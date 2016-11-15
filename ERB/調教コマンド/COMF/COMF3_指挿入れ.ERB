@@ -1,0 +1,273 @@
+﻿;-------------------------------------------------
+;指挿入れ
+;愛撫系コマンド、レベル1
+;-------------------------------------------------
+@USERCOM_ABLE3
+;指挿入れ実行判定
+;ヴァギナ無いとダメ
+SIF !VAGINA(TARGET)
+	RETURN 0
+;プレイヤーが助手の場合、助手が女性で従順3以下orレズっ気3以下、対象が潤滑不足の場合指挿入れはできない（サドならＯＫ）
+IF PLAYER == ASSI && !TALENT:ASSI:サド
+	SIF SEX(ASSI) == 2 && (ABL:ASSI:従順 <= 3 || ABL:ASSI:レズっ気 <= 3) && PALAM:潤滑 < PALAMLV:2
+		RETURN 0
+ENDIF
+
+;異物挿入中はダメ
+SIF TEQUIP:Ｖ異物
+	RETURN 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+
+RETURN 1
+
+@COM3
+;-------------------------------------------------
+;特殊派生処理
+;-------------------------------------------------
+;前コマンドと今回の実行者が同じ
+IF PLAYER == TFLAG:前コマンド実行者
+	;前コマンド
+	SELECTCASE PREVCOMS
+		;非処女で前回の調教が指挿入れかつ実行者の技巧3以上だとGスポット刺激に
+		CASE "指挿入れ"
+			IF ABL:PLAYER:技巧 >= 3 && !TALENT:処女 && !TALENT:再生処女
+				CALL USERCOM_ABLE503
+				SIF RESULT
+					JUMP COM503
+			ENDIF
+		;前回の調教がGスポット刺激なら続行
+		CASE "Gスポット刺激"
+			CALL USERCOM_ABLE503
+			SIF RESULT
+				JUMP COM503
+	ENDSELECT
+ENDIF
+
+PRINTL 指挿入れ
+CALL KOJO_MESSAGE_COM
+
+;V経験を伴うコマンドのフラグ
+SIF !TALENT:処女 && !TALENT:再生処女
+	TFLAG:膣コマンド = 1
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 100
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES LOCAL , 0.40
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES LOCAL , 1.00
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES LOCAL , 1.20
+ENDIF
+
+;奴隷のABL:Ｖ感覚をみる
+SELECTCASE ABL:Ｖ感覚
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASEELSE
+		TIMES LOCAL , 3.00
+ENDSELECT
+
+;奴隷のABL:マゾっ気をみる
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:賢者タイム > 0
+	LOCAL /= 20
+
+SIF PENIS(TARGET)
+	BASE:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 20
+LOSEBASE:気力 += 60
+
+IF !TALENT:処女 && !TALENT:再生処女
+	SOURCE:快V = 100
+	SOURCE:苦痛 = 20
+	SOURCE:露出 = 10
+	SOURCE:不潔 = 30
+	SOURCE:反感 = 30
+;処女及び再生処女の場合
+;V経験が0の時はV経験を伴わない物に派生
+;Vの珠は入らないが、快Vが高いと慣らしてあるため処女喪失時に影響
+ELSE
+	SIF PALAM:快Ｖ < 100
+		SOURCE:快V = 60
+	SOURCE:苦痛 = 30
+	SOURCE:恐怖 = 40
+	SOURCE:露出 = 20
+	SOURCE:不潔 = 10
+	SOURCE:反感 = 50
+ENDIF
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+IF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 20
+	;処女
+	SIF TALENT:処女
+		SOURCE:鬱屈 += 10
+ENDIF
+
+;Vへの苦痛は先に処理しておく
+;EXP:Ｖ経験をみる（処女の反感は別途処理済みなので省略）
+SELECTCASE EXP:Ｖ経験
+	CASE IS < EXPLV:1
+		TIMES SOURCE:苦痛 , 2.50
+	CASE IS < EXPLV:2
+		TIMES SOURCE:苦痛 , 0.80
+		TIMES SOURCE:反感 , 1.20
+	CASE IS < EXPLV:3
+		TIMES SOURCE:苦痛 , 0.40
+	CASE IS < EXPLV:4
+		TIMES SOURCE:苦痛 , 0.10
+	CASE IS < EXPLV:5
+		TIMES SOURCE:苦痛 , 0.00
+	CASE IS >= EXPLV:5
+		TIMES SOURCE:苦痛 , 0.00
+ENDSELECT
+
+;PALAM:潤滑をみる
+SELECTCASE PALAM:潤滑
+	CASE IS < PALAMLV:1
+		TIMES SOURCE:苦痛 , 1.20
+		TIMES SOURCE:反感 , 1.50
+	CASE IS < PALAMLV:2
+		TIMES SOURCE:苦痛 , 0.70
+		TIMES SOURCE:反感 , 1.20
+	CASE IS < PALAMLV:3
+		TIMES SOURCE:苦痛 , 0.40
+	CASE IS < PALAMLV:4
+		TIMES SOURCE:苦痛 , 0.10
+	CASE IS >= PALAMLV:4
+		TIMES SOURCE:苦痛 , 0.05
+ENDSELECT
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 4
+
+CALL SAMEN_SHOOT_T, 4, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;奴隷の膣内⇔調教者の指の汚れが移動
+STAIN:膣内 |= STAIN:PLAYER:手
+STAIN:PLAYER:手 |= STAIN:膣内
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;V経験
+IF !TALENT:処女 && !TALENT:再生処女
+	IF TEQUIP:バイブ
+		PRINTL Ｖ経験+2
+		EXP:Ｖ経験 += 2
+	ELSE
+		PRINTL Ｖ経験+1
+		EXP:Ｖ経験++
+	ENDIF
+ENDIF
+
+CALL EXPUP, 3, 1
+
+RETURN 1
+

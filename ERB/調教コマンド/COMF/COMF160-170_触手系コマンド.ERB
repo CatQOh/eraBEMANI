@@ -1,0 +1,617 @@
+﻿;-------------------------------------------------
+;触手召喚および派生コマンド
+;触手系コマンド
+;-------------------------------------------------
+@USERCOM_ABLE160
+;触手召喚実行判定
+;全裸でないとダメ（足元、特殊は除く）
+SIF TEQUIP:下半身下着 || TEQUIP:上半身下着 || TEQUIP:下半身上着 || TEQUIP:上半身上着 || TEQUIP:全身上着
+	RETURN 0
+;触手使役術をもっていないとダメ
+SIF !ITEM:触手使役術
+	RETURN 0
+;お風呂場プレイ中はダメ
+SIF TEQUIP:お風呂場
+	RETURN 0
+;野外プレイ中は不可
+SIF TEQUIP:野外プレイ
+	RETURN 0
+;新妻プレイ中はダメ
+SIF TEQUIP:エプロン
+	RETURN 0
+
+RETURN 1
+
+@COM160
+PRINTL 触手召喚
+CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+INVERTBIT TEQUIP:触手, 0
+
+;装備は外す
+FOR COUNT, 11, 40
+	SELECTCASE TEQUIPNAME:COUNT
+		CASE "クリキャップ", "オナホール", "バイブ", "アナルバイブ", "アナルビーズ", "ニプルキャップ", "搾乳機", "アイマスク", "縄", "ボールギャグ", "浣腸器", "拡張バルーン", "アナル電極", "乳房電極", "コンドーム", "触手口辱", "搾精コンドーム", "Ｖ異物", "Ａ異物"
+			TEQUIP:COUNT = 0
+	ENDSELECT
+NEXT
+
+;触手解除時はソース、経験の加算は行わず終了する
+SIF !TEQUIP:触手
+	RETURN 1
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 50
+LOSEBASE:気力 += 100
+
+SOURCE:恐怖 = 2500
+SOURCE:逸脱 = 2500
+SOURCE:反感 = 2500
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;触手経験は先に見ておく
+IF EXP:触手経験 < EXPLV:1
+	TIMES LOSEBASE:体力 , 1.20
+	TIMES LOSEBASE:気力 , 1.20
+	TIMES SOURCE:恐怖 , 1.20
+	TIMES SOURCE:逸脱 , 1.20
+	TIMES SOURCE:反感 , 1.20
+ELSEIF EXP:触手経験 < EXPLV:2
+	TIMES LOSEBASE:体力 , 1.00
+	TIMES LOSEBASE:気力 , 1.00
+	TIMES SOURCE:恐怖 , 1.00
+	TIMES SOURCE:逸脱 , 1.00
+	TIMES SOURCE:反感 , 1.00
+ELSEIF EXP:触手経験 < EXPLV:3
+	TIMES LOSEBASE:体力 , 0.80
+	TIMES LOSEBASE:気力 , 0.80
+	TIMES SOURCE:恐怖 , 0.80
+	TIMES SOURCE:逸脱 , 0.80
+	TIMES SOURCE:反感 , 0.80
+ELSEIF EXP:触手経験 < EXPLV:4
+	TIMES LOSEBASE:体力 , 0.60
+	TIMES LOSEBASE:気力 , 0.60
+	TIMES SOURCE:恐怖 , 0.60
+	TIMES SOURCE:逸脱 , 0.60
+	TIMES SOURCE:反感 , 0.60
+ELSEIF EXP:触手経験 < EXPLV:5
+	TIMES LOSEBASE:体力 , 0.40
+	TIMES LOSEBASE:気力 , 0.40
+	TIMES SOURCE:恐怖 , 0.40
+	TIMES SOURCE:逸脱 , 0.40
+	TIMES SOURCE:反感 , 0.40
+ELSE
+	TIMES LOSEBASE:体力 , 0.20
+	TIMES LOSEBASE:気力 , 0.20
+	TIMES SOURCE:恐怖 , 0.20
+	TIMES SOURCE:逸脱 , 0.20
+	TIMES SOURCE:反感 , 0.20
+ENDIF
+
+;触手召喚時は一連のチェックを行わない
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+;CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+;CALL SAMEN_CHECK_T, 0
+
+;CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+IF !EXP:触手経験
+	EXP:異常経験++
+	PRINTL 異常経験+1
+ENDIF
+PRINTL 触手経験+1
+EXP:触手経験++
+
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM160
+PRINTL ＜触手召喚中＞
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 5
+LOSEBASE:気力 += 50
+
+SOURCE:恐怖 += 1000
+SOURCE:逸脱 += 1000
+SOURCE:反感 += 1000
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+SELECTCASE SELECTCOM
+	CASE 161 TO 170
+		IF MAXBASE:MASTER:触手射精 != 0
+			LOCAL = 1000
+			;ABL:技巧をみる
+			SELECTCASE ABL:技巧
+				CASE 0
+					TIMES LOCAL , 1.00
+				CASE 1
+					TIMES LOCAL , 1.10
+				CASE 2
+					TIMES LOCAL , 1.20
+				CASE 3
+					TIMES LOCAL , 1.30
+				CASE 4
+					TIMES LOCAL , 1.40
+				CASEELSE
+					TIMES LOCAL , 1.50
+			ENDSELECT
+
+			;ABL:従順をみる
+			SELECTCASE ABL:従順
+				CASE 0
+					TIMES LOCAL , 0.80
+				CASE 1
+					TIMES LOCAL , 0.90
+				CASE 2
+					TIMES LOCAL , 1.00
+				CASE 3
+					TIMES LOCAL , 1.10
+				CASE 4
+					TIMES LOCAL , 1.20
+				CASEELSE
+					TIMES LOCAL , 1.30
+			ENDSELECT
+
+			;PALAM:欲情をみる
+			IF PALAM:欲情 < PALAMLV:1
+				TIMES LOCAL , 1.00
+			ELSEIF PALAM:欲情 < PALAMLV:2
+				TIMES LOCAL , 1.10
+			ELSEIF PALAM:欲情 < PALAMLV:3
+				TIMES LOCAL , 1.20
+			ELSEIF PALAM:欲情 < PALAMLV:4
+				TIMES LOCAL , 1.30
+			ELSEIF PALAM:欲情 < PALAMLV:5
+				TIMES LOCAL , 1.40
+			ELSE
+				TIMES LOCAL , 1.50
+			ENDIF
+
+			;触手挿入
+			SIF TEQUIP:バイブ
+				TIMES LOCAL , 1.50
+			;アナル触手
+			SIF TEQUIP:アナルバイブ
+				TIMES LOCAL , 1.50
+			;触手クリ責め
+			SIF TEQUIP:クリキャップ
+				TIMES LOCAL , 1.20
+			;触手乳首責め
+			SIF TEQUIP:ニプルキャップ
+				TIMES LOCAL , 1.20
+			;触手搾乳
+			SIF TEQUIP:搾乳器
+				TIMES LOCAL , 1.30
+			;触手ペニス責め
+			SIF TEQUIP:オナホール
+				TIMES LOCAL , 1.10
+			;触手緊縛
+			SIF TEQUIP:縄
+				TIMES LOCAL , 1.20
+			;触手浣腸
+			SIF TEQUIP:浣腸器
+				TIMES LOCAL , 1.30
+			;触手口辱
+			SIF TEQUIP:触手口辱
+				TIMES LOCAL , 1.50
+
+			BASE:MASTER:触手射精 += LOCAL
+		ENDIF
+ENDSELECT
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;触手経験は先に見ておく
+IF EXP:触手経験 < EXPLV:1
+	TIMES LOSEBASE:体力 , 1.20
+	TIMES LOSEBASE:気力 , 1.20
+	TIMES SOURCE:恐怖 , 1.20
+	TIMES SOURCE:逸脱 , 1.20
+	TIMES SOURCE:反感 , 1.20
+ELSEIF EXP:触手経験 < EXPLV:2
+	TIMES LOSEBASE:体力 , 1.00
+	TIMES LOSEBASE:気力 , 1.00
+	TIMES SOURCE:恐怖 , 1.00
+	TIMES SOURCE:逸脱 , 1.00
+	TIMES SOURCE:反感 , 1.00
+ELSEIF EXP:触手経験 < EXPLV:3
+	TIMES LOSEBASE:体力 , 0.80
+	TIMES LOSEBASE:気力 , 0.80
+	TIMES SOURCE:恐怖 , 0.80
+	TIMES SOURCE:逸脱 , 0.80
+	TIMES SOURCE:反感 , 0.80
+ELSEIF EXP:触手経験 < EXPLV:4
+	TIMES LOSEBASE:体力 , 0.60
+	TIMES LOSEBASE:気力 , 0.60
+	TIMES SOURCE:恐怖 , 0.60
+	TIMES SOURCE:逸脱 , 0.60
+	TIMES SOURCE:反感 , 0.60
+ELSEIF EXP:触手経験 < EXPLV:5
+	TIMES LOSEBASE:体力 , 0.40
+	TIMES LOSEBASE:気力 , 0.40
+	TIMES SOURCE:恐怖 , 0.40
+	TIMES SOURCE:逸脱 , 0.40
+	TIMES SOURCE:反感 , 0.40
+ELSE
+	TIMES LOSEBASE:体力 , 0.20
+	TIMES LOSEBASE:気力 , 0.20
+	TIMES SOURCE:恐怖 , 0.20
+	TIMES SOURCE:逸脱 , 0.20
+	TIMES SOURCE:反感 , 0.20
+ENDIF
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+;CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+LOCAL = BASE:MASTER:触手射精/MAXBASE:MASTER:触手射精
+
+;射精時に中毒充足のソースを追加、なお触手は射精の再装填は無し
+;通常射精時
+SIF LOCAL == 1
+	LOCAL:1 = 200
+;大量射精時
+SIF LOCAL >= 2
+	LOCAL:1 = 500
+
+IF LOCAL > 0
+	;精液中毒を見る
+	SELECTCASE ABL:精液中毒
+		CASE 0, 1
+			TIMES LOCAL:1 , 0.00
+		CASE 2
+			TIMES LOCAL:1 , 0.30
+		CASE 3
+			TIMES LOCAL:1 , 0.60
+		CASE 4
+			TIMES LOCAL:1 , 0.90
+		CASE 5
+			TIMES LOCAL:1 , 1.20
+		CASE 6
+			TIMES LOCAL:1 , 1.50
+		CASE 7
+			TIMES LOCAL:1 , 1.80
+		CASE 8
+			TIMES LOCAL:1 , 2.30
+		CASE 9
+			TIMES LOCAL:1 , 3.00
+		CASE IS >= 10
+			TIMES LOCAL:1 , 5.00
+	ENDSELECT
+ENDIF
+
+SOURCE:中毒 += LOCAL:1
+
+;射精時の処理
+;大量射精
+IF LOCAL >= 2
+	EXP:精液経験 += 3
+	PRINTL 触手大量射精
+	PRINTL 精液経験+3
+	TENTACLE++
+	BASE:MASTER:触手射精 -= MAXBASE:MASTER:触手射精*LOCAL
+	NOWEX:MASTER:触手射精 = LOCAL
+	EX:MASTER:触手射精++
+;通常の射精
+ELSEIF LOCAL == 1
+	EXP:精液経験 += 1
+	PRINTL 触手射精
+	PRINTL 精液経験+1
+	TENTACLE++
+	BASE:MASTER:触手射精 -= MAXBASE:MASTER:触手射精
+	NOWEX:MASTER:触手射精 = LOCAL
+	EX:MASTER:触手射精++
+ENDIF
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;触手が射精した場合の精液汚れ
+IF NOWEX:MASTER:触手射精 > 0
+	;触手挿入
+	SIF TEQUIP:バイブ
+		SETBIT STAIN:膣内, 2
+	;アナル触手、触手浣腸
+	SIF TEQUIP:アナルバイブ || TEQUIP:浣腸器
+		SETBIT STAIN:アナル, 2
+	;触手クリ責め
+	SIF TEQUIP:クリキャップ
+		SETBIT STAIN:ヴァギナ, 2
+	;触手乳首責め、触手搾乳
+	SIF TEQUIP:ニプルキャップ || TEQUIP:搾乳器
+		SETBIT STAIN:胸, 2
+	;触手ペニス責め、触手搾精
+	SIF TEQUIP:オナホール || TEQUIP:搾精コンドーム
+		SETBIT STAIN:ペニス, 2
+	;触手緊縛（全身にぶっかけるイメージ）
+	IF TEQUIP:縄
+		SETBIT STAIN:口, 2
+		SETBIT STAIN:手, 2
+		;ペニスがあればペニス、なければヴァギナへ
+		IF PENIS(TARGET)
+			SETBIT STAIN:ペニス, 2
+		ELSEIF VAGINA(TARGET)
+			SETBIT STAIN:ヴァギナ, 2
+		ENDIF
+		SETBIT STAIN:胸, 2
+	ENDIF
+	;触手口辱
+	SIF TEQUIP:触手口辱
+		SETBIT STAIN:口, 2
+ENDIF
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;各触手派生コマンドから集めた触手経験を一括処理
+TENTACLE++
+PRINTFORML 触手経験+{TENTACLE}
+EXP:触手経験 += TENTACLE
+TENTACLE = 0
+
+;依存度補正値(服従で1、隷属で2 強制変更なので、これまでの数値をリセット）
+TFLAG:依存度補正 = 0
+IF TALENT:服従 && PLAYER == MASTER
+	TFLAG:依存度補正 = 2
+ELSEIF TALENT:隷属 && PLAYER == MASTER
+	TFLAG:依存度補正 = 4
+ENDIF
+
+RETURN 1
+
+;-------------------------------------------------
+;派生コマンドの処理
+;-------------------------------------------------
+;触手挿入
+;-------------------------------------------------
+@USERCOM_ABLE161
+;触手ないとダメ
+SIF !TEQUIP:触手
+	RETURN 0
+;ヴァギナ無いとダメ
+SIF !VAGINA(TARGET)
+	RETURN 0
+
+RETURN 1
+
+@COM161
+JUMP COM44
+
+;-------------------------------------------------
+;アナル触手
+;-------------------------------------------------
+@USERCOM_ABLE162
+;触手ないとダメ
+SIF !TEQUIP:触手
+	RETURN 0
+;触手浣腸中は不可
+SIF TEQUIP:浣腸器
+	RETURN 0
+
+RETURN 1
+
+@COM162
+JUMP COM45
+
+;-------------------------------------------------
+;触手クリ責め
+;-------------------------------------------------
+@USERCOM_ABLE163
+;触手ないとダメ
+SIF !TEQUIP:触手
+	RETURN 0
+;ペニス持ちだとダメ
+SIF PENIS(TARGET)
+	RETURN 0
+
+RETURN 1
+
+@COM163
+JUMP COM42
+
+;-------------------------------------------------
+;触手乳首責め
+;-------------------------------------------------
+@USERCOM_ABLE164
+;触手ないとダメ
+SIF !TEQUIP:触手
+	RETURN 0
+;触手搾乳中は不可
+SIF TEQUIP:搾乳器
+	RETURN 0
+
+RETURN 1
+
+@COM164
+JUMP COM47
+
+;-------------------------------------------------
+;触手搾乳
+;-------------------------------------------------
+@USERCOM_ABLE165
+;触手ないとダメ
+SIF !TEQUIP:触手
+	RETURN 0
+;触手乳首責め中は不可
+SIF TEQUIP:ニプルキャップ
+	RETURN 0
+;母乳体質じゃないとダメ
+SIF !TALENT:母乳体質
+	RETURN 0
+;男だとダメ
+SIF SEX(TARGET) == 1
+	RETURN 0
+
+RETURN 1
+
+@COM165
+JUMP COM49
+
+;-------------------------------------------------
+;触手緊縛
+;-------------------------------------------------
+@USERCOM_ABLE166
+;触手ないとダメ
+SIF !TEQUIP:触手
+	RETURN 0
+
+RETURN 1
+
+@COM166
+JUMP COM106
+
+;-------------------------------------------------
+;触手浣腸
+;-------------------------------------------------
+@USERCOM_ABLE167
+
+;腸洗浄済みだとダメ
+SIF TFLAG:腸洗浄済み
+	RETURN 0
+
+;無機物はダメ
+SIF TALENT:無機物
+	RETURN 0
+;触手ないとダメ
+SIF !TEQUIP:触手
+	RETURN 0
+;アナル触手中は不可
+SIF TEQUIP:アナルバイブ
+	RETURN 0
+
+RETURN 1
+
+@COM167
+JUMP COM146
+
+;-------------------------------------------------
+;触手ペニス責め
+;-------------------------------------------------
+@USERCOM_ABLE169
+;触手ないとダメ
+SIF !TEQUIP:触手
+	RETURN 0
+;ペニス無いとダメ
+SIF !PENIS(TARGET)
+	RETURN 0
+
+RETURN 1
+
+@COM169
+JUMP COM43
+
+;-------------------------------------------------
+;触手搾精
+;-------------------------------------------------
+@USERCOM_ABLE170
+;触手ないとダメ
+SIF !TEQUIP:触手
+	RETURN 0
+;ペニス無いとダメ
+SIF !PENIS(TARGET)
+	RETURN 0
+
+RETURN 1
+
+@COM170
+JUMP COM50
+
+;-------------------------------------------------
+;触手口辱
+;-------------------------------------------------
+@USERCOM_ABLE168
+;触手ないとダメ
+SIF !TEQUIP:触手
+	RETURN 0
+;ボールギャグ使用中は不可
+SIF TEQUIP:ボールギャグ
+	RETURN 0
+
+RETURN 1
+
+@COM168
+;触手口辱
+PRINTL 触手口辱
+SELECTCOM = 168
+CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+INVERTBIT TEQUIP:触手口辱, 0
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+LOSEBASE:体力 += 50
+LOSEBASE:気力 += 50
+
+SOURCE:性行動 = 200
+SOURCE:屈従 = 1000
+SOURCE:逸脱 = 1000
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;フェラ経験
+EXP:フェラ経験 += 1
+PRINTL フェラ経験+1
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM168
+PRINTL ＜触手口辱中＞
+
+LOSEBASE:体力 += 50
+LOSEBASE:気力 += 50
+
+SOURCE:性行動 += 100
+SOURCE:屈従 += 700
+SOURCE:逸脱 += 700
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;フェラ経験
+EXP:フェラ経験 += 1
+PRINTL フェラ経験+1
+
+;触手経験加算
+TENTACLE++
+
+RETURN 1
+

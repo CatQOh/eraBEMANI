@@ -1,0 +1,221 @@
+﻿;-------------------------------------------------
+;足扱きする
+;愛撫系コマンド
+;-------------------------------------------------
+@USERCOM_ABLE12
+;足扱きする実行判定
+;対象がペニス無いとダメ
+SIF !PENIS(TARGET)
+	RETURN 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+
+RETURN 1
+
+@COM12
+PRINTL 足扱きする
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 300
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.80
+	CASE 2
+		TIMES LOCAL , 2.60
+	CASE 3
+		TIMES LOCAL , 3.40
+	CASE 4
+		TIMES LOCAL , 4.20
+	CASEELSE
+		TIMES LOCAL , 5.00
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;ABL:Ｃ感覚をみる
+SELECTCASE ABL:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASEELSE
+		TIMES LOCAL , 3.00
+ENDSELECT
+
+;ABL:マゾっ気をみる
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 30
+LOSEBASE:気力 += 150
+
+SOURCE:快C = 200
+SOURCE:達成 = 200
+SOURCE:苦痛 = 150
+SOURCE:露出 = 300
+SOURCE:屈従 = 300
+SOURCE:中毒 = 100
+SOURCE:逸脱 = 500
+SOURCE:反感 = 500
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 400
+
+;苦痛を伴わないマゾっ気及びマゾの処理は先にしておく
+;マゾっ気を見る
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		TIMES SOURCE:達成 , 0.80
+		TIMES SOURCE:屈従 , 0.80
+		SOURCE:液体 += 0
+		SOURCE:欲情 += 0
+	CASE 1
+		TIMES SOURCE:達成 , 1.00
+		TIMES SOURCE:屈従 , 1.00
+		SOURCE:液体 += 20
+		SOURCE:欲情 += 30
+	CASE 2
+		TIMES SOURCE:達成 , 1.20
+		TIMES SOURCE:屈従 , 1.20
+		SOURCE:液体 += 40
+		SOURCE:欲情 += 70
+	CASE 3
+		TIMES SOURCE:達成 , 1.40
+		TIMES SOURCE:屈従 , 1.40
+		SOURCE:液体 += 70
+		SOURCE:欲情 += 120
+	CASE 4
+		TIMES SOURCE:達成 , 1.50
+		TIMES SOURCE:屈従 , 1.50
+		SOURCE:液体 += 110
+		SOURCE:欲情 += 180
+	CASE 5
+		TIMES SOURCE:達成 , 1.70
+		TIMES SOURCE:屈従 , 1.70
+		SOURCE:液体 += 150
+		SOURCE:欲情 += 250
+	CASE 6
+		TIMES SOURCE:達成 , 1.90
+		TIMES SOURCE:屈従 , 1.90
+		SOURCE:液体 += 200
+		SOURCE:欲情 += 300
+	CASE 7
+		TIMES SOURCE:達成 , 2.10
+		TIMES SOURCE:屈従 , 2.10
+		SOURCE:液体 += 250
+		SOURCE:欲情 += 350
+	CASE 8
+		TIMES SOURCE:達成 , 2.30
+		TIMES SOURCE:屈従 , 2.30
+		SOURCE:液体 += 300
+		SOURCE:欲情 += 400
+	CASE 9
+		TIMES SOURCE:達成 , 2.50
+		TIMES SOURCE:屈従 , 2.50
+		SOURCE:液体 += 350
+		SOURCE:欲情 += 450
+	CASE IS >= 10
+		TIMES SOURCE:達成 , 3.00
+		TIMES SOURCE:屈従 , 3.00
+		SOURCE:液体 += 500
+		SOURCE:欲情 += 500
+ENDSELECT
+
+;マゾを見る
+IF TALENT:マゾ
+	TIMES SOURCE:達成 , 2.50
+	TIMES SOURCE:屈従 , 2.50
+	TIMES SOURCE:液体 , 1.20
+	TIMES SOURCE:欲情 , 1.20
+ENDIF
+
+;倒錯的
+SIF TALENT:倒錯的
+	TIMES SOURCE:達成 , 1.80
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 2, 2
+
+;依存度補正値(相性100↑かつ淫乱で1、娼婦で2）
+IF TALENT:淫乱 && RELATION:(NO:PLAYER) > 100
+	TFLAG:依存度補正 += 1
+ELSEIF TALENT:娼婦 && RELATION:(NO:PLAYER) > 100
+	TFLAG:依存度補正 += 2
+ENDIF
+
+RETURN 1
+

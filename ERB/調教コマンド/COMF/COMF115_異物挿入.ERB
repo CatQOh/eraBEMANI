@@ -1,0 +1,600 @@
+﻿;-------------------------------------------------
+;異物挿入
+;拷問系コマンド、レベル1
+;-------------------------------------------------
+@USERCOM_ABLE115
+;異物挿入
+;触手召喚中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+;V感覚もしくはA感覚が3未満だと実行できない
+SIF ABL:Ｖ感覚 < 3 && ABL:Ａ感覚 < 3
+	RETURN 0
+;両穴がふさがってると実行できない
+SIF (TEQUIP:バイブ || TEQUIP:Ｖ異物) && (TEQUIP:アナルバイブ || TEQUIP:アナルビーズ || TEQUIP:浣腸器 || TEQUIP:拡張バルーン || TEQUIP:アナル電極 || TEQUIP:Ａ異物)
+	RETURN 0
+;挿入できる穴がふさがってると実行できない
+IF ABL:Ｖ感覚 >= 3
+	SIF ABL:Ａ感覚 < 3 && (TEQUIP:バイブ || TEQUIP:Ｖ異物)
+	 	RETURN 0
+ENDIF
+IF ABL:Ａ感覚 >= 3
+	SIF ABL:Ｖ感覚 < 3 && (TEQUIP:アナルバイブ || TEQUIP:アナルビーズ || TEQUIP:浣腸器 || TEQUIP:拡張バルーン || TEQUIP:アナル電極 || TEQUIP:Ａ異物)
+		RETURN 0
+ENDIF
+
+;下半身下着をつけているとダメ
+SIF TEQUIP:下半身下着
+	RETURN 0
+;下の空いてない上着を着ているとダメ
+IF TEQUIP:下半身上着 || (TEQUIP:全身上着 && CFLAG:着衣併用 != 1)
+	SIF CFLAG:挿入可 != 1
+		RETURN 0
+ENDIF
+
+RETURN 1
+
+@COM115
+PRINTL 異物挿入
+
+IF VAGINA(TARGET)
+	IF (ABL:Ｖ感覚 >= 3 && ABL:Ａ感覚 < 3) || TEQUIP:Ａ異物
+		LOCAL = 4
+	ELSEIF (ABL:Ｖ感覚 < 3 && ABL:Ａ感覚 >= 3) || TEQUIP:Ｖ異物
+		LOCAL = 5
+	ELSE
+		PRINTL どちらの穴に挿入しますか？
+		PRINTL [0] - 膣穴
+		PRINTL [1] - 尻穴
+		PRINTL [2] - やめる
+		DO
+			INPUT
+		LOOP LOOPRES(0, 1, 2)
+		
+		SELECTCASE RESULT
+			CASE 0
+				LOCAL = 4
+			CASE 1
+				LOCAL = 5
+			CASE 2
+				RETURN 0
+		ENDSELECT
+	ENDIF
+ELSE
+	LOCAL = 5
+ENDIF
+
+IF LOCAL == 4
+	PRINT 膣穴
+ELSEIF LOCAL == 5
+	PRINT 尻穴
+ENDIF
+PRINTL に何を挿入しますか？
+SIF ABL:LOCAL >= 3
+	PRINTL [1] - コーヒー缶
+SIF ABL:LOCAL >= 4
+	PRINTL [2] - ペットボトル
+SIF ABL:LOCAL >= 5
+	PRINTL [3] - 空きビン
+PRINTL [4] - やめる
+;SIF ABL:LOCAL >= 6
+;	PRINTL [4] - 消火器
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 1 TO 3
+			SIF RESULT+2 > ABL:LOCAL
+				CONTINUE
+		CASE 4
+			RETURN 0
+	ENDSELECT
+LOOP LOOPRES(1, 2, 3)
+
+SELECTCASE LOCAL
+	CASE 4
+		TEQUIP:Ｖ異物 = RESULT
+		TFLAG:膣コマンド = 1
+	CASE 5
+		TEQUIP:Ａ異物 = RESULT
+ENDSELECT
+
+TFLAG:異物挿入 = LOCAL
+LOCAL:1 = RESULT
+
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 50
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES LOCAL , 0.40
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES LOCAL , 1.00
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES LOCAL , 1.20
+ENDIF
+
+;奴隷のABL:感覚をみる
+IF TEQUIP:Ｖ異物
+	SELECTCASE ABL:Ｖ感覚
+		CASE 0
+			TIMES LOCAL , 0.50
+		CASE 1
+			TIMES LOCAL , 0.80
+		CASE 2
+			TIMES LOCAL , 1.00
+		CASE 3
+			TIMES LOCAL , 1.50
+		CASE 4
+			TIMES LOCAL , 2.00
+		CASEELSE
+			TIMES LOCAL , 3.00
+	ENDSELECT
+ENDIF
+IF TEQUIP:Ａ異物
+	SELECTCASE ABL:Ａ感覚
+		CASE 0
+			TIMES LOCAL , 0.50
+		CASE 1
+			TIMES LOCAL , 0.80
+		CASE 2
+			TIMES LOCAL , 1.00
+		CASE 3
+			TIMES LOCAL , 1.50
+		CASE 4
+			TIMES LOCAL , 2.00
+		CASEELSE
+			TIMES LOCAL , 3.00
+	ENDSELECT
+ENDIF
+
+;奴隷のABL:マゾっ気をみる
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+SELECTCASE LOCAL:1
+	CASE 1
+		;消費体力、気力
+		LOSEBASE:体力 += 50
+		LOSEBASE:気力 += 150
+
+		SELECTCASE TFLAG:異物挿入
+			CASE 4
+				SOURCE:快V = 100
+			CASE 5
+				SOURCE:快A = 100
+		ENDSELECT
+		SOURCE:苦痛 = 500
+		SOURCE:恐怖 = 200
+		SOURCE:露出 = 50
+		SOURCE:逸脱 = 100
+		SOURCE:反感 = 70
+	CASE 2
+		;消費体力、気力
+		LOSEBASE:体力 += 100
+		LOSEBASE:気力 += 200
+
+		SELECTCASE TFLAG:異物挿入
+			CASE 4
+				SOURCE:快V = 200
+			CASE 5
+				SOURCE:快A = 200
+		ENDSELECT
+		SOURCE:苦痛 = 1000
+		SOURCE:恐怖 = 400
+		SOURCE:露出 = 50
+		SOURCE:逸脱 = 150
+		SOURCE:反感 = 100
+	CASE 3
+		;消費体力、気力
+		LOSEBASE:体力 += 200
+		LOSEBASE:気力 += 400
+
+		SELECTCASE TFLAG:異物挿入
+			CASE 4
+				SOURCE:快V = 300
+			CASE 5
+				SOURCE:快A = 300
+		ENDSELECT
+		SOURCE:苦痛 = 1500
+		SOURCE:恐怖 = 800
+		SOURCE:露出 = 50
+		SOURCE:逸脱 = 200
+		SOURCE:反感 = 100
+	CASE 4
+		;消費体力、気力
+		LOSEBASE:体力 += 300
+		LOSEBASE:気力 += 500
+
+		SELECTCASE TFLAG:異物挿入
+			CASE 4
+				SOURCE:快V = 400
+			CASE 5
+				SOURCE:快A = 400
+		ENDSELECT
+		SOURCE:苦痛 = 2000
+		SOURCE:恐怖 = 1000
+		SOURCE:露出 = 50
+		SOURCE:逸脱 = 250
+		SOURCE:反感 = 100
+ENDSELECT
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 200
+
+;処女だった場合は、苦痛のソースと反発のソースを追加する
+IF TALENT:処女
+	SOURCE:苦痛 += 2000
+	SOURCE:反感 += 3000
+ENDIF
+
+;再生処女だった場合は、苦痛のソースと反発のソースを追加する
+IF TALENT:再生処女
+	SOURCE:苦痛 += 500
+	SOURCE:反感 += 1000
+ENDIF
+
+;苦痛のパラメータによる苦痛のソース増加は先に処理しておく
+IF PALAM:苦痛 < PALAMLV:1
+	TIMES SOURCE:苦痛 , 1.00
+ELSEIF PALAM:苦痛 < PALAMLV:2
+	TIMES SOURCE:苦痛 , 1.50
+ELSEIF PALAM:苦痛 < PALAMLV:3
+	TIMES SOURCE:苦痛 , 2.00
+ELSEIF PALAM:苦痛 < PALAMLV:4
+	TIMES SOURCE:苦痛 , 2.50
+ELSEIF PALAM:苦痛 >= PALAMLV:4
+	TIMES SOURCE:苦痛 , 3.00
+ENDIF
+
+;V及びAへの苦痛は先に処理しておく
+;ABL:感覚をみる（処女の反感は別途処理済みなので省略）
+SELECTCASE ABL:(TFLAG:異物挿入)
+	CASE IS <= 3
+		TIMES SOURCE:苦痛 , 2.00
+		TIMES SOURCE:反感 , 1.50
+	CASE IS <= 4
+		TIMES SOURCE:苦痛 , 1.50
+		TIMES SOURCE:反感 , 1.20
+	CASE IS <= 5
+		TIMES SOURCE:苦痛 , 1.00
+	CASE IS >= 6
+		TIMES SOURCE:苦痛 , 0.50
+ENDSELECT
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES SOURCE:苦痛 , 2.00
+	TIMES SOURCE:反感 , 1.50
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES SOURCE:苦痛 , 1.80
+	TIMES SOURCE:反感 , 1.20
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES SOURCE:苦痛 , 1.60
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES SOURCE:苦痛 , 1.40
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES SOURCE:苦痛 , 1.20
+ENDIF
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+IF TEQUIP:Ｖ異物
+	LOCAL = 4
+ELSEIF TEQUIP:Ａ異物
+	LOCAL = 5
+ENDIF
+
+IF TEQUIP:Ｖ異物 && TEQUIP:Ａ異物
+	IF ABL:Ｖ感覚 > ABL:Ａ感覚
+		LOCAL = 4
+	ELSEIF ABL:Ａ感覚 > ABL:Ｖ感覚
+		LOCAL = 5
+	ELSE
+		LOCAL = 4
+	ENDIF
+ENDIF
+
+CALL SAMEN_CHECK_T, LOCAL
+CALL SAMEN_SHOOT_T, LOCAL, RESULT
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+SELECTCASE TFLAG:異物挿入
+	CASE 4
+		PRINTFORML Ｖ拡張経験+{TEQUIP:Ｖ異物}
+		EXP:Ｖ拡張経験 += TEQUIP:Ｖ異物
+	CASE 5
+		PRINTFORML Ａ拡張経験+{TEQUIP:Ａ異物}
+		EXP:Ａ拡張経験 += TEQUIP:Ａ異物
+ENDSELECT
+
+CALL EXPUP, 1, 4
+
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM115
+;異物挿入中
+
+;V経験を伴うコマンドのフラグ(処女膜再生対応)
+IF TEQUIP:Ｖ異物
+	PRINTL ＜ヴァギナ異物挿入中＞
+	TFLAG:膣コマンド = 1
+ENDIF
+SIF TEQUIP:Ａ異物
+	PRINTL ＜アナル異物挿入中＞
+
+IF TEQUIP:Ｖ異物
+	LOSEBASE:体力 += (TEQUIP:Ｖ異物*30)
+	LOSEBASE:気力 += (TEQUIP:Ｖ異物*50)
+
+	SOURCE:快V += (TEQUIP:Ｖ異物*170)
+	SOURCE:苦痛 += (TEQUIP:Ｖ異物*50)
+	SOURCE:露出 += 30
+	SOURCE:逸脱 += (TEQUIP:Ｖ異物*20)
+ENDIF
+IF TEQUIP:Ａ異物
+	LOSEBASE:体力 += (TEQUIP:Ａ異物*30)
+	LOSEBASE:気力 += (TEQUIP:Ａ異物*50)
+
+	SOURCE:快A += (TEQUIP:Ａ異物*170)
+	SOURCE:苦痛 += (TEQUIP:Ａ異物*50)
+	SOURCE:露出 += 30
+	SOURCE:逸脱 += (TEQUIP:Ａ異物*20)
+ENDIF
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 20
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES LOCAL , 0.40
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES LOCAL , 1.00
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES LOCAL , 1.20
+ENDIF
+
+;奴隷のABL:感覚をみる
+IF TEQUIP:Ｖ異物
+	SELECTCASE ABL:Ｖ感覚
+		CASE 0
+			TIMES LOCAL , 0.50
+		CASE 1
+			TIMES LOCAL , 0.80
+		CASE 2
+			TIMES LOCAL , 1.00
+		CASE 3
+			TIMES LOCAL , 1.50
+		CASE 4
+			TIMES LOCAL , 2.00
+		CASEELSE
+			TIMES LOCAL , 3.00
+	ENDSELECT
+ENDIF
+IF TEQUIP:Ａ異物
+	SELECTCASE ABL:Ａ感覚
+		CASE 0
+			TIMES LOCAL , 0.50
+		CASE 1
+			TIMES LOCAL , 0.80
+		CASE 2
+			TIMES LOCAL , 1.00
+		CASE 3
+			TIMES LOCAL , 1.50
+		CASE 4
+			TIMES LOCAL , 2.00
+		CASEELSE
+			TIMES LOCAL , 3.00
+	ENDSELECT
+ENDIF
+
+;奴隷のABL:マゾっ気をみる
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:射精 += LOCAL
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;自慰実行時は経験+1
+SELECTCASE SELECTCOMS
+	CASE "自慰"
+		IF TEQUIP:Ｖ異物
+			PRINTL Ｖ経験+2
+			EXP:Ｖ経験 += 2
+		ENDIF
+		IF TEQUIP:Ａ異物
+			PRINTL Ａ経験+2
+			EXP:Ａ経験 += 2
+		ENDIF
+	CASE "異物挿入"
+		SELECTCASE TFLAG:異物挿入
+			CASE 4
+				PRINTFORML Ｖ経験+{TEQUIP:Ｖ異物*2}
+				EXP:Ｖ経験 += (TEQUIP:Ｖ異物*2)
+			CASE 5
+				PRINTFORML Ａ経験+{TEQUIP:Ａ異物*2}
+				EXP:Ａ経験 += (TEQUIP:Ａ異物*2)
+		ENDSELECT
+	CASEELSE
+		IF TEQUIP:Ｖ異物
+			PRINTL Ｖ経験+1
+			EXP:Ｖ経験++
+		ENDIF
+		IF TEQUIP:Ａ異物
+			PRINTL Ａ経験+1
+			EXP:Ａ経験++
+		ENDIF
+ENDSELECT
+
+RETURN 1
+

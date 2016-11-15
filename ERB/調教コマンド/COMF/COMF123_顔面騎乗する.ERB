@@ -1,0 +1,177 @@
+﻿;-------------------------------------------------
+;顔面騎乗する
+;助手によるコマンド、及びレズプレイ
+;-------------------------------------------------
+@USERCOM_ABLE123
+;クンニ強制実行判定
+;調教者がヴァギナ無いとダメ
+SIF !VAGINA(PLAYER)
+	RETURN 0
+;猫舌の奴隷の場合は技巧Lv2以上必要
+SIF TALENT:猫舌 && ABL:技巧 < 2
+	RETURN 0
+;ボールギャグ使用中は不可
+SIF TEQUIP:ボールギャグ
+	RETURN 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+;服着てる場合は下が空いていないとダメ 下着一体型全身上着は例外
+IF TEQUIP:PLAYER:下半身上着 || (TEQUIP:PLAYER:全身上着 && CFLAG:PLAYER:着衣併用 != 1)
+	SIF !CFLAG:PLAYER:挿入可 && !CFLAG:PLAYER:着衣併用 != 2
+		RETURN 0
+ENDIF
+
+RETURN 1
+
+@COM123
+PRINTL 顔面騎乗する
+CALL KOJO_MESSAGE_COM
+
+;実行者が奴隷であるフラグ
+TFLAG:奴隷実行 = 1
+
+;-------------------------------------------------
+;射精ゲージチェック（ふたなりの場合）
+;-------------------------------------------------
+LOCAL = 100
+
+;ABL:技巧をみる
+SELECTCASE ABL:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:奉仕精神をみる
+SELECTCASE ABL:奉仕精神
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.40
+ENDSELECT
+
+;TALENT:舌使いをみる
+SIF TALENT:舌使い
+	TIMES LOCAL , 2.00
+
+;プレイヤーのABL:Ｃ感覚をみる
+SELECTCASE ABL:PLAYER:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.50
+	CASE 2
+		TIMES LOCAL , 2.00
+	CASE 3
+		TIMES LOCAL , 2.50
+	CASE 4
+		TIMES LOCAL , 3.50
+	CASEELSE
+		TIMES LOCAL , 5.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:PLAYER:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:PLAYER:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 30
+LOSEBASE:気力 += 100
+
+SOURCE:性行動 = 300
+SOURCE:恐怖 = 300
+SOURCE:達成 = 100
+SOURCE:屈従 = 500
+SOURCE:逸脱 = 400
+SOURCE:反感 = 400
+SOURCE:不潔 = 300
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 400
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK, 6
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT, 6, NOWEX:PLAYER:射精
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 3, 2
+
+;奴隷が猫舌持ちの場合は、調教者に嗜虐快楽経験を追加
+IF TALENT:猫舌
+	EXP:嗜虐快楽経験 += 1
+	PRINTL 嗜虐快楽経験+1
+ENDIF
+
+;依存度補正値(相性100↑かつ淫乱で1、娼婦で2）
+IF TALENT:淫乱 && RELATION:(NO:PLAYER) > 100
+	TFLAG:依存度補正 += 1
+ELSEIF TALENT:娼婦 && RELATION:(NO:PLAYER) > 100
+	TFLAG:依存度補正 += 2
+ENDIF
+
+;奉仕快楽フラグ
+TFLAG:奉仕快楽 = 1
+
+RETURN 1
+

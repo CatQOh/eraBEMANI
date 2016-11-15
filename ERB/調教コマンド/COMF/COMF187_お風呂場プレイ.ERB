@@ -1,0 +1,155 @@
+﻿;-------------------------------------------------
+;お風呂場プレイ
+;特殊なコマンド
+;-------------------------------------------------
+@USERCOM_ABLE187
+;お風呂場プレイ実行判定
+;解除はいつでも可能
+SIF TEQUIP:お風呂場
+	RETURN 1
+;従順が1以上ないとダメ
+SIF ABL:従順 <= 1
+	RETURN 0
+SELECTCASE CSTR:種族
+	;対象か助手が種族：獣人、獣で、従順が3以下だとダメ
+	CASE "獣人", "獣"
+		SIF ABL:従順 <= 3
+			RETURN 0
+	;機械はダメ
+	CASE "機械"
+		RETURN 0
+ENDSELECT
+;無機物はダメ
+SIF TALENT:無機物
+	RETURN 0
+;野外プレイ中はダメ
+SIF TEQUIP:野外プレイ
+	RETURN 0
+;羞恥プレイ中はダメ
+SIF TEQUIP:羞恥プレイ
+	RETURN 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+;新妻プレイ中はダメ
+SIF TEQUIP:エプロン
+	RETURN 0
+
+RETURN 1
+
+@COM187
+PRINTL お風呂場プレイ
+CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+INVERTBIT TEQUIP:お風呂場, 0
+;シャワーは初期化
+TEQUIP:シャワー = 0
+
+;入る時は服を脱ぐ
+IF TEQUIP:お風呂場
+	REPEAT 7
+		TEQUIP:COUNT = 0
+		TEQUIP:MASTER:COUNT = 0
+		SIF ASSI > 0
+			TEQUIP:ASSI:COUNT = 0
+	REND
+;終了時は服を着る ソース、経験の加算は行わない
+ELSE
+	REPEAT 7
+		SIF CSTR:(COUNT+100) != ""
+			TEQUIP:COUNT = 1
+		SIF CSTR:MASTER:(COUNT+100) != ""
+			TEQUIP:MASTER:COUNT = 1
+		SIF ASSI > 0 && CSTR:ASSI:(COUNT+100) != ""
+			TEQUIP:ASSI:COUNT = 1
+	REND
+	RETURN 1
+ENDIF
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 10
+LOSEBASE:気力 += 30
+
+SOURCE:情愛 = 100
+SOURCE:恭順 = 50
+SOURCE:恐怖 = 50
+SOURCE:露出 = 200
+SOURCE:逸脱 = 50
+SOURCE:反感 = 100
+;種族で補正
+SELECTCASE CSTR:種族
+	CASE "獣人", "獣"
+		SOURCE:恐怖 += 50
+		SOURCE:反感 += 100
+	CASE "人魚"
+		LOSEBASE:気力 = 0
+		SOURCE:恐怖 = 0
+ENDSELECT
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 50
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;装備時に汚れをリセットする（風呂に来て汚れたままもどうかということで）
+RESET_STAIN MASTER
+RESET_STAIN TARGET
+SIF ASSI > 0
+	RESET_STAIN ASSI
+
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM187
+PRINTL ＜お風呂場プレイ中＞
+
+LOSEBASE:体力 += 10
+LOSEBASE:気力 += 10
+
+SOURCE:恐怖 += 50
+SOURCE:恭順 += 100
+SOURCE:反感 += 50
+
+;種族で補正
+SELECTCASE CSTR:種族
+	CASE "獣人", "獣"
+		SOURCE:恐怖 += 50
+		SOURCE:反感 += 50
+	CASE "人魚"
+		LOSEBASE:体力 -= 10
+		LOSEBASE:気力 -= 10
+		SOURCE:恐怖 -= 50
+		SOURCE:反感 -= 50
+ENDSELECT
+
+RETURN 1
+

@@ -1,0 +1,272 @@
+﻿;-------------------------------------------------
+;胸自慰
+;愛撫系コマンド、レベル3
+;-------------------------------------------------
+@USERCOM_ABLE10
+;胸自慰実行判定
+;縄使用中は不可
+SIF TEQUIP:縄
+	RETURN 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+
+RETURN 1
+
+@実行判定10
+;-------------------------------------------------
+;実行判定処理
+;-------------------------------------------------
+;すべての命令に共通の要素を考慮
+;(従順が高いと命令に従いやすいなど)
+CALL COM_ORDER
+
+VARSET LOCAL, 0
+LOCAL = RESULT
+
+IF ABL:欲望
+	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望*3})
+	LOCAL += ABL:欲望*3
+ENDIF
+IF ABL:露出癖
+	PRINTFORM +露出癖LV{ABL:露出癖}({ABL:露出癖*4})
+	LOCAL += ABL:露出癖*4
+ENDIF
+IF ABL:自慰中毒
+	PRINTFORM +自慰中毒LV{ABL:自慰中毒}({ABL:自慰中毒*3})
+	LOCAL += ABL:自慰中毒*3
+ENDIF
+IF MARK:快楽刻印
+	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印*3})
+	LOCAL += MARK:快楽刻印*3
+ENDIF
+
+SELECTCASE PALAM:欲情
+	CASE IS < PALAMLV:1
+		LOCAL:2 = 0
+	CASE IS < PALAMLV:2
+		LOCAL:2 = 1
+	CASE IS < PALAMLV:3
+		LOCAL:2 = 2
+	CASE IS < PALAMLV:4
+		LOCAL:2 = 3
+	CASE IS < PALAMLV:5
+		LOCAL:2 = 4
+	CASEELSE
+		LOCAL:2 = 5
+ENDSELECT
+
+LOCAL:1 = LOCAL:2
+
+SIF TALENT:衝動的
+	TIMES LOCAL:1 , 1.50
+IF LOCAL:1
+	PRINTFORM +欲情LV{LOCAL:2}({LOCAL:1*3})
+	LOCAL += LOCAL:1*3
+ENDIF
+
+IF TALENT:自制心
+	PRINT -自制心(5)
+	LOCAL -= 5
+ENDIF
+IF TALENT:恥じらい
+	PRINT -自制心(2)
+	LOCAL -= 2
+ENDIF
+IF TALENT:恥薄い
+	PRINT +恥薄い(2)
+	LOCAL += 2
+ENDIF
+IF TALENT:自慰しやすい
+	PRINTFORM +自慰しやすい(2)
+	LOCAL += 2
+ENDIF
+IF TALENT:快感に素直
+	PRINTFORM +快感に素直(5)
+	LOCAL += 5
+ENDIF
+IF TALENT:快感の否定 && FALLTYPE(TARGET) != 2
+	PRINTFORM -快感の否定(5)
+	LOCAL -= 5
+ENDIF
+IF TEQUIP:媚薬
+	PRINTFORM +媚薬(6)
+	LOCAL += 6
+ENDIF
+
+;合計を表示(33以上で実行)
+PRINTFORM  = {LOCAL}
+
+;難易度上昇
+;公開で+10
+LOCAL:1 = 33
+SIF TEQUIP:ビデオカメラ
+	LOCAL:1 += 10
+
+SELECTCASE LOCAL
+	CASE IS < LOCAL:1
+		PRINT  < 
+	CASE LOCAL:1
+		PRINT  = 
+	CASE IS > LOCAL:1
+		PRINT  > 
+ENDSELECT
+PRINTFORM 実行値{LOCAL:1}
+
+WAIT
+
+;実行できない
+IF LOCAL < LOCAL:1
+		CALL KOJO_MESSAGE_EVENT, 100
+	RETURN 0
+ELSE
+	RETURN 1
+ENDIF
+
+@COM10
+;-------------------------------------------------
+;特殊派生処理
+;-------------------------------------------------
+IF PLAYER == TFLAG:前コマンド実行者
+	;前コマンド
+	SELECTCASE PREVCOMS
+		;騎乗位の場合は騎乗乳房自慰にジャンプ
+		CASE "騎乗位"
+			JUMP COM505
+		;騎乗位アナルの場合は騎乗乳房自慰にジャンプ
+		CASE "騎乗位アナル"
+			JUMP COM505
+	ENDSELECT
+ENDIF
+
+SIF TEQUIP:ビデオカメラ
+	PRINT 公開
+PRINTL 胸自慰
+
+CALL 実行判定10
+SIF !RESULT
+	RETURN 0
+
+CALL KOJO_MESSAGE_COM
+
+;実行者が奴隷であるフラグ
+TFLAG:奴隷実行 = 1
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 40
+LOSEBASE:気力 += 100
+
+SOURCE:快B = 100
+SOURCE:性行動 = 200
+SOURCE:恐怖 = 100
+SOURCE:中毒 = 100
+SOURCE:露出 = 200
+SOURCE:屈従 = 300
+SOURCE:逸脱 = 150
+SOURCE:反感 = 200
+IF TEQUIP:ビデオカメラ
+	SOURCE:液体 = 50
+	SOURCE:恐怖 += 100
+	SOURCE:逸脱 += 100
+	SOURCE:反感 += 100
+	SOURCE:露出 += 200
+ENDIF
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 150
+
+;中毒による中毒充足のソースは先に処理しておく
+;自慰中毒を見る
+SELECTCASE ABL:自慰中毒
+	CASE 0
+		TIMES SOURCE:中毒 , 0.00
+	CASE 1
+		TIMES SOURCE:中毒 , 0.10
+	CASE 2
+		TIMES SOURCE:中毒 , 0.30
+	CASE 3
+		TIMES SOURCE:中毒 , 0.60
+	CASE 4
+		TIMES SOURCE:中毒 , 0.90
+	CASE 5
+		TIMES SOURCE:中毒 , 1.20
+	CASE 6
+		TIMES SOURCE:中毒 , 1.50
+	CASE 7
+		TIMES SOURCE:中毒 , 1.80
+	CASE 8
+		TIMES SOURCE:中毒 , 2.30
+	CASE 9
+		TIMES SOURCE:中毒 , 3.00
+	CASE IS >= 10
+		TIMES SOURCE:中毒 , 5.00
+ENDSELECT
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;奴隷の手⇔奴隷の胸の汚れが移動
+STAIN:手 |= STAIN:胸
+STAIN:胸 |= STAIN:手
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;ビデオ撮影時は経験にプラス
+IF TEQUIP:ビデオカメラ
+	EXP:自慰経験 += 2
+	PRINTL 自慰経験+2
+ELSE
+	EXP:自慰経験++
+	PRINTL 自慰経験+1
+ENDIF
+IF TEQUIP:ビデオカメラ
+	IF CFLAG:自慰を撮影された経験 == 0
+		EXP:異常経験++
+		PRINTL 異常経験+1
+	ENDIF
+	CFLAG:自慰を撮影された経験++
+ENDIF
+
+IF TEQUIP:ビデオカメラ
+	LOCAL:1 = 1
+ELSE
+	LOCAL:1 = 2
+ENDIF
+
+CALL EXPUP, 2, LOCAL:1
+
+;依存度補正値(服従で1、隷属で2）
+IF TALENT:服従
+	TFLAG:依存度補正 += 1
+ELSEIF TALENT:隷属
+	TFLAG:依存度補正 += 2
+ENDIF
+
+RETURN 1
+

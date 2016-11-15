@@ -1,0 +1,331 @@
+﻿;-------------------------------------------------
+;助手を犯す
+;特殊コマンド
+;-------------------------------------------------
+@USERCOM_ABLE185
+;助手を犯す実行判定
+;助手がいないとダメ
+SIF ASSI < 1
+	RETURN 0
+;主人じゃないとダメ
+SIF PLAYER != MASTER
+	RETURN 0
+;助手陥落していないとダメ
+SIF !CFLAG:ASSI:陥落
+	RETURN 0
+;助手が男ならＡ感覚3以上必要
+SIF SEX(ASSI) == 1 && ABL:ASSI:Ａ感覚 < 3
+	RETURN 0
+;小人体型持ちは、双方が小人体型ならOK
+;それ以外の場合は助手が小人体型のとき主人が禁断の知識持ちじゃないとダメ
+SIF TALENT:ASSI:小人体型 && !TALENT:MASTER:禁断の知識 && !TALENT:MASTER:小人体型
+	RETURN 0
+;主人がペニス有り、もしくはペニスバンドがないとダメ
+SIF !PENIS(MASTER) && !ITEM:ペニスバンド
+	RETURN 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+;お風呂場プレイ中はプレイマットが無いとダメ
+SIF TEQUIP:お風呂場 && !ITEM:プレイマット
+	RETURN 0
+;新妻プレイ中はダメ
+SIF TEQUIP:エプロン
+	RETURN 0
+
+RETURN 1
+
+@COM185
+PRINTL 助手を犯す
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;射精ゲージチェック
+;-------------------------------------------------
+LOCAL = 700
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:MASTER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:助手の従順をみる
+SELECTCASE ABL:ASSI:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:助手の欲望をみる
+SELECTCASE ABL:ASSI:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;プレイヤーのABL:Ｃ感覚をみる
+SELECTCASE ABL:PLAYER:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.50
+	CASE 2
+		TIMES LOCAL , 2.00
+	CASE 3
+		TIMES LOCAL , 2.50
+	CASE 4
+		TIMES LOCAL , 3.50
+	CASEELSE
+		TIMES LOCAL , 5.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:MASTER:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:MASTER:射精 += LOCAL
+
+;-------------------------------------------------
+;射精ゲージチェック（助手）
+;-------------------------------------------------
+LOCAL = 500
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:MASTER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:助手の欲望をみる
+SELECTCASE ABL:ASSI:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;Ｖ感覚、Ａ感覚を見る
+SELECTCASE SEX(ASSI)
+	CASE 1
+		SELECTCASE ABL:PLAYER:Ａ感覚
+			CASE 0
+				TIMES LOCAL , 1.00
+			CASE 1
+				TIMES LOCAL , 1.50
+			CASE 2
+				TIMES LOCAL , 2.00
+			CASE 3
+				TIMES LOCAL , 2.50
+			CASE 4
+				TIMES LOCAL , 3.50
+			CASEELSE
+				TIMES LOCAL , 5.00
+		ENDSELECT
+	CASE 2
+		SELECTCASE ABL:PLAYER:Ｖ感覚
+			CASE 0
+				TIMES LOCAL , 1.00
+			CASE 1
+				TIMES LOCAL , 1.50
+			CASE 2
+				TIMES LOCAL , 2.00
+			CASE 3
+				TIMES LOCAL , 2.50
+			CASE 4
+				TIMES LOCAL , 3.50
+			CASEELSE
+				TIMES LOCAL , 5.00
+		ENDSELECT
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:ASSI:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:ASSI:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 20
+LOSEBASE:気力 += 150
+
+SOURCE:情愛 = 100
+SOURCE:液体 = 100
+SOURCE:屈従 = 500
+SOURCE:逸脱 = 700
+SOURCE:反感 = 1000
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抵抗 || TALENT:抑圧
+	SOURCE:鬱屈 += 700
+
+;助手が処女喪失をした場合、屈服と逸脱を増加
+IF TALENT:ASSI:処女
+	TIMES SOURCE:逸脱 , 20.00
+	TIMES SOURCE:屈従 , 3.00
+ENDIF
+
+;助手と奴隷の相性によって、全体のソースが変化
+LOCAL = RELATION:(NO:ASSI)
+SOURCE:情愛 *= LOCAL
+SOURCE:液体 *= LOCAL
+SOURCE:屈従 *= LOCAL
+SOURCE:鬱屈 /= LOCAL
+SOURCE:逸脱 /= LOCAL
+SOURCE:反感 /= LOCAL
+SOURCE:情愛 /= 100
+SOURCE:液体 /= 100
+SOURCE:屈従 /= 100
+SOURCE:鬱屈 *= 100
+SOURCE:逸脱 *= 100
+SOURCE:反感 *= 100
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_M, 7
+CALL SAMEN_CHECK_A, 6
+
+CALL SAMEN_SHOOT, 7, NOWEX:PLAYER:射精, MASTER, ASSI
+CALL SAMEN_SHOOT, 6, NOWEX:ASSI:射精, ASSI, MASTER
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;射精に関係なく行われる処理はここから
+IF PENIS(MASTER)
+	SELECTCASE SEX(ASSI)
+		CASE 1
+			;主人のペニスにアナル汚れ
+			SETBIT STAIN:MASTER:ペニス, 3
+			;主人のペニス⇔助手のアナルの汚れが移動
+			STAIN:MASTER:ペニス |= STAIN:ASSI:アナル
+			STAIN:ASSI:アナル |= STAIN:MASTER:ペニス
+		CASE 2
+			;主人のペニス⇔助手の膣内の汚れが移動
+			STAIN:MASTER:ペニス |= STAIN:ASSI:膣内
+			STAIN:ASSI:膣内 |= STAIN:MASTER:ペニス
+	ENDSELECT
+ENDIF
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;助手が処女の場合、助手と奴隷に異常経験付加
+IF TALENT:ASSI:処女
+	TALENT:ASSI:処女 = 0
+	PRINTL ＜助手処女喪失＞
+	IF RELATION:(NO:ASSI) > 100
+		PRINTL 異常経験+2
+		EXP:異常経験 += 2
+	ELSE
+		PRINTL 異常経験+1
+		EXP:異常経験++
+	ENDIF
+	PRINTFORML 異常経験+1(%CALLNAME:ASSI%)
+	EXP:ASSI:異常経験++
+	IF TALENT:ASSI:性転換済
+		CFLAG:ASSI:性転換処女の奪われ方 = 2
+		VIRGIN:ASSI:11 = %NAME:MASTER%
+	ELSE
+		CFLAG:ASSI:処女の奪われ方 = 2
+		VIRGIN:ASSI:1 = %NAME:MASTER%
+	ENDIF
+ENDIF
+
+IF TALENT:MASTER:童貞
+	IF TALENT:MASTER:性転換済
+		VIRGIN:MASTER:10 = %NAME:ASSI%
+	ELSE
+		VIRGIN:MASTER:0 = %NAME:ASSI%
+	ENDIF
+ENDIF
+
+;助手のＶ経験
+PRINTFORML Ｖ経験+1(%CALLNAME:ASSI%)
+EXP:ASSI:Ｖ経験++
+
+;助手の同性愛経験
+IF SEX(MASTER) == SEX(ASSI)
+	SELECTCASE SEX(ASSI)
+		CASE 1
+			PRINTFORML ゲイ経験+3(%CALLNAME:ASSI%)
+			EXP:ASSI:ゲイ経験 += 3
+		CASE 2
+			PRINTFORML レズ経験+3(%CALLNAME:ASSI%)
+			EXP:ASSI:レズ経験 += 3
+	ENDSELECT
+ENDIF
+
+;依存度補正値(助手との相性100↑かつ淫乱で1、娼婦で2）
+IF TALENT:淫乱 && RELATION:(NO:ASSI) > 100
+	TFLAG:依存度補正 += 1
+ELSEIF TALENT:娼婦 && RELATION:(NO:ASSI) > 100
+	TFLAG:依存度補正 += 2
+ENDIF
+
+RETURN 1
+

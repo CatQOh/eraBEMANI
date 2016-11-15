@@ -1,0 +1,422 @@
+﻿;調教前の処理
+@EVENTTRAIN
+#LATER
+
+PREVCOMS = 
+SELECTCOMS = 
+
+;MAXBASEの設定
+LOCAL = 10000
+SIF TALENT:MASTER:絶倫
+	LOCAL /= 2
+SIF TALENT:MASTER:小柄体型
+	LOCAL *= 2
+SIF SEX(MASTER) == 2
+	LOCAL *= 2
+MAXBASE:MASTER:射精 = LOCAL
+
+LOCAL = 10000
+SIF TALENT:絶倫
+	LOCAL /= 2
+SIF TALENT:小柄体型
+	LOCAL *= 2
+SIF SEX(TARGET) == 2
+	LOCAL *= 2
+MAXBASE:射精 = LOCAL
+
+IF ASSI >= 0
+	LOCAL = 10000
+	SIF TALENT:ASSI:絶倫
+		LOCAL /= 2
+	SIF TALENT:ASSI:小柄体型
+		LOCAL *= 2
+	SIF SEX(ASSI) == 2
+		LOCAL *= 2
+	MAXBASE:ASSI:射精 = LOCAL
+ENDIF
+
+IF TALENT:母乳体質
+	LOCAL = 10000
+	SIF TALENT:淫乳
+		LOCAL /= 2
+	MAXBASE:母乳 = LOCAL
+ENDIF
+
+SIF MAXBASE:MASTER:触手射精 == 0
+	MAXBASE:MASTER:触手射精 = 10000
+
+;主人と調教対象と助手の射精を0に
+BASE:MASTER:射精 = 0
+BASE:TARGET:射精 = 0
+SIF ASSI >= 0
+	BASE:ASSI:射精 = 0
+;母乳も0に
+BASE:TARGET:母乳 = 0
+;触手の射精も0に
+BASE:MASTER:触手射精 = 0
+
+;射精限界数の確保
+CFLAG:残数 = 10
+SIF TALENT:絶倫
+	CFLAG:残数 += 5
+SIF !PENIS(TARGET)
+	CFLAG:残数 = 0
+
+CFLAG:MASTER:残数 = 10
+SIF TALENT:MASTER:絶倫
+	CFLAG:MASTER:残数 += 5
+SIF !PENIS(MASTER)
+	CFLAG:MASTER:残数 = 0
+
+IF ASSI >= 0
+	CFLAG:ASSI:残数 = 10
+	SIF TALENT:ASSI:絶倫
+		CFLAG:ASSI:残数 += 5
+	SIF !PENIS(ASSI)
+		CFLAG:ASSI:残数 = 0
+ENDIF
+
+CFLAG:射精飾り値 = 0
+CFLAG:MASTER:射精飾り値 = 0
+SIF ASSI >= 0
+	CFLAG:ASSI:射精飾り値 = 0
+
+;射精後の充填時間をリセット
+CFLAG:MASTER:賢者タイム = 0
+CFLAG:TARGET:賢者タイム = 0
+SIF ASSI >= 0
+	CFLAG:ASSI:賢者タイム = 0
+
+;TFLAGをリセット
+VARSET TFLAG, 0
+
+;淫乱なら膣内にヴァギナ汚れを付加
+SIF TALENT:淫乱 && VAGINA(TARGET)
+	SETBIT STAIN:膣内, 0
+SIF ASSI >= 0 && TALENT:ASSI:淫乱 && VAGINA(ASSI)
+	SETBIT STAIN:ASSI:膣内, 0
+;淫乱ならペニスに先走り付加
+SIF TALENT:淫乱 && PENIS(TARGET)
+	SETBIT STAIN:ペニス, 1
+SIF ASSI >= 0 && TALENT:ASSI:淫乱 && PENIS(ASSI)
+	SETBIT STAIN:ASSI:ペニス, 1
+;主人は無条件で先走りと愛液付加
+SIF VAGINA(MASTER)
+	SETBIT STAIN:MASTER:ヴァギナ, 0
+SIF PENIS(MASTER)
+	SETBIT STAIN:MASTER:ペニス, 1
+
+;コンドーム射精フラグをリセット
+TFLAG:使用済み避妊具 = 0
+
+;調教者はMASTERにしとく
+PLAYER = MASTER
+
+;ビデオボーナスのリセット
+VARSET VIDEOBONUS, 0
+
+;写真関連のリセット
+VARSET 写真内容, 
+VARSET 写真価格, 0
+
+CALL KOJO_START
+
+;コマンド後のTFLAGリセット処理
+@EVENTUSERCOM
+REPEAT 100
+	TFLAG:COUNT = 0
+REND
+
+;コマンド終了時に呼ばれる ここでは調教終了処理
+@EVENTUSERCOMEND
+;体力切れ
+IF BASE:体力 <= 0
+	PRINTFORML （激しい調教で%CALLNAME:TARGET%はひどく消耗したようです　調教を終了します）
+	;従順ダウン 陥落済みなら発生しない
+	IF ABL:従順 > 0 && !CFLAG:陥落
+		ABL:従順--
+		PRINTFORML %CALLNAME:TARGET%の従順が1下がった
+	ENDIF
+	;体力回復停止フラグ
+	CFLAG:体力回復停止 += 2
+	CFLAG:ストレス値 += 10
+	BASE:体力 = 1
+	;条件を満たしていれば吸血イベント発生するか選択できる
+	;条件：主人が吸血鬼で、対象が種族[人間]である
+	IF TALENT:MASTER:吸血鬼 && CSTR:種族 == "人間"
+		PRINTFORMW 消耗して動けない%CALLNAME:TARGET%を見下ろしながら思う……
+		PRINTFORMW このまま%CALLNAME:TARGET%を……
+		PRINTL [0] 眷属に迎え入れようか
+		PRINTL [1] 放っておこうか
+		DO
+			INPUT
+			;吸血
+			IF RESULT == 0
+				CALL KOJO_MESSAGE_EVENT, 26
+				;吸血鬼化
+				IF TALENT:処女 || TALENT:再生処女 || TALENT:童貞
+					TALENT:吸血鬼 = 1
+					CFLAG:種族 = 21
+					CSTR:種族 = ヴァンパイア
+					;上位陥落素質ありで妄信イベント
+					IF (TALENT:親愛 || TALENT:娼婦 || TALENT:隷属) && !TALENT:妄信
+						PRINTFORML %CALLNAME:TARGET%は[妄信]を得た。
+						TALENT:妄信 = 1
+					ENDIF
+				;ゾンビ化
+				ELSE
+					TALENT:ゾンビ = 1
+					CFLAG:種族 = 19
+					CSTR:種族 = ゾンビ
+				ENDIF
+				IF CFLAG:被吸血経験 == 0
+					EXP:異常経験++
+					PRINTL 異常経験+1
+				ENDIF
+				CFLAG:被吸血経験++
+				EXP:MASTER:吸血経験++
+			ENDIF
+		LOOP LOOPRES(0, 1)
+	;助手が陥落して条件を満たしていれば、助手を使った吸血イベント発生するか選択できる
+	;条件：助手が居て、助手が吸血鬼で、対象が種族[人間]である
+	ELSEIF ASSI >= 0 && CFLAG:ASSI:陥落 && CSTR:種族 == "人間"
+		PRINTFORML 今の無防備な%CALLNAME:TARGET%なら好き勝手できそうだ。
+		PRINTFORML %CALLNAME:ASSI%に血を吸わせますか？
+		PRINTL [0] - 吸わせる
+		PRINTL [1] - 吸わせない
+		DO
+			INPUT
+			IF RESULT == 0
+				CALL KOJO_MESSAGE_EVENT, 27
+				;対象が処女、再生処女、童貞なら吸血鬼化
+				IF TALENT:処女 || TALENT:再生処女 || TALENT:童貞
+					TALENT:吸血鬼 = 1
+					CFLAG:種族 = 21
+					CSTR:種族 = ヴァンパイア
+				;ゾンビ化
+				ELSE
+					TALENT:ゾンビ = 1
+					CFLAG:種族 = 19
+					CSTR:種族 = ゾンビ
+				ENDIF
+				;初めて血を吸われたら異常経験追加
+				IF CFLAG:被吸血経験 == 0
+					EXP:異常経験++ 
+					PRINTL 異常経験+1
+				ENDIF
+				CFLAG:被吸血経験++
+				EXP:ASSI:吸血経験++
+			ENDIF
+		LOOP LOOPRES(0, 1)
+	ENDIF
+	BEGIN AFTERTRAIN
+ELSEIF BASE:体力 < 500
+	PRINTL （体力が限界に来ています　調教を終了します）
+	BEGIN AFTERTRAIN
+ENDIF
+
+;流産時に体力が削りきれなかった場合は強制的に調教終了
+IF TFLAG:流産
+	PRINTFORML （%CALLNAME:TARGET%が流産したため、調教を終了します）
+	BEGIN AFTERTRAIN
+ENDIF
+
+;調教で【崩壊】を得た場合のイベント
+@COLLAPSE_MIND_TRAIN
+PRINTFORMW %CALLNAME:TARGET%の様子がおかしい
+PRINTFORMW 激しい調教の影響によって、%CALLNAME:TARGET%の精神に異常をきたしてしまったようだ
+PRINTFORMW %NAME:TARGET%は【崩壊】してしまった
+TALENT:崩壊 = 1
+IF CFLAG:陥落
+	PRINTFORMW 今まで重ねてきた時間も虚しく、%CALLNAME:TARGET%はすっかり心を閉ざしてしまった……
+	SIF TALENT:恋慕
+		PRINTFORMW %CALLNAME:TARGET%は[恋慕]を失った
+	SIF TALENT:淫乱
+		PRINTFORMW %CALLNAME:TARGET%は[淫乱]を失った
+	SIF TALENT:服従
+		PRINTFORMW %CALLNAME:TARGET%は[服従]を失った
+	SIF TALENT:親愛
+		PRINTFORMW %CALLNAME:TARGET%は[親愛]を失った
+	SIF TALENT:娼婦
+		PRINTFORMW %CALLNAME:TARGET%は[娼婦]を失った
+	SIF TALENT:隷属
+		PRINTFORMW %CALLNAME:TARGET%は[隷属]を失った
+	CFLAG:陥落 = 0
+ENDIF
+
+;調教終了時のイベント
+@EVENTEND
+#LATER
+CALL KOJO_TURNEND
+PRINTW 調教を終了しました
+
+;調教後行為のチェック 気絶、流産時はスルー
+SIF !TFLAG:気絶 && !TFLAG:流産
+	CALL SELF_CHECK
+
+;全体の妊娠判定の処理
+CALL IN_VAGINA
+
+;搾乳した母乳の売却
+CALL SELL_MILK
+
+;搾精した精液の売却
+CALL SELL_SAMEN
+
+;調教時に録画したビデオを売却
+CALL SELL_VIDEO
+
+;調教時に撮影した写真を売却
+CALL SELL_PICTURE
+
+;何の珠を得られたか
+CALL JUEL_CHECK
+
+;否定の珠の打ち消しチェック
+CALL DENIAL_CHECK
+
+;淫乱or娼婦奴隷の相性増加
+IF TALENT:淫乱
+	IF RAND:3 == 0
+		SIF RELATION:(NO:MASTER) < 150
+			RELATION:(NO:MASTER)++
+		SIF ASSI > 0 && RELATION:(NO:ASSI) < 150
+			RELATION:(NO:ASSI)++
+	ENDIF
+ELSEIF TALENT:娼婦
+	IF RAND:2 == 0
+		SIF RELATION:(NO:MASTER) < 200
+			RELATION:(NO:MASTER)++
+		SIF ASSI > 0 && RELATION:(NO:ASSI) < 200
+			RELATION:(NO:ASSI)++
+	ENDIF
+ENDIF
+
+BEGIN ABLUP
+
+@JUEL_CHECK
+REPEAT 15
+	IF PALAM:COUNT < PALAMLV:1
+		LOCAL = 0
+	ELSEIF PALAM:COUNT < PALAMLV:1*3
+		LOCAL = 1
+	ELSEIF PALAM:COUNT < PALAMLV:2
+		LOCAL = 2
+	ELSEIF PALAM:COUNT < PALAMLV:2*3
+		LOCAL = 10
+	ELSEIF PALAM:COUNT < PALAMLV:3
+		LOCAL = 20
+	ELSEIF PALAM:COUNT < PALAMLV:3*2
+		LOCAL = 100
+	ELSEIF PALAM:COUNT < PALAMLV:4
+		LOCAL = 200
+	ELSEIF PALAM:COUNT < PALAMLV:5
+		LOCAL = 1000
+	ELSEIF PALAM:COUNT < PALAMLV:6
+		LOCAL = 2000
+	ELSEIF PALAM:COUNT < PALAMLV:7
+		LOCAL = 3000
+	ELSEIF PALAM:COUNT < PALAMLV:8
+		LOCAL = 5000
+	ELSEIF PALAM:COUNT < PALAMLV:9
+		LOCAL = 8000
+	ELSE
+		LOCAL = PALAM:COUNT/20
+	ENDIF
+
+	SELECTCASE COUNT
+		CASE 0
+			IF PENIS(TARGET)
+				GOTJUEL:COUNT = LOCAL+(EX:射精*2000)+(EX:潮噴き*3000)
+			ELSE
+				GOTJUEL:COUNT = LOCAL+EX:Ｃ絶頂*1000
+			ENDIF
+		CASE 1
+			GOTJUEL:COUNT = LOCAL+EX:Ｖ絶頂*1000
+		CASE 2
+			GOTJUEL:COUNT = LOCAL+EX:Ａ絶頂*1000
+		CASE 3
+			GOTJUEL:COUNT = LOCAL+EX:Ｂ絶頂*1000
+		CASE 4 TO 11
+			GOTJUEL:COUNT = LOCAL
+		CASEELSE
+			GOTJUEL:否定 += LOCAL
+	ENDSELECT
+REND
+
+DRAWLINE
+PRINTL 調教の結果：
+REPEAT 13
+	IF COUNT == 12
+		PRINTFORML 否定の珠×({JUEL:否定}+{GOTJUEL:否定})
+		JUEL:否定 += GOTJUEL:否定
+	ELSEIF PALAMNAME:COUNT != "潤滑"
+		PRINTFORML %PALAMNAME:COUNT%の珠×({JUEL:COUNT}+{GOTJUEL:COUNT})
+		JUEL:COUNT += GOTJUEL:COUNT
+	ENDIF
+REND
+
+PRINTW 以上の珠を得ました
+
+;上限は9,999,999
+REPEAT 13
+	IF COUNT == 12
+		SIF JUEL:否定 > 9999999
+			JUEL:否定 = 9999999
+	ELSE
+		SIF JUEL:COUNT > 9999999
+			JUEL:COUNT = 9999999
+	ENDIF
+REND
+
+@DENIAL_CHECK
+;欲情、屈服、恭順の珠から順に打ち消される
+SIF JUEL:否定 == 0
+	RETURN 0
+
+DRAWLINE
+PRINTL 否定の珠と他の珠の打ち消しが発生しています
+
+IF JUEL:否定 > 0 && (JUEL:恭順+JUEL:欲情+JUEL:屈服) > 0
+	LOCAL:1 = JUEL:否定
+	SIF JUEL:欲情 < JUEL:否定
+		LOCAL:1 = JUEL:欲情
+
+	JUEL:欲情 -= LOCAL:1
+	JUEL:否定 -= LOCAL:1
+
+	SIF LOCAL:1 > 0
+		PRINTFORML 欲情の珠×{LOCAL:1}減少
+
+	LOCAL:1 = JUEL:否定
+	SIF JUEL:屈服 < JUEL:否定
+		LOCAL:1 = JUEL:屈服
+
+	SIF LOCAL:1 > 0
+		PRINTFORML 屈服の珠×{LOCAL:1}減少
+
+	JUEL:屈服 -= LOCAL:1
+	JUEL:否定 -= LOCAL:1
+
+	LOCAL:1 = JUEL:否定
+	SIF JUEL:恭順 < JUEL:否定
+		LOCAL:1 = JUEL:恭順
+
+	JUEL:恭順 -= LOCAL:1
+	JUEL:否定 -= LOCAL:1
+
+	SIF LOCAL:1 > 0
+		PRINTFORML 恭順の珠×{LOCAL:1}減少
+ENDIF
+
+PRINTL その結果、
+REPEAT 13
+	IF COUNT == 12
+		PRINTFORML 否定の珠×({JUEL:100})
+	ELSEIF PALAMNAME:COUNT != "潤滑"
+		PRINTFORML %PALAMNAME:COUNT%の珠×({JUEL:COUNT})
+	ENDIF
+REND
+
+PRINTW 以上のように変化しました
+

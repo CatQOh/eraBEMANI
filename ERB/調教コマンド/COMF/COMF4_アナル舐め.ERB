@@ -1,0 +1,222 @@
+﻿;-------------------------------------------------
+;アナル舐め
+;愛撫系コマンド、レベル1
+;-------------------------------------------------
+@USERCOM_ABLE4
+#DIM LCOUNT
+;アナル舐め実行判定
+;アナルが汚れている場合（先走り、精液、粘液、血、尿）
+FOR LCOUNT, 0, 8
+	IF GETBIT(STAIN:アナル, LCOUNT)
+		SELECTCASE LCOUNT
+			CASE 1, 2, 5, 6, 7
+				;プレイヤーが助手の場合、汚臭敏感で従順3以下ではアナル舐めはできない（汚れ無視ならできる）
+				SIF PLAYER == ASSI && ABL:ASSI:従順 <= 3 && TALENT:ASSI:汚臭敏感 && !TALENT:ASSI:汚れ無視
+					RETURN 0
+				BREAK
+		ENDSELECT
+	ENDIF
+NEXT
+;猫舌の調教者の場合は技巧Lv2以上必要
+SIF TALENT:PLAYER:猫舌 && ABL:PLAYER:技巧 < 2
+	RETURN 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+;アナルバイブ使用中は不可
+SIF TEQUIP:アナルバイブ
+	RETURN 0
+;アナルビーズ使用中は不可
+SIF TEQUIP:アナルビーズ
+	RETURN 0
+;浣腸使用中は不可
+SIF TEQUIP:浣腸器
+	RETURN 0
+;バルーン使用中は不可
+SIF TEQUIP:拡張バルーン
+	RETURN 0
+;電極使用中は不可
+SIF TEQUIP:アナル電極
+	RETURN 0
+;異物挿入中は不可
+SIF TEQUIP:Ａ異物
+	RETURN 0
+
+RETURN 1
+
+@COM4
+PRINTL アナル舐め
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 10
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES LOCAL , 0.40
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES LOCAL , 1.00
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES LOCAL , 1.20
+ENDIF
+
+;奴隷のABL:Ａ感覚をみる
+SELECTCASE ABL:Ａ感覚
+	CASE 0
+		TIMES LOCAL , 0.20
+	CASE 1
+		TIMES LOCAL , 0.50
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 2.00
+	CASE 4
+		TIMES LOCAL , 3.00
+	CASEELSE
+		TIMES LOCAL , 5.00
+ENDSELECT
+
+;奴隷のABL:マゾっ気をみる
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:賢者タイム > 0
+	LOCAL /= 20
+
+SIF PENIS(TARGET)
+	BASE:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 10
+LOSEBASE:気力 += 70
+
+SOURCE:快A = 50
+SOURCE:液体 = 50
+SOURCE:逸脱 = 30
+SOURCE:反感 = 30
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 50
+
+;調教者のTALENT:舌使いをみる
+SIF TALENT:PLAYER:舌使い
+	TIMES SOURCE:快A , 1.50
+	
+;調教者のTALENT:猫舌をみる
+SIF TALENT:PLAYER:猫舌
+	TIMES SOURCE:快A , 0.75
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 5
+
+CALL SAMEN_SHOOT_T, 5, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;奴隷のアナル汚れを舐め取る
+STAIN:アナル = 0
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+PRINTL Ａ経験+1
+EXP:Ａ経験++
+
+CALL EXPUP, 2, 1
+
+;調教者が猫舌持ちの場合は、調教者に嗜虐快楽経験を追加
+IF TALENT:PLAYER:猫舌
+	PRINTFORML 嗜虐快楽経験(%CALLNAME:PLAYER%)+1
+	EXP:PLAYER:嗜虐快楽経験++
+ENDIF
+
+RETURN 1
+

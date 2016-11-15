@@ -1,0 +1,252 @@
+﻿;-------------------------------------------------
+;秘貝開帳
+;愛撫系コマンド、レベル2
+;-------------------------------------------------
+@USERCOM_ABLE9
+;秘貝開帳実行判定
+;従順が2未満だとダメ
+SIF ABL:従順 < 2
+	RETURN 0
+;処女の場合、従順3以上または露出癖3以上ないとダメ
+SIF TALENT:処女 && ABL:従順 < 3 && ABL:露出癖 < 3
+	RETURN 0
+;縄使用中は不可
+SIF TEQUIP:縄
+	RETURN 0
+
+;下半身下着をつけているとダメ
+SIF TEQUIP:下半身下着
+	RETURN 0
+;下の空いてない上着を着ているとダメ
+SIF (TEQUIP:下半身上着 || TEQUIP:全身上着) && !CFLAG:挿入可
+	RETURN 0
+
+;バイブ挿入中はダメ
+SIF TEQUIP:バイブ
+	RETURN 0
+;異物挿入中は不可
+SIF TEQUIP:Ｖ異物
+	RETURN 0
+;ヴァギナ無いとダメ
+SIF !VAGINA(TARGET)
+	RETURN 0
+;お風呂場プレイ中はプレイマットが無いとダメ
+SIF TEQUIP:お風呂場 && !ITEM:プレイマット
+	RETURN 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+
+RETURN 1
+
+@実行判定9
+;-------------------------------------------------
+;実行できるかの判定
+;-------------------------------------------------
+;すべての命令に共通の要素を考慮
+;(従順が高いと命令に従いやすいなど)
+CALL COM_ORDER
+
+VARSET LOCAL, 0
+LOCAL = RESULT
+
+IF ABL:欲望
+	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望*3})
+	LOCAL += ABL:欲望*3
+ENDIF
+IF ABL:Ｖ感覚
+	PRINTFORM +Ｖ感覚LV{ABL:Ｖ感覚}({ABL:Ｖ感覚*2})
+	LOCAL += ABL:Ｖ感覚*2
+ENDIF
+IF ABL:奉仕精神 
+	PRINTFORM +奉仕精神LV{ABL:奉仕精神}({ABL:奉仕精神*4})
+	LOCAL += ABL:奉仕精神*4
+ENDIF
+IF ABL:露出癖
+	PRINTFORM +露出癖LV{ABL:露出癖}({ABL:露出癖*3})
+	LOCAL += ABL:露出癖*3
+ENDIF
+IF ABL:自慰中毒
+	PRINTFORM +自慰中毒LV{ABL:自慰中毒}({ABL:自慰中毒*3})
+	LOCAL += ABL:自慰中毒*3
+ENDIF
+IF MARK:快楽刻印
+	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印*3})
+	LOCAL += MARK:快楽刻印*3
+ENDIF
+;PALAM:潤滑（の不足）
+IF PALAM:潤滑 < PALAMLV:3
+	PRINTFORM -潤滑不足(5)
+	LOCAL -= 5
+ENDIF
+SELECTCASE PALAM:欲情
+	CASE IS < PALAMLV:1
+		LOCAL:2 = 0
+	CASE IS < PALAMLV:2
+		LOCAL:2 = 1
+	CASE IS < PALAMLV:3
+		LOCAL:2 = 2
+	CASE IS < PALAMLV:4
+		LOCAL:2 = 3
+	CASE IS < PALAMLV:5
+		LOCAL:2 = 4
+	CASEELSE
+		LOCAL:2 = 5
+ENDSELECT
+LOCAL:1 = LOCAL:2
+SIF TALENT:衝動的
+	TIMES LOCAL:1 , 1.50
+IF LOCAL:1
+	PRINTFORM +欲情LV{LOCAL:2}({LOCAL:1*3})
+	LOCAL += LOCAL:1*3
+ENDIF
+
+IF TALENT:恥じらい
+	PRINTFORM  -恥じらい(2)
+	LOCAL -= 2
+ENDIF
+IF TALENT:快感の否定 && FALLTYPE(TARGET) != 2
+	PRINTFORM  -快感の否定(5)
+	LOCAL -= 5
+ENDIF
+IF TALENT:男嫌い && SEX(PLAYER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
+	PRINTFORM  -男嫌い(12)
+	LOCAL -= 12
+ENDIF
+
+;処女
+IF TALENT:処女
+	PRINTFORM  -処女(20)
+	LOCAL -= 20
+ELSEIF EXP:Ｖ経験 < EXPLV:2
+	PRINTFORM  -Ｖ経験不足(5)
+	LOCAL -= 5
+ENDIF
+
+;調教者がペニス持ち
+IF PENIS(PLAYER)
+	PRINTFORM  -%CALLNAME:PLAYER%がペニス有(4)
+	LOCAL -= 4
+ENDIF
+
+;媚薬
+IF TEQUIP:媚薬
+	PRINTFORM +媚薬(6)
+	LOCAL += 6
+ENDIF
+
+;合計を表示(18以上で実行)
+	PRINTFORM  = {LOCAL}
+
+SELECTCASE LOCAL
+	CASE IS < 18
+		PRINT  < 
+	CASE 18
+		PRINT  = 
+	CASE IS > 18
+		PRINT  > 
+ENDSELECT
+	PRINT 実行値18
+
+WAIT
+
+;実行できない
+IF LOCAL < 18
+		CALL KOJO_MESSAGE_EVENT, 100
+	RETURN 0
+ELSE
+	RETURN 1
+ENDIF
+
+@COM9
+CALL 実行判定9
+SIF RESULT == 0
+	RETURN 0
+
+PRINTL 秘貝開帳
+CALL KOJO_MESSAGE_COM
+
+;実行者が奴隷であるフラグ
+TFLAG:奴隷実行 = 1
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 20
+LOSEBASE:気力 += 100
+
+SOURCE:快C = 30
+SOURCE:性行動 = 50
+SOURCE:達成 = 10
+SOURCE:恐怖 = 150
+SOURCE:液体 = 30
+SOURCE:露出 = 300
+SOURCE:屈従 = 200
+SOURCE:逸脱 = 100
+SOURCE:反感 = 100
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 150
+
+;処女、貞操観念
+IF TALENT:処女
+	TIMES SOURCE:恐怖 , 1.20
+	TIMES SOURCE:屈従 , 1.20
+	TIMES SOURCE:反感 , 1.20
+	SOURCE:露出 += 300
+ENDIF
+IF TALENT:貞操観念
+	TIMES SOURCE:露出 , 2.00
+	TIMES SOURCE:逸脱 , 2.00
+ENDIF
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;奴隷のヴァギナ⇔手の汚れが移動
+STAIN:ヴァギナ |= STAIN:手
+STAIN:手 |= STAIN:ヴァギナ
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;露出癖Lv3以上で自慰経験加算
+IF ABL:露出癖 >= 3
+	PRINTL 自慰経験+1
+	EXP:自慰経験++
+ENDIF
+
+CALL EXPUP, 1, 1
+
+;依存度補正値(服従で1、隷属で2）
+IF TALENT:服従
+	TFLAG:依存度補正 += 1
+ELSEIF TALENT:隷属
+	TFLAG:依存度補正 += 2
+ENDIF
+
+RETURN 1
+

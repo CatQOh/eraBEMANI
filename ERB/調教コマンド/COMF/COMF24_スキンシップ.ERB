@@ -1,0 +1,113 @@
+﻿;-------------------------------------------------
+;スキンシップ
+;コミュニケーション系コマンド、レベル2
+;-------------------------------------------------
+@USERCOM_ABLE24
+;スキンシップ
+;奴隷が恋慕か親愛で実行者が主人でないとダメ
+SIF FALLTYPE(TARGET) != 1 || PLAYER != MASTER
+	RETURN 0
+;拘束中はダメ
+SIF TEQUIP:アイマスク || TEQUIP:縄 || TEQUIP:触手
+	RETURN 0
+
+RETURN 1
+
+@COM24
+PRINTL スキンシップ
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+;何かのはずみで触れてしまったら
+IF RAND:2 == 0
+	LOCAL = 50
+ELSE
+	LOCAL = 0
+ENDIF
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 10
+LOSEBASE:気力 += 20
+
+SOURCE:情愛 = 500
+SOURCE:性行動 = 500
+SOURCE:逸脱 = 10
+SOURCE:達成 = 300
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;愛情経験
+PRINTL 愛情経験+1
+EXP:愛情経験 += 1
+
+;依存度補正値(恋慕で1、親愛で2）
+IF TALENT:恋慕
+	TFLAG:依存度補正 += 1
+ELSEIF TALENT:親愛
+	TFLAG:依存度補正 += 2
+ENDIF
+
+RETURN 1
+

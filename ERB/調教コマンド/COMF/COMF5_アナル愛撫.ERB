@@ -1,0 +1,248 @@
+﻿;-------------------------------------------------
+;アナル愛撫
+;愛撫系コマンド、レベル2
+;-------------------------------------------------
+@USERCOM_ABLE5
+;アナル愛撫実行判定
+;プレイヤーが助手で、助手と対象が同姓の場合、潤滑不足で従順3以下・レズっ気ホモっ気3以下の場合アナル愛撫はできない（サドならＯＫ）
+IF PLAYER == ASSI
+	IF SEX(TARGET) == SEX(ASSI)
+		SIF PALAM:潤滑 < PALAMLV:2 && (ABL:ASSI:従順 <= 3 || (ABL:ASSI:レズっ気 <= 3 && ABL:ASSI:ホモっ気 <= 3)) && !TALENT:ASSI:サド
+			RETURN 0
+	ENDIF
+ENDIF
+
+;異物挿入中はダメ
+SIF TEQUIP:Ａ異物
+	RETURN 0
+
+RETURN 1
+
+@COM5
+PRINTL アナル愛撫
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 50
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES LOCAL , 0.40
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES LOCAL , 1.00
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES LOCAL , 1.20
+ENDIF
+
+;奴隷のABL:Ａ感覚をみる
+SELECTCASE ABL:Ａ感覚
+	CASE 0
+		TIMES LOCAL , 0.20
+	CASE 1
+		TIMES LOCAL , 0.50
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 2.00
+	CASE 4
+		TIMES LOCAL , 3.00
+	CASEELSE
+		TIMES LOCAL , 5.00
+ENDSELECT
+
+;奴隷のABL:マゾっ気をみる
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;奴隷が男の場合はホモっ気を見る
+IF SEX(TARGET) == 1
+	SELECTCASE ABL:ホモっ気
+		CASE 0
+			TIMES LOCAL , 0.15
+		CASE 1
+			TIMES LOCAL , 0.30
+		CASE 2
+			TIMES LOCAL , 0.50
+		CASE 3
+			TIMES LOCAL , 0.75
+		CASE 4
+			TIMES LOCAL , 1.00
+		CASEELSE
+			TIMES LOCAL , 1.20
+	ENDSELECT
+ENDIF
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:賢者タイム > 0
+	LOCAL /= 20
+
+SIF PENIS(TARGET)
+	BASE:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 40
+LOSEBASE:気力 += 80
+
+SOURCE:快A = 100
+SOURCE:苦痛 = 100
+SOURCE:恐怖 = 30
+SOURCE:屈従 = 100
+SOURCE:逸脱 = 30
+SOURCE:不潔 = 30
+SOURCE:反感 = 50
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 100
+
+;Aへの苦痛は先に処理しておく
+;EXP:Ａ経験をみる
+SELECTCASE EXP:Ａ経験
+	CASE 0 TO EXPLV:1
+		TIMES SOURCE:苦痛 , 3.00
+		TIMES SOURCE:反感 , 3.00
+	CASE IS < EXPLV:2
+		TIMES SOURCE:苦痛 , 1.20
+		TIMES SOURCE:反感 , 2.00
+	CASE IS < EXPLV:3
+		TIMES SOURCE:苦痛 , 0.80
+		TIMES SOURCE:反感 , 1.50
+	CASE IS < EXPLV:4
+		TIMES SOURCE:苦痛 , 0.60
+		TIMES SOURCE:反感 , 1.20
+	CASE IS < EXPLV:5
+		TIMES SOURCE:苦痛 , 0.40
+	CASE IS >= EXPLV:5
+		TIMES SOURCE:苦痛 , 0.20
+ENDSELECT
+
+;PALAM:潤滑をみる
+SELECTCASE PALAM:潤滑
+	CASE IS < PALAMLV:1
+		TIMES SOURCE:苦痛 , 1.20
+		TIMES SOURCE:反感 , 2.00
+	CASE IS < PALAMLV:2
+		TIMES SOURCE:苦痛 , 1.00
+		TIMES SOURCE:反感 , 1.50
+	CASE IS < PALAMLV:3
+		TIMES SOURCE:苦痛 , 0.60
+	CASE IS < PALAMLV:4
+		TIMES SOURCE:苦痛 , 0.30
+	CASE IS >= PALAMLV:4
+		TIMES SOURCE:苦痛 , 0.20
+ENDSELECT
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 5
+
+CALL SAMEN_SHOOT_T, 5, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+IF TEQUIP:触手
+	;奴隷のアナルに触手の汚れがつく
+	SETBIT STAIN:アナル, 5
+ELSE
+	;奴隷のアナル⇔調教者の手の汚れが移動
+	STAIN:アナル |= STAIN:PLAYER:手
+	STAIN:PLAYER:手 |= STAIN:アナル
+ENDIF
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+IF !TEQUIP:アナルビーズ && !TEQUIP:アナルバイブ
+	PRINTL Ａ経験+1
+	EXP:Ａ経験++
+ENDIF
+
+CALL EXPUP, 2, 1
+
+RETURN 1
+

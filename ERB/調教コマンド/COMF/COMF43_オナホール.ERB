@@ -1,0 +1,305 @@
+﻿;-------------------------------------------------
+;オナホール
+;道具使用コマンド、レベル2
+;-------------------------------------------------
+@USERCOM_ABLE43
+;オナホール実行判定
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+;解除はいつでも可能
+SIF TEQUIP:オナホール
+	RETURN 1
+;小人体型持ちは、実行者と対象双方が小人体型ならOK
+;それ以外の場合は主人が禁断の知識持ちじゃないとダメ
+IF TALENT:小人体型
+	SIF !TALENT:MASTER:禁断の知識 && !TALENT:PLAYER:小人体型
+		RETURN 0
+ENDIF
+;アイテムを持っていないとダメ
+SIF !ITEM:オナホール
+	RETURN 0
+;ペニス無いとダメ
+SIF !PENIS(TARGET)
+	RETURN 0
+
+;下半身下着をつけているとダメ
+SIF TEQUIP:下半身下着
+	RETURN 0
+;下の空いてない上着を着ているとダメ
+IF TEQUIP:下半身上着 || (TEQUIP:全身上着 && CFLAG:着衣併用 != 1)
+	SIF !CFLAG:挿入可
+		RETURN 0
+ENDIF
+
+;ASSIの場合、技巧3以上じゃないと使えない。
+IF ASSIPLAY
+	SIF ABL:ASSI:技巧 < 3
+		RETURN 0
+ENDIF
+;新妻プレイ中はダメ
+SIF TEQUIP:エプロン
+	RETURN 0
+
+RETURN 1
+
+@COM43
+;-------------------------------------------------
+;特殊派生処理
+;-------------------------------------------------
+IF TEQUIP:触手
+	IF TEQUIP:搾精コンドーム
+		PRINTL 触手搾精
+		SELECTCOM = 169
+	ELSE
+		PRINTL 触手ペニス責め
+		SELECTCOM = 169
+	ENDIF
+ELSE
+	IF TEQUIP:搾精コンドーム
+		PRINTL オナホ搾精
+	ELSE
+		PRINTL オナホール
+	ENDIF
+ENDIF
+CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+INVERTBIT TEQUIP:オナホール, 0
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 500
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:自慰中毒をみる
+SELECTCASE ABL:自慰中毒
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.30
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASEELSE
+		TIMES LOCAL , 2.50
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;奴隷のABL:Ｃ感覚をみる
+SELECTCASE ABL:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 0.20
+	CASE 1
+		TIMES LOCAL , 0.50
+	CASE 2
+		TIMES LOCAL , 0.80
+	CASE 3
+		TIMES LOCAL , 1.00
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASEELSE
+		TIMES LOCAL , 4.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 30
+LOSEBASE:気力 += 80
+
+SOURCE:快C = 300
+SOURCE:露出 = 20
+SOURCE:不潔 = 50
+SOURCE:逸脱 = 30
+SOURCE:反感 = 30
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 30
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;触手ペニス責めなら、触手体液がペニスに付く
+SIF TEQUIP:触手
+	SETBIT STAIN:ペニス, 5
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 2, 1
+
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM43
+;オナホール装備中
+IF TEQUIP:触手
+	PRINTL ＜触手ペニス責め中＞
+ELSEIF TEQUIP:触手 && TEQUIP:搾精コンドーム
+	PRINTL ＜触手搾精中＞
+ELSE
+	PRINTL ＜オナホール装備中＞
+ENDIF
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+LOSEBASE:体力 += 5
+LOSEBASE:気力 += 20
+
+SOURCE:快C += 50
+SOURCE:露出 += 10
+SOURCE:不潔 += 10
+SOURCE:逸脱 += 15
+SOURCE:反感 += 15
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 100
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:自慰中毒をみる
+SELECTCASE ABL:自慰中毒
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.30
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASEELSE
+		TIMES LOCAL , 2.50
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;奴隷のABL:Ｃ感覚をみる
+SELECTCASE ABL:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 0.20
+	CASE 1
+		TIMES LOCAL , 0.50
+	CASE 2
+		TIMES LOCAL , 0.80
+	CASE 3
+		TIMES LOCAL , 1.00
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASEELSE
+		TIMES LOCAL , 4.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:射精 += LOCAL
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;触手経験加算
+SIF TEQUIP:触手
+	TENTACLE++
+
+RETURN 1
+

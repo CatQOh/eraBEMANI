@@ -1,0 +1,140 @@
+﻿;-------------------------------------------------
+;コンドーム
+;道具使用コマンド、レベル1
+;-------------------------------------------------
+@USERCOM_ABLE51
+;アイテムを持っていないとダメ
+SIF !ITEM:コンドーム
+	RETURN 0
+
+;主人か助手が竿ありならOK
+SIF PENIS(MASTER) || PENIS(ASSI)
+	RETURN 1
+
+;奴隷は条件で判定する
+IF !TEQUIP:コンドーム
+	;触手調教中はダメ
+	SIF TEQUIP:触手
+		RETURN 0
+	;解除はいつでも可能
+	SIF TEQUIP:コンドーム
+		RETURN 1
+	;下半身下着をつけているとダメ
+	SIF TEQUIP:下半身下着
+		RETURN 0
+	;下の空いてない上着を着ているとダメ
+	IF TEQUIP:下半身上着 || TEQUIP:全身上着
+		SIF !CFLAG:挿入可
+			RETURN 0
+	ENDIF
+	;オナホール及び搾精コンドーム使用中は不可
+	SIF TEQUIP:オナホール || TEQUIP:搾精コンドーム
+		RETURN 0
+	;上記条件を満たしてペニスあればOK
+	SIF PENIS(TARGET)
+		RETURN 1
+ENDIF
+
+RETURN 0
+
+@COM51
+VARSET LOCAL, 0
+PRINTL コンドームを脱着する対象を選択してください
+IF PENIS(MASTER)
+	PRINTFORML [0] %CALLNAME:MASTER%
+	LOCAL++
+ENDIF
+IF PENIS(ASSI)
+	PRINTFORML [1] %CALLNAME:ASSI%
+	LOCAL:1++
+ENDIF
+IF PENIS(TARGET) && !TEQUIP:触手 && !TEQUIP:搾精コンドーム && !TEQUIP:オナホール
+	;下半身下着穿いてる場合は不可
+	IF !TEQUIP:下半身下着
+		IF (!TEQUIP:下半身上着 && !TEQUIP:全身上着) || CFLAG:挿入可
+			PRINTFORML [2] %CALLNAME:TARGET%
+			LOCAL:2++
+		ENDIF
+	ENDIF
+ENDIF
+PRINTL [3] やめる
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			SIF !LOCAL
+				CONTINUE
+			SIF !TEQUIP:MASTER:コンドーム
+				ITEM:コンドーム--
+			INVERTBIT TEQUIP:MASTER:コンドーム, 0
+			TFLAG:避妊具着用者 = MASTER
+			BREAK
+		CASE 1
+			SIF !LOCAL:1
+				CONTINUE
+			SIF !TEQUIP:ASSI:コンドーム
+				ITEM:コンドーム--
+			INVERTBIT TEQUIP:ASSI:コンドーム, 0
+			TFLAG:避妊具着用者 = ASSI
+			BREAK
+		CASE 2
+			SIF !LOCAL:2
+				CONTINUE
+			SIF !TEQUIP:コンドーム
+				ITEM:コンドーム--
+			INVERTBIT TEQUIP:コンドーム, 0
+			TFLAG:避妊具着用者 = TARGET
+			BREAK
+		CASE 3
+			RETURN 0
+	ENDSELECT
+LOOP 1
+
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 0
+LOSEBASE:気力 += 5
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 10
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理 呼んでない
+;-------------------------------------------------
+@EQUIP_COM51
+;コンドーム装備中
+PRINTL ＜コンドーム装備中＞
+
+RETURN 1
+

@@ -1,0 +1,172 @@
+﻿;-------------------------------------------------
+;プレゼント
+;コミュニケーション系コマンド、レベル3
+;-------------------------------------------------
+@USERCOM_ABLE23
+;プレゼント
+;奴隷が恋慕か親愛で実行者が主人でないとダメ
+SIF FALLTYPE(TARGET) != 1 || PLAYER != MASTER
+	RETURN 0
+;拘束中はダメ
+SIF TEQUIP:アイマスク || TEQUIP:縄 || TEQUIP:触手
+	RETURN 0
+
+RETURN 1
+
+@COM23
+LOCAL = 0
+PRINTL プレゼント
+
+PRINTFORML 何を贈りますか？(所持金${MONEY})
+PRINTFORML [0] スマイル（タダ）
+PRINTFORML [1] パセリカード($1,000)
+PRINTFORML [2] 日用品($2,500)
+PRINTFORML [3] アクセサリ($10,000)
+PRINTFORML [4] 服($25,000)
+PRINTFORML [5] 素敵な指輪($100,000)
+PRINTFORML [6] IIDX筐体($980,000)
+PRINTFORML [100] やっぱりやめる
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 1
+			LOCAL = 1000
+		CASE 2
+			LOCAL = 2500
+		CASE 3
+			LOCAL = 10000
+		CASE 4
+			LOCAL = 25000
+		CASE 5
+			LOCAL = 100000
+		CASE 6
+			LOCAL = 980000
+	ENDSELECT
+
+	IF MONEY < LOCAL
+		PRINTW 所持金が足りません
+		RESTART
+	ENDIF
+LOOP LOOPRES(0, 1, 2, 3, 4, 5, 6, 100)
+
+SELECTCASE RESULT
+	CASE 0
+		;スマイルをプレゼント
+	CASE 1
+		;パセリカード(1000P)をプレゼント
+		MONEY -= 1000
+	CASE 2
+		;日用品をプレゼント
+		MONEY -= 2500
+	CASE 3
+		;アクセサリをプレゼント
+		MONEY -= 10000
+	CASE 4
+		;服をプレゼント
+		MONEY -= 25000
+	CASE 5
+		;素敵な指輪をプレゼント
+		MONEY -= 100000
+	CASE 6
+		;IIDX筐体をプレゼント
+		MONEY -= 980000
+	CASE 100
+		PRINTFORMW プレゼントを渡すのを止めました
+		RETURN 0
+ENDSELECT
+
+TFLAG:プレゼント = RESULT
+
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 10
+LOSEBASE:気力 += 20
+
+SELECTCASE TFLAG:プレゼント
+	CASE 0
+		SOURCE:情愛 = 300
+		SOURCE:恭順 = 1000
+	CASE 1
+		SOURCE:情愛 = 500
+		SOURCE:恭順 = 1500
+	CASE 2
+		SOURCE:情愛 = 1000
+		SOURCE:恭順 = 2500
+	CASE 3
+		SOURCE:情愛 = 2000
+		SOURCE:恭順 = 3500
+	CASE 4
+		SOURCE:情愛 = 2500
+		SOURCE:恭順 = 5000
+	CASE 5
+		IF TALENT:親愛
+			SOURCE:情愛 = 10000
+			SOURCE:恭順 = 15000
+		ELSE
+			SOURCE:情愛 = 5000
+			SOURCE:恭順 = 8000
+		ENDIF
+	CASE 6
+		SOURCE:恐怖 = 3000
+		SOURCE:逸脱 = 5000
+ENDSELECT
+
+;愛情経験
+SELECTCASE TFLAG:プレゼント
+	CASE 0
+		LOCAL = 1
+	CASE 1
+		LOCAL = 5
+	CASE 2
+		LOCAL = 10
+	CASE 3
+		LOCAL = 15
+	CASE 4
+		LOCAL = 20
+	CASE 5
+		IF TALENT:親愛
+			LOCAL = 50
+		ELSE
+			LOCAL = 25
+		ENDIF
+	CASE 6
+		IF CFLAG:ありえないものをプレゼントされた経験 == 0
+			PRINTL 異常経験+3
+			EXP:異常経験 += 3
+		ENDIF
+		CFLAG:ありえないものをプレゼントされた経験++
+ENDSELECT
+
+IF TFLAG:プレゼント != 6
+	PRINTFORML 愛情経験+{LOCAL}
+	EXP:愛情経験 += LOCAL
+ENDIF
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;依存度補正値
+TFLAG:依存度補正 += TFLAG:プレゼント
+
+RETURN 1
+

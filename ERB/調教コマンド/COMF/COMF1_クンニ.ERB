@@ -1,0 +1,247 @@
+﻿;-------------------------------------------------
+;クンニ
+;愛撫系コマンド　レベル1
+;-------------------------------------------------
+@USERCOM_ABLE1
+#DIM LCOUNT
+;クンニ実行判定
+;性器が汚れている場合（愛液、母乳の汚れ以外）
+FOR LCOUNT, 0, 8
+	IF GETBIT(STAIN:ヴァギナ, LCOUNT)
+		SELECTCASE LCOUNT
+			CASE 1, 2, 3, 5, 6, 7
+				;実行者
+				SELECTCASE PLAYER
+					;主人
+					CASE MASTER
+						;汚れ無視を持っていない場合はクンニできない
+						SIF !TALENT:MASTER:汚れ無視
+							RETURN 0
+					;助手
+					CASE ASSI
+						;汚臭敏感で従順3以下の場合クンニはできない（汚れ無視なら可能）
+						SIF ABL:ASSI:従順 <= 3 && TALENT:ASSI:汚臭敏感 && !TALENT:ASSI:汚れ無視
+							RETURN 0
+				ENDSELECT
+				BREAK
+		ENDSELECT
+	ENDIF
+NEXT
+
+;猫舌の調教者の場合は技巧Lv2以上必要
+SIF TALENT:PLAYER:猫舌 && ABL:PLAYER:技巧 < 2
+	RETURN 0
+;対象がヴァギナ無いとダメ
+SIF !VAGINA(TARGET)
+	RETURN 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+
+RETURN 1
+
+@COM1
+;-------------------------------------------------
+;特殊派生処理
+;-------------------------------------------------
+;前回と今回の調教者が同じで、縄とボールギャグを使ってない
+IF PLAYER == TFLAG:前コマンド実行者 && !TEQUIP:縄 && !TEQUIP:ボールギャグ
+	;前コマンド
+	SELECTCASE PREVCOMS
+		;フェラチオ、クンニ強制、シックスナインだとシックスナインに
+		CASE "フェラチオ", "クンニ強制", "シックスナイン"
+			CALL USERCOM_ABLE501
+			SIF RESULT
+				JUMP COM501
+		;前回の調教がパイズリか縦パイズリかパイズリフェラか69パイズリだと69パイズリに
+		CASE "パイズリ", "縦パイズリ", "パイズリフェラ", "69パイズリ"
+			CALL USERCOM_ABLE508
+			SIF RESULT
+				JUMP COM508
+	ENDSELECT
+ENDIF
+
+;羞恥プレイ中は岩清水に
+SIF TEQUIP:羞恥プレイ
+	JUMP COM502
+
+PRINTL クンニ
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 100
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES LOCAL , 0.40
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES LOCAL , 1.00
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES LOCAL , 1.20
+ENDIF
+
+;奴隷のABL:Ｖ感覚をみる
+SELECTCASE ABL:Ｖ感覚
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASEELSE
+		TIMES LOCAL , 3.00
+ENDSELECT
+
+;奴隷のABL:マゾっ気をみる
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:賢者タイム > 0
+	LOCAL /= 20
+
+SIF PENIS(TARGET)
+	BASE:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 8
+LOSEBASE:気力 += 50
+
+SOURCE:快C = 80
+SOURCE:液体 = 60
+SOURCE:露出 = 30
+SOURCE:不潔 = 20
+SOURCE:反感 = 25
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 20
+
+;舌を使う調教では、調教者の舌使いによって、快感のソース増加
+SIF TALENT:PLAYER:舌使い
+	TIMES SOURCE:快C , 1.50
+
+;猫舌では減少
+SIF TALENT:PLAYER:猫舌
+	TIMES SOURCE:快C , 0.75
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;奴隷のＶの汚れは舐め取る
+STAIN:ヴァギナ = 0
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 20
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 2, 1
+
+;調教者が猫舌持ちの場合は、調教者に嗜虐快楽経験を追加
+IF TALENT:PLAYER:猫舌
+	PRINTFORML 嗜虐快楽経験(%CALLNAME:PLAYER%)+1
+	EXP:PLAYER:嗜虐快楽経験++
+ENDIF
+
+RETURN 1
+

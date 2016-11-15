@@ -1,0 +1,114 @@
+﻿;ABLUP:6 =欲情の珠必要数
+;ABLUPEXP:50 = 異常経験必要数
+@ABLUP1
+SIF ABL:欲望 == 10 && !TALENT:リミットバースト
+	RETURN 0
+CALL NEED_JUEL1
+CALL CHECK_JUEL1
+IF RESULT
+	CALL NEED_JUEL1
+	REPEAT 15
+		JUEL:COUNT -= ABLUP:COUNT
+	REND
+	ABL:欲望++
+ENDIF
+
+@NEED_JUEL1
+SELECTCASE ABL:欲望
+	CASE 0
+		ABLUP:6 = 1
+	CASE 1
+		ABLUP:6 = 20
+	CASE 2
+		ABLUP:6 = 1000
+	CASE 3
+		ABLUP:6 = 8000
+	CASE 4
+		ABLUP:6 = 24000
+	CASE 5
+		ABLUP:6 = 30000
+	CASE 6
+		ABLUP:6 = 36000
+	CASE 7
+		ABLUP:6 = 45000
+	CASE 8
+		ABLUP:6 = 55000
+	CASE 9
+		ABLUP:6 = 70000
+	CASE IS >= 10
+		LOCAL = ABL:欲望*ABL:欲望
+		ABLUP:6 = 800 * LOCAL
+ENDSELECT
+
+;LV4からは異常経験必要 LV7からは異常経験3以上必要（陥落済みもしくは[快感に素直]なら無視できる）
+IF !CFLAG:陥落 && !TALENT:快感に素直
+	IF ABL:欲望 >= 7
+		ABLUPEXP:50 = 3
+	ELSEIF ABL:欲望 >= 4
+		ABLUPEXP:50 = 1
+	ENDIF
+ENDIF
+
+;素質での補正
+;淫乱
+SIF TALENT:淫乱
+	TIMES ABLUP:6 , 0.70
+;娼婦
+SIF TALENT:娼婦
+	TIMES ABLUP:6 , 0.50
+;快感に素直
+SIF TALENT:快感に素直
+	TIMES ABLUP:6 , 0.70
+;感情乏しい、無関心
+SIF TALENT:感情乏しい || TALENT:無関心
+	TIMES ABLUP:6 , 1.30
+;快感の否定
+SIF TALENT:快感の否定
+	TIMES ABLUP:6 , 2.00
+
+@CHECK_JUEL1
+;異常経験が規定値(ABLUPEXP:50)に満たないと上昇できない
+SIF EXP:異常経験 < ABLUPEXP:50
+	RETURN 0
+
+;LV3からは快楽刻印LV1必要 LV5からは快楽刻印LV2必要 LV7からは快楽刻印LV3必要
+IF ABL:欲望 >= 7 && MARK:快楽刻印 < 3
+	RETURN 0
+ELSEIF ABL:欲望 >= 5 && MARK:快楽刻印 < 2
+	RETURN 0
+ELSEIF ABL:欲望 >= 3 && MARK:快楽刻印 < 1
+	RETURN 0
+ENDIF
+
+;欲情の珠(ABLUP:6)が必要
+SIF JUEL:欲情 >= ABLUP:6
+	RETURN 1
+
+;上記の条件を満たせなかったら上げられない
+RETURN 0
+
+@ABLUP_MESSAGE1
+;LV4からは異常経験必要 LV7からは異常経験3以上必要（陥落済みもしくは[快感に素直]なら無視できる）
+SIF EXP:異常経験 < ABLUPEXP:50
+	SETCOLOR 120, 120, 120
+SIF ABLUPEXP:50
+	PRINTFORM [異常経験{ABLUPEXP:50}以上]
+RESETCOLOR
+
+SIF (ABL:欲望 >= 7 && MARK:快楽刻印 < 3) || (ABL:欲望 >= 5 && MARK:快楽刻印 < 2) || (ABL:欲望 >= 3 && MARK:快楽刻印 < 1)
+	SETCOLOR 120, 120, 120
+;LV3からは快楽刻印LV1必要 LV5からは快楽刻印LV2必要 LV7からは快楽刻印LV3必要
+IF ABL:欲望 >= 7
+	PRINT [快楽刻印LV3]
+ELSEIF ABL:欲望 >= 5
+	PRINT [快楽刻印LV2以上]
+ELSEIF ABL:欲望 >= 3
+	PRINT [快楽刻印あり]
+ENDIF
+RESETCOLOR
+
+SIF JUEL:欲情 < ABLUP:6
+	SETCOLOR 120, 120, 120
+PRINTFORM [欲情の珠×{ABLUP:6}]
+RESETCOLOR
+

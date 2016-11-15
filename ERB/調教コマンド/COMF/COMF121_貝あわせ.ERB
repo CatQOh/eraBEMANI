@@ -1,0 +1,262 @@
+﻿;-------------------------------------------------
+;貝あわせ
+;助手によるコマンド、及びレズプレイ、レベル1
+;-------------------------------------------------
+@USERCOM_ABLE121
+;貝あわせ実行判定
+;対象にヴァギナ無いとダメ
+SIF !VAGINA(TARGET)
+	RETURN 0
+;調教者にもヴァギナ無いとダメ
+SIF !VAGINA(PLAYER)
+	RETURN 0
+;欲望3以下の助手の場合貝あわせはできない（小悪魔、相性良好ならＯＫ）
+IF PLAYER == ASSI
+	SIF ABL:ASSI:欲望 <= 3 && !TALENT:ASSI:小悪魔 && (RELATION:(NO:ASSI) <= 100 && RELATION:ASSI:(NO:TARGET) <= 100)
+		RETURN 0
+ENDIF
+;縄使用中は不可
+SIF TEQUIP:縄
+	RETURN 0
+
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+;バイブ挿入中はダメ
+SIF TEQUIP:バイブ
+	RETURN 0
+;異物挿入中は不可
+SIF TEQUIP:Ｖ異物
+	RETURN 0
+;クリキャップ使用中はダメ
+SIF TEQUIP:クリキャップ
+	RETURN 0
+;お風呂場プレイ中はプレイマットが無いとダメ
+SIF TEQUIP:お風呂場 && !ITEM:プレイマット
+	RETURN 0
+
+RETURN 1
+
+@実行判定121
+;-------------------------------------------------
+;実行判定処理
+;-------------------------------------------------
+;すべての命令に共通の要素を考慮
+;(従順が高いと命令に従いやすいなど)
+CALL COM_ORDER
+
+VARSET LOCAL, 0
+LOCAL = RESULT
+
+;ABL:欲望
+IF ABL:欲望
+	LOCAL += ABL:欲望*2
+	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望*2})
+ENDIF
+;ABL:奉仕精神
+IF ABL:奉仕精神
+	LOCAL += ABL:奉仕精神*2
+	PRINTFORM +奉仕精神LV{ABL:奉仕精神}({ABL:奉仕精神*2})
+ENDIF
+;快楽刻印
+IF MARK:快楽刻印
+	LOCAL += MARK:快楽刻印*2
+	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印*2})
+ENDIF
+
+;PALAM:欲情
+LOCAL:1 = 0
+IF PALAM:欲情 < PALAMLV:1
+	LOCAL:1 = 0
+ELSEIF PALAM:欲情 < PALAMLV:2
+	LOCAL:1 = 1
+ELSEIF PALAM:欲情 < PALAMLV:3
+	LOCAL:1 = 2
+ELSEIF PALAM:欲情 < PALAMLV:4
+	LOCAL:1 = 3
+ELSEIF PALAM:欲情 < PALAMLV:5
+	LOCAL:1 = 4
+ELSE
+	LOCAL:1 = 5
+ENDIF
+LOCAL:2 = LOCAL:1
+SIF TALENT:衝動的
+	LOCAL:2 *= 2
+IF LOCAL:2
+	LOCAL += LOCAL:2
+	PRINTFORM +欲情LV{LOCAL:1}({LOCAL:2})
+ENDIF
+
+;恥じらい
+IF TALENT:恥じらい
+	LOCAL -= 5
+	PRINTFORM -恥じらい(5)
+ENDIF
+;献身的
+IF TALENT:献身的
+	LOCAL += 6
+	PRINTFORM +献身的(6)
+ENDIF
+
+;淫乱
+IF TALENT:淫乱
+	LOCAL += 5
+	PRINTFORM +淫乱(5)
+ENDIF
+;娼婦
+IF TALENT:娼婦
+	LOCAL += 10
+	PRINTFORM +娼婦(10)
+ENDIF
+
+LOCAL:1 = 0
+;愛液の汚れ
+SIF GETBIT(STAIN:PLAYER:ヴァギナ, 0)
+	LOCAL:1 += 1
+;精液の汚れ
+SIF GETBIT(STAIN:PLAYER:ヴァギナ, 2)
+	LOCAL:1 += 3
+;アナルの汚れ
+SIF GETBIT(STAIN:PLAYER:ヴァギナ, 3)
+	LOCAL:1 += 5
+;母乳汚れ
+SIF GETBIT(STAIN:PLAYER:ヴァギナ, 4)
+	LOCAL:1 += 1
+;尿
+SIF GETBIT(STAIN:PLAYER:ヴァギナ, 7)
+	LOCAL:1 += 3
+
+SIF TALENT:汚れ無視
+	LOCAL:1 /= 3
+SIF TALENT:潔癖症
+	LOCAL:1 *= 2
+
+;汚れあり
+IF LOCAL:1
+	LOCAL -= LOCAL:1
+	IF TALENT:汚れ無視
+		PRINT -汚れあり、汚れ無視
+	ELSEIF TALENT:潔癖症
+		PRINT -汚れあり、潔癖症
+	ELSE
+		PRINT -汚れあり
+	ENDIF
+	PRINTFORM ({LOCAL:1})
+ENDIF
+
+;合計を表示(30以上で実行)
+PRINTFORM  = {LOCAL}
+
+LOCAL:2 = 30
+SELECTCASE LOCAL
+	CASE IS < LOCAL:2
+		PRINT  < 
+	CASE IS > LOCAL:2
+		PRINT  > 
+	CASEELSE
+		PRINT  = 
+ENDSELECT
+PRINTFORM 実行値{LOCAL:2}
+WAIT
+;実行できない
+IF LOCAL < LOCAL:2
+		CALL KOJO_MESSAGE_EVENT, 100
+	RETURN 0
+ELSE
+	RETURN 1
+ENDIF
+
+@COM121
+PRINTL 貝あわせ
+
+CALL 実行判定121
+SIF !RESULT
+	RETURN 0
+
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+CALL KOJO_MESSAGE_COM
+
+;実行者が奴隷であるフラグ
+TFLAG:奴隷実行 = 1
+
+;-------------------------------------------------
+;脱衣
+;-------------------------------------------------
+IF !CFLAG:PLAYER:挿入可
+	TEQUIP:PLAYER:下半身上着 = 0
+	TEQUIP:PLAYER:全身上着 = 0
+ENDIF
+TEQUIP:PLAYER:下半身下着 = 0
+
+IF !CFLAG:挿入可
+	TEQUIP:全身上着 = 0
+	TEQUIP:下半身上着 = 0
+ENDIF
+TEQUIP:下半身下着 = 0
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 30
+LOSEBASE:気力 += 90
+
+SOURCE:快C = 200
+SOURCE:性行動 = 300
+SOURCE:達成 = 300
+SOURCE:恭順 = 300
+SOURCE:露出 = 200
+SOURCE:屈従 = 400
+SOURCE:逸脱 = 100
+SOURCE:反感 = 200
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 400
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;奴隷のヴァギナ⇔調教者のヴァギナの汚れが移動
+STAIN:ヴァギナ |= STAIN:PLAYER:ヴァギナ
+STAIN:PLAYER:ヴァギナ |= STAIN:ヴァギナ
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 3, 1
+
+;依存度補正値(相性100↑かつ淫乱で1、娼婦で2）
+IF TALENT:淫乱 && RELATION:(NO:PLAYER) > 100
+	TFLAG:依存度補正 += 1
+ELSEIF TALENT:娼婦 && RELATION:(NO:PLAYER) > 100
+	TFLAG:依存度補正 += 2
+ENDIF
+
+TFLAG:奉仕快楽 = 1
+
+RETURN 1
+

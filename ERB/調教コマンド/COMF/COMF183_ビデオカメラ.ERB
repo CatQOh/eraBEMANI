@@ -1,0 +1,208 @@
+﻿;-------------------------------------------------
+;ビデオカメラ
+;特殊コマンド
+;-------------------------------------------------
+@USERCOM_ABLE183
+;ビデオ撮影実行判定
+;解除はいつでも可能
+SIF TEQUIP:ビデオカメラ
+	RETURN 1
+;カメラとテープのアイテムを持っていないとダメ
+SIF !ITEM:ビデオカメラ || !ITEM:ビデオテープ
+	RETURN 0
+
+RETURN 1
+
+@COM183
+;撮影者の処理
+IF !TEQUIP:ビデオカメラ && ASSI > 0
+	PRINTL 撮影者を選択してください　途中変更はできません
+	PRINTL （撮影者を変更する場合、一度撮影を終了してください）
+	PRINTFORML [0] %CALLNAME:MASTER%
+	PRINTFORML [1] %CALLNAME:ASSI%
+	PRINTL [2] やめる
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 0
+				TFLAG:ビデオ撮影者 = 1
+				PRINTFORML 撮影者は%CALLNAME:MASTER%です
+				BREAK
+			CASE 1
+				TFLAG:ビデオ撮影者 = 2
+				PRINTFORML 撮影者は%CALLNAME:ASSI%です
+				BREAK
+			CASE 2
+				RETURN 0
+		ENDSELECT
+	LOOP 1
+ELSEIF !TEQUIP:ビデオカメラ
+	TFLAG:ビデオ撮影者 = 1
+	PRINTFORML 撮影者は%CALLNAME:MASTER%です
+ENDIF
+
+CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+IF TEQUIP:ビデオカメラ
+	;ビデオ撮影がされていれば終了させる
+	;テープは終了時に数を減らす、さらにこれまでの値段と経験を加算する
+	TEQUIP:ビデオカメラ = 0
+	ITEM:ビデオテープ--
+	CALL PRICE_VIDEO
+	PRINTW ★★★ビデオ撮影を終了します★★★
+ELSE
+	;ビデオ撮影してなければ初期化して開始
+	TEQUIP:ビデオカメラ = 1
+	TFLAG:ビデオ撮影回数 = 0
+	VARSET ビデオ撮影内容, 
+	PRINTW ★★★ビデオ撮影を開始します★★★
+ENDIF
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM183
+;撮影開始時はカウントに入れない
+SIF SELECTCOM == 183
+	RETURN 0
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 0
+LOSEBASE:気力 += 50
+
+SOURCE:恐怖 += 300
+SOURCE:露出 += 300
+SOURCE:逸脱 += 400
+SOURCE:反感 += 800
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 700
+
+;苦痛を伴わないマゾっ気及びマゾの処理は先にしておく
+;マゾっ気を見る
+LOCAL = 200
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		TIMES LOCAL , 0.80
+		SOURCE:液体 += 0
+		SOURCE:欲情 += 0
+	CASE 1
+		TIMES LOCAL , 1.00
+		SOURCE:液体 += 20
+		SOURCE:欲情 += 30
+	CASE 2
+		TIMES LOCAL , 1.20
+		SOURCE:液体 += 40
+		SOURCE:欲情 += 60
+	CASE 3
+		TIMES LOCAL , 1.40
+		SOURCE:液体 += 60
+		SOURCE:欲情 += 90
+	CASE 4
+		TIMES LOCAL , 1.50
+		SOURCE:液体 += 80
+		SOURCE:欲情 += 120
+	CASE 5
+		TIMES LOCAL , 1.70
+		SOURCE:液体 += 100
+		SOURCE:欲情 += 150
+	CASE 6
+		TIMES LOCAL , 1.90
+		SOURCE:液体 += 120
+		SOURCE:欲情 += 180
+	CASE 7
+		TIMES LOCAL , 2.10
+		SOURCE:液体 += 140
+		SOURCE:欲情 += 210
+	CASE 8
+		TIMES LOCAL , 2.30
+		SOURCE:液体 += 160
+		SOURCE:欲情 += 240
+	CASE 9
+		TIMES LOCAL , 2.50
+		SOURCE:液体 += 180
+		SOURCE:欲情 += 270
+	CASE IS >= 10
+		TIMES LOCAL , 3.00
+		SOURCE:液体 += 200
+		SOURCE:欲情 += 300
+ENDSELECT
+
+;ナルシスト
+IF TALENT:ナルシスト
+	SOURCE:欲情 += 50
+	SOURCE:露出 += 100
+	SOURCE:屈従 += 50
+	SOURCE:欲情 += 2
+ENDIF
+
+SOURCE:露出 += LOCAL
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+SELECTCASE TFLAG:ビデオ撮影者
+	CASE 1
+		PRINTFORML 撮影経験+1(%CALLNAME:MASTER%)
+		EXP:MASTER:撮影経験++
+	CASE 2
+		PRINTFORML 撮影経験+1(%CALLNAME:ASSI%)
+		EXP:ASSI:撮影経験++
+ENDSELECT
+PRINTL 被写経験+1
+EXP:TARGET:被写経験++
+
+;依存度補正値(服従で1、隷属で2　強制変更なのでリセット）
+IF TALENT:服従
+	TFLAG:依存度補正 = 1
+ELSEIF TALENT:隷属
+	TFLAG:依存度補正 = 2
+ENDIF
+
+;-------------------------------------------------
+;ビデオの処理
+;-------------------------------------------------
+;撮影内容の保存
+ビデオ撮影内容:(TFLAG:ビデオ撮影回数) = %SELECTCOMS%
+TFLAG:ビデオ撮影回数++
+
+;テープ残量がなくなると強制的にTEQUIPフラグを外す、さらにビデオの値段と経験の処理をする
+IF TFLAG:ビデオ撮影回数 >= 10
+	TEQUIP:ビデオカメラ = 0
+	ITEM:ビデオテープ--
+	CALL PRICE_VIDEO
+	PRINTL ＜テープの残量がなくなりました　ビデオ撮影を終了します＞
+ELSE
+	PRINTFORML ＜ビデオ撮影中{TFLAG:ビデオ撮影回数}/10＞
+ENDIF
+
+RETURN 1
+

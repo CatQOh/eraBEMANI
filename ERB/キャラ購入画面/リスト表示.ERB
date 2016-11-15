@@ -1,0 +1,495 @@
+﻿@CHARA_BUY
+#DIM DYNAMIC LRESULT
+VARSET LOCAL, 0
+
+DRAWLINE
+PRINTFORM {DAY}日目
+SELECTCASE TIME
+	CASE 0
+		PRINTL (昼)
+	CASE 1
+		PRINTL (夜)
+ENDSELECT
+
+PRINTFORM 所持金:${MONEY} 難易度:
+SELECTCASE FLAG:難易度
+	CASE 1
+		PRINTL NORMAL
+	CASE 2
+		PRINTL HYPER
+	CASE 3
+		PRINTL ANOTHER
+ENDSELECT
+
+PRINTFORM 主人:%NAME:MASTER% 
+SIF TARGET >= 0
+	PRINTFORM 奴隷:%NAME:TARGET% 
+SIF ASSI >= 0
+	PRINTFORM 助手:%NAME:ASSI%
+PRINTL 
+
+CALL CHARA_LIST
+;まだ表示できるキャラがいたら1が返ってくる
+LOCAL = RESULT
+
+DRAWLINE
+PRINTPLAIN 　CHARA  FILTER　
+PRINT [8000] フィルタ設定
+PRINTPLAIN 　
+PRINTFORM [8001] 男女フィルタ：
+SELECTCASE FLAG:男女フィルタ
+	CASE 0
+		PRINTL 切
+	CASE 1
+		PRINTL 男性を表示
+	CASE 2
+		PRINTL 女性を表示
+ENDSELECT
+PRINTPLAIN 　CUSTOM FILTER　
+PRINT [8003] カスタムフィルタ1：
+IF FLAG:カスタムフィルタ１ >= 0 && FLAG:フィルタスイッチ１
+	PRINTFORM %TALENTNAME:(FLAG:カスタムフィルタ１)%
+	SELECTCASE FLAG:フィルタスイッチ１
+		CASE 1
+			PRINT (表示)
+		CASE 2
+			PRINT (除外)
+	ENDSELECT
+ELSE
+	PRINT 切
+ENDIF
+PRINTPLAIN 　
+PRINT [8005] カスタムフィルタ2：
+IF FLAG:カスタムフィルタ２ >= 0 && FLAG:フィルタスイッチ２
+	PRINTFORM %TALENTNAME:(FLAG:カスタムフィルタ２)%
+	SELECTCASE FLAG:フィルタスイッチ２
+		CASE 1
+			PRINT (表示)
+		CASE 2
+			PRINT (除外)
+	ENDSELECT
+ELSE
+	PRINT 切
+ENDIF
+PRINTL 
+
+PRINTPLAIN 　PRICE  FILTER　
+PRINT [8007] 価格フィルタ：
+IF FLAG:価格フィルタ != 0
+	PRINTFORM ${FLAG:価格フィルタ下限} ～ ${FLAG:価格フィルタ上限}
+	SELECTCASE FLAG:価格フィルタ
+		CASE 1
+			PRINT (表示)
+		CASE 2
+			PRINT (除外)
+	ENDSELECT
+ELSE
+	PRINT 切
+ENDIF
+PRINTPLAIN 　
+PRINT [8008] バストサイズフィルタ：
+SELECTCASE FLAG:バストサイズフィルタ
+	CASE 0
+		PRINTL 切
+	CASE 1
+		PRINTL 絶壁キャラを表示
+	CASE 2
+		PRINTL 貧乳キャラを表示
+	CASE 3
+		PRINTL 並乳キャラを表示
+	CASE 4
+		PRINTL 巨乳キャラを表示
+	CASE 5
+		PRINTL 爆乳キャラを表示
+ENDSELECT
+
+DRAWLINE
+PRINTPLAINFORM 　PAGE.{TFLAG:ページ数+1}　
+IF TFLAG:ページ数 > 0
+	PRINTLC [10001]前のページ
+ELSE
+	PRINTLC  
+ENDIF
+PRINT [10000]購入しない
+SIF RESULT
+	PRINTC [10009]後のページ
+PRINTL 
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 10000
+			RETURN 0
+		CASE 10001
+			SIF TFLAG:ページ数
+				TFLAG:ページ数--
+		CASE 10009
+			SIF LOCAL
+				TFLAG:ページ数++
+		CASE 8000
+			CALL CHARA_FILTER
+			BREAK
+		CASE 8001, 8003, 8005, 8007, 8008
+			CALL CHARA_FILTER2, (RESULT-8000)
+			BREAK
+		CASEELSE
+			IF EXISTCSV(RESULT)
+				LRESULT = RESULT
+				CALL CHARA_MANUAL, LRESULT
+				CALL CHARA_BUY_CHECK, LRESULT
+				;購入した場合は0が返ってくるので関数終了
+				SIF RESULT == 0
+					RETURN 0
+				BREAK
+			ENDIF
+	ENDSELECT
+LOOP LOOPRES(10001, 10009)
+
+RESTART
+
+@CHARA_LIST, ARG
+#DIM LCOUNT
+VARSET LOCAL, 0
+
+;ARG
+;0 = 奴隷購入用キャラリスト
+;1 = その他とりあえず全キャラ羅列するためのキャラリスト
+
+FOR LCOUNT, 0, 10000
+	SIF LCOUNT == 0
+		CONTINUE
+	SIF CCB:LCOUNT
+		CONTINUE
+	SIF !EXISTCSV(LCOUNT)
+		CONTINUE
+	SIF FLAG:男女フィルタ != CSVTALENT(LCOUNT , 0) && FLAG:男女フィルタ
+		CONTINUE
+	SIF FLAG:フィルタスイッチ１ == 1 && CSVTALENT(LCOUNT, FLAG:カスタムフィルタ１) == 0
+		CONTINUE
+	SIF FLAG:フィルタスイッチ１ == 2 && CSVTALENT(LCOUNT, FLAG:カスタムフィルタ１) == 1
+		CONTINUE
+	SIF FLAG:フィルタスイッチ２ == 1 && CSVTALENT(LCOUNT, FLAG:カスタムフィルタ２) == 0
+		CONTINUE
+	SIF FLAG:フィルタスイッチ２ == 2 && CSVTALENT(LCOUNT, FLAG:カスタムフィルタ２) == 1
+		CONTINUE
+	SIF FLAG:バストサイズフィルタ != CSVTALENT(LCOUNT, 139) && FLAG:バストサイズフィルタ
+		CONTINUE
+
+	SELECTCASE CSVCFLAG(LCOUNT, 50)
+		CASE FLAG:価格フィルタ下限 TO FLAG:価格フィルタ上限
+			SIF FLAG:価格フィルタ == 2
+				CONTINUE
+		CASEELSE
+			SIF FLAG:価格フィルタ == 1
+				CONTINUE
+	ENDSELECT
+
+	SIF LCOUNT == NO:MASTER
+		CONTINUE
+
+	IF LOCAL >= 30
+		LOCAL:4 = 1
+		BREAK
+	ENDIF
+
+	LOCAL:2++
+	SIF LOCAL:2 <= (TFLAG:ページ数*30)
+		CONTINUE
+
+	IF LOCAL:1 >= 3
+		;SIF LINEISEMPTY() == 0
+			PRINTL 
+		LOCAL:1 = 0
+	ENDIF
+
+	IF ARG == 1
+		LOCALS = [{LCOUNT, 4}] %CSVNAME(LCOUNT)%
+	ELSE
+		LOCALS = [{LCOUNT, 4}] %CSVNAME(LCOUNT)% \(\${CSVCFLAG(LCOUNT,50)}\)
+	ENDIF
+	PRINTFORM %LOCALS , 38 , LEFT%
+	
+	LOCAL:1++
+
+	LOCAL++
+NEXT
+
+PRINTL 
+
+RETURN LOCAL:4
+
+@CHARA_FILTER
+TFLAG:ページ数 = 0
+DRAWLINE
+PRINTL キャラ購入画面にフィルタをかけることができます
+PRINTL 
+SELECTCASE FLAG:男女フィルタ
+	CASE 0
+		PRINTL [1] 男性キャラだけ表示する
+	CASE 1
+		PRINTL [1] 女性キャラだけ表示する
+	CASE 2
+		PRINTL [1] 全キャラ表示する
+ENDSELECT
+
+PRINT [2] カスタムフィルタ1を設定する（現在
+IF FLAG:カスタムフィルタ１ >= 0
+	PRINTFORML 【%TALENTNAME:(FLAG:カスタムフィルタ１)%】のフィルタ）
+ELSE
+	PRINTL フィルタは設定されていません）
+ENDIF
+
+PRINT [3] カスタムフィルタ1の切り替え（現在
+SELECTCASE FLAG:フィルタスイッチ１
+	CASE 0
+		PRINTL オフ）
+	CASE 1
+		PRINTL 【マッチフィルタオン】）
+	CASE 2
+		PRINTL 【除外フィルタオン】）
+ENDSELECT
+
+PRINT [4] カスタムフィルタ2を設定する（現在
+IF FLAG:カスタムフィルタ２ >= 0
+	PRINTFORML 【%TALENTNAME:(FLAG:カスタムフィルタ２)%】のフィルタ）
+ELSE
+	PRINTL フィルタは設定されていません）
+ENDIF
+
+PRINT [5] カスタムフィルタ2の切り替え（現在
+SELECTCASE FLAG:フィルタスイッチ２
+	CASE 0
+		PRINTL オフ）
+	CASE 1
+		PRINTL 【マッチフィルタオン】）
+	CASE 2
+		PRINTL 【除外フィルタオン】）
+ENDSELECT
+
+PRINT [6] 価格フィルタを設定する（現在
+SELECTCASE FLAG:価格フィルタ
+	CASE 0
+		PRINTL オフ）
+	CASEELSE
+		PRINTFORML 【${FLAG:価格フィルタ下限} ～ ${FLAG:価格フィルタ上限}】のフィルタ）
+ENDSELECT
+
+PRINT [7] 価格フィルタの切り替え（現在
+SELECTCASE FLAG:価格フィルタ
+	CASE 0
+		PRINTL オフ）
+	CASE 1
+		PRINTL 【マッチフィルタオン】）
+	CASE 2
+		PRINTL 【除外フィルタオン】）
+ENDSELECT
+PRINT [8] バストサイズフィルタの切り替え（現在
+SELECTCASE FLAG:バストサイズフィルタ
+	CASE 0
+		PRINTL オフ）
+	CASE 1
+		PRINTL 絶壁キャラを表示）
+	CASE 2
+		PRINTL 貧乳キャラを表示）
+	CASE 3
+		PRINTL 並乳キャラを表示）
+	CASE 4
+		PRINTL 巨乳キャラを表示）
+	CASE 5
+		PRINTL 爆乳キャラを表示）
+ENDSELECT
+
+PRINTL [0] 戻る
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1 TO 7
+			CALL CHARA_FILTER2, RESULT
+			RESTART
+	ENDSELECT
+LOOP 1
+
+@CHARA_FILTER2, ARG
+TFLAG:ページ数 = 0
+SELECTCASE ARG
+	CASE 1
+		SELECTCASE FLAG:男女フィルタ
+			CASE 0
+				PRINTW 男性キャラのみ表示します
+				FLAG:男女フィルタ = 1
+			CASE 1
+				PRINTW 女性キャラのみ表示します
+				FLAG:男女フィルタ = 2
+			CASE 2
+				PRINTW 全キャラ表示します
+				FLAG:男女フィルタ = 0
+		ENDSELECT
+	CASE 2
+		DO
+			DRAWLINE
+			PRINTL フィルタをかけたい素質番号を入力してください。
+			PRINTL [1000] 戻る
+			PRINTL [1001] フィルタをリセット
+			PRINTL [1002] 素質一覧表示
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 1000
+						RETURN 0
+					CASE 1001
+						PRINTW フィルタをリセットしました
+						FLAG:フィルタスイッチ１ = 0
+					CASE 1002
+						CALL TALENT_PRINT
+					CASEELSE
+						IF TALENTNAME:RESULT == ""
+							PRINTFORML {RESULT}番には素質が設定されていません
+						ELSE
+							FLAG:カスタムフィルタ１ = RESULT
+							SIF FLAG:フィルタスイッチ１ == 0
+								FLAG:フィルタスイッチ１ = 1
+							PRINTFORMW 素質「%TALENTNAME:(FLAG:カスタムフィルタ１)%」にフィルタをかけました。
+							RETURN 0
+						ENDIF
+				ENDSELECT
+			LOOP LOOPRES(1000, 1001, 1002)
+		LOOP LOOPRES(1000, 1001)
+	CASE 3
+		SELECTCASE FLAG:フィルタスイッチ１
+			CASE 0
+				PRINTW 条件にマッチするキャラのみ表示します
+				FLAG:フィルタスイッチ１ = 1
+			CASE 1
+				PRINTW 条件にマッチするキャラを除外します
+				FLAG:フィルタスイッチ１ = 2
+			CASE 2
+				PRINTW カスタムフィルタ1をオフにしました
+				FLAG:フィルタスイッチ１ = 0
+		ENDSELECT
+	CASE 4
+		DO
+			DRAWLINE
+			PRINTL フィルタをかけたい素質番号を入力してください。
+			PRINTL [1000] 戻る
+			PRINTL [1001] フィルタをリセット
+			PRINTL [1002] 素質一覧表示
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 1000
+						RETURN 0
+					CASE 1001
+						PRINTW フィルタをリセットしました
+						FLAG:フィルタスイッチ２ = 0
+					CASE 1002
+						CALL TALENT_PRINT
+					CASEELSE
+						IF TALENTNAME:RESULT == ""
+							PRINTFORMW {RESULT}番には素質が設定されていません
+						ELSE
+							FLAG:カスタムフィルタ２ = RESULT
+							SIF FLAG:フィルタスイッチ２ == 0
+								FLAG:フィルタスイッチ２ = 1
+							PRINTFORMW 素質「%TALENTNAME:(FLAG:カスタムフィルタ２)%」にフィルタをかけました。
+							RETURN 0
+						ENDIF
+				ENDSELECT
+			LOOP LOOPRES(1000, 1001, 1002)
+		LOOP LOOPRES(1000, 1001)
+	CASE 5
+		SELECTCASE FLAG:フィルタスイッチ２
+			CASE 0
+				PRINTW 条件にマッチするキャラのみ表示します
+				FLAG:フィルタスイッチ２ = 1
+			CASE 1
+				PRINTW 条件にマッチするキャラを除外します
+				FLAG:フィルタスイッチ２ = 2
+			CASE 2
+				PRINTW カスタムフィルタ2をオフにしました
+				FLAG:フィルタスイッチ２ = 0
+		ENDSELECT
+	CASE 6
+		DO
+			PRINTL 価格でフィルタをかけることができます
+			PRINTFORML [101] 下限を設定する（現在${FLAG:価格フィルタ下限}）
+			PRINTFORML [102] 上限を設定する（現在${FLAG:価格フィルタ上限}）
+			PRINTFORML 現在の設定 ${FLAG:価格フィルタ下限} ～ ${FLAG:価格フィルタ上限}
+			DRAWLINE
+			PRINTL [100] 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 100
+						RETURN 0
+					CASE 101
+						PRINTL 数値を入力してください
+						DO
+							INPUT
+							IF RESULT > FLAG:価格フィルタ上限
+								PRINTL 上限より高い値を設定することはできません
+							ELSE
+								FLAG:価格フィルタ下限 = RESULT
+								BREAK
+							ENDIF
+						LOOP 1
+						BREAK
+					CASE 102
+						PRINTL 数値を入力してください
+						DO
+							INPUT
+							IF RESULT < FLAG:価格フィルタ下限
+								PRINTL 下限より低い値を設定することはできません
+							ELSE
+								FLAG:価格フィルタ上限 = RESULT
+								BREAK
+							ENDIF
+						LOOP 1
+						BREAK
+				ENDSELECT
+			LOOP LOOPRES(101, 102)
+		LOOP 1
+	CASE 7
+		SELECTCASE FLAG:価格フィルタ
+			CASE 0
+				PRINTW 条件にマッチするキャラを除外します
+				FLAG:価格フィルタ = 1
+			CASE 1
+				PRINTW 条件にマッチするキャラのみ表示します
+				FLAG:価格フィルタ = 2
+			CASE 2
+				PRINTW 価格フィルタをオフにしました
+				FLAG:価格フィルタ = 0
+		ENDSELECT
+	CASE 8
+		DO
+			PRINTL 表示したいキャラの胸のサイズを選んでください
+			PRINTL [1] 絶壁
+			PRINTL [2] 貧乳
+			PRINTL [3] 並乳
+			PRINTL [4] 巨乳
+			PRINTL [5] 爆乳
+			PRINTL [0] フィルタオフ
+			INPUT
+			SELECTCASE RESULT
+				CASE 0 TO 5
+					FLAG:バストサイズフィルタ = RESULT
+					BREAK
+				CASEELSE
+					CONTINUE
+			ENDSELECT
+		LOOP 1
+ENDSELECT
+
+RETURN 0
+
+@TALENT_PRINT
+REPEAT 200
+	SELECTCASE TALENTNAME:COUNT
+		CASE "性別", "バストサイズ", ""
+			CONTINUE
+	ENDSELECT
+	PRINTFORMLC [{COUNT}] %TALENTNAME:COUNT%
+REND
+PRINTL 
+

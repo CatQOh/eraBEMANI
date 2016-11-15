@@ -1,0 +1,437 @@
+﻿;-------------------------------------------------
+;二本フェラ(奴隷に二本舐めさせる)
+;奉仕、レズ系派生コマンド
+;-------------------------------------------------
+@USERCOM_ABLE511
+;二本フェラ実行判定
+;主人がペニス無いとダメ
+SIF !PENIS(MASTER)
+	RETURN 0
+;助手がペニス無いとダメ
+SIF !PENIS(ASSI)
+	RETURN 0
+;猫舌の奴隷の場合は技巧Lv2以上必要
+SIF TALENT:猫舌 && ABL:技巧 < 2
+	RETURN 0
+;ボールギャグ使用中は不可
+SIF TEQUIP:ボールギャグ
+	RETURN 0
+;縄使用中は不可
+SIF TEQUIP:縄
+	RETURN 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+
+RETURN 1
+
+@COM511
+PRINTL 二本フェラ
+;-------------------------------------------------
+;実行判定処理
+;-------------------------------------------------
+;すべての命令に共通の要素を考慮
+;(従順が高いと命令に従いやすいなど)
+CALL COM_ORDER
+
+VARSET LOCAL, 0
+LOCAL = RESULT
+
+;ABL:欲望
+IF ABL:欲望
+	LOCAL += ABL:欲望
+	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望})
+ENDIF
+;ABL:奉仕精神
+IF ABL:奉仕精神
+	LOCAL += ABL:奉仕精神*4
+	PRINTFORM +奉仕精神LV{ABL:奉仕精神}({ABL:奉仕精神*4})
+ENDIF
+;ABL:精液中毒
+IF ABL:精液中毒
+	LOCAL += ABL:精液中毒*3
+	PRINTFORM +精液中毒LV{ABL:精液中毒}({ABL:精液中毒*3})
+ENDIF
+
+;快楽刻印
+IF MARK:快楽刻印
+	LOCAL += MARK:快楽刻印
+	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印})
+ENDIF
+
+;PALAM:欲情
+IF PALAM:欲情 < PALAMLV:1
+	LOCAL:1 = 0
+ELSEIF PALAM:欲情 < PALAMLV:2
+	LOCAL:1 = 1
+ELSEIF PALAM:欲情 < PALAMLV:3
+	LOCAL:1 = 2
+ELSEIF PALAM:欲情 < PALAMLV:4
+	LOCAL:1 = 3
+ELSEIF PALAM:欲情 < PALAMLV:5
+	LOCAL:1 = 4
+ELSE
+	LOCAL:1 = 5
+ENDIF
+LOCAL:2 = LOCAL:1
+SIF TALENT:衝動的
+	LOCAL:2 *= 2
+IF LOCAL:2
+	LOCAL += LOCAL:2
+	PRINTFORM +欲情LV{LOCAL:1}({LOCAL:2})
+ENDIF
+
+;恥じらい
+IF TALENT:恥じらい
+	LOCAL -= 3
+	PRINTFORM -恥じらい(3)
+ENDIF
+;汚臭鈍感
+IF TALENT:汚臭鈍感
+	LOCAL += 3
+	PRINTFORM +汚臭鈍感(3)
+ENDIF
+;汚臭敏感
+IF TALENT:汚臭敏感
+	LOCAL -= 9
+	PRINTFORM -汚臭敏感(9)
+ENDIF
+;献身的
+IF TALENT:献身的
+	LOCAL += 6
+	PRINTFORM +献身的(6)
+ENDIF
+;淫乱
+IF TALENT:淫乱
+	LOCAL += 5
+	PRINTFORM +献身的(5)
+ENDIF
+;娼婦
+IF TALENT:娼婦
+	LOCAL += 10
+	PRINTFORM +献身的(10)
+ENDIF
+
+LOCAL:1 = 0
+;精液の汚れ
+SIF GETBIT(STAIN:PLAYER:ペニス, 2)
+	LOCAL:1 += 3
+;アナルの汚れ
+SIF GETBIT(STAIN:PLAYER:ペニス, 3)
+	LOCAL:1 += 5
+;尿
+SIF GETBIT(STAIN:PLAYER:ペニス, 4)
+	LOCAL:1 += 5
+;精液の汚れ
+SIF GETBIT(STAIN:ASSI:ペニス, 2)
+	LOCAL:1 += 3
+;アナルの汚れ
+SIF GETBIT(STAIN:ASSI:ペニス, 3)
+	LOCAL:1 += 5
+;尿
+SIF GETBIT(STAIN:ASSI:ペニス, 4)
+	LOCAL:1 += 5
+
+SIF TALENT:汚れ無視
+	LOCAL:1 /= 3
+SIF TALENT:潔癖症
+	LOCAL:1 *= 2
+
+;汚れあり
+IF LOCAL:1
+	LOCAL -= LOCAL:1
+	IF TALENT:汚れ無視
+		PRINT -汚れあり、汚れ無視
+	ELSEIF TALENT:潔癖症
+		PRINT -汚れあり、潔癖症
+	ELSE
+		PRINT -汚れあり
+	ENDIF
+	PRINTFORM ({LOCAL:1})
+ENDIF
+
+;合計を表示(32以上で実行)
+PRINTFORM  = {LOCAL}
+
+LOCAL:2 = 32
+SIF LOCAL < LOCAL:2
+	PRINT  < 
+SIF LOCAL == LOCAL:2
+	PRINT  = 
+SIF LOCAL > LOCAL:2
+	PRINT  > 
+PRINTFORM 実行値{LOCAL:2}
+WAIT
+;実行できない
+IF LOCAL < LOCAL:2
+	CALL KOJO_MESSAGE_EVENT, 100
+	RETURN 0
+ENDIF
+
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+SELECTCOMS = 二本フェラ
+SELECTCOM = 511
+CALL KOJO_MESSAGE_COM
+
+;実行者が奴隷であるフラグ
+TFLAG:奴隷実行 = 1
+
+;-------------------------------------------------
+;射精ゲージチェック（主人）
+;-------------------------------------------------
+LOCAL = 500
+
+;ABL:技巧をみる
+SELECTCASE ABL:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:奉仕精神をみる
+SELECTCASE ABL:奉仕精神
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.40
+ENDSELECT
+
+;主人のABL:Ｃ感覚をみる
+SELECTCASE ABL:MASTER:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.50
+	CASE 2
+		TIMES LOCAL , 2.00
+	CASE 3
+		TIMES LOCAL , 2.50
+	CASE 4
+		TIMES LOCAL , 3.50
+	CASEELSE
+		TIMES LOCAL , 5.00
+ENDSELECT
+
+;TALENT:舌使いをみる
+SIF TALENT:舌使い
+	TIMES LOCAL , 2.00
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:MASTER:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:MASTER:射精 += LOCAL
+
+;-------------------------------------------------
+;射精ゲージチェック（助手）
+;-------------------------------------------------
+LOCAL = 500
+
+;ABL:技巧をみる
+SELECTCASE ABL:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:奉仕精神をみる
+SELECTCASE ABL:奉仕精神
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.40
+ENDSELECT
+
+;助手のABL:Ｃ感覚をみる
+SELECTCASE ABL:ASSI:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.50
+	CASE 2
+		TIMES LOCAL , 2.00
+	CASE 3
+		TIMES LOCAL , 2.50
+	CASE 4
+		TIMES LOCAL , 3.50
+	CASEELSE
+		TIMES LOCAL , 5.00
+ENDSELECT
+
+;TALENT:舌使いをみる
+SIF TALENT:舌使い
+	TIMES LOCAL , 2.00
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:ASSI:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:ASSI:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 60
+LOSEBASE:気力 += 100
+
+SOURCE:情愛 = 150
+SOURCE:性行動 = 1100
+SOURCE:達成 = 300
+SOURCE:屈従 = 1000
+SOURCE:逸脱 = 500
+SOURCE:反感 = 700
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 700
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック（主人）
+;-------------------------------------------------
+CALL SAMEN_CHECK_M, 4
+CALL SAMEN_CHECK_A, 4
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT, 4, NOWEX:MASTER:射精, MASTER
+CALL SAMEN_SHOOT, 4, NOWEX:ASSI:射精, ASSI
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;奉仕精神LV2以上、技巧LV2以上なら汚れをなめ取る（ボールギャグ使用時は除く）
+IF ABL:奉仕精神 >= 2 && ABL:技巧 >= 2
+	STAIN:MASTER:ペニス = 0
+	STAIN:ASSI:ペニス = 0
+ENDIF
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;フェラ経験
+PRINTL フェラ経験+2
+EXP:フェラ経験 += 2
+
+;同性愛経験
+IF SEX(TARGET) == SEX(MASTER) && SEX(TARGET) == SEX(ASSI)
+	SELECTCASE SEX(TARGET)
+		CASE 1
+			PRINTL ゲイ経験+6
+			EXP:ゲイ経験 += 6
+		CASE 2
+			PRINTL レズ経験+6
+			EXP:レズ経験 += 6
+	ENDSELECT
+ELSEIF SEX(TARGET) == SEX(MASTER) || SEX(TARGET) == SEX(ASSI)
+	SELECTCASE SEX(TARGET)
+		CASE 1
+			PRINTL ゲイ経験+3
+			EXP:ゲイ経験 += 3
+		CASE 2
+			PRINTL レズ経験+3
+			EXP:レズ経験 += 3
+	ENDSELECT
+ENDIF
+
+;奴隷が猫舌持ちの場合は、嗜虐快楽経験を追加
+IF TALENT:猫舌
+	PRINTL 嗜虐快楽経験+1
+	EXP:嗜虐快楽経験++
+ENDIF
+
+;依存度補正値(淫乱で2、娼婦で4）
+IF TALENT:淫乱
+	TFLAG:依存度補正 += 2
+ELSEIF TALENT:娼婦
+	TFLAG:依存度補正 += 4
+ENDIF
+
+;奉仕快楽フラグ
+TFLAG:奉仕快楽 = 1
+
+RETURN 1
+

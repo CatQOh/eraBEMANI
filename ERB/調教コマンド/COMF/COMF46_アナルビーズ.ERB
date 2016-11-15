@@ -1,0 +1,420 @@
+﻿;-------------------------------------------------
+;アナルビーズ
+;道具使用コマンド、レベル3
+;-------------------------------------------------
+@USERCOM_ABLE46
+;アナルビーズ実行判定
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+;解除はいつでも可能
+SIF TEQUIP:アナルビーズ
+	RETURN 1
+;小人体型持ちは主人が禁断の知識持ちじゃないとダメ
+SIF TALENT:小人体型 && !TALENT:MASTER:禁断の知識
+	RETURN 0
+;アイテムを持っていないとダメ
+SIF !ITEM:アナルビーズ
+	RETURN 0
+
+;下半身下着をつけているとダメ
+SIF TEQUIP:下半身下着
+	RETURN 0
+;下の空いてない上着を着ているとダメ
+IF TEQUIP:下半身上着 || (TEQUIP:全身上着 && CFLAG:着衣併用 != 1)
+	SIF !CFLAG:挿入可
+		RETURN 0
+ENDIF
+
+;アナルバイブ使用中は不可
+SIF TEQUIP:アナルバイブ
+	RETURN 0
+;浣腸器使用中は不可
+SIF TEQUIP:浣腸器
+	RETURN 0
+;バルーン使用中は不可
+SIF TEQUIP:拡張バルーン
+	RETURN 0
+;異物挿入中はダメ
+SIF TEQUIP:Ａ異物
+	RETURN 0
+;電極使用中は不可
+SIF TEQUIP:アナル電極
+	RETURN 0
+;新妻プレイ中はダメ
+SIF TEQUIP:エプロン
+	RETURN 0
+
+RETURN 1
+
+@COM46
+PRINTL アナルビーズ
+CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+INVERTBIT TEQUIP:アナルビーズ, 0
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 50
+LOSEBASE:気力 += 80
+
+SOURCE:快A = 150
+SOURCE:苦痛 = 200
+SOURCE:露出 = 50
+SOURCE:屈従 = 50
+SOURCE:逸脱 = 60
+SOURCE:不潔 = 30
+SOURCE:反感 = 100
+
+;装着時は快Aは下がる
+SIF TEQUIP:アナルビーズ
+	TIMES SOURCE:快A , 0.80
+
+;外す時は快Aは上がる
+SIF !TEQUIP:アナルビーズ
+	TIMES SOURCE:快A , 3.00
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+IF TEQUIP:アナルビーズ
+	LOCAL = 80
+ELSEIF !TEQUIP:アナルビーズ
+	LOCAL = 200
+ENDIF
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;PALAM:潤滑をみる
+SELECTCASE PALAM:潤滑
+	CASE IS < PALAMLV:1
+		TIMES LOCAL , 0.40
+	CASE IS < PALAMLV:2
+		TIMES LOCAL , 0.60
+	CASE IS < PALAMLV:3
+		TIMES LOCAL , 0.60
+	CASE IS < PALAMLV:4
+		TIMES LOCAL , 1.00
+	CASE IS >= PALAMLV:4
+		TIMES LOCAL , 1.20
+ENDSELECT
+
+;奴隷のABL:Ａ感覚をみる
+SELECTCASE ABL:Ａ感覚
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASEELSE
+		TIMES LOCAL , 3.00
+ENDSELECT
+
+;奴隷のABL:マゾっ気をみる
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:賢者タイム > 0
+	LOCAL /= 20
+
+;引き抜くときは快感2倍
+SIF !TEQUIP:アナルビーズ
+	LOCAL *= 2
+
+BASE:射精 += LOCAL
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抵抗 || TALENT:抑圧
+	SOURCE:鬱屈 += 70
+
+;Aへの苦痛は先に処理しておく
+;EXP:Ａ経験をみる
+SELECTCASE EXP:Ａ経験
+	CASE IS < EXPLV:1
+		TIMES SOURCE:苦痛 , 3.00
+		TIMES SOURCE:反感 , 3.00
+	CASE IS < EXPLV:2
+		TIMES SOURCE:苦痛 , 1.20
+		TIMES SOURCE:反感 , 2.00
+	CASE IS < EXPLV:3
+		TIMES SOURCE:苦痛 , 0.80
+		TIMES SOURCE:反感 , 1.50
+	CASE IS < EXPLV:4
+		TIMES SOURCE:苦痛 , 0.60
+		TIMES SOURCE:反感 , 1.20
+	CASE IS < EXPLV:5
+		TIMES SOURCE:苦痛 , 0.40
+	CASE IS >= EXPLV:5
+		TIMES SOURCE:苦痛 , 0.20
+ENDSELECT
+
+;PALAM:潤滑をみる
+SELECTCASE PALAM:潤滑
+	CASE IS < PALAMLV:1
+		TIMES SOURCE:苦痛 , 1.20
+		TIMES SOURCE:反感 , 2.00
+	CASE IS < PALAMLV:2
+		TIMES SOURCE:苦痛 , 1.00
+		TIMES SOURCE:反感 , 1.50
+	CASE IS < PALAMLV:3
+		TIMES SOURCE:苦痛 , 0.60
+	CASE IS < PALAMLV:4
+		TIMES SOURCE:苦痛 , 0.30
+	CASE IS >= PALAMLV:4
+		TIMES SOURCE:苦痛 , 0.20
+ENDSELECT
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 5
+
+CALL SAMEN_SHOOT_T, 5, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+IF !TEQUIP:アナルビーズ
+	PRINTL Ａ経験+3
+	EXP:Ａ経験 += 3
+ELSEIF TEQUIP:アナルビーズ
+	PRINTL Ａ経験+2
+	EXP:Ａ経験 += 2
+ENDIF
+
+CALL EXPUP, 2, 1
+
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM46
+;アナルビーズ挿入中
+
+PRINTL ＜アナルビーズ挿入中＞
+
+LOSEBASE:体力 += 20
+LOSEBASE:気力 += 50
+
+SOURCE:快A += 70
+SOURCE:露出 += 30
+SOURCE:屈従 += 30
+SOURCE:逸脱 += 30
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 20
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;PALAM:潤滑をみる
+SELECTCASE PALAM:潤滑
+	CASE IS < PALAMLV:1
+		TIMES LOCAL , 0.40
+	CASE IS < PALAMLV:2
+		TIMES LOCAL , 0.60
+	CASE IS < PALAMLV:3
+		TIMES LOCAL , 0.60
+	CASE IS < PALAMLV:4
+		TIMES LOCAL , 1.00
+	CASE IS >= PALAMLV:4
+		TIMES LOCAL , 1.20
+ENDSELECT
+
+;奴隷のABL:Ａ感覚をみる
+SELECTCASE ABL:Ａ感覚
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASEELSE
+		TIMES LOCAL , 3.00
+ENDSELECT
+
+;奴隷のABL:マゾっ気をみる
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:射精 += LOCAL
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 35
+
+;Aへの苦痛は先に処理しておく
+;EXP:Ａ経験をみる
+LOCAL = 100
+LOCAL:1 = 25
+SELECTCASE EXP:Ａ経験
+	CASE IS < EXPLV:1
+		TIMES LOCAL , 3.00
+		TIMES LOCAL:1 , 3.00
+	CASE IS < EXPLV:2
+		TIMES LOCAL , 1.20
+		TIMES LOCAL:1 , 2.00
+	CASE IS < EXPLV:3
+		TIMES LOCAL , 0.80
+		TIMES LOCAL:1 , 1.50
+	CASE IS < EXPLV:4
+		TIMES LOCAL , 0.60
+		TIMES LOCAL:1 , 1.20
+	CASE IS < EXPLV:5
+		TIMES LOCAL , 0.40
+	CASE IS >= EXPLV:5
+		TIMES LOCAL , 0.20
+ENDSELECT
+
+;PALAM:潤滑をみる
+SELECTCASE PALAM:潤滑
+	CASE IS < PALAMLV:1
+		TIMES LOCAL , 1.20
+		TIMES LOCAL:1 , 2.00
+	CASE IS < PALAMLV:2
+		TIMES LOCAL , 1.00
+		TIMES LOCAL:1 , 1.50
+	CASE IS < PALAMLV:3
+		TIMES LOCAL , 0.60
+	CASE IS < PALAMLV:4
+		TIMES LOCAL , 0.30
+	CASE IS >= PALAMLV:4
+		TIMES LOCAL , 0.20
+ENDSELECT
+SOURCE:苦痛 += LOCAL
+SOURCE:反感 += LOCAL:1
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+SELECTCASE SELECTCOMS
+	CASE "アナル愛撫"
+		PRINTL Ａ経験+2
+		EXP:Ａ経験 += 2
+	CASE IS != "アナルビーズ"
+		PRINTL Ａ経験+1
+		EXP:Ａ経験++
+ENDSELECT
+
+RETURN 1
+

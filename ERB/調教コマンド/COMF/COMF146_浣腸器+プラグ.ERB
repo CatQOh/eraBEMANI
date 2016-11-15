@@ -1,0 +1,262 @@
+﻿;-------------------------------------------------
+;浣腸器+プラグ
+;ハードな調教コマンド、レベル4
+;-------------------------------------------------
+@USERCOM_ABLE146
+;浣腸実行判定
+
+;その調教で既に排便済みなら出来ない
+SIF TFLAG:腸洗浄済み
+	RETURN 0
+
+;下半身下着をつけているとダメ
+SIF TEQUIP:下半身下着
+	RETURN 0
+;下の空いてない上着を着ているとダメ
+IF TEQUIP:下半身上着 || (TEQUIP:全身上着 && CFLAG:着衣併用 != 1)
+	SIF CFLAG:挿入可 != 1
+		RETURN 0
+ENDIF
+
+;無機物はダメ
+SIF TALENT:無機物
+	RETURN 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+;解除はいつでも可能
+SIF TEQUIP:浣腸器
+	RETURN 1
+;調教対象が小人体型の場合は主人が禁断の知識持ちじゃないとダメ
+SIF TALENT:小人体型 && !TALENT:MASTER:禁断の知識
+	RETURN 0
+;アイテムを持っていないとダメ
+SIF !ITEM:浣腸器
+	RETURN 0
+;アナルバイブ使用中は不可
+SIF TEQUIP:アナルバイブ
+	RETURN 0
+;アナルビーズ使用中は不可
+SIF TEQUIP:アナルビーズ
+	RETURN 0
+;バルーン使用中は不可
+SIF TEQUIP:拡張バルーン
+	RETURN 0
+;電極使用中は不可
+SIF TEQUIP:アナル電極
+	RETURN 0
+;異物挿入中は不可
+SIF TEQUIP:Ａ異物
+	RETURN 0
+;Ａ経験が100未満じゃできない
+SIF EXP:Ａ経験 < 100
+	RETURN 0
+;従順、欲望の合計が6ないとできない
+SIF ABL:従順+ABL:欲望 < 6
+	RETURN 0
+
+RETURN 1
+
+@COM146
+IF TEQUIP:触手
+	PRINTL 触手浣腸
+	SELECTCOM = 167
+ELSE
+	PRINTL 浣腸器+プラグ
+ENDIF
+CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+INVERTBIT TEQUIP:浣腸器, 0
+
+;触手浣腸は触手の汚れを追加
+SIF TEQUIP:触手
+	SETBIT STAIN:アナル, 5
+;解除時
+IF !TEQUIP:浣腸器
+	IF !CFLAG:浣腸器で脱糞した経験
+		EXP:異常経験++
+		PRINTFORML 異常経験+1
+	ENDIF
+	CFLAG:浣腸器で脱糞した経験++
+	SIF TEQUIP:ビデオカメラ
+		CFLAG:脱糞を撮影された経験++
+	SETBIT STAIN:アナル, 3
+	TFLAG:腸洗浄済み = 1
+ENDIF
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 100
+LOSEBASE:気力 += 150
+
+SOURCE:快A = 300
+SOURCE:苦痛 = 500
+SOURCE:露出 = 1000
+SOURCE:屈従 = 200
+SOURCE:不潔 = 800
+SOURCE:逸脱 = 800
+SOURCE:反感 = 3000
+;解除時
+IF !TEQUIP:浣腸器
+	SOURCE:露出 += 1000
+	SOURCE:反感 += 2000
+ENDIF
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 500
+
+;Aへの苦痛は先に処理しておく
+;EXP:Ａ経験をみる
+IF EXP:Ａ経験 < EXPLV:1
+	TIMES SOURCE:苦痛 , 3.00
+	TIMES SOURCE:反感 , 3.00
+ELSEIF EXP:Ａ経験 < EXPLV:2
+	TIMES SOURCE:苦痛 , 1.20
+	TIMES SOURCE:反感 , 2.00
+ELSEIF EXP:Ａ経験 < EXPLV:3
+	TIMES SOURCE:苦痛 , 0.80
+	TIMES SOURCE:反感 , 1.50
+ELSEIF EXP:Ａ経験 < EXPLV:4
+	TIMES SOURCE:苦痛 , 0.60
+	TIMES SOURCE:反感 , 1.20
+ELSEIF EXP:Ａ経験 < EXPLV:5
+	TIMES SOURCE:苦痛 , 0.40
+ELSEIF EXP:Ａ経験 >= EXPLV:5
+	TIMES SOURCE:苦痛 , 0.20
+ENDIF
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES SOURCE:苦痛 , 1.20
+	TIMES SOURCE:反感 , 2.00
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES SOURCE:苦痛 , 1.00
+	TIMES SOURCE:反感 , 1.50
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES SOURCE:苦痛 , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES SOURCE:苦痛 , 0.30
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES SOURCE:苦痛 , 0.20
+ENDIF
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 1, 4
+
+;依存度補正値(服従で1、隷属で2）
+IF TALENT:服従 && PLAYER == MASTER
+	TFLAG:依存度補正 += 1
+ELSEIF TALENT:隷属 && PLAYER == MASTER
+	TFLAG:依存度補正 += 2
+ENDIF
+
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM146
+;浣腸+アナルプラグ挿入中
+IF TEQUIP:触手
+	PRINTL ＜浣腸触手挿入中＞
+ELSE
+	PRINTL ＜浣腸器挿入中＞
+ENDIF
+
+LOSEBASE:体力 += 30
+LOSEBASE:気力 += 100
+
+SOURCE:快A += 150
+SOURCE:屈従 += 100
+SOURCE:露出 += 300
+SOURCE:不潔 += 300
+SOURCE:逸脱 += 250
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 250
+
+;Aへの苦痛は先に処理しておく
+;EXP:Ａ経験をみる
+LOCAL = 250
+LOCAL:1 = 250
+IF EXP:Ａ経験 < EXPLV:1
+	TIMES LOCAL , 3.00
+	TIMES LOCAL:1 , 3.00
+ELSEIF EXP:Ａ経験 < EXPLV:2
+	TIMES LOCAL , 1.20
+	TIMES LOCAL:1 , 2.00
+ELSEIF EXP:Ａ経験 < EXPLV:3
+	TIMES LOCAL , 0.80
+	TIMES LOCAL:1 , 1.50
+ELSEIF EXP:Ａ経験 < EXPLV:4
+	TIMES LOCAL , 0.60
+	TIMES LOCAL:1 , 1.20
+ELSEIF EXP:Ａ経験 < EXPLV:5
+	TIMES LOCAL , 0.40
+ELSEIF EXP:Ａ経験 >= EXPLV:5
+	TIMES LOCAL , 0.20
+ENDIF
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES LOCAL , 1.20
+	TIMES LOCAL:1 , 2.00
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES LOCAL , 1.00
+	TIMES LOCAL:1 , 1.50
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES LOCAL , 0.30
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES LOCAL , 0.20
+ENDIF
+SOURCE:苦痛 += LOCAL
+SOURCE:反感 += LOCAL:1
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;Ａ経験
+SELECTCASE SELECTCOMS
+	CASE "浣腸器+プラグ"
+		PRINTL Ａ経験+3
+		EXP:Ａ経験 += 3
+	CASEELSE
+		PRINTL Ａ経験+1
+		EXP:Ａ経験++
+ENDSELECT
+
+RETURN 1
+

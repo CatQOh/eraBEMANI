@@ -1,0 +1,227 @@
+﻿;-------------------------------------------------
+;アナル電極
+;ハードな調教コマンド、レベル4
+;-------------------------------------------------
+@USERCOM_ABLE149
+;アナル電極実行判定
+;奴隷が服従か隷属でないとダメ
+SIF !TALENT:服従 && !TALENT:隷属
+	RETURN 0
+
+;下半身下着をつけているとダメ
+SIF TEQUIP:下半身下着
+	RETURN 0
+;下の空いてない上着を着ているとダメ
+IF TEQUIP:下半身上着 || (TEQUIP:全身上着 && CFLAG:着衣併用 != 1)
+	SIF !CFLAG:挿入可
+		RETURN 0
+ENDIF
+
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+;解除はいつでも可能
+SIF TEQUIP:アナル電極
+	RETURN 1
+;調教対象が小人体型の場合は主人が禁断の知識持ちじゃないとダメ
+SIF TALENT:小人体型 && !TALENT:MASTER:禁断の知識
+	RETURN 0
+;アイテムを持っていないとダメ
+SIF !ITEM:電極プラグ
+	RETURN 0
+;アナルバイブ使用中は不可
+SIF TEQUIP:アナルバイブ
+	RETURN 0
+;アナルビーズ使用中は不可
+SIF TEQUIP:アナルビーズ
+	RETURN 0
+;普通の浣腸使用中は不可
+SIF TEQUIP:浣腸器
+	RETURN 0
+;バルーン使用中は不可
+SIF TEQUIP:拡張バルーン
+	RETURN 0
+;異物挿入中は不可
+SIF TEQUIP:Ａ異物
+	RETURN 0
+;お風呂場プレイ中はダメ
+SIF TEQUIP:お風呂場
+	RETURN 0
+
+RETURN 1
+
+@COM149
+PRINTL アナル電極
+CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+INVERTBIT TEQUIP:アナル電極, 0
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 150
+LOSEBASE:気力 += 200
+
+SOURCE:快A = 500
+SOURCE:苦痛 = 1500
+SOURCE:露出 = 300
+SOURCE:屈従 = 800
+SOURCE:逸脱 = 1200
+SOURCE:反感 = 1200
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 1200
+
+;フィストなどのAへの大きな苦痛は先に処理しておく
+;EXP:Ａ経験をみる
+IF EXP:Ａ経験 < EXPLV:1
+	TIMES SOURCE:苦痛 , 3.00
+	TIMES SOURCE:反感 , 4.00
+ELSEIF EXP:Ａ経験 < EXPLV:2
+	TIMES SOURCE:苦痛 , 2.50
+	TIMES SOURCE:反感 , 3.50
+ELSEIF EXP:Ａ経験 < EXPLV:3
+	TIMES SOURCE:苦痛 , 2.40
+	TIMES SOURCE:反感 , 3.00
+ELSEIF EXP:Ａ経験 < EXPLV:4
+	TIMES SOURCE:苦痛 , 2.00
+	TIMES SOURCE:反感 , 2.50
+ELSEIF EXP:Ａ経験 < EXPLV:5
+	TIMES SOURCE:苦痛 , 1.80
+	TIMES SOURCE:反感 , 2.00
+ELSEIF EXP:Ａ経験 >= EXPLV:5
+	TIMES SOURCE:苦痛 , 1.60
+	TIMES SOURCE:反感 , 1.50
+ENDIF
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES SOURCE:苦痛 , 3.00
+	TIMES SOURCE:反感 , 2.00
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES SOURCE:苦痛 , 2.50
+	TIMES SOURCE:反感 , 1.50
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES SOURCE:苦痛 , 2.00
+	TIMES SOURCE:反感 , 1.20
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES SOURCE:苦痛 , 1.50
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES SOURCE:苦痛 , 1.00
+ENDIF
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;異常経験が3未満のとき、異常経験追加
+IF EXP:異常経験 < 3
+	PRINTL 異常経験+1
+	EXP:異常経験++
+ENDIF
+
+CALL EXPUP, 1, 4
+
+;依存度補正値(服従で1、隷属で2）
+IF TALENT:服従 && PLAYER == MASTER
+	TFLAG:依存度補正 += 1
+ELSEIF TALENT:隷属 && PLAYER == MASTER
+	TFLAG:依存度補正 += 2
+ENDIF
+
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM149
+PRINTL ＜アナル電極挿入中＞
+
+LOSEBASE:体力 += 90
+LOSEBASE:気力 += 150
+
+SOURCE:快A += 250
+SOURCE:屈従 += 400
+SOURCE:逸脱 += 600
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 600
+
+;フィストなどのAへの大きな苦痛は先に処理しておく
+;EXP:Ａ経験をみる
+LOCAL = 750
+LOCAL:1 = 600
+IF EXP:Ａ経験 < EXPLV:1
+	TIMES LOCAL , 3.00
+	TIMES LOCAL:1 , 4.00
+ELSEIF EXP:Ａ経験 < EXPLV:2
+	TIMES LOCAL , 2.50
+	TIMES LOCAL:1 , 3.50
+ELSEIF EXP:Ａ経験 < EXPLV:3
+	TIMES LOCAL , 2.40
+	TIMES LOCAL:1 , 3.00
+ELSEIF EXP:Ａ経験 < EXPLV:4
+	TIMES LOCAL , 2.00
+	TIMES LOCAL:1 , 2.50
+ELSEIF EXP:Ａ経験 < EXPLV:5
+	TIMES LOCAL , 1.80
+	TIMES LOCAL:1 , 2.00
+ELSEIF EXP:Ａ経験 >= EXPLV:5
+	TIMES LOCAL , 1.60
+	TIMES LOCAL:1 , 1.50
+ENDIF
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES LOCAL , 3.00
+	TIMES LOCAL:1 , 2.00
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES LOCAL , 2.50
+	TIMES LOCAL:1 , 1.50
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES LOCAL , 2.00
+	TIMES LOCAL:1 , 1.20
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES LOCAL , 1.50
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES LOCAL , 1.00
+ENDIF
+SOURCE:苦痛 += LOCAL
+SOURCE:反感 += LOCAL:1
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;Ａ経験
+PRINTL Ａ経験+5
+EXP:Ａ経験 += 5
+
+RETURN 1
+

@@ -1,0 +1,421 @@
+﻿;オプション設定処理
+@OPTION
+DRAWLINE
+PRINTL □設定項目を選択してください
+PRINTL 　[0] - テキスト設定
+PRINTL 　[1] - 着衣関連設定
+PRINTL 　[2] - イベント関連の設定
+PRINTL 　[3] - チュートリアル受講
+DRAWLINE
+PRINTPLAIN 　OPTION　
+PRINTL [100] - 戻る
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			CALL TEXT_SETTING
+		CASE 1
+			CALL CLOTHES_SETTING
+		CASE 2
+			CALL EVENT_SETTING
+		CASE 3
+			IF FLAG:ゲームモード == 8
+				CALL TEST_TUTORIAL
+			ELSE
+				CALL TUTORIAL
+			ENDIF
+			DRAWLINE
+		CASE 100
+			RETURN 0
+	ENDSELECT
+LOOP LOOPRES(0, 1, 2, 3, 100)
+
+RESTART
+
+;テキスト関連
+@TEXT_SETTING
+DRAWLINE
+PRINTL □テキストの設定をしてください
+PRINT 　現在の設定：
+IF FLAG:地の文表示 && FLAG:口上表示
+	PRINTL 【口上+地の文】
+ELSEIF !FLAG:地の文表示 && FLAG:口上表示
+	PRINTL 【口上のみ】
+ELSEIF FLAG:地の文表示 && !FLAG:口上表示
+	PRINTL 【地の文のみ】
+ELSEIF !FLAG:地の文表示 && !FLAG:口上表示
+	PRINTL 【テキストを表示しない】
+ENDIF
+PRINTL 　[0] - 口上+地の文
+PRINTL 　[1] - 口上のみ
+PRINTL 　[2] - 地の文のみ
+PRINTL 　[3] - テキストを表示しない
+DRAWLINE
+PRINTPLAIN 　TEXT　
+PRINTL [100] - 戻る
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			PRINTL 【口上+地の文】に設定しました
+			FLAG:地の文表示 = 1
+			FLAG:口上表示 = 1
+		CASE 1
+			PRINTL 【口上のみ】に設定しました
+			FLAG:地の文表示 = 0
+			FLAG:口上表示 = 1
+		CASE 2
+			PRINTL 【地の文のみ】に設定しました
+			FLAG:地の文表示 = 1
+			FLAG:口上表示 = 0
+		CASE 3
+			PRINTL 【テキストを表示しない】に設定しました
+			FLAG:地の文表示 = 0
+			FLAG:口上表示 = 0
+		CASE 100
+			RETURN 0
+	ENDSELECT
+LOOP LOOPRES(0, 1, 2, 3, 100)
+
+RESTART
+
+;初期着衣設定
+@CLOTHES_SETTING
+DRAWLINE
+PRINTL □設定する項目を選択してください
+PRINTL 　[0] - 調教時の着衣状態設定
+PRINTL 　[1] - 服装の設定
+DRAWLINE
+PRINTPLAIN 　CLOTHES　
+PRINTL [100] - 戻る
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			CALL CLOTHES_SETTING_TRAIN
+		CASE 1
+			CALL CLOTHES_SETTING_USUALLY
+		CASE 100
+			RETURN 0
+	ENDSELECT
+LOOP LOOPRES(0, 1, 100)
+
+RESTART
+
+;調教開始時の着衣設定
+@CLOTHES_SETTING_TRAIN
+DRAWLINE
+PRINTL □調教開始時の服装を設定してください
+PRINT 　現在の設定：
+SELECTCASE FLAG:着衣設定
+	CASE 0
+		PRINTL 全着
+	CASE 1
+		PRINTL 下着無し
+	CASE 2
+		PRINTL 下着姿
+	CASE 3
+		PRINTL 全裸
+ENDSELECT
+PRINTL 　[0] - 全着
+PRINTL 　[1] - 下着無し
+PRINTL 　[2] - 下着姿
+PRINTL 　[3] - 全裸
+DRAWLINE
+PRINTPLAIN 　CLOTHES SETTING　
+PRINTL [100] - 戻る
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			PRINTW 初期の着衣を全着に設定しました
+			FLAG:着衣設定 = 0
+		CASE 1
+			PRINTW 初期の着衣を下着無しに設定しました
+			FLAG:着衣設定 = 1
+		CASE 2
+			PRINTW 初期の着衣を下着姿に設定しました
+			FLAG:着衣設定 = 2
+		CASE 3
+			PRINTW 初期の着衣を全裸に設定しました
+			FLAG:着衣設定 = 3
+		CASE 100
+			RETURN 0
+	ENDSELECT
+LOOP LOOPRES(0, 1, 2, 3, 100)
+
+RESTART
+
+;着衣変更 きせかえ
+@CLOTHES_SETTING_USUALLY
+#DIM DYNAMIC PAGE
+DRAWLINE
+LOCAL = PAGE*10
+PRINTL □着衣の設定をするキャラを選択してください
+FOR COUNT, LOCAL, LOCAL+10
+	SIF COUNT == CHARANUM
+		BREAK
+	PRINTFORML 　[{COUNT}] %NAME:COUNT%
+NEXT
+DRAWLINE
+PRINTPLAINFORM 　PAGE.{LOCAL+1}　
+SIF PAGE != 0
+	PRINT [999] 前ページ 
+PRINT [1000] 戻る
+SIF (LOCAL+10) < CHARANUM
+	PRINT  [1001] 次ページ
+PRINTL 
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 999
+			PAGE--
+			RESTART
+		CASE 1000
+			RETURN 0
+		CASE 1001
+			PAGE++
+			RESTART
+		CASE 0 TO CHARANUM-1
+			BREAK
+	ENDSELECT
+LOOP LOOPRES(999, 1000, 1001)
+
+LOCAL:1 = TARGET
+TARGET = RESULT
+CALL CHARA_CLOTHES_SETTING
+TARGET = LOCAL:1
+
+@CHARA_CLOTHES_SETTING
+#DIM LCOUNT
+DRAWLINE
+PRINTFORML □%NAME:TARGET%の服装
+CALL SHOW_INFO_CLOTHES, TARGET
+DRAWLINE
+PRINTL □着衣の変更をしたい部位を選択してください
+;特殊
+IF CFLAG:特殊 != 100
+	PRINTL 　[0] 特殊
+ELSE
+	SETCOLOR 120, 120, 120
+	PRINTPLAIN 　[-] 特殊
+	PRINTL 
+	RESETCOLOR
+ENDIF
+;上半身上着
+IF CFLAG:上半身上着 != 100
+	PRINTL 　[1] 上半身上着
+ELSE
+	SETCOLOR 120, 120, 120
+	PRINTPLAIN 　[-] 上半身上着
+	PRINTL 
+	RESETCOLOR
+ENDIF
+;下半身上着
+IF CFLAG:下半身上着 != 100
+	PRINTL 　[2] 下半身上着
+ELSE
+	SETCOLOR 120, 120, 120
+	PRINTPLAIN 　[-] 下半身上着
+	PRINTL 
+	RESETCOLOR
+ENDIF
+;全身上着
+IF CFLAG:全身上着 != 100
+	PRINTL 　[3] 全身上着
+ELSE
+	SETCOLOR 120, 120, 120
+	PRINTPLAIN 　[-] 全身上着
+	PRINTL 
+	RESETCOLOR
+ENDIF
+;上半身下着
+IF CFLAG:上半身下着 != 100
+	PRINTL 　[4] 上半身下着
+ELSE
+	SETCOLOR 120, 120, 120
+	PRINTPLAIN 　[-] 上半身下着
+	PRINTL 
+	RESETCOLOR
+ENDIF
+;下半身下着
+IF CFLAG:下半身下着 != 100
+	PRINTL 　[5] 下半身下着
+ELSE
+	SETCOLOR 120, 120, 120
+	PRINTPLAIN 　[-] 下半身下着
+	PRINTL 
+	RESETCOLOR
+ENDIF
+;足元
+IF CFLAG:足元 != 100
+	PRINTL 　[6] 足元
+ELSE
+	SETCOLOR 120, 120, 120
+	PRINTPLAIN 　[-] 足元
+	PRINTL 
+	RESETCOLOR
+ENDIF
+PRINTL 　[8] 着衣設定の初期化
+DRAWLINE
+PRINTPLAIN 　COORDINATE　
+PRINTL [9] 戻る
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0 TO 6
+			CALL CHARA_CLOTHES_SETTINGNEXT, RESULT
+			BREAK
+		CASE 8
+			;対象が「あなた」
+			IF NO:TARGET == 0
+				;「あなた」が男の場合
+				SELECTCASE SEX(TARGET)
+					CASE 1
+						FOR COUNT, 100, 107
+							CSTR:COUNT = 0
+						NEXT
+						CSTR:MASTER:上半身上着 = シャツ
+						CSTR:MASTER:下半身上着 = ズボン
+						CSTR:MASTER:下半身下着 = トランクス
+					;「あなた」が女の場合
+					CASE 2
+						FOR COUNT, 100, 107
+							CSTR:COUNT = 0
+						NEXT
+						CSTR:MASTER:全身上着 = ワンピース
+						CSTR:MASTER:上半身下着 = ブラジャー
+						CSTR:MASTER:下半身下着 = パンティ
+						CFLAG:MASTER:挿入可 = 1
+				ENDSELECT
+			ELSE
+				FOR LCOUNT, 100, 107
+					CSTR:LCOUNT = %CSVCSTR(NO:TARGET, LCOUNT, 0)%
+				NEXT
+				CFLAG:挿入可 = CSVCFLAG(NO:TARGET, 47)
+				CFLAG:着衣併用 = CSVCFLAG(NO:TARGET, 48)
+			ENDIF
+			PRINTFORMW ＜%NAME:TARGET%の服装を初期化しました＞
+			RESTART
+		CASE 9
+			RETURN 0
+	ENDSELECT
+LOOP LOOPRES(8, 9)
+
+RESTART
+
+@CHARA_CLOTHES_SETTINGNEXT, ARG
+DRAWLINE
+PRINTL □何を着せますか？
+PRINTL 　[0] 何も着せない
+FOR COUNT, (ARG*100), (ARG*100+100)
+	SIF STR:COUNT == ""
+		CONTINUE
+	PRINTFORML 　[{COUNT}] %STR:COUNT%
+NEXT
+DRAWLINE
+PRINTPLAIN 　COORDINATE　
+PRINTL [1000] 戻る
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0 TO 999
+			CSTR:(ARG+100) = %STR:RESULT%
+			SELECTCASE CSTR:全身上着
+				CASE "コート", "エプロン", "ローブ"
+					CFLAG:着衣併用 = 1
+				CASE "バニースーツ", "スクール水着"
+					CFLAG:着衣併用 = 2
+				CASEELSE
+					CFLAG:着衣併用 = 0
+			ENDSELECT
+			SELECTCASE CSTR:下半身上着
+				CASE "スカート", "パレオ"
+					CFLAG:挿入可 = 1
+				CASEELSE
+					CFLAG:挿入可 = 0
+			ENDSELECT
+			SELECTCASE CSTR:全身上着
+				CASE "和服", "ローブ", "ワンピース", "チュチュ", "ドレス", "チャイナドレス", "修道服", "ゴシックロリータ"
+					CFLAG:挿入可 = 1
+				CASEELSE
+					CFLAG:挿入可 = 0
+			ENDSELECT
+			SELECTCASE ARG
+				CASE 1, 2
+					SIF CFLAG:着衣併用 != 1
+						CSTR:全身上着 = 
+				CASE 4, 5
+					SIF CFLAG:着衣併用 == 2
+						CSTR:全身上着 = 
+				CASE 3
+					IF CFLAG:着衣併用 != 1
+						CSTR:上半身上着 = 
+						CSTR:下半身上着 = 
+					ENDIF
+					IF CFLAG:着衣併用 == 2
+						CSTR:上半身下着 = 
+						CSTR:下半身下着 = 
+					ENDIF
+			ENDSELECT
+			BREAK
+		CASE 1000
+			RETURN 0
+	ENDSELECT
+LOOP LOOPRES(1000)
+
+;着衣設定
+@EVENTTRAIN
+#PRI
+;初期着衣設定に応じて、服の設定をする
+REPEAT 7
+	SIF CSTR:(COUNT+100) != ""
+		TEQUIP:COUNT = 1
+	SIF CSTR:MASTER:(COUNT+100) != ""
+		TEQUIP:MASTER:COUNT = 1
+	IF ASSI > 0
+		SIF CSTR:ASSI:(COUNT+100) != ""
+			TEQUIP:ASSI:COUNT = 1
+	ENDIF
+REND
+
+SELECTCASE FLAG:着衣設定
+	;下着無し
+	CASE 1
+		TEQUIP:上半身下着 = 0
+		TEQUIP:下半身下着 = 0
+	;下着姿
+	CASE 2
+		TEQUIP:上半身上着 = 0
+		TEQUIP:下半身上着 = 0
+		TEQUIP:全身上着 = 0
+	;全裸
+	CASE 3
+		REPEAT 7
+			TEQUIP:COUNT = 0
+			TEQUIP:MASTER:COUNT = 0
+			SIF ASSI > 0
+				TEQUIP:ASSI:COUNT = 0
+		REND
+ENDSELECT
+
+;イベント関連の設定
+@EVENT_SETTING
+DRAWLINE
+PRINTL □イベントのオン/オフを設定できます
+PRINTFORML 　[0] - 主人による色仕掛け/夜這い(現在\@ FLAG:色仕掛け ? オン # オフ \@)
+DRAWLINE
+PRINTPLAIN 　EVENT　
+PRINTL [100] -戻る
+
+INPUT
+DO
+	SELECTCASE RESULT
+		CASE 0
+			INVERTBIT FLAG:色仕掛け, 0
+			RESTART
+		CASE 100
+			RETURN 0
+	ENDSELECT
+LOOP LOOPRES(0, 100)
+

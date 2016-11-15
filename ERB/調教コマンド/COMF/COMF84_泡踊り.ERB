@@ -1,0 +1,381 @@
+﻿;-------------------------------------------------
+;泡踊り
+;奉仕系コマンド、レベル3
+;-------------------------------------------------
+@USERCOM_ABLE84
+;泡踊り実行判定
+;お風呂場プレイ中でプレイマットが無いとダメ
+SIF !TEQUIP:お風呂場 || !ITEM:プレイマット
+	RETURN 0
+;シャワー中はダメ
+SIF TEQUIP:シャワー
+	RETURN 0
+;バイブ挿入中はダメ
+SIF TEQUIP:バイブ
+	RETURN 0
+;アナルバイブ挿入中はダメ
+SIF TEQUIP:アナルバイブ
+	RETURN 0
+;クリキャップ使用中は不可
+SIF TEQUIP:クリキャップ
+	RETURN 0
+;ニプルキャップ使用中は不可
+SIF TEQUIP:ニプルキャップ
+	RETURN 0
+;搾乳器使用中は不可
+SIF TEQUIP:搾乳器
+	RETURN 0
+;乳房電極装着中はダメ
+SIF TEQUIP:乳房電極
+	RETURN 0
+;オナホール使用中はダメ
+SIF TEQUIP:オナホール
+	RETURN 0
+;ボールギャグ使用中は不可
+SIF TEQUIP:ボールギャグ
+	RETURN 0
+;縄使用中は不可
+SIF TEQUIP:縄
+	RETURN 0
+;アイマスク使用中は不可
+SIF TEQUIP:アイマスク
+	RETURN 0
+;アナルビーズ使用中は不可
+SIF TEQUIP:アナルビーズ
+	RETURN 0
+;普通の浣腸使用中は不可
+SIF TEQUIP:浣腸器
+	RETURN 0
+;バルーン使用中は不可
+SIF TEQUIP:拡張バルーン
+	RETURN 0
+;電極使用中は不可
+SIF TEQUIP:アナル電極
+	RETURN 0
+;異物挿入中は不可
+SIF TEQUIP:Ｖ異物
+	RETURN 0
+SIF TEQUIP:Ａ異物
+	RETURN 0
+
+RETURN 1
+
+@実行判定84
+;-------------------------------------------------
+;実行判定処理
+;-------------------------------------------------
+;すべての命令に共通の要素を考慮
+;(従順が高いと命令に従いやすいなど)
+CALL COM_ORDER
+
+VARSET LOCAL, 0
+LOCAL = RESULT
+
+;ABL:欲望
+IF ABL:欲望
+	LOCAL += ABL:欲望
+	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望})
+ENDIF
+;ABL:奉仕精神
+IF ABL:奉仕精神
+	LOCAL += ABL:奉仕精神*4
+	PRINTFORM +奉仕精神LV{ABL:奉仕精神}({ABL:奉仕精神*4})
+ENDIF
+;ABL:精液中毒
+IF ABL:精液中毒
+	LOCAL += ABL:精液中毒*3
+	PRINTFORM +精液中毒LV{ABL:精液中毒}({ABL:精液中毒*3})
+ENDIF
+
+;快楽刻印
+IF MARK:快楽刻印
+	LOCAL += MARK:快楽刻印
+	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印})
+ENDIF
+
+;PALAM:欲情
+IF PALAM:欲情 < PALAMLV:1
+	LOCAL:1 = 0
+ELSEIF PALAM:欲情 < PALAMLV:2
+	LOCAL:1 = 1
+ELSEIF PALAM:欲情 < PALAMLV:3
+	LOCAL:1 = 2
+ELSEIF PALAM:欲情 < PALAMLV:4
+	LOCAL:1 = 3
+ELSEIF PALAM:欲情 < PALAMLV:5
+	LOCAL:1 = 4
+ELSE
+	LOCAL:1 = 5
+ENDIF
+LOCAL:2 = LOCAL:1
+SIF TALENT:衝動的
+	LOCAL:2 *= 2
+IF LOCAL:2
+	LOCAL += LOCAL:2
+	PRINTFORM +欲情LV{LOCAL:1}({LOCAL:2})
+ENDIF
+
+;恥じらい
+IF TALENT:恥じらい
+	LOCAL -= 3
+	PRINTFORM -恥じらい(3)
+ENDIF
+;汚臭鈍感
+IF TALENT:汚臭鈍感
+	LOCAL += 3
+	PRINTFORM +汚臭鈍感(3)
+ENDIF
+;汚臭敏感
+IF TALENT:汚臭敏感
+	LOCAL -= 3
+	PRINTFORM -汚臭敏感(3)
+ENDIF
+;献身的
+IF TALENT:献身的
+	LOCAL += 3
+	PRINTFORM +献身的(3)
+ENDIF
+
+;快感の否定（淫乱、娼婦で無効）
+IF TALENT:快感の否定 && FALLTYPE(TARGET) != 2
+	LOCAL -= 3
+	PRINTFORM -快感の否定(3)
+ENDIF
+;男嫌い（恋慕、親愛で無効）
+IF TALENT:男嫌い && SEX(PLAYER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
+	LOCAL -= 12
+	PRINTFORM -男嫌い(12)
+ENDIF
+;恋慕
+IF TALENT:恋慕 && PLAYER == MASTER
+	LOCAL += 5
+	PRINTFORM +恋慕(5)
+ENDIF
+;親愛
+IF TALENT:親愛 && PLAYER == MASTER
+	LOCAL += 10
+	PRINTFORM +親愛(10)
+ENDIF
+
+LOCAL:1 = 0
+;愛液の汚れ
+SIF GETBIT(STAIN:PLAYER:ペニス, 0)
+	LOCAL:1 += 1
+;精液の汚れ
+SIF GETBIT(STAIN:PLAYER:ペニス, 2)
+	LOCAL:1 += 2
+;アナルの汚れ
+SIF GETBIT(STAIN:PLAYER:ペニス, 3)
+	LOCAL:1 += 3
+;尿
+SIF GETBIT(STAIN:PLAYER:ペニス, 7)
+	LOCAL:1 += 3
+
+SIF TALENT:汚れ無視
+	LOCAL:1 /= 3
+SIF TALENT:潔癖症
+	LOCAL:1 *= 2
+
+;汚れあり
+IF LOCAL:1
+	LOCAL -= LOCAL:1
+	IF TALENT:汚れ無視
+		PRINT -汚れあり、汚れ無視
+	ELSEIF TALENT:潔癖症
+		PRINT -汚れあり、潔癖症
+	ELSE
+		PRINT -汚れあり
+	ENDIF
+	PRINTFORM ({LOCAL:1})
+ENDIF
+
+;合計を表示(30以上で実行)
+PRINTFORM  = {LOCAL}
+
+LOCAL:2 = 30
+SELECTCASE LOCAL
+	CASE IS < LOCAL:2
+		PRINT  < 
+	CASE IS > LOCAL:2
+		PRINT  > 
+	CASEELSE
+		PRINT  = 
+ENDSELECT
+PRINTFORM 実行値{LOCAL:2}
+WAIT
+;実行できない
+IF LOCAL < LOCAL:2
+		CALL KOJO_MESSAGE_EVENT, 100
+	RETURN 0
+ELSE
+	RETURN 1
+ENDIF
+
+@COM84
+PRINTL 泡踊り
+
+CALL 実行判定84
+SIF !RESULT
+	RETURN 0
+
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+CALL KOJO_MESSAGE_COM
+
+;実行者が奴隷であるフラグ
+TFLAG:奴隷実行 = 1
+
+;-------------------------------------------------
+;射精ゲージチェック
+;-------------------------------------------------
+LOCAL = 300
+
+;ABL:技巧をみる
+SELECTCASE ABL:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:奉仕精神をみる
+SELECTCASE ABL:奉仕精神
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.40
+ENDSELECT
+
+;プレイヤーのABL:Ｃ感覚をみる
+SELECTCASE ABL:PLAYER:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.50
+	CASE 2
+		TIMES LOCAL , 2.00
+	CASE 3
+		TIMES LOCAL , 2.50
+	CASE 4
+		TIMES LOCAL , 3.50
+	CASEELSE
+		TIMES LOCAL , 5.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:PLAYER:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:PLAYER:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 50
+LOSEBASE:気力 += 100
+
+SOURCE:快C = 200
+SOURCE:快B = 200
+SOURCE:情愛 = 200
+SOURCE:性行動 = 600
+SOURCE:達成 = 200
+SOURCE:屈従 = 600
+SOURCE:逸脱 = 300
+SOURCE:反感 = 300
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 500
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK, 6
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT, 6, NOWEX:PLAYER:射精
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;奴隷の汚れ
+RESET_STAIN TARGET
+
+;調教者の汚れ
+IF PLAYER == MASTER
+	RESET_STAIN MASTER
+ELSE
+	RESET_STAIN ASSI
+ENDIF
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 2, 2
+
+;愛情経験
+IF (TALENT:恋慕 || TALENT:親愛) && PLAYER == MASTER
+	PRINTL 愛情経験+1
+	EXP:愛情経験++
+ENDIF
+
+;依存度補正値(主人かつ恋慕、淫乱、服従で1。親愛、娼婦、隷属で2）
+IF (TALENT:恋慕 || TALENT:淫乱 || TALENT:服従) && PLAYER == MASTER
+	TFLAG:依存度補正 += 1
+ELSEIF (TALENT:恋慕 || TALENT:淫乱 || TALENT:隷属) && PLAYER == MASTER
+	TFLAG:依存度補正 += 2
+ENDIF
+
+TFLAG:奉仕快楽 = 1
+
+RETURN 1
+

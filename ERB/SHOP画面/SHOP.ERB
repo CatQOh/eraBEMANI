@@ -1,0 +1,520 @@
+﻿@SHOW_SHOP
+VARSET LOCAL, 0
+;陥落済みなら陥落済みフラグをオン
+IF TARGET > 0
+	IF FALLTYPE(TARGET) != 0
+		CFLAG:陥落 = 1
+	ELSE
+		CFLAG:陥落 = 0
+	ENDIF
+ENDIF
+
+
+
+;ゲーム内で表示されるショップ画面
+;□XXXX年XX月XX日 X日目(昼夜) XXX(月齢.XXX) 気温:XX.X℃ X周目 MODE:XXXXX
+;　所持金:$XXXX 昨日の所持金:$XXXX XXXX 変動価格
+;　難易度:XXXX
+;　総奴隷数:X/陥落済み:X
+;
+;□調教中
+;　No.X XXXXXX(♂♀)[ふたなり]【陥落素質】(依存度 ストレス値)
+;　従順:LVXX 欲望:LVXX 技巧:LVXX [BURST]
+;　Ｃ感:LVXX Ｖ感:LVXX Ａ感:LVXX Ｂ感:LVXX [部位陥落素質]
+;　苦痛刻印:LVX [XXX]　快楽刻印:LVX [XXX]　屈服刻印:LVX [XXX]　反発刻印:LVX [XXX]
+;　体力[********************************](XXXX/XXXX)[排卵誘発中]
+;
+;　保管済み母乳:Xml　保管済み精液:Xml
+;　主人:XXX
+
+;日数表示
+DRAWLINE
+PRINTFORM □{YEAR}年{MONTH}月{DAYS}日 {DAY}日目
+
+IF TIME == 0
+	PRINT (昼) 
+ELSE
+	PRINT (夜) 
+ENDIF
+
+SELECTCASE 月齢
+	CASE 0, 1
+		PRINT 新月
+	CASE 2
+		PRINT 繊月
+	CASE 3 TO 6
+		PRINT 三日月
+	CASE 7 TO 9
+		PRINT 上弦の月
+	CASE 10 TO 13
+		PRINT 十日夜
+	CASE 14
+		PRINT 小望月
+	CASE 15
+		PRINT 満月
+	CASE 16
+		PRINT 十六夜
+	CASE 17
+		PRINT 立待月
+	CASE 18
+		PRINT 居待月
+	CASE 19
+		PRINT 寝待月
+	CASE 20 TO 22
+		PRINT 二十日月
+	CASE 23 TO 25
+		PRINT 下弦の月
+	CASE 26 TO 29
+		PRINT 暁月
+	CASE 30
+		PRINT 三十日月
+ENDSELECT
+
+PRINTFORM (月齢.{月齢})
+
+;気温の算出
+SIF FLAG:気温 == 0
+	CALL TEMPERATURE
+
+PRINTFORM  気温:{FLAG:気温/10}.{ABS(FLAG:気温)%10}℃
+
+SIF FLAG:周回数 > 1
+	PRINTFORM  {FLAG:周回数}周目
+SELECTCASE FLAG:ゲームモード
+	CASE 0
+		PRINT  MODE:STANDARD
+	CASE 8
+		PRINT  MODE:段位認定 
+		CALL GRADE, FLAG:選択段位
+	CASE 9
+		PRINT  MODE:PREMIUM FREE
+ENDSELECT
+PRINTL 
+
+;段位認定のときのみ表示を変える
+IF FLAG:ゲームモード != 8
+	;所持金表示
+	PRINTFORM 　所持金:${MONEY} 昨日の所持金:${LASTMONEY} 
+	IF MONEY == LASTMONEY
+		PRINTL →0 KEEP
+	ELSEIF MONEY > LASTMONEY
+		PRINTFORML ↑{MONEY-LASTMONEY} UP!
+	ELSEIF MONEY < LASTMONEY
+		PRINTFORML ↓{LASTMONEY-MONEY} DOWN...
+	ENDIF
+
+	;難易度表示
+	PRINT 　難易度:
+	SELECTCASE FLAG:難易度
+		CASE 1
+			PRINTL NORMAL
+		CASE 2
+			PRINTL HYPER
+		CASE 3
+			PRINTL ANOTHER
+	ENDSELECT
+
+	;奴隷人数表示
+	LOCAL = 0
+	;陥落人数計算
+	REPEAT CHARANUM
+		SIF CFLAG:COUNT:陥落
+			LOCAL++
+	REND
+	PRINTFORML 　総奴隷数:{CHARANUM-1}\/陥落済み:{LOCAL}
+ELSE
+	;所持金表示
+	PRINTFORM 　所持金:${MONEY} 
+
+	;難易度表示
+	PRINT 難易度:
+	SELECTCASE FLAG:難易度
+		CASE 1
+			PRINT NORMAL 
+		CASE 2
+			PRINT HYPER 
+		CASE 3
+			PRINT ANOTHER 
+	ENDSELECT
+
+	;奴隷人数表示
+	LOCAL = 0
+	;売却可能人数計算
+	REPEAT CHARANUM
+		SIF CFLAG:COUNT:状態
+			LOCAL++
+	REND
+	PRINTFORML 総奴隷数:{CHARANUM-1}\/売却可能:{LOCAL}
+	
+	PRINT 　
+	CALL 段位ゲージ表示
+ENDIF
+
+;奴隷の状態
+IF TARGET > 0
+	PRINTL 
+	PRINTL □調教中
+	PRINTFORM 　No.{TARGET} %NAME:TARGET%
+	IF TALENT:性転換済
+		SELECTCASE SEX(TARGET)
+			CASE 1
+				PRINT (元♀の♂)
+			CASE 2
+				PRINT (元♂の♀)
+		ENDSELECT
+	ELSE
+		SELECTCASE SEX(TARGET)
+			CASE 1
+				PRINT (♂)
+			CASE 2
+				PRINT (♀)
+		ENDSELECT
+	ENDIF
+	SIF TALENT:ふたなり
+		PRINT [ふたなり]
+	SIF TALENT:妊娠
+		PRINT 【妊娠中】
+	SIF TALENT:恋慕
+		PRINT 【恋慕】
+	SIF TALENT:淫乱
+		PRINT 【淫乱】
+	SIF TALENT:服従
+		PRINT 【服従】
+	SIF TALENT:親愛
+		PRINT 【親愛】
+	SIF TALENT:娼婦
+		PRINT 【娼婦】
+	SIF TALENT:隷属
+		PRINT 【隷属】
+	SIF TALENT:崩壊
+		PRINT 【崩壊】
+	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+		PRINTFORM (依存度:{CFLAG:依存度} ストレス値{CFLAG:ストレス値})
+	PRINTL 
+	
+	PRINTFORM 　従順:LV{ABL:従順, 2, LEFT} 欲望:LV{ABL:欲望, 2, LEFT} 技巧:LV{ABL:技巧, 2, LEFT}
+	SIF TALENT:リミットバースト
+		PRINTPLAIN  [BURST]
+	PRINTL 
+	
+	PRINTFORM 　Ｃ感:LV{ABL:Ｃ感覚, 2, LEFT} 
+	SIF SEX(TARGET) == 2 || TALENT:ふたなり
+		PRINTFORM Ｖ感:LV{ABL:Ｖ感覚, 2, LEFT} 
+	PRINTFORM Ａ感:LV{ABL:Ａ感覚, 2, LEFT} Ｂ感:LV{ABL:Ｂ感覚, 2, LEFT}
+	IF TALENT:自慰狂い
+		PRINTPLAIN [自慰狂い]
+	ELSEIF TALENT:セックス狂
+		PRINTPLAIN [セックス狂]
+	ELSEIF TALENT:尻穴狂い
+		PRINTPLAIN [尻穴狂い]
+	ELSEIF TALENT:淫乳
+		PRINTPLAIN [淫乳]
+	ENDIF
+	PRINTL 
+	
+	CALL SHOW_INFO_MARK, TARGET
+	PRINT 　体力
+	BAR BASE:体力, MAXBASE:体力, 32
+	PRINTFORML ({BASE:体力}/{MAXBASE:体力})
+ENDIF
+PRINTL 
+PRINTFORML 　保管済み母乳:{FLAG:保管済み母乳}ml　保管済み精液:{FLAG:保管済み精液}ml
+
+PRINTFORM 　主人:%NAME:MASTER%
+SELECTCASE SEX(MASTER)
+	CASE 1
+		PRINT (♂)
+	CASE 2
+		PRINT (♀)
+ENDSELECT
+SIF TALENT:MASTER:ふたなり
+	PRINT [ふたなり]
+
+IF ASSI >= 0
+	PRINTFORM 　助手:%NAME:ASSI%
+	SELECTCASE SEX(ASSI)
+		CASE 1
+			PRINT (♂)
+		CASE 2
+			PRINT (♀)
+	ENDSELECT
+	SIF TALENT:ASSI:ふたなり
+		PRINT [ふたなり]
+ENDIF
+PRINTL 
+
+DRAWLINE
+LOCAL = 0
+REPEAT 10000
+	SIF !EXISTCSV(COUNT)
+		CONTINUE
+	IF (CSVCFLAG(COUNT, 0)/100) == MONTH && (CSVCFLAG(COUNT, 0)%100) == DAYS
+		PRINTFORML 　今日は%CSVNAME(COUNT)%の誕生日です
+		LOCAL++
+	ENDIF
+REND
+IF LOCAL
+	PRINTL 　ハッピーバースデー！
+	DRAWLINE
+ENDIF
+LOCAL = 0
+PRINTL □所持アイテム
+CALL ITEMPRINT
+DRAWLINE
+
+VARSET LOCAL, 0
+;現助手＋元助手のキャラ数の確認
+REPEAT CHARANUM
+	;育児部屋に移動しているキャラは除外
+	SIF CHECK_CHILD_CARE(COUNT)
+		CONTINUE
+	;助手可能
+	SIF CFLAG:COUNT:状態 == 2
+		LOCAL:2++
+	;売却可能
+	SIF CFLAG:COUNT:状態 >= 1
+		LOCAL:1++
+REND
+
+;TARGETの他に調教できるキャラがいるかどうか
+REPEAT CHARANUM
+	;主人は除外
+	SIF COUNT == MASTER
+		CONTINUE
+	;奴隷も除外
+	SIF COUNT == TARGET
+		CONTINUE
+	;育児部屋に移動しているキャラは除外
+	SIF CHECK_CHILD_CARE(COUNT)
+		CONTINUE
+	LOCAL++
+REND
+
+VARSET LOCALS, 
+
+;コマンド名は現在全角4文字の範囲で統一
+;100番台は行動のコマンド
+LOCALS = 　
+;TARGETがいれば表示
+IF TARGET > 0
+	IF TALENT:恋慕 || TALENT:親愛
+		LOCALS:1 = <button value='100' title='%CALLNAME:TARGET%と幸せな時間を過ごします'>[100] - 愛を育む </button>
+	ELSEIF TALENT:淫乱 || TALENT:娼婦
+		LOCALS:1 = <button value='100' title='%CALLNAME:TARGET%と互いの欲望を満たし合います'>[100] - 乱れ合う </button>
+	ELSEIF TALENT:服従 || TALENT:隷属
+		LOCALS:1 = <button value='100' title='%CALLNAME:TARGET%に権威を示します'>[100] - 躾をする </button>
+	ELSE
+		LOCALS:1 = <button value='100' title='%CALLNAME:TARGET%を調教します'>[100] - 調教開始 </button>
+	ENDIF
+ELSE
+	IF CHARANUM == 1 && FLAG:ゲームモード == 8
+		LOCALS:1 = <font color='gray'><nonbutton title='調教可能なキャラが居ません'>[---] - 調教開始 </nonbutton></font>
+	ELSEIF CHARANUM != 1
+		LOCALS:1 = <font color='gray'><nonbutton title='[202] - 奴隷変更 から調教対象を選択してください'>[---] - 調教開始 </nonbutton></font>
+	ELSE
+		LOCALS:1 = <font color='gray'><nonbutton title='[301] - 奴隷購入 からキャラを購入してください'>[---] - 調教開始 </nonbutton></font>
+	ENDIF
+ENDIF
+;無条件で表示
+LOCALS:2 = <button value='101' title='%\@ TIME == 0 ? 夜まで休憩します # 翌日まで休憩します \@%'>[101] - 休憩     </button>
+
+HTML_PRINT LOCALS+LOCALS:1+LOCALS:2
+
+;200番台は奴隷関連のコマンド
+LOCALS = 　
+;調教者含め誰かがいれば表示 現在は必ず表示される
+LOCALS:1 = <button value='200' title='奴隷たちの様々な情報を表示します'>[200] - 能力表示 </button>
+;奴隷が一人でもいれば表示
+IF CHARANUM > 1
+	LOCALS:2 = <button value='201' title='奴隷たちの能力を上昇させます'>[201] - 能力上昇 </button>
+ELSEIF FLAG:ゲームモード != 8
+	LOCALS:2 = <font color='gray'><nonbutton title='[301] - 奴隷購入 からキャラを購入してください'>[---] - 能力上昇 </nonbutton></font>
+ELSE
+	LOCALS:2 = <font color='gray'><nonbutton title='調教可能なキャラが居ません'>[---] - 能力上昇 </nonbutton></font>
+ENDIF
+;TARGETの他に調教できるキャラがいれば表示
+IF LOCAL
+	LOCALS:3 = <button value='202' title='調教対象を変更します'>[202] - 奴隷変更 </button>
+ELSE
+	IF CHARANUM == 1 && FLAG:ゲームモード == 8
+		LOCALS:3 = <font color='gray'><nonbutton title='調教可能なキャラが居ません'>[---] - 奴隷変更 </nonbutton></font>
+	ELSEIF CHARANUM != 1
+		LOCALS:3 = <font color='gray'><nonbutton title='%CALLNAME:TARGET%以外に調教可能なキャラが居ません'>[---] - 奴隷変更 </nonbutton></font>
+	ELSE
+		LOCALS:3 = <font color='gray'><nonbutton title='[301] - 奴隷購入 からキャラを購入してください'>[---] - 奴隷変更 </nonbutton></font>
+	ENDIF
+ENDIF
+;助手可能キャラが一人でもいれば表示
+IF LOCAL:2
+	IF ASSI > 0
+		LOCALS:4 = <button value='203' title='助手を変更します'>[203] - 助手変更 </button>
+	ELSE
+		LOCALS:4 = <button value='203' title='奴隷から助手を指定します'>[203] - 助手変更 </button>
+	ENDIF
+ELSE
+	LOCALS:4 = <font color='gray'><nonbutton title='助手に選べる奴隷は居ません'>[---] - 助手変更 </nonbutton></font>
+ENDIF
+
+HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4
+
+;300番台は購入・売却のコマンド
+LOCALS = 　
+;無条件で表示
+LOCALS:1 = <button value='300' title='淫具や素質追加などのアイテムを購入します'>[300] - アイテム </button>
+;段位認定でなければ表示
+IF FLAG:ゲームモード == 8
+	LOCALS:2 = <font color='gray'><nonbutton title='段位認定では奴隷を購入することができません'>[---] - 奴隷購入 </nonbutton></font>
+ELSE
+	LOCALS:2 = <button value='301' title='調教するための奴隷を購入します'>[301] - 奴隷購入 </button>
+ENDIF
+;売却できるキャラがいれば表示
+IF LOCAL:1
+	LOCALS:3 = <button value='302' title='調教で仕上がった奴隷を売却します'>[302] - 売却     </button>
+ELSE
+	LOCALS:3 = <font color='gray'><nonbutton title='売却可能な奴隷が居ません'>[---] - 売却     </nonbutton></font>
+ENDIF
+
+HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3
+
+;400番台はセーブ・ロード・オプションのシステムコマンド
+;セーブ・ロード・オプションは無条件で表示
+LOCALS = 　
+LOCALS:1 = <button value='400' title='現在の状況をセーブします'>[400] - SAVE     </button>
+LOCALS:2 = <button value='401' title='セーブデータをロードします。保存していない進行状況は失われます'>[401] - LOAD     </button>
+LOCALS:3 = <button value='402' title='服装やテキスト表示など、様々な設定を変更します'>[402] - OPTION   </button>
+
+HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3
+
+;500番台は周回コマンド
+;通常モードで所持金が条件に達していて、ゲームモードがSTANDARDなら表示
+LOCALS = 　
+IF FLAG:ゲームモード == 8
+	LOCALS:1 = <font color='gray'><nonbutton title='段位認定では納金の必要はありません'>[---] - 納金     </nonbutton></font>
+ELSEIF FLAG:ゲームモード == 9
+	LOCALS:1 = <font color='gray'><nonbutton title='PREMIUM FREE MODEでは納金の必要はありません'>[---] - 納金     </nonbutton></font>
+ELSEIF MONEY < 1000000
+	LOCALS:1 = <font color='gray'><nonbutton title='$1,000,000が必要です'>[---] - 納金     </nonbutton></font>
+ELSEIF MONEY >= 1000000 && FLAG:ゲームモード == 0
+	LOCALS:1 = <button value='500' title='$1,000,000を納め、ゲームをクリアします'>[500] - 納金     </button>
+ENDIF
+;周回可能なら表示
+IF FLAG:周回可能
+	LOCALS:2 = <button value='501' title='この周を終了し、引き継いでニューゲームを開始します'>[501] - 周回</button>
+ELSEIF FLAG:ゲームモード == 8
+	LOCALS:2 = <font color='gray'><nonbutton title='段位認定では周回出来ません'>[---] - 周回</nonbutton></font>
+ELSEIF FLAG:ゲームモード == 9
+	LOCALS:2 = <font color='gray'><nonbutton title='PREMIUM FREE MODEでは周回出来ません'>[---] - 周回</nonbutton></font>
+ELSE
+	LOCALS:2 = <font color='gray'><nonbutton title='ゲームをクリアしないと周回は出来ません'>[---] - 周回</nonbutton></font>
+ENDIF
+
+HTML_PRINT LOCALS+LOCALS:1+LOCALS:2
+
+;デバッグモードなら表示
+;#;PRINTPLAIN 　
+;#;PRINTL [998] - デバッグ
+
+DRAWLINE
+PRINTPLAIN 　SHOP　
+
+@USERSHOP
+#DIM LCOUNT
+VARSET LOCAL, 0
+;現助手＋元助手のキャラ数の確認
+FOR LCOUNT, 0, CHARANUM
+	;育児部屋に移動しているキャラは除外
+	SIF CHECK_CHILD_CARE(LCOUNT)
+		CONTINUE
+	;助手可能
+	SIF CFLAG:LCOUNT:状態 == 2
+		LOCAL:2++
+	;売却可能
+	SIF CFLAG:LCOUNT:状態 >= 1
+		LOCAL:1++
+NEXT
+
+;TARGETの他に調教できるキャラがいるかどうか
+FOR LCOUNT, 0, CHARANUM
+	;主人は除外
+	SIF LCOUNT == MASTER
+		CONTINUE
+	;奴隷も除外
+	SIF LCOUNT == TARGET
+		CONTINUE
+	;育児部屋に移動しているキャラは除外
+	SIF CHECK_CHILD_CARE(LCOUNT)
+		CONTINUE
+	LOCAL++
+NEXT
+
+TFLAG:ページ数 = 0
+
+SELECTCASE RESULT
+	;調教開始
+	CASE 100
+		SIF TARGET > 0
+			BEGIN TRAIN
+	;休憩
+	CASE 101
+		;休憩フラグを立てる（ここは特別）
+		FLAG:休憩フラグ = 2
+		BEGIN TURNEND
+	;能力表示
+	CASE 200
+		CALL SHOW_CHARADATA
+	;能力上昇
+	CASE 201
+		SIF CHARANUM > 1
+			CALL SHOP_ABLUP
+	;奴隷変更
+	CASE 202
+		SIF LOCAL
+			CALL CHANGE_TARGET, LOCAL
+	;助手変更
+	CASE 203
+		SIF LOCAL:2
+			CALL SELECT_ASSI, LOCAL:2
+	;アイテム
+	CASE 300
+		IF FLAG:ゲームモード == 8
+			CALL GORILLA_ITEM
+		ELSE
+			CALL SHOPITEM_BUY
+		ENDIF
+	;奴隷購入
+	CASE 301
+		SIF FLAG:ゲームモード != 8
+			CALL CHARA_BUY
+	;売却
+	CASE 302
+		SIF LOCAL:1
+			CALL CHARA_SELL
+	;セーブ
+	CASE 400
+		;SAVEGAME
+		CALL USERSAVE
+	;ロード
+	CASE 401
+		;LOADGAME
+		CALL USERLOAD
+	;オプション
+	CASE 402
+		CALL OPTION
+	;納金
+	CASE 500
+		SIF MONEY >= 1000000 && FLAG:ゲームモード == 0
+			CALL ENDING_CHECK
+	;周回
+	CASE 501
+		SIF FLAG:周回可能
+			CALL SUCCESSION
+	;コナミコマンド
+	CASE 573
+		PRINTW このコマンドはもう意味無いよ
+	;デバッグ用
+	;#;CASE 998
+		;#;CALL DEBUG
+ENDSELECT
+
+RETURN 0
+

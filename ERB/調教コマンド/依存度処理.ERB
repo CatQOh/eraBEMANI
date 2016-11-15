@@ -1,0 +1,193 @@
+﻿;-------------------------------------------------
+;依存度システムの処理
+;依存度はプラスに大きいと主人に対して慕う形で依存し、
+;マイナスに大きいと主人を畏怖する形で依存していく
+;上記の依存の仕方はプラマイから苦痛刻印に置き換え
+;-------------------------------------------------
+@DEPENDENCE_CHECK
+;依存度のベクトル処理
+;0は関数終了、崩壊も依存度は変化しない
+IF TALENT:崩壊
+	PRINTL <依存度変化無し>
+	RETURN 0
+ENDIF
+
+LOCAL = 0
+
+;ABL:従順をみる
+LOCAL += ABL:従順*2
+
+;ABL:奉仕精神をみる
+LOCAL += ABL:奉仕精神
+
+;難易度を見る
+SELECTCASE FLAG:難易度
+	;NORMAL
+	CASE 1
+		LOCAL += 0
+	;HYPER
+	CASE 2
+		LOCAL -= 1
+	;ANOTHER
+	CASE 3
+		LOCAL -= 2
+ENDSELECT
+
+;素質による増減
+;陥落素質
+;恋慕
+SIF TALENT:恋慕
+	LOCAL += 7
+;親愛
+SIF TALENT:親愛
+	LOCAL += 10
+;淫乱
+SIF TALENT:淫乱 && RELATION:(NO:MASTER) > 100
+	LOCAL += 3
+;娼婦
+SIF TALENT:娼婦 && RELATION:(NO:MASTER) > 100
+	LOCAL += 5
+;服従
+SIF TALENT:服従
+	LOCAL += 5
+;隷属
+SIF TALENT:隷属
+	LOCAL += 7
+
+;絶頂強度による補正
+LOCAL += TFLAG:絶頂強度
+
+;その他素質
+;自慰狂い
+SIF TALENT:自慰狂い
+	LOCAL += 1
+;セックス狂
+SIF TALENT:セックス狂
+	LOCAL += 1
+;尻穴狂い
+SIF TALENT:尻穴狂い
+	LOCAL += 1
+;淫乳
+SIF TALENT:淫乳
+	LOCAL += 1
+;妄信
+SIF TALENT:妄信
+	LOCAL += 2
+;寂しがり屋で助手が居る場合
+SIF TALENT:寂しがり屋 && ASSI > 0
+	LOCAL += 3
+;男好き&主人が男
+SIF TALENT:男好き && SEX(MASTER) == 1
+	LOCAL += 1
+;女好き&主人が女
+SIF TALENT:女好き && SEX(MASTER) == 2
+	LOCAL += 1
+;痛みに弱い
+SIF TALENT:痛みに弱い
+	LOCAL += 1
+;快感に素直
+SIF TALENT:快感に素直
+	LOCAL += 2
+;マゾ
+SIF TALENT:マゾ
+	LOCAL += 1
+;幼稚
+SIF TALENT:幼稚
+	LOCAL += 1
+
+;主人の魅力
+SIF TALENT:MASTER:魅力
+	LOCAL += 2
+;主人の魅惑
+SIF TALENT:MASTER:魅惑
+	LOCAL += 3
+;主人の謎の魅力
+SIF TALENT:MASTER:謎の魅力
+	LOCAL += 5
+;主人の治療
+SIF TALENT:MASTER:治療
+	LOCAL += 2
+;主人の鼓舞
+SIF TALENT:MASTER:鼓舞
+	LOCAL += 2
+;主人の人気
+SIF TALENT:MASTER:人気
+	LOCAL += 3
+
+;恋心&PLAYERが恋心抱いている相手
+SIF TALENT:恋心 && TALENT:恋心 == PLAYER
+	LOCAL += 4
+;既婚者&PLAYERが伴侶
+SIF TALENT:既婚者 && TALENT:既婚者 == PLAYER
+	LOCAL += 7
+
+;依存度補正を加算
+LOCAL += TFLAG:依存度補正
+
+;同族嫌悪&同種族
+SIF TALENT:同族嫌悪 && CFLAG:種族 == CFLAG:PLAYER:種族
+	LOCAL /= 2
+;感情乏しい
+SIF TALENT:感情乏しい
+	LOCAL /= 2
+
+;生意気
+SIF TALENT:生意気
+	LOCAL -= 1
+;反抗的
+SIF TALENT:反抗的
+	LOCAL -= 1
+;ツンデレ+従順3以下
+SIF TALENT:ツンデレ && ABL:従順 <= 3
+	LOCAL -= 2
+;自制心
+SIF TALENT:自制心
+	LOCAL -= 1
+;無関心
+SIF TALENT:無関心
+	LOCAL -= 2
+;一線越えない+未陥落
+SIF TALENT:一線越えない && !CFLAG:陥落
+	LOCAL -= 3
+;抑圧
+SIF TALENT:抑圧
+	LOCAL -= 1
+;抵抗
+SIF TALENT:抵抗
+	LOCAL -= 1
+;弱味
+SIF TALENT:弱味
+	LOCAL -= 2
+;痛みに強い
+SIF TALENT:痛みに強い
+	LOCAL -= 1
+;快感の否定
+SIF TALENT:快感の否定
+	LOCAL -= 2
+;男嫌い&主人が男
+SIF TALENT:男嫌い && SEX(MASTER) == 1
+	LOCAL -= 2
+;女嫌い&主人が女
+SIF TALENT:女嫌い && SEX(MASTER) == 2
+	LOCAL -= 2
+;恋心&PLAYERが恋心抱いている相手じゃない
+SIF TALENT:恋心 && TALENT:恋心 != PLAYER && !CFLAG:陥落
+	LOCAL -= 5
+;既婚者&PLAYERが伴侶じゃない
+SIF TALENT:既婚者 && TALENT:既婚者 != PLAYER && !CFLAG:陥落
+	LOCAL -= 10
+
+CFLAG:依存度 += LOCAL
+
+IF LOCAL > 0
+	PRINTL <依存度増加>
+ELSEIF LOCAL < 0
+	PRINTL <依存度減少>
+ELSE
+	PRINTL <依存度変化無し>
+ENDIF
+
+TFLAG:依存度補正 = 0
+
+RETURN 0
+

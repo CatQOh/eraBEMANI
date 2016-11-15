@@ -1,0 +1,116 @@
+﻿@LOOPRES(ARG:0 = -1, ARG:1 = -1, ARG:2 = -1, ARG:3 = -1, ARG:4 = -1, ARG:5 = -1, ARG:6 = -1, ARG:7 = -1, ARG:8 = -1, ARG:9 = -1)
+#FUNCTION
+;式中関数「LOOPRES(LOOP RESULT)」
+;DO～LOOP構文の記述を簡略化するための関数
+;引数で指定された数字とRESULTを参照し、一致していれば0を返す(つまりLOOPを抜ける)
+;現在同時に指定できるのは10個まで
+REPEAT 10
+	SIF RESULT == ARG:COUNT
+		RETURNF 0
+REND
+
+RETURNF 1
+
+@SEX, ARG
+#FUNCTION
+;式中関数「SEX」
+;性別を判別するための関数
+;引数で指定された対象の性別が、男なら1、女なら2を返す
+RETURNF TALENT:ARG:性別
+
+@CHECK_CHILD_CARE, ARG
+#FUNCTION
+;式中関数「CHECK_CHILD_CARE」
+;育児室に居るかどうか判別するための関数
+;引数で指定されたキャラを対象に判別する
+SIF (TALENT:ARG:妊娠 && PREG:ARG:10-5 <= DAY) || TALENT:ARG:育児中
+	RETURNF 1
+
+RETURNF 0
+
+@PENIS, ARG
+#FUNCTION
+;式中関数「PENIS」
+;対象にちんこ生えてるかどうか ぱんくしょんにもあったな
+;ARGが-1だと0を返すので、対象や助手が居ないのに参照してエラーになることはない
+SIF ARG == -1
+	RETURNF 0
+SIF SEX(ARG) == 1 || TALENT:ARG:ふたなり
+	RETURNF 1
+
+RETURNF 0
+
+@VAGINA, ARG
+#FUNCTION
+;式中関数「VAGINA」
+;対象にまんこあるかどうか ぱんくしょんにもあったかどうかは知らん
+;ARGが-1だと0を返すので、対象や助手が居ないのに参照してエラーになることはない
+SIF ARG == -1
+	RETURNF 0
+SIF SEX(ARG) == 2 || TALENT:ARG:ふたなり
+	RETURNF 1
+
+RETURNF 0
+
+@OVER_GENITAL, ARG
+#FUNCTIONS
+;式中関数「OVER_GENITAL」
+;対象の性器を覆い隠している服は何か 一番上の服が返される 下半身上着＝全身上着＞下半身下着
+SIF TEQUIP:ARG:全身上着 && CFLAG:ARG:着衣併用 != 1
+	RETURNF CSTR:ARG:全身上着
+
+SIF TEQUIP:ARG:下半身上着
+	RETURNF CSTR:ARG:下半身上着
+
+SIF TEQUIP:ARG:下半身下着
+	RETURNF CSTR:ARG:下半身下着
+
+@OVER_BUST, ARG
+#FUNCTIONS
+;式中関数「OVER_BUST」
+;対象の乳房を覆い隠している服は何か 一番上の服が返される 上半身上着＝全身上着＞上半身下着
+SIF TEQUIP:ARG:全身上着 && CFLAG:ARG:着衣併用 != 1
+	RETURNF CSTR:ARG:全身上着
+
+SIF TEQUIP:ARG:上半身上着
+	RETURNF CSTR:ARG:上半身上着
+
+SIF TEQUIP:ARG:上半身下着
+	RETURNF CSTR:ARG:上半身下着
+
+@FALLTYPE, ARG
+#FUNCTION
+;式中関数「FALLTYPE」
+;陥落素質のタイプ eraBEMANIでは恋慕系、淫乱系、服従系のどれか一つしか取得できないので、
+;恋慕or親愛だと1 淫乱or娼婦だと2 服従or隷属だと3を返す 未陥落は0
+IF TALENT:ARG:恋慕 || TALENT:ARG:親愛
+	RETURNF 1
+ELSEIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
+	RETURNF 2
+ELSEIF TALENT:ARG:服従 || TALENT:ARG:隷属
+	RETURNF 3
+ELSE
+	RETURNF 0
+ENDIF
+
+@性器露出, ARG
+#FUNCTION
+;式中関数「性器露出」
+;単に性器が露出している状態かどうかを判別 OVER_GENITALとは少し違う(スカート系が対象にならない)
+SELECTCASE OVER_GENITAL(ARG)
+	CASE ""
+		RETURNF 1
+	CASE CSTR:ARG:下半身上着, CSTR:ARG:全身上着
+		IF TEQUIP:ARG:下半身下着
+			RETURNF 0
+		ELSEIF CFLAG:ARG:挿入可
+			RETURNF 1
+		ELSE
+			RETURNF 0
+		ENDIF
+	CASE CSTR:ARG:下半身下着
+		RETURNF 0
+ENDSELECT
+
+RETURNF 0
+

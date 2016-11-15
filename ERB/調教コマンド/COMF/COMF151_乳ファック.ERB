@@ -1,0 +1,398 @@
+﻿;-------------------------------------------------
+;乳ファック
+;ハードな調教コマンド
+;-------------------------------------------------
+@USERCOM_ABLE151
+;乳ファック実行判定
+;男だとダメ
+SELECTCASE TALENT:バストサイズ
+	CASE 0
+		RETURN 0
+ENDSELECT
+;調教者がペニス無いとダメ
+SIF !PENIS(PLAYER)
+	RETURN 0
+;上半身下着または上半身上着または全身上着をつけているとダメ
+SIF TEQUIP:上半身下着 || TEQUIP:上半身上着 || TEQUIP:全身上着
+	RETURN 0
+;ニプルキャップ使用中は不可
+SIF TEQUIP:ニプルキャップ
+	RETURN 0
+;搾乳機使用中は不可
+SIF TEQUIP:搾乳器
+	RETURN 0
+;乳房電極装着中はダメ
+SIF TEQUIP:乳房電極
+	RETURN 0
+;お風呂場プレイ中はプレイマットが無いとダメ
+SIF TEQUIP:お風呂場 && !ITEM:プレイマット
+	RETURN 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+
+RETURN 1
+
+@実行判定151
+;-------------------------------------------------
+;実行判定処理
+;-------------------------------------------------
+;縄で縛られている場合は無視（縄が無い時のみ実行判定を行う）
+IF !TEQUIP:縄
+	;すべての命令に共通の要素を考慮
+	;(従順が高いと命令に従いやすいなど)
+	CALL COM_ORDER
+
+	VARSET LOCAL, 0
+	LOCAL = RESULT
+
+	;ABL:欲望
+	IF ABL:欲望
+		LOCAL += ABL:欲望*3
+		PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望*3})
+	ENDIF
+	;ABL:Ｂ感覚
+	IF ABL:Ｂ感覚
+		LOCAL += ABL:Ｂ感覚*2
+		PRINTFORM +Ｂ感覚LV{ABL:Ｂ感覚}({ABL:Ｂ感覚*2})
+	ENDIF
+	;ABL:性交中毒
+	IF ABL:性交中毒
+		LOCAL += ABL:性交中毒
+		PRINTFORM +性交中毒LV{ABL:性交中毒}({ABL:性交中毒})
+	ENDIF
+	;快楽刻印
+	IF MARK:快楽刻印
+		LOCAL += MARK:快楽刻印*3
+		PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印*3})
+	ENDIF
+	;PALAM:潤滑（の不足）
+	IF PALAM:潤滑 < PALAMLV:3
+		LOCAL -= 5
+		PRINT -潤滑不足(5)
+	ENDIF
+	;PALAM:欲情
+	IF PALAM:欲情 < PALAMLV:1
+		LOCAL:1 = 0
+	ELSEIF PALAM:欲情 < PALAMLV:2
+		LOCAL:1 = 1
+	ELSEIF PALAM:欲情 < PALAMLV:3
+		LOCAL:1 = 2
+	ELSEIF PALAM:欲情 < PALAMLV:4
+		LOCAL:1 = 3
+	ELSEIF PALAM:欲情 < PALAMLV:5
+		LOCAL:1 = 4
+	ELSE
+		LOCAL:1 = 5
+	ENDIF
+	LOCAL:2 = LOCAL:1
+	SIF TALENT:衝動的
+		TIMES LOCAL:2 , 1.50
+	IF LOCAL:2
+		LOCAL += LOCAL:2*3
+		PRINTFORM +欲情LV{LOCAL:1}({LOCAL:2*3})
+	ENDIF
+	;恥じらい
+	IF TALENT:恥じらい
+		LOCAL -= 5
+		PRINT -恥じらい(5)
+	ENDIF
+	;快感の否定
+	IF TALENT:快感の否定
+		LOCAL -= 5
+		PRINT -快感の否定(5)
+	ENDIF
+	;男嫌い（恋慕、親愛で無効）
+	IF TALENT:男嫌い && SEX(PLAYER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
+		LOCAL -= 12
+		PRINT -男嫌い(12)
+	ENDIF
+	;恋慕
+	IF TALENT:恋慕 && !ASSIPLAY
+		LOCAL += 5
+		PRINT +恋慕(5)
+	ENDIF
+	;親愛
+	IF TALENT:親愛 && !ASSIPLAY
+		LOCAL += 10
+		PRINT +親愛(10)
+	ENDIF
+
+	;媚薬
+	IF TEQUIP:媚薬
+		LOCAL += 6
+		PRINT +媚薬(6)
+	ENDIF
+
+	LOCAL:1 = 0
+	;愛液の汚れ
+	SIF GETBIT(STAIN:PLAYER:ペニス, 0)
+		LOCAL:1 += 1
+	;精液の汚れ
+	SIF GETBIT(STAIN:PLAYER:ペニス, 2)
+		LOCAL:1 += 3
+	;アナルの汚れ
+	SIF GETBIT(STAIN:PLAYER:ペニス, 3)
+		LOCAL:1 += 7
+	;母乳
+	SIF GETBIT(STAIN:PLAYER:ペニス, 4)
+		LOCAL:1 += 2
+	;尿
+	SIF GETBIT(STAIN:PLAYER:ペニス, 7)
+		LOCAL:1 += 5
+
+	SIF TALENT:汚れ無視
+		LOCAL:1 /= 3
+	SIF TALENT:潔癖症
+		LOCAL:1 *= 2
+
+	;汚れあり
+	IF LOCAL:1
+		LOCAL -= LOCAL:1
+		IF TALENT:汚臭鈍感
+			PRINT -汚れあり、汚れ無視
+		ELSEIF TALENT:汚臭敏感
+			PRINT -汚れあり、潔癖症
+		ELSE
+			PRINT -汚れあり
+		ENDIF
+		PRINTFORM ({LOCAL:1})
+	ENDIF
+
+	;合計を表示(15以上で実行)
+	PRINTFORM  = {LOCAL}
+
+	LOCAL:2 = 15
+	SELECTCASE LOCAL
+		CASE IS < LOCAL:2
+			PRINT  < 
+		CASE IS > LOCAL:2
+			PRINT  > 
+		CASEELSE
+			PRINT  = 
+	ENDSELECT
+	PRINTFORM 実行値{LOCAL:2}
+	WAIT
+	;実行できない
+	IF LOCAL < LOCAL:2
+		CALL KOJO_MESSAGE_EVENT, 100
+		RETURN 0
+	ELSE
+		RETURN 1
+	ENDIF
+ELSE
+	RETURN 1
+ENDIF
+
+@COM151
+PRINTL 乳ファック
+
+CALL 実行判定151
+SIF !RESULT
+	RETURN 0
+
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;射精ゲージチェック
+;-------------------------------------------------
+LOCAL = 500
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES LOCAL , 0.80
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES LOCAL , 1.00
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES LOCAL , 1.20
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES LOCAL , 1.40
+ENDIF
+
+;調教対象のバストサイズを見る
+SELECTCASE TALENT:バストサイズ
+	;爆乳
+	CASE 5
+		TIMES LOCAL , 1.50
+	;巨乳
+	CASE 4
+		TIMES LOCAL , 1.20
+	;普通
+	CASE 3
+		TIMES LOCAL , 1.00
+	;貧乳
+	CASE 2
+		TIMES LOCAL , 0.90
+	;絶壁
+	CASE 1
+		TIMES LOCAL , 0.70
+ENDSELECT
+
+;プレイヤーのABL:Ｃ感覚をみる
+SELECTCASE ABL:PLAYER:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.50
+	CASE 2
+		TIMES LOCAL , 2.00
+	CASE 3
+		TIMES LOCAL , 2.50
+	CASE 4
+		TIMES LOCAL , 3.50
+	CASEELSE
+		TIMES LOCAL , 5.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:PLAYER:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:PLAYER:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 70
+LOSEBASE:気力 += 100
+
+SOURCE:快B = 400
+SOURCE:性行動 = 200
+SOURCE:苦痛 = 200
+SOURCE:恐怖 = 200
+SOURCE:中毒 = 150
+SOURCE:露出 = 100
+SOURCE:逸脱 = 150
+SOURCE:反感 = 200
+
+;上のほうで計算した汚れデータ
+SOURCE:不潔 = LOCAL:1*50+100
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 300
+
+;中毒による中毒充足のソースは先に処理しておく
+;セックス中毒を見る
+SELECTCASE ABL:性交中毒
+	CASE IS <= 1
+		TIMES SOURCE:中毒 , 0.00
+	CASE 2
+		TIMES SOURCE:中毒 , 0.30
+	CASE 3
+		TIMES SOURCE:中毒 , 0.60
+	CASE 4
+		TIMES SOURCE:中毒 , 0.90
+	CASE 5
+		TIMES SOURCE:中毒 , 1.20
+	CASE 6
+		TIMES SOURCE:中毒 , 1.50
+	CASE 7
+		TIMES SOURCE:中毒 , 1.80
+	CASE 8
+		TIMES SOURCE:中毒 , 2.30
+	CASE 9
+		TIMES SOURCE:中毒 , 3.00
+	CASE IS >= 10
+		TIMES SOURCE:中毒 , 5.00
+ENDSELECT
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK, 5
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT, 5, NOWEX:PLAYER:射精
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;奴隷の胸⇔調教者のペニスの汚れが移動
+;射精に関係なく行われる処理はここから
+STAIN:胸 |= STAIN:PLAYER:ペニス
+STAIN:PLAYER:ペニス |= STAIN:胸
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 2, 2
+
+;依存度補正値(主人かつ恋慕、淫乱、服従で1。親愛、娼婦、隷属で2）
+IF (TALENT:恋慕 || TALENT:淫乱 || TALENT:服従) && !ASSIPLAY
+	TFLAG:依存度補正 += 1
+ELSEIF (TALENT:親愛 || TALENT:娼婦 || TALENT:隷属) && !ASSIPLAY
+	TFLAG:依存度補正 += 2
+ENDIF
+
+RETURN 1
+

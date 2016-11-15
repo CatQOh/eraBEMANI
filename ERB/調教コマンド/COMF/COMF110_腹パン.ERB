@@ -1,0 +1,100 @@
+﻿;-------------------------------------------------
+;腹パン
+;拷問系コマンド、レベル1
+;-------------------------------------------------
+@USERCOM_ABLE110
+;腹パン
+;妊娠中は調教者がサドもしくは禁断の知識持ちじゃないとできない
+SIF TALENT:MASTER:サド || TALENT:MASTER:禁断の知識
+	RETURN 1
+SIF TALENT:妊娠
+	RETURN 0
+
+RETURN 1
+
+@COM110
+PRINTL 腹パン
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+IF TALENT:妊娠 && RAND:4 == 0
+	;消費体力、気力
+	LOSEBASE:体力 += 3500
+	LOSEBASE:気力 += 5000
+	SOURCE:苦痛 = 30000
+	SOURCE:恐怖 = 6000
+	SOURCE:屈従 = 500
+	SOURCE:逸脱 = 10000
+	SOURCE:反感 = 10000
+	SETCOLOR 255 , 0 , 0
+		FONTBOLD
+			PRINTW 流産
+		FONTREGULAR
+	RESETCOLOR
+	TFLAG:流産 = 1
+	TALENT:妊娠 = 0
+	EXP:流産経験 += 1
+ELSE
+	;消費体力、気力
+	LOSEBASE:体力 += 150
+	LOSEBASE:気力 += 100
+
+	SIF CFLAG:陥落
+		SOURCE:情愛 = 100
+	SOURCE:苦痛 = 1000
+	SOURCE:恐怖 = 1000
+	SOURCE:屈従 = 150
+	SOURCE:逸脱 = 500
+	SOURCE:反感 = 1500
+ENDIF
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;苦痛のパラメータによる苦痛のソース増加は先に処理しておく
+IF PALAM:苦痛 < PALAMLV:1
+	TIMES SOURCE:苦痛 , 1.00
+ELSEIF PALAM:苦痛 < PALAMLV:2
+	TIMES SOURCE:苦痛 , 1.50
+ELSEIF PALAM:苦痛 < PALAMLV:3
+	TIMES SOURCE:苦痛 , 2.00
+ELSEIF PALAM:苦痛 < PALAMLV:4
+	TIMES SOURCE:苦痛 , 2.50
+ELSEIF PALAM:苦痛 >= PALAMLV:4
+	TIMES SOURCE:苦痛 , 3.00
+ENDIF
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 1, 4
+
+;依存度補正値(服従で1、隷属で2）
+IF TALENT:服従 && PLAYER == MASTER
+	TFLAG:依存度補正 += 1
+ELSEIF TALENT:隷属 && PLAYER == MASTER
+	TFLAG:依存度補正 += 2
+ENDIF
+
+RETURN 1
+
