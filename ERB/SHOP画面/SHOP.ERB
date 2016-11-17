@@ -83,6 +83,8 @@ SIF FLAG:周回数 > 1
 SELECTCASE FLAG:ゲームモード
 	CASE 0
 		PRINT  MODE:STANDARD
+	CASE 7
+		PRINT  MODE:新婚生活
 	CASE 8
 		PRINT  MODE:段位認定 
 		CALL GRADE, FLAG:選択段位
@@ -103,25 +105,28 @@ IF FLAG:ゲームモード != 8
 		PRINTFORML ↓{LASTMONEY-MONEY} DOWN...
 	ENDIF
 
-	;難易度表示
-	PRINT 　難易度:
-	SELECTCASE FLAG:難易度
-		CASE 1
-			PRINTL NORMAL
-		CASE 2
-			PRINTL HYPER
-		CASE 3
-			PRINTL ANOTHER
-	ENDSELECT
+	;新婚生活中は非表示
+	IF FLAG:ゲームモード != 7
+		;難易度表示
+		PRINT 　難易度:
+		SELECTCASE FLAG:難易度
+			CASE 1
+				PRINTL NORMAL
+			CASE 2
+				PRINTL HYPER
+			CASE 3
+				PRINTL ANOTHER
+		ENDSELECT
 
-	;奴隷人数表示
-	LOCAL = 0
-	;陥落人数計算
-	REPEAT CHARANUM
-		SIF CFLAG:COUNT:陥落
-			LOCAL++
-	REND
-	PRINTFORML 　総奴隷数:{CHARANUM-1}\/陥落済み:{LOCAL}
+		;奴隷人数表示
+		LOCAL = 0
+		;陥落人数計算
+		REPEAT CHARANUM
+			SIF CFLAG:COUNT:陥落
+				LOCAL++
+		REND
+		PRINTFORML 　総奴隷数:{CHARANUM-1}\/陥落済み:{LOCAL}
+	ENDIF
 ELSE
 	;所持金表示
 	PRINTFORM 　所持金:${MONEY} 
@@ -153,8 +158,12 @@ ENDIF
 ;奴隷の状態
 IF TARGET > 0
 	PRINTL 
-	PRINTL □調教中
-	PRINTFORM 　No.{TARGET} %NAME:TARGET%
+	PRINTL □同棲中
+	IF FLAG:ゲームモード == 7
+		PRINTFORM 　%NAME:TARGET%
+	ELSE
+		PRINTFORM 　No.{TARGET} %NAME:TARGET%
+	ENDIF
 	IF TALENT:性転換済
 		SELECTCASE SEX(TARGET)
 			CASE 1
@@ -355,7 +364,11 @@ ELSE
 	LOCALS:4 = <font color='gray'><nonbutton title='助手に選べる奴隷は居ません'>[---] - 助手変更 </nonbutton></font>
 ENDIF
 
-HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4
+IF FLAG:ゲームモード == 7
+	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2
+ELSE
+	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4
+ENDIF
 
 ;300番台は購入・売却のコマンド
 LOCALS = 　
@@ -374,7 +387,11 @@ ELSE
 	LOCALS:3 = <font color='gray'><nonbutton title='売却可能な奴隷が居ません'>[---] - 売却     </nonbutton></font>
 ENDIF
 
-HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3
+IF FLAG:ゲームモード == 7
+	HTML_PRINT LOCALS+LOCALS:1
+ELSE
+	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3
+ENDIF
 
 ;400番台はセーブ・ロード・オプションのシステムコマンド
 ;セーブ・ロード・オプションは無条件で表示
@@ -388,7 +405,9 @@ HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3
 ;500番台は周回コマンド
 ;通常モードで所持金が条件に達していて、ゲームモードがSTANDARDなら表示
 LOCALS = 　
-IF FLAG:ゲームモード == 8
+IF FLAG:ゲームモード == 7
+	LOCALS:1 = <font color='gray'><nonbutton title='新婚モードでは納金の必要はありません'>[---] - 納金     </nonbutton></font>
+ELSEIF FLAG:ゲームモード == 8
 	LOCALS:1 = <font color='gray'><nonbutton title='段位認定では納金の必要はありません'>[---] - 納金     </nonbutton></font>
 ELSEIF FLAG:ゲームモード == 9
 	LOCALS:1 = <font color='gray'><nonbutton title='PREMIUM FREE MODEでは納金の必要はありません'>[---] - 納金     </nonbutton></font>
@@ -468,12 +487,18 @@ SELECTCASE RESULT
 			CALL SHOP_ABLUP
 	;奴隷変更
 	CASE 202
-		SIF LOCAL
-			CALL CHANGE_TARGET, LOCAL
+		SELECTCASE FLAG:ゲームモード
+			CASE IS != 7
+				SIF LOCAL
+					CALL CHANGE_TARGET, LOCAL
+		ENDSELECT
 	;助手変更
 	CASE 203
-		SIF LOCAL:2
-			CALL SELECT_ASSI, LOCAL:2
+		SELECTCASE FLAG:ゲームモード
+			CASE IS != 7
+				SIF LOCAL:2
+					CALL SELECT_ASSI, LOCAL:2
+		ENDSELECT
 	;アイテム
 	CASE 300
 		IF FLAG:ゲームモード == 8
@@ -483,12 +508,17 @@ SELECTCASE RESULT
 		ENDIF
 	;奴隷購入
 	CASE 301
-		SIF FLAG:ゲームモード != 8
-			CALL CHARA_BUY
+		SELECTCASE FLAG:ゲームモード
+			CASE IS != 7, 8
+				CALL CHARA_BUY
+		ENDSELECT
 	;売却
 	CASE 302
-		SIF LOCAL:1
-			CALL CHARA_SELL
+		SELECTCASE FLAG:ゲームモード
+			CASE IS != 7
+				SIF LOCAL:1
+					CALL CHARA_SELL
+		ENDSELECT
 	;セーブ
 	CASE 400
 		;SAVEGAME

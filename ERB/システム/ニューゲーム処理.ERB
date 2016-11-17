@@ -13,6 +13,7 @@ FLAG:口上表示 = 1
 DRAWLINE
 PRINTL ★★モードを選択してください★★
 PRINTL [0] - STANDARD (100日期限 目標金額$1,000,000)
+PRINTL [7] - 新婚モード（期限なし 好きなキャラと好きなだけイチャイチャする）
 PRINTL [8] - 段位認定 (期限あり 特定の4人を攻略)
 PRINTL [9] - PREMIUM FREE (期限なし エンドレス)
 DO
@@ -78,6 +79,12 @@ DO
 				ENDSELECT
 			LOOP LOOPRES(0, 1)
 			BREAK
+		CASE 7
+			FLAG:ゲームモード = 7
+			ADDCHARA 0
+			MASTER = 0
+			CALL START_CHARA_SELECT
+			BREAK
 		CASE 8
 			FLAG:ゲームモード = 8
 			ADDCHARA 0
@@ -133,26 +140,28 @@ IF FLAG:ゲームモード == 0
 	LOOP 1
 ENDIF
 
-;チュートリアル表示
-DRAWLINE
-PRINTL チュートリアルを表示しますか？（オプションからでも確認できます）
-PRINTL [0] - 表示する
-PRINTL [1] - 表示しない
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			DRAWLINE
-			IF FLAG:ゲームモード == 8
-				CALL TEST_TUTORIAL
-			ELSE
-				CALL TUTORIAL
-			ENDIF
-			BREAK
-		CASE 1
-			BREAK
-	ENDSELECT
-LOOP 1
+IF FLAG:ゲームモード != 7
+	;チュートリアル表示
+	DRAWLINE
+	PRINTL チュートリアルを表示しますか？（オプションからでも確認できます）
+	PRINTL [0] - 表示する
+	PRINTL [1] - 表示しない
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 0
+				DRAWLINE
+				IF FLAG:ゲームモード == 8
+					CALL TEST_TUTORIAL
+				ELSE
+					CALL TUTORIAL
+				ENDIF
+				BREAK
+			CASE 1
+				BREAK
+		ENDSELECT
+	LOOP 1
+ENDIF
 
 DRAWLINE
 PRINTL 奴隷の着衣設定を変更しますか？（オプションでも変更できます）
@@ -171,6 +180,8 @@ SELECTCASE FLAG:ゲームモード
 	CASE 0
 		MONEY = 3000
 		FLAG:価格フィルタ上限 = 3000
+	CASE 7
+		MONEY = 3000000
 	CASE 8
 		MONEY = 0
 		FLAG:価格フィルタ上限 = 30000
@@ -315,9 +326,36 @@ DO
 				INPUT
 			LOOP LOOPRES(0)
 			DRAWLINE
-			PRINTL 性交の経験は……
-			PRINTL [0] - ある
-			PRINTL [1] - 無い
+			PRINTL 体型はどんな感じですか？
+			PRINTL [0] - 普通の人です
+			SELECTCASE SEX(MASTER)
+				CASE 1
+					PRINTL [1] - ショタです
+				CASE 2
+					PRINTL [1] - ロリです
+			ENDSELECT
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 1
+						TALENT:MASTER:小柄体型 = 1
+						MAXBASE:MASTER:体力 -= 200
+						BASE:MASTER:体力 -= 200
+						SELECTCASE SEX(MASTER)
+							CASE 2
+								TALENT:MASTER:バストサイズ = 2
+						ENDSELECT
+				ENDSELECT
+			LOOP LOOPRES(0, 1)
+			DRAWLINE
+			SELECTCASE FLAG:ゲームモード
+				CASE 7
+					BREAK
+				CASE 9
+					PRINTL 性交の経験は……
+					PRINTL [0] - ある
+					PRINTL [1] - 無い
+			ENDSELECT
 			DO
 				INPUT
 				SELECTCASE RESULT
@@ -336,149 +374,226 @@ DO
 				DELCHARA 0
 				ADDCHARA RESULT
 				MASTER = 0
-				SELECTCASE CSTR:MASTER:種族
-					CASE "人間"
-						CFLAG:MASTER:種族 = 1
-					CASE "宇宙人"
-						CFLAG:MASTER:種族 = 2
-					CASE "人間(？)"
-						CFLAG:MASTER:種族 = 3
-					CASE "改造人間"
-						CFLAG:MASTER:種族 = 4
-					CASE "精霊"
-						CFLAG:MASTER:種族 = 5
-					CASE "天使"
-						CFLAG:MASTER:種族 = 6
-					CASE "夢魔"
-						CFLAG:MASTER:種族 = 7
-					CASE "ニンフ"
-						CFLAG:MASTER:種族 = 8
-					CASE "悪魔"
-						CFLAG:MASTER:種族 = 9
-					CASE "神"
-						CFLAG:MASTER:種族 = 10
-					CASE "守護者"
-						CFLAG:MASTER:種族 = 11
-					CASE "鳳凰"
-						CFLAG:MASTER:種族 = 12
-					CASE "魔術師"
-						CFLAG:MASTER:種族 = 13
-					CASE "記録者"
-						CFLAG:MASTER:種族 = 14
-					CASE "獣人"
-						CFLAG:MASTER:種族 = 15
-					CASE "機械"
-						CFLAG:MASTER:種族 = 16
-					CASE "人魚"
-						CFLAG:MASTER:種族 = 17
-					CASE "妖精"
-						CFLAG:MASTER:種族 = 18
-					CASE "ゾンビ"
-						CFLAG:MASTER:種族 = 19
-					CASE "獣"
-						CFLAG:MASTER:種族 = 20
-					CASE "ヴァンパイア"
-						CFLAG:MASTER:種族 = 21
-					CASEELSE
-						CFLAG:MASTER:種族 = 99
-				ENDSELECT
+				CFLAG:MASTER:種族 = SELECT_RACE(MASTER)
 				PRINTFORMW プレイヤーを「%NAME:MASTER%」に設定します
 				DRAWLINE
-				PRINTFORML %CALLNAME:MASTER%に調教されたい人向けに奴隷としてあなたを追加しますか？
-				PRINTL [0] - 調教されたい！
-				PRINTL [1] - いらん
-				DO
-					INPUT
-					SELECTCASE RESULT
-						CASE 0
-							ADDCHARA 0
-							TARGET = 1
-							CFLAG:TARGET:種族 = 1
-							DRAWLINE
-							PRINTL 性別を選択してください
-							PRINTL [0] - 男性
-							PRINTL [1] - 女性
-							DO
-								INPUT
-								SELECTCASE RESULT
-									CASE 0
-										TALENT:性別 = 1
-										CSTR:上半身上着 = シャツ
-										CSTR:下半身上着 = ズボン
-										CSTR:下半身下着 = トランクス
-									CASE 1
-										TALENT:性別 = 2
-										TALENT:バストサイズ = 3
-										CSTR:全身上着 = ワンピース
-										CSTR:上半身下着 = ブラジャー
-										CSTR:下半身下着 = パンティ
-										CFLAG:挿入可 = 1
-								ENDSELECT
-							LOOP LOOPRES(0, 1)
-							DRAWLINE
-							DO
-								PRINTL 名前を入力してください(何も入力しない場合は「あなた」になります)
-								INPUTS
-								SELECTCASE RESULTS
-									CASE ""
-										CALLNAME:TARGET = あなた
-										NAME:TARGET = あなた
-									CASEELSE
-										CALLNAME:TARGET = %RESULTS%
-										NAME:TARGET = %RESULTS%
-								ENDSELECT
-								PRINTFORML 「%CALLNAME:TARGET%」でよろしいですか？
-								PRINTL [0] - はい
-								PRINTL [1] - いいえ
-								INPUT
-							LOOP LOOPRES(0)
-							DRAWLINE
-							PRINTL 性交の経験は……
-							PRINTL [0] - ある
-							PRINTL [1] - 無い
-							DO
-								INPUT
-								SELECTCASE RESULT
-									CASE 1
-										SELECTCASE SEX(TARGET)
+				SELECTCASE FLAG:ゲームモード
+					CASE 7
+						BREAK
+					CASE 9
+						PRINTFORML %CALLNAME:MASTER%に調教されたい人向けに奴隷としてあなたを追加しますか？
+						PRINTL [0] - 調教されたい！
+						PRINTL [1] - いらん
+						DO
+							INPUT
+							SELECTCASE RESULT
+								CASE 0
+									ADDCHARA 0
+									TARGET = 1
+									CFLAG:TARGET:種族 = 1
+									DRAWLINE
+									PRINTL 性別を選択してください
+									PRINTL [0] - 男性
+									PRINTL [1] - 女性
+									DO
+										INPUT
+										SELECTCASE RESULT
+											CASE 0
+												TALENT:性別 = 1
+												CSTR:上半身上着 = シャツ
+												CSTR:下半身上着 = ズボン
+												CSTR:下半身下着 = トランクス
 											CASE 1
-												TALENT:TARGET:童貞 = 1
-											CASE 2
-												TALENT:TARGET:処女 = 1
+												TALENT:性別 = 2
+												TALENT:バストサイズ = 3
+												CSTR:全身上着 = ワンピース
+												CSTR:上半身下着 = ブラジャー
+												CSTR:下半身下着 = パンティ
+												CFLAG:挿入可 = 1
 										ENDSELECT
-								ENDSELECT
-							LOOP LOOPRES(0, 1)
-							DRAWLINE
-							PRINTL 体型はどんな感じですか？
-							PRINTL [0] - 普通の人です
-							SELECTCASE SEX(TARGET)
+									LOOP LOOPRES(0, 1)
+									DRAWLINE
+									DO
+										PRINTL 名前を入力してください(何も入力しない場合は「あなた」になります)
+										INPUTS
+										SELECTCASE RESULTS
+											CASE ""
+												CALLNAME:TARGET = あなた
+												NAME:TARGET = あなた
+											CASEELSE
+												CALLNAME:TARGET = %RESULTS%
+												NAME:TARGET = %RESULTS%
+										ENDSELECT
+										PRINTFORML 「%CALLNAME:TARGET%」でよろしいですか？
+										PRINTL [0] - はい
+										PRINTL [1] - いいえ
+										INPUT
+									LOOP LOOPRES(0)
+									DRAWLINE
+									PRINTL 性交の経験は……
+									PRINTL [0] - ある
+									PRINTL [1] - 無い
+									DO
+										INPUT
+										SELECTCASE RESULT
+											CASE 1
+												SELECTCASE SEX(TARGET)
+													CASE 1
+														TALENT:TARGET:童貞 = 1
+													CASE 2
+														TALENT:TARGET:処女 = 1
+												ENDSELECT
+										ENDSELECT
+									LOOP LOOPRES(0, 1)
+									DRAWLINE
+									PRINTL 体型はどんな感じですか？
+									PRINTL [0] - 普通の人です
+									SELECTCASE SEX(TARGET)
+										CASE 1
+											PRINTL [1] - ショタです
+										CASE 2
+											PRINTL [1] - ロリです
+									ENDSELECT
+									DO
+										INPUT
+										SELECTCASE RESULT
+											CASE 1
+												TALENT:小柄体型 = 1
+												MAXBASE:体力 -= 200
+												BASE:体力 -= 200
+												SELECTCASE SEX(TARGET)
+													CASE 2
+														TALENT:バストサイズ = 2
+												ENDSELECT
+										ENDSELECT
+									LOOP LOOPRES(0, 1)
+									BREAK
 								CASE 1
-									PRINTL [1] - ショタです
-								CASE 2
-									PRINTL [1] - ロリです
+									BREAK
 							ENDSELECT
-							DO
-								INPUT
-								SELECTCASE RESULT
-									CASE 1
-										TALENT:小柄体型 = 1
-										MAXBASE:体力 -= 200
-										BASE:体力 -= 200
-										SELECTCASE SEX(TARGET)
-											CASE 2
-												TALENT:バストサイズ = 2
-										ENDSELECT
-								ENDSELECT
-							LOOP LOOPRES(0, 1)
-							BREAK
-						CASE 1
-							BREAK
-					ENDSELECT
-				LOOP LOOPRES(0, 1)
-				BREAK
+						LOOP LOOPRES(0, 1)
+						BREAK
+				ENDSELECT
 			ENDIF
 	ENDSELECT
 LOOP 1
+
+
+;新婚モード専用処理
+IF FLAG:ゲームモード == 7
+	FLAG:難易度 = 1
+	TFLAG:ページ数 = 0
+	DO
+		PRINTL ★★嫁、もしくは婿を選択してください★★
+		CALL CHARA_LIST, 1
+		DRAWLINE
+		PRINTFORM 　PAGE.{TFLAG:ページ数+1} 
+		IF TFLAG:ページ数
+			PRINTLC [10001]前のページ
+		ELSE
+			PRINTLC  
+		ENDIF
+		PRINTPLAIN 　
+		SIF (TFLAG:ページ数+1)*30 < CSVCOUNT
+			PRINTC [10009]後のページ
+		INPUT
+		SELECTCASE RESULT
+			CASE 10001
+				SIF TFLAG:ページ数 > 0
+					TFLAG:ページ数--
+				CONTINUE
+			CASE 10009
+				;最大ページ数と比較、ページ数変動の際は
+				SIF (TFLAG:ページ数+1)*30 < CSVCOUNT
+					TFLAG:ページ数++
+				CONTINUE
+			CASEELSE
+				IF EXISTCSV(RESULT)
+					ADDCHARA RESULT
+					TARGET = 1
+					CFLAG:種族 = SELECT_RACE(TARGET)
+					PRINTFORMW %NAME:TARGET%とのご成婚おめでとうございます
+					CFLAG:嫁 = 1
+					TALENT:親愛 = 1
+					SIF RELATION:(NO:MASTER) < 300
+						RELATION:(NO:MASTER) = 300
+					SIF RELATION:MASTER:(NO:TARGET) < 300
+						RELATION:MASTER:(NO:TARGET) = 300
+					BREAK
+				ELSE
+					CONTINUE
+				ENDIF
+		ENDSELECT
+	LOOP 1
+	PRINTL ご結婚前からいろいろ経験なさりましたよね？
+	PRINTL [0] - そりゃまぁ
+	PRINTL [1] - 純潔を保ってきた
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 0
+				SELECTCASE SEX(MASTER)
+					CASE 1
+						EXP:MASTER:射精経験 += 10
+						EXP:MASTER:性交経験 += 10
+						TALENT:MASTER:童貞 = 0
+						EXP:性交経験 += 10
+						VIRGIN:MASTER:0 = NAME:TARGET
+						SELECTCASE SEX(TARGET)
+							CASE 1
+								EXP:MASTER:Ａ経験 += 10
+								EXP:射精経験 += 10
+								TALENT:童貞 = 0
+								VIRGIN:0 = %NAME:MASTER%
+							CASE 2
+								EXP:膣射経験 += 10
+								EXP:Ｖ経験 += 10
+								TALENT:処女 = 0
+								VIRGIN:1 = %NAME:MASTER%
+								CFLAG:処女の奪われ方 = 2
+						ENDSELECT
+					CASE 2
+						EXP:MASTER:Ｖ経験 += 10
+						TALENT:MASTER:処女 = 0
+						EXP:MASTER:性交経験 += 10
+						VIRGIN:MASTER:1 = %NAME:TARGET%
+						SELECTCASE SEX(TARGET)
+							CASE 1
+								EXP:MASTER:膣射経験 += 10
+								EXP:射精経験 += 10
+								TALENT:童貞 = 0
+								VIRGIN:0 = %NAME:MASTER%
+							CASE 2
+								EXP:Ｖ経験 += 10
+								TALENT:処女 = 0
+								VIRGIN:1 = %NAME:MASTER%
+								CFLAG:処女の奪われ方 = 2
+						ENDSELECT
+				ENDSELECT
+			CASE 1
+				SELECTCASE SEX(MASTER)
+					CASE 1
+						TALENT:MASTER:童貞 = 1
+						EXP:MASTER:性交経験 = 0
+					CASE 2
+						TALENT:MASTER:処女 = 1
+						EXP:MASTER:性交経験 = 0
+						EXP:MASTER:Ｖ経験 = 0
+						EXP:MASTER:膣射経験 = 0
+				ENDSELECT
+				SELECTCASE SEX(TARGET)
+					CASE 1
+						TALENT:童貞 = 1
+						EXP:性交経験 = 0
+					CASE 2
+						TALENT:処女 = 1
+						EXP:性交経験 = 0
+						EXP:Ｖ経験 = 0
+						EXP:膣射経験 = 0
+				ENDSELECT
+		ENDSELECT
+	LOOP LOOPRES(0, 1)
+ENDIF
 
 RETURN 0
 
