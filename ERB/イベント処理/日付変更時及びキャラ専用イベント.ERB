@@ -315,20 +315,50 @@ VARSET LOCAL, 0
 DAYS++
 SELECTCASE MONTH
 	CASE 1, 3, 5, 7, 8, 10, 12
-		SIF DAYS == 32
+		SIF DAYS > 31
 			DAYS = 1
 	CASE 4, 6, 9, 11
-		SIF DAYS == 31
+		SIF DAYS > 30
 			DAYS = 1
 	CASE 2
-		IF (YEAR%4 == 0 && YEAR%100 != 0) || YEAR%400 == 0
-			SIF DAYS == 30
-				DAYS = 1
-		ELSE
-			SIF DAYS == 29
-				DAYS = 1
-		ENDIF
+		;うるう年かどうかで場合分け
+		SELECTCASE YEAR
+			;グレゴリオ暦
+			CASE IS > 1582
+				IF (YEAR%4 == 0 && YEAR%100 != 0) || YEAR%400 == 0
+					SIF DAYS > 29
+						DAYS = 1
+				ELSE
+					SIF DAYS > 28
+						DAYS = 1
+				ENDIF
+			;間違った運用がされていた頃のユリウス暦
+			CASE -44 TO -5
+				IF ABS(YEAR)%3 == 1
+					SIF DAYS > 29
+						DAYS = 1
+				ELSE
+					SIF DAYS > 28
+						DAYS = 1
+				ENDIF
+			;上の間違った運用のシワ寄せ期間
+			CASE -4 TO 4
+				SIF DAYS > 28
+					DAYS = 1
+			;(紀元前46年以前を含め)残りの期間すべてをユリウス暦とする
+			CASEELSE
+				IF ABS(YEAR)%4 == 0
+					SIF DAYS > 29
+						DAYS = 1
+				ELSE
+					SIF DAYS > 28
+						DAYS = 1
+				ENDIF
+		ENDSELECT
 ENDSELECT
+;1582年10月5日～1582年10月14日は存在しない
+SIF YEAR == 1582 && MONTH == 10 && DAYS == 5
+	DAYS = 15
 SIF DAYS == 1
 	MONTH++
 SIF MONTH == 13
