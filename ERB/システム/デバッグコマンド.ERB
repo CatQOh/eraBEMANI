@@ -5,6 +5,7 @@ SIF TARGET == -1
 	TARGET = 0
 
 $LOOP_DEBUG
+
 PRINTFORML なにをしますか？　　対象：%NAME:TARGET%
 PRINTLC [0] - 対象変更
 PRINTLC [1] - 素質操作
@@ -41,6 +42,7 @@ ENDSELECT
 
 GOTO LOOP_DEBUG
 
+;[0] - 対象変更  --------------------------------
 @TARGET_CHANGE
 
 ;対象を表示
@@ -56,6 +58,7 @@ PRINTFORMW 対象を%NAME:TARGET%にしました。
 
 RETURN
 
+;[1] - 素質操作  --------------------------------
 @TALENT_CHANGE
 DRAWLINE
 REPEAT VARSIZE("TALENT")
@@ -117,6 +120,7 @@ ELSE
 	RESTART
 ENDIF
 
+;[2] - ABL操作  --------------------------------
 @ABL_CHANGE
 DRAWLINE
 
@@ -148,6 +152,7 @@ SIF RESULT == -1
 ABL:TARGET:LOCAL = RESULT
 PRINTFORML %NAME:TARGET%の%ABLNAME:LOCAL%をLv{RESULT}にしました
 
+;[3] - 経験操作  --------------------------------
 @EXP_CHANGE
 
 REPEAT VARSIZE("EXP")
@@ -178,6 +183,7 @@ SIF RESULT == -1
 EXP:TARGET:LOCAL = RESULT
 PRINTFORML %NAME:TARGET%の%EXPNAME:LOCAL%の経験を{RESULT}にしました
 
+;[4] - 刻印操作  --------------------------------
 @MARK_CHANGE
 
 REPEAT VARSIZE("MARK")
@@ -208,6 +214,7 @@ SIF RESULT == -1
 MARK:TARGET:LOCAL = RESULT
 PRINTFORML %NAME:TARGET%の%MARKNAME:LOCAL%をLv{RESULT}にしました
 
+;[5] - ITEM操作  --------------------------------
 @ITEM_CHANGE
 
 REPEAT 100
@@ -250,12 +257,16 @@ SIF RESULT == -1
 ITEM:LOCAL = RESULT
 PRINTFORML %ITEMNAME:LOCAL%を{RESULT}個にしました
 
+;[6] - その他  --------------------------------
 @EXTRA_CHANGE
 DRAWLINE
-PRINTLC [0] - 所持金
-PRINTLC [1] - 日数
+PRINTLC [0] - 日数
+PRINTLC [1] - 日付
 PRINTLC [2] - 時間帯
-PRINTL [-1] - 戻る
+PRINTL
+PRINTLC [3] - 所持金
+PRINTLC [4] - 気温
+PRINTLC [-1] - 戻る
 
 INPUT
 
@@ -263,28 +274,123 @@ DRAWLINE
 SIF RESULT == -1
 	RETURN
 IF RESULT == 0
-	PRINTFORML いくらにしますか？　　現在の所持金：{MONEY}
-	PRINTLC [0] 無一文
-	PRINTLC [10000] 1万
-	PRINTLC [100000000] 1億
-	PRINTLC [1000000000000] 1兆
-	PRINTLC [999999999999999999] 限界
+	PRINTFORML 何日にしますか？　　現在の日数：{DAY + 1}
+	PRINTL [1][9][99][999][9999][99999][999999]
 	PRINTL [-1] 戻る
 	INPUT
 	SIF RESULT == -1
 		RESTART
-	MONEY = RESULT
-	PRINTFORMW 所持金を{MONEY}に変更しました
-ELSEIF RESULT == 1
-	PRINTFORML 何日にしますか？　　現在の日数：{DAY + 1}
-	PRINTFORML [1][9][99][999][9999][99999][999999]
-	PRINTFORML [-1] 戻る
-	INPUT
-	SIF RESULT == -1
-		RESTART
 	DAY = RESULT - 1
+	PRINTFORMW {DAY}日目に変更しました
+ELSEIF RESULT == 1
+	DO
+		PRINTFORML どれを変更しますか？　　現在の日付：{YEAR}年{MONTH}月{DAYS}日
+		PRINTL [0] - 年
+		PRINTL [1] - 月
+		PRINTL [2] - 日
+		PRINTL [3] - 現在の日時を取得
+		PRINTL [-1] - 戻る
+		INPUT
+		SIF RESULT == -1
+			RESTART
+		IF RESULT == 0
+			PRINTL 何年に変更しますか？値を入力してください
+			CALL INPUT_VALUE
+			YEAR = RESULT
+			PRINTL
+			PRINTFORML {YEAR}年に変更しました
+			PRINTL
+		ELSEIF RESULT == 1
+			PRINTL 何月に変更しますか？
+			PRINTL [ 1]１月 [ 2]２月 [ 3]３月 [ 4]４月 [ 5]５月 [ 6]６月
+			PRINTL [ 7]７月 [ 8]８月 [ 9]９月 [10]10月 [11]11月 [12]12月
+			$MONTH_INPUT
+			INPUT
+			SELECTCASE RESULT
+				CASE 1 TO 12
+					MONTH = RESULT
+					PRINTL
+					PRINTFORML {MONTH}月に変更しました
+					PRINTL
+				CASEELSE
+					GOTO MONTH_INPUT
+			ENDSELECT
+		ELSEIF RESULT == 2
+			PRINTL 何日に変更しますか？値を入力してください
+			CALL TWO_DIGIT, 31, "日"
+			DAYS = RESULT
+			SIF DAYS < 0
+				DAYS = 1
+			PRINTL
+			PRINTFORML {DAYS}日に変更しました
+			PRINTL
+		ELSEIF RESULT == 3
+			GETTIME
+			LOCAL = RESULT
+			;年月日だけの桁に減らす
+			LOCAL /= POWER(10,9)
+			YEAR = LOCAL / 10000
+			MONTH = LOCAL /100 %100
+			DAYS = LOCAL %100
+			PRINTL
+			PRINTFORML {YEAR}年{MONTH}月{DAYS}日に変更しました
+			PRINTL
+		ENDIF
+		;不正な値の修正
+		SIF DAYS <= 0
+			DAYS = 1
+		SELECTCASE MONTH
+			CASE 1, 3, 5, 7, 8, 10, 12
+				SIF DAYS > 31
+					DAYS = 31
+			CASE 4, 6, 9, 11
+				SIF DAYS > 30
+					DAYS = 30
+			CASE 2
+				;うるう年かどうかで場合分け
+				SELECTCASE YEAR
+					;グレゴリオ暦
+					CASE IS > 1582
+						IF (YEAR%4 == 0 && YEAR%100 != 0) || YEAR%400 == 0
+							SIF DAYS > 29
+								DAYS = 29
+						ELSE
+							SIF DAYS > 28
+								DAYS = 28
+						ENDIF
+					;間違った運用がされていた頃のユリウス暦
+					CASE -44 TO -5
+						IF ABS(YEAR)%3 == 1
+							SIF DAYS > 29
+								DAYS = 29
+						ELSE
+							SIF DAYS > 28
+								DAYS = 28
+						ENDIF
+					;上の間違った運用のシワ寄せ期間
+					CASE -4 TO 4
+						SIF DAYS > 28
+							DAYS = 28
+					;(紀元前46年以前を含め)残りの期間すべてをユリウス暦とする
+					CASEELSE
+						IF ABS(YEAR)%4 == 0
+							SIF DAYS > 29
+								DAYS = 29
+						ELSE
+							SIF DAYS > 28
+								DAYS = 28
+						ENDIF
+				ENDSELECT
+		ENDSELECT
+		;1582年10月5日～1582年10月14日は存在しないのでその期間の日付はすべて10月15日にする
+		IF YEAR == 1582 && MONTH == 10
+			IF 5 <= DAYS && DAYS <= 14
+				DAYS = 15
+			ENDIF
+		ENDIF
+	LOOP 1
 ELSEIF RESULT == 2
-	PRINTFORM いつにしますか？　　現在の時間帯：
+	PRINT いつにしますか？　　現在の時間帯：
 	IF TIME == 0
 		PRINTL 昼
 	ELSE
@@ -303,7 +409,284 @@ ELSEIF RESULT == 2
 	ELSE
 		PRINTL 夜
 	ENDIF
-	PRINTL に変更しました
+	PRINTW に変更しました
+ELSEIF RESULT == 3
+	PRINTFORML いくらにしますか？　　現在の所持金：${MONEY}
+	PRINTLC [0] 無一文
+	PRINTLC [10000] 1万
+	PRINTLC [1000000] 100万
+	PRINTLC [1000000000] 10億
+	PRINTLC [1000000000000] 1兆
+	PRINTLC [10000000000000000] 1京
+	PRINTLC [-1] 戻る
+	INPUT
+	SIF RESULT == -1
+		RESTART
+	MONEY = RESULT
+	PRINTFORMW 所持金を{MONEY}に変更しました
+ELSEIF RESULT == 4
+	;今何度？ とか書こうとした
+	PRINTL 何度にしますか？　※10倍した値で入力してください
+	PRINTFORML 現在の気温：{FLAG:気温/10}.{ABS(FLAG:気温)%10}℃
+	PRINTLC [-50] -5℃
+	PRINTLC [  0] 0℃
+	PRINTLC [ 50] 5℃
+	PRINTLC [100] 10℃
+	PRINTLC [150] 15℃
+	PRINTLC [200] 20℃
+	PRINTLC [250] 25℃
+	PRINTLC [300] 30℃
+	INPUT
+	FLAG:気温 = RESULT
+	PRINTFORMW 気温を{FLAG:気温/10}.{ABS(FLAG:気温)%10}℃に変更しました
 ENDIF
 
 RESTART
+
+
+;値を電卓で入力する関数
+;一応汎用性は持たしているのでデバッグモード以外でも使える
+@INPUT_VALUE
+
+;表示している値のための変数
+#DIM DYNAMIC DISPLAY
+;格納している値のための変数
+#DIM DYNAMIC MEMORY
+;演算子を管理する変数 1:＋ 2:－ 3:× 4:÷ 5:＾
+#DIM DYNAMIC OPERATOR
+
+DO
+	PRINTL
+	IF OPERATOR == 1
+		PRINTFORML  {MEMORY}＋
+	ELSEIF OPERATOR == 2
+		PRINTFORML  {MEMORY}－
+	ELSEIF OPERATOR == 3
+		PRINTFORML  {MEMORY}×
+	ELSEIF OPERATOR == 4
+		PRINTFORML  {MEMORY}÷
+	ELSEIF OPERATOR == 5
+		PRINTFORML  {MEMORY}＾
+	ELSE
+		PRINTL
+	ENDIF
+	PRINTFORML 【{DISPLAY}】
+	PRINTBUTTON "[ AC ]", "AC"
+	PRINTBUTTON "[C]", "C"
+	PRINTBUTTON "[^]", "^"
+	PRINTL 　◆キーボードでの入力方法◆
+	PRINT [7][8][9]
+	PRINTBUTTON "[/]", "/"
+	PRINTL 　数字は一度に入力することができますが、
+	PRINT [4][5][6]
+	PRINTBUTTON "[*]", "*"
+	PRINTL 　数字と記号はEnterキーで分けて入力してください。
+	PRINT [1][2][3]
+	PRINTBUTTON "[-]", "-"
+	PRINTL 　また、"Submit"などの命令は全て大文字か全て小文字
+	PRINT [0]
+	PRINTBUTTON "[ ＝ ]", "="
+	PRINTBUTTON "[+]", "+"
+	PRINTL 　もしくは頭文字のみでも入力できます。
+	PRINTBUTTON "[  Submit  ]", "Submit"
+	PRINTL
+	INPUTS
+	IF RESULTS == "0" || TOINT(RESULTS) != 0
+		RESULT = TOINT(RESULTS)
+		;マイナスの値の入力は表示が0のときのみ有効
+		IF DISPLAY == 0
+			DISPLAY = RESULT
+		ELSEIF RESULT >= 0
+			;表示している桁数の計算
+			LOCAL = 1 + LOG10(ABS(DISPLAY))
+			;入力された桁数の計算
+			IF RESULT == 0
+				LOCAL:1 = 1
+			ELSE
+				LOCAL:1 = 1 + LOG10(RESULT)
+			ENDIF
+			;値が100京以上になるなら入力しなおし
+			SIF LOCAL + LOCAL:1 < 19
+				DISPLAY = DISPLAY * POWER(10,LOCAL:1) + SIGN(DISPLAY)*RESULT
+		ENDIF
+	ELSEIF RESULTS == "=" || RESULTS == "+" || RESULTS == "-" || RESULTS == "*" || RESULTS == "/" || RESULTS == "^"
+		IF OPERATOR == 0
+			MEMORY = DISPLAY
+		ELSEIF OPERATOR == 1
+			MEMORY += DISPLAY
+		ELSEIF OPERATOR == 2
+			MEMORY -= DISPLAY
+		ELSEIF OPERATOR == 3
+			;値を100京未満に抑える
+			SIF DISPLAY == 0 || MEMORY == 0 || (LOG10(ABS(DISPLAY))) + (LOG10(ABS(MEMORY))) < 17
+				MEMORY *= DISPLAY
+		ELSEIF OPERATOR == 4
+			SIF DISPLAY != 0
+				MEMORY /= DISPLAY
+		ELSEIF OPERATOR == 5
+			;値を100京未満に抑える
+			SIF MEMORY == 0 ||  DISPLAY*(1+LOG10(ABS(MEMORY))) < 18
+				MEMORY = POWER(MEMORY,DISPLAY)
+		ENDIF
+		IF RESULTS != "="
+			DISPLAY = 0
+		ELSE
+			DISPLAY = MEMORY
+			MEMORY = 0
+		ENDIF
+		IF RESULTS == "+"
+			OPERATOR = 1
+		ELSEIF RESULTS == "-"
+			OPERATOR = 2
+		ELSEIF RESULTS == "*"
+			OPERATOR = 3
+		ELSEIF RESULTS == "/"
+			OPERATOR = 4
+		ELSEIF RESULTS == "^"
+			OPERATOR = 5
+		ELSE
+			OPERATOR = 0
+		ENDIF
+	ELSEIF RESULTS == "C" || RESULTS == "c"
+		DISPLAY = 0
+	ELSEIF RESULTS == "AC" || RESULTS == "Ac" || RESULTS == "ac" || RESULTS == "A" || RESULTS == "a"
+		DISPLAY = 0
+		MEMORY = 0
+		OPERATOR = 0
+	ELSEIF RESULTS == "SUBMIT" || RESULTS == "Submit" || RESULTS == "submit" || RESULTS == "S" || RESULTS == "s"
+		RETURN DISPLAY
+	ENDIF
+LOOP 1
+
+
+;2桁の数値を直接入力するための関数
+;ARGは最大値
+;ARGSは単位
+@TWO_DIGIT, ARG, ARGS
+
+LOCAL = 0
+
+PRINTL
+PRINTL キーボードによる直接入力もできます
+
+DO
+	PRINTL
+	IF LOCAL >= 10
+		PRINTFORM 【 %TOFULL(TOSTR(LOCAL/10))%
+	ELSE
+		PRINT 【 　
+	ENDIF
+	PRINTFORML %TOFULL(TOSTR(LOCAL%10))% 】%ARGS%
+
+	IF ARG >= 10
+		PRINTBUTTON  "[ 0 ]", 200
+	ELSE
+		PRINTPLAIN      
+	ENDIF
+	IF ARG >= 0
+		PRINTBUTTON "[ 0 ]", 100
+		PRINTL
+	ENDIF
+	IF ARG >= 10
+		PRINTBUTTON  "[ 1 ]", 110
+	ELSE
+		PRINTPLAIN      
+	ENDIF
+	IF ARG >= 1
+		PRINTBUTTON "[ 1 ]", 101
+		PRINTL
+	ENDIF
+	IF ARG >= 20
+		PRINTBUTTON  "[ 2 ]", 120
+	ELSE
+		PRINTPLAIN      
+	ENDIF
+	IF ARG >= 2
+		PRINTBUTTON "[ 2 ]", 102
+		PRINTL
+	ENDIF
+	IF ARG >= 30
+		PRINTBUTTON  "[ 3 ]", 130
+	ELSE
+		PRINTPLAIN      
+	ENDIF
+	IF ARG >= 3
+		PRINTBUTTON "[ 3 ]", 103
+		PRINTL
+	ENDIF
+	IF ARG >= 40
+		PRINTBUTTON  "[ 4 ]", 140
+	ELSE
+		PRINTPLAIN      
+	ENDIF
+	IF ARG >= 4
+		PRINTBUTTON "[ 4 ]", 104
+		PRINTL
+	ENDIF
+	IF ARG >= 50
+		PRINTBUTTON  "[ 5 ]", 150
+	ELSE
+		PRINTPLAIN      
+	ENDIF
+	IF ARG >= 5
+		PRINTBUTTON "[ 5 ]", 105
+		PRINTL
+	ENDIF
+	IF ARG >= 60
+		PRINTBUTTON  "[ 6 ]", 160
+	ELSE
+		PRINTPLAIN      
+	ENDIF
+	IF ARG >= 6
+		PRINTBUTTON "[ 6 ]", 106
+		PRINTL
+	ENDIF
+	IF ARG >= 70
+		PRINTBUTTON  "[ 7 ]", 170
+	ELSE
+		PRINTPLAIN      
+	ENDIF
+	IF ARG >= 7
+		PRINTBUTTON "[ 7 ]", 107
+		PRINTL
+	ENDIF
+	IF ARG >= 80
+		PRINTBUTTON  "[ 8 ]", 180
+	ELSE
+		PRINTPLAIN      
+	ENDIF
+	IF ARG >= 8
+		PRINTBUTTON "[ 8 ]", 108
+		PRINTL
+	ENDIF
+	IF ARG >= 90
+		PRINTBUTTON  "[ 9 ]", 190
+	ELSE
+		PRINTPLAIN      
+	ENDIF
+	IF ARG >= 9
+		PRINTBUTTON  "[ 9 ]", 109
+		PRINTL
+	ENDIF
+	PRINTL [999] 決定
+	INPUT
+
+	SIF RESULT == 999
+		RETURN LOCAL
+
+	IF RESULT >= 110
+		LOCAL %= 10
+		LOCAL += 10 * ((RESULT/10)%10)
+	ELSEIF RESULT >= 100
+		LOCAL = LOCAL /10 *10
+		LOCAL += RESULT%10
+	ELSEIF RESULT >= 0
+		LOCAL = RESULT
+	ENDIF
+	SIF LOCAL > ARG
+		LOCAL = ARG
+	SIF LOCAL < 0
+		LOCAL = 0
+	;ボタンの値とRESULTの値が異なり不自然なのでRESULTの値を消去
+	CLEARLINE 1
+LOOP 1
