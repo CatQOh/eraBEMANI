@@ -285,7 +285,13 @@ IF RESULT == 0
 	PRINTFORMW {DAY}日目に変更しました
 ELSEIF RESULT == 1
 	DO
-		PRINTFORML どれを変更しますか？　　現在の日付：{YEAR}年{MONTH}月{DAYS}日
+		PRINTFORM どれを変更しますか？　　現在の日付：
+		IF YEAR > 0
+			PRINTFORM {YEAR}
+		ELSE
+			PRINTFORM BC{ABS(YEAR)+1}
+		ENDIF
+		PRINTFORML 年{MONTH}月{DAYS}日(%DOW(ZELLER(YEAR,MONTH,DAYS))%)
 		PRINTL [0] - 年
 		PRINTL [1] - 月
 		PRINTL [2] - 日
@@ -296,10 +302,15 @@ ELSEIF RESULT == 1
 			RESTART
 		IF RESULT == 0
 			PRINTL 何年に変更しますか？値を入力してください
-			CALL INPUT_VALUE
+			CALL INPUT_YEAR
 			YEAR = RESULT
 			PRINTL
-			PRINTFORML {YEAR}年に変更しました
+			IF YEAR > 0
+				PRINTFORM {YEAR}
+			ELSE
+				PRINTFORM BC{ABS(YEAR)+1}
+			ENDIF
+			PRINTFORML 年に変更しました
 			PRINTL
 		ELSEIF RESULT == 1
 			PRINTL 何月に変更しますか？
@@ -445,118 +456,124 @@ ENDIF
 RESTART
 
 
-;値を電卓で入力する関数
-;一応汎用性は持たしているのでデバッグモード以外でも使える
-@INPUT_VALUE
+;年を入力するための関数
+@INPUT_YEAR
 
-;表示している値のための変数
-#DIM DYNAMIC DISPLAY
-;格納している値のための変数
-#DIM DYNAMIC MEMORY
-;演算子を管理する変数 1:＋ 2:－ 3:× 4:÷ 5:＾
-#DIM DYNAMIC OPERATOR
+;LOCALは表示される年
+;LOCAL:1は紀元前かどうか
+LOCAL = YEAR
+IF LOCAL > 0
+	LOCAL:1 = 0
+ELSE
+	LOCAL = ABS(LOCAL) + 1
+	LOCAL:1 = 1
+ENDIF
 
 DO
 	PRINTL
-	IF OPERATOR == 1
-		PRINTFORML  {MEMORY}＋
-	ELSEIF OPERATOR == 2
-		PRINTFORML  {MEMORY}－
-	ELSEIF OPERATOR == 3
-		PRINTFORML  {MEMORY}×
-	ELSEIF OPERATOR == 4
-		PRINTFORML  {MEMORY}÷
-	ELSEIF OPERATOR == 5
-		PRINTFORML  {MEMORY}＾
-	ELSE
-		PRINTL
-	ENDIF
-	PRINTFORML 【{DISPLAY}】
-	PRINTBUTTON "[ AC ]", "AC"
-	PRINTBUTTON "[C]", "C"
-	PRINTBUTTON "[^]", "^"
-	PRINTL 　◆キーボードでの入力方法◆
-	PRINT [7][8][9]
-	PRINTBUTTON "[/]", "/"
-	PRINTL 　数字は一度に入力することができますが、
-	PRINT [4][5][6]
-	PRINTBUTTON "[*]", "*"
-	PRINTL 　数字と記号はEnterキーで分けて入力してください。
-	PRINT [1][2][3]
-	PRINTBUTTON "[-]", "-"
-	PRINTL 　また、"Submit"などの命令は全て大文字か全て小文字
-	PRINT [0]
-	PRINTBUTTON "[ ＝ ]", "="
-	PRINTBUTTON "[+]", "+"
-	PRINTL 　もしくは頭文字のみでも入力できます。
-	PRINTBUTTON "[  Submit  ]", "Submit"
+	PRINT 【
+	SIF LOCAL:1
+		PRINT 紀元前
+	PRINTFORML %TOFULL(TOSTR(LOCAL))%年】
+	PRINTBUTTON "[+1]", "+1"
+	PRINTPLAIN  
+	PRINTBUTTON "[+10]", "+10"
+	PRINTPLAIN  
+	PRINTBUTTON "[+100]", "+100"
+	PRINTPLAIN  
+	PRINTBUTTON "[+1000]", "+1000"
 	PRINTL
-	INPUTS
-	IF RESULTS == "0" || TOINT(RESULTS) != 0
-		RESULT = TOINT(RESULTS)
-		;マイナスの値の入力は表示が0のときのみ有効
-		IF DISPLAY == 0
-			DISPLAY = RESULT
-		ELSEIF RESULT >= 0
-			;表示している桁数の計算
-			LOCAL = 1 + LOG10(ABS(DISPLAY))
-			;入力された桁数の計算
-			IF RESULT == 0
-				LOCAL:1 = 1
-			ELSE
-				LOCAL:1 = 1 + LOG10(RESULT)
-			ENDIF
-			;値が100京以上になるなら入力しなおし
-			SIF LOCAL + LOCAL:1 < 19
-				DISPLAY = DISPLAY * POWER(10,LOCAL:1) + SIGN(DISPLAY)*RESULT
-		ENDIF
-	ELSEIF RESULTS == "=" || RESULTS == "+" || RESULTS == "-" || RESULTS == "*" || RESULTS == "/" || RESULTS == "^"
-		IF OPERATOR == 0
-			MEMORY = DISPLAY
-		ELSEIF OPERATOR == 1
-			MEMORY += DISPLAY
-		ELSEIF OPERATOR == 2
-			MEMORY -= DISPLAY
-		ELSEIF OPERATOR == 3
-			;値を100京未満に抑える
-			SIF DISPLAY == 0 || MEMORY == 0 || (LOG10(ABS(DISPLAY))) + (LOG10(ABS(MEMORY))) < 17
-				MEMORY *= DISPLAY
-		ELSEIF OPERATOR == 4
-			SIF DISPLAY != 0
-				MEMORY /= DISPLAY
-		ELSEIF OPERATOR == 5
-			;値を100京未満に抑える
-			SIF MEMORY == 0 ||  DISPLAY*(1+LOG10(ABS(MEMORY))) < 18
-				MEMORY = POWER(MEMORY,DISPLAY)
-		ENDIF
-		IF RESULTS != "="
-			DISPLAY = 0
-		ELSE
-			DISPLAY = MEMORY
-			MEMORY = 0
-		ENDIF
-		IF RESULTS == "+"
-			OPERATOR = 1
-		ELSEIF RESULTS == "-"
-			OPERATOR = 2
-		ELSEIF RESULTS == "*"
-			OPERATOR = 3
-		ELSEIF RESULTS == "/"
-			OPERATOR = 4
-		ELSEIF RESULTS == "^"
-			OPERATOR = 5
-		ELSE
-			OPERATOR = 0
-		ENDIF
-	ELSEIF RESULTS == "C" || RESULTS == "c"
-		DISPLAY = 0
-	ELSEIF RESULTS == "AC" || RESULTS == "Ac" || RESULTS == "ac" || RESULTS == "A" || RESULTS == "a"
-		DISPLAY = 0
-		MEMORY = 0
-		OPERATOR = 0
-	ELSEIF RESULTS == "SUBMIT" || RESULTS == "Submit" || RESULTS == "submit" || RESULTS == "S" || RESULTS == "s"
-		RETURN DISPLAY
+	PRINTBUTTON "[-1]", "-1"
+	PRINTPLAIN  
+	PRINTBUTTON "[-10]", "-10"
+	PRINTPLAIN  
+	PRINTBUTTON "[-100]", "-100"
+	PRINTPLAIN  
+	PRINTBUTTON "[-1000]", "-1000"
+	PRINTL
+	PRINTL [ 0 ][ 1 ][ 2 ][ 3 ][ 4 ]
+	PRINTL [ 5 ][ 6 ][ 7 ][ 8 ][ 9 ]
+	IF LOCAL:1
+		PRINTBUTTON "[ AD/BC ]", "AD"
+	ELSE
+		PRINTBUTTON "[ AD/BC ]", "BC"
 	ENDIF
+	PRINTBUTTON "[  AC  ]", "AC"
+	PRINTBUTTON "[  OK  ]", "OK"
+	INPUTS
+	
+	IF RESULTS == "" || RESULTS == "OK"
+		IF LOCAL:1
+			RETURN 1-LOCAL
+		ELSE
+			RETURN LOCAL
+		ENDIF
+	ENDIF
+	
+	SIF RESULTS == "AC"
+		LOCAL = 0
+	SIF RESULTS == "AD"
+		LOCAL:1 = 0
+	SIF RESULTS == "BC"
+		LOCAL:1 = 1
+	SIF RESULTS == "AD/BC"
+		INVERTBIT LOCAL:1, 0
+	
+	SELECTCASE CHARATU(RESULTS, 0)
+		CASE "+"
+			REPLACE RESULTS, ESCAPE("+"), ""
+			IF TOINT(RESULTS) != 0
+				RESULT = TOINT(RESULTS)
+				IF LOCAL:1
+					LOCAL -= RESULT
+					IF LOCAL <= 0
+						LOCAL:1 = 0
+						LOCAL = ABS(LOCAL) + 1
+					ENDIF
+				ELSE
+					LOCAL += RESULT
+				ENDIF
+			ENDIF
+			CONTINUE
+		CASE "-"
+			REPLACE RESULTS, ESCAPE("-"), ""
+			IF TOINT(RESULTS) != 0
+				RESULT = TOINT(RESULTS)
+				IF LOCAL:1
+					LOCAL += RESULT
+				ELSE
+					LOCAL -= RESULT
+					IF LOCAL <= 0
+						LOCAL:1 = 1
+						LOCAL = ABS(LOCAL) + 1
+					ENDIF
+				ENDIF
+			ENDIF
+			CONTINUE
+	ENDSELECT
+	
+	SIF RESULTS != "0" && TOINT(RESULTS) == 0
+		CONTINUE
+	;見やすさから変数RESULTを使用
+	RESULT = TOINT(RESULTS)
+	
+	;入力値の桁数を計算
+	IF RESULT == 0
+		LOCAL:2 = 1
+	ELSE
+		LOCAL:2 = LOG10(RESULT) + 1
+	ENDIF
+	;表示されている値の桁数を計算
+	IF LOCAL == 0
+		LOCAL:3 = 1
+	ELSE
+		LOCAL:3 = LOG10(RESULT) + 1
+	ENDIF
+	;18桁に抑える
+	SIF LOCAL:2 + LOCAL:3 > 18
+		CONTINUE
+	LOCAL = LOCAL * POWER(10,LOCAL:2) + RESULT
+	
 LOOP 1
 
 

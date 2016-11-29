@@ -1,0 +1,106 @@
+﻿@ZELLER(年, 月, 日)
+#FUNCTION
+#DIM 年
+#DIM 月
+#DIM 日
+;曜日を求める公式(ツェラーの公式)
+;ARG=年 ARG:1=月 ARG:2=日  に対して「1:日,2:月,3:火,4:水,5:木,6:金,0:土」で返す
+;Enter:ARG変数を「年」「月」「日」に置き換え
+
+;1月と2月は前年の13月と14月として扱う
+IF 月 < 3
+	年--
+	月 += 12
+ENDIF
+
+;年/100に床関数を通したものをLOCAL:1とする
+;負の数の床関数は面倒
+LOCAL:1 = 年/100
+SIF 年 < 0 && 年%100 != 0
+	LOCAL:1--
+
+;年と100を法として合同である値をLOCAL:2とする
+;負の数の剰余も面倒
+;(-34)%10 は -4と出る
+LOCAL:2 = 年%100
+SIF 年 < 0 && 年%100 != 0
+	LOCAL:2 = 100 + LOCAL:2
+
+;グレゴリオ暦かユリウス暦かによる補正をLOCAL:3とする
+IF GREGORIAN(年, 月, 日)
+	LOCAL:3 = 5* LOCAL:1 + LOCAL:1 /4
+ELSE
+	LOCAL:3 = 6* LOCAL:1 +5
+ENDIF
+
+;ユリウス暦を間違った運用をしていた期間の補正をLOCAL:4とする
+SELECTCASE 年
+	CASE -37, -34, -33, -31 TO -26, -24, -23, -20, 0 TO 3
+		LOCAL:4 = 1
+	CASE -25, -22, -21, -19 TO -14, -12, -11, -8, -4 TO -1
+		LOCAL:4 = 2
+	CASE -13, -10, -9, -7 TO -5
+		LOCAL:4 = 3
+	CASE -44
+		LOCAL:4 = 6
+	CASEELSE
+		LOCAL:4 = 0
+ENDSELECT
+
+;求める値をLOCALとおく
+;Enter:ウィキペディア風に括弧閉じ
+LOCAL = LOCAL:2 + (LOCAL:2 /4) + (26*(1+月)/10) + 日 + LOCAL:3 + LOCAL:4
+LOCAL %= 7
+
+RETURNF LOCAL
+
+
+@GREGORIAN(年, 月, 日)
+#FUNCTION
+#DIM 年
+#DIM 月
+#DIM 日
+;ARG年 ARG:1月 ARG:2日  にグレゴリオ暦が使われているか
+;使われているなら1、そうでないなら0
+;グレゴリオ暦は1582年10月15日から施行
+;こっちもARGを年月日で置き換え
+
+IF 年 > 1582
+	RETURNF 1
+ELSEIF 年 == 1582
+	IF 月 > 10
+		RETURNF 1
+	ELSEIF 月 == 10
+		IF 日 >= 15
+			RETURNF 1
+		ELSE
+			RETURNF 0
+		ENDIF
+	ELSE
+		RETURNF 0
+	ENDIF
+ELSE
+	RETURNF 0
+ENDIF
+
+
+@DOW(ARG)
+#FUNCTIONS
+;DOWはday of week(曜日)の略
+;「1:日,2:月,3:火,4:水,5:木,6:金,0:土」を出力する
+SELECTCASE ARG
+	CASE 1
+		RETURNF "日"
+	CASE 2
+		RETURNF "月"
+	CASE 3
+		RETURNF "火"
+	CASE 4
+		RETURNF "水"
+	CASE 5
+		RETURNF "木"
+	CASE 6
+		RETURNF "金"
+	CASE 0
+		RETURNF "土"
+ENDSELECT
