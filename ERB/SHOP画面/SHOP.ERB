@@ -342,14 +342,20 @@ LOCALS = 　
 LOCALS:1 = <button value='200' title='奴隷たちの様々な情報を表示します'>[200] - 能力表示 </button>
 ;奴隷が一人でもいれば表示
 IF CHARANUM > 1
-	LOCALS:2 = <button value='201' title='奴隷たちの能力を上昇させます'>[201] - 能力上昇 </button>
+	LOCALS:2 = <button value='201' title='キャラの能力を上昇させます'>[201] - 能力上昇 </button>
 ELSEIF FLAG:ゲームモード != 8
 	LOCALS:2 = <font color='gray'><nonbutton title='[301] - 奴隷購入 からキャラを購入してください'>[---] - 能力上昇 </nonbutton></font>
 ELSE
 	LOCALS:2 = <font color='gray'><nonbutton title='調教可能なキャラが居ません'>[---] - 能力上昇 </nonbutton></font>
 ENDIF
 ;TARGETの他に調教できるキャラがいれば表示
-IF LOCAL
+IF FLAG:ゲームモード == 7
+		IF TALENT:妊娠 || TALENT:育児中
+			LOCALS:3 = <font color='gray'><nonbutton title='%CALLNAME:TARGET%が身篭っているため、できません'>[---] - 一転攻勢 </nonbutton></font>
+		ELSE
+			LOCALS:3 = <button value='202' title='%CALLNAME:MASTER%と%CALLNAME:TARGET%の受け攻めを変えます'>[202] - 一転攻勢 </button>
+		ENDIF
+ELSEIF LOCAL
 	LOCALS:3 = <button value='202' title='調教対象を変更します'>[202] - 奴隷変更 </button>
 ELSE
 	IF CHARANUM == 1 && FLAG:ゲームモード == 8
@@ -372,7 +378,7 @@ ELSE
 ENDIF
 
 IF FLAG:ゲームモード == 7
-	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2
+	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3
 ELSE
 	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4
 ENDIF
@@ -495,6 +501,13 @@ SELECTCASE RESULT
 	;奴隷変更
 	CASE 202
 		SELECTCASE FLAG:ゲームモード
+			CASE 7
+				VARSET PREG:TARGET, 0
+				SWAPCHARA TARGET, MASTER
+				TALENT:MASTER:親愛 = 0
+				TALENT:親愛 = 1
+				MASTER = 0
+				TARGET = 1
 			CASE IS != 7
 				SIF LOCAL
 					CALL CHANGE_TARGET, LOCAL
