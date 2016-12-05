@@ -14,60 +14,37 @@
 
 ;次のような流れで導き出す
 ;降水量Xミリ以上になる確率(パーセント)を算出する関数F(X)をパラメータA,Bを用いて、
-;F(X) = 100 / (1 + B*X^A) とおく
-;この関数は必ず定点(0,100)を通る(降水量0ミリ以上になる確率は100パーセント)
-;また、F(X)→0 (X→∞) である
+;F(X) = AX + B  (X>0) とおく
+;ただし、例外としてF(0)=100とする(降水量0ミリ以上になる確率は100パーセント)
+;一般に F(1)>F(10) なのでAは負の値をとるため、Xを大きくするとF(X)はマイナスになってしまうが、
+;SELECTCASEの挙動から問題ない
 ;この関数をおいたあと、気象庁から東京の1981年～2010年の1日ごとの
 ;1ミリ以上になる日数(X=1のときのF(1)の値)と10ミリ以上になる日数(X=10のときのF(10)の値)を取得する
 ;例えば1月1日は1ミリ以上になる日数が0.12日なので、12パーセントの確率で1ミリ以上になると考える
 ;平面座標(X,F(X))における2点を定めると関数F(X)は一意に定まる(パラメータA,Bの値が確定する)
 ;次の連立方程式でA,Bの値を求める
-;	F(1)  = 100 / (1 + B)      …①
-;	F(10) = 100 / (1 + B*10^A) …②
-;①よりBの値を求める
-;この値を②に代入して、
-;	B*10^A =  100/F(10) - 1
-;	  10^A = (100/F(10) - 1) / B
-;	     A = LOG10( (100/F(10) - 1) / B )
-;関数が確定したあと、Xミリ以上になる確率を1ミリごとに計算
-;あとはRAND:100で雨量を算出
+;	F(1)  =   A + B …①
+;	F(10) = 10A + B …②
+;(②－①)÷9よりAの値を求める
+;Aの値を出したら、①より
+;	B = F(1) - A
 
 ;雨量のサンプルを取得して代入
 CALL TOKYO_STYLE_RAINY_DAY
 F1 = RESULT
 F10 = RESULT:1
 
-;はじめにBの値を求める
-P_B = 100/F1 - 1
+;はじめにAの値を1000倍で求める
+P_A = 1000 * (F10 - F1) /9
 
-;Bの値を用いてAの値を求める
-;ただし、整数しか使えない都合でAの値は10倍して使う
-;10*LOG10(X) = LOG10(X^10) を利用
-P_A = LOG10(POWER( (100/F10 -1 )/P_B, 10 ))
+;Aの値を用いてBの値を1000倍で求める
+P_B = 1000*F1 - P_A
 
 ;パラメータA,B(変数P_A,P_B)が求まったので具体的に計算
-;F(X) = 100000 / (1000+1000*B*X^A)
-;分母・分子をそれぞれ1000倍して計算
-;また、X^A = EXP(A*LOG(X)) （LOGは自然対数）と、
-;EXP(X) = 1 + X + X^2/2! + X^3/3! + … + X^N/N! +… （指数関数のテイラー展開）を用いる
+;F(X) = (P_A*X + P_B) / 1000
+;パラメータA,Bが1000倍になっているので、最後に1000で割る
 FOR COUNT, 1, 51
-	;1000*B*X^A = 1000*B*EXP(A*LOG(X)) より、
-	;A*LOG(X)の1000倍の値を求めてそれをLOCALとする
-	;HLOG(X)はXの自然対数の100倍
-	;P_Aが本来の10倍でとってあるのでLOCALは本来の1000倍
-	LOCAL = P_A * HLOG(COUNT)
-	
-	;次に 1000*B*EXP(LOCAL/1000) を計算しそれをLOCAL:1に代入
-	;テイラー展開の4乗の項まで計算
-	;LOCAL=3000でも耐えられる
-	LOCAL:1 = 1000 * P_B
-	LOCAL:1 += 1000 * P_B * LOCAL / 1000
-	LOCAL:1 += 1000 * P_B * POWER(LOCAL,2) / POWER(1000,2) / 2
-	LOCAL:1 += 1000 * P_B * POWER(LOCAL,3) / POWER(1000,3) / 6
-	LOCAL:1 += 1000 * P_B * POWER(LOCAL,4) / POWER(1000,4) / 24
-	
-	;最後に F(X) = 100000 / (1000+LOCAL:1) を求めてR_MM:Xに代入
-	R_MM:COUNT = 100000 / (1000+LOCAL:1)
+	R_MM:COUNT = (P_A * COUNT + P_B)/1000
 NEXT
 
 ;R_MM:1～R_MM:50の値が揃ったのであとはその分布に従い雨量を出す
@@ -725,111 +702,3 @@ SELECTCASE MONTH
 ENDSELECT
 
 RETURN LOCAL, LOCAL:1
-
-
-@HLOG(ARG)
-#FUNCTION
-;ARGの自然対数の100倍を返す式中関数
-;とりあえず50まで
-SELECTCASE ARG
-	CASE IS <= 1
-		RETURNF 0
-	CASE 2
-		RETURNF 69
-	CASE 3
-		RETURNF 110
-	CASE 4
-		RETURNF 139
-	CASE 5
-		RETURNF 161
-	CASE 6
-		RETURNF 179
-	CASE 7
-		RETURNF 195
-	CASE 8
-		RETURNF 208
-	CASE 9
-		RETURNF 220
-	CASE 10
-		RETURNF 230
-	CASE 11
-		RETURNF 240
-	CASE 12
-		RETURNF 248
-	CASE 13
-		RETURNF 256
-	CASE 14
-		RETURNF 264
-	CASE 15
-		RETURNF 271
-	CASE 16
-		RETURNF 277
-	CASE 17
-		RETURNF 283
-	CASE 18
-		RETURNF 289
-	CASE 19
-		RETURNF 294
-	CASE 20
-		RETURNF 300
-	CASE 21
-		RETURNF 304
-	CASE 22
-		RETURNF 309
-	CASE 23
-		RETURNF 314
-	CASE 24
-		RETURNF 318
-	CASE 25
-		RETURNF 322
-	CASE 26
-		RETURNF 326
-	CASE 27
-		RETURNF 330
-	CASE 28
-		RETURNF 333
-	CASE 29
-		RETURNF 337
-	CASE 30
-		RETURNF 340
-	CASE 31
-		RETURNF 343
-	CASE 32
-		RETURNF 347
-	CASE 33
-		RETURNF 350
-	CASE 34
-		RETURNF 353
-	CASE 35
-		RETURNF 356
-	CASE 36
-		RETURNF 358
-	CASE 37
-		RETURNF 361
-	CASE 38
-		RETURNF 364
-	CASE 39
-		RETURNF 366
-	CASE 40
-		RETURNF 369
-	CASE 41
-		RETURNF 371
-	CASE 42
-		RETURNF 374
-	CASE 43
-		RETURNF 376
-	CASE 44
-		RETURNF 378
-	CASE 45
-		RETURNF 381
-	CASE 46
-		RETURNF 383
-	CASE 47
-		RETURNF 385
-	CASE 48
-		RETURNF 387
-	CASE 49
-		RETURNF 389
-	CASEELSE
-		RETURNF 391
-ENDSELECT
