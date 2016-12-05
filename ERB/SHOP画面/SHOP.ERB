@@ -13,7 +13,8 @@ ENDIF
 FLAG:曜日 = ZELLER(YEAR,MONTH,DAYS)
 
 ;ゲーム内で表示されるショップ画面
-;□XXXX年XX月XX日(曜日) X日目(昼夜) XXX(月齢.XXX) 気温:XX.X℃ X周目 MODE:XXXXX
+;□XXXX年XX月XX日(曜日) X日目(昼夜) X周目 MODE:XXXXX
+;　天気:XX 気温:XX.X℃ XXX(月齢.XXX) 
 ;　所持金:$XXXX 昨日の所持金:$XXXX XXXX 変動価格
 ;　難易度:XXXX
 ;　総奴隷数:X/陥落済み:X
@@ -43,6 +44,50 @@ IF TIME == 0
 ELSE
 	PRINT (夜) 
 ENDIF
+
+SIF FLAG:周回数 > 1
+	PRINTFORM  {FLAG:周回数}周目
+SELECTCASE FLAG:ゲームモード
+	CASE 0
+		PRINT  MODE:STANDARD
+	CASE 7
+		PRINT  MODE:新婚生活
+	CASE 8
+		PRINT  MODE:段位認定 
+		CALL GRADE, FLAG:選択段位
+	CASE 9
+		PRINT  MODE:PREMIUM FREE
+ENDSELECT
+PRINTL 
+
+;気温の算出
+SIF FLAG:気温 == 0
+	CALL TEMPERATURE
+
+PRINT 　天気:
+SELECTCASE FLAG:天気
+	CASE 1
+		;気温が上がっていれば快晴表示
+		IF FLAG:気温-前の昼の気温 >= 1
+			PRINT 快晴
+		ELSE
+			PRINT 晴れ
+		ENDIF
+	CASE 2
+		PRINT 曇り
+	CASE 3
+		PRINT 雨
+	CASE 4
+		PRINT 大雨
+	CASE 5
+		PRINT 雷雨
+	CASE 6
+		PRINT 雪
+	CASE 7
+		PRINT 大雪
+ENDSELECT
+
+PRINTFORM  気温:{FLAG:気温/10}.{ABS(FLAG:気温)%10}℃ 
 
 SELECTCASE 月齢
 	CASE 0, 1
@@ -78,26 +123,6 @@ SELECTCASE 月齢
 ENDSELECT
 
 PRINTFORM (月齢.{月齢})
-
-;気温の算出
-SIF FLAG:気温 == 0
-	CALL TEMPERATURE
-
-PRINTFORM  気温:{FLAG:気温/10}.{ABS(FLAG:気温)%10}℃
-
-SIF FLAG:周回数 > 1
-	PRINTFORM  {FLAG:周回数}周目
-SELECTCASE FLAG:ゲームモード
-	CASE 0
-		PRINT  MODE:STANDARD
-	CASE 7
-		PRINT  MODE:新婚生活
-	CASE 8
-		PRINT  MODE:段位認定 
-		CALL GRADE, FLAG:選択段位
-	CASE 9
-		PRINT  MODE:PREMIUM FREE
-ENDSELECT
 PRINTL 
 
 ;段位認定のときのみ表示を変える
