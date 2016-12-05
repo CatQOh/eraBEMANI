@@ -102,6 +102,7 @@ SELECTCASE TIME
 				;気温が下がってない場合、曇りにする
 				IF 前の昼の気温 <= FLAG:気温
 					FLAG:天気 = 2
+					FLAG:降水量 = 0
 				;気温が下がった場合、雨,雪をキープし降水量を増やす
 				ELSE
 					FLAG:降水量 += RAND:(前の昼の気温-FLAG:気温)
@@ -123,7 +124,7 @@ SELECTCASE MONTH
 		降雪確率補正 = 5
 ENDSELECT
 
-;雨→雪の派生処理 雪→雨の派生は上で行うため、一定以下の気温だと乱数次第でずっと雪が続く
+;雨,雪の分岐処理 一定以下の気温だと乱数次第でずっと雪が続く
 IF FLAG:天気 >= 3
 	SELECTCASE FLAG:気温
 		;気温0℃以下は雪
@@ -147,8 +148,13 @@ IF FLAG:天気 >= 3
 					;7月～9月は0.5℃ つまり確定時以外降らない
 					IF FLAG:気温*5/降雪確率補正 <= 降雪確率補正
 						;上記の気温以下なら、気温が低ければ低いほど雪の確率アップ
-						SIF RAND:(FLAG:気温) < 降雪確率補正
+						IF RAND:(FLAG:気温) < 降雪確率補正
 							FLAG:天気 = 4
+						ELSE
+							FLAG:天気 = 3
+						ENDIF
+					ELSE
+						FLAG:天気 = 3
 					ENDIF
 			ENDSELECT
 	ENDSELECT
