@@ -1,15 +1,9 @@
 ﻿;-------------------------------------------------
-;フェラチオ
-;奉仕系コマンド、レベル2
+;フェラさせる(ドラゴン)
+;龍姦コマンド
 ;-------------------------------------------------
-@USERCOM_ABLE81
-;フェラチオ実行判定
-;調教者がペニス無いとダメ
-SIF !PENIS(PLAYER)
-	RETURN 0
-;猫舌の奴隷の場合は技巧Lv2以上必要
-SIF TALENT:猫舌 && ABL:技巧 < 2
-	RETURN 0
+@USERCOM_ABLE201
+;フェラさせる(ドラゴン)実行判定
 ;ボールギャグ使用中は不可
 SIF TEQUIP:ボールギャグ
 	RETURN 0
@@ -19,10 +13,19 @@ SIF TEQUIP:縄
 ;触手調教中はダメ
 SIF TEQUIP:触手
 	RETURN 0
+;風呂場だとダメ
+SIF TEQUIP:お風呂場
+	RETURN 0
+;PLAYERがドラゴン使い持ってないとダメ
+SIF !TALENT:PLAYER:ドラゴン使い
+	RETURN 0
+;PLAYERが助手で未陥落だとダメ
+SIF PLAYER == ASSI && !CFLAG:PLAYER:陥落
+	RETURN 0
 
 RETURN 1
 
-@実行判定81
+@実行判定201
 ;-------------------------------------------------
 ;実行判定処理
 ;-------------------------------------------------
@@ -89,8 +92,8 @@ IF TALENT:汚臭鈍感
 ENDIF
 ;汚臭敏感
 IF TALENT:汚臭敏感
-	LOCAL -= 7
-	PRINTFORM -汚臭敏感(7)
+	LOCAL -= 10
+	PRINTFORM -汚臭敏感(10)
 ENDIF
 ;献身的
 IF TALENT:献身的
@@ -113,45 +116,10 @@ IF TALENT:親愛 && PLAYER == MASTER
 	PRINTFORM +親愛(10)
 ENDIF
 
-LOCAL:1 = 0
-;愛液の汚れ
-SIF GETBIT(STAIN:PLAYER:ペニス, 0)
-	LOCAL:1 += 1
-;精液の汚れ
-SIF GETBIT(STAIN:PLAYER:ペニス, 2)
-	LOCAL:1 += 4
-;アナルの汚れ
-SIF GETBIT(STAIN:PLAYER:ペニス, 3)
-	LOCAL:1 += 7
-;母乳汚れ
-SIF GETBIT(STAIN:PLAYER:ペニス, 4)
-	LOCAL:1 += 1
-;尿
-SIF GETBIT(STAIN:PLAYER:ペニス, 7)
-	LOCAL:1 += 7
-
-SIF TALENT:汚れ無視
-	LOCAL:1 /= 3
-SIF TALENT:潔癖症
-	LOCAL:1 += 2
-
-;汚れあり
-IF LOCAL:1
-	LOCAL -= LOCAL:1
-	IF TALENT:汚れ無視
-		PRINT -汚れあり、汚れ無視
-	ELSEIF TALENT:潔癖症
-		PRINT -汚れあり、潔癖症
-	ELSE
-		PRINT -汚れあり
-	ENDIF
-	PRINTFORM ({LOCAL:1})
-ENDIF
-
-;合計を表示(24以上で実行)
+;合計を表示(42以上で実行)
 PRINTFORM  = {LOCAL}
 
-LOCAL:2 = 24
+LOCAL:2 = 42
 SELECTCASE LOCAL
 	CASE IS < LOCAL:2
 		PRINT  < 
@@ -170,58 +138,10 @@ ELSE
 	RETURN 1
 ENDIF
 
-@COM81
-;-------------------------------------------------
-;特殊派生処理
-;-------------------------------------------------
-;前回の調教が3Pのとき3Pへ
-TFLAG:乱交継続中 = 0
-IF PREVCOMS == "3P"
-	CALL USERCOM_ABLE500
-	IF RESULT
-		TFLAG:乱交継続中 = 1
-		JUMP COM500
-	ENDIF
-;調教者が前回:助手で今回:主人か、前回:主人で今回:助手のとき
-ELSEIF TFLAG:前コマンド実行者 != PLAYER
-	;前回の調教が正常位か後背位か背面座位かアナルセックスのときは3Pへ
-	SELECTCASE PREVCOMS
-		CASE "正常位", "後背位", "正常位アナル", "後背位アナル", "背面座位", "背面座位アナル"
-			CALL USERCOM_ABLE500
-			SIF RESULT
-				JUMP COM500
-	ENDSELECT
-ENDIF
+@COM201
+PRINTL フェラさせる(ドラゴン)
 
-;前回の調教が二本フェラのとき二本フェラへ
-IF PREVCOMS == "二本フェラ"
-	CALL USERCOM_ABLE511
-	SIF RESULT
-		JUMP COM511
-;調教者が前回:助手で今回:主人か、前回:主人で今回:助手のとき
-ELSEIF TFLAG:前コマンド実行者 != PLAYER
-	;前回の調教がフェラチオだと二本フェラに
-	IF PREVCOMS == "フェラチオ"
-		CALL USERCOM_ABLE511
-		SIF RESULT
-			JUMP COM511
-	ENDIF
-ENDIF
-
-;前回と今回の調教者が同じ
-IF PLAYER == TFLAG:前コマンド実行者
-	;前回の調教がクンニかフェラするかシックスナインだとシックスナインに
-	SELECTCASE PREVCOMS
-		CASE "クンニ", "フェラする", "シックスナイン" 
-			CALL USERCOM_ABLE501
-			SIF RESULT
-				JUMP COM501
-	ENDSELECT
-ENDIF
-
-PRINTL フェラチオ
-
-CALL 実行判定81
+CALL 実行判定201
 SIF !RESULT
 	RETURN 0
 
@@ -306,28 +226,23 @@ ENDSELECT
 SIF TALENT:舌使い
 	TIMES LOCAL , 2.00
 
-;再装填処理中は射精ゲージは20分の1に
-SIF CFLAG:PLAYER:賢者タイム > 0
-	LOCAL /= 20
-
-BASE:PLAYER:射精 += LOCAL
+BASE:PLAYER:ドラゴン射精 += LOCAL
 
 ;-------------------------------------------------
 ;ソース追加処理
 ;-------------------------------------------------
 ;消費体力、気力
-LOSEBASE:体力 += 30
-LOSEBASE:気力 += 70
+LOSEBASE:体力 += 50
+LOSEBASE:気力 += 80
 
-SOURCE:情愛 = 100
+SOURCE:情愛 = 50
 SOURCE:性行動 = 800
-SOURCE:達成 = 150
-SOURCE:屈従 = 700
-SOURCE:逸脱 = 200
-SOURCE:反感 = 200
-
-;上のほうで計算した汚れデータ
-SOURCE:不潔 = LOCAL:1*40+80
+SOURCE:達成 = 200
+SOURCE:屈従 = 1000
+SOURCE:恐怖 = 500
+SOURCE:逸脱 = 500
+SOURCE:反感 = 300
+SOURCE:不潔 = 300
 
 ;-------------------------------------------------
 ;特殊ソース処理
@@ -344,10 +259,10 @@ CALL SOURCE_CHECK_CVAB
 ;-------------------------------------------------
 ;射精チェック
 ;-------------------------------------------------
-CALL SAMEN_CHECK, 4
+CALL SAMEN_CHECK_DRAGON
 CALL SAMEN_CHECK_T, 0
 
-CALL SAMEN_SHOOT, 4, NOWEX:PLAYER:射精
+CALL SAMEN_SHOOT_DRAGON, NOWEX:PLAYER:ドラゴン射精
 CALL SAMEN_SHOOT_T, 0, NOWEX:射精
 
 ;-------------------------------------------------
@@ -357,39 +272,18 @@ CALL SAMEN_SHOOT_T, 0, NOWEX:射精
 ;	WAIT
 
 ;-------------------------------------------------
-;汚れの処理
-;-------------------------------------------------
-;射精に関係なく行われる処理はここから
-;奉仕精神LV2以上、技巧LV2以上なら汚れをなめ取る
-SIF ABL:奉仕精神 >= 2 && ABL:技巧 >= 2
-	STAIN:PLAYER:ペニス = 2
-
-;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
 ;フェラ経験
-PRINTL フェラ経験+1
-EXP:フェラ経験++
+PRINTL フェラ経験+2
+EXP:フェラ経験 += 2
 
 CALL EXPUP, 2, 2
-
-;愛情経験
-IF (TALENT:恋慕 || TALENT:親愛) && PLAYER == MASTER
-	PRINTL 愛情経験+1
-	EXP:愛情経験++
-ENDIF
 
 ;奴隷が猫舌持ちの場合は、調教者に嗜虐快楽経験を追加
 IF TALENT:猫舌
 	EXP:嗜虐快楽経験++
 	PRINTL 嗜虐快楽経験+1
-ENDIF
-
-;依存度補正値(主人かつ恋慕、淫乱、服従で1。親愛、娼婦、隷属で2）
-IF (TALENT:恋慕 || TALENT:淫乱 || TALENT:服従) && PLAYER == MASTER
-	TFLAG:依存度補正 += 1
-ELSEIF (TALENT:親愛 || TALENT:娼婦 || TALENT:隷属) && PLAYER == MASTER
-	TFLAG:依存度補正 += 2
 ENDIF
 
 TFLAG:奉仕快楽 = 1

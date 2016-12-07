@@ -651,16 +651,20 @@ RETURN LOCAL
 ;---------------------------------------------------------
 ;射精処理
 ;---------------------------------------------------------
-@SAMEN_SHOOT, ARG, ARG:1, ARG:2 = -1, ARG:3 = -1
+@SAMEN_SHOOT, 射精先, 射精量, 射精したキャラ = -1, 射精されるキャラ = -1
+#DIM 射精先
+#DIM 射精量
+#DIM 射精したキャラ
+#DIM 射精されるキャラ
 ;ARG:0 = 射精先
 ;ARG:1 = 射精量
 ;ARG:2 = 射精したキャラ
 ;ARG:3 = 射精されるキャラ
-SIF ARG:2 == -1
-	ARG:2 = PLAYER
-SIF ARG:3 == -1
-	ARG:3 = TARGET
-SIF ARG:1 <= 0
+SIF 射精したキャラ == -1
+	射精したキャラ = PLAYER
+SIF 射精されるキャラ == -1
+	射精されるキャラ = TARGET
+SIF 射精量 <= 0
 	RETURN 0
 
 ;ARG:0内訳
@@ -679,39 +683,39 @@ SIF ARG:1 <= 0
 ;11 = 3P助手射精
 
 ;コマンドごとの分岐
-SELECTCASE ARG
+SELECTCASE 射精先
 ;通常セックス系
 	CASE 1
 		;主人による奴隷への中田氏
-		IF ARG:2 == MASTER
+		IF 射精したキャラ == MASTER
 			IF !TEQUIP:MASTER:コンドーム
 				SETBIT TFLAG:中出し, 0
-				PRINTFORML 膣内射精経験+{ARG:1}
-				EXP:膣射経験 += ARG:1
-				PREG:0 += ARG:1
+				PRINTFORML 膣内射精経験+{射精量}
+				EXP:膣射経験 += 射精量
+				PREG:0 += 射精量
 				CFLAG:主人からの膣射経験++
 				中出し人数:MASTER:(NO:TARGET)++
 				中出され人数:(NO:MASTER)++
 				;妊娠していないのであれば中田氏時の恐怖判定等
 				SIF !TALENT:妊娠
-					CALL SAMEN_SHOOT_SOURCE, ARG:2
+					CALL SAMEN_SHOOT_SOURCE, 射精したキャラ
 				;ビデオ撮影中はボーナスカウント
 				SIF TEQUIP:ビデオカメラ
 					VIDEOBONUS:0++
 			ENDIF
 		;助手による奴隷への中田氏
-		ELSEIF ARG:2 == ASSI
+		ELSEIF 射精したキャラ == ASSI
 			IF !TEQUIP:ASSI:コンドーム
 				SETBIT TFLAG:中出し, 0
-				PRINTFORML 膣内射精経験+{ARG:1}
-				EXP:TARGET:膣射経験 += ARG:1
-				PREG:1 += ARG:1
+				PRINTFORML 膣内射精経験+{射精量}
+				EXP:TARGET:膣射経験 += 射精量
+				PREG:1 += 射精量
 				CFLAG:助手からの膣射経験++
 				中出し人数:ASSI:(NO:TARGET)++
 				中出され人数:(NO:ASSI)++
 				;妊娠していないのであれば中田氏時の恐怖判定等
 				SIF TALENT:妊娠 == 0
-					CALL SAMEN_SHOOT_SOURCE, ARG:2
+					CALL SAMEN_SHOOT_SOURCE, 射精したキャラ
 				;ビデオ撮影中はボーナスカウント
 				SIF TEQUIP:ビデオカメラ
 					VIDEOBONUS:2++
@@ -719,7 +723,7 @@ SELECTCASE ARG
 		ENDIF
 	;アナル射精
 	CASE 2
-		IF ARG:2 == MASTER
+		IF 射精したキャラ == MASTER
 			IF !TEQUIP:MASTER:コンドーム
 				SETBIT TFLAG:中出し, 1
 				CFLAG:主人からの腸射経験++
@@ -729,7 +733,7 @@ SELECTCASE ARG
 				SIF TEQUIP:ビデオカメラ
 					VIDEOBONUS:1++
 			ENDIF
-		ELSEIF ARG:2 == ASSI
+		ELSEIF 射精したキャラ == ASSI
 			IF !TEQUIP:ASSI:コンドーム
 				SETBIT TFLAG:中出し, 1
 				CFLAG:助手からの腸射経験++
@@ -742,11 +746,11 @@ SELECTCASE ARG
 		ENDIF
 	;手淫
 	CASE 3
-		SIF ARG:2 == MASTER
+		SIF 射精したキャラ == MASTER
 			CFLAG:手で射精させた経験++
 	;フェラ
 	CASE 4
-		IF ARG:2 == MASTER || SELECTCOMS == "ダブルフェラ"
+		IF 射精したキャラ == MASTER || SELECTCOMS == "ダブルフェラ"
 			IF !TEQUIP:MASTER:コンドーム
 				;奉仕精神LV2以上、技巧LV2以上なら汚れをなめ取る（ボールギャグ使用時は除く）
 				IF ABL:技巧 >= 2 && ABL:奉仕精神 >= 2
@@ -764,41 +768,41 @@ SELECTCASE ARG
 		ENDIF
 	;パイズリ
 	CASE 5
-		SIF ARG:2 == MASTER || SELECTCOMS == "ダブルパイズリ"
+		SIF 射精したキャラ == MASTER || SELECTCOMS == "ダブルパイズリ"
 			CFLAG:胸で射精させた経験++
 	;その他奉仕
 	CASE 6
 		;
 	;助手を犯すで射精
 	CASE 7
-		IF ARG:2 == MASTER
+		IF 射精したキャラ == MASTER
 			IF SEX(ASSI) == 1
 				IF !TEQUIP:MASTER:コンドーム
 					SETBIT TFLAG:中出し, 3
-					PRINTFORML 精液経験+{ARG:1}(%CALLNAME:ASSI%)
-					EXP:ASSI:精液経験 += ARG:1
+					PRINTFORML 精液経験+{射精量}(%CALLNAME:ASSI%)
+					EXP:ASSI:精液経験 += 射精量
 				ENDIF
 			ELSE
 				IF !TEQUIP:MASTER:コンドーム
 					SETBIT TFLAG:中出し, 2
-					PRINTFORML 精液経験+{ARG:1}(%CALLNAME:ASSI%)
-					EXP:ASSI:精液経験 += ARG:1
-					PRINTFORML 膣内射精経験+{ARG:1}(%CALLNAME:ASSI%)
-					EXP:膣射経験 += ARG:1
-					PREG:ASSI:0 += ARG:1
+					PRINTFORML 精液経験+{射精量}(%CALLNAME:ASSI%)
+					EXP:ASSI:精液経験 += 射精量
+					PRINTFORML 膣内射精経験+{射精量}(%CALLNAME:ASSI%)
+					EXP:膣射経験 += 射精量
+					PREG:ASSI:0 += 射精量
 				ENDIF
 			ENDIF
 		ENDIF
 	;クンニ
 	CASE 8
-		SIF ARG:2 == MASTER
+		SIF 射精したキャラ == MASTER
 			CFLAG:口で射精させた経験++
 	;3P助手射精
 	CASE 11
 		;
 ENDSELECT
 
-IF ARG:2 == MASTER
+IF 射精したキャラ == MASTER
 	SELECTCASE SELECTCOMS
 		CASE "キスする"
 			CFLAG:キスで射精させた経験++
@@ -812,39 +816,38 @@ IF ARG:2 == MASTER
 ENDIF
 
 ;射精回数カウント
-EX:(ARG:2):射精++
-NOWEX:(ARG:2):射精 = ARG:1
+EX:(射精したキャラ):射精++
 
 ;助手に射精した時以外は奴隷の精液経験増加
-IF ARG != 7
-	PRINTFORML 精液経験+{ARG:1}
-	EXP:精液経験 += ARG:1
+IF 射精先 != 7
+	PRINTFORML 精液経験+{射精量}
+	EXP:精液経験 += 射精量
 ENDIF
 ;ダブルフェラ、ダブルパイズリ時、助手を犯す時は助手の精液経験も増加
-IF SELECTCOMS == "ダブルフェラ" || SELECTCOMS == "ダブルパイズリ" || ARG == 7
-	PRINTFORML 精液経験+{ARG:1}(%CALLNAME:ASSI%)
-	EXP:ASSI:精液経験 += ARG:1
+IF SELECTCOMS == "ダブルフェラ" || SELECTCOMS == "ダブルパイズリ" || 射精先 == 7
+	PRINTFORML 精液経験+{射精量}(%CALLNAME:ASSI%)
+	EXP:ASSI:精液経験 += 射精量
 ENDIF
 
-PRINTFORML 射精経験+{ARG:1}(%CALLNAME:(ARG:2)%)
-EXP:(ARG:2):射精経験 += ARG:1
+PRINTFORML 射精経験+{射精量}(%CALLNAME:(射精したキャラ)%)
+EXP:(射精したキャラ):射精経験 += 射精量
 
 ;精液汚れの設定
-SETBIT STAIN:(ARG:2):ペニス, 2
+SETBIT STAIN:(射精したキャラ):ペニス, 2
 
-BASE:(ARG:2):射精 -= MAXBASE:(ARG:2):射精*ARG:1
-SIF BASE:(ARG:2):射精 >= MAXBASE:(ARG:2):射精
-	BASE:(ARG:2):射精 = MAXBASE:(ARG:2):射精-1
+BASE:(射精したキャラ):射精 -= MAXBASE:(射精したキャラ):射精*射精量
+SIF BASE:(射精したキャラ):射精 >= MAXBASE:(射精したキャラ):射精
+	BASE:(射精したキャラ):射精 = MAXBASE:(射精したキャラ):射精-1
 
 ;射精時に中毒充足のソースを追加
 ;通常射精時
-SIF ARG:1 == 1
+SIF 射精量 == 1
 	LOCAL = 200
 ;大量射精時
-SIF ARG:1 >= 2
+SIF 射精量 >= 2
 	LOCAL = 500
 
-IF ARG:3 == TARGET
+IF 射精されるキャラ == TARGET
 	;精液中毒を見る
 	SELECTCASE ABL:精液中毒
 		CASE 0, 1
@@ -874,24 +877,24 @@ SOURCE:中毒 += LOCAL
 
 ;射精後は再装填の時間を設ける
 ;通常射精時
-SIF ARG:1 == 1
-	CFLAG:(ARG:2):賢者タイム = 3
+SIF 射精量 == 1
+	CFLAG:(射精したキャラ):賢者タイム = 3
 ;大量射精時
-SIF ARG:1 >= 2
-	CFLAG:(ARG:2):賢者タイム = 5
-CFLAG:(ARG:2):残数--
+SIF 射精量 >= 2
+	CFLAG:(射精したキャラ):賢者タイム = 5
+CFLAG:(射精したキャラ):残数--
 
-IF TEQUIP:(ARG:2):コンドーム
-	TEQUIP:(ARG:2):コンドーム = 0
-	IF ARG:2 == MASTER
+IF TEQUIP:(射精したキャラ):コンドーム
+	TEQUIP:(射精したキャラ):コンドーム = 0
+	IF 射精したキャラ == MASTER
 		SETBIT TFLAG:避妊具射精, 0
 		TFLAG:使用済み避妊具 = 1
-	ELSEIF ARG:2 == ASSI
+	ELSEIF 射精したキャラ == ASSI
 		SETBIT TFLAG:避妊具射精, 1
 		TFLAG:使用済み避妊具 = 2
 	ENDIF
 	;コンドーム自動装着処理
-	IF GETBIT(FLAG:避妊具設定, 0) && ARG:2 == MASTER
+	IF GETBIT(FLAG:避妊具設定, 0) && 射精したキャラ == MASTER
 		IF ITEM:コンドーム > 0
 			ITEM:コンドーム--
 			TEQUIP:MASTER:コンドーム = 1
@@ -900,7 +903,7 @@ IF TEQUIP:(ARG:2):コンドーム
 			PRINTL <コンドームが無くなったので、自動装着を解除します>
 			CLEARBIT FLAG:避妊具設定, 0
 		ENDIF
-	ELSEIF GETBIT(FLAG:避妊具設定, 1) && ARG:2 == ASSI
+	ELSEIF GETBIT(FLAG:避妊具設定, 1) && 射精したキャラ == ASSI
 		IF ITEM:コンドーム > 0
 			ITEM:コンドーム--
 			TEQUIP:ASSI:コンドーム = 1

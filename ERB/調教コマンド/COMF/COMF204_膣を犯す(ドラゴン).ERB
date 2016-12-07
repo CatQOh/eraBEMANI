@@ -1,0 +1,506 @@
+﻿;-------------------------------------------------
+;膣を犯す(ドラゴン)
+;龍姦コマンド
+;-------------------------------------------------
+@USERCOM_ABLE204
+;膣を犯す(ドラゴン)実行条件
+;バイブ挿入中はダメ
+SIF TEQUIP:バイブ
+	RETURN 0
+;異物挿入中は不可
+SIF TEQUIP:Ｖ異物
+	RETURN 0
+;ヴァギナ無いとダメ
+SIF !VAGINA(TARGET)
+	RETURN 0
+;小人体型持ちは物理的に無理
+SIF TALENT:小人体型
+	RETURN 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+;お風呂場プレイ中はダメ
+SIF TEQUIP:お風呂場
+	RETURN 0
+;PLAYERがドラゴン使い持ってないとダメ
+SIF !TALENT:PLAYER:ドラゴン使い
+	RETURN 0
+;PLAYERが助手で未陥落だとダメ
+SIF PLAYER == ASSI && !CFLAG:PLAYER:陥落
+	RETURN 0
+
+RETURN 1
+
+@実行判定204
+;-------------------------------------------------
+;実行判定処理
+;-------------------------------------------------
+;縄で縛られている場合は無視（縄が無い時のみ実行判定を行う）
+IF !TEQUIP:縄
+	;すべての命令に共通の要素を考慮
+	;(従順が高いと命令に従いやすいなど)
+	CALL COM_ORDER
+
+	VARSET LOCAL, 0
+	LOCAL = RESULT
+
+	;ABL:欲望
+	IF ABL:欲望
+		LOCAL += ABL:欲望*3
+		PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望*3})
+	ENDIF
+	;ABL:Ｖ感覚
+	IF ABL:Ｖ感覚
+		LOCAL += ABL:Ｖ感覚*2
+		PRINTFORM +Ｖ感覚LV{ABL:Ｖ感覚}({ABL:Ｖ感覚*2})
+	ENDIF
+	;ABL:性交中毒
+	IF ABL:性交中毒
+		LOCAL += ABL:性交中毒
+		PRINTFORM +性交中毒LV{ABL:性交中毒}({ABL:性交中毒})
+	ENDIF
+	;快楽刻印
+	IF MARK:快楽刻印
+		LOCAL += MARK:快楽刻印*3
+		PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印*3})
+	ENDIF
+	;PALAM:潤滑（の不足）
+	IF PALAM:潤滑 < PALAMLV:3
+		LOCAL -= 5
+		PRINT -潤滑不足(5)
+	ENDIF
+	;PALAM:欲情
+	SELECTCASE PALAM:欲情
+		CASE IS < PALAMLV:1
+			LOCAL:1 = 0
+		CASE IS < PALAMLV:2
+			LOCAL:1 = 1
+		CASE IS < PALAMLV:3
+			LOCAL:1 = 2
+		CASE IS < PALAMLV:4
+			LOCAL:1 = 3
+		CASE IS < PALAMLV:5
+			LOCAL:1 = 4
+		CASEELSE
+			LOCAL:1 = 5
+	ENDSELECT
+	LOCAL:2 = LOCAL:1
+	SIF TALENT:衝動的
+		TIMES LOCAL:2 , 1.50
+	IF LOCAL:1
+		LOCAL += LOCAL:2*3
+		PRINTFORM +欲情LV{LOCAL:1}({LOCAL:2*3})
+	ENDIF
+	;恥じらい
+	IF TALENT:恥じらい
+		LOCAL -= 2
+		PRINT -恥じらい(2)
+	ENDIF
+	;快感の否定
+	IF TALENT:快感の否定
+		LOCAL -= 5
+		PRINT -快感の否定(5)
+	ENDIF
+	;男嫌い（恋慕、親愛で無効）
+	IF TALENT:男嫌い && SEX(PLAYER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
+		LOCAL -= 12
+		PRINT -男嫌い(12)
+	ENDIF
+	;小柄体型
+	IF TALENT:小柄体型
+		LOCAL -= 8
+		PRINT -小柄体型(8)
+	ENDIF
+	;淫乱
+	IF TALENT:恋慕
+		LOCAL += 15
+		PRINT +淫乱(15)
+	ENDIF
+	;娼婦
+	IF TALENT:娼婦
+		LOCAL += 20
+		PRINT +娼婦(20)
+	ENDIF
+	;処女
+	IF TALENT:処女
+		LOCAL -= 40
+		PRINT -処女(40)
+	;V経験
+	ELSEIF EXP:Ｖ経験 < EXPLV:2
+		LOCAL -= 15
+		PRINT -Ｖ経験不足(15)
+	ENDIF
+
+	;媚薬
+	IF TEQUIP:媚薬
+		LOCAL += 6
+		PRINT +媚薬(6)
+	ENDIF
+
+	;合計を表示(32以上で実行)
+	PRINTFORM  = {LOCAL}
+
+	LOCAL:2 = 32
+	SELECTCASE LOCAL
+		CASE IS < LOCAL:2
+			PRINT  < 
+		CASE IS > LOCAL:2
+			PRINT  > 
+		CASEELSE
+			PRINT  = 
+	ENDSELECT
+	PRINTFORM 実行値{LOCAL:2}
+	WAIT
+	;実行できない
+	IF LOCAL < LOCAL:2
+		CALL KOJO_MESSAGE_EVENT, 100
+		RETURN 0
+	ELSE
+		RETURN 1
+	ENDIF
+ELSE
+	RETURN 1
+ENDIF
+
+@COM204
+PRINTL 膣を犯す(ドラゴン)
+
+CALL 実行判定204
+SIF !RESULT
+	RETURN 0
+
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+CALL KOJO_MESSAGE_COM
+
+;V経験を伴うコマンドのフラグ(処女膜再生対応)
+TFLAG:膣コマンド = 1
+
+;-------------------------------------------------
+;脱衣
+;-------------------------------------------------
+IF OVER_GENITAL(TARGET) != ""
+	IF CFLAG:挿入可
+		TEQUIP:下半身下着 = 0
+	ELSE
+		TEQUIP:下半身下着 = 0
+		TEQUIP:下半身上着 = 0
+		TEQUIP:全身上着 = 0
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;射精ゲージチェック（ドラゴン）
+;-------------------------------------------------
+LOCAL = 1000
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES LOCAL , 0.80
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES LOCAL , 1.00
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES LOCAL , 1.20
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES LOCAL , 1.40
+ENDIF
+
+;処女だと増える
+SIF TALENT:処女
+	TIMES LOCAL , 1.50
+
+BASE:PLAYER:ドラゴン射精 += LOCAL
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 500
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES LOCAL , 0.40
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES LOCAL , 0.60
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES LOCAL , 1.00
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES LOCAL , 1.20
+ENDIF
+
+;奴隷のABL:Ｖ感覚をみる
+SELECTCASE ABL:Ｖ感覚
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASEELSE
+		TIMES LOCAL , 3.00
+ENDSELECT
+
+;奴隷のABL:マゾっ気をみる
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 120
+LOSEBASE:気力 += 200
+
+SOURCE:快V = 700
+SOURCE:情愛 = 100
+SOURCE:苦痛 = 1200
+SOURCE:中毒 = 300
+SOURCE:露出 = 100
+SOURCE:反感 = 500
+SOURCE:液体 = 500
+SOURCE:恐怖 = 800
+SOURCE:逸脱 = 300
+SOURCE:不潔 = 300
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 300
+
+;貞操観念持ちで淫乱、娼婦持ち以外には常に反発のソースを追加する（セックス系のみ）
+SIF TALENT:貞操観念 && FALLTYPE(TARGET) != 2
+	SOURCE:反感 += 1000
+
+;処女だった場合は、苦痛のソースと反発のソースを追加する
+IF TALENT:処女
+	SOURCE:苦痛 += 2000
+	SOURCE:反感 += 3000
+ENDIF
+
+;再生処女だった場合は、苦痛のソースと反発のソースを追加する
+IF TALENT:再生処女
+	SOURCE:苦痛 += 500
+	SOURCE:反感 += 1000
+ENDIF
+
+;Vへの苦痛は先に処理しておく
+;EXP:Ｖ経験をみる（処女の反感は別途処理済みなので省略）
+IF EXP:Ｖ経験 < EXPLV:1
+	TIMES SOURCE:苦痛 , 5.00
+ELSEIF EXP:Ｖ経験 < EXPLV:2
+	TIMES SOURCE:苦痛 , 2.50
+ELSEIF EXP:Ｖ経験 < EXPLV:3
+	TIMES SOURCE:苦痛 , 1.25
+ELSEIF EXP:Ｖ経験 < EXPLV:4
+	TIMES SOURCE:苦痛 , 1.00
+ELSEIF EXP:Ｖ経験 >= EXPLV:4
+	TIMES SOURCE:苦痛 , 0.50
+ENDIF
+
+;PALAM:潤滑をみる
+IF PALAM:潤滑 < PALAMLV:1
+	TIMES SOURCE:苦痛 , 2.50
+	TIMES SOURCE:反感 , 1.50
+ELSEIF PALAM:潤滑 < PALAMLV:2
+	TIMES SOURCE:苦痛 , 1.50
+	TIMES SOURCE:反感 , 1.20
+ELSEIF PALAM:潤滑 < PALAMLV:3
+	TIMES SOURCE:苦痛 , 1.00
+ELSEIF PALAM:潤滑 < PALAMLV:4
+	TIMES SOURCE:苦痛 , 0.50
+ELSEIF PALAM:潤滑 >= PALAMLV:4
+	TIMES SOURCE:苦痛 , 0.20
+ENDIF
+
+;中毒による中毒充足のソースは先に処理しておく
+;セックス中毒を見る
+SELECTCASE ABL:性交中毒
+	CASE IS <= 1
+		TIMES SOURCE:中毒 , 0.00
+	CASE 2
+		TIMES SOURCE:中毒 , 0.30
+	CASE 3
+		TIMES SOURCE:中毒 , 0.60
+	CASE 4
+		TIMES SOURCE:中毒 , 0.90
+	CASE 5
+		TIMES SOURCE:中毒 , 1.20
+	CASE 6
+		TIMES SOURCE:中毒 , 1.50
+	CASE 7
+		TIMES SOURCE:中毒 , 1.80
+	CASE 8
+		TIMES SOURCE:中毒 , 2.30
+	CASE 9
+		TIMES SOURCE:中毒 , 3.00
+	CASE IS >= 10
+		TIMES SOURCE:中毒 , 5.00
+ENDSELECT
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_DRAGON
+CALL SAMEN_CHECK_T, 4
+
+CALL SAMEN_SHOOT_DRAGON, NOWEX:PLAYER:ドラゴン射精
+CALL SAMEN_SHOOT_T, 4, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;射精に関係なく行われる処理はここから
+;膣内に破瓜の血の汚れを付加
+SIF TALENT:処女 || TALENT:再生処女
+	SETBIT STAIN:膣内, 6
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;V経験
+EXP:Ｖ経験++
+PRINTL Ｖ経験+3
+
+;性交経験
+EXP:性交経験++
+PRINTL 性交経験+1
+
+CALL EXPUP, 0, 3
+
+RETURN 1
+

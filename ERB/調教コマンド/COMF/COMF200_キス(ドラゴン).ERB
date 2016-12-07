@@ -1,0 +1,173 @@
+﻿;-------------------------------------------------
+;キス(ドラゴン)
+;龍姦コマンド
+;-------------------------------------------------
+@USERCOM_ABLE200
+;キス(ドラゴン)実行判定
+;ボールギャグ使用中は不可
+SIF TEQUIP:ボールギャグ
+	RETURN 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURN 0
+;風呂場だとダメ
+SIF TEQUIP:お風呂場
+	RETURN 0
+;PLAYERがドラゴン使い持ってないとダメ
+SIF !TALENT:PLAYER:ドラゴン使い
+	RETURN 0
+;PLAYERが助手で未陥落だとダメ
+SIF PLAYER == ASSI && !CFLAG:PLAYER:陥落
+	RETURN 0
+
+RETURN 1
+
+@COM200
+;-------------------------------------------------
+;特殊派生処理
+;-------------------------------------------------
+;技巧が高いとキス・オブ・ザ・ドラゴンに派生
+IF ABL:PLAYER:技巧 >= 3
+	PRINTL キス・オブ・ザ・ドラゴン
+	TFLAG:実行判定無視 = 1
+ELSE
+	PRINTL キス(ドラゴン)
+ENDIF
+
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 50
+
+;ABL:調教者の技巧をみる
+SELECTCASE ABL:PLAYER:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:欲望をみる
+SELECTCASE ABL:欲望
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.30
+	CASE 4
+		TIMES LOCAL , 1.40
+	CASEELSE
+		TIMES LOCAL , 1.50
+ENDSELECT
+
+;ABL:奉仕精神をみる
+SELECTCASE ABL:奉仕精神
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.40
+ENDSELECT
+
+;TALENT:陥落系素質をみる
+IF PLAYER == MASTER
+	SIF TALENT:淫乱 || TALENT:服従
+		TIMES LOCAL , 1.50
+	SIF TALENT:恋慕 || TALENT:娼婦 || TALENT:隷属
+		TIMES LOCAL , 2.00
+	SIF TALENT:親愛
+		TIMES LOCAL , 3.00
+ENDIF
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 10
+LOSEBASE:気力 += 25
+
+SOURCE:情愛 = 50
+SOURCE:性行動 = 10
+SOURCE:恭順 = 10
+SOURCE:屈従 = 30
+SOURCE:恐怖 = 200
+SOURCE:不潔 = 100
+SOURCE:反感 = 50
+SOURCE:逸脱 = 30
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 10
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK, 6
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT, 6, NOWEX:PLAYER:射精
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 0, 1
+
+RETURN 1
+
