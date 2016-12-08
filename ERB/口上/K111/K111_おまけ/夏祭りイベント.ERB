@@ -1,0 +1,789 @@
+﻿@MATSURI
+;夏祭りイベント
+;恋慕・親愛前提のイベントなので、他の場面に流用する際は整合性を確認することを推奨
+#DIM DYNAMIC HOUR
+#DIM DYNAMIC MINUTE
+#DIM DYNAMIC MOOD
+#DIM DYNAMIC MCHECK
+
+MATSURI_NOW = 1
+CALL SET_ITEM_TEMPORARY
+
+PRINTW ………………
+PRINTW …………
+PRINTW ……
+PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%は夏祭りの会場に着いた
+PRINTW 辺りは多くの人々で賑わっており、屋台もたくさん出ているようだ
+TRYCALLFORM MATSURI_START_K{NO:TARGET}
+;変数MINUTEは10分を「1」とする
+;20時30分ならHOUR=20,MINUTE=3
+HOUR = 19
+MINUTE = 0
+MOOD = ABL:欲望 * SQRT(CFLAG:依存度) + 10
+MCHECK = 0
+
+$MATSURI_MENU
+IF MINUTE >= 6
+	MINUTE -= 6
+	HOUR++
+ENDIF
+PRINTL
+DRAWLINE
+;日付が変わる頃には祭りは終わっている
+IF HOUR >= 24
+	PRINTW 辺りを賑わせていた多くの人々は帰路につき、屋台も店仕舞いを始めていた……
+	PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%は帰ることにした
+	;18時から1分経つごとに体力を1減らす(いきなり帰っても60減っている)
+	;ただし、ホテルに泊まる場合はその減少を半分にする(疲れを忘れるほど興奮している)
+	LOCAL = 60*(HOUR-18) + 10*MINUTE
+	IF MOOD >= 16000
+		PRINTFORML 祭りの興奮が冷めやらぬ%CALLNAME:TARGET%は、
+		PRINTFORMW このまますぐに近くのホテルに泊まらないかと提案してきた……
+		TRYCALLFORM MATSURI_END1_K{NO:TARGET}
+		PRINTL どうしますか？
+		PRINTL [0] そのまま帰って愛を育む
+		PRINTL [1] 近くのホテルですぐに愛し合う($30000が必要)
+		PRINTL [2] いっそのこと人がいなさそうな場所で
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					BASE:体力 -= LOCAL
+					PRINTW ………………
+					PRINTW …………
+					PRINTW ……
+					PRINTW 元の場所へ戻ってきた
+					RETURN 0
+				CASE 1
+					IF MONEY < 30000
+						PRINTW お金が足りません
+						CONTINUE
+					ENDIF
+					MONEY -= 30000
+					BASE:体力 -= LOCAL/2
+					;アイテム0-17,20-24を一時的に全解禁する
+					;終了時にGET_ITEM_TEMPORARYで元に戻す
+					FOR COUNT, 0, 25
+						SIF COUNT != 18 && COUNT != 19
+							ITEM:COUNT = 1
+					NEXT
+					;野外プレイのみ禁止
+					ITEM:首輪 = 0
+					PRINTW ………………
+					PRINTW …………
+					PRINTW ……
+					PRINTW ホテルにたどり着いた
+					PRINTW ホテルの設備は上々で大抵のものは揃っていた
+					PRINTL ローションを6個手に入れた
+					PRINTL コンドームを6個手に入れた
+					PRINTW 搾精コンドームを6個手に入れた
+					ITEM:ローション += 6
+					ITEM:コンドーム += 6
+					ITEM:搾精コンドーム += 6
+					SIF ITEM:ローション > 99
+						ITEM:ローション = 99
+					SIF ITEM:コンドーム > 99
+						ITEM:コンドーム = 99
+					SIF ITEM:搾精コンドーム > 99
+						ITEM:搾精コンドーム = 99
+					RETURN 0
+				CASE 2
+					TEQUIP:野外プレイ = 1
+					ITEM:首輪 = 0
+					ITEM:大鏡 = 0
+					BASE:体力 -= LOCAL
+					PRINTW ………………
+					PRINTW …………
+					PRINTW ……
+					PRINTFORML %CALLNAME:MASTER%と%CALLNAME:TARGET%は近くの人がいなさそうな場所でプレイを始めることにした……
+					RETURN 0
+			ENDSELECT
+		LOOP LOOPRES(0, 1, 2)
+	ELSE
+		BASE:体力 -= LOCAL
+		TRYCALLFORM MATSURI_END0_K{NO:TARGET}
+		PRINTW ………………
+		PRINTW …………
+		PRINTW ……
+		PRINTW 元の場所へ戻ってきた
+		RETURN 0
+	ENDIF
+ENDIF
+PRINTL 何をしますか？
+PRINTFORML 現在の時刻:{HOUR}時{MINUTE}0分 所持金:${MONEY} ムード:{MOOD}
+;以下、ゲーム的なコマンド解説
+;基本的には値段が高いほど効果が大きい
+;また、一度選んだコマンド(MCHECKに記録,7は除く)は効果が薄くなる
+;なお7月～8月は、最低17.2℃-最高31.6℃で推移する
+PRINTL [ 0] ジュースを飲む　　　　($200)
+		;気温に依存 暑ければ暑いほど良い
+PRINTL [ 1] チョコバナナを食べる　($300)
+		;これは逆に暑すぎるとチョコレートが溶けてしまう
+PRINTL [ 2] アイスクリームを食べる($300)
+		;ジュースよりさらに気温に依存する
+PRINTL [ 3] 焼きそばを食べる　　　($400)
+		;焼きそばの出来(乱数)による まずい焼きそばは本当にまずい
+PRINTL [ 4] わたあめを食べる　　　($400)
+		;特筆すべき点はなし
+PRINTL [ 5] たこ焼きを食べる　　　($500)
+		;基本的には強いコマンドだが、まれに口の中をやけどしてしまう
+PRINTL [ 6] 屋台のゲームをする　　($600)
+		;完全にゲームのスコアに依存 得点次第ではものすごいことになる
+PRINTL [ 7] 人のいないところに行く
+		;選べるコマンドはムードに依存
+SIF HOUR <= 20
+	PRINTL [ 8] 盆踊りを踊る
+		;そこまで効果は高くない
+SIF HOUR == 21
+	PRINTL [ 9] 花火を見る
+		;22時00分までの残り時間に依存 60分フルで見たときの効果は高い
+		;また、花火は1度しか選べないため、MCHECKの対象外
+PRINTL [10] 10分ほど休憩する
+PRINTL [99] もう帰る
+INPUT
+
+SELECTCASE RESULT
+	CASE 0
+		IF MONEY < 200
+			PRINTW お金が足りません
+			GOTO MATSURI_MENU
+		ENDIF
+		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%はジュースを売っている屋台に並ぶことにした
+		MONEY -= 200
+		CALL MATSURI_CONGESTION
+		MINUTE += RESULT
+		PRINTL
+		TRYCALLFORM MATSURI0_K{NO:TARGET}
+		PRINTW キンキンに冷えたジュースは熱気に包まれて渇きがちな喉を潤してくれた……
+		;最低117%-最高141%
+		LOCAL = (FLAG:気温 - 70)/6 + 100
+		SIF GETBIT(MCHECK, 0)
+			LOCAL = (LOCAL-100)/2 +100
+		MOOD *= LOCAL
+		MOOD /= 100
+		SETBIT MCHECK, 0
+	CASE 1
+		IF MONEY < 300
+			PRINTW お金が足りません
+			GOTO MATSURI_MENU
+		ENDIF
+		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%はチョコバナナを売っている屋台に並ぶことにした
+		MONEY -= 300
+		CALL MATSURI_CONGESTION
+		MINUTE += RESULT
+		PRINTL
+		TRYCALLFORM MATSURI1_K{NO:TARGET}
+		PRINTW チョコが溶けないように気を付けつつ甘さのコラボレーションを楽しんだ……
+		;最低126%-最高146%
+		LOCAL = (500 - FLAG:気温)/7 + 100
+		SIF GETBIT(MCHECK, 1)
+			LOCAL = (LOCAL-100)/2 +100
+		MOOD *= LOCAL
+		MOOD /= 100
+		SETBIT MCHECK, 1
+	CASE 2
+		IF MONEY < 300
+			PRINTW お金が足りません
+			GOTO MATSURI_MENU
+		ENDIF
+		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%はアイスクリームを売っている屋台に並ぶことにした
+		MONEY -= 300
+		CALL MATSURI_CONGESTION
+		MINUTE += RESULT
+		PRINTL
+		TRYCALLFORM MATSURI2_K{NO:TARGET}
+		PRINTW 暑い中食べるアイスクリームはどうしてこんなに美味しいのだろうか……
+		;最低104%-最高152%
+		LOCAL = (FLAG:気温 - 160)/3 + 100
+		SIF GETBIT(MCHECK, 2)
+			LOCAL = (LOCAL-100)/2 +100
+		MOOD *= LOCAL
+		MOOD /= 100
+		SETBIT MCHECK, 2
+	CASE 3
+		IF MONEY < 400
+			PRINTW お金が足りません
+			GOTO MATSURI_MENU
+		ENDIF
+		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%は焼きそばを売っている屋台に並ぶことにした
+		MONEY -= 400
+		CALL MATSURI_CONGESTION
+		MINUTE += RESULT
+		PRINTL
+		;焼きそばの出来は乱数で変動
+		;ムードの変動は 最低90%-最高165%
+		SELECTCASE RAND:4
+			;PERFECTな出来の焼きそば
+			CASE 0
+				TRYCALLFORM MATSURI3PERFECT_K{NO:TARGET}
+				PRINTW 屋台での出来とは思えない美味しさの焼きそばを堪能した……
+				;165%
+				LOCAL = 165
+			;GREATな出来の焼きそば
+			CASE 1
+				TRYCALLFORM MATSURI3GREAT_K{NO:TARGET}
+				PRINTW 焼きそばが予想以上に美味しかったため、2人の顔はどこか満足気だった……
+				;140%
+				LOCAL = 140
+			;BADな出来の焼きそば
+			CASE 2
+				TRYCALLFORM MATSURI3BAD_K{NO:TARGET}
+				PRINTW ある意味で屋台のものらしい簡素な作りの焼きそばを食べ終えた……
+				;115%
+				LOCAL = 115
+			;POORな出来の焼きそば
+			CASE 3
+				TRYCALLFORM MATSURI3POOR_K{NO:TARGET}
+				PRINTW 焼きそばはお世辞にも美味しいとは言えなかった……
+				;90%
+				LOCAL = 90
+		ENDSELECT
+		SIF GETBIT(MCHECK, 3)
+			LOCAL = (LOCAL-100)/2 +100
+		MOOD *= LOCAL
+		MOOD /= 100
+		SETBIT MCHECK, 3
+	CASE 4
+		IF MONEY < 400
+			PRINTW お金が足りません
+			GOTO MATSURI_MENU
+		ENDIF
+		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%はわたあめを売っている屋台に並ぶことにした
+		MONEY -= 400
+		CALL MATSURI_CONGESTION
+		MINUTE += RESULT
+		PRINTL
+		TRYCALLFORM MATSURI4_K{NO:TARGET}
+		PRINTW 砂糖が口の中に溶けていく独特の感覚を味わって食べていった……
+		;最低140%-最高150%
+		LOCAL = 140 + RAND:11
+		SIF GETBIT(MCHECK, 4)
+			LOCAL = (LOCAL-100)/2 +100
+		MOOD *= LOCAL
+		MOOD /= 100
+		SETBIT MCHECK, 4
+	CASE 5
+		IF MONEY < 500
+			PRINTW お金が足りません
+			GOTO MATSURI_MENU
+		ENDIF
+		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%はたこ焼きを売っている屋台に並ぶことにした
+		MONEY -= 500
+		CALL MATSURI_CONGESTION
+		MINUTE += RESULT
+		PRINTL
+		TRYCALLFORM MATSURI5_K{NO:TARGET}
+		;最低120%-最高180%
+		IF RAND:6 == 0
+			PRINTFORMW %CALLNAME:MASTER%は焦って口の中をやけどしつつ、たこ焼きを食べきった……
+			LOCAL = 120 + RAND:11
+		ELSE
+			PRINTFORMW ソースとマヨネーズが程よく効いたたこ焼きを完食した……
+			LOCAL = 160 +RAND:21 
+		ENDIF
+		SIF GETBIT(MCHECK, 5)
+			LOCAL = (LOCAL-100)/2 +100
+		MOOD *= LOCAL
+		MOOD /= 100
+		SETBIT MCHECK, 5
+	CASE 6
+		IF MONEY < 600
+			PRINTW お金が足りません
+			GOTO MATSURI_MENU
+		ENDIF
+		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%はゲームの屋台に並ぶことにした
+		PRINTW 並んでいる間に大まかなルール説明を読んでおこう……
+		PRINTL
+		PRINTL 　　　　　★ビンゴピンボール★
+		PRINTL 　　ボールを弾いてゴールにシュート！
+		PRINTL 　　ビンゴができればエキサイティン！
+		PRINTW 　　スコアに応じて豪華な景品ゲット！
+		PRINTL 　　　　　◆　　　景品　　　◆
+		PRINTL 　　 200点…おいしいアメ2個
+		PRINTL 　　 500点…パステルくんストラップ
+		PRINTL 　　 800点…日用品
+		PRINTL 　　1200点…怪しいオモチャ
+		PRINTW 　　1700点…IIDX筐体
+		PRINTL
+		PRINTW …と、こんな感じのゲームらしい
+		PRINTW 詳しいことはきっとゲームをやってみたらわかるだろう
+		PRINTW …………そろそろ自分たちの番だろうか
+		MONEY -= 600
+		CALL MATSURI_CONGESTION
+		MINUTE += RESULT
+		PRINTW ようやくゲームのスタートだ……
+		CALL BINGO_PINBALL
+		PRINTL
+		PRINTW ゲームが終わった……
+		;スコアは、[ビンゴ数]*200+[反射板ボーナス]*50 で計算 (RESULTに代入される)
+		;1700点は8ビンゴのみでは達成できない
+		LOCAL = RESULT/4 +100
+		SELECTCASE RESULT
+			CASE IS >= 1700
+				;異常経験が入るイベントなので選択肢をおく
+				PRINTFORML %CALLNAME:MASTER%はIIDX筐体を手に入れた
+				PRINTFORML これを%CALLNAME:TARGET%にプレゼントしますか？
+				PRINTL [0] はい
+				PRINTL [1] いいえ
+				DO
+					INPUT
+					SELECTCASE RESULT
+						CASE 0
+							TRYCALLFORM MATSURI6_0A_K{NO:TARGET}
+							PRINTFORML %CALLNAME:MASTER%がゲームで勝ち取ったIIDX筐体を渡された%CALLNAME:TARGET%は動揺を隠しきれていない……
+							IF CFLAG:ありえないものをプレゼントされた経験 == 0
+								PRINTW 異常経験+3
+								EXP:異常経験 += 3
+							ENDIF
+							CFLAG:ありえないものをプレゼントされた経験++
+						CASE 1
+							TRYCALLFORM MATSURI6_0B_K{NO:TARGET}
+							PRINTW %CALLNAME:MASTER%が屋台のゲームでIIDX筐体を勝ち取ったことに%CALLNAME:TARGET%は驚きを隠しきれていない……
+					ENDSELECT
+				LOOP LOOPRES(0, 1)
+			CASE IS >= 1200
+				;まだ手に入れていないアイテムを手に入れる
+				;対象となるアイテムは調教コマンド[40]-[59]に該当する調教道具かつ被使用者に制限がないもの
+				;安いものから順に総当りしていき最初に当たったものが手に入る
+				IF !ITEM:ローター
+					PRINTFORMW 屋台のおじさんはニヤニヤしながら%CALLNAME:MASTER%たちにローターを手渡してきた……
+					ITEM:ローター++
+				ELSEIF !ITEM:アナルビーズ
+					PRINTFORMW 屋台のおじさんはニヤニヤしながら%CALLNAME:MASTER%たちにアナルビーズを手渡してきた……
+					ITEM:アナルビーズ++
+				ELSEIF !ITEM:アナルバイブ
+					PRINTFORMW 屋台のおじさんはニヤニヤしながら%CALLNAME:MASTER%たちにアナルバイブを手渡してきた……
+					ITEM:アナルバイブ++
+				ELSEIF !ITEM:ニプルキャップ
+					PRINTFORMW 屋台のおじさんはニヤニヤしながら%CALLNAME:MASTER%たちにニプルキャップを手渡してきた……
+					ITEM:ニプルキャップ++
+				ELSEIF !ITEM:電気按摩
+					PRINTFORMW 屋台のおじさんはニヤニヤしながら%CALLNAME:MASTER%たちに電気按摩を手渡してきた……
+					ITEM:電気按摩++
+				ELSE
+					PRINTFORML 屋台のおじさんはニヤニヤしながら%CALLNAME:MASTER%たちに怪しいオモチャを手渡してきたが、
+					PRINTFORMW %CALLNAME:MASTER%がすでに持っている道具だった……
+				ENDIF
+				TRYCALLFORM MATSURI6_1_K{NO:TARGET}
+			CASE IS >= 800
+				PRINTFORMW %CALLNAME:MASTER%は日常で使いそうな雑貨を手に入れたので、それを%CALLNAME:TARGET%にプレゼントした
+				TRYCALLFORM MATSURI6_2_K{NO:TARGET}
+			CASE IS >= 500
+				PRINTFORMW %CALLNAME:MASTER%はパステルくんストラップを手に入れたので、それを%CALLNAME:TARGET%にプレゼントした
+				TRYCALLFORM MATSURI6_3_K{NO:TARGET}
+			CASE IS >= 200
+				PRINTFORMW %CALLNAME:MASTER%たちはアメを手に入れた
+				TRYCALLFORM MATSURI6_4_K{NO:TARGET}
+			CASEELSE
+				PRINTFORMW %CALLNAME:MASTER%たちは何も手に入れることができなかった……
+				TRYCALLFORM MATSURI6_5_K{NO:TARGET}
+		ENDSELECT
+		;最低100% (理論上は6750点取れるので)最高1430%　参考:1600点で400%
+		SIF GETBIT(MCHECK, 6)
+			LOCAL = (LOCAL-100)/5 +100
+		MOOD *= LOCAL
+		MOOD /= 100
+		SETBIT MCHECK, 6
+	CASE 7
+		;隠れてイチャイチャ
+		;ムードの変動値は基本的には「ABL:欲望」に依存
+		MINUTE += 1
+		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%は祭りの会場から離れ、人気の少ないところにたどり着いた……
+		LOCAL = 0
+		DO
+			IF MINUTE >= 6
+				MINUTE -= 6
+				HOUR++
+			ENDIF
+			PRINTL
+			DRAWLINE
+			;日付が変わる頃には祭りは終わっている
+			IF HOUR >= 24
+				PRINTW 辺りを賑わせていた多くの人々は帰路につき、屋台も店仕舞いを始めていた……
+				PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%は帰ることにした
+				;18時から1分経つごとに体力を1減らす(いきなり帰っても60減っている)
+				;ただし、ホテルに泊まる場合はその減少を半分にする(疲れを忘れるほど興奮している)
+				LOCAL = 60*(HOUR-18) + 10*MINUTE
+				IF MOOD >= 16000
+					PRINTFORML 祭りの興奮が冷めやらぬ%CALLNAME:TARGET%は、
+					PRINTFORMW このまますぐに近くのホテルに泊まらないかと提案してきた……
+					TRYCALLFORM MATSURI_END1_K{NO:TARGET}
+					PRINTL どうしますか？
+					PRINTL [0] そのまま帰って愛を育む
+					PRINTL [1] 近くのホテルですぐに愛し合う($30000が必要)
+					PRINTL [2] いっそのことここで
+					DO
+						INPUT
+						SELECTCASE RESULT
+							CASE 0
+								BASE:体力 -= LOCAL
+								PRINTW ………………
+								PRINTW …………
+								PRINTW ……
+								PRINTW 元の場所へ戻ってきた
+								RETURN 0
+							CASE 1
+								IF MONEY < 30000
+									PRINTW お金が足りません
+									CONTINUE
+								ENDIF
+								MONEY -= 30000
+								BASE:体力 -= LOCAL/2
+								;アイテム0-17,20-24を一時的に全解禁する
+								;終了時にGET_ITEM_TEMPORARYで元に戻す
+								FOR COUNT, 0, 25
+									SIF COUNT != 18 && COUNT != 19
+										ITEM:COUNT = 1
+								NEXT
+								;野外プレイのみ禁止
+								ITEM:首輪 = 0
+								PRINTW ………………
+								PRINTW …………
+								PRINTW ……
+								PRINTW ホテルにたどり着いた
+								PRINTW ホテルの設備は上々で大抵のものは揃っていた
+								PRINTL ローションを6個手に入れた
+								PRINTL コンドームを6個手に入れた
+								PRINTW 搾精コンドームを6個手に入れた
+								ITEM:ローション += 6
+								ITEM:コンドーム += 6
+								ITEM:搾精コンドーム += 6
+								SIF ITEM:ローション > 99
+									ITEM:ローション = 99
+								SIF ITEM:コンドーム > 99
+									ITEM:コンドーム = 99
+								SIF ITEM:搾精コンドーム > 99
+									ITEM:搾精コンドーム = 99
+								RETURN 0
+							CASE 2
+								TEQUIP:野外プレイ = 1
+								ITEM:首輪 = 0
+								ITEM:大鏡 = 0
+								BASE:体力 -= LOCAL
+								PRINTW ………………
+								PRINTW …………
+								PRINTW ……
+								PRINTFORML %CALLNAME:MASTER%と%CALLNAME:TARGET%は近くの人がいなさそうな場所でプレイを始めることにした……
+								RETURN 0
+						ENDSELECT
+					LOOP LOOPRES(0, 1, 2)
+				ELSE
+					BASE:体力 -= LOCAL
+					TRYCALLFORM MATSURI_END0_K{NO:TARGET}
+					PRINTW ………………
+					PRINTW …………
+					PRINTW ……
+					PRINTW 元の場所へ戻ってきた
+					RETURN 0
+				ENDIF
+			ENDIF
+			PRINTL 何をしますか？
+			PRINTFORML 現在の時刻:{HOUR}時{MINUTE}0分 所持金:${MONEY} ムード:{MOOD}
+			PRINTL [ 0] キスをする
+			PRINTL [ 1] 胸を揉む
+			SIF MOOD >= 4000
+				PRINTL [ 2] 愛撫する
+			SIF MOOD >= 4000
+				PRINTL [ 3] アナルを愛撫する
+			CALL USERCOM_ABLE1
+			SIF MOOD >= 8000 && RESULT
+				PRINTL [ 4] クンニする
+			CALL USERCOM_ABLE2
+			SIF MOOD >= 8000 && RESULT
+				PRINTL [ 5] フェラする
+			CALL USERCOM_ABLE81
+			SIF MOOD >= 8000 && RESULT
+				PRINTL [ 6] フェラしてもらう
+			CALL MATSURI_ABLE82
+			SIF MOOD >= 11313 && RESULT
+				PRINTL [ 7] パイズリしてもらう
+			CALL USERCOM_ABLE63
+			SIF MOOD >= 16000 && RESULT
+				PRINTL [ 8] 抱き寄せて挿入する
+			SIF MOOD >= 32000
+				PRINTL [ 9] 祭りのことなど忘れて押し倒す
+			PRINTL [99] 祭りの会場に戻る
+			$INPUT_LOOP
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					IF LOCAL
+						;対面座位キスへの派生
+						CALL MESSAGE_COM532
+						TRYCALLFORM COM532_K{NO:TARGET}
+						MINUTE += 1
+						MOOD *= 101 + 6*ABL:欲望
+						MOOD /= 100
+					ELSE
+						CALL MESSAGE_COM20
+						TRYCALLFORM COM20_K{NO:TARGET}
+						MINUTE += 1
+						MOOD *= 101 + ABL:欲望
+						MOOD /= 100
+					ENDIF
+					LOCAL = 0
+				CASE 1
+					CALL MESSAGE_COM6
+					TRYCALLFORM COM6_K{NO:TARGET}
+					MINUTE += 1
+					MOOD *= 101 + ABL:欲望
+					MOOD /= 100
+					LOCAL = 0
+				CASE 2
+					SIF !(MOOD >= 4000)
+						GOTO INPUT_LOOP
+					CALL MESSAGE_COM0
+					TRYCALLFORM COM0_K{NO:TARGET}
+					MINUTE += 1
+					MOOD *= 101 + 2*ABL:欲望
+					MOOD /= 100
+					LOCAL = 0
+				CASE 3
+					SIF !(MOOD >= 4000)
+						GOTO INPUT_LOOP
+					CALL MESSAGE_COM5
+					TRYCALLFORM COM5_K{NO:TARGET}
+					MINUTE += 1
+					MOOD *= 101 + 2*ABL:欲望
+					MOOD /= 100
+					LOCAL = 0
+				CASE 4
+					CALL USERCOM_ABLE1
+					SIF !(MOOD >= 8000 && RESULT)
+						GOTO INPUT_LOOP
+					CALL MESSAGE_COM1
+					TRYCALLFORM COM1_K{NO:TARGET}
+					MINUTE += 1
+					MOOD *= 101 + 3*ABL:欲望
+					MOOD /= 100
+					LOCAL = 0
+				CASE 5
+					CALL USERCOM_ABLE2
+					SIF !(MOOD >= 8000 && RESULT)
+						GOTO INPUT_LOOP
+					CALL MESSAGE_COM2
+					TRYCALLFORM COM2_K{NO:TARGET}
+					MINUTE += 1
+					MOOD *= 101 + 3*ABL:欲望
+					MOOD /= 100
+					LOCAL = 0
+				CASE 6
+					CALL USERCOM_ABLE81
+					SIF !(MOOD >= 8000 && RESULT)
+						GOTO INPUT_LOOP
+					CALL MESSAGE_COM81
+					TRYCALLFORM COM81_K{NO:TARGET}
+					MINUTE += 1
+					MOOD *= 101 + 3*ABL:欲望
+					MOOD /= 100
+					LOCAL = 0
+				CASE 7
+					CALL MATSURI_ABLE82
+					SIF !(MOOD >= 11313 && RESULT)
+						GOTO INPUT_LOOP
+					CALL MESSAGE_COM82
+					TRYCALLFORM COM82_K{NO:TARGET}
+					MINUTE += 1
+					MOOD *= 101 + 4*ABL:欲望
+					MOOD /= 100
+					LOCAL = 0
+				CASE 8
+					CALL USERCOM_ABLE63
+					SIF !(MOOD >= 16000 && RESULT)
+						GOTO INPUT_LOOP
+					CALL MESSAGE_COM63
+					TRYCALLFORM COM63_K{NO:TARGET}
+					MINUTE += 1
+					MOOD *= 101 + 5*ABL:欲望
+					MOOD /= 100
+					LOCAL = 1
+				CASE 9
+					SIF !(MOOD >= 32000)
+						GOTO INPUT_LOOP
+					;18時から1分経つごとに体力を1減らす(いきなり帰っても60減っている)
+					LOCAL = 60*(HOUR-18) + 10*MINUTE
+					TEQUIP:野外プレイ = 1
+					ITEM:首輪 = 0
+					ITEM:大鏡 = 0
+					BASE:体力 -= LOCAL
+					PRINTFORML %CALLNAME:MASTER%は%CALLNAME:TARGET%をゆっくりと押し倒し、
+					PRINTW 周りの音も聞こえなくなるような快楽の世界へと入り込んでいった……
+					RETURN 0
+				CASE 99
+					MINUTE += 1
+					PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%は祭りの会場に戻ることにした……
+					BREAK
+				CASEELSE
+					GOTO INPUT_LOOP
+			ENDSELECT
+		LOOP 1
+	CASE 8
+		SIF HOUR >= 21
+			GOTO MATSURI_MENU
+		MINUTE += 3
+		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%は盆踊りを踊ることにした
+		TRYCALLFORM MATSURI8_K{NO:TARGET}
+		;固定で112%
+		LOCAL = 112
+		SIF GETBIT(MCHECK, 8)
+			LOCAL = (LOCAL-100)/2 +100
+		MOOD *= LOCAL
+		MOOD /= 100
+		SETBIT MCHECK, 8
+	CASE 9
+		SIF HOUR != 21
+			GOTO MATSURI_MENU
+		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%は花火を見ることにした
+		TRYCALLFORM MATSURI8_K{NO:TARGET}
+		PRINTW …………
+		PRINTW ……
+		SIF MINUTE >= 4
+			PRINTL 見始めるのが遅かったためそんなに見ることができなかったが、
+		PRINTW 綺麗な花火に2人とも見とれてしまっていた…………
+		;最低150%-最高400%
+		MOOD *= (6 - MINUTE)*50 + 100
+		MOOD /= 100
+		HOUR = 22
+		MINUTE = 0
+	CASE 10
+		MINUTE++
+		PRINTFORMW 疲れたので%CALLNAME:MASTER%と%CALLNAME:TARGET%は10分ほど休憩した
+		;固定で101%
+		MOOD *= 101
+		MOOD /= 100
+	CASE 99
+		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%は帰ることにした
+		;18時から1分経つごとに体力を1減らす(いきなり帰っても60減っている)
+		;ただし、ホテルに泊まる場合はその減少を半分にする(疲れを忘れるほど興奮している)
+		LOCAL = 60*(HOUR-18) + 10*MINUTE
+		IF MOOD >= 16000 && MONEY >= 30000
+			PRINTFORML 祭りの興奮が冷めやらぬ%CALLNAME:TARGET%は、
+			PRINTFORMW このまますぐに近くのホテルに泊まらないかと提案してきた……
+			TRYCALLFORM MATSURI_END1_K{NO:TARGET}
+			PRINTL どうしますか？
+			PRINTL [0] そのまま帰って愛を育む
+			PRINTL [1] 近くのホテルですぐに愛し合う($30000が必要)
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						BASE:体力 -= LOCAL
+						PRINTW ………………
+						PRINTW …………
+						PRINTW ……
+						PRINTW 元の場所へ戻ってきた
+						RETURN 0
+					CASE 1
+						MONEY -= 30000
+						BASE:体力 -= LOCAL/2
+						;アイテム0-17,20-24を一時的に全解禁する
+						;終了時にGET_ITEM_TEMPORARYで元に戻す
+						FOR COUNT, 0, 25
+							SIF COUNT != 18 && COUNT != 19
+								ITEM:COUNT = 1
+						NEXT
+						;野外プレイのみ禁止
+						ITEM:首輪 = 0
+						PRINTW ………………
+						PRINTW …………
+						PRINTW ……
+						PRINTW ホテルにたどり着いた
+						PRINTW ホテルの設備は上々で大抵のものは揃っていた
+						PRINTL ローションを6個手に入れた
+						PRINTL コンドームを6個手に入れた
+						PRINTW 搾精コンドームを6個手に入れた
+						ITEM:ローション += 6
+						ITEM:コンドーム += 6
+						ITEM:搾精コンドーム += 6
+						SIF ITEM:ローション > 99
+							ITEM:ローション = 99
+						SIF ITEM:コンドーム > 99
+							ITEM:コンドーム = 99
+						SIF ITEM:搾精コンドーム > 99
+							ITEM:搾精コンドーム = 99
+						RETURN 0
+				ENDSELECT
+			LOOP LOOPRES(0, 1)
+		ELSE
+			BASE:体力 -= LOCAL
+			TRYCALLFORM MATSURI_END0_K{NO:TARGET}
+			PRINTW ………………
+			PRINTW …………
+			PRINTW ……
+			PRINTW 元の場所へ戻ってきた
+			RETURN 0
+		ENDIF
+ENDSELECT
+
+GOTO MATSURI_MENU
+
+
+@MATSURI_CONGESTION
+;ランダムで混雑具合を出し
+;地の文としても出力する
+;返り値には待ち時間を入れる
+SELECTCASE RAND:100
+	CASE 0 TO 24
+		PRINTW 意外と混んでいなかったため、ほとんど待たずに済んだ
+		RETURN 1
+	CASE 25 TO 74
+		PRINTW まあまあな時間待つことになったが、祭りだしそんなものだろう
+		RETURN 2
+	CASE 75 TO 94
+		PRINTW かなりの間待つことになり、脚がくたびれてしまった
+		RETURN 3
+	CASE 95 TO 99
+		PRINTW 想像を超える待ち時間だったため、苦しい思いをすることになった
+		RETURN 4
+ENDSELECT
+
+
+@MATSURI_ABLE82
+;祭り中におけるパイズリ実行判定
+;着衣の状況を無視して、必要ない判定も削る
+SELECTCASE TALENT:バストサイズ
+	;男or絶壁だとダメ
+	CASE 0, 1
+		RETURN 0
+	;貧乳なら技巧4以上必要
+	CASE 2
+		LOCAL = 4
+	;普通なら技巧3以上必要
+	CASE 3
+		LOCAL = 3
+	;巨乳なら技巧LV2以上必要
+	CASE 4
+		LOCAL = 2
+	;爆乳なら技巧LV1以上必要
+	CASE 5
+		LOCAL = 1
+ENDSELECT
+SIF ABL:技巧 < LOCAL
+	RETURN 0
+;調教者がペニス無いとダメ
+SIF !PENIS(PLAYER)
+	RETURN 0
+
+RETURN 1
+
+
+@SET_ITEM_TEMPORARY
+;アイテム所持状況を一時的に格納
+VARSET ITEM_TEMPORARY
+FOR COUNT, 0, 25
+	SIF ITEM:COUNT && COUNT != 18 && COUNT != 19
+		SETBIT ITEM_TEMPORARY, COUNT
+NEXT
+
+
+@GET_ITEM_TEMPORARY
+;格納されたアイテム所持状況を反映させる
+FOR COUNT, 0, 25
+	IF  COUNT != 18 && COUNT != 19
+		IF GETBIT(ITEM_TEMPORARY, COUNT)
+			ITEM:COUNT = 1
+		ELSE
+			ITEM:COUNT = 0
+		ENDIF
+	ENDIF
+NEXT
