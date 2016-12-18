@@ -2,7 +2,9 @@
 #DIM DYNAMIC NUM;次に取る牌が何枚目かを記録
 #DIM DYNAMIC DBX, 8, 7;待ち牌の判定に使用する2次元変数
 #DIM DYNAMIC LCOUNT;関数を跨いだFOR-NEXT構文でのカウンタ変数
-
+ 
+KYOKU_MAX = 8
+ 
 PRINTL
 PRINTL ◆八牌麻雀◆
 PRINTL
@@ -10,572 +12,625 @@ PRINTL 萬子・筒子・字牌のみで2面子1雀頭を作ってアガるゲ�
 PRINTL [0] 始める
 PRINTL [1] 設定の確認・変更
 PRINTL [2] 採用役の確認
+PRINTL [3] ルールを見る
 DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			BREAK
-		CASE 1
-			CALL PAI8OPTION
-			RESTART
-		CASE 2
-			PRINTL 　　　※役牌…三元牌(白・發・中)の他、東・西が共通で常に役牌
-			PRINTFORM １翻：立直 一発 門前清自摸和 断%UNICODE(0x4E48)%九 平和 役牌 一盃口 海底模月 河底撈魚
-			SIF P8HANA & 4
-				PRINT  嶺上開花
-			PRINTL
-			PRINTFORML ２翻：ダブル立直 混老頭 対々和 混全帯%UNICODE(0x4E48)%九
-			PRINTFORML ３翻：混一色 純全帯%UNICODE(0x4E48)%九
-			PRINTL ６翻：清一色
-			PRINT 役満：天和 地和 人和 清老頭 字一色
-			SIF P8HANA & 16
-				PRINT  小四喜
-			PRINTW
-			RESTART
-	ENDSELECT
+   INPUT
+   SELECTCASE RESULT
+       CASE 0
+           BREAK
+       CASE 1
+           CALL PAI8OPTION
+           RESTART
+       CASE 2
+           PRINTL
+           PRINTL 　　　※役牌…三元牌(白・發・中)の他、東・西が共通で常に役牌
+           PRINTFORM １翻：立直 一発 門前清自摸和 断%UNICODE(0x4E48)%九 平和 役牌 一盃口 海底模月 河底撈魚
+           SIF P8HANA & 4
+               PRINT  嶺上開花
+           PRINTL
+           PRINTFORML ２翻：ダブル立直 混老頭 対々和 混全帯%UNICODE(0x4E48)%九
+           PRINTFORML ３翻：混一色 純全帯%UNICODE(0x4E48)%九
+           PRINTL ６翻：清一色
+           PRINT 役満：天和 地和 人和 清老頭 字一色
+           SIF P8HANA & 16
+               PRINT  小四喜
+           PRINTW
+           RESTART
+       CASE 3
+           PRINTL
+           PRINTL 八牌麻雀は次の25種類の牌を使って遊ぶゲームです
+           PRINT 萬子:
+           FOR COUNT, 0, 9
+               CALL PRTPAI, COUNT
+               IF COUNT == 8
+                   PRINTL
+                   BREAK
+               ENDIF
+               PRINT  
+           NEXT
+           PRINT 筒子:
+           FOR COUNT, 9, 18
+               CALL PRTPAI, COUNT
+               IF COUNT == 17
+                   PRINTL
+                   BREAK
+               ENDIF
+               PRINT  
+           NEXT
+           PRINT 字牌:
+           FOR COUNT, 18, 25
+               CALL PRTPAI, COUNT
+               IF COUNT == 24
+                   PRINTL
+                   BREAK
+               ENDIF
+               PRINT  
+           NEXT
+           PRINTL これらを組み合わせて2面子1雀頭で何らかの役を作ることでアガることができます
+           PRINTL 　　面子…「順子」か「刻子」のこと
+           PRINTL 　　　　順子（シュンツ）…「２３４」や「７８９」などを萬子か筒子で揃えたもの（※「８９１」「９１２」はダメ）
+           PRINTL 　　　　刻子（コーツ）……「８８８」や「北北北」などの3つセットを揃えたもの
+           PRINTL 　　雀頭…「２２」や「中中」などの2つセットを揃えたもの
+           PRINTL 各プレイヤーは7枚の牌を所持していて、毎ターン1枚引いて1枚捨てることでゲームが進行します
+           PRINTL 1枚引いたときにアガることができるとき、「ツモ」を宣言することでアガることができます
+           PRINTL また、相手プレイヤーが捨てた牌を使ってアガることができるのなら「ロン」を宣言することでアガることができます
+           PRINTL 誰かがアガるか、両プレイヤーが18枚ずつ牌を捨てるまでを1局として、
+           PRINTFORML {KYOKU_MAX}局終わったときに、点数が多いほうが勝ちとなります
+           PRINTL
+           PRINTL 通常の麻雀とは違い、「ポン」「チー」「カン」ができません
+           PRINTL フリテン立直や立直後の見逃しは認めています(ロン和了りはできなくなります)
+           PRINTL 流局時のテンパイ料は場に3000点となります
+           WAIT
+           RESTART
+   ENDSELECT
 LOOP 1
-
+ 
 VARSET PAI8SCORE, 50000
 KYOKU = 0
-KYOKU_MAX = 8
-
+ 
 $RESET
 IF KYOKU >= KYOKU_MAX
-	PRINTL
-	PRINTL ゲーム終了
-	PRINTFORML %NAME:MASTER%:{PAI8SCORE}点
-	PRINTFORMW %NAME:TARGET%:{PAI8SCORE:1}点
-	PRINTL
-	RETURN PAI8SCORE, PAI8SCORE:1
+   PRINTL
+   PRINTL ゲーム終了
+   PRINTFORML %NAME:MASTER%:{PAI8SCORE}点
+   PRINTFORMW %NAME:TARGET%:{PAI8SCORE:1}点
+   PRINTL
+   RETURN PAI8SCORE, PAI8SCORE:1
 ENDIF
-
+ 
 VARSET KAWA
 VARSET GARI
 VARSET TURN
 VARSET RICHI, -1
 VARSET MINOGASHI
 VARSET SOKU
-
+ 
 ;ヤマのシャッフル
 IF P8HANA & 1
-	CALL SHUFFLE, 104
+   CALL SHUFFLE, 104
 ELSE
-	CALL SHUFFLE, 100
+   CALL SHUFFLE, 100
 ENDIF
-
+ 
 ;配牌と抜きドラの処理
 NUM = 0
 FOR N, 0, 7
-	$YAMA_LOOP0
-	IF YAMA:NUM >= 100 || (YAMA:NUM %25 == 21 && P8HANA & 2)
-		GARI:0:0++
-		GARI:0:(GARI:0:0) = YAMA:NUM
-		NUM++
-		GOTO YAMA_LOOP0
-	ENDIF
-	TEHAI:0:N = YAMA:NUM
-	NUM++
+   $YAMA_LOOP0
+   IF YAMA:NUM >= 100 || (YAMA:NUM %25 == 21 && P8HANA & 2)
+       GARI:0:0++
+       GARI:0:(GARI:0:0) = YAMA:NUM
+       NUM++
+       GOTO YAMA_LOOP0
+   ENDIF
+   TEHAI:0:N = YAMA:NUM
+   NUM++
 NEXT
 FOR N, 0, 7
-	$YAMA_LOOP1
-	IF YAMA:NUM >= 100 || (YAMA:NUM %25 == 21 && P8HANA & 2)
-		GARI:1:0++
-		GARI:1:(GARI:1:0) = YAMA:NUM
-		NUM++
-		GOTO YAMA_LOOP1
-	ENDIF
-	TEHAI:1:N = YAMA:NUM
-	NUM++
+   $YAMA_LOOP1
+   IF YAMA:NUM >= 100 || (YAMA:NUM %25 == 21 && P8HANA & 2)
+       GARI:1:0++
+       GARI:1:(GARI:1:0) = YAMA:NUM
+       NUM++
+       GOTO YAMA_LOOP1
+   ENDIF
+   TEHAI:1:N = YAMA:NUM
+   NUM++
 NEXT
-
-;スタートはランダム
+ 
+;1局目のみ親はランダム
 KYOKU++
+SIF KYOKU == 1
+   TONCHA = RAND:2
 PRINTL
-IF RAND:2 == 0
-	PRINTFORMW %NAME:MASTER%からスタートです
+IF TONCHA == 0
+   PRINTFORMW %NAME:MASTER%が親です
 ELSE
-	PRINTFORMW %NAME:TARGET%からスタートです
-	CALL LINEPLUS
-	GOTO AI_START
+   PRINTFORMW %NAME:TARGET%が親です
+   CALL LINEPLUS
+   GOTO AI_START
 ENDIF
-
+ 
 ;CLEARLINEを使うと目がチカチカしたので単純に行を追加する方法で
 CALL LINEPLUS
-
+ 
 DO
-	;ここからプレイヤーのターン
-	SIF SOKU == 2
-		SOKU = 1
-	RINSHAN = 0
-	$TSUMO_LOOP0
-	TSUMO = YAMA:NUM
-	CALL SORTPAI, 0
-	DRAWLINE
-	PRINTL
-	SETCOLOR 0x228B22
-	PRINT ■ ■ ■ ■ ■ ■ ■ 
-	RESETCOLOR
-	IF GARI:1:0
-		PRINT  　　　抜きドラ:
-		FOR N, 1, GARI:1:0 + 1
-			CALL PRTPAI, GARI:1:N
-		NEXT
-	ENDIF
-	PRINTL
-	PRINTL
-	CALL RICHI_TURN, 1
-	IF TURN:1
-		FOR N, 0, TURN:1
-			CALL PRTPAI, KAWA:1:N
-			SIF N%6 == 5
-				PRINT  
-		NEXT
-	ENDIF
-	PRINTL
-	CALL PRT8PAI_SCORE
-	IF TURN
-		FOR N, 0, TURN
-			CALL PRTPAI, KAWA:0:N
-			SIF N%6 == 5
-				PRINT  
-		NEXT
-	ENDIF
-	PRINTL
-	CALL RICHI_TURN, 0
-	PRINTL
-	FOR N, 0, 7
-		CALL PRTPAI, TEHAI:0:N
-		PRINT  
-	NEXT
-	PRINT  
-	CALL PRTPAI, TSUMO
-	IF GARI:0:0
-		PRINT 　　抜きドラ:
-		FOR N, 1, GARI:0:0 + 1
-			CALL PRTPAI, GARI:0:N
-		NEXT
-	ENDIF
-	PRINTL
-	IF RICHI == -1
-		PRINT [0][1][2][3][4][5][6] 
-	ELSE
-		PRINTPLAIN 　 　 　 　 　 　 　  
-	ENDIF
-	IF RICHI == -1 || SHANTEN(0, -1) == -1
-		PRINT [7]
-	ELSE
-		PRINTPLAIN 　 
-	ENDIF
-	SIF SHANTEN(0, -1) <= 0 && RICHI == -1
-		PRINT  [8]リーチ
-	SIF SHANTEN(0, -1) == -1
-		PRINT  [9]ツモ
-	PRINTL
-	IF TSUMO >= 100 || (YAMA:NUM %25 == 21 && P8HANA & 2)
-		GARI:0:0++
-		GARI:0:(GARI:0:0) = TSUMO
-		NUM++
-		RINSHAN++
-		IF P8HANA & 8
-			SOKU = 0
-			SOKU:1 = 0
-		ENDIF
-		TWAIT 400, 0
-		CALL LINEPLUS
-		GOTO TSUMO_LOOP0
-	ENDIF
-	IF RICHI != -1 && SHANTEN(0, -1) != -1
-		TWAIT 400, 0
-		GOTO TSUMOGIRI
-	ENDIF
-	$INPUTLOOP
-	INPUT
-	SELECTCASE RESULT
-		CASE 0 TO 6
-			IF RICHI == -1
-				KAWA:0:TURN = TEHAI:0:RESULT
-				TEHAI:0:RESULT = TSUMO
-			ELSE
-				GOTO INPUTLOOP
-			ENDIF
-		CASE 7
-			$TSUMOGIRI
-			KAWA:0:TURN = TSUMO
-		CASE 8
-			IF SHANTEN(0, -1) <= 0
-				CLEARLINE 3
-				FOR N, 0, 7
-					CALL PRTPAI, TEHAI:0:N
-					PRINT  
-				NEXT
-				PRINT  
-				CALL PRTPAI, TSUMO
-				PRINTL
-				VARSET DBX
-				FOR LCOUNT, 0, 8
-					IF SHANTEN(0, LCOUNT) == 0
-						M = 0
-						N = 0
-						DO
-							IF M != LCOUNT && M < 7
-								DBX:LCOUNT:N = TEHAI:0:M
-								N++
-							ELSEIF  M != LCOUNT && M == 7
-								DBX:LCOUNT:N = TSUMO
-								N++
-							ENDIF
-							M++
-						LOOP N <= 6
-						LOCALS:LCOUNT = <button value='{LCOUNT}' title='待ちは「%MACHI(DBX:LCOUNT:0,DBX:LCOUNT:1,DBX:LCOUNT:2,DBX:LCOUNT:3,DBX:LCOUNT:4,DBX:LCOUNT:5,DBX:LCOUNT:6)%」です'>[{LCOUNT}]</button>
-					ELSE
-						LOCALS:LCOUNT = <font color='gray'><nonbutton title='この牌を切るとテンパイしません'>[-]</nonbutton></font>
-					ENDIF
-				NEXT
-				HTML_PRINT LOCALS:0 + LOCALS:1 + LOCALS:2 + LOCALS:3 + LOCALS:4 + LOCALS:5 + LOCALS:6 + " " + LOCALS:7
-				$INPUTLOOP_T
-				INPUT
-				IF 0 <= RESULT && RESULT <= 6 && SHANTEN(0, RESULT) == 0
-					KAWA:0:TURN = TEHAI:0:RESULT
-					TEHAI:0:RESULT = TSUMO
-				ELSEIF RESULT == 7 && SHANTEN(0, RESULT) == 0
-					KAWA:0:TURN = TSUMO
-				ELSE
-					GOTO INPUTLOOP_T
-				ENDIF
-				PAI8SCORE -= 1000
-				DEPOSITION += 1000
-				RICHI = TURN
-				SOKU = 2
-			ELSE
-				GOTO INPUTLOOP
-			ENDIF
-		CASE 9
-			IF SHANTEN(0, -1) == -1
-				CALL PAI8SCORE(0, TSUMO, 1)
-				PAI8SCORE += RESULT
-				PAI8SCORE:1 -= RESULT
-				PAI8SCORE += DEPOSITION
-				DEPOSITION = 0
-				GOTO RESET
-			ELSE
-				GOTO INPUTLOOP
-			ENDIF
-		CASEELSE
-			GOTO INPUTLOOP
-	ENDSELECT
-	SIF SOKU == 1
-		SOKU = 0
-	;AIは見逃しをしない
-	IF DEAGARI(1, KAWA:0:TURN)
-		CALL LINEPLUS
-		DRAWLINE
-		CALL SORTPAI, 1
-		PRINTL
-		FOR N, 0, 7
-			CALL PRTPAI, TEHAI:1:N
-			PRINT  
-		NEXT
-		IF GARI:1:0
-			PRINT  　　　抜きドラ:
-			FOR N, 1, GARI:1:0 + 1
-				CALL PRTPAI, GARI:1:N
-			NEXT
-		ENDIF
-		PRINTL
-		PRINTL 　 　 　 　 　 　 　 ロン
-		CALL RICHI_TURN, 1
-		IF TURN:1
-			FOR N, 0, TURN:1
-				CALL PRTPAI, KAWA:1:N
-				SIF N%6 == 5
-					PRINT  
-			NEXT
-		ENDIF
-		PRINTL
-		CALL PRT8PAI_SCORE
-		IF TURN+1
-			FOR N, 0, TURN+1
-				CALL PRTPAI, KAWA:0:N
-				SIF N%6 == 5
-					PRINT  
-			NEXT
-		ENDIF
-		PRINTL
-		CALL RICHI_TURN, 0
-		PRINTL
-		FOR N, 0, 7
-			CALL PRTPAI, TEHAI:0:N
-			PRINT  
-		NEXT
-		IF GARI:0:0
-			PRINT  　　　抜きドラ:
-			FOR N, 1, GARI:0:0 + 1
-				CALL PRTPAI, GARI:0:N
-			NEXT
-		ENDIF
-		PRINTW
-		CALL PAI8SCORE(1, KAWA:0:TURN, 0)
-		PAI8SCORE -= RESULT
-		PAI8SCORE:1 += RESULT
-		PAI8SCORE:1 += DEPOSITION
-		DEPOSITION = 0
-		;立直が成立してないので1000点戻す
-		IF SOKU == 2
-			PAI8SCORE += 1000
-			PAI8SCORE -= 1000
-		ENDIF
-		GOTO RESET
-	ENDIF
-	NUM++
-	TURN++
-	SIF TURN == 18 && TURN:1 == 18
-		BREAK
-	CALL LINEPLUS
-	
-	$AI_START
-	;ここから相手プレイヤーのターン
-	SIF SOKU:1 == 2
-		SOKU:1 = 1
-	RINSHAN = 0
-	$TSUMO_LOOP1
-	TSUMO = YAMA:NUM
-	CALL SORTPAI, 1
-	DRAWLINE
-	PRINTL
-	SETCOLOR 0x228B22
-	PRINT ■ ■ ■ ■ ■ ■ ■  
-	IF TSUMO >= 100 || (YAMA:NUM %25 == 21 && P8HANA & 2)
-		CALL PRTPAI, TSUMO
-	ELSE
-		PRINT ■
-	ENDIF
-	RESETCOLOR
-	IF GARI:1:0
-		PRINT 　　抜きドラ:
-		FOR N, 1, GARI:1:0 + 1
-			CALL PRTPAI, GARI:1:N
-		NEXT
-	ENDIF
-	PRINTL
-	PRINTL
-	CALL RICHI_TURN, 1
-	IF TURN:1
-		FOR N, 0, TURN:1
-			CALL PRTPAI, KAWA:1:N
-			SIF N%6 == 5
-				PRINT  
-		NEXT
-	ENDIF
-	PRINTL
-	CALL PRT8PAI_SCORE
-	IF TURN:0
-		FOR N, 0, TURN
-			CALL PRTPAI, KAWA:0:N
-			SIF N%6 == 5
-				PRINT  
-		NEXT
-	ENDIF
-	PRINTL
-	CALL RICHI_TURN, 0
-	PRINTL
-	FOR N, 0, 7
-		CALL PRTPAI, TEHAI:0:N
-		PRINT  
-	NEXT
-	IF GARI:0:0
-		PRINT  　　　抜きドラ:
-		FOR N, 1, GARI:0:0 + 1
-			CALL PRTPAI, GARI:0:N
-		NEXT
-	ENDIF
-	PRINTL
-	PRINTL
-	TWAIT 400, 0
-	IF TSUMO >= 100 || (YAMA:NUM %25 == 21 && P8HANA & 2)
-		GARI:1:0++
-		GARI:1:(GARI:1:0) = TSUMO
-		NUM++
-		RINSHAN++
-		IF P8HANA & 8
-			SOKU = 0
-			SOKU:1 = 0
-		ENDIF
-		TWAIT 400, 0
-		CALL LINEPLUS
-		GOTO TSUMO_LOOP1
-	ENDIF
-	;ここからAIの思考
-	;アガれるなら絶対アガる
-	IF SHANTEN(1, -1) == -1
-		CALL LINEPLUS
-		DRAWLINE
-		PRINTL
-		FOR N, 0, 7
-			CALL PRTPAI, TEHAI:1:N
-			PRINT  
-		NEXT
-		PRINT  
-		CALL PRTPAI, TSUMO
-		IF GARI:1:0
-			PRINT 　　抜きドラ:
-			FOR N, 1, GARI:1:0 + 1
-				CALL PRTPAI, GARI:1:N
-			NEXT
-		ENDIF
-		PRINTL
-		PRINTL 　 　 　 　 　 　 　 ツモ
-		CALL RICHI_TURN, 1
-		IF TURN:1
-			FOR N, 0, TURN:1
-				CALL PRTPAI, KAWA:1:N
-				SIF N%6 == 5
-					PRINT  
-			NEXT
-		ENDIF
-		PRINTL
-		CALL PRT8PAI_SCORE
-		IF TURN:0
-			FOR N, 0, TURN
-				CALL PRTPAI, KAWA:0:N
-				SIF N%6 == 5
-					PRINT  
-			NEXT
-		ENDIF
-		PRINTL
-		CALL RICHI_TURN, 0
-		PRINTL
-		FOR N, 0, 7
-			CALL PRTPAI, TEHAI:0:N
-			PRINT  
-		NEXT
-		IF GARI:0:0
-			PRINT  　　　抜きドラ:
-			FOR N, 1, GARI:0:0 + 1
-				CALL PRTPAI, GARI:0:N
-			NEXT
-		ENDIF
-		PRINTL
-		PRINTW
-		CALL PAI8SCORE(1, TSUMO, 1)
-		PAI8SCORE -= RESULT
-		PAI8SCORE:1 += RESULT
-		PAI8SCORE:1 += DEPOSITION
-		DEPOSITION = 0
-		GOTO RESET
-	ENDIF
-	;アガれないとき
-	;立直をかけているならツモ切る
-	IF RICHI:1 != -1
-		KAWA:1:(TURN:1) = TSUMO
-		GOTO DAHAI
-	ENDIF
-	;立直をかけていないとき
-	;ランダムな位置からシャンテン数が少なくなる牌を探す
-	LOCAL = RAND:7
-	FOR LOCAL, 1, LOCAL+7
-		IF SHANTEN(1, LOCAL%7) < SHANTEN(1, 7)
-			KAWA:1:(TURN:1) = TEHAI:1:(LOCAL%7)
-			TEHAI:1:(LOCAL%7) = TSUMO
-			GOTO DAHAI
-		ENDIF
-	NEXT
-	;ない場合、ランダムな位置からシャンテン数が変わらない牌を探す
-	LOCAL = RAND:8
-	FOR LOCAL, 1, LOCAL+8
-		IF LOCAL%8 == 7
-			KAWA:1:(TURN:1) = TSUMO
-		ELSEIF SHANTEN(1, LOCAL%8) <= SHANTEN(1, 7)
-			KAWA:1:(TURN:1) = TEHAI:1:(LOCAL%8)
-			TEHAI:1:(LOCAL%8) = TSUMO
-			GOTO DAHAI
-		ENDIF
-	NEXT
-	$DAHAI
-	;聴牌即リー
-	IF RICHI:1 == -1 && SHANTEN(1, 7) == 0
-		PAI8SCORE:1 -= 1000
-		DEPOSITION += 1000
-		RICHI:1 = TURN:1
-		SOKU:1 = 2
-	ENDIF
-	SIF SOKU:1 == 1
-		SOKU:1 = 0
-	;出和了りができるとき
-	IF DEAGARI(0, KAWA:1:(TURN:1))
-		CALL LINEPLUS
-		DRAWLINE
-		PRINTL
-		SETCOLOR 0x228B22
-		PRINT ■ ■ ■ ■ ■ ■ ■ 
-		RESETCOLOR
-		IF GARI:1:0
-			PRINT  　　　抜きドラ:
-			FOR N, 1, GARI:1:0 + 1
-				CALL PRTPAI, GARI:1:N
-			NEXT
-		ENDIF
-		PRINTL
-		PRINTL
-		CALL RICHI_TURN, 1
-		IF TURN:1+1
-			FOR N, 0, TURN:1+1
-				CALL PRTPAI, KAWA:1:N
-				SIF N%6 == 5
-					PRINT  
-			NEXT
-		ENDIF
-		PRINTL
-		CALL PRT8PAI_SCORE
-		IF TURN
-			FOR N, 0, TURN
-				CALL PRTPAI, KAWA:0:N
-				SIF N%6 == 5
-					PRINT  
-			NEXT
-		ENDIF
-		PRINTL
-		CALL RICHI_TURN, 0
-		PRINTL
-		FOR N, 0, 7
-			CALL PRTPAI, TEHAI:0:N
-			PRINT  
-		NEXT
-		IF GARI:0:0
-			PRINT  　　　抜きドラ:
-			FOR N, 1, GARI:0:0 + 1
-				CALL PRTPAI, GARI:0:N
-			NEXT
-		ENDIF
-		PRINTL
-		PRINTPLAIN 　 　 　 　 　 　 　  　  
-		PRINTL [9]ロン [10]パス
-		DO
-			INPUT
-			SELECTCASE RESULT
-				CASE 9
-					CALL PAI8SCORE(0, KAWA:1:(TURN:1), 0)
-					PAI8SCORE += RESULT
-					PAI8SCORE:1 -= RESULT
-					PAI8SCORE += DEPOSITION
-					DEPOSITION = 0
-					;立直が成立してないので1000点戻す
-					IF SOKU:1 == 2
-						PAI8SCORE -= 1000
-						PAI8SCORE:1 += 1000
-					ENDIF
-					GOTO RESET
-				CASE 10
-					MINOGASHI = 1
-			ENDSELECT
-		LOOP LOOPRES(9, 10)
-	ELSE
-		TWAIT 400, 0
-	ENDIF
-	NUM++
-	TURN:1++
-	SIF TURN == 18 && TURN:1 == 18
-		BREAK
-	CALL LINEPLUS
+   ;ここからプレイヤーのターン
+   SIF SOKU == 2
+       SOKU = 1
+   RINSHAN = 0
+   $TSUMO_LOOP0
+   TSUMO = YAMA:NUM
+   CALL SORTPAI, 0
+   DRAWLINE
+   PRINTL
+   SETCOLOR 0x228B22
+   PRINT ■ ■ ■ ■ ■ ■ ■ 
+   RESETCOLOR
+   IF GARI:1:0
+       PRINT  　　　抜きドラ:
+       FOR N, 1, GARI:1:0 + 1
+           CALL PRTPAI, GARI:1:N
+       NEXT
+   ENDIF
+   PRINTL
+   PRINTL
+   CALL RICHI_TURN, 1
+   IF TURN:1
+       FOR N, 0, TURN:1
+           CALL PRTPAI, KAWA:1:N
+           SIF N%6 == 5
+               PRINT  
+       NEXT
+   ENDIF
+   PRINTL
+   CALL PRT8PAI_SCORE
+   IF TURN
+       FOR N, 0, TURN
+           CALL PRTPAI, KAWA:0:N
+           SIF N%6 == 5
+               PRINT  
+       NEXT
+   ENDIF
+   PRINTL
+   CALL RICHI_TURN, 0
+   PRINTL
+   FOR N, 0, 7
+       CALL PRTPAI, TEHAI:0:N
+       PRINT  
+   NEXT
+   PRINT  
+   CALL PRTPAI, TSUMO
+   IF GARI:0:0
+       PRINT 　　抜きドラ:
+       FOR N, 1, GARI:0:0 + 1
+           CALL PRTPAI, GARI:0:N
+       NEXT
+   ENDIF
+   PRINTL
+   IF RICHI == -1
+       PRINT [0][1][2][3][4][5][6] 
+   ELSE
+       PRINTPLAIN 　 　 　 　 　 　 　  
+   ENDIF
+   IF RICHI == -1 || SHANTEN(0, -1) == -1
+       PRINT [7]
+   ELSE
+       PRINTPLAIN 　 
+   ENDIF
+   SIF SHANTEN(0, -1) <= 0 && RICHI == -1
+       PRINT  [8]リーチ
+   SIF SHANTEN(0, -1) == -1
+       PRINT  [9]ツモ
+   PRINTL
+   IF TSUMO >= 100 || (YAMA:NUM %25 == 21 && P8HANA & 2)
+       GARI:0:0++
+       GARI:0:(GARI:0:0) = TSUMO
+       NUM++
+       RINSHAN++
+       IF P8HANA & 8
+           SOKU = 0
+           SOKU:1 = 0
+       ENDIF
+       TWAIT 400, 0
+       CALL LINEPLUS
+       GOTO TSUMO_LOOP0
+   ENDIF
+   IF RICHI != -1 && SHANTEN(0, -1) != -1
+       TWAIT 400, 0
+       GOTO TSUMOGIRI
+   ENDIF
+   $INPUTLOOP
+   INPUT
+   SELECTCASE RESULT
+       CASE 0 TO 6
+           IF RICHI == -1
+               KAWA:0:TURN = TEHAI:0:RESULT
+               TEHAI:0:RESULT = TSUMO
+           ELSE
+               GOTO INPUTLOOP
+           ENDIF
+       CASE 7
+           $TSUMOGIRI
+           KAWA:0:TURN = TSUMO
+       CASE 8
+           IF SHANTEN(0, -1) <= 0
+               CLEARLINE 3
+               FOR N, 0, 7
+                   CALL PRTPAI, TEHAI:0:N
+                   PRINT  
+               NEXT
+               PRINT  
+               CALL PRTPAI, TSUMO
+               PRINTL
+               VARSET DBX
+               FOR LCOUNT, 0, 8
+                   IF SHANTEN(0, LCOUNT) == 0
+                       M = 0
+                       N = 0
+                       DO
+                           IF M != LCOUNT && M < 7
+                               DBX:LCOUNT:N = TEHAI:0:M
+                               N++
+                           ELSEIF  M != LCOUNT && M == 7
+                               DBX:LCOUNT:N = TSUMO
+                               N++
+                           ENDIF
+                           M++
+                       LOOP N <= 6
+                       LOCALS:LCOUNT = <button value='{LCOUNT}' title='待ちは「%MACHI(DBX:LCOUNT:0,DBX:LCOUNT:1,DBX:LCOUNT:2,DBX:LCOUNT:3,DBX:LCOUNT:4,DBX:LCOUNT:5,DBX:LCOUNT:6)%」です'>[{LCOUNT}]</button>
+                   ELSE
+                       LOCALS:LCOUNT = <font color='gray'><nonbutton title='この牌を切るとテンパイしません'>[-]</nonbutton></font>
+                   ENDIF
+               NEXT
+               HTML_PRINT LOCALS:0 + LOCALS:1 + LOCALS:2 + LOCALS:3 + LOCALS:4 + LOCALS:5 + LOCALS:6 + " " + LOCALS:7
+               $INPUTLOOP_T
+               INPUT
+               IF 0 <= RESULT && RESULT <= 6 && SHANTEN(0, RESULT) == 0
+                   KAWA:0:TURN = TEHAI:0:RESULT
+                   TEHAI:0:RESULT = TSUMO
+               ELSEIF RESULT == 7 && SHANTEN(0, RESULT) == 0
+                   KAWA:0:TURN = TSUMO
+               ELSE
+                   GOTO INPUTLOOP_T
+               ENDIF
+               PAI8SCORE -= 1000
+               DEPOSITION += 1000
+               RICHI = TURN
+               SOKU = 2
+           ELSE
+               GOTO INPUTLOOP
+           ENDIF
+       CASE 9
+           IF SHANTEN(0, -1) == -1
+               CALL PAI8SCORE(0, TSUMO, 1)
+               PAI8SCORE += RESULT
+               PAI8SCORE:1 -= RESULT
+               PAI8SCORE += DEPOSITION
+               DEPOSITION = 0
+               TONCHA = 0
+               GOTO RESET
+           ELSE
+               GOTO INPUTLOOP
+           ENDIF
+       CASEELSE
+           GOTO INPUTLOOP
+   ENDSELECT
+   SIF SOKU == 1
+       SOKU = 0
+   ;AIは見逃しをしない
+   IF DEAGARI(1, KAWA:0:TURN)
+       CALL LINEPLUS
+       DRAWLINE
+       CALL SORTPAI, 1
+       PRINTL
+       FOR N, 0, 7
+           CALL PRTPAI, TEHAI:1:N
+           PRINT  
+       NEXT
+       IF GARI:1:0
+           PRINT  　　　抜きドラ:
+           FOR N, 1, GARI:1:0 + 1
+               CALL PRTPAI, GARI:1:N
+           NEXT
+       ENDIF
+       PRINTL
+       PRINTL 　 　 　 　 　 　 　 ロン
+       CALL RICHI_TURN, 1
+       IF TURN:1
+           FOR N, 0, TURN:1
+               CALL PRTPAI, KAWA:1:N
+               SIF N%6 == 5
+                   PRINT  
+           NEXT
+       ENDIF
+       PRINTL
+       CALL PRT8PAI_SCORE
+       IF TURN+1
+           FOR N, 0, TURN+1
+               CALL PRTPAI, KAWA:0:N
+               SIF N%6 == 5
+                   PRINT  
+           NEXT
+       ENDIF
+       PRINTL
+       CALL RICHI_TURN, 0
+       PRINTL
+       FOR N, 0, 7
+           CALL PRTPAI, TEHAI:0:N
+           PRINT  
+       NEXT
+       IF GARI:0:0
+           PRINT  　　　抜きドラ:
+           FOR N, 1, GARI:0:0 + 1
+               CALL PRTPAI, GARI:0:N
+           NEXT
+       ENDIF
+       PRINTW
+       CALL PAI8SCORE(1, KAWA:0:TURN, 0)
+       PAI8SCORE -= RESULT
+       PAI8SCORE:1 += RESULT
+       PAI8SCORE:1 += DEPOSITION
+       DEPOSITION = 0
+       ;立直が成立してないので1000点戻す
+       IF SOKU == 2
+           PAI8SCORE += 1000
+           PAI8SCORE -= 1000
+       ENDIF
+       TONCHA = 1
+       GOTO RESET
+   ENDIF
+   NUM++
+   TURN++
+   SIF TURN == 18 && TURN:1 == 18
+       BREAK
+   CALL LINEPLUS
+   
+   $AI_START
+   ;ここから相手プレイヤーのターン
+   SIF SOKU:1 == 2
+       SOKU:1 = 1
+   RINSHAN = 0
+   $TSUMO_LOOP1
+   TSUMO = YAMA:NUM
+   CALL SORTPAI, 1
+   DRAWLINE
+   PRINTL
+   SETCOLOR 0x228B22
+   PRINT ■ ■ ■ ■ ■ ■ ■  
+   IF TSUMO >= 100 || (YAMA:NUM %25 == 21 && P8HANA & 2)
+       CALL PRTPAI, TSUMO
+   ELSE
+       PRINT ■
+   ENDIF
+   RESETCOLOR
+   IF GARI:1:0
+       PRINT 　　抜きドラ:
+       FOR N, 1, GARI:1:0 + 1
+           CALL PRTPAI, GARI:1:N
+       NEXT
+   ENDIF
+   PRINTL
+   PRINTL
+   CALL RICHI_TURN, 1
+   IF TURN:1
+       FOR N, 0, TURN:1
+           CALL PRTPAI, KAWA:1:N
+           SIF N%6 == 5
+               PRINT  
+       NEXT
+   ENDIF
+   PRINTL
+   CALL PRT8PAI_SCORE
+   IF TURN:0
+       FOR N, 0, TURN
+           CALL PRTPAI, KAWA:0:N
+           SIF N%6 == 5
+               PRINT  
+       NEXT
+   ENDIF
+   PRINTL
+   CALL RICHI_TURN, 0
+   PRINTL
+   FOR N, 0, 7
+       CALL PRTPAI, TEHAI:0:N
+       PRINT  
+   NEXT
+   IF GARI:0:0
+       PRINT  　　　抜きドラ:
+       FOR N, 1, GARI:0:0 + 1
+           CALL PRTPAI, GARI:0:N
+       NEXT
+   ENDIF
+   PRINTL
+   PRINTL
+   TWAIT 400, 0
+   IF TSUMO >= 100 || (YAMA:NUM %25 == 21 && P8HANA & 2)
+       GARI:1:0++
+       GARI:1:(GARI:1:0) = TSUMO
+       NUM++
+       RINSHAN++
+       IF P8HANA & 8
+           SOKU = 0
+           SOKU:1 = 0
+       ENDIF
+       TWAIT 400, 0
+       CALL LINEPLUS
+       GOTO TSUMO_LOOP1
+   ENDIF
+   ;ここからAIの思考
+   ;アガれるなら絶対アガる
+   IF SHANTEN(1, -1) == -1
+       CALL LINEPLUS
+       DRAWLINE
+       PRINTL
+       FOR N, 0, 7
+           CALL PRTPAI, TEHAI:1:N
+           PRINT  
+       NEXT
+       PRINT  
+       CALL PRTPAI, TSUMO
+       IF GARI:1:0
+           PRINT 　　抜きドラ:
+           FOR N, 1, GARI:1:0 + 1
+               CALL PRTPAI, GARI:1:N
+           NEXT
+       ENDIF
+       PRINTL
+       PRINTL 　 　 　 　 　 　 　 ツモ
+       CALL RICHI_TURN, 1
+       IF TURN:1
+           FOR N, 0, TURN:1
+               CALL PRTPAI, KAWA:1:N
+               SIF N%6 == 5
+                   PRINT  
+           NEXT
+       ENDIF
+       PRINTL
+       CALL PRT8PAI_SCORE
+       IF TURN:0
+           FOR N, 0, TURN
+               CALL PRTPAI, KAWA:0:N
+               SIF N%6 == 5
+                   PRINT  
+           NEXT
+       ENDIF
+       PRINTL
+       CALL RICHI_TURN, 0
+       PRINTL
+       FOR N, 0, 7
+           CALL PRTPAI, TEHAI:0:N
+           PRINT  
+       NEXT
+       IF GARI:0:0
+           PRINT  　　　抜きドラ:
+           FOR N, 1, GARI:0:0 + 1
+               CALL PRTPAI, GARI:0:N
+           NEXT
+       ENDIF
+       PRINTL
+       PRINTW
+       CALL PAI8SCORE(1, TSUMO, 1)
+       PAI8SCORE -= RESULT
+       PAI8SCORE:1 += RESULT
+       PAI8SCORE:1 += DEPOSITION
+       DEPOSITION = 0
+       TONCHA = 1
+       GOTO RESET
+   ENDIF
+   ;アガれないとき
+   ;立直をかけているならツモ切る
+   IF RICHI:1 != -1
+       KAWA:1:(TURN:1) = TSUMO
+       GOTO DAHAI
+   ENDIF
+   ;立直をかけていないとき
+   ;ランダムな位置からシャンテン数が少なくなる牌を探す
+   LOCAL = RAND:7
+   FOR LOCAL, 1, LOCAL+7
+       IF SHANTEN(1, LOCAL%7) < SHANTEN(1, 7)
+           KAWA:1:(TURN:1) = TEHAI:1:(LOCAL%7)
+           TEHAI:1:(LOCAL%7) = TSUMO
+           GOTO DAHAI
+       ENDIF
+   NEXT
+   ;ない場合、ランダムな位置からシャンテン数が変わらない牌を探す
+   LOCAL = RAND:8
+   FOR LOCAL, 1, LOCAL+8
+       IF LOCAL%8 == 7
+           KAWA:1:(TURN:1) = TSUMO
+       ELSEIF SHANTEN(1, LOCAL%8) <= SHANTEN(1, 7)
+           KAWA:1:(TURN:1) = TEHAI:1:(LOCAL%8)
+           TEHAI:1:(LOCAL%8) = TSUMO
+           GOTO DAHAI
+       ENDIF
+   NEXT
+   $DAHAI
+   ;聴牌即リー
+   IF RICHI:1 == -1 && SHANTEN(1, 7) == 0
+       PAI8SCORE:1 -= 1000
+       DEPOSITION += 1000
+       RICHI:1 = TURN:1
+       SOKU:1 = 2
+   ENDIF
+   SIF SOKU:1 == 1
+       SOKU:1 = 0
+   ;出和了りができるとき
+   IF DEAGARI(0, KAWA:1:(TURN:1))
+       CALL LINEPLUS
+       DRAWLINE
+       PRINTL
+       SETCOLOR 0x228B22
+       PRINT ■ ■ ■ ■ ■ ■ ■ 
+       RESETCOLOR
+       IF GARI:1:0
+           PRINT  　　　抜きドラ:
+           FOR N, 1, GARI:1:0 + 1
+               CALL PRTPAI, GARI:1:N
+           NEXT
+       ENDIF
+       PRINTL
+       PRINTL
+       CALL RICHI_TURN, 1
+       IF TURN:1+1
+           FOR N, 0, TURN:1+1
+               CALL PRTPAI, KAWA:1:N
+               SIF N%6 == 5
+                   PRINT  
+           NEXT
+       ENDIF
+       PRINTL
+       CALL PRT8PAI_SCORE
+       IF TURN
+           FOR N, 0, TURN
+               CALL PRTPAI, KAWA:0:N
+               SIF N%6 == 5
+                   PRINT  
+           NEXT
+       ENDIF
+       PRINTL
+       CALL RICHI_TURN, 0
+       PRINTL
+       FOR N, 0, 7
+           CALL PRTPAI, TEHAI:0:N
+           PRINT  
+       NEXT
+       IF GARI:0:0
+           PRINT  　　　抜きドラ:
+           FOR N, 1, GARI:0:0 + 1
+               CALL PRTPAI, GARI:0:N
+           NEXT
+       ENDIF
+       PRINTL
+       PRINTPLAIN 　 　 　 　 　 　 　  　  
+       PRINTL [9]ロン [10]パス
+       DO
+           INPUT
+           SELECTCASE RESULT
+               CASE 9
+                   CALL PAI8SCORE(0, KAWA:1:(TURN:1), 0)
+                   PAI8SCORE += RESULT
+                   PAI8SCORE:1 -= RESULT
+                   PAI8SCORE += DEPOSITION
+                   DEPOSITION = 0
+                   ;立直が成立してないので1000点戻す
+                   IF SOKU:1 == 2
+                       PAI8SCORE -= 1000
+                       PAI8SCORE:1 += 1000
+                   ENDIF
+                   TONCHA = 0
+                   GOTO RESET
+               CASE 10
+                   MINOGASHI = 1
+           ENDSELECT
+       LOOP LOOPRES(9, 10)
+   ELSE
+       TWAIT 400, 0
+   ENDIF
+   NUM++
+   TURN:1++
+   SIF TURN == 18 && TURN:1 == 18
+       BREAK
+   CALL LINEPLUS
 LOOP 1
 ;流局時の処理
 CALL LINEPLUS
@@ -584,180 +639,190 @@ CALL SORTPAI, 1
 DRAWLINE
 PRINTL
 FOR N, 0, 7
-	CALL PRTPAI, TEHAI:1:N
-	PRINT  
+   CALL PRTPAI, TEHAI:1:N
+   PRINT  
 NEXT
 IF GARI:1:0
-	PRINT  　　　抜きドラ:
-	FOR N, 1, GARI:1:0 + 1
-		CALL PRTPAI, GARI:1:N
-	NEXT
+   PRINT  　　　抜きドラ:
+   FOR N, 1, GARI:1:0 + 1
+       CALL PRTPAI, GARI:1:N
+   NEXT
 ENDIF
 PRINTL
 IF SHANTEN(1, 7) == 0
-	PRINTL 　 　 　 　 　 　 　 テンパイ
+   PRINTL 　 　 　 　 　 　 　 テンパイ
 ELSE
-	PRINTL 　 　 　 　 　 　 　 ノーテン
+   PRINTL 　 　 　 　 　 　 　 ノーテン
 ENDIF
 CALL RICHI_TURN, 1
 IF TURN:1
-	FOR N, 0, TURN:1
-		CALL PRTPAI, KAWA:1:N
-		SIF N%6 == 5
-			PRINT  
-	NEXT
+   FOR N, 0, TURN:1
+       CALL PRTPAI, KAWA:1:N
+       SIF N%6 == 5
+           PRINT  
+   NEXT
 ENDIF
 PRINTL
 CALL PRT8PAI_SCORE
 IF TURN:0
-	FOR N, 0, TURN
-		CALL PRTPAI, KAWA:0:N
-		SIF N%6 == 5
-			PRINT  
-	NEXT
+   FOR N, 0, TURN
+       CALL PRTPAI, KAWA:0:N
+       SIF N%6 == 5
+           PRINT  
+   NEXT
 ENDIF
 PRINTL
 CALL RICHI_TURN, 0
 IF SHANTEN(0, 7) == 0
-	PRINTL 　 　 　 　 　 　 　 テンパイ
+   PRINTL 　 　 　 　 　 　 　 テンパイ
 ELSE
-	PRINTL 　 　 　 　 　 　 　 ノーテン
+   PRINTL 　 　 　 　 　 　 　 ノーテン
 ENDIF
 FOR N, 0, 7
-	CALL PRTPAI, TEHAI:0:N
-	PRINT  
+   CALL PRTPAI, TEHAI:0:N
+   PRINT  
 NEXT
 IF GARI:0:0
-	PRINT  　　　抜きドラ:
-	FOR N, 1, GARI:0:0 + 1
-		CALL PRTPAI, GARI:0:N
-	NEXT
+   PRINT  　　　抜きドラ:
+   FOR N, 1, GARI:0:0 + 1
+       CALL PRTPAI, GARI:0:N
+   NEXT
 ENDIF
 PRINTL
 PRINTW
 IF SHANTEN(0, 7) == 0 && SHANTEN(1, 7) != 0
-	PAI8SCORE += 3000
-	PAI8SCORE:1 -= 3000
+   PAI8SCORE += 3000
+   PAI8SCORE:1 -= 3000
 ELSEIF SHANTEN(0, 7) != 0 && SHANTEN(1, 7) == 0
-	PAI8SCORE -= 3000
-	PAI8SCORE:1 += 3000
+   PAI8SCORE -= 3000
+   PAI8SCORE:1 += 3000
 ENDIF
 GOTO RESET
-
-
+ 
+ 
 @PRT8PAI_SCORE
 ;スコア部分の表示
+IF TONCHA == 1
+   PRINT (親) 
+ELSE
+   PRINT (子) 
+ENDIF
 PRINTFORML %NAME:TARGET%:{PAI8SCORE:1}点
 PRINTL
 PRINTFORM {KYOKU}局目/全{KYOKU_MAX}局　ドラ表示牌:
 CALL PRTPAI, YAMA:98
 SIF DEPOSITION
-	PRINTFORM 　供託:{DEPOSITION}点
+   PRINTFORM 　供託:{DEPOSITION}点
 PRINTL
 PRINTL
+IF TONCHA == 0
+   PRINT (親) 
+ELSE
+   PRINT (子) 
+ENDIF
 PRINTFORML %NAME:MASTER%:{PAI8SCORE}点
-
-
+ 
+ 
 @RICHI_TURN, ARG
 ;リーチしているなら「ﾘｰﾁ」と出る
 REPEAT TURN:ARG+1
-	IF COUNT == RICHI:ARG
-		FONTBOLD
-		PRINT ﾘｰﾁ
-		FONTREGULAR
-		BREAK
-	ELSE
-		PRINT 　
-	ENDIF
-	SIF COUNT%6 == 5
-		PRINT  
+   IF COUNT == RICHI:ARG
+       FONTBOLD
+       PRINT ﾘｰﾁ
+       FONTREGULAR
+       BREAK
+   ELSE
+       PRINT 　
+   ENDIF
+   SIF COUNT%6 == 5
+       PRINT  
 REND
 PRINTL
-
-
+ 
+ 
 @PAI8OPTION
 PRINTL
 PRINTL 　　　　　現在の設定
 PRINT 　　赤牌　　赤五萬：
 SELECTCASE P8RED%4
-	CASE 0
-		PRINTL なし
-	CASE 1
-		PRINTL １枚
-	CASE 2
-		PRINTL ２枚
-	CASE 3
-		PRINTL ４枚
+   CASE 0
+       PRINTL なし
+   CASE 1
+       PRINTL １枚
+   CASE 2
+       PRINTL ２枚
+   CASE 3
+       PRINTL ４枚
 ENDSELECT
 PRINT 　　　　　　赤五筒：
 SELECTCASE P8RED/4%4
-	CASE 0
-		PRINT なし
-	CASE 1
-		PRINT １枚
-	CASE 2
-		PRINT ２枚
-	CASE 3
-		PRINT ４枚
+   CASE 0
+       PRINT なし
+   CASE 1
+       PRINT １枚
+   CASE 2
+       PRINT ２枚
+   CASE 3
+       PRINT ４枚
 ENDSELECT
 SELECTCASE P8RED&128
-	CASE 0
-		PRINTL (役ではない)
-	CASE 128
-		PRINTL (役と認める)
+   CASE 0
+       PRINTL (役ではない)
+   CASE 128
+       PRINTL (役と認める)
 ENDSELECT
 PRINT 　　　　　　赤三筒：
 SELECTCASE P8RED/16%4
-	CASE 0
-		PRINTL なし
-	CASE 1
-		PRINTL １枚
-	CASE 2
-		PRINTL ２枚
-	CASE 3
-		PRINTL 赤金
+   CASE 0
+       PRINTL なし
+   CASE 1
+       PRINTL １枚
+   CASE 2
+       PRINTL ２枚
+   CASE 3
+       PRINTL 赤金
 ENDSELECT
 PRINT 　　　　　　　赤北：
 SELECTCASE P8RED&64
-	CASE 0
-		PRINTL なし
-	CASE 64
-		PRINTL １枚
+   CASE 0
+       PRINTL なし
+   CASE 64
+       PRINTL １枚
 ENDSELECT
 PRINT 抜きドラ　　　花牌：
 SELECTCASE P8HANA&1
-	CASE 0
-		PRINTL なし
-	CASE 1
-		PRINTL あり
+   CASE 0
+       PRINTL なし
+   CASE 1
+       PRINTL あり
 ENDSELECT
 PRINT 　　　　　北の扱い：
 SELECTCASE P8HANA&2
-	CASE 0
-		PRINTL 通常の牌
-	CASE 2
-		PRINTL 抜きドラ
+   CASE 0
+       PRINTL 通常の牌
+   CASE 2
+       PRINTL 抜きドラ
 ENDSELECT
 PRINT 　　　　　嶺上開花：
 SELECTCASE P8HANA&4
-	CASE 0
-		PRINTL なし
-	CASE 4
-		PRINTL あり
+   CASE 0
+       PRINTL なし
+   CASE 4
+       PRINTL あり
 ENDSELECT
 PRINT 　　　　　一発消し：
 SELECTCASE P8HANA&8
-	CASE 0
-		PRINTL なし
-	CASE 8
-		PRINTL あり
+   CASE 0
+       PRINTL なし
+   CASE 8
+       PRINTL あり
 ENDSELECT
 PRINT 　　　　　　小四喜：
 SELECTCASE P8HANA&16
-	CASE 0
-		PRINTL なし
-	CASE 16
-		PRINTL あり
+   CASE 0
+       PRINTL なし
+   CASE 16
+       PRINTL あり
 ENDSELECT
 PRINTL
 PRINTL [0] 赤牌の設定を変える
@@ -765,179 +830,179 @@ PRINTL [1] 抜きドラの設定を変える
 PRINTL [9] 設定変更を終える
 INPUT
 IF RESULT == 0
-	DO
-		PRINTL
-		PRINTL 　　　現在の設定　　　　 ＜設定したい項目を選んでください＞
-		PRINTPLAIN 　　　　　赤五萬：
-		SELECTCASE P8RED%4
-			CASE 0
-				PRINTPLAIN なし　
-			CASE 1
-				PRINTPLAIN １枚　
-			CASE 2
-				PRINTPLAIN ２枚　
-			CASE 3
-				PRINTPLAIN ４枚　
-		ENDSELECT
-		PRINTL [ 0]なし [ 1]１枚 [ 2]２枚 [ 3]４枚
-		PRINTPLAIN 　　　　　赤五筒：
-		SELECTCASE P8RED/4%4
-			CASE 0
-				PRINTPLAIN なし　
-			CASE 1
-				PRINTPLAIN １枚　
-			CASE 2
-				PRINTPLAIN ２枚　
-			CASE 3
-				PRINTPLAIN ４枚　
-		ENDSELECT
-		PRINTL [ 4]なし [ 5]１枚 [ 6]２枚 [ 7]４枚
-		PRINTPLAIN 赤五筒を役とする：
-		SELECTCASE P8RED&128
-			CASE 0
-				PRINTPLAIN なし　
-			CASE 128
-				PRINTPLAIN あり　
-		ENDSELECT
-		PRINTL [ 8]なし [ 9]あり
-		PRINTPLAIN 　　　　　赤三筒：
-		SELECTCASE P8RED/16%4
-			CASE 0
-				PRINTPLAIN なし　
-			CASE 1
-				PRINTPLAIN １枚　
-			CASE 2
-				PRINTPLAIN ２枚　
-			CASE 3
-				PRINTPLAIN 赤金　
-		ENDSELECT
-		PRINTL [10]なし [11]１枚 [12]２枚 [13]赤金
-		PRINTPLAIN 　　　　　　赤北：
-		SELECTCASE P8RED&64
-			CASE 0
-				PRINTPLAIN なし　
-			CASE 64
-				PRINTPLAIN １枚　
-		ENDSELECT
-		PRINTL [14]なし [15]１枚
-		PRINTPLAIN 　　　　　　　　　　　　
-		PRINTL [16]設定を終える
-		INPUT
-		SELECTCASE RESULT
-			CASE 0
-				P8RED &= 252
-			CASE 1
-				P8RED &= 252
-				P8RED |= 1
-			CASE 2
-				P8RED &= 252
-				P8RED |= 2
-			CASE 3
-				P8RED |= 3
-			CASE 4
-				P8RED &= 243
-			CASE 5
-				P8RED &= 243
-				P8RED |= 4
-			CASE 6
-				P8RED &= 243
-				P8RED |= 8
-			CASE 7
-				P8RED |= 12
-			CASE 8
-				P8RED &= 127
-			CASE 9
-				P8RED |= 128
-			CASE 10
-				P8RED &= 207
-			CASE 11
-				P8RED &= 207
-				P8RED |= 16
-			CASE 12
-				P8RED &= 207
-				P8RED |= 32
-			CASE 13
-				P8RED |= 48
-			CASE 14
-				P8RED &= 191
-			CASE 15
-				P8RED |= 64
-			CASE 16
-				BREAK
-		ENDSELECT
-	LOOP 1
-	RESTART
+   DO
+       PRINTL
+       PRINTL 　　　現在の設定　　　　 ＜設定したい項目を選んでください＞
+       PRINTPLAIN 　　　　　赤五萬：
+       SELECTCASE P8RED%4
+           CASE 0
+               PRINTPLAIN なし　
+           CASE 1
+               PRINTPLAIN １枚　
+           CASE 2
+               PRINTPLAIN ２枚　
+           CASE 3
+               PRINTPLAIN ４枚　
+       ENDSELECT
+       PRINTL [ 0]なし [ 1]１枚 [ 2]２枚 [ 3]４枚
+       PRINTPLAIN 　　　　　赤五筒：
+       SELECTCASE P8RED/4%4
+           CASE 0
+               PRINTPLAIN なし　
+           CASE 1
+               PRINTPLAIN １枚　
+           CASE 2
+               PRINTPLAIN ２枚　
+           CASE 3
+               PRINTPLAIN ４枚　
+       ENDSELECT
+       PRINTL [ 4]なし [ 5]１枚 [ 6]２枚 [ 7]４枚
+       PRINTPLAIN 赤五筒を役とする：
+       SELECTCASE P8RED&128
+           CASE 0
+               PRINTPLAIN なし　
+           CASE 128
+               PRINTPLAIN あり　
+       ENDSELECT
+       PRINTL [ 8]なし [ 9]あり
+       PRINTPLAIN 　　　　　赤三筒：
+       SELECTCASE P8RED/16%4
+           CASE 0
+               PRINTPLAIN なし　
+           CASE 1
+               PRINTPLAIN １枚　
+           CASE 2
+               PRINTPLAIN ２枚　
+           CASE 3
+               PRINTPLAIN 赤金　
+       ENDSELECT
+       PRINTL [10]なし [11]１枚 [12]２枚 [13]赤金
+       PRINTPLAIN 　　　　　　赤北：
+       SELECTCASE P8RED&64
+           CASE 0
+               PRINTPLAIN なし　
+           CASE 64
+               PRINTPLAIN １枚　
+       ENDSELECT
+       PRINTL [14]なし [15]１枚
+       PRINTPLAIN 　　　　　　　　　　　　
+       PRINTL [16]設定を終える
+       INPUT
+       SELECTCASE RESULT
+           CASE 0
+               P8RED &= 252
+           CASE 1
+               P8RED &= 252
+               P8RED |= 1
+           CASE 2
+               P8RED &= 252
+               P8RED |= 2
+           CASE 3
+               P8RED |= 3
+           CASE 4
+               P8RED &= 243
+           CASE 5
+               P8RED &= 243
+               P8RED |= 4
+           CASE 6
+               P8RED &= 243
+               P8RED |= 8
+           CASE 7
+               P8RED |= 12
+           CASE 8
+               P8RED &= 127
+           CASE 9
+               P8RED |= 128
+           CASE 10
+               P8RED &= 207
+           CASE 11
+               P8RED &= 207
+               P8RED |= 16
+           CASE 12
+               P8RED &= 207
+               P8RED |= 32
+           CASE 13
+               P8RED |= 48
+           CASE 14
+               P8RED &= 191
+           CASE 15
+               P8RED |= 64
+           CASE 16
+               BREAK
+       ENDSELECT
+   LOOP 1
+   RESTART
 ELSEIF RESULT == 1
-	DO
-		PRINTL
-		PRINTL 　　　　現在の設定　　　　＜設定したい項目を選んでください＞
-		PRINTPLAIN 　　　　　　　花牌：
-		SELECTCASE P8HANA&1
-			CASE 0
-				PRINTPLAIN なし　
-			CASE 1
-				PRINTPLAIN あり　
-		ENDSELECT
-		PRINTL [ 0]なし [ 1]あり
-		PRINTPLAIN 北を抜きドラとする：
-		SELECTCASE P8HANA&2
-			CASE 0
-				PRINTPLAIN なし　
-			CASE 2
-				PRINTPLAIN あり　
-		ENDSELECT
-		PRINTL [ 2]なし [ 3]あり
-		PRINTPLAIN 抜きドラで嶺上開花：
-		SELECTCASE P8HANA&4
-			CASE 0
-				PRINTPLAIN なし　
-			CASE 4
-				PRINTPLAIN あり　
-		ENDSELECT
-		PRINTL [ 4]なし [ 5]あり
-		PRINTPLAIN 抜きドラで一発消し：
-		SELECTCASE P8HANA&8
-			CASE 0
-				PRINTPLAIN なし　
-			CASE 8
-				PRINTPLAIN あり　
-		ENDSELECT
-		PRINTL [ 6]なし [ 7]あり
-		PRINTPLAIN 北３枚抜きの小四喜：
-		SELECTCASE P8HANA&16
-			CASE 0
-				PRINTPLAIN なし　
-			CASE 16
-				PRINTPLAIN あり　
-		ENDSELECT
-		PRINTL [ 8]なし [ 9]あり
-		PRINTPLAIN 　　　　　　　　　　　　　
-		PRINTL [10]設定を終える
-		INPUT
-		SELECTCASE RESULT
-			CASE 0
-				P8HANA &= 30
-			CASE 1
-				P8HANA |= 1
-			CASE 2
-				P8HANA &= 29
-			CASE 3
-				P8HANA |= 2
-			CASE 4
-				P8HANA &= 27
-			CASE 5
-				P8HANA |= 4
-			CASE 6
-				P8HANA &= 23
-			CASE 7
-				P8HANA |= 8
-			CASE 8
-				P8HANA &= 15
-			CASE 9
-				P8HANA |= 16
-			CASE 10
-				BREAK
-		ENDSELECT
-	LOOP 1
-	RESTART
+   DO
+       PRINTL
+       PRINTL 　　　　現在の設定　　　　＜設定したい項目を選んでください＞
+       PRINTPLAIN 　　　　　　　花牌：
+       SELECTCASE P8HANA&1
+           CASE 0
+               PRINTPLAIN なし　
+           CASE 1
+               PRINTPLAIN あり　
+       ENDSELECT
+       PRINTL [ 0]なし [ 1]あり
+       PRINTPLAIN 北を抜きドラとする：
+       SELECTCASE P8HANA&2
+           CASE 0
+               PRINTPLAIN なし　
+           CASE 2
+               PRINTPLAIN あり　
+       ENDSELECT
+       PRINTL [ 2]なし [ 3]あり
+       PRINTPLAIN 抜きドラで嶺上開花：
+       SELECTCASE P8HANA&4
+           CASE 0
+               PRINTPLAIN なし　
+           CASE 4
+               PRINTPLAIN あり　
+       ENDSELECT
+       PRINTL [ 4]なし [ 5]あり
+       PRINTPLAIN 抜きドラで一発消し：
+       SELECTCASE P8HANA&8
+           CASE 0
+               PRINTPLAIN なし　
+           CASE 8
+               PRINTPLAIN あり　
+       ENDSELECT
+       PRINTL [ 6]なし [ 7]あり
+       PRINTPLAIN 北３枚抜きの小四喜：
+       SELECTCASE P8HANA&16
+           CASE 0
+               PRINTPLAIN なし　
+           CASE 16
+               PRINTPLAIN あり　
+       ENDSELECT
+       PRINTL [ 8]なし [ 9]あり
+       PRINTPLAIN 　　　　　　　　　　　　　
+       PRINTL [10]設定を終える
+       INPUT
+       SELECTCASE RESULT
+           CASE 0
+               P8HANA &= 30
+           CASE 1
+               P8HANA |= 1
+           CASE 2
+               P8HANA &= 29
+           CASE 3
+               P8HANA |= 2
+           CASE 4
+               P8HANA &= 27
+           CASE 5
+               P8HANA |= 4
+           CASE 6
+               P8HANA &= 23
+           CASE 7
+               P8HANA |= 8
+           CASE 8
+               P8HANA &= 15
+           CASE 9
+               P8HANA |= 16
+           CASE 10
+               BREAK
+       ENDSELECT
+   LOOP 1
+   RESTART
 ENDIF
