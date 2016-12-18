@@ -3,8 +3,6 @@
 #DIM DYNAMIC DBX, 8, 7;待ち牌の判定に使用する2次元変数
 #DIM DYNAMIC LCOUNT;関数を跨いだFOR-NEXT構文でのカウンタ変数
 
-KYOKU_MAX = 8
-
 PRINTL
 PRINTL ◆八牌麻雀◆
 PRINTL
@@ -12,7 +10,6 @@ PRINTL 萬子・筒子・字牌のみで2面子1雀頭を作ってアガるゲ�
 PRINTL [0] 始める
 PRINTL [1] 設定の確認・変更
 PRINTL [2] 採用役の確認
-PRINTL [3] ルールを見る
 DO
 	INPUT
 	SELECTCASE RESULT
@@ -22,7 +19,6 @@ DO
 			CALL PAI8OPTION
 			RESTART
 		CASE 2
-			PRINTL
 			PRINTL 　　　※役牌…三元牌(白・發・中)の他、東・西が共通で常に役牌
 			PRINTFORM １翻：立直 一発 門前清自摸和 断%UNICODE(0x4E48)%九 平和 役牌 一盃口 海底模月 河底撈魚
 			SIF P8HANA & 4
@@ -36,57 +32,12 @@ DO
 				PRINT  小四喜
 			PRINTW
 			RESTART
-		CASE 3
-			PRINTL
-			PRINTL 八牌麻雀は次の25種類の牌を使って遊ぶゲームです
-			PRINT 萬子:
-			FOR COUNT, 0, 9
-				CALL PRTPAI, COUNT
-				IF COUNT == 8
-					PRINTL
-					BREAK
-				ENDIF
-				PRINT  
-			NEXT
-			PRINT 筒子:
-			FOR COUNT, 9, 18
-				CALL PRTPAI, COUNT
-				IF COUNT == 17
-					PRINTL
-					BREAK
-				ENDIF
-				PRINT  
-			NEXT
-			PRINT 字牌:
-			FOR COUNT, 18, 25
-				CALL PRTPAI, COUNT
-				IF COUNT == 24
-					PRINTL
-					BREAK
-				ENDIF
-				PRINT  
-			NEXT
-			PRINTL これらを組み合わせて2面子1雀頭で何らかの役を作ることでアガることができます
-			PRINTL 　　面子…「順子」か「刻子」のこと
-			PRINTL 　　　　順子（シュンツ）…「２３４」や「７８９」などを萬子か筒子で揃えたもの（※「８９１」「９１２」はダメ）
-			PRINTL 　　　　刻子（コーツ）……「８８８」や「北北北」などの3つセットを揃えたもの
-			PRINTL 　　雀頭…「２２」や「中中」などの2つセットを揃えたもの
-			PRINTL 各プレイヤーは7枚の牌を所持していて、毎ターン1枚引いて1枚捨てることでゲームが進行します
-			PRINTL 1枚引いたときにアガることができるとき、「ツモ」を宣言することでアガることができます
-			PRINTL また、相手プレイヤーが捨てた牌を使ってアガることができるのなら「ロン」を宣言することでアガることができます
-			PRINTL 誰かがアガるか、両プレイヤーが18枚ずつ牌を捨てるまでを1局として、
-			PRINTFORML {KYOKU_MAX}局終わったときに、点数が多いほうが勝ちとなります
-			PRINTL
-			PRINTL 通常の麻雀とは違い、「ポン」「チー」「カン」ができません
-			PRINTL フリテン立直や立直後の見逃しは認めています(ロン和了りはできなくなります)
-			PRINTL 流局時のテンパイ料は場に3000点となります
-			WAIT
-			RESTART
 	ENDSELECT
 LOOP 1
 
 VARSET PAI8SCORE, 50000
 KYOKU = 0
+KYOKU_MAX = 8
 
 $RESET
 IF KYOKU >= KYOKU_MAX
@@ -137,15 +88,13 @@ FOR N, 0, 7
 	NUM++
 NEXT
 
-;1局目のみ親はランダム
+;スタートはランダム
 KYOKU++
-SIF KYOKU == 1
-	TONCHA = RAND:2
 PRINTL
-IF TONCHA == 0
-	PRINTFORMW %NAME:MASTER%が親です
+IF RAND:2 == 0
+	PRINTFORMW %NAME:MASTER%からスタートです
 ELSE
-	PRINTFORMW %NAME:TARGET%が親です
+	PRINTFORMW %NAME:TARGET%からスタートです
 	CALL LINEPLUS
 	GOTO AI_START
 ENDIF
@@ -307,7 +256,6 @@ DO
 				PAI8SCORE:1 -= RESULT
 				PAI8SCORE += DEPOSITION
 				DEPOSITION = 0
-				TONCHA = 0
 				GOTO RESET
 			ELSE
 				GOTO INPUTLOOP
@@ -376,7 +324,6 @@ DO
 			PAI8SCORE += 1000
 			PAI8SCORE -= 1000
 		ENDIF
-		TONCHA = 1
 		GOTO RESET
 	ENDIF
 	NUM++
@@ -514,7 +461,6 @@ DO
 		PAI8SCORE:1 += RESULT
 		PAI8SCORE:1 += DEPOSITION
 		DEPOSITION = 0
-		TONCHA = 1
 		GOTO RESET
 	ENDIF
 	;アガれないとき
@@ -617,7 +563,6 @@ DO
 						PAI8SCORE -= 1000
 						PAI8SCORE:1 += 1000
 					ENDIF
-					TONCHA = 0
 					GOTO RESET
 				CASE 10
 					MINOGASHI = 1
@@ -702,11 +647,6 @@ GOTO RESET
 
 @PRT8PAI_SCORE
 ;スコア部分の表示
-IF TONCHA == 1
-	PRINT (親) 
-ELSE
-	PRINT (子) 
-ENDIF
 PRINTFORML %NAME:TARGET%:{PAI8SCORE:1}点
 PRINTL
 PRINTFORM {KYOKU}局目/全{KYOKU_MAX}局　ドラ表示牌:
@@ -715,11 +655,6 @@ SIF DEPOSITION
 	PRINTFORM 　供託:{DEPOSITION}点
 PRINTL
 PRINTL
-IF TONCHA == 0
-	PRINT (親) 
-ELSE
-	PRINT (子) 
-ENDIF
 PRINTFORML %NAME:MASTER%:{PAI8SCORE}点
 
 
