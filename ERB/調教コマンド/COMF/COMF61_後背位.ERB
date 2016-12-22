@@ -219,13 +219,81 @@ IF PREVCOMS == "3P"
 	ENDIF
 ;調教者が前回:助手で今回:主人か、前回:主人で今回:助手のとき
 ELSEIF TFLAG:前コマンド実行者 != PLAYER
-	;前回の調教が正常位アナルか後背位アナルかフェラチオかイラマチオのとき3Pへ
 	SELECTCASE PREVCOMS
+		;前回の調教が正常位アナルか後背位アナルかフェラチオかイラマチオのとき3Pへ
 		CASE "正常位アナル", "後背位アナル", "フェラチオ", "イラマチオ"
 			CALL USERCOM_ABLE500
 			SIF RESULT
 				JUMP COM500
+		;前回の調教が正常位させるか正常位アナルさせるのとき数珠繋ぎへ
+		CASE "正常位させる", "正常位アナルさせる"
+			TFLAG:奴隷挿入箇所 = 0
+			TFLAG:助手挿入箇所 = 0
+			TFLAG:主人挿入箇所 = 0
+			IF TFLAG:前コマンド実行者 == MASTER
+				TFLAG:数珠繋ぎ = 231
+				SELECTCASE PREVCOMS
+					CASE "正常位させる"
+						TFLAG:奴隷挿入箇所 = 1
+					CASE "正常位アナルさせる"
+						TFLAG:奴隷挿入箇所 = 2
+				ENDSELECT
+				TFLAG:助手挿入箇所 = 1
+			ELSEIF TFLAG:前コマンド実行者 == ASSI
+				TFLAG:数珠繋ぎ = 132
+				SELECTCASE PREVCOMS
+					CASE "正常位させる"
+						TFLAG:奴隷挿入箇所 = 1
+					CASE "正常位アナルさせる"
+						TFLAG:奴隷挿入箇所 = 2
+				ENDSELECT
+				TFLAG:主人挿入箇所 = 1
+			ENDIF
+			CALL USERCOM_ABLE512
+			IF RESULT
+				JUMP COM512
+			ELSE
+				TFLAG:奴隷挿入箇所 = 0
+				TFLAG:助手挿入箇所 = 0
+				TFLAG:主人挿入箇所 = 0
+			ENDIF
+		;前回の調教が助手を犯すのとき
+		CASE "助手を犯す"
+			TFLAG:奴隷挿入箇所 = 0
+			TFLAG:助手挿入箇所 = 0
+			TFLAG:主人挿入箇所 = 0
+			TFLAG:数珠繋ぎ = 123
+			IF VAGINA(ASSI)
+				TFLAG:主人挿入箇所 = 1
+			ELSE
+				TFLAG:主人挿入箇所 = 2
+			ENDIF
+			TFLAG:助手挿入箇所 = 1
+			CALL USERCOM_ABLE512
+			IF RESULT
+				JUMP COM512
+			ELSE
+				TFLAG:奴隷挿入箇所 = 0
+				TFLAG:助手挿入箇所 = 0
+				TFLAG:主人挿入箇所 = 0
+			ENDIF
 	ENDSELECT
+;前回、今回共にの調教者が主人で前回の調教が助手を犯させるのとき
+ELSEIF TFLAG:前コマンド実行者 == PLAYER && PREVCOMS == "助手を犯させる"
+	TFLAG:数珠繋ぎ = 132
+	IF VAGINA(ASSI)
+		TFLAG:奴隷挿入箇所 = 1
+	ELSE
+		TFLAG:奴隷挿入箇所 = 2
+	ENDIF
+	TFLAG:主人挿入箇所 = 1
+	CALL USERCOM_ABLE512
+	IF RESULT
+		JUMP COM512
+	ELSE
+		TFLAG:奴隷挿入箇所 = 0
+		TFLAG:主人挿入箇所 = 0
+	ENDIF
 ;前のプレイが後背位かつ調教者の技巧3以上の場合、挿入子宮口責めへ派生。
 ELSEIF PREVCOMS == "後背位" && ABL:PLAYER:技巧 >= 3
 	JUMP COM507
