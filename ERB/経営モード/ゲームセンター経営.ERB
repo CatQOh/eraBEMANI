@@ -1,0 +1,1314 @@
+﻿@STRATEGY_GC
+DRAWLINE
+PRINTL 
+PRINTL 【ゲームセンター経営】
+PRINTL 
+DRAWLINE
+;CALL GC_STR
+PRINTL 【現在の規模】
+;----------------------------------------------------
+PRINTFORML 物件：%GC_STR:(GC:0)%
+;名声表示--------------------------------------------
+PRINTFORMLC 名声：%GC名声グレード(GC名声)%({GC名声})
+;評判表示----------------------------------------------
+PRINTFORML 評判：%GC評判グレード(GC評判)%({GC評判})
+;----------------------------------------------------
+PRINTFORMLC 基本収入：%GC収入グレード(GC収入期待値)%({GC収入期待値})
+;----------------------------------------------------
+PRINTFORML メンテナンス：%GCメンテグレード(GCメンテ)%
+DRAWLINE
+
+PRINTL [1] - 物件購入
+PRINTL [2] - 物件増築
+PRINTL [3] - 筐体購入
+PRINTL [4] - 人員配置
+PRINTL [5] - 筐体設置
+DRAWLINE
+PRINTPLAIN 　GAME CENTER　
+PRINT [0] - 戻る
+PRINTL 　[100] 各コマンドの説明
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			CALL GC_PROPERTY
+		CASE 2
+			CALL GC_RENOVATION
+		CASE 3
+			CALL GC_ARCADEGAME
+		CASE 4
+			CALL GC_PERSONAL
+		CASE 5
+			CALL SELECT_FLOOR
+		CASE 100
+			CALL GC_TUTORIAL
+		CASEELSE
+			CONTINUE
+	ENDSELECT
+	RESTART
+LOOP 1
+
+;----------------------------------------------------
+;ゲームセンター経営モードチュートリアル
+;----------------------------------------------------
+@GC_TUTORIAL
+DRAWLINE
+PRINTL 当モードはゲームセンターを経営して資金を稼ぐコマンドです。
+PRINTL 
+PRINTL [1] - 「物件購入」とは？
+PRINTL [2] - 「物件増築」とは？
+PRINTL [3] - 「筐体購入」とは？
+PRINTL [4] - 「人員配置」とは？
+PRINTL [5] - 「筐体設置」とは？
+DRAWLINE
+PRINTPLAIN 　TUTORIAL　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			PRINTL 「物件購入」は筐体を置く物件を購入するコマンドです。
+			PRINTL これが無いと話にならないので、まずはボロ屋でもいいので購入してみましょう。
+			PRINTL 物件は大きく「所有物件」と「テナント」に分けられます。
+			PRINTL 「所有物件」は物件購入の際の経費が高いですが、運営費が安いので安定した収入を得ることができます。
+			PRINTL 「テナント」はその逆で、運営費が高く、物件購入の経費が安いです。
+			PRINTW また、テナントは増築ができないので、即席で施設を整えたい場合に使うといいかもしれません
+		CASE 2
+			PRINTL 「物件増築」は購入した物件を増築し、筐体を置けるスペースを広げたり、設備を向上させるコマンドです
+			PRINTL 物件には「広さ」「分煙施設」「階層」「外装」「フードコート」「トイレ」の設備があり、それぞれ改築することにより様々な面での経済効果がアップします
+			PRINTL 分煙施設はテナント系物件には初期から備えられており、有無で判断するので改築は一回で済みます
+			PRINTL 他の施設はいくらでも増築できるので、その分経済効果も尻上がりになります。
+			PRINTW しかし増築すればするほど、増築に必要な経費も上がり運営費も上昇するので、計画的な増築が必要になるでしょう
+		CASE 3
+			PRINTL 「筐体購入」はゲーセンに設置するための筐体を購入するコマンドです
+			PRINTW 当バージョンでは少なく、これからも増やして行きたいと思います
+		CASE 4
+			PRINTL 「人員配置」はゲーセン経営に人員を配置するコマンドです
+			PRINTL 現段階では「物件ごとに配置する」のではなく「経営に配属させる」という形になってるので、奴隷を選ぶだけであとはキャラたちがやってくれます
+			PRINTW プラス素質（魅力系や、巨乳や小柄体型などのフェチズム素質など）があるとプラス補正がかかったり、マイナス素質（生意気や悲観的など）があるとマイナス補正がかかります
+		CASE 5
+			PRINTL 「筐体設置」は所有する物件に筐体を設置するコマンドです
+			PRINTL 「物件の広さ」×「物件の階層」と同じ数値の分筐体を置くことができます
+			PRINTL 筐体は所持するだけなら経費はかかりませんが、設置した翌日から経費がかかるので所持金とよく相談して決めましょう
+			PRINTW ※なお、アーケードゲームは基本一般客には販売しないらしいです
+	ENDSELECT
+LOOP LOOPRES(1, 2, 3, 4, 5)
+
+RESTART
+
+;物件購入処理----------------------------------------------------
+@GC_PROPERTY
+LOCAL = GC名声+GC評判
+DRAWLINE
+PRINTL 【物件購入】
+PRINTL 名声や評判によって買える物件も変わります
+PRINTL 「アイテム名」($金額 - $日毎の基本維持費)
+PRINTFORML 所持金：${MONEY}
+PRINTL 
+PRINTL [1] - ボロ屋($30000 - $100～)
+PRINTL [2] - 中小スーパーのテナント($5000 - $600～)
+SIF LOCAL >= 5000
+	PRINTL [3] - 商店街の一角($50000 - $300～)
+SIF LOCAL >= 10000
+	PRINTL [4] - 駅中テナント($10000 - $1500～)
+SIF LOCAL >= 30000
+	PRINTL [5] - 街中物件($100000 - $500～)
+SIF LOCAL >= 50000
+	PRINTL [6] - 百貨店テナント($30000 - $3000～)
+SIF LOCAL >= 100000
+	PRINTL [7] - アミューズメント施設($300000 - $5000～)
+DRAWLINE
+PRINTPLAIN 　PROPERTY　
+PRINTL [0] - 戻る　
+
+DO
+	INPUT
+	LOCAL = RESULT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			PRINTL 【ボロ屋】
+			PRINTL 
+			PRINTL その名の通りボロっちい建物。
+			PRINTL 整備すればゲーセンとして使えるかもしれないが……
+			PRINTL 狭いため筐体もあまり置けず、高い経済効果は期待できない。
+		CASE 2
+			PRINTL 【中小スーパーのテナント】
+			PRINTL 
+			PRINTL 時々スーパーの片隅に申し分ない程度の筐体が置いてあるあのスペース。
+			PRINTL ゲーム目的で来る人はほとんど居ないと思うが、お買い物に飽きた子どもたちがよく訪れる。
+			PRINTL ボロ屋と比べると経済効果はだいぶマシではあるが、こちらはテナントなので維持費が高い。
+			PRINTL 他にも改装が難しいなど、使い勝手の悪い部分がある。
+		CASE 3
+			PRINTL 【商店街の一角】
+			PRINTL 
+			PRINTL 商店街といっても昔ながらの風情のあるような場所ではなく、最近の流行やファッションの店が並ぶいわゆる「アーケード街」
+			PRINTL 改築の自由度もそこそこ高く、周囲にもいろいろな店が並ぶので、お客さんが多い。
+			PRINTL 維持費も安く、初期設備も平均的なため、経営に慣れてきたらここを使ってみるのもいいだろう。
+		CASE 4
+			PRINTL 【駅中テナント】
+			PRINTL 
+			PRINTL 都会の駅中にあるスペースを間借りしたもの。
+			PRINTL 最低限の設備は整っており、全体的に水準以上の環境でである。
+			PRINTL イニシャルコストは安いが、増築もできずランニングコストも結構かかるため、計画的な経営ができないと破産する可能性も高い。注意しよう。
+		CASE 5
+			PRINTL 【街中物件】
+			PRINTL 
+			PRINTL 環境、土地共に優れていて、人通りも多い街中の物件。
+			PRINTL 特徴としては分煙施設は無いが、ここは二階建てなので広さの倍の筐体が置ける。
+			PRINTL 増築もできるので、買うことさえできればかなり使い勝手のいい物件である。
+		CASE 6
+			PRINTL 【百貨店テナント】
+			PRINTL 
+			PRINTL 百貨店内に間借りする物件。
+			PRINTL 経済効果が非常に高いが、その分経費も馬鹿にならないため、店を構える際はよく考えよう。
+			PRINTL こちらは街中物件とは違い、一階しか無く、増築も行えない。
+		CASE 7
+			PRINTL 【アミューズメント】
+			PRINTL 
+			PRINTL 当バージョンでは最高ランクの施設。
+			PRINTL 初期コストが30万、基本経費が5000ととんでもないコストがかかるが、経済効果もコスト同等のものだと思っていいだろう。
+			PRINTL 初期から二階建て、所有物件唯一の分煙設備、他高水準の設備もあり、フードコートもある。
+			PRINTL 増築も自由にできるため、経営での物件は最終的にここに行き着くだろう。
+	ENDSELECT
+LOOP LOOPRES(1, 2, 3, 4, 5, 6, 7)
+
+IF MONEY < 物件価格(RESULT)
+	PRINTW 所持金が足りません
+	RESTART
+ENDIF
+
+PRINTL 所持金変動
+PRINTFORML ${MONEY} > ${MONEY - 物件価格(RESULT)}
+PRINTL 
+PRINTL 購入しますか？
+PRINTL [0] - 購入しない
+PRINTL [1] - 購入する
+
+DO
+	INPUT
+	SIF RESULT == 0
+		RESTART
+LOOP LOOPRES(0, 1)
+
+PRINTFORMW ＜%物件名(LOCAL)%を購入しました＞
+MONEY -= 物件価格(LOCAL)
+
+;初期値設定-------------------
+;物件情報--------------
+GC:物件 = LOCAL
+
+;広さ初期値------------
+GC:広さ = (LOCAL * 2)
+
+;分煙施設--------------
+SELECTCASE LOCAL
+	;テナントとアミューズメントには分煙施設が付く
+	CASE 2, 4, 6, 7
+		GC:分煙 = 1
+ENDSELECT
+
+;階層初期値------------
+GC:階層 = 1
+;街中とアミューズメントは2階建て
+SELECTCASE LOCAL
+	CASE 5, 7
+		GC:階層 = 2
+ENDSELECT
+
+;外装初期値------------
+GC:外装 = (LOCAL/2+1)
+
+;フードコート----------
+SELECTCASE LOCAL
+	;百貨店とアミューズメントにはフードコートが付く
+	CASE 6, 7
+		GC:フードコート = 1
+ENDSELECT
+
+;お手洗い--------------
+GC:トイレ = (LOCAL/2+1)
+
+RETURN 0
+
+;物件増築処理----------------------------------------------------
+@GC_RENOVATION
+VARSET LOCAL, 0
+PRINTL 【物件増築】
+PRINTL 物件を増築できます。
+PRINTL スペースを広げたり設備を強化すると、置ける筐体の数が増えたり評判が上がったりします。
+PRINTL 
+DRAWLINE
+PRINTFORML 物件：%物件名(GC:物件)%
+SELECTCASE GC:分煙
+	CASE 0
+		PRINTLC 分煙施設：無
+	CASE 1
+		PRINTLC 分煙施設：有
+ENDSELECT
+PRINTFORMLC 階層：{GC:階層}階建
+
+PRINTL 
+
+PRINTFORMLC 外装レベル：{GC:外装}
+SELECTCASE GC:フードコート
+	CASE 0
+		PRINTLC フードコート：無
+	CASE 1
+		PRINTFORMLC フードコート：有
+ENDSELECT
+PRINTFORMLC お手洗いレベル：{GC:トイレ}
+
+PRINTL 
+DRAWLINE
+
+SELECTCASE GC:物件
+	CASE 2, 4, 6
+		PRINTL 
+		PRINTL 【増築できません】
+		PRINTL 
+	CASEELSE
+		PRINTFORML [1] - 広くする(${GC:広さ *3000 + 5000})
+		SIF !GC:分煙
+			PRINTFORML [2] - 分煙施設を作る($30000)
+		PRINTFORML [3] - 階層を増やす(${GC:階層 * 100000})
+		PRINTFORML [4] - 外装強化(${GC:外装 * 10000})
+		SIF !GC:フードコート
+			PRINTFORML [5] - フードコートを作る($100000)
+		PRINTFORML [6] - お手洗い改装(${GCP:トイレ * 2000 + 5000})
+ENDSELECT
+DRAWLINE
+PRINTPLAIN 　RENOVATION　
+PRINTL [0] 戻る
+;PRINTL [100] マニュアル
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 2
+			SIF GC:分煙
+				CONTINUE
+		CASE 5
+			SIF GC:フードコート
+				CONTINUE
+	ENDSELECT
+LOOP LOOPRES(1, 2, 3, 4, 5, 6)
+
+LOCAL = RESULT
+
+SELECTCASE LOCAL
+	CASE 0
+		RETURN 0
+	;ELSEIF RESULT == 100
+	;	CALL RENOVATION_MANUAL
+	CASE  1 TO 6
+		SELECTCASE GC:物件
+			CASE 2, 4, 6
+				GOTO LOOP
+			CASEELSE
+				SELECTCASE LOCAL
+					CASE 1
+						LOCAL:1 = GC:広さ*3000+5000
+					CASE 2
+						LOCAL:1 = 30000
+					CASE 3
+						LOCAL:1 = GC:階層*100000
+					CASE 4
+						LOCAL:1 = GC:外装*10000
+					CASE 5
+						LOCAL:1 = 100000
+					CASE 6
+						LOCAL:1 = GC:トイレ*2000+5000
+				ENDSELECT
+		ENDSELECT
+	CASEELSE
+		GOTO INPUT_LOOP
+ENDSELECT
+
+IF MONEY < LOCAL:1
+	PRINTW 所持金が足りません
+	RESTART
+ENDIF
+PRINTL 所持金変動
+PRINTFORML ${MONEY} > ${MONEY-LOCAL:1}
+
+SELECTCASE LOCAL
+	CASE 1
+		PRINTL 広さレベル変動
+	CASE 2
+		PRINTL 分煙施設設置
+	CASE 3
+		PRINTL 階層変動
+	CASE 4
+		PRINTL 外装レベル変動
+	CASE 5
+		PRINTL フードコートレベル設置
+	CASE 6
+		PRINTL お手洗いレベル変動
+ENDSELECT
+
+SIF LOCAL != 2 && LOCAL != 5
+	PRINTFORML {GC:LOCAL} > {GC:LOCAL+1}
+
+PRINTL 
+PRINTL 改装しますか？
+PRINTL 
+PRINTL [0] - 改装しない
+PRINTL [1] - 改装する
+
+$LOOP2
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RESTART
+		CASE 1
+			SELECTCASE LOCAL
+				CASE 1
+					PRINTFORMW %物件名(GC:物件)%を改築し、広くしました
+				CASE 2
+					PRINTFORMW 分煙施設を設置しました
+				CASE 3
+					PRINTFORMW {GC:階層+1}階建に増築しました
+				CASE 4
+					PRINTFORMW 外装を強化しました
+				CASE 5
+					PRINTFORMW フードコート施設を設置しました
+				CASE 6
+					PRINTFORMW トイレを改装しました
+			ENDSELECT
+		MONEY -= LOCAL:1
+		GC:LOCAL++
+		RESTART
+	ENDSELECT
+LOOP 1
+
+RETURN 0
+
+;筐体購入処理----------------------------------------------------
+@GC_ARCADEGAME
+DRAWLINE
+PRINTL 【筐体購入】
+PRINTL アーケードゲームを購入できます
+PRINTL これが無いとゲーセン経営は話になりません
+CALL PRINT_AC_ITEM
+PRINTL 
+PRINTL [1] - 音ゲー
+;PRINTL [6] - メダルゲーム
+;PRINTL [7] - プライズゲーム
+PRINTL [8] - 両替機・券売機・その他
+DRAWLINE
+PRINTPLAIN 　ARCADE　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1, 8
+			DRAWLINE
+			PRINTFORML 所持金:{MONEY}
+			PRINTL 
+			PRINTL 購入する筐体を選んでください
+			PRINTL 
+			FOR COUNT, RESULT*100+1000, RESULT*100+1100
+				SIF ITEMNAME:COUNT != ""
+					PRINTFORML [{COUNT}] - %IEMNAME:COUNT%(${ITEMPRICE:COUNT})
+			NEXT
+			DRAWLINE
+			PRINTPLAIN 　ARCADE　
+			PRINTL [1000] 戻る
+			
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 1000
+						RESTART
+					CASEELSE
+						IF ITEMNAME:RESULT != ""
+							IF MONEY < ITEMPRICE:RESULT
+								PRINTW 所持金が足りません
+								RESTART
+							ELSE
+								PRINTFORMW ＜%ITEMNAME:RESULT%を購入しました＞
+								ITEM:RESULT++
+								MONEY -= ITEMPRICE:RESULT
+								RESTART
+							ENDIF
+						ENDIF
+				ENDSELECT
+			LOOP 1
+	ENDSELECT
+LOOP 1
+
+;人員配置処理----------------------------------------------------
+@GC_PERSONAL
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 配属可能人数
+#DIM DYNAMIC 飛ばした人数
+VARSET LOCAL, 0
+DRAWLINE
+PRINTL 
+PRINTL ゲーセン経営に配属する奴隷を選択してください
+PRINTL 
+
+REPEAT CHARANUM
+	;主人は無理
+	SIF COUNT == MASTER
+		CONTINUE
+	;助手可能じゃないと無理
+	SIF CFLAG:COUNT:状態 < 2
+		CONTINUE
+	;体力不足だと無理
+	SIF BASE:COUNT:体力 > 500
+		CONTINUE
+	;妊娠中、育児中は無理
+	SIF TALENT:妊娠 || TALENT:育児中
+		CONTINUE
+	配属可能人数++
+	;配属可能なキャラに対応したLOCALが1になる
+	LOCAL:COUNT = 1
+REND
+
+飛ばした人数 = 0
+表示数 = 0
+
+IF 配属可能人数
+	REPEAT CHARANUM
+		SIF !LOCAL:COUNT
+			CONTINUE
+		;2ページ目以降はページ×10まで表示を飛ばす
+		IF 飛ばした人数 < ページ数*10
+			飛ばした人数++
+			CONTINUE
+		ENDIF
+		PRINTFORM [{COUNT}] - %NAME:COUNT%(技巧：{ABL:COUNT:技巧})
+		IF COUNT == TARGET
+			PRINTL 【調教中】
+		ELSEIF COUNT == TARGET
+			PRINTL 【助手中】
+		ELSEIF CFLAG:COUNT:配属 == 0
+			PRINTL 【休憩中】
+		ELSEIF CFLAG:COUNT:配属 == 1
+			PRINTL 【配属中】
+		ELSEIF CFLAG:COUNT:配属 == 2
+			PRINTL 【娼館配属中】
+		ENDIF
+		表示数++
+		;10人表示したらページ終わり
+		SIF 表示数 == 10
+			BREAK
+	REND
+ELSE
+	PRINTL 【現在配属できる奴隷はいません】
+	PRINTL 
+ENDIF
+DRAWLINE
+PRINTPLAINFORM 　PAGE.{ページ数+1}　
+SIF ページ数 > 0
+	PRINTLC [999]前ページ
+PRINTLC [1000] 戻る　
+;表示できるキャラがまだ居れば次ページ
+SIF 表示数+10*ページ数 < 配属可能人数 
+	PRINTLC [1001]次ページ
+PRINTL [1002] 全員帰還
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 999
+			SIF ページ数 > 0
+				ページ数--
+		CASE 1000
+			RETURN 0
+		CASE 1001
+			;表示できるキャラがまだ居れば次ページ
+			SIF 表示数+10*ページ数 < 配属可能人数 
+				ページ数++
+		CASE 1002
+			REPEAT CHARANUM
+				SIF CFLAG:COUNT:配属 == 1
+					CFLAG:COUNT:配属 = 0
+			REND
+			PRINTW 全員帰宅しました
+		CASEELSE
+			SIF !LOCAL:RESULT
+				CONTINUE
+			SELECTCASE CFLAG:RESULT:配属
+				CASE 0
+					PRINTFORMW %CALLNAME:RESULT%を配属しました
+					CFLAG:RESULT:配属 = 1
+					SIF TARGET == RESULT
+						TARGET = -1
+					SIF ASSI == RESULT
+						ASSI = -1
+					RESTART
+				CASE 1
+					PRINTFORMW %CALLNAME:RESULT%が帰宅しました
+					CFLAG:RESULT:配属 = 0
+					RESTART
+			ENDSELECT
+	ENDSELECT
+LOOP LOOPRES(999, 1001, 1002)
+
+RESTART
+
+;階層選択処理----------------------------------------------------
+@SELECT_FLOOR
+#DIM ページ数
+IF GC:階層 >= 2
+	DRAWLINE
+	PRINTFORML %施設名% {GC:階層}階建て
+	PRINTL 階層を選んでください
+	FOR COUNT, ページ数*GC:階層+1, ページ数*GC:階層+11
+		SIF COUNT > GC:階層
+			BREAK
+		PRINTFORM [{COUNT}] {COUNT}階 {空きスペース:COUNT}/{GC:広さ}使用中
+	NEXT
+	PRINTPLAINFORM 　PAGE:{ページ数+1}　
+	SIF ページ数 > 0
+		PRINTLC [999] 前ページ
+	PRINTLC [1000] 戻る
+	SIF GC:階層 > ページ数*10
+		PRINTLC [1001] 次ページ
+	
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 999
+				SIF ページ数 > 0
+					ページ数--
+			CASE 1000
+				RETURN 0
+			CASE 1001
+				SIF GC:階層 > ページ数*10
+					ページ数++
+			CASE IS >= 1 && IS <= GC:階層
+				CALL AC_SETUP, RESULT
+				RESTART
+		ENDSELECT
+	LOOP LOOPRES(999, 1001)
+ELSE
+	CALL AC_SETUP, 1
+	RETURN 0
+ENDIF
+
+RESTART
+
+;----------------------------------------------------
+;筐体設置処理
+;----------------------------------------------------
+@AC_SETUP, 階層
+#DIM 階層
+#DIM DYNAMIC 選択筐体
+;ここにページ数は初期値が1
+#DIM ページ数 = 1
+VARSET LOCAL, 0
+DRAWLINE
+
+PRINTFORML {ARG}階 広さ:{GC:広さ} 
+PRINTFORM 使用済みスペース:{占領中:ARG} 使用可能スペース:あと{空きスペース:ARG}
+
+FOR COUNT, ページ数*100+1000, ページ数*200+1000
+	SIF ITEMNAME:COUNT == ""
+		CONTINUE
+	
+	PRINTFORML ・%ITEMNAME:COUNT%×{ITEM:COUNT}
+	SIF ITEM:COUNT
+		PRINTFORML 　%ITEMNAME:COUNT%を設置[COUNT*10]
+	SIF 設置筐体:ARG:COUNT
+		PRINTFORML 　%ITEMNAME:COUNT%を撤去{COUNT*10+1}
+NEXT
+PRINTL [1002] 全て撤去
+
+DRAWLINE
+PRINTPLAINFORM 　{ページ数}　
+SIF ページ数 > 1
+	PRINTLC [999] 前ページ
+PRINTLC [1000] 戻る
+SIF ページ数 < 8
+	PRINTLC [1001] 次ページ
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 999
+			SIF ページ数 > 1
+				ページ数 = 1
+		CASE 1000
+			RETURN 0
+		CASE 1001
+			SIF ページ数 < 8
+				ページ数 = 8
+		CASE 1002
+			FOR COUNT, 1000, 2000
+				SIF ITEMNAME:COUNT == ""
+					CONTINUE
+				SIF 設置筐体:ARG:COUNT == 0
+					CONTINUE
+				ITEM:COUNT += 設置筐体:ARG:COUNT
+				設置筐体:ARG:COUNT = 0
+			NEXT
+			PRINTW 全筐体を撤去しました
+		CASEELSE
+			選択筐体 = RESULT/10
+			IF 筐体コスト > 空きスペース:ARG
+				PRINTW スペースが足りません
+			ELSEIF ITEMNAME:選択筐体 != "" && ITEM:選択筐体
+				SELECTCASE RESULT%10
+					CASE 0
+						設置筐体:ARG:選択筐体++
+						ITEM:選択筐体--
+						PRINTFORMW {ARG}階に%ITEMNAME:RESULT%を設置しました(現在{設置筐体:ARG:選択筐体}台)
+					CASE 1
+						設置筐体:ARG:選択筐体--
+						ITEM:選択筐体++
+						PRINTFORMW {ARG}階の%ITEMNAME:RESULT%を撤去しました(現在{設置筐体:ARG:選択筐体}台)
+				ENDSELECT
+				RESTART
+			ENDIF
+	ENDSELECT
+LOOP LOOPRES(999, 1001, 1002)
+
+RESTART
+
+;----------------------------------------------------
+;所持筐体表示処理
+;----------------------------------------------------
+@PRINT_AC_ITEM
+DRAWLINE
+FOR COUNT, 1000, 2000
+	SIF ITEMNAME:COUNT == ""
+		CONTINUE
+	SIF ITEM:COUNT == 0
+		CONTINUE
+
+	PRINTFORM [%ITEMNAME:COUNT%×{ITEM:COUNT}]
+
+NEXT
+SIF !LINEISEMPTY()
+	PRINTL 
+DRAWLINE
+
+;----------------------------------------------------
+;所持物件表示処理
+;----------------------------------------------------
+;@PRINT_PR_ITEM
+;REPEAT 100
+;	SIF GC:100 <= COUNT
+;		BREAK
+;	PRINTFORM [{COUNT}]
+;	SIF COUNT < 10
+;		PRINT  
+;	PRINTFORML %GC_STR:(GCP:COUNT:0)%
+;REND
+
+;----------------------------------------------------
+;筐体マニュアル及び筐体購入の処理をします（工事中）
+;----------------------------------------------------
+;@AC_MANUAL
+;IF P == 100
+;	PRINTL 【beatmaniaIIDX】
+;	PRINTL
+;	PRINTL 公式いわく「BEMANI一のガチンコ系」
+;	PRINTL ご存知の通り降ってくるノーツに合わせて鍵盤を叩いたり皿を回したりする。
+;	PRINTL BEMANI初心者から上級者まで幅広い層に人気があり、メンテや評判、名声が良いと遠くからはるばる遠征に訪れるものも少なくない。
+;	PRINTL 15年以上試行錯誤してきた筐体でもあり、BEMANIシリーズの祖であるため、筐体性能は非常にナイーブ。
+;	PRINTL メンテナンス能力が重要になってくる筐体だろう。
+;IF P == 101
+;	PRINTL 【pop`n music】
+;	PRINTL
+;	PRINTL 
+
+;	PRINTL
+;	PRINTL 所持金変動
+;	PRINTFORML {MONEY} > {MONEY - ACSI:O}
+;	PRINTL [0] - 購入する
+;	PRINTL [1] - 購入しない
+
+
+;----------------------------------------------------
+;ゲームセンター経営での収入を計算。日付変更時に呼び出されます
+;----------------------------------------------------
+@INCOME_GC
+#DIM DYNAMIC INCOME
+#DIM DYNAMIC 名声
+#DIM DYNAMIC 評判
+#DIM DYNAMIC メンテ
+#DIM DYNAMIC LCOUNT
+VARSET LOCAL, 0
+SIF !GC:物件
+	RETURN 0
+	S = 0
+	T = 0
+	R = 0
+	A = 0
+;収入計算--------------------------------------------------------
+;良い物件ほど最低額保証
+INCOME = 300 * GC:物件
+FOR LCOUNT, 1, GC:階層+1
+	;一番高い期待値を調べておく
+	SIF LOCAL < 収入期待値:LCOUNT
+		LOCAL = 収入期待値:LCOUNT
+	;期待値--------------------------------------
+	SELECTCASE GC:物件
+		;テナント店なら階層ごとの期待値をそのまま加算
+		CASE 2, 4, 6
+			INCOME += 収入期待値:LCOUNT
+		;それ以外ならRAND:階層ごとの収入期待値を加算
+		CASEELSE
+			INCOME += RAND:(収入期待値:LCOUNT)
+	ENDSELECT
+NEXT
+;分煙補正-------------------------------------
+;収入には影響なし
+
+;外装補正-------------------------------------
+;期待値で計算済み
+
+;お手洗い補正---------------------------------
+;レベル数だけ最大期待値をロール 一番高い値を加算
+LOCAL:2 = 0
+REPEAT GC:トイレ
+	LOCAL:1 = RAND:LOCAL
+	SIF LOCAL:2 < LOCAL:1
+		LOCAL:2 = LOCAL:1
+REND
+INCOME += LOCAL:2
+;フードコート補正-------------------------
+LOCAL:2 = 0
+IF GC:フードコート
+	;階層の数だけ期待値をロール 一番高い値を加算
+	REPEAT GC:階層
+		LOCAL:1 = RAND:フードコート収入期待値()
+		SIF LOCAL:2 < LOCAL:1
+			LOCAL:2 = LOCAL:1
+	REND
+ENDIF
+INCOME += LOCAL:2
+;人事補正---------------------------------
+INCOME += GC収入人事補正()
+;収入処理--------------------------------------
+PRINTFORML ゲームセンターの収入が${INCOME}入りました
+MONEY += INCOME
+;GC:13 = INCOME
+
+;名声計算--------------------------------------------------------
+	S = 0
+	T = 0
+	R = 0
+	A = 0
+;テナント施設だと名声が上がりやすい
+SELECTCASE GC:物件
+	CASE 2, 4, 6
+		名声 += GC:物件*5
+ENDSELECT
+;筐体補正--------------------------------------
+;単純に筐体数が多ければそれだけで名声が上がる
+FOR LCOUNT, 1, GC:階層+1
+	名声 += 名声計算（筐体）(LCOUNT)
+NEXT
+;広さ補正-------------------------------------
+名声 += GC:広さ
+;分煙補正-------------------------------------
+SIF GC:分煙
+	名声 += GC:物件*3
+;階層・外装補正-------------------------------------
+名声 += GC:階層*GC:外装*2
+;フードコート補正-------------------------
+名声 += フードコートレベル()
+;お手洗い補正---------------------------------
+名声 += GC:トイレ*GC:物件/10
+;人事補正---------------------------------
+名声 += GC名声人事補正()
+;名声処理--------------------------------------
+PRINTFORML ゲームセンターの名声が{名声}上がりました
+GC:名声 += 名声
+
+;評判計算--------------------------------------------------------
+	S = 0
+	T = 0
+	R = 0
+	A = 0
+	REPEAT GC:100
+		S = 2 * GCP:COUNT:0
+;筐体補正--------------------------------------
+		S += 4 * GCP:COUNT:800
+		S += 2 * GCP:COUNT:801
+		S += 3 * GCP:COUNT:805
+		S += 5 * GCP:COUNT:806
+		S += 3 * GCP:COUNT:810
+		S += 4 * GCP:COUNT:811
+		S += 3 * GCP:COUNT:812
+		S += 4 * GCP:COUNT:820
+		S += 1 * GCP:COUNT:821
+;広さ補正-------------------------------------
+		T = GCP:COUNT:1 / 10 + 1
+		S *= T
+;分煙補正-------------------------------------
+		SIF GCP:COUNT:2 == 1
+			S *= 2
+;階層補正-------------------------------------
+		T = GCP:COUNT:3 / 10 + 1
+		S *= T
+;外装補正-------------------------------------
+		T = GCP:COUNT:4 / 10 + 1
+		S *= T
+;フードコート補正-------------------------
+		IF GCP:COUNT:5 > 0
+			T = GCP:COUNT:5 / 10 + 1
+			S *= T
+		ENDIF
+;お手洗い補正---------------------------------
+		T = GCP:COUNT:6 / 10 + 1
+		S *= T
+		S /= 3
+		A += S
+	REND
+;人事補正---------------------------------
+	REPEAT CHARANUM
+		IF CFLAG:COUNT:12 == 3
+			SIF ABL:COUNT:2 == 0
+				TIMES A , 1.00
+			SIF ABL:COUNT:2 == 1
+				TIMES A , 1.10
+			SIF ABL:COUNT:2 == 2
+				TIMES A , 1.20
+			SIF ABL:COUNT:2 == 3
+				TIMES A , 1.30
+			SIF ABL:COUNT:2 == 4
+				TIMES A , 1.40
+			SIF ABL:COUNT:2 == 5
+				TIMES A , 1.50
+			SIF TALENT:COUNT:11
+				TIMES A , 0.90
+			SIF TALENT:COUNT:16
+				TIMES A , 0.90
+			SIF TALENT:COUNT:25
+				TIMES A , 1.10
+			SIF TALENT:COUNT:26
+				TIMES A , 0.90
+			SIF TALENT:COUNT:28
+				TIMES A , 1.10
+			IF TALENT:COUNT:35
+				IF RAND:2 == 1
+					TIMES A , 1.10
+				ELSE
+					TIMES A , 0.90
+				ENDIF
+			ENDIF
+			SIF TALENT:COUNT:36
+				TIMES A , 1.10
+			SIF TALENT:COUNT:92
+				TIMES A , 1.10
+			SIF TALENT:COUNT:93
+				TIMES A , 1.10
+			SIF TALENT:COUNT:94
+				TIMES A , 1.20
+			SIF TALENT:COUNT:100
+				TIMES A , 1.10
+			SIF TALENT:COUNT:111 || TALENT:COUNT:112
+				TIMES A , 1.10
+			SIF TALENT:COUNT:143
+				TIMES A , 1.10
+			SIF TALENT:COUNT:145
+				TIMES A , 1.10
+		ENDIF
+	REND
+;評判処理--------------------------------------
+	PRINTFORML ゲームセンターの評判が{A}上がりました
+	GC:12 += A
+;支出計算--------------------------------------------------------
+	S = 0
+	T = 0
+	R = 0
+	A = 0
+	REPEAT GC:100
+		SIF GCP:COUNT:0 == 1
+			S = 100 
+		SIF GCP:COUNT:0 == 2
+			S = 600
+		SIF GCP:COUNT:0 == 3
+			S = 300
+		SIF GCP:COUNT:0 == 4
+			S = 1500
+		SIF GCP:COUNT:0 == 5
+			S = 500
+		SIF GCP:COUNT:0 == 6
+			S = 3000
+		SIF GCP:COUNT:0 == 7
+			S = 5000
+;筐体補正--------------------------------------
+		S += 400 * GCP:COUNT:100
+		S += 300 * GCP:COUNT:101
+		S += 500 * GCP:COUNT:102
+		S += 250 * GCP:COUNT:103
+		S += 80 * GCP:COUNT:104
+		S += 80 * GCP:COUNT:105
+		S += 100 * GCP:COUNT:106
+		S += 300 * GCP:COUNT:107
+		S += 250 * GCP:COUNT:600
+		S += 250 * GCP:COUNT:700
+		S += 30 * GCP:COUNT:800
+		S += 50 * GCP:COUNT:801
+		S += 50 * GCP:COUNT:805
+		S += 40 * GCP:COUNT:806
+		S += 150 * GCP:COUNT:810
+		S += 200 * GCP:COUNT:811
+		S += 150 * GCP:COUNT:812
+		S += 20 * GCP:COUNT:820
+;広さ補正-------------------------------------
+		T = GCP:COUNT:1 / 10 + 1
+		S *= T
+;分煙補正-------------------------------------
+		SIF GCP:COUNT:2 == 1
+			S *= 2
+;階層補正-------------------------------------
+		T = GCP:COUNT:3 / 10 + 1
+		S *= T
+;外装補正-------------------------------------
+		T = GCP:COUNT:4 / 10 + 1
+		S *= T
+;フードコート補正-------------------------
+		IF GCP:COUNT:5 > 0
+			T = GCP:COUNT:5 / 10 + 1
+			S *= T
+		ENDIF
+;お手洗い補正---------------------------------
+		T = GCP:COUNT:6 / 10 + 1
+		S *= T
+		S /= 5
+		A += S
+	REND
+;人事補正---------------------------------
+	REPEAT CHARANUM
+		SIF CFLAG:COUNT:12 == 3
+			A += 500
+	REND
+;支出処理--------------------------------------
+	PRINTFORMW ゲームセンターの経費に${A}かかりました
+	MONEY -= A
+	E = GC:13 / A
+	SIF GC:13 < A && GC:3 > 43
+		GC:3 -= 1
+	SIF GC:13 > A && GC:3 < 50
+		GC:3 += 1
+	SIF E >= 1
+		GC:3 = 51
+	SIF E >= 10
+		GC:3 = 52
+	SIF E >= 30
+		GC:3 = 53
+	SIF E >= 50
+		GC:3 = 54
+	SIF E >= 100
+		GC:3 = 55
+ENDIF
+
+
+;----------------------------------------------------
+;ゲームセンター経営モードのグレード名をここで定義します
+;----------------------------------------------------
+;物件グレード----------------------------------------------------
+@物件名, ARG
+#FUNCTIONS
+SELECTCASE ARG
+	CASE 1
+		RETURNF ボロ屋
+	CASE 2
+		RETURNF 中小スーパーのテナント
+	CASE 3
+		RETURNF 商店街の一角
+	CASE 4
+		RETURNF 駅中テナント
+	CASE 5
+		RETURNF 街中物件
+	CASE 6
+		RETURNF 百貨店テナント
+	CASE 7
+		RETURNF アミューズメント
+ENDSELECT
+
+;物件レベル（GC_STR 80～99）-----------
+;GC_STR:80 = 物件
+;GC_STR:81 = 広さ
+;GC_STR:82 = 分煙施設
+;GC_STR:83 = 階層
+;GC_STR:84 = 外装
+;GC_STR:85 = フードコート
+;GC_STR:86 = お手洗い
+
+;物件の値段（SI 0～99）-----------
+@物件価格, ARG
+#FUNCTION
+SELECTCASE ARG
+	;ボロ屋
+	CASE 1
+		RETURNF 30000
+	;中小スーパーのテナント
+	CASE 2
+		RETURNF 5000
+	;商店街の一角
+	CASE 3
+		RETURNF 50000
+	;駅中テナント
+	CASE 4
+		RETURNF 10000
+	;街中物件
+	CASE 5
+		RETURNF 100000
+	;百貨店テナント
+	CASE 6
+		RETURNF 30000
+	;アミューズメント
+	CASE 7
+		RETURNF 300000
+ENDSELECT
+
+;名声グレード----------------------------------------------------
+@GC名声グレード, ARG
+#FUNCTIONS
+SELECTCASE ARG
+	CASE IS < 100
+		RETURNF まったくの無名ゲーセン
+	CASE IS >= 100
+		RETURNF 噂のゲーセン
+	CASE IS >= 500
+		RETURNF ちょっと寄ってみるか程度のゲーセン
+	CASE IS >= 1000
+		RETURNF 行ってみようよあそこのゲーセン
+	CASE IS >= 3000
+		RETURNF なかなかいいよこのゲーセン
+	CASE IS >= 5000
+		RETURNF やっぱ一番だよここのゲーセン
+	CASE IS >= 10000
+		RETURNF すっかり馴染んだゲーセン
+	CASE IS >= 30000
+		RETURNF 県内随一の有名ゲーセン
+	CASE IS >= 50000
+		RETURNF 県外から遠征者が来るゲーセン
+	CASE IS >= 100000
+		RETURNF 国外から遠征者が来るゲーセン
+	CASE IS >= 300000
+		RETURNF 地球外から遠征者が来るゲーセン
+	CASE IS >= 500000
+		RETURNF ゲーセン界の王に君臨するゲーセン
+	CASE IS >= 100000
+		RETURNF ゲーセン界の王に君臨するゲーセン
+ENDSELECT
+
+;評判グレード----------------------------------------------------
+@GC評判グレード, ARG
+#FUNCTIONS
+SELECTCASE ARG
+	CASE IS < 100
+		RETURNF 存在すら知られていないゲーセン
+	CASE IS >= 100
+		RETURNF 近寄りがたいゲーセン
+	CASE IS >= 500
+		RETURNF 治安悪いよねあそこのゲーセン(´･ω･)(･ω･｀)
+	CASE IS >= 1000
+		RETURNF このゲーセンだったら別に……
+	CASE IS >= 3000
+		RETURNF たまにはあそこのゲーセン行ってみる？( ･ω･)(･ω･ )
+	CASE IS >= 5000
+		RETURNF 意外と居心地いいよこのゲーセン
+	CASE IS >= 10000
+		RETURNF 今日も開店アタックするぞ！(｀・ω・)(・ω・´)
+	CASE IS >= 30000
+		RETURNF やっぱ最高だねこのゲーセン(*´ω｀)(´ω｀*)
+ENDSELECT
+
+;収入グレード----------------------------------------------------
+@GC収入グレード, ARG
+#FUNCTIONS
+SELECTCASE ARG
+	CASE IS < -100000
+		RETURNF このままではｶﾞｼｬﾝしてしまう！
+	CASE IS < -50000
+		RETURNF ゲーセンは家計簿に火を放った
+	CASE IS < -30000
+		RETURNF 火の車
+	CASE IS < -10000
+		RETURNF 大赤字
+	CASE IS < -5000
+		RETURNF 赤字
+	CASE IS < -3000
+		RETURNF 割に合わない
+	CASE IS < -1000
+		RETURNF 給料を切り詰めるレベル
+	CASE 0
+		RETURNF プラマイゼロ
+	CASE IS < 1000
+		RETURNF 小銭稼ぎか？
+	CASE IS < 3000
+		RETURNF 副業としては良し
+	CASE IS < 5000
+		RETURNF 飯は食えそう
+	CASE IS < 10000
+		RETURNF 順風満帆
+	CASE IS < 30000
+		RETURNF この収入なら嫁を幸せにできるぞ
+	CASE IS < 50000
+		RETURNF 立派な経営者
+	CASE IS >= 50000
+		RETURNF GOOOOOOOOOOOOOOOOOLD!!!!!
+ENDSELECT
+
+;メンテグレード----------------------------------------------------
+@GCメンテグレード, ARG
+#FUNCTIONS
+SELECTCASE ARG
+	CASE 0
+		RETURNF 筐体無し
+	CASE 1 TO 29
+		SELECTCASE RAND:6
+			CASE 0
+				RETURNF もうちょっと綺麗にできないのか？
+			CASE 1
+				RETURNF 全然スコア出ない！やっぱここメンテ悪い
+			CASE 2
+				RETURNF 投入口にコイン挟まったぞ！
+			CASE 3
+				RETURNF みーつまスッポ抜けた！
+			CASE 4
+				RETURNF ボタン硬いなぁ……
+			CASE 5
+				RETURNF パネル硬……いや仕様か
+		ENDSELECT
+	CASE 30 TO 49
+		SELECTCASE RAND:2
+			CASE 0
+				RETURNF うん……まぁいいんじゃない？
+			CASE 1
+				RETURNF 出来ないことはない
+		ENDSELECT
+	CASE 50 TO 69
+		SELECTCASE RAND:2
+			CASE 0
+				RETURNF 結構いいと思うよ
+			CASE 1
+				RETURNF 遅延も無いし判定良好
+		ENDSELECT
+	CASE 70 TO 79
+		RETURNF ここでやったらスコア伸びました！
+	CASE 80 TO 89
+		RETURNF ここでやったら全一出ました！
+	CASE 90 TO 99
+		RETURNF ここでやったら理論値出ました！
+	CASE 100
+		RETURNF ここのゲーセンメンテ良すぎて理論値超えた！！
+ENDSELECT
+
+;筐体名称----------------------------------------------------
+@筐体コスト, ARG
+#FUNCTIONS
+SELECTCASE ARG
+	CASE 100
+		RETURNF beatmaniaIIDX
+	CASE 101
+		RETURNF pop`n music
+	CASE 102
+		RETURNF Dance Dance Revolution
+	CASE 103
+		RETURNF GITADORA
+	CASE 104
+		RETURNF jubeat
+	CASE 105
+		RETURNF REFLEC BEAT
+	CASE 106
+		RETURNF SOUND VOLTEX
+	CASE 107
+		RETURNF Dance Evolution
+;AC_STR:200
+
+;AC_STR:600 = メダルゲーム
+
+;AC_STR:700 = クレーンゲーム
+
+	CASE 800
+		RETURNF 両替機
+	CASE 801
+		RETURNF メダル両替機
+	CASE 805
+		RETURNF PASELI券売機
+	CASE 806
+		RETURNF PASELIチャージ機
+	CASE 810
+		RETURNF 自販機（飲み物）
+	CASE 811
+		RETURNF 自販機（軽食）
+	CASE 812
+		RETURNF 自販機（アイス）
+	CASE 820
+		RETURNF マッサージチェア
+	CASE 821
+		RETURNF 待ち椅子
+ENDSELECT
+
+;筐体金額（ACSI）----------------------------------------------------
+@筐体価格
+#FUNCTION
+
+ACSI:100 = 100000
+ACSI:101 = 80000
+ACSI:102 = 130000
+ACSI:103 = 60000
+ACSI:104 = 15000
+ACSI:105 = 15000
+ACSI:106 = 20000
+ACSI:107 = 150000
+
+ACSI:600 = 70000
+
+ACSI:700 = 50000
+
+ACSI:800 = 30000
+ACSI:801 = 30000
+ACSI:805 = 20000
+ACSI:806 = 40000
+ACSI:810 = 60000
+ACSI:811 = 80000
+ACSI:812 = 70000
+ACSI:820 = 100000
+ACSI:821 = 1000
+
+@名声計算（筐体）, ARG
+#FUNCTION
+#DIM DYNAMIC 合計値
+FOR COUNT, 1000, 2000
+	LOCAL = 0
+	SIF !設置筐体:ARG:COUNT
+		CONTINUE
+	SELECTCASE ITEMNAME:COUNT
+		CASE "beatmaniaIIDX"
+			LOCAL = 2
+		CASE "pop'n music"
+			LOCAL = 2
+		CASE "Dance Dance Revolution"
+			LOCAL = 3
+		CASE "GITADORA"
+			LOCAL = 3
+		CASE "jubeat"
+			LOCAL = 1
+		CASE "REFLEC BEAT"
+			LOCAL = 1
+		CASE "SOUND VOLTEX"
+			LOCAL = 1
+		CASE "Dance Evolution"
+			LOCAL = 3
+	ENDSELECT
+	合計値 += 設置筐体:ARG:COUNT*LOCAL
+NEXT
+
+RETURNF 合計値
+

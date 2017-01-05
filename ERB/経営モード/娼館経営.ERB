@@ -1,0 +1,2083 @@
+﻿@STRATEGY_BROTHEL
+CALL BR_STR
+CALL BR_ITEM_POINT
+DRAWLINE
+PRINTFORML 娼館レベル：{BR:0}
+PRINTFORML 次のランクアップまであと${BR:15}の売上が必要
+DRAWLINE
+PRINTL [1] - 道具配置
+PRINTL [2] - 物件増設
+PRINTL [3] - 経営方針
+PRINTL [4] - 人員配置
+DRAWLINE
+PRINTPLAIN 　BROTHEL　
+PRINT [0] - 戻る
+PRINTL 　[100] 各コマンドの説明
+
+$INPUT_LOOP
+INPUT
+
+IF RESULT == 0
+	JUMP STRATEGY
+ELSEIF RESULT == 1
+	CALL BR_ITEM
+ELSEIF RESULT == 2
+	CALL BR_RENOVATION
+ELSEIF RESULT == 3
+	CALL BR_PLAN
+ELSEIF RESULT == 4
+	CALL BR_PERSONAL
+ELSEIF RESULT == 100
+	CALL BR_TUTORIAL
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+
+RESTART
+
+;----------------------------------------------------
+;娼館経営モードチュートリアル
+;----------------------------------------------------
+@BR_TUTORIAL
+DRAWLINE
+PRINTL 当モードは娼館を経営して資金を稼ぐコマンドです。
+PRINTL 
+PRINTL [1] - 「道具配置」とは？
+PRINTL [2] - 「物件増築」とは？
+PRINTL [3] - 「経営方針」とは？
+PRINTL [4] - 「人員配置」とは？
+DRAWLINE
+PRINTPLAIN 　TUTORIAL　
+PRINTL [0] - 戻る
+
+$INPUT
+INPUT
+IF RESULT == 0
+	RETURN 0
+ELSEIF RESULT == 1
+	PRINTL 道具を購入、及び配置するコマンドです。
+	PRINTL 調教用の道具とはまた別物で、娼館で使用するものは新たに購入する必要があります。
+	PRINTL 道具にはそれぞれ用途に合わせたポイントがあり、経営方針に見合った道具を配置することで収入にプラスの補正が入ります。
+	PRINTL 消耗品は一日ごとに一つ消費され、在庫が無くなると配置がオフになるので注意しましょう。
+	PRINTW デフォルトでは1種類しか配置できませんが、増築することによって配置可能な数が増えます。
+ELSEIF RESULT == 2
+	PRINTL 物件を増築し、より多くの道具や奴隷を配置できるようにするコマンドです。
+	PRINTL ゲームセンター経営と違い、物件はデフォルトで所持しているので経営自体はすぐに始められます。
+	PRINTW 増築には当然お金がかかりますが、序盤は小規模でも特に気になるものではないと思います。
+ELSEIF RESULT == 3
+	PRINTL 運営方針を決めるコマンドです。
+	PRINTL 運営には方針が必要であり、これを決めないとほとんど経営放棄も同然です。
+	PRINTW 奴隷の身体をよく案じて考えて、適切な方針を定めましょう。
+ELSEIF RESULT == 4
+	PRINTL 奴隷から人員を選出するコマンドです。
+	PRINTL 当然身体を売る奴隷がいないと収入はありません。
+	PRINTL 体力が減っている奴隷は配置しても売春できないため、奴隷の身体をちゃんと考えてあげましょう。
+	PRINTW (数値上は500以上減っていると自動で休憩に入り、回復後に売春を行います)
+ENDIF
+
+GOTO INPUT
+
+;道具関係----------------------------------------------------
+@BR_ITEM
+CALL BR_ITEM_STR
+CALL BR_ITEM_PRICE
+PRINTL 娼館で使用出来る道具を購入します
+DRAWLINE
+PRINTFORML 所持アイテム　所持金：${MONEY}
+REPEAT 200
+	SIF BR_ITEM_STR:COUNT == ""
+		CONTINUE
+	SIF BR_ITEM:COUNT == 0
+		CONTINUE
+	SIF BR_ITEM:COUNT >= 1
+		PRINTFORM 【%BR_ITEM_STR:COUNT%
+	SIF COUNT >= 100
+		PRINTFORM ×{BR_ITEM:COUNT}
+	PRINT 】
+REND
+PRINTL
+DRAWLINE
+PRINTL [1] - アイテム配置
+PRINTL [2] - アイテム購入
+DRAWLINE
+PRINTL [0] - 戻る
+
+$LOOP
+INPUT
+
+IF RESULT == 0
+	RETURN 0
+ELSEIF RESULT == 1
+	CALL BR_ITEM_PERSONAL
+ELSEIF RESULT == 2
+	CALL BR_ITEM_BUY
+ELSE
+	GOTO LOOP
+ENDIF
+RESTART
+
+;道具配置------------------------------------------
+@BR_ITEM_PERSONAL
+CALL BR_ITEM_POINT
+PRINTL 道具を配置します
+DRAWLINE
+PRINTL 【現在のポイント】
+PRINTFORMLC ソフト - {BR:100}
+PRINTFORMLC ハード - {BR:101}
+PRINTFORMLC SM - {BR:102}
+PRINTFORMLC 狂気 - {BR:103}
+PRINTL
+BR:202 = 0
+REPEAT 199
+	SIF BR_ITEM_PERSONAL:COUNT
+		BR:202++
+REND
+PRINT  *配置枠*［
+A = 0
+REPEAT BR:201+1
+	IF A < BR:202
+		SETCOLOR 0 , 100 , 250
+			PRINT ■
+		RESETCOLOR
+	ELSE
+		SETCOLOR 150 , 150 , 150
+			PRINT ■
+		RESETCOLOR
+	ENDIF
+	A++
+REND
+PRINTL ］
+DRAWLINE
+REPEAT 200
+	SIF BR_ITEM_STR:COUNT == ""
+		CONTINUE
+	SIF BR_ITEM:COUNT == 0 && COUNT < 100
+		CONTINUE
+	IF BR_ITEM:COUNT == 0
+		PRINTFORMLC \({COUNT}\) %BR_ITEM_STR:COUNT%
+	ELSE
+		PRINTFORMLC [{COUNT}] %BR_ITEM_STR:COUNT%
+	ENDIF
+	IF BR_ITEM:COUNT == 0
+		PRINT 【
+		SETCOLOR 200 , 0 , 50
+			PRINT 在庫切
+		RESETCOLOR
+		PRINT 】
+	ELSEIF BR_ITEM_PERSONAL:COUNT == 0
+		PRINT 【
+		SETCOLOR 150 , 150 , 150
+			PRINT 未配置
+		RESETCOLOR
+		PRINT 】
+	ELSE
+		PRINT 【
+		SETCOLOR 0 , 100 , 250
+			PRINT 配置中
+		RESETCOLOR
+		PRINT 】
+	ENDIF
+REND
+PRINTL
+DRAWLINE
+PRINTPLAIN 　PERSONAL　
+PRINTL [1000] - 戻る
+
+$LOOP
+INPUT
+
+SIF RESULT == 1000
+	RETURN 0
+SIF RESULT > 200
+	GOTO LOOP
+SIF BR_ITEM_STR:RESULT == ""
+	GOTO LOOP
+SIF BR_ITEM:RESULT == 0
+	GOTO LOOP 
+
+IF RESULT == 1000
+	RETURN 0
+ELSE
+	IF BR_ITEM_PERSONAL:RESULT == 0
+		IF BR:202 >= BR:201+1
+			PRINTW 【これ以上配置できません】
+		ELSE
+			PRINTFORMW %BR_ITEM_STR:RESULT%を配置しました
+			BR_ITEM_PERSONAL:RESULT = 1
+		ENDIF
+	ELSE
+		PRINTFORMW %BR_ITEM_STR:RESULT%を回収しました
+		BR_ITEM_PERSONAL:RESULT = 0
+	ENDIF
+	RESTART
+ENDIF
+
+
+;道具購入------------------------------------------
+@BR_ITEM_BUY
+DRAWLINE
+PRINTFORML 所持アイテム　所持金：{MONEY}
+REPEAT 200
+	SIF BR_ITEM_STR:COUNT == ""
+		CONTINUE
+	SIF BR_ITEM:COUNT == 0
+		CONTINUE
+	SIF BR_ITEM:COUNT >= 1
+		PRINTFORM 【%BR_ITEM_STR:COUNT%
+	SIF COUNT >= 100
+		PRINTFORM ×{BR_ITEM:COUNT}
+	PRINT 】
+REND
+PRINTL
+DRAWLINE
+PRINTL 何を購入しますか？
+PRINTL [1] - 通常アイテム
+PRINTL [2] - 消耗品
+DRAWLINE
+PRINTPLAIN 　BUY　
+PRINTL [0] - 戻る
+
+$ITEMLOOP
+INPUT
+
+IF RESULT == 0
+	RETURN 0
+ELSEIF RESULT == 1
+	CALL BUY_ITEM1
+ELSEIF RESULT == 2
+	CALL BUY_ITEM2
+ELSE
+	GOTO ITEMLOOP
+ENDIF
+
+
+@BUY_ITEM1
+PRINTL 何を購入しますか？
+DRAWLINE
+PRINTFORML 所持アイテム　所持金：${MONEY}
+REPEAT 200
+	SIF BR_ITEM_STR:COUNT == ""
+		CONTINUE
+	SIF BR_ITEM:COUNT == 0
+		CONTINUE
+	SIF BR_ITEM:COUNT >= 1
+		PRINTFORM 【%BR_ITEM_STR:COUNT%
+	SIF COUNT >= 100
+		PRINTFORM ×{BR_ITEM:COUNT}
+	PRINT 】
+REND
+PRINTL
+DRAWLINE
+
+REPEAT 5
+	SIF BR_ITEM:COUNT == 0
+		PRINTFORMLC [{COUNT}] %BR_ITEM_STR:COUNT% - ${BR_ITEM_PRICE:COUNT}
+REND
+
+PRINTL
+DRAWLINE
+PRINTPLAIN 　BUY　
+PRINTL [100] - 戻る
+
+
+$ITEMLOOP
+INPUT
+
+IF RESULT >= 0 && RESULT <= 4
+	IF MONEY < BR_ITEM_PRICE:RESULT
+		PRINTW 所持金が足りません
+	ELSE
+		PRINTFORMW %BR_ITEM_STR:RESULT%を購入しました
+		BR_ITEM:RESULT = 1
+		MONEY -= BR_ITEM_PRICE:RESULT
+	ENDIF
+	RESTART
+ELSEIF RESULT == 100
+	RETURN 0
+ELSE
+	GOTO ITEMLOOP
+ENDIF
+
+
+@BUY_ITEM2
+PRINTL 何を購入しますか？
+DRAWLINE
+PRINTFORML 所持アイテム　所持金：${MONEY}
+REPEAT 200
+	SIF BR_ITEM_STR:COUNT == ""
+		CONTINUE
+	SIF BR_ITEM:COUNT == 0
+		CONTINUE
+	SIF BR_ITEM:COUNT >= 1
+		PRINTFORM 【%BR_ITEM_STR:COUNT%
+	SIF COUNT >= 100
+		PRINTFORM ×{BR_ITEM:COUNT}
+	PRINT 】
+REND
+PRINTL
+DRAWLINE
+
+REPEAT 4
+	A = COUNT + 100
+	PRINTFORMLC [{COUNT}] %BR_ITEM_STR:A% - ${BR_ITEM_PRICE:A}
+REND
+
+PRINTL
+DRAWLINE
+PRINTPLAIN 　BUY　
+PRINTL [100] - 戻る
+
+
+$ITEMLOOP
+INPUT
+
+IF RESULT >= 0 && RESULT <= 3
+	A = RESULT + 100
+	IF BR_ITEM:A >= 99
+		PRINTL これ以上持てません
+		RESTART
+	ENDIF
+
+	PRINTFORML %BR_ITEM_STR:A%をいくつ購入しますか？
+	PRINTFORML 現在{BR_ITEM:A}個所持
+	B = MONEY / BR_ITEM_PRICE:A
+	SIF B + BR_ITEM:A > 99
+		B = 99 - BR_ITEM:A
+	PRINTFORML あと{B}個購入出来ます
+
+	SIF B >= 1
+		PRINTL [1]  - 1個だけ買う
+	SIF B >= 5
+		PRINTL [5]  - 5個買う
+	SIF B >= 10
+		PRINTL [10] - 10個買う
+	SIF BR_ITEM < 99
+		PRINTL [100]- 買えるだけ買う
+	PRINTL [0]  - 戻る
+	
+	$INPUTLOOP
+	INPUT
+
+	IF RESULT == 0
+		RESTART
+	ELSEIF BR_ITEM_PRICE:A * RESULT > MONEY && RESULT < 100
+		PRINTW 所持金が足りません
+	ELSEIF RESULT == 100
+		PRINTFORMW %BR_ITEM_STR:A%を{B}個購入しました
+		MONEY -= B * BR_ITEM_PRICE:A
+		BR_ITEM:A += B
+	ELSEIF B >= RESULT
+		PRINTFORMW %BR_ITEM_STR:A%を{RESULT}個購入しました
+		MONEY -= RESULT * BR_ITEM_PRICE:A
+		BR_ITEM:A += RESULT
+	ELSE
+		PRINTW そんなに持てません
+	ENDIF
+	RESTART
+ELSEIF RESULT == 100
+	RETURN 0
+ELSE
+	GOTO ITEMLOOP
+ENDIF
+
+;娼館増設----------------------------------------------------
+@BR_RENOVATION
+A = BR:201 * BR:201 * 1000
+DRAWLINE
+PRINTFORML 現在{BR:201}人配置可能  {BR:201+1}種類のアイテムを配置可能
+PRINTL 増設することで配置可能な人数が一人増え、配置できるアイテム枠もひとつ増えます
+PRINTFORML 所持金：${MONEY}
+PRINTFORML [0] - 増設する（${A}必要）
+PRINTL [1] - 増設しない
+
+$LOOP
+INPUT
+
+IF RESULT == 0
+	IF A > MONEY
+		PRINTL 所持金が足りません
+		RESTART
+	ENDIF
+	BR:201++
+	PRINTL 娼館を増設しました
+	MONEY -= A
+	RESTART
+ELSEIF RESULT == 1
+	RETURN 0
+ELSE
+	GOTO LOOP
+ENDIF
+
+;PRINTL 物件を増設します
+;DRAWLINE
+;PRINTFORMLC 広さ：{BR:200}
+;PRINTFORMLC 部屋数：{BR:201}
+;PRINTL
+;DRAWLINE
+;PRINTL 【設備】
+;A = 0
+;REPEAT 50
+;	IF BR_ITEM_PERSONAL:COUNT == 1
+;		PRINTPLAIN [
+;		PRINTFORM %BR_ITEM_STR:COUNT%
+;		PRINTPLAIN ]
+;		A++
+;	ENDIF
+;	SIF A == 0
+;		PRINTPLAIN [何も無いようです] 
+;REND
+;PRINTL
+;DRAWLINE
+;
+;PRINTL [1] - 広くする
+;PRINTL [2] - 部屋を増やす
+;PRINTL [3] - 設備を導入する
+;DRAWLINE
+;PRINTPLAIN 　RENOVATION　
+;PRINTL [0] - 戻る
+;
+;$LOOP
+;INPUT
+;
+;IF RESULT == 0
+;	RETURN 0
+;ELSEIF RESULT == 1
+;	CALL BR_RENOVATION_1
+;ELSEIF RESULT == 2
+;	CALL BR_RENOVATION_2
+;ELSEIF RESULT == 3
+;	CALL BR_RENOVATION_3
+;ELSE
+;	GOTO LOOP
+;ENDIF
+;
+;RESTART
+
+;運営方針----------------------------------------------------
+@BR_PLAN
+CALL BR_ITEM_POINT
+DRAWLINE
+PRINTL 【現在のポイント】
+PRINTFORMLC ソフト - {BR:100}
+PRINTFORMLC ハード - {BR:101}
+PRINTFORMLC SM - {BR:102}
+PRINTFORMLC 狂気 - {BR:103}
+PRINTL
+DRAWLINE
+A = BR:50
+PRINTFORML 現在の方針：%BR_STR:A%
+DRAWLINE
+PRINTL [0] - 方針無し
+PRINTL [1] - ソフト方針
+PRINTL [2] - ハード方針
+PRINTL [3] - SM方針
+PRINTL [4] - 狂気方針
+IF BR:51 == 0
+	PRINTL [5] - プレイ内容を報告させる（現在オフ）
+ELSEIF BR:51 == 1
+	PRINTL [5] - プレイ内容を報告させる（現在オン）
+ENDIF
+DRAWLINE
+PRINTPLAIN 　PLAN　
+PRINT [10] 戻る　
+PRINT [20] 各方針の説明
+
+$LOOP
+INPUT
+
+IF RESULT >= 0 && RESULT <= 4
+	BR:50 = RESULT
+ELSEIF RESULT == 5
+	IF BR:51 == 0
+		BR:51 = 1
+	ELSE
+		BR:51 = 0
+	ENDIF
+	RESTART
+ELSEIF RESULT == 10
+	RETURN 0
+ELSEIF RESULT == 20
+	PRINTL 0-方針無し
+	PRINTL ├特に方針を指定しません。初期設定でもあります。
+	PRINTL ├無計画ということなので方針としての効果は皆無。
+	PRINTL └何かしら方針は定めたほうが良いでしょう。
+	PRINTL 1-ソフト売春
+	PRINTL ├本番無しなど店側の制約を多く設けた方針です。
+	PRINTL ├体力や気力の消費が軽く経験の浅い奴隷でもそれなりの効果があります。
+	PRINTL └しかし基本的に経験が上がりにくく、調教としての効果は薄いかもしれません。
+	PRINTL 2-ハード方針
+	PRINTL ├経験豊富で淫乱な奴隷ほど効果が高まる方針です。
+	PRINTL ├各種経験に多めの数値が入り、収入も安定しています。
+	PRINTL └経験が浅く適正でない奴隷の場合、収入も低く体力消費も大きいため序盤にはおすすめできません。
+	PRINTL 3-SM方針
+	PRINTL ├いろいろとマニアックなプレイを専門とする方針です。
+	PRINTL ├一部素質で強力なプラス補正がかかり、逆にこういったプレイに向かない奴隷の場合は
+	PRINTL └多大な体力消費など、マイナスの効果が大きいかもしれません。
+	PRINTL 4-狂気方針
+	PRINTL ├ごく一部の稀有なクライアント向けの方針です。
+	PRINTL ├脱法的な経営なので、客は少なく、ランクが低いとまったく収入がありません。
+	PRINTL └崩壊した奴隷や特殊な素質を持った奴隷の効果が高く、特殊な方針といえるでしょう。
+	PRINTL 5-プレイ内容を報告させる
+	PRINTL ├売春での奉仕内容を収入計算時に報告させます。
+	PRINTL └オンオフで収入に違いは無いので奴隷の動向が気になるならオンにしてみましょう。
+	PRINTW
+ENDIF
+
+RESTART
+
+;人員配置----------------------------------------------------
+@BR_PERSONAL
+D = 0
+S = 0
+DRAWLINE
+PRINTL
+PRINTL 娼館経営に配属する奴隷を選択してください
+PRINTL
+REPEAT CHARANUM
+	SIF COUNT == MASTER
+		CONTINUE
+	SIF CFLAG:COUNT:1 < 2
+		CONTINUE
+	IF CFLAG:COUNT:1 == 2
+		PRINTFORM [{COUNT}] - %CALLNAME:COUNT%（技巧：{ABL:COUNT:2}）
+		IF CFLAG:COUNT:12 == 0
+			PRINTL 【休憩中】
+		ELSEIF CFLAG:COUNT:12 == 1
+			PRINTL 【レンタル中】
+		ELSEIF CFLAG:COUNT:12 == 2
+			PRINTL 【売春中】
+		ELSEIF CFLAG:COUNT:12 == 3
+			PRINTL 【ゲームセンター配属中】
+		ELSEIF CFLAG:COUNT:12 == 4
+			PRINTL 【配属中】
+		ENDIF
+		D++
+	ENDIF
+REND
+IF D < 1
+	PRINTL 【現在配属できる奴隷はいません】
+	PRINTL
+ENDIF
+DRAWLINE
+PRINTPLAIN 　PERSONAL　
+PRINT [1000] 戻る　
+PRINTL [1001] 全員帰還
+
+$INPUT_LOOP
+INPUT
+
+IF RESULT == 1000
+	 RETURN 0
+ELSEIF RESULT == 1001
+	REPEAT CHARANUM
+		SIF CFLAG:COUNT:12 == 4
+			CFLAG:COUNT:12 = 0
+	REND
+	PRINTW 全員帰宅しました
+	RESTART
+ELSEIF RESULT <= CHARANUM
+	S = RESULT
+	IF CFLAG:S:12 == 0
+		PRINTFORMW %CALLNAME:S%を配属しました
+		CFLAG:S:12 = 4
+		SIF TARGET == S
+			TARGET = -1
+	ELSEIF CFLAG:S:12 == 4
+		PRINTFORMW %CALLNAME:S%が帰宅しました
+		CFLAG:S:12 = 0
+	ENDIF
+	RESTART
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+
+
+;名称----------------------------------------------------
+@BR_STR
+BR_STR:0 = 方針無し
+BR_STR:1 = ソフト方針
+BR_STR:2 = ハード方針
+BR_STR:3 = SM方針
+BR_STR:4 = 狂気方針
+
+;道具名----------------------------------------------------
+@BR_ITEM_STR
+;0～ 通常アイテム
+BR_ITEM_STR:0 = ローター
+BR_ITEM_STR:1 = バイブ
+BR_ITEM_STR:2 = 鞭
+BR_ITEM_STR:3 = 縄
+BR_ITEM_STR:4 = ペニスバンド
+
+;100～ 消耗アイテム
+BR_ITEM_STR:100 = コンドーム
+BR_ITEM_STR:101 = ローション
+BR_ITEM_STR:102 = 媚薬
+BR_ITEM_STR:103 = 睡眠薬
+
+;200～ 設備名(工事中)
+BR_ITEM_STR:200 = 設備１
+BR_ITEM_STR:201 = 設備２
+
+;道具名----------------------------------------------------
+@BR_ITEM_POINT
+A = 0
+B = 0
+C = 0
+D = 0
+
+IF BR_ITEM_PERSONAL:0
+	A += 20
+	B += 10
+	D += 5
+ENDIF
+IF BR_ITEM_PERSONAL:1
+	B += 10
+	C += 20
+	D += 15
+ENDIF
+IF BR_ITEM_PERSONAL:2
+	C += 30
+	D += 20
+ENDIF
+IF BR_ITEM_PERSONAL:3
+	C += 25
+	D += 35
+ENDIF
+IF BR_ITEM_PERSONAL:4
+	B += 10
+	C += 30
+	D += 5
+ENDIF
+IF BR_ITEM_PERSONAL:100
+	A += 5
+	B += 20
+	C += 15
+	D += 5
+ENDIF
+IF BR_ITEM_PERSONAL:101
+	A += 15
+	B += 20
+	C += 10
+	D += 5
+ENDIF
+IF BR_ITEM_PERSONAL:102
+	A += 20
+	B += 40
+	C += 35
+	D += 30
+ENDIF
+IF BR_ITEM_PERSONAL:103
+	B += 5
+	C += 10
+	D += 30
+ENDIF
+
+BR:100 = A
+BR:101 = B
+BR:102 = C
+BR:103 = D
+
+;道具の値段----------------------------------------------------
+@BR_ITEM_PRICE
+;0～ 通常アイテム
+BR_ITEM_PRICE:0 = 500
+BR_ITEM_PRICE:1 = 1000
+BR_ITEM_PRICE:2 = 500
+BR_ITEM_PRICE:3 = 2000
+BR_ITEM_PRICE:4 = 2000
+
+;100～ 消費アイテム
+BR_ITEM_PRICE:100 = 100
+BR_ITEM_PRICE:101 = 100
+BR_ITEM_PRICE:102 = 2000
+BR_ITEM_PRICE:103 = 1000
+
+;収入計算----------------------------------------------------
+@INCOME_BR
+A = 0
+IF BR:50 == 4
+	A += (BR:0 - 10) * 100
+ELSE
+	A += BR:0 * 100
+ENDIF
+A += BR:100
+A += BR:101
+A += BR:102
+A += BR:103
+
+IF BR:50 != 0
+	B = BR:50 + 99
+	A += BR:B * 5
+ENDIF
+
+Z = 0
+
+REPEAT CHARANUM
+	SIF COUNT == 0
+		CONTINUE
+	SIF CFLAG:COUNT:12 != 4
+		CONTINUE
+	SIF BASE:COUNT:0 <= MAXBASE:COUNT:0 - 500
+		CONTINUE
+	;ソフト
+	IF BR:50 == 1
+		;まずはプラス素質から計算
+		SIF TALENT:COUNT:0
+			A += 30
+			C++
+		IF TALENT:COUNT:2
+			IF RAND:2 == 0
+				A += 20
+				C++
+			ELSE
+				A -= 20
+				D++
+			ENDIF
+		ENDIF
+		SIF TALENT:COUNT:4
+			A += 100
+			C++
+		SIF TALENT:COUNT:7
+			A += 200
+			C++
+		SIF TALENT:COUNT:13
+			A += 35
+			C++
+		SIF TALENT:COUNT:14
+			A += 20
+			C++
+		SIF TALENT:COUNT:17
+			A += 20
+			C++
+		SIF TALENT:COUNT:23
+			A += 25
+			C++
+		SIF TALENT:COUNT:25
+			A += 10
+			C++
+		SIF TALENT:COUNT:28
+			A += 15
+			C++
+		SIF TALENT:COUNT:33
+			A += 25
+			C++
+		SIF TALENT:COUNT:36
+			A += 10
+			C++
+		SIF TALENT:COUNT:41
+			A += 15
+			C++
+		SIF TALENT:COUNT:42
+			A += 20
+			C++
+		SIF TALENT:COUNT:52
+			A += 15
+			C++
+		SIF TALENT:COUNT:61
+			A += 10
+			C++
+		SIF TALENT:COUNT:63
+			A += 20
+			C++
+		SIF TALENT:COUNT:70
+			A += 10
+			C++
+		SIF TALENT:COUNT:81
+			A += 10
+			C++
+		SIF TALENT:COUNT:87
+			A += 10
+			C++
+		SIF TALENT:COUNT:92
+			A += 15
+			C++
+		SIF TALENT:COUNT:93
+			A += 15
+			C++
+		SIF TALENT:COUNT:94
+			A += 20
+		IF TALENT:COUNT:100
+			IF RAND:2 == 0
+				A += 50
+				C++
+			ELSE
+				A -= 30
+				D++
+			ENDIF
+		ENDIF
+		SIF TALENT:COUNT:102
+			A += 10
+			C++
+		SIF TALENT:COUNT:108
+			A += 10
+			C++
+		IF TALENT:COUNT:109
+			IF RAND:3 == 0
+				A += 30
+				C++
+			ELSEIF RAND:2 == 0
+				A -= 10
+				D++
+			ELSE
+				A -= 30
+				D++
+			ENDIF
+		ENDIF
+		IF TALENT:COUNT:110
+			IF RAND:5 == 0
+				A += 40
+				C++
+			ELSEIF RAND:4 == 0
+				A += 0
+			ELSEIF RAND:3 == 0
+				A -= 10
+				D++
+			ELSEIF RAND:2 == 0
+				A -= 30
+				D++
+			ELSE
+				A -= 50
+				D++
+			ENDIF
+		ENDIF 
+		SIF TALENT:COUNT:111
+			A += 20
+			C++
+		IF TALENT:COUNT:112
+			IF RAND:5 == 0
+				A -= 10
+				D++
+			ELSE
+				A += 30
+				C++
+			ENDIF
+		ENDIF
+		SIF TALENT:COUNT:143
+			A += 10
+			C++
+		SIF TALENT:COUNT:145
+			A += 20
+			C++
+		SIF TALENT:COUNT:152
+			A += 10
+			C++
+		SIF TALENT:COUNT:155
+			A += 10
+			C++
+		SIF TALENT:COUNT:157
+			A += 10
+			C++
+		;ここからマイナス素質
+		SIF TALENT:COUNT:3
+			A -= 30
+			D++
+		SIF TALENT:COUNT:6
+			A -= 50
+			D++
+		;SIF TALENT:COUNT:9
+			;A -= 80
+		SIF TALENT:COUNT:10
+			A -= 10
+			D++
+		SIF TALENT:COUNT:11
+			A -= 20
+			D++
+		SIF TALENT:COUNT:12
+			A -= 10
+			D++
+		SIF TALENT:COUNT:15
+			A -= 10
+			D++
+		SIF TALENT:COUNT:16
+			A -= 10
+			D++
+		SIF TALENT:COUNT:20
+			A -= 10
+			D++
+		SIF TALENT:COUNT:21
+			A -= 20
+			D++
+		SIF TALENT:COUNT:24
+			A -= 15
+			D++
+		IF TALENT:COUNT:26
+			IF RAND:4 == 0
+				A += 20
+				C++
+			ELSE
+				A -= 10
+				D++
+			ENDIF
+		ENDIF
+		SIF TALENT:COUNT:27
+			A -= 30
+			D++
+		SIF TALENT:COUNT:32
+			A -= 25
+			D++
+		SIF TALENT:COUNT:34
+			A -= 25
+			D++
+		IF TALENT:COUNT:35
+			IF RAND:2 == 0
+				A -= 15
+				D++
+			ELSE
+				A += 15
+				C++
+			ENDIF
+		ENDIF
+		IF TALENT:COUNT:40
+			IF RAND:2 == 0
+				A -= 10
+				D++
+			ELSE
+				A += 10
+				C++
+			ENDIF
+		ENDIF
+		SIF TALENT:COUNT:43
+			A -= 5
+			D++
+		SIF TALENT:COUNT:54
+			A -= 20
+			D++
+		SIF TALENT:COUNT:62
+			A -= 5
+			D++
+		SIF TALENT:COUNT:71
+			A -= 25
+			D++
+		SIF TALENT:COUNT:82
+			A -= 20
+			D++
+		IF TALENT:COUNT:88
+			IF RAND:5 == 0
+				A -= 20
+				D++
+			ELSE
+				A -= 0
+			ENDIF
+		ENDIF
+			D++
+		SIF TALENT:COUNT:101
+			A -= 10
+			D++
+		SIF TALENT:COUNT:107
+			A -= 10
+			D++
+		IF TALENT:COUNT:139
+			IF RAND:6 == 0
+				A += 40
+				C++
+			ELSE
+				A -= 15
+				D++
+			ENDIF
+		ENDIF
+		IF TALENT:COUNT:140
+			IF RAND:8 == 0
+				A += 40
+				C++
+			ELSE
+				A -= 25
+				D++
+			ENDIF
+		ENDIF
+			D++
+		SIF TALENT:COUNT:141
+			A -= 50
+			D++
+		SIF TALENT:COUNT:142
+			A -= 20
+			D++
+		SIF TALENT:COUNT:147
+			A -= 20
+			D++
+		SIF TALENT:COUNT:148
+			A -= 30
+			D++
+		SIF TALENT:COUNT:153
+			A -= 70
+			D++
+		SIF TALENT:COUNT:156
+			A -= 40
+			D++
+		;ここから能力で倍率計算
+		B = A
+		SELECTCASE ABL:COUNT:0
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.10
+			CASE 2
+				TIMES B , 1.20
+			CASE 3
+				TIMES B , 1.30
+			CASE 4
+				TIMES B , 1.40
+			CASEELSE
+				TIMES B , 1.50
+		ENDSELECT
+		SELECTCASE ABL:COUNT:1
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.05
+			CASE 2
+				TIMES B , 1.10
+			CASE 3
+				TIMES B , 1.15
+			CASE 4
+				TIMES B , 1.20
+			CASEELSE
+				TIMES B , 1.25
+		ENDSELECT
+		SELECTCASE ABL:COUNT:2
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.20
+			CASE 2
+				TIMES B , 1.40
+			CASE 3
+				TIMES B , 1.60
+			CASE 4
+				TIMES B , 1.80
+			CASEELSE
+				TIMES B , 2.00
+		ENDSELECT
+		SELECTCASE ABL:COUNT:7
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.10
+			CASE 2
+				TIMES B , 1.20
+			CASE 3
+				TIMES B , 1.30
+			CASE 4
+				TIMES B , 1.40
+			CASEELSE
+				TIMES B , 1.50
+		ENDSELECT
+	;ハード
+	ELSEIF BR:50 == 2
+		;まずはプラス素質から計算
+		SIF TALENT:COUNT:0
+			A += 100
+		IF TALENT:COUNT:2
+			IF RAND:2 == 0
+				A += 40
+				C++
+			ELSE
+				A -= 10
+				D++
+			ENDIF
+		ENDIF
+		SIF TALENT:COUNT:4
+			A += 200
+			C++
+		SIF TALENT:COUNT:7
+			A += 400
+			C++
+		SIF TALENT:COUNT:10
+			A += 20
+			C++
+		SIF TALENT:COUNT:13
+			A += 30
+			C++
+		SIF TALENT:COUNT:17
+			A += 30
+			C++
+		SIF TALENT:COUNT:23
+			A += 40
+			C++
+		SIF TALENT:COUNT:25
+			A += 10
+			C++
+		SIF TALENT:COUNT:28
+			A += 10
+			C++
+		SIF TALENT:COUNT:31
+			A += 40
+			C++
+		SIF TALENT:COUNT:36
+			A += 20
+			C++
+		SIF TALENT:COUNT:41
+			A += 25
+			C++
+		SIF TALENT:COUNT:42
+			A += 25
+			C++
+		SIF TALENT:COUNT:52
+			A += 10
+			C++
+		SIF TALENT:COUNT:63
+			A += 20
+			C++
+		SIF TALENT:COUNT:70
+			A += 20
+			C++
+		SIF TALENT:COUNT:75
+			A += 100
+			C++
+		SIF TALENT:COUNT:76
+			A += 100
+			C++
+		SIF TALENT:COUNT:87
+			A += 10
+			C++
+		SIF TALENT:COUNT:92
+			A += 10
+			C++
+		SIF TALENT:COUNT:93
+			A += 10
+			C++
+		SIF TALENT:COUNT:94
+			A += 20
+			C++
+		IF TALENT:COUNT:100
+			IF RAND:2 == 0
+				A += 30
+				C++
+			ELSE
+				A -= 50
+				D++
+			ENDIF
+		ENDIF
+		SIF TALENT:COUNT:104
+			A += 10
+			C++
+		SIF TALENT:COUNT:106
+			A += 10
+			C++
+		IF TALENT:COUNT:109
+			IF RAND:3 == 0
+				A += 30
+				C++
+			ELSEIF RAND:2 == 0
+				A -= 10
+				D++
+			ELSE
+				A -= 30
+				D++
+			ENDIF
+		ENDIF
+		IF TALENT:COUNT:110
+			IF RAND:5 == 0
+				A += 40
+				C++
+			ELSEIF RAND:4 == 0
+				A += 0
+			ELSEIF RAND:3 == 0
+				A -= 10
+				D++
+			ELSEIF RAND:2 == 0
+				A -= 30
+				D++
+			ELSE
+				A -= 50
+				D++
+			ENDIF
+		ENDIF 
+		SIF TALENT:COUNT:111
+			A += 20
+			C++
+		IF TALENT:COUNT:112
+			IF RAND:5 == 0
+				A -= 10
+				D++
+			ELSE
+				A += 30
+				C++
+			ENDIF
+		ENDIF
+		SIF TALENT:COUNT:143
+			A += 10
+			C++
+		SIF TALENT:COUNT:145
+			A += 20
+			C++
+		SIF TALENT:COUNT:152
+			A += 10
+			C++
+		SIF TALENT:COUNT:155
+			A += 10
+			C++
+		SIF TALENT:COUNT:157
+			A += 10
+			C++
+		;ここからマイナス素質
+		SIF TALENT:COUNT:3
+			A -= 50
+			D++
+		SIF TALENT:COUNT:6
+			A -= 100
+			D++
+		;SIF TALENT:COUNT:9
+			;A -= 100
+		SIF TALENT:COUNT:11
+			A -= 30
+			D++
+		SIF TALENT:COUNT:15
+			A -= 20
+			D++
+		SIF TALENT:COUNT:16
+			A -= 20
+			D++
+		SIF TALENT:COUNT:20
+			A -= 20
+			D++
+		SIF TALENT:COUNT:21
+			A -= 40
+			D++
+		SIF TALENT:COUNT:24
+			A -= 15
+			D++
+		IF TALENT:COUNT:26
+			IF RAND:4 == 0
+				A += 20
+				C++
+			ELSE
+				A -= 10
+				D++
+			ENDIF
+		ENDIF
+		SIF TALENT:COUNT:27
+			A -= 50
+			D++
+		SIF TALENT:COUNT:32
+			A -= 25
+			D++
+		SIF TALENT:COUNT:34
+			A -= 25
+		IF TALENT:COUNT:35
+			IF RAND:2 == 0
+				A -= 15
+				D++
+			ELSE
+				A += 15
+				C++
+			ENDIF
+		ENDIF
+		IF TALENT:COUNT:40
+			IF RAND:3 == 0
+				A -= 20
+				D++
+			ELSE
+				A += 10
+				C++
+			ENDIF
+		ENDIF
+		SIF TALENT:COUNT:43
+			A -= 20
+			D++
+		SIF TALENT:COUNT:71
+			A -= 40
+			D++
+		SIF TALENT:COUNT:82
+			A -= 20
+			D++
+		IF TALENT:COUNT:88
+			IF RAND:5 == 0
+				A -= 20
+				D++
+			ELSE
+				A -= 0
+			ENDIF
+		ENDIF
+		SIF TALENT:COUNT:103
+			A -= 25
+			D++
+		SIF TALENT:COUNT:105
+			A -= 25
+			D++
+		IF TALENT:COUNT:139
+			IF RAND:6 == 0
+				A += 40
+				C++
+			ELSE
+				A -= 15
+				D++
+			ENDIF
+		ENDIF
+		IF TALENT:COUNT:140
+			IF RAND:8 == 0
+				A += 40
+				C++
+			ELSE
+				A -= 25
+				D++
+			ENDIF
+		ENDIF
+		SIF TALENT:COUNT:141
+			A -= 50
+			D++
+		SIF TALENT:COUNT:142
+			A -= 30
+			D++
+		SIF TALENT:COUNT:147
+			A -= 20
+			D++
+		SIF TALENT:COUNT:148
+			A -= 30
+			D++
+		SIF TALENT:COUNT:153
+			A -= 70
+			D++
+		SIF TALENT:COUNT:156
+			A -= 40
+			D++
+		;ここから能力で倍率計算
+		B = A
+		SELECTCASE ABL:COUNT:0
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.10
+			CASE 2
+				TIMES B , 1.20
+			CASE 3
+				TIMES B , 1.30
+			CASE 4
+				TIMES B , 1.40
+			CASEELSE
+				TIMES B , 1.50
+		ENDSELECT
+		SELECTCASE ABL:COUNT:1
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.10
+			CASE 2
+				TIMES B , 1.20
+			CASE 3
+				TIMES B , 1.30
+			CASE 4
+				TIMES B , 1.40
+			CASEELSE
+				TIMES B , 1.50
+		ENDSELECT
+		SELECTCASE ABL:COUNT:2
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.20
+			CASE 2
+				TIMES B , 1.40
+			CASE 3
+				TIMES B , 1.60
+			CASE 4
+				TIMES B , 1.80
+			CASEELSE
+				TIMES B , 2.00
+		ENDSELECT
+		IF RAND:2 == 0 && TALENT:COUNT:140 == 0
+			SELECTCASE ABL:COUNT:4
+				CASE 0
+					TIMES B , 1.00
+				CASE 1
+					TIMES B , 1.10
+				CASE 2
+					TIMES B , 1.20
+				CASE 3
+					TIMES B , 1.30
+				CASE 4
+					TIMES B , 1.40
+				CASEELSE
+					TIMES B , 1.50
+			ENDSELECT
+			X = 1
+		ELSE
+			SELECTCASE ABL:COUNT:5
+				CASE 0
+					TIMES B , 1.00
+				CASE 1
+					TIMES B , 1.10
+				CASE 2
+					TIMES B , 1.20
+				CASE 3
+					TIMES B , 1.30
+				CASE 4
+					TIMES B , 1.40
+				CASEELSE
+					TIMES B , 1.50
+			ENDSELECT
+			X = 2
+		ENDIF
+		SELECTCASE ABL:COUNT:7
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.10
+			CASE 2
+				TIMES B , 1.20
+			CASE 3
+				TIMES B , 1.30
+			CASE 4
+				TIMES B , 1.40
+			CASEELSE
+				TIMES B , 1.50
+		ENDSELECT
+		SELECTCASE ABL:COUNT:16
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.05
+			CASE 2
+				TIMES B , 1.10
+			CASE 3
+				TIMES B , 1.15
+			CASE 4
+				TIMES B , 1.20
+			CASEELSE
+				TIMES B , 1.25
+		ENDSELECT
+		SELECTCASE ABL:COUNT:18
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.20
+			CASE 2
+				TIMES B , 1.40
+			CASE 3
+				TIMES B , 1.60
+			CASE 4
+				TIMES B , 1.80
+			CASEELSE
+				TIMES B , 2.00
+		ENDSELECT
+	;マニアック
+	ELSEIF BR:50 == 3
+		;まずはプラス素質から計算
+		IF TALENT:COUNT:0
+			IF RAND:2 == 0
+				A += 100
+				C++
+			ELSE
+				A += 0
+			ENDIF
+		ENDIF
+		SIF TALENT:COUNT:41
+			A += 50
+			C++
+		SIF TALENT:COUNT:42
+			A += 30
+			C++
+		SIF TALENT:COUNT:52
+			A += 20
+			C++
+		SIF TALENT:COUNT:53
+			A += 20
+			C++
+		SIF TALENT:COUNT:57
+			A += 20
+			C++
+		SIF TALENT:COUNT:63
+			A += 20
+			C++
+		SIF TALENT:COUNT:64
+			A += 10
+			C++
+		SIF TALENT:COUNT:70
+			A += 10
+			C++
+		SIF TALENT:COUNT:72
+			A += 15
+			C++
+		SIF TALENT:COUNT:80
+			A += 40
+			C++
+		SIF TALENT:COUNT:81
+			A += 20
+			C++
+		SIF TALENT:COUNT:83
+			A += 25
+			C++
+		SIF TALENT:COUNT:84
+			A += 25
+			C++
+		SIF TALENT:COUNT:87
+			A += 20
+			C++
+		SIF TALENT:COUNT:100
+			A += 30
+			C++
+		SIF TALENT:COUNT:109
+			A += 20
+			C++
+		SIF TALENT:COUNT:110
+			A += 30
+			C++
+		SIF TALENT:COUNT:111
+			A += 10
+			C++
+		SIF TALENT:COUNT:112
+			A += 30
+			C++
+		SIF TALENT:COUNT:132
+			A += 15
+			C++
+		SIF TALENT:COUNT:137
+			A += 15
+			C++
+		SIF TALENT:COUNT:139
+			A += 40
+			C++
+		SIF TALENT:COUNT:140
+			A += 25
+			C++
+		SIF TALENT:COUNT:143
+			A += 10
+			C++
+		SIF TALENT:COUNT:145
+			A += 20
+			C++
+		SIF TALENT:COUNT:149
+			A += 20
+			C++
+		SIF TALENT:COUNT:152
+			A += 10
+			C++
+		SIF TALENT:COUNT:155
+			A += 10
+			C++
+		SIF TALENT:COUNT:157
+			A += 10
+			C++
+		;マイナス
+		SIF TALENT:COUNT:40
+			A -= 30
+			D++
+		SIF TALENT:COUNT:43
+			A -= 20
+			D++
+		SIF TALENT:COUNT:62
+			A -= 40
+			D++
+		SIF TALENT:COUNT:82
+			A -= 50
+			D++
+		SIF TALENT:COUNT:88
+			A -= 50
+			D++
+		SIF TALENT:COUNT:101
+			A -= 20
+			D++
+		SIF TALENT:COUNT:103
+			A -= 20
+			D++
+		SIF TALENT:COUNT:105
+			A -= 20
+			D++
+		SIF TALENT:COUNT:107
+			A -= 20
+			D++
+		SIF TALENT:COUNT:141
+			A -= 20
+			D++
+		SIF TALENT:COUNT:142
+			A -= 10
+			D++
+		SIF TALENT:COUNT:147
+			A -= 10
+			D++
+		SIF TALENT:COUNT:148
+			A -= 30
+			D++
+		SIF TALENT:COUNT:153
+			A -= 50
+			D++
+		SIF TALENT:COUNT:156
+			A -= 70
+			D++
+		;ここから能力で倍率計算
+		B = A
+		SELECTCASE ABL:COUNT:0
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.05
+			CASE 2
+				TIMES B , 1.10
+			CASE 3
+				TIMES B , 1.15
+			CASE 4
+				TIMES B , 1.20
+			CASEELSE
+				TIMES B , 1.25
+		ENDSELECT
+		SELECTCASE ABL:COUNT:1
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.05
+			CASE 2
+				TIMES B , 1.10
+			CASE 3
+				TIMES B , 1.15
+			CASE 4
+				TIMES B , 1.20
+			CASEELSE
+				TIMES B , 1.25
+		ENDSELECT
+		SELECTCASE ABL:COUNT:2
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.05
+			CASE 2
+				TIMES B , 1.10
+			CASE 3
+				TIMES B , 1.15
+			CASE 4
+				TIMES B , 1.20
+			CASEELSE
+				TIMES B , 1.25
+		ENDSELECT
+		IF RAND:2 == 0 || TALENT:COUNT:140 == 0
+			SELECTCASE ABL:COUNT:4
+				CASE 0
+					TIMES B , 1.00
+				CASE 1
+					TIMES B , 1.10
+				CASE 2
+					TIMES B , 1.20
+				CASE 3
+					TIMES B , 1.30
+				CASE 4
+					TIMES B , 1.40
+				CASEELSE
+					TIMES B , 1.50
+			ENDSELECT
+			X = 1
+		ELSE
+			SELECTCASE ABL:COUNT:5
+				CASE 0
+					TIMES B , 1.00
+				CASE 1
+					TIMES B , 1.10
+				CASE 2
+					TIMES B , 1.20
+				CASE 3
+					TIMES B , 1.30
+				CASE 4
+					TIMES B , 1.40
+				CASEELSE
+					TIMES B , 1.50
+			ENDSELECT
+			X = 2
+		ENDIF
+		SELECTCASE ABL:COUNT:9
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.10
+			CASE 2
+				TIMES B , 1.20
+			CASE 3
+				TIMES B , 1.30
+			CASE 4
+				TIMES B , 1.40
+			CASEELSE
+				TIMES B , 1.50
+		ENDSELECT
+		SELECTCASE ABL:COUNT:10
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.10
+			CASE 2
+				TIMES B , 1.20
+			CASE 3
+				TIMES B , 1.30
+			CASE 4
+				TIMES B , 1.40
+			CASEELSE
+				TIMES B , 1.50
+		ENDSELECT
+		IF RAND:2
+			SELECTCASE ABL:COUNT:17
+				CASE 0
+					TIMES B , 1.00
+				CASE 1
+					TIMES B , 1.10
+				CASE 2
+					TIMES B , 1.20
+				CASE 3
+					TIMES B , 1.30
+				CASE 4
+					TIMES B , 1.40
+				CASEELSE
+					TIMES B , 1.50
+			ENDSELECT
+		ELSE
+			SELECTCASE ABL:COUNT:21
+				CASE 0
+					TIMES B , 1.00
+				CASE 1
+					TIMES B , 1.10
+				CASE 2
+					TIMES B , 1.20
+				CASE 3
+					TIMES B , 1.30
+				CASE 4
+					TIMES B , 1.40
+				CASEELSE
+					TIMES B , 1.50
+			ENDSELECT
+		ENDIF
+	;ルナティック
+	ELSEIF BR:50 == 4
+		;まずはプラス素質から計算
+		SIF TALENT:COUNT:9
+			A += 2000
+			C++
+		SIF TALENT:COUNT:22
+			A += 200
+			C++
+		SIF TALENT:COUNT:40
+			A += 300
+			C++
+		SIF TALENT:COUNT:80
+			A += 200
+			C++
+		SIF TALENT:COUNT:86
+			A += 300
+			C++
+		SIF TALENT:COUNT:139
+			A += 200
+			C++
+		SIF TALENT:COUNT:141
+			A += 1000
+			C++
+		SIF TALENT:COUNT:142
+			A += 1000
+			C++
+		SIF TALENT:COUNT:144
+			A += 1500
+			C++
+		SIF TALENT:COUNT:147
+			A += 700
+			C++
+		SIF TALENT:COUNT:148
+			A += 1500
+			C++
+		SIF TALENT:COUNT:150
+			A += 500
+			C++
+		SIF TALENT:COUNT:153
+			A += 800
+			C++
+		SIF TALENT:COUNT:156
+			A += 400
+			C++
+		;マイナス
+		A /= 5
+		;ここから能力で倍率計算
+		B = A
+		SELECTCASE ABL:COUNT:0
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.05
+			CASE 2
+				TIMES B , 1.10
+			CASE 3
+				TIMES B , 1.15
+			CASE 4
+				TIMES B , 1.20
+			CASEELSE
+				TIMES B , 1.25
+		ENDSELECT
+		SELECTCASE ABL:COUNT:1
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.05
+			CASE 2
+				TIMES B , 1.10
+			CASE 3
+				TIMES B , 1.15
+			CASE 4
+				TIMES B , 1.20
+			CASEELSE
+				TIMES B , 1.25
+		ENDSELECT
+		SELECTCASE ABL:COUNT:2
+			CASE 0
+				TIMES B , 1.00
+			CASE 1
+				TIMES B , 1.05
+			CASE 2
+				TIMES B , 1.10
+			CASE 3
+				TIMES B , 1.15
+			CASE 4
+				TIMES B , 1.20
+			CASEELSE
+				TIMES B , 1.25
+		ENDSELECT
+	ENDIF
+	;体力気力消費計算
+	IF BR:50 <= 1
+		E = D - C
+		IF E >= 1
+			BASE:COUNT:0 -= E * 10
+			BASE:COUNT:1 -= E * 30
+		ELSE
+			BASE:COUNT:0 -= 10
+			BASE:COUNT:1 -= 30
+		ENDIF
+		SIF BASE:COUNT:0 <= 0
+			BASE:COUNT:0 = 1
+	ELSEIF BR:50 <= 2
+		E = D - C
+		IF E >= 1
+			BASE:COUNT:0 -= E * 50
+			BASE:COUNT:1 -= E * 100
+		ELSE
+			BASE:COUNT:0 -= 50
+			BASE:COUNT:1 -= 100
+		ENDIF
+		SIF BASE:COUNT:0 <= 0
+			BASE:COUNT:0 = 1
+	ELSEIF BR:50 <= 3
+		E = D - C
+		IF E >= 1
+			BASE:COUNT:0 -= E * 80
+			BASE:COUNT:1 -= E * 160
+		ELSE
+			BASE:COUNT:0 -= 80
+			BASE:COUNT:1 -= 160
+		ENDIF
+		SIF BASE:COUNT:0 <= 0
+			BASE:COUNT:0 = 1
+	ELSEIF BR:50 == 4
+		E = 14 - C
+			BASE:COUNT:0 -= E * 50
+			BASE:COUNT:1 -= E * 100
+		SIF BASE:COUNT:0 <= 0
+			BASE:COUNT:0 = 1
+	ENDIF
+
+	Z += B
+
+	W = 0
+
+	A = 0
+	B = 0
+	C = 0
+	V = 0
+
+	E = 0
+	S = 0
+	Y = 0
+	T = 0
+
+	M = 0
+	H = 0
+	F = 0
+	P = 0
+
+	L = 0
+	G = 0
+
+	IF BR:50 == 1
+		E = RAND:6
+		S = RAND:6
+		M = RAND:4
+		F = RAND:11
+		Y = RAND:3
+		SIF TALENT:COUNT:139 || TALENT:140
+			S = RAND:4
+		SIF TALENT:COUNT:140
+			G = RAND:4
+		F++
+	ELSEIF BR:50 == 2
+		IF X == 1
+			V = RAND:11
+		ELSEIF X == 2
+			A = RAND:11
+		ENDIF
+		E = RAND:6
+		F = RAND:2
+		P = RAND:4
+		Y = RAND:6
+		SIF TALENT:COUNT:140 == 0 && W != 2
+			T = RAND:2
+		SIF TALENT:COUNT:139 || TALENT:COUNT:140
+			S = RAND:6
+		SIF TALENT:COUNT:140
+			G = RAND:6
+		SIF V == 0 && A == 0
+			A++
+	ELSEIF BR:50 == 3
+		W = RAND:4
+		A = RAND:4
+		SIF TALENT:COUNT:140 == 0
+			V = RAND:4
+		E = RAND:4
+		SIF W != 2
+			Y = RAND:2
+		SIF TALENT:COUNT:139 || TALENT:COUNT:140
+			S = RAND:6
+		M = RAND:4
+		SIF TALENT:COUNT:140 == 0 && W != 2
+			T = RAND:2
+		SIF W != 2
+			F = RAND:4
+		P = RAND:4
+		SIF TALENT:COUNT:140 == 0 && W >= 2
+			L = RAND:4
+		SIF TALENT:COUNT:140 && W <= 1
+			G = RAND:4
+		SIF A == 0 && V == 0
+			A++
+	ELSEIF BR:50 == 4
+		W = RAND:4
+		SIF TALENT:COUNT:140 == 0
+			V = RAND:31
+		A = RAND:31
+		SIF W != 2
+			Y = RAND:2
+		SIF TALENT:COUNT:140 == 0 && W >= 2
+			L = RAND:11
+		SIF TALENT:COUNT:140 && W <= 1
+			G = RAND:11
+	ENDIF
+
+	IF BR:51
+		PRINTFORMW %CALLNAME:COUNT%が今日の仕事を報告してきた。
+		PRINTFORM %CALLNAME:COUNT%は
+		IF W <= 1
+			PRINT 男性客を相手に
+		ELSEIF W == 2
+			PRINT 女性客を相手に
+		ELSEIF W == 3
+			PRINT ふたなりの女性客を相手に
+		ENDIF
+		IF W != 2
+			SIF F
+				PRINT 口
+			SIF F && (V || A)
+				PRINT と
+			SIF V
+				PRINT 膣
+			SIF V && A
+				PRINT と
+			SIF A
+				PRINT アナル
+			PRINT で奉仕
+			IF Y
+				PRINTW して射精させた。
+			ELSE
+				PRINTW したが、射精させるには至らなかった。
+			ENDIF
+		ENDIF
+		SIF W != 2
+			PRINTFORM %CALLNAME:COUNT%は
+		IF A || V
+			SIF A
+				PRINT アナル
+			SIF A && V
+				PRINT や
+			SIF V
+				PRINT ヴァギナ
+			PRINT を
+			SIF W == 2
+				PRINT 指や道具で
+			SIF V > 7 || A > 7
+				PRINT 激しく
+			PRINT 犯された
+			IF S == 0
+				PRINTW ようだ。
+			ELSE
+				PRINTL 挙句、
+				IF T
+					PRINT 膣に中出しされながら
+				ELSEIF Y && A
+					PRINT アナルに中出しされながら
+				ELSEIF V > A
+					PRINT ヴァギナへの快感で
+				ELSE
+					PRINT アナルへの快感で
+				ENDIF
+				SIF S >= 3
+					PRINT 何回も
+				PRINTW 射精してしまったようだ。
+			ENDIF
+		ENDIF
+		IF M
+			PRINT その後、自慰を命じられ
+			IF S
+				PRINTFORMW 、%CALLNAME:COUNT%は上手に自分で射精できたようだ。
+			ELSEIF E
+				PRINTFORMW 、%CALLNAME:COUNT%は上手に自分で絶頂に達せたようだ。
+			ELSE
+				PRINTFORMW たが、一人で絶頂を迎えることはできなかったらしい。
+			ENDIF
+		ENDIF
+	ENDIF
+	SIF V
+		PRINTFORML V経験+{V} (%CALLNAME:COUNT%)
+		EXP:COUNT:0 += V
+	SIF V && TALENT:COUNT:0
+		TALENT::COUNT:0 = 0
+	SIF A
+		PRINTFORML A経験+{A} (%CALLNAME:COUNT%)
+		EXP:COUNT:1 += A
+	SIF E
+		PRINTFORML 絶頂経験+{E} (%CALLNAME:COUNT%)
+		EXP:COUNT:2 += E
+	SIF S
+		PRINTFORML 射精経験+{S} (%CALLNAME:COUNT%)
+		EXP:COUNT:3 += S
+	SIF T
+		PRINTFORML 膣射経験+{T} (%CALLNAME:COUNT%)
+		EXP:COUNT:5 += T
+	SIF Y
+		PRINTFORML 精液経験+{Y} (%CALLNAME:COUNT%)
+		EXP:COUNT:20 += Y
+	SIF M
+		PRINTFORML 自慰経験+{M} (%CALLNAME:COUNT%)
+		EXP:COUNT:10 += M
+	SIF F
+		PRINTFORML フェラ経験+{F} (%CALLNAME:COUNT%)
+		EXP:COUNT:22 += F
+	SIF L
+		PRINTFORML レズ経験+{L} (%CALLNAME:COUNT%)
+		EXP:COUNT:40 += L
+	SIF G
+		PRINTFORML ゲイ経験+{G} (%CALLNAME:COUNT%)
+		EXP:COUNT:41 += G
+	SIF W == 2 && TALENT:COUNT:2
+		TALENT:COUNT:2 = 0
+REND
+
+
+PRINTFORML 娼館経営の収入が${Z}入りました
+MONEY += Z
+BR:14 += Z
+$LEVELUP
+X = 1000 * (BR:0 * BR:0)
+IF BR:14 >= X
+	BR:0++
+	GOTO LEVELUP
+ENDIF
+BR:15 = X - BR:14
+
+;消費アイテム消費計算
+REPEAT 100
+	A = COUNT + 99
+	SIF BR_ITEM_PERSONAL:A
+		BR_ITEM:A -= 1
+	SIF BR_ITEM:A == 0
+		BR_ITEM_PERSONAL:A = 0
+REND
+
+
+
