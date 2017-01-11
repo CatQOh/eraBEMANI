@@ -12,16 +12,17 @@ FLAG:口上表示 = 1
 ;モード選択
 DRAWLINE
 PRINTL ★★モードを選択してください★★
-PRINTL [0] - STANDARD (100日期限 目標金額$1,000,000)
+PRINTL [0] - STANDARD (100日期限 目標金額$1,000,000 経営モード使用不可 クリア後は可能)
+PRINTL [1] - STRATEGY（300日期限 目標金額$20,000,000 経営モード使用可能）
 PRINTL [7] - 新婚モード（期限なし 好きなキャラと好きなだけイチャイチャする）
 PRINTL [8] - 段位認定 (期限あり 特定の4人を攻略)
 PRINTL [9] - PREMIUM FREE (期限なし エンドレス)
 DO
 	INPUT
 	SELECTCASE RESULT
-		CASE 0
+		CASE 0, 1
 			DRAWLINE
-			FLAG:ゲームモード = 0
+			FLAG:ゲームモード = RESULT
 			ADDCHARA 0
 			MASTER = 0
 			CFLAG:MASTER:種族 = 1
@@ -105,40 +106,90 @@ DO
 LOOP 1
 
 ;難易度選択
-IF FLAG:ゲームモード == 0 || FLAG:ゲームモード == 9
-	DRAWLINE
-	PRINTL ★★難易度を選択してください★★
-	PRINTL [0] - NORMAL
-	PRINTL [1] - HYPER
-	PRINTL [2] - ANOTHER
-	DO
-		INPUT
-		SELECTCASE RESULT
-			CASE 0 TO 2
-				FLAG:難易度 = RESULT+1
-				BREAK
-		ENDSELECT
-	LOOP 1
-ENDIF
+SELECTCASE FLAG:ゲームモード
+	CASE 0, 1, 9
+		DRAWLINE
+		PRINTL ★★難易度を選択してください★★
+		PRINTL [0] - NORMAL
+		PRINTL [1] - HYPER
+		PRINTL [2] - ANOTHER
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0 TO 2
+					FLAG:難易度 = RESULT+1
+					BREAK
+			ENDSELECT
+		LOOP 1
+ENDSELECT
 
 ;オープニング表示
-IF FLAG:ゲームモード == 0
-	DRAWLINE
-	PRINTL オープニングストーリーを表示しますか？
-	PRINTL [0] - 表示する
-	PRINTL [1] - 表示しない
-	DO
-		INPUT
-		SELECTCASE RESULT
-			CASE 0
-				DRAWLINE
-				CALL OPENING
-				BREAK
-			CASE 1
-				BREAK
-		ENDSELECT
-	LOOP 1
-ENDIF
+SELECTCASE FLAG;ゲームモード
+	CASE 0
+		DRAWLINE
+		PRINTL オープニングストーリーを表示しますか？
+		PRINTL [0] - 表示する
+		PRINTL [1] - 表示しない
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					DRAWLINE
+					CALL OPENING
+					BREAK
+				CASE 1
+					BREAK
+			ENDSELECT
+		LOOP 1
+	;STRATEGYモード専用処理
+	CASE 1
+		TFLAG:ページ数 = 0
+		DO
+			PRINTL ★★パートナーを選択してください★★
+			CALL CHARA_LIST, 1
+			DRAWLINE
+			PRINTFORM 　PAGE.{TFLAG:ページ数+1} 
+			IF TFLAG:ページ数
+				PRINTLC [10001]前のページ
+			ELSE
+				PRINTLC  
+			ENDIF
+			PRINTPLAIN 　
+			SIF (TFLAG:ページ数+1)*30 < CSVCOUNT
+				PRINTC [10009]後のページ
+			INPUT
+			SELECTCASE RESULT
+				CASE 10001
+					SIF TFLAG:ページ数 > 0
+						TFLAG:ページ数--
+					CONTINUE
+				CASE 10009
+					;最大ページ数と比較、ページ数変動の際は
+					SIF (TFLAG:ページ数+1)*30 < CSVCOUNT
+						TFLAG:ページ数++
+					CONTINUE
+				CASEELSE
+					IF EXISTCSV(RESULT)
+						ADDCHARA RESULT
+						ASSI = 1
+						CFLAG:ASSI:種族 = SELECT_RACE(ASSI)
+						TRYCALLFORM PARTNER_K{NO:ASSI}
+						PRINTFORMW %NAME:ASSI%をパートナーに選択しました
+						CFLAG:ASSI:売却不可 = 1
+						CFLAG:ASSI:服従 = 1
+						CFLAG:ASSI:状態 = 2
+						MARK:ASSI:屈服刻印 = 3
+						SIF RELATION:(NO:MASTER) < 200
+							RELATION:(NO:MASTER) = 200
+						SIF RELATION:MASTER:(NO:TARGET) < 200
+							RELATION:MASTER:(NO:TARGET) = 200
+						BREAK
+					ELSE
+						CONTINUE
+					ENDIF
+			ENDSELECT
+		LOOP 1
+ENDSELECT
 
 IF FLAG:ゲームモード != 7
 	;チュートリアル表示
@@ -162,6 +213,9 @@ IF FLAG:ゲームモード != 7
 		ENDSELECT
 	LOOP 1
 ENDIF
+
+
+
 
 DRAWLINE
 PRINTL 奴隷の着衣設定を変更しますか？（オプションでも変更できます）
@@ -514,6 +568,7 @@ IF FLAG:ゲームモード == 7
 					ADDCHARA RESULT
 					TARGET = 1
 					CFLAG:種族 = SELECT_RACE(TARGET)
+					TRYCALLFORM WEDDING_K{NO:TARGET}
 					PRINTFORMW %NAME:TARGET%とのご成婚おめでとうございます
 					CFLAG:嫁 = 1
 					TALENT:恋心 = 0

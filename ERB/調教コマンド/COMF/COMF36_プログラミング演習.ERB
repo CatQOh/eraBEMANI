@@ -1,20 +1,26 @@
 ﻿;-------------------------------------------------
-;歌唱トレーニング
+;プログラミング演習
 ;コミュニケーション系コマンド
 ;-------------------------------------------------
-@USERCOM_ABLE27
-;歌の練習
+@USERCOM_ABLE36
+;楽器の練習
 ;助手可能もしくは陥落済みじゃないとダメ
 SIF !CFLAG:陥落 && CFLAG:状態 != 2
 	RETURN 0
 ;拘束中はダメ
 SIF TEQUIP:縄 || TEQUIP:ボールギャグ
 	RETURN 0
+;事業開発オフィスを持ってないとダメ
+SIF !ITEM:事業開発オフィス
+	RETURN 0
+;ある程度工作経験が無いと無理
+SIF EXP:工作経験 < 50
+	RETURN 0
 
 RETURN 1
 
-@COM27
-PRINTL 歌の練習
+@COM36
+PRINTL プログラミング演習
 CALL KOJO_MESSAGE_COM
 
 ;実行者が奴隷であるフラグ
@@ -24,90 +30,68 @@ TFLAG:奴隷実行 = 1
 ;ソース追加処理
 ;-------------------------------------------------
 ;消費体力、気力
-LOSEBASE:体力 += 20
-LOSEBASE:気力 += 60
+;ドラムマニアって結構疲れるよねあれ
+LOSEBASE:体力 += 50
+LOSEBASE:気力 += 500
 
-SOURCE:習得 = 300
+SOURCE:習得 = 500
 SOURCE:恭順 = 50
-SOURCE:屈従 = 100
-SOURCE:露出 = 30
-SOURCE:逸脱 = 50
-SOURCE:反感 = 50
+SOURCE:屈従 = 200
+SOURCE:逸脱 = 100
+SOURCE:反感 = 500
 SOURCE:達成 = 200
 
 ;-------------------------------------------------
 ;特殊ソース処理
 ;-------------------------------------------------
 ;経験に応じてボーナス 低いと上がりやすい
-SOURCE:習得 += (SOURCE:習得/100)*(100-EXP:歌唱経験/10)
+SOURCE:習得 += (SOURCE:習得/100)*(100-EXP:工作経験/10)
 
 ;歌唱技能は先に処理しておく
-SELECTCASE ABL:歌唱技能
+SELECTCASE ABL:工作技能
 	CASE 0
 		TIMES SOURCE:習得 , 0.50
-		TIMES SOURCE:恭順 , 0.50
-		TIMES SOURCE:露出 , 2.50
-		TIMES SOURCE:逸脱 , 2.50
-		TIMES SOURCE:反感 , 2.50
+		TIMES SOURCE:達成 , 0.50
+		TIMES SOURCE:反感 , 5.00
 	CASE 1
 		TIMES SOURCE:習得 , 0.70
-		TIMES SOURCE:恭順 , 0.70
-		TIMES SOURCE:露出 , 1.50
-		TIMES SOURCE:逸脱 , 1.20
-		TIMES SOURCE:反感 , 1.20
+		TIMES SOURCE:達成 , 0.70
+		TIMES SOURCE:反感 , 4.50
 	CASE 2
 		TIMES SOURCE:習得 , 0.90
-		TIMES SOURCE:恭順 , 0.90
-		TIMES SOURCE:露出 , 1.20
-		TIMES SOURCE:逸脱 , 0.90
-		TIMES SOURCE:反感 , 0.90
+		TIMES SOURCE:達成 , 0.90
+		TIMES SOURCE:反感 , 4.00
 	CASE 3
 		TIMES SOURCE:習得 , 1.10
-		TIMES SOURCE:恭順 , 1.10
-		TIMES SOURCE:露出 , 1.00
-		TIMES SOURCE:逸脱 , 0.60
-		TIMES SOURCE:反感 , 0.60
+		TIMES SOURCE:達成 , 1.10
+		TIMES SOURCE:反感 , 3.00
 	CASE 4
 		TIMES SOURCE:習得 , 1.30
-		TIMES SOURCE:恭順 , 1.30
-		TIMES SOURCE:露出 , 0.80
-		TIMES SOURCE:逸脱 , 0.30
-		TIMES SOURCE:反感 , 0.30
+		TIMES SOURCE:達成 , 1.30
+		TIMES SOURCE:反感 , 2.00
 	CASE 5
 		TIMES SOURCE:習得 , 1.50
-		TIMES SOURCE:恭順 , 1.50
-		TIMES SOURCE:露出 , 0.60
-		TIMES SOURCE:逸脱 , 0.10
-		TIMES SOURCE:反感 , 0.10
+		TIMES SOURCE:達成 , 1.50
+		TIMES SOURCE:反感 , 1.50
 	CASE 6
 		TIMES SOURCE:習得 , 1.70
-		TIMES SOURCE:恭順 , 1.70
-		TIMES SOURCE:露出 , 0.40
-		TIMES SOURCE:逸脱 , 0.10
-		TIMES SOURCE:反感 , 0.10
+		TIMES SOURCE:達成 , 1.70
+		TIMES SOURCE:反感 , 1.25
 	CASE 7
 		TIMES SOURCE:習得 , 1.90
-		TIMES SOURCE:恭順 , 1.90
-		TIMES SOURCE:露出 , 0.20
-		TIMES SOURCE:逸脱 , 0.10
+		TIMES SOURCE:達成 , 1.90
 		TIMES SOURCE:反感 , 0.10
 	CASE 8
 		TIMES SOURCE:習得 , 2.30
-		TIMES SOURCE:恭順 , 2.30
-		TIMES SOURCE:露出 , 0.10
-		TIMES SOURCE:逸脱 , 0.10
+		TIMES SOURCE:達成 , 2.30
 		TIMES SOURCE:反感 , 0.10
 	CASE 9
 		TIMES SOURCE:習得 , 2.70
-		TIMES SOURCE:恭順 , 2.70
-		TIMES SOURCE:露出 , 0.10
-		TIMES SOURCE:逸脱 , 0.10
+		TIMES SOURCE:達成 , 2.70
 		TIMES SOURCE:反感 , 0.10
 	CASE IS >= 10
 		TIMES SOURCE:習得 , 4.00
-		TIMES SOURCE:恭順 , 4.00
-		TIMES SOURCE:露出 , 0.10
-		TIMES SOURCE:逸脱 , 0.10
+		TIMES SOURCE:達成 , 4.00
 		TIMES SOURCE:反感 , 0.10
 ENDSELECT
 
@@ -133,8 +117,9 @@ CALL SAMEN_SHOOT_T, 0, NOWEX:射精
 ;経験の処理
 ;-------------------------------------------------
 ;歌唱経験
-PRINTFORML 歌唱経験+1
-EXP:歌唱経験 += 1
+LOCAL = EXP:工作経験/100+3
+PRINTFORML 工作経験+{LOCAL}
+EXP:工作経験 += LOCAL
 
 RETURN 1
 

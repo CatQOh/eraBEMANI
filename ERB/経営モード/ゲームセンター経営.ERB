@@ -7,13 +7,13 @@ DRAWLINE
 ;CALL GC_STR
 PRINTL 【現在の規模】
 ;----------------------------------------------------
-PRINTFORML 　　　　物件：%物件名(GC物件)%
+PRINTFORML 物件：%GC_STR:(GC0)%
 ;名声表示--------------------------------------------
-PRINTFORML 　　　　名声：%GC名声グレード(GC名声)%({GC名声})
+PRINTFORMLC 名声：%GC名声グレード(GC名声)%({GC名声})
 ;評判表示----------------------------------------------
-PRINTFORML 　　　　評判：%GC評判グレード(GC評判)%({GC評判})
+PRINTFORML 評判：%GC評判グレード(GC評判)%({GC評判})
 ;----------------------------------------------------
-PRINTFORML 　　基本収入：%GC収入グレード(GC収入期待値)%({GC収入期待値})
+PRINTFORMLC 基本収入：%GC収入グレード(GC収入期待値)%({GC収入期待値})
 ;----------------------------------------------------
 PRINTFORML メンテナンス：%GCメンテグレード(GCメンテ)%
 DRAWLINE
@@ -282,7 +282,7 @@ SELECTCASE GC物件
 		PRINTFORML [4] - 外装強化(${GC外装 * 10000})
 		SIF !GCフードコート
 			PRINTFORML [5] - フードコートを作る($100000)
-		PRINTFORML [6] - お手洗い改装(${GCPトイレ * 2000 + 5000})
+		PRINTFORML [6] - お手洗い改装(${GCP:トイレ * 2000 + 5000})
 ENDSELECT
 DRAWLINE
 PRINTPLAIN 　RENOVATION　
@@ -311,7 +311,7 @@ SELECTCASE LOCAL
 	CASE  1 TO 6
 		SELECTCASE GC物件
 			CASE 2, 4, 6
-				GOTO LOOP
+				RESTART
 			CASEELSE
 				SELECTCASE LOCAL
 					CASE 1
@@ -328,8 +328,6 @@ SELECTCASE LOCAL
 						LOCAL:1 = GCトイレ*2000+5000
 				ENDSELECT
 		ENDSELECT
-	CASEELSE
-		GOTO INPUT_LOOP
 ENDSELECT
 
 IF MONEY < LOCAL:1
@@ -349,13 +347,13 @@ SELECTCASE LOCAL
 	CASE 4
 		PRINTL 外装レベル変動
 	CASE 5
-		PRINTL フードコート設置
+		PRINTL フードコートレベル設置
 	CASE 6
 		PRINTL お手洗いレベル変動
 ENDSELECT
 
 SIF LOCAL != 2 && LOCAL != 5
-	PRINTFORML {GC:LOCAL} > {GC:LOCAL+1}
+	PRINTFORML {GCLOCAL} > {GCLOCAL+1}
 
 PRINTL 
 PRINTL 改装しますか？
@@ -372,11 +370,11 @@ DO
 		CASE 1
 			SELECTCASE LOCAL
 				CASE 1
-					PRINTFORMW %物件名(物件)%を改築し、広くしました
+					PRINTFORMW %物件名(GC物件)%を改築し、広くしました
 				CASE 2
 					PRINTFORMW 分煙施設を設置しました
 				CASE 3
-					PRINTFORMW {GC:階層+1}階建に増築しました
+					PRINTFORMW {GC階層+1}階建に増築しました
 				CASE 4
 					PRINTFORMW 外装を強化しました
 				CASE 5
@@ -385,7 +383,7 @@ DO
 					PRINTFORMW トイレを改装しました
 			ENDSELECT
 		MONEY -= LOCAL:1
-		GC:LOCAL++
+		GCLOCAL++
 		RESTART
 	ENDSELECT
 LOOP 1
@@ -421,7 +419,7 @@ DO
 			PRINTL 
 			FOR COUNT, RESULT*100+1000, RESULT*100+1100
 				SIF ITEMNAME:COUNT != ""
-					PRINTFORML [{COUNT}] - %ITEMNAME:COUNT%(${ITEMPRICE:COUNT})
+					PRINTFORML [{COUNT}] - %IEMNAME:COUNT%(${ITEMPRICE:COUNT})
 			NEXT
 			DRAWLINE
 			PRINTPLAIN 　ARCADE　
@@ -578,7 +576,7 @@ IF GC階層 >= 2
 	SIF ページ数 > 0
 		PRINTLC [999] 前ページ
 	PRINTLC [1000] 戻る
-	SIF GC:階層 > ページ数*10
+	SIF GC階層 > ページ数*10
 		PRINTLC [1001] 次ページ
 	
 	DO
@@ -592,7 +590,7 @@ IF GC階層 >= 2
 			CASE 1001
 				SIF GC階層 > ページ数*10
 					ページ数++
-			CASE IS >= 1 && IS <= GC階層
+			CASE IS >= 1, IS <= GC階層
 				CALL AC_SETUP, RESULT
 				RESTART
 		ENDSELECT
@@ -625,7 +623,7 @@ FOR COUNT, ページ数*100+1000, ページ数*200+1000
 	PRINTFORML ・%ITEMNAME:COUNT%×{ITEM:COUNT}
 	SIF ITEM:COUNT
 		PRINTFORML 　%ITEMNAME:COUNT%を設置[COUNT*10]
-	SIF 設置筐体:ARG:COUNT
+	SIF 設置筐体:階層:COUNT
 		PRINTFORML 　%ITEMNAME:COUNT%を撤去{COUNT*10+1}
 NEXT
 PRINTL [1002] 全て撤去
@@ -661,7 +659,7 @@ DO
 			PRINTW 全筐体を撤去しました
 		CASEELSE
 			選択筐体 = RESULT/10
-			IF 筐体コスト > 空きスペース:ARG
+			IF 筐体コスト(選択筐体) > 空きスペース:ARG
 				PRINTW スペースが足りません
 			ELSEIF ITEMNAME:選択筐体 != "" && ITEM:選択筐体
 				SELECTCASE RESULT%10
@@ -704,7 +702,7 @@ DRAWLINE
 ;----------------------------------------------------
 ;@PRINT_PR_ITEM
 ;REPEAT 100
-;	SIF GC:100 <= COUNT
+;	SIF GC100 <= COUNT
 ;		BREAK
 ;	PRINTFORM [{COUNT}]
 ;	SIF COUNT < 10
@@ -744,9 +742,10 @@ DRAWLINE
 #DIM DYNAMIC 名声
 #DIM DYNAMIC 評判
 #DIM DYNAMIC メンテ
+#DIM DYNAMIC 支出
 #DIM DYNAMIC LCOUNT
 VARSET LOCAL, 0
-SIF !GC:物件
+SIF !GC物件
 	RETURN 0
 	S = 0
 	T = 0
@@ -754,13 +753,13 @@ SIF !GC:物件
 	A = 0
 ;収入計算--------------------------------------------------------
 ;良い物件ほど最低額保証
-INCOME = 300 * GC:物件
-FOR LCOUNT, 1, GC:階層+1
+INCOME = 300 * GC物件
+FOR LCOUNT, 1, GC階層+1
 	;一番高い期待値を調べておく
 	SIF LOCAL < 収入期待値:LCOUNT
 		LOCAL = 収入期待値:LCOUNT
 	;期待値--------------------------------------
-	SELECTCASE GC:物件
+	SELECTCASE GC物件
 		;テナント店なら階層ごとの期待値をそのまま加算
 		CASE 2, 4, 6
 			INCOME += 収入期待値:LCOUNT
@@ -788,7 +787,7 @@ INCOME += LOCAL:2
 LOCAL:2 = 0
 IF GCフードコート
 	;階層の数だけ期待値をロール 一番高い値を加算
-	REPEAT GC:階層
+	REPEAT GC階層
 		LOCAL:1 = RAND:フードコート収入期待値()
 		SIF LOCAL:2 < LOCAL:1
 			LOCAL:2 = LOCAL:1
@@ -800,7 +799,7 @@ INCOME += GC収入人事補正()
 ;収入処理--------------------------------------
 PRINTFORML ゲームセンターの収入が${INCOME}入りました
 MONEY += INCOME
-;GC:13 = INCOME
+;GC13 = INCOME
 
 ;名声計算--------------------------------------------------------
 	S = 0
@@ -808,13 +807,13 @@ MONEY += INCOME
 	R = 0
 	A = 0
 ;テナント施設だと名声が上がりやすい
-SELECTCASE GC:物件
+SELECTCASE GC物件
 	CASE 2, 4, 6
-		名声 += GC:物件*5
+		名声 += GC物件*5
 ENDSELECT
 ;筐体補正--------------------------------------
 ;単純に筐体数が多ければそれだけで名声が上がる
-FOR LCOUNT, 1, GC:階層+1
+FOR LCOUNT, 1, GC階層+1
 	名声 += 名声計算（筐体）(LCOUNT)
 NEXT
 ;広さ補正-------------------------------------
@@ -839,181 +838,99 @@ GC名声 += 名声
 	T = 0
 	R = 0
 	A = 0
-	REPEAT GC:100
-		S = 2 * GCP:COUNT:0
-;筐体補正--------------------------------------
-		S += 4 * GCP:COUNT:800
-		S += 2 * GCP:COUNT:801
-		S += 3 * GCP:COUNT:805
-		S += 5 * GCP:COUNT:806
-		S += 3 * GCP:COUNT:810
-		S += 4 * GCP:COUNT:811
-		S += 3 * GCP:COUNT:812
-		S += 4 * GCP:COUNT:820
-		S += 1 * GCP:COUNT:821
-;広さ補正-------------------------------------
-		T = GCP:COUNT:1 / 10 + 1
-		S *= T
-;分煙補正-------------------------------------
-		SIF GCP:COUNT:2 == 1
-			S *= 2
-;階層補正-------------------------------------
-		T = GCP:COUNT:3 / 10 + 1
-		S *= T
-;外装補正-------------------------------------
-		T = GCP:COUNT:4 / 10 + 1
-		S *= T
-;フードコート補正-------------------------
-		IF GCP:COUNT:5 > 0
-			T = GCP:COUNT:5 / 10 + 1
-			S *= T
-		ENDIF
+
+評判 += GC物件*3
+
+評判 += 評判人事補正()
+
+評判 += フードコートレベル()
+
+;飯がマズイと評判下がったりする
+
+REPEAT GC階層
+	;機種が偏ると評判は下がる
+	評判 += 評判筐体補正(COUNT)
+REND
+
 ;お手洗い補正---------------------------------
-		T = GCP:COUNT:6 / 10 + 1
-		S *= T
-		S /= 3
-		A += S
-	REND
-;人事補正---------------------------------
-	REPEAT CHARANUM
-		IF CFLAG:COUNT:12 == 3
-			SIF ABL:COUNT:2 == 0
-				TIMES A , 1.00
-			SIF ABL:COUNT:2 == 1
-				TIMES A , 1.10
-			SIF ABL:COUNT:2 == 2
-				TIMES A , 1.20
-			SIF ABL:COUNT:2 == 3
-				TIMES A , 1.30
-			SIF ABL:COUNT:2 == 4
-				TIMES A , 1.40
-			SIF ABL:COUNT:2 == 5
-				TIMES A , 1.50
-			SIF TALENT:COUNT:11
-				TIMES A , 0.90
-			SIF TALENT:COUNT:16
-				TIMES A , 0.90
-			SIF TALENT:COUNT:25
-				TIMES A , 1.10
-			SIF TALENT:COUNT:26
-				TIMES A , 0.90
-			SIF TALENT:COUNT:28
-				TIMES A , 1.10
-			IF TALENT:COUNT:35
-				IF RAND:2 == 1
-					TIMES A , 1.10
-				ELSE
-					TIMES A , 0.90
-				ENDIF
-			ENDIF
-			SIF TALENT:COUNT:36
-				TIMES A , 1.10
-			SIF TALENT:COUNT:92
-				TIMES A , 1.10
-			SIF TALENT:COUNT:93
-				TIMES A , 1.10
-			SIF TALENT:COUNT:94
-				TIMES A , 1.20
-			SIF TALENT:COUNT:100
-				TIMES A , 1.10
-			SIF TALENT:COUNT:111 || TALENT:COUNT:112
-				TIMES A , 1.10
-			SIF TALENT:COUNT:143
-				TIMES A , 1.10
-			SIF TALENT:COUNT:145
-				TIMES A , 1.10
-		ENDIF
-	REND
+評判 += GCトイレ*GC物件/3
+
+;分煙補正-------------------------------------
+IF GC分煙
+	SELECTCASE 名声
+		CASE IS >= 0
+			TIMES 評判 , 1.20
+		CASEELSE
+			TIMES 評判 , 0.80
+	ENDSELECT
+ENDIF
+
 ;評判処理--------------------------------------
-	PRINTFORML ゲームセンターの評判が{A}上がりました
-	GC:12 += A
+SELECTCASE 評判
+	CASE IS > 0
+		PRINTFORML ゲームセンターの評判が{評判}上がりました
+	CASE 0
+		PRINTFORML ゲームセンターの評判に変化はありませんでした
+	CASE IS < 0
+		PRINTFORML ゲームセンターの評判が{評判}下がりました
+ENDSELECT
+GC評判 += 評判
+;0未満にはならない
+SIF GC評判 < 0
+	GC評判 = 0
+
 ;支出計算--------------------------------------------------------
 	S = 0
 	T = 0
 	R = 0
 	A = 0
-	REPEAT GC:100
-		SIF GCP:COUNT:0 == 1
-			S = 100 
-		SIF GCP:COUNT:0 == 2
-			S = 600
-		SIF GCP:COUNT:0 == 3
-			S = 300
-		SIF GCP:COUNT:0 == 4
-			S = 1500
-		SIF GCP:COUNT:0 == 5
-			S = 500
-		SIF GCP:COUNT:0 == 6
-			S = 3000
-		SIF GCP:COUNT:0 == 7
-			S = 5000
-;筐体補正--------------------------------------
-		S += 400 * GCP:COUNT:100
-		S += 300 * GCP:COUNT:101
-		S += 500 * GCP:COUNT:102
-		S += 250 * GCP:COUNT:103
-		S += 80 * GCP:COUNT:104
-		S += 80 * GCP:COUNT:105
-		S += 100 * GCP:COUNT:106
-		S += 300 * GCP:COUNT:107
-		S += 250 * GCP:COUNT:600
-		S += 250 * GCP:COUNT:700
-		S += 30 * GCP:COUNT:800
-		S += 50 * GCP:COUNT:801
-		S += 50 * GCP:COUNT:805
-		S += 40 * GCP:COUNT:806
-		S += 150 * GCP:COUNT:810
-		S += 200 * GCP:COUNT:811
-		S += 150 * GCP:COUNT:812
-		S += 20 * GCP:COUNT:820
-;広さ補正-------------------------------------
-		T = GCP:COUNT:1 / 10 + 1
-		S *= T
-;分煙補正-------------------------------------
-		SIF GCP:COUNT:2 == 1
-			S *= 2
-;階層補正-------------------------------------
-		T = GCP:COUNT:3 / 10 + 1
-		S *= T
-;外装補正-------------------------------------
-		T = GCP:COUNT:4 / 10 + 1
-		S *= T
-;フードコート補正-------------------------
-		IF GCP:COUNT:5 > 0
-			T = GCP:COUNT:5 / 10 + 1
-			S *= T
-		ENDIF
-;お手洗い補正---------------------------------
-		T = GCP:COUNT:6 / 10 + 1
-		S *= T
-		S /= 5
-		A += S
-	REND
-;人事補正---------------------------------
-	REPEAT CHARANUM
-		SIF CFLAG:COUNT:12 == 3
-			A += 500
-	REND
-;支出処理--------------------------------------
-	PRINTFORMW ゲームセンターの経費に${A}かかりました
-	MONEY -= A
-	E = GC:13 / A
-	SIF GC:13 < A && GC:3 > 43
-		GC:3 -= 1
-	SIF GC:13 > A && GC:3 < 50
-		GC:3 += 1
-	SIF E >= 1
-		GC:3 = 51
-	SIF E >= 10
-		GC:3 = 52
-	SIF E >= 30
-		GC:3 = 53
-	SIF E >= 50
-		GC:3 = 54
-	SIF E >= 100
-		GC:3 = 55
-ENDIF
+;要調整
+SELECTCASE GC物件
+	CASE 1
+		支出 = 100 
+	CASE 2
+		支出 = 600
+	CASE 3
+		支出 = 300
+	CASE 4
+		支出 = 1500
+	CASE 5
+		支出 = 500
+	CASE 6
+		支出 = 3000
+	CASE 7
+		支出 = 5000
+ENDSELECT
 
+;筐体補正--------------------------------------
+REPEAT GC階層
+	支出 += 筐体支出補正(COUNT)
+REND
+
+
+;広さ補正-------------------------------------
+支出 += GC広さ*10
+
+;階層補正-------------------------------------
+支出 += GC階層*100
+
+;フードコート補正-------------------------
+;フードコートレベルに応じて支出を抑えられる
+SIF GCフードコート
+	支出 = (支出/100)*(100-フードコートレベル())
+
+;人事補正---------------------------------
+;奴隷にも給料はちゃんと払う
+REPEAT CHARANUM
+	;日給500……この世界の金銭価値はいかほどか
+	SIF CFLAG:COUNT:配属 == 1
+		支出 += 500
+REND
+
+;支出処理--------------------------------------
+PRINTFORMW ゲームセンターの経費に${支出}かかりました
+MONEY -= 支出
+基本収入 = INCOME-支出
 
 ;----------------------------------------------------
 ;ゲームセンター経営モードのグレード名をここで定義します
@@ -1311,4 +1228,29 @@ FOR COUNT, 1000, 2000
 NEXT
 
 RETURNF 合計値
+
+@筐体支出
+		S += 400 * GCP:COUNT:100
+		S += 300 * GCP:COUNT:101
+		S += 500 * GCP:COUNT:102
+		S += 250 * GCP:COUNT:103
+		S += 80 * GCP:COUNT:104
+		S += 80 * GCP:COUNT:105
+		S += 100 * GCP:COUNT:106
+		S += 300 * GCP:COUNT:107
+		S += 250 * GCP:COUNT:600
+		S += 250 * GCP:COUNT:700
+		S += 30 * GCP:COUNT:800
+		S += 50 * GCP:COUNT:801
+		S += 50 * GCP:COUNT:805
+		S += 40 * GCP:COUNT:806
+		S += 150 * GCP:COUNT:810
+		S += 200 * GCP:COUNT:811
+		S += 150 * GCP:COUNT:812
+		S += 20 * GCP:COUNT:820
+
+@筐体コスト, ARG
+#FUNCTION
+
+
 
