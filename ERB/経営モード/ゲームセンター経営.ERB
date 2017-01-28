@@ -460,6 +460,7 @@ DO
 				CASE 3
 					PRINTFORMW {GC階層+1}階建に増築しました
 					GC階層++
+					空きスペース:GC階層 = GC広さ
 				CASE 4
 					PRINTFORMW 外装を強化しました
 					GC外装++
@@ -548,7 +549,7 @@ REPEAT CHARANUM
 		配属人数++
 REND
 DRAWLINE
-PRINTFORML □ゲーセン経営に配属する奴隷を選択してください(現在{配属人数}/10)
+PRINTFORML □ゲーセン経営に配属する人員を選択してください(現在{配属人数}/10)
 
 配属可能人数 = 0
 
@@ -578,11 +579,11 @@ IF 配属可能人数
 		SIF !LOCAL:COUNT
 			CONTINUE
 		;2ページ目以降はページ×10まで表示を飛ばす
-		IF 飛ばした人数 < ページ数*10
+		IF 飛ばした人数 < ページ数*20
 			飛ばした人数++
 			CONTINUE
 		ENDIF
-		PRINTFORM 　[{COUNT}] - %NAME:COUNT%(家事技能:{ABL:COUNT:家事技能} 工作技能:{ABL:COUNT:工作技能} 料理技能:{ABL:COUNT:料理技能}
+		PRINTFORM 　[{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(家事技能:{ABL:COUNT:家事技能, 2, LEFT} 工作技能:{ABL:COUNT:工作技能, 2, LEFT} 料理技能:{ABL:COUNT:料理技能, 2, LEFT}
 		SIF TALENT:COUNT:料理人
 			PRINT  料理人
 		SIF TALENT:COUNT:専業主婦
@@ -603,7 +604,7 @@ IF 配属可能人数
 		ENDIF
 		表示数++
 		;10人表示したらページ終わり
-		SIF 表示数 == 10
+		SIF 表示数 == 20
 			BREAK
 	REND
 ELSE
@@ -617,7 +618,7 @@ SIF ページ数 > 0
 	PRINTLC [999]前ページ
 PRINTLC [1000] 戻る　
 ;表示できるキャラがまだ居れば次ページ
-SIF 表示数+10*ページ数 < 配属可能人数 
+SIF 表示数+20*ページ数 < 配属可能人数 
 	PRINTLC [1001]次ページ
 PRINTL [1002] 全員帰還
 
@@ -631,7 +632,7 @@ DO
 			RETURN 0
 		CASE 1001
 			;表示できるキャラがまだ居れば次ページ
-			SIF 表示数+10*ページ数 < 配属可能人数 
+			SIF 表示数+20*ページ数 < 配属可能人数 
 				ページ数++
 		CASE 1002
 			REPEAT CHARANUM
@@ -670,13 +671,14 @@ RESTART
 #DIM ページ数
 IF GC階層 >= 2
 	DRAWLINE
-	PRINTFORML %施設名% {GC階層}階建て
-	PRINTL 階層を選んでください
+	PRINTFORML □%物件名(GC物件)% {GC階層}階建て
+	PRINTL 　階層を選んでください
 	FOR COUNT, ページ数*GC階層+1, ページ数*GC階層+11
 		SIF COUNT > GC階層
 			BREAK
-		PRINTFORM [{COUNT}] {COUNT}階 {空きスペース:COUNT}/{GC広さ}使用中
+		PRINTFORML 　[{COUNT}] {COUNT}階 {空きスペース:COUNT}/{GC広さ}使用中
 	NEXT
+	DRAWLINE
 	PRINTPLAINFORM 　PAGE:{ページ数+1}　
 	SIF ページ数 > 0
 		PRINTLC [999] 前ページ
@@ -908,16 +910,17 @@ ENDIF
 収入 += LOCAL:2
 
 ;フードコート補正-------------------------
-LOCAL:2 = 0
-IF GCフードコート
-	;階層の数だけ期待値をロール 一番高い値を加算
-	REPEAT GC階層
-		LOCAL:1 = RAND:フードコート収入期待値()
-		SIF LOCAL:2 < LOCAL:1
-			LOCAL:2 = LOCAL:1
-	REND
-ENDIF
-収入 += LOCAL:2
+;レベルに応じて支出を抑えられるのでフードコートによる収入は保留
+;LOCAL:2 = 0
+;IF GCフードコート
+;	;階層の数だけ期待値をロール 一番高い値を加算
+;	REPEAT GC階層
+;		LOCAL:1 = RAND:フードコート収入期待値()
+;		SIF LOCAL:2 < LOCAL:1
+;			LOCAL:2 = LOCAL:1
+;	REND
+;ENDIF
+;収入 += LOCAL:2
 
 ;人事補正---------------------------------
 収入 += GC収入人事補正()
@@ -972,7 +975,8 @@ GC名声 += 名声
 評判 += 評判人事補正()
 
 ;飯がマズイと評判下がったりする
-評判 += (フードコートレベル()-5)*3
+SIF GCフードコート
+	評判 += (フードコートレベル()-5)*3
 
 評判 += GCメンテ/5
 
@@ -1001,7 +1005,7 @@ SELECTCASE 評判
 	CASE 0
 		PRINTFORML ゲームセンターの評判に変化はありませんでした
 	CASE IS < 0
-		PRINTFORML ゲームセンターの評判が{評判}下がりました
+		PRINTFORML ゲームセンターの評判が{ABS(評判)}下がりました
 ENDSELECT
 GC評判 += 評判
 ;0未満にはならない
