@@ -461,19 +461,33 @@ LOCALS:3 = <button value='402' title='服装やテキスト表示など、様々
 HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3
 
 ;500番台は周回コマンド
-;通常モードで所持金が条件に達していて、ゲームモードがSTANDARDなら表示
+;所持金が条件に達していて、ゲームモードがSTANDARDもしくはSTRATEGYなら表示
 LOCALS = 　
-IF FLAG:ゲームモード == 7
-	LOCALS:1 = <font color='gray'><nonbutton title='新婚モードでは納金の必要はありません'>[---] - 納金     </nonbutton></font>
-ELSEIF FLAG:ゲームモード == 8
-	LOCALS:1 = <font color='gray'><nonbutton title='段位認定では納金の必要はありません'>[---] - 納金     </nonbutton></font>
-ELSEIF FLAG:ゲームモード == 9
-	LOCALS:1 = <font color='gray'><nonbutton title='PREMIUM FREE MODEでは納金の必要はありません'>[---] - 納金     </nonbutton></font>
-ELSEIF MONEY < 1000000
-	LOCALS:1 = <font color='gray'><nonbutton title='$1,000,000が必要です'>[---] - 納金     </nonbutton></font>
-ELSEIF MONEY >= 1000000 && FLAG:ゲームモード == 0
-	LOCALS:1 = <button value='500' title='$1,000,000を納め、ゲームをクリアします'>[500] - 納金     </button>
-ENDIF
+SELECTCASE FLAG:ゲームモード
+	;STANDARD
+	CASE 0
+		IF MONEY < 1000000
+			LOCALS:1 = <font color='gray'><nonbutton title='$1,000,000が必要です'>[---] - 納金     </nonbutton></font>
+		ELSEIF MONEY >= 1000000
+			LOCALS:1 = <button value='500' title='$1,000,000を納め、ゲームをクリアします'>[500] - 納金     </button>
+		ENDIF
+	;STRATEGY
+	CASE 1
+		IF MONEY < 20000000
+			LOCALS:1 = <font color='gray'><nonbutton title='$20,000,000が必要です'>[---] - 納金     </nonbutton></font>
+		ELSEIF MONEY >= 20000000
+			LOCALS:1 = <button value='500' title='$20,000,000を納め、ゲームをクリアします'>[500] - 納金     </button>
+		ENDIF
+	;新婚
+	CASE 7
+		LOCALS:1 = <font color='gray'><nonbutton title='新婚モードでは納金の必要はありません'>[---] - 納金     </nonbutton></font>
+	;段位認定
+	CASE 8
+		LOCALS:1 = <font color='gray'><nonbutton title='段位認定では納金の必要はありません'>[---] - 納金     </nonbutton></font>
+	;PFREE
+	CASE 9
+		LOCALS:1 = <font color='gray'><nonbutton title='PREMIUM FREE MODEでは納金の必要はありません'>[---] - 納金     </nonbutton></font>
+ENDSELECT
 ;周回可能なら表示
 IF FLAG:周回可能
 	LOCALS:2 = <button value='501' title='この周を終了し、引き継いでニューゲームを開始します'>[501] - 周回</button>
@@ -605,8 +619,14 @@ SELECTCASE RESULT
 		CALL OPTION
 	;納金
 	CASE 500
-		SIF MONEY >= 1000000 && FLAG:ゲームモード == 0
-			CALL ENDING_CHECK
+		SELECTCASE FLAG:ゲームモード
+			CASE 0
+				SIF MONEY >= 1000000
+					CALL ENDING_CHECK
+			CASE 1
+				SIF MONEY >= 20000000
+					CALL ENDING_CHECK
+		ENDSELECT
 	;周回
 	CASE 501
 		SIF FLAG:周回可能
