@@ -1,14 +1,28 @@
 ﻿@STRATEGY_BROTHEL
-CALL BR_STR
+;CALL BR_STR
 CALL BR_ITEM_POINT
+
+SIF 娼館広さ == 0
+	娼館広さ = 1
+SIF 娼館部屋数 == 0
+	娼館部屋数 = 1
+
+娼館広さ = 20
+娼館部屋数 = 20
+
 DRAWLINE
 PRINTFORML 娼館レベル:{娼館レベル}
-PRINTFORML 次のランクアップまであと${BR:15}の売上が必要
+PRINTFORML 次のランクアップまであと${娼館レベルアップ必要額}の売上が必要
 DRAWLINE
 PRINTL [1] - 道具配置
 PRINTL [2] - 物件増設
 PRINTL [3] - 経営方針
 PRINTL [4] - 人員配置
+IF FLAG:娼館営業中
+	PRINTL [9] - 一時休業
+ELSE
+	PRINTL [9] - 通常営業
+ENDIF
 DRAWLINE
 PRINTPLAIN 　BROTHEL　
 PRINT [0] - 戻る
@@ -27,6 +41,13 @@ DO
 			CALL BR_PLAN
 		CASE 4
 			CALL BR_PERSONAL
+		CASE 9
+			IF FLAG:娼館営業中
+				PRINTW 娼館の経営を一時中断しました
+			ELSE
+				PRINTW 娼館の経営を開始しました
+			ENDIF
+			INVERTBIT FLAG:娼館営業中, 0
 		CASE 100
 			CALL BR_TUTORIAL
 		CASEELSE
@@ -128,10 +149,10 @@ PRINTL
 DRAWLINE
 
 娼館道具設置数 = 0
-REPEAT 100
-	SIF 娼館設置アイテム:COUNT
+FOR LCOUNT, 1500, 1580
+	SIF ITEM:LCOUNT
 		娼館道具設置数++
-REND
+NEXT
 PRINT  *配置枠*［
 LOCAL = 0
 REPEAT 娼館広さ
@@ -140,7 +161,7 @@ REPEAT 娼館広さ
 			PRINT ■
 		RESETCOLOR
 	ELSE
-		SETCOLOR 150 , 150 , 150
+		SETCOLOR 120 , 120 , 120
 			PRINT ■
 		RESETCOLOR
 	ENDIF
@@ -148,10 +169,13 @@ REPEAT 娼館広さ
 REND
 PRINTL ］
 DRAWLINE
+LOCAL = 0
 FOR LCOUNT, 1500, 1580
 	SIF ITEMNAME:LCOUNT == ""
 		CONTINUE
-	PRINTFORM [{COUNT}] %ITEMNAME:LCOUNT%
+	SIF LOCAL%3 == 0
+		PRINT 　
+	PRINTFORM [{LCOUNT}] %ITEMNAME:LCOUNT%
 	PRINTFORM  維持費:${ITEMPRICE:LCOUNT}
 	;IF BR_ITEM:COUNT == 0
 	;	PRINT 【
@@ -160,15 +184,15 @@ FOR LCOUNT, 1500, 1580
 	;	RESETCOLOR
 	;	PRINT 】
 	
-	IF ITEM:COUNT == 0 && LCOUNT>= 1580
+;	IF ITEM:COUNT == 0 && LCOUNT >= 1580
+;		PRINT 【
+;		SETCOLOR 150 , 150 , 150
+;			PRINT 未所持
+;		RESETCOLOR
+;		PRINT 】
+	IF ITEM:LCOUNT == 0
 		PRINT 【
-		SETCOLOR 150 , 150 , 150
-			PRINT 未所持
-		RESETCOLOR
-		PRINT 】
-	ELSEIF 娼館設置アイテム:LCOUNT == 0
-		PRINT 【
-		SETCOLOR 150 , 150 , 150
+		SETCOLOR 120 , 120 , 120
 			PRINT 未配置
 		RESETCOLOR
 		PRINT 】
@@ -179,6 +203,9 @@ FOR LCOUNT, 1500, 1580
 		RESETCOLOR
 		PRINT 】
 	ENDIF
+	LOCAL++
+	SIF LOCAL%3 == 0
+		PRINTL 
 NEXT
 PRINTL 
 DRAWLINE
@@ -193,18 +220,16 @@ DO
 		CASEELSE
 			SIF ITEMNAME:RESULT == ""
 				CONTINUE
-			SIF ITEM:RESULT == 0
-				CONTINUE
-			IF 娼館設置アイテム:(RESULT-1400) == 0
+			IF ITEM:RESULT == 0
 				IF 娼館道具設置数 >= 娼館広さ
 					PRINTW 【これ以上配置できません】
 				ELSE
 					PRINTFORMW %ITEMNAME:RESULT%を配置しました
-					娼館設置アイテム:(RESULT-1400) = 1
+					ITEM:RESULT = 1
 				ENDIF
 			ELSE
 				PRINTFORMW %ITEMNAME:RESULT%を回収しました
-				娼館設置アイテム:(RESULT-1400) = 0
+				ITEM:RESULT = 0
 			ENDIF
 			RESTART
 	ENDSELECT
@@ -390,7 +415,7 @@ FOR LCOUNT, 1580, 1600
 	LOCAL:1++
 NEXT
 SIF !LOCAL:1
-	PRINT [設備無し]
+	PRINT 　[設備無し]
 SIF !LINEISEMPTY()
 	PRINTL 
 
@@ -444,1642 +469,1269 @@ DO
 		CASE 0
 			RETURN 0
 		CASE 1
-			CALL BR_RENOVATION_1
+			IF LOCAL > MONEY
+				PRINTW 所持金が足りません
+				RESTART
+			ENDIF
+			PRINTL 娼館を広くしますか？
+			PRINTFORML 広さ {娼館広さ}→{娼館広さ+1}
+			PRINTFORML 増設後の所持金 ${MONEY-LOCAL}
+			PRINTL 
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						PRINTW 娼館を広くしました
+						MONEY -= LOCAL
+						娼館広さ++
+						RESTART
+				ENDSELECT
+			LOOP LOOPRES(0, 1)
 		CASE 2
-			CALL BR_RENOVATION_2
+			IF LOCAL:1 > MONEY
+				PRINTW 所持金が足りません
+				RESTART
+			ENDIF
+			PRINTL 娼館の部屋を増やしますか？
+			PRINTFORML 部屋数 {娼館部屋数}→{娼館部屋数+1}
+			PRINTFORML 増設後の所持金 ${MONEY-LOCAL:1}
+			PRINTL 
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						PRINTW 娼館の部屋を増やしました
+						MONEY -= LOCAL:1
+						娼館部屋数++
+						RESTART
+				ENDSELECT
+			LOOP LOOPRES(0, 1)
 		CASE 3
-			CALL BR_RENOVATION_3
+			CALL BR_ITEM_BUY
 		CASEELSE
 			CONTINUE
 	ENDSELECT
 	RESTART
 LOOP 1
 
+;設備導入----------------------------------------------------
+@BR_ITEM_BUY
+#DIM LCOUNT
+DRAWLINE
+PRINTL □設備を導入します
+DRAWLINE
+CALL PRINT_BR_ITEM
+DRAWLINE
+
+FOR LCOUNT, 1580, 1600
+	SIF ITEMNAME:LCOUNT == ""
+		CONTINUE
+	IF ITEM:LCOUNT
+		SETCOLOR 120, 120, 120
+		PRINTFORMLC [導入済み] %ITEMNAME:LCOUNT%
+		RESETCOLOR
+	ELSE
+		PRINTFORMLC [{LCOUNT}] %ITEMNAME:LCOUNT%(${ITEMPRICE:LCOUNT})
+	ENDIF
+NEXT
+
+SIF !LINEISEMPTY()
+	PRINTL 
+
+DRAWLINE
+PRINTPLAIN 　ITEM　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASEELSE
+			SIF ITEMNAME:RESULT == ""
+				CONTINUE
+			SIF ITEM:RESULT
+				CONTINUE
+			IF ITEMPRICE:RESULT > MONEY
+				PRINTW 所持金が足りません
+				RESTART
+			ENDIF
+			DRAWLINE
+			LOCAL = RESULT
+			PRINTFORM %ITEMNAME:RESULT%:
+			SELECTCASE ITEMNAME:RESULT
+				CASE "お風呂場"
+					PRINTL 性行為の前には体を洗いましょう
+				CASE "高級ベッド"
+					PRINTL 広々とした空間で新たなプレイを
+				CASE "隠しカメラ"
+					PRINTL マジックミラーの後ろに仕込む隠しカメラ
+				CASE "換気扇"
+					PRINTL 臭いと不快感を減らす
+				CASE "ピンクライト"
+					PRINTL 売春の雰囲気UP!
+				CASE "防音壁"
+					PRINTL 外に声が漏れないので遠慮なく楽しめます
+				CASE "拷問器具"
+					PRINTL 普通のSMプレイにも飽きた人へ
+				CASE "わけのわからないもの"
+					PRINTL わけのわからない人たちが使う
+			ENDSELECT
+			PRINTFORML 導入後の所持金 ${MONEY}→${MONEY-ITEMPRICE:RESULT}
+			PRINTL [0] - 導入する
+			PRINTL [1] - 導入しない
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						PRINTFORMW %ITEMNAME:LOCAL%を導入しました
+						ITEM:LOCAL = 1
+						MONEY -= ITEMPRICE:LOCAL
+				ENDSELECT
+			LOOP LOOPRES(0, 1)
+			RESTART
+	ENDSELECT
+LOOP 1
+
+
 ;運営方針----------------------------------------------------
 @BR_PLAN
-CALL BR_ITEM_POINT
+;CALL BR_ITEM_POINT
 DRAWLINE
 PRINTL 【現在のポイント】
-PRINTFORMLC ソフト - {BR:100}
-PRINTFORMLC ハード - {BR:101}
-PRINTFORMLC SM - {BR:102}
-PRINTFORMLC 狂気 - {BR:103}
-PRINTL
+PRINTFORMLC 　ソフト - {ソフトポイント}
+PRINTFORMLC ハード - {ハードポイント}
+PRINTFORMLC SM - {SMポイント}
+PRINTFORMLC 狂気 - {狂気ポイント}
+PRINTL 
 DRAWLINE
-A = BR:50
-PRINTFORML 現在の方針：%BR_STR:A%
-DRAWLINE
-PRINTL [0] - 方針無し
-PRINTL [1] - ソフト方針
-PRINTL [2] - ハード方針
-PRINTL [3] - SM方針
-PRINTL [4] - 狂気方針
-IF BR:51 == 0
-	PRINTL [5] - プレイ内容を報告させる（現在オフ）
-ELSEIF BR:51 == 1
-	PRINTL [5] - プレイ内容を報告させる（現在オン）
-ENDIF
+PRINTFORML □現在の方針：%娼館方針名(娼館方針)%
+PRINTL 　[0] - 方針無し
+PRINTL 　[1] - ソフト方針
+PRINTL 　[2] - ハード方針
+PRINTL 　[3] - SM方針
+PRINTL 　[4] - 狂気方針
+PRINTFORML 　[5] - プレイ内容を報告させる（現在\@ FLAG:娼館報告 ? オン # オフ \@）
 DRAWLINE
 PRINTPLAIN 　PLAN　
-PRINT [10] 戻る　
-PRINT [20] 各方針の説明
+PRINT [10] 戻る 
+PRINTL [20] 各方針の説明
 
-$LOOP
-INPUT
-
-IF RESULT >= 0 && RESULT <= 4
-	BR:50 = RESULT
-ELSEIF RESULT == 5
-	IF BR:51 == 0
-		BR:51 = 1
-	ELSE
-		BR:51 = 0
-	ENDIF
-	RESTART
-ELSEIF RESULT == 10
-	RETURN 0
-ELSEIF RESULT == 20
-	PRINTL 0-方針無し
-	PRINTL ├特に方針を指定しません。初期設定でもあります。
-	PRINTL ├無計画ということなので方針としての効果は皆無。
-	PRINTL └何かしら方針は定めたほうが良いでしょう。
-	PRINTL 1-ソフト売春
-	PRINTL ├本番無しなど店側の制約を多く設けた方針です。
-	PRINTL ├体力や気力の消費が軽く経験の浅い奴隷でもそれなりの効果があります。
-	PRINTL └しかし基本的に経験が上がりにくく、調教としての効果は薄いかもしれません。
-	PRINTL 2-ハード方針
-	PRINTL ├経験豊富で淫乱な奴隷ほど効果が高まる方針です。
-	PRINTL ├各種経験に多めの数値が入り、収入も安定しています。
-	PRINTL └経験が浅く適正でない奴隷の場合、収入も低く体力消費も大きいため序盤にはおすすめできません。
-	PRINTL 3-SM方針
-	PRINTL ├いろいろとマニアックなプレイを専門とする方針です。
-	PRINTL ├一部素質で強力なプラス補正がかかり、逆にこういったプレイに向かない奴隷の場合は
-	PRINTL └多大な体力消費など、マイナスの効果が大きいかもしれません。
-	PRINTL 4-狂気方針
-	PRINTL ├ごく一部の稀有なクライアント向けの方針です。
-	PRINTL ├脱法的な経営なので、客は少なく、ランクが低いとまったく収入がありません。
-	PRINTL └崩壊した奴隷や特殊な素質を持った奴隷の効果が高く、特殊な方針といえるでしょう。
-	PRINTL 5-プレイ内容を報告させる
-	PRINTL ├売春での奉仕内容を収入計算時に報告させます。
-	PRINTL └オンオフで収入に違いは無いので奴隷の動向が気になるならオンにしてみましょう。
-	PRINTW
-ENDIF
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0 TO 4
+			娼館方針 = RESULT
+		CASE 5
+			INVERTBIT FLAG:娼館報告, 0
+		CASE 10
+			RETURN 0
+		CASE 20
+			PRINTL 0-方針無し
+			PRINTL ├特に方針を指定しません。初期設定でもあります。
+			PRINTL ├無計画ということなので方針としての効果は皆無。
+			PRINTL └何かしら方針は定めたほうが良いでしょう。
+			PRINTL 1-ソフト売春
+			PRINTL ├本番無しなど店側の制約を多く設けた方針です。
+			PRINTL ├体力や気力の消費が軽く経験の浅い奴隷でもそれなりの効果があります。
+			PRINTL └しかし基本的に経験が上がりにくく、調教としての効果は薄いかもしれません。
+			PRINTL 2-ハード方針
+			PRINTL ├経験豊富で淫乱な奴隷ほど効果が高まる方針です。
+			PRINTL ├各種経験に多めの数値が入り、収入も安定しています。
+			PRINTL └経験が浅く適正でない奴隷の場合、収入も低く体力消費も大きいため序盤にはおすすめできません。
+			PRINTL 3-SM方針
+			PRINTL ├いろいろとマニアックなプレイを専門とする方針です。
+			PRINTL ├一部素質で強力なプラス補正がかかり、逆にこういったプレイに向かない奴隷の場合は
+			PRINTL └多大な体力消費など、マイナスの効果が大きいかもしれません。
+			PRINTL 4-狂気方針
+			PRINTL ├ごく一部の稀有なクライアント向けの方針です。
+			PRINTL ├脱法的な経営なので、客は少なく、ランクが低いとまったく収入がありません。
+			PRINTL └崩壊した奴隷や特殊な素質を持った奴隷の効果が高く、特殊な方針といえるでしょう。
+			PRINTL 5-プレイ内容を報告させる
+			PRINTL ├売春での奉仕内容を収入計算時に報告させます。
+			PRINTW └オンオフで収入に違いは無いので奴隷の動向が気になるならオンにしてみましょう。
+	ENDSELECT
+LOOP LOOPRES(0, 1, 2, 3, 4, 5, 20)
 
 RESTART
 
 ;人員配置----------------------------------------------------
 @BR_PERSONAL
-D = 0
-S = 0
-DRAWLINE
-PRINTL
-PRINTL 娼館経営に配属する奴隷を選択してください
-PRINTL
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 配属可能人数
+#DIM DYNAMIC 飛ばした人数
+#DIM DYNAMIC 配属人数
+VARSET LOCAL, 0
+配属人数 = 0
 REPEAT CHARANUM
+	SIF CFLAG:COUNT:配属 == 2
+		配属人数++
+REND
+DRAWLINE
+PRINTFORML □娼館経営に配属する奴隷を選択してください(現在{配属人数}/{娼館部屋数})
+
+配属可能人数 = 0
+REPEAT CHARANUM
+	;主人は無理
 	SIF COUNT == MASTER
 		CONTINUE
-	SIF CFLAG:COUNT:1 < 2
+	;売却可能じゃないと無理
+	SIF !CFLAG:COUNT:状態
 		CONTINUE
-	IF CFLAG:COUNT:1 == 2
-		PRINTFORM [{COUNT}] - %CALLNAME:COUNT%（技巧：{ABL:COUNT:2}）
-		IF CFLAG:COUNT:12 == 0
-			PRINTL 【休憩中】
-		ELSEIF CFLAG:COUNT:12 == 1
-			PRINTL 【レンタル中】
-		ELSEIF CFLAG:COUNT:12 == 2
-			PRINTL 【売春中】
-		ELSEIF CFLAG:COUNT:12 == 3
-			PRINTL 【ゲームセンター配属中】
-		ELSEIF CFLAG:COUNT:12 == 4
-			PRINTL 【配属中】
-		ENDIF
-		D++
-	ENDIF
+	配属可能人数++
+	;配属可能なキャラに対応したLOCALが1になる
+	LOCAL:COUNT = 1
 REND
-IF D < 1
+
+飛ばした人数 = 0
+表示数 = 0
+
+IF 配属可能人数
+
+	REPEAT CHARANUM
+		SIF !LOCAL:COUNT
+			CONTINUE
+		;2ページ目以降はページ×20まで表示を飛ばす
+		IF 飛ばした人数 < ページ数*20
+			飛ばした人数++
+			CONTINUE
+		ENDIF
+		PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(従順:{ABL:COUNT:従順} 欲望:{ABL:COUNT:欲望} 技巧:{ABL:COUNT:技巧}
+		
+		SIF TALENT:COUNT:淫乱
+			PRINT  淫乱
+		SIF TALENT:COUNT:娼婦
+			PRINT  娼婦
+		SIF TALENT:COUNT:自慰狂い
+			PRINT  自慰狂い
+		SIF TALENT:COUNT:セックス狂
+			PRINT  セックス狂
+		SIF TALENT:COUNT:尻穴狂い
+			PRINT  尻穴狂い
+		SIF TALENT:COUNT:淫乳
+			PRINT  淫乳
+		PRINT )
+		
+		SELECTCASE CFLAG:COUNT:配属
+			CASE 0
+				IF COUNT == TARGET
+					PRINTL 【調教中】
+				ELSEIF COUNT == ASSI
+					PRINTL 【助手中】
+				ELSE
+					PRINTL 【休憩中】
+				ENDIF
+			CASE 1
+				PRINTL 【ゲームセンター配属中】
+			CASE 2
+				PRINTL 【配属中】
+		ENDSELECT
+		表示数++
+		;20人表示したらページ終わり
+		SIF 表示数 == 20
+			BREAK
+	REND
+ELSE
+	PRINTL 
 	PRINTL 【現在配属できる奴隷はいません】
-	PRINTL
+	PRINTL 
 ENDIF
 DRAWLINE
-PRINTPLAIN 　PERSONAL　
-PRINT [1000] 戻る　
-PRINTL [1001] 全員帰還
+PRINTPLAINFORM 　PAGE.{ページ数+1}　
+SIF ページ数 > 0
+	PRINTLC [999]前ページ
+PRINTLC [1000] 戻る　
+;表示できるキャラがまだ居れば次ページ
+SIF 表示数+20*ページ数 < 配属可能人数 
+	PRINTLC [1001]次ページ
+PRINTL [1002] 全員帰還
 
-$INPUT_LOOP
-INPUT
-
-IF RESULT == 1000
-	 RETURN 0
-ELSEIF RESULT == 1001
-	REPEAT CHARANUM
-		SIF CFLAG:COUNT:12 == 4
-			CFLAG:COUNT:12 = 0
-	REND
-	PRINTW 全員帰宅しました
-	RESTART
-ELSEIF RESULT <= CHARANUM
-	S = RESULT
-	IF CFLAG:S:12 == 0
-		PRINTFORMW %CALLNAME:S%を配属しました
-		CFLAG:S:12 = 4
-		SIF TARGET == S
-			TARGET = -1
-	ELSEIF CFLAG:S:12 == 4
-		PRINTFORMW %CALLNAME:S%が帰宅しました
-		CFLAG:S:12 = 0
-	ENDIF
-	RESTART
-ELSE
-	GOTO INPUT_LOOP
-ENDIF
-
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 999
+			SIF ページ数 > 0
+				ページ数--
+		CASE 1000
+			RETURN 0
+		CASE 1001
+			;表示できるキャラがまだ居れば次ページ
+			SIF 表示数+20*ページ数 < 配属可能人数 
+				ページ数++
+		CASE 1002
+			REPEAT CHARANUM
+				IF CFLAG:COUNT:配属 == 2
+					CFLAG:COUNT:配属完了 = 0
+					CFLAG:COUNT:配属 = 0
+				ENDIF
+			REND
+			PRINTW 全員帰宅しました
+		CASEELSE
+			SIF !LOCAL:RESULT
+				CONTINUE
+			IF 配属人数 >= 娼館部屋数
+				PRINTW これ以上配属できません
+				RESTART
+			ENDIF
+			SELECTCASE CFLAG:RESULT:配属
+				CASE 0
+					PRINTFORMW %CALLNAME:RESULT%を配属しました
+					CFLAG:RESULT:配属 = 2
+					SIF TARGET == RESULT
+						TARGET = -1
+					SIF ASSI == RESULT
+						ASSI = -1
+					RESTART
+				CASE 1
+					PRINTFORMW %CALLNAME:RESULT%が帰宅しました
+					CFLAG:RESULT:配属 = 0
+					CFLAG:RESULT:配属完了 = 0
+					RESTART
+			ENDSELECT
+	ENDSELECT
+LOOP LOOPRES(999, 1001, 1002)
 
 ;名称----------------------------------------------------
-@BR_STR
-BR_STR:0 = 方針無し
-BR_STR:1 = ソフト方針
-BR_STR:2 = ハード方針
-BR_STR:3 = SM方針
-BR_STR:4 = 狂気方針
-
-;道具名----------------------------------------------------
-@BR_ITEM_STR
-;0～ 通常アイテム
-BR_ITEM_STR:0 = ローター
-BR_ITEM_STR:1 = バイブ
-BR_ITEM_STR:2 = 鞭
-BR_ITEM_STR:3 = 縄
-BR_ITEM_STR:4 = ペニスバンド
-
-;100～ 消耗アイテム
-BR_ITEM_STR:100 = コンドーム
-BR_ITEM_STR:101 = ローション
-BR_ITEM_STR:102 = 媚薬
-BR_ITEM_STR:103 = 睡眠薬
-
-;200～ 設備名(工事中)
-BR_ITEM_STR:200 = 設備１
-BR_ITEM_STR:201 = 設備２
+;@BR_STR
+;BR_STR:0 = 方針無し
+;BR_STR:1 = ソフト方針
+;BR_STR:2 = ハード方針
+;BR_STR:3 = SM方針
+;BR_STR:4 = 狂気方針
+;
+;;道具名----------------------------------------------------
+;@BR_ITEM_STR
+;;0～ 通常アイテム
+;BR_ITEM_STR:0 = ローター
+;BR_ITEM_STR:1 = バイブ
+;BR_ITEM_STR:2 = 鞭
+;BR_ITEM_STR:3 = 縄
+;BR_ITEM_STR:4 = ペニスバンド
+;
+;;100～ 消耗アイテム
+;BR_ITEM_STR:100 = コンドーム
+;BR_ITEM_STR:101 = ローション
+;BR_ITEM_STR:102 = 媚薬
+;BR_ITEM_STR:103 = 睡眠薬
+;
+;;200～ 設備名(工事中)
+;BR_ITEM_STR:200 = 設備１
+;BR_ITEM_STR:201 = 設備２
 
 ;道具名----------------------------------------------------
 @BR_ITEM_POINT
-A = 0
-B = 0
-C = 0
-D = 0
+#DIM LCOUNT
+ソフトポイント = 0
+ハードポイント = 0
+SMポイント = 0
+狂気ポイント = 0
 
-IF BR_ITEM_PERSONAL:0
-	A += 20
-	B += 10
-	D += 5
-ENDIF
-IF BR_ITEM_PERSONAL:1
-	B += 10
-	C += 20
-	D += 15
-ENDIF
-IF BR_ITEM_PERSONAL:2
-	C += 30
-	D += 20
-ENDIF
-IF BR_ITEM_PERSONAL:3
-	C += 25
-	D += 35
-ENDIF
-IF BR_ITEM_PERSONAL:4
-	B += 10
-	C += 30
-	D += 5
-ENDIF
-IF BR_ITEM_PERSONAL:100
-	A += 5
-	B += 20
-	C += 15
-	D += 5
-ENDIF
-IF BR_ITEM_PERSONAL:101
-	A += 15
-	B += 20
-	C += 10
-	D += 5
-ENDIF
-IF BR_ITEM_PERSONAL:102
-	A += 20
-	B += 40
-	C += 35
-	D += 30
-ENDIF
-IF BR_ITEM_PERSONAL:103
-	B += 5
-	C += 10
-	D += 30
-ENDIF
-
-BR:100 = A
-BR:101 = B
-BR:102 = C
-BR:103 = D
+FOR LCOUNT, 1500, 1580
+	SIF ITEMNAME:LCOUNT == ""
+		CONTINUE
+	SIF !ITEM:LCOUNT
+		CONTINUE
+	SELECTCASE ITEMNAME:LCOUNT
+		CASE "ローター"
+			ソフトポイント += 20
+			ハードポイント += 10
+			狂気ポイント += 5
+		CASE "バイブ"
+			ハードポイント += 10
+			SMポイント += 20
+			狂気ポイント += 15
+		CASE "鞭"
+			SMポイント += 30
+			狂気ポイント += 20
+		CASE "縄"
+			SMポイント += 25
+			狂気ポイント += 35
+		CASE "ペニスバンド"
+			ハードポイント += 10
+			SMポイント += 30
+			狂気ポイント += 5
+		CASE "コンドーム"
+			ソフトポイント += 5
+			ハードポイント += 20
+			SMポイント += 15
+			狂気ポイント += 5
+		CASE "ローション"
+			ソフトポイント += 15
+			ハードポイント += 20
+			SMポイント += 10
+			狂気ポイント += 5
+		CASE "媚薬"
+			ソフトポイント += 20
+			ハードポイント += 40
+			SMポイント += 35
+			狂気ポイント += 30
+		CASE "睡眠薬"
+			ハードポイント += 5
+			SMポイント += 10
+			狂気ポイント += 30
+		CASE "ゴム手袋"
+			ソフトポイント += 15
+			狂気ポイント += 5
+	ENDSELECT
+NEXT
 
 ;道具の値段----------------------------------------------------
-@BR_ITEM_PRICE
-;0～ 通常アイテム
-BR_ITEM_PRICE:0 = 500
-BR_ITEM_PRICE:1 = 1000
-BR_ITEM_PRICE:2 = 500
-BR_ITEM_PRICE:3 = 2000
-BR_ITEM_PRICE:4 = 2000
-
-;100～ 消費アイテム
-BR_ITEM_PRICE:100 = 100
-BR_ITEM_PRICE:101 = 100
-BR_ITEM_PRICE:102 = 2000
-BR_ITEM_PRICE:103 = 1000
+;@BR_ITEM_PRICE
+;;0～ 通常アイテム
+;BR_ITEM_PRICE:0 = 500
+;BR_ITEM_PRICE:1 = 1000
+;BR_ITEM_PRICE:2 = 500
+;BR_ITEM_PRICE:3 = 2000
+;BR_ITEM_PRICE:4 = 2000
+;
+;;100～ 消費アイテム
+;BR_ITEM_PRICE:100 = 100
+;BR_ITEM_PRICE:101 = 100
+;BR_ITEM_PRICE:102 = 2000
+;BR_ITEM_PRICE:103 = 1000
 
 ;収入計算----------------------------------------------------
 @INCOME_BR
-A = 0
-IF BR:50 == 4
-	A += (BR:0 - 10) * 100
-ELSE
-	A += BR:0 * 100
-ENDIF
-A += BR:100
-A += BR:101
-A += BR:102
-A += BR:103
+#DIM DYNAMIC 収入
+#DIM DYNAMIC 収入合計
+#DIM DYNAMIC 支出
+#DIM DYNAMIC 適性
+#DIM DYNAMIC 不適性
 
-IF BR:50 != 0
-	B = BR:50 + 99
-	A += BR:B * 5
-ENDIF
+#DIM DYNAMIC 客の性別
+#DIM DYNAMIC 絶頂
+#DIM DYNAMIC 射精
+#DIM DYNAMIC 自慰
+#DIM DYNAMIC フェラ
+#DIM DYNAMIC 客の射精
+#DIM DYNAMIC ゲイ
+#DIM DYNAMIC レズ
+#DIM DYNAMIC 中出し
+#DIM DYNAMIC ヴァギナ
+#DIM DYNAMIC アナル
 
-Z = 0
+#DIM LCOUNT
+
+収入合計 += 娼館レベル*100
+
+収入合計 += ソフトポイント*10
+収入合計 += ハードポイント*10
+収入合計 += SMポイント*10
+収入合計 += 狂気ポイント*10
 
 REPEAT CHARANUM
-	SIF COUNT == 0
+	;主人は除外
+	SIF COUNT == MASTER
 		CONTINUE
-	SIF CFLAG:COUNT:12 != 4
+	;当然配属してないとダメ
+	SIF CFLAG:COUNT:配属 != 2
 		CONTINUE
-	SIF BASE:COUNT:0 <= MAXBASE:COUNT:0 - 500
+	;配属完了してないとダメ
+	IF !CFLAG:COUNT:配属完了
+		CFLAG:COUNT:配属完了 = 1
 		CONTINUE
-	;ソフト
-	IF BR:50 == 1
-		;まずはプラス素質から計算
-		SIF TALENT:COUNT:0
-			A += 30
-			C++
-		IF TALENT:COUNT:2
-			IF RAND:2 == 0
-				A += 20
-				C++
-			ELSE
-				A -= 20
-				D++
-			ENDIF
-		ENDIF
-		SIF TALENT:COUNT:4
-			A += 100
-			C++
-		SIF TALENT:COUNT:7
-			A += 200
-			C++
-		SIF TALENT:COUNT:13
-			A += 35
-			C++
-		SIF TALENT:COUNT:14
-			A += 20
-			C++
-		SIF TALENT:COUNT:17
-			A += 20
-			C++
-		SIF TALENT:COUNT:23
-			A += 25
-			C++
-		SIF TALENT:COUNT:25
-			A += 10
-			C++
-		SIF TALENT:COUNT:28
-			A += 15
-			C++
-		SIF TALENT:COUNT:33
-			A += 25
-			C++
-		SIF TALENT:COUNT:36
-			A += 10
-			C++
-		SIF TALENT:COUNT:41
-			A += 15
-			C++
-		SIF TALENT:COUNT:42
-			A += 20
-			C++
-		SIF TALENT:COUNT:52
-			A += 15
-			C++
-		SIF TALENT:COUNT:61
-			A += 10
-			C++
-		SIF TALENT:COUNT:63
-			A += 20
-			C++
-		SIF TALENT:COUNT:70
-			A += 10
-			C++
-		SIF TALENT:COUNT:81
-			A += 10
-			C++
-		SIF TALENT:COUNT:87
-			A += 10
-			C++
-		SIF TALENT:COUNT:92
-			A += 15
-			C++
-		SIF TALENT:COUNT:93
-			A += 15
-			C++
-		SIF TALENT:COUNT:94
-			A += 20
-		IF TALENT:COUNT:100
-			IF RAND:2 == 0
-				A += 50
-				C++
-			ELSE
-				A -= 30
-				D++
-			ENDIF
-		ENDIF
-		SIF TALENT:COUNT:102
-			A += 10
-			C++
-		SIF TALENT:COUNT:108
-			A += 10
-			C++
-		IF TALENT:COUNT:109
-			IF RAND:3 == 0
-				A += 30
-				C++
-			ELSEIF RAND:2 == 0
-				A -= 10
-				D++
-			ELSE
-				A -= 30
-				D++
-			ENDIF
-		ENDIF
-		IF TALENT:COUNT:110
-			IF RAND:5 == 0
-				A += 40
-				C++
-			ELSEIF RAND:4 == 0
-				A += 0
-			ELSEIF RAND:3 == 0
-				A -= 10
-				D++
-			ELSEIF RAND:2 == 0
-				A -= 30
-				D++
-			ELSE
-				A -= 50
-				D++
-			ENDIF
-		ENDIF 
-		SIF TALENT:COUNT:111
-			A += 20
-			C++
-		IF TALENT:COUNT:112
-			IF RAND:5 == 0
-				A -= 10
-				D++
-			ELSE
-				A += 30
-				C++
-			ENDIF
-		ENDIF
-		SIF TALENT:COUNT:143
-			A += 10
-			C++
-		SIF TALENT:COUNT:145
-			A += 20
-			C++
-		SIF TALENT:COUNT:152
-			A += 10
-			C++
-		SIF TALENT:COUNT:155
-			A += 10
-			C++
-		SIF TALENT:COUNT:157
-			A += 10
-			C++
-		;ここからマイナス素質
-		SIF TALENT:COUNT:3
-			A -= 30
-			D++
-		SIF TALENT:COUNT:6
-			A -= 50
-			D++
-		;SIF TALENT:COUNT:9
-			;A -= 80
-		SIF TALENT:COUNT:10
-			A -= 10
-			D++
-		SIF TALENT:COUNT:11
-			A -= 20
-			D++
-		SIF TALENT:COUNT:12
-			A -= 10
-			D++
-		SIF TALENT:COUNT:15
-			A -= 10
-			D++
-		SIF TALENT:COUNT:16
-			A -= 10
-			D++
-		SIF TALENT:COUNT:20
-			A -= 10
-			D++
-		SIF TALENT:COUNT:21
-			A -= 20
-			D++
-		SIF TALENT:COUNT:24
-			A -= 15
-			D++
-		IF TALENT:COUNT:26
-			IF RAND:4 == 0
-				A += 20
-				C++
-			ELSE
-				A -= 10
-				D++
-			ENDIF
-		ENDIF
-		SIF TALENT:COUNT:27
-			A -= 30
-			D++
-		SIF TALENT:COUNT:32
-			A -= 25
-			D++
-		SIF TALENT:COUNT:34
-			A -= 25
-			D++
-		IF TALENT:COUNT:35
-			IF RAND:2 == 0
-				A -= 15
-				D++
-			ELSE
-				A += 15
-				C++
-			ENDIF
-		ENDIF
-		IF TALENT:COUNT:40
-			IF RAND:2 == 0
-				A -= 10
-				D++
-			ELSE
-				A += 10
-				C++
-			ENDIF
-		ENDIF
-		SIF TALENT:COUNT:43
-			A -= 5
-			D++
-		SIF TALENT:COUNT:54
-			A -= 20
-			D++
-		SIF TALENT:COUNT:62
-			A -= 5
-			D++
-		SIF TALENT:COUNT:71
-			A -= 25
-			D++
-		SIF TALENT:COUNT:82
-			A -= 20
-			D++
-		IF TALENT:COUNT:88
-			IF RAND:5 == 0
-				A -= 20
-				D++
-			ELSE
-				A -= 0
-			ENDIF
-		ENDIF
-			D++
-		SIF TALENT:COUNT:101
-			A -= 10
-			D++
-		SIF TALENT:COUNT:107
-			A -= 10
-			D++
-		IF TALENT:COUNT:139
-			IF RAND:6 == 0
-				A += 40
-				C++
-			ELSE
-				A -= 15
-				D++
-			ENDIF
-		ENDIF
-		IF TALENT:COUNT:140
-			IF RAND:8 == 0
-				A += 40
-				C++
-			ELSE
-				A -= 25
-				D++
-			ENDIF
-		ENDIF
-			D++
-		SIF TALENT:COUNT:141
-			A -= 50
-			D++
-		SIF TALENT:COUNT:142
-			A -= 20
-			D++
-		SIF TALENT:COUNT:147
-			A -= 20
-			D++
-		SIF TALENT:COUNT:148
-			A -= 30
-			D++
-		SIF TALENT:COUNT:153
-			A -= 70
-			D++
-		SIF TALENT:COUNT:156
-			A -= 40
-			D++
-		;ここから能力で倍率計算
-		B = A
-		SELECTCASE ABL:COUNT:0
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.10
-			CASE 2
-				TIMES B , 1.20
-			CASE 3
-				TIMES B , 1.30
-			CASE 4
-				TIMES B , 1.40
-			CASEELSE
-				TIMES B , 1.50
-		ENDSELECT
-		SELECTCASE ABL:COUNT:1
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.05
-			CASE 2
-				TIMES B , 1.10
-			CASE 3
-				TIMES B , 1.15
-			CASE 4
-				TIMES B , 1.20
-			CASEELSE
-				TIMES B , 1.25
-		ENDSELECT
-		SELECTCASE ABL:COUNT:2
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.20
-			CASE 2
-				TIMES B , 1.40
-			CASE 3
-				TIMES B , 1.60
-			CASE 4
-				TIMES B , 1.80
-			CASEELSE
-				TIMES B , 2.00
-		ENDSELECT
-		SELECTCASE ABL:COUNT:7
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.10
-			CASE 2
-				TIMES B , 1.20
-			CASE 3
-				TIMES B , 1.30
-			CASE 4
-				TIMES B , 1.40
-			CASEELSE
-				TIMES B , 1.50
-		ENDSELECT
-	;ハード
-	ELSEIF BR:50 == 2
-		;まずはプラス素質から計算
-		SIF TALENT:COUNT:0
-			A += 100
-		IF TALENT:COUNT:2
-			IF RAND:2 == 0
-				A += 40
-				C++
-			ELSE
-				A -= 10
-				D++
-			ENDIF
-		ENDIF
-		SIF TALENT:COUNT:4
-			A += 200
-			C++
-		SIF TALENT:COUNT:7
-			A += 400
-			C++
-		SIF TALENT:COUNT:10
-			A += 20
-			C++
-		SIF TALENT:COUNT:13
-			A += 30
-			C++
-		SIF TALENT:COUNT:17
-			A += 30
-			C++
-		SIF TALENT:COUNT:23
-			A += 40
-			C++
-		SIF TALENT:COUNT:25
-			A += 10
-			C++
-		SIF TALENT:COUNT:28
-			A += 10
-			C++
-		SIF TALENT:COUNT:31
-			A += 40
-			C++
-		SIF TALENT:COUNT:36
-			A += 20
-			C++
-		SIF TALENT:COUNT:41
-			A += 25
-			C++
-		SIF TALENT:COUNT:42
-			A += 25
-			C++
-		SIF TALENT:COUNT:52
-			A += 10
-			C++
-		SIF TALENT:COUNT:63
-			A += 20
-			C++
-		SIF TALENT:COUNT:70
-			A += 20
-			C++
-		SIF TALENT:COUNT:75
-			A += 100
-			C++
-		SIF TALENT:COUNT:76
-			A += 100
-			C++
-		SIF TALENT:COUNT:87
-			A += 10
-			C++
-		SIF TALENT:COUNT:92
-			A += 10
-			C++
-		SIF TALENT:COUNT:93
-			A += 10
-			C++
-		SIF TALENT:COUNT:94
-			A += 20
-			C++
-		IF TALENT:COUNT:100
-			IF RAND:2 == 0
-				A += 30
-				C++
-			ELSE
-				A -= 50
-				D++
-			ENDIF
-		ENDIF
-		SIF TALENT:COUNT:104
-			A += 10
-			C++
-		SIF TALENT:COUNT:106
-			A += 10
-			C++
-		IF TALENT:COUNT:109
-			IF RAND:3 == 0
-				A += 30
-				C++
-			ELSEIF RAND:2 == 0
-				A -= 10
-				D++
-			ELSE
-				A -= 30
-				D++
-			ENDIF
-		ENDIF
-		IF TALENT:COUNT:110
-			IF RAND:5 == 0
-				A += 40
-				C++
-			ELSEIF RAND:4 == 0
-				A += 0
-			ELSEIF RAND:3 == 0
-				A -= 10
-				D++
-			ELSEIF RAND:2 == 0
-				A -= 30
-				D++
-			ELSE
-				A -= 50
-				D++
-			ENDIF
-		ENDIF 
-		SIF TALENT:COUNT:111
-			A += 20
-			C++
-		IF TALENT:COUNT:112
-			IF RAND:5 == 0
-				A -= 10
-				D++
-			ELSE
-				A += 30
-				C++
-			ENDIF
-		ENDIF
-		SIF TALENT:COUNT:143
-			A += 10
-			C++
-		SIF TALENT:COUNT:145
-			A += 20
-			C++
-		SIF TALENT:COUNT:152
-			A += 10
-			C++
-		SIF TALENT:COUNT:155
-			A += 10
-			C++
-		SIF TALENT:COUNT:157
-			A += 10
-			C++
-		;ここからマイナス素質
-		SIF TALENT:COUNT:3
-			A -= 50
-			D++
-		SIF TALENT:COUNT:6
-			A -= 100
-			D++
-		;SIF TALENT:COUNT:9
-			;A -= 100
-		SIF TALENT:COUNT:11
-			A -= 30
-			D++
-		SIF TALENT:COUNT:15
-			A -= 20
-			D++
-		SIF TALENT:COUNT:16
-			A -= 20
-			D++
-		SIF TALENT:COUNT:20
-			A -= 20
-			D++
-		SIF TALENT:COUNT:21
-			A -= 40
-			D++
-		SIF TALENT:COUNT:24
-			A -= 15
-			D++
-		IF TALENT:COUNT:26
-			IF RAND:4 == 0
-				A += 20
-				C++
-			ELSE
-				A -= 10
-				D++
-			ENDIF
-		ENDIF
-		SIF TALENT:COUNT:27
-			A -= 50
-			D++
-		SIF TALENT:COUNT:32
-			A -= 25
-			D++
-		SIF TALENT:COUNT:34
-			A -= 25
-		IF TALENT:COUNT:35
-			IF RAND:2 == 0
-				A -= 15
-				D++
-			ELSE
-				A += 15
-				C++
-			ENDIF
-		ENDIF
-		IF TALENT:COUNT:40
-			IF RAND:3 == 0
-				A -= 20
-				D++
-			ELSE
-				A += 10
-				C++
-			ENDIF
-		ENDIF
-		SIF TALENT:COUNT:43
-			A -= 20
-			D++
-		SIF TALENT:COUNT:71
-			A -= 40
-			D++
-		SIF TALENT:COUNT:82
-			A -= 20
-			D++
-		IF TALENT:COUNT:88
-			IF RAND:5 == 0
-				A -= 20
-				D++
-			ELSE
-				A -= 0
-			ENDIF
-		ENDIF
-		SIF TALENT:COUNT:103
-			A -= 25
-			D++
-		SIF TALENT:COUNT:105
-			A -= 25
-			D++
-		IF TALENT:COUNT:139
-			IF RAND:6 == 0
-				A += 40
-				C++
-			ELSE
-				A -= 15
-				D++
-			ENDIF
-		ENDIF
-		IF TALENT:COUNT:140
-			IF RAND:8 == 0
-				A += 40
-				C++
-			ELSE
-				A -= 25
-				D++
-			ENDIF
-		ENDIF
-		SIF TALENT:COUNT:141
-			A -= 50
-			D++
-		SIF TALENT:COUNT:142
-			A -= 30
-			D++
-		SIF TALENT:COUNT:147
-			A -= 20
-			D++
-		SIF TALENT:COUNT:148
-			A -= 30
-			D++
-		SIF TALENT:COUNT:153
-			A -= 70
-			D++
-		SIF TALENT:COUNT:156
-			A -= 40
-			D++
-		;ここから能力で倍率計算
-		B = A
-		SELECTCASE ABL:COUNT:0
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.10
-			CASE 2
-				TIMES B , 1.20
-			CASE 3
-				TIMES B , 1.30
-			CASE 4
-				TIMES B , 1.40
-			CASEELSE
-				TIMES B , 1.50
-		ENDSELECT
-		SELECTCASE ABL:COUNT:1
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.10
-			CASE 2
-				TIMES B , 1.20
-			CASE 3
-				TIMES B , 1.30
-			CASE 4
-				TIMES B , 1.40
-			CASEELSE
-				TIMES B , 1.50
-		ENDSELECT
-		SELECTCASE ABL:COUNT:2
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.20
-			CASE 2
-				TIMES B , 1.40
-			CASE 3
-				TIMES B , 1.60
-			CASE 4
-				TIMES B , 1.80
-			CASEELSE
-				TIMES B , 2.00
-		ENDSELECT
-		IF RAND:2 == 0 && TALENT:COUNT:140 == 0
-			SELECTCASE ABL:COUNT:4
-				CASE 0
-					TIMES B , 1.00
-				CASE 1
-					TIMES B , 1.10
-				CASE 2
-					TIMES B , 1.20
-				CASE 3
-					TIMES B , 1.30
-				CASE 4
-					TIMES B , 1.40
-				CASEELSE
-					TIMES B , 1.50
-			ENDSELECT
-			X = 1
-		ELSE
-			SELECTCASE ABL:COUNT:5
-				CASE 0
-					TIMES B , 1.00
-				CASE 1
-					TIMES B , 1.10
-				CASE 2
-					TIMES B , 1.20
-				CASE 3
-					TIMES B , 1.30
-				CASE 4
-					TIMES B , 1.40
-				CASEELSE
-					TIMES B , 1.50
-			ENDSELECT
-			X = 2
-		ENDIF
-		SELECTCASE ABL:COUNT:7
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.10
-			CASE 2
-				TIMES B , 1.20
-			CASE 3
-				TIMES B , 1.30
-			CASE 4
-				TIMES B , 1.40
-			CASEELSE
-				TIMES B , 1.50
-		ENDSELECT
-		SELECTCASE ABL:COUNT:16
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.05
-			CASE 2
-				TIMES B , 1.10
-			CASE 3
-				TIMES B , 1.15
-			CASE 4
-				TIMES B , 1.20
-			CASEELSE
-				TIMES B , 1.25
-		ENDSELECT
-		SELECTCASE ABL:COUNT:18
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.20
-			CASE 2
-				TIMES B , 1.40
-			CASE 3
-				TIMES B , 1.60
-			CASE 4
-				TIMES B , 1.80
-			CASEELSE
-				TIMES B , 2.00
-		ENDSELECT
-	;マニアック
-	ELSEIF BR:50 == 3
-		;まずはプラス素質から計算
-		IF TALENT:COUNT:0
-			IF RAND:2 == 0
-				A += 100
-				C++
-			ELSE
-				A += 0
-			ENDIF
-		ENDIF
-		SIF TALENT:COUNT:41
-			A += 50
-			C++
-		SIF TALENT:COUNT:42
-			A += 30
-			C++
-		SIF TALENT:COUNT:52
-			A += 20
-			C++
-		SIF TALENT:COUNT:53
-			A += 20
-			C++
-		SIF TALENT:COUNT:57
-			A += 20
-			C++
-		SIF TALENT:COUNT:63
-			A += 20
-			C++
-		SIF TALENT:COUNT:64
-			A += 10
-			C++
-		SIF TALENT:COUNT:70
-			A += 10
-			C++
-		SIF TALENT:COUNT:72
-			A += 15
-			C++
-		SIF TALENT:COUNT:80
-			A += 40
-			C++
-		SIF TALENT:COUNT:81
-			A += 20
-			C++
-		SIF TALENT:COUNT:83
-			A += 25
-			C++
-		SIF TALENT:COUNT:84
-			A += 25
-			C++
-		SIF TALENT:COUNT:87
-			A += 20
-			C++
-		SIF TALENT:COUNT:100
-			A += 30
-			C++
-		SIF TALENT:COUNT:109
-			A += 20
-			C++
-		SIF TALENT:COUNT:110
-			A += 30
-			C++
-		SIF TALENT:COUNT:111
-			A += 10
-			C++
-		SIF TALENT:COUNT:112
-			A += 30
-			C++
-		SIF TALENT:COUNT:132
-			A += 15
-			C++
-		SIF TALENT:COUNT:137
-			A += 15
-			C++
-		SIF TALENT:COUNT:139
-			A += 40
-			C++
-		SIF TALENT:COUNT:140
-			A += 25
-			C++
-		SIF TALENT:COUNT:143
-			A += 10
-			C++
-		SIF TALENT:COUNT:145
-			A += 20
-			C++
-		SIF TALENT:COUNT:149
-			A += 20
-			C++
-		SIF TALENT:COUNT:152
-			A += 10
-			C++
-		SIF TALENT:COUNT:155
-			A += 10
-			C++
-		SIF TALENT:COUNT:157
-			A += 10
-			C++
-		;マイナス
-		SIF TALENT:COUNT:40
-			A -= 30
-			D++
-		SIF TALENT:COUNT:43
-			A -= 20
-			D++
-		SIF TALENT:COUNT:62
-			A -= 40
-			D++
-		SIF TALENT:COUNT:82
-			A -= 50
-			D++
-		SIF TALENT:COUNT:88
-			A -= 50
-			D++
-		SIF TALENT:COUNT:101
-			A -= 20
-			D++
-		SIF TALENT:COUNT:103
-			A -= 20
-			D++
-		SIF TALENT:COUNT:105
-			A -= 20
-			D++
-		SIF TALENT:COUNT:107
-			A -= 20
-			D++
-		SIF TALENT:COUNT:141
-			A -= 20
-			D++
-		SIF TALENT:COUNT:142
-			A -= 10
-			D++
-		SIF TALENT:COUNT:147
-			A -= 10
-			D++
-		SIF TALENT:COUNT:148
-			A -= 30
-			D++
-		SIF TALENT:COUNT:153
-			A -= 50
-			D++
-		SIF TALENT:COUNT:156
-			A -= 70
-			D++
-		;ここから能力で倍率計算
-		B = A
-		SELECTCASE ABL:COUNT:0
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.05
-			CASE 2
-				TIMES B , 1.10
-			CASE 3
-				TIMES B , 1.15
-			CASE 4
-				TIMES B , 1.20
-			CASEELSE
-				TIMES B , 1.25
-		ENDSELECT
-		SELECTCASE ABL:COUNT:1
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.05
-			CASE 2
-				TIMES B , 1.10
-			CASE 3
-				TIMES B , 1.15
-			CASE 4
-				TIMES B , 1.20
-			CASEELSE
-				TIMES B , 1.25
-		ENDSELECT
-		SELECTCASE ABL:COUNT:2
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.05
-			CASE 2
-				TIMES B , 1.10
-			CASE 3
-				TIMES B , 1.15
-			CASE 4
-				TIMES B , 1.20
-			CASEELSE
-				TIMES B , 1.25
-		ENDSELECT
-		IF RAND:2 == 0 || TALENT:COUNT:140 == 0
-			SELECTCASE ABL:COUNT:4
-				CASE 0
-					TIMES B , 1.00
-				CASE 1
-					TIMES B , 1.10
-				CASE 2
-					TIMES B , 1.20
-				CASE 3
-					TIMES B , 1.30
-				CASE 4
-					TIMES B , 1.40
-				CASEELSE
-					TIMES B , 1.50
-			ENDSELECT
-			X = 1
-		ELSE
-			SELECTCASE ABL:COUNT:5
-				CASE 0
-					TIMES B , 1.00
-				CASE 1
-					TIMES B , 1.10
-				CASE 2
-					TIMES B , 1.20
-				CASE 3
-					TIMES B , 1.30
-				CASE 4
-					TIMES B , 1.40
-				CASEELSE
-					TIMES B , 1.50
-			ENDSELECT
-			X = 2
-		ENDIF
-		SELECTCASE ABL:COUNT:9
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.10
-			CASE 2
-				TIMES B , 1.20
-			CASE 3
-				TIMES B , 1.30
-			CASE 4
-				TIMES B , 1.40
-			CASEELSE
-				TIMES B , 1.50
-		ENDSELECT
-		SELECTCASE ABL:COUNT:10
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.10
-			CASE 2
-				TIMES B , 1.20
-			CASE 3
-				TIMES B , 1.30
-			CASE 4
-				TIMES B , 1.40
-			CASEELSE
-				TIMES B , 1.50
-		ENDSELECT
-		IF RAND:2
-			SELECTCASE ABL:COUNT:17
-				CASE 0
-					TIMES B , 1.00
-				CASE 1
-					TIMES B , 1.10
-				CASE 2
-					TIMES B , 1.20
-				CASE 3
-					TIMES B , 1.30
-				CASE 4
-					TIMES B , 1.40
-				CASEELSE
-					TIMES B , 1.50
-			ENDSELECT
-		ELSE
-			SELECTCASE ABL:COUNT:21
-				CASE 0
-					TIMES B , 1.00
-				CASE 1
-					TIMES B , 1.10
-				CASE 2
-					TIMES B , 1.20
-				CASE 3
-					TIMES B , 1.30
-				CASE 4
-					TIMES B , 1.40
-				CASEELSE
-					TIMES B , 1.50
-			ENDSELECT
-		ENDIF
-	;ルナティック
-	ELSEIF BR:50 == 4
-		;まずはプラス素質から計算
-		SIF TALENT:COUNT:9
-			A += 2000
-			C++
-		SIF TALENT:COUNT:22
-			A += 200
-			C++
-		SIF TALENT:COUNT:40
-			A += 300
-			C++
-		SIF TALENT:COUNT:80
-			A += 200
-			C++
-		SIF TALENT:COUNT:86
-			A += 300
-			C++
-		SIF TALENT:COUNT:139
-			A += 200
-			C++
-		SIF TALENT:COUNT:141
-			A += 1000
-			C++
-		SIF TALENT:COUNT:142
-			A += 1000
-			C++
-		SIF TALENT:COUNT:144
-			A += 1500
-			C++
-		SIF TALENT:COUNT:147
-			A += 700
-			C++
-		SIF TALENT:COUNT:148
-			A += 1500
-			C++
-		SIF TALENT:COUNT:150
-			A += 500
-			C++
-		SIF TALENT:COUNT:153
-			A += 800
-			C++
-		SIF TALENT:COUNT:156
-			A += 400
-			C++
-		;マイナス
-		A /= 5
-		;ここから能力で倍率計算
-		B = A
-		SELECTCASE ABL:COUNT:0
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.05
-			CASE 2
-				TIMES B , 1.10
-			CASE 3
-				TIMES B , 1.15
-			CASE 4
-				TIMES B , 1.20
-			CASEELSE
-				TIMES B , 1.25
-		ENDSELECT
-		SELECTCASE ABL:COUNT:1
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.05
-			CASE 2
-				TIMES B , 1.10
-			CASE 3
-				TIMES B , 1.15
-			CASE 4
-				TIMES B , 1.20
-			CASEELSE
-				TIMES B , 1.25
-		ENDSELECT
-		SELECTCASE ABL:COUNT:2
-			CASE 0
-				TIMES B , 1.00
-			CASE 1
-				TIMES B , 1.05
-			CASE 2
-				TIMES B , 1.10
-			CASE 3
-				TIMES B , 1.15
-			CASE 4
-				TIMES B , 1.20
-			CASEELSE
-				TIMES B , 1.25
-		ENDSELECT
 	ENDIF
+	;体力不足
+	IF BASE:COUNT:体力 <= 500
+		PRINTFORML %CALLNAME:COUNT%は疲労で娼館を休みました
+		CONTINUE
+	ENDIF
+	IF CFLAG:COUNT:ストレス値 > 90 && !TALENT:COUNT:崩壊
+		PRINTFORML %CALLNAME:COUNT%はストレス過多のため、娼館を休みました
+		CONTINUE
+	ENDIF
+	;$1000は保証
+	収入 = 1000
+	適性 = 0
+	不適性 = 0
+	;方針による補正
+	SELECTCASE 娼館方針
+		;ソフト
+		CASE 1
+			;まずはプラス素質から計算
+			IF TALENT:COUNT:淫乱
+				収入 += 300
+				適性 += 2
+			ENDIF
+			IF TALENT:COUNT:娼婦
+				収入 += 500
+				適性 += 3
+			ENDIF
+			IF TALENT:COUNT:素直
+				収入 += 200
+				適性 += 2
+			ENDIF
+			SIF TALENT:COUNT:臆病
+				収入 += 100
+			
+			IF TALENT:COUNT:プライド低い
+				収入 += 150
+				適性++
+			ENDIF
+			IF TALENT:COUNT:大人しい
+				収入 += 50
+				適性++
+			ENDIF
+			IF TALENT:COUNT:好奇心
+				収入 += 150
+				適性++
+			ENDIF
+			SIF TALENT:COUNT:恥じらい
+				収入 += 50
+			SIF TALENT:COUNT:恥薄い
+				適性++
+			SIF TALENT:COUNT:痛みに強い
+				適性 += 2
+			SIF TALENT:COUNT:舌使い
+				収入 += 200
+			IF TALENT:COUNT:自慰しやすい
+				収入 += 50
+				適性++
+			ENDIF
+			SIF TALENT:COUNT:汚臭鈍感
+				適性++
+			SIF TALENT:COUNT:汚れ無視
+				適性++
+			IF TALENT:COUNT:献身的
+				収入 += 150
+				適性 += 2
+			ENDIF
+			IF TALENT:COUNT:快感に素直
+				収入 += 100
+				適性++
+			ENDIF
+			IF TALENT:COUNT:自慰狂い
+				収入 += 150
+				適性++
+			ENDIF
+			IF TALENT:COUNT:両刀
+				収入 += 50
+				適性++
+			ENDIF
+			IF TALENT:COUNT:男好き
+				収入 += 100
+				適性 += 2
+			ENDIF
+			SIF TALENT:COUNT:小悪魔
+				収入 += 50
+			SIF TALENT:COUNT:魅力
+				収入 += 50
+			SIF TALENT:COUNT:魅惑
+				収入 += 50
+			SIF TALENT:COUNT:謎の魅力
+				収入 += 100
+			;客がロリコンの確率は半々
+			IF TALENT:COUNT:小柄体型
+				IF RAND:2 == 0
+					収入 += 100
+				ELSE
+					収入 -= 50
+				ENDIF
+				;どちらにせよ負担が大きいので不適性
+				不適性++
+			ENDIF
+			;大きいのが好きか小さいのが好きかはランダム
+			IF RAND:2 == 0
+				収入 += (6-TALENT:バストサイズ)*10
+			ELSE
+				収入 += TALENT:バストサイズ*10
+			ENDIF
+			SIF TALENT:COUNT:ファーリー
+				収入 += 30
+			SIF TALENT:COUNT:尻尾
+				収入 += 30
+			SIF TALENT:COUNT:動物耳
+				収入 += 30
+			;小人も人による
+			IF TALENT:COUNT:小人体型
+				IF RAND:3 == 0
+					収入 += 200
+				ELSE
+					収入 -= 100
+				ENDIF
+				不適性 += 2
+			ENDIF
+			SIF TALENT:COUNT:ふたなり
+				収入 += 50
+			SIF TALENT:COUNT:人気
+				収入 += 100
+				適性++
+
+			;ここからマイナス素質
+			IF TALENT:COUNT:恋慕
+				収入 -= 50
+				不適性++
+			ENDIF
+			IF TALENT:COUNT:親愛
+				収入 -= 100
+				不適性 += 2
+			ENDIF
+			IF TALENT:COUNT:生意気
+				収入 -= 50
+				不適性++
+			ENDIF
+			IF TALENT:COUNT:反抗的
+				収入 -= 50
+				不適性++
+			ENDIF
+			IF TALENT:COUNT:プライド高い
+				収入 -= 30
+				不適性++
+			ENDIF
+			SIF TALENT:COUNT:ツンデレ
+				収入 -= 30
+			SIF TALENT:COUNT:無関心
+				収入 -= 30
+			SIF TALENT:COUNT:保守的
+				不適性++
+			SIF TALENT:COUNT:悲観的
+				不適性++
+			SIF TALENT:COUNT:抵抗
+				不適性 += 2
+			SIF TALENT:COUNT:痛みに弱い
+				不適性 += 2
+			SIF TALENT:COUNT:汚臭敏感
+				不適性++
+			SIF TALENT:COUNT:潔癖症
+				不適性++
+			IF TALENT:COUNT:男嫌い
+				収入 -= 50
+				不適性 += 2
+			ENDIF
+			IF TALENT:COUNT:同族嫌悪
+				収入 -= 50
+				不適性++
+			ENDIF
+			;ここから能力で倍率計算
+			収入 += (収入/20)*ABL:COUNT:従順
+			収入 += (収入/10)*ABL:COUNT:欲望
+			収入 += (収入/5)*ABL:COUNT:技巧
+			収入 += (収入/10)*ABL:COUNT:奉仕精神
+			;ソフトでは比較的負担は少ない
+			TIMES 適性 , 1.50
+		;ハード
+		CASE 2
+			;まずはプラス素質から計算
+			SIF TALENT:COUNT:処女
+				収入 += 2000
+			IF TALENT:COUNT:淫乱
+				収入 += 500
+				適性++
+			ENDIF
+			IF TALENT:COUNT:娼婦
+				収入 += 1000
+				適性 += 2
+			ENDIF
+			IF TALENT:COUNT:素直
+				収入 += 300
+				適性++
+			ENDIF
+			IF TALENT:COUNT:プライド低い
+				収入 += 200
+				適性++
+			ENDIF
+			IF TALENT:COUNT:大人しい
+				収入 += 100
+				適性++
+			ENDIF
+			IF TALENT:COUNT:好奇心
+				収入 += 200
+				適性++
+			ENDIF
+			IF TALENT:COUNT:貞操無頓着
+				収入 += 100
+				適性 += 2
+			ENDIF
+			SIF TALENT:COUNT:恥じらい
+				収入 += 150
+			SIF TALENT:COUNT:恥薄い
+				適性++
+			SIF TALENT:COUNT:痛みに強い
+				適性 += 2
+			SIF TALENT:COUNT:舌使い
+				収入 += 100
+			SIF TALENT:COUNT:汚れ無視
+				適性++
+			IF TALENT:COUNT:献身的
+				収入 += 300
+				適性 += 2
+			ENDIF
+			IF TALENT:COUNT:快感に素直
+				収入 += 200
+				適性 += 2
+			ENDIF
+			IF TALENT:COUNT:セックス狂
+				収入 += 300
+				適性 += 2
+			ENDIF
+			IF TALENT:COUNT:両刀
+				収入 += 100
+			ENDIF
+			IF TALENT:COUNT:男好き
+				収入 += 100
+				適性++
+			ENDIF
+			SIF TALENT:COUNT:魅力
+				収入 += 100
+			SIF TALENT:COUNT:魅惑
+				収入 += 100
+			SIF TALENT:COUNT:謎の魅力
+				収入 += 200
+			;客がロリコンの確率は半々
+			IF TALENT:COUNT:小柄体型
+				IF RAND:2 == 0
+					収入 += 300
+				ELSE
+					収入 -= 100
+				ENDIF
+				;どちらにせよ負担が大きいので不適性
+				不適性++
+			ENDIF
+			SIF TALENT:COUNT:Ｖ敏感
+				適性++
+			SIF TALENT:COUNT:Ａ敏感
+				適性++
+			;大きいのが好きか小さいのが好きかはランダム
+			IF RAND:2 == 0
+				収入 += (6-TALENT:バストサイズ)*20
+			ELSE
+				収入 += TALENT:バストサイズ*20
+			ENDIF
+			SIF TALENT:COUNT:ファーリー
+				収入 += 50
+			SIF TALENT:COUNT:尻尾
+				収入 += 50
+			SIF TALENT:COUNT:動物耳
+				収入 += 50
+			;小人も人による
+			IF TALENT:COUNT:小人体型
+				IF RAND:3 == 0
+					収入 += 500
+				ELSE
+					収入 -= 300
+				ENDIF
+				不適性 += 2
+			ENDIF
+			SIF TALENT:COUNT:ふたなり
+				収入 += 100
+			SIF TALENT:COUNT:人気
+				収入 += 200
+				適性++
+
+			;ここからマイナス素質
+			IF TALENT:COUNT:恋慕
+				収入 -= 1500
+				不適性++
+			ENDIF
+			IF TALENT:COUNT:親愛
+				収入 -= 300
+				不適性 += 2
+			ENDIF
+			IF TALENT:COUNT:生意気
+				収入 -= 100
+				不適性++
+			ENDIF
+			IF TALENT:COUNT:反抗的
+				収入 -= 100
+				不適性++
+			ENDIF
+			IF TALENT:COUNT:プライド高い
+				収入 -= 50
+				不適性 += 2
+			ENDIF
+			SIF TALENT:COUNT:ツンデレ
+				収入 -= 50
+			SIF TALENT:COUNT:無関心
+				収入 -= 50
+			SIF TALENT:COUNT:保守的
+				不適性++
+			SIF TALENT:COUNT:悲観的
+				不適性++
+			IF TALENT:COUNT:貞操観念
+				収入 -= 50
+				不適性++
+			ENDIF
+			SIF TALENT:COUNT:抵抗
+				不適性 += 2
+			SIF TALENT:COUNT:痛みに弱い
+				不適性 += 2
+			SIF TALENT:COUNT:潔癖症
+				不適性 += 2
+			IF TALENT:COUNT:男嫌い
+				収入 -= 200
+				不適性 += 3
+			ENDIF
+			IF TALENT:COUNT:同族嫌悪
+				収入 -= 100
+				不適性++
+			ENDIF
+			SIF TALENT:COUNT:Ｖ鈍感
+				不適性++
+			SIF TALENT:COUNT:Ａ鈍感
+				不適性++
+			;ここから能力で倍率計算
+			B = A
+			収入 += (収入/10)*ABL:COUNT:従順
+			収入 += (収入/10)*ABL:COUNT:欲望
+			収入 += (収入/5)*ABL:COUNT:技巧
+			SIF VAGINA(COUNT)
+				収入 = (収入/20)*ABL:COUNT:Ｖ感覚
+			収入 += (収入/20)*ABL:COUNT:Ａ感覚
+			収入 += (収入/10)*ABL:COUNT:奉仕精神
+			収入 += (収入/5)*ABL:COUNT:性交中毒
+		;SM
+		CASE 3
+			;まずはプラス素質から計算
+			;SMは我が強い子が結構稼げる 責めに回っても受けに回っても需要がある
+			SIF TALENT:COUNT:処女
+				収入 += 1000
+			SIF TALENT:COUNT:生意気
+				収入 += 200
+			SIF TALENT:COUNT:反抗的
+				収入 += 200
+			SIF TALENT:COUNT:気丈
+				収入 += 100
+			SIF TALENT:COUNT:衝動的
+				収入 += 150
+			SIF TALENT:COUNT:プライド高い
+				収入 += 150
+			SIF TALENT:COUNT:保守的
+				収入 += 100
+			SIF TALENT:COUNT:一線越えない
+				収入 += 100
+			SIF TALENT:COUNT:貞操観念
+				収入 += 150
+			SIF TALENT:COUNT:抑圧
+				収入 += 100
+			SIF TALENT:COUNT:抵抗
+				収入 += 150
+			SIF TALENT:COUNT:弱味
+				収入 += 50
+			IF TALENT:COUNT:痛みに強い
+				収入 += 50
+				適性 += 3
+			ENDIF
+			SIF TALENT:COUNT:針さばき
+				収入 += 100
+			SIF TALENT:COUNT:おもらし癖
+				収入 += 100
+			SIF TALENT:COUNT:快感に素直
+				適性 += 2
+			SIF TALENT:COUNT:快感の否定
+				収入 += 50
+			SIF TALENT:COUNT:即落ち
+				収入 += 50
+			SIF TALENT:COUNT:倒錯的
+				収入 += 200
+			SIF TALENT:COUNT:両刀
+				収入 += 50
+			SIF TALENT:COUNT:サド
+				収入 += 100
+			SIF TALENT:COUNT:マゾ
+				収入 += 100
+			IF TALENT:COUNT:戦士
+				収入 += 100
+				適性++
+			ENDIF
+			SIF TALENT:COUNT:ふたなり
+				収入 += 150
+			;マイナス
+			IF TALENT:COUNT:臆病
+				収入 -= 100
+				不適性++
+			ENDIF
+			IF TALENT:COUNT:素直
+				収入 -= 50
+				不適性++
+			ENDIF
+			IF TALENT:COUNT:大人しい
+				収入 -= 100
+				不適性++
+			ENDIF
+			IF TALENT:COUNT:無関心
+				収入 -= 150
+				不適性++
+			ENDIF
+			IF TALENT:COUNT:感情乏しい
+				収入 -= 100
+				不適性++
+			ENDIF
+			IF TALENT:COUNT:恥じらい
+				収入 -= 50
+				不適性 += 2
+			ENDIF
+			IF TALENT:COUNT:寂しがり屋
+				収入 -= 100
+				不適性++
+			ENDIF
+			IF TALENT:COUNT:痛みに弱い
+				収入 -= 50
+				不適性 += 5
+			ENDIF
+			;ここから能力で倍率計算
+			収入 += (収入/20)*ABL:COUNT:従順
+			収入 += (収入/20)*ABL:COUNT:欲望
+			収入 += (収入/20)*ABL:COUNT:技巧
+			SIF VAGINA(COUNT)
+				収入 = (収入/20)*ABL:COUNT:Ｖ感覚
+			収入 += (収入/20)*ABL:COUNT:Ａ感覚
+			収入 += (収入/10)*ABL:COUNT:露出癖
+			収入 += (収入/5)*ABL:COUNT:マゾっ気
+			収入 += (収入/5)*ABL:COUNT:サドっ気
+		;ルナティック
+		CASE 4
+			;まずはプラス素質から計算
+			IF TALENT:COUNT:崩壊
+				収入 += 2000
+				適性++
+			ENDIF
+			IF TALENT:COUNT:弱味
+				収入 += 300
+				適性++
+			ENDIF
+			IF TALENT:COUNT:倒錯的
+				収入 += 500
+				適性++
+			ENDIF
+			IF TALENT:COUNT:妄信
+				収入 += 500
+				適性++
+			ENDIF
+			SIF TALENT:COUNT:狐
+				収入 += 300
+			IF TALENT:COUNT:ネクロマンサー
+				収入 += 300
+				適性++
+			ENDIF
+			SIF TALENT:COUNT:バストサイズ == 5
+				収入 += 200
+			SIF TALENT:COUNT:ファーリー
+				収入 += 200
+			IF TALENT:COUNT:無機物
+				収入 += 500
+				適性++
+			ENDIF
+			SIF TALENT:COUNT:羽
+				収入 += 100
+			SIF TALENT:COUNT:小人体型
+				収入 += 1000
+			SIF TALENT:COUNT:性器破損
+				収入 += 500
+			IF TALENT:COUNT:ふたなり
+				収入 += 300
+				適性++
+			ENDIF
+			SIF TALENT:COUNT:吸血鬼
+				収入 += 500
+			SIF TALENT:COUNT:幼児／幼児退行
+				収入 += 300
+			SIF TALENT:COUNT:幼稚
+				収入 += 300
+			IF TALENT:COUNT:狂気
+				収入 += 1000
+				適性++
+			ENDIF
+			SIF TALENT:COUNT:夢喰い
+				収入 += 200
+			SIF TALENT:COUNT:ドラゴン使い
+				収入 += 200
+			IF TALENT:COUNT:リミットバースト
+				収入 += 500
+				適性++
+			ENDIF
+			;マイナス
+			不適性 = 10
+			;娼館レベルに応じて変動
+			収入 = 収入*娼館レベル/50
+			;ここから能力で倍率計算
+			収入 += (収入/20)*ABL:COUNT:従順
+			収入 += (収入/20)*ABL:COUNT:欲望
+			収入 += (収入/20)*ABL:COUNT:技巧
+	ENDSELECT
 	;体力気力消費計算
-	IF BR:50 <= 1
-		E = D - C
-		IF E >= 1
-			BASE:COUNT:0 -= E * 10
-			BASE:COUNT:1 -= E * 30
-		ELSE
-			BASE:COUNT:0 -= 10
-			BASE:COUNT:1 -= 30
-		ENDIF
-		SIF BASE:COUNT:0 <= 0
-			BASE:COUNT:0 = 1
-	ELSEIF BR:50 <= 2
-		E = D - C
-		IF E >= 1
-			BASE:COUNT:0 -= E * 50
-			BASE:COUNT:1 -= E * 100
-		ELSE
-			BASE:COUNT:0 -= 50
-			BASE:COUNT:1 -= 100
-		ENDIF
-		SIF BASE:COUNT:0 <= 0
-			BASE:COUNT:0 = 1
-	ELSEIF BR:50 <= 3
-		E = D - C
-		IF E >= 1
-			BASE:COUNT:0 -= E * 80
-			BASE:COUNT:1 -= E * 160
-		ELSE
-			BASE:COUNT:0 -= 80
-			BASE:COUNT:1 -= 160
-		ENDIF
-		SIF BASE:COUNT:0 <= 0
-			BASE:COUNT:0 = 1
-	ELSEIF BR:50 == 4
-		E = 14 - C
-			BASE:COUNT:0 -= E * 50
-			BASE:COUNT:1 -= E * 100
-		SIF BASE:COUNT:0 <= 0
-			BASE:COUNT:0 = 1
-	ENDIF
+	LOCAL = 不適性 - 適性
+	SIF LOCAL < 1
+		LOCAL = 0
+	SELECTCASE 娼館方針
+		;ソフト
+		CASE 1
+			BASE:COUNT:体力 -= LOCAL * 10
+		;ハード
+		CASE 2
+			BASE:COUNT:体力 -= LOCAL * 50
+		;SM
+		CASE 3
+			BASE:COUNT:体力 -= LOCAL * 80
+		;狂気
+		CASE 4
+			BASE:COUNT:体力 -= LOCAL * 50
+	ENDSELECT
+	SIF BASE:COUNT:体力 <= 0
+		BASE:COUNT:体力 = 1
 
-	Z += B
+	収入合計 += 収入
 
-	W = 0
+	客の性別 = 0
+	絶頂 = 0
+	射精 = 0
+	自慰 = 0
+	フェラ = 0
+	客の射精 = 0
+	ゲイ = 0
+	レズ = 0
+	中出し = 0
+	ヴァギナ = 0
+	アナル = 0
 
-	A = 0
-	B = 0
-	C = 0
-	V = 0
-
-	E = 0
-	S = 0
-	Y = 0
-	T = 0
-
-	M = 0
-	H = 0
-	F = 0
-	P = 0
-
-	L = 0
-	G = 0
-
-	IF BR:50 == 1
-		E = RAND:6
-		S = RAND:6
-		M = RAND:4
-		F = RAND:11
-		Y = RAND:3
-		SIF TALENT:COUNT:139 || TALENT:140
-			S = RAND:4
-		SIF TALENT:COUNT:140
-			G = RAND:4
-		F++
-	ELSEIF BR:50 == 2
-		IF X == 1
-			V = RAND:11
-		ELSEIF X == 2
-			A = RAND:11
-		ENDIF
-		E = RAND:6
-		F = RAND:2
-		P = RAND:4
-		Y = RAND:6
-		SIF TALENT:COUNT:140 == 0 && W != 2
-			T = RAND:2
-		SIF TALENT:COUNT:139 || TALENT:COUNT:140
-			S = RAND:6
-		SIF TALENT:COUNT:140
-			G = RAND:6
-		SIF V == 0 && A == 0
-			A++
-	ELSEIF BR:50 == 3
-		W = RAND:4
-		A = RAND:4
-		SIF TALENT:COUNT:140 == 0
-			V = RAND:4
-		E = RAND:4
-		SIF W != 2
-			Y = RAND:2
-		SIF TALENT:COUNT:139 || TALENT:COUNT:140
-			S = RAND:6
-		M = RAND:4
-		SIF TALENT:COUNT:140 == 0 && W != 2
-			T = RAND:2
-		SIF W != 2
-			F = RAND:4
-		P = RAND:4
-		SIF TALENT:COUNT:140 == 0 && W >= 2
-			L = RAND:4
-		SIF TALENT:COUNT:140 && W <= 1
-			G = RAND:4
-		SIF A == 0 && V == 0
-			A++
-	ELSEIF BR:50 == 4
-		W = RAND:4
-		SIF TALENT:COUNT:140 == 0
-			V = RAND:31
-		A = RAND:31
-		SIF W != 2
-			Y = RAND:2
-		SIF TALENT:COUNT:140 == 0 && W >= 2
-			L = RAND:11
-		SIF TALENT:COUNT:140 && W <= 1
-			G = RAND:11
-	ENDIF
-
-	IF BR:51
-		PRINTFORMW %CALLNAME:COUNT%が今日の仕事を報告してきた。
-		PRINTFORM %CALLNAME:COUNT%は
-		IF W <= 1
-			PRINT 男性客を相手に
-		ELSEIF W == 2
-			PRINT 女性客を相手に
-		ELSEIF W == 3
-			PRINT ふたなりの女性客を相手に
-		ENDIF
-		IF W != 2
-			SIF F
-				PRINT 口
-			SIF F && (V || A)
-				PRINT と
-			SIF V
-				PRINT 膣
-			SIF V && A
-				PRINT と
-			SIF A
-				PRINT アナル
-			PRINT で奉仕
-			IF Y
-				PRINTW して射精させた。
+	SELECTCASE 娼館方針
+		CASE 1
+			絶頂 = RAND:6
+			射精 = RAND:6
+			自慰 = RAND:4
+			フェラ = RAND:8+3
+			客の射精 = RAND:3
+			SIF PENIS(COUNT)
+				射精 = RAND:4
+			SIF SEX(COUNT) == 1
+				ゲイ = RAND:4+1
+		CASE 2
+			IF VAGINA(COUNT)
+				ヴァギナ = RAND:11
 			ELSE
-				PRINTW したが、射精させるには至らなかった。
+				アナル = RAND:11
 			ENDIF
+			絶頂 = RAND:6
+			フェラ = RAND:2
+			;P = RAND:4
+			客の射精 = RAND:6
+			SIF VAGINA(COUNT) && 客の性別 != 2
+				中出し = RAND:2
+			SIF PENIS(COUNT)
+				射精 = RAND:6
+			SIF SEX(COUNT) == 1
+				ゲイ = RAND:10+3
+			SIF ヴァギナ == 0 && アナル == 0
+				アナル++
+			客の射精 += 中出し
+		CASE 3
+			客の性別 = RAND:4
+			アナル = RAND:4
+			SIF VAGINA(COUNT)
+				ヴァギナ = RAND:4
+			絶頂 = RAND:4
+			SIF 客の性別 != 2
+				客の射精 = RAND:2
+			SIF PENIS(COUNT)
+				射精 = RAND:6
+			自慰 = RAND:4+3
+			SIF VAGINA(COUNT) && 客の性別 != 2
+				中出し = RAND:2
+			SIF 客の性別 != 2
+				フェラ = RAND:4
+			;P = RAND:4
+			SELECTCASE SEX(COUNT)
+				CASE 1
+					SIF 客の性別 <= 1
+						ゲイ = RAND:4+2
+				CASE 2
+					SIF 客の性別 >= 2
+						レズ = RAND:4+2
+			ENDSELECT
+			SIF アナル == 0 && ヴァギナ == 0
+				アナル++
+			客の射精 += 中出し
+		CASE 4
+			客の性別 = RAND:4
+			SIF VAGINA(COUNT)
+				ヴァギナ = RAND:26+5
+			アナル = RAND:26+5
+			SIF 客の性別 != 2
+				客の射精 = RAND:2
+			SIF PENIS(COUNT)
+				射精 = RAND:11
+			SELECTCASE SEX(COUNT)
+				CASE 1
+					SIF 客の性別 <= 1
+						ゲイ = RAND:10+1
+				CASE 2
+					SIF 客の性別 >= 2
+						レズ = RAND:10+1
+			ENDSELECT
+	ENDSELECT
+
+	IF FLAG:娼館報告 && 娼館方針
+		PRINTFORML %CALLNAME:COUNT%が今日の仕事を報告してきた。
+		PRINTFORM %CALLNAME:COUNT%は
+		SELECTCASE 客の性別
+			CASE IS <= 1
+				PRINT 男性客を相手に
+			CASE 2
+				PRINT 女性客を相手に
+			CASE 3
+				PRINT ふたなりの女性客を相手に
+		ENDSELECT
+		IF 客の性別 != 2
+				SIF フェラ
+					PRINT 口
+				SIF フェラ && (ヴァギナ || アナル)
+					PRINT と
+				SIF ヴァギナ
+					PRINT 膣
+				SIF ヴァギナ && アナル
+					PRINT と
+				SIF アナル
+					PRINT アナル
+				PRINT で奉仕
+				IF 客の射精
+					PRINTL して射精させた。
+				ELSE
+					PRINTL したが、射精させるには至らなかった。
+				ENDIF
 		ENDIF
-		SIF W != 2
+		SIF 客の性別 != 2
 			PRINTFORM %CALLNAME:COUNT%は
-		IF A || V
-			SIF A
+		IF アナル || ヴァギナ
+			SIF アナル
 				PRINT アナル
-			SIF A && V
+			SIF アナル && ヴァギナ
 				PRINT や
-			SIF V
-				PRINT ヴァギナ
+			SIF ヴァギナ
+				PRINT 膣内
 			PRINT を
-			SIF W == 2
+			SIF 客の性別 == 2
 				PRINT 指や道具で
-			SIF V > 7 || A > 7
+			SIF ヴァギナ > 7 || アナル > 7
 				PRINT 激しく
 			PRINT 犯された
-			IF S == 0
-				PRINTW ようだ。
+			IF 射精 == 0
+				PRINTL ようだ。
 			ELSE
-				PRINTL 挙句、
-				IF T
+				PRINT 挙句、
+				IF 中出し
 					PRINT 膣に中出しされながら
-				ELSEIF Y && A
+				ELSEIF 客の射精 && アナル
 					PRINT アナルに中出しされながら
-				ELSEIF V > A
+				ELSEIF ヴァギナ > アナル
 					PRINT ヴァギナへの快感で
 				ELSE
 					PRINT アナルへの快感で
 				ENDIF
-				SIF S >= 3
+				SIF 射精 >= 3
 					PRINT 何回も
-				PRINTW 射精してしまったようだ。
+				PRINTL 射精してしまったようだ。
 			ENDIF
 		ENDIF
-		IF M
+		IF 自慰
 			PRINT その後、自慰を命じられ
-			IF S
-				PRINTFORMW 、%CALLNAME:COUNT%は上手に自分で射精できたようだ。
-			ELSEIF E
-				PRINTFORMW 、%CALLNAME:COUNT%は上手に自分で絶頂に達せたようだ。
+			IF 射精
+				PRINTFORML 、%CALLNAME:COUNT%は上手に自分で射精できたようだ。
+			ELSEIF 絶頂
+				PRINTFORML 、%CALLNAME:COUNT%は上手に自分で絶頂に達せたようだ。
 			ELSE
-				PRINTFORMW たが、一人で絶頂を迎えることはできなかったらしい。
+				PRINTFORML たが、一人で絶頂を迎えることはできなかったらしい。
 			ENDIF
+		ENDIF
+		WAIT
+	ENDIF
+	SIF ヴァギナ
+		PRINTFORML Ｖ経験+{ヴァギナ}(%CALLNAME:COUNT%)
+	IF ヴァギナ && TALENT:COUNT:処女
+		TALENT:COUNT:処女 = 0
+		IF TALENT:性転換済
+			VIRGIN:COUNT:11 = 娼館に訪れた客
+		ELSE
+			VIRGIN:COUNT:1 = 娼館に訪れた客
 		ENDIF
 	ENDIF
-	SIF V
-		PRINTFORML V経験+{V} (%CALLNAME:COUNT%)
-		EXP:COUNT:0 += V
-	SIF V && TALENT:COUNT:0
-		TALENT::COUNT:0 = 0
-	SIF A
-		PRINTFORML A経験+{A} (%CALLNAME:COUNT%)
-		EXP:COUNT:1 += A
-	SIF E
-		PRINTFORML 絶頂経験+{E} (%CALLNAME:COUNT%)
-		EXP:COUNT:2 += E
-	SIF S
-		PRINTFORML 射精経験+{S} (%CALLNAME:COUNT%)
-		EXP:COUNT:3 += S
-	SIF T
-		PRINTFORML 膣射経験+{T} (%CALLNAME:COUNT%)
-		EXP:COUNT:5 += T
-	SIF Y
-		PRINTFORML 精液経験+{Y} (%CALLNAME:COUNT%)
-		EXP:COUNT:20 += Y
-	SIF M
-		PRINTFORML 自慰経験+{M} (%CALLNAME:COUNT%)
-		EXP:COUNT:10 += M
-	SIF F
-		PRINTFORML フェラ経験+{F} (%CALLNAME:COUNT%)
-		EXP:COUNT:22 += F
-	SIF L
-		PRINTFORML レズ経験+{L} (%CALLNAME:COUNT%)
-		EXP:COUNT:40 += L
-	SIF G
-		PRINTFORML ゲイ経験+{G} (%CALLNAME:COUNT%)
-		EXP:COUNT:41 += G
-	SIF W == 2 && TALENT:COUNT:2
-		TALENT:COUNT:2 = 0
+	SIF アナル
+		PRINTFORML Ａ経験+{アナル}(%CALLNAME:COUNT%)
+	SIF 絶頂
+		PRINTFORML 絶頂経験+{絶頂}(%CALLNAME:COUNT%)
+	SIF 射精
+		PRINTFORML 射精経験+{射精}(%CALLNAME:COUNT%)
+	SIF 中出し
+		PRINTFORML 膣射経験+{中出し}(%CALLNAME:COUNT%)
+		EXP:COUNT:膣射経験 += 中出し
+	SIF 客の射精
+		PRINTFORML 精液経験+{客の射精}(%CALLNAME:COUNT%)
+	SIF 自慰
+		PRINTFORML 自慰経験+{自慰}(%CALLNAME:COUNT%)
+	SIF フェラ
+		PRINTFORML フェラ経験+{フェラ}(%CALLNAME:COUNT%)
+		EXP:COUNT:フェラ経験 += フェラ
+	SIF レズ
+		PRINTFORML レズ経験+{レズ}(%CALLNAME:COUNT%)
+	SIF ゲイ
+		PRINTFORML ゲイ経験+{ゲイ}(%CALLNAME:COUNT%)
+
+	EXP:COUNT:Ｖ経験 += ヴァギナ
+	EXP:COUNT:Ａ経験 += アナル
+	EXP:COUNT:絶頂経験 += 絶頂
+	EXP:COUNT:射精経験 += 射精
+	EXP:COUNT:精液経験 += 客の射精
+	EXP:COUNT:自慰経験 += 自慰
+	EXP:COUNT:レズ経験 += レズ
+	EXP:COUNT:ゲイ経験 += ゲイ
+	;お風呂場があるとストレス溜まりづらくなる
+	IF ITEM:お風呂場
+		CFLAG:COUNT:ストレス値 += 娼館方針
+	ELSE
+		CFLAG:COUNT:ストレス値 += 娼館方針*2
+	ENDIF
+	;換気口あるとさらに軽減
+	SIF ITEM:換気口
+		CFLAG:COUNT:ストレス値 -= 1
 REND
 
+;方針とポイントに応じて上下する
+SELECTCASE 娼館方針
+	;ソフト
+	CASE 1
+		収入合計 += 収入合計*ソフトポイント/100
+	;ハード
+	CASE 2
+		収入合計 += 収入合計*ハードポイント/100
+	;SM
+	CASE 3
+		収入合計 += 収入合計*SMポイント/100
+	;狂気
+	CASE 4
+		収入合計 += 収入合計*狂気ポイント/100
+ENDSELECT
 
-PRINTFORML 娼館経営の収入が${Z}入りました
-MONEY += Z
-BR:14 += Z
-$LEVELUP
-X = 1000 * (BR:0 * BR:0)
-IF BR:14 >= X
-	BR:0++
-	GOTO LEVELUP
+;隠し撮りビデオを売却して追加報酬
+SIF ITEM:隠しカメラ
+	収入合計 += 収入合計/10
+
+IF 収入合計
+	PRINTFORML 娼館経営の収入が${収入合計}入りました
+	MONEY += 収入合計
+	娼館総収入 += 収入合計
+	DO
+		;高級ベッドがあるとレベルが上がりやすくなる
+		IF ITEM:高級ベッド
+			LOCAL = 700*(娼館レベル*娼館レベル)
+		ELSE
+			LOCAL = 1000*(娼館レベル*娼館レベル)
+		ENDIF
+		SIF 娼館総収入 >= LOCAL
+			娼館レベル++
+	LOOP 娼館総収入 >= LOCAL
+
+	娼館レベルアップ必要額 = LOCAL-娼館総収入
+
+	FOR LCOUNT, 1500, 1580
+		SIF ITEM:LCOUNT
+			支出 += ITEMPRICE:LCOUNT
+	NEXT
+	SIF 支出
+		PRINTFORML 娼館経営の支出は${支出}でした
+	MONEY -= 支出
 ENDIF
-BR:15 = X - BR:14
-
-;消費アイテム消費計算
-;REPEAT 100
-;	A = COUNT + 99
-;	SIF BR_ITEM_PERSONAL:A
-;		BR_ITEM:A -= 1
-;	SIF BR_ITEM:A == 0
-		BR_ITEM_PERSONAL:A = 0
-;REND
-
 
 
