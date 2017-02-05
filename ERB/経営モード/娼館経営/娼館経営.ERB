@@ -7,9 +7,6 @@ SIF 娼館広さ == 0
 SIF 娼館部屋数 == 0
 	娼館部屋数 = 1
 
-娼館広さ = 20
-娼館部屋数 = 20
-
 DRAWLINE
 PRINTFORML 娼館レベル:{娼館レベル}
 PRINTFORML 次のランクアップまであと${娼館レベルアップ必要額}の売上が必要
@@ -779,18 +776,18 @@ DO
 				RESTART
 			ENDIF
 			SELECTCASE CFLAG:RESULT:配属
-				CASE 0
+				CASE 2
+					PRINTFORMW %CALLNAME:RESULT%が帰宅しました
+					CFLAG:RESULT:配属 = 0
+					CFLAG:RESULT:配属完了 = 0
+					RESTART
+				CASEELSE
 					PRINTFORMW %CALLNAME:RESULT%を配属しました
 					CFLAG:RESULT:配属 = 2
 					SIF TARGET == RESULT
 						TARGET = -1
 					SIF ASSI == RESULT
 						ASSI = -1
-					RESTART
-				CASE 1
-					PRINTFORMW %CALLNAME:RESULT%が帰宅しました
-					CFLAG:RESULT:配属 = 0
-					CFLAG:RESULT:配属完了 = 0
 					RESTART
 			ENDSELECT
 	ENDSELECT
@@ -916,13 +913,24 @@ SIF ITEM:わけのわからないもの
 #DIM DYNAMIC 絶頂
 #DIM DYNAMIC 射精
 #DIM DYNAMIC 自慰
+#DIM DYNAMIC 自慰で射精
 #DIM DYNAMIC フェラ
+#DIM DYNAMIC フェラで射精
 #DIM DYNAMIC 客の射精
 #DIM DYNAMIC ゲイ
 #DIM DYNAMIC レズ
 #DIM DYNAMIC 中出し
+#DIM DYNAMIC アナル中出し
 #DIM DYNAMIC ヴァギナ
 #DIM DYNAMIC アナル
+#DIM DYNAMIC 手コキ
+#DIM DYNAMIC 手コキで射精
+#DIM DYNAMIC 足コキ
+#DIM DYNAMIC 足コキで射精
+#DIM DYNAMIC 兜合わせ
+#DIM DYNAMIC 兜合わせで射精
+#DIM DYNAMIC 素股
+#DIM DYNAMIC 素股で射精
 
 #DIM LCOUNT
 
@@ -945,13 +953,16 @@ REPEAT CHARANUM
 		CFLAG:COUNT:配属完了 = 1
 		CONTINUE
 	ENDIF
+	DRAWLINE
 	;体力不足
-	IF BASE:COUNT:体力 <= 500
+	IF BASE:COUNT:体力 <= 1000
 		PRINTFORML %CALLNAME:COUNT%は疲労で娼館を休みました
+		CFLAG:COUNT:休憩 = 1
 		CONTINUE
 	ENDIF
 	IF CFLAG:COUNT:ストレス値 > 90 && !TALENT:COUNT:崩壊
 		PRINTFORML %CALLNAME:COUNT%はストレス過多のため、娼館を休みました
+		CFLAG:COUNT:休憩 = 1
 		CONTINUE
 	ENDIF
 	;$1000は保証
@@ -1465,20 +1476,20 @@ REPEAT CHARANUM
 	;体力気力消費計算
 	LOCAL = 不適性 - 適性
 	SIF LOCAL < 1
-		LOCAL = 0
+		LOCAL = 1
 	SELECTCASE 娼館方針
 		;ソフト
 		CASE 1
-			BASE:COUNT:体力 -= LOCAL * 10
+			BASE:COUNT:体力 -= LOCAL * 50
 		;ハード
 		CASE 2
-			BASE:COUNT:体力 -= LOCAL * 50
+			BASE:COUNT:体力 -= LOCAL * 200
 		;SM
 		CASE 3
-			BASE:COUNT:体力 -= LOCAL * 80
+			BASE:COUNT:体力 -= LOCAL * 400
 		;狂気
 		CASE 4
-			BASE:COUNT:体力 -= LOCAL * 50
+			BASE:COUNT:体力 -= LOCAL * 250
 	ENDSELECT
 	SIF BASE:COUNT:体力 <= 0
 		BASE:COUNT:体力 = 1
@@ -1489,25 +1500,54 @@ REPEAT CHARANUM
 	絶頂 = 0
 	射精 = 0
 	自慰 = 0
+	自慰で射精 = 0
 	フェラ = 0
+	フェラで射精 = 0
 	客の射精 = 0
 	ゲイ = 0
 	レズ = 0
 	中出し = 0
+	アナル中出し = 0
 	ヴァギナ = 0
 	アナル = 0
+	手コキ = 0
+	手コキで射精 = 0
+	足コキ = 0
+	足コキで射精 = 0
+	兜合わせ = 0
+	兜合わせで射精 = 0
+	素股 = 0
+	素股で射精 = 0
+
 
 	SELECTCASE 娼館方針
 		CASE 1
 			絶頂 = RAND:6
-			射精 = RAND:6
+			;射精 = RAND:6
 			自慰 = RAND:4
+			SIF 自慰 && PENIS(COUNT)
+				自慰で射精 = RAND:2
 			フェラ = RAND:8+3
-			客の射精 = RAND:3
-			SIF PENIS(COUNT)
-				射精 = RAND:4
+			フェラで射精 = RAND:3
+			IF PENIS(COUNT)
+				兜合わせ = RAND:3
+				SIF 兜合わせ
+					兜合わせで射精 = RAND:2
+				射精 = RAND:3+自慰で射精
+			ELSE
+				素股 = RAND:3
+				SIF 素股
+					素股で射精 = RAND:2
+			ENDIF
+			足コキ = RAND:3
+			SIF 足コキ == 2
+				足コキで射精 = RAND:2
+			手コキ = RAND:3
+			SIF 手コキ == 2
+				手コキで射精 = RAND:2
 			SIF SEX(COUNT) == 1
 				ゲイ = RAND:4+1
+			客の射精 = フェラで射精+手コキで射精+足コキで射精
 		CASE 2
 			IF VAGINA(COUNT)
 				ヴァギナ = RAND:11
@@ -1516,33 +1556,47 @@ REPEAT CHARANUM
 			ENDIF
 			絶頂 = RAND:6
 			フェラ = RAND:2
-			;P = RAND:4
-			客の射精 = RAND:6
+			フェラで射精 = フェラ
+			アナル中出し = RAND:3
 			SIF VAGINA(COUNT) && 客の性別 != 2
-				中出し = RAND:2
+				中出し = RAND:3
 			SIF PENIS(COUNT)
 				射精 = RAND:6
 			SIF SEX(COUNT) == 1
 				ゲイ = RAND:10+3
 			SIF ヴァギナ == 0 && アナル == 0
 				アナル++
-			客の射精 += 中出し
+			客の射精 = 中出し+アナル中出し+フェラで射精
 		CASE 3
 			客の性別 = RAND:4
-			アナル = RAND:4
-			SIF VAGINA(COUNT)
-				ヴァギナ = RAND:4
-			絶頂 = RAND:4
-			SIF 客の性別 != 2
+			;たまにマゾが来る
+			IF 客の性別 != 2 && RAND:5 == 0
+				手コキで射精 = RAND:3+1
+				手コキ = 手コキで射精
+				足コキで射精 = RAND:3+1
+				足コキ = 足コキで射精
+			ELSE
+				アナル = RAND:4
+				SIF VAGINA(COUNT)
+					ヴァギナ = RAND:4
+				絶頂 = RAND:4
+				自慰 = RAND:4+3
+				SIF 自慰 && PENIS(COUNT)
+					自慰で射精 = RAND:3
+				SIF アナル && RAND:4 == 0
+					アナル中出し = 1
+				SIF VAGINA(COUNT) && 客の性別 != 2 && RAND:3 == 0
+					中出し = 1
+				SIF アナル == 0 && ヴァギナ == 0
+					アナル++
 				客の射精 = RAND:2
+			ENDIF
 			SIF PENIS(COUNT)
-				射精 = RAND:6
-			自慰 = RAND:4+3
-			SIF VAGINA(COUNT) && 客の性別 != 2
-				中出し = RAND:2
+				射精 = RAND:6+自慰で射精
 			SIF 客の性別 != 2
 				フェラ = RAND:4
-			;P = RAND:4
+			SIF フェラ
+				フェラで射精 = RAND:フェラ
 			SELECTCASE SEX(COUNT)
 				CASE 1
 					SIF 客の性別 <= 1
@@ -1551,9 +1605,7 @@ REPEAT CHARANUM
 					SIF 客の性別 >= 2
 						レズ = RAND:4+2
 			ENDSELECT
-			SIF アナル == 0 && ヴァギナ == 0
-				アナル++
-			客の射精 += 中出し
+			客の射精 = 中出し+アナル中出し+手コキで射精+足コキで射精+フェラで射精
 		CASE 4
 			客の性別 = RAND:4
 			SIF VAGINA(COUNT)
@@ -1576,35 +1628,108 @@ REPEAT CHARANUM
 	IF FLAG:娼館報告 && 娼館方針
 		PRINTFORML %CALLNAME:COUNT%が今日の仕事を報告してきた。
 		PRINTFORM %CALLNAME:COUNT%は
+		SIF 娼館方針 == 3 && 手コキで射精
+			PRINT マゾヒストの
 		SELECTCASE 客の性別
 			CASE IS <= 1
 				PRINT 男性客を相手に
 			CASE 2
 				PRINT 女性客を相手に
 			CASE 3
-				PRINT ふたなりの女性客を相手に
+				PRINT ふたなり女性客を相手に
 		ENDSELECT
 		IF 客の性別 != 2
-				SIF フェラ
-					PRINT 口
-				SIF フェラ && (ヴァギナ || アナル)
-					PRINT と
+			IF フェラ
+				PRINT 口で奉仕
+				IF フェラで射精
+					PRINTFORM して{フェラで射精}回射精させた
+				ELSE
+					PRINT した
+				ENDIF
+				IF ヴァギナ || アナル || 手コキ || 足コキ || 素股 || 兜合わせ
+					PRINT 後、
+				ELSE
+					PRINT 。
+				ENDIF
+			ENDIF
+			IF 手コキ || 足コキ
+				IF 手コキ && 足コキ
+					IF 手コキで射精 && 足コキで射精
+						PRINTFORM 手で{手コキで射精}回、足で{足コキで射精}回イかせ
+					ELSEIF 手コキで射精 || 足コキで射精
+						PRINTFORM 手と足で扱いて{手コキで射精+足コキで射精}回イかせ
+					ELSE
+						PRINTFORM 手と足で扱
+					ENDIF
+				ELSEIF 手コキ
+					IF 手コキで射精
+						PRINTFORM 手で{手コキで射精}回イかせ
+					ELSE
+						PRINT 手で扱
+					ENDIF
+				ELSEIF 足コキ
+					IF 足コキで射精
+						PRINTFORM 足で{足コキで射精}回イかせ
+					ELSE
+						PRINT 足で扱
+					ENDIF
+				ENDIF
+				IF 手コキで射精 || 足コキで射精
+					IF ヴァギナ || アナル || 素股 || 兜合わせ
+						PRINT 、
+					ELSE
+						PRINT た。
+					ENDIF
+				ELSE
+					IF ヴァギナ || アナル || 素股 || 兜合わせ
+						PRINT き、
+					ELSE
+						PRINT いたが、射精させるには至らなかった。
+					ENDIF
+				ENDIF
+			ENDIF
+			IF 兜合わせ
+				PRINTFORM 客と陰茎を擦り合わせ
+				IF 兜合わせで射精
+					PRINTFORM て{兜合わせで射精}回射精させた。
+				ELSE
+					PRINT たが、射精させるには至らなかった。
+				ENDIF
+			ENDIF
+			IF 素股
+				PRINTFORM 性行為の代わりに秘部を擦り合わせ
+				IF 素股で射精
+					PRINTFORM て{素股で射精}回射精させた。
+				ELSE
+					PRINT たが、射精させるには至らなかった。
+				ENDIF
+			ENDIF
+			IF ヴァギナ || アナル
 				SIF ヴァギナ
 					PRINT 膣
 				SIF ヴァギナ && アナル
 					PRINT と
 				SIF アナル
 					PRINT アナル
-				PRINT で奉仕
-				IF 客の射精
-					PRINTL して射精させた。
+				PRINT で性行為に
+				IF 中出し || アナル中出し
+					PRINT 及び、
+					IF 中出し && アナル中出し
+						PRINTFORM 膣に{中出し}回、アナルに{アナル中出し}回中出しされた。
+					ELSEIF 中出し
+						PRINTFORM {中出し}回中出しされた。
+					ELSEIF アナル中出し
+						PRINTFORM {アナル中出し}回中出しされた。
+					ENDIF
 				ELSE
-					PRINTL したが、射精させるには至らなかった。
+					PRINT 及んだが、射精させるには至らなかった。
 				ENDIF
+			ENDIF
+			PRINTL 
 		ENDIF
-		SIF 客の性別 != 2
-			PRINTFORM %CALLNAME:COUNT%は
-		IF アナル || ヴァギナ
+		IF (アナル || ヴァギナ) && (絶頂 || 射精)
+			SIF 客の性別 != 2
+				PRINTFORM %CALLNAME:COUNT%は
 			SIF アナル
 				PRINT アナル
 			SIF アナル && ヴァギナ
@@ -1617,27 +1742,31 @@ REPEAT CHARANUM
 			SIF ヴァギナ > 7 || アナル > 7
 				PRINT 激しく
 			PRINT 犯された
-			IF 射精 == 0
+			IF 射精 == 0 && 絶頂 == 0
 				PRINTL ようだ。
 			ELSE
 				PRINT 挙句、
 				IF 中出し
 					PRINT 膣に中出しされながら
-				ELSEIF 客の射精 && アナル
+				ELSEIF アナル中出し
 					PRINT アナルに中出しされながら
 				ELSEIF ヴァギナ > アナル
 					PRINT ヴァギナへの快感で
 				ELSE
 					PRINT アナルへの快感で
 				ENDIF
-				SIF 射精 >= 3
+				SIF 射精 >= 3 && 絶頂 >= 3
 					PRINT 何回も
-				PRINTL 射精してしまったようだ。
+				IF 射精
+					PRINTL 射精してしまったようだ。
+				ELSE
+					PRINTL 絶頂に達してしまったようだ。
+				ENDIF
 			ENDIF
 		ENDIF
 		IF 自慰
 			PRINT その後、自慰を命じられ
-			IF 射精
+			IF 自慰で射精
 				PRINTFORML 、%CALLNAME:COUNT%は上手に自分で射精できたようだ。
 			ELSEIF 絶頂
 				PRINTFORML 、%CALLNAME:COUNT%は上手に自分で絶頂に達せたようだ。
@@ -1665,14 +1794,12 @@ REPEAT CHARANUM
 		PRINTFORML 射精経験+{射精}(%CALLNAME:COUNT%)
 	SIF 中出し
 		PRINTFORML 膣射経験+{中出し}(%CALLNAME:COUNT%)
-		EXP:COUNT:膣射経験 += 中出し
 	SIF 客の射精
 		PRINTFORML 精液経験+{客の射精}(%CALLNAME:COUNT%)
 	SIF 自慰
 		PRINTFORML 自慰経験+{自慰}(%CALLNAME:COUNT%)
 	SIF フェラ
 		PRINTFORML フェラ経験+{フェラ}(%CALLNAME:COUNT%)
-		EXP:COUNT:フェラ経験 += フェラ
 	SIF レズ
 		PRINTFORML レズ経験+{レズ}(%CALLNAME:COUNT%)
 	SIF ゲイ
@@ -1680,6 +1807,8 @@ REPEAT CHARANUM
 
 	EXP:COUNT:Ｖ経験 += ヴァギナ
 	EXP:COUNT:Ａ経験 += アナル
+	EXP:COUNT:膣射経験 += 中出し
+	EXP:COUNT:フェラ経験 += フェラ
 	EXP:COUNT:絶頂経験 += 絶頂
 	EXP:COUNT:射精経験 += 射精
 	EXP:COUNT:精液経験 += 客の射精
@@ -1720,6 +1849,7 @@ SIF ITEM:隠しカメラ
 IF 収入合計
 	PRINTFORML 娼館経営の収入が${収入合計}入りました
 	MONEY += 収入合計
+	娼館前日の収入 = 収入合計
 	娼館総収入 += 収入合計
 	DO
 		;高級ベッドがあるとレベルが上がりやすくなる
