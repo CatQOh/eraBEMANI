@@ -278,24 +278,66 @@ ELSE
 	PRINTL 
 	RESETCOLOR
 ENDIF
-PRINTL 　[8] 着衣設定の初期化
+
+;下半身上着もしくは全身上着を着用時、挿入可フラグの変更ができる
+IF CSTR:下半身上着 != "" || CSTR:全身上着 != ""
+	PRINTFORML 　[7] 着衣状態での性行為可否の変更(現在:\@ CFLAG:挿入可 ? 可能 # 不可能 \@)
+ELSE
+	SETCOLOR 120, 120, 120
+	PRINTPLAIN 　[-] 着衣状態での性行為可否の変更
+	PRINTL 
+	RESETCOLOR
+ENDIF
+
+;全身上着の着用時、全身上着の性質の変更ができる
+IF CSTR:全身上着 != ""
+	PRINTFORM 　[8] %CSTR:全身上着%の性質の変更(現在:
+	SELECTCASE CFLAG:着衣併用
+		CASE 0
+			PRINTL 通常の全身上着)
+		CASE 1
+			PRINTL 上着との併用が可能)
+		CASE 2
+			PRINTL 下着との併用が不可能)
+	ENDSELECT
+ELSE
+	SETCOLOR 120, 120, 120
+	PRINTPLAIN 　[-] 全身上着の性質の変更
+	PRINTL 
+	RESETCOLOR
+ENDIF
+
+PRINTL 　[9] 着衣設定の初期化
 DRAWLINE
 PRINTPLAIN 　COORDINATE　
-PRINTL [9] 戻る
+PRINTL [10] 戻る
 DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 0 TO 6
 			CALL CHARA_CLOTHES_SETTINGNEXT, RESULT
 			BREAK
+		CASE 7
+			INVERTBIT CFLAG:挿入可, 0
+			RESTART
 		CASE 8
+			PRINTFORML □%CSTR:全身上着%の性質を選択してください
+			PRINTL 　[0] - 通常の全身上着(上半身上着、下半身上着との併用が不可)
+			PRINTL 　[1] - 上着の上に着用するもの(上半身上着、下半身上着との併用が可能)
+			PRINTL 　[2] - 肌着も兼ねるもの(上半身上着、下半身上着、及び下着との併用が不可能)
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1, 2)
+			CFLAG:着衣併用 = RESULT
+			RESTART
+		CASE 9
 			;対象が「あなた」
 			IF NO:TARGET == 0
 				;「あなた」が男の場合
 				SELECTCASE SEX(TARGET)
 					CASE 1
 						FOR COUNT, 100, 107
-							CSTR:COUNT = 0
+							CSTR:COUNT = 
 						NEXT
 						CSTR:MASTER:上半身上着 = シャツ
 						CSTR:MASTER:下半身上着 = ズボン
@@ -303,7 +345,7 @@ DO
 					;「あなた」が女の場合
 					CASE 2
 						FOR COUNT, 100, 107
-							CSTR:COUNT = 0
+							CSTR:COUNT = 
 						NEXT
 						CSTR:MASTER:全身上着 = ワンピース
 						CSTR:MASTER:上半身下着 = ブラジャー
@@ -319,16 +361,16 @@ DO
 			ENDIF
 			PRINTFORMW ＜%NAME:TARGET%の服装を初期化しました＞
 			RESTART
-		CASE 9
+		CASE 10
 			RETURN 0
 	ENDSELECT
-LOOP LOOPRES(8, 9)
+LOOP 1
 
 RESTART
 
 @CHARA_CLOTHES_SETTINGNEXT, ARG
 DRAWLINE
-PRINTL □何を着せますか？
+PRINTL □何を着せますか？(番号の他、自由入力も可能です)
 PRINTL 　[0] 何も着せない
 FOR COUNT, (ARG*100), (ARG*100+100)
 	SIF STR:COUNT == ""
@@ -339,10 +381,17 @@ DRAWLINE
 PRINTPLAIN 　COORDINATE　
 PRINTL [1000] 戻る
 DO
-	INPUT
-	SELECTCASE RESULT
+	INPUTS
+	
+	IF ISNUMERIC(RESULTS)
+		LOCAL = TOINT(RESULTS)
+	ELSE
+		LOCAL = -1
+	ENDIF
+	
+	SELECTCASE LOCAL
 		CASE 0 TO 999
-			CSTR:(ARG+100) = %STR:RESULT%
+			CSTR:(ARG+100) = %STR:LOCAL%
 			SELECTCASE CSTR:全身上着
 				CASE "コート", "エプロン", "ローブ"
 					CFLAG:着衣併用 = 1
@@ -363,6 +412,26 @@ DO
 				CASEELSE
 					CFLAG:挿入可 = 0
 			ENDSELECT
+			SELECTCASE ARG
+				CASE 1, 2
+					SIF CFLAG:着衣併用 != 1
+						CSTR:全身上着 = 
+				CASE 4, 5
+					SIF CFLAG:着衣併用 == 2
+						CSTR:全身上着 = 
+				CASE 3
+					IF CFLAG:着衣併用 != 1
+						CSTR:上半身上着 = 
+						CSTR:下半身上着 = 
+					ENDIF
+					IF CFLAG:着衣併用 == 2
+						CSTR:上半身下着 = 
+						CSTR:下半身下着 = 
+					ENDIF
+			ENDSELECT
+			BREAK
+		CASE -1
+			CSTR:(ARG+100) = %RESULTS%
 			SELECTCASE ARG
 				CASE 1, 2
 					SIF CFLAG:着衣併用 != 1
