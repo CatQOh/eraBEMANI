@@ -43,6 +43,8 @@ ELSE
 	HTML_PRINT LOCALS
 	LOCALS = <button value='5' title='ゲームセンターにアーケードゲーム筐体を設置します'>　[5] - 筐体設置</button>
 	HTML_PRINT LOCALS
+	LOCALS = <button value='6' title='ゲームセンターの人員から店長を任命します'>　[6] - 店長任命</button>
+	HTML_PRINT LOCALS
 	IF FLAG:ゲーセン営業中
 		LOCALS = <button value='9' title='ゲームセンターを一時休業し、収入と支出が行われないようにします'>　[9] - 一時休業</button>
 	ELSE
@@ -76,6 +78,8 @@ DO
 			CALL GC_PERSONAL
 		CASE 5
 			CALL SELECT_FLOOR
+		CASE 6
+			CALL GC_LEADER
 		CASE 9
 			IF FLAG:ゲーセン営業中
 				PRINTW ゲームセンターの経営を一時中断しました
@@ -672,6 +676,53 @@ LOOP LOOPRES(999, 1001, 1002)
 
 RESTART
 
+;店長の任命----------------------------------------------------
+@GC_LEADER
+LOCAL = 0
+REPEAT CHARANUM
+	SIF CFLAG:ゲーセン店長
+		LOCAL = COUNT
+REND
+DRAWLINE
+
+PRINT □店長に任命するキャラを選んでください(現在の店長:
+IF LOCAL
+	PRINTFORML %NAME:LOCAL%)
+ELSE
+	PRINTL 不在)
+ENDIF
+REPEAT CHARANUM
+	IF CFLAG:COUNT:配属 == 1
+		PRINTFORM 　[{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(家事技能:{ABL:COUNT:家事技能, 2, LEFT} 工作技能:{ABL:COUNT:工作技能, 2, LEFT} 料理技能:{ABL:COUNT:料理技能, 2, LEFT}
+		SIF TALENT:COUNT:料理人
+			PRINT  料理人
+		SIF TALENT:COUNT:専業主婦
+			PRINT  専業主婦
+		SIF TALENT:COUNT:工学博士
+			PRINT  工学博士
+		PRINT )
+	ENDIF
+REND
+
+DRAWLINE
+PRINTPLAIN 　LEADER　
+PRINTL [0] 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASEELSE
+			IF CFLAG:RESULT:配属 == 1
+				PRINTFORMW %NAME:RESULT%を店長に任命しました
+				CFLAG:LOCAL:ゲーセン店長 = 0
+				CFLAG:RESULT:ゲーセン店長 = 1
+				RESTART
+			ENDIF
+	ENDSELECT
+LOOP 1
+
 ;階層選択処理----------------------------------------------------
 @SELECT_FLOOR
 #DIM ページ数
@@ -1057,8 +1108,13 @@ SIF GCフードコート
 ;奴隷にも給料はちゃんと払う
 REPEAT CHARANUM
 	;日給500……この世界の金銭価値はいかほどか
-	SIF CFLAG:COUNT:配属 == 1
-		支出 += 500
+	IF CFLAG:COUNT:配属 == 1
+		IF CFLAG:COUNT:ゲーセン店長
+			支出 += 1000
+		ELSE
+			支出 += 500
+		ENDIF
+	ENDIF
 REND
 
 ;支出処理--------------------------------------
@@ -1085,11 +1141,17 @@ FOR LCOUNT, 1, CHARANUM
 	SIF TALENT:LCOUNT:工学博士
 		LOCAL += 5
 	LOCAL /= 2
+	SIF CFLAG:LCOUNT:ゲーセン店長
+		LOCAL *= 2
 	SIF LOCAL > 10
 		LOCAL = 10
 	LOCAL:1 += LOCAL
 	;ついでに配属中のキャラには実務経験を加算
-	EXP:LCOUNT:実務経験++
+	IF CFLAG:LCOUNT:ゲーセン店長
+		EXP:LCOUNT:実務経験 += 10
+	ELSE
+		EXP:LCOUNT:実務経験++
+	ENDIF
 NEXT
 
 GCメンテ = LOCAL:1
