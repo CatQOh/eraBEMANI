@@ -1,5 +1,4 @@
 ﻿@STRATEGY_BROTHEL
-;CALL BR_STR
 CALL BR_ITEM_POINT
 
 SIF 娼館広さ == 0
@@ -11,15 +10,22 @@ DRAWLINE
 PRINTFORML 娼館レベル:{娼館レベル}
 PRINTFORML 次のランクアップまであと${娼館レベルアップ必要額}の売上が必要
 DRAWLINE
-PRINTL [1] - 道具配置
-PRINTL [2] - 物件増設
-PRINTL [3] - 経営方針
-PRINTL [4] - 人員配置
+
+LOCALS = <button value='1' title='娼館に道具を配置します'>　[1] - 道具配置</button>
+HTML_PRINT LOCALS
+LOCALS = <button value='2' title='娼館用の物件を改装します'>　[2] - 物件増築</button>
+HTML_PRINT LOCALS
+LOCALS = <button value='3' title='娼館の運営方針を決定します'>　[3] - 運営方針</button>
+HTML_PRINT LOCALS
+LOCALS = <button value='4' title='娼館で働かせるキャラを配属します'>　[4] - 人員配置</button>
+HTML_PRINT LOCALS
 IF FLAG:娼館営業中
-	PRINTL [9] - 一時休業
+	LOCALS = <button value='9' title='娼館を一時休業し、収入と支出が行われないようにします'>　[9] - 一時休業</button>
 ELSE
-	PRINTL [9] - 通常営業
+	LOCALS = <button value='9' title='娼館の営業を再開し、収入と支出が行われるようにします'>　[9] - 通常営業</button>
 ENDIF
+HTML_PRINT LOCALS
+
 DRAWLINE
 PRINTPLAIN 　BROTHEL　
 PRINT [0] - 戻る
@@ -76,10 +82,9 @@ DO
 		CASE 0
 			RETURN 0
 		CASE 1
-			PRINTL 道具を購入、及び配置するコマンドです。
-			PRINTL 調教用の道具とはまた別物で、娼館で使用するものは新たに購入する必要があります。
+			PRINTL 道具を配置するコマンドです。
+			PRINTL 調教用の道具とはまた別物で、娼館で使用するものは配置分だけ毎日コストを支払う必要があります。
 			PRINTL 道具にはそれぞれ用途に合わせたポイントがあり、経営方針に見合った道具を配置することで収入にプラスの補正が入ります。
-			PRINTL 消耗品は一日ごとに一つ消費され、在庫が無くなると配置がオフになるので注意しましょう。
 			PRINTW デフォルトでは1種類しか配置できませんが、増築することによって配置可能な数が増えます。
 		CASE 2
 			PRINTL 物件を増築し、より多くの道具や奴隷を配置できるようにするコマンドです。
@@ -91,44 +96,15 @@ DO
 			PRINTW 奴隷の身体をよく案じて考えて、適切な方針を定めましょう。
 		CASE 4
 			PRINTL 奴隷から人員を選出するコマンドです。
-			PRINTL 当然身体を売る奴隷がいないと収入はありません。
-			PRINTL 体力が減っている奴隷は配置しても売春できないため、奴隷の身体をちゃんと考えてあげましょう。
-			PRINTW (数値上は500以上減っていると自動で休憩に入り、回復後に売春を行います)
+			PRINTL 当然身体を売る奴隷がいないと収入はありません。売春を行ったキャラは、売春の回数に応じて売却額が下がっていきます。
+			PRINTL 体力が減っている、もしくはストレス過多の奴隷は配置しても売春できないため、奴隷の身体をちゃんと考えてあげましょう。
+			PRINTW (数値上1000以上減っていると自動で休憩に入り、回復後に売春を行います)
 		CASEELSE
 			CONTINUE
 	ENDSELECT
 	RESTART
 LOOP 1
 
-;道具関係----------------------------------------------------
-;@BR_ITEM
-;#DIM LCOUNT
-;LOCAL = 0
-;CALL BR_ITEM_STR
-;CALL BR_ITEM_PRICE
-;DRAWLINE
-;PRINTL 　[1] - アイテム配置
-;PRINTL 　[2] - アイテム購入
-;DRAWLINE
-;PRINTPLAIN 　BROTHEL ITEMS　
-;PRINTL [0] - 戻る
-;
-;DO
-;	INPUT
-;	SELECTCASE RESULT
-;		CASE 0
-;			RETURN 0
-;		CASE 1
-;			CALL BR_ITEM_PERSONAL
-;		CASE 2
-;			CALL BR_ITEM_BUY
-;		CASEELSE
-;			CONTINUE
-;	ENDSELECT
-;	RESTART
-;LOOP 1
-
-;道具配置------------------------------------------
 @BR_ITEM
 #DIM LCOUNT
 #DIM 娼館道具設置数
@@ -141,8 +117,6 @@ PRINTFORMLC ハード - {ハードポイント}
 PRINTFORMLC SM - {SMポイント}
 PRINTFORMLC 狂気 - {狂気ポイント}
 PRINTL 
-;DRAWLINE
-;CALL PRINT_BR_ITEM
 DRAWLINE
 
 娼館道具設置数 = 0
@@ -174,19 +148,6 @@ FOR LCOUNT, 1500, 1580
 		PRINT 　
 	PRINTFORM [{LCOUNT}] %ITEMNAME:LCOUNT%
 	PRINTFORM  維持費:${ITEMPRICE:LCOUNT}
-	;IF BR_ITEM:COUNT == 0
-	;	PRINT 【
-	;	SETCOLOR 200 , 0 , 50
-	;		PRINT 在庫切
-	;	RESETCOLOR
-	;	PRINT 】
-	
-;	IF ITEM:COUNT == 0 && LCOUNT >= 1580
-;		PRINT 【
-;		SETCOLOR 150 , 150 , 150
-;			PRINT 未所持
-;		RESETCOLOR
-;		PRINT 】
 	IF ITEM:LCOUNT == 0
 		PRINT 【
 		SETCOLOR 120 , 120 , 120
@@ -232,166 +193,6 @@ DO
 	ENDSELECT
 LOOP 1
 
-;道具購入------------------------------------------
-;@BR_ITEM_BUY
-;#DIM LCOUNT
-;DRAWLINE
-;PRINTL □娼館で使用出来る道具を購入します
-;DRAWLINE
-;PRINTFORML 所持アイテム　所持金:{MONEY}
-;CALL PRINT_BR_ITEM
-;DRAWLINE
-;PRINTL 何を購入しますか？
-;FOR LCOUNT, 1500, 1600
-;PRINTL [1] - 通常アイテム
-;PRINTL [2] - 消耗品
-;DRAWLINE
-;PRINTPLAIN 　BUY　
-;PRINTL [0] - 戻る
-;
-;DO 
-;INPUT
-;
-;IF RESULT == 0
-;	RETURN 0
-;ELSEIF RESULT == 1
-;	CALL BUY_ITEM1
-;ELSEIF RESULT == 2
-;	CALL BUY_ITEM2
-;ELSE
-;	GOTO ITEMLOOP
-;ENDIF
-;
-;
-;@BUY_ITEM1
-;PRINTL 何を購入しますか？
-;DRAWLINE
-;PRINTFORML 所持アイテム　所持金：${MONEY}
-;REPEAT 200
-;	SIF BR_ITEM_STR:COUNT == ""
-;		CONTINUE
-;	SIF BR_ITEM:COUNT == 0
-;		CONTINUE
-;	SIF BR_ITEM:COUNT >= 1
-;		PRINTFORM 【%BR_ITEM_STR:COUNT%
-;	SIF COUNT >= 100
-;		PRINTFORM ×{BR_ITEM:COUNT}
-;	PRINT 】
-;REND
-;PRINTL
-;DRAWLINE
-;
-;REPEAT 5
-;	SIF BR_ITEM:COUNT == 0
-;		PRINTFORMLC [{COUNT}] %BR_ITEM_STR:COUNT% - ${BR_ITEM_PRICE:COUNT}
-;REND
-;
-;PRINTL
-;DRAWLINE
-;PRINTPLAIN 　BUY　
-;PRINTL [100] - 戻る
-;
-;
-;$ITEMLOOP
-;INPUT
-;
-;IF RESULT >= 0 && RESULT <= 4
-;	IF MONEY < BR_ITEM_PRICE:RESULT
-;		PRINTW 所持金が足りません
-;	ELSE
-;		PRINTFORMW %BR_ITEM_STR:RESULT%を購入しました
-;		BR_ITEM:RESULT = 1
-;		MONEY -= BR_ITEM_PRICE:RESULT
-;	ENDIF
-;	RESTART
-;ELSEIF RESULT == 100
-;	RETURN 0
-;ELSE
-;	GOTO ITEMLOOP
-;ENDIF
-;
-;
-;@BUY_ITEM2
-;PRINTL 何を購入しますか？
-;DRAWLINE
-;PRINTFORML 所持アイテム　所持金：${MONEY}
-;REPEAT 200
-;	SIF BR_ITEM_STR:COUNT == ""
-;		CONTINUE
-;	SIF BR_ITEM:COUNT == 0
-;		CONTINUE
-;	SIF BR_ITEM:COUNT >= 1
-;		PRINTFORM 【%BR_ITEM_STR:COUNT%
-;	SIF COUNT >= 100
-;		PRINTFORM ×{BR_ITEM:COUNT}
-;	PRINT 】
-;REND
-;PRINTL
-;DRAWLINE
-;
-;REPEAT 4
-;	A = COUNT + 100
-;	PRINTFORMLC [{COUNT}] %BR_ITEM_STR:A% - ${BR_ITEM_PRICE:A}
-;REND
-;
-;PRINTL
-;DRAWLINE
-;PRINTPLAIN 　BUY　
-;PRINTL [100] - 戻る
-;
-;
-;$ITEMLOOP
-;INPUT
-;
-;IF RESULT >= 0 && RESULT <= 3
-;	A = RESULT + 100
-;	IF BR_ITEM:A >= 99
-;		PRINTL これ以上持てません
-;		RESTART
-;	ENDIF
-;
-;	PRINTFORML %BR_ITEM_STR:A%をいくつ購入しますか？
-;	PRINTFORML 現在{BR_ITEM:A}個所持
-;	B = MONEY / BR_ITEM_PRICE:A
-;	SIF B + BR_ITEM:A > 99
-;		B = 99 - BR_ITEM:A
-;	PRINTFORML あと{B}個購入出来ます
-;
-;	SIF B >= 1
-;		PRINTL [1]  - 1個だけ買う
-;	SIF B >= 5
-;		PRINTL [5]  - 5個買う
-;	SIF B >= 10
-;		PRINTL [10] - 10個買う
-;	SIF BR_ITEM < 99
-;		PRINTL [100]- 買えるだけ買う
-;	PRINTL [0]  - 戻る
-;	
-;	$INPUTLOOP
-;	INPUT
-;
-;	IF RESULT == 0
-;		RESTART
-;	ELSEIF BR_ITEM_PRICE:A * RESULT > MONEY && RESULT < 100
-;		PRINTW 所持金が足りません
-;	ELSEIF RESULT == 100
-;		PRINTFORMW %BR_ITEM_STR:A%を{B}個購入しました
-;		MONEY -= B * BR_ITEM_PRICE:A
-;		BR_ITEM:A += B
-;	ELSEIF B >= RESULT
-;		PRINTFORMW %BR_ITEM_STR:A%を{RESULT}個購入しました
-;		MONEY -= RESULT * BR_ITEM_PRICE:A
-;		BR_ITEM:A += RESULT
-;	ELSE
-;		PRINTW そんなに持てません
-;	ENDIF
-;	RESTART
-;ELSEIF RESULT == 100
-;	RETURN 0
-;ELSE
-;	GOTO ITEMLOOP
-;ENDIF
-
 @PRINT_BR_ITEM
 #DIM LCOUNT
 VARSET LOCAL, 0
@@ -420,31 +221,6 @@ SIF !LINEISEMPTY()
 @BR_RENOVATION
 LOCAL = POWER(娼館広さ, 2)*10000
 LOCAL:1 = POWER(2, 娼館部屋数)*10000
-;DRAWLINE
-;PRINTFORML 現在{娼館広さ}人配置可能  {娼館広さ+1}種類のアイテムを配置可能
-;PRINTL 増設することで配置可能な人数が一人増え、配置できるアイテム枠もひとつ増えます
-;PRINTFORML 所持金:${MONEY}
-;PRINTFORML [0] - 増設する（${LOCAL}必要）
-;PRINTL [1] - 増設しない
-;
-;DO
-;	INPUT
-;
-;	IF RESULT == 0
-;		IF A > MONEY
-;			PRINTL 所持金が足りません
-;			RESTART
-;		ENDIF
-;		BR:201++
-;		PRINTL 娼館を増設しました
-;		MONEY -= A
-;		RESTART
-;	ELSEIF RESULT == 1
-;		RETURN 0
-;	ELSE
-;		GOTO LOOP
-;	ENDIF
-
 PRINTL □物件を増設します
 PRINTFORMLC 　広さ:{娼館広さ}
 PRINTFORMLC 部屋数:{娼館部屋数}
@@ -453,7 +229,14 @@ DRAWLINE
 CALL PRINT_BR_ITEM
 DRAWLINE
 
-PRINTFORML 　[1] - 広くする(${LOCAL})
+IF 娼館広さ >= 10
+	SETCOLOR 120, 120, 120
+	PRINTPLAIN 　[-] - これ以上広く出来ません
+	PRINTL 
+	RESETCOLOR
+ELSE
+	PRINTFORML 　[1] - 広くする(${LOCAL})
+ENDIF
 PRINTFORML 　[2] - 部屋を増やす(${LOCAL:1})
 PRINTFORML 　[3] - 設備を導入する
 DRAWLINE
@@ -466,6 +249,8 @@ DO
 		CASE 0
 			RETURN 0
 		CASE 1
+			SIF 娼館広さ >= 10
+				CONTINUE
 			IF LOCAL > MONEY
 				PRINTW 所持金が足りません
 				RESTART
@@ -632,22 +417,27 @@ DO
 			PRINTL ├特に方針を指定しません。初期設定でもあります。
 			PRINTL ├無計画ということなので方針としての効果は皆無。
 			PRINTL └何かしら方針は定めたほうが良いでしょう。
+			PRINTL 
 			PRINTL 1-ソフト売春
 			PRINTL ├本番無しなど店側の制約を多く設けた方針です。
 			PRINTL ├体力や気力の消費が軽く経験の浅い奴隷でもそれなりの効果があります。
 			PRINTL └しかし基本的に経験が上がりにくく、調教としての効果は薄いかもしれません。
+			PRINTL 
 			PRINTL 2-ハード方針
 			PRINTL ├経験豊富で淫乱な奴隷ほど効果が高まる方針です。
 			PRINTL ├各種経験に多めの数値が入り、収入も安定しています。
 			PRINTL └経験が浅く適正でない奴隷の場合、収入も低く体力消費も大きいため序盤にはおすすめできません。
+			PRINTL 
 			PRINTL 3-SM方針
 			PRINTL ├いろいろとマニアックなプレイを専門とする方針です。
 			PRINTL ├一部素質で強力なプラス補正がかかり、逆にこういったプレイに向かない奴隷の場合は
 			PRINTL └多大な体力消費など、マイナスの効果が大きいかもしれません。
+			PRINTL 
 			PRINTL 4-狂気方針
 			PRINTL ├ごく一部の稀有なクライアント向けの方針です。
 			PRINTL ├脱法的な経営なので、客は少なく、ランクが低いとまったく収入がありません。
-			PRINTL └崩壊した奴隷や特殊な素質を持った奴隷の効果が高く、特殊な方針といえるでしょう。
+			PRINTL └崩壊した奴隷や特殊な素質を持った奴隷の効果が高く、玄人向けの方針といえるでしょう。
+			PRINTL 
 			PRINTL 5-プレイ内容を報告させる
 			PRINTL ├売春での奉仕内容を収入計算時に報告させます。
 			PRINTW └オンオフで収入に違いは無いので奴隷の動向が気になるならオンにしてみましょう。
@@ -784,6 +574,7 @@ DO
 					ENDIF
 					PRINTFORMW %CALLNAME:RESULT%を配属しました
 					CFLAG:RESULT:配属 = 2
+					CFLAG:RESULT:ゲーセン店長 = 0
 					SIF TARGET == RESULT
 						TARGET = -1
 					SIF ASSI == RESULT
@@ -792,33 +583,6 @@ DO
 			ENDSELECT
 	ENDSELECT
 LOOP LOOPRES(999, 1001, 1002)
-
-;名称----------------------------------------------------
-;@BR_STR
-;BR_STR:0 = 方針無し
-;BR_STR:1 = ソフト方針
-;BR_STR:2 = ハード方針
-;BR_STR:3 = SM方針
-;BR_STR:4 = 狂気方針
-;
-;;道具名----------------------------------------------------
-;@BR_ITEM_STR
-;;0～ 通常アイテム
-;BR_ITEM_STR:0 = ローター
-;BR_ITEM_STR:1 = バイブ
-;BR_ITEM_STR:2 = 鞭
-;BR_ITEM_STR:3 = 縄
-;BR_ITEM_STR:4 = ペニスバンド
-;
-;;100～ 消耗アイテム
-;BR_ITEM_STR:100 = コンドーム
-;BR_ITEM_STR:101 = ローション
-;BR_ITEM_STR:102 = 媚薬
-;BR_ITEM_STR:103 = 睡眠薬
-;
-;;200～ 設備名(工事中)
-;BR_ITEM_STR:200 = 設備１
-;BR_ITEM_STR:201 = 設備２
 
 ;道具名----------------------------------------------------
 @BR_ITEM_POINT
@@ -885,21 +649,6 @@ SIF ITEM:拷問器具
 	TIMES SMポイント , 1.50
 SIF ITEM:わけのわからないもの
 	TIMES 狂気ポイント , 1.50
-
-;道具の値段----------------------------------------------------
-;@BR_ITEM_PRICE
-;;0～ 通常アイテム
-;BR_ITEM_PRICE:0 = 500
-;BR_ITEM_PRICE:1 = 1000
-;BR_ITEM_PRICE:2 = 500
-;BR_ITEM_PRICE:3 = 2000
-;BR_ITEM_PRICE:4 = 2000
-;
-;;100～ 消費アイテム
-;BR_ITEM_PRICE:100 = 100
-;BR_ITEM_PRICE:101 = 100
-;BR_ITEM_PRICE:102 = 2000
-;BR_ITEM_PRICE:103 = 1000
 
 ;収入計算----------------------------------------------------
 @INCOME_BR
@@ -1128,13 +877,20 @@ REPEAT CHARANUM
 				収入 -= 50
 				不適性++
 			ENDIF
+			;ソフトでは適性-10
+			不適性 += 10
 			;ここから能力で倍率計算
 			収入 += (収入/20)*ABL:COUNT:従順
+			適性 += ABL:COUNT:従順/3
+
 			収入 += (収入/10)*ABL:COUNT:欲望
+			適性 += ABL:COUNT:欲望/3
+
 			収入 += (収入/5)*ABL:COUNT:技巧
+			適性 += ABL:COUNT:技巧/2
+
 			収入 += (収入/10)*ABL:COUNT:奉仕精神
-			;ソフトでは比較的負担は少ない
-			TIMES 適性 , 1.50
+			適性 += ABL:COUNT:奉仕精神/2
 		;ハード
 		CASE 2
 			;まずはプラス素質から計算
@@ -1247,7 +1003,7 @@ REPEAT CHARANUM
 
 			;ここからマイナス素質
 			IF TALENT:COUNT:恋慕
-				収入 -= 1500
+				収入 -= 150
 				不適性++
 			ENDIF
 			IF TALENT:COUNT:親愛
@@ -1296,15 +1052,31 @@ REPEAT CHARANUM
 				不適性++
 			SIF TALENT:COUNT:Ａ鈍感
 				不適性++
+			;ハードは適性-15
+			不適性 += 15
 			;ここから能力で倍率計算
 			収入 += (収入/10)*ABL:COUNT:従順
+			適性 += ABL:COUNT:従順/3
+
 			収入 += (収入/10)*ABL:COUNT:欲望
+			適性 += ABL:COUNT:欲望/2
+
 			収入 += (収入/5)*ABL:COUNT:技巧
-			SIF VAGINA(COUNT)
-				収入 = (収入/20)*ABL:COUNT:Ｖ感覚
+			適性 += ABL:COUNT:技巧/3
+
+			IF VAGINA(COUNT)
+				収入 += (収入/20)*ABL:COUNT:Ｖ感覚
+				適性 += ABL:COUNT:Ｖ感覚/5
+			ENDIF
+
 			収入 += (収入/20)*ABL:COUNT:Ａ感覚
+			適性 += ABL:COUNT:Ａ感覚/5
+
 			収入 += (収入/10)*ABL:COUNT:奉仕精神
+			適性 += ABL:COUNT:奉仕精神/3
+
 			収入 += (収入/5)*ABL:COUNT:性交中毒
+			適性 += ABL:COUNT:性交中毒/2
 		;SM
 		CASE 3
 			;まずはプラス素質から計算
@@ -1394,16 +1166,34 @@ REPEAT CHARANUM
 				収入 -= 50
 				不適性 += 5
 			ENDIF
+			;SMは適性がかなり上がりにくいので適性-5
+			不適性 += 5
 			;ここから能力で倍率計算
 			収入 += (収入/20)*ABL:COUNT:従順
+			適性 += ABL:COUNT:従順/3+1
+
 			収入 += (収入/20)*ABL:COUNT:欲望
+			適性 += ABL:COUNT:欲望/5
+
 			収入 += (収入/20)*ABL:COUNT:技巧
-			SIF VAGINA(COUNT)
-				収入 = (収入/20)*ABL:COUNT:Ｖ感覚
+			適性 += ABL:COUNT:技巧/5
+
+			IF VAGINA(COUNT)
+				収入 += (収入/20)*ABL:COUNT:Ｖ感覚
+				適性 += ABL:COUNT:Ｖ感覚/5
+			ENDIF
+
 			収入 += (収入/20)*ABL:COUNT:Ａ感覚
+			適性 += ABL:COUNT:Ａ感覚/5
+
 			収入 += (収入/10)*ABL:COUNT:露出癖
+			適性 += ABL:COUNT:露出癖/5
+
 			収入 += (収入/5)*ABL:COUNT:マゾっ気
+			適性 += ABL:COUNT:マゾっ気/2
+
 			収入 += (収入/5)*ABL:COUNT:サドっ気
+			適性 += ABL:COUNT:サドっ気/2
 		;ルナティック
 		CASE 4
 			;まずはプラス素質から計算
@@ -1466,13 +1256,18 @@ REPEAT CHARANUM
 				適性++
 			ENDIF
 			;マイナス
-			不適性 = 10
+			不適性 = 20
 			;娼館レベルに応じて変動
 			収入 = 収入*娼館レベル/50
 			;ここから能力で倍率計算
 			収入 += (収入/20)*ABL:COUNT:従順
+			適性 += ABL:COUNT:従順/3
+
 			収入 += (収入/20)*ABL:COUNT:欲望
+			適性 += ABL:COUNT:欲望/3
+
 			収入 += (収入/20)*ABL:COUNT:技巧
+			適性 += ABL:COUNT:技巧/3
 	ENDSELECT
 	;体力気力消費計算
 	LOCAL = 不適性 - 適性
@@ -1484,13 +1279,13 @@ REPEAT CHARANUM
 			BASE:COUNT:体力 -= LOCAL * 50
 		;ハード
 		CASE 2
-			BASE:COUNT:体力 -= LOCAL * 200
+			BASE:COUNT:体力 -= LOCAL * 100
 		;SM
 		CASE 3
-			BASE:COUNT:体力 -= LOCAL * 400
+			BASE:COUNT:体力 -= LOCAL * 300
 		;狂気
 		CASE 4
-			BASE:COUNT:体力 -= LOCAL * 250
+			BASE:COUNT:体力 -= LOCAL * 200
 	ENDSELECT
 	SIF BASE:COUNT:体力 <= 0
 		BASE:COUNT:体力 = 1
@@ -1856,11 +1651,16 @@ IF 収入合計
 	娼館前日の収入 = 収入合計
 	娼館総収入 += 収入合計
 	DO
+		LOCAL = 0
 		;高級ベッドがあるとレベルが上がりやすくなる
 		IF ITEM:高級ベッド
-			LOCAL = 700*(娼館レベル*娼館レベル)
+			REPEAT 娼館レベル
+				LOCAL = 700*(COUNT*COUNT)
+			REND
 		ELSE
-			LOCAL = 1000*(娼館レベル*娼館レベル)
+			REPEAT 娼館レベル
+				LOCAL += 1000*(COUNT*COUNT)
+			REND
 		ENDIF
 		SIF 娼館総収入 >= LOCAL
 			娼館レベル++
