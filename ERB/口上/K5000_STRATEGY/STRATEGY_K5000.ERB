@@ -1,0 +1,372 @@
+﻿;-------------------------------------------------
+;○○口上（キャラクターの名前を入れる、下にコンセプトなど一言あれば入れる）
+;
+;-------------------------------------------------
+;eraBEMANI及びeraBEMANI系列専用口上テンプレート（STRATEGYモード用）
+;X1をキャラ番号に置換してください
+;read meにも目を通しておくことをお勧めします
+;--------------------------------------------------
+;口上の存在判定 X1だけ置換して、処理は書き加えないでください
+;--------------------------------------------------
+@EXIST_STRATEGY_KOJO_K5000
+
+;--------------------------------------------------
+;パートナーに選んだときの口上
+;デフォルトで服従が付く パートナーはTARGETではなくASSIとなる
+;※パートナー専用
+;--------------------------------------------------
+@PARTNER_K5000
+PRINTFORMW 「BisCoだよ！よろしく～(≧∇≦)/」
+
+;下記の文は必要に応じて改変・コメントアウトを行ってもよし
+PRINTFORMW %NAME:ASSI%をパートナーに選択しました
+
+;--------------------------------------------------
+;パートナーに話しかけたときの口上
+;※パートナー専用
+;--------------------------------------------------
+@TALK_PARTNER_K5000
+#DIM DYNAMIC L_FLAG
+L_FLAG = 0
+
+PRINTL
+PRINTL 「どうしたの？」
+$TALK_LOOP
+IF L_FLAG
+	PRINTL [0] 特にない
+ELSE
+	PRINTL [0] なんでもない
+ENDIF
+PRINTL [7] 電卓を使いたい
+PRINTL [8] 複利計算をしたい
+PRINTL [9] 組み合わせを計算したい
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			PRINTL
+			PRINTW 「わかった～(^▽^ *)」
+			RETURN 0
+		CASE 7
+			PRINTL
+			PRINTW 「電卓だね！準備ができたよ～( ´ ▽ ` )ﾉ」
+			CALL CALCULATOR
+			L_FLAG = 1
+			PRINTL
+			PRINTL 「おつかれさま～(*´∀｀*) 他には何かある？」
+			GOTO TALK_LOOP
+		CASE 8
+			PRINTL
+			PRINTL 「複利計算だね！利率は？」
+			PRINTL [  1]0.1% [  2]0.2% [  3]0.3% [  4]0.4% [  5]0.5%
+			PRINTL [  6]0.6% [  7]0.7% [  8]0.8% [  9]0.9%
+			PRINTL [ 10]1%   [ 20]2%   [ 30]3%   [ 40]4%   [ 50]5%
+			PRINTL [ 60]6%   [ 70]7%   [ 80]8%   [ 90]9%
+			PRINTL [100]10%
+			$RATE_LOOP
+			INPUT
+			SIF ABS(RESULT) >= 1000
+				GOTO RATE_LOOP
+			LOCAL = RESULT
+			SELECTCASE ABS(RESULT)
+				CASE 0
+					PRINTL 「オッケー！0%ね！……って計算するまでもないよ∑(￣ﾛ￣)」
+					GOTO RATE_LOOP
+				CASE IS < 10
+					PRINT 「オッケー！
+					IF RESULT < 0
+						PRINT -
+					ENDIF
+					PRINTFORML 0.{ABS(RESULT)}\%ね！これが何回？」
+				CASE IS < 100
+					PRINTFORML 「オッケー！{RESULT/10}\%ね！これが何回？」
+				CASEELSE
+					PRINTFORML 「オッケー！{RESULT/100*10}\%ね！これが何回？」
+			ENDSELECT
+			PRINTL
+			PRINTL 回数を入力してください
+			CALL TWO_DIGIT, 30, "回"
+			LOCAL:1 = RESULT
+			PRINTL
+			PRINT 「えーと、利率
+			SELECTCASE ABS(LOCAL)
+				CASE IS < 10
+					IF LOCAL < 0
+						PRINT -
+					ENDIF
+					PRINTFORM 0.{ABS(LOCAL)}\%
+				CASE IS < 100
+					PRINTFORM {LOCAL/10}\%
+				CASEELSE
+					PRINTFORM {LOCAL/100*10}\%
+			ENDSELECT
+			LOCAL:2 = COMP_INTEREST(LOCAL, LOCAL:1)
+			;0.01単位に四捨五入
+			SIF LOCAL:2%10 >= 5
+				LOCAL:2 += 10
+			LOCAL:2 /= 10
+			PRINTFORM の{LOCAL:1}回複利だと……大体{LOCAL:2/100}.
+			SIF LOCAL:2 < 10
+				PRINT 0
+			PRINTFORMW {LOCAL:2%100}倍になるみたいだよ( ＞▽＜)」
+			L_FLAG = 1
+			PRINTL
+			PRINTL 「他には何かある？」
+			GOTO TALK_LOOP
+		CASE 9
+			PRINTL
+			PRINTL 「組み合わせ計算だね！まず、全体の個数はいくら？」
+			PRINTL
+			CALL TWO_DIGIT, 61, "個"
+			LOCAL = RESULT
+			PRINTFORML 「じゃあ、{LOCAL}個のものからいくつを選ぶつもり？」
+			PRINTL
+			CALL TWO_DIGIT, 61, "個"
+			LOCAL:1 = RESULT
+			PRINTL
+			PRINTFORML 「えーと、異なる{LOCAL}個のものから{LOCAL:1}個を選んだときの組み合わせは、
+			PRINTFORML {BINOM(LOCAL, LOCAL:1)}通りになるみたいだよ(｀･ω･´)ゞ」
+			L_FLAG = 1
+			PRINTL
+			PRINTL 「他には何かある？」
+			GOTO TALK_LOOP
+	ENDSELECT
+LOOP LOOPRES(7, 8, 9)
+;--------------------------------------------------
+;ゲーセンに配属した時の口上
+;--------------------------------------------------
+@GC_ASSIGNON_K5000
+PRINTFORMW 
+
+;--------------------------------------------------
+;ゲーセンの配属から外した時の口上
+;--------------------------------------------------
+@GC_ASSIGNOFF_K5000
+PRINTFORMW 
+
+;--------------------------------------------------
+;ゲーセンの店長に任命した時の口上
+;--------------------------------------------------
+@GC_ASSIGNLEADER_K5000
+PRINTFORMW 
+
+;--------------------------------------------------
+;ゲーセン配属中に一日が終わった時の口上
+;変数「収入」「支出」にはそのままその日の収入額と支出額が入る
+;--------------------------------------------------
+@GC_TURNEND_K5000, 収入, 支出
+#DIM 収入
+#DIM 支出
+
+PRINTFORMW 
+
+;--------------------------------------------------
+;ゲーセン用の物件を購入した時の口上
+;※パートナー専用
+;--------------------------------------------------
+@BUY_OBJECT_K5000, ARG
+SELECTCASE 物件名(ARG)
+	CASE "ボロ屋"
+		PRINTFORMW 
+	CASE "中小スーパーのテナント"
+		PRINTFORMW 
+	CASE "商店街の一角"
+		PRINTFORMW 
+	CASE "駅中テナント"
+		PRINTFORMW 
+	CASE "街中物件"
+		PRINTFORMW 
+	CASE "百貨店テナント"
+		PRINTFORMW 
+	CASE "アミューズメント"
+		PRINTFORMW 
+ENDSELECT
+
+;--------------------------------------------------
+;ゲーセン用の物件を増築した時の口上
+;※パートナー専用
+;--------------------------------------------------
+@GC_RENOVATION_K5000, ARG
+SELECTCASE ARG
+	;広くした
+	CASE 1
+		PRINTFORMW 
+	;分煙施設を設置した
+	CASE 2
+		PRINTFORMW 
+	;階層を増やした
+	CASE 3
+		PRINTFORMW 
+	;外装を強化した
+	CASE 4
+		PRINTFORMW 
+	;フードコート施設を設置した
+	CASE 5
+		PRINTFORMW 
+	;トイレを改装した
+	CASE 6
+		PRINTFORMW 
+ENDSELECT
+
+;--------------------------------------------------
+;ゲーセン用の筐体を購入した時の口上
+;※パートナー専用
+;--------------------------------------------------
+@BUY_ARCADEGAME_K5000, ARG
+SELECTCASE ITEMNAME:ARG
+	CASE "beatmaniaIIDX"
+		PRINTFORMW 
+	CASE "pop'n music"
+		PRINTFORMW 
+	CASE "Dance Dance Revolution"
+		PRINTFORMW 
+	CASE "GITADORA"
+		PRINTFORMW 
+	CASE "jubeat"
+		PRINTFORMW 
+	CASE "REFLEC BEAT"
+		PRINTFORMW 
+	CASE "SOUND VOLTEX"
+		PRINTFORMW 
+	CASE "Dance Evolution"
+		PRINTFORMW 
+	CASE "両替機"
+		PRINTFORMW 
+	CASE "メダル両替機"
+		PRINTFORMW 
+	CASE "PASELI券売機"
+		PRINTFORMW 
+	CASE "PASELIチャージ機"
+		PRINTFORMW 
+	CASE "自販機（飲み物）"
+		PRINTFORMW 
+	CASE "自販機（軽食）"
+		PRINTFORMW 
+	CASE "自販機（アイス）"
+		PRINTFORMW 
+	CASE "マッサージチェア"
+		PRINTFORMW 
+	CASE "待ち椅子"
+		PRINTFORMW 
+ENDSELECT
+
+;--------------------------------------------------
+;娼館に配属した時の口上
+;--------------------------------------------------
+@BR_ASSIGNON_K5000
+PRINTFORMW 
+
+;--------------------------------------------------
+;娼館の配属から外した時の口上
+;--------------------------------------------------
+@BR_ASSIGNOFF_K5000
+PRINTFORMW 
+
+;--------------------------------------------------
+;娼館に道具を配置した&娼館に設備を導入した時の口上
+;※パートナー専用
+;--------------------------------------------------
+@BR_ITEM_K5000, ARG
+SELECTCASE ITEMNAME:ARG
+	CASE "ローター"
+		PRINTFORMW 
+	CASE "バイブ"
+		PRINTFORMW 
+	CASE "鞭"
+		PRINTFORMW 
+	CASE "縄"
+		PRINTFORMW 
+	CASE "ペニスバンド"
+		PRINTFORMW 
+	CASE "コンドーム"
+		PRINTFORMW 
+	CASE "ローション"
+		PRINTFORMW 
+	CASE "媚薬"
+		PRINTFORMW 
+	CASE "睡眠薬"
+		PRINTFORMW 
+	CASE "ゴム手袋"
+		PRINTFORMW 
+	CASE "お風呂場"
+		PRINTFORMW 
+	CASE "高級ベッド"
+		PRINTFORMW 
+	CASE "隠しカメラ"
+		PRINTFORMW 
+	CASE "換気扇"
+		PRINTFORMW 
+	CASE "ピンクライト"
+		PRINTFORMW 
+	CASE "防音壁"
+		PRINTFORMW 
+	CASE "拷問器具"
+		PRINTFORMW 
+	CASE "わけのわからないもの"
+		PRINTFORMW 
+ENDSELECT
+
+;--------------------------------------------------
+;娼館を増築した時の口上
+;※パートナー専用
+;--------------------------------------------------
+@BR_RENOVATION_K5000, ARG
+SELECTCASE ARG
+	;広くした
+	CASE 1
+		PRINTFORMW 
+	;部屋を増やした
+	CASE 2
+		PRINTFORMW 
+ENDSELECT
+
+;--------------------------------------------------
+;娼館の方針を決めた時の口上
+;※パートナー専用
+;--------------------------------------------------
+@BR_PLAN_K5000, ARG
+SELECTCASE 娼館方針
+	;ソフト
+	CASE 1
+		PRINTFORMW 
+	;ハード
+	CASE 2
+		PRINTFORMW 
+	;SM
+	CASE 3
+		PRINTFORMW 
+	;狂気
+	CASE 4
+		PRINTFORMW 
+ENDSELECT
+
+;--------------------------------------------------
+;娼館でプレイ内容を報告させた時の口上
+;ぶっちゃけここ書くの相当難易度高いので、自信が無ければ関数名差し戻し推奨
+;--------------------------------------------------
+@BR_PLAY_X1, 客の性別, 絶頂, 射精, 客の射精, 自慰, 自慰で射精, フェラ, フェラで射精, ヴァギナ, 中出し, アナル, アナル中出し, 手コキ, 手コキで射精, 足コキ, 足コキで射精, 兜合わせ, 兜合わせで射精, 素股, 素股で射精, ゲイ, レズ
+#DIM DYNAMIC 客の性別
+#DIM DYNAMIC 絶頂
+#DIM DYNAMIC 射精
+#DIM DYNAMIC 客の射精
+#DIM DYNAMIC 自慰
+#DIM DYNAMIC 自慰で射精
+#DIM DYNAMIC フェラ
+#DIM DYNAMIC フェラで射精
+#DIM DYNAMIC ヴァギナ
+#DIM DYNAMIC 中出し
+#DIM DYNAMIC アナル
+#DIM DYNAMIC アナル中出し
+#DIM DYNAMIC 手コキ
+#DIM DYNAMIC 手コキで射精
+#DIM DYNAMIC 足コキ
+#DIM DYNAMIC 足コキで射精
+#DIM DYNAMIC 兜合わせ
+#DIM DYNAMIC 兜合わせで射精
+#DIM DYNAMIC 素股
+#DIM DYNAMIC 素股で射精
+#DIM DYNAMIC ゲイ
+#DIM DYNAMIC レズ
+
+PRINTFORMW 
+
