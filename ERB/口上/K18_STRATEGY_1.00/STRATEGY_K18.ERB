@@ -11,6 +11,16 @@
 @EXIST_STRATEGY_KOJO_K18
 
 ;--------------------------------------------------
+;SHOP画面開始時に呼ばれるイベント関数
+;--------------------------------------------------
+@EVENTSHOP
+#PRI
+IF TIME == 0
+	昼の気温 = FLAG:気温
+	昼の天気 = FLAG:天気
+ENDIF
+
+;--------------------------------------------------
 ;パートナーに選んだときの口上
 ;デフォルトで服従が付く パートナーはTARGETではなくASSIとなる
 ;※パートナー専用
@@ -27,6 +37,15 @@ PRINTFORMW %NAME:ASSI%をパートナーに選択しました
 ;--------------------------------------------------
 @TALK_PARTNER_K18
 #DIM LCOUNT
+#DIM 彩葉
+
+REPEAT CHARANUM
+	IF NAME:COUNT == "梅桐 彩葉"
+		彩葉 = COUNT
+		BREAK
+	ENDIF
+REND
+
 ;ゲーセン物件無し
 IF GC物件 == 0
 	LOCAL = 2
@@ -46,7 +65,7 @@ ELSE
 		CASE 0
 			IF 基本収入 <= 20000
 				LOCAL = 0
-				FOR LCOUNT, 1, 階層+1
+				FOR LCOUNT, 1, GC階層+1
 					LOCAL += 筐体支出補正(LCOUNT)
 				NEXT
 				PRINTFORM 「ゲームセンターの利益が奮わんて？ 
@@ -79,18 +98,16 @@ ELSE
 					CASE IS <= 100000
 						PRINTFORMW うんうん、安定してきたやんか！ この調子でもっと稼いでいこか～♪」
 					CASE IS >= 200000
-						PRINTFORMW さっすが凄腕の経営者やな！ やなやな♪ ウチもパートナーとして鼻が高いわ～」
+						IF CFLAG:彩葉:ゲーセン店長
+							PRINTFORMW いや～、やっぱウチが店長やってるお陰やな！ 感謝せなアカンよ～、へへーん」
+						ELSE
+							PRINTFORMW さっすが凄腕の経営者やな！ やなやな♪ ウチもパートナーとして鼻が高いわ～」
+						ENDIF
 				ENDSELECT
 			ENDIF
 		CASE 1
-			REPEAT CHARANUM
-				IF NAME:COUNT == "梅桐 彩葉"
-					LOCAL = COUNT
-					BREAK
-				ENDIF
-			REND
 			IF 基本収入 <= 20000 && 娼館前日の収入 <= 20000
-				SELECTCASE CFLAG:LOCAL:配属
+				SELECTCASE CFLAG:彩葉:配属
 					CASE 1
 						PRINTFORMW 「娼館がうまくいってない以上、ウチらが頑張らなあかんいうのは分かっとるんやけど……なかなか思い通りには稼げんわ」
 					CASE 2
@@ -124,19 +141,40 @@ ENDIF
 ;ゲーセンに配属した時の口上
 ;--------------------------------------------------
 @GC_ASSIGNON_K18
-PRINTFORMW 
+IF FLAG:パートナー == 18
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 「よぉ～し！ ウチに任しとき！」
+		CASE 1
+			PRINTFORMW 「ふっふっふ、とうとうウチの手腕を発揮する時が来たようやな」
+	ENDSELECT
+ENDIF
 
 ;--------------------------------------------------
 ;ゲーセンの配属から外した時の口上
 ;--------------------------------------------------
 @GC_ASSIGNOFF_K18
-PRINTFORMW 
+IF FLAG:パートナー == 18
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 「なんでや！ ウチ適任やろ！」
+		CASE 1
+			PRINTFORMW 「あんたがそう言うんならしゃーないわ。しばらく休んどく～」
+	ENDSELECT
+ENDIF
 
 ;--------------------------------------------------
 ;ゲーセンの店長に任命した時の口上
 ;--------------------------------------------------
 @GC_ASSIGNLEADER_K18
-PRINTFORMW 
+IF FLAG:パートナー == 18
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 「う、ウチが店長に！？ あーどないしよ、緊張してきた……」
+		CASE 1
+			PRINTFORMW 「そうかー……よし、ウチもあんたのパートナーや。一蓮托生、よろしく頼むで！」
+	ENDSELECT
+ENDIF
 
 ;--------------------------------------------------
 ;ゲーセン配属中に一日が終わった時の口上
@@ -145,8 +183,210 @@ PRINTFORMW
 @GC_TURNEND_K18, 収入, 支出
 #DIM 収入
 #DIM 支出
+#DIM 階層
+#DIM 筐体
+#DIM 彩葉
+#DIM LCOUNT
 
-PRINTFORMW 
+VARSET LOCAL, 0
+FOR LCOUNT, 1, GC階層+1
+	FOR 筐体, 1100, 1500
+		SIF !設置筐体:階層:筐体
+			CONTINUE
+		SELECTCASE ITEMNAME:筐体
+			CASE "beatmaniaIIDX", "pop'n music", "Dance Dance Revolution", "GITADORA", "jubeat", "REFLEC BEAT", "SOUND VOLTEX", "Dance Evolution"
+				LOCAL++
+			CASE "両替機", "メダル両替機"
+				LOCAL:1++
+			CASE "PASELI券売機", "PASELIチャージ機"
+				LOCAL:2++
+			CASE "自販機（飲み物）", "自販機（軽食）", "自販機（アイス）"
+				LOCAL:3++
+			CASE "待ち椅子", "マッサージチェア"
+				LOCAL:4++
+		ENDSELECT
+	NEXT
+NEXT
+
+REPEAT CHARANUM
+	IF NAME:COUNT == "梅桐 彩葉"
+		彩葉 = COUNT
+		BREAK
+	ENDIF
+REND
+
+;筐体無し
+IF LOCAL == 0
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 「『ゲーセン勤務頑張れ』言われたんはいいけど……ゲーム機も無しに何を頑張ればええんやウチは？ 掃除？」
+		CASE 1
+			PRINTFORML 「お客さんみんな困惑しながら帰ってったで。『遊ぶゲームが無い』言うてな」
+			FOR LCOUNT, 0, 5
+				SIF LOCAL:LCOUNT
+					LOCAL:5++
+			NEXT
+			IF LOCAL:5
+				PRINTFORMW 「ゲームセンターの看板掲げといて中は空き家とかシャレにならんで」
+			ELSEIF LOCAL:5 >= 2
+				WAIT
+			ELSE
+				IF LOCAL:1
+					PRINTFORMW 「当然や。両替機しか置いてへんもん」
+				ELSEIF LOCAL:2
+					PRINTFORMW 「そらそうや。パセリチャージできても使うゲーム機があらへんわ」
+				ELSEIF LOCAL:3
+					PRINTFORMW 「ゲームセンター来たのに自販機しか置いてなかったときの客の気持ち考えたらごっつ切なくなるわぁ～」
+				ELSEIF LOCAL:4 <= 3
+					PRINTFORMW 「ぽつんと椅子だけ置いてあってもホラーやで」
+				ELSEIF LOCAL:4 > 3
+					PRINTFORMW 「椅子だけぎょーさん置いてあって、ウチんとこは公民館か何かか？」
+				ENDIF
+			ENDIF
+	ENDSELECT
+ELSEIF LOCAL == 1
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 「一個のゲーム機にぎょーさん並んでて地獄絵図やったで。もっといろいろ置いたほうがええんちゃう？」
+		CASE 1
+			PRINTFORMW 「ゲームセンターいうてもゲーム機の数がなぁ……ウチんとこは少なすぎや」
+	ENDSELECT
+ELSE
+	IF CFLAG:彩葉:ゲーセン店長
+		PRINTFORM 「{MONTH}月{DAYS}日、天気は
+		SELECTCASE FLAG:天気
+			CASE 1
+				PRINT 晴れ
+			CASE 2
+				PRINT 曇り
+			CASE 3, 4, 5
+				PRINT 雨
+			CASE 6, 7
+				PRINT 雪
+		ENDSELECT
+		PRINTFORML 、今日の利益は${収入-支出}、っと」
+		IF 収入-支出 <= 0
+			PRINT 「……あかーんっ！！ 赤字やで！
+			SELECTCASE RAND:3
+				CASE 0
+					PRINTW 経営見直すべきや！」
+				CASE 1
+					PRINTW さすがにウチもあんたと首括るのはイヤやぁ！」
+				CASE 2
+					PRINTW う、ウチのせいちゃうわ！ 頑張っとるもん……」
+			ENDSELECT
+		ELSE
+			SELECTCASE RAND:3
+				CASE 0
+					PRINT 「店長やるのも一苦労やなぁ。
+				CASE 1
+					PRINT 「今日の帳簿よし。
+				CASE 2
+					PRINT 「今日も疲れたわ～。
+			ENDSELECT
+			SELECTCASE RAND:2
+				CASE 0
+					SELECTCASE FLAG:天気
+						CASE 1
+							;昼も晴れ
+							IF 昼の天気 == 1
+								IF FLAG:梅雨
+									PRINTW 今日は晴れてたからええけど、この時期は雨が続くから客足も減るやろな」
+								ELSE
+									PRINTW 今日は天気良かったしお客さんもまぁまぁ来てたんとちゃう？」
+								ENDIF
+							ELSE
+								PRINTW 午前はともかく午後から晴れて助かったわ～」
+							ENDIF
+						CASE 2
+							SELECTCASE RAND:2
+								CASE 0
+									PRINTW なんか空模様が怪しいけど明日雨降らんとええな」
+								CASE 1
+									PRINTW 今日みたいなびみょーな天気だとウチのテンションまでびみょーになるわ」
+							ENDSELECT
+						CASE 3, 4, 5
+							SELECTCASE 昼の天気
+								;昼も雨
+								CASE 3, 4, 5
+									IF FLAG:梅雨
+										PRINTW 梅雨やからしゃーないけど、雨の日は掃除が大変やねん。やんなるわぁ」
+									ELSE
+										PRINTW 今日みたいな雨やと客足も遠のいて利益減ってまうわ。店長やってると嫌でも分かるもんやなぁ」
+									ENDIF
+								CASEELSE
+									PRINTW 日中は晴れてたのに午後からぽつぽつ降ってきてな……大変やねん」
+							ENDSELECT
+						CASE 6, 7
+							SELECTCASE MONTH
+								CASE 11, 12, 1, 2, 3
+									SELECTCASE RAND:2
+										CASE 0
+											PRINTW ホンマ雪は勘弁してほしいわぁ～、誰が雪かきすると思うてんのや」
+										CASE 1
+											PRINTW うー、さぶい。駐車場の雪どないかせんと明日は悲惨やでぇ……」
+									ENDSELECT
+								CASEELSE
+									PRINTW まさかこないな時期に雪降るとは思わんかったわ……」
+							ENDSELECT
+					ENDSELECT
+				CASE 1
+					SELECTCASE MONTH
+						CASE 12, 1, 2
+							SELECTCASE 昼の気温-平均気温_K18()
+								CASE IS >= 30
+									PRINTW 今日はいつもよりは暖かかったかな。雪も溶けてくれると助かるんやけど」
+								CASE IS <= -30
+									PRINTW 今日はよりいっそう寒ぅて大変やった……店は暖房ついてるからええんやけど」
+								CASEELSE
+									PRINTW いつまで寒い日が続くんかなぁ。寒い日は指がかじかんでゲームも上手くできひんのや」
+							ENDSELECT
+						CASE 3 TO 5
+							SELECTCASE 昼の気温-平均気温_K18()
+								CASE IS >= 30
+									PRINTW だんだん暖かなってきて、春って感じやな。この忙しい時期にゲーセン来るやつあんまおらんやろな」
+								CASE IS <= -30
+									PRINTW 冬は過ぎたいうのにまだ寒いわ……もしかしてまだ冬なんやろか」
+								CASEELSE
+									PRINTW さてさて、そろそろあれか？ 人事異動とか入社式とか……ウチにはそんなの無いって？」
+							ENDSELECT
+						CASE 6 TO 8
+							SELECTCASE 昼の気温-平均気温_K18()
+								CASE IS >= 30
+									PRINTW 今日はごっつ暑くてな、明日はもーちょい冷房効かせたるわ！」
+								CASE IS <= -30
+									PRINT 今日は結構涼しくて過ごしやすかったかな。
+									IF MONTH == 6
+										PRINTW そろそろウチんとこも夏用の制服に変えたろかな……」
+									ELSE
+										PRINTW 夏用の制服も可愛くてウチは気に入っとるで♪」
+									ENDIF
+								CASEELSE
+									PRINTW すっかり夏やなぁ。灼熱ってこういうことを言うんやろな」
+							ENDSELECT
+						CASE 9 TO 11
+							SELECTCASE 昼の気温-平均気温_K18()
+								CASE IS >= 30
+									PRINTW 残暑が続くなぁ。涼しなったとはいえ、暑いと無駄に体力持ってかれてまうわ」
+								CASE IS <= -30
+									PRINTW けっこー寒なってきとるわ……そうやな、もう秋で、すぐに冬がやってくるんやな」
+								CASEELSE
+									PRINTW 今年も後半や思うと、店長として身が引き締まる思いや。お互い頑張ろな～♪」
+							ENDSELECT
+					ENDSELECT
+			ENDSELECT
+		ENDIF
+	ELSE
+		SELECTCASE RAND:3
+			CASE 0
+				PRINTW 「はー、結構忙しかったけど、利益のほうがどうなんやろか。ウチが気にすることでもないか……」
+			CASE 1
+				PRINTW 「今日もお疲れ様やで～。さ、ウチも帰って寝よ」
+			CASE 2
+				PRINTW 「ほらほら、今日も頑張ったで！ 何かご褒美ちょーだい♪」
+		ENDSELECT
+	ENDIF
+ENDIF
 
 ;--------------------------------------------------
 ;ゲーセン用の物件を購入した時の口上
