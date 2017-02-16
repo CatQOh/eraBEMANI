@@ -183,12 +183,17 @@ REPEAT CHARANUM
 	
 	;魔剤フラグ消去
 	CFLAG:COUNT:魔剤 = 0
-
-	;体力回復停止処理
-	IF CFLAG:COUNT:体力回復停止 > 0
-		CFLAG:COUNT:体力回復停止--
-		CONTINUE
+	;魔剤耐性減少
+	IF TALENT:COUNT:小人体型
+		CFLAG:COUNT:魔剤耐性 -= 5
+	ELSEIF TALENT:COUNT:小柄体型
+		CFLAG:COUNT:魔剤耐性 -= 6
+	ELSE
+		CFLAG:COUNT:魔剤耐性 -= 7
 	ENDIF
+	;魔剤耐性は1000～2000の間で変動する
+	SIF CFLAG:COUNT:魔剤耐性 < 1000
+		CFLAG:COUNT:魔剤耐性 = 1000
 
 	;体力の回復（午後の調教後は夜の休みが入るので回復大きい）
 	SELECTCASE TIME
@@ -294,7 +299,7 @@ REPEAT CHARANUM
 	SIF CFLAG:COUNT:配属 == 2 && CFLAG:COUNT:休憩 == 0 && FLAG:娼館営業中 == 1
 		LOCAL /= 10
 
-	BASE:COUNT:体力 += LOCAL
+	BASE:COUNT:体力 += LOCAL / (1 + CFLAG:COUNT:回復量低下)
 	SIF BASE:COUNT:体力 > MAXBASE:COUNT:体力
 		BASE:COUNT:体力 = MAXBASE:COUNT:体力
 
@@ -302,6 +307,10 @@ REPEAT CHARANUM
 	SIF CFLAG:COUNT:ストレス値 < 0
 		CFLAG:COUNT:ストレス値 = 0
 	CFLAG:COUNT:休憩 = 0
+	
+	;回復量低下処理
+	SIF CFLAG:COUNT:回復量低下 > 0
+		CFLAG:COUNT:回復量低下--
 REND
 
 CALL EVENTCHECK_ABL
