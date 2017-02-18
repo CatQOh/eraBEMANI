@@ -31,29 +31,41 @@ SIF FLAG:口上表示 == 0
 ;はいを選択した時に初調教時に口上設定用の素質に変更できます
 ;下記に処女化する場合の構文をサンプルとして載せておきます
 ;--------------------------------------------------
-;IF FEVE:15 == 0
-;	PRINTL 処女モードに移行しますか？
-;	PRINTL [0] はい
-;	PRINTL [1] いいえ
-;	$INPUT_LOOP
-;	INPUT
-;	IF RESULT == 0
-;		PRINTFORMW ―処女モードに素質、能力を変更します―
-;		TALENT:TARGET:処女 = 1
-;		ABL:TARGET:Ｖ感覚 = 0
-;		EXP:TARGET:Ｖ経験 = 0
-;	ELSEIF RESULT == 1
-;		PRINTFORMW ―通常モードで調教を開始します―
-;	ELSE
-;		GOTO INPUT_LOOP
-;	ENDIF
-;	FEVE:15 = 1
-;ENDIF
+IF FEVE:15 == 0
+	PRINTL ドラゴンたち（リントヴルムとレーヴァテインのセリフ）を表示しますか？
+	PRINTL ※かなりクセの強い内容になっています。口上フォルダ内のモード口上read meを読んでからお選びください
+	PRINTL 　なお、調教中に「何もしない」を選択することでオンオフの設定ができます
+	PRINTL [0] はい
+	PRINTL [1] いいえ
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 0
+				PRINTW リントヴルムとレーヴァテインのセリフを表示します
+				MAUD:99 = 1
+			CASE 1
+				PRINTW リントヴルムとレーヴァテインのセリフを表示しません
+		ENDSELECT
+	LOOP LOOPRES(0, 1)
+	FEVE:15 = 1
+ENDIF
 ;-------------------------------------------------
 ;調教開始時 FEVE:0
 ;-------------------------------------------------
 VARSET LOCAL, 0
 VARSET LOCALS, 
+;助手がリリーゼフラグ
+IF ASSI > 0 && CALLNAME:ASSI == "リリーゼ"
+	HERE_L = 1
+ELSE
+	HERE_L = 0
+ENDIF
+IF HERE_L && CFLAG:ASSI:陥落 && MAUD:99
+	MAUD:98 = 1
+ELSE
+	MAUD:99 = 0
+ENDIF
+
 DRAWLINE
 ;初調教時
 IF FEVE:0 == 0
@@ -62,13 +74,17 @@ IF FEVE:0 == 0
 	PRINTW この場所、抜け出すことのできない暗く深い海の底のような場所で、どう動くのか、それはこれからの話
 	FEVE:0 = 1
 ;リリーゼが助手
-ELSEIF ASSI > 0 && CALLNAME:ASSI == "リリーゼ"
+ELSEIF HERE_L
 	;リリーゼと初めて
 	IF MAUD:6 == 0
-		PRINTFORMW 「あっ……！ あなたは……リリーゼさん、どうしてここに？」
+		PRINTFORMW 「あっ……！ 貴女は……リリーゼさん、どうしてここに？」
 		;リリーゼ陥落済み
 		IF CFLAG:ASSI:陥落
 			PRINTFORMW 「あぁ、あんたもここに居たのね。別にあたしがどこに居たっていいじゃない。こいつがあたしに泣いて頼んできたからこうやって付き添ってあげてるってわけよ」
+			IF MAUD:99
+				PRINTFORMW 「リリ様まーた虚勢張っちゃってぇ?。リリ様のほうがコイツに付きっきりのくせに」
+				PRINTFORMW 「ちょっと黙ってなさいあんた」
+			ENDIF
 			;モード陥落済み
 			IF CFLAG:陥落
 				PRINTFORMW 「あはは……リリーゼさんったら、相変わらずですね……」
@@ -103,71 +119,142 @@ ELSEIF ASSI > 0 && CALLNAME:ASSI == "リリーゼ"
 		MAUD:8 = 2
 	;2回目以降
 	ELSE
-		;リリーゼモード共に陥落済み
-		IF CFLAG:陥落 && CFLAG:ASSI:陥落
-			MAUD:10++
-			IF MAUD:10 == 10
-				PRINTFORMW 「あーあ、たまにはエッチなことばかりじゃなくて他の遊びとかないの？」
-				PRINTFORMW 「急になんですか……でも、いいですね。3人で外でお遊び……%CALLMAUD%？」
-				PRINTFORMW たまには二人とどこかに出かけるのもいいだろう。近所にゲームセンターがあったはずだが……
-				PRINTL ゲームセンターに
-				PRINTL [0] - 行く
-				PRINTL [1] - 行かない
-				INPUT
-				DO
-					SELECTCASE RESULT
+		;陥落後、初の調教
+		IF FEVE:0 <= 1 && CFLAG:陥落
+			GOTO MAUD_FALL
+		;前の調教で破瓜
+		ELSEIF MAUD:0
+			SELECTCASE MAUD:0
+				CASE DAY
+					PRINT 「さっき
+				CASE DAY-1
+					PRINT 「昨日
+				CASEELSE
+					PRINT 「こないだ
+			ENDSELECT
+			PRINTFORMW はごめんね、モードちゃん。痛かったでしょうけど、休んだらマシになったかな？」
+			IF MAUD:99 && CFLAG:ASSI:陥落
+				PRINTFORMW 「もー、リリ様が乱暴にするからモードちゃん可哀想で見てられなかったっスよぉ?。モードちゃん大丈夫っスか？ 舐めてあげましょうか？」
+				PRINTFORMW 「あんたのヨダレで治るわけないでしょ。このアホドラゴン」
+			ENDIF
+			IF CFLAG:陥落
+				IF MAUD:99
+					PRINTFORMW 「すまぬ、モードよ。止めるべきだとは思ったが……お前がこの先も、リリーゼ嬢と深く繋がって生きていくのならば、きっとお前の初めては彼女が相応しい」
+					PRINTFORMW 「ん、ありがと、リントヴルム。リリーゼさんのこと、認めてくれるんですね」
+					PRINTFORMW 「ぬうっ……まぁ、いいだろう。お前たち二人のことは、ずっと見てきたからな」
+				ENDIF
+				PRINTFORMW 「リリーゼさん、私は大丈夫です。初めてがリリーゼさんというのは、きっと%CALLMAUD%と同じくらい望んでいた……でも、お股から血が出たのは初めてなのでちょっと驚いちゃいましたけど」
+				IF CFLAG:ASSI:陥落
+					PRINTFORMW 「……んんっ？ モードちゃんもしかして……？」
+					PRINTFORMW （ちょっとあんた、この子まさか初潮来てないの……？）
+					PRINTFORMW リリーゼは%CALLNAME:MASTER%を強引に部屋の隅に連れて行きひそひそと聞いてくるが、当人から報告されてるわけでもないので知る由も無い%CALLNAME:MASTER%は、リリーゼに知らないと告げる
+					PRINTFORMW （ふむん……あたしは初潮前のいたいけなモードちゃんの処女を奪っちゃったのかもね……罪悪感と、ちょっと満足感♪）
+				ENDIF
+				IF MAUD:99
+					PRINTFORMW 「あの二人は何をヒソヒソ話してるんスかね」
+					PRINTFORMW 「さぁ……知らんな」
+				ENDIF
+			ELSE
+				PRINTFORMW 「印象が強すぎて、今も痛いのか思い出してるだけなのか分かりませんが、自分のお股から血が出てくる光景はなんとも不気味で……」
+			ENDIF
+			MAUD:0 = 0
+		ELSE
+			IF CFLAG:陥落
+				;あけましておめでとうイベント 一年に一回だけ
+				IF MONTH == 1 && MAUD:50 < YEAR
+					GOTO MAUD0101
+				;バレンタインイベント
+				ELSEIF MONTH == 2 && DAYS == 14 && MAUD:51 < YEAR
+					GOTO MAUD0214
+				;クリスマスイベント
+				ELSEIF MONTH == 12 && DAYS == 25 && MAUD:52 < YEAR
+					GOTO MAUD1225
+				;モードのこと放置しすぎるとヤンデレイベントが発生する 他のキャラとの相性が悪くなる ただしリリーゼは例外
+				;1週間放置からが発生の条件
+				ELSEIF DAY-MAUD:2 >= 7
+					GOTO ENVY
+				ELSE
+					SELECTCASE RAND:2
 						CASE 0
-							PRINTW 「やったっ！ じゃあ早速支度しなくちゃ！」
-							PRINTFORMW 「人がたくさん居るところは苦手ですけど……%CALLMAUD%とリリーゼさんがついてくれるなら大丈夫、かな……」
-							DRAWLINE
-							FOR COUNT, 100, 107
-								CSTR:COUNT = %CSVCSTR(NO:TARGET, COUNT)%
-								CSTR:ASSI:COUNT = %CSVCSTR(NO:ASSI, COUNT)%
-							NEXT
-							SELECTCASE SEX(MASTER)
-								CASE 1
-									CSTR:MASTER:上半身上着 = シャツ
-									CSTR:MASTER:下半身上着 = ズボン
-									CSTR:MASTER:下半身下着 = トランクス
-								CASE 2
-									CSTR:MASTER:全身上着 = ワンピース
-									CSTR:MASTER:上半身下着 = ブラジャー
-									CSTR:MASTER:下半身下着 = パンティ
-									CFLAG:MASTER:挿入可 = 1
-							ENDSELECT
-							CALL GAME_CENTER_K108
-							DRAWLINE
-							SELECTCASE MAUD:10
-								;主人の勝ち
-								CASE 1
-									PRINTW 「えっと……じゃあ時間もあるし、今日もしましょうか？」
-									PRINTW 「ちょっと、何か忘れてない？ モードちゃんこいつにキスしなきゃだめよ。あたしに勝ったんだから」
-									PRINTW 「えぇっ、ど、どうして……」
-									PRINTW 「いいじゃないの。いっつも好き好き愛してるとか言いながらしてるんでしょ？ あたしにも見せてほしいな」
-									PRINTFORMW 「そんなこと……言ってるかもしれませんけど……いいんですか？ %CALLMAUD%？」
-									PRINTW 「いいのよ。ほら、あたしが見てたげる。おふたりのキュンとくる姿をね」
-									PRINTFORMW 「じゃあ……%CALLMAUD%、失礼しますね」
-									PRINTFORMW リリーゼにそそのかされるまま%CALLNAME:MASTER%を見つめるモードは、ゆっくりと顔を近づけてくる……
-									PRINTFORMW 柔らかな唇が%CALLNAME:MASTER%の唇に触れ、後ろには愉快げにその光景を眺めるリリーゼがしてやったりといった様子で腕を組んでいた
-								;リリーゼの勝ち
-								CASE 2
-									PRINTW 「約束よ、モードちゃん。ほら、キスして」
-									PRINTW 「私はそんな約束してませんけど……どこにキスすればいいんですか？」
-									PRINTW 「なに？ いまさらほっぺにキス？ それともエッチな意味？」
-									PRINTW 「ち、ちがっ……分かりました、じゃあ……」
-									PRINTW 頬を染めて少しばかり目を逸らすモードはリリーゼに向き直り、ゆっくりと唇を重ねる……
-									PRINTW 「いいわね。あたしからじゃなく、たまにはモードちゃんからキスされるのも」
-									PRINTW 「もう、次から私のキスを賭けるときは事前に言ってくださいね？」
-								;同点 まずありえない
-								CASE 3
-							ENDSELECT
-							MAUD:10 = 10
-							BREAK
+							PRINTFORMW 「おはようございます、%CALLMAUD%……あっ、リリーゼさんも一緒なんですね」
+							SIF CFLAG:ASSI:陥落 && MAUD:99
+								PRINTFORMW 「オレも一緒っスよ」
+							PRINTFORMW 「せっかく同じ屋根の下に住んでるんだものね。来てあげたわ」
+							PRINTFORM 「%CALLMAUD%とリリーゼさん……
+							SIF CFLAG:ASSI:陥落 && MAUD:99
+								PRINT レーヴァテインさんも来てくれて、
+							PRINTFORMW みんな一緒、ふふっ」
+							PRINTFORMW 「あんた結構寂しがり屋さんだからね。こうやって顔出してあげないと」
 						CASE 1
-							PRINTW 「ちぇっ、つまんないの」
-							PRINTW 「まぁまぁ、リリーゼさん。私はお家で過ごすのが一番楽しいですから、ね？」
+							PRINTFORMW 「どーも、モードちゃん。あたしも一緒に来ちゃったわ。ごめんね」
+							PRINTFORMW 「謝ることなんて……リリーゼさんも%CALLMAUD%も大好きだから、おふたりと一緒に過ごせるのは、とても嬉しい……」
+							PRINTFORMW 「独り占めしたいとかは思わないのね。こいつのこと」
+							PRINTFORMW 「リリーゼさんだから、いいんです。リリーゼさん以外の人に%CALLMAUD%が奪われちゃったら、私……私……」
+							PRINTFORMW 「……変なことは考えないようにしましょ？ あんたって、結構独りよがりなところがあるのよね」
 					ENDSELECT
-				LOOP LOOPRES(1)
+				ENDIF
+			ELSEIF MARK:屈服刻印 == 3
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「ここにも慣れてきた？ 慣れる、っていうのもなんだか変だけど」
+						PRINTFORMW 「不思議ですね。最初は嫌だったのに、ここに居るとなんだか落ち着く……」
+						PRINTFORMW 「にゃはっ、そうね。ねぇ……モードちゃん、どこに居ようとも、あたしはモードちゃんが一緒に居てくれれば、それでいいのよ」
+						PRINTFORMW 「ありがとう……ございます。リリーゼさん」
+					CASE 1
+						PRINTFORMW 「リリーゼさんは、どうしてその人に従っているのでしょうか？」
+						PRINTFORMW 「どうして、って聞かれるといまいちなんとも言えないけど、気持ちいいことしてくれるし、何よりモードちゃんとこうやって……で、できるし」
+						PRINTFORMW 「ふふっ、リリーゼさんもまんざらではないんですね」
+						PRINTFORMW 「言わせないでよっ、恥ずかしい」
+						SIF CFLAG:ASSI:陥落 && MAUD:99
+							PRINTFORMW （リリ様……やっぱり惚れてるんっスかねぇ……）
+				ENDSELECT
+			ELSEIF MARK:屈服刻印
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「リリーゼさんの声、たまに私の部屋にまで聞こえてくるんです……なにかひどいことされたりとかは、ないですか？」
+						PRINTFORMW 「……大丈夫よ。モードちゃんが不安がる必要なんて無いわ。あたしはいつでもそばに居てあげるから」
+						SIF CFLAG:ASSI:陥落 && MAUD:99
+							PRINTFORMW 「リリ様にはオレが付いてるんです。モードちゃんは心配しなくても大丈夫っすよ」
+					CASE 1
+						IF TIME == 0
+							PRINTFORMW 「おはよう、モードちゃん。よく眠れた？」
+							PRINTFORMW 「前よりはぐっすりと……でも、疲れはあまり抜けなくて……」
+							PRINTFORMW 「あらら、大変ねぇ。不安な時はあたしが一緒に寝てあげるから言ってよね？」
+						ELSE
+							PRINTFORMW 「わざわざお二人で来られるなんて……もう寝ようと思っていたのに」
+							PRINTFORMW 「寝るのにはちょっと早すぎない？ あんたの体内時計どうなってんのよ」
+							PRINTFORMW 「夜は心が沈むので、寝てやり過ごしたいだけです……しかし、素直に寝せてはもらえなさそうですね」
+						ENDIF
+						IF CFLAG:ASSI:陥落 && MAUD:99
+							PRINTFORMW 「モードちゃんがお疲れでしたら、一曲子守唄でも歌ってあげたい気分なんスけど」
+							PRINTFORMW 「あんたの歌じゃモードちゃん不眠症になっちゃうから勘弁ね」
+						ENDIF
+				ENDSELECT
+			ELSE
+				;数日ぶり
+				IF DAY-MAUD:2 >= 3
+					GOTO MAUD3DAYS
+				ELSE
+					SELECTCASE RAND:2
+						CASE 0
+							PRINTFORMW 「はろ?、来たわよ、モードちゃん」
+							PRINTFORMW 「あっ、リリーゼさん……はぁ、リリーゼさんも一緒でよかった……」
+							IF CFLAG:ASSI:陥落
+								PRINTFORMW 「何安心してんのよ。これからあんたの体をあれこれしようってんだから覚悟しなさいよね」
+								SIF MAUD:99
+									PRINTFORMW 「モードちゃんはオレの顔見て安心したんですよね？ 分かるっスよ」
+							ELSE
+								PRINTFORMW 「あたしも、あんたの顔が見れて安心したわ。もう会えないんじゃないかと、ちょっぴり怖かった」
+							ENDIF
+						CASE 1
+							PRINTFORMW 「リリーゼさんが居なかったら私、おかしくなっちゃいそう……人の悪意に振り回されるのはもううんざり」
+							PRINTFORMW 「そう、かな。そこまで言うほど、この人って悪い奴じゃないかな……とあたしは思ってるんだけど……」
+							PRINTFORMW 「リリーゼさん……？」
+							PRINTFORMW 「なんでもないわ。忘れてちょうだい」
+							SIF CFLAG:ASSI:陥落 && MAUD:99
+								PRINTFORMW （ううっ、リリ様の前でこんなこと言えないけど、モードちゃんにはオレが付いてるから安心してほしいっス！）
+					ENDSELECT
+				ENDIF
 			ENDIF
 		ENDIF
 	ENDIF
@@ -175,6 +262,7 @@ ELSEIF ASSI > 0 && CALLNAME:ASSI == "リリーゼ"
 ELSEIF CFLAG:陥落
 	;陥落後、初の調教
 	IF FEVE:0 <= 1
+		$MAUD_FALL
 		PRINTW 「あ、あ……あの……ごめんなさい、この気持ちをどう伝えたらいいか……」
 		SELECTCASE FALLTYPE(TARGET)
 			;恋慕
@@ -193,11 +281,28 @@ ELSEIF CFLAG:陥落
 				PRINTW 「お願いします、ご主人様……モードはもう、ご主人様の虜です……これからも、ずっとそばに居させてください……ね？」
 				CALLMAUD = ご主人様
 		ENDSELECT
+		IF HERE_L
+			PRINTFORMW 「モードちゃん、大丈夫？」
+			PRINTFORMW 「ええ……私、今とても嬉しいんです。%CALLMAUD%のこと、好きになってもよかったんだ……」
+			IF CFLAG:ASSI:陥落
+				PRINTFORMW 「そう……こういうの、恋のライバルっていうのかな。でもモードちゃん、あたしたち、ライバルなんかじゃないわ」
+				PRINTFORMW 「お互い、好きなようにあいつを愛してさ、あたしたちも愛し合って、三人で幸せになろう？」
+				PRINTFORMW 「はい、はい……ありがとう。ほんとうに、好き……リリーゼさん……大好き……」
+				PRINTFORMW 人を愛することを自他共に許してもらえたことに、モードはたくさんの涙を流して喜んでいる。リリーゼも目を赤くして優しい笑顔を保つ
+				PRINTFORMW 「よかったね、モードちゃん、人を愛することができて。あんたもありがとね、モードちゃんを愛してあげなきゃ、あたしが許さないんだから」
+			ELSE
+				PRINTFORMW 「そう……モードちゃん、あいつのこと好きなんだ……」
+				PRINTFORMW %CALLNAME:MASTER%を鋭い目つきで睨むリリーゼは、顔を寄せ小声で話しかけてくる
+				PRINTFORMW 「あたしはあんたなんて好きじゃないけど、親友の子があんたに恋したっていうんだから、黙って見てるわけにもいかないわ」
+				PRINTFORMW 「あんたが蒔いた種なんだから、モードちゃんをちゃんと愛してあげて？ 泣かせたりしたら、ブチ殺すわよ」
+			ENDIF
+		ENDIF
 		FEVE:0 = 2
 	;2回目以降
 	ELSE
 		;あけましておめでとうイベント 一年に一回だけ
 		IF MONTH == 1 && MAUD:50 < YEAR
+			$MAUD0101
 			;陥落済みの鹿ノ子、及び寿々が居るか調べる
 			REPEAT CHARANUM
 				SIF !CFLAG:COUNT:陥落
@@ -228,6 +333,21 @@ ELSEIF CFLAG:陥落
 			ENDIF
 			PRINTW 「似合ってますか……？」
 			PRINTW モードは袖口をひらひらさせて照れくさそうに笑っている
+
+			IF ASSI > 0 && CFLAG:ASSI:陥落 && CALLNAME:ASSI == "リリーゼ"
+				PRINT 「奇遇ねぇ。あたしもあの二人におめかしされちゃって、ね。
+				SIF LOCAL:1
+					PRINT 鹿ノ子ちゃんったら、ずっと可愛い可愛い言いっぱなしで。でも……
+				PRINTW 
+				PRINTFORMW 　本当にすごく可愛いわ、モードちゃん」
+				PRINTFORMW 「リリーゼさんこそ……『姫初め』という風情のある風習には、相応しいかも……%CALLMAUD%、今年も、私たちふたりを、可愛がってくださいね？」
+				PRINTFORMW 「そうよ、モードちゃんのこともあたしのことも、たーくさん愛してくれないと許さないんだから」
+				IF MAUD:99
+					PRINTFORMW 「お二人とも可愛いっスけど、そんな甘いイチャイチャは目に毒っス！」
+					PRINTFORMW 「私たちはここに居ないほうがよいのかもしれぬな」
+				ENDIF
+			ENDIF
+
 			;服装の設定
 			FOR COUNT, 100, 107
 				CSTR:COUNT = 
@@ -244,11 +364,33 @@ ELSEIF CFLAG:陥落
 			TEQUIP:上半身下着 = 0
 			TEQUIP:下半身下着 = 1
 			TEQUIP:足元 = 0
+			IF ASSI > 0 && CFLAG:ASSI:陥落 && CALLNAME:ASSI == "リリーゼ"
+				CSTR:ASSI:特殊 = かんざし
+				CSTR:ASSI:全身上着 = 和服
+				CSTR:ASSI:下半身下着 = パンティ
+				CFLAG:ASSI:挿入可 = 1
+				CFLAG:ASSI:着衣併用 = 0
+				TEQUIP:ASSI:特殊 = 1
+				TEQUIP:ASSI:上半身上着 = 0
+				TEQUIP:ASSI:下半身上着 = 0
+				TEQUIP:ASSI:全身上着 = 1
+				TEQUIP:ASSI:上半身下着 = 0
+				TEQUIP:ASSI:下半身下着 = 1
+				TEQUIP:ASSI:足元 = 0
+			ENDIF
 			;イベント発生しましたフラグ
 			MAUD:50 = YEAR
 		;バレンタインイベント
 		ELSEIF MONTH == 2 && DAYS == 14 && MAUD:51 < YEAR
+			$MAUD0214
 			PRINTW 「今日は、バレンタインデーというらしいですね……バレンタインさんが殺された日でしたっけ？」
+			SIF MAUD:99
+				PRINTW 「せっかく努力と手間をかけたのだ。変な話で台無しにしてはならぬ」
+			IF ASSI > 0 && CALLNAME:ASSI == "リリーゼ"
+				PRINTFORMW 「物騒なことばかり覚えてるのねぇ」
+				SIF CFLAG:ASSI:陥落 && MAUD:99
+					PRINTFORMW 「オレはてっきり今日は15日だと思ってたっス」
+			ENDIF
 			;組み合わせを参照
 			REPEAT CHARANUM
 				SIF !CFLAG:COUNT:陥落
@@ -290,8 +432,8 @@ ELSEIF CFLAG:陥落
 						ENDSELECT
 						PRINTW が教えてくれました。えっと……その……」
 						PRINTW 「す、好きな人にチョコレートをプレゼントする日、でよろしかったですか……？」
-						;陥落済みのリリーゼも居る
-						IF LOCAL:5
+						;陥落済みのリリーゼも居る しかし助手のときはツンなので表示されない
+						IF LOCAL:5 && !HERE_L
 							PRINTW 「私とリリーゼさんも、お二方に教わって作ってみました……どっ、どうかお召し上がりください……」
 							PRINTFORMW 「リリーゼさんは、素直じゃないので、ふふ……まだ受け取ってませんか？ %CALLMAUD%？」
 						ELSE
@@ -302,16 +444,21 @@ ELSEIF CFLAG:陥落
 				LOOP 1
 			ELSE
 				PRINTW 「そ、それと……すっ、好き……好きな人にチョコレートを上げる日……ですよね……？」
-				IF LOCAL:5
+				IF LOCAL:5 && HERE_L
 					PRINTW 「私も、実はその……リリーゼさんと一緒に手作りしたりして……どっ、どうか受け取ってください……」
 					PRINTFORMW 「リリーゼさんは、素直じゃないので、ふふ……まだ受け取ってませんか？ %CALLMAUD%？」
 				ELSE
-					PRINTW 「私も、実はその……リリーゼさんと一緒に手作りしたりして……と、溶かして固めただけなので不味かったりはしないと思います。どうかお召し上がりください……」
+					PRINTW 「私も、実はその……手作りして……溶かして固めただけなので不味かったりはしないと思います。どうかお召し上がりください……」
 				ENDIF
 			ENDIF
 			;主人獣
 			IF CSTR:MASTER:種族 == "獣"
 				PRINTFORMW あいにく%CALLNAME:MASTER%はチョコが駄目な体質だが、それは伏せて気持ちはありがたく受け取ることにした。さて、これをどうしようか……
+				IF HERE_L
+					PRINTFORMW 「あんたその体でチョコ食えるの？ っと、モードちゃんに聞こえたら悪いわね」
+					PRINTFORMW 「親友として言っとくわ、モードちゃんがあんたのこと大好きってのは本当の気持ちなんだから、ありがたく受け取りなさいよ」
+					PRINTFORMW %CALLNAME:MASTER%はモードからの愛情に真摯に答えるべく、感謝の言葉を述べ、照れて俯く彼女を撫でる
+				ENDIF
 			;主人獣人
 			ELSEIF CSTR:MASTER:種族 == "獣人"
 				PRINTFORMW 半分獣の%CALLNAME:MASTER%はチョコを食べるべきか迷ったが、少量なら大丈夫と思いふたりで仲良くチョコレートを食した
@@ -326,8 +473,26 @@ ELSEIF CFLAG:陥落
 				;主人獣
 				IF CSTR:MASTER:種族 == "獣"
 					PRINTFORMW %CALLNAME:MASTER%はひどい罪悪感を抱きながら、この贈り物をどう扱うべきか考えている……
+					PRINTFORMW 「気持ちをちゃんと受け取ってくれればそれでいいのよ。チョコ渡しなさい。あたしからちゃんとモードちゃんに説明して、ふたりで美味しく頂いたげるわ」
 				ELSE
 					PRINTFORMW その涙を指で拭うとやっと%CALLNAME:TARGET%を見て微笑んだ
+					IF HERE_L
+						IF MAUD:99
+							PRINTFORMW 「よかったな、モードよ」
+							PRINTFORMW 「はい……リントヴルムもリリーゼさんも、\@ CFLAG:ASSI:陥落 ? レーヴァテインさんも、 #  \@みんなのお陰です、ありがとう……」
+						ENDIF
+						IF CFLAG:ASSI:陥落
+							PRINTFORMW 「リリーゼさんにも一緒に作ろうと言ったのですが、チョコ作るなんてめんどくさいって言って……」
+							PRINTFORMW 「ほんと、こいつに食わせるチョコをなんであたしが作らなきゃいけないのよ。そんなことより、チョコも食べ終えたみたいだし、始めましょ。もう我慢できないわ」
+							IF MAUD:99
+								PRINTFORMW 「あーあ、せっかくの良い雰囲気がリリ様の性欲で台無しっスよ。ひどい」
+								PRINTFORMW 「いいんですよ、レーヴァテインさん。今日もまた、みんなと一緒に居られるのが、幸せです」
+								PRINTFORMW 「モードちゃん……オレもリリ様も、リントヴルムさんも、ずっとそばに居てあげるっスよ」
+							ENDIF
+						ELSE
+							PRINTFORMW 「泣くほど嬉しいの？ あんなに心を閉ざしてたモードちゃんがねぇ。愛ってすごい力ね」
+						ENDIF
+					ENDIF
 				ENDIF
 			ENDIF
 			;お相手が居るなら名前出す お相手は陥落済みじゃなくていい
@@ -451,28 +616,90 @@ ELSEIF CFLAG:陥落
 			MAUD:51 = YEAR
 		;クリスマスイベント
 		ELSEIF MONTH == 12 && DAYS == 25 && MAUD:52 < YEAR
+			$MAUD1225
 			REPEAT CHARANUM
 				SIF CALLNAME:COUNT == "アーシェム"
 					LOCAL:2 = 1
+				SIF CALLNAME:COUNT == "リリーゼ"
+					LOCAL:3 = 1
 				SIF !CFLAG:COUNT:陥落
 					CONTINUE
 				SIF CALLNAME:COUNT == "つらら"
 					LOCAL:1 = 1
 			REND
-			;陥落済みのつららが居るかどうかで分岐
-			IF LOCAL:1
-				PRINTW 「め、メリークリスマス……」
+			;陥落済みのつらら、もしくはリリーゼが居るかどうかで分岐
+			IF LOCAL:1 || LOCAL:3
+				PRINTW 「め、メリークリスマ……ス……」
 				PRINTW 「うーん、練習したのに、実際にやってみると恥ずかしい……」
-				PRINTW 「何やらサンタクロースという団体がプレゼントを贈る日だとつららさんから聞いて……」
-				PRINTW 「お揃いの服を着せてもらって、私もサンタさんの仲間入りしてみました。似合いますか？」
-				;アーシェムが居る 陥落済みじゃなくても良い
-				IF LOCAL:2
-					PRINTW 「プレゼントは何にしようかと悩んでいたら、アーシェムさんからこれを頂きました。受け取ってください」
-					PRINTW …………これは媚薬だ
-					PRINTW 媚薬を手に入れた
-					ITEM:媚薬++
+				PRINT 「何やらサンタクロースという団体がプレゼントを贈る日だと
+				;つらら居る
+				IF LOCAL:1
+					PRINTW つららさんから聞いて……」
+					PRINTW 「お揃いの服を着せてもらって、私もサンタさんの仲間入りしてみました。似合いますか？」
+				;リリーゼ居る
+				ELSEIF LOCAL:3
+					PRINTFORMW リリーゼさんから聞いて……」
+					PRINTFORMW 「家にあった服をいろいろ着せてもらって、これがサンタクロースの格好、ですか？ 本では男性のサンタクロースの方ばかり載ってて……」
+				ENDIF
+				;リリーゼが助手
+				IF HERE_L
+					PRINT 「心配ご無用よ！ あたしも一緒のカッコなんだから。
+					;リリーゼ陥落地味
+					IF CFLAG:ASSI:陥落
+						PRINTFORMW プレゼントはあたしたちふたり！ あんたもプレゼントくれなきゃイタズラするわよ！」
+						IF MAUD:99
+							PRINTFORMW 「リリ様、それはハロウィンっスよ！」
+							PRINTFORMW 「いいのいいの、モードちゃん、細かいことは気にしないで今日はめちゃくちゃに楽しんじゃおうね！」
+							PRINTFORMW 「は、はいっ！ じゃあみんなで……メリークリスマス！」
+							PRINTFORMW （ちゃんと言えてるではないか、モードよ。ここまで嬉しそうなモードはそうそう見れぬ……感謝しているぞ）
+							PRINT 「
+						ELSE
+							PRINTW 「あれ？ 今日ってそんな日でしたっけ？」
+							PRINT 「細かいことは気にしないの。
+						ENDIF
+					ELSE
+						PRINTFORMW あたしまで巻き込まれるのは気に食わないけど、モードちゃんがあんたを喜ばせたいって言うんだから特別なんだからねっ」
+						PRINTFORMW 「リリーゼ嬢よ、すまない。モードのわがままに付き合わせてしまって」
+						PRINTFORMW 「いいのよ。いつもあたしがわがままさせてもらってるんだから。
+					ENDIF
+					PRINTFORMW それよりもモードちゃん、プレゼントあったでしょ？」
+					PRINT 「あっ、そうでした。
+					;アーシェムが居る
+					IF LOCAL:2
+						PRINTW アーシェムさんが、好きな人にプレゼントするならこれがいいと教えてくれて……
+						PRINTW …………これは媚薬だ
+						PRINTW 媚薬を手に入れた
+						ITEM:媚薬++
+					ELSE
+						PRINTFORMW リントヴルムが、%CALLMAUD%にプレゼントするなら、お守りが良いって……リントヴルムも%CALLMAUD%のこと心配してくれてるんですね」
+						PRINTFORMW これは……魔除けのお守りだ……。当のリントヴルムは厳しい目でこちらを見ている
+						PRINTFORMW 「貴様がもう少しまともな人間になることを願うぞ」
+					ENDIF
 				ELSE
-					PRINTW 「プレゼントは何にしようかと悩みましたが……何も持ってないので、今日は好きなだけ私を……」
+					;アーシェムが居る 陥落済みじゃなくても良い
+					IF LOCAL:2
+						PRINTW 「プレゼントは何にしようかと悩んでいたら、アーシェムさんからこれを頂きました。受け取ってください」
+						PRINTW …………これは媚薬だ
+						PRINTW 媚薬を手に入れた
+						ITEM:媚薬++
+					ELSEIF LOCAL:3
+						PRINTW 「プレゼントは何にしようかと悩んでいたら、リリーゼさんが、相手を確実に射止めるならこれが一番だ、と……」
+						PRINTW …………これは媚薬だ
+						PRINTW 媚薬を手に入れた
+					ELSE
+						PRINTW 「プレゼントは何にしようかと悩みましたが……何も持ってないので、今日は好きなだけ私を……」
+					ENDIF
+				ENDIF
+				;媚薬プレゼントされた
+				IF HERE_L && (LOCAL:2 || LOCAL:3)
+					PRINT 「にゃはは、
+					ITEM:媚薬++
+					IF CFLAG:ASSI:陥落
+						PRINTFORMW 三人で使うには申し分ない量ね。今日はみんなで忘れられないくらい楽しい日にしましょ」
+					ELSE
+						PRINTFORMW ふたりで使うには申し分ない量じゃないの。今日は楽しんでね。それと……
+						PRINTFORMW 　あんた、モードちゃん泣かせたりしたら、キリストの誕生日どころかあんたの命日になるんだからね。しっかりしなさいよ」
+					ENDIF
 				ENDIF
 				CSTR:特殊 = リボン
 				CSTR:上半身上着 = セーター
@@ -490,7 +717,25 @@ ELSEIF CFLAG:陥落
 				TEQUIP:上半身下着 = 1
 				TEQUIP:下半身下着 = 1
 				TEQUIP:足元 = 1
-			;陥落済みのつらら居ない
+				IF HERE_L
+					CSTR:ASSI:特殊 = リボン
+					CSTR:ASSI:上半身上着 = セーター
+					CSTR:ASSI:下半身上着 = スカート
+					CSTR:ASSI:全身上着 = ロングコート
+					CSTR:ASSI:上半身下着 = スポーツブラ
+					CSTR:ASSI:下半身下着 = パンティ
+					CSTR:ASSI:足元 = ハイソックス
+					CFLAG:ASSI:挿入可 = 1
+					CFLAG:ASSI:着衣併用 = 1
+					TEQUIP:ASSI:特殊 = 1
+					TEQUIP:ASSI:上半身上着 = 1
+					TEQUIP:ASSI:下半身上着 = 1
+					TEQUIP:ASSI:全身上着 = 1
+					TEQUIP:ASSI:上半身下着 = 1
+					TEQUIP:ASSI:下半身下着 = 1
+					TEQUIP:ASSI:足元 = 1
+				ENDIF
+			;陥落済みのつららもリリーゼも居ない
 			ELSE
 				PRINTW 「今日はクリスマスというらしいですね……何やら子供たちにプレゼントが配られるとか」
 				PRINTFORMW 「私にそんな身に覚えはありませんが……%CALLMAUD%と体を重ねておいて子供と言い張るのも変な話です」
@@ -500,6 +745,7 @@ ELSEIF CFLAG:陥落
 		;モードのこと放置しすぎるとヤンデレイベントが発生する 他のキャラとの相性が悪くなる ただしリリーゼは例外
 		;1週間放置からが発生の条件
 		ELSEIF DAY-MAUD:2 >= 7
+			$ENVY
 			SELECTCASE DAY-MAUD:2
 				;前回の調教から3ヶ月(90日)以上放置
 				CASE IS >= 90
@@ -550,6 +796,10 @@ ELSEIF CFLAG:陥落
 							RELATION:(NO:COUNT) = 30
 					REND
 			ENDSELECT
+			IF HERE_L
+				PRINTFORMW 「モードちゃんどしたの？」
+				PRINTFORMW 「いえ……なんでもないです」
+			ENDIF
 		;モードが家事コマンドで編み物教えてもらってから30日以上が経ち12月か1月の場合に手編みのマフラーもらえる
 		ELSEIF DAY-MAUD:3 >= 30 && MAUD:3 != 0 && (MONTH == 12 || MONTH == 1)
 			PRINTFORMW 「あ、あの……%CALLMAUD%？ 最近、寒い日が続きますね……」
@@ -592,12 +842,34 @@ ELSEIF CFLAG:陥落
 					IF MAUD:1 == DAY && TIME == 1
 						PRINTW 「うーん、さすがにお昼に張り切りすぎたせいで、今はちょっと……」
 						PRINTW 「あまり激しいのはだめ、ですよ？ お口とか手でやるなら大丈夫かも……」
+						IF MAUD:99
+							PRINTW 「モードよ、無理は禁物だぞ」
+							PRINTW 「分かってますよ、リントヴルム。%CALLMAUD%も優しいから、疲れたらすぐ終わりにします」
+						ENDIF
 					ELSE
 						PRINTW 「準備は万全ですよ。一緒にたくさん楽しみましょうねっ」
 					ENDIF
 				CASE 4
 					PRINTFORMW 「%CALLMAUD%……\@ TIME == 0 ? 今日も一緒に過ごせるのが嬉しいです…… # 今夜は離しません……ふふふ…… \@」
 					PRINTFORMW %CALLNAME:MASTER%の胸に頬ずりするモードは幸せそうに%CALLNAME:MASTER%を抱きしめている
+					IF MAUD:99
+						IF TIME == 0
+							PRINTFORMW 「うぅむ、貴様に頼るのは癪だが、モードが嬉しいのなら……その子を幸せにしてやってくれ」
+							PRINTFORMW 「ありがとう、リントヴルム。貴方が私のお父様みたいに心配してくれるのは嬉しい……けど、%CALLMAUD%と一緒に居るだけで、私は幸せ……」
+							PRINTFORMW 「そうか。良いパートナーだな……貴様、モードを頼むぞ」
+						ELSE
+							SELECTCASE RAND:2
+								CASE 0
+									PRINTFORMW 「あまり夜更かしをしてはいかんぞ」
+									PRINTFORMW 「んー、眠くなったら、そのまま%CALLMAUD%と一緒に寝ちゃうから大丈夫です♪」
+								CASE 1
+									PRINTFORMW 「夜更かしはいかん。お前はただでさえ体が弱いのだ。休まねば」
+									PRINTFORMW 「私は%CALLMAUD%と一緒に居る時が一番癒されます……%CALLMAUD%と過ごせない夜のほうが、私にはずっと耐えられない……」
+									PRINTFORMW 「……無茶はするな」
+									PRINTFORMW 「はい、わかってます」
+							ENDSELECT
+						ENDIF
+					ENDIF
 				CASE 5
 					;初期状態と違った服装をしている
 					IF CSTR:全身上着 != "ワンピース" || CSTR:上半身下着 != "スポーツブラ" || CSTR:下半身下着 != "パンティ"
@@ -616,18 +888,46 @@ ELSEIF CFLAG:陥落
 									CASE 0
 										PRINTFORMW 「さ、始めましょう？ %CALLMAUD%が、脱がしてくれるんですよね……？」
 										PRINTFORMW ちろちろと舌を出して自らの指を舐るモードは、頬を赤らめながら期待に満ちた瞳で%CALLNAME:MASTER%を見つめている
+										SIF MAUD:99
+											PRINTFORMW 痛いほどの視線を感じてリントヴルムを一瞥すると、「丁重に扱え」と言わんばかりの形相で%CALLNAME:MASTER%を睨んでいた……
 									CASE 1
 										PRINTW 「服を着たままするのは、私、好きかもしれません……」
 										PRINTW 「これなら、お外でもちょっとした時に出来そう……やだ、私、何を考えて……」
+										IF MAUD:99
+											PRINTFORMW 「モードよ、こやつと同じ愚か者に成り下がっては私が困る」
+											PRINTFORMW 「ううっ、わかってますし、%CALLMAUD%は愚か者じゃありませんっ……リントヴルムに怒られると、乗り気な自分が恥ずかしくなっちゃう……」
+										ENDIF
 								ENDSELECT
 							;下着無し
 							CASE 1
 								PRINTFORMW 「この服の下には何も穿いてないんです……見てみますか？ %CALLMAUD%……」
 								PRINTFORMW モードは着ている%CSTR:下半身上着%\@ CFLAG:挿入可 ? の裾をそっと掴んで # に手を添えて \@%CALLNAME:MASTER%を誘っている……
+								IF MAUD:99
+									SELECTCASE RAND:2
+										CASE 0
+											PRINTFORMW 「はしたないぞ、モードよ。お前はもっと清楚であるべきだ」
+											PRINTFORMW 「てへっ、ごめんなさい。つい、%CALLMAUD%を誘惑してみたくなったんです」
+										CASE 1
+											PRINTFORMW 「娼婦のような真似はよすんだ、モード」
+											PRINTFORMW 「しょーふ……？ なんですか？ それは」
+											PRINTFORMW 「ぐっ……そ、それは……だな……なんでもない。忘れてくれ」
+									ENDSELECT
+								ENDIF
 							;下着だけ
 							CASE 2
 								PRINTFORMW 「下着姿がお好きで……？ %CALLMAUD%が私に用意してくれる下着は可愛いものばかりで気に入ってます」
 								PRINTFORMW 体育すわりで%CALLNAME:MASTER%をじっと見つめるモードは、足の間から無頓着に下着を覗かせて幼さ故の官能を醸し出している……
+								IF MAUD:99
+									PRINT 「服を着せてやってはくれぬか、
+									SELECTCASE MONTH
+										CASE 7 TO 9
+											PRINTFORMW 夏とはいえ、衣服が無いのは可哀想だ」
+											PRINTFORMW 「むぅ、いいんですよ。どうせすぐ脱がしてもらうんですから。ね？ %CALLMAUD%？」
+										CASEELSE
+											PRINTFORMW 寒そうだ。モードはすぐに風邪をこじらせる」
+											PRINTFORMW 「寒くないですっ。これから%CALLMAUD%とすることを考えると、体が熱いくらい……」
+									ENDSELECT
+								ENDIF
 							;全裸
 							CASE 3
 								SELECTCASE RAND:2
@@ -637,6 +937,8 @@ ELSEIF CFLAG:陥落
 									CASE 1
 										PRINTFORMW 既に服を脱いで%CALLNAME:MASTER%を迎えるモードは、たどたどしい手つきで%CALLNAME:MASTER%の服を脱がし始める
 										PRINTFORMW 「ん、しょ……っと……%CALLMAUD%の肌がどんどん露わになっていく……はぁ……」
+										SIF MAUD:99
+											PRINTFORMW その姿を見せつけられるリントヴルムは不機嫌そうにそっぽを向いている……
 								ENDSELECT
 						ENDSELECT
 					ENDIF
@@ -658,6 +960,8 @@ ELSEIF CFLAG:陥落
 							PRINTW 女の子ですからおめかしも必要だと思うのですが……あいにく私はお洒落には疎くて……」
 					ENDSELECT
 					PRINTW 「あの子も両親の顔を見たいでしょうし、お暇があれば一緒に行きましょう？」
+					SIF MAUD:99
+						PRINTFORMW 「貴様が父親として失格だとしても、子供たちは私が面倒を見てやろう。モードの子なのだからな……」
 			ENDSELECT
 		ENDIF
 	ENDIF
@@ -672,20 +976,27 @@ ELSE
 				PRINTW 「あまり痛いことをするなら、私も大人しく従ってるわけにもいきません……お互いのためにも、暴力はやめてください……」
 				MAUD:0 = 0
 			ELSEIF DAY-MAUD:2 >= 3
-				SELECTCASE DAY-MAUD:2
-					;前回の調教から1ヶ月以上経過
-					CASE IS >= 30
-						PRINTW 「しばらくぶりですね……この家には本も娯楽も揃っていて、住むには申し分ありません……」
-						PRINTW 「貴方がもう少しまともな方なら、私もまた違った暮らしを送れたかもしれないのに……残念です」
-					;前回の調教から1週間以上経過
-					CASE IS >= 7
-						PRINTW 「最近見ないと思ってすっかり忘れていましたが……」
-						PRINTW 「うぅ、貴方の顔を見たら、あの嫌な感覚を思い出してしまいました……」
-					;前回の調教から3日以上経過
-					CASEELSE
-						PRINTW 貴方がモードの前に姿をあらわすと、モードは怯えて部屋の隅に逃げてしまった
-						PRINTW 「ひぃっ……わ、私の番ですか……？ うぅっ……もう、解放してください……」
-				ENDSELECT
+				$MAUD3DAYS
+				IF HERE_L
+					PRINTFORMW 「ご無沙汰ね、モードちゃん」
+					PRINTFORMW 「リリーゼさん……と、もうひとり、貴方もですか……」
+					PRINTFORMW 「そう残念な顔しないでよ。あたしがついてるんだから心配ないわ」
+				ELSE
+					SELECTCASE DAY-MAUD:2
+						;前回の調教から1ヶ月以上経過
+						CASE IS >= 30
+							PRINTW 「しばらくぶりですね……この家には本も娯楽も揃っていて、住むには申し分ありません……」
+							PRINTW 「貴方がもう少しまともな方なら、私もまた違った暮らしを送れたかもしれないのに……残念です」
+						;前回の調教から1週間以上経過
+						CASE IS >= 7
+							PRINTW 「最近見ないと思ってすっかり忘れていましたが……」
+							PRINTW 「うぅ、貴方の顔を見たら、あの嫌な感覚を思い出してしまいました……」
+						;前回の調教から3日以上経過
+						CASEELSE
+							PRINTW 貴方がモードの前に姿をあらわすと、モードは怯えて部屋の隅に逃げてしまった
+							PRINTW 「ひぃっ……わ、私の番ですか……？ うぅっ……もう、解放してください……」
+					ENDSELECT
+				ENDIF
 			ELSE
 				SELECTCASE RAND:7
 					CASE 0
@@ -879,11 +1190,64 @@ SIF FLAG:口上表示 == 0
 ;調教終了時のセリフ
 ;--------------------------------------------------
 DRAWLINE
+;リリーゼ助手
+IF HERE_L
+	IF CFLAG:陥落
+		SELECTCASE RAND:2
+			CASE 0
+				PRINTFORMW 「お疲れちゃんね。モードちゃん」
+				PRINTFORMW 「私はまだできますが、終わっちゃうんですか？」
+				PRINTFORMW 「自分が思ってる以上にあんたの体は疲れてんのよ。疲れが抜けにくい体質なんだからしっかり休みなさい」
+				PRINTFORMW 「リリーゼさんが一緒なら、安心して休めるかも……」
+				PRINTFORMW 昼
+				IF TIME == 0
+					PRINTFORMW 「そう？ じゃあ一緒にお昼寝でもしよっか」
+				ELSE
+					PRINTFORM 「あんたには愛する%CALLMAUD%もリントヴルムも居るでしょ。
+					IF CFLAG:ASSI:陥落
+						PRINTFORMW まぁでも、三人で過ごすのも悪くないわね」
+						IF MAUD:99
+							PRINTFORMW 「オレたち二匹を忘れてもらっちゃ困りますよ～」
+							PRINTFORMW 「いや、リリーゼ嬢、私たちのことは忘れてもらっても構わんぞ」
+						ENDIF
+					ELSE
+						PRINTFORMW あたしが出る幕じゃないわ」
+						IF MAUD:99
+							PRINTFORMW 「すまない、リリーゼ嬢。気を遣わせてしまって……」
+							PRINTFORMW 「いいのよ。それよりもこいつがモードちゃんに変なことしたら噛み殺してちょーだいね」
+						ENDIF
+					ENDIF
+				ENDIF
+			CASE 1
+				PRINTFORMW 「あらら、終わっちゃうのね。今日も会えて嬉しかったわ、モードちゃん」
+				PRINTFORMW 「私も、です。リリーゼさん、また会いましょうね？」
+				IF CFLAG:ASSI:陥落
+					PRINTFORMW 「当然よ。すぐにでもあたしのほうから会いに行っちゃうわ」
+				ELSE
+					PRINTFORMW 「ええ……あたしも、また会いたいわ。今になって心からそう思う」
+				ENDIF
+		ENDSELECT
+	ELSE
+		SELECTCASE RAND:2
+			CASE 0
+				PRINTFORMW 「モードちゃん大丈夫？ つらくない？」
+				PRINTFORMW 「つらいかどうかと聞かれたらつらいですけど、リリーゼさんが居るからまだ安心できます……」
+				PRINTFORMW 「あたしがよりどころになるなら、もっと頼もしくならないとダメね。これ以上、何かあったらあたしを呼ぶのよ？」
+				SIF CFLAG:ASSI:陥落 && MAUD:99
+					PRINTFORMW 「オレも一緒に駆けつけます。ぜひ頼ってください」
+			CASE 1
+				PRINTFORMW 「リリーゼさん……もう少し、一緒に居てくれますか？」
+				PRINTFORMW 「いいわよ。モードちゃんの頼みだもんね。ほら、あんたは出てっていいわよ。モードちゃんの様子を見ながら。あとで戻るわ」
+		ENDSELECT
+	ENDIF
 ;通常終了時
-IF BASE:体力 >= 500
+ELSEIF BASE:体力 >= 500
 	;陥落済み
 	IF CFLAG:陥落
-		SELECTCASE RAND:4
+		LOCAL = 4
+		SIF MAUD:99
+			LOCAL++
+		SELECTCASE RAND:LOCAL
 			CASE 0
 				SELECTCASE TIME
 					;昼
@@ -924,8 +1288,14 @@ IF BASE:体力 >= 500
 				ENDIF
 			CASE 2
 				PRINTFORMW 「きっと、また、来てください……待ちぼうけは嫌ですから、ね？」
+				SIF MAUD:99
+					PRINTFORMW 「心配するな、貴様が来なくとも、モードには私がついているのだからな」
 			CASE 3
 				PRINTFORMW 「また会えますか……？ うん……またすぐに会いたい……約束ですよ……？」
+			CASE 4
+				PRINTFORMW 「終わりたくない……ですけど、時間は私たちに味方してくれないのですね。%CALLMAUD%と過ごせたこの時間に感謝します」
+				PRINTFORMW 「うむ、時間とは残酷なものだ。しかし、お前にはまだ時間がたっぷりとある。それだけ幸せな時間は続くだろう」
+				PRINTFORMW 「ありがとう、リントヴルム。貴方が居てくれれば、%CALLMAUD%が居ない時間も耐えられます」
 		ENDSELECT
 	;屈服刻印3
 	ELSEIF MARK:屈服刻印 == 3
@@ -957,10 +1327,13 @@ IF BASE:体力 >= 500
 ELSEIF BASE:体力 < 500
 	;陥落済み
 	IF CFLAG:陥落
-		SELECTCASE RAND:2
+		LOCAL = RAND:4
+		SELECTCASE LOCAL
 			CASE 0
 				PRINTFORMW 「ちょっと疲れちゃいました……\@ TIME == 0 ? お昼寝しようかな…… # うぅん……もう、眠いなぁ…… \@」
 				PRINTW モードは小さい口を広げて欠伸をし、目元を擦っている
+				SIF MAUD:99
+					PRINTFORMW 「そうだな、休むことにしよう。さぁ、モードは休息が必要なのだ。貴様はさっさと出て行け」
 			CASE 1
 				SELECTCASE TIME
 					;昼
@@ -979,6 +1352,8 @@ ELSEIF BASE:体力 < 500
 				PRINTFORMW 「%CALLMAUD%……私への気持ちは、嘘じゃない……ですよね？」
 				PRINTFORMW 「壊れるほど愛されるなら……私も、%CALLMAUD%が壊れるまで愛したい……」
 		ENDSELECT
+		SIF LOCAL != 0
+			PRINTFORMW 「モードをあまり乱暴に扱うのなら私が許さん……もう少し優しく、頼むぞ」
 	;屈服刻印3
 	ELSEIF MARK:屈服刻印 == 3
 		SELECTCASE RAND:3
@@ -1064,6 +1439,8 @@ IF FCOM:SELECTCOM == 0 && !CFLAG:陥落
 	PRINTW 「どこを……触るんですか？」
 	PRINTW 起伏の少ない胸を撫でると、モードは気味が悪いといった様子で身を引く
 	PRINTFORMW もう片方の手を下半身に忍ばせると、\@ TEQUIP:縄 ? 縛られた体をよじらせて # 幼い細腕で \@精一杯の反抗をするが、無駄に終わった……
+	SIF HERE_L
+		PRINTFORMW 「逃げても無駄よ、モードちゃん。あたしも居るんだから。素直に撫でられときなさい」
 	FCOM:SELECTCOM = 1
 ;二回目以降
 ELSE
@@ -1076,15 +1453,27 @@ ELSE
 						PRINTW モードの小さいペニスを指先で摘むように扱きながら、申し訳程度に身体中を愛撫する
 						PRINTW 「んぅ……そこばかり弄ってたら、私の……壊れちゃいそう……うぁ、やっ……」
 						PRINTW 包皮を剥いて露出した若々しい色の亀頭を撫でると、モードはさらに激しく悶えながら前屈みに腰を曲げた……
+						IF HERE_L
+							PRINTFORMW 「ちょっと苦しそう……っていうか苦しいのかよがってるのか分かりづらいんだけど。どうなの？ モードちゃん」
+							PRINTFORMW 「うぅっ……変……変になっちゃうの……」
+							PRINTFORMW 「んぅ……我慢しないで射精してもいいのよ？」
+						ENDIF
 					CASE 1
 						;地の文表示関数
 						TRYCALLFORM MESSAGE_COM{SELECTCOM}
 						IF OVER_GENITAL(TARGET) != ""
 							PRINTFORMW 「%CALLMAUD%……胸ばかりじゃなくて……ね？」
 							PRINTFORMW 期待のこもった声で甘えてくるモードに応えて股間に手を伸ばすと、小さくもすっかり硬くなったペニスが%OVER_GENITAL(TARGET)%を膨らませている。服の上から優しく撫でると、先走りが%OVER_GENITAL(TARGET)%を微かに湿らせた
+							IF HERE_L
+								PRINTFORMW 「モードちゃん……精子ぴゅっぴゅしたいの？」
+								PRINTFORMW 「んっ…………はい……」
+								PRINTFORMW 「そっか。今日はあたしも手伝ったげるね」
+							ENDIF
 						ELSE
 							PRINTW モードの会陰を指でなぞりながら、小さい陰嚢を人差し指と親指で揉み解す。皮を被った幼いペニスを撫でると、モードは口を半開きにして自らの性器を勃起させていった
 							PRINTFORMW 「こ、こうなっちゃうと……%CALLMAUD%のことしか考えられなくなって……早く、早く出したいです……」
+							SIF HERE_L
+								PRINTFORMW 「もう、慌てちゃダメよ。ねぇ、あんたさ、今度はどっちがモードちゃんをイかせてあげようか？」
 						ENDIF
 				ENDSELECT
 			ELSE
@@ -1101,6 +1490,10 @@ ELSE
 						TRYCALLFORM MESSAGE_COM{SELECTCOM}
 						PRINTW 「私を男の子にしてまで、触りたかったものなんでしょうか……」
 						PRINTW 慣れないペニスへの刺激にくすぐったそうに体をよじらせるモードを押さえ込むようにしながら、胸への愛撫も続けた
+						IF HERE_L
+							PRINTFORMW 「こいつはそういう変態なのよ。でも男の子のモードちゃんも可愛いわよ」
+							PRINTFORMW 「むぅ……そう、ですか……？ ありがとうございます、リリーゼさん……」
+						ENDIF
 				ENDSELECT
 			ENDIF
 		CASE 2
@@ -1111,17 +1504,31 @@ ELSE
 						PRINTFORMW モードは%CALLNAME:MASTER%の手を取り、ゆっくりと自分の胸へと近付ける。%CALLNAME:MASTER%の指先が小さく可愛らしい乳首に触れると、モードの腕がぴくっと跳ねてその手が離れた
 						PRINTW 「ちょっと、触っただけなのに……体がじっとしていられなくて……」
 						PRINTFORMW %CALLNAME:MASTER%はモードの体が震えないように抱き寄せ、敏感な突起を撫で回す。%CALLNAME:PLAYER%の腕の中で快楽を享受する彼女は、表情を綻ばせて二人の間に安堵の息を落とした
+						IF HERE_L
+							PRINTFORMW 「モードちゃん、嬉しいの？」
+							PRINTFORMW 「はい……%CALLMAUD%と触れ合えることがこんなに嬉しい……」
+							PRINTFORMW 「にゃはっ、良かったわね。モードちゃんが嬉しそうだと、あたしも嬉しいわ」
+						ENDIF
 					CASE 1
 						;地の文表示関数
 						TRYCALLFORM MESSAGE_COM{SELECTCOM}
 						PRINTFORMW 愛撫の指を受け入れるモードがぎゅっと足を閉じて%CALLNAME:MASTER%の手を挟み込む。顔を赤らめた彼女が照れくさそうな上目遣いで%CALLNAME:MASTER%を見つめる
 						PRINTFORMW 「%CALLMAUD%……その手で、ずっと私を触っていて……」
+						IF MAUD:99
+							PRINTFORMW それを見つめるリントヴルムは、諦めがついたように言い放つ
+							PRINTFORMW 「……モードが望むのなら、よろしく頼む」
+						ENDIF
 					CASE 2
 						;地の文表示関数
 						TRYCALLFORM MESSAGE_COM{SELECTCOM}
 						PRINTFORMW %CALLNAME:MASTER%の膝上、腕の中でなすがままにされるモードは、控えめな乳房を愛撫する%CALLNAME:MASTER%の腕にそっと手を添える
 						PRINTFORMW 「素敵な腕です……世界で一番、私を愛してくれる%CALLMAUD%の腕……」
 						PRINTW 嬉しそうに呟くモードの髪に唇を寄せ、愛情に飢える小さな体をずっと撫で続けた
+						IF MAUD:99
+							PRINTFORMW 「おいで、リントヴルム。%CALLMAUD%のするように、私も愛する貴方を撫でてあげたいの……」
+							PRINTFORMW 「……頭と口元だけにしておけ。愛撫を愛情表現とするのは分かるが、お前と性行為を行うわけには……」
+							PRINTFORMW 「はい、いつもするように。そばに居てくれてありがとう。リントヴルムも%CALLMAUD%も、愛しています」
+						ENDIF
 				ENDSELECT
 			;屈服刻印Lv3
 			ELSEIF MARK:屈服刻印 == 3
@@ -1142,7 +1549,10 @@ ELSE
 			ELSE
 				;地の文表示関数
 				TRYCALLFORM MESSAGE_COM{SELECTCOM}
-				SELECTCASE RAND:3
+				LOCAL = 3
+				SIF HERE_L
+					LOCAL++
+				SELECTCASE RAND:LOCAL
 					CASE 0
 						PRINTW 「飽きないんですね……こんな体を触って……」
 						IF PALAM:欲情 >= PALAMLV:3
@@ -1151,6 +1561,10 @@ ELSE
 							PRINT まるで血が流れていないかのような冷たい肌に
 						ENDIF
 						PRINTW 指を這わせ、ちょんと突き出た乳首を撫でると「あぅ……」と可愛らしい声を漏らした
+						IF HERE_L
+							PRINTFORMW 「ふふん、普段は大人しいけど可愛い声も出すじゃないの、モードちゃん」
+							PRINTFORMW 「あうぅ……」
+						ENDIF
 					CASE 1
 						IF PALAM:潤滑 >= PALAMLV:3
 							PRINT 陰部に引かれた綺麗な縦割れ
@@ -1159,9 +1573,21 @@ ELSE
 						ENDIF
 						PRINTW を指先でなぞると、モードは不安そうに息を呑む
 						PRINTW 「そこを触られるのは、怖い……少し、怖いです…………」
+						IF HERE_L
+							PRINTFORMW 「大丈夫よ、外側を優しく触るだけだから怖くないわよ？」
+							PRINTFORMW 「そ、そう言われても……」
+						ENDIF
 					CASE 2
 						PRINTFORMW 後ろから抱きかかえるようにして、小さな乳房と\@ OVER_GENITAL(TARGET) != "" ?、布に覆われた #  \@秘部を撫でると、モードは碧い髪の下で顔を赤くして俯いてしまった……
 						PRINTW 「胸や、お……お股を、他人に触らせるのは……変だと思います、私……」
+						IF HERE_L
+							PRINTFORMW 「変じゃないわ。あたしだってこいつに触られたりするんだし、エッチするってのはこういうことなのよ」
+							PRINTFORMW 「私はえっちなことなんてしたくないのに……」
+						ENDIF
+					CASE 3
+						PRINTFORMW 「触らないで、と言おうと思ったのに……これじゃ……んんっ……」
+						PRINTFORMW 「こいつは言ってもやめないわよ。痛いわけじゃないんだから、大人しくしてたほうが気持ち良くなれるわ」
+						PRINTFORMW 「リリーゼさんまで……そんなぁ……」
 				ENDSELECT
 			ENDIF
 	ENDSELECT
@@ -1179,6 +1605,8 @@ IF FCOM:SELECTCOM == 0 && !CFLAG:陥落
 	TRYCALLFORM MESSAGE_COM{SELECTCOM}
 	PRINTFORMW 「えっ、えっ……？ 舐めるなら私、洗わないと……ひぁっ、く、くすぐったい……です……」
 	PRINTFORMW 閉じた無毛の陰唇を舌でなぞり、唾液で慣らしながら少しづつ奥を舐めほぐしていく。幼さ故の無頓着か、恥垢の残る内側にじっくりと舌を擦り付けた
+	SIF HERE_L
+		PRINTFORMW 「モードちゃんのおまんこ……綺麗ね。毛もないし、柔らかそう。あたしも舐めたくなっちゃう」
 	FCOM:SELECTCOM = 1
 ;二回目以降
 ELSE
@@ -1196,7 +1624,9 @@ ELSE
 				PRINTFORMW 期待に熱のこもる内側に舌を這わせると、モードの細い指がぴくりと跳ねて、秘唇を抑えながら快楽にすがっていた
 			CASE 2
 				PRINTFORMW モードの幼い女性器をじっくりと舐め回すと、幼いながらも体は快楽を訴え、可愛らしくも官能的な声を上げて悦んでいる
-				PRINTFORMW 「モードは幸せです……%CALLMAUD%が居てくれて……」
+				PRINTFORMW 「モードは幸せです……%CALLMAUD%\@ HERE_L ? とリリーゼさん #  \@が居てくれて……」
+				SIF HERE_L
+					PRINTFORMW 「ありがと、モードちゃん。あたしも……舐めてあげたいんだけど、いいかしら？」
 			CASE 3
 				;地の文表示関数
 				TRYCALLFORM MESSAGE_COM{SELECTCOM}
@@ -1211,13 +1641,26 @@ ELSE
 			CASE 0
 				PRINTFORMW 舌での愛撫を小さな体で一身に受けるモードは、口元に手の甲を寄せて呼吸を繰り返す
 				PRINTFORMW 「私ばかり舐められるのも、申し訳ない気持ちになります……至らぬところがあれば、私が……私が……」
+				IF HERE_L
+					PRINTFORMW 「そっか……じゃあ、あたしが気が向いた時に、あたしも舐めて貰おうかしら」
+					PRINTFORMW 「はい……喜んで」
+				ENDIF
 			CASE 1
 				PRINTFORMW モードの無垢な女性器を舐めほぐし、小さなクリトリスに優しくキスをすると、それだけで可愛らしい声を上げた
 				PRINTFORMW 「そこは、あまり触りすぎないようにしてほしいです……」
-				PRINTFORMW 口ではそう言っても、正直な反応を見せる幼い体は舌での奉仕にどんどん昂ぶっていった
+				IF HERE_L
+					PRINTFORMW 「そこが一番気持ち良いのよ？ もう少し我慢なさい、こいつがイかせてくれるはずだから」
+					PRINTFORMW 「うぅ……あっ、う……ひっ……」
+				ELSE
+					PRINTFORMW 口ではそう言っても、正直な反応を見せる幼い体は舌での奉仕にどんどん昂ぶっていった
+				ENDIF
 			CASE 2
 				PRINTFORMW 「はぁー…………はぅ、ぁ……」
 				PRINTFORMW すっかり警戒心を失い、股を委ねるモードが安心したように深く息を吐いている。%CALLNAME:PLAYER%が敏感な部分を舌で擦ると、吐息交じりに気持ち良さそうな喘ぎ声を漏らした
+				IF HERE_L
+					PRINTFORMW 「気持ち良いの？ モードちゃん」
+					PRINTFORMW 「はい……いわゆる、『感じてる』ということでしょうか」
+				ENDIF
 		ENDSELECT
 	;それ以外
 	ELSE
@@ -1226,16 +1669,30 @@ ELSE
 				;地の文表示関数
 				TRYCALLFORM MESSAGE_COM{SELECTCOM}
 				PRINTFORMW モードは口と目を閉じて、足の間に顔を埋める%CALLNAME:PLAYER%からの口淫を必死に耐え忍んでいる
-				PRINTFORMW (くすぐったいのか気持ち良いのかよく分からない……気を抜いたら、何か来ちゃいそう……)
+				PRINTFORMW （くすぐったいのか気持ち良いのかよく分からない……気を抜いたら、何か来ちゃいそう……）
+				IF HERE_L
+					PRINTFORMW 「どうしたのモードちゃん？ 声出してもいいのよ？」
+					PRINTFORMW （リリーゼさん……相変わらずいぢわる……）
+				ENDIF
 			CASE 1
 				PRINTFORMW 座り込んで震えながら、まるで舐めさせまいと足を閉じるモードだが、色白の膝に手を置いてじっとその目を見つめると、視線を逸らして瞳を潤しながらゆっくりと足を開いた
 				PRINTFORMW 「あ、貴方は……まっすぐな眼で、私を見るんですね……」
+				IF HERE_L
+					PRINTW 「あたしも、ずっとあんたのこと見てるわよ」
+					PRINTW 「リリーゼさんに見られるのはありがたいのですが……」
+				ENDIF
 			CASE 2
 				;地の文表示関数
 				TRYCALLFORM MESSAGE_COM{SELECTCOM}
 				PRINTFORMW 寝転がって秘部を舐められるモードは、恥ずかしさからか両手で顔を覆い隠してしまっている
 				PRINTFORMW 「ごめん、なさい……私、今、きっとひどい顔をしている……」
 				PRINTFORMW \@ PALAM:潤滑 >= PALAMLV:3 ? 濡れる #  \@陰部から口を離した%CALLNAME:PLAYER%は、\@ TEQUIP:野外プレイ ? 地に # ベッドに \@碧い髪を広げて震えるモードの表情を伺う。明かりの下で、一筋伝う涙のようなものが見えた気がした……
+				IF HERE_L
+					PRINTFORMW 「まさか、可愛いわ。モードちゃん。だから……泣かないでよ」
+					PRINTFORMW 「リリーゼさん……」
+					PRINTFORMW 「うちの主人がアホみたいなことしてごめんね。モードちゃんにはあたしが付いてるんだから……泣かないでね？」
+					PRINTFORMW 「……はい、リリーゼさん」
+				ENDIF
 		ENDSELECT
 	ENDIF
 ENDIF
@@ -1252,12 +1709,16 @@ IF FCOM:SELECTCOM == 0
 	TRYCALLFORM MESSAGE_COM{SELECTCOM}
 	PRINTFORMW 「あっ、ん、もう……これを舐めるために、私を男の子に……？」
 	PRINTFORMW 意味も分からず硬くなるモードの小さなペニスを口に含むと、くすぐったそうに足をもじもじさせながら、今や少年となった少女に奉仕する%CALLNAME:PLAYER%を見つめている
+	IF HERE_L
+		PRINTFORMW 「モノ好きよねぇ。男の子が好きなら最初から男の子を攫ってくればいいじゃないの」
+		PRINTFORMW 「本当に……どうして私とリリーゼさんを……」
+	ENDIF
 	FCOM:SELECTCOM = 1
 ;二回目以降
 ELSE
 	;陥落済み
 	IF CFLAG:陥落
-		SELECTCASE RAND:3
+		SELECTCASE RAND:4
 			CASE 0
 				PRINTFORMW ぴんと勃ったそれを舌と唇でキスをするようについばみ、口で包み込んではゆっくり湿りを与えながら舐め回す。自らの口元に指を添え、喘ぐような呼吸を繰り返すモードの声が静かに響き渡っている
 				PRINTFORMW 「%CALLMAUD%……%CALLMAUD%……もっと、ずっと、こうして……」
@@ -1267,6 +1728,11 @@ ELSE
 				PRINTFORMW 「ぁ……ごめんなさい、ちょっとびっくりして…………お願いします、%CALLMAUD%」
 				PRINTFORMW 期待交じりに微笑むモードの腰を撫でながら敏感な亀頭を舌で突くと、艶のある声で鳴きながら細い足を震えさせている。幼い体には少しばかり刺激が強いはずだが、彼女は%CALLNAME:PLAYER%の口淫をしっかりと受け入れていた
 			CASE 2
+				PRINTFORMW 余る皮をゆっくりと剥いて亀頭を露わにする。少しばかり恥垢の匂いと味が残る原型を舌で舐め上げるたびに、モードは歓びと痛みの混じった嬌声をあげる
+				PRINTFORMW 「ふあぁっ、くすぐったくて、痛くて……何より気持ち良いの……全部が、快感に変わっちゃう……」
+				SIF MAUD:99
+					PRINTFORMW 「貴様は男の扱いも女の扱いもできるのか。不思議なやつだな」
+			CASE 3
 				;地の文表示関数
 				TRYCALLFORM MESSAGE_COM{SELECTCOM}
 		ENDSELECT
@@ -1279,9 +1745,30 @@ ELSE
 				PRINTFORMW 「皮の中は……あぅっ……！ びりびりします……ちょっと、我慢できないです……」
 				PRINTFORMW 中身への刺激に悶絶するモードを気遣い、皮を被せたまま陰嚢から短い竿の皮先までに舌を這わせ、快感を高めていく
 				PRINTFORMW 「ごめんなさい……ごめんなさい……でも、気持ち良いです……貴方が望むなら、私も頑張って射精します……」
+				IF HERE_L
+					PRINT 「射精って頑張ってするものなの？
+					IF EXP:ASSI:射精経験
+						PRINTFORMW あたしの場合、我慢できなくて出しちゃうものなんだけどな」
+						PRINTFORMW 「恥ずかしすぎると、緊張して気持ち良くならないというか……なんて言ったらいいんでしょう……」
+					ELSEIF PENIS(MASTER)
+						PRINTFORMW こいつが出してる時はあまり頑張ってる気がしないんだけど」
+						PRINTFORMW 「どうなんでしょう……まだうまく出すコツが掴めてないのかな……」
+						PRINTFORMW 「なにそれ。変なの」
+					ELSE
+						PRINTFORMW 男の子の体は分からないことだらけね」
+						PRINTFORMW 「私だって、自分でもよく分かりません……」
+					ENDIF
+				ENDIF
 			CASE 1
 				PRINTFORMW 「そこは……痛かったり、むずむずしたりするので、あまり乱暴にしないでくださいね……？」
 				PRINTFORMW 皮に包まれた敏感な部分を言っているのか、幼さ故に刺激に慣れない亀頭を責められるのはまだ早いらしく、%CALLNAME:PLAYER%は十分注意してモードを射精へと導いていった
+				IF HERE_L
+					PRINTFORMW 「小動物みたいに震えちゃって。可愛いんだから」
+					PRINTFORMW 「人の怖さが身に染みて分かります……」
+				ENDIF
+			CASE 2
+				PRINTFORMW 「くすぐったいはずなのに、変な気持ちになっちゃう……なんでだろ」
+				PRINTFORMW 口に含んだモードのペニスを舌で転がし執拗に舐ると、そこから広がる刺激が彼女の体を小さく痙攣させる……
 		ENDSELECT
 	ENDIF
 ENDIF
@@ -1306,9 +1793,15 @@ IF FCOM:SELECTCOM == 0
 			PRINTFORMW 誤って初めてを破らないよう丁寧に、無垢な女性器を指で解していく。軽い前戯で準備を整える%CALLNAME:PLAYER%に、モードは身を委ねながらそっと抱きついてくる
 			PRINTFORMW 「そこって、好きな人と繋がるための場所、ですよね……？」
 			PRINTFORMW 「私…………私の好きな人は、%CALLMAUD%……%CALLMAUD%と一緒に……わがままでごめんなさい。でも、%CALLMAUD%が好きなんです、私」
+			IF MAUD:99
+				PRINTFORMW 「この子の体を気遣ってくれて感謝する。モードはまだ子供だ。もし抱くというなら……入念に準備を整えて、少しでも負担の無い破瓜を迎えさせてやってくれ」
+				PRINTFORMW リントヴルムは父のような兄のような、はたまた親友のような複雑な心境を%CALLNAME:MASTER%に述べる……
+			ENDIF
 		ELSE
 			PRINTFORMW 「ひっ……そ、そこに指なんて、入るんですか……？」
 			PRINTFORMW モードの幼い割れ目を指で擦り、膣口を撫でながら指を出し入れすると、少し怖そうに腰を引いてしまっている
+			SIF HERE_L
+				PRINTFORMW 「あんま深く挿れちゃダメよ。初めてが指なんて可哀想だわ」
 		ENDIF
 	;再生処女
 	ELSEIF TALENT:再生処女
@@ -1317,6 +1810,22 @@ IF FCOM:SELECTCOM == 0
 		IF CFLAG:陥落
 			IF VIRGIN:1 == NAME:MASTER
 				PRINTFORMW 「で、でも、私の一番の初めては%CALLMAUD%ですからね……？ %CALLMAUD%以外の人が私の特別な相手なんて……嫌ですからね」
+				IF MAUD:99 || HERE_L
+					PRINT 「あっ、でも、また初めてを他人にあげられるなら……
+					IF HERE_L
+						PRINTFORMW リリーゼさんに捧げたいな……」
+						PRINTFORMW 「あ、あたし？ あたしでいいの？」
+						PRINTFORMW 「私の特別な人に、なってほしくて……だめ、ですか……？」
+						PRINTFORMW 「断る理由なんて無いわよ……モードちゃんにそう言ってもらえて、あたしもすごく嬉しい……」
+					ELSE
+						PRINTFORMW ねぇ、リントヴルム？」
+						PRINTFORMW 「わ、私か……？ 本気で言ってるのか？」
+						PRINTFORMW 「……はい」
+						PRINTFORMW まっすぐ目を逸らさず、性交渉を知った娘は、愛する親友のの龍を見つめている
+						PRINTFORMW 「2回目というのも申し訳ありませんが、また処女を与える機会があるのです。とても大事で大好きな、愛するリントヴルムに捧げます」
+						PRINTFORMW 「……お前の覚悟は分かった。お前の%CALLMAUD%とやらに相談しておこう」
+					ENDIF
+				ENDIF
 			ELSE
 				PRINTFORMW 「私、今度こそ%CALLMAUD%にこの体を捧げたいです……%CALLMAUD%、私の、特別な相手になってください……」
 			ENDIF
@@ -1327,6 +1836,10 @@ IF FCOM:SELECTCOM == 0
 		IF EXP:Ｖ経験 <= 50
 			PRINTFORMW 「きゃっ！ あ……ご、ごめんなさい……あの破瓜っていうのが、とても痛かったから……触られるのは怖いんです……」
 			PRINTFORMW モードが感じているのが苦痛なのか快楽なのか分からないまま膣壁を指で擦り、未熟な性感を次第に高めていった
+			IF HERE_L
+				PRINTFORMW 「最初は痛いかもしれないけど、次第に慣れてくるから大丈夫よ」
+				PRINTFORMW 「慣れるも何も、どうして痛い思いをしてまで慣らす必要があるんですか……」
+			ENDIF
 		ELSE
 			PRINTFORMW 「不思議なものですね……初めてはあんなに痛かったのに、慣れてくると気持ち良くなってきます……」
 			PRINTFORMW 小さな膣でぎゅうっと指を締め付けてくる若い肉壁をくすぐるようになぞると、モードの愛液が指にまとわりついてきた
@@ -1341,37 +1854,58 @@ ELSE
 		IF (TALENT:性転換済 || TALENT:ふたなり) && FCOM:SELECTCOM == 1
 			PRINTFORMW 「私……男の子なんでしょうか、女の子なんでしょうか……どっちもあるなんて、\@ CFLAG:陥落 ? 欲張りかもしれませんね # 私の体はどうなっているんでしょう…… \@」
 			PRINTFORMW モードの膣に指を細かく出し入れすると、小さなペニスをぴくんと可愛らしく揺らした
+			SIF HERE_L
+				PRINTFORMW 「まぁどっちでもいいんじゃないの。どっちにもなれるんだったらお得よね」
 			FCOM:SELECTCOM = 2
 		ELSE
 			IF TALENT:処女
-				SELECTCASE RAND:2
+				SELECTCASE RAND:3
 					CASE 0
 						PRINTFORMW 「私の体を気遣ってくれてるんですね……優しい%CALLMAUD%、大好き……」
 						PRINTFORMW 好意を口に出しては恥ずかしそうに顔を赤くするモードを抱き寄せ、まだ初めてを済ませていない膣を慎重に解していくと、%CALLNAME:PLAYER%の腕の中で彼女は嬉しそうに微笑んだ
 					CASE 1
 						PRINTFORMW 「私が思っているより痛い、のかな……でも、私、きっと我慢します……%CALLMAUD%の愛を受け止めます」
 						PRINTFORMW 男を知らない女性器への丹念な愛撫を受け、モードは期待交じりの綺麗な瞳で見つめてくる。その可愛い表情を曇らせまいと、%CALLNAME:PLAYER%は出来る限りモードの体を慣らしていった
+						IF HERE_L
+							PRINTFORMW 「大丈夫よ。しっかり準備してるんだから、安心して身を委ねて、ね？」
+							PRINTFORMW 「はい……リリーゼさんのおかげで、一層どきどきしてきました……」
+						ENDIF
+					CASE 2
+						PRINTFORMW 割れ目をなぞっては浅く指を沈ませる愛撫を繰り返す。それだけでモードの体からは力が抜け、%CALLNAME:MASTER%に身を委ねる
+						PRINTFORMW 「ちょっと触られただけで幸せでいっぱいになっちゃう……きっと%CALLMAUD%に奥の方まで撫でられたら……考えただけで、もう……好き……」
 				ENDSELECT
 			ELSE
-				SELECTCASE RAND:2
+				SELECTCASE RAND:3
 					CASE 0
 						PRINTFORMW 指を強く締め付けてくる幼く小さい膣内は、愛液を滲ませて愛撫への敏感な反応を見せている
 						PRINTFORMW 「お股が熱くて……とろけちゃいそう……もっと、もっと撫でて……%CALLMAUD%……」
 					CASE 1
 						PRINTFORMW モードの幼い体から無尽蔵に湧き出す情欲が、狭い膣内を熱で満たし、子宮口まで沈み込む%CALLNAME:PLAYER%の指と溶け合うかのようにきつく咥え込んでいる
 						PRINTFORMW 「%CALLMAUD%の指だと、…………お腹の中が、どきどきします…………子宮、でしたっけ？」
+					CASE 2
+						PRINTFORMW 「気持ち良いところを、いっぱい撫でてくれるの……%CALLMAUD%の指……」
+						PRINTFORMW モードは%CALLNAME:MASTER%の空いている方の手を取り、愛おしげに指を舐めている……
 				ENDSELECT
 			ENDIF
 		ENDIF
 	;それ以外
 	ELSE
-		SELECTCASE RAND:2
+		SELECTCASE RAND:3
 			CASE 0
 				PRINTFORMW 「変に激しくしないでください……きっと、傷が付いたら痛いと思います……優しく、お願いしますね」
 				PRINTFORMW 不安がる心を安らげるように縦すじをなぞりながらきつく閉じた膣口を慣らし、ゆっくりと指先を出し入れする。モードの瞳が指を飲み込む自分の陰部を見つめ、鈍い快楽に瞼を降ろした
+				SIF HERE_L
+					PRINTFORMW 「モードちゃんに怪我させたらあたしも許さないんだから、無理させないでよね」
 			CASE 1
 				PRINTFORMW ふにふにと柔らかくまだ毛の一本も無い、まさに子供の秘部に指を挿れていく。モードは緊張した面持ちで膣と指の触れ合いを見つめ、幼子故のとても狭い空間が指先を強く締め付ける
 				PRINTFORMW 「私は動かないようにします……どうか、痛くしないで……」
+				IF HERE_L
+					PRINTFORMW 「あたしが抱きしめてあげる。少しは安心できるといいんだけど……」
+					PRINTFORMW じっと固まって動かないモードを後ろから細腕で包み込むリリーゼ。モードの表情に微かに安堵が宿る……
+				ENDIF
+			CASE 2
+				PRINTFORMW 「このくらいなら、私も……激しいのはだめです。優しく撫でてくださいね」
+				PRINTFORMW 秘唇へ指を飲み込ませ、ひとつひとつの動作をゆっくりと行う。指を曲げ、内側を擦り、さらに深くへと進んでいく一連の動きに、モードは敏感な反応を見せていた……
 		ENDSELECT
 	ENDIF
 ENDIF
@@ -1403,45 +1937,75 @@ IF FCOM:SELECTCOM == 0
 ELSE
 	;陥落済み
 	IF CFLAG:陥落
-		SELECTCASE RAND:2
+		LOCAL = 2
+		SIF MAUD:99
+			LOCAL++
+		SELECTCASE RAND:LOCAL
 			CASE 0
 				;地の文表示関数
 				TRYCALLFORM MESSAGE_COM{SELECTCOM}
 				PRINTFORMW 「また舐めてる……私も、%CALLMAUD%のお尻、舐めてあげましょうか……？」
 				PRINTFORMW 尻穴へのくすぐられるような刺激を、モードは体をよじらせて受け入れている
+				IF MAUD:99
+					PRINTFORMW 「モードがこやつの尻を舐める必要はない。腹を壊すぞ」
+					PRINTFORMW 「%CALLMAUD%のお尻も綺麗ですもんね？ 大丈夫ですよね？」
+				ENDIF
 			CASE 1
 				SELECTCASE TALENT:性別
 					CASE 1
 						PRINTFORMW モードは小さなお尻を揺らしながら%CALLNAME:PLAYER%を誘う。期待するアナルに舌を寄せると、幼いペニスがぴくんと跳ねる
 						PRINTFORMW 「男の子になってから、お尻の穴で、ここが反応するようになって……私、変ですか……？」
+						IF MAUD:99
+							PRINTFORMW 「男性には前立腺というものがある。そこで感じてしまうのは珍しいことじゃない」
+							PRINTFORMW 「そうなんですか……やっぱり私は男の子に……リントヴルムもお尻の経験が？」
+							PRINTFORMW 「……ノーコメントだ」
+						ENDIF
 					CASE 2
 						PRINTFORMW モードは小さなお尻を揺らしながら%CALLNAME:MASTER%を誘う。期待するアナルに舌を寄せると、嬉しそうな声を上げた
 						PRINTFORMW 「はぁ……%CALLMAUD%……もっと舐めて……」
 				ENDSELECT
+			CASE 2
+				PRINTFORMW 「やっぱり、私は舐めるより指を入れてもらったほうがいいかも……」
+				PRINTFORMW 当のモードは尻穴を舐められるだけでは満足できない様子だ……
+				PRINTFORMW 「しっかり解さねばならん。準備を怠ると怪我をするぞ」
+				PRINTFORMW 「そうですね……なんだか詳しいんですね、リントヴルム……」
 		ENDSELECT
 	;屈服刻印Lv3
 	ELSEIF MARK:屈服刻印 == 3
-		SELECTCASE RAND:2
+		SELECTCASE RAND:3
 			CASE 0
 				;地の文表示関数
 				TRYCALLFORM MESSAGE_COM{SELECTCOM}
 				PRINTFORMW 「お尻の穴を好んで舐める人も、あまり居ないのではないでしょうか」
 				PRINTFORMW %CALLNAME:PLAYER%の口に尻穴を委ねるモードは両の手をぎゅっと握りしめながらむず痒さに耐えている。ひくひくと震える穴の中に舌を突き入れると、可愛らしい声と共に軽い体がぴくんと跳ねた
+				SIF HERE_L
+					PRINTFORMW 「こいつはあまり居ないうちの一人だからしょうがないわよ。救いようのない変態」
 			CASE 1
 				PRINTFORMW 弾力のある尻肉をぎゅっと掴みながら肛門を舐める。心なしか目の前の幼い割れ目がじわりと湿り気を帯びているようにも見えた
 				PRINTFORMW 「ちょっと舐められるだけなのに、身体中に響くんですね……」
+			CASE 2
+				PRINTFORMW 「やっぱり、舐めるのはやめませんか……？ 顔も見えないし、手で触られるよりずぅっと恥ずかしい……です……」
+				PRINTFORMW 嫌悪感より羞恥が上回ったモードは、顔を赤くしている……
+				IF HERE_L
+					PRINTFORMW 「確かに恥ずかしいけど、別にいいじゃないの。お尻舐めるなんて犬のやることよ。こいつは今モードちゃんより立場が下なのよ」
+					PRINTFORMW 「可愛くない犬です……」
+					PRINTFORMW 「あんたもなかなかひどいこと言うわね……」
+				ENDIF
 		ENDSELECT
 	;それ以外
 	ELSE
 		;地の文表示関数
 		TRYCALLFORM MESSAGE_COM{SELECTCOM}
-		SELECTCASE RAND:2
+		SELECTCASE RAND:3
 			CASE 0
 				PRINTFORMW 「ちゃんと綺麗にするようには心掛けてますが……うぅ、何も言わないでください……」
 				PRINTFORMW 目の前でひくつく肛門をじっくりと眺めながら舐め続けるが、無垢で綺麗な色の穴をしていることを、モード自身は知る由も無い
 			CASE 1
 				PRINTFORMW 「やめてください……見られるだけでも困るのに、舐めるなんて……」
 				PRINTFORMW 羞恥に震えるモードの目は涙ぐんでいる。何も非は無いのに拒絶と謝罪を繰り返す幼子の姿に、%CALLNAME:PLAYER%は微かな罪悪感を覚えながら、舌で尻穴を慣らし続けた
+			CASE 2
+				PRINTFORMW 「くすぐったいっていうより……もう、本当に、気味が悪い……」
+				PRINTFORMW 湿った舌が尻穴を這うのは生理的な恐怖もあるのだろうか。声に恐怖が混じっている……
 		ENDSELECT
 	ENDIF
 ENDIF
@@ -1463,15 +2027,29 @@ IF FCOM:SELECTCOM == 0
 	IF CFLAG:陥落
 		PRINTFORMW 「%CALLMAUD%が使いやすいようにと思って、中のほうまで綺麗にしているんです……ちょっと苦しいですけどね」
 		PRINTFORMW 健気に笑顔を作るモードの肛門を指で撫でながら、ゆっくりと指の先端を中に挿れていく。モードは期待に潤んだ瞳で下腹部を見つめると、嬉しそうに息を吐きながら尻穴を緩めた
+		IF MAUD:99
+			PRINTFORMW 「まったく……貴様が余計な趣味を持っていなければ、モードも大変な思いをしなくて済むのだ」
+			PRINTFORMW 「いいんですよ、リントヴルム。%CALLMAUD%が私の体を隅々まで愛してくれるなら、私にとっては一番嬉しいの……」
+			PRINTFORMW 「モード、お前というやつは……
+			PRINTFORMW  　貴様、モードを愛してるなら、モードの体を……大切に扱ってやってくれ。頼む」
+		ENDIF
 	ELSE
 		;地の文表示関数
 		TRYCALLFORM MESSAGE_COM{SELECTCOM}
 		IF EXP:Ａ経験 <= 100
 			PRINTFORMW 「えっ！？ んやっ、だめです……き、きたな……汚れちゃいますから……」
 			PRINTFORMW %CALLNAME:PLAYER%の指から必死に逃げようとするモードを抱きしめると、主人に抱き上げられた犬のように大人しくなる。腕の中のモードのアナルを指で弄ると、何も言えないまま身震いしていた
+			IF HERE_L
+				PRINTFORMW 「はぁ～、好きな人にしてもらうなら憧れちゃう体勢だけど、相手がこいつじゃあね……」
+				PRINTFORMW 「憧れちゃうならリリーゼさんが代わってくださいよぅ……」
+			ENDIF
 		ELSE
 			PRINTFORMW 「お尻が好きなんですね……あ、いえ、少し洗い方を変えてみたので……」
 			PRINTFORMW 準備を整えるモードもまんざらでもないのだろうか。しかし何気なく口に出した自分の発言に、彼女は少し遅れて理解したのか頬を染めて言葉を詰まらせてしまった
+			IF HERE_L
+				PRINTFORMW 「へぇ、自分で洗ってるんだ。どうやって？」
+				PRINTFORMW リリーゼの追い打ちのような問いに、モードは耳まで赤くなっている……
+			ENDIF
 		ENDIF
 	ENDIF
 	FCOM:SELECTCOM = 1
@@ -1484,6 +2062,8 @@ ELSE
 		PRINTFORMW 「何か、変です……何かが……」
 		PRINTFORMW 少年になったモードのアナルに指を挿れて前立腺をぐっと押すと、肛門をぎゅっと締め付けて小さなペニスを揺らす
 		PRINTFORMW 「ひゃっ！ な、なんですか、今のは……？ これが、男の子の体……」
+		SIF HERE_L
+			PRINTFORMW 「前立腺ってやつ？ ふふん、モードちゃんも早くメスイキできるようになるといいわね」
 		FCOM:SELECTCOM = 2
 	;陥落済み
 	ELSEIF CFLAG:陥落
@@ -1493,6 +2073,10 @@ ELSE
 				TRYCALLFORM MESSAGE_COM{SELECTCOM}
 				PRINTFORMW 尻穴で指を咥え込むモードは、緩んでは締まるのを繰り返しながら愛撫の快感を享受している
 				PRINTFORMW 「もっと奥まで……全部挿れてください……%CALLMAUD%の指、一番奥まで……」
+				IF HERE_L
+					PRINTFORMW 「もう全部入ってるわよ」
+					PRINTFORMW 「あれ？ じゃあ、別の指も、一緒に……」
+				ENDIF
 			CASE 1
 				SELECTCASE TALENT:性別
 					CASE 1
@@ -1501,11 +2085,20 @@ ELSE
 						PRINTFORMW モードを四つん這いにさせて後ろから肛門を指で弄ると、\@ PALAM:潤滑 >= PALAMLV:3 ? 幼い陰唇から愛液を滴らせながら #  \@小ぶりな尻を揺らして媚びてくる
 				ENDSELECT
 				PRINTFORMW 「んんっ……さすがです、%CALLMAUD%……モードの気持ち良いところ、ちゃんと分かってくれてる……」
+				IF MAUD:99
+					PRINTFORMW 「体を理解するのは立派なパートナーだ。モード、良い主人に恵まれたな」
+					PRINTFORMW 「ふふ……はい。%CALLMAUD%は、私にとって世界でいちばんのパートナー……」
+				ENDIF
 			CASE 2
 				SELECTCASE TALENT:性別
 					CASE 1
 						PRINTFORMW 開脚するモードの尻穴に指を挿れて前立腺を撫でると、小さなペニスが逃げるように跳ねる。当の本人は胸元で指を組み、足の間に%CALLNAME:PLAYER%の指が出入りするのをじっと見つめている
 						PRINTFORMW 「お尻の中を触られると……ずっしり重い何かが来て、全部押し潰されちゃいそうなんです……不思議と、出ちゃいそう……」
+						IF MAUD:99 && CFLAG:アナルを責められて射精した経験 == 0
+							PRINTFORMW 「モード、もう少し耐えれば、前立腺だけで射精することもある。試してみたいか？」
+							PRINTFORMW 「ぜん、りつせん……？ 気持ち良くなれるのなら、ぜひ……」
+							PRINTFORMW 「そうか。貴様、その手を休めるな。モードが前立腺で射精に達するまで続けてくれ」
+						ENDIF
 						IF BASE:射精 >= MAXBASE:射精/10*9
 							PRINTFORMW 「あっ……%CALLMAUD%、%CALLMAUD%っ……！ 出そう……擦って、擦って……！」
 						ELSE
@@ -1517,13 +2110,17 @@ ELSE
 						PRINTFORMW 挿れた指を曲げて腸壁を撫で回すと、モードはくぐもった声を上げてさらなる刺激を求める
 						PRINTFORMW 「%CALLMAUD%……たくさん触ってください……私も、もっと気持ち良くなりたいです……わがままでごめんなさい」
 						PRINTFORMW モードの細い足を撫でながら尻穴を弄り回し、少女を深い快楽の沼に誘い込んだ……
+						IF MAUD:99
+							PRINTFORMW 「モード、それはわがままなどではない。愛する者と快楽を共有したいのはごく自然な欲求だ。後ろめたいことはない」
+							PRINTFORMW 「そう、なんですか？ 私も、お礼に%CALLMAUD%のこと、たくさん気持ち良くしてあげなくちゃ……」
+						ENDIF
 				ENDSELECT
 		ENDSELECT
 	;屈服刻印Lv3
 	ELSEIF MARK:屈服刻印 == 3
 		;地の文表示関数
 		TRYCALLFORM MESSAGE_COM{SELECTCOM}
-		SELECTCASE RAND:2
+		SELECTCASE RAND:3
 			CASE 0
 				PRINTFORMW 「もう……そこばっかり触って……」
 				PRINTFORMW モードは\@ TEQUIP:縄 ? 瞼を閉じると # 自身の尻穴を弄る手にそっと指を添えると \@、見えない尻への蹂躙に息も絶え絶えに耐えている
@@ -1531,18 +2128,33 @@ ELSE
 				PRINTFORMW 「指……もう1本くらい、入るかも……」
 				PRINTFORMW 自分の体を分かってきたモードの小さな声での提案に、%CALLNAME:PLAYER%は唾液でよく馴染ませた指を追加でゆっくり挿れていくと、彼女はまたも小さな声で反応する
 				PRINTFORMW 「あ、だめ……ごめんなさい、痛いです。無理でしたね……ごめんなさい……」
+			CASE 2
+				PRINTFORMW 「もう少し、深くまで……え、もう全部入っちゃってるんですか……そうですか……」
+				PRINTFORMW 少し残念な様子のモード。もはや指では足りないらしい
+				IF HERE_L
+					PRINTFORMW 「欲張りねぇ、モードちゃん。じゃあ次は何を入れて欲しいの？」
+					PRINTFORMW 「何って……そちらが決めるんでしょう？ 私に聞かないでください……」
+				ENDIF
 		ENDSELECT
 	;それ以外
 	ELSE
 		;地の文表示関数
 		TRYCALLFORM MESSAGE_COM{SELECTCOM}
-		SELECTCASE RAND:2
+		SELECTCASE RAND:3
 			CASE 0
 				PRINTFORMW 「私は……お尻を触られるのは、あまり好きじゃないかもしれません……」
 				PRINTFORMW 口では弱々しい抵抗を見せるモードだが、体は尻穴への刺激に敏感な反応を見せ、快楽に震える体を必死に制している
 			CASE 1
 				PRINTFORMW 尻穴で指の根元まで咥え込むモードにそれを伝えると、顔を赤くしながらぼそぼそと呟き始めた
 				PRINTFORMW 「い、言わなくてもいいですよ……意地悪なお人ですね……」
+				SIF HERE_L
+					PRINTFORMW 「わざわざ伝えるのも悪趣味よね……あたしも言っちゃうかもしれないけど」
+			CASE 2
+				PRINTFORMW 「やればやるほど痛くなくなってくるのが、安心するような、拡がっちゃうようで怖いような……」
+				IF HERE_L
+					PRINTFORMW 「どんなに弄ったって、拡がりすぎちゃうなんてことはないから安心しなさい」
+					PRINTFORMW 「本当ですか……？ リリーゼさん……」
+				ENDIF
 		ENDSELECT
 	ENDIF
 ENDIF
@@ -1569,11 +2181,17 @@ RETURN 0
 					CASE 0
 						PRINTFORMW 「%CALLMAUD%は、私みたいに小さい子が好きなんですね……優しい人です、ね。%CALLMAUD%…………」
 						PRINTFORMW 未発達な乳房を、脆い物を扱うような手つきで優しく揉む%CALLNAME:PLAYER%の手に、モードは自分の手をそっと添えて指を絡めてきた
+						SIF HERE_L
+							PRINTFORMW 「何やらあたしのことも好きで攫ってくるくらいだものね。小さい子が好きなのは間違いないと思うわ」
 					CASE 1
 						PRINTFORMW 薄い乳房を摘むように揉み続けると、普段は冷たいモードの身体が、込み上げる情欲に熱を帯びている
 						PRINTFORMW 「分かりますか……？ 私の体、%CALLMAUD%のおかげでこんなに満たされるんです……私は、幸せです……」
+						SIF HERE_L
+							PRINTFORMW 「モードが幸せで何よりだ……貴様にモードをまかせて正解だった。これからもモードを頼むぞ」
 					CASE 2
 						PRINTFORMW 「%CALLMAUD%も……大きい方が好みですか……？ 私、頑張ります……」
+						SIF HERE_L
+							PRINTFORMW 「あたしは小さい方が好きよ。念のため言っとくけど」
 				ENDSELECT
 		ENDSELECT
 	;それ以外
@@ -1586,18 +2204,26 @@ RETURN 0
 					CASE 0
 						PRINTFORMW 「あ、あの……揉むほど大きくは無いですよ、もう……」
 						PRINTFORMW 普通の人よりも少し冷たく、控えめな胸を手のひらで撫でるように揉みしだくと、モードは恥ずかしそうに顔を赤くしている
+						SIF HERE_L
+							PRINTFORMW 「何言ってんの！ このくらいの胸が触ってて一番楽しいんじゃない。このロリコンはモードちゃんみたいな小さい胸が好きなのよ」
 					CASE 1
 						PRINTFORMW 薄い胸を揉まれる小さな体が%CALLNAME:PLAYER%の手の中でくすぐったそうに身をよじらせる。それと一緒に、噤んだ唇からも堪えきれずに微かな喘ぎ声が漏れ出す
 						PRINTFORMW 「ぅ………………ぁ…………………………」
+						SIF HERE_L
+							PRINTFORMW （これは……感じてるのかな、モードちゃん）
 				ENDSELECT
 			CASE 3, 4, 5
 				SELECTCASE RAND:2
 					CASE 0
 						PRINTFORMW 「大きくなったと思ったら、これですからね……」
 						PRINTFORMW モードの小さな体には些か不釣り合いな大きめの乳房を優しく揉むと、硬く突き出た乳首が手のひらを押し返している
+						SIF HERE_L
+							PRINTFORMW 「なんで大きくしちゃうかなぁ……小さい方が可愛いのに」
 					CASE 1
 						PRINTFORMW 「揉まれるだけの胸なら、私は小さい方が……」
 						PRINTFORMW 豊満になったモードの乳房に指を食い込ませてひたすらに揉みしだく。重みを増した乳房を揉まれ、小さな体もぐらぐらと揺れている
+						SIF HERE_L
+							PRINTFORMW 「あんたはモードちゃんの良さが分かってないわ。モードちゃんの胸は小さいからこそ、可愛いんじゃないの」
 				ENDSELECT
 		ENDSELECT
 	ENDIF
@@ -1722,6 +2348,8 @@ IF FCOM:SELECTCOM == 0
 		PRINTFORMW モードは%CALLNAME:PLAYER%の要求に、無毛の縦割れに指を添えて\@ EXP:自慰経験 >= 100 ? 慣れた # 不慣れな \@手つきで左右に拡げて見せた
 		PRINTFORMW 「はい、どうぞ……%CALLMAUD%…………
 		PRINTFORMW   どうしました？ もっと近くで見ていいんですよ？」
+		SIF HERE_L
+			PRINTFORMW （あたしもどさくさに紛れて……あぁ、モードちゃんのおまんこ、うぅ、触りたい、舐めたい……挿れたい……）
 	ELSE
 		PRINTFORMW 「なんと仰いました？ えっと……自分で？」
 		PRINTFORMW いまいち意味を飲み込めないモードに、%CALLNAME:PLAYER%は\@ VAGINA(PLAYER) ? 自分の陰唇を指で広げながら # モードの幼い陰唇に手を添えて\@やり方を教えた
@@ -1768,17 +2396,20 @@ ELSE
 		ENDSELECT
 	;屈服刻印Lv3
 	ELSEIF MARK:屈服刻印 == 3
-		SELECTCASE RAND:2
+		SELECTCASE RAND:3
 			CASE 0
 				PRINTFORMW 秘貝に添えられるモードの指は未だに震えているが、開帳に以前ほどの躊躇いは見せなくなった
 				PRINTFORMW 「こちらです……ご満足いただけました？」
 			CASE 1
 				PRINTFORMW 「こんな恥ずかしいところは、とても貴方以外の方には見せられません……」
 				PRINTFORMW 中まで無垢なモードの体を舐めるように眺め、その幼い膣から漂う匂いを堪能した
+			CASE 2
+				PRINTFORMW 「……見たいだけ見たら、もうおしまいですからね」
+				PRINTFORMW 秘部を晒しつつもそっぽを向くモードは、自分の中からこみ上げる恥ずかしさを必死に堪えてるようにも見える……
 		ENDSELECT
 	;それ以外
 	ELSE
-		SELECTCASE RAND:2
+		SELECTCASE RAND:3
 			CASE 0
 				IF PENIS(PLAYER) && !TEQUIP:アイマスク
 					PRINTFORMW 身の内をさらけ出す幼い女性器に興奮して、%CALLNAME:PLAYER%は股ぐらをいきり立たせる。それを見兼ねたモードは視界を覆い隠すこともできず、分かりやすく顔を赤くして慌てている
@@ -1790,6 +2421,13 @@ ELSE
 				PRINTFORMW 女性器を、ましてや自分の指で拡げて晒け出すことに、モードは恥ずかしさのあまり俯いてぼそぼそと何かを呟いている
 				PRINTFORMW 「あ、あ……あの……私はいつまでこうしていれば……ごめん、なさい……私、こんなの……」
 				PRINTFORMW 瞬きを繰り返すモードの眼から一筋の涙が零れ落ちるが、陰唇に添えられた細い指が涙を拭うことなど出来はしない
+			CASE 2
+				PRINTFORMW 「もうやだ……私の体をなんだと思ってるんですか……」
+				PRINTFORMW モードの態度は諦めと恥じらいと呆れが混ざり合い、意気消沈気味だ……
+				IF HERE_L
+					PRINTFORMW 「モードちゃんの体って見てるだけで楽しいんだもの。そりゃあ隅々まで気になっちゃうわ」
+					PRINTFORMW 「こんな格好してる時に言われても、全然嬉しくないですね……」
+				ENDIF
 		ENDSELECT
 	ENDIF
 ENDIF
@@ -1814,6 +2452,12 @@ IF FCOM:SELECTCOM == 0
 				;O.NA.NI.-G
 				PRINTFORMW 「なんなんですかこれ……おなにー？ じー？ 変な名前ですね……%CALLMAUD%が言うのならきっと効き目があるんでしょうけど……」
 			ENDIF
+			IF HERE_L
+				PRINTFORMW 「モードちゃん経験無いの？ まぁあたしも自分で胸いじるってあまり無いけど」
+				PRINTFORMW 「リリーゼさんはその……おな……っていうのをやるんですか……」
+				PRINTFORMW 「あっ、えっと……あ……」
+				PRINTFORMW モードの無邪気な一言に、リリーゼは何も言えずに恥ずかしがっている……」
+			ENDIF
 		ELSE
 			;地の文表示関数
 			TRYCALLFORM MESSAGE_COM{SELECTCOM}
@@ -1824,15 +2468,27 @@ IF FCOM:SELECTCOM == 0
 				CASE 3, 4, 5
 					PRINTFORMW 「これをやらせるために、わざわざ大きくしてくれたんですね……とてもお礼を申し上げる気にはなれませんけど……」
 			ENDSELECT
+			IF HERE_L
+				PRINTFORMW 「モードちゃん……もっといやらしい手つきでやってもらえると嬉しいんだけど」
+				PRINTFORMW 「言ってる意味がよくわかりません……」
+			ENDIF
 		ENDIF
 	ELSE
 		IF CFLAG:陥落
 			PRINTFORMW 「胸での自慰は、ちょっと経験無いです……でも、胸でいっちゃったのがすごく気持ち良かったので、自分でも出来るように頑張ってみます」
 			PRINTFORMW 拙い手つきで小さな乳首を中心に弄り始めるモードは、目を閉じて胸での快感に集中している
+			IF MAUD:99
+				PRINTFORMW 「目の前に想い人が居るというのに、自慰に耽るのは時間の無駄だぞ。モードよ」
+				PRINTFORMW 「時間なら……いくらでもあります。今は%CALLMAUD%のご要望にお答えして、胸でやってみます」
+			ENDIF
 		ELSE
 			PRINTFORMW 「じ、自分で、ですか……ちょっと自信は無いですが……頑張ります……」
 			PRINTFORMW 恐る恐る自分の胸を弄りだすモードは、度々嬌声とともに体を震わせては青い瞳に涙を浮かべている
 			PRINTFORMW 「ご、ごめ……ごめんなさい……私がやると、指が止まっちゃうんです……」
+			IF HERE_L
+				PRINTFORMW 「焦らなくていいわよ。止まってもいいから、ゆっくり気持ち良くなっていきましょ？」
+				PRINTFORMW 「……はい」
+			ENDIF
 		ENDIF
 	ENDIF
 	FCOM:SELECTCOM = 1
@@ -1846,9 +2502,17 @@ ELSE
 			CASE 0
 				PRINTFORMW 「不思議と、胸でも気持ちよくなれたりするんですね……%CALLMAUD%……」
 				PRINTFORMW 淡い瞳で%CALLNAME:PLAYER%を見つめるモードが、乳首と乳房を弄り回す細い指をさらに激しく動かし、背筋を走る快楽に溺れていく……
+				IF MAUD:99
+					PRINTFORMW 「モードもそこまで来てしまったか……あまり自慰に夢中になってはいかぬぞ。お前には愛する主人がいるだろう」
+					PRINTFORMW 「そう、私には大好きな%CALLMAUD%が居ます。自慰なんていりません……%CALLMAUD%がずっと、私と一緒に、してくれるなら……」
+				ENDIF
 			CASE 1
 				PRINTFORMW 「%CALLMAUD%ほどではありませんが……私も、だんだん上手に出来るようになってきました……」
 				PRINTFORMW 自分の乳房を撫でるように弄り回すモードが、%CALLNAME:PLAYER%を見つめながら自慰を行う指をさらに激しく動かしている
+				IF MAUD:99
+					PRINTFORMW 「貴様もだな、モードに自慰ばかり覚えさせるな。モードが求愛しているのだ……満たしてやってくれぬか？」
+					PRINTFORMW リントヴルムも父親としてか、大事なパートナーとしてか、モードの幸せを%CALLNAME:MASTER%に求めている。リントヴルムの頼みに答えるかどうか……
+				ENDIF
 		ENDSELECT
 	;それ以外
 	ELSE
@@ -1859,6 +2523,9 @@ ELSE
 			CASE 1
 				PRINTFORMW 「胸を触っても気持ち良くなんてなりません……だから、もう……」
 				PRINTFORMW 口では拒みつつも小さな体は自慰行為に敏感な反応を見せ、指を押し返すピンク色の硬い乳首がモードの正直な快感を表している
+			CASE 2
+				PRINTFORMW 「はぁ……はぁっ、ぅ……」
+				PRINTFORMW 感じてる……というよりは、感じているふりだろうか。集中しすぎるあまり、実際の快楽を得るための行動が過剰になってきていることにモードは気づいていない
 		ENDSELECT
 	ENDIF
 ENDIF
@@ -1876,6 +2543,10 @@ IF FCOM:SELECTCOM == 0
 			IF CFLAG:陥落
 				PRINTFORMW 「指でごしごしするんですね……%CALLMAUD%、私が出すところは、ちゃんと見ててくださいね？」
 				PRINTFORMW モードは小さな手で自分の幼い男性器を包み、上下に擦っている。小さくともしっかりと硬くなっていく皮かむりのペニスが、%CALLNAME:PLAYER%の視線を受けてぴくぴくと震える……
+				IF MAUD:99
+					PRINTFORMW 「モード、男の性処理が分からぬのなら、私も教えてやろう。人間の雄というのは、雌よりも性処理の必要性があるのでな」
+					PRINTFORMW 「はい……%CALLMAUD%で至らぬ場合には、お願いします」
+				ENDIF
 			ELSE
 				PRINTFORMW 「え、えっと……ど、どうすれば……」
 				PRINTFORMW 男性の自慰を知らないモードは自分のペニスを指先でつんつんと突いている
@@ -1899,16 +2570,34 @@ IF FCOM:SELECTCOM == 0
 			IF EXP:自慰経験
 				IF CFLAG:陥落
 					PRINTFORMW 「これ……私、ときどき自分でやっています……%CALLMAUD%のことを想うと、中がきゅん、として……気持ち良くて、つい夢中になっちゃう……」
+					IF HERE_L
+						PRINTFORMW 「んんっ、好きな人のこと考えて、子宮の奥が疼いちゃうのね。モードちゃん……可愛いわ」
+						PRINTFORMW 「ええ……%CALLMAUD%と、もうひとり……」
+						PRINTFORMW リリーゼのほうをちらちらと見るモード。リリーゼはその視線に気づくと、ちょっとした驚きの後に、顔を赤らめる
+						PRINTFORMW 「そう、なの……モードちゃんにそこまで愛されちゃってるんだ、あたし……その疼き、満たしてあげるわ」
+					ENDIF
 				ELSE
 					PRINTFORMW 「あっ……こ、これが、じいってことなんですか……そうですか……自慰っていうんですね、これは……」
 					PRINTFORMW モードは初めてとは思えない小慣れた手つきで性器をまさぐり始める。どうやらちゃんと経験はあるらしい
+					IF HERE_L
+						PRINTFORMW 「なんだか慣れた手つきねぇ。普段からオナニーしてるの？」
+						PRINTFORMW 「そんな、まさか……してませんよ」
+					ENDIF
 				ENDIF
 			ELSE
 				IF CFLAG:陥落
 					PRINTFORMW 「ひゃっ……つまり、自分で、その……気持ち良いことをするんですね」
 					PRINTFORMW 「%CALLMAUD%が見たいのならやりますけど、私は%CALLMAUD%に触ってもらいたいな……私が一人で上手に出来たら、ご褒美にお願いします……ね？」
+					IF MAUD:99
+						PRINTFORMW 「……貴様も、モードが好きならば想いのままに抱けばよいだろう。自慰などと回りくどいものでなく、もっと直接的な愛情を示してやってほしい」
+						PRINTFORMW 「あまり怒らないでください、リントヴルム。私も、こうやっているのがちょっと楽しいんです」
+					ENDIF
 				ELSE
 					PRINTFORMW 「んっ……こういうこと、ですか……自分でやるんですね……ええっと、あんまりじろじろ見たらだめ、ですよ？」
+					IF HERE_L
+						PRINTFORMW 「初めてじゃ勝手もわからなくて仕方ないわね。とりあえずやり方はそれでいいから、もうちょっと指をこう、動かしてみて？」
+						PRINTFORMW 「は、はい……あっ、リリーゼさんのおかげで少し気持ち良い、かも？」
+					ENDIF
 				ENDIF
 			ENDIF
 	ENDSELECT
@@ -1929,10 +2618,19 @@ ELSE
 					PRINTFORMW 「%CALLMAUD%、私、どんどん自慰が上達してきました。%CALLMAUD%のことを想うと、すぐに出せちゃうんですよ」
 					PRINTFORMW どうやらモードは早く出すのが上達することだと思い込んでいるようだが、若いせいか性転換の恩恵か、続けて何度も自慰での射精ができるようだ
 					PRINTFORMW 「%CALLMAUD%……ああ……%CALLMAUD%が目の前に……私、またすぐに……っ……」
+					IF MAUD:99
+						PRINTFORMW 「モード……あまり躍起になるな。体が持たんぞ」
+						PRINTFORMW 「そんなこと言われても……%CALLMAUD%やリントヴルムを想うと……止められないよぉ……」
+						PRINTFORMW モードの発言に、リントヴルムが%CALLNAME:MASTER%と一瞬顔を見合わせると、娘のように扱ってきた少女に想われることを恥じてか目を背けてしまった……
+					ENDIF
 				CASE 1
 					PRINTFORMW 「はぁ、はぁっ……っうぁ……おかしいな……一人だとすぐに出せるのに……」
 					PRINTFORMW 小さなペニスを必死に突き出して激しく扱くモードは、%CALLNAME:PLAYER%を目前にして射精へ至る道を忘れてしまい快感の路頭に迷ってしまっている
 					PRINTFORMW 「ご、ごめんなさい、%CALLMAUD%……私、ちょっと緊張しちゃったのかな……きっと出しますから、どうか最後まで……」
+					IF HERE_L
+						PRINTFORMW 「誰も急いで出すことは望んでないわ。あいつもあたしも、モードちゃんがじっくりよがってる姿を見たいんだから。ほら、あたしとヤってるところとか、想像してごらん？」
+						PRINTFORMW 「リリーゼさんと……？ うあぁ……少し気持ち良くなってきたかも……」
+					ENDIF
 				CASE 2
 					PRINTFORMW 「男の子の自慰にもすっかり慣れちゃいました……ぅん、気持ち良いです……何回出しても無くならないって不思議ですね……」
 					PRINTFORMW モードの小さい手が幼いペニスを包み込み、慣れた手つきで射精へと昂ぶっていく。少女から少年へと生まれ変わった彼女はすっかり男性の快感を覚えてしまったようだ
@@ -1945,7 +2643,11 @@ ELSE
 					PRINTFORMW 「%CALLMAUD%っ……抱きしめて、キスをして……%CALLMAUD%の腕の中で、果てたい、です……」
 				CASE 1
 					PRINTFORMW 無垢な女性器は快楽\@ PALAM:潤滑 >= PALAMLV:3 ? と愛液 #  \@に溺れ、ひたすらに情欲が募っていく小さな体は欲しがるままに激しくクリトリスを弄り倒す
-					PRINTFORMW 「%CALLMAUD%に見られていると、独りよりずっと気持ち良いんです……素敵な瞳、今は私だけを捉えて離さないで……」
+					PRINTFORMW 「%CALLMAUD%\@ HERE_L ? とリリーゼさん ? #  \@に見られていると、独りよりずっと気持ち良いんです……素敵な瞳、今は私だけを捉えて離さないで……」
+					IF HERE_L
+						PRINTFORMW 「ずっと見てるわ。モードちゃんを独りになんてさせないから。ずっと一緒よ？」
+						PRINTFORMW 「ありがとう、リリーゼさん……私、幸せです……」
+					ENDIF
 				CASE 2
 					PRINTFORMW 「%CALLMAUD%も自慰をするときはありますか？ その時は誰を想って……？ 私は%CALLMAUD%を想って……%CALLMAUD%も私のことを想ってくれてたら……幸せです……」
 					PRINTFORMW モードは今まさに現実と妄想の二人の%CALLNAME:PLAYER%を重ね合わせ、幼い膣内がきゅんと熱を帯びて温かな愛液を溢れさせている
@@ -1961,6 +2663,10 @@ ELSE
 				CASE 1
 					PRINTFORMW 足を開いてつま先をがくがくと震わせながらペニスを扱くことに没頭するモードは、今の自分がとても恥ずかしい格好をしていることなど頭に入っていないようだ
 					PRINTFORMW 「あっ……はぁっ……出てっ、出てきて……白いの……」
+					IF HERE_L
+						PRINTFORMW 「そんなのちょっと踏ん張ればイけるでしょ？ 変な子ねぇ」
+						PRINTFORMW 「だめっ、なの……見られてると、怖くて、出せない……」
+					ENDIF
 				CASE 2
 					PRINTFORMW 「うーん……うぅ、ん……出るかな……出るかな……？ 出しちゃう……かな？」
 					PRINTFORMW 先走りに濡れてくちゅくちゅと音を立てるモードの自慰は、未だ射精を覚えきれずに手探りで快感の到達点を探している
@@ -1970,12 +2676,26 @@ ELSE
 				CASE 0
 					PRINTFORMW 「なんとなく、他人の前でやることではないようにも思えます……貴方は何を思って私の自慰を見るんでしょうか……？」
 					PRINTFORMW 性経験の浅いモードでも、一人ふしだらに乱れるのは恥ずべきことだと認識できているようだ。しかし秘所を弄る指は止まらず、歯止めの効かない快感に頬を赤くしながら自慰を続けていた
+					IF HERE_L
+						PRINTFORMW 「あたしは見てて楽しいからね。なんだかエッチな気分になってきて……そう、心が満たされるのよ」
+						PRINTFORMW 「心が……それは、素敵ですね。私も、リリーゼさんのために頑張ってみます」
+					ENDIF
 				CASE 1
 					PRINTFORMW 「あの…………あ、あ……いえ……ごめんなさい……」
 					PRINTFORMW じっと見つめる%CALLNAME:PLAYER%の瞳に射抜かれ、モードは何も言えずに自慰を続ける。%CALLNAME:PLAYER%と目を合わせることができないモードは、半ば恐怖の中で自身に与える快感にすがっていた……
+					IF HERE_L
+						PRINTFORMW 「恥ずかしい？ あたしたち、別にあんたのオナニー見て笑ったりしないわ。あたしもあいつも『モードちゃんすごくえっちで可愛い』って思ってるのよ」
+						PRINTFORMW 「可愛いのは……いいですけど……えっちなのは……私は……」
+					ENDIF
 				CASE 2
 					PRINTFORMW モードの自慰は拙いものだが、細い指と幼い女性器で精一杯の快感を探り当てている。ひとつの快感を得るたびにモードの体はぴくりと跳ね、%CALLNAME:PLAYER%の視線から成る緊張との板挟みになっているようだ
 					PRINTFORMW 「あぅ……どうしよ、うまくできないや……あまりじっと見られると、私、緊張しちゃいます……ほどほどにお願いします、ね？」
+					IF HERE_L
+						PRINTFORMW 「リラックスが必要なんだ……ほら、モードちゃんっ」
+						PRINTFORMW 座って秘所をまさぐるモードに、リリーゼが後ろから抱きつく。一瞬驚いた表情を見せるモードだったが、リリーゼが耳元で淫らな息遣いを立てると、次第にモードも欲情を募らせていく……
+						PRINTFORMW 「リリーゼさん……？ リラックス、なんてものでは……」
+						PRINTFORMW 「続けて、モードちゃん……きっと、気持ち良いわ……見せてね？」
+					ENDIF
 			ENDSELECT
 		ENDIF
 	ENDIF
@@ -2014,33 +2734,42 @@ IF FCOM:SELECTCOM == 0
 ELSE
 	;陥落済み
 	IF CFLAG:陥落
-		SELECTCASE RAND:2
+		SELECTCASE RAND:3
 			CASE 0
 				PRINTFORMW 「私のが、%CALLMAUD%の足に……ああ、その足に出したい……%CALLMAUD%、低俗なモードをお許しください……」
 				PRINTFORMW 足で射精へと導かれていくモードは卑しい自分を虐げるが、その表情は悦びに満ちている
 			CASE 1
 				PRINTFORMW 「足だけでこんなに気持ち良くしてくれる……%CALLMAUD%、すごい……好き……」
 				PRINTFORMW %CALLNAME:PLAYER%の足に乱されるモードは頬を染めながらその光景を見つめる。足でされるのも癖になっているようだ
+			CASE 2
+				PRINTFORMW 「今の私をもっと見て……%CALLMAUD%への、服従の姿……焼きつけてください……」
+				PRINTFORMW 飼い主に腹を見せる犬のように、モードは仰向けのまま%CALLNAME:MASTER%の足に翻弄される姿をさらけ出している……
 		ENDSELECT
 	;屈服刻印Lv3
 	ELSEIF MARK:屈服刻印 == 3
-		SELECTCASE RAND:2
+		SELECTCASE RAND:3
 			CASE 0
 				PRINTFORMW 「貴方の足は綺麗ですね……私の精液で汚れてもいいのでしょうか……？」
 				PRINTFORMW 「その時は私が綺麗にします……ですから、できれば最後までお願いしますね……？」
 			CASE 1
 				PRINTFORMW 「意外と、足でされるのも悪くないです。貴方が上手だからでしょうか……？」
 				PRINTFORMW 「急に出してしまったら申し訳ありません……怒らないでください……」
+			CASE 2
+				PRINTFORMW 「少しだけ……少しだけ、ですけど……私も……」
+				PRINTFORMW 言わずともわかるモードの表情の変化が先の言葉を表している……
 		ENDSELECT
 	;それ以外
 	ELSE
-		SELECTCASE RAND:2
+		SELECTCASE RAND:3
 			CASE 0
 				PRINTFORMW 「あ、あの……私が言うのもなんですが、ずいぶんとお間抜けな……」
 				PRINTFORMW 「す、すいません……それで気持ち良くなってる私の方が、ずっと滑稽ですね……」
 			CASE 1
 				PRINTFORMW 「怪我でもしないか不安です……貴方が少し力加減を間違ったら……」
 				PRINTFORMW 「うぅ、考えるだけで痛々しい……」
+			CASE 2
+				PRINTFORMW 「踏みつけるのは……だめっ……怖いもん……」
+				PRINTFORMW 心底怯える態度を見せるモードは、%CALLNAME:MASTER%の足から逃げるように腰を引いている……
 		ENDSELECT
 	ENDIF
 ENDIF
@@ -2058,6 +2787,10 @@ IF FCOM:SELECTCOM == 0
 	IF CFLAG:陥落
 		PRINTFORMW 「ついさっきまで%CALLMAUD%が穿いていた……なんででしょう、そう考えるとすごく興奮しちゃう……」
 		PRINTFORMW 「出したいな、出したいなぁ……%CALLMAUD%の下着に、私の精子……また穿いてくれますよね……？」
+		IF MAUD:99
+			PRINTFORMW 「いくら想い人のものであろうと、次に使うときには洗うべきではあるな」
+			PRINTFORMW 「もうっ……リントヴルムが冷静に指摘するたびに、気乗りする自分に恥ずかしくなっちゃいます……」
+		ENDIF
 	ELSE
 		PRINTFORM 「えぇっと……それはさっきまで貴方が穿いていたもので……あの、少し不潔では……
 		;精液汚れor愛液汚れ
@@ -2109,6 +2842,14 @@ ELSE
 	;それ以外
 	ELSE
 		;PRINTFORMW 
+PRINTFORMW 「下着で、だなんて……されるだけでも可笑しいのに、出しちゃったときには、もう……」
+PRINTFORMW モードは嫌な想像を振り払うように、
+PRINTFORMW じっと目を閉じて
+PRINTFORMW ぐっと唇を噛み締めて
+PRINTFORMW 射精を堪えている……
+
+PRINTFORMW 「だめですよ……下着が汚れますから……あぅっ、なんで激しくなるの……？」
+PRINTFORMW 汚したい衝動と汚されたい衝動の双方に駆られる%CALLNAME:MASTER%は、下着に包まれた陰茎を扱く手をさらに速めた
 	ENDIF
 ENDIF
 
@@ -2129,6 +2870,8 @@ IF FCOM:SELECTCOM == 0
 		PRINTFORMW 目を閉じて%CALLNAME:PLAYER%の接吻を待つモードを抱きかかえて膝に乗せると、期待に息を呑む唇にそっとキスをした
 		PRINTFORMW 「んっ……ふぁ……ご、%CALLMAUD%、私たち……こ、子供が出来ちゃったり……え？ キスだけではできない？ あ、やだ、私……何を早とちりして……」
 		PRINTFORMW 羞恥に染まる可愛らしい顔に手を寄せて再度唇を重ね合う。キスの仕方を分からないモードはひたすら不器用に唇を擦り付けてきた
+		SIF MAUD:99
+			PRINTFORMW キスを交わしながら、いまいち性教育がなっていないリントヴルムを見つめるが、彼は目を逸らして知らないふりをしている……
 	ELSE
 		PRINTFORMW 不意に唇を奪われたモードは、目を白黒させて口元を手で覆い隠した
 		PRINTFORMW 「えっ、ええっ！？ や……やだ……赤ちゃん出来ちゃったりしたらどうするんですかぁ……もうっ……」
@@ -2150,14 +2893,25 @@ ELSE
 						PRINT 「んなわけないでしょ！ 
 						IF CFLAG:ASSI:キスで射精させた経験
 							PRINTFORMW だってこいつ、あたしとキスしただけで射精しちゃうくらいなんだから、あたしとしたほうが絶対良いの！」
+							SIF MAUD:98
+								PRINTFORMW 「リリ様のキステクは一級品ッスもんね……オレもよく分かるッス」
 							PRINTFORMW 「そのくらい私でも……ね、%CALLMAUD%？」
 						ELSE
 							PRINTFORMW ……っもう。あたし助手やってあげてんだから、後でちゃんとご褒美貰うからね」
+							IF MAUD:99
+								PRINTFORMW 「リリーゼ嬢よ……モードが恋人を独占してしまって申し訳ない」
+								PRINTFORMW 「んーまぁいいのよ。モードちゃんがハブられるときもあるし、なんだかんだ言ってもお互い様よ」
+							ENDIF
 						ENDIF
 					CASE 1
 						PRINTFORMW （なんかすごく気持ち良さそうにしてるし……そりゃあたしだってキスされたら気持ち良いけど……）
 						PRINTFORMW 「はっ……%CALLMAUD%、もっと……ん、好き……キスも%CALLMAUD%も好き……」
 						PRINTFORMW （……何よ。あざといって分かってるのに、あの子が可愛く見えちゃう、羨ましい……）
+						IF MAUD:98
+							PRINTFORMW 「リリ様、モードちゃん嬉しそうッスね。その姿見てるとオレも嬉しいっスけど、リリ様はどうっスか？」
+							PRINTFORMW 「そうよね……レーヴァテイン、こっちおいで。一緒にモードちゃん見守っててあげよっか」
+							PRINTFORMW 「はいッス、リリ様。仰せの通りに」
+						ENDIF
 				ENDSELECT
 			;モードだけ陥落済み
 			ELSE
@@ -2166,9 +2920,18 @@ ELSE
 						PRINTFORMW 「何よ、イチャイチャしちゃって……目に毒だわ。あたしここに居る意味無いじゃない」
 						PRINTFORMW 「ふふーん、リリーゼさん、もしかして妬いてます？」
 						PRINTFORMW 「何言ってんの？ バッカじゃないの？ あんたら二人揃ってほんとバカ」
+						IF MAUD:99
+							PRINTFORMW 「モードよ、あまりリリーゼ嬢をからかってはならん。すまぬな、リリーゼ嬢」
+							PRINTFORMW 「いいけどさ……そんなこと言っといて、リントヴルムもこんなバカップル水入らずの場所に居る必要無いのよ？」
+							PRINTFORMW 「……本当に申し訳ない。私はリリーゼ嬢を巻き込むつもりは無かったのだが」
+						ENDIF
 					CASE 1
 						PRINTFORMW 「%CALLMAUD%、リリーゼさんが見てる……」
 						PRINTFORMW その声を拾ったのか、リリーゼは頬を染めてそっぽを向いてしまった
+						IF MAUD:99
+							PRINTFORMW 「リリーゼ嬢……気まずいかもしれんが、どうかふたりを恨まないでやってくれ」
+							PRINTFORMW 「別にモードちゃんを恨んでないわ。あたしが恨んでるのは、モードちゃんを奪った……あいつ……」
+						ENDIF
 				ENDSELECT
 			ENDIF
 		ELSE
@@ -2178,10 +2941,19 @@ ELSE
 					CASE 0
 						PRINTFORMW 「ねぇねぇ、その子嫌がってるし、あたしとしない？ その子より全然上手なんだから」
 						PRINTFORMW 強引なキスとリリーゼの挑発に、モードはどうしようも無い感情を身震いで表すことしかできない
+						IF MAUD:98
+							PRINTFORMW 「も、モードちゃん……リリ様、あまりいじめちゃダメっスよ。ええっと、モードちゃん、オレはなんて慰めてあげれば……」
+							PRINTFORMW 「ふん、レーヴァテインは炎龍のくせに優しすぎなのよ。さ、下手くそなキスは構ってないであたしとしよっか♪」
+							PRINTFORMW （冗談じゃない。モードちゃんの唇もこいつの唇も、あたしのものなんだから。このふたりのキスは……モードちゃんが喜ばないと許せないわ）
+						ENDIF
 					CASE 1
 						PRINTFORMW 「何泣きそうな顔してんのよ。こいつとキスするのが嫌？ じゃあ、あたしがしてあげようか」
 						PRINTFORMW 「遠慮……しておきます……そんなにキスがしたいならお二人でどうぞ」
 						PRINTFORMW 「あたしたちいつもしてるもんねー。こんなに気持ち良いのにモードちゃんったら素直じゃないんだから」
+						IF MAUD:98
+							PRINTFORMW 「素直とかじゃなくてモードちゃんは本当に嫌がってるんッスよ。大丈夫ッスか？」
+							PRINTFORMW 「ありがとう……レーヴァテインさんが慰めてくれると、気持ちが楽になります……」
+						ENDIF
 				ENDSELECT
 			;どっちも未陥落
 			ELSE
@@ -2210,14 +2982,24 @@ ELSE
 				CASE 1
 					PRINTFORMW 「%CALLMAUD%……♪ 今は私だけの%CALLMAUD%……♪ もっと、愛し合いましょう……？ 私は%CALLMAUD%のこと、いくら愛しても足りないくらいです」
 					PRINTFORMW 期待に潤む瞳で見つめるモードを抱き締め、幸せそうに唇を重ね合うモードとの時間を心ゆくまで楽しんだ
+					SIF MAUD:99
+						PRINTFORMW ふたりの情事を見守るリントヴルムは少し安心した様子を見せ、鋭くも慈愛に満ちた視線だけが%CALLNAME:MASTER%に感謝を伝えているようにも見える
 				CASE 2
 					PRINTFORMW 「%CALLMAUD%のキスは、その……大人のキスって感じです。私のやり方って、どうですか？」
 					PRINTFORMW モードのキスは不器用に唇を擦り付け、舌を絡ませるものだが、その初々しさが十分な魅力となっている。%CALLNAME:PLAYER%はモードに上手にできていると告げた
 					PRINTFORMW 「そ、そうですか？ 嬉しいな……%CALLMAUD%、よろしければ、私のキスでたくさん気持ち良くなってくださいね？」
+					IF MAUD:99
+						PRINTFORMW 「想い人との接吻というのは、それだけで心を満たしてくれるものだ。モード、お前がそうであるように」
+						PRINTFORMW 「%CALLMAUD%も、私を好きでいてくれるから、キスが気持ち良いの……？
+						PRINTFORMW   私たち……両想い、ですね？ なんだろう、嬉しいのに、涙が出ちゃう……ありがとう」
+					ENDIF
 				CASE 3
 					PRINTFORMW 「%CALLMAUD%、私、キスが大好きです……%CALLMAUD%が私を愛してくれてる……これからも毎日、モードを愛してください……」
 					PRINTFORMW たまらなく可愛い微笑みを見せるモードとさらにキスを重ね、二人溢れ出すほどの愛情を示し、そして受け止め合った
-				
+					IF MAUD:99
+						PRINTFORMW 「モードが幸せな日々を過ごせるのなら、私も幸せだ……この子を深く愛してやってほしい。私の願いだ」
+						PRINTFORMW 「リントヴルム……私も、貴方が居てくれるおかげです。ずっと一緒に、ね？」
+					ENDIF
 				CASE 4
 					PRINTFORMW 「%CALLMAUD%……私、キスが好き……%CALLMAUD%に求められるのが嬉しくて……%CALLMAUD%と出会えて本当によかった……」
 					PRINTFORMW かつて見せた恐怖の涙とは違う、溢れ出る幸せが詰まった涙は、互いをさらに深い愛へと導くのには十分なものだった……
@@ -2441,14 +3223,11 @@ ENDIF
 RETURN 0
 
 ;-------------------------------------------------
-;26,家事　助手可能、もしくは陥落済みのみ
+;26,家事　恋慕、親愛のみ
 ;-------------------------------------------------
 @COM26_K108
 ;地の文表示関数
 TRYCALLFORM MESSAGE_COM{SELECTCOM}
-
-SIF !CFLAG:陥落
-	RETURN 0
 
 ;初めて
 IF FCOM:SELECTCOM == 0
@@ -2471,7 +3250,7 @@ ENDIF
 RETURN 0
 
 ;-------------------------------------------------
-;27,歌の練習　助手可能、もしくは陥落済みのみ
+;27,歌の練習　恋慕、親愛のみ
 ;-------------------------------------------------
 @COM27_K108
 ;初めて
@@ -2540,7 +3319,7 @@ ELSE
 					CASE 11
 						PRINTFORMW 「この楽譜は……？ 『ヒデオ体操第一』？ なるほど、振り付けも覚えるんですね。頑張ります」
 					CASE 12
-						PRINTFORMW 「この楽譜は……？ 『朧』？ ああ、なんて切ない歌詞でしょう……\@ CFLAG:陥落 ? %CALLMAUD%……ずっと側に居てくれますか？ # \@」
+						PRINTFORMW 「この楽譜は……？ 『朧』？ ああ、なんて切ない歌詞でしょう……%CALLMAUD%……ずっと側に居てくれますか？」
 					CASE 13
 						PRINTFORMW 「この楽譜は……？ 『量子の海の……』
 						PRINTFORMW 　はっ、私は今何を？」
@@ -2549,8 +3328,6 @@ ELSE
 				ENDSELECT
 			ENDIF
 		CASE IS >= 4
-			SIF !CFLAG:陥落
-				RETURN 0
 			IF FCOM:SELECTCOM <= 2
 				PRINTFORMW 「%CALLMAUD%、私、この歌を精一杯練習してきました……%CALLMAUD%に、この歌を捧げます」
 				PRINTFORMW すぅっと息を吸って歌い出すモードの姿は堂々としており、その幼くも荘厳な歌声は%CALLNAME:PLAYER%の心を釘付けにする
@@ -2756,126 +3533,6 @@ ELSE
 		CASE 4
 			PRINTFORMW 少食なモードは少しの吸血で満足し、口の周りにこびり付いた血を舌で舐め取ってやるとそのまま深いキスに発展した
 	ENDSELECT
-ENDIF
-
-RETURN 0
-
-;-------------------------------------------------
-;32,料理を作る 助手可能、もしくは陥落済みのみ
-;-------------------------------------------------
-@COM32_KX1
-;初めて
-IF FCOM:SELECTCOM == 0
-	PRINTFORMW 
-	FCOM:SELECTCOM = 1
-;二回目以降
-ELSE
-	;陥落済み
-	IF CFLAG:陥落
-		PRINTFORMW 
-	;屈服刻印Lv3
-	ELSEIF MARK:屈服刻印 == 3
-		PRINTFORMW 
-	;それ以外
-	ELSE
-		PRINTFORMW 
-	ENDIF
-ENDIF
-
-RETURN 0
-
-;-------------------------------------------------
-;33,お菓子を作る 助手可能、もしくは陥落済みのみ
-;-------------------------------------------------
-@COM33_KX1
-;初めて
-IF FCOM:SELECTCOM == 0
-	PRINTFORMW 
-	FCOM:SELECTCOM = 1
-;二回目以降
-ELSE
-	;陥落済み
-	IF CFLAG:陥落
-		PRINTFORMW 
-	;屈服刻印Lv3
-	ELSEIF MARK:屈服刻印 == 3
-		PRINTFORMW 
-	;それ以外
-	ELSE
-		PRINTFORMW 
-	ENDIF
-ENDIF
-
-RETURN 0
-
-;-------------------------------------------------
-;34,楽器の練習 助手可能、もしくは陥落済みのみ
-;-------------------------------------------------
-@COM34_KX1
-;初めて
-IF FCOM:SELECTCOM == 0
-	PRINTFORMW 
-	FCOM:SELECTCOM = 1
-;二回目以降
-ELSE
-	;陥落済み
-	IF CFLAG:陥落
-		PRINTFORMW 
-	;屈服刻印Lv3
-	ELSEIF MARK:屈服刻印 == 3
-		PRINTFORMW 
-	;それ以外
-	ELSE
-		PRINTFORMW 
-	ENDIF
-ENDIF
-
-RETURN 0
-
-;-------------------------------------------------
-;35,機械の勉強 助手可能、もしくは陥落済みのみ
-;-------------------------------------------------
-@COM35_KX1
-;初めて
-IF FCOM:SELECTCOM == 0
-	PRINTFORMW 
-	FCOM:SELECTCOM = 1
-;二回目以降
-ELSE
-	;陥落済み
-	IF CFLAG:陥落
-		PRINTFORMW 
-	;屈服刻印Lv3
-	ELSEIF MARK:屈服刻印 == 3
-		PRINTFORMW 
-	;それ以外
-	ELSE
-		PRINTFORMW 
-	ENDIF
-ENDIF
-
-RETURN 0
-
-;-------------------------------------------------
-;36,プログラミング演習 助手可能、もしくは陥落済みのみ
-;-------------------------------------------------
-@COM36_KX1
-;初めて
-IF FCOM:SELECTCOM == 0
-	PRINTFORMW 
-	FCOM:SELECTCOM = 1
-;二回目以降
-ELSE
-	;陥落済み
-	IF CFLAG:陥落
-		PRINTFORMW 
-	;屈服刻印Lv3
-	ELSEIF MARK:屈服刻印 == 3
-		PRINTFORMW 
-	;それ以外
-	ELSE
-		PRINTFORMW 
-	ENDIF
 ENDIF
 
 RETURN 0
@@ -7593,6 +8250,13 @@ ENDIF
 
 RETURN 0
 
+;-------------------------------------------------
+;202,舐め回す(ドラゴン)
+;-------------------------------------------------
+@COM202_K108
+SIF CALLNAME:PLAYER == "リリーゼ"
+	MAUD:10 = 1
+
 ;=================================================
 ;500番台,派生コマンド
 ;=================================================
@@ -9560,7 +10224,7 @@ IF MAUD:7
 			PRINTFORMW 朝の陽が差し込み、並んで寝ていた3人は目を覚ます。「もうちょい寝せて」とぼやくリリーゼをよそに、モードはいちはやく、朝勃ちする%CALLNAME:MASTER%のペニスに気付いた
 			PRINTFORMW 「あっ……これ、苦しいですか？ せっかくだし、お口でさせてもらいますね？」
 			PRINTFORMW 「んー、モードちゃん何するの？ 朝からこいつのこと抜いてあげるって？ あたしもやるー」
-			PRINTFORMW 布団の上で%CALLNAME:MASTER%のペニスにがっつくふたりは、%CALLNAME:MASTER%の目の前で小振りな尻を揺らす。視線に気付いたリリーゼは、%CALLNAME:MASTER%の顔に服越しの股間を押し付けてくる
+			PRINTFORMW 布団の上で%CALLNAME:MASTER%のペニスにがっつくふたりは、%CALLNAME:MASTER%の目の前で小振りな尻を揺らす。視線に気付いたリリーゼは、あなたAの顔に服越しの股間を押し付けてくる
 			PRINT 「にゃは、せっかくだし、あたしのもお願いね。あたしも、寝起き
 			IF PENIS(ASSI)
 				PRINTW でぼっきしちゃってたいへんなの」
@@ -10281,7 +10945,7 @@ ENDSELECT
 ;-------------------------------------------------
 ;体力回復薬使用時
 ;-------------------------------------------------
-@EVENT300_K108
+@EVENT70_K108
 ;地の文表示関数 地の文表示させたくない場合はコメントアウト
 TRYCALLFORM EVENT_MESSAGE_70
 
@@ -10332,7 +10996,7 @@ FEVE:70 = 1
 ;-------------------------------------------------
 ;ふたなり薬使用時
 ;-------------------------------------------------
-@EVENT301_KX1
+@EVENT71_KX1
 SELECTCASE FALLTYPE(TARGET)
 	;恋慕、親愛
 	CASE 1
@@ -10351,7 +11015,7 @@ ENDSELECT
 ;-------------------------------------------------
 ;ふたなり消去薬使用時
 ;-------------------------------------------------
-@EVENT302_KX1
+@EVENT72_KX1
 SELECTCASE FALLTYPE(TARGET)
 	;恋慕、親愛
 	CASE 1
@@ -10370,7 +11034,7 @@ ENDSELECT
 ;-------------------------------------------------
 ;母乳体質にする薬使用時
 ;-------------------------------------------------
-@EVENT303_KX1
+@EVENT73_KX1
 SELECTCASE FALLTYPE(TARGET)
 	;恋慕、親愛
 	CASE 1
@@ -10389,7 +11053,7 @@ ENDSELECT
 ;-------------------------------------------------
 ;処女膜再生時
 ;-------------------------------------------------
-@EVENT304_KX1
+@EVENT74_KX1
 SELECTCASE FALLTYPE(TARGET)
 	;恋慕、親愛
 	CASE 1
@@ -10408,7 +11072,7 @@ ENDSELECT
 ;-------------------------------------------------
 ;豊乳化
 ;-------------------------------------------------
-@EVENT305_K108
+@EVENT75_K108
 ;地の文表示関数 地の文表示させたくない場合はコメントアウト
 TRYCALLFORM EVENT_MESSAGE_75
 
@@ -10437,7 +11101,7 @@ FEVE:75 = 1
 ;-------------------------------------------------
 ;縮乳化
 ;-------------------------------------------------
-@EVENT306_K108
+@EVENT76_K108
 ;地の文表示関数 地の文表示させたくない場合はコメントアウト
 TRYCALLFORM EVENT_MESSAGE_76
 
@@ -10456,7 +11120,7 @@ ENDSELECT
 ;-------------------------------------------------
 ;母乳体質治療時
 ;-------------------------------------------------
-@EVENT307_K108
+@EVENT77_K108
 ;地の文表示関数 地の文表示させたくない場合はコメントアウト
 TRYCALLFORM EVENT_MESSAGE_77
 
@@ -10470,7 +11134,7 @@ ENDIF
 ;-------------------------------------------------
 ;おもらし癖治療時
 ;-------------------------------------------------
-@EVENT308_K108
+@EVENT78_K108
 ;地の文表示関数 地の文表示させたくない場合はコメントアウト
 TRYCALLFORM EVENT_MESSAGE_78
 
@@ -10483,7 +11147,7 @@ ENDIF
 ;-------------------------------------------------
 ;ゾンビ化時
 ;-------------------------------------------------
-@EVENT310_KX1
+@EVENT80_KX1
 SELECTCASE FALLTYPE(TARGET)
 	;恋慕、親愛
 	CASE 1
@@ -10502,7 +11166,7 @@ ENDSELECT
 ;-------------------------------------------------
 ;ゾンビ治療時
 ;-------------------------------------------------
-@EVENT311_KX1
+@EVENT81_KX1
 SELECTCASE FALLTYPE(TARGET)
 	;恋慕、親愛
 	CASE 1
@@ -10521,7 +11185,7 @@ ENDSELECT
 ;-------------------------------------------------
 ;性転換時
 ;-------------------------------------------------
-@EVENT312_K108
+@EVENT82_K108
 ;地の文表示関数 地の文表示させたくない場合はコメントアウト
 TRYCALLFORM EVENT_MESSAGE_82
 
@@ -10546,7 +11210,7 @@ EXP:射精経験++
 ;-------------------------------------------------
 ;ロリ化、大人化時
 ;-------------------------------------------------
-@EVENT313_KX1
+@EVENT83_KX1
 ;大人化
 IF TALENT:小柄体型
 	SELECTCASE FALLTYPE(TARGET)
@@ -10584,7 +11248,7 @@ ENDIF
 ;-------------------------------------------------
 ;おもらし癖付加時
 ;-------------------------------------------------
-@EVENT314_K108
+@EVENT84_K108
 ;地の文表示関数 地の文表示させたくない場合はコメントアウト
 TRYCALLFORM EVENT_MESSAGE_84
 
@@ -10598,7 +11262,7 @@ ENDIF
 ;-------------------------------------------------
 ;排卵誘発剤使用時
 ;-------------------------------------------------
-@EVENT400_K108
+@EVENT91_K108
 ;地の文表示関数 地の文表示させたくない場合はコメントアウト
 TRYCALLFORM EVENT_MESSAGE_91
 
