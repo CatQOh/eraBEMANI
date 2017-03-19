@@ -1,0 +1,192 @@
+﻿;-------------------------------------------------
+;授乳手コキ
+;愛撫系派生コマンド
+;-------------------------------------------------
+@USERCOM_ABLE513
+;授乳手コキ
+;大体の条件は派生元の母乳飲み判定と共通なため省略
+;乳房が露出してないとダメ
+SIF OVER_BUST(TARGET) != ""
+	RETURN 0
+
+RETURN 1
+
+@COM513
+PRINTL 授乳手コキ
+SELECTCOMS = 搾乳
+SELECTCOM = 513
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;射精ゲージチェック
+;-------------------------------------------------
+LOCAL = 500
+;対象が母性持ちだと気持ち良い
+SIF TALENT:母性
+	LOCAL += 200
+
+;ABL:技巧をみる
+SELECTCASE ABL:技巧
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.20
+	CASE 2
+		TIMES LOCAL , 1.40
+	CASE 3
+		TIMES LOCAL , 1.60
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.00
+ENDSELECT
+
+;ABL:従順をみる
+SELECTCASE ABL:従順
+	CASE 0
+		TIMES LOCAL , 0.80
+	CASE 1
+		TIMES LOCAL , 0.90
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.10
+	CASE 4
+		TIMES LOCAL , 1.20
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+
+;ABL:奉仕精神をみる
+SELECTCASE ABL:奉仕精神
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		TIMES LOCAL , 2.40
+ENDSELECT
+
+;プレイヤーのABL:Ｃ感覚をみる
+SELECTCASE ABL:PLAYER:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.50
+	CASE 2
+		TIMES LOCAL , 2.00
+	CASE 3
+		TIMES LOCAL , 2.50
+	CASE 4
+		TIMES LOCAL , 3.50
+	CASEELSE
+		TIMES LOCAL , 5.00
+ENDSELECT
+
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:PLAYER:賢者タイム > 0
+	LOCAL /= 20
+
+BASE:PLAYER:射精 += LOCAL
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 50
+LOSEBASE:気力 += 50
+
+SOURCE:快B = 400
+SOURCE:性行動 = 500
+SOURCE:達成 = 200
+SOURCE:情愛 = 1000
+SOURCE:露出 = 1000
+SOURCE:恭順 = 3000
+SOURCE:屈従 = 500
+SOURCE:不潔 = 50
+SOURCE:反感 = 100
+
+;対象が母性持ちならいろいろボーナス
+IF TALENT:母性
+	LOSEBASE:体力 -= 10
+	LOSEBASE:気力 -= 20
+	SOURCE:快B += 100
+	SOURCE:情愛 += 500
+	SOURCE:恭順 += 2000
+	SOURCE:不潔 -= 50
+	SOURCE:反感 -= 100
+ENDIF
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 100
+
+;対象が母性持ちならいろいろボーナス
+IF TALENT:母性
+	LOSEBASE:体力 -= 10
+	LOSEBASE:気力 -= 20
+	SOURCE:快B += 100
+	SOURCE:情愛 += 500
+	SOURCE:恭順 += 2000
+	SOURCE:不潔 -= 50
+	SOURCE:反感 -= 100
+ENDIF
+
+;調教者が［幼稚］か［幼児退行］
+IF TALENT:PLAYER:幼稚 || TALENT:PLAYER:幼児／幼児退行
+	TIMES SOURCE:快B , 1.20
+	TIMES SOURCE:情愛 , 1.20
+ENDIF
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK, 3
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT, 3, NOWEX:PLAYER:射精
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;絶頂時のウェイト
+;-------------------------------------------------
+;SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:放尿 || NOWEX:噴乳 || NOWEX:MASTER:射精 || (ASSI > 0 && NOWEX:ASSI:射精)
+;	WAIT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;奴隷の手⇔調教者のペニスの汚れが移動
+STAIN:手 |= STAIN:PLAYER:ペニス
+STAIN:PLAYER:ペニス |= STAIN:手
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 2, 3
+
+;愛情経験
+IF (TALENT:恋慕 || TALENT:親愛) && PLAYER == MASTER
+	PRINTL 愛情経験+2
+	EXP:愛情経験 += 2
+ENDIF
+
+;奉仕快楽フラグ
+TFLAG:奉仕快楽 = 1
+
+RETURN 1
+
