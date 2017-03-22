@@ -1,5 +1,8 @@
 ﻿@段位内容, ARG
+#DIM DYNAMIC LCOUNT
 
+LOCALS =
+VARSET LOCAL
 SELECTCASE ARG
 	;七級
 	CASE 1
@@ -128,6 +131,13 @@ SELECTCASE ARG
 		LOCAL:1 = RESULT:1
 		LOCAL:2 = RESULT:2
 		LOCAL:3 = RESULT:3
+	;段位認定 裏七級
+	CASE 50
+		LOCALS = 難易度ANOTHERで、陥落素質をつけないと売却できません
+		LOCAL:0 = 1776;オフィーリア
+		LOCAL:1 = 2109;うさぬこ
+		LOCAL:2 = 5000;BisCo
+		LOCAL:3 = 1684;Bis子
 	;ドキッ！淫乱ピンクだらけの調教大会！
 	CASE 51
 		LOCAL:0 = 72;アーシェム
@@ -146,7 +156,7 @@ SELECTCASE ARG
 	CASE 53
 		LOCAL:0 = 44;タルト
 		LOCAL:1 = 45;タフィ
-		LOCAL:2 = 51:ノクス
+		LOCAL:2 = 51;ノクス
 		LOCAL:3 = 52;マタン
 		LOCAL:4 = 83;ひなた
 		LOCAL:5 = 85;まゆ
@@ -156,7 +166,7 @@ SELECTCASE ARG
 		LOCAL:9 = 1742;ロッテ
 		LOCAL:10 = 9005;夏陽
 		LOCAL:11 = 9006;心菜
-	;アダルトゲーム「日向美ビタースイーツ」
+	;アダルトゲーム「日向美ビタースイーツ♪」
 	CASE 54
 		LOCAL:0 = 9000;まり花
 		LOCAL:1 = 9001;イブ
@@ -194,8 +204,9 @@ SELECTCASE ARG
 		LOCAL:2 = 1025;グレイス
 		LOCAL:3 = 1615;スミレ
 		LOCAL:4 = 2099;氷海
-	;えっちなお姉さんたちが教えてア・ゲ・ル♪（プレイヤーは無条件でショタになる）
+	;えっちなお姉さんたちが教えてア・ゲ・ル♪
 	CASE 59
+		LOCALS = プレイヤーは無条件でショタになります
 		LOCAL:0 = 69;アーシェム
 		LOCAL:1 = 1651;ミルク
 		LOCAL:2 = 1963;クアトロ
@@ -215,12 +226,34 @@ SELECTCASE ARG
 		LOCAL:2 = 1612;六
 		LOCAL:3 = 1008;奈奈
 		LOCAL:4 = 86;リピカ
+	;神よ、ニャンコを与えたまえ!
+	CASE 62
+		LOCALS = ゲージが22\%で始まります
+		LOCAL:0 = 77;ニーソ姫
+		LOCAL:1 = 1501;ニャミ
+		LOCAL:2 = 3005;なぎさ
+		LOCAL:3 = 5000;BisCo
+	;戦う誇りを胸に Natus Vincere
+	CASE 63
+		LOCAL:0 = 51;ノクス
+		LOCAL:1 = 65;ヴァルキリー
+		LOCAL:2 = 1026;オルトリンデ
+		LOCAL:3 = 9223;アルフィン
+	;Roll on spring!
+	CASE 64
+		LOCALS = 2月1日スタートになります
+		LOCAL:0 = 2114;フローラ
+		LOCAL:1 = 2099;氷海
+		LOCAL:2 = 106;スノーフェアリー
+		LOCAL:3 = 1024;氷雪
 ENDSELECT
 
 DO
-	SIF LOCAL:COUNT == 0
-		LOCAL:100 = COUNT
-	BREAK
+	IF LOCAL:LCOUNT == 0
+		LOCAL:100 = LCOUNT
+		BREAK
+	ENDIF
+	LCOUNT++
 LOOP 1
 
 
@@ -228,11 +261,15 @@ PRINT 【段位認定
 CALL GRADE, ARG
 PRINTL 】
 PRINTL 『クリア方法』
-PRINTFORML 指定された[LOCAL:100]人のキャラを売却、もしくは売却可能or助手可能でクリア
+PRINTFORML 指定された{LOCAL:100}人のキャラを売却、もしくは売却可能or助手可能でクリア
+IF LOCALS != ""
+	PRINTL 『特別ルール』
+	PRINTFORML %LOCALS%
+ENDIF
 PRINTL 
 PRINTL 『攻略対象キャラクター』
 REPEAT LOCAL:100
-	PRINTFORML 　No.{LOCAL:COUNT} %CSVNAME(LOCAL:COUTN)%
+	PRINTFORML 　No.{LOCAL:COUNT} %CSVNAME(LOCAL:COUNT)%
 REND
 DRAWLINE
 PRINTPLAIN 　READY?　
@@ -246,7 +283,7 @@ DO
 		CASE 0
 			PRINTW 段位認定を開始します。
 			REPEAT LOCAL:100
-			ADDCHARA LOCAL:COUNT
+				ADDCHARA LOCAL:COUNT
 			REND
 			REPEAT CHARANUM
 				SIF COUNT == 0
@@ -302,6 +339,22 @@ DO
 				ENDSELECT
 			REND
 			FLAG:段位ゲージ = 50
+			;オリジナルコースの特殊な処理はここで行う
+			;ただし、ゲーム難易度は「ニューゲーム処理」で
+			SELECTCASE FLAG:選択段位
+				;えっちなお姉さんたちが教えてア・ゲ・ル♪
+				CASE 59
+					TALENT:MASTER:小柄体型 = 1
+					MAXBASE:MASTER:体力 -= 200
+					BASE:MASTER:体力 -= 200
+				;神よ、ニャンコを与えたまえ!
+				CASE 62
+					FLAG:段位ゲージ = 11
+				;Roll on spring!
+				CASE 64
+					MONTH = 2
+					DAYS = 1
+			ENDSELECT
 			RETURN 0
 		CASE 1
 			VARSET CCB, 0
