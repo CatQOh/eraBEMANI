@@ -18,18 +18,18 @@ SELECTCASE TALENT:バストサイズ
 	;男or絶壁だとダメ
 	CASE 0, 1
 		RETURN 0
-	;貧乳だと技巧LV5以上必要
+	;貧乳だと技巧LV6以上必要
 	CASE 2
-		LOCAL = 5
-	;普通だと技巧LV4以上必要
+		LOCAL = 6
+	;普通だと技巧LV5以上必要
 	CASE 3
-		LOCAL = 4
-	;巨乳なら技巧LV3以上必要
+		LOCAL = 5
+	;巨乳なら技巧LV4以上必要
 	CASE 4
-		LOCAL = 3
-	;爆乳なら技巧LV2以上必要
+		LOCAL = 4
+	;爆乳なら技巧LV3以上必要
 	CASE 5
-		LOCAL = 2
+		LOCAL = 3
 ENDSELECT
 SIF ABL:技巧 < LOCAL
 	RETURN 0
@@ -38,9 +38,6 @@ SIF !PENIS(PLAYER)
 	RETURN 0
 ;猫舌の調教者の場合は技巧Lv2以上必要
 SIF TALENT:PLAYER:猫舌 && ABL:PLAYER:技巧 < 2
-	RETURN 0
-;猫舌の奴隷の場合は技巧Lv2以上必要
-SIF TALENT:猫舌 && ABL:技巧 < 2
 	RETURN 0
 ;上半身下着、上半身上着、全身上着をつけているとダメ
 SIF TEQUIP:上半身上着 || (TEQUIP:全身上着 && CFLAG:着衣併用 != 1) || TEQUIP:上半身下着
@@ -182,10 +179,10 @@ IF LOCAL:1
 	PRINTFORM ({LOCAL:1})
 ENDIF
 
-;合計を表示(34以上で実行)
+;合計を表示(45以上で実行)
 PRINTFORM  = {LOCAL}
 
-LOCAL:2 = 34
+LOCAL:2 = 45
 SIF LOCAL < LOCAL:2
 	PRINT  < 
 SIF LOCAL == LOCAL:2
@@ -279,6 +276,38 @@ SELECTCASE ABL:PLAYER:Ｃ感覚
 		TIMES LOCAL , 5.00
 ENDSELECT
 
+;TALENT:バストサイズをみる
+SELECTCASE TALENT:バストサイズ
+	CASE 1
+		TIMES LOCAL , 0.70
+	CASE 2
+		TIMES LOCAL , 0.85
+	CASE 3
+		TIMES LOCAL , 1.00
+	CASE 4
+		TIMES LOCAL , 1.15
+	CASEELSE
+		TIMES LOCAL , 1.30
+ENDSELECT
+;PLAYERが小柄体型・小人体型なら相対的に胸が大きくなるので少し増やす
+SIF TALENT:PLAYER:小柄体型 || TALENT:PLAYER:小人体型
+	TIMES LOCAL , 1.15
+
+;機械・無機物の場合、ある程度減らす
+IF CSTR:種族 == "機械" && TALENT:無機物
+	TIMES LOCAL , 0.60
+ELSEIF CSTR:種族 == "機械" || TALENT:無機物
+	TIMES LOCAL , 0.80
+ENDIF
+
+;奴隷が小柄体型・小人体型なら身体が柔らかいので増やす
+SIF TALENT:小柄体型 || TALENT:小人体型
+	TIMES LOCAL , 1.25
+
+;TALENT:舌使いをみる
+SIF TALENT:舌使い
+	TIMES LOCAL , 2.00
+
 ;再装填処理中は射精ゲージは20分の1に
 SIF CFLAG:PLAYER:賢者タイム > 0
 	LOCAL /= 20
@@ -368,16 +397,16 @@ BASE:射精 += LOCAL
 ;ソース追加処理
 ;-------------------------------------------------
 ;消費体力、気力
-LOSEBASE:体力 += 30
-LOSEBASE:気力 += 100
+LOSEBASE:体力 += 50
+LOSEBASE:気力 += 120
 
-SOURCE:快C = 400
-SOURCE:快B = 150
-SOURCE:情愛 = 500
+SOURCE:快C = 500
+SOURCE:快B = 200
+SOURCE:情愛 = 800
 SOURCE:性行動 = 1200
 SOURCE:達成 = 500
 SOURCE:恭順 = 700
-SOURCE:液体 = 80
+SOURCE:液体 = 100
 SOURCE:露出 = 100
 SOURCE:屈従 = 1200
 SOURCE:逸脱 = 700
@@ -429,9 +458,16 @@ SIF VAGINA(TARGET)
 SIF PENIS(TARGET)
 	STAIN:ペニス = 0
 
+;奉仕精神LV2以上、技巧LV2以上なら汚れをなめ取る
+SIF ABL:奉仕精神 >= 2 && ABL:技巧 >= 2
+	STAIN:PLAYER:ペニス = 2
+
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
+;フェラ経験
+PRINTL フェラ経験+1
+EXP:フェラ経験 += 1
 CALL EXPUP, 4, 2
 
 ;愛情経験
