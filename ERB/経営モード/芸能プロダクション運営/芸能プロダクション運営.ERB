@@ -1,0 +1,349 @@
+﻿@STRATEGY_IDOL
+#DIM LCOUNT
+
+FOR LCOUNT, 1, CHARANUM
+	SIF CFLAG:LCOUNT:配属 == 4
+		IDOL所属人数++
+NEXT
+
+DRAWLINE
+PRINTL 
+PRINTL 【芸能プロダクション運営】
+PRINTL 
+DRAWLINE
+PRINTFORML 知名度:{IDOL知名度}
+DRAWLINE
+
+IF IDOL所属人数
+	LOCALS = <button value='1' title='レッスンを受けさせる予定を入れます'>　[1] - レッスン</button>
+	HTML_PRINT LOCALS
+	LOCALS = <button value='2' title='ライブなどのイベントを行います'>　[2] - イベント</button>
+	HTML_PRINT LOCALS
+ELSE
+	LOCALS = <font color='gray'><nonbutton title='キャラを配属してください'>　[-] - レッスン</nonbutton></font>
+	HTML_PRINT LOCALS
+	LOCALS = <font color='gray'><nonbutton title='キャラを配属してください'>　[-] - イベント</nonbutton></font>
+	HTML_PRINT LOCALS
+ENDIF
+LOCALS = <button value='3' title='現金などを送ることにより知名度を強引に上げます'>　[3] - 贈賄する</button>
+HTML_PRINT LOCALS
+LOCALS = <button value='4' title='芸能プロダクションで働かせるキャラを配属します'>　[4] - 人員配置</button>
+HTML_PRINT LOCALS
+
+
+DRAWLINE
+PRINTPLAIN 　IDOL　
+PRINT [0] - 戻る
+PRINTL 　[100] 各コマンドの説明
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 1, 2
+			SIF !IDOL所属人数
+				CONTINUE
+	ENDSELECT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			CALL IDOL_LESSON
+		CASE 2
+			CALL IDOL_EVENT
+		CASE 3
+			CALL IDOL_BRIBE
+		CASE 4
+			CALL IDOL_PERSONAL
+		CASE 100
+			CALL IDOL_TUTORIAL
+		CASEELSE
+			CONTINUE
+	ENDSELECT
+	RESTART
+LOOP 1
+
+RESTART
+
+;----------------------------------------------------
+;芸能プロダクション運営モードチュートリアル
+;----------------------------------------------------
+@IDOL_TUTORIAL
+DRAWLINE
+PRINTL 当モードは芸能プロダクションを運営して資金を稼ぐコマンドです。
+PRINTL 
+PRINTL [1] - 「レッスン」とは？
+PRINTL [2] - 「イベント」とは？
+PRINTL [3] - 「贈賄する」とは？
+PRINTL [4] - 「人員配置」とは？
+DRAWLINE
+PRINTPLAIN 　TUTORIAL　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			PRINTL 「レッスン」はこれから受けるレッスンの予定を入れるコマンドです。
+			PRINTL お金を払うことによりボーカル・ダンス・楽器演奏のいずれかのレッスンを受けることができます。
+			PRINTL ここで予定を入れなくても全ての経験を少しずつ得ていきますが、
+			PRINTL 能力をより強くしたり何かの技能に特化させたり際に必要となるでしょう。
+			PRINTW 高い効果のレッスンは相応の知名度がないと受けることができません。
+		CASE 2
+			PRINTL 「イベント」はライブなどの催し物で利益を上げるコマンドです。
+			PRINTW このコマンドを選択したときのみ、主人は半日間拘束されます。
+		CASE 3
+			PRINTL 「贈賄する」は賄賂を送ることなどの裏工作により知名度を上げるコマンドです。
+			PRINTL 知名度が高いほど賄賂に必要な金額は増えていきます。
+			PRINTW また、枕営業をさせることでも取引ができますが、その効果は奴隷の働き次第です。
+		CASE 4
+			PRINTL 「人員配置」は芸能プロダクションに人員を配置するコマンドです。
+			PRINTW 配属された人数に応じてお金はかかってしまうので、誰を配属するかはよく考えましょう。
+	ENDSELECT
+LOOP LOOPRES(1, 2, 3, 4)
+
+RESTART
+
+
+;レッスン----------------------------------------------------
+@IDOL_LESSON
+;「CFLAG:レッスン」について
+;3で割った余りでレッスンの種類、3の倍数に切り上げたときの値でレッスンのレベルを判別
+;Vocal:1, 4, 7, 10, 13
+;Inst.:2, 5, 8, 11, 14
+;Dance:3, 6, 9, 12, 15
+;それぞれ左からLv1～Lv5となる
+
+DRAWLINE
+PRINT □レッスンを受けさせるキャラを選んでください
+
+REPEAT CHARANUM
+	IF CFLAG:COUNT:配属 == 4
+		IF CFLAG:レッスン == 0
+			PRINT 　　　　　
+		ELSEIF CFLAG:レッスン%3 == 1
+			PRINTFORM Vocal(Lv{(CFLAG:レッスン+2)/3})
+		ELSEIF CFLAG:レッスン%3 == 2
+			PRINTFORM Inst.(Lv{(CFLAG:レッスン+1)/3})
+		ELSE
+			PRINTFORM Dance(Lv{CFLAG:レッスン/3})
+		ENDIF
+		PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(歌唱技能:{ABL:COUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:COUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:COUNT:舞踊技能, 2, LEFT}
+		SIF TALENT:COUNT:魅力
+			PRINT  魅力
+		SIF TALENT:COUNT:魅惑
+			PRINT  魅惑
+		SIF TALENT:COUNT:謎の魅力
+			PRINT  謎の魅力
+		SIF TALENT:COUNT:人気
+			PRINT  人気
+		PRINTL )
+	ENDIF
+REND
+
+DRAWLINE
+PRINTPLAIN 　LESSON　
+PRINTL [0] 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1 TO CHARANUM-1
+			IF CFLAG:RESULT:配属 == 4
+				LOCAL = RESULT
+				PRINTL
+				PRINTL レッスンのレベルと種類を選んでください
+				PRINTL
+				PRINTL [0]レッスンの予定を入れない
+				PRINTL 　　Vocal Inst. Dance
+				PRINTL Lv1 [ 1]  [ 2]  [ 3]
+				SIF IDOL知名度 > 40
+					PRINTL Lv2 [ 4]  [ 5]  [ 6]
+				SIF IDOL知名度 > 160
+					PRINTL Lv3 [ 7]  [ 8]  [ 9]
+				SIF IDOL知名度 > 640
+					PRINTL Lv4 [10]  [11]  [12]
+				SIF IDOL知名度 > 2560
+					PRINTL Lv5 [13]  [14]  [15]
+				DO
+					INPUT
+					SELECTCASE RESULT
+						CASE 0 TO 3
+							CFLAG:LOCAL:レッスン = RESULT
+							RESTART
+						CASE 4 TO 6
+							IF IDOL知名度 > 40
+								CFLAG:LOCAL:レッスン = RESULT
+								RESTART
+							ENDIF
+						CASE 7 TO 9
+							IF IDOL知名度 > 160
+								CFLAG:LOCAL:レッスン = RESULT
+								RESTART
+							ENDIF
+						CASE 10 TO 12
+							IF IDOL知名度 > 640
+								CFLAG:LOCAL:レッスン = RESULT
+								RESTART
+							ENDIF
+						CASE 13 TO 15
+							IF IDOL知名度 > 2560
+								CFLAG:LOCAL:レッスン = RESULT
+								RESTART
+							ENDIF
+					ENDSELECT
+				LOOP 1
+			ENDIF
+	ENDSELECT
+LOOP 1
+
+;人員配置処理----------------------------------------------------
+@IDOL_PERSONAL
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 配属可能人数
+#DIM DYNAMIC 飛ばした人数
+#DIM DYNAMIC 配属人数
+VARSET LOCAL, 0
+配属人数 = 0
+REPEAT CHARANUM
+	SIF CFLAG:COUNT:配属 == 4
+		配属人数++
+REND
+DRAWLINE
+PRINTFORML □芸能プロダクションに配属する人員を選択してください(現在{配属人数}/10)
+
+配属可能人数 = 0
+
+REPEAT CHARANUM
+	;主人は無理
+	SIF COUNT == MASTER
+		CONTINUE
+	;助手可能じゃないと無理
+	SIF CFLAG:COUNT:状態 < 2
+		CONTINUE
+	;体力不足だと無理
+	SIF BASE:COUNT:体力 < 500
+		CONTINUE
+	;妊娠中、育児中は無理
+	SIF TALENT:COUNT:妊娠 || TALENT:COUNT:育児中
+		CONTINUE
+	配属可能人数++
+	;配属可能なキャラに対応したLOCALが1になる
+	LOCAL:COUNT = 1
+REND
+
+飛ばした人数 = 0
+表示数 = 0
+
+IF 配属可能人数
+	REPEAT CHARANUM
+		SIF !LOCAL:COUNT
+			CONTINUE
+		;2ページ目以降はページ×20まで表示を飛ばす
+		IF 飛ばした人数 < ページ数*20
+			飛ばした人数++
+			CONTINUE
+		ENDIF
+		PRINTFORM 　[{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(歌唱技能:{ABL:COUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:COUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:COUNT:舞踊技能, 2, LEFT}
+		SIF TALENT:COUNT:魅力
+			PRINT  魅力
+		SIF TALENT:COUNT:魅惑
+			PRINT  魅惑
+		SIF TALENT:COUNT:謎の魅力
+			PRINT  謎の魅力
+		SIF TALENT:COUNT:人気
+			PRINT  人気
+		PRINT )
+
+		SELECTCASE CFLAG:COUNT:配属
+			CASE 0
+				IF COUNT == TARGET
+					PRINTL 【調教中】
+				ELSEIF COUNT == ASSI
+					PRINTL 【助手中】
+				ELSE
+					PRINTL 【休憩中】
+				ENDIF
+			CASE 1
+				PRINTL 【ゲームセンター配属中】
+			CASE 2
+				PRINTL 【娼館配属中】
+			CASE 4
+				PRINTL 【配属中】
+		ENDSELECT
+		表示数++
+		;20人表示したらページ終わり
+		SIF 表示数 == 20
+			BREAK
+	REND
+ELSE
+	PRINTL 
+	PRINTL 【現在配属できる奴隷はいません】
+	PRINTL 
+ENDIF
+DRAWLINE
+PRINTPLAINFORM 　PAGE.{ページ数+1}　
+SIF ページ数 > 0
+	PRINTLC [999]前ページ
+PRINTLC [1000] 戻る　
+;表示できるキャラがまだ居れば次ページ
+SIF 表示数+20*ページ数 < 配属可能人数 
+	PRINTLC [1001]次ページ
+PRINTL [1002] 全員帰還
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 999
+			SIF ページ数 > 0
+				ページ数--
+		CASE 1000
+			RETURN 0
+		CASE 1001
+			;表示できるキャラがまだ居れば次ページ
+			SIF 表示数+20*ページ数 < 配属可能人数 
+				ページ数++
+		CASE 1002
+			REPEAT CHARANUM
+				IF CFLAG:COUNT:配属 == 4
+					CFLAG:COUNT:配属完了 = 0
+					CFLAG:COUNT:配属 = 0
+				ENDIF
+			REND
+			PRINTW 全員帰宅しました
+		CASEELSE
+			SIF !LOCAL:RESULT
+				CONTINUE
+			SELECTCASE CFLAG:RESULT:配属
+				CASE 1
+					PRINTFORMW %CALLNAME:RESULT%が帰宅しました
+					CFLAG:RESULT:配属 = 0
+					CFLAG:RESULT:配属完了 = 0
+					SIF FLAG:口上表示
+						TRYCALLFORM IDOL_ASSIGNOFF_K{NO:RESULT}
+					RESTART
+				CASEELSE
+					IF 配属人数 >= 10
+						PRINTW これ以上配属できません
+						RESTART
+					ENDIF
+					PRINTFORMW %CALLNAME:RESULT%を配属しました
+					CFLAG:RESULT:配属 = 4
+					CFLAG:RESULT:配属完了 = 0
+					CFLAG:RESULT:ゲーセン店長 = 0
+					SIF FLAG:口上表示
+						TRYCALLFORM IDOL_ASSIGNON_K{NO:RESULT}
+					SIF TARGET == RESULT
+						TARGET = -1
+					SIF ASSI == RESULT
+						ASSI = -1
+					RESTART
+			ENDSELECT
+	ENDSELECT
+LOOP LOOPRES(999, 1001, 1002)
+
+RESTART
