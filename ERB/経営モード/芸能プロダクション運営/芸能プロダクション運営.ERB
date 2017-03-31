@@ -218,6 +218,11 @@ LOOP 1
 
 ;イベント----------------------------------------------------
 @IDOL_EVENT
+#DIM DYNAMIC 分野
+#DIM DYNAMIC 技量, 4
+#DIM DYNAMIC 人数, 4
+#DIM DYNAMIC LMEMORY
+#DIM DYNAMIC LCOUNT
 
 DRAWLINE
 PRINTL 何のイベントを開催しますか？
@@ -232,10 +237,139 @@ DO
 		CASE 0
 			RETURN 0
 		CASE 1
+			VARSET LOCAL
 			CALL MUSIC_LIST
-			SIF RESULTS == ""
+			SIF IDOL選曲 == ""
 				RESTART
-			
+			$MEMBER_LOOP
+			;◆◆◆技量の計算◆◆◆
+			;	技量 = 技能LVの合計値 / √(担当人数)
+			;D&VやI&Vの場合は、それぞれで1人として数えるが技能LVを0.75倍で計算する
+			;技量は10000倍にして計算する(表記上は小数第4位まで計算する)
+			VARSET 技量
+			VARSET 人数
+			REPEAT CHARANUM
+				IF CFLAG:COUNT:配属 == 4
+					SELECTCASE LOCAL:COUNT
+						CASE 1
+							技量:3 += 10000*ABL:COUNT:舞踊技能
+							人数:3++
+						CASE 2
+							技量:2 += 10000*ABL:COUNT:演奏技能
+							人数:2++
+						CASE 3
+							技量:1 += 10000*ABL:COUNT:歌唱技能
+							人数:1++
+						CASE 4
+							技量:3 += 7500*ABL:COUNT:舞踊技能
+							人数:3++
+							技量:1 += 7500*ABL:COUNT:歌唱技能
+							人数:1++
+						CASE 5
+							技量:2 += 7500*ABL:COUNT:演奏技能
+							人数:2++
+							技量:1 += 7500*ABL:COUNT:歌唱技能
+							人数:1++
+					ENDSELECT
+				ENDIF
+			REND
+			FOR 分野, 1, 4
+				SIF 人数:分野 <= 0
+					CONTINUE
+				技量:分野 *= 10000
+				技量:分野 /= SQRT(人数:分野*10000*10000)
+			NEXT
+			DRAWLINE
+			PRINTL ライブに出すメンバーと担当するパートを選んでください
+			PRINTL （ボーカル曲の場合、最低でも1人はボーカルを担当する必要があります）
+			PRINTL
+			PRINTFORML %IDOL選曲%
+			PRINT 楽曲難易度　
+			FOR 分野, 1, 4
+				SELECTCASE 分野
+					CASE 1
+						PRINT Vocal:
+					CASE 2
+						PRINT Inst.:
+					CASE 3
+						PRINT Dance:
+				ENDSELECT
+				SELECTCASE TOINT(IDOL選曲:分野)
+					CASE 0
+						PRINT ‐ 
+					CASE IS < 10
+						PRINTFORM %TOFULL(IDOL選曲:分野)% 
+					CASEELSE
+						PRINTFORM %IDOL選曲:分野% 
+				ENDSELECT
+			NEXT
+			PRINTL
+			PRINT 現在の技量　
+			FOR 分野, 1, 4
+				PRINTFORM {技量:分野/10000, 3, RIGHT}.
+				FOR LCOUNT, 0, 4-STRLENS(TOSTR(技量:分野%10000))
+					PRINT 0
+				NEXT
+				PRINTFORM {技量:分野%10000} 
+			NEXT
+			PRINTL
+			REPEAT CHARANUM
+				IF CFLAG:COUNT:配属 == 4
+					SELECTCASE LOCAL:COUNT
+						CASE 0
+							PRINT 　　
+						CASE 1
+							PRINT Da. 
+						CASE 2
+							PRINT In. 
+						CASE 3
+							PRINT Vo. 
+						CASE 4
+							PRINT D&V 
+						CASE 5
+							PRINT I&V 
+					ENDSELECT
+					PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(歌唱技能:{ABL:COUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:COUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:COUNT:舞踊技能, 2, LEFT}
+					SIF TALENT:COUNT:魅力
+						PRINT  魅力
+					SIF TALENT:COUNT:魅惑
+						PRINT  魅惑
+					SIF TALENT:COUNT:謎の魅力
+						PRINT  謎の魅力
+					SIF TALENT:COUNT:人気
+						PRINT  人気
+					PRINTL )
+				ENDIF
+			REND
+			DO
+				INPUT
+				IF CFLAG:RESULT:配属 == 4
+					LMEMORY = RESULT
+					PRINTL
+					PRINTL どのパートを担当しますか？
+					PRINTL [0] 担当しない
+					PRINTL [1] ダンス
+					PRINTL [2] 楽器演奏
+					IF IDOL選曲:1 != "0"
+						PRINTL [3] ボーカル
+						PRINTL [4] ダンス&ボーカル
+						PRINTL [5] 楽器演奏&ボーカル
+					ENDIF
+					$PART_INPUT
+					INPUT
+					SELECTCASE RESULT
+						CASE 0, 1, 2
+							LOCAL:LMEMORY = RESULT
+						CASE 3, 4, 5
+							SIF IDOL選曲:1 == "0"
+								GOTO PART_INPUT
+							LOCAL:LMEMORY = RESULT
+						CASEELSE
+							GOTO PART_INPUT
+					ENDSELECT
+					GOTO MEMBER_LOOP
+				ENDIF
+			LOOP 1
 	ENDSELECT
 LOOP 1
 
@@ -454,9 +588,9 @@ REND
 LOCAL = LOCAL:1 + LOCAL:2
 MONEY -= LOCAL
 IF LOCAL && IDOL報告%4 < 2
-	PRINTFORM 事務所の維持費に${LOCAL:1}
+	PRINTFORM 事務所の維持費用に${LOCAL:1}
 	IF LOCAL:2
-		PRINTFORM 、レッスン費用に${LOCAL:2}かかったので、合計${LOCAL}を支払いました。
+		PRINTFORM とレッスン費用に${LOCAL:2}かかったので、合計${LOCAL}を支払いました。
 	ELSE
 		PRINT かかりました。
 	ENDIF
