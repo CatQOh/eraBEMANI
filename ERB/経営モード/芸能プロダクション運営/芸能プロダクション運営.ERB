@@ -1,6 +1,9 @@
 ﻿@STRATEGY_IDOL
 #DIM LCOUNT
 
+SIF IDOL知名度 < 10
+	IDOL知名度 = 10
+
 FOR LCOUNT, 1, CHARANUM
 	SIF CFLAG:LCOUNT:配属 == 4
 		IDOL所属人数++
@@ -29,6 +32,8 @@ LOCALS = <button value='3' title='現金などを送ることにより知名度�
 HTML_PRINT LOCALS
 LOCALS = <button value='4' title='芸能プロダクションで働かせるキャラを配属します'>　[4] - 人員配置</button>
 HTML_PRINT LOCALS
+LOCALS = <button value='5' title='芸能プロダクション運営に関する設定を変更します'>　[5] - 設定変更</button>
+HTML_PRINT LOCALS
 
 
 DRAWLINE
@@ -54,6 +59,8 @@ DO
 			CALL IDOL_BRIBE
 		CASE 4
 			CALL IDOL_PERSONAL
+		CASE 5
+			CALL IDOL_OPTION
 		CASE 100
 			CALL IDOL_TUTORIAL
 		CASEELSE
@@ -116,20 +123,20 @@ RESTART
 ;それぞれ左からLv1～Lv5となる
 
 DRAWLINE
-PRINT □レッスンを受けさせるキャラを選んでください
+PRINTL □レッスンを受けさせるキャラを選んでください
 
 REPEAT CHARANUM
 	IF CFLAG:COUNT:配属 == 4
-		IF CFLAG:レッスン == 0
+		IF CFLAG:COUNT:レッスン == 0
 			PRINT 　　　　　
-		ELSEIF CFLAG:レッスン%3 == 1
-			PRINTFORM Vocal(Lv{(CFLAG:レッスン+2)/3})
-		ELSEIF CFLAG:レッスン%3 == 2
-			PRINTFORM Inst.(Lv{(CFLAG:レッスン+1)/3})
+		ELSEIF CFLAG:COUNT:レッスン%3 == 1
+			PRINTFORM Vocal(Lv{(CFLAG:COUNT:レッスン+2)/3})
+		ELSEIF CFLAG:COUNT:レッスン%3 == 2
+			PRINTFORM Inst.(Lv{(CFLAG:COUNT:レッスン+1)/3})
 		ELSE
-			PRINTFORM Dance(Lv{CFLAG:レッスン/3})
+			PRINTFORM Dance(Lv{CFLAG:COUNT:レッスン/3})
 		ENDIF
-		PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(歌唱技能:{ABL:COUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:COUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:COUNT:舞踊技能, 2, LEFT}
+		PRINTFORM  [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(歌唱技能:{ABL:COUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:COUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:COUNT:舞踊技能, 2, LEFT}
 		SIF TALENT:COUNT:魅力
 			PRINT  魅力
 		SIF TALENT:COUNT:魅惑
@@ -158,16 +165,24 @@ DO
 				PRINTL レッスンのレベルと種類を選んでください
 				PRINTL
 				PRINTL [0]レッスンの予定を入れない
-				PRINTL 　　Vocal Inst. Dance
-				PRINTL Lv1 [ 1]  [ 2]  [ 3]
-				SIF IDOL知名度 > 40
-					PRINTL Lv2 [ 4]  [ 5]  [ 6]
-				SIF IDOL知名度 > 160
-					PRINTL Lv3 [ 7]  [ 8]  [ 9]
-				SIF IDOL知名度 > 640
-					PRINTL Lv4 [10]  [11]  [12]
-				SIF IDOL知名度 > 2560
-					PRINTL Lv5 [13]  [14]  [15]
+				PRINTL 　　　　　　 Vocal Inst. Dance
+				PRINTL Lv1($10000)  [ 1]  [ 2]  [ 3]
+				IF IDOL知名度 > 40
+					PRINTPLAIN Lv2($30000)  
+					PRINTL [ 4]  [ 5]  [ 6]
+				ENDIF
+				IF IDOL知名度 > 160
+					PRINTPLAIN Lv3($60000)  
+					PRINTL [ 7]  [ 8]  [ 9]
+				ENDIF
+				IF IDOL知名度 > 640
+					PRINTPLAIN Lv4($100000) 
+					PRINTL [10]  [11]  [12]
+				ENDIF
+				IF IDOL知名度 > 2560
+					PRINTPLAIN Lv5($150000) 
+					PRINTL [13]  [14]  [15]
+				ENDIF
 				DO
 					INPUT
 					SELECTCASE RESULT
@@ -199,6 +214,31 @@ DO
 			ENDIF
 	ENDSELECT
 LOOP 1
+
+
+;イベント----------------------------------------------------
+@IDOL_EVENT
+
+DRAWLINE
+PRINTL 何のイベントを開催しますか？
+PRINTL [1] ライブ
+DRAWLINE
+PRINTPLAIN 　EVENT　
+PRINTL [0] 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			CALL MUSIC_LIST
+			SIF RESULTS == ""
+				RESTART
+			
+	ENDSELECT
+LOOP 1
+
 
 ;人員配置処理----------------------------------------------------
 @IDOL_PERSONAL
@@ -322,7 +362,6 @@ DO
 				CASE 1
 					PRINTFORMW %CALLNAME:RESULT%が帰宅しました
 					CFLAG:RESULT:配属 = 0
-					CFLAG:RESULT:配属完了 = 0
 					SIF FLAG:口上表示
 						TRYCALLFORM IDOL_ASSIGNOFF_K{NO:RESULT}
 					RESTART
@@ -347,3 +386,85 @@ DO
 LOOP LOOPRES(999, 1001, 1002)
 
 RESTART
+
+
+;オプション----------------------------------------------------
+@IDOL_OPTION
+PRINTL
+PRINTL ターンごとの収支の報告をしますか？
+PRINTL [0] する(メッセージWAITあり)
+PRINTL [1] する(メッセージWAITなし)
+PRINTL [2] しない
+DO
+	INPUT
+	IF INRANGE(RESULT, 0, 2)
+		IDOL報告 = IDOL報告/4*4 + RESULT
+		PRINTW 設定を変更しました
+		RETURN 0
+	ENDIF
+LOOP 1
+
+
+;経験の増加・収支の計算など----------------------------------------------------
+@TURNEND_IDOL
+#DIM DYNAMIC レッスンレベル
+
+VARSET LOCAL
+
+REPEAT CHARANUM
+	IF CFLAG:COUNT:配属 == 4
+		;1人ごとにかかる基礎費用
+		LOCAL:1 += 1000
+		;レッスンの内容ごとに場合分け
+		;0未満は枕営業中
+		IF CFLAG:COUNT:レッスン < 0
+			CALL IDOL_MAKURA, COUNT
+		;0の場合はレッスンなしで、歌唱・演奏・ダンスの経験がそれぞれ1つずつ増える
+		ELSEIF CFLAG:COUNT:レッスン == 0
+			EXP:COUNT:歌唱経験++
+			EXP:COUNT:演奏経験++
+			EXP:COUNT:ダンス経験++
+		;1以上の場合は何らかのレッスンを受けており、5*Lvの経験が入る
+		ELSE
+			;3で割って1余るとき、ボーカルのレッスン
+			IF CFLAG:COUNT:レッスン%3 == 1
+				レッスンレベル = (CFLAG:COUNT:レッスン+2)/3
+				EXP:COUNT:歌唱経験 += 5*レッスンレベル
+			;3で割って2余るとき、楽器演奏のレッスン
+			ELSEIF CFLAG:COUNT:レッスン%3 == 2
+				レッスンレベル = (CFLAG:COUNT:レッスン+1)/3
+				EXP:COUNT:演奏経験 += 5*レッスンレベル
+			;3で割り切れるとき、ダンスのレッスン
+			ELSE
+				レッスンレベル = CFLAG:COUNT:レッスン/3
+				EXP:COUNT:ダンス経験 += 5*レッスンレベル
+			ENDIF
+			;レベルNのレッスン費用は
+			;	(1+2+3+…+N)*10000 ―①
+			;で求まり
+			;	 1+2+3+…+N = N(N+1)/2
+			;であるから、①は
+			;	5000N(N+1)
+			;と変形できる
+			LOCAL:2 += 5000*レッスンレベル*(レッスンレベル+1)
+		ENDIF
+	ENDIF
+REND
+
+LOCAL = LOCAL:1 + LOCAL:2
+MONEY -= LOCAL
+IF LOCAL && IDOL報告%4 < 2
+	PRINTFORM 事務所の維持費に${LOCAL:1}
+	IF LOCAL:2
+		PRINTFORM 、レッスン費用に${LOCAL:2}かかったので、合計${LOCAL}を支払いました。
+	ELSE
+		PRINT かかりました。
+	ENDIF
+	SIF IDOL報告%4 == 0
+		WAIT
+ENDIF
+
+
+;枕営業の処理
+@IDOL_MAKURA, ARG
+
