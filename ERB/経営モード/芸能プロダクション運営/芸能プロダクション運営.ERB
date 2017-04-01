@@ -220,6 +220,7 @@ LOOP 1
 @IDOL_EVENT
 #DIM DYNAMIC 分野
 #DIM DYNAMIC 技量, 4
+#DIM DYNAMIC 難度, 4
 #DIM DYNAMIC 人数, 4
 #DIM DYNAMIC LMEMORY
 #DIM DYNAMIC LCOUNT
@@ -238,9 +239,16 @@ DO
 			RETURN 0
 		CASE 1
 			VARSET LOCAL
+			$MUSIC_SELECT
 			CALL MUSIC_LIST
 			SIF IDOL選曲 == ""
 				RESTART
+			IF IDOL選曲:1 == "0"
+				REPEAT CHARANUM
+					SIF LOCAL:COUNT >= 3
+						LOCAL:COUNT -= 3
+				REND
+			ENDIF
 			$MEMBER_LOOP
 			;◆◆◆技量の計算◆◆◆
 			;	技量 = 技能LVの合計値 / √(担当人数)
@@ -341,8 +349,17 @@ DO
 					PRINTL )
 				ENDIF
 			REND
+			PRINTL 　　 [ 0] - ライブを始める
+			PRINTL 　　 [-1] - 選曲画面に戻る
+			PRINTL 　　 [-2] - 戻る
 			DO
 				INPUT
+				SIF RESULT == -2
+					RESTART
+				SIF RESULT == -1
+					GOTO MUSIC_SELECT
+				SIF RESULT == 0
+					BREAK
 				IF CFLAG:RESULT:配属 == 4
 					LMEMORY = RESULT
 					PRINTL
@@ -370,6 +387,35 @@ DO
 					GOTO MEMBER_LOOP
 				ENDIF
 			LOOP 1
+			;上記のループを超えるとライブ開始
+			難度:1 = 10000*TOINT(IDOL選曲:1)
+			難度:2 = 10000*TOINT(IDOL選曲:2)
+			難度:3 = 10000*TOINT(IDOL選曲:3)
+			;魅惑で2%、魅力で3%、謎の魅力で4%、人気で5%難度が下がる(乗算で重複する)
+			REPEAT CHARANUM
+				IF CFLAG:COUNT:配属 == 4 && LOCAL:COUNT
+					IF TALENT:COUNT:魅惑
+						TIMES 難度:1, 0.98
+						TIMES 難度:2, 0.98
+						TIMES 難度:3, 0.98
+					ENDIF
+					IF TALENT:COUNT:魅力
+						TIMES 難度:1, 0.97
+						TIMES 難度:2, 0.97
+						TIMES 難度:3, 0.97
+					ENDIF
+					IF TALENT:COUNT:謎の魅力
+						TIMES 難度:1, 0.96
+						TIMES 難度:2, 0.96
+						TIMES 難度:3, 0.96
+					ENDIF
+					IF TALENT:COUNT:人気
+						TIMES 難度:1, 0.95
+						TIMES 難度:2, 0.95
+						TIMES 難度:3, 0.95
+					ENDIF
+				ENDIF
+			REND
 	ENDSELECT
 LOOP 1
 
