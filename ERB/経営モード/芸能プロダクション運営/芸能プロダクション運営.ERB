@@ -1,8 +1,8 @@
 ﻿@STRATEGY_IDOL
 #DIM LCOUNT
 
-SIF IDOL知名度 < 10
-	IDOL知名度 = 10
+SIF IDOL知名度 < 0
+	IDOL知名度 = 0
 
 FOR LCOUNT, 1, CHARANUM
 	SIF CFLAG:LCOUNT:配属 == 4
@@ -55,6 +55,8 @@ DO
 			CALL IDOL_LESSON
 		CASE 2
 			CALL IDOL_EVENT
+			SIF RESULT
+				BREAK
 		CASE 3
 			CALL IDOL_BRIBE
 		CASE 4
@@ -69,7 +71,8 @@ DO
 	RESTART
 LOOP 1
 
-RESTART
+;上記のループをBREAKで脱出するには「イベント」をRETURN 1で終了させる必要がある
+BEGIN TURNEND
 
 ;----------------------------------------------------
 ;芸能プロダクション運営モードチュートリアル
@@ -224,6 +227,7 @@ LOOP 1
 #DIM DYNAMIC 人数, 4
 #DIM DYNAMIC LMEMORY
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 収入, 2
 
 DRAWLINE
 PRINTL 何のイベントを開催しますか？
@@ -358,8 +362,13 @@ DO
 					RESTART
 				SIF RESULT == -1
 					GOTO MUSIC_SELECT
-				SIF RESULT == 0
+				IF RESULT == 0
+					IF IDOL選曲:1 != "0" && 人数:1 == 0
+						PRINTW ボーカルを1人以上選び出してください
+						GOTO MEMBER_LOOP
+					ENDIF
 					BREAK
+				ENDIF
 				IF CFLAG:RESULT:配属 == 4
 					LMEMORY = RESULT
 					PRINTL
@@ -391,33 +400,79 @@ DO
 			難度:1 = 10000*TOINT(IDOL選曲:1)
 			難度:2 = 10000*TOINT(IDOL選曲:2)
 			難度:3 = 10000*TOINT(IDOL選曲:3)
-			;魅惑で2%、魅力で3%、謎の魅力で4%、人気で5%難度が下がる(乗算で重複する)
+			;魅惑で2%、魅力で3%、謎の魅力で4%、人気で5%技量が上がる(乗算で重複する)
+			;ビジュアルによって難度が下がる(※かわいいは正義)のだが
+			;難度を下げると収入も下がってしまうので相対的に技量を上げる
 			REPEAT CHARANUM
 				IF CFLAG:COUNT:配属 == 4 && LOCAL:COUNT
+					CFLAG:COUNT:レッスン = 0
 					IF TALENT:COUNT:魅惑
-						TIMES 難度:1, 0.98
-						TIMES 難度:2, 0.98
-						TIMES 難度:3, 0.98
+						TIMES 技量:1, 1.02
+						TIMES 技量:2, 1.02
+						TIMES 技量:3, 1.02
 					ENDIF
 					IF TALENT:COUNT:魅力
-						TIMES 難度:1, 0.97
-						TIMES 難度:2, 0.97
-						TIMES 難度:3, 0.97
+						TIMES 技量:1, 1.03
+						TIMES 技量:2, 1.03
+						TIMES 技量:3, 1.03
 					ENDIF
 					IF TALENT:COUNT:謎の魅力
-						TIMES 難度:1, 0.96
-						TIMES 難度:2, 0.96
-						TIMES 難度:3, 0.96
+						TIMES 技量:1, 1.04
+						TIMES 技量:2, 1.04
+						TIMES 技量:3, 1.04
 					ENDIF
 					IF TALENT:COUNT:人気
-						TIMES 難度:1, 0.95
-						TIMES 難度:2, 0.95
-						TIMES 難度:3, 0.95
+						TIMES 技量:1, 1.05
+						TIMES 技量:2, 1.05
+						TIMES 技量:3, 1.05
 					ENDIF
 				ENDIF
 			REND
+			収入 = 0
+			;それぞれの分野についての基本収入を出す
+			;収入は難度Xに対して技量が同じだとX*10000となり、
+			;不足分1あたりX*12500ずつ減り、超過分1あたりX*8000ずつ増える
+			FOR 分野, 1, 4
+				;誰も担当していないときは特例で0
+				IF 人数:分野
+					収入 += 難度:分野
+					IF 技量:分野 >= 難度:分野
+						収入 += (技量:分野 - 難度:分野)*4/5
+					ELSE
+						収入 += (技量:分野 - 難度:分野)*5/4
+					ENDIF
+				ENDIF
+			NEXT
+			収入:1 = 収入
+			;最後に知名度による補正
+			収入:1 *= (1000+IDOL知名度)
+			収入:1 /= 1000
+			MONEY += 収入:1
+			;最終的な収益の計算の後に知名度の増減を行う
+			IDOL知名度 += 収入/1000
+			PRINTL
+			PRINTL ライブが終了しました
+			IF 収入:1 >= 0
+				PRINTFORM ${収入:1}の利益を出し、
+			ELSE
+				PRINTFORM ${ABS(収入:1)}の損失を出し、
+			ENDIF
+			PRINT 知名度が
+			IF 収入 >= 0
+				PRINTFORMW {収入/1000}増えました
+			ELSE
+				PRINTFORMW {ABS(収入/1000)}減りました
+			ENDIF
+			SIF IDOL知名度 < 0
+				IDOL知名度 = 0
+			;返り値が1であることでTURNENDできる
+			RETURN 1
 	ENDSELECT
 LOOP 1
+
+
+;賄賂・枕営業----------------------------------------------------
+@IDOL_BRIBE
 
 
 ;人員配置処理----------------------------------------------------
@@ -434,7 +489,7 @@ REPEAT CHARANUM
 		配属人数++
 REND
 DRAWLINE
-PRINTFORML □芸能プロダクションに配属する人員を選択してください(現在{配属人数}/10)
+PRINTFORML □芸能プロダクションに配属する人員を選択してください(現在{配属人数}/20)
 
 配属可能人数 = 0
 
@@ -546,7 +601,7 @@ DO
 						TRYCALLFORM IDOL_ASSIGNOFF_K{NO:RESULT}
 					RESTART
 				CASEELSE
-					IF 配属人数 >= 10
+					IF 配属人数 >= 20
 						PRINTW これ以上配属できません
 						RESTART
 					ENDIF
