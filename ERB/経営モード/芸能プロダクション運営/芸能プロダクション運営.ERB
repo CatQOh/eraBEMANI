@@ -72,6 +72,7 @@ DO
 LOOP 1
 
 ;上記のループをBREAKで脱出するには「イベント」をRETURN 1で終了させる必要がある
+STRATEGY_TURNEND = 1
 BEGIN TURNEND
 
 ;----------------------------------------------------
@@ -129,9 +130,14 @@ DRAWLINE
 PRINTL □レッスンを受けさせるキャラを選んでください
 
 REPEAT CHARANUM
+	;体力不足だと無理
+	SIF BASE:COUNT:体力 < 500
+		CONTINUE
 	IF CFLAG:COUNT:配属 == 4
 		IF CFLAG:COUNT:レッスン == 0
 			PRINT 　　　　　
+		ELSEIF CFLAG:COUNT:レッスン < 0
+			PRINT 枕営業予定
 		ELSEIF CFLAG:COUNT:レッスン%3 == 1
 			PRINTFORM Vocal(Lv{(CFLAG:COUNT:レッスン+2)/3})
 		ELSEIF CFLAG:COUNT:レッスン%3 == 2
@@ -162,7 +168,7 @@ DO
 		CASE 0
 			RETURN 0
 		CASE 1 TO CHARANUM-1
-			IF CFLAG:RESULT:配属 == 4
+			IF BASE:RESULT:体力 >= 500 && CFLAG:RESULT:配属 == 4
 				LOCAL = RESULT
 				PRINTL
 				PRINTL レッスンのレベルと種類を選んでください
@@ -224,6 +230,7 @@ LOOP 1
 #DIM DYNAMIC 分野
 #DIM DYNAMIC 技量, 4
 #DIM DYNAMIC 難度, 4
+#DIM DYNAMIC 難度合計
 #DIM DYNAMIC 人数, 4
 #DIM DYNAMIC LMEMORY
 #DIM DYNAMIC LCOUNT
@@ -326,6 +333,9 @@ DO
 			NEXT
 			PRINTL
 			REPEAT CHARANUM
+				;体力不足だと無理
+				SIF BASE:COUNT:体力 < 500
+					CONTINUE
 				IF CFLAG:COUNT:配属 == 4
 					SELECTCASE LOCAL:COUNT
 						CASE 0
@@ -363,13 +373,17 @@ DO
 				SIF RESULT == -1
 					GOTO MUSIC_SELECT
 				IF RESULT == 0
+					IF 人数:1 == 0  && 人数:2 == 0 && 人数:3 == 0
+						PRINTW メンバーを1人以上選び出してください
+						GOTO MEMBER_LOOP
+					ENDIF
 					IF IDOL選曲:1 != "0" && 人数:1 == 0
 						PRINTW ボーカルを1人以上選び出してください
 						GOTO MEMBER_LOOP
 					ENDIF
 					BREAK
 				ENDIF
-				IF CFLAG:RESULT:配属 == 4
+				IF BASE:RESULT:体力 >= 500 && CFLAG:RESULT:配属 == 4
 					LMEMORY = RESULT
 					PRINTL
 					PRINTL どのパートを担当しますか？
@@ -400,12 +414,18 @@ DO
 			難度:1 = 10000*TOINT(IDOL選曲:1)
 			難度:2 = 10000*TOINT(IDOL選曲:2)
 			難度:3 = 10000*TOINT(IDOL選曲:3)
+			難度合計 = (難度:1 + 難度:2 + 難度:3) / 10000
 			;魅惑で2%、魅力で3%、謎の魅力で4%、人気で5%技量が上がる(乗算で重複する)
-			;ビジュアルによって難度が下がる(※かわいいは正義)のだが
+			;ビジュアルによって難度が下がる(※かわいいは正義)ことを表現したいのだが
 			;難度を下げると収入も下がってしまうので相対的に技量を上げる
 			REPEAT CHARANUM
 				IF CFLAG:COUNT:配属 == 4 && LOCAL:COUNT
 					CFLAG:COUNT:レッスン = 0
+					BASE:COUNT:体力 -= 50*(難度合計)
+					IF BASE:COUNT:体力 < 1
+						BASE:COUNT:体力 = 1
+						CFLAG:COUNT:回復量低下 += 2
+					ENDIF
 					IF TALENT:COUNT:魅惑
 						TIMES 技量:1, 1.02
 						TIMES 技量:2, 1.02
@@ -431,16 +451,13 @@ DO
 			収入 = 0
 			;それぞれの分野についての基本収入を出す
 			;収入は難度Xに対して技量が同じだとX*10000となり、
-			;不足分1あたりX*12500ずつ減り、超過分1あたりX*8000ずつ増える
+			;不足分1あたり12500ずつ減り、超過分1あたり8000ずつ増える
 			FOR 分野, 1, 4
-				;誰も担当していないときは特例で0
-				IF 人数:分野
-					収入 += 難度:分野
-					IF 技量:分野 >= 難度:分野
-						収入 += (技量:分野 - 難度:分野)*4/5
-					ELSE
-						収入 += (技量:分野 - 難度:分野)*5/4
-					ENDIF
+				収入 += 難度:分野
+				IF 技量:分野 >= 難度:分野
+					収入 += (技量:分野 - 難度:分野)*4/5
+				ELSE
+					収入 += (技量:分野 - 難度:分野)*5/4
 				ENDIF
 			NEXT
 			収入:1 = 収入
@@ -473,6 +490,102 @@ LOOP 1
 
 ;賄賂・枕営業----------------------------------------------------
 @IDOL_BRIBE
+DRAWLINE
+PRINTL 何をしますか？
+PRINTL [1] 賄賂を送る
+PRINTL [2] 枕営業をさせる
+DRAWLINE
+PRINTPLAIN 　BRIBE　
+PRINTL [0] 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			;知名度が50上昇したあと1%上昇する
+			;贈賄に必要な金額は、知名度をX(ただしXが40未満のとき40にする)と置くと
+			;1000*X^1.5
+			LOCAL = IDOL知名度
+			LOCAL:1 = IDOL知名度
+			SIF LOCAL < 40
+				LOCAL = 40
+			LOCAL *= SQRT(LOCAL*1000*1000)
+			;1000の倍数に四捨五入
+			LOCAL += 500
+			LOCAL /= 1000
+			LOCAL *= 1000
+			PRINTFORML 賄賂による裏工作をするには${LOCAL}必要です
+			IF MONEY < LOCAL
+				PRINTW お金が足りません
+				RESTART
+			ENDIF
+			PRINTFORML 支払いますか？(所持金:${MONEY})
+			PRINTL [0] はい
+			PRINTL [1] いいえ
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						MONEY -= LOCAL
+						IDOL知名度 += 50
+						TIMES IDOL知名度, 1.01
+						PRINTFORMW ${LOCAL}を支払い知名度を{IDOL知名度-LOCAL:1}上昇させました
+				ENDSELECT
+			LOOP LOOPRES(0, 1)
+			RESTART
+		CASE 2
+			;枕営業とレッスンの切り替えについて
+			;CFLAG:レッスンの変数を次のように変換する
+			;0と-1、1と-2、2と-3、3と-4……
+			;負の数ならば枕営業となる
+			;	Y = -X-1
+			;のような式になるうえに、この逆関数は
+			;	X = -Y-1
+			;となるので枕営業の設定・解除のどちらの場合も
+			;「-1倍して1引く」という演算で済む
+			$MAKURA_LOOP
+			DRAWLINE
+			PRINTL □枕営業をさせるキャラを選んでください
+
+			REPEAT CHARANUM
+				;体力不足だと無理
+				SIF BASE:COUNT:体力 < 500
+					CONTINUE
+				IF CFLAG:COUNT:配属 == 4
+					IF CFLAG:COUNT:レッスン == 0
+						PRINT 　　　　　
+					ELSEIF CFLAG:COUNT:レッスン < 0
+						PRINT 枕営業予定
+					ELSEIF CFLAG:COUNT:レッスン%3 == 1
+						PRINTFORM Vocal(Lv{(CFLAG:COUNT:レッスン+2)/3})
+					ELSEIF CFLAG:COUNT:レッスン%3 == 2
+						PRINTFORM Inst.(Lv{(CFLAG:COUNT:レッスン+1)/3})
+					ELSE
+						PRINTFORM Dance(Lv{CFLAG:COUNT:レッスン/3})
+					ENDIF
+					PRINTFORML  [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(従順:{ABL:COUNT:従順, 2, LEFT} 技巧:{ABL:COUNT:技巧, 2, LEFT} 奉仕精神:{ABL:COUNT:奉仕精神, 2, LEFT})
+				ENDIF
+			REND
+			DRAWLINE
+			PRINTPLAIN 　MAKURA　
+			PRINTL [0] 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						RESTART
+					CASE 1 TO CHARANUM-1
+						IF BASE:RESULT:体力 >= 500 && CFLAG:RESULT:配属 == 4
+							CFLAG:RESULT:レッスン *= -1
+							CFLAG:RESULT:レッスン--
+						ENDIF
+						GOTO MAKURA_LOOP
+				ENDSELECT
+			LOOP 1
+	ENDSELECT
+LOOP 1
 
 
 ;人員配置処理----------------------------------------------------
@@ -499,9 +612,6 @@ REPEAT CHARANUM
 		CONTINUE
 	;助手可能じゃないと無理
 	SIF CFLAG:COUNT:状態 < 2
-		CONTINUE
-	;体力不足だと無理
-	SIF BASE:COUNT:体力 < 500
 		CONTINUE
 	;妊娠中、育児中は無理
 	SIF TALENT:COUNT:妊娠 || TALENT:COUNT:育児中
@@ -607,6 +717,7 @@ DO
 					ENDIF
 					PRINTFORMW %CALLNAME:RESULT%を配属しました
 					CFLAG:RESULT:配属 = 4
+					CFLAG:RESULT:レッスン = 0
 					CFLAG:RESULT:配属完了 = 0
 					CFLAG:RESULT:ゲーセン店長 = 0
 					SIF FLAG:口上表示
@@ -624,19 +735,53 @@ RESTART
 
 
 ;オプション----------------------------------------------------
+;「変数IDOL報告」は4進数で管理されている
+;収支の報告……0,1,2 (3は未使用)
+;枕営業の報告…0,4,8,12
 @IDOL_OPTION
-PRINTL
-PRINTL ターンごとの収支の報告をしますか？
-PRINTL [0] する(メッセージWAITあり)
-PRINTL [1] する(メッセージWAITなし)
-PRINTL [2] しない
+DRAWLINE
+PRINTL 設定する項目を選んでください
+PRINTL [1] ターンごとの収支報告
+PRINTL [2] 枕営業の報告
+DRAWLINE
+PRINTPLAIN 　IDOL　
+PRINT [0] - 戻る
+
 DO
 	INPUT
-	IF INRANGE(RESULT, 0, 2)
-		IDOL報告 = IDOL報告/4*4 + RESULT
-		PRINTW 設定を変更しました
-		RETURN 0
-	ENDIF
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			PRINTL
+			PRINTL ターンごとの収支の報告をしますか？
+			PRINTL [0] する(メッセージWAITあり)
+			PRINTL [1] する(メッセージWAITなし)
+			PRINTL [2] しない
+			DO
+				INPUT
+				IF INRANGE(RESULT, 0, 2)
+					IDOL報告 = IDOL報告/4*4 + RESULT
+					PRINTW 設定を変更しました
+					RESTART
+				ENDIF
+			LOOP 1
+		CASE 2
+			PRINTL
+			PRINTL 枕営業の報告をしますか？
+			PRINTL [0] プレイ内容まで全て報告する
+			PRINTL [1] 経験・知名度の上昇値のみ報告
+			PRINTL [2] 知名度の上昇値のみ報告
+			PRINTL [3] 一切しない
+			DO
+				INPUT
+				IF INRANGE(RESULT, 0, 3)
+					IDOL報告 = IDOL報告%4 + RESULT*4
+					PRINTW 設定を変更しました
+					RESTART
+				ENDIF
+			LOOP 1
+	ENDSELECT
 LOOP 1
 
 
@@ -649,16 +794,22 @@ VARSET LOCAL
 REPEAT CHARANUM
 	IF CFLAG:COUNT:配属 == 4
 		;1人ごとにかかる基礎費用
-		LOCAL:1 += 1000
+		LOCAL:1 += 2000
 		;レッスンの内容ごとに場合分け
 		;0未満は枕営業中
 		IF CFLAG:COUNT:レッスン < 0
 			CALL IDOL_MAKURA, COUNT
-		;0の場合はレッスンなしで、歌唱・演奏・ダンスの経験がそれぞれ1つずつ増える
+		;0の場合はレッスンなしで、歌唱・演奏・ダンスの経験がどれか1つ増える
+		;増えるものはローテーション
 		ELSEIF CFLAG:COUNT:レッスン == 0
-			EXP:COUNT:歌唱経験++
-			EXP:COUNT:演奏経験++
-			EXP:COUNT:ダンス経験++
+			SELECTCASE (2*DAY+TIME)%3
+				CASE 2
+					EXP:COUNT:歌唱経験++
+				CASE 0
+					EXP:COUNT:演奏経験++
+				CASE 1
+					EXP:COUNT:ダンス経験++
+			ENDSELECT
 		;1以上の場合は何らかのレッスンを受けており、5*Lvの経験が入る
 		ELSE
 			;3で割って1余るとき、ボーカルのレッスン
@@ -691,9 +842,9 @@ MONEY -= LOCAL
 IF LOCAL && IDOL報告%4 < 2
 	PRINTFORM 事務所の維持費用に${LOCAL:1}
 	IF LOCAL:2
-		PRINTFORM とレッスン費用に${LOCAL:2}かかったので、合計${LOCAL}を支払いました。
+		PRINTFORML とレッスン費用に${LOCAL:2}かかったので、合計${LOCAL}を支払いました。
 	ELSE
-		PRINT かかりました。
+		PRINTL かかりました。
 	ENDIF
 	SIF IDOL報告%4 == 0
 		WAIT
@@ -701,5 +852,217 @@ ENDIF
 
 
 ;枕営業の処理
+;ARGはキャラ登録番号
 @IDOL_MAKURA, ARG
+#DIM DYNAMIC 満足度
+#DIM DYNAMIC ヴァギナ
+#DIM DYNAMIC 中出し
+#DIM DYNAMIC アナル
+#DIM DYNAMIC アナル中出し
+#DIM DYNAMIC フェラ
+#DIM DYNAMIC 奉仕
+#DIM DYNAMIC 奉仕で射精
+#DIM DYNAMIC 絶頂
+#DIM DYNAMIC 射精
 
+;賄賂と違い、満足度に比例して増えるだけなので
+;相対的に知名度が低いときの方が効果が高い
+;基本的に言われたことを何でもするような従順な子の方が満足してもらえる
+
+;能力
+満足度 = 3*ABL:ARG:従順 + ABL:ARG:技巧 + 3*ABL:ARG:奉仕精神
+
+;陥落素質
+SIF TALENT:ARG:淫乱
+	満足度 += 6
+SIF TALENT:ARG:娼婦
+	満足度 += 9
+SIF TALENT:ARG:服従
+	満足度 += 20
+SIF TALENT:ARG:隷属
+	満足度 += 30
+
+;性格
+SIF TALENT:ARG:生意気
+	満足度 -= 10
+SIF TALENT:ARG:臆病
+	満足度 += 10
+SIF TALENT:ARG:素直
+	満足度 += 15
+SIF TALENT:ARG:反抗的
+	満足度 -= 15
+SIF TALENT:ARG:プライド高い
+	満足度 -= 10
+SIF TALENT:ARG:プライド低い
+	満足度 += 10
+SIF TALENT:ARG:ツンデレ
+	満足度 -= 5
+
+;性への関心
+SIF TALENT:ARG:自制心
+	満足度 -= 7
+SIF TALENT:ARG:保守的
+	満足度 -= 10
+SIF TALENT:ARG:一線越えない
+	満足度 -= 10
+SIF TALENT:ARG:目立ちたがり
+	満足度 += 2
+
+;乙女心
+SIF TALENT:ARG:貞操観念
+	満足度 -= 20
+SIF TALENT:ARG:貞操無頓着
+	満足度 += 5
+SIF TALENT:ARG:恥じらい
+	満足度 -= 2
+
+;体質
+SIF TALENT:ARG:濡れにくい
+	満足度 -= 1
+
+;技術
+SIF TALENT:ARG:舌使い
+	満足度 += 5
+SIF TALENT:ARG:献身的
+	満足度 += 15
+SIF TALENT:ARG:潔癖症
+	満足度 -= 8
+
+;正直度
+SIF TALENT:ARG:自慰狂い || TALENT:ARG:セックス狂 || TALENT:ARG:尻穴狂い || TALENT:ARG:淫乳
+	満足度 += 4
+
+;先天的身体特徴
+SIF TALENT:ARG:小柄体型 || TALENT:ARG:小人体型
+	満足度 += 13
+SELECTCASE TALENT:ARG:バストサイズ
+	CASE 1
+		満足度 += 1
+	CASE 2
+		満足度 += 2
+	CASE 3
+		満足度 += 3
+	CASE 4
+		満足度 += 5
+	CASE 5
+		満足度 += 8
+ENDSELECT
+
+;後天的身体特徴
+SIF TALENT:ARG:母乳体質
+	満足度 += 3
+SIF TALENT:ARG:絶倫
+	満足度 += 5
+
+;満足度1を保証
+SIF 満足度 < 1
+	満足度 = 1
+
+;特別ボーナス
+SIF TALENT:ARG:処女
+	TIMES 満足度, 1.80
+SIF TALENT:ARG:謎の魅力
+	TIMES 満足度, 1.10
+SIF TALENT:ARG:魅力
+	TIMES 満足度, 1.05
+
+;回数のロール
+IF VAGINA(ARG)
+	ヴァギナ = 5+RAND:3
+	中出し = RAND:(1+ヴァギナ)
+ENDIF
+アナル = 1+RAND:7
+アナル中出し = RAND:(1+アナル)
+
+絶頂 = RAND:(1+ヴァギナ+アナル)/3
+射精 = RAND:(1+ヴァギナ+アナル)/3
+
+フェラ += 1+RAND:4
+SELECTCASE TALENT:ARG:バストサイズ
+	CASE 1
+		奉仕 += 1
+	CASE 2
+		奉仕 += 1
+	CASE 3
+		奉仕 += 2
+	CASE 4
+		奉仕 += 3
+	CASE 5
+		奉仕 += 5
+ENDSELECT
+奉仕 += RAND:( 1+LIMIT(ABL:ARG:奉仕精神, 0, 10) )
+奉仕で射精 = (フェラ+奉仕)/3
+
+CFLAG:ARG:レッスン = 0
+BASE:ARG:体力 -= 40*(ヴァギナ+アナル+絶頂+射精)
+BASE:ARG:体力 -= 20*(フェラ+奉仕)
+IF BASE:ARG:体力 < 1
+	BASE:ARG:体力 = 1
+	CFLAG:ARG:回復量低下 += 2
+ENDIF
+
+IF IDOL報告/4 == 0
+	PRINTL 今日は営業先の重役を相手した。
+	PRINT フェラ
+	SIF 奉仕
+		PRINT や奉仕
+	PRINT でペニスを刺激させ
+	SIF 奉仕で射精
+		PRINT て射精させ
+	PRINT た後、
+	SIF VAGINA(ARG)
+		PRINTFORM 膣を{ヴァギナ}回
+	PRINTFORM アナルを{アナル}回犯され
+	SIF 中出し || アナル中出し
+		PRINTL 、
+	SIF 中出し
+		PRINTFORM 膣に{中出し}回
+	SIF アナル中出し
+		PRINTFORM アナルに{アナル中出し}回
+	SIF 中出し || アナル中出し
+		PRINT 中出しされ
+	PRINTW た……
+ENDIF
+
+IF VAGINA(ARG)
+	SIF IDOL報告/4 < 2
+		PRINTFORML Ｖ経験+{ヴァギナ}
+	EXP:ARG:Ｖ経験 += ヴァギナ
+	IF TALENT:ARG:処女
+		TALENT:ARG:処女 = 0
+		IF TALENT:ARG:性転換済
+			VIRGIN:ARG:11 = 営業先の重役
+		ELSE
+			VIRGIN:ARG:1 = 営業先の重役
+		ENDIF
+	ENDIF
+ENDIF
+
+IF IDOL報告/4 < 2
+	PRINTFORML Ａ経験+{アナル}
+	SIF 絶頂
+		PRINTFORML 絶頂経験+{絶頂}
+	SIF 射精
+		PRINTFORML 射精経験+{射精}
+	SIF 中出し
+		PRINTFORML 膣射経験+{中出し}
+	PRINTFORML フェラ経験+{フェラ}
+	SIF 中出し+アナル中出し+奉仕で射精
+		PRINTFORML 精液経験+{中出し+アナル中出し+奉仕で射精}
+ENDIF
+
+EXP:ARG:Ａ経験 += アナル
+EXP:ARG:膣射経験 += 中出し
+EXP:ARG:フェラ経験 += フェラ
+EXP:ARG:絶頂経験 += 絶頂
+EXP:ARG:射精経験 += 射精
+IF TALENT:ARG:性別 == 1
+	SIF IDOL報告/4 < 2
+		PRINTFORML ゲイ経験+{2*(ヴァギナ+アナル+フェラ+奉仕)}
+	EXP:ARG:ゲイ経験 += 2*(ヴァギナ+アナル+フェラ+奉仕)
+ENDIF
+WAIT
+
+SIF IDOL報告 < 3
+	PRINTFORMW %CALLNAME:ARG%のおかげで知名度が{満足度}上がった
+IDOL知名度 += 満足度
