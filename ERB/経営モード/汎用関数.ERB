@@ -1,0 +1,225 @@
+﻿@STRATEGY_PERSONAL, ARGS
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 配属可能人数
+#DIM DYNAMIC 飛ばした人数
+#DIM DYNAMIC 配属人数
+#DIM DYNAMIC 配属先
+#DIM DYNAMIC 配属上限
+VARSET LOCAL, 0
+配属人数 = 0
+
+;分野ごとの配属先番号、配属上限人数を設定しておく
+SELECTCASE ARGS
+	CASE "ゲームセンター"
+		配属先 = 1
+		配属上限 = 10
+	CASE "娼館"
+		配属先 = 2
+		配属上限 = 娼館部屋数
+	CASE "芸能プロダクション"
+		配属先 = 4
+		配属上限 = 20
+ENDSELECT
+
+;既に配属されている人数を計算
+REPEAT CHARANUM
+	SIF CFLAG:COUNT:配属 == 配属先
+		配属人数++
+REND
+
+DRAWLINE
+PRINTFORML □%ARGS%に配属する人員を選択してください(現在{配属人数}/{配属上限})
+
+配属可能人数 = 0
+
+;配属可能なキャラを調べる
+REPEAT CHARANUM
+	;主人は無理
+	SIF COUNT == MASTER
+		CONTINUE
+	SELECTCASE ARGS
+		;ゲーセンと芸能は助手可能が条件
+		CASE "ゲームセンター", "芸能プロダクション"
+			SIF CFLAG:COUNT:状態 < 2
+				CONTINUE
+		;娼館は売却可能で配置可能
+		CASE "娼館"
+			;売却可能じゃないと無理
+			SIF !CFLAG:COUNT:状態
+				CONTINUE
+	ENDSELECT
+	;妊娠中、育児中は無理
+	SIF TALENT:COUNT:妊娠 || TALENT:COUNT:育児中
+		CONTINUE
+	配属可能人数++
+	;配属可能なキャラに対応したLOCALが1になる
+	LOCAL:COUNT = 1
+REND
+
+飛ばした人数 = 0
+表示数 = 0
+
+;配属できるキャラがいる
+IF 配属可能人数
+	REPEAT CHARANUM
+		SIF !LOCAL:COUNT
+			CONTINUE
+		;2ページ目以降はページ×20まで表示を飛ばす
+		IF 飛ばした人数 < ページ数*20
+			飛ばした人数++
+			CONTINUE
+		ENDIF
+		;その分野に配属中のキャラには◯マークが付く
+		IF CFLAG:COUNT:配属 == 配属先
+			PRINT ◯
+		ELSE
+			PRINT 　
+		ENDIF
+		;配属先によって表示が違う
+		SELECTCASE ARGS
+			CASE "ゲームセンター"
+				PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(家事技能:{ABL:COUNT:家事技能, 2, LEFT} 工作技能:{ABL:COUNT:工作技能, 2, LEFT} 料理技能:{ABL:COUNT:料理技能, 2, LEFT}
+				SIF TALENT:COUNT:料理人
+					PRINT  料理人
+				SIF TALENT:COUNT:専業主婦
+					PRINT  専業主婦
+				SIF TALENT:COUNT:工学博士
+					PRINT  工学博士
+				PRINT )
+			CASE "娼館"
+				PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(従順:{ABL:COUNT:従順} 欲望:{ABL:COUNT:欲望} 技巧:{ABL:COUNT:技巧}
+				SIF TALENT:COUNT:淫乱
+					PRINT  淫乱
+				SIF TALENT:COUNT:娼婦
+					PRINT  娼婦
+				SIF TALENT:COUNT:自慰狂い
+					PRINT  自慰狂い
+				SIF TALENT:COUNT:セックス狂
+					PRINT  セックス狂
+				SIF TALENT:COUNT:尻穴狂い
+					PRINT  尻穴狂い
+				SIF TALENT:COUNT:淫乳
+					PRINT  淫乳
+				PRINT )
+			CASE "芸能プロダクション"
+				PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(歌唱技能:{ABL:COUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:COUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:COUNT:舞踊技能, 2, LEFT}
+				SIF TALENT:COUNT:魅力
+					PRINT  魅力
+				SIF TALENT:COUNT:魅惑
+					PRINT  魅惑
+				SIF TALENT:COUNT:謎の魅力
+					PRINT  謎の魅力
+				SIF TALENT:COUNT:人気
+					PRINT  人気
+				SIF TALENT:COUNT:絶対音感
+					PRINT  絶対音感
+				PRINT )
+		ENDSELECT
+		SELECTCASE CFLAG:COUNT:配属
+			CASE 0
+				IF COUNT == TARGET
+					PRINTL 【調教中】
+				ELSEIF COUNT == ASSI
+					PRINTL 【助手中】
+				ELSE
+					PRINTL 【休憩中】
+				ENDIF
+			CASE 1
+				PRINTL 【ゲームセンター配属中】
+			CASE 2
+				PRINTL 【娼館配属中】
+			CASE 4
+				PRINTL 【芸能プロダクション配属中】
+		ENDSELECT
+		表示数++
+		;20人表示したらページ終わり
+		SIF 表示数 == 20
+			BREAK
+	REND
+ELSE
+	PRINTL 
+	PRINTL 【現在配属できる奴隷はいません】
+	PRINTL 
+ENDIF
+DRAWLINE
+PRINTPLAINFORM 　PAGE.{ページ数+1}　
+SIF ページ数 > 0
+	PRINTLC [999]前ページ
+PRINTLC [1000] 戻る　
+;表示できるキャラがまだ居れば次ページ
+SIF 表示数+20*ページ数 < 配属可能人数 
+	PRINTLC [1001]次ページ
+PRINTL [1002] 全員帰還
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 999
+			SIF ページ数 > 0
+				ページ数--
+		CASE 1000
+			RETURN 0
+		CASE 1001
+			;表示できるキャラがまだ居れば次ページ
+			SIF 表示数+20*ページ数 < 配属可能人数 
+				ページ数++
+		CASE 1002
+			REPEAT CHARANUM
+				IF CFLAG:COUNT:配属 == 配属先
+					CFLAG:COUNT:配属完了 = 0
+					CFLAG:COUNT:配属 = 0
+				ENDIF
+			REND
+			PRINTFORMW %ARGS%に配属してる人員が全員帰宅しました
+		CASEELSE
+			SIF !LOCAL:RESULT
+				CONTINUE
+			SELECTCASE CFLAG:RESULT:配属
+				CASE 配属先
+					PRINTFORMW %CALLNAME:RESULT%が帰宅しました
+					CFLAG:RESULT:配属 = 0
+					;配属解除時の口上
+					IF FLAG:口上表示
+						SELECTCASE ARGS
+							CASE "ゲームセンター"
+								TRYCALLFORM GC_ASSIGNOFF_K{NO:RESULT}
+							CASE "娼館"
+								TRYCALLFORM BR_ASSIGNOFF_K{NO:RESULT}
+							CASE "芸能プロダクション"
+								TRYCALLFORM IDOL_ASSIGNOFF_K{NO:RESULT}
+						ENDSELECT
+					ENDIF
+					RESTART
+				CASEELSE
+					IF 配属人数 >= 配属上限
+						PRINTW これ以上配属できません
+						RESTART
+					ENDIF
+					PRINTFORMW %CALLNAME:RESULT%を配属しました
+					CFLAG:RESULT:配属 = 配属先
+					CFLAG:RESULT:レッスン = 0
+					CFLAG:RESULT:配属完了 = 0
+					CFLAG:RESULT:ゲーセン店長 = 0
+					;配属時の口上
+					IF FLAG:口上表示
+						SELECTCASE ARGS
+							CASE "ゲームセンター"
+								TRYCALLFORM GC_ASSIGNON_K{NO:RESULT}
+							CASE "娼館"
+								TRYCALLFORM BR_ASSIGNON_K{NO:RESULT}
+							CASE "芸能"
+								TRYCALLFORM IDOL_ASSIGNON_K{NO:RESULT}
+						ENDSELECT
+					ENDIF
+					SIF TARGET == RESULT
+						TARGET = -1
+					SIF ASSI == RESULT
+						ASSI = -1
+					RESTART
+			ENDSELECT
+	ENDSELECT
+LOOP LOOPRES(999, 1001, 1002)
+
+RESTART
+

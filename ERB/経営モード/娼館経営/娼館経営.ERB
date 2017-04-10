@@ -47,7 +47,7 @@ DO
 		CASE 3
 			CALL BR_PLAN
 		CASE 4
-			CALL BR_PERSONAL
+			CALL STRATEGY_PERSONAL, "娼館"
 		CASE 9
 			IF FLAG:娼館営業中
 				PRINTW 娼館の経営を一時中断しました
@@ -460,144 +460,6 @@ LOOP LOOPRES(0, 1, 2, 3, 4, 5, 20)
 
 RESTART
 
-;人員配置----------------------------------------------------
-@BR_PERSONAL
-#DIM DYNAMIC ページ数
-#DIM DYNAMIC 表示数
-#DIM DYNAMIC 配属可能人数
-#DIM DYNAMIC 飛ばした人数
-#DIM DYNAMIC 配属人数
-VARSET LOCAL, 0
-配属人数 = 0
-REPEAT CHARANUM
-	SIF CFLAG:COUNT:配属 == 2
-		配属人数++
-REND
-DRAWLINE
-PRINTFORML □娼館経営に配属する奴隷を選択してください(現在{配属人数}/{娼館部屋数})
-
-配属可能人数 = 0
-REPEAT CHARANUM
-	;主人は無理
-	SIF COUNT == MASTER
-		CONTINUE
-	;売却可能じゃないと無理
-	SIF !CFLAG:COUNT:状態
-		CONTINUE
-	配属可能人数++
-	;配属可能なキャラに対応したLOCALが1になる
-	LOCAL:COUNT = 1
-REND
-
-飛ばした人数 = 0
-表示数 = 0
-
-IF 配属可能人数
-
-	REPEAT CHARANUM
-		SIF !LOCAL:COUNT
-			CONTINUE
-		;2ページ目以降はページ×20まで表示を飛ばす
-		IF 飛ばした人数 < ページ数*20
-			飛ばした人数++
-			CONTINUE
-		ENDIF
-		PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(従順:{ABL:COUNT:従順} 欲望:{ABL:COUNT:欲望} 技巧:{ABL:COUNT:技巧}
-		
-		SIF TALENT:COUNT:淫乱
-			PRINT  淫乱
-		SIF TALENT:COUNT:娼婦
-			PRINT  娼婦
-		SIF TALENT:COUNT:自慰狂い
-			PRINT  自慰狂い
-		SIF TALENT:COUNT:セックス狂
-			PRINT  セックス狂
-		SIF TALENT:COUNT:尻穴狂い
-			PRINT  尻穴狂い
-		SIF TALENT:COUNT:淫乳
-			PRINT  淫乳
-		PRINT )
-		
-		SELECTCASE CFLAG:COUNT:配属
-			CASE 0
-				IF COUNT == TARGET
-					PRINTL 【調教中】
-				ELSEIF COUNT == ASSI
-					PRINTL 【助手中】
-				ELSE
-					PRINTL 【休憩中】
-				ENDIF
-			CASE 1
-				PRINTL 【ゲームセンター配属中】
-			CASE 2
-				PRINTL 【配属中】
-		ENDSELECT
-		表示数++
-		;20人表示したらページ終わり
-		SIF 表示数 == 20
-			BREAK
-	REND
-ELSE
-	PRINTL 
-	PRINTL 【現在配属できる奴隷はいません】
-	PRINTL 
-ENDIF
-DRAWLINE
-PRINTPLAINFORM 　PAGE.{ページ数+1}　
-SIF ページ数 > 0
-	PRINTLC [999]前ページ
-PRINTLC [1000] 戻る　
-;表示できるキャラがまだ居れば次ページ
-SIF 表示数+20*ページ数 < 配属可能人数 
-	PRINTLC [1001]次ページ
-PRINTL [1002] 全員帰還
-
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 999
-			SIF ページ数 > 0
-				ページ数--
-		CASE 1000
-			RETURN 0
-		CASE 1001
-			;表示できるキャラがまだ居れば次ページ
-			SIF 表示数+20*ページ数 < 配属可能人数 
-				ページ数++
-		CASE 1002
-			REPEAT CHARANUM
-				IF CFLAG:COUNT:配属 == 2
-					CFLAG:COUNT:配属完了 = 0
-					CFLAG:COUNT:配属 = 0
-				ENDIF
-			REND
-			PRINTW 全員帰宅しました
-		CASEELSE
-			SIF !LOCAL:RESULT
-				CONTINUE
-			SELECTCASE CFLAG:RESULT:配属
-				CASE 2
-					PRINTFORMW %CALLNAME:RESULT%が帰宅しました
-					CFLAG:RESULT:配属 = 0
-					CFLAG:RESULT:配属完了 = 0
-					RESTART
-				CASEELSE
-					IF 配属人数 >= 娼館部屋数
-						PRINTW これ以上配属できません
-						RESTART
-					ENDIF
-					PRINTFORMW %CALLNAME:RESULT%を配属しました
-					CFLAG:RESULT:配属 = 2
-					CFLAG:RESULT:ゲーセン店長 = 0
-					SIF TARGET == RESULT
-						TARGET = -1
-					SIF ASSI == RESULT
-						ASSI = -1
-					RESTART
-			ENDSELECT
-	ENDSELECT
-LOOP LOOPRES(999, 1001, 1002)
-
 ;道具名----------------------------------------------------
 @BR_ITEM_POINT
 #DIM LCOUNT
@@ -816,9 +678,9 @@ FOR LCOUNT, 1, CHARANUM
 			ENDIF
 			;大きいのが好きか小さいのが好きかはランダム
 			IF RAND:2 == 0
-				収入 += (6-TALENT:バストサイズ)*10
+				収入 += (6-TALENT:LCOUNT:バストサイズ)*10
 			ELSE
-				収入 += TALENT:バストサイズ*10
+				収入 += TALENT:LCOUNT:バストサイズ*10
 			ENDIF
 			SIF TALENT:LCOUNT:ファーリー
 				収入 += 30
@@ -985,9 +847,9 @@ FOR LCOUNT, 1, CHARANUM
 				適性++
 			;大きいのが好きか小さいのが好きかはランダム
 			IF RAND:2 == 0
-				収入 += (6-TALENT:バストサイズ)*20
+				収入 += (6-TALENT:LCOUNT:バストサイズ)*20
 			ELSE
-				収入 += TALENT:バストサイズ*20
+				収入 += TALENT:LCOUNT:バストサイズ*20
 			ENDIF
 			SIF TALENT:LCOUNT:ファーリー
 				収入 += 50
