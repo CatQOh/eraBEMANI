@@ -1,0 +1,174 @@
+﻿;所持金マイナスでゲームオーバーにならないモードの借金の処理
+@DEBT
+#DIM DYNAMIC 金額
+#DIM DYNAMIC 方向
+
+;所持金がマイナスの場合は借金に繰り入れる
+IF MONEY < 0
+	借金 -= MONEY
+	MONEY = 0
+ENDIF
+LOCAL = 借金
+
+PRINTL
+IF 借金 > 0
+	PRINTFORM 現在の借金${LOCAL}に
+	;利率はNORMAL:5%, HYPER:7%, ANOTHER:10%
+	SELECTCASE FLAG:難易度
+		CASE 1
+			PRINT 5%の利子
+			TIMES 借金, 1.05
+		CASE 2
+			PRINT 7%の利子
+			TIMES 借金, 1.07
+		CASE 3
+			PRINT 10%の利子
+			TIMES 借金, 1.10
+	ENDSELECT
+	PRINTFORMW (${借金-LOCAL})がつき、合計${借金}になりました。
+ELSE
+	PRINT 新たに借金をすることができます(10日ごとに利子が
+	SELECTCASE FLAG:難易度
+		CASE 1
+			PRINT 5%
+		CASE 2
+			PRINT 7%
+		CASE 3
+			PRINT 10%
+	ENDSELECT
+	PRINTL つきます)
+	PRINTL [0] する
+	PRINTL [1] しない
+	PRINTL [2] そんなつもりはない(借金がないとき非表示 オプションで再表示可)
+	DO
+		INPUT
+		SIF RESULT == 1
+			RETURN 0
+		IF RESULT == 2
+			
+		ENDIF
+	LOOP LOOPRES(0)
+ENDIF
+
+;変数「方向」は、1なら返済で0なら借入
+SIF 借金 > 0
+	方向 = 1
+
+DO
+	DRAWLINE
+	PRINTL 返済・借入する金額を入力してください
+	PRINTL キーボードで直接入力もできます
+	PRINTL
+	IF 方向
+		PRINTFORML 借金……${借金-金額}
+	ELSE
+		PRINTFORML 借金……${借金+金額}
+	ENDIF
+	SELECTCASE 方向
+		CASE 1
+			PRINTL 　　　　↑
+		CASEELSE
+			PRINTL 　　　　｜
+	ENDSELECT
+	PRINTFORM 　　　　｜${金額}
+	SELECTCASE 方向
+		CASE 1
+			PRINTL 返済
+		CASEELSE
+			PRINTL 借入
+	ENDSELECT
+	SELECTCASE 方向
+		CASE 0
+			PRINTL 　　　　↓
+		CASEELSE
+			PRINTL 　　　　｜
+	ENDSELECT
+	IF 方向
+		PRINTFORML 所持金…${MONEY-金額}
+	ELSE
+		PRINTFORML 所持金…${MONEY+金額}
+	ENDIF
+	
+	PRINTL
+	PRINTBUTTON "[CHANGE] 返済・借入の変更", "CHANGE"
+	PRINTL
+	IF 方向
+		PRINTBUTTON "[ MAX ] 持ち金全てを返済にあてる", "MAX"
+		PRINTL
+	ELSE
+		PRINTL
+	ENDIF
+	PRINTBUTTON "[+5000000]", "+5000000"
+	PRINTBUTTON "[+500000]", "+500000"
+	PRINTBUTTON "[+50000]", "+50000"
+	PRINTBUTTON "[+5000]", "+5000"
+	PRINTL
+	PRINTBUTTON "[+2000000]", "+2000000"
+	PRINTBUTTON "[+200000]", "+200000"
+	PRINTBUTTON "[+20000]", "+20000"
+	PRINTBUTTON "[+2000]", "+2000"
+	PRINTL
+	PRINTBUTTON "[+1000000]", "+1000000"
+	PRINTBUTTON "[+100000]", "+100000"
+	PRINTBUTTON "[+10000]", "+10000"
+	PRINTBUTTON "[+1000]", "+1000"
+	PRINTL
+	PRINTL [                0               ]
+	PRINTBUTTON "[-1000000]", "-1000000"
+	PRINTBUTTON "[-100000]", "-100000"
+	PRINTBUTTON "[-10000]", "-10000"
+	PRINTBUTTON "[-1000]", "-1000"
+	PRINTL
+	PRINTBUTTON "[-2000000]", "-2000000"
+	PRINTBUTTON "[-200000]", "-200000"
+	PRINTBUTTON "[-20000]", "-20000"
+	PRINTBUTTON "[-2000]", "-2000"
+	PRINTL
+	PRINTBUTTON "[-5000000]", "-5000000"
+	PRINTBUTTON "[-500000]", "-500000"
+	PRINTBUTTON "[-50000]", "-50000"
+	PRINTBUTTON "[-5000]", "-5000"
+	PRINTL
+	PRINTBUTTON "[ENTER]", "ENTER"
+	
+	INPUTS
+	SELECTCASE RESULTS
+		CASE "", "ENTER", "enter", "Enter", "E", "e"
+			BREAK
+		CASE "CHANGE", "change", "Change", "C", "c"
+			IF 方向
+				方向 = 0
+			ELSE
+				方向 = 1
+			ENDIF
+		CASE "MAX", "max", "Max", "M", "m"
+			SIF 方向
+				金額 = MIN(借金, MONEY)
+		CASE "0"
+			金額 = 0
+		CASEELSE
+			IF CHARATU(RESULTS, 0) == "+"
+				SIF ISNUMERIC(SUBSTRING(RESULTS, 1))
+					金額 += TOINT(SUBSTRING(RESULTS, 1))
+			ELSEIF CHARATU(RESULTS, 0) == "-"
+				SIF ISNUMERIC(SUBSTRING(RESULTS, 1))
+					金額 -= TOINT(SUBSTRING(RESULTS, 1))
+			ELSEIF ISNUMERIC(RESULTS)
+				金額 = TOINT(RESULTS)
+			ENDIF
+	ENDSELECT
+	SIF 金額 < 0
+		金額 = 0
+	;借りている額より多く返せないし、持っている額より多く返せない
+	SIF 方向
+		金額 = LIMIT(金額, 0, MIN(借金, MONEY))
+	CLEARLINE 21
+LOOP 1
+
+IF 方向
+	MONEY -= 金額
+	借金 -= 金額
+ELSE
+	MONEY += 金額
+	借金 += 金額
+ENDIF
