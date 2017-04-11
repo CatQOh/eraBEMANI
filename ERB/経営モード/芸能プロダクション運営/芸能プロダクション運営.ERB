@@ -32,7 +32,14 @@ LOCALS = <button value='3' title='現金などを送ることにより知名度�
 HTML_PRINT LOCALS
 LOCALS = <button value='4' title='芸能プロダクションで働かせるキャラを配属します'>　[4] - 人員配置</button>
 HTML_PRINT LOCALS
-LOCALS = <button value='5' title='芸能プロダクション運営に関する設定を変更します'>　[5] - 設定変更</button>
+IF IDOL所属人数
+	LOCALS = <button value='5' title='キャラ同士でユニットを組みます'>　[5] - ユニット</button>
+	HTML_PRINT LOCALS
+ELSE
+	LOCALS = <font color='gray'><nonbutton title='キャラを配属してください'>　[-] - ユニット</nonbutton></font>
+	HTML_PRINT LOCALS
+ENDIF
+LOCALS = <button value='6' title='芸能プロダクション運営に関する設定を変更します'>　[6] - 設定変更</button>
 HTML_PRINT LOCALS
 
 
@@ -62,6 +69,8 @@ DO
 		CASE 4
 			CALL STRATEGY_PERSONAL, "芸能プロダクション"
 		CASE 5
+			CALL IDOL_UNIT
+		CASE 6
 			CALL IDOL_OPTION
 		CASE 100
 			CALL IDOL_TUTORIAL
@@ -237,6 +246,15 @@ LOOP 1
 #DIM DYNAMIC LMEMORY
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 収入, 2
+#DIM DYNAMIC ユニット数
+#DIM DYNAMIC 選出可能, 11
+
+ユニット数 = 0
+
+REPEAT 11
+	SIF ユニット名:COUNT != ""
+		ユニット数++
+REND
 
 DRAWLINE
 PRINTL 何のイベントを開催しますか？
@@ -367,11 +385,77 @@ DO
 					PRINTL )
 				ENDIF
 			REND
-			PRINTL 　　 [ 0] - ライブを始める
-			PRINTL 　　 [-1] - 選曲画面に戻る
-			PRINTL 　　 [-2] - 戻る
+			PRINTPLAIN LIVE 
+			PRINT [ 0] - ライブを始める　
+			PRINT [-1] - 選曲画面に戻る　
+			PRINTL [-2] - 戻る
+			SIF ユニット数
+				PRINTL [-3] - ユニットで選出する
 			DO
 				INPUT
+				IF RESULT == -3
+					SIF !ユニット数
+						CONTINUE
+					DRAWLINE
+					PRINTL □ユニットを選択してください
+					FOR COUNT, 1, ユニット数+1
+						;ユニット全部表示したらBREAK
+						SIF ユニット名:COUNT == ""
+							BREAK
+						;選出可能フラグは予め立てておく
+						選出可能:COUNT = 1
+						FOR LCOUNT, 1, CHARANUM
+							;ユニットのメンバーが芸能プロダクションに配属されてるか確認する
+							IF CFLAG:LCOUNT:ユニット番号 == COUNT
+								;配属されてないメンバーが居れば選出可能フラグを折って灰色表示してBREAK
+								IF CFLAG:LCOUNT:配属 != 4
+									LOCALS = <font color='gray'><nonbutton title='一部メンバーが不在です'>　[-] %ユニット名:COUNT%</nonbutton></font>
+									HTML_PRINT LOCALS
+									選出可能:COUNT = 0
+									BREAK
+								ENDIF
+							ENDIF
+						NEXT
+						;上記のチェックを抜けてきたら選出可能
+						SIF 選出可能:COUNT
+							PRINTFORML 　[{COUNT}] %ユニット名:COUNT%
+					NEXT
+					DRAWLINE
+					PRINTPLAIN 　UNIT　
+					PRINTL [0] - メンバー選定に戻る
+					DO
+						INPUT
+						SELECTCASE RESULT
+							CASE 1 TO 10
+								SIF !選出可能:RESULT
+									CONTINUE
+								;ユニットメンバーだけにするのでLOCALにVARSETかけておく
+								VARSET LOCAL, 0
+								REPEAT CHARANUM
+									IF CFLAG:COUNT:ユニット番号 == RESULT
+										;ユニット結成時にあらかじめ決めておいた担当に分担する
+										;ボーカル担当の場合内部数値は2桁 2桁目がメイン、1桁目がサブ
+										SELECTCASE CFLAG:COUNT:ユニット担当
+											CASE IS < 10
+												;ダンス、楽器演奏はそのまま代入
+												LOCAL:COUNT = CFLAG:COUNT:ユニット担当
+											CASEELSE
+												;ボーカル必要無い選曲の場合、予備の担当に切り替える(1桁目)
+												IF IDOL選曲:1 == "0"
+													LOCAL:COUNT = CFLAG:COUNT:ユニット担当%10
+												;オンボーカルならメインの担当(2桁目)
+												ELSE
+													LOCAL:COUNT = CFLAG:COUNT:ユニット担当/10
+												ENDIF
+										ENDSELECT
+									ENDIF
+								REND
+								GOTO MEMBER_LOOP
+							CASE 0
+								GOTO MEMBER_LOOP
+						ENDSELECT
+					LOOP 1
+				ENDIF
 				SIF RESULT == -2
 					RESTART
 				SIF RESULT == -1
@@ -590,6 +674,347 @@ DO
 			LOOP 1
 	ENDSELECT
 LOOP 1
+
+;ユニット----------------------------------------------------
+@IDOL_UNIT
+#DIM DYNAMIC ユニット数
+#DIM DYNAMIC 選出キャラ
+#DIM DYNAMIC ユニット人数
+#DIM DYNAMIC 特殊ユニット, 100
+DRAWLINE
+
+VARSET LOCAL, 0
+
+$MEMBER_LOOP
+
+ユニット数 = 0
+
+REPEAT 11
+	SIF ユニット名:COUNT != ""
+		ユニット数++
+REND
+
+;組めるユニットは10チームまで
+IF ユニット数 < 10
+	PRINTL □ユニットを組むキャラを選んでください
+	REPEAT CHARANUM
+		IF CFLAG:COUNT:配属 == 4
+			SELECTCASE LOCAL:COUNT
+				CASE 0
+					PRINT 　　
+				CASE 1
+					PRINT Da. 
+				CASE 2
+					PRINT In. 
+				CASE IS > 10
+					SELECTCASE LOCAL:COUNT/10
+						CASE 3
+							PRINT Vo. 
+						CASE 4
+							PRINT D&V 
+						CASE 5
+							PRINT I&V 
+					ENDSELECT
+			ENDSELECT
+			PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(歌唱技能:{ABL:COUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:COUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:COUNT:舞踊技能, 2, LEFT}
+			SIF TALENT:COUNT:魅力
+				PRINT  魅力
+			SIF TALENT:COUNT:魅惑
+				PRINT  魅惑
+			SIF TALENT:COUNT:謎の魅力
+				PRINT  謎の魅力
+			SIF TALENT:COUNT:人気
+				PRINT  人気
+			SIF TALENT:COUNT:絶対音感
+				PRINT  絶対音感
+			PRINTL )
+		ENDIF
+	REND
+	DRAWLINE
+	PRINTPLAIN 　UNIT　
+	PRINT [ 0] - 戻る　
+	PRINT [-1] - 選んだキャラでユニットを組む　
+	SIF ユニット数
+		PRINT [-2] - 既存ユニットの解散
+	PRINTL 
+ELSE
+	PRINTL 
+	PRINTL これ以上ユニットを組めません
+	PRINTL 
+	PRINTPLAIN UNIT
+	PRINT [ 0] - 戻る　
+	PRINTL [-2] - 既存ユニットの解散
+ENDIF
+
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE -1
+			SIF ユニット数 == 10
+				CONTINUE
+			ユニット人数 = 0
+			REPEAT CHARANUM
+				SIF LOCAL:COUNT
+					ユニット人数++
+			REND
+			IF ユニット人数 == 0
+				PRINTW メンバーを指定してください
+				GOTO MEMBER_LOOP
+			ENDIF
+			PRINTL 選択したキャラでユニットを組みます
+			VARSET 特殊ユニット, 0
+			LOCALS = 
+			;特定の組み合わせの場合は自動でユニット名が付く
+			SELECTCASE ユニット人数
+				CASE 2
+					REPEAT CHARANUM
+						SIF !LOCAL:COUNT
+							CONTINUE
+						SELECTCASE NAME:COUNT
+							CASE "梅桐 彩葉"
+								特殊ユニット:0++
+							CASE "雛月 理々奈"
+								特殊ユニット:0++
+							CASE "ミミ"
+								特殊ユニット:1++
+							CASE "ニャミ"
+								特殊ユニット:1++
+							CASE "オリーブ"
+								特殊ユニット:2++
+							CASE "ヤンクル"
+								特殊ユニット:2++
+							CASE "東雲 夏陽"
+								特殊ユニット:3++
+							CASE "東雲 心菜"
+								特殊ユニット:3++
+						ENDSELECT
+					REND
+					SIF 特殊ユニット:0 == 2
+						LOCALS = オカルト研究会
+					SIF 特殊ユニット:1 == 2
+						LOCALS = ポッパーズ
+					SIF 特殊ユニット:2 == 2
+						LOCALS = コレットオーダーショップ
+					SIF 特殊ユニット:3 == 2
+						LOCALS = ここなつ
+				CASE 3
+					REPEAT CHARANUM
+						SIF !LOCAL:COUNT
+							CONTINUE
+						SELECTCASE NAME:COUNT
+							CASE "クジャク"
+								特殊ユニット:0++
+							CASE "ジルチ"
+								特殊ユニット:0++
+							CASE "刃雪 達磨"
+								特殊ユニット:0++
+							CASE "赤シグ"
+								特殊ユニット:1++
+							CASE "黄シグ"
+								特殊ユニット:1++
+							CASE "青シグ"
+								特殊ユニット:1++
+							CASE "レイシス"
+								特殊ユニット:2++
+							CASE "嬬武器 雷刀"
+								特殊ユニット:2++
+							CASE "嬬武器 烈風刀"
+								特殊ユニット:2++
+							CASE "蒼"
+								特殊ユニット:3++
+							CASE "雛"
+								特殊ユニット:3++
+							CASE "桃"
+								特殊ユニット:3++
+							CASE "ヒカリ"
+								特殊ユニット:4++
+							CASE "ミライ"
+								特殊ユニット:4++
+							CASE "ソラ"
+								特殊ユニット:4++
+							CASE "璃音"
+								特殊ユニット:5++
+							CASE "響香"
+								特殊ユニット:5++
+							CASE "弦"
+								特殊ユニット:5++
+						ENDSELECT
+					REND
+					SIF 特殊ユニット:0 == 3
+						LOCALS = すけべえ同盟
+					SIF 特殊ユニット:1 == 3
+						LOCALS = SigSig
+					SIF 特殊ユニット:2 == 3
+						LOCALS = ハレルヤ組
+					SIF 特殊ユニット:3 == 3
+						LOCALS = バタフライキャッツ
+					SIF 特殊ユニット:4 == 3
+						LOCALS = にじっ娘
+					SIF 特殊ユニット:5 == 3
+						LOCALS = ひまわり*パンチ
+				CASE 4
+					REPEAT CHARANUM
+						SIF !LOCAL:COUNT
+							CONTINUE
+						SELECTCASE NAME:COUNT
+							CASE "ウーノ"
+								特殊ユニット:0++
+							CASE "ツースト"
+								特殊ユニット:0++
+							CASE "若さん"
+								特殊ユニット:0++
+							CASE "フォース"
+								特殊ユニット:0++
+							CASE "アン"
+								特殊ユニット:1++
+							CASE "ンビリ"
+								特殊ユニット:1++
+							CASE "サン"
+								特殊ユニット:1++
+							CASE "クアトロ"
+								特殊ユニット:1++
+							CASE "風雅"
+								特殊ユニット:2++
+							CASE "氷海"
+								特殊ユニット:2++
+							CASE "烈"
+								特殊ユニット:2++
+							CASE "鈴花"
+								特殊ユニット:2++
+						ENDSELECT
+					REND
+					SIF 特殊ユニット:0 == 4
+						LOCALS = ミラクル☆4
+					SIF 特殊ユニット:1 == 4
+						LOCALS = マジカル☆4
+					SIF 特殊ユニット:2 == 4
+						LOCALS = つぎドカルテット
+				CASE 5
+					REPEAT CHARANUM
+						SIF !LOCAL:COUNT
+							CONTINUE
+						SELECTCASE NAME:COUNT
+							CASE "明坂 芹菜"
+								特殊ユニット:0++
+							CASE "御形 アリシアナ"
+								特殊ユニット:0++
+							CASE "天王洲 なずな"
+								特殊ユニット:0++
+							CASE "小仏 凪"
+								特殊ユニット:0++
+							CASE "箱部 なる"
+								特殊ユニット:0++
+							CASE "山形 まり花"
+								特殊ユニット:1++
+							CASE "和泉 一舞"
+								特殊ユニット:1++
+							CASE "春日 咲子"
+								特殊ユニット:1++
+							CASE "霜月 凛"
+								特殊ユニット:1++
+							CASE "芽兎 めう"
+								特殊ユニット:1++
+						ENDSELECT
+					REND
+					SIF 特殊ユニット:0 == 5
+						LOCALS = イロドリミドリ
+					SIF 特殊ユニット:1 == 5
+						LOCALS = 日向美ビタースイーツ♪
+			ENDSELECT
+			SIF LOCALS == ""
+				PRINTL ユニット名を入力してください(何も入力しない場合はメンバー名が連ねられます)
+			WAIT
+			IF LOCALS == ""
+				INPUTS
+				IF RESULTS == ""
+					REPEAT CHARANUM
+						IF LOCAL:COUNT
+							SIF LOCALS != ""
+								LOCALS += "、"
+							LOCALS += %NAME:COUNT%
+						ENDIF
+					REND
+				ELSE
+					LOCALS = %RESULTS%
+				ENDIF
+			ENDIF
+			;自動で前詰め処理をするのでユニット数+1のインデックスが空いている
+			ユニット名:(ユニット数+1) = %LOCALS%
+			REPEAT CHARANUM
+				IF LOCAL:COUNT
+					;選んだキャラのCFLAGに属するユニット番号と役割担当を記録する
+					CFLAG:COUNT:ユニット番号 = ユニット数+1
+					CFLAG:COUNT:ユニット担当 = LOCAL:COUNT
+				ENDIF
+			REND
+			RESTART
+		CASE -2
+			SIF !ユニット数
+				CONTINUE
+			DRAWLINE
+			PRINTL □解散するユニットを選んでください
+			FOR COUNT, 1, ユニット数+1
+				PRINTFORML 　[{COUNT}] %ユニット名:COUNT%
+			NEXT
+			DRAWLINE
+			PRINTPLAIN 　BREAKUP　
+			PRINTL [0] - 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 1 TO 10
+						SIF ユニット名 == ""
+							CONTINUE
+						;解散は別関数で行う
+						CALL BREAKUP, RESULT
+					CASE 0
+						GOTO MEMBER_LOOP
+					CASEELSE
+						CONTINUE
+				ENDSELECT
+			LOOP 1
+		CASEELSE
+			SIF ユニット数 == 10
+				CONTINUE
+			;おおまかな流れはライブ時の選出と同じ
+			IF CFLAG:RESULT:配属 == 4
+				選出キャラ = RESULT
+				PRINTL 
+				PRINTL どのパートを担当しますか？
+				PRINTL [0] ユニットから外す
+				PRINTL [1] ダンス
+				PRINTL [2] 楽器演奏
+				PRINTL [3] ボーカル
+				PRINTL [4] ダンス&ボーカル
+				PRINTL [5] 楽器演奏&ボーカル
+				DO
+					INPUT
+					SELECTCASE RESULT
+						CASE 0, 1, 2
+							LOCAL:選出キャラ = RESULT
+						CASE 3, 4, 5
+							LOCAL:選出キャラ = RESULT
+							PRINTL ボーカル曲でない場合の予備の担当を指定してください
+							PRINTL [1] ダンス
+							PRINTL [2] 楽器演奏
+							DO
+								INPUT
+								SELECTCASE RESULT
+									CASE 1, 2
+										;ハイブリッド担当は予備の情報も二桁で記録する。担当/10でメイン、担当%10で予備
+										LOCAL:選出キャラ = LOCAL:選出キャラ*10+RESULT
+								ENDSELECT
+							LOOP LOOPRES(1, 2)
+					ENDSELECT
+				LOOP LOOPRES(0, 1, 2, 3, 4, 5)
+				GOTO MEMBER_LOOP
+			ENDIF
+	ENDSELECT
+LOOP 1
+
 
 ;オプション----------------------------------------------------
 ;「変数IDOL報告」は4進数で管理されている
