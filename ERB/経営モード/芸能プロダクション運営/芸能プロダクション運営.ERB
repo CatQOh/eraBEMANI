@@ -14,7 +14,7 @@ PRINTL
 PRINTL 【芸能プロダクション運営】
 PRINTL 
 DRAWLINE
-PRINTFORML 知名度:{IDOL知名度}
+PRINTFORML 　現在の知名度:{IDOL知名度}
 DRAWLINE
 
 IF IDOL所属人数
@@ -257,8 +257,8 @@ REPEAT 11
 REND
 
 DRAWLINE
-PRINTL 何のイベントを開催しますか？
-PRINTL [1] ライブ
+PRINTL □何のイベントを開催しますか？
+PRINTL 　[1] ライブ
 DRAWLINE
 PRINTPLAIN 　EVENT　
 PRINTL [0] 戻る
@@ -319,11 +319,11 @@ DO
 				技量:分野 /= SQRT(人数:分野*10000*10000)
 			NEXT
 			DRAWLINE
-			PRINTL ライブに出すメンバーと担当するパートを選んでください
-			PRINTL （ボーカル曲の場合、最低でも1人はボーカルを担当する必要があります）
-			PRINTL
-			PRINTFORML %IDOL選曲%
-			PRINT 楽曲難易度　
+			PRINTL □ライブに出すメンバーと担当するパートを選んでください
+			PRINTL 　(ボーカル曲の場合、最低でも1人はボーカルを担当する必要があります)
+			PRINTL 
+			PRINTFORML 　選曲　　　 %IDOL選曲%
+			PRINT 　楽曲難易度　
 			FOR 分野, 1, 4
 				SELECTCASE 分野
 					CASE 1
@@ -342,8 +342,8 @@ DO
 						PRINTFORM %IDOL選曲:分野% 
 				ENDSELECT
 			NEXT
-			PRINTL
-			PRINT 現在の技量　
+			PRINTL 
+			PRINT 　現在の技量　
 			FOR 分野, 1, 4
 				PRINTFORM {技量:分野/10000, 3, RIGHT}.
 				FOR LCOUNT, 0, 4-STRLENS(TOSTR(技量:分野%10000))
@@ -351,12 +351,14 @@ DO
 				NEXT
 				PRINTFORM {技量:分野%10000} 
 			NEXT
-			PRINTL
+			PRINTL 
+			PRINTL 
 			REPEAT CHARANUM
 				;体力不足だと無理
 				SIF BASE:COUNT:体力 < 500
 					CONTINUE
 				IF CFLAG:COUNT:配属 == 4
+					PRINT 　
 					SELECTCASE LOCAL:COUNT
 						CASE 0
 							PRINT 　　
@@ -385,12 +387,13 @@ DO
 					PRINTL )
 				ENDIF
 			REND
-			PRINTPLAIN LIVE 
+			DRAWLINE
+			PRINTPLAIN 　LIVE　
 			PRINT [ 0] - ライブを始める　
 			PRINT [-1] - 選曲画面に戻る　
 			PRINTL [-2] - 戻る
 			SIF ユニット数
-				PRINTL [-3] - ユニットで選出する
+				PRINTL 　　　　[-3] - ユニットで選出する
 			DO
 				INPUT
 				IF RESULT == -3
@@ -701,7 +704,11 @@ IF ユニット数 < 10
 		IF CFLAG:COUNT:配属 == 4
 			SELECTCASE LOCAL:COUNT
 				CASE 0
-					PRINT 　　
+					IF CFLAG:COUNT:ユニット番号
+						PRINT  盟 
+					ELSE
+						PRINT 　　
+					ENDIF
 				CASE 1
 					PRINT Da. 
 				CASE 2
@@ -741,7 +748,7 @@ ELSE
 	PRINTL 
 	PRINTL これ以上ユニットを組めません
 	PRINTL 
-	PRINTPLAIN UNIT
+	PRINTPLAIN 　UNIT　
 	PRINT [ 0] - 戻る　
 	PRINTL [-2] - 既存ユニットの解散
 ENDIF
@@ -966,10 +973,11 @@ DO
 				INPUT
 				SELECTCASE RESULT
 					CASE 1 TO 10
-						SIF ユニット名 == ""
+						SIF ユニット名:RESULT == ""
 							CONTINUE
 						;解散は別関数で行う
 						CALL BREAKUP, RESULT
+						GOTO MEMBER_LOOP
 					CASE 0
 						GOTO MEMBER_LOOP
 					CASEELSE
@@ -979,6 +987,11 @@ DO
 		CASEELSE
 			SIF ユニット数 == 10
 				CONTINUE
+			;二つ以上のユニットには属せない(作れるけどコードの可読性が下がるので保留)
+			IF CFLAG:RESULT:ユニット番号
+				PRINTFORMW %CALLNAME:RESULT%は既に「%ユニット名:(CFLAG:RESULT:ユニット番号)%」に所属しています
+				GOTO MEMBER_LOOP
+			ENDIF
 			;おおまかな流れはライブ時の選出と同じ
 			IF CFLAG:RESULT:配属 == 4
 				選出キャラ = RESULT
@@ -1004,7 +1017,7 @@ DO
 								INPUT
 								SELECTCASE RESULT
 									CASE 1, 2
-										;ハイブリッド担当は予備の情報も二桁で記録する。担当/10でメイン、担当%10で予備
+										;ハイブリッド担当は予備の情報を二桁で記録する。担当/10でメイン、担当%10で予備
 										LOCAL:選出キャラ = LOCAL:選出キャラ*10+RESULT
 								ENDSELECT
 							LOOP LOOPRES(1, 2)
@@ -1015,6 +1028,30 @@ DO
 	ENDSELECT
 LOOP 1
 
+@BREAKUP, 解散ユニット
+#DIM DYNAMIC 解散ユニット
+#DIM DYNAMIC LCOUNT
+
+ユニット名:解散ユニット = 
+
+;解散ユニットに属していたメンバーはフリーになる
+REPEAT CHARANUM
+	IF CFLAG:COUNT:ユニット番号 == 解散ユニット
+		CFLAG:COUNT:ユニット番号 = 0
+		CFLAG:COUNT:ユニット担当 = 0
+	ENDIF
+REND
+
+;ユニット名の前詰め処理
+FOR LCOUNT, 解散ユニット, 10
+	SWAP ユニット名:LCOUNT, ユニット名:(LCOUNT+1)
+NEXT
+
+;キャラごとにユニット名に対応した番号が割り振られているので、解散したユニット以降の番号なら減算するだけでよい
+REPEAT CHARANUM
+	SIF CFLAG:COUNT:ユニット番号 > 解散ユニット
+		CFLAG:COUNT:ユニット番号--
+REND
 
 ;オプション----------------------------------------------------
 ;「変数IDOL報告」は4進数で管理されている
