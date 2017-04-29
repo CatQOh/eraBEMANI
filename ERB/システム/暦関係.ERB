@@ -1,0 +1,296 @@
+﻿@NEXTDAY
+VARSET LOCAL, 0
+
+;日付加算
+DAYS++
+SELECTCASE MONTH
+	CASE 1, 3, 5, 7, 8, 10, 12
+		SIF DAYS > 31
+			DAYS = 1
+	CASE 4, 6, 9, 11
+		SIF DAYS > 30
+			DAYS = 1
+	CASE 2
+		;うるう年かどうかで場合分け
+		SELECTCASE YEAR
+			;グレゴリオ暦
+			CASE IS > 1582
+				IF (YEAR%4 == 0 && YEAR%100 != 0) || YEAR%400 == 0
+					SIF DAYS > 29
+						DAYS = 1
+				ELSE
+					SIF DAYS > 28
+						DAYS = 1
+				ENDIF
+			;間違った運用がされていた頃のユリウス暦
+			CASE -44 TO -5
+				IF ABS(YEAR)%3 == 1
+					SIF DAYS > 29
+						DAYS = 1
+				ELSE
+					SIF DAYS > 28
+						DAYS = 1
+				ENDIF
+			;上の間違った運用のシワ寄せ期間
+			CASE -4 TO 4
+				SIF DAYS > 28
+					DAYS = 1
+			;(紀元前46年以前を含め)残りの期間すべてをユリウス暦とする
+			CASEELSE
+				IF ABS(YEAR)%4 == 0
+					SIF DAYS > 29
+						DAYS = 1
+				ELSE
+					SIF DAYS > 28
+						DAYS = 1
+				ENDIF
+		ENDSELECT
+ENDSELECT
+
+;1582年10月5日～1582年10月14日は存在しない
+SIF YEAR == 1582 && MONTH == 10 && INRANGE(DAYS, 5, 14)
+	DAYS = 15
+
+;繰り上げ処理
+SIF DAYS == 1
+	MONTH++
+SIF MONTH == 13
+	MONTH = 1
+SIF DAYS == 1 && MONTH == 1
+	YEAR++
+
+;月齢計算
+LOCAL:2 = YEAR-11
+;負の数の剰余に対応
+IF LOCAL:2 < 0
+	LOCAL:2 = 19 + (LOCAL:2)%19
+ELSE
+	LOCAL:2 %= 19
+ENDIF
+LOCAL = (LOCAL:2)*11
+SELECTCASE MONTH
+	CASE 1, 3
+		LOCAL:1 = 0
+	CASE 2, 4, 5
+		LOCAL:1 = 2
+	CASE 6 TO 12
+		LOCAL:1 = MONTH-2
+ENDSELECT
+月齢 = (LOCAL+LOCAL:1+DAYS)%30
+
+;曜日計算
+FLAG:曜日 = ZELLER(YEAR,MONTH,DAYS)
+
+@HOLIDAY
+HOLIDAY =
+
+;プレミアムフライデーならまずプレミアムフライデーを入れる(下記祝日・記念日の表示が優先)
+SIF PREMIUM_FRIDAY(YEAR, MONTH, DAYS)
+	HOLIDAY = プレミアムフライデー
+
+;祝日の設定
+SELECTCASE MONTH
+	;1月
+	CASE 1
+		SELECTCASE DAYS
+			;1日
+			CASE 1
+				HOLIDAY = 元日
+			;7日
+			CASE 7
+				HOLIDAY = イロドリミドリの日
+			;18日
+			CASE 18
+				HOLIDAY = 「SOUND VOLTEX」稼働記念日
+			;第二月曜日
+			CASE NO_DOW(2, "月")
+				HOLIDAY = 成人の日
+		ENDSELECT
+	;2月
+	CASE 2
+		SELECTCASE DAYS
+			;3日
+			CASE 3
+				HOLIDAY = 節分
+			;4日
+			CASE 4
+				HOLIDAY = 「Toy'sMarch」稼働記念日
+			;6日
+			CASE 6
+				HOLIDAY = 「KEYBOARDMANIA」稼働記念日
+			;11日
+			CASE 11
+				HOLIDAY = 建国記念日
+			;14日
+			CASE 14
+				HOLIDAY = バレンタインデー
+			;26日
+			CASE 26
+				HOLIDAY = 「beatmaniaIIDX」稼働記念日
+		ENDSELECT
+	;3月
+	CASE 3
+		SELECTCASE DAYS
+			;1日
+			CASE 1
+				HOLIDAY = 「ノスタルジア」稼働記念日
+			;3日
+			CASE 3
+				HOLIDAY = ひな祭り
+			;14日
+			CASE 14
+				HOLIDAY = ホワイトデー
+			;面倒だから20日
+			CASE 20
+				HOLIDAY = 春分の日
+			;27日
+			CASE 27
+				HOLIDAY = 「Dance Evolution ARCADE」稼働記念日
+		ENDSELECT
+	;4月
+	CASE 4
+		SELECTCASE DAYS
+			;1日
+			CASE 1
+				HOLIDAY = エイプリルフール
+			;29日
+			CASE 29
+				HOLIDAY = 昭和の日
+		ENDSELECT
+	;5月
+	CASE 5
+		SELECTCASE DAYS
+			;3日
+			CASE 3
+				HOLIDAY = 憲法記念日
+			;4日
+			CASE 4
+				HOLIDAY = みどりの日
+			;5日
+			CASE 5
+				HOLIDAY = こどもの日
+			;第二日曜日
+			CASE NO_DOW(2, "日")
+				HOLIDAY = 母の日
+		ENDSELECT
+	;6月
+	CASE 6
+		SELECTCASE DAYS
+			;4日
+			CASE 4
+				HOLIDAY = 「MAMBO A GO GO」稼働記念日
+			;20日
+			CASE 20
+				HOLIDAY = 「ミライダガッキ」稼働記念日
+			;21日
+			CASE 21
+				HOLIDAY = 「Dance ManiaX」稼働記念日
+			;第三日曜日
+			CASE NO_DOW(3, "日")
+				HOLIDAY = 父の日
+		ENDSELECT
+	;7月
+	CASE 7
+		SELECTCASE DAYS
+			;7日
+			CASE 7
+				HOLIDAY = 七夕
+			;10日
+			CASE 10
+				HOLIDAY = 「drummania」稼働記念日
+			;16日
+			CASE 16
+				HOLIDAY = 「CHUNITHM」稼働記念日
+			;17日
+			CASE 17
+				HOLIDAY = 「BeatStream」稼働記念日
+			;24日
+			CASE 24
+				HOLIDAY = 「jubeat」稼働記念日
+			;第三月曜日
+			CASE NO_DOW(3, "月")
+				HOLIDAY = 海の日
+		ENDSELECT
+	;8月
+	CASE 8
+		SELECTCASE DAYS
+			;11日
+			CASE 11
+				HOLIDAY = 山の日
+			;13～15日
+			CASE 13 TO 15
+				HOLIDAY = お盆
+		ENDSELECT
+	;9月
+	CASE 9
+		SELECTCASE DAYS
+			;第三月曜日
+			CASE NO_DOW(3, "月")
+				HOLIDAY = 敬老の日
+			CASE 12
+				HOLIDAY = 「ParaParaParadise」稼働記念日
+			;面倒だから23日
+			CASE 23
+				HOLIDAY = 秋分の日
+			;28日
+			CASE 28
+				HOLIDAY = 「pop'n music」稼働記念日
+			;15日以降
+			CASE IS >= 15
+				;満月なら十五夜
+				SIF 月齢 == 15
+					HOLIDAY = 十五夜
+		ENDSELECT
+	;10月
+	CASE 10
+		SELECTCASE DAYS
+			;第二月曜日
+			CASE NO_DOW(2, "月")
+				HOLIDAY = 体育の日
+			;15日以前
+			CASE IS <= 15
+				;満月なら十五夜
+				SIF 月齢 == 15
+					HOLIDAY = 十五夜
+		ENDSELECT
+	;11月
+	CASE 11
+		SELECTCASE DAYS
+			;3日
+			CASE 3
+				HOLIDAY = 文化の日
+			;4日
+			CASE 4
+				HOLIDAY = 「REFLEC BEAT」稼働記念日
+			;15日
+			CASE 15
+				HOLIDAY = 七五三
+			;18日
+			CASE 18
+				HOLIDAY = 「Dance Dance Revolution」稼働記念日
+			;23日
+			CASE 23
+				HOLIDAY = 勤労感謝の日
+			;25日
+			CASE 25
+				HOLIDAY = 「日向美ビタースイーツ」結成記念日
+		ENDSELECT
+	;12月 天皇誕生日はちょっと様子を見るので見送り
+	CASE 12
+		SELECTCASE DAYS
+			;10日
+			CASE 10
+				HOLIDAY = 「MÚSECA」稼働記念日
+			;24日
+			CASE 24
+				HOLIDAY = クリスマス・イブ
+			;25日
+			CASE 25
+				HOLIDAY = クリスマス
+		ENDSELECT
+ENDSELECT
+
+;上記の休日が無く新婚モードで開始した日は結婚記念日
+SIF HOLIDAY == "" && FLAG:ゲームモード == 7 && REALTIME:1 == MONTH &&  REALTIME:2 == DAYS
+	HOLIDAY = 結婚記念日
+
