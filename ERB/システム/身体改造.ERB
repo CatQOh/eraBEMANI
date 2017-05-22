@@ -44,6 +44,10 @@ PRINTL 　[10] - 中絶
 SELECTCASE RESULT
 	CASE 1
 		CALL 体外受精
+	CASE 2
+		CALL 薬物投与
+	CASE 3
+		CALL 魔術師不妊治療
 ENDSELECT
 
 @体外受精
@@ -95,9 +99,10 @@ RESETCOLOR
 PRINTL 
 DRAWLINE
 PRINTPLAIN 　体外受精　
-PRINTL [0] - 中止する
+PRINT [0] - 中止する
 SIF 父親 >= 0 && 母親 >= 0 && 母体 >= 0
-	PRINTL [5] - この組み合わせで行う
+	PRINT [5] - この組み合わせで行う
+PRINTL 
 
 DO
 	INPUT
@@ -106,7 +111,7 @@ DO
 			DRAWLINE
 			PRINTL □父親を選んでください
 			REPEAT CHARANUM
-				IF 生殖機能♂
+				IF 生殖機能♂(COUNT)
 					PRINTFORM 　[{COUNT, 2, RIGHT}] %NAME:COUNT% 
 					SELECTCASE SEX(COUNT)
 						CASE 1
@@ -127,7 +132,7 @@ DO
 					CASE -1
 						RESTART
 					CASEELSE
-						SIF !生殖機能♂:RESULT
+						SIF !生殖機能♂(RESULT)
 							CONTINUE
 						費用:0 = 50000
 						;小柄体型だと費用がかさむ
@@ -142,7 +147,7 @@ DO
 			DRAWLINE
 			PRINTL □母親を選んでください
 			REPEAT CHARANUM
-				IF 生殖機能♀ && !TALENT:COUNT:妊娠 && !TALENT:COUNT:妊娠確定
+				IF 生殖機能♀(COUNT) && !TALENT:COUNT:妊娠 && !TALENT:COUNT:妊娠確定
 					PRINTFORM 　[{COUNT, 2, RIGHT}] %NAME:COUNT% 
 					SELECTCASE SEX(COUNT)
 						CASE 1
@@ -163,7 +168,7 @@ DO
 					CASE -1
 						RESTART
 					CASEELSE
-						SIF !生殖機能♀ || TALENT:COUNT:妊娠 || TALENT:COUNT:妊娠確定
+						SIF !生殖機能♀(RESULT) || TALENT:RESULT:妊娠 || TALENT:RESULT:妊娠確定
 							CONTINUE
 						費用:1 = 50000
 						;小柄体型だと費用がかさむ
@@ -198,13 +203,14 @@ DO
 					CASE -1
 						RESTART
 					CASEELSE
-						SIF !VAGINA(COUNT) || TALENT:COUNT:妊娠 || TALENT:COUNT:妊娠確定
+						SIF !VAGINA(RESULT) || TALENT:RESULT:妊娠 || TALENT:RESULT:妊娠確定
 							CONTINUE
 						費用:2 = 50000
 						;小柄体型だと費用がかさむ
 						SIF TALENT:RESULT:小柄体型
 							費用:2 += 30000
 						;初産でも費用かさむ
+						SIF !EXP:RESULT:出産経験
 							費用:2 += 30000
 						母体 = RESULT
 						RESTART
@@ -240,15 +246,20 @@ DO
 				RESTART
 			ENDIF
 			PRINTL 体外受精を始めます
+			MONEY -= 費用:0+費用:1+費用2
 			IF 母親 != 母体
 				PRINTFORMW %CALLNAME:母親%と%CALLNAME:母体%は準備のため休養に入ります
 			ELSE
 				PRINTFORMW %CALLNAME:母親%は準備のため休養に入ります
 			ENDIF
+			SIF TARGET == 母親 || TARGET == 母体
+				TARGET = -1
+			SIF ASSI == 母親 || ASSI == 母体
+				ASSI = -1
 			CFLAG:母親:使用不可 = 15
 			CFLAG:母体:使用不可 = 15
-			CFLAG:母親:改造中 = 15
-			CFLAG:母体:改造中 = 15
+			CFLAG:母親:改造中 = 1
+			CFLAG:母体:改造中 = 1
 
 			;妊娠は確定する
 			PREG:母体:10 = DAY+60+RAND:21
@@ -256,6 +267,78 @@ DO
 			PREG:母体:22 = NO:母親
 			TALENT:母体:妊娠確定 = 1
 			RETURN 1
+	ENDSELECT
+LOOP 1
+
+@薬物投与
+#DIM DYNAMIC 患者 = -1
+#DIM DYNAMIC 費用
+PRINTL □薬物投与
+PRINTL 　継続的な薬剤投与により生殖力を高める不妊治療
+PRINTL □費用
+CALL PASELIL, @"　{費用}＄ - {費用/100}＄／日"
+PRINTL □注意事項
+PRINTL 　継続的な薬剤投与が必要になるため、日毎の費用が発生する
+PRINTL 　また、売却額は低下する
+PRINTL □患者
+PRINTL 　[1] - 父親を選ぶ
+DRAWLINE
+PRINTPLAIN 　薬物投与　
+PRINT [0] - 戻る
+SIF 患者 >= 0
+	PRINT [2] - 治療を行う
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			DRAWLINE
+			PRINTL □患者を選んでください
+			REPEAT CHARANUM
+				SIF CFLAG:COUNT:生殖力強化 == 1
+					CONTINUE
+				IF 生殖能力♂(COUNT) || 生殖能力♀(COUNT)
+					PRINTFORM 　[{COUNT, 2, RIGHT}] %NAME:COUNT% 
+					SELECTCASE SEX(COUNT)
+						CASE 1
+							PRINT ♂ 
+						CASE 2
+							PRINT ♀ 
+					ENDSELECT
+					SIF TALENT:小柄体型
+						PRINT 幼 
+				ENDIF
+			REND
+			DRAWLINE
+			PRINTPLAIN 　患者　
+			PRINTL [-1] 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE -1
+						RESTART
+					CASEELSE
+						SIF !生殖能力♂(RESULT) && !生殖能力♀(RESULT)
+							CONTINUE
+						費用 = 30000
+						;小柄体型だと費用がかさむ
+						SIF TALENT:RESULT:小柄体型
+							費用:2 += 20000
+						患者 = RESULT
+						RESTART
+				ENDSELECT
+			LOOP 1
+		CASE 2
+			IF MONEY < 費用
+				PRINTW 費用が足りません
+				RESTART
+			ENDIF
+			PRINTW 薬物投与による不妊治療を始めます
+			MONEY -= 費用
+			CFLAG:生殖力強化 = 1
+			RETURN 0
 	ENDSELECT
 LOOP 1
 
@@ -295,6 +378,12 @@ PRINTL 　[8] - 屍鬼
 PRINTL 　[9] - 吸血鬼
 
 
+
+@生殖機能♂
+#FUNCTION
+
+@生殖機能♀
+#FUNCTION
 
 
 
