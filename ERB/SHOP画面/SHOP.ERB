@@ -139,10 +139,10 @@ PRINTL
 ;段位認定のときのみ表示を変える
 IF FLAG:ゲームモード != 8
 	;所持金表示
-	PRINTFORM 　所持金:${MONEY}
+	CALL PASELI, @"　所持金:{MONEY}＄"
 	SIF 借金 > 0
-		PRINTFORM  借金:${借金}
-	PRINTFORM  昨日の所持金:${LASTMONEY} 
+		CALL PASELI, @" 借金:{借金}＄"
+	CALL PASELI, @" 昨日の所持金:{LASTMONEY}＄"
 	IF MONEY == LASTMONEY
 		PRINTL →0 KEEP
 	ELSEIF MONEY > LASTMONEY
@@ -175,7 +175,8 @@ IF FLAG:ゲームモード != 8
 	ENDIF
 ELSE
 	;所持金表示
-	PRINTFORM 　所持金:${MONEY} 
+	CALL PASELI, @"　所持金:{MONEY}＄"
+	PRINTL 
 
 	;難易度表示
 	PRINT 難易度:
@@ -309,7 +310,9 @@ IF GC物件
 	IF FLAG:ゲーセン営業中
 		PRINTPLAIN 　営業中 
 		PRINTL [600] - 一時休業する
-		PRINTFORML 　前日の収入:${基本収入} 店長:%NAME:LOCAL%
+		PRINT 　前日の収入:{基本収入}
+		PRINT_IMG "PASELI"
+		PRINTFORML  店長:%NAME:LOCAL%
 	ELSE
 		PRINTPLAIN 　休業中 
 		PRINTL [600] - 営業を開始する
@@ -322,7 +325,9 @@ IF ITEM:風俗店営業許可証
 	IF FLAG:娼館営業中
 		PRINTPLAIN 　営業中 
 		PRINTL [601] - 一時休業する
-		PRINTFORML 　前日の収入:${娼館前日の収入}
+		PRINTFORM 　前日の収入:{娼館前日の収入}
+		PRINT_IMG "PASELI"
+		PRINTL 
 	ELSE
 		PRINTPLAIN 　休業中 
 		PRINTL [601] - 営業を開始する
@@ -460,8 +465,20 @@ ELSE
 	LOCALS:4 = <font color='gray'><nonbutton title='助手に選べる奴隷は居ません'>[---] - 助手変更 </nonbutton></font>
 ENDIF
 
+;主人が禁断の知識持ってる場合
+IF TALENT:MASTER:禁断の知識
+	IF CHARANUM > 1
+		LOCALS:5 = <button value='201' title='キャラの体に改造を施します'>[204] - 身体改造 </button>
+	ELSE
+		LOCALS:5 = <font color='gray'><nonbutton title='改造可能なキャラが居ません'>[---] - 身体改造 </nonbutton></font>
+	ENDIF
+ENDIF
+
+
 IF FLAG:ゲームモード == 7
 	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3
+ELSEIF TALENT:MASTER:禁断の知識
+	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4+LOCALS:5
 ELSE
 	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4
 ENDIF
@@ -505,16 +522,16 @@ SELECTCASE FLAG:ゲームモード
 	;STANDARD
 	CASE 0
 		IF MONEY < 1000000
-			LOCALS:1 = <font color='gray'><nonbutton title='$1,000,000が必要です'>[---] - 納金     </nonbutton></font>
+			LOCALS:1 = <font color='gray'><nonbutton title='1,000,000パセリが必要です'>[---] - 納金     </nonbutton></font>
 		ELSE
-			LOCALS:1 = <button value='500' title='$1,000,000を納め、ゲームをクリアします'>[500] - 納金     </button>
+			LOCALS:1 = <button value='500' title='1,000,000パセリを納め、ゲームをクリアします'>[500] - 納金     </button>
 		ENDIF
 	;STRATEGY
 	CASE 1
 		IF MONEY < 50000000
-			LOCALS:1 = <font color='gray'><nonbutton title='$50,000,000が必要です'>[---] - 納金     </nonbutton></font>
+			LOCALS:1 = <font color='gray'><nonbutton title='50,000,000パセリが必要です'>[---] - 納金     </nonbutton></font>
 		ELSE
-			LOCALS:1 = <button value='500' title='$50,000,000を納め、ゲームをクリアします'>[500] - 納金     </button>
+			LOCALS:1 = <button value='500' title='50,000,000パセリを納め、ゲームをクリアします'>[500] - 納金     </button>
 		ENDIF
 	;新婚
 	CASE 7
@@ -630,6 +647,10 @@ SELECTCASE RESULT
 				SIF LOCAL:2
 					CALL SELECT_ASSI, LOCAL:2
 		ENDSELECT
+	;身体改造
+	CASE 204
+		SIF TALENT:MASTER:禁断の知識 && CHARANUM > 1
+			CALL BODY_MOD
 	;アイテム
 	CASE 300
 		IF FLAG:ゲームモード == 8

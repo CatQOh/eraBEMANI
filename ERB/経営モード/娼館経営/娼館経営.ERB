@@ -12,7 +12,7 @@ PRINTL 【娼館経営】
 PRINTL 
 DRAWLINE
 PRINTFORML 娼館レベル:{娼館レベル}
-PRINTFORML 次のランクアップまであと${娼館レベルアップ必要額}の売上が必要
+CALL PASELIL, @"次のランクアップまであと{娼館レベルアップ必要額}＄の売上が必要"
 DRAWLINE
 
 LOCALS = <button value='1' title='娼館に道具を配置します'>　[1] - 道具配置</button>
@@ -151,7 +151,7 @@ FOR LCOUNT, 1500, 1580
 	SIF LOCAL%3 == 0
 		PRINT 　
 	PRINTFORM [{LCOUNT}] %ITEMNAME:LCOUNT%
-	PRINTFORM  維持費:${ITEMPRICE:LCOUNT}
+	CALL PASELI, @" 維持費:{ITEMPRICE:LCOUNT}＄"
 	IF ITEM:LCOUNT == 0
 		PRINT 【
 		SETCOLOR 120 , 120 , 120
@@ -241,9 +241,9 @@ IF 娼館広さ >= 10
 	PRINTL 
 	RESETCOLOR
 ELSE
-	PRINTFORML 　[1] - 広くする(${LOCAL})
+	CALL PASELIL, @"　[1] - 広くする({LOCAL}＄)"
 ENDIF
-PRINTFORML 　[2] - 部屋を増やす(${LOCAL:1})
+CALL PASELIL, @"　[2] - 部屋を増やす({LOCAL:1}＄)"
 PRINTFORML 　[3] - 設備を導入する
 DRAWLINE
 PRINTPLAIN 　RENOVATION　
@@ -263,7 +263,7 @@ DO
 			ENDIF
 			PRINTL 娼館を広くしますか？
 			PRINTFORML 広さ {娼館広さ}→{娼館広さ+1}
-			PRINTFORML 増設後の所持金 ${MONEY-LOCAL}
+			CALL PASELIL, @"増設後の所持金 {MONEY-LOCAL}＄"
 			PRINTL 
 			PRINTL [0] - はい
 			PRINTL [1] - いいえ
@@ -286,7 +286,7 @@ DO
 			ENDIF
 			PRINTL 娼館の部屋を増やしますか？
 			PRINTFORML 部屋数 {娼館部屋数}→{娼館部屋数+1}
-			PRINTFORML 増設後の所持金 ${MONEY-LOCAL:1}
+			CALL PASELIL, @"増設後の所持金 {MONEY-LOCAL:1}＄"
 			PRINTL 
 			PRINTL [0] - はい
 			PRINTL [1] - いいえ
@@ -312,7 +312,9 @@ LOOP 1
 
 ;設備導入----------------------------------------------------
 @BR_ITEM_BUY
-#DIM LCOUNT
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC LCOUNT
+表示数 = 0
 DRAWLINE
 PRINTL □設備を導入します
 DRAWLINE
@@ -327,7 +329,17 @@ FOR LCOUNT, 1580, 1600
 		PRINTFORMLC [導入済み] %ITEMNAME:LCOUNT%
 		RESETCOLOR
 	ELSE
-		PRINTFORMLC [{LCOUNT}] %ITEMNAME:LCOUNT%(${ITEMPRICE:LCOUNT})
+		LOCALS = [{LCOUNT}] %ITEMNAME:LCOUNT%({ITEMPRICE:LCOUNT}＄)
+		CALL PASELI, LOCALS
+		;PRINT_IMGでPRINTC系命令使うとエラーになるので疑似再現
+		FOR LCOUNT, 0, 28-STRLENS(LOCALS)
+			PRINT  
+		NEXT
+	ENDIF
+	表示数++
+	IF 表示数 == 4
+		PRINTL 
+		表示数 = 0
 	ENDIF
 NEXT
 
@@ -373,7 +385,7 @@ DO
 				CASE "わけのわからないもの"
 					PRINTL わけのわからない人たちが使う
 			ENDSELECT
-			PRINTFORML 導入後の所持金 ${MONEY}→${MONEY-ITEMPRICE:RESULT}
+			CALL PASELIL, @"導入後の所持金 {MONEY}＄→{MONEY-ITEMPRICE:RESULT}＄"
 			PRINTL [0] - 導入する
 			PRINTL [1] - 導入しない
 			DO
@@ -586,7 +598,7 @@ FOR LCOUNT, 1, CHARANUM
 		CFLAG:LCOUNT:休憩 = 1
 		CONTINUE
 	ENDIF
-	;$1000は保証
+	;1000パセリは保証
 	収入 = 1000
 	適性 = 0
 	不適性 = 0
@@ -1529,7 +1541,7 @@ SIF ITEM:隠しカメラ
 	収入合計 += 収入合計/10
 
 IF 収入合計
-	PRINTFORML 娼館経営の収入が${収入合計}入りました
+	CALL PASELIL, @"娼館経営の収入が{収入合計}入りました"
 	MONEY += 収入合計
 	娼館前日の収入 = 収入合計
 	娼館総収入 += 収入合計
@@ -1556,7 +1568,7 @@ IF 収入合計
 			支出 += ITEMPRICE:LCOUNT
 	NEXT
 	SIF 支出
-		PRINTFORML 娼館経営の支出は${支出}でした
+		CALL PASELIL, @"娼館経営の支出は{支出}＄でした"
 	MONEY -= 支出
 ENDIF
 

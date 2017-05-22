@@ -1,0 +1,302 @@
+﻿@BODY_MOD
+DRAWLINE
+
+PRINTL □施す改造の分野を選んでください
+PRINTL 　[1] - 生殖関連
+PRINTL 　[2] - 体質関連
+PRINTL 　[3] - 容姿関連
+PRINTL 　[4] - 機械化
+PRINTL 　[5] - 眷属化
+DRAWLINE
+PRINTPLAIN 　BODY MOD　
+PRINTL [0] - 戻る
+
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1 TO 5
+			CALLFORM BODY_MOD_{RESULT}
+			RESTART
+	ENDSELECT
+LOOP 1
+
+;生殖関連の改造
+@BODY_MOD_1
+DRAWLINE
+
+PRINTL □施す改造を選んでください
+PRINTL 　[1] - 体外受精(不妊治療)
+PRINTL 　[2] - 薬物投与(不妊治療)
+PRINTL 　[3] - 魔術師による不妊治療
+PRINTL 　[4] - 卵管結紮(不妊手術)
+PRINTL 　[5] - 精管結紮(不妊手術,パイプカット)
+PRINTL 　[6] - 魔術師による不妊化
+PRINTL 　[7] - 性器切断(不妊手術,去勢)
+PRINTL 　[8] - 男性器形成(性転換)
+PRINTL 　[9] - 女性器形成(性転換)
+PRINTL 　[10] - 中絶
+
+
+
+SELECTCASE RESULT
+	CASE 1
+		CALL 体外受精
+ENDSELECT
+
+@体外受精
+#DIM DYNAMIC 父親 = -1
+#DIM DYNAMIC 母親 = -1
+#DIM DYNAMIC 母体 = -1
+#DIM DYNAMIC 費用, 3
+
+DRAWLINE
+PRINTL □体外受精
+PRINTL 　採取した精子と卵子を人工的に受精させ、受精卵を母体に戻す不妊治療
+PRINTL □費用
+PRINTFORM 　{費用:0+費用:1+費用:2}
+PRINT_IMG "PASELI"
+PRINTL 
+PRINTL □注意事項
+PRINTL 　父親、母親、母体は陥落済みでなければならない
+PRINTL 　母親、母体は一週間ほどの休養が必要
+PRINTL 　父親から既に精子を採取している場合は陥落の必要は無い
+
+PRINTL □患者
+PRINTLC 　[1] - 父親を選ぶ
+PRINTLC 　[2] - 母親を選ぶ
+PRINTLC 　[3] - 母体を選ぶ
+PRINTL 
+PRINTL 　[4] - 既に採取してある精子を使用する
+
+IF 父親 == -1
+	SETCOLOR 120, 120, 120
+	PRINTFORMLC 父親:----
+ELSE
+	PRINTFORMLC 父親:%CSVNAME(父親)%
+ENDIF
+RESETCOLOR
+IF 母親 == -1
+	SETCOLOR 120, 120, 120
+	PRINTFORMLC 母親:----
+ELSE
+	PRINTFORMLC 母親:%NAME:母親%
+ENDIF
+RESETCOLOR
+IF 母体 == -1
+	SETCOLOR 120, 120, 120
+	PRINTFORMLC 母体:----
+ELSE
+	PRINTFORMLC 母体:%NAME:母体%
+ENDIF
+RESETCOLOR
+PRINTL 
+DRAWLINE
+PRINTPLAIN 　体外受精　
+PRINTL [0] - 中止する
+SIF 父親 >= 0 && 母親 >= 0 && 母体 >= 0
+	PRINTL [5] - この組み合わせで行う
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 1
+			DRAWLINE
+			PRINTL □父親を選んでください
+			REPEAT CHARANUM
+				IF 生殖機能♂
+					PRINTFORM 　[{COUNT, 2, RIGHT}] %NAME:COUNT% 
+					SELECTCASE SEX(COUNT)
+						CASE 1
+							PRINT ♂ 
+						CASE 2
+							PRINT ♀ 
+					ENDSELECT
+					SIF TALENT:小柄体型
+						PRINT 幼 
+				ENDIF
+			REND
+			DRAWLINE
+			PRINTPLAIN 　父親　
+			PRINTL [-1] 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE -1
+						RESTART
+					CASEELSE
+						SIF !生殖機能♂:RESULT
+							CONTINUE
+						費用:0 = 50000
+						;小柄体型だと費用がかさむ
+						SIF TALENT:RESULT:小柄体型
+							費用:0 += 30000
+						;父親はNOで入れる
+						父親 = NO:RESULT
+						RESTART
+				ENDSELECT
+			LOOP 1
+		CASE 2
+			DRAWLINE
+			PRINTL □母親を選んでください
+			REPEAT CHARANUM
+				IF 生殖機能♀ && !TALENT:COUNT:妊娠 && !TALENT:COUNT:妊娠確定
+					PRINTFORM 　[{COUNT, 2, RIGHT}] %NAME:COUNT% 
+					SELECTCASE SEX(COUNT)
+						CASE 1
+							PRINT ♂ 
+						CASE 2
+							PRINT ♀ 
+					ENDSELECT
+					SIF TALENT:小柄体型
+						PRINT 幼 
+				ENDIF
+			REND
+			DRAWLINE
+			PRINTPLAIN 　母親　
+			PRINTL [-1] 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE -1
+						RESTART
+					CASEELSE
+						SIF !生殖機能♀ || TALENT:COUNT:妊娠 || TALENT:COUNT:妊娠確定
+							CONTINUE
+						費用:1 = 50000
+						;小柄体型だと費用がかさむ
+						SIF TALENT:RESULT:小柄体型
+							費用:1 += 30000
+						母親 = RESULT
+						RESTART
+				ENDSELECT
+			LOOP 1
+		CASE 3
+			DRAWLINE
+			PRINTL □母体を選んでください
+			REPEAT CHARANUM
+				IF VAGINA(COUNT) && !TALENT:COUNT:妊娠 && !TALENT:COUNT:妊娠確定
+					PRINTFORM 　[{COUNT, 2, RIGHT}] %NAME:COUNT% 
+					SELECTCASE SEX(COUNT)
+						CASE 1
+							PRINT ♂ 
+						CASE 2
+							PRINT ♀ 
+					ENDSELECT
+					SIF TALENT:小柄体型
+						PRINT 幼 
+				ENDIF
+			REND
+			DRAWLINE
+			PRINTPLAIN 　母体　
+			PRINTL [-1] 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE -1
+						RESTART
+					CASEELSE
+						SIF !VAGINA(COUNT) || TALENT:COUNT:妊娠 || TALENT:COUNT:妊娠確定
+							CONTINUE
+						費用:2 = 50000
+						;小柄体型だと費用がかさむ
+						SIF TALENT:RESULT:小柄体型
+							費用:2 += 30000
+						;初産でも費用かさむ
+							費用:2 += 30000
+						母体 = RESULT
+						RESTART
+				ENDSELECT
+			LOOP 1
+		CASE 4
+			DRAWLINE
+			PRINTL □誰の精子を使いますか？
+			REPEAT 10000
+				SIF 採取精液:COUNT
+					PRINTFORML 　[{COUNT, 5, RIGHT}] %CSVNAME(COUNT)%
+			REND
+			DRAWLINE
+			PRINTPLAIN 　採取精子　
+			PRINT [-1] 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE -1
+						RESTART
+					CASEELSE
+						SIF !採取精液
+							CONTINUE
+						費用:0 = 100000
+						父親 = RESULT
+						RESTART
+				ENDSELECT
+			LOOP 1
+		CASE 5
+			DRAWLINE
+			IF MONEY < 費用:0+費用:1+費用:2
+				PRINTW 費用が足りません
+				RESTART
+			ENDIF
+			PRINTL 体外受精を始めます
+			IF 母親 != 母体
+				PRINTFORMW %CALLNAME:母親%と%CALLNAME:母体%は準備のため休養に入ります
+			ELSE
+				PRINTFORMW %CALLNAME:母親%は準備のため休養に入ります
+			ENDIF
+			CFLAG:母親:使用不可 = 15
+			CFLAG:母体:使用不可 = 15
+			CFLAG:母親:改造中 = 15
+			CFLAG:母体:改造中 = 15
+
+			;妊娠は確定する
+			PREG:母体:10 = DAY+60+RAND:21
+			PREG:母体:21 = 父親
+			PREG:母体:22 = NO:母親
+			TALENT:母体:妊娠確定 = 1
+			RETURN 1
+	ENDSELECT
+LOOP 1
+
+;体質関連の改造
+@BODY_MOD_2
+DRAWLINE
+
+PRINTL □施す改造を選んでください
+PRINTL 　[1] - 処女膜の再生
+PRINTL 　[2] - 性転換
+PRINTL 　[3] - 代謝の活性化/不活化
+PRINTL 　[4] - 性感帯
+
+;容姿関連の改造
+@BODY_MOD_3
+DRAWLINE
+
+PRINTL □施す改造を選んでください
+PRINTL 　[1] 
+
+;機械化
+@BODY_MOD_4
+
+
+;眷属化
+@BODY_MOD_5
+
+PRINTL □眷属化させる種族を選んでください
+PRINTL 　[1] - 精霊
+PRINTL 　[2] - 天使
+PRINTL 　[3] - 夢魔、悪魔
+PRINTL 　[4] - 神
+PRINTL 　[5] - 鳳凰
+PRINTL 　[6] - 魔術師
+PRINTL 　[7] - 人魚
+PRINTL 　[8] - 屍鬼
+PRINTL 　[9] - 吸血鬼
+
+
+
+
+
+
+

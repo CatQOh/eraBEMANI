@@ -11,7 +11,9 @@ SELECTCASE TIME
 		PRINTL (夜)
 ENDSELECT
 
-PRINTFORM 所持金:${MONEY} 難易度:
+PRINTFORM 所持金:{MONEY}
+PRINT_IMG "PASELI"
+PRINTL  難易度:
 SELECTCASE FLAG:難易度
 	CASE 1
 		PRINTL NORMAL
@@ -76,7 +78,10 @@ PRINTL
 PRINTPLAIN 　PRICE  FILTER　
 PRINT [20007] 価格フィルタ：
 IF FLAG:価格フィルタ != 0
-	PRINTFORM ${FLAG:価格フィルタ下限} ～ ${FLAG:価格フィルタ上限}
+	PRINTFORM {FLAG:価格フィルタ下限}
+	PRINT_IMG "PASELI"
+	PRINTFORM ～ {FLAG:価格フィルタ上限}
+	PRINT_IMG "PASELI"
 	SELECTCASE FLAG:価格フィルタ
 		CASE 1
 			PRINT (表示)
@@ -147,7 +152,7 @@ LOOP LOOPRES(10001, 10009)
 RESTART
 
 @CHARA_LIST, ARG
-#DIM LCOUNT
+#DIM DYNAMIC LCOUNT
 VARSET LOCAL, 0
 
 ;ARG
@@ -206,8 +211,9 @@ FOR LCOUNT, 0, 10000
 	IF ARG == 1
 		LOCALS = [{LCOUNT, 4}] %CSVNAME(LCOUNT)%
 	ELSE
-		LOCALS = [{LCOUNT, 4}] %CSVNAME(LCOUNT)% \(\${CSVCFLAG(LCOUNT,50)}\)
+		LOCALS = [{LCOUNT, 4}] %CSVNAME(LCOUNT)% ({CSVCFLAG(LCOUNT,50)}＄)
 	ENDIF
+	
 	;口上表示設定、かつ口上の存在するキャラは青文字表示
 	IF FLAG:口上表示
 		IF ARG == 0
@@ -227,7 +233,17 @@ FOR LCOUNT, 0, 10000
 			ENDCATCH
 		ENDIF
 	ENDIF
-	PRINTFORM %LOCALS , 38 , LEFT%
+	IF ARG == 1
+		PRINTFORM %LOCALS , 38 , LEFT%
+	ELSE
+		CALL PASELI, LOCALS
+		;3人目は空白埋めしない
+		IF LOCAL:1 != 2
+			REPEAT 38-STRLENS(LOCALS)
+				PRINT  
+			REND
+		ENDIF
+	ENDIF
 	RESETCOLOR
 	
 	LOCAL:1++
@@ -292,7 +308,7 @@ SELECTCASE FLAG:価格フィルタ
 	CASE 0
 		PRINTL オフ）
 	CASEELSE
-		PRINTFORML 【${FLAG:価格フィルタ下限} ～ ${FLAG:価格フィルタ上限}】のフィルタ）
+		CALL PASELIL, @"【{FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄】のフィルタ）"
 ENDSELECT
 
 PRINT [7] 価格フィルタの切り替え（現在
@@ -434,9 +450,9 @@ SELECTCASE ARG
 	CASE 6
 		DO
 			PRINTL 価格でフィルタをかけることができます
-			PRINTFORML [101] 下限を設定する（現在${FLAG:価格フィルタ下限}）
-			PRINTFORML [102] 上限を設定する（現在${FLAG:価格フィルタ上限}）
-			PRINTFORML 現在の設定 ${FLAG:価格フィルタ下限} ～ ${FLAG:価格フィルタ上限}
+			CALL PASELIL, @"[101] 下限を設定する(現在{FLAG:価格フィルタ下限}＄)"
+			CALL PASELIL, @"[102] 上限を設定する(現在{FLAG:価格フィルタ上限}＄)"
+			CALL PASELIL, @"現在の設定 {FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄"
 			DRAWLINE
 			PRINTL [100] 戻る
 			DO
