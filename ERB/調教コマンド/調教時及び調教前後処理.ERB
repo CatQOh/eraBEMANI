@@ -141,6 +141,12 @@ SIF VAGINA(MASTER)
 SIF PENIS(MASTER)
 	SETBIT STAIN:MASTER:ペニス, 1
 
+;媚薬の効果をリセット
+CFLAG:MASTER:媚薬 = 0
+CFLAG:媚薬 = 0
+SIF ASSI > 0
+	CFLAG:ASSI:媚薬 = 0
+
 ;コンドーム射精フラグをリセット
 TFLAG:使用済み避妊具 = 0
 
@@ -168,6 +174,64 @@ REPEAT VARSIZE("ITEM")
 	ENDIF
 REND
 
+;種族宇宙人の感度変化
+IF CSTR:種族 == "宇宙人"
+	IF VAGINA(TARGET)
+		SELECTCASE RAND:3
+			CASE 0
+				TALENT:Ｖ敏感 = 0
+				TALENT:Ｖ鈍感 = 1
+			CASE 1
+				TALENT:Ｖ敏感 = 0
+				TALENT:Ｖ鈍感 = 0
+			CASE 2
+				TALENT:Ｖ敏感 = 1
+				TALENT:Ｖ鈍感 = 0
+		ENDSELECT
+	ENDIF
+	SELECTCASE RAND:3
+		CASE 0
+			TALENT:Ｃ敏感 = 0
+			TALENT:Ｃ鈍感 = 1
+		CASE 1
+			TALENT:Ｃ敏感 = 0
+			TALENT:Ｃ鈍感 = 0
+		CASE 2
+			TALENT:Ｃ敏感 = 1
+			TALENT:Ｃ鈍感 = 0
+	ENDSELECT
+	SELECTCASE RAND:3
+		CASE 0
+			TALENT:Ａ敏感 = 0
+			TALENT:Ａ鈍感 = 1
+		CASE 1
+			TALENT:Ａ敏感 = 0
+			TALENT:Ａ鈍感 = 0
+		CASE 2
+			TALENT:Ａ敏感 = 1
+			TALENT:Ａ鈍感 = 0
+	ENDSELECT
+	SELECTCASE RAND:3
+		CASE 0
+			TALENT:Ｂ敏感 = 0
+			TALENT:Ｂ鈍感 = 1
+		CASE 1
+			TALENT:Ｂ敏感 = 0
+			TALENT:Ｂ鈍感 = 0
+		CASE 2
+			TALENT:Ｂ敏感 = 1
+			TALENT:Ｂ鈍感 = 0
+	ENDSELECT
+ENDIF
+
+;種族妖精ならランダムで消費アイテム取得
+IF CSTR:種族 == "妖精"
+	LOCAL = RAND:8+100
+	LOCAL:1 = RAND:3+1
+	PRINTFORML %CALLNAME:TARGET%の部屋にあった{LOCAL:1}個の%ITEMNAME:LOCAL%を回収しました
+	ITEM:LOCAL += LOCAL:1
+ENDIF
+
 SIF LOCAL == 0
 	CALL 実績解除, "そんな装備で大丈夫か？"
 
@@ -189,8 +253,38 @@ REPEAT 100
 	TFLAG:COUNT = 0
 REND
 
-;コマンド終了時に呼ばれる ここでは調教終了処理
+;コマンド終了時に呼ばれる ここでは調教終了処理と媚薬処理
 @EVENTUSERCOMEND
+IF !TEQUIP:媚薬 && CFLAG:媚薬 >= 10
+	SELECTCASE CSTR:MASTER:種族
+		CASE "獣人", "獣"
+			PRINTFORMW %CALLNAME:MASTER%のフェロモンで%CALLNAME:TARGET%は媚薬を飲まされたかのように発情してしまった……
+		CASEELSE
+			PRINTFORMW %CALLNAME:ASSI%のフェロモンで%CALLNAME:TARGET%は媚薬を飲まされたかのように発情してしまった……
+	ENDSELECT
+	TEQUIP:媚薬 = 1
+ENDIF
+IF !TEQUIP:MASTER:媚薬 && CFLAG:MASTER:媚薬 >= 10
+	SELECTCASE CSTR:種族
+		CASE "獣人", "獣"
+			PRINTFORMW %CALLNAME:TARGET%のフェロモンで%CALLNAME:MASTER%は媚薬を飲まされたかのように発情してしまった……
+		CASEELSE
+			PRINTFORMW %CALLNAME:ASSI%のフェロモンで%CALLNAME:MASTER%は媚薬を飲まされたかのように発情してしまった……
+	ENDSELECT
+	TEQUIP:MASTER:媚薬 = 1
+ENDIF
+IF ASSI > 0
+	IF !TEQUIP:ASSI:媚薬 && CFLAG:ASSI:媚薬 >= 10
+		SELECTCASE CSTR:種族
+			CASE "獣人", "獣"
+				PRINTFORMW %CALLNAME:TARGET%のフェロモンで%CALLNAME:ASSI%は媚薬を飲まされたかのように発情してしまった……
+			CASEELSE
+				PRINTFORMW %CALLNAME:MASTER%のフェロモンで%CALLNAME:ASSI%は媚薬を飲まされたかのように発情してしまった……
+		ENDSELECT
+	ENDIF
+	TEQUIP:ASSI:媚薬 = 1
+ENDIF
+
 ;体力切れ
 IF BASE:体力 <= 0
 	PRINTFORML （激しい調教で%CALLNAME:TARGET%はひどく消耗したようです　調教を終了します）
@@ -314,6 +408,26 @@ ENDIF
 #LATER
 CALL KOJO_TURNEND
 PRINTW 調教を終了しました
+
+;屋外プレイで雨、もしくはお風呂場プレイ中に終了した場合、人魚の体力気力を半減させる
+IF TEQUIP:お風呂場
+	IF CSTR:種族 == "人魚"
+		MAXBASE:体力 /= 2
+		MAXBASE:気力 /= 2
+		BASE:体力 /= 2
+		BASE:体力 /= 2
+	ENDIF
+ELSEIF TEQUIP:野外プレイ
+	SELECTCASE FLAG:天気
+		CASE 3, 4, 5
+			IF CSTR:種族 == "人魚"
+				MAXBASE:体力 /= 2
+				MAXBASE:気力 /= 2
+				BASE:体力 /= 2
+				BASE:体力 /= 2
+			ENDIF
+	ENDSELECT
+ENDIF
 
 ;調教後行為のチェック 気絶、流産時はスルー
 SIF !TFLAG:気絶 && !TFLAG:流産

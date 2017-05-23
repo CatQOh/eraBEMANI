@@ -162,6 +162,10 @@ ENDSELECT
 
 NOWEX:射精 = LOCAL
 
+;射精強度を表示
+SIF LOCAL >= 3
+	PRINTFORML 射精強度×{LOCAL}
+
 RETURN BASE:射精 / MAXBASE:射精
 
 ;実績:性転換、もしくはふたなり化しためうとまり花をオナホで射精させる
@@ -177,6 +181,7 @@ IF TEQUIP:オナホール && !TEQUIP:コンドーム && TEQUIP:搾精コンド�
 ENDIF
 
 @SAMEN_SHOOT_T, ARG, ARG:1, ARG:2 = -1
+#DIM 射精量
 ;ARG:0 = 射精先
 ;ARG:1 = 射精量
 ;ARG:2 = 射精されるキャラ
@@ -184,6 +189,8 @@ SIF ARG:2 == -1
 	ARG:2 = PLAYER
 SIF ARG:1 <= 0
 	RETURN 0
+
+射精量 = ARG:1
 
 ;ARG:0内訳
 ;1 = 主人の膣内に射精
@@ -207,6 +214,12 @@ SELECTCASE ARG
 			中出し人数:(NO:MASTER)++
 			中出され人数:MASTER:(NO:TARGET)++
 			CFLAG:主人への膣射経験++
+			;獣人、獣による催淫
+			SELECTCASE CSTR:種族
+				CASE "獣人", "獣"
+					CFLAG:MASTER:残数 += ((CFLAG:MASTER:媚薬%5)+射精量)/5
+					CFLAG:MASTER:媚薬 += 射精量
+			ENDSELECT
 		ENDIF
 	;奴隷→助手に中出し
 	CASE 2
@@ -218,6 +231,12 @@ SELECTCASE ARG
 			中出し人数:(NO:ASSI)++
 			中出され人数:ASSI:(NO:TARGET)++
 			CFLAG:助手への膣射経験++
+			;獣人、獣による催淫
+			SELECTCASE CSTR:種族
+				CASE "獣人", "獣"
+					CFLAG:ASSI:残数 += ((CFLAG:ASSI::媚薬%5)+射精量)/5
+					CFLAG:ASSI:媚薬 += 射精量
+			ENDSELECT
 		ENDIF
 	;フェラ
 	CASE 3
@@ -229,6 +248,12 @@ SELECTCASE ARG
 			ELSEIF PLAYER == ASSI
 				SETBIT TFLAG:口内射精, 1
 			ENDIF
+			;獣人、獣による催淫
+			SELECTCASE CSTR:種族
+				CASE "獣人", "獣"
+					CFLAG:PLAYER:残数 += ((CFLAG:PLAYER:媚薬%5)+射精量)/5
+					CFLAG:PLAYER:媚薬 += 射精量
+			ENDSELECT
 		ENDIF
 	;被挿入
 	CASE 4
@@ -243,12 +268,24 @@ SELECTCASE ARG
 		IF !TEQUIP:コンドーム && !TEQUIP:搾精コンドーム
 			SETBIT TFLAG:中出し, 5
 			CFLAG:主人への腸射経験++
+			;獣人、獣による催淫
+			SELECTCASE CSTR:種族
+				CASE "獣人", "獣"
+					CFLAG:MASTER:残数 += ((CFLAG:MASTER:媚薬%5)+射精量)/5
+					CFLAG:MASTER:媚薬 += 射精量
+			ENDSELECT
 		ENDIF
 	;奴隷→助手にアナル中出し
 	CASE 7
 		IF !TEQUIP:コンドーム && !TEQUIP:搾精コンドーム
 			SETBIT TFLAG:中出し, 3
 			CFLAG:助手への腸射経験++
+			;獣人、獣による催淫
+			SELECTCASE CSTR:種族
+				CASE "獣人", "獣"
+					CFLAG:ASSI:残数 += ((CFLAG:ASSI::媚薬%5)+射精量)/5
+					CFLAG:ASSI:媚薬 += 射精量
+			ENDSELECT
 		ENDIF
 	;その他
 	CASEELSE
@@ -387,6 +424,11 @@ IF TEQUIP:コンドーム || TEQUIP:搾精コンドーム
 	ENDIF
 ENDIF
 
+;天使による感度アップ
+SIF CSTR:種族 == "天使"
+	TFLAG:天使の感度ボーナス++
+
+
 ;-------------------------------------------------
 ;調教対象の噴乳チェック
 ;-------------------------------------------------
@@ -413,8 +455,8 @@ SIF TALENT:Ｂ敏感
 	TIMES LOCAL , 1.20
 
 ;媚薬
-SIF TEQUIP:媚薬
-	LOCAL *= 2
+SIF CFLAG:媚薬
+	LOCAL += LOCAL/10*CFLAG:媚薬
 
 ;調教者が幼児退行
 SIF TALENT:PLAYER:幼児／幼児退行
@@ -523,6 +565,13 @@ IF LOCAL
 	IF TEQUIP:搾乳器
 		TFLAG:搾乳量 += LOCAL
 		CFLAG:搾乳された経験++
+	ELSE
+		;獣人、獣による催淫
+		SELECTCASE CSTR:種族
+			CASE "獣人", "獣"
+				CFLAG:PLAYER:残数 += ((CFLAG:PLAYER:媚薬%5)+LOCAL)/5
+				CFLAG:PLAYER:媚薬 += LOCAL
+		ENDSELECT
 	ENDIF
 	
 	LOCAL = 0
