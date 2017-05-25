@@ -1,0 +1,210 @@
+﻿@FAMILIAR
+#DIM DYNAMIC 主 = -1
+#DIM DYNAMIC 対象 = -1
+#DIM DYNAMIC 費用
+#DIM DYNAMIC ネクロ兼用
+
+ネクロ兼用 = 0
+
+LOCAL = 0
+
+費用 = 100000
+
+IF 対象 >= 0
+	SIF TALENT:対象:小柄体型
+		費用 += 30000
+ENDIF
+
+IF 主 >= 0
+	SELECTCASE CSTR:主:種族
+		CASE "神", "天使", "悪魔"
+			費用 += 100000
+		CASE "精霊", "鳳凰", "魔術師"
+			費用 += 50000
+		CASE "ヴァンパイア"
+			費用 = 0
+	ENDSELECT
+ENDIF
+
+IF 主 >= 0 && 対象 >= 0
+	;相性が良いと割安、悪いと割高
+	費用 = 費用*(10000/RELATION:主:対象)/100
+	費用 = 費用*(10000/RELATION:対象:主)/100
+ENDIF
+
+DRAWLINE
+PRINTL □眷属の儀
+IF 主 >= 0 && 対象 >= 0
+	SELECTCASE CSTR:主:種族
+		CASE "人間", "人間(？)", "改造人間", "宇宙人", "不明"
+			PRINTFORML 　%NAME:主%により%NAME:対象%を屍鬼の一族に迎え入れる儀式
+		CASEELSE
+			PRINTFORML 　%NAME:主%により%NAME:対象%を%CSTR:主:種族%\@ TALENT:主:ネクロマンサー ? 、もしくは屍鬼 #  \@の一族に迎え入れる儀式
+			SIF TALENT:主:ネクロマンサー
+				ネクロ兼用 = 1
+	ENDSELECT
+ENDIF
+PRINTL □材料費
+CALL PASELIL, @"　{費用}＄"
+PRINTL □効果
+PRINTL 　眷属主は陥落済みの必要がある。眷属対象は陥落済み、もしくは眷属主に対する相性が一定以上でなければならない(主人は例外)
+PRINTL 　眷属の儀を執り行うには錬金術やエッセンスが必要なため、材料費が必要
+PRINTL 　眷属主と眷属対象は儀式の後、3日ほどの安静が必要
+PRINTL 　眷属主と眷属対象の売却額は下がる。眷属主は眷属の儀を行うたびに売却額が下がっていく
+PRINTL 　ただしヴァンパイアとしての眷属の儀は上記の限りではない
+PRINTL 
+PRINTLC 　[1] - 眷属の主を選ぶ
+PRINTLC [2] - 眷属化の対象を選ぶ
+PRINTL 
+
+IF 主 == -1
+	SETCOLOR 120, 120, 120
+	PRINTFORMLC 　主:----
+ELSE
+	IF !CFLAG:主:陥落 && 主 != 0
+		SETCOLOR 120, 120, 120
+		PRINTFORMLC 　主:%NAME:主% 未陥落
+	ELSE
+		PRINTFORMLC 　主:%NAME:主%
+	ENDIF
+ENDIF
+RESETCOLOR
+IF 対象 == -1
+	SETCOLOR 120, 120, 120
+	PRINTFORMLC 対象:----
+ELSE
+	IF !CFLAG:対象:陥落 && 対象 != 0 && RELATION:対象:(NO:主) < 120
+		SETCOLOR 120, 120, 120
+		PRINTFORMLC 対象:%NAME:対象% 未陥落
+	ELSE
+		PRINTFORMLC 対象:%NAME:対象%
+	ENDIF
+ENDIF
+RESETCOLOR
+PRINTL 
+DRAWLINE
+PRINTPLAIN 　眷属の儀　
+PRINTLC [0] - 戻る 
+IF 主 >= 0 && 対象 >= 0 && (CFLAG:主:陥落 || 主 == 0) && (CFLAG:対象:陥落 || 対象 == 0 || RELATION:対象:(NO:主) >= 120)
+	PRINT [3] - 儀式を執り行う
+	LOCAL = 1
+ENDIF
+PRINTL 
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			;人間、宇宙人、不明以外の種族、もしくはネクロマンサー
+			CALL PAGING, "NOR", "CSTR", "種族", "人間", "CSTR", "種族", "宇宙人", "CSTR", "種族", "人間(？)", "CSTR", "種族", "改造人間", "CFLAG", "種族", "99", "TALENT", "ネクロマンサー", "0"
+			SIF RESULT >= 0
+				主 = RESULT
+			RESTART
+			
+		CASE 2
+			;人間系か不明の種族
+			CALL PAGING, "OR", "CSTR", "種族", "人間", "CSTR", "種族", "人間(？)", "CSTR", "種族", "改造人間", "CFLAG", "種族", "99"
+			SIF RESULT >= 0
+				対象 = RESULT
+			RESTART
+		CASE 3
+			SIF !LOCAL
+				CONTINUE
+
+			IF 費用 > MONEY
+				PRINTW 費用が足りません
+				RESTART
+			ENDIF
+			IF ネクロ兼用
+				PRINTFORML %CALLNAME:主%は%CSTR:主:種族%と屍鬼の眷属化が可能です。どちらにしますか？
+				PRINTFORML [0] - %CSTR:主:種族%
+				PRINTL [1] - 屍鬼
+				DO
+					INPUT
+					ネクロ兼用 = RESULT
+				LOOP LOOPRES(0, 1)
+			ENDIF
+			CALL PASELI, @"{費用}＄"
+			PRINTFORML を使い、%NAME:主%と%NAME:対象%の眷属の儀を執り行います。本当によろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT
+				RESTART
+			MONEY -= 費用
+			PRINTW ………………
+			PRINTW …………
+			PRINTW ……
+			IF ネクロ兼用
+				PRINTFORMW 儀式は無事に終了し、%CALLNAME:対象%は屍鬼の眷属となりました
+				PRINTW 二人とも体力を消耗したようです。しばらく安静にしましょう
+				CSTR:対象:種族 = "ゾンビ"
+				CFLAG:対象:種族 = SELECT_RACE(対象)
+				;痛みに弱いがあれば消える
+				TALENT:対象:痛みに弱い = 0
+			ELSE
+				PRINTFORMW 儀式は無事に終了し、%CALLNAME:対象%は%CSTR:主:種族%の眷属となりました
+				PRINTW 二人とも体力を消耗したようです。しばらく安静にしましょう
+				CSTR:対象:種族 = %CSTR:主:種族%
+				CFLAG:対象:種族 = SELECT_RACE(対象)
+				;種族次第で素質が付いたりする
+				SELECTCASE CSTR:対象:種族
+					CASE "天使"
+						TALENT:対象:羽 = 1
+					CASE "悪魔"
+						;一段階頑丈になる
+						IF TALENT:対象:痛みに弱い
+							TALENT:対象:痛みに弱い = 0
+						ELSE
+							TALENT:対象:痛みに強い = 1
+						ENDIF
+					CASE "神"
+						TALENT:対象:謎の魅力 = 1
+					CASE "獣人", "獣"
+						TALENT:対象:動物耳 = 1
+						TALENT:対象:尻尾 = 1
+						;エロくなる
+						IF TALENT:対象:無関心
+							TALENT:対象:無関心 = 0
+						ELSE
+							TALENT:対象:好奇心 = 1
+						ENDIF
+					CASE "魔術師"
+						TALENT:対象:調合知識 = 1
+					CASE "人魚"
+						;一段階濡れやすくなる
+						IF TALENT:対象:濡れにくい
+							TALENT:対象:濡れにくい = 0
+						ELSE
+							TALENT:対象:濡れやすい = 1
+						ENDIF
+				ENDSELECT
+			ENDIF
+			CFLAG:主:使用不可 = 7
+			CFLAG:対象:使用不可 = 7
+
+			SIF TALENT:主:回復遅い
+				CFLAG:主:使用不可 += 4
+			SIF TALENT:対象:回復遅い
+				CFLAG:対象:使用不可 += 4
+
+			SIF TALENT:主:回復早い
+				CFLAG:主:使用不可 -= 2
+			SIF TALENT:対象:回復早い
+				CFLAG:対象:使用不可 -= 2
+			
+			CSTR:対象:眷属主 = %NAME:主%
+
+			CFLAG:主:眷属化した人数++
+			
+			RELATION:主:(NO:対象) += 20
+			RELATION:対象:(NO:主) += 20
+			
+			RETURN 1
+	ENDSELECT
+LOOP 1
+

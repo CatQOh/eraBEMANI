@@ -15,6 +15,12 @@ FLAG:曜日 = ZELLER(YEAR,MONTH,DAYS)
 ;祝日・記念日の設定
 CALL HOLIDAY
 
+;対象か助手が使用不可の場合は外す
+SIF TARGET >= 0 && CFLAG:使用不可
+	TARGET = -1
+SIF ASSI >= 0 && CFLAG:ASSI:使用不可
+	ASSI = -1
+	
 
 ;ゲーム内で表示されるショップ画面
 ;□XXXX年XX月XX日(曜日) X日目(昼夜) X周目 MODE:XXXXX
@@ -405,18 +411,20 @@ ENDIF
 ;無条件で表示
 LOCALS:2 = <button value='101' title='%\@ TIME == 0 ? 夜まで休憩します # 翌日まで休憩します \@%'>[101] - 休憩     </button>
 
+;無条件で表示
+LOCALS:3 = <button value='102' title='奴隷の種族を変更するための儀式を行います'>[102] - 眷属の儀 </button>
+
+
 ;STRATEGYモード、PFREEモードなら表示
 SELECTCASE FLAG:ゲームモード
 	CASE 1, 9
-		LOCALS:3 = <button value='102' title='収益要素を管理します'>[102] - 経営     </button>
+		LOCALS:4 = <button value='103' title='収益要素を管理します'>[103] - 経営     </button>
 		;パートナーに話しかける口上が実装されていれば表示
 		TRYCCALLFORM EXIST_STRATEGY_KOJO_K{FLAG:パートナー}
-			LOCALS:4 = <button value='103' title='%CSVCALLNAME(FLAG:パートナー)%に経営の相談をします'>[103] - 経営相談     </button>
+			LOCALS:5 = <button value='104' title='%CSVCALLNAME(FLAG:パートナー)%に経営の相談をします'>[104] - 経営相談     </button>
 		CATCH
 		ENDCATCH
 ENDSELECT
-
-
 
 HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4
 
@@ -603,14 +611,21 @@ SELECTCASE RESULT
 		;休憩フラグを立てる（ここは特別）
 		FLAG:休憩フラグ = 2
 		BEGIN TURNEND
-	;経営
+	;眷属の儀
 	CASE 102
+		CALL FAMILIAR
+		IF RESULT == 1
+			FLAG:休憩フラグ = 1
+			BEGIN TURNEND
+		ENDIF
+	;経営
+	CASE 103
 		SELECTCASE FLAG:ゲームモード
 			CASE 1, 9
 				CALL STRATEGY
 		ENDSELECT
 	;経営相談
-	CASE 103
+	CASE 104
 		SIF FLAG:口上表示
 			TRYCALLFORM TALK_PARTNER_K{FLAG:パートナー}
 	;能力表示
