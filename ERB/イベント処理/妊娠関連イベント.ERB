@@ -7,26 +7,25 @@ REPEAT CHARANUM
 	SIF COUNT == MASTER
 		CONTINUE
 	;主人の中田氏による妊娠判定
-	IF PREG:COUNT:0
+	SIF PREG:COUNT:0
 		CALL NAKADASHI_CHECK, COUNT, 0
-	ENDIF
 	;助手→奴隷への中田氏による妊娠判定
-	IF PREG:COUNT:1
+	SIF PREG:COUNT:1
 		CALL NAKADASHI_CHECK, COUNT, 1
-	ENDIF
 	;奴隷→助手への中田氏による妊娠判定
-	IF PREG:COUNT:2
+	SIF PREG:COUNT:2
 		CALL NAKADASHI_CHECK, COUNT, 2
-	ENDIF
 	;娼館やレンタル時に客に膣射された場合の妊娠判定
-	IF PREG:COUNT:3
+	SIF PREG:COUNT:3
 		CALL NAKADASHI_CHECK, COUNT, 3
-	ENDIF
+	;主人に中出ししてるかどうか
+	SIF PREG:COUNT:4
+		CALL NAKADASHI_CHECK_MASTER, COUNT
 REND
 
 ;妊娠確定時の処理
 REPEAT CHARANUM
-	IF !TALENT:COUNT:妊娠 && PREG:COUNT:20 && PREG:COUNT:10 == 0
+	IF !TALENT:COUNT:妊娠 && PREG:COUNT:21 && PREG:COUNT:10 == 0
 		;獣人と獣は早く産める
 		SELECTCASE CSTR:COUNT:種族
 			CASE "獣人", "獣"
@@ -37,85 +36,88 @@ REPEAT CHARANUM
 	ENDIF
 REND
 
-@NAKADASHI_CHECK, ARG:0, ARG:1
+@NAKADASHI_CHECK, 母親, 竿役
+#DIM DYNAMIC 母親
+#DIM DYNAMIC 竿役
+
 VARSET LOCAL, 0
 ;中出しされた精子量に応じて確率処理
-;ARG:0 = 現在妊娠判定してるキャラ番号
-;ARG:1 = 0,MASTERによる中出し 1,助手による中出し 2,奴隷による中出し 3,その他労役での中出し(現在未使用)
+;母親 = 現在妊娠判定してるキャラ番号
+;竿役 = 0,MASTERによる中出し 1,助手による中出し 2,奴隷による中出し 3,その他労役での中出し(現在未使用)
 
 ;LOCAL = 中出ししたヤツ
-IF ARG:1 == 0
+IF 竿役 == 0
 	LOCAL = MASTER
-ELSEIF ARG:1 == 1
+ELSEIF 竿役 == 1
 	LOCAL = ASSI
-ELSEIF ARG:1 == 2
-	LOCAL = TARGET
+ELSEIF 竿役 == 2
+	LOCAL = T母親ET
 ENDIF
 
 ;中だしされてないなら関数終了(一応)
-SIF PREG:ARG:(ARG:1) == 0
+SIF PREG:母親:竿役 == 0
 	RETURN 0
 
 ;対象がヴァギナ無いなら関数終了
 IF !VAGINA(TARGET)
-	PREG:ARG:(ARG:1) = 0
+	PREG:母親:竿役 = 0
 	RETURN 0
 ENDIF
 
 ;対象が助手もしくは奴隷でなければ不具合起こりそうなのでフラグリセットして終了
 IF COUNT != TARGET && COUNT != ASSI
-	PREG:ARG:(ARG:1) = 0
+	PREG:母親:竿役 = 0
 	RETURN 0
 ENDIF
 
 ;対象が素質[無機物]もしくは種族[機械]なら関数終了
-IF TALENT:ARG:無機物 || CSTR:ARG:種族 == "機械"
-	PREG:ARG:(ARG:1) = 0
+IF TALENT:母親:無機物 || CSTR:母親:種族 == "機械"
+	PREG:母親:竿役 = 0
 	RETURN 0
 ENDIF
 
 ;中出ししたヤツが生殖能力無ければ関数終了
 ;素質[無機物]
 IF TALENT:LOCAL:無機物
-	PREG:ARG:(ARG:1) = 0
+	PREG:母親:竿役 = 0
 	RETURN 0
 ENDIF
 
 ;種族[機械]
 IF CSTR:LOCAL:種族 == "機械"
-	PREG:ARG:(ARG:1) = 0
+	PREG:母親:竿役 = 0
 	RETURN 0
 ENDIF
 
 ;素質[ゾンビ]
 IF TALENT:LOCAL:ゾンビ
-	PREG:ARG:(ARG:1) = 0
+	PREG:母親:竿役 = 0
 	RETURN 0
 ENDIF
 
 ;妊娠が既に確定している場合は関数終了
-IF PREG:ARG:10
-	PREG:ARG:(ARG:1) = 0
+IF PREG:母親:10
+	PREG:母親:竿役 = 0
 	RETURN 0
 ENDIF
 
 ;妊娠中もしくは育児中は関数終了
-IF TALENT:ARG:妊娠 || TALENT:ARG:育児中
-	PREG:ARG:(ARG:1) = 0
+IF TALENT:母親:妊娠 || TALENT:母親:育児中
+	PREG:母親:竿役 = 0
 	RETURN 0
 ENDIF
 
 ;排卵剤の有無による定数設定
-LOCAL:1 = 3-(CFLAG:ARG:排卵誘発剤*2)
+LOCAL:1 = 3-(CFLAG:母親:排卵誘発剤*2)
 
 ;異種間交配だと妊娠確率が下がる 竿役が神だと下がらない
-SIF CSTR:LOCAL:種族 != "神" && CFLAG:LOCAL:種族 != CFLAG:ARG:種族
+SIF CSTR:LOCAL:種族 != "神" && CFLAG:LOCAL:種族 != CFLAG:母親:種族
 	LOCAL:1 *= 6
 
 ;射精量による妊娠判定
 ;小柄体型だと妊娠しにくい
 ;小人体型だともっと妊娠しにくい
-SELECTCASE PREG:ARG:(ARG:1)
+SELECTCASE PREG:母親:竿役
 	CASE IS >= 15
 		LOCAL:2 = 1
 	CASE IS >= 12
@@ -130,9 +132,9 @@ SELECTCASE PREG:ARG:(ARG:1)
 		LOCAL:2 = 6
 ENDSELECT
 
-SIF TALENT:ARG:小柄体型
+SIF TALENT:母親:小柄体型
 	LOCAL:2 += 2
-SIF TALENT:ARG:小人体型
+SIF TALENT:母親:小人体型
 	LOCAL:2 += 3
 
 ;実績「ルートに排卵誘発剤を使用し種族一致で15回以上中出しする」
@@ -142,7 +144,7 @@ IF NAME:TARGET == "ルート＠超ドー研"
 ENDIF
 
 ;獣人と獣は孕みやすい
-SELECTCASE CSTR:ARG:種族
+SELECTCASE CSTR:母親:種族
 	CASE "獣人", "獣"
 		SIF LOCAL:2 >= 2
 			LOCAL:2 /= 2
@@ -151,47 +153,161 @@ ENDSELECT
 ;LOCAL:1は最大18、最低1
 ;LOCAL:2は最大11、最低1（小柄体型と小人体型が両立するのか微妙なところだが）
 ;妊娠確率は一番低くて1/196 一番高いと100%妊娠する
-;排卵誘発剤使用、種族一致もしくは父親が神、膣内射精量15以上で対象が小柄体型小人体型共に無しなら100%孕む
+;排卵誘発剤使用、種族一致もしくは竿役が神、膣内射精量15以上で対象が小柄体型小人体型共に無しなら100%孕む
 
 IF RAND:(LOCAL:1*LOCAL:2) == 0
 	IF LOCAL == MASTER
-		PREG:ARG:20 = 1
+		PREG:母親:20 = 1
 	ELSEIF LOCAL == ASSI
-		PREG:ARG:20 = 2
+		PREG:母親:20 = 2
 	ELSEIF LOCAL == TARGET
-		PREG:ARG:20 = 3
+		PREG:母親:20 = 3
 	ELSE
-		PREG:ARG:20 = 4
+		PREG:母親:20 = 4
 	ENDIF
-	PREG:ARG:21 = NO:LOCAL
+	PREG:母親:21 = NO:LOCAL
 ENDIF
 
 ;判定を行った膣射のリセット
-PREG:ARG:(ARG:1) = 0
+PREG:母親:竿役 = 0
 
-;妊娠処理
-@GET_CHILD
-REPEAT CHARANUM
-	SIF PREG:COUNT:10 == 0
-		CONTINUE
-	;出産予定日より20日前で妊娠発覚
-	SIF !TALENT:COUNT:妊娠 && !TALENT:COUNT:育児中 && DAY >= PREG:COUNT:10-20
-		CALL GET_CHILD_MESSAGE, COUNT
-REND
+@NAKADASHI_CHECK_MASTER, 竿役
+#DIM DYNAMIC 竿役
+
+VARSET LOCAL, 0
+;中出しされた精子量に応じて確率処理
+;竿役 = 0,MASTERによる中出し 1,助手による中出し 2,奴隷による中出し 3,その他労役での中出し(現在未使用)
+
+;LOCAL = 中出ししたヤツ
+;IF 竿役 == 0
+;	LOCAL = MASTER
+;ELSEIF 竿役 == 1
+;	LOCAL = ASSI
+;ELSEIF 竿役 == 2
+;	LOCAL = TARGET
+;ENDIF
+
+;中出ししていないなら関数終了(一応)
+SIF PREG:竿役:4 == 0
+	RETURN 0
+
+;MASTERがヴァギナ無いなら関数終了
+IF !VAGINA(MASTER)
+	PREG:竿役:4 = 0
+	RETURN 0
+ENDIF
+
+;対象が助手もしくは奴隷でなければ不具合起こりそうなのでフラグリセットして終了
+;IF COUNT != TARGET && COUNT != ASSI
+;	PREG:竿役:4 = 0
+;	RETURN 0
+;ENDIF
+
+;竿役が素質[無機物]もしくは種族[機械]なら関数終了
+IF TALENT:竿役:無機物 || CSTR:竿役:種族 == "機械"
+	PREG:竿役:4 = 0
+	RETURN 0
+ENDIF
+
+;MASTERが生殖能力無ければ関数終了
+;素質[無機物]
+IF TALENT:MASTER:無機物
+	PREG:竿役:4 = 0
+	RETURN 0
+ENDIF
+
+;種族[機械]
+IF CSTR:MASTER:種族 == "機械"
+	PREG:竿役:4 = 0
+	RETURN 0
+ENDIF
+
+;素質[ゾンビ]
+IF TALENT:MASTER:ゾンビ
+	PREG:竿役:4 = 0
+	RETURN 0
+ENDIF
+
+;妊娠が既に確定している場合は関数終了
+IF PREG:MASTER:10
+	PREG:竿役:4 = 0
+	RETURN 0
+ENDIF
+
+;妊娠中もしくは育児中は関数終了
+IF TALENT:MASTER:妊娠 || TALENT:MASTER:育児中
+	PREG:竿役:4 = 0
+	RETURN 0
+ENDIF
+
+;排卵剤の有無による定数設定
+LOCAL:1 = 3-(CFLAG:MASTER:排卵誘発剤*2)
+
+;異種間交配だと妊娠確率が下がる 竿役が神だと下がらない
+SIF CSTR:竿役:種族 != "神" && CFLAG:竿役:種族 != CFLAG:MASTER:種族
+	LOCAL:1 *= 6
+
+;射精量による妊娠判定
+;小柄体型だと妊娠しにくい
+;小人体型だともっと妊娠しにくい
+SELECTCASE PREG:竿役:4
+	CASE IS >= 15
+		LOCAL:2 = 1
+	CASE IS >= 12
+		LOCAL:2 = 2
+	CASE IS >= 9
+		LOCAL:2 = 3
+	CASE IS >= 6
+		LOCAL:2 = 4
+	CASE IS >= 3
+		LOCAL:2 = 5
+	CASEELSE
+		LOCAL:2 = 6
+ENDSELECT
+
+SIF TALENT:MASTER:小柄体型
+	LOCAL:2 += 2
+SIF TALENT:MASTER:小人体型
+	LOCAL:2 += 3
+
+;獣人と獣は孕みやすい
+SELECTCASE CSTR:MASTER:種族
+	CASE "獣人", "獣"
+		SIF LOCAL:2 >= 2
+			LOCAL:2 /= 2
+ENDSELECT
+
+;LOCAL:1は最大18、最低1
+;LOCAL:2は最大11、最低1（小柄体型と小人体型が両立するのか微妙なところだが）
+;妊娠確率は一番低くて1/196 一番高いと100%妊娠する
+;排卵誘発剤使用、種族一致もしくは竿役が神、膣内射精量15以上で対象が小柄体型小人体型共に無しなら100%孕む
+
+SIF RAND:(LOCAL:1*LOCAL:2) == 0
+	PREG:MASTER:21 = NO:竿役
+
+;判定を行った膣射のリセット
+PREG:竿役:4 = 0
 
 @GET_CHILD_MESSAGE, ARG
 VARSET LOCAL, 0
 
-PRINTFORMW %CALLNAME:ARG%の様子がおかしい……
-IF PREG:ARG:20 == 4
-	PRINTFORMW %CALLNAME:ARG%は名も知らぬ男の子供を身篭ったようだ
-ELSEIF PREG:ARG:20 == 1
-	PRINTFORMW %CALLNAME:ARG%は%CALLNAME:MASTER%の子供を身篭ったようだ
+IF ARG == MASTER
+	PRINTW ここ最近つわりのようなものがひどい……
+	PRINTFORM %CALLNAME:MASTER%はどうやら%CSVCALLNAME:(PREG:ARG:21)%の子供を身籠ってしまったようだ
+	TALENT:MASTER:妊娠 = 1
+	CALL KOJO_MASTER_EVENT, 1
 ELSE
-	PRINTFORMW %CALLNAME:ARG%は%CSVCALLNAME(PREG:ARG:21)%の子供を身篭ったようだ
+	PRINTFORMW %CALLNAME:ARG%の様子がおかしい……
+	IF PREG:ARG:20 == 4
+		PRINTFORMW %CALLNAME:ARG%は名も知らぬ男の子供を身篭ったようだ
+	ELSEIF PREG:ARG:20 == 1
+		PRINTFORMW %CALLNAME:ARG%は%CALLNAME:MASTER%の子供を身篭ったようだ
+	ELSE
+		PRINTFORMW %CALLNAME:ARG%は%CSVCALLNAME(PREG:ARG:21)%の子供を身篭ったようだ
+	ENDIF
+	PRINTFORMW %NAME:ARG%は[妊娠]した
+	TALENT:ARG:妊娠 = 1
 ENDIF
-PRINTFORMW %NAME:ARG%は[妊娠]した
-TALENT:ARG:妊娠 = 1
 
 ;妊娠したら経営から外す
 IF CFLAG:ARG:配属
@@ -216,121 +332,141 @@ IF !TALENT:ARG:母乳体質 && SEX(ARG) == 2
 ENDIF
 
 ;ストレス値の処理
-LOCAL = 100
-;父親が主人
-IF PREG:ARG:21 == NO:MASTER
-	;恋慕もしくは親愛
-	SIF TALENT:ARG:恋慕 || TALENT:ARG:親愛
-		LOCAL -= 100
-	;淫乱もしくは娼婦
-	SIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
-		LOCAL -= 60
-	;服従もしくは隷属
-	SIF TALENT:ARG:服従 || TALENT:ARG:隷属
-		LOCAL -= 80
-;父親が奴隷または助手
-ELSEIF PREG:ARG:21 != -1
-	;恋慕もしくは親愛
-	SIF TALENT:ARG:恋慕 || TALENT:ARG:親愛
-		LOCAL -= 40
-	;淫乱もしくは娼婦
-	SIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
-		LOCAL -= 60
-	;服従もしくは隷属
-	SIF TALENT:ARG:服従 || TALENT:ARG:隷属
-		LOCAL -= 50
-;父親が顧客
-ELSEIF PREG:ARG:21 == -1
-	;恋慕もしくは親愛
-	SIF TALENT:ARG:恋慕 || TALENT:ARG:親愛
+IF ARG != MASTER
+	LOCAL = 100
+	;父親が主人
+	IF PREG:ARG:21 == NO:MASTER
+		;恋慕もしくは親愛
+		SIF TALENT:ARG:恋慕 || TALENT:ARG:親愛
+			LOCAL -= 100
+		;淫乱もしくは娼婦
+		SIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
+			LOCAL -= 60
+		;服従もしくは隷属
+		SIF TALENT:ARG:服従 || TALENT:ARG:隷属
+			LOCAL -= 80
+	;父親が奴隷または助手
+	ELSEIF PREG:ARG:21 != -1
+		;恋慕もしくは親愛
+		SIF TALENT:ARG:恋慕 || TALENT:ARG:親愛
+			LOCAL -= 40
+		;淫乱もしくは娼婦
+		SIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
+			LOCAL -= 60
+		;服従もしくは隷属
+		SIF TALENT:ARG:服従 || TALENT:ARG:隷属
+			LOCAL -= 50
+	;父親が顧客
+	ELSEIF PREG:ARG:21 == -1
+		;恋慕もしくは親愛
+		SIF TALENT:ARG:恋慕 || TALENT:ARG:親愛
+			LOCAL -= 10
+		;淫乱もしくは娼婦
+		SIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
+			LOCAL -= 60
+		;服従もしくは隷属
+		SIF TALENT:ARG:服従 || TALENT:ARG:隷属
+			LOCAL -= 50
+	ENDIF
+	;相性による変動
+	IF PREG:ARG:21 != -1
+		LOCAL *= 100
+		LOCAL /= RELATION:ARG:(PREG:ARG:21)
+	ENDIF
+
+	;その他素質による補正
+	;気丈
+	SIF TALENT:ARG:気丈
 		LOCAL -= 10
-	;淫乱もしくは娼婦
-	SIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
-		LOCAL -= 60
-	;服従もしくは隷属
-	SIF TALENT:ARG:服従 || TALENT:ARG:隷属
-		LOCAL -= 50
+	;無関心
+	SIF TALENT:ARG:無関心
+		LOCAL -= 5
+	;感情乏しい
+	SIF TALENT:ARG:感情乏しい
+		LOCAL -= 10
+	;楽観的
+	SIF TALENT:ARG:楽観的
+		LOCAL -= 5
+	;悲観的
+	SIF TALENT:ARG:悲観的
+		LOCAL += 5
+	;貞操観念
+	SIF TALENT:ARG:貞操観念
+		LOCAL += 10
+	;貞操無頓着
+	SIF TALENT:ARG:貞操無頓着
+		LOCAL -= 10
+
+	SIF LOCAL < 0
+		LOCAL = 0
+
+	CFLAG:ARG:ストレス値 += LOCAL
+
+	;ストレス値の累積が100を超えた場合
+	IF CFLAG:ARG:ストレス値 >= 100 && !TALENT:ARG:崩壊
+		PRINTFORMW %CALLNAME:ARG%は呆然とした面持ちをしている
+		PRINTFORMW %CALLNAME:ARG%の中で何かが壊れてしまったようだ
+		PRINTFORMW %CALLNAME:ARG%は[崩壊]してしまった
+		PRINTL 
+		IF TALENT:ARG:恋慕
+			PRINTFORMW %CALLNAME:ARG%は【恋慕】を失った
+			TALENT:ARG:恋慕 = 0
+		ENDIF
+		IF TALENT:ARG:淫乱
+			PRINTFORMW %CALLNAME:ARG%は【淫乱】を失った
+			TALENT:ARG:淫乱 = 0
+		ENDIF
+		IF TALENT:ARG:服従
+			PRINTFORMW %CALLNAME:ARG%は【服従】を失った
+			TALENT:ARG:服従 = 0
+		ENDIF
+		IF TALENT:ARG:親愛
+			PRINTFORMW %CALLNAME:ARG%は【親愛】を失った
+			TALENT:ARG:親愛 = 0
+		ENDIF
+		IF TALENT:ARG:娼婦
+			PRINTFORMW %CALLNAME:ARG%は【娼婦】を失った
+			TALENT:ARG:娼婦 = 0
+		ENDIF
+		IF TALENT:ARG:隷属
+			PRINTFORMW %CALLNAME:ARG%は【隷属】を失った
+			TALENT:ARG:隷属 = 0
+		ENDIF
+		CFLAG:ARG:陥落 = 0
+		TALENT:ARG:崩壊 = 1
+	ENDIF
 ENDIF
 
-;相性による変動
-IF PREG:ARG:21 != -1
-	LOCAL *= 100
-	LOCAL /= RELATION:ARG:(PREG:ARG:21)
+IF ARG == MASTER
+	LOCAL = -1
+	REPEAT CHARANUM
+		IF NO:COUNT == PREG:MASTER:21
+			LOCAL = COUNT
+			BREAK
+		ENDIF
+	REND
+	IF LOCAL >= 0
+		PRINTFORML %CALLNAME:COUNT%に妊娠したことを伝えますか？
+		PRINTL [0] - そっとしておこう
+		PRINTL [1] - 伝えよう
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					PRINTFORMW %CALLNAME:COUNT%には報告しないことにしました
+					PREG:MASTER:5 = 0
+					BREAK
+				CASE 1
+					PRINTFORMW %CALLNAME:COUNT%に、\@ SEX(COUNT) == 1 ? 彼 # 彼女 \@の子を身籠ったことを報告しました
+					CALL KOJO_MESSAGE_EVENT, 60, COUNT
+					PREG:MASTER:5 = 1
+					BREAK
+			ENDSELECT
+		LOOP 1
+	ENDIF
+ELSE
+	CALL KOJO_MESSAGE_EVENT, 11, ARG
 ENDIF
-
-;その他素質による補正
-;気丈
-SIF TALENT:ARG:気丈
-	LOCAL -= 10
-;無関心
-SIF TALENT:ARG:無関心
-	LOCAL -= 5
-;感情乏しい
-SIF TALENT:ARG:感情乏しい
-	LOCAL -= 10
-;楽観的
-SIF TALENT:ARG:楽観的
-	LOCAL -= 5
-;悲観的
-SIF TALENT:ARG:悲観的
-	LOCAL += 5
-;貞操観念
-SIF TALENT:ARG:貞操観念
-	LOCAL += 10
-;貞操無頓着
-SIF TALENT:ARG:貞操無頓着
-	LOCAL -= 10
-
-SIF LOCAL < 0
-	LOCAL = 0
-
-CFLAG:ARG:ストレス値 += LOCAL
-
-;ストレス値の累積が100を超えた場合
-IF CFLAG:ARG:ストレス値 >= 100 && !TALENT:ARG:崩壊
-	PRINTFORMW %CALLNAME:ARG%は呆然とした面持ちをしている
-	PRINTFORMW %CALLNAME:ARG%の中で何かが壊れてしまったようだ
-	PRINTFORMW %CALLNAME:ARG%は[崩壊]してしまった
-	PRINTL 
-	IF TALENT:ARG:恋慕
-		PRINTFORMW %CALLNAME:ARG%は【恋慕】を失った
-		TALENT:ARG:恋慕 = 0
-	ENDIF
-	IF TALENT:ARG:淫乱
-		PRINTFORMW %CALLNAME:ARG%は【淫乱】を失った
-		TALENT:ARG:淫乱 = 0
-	ENDIF
-	IF TALENT:ARG:服従
-		PRINTFORMW %CALLNAME:ARG%は【服従】を失った
-		TALENT:ARG:服従 = 0
-	ENDIF
-	IF TALENT:ARG:親愛
-		PRINTFORMW %CALLNAME:ARG%は【親愛】を失った
-		TALENT:ARG:親愛 = 0
-	ENDIF
-	IF TALENT:ARG:娼婦
-		PRINTFORMW %CALLNAME:ARG%は【娼婦】を失った
-		TALENT:ARG:娼婦 = 0
-	ENDIF
-	IF TALENT:ARG:隷属
-		PRINTFORMW %CALLNAME:ARG%は【隷属】を失った
-		TALENT:ARG:隷属 = 0
-	ENDIF
-	CFLAG:ARG:陥落 = 0
-	TALENT:ARG:崩壊 = 1
-ENDIF
-
-LOCAL = TARGET
-
-SIF ARG == ASSI
-	LOCAL:1 = ASSI
-TARGET = ARG
-
-CALL KOJO_MESSAGE_EVENT, 11
-
-TARGET = LOCAL
-SIF LOCAL:1
-	ASSI = LOCAL:1
 
 ;臨月到達
 @REACH_FULL_TERM, ARG
@@ -340,6 +476,78 @@ SIF TARGET == ARG
 	TARGET = -1
 SIF ASSI == ARG
 	ASSI = -1
+
+@PREG_READY
+#DIM LCOUNT
+
+;出産･育児室関連
+FOR LCOUNT, 0, CHARANUM
+	IF TALENT:LCOUNT:妊娠 == 1
+		;出産5日前からは臨月突入で調教不可に
+		IF (PREG:LCOUNT:10 - 5) == DAY:1
+			DRAWLINE
+			CALL REACH_FULL_TERM, LCOUNT
+			;主人の使用不可フラグは余分に設定する
+			SIF LCOUNT == MASTER
+				CFLAG:MASTER:使用不可 = 10000
+		;出産前日には育児室への訪問を問うイベント発生
+		ELSEIF (PREG:LCOUNT:10 - 1) == DAY:1
+			DRAWLINE
+			IF LCOUNT == MASTER
+				PRINTFORML %CALLNAME:LCOUNT%は出産が近づいている……
+				IF PREG:MASTER:5
+					LOCAL = -1
+					REPEAT CHARANUM
+						IF NO:COUNT == PREG:MASTER:21
+							LOCAL = COUNT
+							BREAK
+						ENDIF
+					REND
+					SIF LOCAL >= 0
+						CALL KOJO_MESSAGE_EVENT, 62, LOCAL
+				ENDIF
+			ELSE
+				PRINTFORML %CALLNAME:LCOUNT%は出産が近づいているようだ……
+				CALL CHILD_CARE_ROOM_SELECT, LCOUNT
+			ENDIF
+		;出産予定日なら出産
+		ELSEIF PREG:LCOUNT:10 <= DAY:1
+			DRAWLINE
+			CALL CHILD_BIRTH, LCOUNT
+		ENDIF
+	ELSEIF TALENT:LCOUNT:妊娠 == 2
+		;出産後翌日には育児室への訪問を問うイベント発生
+		IF (PREG:LCOUNT:10 + 1) == DAY:1 && !PREG:LCOUNT:6
+			DRAWLINE
+			PRINTFORML %CALLNAME:LCOUNT%の出産から一日経ちました
+			CALL CHILD_CARE_ROOM_SELECT, LCOUNT
+		;出産後3日には育児室への訪問を問うイベント発生
+		ELSEIF (PREG:LCOUNT:10 + 3) == DAY:1 && !PREG:LCOUNT:6
+			DRAWLINE
+			IF LCOUNT == MASTER
+				PRINTFORML %CALLNAME:LCOUNT%の出産から三日経ちました
+				IF PREG:MASTER:5
+					LOCAL = -1
+					REPEAT CHARANUM
+						IF NO:COUNT == PREG:MASTER:21
+							LOCAL = COUNT
+							BREAK
+						ENDIF
+					REND
+					SIF LOCAL >= 0
+						CALL KOJO_MESSAGE_EVENT, 62, LOCAL
+				ENDIF
+			ELSE
+				PRINTFORML %CALLNAME:LCOUNT%の出産から三日経ちました
+				CALL CHILD_CARE_ROOM_SELECT, LCOUNT
+			ENDIF
+		;出産後5日で親離れで調教可能に
+		ELSEIF (PREG:LCOUNT:10 + 5) == DAY:1
+			DRAWLINE
+			CALL DEPEARENT, LCOUNT
+		ENDIF
+	ENDIF
+NEXT
 
 ;出産
 @CHILD_BIRTH, ARG
@@ -355,51 +563,57 @@ ENDIF
 
 EXP:ARG:出産経験++
 
-LOCAL = TARGET
-TARGET = ARG
-
-CALL KOJO_MESSAGE_EVENT, 12
-
-TARGET = LOCAL
+IF ARG == MASTER
+	IF PREG:MASTER:5
+		LOCAL = -1
+		REPEAT CHARANUM
+			IF NO:COUNT == PREG:MASTER:21
+				LOCAL = COUNT
+				BREAK
+			ENDIF
+		REND
+		SIF LOCAL >= 0
+			CALL KOJO_MESSAGE_EVENT, 61, LOCAL
+	ENDIF
+ELSE
+	CALL KOJO_MESSAGE_EVENT, 12, ARG
+ENDIF
 
 ;妊娠を失う
 TALENT:ARG:妊娠 = 0
 
 ;崩壊持ちなら育児放棄してしまう
-IF TALENT:ARG:崩壊
+IF TALENT:ARG:崩壊 && ARG != MASTER
 	;育児放棄の際の赤子の処置
 	REPEAT CHARANUM
-		SIF !TALENT:COUNT:妊娠 && (TALENT:COUNT:育児中 || TALENT:COUNT:母性)
+		SIF TALENT:COUNT:育児中 == 2 || TALENT:COUNT:母性
 			LOCAL++
 	REND
 	IF LOCAL
-		PRINTFORMW 産まれた赤ん坊を他の奴隷に任せるか、里子に出すかを選択してください
-		PRINTL 
-		PRINTL 誰に任せますか？
-		REPEAT CHARANUM
-			;現在[妊娠]状態でなく、[育児中]か[母性]持ちのキャラを羅列
-			IF !TALENT:COUNT:妊娠 && (TALENT:COUNT:育児中 || TALENT:COUNT:母性)
-				PRINTFORM [{COUNT, 2}]%NAME:COUNT% 
-				SIF TALENT:COUNT:育児中
-					PRINTFORM 育児中 
-				SIF TALENT:COUNT:母性
-					PRINTFORM 母性あり 
-				PRINTL 
-			ENDIF
-		REND
-		PRINTFORML  [10000]里子に出す
+		DRAWLINE
+		PRINTW 産まれた赤ん坊を他の奴隷に任せるか、里子に出すかを選択してください
+		PRINTL □誰に任せますか？
+		CALL PAGING, "OR", "TALENT", "妊娠", "2" , "TALENT", "母性", "1"
 		DO
 			INPUT
-			IF !TALENT:RESULT:妊娠 && (TALENT:RESULT:育児中 || TALENT:RESULT:母性)
-				PRINTFORMW %CALLNAME:MASTER%は%CALLNAME:RESULT%に乳母をやってもらうことにしました
-				;育児期間を設定する
-				PREG:RESULT:10 = DAY+10
-				IF !TALENT:RESULT:育児中
-					TALENT:RESULT:育児中 = 1
-					SIF RESULT == TARGET
-						TARGET = -1
-					SIF RESULT == ASSI
-						TARGET = -1
+			IF TALENT:RESULT:妊娠 == 2 || TALENT:RESULT:母性
+				IF RESULT == MASTER
+					PRINTFORMW %CALLNAME:MASTER%は自分で%CALLNAME:ARG%の子供を育てることにしました
+					PREG:MASTER:10 = DAY:1+10
+					PREG:MASTER:6 = 1
+					CFLAG:MASTER:使用不可 = 10000
+				ELSE
+					PRINTFORMW %CALLNAME:MASTER%は%CALLNAME:RESULT%に乳母をやってもらうことにしました
+					;育児期間を設定する
+					PREG:RESULT:10 = DAY:1+10
+					PREG:RESULT:6 = 1
+					IF TALENT:RESULT:妊娠 != 2
+						TALENT:RESULT:妊娠 = 2
+						SIF RESULT == TARGET
+							TARGET = -1
+						SIF RESULT == ASSI
+							TARGET = -1
+					ENDIF
 				ENDIF
 				BREAK
 			ELSEIF RESULT == 10000
@@ -414,23 +628,25 @@ IF TALENT:ARG:崩壊
 	MAXBASE:ARG:体力 += 500
 	CALL CLEAR_FLAG, ARG
 	;母乳体質消える
-	SIF TALENT:ARG:母乳体質
+	SIF TALENT:ARG:母乳体質 && PREG:ARG:25
 		TALENT:ARG:母乳体質 = 0
 ;育児に入った場合
 ELSE
 	PRINTFORML %CALLNAME:ARG%は育児室で育児を始めた
-	REPEAT 10
-		PREG:ARG:COUNT = 0
-	REND
+;	REPEAT 10
+;		PREG:ARG:COUNT = 0
+;	REND
 	SIF ARG == TARGET
 		TARGET = -1
 	SIF ARG == ASSI
 		ASSI = -1
-	TALENT:ARG:育児中 = 1
+	TALENT:ARG:妊娠 = 2
 	;女で恋慕or親愛持ちで父親が主人
-	IF SEX(ARG) == 2 && (TALENT:ARG:恋慕 || TALENT:ARG:親愛) && PREG:ARG:21 == NO:MASTER && !TALENT:ARG:母性
-		PRINTFORMW どうやら%CALLNAME:ARG%は[母性]に目覚めたようだ
-		TALENT:ARG:母性 = 1
+	IF ARG != MASTER
+		IF SEX(ARG) == 2 && (TALENT:ARG:恋慕 || TALENT:ARG:親愛) && PREG:ARG:21 == NO:MASTER && !TALENT:ARG:母性
+			PRINTFORMW どうやら%CALLNAME:ARG%は[母性]に目覚めたようだ
+			TALENT:ARG:母性 = 1
+		ENDIF
 	ENDIF
 ENDIF
 
@@ -462,7 +678,7 @@ REPEAT CHARANUM
 	IF COUNT == MASTER
 		CONTINUE
 	;現在臨月か[育児中]のキャラを羅列
-	ELSEIF (TALENT:COUNT:妊娠 && (PREG:COUNT:10-5) <= DAY) || TALENT:COUNT:育児中
+	ELSEIF (TALENT:COUNT:妊娠 && (PREG:COUNT:10-5) <= DAY) || TALENT:COUNT:妊娠 == 2
 		PRINTFORML [{COUNT, 2}]%NAME:COUNT% 
 	ENDIF
 REND
@@ -490,21 +706,24 @@ RETURN 0
 ;親離れ
 @DEPEARENT, ARG
 PRINTFORMW %CALLNAME:ARG%の育てていた子供が親離れしました
-PRINTFORMW %CALLNAME:ARG%は再び調教可能になりました
+IF ARG == MASTER
+	PRINTFORMW %CALLNAME:ARG%が主人として復帰しました
+	CFLAG:MASTER:使用不可 = 0
+ELSE
+	PRINTFORMW %CALLNAME:ARG%は再び調教可能になりました
+ENDIF
 ;妊娠時に減った体力の最大値が回復
 SIF PREG:ARG:10 != 0
 	MAXBASE:ARG:体力 += 500
-TALENT:ARG:育児中 = 0
+TALENT:ARG:妊娠 = 0
 IF TALENT:ARG:母乳体質 && PREG:ARG:25 == 1
 	PRINTFORMW %CALLNAME:ARG%は母乳が出なくなりました
 	TALENT:ARG:母乳体質 = 0
 ENDIF
 CALL CLEAR_FLAG, ARG
 
-LOCAL = TARGET
-TARGET = ARG
-CALL KOJO_MESSAGE_EVENT, 14
-TARGET = LOCAL
+SIF ARG != MASTER
+	CALL KOJO_MESSAGE_EVENT, 14, ARG
 
 ;妊娠まわりのフラグをリセット
 @CLEAR_FLAG, ARG
