@@ -166,13 +166,6 @@ SIF TALENT:MASTER:ドラゴン使い && CSTR:MASTER:ドラゴン == ""
 SIF ASSI >= 0 && TALENT:ASSI:ドラゴン使い && CSTR:ASSI:ドラゴン == ""
 	CSTR:ASSI:ドラゴン = ドラゴン
 
-LOCAL = 0
-REPEAT VARSIZE("ITEM")
-	IF ITEM:COUNT
-		LOCAL = 1
-		BREAK
-	ENDIF
-REND
 
 ;種族宇宙人の感度変化
 IF CSTR:種族 == "宇宙人"
@@ -232,10 +225,46 @@ IF CSTR:種族 == "妖精"
 	ITEM:LOCAL += LOCAL:1
 ENDIF
 
+;鳳凰ならボーナス
+IF CSTR:種族 == "鳳凰" && FLAG:気温 > 0
+	LOCAL = FLAG:気温
+	SELECTCASE FLAG:天気
+		CASE 2
+			TIMES LOCAL , 0.50
+		CASE 3 TO 7
+			TIMES LOCAL , 0.20
+	ENDSELECT
+	;気温と天気で計算したボーナスを一部の初期PALAMに付与する
+	REPEAT VARSIZE("PALAM")
+		SELECTCASE PALAMNAME:COUNT
+			CASE "快Ａ", "快Ｂ", "潤滑", "恭順", "欲情", "屈服", "習得"
+				PALAM:COUNT += LOCAL
+			CASE "快Ｃ"
+				SELECTCASE SEX(TARGET)
+					CASE 1
+						SIF PENIS(TARGET)
+							PALAM:COUNT += LOCAL
+					CASE 2
+						PALAM:COUNT += LOCAL
+				ENDSELECT
+			CASE "快Ｖ"
+				SIF VAGINA(TARGET)
+					PALAM:COUNT += LOCAL
+		ENDSELECT
+	REND
+ENDIF
+
 ;オナホパフェフラグリセット
 オナホパフェ = 0
 
 ;実績:アイテムを何も持ってない状態で調教を始める
+LOCAL = 0
+REPEAT VARSIZE("ITEM")
+	IF ITEM:COUNT
+		LOCAL = 1
+		BREAK
+	ENDIF
+REND
 SIF LOCAL == 0
 	CALL 実績解除, "そんな装備で大丈夫か？"
 

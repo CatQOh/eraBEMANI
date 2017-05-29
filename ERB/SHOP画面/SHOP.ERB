@@ -20,340 +20,8 @@ SIF TARGET >= 0 && CFLAG:使用不可
 	TARGET = -1
 SIF ASSI >= 0 && CFLAG:ASSI:使用不可
 	ASSI = -1
-	
 
-;ゲーム内で表示されるショップ画面
-;□XXXX年XX月XX日(曜日) X日目(昼夜) X周目 MODE:XXXXX
-;　天気:XX 気温:XX.X℃ XXX(月齢.XXX) 
-;　所持金:$XXXX 昨日の所持金:$XXXX XXXX 変動価格
-;　難易度:XXXX
-;　総奴隷数:X/陥落済み:X
-;
-;□調教中
-;　No.X XXXXXX(♂♀)[ふたなり]【陥落素質】(依存度 ストレス値)
-;　従順:LVXX 欲望:LVXX 技巧:LVXX [BURST]
-;　Ｃ感:LVXX Ｖ感:LVXX Ａ感:LVXX Ｂ感:LVXX [部位陥落素質]
-;　苦痛刻印:LVX [XXX]　快楽刻印:LVX [XXX]　屈服刻印:LVX [XXX]　反発刻印:LVX [XXX]
-;　体力[********************************](XXXX/XXXX)[排卵誘発中]
-;
-;　保管済み母乳:Xml　保管済み精液:Xml
-;　主人:XXX
-;-------------------------------------------------------------------------------------
-;□ゲームセンターの状況
-;　営業中or休業中 [600]営業を開始するor休業する
-;　前日の収入:($XXX) 店長:XXXX
-;-------------------------------------------------------------------------------------
-;□娼館の状況
-;　営業中or休業中 [601]営業を開始するor休業する
-;　前日の収入:($XXX)
-;
-
-;日数表示
-DRAWLINE
-PRINT □
-IF YEAR > 0
-	PRINTFORM {YEAR}
-ELSE
-	PRINTFORM BC{ABS(YEAR)+1}
-ENDIF
-PRINTFORM 年{MONTH}月{DAYS}日(%DOW(FLAG:曜日)%) 
-
-SIF HOLIDAY != ""
-	PRINTFORM %HOLIDAY% 
-
-PRINTFORM {DAY}日目
-
-IF TIME == 0
-	PRINT (昼) 
-ELSE
-	PRINT (夜) 
-ENDIF
-
-SIF FLAG:周回数 > 1
-	PRINTFORM  {FLAG:周回数}周目
-SELECTCASE FLAG:ゲームモード
-	CASE 0
-		PRINT  MODE:STANDARD
-	CASE 1
-		PRINT  MODE:STRATEGY
-	CASE 7
-		PRINT  MODE:新婚生活
-	CASE 8
-		PRINT  MODE:段位認定 
-		CALL GRADE, FLAG:選択段位
-	CASE 9
-		PRINT  MODE:PREMIUM FREE
-ENDSELECT
-PRINTL
-
-PRINT 　天気:
-SELECTCASE FLAG:天気
-	CASE 1
-		PRINT 晴れ
-	CASE 2
-		PRINT 曇り
-	CASE 3
-		PRINT 雨
-	CASE 4
-		PRINT 大雨
-	CASE 5
-		PRINT 雷雨
-	CASE 6
-		PRINT 雪
-	CASE 7
-		PRINT 大雪
-ENDSELECT
-
-PRINTFORM  気温:{FLAG:気温/10}.{ABS(FLAG:気温)%10}℃ 
-
-SELECTCASE 月齢
-	CASE 0, 1
-		PRINT 新月
-	CASE 2
-		PRINT 繊月
-	CASE 3 TO 6
-		PRINT 三日月
-	CASE 7 TO 9
-		PRINT 上弦の月
-	CASE 10 TO 13
-		PRINT 十日夜
-	CASE 14
-		PRINT 小望月
-	CASE 15
-		PRINT 満月
-	CASE 16
-		PRINT 十六夜
-	CASE 17
-		PRINT 立待月
-	CASE 18
-		PRINT 居待月
-	CASE 19
-		PRINT 寝待月
-	CASE 20 TO 22
-		PRINT 二十日月
-	CASE 23 TO 25
-		PRINT 下弦の月
-	CASE 26 TO 29
-		PRINT 暁月
-	CASE 30
-		PRINT 三十日月
-ENDSELECT
-
-PRINTFORM (月齢.{月齢})
-PRINTL 
-
-;段位認定のときのみ表示を変える
-IF FLAG:ゲームモード != 8
-	;所持金表示
-	CALL PASELI, @"　所持金:{MONEY}＄"
-	SIF 借金 > 0
-		CALL PASELI, @" 借金:{借金}＄"
-	CALL PASELI, @" 昨日の所持金:{LASTMONEY}＄"
-	IF MONEY == LASTMONEY
-		PRINTL →0 KEEP
-	ELSEIF MONEY > LASTMONEY
-		PRINTFORML ↑{MONEY-LASTMONEY} UP!
-	ELSEIF MONEY < LASTMONEY
-		PRINTFORML ↓{LASTMONEY-MONEY} DOWN...
-	ENDIF
-
-	;新婚生活中は非表示
-	IF FLAG:ゲームモード != 7
-		;難易度表示
-		PRINT 　難易度:
-		SELECTCASE FLAG:難易度
-			CASE 1
-				PRINTL NORMAL
-			CASE 2
-				PRINTL HYPER
-			CASE 3
-				PRINTL ANOTHER
-		ENDSELECT
-
-		;奴隷人数表示
-		LOCAL = 0
-		;陥落人数計算
-		REPEAT CHARANUM
-			SIF CFLAG:COUNT:陥落
-				LOCAL++
-		REND
-		PRINTFORML 　総奴隷数:{CHARANUM-1}\/陥落済み:{LOCAL}
-	ENDIF
-ELSE
-	;所持金表示
-	CALL PASELI, @"　所持金:{MONEY}＄"
-	PRINTL 
-
-	;難易度表示
-	PRINT 難易度:
-	SELECTCASE FLAG:難易度
-		CASE 1
-			PRINT NORMAL 
-		CASE 2
-			PRINT HYPER 
-		CASE 3
-			PRINT ANOTHER 
-	ENDSELECT
-
-	;奴隷人数表示
-	LOCAL = 0
-	;売却可能人数計算
-	REPEAT CHARANUM
-		SIF CFLAG:COUNT:状態
-			LOCAL++
-	REND
-	PRINTFORML 総奴隷数:{CHARANUM-1}\/売却可能:{LOCAL}
-	
-	PRINT 　
-	CALL 段位ゲージ表示
-ENDIF
-
-;奴隷の状態
-IF TARGET > 0
-	PRINTL 
-	PRINTL □同棲中
-	IF FLAG:ゲームモード == 7
-		PRINTFORM 　%NAME:TARGET%
-	ELSE
-		PRINTFORM 　No.{TARGET} %NAME:TARGET%
-	ENDIF
-	IF TALENT:性転換済
-		SELECTCASE SEX(TARGET)
-			CASE 1
-				PRINT (元♀の♂)
-			CASE 2
-				PRINT (元♂の♀)
-		ENDSELECT
-	ELSE
-		SELECTCASE SEX(TARGET)
-			CASE 1
-				PRINT (♂)
-			CASE 2
-				PRINT (♀)
-		ENDSELECT
-	ENDIF
-	SIF TALENT:ふたなり
-		PRINT [ふたなり]
-	SIF TALENT:妊娠
-		PRINT 【妊娠中】
-	SIF TALENT:恋慕
-		PRINT 【恋慕】
-	SIF TALENT:淫乱
-		PRINT 【淫乱】
-	SIF TALENT:服従
-		PRINT 【服従】
-	SIF TALENT:親愛
-		PRINT 【親愛】
-	SIF TALENT:娼婦
-		PRINT 【娼婦】
-	SIF TALENT:隷属
-		PRINT 【隷属】
-	SIF TALENT:崩壊
-		PRINT 【崩壊】
-	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-		PRINTFORM (依存度:{CFLAG:依存度} ストレス値{CFLAG:ストレス値})
-	PRINTL 
-	
-	PRINTFORM 　従順:LV{ABL:従順, 2, LEFT} 欲望:LV{ABL:欲望, 2, LEFT} 技巧:LV{ABL:技巧, 2, LEFT}
-	SIF TALENT:リミットバースト
-		PRINTPLAIN  [BURST]
-	PRINTL 
-	
-	PRINTFORM 　Ｃ感:LV{ABL:Ｃ感覚, 2, LEFT} 
-	SIF SEX(TARGET) == 2 || TALENT:ふたなり
-		PRINTFORM Ｖ感:LV{ABL:Ｖ感覚, 2, LEFT} 
-	PRINTFORM Ａ感:LV{ABL:Ａ感覚, 2, LEFT} Ｂ感:LV{ABL:Ｂ感覚, 2, LEFT}
-	IF TALENT:自慰狂い
-		PRINTPLAIN [自慰狂い]
-	ELSEIF TALENT:セックス狂
-		PRINTPLAIN [セックス狂]
-	ELSEIF TALENT:尻穴狂い
-		PRINTPLAIN [尻穴狂い]
-	ELSEIF TALENT:淫乳
-		PRINTPLAIN [淫乳]
-	ENDIF
-	PRINTL 
-	
-	CALL SHOW_INFO_MARK, TARGET
-	PRINT 　体力
-	BAR BASE:体力, MAXBASE:体力, 32
-	PRINTFORML ({BASE:体力}/{MAXBASE:体力})
-ENDIF
-PRINTL 
-PRINTFORML 　保管済み母乳:{FLAG:保管済み母乳}ml　保管済み精液:{FLAG:保管済み精液}ml
-
-PRINTFORM 　主人:%NAME:MASTER%
-SELECTCASE SEX(MASTER)
-	CASE 1
-		PRINT (♂)
-	CASE 2
-		PRINT (♀)
-ENDSELECT
-SIF TALENT:MASTER:ふたなり
-	PRINT [ふたなり]
-
-IF ASSI >= 0
-	PRINTFORM 　助手:%NAME:ASSI%
-	SELECTCASE SEX(ASSI)
-		CASE 1
-			PRINT (♂)
-		CASE 2
-			PRINT (♀)
-	ENDSELECT
-	SIF TALENT:ASSI:ふたなり
-		PRINT [ふたなり]
-ENDIF
-PRINTL 
-
-DRAWLINE
-IF GC物件
-	LOCAL = 0
-	REPEAT CHARANUM
-		SIF CFLAG:COUNT:ゲーセン店長
-			LOCAL = COUNT
-	REND
-	PRINTL □ゲームセンターの状況
-	IF FLAG:ゲーセン営業中
-		PRINTPLAIN 　営業中 
-		PRINTL [600] - 一時休業する
-		CALL PASELIL, @"　前日の収入:{基本収入}＄ 店長:%NAME:LOCAL%"
-	ELSE
-		PRINTPLAIN 　休業中 
-		PRINTL [600] - 営業を開始する
-	ENDIF
-	DRAWLINE
-ENDIF
-
-IF ITEM:風俗店営業許可証
-	PRINTL □娼館の状況
-	IF FLAG:娼館営業中
-		PRINTPLAIN 　営業中 
-		PRINTL [601] - 一時休業する
-		CALL PASELIL, @"　前日の収入:{娼館前日の収入}＄"
-	ELSE
-		PRINTPLAIN 　休業中 
-		PRINTL [601] - 営業を開始する
-	ENDIF
-	DRAWLINE
-ENDIF
-
-LOCAL = 0
-REPEAT 10000
-	SIF !EXISTCSV(COUNT)
-		CONTINUE
-	IF (CSVCFLAG(COUNT, 0)/100) == MONTH && (CSVCFLAG(COUNT, 0)%100) == DAYS
-		PRINTFORML 　今日は%CSVNAME(COUNT)%の誕生日です
-		LOCAL++
-	ENDIF
-REND
-IF LOCAL
-	PRINTL 　ハッピーバースデー！
-	DRAWLINE
-ENDIF
-LOCAL = 0
-PRINTL □所持アイテム
-CALL ITEMPRINT
-DRAWLINE
+CALL SHOP_UI
 
 VARSET LOCAL, 0
 ;現助手＋元助手のキャラ数の確認
@@ -639,7 +307,7 @@ SELECTCASE RESULT
 	CASE 202
 		SELECTCASE FLAG:ゲームモード
 			CASE 7
-				VARSET PREG:TARGET, 0
+				;VARSET PREG:TARGET, 0
 				SWAPCHARA TARGET, MASTER
 				TALENT:MASTER:親愛 = 0
 				TALENT:親愛 = 1
@@ -737,4 +405,338 @@ SELECTCASE RESULT
 ENDSELECT
 
 RETURN 0
+
+@SHOP_UI
+;ゲーム内で表示されるショップ画面
+;□XXXX年XX月XX日(曜日) X日目(昼夜) X周目 MODE:XXXXX
+;　天気:XX 気温:XX.X℃ XXX(月齢.XXX) 
+;　所持金:$XXXX 昨日の所持金:$XXXX XXXX 変動価格
+;　難易度:XXXX
+;　総奴隷数:X/陥落済み:X
+;
+;□調教中
+;　No.X XXXXXX(♂♀)[ふたなり]【陥落素質】(依存度 ストレス値)
+;　従順:LVXX 欲望:LVXX 技巧:LVXX [BURST]
+;　Ｃ感:LVXX Ｖ感:LVXX Ａ感:LVXX Ｂ感:LVXX [部位陥落素質]
+;　苦痛刻印:LVX [XXX]　快楽刻印:LVX [XXX]　屈服刻印:LVX [XXX]　反発刻印:LVX [XXX]
+;　体力[********************************](XXXX/XXXX)[排卵誘発中]
+;
+;　保管済み母乳:Xml　保管済み精液:Xml
+;　主人:XXX
+;-------------------------------------------------------------------------------------
+;□ゲームセンターの状況
+;　営業中or休業中 [600]営業を開始するor休業する
+;　前日の収入:($XXX) 店長:XXXX
+;-------------------------------------------------------------------------------------
+;□娼館の状況
+;　営業中or休業中 [601]営業を開始するor休業する
+;　前日の収入:($XXX)
+;
+
+;日数表示
+DRAWLINE
+PRINT □
+IF YEAR > 0
+	PRINTFORM {YEAR}
+ELSE
+	PRINTFORM BC{ABS(YEAR)+1}
+ENDIF
+PRINTFORM 年{MONTH}月{DAYS}日(%DOW(FLAG:曜日)%) 
+
+SIF HOLIDAY != ""
+	PRINTFORM %HOLIDAY% 
+
+PRINTFORM {DAY}日目
+
+IF TIME == 0
+	PRINT (昼) 
+ELSE
+	PRINT (夜) 
+ENDIF
+
+SIF FLAG:周回数 > 1
+	PRINTFORM  {FLAG:周回数}周目
+SELECTCASE FLAG:ゲームモード
+	CASE 0
+		PRINT  MODE:STANDARD
+	CASE 1
+		PRINT  MODE:STRATEGY
+	CASE 7
+		PRINT  MODE:新婚生活
+	CASE 8
+		PRINT  MODE:段位認定 
+		CALL GRADE, FLAG:選択段位
+	CASE 9
+		PRINT  MODE:PREMIUM FREE
+ENDSELECT
+PRINTL 
+
+PRINT 　天気:
+SELECTCASE FLAG:天気
+	CASE 1
+		PRINT 晴れ
+	CASE 2
+		PRINT 曇り
+	CASE 3
+		PRINT 雨
+	CASE 4
+		PRINT 大雨
+	CASE 5
+		PRINT 雷雨
+	CASE 6
+		PRINT 雪
+	CASE 7
+		PRINT 大雪
+ENDSELECT
+
+PRINTFORM  気温:{FLAG:気温/10}.{ABS(FLAG:気温)%10}℃ 
+
+SELECTCASE 月齢
+	CASE 0, 1
+		PRINT 新月
+	CASE 2
+		PRINT 繊月
+	CASE 3 TO 6
+		PRINT 三日月
+	CASE 7 TO 9
+		PRINT 上弦の月
+	CASE 10 TO 13
+		PRINT 十日夜
+	CASE 14
+		PRINT 小望月
+	CASE 15
+		PRINT 満月
+	CASE 16
+		PRINT 十六夜
+	CASE 17
+		PRINT 立待月
+	CASE 18
+		PRINT 居待月
+	CASE 19
+		PRINT 寝待月
+	CASE 20 TO 22
+		PRINT 二十日月
+	CASE 23 TO 25
+		PRINT 下弦の月
+	CASE 26 TO 29
+		PRINT 暁月
+	CASE 30
+		PRINT 三十日月
+ENDSELECT
+
+PRINTFORM (月齢.{月齢})
+PRINTL 
+
+;段位認定のときのみ表示を変える
+IF FLAG:ゲームモード != 8
+	;所持金表示
+	CALL PASELI, @"　所持金:{MONEY}＄"
+	SIF 借金 > 0
+		CALL PASELI, @" 借金:{借金}＄"
+	CALL PASELI, @" 昨日の所持金:{LASTMONEY}＄"
+	IF MONEY == LASTMONEY
+		PRINTL →0 KEEP
+	ELSEIF MONEY > LASTMONEY
+		PRINTFORML ↑{MONEY-LASTMONEY} UP!
+	ELSEIF MONEY < LASTMONEY
+		PRINTFORML ↓{LASTMONEY-MONEY} DOWN...
+	ENDIF
+
+	;新婚生活中は非表示
+	IF FLAG:ゲームモード != 7
+		;難易度表示
+		PRINT 　難易度:
+		SELECTCASE FLAG:難易度
+			CASE 1
+				PRINTL NORMAL
+			CASE 2
+				PRINTL HYPER
+			CASE 3
+				PRINTL ANOTHER
+		ENDSELECT
+
+		;奴隷人数表示
+		LOCAL = 0
+		;陥落人数計算
+		REPEAT CHARANUM
+			SIF CFLAG:COUNT:陥落
+				LOCAL++
+		REND
+		PRINTFORML 　総奴隷数:{CHARANUM-1}\/陥落済み:{LOCAL}
+	ENDIF
+ELSE
+	;所持金表示
+	CALL PASELI, @"　所持金:{MONEY}＄"
+	PRINTL 
+
+	;難易度表示
+	PRINT 難易度:
+	SELECTCASE FLAG:難易度
+		CASE 1
+			PRINT NORMAL 
+		CASE 2
+			PRINT HYPER 
+		CASE 3
+			PRINT ANOTHER 
+	ENDSELECT
+
+	;奴隷人数表示
+	LOCAL = 0
+	;売却可能人数計算
+	REPEAT CHARANUM
+		SIF CFLAG:COUNT:状態
+			LOCAL++
+	REND
+	PRINTFORML 総奴隷数:{CHARANUM-1}\/売却可能:{LOCAL}
+	
+	PRINT 　
+	CALL 段位ゲージ表示
+ENDIF
+
+;奴隷の状態
+IF TARGET > 0
+	PRINTL 
+	PRINTL □同棲中
+	IF FLAG:ゲームモード == 7
+		PRINTFORM 　%NAME:TARGET%
+	ELSE
+		PRINTFORM 　No.{TARGET} %NAME:TARGET%
+	ENDIF
+	IF TALENT:性転換済
+		SELECTCASE SEX(TARGET)
+			CASE 1
+				PRINT (元♀の♂)
+			CASE 2
+				PRINT (元♂の♀)
+		ENDSELECT
+	ELSE
+		SELECTCASE SEX(TARGET)
+			CASE 1
+				PRINT (♂)
+			CASE 2
+				PRINT (♀)
+		ENDSELECT
+	ENDIF
+	SIF TALENT:ふたなり
+		PRINT [ふたなり]
+	SIF TALENT:妊娠
+		PRINT 【妊娠中】
+	SIF TALENT:恋慕
+		PRINT 【恋慕】
+	SIF TALENT:淫乱
+		PRINT 【淫乱】
+	SIF TALENT:服従
+		PRINT 【服従】
+	SIF TALENT:親愛
+		PRINT 【親愛】
+	SIF TALENT:娼婦
+		PRINT 【娼婦】
+	SIF TALENT:隷属
+		PRINT 【隷属】
+	SIF TALENT:崩壊
+		PRINT 【崩壊】
+	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+		PRINTFORM (依存度:{CFLAG:依存度} ストレス値{CFLAG:ストレス値})
+	PRINTL 
+	
+	PRINTFORM 　従順:LV{ABL:従順, 2, LEFT} 欲望:LV{ABL:欲望, 2, LEFT} 技巧:LV{ABL:技巧, 2, LEFT}
+	SIF TALENT:リミットバースト
+		PRINTPLAIN  [BURST]
+	PRINTL 
+	
+	PRINTFORM 　Ｃ感:LV{ABL:Ｃ感覚, 2, LEFT} 
+	SIF SEX(TARGET) == 2 || TALENT:ふたなり
+		PRINTFORM Ｖ感:LV{ABL:Ｖ感覚, 2, LEFT} 
+	PRINTFORM Ａ感:LV{ABL:Ａ感覚, 2, LEFT} Ｂ感:LV{ABL:Ｂ感覚, 2, LEFT}
+	IF TALENT:自慰狂い
+		PRINTPLAIN [自慰狂い]
+	ELSEIF TALENT:セックス狂
+		PRINTPLAIN [セックス狂]
+	ELSEIF TALENT:尻穴狂い
+		PRINTPLAIN [尻穴狂い]
+	ELSEIF TALENT:淫乳
+		PRINTPLAIN [淫乳]
+	ENDIF
+	PRINTL 
+	
+	CALL SHOW_INFO_MARK, TARGET
+	PRINT 　体力
+	BAR BASE:体力, MAXBASE:体力, 32
+	PRINTFORML ({BASE:体力}/{MAXBASE:体力})
+ENDIF
+PRINTL 
+PRINTFORML 　保管済み母乳:{FLAG:保管済み母乳}ml　保管済み精液:{FLAG:保管済み精液}ml
+
+PRINTFORM 　主人:%NAME:MASTER%
+SELECTCASE SEX(MASTER)
+	CASE 1
+		PRINT (♂)
+	CASE 2
+		PRINT (♀)
+ENDSELECT
+SIF TALENT:MASTER:ふたなり
+	PRINT [ふたなり]
+
+IF ASSI >= 0
+	PRINTFORM 　助手:%NAME:ASSI%
+	SELECTCASE SEX(ASSI)
+		CASE 1
+			PRINT (♂)
+		CASE 2
+			PRINT (♀)
+	ENDSELECT
+	SIF TALENT:ASSI:ふたなり
+		PRINT [ふたなり]
+ENDIF
+PRINTL 
+
+DRAWLINE
+IF GC物件
+	LOCAL = 0
+	REPEAT CHARANUM
+		SIF CFLAG:COUNT:ゲーセン店長
+			LOCAL = COUNT
+	REND
+	PRINTL □ゲームセンターの状況
+	IF FLAG:ゲーセン営業中
+		PRINTPLAIN 　営業中 
+		PRINTL [600] - 一時休業する
+		CALL PASELIL, @"　前日の収入:{基本収入}＄ 店長:%NAME:LOCAL%"
+	ELSE
+		PRINTPLAIN 　休業中 
+		PRINTL [600] - 営業を開始する
+	ENDIF
+	DRAWLINE
+ENDIF
+
+IF ITEM:風俗店営業許可証
+	PRINTL □娼館の状況
+	IF FLAG:娼館営業中
+		PRINTPLAIN 　営業中 
+		PRINTL [601] - 一時休業する
+		CALL PASELIL, @"　前日の収入:{娼館前日の収入}＄"
+	ELSE
+		PRINTPLAIN 　休業中 
+		PRINTL [601] - 営業を開始する
+	ENDIF
+	DRAWLINE
+ENDIF
+
+LOCAL = 0
+REPEAT 10000
+	SIF !EXISTCSV(COUNT)
+		CONTINUE
+	IF (CSVCFLAG(COUNT, 0)/100) == MONTH && (CSVCFLAG(COUNT, 0)%100) == DAYS
+		PRINTFORML 　今日は%CSVNAME(COUNT)%の誕生日です
+		LOCAL++
+	ENDIF
+REND
+IF LOCAL
+	PRINTL 　ハッピーバースデー！
+	DRAWLINE
+ENDIF
+LOCAL = 0
+PRINTL □所持アイテム
+CALL ITEMPRINT
+DRAWLINE
 
