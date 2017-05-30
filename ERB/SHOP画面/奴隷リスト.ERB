@@ -584,282 +584,87 @@ LOOP LOOPRES(0, 1, 2, 3, 4, 5, 6, 7)
 RETURN 0
 
 ;引数の条件に一致するキャラをページ形式で表示する
-@PAGING, 論理演算, キャラ変数, 変数名, 条件, キャラ変数:1, 変数名:1, 条件:1, キャラ変数:2, 変数名:2, 条件:2, キャラ変数:3, 変数名:3, 条件:3, キャラ変数:4, 変数名:4, 条件:4, キャラ変数:5, 変数名:5, 条件:5
+@PAGING, 表示, 追加情報, ページ名, 終了表記
+#DIM ページ数
+#DIM 表示数
+#DIM 飛ばした人数
+#DIM 未表示キャラ
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC ページ数
-#DIM DYNAMIC 表示数
-#DIM DYNAMIC 飛ばした人数
-#DIM DYNAMIC 条件チェック
-#DIM DYNAMIC キャラ
-#DIM DYNAMIC 未表示キャラ
-#DIMS DYNAMIC キャラ変数, 6
-#DIMS DYNAMIC 変数名, 6
-#DIMS DYNAMIC 条件, 6
-#DIM DYNAMIC 条件ID
-#DIMS DYNAMIC 論理演算
+#DIM DYNAMIC 表示
+#DIMS DYNAMIC 追加情報
+#DIMS DYNAMIC ページ名
+#DIMS DYNAMIC 終了表記
 
-VARSET LOCAL, 0
-飛ばした人数 = 0
-表示数 = 0
-未表示キャラ = 0
+LCOUNT = PAGING
 
-FOR キャラ, 0, CHARANUM
-	;AND = 条件全てに一致してれば表示
-	;OR = 条件どれかに一致してれば表示
-	;NOR = 条件全てに一致してなければ表示
-	;NAND = 条件どれかに一致してなければ表示
-	SELECTCASE 論理演算
-		CASE "AND", "NOR"
-			条件チェック = 1
-		CASE "OR", "NAND"
-			条件チェック = 0
-	ENDSELECT
-	FOR 条件ID, 0, 5
-		SIF キャラ変数:条件ID == ""
-			BREAK
-		
-		SELECTCASE キャラ変数:条件ID
-			CASE "TALENT"
-				FOR LCOUNT, 0, VARSIZE("TALENT")
-					IF TALENTNAME:LCOUNT == 変数名:条件ID
-						SELECTCASE 論理演算
-							CASE "AND"
-								SIF TALENT:キャラ:LCOUNT != TOINT(条件:条件ID)
-									条件チェック = 0
-							CASE "OR"
-								SIF TALENT:キャラ:LCOUNT == TOINT(条件:条件ID)
-									条件チェック = 1
-							CASE "NOR"
-								SIF TALENT:キャラ:LCOUNT == TOINT(条件:条件ID)
-									条件チェック = 0
-							CASE "NAND"
-								SIF TALENT:キャラ:LCOUNT != TOINT(条件:条件ID)
-									条件チェック = 1
-						ENDSELECT
-					ENDIF
-				NEXT
-			CASE "CFLAG"
-				FOR LCOUNT, 0, VARSIZE("CFLAG")
-					IF CFLAGNAME:LCOUNT == 変数名:条件ID
-						SELECTCASE 論理演算
-							CASE "AND"
-								SIF CFLAG:キャラ:LCOUNT != TOINT(条件:条件ID)
-									条件チェック = 0
-							CASE "OR"
-								SIF CFLAG:キャラ:LCOUNT == TOINT(条件:条件ID)
-									条件チェック = 1
-							CASE "NOR"
-								SIF CFLAG:キャラ:LCOUNT == TOINT(条件:条件ID)
-									条件チェック = 0
-							CASE "NAND"
-								SIF CFLAG:キャラ:LCOUNT != TOINT(条件:条件ID)
-									条件チェック = 1
-						ENDSELECT
-					ENDIF
-				NEXT
-			CASE "ABL"
-				FOR LCOUNT, 0, VARSIZE("ABL")
-					IF ABLNAME:LCOUNT == 変数名:条件ID
-						;条件が正の数ならそれ以上が条件、負の数ならそれ以下が条件
-						SELECTCASE 論理演算
-							CASE "AND"
-								SELECTCASE SIGN(TOINT(条件:条件ID))
-									CASE 0, 1
-										SIF ABL:キャラ:LCOUNT < TOINT(条件:条件ID)
-											条件チェック = 0
-									CASE -1
-										SIF ABL:キャラ:LCOUNT > ABS(TOINT(条件:条件ID))
-											条件チェック = 0
-								ENDSELECT
-							CASE "OR"
-								SELECTCASE SIGN(TOINT(条件:条件ID))
-									CASE 0, 1
-										SIF ABL:キャラ:LCOUNT >= TOINT(条件:条件ID)
-											条件チェック = 1
-									CASE -1
-										SIF ABL:キャラ:LCOUNT <= ABS(TOINT(条件:条件ID))
-											条件チェック = 1
-								ENDSELECT
-							CASE "NOR"
-								SELECTCASE SIGN(TOINT(条件:条件ID))
-									CASE 0, 1
-										SIF ABL:キャラ:LCOUNT >= TOINT(条件:条件ID)
-											条件チェック = 0
-									CASE -1
-										SIF ABL:キャラ:LCOUNT <= ABS(TOINT(条件:条件ID))
-											条件チェック = 0
-								ENDSELECT
-							CASE "NAND"
-								SELECTCASE SIGN(TOINT(条件:条件ID))
-									CASE 0, 1
-										SIF ABL:キャラ:LCOUNT < TOINT(条件:条件ID)
-											条件チェック = 1
-									CASE -1
-										SIF ABL:キャラ:LCOUNT > ABS(TOINT(条件:条件ID))
-											条件チェック = 1
-								ENDSELECT
-						ENDSELECT
-					ENDIF
-				NEXT
-			CASE "EXP"
-				FOR LCOUNT, 0, VARSIZE("EXP")
-					IF EXPNAME:LCOUNT == 変数名:条件ID
-						;条件が正の数ならそれ以上が条件、負の数ならそれ以下が条件
-						SELECTCASE 論理演算
-							CASE "AND"
-								SELECTCASE SIGN(TOINT(条件:条件ID))
-									CASE 0, 1
-										SIF EXP:キャラ:LCOUNT < TOINT(条件:条件ID)
-											条件チェック = 0
-									CASE -1
-										SIF EXP:キャラ:LCOUNT > ABS(TOINT(条件:条件ID))
-											条件チェック = 0
-								ENDSELECT
-							CASE "OR"
-								SELECTCASE SIGN(TOINT(条件:条件ID))
-									CASE 0, 1
-										SIF EXP:キャラ:LCOUNT >= TOINT(条件:条件ID)
-											条件チェック = 1
-									CASE -1
-										SIF EXP:キャラ:LCOUNT <= ABS(TOINT(条件:条件ID))
-											条件チェック = 1
-								ENDSELECT
-							CASE "NOR"
-								SELECTCASE SIGN(TOINT(条件:条件ID))
-									CASE 0, 1
-										SIF EXP:キャラ:LCOUNT >= TOINT(条件:条件ID)
-											条件チェック = 0
-									CASE -1
-										SIF EXP:キャラ:LCOUNT <= ABS(TOINT(条件:条件ID))
-											条件チェック = 0
-								ENDSELECT
-							CASE "NAND"
-								SELECTCASE SIGN(TOINT(条件:条件ID))
-									CASE 0, 1
-										SIF EXP:キャラ:LCOUNT < TOINT(条件:条件ID)
-											条件チェック = 1
-									CASE -1
-										SIF EXP:キャラ:LCOUNT > ABS(TOINT(条件:条件ID))
-											条件チェック = 1
-								ENDSELECT
-						ENDSELECT
-					ENDIF
-				NEXT
-			CASE "MARK"
-				FOR LCOUNT, 0, VARSIZE("MARK")
-					IF MARKNAME:LCOUNT == 変数名:条件ID
-						;条件が正の数ならそれ以上が条件、負の数ならそれ以下が条件
-						SELECTCASE 論理演算
-							CASE "AND"
-								SELECTCASE SIGN(TOINT(条件:条件ID))
-									CASE 0, 1
-										SIF MARK:キャラ:LCOUNT < TOINT(条件:条件ID)
-											条件チェック = 0
-									CASE -1
-										SIF MARK:キャラ:LCOUNT > ABS(TOINT(条件:条件ID))
-											条件チェック = 0
-								ENDSELECT
-							CASE "OR"
-								SELECTCASE SIGN(TOINT(条件:条件ID))
-									CASE 0, 1
-										SIF MARK:キャラ:LCOUNT >= TOINT(条件:条件ID)
-											条件チェック = 1
-									CASE -1
-										SIF MARK:キャラ:LCOUNT <= ABS(TOINT(条件:条件ID))
-											条件チェック = 1
-								ENDSELECT
-							CASE "NOR"
-								SELECTCASE SIGN(TOINT(条件:条件ID))
-									CASE 0, 1
-										SIF MARK:キャラ:LCOUNT >= TOINT(条件:条件ID)
-											条件チェック = 0
-									CASE -1
-										SIF MARK:キャラ:LCOUNT <= ABS(TOINT(条件:条件ID))
-											条件チェック = 0
-								ENDSELECT
-							CASE "NAND"
-								SELECTCASE SIGN(TOINT(条件:条件ID))
-									CASE 0, 1
-										SIF MARK:キャラ:LCOUNT < TOINT(条件:条件ID)
-											条件チェック = 1
-									CASE -1
-										SIF MARK:キャラ:LCOUNT > ABS(TOINT(条件:条件ID))
-											条件チェック = 1
-								ENDSELECT
-						ENDSELECT
-					ENDIF
-				NEXT
-			CASE "CSTR"
-				FOR LCOUNT, 0, VARSIZE("CSTR")
-					IF CSTRNAME:LCOUNT == 変数名:条件ID
-						SELECTCASE 論理演算
-							CASE "AND"
-								SIF CSTR:キャラ:LCOUNT != 条件:条件ID
-									条件チェック = 0
-							CASE "OR"
-								SIF CSTR:キャラ:LCOUNT == 条件:条件ID
-									条件チェック = 1
-							CASE "NOR"
-								SIF CSTR:キャラ:LCOUNT == 条件:条件ID
-									条件チェック = 0
-							CASE "NAND"
-								SIF CSTR:キャラ:LCOUNT != 条件:条件ID
-									条件チェック = 1
-						ENDSELECT
-					ENDIF
-				NEXT
-		ENDSELECT
-	NEXT
-	;条件通ったら表示処理 20人づつ
-	IF 条件チェック
-		;2ページ目以降はページ数×20まで表示を飛ばす
-		IF 飛ばした人数 < ページ数*20
-			飛ばした人数++
-			CONTINUE
-		ENDIF
-		;20人表示したら未表示キャラが居るフラグ立ててページ終わり
-		IF 表示数 == 20
-			未表示キャラ = 1
-			BREAK
-		ENDIF
-		PRINTFORM 　[{キャラ, 2, RIGHT}] - %NAME:キャラ, 26, LEFT% \@ SEX(キャラ) == 1 ? ♂ # ♀ \@ 
-		FOR 条件ID, 0, 5
-			IF キャラ変数:条件ID == "CSTR" && 変数名:条件ID == "種族"
-				PRINTFORM %CSTR:キャラ:種族% 
-				BREAK
-			ENDIF
-		NEXT
-		PRINTL 
-		LOCAL:キャラ = 1
+IF LCOUNT == 0
+	VARSET LOCAL, 0
+	飛ばした人数 = 0
+	表示数 = 0
+	未表示キャラ = 0
+ENDIF
+
+IF 表示
+	;2ページ目以降はページ数×20まで表示を飛ばす
+	IF 飛ばした人数 < ページ数*20
+		飛ばした人数++
+		RETURN 0
+	ENDIF
+
+	;20人表示したら未表示キャラが居るフラグ立ててページ終わり
+	IF 表示数 == 20
+		未表示キャラ = 1
+	ELSE
+		PRINTFORML 　[{LCOUNT, 2, RIGHT}] - %NAME:LCOUNT, 26, LEFT% \@ SEX(LCOUNT) == 1 ? ♂ # ♀ \@ %追加情報%
+		LOCAL:LCOUNT = 1
 		表示数++
 	ENDIF
-NEXT
+ENDIF
 
-DRAWLINE
-PRINTPLAINFORM 　PAGE.{ページ数+1}　
-SIF ページ数 > 0
-	PRINTLC [999]前ページ
-PRINTLC [1000] やめる　
-;表示できるキャラがまだ居れば次ページ
-SIF 未表示キャラ
-	PRINTLC [1001]次ページ
-PRINTL 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 999
-			SIF ページ数 > 0
-				ページ数--
-		CASE 1000
-			RETURN -1
-		CASE 1001
-			;表示できるキャラがまだ居れば次ページ
-			SIF 未表示キャラ
-				ページ数++
-		CASEELSE
-			SIF !LOCAL:RESULT
-				CONTINUE
-			RETURN RESULT
-	ENDSELECT
-LOOP 1
+;表示数が20人になるか全キャラ表示したら入力受け付け
+IF 表示数 == 20 || LCOUNT == CHARANUM-1
+	DRAWLINE
+	IF ページ名 == ""
+		PRINTPLAINFORM 　PAGE.{ページ数+1}　
+	ELSE
+		PRINTPLAINFORM 　%ページ名%　
+	ENDIF
+	SIF ページ数 > 0
+		PRINTLC [999]前ページ
+	IF 終了表記 == ""
+		PRINTLC [1000] 戻る　
+	ELSE
+		PRINTFORMLC [1000] %終了表記%　
+	ENDIF
+	;表示できるキャラがまだ居れば次ページ
+	SIF 未表示キャラ
+		PRINTLC [1001]次ページ
+	PRINTL 
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 999
+				SIF ページ数 > 0
+					ページ数--
+				PAGING = 0
+				RETURN 0
+			CASE 1000
+				PAGING = CHARANUM
+				ページ数 = 0
+				RETURN -1
+			CASE 1001
+				;表示できるキャラがまだ居れば次ページ
+				SIF 未表示キャラ
+					ページ数++
+				PAGING = 0
+				RETURN 0
+			CASEELSE
+				SIF !LOCAL:RESULT
+					CONTINUE
+				PAGING = CHARANUM
+				ページ数 = 0
+				RETURN RESULT
+		ENDSELECT
+	LOOP 1
+ENDIF
 

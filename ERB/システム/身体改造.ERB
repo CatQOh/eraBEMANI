@@ -48,9 +48,14 @@ SELECTCASE RESULT
 		CALL 薬物投与
 	CASE 3
 		CALL 魔術師不妊治療
+	CASE 4
+		CALL 卵管結紮
+	CASE 5
+		CALL 精管結紮
 ENDSELECT
 
 @体外受精
+#DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 父親 = -1
 #DIM DYNAMIC 母親 = -1
 #DIM DYNAMIC 母体 = -1
@@ -108,112 +113,58 @@ DO
 		CASE 1
 			DRAWLINE
 			PRINTL □父親を選んでください
-			REPEAT CHARANUM
-				IF 生殖機能♂(COUNT)
-					PRINTFORM 　[{COUNT, 2, RIGHT}] %NAME:COUNT% 
-					SELECTCASE SEX(COUNT)
-						CASE 1
-							PRINT ♂ 
-						CASE 2
-							PRINT ♀ 
-					ENDSELECT
-					SIF TALENT:小柄体型
-						PRINT 幼 
-				ENDIF
-			REND
-			DRAWLINE
-			PRINTPLAIN 　父親　
-			PRINTL [-1] 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE -1
-						RESTART
-					CASEELSE
-						SIF !生殖機能♂(RESULT)
-							CONTINUE
-						費用:0 = 50000
-						;小柄体型だと費用がかさむ
-						SIF TALENT:RESULT:小柄体型
-							費用:0 += 30000
-						;父親はNOで入れる
-						父親 = NO:RESULT
-						RESTART
-				ENDSELECT
-			LOOP 1
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, 生殖機能♂(PAGING), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "父親"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					費用:0 = 50000
+					;小柄体型だと費用がかさむ
+					SIF TALENT:RESULT:小柄体型
+						費用:0 += 30000
+					;父親はNOで入れる
+					父親 = NO:RESULT
+					RESTART
+			ENDSELECT
 		CASE 2
 			DRAWLINE
 			PRINTL □母親を選んでください
-			REPEAT CHARANUM
-				IF 生殖機能♀(COUNT) && !TALENT:COUNT:妊娠 && !TALENT:COUNT:妊娠確定
-					PRINTFORM 　[{COUNT, 2, RIGHT}] %NAME:COUNT% 
-					SELECTCASE SEX(COUNT)
-						CASE 1
-							PRINT ♂ 
-						CASE 2
-							PRINT ♀ 
-					ENDSELECT
-					SIF TALENT:小柄体型
-						PRINT 幼 
-				ENDIF
-			REND
-			DRAWLINE
-			PRINTPLAIN 　母親　
-			PRINTL [-1] 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE -1
-						RESTART
-					CASEELSE
-						SIF !生殖機能♀(RESULT) || TALENT:RESULT:妊娠 || TALENT:RESULT:妊娠確定
-							CONTINUE
-						費用:1 = 50000
-						;小柄体型だと費用がかさむ
-						SIF TALENT:RESULT:小柄体型
-							費用:1 += 30000
-						母親 = RESULT
-						RESTART
-				ENDSELECT
-			LOOP 1
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, 生殖機能♀(PAGING) && !TALENT:PAGING:妊娠 && !TALENT:PAGING:妊娠確定, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "母親"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					費用:1 = 50000
+					;小柄体型だと費用がかさむ
+					SIF TALENT:RESULT:小柄体型
+						費用:1 += 30000
+					母親 = RESULT
+					RESTART
+			ENDSELECT
 		CASE 3
 			DRAWLINE
 			PRINTL □母体を選んでください
-			REPEAT CHARANUM
-				IF VAGINA(COUNT) && !TALENT:COUNT:妊娠 && !TALENT:COUNT:妊娠確定
-					PRINTFORM 　[{COUNT, 2, RIGHT}] %NAME:COUNT% 
-					SELECTCASE SEX(COUNT)
-						CASE 1
-							PRINT ♂ 
-						CASE 2
-							PRINT ♀ 
-					ENDSELECT
-					SIF TALENT:小柄体型
-						PRINT 幼 
-				ENDIF
-			REND
-			DRAWLINE
-			PRINTPLAIN 　母体　
-			PRINTL [-1] 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE -1
-						RESTART
-					CASEELSE
-						SIF !VAGINA(RESULT) || TALENT:RESULT:妊娠 || TALENT:RESULT:妊娠確定
-							CONTINUE
-						費用:2 = 50000
-						;小柄体型だと費用がかさむ
-						SIF TALENT:RESULT:小柄体型
-							費用:2 += 30000
-						;初産でも費用かさむ
-						SIF !EXP:RESULT:出産経験
-							費用:2 += 30000
-						母体 = RESULT
-						RESTART
-				ENDSELECT
-			LOOP 1
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, VAGINA(PAGING) && !TALENT:PAGING:妊娠 && !TALENT:PAGING:妊娠確定, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "母体"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					費用:2 = 50000
+					;小柄体型だと費用がかさむ
+					SIF TALENT:RESULT:小柄体型
+						費用:2 += 30000
+					;初産でも費用かさむ
+					SIF !EXP:RESULT:出産経験
+						費用:2 += 30000
+					母体 = RESULT
+					RESTART
+			ENDSELECT
 		CASE 4
 			DRAWLINE
 			PRINTL □誰の精子を使いますか？
@@ -279,7 +230,11 @@ PRINTL □注意事項
 PRINTL 　継続的な薬剤投与が必要になるため、日毎の費用が発生する
 PRINTL 　また、売却額は低下する
 PRINTL □患者
-PRINTL 　[1] - 父親を選ぶ
+IF 患者 >= 0
+	PRINTFORML 　[1] - %NAME:患者%
+ELSE
+	PRINTL 　[1] - 患者を選ぶ
+ENDIF
 DRAWLINE
 PRINTPLAIN 　薬物投与　
 PRINT [0] - 戻る
@@ -294,40 +249,20 @@ DO
 		CASE 1
 			DRAWLINE
 			PRINTL □患者を選んでください
-			REPEAT CHARANUM
-				SIF CFLAG:COUNT:生殖力強化 == 1
-					CONTINUE
-				IF 生殖機能♂(COUNT) || 生殖機能♀(COUNT)
-					PRINTFORM 　[{COUNT, 2, RIGHT}] %NAME:COUNT% 
-					SELECTCASE SEX(COUNT)
-						CASE 1
-							PRINT ♂ 
-						CASE 2
-							PRINT ♀ 
-					ENDSELECT
-					SIF TALENT:小柄体型
-						PRINT 幼 
-				ENDIF
-			REND
-			DRAWLINE
-			PRINTPLAIN 　患者　
-			PRINTL [-1] 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE -1
-						RESTART
-					CASEELSE
-						SIF !生殖機能♂(RESULT) && !生殖機能♀(RESULT)
-							CONTINUE
-						費用 = 30000
-						;小柄体型だと費用がかさむ
-						SIF TALENT:RESULT:小柄体型
-							費用:2 += 20000
-						患者 = RESULT
-						RESTART
-				ENDSELECT
-			LOOP 1
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, !CFLAG:PAGING:生殖力強化 && (生殖機能♂(PAGING) || 生殖機能♀(PAGING)), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					費用 = 30000
+					;小柄体型だと費用がかさむ
+					SIF TALENT:RESULT:小柄体型
+						費用 += 20000
+					患者 = RESULT
+					RESTART
+			ENDSELECT
 		CASE 2
 			IF MONEY < 費用
 				PRINTW 費用が足りません
@@ -335,10 +270,128 @@ DO
 			ENDIF
 			PRINTW 薬物投与による不妊治療を始めます
 			MONEY -= 費用
-			CFLAG:生殖力強化 = 1
+			CFLAG:患者:生殖力強化 = 1
 			RETURN 0
 	ENDSELECT
 LOOP 1
+
+@卵管結紮
+#DIM DYNAMIC 患者 = -1
+#DIM DYNAMIC 費用
+PRINTL □薬物投与
+PRINTL 　卵管を結紮し、受精を未然に防ぐ不妊手術
+PRINTL □費用
+CALL PASELIL, @"　{費用}＄"
+PRINTL □注意事項
+PRINTL 　治療は不可能であり売却額は低下する
+PRINTL 　術後1週間ほどの経過観察が必要
+PRINTL □患者
+IF 患者 >= 0
+	PRINTFORML 　[1] - %NAME:患者%
+ELSE
+	PRINTL 　[1] - 患者を選ぶ
+ENDIF
+DRAWLINE
+PRINTPLAIN 　卵管結紮　
+PRINT [0] - 戻る
+SIF 患者 >= 0
+	PRINT [2] - 術式を行う
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			DRAWLINE
+			PRINTL □患者を選んでください
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, VAGINA(PAGING) && !CFLAG:PAGING:卵管結紮, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					費用 = 50000
+					;小柄体型だと費用が減る
+					SIF TALENT:RESULT:小柄体型
+						費用 += 30000
+					患者 = RESULT
+					RESTART
+			ENDSELECT
+		CASE 2
+			IF MONEY < 費用
+				PRINTW 費用が足りません
+				RESTART
+			ENDIF
+			PRINTW 卵管結紮の術式を始めます
+			MONEY -= 費用
+			CFLAG:患者:卵管結紮 = 1
+			CFLAG:患者:使用不可 = 14
+			RETURN 0
+	ENDSELECT
+LOOP 1
+
+
+
+@精管結紮
+#DIM DYNAMIC 患者 = -1
+#DIM DYNAMIC 費用
+PRINTL □精管結紮
+PRINTL 　精管を結紮し精子を生成できなくする不妊手術
+PRINTL □費用
+CALL PASELIL, @"　{費用}＄"
+PRINTL □注意事項
+PRINTL 　治療は不可能だが売却額に変化は無い
+PRINTL 　術後1週間ほどの経過観察が必要
+PRINTL □患者
+IF 患者 >= 0
+	PRINTFORML 　[1] - %NAME:患者%
+ELSE
+	PRINTL 　[1] - 患者を選ぶ
+ENDIF
+DRAWLINE
+PRINTPLAIN 　精管結紮　
+PRINT [0] - 戻る
+SIF 患者 >= 0
+	PRINT [2] - 術式を行う
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			DRAWLINE
+			PRINTL □患者を選んでください
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, PENIS(PAGING) && !CFLAG:PAGING:精管結紮, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					費用 = 30000
+					;小柄体型だと費用が減る
+					SIF TALENT:RESULT:小柄体型
+						費用 += 20000
+					患者 = RESULT
+					RESTART
+			ENDSELECT
+		CASE 2
+			IF MONEY < 費用
+				PRINTW 費用が足りません
+				RESTART
+			ENDIF
+			PRINTW 精管結紮の術式を始めます
+			MONEY -= 費用
+			CFLAG:患者:精管結紮 = 1
+			CFLAG:患者:使用不可 = 14
+			RETURN 0
+	ENDSELECT
+LOOP 1
+
+
 
 ;体質関連の改造
 @BODY_MOD_2

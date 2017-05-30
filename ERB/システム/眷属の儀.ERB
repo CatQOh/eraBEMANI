@@ -3,6 +3,8 @@
 #DIM DYNAMIC 対象 = -1
 #DIM DYNAMIC 費用
 #DIM DYNAMIC ネクロ兼用
+#DIM DYNAMIC 眷属可能, 1000
+#DIM DYNAMIC 被眷属可能, 1000
 
 ネクロ兼用 = 0
 
@@ -91,21 +93,39 @@ IF 主 >= 0 && 対象 >= 0 && (CFLAG:主:陥落 || 主 == 0) && (CFLAG:対象:�
 ENDIF
 PRINTL 
 
+REPEAT CHARANUM
+	SELECTCASE CSTR:COUNT:種族
+		CASE "人間", "宇宙人", "人間(？)", "改造人間", "不明"
+			被眷属可能:COUNT = 1
+		CASEELSE
+			眷属可能:COUNT = 1
+	ENDSELECT
+	眷属可能:COUNT = TALENT:ネクロマンサー
+REND
+
 DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 0
 			RETURN 0
 		CASE 1
-			;人間、宇宙人、不明以外の種族、もしくはネクロマンサー
-			CALL PAGING, "NOR", "CSTR", "種族", "人間", "CSTR", "種族", "宇宙人", "CSTR", "種族", "人間(？)", "CSTR", "種族", "改造人間", "CFLAG", "種族", "99", "TALENT", "ネクロマンサー", "0"
+			DRAWLINE
+			PRINTL □眷属主を選んでください
+			;人間系か不明以外の種族、もしくはネクロマンサー
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, 眷属可能:PAGING, @"%CSTR:PAGING:種族%", "眷属の儀", "やめる"
+			NEXT
 			SIF RESULT >= 0
 				主 = RESULT
 			RESTART
 			
 		CASE 2
+			DRAWLINE
+			PRINTL □眷属対象を選んでください
 			;人間系か不明の種族
-			CALL PAGING, "OR", "CSTR", "種族", "人間", "CSTR", "種族", "人間(？)", "CSTR", "種族", "改造人間", "CFLAG", "種族", "99"
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, 被眷属可能:PAGING, @"%CSTR:PAGING:種族%", "眷属の儀", "やめる"
+			NEXT
 			SIF RESULT >= 0
 				対象 = RESULT
 			RESTART
