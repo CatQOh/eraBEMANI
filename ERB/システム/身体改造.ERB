@@ -52,6 +52,12 @@ SELECTCASE RESULT
 		CALL 卵管結紮
 	CASE 5
 		CALL 精管結紮
+	CASE 6
+		CALL 魔術師不妊化
+	CASE 7
+		CALL 性器切断
+	CASE 8
+		CALL 男性器形成
 ENDSELECT
 
 @体外受精
@@ -102,7 +108,7 @@ RESETCOLOR
 PRINTL 
 DRAWLINE
 PRINTPLAIN 　体外受精　
-PRINT [0] - 中止する
+PRINT [0] - 中止する　
 SIF 父親 >= 0 && 母親 >= 0 && 母体 >= 0
 	PRINT [5] - この組み合わせで行う
 PRINTL 
@@ -114,7 +120,7 @@ DO
 			DRAWLINE
 			PRINTL □父親を選んでください
 			FOR PAGING, 0, CHARANUM
-				CALL PAGING, 生殖機能♂(PAGING), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "父親"
+				CALL PAGING, CFLAG:PAGING:陥落 && 生殖機能♂(PAGING), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "父親"
 			NEXT
 			SELECTCASE RESULT
 				CASE -1
@@ -132,7 +138,7 @@ DO
 			DRAWLINE
 			PRINTL □母親を選んでください
 			FOR PAGING, 0, CHARANUM
-				CALL PAGING, 生殖機能♀(PAGING) && !TALENT:PAGING:妊娠 && !TALENT:PAGING:妊娠確定, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "母親"
+				CALL PAGING, CFLAG:PAGING:陥落 && 生殖機能♀(PAGING) && !TALENT:PAGING:妊娠 && !TALENT:PAGING:妊娠確定, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "母親"
 			NEXT
 			SELECTCASE RESULT
 				CASE -1
@@ -149,7 +155,7 @@ DO
 			DRAWLINE
 			PRINTL □母体を選んでください
 			FOR PAGING, 0, CHARANUM
-				CALL PAGING, VAGINA(PAGING) && !TALENT:PAGING:妊娠 && !TALENT:PAGING:妊娠確定, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "母体"
+				CALL PAGING, CFLAG:PAGING:陥落 && VAGINA(PAGING) && !TALENT:PAGING:妊娠 && !TALENT:PAGING:妊娠確定, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "母体"
 			NEXT
 			SELECTCASE RESULT
 				CASE -1
@@ -237,7 +243,7 @@ ELSE
 ENDIF
 DRAWLINE
 PRINTPLAIN 　薬物投与　
-PRINT [0] - 戻る
+PRINT [0] - 戻る　
 SIF 患者 >= 0
 	PRINT [2] - 治療を行う
 
@@ -250,7 +256,7 @@ DO
 			DRAWLINE
 			PRINTL □患者を選んでください
 			FOR PAGING, 0, CHARANUM
-				CALL PAGING, !CFLAG:PAGING:生殖力強化 && (生殖機能♂(PAGING) || 生殖機能♀(PAGING)), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
+				CALL PAGING, CFLAG:PAGING:生殖力強化 == 0 && (生殖機能♂(PAGING) || 生殖機能♀(PAGING)), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
 			NEXT
 			SELECTCASE RESULT
 				CASE -1
@@ -271,9 +277,134 @@ DO
 			PRINTW 薬物投与による不妊治療を始めます
 			MONEY -= 費用
 			CFLAG:患者:生殖力強化 = 1
-			RETURN 0
+			RETURN 1
 	ENDSELECT
 LOOP 1
+
+@魔術師不妊治療
+#DIM DYNAMIC 対象 = -1
+#DIM DYNAMIC 費用, 2
+#DIM DYNAMIC 術師 = -1
+#DIM DYNAMIC 契約対象 = -1
+
+SIF CFLAG:対象:生殖力担当魔術師 == NO:術師
+	VARSET 費用, 0
+
+PRINTL □魔術師による不妊治療
+PRINTL 　魔術師との契約により精力及び受精率を上げる不妊治療
+PRINTL □費用
+CALL PASELIL, @"　{費用+費用:1}＄"
+PRINTL □注意事項
+PRINTL 　投薬と比べると日毎の経費は発生しないが、契約魔術師が主人、または助手でないと効果が得られない
+PRINTL 　魔術師、及び対象は1日ほどの安静が必要
+PRINTL 　売却額に影響は無い
+PRINTL □契約者
+IF 対象 >= 0
+	PRINTFORMLC 　[1] - %NAME:対象%
+ELSE
+	PRINTLC 　[1] - 対象を選ぶ
+ENDIF
+IF 術師 >= 0
+	PRINTFORMLC [2] - %NAME:術師%
+ELSE
+	PRINTLC [2] - 術師を選ぶ
+ENDIF
+DRAWLINE
+PRINTPLAIN 　魔術師不妊治療　
+PRINT [0] - 戻る　
+IF 対象 >= 0 && 術師 >= 0
+	IF CFLAG:対象:生殖力強化 == 2
+		IF CFLAG:対象:生殖力担当魔術師 == NO:術師
+			PRINTL [3] - 契約を破棄する
+		ELSE
+			PRINTFORML [3] - %CSVCALLNAME(CFLAG:対象:生殖力担当魔術師)%との契約を破棄して、新たに%CALLNAME:術師%と契約を行う
+		ENDIF
+	ELSE
+		IF 契約対象 >= 0
+			PRINTFORML [3] - %CALLNAME:契約対象%との契約を破棄して、新たに%CALLNAME:対象%と契約を行う
+		ELSE
+			PRINT [3] - 契約を行う
+		ENDIF
+	ENDIF
+ENDIF
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			DRAWLINE
+			PRINTL □対象を選んでください
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, (!CFLAG:PAGING:生殖力強化 || CFLAG:PAGING:生殖力強化 == 2) && (生殖機能♂(PAGING) || 生殖機能♀(PAGING)), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "対象"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					費用 = 10000
+					RESTART
+			ENDSELECT
+		CASE 2
+			DRAWLINE
+			PRINTL □対象を選んでください
+			FOR PAGING, 0, CHARANUM
+				LOCAL = -1
+				;魔術師に契約済みのキャラが居ればそれも表示
+				IF CSTR:PAGING:種族 == "魔術師"
+					REPEAT CHARANUM
+						IF CFLAG:COUNT:生殖力担当魔術師 == NO:PAGING
+							LOCAL = COUNT
+							BREAK
+						ENDIF
+					REND
+				ENDIF
+				CALL PAGING, CSTR:PAGING:種族 == "魔術師", @"技巧:LV{ABL:PAGING:技巧} \@ LOCAL >= 0 ? %CALLNAME:LOCAL%と契約中 #  \@", "術師"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					契約対象 = -1
+					REPEAT CHARANUM
+						IF CFLAG:COUNT:生殖力担当魔術師 == NO:RESULT
+							契約対象 = COUNT
+							BREAK
+						ENDIF
+					REND
+					費用:1 = 30000
+					;技巧次第で費用は下がる
+					SELECTCASE ABL:RESULT:技巧
+						CASE IS <= 9
+							費用:1 /= ABL:RESULT:技巧
+						CASEELSE
+							費用:1 = 3000
+					ENDSELECT
+					術師 = RESULT
+					RESTART
+			ENDSELECT
+		CASE 3
+			IF MONEY < 費用+費用:1
+				PRINTW 費用が足りません
+				RESTART
+			ENDIF
+			IF CFLAG:対象:生殖力担当魔術師 == NO:術師
+				PRINTFORMW %NAME:対象%と%NAME:術師%の契約を破棄します
+				CFLAG:対象:生殖力強化 = 0
+				CFLAG:対象:生殖力担当魔術師 = -1
+			ELSE
+				PRINTW 魔術師による不妊治療を始めます
+				MONEY -= 費用+費用:1
+				CFLAG:対象:生殖力強化 = 2
+				CFLAG:対象:生殖力担当魔術師 = NO:術師
+			ENDIF
+			CFLAG:対象:使用不可 = 3
+			CFLAG:術師:使用不可 = 3
+			RETURN 1
+	ENDSELECT
+LOOP 1
+
 
 @卵管結紮
 #DIM DYNAMIC 患者 = -1
@@ -293,7 +424,7 @@ ELSE
 ENDIF
 DRAWLINE
 PRINTPLAIN 　卵管結紮　
-PRINT [0] - 戻る
+PRINT [0] - 戻る　
 SIF 患者 >= 0
 	PRINT [2] - 術式を行う
 
@@ -327,8 +458,8 @@ DO
 			PRINTW 卵管結紮の術式を始めます
 			MONEY -= 費用
 			CFLAG:患者:卵管結紮 = 1
-			CFLAG:患者:使用不可 = 14
-			RETURN 0
+			CFLAG:患者:使用不可 = 15
+			RETURN 1
 	ENDSELECT
 LOOP 1
 
@@ -352,7 +483,7 @@ ELSE
 ENDIF
 DRAWLINE
 PRINTPLAIN 　精管結紮　
-PRINT [0] - 戻る
+PRINT [0] - 戻る　
 SIF 患者 >= 0
 	PRINT [2] - 術式を行う
 
@@ -386,8 +517,399 @@ DO
 			PRINTW 精管結紮の術式を始めます
 			MONEY -= 費用
 			CFLAG:患者:精管結紮 = 1
-			CFLAG:患者:使用不可 = 14
+			CFLAG:患者:使用不可 = 15
+			RETURN 1
+	ENDSELECT
+LOOP 1
+
+
+@性器切断
+#DIM DYNAMIC 患者 = -1
+#DIM DYNAMIC 費用
+PRINTL □性器切断
+PRINTL 　男性器を切除し、性行為を行えなくする不妊手術
+PRINTL □費用
+CALL PASELIL, @"　{費用}＄"
+PRINTL □注意事項
+PRINTL 　対象は陥落済みでなければならない
+PRINTL 　治療は不可能、売却額も低下する
+PRINTL 　術後1週間ほどの経過観察が必要
+PRINTL □患者
+IF 患者 >= 0
+	PRINTFORML 　[1] - %NAME:患者%
+ELSE
+	PRINTL 　[1] - 患者を選ぶ
+ENDIF
+DRAWLINE
+PRINTPLAIN 　性器切断　
+PRINT [0] - 戻る　
+SIF 患者 >= 0
+	PRINT [2] - 術式を行う
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
 			RETURN 0
+		CASE 1
+			DRAWLINE
+			PRINTL □患者を選んでください
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, CFLAG:PAGING:陥落, PENIS(PAGING) && SEX(PAGING) == 1, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					費用 = 50000
+					;小柄体型だと費用が減る
+					SIF TALENT:RESULT:小柄体型
+						費用 += 20000
+					患者 = RESULT
+					RESTART
+			ENDSELECT
+		CASE 2
+			IF MONEY < 費用
+				PRINTW 費用が足りません
+				RESTART
+			ENDIF
+			PRINTW 去勢の術式を始めます
+			MONEY -= 費用
+			TALENT:患者:去勢済み = 1
+			CFLAG:患者:使用不可 = 15
+			RETURN 1
+	ENDSELECT
+LOOP 1
+
+@魔術師不妊化
+#DIM DYNAMIC 対象 = -1
+#DIM DYNAMIC 費用, 2
+#DIM DYNAMIC 術師 = -1
+#DIM DYNAMIC 契約対象 = -1
+
+PRINTL □魔術師による不妊化
+PRINTL 　魔術師との契約により、限定的に生殖力を失わせる不妊化
+PRINTL □費用
+CALL PASELIL, @"　{費用+費用:1}＄"
+PRINTL □注意事項
+PRINTL 　外科手術と違い生殖力を回復させることが可能だが、契約魔術師が主人、または助手でないと効果が得られない
+PRINTL 　魔術師、及び対象は1日ほどの安静が必要
+PRINTL 　売却額に影響は無い
+PRINTL □契約者
+IF 対象 >= 0
+	PRINTFORMLC 　[1] - %NAME:対象%
+ELSE
+	PRINTLC 　[1] - 対象を選ぶ
+ENDIF
+IF 術師 >= 0
+	PRINTFORMLC [2] - %NAME:術師%
+ELSE
+	PRINTLC [2] - 術師を選ぶ
+ENDIF
+DRAWLINE
+PRINTPLAIN 　魔術師不妊化　
+PRINT [0] - 戻る　
+IF 対象 >= 0 && 術師 >= 0
+	SELECTCASE CFLAG:対象:不妊担当魔術師
+		CASE NO:術師
+			PRINTL [3] - 契約を破棄する
+		CASE IS >= 0
+			PRINTFORML [3] - %CSVCALLNAME(CFLAG:対象:不妊担当魔術師)%との契約を破棄して、新たに%CALLNAME:術師%と契約を行う
+		CASEELSE
+			IF 契約対象 >= 0
+				PRINTFORML [3] - %CALLNAME:契約対象%との契約を破棄して、新たに%CALLNAME:対象%と契約を行う
+			ELSE
+				PRINT [3] - 契約を行う
+			ENDIF
+	ENDSELECT
+ENDIF
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			DRAWLINE
+			PRINTL □対象を選んでください
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, CFLAG:PAGING:精管結紮 == 2 || CFLAG:PAGING:卵管結紮 == 2 || 生殖機能♂(PAGING) || 生殖機能♀(PAGING), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "対象"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					費用 = 10000
+					RESTART
+			ENDSELECT
+		CASE 2
+			DRAWLINE
+			PRINTL □対象を選んでください
+			FOR PAGING, 0, CHARANUM
+				LOCAL = -1
+				;魔術師に契約済みのキャラが居ればそれも表示
+				IF CSTR:PAGING:種族 == "魔術師"
+					REPEAT CHARANUM
+						IF CFLAG:COUNT:不妊担当魔術師 == NO:PAGING
+							LOCAL = COUNT
+							BREAK
+						ENDIF
+					REND
+				ENDIF
+				CALL PAGING, CSTR:PAGING:種族 == "魔術師", @"技巧:LV{ABL:PAGING:技巧} \@ LOCAL >= 0 ? %CALLNAME:LOCAL%と契約中 #  \@", "術師"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					契約対象 = -1
+					REPEAT CHARANUM
+						IF CFLAG:COUNT:不妊担当魔術師 == NO:RESULT
+							契約対象 = COUNT
+							BREAK
+						ENDIF
+					REND
+					費用:1 = 30000
+					;技巧次第で費用は下がる
+					SELECTCASE ABL:RESULT:技巧
+						CASE IS <= 9
+							費用:1 /= ABL:RESULT:技巧
+						CASEELSE
+							費用:1 = 3000
+					ENDSELECT
+					術師 = RESULT
+					RESTART
+			ENDSELECT
+		CASE 3
+			IF MONEY < 費用+費用:1
+				PRINTW 費用が足りません
+				RESTART
+			ENDIF
+			IF CFLAG:対象:不妊担当魔術師 == NO:術師
+				PRINTFORMW %NAME:対象%と%NAME:術師%の契約を破棄します
+				CFLAG:対象:生殖力強化 = 0
+				CFLAG:対象:生殖力担当魔術師 = -1
+			ELSE
+				PRINTW 魔術師による不妊治療を始めます
+				MONEY -= 費用+費用:1
+				SIF 生殖機能♂(対象)
+					CFLAG:対象:精管結紮 = 2
+				SIF 生殖機能♀(対象)
+					CFLAG:対象:卵管結紮 = 2
+				CFLAG:対象:不妊担当魔術師 = NO:術師
+			ENDIF
+			CFLAG:対象:使用不可 = 3
+			CFLAG:術師:使用不可 = 3
+			RETURN 1
+	ENDSELECT
+LOOP 1
+
+
+
+@男性器形成
+#DIM DYNAMIC 対象 = -1
+#DIM DYNAMIC 術師 = -1
+#DIM DYNAMIC 提供者 = -1
+#DIM DYNAMIC ペニスサイズ
+#DIM DYNAMIC 費用, 3
+
+費用:2 = ペニスサイズ*10000
+
+PRINTL □男性器形成
+PRINTL 　魔法、もしくは外科手術により女性の陰部に男性器を形成、もしくは移植する
+PRINTL □費用
+CALL PASELIL, @"　{費用+費用:1+費用:2}＄"
+PRINTL □注意事項
+PRINTL 　魔法か外科手術かによって形成後の機能が異なる
+PRINTL 　外科手術によって形成した場合、射精は可能だが精子は含まれない
+PRINTL 　ただし本物の男性器を移植した場合はその限りではない。提供者は陥落済みの必要がある
+PRINTL 　魔術師によって形成した場合、射精も交配も可能
+PRINTL 　どちらの方法も、対象、男性器提供者共に1週間、魔術師は3日ほどの安静が必要
+PRINTL 　形成した対象の売却額は増加するが、男性器提供者の売却額は低下する
+PRINTL □対象
+
+IF 対象 >= 0
+	PRINTFORMLC 　[1] - %NAME:対象%
+ELSE
+	PRINTLC 　[1] - 対象を選ぶ
+ENDIF
+IF 提供者 >= 0
+	PRINTFORMLC [2] - %NAME:提供者%(男性器提供者)
+ELSEIF 術師 >= 0
+	PRINTFORMLC [2] - %NAME:術師%(魔術師)
+ELSE
+	PRINTLC [2] - 術師・提供者を選ぶ
+ENDIF
+
+IF 対象 >= 0
+	IF 提供者 >= 0
+		IF TALENT:対象:小柄体型
+			SELECTCASE CFLAG:提供者:ペニスサイズ
+				CASE 1
+					PRINTL 適合:移植する男性器の大きさは体格相応
+				CASE 2
+					PRINTL 適合:移植する男性器は大きめ
+				CASE 3
+					PRINTL 適合:移植する男性器は体格不相応に大きい
+			ENDSELECT
+		ELSE
+			SELECTCASE CFLAG:提供者:ペニスサイズ
+				CASE 1
+					PRINTL 適合:移植する男性器は小さめ
+				CASE 2
+					PRINTL 適合:移植する男性器は体格相応
+				CASE 3
+					PRINTL 適合:移植する男性器は大きめ
+			ENDSELECT
+		ENDIF
+	ELSE
+		IF ペニスサイズ == 0
+			PRINTL [3] - 形成後の男性器の大きさを選ぶ
+		ELSE
+			IF TALENT:対象:小柄体型
+				SELECTCASE ペニスサイズ
+					CASE 1
+						PRINTL [3] - 形成する男性器の大きさは体格相応
+					CASE 2
+						PRINTL [3] - 形成する男性器は大きめ
+					CASE 3
+						PRINTL [3] - 形成する男性器は体格不相応に大きい
+				ENDSELECT
+			ELSE
+				SELECTCASE ペニスサイズ
+					CASE 1
+						PRINTL [3] - 形成する男性器は小さめ
+					CASE 2
+						PRINTL [3] - 形成する男性器は体格相応
+					CASE 3
+						PRINTL [3] - 形成する男性器は大きめ
+				ENDSELECT
+			ENDIF
+		ENDIF
+	ENDIF
+ENDIF
+DRAWLINE
+PRINTPLAIN 　男性器形成　
+PRINT [0] - 戻る　
+SIF 対象 >= 0
+	PRINT [4] - 形成を始める
+PRINTL 
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			DRAWLINE
+			PRINTL □対象を選んでください
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, SEX(PAGING) == 2 && !PENIS(PAGING), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "対象"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					費用 = 50000
+					;小柄体型だと費用は下がる
+					SIF TALENT:RESULT:小柄体型
+						費用 -= 20000
+					ペニスサイズ = 0
+					RESTART
+			ENDSELECT
+		CASE 2
+			DRAWLINE
+			PRINTL □対象を選んでください
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, CSTR:PAGING:種族 == "魔術師" || (CFLAG:PAGING:陥落済み && !TALENT:PAGING:小人体型 && SEX(PAGING) == 1 && PENIS(PAGING)), @"\@ SEX(PAGING) == 1 ? ♂ #  \@ \@ CSTR:PAGING:種族 == "魔術師" ? 魔術師 #  \@", "術師・提供者"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					IF !TALENT:小人体型 && SEX(RESULT) == 1 && PENIS(RESULT) && CSTR:RESULT:種族 == "魔術師"
+						LOCAL = RESULT
+						PRINTL 魔術師と男性器提供者のどちらを担当しますか？
+						PRINTL [0] - 魔術師
+						PRINTL [1] - 男性器提供者
+						DO
+							INPUT
+							SELECTCASE RESULT
+								CASE 0
+									提供者 = -1
+									術師 = LOCAL
+								CASE 1
+									提供者 = LOCAL
+									術師 = -1
+							ENDSELECT
+						LOOP LOOPRES(0, 1)
+						RESULT = LOCAL
+					ELSEIF CSTR:RESULT:種族 == "魔術師"
+						提供者 = -1
+						術師 = RESULT
+					ELSE
+						提供者 = RESULT
+						術師 = -1
+					ENDIF
+					費用:1 = 50000
+					IF 提供者 >= 0
+						;提供者が小柄体型だと費用はかさむ
+						SIF TALENT:RESULT:小柄体型
+							費用 += 20000
+					ELSEIF 術師 >= 0
+						;魔術師だと技巧に応じて費用は下がる
+						SELECTCASE ABL:RESULT:技巧
+							CASE IS <= 9
+								費用:1 /= ABL:RESULT:技巧
+							CASEELSE
+								費用:1 = 3000
+						ENDSELECT
+					ENDIF
+					ペニスサイズ = 0
+					RESTART
+			ENDSELECT
+		CASE 3
+			SIF 対象 == -1 || 提供者 >= 0
+				RESTART
+			PRINTFORML □%CALLNAME:対象%に形成する男性器の大きさを選んでください
+			PRINTL [1] - 子供相応
+			PRINTL [2] - 大人相応
+			PRINTL [3] - 巨根
+			DO
+				INPUT
+				ペニスサイズ = RESULT
+			LOOP LOOPRES(1, 2, 3)
+			RESTART
+		CASE 4
+			SIF 対象 == -1
+				RESTART
+			IF 費用+費用:1+費用:2 > MONEY
+				PRINTW 費用が足りません
+				RESTART
+			ENDIF
+			PRINTL 男性器の形成を始めます
+			PRINTFORM %CALLNAME:対象%
+			SIF 提供者 >= 0
+				PRINTFORM と%CALLNAME:提供者%
+			SIF 術師 >= 0
+				PRINTFORM と%CALLNAME:術師%
+			PRINTW は準備のため休養に入ります
+			TALENT:対象:ふたなり = 1
+			CFLAG:対象:ペニスサイズ = ペニスサイズ
+			CFLAG:対象:精管結紮 = 1
+			CFLAG:対象:使用不可 = 15
+			IF 提供者 >= 0
+				CFLAG:対象:ペニスサイズ = CFLAG:提供者:ペニスサイズ
+				CFLAG:対象:精管結紮 = 0
+				TALENT:提供者:去勢済み = 0
+				CFLAG:対象:男性器提供者 = NO:提供者
+				CFLAG:提供者:使用不可 = 15
+			ENDIF
+			IF 術師 >= 0
+				CFLAG:対象:精管結紮 = 0
+				CFLAG:術師:使用不可 = 7
+			ENDIF
+			RETURN 1
 	ENDSELECT
 LOOP 1
 

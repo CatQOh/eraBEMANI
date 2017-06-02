@@ -51,7 +51,7 @@ IF 竿役 == 0
 ELSEIF 竿役 == 1
 	LOCAL = ASSI
 ELSEIF 竿役 == 2
-	LOCAL = T母親ET
+	LOCAL = TARGET
 ENDIF
 
 ;中だしされてないなら関数終了(一応)
@@ -482,7 +482,7 @@ SIF ASSI == ARG
 
 ;出産･育児室関連
 FOR LCOUNT, 0, CHARANUM
-	IF TALENT:LCOUNT:妊娠 == 1
+	IF TALENT:LCOUNT:妊娠
 		;出産5日前からは臨月突入で調教不可に
 		IF (PREG:LCOUNT:10 - 5) == DAY:1
 			DRAWLINE
@@ -515,17 +515,35 @@ FOR LCOUNT, 0, CHARANUM
 			DRAWLINE
 			CALL CHILD_BIRTH, LCOUNT
 		ENDIF
-	ELSEIF TALENT:LCOUNT:妊娠 == 2
+	;PREG:6は他人の子を育てているフラグ 立っているとイベントは発生しない
+	ELSEIF TALENT:LCOUNT:育児中
 		;出産後翌日には育児室への訪問を問うイベント発生
 		IF (PREG:LCOUNT:10 + 1) == DAY:1 && !PREG:LCOUNT:6
 			DRAWLINE
-			PRINTFORML %CALLNAME:LCOUNT%の出産から一日経ちました
-			CALL CHILD_CARE_ROOM_SELECT, LCOUNT
+			IF LCOUNT == MASTER
+				PRINTFORML %CALLNAME:LCOUNT%の出産から三日経ちました
+				;主人の妊娠で、父親が認知していれば会いに来るイベント
+				IF PREG:MASTER:5
+					LOCAL = -1
+					REPEAT CHARANUM
+						IF NO:COUNT == PREG:MASTER:21
+							LOCAL = COUNT
+							BREAK
+						ENDIF
+					REND
+					SIF LOCAL >= 0
+						CALL KOJO_MESSAGE_EVENT, 62, LOCAL
+				ENDIF
+			ELSE
+				PRINTFORML %CALLNAME:LCOUNT%の出産から一日経ちました
+				CALL CHILD_CARE_ROOM_SELECT, LCOUNT
+			ENDIF
 		;出産後3日には育児室への訪問を問うイベント発生
 		ELSEIF (PREG:LCOUNT:10 + 3) == DAY:1 && !PREG:LCOUNT:6
 			DRAWLINE
 			IF LCOUNT == MASTER
 				PRINTFORML %CALLNAME:LCOUNT%の出産から三日経ちました
+				;主人の妊娠で、父親が認知していれば会いに来るイベント
 				IF PREG:MASTER:5
 					LOCAL = -1
 					REPEAT CHARANUM
@@ -586,17 +604,20 @@ TALENT:ARG:妊娠 = 0
 IF TALENT:ARG:崩壊 && ARG != MASTER
 	;育児放棄の際の赤子の処置
 	REPEAT CHARANUM
-		SIF TALENT:COUNT:育児中 == 2 || TALENT:COUNT:母性
+		SIF !TALENT:COUNT:妊娠 && (TALENT:COUNT:育児中 || TALENT:COUNT:母性)
 			LOCAL++
 	REND
 	IF LOCAL
 		DRAWLINE
 		PRINTW 産まれた赤ん坊を他の奴隷に任せるか、里子に出すかを選択してください
 		PRINTL □誰に任せますか？
-		CALL PAGING, "OR", "TALENT", "妊娠", "2" , "TALENT", "母性", "1"
-		DO
-			INPUT
-			IF TALENT:RESULT:妊娠 == 2 || TALENT:RESULT:母性
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, !TALENT:PAGING:妊娠 && (TALENT:PAGING:育児中 || TALENT:PAGING:母性), "", "", "里子に出す"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
+				PRINTFORMW %CALLNAME:MASTER%はやむなく、赤ん坊を里子に出しました
+			CASEELSE
 				IF RESULT == MASTER
 					PRINTFORMW %CALLNAME:MASTER%は自分で%CALLNAME:ARG%の子供を育てることにしました
 					PREG:MASTER:10 = DAY:1+10
@@ -615,12 +636,7 @@ IF TALENT:ARG:崩壊 && ARG != MASTER
 							TARGET = -1
 					ENDIF
 				ENDIF
-				BREAK
-			ELSEIF RESULT == 10000
-				PRINTFORMW %CALLNAME:MASTER%はやむなく、赤ん坊を里子に出しました
-				BREAK
-			ENDIF
-		LOOP 1
+		ENDSELECT
 	ELSE
 		PRINTFORMW %CALLNAME:MASTER%はやむなく、赤ん坊を里子に出しました
 	ENDIF
@@ -633,14 +649,11 @@ IF TALENT:ARG:崩壊 && ARG != MASTER
 ;育児に入った場合
 ELSE
 	PRINTFORML %CALLNAME:ARG%は育児室で育児を始めた
-;	REPEAT 10
-;		PREG:ARG:COUNT = 0
-;	REND
 	SIF ARG == TARGET
 		TARGET = -1
 	SIF ARG == ASSI
 		ASSI = -1
-	TALENT:ARG:妊娠 = 2
+	TALENT:ARG:育児中 = 1
 	;女で恋慕or親愛持ちで父親が主人
 	IF ARG != MASTER
 		IF SEX(ARG) == 2 && (TALENT:ARG:恋慕 || TALENT:ARG:親愛) && PREG:ARG:21 == NO:MASTER && !TALENT:ARG:母性
@@ -678,7 +691,7 @@ REPEAT CHARANUM
 	IF COUNT == MASTER
 		CONTINUE
 	;現在臨月か[育児中]のキャラを羅列
-	ELSEIF (TALENT:COUNT:妊娠 && (PREG:COUNT:10-5) <= DAY) || TALENT:COUNT:妊娠 == 2
+	ELSEIF (TALENT:COUNT:妊娠 && (PREG:COUNT:10-5) <= DAY) || TALENT:COUNT:育児中
 		PRINTFORML [{COUNT, 2}]%NAME:COUNT% 
 	ENDIF
 REND
