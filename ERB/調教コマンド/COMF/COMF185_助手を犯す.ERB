@@ -35,7 +35,22 @@ SIF TEQUIP:エプロン
 
 RETURN 1
 
+;ダミー関数
+@実行判定185
+RETURN 1
+
 @COM185
+IF VAGINA(ASSI)
+	PRINTL 膣とアナルのどちらを犯しますか？
+	PRINTL [1] - 膣
+	PRINTL [2] - アナル
+	DO
+		INPUT
+	LOOP LOOPRES(1, 2)
+	TFLAG:主人挿入箇所 = RESULT
+ELSE
+	TFLAG:主人挿入箇所 = 2
+ENDIF
 ;-------------------------------------------------
 ;特殊派生処理
 ;-------------------------------------------------
@@ -45,7 +60,6 @@ IF TFLAG:前コマンド実行者 == PLAYER
 		CASE "後背位させる", "後背位アナルさせる"
 			TFLAG:奴隷挿入箇所 = 0
 			TFLAG:助手挿入箇所 = 0
-			TFLAG:主人挿入箇所 = 0
 			TFLAG:数珠繋ぎ = 312
 			SELECTCASE PREVCOMS
 				CASE "後背位させる"
@@ -54,11 +68,6 @@ IF TFLAG:前コマンド実行者 == PLAYER
 					TFLAG:奴隷挿入箇所 = 2
 			ENDSELECT
 			
-			IF VAGINA(ASSI)
-				TFLAG:主人挿入箇所 = 1
-			ELSE
-				TFLAG:主人挿入箇所 = 2
-			ENDIF
 			CALL USERCOM_ABLE512
 			IF RESULT
 				JUMP COM512
@@ -74,7 +83,6 @@ ELSEIF TFLAG:前コマンド実行者 == ASSI
 		CASE "正常位", "後背位", "正常位アナル", "後背位アナル"
 			TFLAG:奴隷挿入箇所 = 0
 			TFLAG:助手挿入箇所 = 0
-			TFLAG:主人挿入箇所 = 0
 			TFLAG:数珠繋ぎ = 123
 			SELECTCASE PREVCOMS
 				CASE "正常位", "後背位"
@@ -83,11 +91,6 @@ ELSEIF TFLAG:前コマンド実行者 == ASSI
 					TFLAG:助手挿入箇所 = 2
 			ENDSELECT
 			
-			IF VAGINA(ASSI)
-				TFLAG:主人挿入箇所 = 1
-			ELSE
-				TFLAG:主人挿入箇所 = 2
-			ENDIF
 			CALL USERCOM_ABLE512
 			IF RESULT
 				JUMP COM512
@@ -159,23 +162,8 @@ LOCAL += (LOCAL/10)*ABL:ASSI:従順
 LOCAL += (LOCAL/5)*ABL:ASSI:欲望
 
 ;Ｖ感覚、Ａ感覚を見る
-SELECTCASE SEX(ASSI)
+SELECTCASE TFLAG:主人挿入箇所
 	CASE 1
-		SELECTCASE ABL:PLAYER:Ａ感覚
-			CASE 0
-				TIMES LOCAL , 1.00
-			CASE 1
-				TIMES LOCAL , 1.50
-			CASE 2
-				TIMES LOCAL , 2.00
-			CASE 3
-				TIMES LOCAL , 2.50
-			CASE 4
-				TIMES LOCAL , 3.50
-			CASEELSE
-				LOCAL += (LOCAL/2)*ABL:Ａ感覚
-		ENDSELECT
-	CASE 2
 		SELECTCASE ABL:PLAYER:Ｖ感覚
 			CASE 0
 				TIMES LOCAL , 1.00
@@ -189,6 +177,21 @@ SELECTCASE SEX(ASSI)
 				TIMES LOCAL , 3.50
 			CASEELSE
 				LOCAL += (LOCAL/2)*ABL:Ｖ感覚
+		ENDSELECT
+	CASE 2
+		SELECTCASE ABL:PLAYER:Ａ感覚
+			CASE 0
+				TIMES LOCAL , 1.00
+			CASE 1
+				TIMES LOCAL , 1.50
+			CASE 2
+				TIMES LOCAL , 2.00
+			CASE 3
+				TIMES LOCAL , 2.50
+			CASE 4
+				TIMES LOCAL , 3.50
+			CASEELSE
+				LOCAL += (LOCAL/2)*ABL:Ａ感覚
 		ENDSELECT
 ENDSELECT
 
@@ -264,56 +267,63 @@ CALL SAMEN_SHOOT, 6, NOWEX:ASSI:射精, ASSI, MASTER
 ;-------------------------------------------------
 ;射精に関係なく行われる処理はここから
 IF PENIS(MASTER)
-	SELECTCASE SEX(ASSI)
+	SELECTCASE TFLAG:主人挿入箇所
 		CASE 1
+			;主人のペニス⇔助手の膣内の汚れが移動
+			STAIN:MASTER:ペニス |= STAIN:ASSI:膣内
+			STAIN:ASSI:膣内 |= STAIN:MASTER:ペニス
+		CASE 2
 			;主人のペニスにアナル汚れ
 			SETBIT STAIN:MASTER:ペニス, 3
 			;主人のペニス⇔助手のアナルの汚れが移動
 			STAIN:MASTER:ペニス |= STAIN:ASSI:アナル
 			STAIN:ASSI:アナル |= STAIN:MASTER:ペニス
-		CASE 2
-			;主人のペニス⇔助手の膣内の汚れが移動
-			STAIN:MASTER:ペニス |= STAIN:ASSI:膣内
-			STAIN:ASSI:膣内 |= STAIN:MASTER:ペニス
 	ENDSELECT
 ENDIF
 
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
-;助手が処女の場合、助手と奴隷に異常経験付加
-IF TALENT:ASSI:処女
-	TALENT:ASSI:処女 = 0
-	PRINTL ＜助手処女喪失＞
-	IF RELATION:(NO:ASSI) > 100
-		PRINTL 異常経験+2
-		EXP:異常経験 += 2
-	ELSE
-		PRINTL 異常経験+1
-		EXP:異常経験++
-	ENDIF
-	PRINTFORML 異常経験+1(%CALLNAME:ASSI%)
-	EXP:ASSI:異常経験++
-	IF TALENT:ASSI:性転換済
-		CFLAG:ASSI:性転換処女の奪われ方 = 2
-		VIRGIN:ASSI:11 = %NAME:MASTER%
-	ELSE
-		CFLAG:ASSI:処女の奪われ方 = 2
-		VIRGIN:ASSI:1 = %NAME:MASTER%
-	ENDIF
-ENDIF
+SELECTCASE TFLAG:主人挿入箇所
+	CASE 1
+		;助手が処女の場合、助手と奴隷に異常経験付加
+		IF TALENT:ASSI:処女
+			TALENT:ASSI:処女 = 0
+			PRINTL ＜助手処女喪失＞
+			IF RELATION:(NO:ASSI) > 100
+				PRINTL 異常経験+2
+				EXP:異常経験 += 2
+			ELSE
+				PRINTL 異常経験+1
+				EXP:異常経験++
+			ENDIF
+			PRINTFORML 異常経験+1(%CALLNAME:ASSI%)
+			EXP:ASSI:異常経験++
+			IF TALENT:ASSI:性転換済
+				CFLAG:ASSI:性転換処女の奪われ方 = 2
+				VIRGIN:ASSI:11 = %NAME:MASTER%
+			ELSE
+				CFLAG:ASSI:処女の奪われ方 = 2
+				VIRGIN:ASSI:1 = %NAME:MASTER%
+			ENDIF
+		ENDIF
 
-IF TALENT:MASTER:童貞
-	IF TALENT:MASTER:性転換済
-		VIRGIN:MASTER:10 = %NAME:ASSI%
-	ELSE
-		VIRGIN:MASTER:0 = %NAME:ASSI%
-	ENDIF
-ENDIF
+		IF TALENT:MASTER:童貞
+			IF TALENT:MASTER:性転換済
+				VIRGIN:MASTER:10 = %NAME:ASSI%
+			ELSE
+				VIRGIN:MASTER:0 = %NAME:ASSI%
+			ENDIF
+		ENDIF
 
-;助手のＶ経験
-PRINTFORML Ｖ経験+1(%CALLNAME:ASSI%)
-EXP:ASSI:Ｖ経験++
+		;助手のＶ経験
+		PRINTFORML Ｖ経験+1(%CALLNAME:ASSI%)
+		EXP:ASSI:Ｖ経験++
+	CASE 2
+		;助手のＶ経験
+		PRINTFORML Ａ経験+1(%CALLNAME:ASSI%)
+		EXP:ASSI:Ａ経験++
+ENDSELECT
 
 ;助手の同性愛経験
 IF SEX(MASTER) == SEX(ASSI)

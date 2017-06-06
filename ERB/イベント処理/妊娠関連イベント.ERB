@@ -3,6 +3,7 @@
 ;中田氏・妊娠フラグチェック
 ;---------------------------------------------------------
 @IN_VAGINA
+#DIM LCOUNT
 REPEAT CHARANUM
 	SIF COUNT == MASTER
 		CONTINUE
@@ -23,15 +24,26 @@ REPEAT CHARANUM
 		CALL NAKADASHI_CHECK_MASTER, COUNT
 REND
 
+LOCAL = -1
+
 ;妊娠確定時の処理
 REPEAT CHARANUM
-	IF !TALENT:COUNT:妊娠 && PREG:COUNT:21 && PREG:COUNT:10 == 0
+	IF !TALENT:COUNT:妊娠 && PREG:COUNT:11 && PREG:COUNT:10 == 0
+		;父親の番号を取得
+		FOR LCOUNT, 0, CHARANUM
+			IF NO:LCOUNT == PREG:COUNT:21
+				LOCAL = LCOUNT
+				BREAK
+			ENDIF
+		NEXT
 		;獣人と獣は早く産める
 		SELECTCASE CSTR:COUNT:種族
 			CASE "獣人", "獣"
 				PREG:COUNT:10 = DAY+30+RAND:11
+				CALL CHILDSET, COUNT, LOCAL
 			CASEELSE
 				PREG:COUNT:10 = DAY+60+RAND:21
+				CALL CHILDSET, COUNT, LOCAL
 		ENDSELECT
 	ENDIF
 REND
@@ -58,6 +70,12 @@ ENDIF
 SIF PREG:母親:竿役 == 0
 	RETURN 0
 
+;現状、子供が子供を作ることはできない
+IF NO:母親 >= 10000 || NO:LOCAL >= 10000
+	PREG:母親:竿役 = 0
+	RETURN 0
+ENDIF
+
 ;対象がヴァギナ無いなら関数終了
 IF !VAGINA(TARGET)
 	PREG:母親:竿役 = 0
@@ -65,7 +83,7 @@ IF !VAGINA(TARGET)
 ENDIF
 
 ;対象が助手もしくは奴隷でなければ不具合起こりそうなのでフラグリセットして終了
-IF COUNT != TARGET && COUNT != ASSI
+IF 母親 != TARGET && 母親 != ASSI
 	PREG:母親:竿役 = 0
 	RETURN 0
 ENDIF
@@ -155,7 +173,7 @@ ENDSELECT
 ;妊娠確率は一番低くて1/196 一番高いと100%妊娠する
 ;排卵誘発剤使用、種族一致もしくは竿役が神、膣内射精量15以上で対象が小柄体型小人体型共に無しなら100%孕む
 
-IF RAND:(LOCAL:1*LOCAL:2) == 0
+;IF RAND:(LOCAL:1*LOCAL:2) == 0
 	IF LOCAL == MASTER
 		PREG:母親:20 = 1
 	ELSEIF LOCAL == ASSI
@@ -165,8 +183,10 @@ IF RAND:(LOCAL:1*LOCAL:2) == 0
 	ELSE
 		PREG:母親:20 = 4
 	ENDIF
+	PREG:母親:11 = 1
 	PREG:母親:21 = NO:LOCAL
-ENDIF
+	PREG:母親:22 = NO:母親
+;ENDIF
 
 ;判定を行った膣射のリセット
 PREG:母親:竿役 = 0
@@ -282,11 +302,23 @@ ENDSELECT
 ;妊娠確率は一番低くて1/196 一番高いと100%妊娠する
 ;排卵誘発剤使用、種族一致もしくは竿役が神、膣内射精量15以上で対象が小柄体型小人体型共に無しなら100%孕む
 
-SIF RAND:(LOCAL:1*LOCAL:2) == 0
+IF RAND:(LOCAL:1*LOCAL:2) == 0
 	PREG:MASTER:21 = NO:竿役
+	PREG:MASTER:22 = NO:MASTER
+ENDIF
 
 ;判定を行った膣射のリセット
 PREG:竿役:4 = 0
+
+;妊娠処理
+@GET_CHILD
+REPEAT CHARANUM
+    SIF PREG:COUNT:10 == 0
+        CONTINUE
+    ;出産予定日より20日前で妊娠発覚
+    SIF !TALENT:COUNT:妊娠 && !TALENT:COUNT:育児中 && DAY >= PREG:COUNT:10-20
+        CALL GET_CHILD_MESSAGE, COUNT
+REND
 
 @GET_CHILD_MESSAGE, ARG
 VARSET LOCAL, 0
@@ -521,7 +553,7 @@ FOR LCOUNT, 0, CHARANUM
 		IF (PREG:LCOUNT:10 + 1) == DAY:1 && !PREG:LCOUNT:6
 			DRAWLINE
 			IF LCOUNT == MASTER
-				PRINTFORML %CALLNAME:LCOUNT%の出産から三日経ちました
+				PRINTFORML %CALLNAME:LCOUNT%の出産から一日経ちました
 				;主人の妊娠で、父親が認知していれば会いに来るイベント
 				IF PREG:MASTER:5
 					LOCAL = -1
@@ -581,6 +613,8 @@ ENDIF
 
 EXP:ARG:出産経験++
 
+CHILDBIRTHDAY:ARG:0 = MONTH*100+DAYS
+
 IF ARG == MASTER
 	IF PREG:MASTER:5
 		LOCAL = -1
@@ -600,54 +634,54 @@ ENDIF
 ;妊娠を失う
 TALENT:ARG:妊娠 = 0
 
-;崩壊持ちなら育児放棄してしまう
-IF TALENT:ARG:崩壊 && ARG != MASTER
-	;育児放棄の際の赤子の処置
-	REPEAT CHARANUM
-		SIF !TALENT:COUNT:妊娠 && (TALENT:COUNT:育児中 || TALENT:COUNT:母性)
-			LOCAL++
-	REND
-	IF LOCAL
-		DRAWLINE
-		PRINTW 産まれた赤ん坊を他の奴隷に任せるか、里子に出すかを選択してください
-		PRINTL □誰に任せますか？
-		FOR PAGING, 0, CHARANUM
-			CALL PAGING, !TALENT:PAGING:妊娠 && (TALENT:PAGING:育児中 || TALENT:PAGING:母性), "", "", "里子に出す"
-		NEXT
-		SELECTCASE RESULT
-			CASE -1
-				PRINTFORMW %CALLNAME:MASTER%はやむなく、赤ん坊を里子に出しました
-			CASEELSE
-				IF RESULT == MASTER
-					PRINTFORMW %CALLNAME:MASTER%は自分で%CALLNAME:ARG%の子供を育てることにしました
-					PREG:MASTER:10 = DAY:1+10
-					PREG:MASTER:6 = 1
-					CFLAG:MASTER:使用不可 = 10000
-				ELSE
-					PRINTFORMW %CALLNAME:MASTER%は%CALLNAME:RESULT%に乳母をやってもらうことにしました
-					;育児期間を設定する
-					PREG:RESULT:10 = DAY:1+10
-					PREG:RESULT:6 = 1
-					IF TALENT:RESULT:妊娠 != 2
-						TALENT:RESULT:妊娠 = 2
-						SIF RESULT == TARGET
-							TARGET = -1
-						SIF RESULT == ASSI
-							TARGET = -1
-					ENDIF
-				ENDIF
-		ENDSELECT
-	ELSE
-		PRINTFORMW %CALLNAME:MASTER%はやむなく、赤ん坊を里子に出しました
-	ENDIF
-	;妊娠時に減った体力の最大値が回復
-	MAXBASE:ARG:体力 += 500
-	CALL CLEAR_FLAG, ARG
-	;母乳体質消える
-	SIF TALENT:ARG:母乳体質 && PREG:ARG:25
-		TALENT:ARG:母乳体質 = 0
-;育児に入った場合
-ELSE
+;;崩壊持ちなら育児放棄してしまう
+;IF TALENT:ARG:崩壊 && ARG != MASTER
+;	;育児放棄の際の赤子の処置
+;	REPEAT CHARANUM
+;		SIF !TALENT:COUNT:妊娠 && (TALENT:COUNT:育児中 || TALENT:COUNT:母性)
+;			LOCAL++
+;	REND
+;	IF LOCAL
+;		DRAWLINE
+;		PRINTW 産まれた赤ん坊を他の奴隷に任せるか、里子に出すかを選択してください
+;		PRINTL □誰に任せますか？
+;		FOR PAGING, 0, CHARANUM
+;			CALL PAGING, !TALENT:PAGING:妊娠 && (TALENT:PAGING:育児中 || TALENT:PAGING:母性), "", "", "里子に出す"
+;		NEXT
+;		SELECTCASE RESULT
+;			CASE -1
+;				PRINTFORMW %CALLNAME:MASTER%はやむなく、赤ん坊を里子に出しました
+;			CASEELSE
+;				IF RESULT == MASTER
+;					PRINTFORMW %CALLNAME:MASTER%は自分で%CALLNAME:ARG%の子供を育てることにしました
+;					PREG:MASTER:10 = DAY:1+10
+;					PREG:MASTER:6 = 1
+;					CFLAG:MASTER:使用不可 = 10000
+;				ELSE
+;					PRINTFORMW %CALLNAME:MASTER%は%CALLNAME:RESULT%に乳母をやってもらうことにしました
+;					;育児期間を設定する
+;					PREG:RESULT:10 = DAY:1+10
+;					PREG:RESULT:6 = 1
+;					IF TALENT:RESULT:妊娠 != 2
+;						TALENT:RESULT:妊娠 = 2
+;						SIF RESULT == TARGET
+;							TARGET = -1
+;						SIF RESULT == ASSI
+;							TARGET = -1
+;					ENDIF
+;				ENDIF
+;		ENDSELECT
+;	ELSE
+;		PRINTFORMW %CALLNAME:MASTER%はやむなく、赤ん坊を里子に出しました
+;	ENDIF
+;	;妊娠時に減った体力の最大値が回復
+;	MAXBASE:ARG:体力 += 500
+;	CALL CLEAR_FLAG, ARG
+;	;母乳体質消える
+;	SIF TALENT:ARG:母乳体質 && PREG:ARG:25
+;		TALENT:ARG:母乳体質 = 0
+;;育児に入った場合
+;ELSE
 	PRINTFORML %CALLNAME:ARG%は育児室で育児を始めた
 	SIF ARG == TARGET
 		TARGET = -1
@@ -661,7 +695,7 @@ ELSE
 			TALENT:ARG:母性 = 1
 		ENDIF
 	ENDIF
-ENDIF
+;ENDIF
 
 ;実績準備
 SIF NO:ARG != 0 && NAME:ARG == "育江" && !この子の七つのお祝いに
@@ -706,7 +740,7 @@ DO
 				DRAWLINE
 				PRINTFORMW %CALLNAME:MASTER%は%CALLNAME:RESULT%のところへ向かった
 				LOCAL = TARGET
-				TARGET = ARG
+				TARGET = RESULT
 				CALL KOJO_MESSAGE_EVENT, 13
 				TARGET = LOCAL
 				RESTART
@@ -716,9 +750,339 @@ LOOP 1
 
 RETURN 0
 
-;親離れ
+
+;子供の素質と種族の確定
+@CHILDSET, 母親, 父親 = -1, 母体 = -1
+#DIM DYNAMIC 母親
+#DIM DYNAMIC 父親
+#DIM DYNAMIC 母体
+#DIM DYNAMIC 素質数
+#DIM DYNAMIC テーブル
+SIF 母体 == -1
+	母体 = 母親
+
+VARSET LOCAL, 0
+
+;父親が不明なら母親の種族を受け継ぐ
+IF 父親 == -1
+	CHILDRACE:母体:0 = %CSTR:母親:種族%
+;種族一致なら子供も同じ種族
+ELSEIF CSTR:母親:種族 == CSTR:父親:種族
+	CHILDRACE:母体:0 = %CSTR:母親:種族%
+;種族不一致なら
+ELSE
+	;獣人、獣は母親の遺伝が強く、母親が獣人か獣ならまず獣人になる
+	SELECTCASE CSTR:母親:種族
+		CASE "獣人", "獣"
+			CHILDRACE:母体:0 = 獣人
+		CASEELSE
+			;父親が悪魔、もしくは神なら子供も父親の種族を受け継ぐ
+			SELECTCASE CSTR:父親:種族
+				CASE "悪魔", "神"
+					CHILDRACE:母体:0 = %CSTR:父親:種族%
+				;それ以外はランダムで父親か母親の種族を受け継ぐ
+				CASEELSE
+					SELECTCASE RAND:2
+						CASE 0
+							CHILDRACE:母体:0 = %CSTR:父親:種族%
+						CASE 1
+							CHILDRACE:母体:0 = %CSTR:母親:種族%
+					ENDSELECT
+			ENDSELECT
+	ENDSELECT
+ENDIF
+
+;続いて素質の設定
+;まずは性別
+CHILDTALENT:母体:TALENTF("性別") = RAND(1, 3)
+
+;小柄体型
+CHILDTALENT:母体:TALENTF("小柄体型") = 1
+
+;当然子供なので童貞か処女
+SELECTCASE CHILDTALENT:母体:TALENTF("性別")
+	CASE 1
+		CHILDTALENT:母体:TALENTF("童貞") = 1
+	CASE 2
+		CHILDTALENT:母体:TALENTF("処女") = 1
+		;基本絶壁か貧乳だがまれに大きくなる 爆乳にはならない
+		SELECTCASE RAND:20
+			CASE 0 TO 5
+				CHILDTALENT:母体:TALENTF("バストサイズ") = 1
+			CASE 6 TO 15
+				CHILDTALENT:母体:TALENTF("バストサイズ") = 2
+			CASE 16 TO 18
+				CHILDTALENT:母体:TALENTF("バストサイズ") = 3
+			CASE 19
+				CHILDTALENT:母体:TALENTF("バストサイズ") = 4
+		ENDSELECT
+ENDSELECT
+
+;だいたい6～8個の素質が付く
+LOCAL = RAND(6, 9)
+
+;親が神ならさらに2～4個追加
+SIF CSTR:母親:種族 == "神" || (父親 >= 0 && CSTR:父親:種族 == "神")
+	LOCAL += RAND(2, 5)
+
+DO
+	テーブル = RAND(1, 22)
+	;既に決定済みのテーブルならやり直し
+	SIF LOCAL:テーブル
+		CONTINUE
+	;素質の種類ごとにテーブルを置く
+	SELECTCASE テーブル
+		;生意気、臆病、ツンデレ
+		CASE 1
+			SELECTCASE RAND:3
+				CASE 0
+					CHILDTALENT:母体:TALENTF("生意気") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("臆病") = 1
+				CASE 2
+					CHILDTALENT:母体:TALENTF("ツンデレ") = 1
+			ENDSELECT
+		;素直、反抗的、衝動的
+		CASE 2
+			SELECTCASE RAND:3
+				CASE 0
+					CHILDTALENT:母体:TALENTF("素直") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("反抗的") = 1
+				CASE 2
+					CHILDTALENT:母体:TALENTF("衝動的") = 1
+			ENDSELECT
+		;プライド高い、プライド低い
+		CASE 3
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("プライド高い") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("プライド低い") = 1
+			ENDSELECT
+		;ハイテンション、大人しい
+		CASE 4
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("ハイテンション") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("大人しい") = 1
+			ENDSELECT
+		;自制心、無関心、感情乏しい、好奇心
+		CASE 5
+			SELECTCASE RAND:4
+				CASE 0
+					CHILDTALENT:母体:TALENTF("自制心") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("無関心") = 1
+				CASE 2
+					CHILDTALENT:母体:TALENTF("感情乏しい") = 1
+				CASE 3
+					CHILDTALENT:母体:TALENTF("好奇心") = 1
+			ENDSELECT
+		;保守的、楽観的、悲観的
+		CASE 6
+			SELECTCASE RAND:3
+				CASE 0
+					CHILDTALENT:母体:TALENTF("保守的") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("楽観的") = 1
+				CASE 2
+					CHILDTALENT:母体:TALENTF("悲観的") = 1
+			ENDSELECT
+		;貞操観念、貞操無頓着
+		CASE 7
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("貞操観念") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("貞操無頓着") = 1
+			ENDSELECT
+		;恥じらい、恥薄い、寂しがり屋
+		CASE 8
+			SELECTCASE RAND:3
+				CASE 0
+					CHILDTALENT:母体:TALENTF("恥じらい") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("恥薄い") = 1
+				CASE 2
+					CHILDTALENT:母体:TALENTF("寂しがり屋") = 1
+			ENDSELECT
+		;痛みに弱い、痛みに強い
+		CASE 9
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("痛みに弱い") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("痛みに強い") = 1
+			ENDSELECT
+		;濡れやすい、濡れにくい
+		CASE 10
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("濡れやすい") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("濡れにくい") = 1
+			ENDSELECT
+		;習得早い、習得遅い
+		CASE 11
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("習得早い") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("習得遅い") = 1
+			ENDSELECT
+		;汚臭鈍感、汚臭敏感
+		CASE 12
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("汚臭鈍感") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("汚臭敏感") = 1
+			ENDSELECT
+		;汚れ無視、潔癖症
+		CASE 13
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("汚れ無視") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("潔癖症") = 1
+			ENDSELECT
+		;快感に素直、快感の否定
+		CASE 14
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("快感に素直") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("快感の否定") = 1
+			ENDSELECT
+		;両刀、男好き、女好き、男嫌い、女嫌い、同族嫌悪
+		CASE 15
+			SELECTCASE RAND:6
+				CASE 0
+					CHILDTALENT:母体:TALENTF("両刀") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("男好き") = 1
+				CASE 2
+					CHILDTALENT:母体:TALENTF("女好き") = 1
+				CASE 3
+					CHILDTALENT:母体:TALENTF("男嫌い") = 1
+				CASE 4
+					CHILDTALENT:母体:TALENTF("女嫌い") = 1
+				CASE 5
+					CHILDTALENT:母体:TALENTF("同族嫌悪") = 1
+			ENDSELECT
+		;サド、マゾ
+		CASE 16
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("サド") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("マゾ") = 1
+			ENDSELECT
+		;Ｖ敏感鈍感
+		CASE 17
+			;男ならやり直し
+			SIF CHILDTALENT:母体:TALENTF("性別") == 1
+				CONTINUE
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("Ｖ敏感") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("Ｖ鈍感") = 1
+			ENDSELECT
+		;Ｃ敏感鈍感
+		CASE 18
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("Ｃ敏感") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("Ｃ鈍感") = 1
+			ENDSELECT
+		;Ａ敏感鈍感
+		CASE 19
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("Ａ敏感") = 1
+				CASE 0
+					CHILDTALENT:母体:TALENTF("Ａ鈍感") = 1
+			ENDSELECT
+		;Ｂ敏感鈍感
+		CASE 20
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("Ｂ敏感") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("Ｂ鈍感") = 1
+			ENDSELECT
+		;回復早い、回復遅い
+		CASE 21
+			SELECTCASE RAND:2
+				CASE 0
+					CHILDTALENT:母体:TALENTF("回復早い") = 1
+				CASE 1
+					CHILDTALENT:母体:TALENTF("回復遅い") = 1
+			ENDSELECT
+	ENDSELECT
+	LOCAL:テーブル = 1
+	素質数++
+LOOP LOCAL != 素質数
+
+VARSET LOCAL, 0
+素質数 = 0
+
+;以下プラス素質から必ず何かひとつ付く
+LOCAL = 1
+
+;親が神ならさらに1～3個追加
+SIF CSTR:母親:種族 == "神" || (父親 >= 0 && CSTR:父親:種族 == "神")
+	LOCAL += RAND(1, 4)
+
+DO
+	テーブル = RAND(1, 10)
+	;既に決定済みのテーブルならやり直し
+	SIF LOCAL:テーブル
+		CONTINUE
+	;目立ちたがり、舌使い、献身的、小悪魔、孔雀の瞳、夢喰い、買い物上手、治療、音ゲーマー
+	SELECTCASE テーブル
+		CASE 1
+			CHILDTALENT:母体:TALENTF("目立ちたがり") = 1
+		CASE 2
+			CHILDTALENT:母体:TALENTF("舌使い") = 1
+		CASE 3
+			CHILDTALENT:母体:TALENTF("献身的") = 1
+		CASE 4
+			CHILDTALENT:母体:TALENTF("小悪魔") = 1
+		CASE 5
+			CHILDTALENT:母体:TALENTF("孔雀の瞳") = 1
+		CASE 6
+			CHILDTALENT:母体:TALENTF("夢喰い") = 1
+		CASE 7
+			CHILDTALENT:母体:TALENTF("買い物上手") = 1
+		CASE 8
+			CHILDTALENT:母体:TALENTF("治療") = 1
+		CASE 9
+			CHILDTALENT:母体:TALENTF("音ゲーマー") = 1
+	ENDSELECT
+	LOCAL:テーブル = 1
+	素質数++
+LOOP LOCAL != 素質数
+
+;種族によって固定素質
+SELECTCASE CHILDRACE:母体:0
+	CASE "獣人", "獣"
+		CHILDTALENT:母体:TALENTF("動物耳") = 1
+		CHILDTALENT:母体:TALENTF("尻尾") = 1
+	CASE "天使", "鳳凰"
+		CHILDTALENT:母体:TALENTF("羽") = 1
+	CASE "魔術師"
+		CHILDTALENT:母体:TALENTF("調合知識") = 1
+ENDSELECT
+
+;親離れ、もしくは子供を迎え入れる
 @DEPEARENT, ARG
-PRINTFORMW %CALLNAME:ARG%の育てていた子供が親離れしました
+
+PRINTFORML %CALLNAME:ARG%の育てていた子供の容態が安定してきたようだ
 IF ARG == MASTER
 	PRINTFORMW %CALLNAME:ARG%が主人として復帰しました
 	CFLAG:MASTER:使用不可 = 0
@@ -728,17 +1092,112 @@ ENDIF
 ;妊娠時に減った体力の最大値が回復
 SIF PREG:ARG:10 != 0
 	MAXBASE:ARG:体力 += 500
-TALENT:ARG:妊娠 = 0
+TALENT:ARG:育児中 = 0
 IF TALENT:ARG:母乳体質 && PREG:ARG:25 == 1
 	PRINTFORMW %CALLNAME:ARG%は母乳が出なくなりました
 	TALENT:ARG:母乳体質 = 0
 ENDIF
-CALL CLEAR_FLAG, ARG
+SELECTCASE CHILDTALENT:ARG:TALENTF("性別")
+	CASE 1
+		PRINTL さて、この子供は男の子だが……この子をどうしようか
+	CASE 2
+		PRINTL さて、この子供は女の子だが……この子をどうしようか
+ENDSELECT
+PRINTL [0] - 養子に出す
+CALL PASELIL,  @"[1] - 一緒に暮らす(育児費用30000＄が必要)"
 
-SIF ARG != MASTER
-	CALL KOJO_MESSAGE_EVENT, 14, ARG
+DO
+	INPUT
+	IF RESULT == 1 && MONEY < 30000
+		PRINTW 育児費用が足りないため、やむなく養子に出すことにしました
+		RESULT = 0
+	ENDIF
+LOOP LOOPRES(0, 1)
+
+SELECTCASE RESULT
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%の育てていた子供を養子に出しました
+		CALL CLEAR_FLAG, ARG
+
+		SIF ARG != MASTER
+			CALL KOJO_MESSAGE_EVENT, 14, ARG
+	CASE 1
+		MONEY -= 30000
+		PRINTL 名前をつけてあげよう。この子の名前は……(入力してください)
+		DO
+			INPUTS
+			IF RESULTS != ""
+				PRINTFORML 「%RESULTS%」でいいですか？
+				PRINTL [0] - はい
+				PRINTL [1] - 考え直す
+				DO
+					INPUT
+				LOOP LOOPRES(0, 1)
+				SELECTCASE RESULT
+					CASE 0
+						BREAK
+					CASE 1
+						PRINTL 名前をつけてあげよう。この子の名前は……(入力してください)
+						CONTINUE
+				ENDSELECT
+			ENDIF
+		LOOP 1
+		ADDVOIDCHARA
+		TARGET = CHARANUM-1
+		NAME:TARGET = %RESULTS%
+		CALLNAME:TARGET = %RESULTS%
+		CFLAG:誕生日 = CHILDBIRTHDAY:ARG:0
+		CSTR:種族 = %CHILDRACE:ARG:0%
+		REPEAT VARSIZE("TALENT")
+			TALENT:COUNT = CHILDTALENT:ARG:COUNT
+		REND
+		MAXBASE:体力 = RAND(16, 19)*100
+		MAXBASE:気力 = RAND(12, 16)*100
+		SELECTCASE CSTR:種族
+			CASE "神", "悪魔"
+				MAXBASE:体力 += 200
+				MAXBASE:気力 += 200
+		ENDSELECT
+		BASE:体力 = MAXBASE:体力
+		BASE:気力 = MAXBASE:気力
+		NO:TARGET = FLAG:子供の数+10000
+		CFLAG:血縁コード = PREG:ARG:21*10000+PREG:ARG:22
+		RELATION:(PREG:21) = 150
+		RELATION:(PREG:22) = 150
+		RELATION:(NO:ARG) = 150
+		CFLAG:生殖力担当魔術師 = -1
+		CFLAG:不妊担当魔術師 = -1
+		CFLAG:男性器提供者 = -1
+		IF PENIS(TARGET)
+			CFLAG:ペニスサイズ = 2
+			SIF TALENT:小柄体型 || TALENT:小人体型
+				CFLAG:ペニスサイズ = 1
+		ENDIF
+		FLAG:子供の数++
+		CALL CLEAR_FLAG, ARG
+		PRINTFORMW %CALLNAME:TARGET%に性教育を施すべく、一緒に暮らすことにしました
+		PRINTFORML %CALLNAME:TARGET%に性交渉を行えるようになるまでどう育てますか？
+		PRINTL [0] - 普通に育てる(年月経過、期限に影響は無し)
+		PRINTL [1] - 時の砂時計を使う
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					PRINTW ………………
+					PRINTW …………
+					PRINTW ……
+					PRINTFORMW 数年の月日を経て、%CALLNAME:TARGET%が調教可能になりました
+					YEAR += 8
+				CASE 1
+					PRINTFORMW 時の砂時計を使用して、%CALLNAME:TARGET%を調教可能な体まで成長させました
+			ENDSELECT
+		LOOP LOOPRES(0, 1)
+ENDSELECT
 
 ;妊娠まわりのフラグをリセット
 @CLEAR_FLAG, ARG
 VARSET PREG:ARG:0, 0
+VARSET CHILDTALENT:ARG:0, 0
+CHILDBIRTHDAY:ARG:0 = 0
+CHILDRACE:ARG:0 = 
 
