@@ -12,8 +12,11 @@ CALL LIFE_LIST, 1
 ;RESULT:0には選んだキャラ、RESULT:1にはこのリストでどのキャラまで表示したか
 DRAWLINE
 PRINTPLAIN 　CHANGE TARGET　
-SIF TFLAG:ページ数 > 0
+IF TFLAG:ページ数 > 0
 	PRINTFORM [999] 前ページ 
+ELSE
+	PRINT 　　　　　　　
+ENDIF
 PRINTFORM [1000] 戻る 
 ;調教可能キャラの終端と、RESULT:1を参照して次ページ表示できるかの判定
 SIF LOCAL > RESULT:1
@@ -316,11 +319,14 @@ CALL LIFE_LIST
 DRAWLINE
 
 PRINTPLAIN 　CHARADATA　
-SIF TFLAG:ページ数 > 0
+IF TFLAG:ページ数 > 0
 	PRINTFORM [999] 前ページ 
+ELSE
+	PRINT 　　　　　　　
+ENDIF
 PRINTFORM [1000] 戻る 
 SIF RESULT:1 < CHARANUM-1
-	PRINTFORM [1001] 次ページ 
+	PRINTFORMLC [1001] 次ページ 
 
 PRINTL [1010] キャラソート
 
@@ -584,11 +590,14 @@ LOOP LOOPRES(0, 1, 2, 3, 4, 5, 6, 7)
 RETURN 0
 
 ;引数の条件に一致するキャラをページ形式で表示する
+;詳しくは資料フォルダの雑記.txtを参照
 @PAGING, 表示, 追加情報, ページ名, 終了表記, 使用不可も表示
 #DIM ページ数
 #DIM 表示数
 #DIM 飛ばした人数
 #DIM 未表示キャラ
+#DIM 表示行数
+#DIM 初期化フラグ
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 表示
 #DIM DYNAMIC 使用不可も表示
@@ -598,40 +607,46 @@ RETURN 0
 
 LCOUNT = PAGING
 
-IF LCOUNT == 0
+IF 初期化フラグ == 0
 	VARSET LOCAL, 0
 	飛ばした人数 = 0
 	表示数 = 0
 	未表示キャラ = 0
+	表示行数 = LINECOUNT
+	初期化フラグ = 1
 ENDIF
 
 IF 表示 && (使用不可も表示 || !CFLAG:PAGING:使用不可)
-	;2ページ目以降はページ数×20まで表示を飛ばす
-	IF 飛ばした人数 < ページ数*20
+	;2ページ目以降はページ数×10まで表示を飛ばす
+	IF 飛ばした人数 < ページ数*10
 		飛ばした人数++
 		RETURN 0
 	ENDIF
 
+	表示数++
 	;20人表示したら未表示キャラが居るフラグ立ててページ終わり
-	IF 表示数 == 20
+	IF 表示数 > 10
 		未表示キャラ = 1
 	ELSE
 		PRINTFORML 　[{LCOUNT, 2, RIGHT}] - %NAME:LCOUNT, 26, LEFT% \@ SEX(LCOUNT) == 1 ? ♂ # ♀ \@ %追加情報%
 		LOCAL:LCOUNT = 1
-		表示数++
 	ENDIF
 ENDIF
 
 ;表示数が20人になるか全キャラ表示したら入力受け付け
-IF 表示数 == 20 || LCOUNT == CHARANUM-1
+IF 表示数 > 10 || LCOUNT == CHARANUM-1
 	DRAWLINE
+	初期化フラグ = 0
 	IF ページ名 == ""
 		PRINTPLAINFORM 　PAGE.{ページ数+1}　
 	ELSE
 		PRINTPLAINFORM 　%ページ名%　
 	ENDIF
-	SIF ページ数 > 0
+	IF ページ数 > 0
 		PRINTLC [999]前ページ
+	ELSE
+		PRINTLC  
+	ENDIF
 	IF 終了表記 == ""
 		PRINTLC [1000] 戻る　
 	ELSE
@@ -647,7 +662,8 @@ IF 表示数 == 20 || LCOUNT == CHARANUM-1
 			CASE 999
 				SIF ページ数 > 0
 					ページ数--
-				PAGING = 0
+				PAGING = -1
+				CLEARLINE LINECOUNT-表示行数
 				RETURN 0
 			CASE 1000
 				PAGING = CHARANUM
@@ -657,7 +673,8 @@ IF 表示数 == 20 || LCOUNT == CHARANUM-1
 				;表示できるキャラがまだ居れば次ページ
 				SIF 未表示キャラ
 					ページ数++
-				PAGING = 0
+				PAGING = -1
+				CLEARLINE LINECOUNT-表示行数
 				RETURN 0
 			CASEELSE
 				SIF !LOCAL:RESULT

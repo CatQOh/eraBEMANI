@@ -118,15 +118,17 @@ VARSET LOCAL, 0
 
 IF TARGET >= 0
 	;未陥落なら反発刻印に応じてストレス値増加
-	SIF !CFLAG:陥落
+	;未陥落じゃなくても上がるように
+	;SIF !CFLAG:陥落
 		CFLAG:ストレス値 += MARK:反発刻印
 	;ストレス値100以上で崩壊を得る
-	SIF CFLAG:ストレス値 >= 100 && !TALENT:崩壊
-		CALL COLLAPSE_MIND_TRAIN
+	;撤廃しました
+	;SIF CFLAG:ストレス値 >= 100 && !TALENT:崩壊
+	;	CALL COLLAPSE_MIND_TRAIN
 
 	;依存度が-1000未満の場合、-1000にする
-	SIF CFLAG:依存度 < -1000
-		CFLAG:依存度 = -1000
+	;SIF CFLAG:依存度 < -1000
+	;	CFLAG:依存度 = -1000
 
 	;売却可能&助手可能判定 陥落系で無視できるって条件はほとんど意味無いか
 	;従順+欲望が6以上
@@ -250,20 +252,23 @@ REPEAT CHARANUM
 	SIF TALENT:MASTER:治療 || (ASSI >= 0 && TALENT:ASSI:治療)
 		LOCAL += 150
 
-	;休憩フラグ（休憩フラグが経っている、もしくは調教対象でない）
-	IF FLAG:休憩フラグ || TARGET != COUNT
-		LOCAL += 100
-		CFLAG:COUNT:ストレス値--
-		SIF TALENT:COUNT:ハイテンション
+	;使用不可のキャラは休憩フラグの影響を受けない
+	IF !CFLAG:COUNT:使用不可
+		;休憩フラグ（休憩フラグが経っている、もしくは調教対象でない）
+		IF FLAG:休憩フラグ || TARGET != COUNT
+			LOCAL += 100
 			CFLAG:COUNT:ストレス値--
-	ENDIF
+			SIF TALENT:COUNT:ハイテンション
+				CFLAG:COUNT:ストレス値--
+		ENDIF
 
-	;休憩コマンドで休んだ場合
-	IF FLAG:休憩フラグ == 2
-		TIMES LOCAL , 2.00
-		CFLAG:COUNT:ストレス値 -= 2
-		SIF TALENT:COUNT:ハイテンション
-			CFLAG:COUNT:ストレス値--
+		;休憩コマンドで休んだ場合
+		IF FLAG:休憩フラグ == 2
+			TIMES LOCAL , 2.00
+			CFLAG:COUNT:ストレス値 -= 2
+			SIF TALENT:COUNT:ハイテンション
+				CFLAG:COUNT:ストレス値--
+		ENDIF
 	ENDIF
 
 	;吸血鬼
@@ -341,8 +346,16 @@ REPEAT CHARANUM
 		CFLAG:COUNT:回復量低下--
 	
 	;使用不可フラグ
-	SIF CFLAG:COUNT:使用不可
+	IF CFLAG:COUNT:使用不可
 		CFLAG:COUNT:使用不可--
+		IF CFLAG:COUNT:使用不可 == 0
+			IF CFLAG:改造中 == 1
+				PRINTFORMW %CALLNAME:COUNT%は体外受精を終えたため、再び調教可能になりました
+			ELSE
+				PRINTFORMW %CALLNAME:COUNT%が再び調教可能になりました
+			ENDIF
+		ENDIF
+	ENDIF
 REND
 
 CALL EVENTCHECK_ABL
@@ -480,8 +493,6 @@ REPEAT CHARANUM
 	ENDIF
 REND
 
-
-
 ;主人が使用不可の場合はTARGETとASSIを外してSHOP画面表示し、収入と支出の一切を中断して時間だけ経過させる。DAYは増えないので期限には影響無し
 IF CFLAG:MASTER:使用不可
 	TARGET = -1
@@ -549,11 +560,18 @@ ENDIF
 ;全体の妊娠発覚時のイベント
 CALL GET_CHILD
 
-;排卵誘発剤の効果終了処理
+;排卵誘発剤の効果終了と、不妊治療薬のコスト処理
 REPEAT CHARANUM
 	IF CFLAG:COUNT:排卵誘発剤
 		PRINTFORMW %CALLNAME:COUNT%の排卵誘発剤の効果が切れたようだ
 		CFLAG:COUNT:排卵誘発剤 = 0
+	ENDIF
+	IF CFLAG:COUNT:生殖力強化 == 1
+		LOCAL = 300
+		SIF TALENT:COUNT:小柄体型
+			LOCAL += 200
+		CALL PASELIW, @"%CALLNAME:COUNT%の不妊治療薬に{LOCAL}＄の費用が発生しました"
+		CFLAG:COUNT:ストレス値++
 	ENDIF
 REND
 

@@ -34,14 +34,21 @@ PRINTL 　[3] - 魔術師による不妊治療
 PRINTL 　[4] - 卵管結紮(不妊手術)
 PRINTL 　[5] - 精管結紮(不妊手術,パイプカット)
 PRINTL 　[6] - 魔術師による不妊化
-PRINTL 　[7] - 性器切断(不妊手術,去勢)
-PRINTL 　[8] - 男性器形成(性転換)
-PRINTL 　[9] - 女性器形成(性転換)
-PRINTL 　[10] - 中絶
+PRINTL 　[7] - 中絶
+DRAWLINE
+PRINTPLAIN 　生殖関連　
+PRINTL [0] - 戻る
+;PRINTL 　[7] - 性器切断(不妊手術,去勢)
+;PRINTL 　[8] - 男性器形成(性転換)
+;PRINTL 　[9] - 女性器形成(性転換)
 
-INPUT
+DO
+	INPUT
+LOOP LOOPRES(0, 1, 2, 3, 4, 5, 6, 7)
 
 SELECTCASE RESULT
+	CASE 0
+		RETURN 0
 	CASE 1
 		CALL 体外受精
 	CASE 2
@@ -55,14 +62,12 @@ SELECTCASE RESULT
 	CASE 6
 		CALL 魔術師不妊化
 	CASE 7
-		CALL 性器切断
-	CASE 8
-		CALL 男性器形成
+		CALL 中絶
 ENDSELECT
 
 @体外受精
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC 父親 = -1
+#DIM DYNAMIC 父親, 2 = -1
 #DIM DYNAMIC 母親 = -1
 #DIM DYNAMIC 母体 = -1
 #DIM DYNAMIC 費用, 3
@@ -134,6 +139,8 @@ DO
 						費用:0 += 30000
 					;父親はNOで入れる
 					父親 = NO:RESULT
+					;子供の素質設定用
+					父親:1 = RESULT
 					RESTART
 			ENDSELECT
 		CASE 2
@@ -217,12 +224,15 @@ DO
 			CFLAG:母体:使用不可 = 15
 			CFLAG:母親:改造中 = 1
 			CFLAG:母体:改造中 = 1
+			CFLAG:母親:ストレス値 += 5
+			CFLAG:母体:ストレス値 += 10
 
 			;妊娠は確定する
 			PREG:母体:10 = DAY+60+RAND:21
 			PREG:母体:21 = 父親
 			PREG:母体:22 = NO:母親
 			TALENT:母体:妊娠確定 = 1
+			CALL CHILDSET, 母親, 父親:1, 母体
 			RETURN 1
 	ENDSELECT
 LOOP 1
@@ -279,6 +289,7 @@ DO
 			PRINTW 薬物投与による不妊治療を始めます
 			MONEY -= 費用
 			CFLAG:患者:生殖力強化 = 1
+			CFLAG:患者:ストレス値++
 			RETURN 1
 	ENDSELECT
 LOOP 1
@@ -403,6 +414,8 @@ DO
 			ENDIF
 			CFLAG:対象:使用不可 = 3
 			CFLAG:術師:使用不可 = 3
+			CFLAG:対象:ストレス値 += 3
+			CFLAG:術師:ストレス値 += 3
 			RETURN 1
 	ENDSELECT
 LOOP 1
@@ -461,6 +474,7 @@ DO
 			MONEY -= 費用
 			CFLAG:患者:卵管結紮 = 1
 			CFLAG:患者:使用不可 = 15
+			CFLAG:患者:ストレス値 += 10
 			RETURN 1
 	ENDSELECT
 LOOP 1
@@ -520,6 +534,7 @@ DO
 			MONEY -= 費用
 			CFLAG:患者:精管結紮 = 1
 			CFLAG:患者:使用不可 = 15
+			CFLAG:患者:ストレス値 += 10
 			RETURN 1
 	ENDSELECT
 LOOP 1
@@ -710,6 +725,68 @@ DO
 	ENDSELECT
 LOOP 1
 
+@中絶
+#DIM DYNAMIC 患者 = -1
+#DIM DYNAMIC 費用
+
+PRINTL □中絶
+PRINTL 　出産前の胎児を堕ろす外科手術
+PRINTL □費用
+CALL PASELIL, @"　{費用}＄"
+PRINTL □注意事項
+PRINTL 　対象は2週間ほどの安静が必要
+PRINTL □患者
+
+IF 患者 >= 0
+	PRINTFORMLC 　[1] - %NAME:患者%
+ELSE
+	PRINTLC 　[1] - 患者を選ぶ
+ENDIF
+
+PRINTPLAIN 　中絶　
+PRINT [0] - 戻る　
+SIF 患者 >= 0
+	PRINT [2] - 術式を行う
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			DRAWLINE
+			PRINTL □患者を選んでください
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, TALENT:PAGING:妊娠, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					;出産予定日が近いほど費用が上がり、小柄体型だとさらに費用がかさむ
+					IF TALENT:RESULT:小柄体型
+						費用 = (100-(PREG:10-DAY))*2000
+					ELSE
+						費用 = (100-(PREG:10-DAY))*1000
+					ENDIF
+					費用 += 30000
+					患者 = RESULT
+					RESTART
+			ENDSELECT
+		CASE 2
+			IF MONEY < 費用
+				PRINTW 費用が足りません
+				RESTART
+			ENDIF
+			PRINTFORMW %NAME:患者%の胎児を堕ろします
+			MONEY -= 費用
+			TALENT:患者:妊娠 = 0
+			CALL CLEAR_FLAG, 患者
+			CFLAG:患者:使用不可 = 29
+			CFLAG:患者:ストレス += 30
+			RETURN 1
+	ENDSELECT
+LOOP 1
 
 
 @男性器形成

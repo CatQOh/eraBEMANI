@@ -173,7 +173,7 @@ ENDSELECT
 ;妊娠確率は一番低くて1/196 一番高いと100%妊娠する
 ;排卵誘発剤使用、種族一致もしくは竿役が神、膣内射精量15以上で対象が小柄体型小人体型共に無しなら100%孕む
 
-IF RAND:(LOCAL:1*LOCAL:2) == 0
+;IF RAND:(LOCAL:1*LOCAL:2) == 0
 	IF LOCAL == MASTER
 		PREG:母親:20 = 1
 	ELSEIF LOCAL == ASSI
@@ -186,7 +186,7 @@ IF RAND:(LOCAL:1*LOCAL:2) == 0
 	PREG:母親:11 = 1
 	PREG:母親:21 = NO:LOCAL
 	PREG:母親:22 = NO:母親
-ENDIF
+;ENDIF
 
 ;判定を行った膣射のリセット
 PREG:母親:竿役 = 0
@@ -331,7 +331,9 @@ IF ARG == MASTER
 	CALL KOJO_MASTER_EVENT, 1
 ELSE
 	PRINTFORMW %CALLNAME:ARG%の様子がおかしい……
-	IF PREG:ARG:20 == 4
+	IF TALENT:ARG:妊娠確定
+		PRINTFORMW %CALLNAME:ARG%は妊娠の自覚症状が出てきたようだ
+	ELSEIF PREG:ARG:20 == 4
 		PRINTFORMW %CALLNAME:ARG%は名も知らぬ男の子供を身篭ったようだ
 	ELSEIF PREG:ARG:20 == 1
 		PRINTFORMW %CALLNAME:ARG%は%CALLNAME:MASTER%の子供を身篭ったようだ
@@ -365,7 +367,7 @@ IF !TALENT:ARG:母乳体質 && SEX(ARG) == 2
 ENDIF
 
 ;ストレス値の処理
-IF ARG != MASTER
+IF ARG != MASTER || !TALENT:ARG:妊娠確定
 	LOCAL = 100
 	;父親が主人
 	IF PREG:ARG:21 == NO:MASTER
@@ -435,39 +437,39 @@ IF ARG != MASTER
 
 	CFLAG:ARG:ストレス値 += LOCAL
 
-	;ストレス値の累積が100を超えた場合
-	IF CFLAG:ARG:ストレス値 >= 100 && !TALENT:ARG:崩壊
-		PRINTFORMW %CALLNAME:ARG%は呆然とした面持ちをしている
-		PRINTFORMW %CALLNAME:ARG%の中で何かが壊れてしまったようだ
-		PRINTFORMW %CALLNAME:ARG%は[崩壊]してしまった
-		PRINTL 
-		IF TALENT:ARG:恋慕
-			PRINTFORMW %CALLNAME:ARG%は【恋慕】を失った
-			TALENT:ARG:恋慕 = 0
-		ENDIF
-		IF TALENT:ARG:淫乱
-			PRINTFORMW %CALLNAME:ARG%は【淫乱】を失った
-			TALENT:ARG:淫乱 = 0
-		ENDIF
-		IF TALENT:ARG:服従
-			PRINTFORMW %CALLNAME:ARG%は【服従】を失った
-			TALENT:ARG:服従 = 0
-		ENDIF
-		IF TALENT:ARG:親愛
-			PRINTFORMW %CALLNAME:ARG%は【親愛】を失った
-			TALENT:ARG:親愛 = 0
-		ENDIF
-		IF TALENT:ARG:娼婦
-			PRINTFORMW %CALLNAME:ARG%は【娼婦】を失った
-			TALENT:ARG:娼婦 = 0
-		ENDIF
-		IF TALENT:ARG:隷属
-			PRINTFORMW %CALLNAME:ARG%は【隷属】を失った
-			TALENT:ARG:隷属 = 0
-		ENDIF
-		CFLAG:ARG:陥落 = 0
-		TALENT:ARG:崩壊 = 1
-	ENDIF
+;	;ストレス値の累積が100を超えた場合
+;	IF CFLAG:ARG:ストレス値 >= 100 && !TALENT:ARG:崩壊
+;		PRINTFORMW %CALLNAME:ARG%は呆然とした面持ちをしている
+;		PRINTFORMW %CALLNAME:ARG%の中で何かが壊れてしまったようだ
+;		PRINTFORMW %CALLNAME:ARG%は[崩壊]してしまった
+;		PRINTL 
+;		IF TALENT:ARG:恋慕
+;			PRINTFORMW %CALLNAME:ARG%は【恋慕】を失った
+;			TALENT:ARG:恋慕 = 0
+;		ENDIF
+;		IF TALENT:ARG:淫乱
+;			PRINTFORMW %CALLNAME:ARG%は【淫乱】を失った
+;			TALENT:ARG:淫乱 = 0
+;		ENDIF
+;		IF TALENT:ARG:服従
+;			PRINTFORMW %CALLNAME:ARG%は【服従】を失った
+;			TALENT:ARG:服従 = 0
+;		ENDIF
+;		IF TALENT:ARG:親愛
+;			PRINTFORMW %CALLNAME:ARG%は【親愛】を失った
+;			TALENT:ARG:親愛 = 0
+;		ENDIF
+;		IF TALENT:ARG:娼婦
+;			PRINTFORMW %CALLNAME:ARG%は【娼婦】を失った
+;			TALENT:ARG:娼婦 = 0
+;		ENDIF
+;		IF TALENT:ARG:隷属
+;			PRINTFORMW %CALLNAME:ARG%は【隷属】を失った
+;			TALENT:ARG:隷属 = 0
+;		ENDIF
+;		CFLAG:ARG:陥落 = 0
+;		TALENT:ARG:崩壊 = 1
+;	ENDIF
 ENDIF
 
 IF ARG == MASTER
@@ -499,6 +501,7 @@ IF ARG == MASTER
 	ENDIF
 ELSE
 	CALL KOJO_MESSAGE_EVENT, 11, ARG
+	TALENT:ARG:妊娠確定 = 0
 ENDIF
 
 ;臨月到達
@@ -764,7 +767,7 @@ SIF 母体 == -1
 
 VARSET LOCAL, 0
 
-;父親が不明なら母親の種族を受け継ぐ
+;父親が不明、もしくは採取精液なら母親の種族を受け継ぐ
 IF 父親 == -1
 	CHILDRACE:母体:0 = %CSTR:母親:種族%
 ;種族一致なら子供も同じ種族
