@@ -1,5 +1,8 @@
 ﻿@SHOW_SHOP
 VARSET LOCAL, 0
+
+VARLINE = 0
+
 ;陥落済みなら陥落済みフラグをオン
 IF TARGET > 0
 	IF FALLTYPE(TARGET) != 0
@@ -108,17 +111,16 @@ ELSEIF FLAG:ゲームモード != 8
 ELSE
 	LOCALS:2 = <font color='gray'><nonbutton title='調教可能なキャラが居ません'>[---] - 能力上昇 </nonbutton></font>
 ENDIF
-;TARGETの他に調教できるキャラがいれば表示
-IF FLAG:ゲームモード == 7
-		IF TALENT:1:妊娠 || TALENT:1:育児中
-			LOCALS:3 = <font color='gray'><nonbutton title='%CALLNAME:1%が身篭っているため、できません'>[---] - 一転攻勢 </nonbutton></font>
-		ELSE
-			LOCALS:3 = <button value='202' title='%CALLNAME:MASTER%と%CALLNAME:1%の受け攻めを変えます'>[202] - 一転攻勢 </button>
-		ENDIF
-ELSEIF LOCAL
-	LOCALS:3 = <button value='202' title='調教対象を変更します'>[202] - 奴隷変更 </button>
+IF LOCAL
+	IF FLAG:ゲームモード == 7
+		LOCALS:3 = <button value='202' title='お相手を変更します'>[202] - 対象変更 </button>
+	ELSE
+		LOCALS:3 = <button value='202' title='調教対象を変更します'>[202] - 奴隷変更 </button>
+	ENDIF
 ELSE
-	IF CHARANUM == 1 && FLAG:ゲームモード == 8
+	IF FLAG:ゲームモード == 7
+		LOCALS:3 = <font color='gray'><nonbutton title='%CALLNAME:TARGET%以外にキャラが居ません'>[---] - 対象変更 </nonbutton></font>
+	ELSEIF CHARANUM == 1 && FLAG:ゲームモード == 8
 		LOCALS:3 = <font color='gray'><nonbutton title='調教可能なキャラが居ません'>[---] - 奴隷変更 </nonbutton></font>
 	ELSEIF CHARANUM != 1 && TARGET >= 0
 		LOCALS:3 = <font color='gray'><nonbutton title='%CALLNAME:TARGET%以外に調教可能なキャラが居ません'>[---] - 奴隷変更 </nonbutton></font>
@@ -128,13 +130,25 @@ ELSE
 ENDIF
 ;助手可能キャラが一人でもいれば表示
 IF LOCAL:2
-	IF ASSI > 0
-		LOCALS:4 = <button value='203' title='助手を変更します'>[203] - 助手変更 </button>
+	IF FLAG:ゲームモード == 7
+		IF ASSI > 0
+			LOCALS:4 = <button value='203' title='助手を変更します'>[203] - 助手変更 </button>
+		ELSE
+			LOCALS:4 = <button value='203' title='助手を選出します'>[203] - 助手変更 </button>
+		ENDIF
 	ELSE
-		LOCALS:4 = <button value='203' title='奴隷から助手を指定します'>[203] - 助手変更 </button>
+		IF ASSI > 0
+			LOCALS:4 = <button value='203' title='助手を変更します'>[203] - 助手変更 </button>
+		ELSE
+			LOCALS:4 = <button value='203' title='奴隷から助手を指定します'>[203] - 助手変更 </button>
+		ENDIF
 	ENDIF
 ELSE
-	LOCALS:4 = <font color='gray'><nonbutton title='助手に選べる奴隷は居ません'>[---] - 助手変更 </nonbutton></font>
+	IF FLAG:ゲームモード == 7
+		LOCALS:4 = <font color='gray'><nonbutton title='助手に選べるキャラは居ません'>[---] - 助手変更 </nonbutton></font>
+	ELSE
+		LOCALS:4 = <font color='gray'><nonbutton title='助手に選べる奴隷は居ません'>[---] - 助手変更 </nonbutton></font>
+	ENDIF
 ENDIF
 
 ;主人が禁断の知識持ってる場合
@@ -146,9 +160,23 @@ IF TALENT:MASTER:禁断の知識
 	ENDIF
 ENDIF
 
+;新婚モードの一転攻勢
+IF FLAG:ゲームモード == 7
+	REPEAT CHARANUM
+		IF CFLAG:COUNT:嫁
+			LOCAL = COUNT
+			BREAK
+		ENDIF
+	REND
+	IF TALENT:LOCAL:妊娠 || TALENT:LOCAL:育児中
+		LOCALS:6 = <font color='gray'><nonbutton title='%CALLNAME:LOCAL%が身篭っているため、できません'>[---] - 一転攻勢 </nonbutton></font>
+	ELSE
+		LOCALS:6 = <button value='205' title='%CALLNAME:MASTER%と%CALLNAME:LOCAL%の受け攻めを変えます'>[205] - 一転攻勢 </button>
+	ENDIF
+ENDIF
 
 IF FLAG:ゲームモード == 7
-	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3
+	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4+LOCALS:5+LOCALS:6
 ELSEIF TALENT:MASTER:禁断の知識
 	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4+LOCALS:5
 ELSE
@@ -305,20 +333,8 @@ SELECTCASE RESULT
 			CALL SHOP_ABLUP
 	;奴隷変更
 	CASE 202
-		SELECTCASE FLAG:ゲームモード
-			CASE 7
-				;VARSET PREG:TARGET, 0
-				SWAPCHARA TARGET, MASTER
-				TALENT:MASTER:親愛 = 0
-				TALENT:親愛 = 1
-				CFLAG:MASTER:嫁 = 0
-				CFLAG:嫁 = 1
-				MASTER = 0
-				TARGET = 1
-			CASE IS != 7
-				SIF LOCAL
-					CALL CHANGE_TARGET, LOCAL
-		ENDSELECT
+		SIF LOCAL
+			CALL CHANGE_TARGET, LOCAL
 	;助手変更
 	CASE 203
 		SELECTCASE FLAG:ゲームモード
@@ -330,6 +346,24 @@ SELECTCASE RESULT
 	CASE 204
 		SIF TALENT:MASTER:禁断の知識 && CHARANUM > 1
 			CALL BODY_MOD
+	;一転攻勢
+	CASE 205
+		IF FLAG:ゲームモード == 7
+			REPEAT CHARANUM
+				IF CFLAG:COUNT:嫁
+					LOCAL = COUNT
+					BREAK
+				ENDIF
+			REND
+			IF !TALENT:LOCAL:妊娠 && !TALENT:LOCAL:育児中
+				;VARSET PREG:TARGET, 0
+				TALENT:MASTER:親愛 = 1
+				TALENT:LOCAL:親愛 = 0
+				CFLAG:MASTER:嫁 = 1
+				CFLAG:LOCAL:嫁 = 0
+				SWAPCHARA LOCAL, MASTER
+			ENDIF
+		ENDIF
 	;アイテム
 	CASE 300
 		IF FLAG:ゲームモード == 8
