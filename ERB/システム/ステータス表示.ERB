@@ -35,27 +35,29 @@ SIF TALENT:ARG:服従
 SIF TALENT:ARG:隷属
 	PRINTL 　全キャラ×150%
 LOCAL = 0
-REPEAT 10000
-	IF EXISTCSV(COUNT)
+REPEAT 20000
+	IF EXISTCSV(COUNT) || COUNT > 10000
+		SIF COUNT > 10000 && CHILDNAME:(COUNT-10000) == ""
+			BREAK
 		LOCALS = 
 		IF RELATION:ARG:COUNT != 100
 			IF !TALENT:ARG:服従 && !TALENT:ARG:隷属
 				IF NO:MASTER == COUNT
 					LOCALS = 　%NAME:MASTER%×{RELATION:ARG:COUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAME(COUNT)%×{RELATION:ARG:COUNT}\%
+					LOCALS = 　%CSVNAMEF(COUNT)%×{RELATION:ARG:COUNT}\%
 				ENDIF
 			ELSEIF RELATION:ARG:COUNT > 120 && TALENT:ARG:服従
 				IF NO:MASTER == COUNT
 					LOCALS = 　%NAME:MASTER%×{RELATION:ARG:COUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAME(COUNT)%×{RELATION:ARG:COUNT}\%
+					LOCALS = 　%CSVNAMEF(COUNT)%×{RELATION:ARG:COUNT}\%
 				ENDIF
 			ELSEIF RELATION:ARG:COUNT > 150 && TALENT:ARG:隷属
 				IF NO:MASTER == COUNT
 					LOCALS = 　%NAME:MASTER%×{RELATION:ARG:COUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAME(COUNT)%×{RELATION:ARG:COUNT}\%
+					LOCALS = 　%CSVNAMEF(COUNT)%×{RELATION:ARG:COUNT}\%
 				ENDIF
 			ENDIF
 		ENDIF
@@ -135,8 +137,16 @@ PRINTL □ その他情報
 IF FLAG:ゲームモード == 1 && FLAG:パートナー == NO:ARG
 		PRINTFORML 　{REALTIME:0}年{REALTIME:1}月{REALTIME:2}日に%CALLNAME:MASTER%のパートナーになった
 ELSEIF FLAG:ゲームモード == 7
-	IF ARG == MASTER
-		PRINTFORML 　{REALTIME:0}年{REALTIME:1}月{REALTIME:2}日に%CALLNAME:1%と結婚した
+	IF NO:ARG >= 10000
+		PRINTFORML 　%CSVNAMEF(CFLAG:ARG:血縁コード/100000)%と%CSVNAMEF(CFLAG:ARG:血縁コード%100000)%の\@ CFLAG:ARG:近親交配 ? 近親交配で # 間に \@産まれた\@ SEX(ARG) == 1 ? 息子 # 娘 \@だ
+	ELSEIF ARG == MASTER
+		REPEAT CHARANUM
+			IF CFLAG:COUNT:嫁
+				LOCAL = COUNT
+				BREAK
+			ENDIF
+		REND
+		PRINTFORML 　{REALTIME:0}年{REALTIME:1}月{REALTIME:2}日に%CALLNAME:LOCAL%と結婚した
 	ELSE
 		PRINTFORML 　{REALTIME:0}年{REALTIME:1}月{REALTIME:2}日に%CALLNAME:MASTER%と結婚した
 	ENDIF
@@ -156,7 +166,7 @@ ELSE
 		IF NO:ARG == 0
 			PRINTFORML 　%CALLNAME:MASTER%が調教師を始めたと聞いて、自ら奴隷になりたいと志願してきた変人である
 		ELSEIF NO:ARG >= 10000
-			PRINTFORML 　%CSVNAME(CFLAG:ARG:血縁コード/10000)%と%CSVNAME(CFLAG:ARG:血縁コード%10000)%の間に産まれた\@ SEX(ARG) == 1 ? 息子 # 娘 \@だ
+			PRINTFORML 　%CSVNAMEF(CFLAG:ARG:血縁コード/100000)%と%CSVNAMEF(CFLAG:ARG:血縁コード%100000)%の\@ CFLAG:ARG:近親交配 ? 近親交配で # 間に \@産まれた\@ SEX(ARG) == 1 ? 息子 # 娘 \@だ
 		ELSE
 			PRINTFORML 　{BUYY:ARG:0}年{BUYM:ARG:0}月{BUYD:ARG:0}日に購入
 		ENDIF
@@ -545,6 +555,11 @@ SIF CSTR:ARG:眷属主 != ""
 	PRINTFORML 　%CSTR:ARG:眷属主%の手により%CSTR:ARG:種族%の眷属に迎えられた
 
 IF ARG != MASTER
+	;新婚モードなら一時的にCALLNAME:MASTERは「主人」になる
+	IF FLAG:ゲームモード == 7
+		LOCALS = %CALLNAME:MASTER%
+		CALLNAME:MASTER = 主人
+	ENDIF
 	SELECTCASE PAGE
 		CASE 0
 			PRINTPLAIN □ 日常経験 
@@ -745,6 +760,8 @@ IF ARG != MASTER
 			SIF CFLAG:ARG:脱糞を撮影された経験
 				PRINTFORML 　撮影されながら浣腸液で糞便を撒き散らしたことがある
 	ENDSELECT
+	SIF FLAG:ゲームモード == 7
+		CALLNAME:MASTER = %LOCALS%
 ENDIF
 
 SIF ドラゴンに処女:0
@@ -1545,9 +1562,9 @@ REPEAT VARSIZE("TALENT")
 		CASE "買い物上手"
 			LOCALS:(LOCAL%6) += @"持ち前の話術でアイテムを安く購入出来るようです"
 		CASE "恋心"
-			LOCALS:(LOCAL%6) += @"\@ TALENT:ARG:恋心 != 10000 ? %CSVNAME(TALENT:ARG:恋心)% # 誰か \@に恋をしているようです。意中の相手以外に%CALLNAME:ARG%を振り向かせるのは難しいでしょう"
+			LOCALS:(LOCAL%6) += @"\@ TALENT:ARG:恋心 != 10000 ? %CSVNAMEF(TALENT:ARG:恋心)% # 誰か \@に恋をしているようです。意中の相手以外に%CALLNAME:ARG%を振り向かせるのは難しいでしょう"
 		CASE "既婚者"
-			LOCALS:(LOCAL%6) += @"\@ TALENT:ARG:既婚者 != 10000 ? %CSVNAME(TALENT:ARG:既婚者)% # 別の誰か \@と結婚しています。%CALLNAME:TARGET%の誓いを撤回させるには相当な手間がかかるでしょう"
+			LOCALS:(LOCAL%6) += @"\@ TALENT:ARG:既婚者 != 10000 ? %CSVNAMEF(TALENT:ARG:既婚者)% # 別の誰か \@と結婚しています。%CALLNAME:TARGET%の誓いを撤回させるには相当な手間がかかるでしょう"
 		CASE "夢喰い"
 			LOCALS:(LOCAL%6) += @"他人の夢に介入できるようです。その夢の中で遊んだり、都合の良いように操作したりします"
 		CASE "ネクロマンサー"
