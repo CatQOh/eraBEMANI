@@ -70,12 +70,6 @@ ENDIF
 SIF PREG:母親:竿役 == 0
 	RETURN 0
 
-;現状、子供が子供を作ることはできない
-IF NO:母親 >= 10000 || NO:LOCAL >= 10000
-	PREG:母親:竿役 = 0
-	RETURN 0
-ENDIF
-
 ;対象が助手もしくは奴隷でなければ不具合起こりそうなのでフラグリセットして終了
 IF 母親 != TARGET && 母親 != ASSI
 	PREG:母親:竿役 = 0
@@ -741,6 +735,16 @@ ELSE
 	ENDSELECT
 ENDIF
 
+;血縁コードが同じ、もしくは親子間の交配なら近親交配フラグが立つ
+SIF CFLAG:母親:血縁コード == CFLAG:父親:血縁コード
+	PREG:母体:27 = 1
+
+SIF CFLAG:母親:血縁コード >= 10000 && (CFLAG:母親:血縁コード/100000 == NO:父親 || CFLAG:母親:血縁コード%100000 == NO:父親)
+	PREG:母体:27 = 1
+
+SIF CFLAG:父親:血縁コード >= 10000 && (CFLAG:父親:血縁コード/100000 == NO:母親 || CFLAG:父親:血縁コード%100000 == NO:母親)
+	PREG:母体:27 = 1
+
 ;続いて素質の設定
 ;まずは性別
 CHILDTALENT:母体:TALENTF("性別") = RAND(1, 3)
@@ -1100,19 +1104,29 @@ SELECTCASE RESULT
 		REPEAT VARSIZE("TALENT")
 			TALENT:COUNT = CHILDTALENT:ARG:COUNT
 		REND
+		SIF PREG:ARG:27
+			CFLAG:近親交配 = 1
 		MAXBASE:体力 = RAND(16, 19)*100
 		MAXBASE:気力 = RAND(12, 16)*100
 		SELECTCASE CSTR:種族
 			CASE "神", "悪魔"
 				MAXBASE:体力 += 200
 				MAXBASE:気力 += 200
+			CASEELSE
+				;近親交配だと虚弱になりやすい
+				IF CFLAG:近親交配
+					MAXBASE:体力 -= RAND(1, 4)*100
+					MAXBASE:気力 -= RAND(1, 4)*100
+				ENDIF
 		ENDSELECT
 		BASE:体力 = MAXBASE:体力
 		BASE:気力 = MAXBASE:気力
 		;10000が恋心と既婚者のフラグに使われてるので、子供ののNOは10001から
 		FLAG:子供の数++
 		NO:TARGET = FLAG:子供の数+10000
-		CFLAG:血縁コード = PREG:ARG:21*10000+PREG:ARG:22
+		;NO-10000のCHILDNAMEに名前が記録される
+		CHILDNAME:(FLAG:子供の数) = %NAME:TARGET%
+		CFLAG:血縁コード = PREG:ARG:21*100000+PREG:ARG:22
 		RELATION:(PREG:ARG:21) = 150
 		RELATION:(PREG:ARG:22) = 150
 		RELATION:(NO:ARG) = 150
