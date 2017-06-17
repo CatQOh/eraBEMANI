@@ -1,0 +1,1488 @@
+﻿@PRIME_DICE
+
+#DIM DYNAMIC AI_LV;AIの強さ
+#DIM DYNAMIC AI_TIME;AIが答えるまでの時間
+#DIM DYNAMIC P_PASS;プレイヤーがパスしたかどうか
+
+#DIM DYNAMIC CHIP_VALUE
+#DIM DYNAMIC PRIME_MAX
+#DIM DYNAMIC TOTAL_SCORE
+
+#DIM CONST CHIP_MAX = 5
+#DIM DYNAMIC CHIP, 2
+CHIP:0 = CHIP_MAX;自分の残り持ち点
+CHIP:1 = CHIP_MAX;相手の残り持ち点
+
+$PRIME_DICE_RULE
+PRINTL
+PRINTL ◆素数ダイスのルール◆
+PRINTFORML 4つのダイスをふって出た1～{PIP_MAX}の数字を使って
+PRINTL 素数を作り出すゲームです。　例…6×6×3＋5＝113
+PRINTFORML ＋－×÷と括弧\@ CALC_RULE >= 6 ? と累乗 # \@が使えます。
+SIF CALC_RULE == 7
+	PRINTL また、数字を結合させることも認められます。　例…121＋6＝127,(3×4＋1)＆1＝131
+PRINTFORML 2人が同額のチップを{CHIP_MAX}枚ずつ持ってゲームをします。
+PRINTL 30秒以内に「前回より大きい素数」を1つ答えてください。回答は早押しです。
+PRINTL 正解するたびに相手のチップを1枚奪うことができます。(その後のゲームには使えません)
+PRINTL ただし、誤答をすると相手にチップを2枚渡さなくてはなりません。
+PRINTL また、両者30秒間無回答だとお互いチップを1枚失います。
+PRINTL どちらかのチップがなくなるとゲーム終了です。
+PRINTL なお、最初の素数の大きさは対戦相手によります。
+PRINTL
+PRINTL ルールの変更をしますか？
+PRINTL [0]しない [1]する
+INPUT
+IF RESULT != 0 && RESULT != 1
+	GOTO PRIME_DICE_RULE
+ELSEIF RESULT == 1
+	$PRIME_DICE_OPTION
+	PRINTL
+	PRINTL 変更する項目を選択してください。
+	PRINTFORML ■使用するダイスの種類 (現在のルール:1～{PIP_MAX})
+	PRINT   
+	PRINTBUTTON "[0]1～6", 0
+	PRINTL  [1]1～8 [2]1～9 [3]1～12 [4]1～20
+	PRINT ■累乗・結合の使用 (現在のルール:
+	IF CALC_RULE == 5
+		PRINTL どちらも使用できない)
+	ELSEIF CALC_RULE == 6
+		PRINTL 累乗のみ使用できる)
+	ELSE
+		PRINTL どちらも使用できる)
+	ENDIF
+	PRINT   
+	PRINTBUTTON "[5]どちらも使用できない", 5
+	PRINTL  [6]累乗のみ使用できる [7]どちらも使用できる
+	PRINTL [8]設定を終えてルールを確認する
+	PRINTL [9]設定を終えてゲームを開始する
+	INPUT
+	IF RESULT == 0
+		PIP_MAX = 6
+	ELSEIF RESULT == 1
+		PIP_MAX = 8
+	ELSEIF RESULT == 2
+		PIP_MAX = 9
+	ELSEIF RESULT == 3
+		PIP_MAX = 12
+	ELSEIF RESULT == 4
+		PIP_MAX = 20
+	ELSEIF 5 <= RESULT && RESULT <= 7
+		CALC_RULE = RESULT
+	ELSEIF RESULT == 8
+		GOTO PRIME_DICE_RULE
+	ELSEIF RESULT == 9
+		GOTO PRIME_DICE_RULE_END
+	ENDIF
+	GOTO PRIME_DICE_OPTION
+ENDIF
+$PRIME_DICE_RULE_END
+
+PRINTL
+PRINTL 対戦相手の強さを選択してください
+PRINTFORML 所持金:${MONEY}
+PRINTFORML [0]弱い(賭け金:{CHIP_MAX}×$100 最初の素数:1以上)
+PRINTFORML [1]普通(賭け金:{CHIP_MAX}×$500 最初の素数:10以上)
+PRINTFORML [2]強い(賭け金:{CHIP_MAX}×$1000 最初の素数:50以上)
+PRINTFORML [3]最強(賭け金:{CHIP_MAX}×$5000 最初の素数:100以上)
+INPUT
+IF RESULT < 0 || 3 < RESULT
+	GOTO PRIME_DICE_RULE_END
+ELSEIF RESULT == 0
+	PRIME_MAX = 1;これより大きい素数を見つけなくてはならない
+	AI_LV = 0;難易度
+	CHIP_VALUE = 100;チップ1枚の価値
+ELSEIF RESULT == 1
+	PRIME_MAX = 10
+	AI_LV = 1
+	CHIP_VALUE = 500
+ELSEIF RESULT == 2
+	PRIME_MAX = 50
+	AI_LV = 2
+	CHIP_VALUE = 1000
+ELSEIF RESULT == 3
+	PRIME_MAX = 100
+	AI_LV = 3
+	CHIP_VALUE = 5000
+ENDIF
+
+PRINTL
+PRINTW ゲームを開始します。
+
+$PRIME_DICE_START
+
+LOCAL:1 = 1+RAND:(PIP_MAX)
+LOCAL:2 = 1+RAND:(PIP_MAX)
+LOCAL:3 = 1+RAND:(PIP_MAX)
+LOCAL:4 = 1+RAND:(PIP_MAX)
+AI_TIME = (LOG(PRIME_MAX)*12000 + RAND:20000)/(AI_LV+1);相手が回答するまでの時間
+;ただし、30秒を超えると30秒に直される
+;難易度3(最強)でも求める素数が22027(>exp(10)>22026)以上になると確実に30秒になる
+;ちなみに22027は素数
+;exp(1)=2.7 exp(2)=7.4 exp(3)=20.1 exp(4)=54.6 exp(5)=148.4
+;exp(6)=403.4 exp(7)=1096.6 exp(8)=2980.96 exp(9)=8103.1 exp(10)=22026.5
+SIF AI_TIME > 30000
+	AI_TIME = 30000
+PRINTL
+DRAWLINE
+LOCAL:5 = 0;経過時間の記録
+P_PASS = 0;相手が答えるかどうか
+GETMILLISECOND
+LOCAL:6 = RESULT;スタート時刻の取得
+PRINTFORML チップ1枚:${CHIP_VALUE}
+PRINTFORML %CALLNAME:MASTER%:{CHIP:0}枚 相手プレイヤー:{CHIP:1}枚
+PRINTFORML ({LOCAL:1},{LOCAL:2},{LOCAL:3},{LOCAL:4})を全て使った{PRIME_MAX}より大きい素数は？
+PRINTL [0]画面上の10キーで入力 [-1]答えない
+$PRIME_DICE_INPUT
+TINPUT (AI_TIME-LOCAL:5), -1, 0
+IF RESULT < -1
+	GETMILLISECOND
+	LOCAL:5 += RESULT-LOCAL:6
+	GOTO PRIME_DICE_INPUT
+ELSEIF RESULT == -1
+	;答えない場合、相手のターンへ
+	P_PASS = 1
+ELSEIF RESULT == 0
+	LOCAL:8 = 0;表示されている値
+	LOCAL:11 = 0;格納している値
+	LOCAL:12 = 0;格納している算術記号
+	$PRIME_DICE_10KEY
+	GETMILLISECOND
+	LOCAL:5 = RESULT-LOCAL:6
+	PRINTL
+	PRINTFORML %CALLNAME:MASTER%:{CHIP:0}枚 相手プレイヤー:{CHIP:1}枚
+	PRINTFORML ({LOCAL:1},{LOCAL:2},{LOCAL:3},{LOCAL:4})を全て使った{PRIME_MAX}より大きい素数は？
+	IF LOCAL:12 == 1
+		PRINTFORML  {LOCAL:11}＋
+	ELSEIF LOCAL:12 == 2
+		PRINTFORML  {LOCAL:11}－
+	ELSEIF LOCAL:12 == 3
+		PRINTFORML  {LOCAL:11}×
+	ELSEIF LOCAL:12 == 4
+		PRINTFORML  {LOCAL:11}÷
+	ELSEIF LOCAL:12 == 5
+		PRINTFORML  {LOCAL:11}＾
+	ELSE
+		PRINTL
+	ENDIF
+	PRINTFORML 【{LOCAL:8}】
+	PRINTBUTTON "[ AC ]", "AC"
+	PRINTBUTTON "[C]", "C"
+	PRINTBUTTON "[^]", "^"
+	PRINTL 　◆キーボードでの入力方法◆
+	PRINT [7][8][9]
+	PRINTBUTTON "[/]", "/"
+	PRINTL 　数字は一度に入力することができますが、
+	PRINT [4][5][6]
+	PRINTBUTTON "[*]", "*"
+	PRINTL 　数字と記号はEnterキーで分けて入力してください。
+	PRINT [1][2][3]
+	PRINTBUTTON "[-]", "-"
+	PRINTL 　また、"Submit"などの命令は全て大文字か全て小文字もしくは頭文字のみでも入力できます。
+	PRINT [0]
+	PRINTBUTTON "[ ＝ ]", "="
+	PRINTBUTTON "[+]", "+"
+	PRINT 　さらに、"Pass"を入力すると
+	PRINTBUTTON "「答えない」", "Pass"
+	PRINTL という選択ができます。
+	PRINTBUTTON "[  Submit  ]", "Submit"
+	PRINTL
+	TINPUTS (AI_TIME-LOCAL:5), "Pass", 0
+	IF RESULTS == "0" || TOINT(RESULTS) != 0
+		RESULT = TOINT(RESULTS)
+		IF LOCAL:8 == 0
+			LOCAL:8 = RESULT
+		ELSEIF RESULT >= 0
+			;表示している桁数の計算
+			LOCAL:9 = 1 + LOG10(ABS(LOCAL:8))
+			;入力された桁数の計算
+			IF RESULT == 0
+				LOCAL:10 = 1
+			ELSE
+				LOCAL:10 = 1 + LOG10(RESULT)
+			ENDIF
+			SIF LOCAL:8 != 0 && LOCAL:9 + LOCAL:10 < 17;答えが1京を超えるようなら入力しなおし
+				LOCAL:8 = LOCAL:8 * POWER(10,LOCAL:10) + SIGN(LOCAL:8)*RESULT
+			SIF LOCAL:8 == 0 && LOCAL:9 < 17
+				LOCAL:8 = RESULT
+		ENDIF
+		GOTO PRIME_DICE_10KEY
+	ELSEIF RESULTS == "=" || RESULTS == "+" || RESULTS == "-" || RESULTS == "*" || RESULTS == "/" || RESULTS == "^"
+		IF LOCAL:12 == 0
+			LOCAL:11 = LOCAL:8
+		ELSEIF LOCAL:12 == 1
+			LOCAL:11 += LOCAL:8
+		ELSEIF LOCAL:12 == 2
+			LOCAL:11 -= LOCAL:8
+		ELSEIF LOCAL:12 == 3
+			SIF LOCAL:8 == 0 || LOCAL:11 == 0 || (1+LOG10(ABS(LOCAL:8))) + (1+LOG10(ABS(LOCAL:11))) < 17
+				LOCAL:11 *= LOCAL:8
+		ELSEIF LOCAL:12 == 4
+			SIF LOCAL:8 != 0
+				LOCAL:11 /= LOCAL:8
+		ELSEIF LOCAL:12 == 5
+			SIF LOCAL:11 == 0 ||  LOCAL:8*(1+LOG10(ABS(LOCAL:11))) < 17
+				LOCAL:11 = POWER(LOCAL:11,LOCAL:8)
+		ENDIF
+		IF RESULTS != "="
+			LOCAL:8 = 0
+		ELSE
+			LOCAL:8 = LOCAL:11
+			LOCAL:11 = 0
+		ENDIF
+		IF RESULTS == "+"
+			LOCAL:12 = 1
+		ELSEIF RESULTS == "-"
+			LOCAL:12 = 2
+		ELSEIF RESULTS == "*"
+			LOCAL:12 = 3
+		ELSEIF RESULTS == "/"
+			LOCAL:12 = 4
+		ELSEIF RESULTS == "^"
+			LOCAL:12 = 5
+		ELSE
+			LOCAL:12 = 0
+		ENDIF
+		GOTO PRIME_DICE_10KEY
+	ELSEIF RESULTS == "C" || RESULTS == "c"
+		LOCAL:8 = 0
+		GOTO PRIME_DICE_10KEY
+	ELSEIF RESULTS == "AC" || RESULTS == "Ac" || RESULTS == "ac" || RESULTS == "A" || RESULTS == "a"
+		LOCAL:8 = 0
+		LOCAL:11 = 0
+		LOCAL:12 = 0
+		GOTO PRIME_DICE_10KEY
+	ELSEIF RESULTS == "SUBMIT" || RESULTS == "Submit" || RESULTS == "submit" || RESULTS == "S" || RESULTS == "s"
+		RESULT = LOCAL:8
+		GOTO PRIME_DICE_JUDGE
+	ELSEIF RESULTS == "PASS" || RESULTS == "Pass" || RESULTS == "pass" || RESULTS == "P" || RESULTS == "p"
+		;答えない場合、相手のターンへ
+		P_PASS = 1
+	ELSE
+		PRINTL TEST
+		GOTO PRIME_DICE_10KEY
+	ENDIF
+ELSE
+	$PRIME_DICE_JUDGE
+	PRINTL
+	LOCAL = RESULT
+	CALL ISCALC24, LOCAL, LOCAL:1, LOCAL:2, LOCAL:3, LOCAL:4
+	IF RESULT
+		CALL PRTFOMULA, CALC_PTN, CALC_NUM:0, CALC_NUM:1, CALC_NUM:2, CALC_NUM:3
+		PRINTFORM ＝{LOCAL}
+		IF LOCAL > PRIME_MAX
+			PRINTFORML  ＞ {PRIME_MAX}
+			IF ISPRIME(LOCAL)
+				PRINTFORML {LOCAL}は素数です。
+				CHIP:1 -= 1
+				PRIME_MAX = LOCAL
+			ELSE
+				PRINTFORML {LOCAL}は素数ではありません。
+				CHIP:0 -= 2
+			ENDIF
+		ELSE
+			PRINTFORML  ≦ {PRIME_MAX}
+			PRINTFORML 答えは{PRIME_MAX}より大きくなければいけません。
+			CHIP:0 -= 2
+		ENDIF
+	ELSE
+		PRINTFORML 答えが{LOCAL}になるような計算式は見つかりませんでした。
+		CHIP:0 -= 2
+	ENDIF
+ENDIF
+;パスした場合はAIが答える
+IF P_PASS
+	PRINTL
+	LOCAL:20 = PRIME_MAX
+	IF AI_LV == 0
+		LOCAL:22 = LOCAL:20
+	ELSEIF AI_LV == 1
+		LOCAL:22 = SQRT(LOCAL:20)
+	ELSEIF AI_LV == 2
+		LOCAL:22 = CBRT(LOCAL:20)
+	ELSEIF AI_LV == 3
+		LOCAL:22 = SQRT(SQRT(LOCAL:20))
+	ENDIF
+	IF RAND:(1 + (LOCAL:22/(1+AI_LV))) == 0
+		;求める素数が10万未満なら、確実に求めることができる
+		FOR M, (PRIME_MAX+3)/10+RAND:(1+AI_LV), (PRIME_MAX+3)/10+10
+			FOR N, 0, 3
+				LOCAL:19 = M*10 + 7 + N*2
+				IF ISPRIME(LOCAL:19)
+					CALL ISCALC24, LOCAL:19, LOCAL:1, LOCAL:2, LOCAL:3, LOCAL:4
+					IF RESULT
+						PRINTL 相手プレイヤーが回答します。
+						CALL PRTFOMULA, CALC_PTN, CALC_NUM:0, CALC_NUM:1, CALC_NUM:2, CALC_NUM:3
+						PRINTFORM ＝{LOCAL:19}
+						PRINTFORML  ＞ {PRIME_MAX}
+						PRINTFORML {LOCAL:19}は素数です。
+						PRIME_MAX = LOCAL:19
+						CHIP:0 -= 1
+						GOTO PRIME_DICE_TURN_END
+					ENDIF
+				ENDIF
+			NEXT
+		NEXT
+		PRINTL 30秒経ちましたが、
+		PRINTL 相手プレイヤーも回答しませんでした。
+		CHIP:0 -= 1
+		CHIP:1 -= 1
+	ELSEIF RAND:(4 - AI_LV) == 0
+		PRINTL 30秒経ちましたが、
+		PRINTL 相手プレイヤーも回答しませんでした。
+		CHIP:0 -= 1
+		CHIP:1 -= 1
+	ELSE
+		;当てずっぽうで答える
+		PRINTL 相手プレイヤーが回答します。
+		LOCAL = ((PRIME_MAX+3)/10+RAND:(1+AI_LV))*10 + 7 + 2*RAND:4
+		CALL ISCALC24, LOCAL, LOCAL:1, LOCAL:2, LOCAL:3, LOCAL:4
+		IF RESULT
+			CALL PRTFOMULA, CALC_PTN, CALC_NUM:0, CALC_NUM:1, CALC_NUM:2, CALC_NUM:3
+			PRINTFORM ＝{LOCAL}
+			PRINTFORML  ＞ {PRIME_MAX}
+			IF ISPRIME(LOCAL)
+				PRINTFORML {LOCAL}は素数です。
+				CHIP:0 -= 1
+				PRIME_MAX = LOCAL
+			ELSE
+				PRINTFORML {LOCAL}は素数ではありません。
+				CHIP:1 -= 2
+			ENDIF
+		ELSE
+			PRINTFORML 相手プレイヤーは{LOCAL}と答えましたが、
+			PRINTFORML 答えが{LOCAL}になるような計算式は見つかりませんでした。
+			CHIP:1 -= 2
+		ENDIF
+	ENDIF
+ENDIF
+$PRIME_DICE_TURN_END
+
+IF CHIP:0 <= 0 || CHIP:1 <= 0
+	PRINTL
+	PRINTW チップがなくなったプレイヤーがいるためゲーム終了です。
+	PRINTL
+	DRAWLINE
+	PRINTFORML チップ開始時:{CHIP_MAX}枚
+	PRINTFORML 残ったチップ:{CHIP:0}枚
+	PRINTFORML 奪ったチップ:{CHIP_MAX-CHIP:1}枚
+	PRINTFORML チップ総収支:\@ CHIP:0-CHIP:1 >0 ? + # \@{CHIP:0-CHIP:1}枚
+	PRINTFORML チップ単価　:${CHIP_VALUE}
+	TOTAL_SCORE = CHIP_VALUE*(CHIP:0-CHIP:1)
+	IF TOTAL_SCORE > 0
+		PRINTFORMW 総収支　　　:+${TOTAL_SCORE}
+	ELSEIF TOTAL_SCORE < 0
+		PRINTFORMW 総収支　　　:-${ABS(TOTAL_SCORE)}
+	ELSE
+		PRINTFORMW 総収支　　　:$0
+	ENDIF
+	RETURN TOTAL_SCORE
+ELSE
+	PRINTL
+	PRINTW 次のゲームへ進みます。
+	GOTO PRIME_DICE_START
+ENDIF
+
+
+;ISCALCで返ってきた値に対し式を出力する
+@PRTFOMULA, ARG, ARG:1, ARG:2, ARG:3, ARG:4
+;以下演算子(+,*,-,/,累乗,結合)を★、
+;ARG:1-ARG:4をそれぞれA-Dとする
+;※「最も内側の括弧」の記述の行に対しインデントをつけました
+;(i):((A★B)★C)★D
+IF 10000 < ARG && ARG < 70000 && (ARG/100)%100 <= 6
+	SETCOLOR 0x00FF00
+	PRINT (
+	SETCOLOR 0xFFFF00
+		PRINT (
+		RESETCOLOR
+		PRINTFORM {ARG:1}
+		SETCOLOR 0x00FFFF
+		CALL PRTOPERATOR, ARG%100
+		RESETCOLOR
+		PRINTFORM {ARG:2}
+		SETCOLOR 0xFFFF00
+		PRINT )
+	CALL PRTOPERATOR, ARG/100%100
+	RESETCOLOR
+	PRINTFORM {ARG:3}
+	SETCOLOR 0x00FF00
+	PRINT )
+	CALL PRTOPERATOR, ARG/10000
+	RESETCOLOR
+	PRINTFORM {ARG:4}
+ENDIF
+;(ii):(A★(B★C))★D
+IF 10000 < ARG && ARG < 70000 && 9 <= (ARG/100)%100
+	SETCOLOR 0x00FF00
+	PRINT (
+	RESETCOLOR
+	PRINTFORM {ARG:1}
+	SETCOLOR 0xFFFF00
+	CALL PRTOPERATOR, ARG/100%100
+		PRINT (
+		RESETCOLOR
+		PRINTFORM {ARG:2}
+		SETCOLOR 0x00FFFF
+		CALL PRTOPERATOR, ARG%100
+		RESETCOLOR
+		PRINTFORM {ARG:3}
+		SETCOLOR 0xFFFF00
+		PRINT )
+	SETCOLOR 0x00FF00
+	PRINT )
+	CALL PRTOPERATOR, ARG/10000
+	RESETCOLOR
+	PRINTFORM {ARG:4}
+ENDIF
+;(iii):A★((B★C)★D)
+IF 90000 < ARG && ARG < 130000 && (ARG/100)%100 <= 6
+	PRINTFORM {ARG:1}
+	SETCOLOR 0x00FF00
+	CALL PRTOPERATOR, ARG/10000
+	PRINT (
+	SETCOLOR 0xFFFF00
+		PRINT (
+		RESETCOLOR
+		PRINTFORM {ARG:2}
+		SETCOLOR 0x00FFFF
+		CALL PRTOPERATOR, ARG%100
+		RESETCOLOR
+		PRINTFORM {ARG:3}
+		SETCOLOR 0xFFFF00
+		PRINT )
+	CALL PRTOPERATOR, ARG/100%100
+	RESETCOLOR
+	PRINTFORM {ARG:4}
+	SETCOLOR 0x00FF00
+	PRINT )
+	RESETCOLOR
+ENDIF
+;(iv):A★(B★(C★D))
+IF 90000 < ARG && ARG < 130000 && 9 <= (ARG/100)%100
+	PRINTFORM {ARG:1}
+	SETCOLOR 0x00FF00
+	CALL PRTOPERATOR, ARG/10000
+	PRINT (
+	RESETCOLOR
+	PRINTFORM {ARG:2}
+	SETCOLOR 0xFFFF00
+	CALL PRTOPERATOR, ARG/100%100
+		PRINT (
+		RESETCOLOR
+		PRINTFORM {ARG:3}
+		SETCOLOR 0x00FFFF
+		CALL PRTOPERATOR, ARG%100
+		RESETCOLOR
+		PRINTFORM {ARG:4}
+		SETCOLOR 0xFFFF00
+		PRINT )
+	SETCOLOR 0x00FF00
+	PRINT )
+	RESETCOLOR
+ENDIF
+;(v):(A★B)★(C★D)
+IF 100 < ARG && ARG < 700
+	SETCOLOR 0x00FF00
+	PRINT (
+	RESETCOLOR
+	PRINTFORM {ARG:1}
+	SETCOLOR 0xFFFF00
+	CALL PRTOPERATOR, ARG/10%10
+	RESETCOLOR
+	PRINTFORM {ARG:2}
+	SETCOLOR 0x00FF00
+	PRINT )
+	CALL PRTOPERATOR, ARG/100
+	PRINT (
+	RESETCOLOR
+	PRINTFORM {ARG:3}
+	SETCOLOR 0xFFFF00
+	CALL PRTOPERATOR, ARG%10
+	RESETCOLOR
+	PRINTFORM {ARG:4}
+	SETCOLOR 0x00FF00
+	PRINT )
+	RESETCOLOR
+ENDIF
+
+;演算子を出力する
+;＆は単純な結合
+@PRTOPERATOR, ARG
+IF ARG % 6 == 1
+	PRINT ＋
+ELSEIF ARG % 6 == 2
+	PRINT ×
+ELSEIF ARG % 6 == 3
+	PRINT －
+ELSEIF ARG % 6 == 4
+	PRINT ÷
+ELSEIF ARG % 6 == 5
+	PRINT ＾
+ELSE
+	PRINT ＆
+ENDIF
+
+;ARGがARG:1からARG:4で計算可能かどうかを判定する
+;順番を入れ替えた24通り全てで判別し、
+;計算可能な場合、計算パターンをCALC_PTNに、その順列をCALC_NUM:0,CALC_NUM:1,CALC_NUM:2,CALC_NUM:3に出力し、1を返す
+;計算不可能な場合、0を返す
+@ISCALC24, ARG, ARG:1, ARG:2, ARG:3, ARG:4
+CALC_PTN = 0
+CALC_NUM:0 = 0
+CALC_NUM:1 = 0
+CALC_NUM:2 = 0
+CALC_NUM:3 = 0
+IF ISCALC(ARG, ARG:1, ARG:2, ARG:3, ARG:4)
+	CALC_PTN = ISCALC(ARG, ARG:1, ARG:2, ARG:3, ARG:4)
+	CALC_NUM:0 = ARG:1
+	CALC_NUM:1 = ARG:2
+	CALC_NUM:2 = ARG:3
+	CALC_NUM:3 = ARG:4
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:1, ARG:2, ARG:4, ARG:3)
+	CALC_PTN = ISCALC(ARG, ARG:1, ARG:2, ARG:4, ARG:3)
+	CALC_NUM:0 = ARG:1
+	CALC_NUM:1 = ARG:2
+	CALC_NUM:2 = ARG:4
+	CALC_NUM:3 = ARG:3
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:1, ARG:3, ARG:2, ARG:4)
+	CALC_PTN = ISCALC(ARG, ARG:1, ARG:3, ARG:2, ARG:4)
+	CALC_NUM:0 = ARG:1
+	CALC_NUM:1 = ARG:3
+	CALC_NUM:2 = ARG:2
+	CALC_NUM:3 = ARG:4
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:1, ARG:3, ARG:4, ARG:2)
+	CALC_PTN = ISCALC(ARG, ARG:1, ARG:3, ARG:4, ARG:2)
+	CALC_NUM:0 = ARG:1
+	CALC_NUM:1 = ARG:3
+	CALC_NUM:2 = ARG:4
+	CALC_NUM:3 = ARG:2
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:1, ARG:4, ARG:2, ARG:3)
+	CALC_PTN = ISCALC(ARG, ARG:1, ARG:4, ARG:2, ARG:3)
+	CALC_NUM:0 = ARG:1
+	CALC_NUM:1 = ARG:4
+	CALC_NUM:2 = ARG:2
+	CALC_NUM:3 = ARG:3
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:1, ARG:4, ARG:3, ARG:2)
+	CALC_PTN = ISCALC(ARG, ARG:1, ARG:4, ARG:3, ARG:2)
+	CALC_NUM:0 = ARG:1
+	CALC_NUM:1 = ARG:4
+	CALC_NUM:2 = ARG:3
+	CALC_NUM:3 = ARG:2
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:2, ARG:1, ARG:3, ARG:4)
+	CALC_PTN = ISCALC(ARG, ARG:2, ARG:1, ARG:3, ARG:4)
+	CALC_NUM:0 = ARG:2
+	CALC_NUM:1 = ARG:1
+	CALC_NUM:2 = ARG:3
+	CALC_NUM:3 = ARG:4
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:2, ARG:1, ARG:4, ARG:3)
+	CALC_PTN = ISCALC(ARG, ARG:2, ARG:1, ARG:4, ARG:3)
+	CALC_NUM:0 = ARG:2
+	CALC_NUM:1 = ARG:1
+	CALC_NUM:2 = ARG:4
+	CALC_NUM:3 = ARG:3
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:2, ARG:3, ARG:1, ARG:4)
+	CALC_PTN = ISCALC(ARG, ARG:2, ARG:3, ARG:1, ARG:4)
+	CALC_NUM:0 = ARG:2
+	CALC_NUM:1 = ARG:3
+	CALC_NUM:2 = ARG:1
+	CALC_NUM:3 = ARG:4
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:2, ARG:3, ARG:4, ARG:1)
+	CALC_PTN = ISCALC(ARG, ARG:2, ARG:3, ARG:4, ARG:1)
+	CALC_NUM:0 = ARG:2
+	CALC_NUM:1 = ARG:3
+	CALC_NUM:2 = ARG:4
+	CALC_NUM:3 = ARG:1
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:2, ARG:4, ARG:1, ARG:3)
+	CALC_PTN = ISCALC(ARG, ARG:2, ARG:4, ARG:1, ARG:3)
+	CALC_NUM:0 = ARG:2
+	CALC_NUM:1 = ARG:4
+	CALC_NUM:2 = ARG:1
+	CALC_NUM:3 = ARG:3
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:2, ARG:4, ARG:3, ARG:1)
+	CALC_PTN = ISCALC(ARG, ARG:2, ARG:4, ARG:3, ARG:1)
+	CALC_NUM:0 = ARG:2
+	CALC_NUM:1 = ARG:4
+	CALC_NUM:2 = ARG:3
+	CALC_NUM:3 = ARG:1
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:3, ARG:1, ARG:2, ARG:4)
+	CALC_PTN = ISCALC(ARG, ARG:3, ARG:1, ARG:2, ARG:4)
+	CALC_NUM:0 = ARG:3
+	CALC_NUM:1 = ARG:1
+	CALC_NUM:2 = ARG:2
+	CALC_NUM:3 = ARG:4
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:3, ARG:1, ARG:4, ARG:2)
+	CALC_PTN = ISCALC(ARG, ARG:3, ARG:1, ARG:4, ARG:2)
+	CALC_NUM:0 = ARG:3
+	CALC_NUM:1 = ARG:1
+	CALC_NUM:2 = ARG:4
+	CALC_NUM:3 = ARG:2
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:3, ARG:2, ARG:1, ARG:4)
+	CALC_PTN = ISCALC(ARG, ARG:3, ARG:2, ARG:1, ARG:4)
+	CALC_NUM:0 = ARG:3
+	CALC_NUM:1 = ARG:2
+	CALC_NUM:2 = ARG:1
+	CALC_NUM:3 = ARG:4
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:3, ARG:2, ARG:4, ARG:1)
+	CALC_PTN = ISCALC(ARG, ARG:3, ARG:2, ARG:4, ARG:1)
+	CALC_NUM:0 = ARG:3
+	CALC_NUM:1 = ARG:2
+	CALC_NUM:2 = ARG:4
+	CALC_NUM:3 = ARG:1
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:3, ARG:4, ARG:1, ARG:2)
+	CALC_PTN = ISCALC(ARG, ARG:3, ARG:4, ARG:1, ARG:2)
+	CALC_NUM:0 = ARG:3
+	CALC_NUM:1 = ARG:4
+	CALC_NUM:2 = ARG:1
+	CALC_NUM:3 = ARG:2
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:3, ARG:4, ARG:2, ARG:1)
+	CALC_PTN = ISCALC(ARG, ARG:3, ARG:4, ARG:2, ARG:1)
+	CALC_NUM:0 = ARG:3
+	CALC_NUM:1 = ARG:4
+	CALC_NUM:2 = ARG:2
+	CALC_NUM:3 = ARG:1
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:4, ARG:1, ARG:2, ARG:3)
+	CALC_PTN = ISCALC(ARG, ARG:4, ARG:1, ARG:2, ARG:3)
+	CALC_NUM:0 = ARG:4
+	CALC_NUM:1 = ARG:1
+	CALC_NUM:2 = ARG:2
+	CALC_NUM:3 = ARG:3
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:4, ARG:1, ARG:3, ARG:2)
+	CALC_PTN = ISCALC(ARG, ARG:4, ARG:1, ARG:3, ARG:2)
+	CALC_NUM:0 = ARG:4
+	CALC_NUM:1 = ARG:1
+	CALC_NUM:2 = ARG:3
+	CALC_NUM:3 = ARG:2
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:4, ARG:2, ARG:1, ARG:3)
+	CALC_PTN = ISCALC(ARG, ARG:4, ARG:2, ARG:1, ARG:3)
+	CALC_NUM:0 = ARG:4
+	CALC_NUM:1 = ARG:2
+	CALC_NUM:2 = ARG:1
+	CALC_NUM:3 = ARG:3
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:4, ARG:2, ARG:3, ARG:1)
+	CALC_PTN = ISCALC(ARG, ARG:4, ARG:2, ARG:3, ARG:1)
+	CALC_NUM:0 = ARG:4
+	CALC_NUM:1 = ARG:2
+	CALC_NUM:2 = ARG:3
+	CALC_NUM:3 = ARG:1
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:4, ARG:3, ARG:1, ARG:2)
+	CALC_PTN = ISCALC(ARG, ARG:4, ARG:3, ARG:1, ARG:2)
+	CALC_NUM:0 = ARG:4
+	CALC_NUM:1 = ARG:3
+	CALC_NUM:2 = ARG:1
+	CALC_NUM:3 = ARG:2
+	RETURN 1
+ELSEIF ISCALC(ARG, ARG:4, ARG:3, ARG:2, ARG:1)
+	CALC_PTN = ISCALC(ARG, ARG:4, ARG:3, ARG:2, ARG:1)
+	CALC_NUM:0 = ARG:4
+	CALC_NUM:1 = ARG:3
+	CALC_NUM:2 = ARG:2
+	CALC_NUM:3 = ARG:1
+	RETURN 1
+ELSE
+	RETURN 0
+ENDIF
+
+;ARGがARG:1からARG:4で計算可能かどうかを判定する
+;ただし、順番は入れ替えられない
+@ISCALC(ARG,ARG:1,ARG:2,ARG:3,ARG:4)
+#FUNCTION
+;以下演算子(+,-,*,/,累乗,結合)を★、
+;ARG:1-ARG:4をそれぞれA-Dとする
+;(i):((A★B)★C)★D
+FOR ARG:5, 1, CALC_RULE
+	FOR ARG:6, 1, CALC_RULE
+		FOR ARG:7, 1, CALC_RULE
+			計算不可 = 0
+			分数分子:0 = 0
+			分数分母:0 = 0
+			IF CALC(CALC(CALC(ARG:1,ARG:2,ARG:7),ARG:3,ARG:6),ARG:4,ARG:5) == ARG
+				SIF 計算不可 == 0 && 分数分母:0 == 0
+					RETURNF ARG:5*10000+ARG:6*100+ARG:7
+			ENDIF
+		NEXT
+	NEXT
+NEXT
+;(ii):(A★(B★C))★D
+FOR ARG:5, 1, CALC_RULE
+	FOR ARG:6, 3, CALC_RULE
+		FOR ARG:7, 1, CALC_RULE
+			計算不可 = 0
+			分数分子:0 = 0
+			分数分母:0 = 0
+			IF CALC(CALC2(ARG:1,CALC(ARG:2,ARG:3,ARG:7),ARG:6),ARG:4,ARG:5) == ARG
+				SIF 計算不可 == 0 && 分数分母:0 == 0
+					RETURNF ARG:5*10000+(ARG:6+6)*100+ARG:7
+			ENDIF
+		NEXT
+	NEXT
+NEXT
+;(iii):A★((B★C)★D)
+FOR ARG:5, 3, CALC_RULE
+	FOR ARG:6, 1, CALC_RULE
+		FOR ARG:7, 1, CALC_RULE
+			計算不可 = 0
+			分数分子:0 = 0
+			分数分母:0 = 0
+			IF CALC2(ARG:1,CALC(CALC(ARG:2,ARG:3,ARG:7),ARG:4,ARG:6),ARG:5) == ARG
+				SIF 計算不可 == 0 && 分数分母:0 == 0
+					RETURNF (ARG:5+6)*10000+ARG:6*100+ARG:7
+			ENDIF
+		NEXT
+	NEXT
+NEXT
+;(iv):A★(B★(C★D))
+FOR ARG:5, 3, CALC_RULE
+	FOR ARG:6, 3, CALC_RULE
+		FOR ARG:7, 1, CALC_RULE
+			計算不可 = 0
+			分数分子:0 = 0
+			分数分母:0 = 0
+			IF CALC2(ARG:1,CALC2(ARG:2,CALC(ARG:3,ARG:4,ARG:7),ARG:6),ARG:5) == ARG
+				SIF 計算不可 == 0 && 分数分母:0 == 0
+					RETURNF (ARG:5+6)*10000+(ARG:6+6)*100+ARG:7
+			ENDIF
+		NEXT
+	NEXT
+NEXT
+;(v):(A★B)★(C★D)
+FOR ARG:5, 1, CALC_RULE
+	FOR ARG:6, 1, CALC_RULE
+		FOR ARG:7, 1, CALC_RULE
+			計算不可 = 0
+			分数分子:0 = 0
+			分数分母:0 = 0
+			分数分子:1 = 0
+			分数分母:1 = 0
+			IF CALC3(CALC(ARG:1,ARG:2,ARG:6),CALC1(ARG:3,ARG:4,ARG:7),ARG:5) == ARG
+				SIF 計算不可 == 0
+					RETURNF (ARG:5)*100+(ARG:6)*10+ARG:7
+			ENDIF
+		NEXT
+	NEXT
+NEXT
+RETURNF 0
+
+;以下演算(1:+ 2:* 3:- 4:/ 5:累乗 6:結合)の処理
+;やっちゃ駄目な計算をすると計算不可に1が代入される
+
+;CALCに対し帯分数がくるときは必ずARG:0
+@CALC(ARG:0,ARG:1,ARG:2)
+#FUNCTION
+SIF 分数分母:0 == 0
+	分数分子:0 = 0
+仮置き = 0;仮置き用
+IF ARG:2 == 1
+	RETURNF ARG:0 + ARG:1
+ELSEIF ARG:2 == 2
+	分数分子:0 *= ARG:1
+	;ここから約分
+	IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+		分数分子:0 /= 2
+		分数分母:0 /= 2
+	ENDIF
+	IF 分数分子:0 % 3 == 0 && 分数分母:0 % 3 == 0
+		分数分子:0 /= 3
+		分数分母:0 /= 3
+	ENDIF
+	IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+		分数分子:0 /= 2
+		分数分母:0 /= 2
+	ENDIF
+	IF 分数分子:0 % 5 == 0 && 分数分母:0 % 5 == 0
+		分数分子:0 /= 5
+		分数分母:0 /= 5
+	ENDIF
+	IF 分数分子:0 % 7 == 0 && 分数分母:0 % 7 == 0
+		分数分子:0 /= 7
+		分数分母:0 /= 7
+	ENDIF
+	IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+		分数分子:0 /= 2
+		分数分母:0 /= 2
+	ENDIF
+	IF 分数分子:0 % 3 == 0 && 分数分母:0 % 3 == 0
+		分数分子:0 /= 3
+		分数分母:0 /= 3
+	ENDIF
+	IF 分数分子:0 % 11 == 0 && 分数分母:0 % 11 == 0
+		分数分子:0 /= 11
+		分数分母:0 /= 11
+	ENDIF
+	IF 分数分子:0 % 13 == 0 && 分数分母:0 % 13 == 0
+		分数分子:0 /= 13
+		分数分母:0 /= 13
+	ENDIF
+	IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+		分数分子:0 /= 2
+		分数分母:0 /= 2
+	ENDIF
+	IF 分数分子:0 % 17 == 0 && 分数分母:0 % 17 == 0
+		分数分子:0 /= 17
+		分数分母:0 /= 17
+	ENDIF
+	IF 分数分子:0 % 19 == 0 && 分数分母:0 % 19 == 0
+		分数分子:0 /= 19
+		分数分母:0 /= 19
+	ENDIF
+	IF 分数分母:0 == 1
+		分数分母:0 = 0
+		RETURNF ARG:0 * ARG:1 + 分数分子:0
+	ENDIF
+	RETURNF ARG:0 * ARG:1
+ELSEIF ARG:2 == 3
+	RETURNF ARG:0 - ARG:1
+ELSEIF ARG:2 == 4
+	IF ARG:1 == 0;0で割らないように
+		計算不可 = 1
+		RETURNF 0
+	ELSE
+		IF ARG:0 < 0 && ARG:1 < 0
+			ARG:0 *= -1
+			ARG:1 *= -1
+		ENDIF
+		IF ARG:0 * ARG:1 < 0
+			ARG:0 = -ABS(ARG:0)
+			ARG:1 = ABS(ARG:1)
+		ENDIF
+		IF 分数分母:0 != 0;帯分数を割るとき、仮分数に直し普通の割り算に帰着させる
+			ARG:0 = 分数分子:0 + ARG:0 * 分数分母:0
+			ARG:1 = 分数分母:0
+		ENDIF
+		IF ARG:0 % ARG:1 != 0;割り切れないとき、帯分数に
+			分数分子:0 = ARG:0 - ARG:1*(ARG:0 / ARG:1)
+			分数分母:0 = ARG:1
+		ENDIF
+		;ここから約分
+		IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+			分数分子:0 /= 2
+			分数分母:0 /= 2
+		ENDIF
+		IF 分数分子:0 % 3 == 0 && 分数分母:0 % 3 == 0
+			分数分子:0 /= 3
+			分数分母:0 /= 3
+		ENDIF
+		IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+			分数分子:0 /= 2
+			分数分母:0 /= 2
+		ENDIF
+		IF 分数分子:0 % 5 == 0 && 分数分母:0 % 5 == 0
+			分数分子:0 /= 5
+			分数分母:0 /= 5
+		ENDIF
+		IF 分数分子:0 % 7 == 0 && 分数分母:0 % 7 == 0
+			分数分子:0 /= 7
+			分数分母:0 /= 7
+		ENDIF
+		IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+			分数分子:0 /= 2
+			分数分母:0 /= 2
+		ENDIF
+		IF 分数分子:0 % 3 == 0 && 分数分母:0 % 3 == 0
+			分数分子:0 /= 3
+			分数分母:0 /= 3
+		ENDIF
+		IF 分数分子:0 % 11 == 0 && 分数分母:0 % 11 == 0
+			分数分子:0 /= 11
+			分数分母:0 /= 11
+		ENDIF
+		IF 分数分子:0 % 13 == 0 && 分数分母:0 % 13 == 0
+			分数分子:0 /= 13
+			分数分母:0 /= 13
+		ENDIF
+		IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+			分数分子:0 /= 2
+			分数分母:0 /= 2
+		ENDIF
+		IF 分数分子:0 % 17 == 0 && 分数分母:0 % 17 == 0
+			分数分子:0 /= 17
+			分数分母:0 /= 17
+		ENDIF
+		IF 分数分子:0 % 19 == 0 && 分数分母:0 % 19 == 0
+			分数分子:0 /= 19
+			分数分母:0 /= 19
+		ENDIF
+		RETURNF ARG:0 / ARG:1
+	ENDIF
+ELSEIF ARG:2 == 5
+	IF ARG:0 == 0
+		RETURNF 0
+	ELSEIF ARG:0 < 0 || ARG:1 < 0 || ARG:1*(1+LOG10(ARG:0)) > 16;負の数が含まれる累乗を禁止する/答えが1京を超えないように
+		計算不可 = 1
+		RETURNF 0
+	ELSEIF 分数分母:0 != 0
+		分数分子:0 += ARG:0 * 分数分母:0;仮分数に直す
+		IF 分数分子:0 == 0
+			計算不可 = 1
+			RETURNF 0
+		ENDIF
+		IF 分数分子:0 < 0 || ARG:1*(1+LOG10(分数分子:0)) > 15 || ARG:1*(1+LOG10(分数分母:0)) > 15
+			計算不可 = 0
+			RETURNF 0
+		ELSE
+			分数分子:0 = POWER(分数分子:0,ARG:1)
+			分数分母:0 = POWER(分数分母:0,ARG:1)
+			仮置き = 分数分子:0 / 分数分母:0
+			分数分子:0 -= 仮置き
+			RETURNF 仮置き
+		ENDIF
+	ELSE
+		RETURNF POWER(ARG:0,ARG:1)
+	ENDIF
+ELSEIF ARG:2 == 6
+	IF 分数分母:0 != 0;帯分数が入っている状態で結合はできない
+		計算不可 = 1
+		RETURNF 0
+	ENDIF
+	IF ARG:0 == 0 || ARG:1 < 0
+		計算不可 = 1
+		RETURNF 0
+	ELSEIF ARG:1 == 0
+		RETURNF 10*ARG:0+ARG:1
+	ELSE
+		RETURNF POWER(10,1+LOG10(ARG:1))*ARG:0+SIGN(ARG:0)*ARG:1
+	ENDIF
+ELSE
+	計算不可 = 1
+	RETURNF 0
+ENDIF
+
+;CALC1に対し帯分数がくるときは必ずARG:0
+;CALCとの違いは帯分数の時に処理する変数
+@CALC1(ARG:0,ARG:1,ARG:2)
+#FUNCTION
+SIF 分数分母:1 == 0
+	分数分子:1 = 0
+仮置き = 0;仮置き用
+IF ARG:2 == 1
+	RETURNF ARG:0 + ARG:1
+ELSEIF ARG:2 == 2
+	分数分子:1 *= ARG:1
+	;ここから約分
+	IF 分数分子:1 % 2 == 0 && 分数分母:1 % 2 == 0
+		分数分子:1 /= 2
+		分数分母:1 /= 2
+	ENDIF
+	IF 分数分子:1 % 3 == 0 && 分数分母:1 % 3 == 0
+		分数分子:1 /= 3
+		分数分母:1 /= 3
+	ENDIF
+	IF 分数分子:1 % 2 == 0 && 分数分母:1 % 2 == 0
+		分数分子:1 /= 2
+		分数分母:1 /= 2
+	ENDIF
+	IF 分数分子:1 % 5 == 0 && 分数分母:1 % 5 == 0
+		分数分子:1 /= 5
+		分数分母:1 /= 5
+	ENDIF
+	IF 分数分子:1 % 7 == 0 && 分数分母:1 % 7 == 0
+		分数分子:1 /= 7
+		分数分母:1 /= 7
+	ENDIF
+	IF 分数分子:1 % 2 == 0 && 分数分母:1 % 2 == 0
+		分数分子:1 /= 2
+		分数分母:1 /= 2
+	ENDIF
+	IF 分数分子:1 % 3 == 0 && 分数分母:1 % 3 == 0
+		分数分子:1 /= 3
+		分数分母:1 /= 3
+	ENDIF
+	IF 分数分子:1 % 11 == 0 && 分数分母:1 % 11 == 0
+		分数分子:1 /= 11
+		分数分母:1 /= 11
+	ENDIF
+	IF 分数分子:1 % 13 == 0 && 分数分母:1 % 13 == 0
+		分数分子:1 /= 13
+		分数分母:1 /= 13
+	ENDIF
+	IF 分数分子:1 % 2 == 0 && 分数分母:1 % 2 == 0
+		分数分子:1 /= 2
+		分数分母:1 /= 2
+	ENDIF
+	IF 分数分子:1 % 17 == 0 && 分数分母:1 % 17 == 0
+		分数分子:1 /= 17
+		分数分母:1 /= 17
+	ENDIF
+	IF 分数分子:1 % 19 == 0 && 分数分母:1 % 19 == 0
+		分数分子:1 /= 19
+		分数分母:1 /= 19
+	ENDIF
+	IF 分数分母:1 == 1
+		分数分母:1 = 0
+		RETURNF ARG:0 * ARG:1 + 分数分子:1
+	ENDIF
+	RETURNF ARG:0 * ARG:1
+ELSEIF ARG:2 == 3
+	RETURNF ARG:0 - ARG:1
+ELSEIF ARG:2 == 4
+	IF ARG:1 == 0;0で割らないように
+		計算不可 = 1
+		RETURNF 0
+	ELSE
+		IF ARG:0 < 0 && ARG:1 < 0
+			ARG:0 *= -1
+			ARG:1 *= -1
+		ENDIF
+		IF ARG:0 * ARG:1 < 0
+			ARG:0 = -ABS(ARG:0)
+			ARG:1 = ABS(ARG:1)
+		ENDIF
+		IF 分数分母:1 != 0;帯分数を割るとき、仮分数に直し普通の割り算に帰着させる
+			ARG:0 = 分数分子:1 + ARG:0 * 分数分母:1
+			ARG:1 = 分数分母:1
+		ENDIF
+		IF ARG:0 % ARG:1 != 0;割り切れないとき、帯分数に
+			分数分子:1 = ARG:0 - ARG:1*(ARG:0 / ARG:1)
+			分数分母:1 = ARG:1
+		ENDIF
+		;ここから約分
+		IF 分数分子:1 % 2 == 0 && 分数分母:1 % 2 == 0
+			分数分子:1 /= 2
+			分数分母:1 /= 2
+		ENDIF
+		IF 分数分子:1 % 3 == 0 && 分数分母:1 % 3 == 0
+			分数分子:1 /= 3
+			分数分母:1 /= 3
+		ENDIF
+		IF 分数分子:1 % 2 == 0 && 分数分母:1 % 2 == 0
+			分数分子:1 /= 2
+			分数分母:1 /= 2
+		ENDIF
+		IF 分数分子:1 % 5 == 0 && 分数分母:1 % 5 == 0
+			分数分子:1 /= 5
+			分数分母:1 /= 5
+		ENDIF
+		IF 分数分子:1 % 7 == 0 && 分数分母:1 % 7 == 0
+			分数分子:1 /= 7
+			分数分母:1 /= 7
+		ENDIF
+		IF 分数分子:1 % 2 == 0 && 分数分母:1 % 2 == 0
+			分数分子:1 /= 2
+			分数分母:1 /= 2
+		ENDIF
+		IF 分数分子:1 % 3 == 0 && 分数分母:1 % 3 == 0
+			分数分子:1 /= 3
+			分数分母:1 /= 3
+		ENDIF
+		IF 分数分子:1 % 11 == 0 && 分数分母:1 % 11 == 0
+			分数分子:1 /= 11
+			分数分母:1 /= 11
+		ENDIF
+		IF 分数分子:1 % 13 == 0 && 分数分母:1 % 13 == 0
+			分数分子:1 /= 13
+			分数分母:1 /= 13
+		ENDIF
+		IF 分数分子:1 % 2 == 0 && 分数分母:1 % 2 == 0
+			分数分子:1 /= 2
+			分数分母:1 /= 2
+		ENDIF
+		IF 分数分子:1 % 17 == 0 && 分数分母:1 % 17 == 0
+			分数分子:1 /= 17
+			分数分母:1 /= 17
+		ENDIF
+		IF 分数分子:1 % 19 == 0 && 分数分母:1 % 19 == 0
+			分数分子:1 /= 19
+			分数分母:1 /= 19
+		ENDIF
+		RETURNF ARG:0 / ARG:1
+	ENDIF
+ELSEIF ARG:2 == 5
+	IF ARG:0 == 0
+		RETURNF 0
+	ELSEIF ARG:0 < 0 || ARG:1 < 0 || ARG:1*(1+LOG10(ARG:0)) > 16;負の数が含まれる累乗を禁止する/答えが1京を超えないように
+		計算不可 = 1
+		RETURNF 0
+	ELSEIF 分数分母:1 != 0
+		分数分子:1 += ARG:0 * 分数分母:1;仮分数に直す
+		IF 分数分子:0 == 0
+			計算不可 = 1
+			RETURNF 0
+		ENDIF
+		IF 分数分子:1 < 0 || ARG:1*(1+LOG10(分数分子:1)) > 15 || ARG:1*(1+LOG10(分数分母:1)) > 15
+			計算不可 = 0
+			RETURNF 0
+		ELSE
+			分数分子:1 = POWER(分数分子:1,ARG:1)
+			分数分母:1 = POWER(分数分母:1,ARG:1)
+			仮置き = 分数分子:1 / 分数分母:1
+			分数分子:1 -= 仮置き
+			RETURNF 仮置き
+		ENDIF
+	ELSE
+		RETURNF POWER(ARG:0,ARG:1)
+	ENDIF
+ELSEIF ARG:2 == 6
+	IF 分数分母:1 != 0;帯分数が入っている状態で結合はできない
+		計算不可 = 1
+		RETURNF 0
+	ENDIF
+	IF ARG:0 == 0 || ARG:1 < 0
+		計算不可 = 1
+		RETURNF 0
+	ELSEIF ARG:1 == 0
+		RETURNF 10*ARG:0+ARG:1
+	ELSE
+		RETURNF POWER(10,1+LOG10(ARG:1))*ARG:0+SIGN(ARG:0)*ARG:1
+	ENDIF
+ELSE
+	計算不可 = 1
+	RETURNF 0
+ENDIF
+
+;CALC2に対し帯分数がくるときは必ずARG:1
+@CALC2(ARG:0,ARG:1,ARG:2)
+#FUNCTION
+SIF 分数分母:0 == 0
+	分数分子:0 = 0
+IF ARG:2 == 1
+	RETURNF ARG:0 + ARG:1
+ELSEIF ARG:2 == 2
+	分数分子:0 *= ARG:0
+	;ここから約分
+	IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+		分数分子:0 /= 2
+		分数分母:0 /= 2
+	ENDIF
+	IF 分数分子:0 % 3 == 0 && 分数分母:0 % 3 == 0
+		分数分子:0 /= 3
+		分数分母:0 /= 3
+	ENDIF
+	IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+		分数分子:0 /= 2
+		分数分母:0 /= 2
+	ENDIF
+	IF 分数分子:0 % 5 == 0 && 分数分母:0 % 5 == 0
+		分数分子:0 /= 5
+		分数分母:0 /= 5
+	ENDIF
+	IF 分数分子:0 % 7 == 0 && 分数分母:0 % 7 == 0
+		分数分子:0 /= 7
+		分数分母:0 /= 7
+	ENDIF
+	IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+		分数分子:0 /= 2
+		分数分母:0 /= 2
+	ENDIF
+	IF 分数分子:0 % 3 == 0 && 分数分母:0 % 3 == 0
+		分数分子:0 /= 3
+		分数分母:0 /= 3
+	ENDIF
+	IF 分数分子:0 % 11 == 0 && 分数分母:0 % 11 == 0
+		分数分子:0 /= 11
+		分数分母:0 /= 11
+	ENDIF
+	IF 分数分子:0 % 13 == 0 && 分数分母:0 % 13 == 0
+		分数分子:0 /= 13
+		分数分母:0 /= 13
+	ENDIF
+	IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+		分数分子:0 /= 2
+		分数分母:0 /= 2
+	ENDIF
+	IF 分数分子:0 % 17 == 0 && 分数分母:0 % 17 == 0
+		分数分子:0 /= 17
+		分数分母:0 /= 17
+	ENDIF
+	IF 分数分子:0 % 19 == 0 && 分数分母:0 % 19 == 0
+		分数分子:0 /= 19
+		分数分母:0 /= 19
+	ENDIF
+	IF 分数分母:0 == 1
+		分数分母:0 = 0
+		RETURNF ARG:0 * ARG:1 + 分数分子:0
+	ENDIF
+	RETURNF ARG:0 * ARG:1
+ELSEIF ARG:2 == 3
+	分数分子:0 *= -1
+	RETURNF ARG:0 - ARG:1
+ELSEIF ARG:2 == 4
+	IF ARG:1 == 0;0で割らないように
+		計算不可 = 1
+		RETURNF 0
+	ELSE
+		IF ARG:0 < 0 && ARG:1 < 0
+			ARG:0 *= -1
+			ARG:1 *= -1
+		ENDIF
+		IF ARG:0 * ARG:1 < 0
+			ARG:0 = -ABS(ARG:0)
+			ARG:1 = ABS(ARG:1)
+		ENDIF
+		IF 分数分母:0 != 0;帯分数で割るとき、仮分数に直し普通の割り算に帰着させる
+			ARG:0 *= 分数分母:0
+			ARG:1 = 分数分子:0 + ARG:1 * 分数分母:0
+		ENDIF
+		IF ARG:1 == 0;0で割らないように
+			計算不可 = 1
+			RETURNF 0
+		ENDIF
+		IF ARG:0 % ARG:1 != 0;割り切れないとき、帯分数に
+			分数分子:0 = ARG:0 - ARG:1*(ARG:0 / ARG:1)
+			分数分母:0 = ARG:1
+		ENDIF
+		;ここから約分
+		IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+			分数分子:0 /= 2
+			分数分母:0 /= 2
+		ENDIF
+		IF 分数分子:0 % 3 == 0 && 分数分母:0 % 3 == 0
+			分数分子:0 /= 3
+			分数分母:0 /= 3
+		ENDIF
+		IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+			分数分子:0 /= 2
+			分数分母:0 /= 2
+		ENDIF
+		IF 分数分子:0 % 5 == 0 && 分数分母:0 % 5 == 0
+			分数分子:0 /= 5
+			分数分母:0 /= 5
+		ENDIF
+		IF 分数分子:0 % 7 == 0 && 分数分母:0 % 7 == 0
+			分数分子:0 /= 7
+			分数分母:0 /= 7
+		ENDIF
+		IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+			分数分子:0 /= 2
+			分数分母:0 /= 2
+		ENDIF
+		IF 分数分子:0 % 3 == 0 && 分数分母:0 % 3 == 0
+			分数分子:0 /= 3
+			分数分母:0 /= 3
+		ENDIF
+		IF 分数分子:0 % 11 == 0 && 分数分母:0 % 11 == 0
+			分数分子:0 /= 11
+			分数分母:0 /= 11
+		ENDIF
+		IF 分数分子:0 % 13 == 0 && 分数分母:0 % 13 == 0
+			分数分子:0 /= 13
+			分数分母:0 /= 13
+		ENDIF
+		IF 分数分子:0 % 2 == 0 && 分数分母:0 % 2 == 0
+			分数分子:0 /= 2
+			分数分母:0 /= 2
+		ENDIF
+		IF 分数分子:0 % 17 == 0 && 分数分母:0 % 17 == 0
+			分数分子:0 /= 17
+			分数分母:0 /= 17
+		ENDIF
+		IF 分数分子:0 % 19 == 0 && 分数分母:0 % 19 == 0
+			分数分子:0 /= 19
+			分数分母:0 /= 19
+		ENDIF
+		RETURNF ARG:0 / ARG:1
+	ENDIF
+ELSEIF ARG:2 == 5
+	IF ARG:0 == 0
+		RETURNF 0
+	ELSEIF ARG:0 < 0 || ARG:1 < 0 || ARG:1*(1+LOG10(ARG:0)) > 16;負の数が含まれる累乗を禁止する/答えが1京を超えないように
+		計算不可 = 1
+		RETURNF 0
+	ELSEIF 分数分母:0 != 0
+		分数分子:0 += ARG:1 * 分数分母:0;仮分数に直す
+		IF 分数分子:0 < 0 || 分数分子:0*(1+LOG10(ARG:0))/分数分母:0 > 15
+			計算不可 = 0
+			RETURNF 0
+		ELSEIF 分数分母:0 == 2 && ARG:0 == POWER(SQRT(ARG:0),2);2乗根が計算できるとき
+			分数分母:0 = 0
+			ARG:0 = SQRT(ARG:0)
+			RETURNF POWER(ARG:0,分数分子:0)
+		ELSEIF 分数分母:0 == 3 && ARG:0 == POWER(CBRT(ARG:0),3);3乗根が計算できるとき
+			分数分母:0 = 0
+			ARG:0 = CBRT(ARG:0)
+			RETURNF POWER(ARG:0,分数分子:0)
+		ELSEIF 分数分母:0 == 4 && ARG:0 == POWER(SQRT(SQRT(ARG:0)),4);4乗根が計算できるとき
+			分数分母:0 = 0
+			ARG:0 = SQRT(SQRT(ARG:0))
+			RETURNF POWER(ARG:0,分数分子:0)
+		ENDIF
+		;これ以外のパターンは計算不能とする
+		計算不可 = 1
+		RETURNF 0
+	ELSE
+		RETURNF POWER(ARG:0,ARG:1)
+	ENDIF
+ELSEIF ARG:2 == 6
+	IF 分数分母:0 != 0;帯分数が入っている状態で結合はできない
+		計算不可 = 1
+		RETURNF 0
+	ENDIF
+	IF ARG:0 == 0 || ARG:1 < 0
+		計算不可 = 1
+		RETURNF 0
+	ELSEIF ARG:1 == 0
+		RETURNF 10*ARG:0+ARG:1
+	ELSE
+		RETURNF POWER(10,1+LOG10(ARG:1))*ARG:0+SIGN(ARG:0)*ARG:1
+	ENDIF
+ELSE
+	計算不可 = 1
+	RETURNF 0
+ENDIF
+
+;CALC3に対しては帯分数はどちらにも入りうる
+;また、「分母が異なる既約分数の和は整数にならない」という性質を使う
+@CALC3(ARG:0,ARG:1,ARG:2)
+#FUNCTION
+SIF 分数分母:0 == 0
+	分数分子:0 = 0
+SIF 分数分母:1 == 0
+	分数分子:1 = 0
+仮置き = 0;仮置き用
+IF ARG:2 == 1
+	SIF 分数分母:0 != 分数分母:1
+		計算不可 = 1
+	SIF 分数分母:0 != 0 && (分数分子:0 + 分数分子:1) % 分数分母:0 != 0
+		計算不可 = 1
+	SIF 分数分母:0 == 0
+		分数分母:0 = 1;ゼロ除算対策
+	RETURNF ARG:0 + ARG:1 + (分数分子:0 + 分数分子:1) / 分数分母:0
+ELSEIF ARG:2 == 2
+	SIF 分数分母:0 == 0 && 分数分母:1 == 0
+		RETURNF ARG:0 * ARG:1
+	IF 分数分母:1 == 0;分数分子:0/分数分母:0は存在する
+		分数分子:0 *= ARG:1
+		SIF 分数分子:0 % 分数分母:0 != 0
+			計算不可 = 1;答えは整数ではない
+		RETURNF ARG:0 * ARG:1 + 分数分子:0 /分数分母:0
+	ELSEIF 仮置き == 0;分数分子:1/分数分母:1は存在する
+		分数分子:1 *= ARG:0
+		SIF 分数分子:1 % 分数分母:1 != 0
+			計算不可 = 1;答えは整数ではない
+		RETURNF ARG:0 * ARG:1 + 分数分子:1 /分数分母:1
+	ELSE ;分数分子:0/分数分母:0と分数分子:1/分数分母:1は存在する
+		IF ARG:0 < 0 && ARG:1 < 0
+			ARG:0 *= -1
+			ARG:1 *= -1
+		ENDIF
+		IF ARG:0 * ARG:1 < 0
+			ARG:0 = -ABS(ARG:0)
+			ARG:1 = ABS(ARG:1)
+		ENDIF
+		;全て仮分数に直す
+		IF 分数分母:0 == 0
+			分数分子:0 = ARG:0
+			分数分母:0 = 1
+		ELSE
+			分数分子:0 += 分数分母:0 * ARG:0
+		ENDIF
+		IF 分数分母:1 == 0
+			分数分子:1 = ARG:1
+			分数分母:1 = 1
+		ELSE
+			分数分子:0 += 分数分母:0 * ARG:0
+		ENDIF
+		;ここまで仮分数への変換
+		SIF (分数分子:0 * 分数分子:1) % (分数分母:0 * 分数分母:1) == 0
+			計算不可 = 1
+		RETURNF (分数分子:0 * 分数分子:1) / (分数分母:0 * 分数分母:1)
+	ENDIF
+ELSEIF ARG:2 == 3
+	SIF 分数分母:0 != 分数分母:1
+		計算不可 = 1
+	SIF 分数分母:0 !=0 && (分数分子:0 - 分数分子:1) % 分数分母:0 != 0
+		計算不可 = 1
+	SIF 分数分母:0 == 0
+		分数分母:0 = 1;ゼロ除算対策
+	RETURNF ARG:0 - ARG:1 + (分数分子:0 - 分数分子:1) / 分数分母:0
+ELSEIF ARG:2 == 4
+	IF ARG:1 == 0;0で割らないように
+		計算不可 = 1
+		RETURNF 0
+	ELSE
+		IF ARG:0 < 0 && ARG:1 < 0
+			ARG:0 *= -1
+			ARG:1 *= -1
+		ENDIF
+		IF ARG:0 * ARG:1 < 0
+			ARG:0 = -ABS(ARG:0)
+			ARG:1 = ABS(ARG:1)
+		ENDIF
+		;全て仮分数に直す
+		IF 分数分母:0 == 0
+			分数分子:0 = ARG:0
+			分数分母:0 = 1
+		ELSE
+			分数分子:0 += 分数分母:0 * ARG:0
+		ENDIF
+		IF 分数分母:1 == 0
+			分数分子:1 = ARG:1
+			分数分母:1 = 1
+		ELSE
+			分数分子:1 += 分数分母:1 * ARG:0
+		ENDIF
+		;ここまで仮分数への変換
+		SIF (分数分子:0 * 分数分母:1) % (分数分母:0 * 分数分子:1) != 0
+			計算不可 = 1
+		RETURNF (分数分子:0 * 分数分母:1) / (分数分母:0 * 分数分子:1)
+	ENDIF
+ELSEIF ARG:2 == 5
+	IF ARG:0 == 0
+		RETURNF 0
+	ELSEIF ARG:0 < 0 || ARG:1 < 0 || ARG:1*(1+LOG10(ARG:0)) > 16;負の数が含まれる累乗を禁止する/答えが1京を超えないように
+		計算不可 = 1
+		RETURNF 0
+	ELSEIF 分数分母:0 != 0
+		計算不可 = 1
+		RETURNF 0
+	ELSEIF 分数分母:1 != 0
+		分数分子:1 += ARG:1 * 分数分母:1;仮分数に直す
+		IF 分数分子:1 < 0 || 分数分子:1*(1+LOG10(ARG:0))/分数分母:1 > 15
+			計算不可 = 0
+			RETURNF 0
+		ELSEIF 分数分母:1 == 2 && ARG:0 == POWER(SQRT(ARG:0),2);2乗根が計算できるとき
+			分数分母:1 = 0
+			ARG:0 = SQRT(ARG:0)
+			RETURNF POWER(ARG:0,分数分子:1)
+		ELSEIF 分数分母:1 == 3 && ARG:0 == POWER(CBRT(ARG:0),3);3乗根が計算できるとき
+			分数分母:1 = 0
+			ARG:0 = CBRT(ARG:0)
+			RETURNF POWER(ARG:0,分数分子:1)
+		ELSEIF 分数分母:1 == 4 && ARG:0 == POWER(SQRT(SQRT(ARG:0)),4);4乗根が計算できるとき
+			分数分母:1 = 0
+			ARG:0 = SQRT(SQRT(ARG:0))
+			RETURNF POWER(ARG:0,分数分子:1)
+		ENDIF
+		;これ以外のパターンは計算不能とする
+		計算不可 = 1
+		RETURNF 0
+	ELSE
+		RETURNF POWER(ARG:0,ARG:1)
+	ENDIF
+ELSEIF ARG:2 == 6
+	IF 分数分母:0 != 0 || 分数分母:1 != 0;帯分数が入っている状態で結合はできない
+		計算不可 = 1
+		RETURNF 0
+	ENDIF
+	IF ARG:0 == 0 || ARG:1 < 0
+		計算不可 = 1
+		RETURNF 0
+	ELSEIF ARG:1 == 0
+		RETURNF 10*ARG:0+ARG:1
+	ELSE
+		RETURNF POWER(10,1+LOG10(ARG:1))*ARG:0+SIGN(ARG:0)*ARG:1
+	ENDIF
+ELSE
+	計算不可 = 1
+	RETURNF 0
+ENDIF
