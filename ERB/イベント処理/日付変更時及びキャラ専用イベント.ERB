@@ -127,8 +127,8 @@ IF TARGET >= 0
 	;	CALL COLLAPSE_MIND_TRAIN
 
 	;依存度が-1000未満の場合、-1000にする
-	;SIF CFLAG:依存度 < -1000
-	;	CFLAG:依存度 = -1000
+	SIF CFLAG:依存度 < -1000
+		CFLAG:依存度 = -1000
 
 	;売却可能&助手可能判定 陥落系で無視できるって条件はほとんど意味無いか
 	;従順+欲望が6以上
@@ -410,11 +410,11 @@ REPEAT CHARANUM
 	IF VIRGIN:COUNT:0 == "タルタ" || VIRGIN:COUNT:10 == "タルタ"
 		SELECTCASE CHARANAMEF(COUNT)
 			CASE "ラジェ"
-				タルタ童貞喰い &= 1
+				タルタ童貞喰い |= 1
 			CASE "ガレト"
-				タルタ童貞喰い &= 2
+				タルタ童貞喰い |= 2
 			CASE "ヴァロ"
-				タルタ童貞喰い &= 4
+				タルタ童貞喰い |= 4
 		ENDSELECT
 	ENDIF
 REND
@@ -585,24 +585,54 @@ CALL PREG_READY
 ;-------------------------------------------------
 @EVENTTRAIN
 #PRI
-;調教対象が紅刃の時、1/5の確率で豹変
+;調教対象・助手が特定のキャラの場合、調教開始時に豹変することがある
+;紅刃……1/5の確率で豹変
+;冷音……天気が雨・雪・雷雨で豹変
 IF TARGET >= 0
 	IF CALLNAME:TARGET == "紅刃" && RAND:5 == 0 && NO:TARGET != 0
 		CALL TRANCE_ON, TARGET
 		TRANCE:200 = 1
 		DRAWLINE
 		PRINTFORMW ＜紅刃は性格が豹変した＞
+	ELSEIF CALLNAME:TARGET == "冷音" && INRANGE(FLAG:天気, 3, 5) && NO:TARGET != 0
+		CALL TRANCE_ON, TARGET
+		TRANCE:200 = 1
+		DRAWLINE
+		PRINTFORMW ＜冷音は性格が豹変した＞
 	ENDIF
 ENDIF
-
-;助手が紅刃の時、1/5の確率で豹変
 IF ASSI >= 0
 	IF CALLNAME:ASSI == "紅刃" && RAND:5 == 0 && NO:ASSI != 0
 		CALL TRANCE_ON, ASSI
 		TRANCE:ASSI:200 = 1
 		DRAWLINE
 		PRINTFORMW ＜紅刃は性格が豹変した＞
+	ELSEIF CALLNAME:ASSI == "冷音" && INRANGE(FLAG:天気, 3, 5) && NO:ASSI != 0
+		CALL TRANCE_ON, ASSI
+		TRANCE:ASSI:200 = 1
+		DRAWLINE
+		PRINTFORMW ＜冷音は性格が豹変した＞
 	ENDIF
+ENDIF
+
+@EVENT_NEXTDAY_BEMANI
+;調教対象・助手が豹変しているとき、元に戻る
+;現在豹変し得るのは、紅刃・冷音
+IF TARGET >= 0 && TRANCE:200
+	SELECTCASE CALLNAME:TARGET
+		CASE "紅刃", "冷音"
+			CALL TRANCE_OFF, TARGET
+			TRANCE:200 = 0
+			PRINTFORMW ＜%CALLNAME:TARGET%は元の性格にもどった＞
+	ENDSELECT
+ENDIF
+IF ASSI >= 0 && TRANCE:ASSI:200
+	SELECTCASE CALLNAME:TARGET
+		CASE "紅刃", "冷音"
+			CALL TRANCE_OFF, ASSI
+			TRANCE:ASSI:200 = 0
+			PRINTFORMW ＜%CALLNAME:ASSI%は元の性格にもどった＞
+	ENDSELECT
 ENDIF
 
 @TRANCE_ON, ARG
@@ -612,7 +642,7 @@ SELECTCASE CALLNAME:ARG
 		REPEAT 200
 			;変身時(豹変時)
 			;素質の消滅処理
-			;消滅素質：臆病(21)、大人しい(29)、保守的(44)、一線を越えない(47)、貞操観念(50)、痛みに弱い(60)、濡れにくい(63)、汚臭敏感(82)、献身的(83)
+			;消滅素質：臆病(21)、大人しい(29)、保守的(44)、一線越えない(47)、貞操観念(50)、痛みに弱い(60)、濡れにくい(63)、汚臭敏感(82)、献身的(83)
 			SELECTCASE TALENTNAME:COUNT
 				CASE "臆病", "大人しい", "保守的", "一線を越えない", "貞操観念", "痛みに弱い", "濡れにくい", "汚臭敏感", "献身的"
 					IF TALENT:ARG:COUNT
@@ -621,10 +651,41 @@ SELECTCASE CALLNAME:ARG
 					ENDIF
 			ENDSELECT
 			;素質の習得処理
-			;習得素質：気丈(24)、好奇心(23)、楽観的(45)、痛みに強い(61)、濡れやすい(62)、汚臭鈍感(81)、汚れ無視(84)、倒錯的(100)、両刀(101)、サド(107)
+			;習得素質：気丈(24)、好奇心(43)、楽観的(45)、痛みに強い(61)、濡れやすい(62)、汚臭鈍感(81)、汚れ無視(84)、倒錯的(100)、両刀(101)、サド(107)
 			SELECTCASE TALENTNAME:COUNT
 				CASE "気丈", "好奇心", "楽観的", "痛みに強い", "濡れやすい", "汚臭鈍感", "汚れ無視", "倒錯的", "両刀", "サド"
-					IF TALENT:ARG:COUNT == 0
+					IF !TALENT:ARG:COUNT
+						TRANCE:ARG:COUNT = 1
+						TALENT:ARG:COUNT = 1
+					ENDIF
+			ENDSELECT
+		REND
+	CASE "冷音"
+		;雨が降ると気力にボーナス
+		;無条件に700増えるほかに、Y=1000/XのグラフでのX=1～X=[雨量]までの面積
+		;つまり1000LOG([雨量])だけ増加する
+		;ただし、整数への切り捨ての関係で100LOG([雨量]^10)としている
+		;雨量に対する気力の参考値
+		;雨量1:1700 雨量2:2300 雨量3:2700 雨量4:3000 雨量5:3300 雨量10:4000 雨量15:4400 雨量20:4600 雨量78以上:6000
+		MAXBASE:ARG:気力 += 700
+		MAXBASE:ARG:気力 += 100*LOG(POWER(LIMIT(FLAG:降水量, 1, 78), 10))
+		BASE:ARG:気力 = MAXBASE:ARG:気力
+		REPEAT 200
+			;変身時(豹変時)
+			;素質の消滅処理
+			;消滅素質：大人しい(29)、無関心(41)、一線越えない(47)、貞操観念(50)、恥じらい(55)
+			SELECTCASE TALENTNAME:COUNT
+				CASE "大人しい", "無関心", "一線を越えない", "貞操観念", "恥じらい"
+					IF TALENT:ARG:COUNT
+						TRANCE:ARG:COUNT = 1
+						TALENT:ARG:COUNT = 0
+					ENDIF
+			ENDSELECT
+			;素質の習得処理
+			;習得素質：生意気(20)、反抗的(23)、衝動的(25)、プライド高い(26)、好奇心(43)、目立ちたがり(48)、貞操無頓着(51)、恥薄い(56)、痛みに強い(61)、濡れやすい(62)、汚臭鈍感(81)、汚れ無視(84)、快感に素直(90)、倒錯的(100)、両刀(101)、サド(107)
+			SELECTCASE TALENTNAME:COUNT
+				CASE "生意気", "反抗的", "衝動的", "プライド高い", "好奇心", "目立ちたがり", "貞操無頓着", "恥薄い", "痛みに強い", "濡れやすい", "汚臭鈍感", "汚れ無視", "快感に素直", "倒錯的", "両刀", "サド"
+					IF !TALENT:ARG:COUNT
 						TRANCE:ARG:COUNT = 1
 						TALENT:ARG:COUNT = 1
 					ENDIF
@@ -632,31 +693,12 @@ SELECTCASE CALLNAME:ARG
 		REND
 ENDSELECT
 
-@EVENT_NEXTDAY_BEMANI
-;調教対象が紅刃(豹変時)の時、元に戻る
-IF TARGET >= 0
-	IF CALLNAME:TARGET == "紅刃" && TRANCE:200
-		CALL TRANCE_OFF, TARGET
-		TRANCE:200 = 0
-		PRINTFORMW ＜紅刃は元の性格にもどった＞
-	ENDIF
-ENDIF
-
-;助手が紅刃(豹変時)の時、元に戻る
-IF ASSI >= 0
-	IF CALLNAME:ASSI == "紅刃" && TRANCE:ASSI:200
-		CALL TRANCE_OFF, ASSI
-		TRANCE:ASSI:200 = 0
-		PRINTFORMW ＜紅刃は元の性格にもどった＞
-	ENDIF
-ENDIF
-
 @TRANCE_OFF, ARG
 SELECTCASE CALLNAME:ARG
 	CASE "紅刃"
 		REPEAT 200
 			;変身解除時、習得処理を行なう
-			;習得素質：臆病(10)、大人しい(14)、保守的(24)、一線を越えない(27)、貞操観念(30)、痛みに弱い(40)、濡れにくい(43)、汚臭敏感(62)、献身的(63)
+			;習得素質：臆病(21)、大人しい(29)、保守的(44)、一線越えない(47)、貞操観念(50)、痛みに弱い(60)、濡れにくい(63)、汚臭敏感(82)、献身的(83)
 			SELECTCASE TALENTNAME:COUNT
 				CASE "臆病", "大人しい", "保守的", "一線を越えない", "貞操観念", "痛みに弱い", "濡れにくい", "汚臭敏感", "献身的"
 					IF TRANCE:ARG:COUNT
@@ -665,9 +707,31 @@ SELECTCASE CALLNAME:ARG
 					ENDIF
 			ENDSELECT
 			;変身解除時、消滅処理を行なう
-			;消滅素質：気丈(12)、好奇心(23)、楽観的(25)、痛みに強い(41)、濡れやすい(42)、汚臭鈍感(61)、汚れ無視(64)、倒錯的(80)、両刀(81)、サド(83)
+			;消滅素質：気丈(24)、好奇心(43)、楽観的(45)、痛みに強い(61)、濡れやすい(62)、汚臭鈍感(81)、汚れ無視(84)、倒錯的(100)、両刀(101)、サド(107)
 			SELECTCASE TALENTNAME:COUNT
 				CASE "気丈", "好奇心", "楽観的", "痛みに強い", "濡れやすい", "汚臭鈍感", "汚れ無視", "倒錯的", "両刀", "サド"
+					IF TRANCE:ARG:COUNT
+						TALENT:ARG:COUNT = 0
+						TRANCE:ARG:COUNT = 0
+					ENDIF
+			ENDSELECT
+		REND
+	CASE "冷音"
+		MAXBASE:ARG:気力 = CSVBASE(NO:ARG, 1)
+		REPEAT 200
+			;変身解除時、習得処理を行なう
+			;習得素質：大人しい(29)、無関心(41)、一線越えない(47)、貞操観念(50)、恥じらい(55)
+			SELECTCASE TALENTNAME:COUNT
+				CASE "大人しい", "無関心", "一線を越えない", "貞操観念", "恥じらい"
+					IF TRANCE:ARG:COUNT
+						TALENT:ARG:COUNT = 1
+						TRANCE:ARG:COUNT = 0
+					ENDIF
+			ENDSELECT
+			;変身解除時、消滅処理を行なう
+			;消滅素質：生意気(20)、反抗的(23)、衝動的(25)、プライド高い(26)、好奇心(43)、目立ちたがり(48)、貞操無頓着(51)、恥薄い(56)、痛みに強い(61)、濡れやすい(62)、汚臭鈍感(81)、汚れ無視(84)、快感に素直(90)、倒錯的(100)、両刀(101)、サド(107)
+			SELECTCASE TALENTNAME:COUNT
+				CASE "生意気", "反抗的", "衝動的", "プライド高い", "好奇心", "目立ちたがり", "貞操無頓着", "恥薄い", "痛みに強い", "濡れやすい", "汚臭鈍感", "汚れ無視", "快感に素直", "倒錯的", "両刀", "サド"
 					IF TRANCE:ARG:COUNT
 						TALENT:ARG:COUNT = 0
 						TRANCE:ARG:COUNT = 0
