@@ -7,7 +7,7 @@ CALL ITEMPRINT
 DRAWLINE
 
 PRINTL 　[0] 調教道具
-PRINTL 　[1] 消耗品
+PRINTL 　[1] 消耗品・お酒
 PRINTL 　[2] 素質アイテム
 PRINTL 　[3] 薬品類
 PRINTL 　[4] 特殊アイテム
@@ -123,12 +123,16 @@ ENDSELECT
 SELECTCASE ARG
 	CASE 1, 5
 		;ローション、媚薬、ビデオテープなどはとりあえず99個まで
-		FOR COUNT, 100, 200
+		;飲みきりのお酒も99個まで
+		FOR COUNT, 100, 160
 			IF ITEM:COUNT >= 99
 				ITEMSALES:COUNT = 0
 			ELSE
 				ITEMSALES:COUNT = 1
 			ENDIF
+		NEXT
+		FOR COUNT, 160, 200
+			ITEMSALES:COUNT = 1
 		NEXT
 		;ビデオカメラが無いときはビデオテープの販売をしない
 		SIF !ITEM:ビデオカメラ
@@ -451,6 +455,20 @@ SELECTCASE ITEMNAME:ARG
 		PRINTL オーガズムを封じ込める働きがあるらしい 精神薬の名を冠した何か
 	CASE "搾精コンドーム"
 		PRINTL 量が多くても安心 鮮度長持ち
+	CASE "スーパードライ", "一番搾り", "プレミアムモルツ", "ヱビス"
+		PRINTL Alc.5% 一般的に飲まれているビール。美味しい！
+	CASE "ほろよい"
+		PRINTL Alc.3% 定番の低アルコール酎ハイ。お酒が苦手な方も安心
+	CASE "ストロングゼロ"
+		PRINTL Alc.9% コスパと美味しさを両立させた、呑兵衛にも人気の一品
+	CASE "炭酸水"
+		PRINTL そのまま飲む他、お酒の割り材にも使える万能飲料
+	CASE "日本酒", "ワイン"
+		PRINTL Alc.12% およそグラス10杯分ほどの量
+	CASE "焼酎"
+		PRINTL Alc.25% 割ったり割らなかったりでおよそ10杯分ほどの量
+	CASE "ウイスキー"
+		PRINTL Alc.40% 割ったり割らなかったりでおよそ10杯分ほどの量
 	CASE "【汚れ無視】"
 		PRINTL 汚れた身体でも愛することが可能に
 	CASE "【調合知識】"
@@ -618,7 +636,12 @@ PRINTFORML %ITEMNAME:ARG%をいくつ買いますか？ (最大{LOCAL}個、0で
 CALL TWO_DIGIT, LOCAL, "個"
 IF RESULT
 	PRINTFORMW ＜%ITEMNAME:ARG%を{RESULT}個購入しました＞
-	ITEM:ARG += RESULT
+	SELECTCASE ITEMNAME:ARG
+		CASE "日本酒", "焼酎", "ワイン", "ウイスキー"
+			ITEM:ARG += RESULT*10
+		CASEELSE
+			ITEM:ARG += RESULT
+	ENDSELECT
 	MONEY -= アイテム価格*RESULT
 	;実績:ター子の交渉で値引きしたアイテムを購入する
 	SIF CHARANAMEF(MASTER) == "ター子" || (ASSI > 0 && CHARANAMEF(ASSI) == "ター子")

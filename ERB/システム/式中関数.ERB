@@ -347,9 +347,14 @@ NEXT
 ;2桁の数値を直接入力するための関数
 ;ARGは最大値
 ;ARGSは単位
-@TWO_DIGIT, ARG, ARGS
+;ARG:1は最低値
+@TWO_DIGIT, 最大値, 単位, 最低値
+#DIM 最大値
+#DIMS 単位
+#DIM 最低値
+#DIM DYNAMIC LCOUNT
 
-LOCAL = 0
+VARSET LOCAL, 0
 
 PRINTL キーボードによる直接入力もできます
 
@@ -360,127 +365,57 @@ DO
 	ELSE
 		PRINT 【 　
 	ENDIF
-	PRINTFORML %TOFULL(TOSTR(LOCAL%10))% 】%ARGS%
+	PRINTFORML %TOFULL(TOSTR(LOCAL%10))% 】%単位%
 
-	IF ARG >= 10
-		PRINTBUTTON  "[ 0 ]", 200
-	ELSE
-		PRINTPLAIN      
-	ENDIF
-	IF ARG >= 0
-		PRINTBUTTON "[ 0 ]", 100
-		PRINTL
-	ENDIF
-	IF ARG >= 10
-		PRINTBUTTON  "[ 1 ]", 110
-	ELSE
-		PRINTPLAIN      
-	ENDIF
-	IF ARG >= 1
-		PRINTBUTTON "[ 1 ]", 101
-		PRINTL
-	ENDIF
-	IF ARG >= 20
-		PRINTBUTTON  "[ 2 ]", 120
-	ELSE
-		PRINTPLAIN      
-	ENDIF
-	IF ARG >= 2
-		PRINTBUTTON "[ 2 ]", 102
-		PRINTL
-	ENDIF
-	IF ARG >= 30
-		PRINTBUTTON  "[ 3 ]", 130
-	ELSE
-		PRINTPLAIN      
-	ENDIF
-	IF ARG >= 3
-		PRINTBUTTON "[ 3 ]", 103
-		PRINTL
-	ENDIF
-	IF ARG >= 40
-		PRINTBUTTON  "[ 4 ]", 140
-	ELSE
-		PRINTPLAIN      
-	ENDIF
-	IF ARG >= 4
-		PRINTBUTTON "[ 4 ]", 104
-		PRINTL
-	ENDIF
-	IF ARG >= 50
-		PRINTBUTTON  "[ 5 ]", 150
-	ELSE
-		PRINTPLAIN      
-	ENDIF
-	IF ARG >= 5
-		PRINTBUTTON "[ 5 ]", 105
-		PRINTL
-	ENDIF
-	IF ARG >= 60
-		PRINTBUTTON  "[ 6 ]", 160
-	ELSE
-		PRINTPLAIN      
-	ENDIF
-	IF ARG >= 6
-		PRINTBUTTON "[ 6 ]", 106
-		PRINTL
-	ENDIF
-	IF ARG >= 70
-		PRINTBUTTON  "[ 7 ]", 170
-	ELSE
-		PRINTPLAIN      
-	ENDIF
-	IF ARG >= 7
-		PRINTBUTTON "[ 7 ]", 107
-		PRINTL
-	ENDIF
-	IF ARG >= 80
-		PRINTBUTTON  "[ 8 ]", 180
-	ELSE
-		PRINTPLAIN      
-	ENDIF
-	IF ARG >= 8
-		PRINTBUTTON "[ 8 ]", 108
-		PRINTL
-	ENDIF
-	IF ARG >= 90
-		PRINTBUTTON  "[ 9 ]", 190
-	ELSE
-		PRINTPLAIN      
-	ENDIF
-	IF ARG >= 9
-		PRINTBUTTON  "[ 9 ]", 109
-		PRINTL
-	ENDIF
-	PRINTBUTTON "[  決定  ]", 999
-	PRINTL
-	INPUTS
 	
-	SIF RESULTS == ""
-		RETURN LOCAL
-	SIF RESULTS != "0" && TOINT(RESULTS) == 0
-		CONTINUE
-	;見やすさから変数RESULTを使用
-	RESULT = TOINT(RESULTS)
+	;一の位は100～109を入力されると決まる RESULT-100とかRESULT%100とか
+	;十の位は200～290を入力されると決まる (RESULT-200)/10とか？
+	FOR LCOUNT, 0, 10
+		VARSET LOCALS, 
+		IF 最大値 >= LCOUNT*10 && 最低値 <= LCOUNT*10
+			LOCALS = <font color='#c0c0c0'><button value='{200+LCOUNT*10}'>[ {LCOUNT} ]</button></font>
+		ELSE
+			LOCALS = <font color='#c0c0c0'>     </font>
+		ENDIF
+		IF 最大値 >= LCOUNT && 最低値 <= LCOUNT
+			LOCALS:1 = <font color='#c0c0c0'><button value='{100+LCOUNT}'>[ {LCOUNT} ]</button></font>
+		ENDIF
+		HTML_PRINT LOCALS+LOCALS:1
+	NEXT
+	PRINTBUTTON "[  決定  ]", 999
+	PRINTBUTTON "[ 最大値 ]", 最大値
+	PRINTBUTTON "[ 最低値 ]", 最低値
+	PRINTL 
+	INPUT
+	
+	;キーボード入力で最低値～最大値の範囲外ならそれを返す
+	SELECTCASE RESULT
+		CASE IS <= 99, 最低値 TO 最大値
+			RETURN RESULT
+	ENDSELECT
 
+	;決定が押されればLOCALの値を返す
 	IF RESULT == 999
 		CLEARLINE 1
 		RETURN LOCAL
 	ENDIF
 
-	IF RESULT >= 110
-		LOCAL %= 10
-		LOCAL += 10 * ((RESULT/10)%10)
-	ELSEIF RESULT >= 100
-		LOCAL = LOCAL /10 *10
-		LOCAL += RESULT%10
-	ELSEIF RESULT > ARG
-		LOCAL = ARG
-	ELSEIF RESULT >= 0
-		RETURN RESULT
-	ENDIF
-	SIF LOCAL > ARG
-		LOCAL = ARG
+	SELECTCASE RESULT
+		;一の位の処理 一の位を0にしてから加算する
+		CASE 100 TO 109
+			LOCAL = (LOCAL/10)*10+(RESULT-100)
+		;十の位の処理 十の位を0にしてから加算する
+		CASE 200 TO 290
+			;プレイヤーが変なの入力した時用に一の位を抹消する
+			RESULT -= RESULT%10
+			LOCAL = (LOCAL%10)+(RESULT-200)
+	ENDSELECT
+	;最大値を超えてたら最大値に揃える
+	SIF LOCAL > 最大値
+		LOCAL = 最大値
+	;最低値を下回ってたら最低値に揃える
+	SIF LOCAL < 最低値
+		LOCAL = 最低値
 	SIF LOCAL < 0
 		LOCAL = 0
 	CLEARLINE 14

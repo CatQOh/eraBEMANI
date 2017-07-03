@@ -1,0 +1,366 @@
+﻿;-------------------------------------------------
+;お酒を飲ませる
+;-------------------------------------------------
+@USERCOM_ABLE37
+#DIM LCOUNT
+
+;妊娠中は飲ませされない
+SIF TALENT:妊娠
+	RETURN 0
+
+;お酒持ってないとダメ
+LOCAL = 0
+FOR LCOUNT, 150, 200
+	IF ITEM:LCOUNT > 0
+		LOCAL = 1
+		BREAK
+	ENDIF
+NEXT
+
+RETURN LOCAL
+
+@COM23
+#DIM DYNAMIC ALC
+#DIM DYNAMIC お酒
+#DIMS DYNAMIC 酒名
+#DIMS DYNAMIC 製法
+#DIM DYNAMIC LCOUNT
+PRINTL 何を飲ませますか？
+
+SIF ITEM:スーパードライ || ITEM:一番搾り || ITEM:プレミアムモルツ || ITEM:ヱビス || ITEM:ほろよい
+	PRINTL [1] 缶飲料類
+SIF ITEM:日本酒
+	PRINTL [2] 日本酒(Alc.12%)
+SIF ITEM:ワイン
+	PRINTL [3] ワイン(Alc.12%)
+SIF ITEM:焼酎
+	PRINTL [4] 焼酎
+SIF ITEM:ウイスキー
+	PRINTL [5] ウイスキー
+PRINTL [100] やっぱりやめる
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 1
+			SIF !ITEM:スーパードライ && !ITEM:一番搾り && !ITEM:プレミアムモルツ && !ITEM:ヱビス && !ITEM:ほろよい
+				CONTINUE
+			PRINTL 何を飲ませますか？
+			SIF ITEM:スーパードライ
+				PRINTL [0] スーパードライ(Alc.5%)
+			SIF ITEM:一番搾り
+				PRINTL [1] 一番搾り(Alc.5%)
+			SIF ITEM:プレミアムモルツ
+				PRINTL [2] プレミアムモルツ(Alc.5%)
+			SIF ITEM:ヱビス
+				PRINTL [3] ヱビス(Alc.5%)
+			SIF ITEM:ほろよい
+				PRINTL [4] ほろよい(Alc.3%)
+			SIF ITEM:ストロングゼロ
+				PRINTL [5] ストロングゼロ(Alc.9%)
+			DO
+				INPUT
+				SIF !ITEM:(RESULT+150)
+					CONTINUE
+				SELECTCASE RESULT
+					CASE 0 TO 3
+						お酒 = RESULT+150
+						酒名 = ITEMNAME:(RESULT+150)
+						製法 = ビール
+						ALC = 5
+						BREAK
+					CASE 4
+						お酒 = RESULT+150
+						酒名 = ほろよい
+						ALC = 3
+						BREAK
+					CASE 5
+						お酒 = RESULT+150
+						酒名 = ストロングゼロ
+						ALC = 9
+						BREAK
+				ENDSELECT
+			LOOP 1
+		CASE 2
+			SIF !ITEM:日本酒
+				CONTINUE
+			FOR LCOUNT, 150, 200
+				IF ITEMNAME:LCOUNT == "日本酒"
+					お酒 = LCOUNT
+					BREAK
+				ENDIF
+			NEXT
+			酒名 = 日本酒
+			ALC = 12
+			BREAK
+		CASE 3
+			SIF !ITEM:ワイン
+				CONTINUE
+			FOR LCOUNT, 150, 200
+				IF ITEMNAME:LCOUNT == "ワイン"
+					お酒 = LCOUNT
+					BREAK
+				ENDIF
+			NEXT
+			酒名 = ワイン
+			ALC = 12
+			BREAK
+		CASE 4
+			FOR LCOUNT, 150, 200
+				IF ITEMNAME:LCOUNT == "焼酎"
+					お酒 = LCOUNT
+					BREAK
+				ENDIF
+			NEXT
+			PRINTL 焼酎をどのように飲ませますか？
+			PRINTL [1] 水割り(Alc.5～20%)
+			PRINTL [2] お湯割り(Alc.5～20%)
+			PRINTL [3] ロック(Alc.22%)
+			PRINTL [4] ストレート(Alc.25%)
+			SIF ITEM:炭酸水
+				PRINTL [5] 焼酎ハイボール(Alc.5～20%)
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 1, 2, 5
+						SELECTCASE RESULT
+							CASE 1
+								製法 = 水割り
+								酒名 = 焼酎の水割り
+							CASE 2
+								製法 = お湯割り
+								酒名 = 焼酎のお湯割り
+							CASE 5
+								SIF !ITEM:炭酸水
+									CONTINUE
+								製法 = ハイボール
+								酒名 = 焼酎ハイボール
+						ENDSELECT
+						PRINTL アルコール度数を決めてください(5～20%)
+						CALL TWO_DIGIT, 20, "%", 5
+						ALC = RESULT
+						BREAK
+					CASE 3
+						酒名 = 焼酎のロック
+						ALC = 22
+						BREAK
+					CASE 4
+						酒名 = 焼酎のストレート
+						ALC = 25
+						BREAK
+				ENDSELECT
+			LOOP 1
+		CASE 5
+			FOR LCOUNT, 150, 200
+				IF ITEMNAME:LCOUNT == "ウイスキー"
+					お酒 = LCOUNT
+					BREAK
+				ENDIF
+			NEXT
+			PRINTL ウイスキーをどのように飲ませますか？
+			PRINTL [1] 水割り(Alc.9～35%)
+			PRINTL [2] お湯割り(Alc.9～35%)
+			PRINTL [3] ロック(Alc.37%)
+			PRINTL [4] ストレート(Alc.40%)
+			SIF ITEM:炭酸水
+				PRINTL [5] 焼酎ハイボール(Alc.9～35%)
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 1, 2, 5
+						SELECTCASE RESULT
+							CASE 1
+								製法 = 水割り
+								酒名 = ウイスキーの水割り
+							CASE 2
+								製法 = お湯割り
+								酒名 = ウイスキーのお湯割り
+							CASE 5
+								SIF !ITEM:炭酸水
+									CONTINUE
+								製法 = ハイボール
+								酒名 = ハイボール
+						ENDSELECT
+						PRINTL アルコール度数を決めてください(9～35%)
+						CALL TWO_DIGIT, 35, "%", 9
+						ALC = RESULT
+						BREAK
+					CASE 3
+						酒名 = ウイスキーのロック
+						ALC = 37
+						BREAK
+					CASE 4
+						酒名 = ウイスキーのストレート
+						ALC = 40
+						BREAK
+				ENDSELECT
+			LOOP 1
+		CASE 100
+			PRINTFORMW お酒を飲ませるのを止めました
+			RETURN 0
+	ENDSELECT
+LOOP 1
+
+CALL ALC_ORDER, ALC, 製法
+
+PRINTFORM  = {RESULT}
+SELECTCASE RESULT
+	CASE IS < 0
+		PRINT < 
+	CASE IS > 0
+		PRINT > 
+	CASEELSE
+		PRINT = 
+ENDSELECT
+PRINT 実効値0
+WAIT
+;実行できない お酒は特殊の地の文
+IF RESULT < 0
+	CALL KOJO_MESSAGE_EVENT, 101
+	RETURN 0
+ELSE
+	ITEM:お酒--
+	SIF 製法 == "ハイボール"
+		ITEM:炭酸水--
+ENDIF
+
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 20
+LOSEBASE:気力 += 50
+
+SOURCE:中毒 = 500
+SOURCE:露出 = 50
+SOURCE:欲情 = 100
+SOURCE:恭順 = 100
+SOURCE:逸脱 = 300
+SOURCE:反感 = 300
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+IF TALENT:下戸
+	CFLAG:酔 = ALC*2
+ELSEIF TALENT:酒豪
+	CFLAG:酔 = ALC/2
+ELSE
+	CFLAG:酔 = ALC
+ENDIF
+
+SIF CFLAG:酔 > 100
+	CFLAG:酔 = 100
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+RETURN 1
+
+;-------------------------------------------------
+;お酒を飲ませるコマンドのCOM_ORDERは特殊
+;-------------------------------------------------
+@ALC_ORDER, ALC, 製法
+#DIM DYNAMIC ALC
+#DIMS DYNAMIC 製法
+
+LOCAL = 0
+
+IF TALENT:下戸
+	PRINTFORM -アルコール度数{ALC}\%({ALC*2})
+	LOCAL -= ALC*2
+ELSEIF !TALENT:酒豪
+	PRINTFORM -アルコール度数{ALC}\%({ALC})
+	LOCAL -= ALC
+ENDIF
+
+LOCAL:1 = 0
+
+IF TALENT:快感に素直
+	LOCAL:1 = CFLAG:酔*3/2
+ELSEIF TALENT:快感の否定
+	LOCAL:1 = CFLAG:酔/2
+ENDIF
+
+IF LOCAL:1 >= 5 && TALENT:下戸
+	PRINTFORM +酒が回っている{CFLAG:酔}({LOCAL:1/5})
+	LOCAL += LOCAL:1/5
+ELSEIF LOCAL:1 >= 3
+	PRINTFORM +酒が回っている{CFLAG:酔}({LOCAL:1/3})
+	LOCAL += LOCAL:1/3
+ENDIF
+
+IF CFLAG:陥落
+	PRINT +陥落(5)
+	LOCAL += 5
+ENDIF
+
+IF 製法 == "ビール" && !TALENT:酒豪 && (TALENT:小柄体型 || TALENT:下戸)
+	PRINT -ビールは苦くて無理(10)
+	LOCAL -= 10
+ENDIF
+
+SELECTCASE 製法
+	CASE "水割り", "ハイボール"
+		IF FLAG:気温 >= 200
+			PRINTFORM +高気温&冷飲料({(FLAG:気温-190)/10})
+			LOCAL += (FLAG:気温-190)/10
+		ENDIF
+	CASE "お湯割り"
+		IF FLAG:気温 <= 100
+			PRINTFORM +低気温&温飲料({(110-FLAG:気温)/10})
+			LOCAL += (110-FLAG:気温)/10
+		ENDIF
+ENDSELECT
+
+IF 製法 == "ハイボール"
+	PRINT +ハイボールは美味しい(5)
+	LOCAL += 5
+ENDIF
+
+IF TALENT:衝動的
+	PRINT +衝動的(3)
+	LOCAL += 3
+ENDIF
+
+IF TALENT:好奇心
+	PRINT +好奇心(3)
+	LOCAL += 3
+ENDIF
+
+IF TALENT:無関心
+	PRINT -無関心(2)
+	LOCAL -= 2
+ENDIF
+
+IF TALENT:目立ちたがり
+	PRINT +目立ちたがり(3)
+	LOCAL += 3
+ENDIF
+
+IF 製法 == "お湯割り" && TALENT:猫舌
+	PRINT -猫舌(3)
+	LOCAL -= 2
+ENDIF
+
+IF TALENT:小柄体型 && !TALENT:酒豪
+	PRINT -子供(3)
+	LOCAL -= 3
+ENDIF
+
+RETURN LOCAL
+
