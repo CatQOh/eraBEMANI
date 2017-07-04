@@ -8,6 +8,10 @@
 SIF TALENT:妊娠
 	RETURN 0
 
+;機械と無機物は飲めない
+SIF TALENT:無機物 || CSTR:種族 == "機械"
+	RETURN 0
+
 ;お酒持ってないとダメ
 LOCAL = 0
 FOR LCOUNT, 150, 200
@@ -19,10 +23,9 @@ NEXT
 
 RETURN LOCAL
 
-@COM23
+@COM37
 #DIM DYNAMIC ALC
 #DIM DYNAMIC お酒
-#DIMS DYNAMIC 酒名
 #DIMS DYNAMIC 製法
 #DIM DYNAMIC LCOUNT
 PRINTL 何を飲ませますか？
@@ -81,6 +84,7 @@ DO
 						BREAK
 				ENDSELECT
 			LOOP 1
+			BREAK
 		CASE 2
 			SIF !ITEM:日本酒
 				CONTINUE
@@ -150,6 +154,7 @@ DO
 						BREAK
 				ENDSELECT
 			LOOP 1
+			BREAK
 		CASE 5
 			FOR LCOUNT, 150, 200
 				IF ITEMNAME:LCOUNT == "ウイスキー"
@@ -163,7 +168,7 @@ DO
 			PRINTL [3] ロック(Alc.37%)
 			PRINTL [4] ストレート(Alc.40%)
 			SIF ITEM:炭酸水
-				PRINTL [5] 焼酎ハイボール(Alc.9～35%)
+				PRINTL [5] ハイボール(Alc.9～35%)
 			DO
 				INPUT
 				SELECTCASE RESULT
@@ -195,6 +200,7 @@ DO
 						BREAK
 				ENDSELECT
 			LOOP 1
+			BREAK
 		CASE 100
 			PRINTFORMW お酒を飲ませるのを止めました
 			RETURN 0
@@ -206,14 +212,18 @@ CALL ALC_ORDER, ALC, 製法
 PRINTFORM  = {RESULT}
 SELECTCASE RESULT
 	CASE IS < 0
-		PRINT < 
+		PRINT  < 
 	CASE IS > 0
-		PRINT > 
+		PRINT  > 
 	CASEELSE
-		PRINT = 
+		PRINT  = 
 ENDSELECT
 PRINT 実効値0
 WAIT
+
+TFLAG:お酒 = お酒
+TFLAG:アルコール度数 = ALC
+
 ;実行できない お酒は特殊の地の文
 IF RESULT < 0
 	CALL KOJO_MESSAGE_EVENT, 101
@@ -247,11 +257,11 @@ SOURCE:反感 = 300
 ;特殊ソース処理
 ;-------------------------------------------------
 IF TALENT:下戸
-	CFLAG:酔 = ALC*2
+	CFLAG:酔 += ALC*2
 ELSEIF TALENT:酒豪
-	CFLAG:酔 = ALC/2
+	CFLAG:酔 += ALC/2
 ELSE
-	CFLAG:酔 = ALC
+	CFLAG:酔 += ALC
 ENDIF
 
 SIF CFLAG:酔 > 100
@@ -277,6 +287,7 @@ RETURN 1
 @ALC_ORDER, ALC, 製法
 #DIM DYNAMIC ALC
 #DIMS DYNAMIC 製法
+#DIM DYNAMIC LCOUNT
 
 LOCAL = 0
 
@@ -294,19 +305,37 @@ IF TALENT:快感に素直
 	LOCAL:1 = CFLAG:酔*3/2
 ELSEIF TALENT:快感の否定
 	LOCAL:1 = CFLAG:酔/2
+ELSE
+	LOCAL:1 = CFLAG:酔
 ENDIF
 
 IF LOCAL:1 >= 5 && TALENT:下戸
-	PRINTFORM +酒が回っている{CFLAG:酔}({LOCAL:1/5})
+	PRINTFORM +酒が回っている({LOCAL:1/5})
 	LOCAL += LOCAL:1/5
 ELSEIF LOCAL:1 >= 3
-	PRINTFORM +酒が回っている{CFLAG:酔}({LOCAL:1/3})
+	PRINTFORM +酒が回っている({LOCAL:1/3})
 	LOCAL += LOCAL:1/3
+ENDIF
+
+IF CFLAG:二日酔い
+	PRINT -二日酔い(5)
+	LOCAL -= 5
 ENDIF
 
 IF CFLAG:陥落
 	PRINT +陥落(5)
 	LOCAL += 5
+ENDIF
+
+LOCAL:2 = 0
+FOR LCOUNT, 1, 10
+	SIF PALAMLV:LCOUNT <= PALAM:恭順
+		LOCAL:2 = LCOUNT
+NEXT
+
+IF LOCAL:2
+	PRINTFORM +恭順({LOCAL:2})
+	LOCAL += LOCAL:2
 ENDIF
 
 IF 製法 == "ビール" && !TALENT:酒豪 && (TALENT:小柄体型 || TALENT:下戸)
