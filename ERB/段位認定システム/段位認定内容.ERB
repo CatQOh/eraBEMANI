@@ -353,169 +353,65 @@ SIF LOCAL >= 3
 SIF LOCAL >= 4
 	PRINTFORML 　四人目 %CSVNAMEF(EDIT:3)%
 
-PRINTL EDITに指名するキャラの番号を入力してください
-PRINTL 
+CALL CHARA_LIST, 4
 
-CALL CHARA_LIST, 1
-;まだ表示できるキャラがいたら1が返ってくる
-LOCAL:1 = RESULT
-
-DRAWLINE
-PRINTPLAIN 　CHARA  FILTER　
-PRINT [8000] フィルタ設定
-PRINTPLAIN 　
-PRINTFORM [8001] 男女フィルタ：
-SELECTCASE FLAG:男女フィルタ
-	CASE 0
-		PRINTL 切
-	CASE 1
-		PRINTL 男性を表示
-	CASE 2
-		PRINTL 女性を表示
-ENDSELECT
-PRINTPLAIN 　CUSTOM FILTER　
-PRINT [8003] カスタムフィルタ1：
-IF FLAG:カスタムフィルタ１ >= 0 && FLAG:フィルタスイッチ１
-	PRINTFORM %TALENTNAME:(FLAG:カスタムフィルタ１)%
-	SELECTCASE FLAG:フィルタスイッチ１
-		CASE 1
-			PRINT (表示)
-		CASE 2
-			PRINT (除外)
-	ENDSELECT
-ELSE
-	PRINT 切
-ENDIF
-PRINTPLAIN 　
-PRINT [8005] カスタムフィルタ2：
-IF FLAG:カスタムフィルタ２ >= 0 && FLAG:フィルタスイッチ２
-	PRINTFORM %TALENTNAME:(FLAG:カスタムフィルタ２)%
-	SELECTCASE FLAG:フィルタスイッチ２
-		CASE 1
-			PRINT (表示)
-		CASE 2
-			PRINT (除外)
-	ENDSELECT
-ELSE
-	PRINT 切
-ENDIF
-PRINTL 
-
-PRINTPLAIN 　PRICE  FILTER　
-PRINT [8007] 価格フィルタ：
-IF FLAG:価格フィルタ != 0
-	CALL PASELI, @"{FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄"
-	SELECTCASE FLAG:価格フィルタ
-		CASE 1
-			PRINT (表示)
-		CASE 2
-			PRINT (除外)
-	ENDSELECT
-ELSE
-	PRINT 切
-ENDIF
-PRINTPLAIN 　
-PRINT [8008] バストサイズフィルタ：
-SELECTCASE FLAG:バストサイズフィルタ
-	CASE 0
-		PRINTL 切
-	CASE 1
-		PRINTL 絶壁キャラを表示
-	CASE 2
-		PRINTL 貧乳キャラを表示
-	CASE 3
-		PRINTL 並乳キャラを表示
-	CASE 4
-		PRINTL 巨乳キャラを表示
-	CASE 5
-		PRINTL 爆乳キャラを表示
-ENDSELECT
-
-DRAWLINE
-PRINTPLAINFORM 　PAGE.{TFLAG:ページ数+1}　
-IF TFLAG:ページ数 > 0
-	PRINTLC [10001]前のページ
-ELSE
-	PRINTLC  
-ENDIF
-PRINT [10000]最初から設定する
-SIF RESULT
-	PRINTC [10009]後のページ
-PRINTL 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 10000
-			VARSET CCB, 0
-			VARSET EDIT, 0
-			LOCAL = 0
-			RESTART
-		CASE 10001
-			SIF TFLAG:ページ数
-				TFLAG:ページ数--
-		CASE 10009
-			SIF LOCAL:1
-				TFLAG:ページ数++
-		CASE 8000
-			CALL CHARA_FILTER
-			BREAK
-		CASE 8001, 8003, 8005, 8007, 8008
-			CALL CHARA_FILTER2, (RESULT-8000)
-			BREAK
-		CASEELSE
-			IF EXISTCSV(RESULT)
-				LRESULT = RESULT
-				CALL CHARA_MANUAL, RESULT
-				DO
+SELECTCASE RESULT
+	CASE 10000
+		VARSET CCB, 0
+		VARSET EDIT, 0
+		LOCAL = 0
+		RESTART
+	CASEELSE
+		LRESULT = RESULT
+		CALL CHARA_MANUAL, LRESULT
+		DO
+			PRINTL 
+			PRINTL このキャラにしますか？
+			PRINTL [0] はい
+			PRINTL [1] いいえ
+			SIF LOCAL:1 == 0
+				PRINTL [2] 素質を表示する
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					EDIT:LOCAL = LRESULT
+					CCB:LRESULT = 1
+					TFLAG:ページ数 = 0
+					GOTO CHARA_DECIDE
+				CASE 1
+					RESTART
+				CASE 2
+					LOCAL:1 = 1
 					PRINTL 
-					PRINTL このキャラにしますか？
-					PRINTL [0]はい
-					PRINTL [1]いいえ
-					SIF LOCAL:2 == 0
-						PRINTL [2]素質を表示する
-					INPUT
-					SELECTCASE RESULT
-						CASE 0
-							EDIT:LOCAL = LRESULT
-							CCB:LRESULT = 1
-							TFLAG:ページ数 = 0
-							GOTO CHARA_DECIDE
-						CASE 1
-							RESTART
-						CASE 2
-							LOCAL:2 = 1
-							PRINTL 
-							PRINTFORML 種族:%CSVCSTR(LRESULT, 110)%
-							PRINT 素質
-							REPEAT 200
-								SELECTCASE TALENTNAME:COUNT
-									CASE "性別"
-										CONTINUE
-									CASE "バストサイズ"
-										SELECTCASE CSVTALENT(LRESULT, COUNT)
-											CASE 1
-												PRINT 【絶壁】
-											CASE 2
-												PRINT 【貧乳】
-											CASE 3
-												PRINT 【並乳】
-											CASE 4
-												PRINT 【巨乳】
-											CASE 5
-												PRINT 【爆乳】
-										ENDSELECT
-										CONTINUE
+					PRINTFORML 種族:%CSVCSTR(LRESULT, 110)%
+					PRINT 素質
+					REPEAT 200
+						SELECTCASE TALENTNAME:COUNT
+							CASE "性別"
+								CONTINUE
+							CASE "バストサイズ"
+								SELECTCASE CSVTALENT(LRESULT, COUNT)
+									CASE 1
+										PRINT 【絶壁】
+									CASE 2
+										PRINT 【貧乳】
+									CASE 3
+										PRINT 【並乳】
+									CASE 4
+										PRINT 【巨乳】
+									CASE 5
+										PRINT 【爆乳】
 								ENDSELECT
-								SIF CSVTALENT(LRESULT, COUNT)
-									PRINTFORM 【%TALENTNAME:COUNT%】
-							REND
-							SIF !LINEISEMPTY()
-								PRINTL 
-					ENDSELECT
-				LOOP 1
-			ENDIF
-	ENDSELECT
-LOOP LOOPRES(10001, 10009)
+								CONTINUE
+						ENDSELECT
+						SIF CSVTALENT(LRESULT, COUNT)
+							PRINTFORM 【%TALENTNAME:COUNT%】
+					REND
+					SIF !LINEISEMPTY()
+						PRINTL 
+			ENDSELECT
+		LOOP 1
+ENDSELECT
 
 RESTART
 

@@ -2,6 +2,8 @@
 TARGET = -1
 ASSI = -1
 
+VARLINE = 0
+
 LOADGLOBAL
 
 ;周回数を1に
@@ -23,75 +25,26 @@ DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 0, 1
-			DRAWLINE
 			FLAG:ゲームモード = RESULT
+			CALL SETUP_GAMESTART
 			ADDCHARA 0
 			MASTER = 0
 			CFLAG:MASTER:種族 = 1
-			PRINTL 性別を選択してください
-			PRINTL [0] - 男性
-			PRINTL [1] - 女性
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						TALENT:MASTER:性別 = 1
-						CSTR:MASTER:上半身上着 = シャツ
-						CSTR:MASTER:下半身上着 = ズボン
-						CSTR:MASTER:下半身下着 = トランクス
-					CASE 1
-						TALENT:MASTER:性別 = 2
-						TALENT:MASTER:バストサイズ = 3
-						CSTR:MASTER:全身上着 = ワンピース
-						CSTR:MASTER:上半身下着 = ブラジャー
-						CSTR:MASTER:下半身下着 = パンティ
-						CFLAG:MASTER:挿入可 = 1
-				ENDSELECT
-			LOOP LOOPRES(0, 1)
-			DRAWLINE
-			DO
-				PRINT 名前を入力してください(何も入力しない場合は「
-				PRINTBUTTON "あなた", "あなた"
-				PRINTL 」になります)
-				INPUTS
-				SELECTCASE RESULTS
-					CASE ""
-						CALLNAME:MASTER = あなた
-						NAME:MASTER = あなた
-					CASEELSE
-						CALLNAME:MASTER = %RESULTS%
-						NAME:MASTER = %RESULTS%
-				ENDSELECT
-				PRINTFORML 「%CALLNAME:MASTER%」でよろしいですか？
-				PRINTL [0] - はい
-				PRINTL [1] - いいえ
-				INPUT
-			LOOP LOOPRES(0)
-			DRAWLINE
-			PRINTL 性交の経験は……
-			PRINTL [0] - ある
-			PRINTL [1] - 無い
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 1
-						SELECTCASE SEX(MASTER)
-							CASE 1
-								TALENT:MASTER:童貞 = 1
-							CASE 2
-								TALENT:MASTER:処女 = 1
-						ENDSELECT
-				ENDSELECT
-			LOOP LOOPRES(0, 1)
+			CALL SELECT_SEX
+			CALL INPUT_NAME
+			CALL SELECT_VIRGIN
+			CALL SELECT_DIFFICULT
 			BREAK
 		CASE 7
 			FLAG:ゲームモード = 7
+			CALL SETUP_GAMESTART
 			ADDCHARA 0
 			MASTER = 0
 			CALL START_CHARA_SELECT
 			BREAK
 		CASE 8
 			FLAG:ゲームモード = 8
+			CALL SETUP_GAMESTART
 			ADDCHARA 0
 			MASTER = 0
 			CFLAG:MASTER:種族 = 1
@@ -99,39 +52,27 @@ DO
 			CSTR:MASTER:上半身上着 = シャツ
 			CSTR:MASTER:下半身上着 = ズボン
 			CSTR:MASTER:下半身下着 = トランクス
+			LOADGLOBAL
+			CALL 段位認定緑
+			SELECTCASE FLAG:選択段位
+				CASE 99
+					CALL SELECT_DIFFICULT
+				CASE 50
+					FLAG:難易度 = 3
+				CASEELSE
+					FLAG:難易度 = 1
+			ENDSELECT
 			BREAK
 		CASE 9
 			FLAG:ゲームモード = 9
+			CALL SETUP_GAMESTART
 			ADDCHARA 0
 			MASTER = 0
 			CALL START_CHARA_SELECT
+			CALL SELECT_DIFFICULT
 			BREAK
 	ENDSELECT
 LOOP 1
-
-;難易度選択
-SELECTCASE FLAG:ゲームモード
-	CASE 0, 1, 9
-		DRAWLINE
-		PRINTL ★★難易度を選択してください★★
-		IF QMA
-			PRINTL [0] - フェアリー級(初心者でも安心)
-			PRINTL [1] - ミノフェニ級(それなりに)
-			PRINTL [2] - ドラゴン級(ようこそ廃人の入口へ)
-		ELSE
-			PRINTL [0] - NORMAL
-			PRINTL [1] - HYPER
-			PRINTL [2] - ANOTHER
-		ENDIF
-		DO
-			INPUT
-			SELECTCASE RESULT
-				CASE 0 TO 2
-					FLAG:難易度 = RESULT+1
-					BREAK
-			ENDSELECT
-		LOOP 1
-ENDSELECT
 
 ;オープニング表示
 SELECTCASE FLAG:ゲームモード
@@ -155,58 +96,28 @@ SELECTCASE FLAG:ゲームモード
 	CASE 1
 		DRAWLINE
 		TFLAG:ページ数 = 0
-		DO
-			PRINTL ★★パートナーを選択してください★★
-			CALL CHARA_LIST, 3
-			DRAWLINE
-			PRINTFORM 　PAGE.{TFLAG:ページ数+1} 
-			IF TFLAG:ページ数
-				PRINTLC [10001]前のページ
-			ELSE
-				PRINTLC  
-			ENDIF
-			PRINTPLAIN 　
-			SIF (TFLAG:ページ数+1)*30 < CSVCOUNT
-				PRINTC [10009]後のページ
-			INPUT
-			SELECTCASE RESULT
-				CASE 10001
-					SIF TFLAG:ページ数 > 0
-						TFLAG:ページ数--
-					CONTINUE
-				CASE 10009
-					;最大ページ数と比較、ページ数変動の際は
-					SIF (TFLAG:ページ数+1)*30 < CSVCOUNT
-						TFLAG:ページ数++
-					CONTINUE
-				CASEELSE
-					IF EXISTCSV(RESULT)
-						ADDCHARA RESULT
-						CCB:RESULT = 1
-						ASSI = 1
-						CFLAG:ASSI:種族 = SELECT_RACE(ASSI)
-						;この時点では口上表示の設定はできないので強制表示
-						TRYCCALLFORM PARTNER_K{NO:ASSI}
-						CATCH
-							PRINTFORMW %NAME:ASSI%をパートナーに選択しました
-						ENDCATCH
-						CFLAG:ASSI:売却不可 = 1
-						TALENT:ASSI:服従 = 1
-						CFLAG:ASSI:状態 = 2
-						CFLAG:ASSI:陥落 = 1
-						MARK:ASSI:屈服刻印 = 3
-						FLAG:パートナー = NO:ASSI
-						SIF RELATION:ASSI:(NO:MASTER) < 200
-							RELATION:ASSI:(NO:MASTER) = 200
-						SIF RELATION:MASTER:(NO:ASSI) < 200
-							RELATION:MASTER:(NO:ASSI) = 200
-						キャラ未購入 = 1
-						BREAK
-					ELSE
-						CONTINUE
-					ENDIF
-			ENDSELECT
-		LOOP 1
+		PRINTL ★★パートナーを選択してください★★
+		CALL CHARA_LIST, 3
+		ADDCHARA RESULT
+		CCB:RESULT = 1
+		ASSI = 1
+		CFLAG:ASSI:種族 = SELECT_RACE(ASSI)
+		;この時点では口上表示の設定はできないので強制表示
+		TRYCCALLFORM PARTNER_K{NO:ASSI}
+		CATCH
+			PRINTFORMW %NAME:ASSI%をパートナーに選択しました
+		ENDCATCH
+		CFLAG:ASSI:売却不可 = 1
+		TALENT:ASSI:服従 = 1
+		CFLAG:ASSI:状態 = 2
+		CFLAG:ASSI:陥落 = 1
+		MARK:ASSI:屈服刻印 = 3
+		FLAG:パートナー = NO:ASSI
+		SIF RELATION:ASSI:(NO:MASTER) < 200
+			RELATION:ASSI:(NO:MASTER) = 200
+		SIF RELATION:MASTER:(NO:ASSI) < 200
+			RELATION:MASTER:(NO:ASSI) = 200
+		キャラ未購入 = 1
 ENDSELECT
 
 IF FLAG:ゲームモード != 7
@@ -292,99 +203,6 @@ DO
 	ENDSELECT
 LOOP LOOPRES(0, 1)
 
-DAY = 1
-SELECTCASE FLAG:ゲームモード
-	CASE 0
-		MONEY = 3000
-		FLAG:価格フィルタ上限 = 3000
-	CASE 1
-		MONEY = 1000000
-		ITEM:風俗店営業許可証 = 1
-		娼館広さ = 1
-		娼館部屋数 = 1
-		娼館レベルアップ必要額 = 1000
-	CASE 7
-		MONEY = 3000000
-	CASE 8
-		MONEY = 0
-		FLAG:価格フィルタ上限 = 30000
-	CASE 9
-		MONEY = 30000
-		FLAG:価格フィルタ上限 = 30000
-ENDSELECT
-FLAG:カスタムフィルタ１ = 1
-FLAG:カスタムフィルタ２ = 3
-FLAG:色仕掛け = 1
-LASTMONEY = MONEY
-;リアルタイム計算処理 変数REALTIMEも残しておくこと
-;リアルタイム(文字列式)からリアル西暦を抜き出して数値型に変換して代入する……
-REALTIME:0 = TOINT(SUBSTRING(GETTIMES(), 0, 4))
-REALTIME:1 = TOINT(SUBSTRING(GETTIMES(), 5, 2))
-REALTIME:2 = TOINT(SUBSTRING(GETTIMES(), 8, 2))
-
-YEAR = REALTIME:0
-MONTH = REALTIME:1
-DAYS = REALTIME:2
-
-;曜日計算
-FLAG:曜日 = ZELLER(YEAR, MONTH, DAYS)
-
-;月齢計算
-LOCAL = ((YEAR-11)%19)*11
-SELECTCASE MONTH
-	CASE 1, 3
-		LOCAL:1 = 0
-	CASE 2, 4, 5
-		LOCAL:1 = 2
-	CASE 6 TO 12
-		LOCAL:1 = MONTH-2
-ENDSELECT
-
-月齢 = (LOCAL+LOCAL:1+DAYS)%30
-
-VARSET LOCAL, 0
-
-VARSET SELECTCOM, -1
-SELECTCOM = 0
-
-
-;段位認定における処理
-IF FLAG:ゲームモード == 8
-	LOADGLOBAL
-	CALL 段位認定緑
-	SELECTCASE FLAG:選択段位
-		CASE 99
-			DRAWLINE
-			PRINTL ★★難易度を選択してください★★
-			IF QMA
-				PRINTL [0] - フェアリー級(初心者でも安心)
-				PRINTL [1] - ミノフェニ級(それなりに)
-				PRINTL [2] - ドラゴン級(ようこそ廃人の入口へ)
-			ELSE
-				PRINTL [0] - NORMAL
-				PRINTL [1] - HYPER
-				PRINTL [2] - ANOTHER
-			ENDIF
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0 TO 2
-						FLAG:難易度 = RESULT+1
-						BREAK
-				ENDSELECT
-			LOOP 1
-		CASE 50
-			FLAG:難易度 = 3
-		CASEELSE
-			FLAG:難易度 = 1
-	ENDSELECT
-ENDIF
-
-;気温の算出
-CALL TEMPERATURE
-;天気の決定
-CALL WEATHER
-
 BEGIN SHOP
 
 @START_CHARA_SELECT
@@ -395,285 +213,73 @@ PRINTL ★★キャラを選択してください★★
 
 CALL CHARA_LIST, 2
 
-DRAWLINE
-PRINTFORM 　PAGE.{TFLAG:ページ数+1} 
-IF TFLAG:ページ数
-	PRINTLC [10001]前のページ
-ELSE
-	PRINTLC  
-ENDIF
-PRINTPLAIN 　
-PRINT [10000]変更しない
-PRINTPLAIN 　
-SIF (TFLAG:ページ数+1)*30 < CSVCOUNT
-	PRINTC [10009]後のページ
-PRINTL 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 10001
-			SIF TFLAG:ページ数 > 0
-				TFLAG:ページ数--
-			RESTART
-		CASE 10009
-			;最大ページ数と比較、ページ数変動の際は
-			SIF (TFLAG:ページ数+1)*30 < CSVCOUNT
-				TFLAG:ページ数++
-			RESTART
-		CASE 10000
-			PRINTW プレイヤーを変更しませんでした
-			DRAWLINE
-			PRINTL 性別を変更しますか？
-			PRINTL [0] - 男のままでいい
-			PRINTL [1] - 女になってみる
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						PRINTW 性別を変更せず開始します
-						TALENT:MASTER:性別 = 1
-						CSTR:MASTER:上半身上着 = シャツ
-						CSTR:MASTER:下半身上着 = ズボン
-						CSTR:MASTER:下半身下着 = トランクス
-					CASE 1
-						PRINTW 女性の体で開始します
-						TALENT:MASTER:性別 = 2
-						TALENT:MASTER:バストサイズ = 3
-						CSTR:MASTER:全身上着 = ワンピース
-						CSTR:MASTER:上半身下着 = ブラジャー
-						CSTR:MASTER:下半身下着 = パンティ
-						CFLAG:MASTER:挿入可 = 1
-				ENDSELECT
-			LOOP LOOPRES(0, 1)
-			DRAWLINE
-			DO
-				PRINT 名前を入力してください(何も入力しない場合は「
-				PRINTBUTTON "あなた", "あなた"
-				PRINTL 」になります)
-				INPUTS
-				SELECTCASE RESULTS
-					CASE ""
-						CALLNAME:MASTER = あなた
-						NAME:MASTER = あなた
-					CASEELSE
-						CALLNAME:MASTER = %RESULTS%
-						NAME:MASTER = %RESULTS%
-				ENDSELECT
-				PRINTFORML 「%CALLNAME:MASTER%」でよろしいですか？
-				PRINTL [0] - はい
-				PRINTL [1] - いいえ
-				INPUT
-			LOOP LOOPRES(0)
-			DRAWLINE
-			PRINTL 体型はどんな感じですか？
-			PRINTL [0] - 普通の人です
-			SELECTCASE SEX(MASTER)
-				CASE 1
-					PRINTL [1] - ショタです
-				CASE 2
-					PRINTL [1] - ロリです
-			ENDSELECT
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 1
-						TALENT:MASTER:小柄体型 = 1
-						MAXBASE:MASTER:体力 -= 200
-						BASE:MASTER:体力 -= 200
-						SELECTCASE SEX(MASTER)
-							CASE 2
-								TALENT:MASTER:バストサイズ = 2
-						ENDSELECT
-				ENDSELECT
-			LOOP LOOPRES(0, 1)
-			DRAWLINE
-			SELECTCASE FLAG:ゲームモード
-				CASE 7
-					BREAK
-				CASE 9
-					PRINTL 性交の経験は……
-					PRINTL [0] - ある
-					PRINTL [1] - 無い
-			ENDSELECT
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 1
-						SELECTCASE SEX(MASTER)
-							CASE 1
-								TALENT:MASTER:童貞 = 1
-							CASE 2
-								TALENT:MASTER:処女 = 1
-						ENDSELECT
-				ENDSELECT
-			LOOP LOOPRES(0, 1)
-			BREAK
-		CASEELSE
-			IF EXISTCSV(RESULT)
-				DELCHARA 0
-				ADDCHARA RESULT
-				MASTER = 0
-				CFLAG:MASTER:種族 = SELECT_RACE(MASTER)
-				PRINTFORMW プレイヤーを「%NAME:MASTER%」に設定します
-				DRAWLINE
-				SELECTCASE FLAG:ゲームモード
-					CASE 7
-						BREAK
-					CASE 9
-						PRINTFORML %CALLNAME:MASTER%に調教されたい人向けに奴隷としてあなたを追加しますか？
-						PRINTL [0] - 調教されたい！
-						PRINTL [1] - いらん
-						DO
-							INPUT
-							SELECTCASE RESULT
-								CASE 0
-									ADDCHARA 0
-									TARGET = 1
-									CFLAG:TARGET:種族 = 1
-									DRAWLINE
-									PRINTL 性別を選択してください
-									PRINTL [0] - 男性
-									PRINTL [1] - 女性
-									DO
-										INPUT
-										SELECTCASE RESULT
-											CASE 0
-												TALENT:性別 = 1
-												CSTR:上半身上着 = シャツ
-												CSTR:下半身上着 = ズボン
-												CSTR:下半身下着 = トランクス
-											CASE 1
-												TALENT:性別 = 2
-												TALENT:バストサイズ = 3
-												CSTR:全身上着 = ワンピース
-												CSTR:上半身下着 = ブラジャー
-												CSTR:下半身下着 = パンティ
-												CFLAG:挿入可 = 1
-										ENDSELECT
-									LOOP LOOPRES(0, 1)
-									DRAWLINE
-									DO
-										PRINT 名前を入力してください(何も入力しない場合は「
-										PRINTBUTTON "あなた", "あなた"
-										PRINTL 」になります)
-										INPUTS
-										SELECTCASE RESULTS
-											CASE ""
-												CALLNAME:TARGET = あなた
-												NAME:TARGET = あなた
-											CASEELSE
-												CALLNAME:TARGET = %RESULTS%
-												NAME:TARGET = %RESULTS%
-										ENDSELECT
-										PRINTFORML 「%CALLNAME:TARGET%」でよろしいですか？
-										PRINTL [0] - はい
-										PRINTL [1] - いいえ
-										INPUT
-									LOOP LOOPRES(0)
-									DRAWLINE
-									PRINTL 性交の経験は……
-									PRINTL [0] - ある
-									PRINTL [1] - 無い
-									DO
-										INPUT
-										SELECTCASE RESULT
-											CASE 1
-												SELECTCASE SEX(TARGET)
-													CASE 1
-														TALENT:TARGET:童貞 = 1
-													CASE 2
-														TALENT:TARGET:処女 = 1
-												ENDSELECT
-										ENDSELECT
-									LOOP LOOPRES(0, 1)
-									DRAWLINE
-									PRINTL 体型はどんな感じですか？
-									PRINTL [0] - 普通の人です
-									SELECTCASE SEX(TARGET)
-										CASE 1
-											PRINTL [1] - ショタです
-										CASE 2
-											PRINTL [1] - ロリです
-									ENDSELECT
-									DO
-										INPUT
-										SELECTCASE RESULT
-											CASE 1
-												TALENT:小柄体型 = 1
-												MAXBASE:体力 -= 200
-												BASE:体力 -= 200
-												SELECTCASE SEX(TARGET)
-													CASE 2
-														TALENT:バストサイズ = 2
-												ENDSELECT
-										ENDSELECT
-									LOOP LOOPRES(0, 1)
-									BREAK
-								CASE 1
-									BREAK
-							ENDSELECT
-						LOOP LOOPRES(0, 1)
-						BREAK
-				ENDSELECT
-			ENDIF
-	ENDSELECT
-LOOP 1
+SELECTCASE RESULT
+	CASE 10000
+		PRINTW プレイヤーを変更しませんでした
+		CALL SELECT_SEX
+		CALL INPUT_NAME
+		CALL SELECT_STYLE
+		SELECTCASE FLAG:ゲームモード
+			CASE 9
+				CALL SELECT_VIRGIN
+		ENDSELECT
+	CASEELSE
+		DELCHARA 0
+		ADDCHARA RESULT
+		MASTER = 0
+		CFLAG:MASTER:種族 = SELECT_RACE(MASTER)
+		PRINTFORMW プレイヤーを「%NAME:MASTER%」に設定します
+		DRAWLINE
+		SELECTCASE FLAG:ゲームモード
+			CASE 9
+				PRINTFORML %CALLNAME:MASTER%に調教されたい人向けに奴隷としてあなたを追加しますか？
+				PRINTL [0] - 調教されたい！
+				PRINTL [1] - いらん
+				DO
+					INPUT
+					SELECTCASE RESULT
+						CASE 0
+							ADDCHARA 0
+							TARGET = 1
+							CFLAG:TARGET:種族 = 1
+							CALL SELECT_SEX, TARGET
+							CALL INPUT_NAME, TARGET
+							CALL SELECT_VIRGIN, TARGET
+							CALL SELECT_STYLE, TARGET
+							BREAK
+						CASE 1
+							BREAK
+					ENDSELECT
+				LOOP 1
+		ENDSELECT
+ENDSELECT
+
 
 
 ;新婚モード専用処理
 IF FLAG:ゲームモード == 7
 	FLAG:難易度 = 1
 	TFLAG:ページ数 = 0
-	DO
-		PRINTL ★★嫁、もしくは婿を選択してください★★
-		CALL CHARA_LIST, 1
-		DRAWLINE
-		PRINTFORM 　PAGE.{TFLAG:ページ数+1} 
-		IF TFLAG:ページ数
-			PRINTLC [10001]前のページ
-		ELSE
-			PRINTLC  
-		ENDIF
-		PRINTPLAIN 　
-		SIF (TFLAG:ページ数+1)*30 < CSVCOUNT
-			PRINTC [10009]後のページ
-		INPUT
-		SELECTCASE RESULT
-			CASE 10001
-				SIF TFLAG:ページ数 > 0
-					TFLAG:ページ数--
-				CONTINUE
-			CASE 10009
-				;最大ページ数と比較、ページ数変動の際は
-				SIF (TFLAG:ページ数+1)*30 < CSVCOUNT
-					TFLAG:ページ数++
-				CONTINUE
-			CASEELSE
-				IF EXISTCSV(RESULT)
-					ADDCHARA RESULT
-					TARGET = 1
-					CFLAG:種族 = SELECT_RACE(TARGET)
-					TRYCALLFORM WEDDING_K{NO:TARGET}
-					PRINTFORMW %NAME:TARGET%とのご成婚おめでとうございます
-					CFLAG:嫁 = 1
-					CFLAG:陥落 = 1
-					TALENT:恋心 = 0
-					TALENT:親愛 = 1
-					TALENT:MASTER:恋心 = 0
-					TALENT:既婚者 = NO:MASTER
-					TALENT:MASTER:既婚者 = NO:TARGET
-					MARK:屈服刻印 = 3
-					MARK:MASTER:屈服刻印 = 3
-					SIF RELATION:(NO:MASTER) < 300
-						RELATION:(NO:MASTER) = 300
-					SIF RELATION:MASTER:(NO:TARGET) < 300
-						RELATION:MASTER:(NO:TARGET) = 300
-					BREAK
-				ELSE
-					CONTINUE
-				ENDIF
-		ENDSELECT
-	LOOP 1
+	PRINTL ★★嫁、もしくは婿を選択してください★★
+	CALL CHARA_LIST, 1
+	ADDCHARA RESULT
+	TARGET = 1
+	CFLAG:種族 = SELECT_RACE(TARGET)
+	TRYCALLFORM WEDDING_K{NO:TARGET}
+	PRINTFORMW %NAME:TARGET%とのご成婚おめでとうございます
+	CFLAG:嫁 = 1
+	CFLAG:陥落 = 1
+	TALENT:恋心 = 0
+	TALENT:親愛 = 1
+	TALENT:MASTER:恋心 = 0
+	TALENT:既婚者 = NO:MASTER
+	TALENT:MASTER:既婚者 = NO:TARGET
+	MARK:屈服刻印 = 3
+	MARK:MASTER:屈服刻印 = 3
+	SIF RELATION:(NO:MASTER) < 300
+		RELATION:(NO:MASTER) = 300
+	SIF RELATION:MASTER:(NO:TARGET) < 300
+		RELATION:MASTER:(NO:TARGET) = 300
 	PRINTL ご結婚前からいろいろ経験なさりましたよね？
 	PRINTL [0] - そりゃまぁ
 	PRINTL [1] - 純潔を保ってきた
@@ -746,4 +352,181 @@ IF FLAG:ゲームモード == 7
 ENDIF
 
 RETURN 0
+
+@SELECT_SEX, ARG = -1
+SIF ARG == -1
+	ARG = MASTER
+DRAWLINE
+PRINTL 性別を選択してください
+PRINTL [0] - 男性
+PRINTL [1] - 女性
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			TALENT:ARG:性別 = 1
+			CSTR:ARG:上半身上着 = シャツ
+			CSTR:ARG:下半身上着 = ズボン
+			CSTR:ARG:下半身下着 = トランクス
+		CASE 1
+			TALENT:ARG:性別 = 2
+			TALENT:ARG:バストサイズ = 3
+			CSTR:ARG:全身上着 = ワンピース
+			CSTR:ARG:上半身下着 = ブラジャー
+			CSTR:ARG:下半身下着 = パンティ
+			CFLAG:ARG:挿入可 = 1
+	ENDSELECT
+LOOP LOOPRES(0, 1)
+
+@INPUT_NAME, ARG = -1
+SIF ARG == -1
+	ARG = MASTER
+DRAWLINE
+DO
+	PRINT 名前を入力してください(何も入力しない場合は「
+	PRINTBUTTON "あなた", "あなた"
+	PRINTL 」になります)
+	INPUTS
+	SELECTCASE RESULTS
+		CASE ""
+			CALLNAME:ARG = あなた
+			NAME:ARG = あなた
+		CASEELSE
+			CALLNAME:ARG = %RESULTS%
+			NAME:ARG = %RESULTS%
+	ENDSELECT
+	PRINTFORML 「%CALLNAME:ARG%」でよろしいですか？
+	PRINTL [0] - はい
+	PRINTL [1] - いいえ
+	INPUT
+LOOP LOOPRES(0)
+
+@SELECT_VIRGIN, ARG = -1
+SIF ARG == -1
+	ARG = MASTER
+DRAWLINE
+PRINTL 性交の経験は……
+PRINTL [0] - ある
+PRINTL [1] - 無い
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 1
+			SELECTCASE SEX(ARG)
+				CASE 1
+					TALENT:ARG:童貞 = 1
+				CASE 2
+					TALENT:ARG:処女 = 1
+			ENDSELECT
+	ENDSELECT
+LOOP LOOPRES(0, 1)
+
+@SELECT_DIFFICULT
+DRAWLINE
+PRINTL ★★難易度を選択してください★★
+IF QMA
+	PRINTL [0] - フェアリー級(初心者でも安心)
+	PRINTL [1] - ミノフェニ級(それなりに)
+	PRINTL [2] - ドラゴン級(ようこそ廃人の入口へ)
+ELSE
+	PRINTL [0] - NORMAL
+	PRINTL [1] - HYPER
+	PRINTL [2] - ANOTHER
+ENDIF
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0 TO 2
+			FLAG:難易度 = RESULT+1
+			BREAK
+	ENDSELECT
+LOOP 1
+
+@SELECT_STYLE, ARG = -1
+SIF ARG == -1
+	ARG = MASTER
+DRAWLINE
+PRINTL 体型はどんな感じですか？
+PRINTL [0] - 普通の人です
+SELECTCASE SEX(ARG)
+	CASE 1
+		PRINTL [1] - ショタです
+	CASE 2
+		PRINTL [1] - ロリです
+ENDSELECT
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 1
+			TALENT:ARG:小柄体型 = 1
+			MAXBASE:ARG:体力 -= 200
+			BASE:ARG:体力 -= 200
+			SELECTCASE SEX(ARG)
+				CASE 2
+					TALENT:ARG:バストサイズ = 2
+			ENDSELECT
+	ENDSELECT
+LOOP LOOPRES(0, 1)
+
+@SETUP_GAMESTART
+DAY = 1
+SELECTCASE FLAG:ゲームモード
+	CASE 0
+		MONEY = 3000
+		FLAG:価格フィルタ上限 = 3000
+	CASE 1
+		MONEY = 1000000
+		ITEM:風俗店営業許可証 = 1
+		娼館広さ = 1
+		娼館部屋数 = 1
+		娼館レベルアップ必要額 = 1000
+	CASE 7
+		MONEY = 3000000
+	CASE 8
+		MONEY = 0
+		FLAG:価格フィルタ上限 = 30000
+	CASE 9
+		MONEY = 30000
+		FLAG:価格フィルタ上限 = 30000
+ENDSELECT
+FLAG:カスタムフィルタ１ = 1
+FLAG:カスタムフィルタ２ = 3
+FLAG:色仕掛け = 1
+LASTMONEY = MONEY
+;リアルタイム計算処理 変数REALTIMEも残しておくこと
+;リアルタイム(文字列式)からリアル西暦を抜き出して数値型に変換して代入する……
+REALTIME:0 = TOINT(SUBSTRING(GETTIMES(), 0, 4))
+REALTIME:1 = TOINT(SUBSTRING(GETTIMES(), 5, 2))
+REALTIME:2 = TOINT(SUBSTRING(GETTIMES(), 8, 2))
+
+YEAR = REALTIME:0
+MONTH = REALTIME:1
+DAYS = REALTIME:2
+
+;曜日計算
+FLAG:曜日 = ZELLER(YEAR, MONTH, DAYS)
+
+;月齢計算
+LOCAL = ((YEAR-11)%19)*11
+SELECTCASE MONTH
+	CASE 1, 3
+		LOCAL:1 = 0
+	CASE 2, 4, 5
+		LOCAL:1 = 2
+	CASE 6 TO 12
+		LOCAL:1 = MONTH-2
+ENDSELECT
+
+月齢 = (LOCAL+LOCAL:1+DAYS)%30
+
+VARSET LOCAL, 0
+
+VARSET SELECTCOM, -1
+SELECTCOM = 0
+
+;気温の算出
+CALL TEMPERATURE
+;天気の決定
+CALL WEATHER
+
 

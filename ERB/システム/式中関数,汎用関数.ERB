@@ -491,3 +491,100 @@ ENDIF
 
 RETURNF 0
 
+;引数の条件に一致するキャラをページ形式で表示する
+;詳しくは資料フォルダの雑記.txtを参照
+@PAGING, 表示, 追加情報, ページ名, 終了表記, 使用不可も表示
+#DIM ページ数
+#DIM 表示数
+#DIM 飛ばした人数
+#DIM 未表示キャラ
+#DIM 表示行数
+#DIM 初期化フラグ
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 表示
+#DIM DYNAMIC 使用不可も表示
+#DIMS DYNAMIC 追加情報
+#DIMS DYNAMIC ページ名
+#DIMS DYNAMIC 終了表記
+
+LCOUNT = PAGING
+
+IF 初期化フラグ == 0
+	VARSET LOCAL, 0
+	飛ばした人数 = 0
+	表示数 = 0
+	未表示キャラ = 0
+	表示行数 = LINECOUNT
+	初期化フラグ = 1
+ENDIF
+
+IF 表示 && (使用不可も表示 || !CFLAG:PAGING:使用不可)
+	;2ページ目以降はページ数×10まで表示を飛ばす
+	IF 飛ばした人数 < ページ数*10
+		飛ばした人数++
+		RETURN 0
+	ENDIF
+
+	表示数++
+	;20人表示したら未表示キャラが居るフラグ立ててページ終わり
+	IF 表示数 > 10
+		未表示キャラ = 1
+	ELSE
+		PRINTFORML 　[{LCOUNT, 2, RIGHT}] - %NAME:LCOUNT, 26, LEFT% \@ SEX(LCOUNT) == 1 ? ♂ # ♀ \@ %追加情報%
+		LOCAL:LCOUNT = 1
+	ENDIF
+ENDIF
+
+;表示数が20人になるか全キャラ表示したら入力受け付け
+IF 表示数 > 10 || LCOUNT == CHARANUM-1
+	DRAWLINE
+	初期化フラグ = 0
+	IF ページ名 == ""
+		PRINTPLAINFORM 　PAGE.{ページ数+1}　
+	ELSE
+		PRINTPLAINFORM 　%ページ名%　
+	ENDIF
+	IF ページ数 > 0
+		PRINTLC [999]前ページ
+	ELSE
+		PRINTLC  
+	ENDIF
+	IF 終了表記 == ""
+		PRINTLC [1000] 戻る　
+	ELSE
+		PRINTFORMLC [1000] %終了表記%　
+	ENDIF
+	;表示できるキャラがまだ居れば次ページ
+	SIF 未表示キャラ
+		PRINTLC [1001]次ページ
+	PRINTL 
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 999
+				SIF ページ数 > 0
+					ページ数--
+				PAGING = -1
+				CLEARLINE LINECOUNT-表示行数
+				RETURN 0
+			CASE 1000
+				PAGING = CHARANUM
+				ページ数 = 0
+				RETURN -1
+			CASE 1001
+				;表示できるキャラがまだ居れば次ページ
+				SIF 未表示キャラ
+					ページ数++
+				PAGING = -1
+				CLEARLINE LINECOUNT-表示行数
+				RETURN 0
+			CASEELSE
+				SIF !LOCAL:RESULT
+					CONTINUE
+				PAGING = CHARANUM
+				ページ数 = 0
+				RETURN RESULT
+		ENDSELECT
+	LOOP 1
+ENDIF
+
