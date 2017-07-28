@@ -33,7 +33,11 @@ RETURN LOCAL
 #DIM DYNAMIC ALC
 #DIM DYNAMIC お酒
 #DIMS DYNAMIC 製法
+#DIM DYNAMIC 材料, 3
 #DIM DYNAMIC LCOUNT
+
+VARSET 材料, 0
+
 PRINTL 何を飲ませますか？
 
 SIF ITEM:スーパードライ || ITEM:一番搾り || ITEM:プレミアムモルツ || ITEM:ヱビス || ITEM:ほろよい
@@ -48,14 +52,14 @@ SIF ITEM:倉吉
 	PRINTL [5] 倉吉(ウイスキー)
 SIF ITEM:スペリオール
 	PRINTL [6] スペリオール(ラム)
-SIF ITEM:ボンベイサファイア
-	PRINTL [7] ボンベイサファイア(ジン)
+SIF ITEM:ビーフィーター
+	PRINTL [7] ビーフィーター(ジン)
 SIF ITEM:アブソルート
 	PRINTL [8] アブソルート(ウォッカ)
 SIF ITEM:カルーア
 	PRINTL [9] カルーア
-SIF ITEM:スピリタス
-	PRINTL [10] スピリタス
+;SIF ITEM:スピリタス
+;	PRINTL [10] スピリタス
 PRINTL [100] やっぱりやめる
 
 DO
@@ -104,22 +108,46 @@ DO
 									CASE 2
 										SIF !ITEM:ジンジャーエール
 											CONTINUE
-										製法 = ジンジャー割り
+										製法 = ビール
 										酒名 = シャンディガフ
+										LOCAL = 0
+										FOR LCOUNT, 150, 200
+											SELECTCASE ITEMNAME:LCOUNT
+												CASE "ジンジャーエール"
+													材料:LOCAL = LCOUNT
+													LOCAL++
+											ENDSELECT
+										NEXT
 										ALC = 3
 										BREAK
 									CASE 3
 										SIF !ITEM:レモンジュース
 											CONTINUE
-										製法 = レモン割り
+										製法 = ビール
 										酒名 = パナシェ
+										LOCAL = 0
+										FOR LCOUNT, 150, 200
+											SELECTCASE ITEMNAME:LCOUNT
+												CASE "レモンジュース"
+													材料:LOCAL = LCOUNT
+													LOCAL++
+											ENDSELECT
+										NEXT
 										ALC = 3
 										BREAK
 									CASE 4
 										SIF !ITEM:アルパカ
 											CONTINUE
-										製法 = カクテル
+										製法 = ビール
 										酒名 = ビアスプリッツァー
+										LOCAL = 0
+										FOR LCOUNT, 150, 200
+											SELECTCASE ITEMNAME:LCOUNT
+												CASE "アルパカ"
+													材料:LOCAL = LCOUNT
+													LOCAL++
+											ENDSELECT
+										NEXT
 										ALC = 8
 										BREAK
 								ENDSELECT
@@ -152,32 +180,33 @@ DO
 					BREAK
 				ENDIF
 			NEXT
-			IF ITEM:ライムジュース
-				PRINTL 皆伝をどのように飲ませますか？
-				PRINTL [1] そのまま(Alc.12%)
-				PRINTL [2] サムライロック(Alc.3～10%)
-				DO
-					INPUT
-					SELECTCASE RESULT
-						CASE 1
-							酒名 = 皆伝
-							ALC = 12
-							BREAK
-						CASE 2
-							SIF !ITEM:ライムジュース
-								CONTINUE
-							製法 = ライム割り
-							酒名 = サムライロック
-							PRINTL アルコール度数を決めてください(3～10%)
-							CALL TWO_DIGIT, 10, "%", 3
-							ALC = RESULT
-							BREAK
-					ENDSELECT
-				LOOP 1
-			ELSE
-				酒名 = 皆伝
-				ALC = 12
-			ENDIF
+			PRINTL 皆伝をどのように飲ませますか？
+			PRINTL [1] そのまま(Alc.12%)
+			PRINTL [2] 熱燗(Alc.12%)
+			SIF ITEM:ライムジュース
+				PRINTL [3] サムライロック(Alc.3～10%)
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 1
+						酒名 = 皆伝
+						ALC = 12
+						BREAK
+					CASE 2
+						製法 = 熱燗
+						酒名 = 皆伝の熱燗
+						ALC = 12
+					CASE 3
+						SIF !ITEM:ライムジュース
+							CONTINUE
+						製法 = ライム割り
+						酒名 = サムライロック
+						PRINTL アルコール度数を決めてください(3～10%)
+						CALL TWO_DIGIT, 10, "%", 3
+						ALC = RESULT
+						BREAK
+				ENDSELECT
+			LOOP 1
 			BREAK
 		CASE 3
 			SIF !ITEM:アルパカ
@@ -371,11 +400,27 @@ DO
 									CONTINUE
 								製法 = カクテル
 								酒名 = ラムフィズ
+								LOCAL = 0
+								FOR LCOUNT, 150, 200
+									SELECTCASE ITEMNAME:LCOUNT
+										CASE "レモンジュース", "炭酸水"
+											材料:LOCAL = LCOUNT
+											LOCAL++
+									ENDSELECT
+								NEXT
 							CASE 7
 								SIF !ITEM:ライムジュース || !ITEM:炭酸水
 									CONTINUE
 								製法 = カクテル
 								酒名 = モヒート
+								LOCAL = 0
+								FOR LCOUNT, 150, 200
+									SELECTCASE ITEMNAME:LCOUNT
+										CASE "ライムジュース", "炭酸水"
+											材料:LOCAL = LCOUNT
+											LOCAL++
+									ENDSELECT
+								NEXT
 						ENDSELECT
 						IF 酒名 == "ダイキリ"
 							PRINTL アルコール度数を決めてください(20～35%)
@@ -390,15 +435,15 @@ DO
 			LOOP 1
 			BREAK
 		CASE 7
-			SIF !ITEM:ボンベイサファイア
+			SIF !ITEM:ビーフィーター
 				CONTINUE
 			FOR LCOUNT, 150, 200
-				IF ITEMNAME:LCOUNT == "ボンベイサファイア"
+				IF ITEMNAME:LCOUNT == "ビーフィーター"
 					お酒 = LCOUNT
 					BREAK
 				ENDIF
 			NEXT
-			PRINTL ボンベイサファイアをどのように飲ませますか？
+			PRINTL ビーフィーターをどのように飲ませますか？
 			PRINTL [1] ストレート(Alc.47%)
 			PRINTL [2] ロック(Alc.44%)
 			SIF ITEM:トニックウォーター
@@ -415,11 +460,11 @@ DO
 				INPUT
 				SELECTCASE RESULT
 					CASE 1
-						酒名 = ボンベイサファイアのストレート
+						酒名 = ビーフィーターのストレート
 						ALC = 47
 						BREAK
 					CASE 2
-						酒名 = ボンベイサファイアのロック
+						酒名 = ビーフィーターのロック
 						ALC = 44
 						BREAK
 					CASE 3, 4, 5, 6, 7
@@ -444,11 +489,27 @@ DO
 									CONTINUE
 								製法 = カクテル
 								酒名 = ジンフィズ
+								LOCAL = 0
+								FOR LCOUNT, 150, 200
+									SELECTCASE ITEMNAME:LCOUNT
+										CASE "レモンジュース", "炭酸水"
+											材料:LOCAL = LCOUNT
+											LOCAL++
+									ENDSELECT
+								NEXT
 							CASE 7
 								SIF !ITEM:レモンジュース || !ITEM:ジンジャーエール
 									CONTINUE
 								製法 = カクテル
 								酒名 = ジンバック
+								LOCAL = 0
+								FOR LCOUNT, 150, 200
+									SELECTCASE ITEMNAME:LCOUNT
+										CASE "レモンジュース", "ジンジャーエール"
+											材料:LOCAL = LCOUNT
+											LOCAL++
+									ENDSELECT
+								NEXT
 						ENDSELECT
 						IF 酒名 == "ギムレット"
 							PRINTL アルコール度数を決めてください(25～42%)
@@ -493,7 +554,7 @@ DO
 						酒名 = アブソルートのロック
 						ALC = 37
 						BREAK
-					CASE 3, 4, 5, 6, 7
+					CASE 3, 4, 5, 6
 						SELECTCASE RESULT
 							CASE 3
 								SIF !ITEM:トニックウォーター
@@ -510,11 +571,27 @@ DO
 									CONTINUE
 								製法 = カクテル
 								酒名 = ブラックルシアン
+								LOCAL = 0
+								FOR LCOUNT, 150, 200
+									SELECTCASE ITEMNAME:LCOUNT
+										CASE "カルーア"
+											材料:LOCAL = LCOUNT
+											LOCAL++
+									ENDSELECT
+								NEXT
 							CASE 6
 								SIF !ITEM:ライムジュース || !ITEM:ジンジャーエール
 									CONTINUE
 								製法 = カクテル
 								酒名 = モスコミュール
+								LOCAL = 0
+								FOR LCOUNT, 150, 200
+									SELECTCASE ITEMNAME:LCOUNT
+										CASE "ライムジュース", "ジンジャーエール"
+											材料:LOCAL = LCOUNT
+											LOCAL++
+									ENDSELECT
+								NEXT
 						ENDSELECT
 						IF 酒名 == "ブラックルシアン"
 							PRINTL アルコール度数を決めてください(25～37%)
@@ -528,13 +605,78 @@ DO
 				ENDSELECT
 			LOOP 1
 			BREAK
+		CASE 9
+			SIF !ITEM:カルーア
+				CONTINUE
+			FOR LCOUNT, 150, 200
+				IF ITEMNAME:LCOUNT == "カルーア"
+					お酒 = LCOUNT
+					BREAK
+				ENDIF
+			NEXT
+			PRINTL カルーアをどのように飲ませますか？
+			PRINTL [1] ストレート(Alc.20%)
+			PRINTL [2] ロック(Alc.18%)
+			;牛乳は生活必需品だから常にある（暴論）
+			PRINTL [3] カルーアミルク(Alc.5～15%)
+			SIF ITEM:炭酸水
+				PRINTL [4] カルーアソーダ(Alc.5～15%)
+			SIF ITEM:アブソルート
+				PRINTL [5] ブラックルシアン(Alc.25～37%)
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 1
+						酒名 = カルーアのストレート
+						ALC = 40
+						BREAK
+					CASE 2
+						酒名 = カルーアのロック
+						ALC = 37
+						BREAK
+					CASE 3, 4, 5
+						SELECTCASE RESULT
+							CASE 3
+								製法 = カクテル
+								酒名 = カルーアミルク
+							CASE 4
+								SIF !ITEM:炭酸水
+									CONTINUE
+								製法 = ハイボール
+								酒名 = カルーアソーダ
+							CASE 5
+								SIF !ITEM:アブソルート
+									CONTINUE
+								製法 = カクテル
+								酒名 = ブラックルシアン
+								LOCAL = 0
+								FOR LCOUNT, 150, 200
+									SELECTCASE ITEMNAME:LCOUNT
+										CASE "アブソルート"
+											材料:LOCAL = LCOUNT
+											LOCAL++
+									ENDSELECT
+								NEXT
+						ENDSELECT
+						IF 酒名 == "ブラックルシアン"
+							PRINTL アルコール度数を決めてください(25～37%)
+							CALL TWO_DIGIT, 37, "%", 25
+						ELSE
+							PRINTL アルコール度数を決めてください(5～15%)
+							CALL TWO_DIGIT, 15, "%", 5
+						ENDIF
+						ALC = RESULT
+						BREAK
+				ENDSELECT
+			LOOP 1
+			BREAK
 		CASE 100
 			PRINTFORMW お酒を飲ませるのを止めました
 			RETURN 0
 	ENDSELECT
 LOOP 1
 
-CALL ALC_ORDER, ALC, 製法
+CALL ALC_ORDER, ALC, 製法, お酒
 
 PRINTFORM  = {RESULT}
 SELECTCASE RESULT
@@ -557,8 +699,25 @@ IF RESULT < 0
 	RETURN 0
 ELSE
 	ITEM:お酒--
-	SIF 製法 == "ハイボール"
-		ITEM:炭酸水--
+	SELECTCASE 製法
+		CASE "ハイボール"
+			ITEM:炭酸水--
+		CASE "コーラ割り"
+			ITEM:コーラ--
+		CASE "ジンジャー割り"
+			ITEM:ジンジャーエール--
+		CASE "トニック割り"
+			ITEM:トニックウォーター--
+		CASE "レモン割り"
+			ITEM:レモンジュース--
+		CASE "ライム割り"
+			ITEM:ライムジュース--
+		CASE "カクテル"
+			FOR LCOUNT, 0, VARSIZE("材料")
+				SIF 材料:LCOUNT
+					ITEM:(材料:LCOUNT)--
+			NEXT
+	ENDSELECT
 ENDIF
 
 ;-------------------------------------------------
@@ -591,8 +750,57 @@ ELSE
 	CFLAG:酔 += ALC
 ENDIF
 
-SIF CFLAG:酔 > 100
+;各種メリットは酔い上限突き抜けてない場合にのみ発動
+IF CFLAG:酔 > 100
 	CFLAG:酔 = 100
+ELSE
+	SELECTCASE ITEMNAME:お酒
+		;皆伝は音ゲーマーが飲むとボーナス
+		CASE "皆伝"
+			SIF TALENT:音ゲーマー
+				TEQUIP:お酒ボーナス++
+		;魔王は悪魔か小悪魔が飲むとボーナス
+		CASE "魔王"
+			SIF CSTR:種族 == "悪魔" || TALENT:小悪魔
+				TEQUIP:お酒ボーナス++
+		;アルパカは獣、獣人、ファーリーが飲むとボーナス
+		CASE "アルパカ"
+			SIF CSTR:種族 == "獣" || CSTR:種族 == "獣人" || TALENT:ファーリー
+				TEQUIP:お酒ボーナス++
+		;倉吉はひなビタキャラが飲むとボーナス
+		CASE "倉吉"
+			SELECTCASE CHARANAMEF(TARGET)
+				CASE "山形 まり花", "和泉 一舞", "春日 咲子", "霜月 凛", "芽兎 めう", "東雲 夏陽", "東雲 心菜", "星見 日向", "久領堤 纒"
+					TEQUIP:お酒ボーナス++
+					;実績：ひなビタキャラにピュアモルトウイスキー倉吉を飲ませる
+					CALL 実績解除, "地元のお酒だめう！"
+			ENDSELECT
+		;スペリオールは人魚が飲むとボーナス
+		CASE "スペリオール"
+			SIF CSTR:種族 == "人魚"
+				TEQUIP:お酒ボーナス++
+		;ジンのボーナスが思いつかない 誰か助けて
+		CASE "ジン"
+		;アブソルートは特段ボーナスは無いが、ウォッカの特徴として二日酔いしにくい
+		CASE "アブソルート"
+			IF TALENT:下戸
+				TEQUIP:ウォッカ += ALC*2
+			ELSEIF TALENT:酒豪
+				TEQUIP:ウォッカ += ALC/2
+			ELSE
+				TEQUIP:ウォッカ += ALC
+			ENDIF
+		;カルーアは飲みやすいが獣人と獣に飲ませると大ダメージ
+		CASE "カルーア"
+			IF CSTR:種族 == "獣人"
+				LOSEBASE:体力 += 300
+				LOSEBASE:気力 += 300
+			ELSEIF CSTR:種族 == "獣"
+				LOSEBASE:体力 += 500
+				LOSEBASE:気力 += 500
+			ENDIF
+	ENDSELECT
+ENDIF
 
 ;-------------------------------------------------
 ;絶頂チェック
@@ -609,11 +817,22 @@ CALL SAMEN_SHOOT_T, 0, NOWEX:射精
 RETURN 1
 
 ;-------------------------------------------------
+;お酒ボーナスの処理
+;-------------------------------------------------
+@EQUIP_COM_お酒を飲ませる
+SOURCE:欲情 += TEQUIP:お酒ボーナス*30
+SOURCE:恭順 += TEQUIP:お酒ボーナス*30
+
+;依存度補正がお酒ボーナス最大のメリット
+TFLAG:依存度補正 += TEQUIP:お酒ボーナス
+
+;-------------------------------------------------
 ;お酒を飲ませるコマンドのCOM_ORDERは特殊
 ;-------------------------------------------------
-@ALC_ORDER, ALC, 製法
+@ALC_ORDER, ALC, 製法, お酒
 #DIM DYNAMIC ALC
 #DIMS DYNAMIC 製法
+#DIM DYNAMIC お酒
 #DIM DYNAMIC LCOUNT
 
 LOCAL = 0
@@ -668,25 +887,39 @@ ENDIF
 IF 製法 == "ビール" && !TALENT:酒豪 && (TALENT:小柄体型 || TALENT:下戸)
 	PRINT -ビールは苦くて無理(10)
 	LOCAL -= 10
+	SELECTCASE 酒名
+		CASE "シャンディガフ", "パナシェ", "ビアスプリッツァー"
+			PRINT +ビールの苦さを軽減(5)
+			LOCAL += 5
+	ENDSELECT
+ENDIF
+
+IF !TALENT:下戸
+	SELECTCASE 製法
+		CASE "ハイボール", "ビール", "コーラ割り", "ジンジャー割り", "レモン割り", "ライム割り", "トニック割り", "カクテル"
+			IF FLAG:気温 >= 200
+				PRINTFORM +高気温&冷飲料({(FLAG:気温-190)/10})
+				LOCAL += (FLAG:気温-190)/10
+			ENDIF
+		CASE "お湯割り", "熱燗"
+			IF FLAG:気温 <= 100
+				PRINTFORM +低気温&温飲料({(110-FLAG:気温)/10})
+				LOCAL += (110-FLAG:気温)/10
+			ENDIF
+	ENDSELECT
 ENDIF
 
 SELECTCASE 製法
-	CASE "水割り", "ハイボール"
-		IF FLAG:気温 >= 200
-			PRINTFORM +高気温&冷飲料({(FLAG:気温-190)/10})
-			LOCAL += (FLAG:気温-190)/10
-		ENDIF
-	CASE "お湯割り"
-		IF FLAG:気温 <= 100
-			PRINTFORM +低気温&温飲料({(110-FLAG:気温)/10})
-			LOCAL += (110-FLAG:気温)/10
-		ENDIF
+	CASE "ハイボール"
+		PRINT +ハイボールは美味しい(3)
+		LOCAL += 3
+	CASE "コーラ割り", "ジンジャー割り", "トニック割り", "レモン割り", "ライム割り"
+		PRINT +飲みやすいカクテル(5)
+		LOCAL += 5
+	CASE "カクテル"
+		PRINT +美味しいカクテル(7)
+		LOCAL += 7
 ENDSELECT
-
-IF 製法 == "ハイボール"
-	PRINT +ハイボールは美味しい(5)
-	LOCAL += 5
-ENDIF
 
 IF TALENT:衝動的
 	PRINT +衝動的(3)
@@ -703,20 +936,39 @@ IF TALENT:無関心
 	LOCAL -= 2
 ENDIF
 
+IF TALENT:自制心
+	PRINT -自制心(5)
+	LOCAL -= 5
+ENDIF
+
 IF TALENT:目立ちたがり
 	PRINT +目立ちたがり(3)
 	LOCAL += 3
 ENDIF
 
-IF 製法 == "お湯割り" && TALENT:猫舌
-	PRINT -猫舌(3)
-	LOCAL -= 2
-ENDIF
+SELECTCASE 製法
+	CASE "お湯割り", "熱燗"
+		IF TALENT:猫舌
+			PRINT -猫舌(3)
+			LOCAL -= 3
+		ENDIF
+ENDSELECT
 
 IF TALENT:小柄体型 && !TALENT:酒豪
 	PRINT -子供(3)
 	LOCAL -= 3
 ENDIF
+
+IF TALENT:MASTER:魅惑
+	PRINT +主人が魅惑持ち(2)
+	LOCAL += 2
+ENDIF
+
+IF ASSI > 0 && TALENT:ASSI:ハイテンション
+	PRINT +助手がハイテンション(2)
+	LOCAL += 2
+ENDIF
+
 
 RETURN LOCAL
 
