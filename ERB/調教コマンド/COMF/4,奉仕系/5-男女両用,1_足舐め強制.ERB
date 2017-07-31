@@ -43,19 +43,7 @@ IF MARK:快楽刻印
 ENDIF
 
 ;PALAM:欲情
-IF PALAM:欲情 < PALAMLV:1
-	LOCAL:1 = 0
-ELSEIF PALAM:欲情 < PALAMLV:2
-	LOCAL:1 = 1
-ELSEIF PALAM:欲情 < PALAMLV:3
-	LOCAL:1 = 2
-ELSEIF PALAM:欲情 < PALAMLV:4
-	LOCAL:1 = 3
-ELSEIF PALAM:欲情 < PALAMLV:5
-	LOCAL:1 = 4
-ELSE
-	LOCAL:1 = 5
-ENDIF
+LOCAL:1 = GETPALAMLV(PALAM:欲情, 5)
 LOCAL:2 = LOCAL:1
 SIF TALENT:衝動的
 	LOCAL:2 *= 2
@@ -64,46 +52,40 @@ IF LOCAL:2
 	PRINTFORM +欲情LV{LOCAL:1}({LOCAL:2})
 ENDIF
 
-;恥じらい
-IF TALENT:恥じらい
-	LOCAL -= 1
-	PRINTFORM -恥じらい(1)
-ENDIF
-;汚臭鈍感
-IF TALENT:汚臭鈍感
-	LOCAL += 1
-	PRINTFORM +汚臭鈍感(1)
-ENDIF
-;汚臭敏感
-IF TALENT:汚臭敏感
-	LOCAL -= 3
-	PRINTFORM -汚臭敏感(3)
-ENDIF
-;献身的
-IF TALENT:献身的
-	LOCAL += 6
-	PRINTFORM +献身的(6)
-ENDIF
-;快感の否定（淫乱、娼婦で無効）
-IF TALENT:快感の否定 && FALLTYPE(TARGET) != 2
-	LOCAL -= 1
-	PRINTFORM -快感の否定(1)
-ENDIF
-;男嫌い（恋慕、親愛で無効）
-IF TALENT:男嫌い && SEX(PLAYER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
-	LOCAL -= 12
-	PRINTFORM -男嫌い(12)
-ENDIF
-;恋慕
-IF TALENT:恋慕 && PLAYER == MASTER
-	LOCAL += 5
-	PRINTFORM +恋慕(5)
-ENDIF
-;親愛
-IF TALENT:親愛 && PLAYER == MASTER
-	LOCAL += 10
-	PRINTFORM +親愛(10)
-ENDIF
+REPEAT VARSIZE("TALENT")
+	LOCAL:1 = 0
+	SIF !TALENT:COUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:COUNT
+		CASE "隷属"
+			SIF PLAYER == MASTER
+				LOCAL:1 = 10
+		CASE "服従"
+			SIF PLAYER == MASTER
+				LOCAL:1 = 5
+		CASE "プライド高い"
+			LOCAL:1 = -12
+		CASE "プライド低い"
+			LOCAL:1 = 2
+		CASE "抵抗"
+			LOCAL:1 = -20
+		CASE "恥じらい"
+			LOCAL:1 = -1
+		CASE "汚臭鈍感", "汚れ無視", "倒錯的", "サド"
+			LOCAL:1 = 2
+		CASE "献身的"
+			LOCAL:1 = 6
+		CASE "汚臭敏感", "潔癖症"
+			LOCAL:1 = -7
+		CASE "反抗的"
+			SIF FALLTYPE(TARGET) != 3
+				LOCAL:1 = -10
+	ENDSELECT
+	IF LOCAL:1
+		PRINTFORM \@SIGN(LOCAL:1) == 1 ? + # - \@%TALENTNAME:COUNT%({ABS(LOCAL:1)})
+		LOCAL += LOCAL:1
+	ENDIF
+REND
 
 ;合計を表示(39以上で実行)
 PRINTFORM  = {LOCAL}

@@ -59,57 +59,41 @@ IF MARK:快楽刻印
 ENDIF
 
 ;PALAM:欲情
-IF PALAM:欲情 < PALAMLV:1
-	LOCAL:1 = 0
-ELSEIF PALAM:欲情 < PALAMLV:2
-	LOCAL:1 = 1
-ELSEIF PALAM:欲情 < PALAMLV:3
-	LOCAL:1 = 2
-ELSEIF PALAM:欲情 < PALAMLV:4
-	LOCAL:1 = 3
-ELSEIF PALAM:欲情 < PALAMLV:5
-	LOCAL:1 = 4
-ELSE
-	LOCAL:1 = 5
-ENDIF
+LOCAL:1 = GETPALAMLV(PALAM:欲情, 5)
 LOCAL:2 = LOCAL:1
 SIF TALENT:衝動的
 	LOCAL:2 *= 2
 IF LOCAL:2
 	LOCAL += LOCAL:2
-	PRINTFORM +欲情LV{LOCAL:1}({LOCAL:2})
+	PRINTFORM +欲情LV{LOCAL:1}({LOCAL:2*3})
 ENDIF
 
-;恥じらい
-IF TALENT:恥じらい
-	LOCAL -= 3
-	PRINTFORM -恥じらい(3)
-ENDIF
-;汚臭鈍感
-IF TALENT:汚臭鈍感
-	LOCAL += 3
-	PRINTFORM +汚臭鈍感(3)
-ENDIF
-;汚臭敏感
-IF TALENT:汚臭敏感
-	LOCAL -= 9
-	PRINTFORM -汚臭敏感(9)
-ENDIF
-;献身的
-IF TALENT:献身的
-	LOCAL += 6
-	PRINTFORM +献身的(6)
-ENDIF
-;淫乱
-IF TALENT:淫乱
-	LOCAL += 5
-	PRINTFORM +献身的(5)
-ENDIF
-;娼婦
-IF TALENT:娼婦
-	LOCAL += 10
-	PRINTFORM +献身的(10)
-ENDIF
+REPEAT VARSIZE("TALENT")
+	LOCAL:1 = 0
+	SIF !TALENT:COUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:COUNT
+		CASE "娼婦"
+			LOCAL:1 = 10
+		CASE "淫乱"
+			LOCAL:1 = 5
+		CASE "恥じらい"
+			LOCAL:1 = -3
+		CASE "汚臭鈍感"
+			LOCAL:1 = 3
+		CASE "汚臭敏感"
+			LOCAL:1 = -9
+		CASE "献身的"
+			LOCAL:1 = 6
+		CASE "男嫌い"
+			SIF SEX(PLAYER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
+				LOCAL:1 = -12
+	ENDSELECT
+	IF LOCAL:1
+		PRINTFORM \@SIGN(LOCAL:1) == 1 ? + # - \@%TALENTNAME:COUNT%({ABS(LOCAL:1)})
+		LOCAL += LOCAL:1
+	ENDIF
+REND
 
 LOCAL:1 = 0
 ;精液の汚れ
@@ -224,11 +208,7 @@ ENDSELECT
 SIF TALENT:舌使い
 	TIMES LOCAL , 2.00
 
-;再装填処理中は射精ゲージは20分の1に
-SIF CFLAG:MASTER:賢者タイム > 0
-	LOCAL /= 20
-
-BASE:MASTER:射精 += LOCAL
+CALL 射精ゲージ増加, LOCAL, MASTER
 
 ;-------------------------------------------------
 ;射精ゲージチェック（助手）
@@ -277,11 +257,7 @@ ENDSELECT
 SIF TALENT:舌使い
 	TIMES LOCAL , 2.00
 
-;再装填処理中は射精ゲージは20分の1に
-SIF CFLAG:ASSI:賢者タイム > 0
-	LOCAL /= 20
-
-BASE:ASSI:射精 += LOCAL
+CALL 射精ゲージ増加, LOCAL, ASSI
 
 ;-------------------------------------------------
 ;ソース追加処理

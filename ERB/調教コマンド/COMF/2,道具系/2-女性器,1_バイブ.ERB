@@ -25,7 +25,6 @@ SIF TALENT:小人体型 && !TALENT:MASTER:禁断の知識
 SIF !ITEM:バイブ
 	RETURN 0
 
-
 ;処女で、従順4以下・レズっ気4以下の女性ASSIの場合バイブはできない（サドならＯＫ）
 IF TALENT:処女 && ASSIPLAY
 	SIF SEX(ASSI) == 2 && (ABL:ASSI:従順 <= 4 || ABL:ASSI:レズっ気 <= 4) && !TALENT:ASSI:サド
@@ -100,11 +99,7 @@ SELECTCASE ABL:Ｖ感覚
 		LOCAL += LOCAL*(ABL:Ｖ感覚-2)
 ENDSELECT
 
-;再装填処理中は射精ゲージは20分の1に
-SIF CFLAG:賢者タイム > 0
-	LOCAL /= 20
-
-BASE:射精 += LOCAL
+CALL 射精ゲージ増加, LOCAL, TARGET
 
 ;-------------------------------------------------
 ;ソース追加処理
@@ -138,39 +133,7 @@ IF TALENT:再生処女
 	SOURCE:反感 += 1000
 ENDIF
 
-;Vへの苦痛は先に処理しておく
-;EXP:Ｖ経験をみる（処女の反感は別途処理済みなので省略）
-SELECTCASE EXP:Ｖ経験
-	CASE IS < EXPLV:1
-		TIMES SOURCE:苦痛 , 2.50
-	CASE IS < EXPLV:2
-		TIMES SOURCE:苦痛 , 0.80
-		TIMES SOURCE:反感 , 1.20
-	CASE IS < EXPLV:3
-		TIMES SOURCE:苦痛 , 0.40
-	CASE IS < EXPLV:4
-		TIMES SOURCE:苦痛 , 0.10
-	CASE IS < EXPLV:5
-		TIMES SOURCE:苦痛 , 0.00
-	CASE IS >= EXPLV:5
-		TIMES SOURCE:苦痛 , 0.00
-ENDSELECT
-
-;PALAM:潤滑をみる
-SELECTCASE PALAM:潤滑
-	CASE IS < PALAMLV:1
-		TIMES SOURCE:苦痛 , 1.20
-		TIMES SOURCE:反感 , 1.50
-	CASE IS < PALAMLV:2
-		TIMES SOURCE:苦痛 , 0.70
-		TIMES SOURCE:反感 , 1.20
-	CASE IS < PALAMLV:3
-		TIMES SOURCE:苦痛 , 0.40
-	CASE IS < PALAMLV:4
-		TIMES SOURCE:苦痛 , 0.10
-	CASE IS >= PALAMLV:4
-		TIMES SOURCE:苦痛 , 0.05
-ENDSELECT
+CALL 特殊ソース処理_Ｖ
 
 ;-------------------------------------------------
 ;汚れの処理
@@ -237,20 +200,7 @@ SOURCE:反感 += 30
 LOCAL = 70
 
 ;ABL:調教者の技巧をみる
-SELECTCASE ABL:PLAYER:技巧
-	CASE 0
-		TIMES LOCAL , 1.00
-	CASE 1
-		TIMES LOCAL , 1.20
-	CASE 2
-		TIMES LOCAL , 1.40
-	CASE 3
-		TIMES LOCAL , 1.60
-	CASE 4
-		TIMES LOCAL , 1.80
-	CASEELSE
-		TIMES LOCAL , 2.00
-ENDSELECT
+LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
 
 ;ABL:自慰中毒をみる
 SELECTCASE ABL:自慰中毒
@@ -265,24 +215,11 @@ SELECTCASE ABL:自慰中毒
 	CASE 4
 		TIMES LOCAL , 2.00
 	CASEELSE
-		TIMES LOCAL , 2.50
+		LOCAL += (LOCAL/3)*ABL:自慰中毒
 ENDSELECT
 
 ;ABL:欲望をみる
-SELECTCASE ABL:欲望
-	CASE 0
-		TIMES LOCAL , 1.00
-	CASE 1
-		TIMES LOCAL , 1.10
-	CASE 2
-		TIMES LOCAL , 1.20
-	CASE 3
-		TIMES LOCAL , 1.30
-	CASE 4
-		TIMES LOCAL , 1.40
-	CASEELSE
-		TIMES LOCAL , 1.50
-ENDSELECT
+LOCAL += (LOCAL/10)*ABL:欲望
 
 ;奴隷のABL:Ｖ感覚をみる
 SELECTCASE ABL:Ｖ感覚
@@ -297,14 +234,10 @@ SELECTCASE ABL:Ｖ感覚
 	CASE 4
 		TIMES LOCAL , 2.00
 	CASEELSE
-		TIMES LOCAL , 4.00
+		LOCAL += LOCAL*(ABL:Ｖ感覚-2)
 ENDSELECT
 
-;再装填処理中は射精ゲージは20分の1に
-SIF CFLAG:賢者タイム > 0
-	LOCAL /= 20
-
-BASE:射精 += LOCAL
+CALL 射精ゲージ増加, LOCAL, TARGET
 
 ;-------------------------------------------------
 ;特殊ソース処理
@@ -313,39 +246,7 @@ BASE:射精 += LOCAL
 SIF TALENT:抑圧 || TALENT:抵抗
 	SOURCE:鬱屈 += 20
 
-;Vへの苦痛は先に処理しておく
-;EXP:Ｖ経験をみる（処女はありえない）
-LOCAL = 25
-LOCAL:1 = 20
-SELECTCASE EXP:Ｖ経験
-	CASE IS < EXPLV:2
-		TIMES LOCAL , 0.80
-		TIMES LOCAL:1 , 1.20
-	CASE IS < EXPLV:3
-		TIMES LOCAL , 0.40
-	CASE IS < EXPLV:4
-		TIMES LOCAL , 0.10
-	CASE IS >= EXPLV:4
-		TIMES LOCAL , 0.00
-ENDSELECT
-
-;PALAM:潤滑をみる
-SELECTCASE PALAM:潤滑
-	CASE IS < PALAMLV:1
-		TIMES LOCAL , 1.20
-		TIMES LOCAL:1 , 1.50
-	CASE IS < PALAMLV:2
-		TIMES LOCAL , 0.70
-		TIMES LOCAL:1 , 1.20
-	CASE IS < PALAMLV:3
-		TIMES LOCAL , 0.40
-	CASE IS < PALAMLV:4
-		TIMES LOCAL , 0.10
-	CASE IS >= PALAMLV:4
-		TIMES LOCAL , 0.05
-ENDSELECT
-SOURCE:苦痛 += LOCAL
-SOURCE:反感 += LOCAL:1
+CALL 特殊ソース処理_Ｖ道具, 25, 20
 
 ;-------------------------------------------------
 ;経験の処理
