@@ -1,4 +1,7 @@
 ﻿@SHOW_SHOP
+#DIM DYNAMIC 助手可能
+#DIM DYNAMIC 売却可能
+#DIM DYNAMIC 調教可能
 VARSET LOCAL, 0
 
 VARLINE = 0
@@ -37,7 +40,6 @@ SIF ASSI >= 0 && CFLAG:ASSI:使用不可
 
 CALL SHOP_UI
 
-VARSET LOCAL, 0
 ;現助手＋元助手のキャラ数の確認
 REPEAT CHARANUM
 	;育児部屋に移動しているキャラは除外
@@ -45,10 +47,10 @@ REPEAT CHARANUM
 		CONTINUE
 	;助手可能
 	SIF CFLAG:COUNT:状態 == 2
-		LOCAL:2++
+		助手可能++
 	;売却可能
 	SIF CFLAG:COUNT:状態 >= 1 && !CFLAG:COUNT:売却不可
-		LOCAL:1++
+		売却可能++
 REND
 
 ;TARGETの他に調教できるキャラがいるかどうか
@@ -59,10 +61,13 @@ REPEAT CHARANUM
 	;奴隷も除外
 	SIF COUNT == TARGET
 		CONTINUE
+	;使用不可は除外
+	SIF CFLAG:COUNT:使用不可
+		CONTINUE
 	;育児部屋に移動しているキャラは除外
 	SIF CHECK_CHILD_CARE(COUNT)
 		CONTINUE
-	LOCAL++
+	調教可能++
 REND
 
 VARSET LOCALS, 
@@ -72,21 +77,22 @@ VARSET LOCALS,
 LOCALS = 　
 ;TARGETがいれば表示
 IF TARGET > 0
-	IF TALENT:恋慕 || TALENT:親愛
-		LOCALS:1 = <button value='100' title='%CALLNAME:TARGET%と幸せな時間を過ごします'>[100] - 愛を育む </button>
-	ELSEIF TALENT:淫乱 || TALENT:娼婦
-		LOCALS:1 = <button value='100' title='%CALLNAME:TARGET%と互いの欲望を満たし合います'>[100] - 乱れ合う </button>
-	ELSEIF TALENT:服従 || TALENT:隷属
-		LOCALS:1 = <button value='100' title='%CALLNAME:TARGET%に権威を示します'>[100] - 躾をする </button>
-	ELSE
-		LOCALS:1 = <button value='100' title='%CALLNAME:TARGET%を調教します'>[100] - 調教開始 </button>
-	ENDIF
+	SELECTCASE FALLTYPE(TARGET)
+		CASE 1
+			LOCALS:1 = <button value='100' title='%CALLNAME:TARGET%と幸せな時間を過ごします'>[100] - 愛を育む </button>
+		CASE 2
+			LOCALS:1 = <button value='100' title='%CALLNAME:TARGET%と互いの欲望を満たし合います'>[100] - 乱れ合う </button>
+		CASE 3
+			LOCALS:1 = <button value='100' title='%CALLNAME:TARGET%に権威を示します'>[100] - 躾をする </button>
+		CASEELSE
+			LOCALS:1 = <button value='100' title='%CALLNAME:TARGET%を調教します'>[100] - 調教開始 </button>
+	ENDSELECT
 ELSE
 	IF CHARANUM == 1 && FLAG:ゲームモード == 8
 		LOCALS:1 = <font color='gray'><nonbutton title='調教可能なキャラが居ません'>[---] - 調教開始 </nonbutton></font>
 	ELSEIF FLAG:ゲームモード == 7
 		LOCALS:1 = <font color='gray'><nonbutton title='[202] - 対象変更 から対象を選択してください'>[---] - 愛を育む </nonbutton></font>
-	ELSEIF CHARANUM != 1
+	ELSEIF 調教可能
 		LOCALS:1 = <font color='gray'><nonbutton title='[202] - 奴隷変更 から調教対象を選択してください'>[---] - 調教開始 </nonbutton></font>
 	ELSE
 		LOCALS:1 = <font color='gray'><nonbutton title='[301] - 奴隷購入 からキャラを購入してください'>[---] - 調教開始 </nonbutton></font>
@@ -115,7 +121,7 @@ HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4+LOCALS:5
 ;200番台は奴隷関連のコマンド
 LOCALS = 　
 ;調教者含め誰かがいれば表示 現在は必ず表示される
-LOCALS:1 = <button value='200' title='奴隷たちの様々な情報を表示します'>[200] - 能力表示 </button>
+LOCALS:1 = <button value='200' title='キャラの様々な情報を表示します'>[200] - 能力表示 </button>
 ;奴隷が一人でもいれば表示
 IF CHARANUM > 1
 	LOCALS:2 = <button value='201' title='キャラの能力を上昇させます'>[201] - 能力上昇 </button>
@@ -124,7 +130,7 @@ ELSEIF FLAG:ゲームモード != 8
 ELSE
 	LOCALS:2 = <font color='gray'><nonbutton title='調教可能なキャラが居ません'>[---] - 能力上昇 </nonbutton></font>
 ENDIF
-IF LOCAL
+IF 調教可能
 	IF FLAG:ゲームモード == 7
 		LOCALS:3 = <button value='202' title='お相手を変更します'>[202] - 対象変更 </button>
 	ELSE
@@ -142,26 +148,14 @@ ELSE
 	ENDIF
 ENDIF
 ;助手可能キャラが一人でもいれば表示
-IF LOCAL:2
-	IF FLAG:ゲームモード == 7
-		IF ASSI > 0
-			LOCALS:4 = <button value='203' title='助手を変更します'>[203] - 助手変更 </button>
-		ELSE
-			LOCALS:4 = <button value='203' title='助手を選出します'>[203] - 助手変更 </button>
-		ENDIF
+IF 助手可能
+	IF ASSI > 0
+		LOCALS:4 = <button value='203' title='助手を変更します'>[203] - 助手変更 </button>
 	ELSE
-		IF ASSI > 0
-			LOCALS:4 = <button value='203' title='助手を変更します'>[203] - 助手変更 </button>
-		ELSE
-			LOCALS:4 = <button value='203' title='奴隷から助手を指定します'>[203] - 助手変更 </button>
-		ENDIF
+		LOCALS:4 = <button value='203' title='助手を選出します'>[203] - 助手変更 </button>
 	ENDIF
 ELSE
-	IF FLAG:ゲームモード == 7
-		LOCALS:4 = <font color='gray'><nonbutton title='助手に選べるキャラは居ません'>[---] - 助手変更 </nonbutton></font>
-	ELSE
-		LOCALS:4 = <font color='gray'><nonbutton title='助手に選べる奴隷は居ません'>[---] - 助手変更 </nonbutton></font>
-	ENDIF
+	LOCALS:4 = <font color='gray'><nonbutton title='助手に選べるキャラは居ません'>[---] - 助手変更 </nonbutton></font>
 ENDIF
 
 ;主人が禁断の知識持ってる場合
@@ -175,16 +169,10 @@ ENDIF
 
 ;新婚モードの一転攻勢
 IF FLAG:ゲームモード == 7
-	REPEAT CHARANUM
-		IF CFLAG:COUNT:嫁
-			LOCAL = COUNT
-			BREAK
-		ENDIF
-	REND
-	IF TALENT:LOCAL:妊娠 || TALENT:LOCAL:育児中
-		LOCALS:6 = <font color='gray'><nonbutton title='%CALLNAME:LOCAL%が身篭っているため、できません'>[---] - 一転攻勢 </nonbutton></font>
+	IF TALENT:FINDCHARA(CFLAG:嫁, 1):妊娠 || TALENT:FINDCHARA(CFLAG:嫁, 1):育児中
+		LOCALS:6 = <font color='gray'><nonbutton title='%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%が身篭っているため、できません'>[---] - 一転攻勢 </nonbutton></font>
 	ELSE
-		LOCALS:6 = <button value='205' title='%CALLNAME:MASTER%と%CALLNAME:LOCAL%の受け攻めを変えます'>[205] - 一転攻勢 </button>
+		LOCALS:6 = <button value='205' title='%CALLNAME:MASTER%と%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%の受け攻めを変えます'>[205] - 一転攻勢 </button>
 	ENDIF
 ENDIF
 
@@ -207,7 +195,7 @@ ELSE
 	LOCALS:2 = <button value='301' title='調教するための奴隷を購入します'>[301] - 奴隷購入 </button>
 ENDIF
 ;売却できるキャラがいれば表示
-IF LOCAL:1
+IF 売却可能
 	LOCALS:3 = <button value='302' title='調教で仕上がった奴隷を売却します'>[302] - 売却     </button>
 ELSE
 	LOCALS:3 = <font color='gray'><nonbutton title='売却可能な奴隷が居ません'>[---] - 売却     </nonbutton></font>
@@ -235,16 +223,16 @@ SELECTCASE FLAG:ゲームモード
 	;STANDARD
 	CASE 0
 		IF MONEY < 1000000
-			LOCALS:1 = <font color='gray'><nonbutton title='1,000,000パセリが必要です'>[---] - 納金     </nonbutton></font>
+			LOCALS:1 = <font color='gray'><nonbutton title='1,000,000の所持金が必要です'>[---] - 納金     </nonbutton></font>
 		ELSE
-			LOCALS:1 = <button value='500' title='1,000,000パセリを納め、ゲームをクリアします'>[500] - 納金     </button>
+			LOCALS:1 = <button value='500' title='1,000,000の所持金を納め、ゲームをクリアします'>[500] - 納金     </button>
 		ENDIF
 	;STRATEGY
 	CASE 1
 		IF MONEY < 100000000
-			LOCALS:1 = <font color='gray'><nonbutton title='100,000,000パセリが必要です'>[---] - 納金     </nonbutton></font>
+			LOCALS:1 = <font color='gray'><nonbutton title='100,000,000の所持金が必要です'>[---] - 納金     </nonbutton></font>
 		ELSE
-			LOCALS:1 = <button value='500' title='100,000,000パセリを納め、ゲームをクリアします'>[500] - 納金     </button>
+			LOCALS:1 = <button value='500' title='100,000,000の所持金を納め、ゲームをクリアします'>[500] - 納金     </button>
 		ENDIF
 	;新婚
 	CASE 7
@@ -279,7 +267,10 @@ DRAWLINE
 PRINTPLAIN 　SHOP　
 
 @USERSHOP
-#DIM LCOUNT
+#DIM DYNAMIC 助手可能
+#DIM DYNAMIC 売却可能
+#DIM DYNAMIC 調教可能
+#DIM DYNAMIC LCOUNT
 VARSET LOCAL, 0
 ;現助手＋元助手のキャラ数の確認
 FOR LCOUNT, 0, CHARANUM
@@ -288,10 +279,10 @@ FOR LCOUNT, 0, CHARANUM
 		CONTINUE
 	;助手可能
 	SIF CFLAG:LCOUNT:状態 == 2
-		LOCAL:2++
+		助手可能++
 	;売却可能
 	SIF CFLAG:LCOUNT:状態 >= 1
-		LOCAL:1++
+		売却可能++
 NEXT
 
 ;TARGETの他に調教できるキャラがいるかどうか
@@ -305,7 +296,7 @@ FOR LCOUNT, 0, CHARANUM
 	;育児部屋に移動しているキャラは除外
 	SIF CHECK_CHILD_CARE(LCOUNT)
 		CONTINUE
-	LOCAL++
+	調教可能++
 NEXT
 
 TFLAG:ページ数 = 0
@@ -346,11 +337,11 @@ SELECTCASE RESULT
 			CALL SHOP_ABLUP
 	;奴隷変更
 	CASE 202
-		SIF LOCAL
+		SIF 調教可能
 			CALL CHANGE_TARGET, LOCAL
 	;助手変更
 	CASE 203
-		SIF LOCAL:2
+		SIF 助手可能
 			CALL SELECT_ASSI, LOCAL:2
 	;身体改造
 	CASE 204
@@ -366,7 +357,6 @@ SELECTCASE RESULT
 				ENDIF
 			REND
 			IF !TALENT:LOCAL:妊娠 && !TALENT:LOCAL:育児中
-				;VARSET PREG:TARGET, 0
 				TALENT:MASTER:親愛 = 1
 				TALENT:LOCAL:親愛 = 0
 				CFLAG:MASTER:嫁 = 1
@@ -391,16 +381,14 @@ SELECTCASE RESULT
 	CASE 302
 		SELECTCASE FLAG:ゲームモード
 			CASE IS != 7
-				SIF LOCAL:1
+				SIF 売却可能
 					CALL CHARA_SELL
 		ENDSELECT
 	;セーブ
 	CASE 400
-		;SAVEGAME
 		CALL USERSAVE
 	;ロード
 	CASE 401
-		;LOADGAME
 		CALL USERLOAD
 	;オプション
 	CASE 402
@@ -763,15 +751,11 @@ PRINTL
 DRAWLINE
 IF GC物件
 	LOCAL = 0
-	REPEAT CHARANUM
-		SIF CFLAG:COUNT:ゲーセン店長
-			LOCAL = COUNT
-	REND
 	PRINTL □ゲームセンターの状況
 	IF FLAG:ゲーセン営業中
 		PRINTPLAIN 　営業中 
 		PRINTL [600] - 一時休業する
-		CALL PASELIL, @"　前日の収入:{基本収入}＄ 店長:%NAME:LOCAL%"
+		CALL PASELIL, @"　前日の収入:{基本収入}＄ 店長:%NAME:FINDCHARA(CFLAG:ゲーセン店長, 1)%"
 	ELSE
 		PRINTPLAIN 　休業中 
 		PRINTL [600] - 営業を開始する
