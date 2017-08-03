@@ -724,113 +724,114 @@ ENDSELECT
 PRINTL 誰に使いますか？
 
 FOR PAGING, 0, CHARANUM
+	LOCAL = 1
 	SELECTCASE ARG
 		;薬品系と素質系で処理が異なる
 		CASE 300 TO 499
 			;無機物・機械は除外
 			SIF TALENT:PAGING:無機物 || CSTR:PAGING:種族 == "機械"
-				CONTINUE
+				LOCAL = 0
 			;使用不可のキャラも除外
 			SIF CFLAG:PAGING:使用不可
-				CONTINUE
+				LOCAL = 0
 			;主人は除外 ただしふたなり、処女再生、胸関連、性転換薬、時の砂時計、ビースティースターター、排卵誘発剤は可能
 			IF PAGING == MASTER
 				SELECTCASE ITEMNAME:ARG
 					CASE "ふたなり薬", "ユニコーンの角", "豊胸剤", "縮胸剤", "性転換薬", "時の砂時計", "ビースティースターター", "排卵誘発剤"
 					CASEELSE
-						CONTINUE
+						LOCAL = 0
 				ENDSELECT
 			ENDIF
 			SELECTCASE ITEMNAME:ARG
 				CASE "怪しげな栄養剤"
 					;体力がマックスだと使えない
 					SIF BASE:PAGING:体力 >= MAXBASE:PAGING:体力
-						CONTINUE
+						LOCAL = 0
 				CASE "ふたなり薬"
 					SIF TALENT:PAGING:ふたなり
-						CONTINUE
+						LOCAL = 0
 				CASE "ふたなり消去薬"
 					;男で妊娠中だとヴァギナ塞げない
 					SIF !TALENT:PAGING:ふたなり || (SEX(PAGING) == 1 && TALENT:PAGING:妊娠)
-						CONTINUE
+						LOCAL = 0
 				CASE "天使のミルク"
 					SIF TALENT:PAGING:母乳体質 || (SEX(PAGING) == 1 && !TALENT:PAGING:ふたなり)
-						CONTINUE
+						LOCAL = 0
 				CASE "ユニコーンの角"
 					SIF TALENT:PAGING:処女 || TALENT:PAGING:再生処女 || (SEX(PAGING) == 1 && !TALENT:PAGING:ふたなり)
-						CONTINUE
+						LOCAL = 0
 				CASE "豊胸剤"
 					SIF TALENT:PAGING:バストサイズ == 5 || SEX(PAGING) == 1
-						CONTINUE
+						LOCAL = 0
 				CASE "縮胸剤"
 					SIF TALENT:PAGING:バストサイズ == 1 || SEX(PAGING) == 1
-						CONTINUE
+						LOCAL = 0
 				CASE "止乳剤"
 					SIF !TALENT:PAGING:母乳体質 || SEX(PAGING) == 1
-						CONTINUE
+						LOCAL = 0
 				CASE "夜尿症改善薬"
 					SIF !TALENT:PAGING:おもらし癖
-						CONTINUE
+						LOCAL = 0
 				CASE "胎児卵化薬"
 					SIF !TALENT:PAGING:妊娠 || (TALENT:PAGING:妊娠 && PREG:PAGING:10 - 3 <= DAY) || BASE:PAGING:体力 < 1000
-						CONTINUE
+						LOCAL = 0
 				CASE "ゾンビパウダー"
 					SIF TALENT:PAGING:ゾンビ
-						CONTINUE
+						LOCAL = 0
 				CASE "聖水"
 					SIF !TALENT:PAGING:ゾンビ
-						CONTINUE
+						LOCAL = 0
 				CASE "性転換薬"
 					;妊娠時は使えない
 					SIF TALENT:PAGING:妊娠 || TALENT:PAGING:性転換済
-						CONTINUE
+						LOCAL = 0
 				CASE "時の砂時計"
 					SIF TALENT:PAGING:小人体型
-						CONTINUE
+						LOCAL = 0
 				CASE "永続的利尿剤"
 					;既におもらし癖ついてると使えない
 					SIF TALENT:PAGING:おもらし癖
-						CONTINUE
+						LOCAL = 0
 				CASE "ビースティースターター"
 					;ケモミミ尻尾両方あったり、既に獣だったりファーリーだったりすると使えない
 					SIF (TALENT:PAGING:動物耳 && TALENT:PAGING:尻尾) || CSTR:PAGING:種族 == "獣" || TALENT:PAGING:ファーリー
-						CONTINUE
+						LOCAL = 0
 				CASE "魔剤"
 					;既にキメてる場合は使えない
 					SIF CFLAG:PAGING:魔剤
-						CONTINUE
+						LOCAL = 0
 				CASE "排卵誘発剤"
 					SIF CFLAG:PAGING:排卵誘発剤 || !VAGINA(PAGING)
-						CONTINUE
+						LOCAL = 0
 				CASE "リミッター解除"
 					SIF TALENT:PAGING:リミットバースト || !CFLAG:PAGING:陥落
-						CONTINUE
+						LOCAL = 0
 			ENDSELECT
 		;経営用素質は誰でも習得可能 各経験、技能、実務経験が必要
 		CASE 1050 TO 1099
 			;実務経験が必要
 			SIF EXP:PAGING:実務経験 < 1000
-				CONTINUE
+				LOCAL = 0
 			;既に何か持ってる場合は無理
 			SIF TALENT:PAGING:料理人 || TALENT:PAGING:専業主婦 || TALENT:PAGING:工学博士 || TALENT:PAGING:絶対音感 || TALENT:PAGING:カメラマン
-				CONTINUE
+				LOCAL = 0
 			;各経験、能力と実務経験があれば特殊素質を身につけられる
 			SELECTCASE ITEMNAME:ARG
 				CASE "【料理人】"
 					SIF EXP:PAGING:料理経験 < 1000 || ABL:PAGING:料理技能 < 5
-						CONTINUE
+						LOCAL = 0
 				CASE "【専業主婦】"
 					SIF EXP:PAGING:家事経験 < 1000 || ABL:PAGING:家事技能 < 5
-						CONTINUE
+						LOCAL = 0
 				CASE "【工学博士】"
 					SIF EXP:PAGING:工作経験 < 1000 || ABL:PAGING:工作技能 < 5
-						CONTINUE
+						LOCAL = 0
 				CASE "【絶対音感】"
 					SIF (EXP:PAGING:歌唱経験 < 1000 || ABL:PAGING:歌唱技能 < 5) && (EXP:PAGING:演奏経験 < 1000 || ABL:PAGING:演奏技能 < 5)
-						CONTINUE
+						LOCAL = 0
 				CASE "【カメラマン】"
 					SIF EXP:PAGING:撮影経験 < 1000 || ABL:PAGING:撮影技能 < 5
-						CONTINUE
+						LOCAL = 0
 			ENDSELECT
 	ENDSELECT
 
@@ -860,7 +861,7 @@ FOR PAGING, 0, CHARANUM
 		LOCALS += "超 "
 	SIF CFLAG:PAGING:状態 == 2
 		LOCALS += "助手可 "
-	CALL PAGING, 1, @"%LOCALS%", "ITEM USE", "戻る"
+	CALL PAGING, LOCAL, @"%LOCALS%", "ITEM USE", "戻る"
 NEXT
 
 SIF RESULT == -1
