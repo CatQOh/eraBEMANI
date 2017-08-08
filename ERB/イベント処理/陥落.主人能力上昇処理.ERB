@@ -1,30 +1,23 @@
 ﻿;素質変化イベント.ERB
 @EVENTCHECK_ABL
-
-IF !STRATEGY_TURNEND
-	;奴隷の素質変化
-	IF TARGET >= 0
-		CALL EVENTCHECK_T
-		IF ハットトリック
-			ハットトリック = 0
-			ハットトリック:1++
-			SIF ハットトリック:1 >= 3
-				CALL 実績解除, "ハットトリック"
-		ELSE
-			VARSET ハットトリック, 0
-		ENDIF
+;奴隷の素質変化
+IF TARGET >= 0
+	CALL EVENTCHECK_T
+	IF ハットトリック
+		ハットトリック = 0
+		ハットトリック:1++
+		SIF ハットトリック:1 >= 3
+			CALL 実績解除, "ハットトリック"
+	ELSE
+		VARSET ハットトリック, 0
 	ENDIF
-	;調教者の素質変化
-	SIF MASTER >= 0
-		CALL EVENTCHECK_M
-	;助手の素質変化
-	SIF ASSI >= 0
-		CALL EVENTCHECK_A
 ENDIF
-
-SIF STRATEGY_TURNEND
-	STRATEGY_TURNEND = 0
-
+;調教者の素質変化
+SIF MASTER >= 0
+	CALL EVENTCHECK_M
+;助手の素質変化
+SIF ASSI >= 0
+	CALL EVENTCHECK_A
 
 ;---------------------------------------------------------
 ;陥落素質 崩壊した奴隷は陥落しない
@@ -106,11 +99,11 @@ ENDIF
 ;特殊性感素質、一つしか取得はできない（重複した場合は上から優先）
 ;---------------------------------------------------------
 IF !TALENT:自慰狂い && !TALENT:セックス狂 && !TALENT:尻穴狂い && !TALENT:淫乳
-	;自慰狂い：Ｃ感覚4以上、自慰経験100以上、絶頂経験150以上
-	;男なら加えてＡ感覚3以上、Ａ経験100以上必要
-	IF ABL:Ｃ感覚 >= 4 && EXP:自慰経験 >= 100 && EXP:絶頂経験 >= 150
+	;自慰狂い：Ｃ感覚6以上、露出癖4以上、自慰経験300以上、絶頂経験500以上
+	;男なら加えてＡ感覚4以上、Ａ経験300以上必要
+	IF ABL:Ｃ感覚 >= 6 && ABL:露出癖 >= 4 && EXP:自慰経験 >= 300 && EXP:絶頂経験 >= 500
 		IF SEX(TARGET) == 1
-			IF ABL:Ａ感覚 >= 3 && EXP:Ａ経験 >= 100
+			IF ABL:Ａ感覚 >= 3 && EXP:Ａ経験 >= 300
 				CALL KOJO_MESSAGE_EVENT, 36
 				TALENT:自慰狂い = 1
 			ENDIF
@@ -118,26 +111,18 @@ IF !TALENT:自慰狂い && !TALENT:セックス狂 && !TALENT:尻穴狂い && !T
 			CALL KOJO_MESSAGE_EVENT, 36
 			TALENT:自慰狂い = 1
 		ENDIF
-	;セックス狂：Ｖ感覚4以上、性交経験300以上、絶頂経験150以上
+	;セックス狂：Ｖ感覚6以上、性交中毒4以上、性交経験1000以上、絶頂経験500以上
 	;男だと取得できない ふたなりならできる
-	ELSEIF ABL:Ｖ感覚 >= 4 && EXP:性交経験 >= 300 && EXP:絶頂経験 >= 150
+	ELSEIF ABL:Ｖ感覚 >= 6 && ABL:性交中毒 >= 4 && EXP:性交経験 >= 1000 && EXP:絶頂経験 >= 500 && VAGINA(TARGET)
 		CALL KOJO_MESSAGE_EVENT, 37
 		TALENT:セックス狂 = 1
-	;尻穴狂い：Ａ感覚4以上、Ａ経験300以上、絶頂経験150以上
-	;男なら加え精液経験150以上必要
-	ELSEIF ABL:Ａ感覚 >= 4 && EXP:Ａ経験 >= 300 && EXP:絶頂経験 >= 150
-		IF SEX(TARGET) == 1
-			IF EXP:精液経験 >= 150
-				CALL KOJO_MESSAGE_EVENT, 38
-				TALENT:尻穴狂い = 1
-			ENDIF
-		ELSE
-			CALL KOJO_MESSAGE_EVENT, 38
-			TALENT:尻穴狂い = 1
-		ENDIF
-	;淫乳：Ｂ感覚4以上、噴乳経験100以上、絶頂経験150以上
+	;尻穴狂い：Ａ感覚6以上、性交中毒4以上、Ａ経験1000以上、絶頂経験500以上
+	ELSEIF ABL:Ａ感覚 >= 6 && ABL:性交中毒 >= 4 && EXP:Ａ経験 >= 1000 && EXP:絶頂経験 >= 500
+		CALL KOJO_MESSAGE_EVENT, 38
+		TALENT:尻穴狂い = 1
+	;淫乳：Ｂ感覚6以上、露出癖4以上噴乳経験300以上、絶頂経験500以上
 	;男だと取得できない……？
-	ELSEIF ABL:Ｂ感覚 >= 4 && EXP:噴乳経験 >= 100 && EXP:絶頂経験 >= 150
+	ELSEIF ABL:Ｂ感覚 >= 6 && ABL:露出癖 >= 4 && EXP:噴乳経験 >= 300 && EXP:絶頂経験 >= 500
 		CALL KOJO_MESSAGE_EVENT, 39
 		TALENT:淫乳 = 1
 	ENDIF
@@ -174,70 +159,20 @@ IF TFLAG:流産
 	;初流産による崩壊 [隷属]もしくは[崩壊]持ちなら回避できる
 	IF !TALENT:隷属 && !TALENT:崩壊 && EXP:流産経験 == 0
 		CFLAG:陥落 = 0
-		IF TALENT:恋慕
-			PRINTFORMW %CALLNAME:TARGET%は【恋慕】を失った
-			TALENT:恋慕 = 0
-		ENDIF
-		IF TALENT:淫乱
-			PRINTFORMW %CALLNAME:TARGET%は【淫乱】を失った
-			TALENT:淫乱 = 0
-		ENDIF
-		IF TALENT:服従
-			PRINTFORMW %CALLNAME:TARGET%は【服従】を失った
-			TALENT:服従 = 0
-		ENDIF
-		IF TALENT:親愛
-			PRINTFORMW %CALLNAME:TARGET%は【親愛】を失った
-			TALENT:親愛 = 0
-		ENDIF
-		IF TALENT:娼婦
-			PRINTFORMW %CALLNAME:TARGET%は【娼婦】を失った
-			TALENT:娼婦 = 0
-		ENDIF
-		IF TALENT:崩壊 == 0
-			PRINTFORMW %CALLNAME:TARGET%は【崩壊】を得た
-			TALENT:崩壊 = 1
-		ENDIF
-		IF TALENT:反抗的
-			PRINTFORMW %CALLNAME:TARGET%は【反抗的】を失った
-			TALENT:反抗的 = 0
-		ENDIF
-		IF TALENT:プライド高い
-			PRINTFORMW %CALLNAME:TARGET%は【プライド高い】を失った
-			TALENT:プライド高い = 0
-		ENDIF
-		IF TALENT:生意気
-			PRINTFORMW %CALLNAME:TARGET%は【生意気】を失った
-			TALENT:生意気 = 0
-		ENDIF
-		IF TALENT:自制心
-			PRINTFORMW %CALLNAME:TARGET%は【自制心】を失った
-			TALENT:自制心 = 0
-		ENDIF
-		IF TALENT:無関心 == 0
-			PRINTFORMW %CALLNAME:TARGET%は【無関心】を得た
-			TALENT:無関心 = 1
-		ENDIF
-		IF TALENT:感情乏しい == 0
-			PRINTFORMW %CALLNAME:TARGET%は【感情乏しい】を得た
-			TALENT:感情乏しい = 1
-		ENDIF
-		IF TALENT:好奇心
-			PRINTFORMW %CALLNAME:TARGET%は【好奇心】を失った
-			TALENT:好奇心 = 0
-		ENDIF
-		IF TALENT:楽観的
-			PRINTFORMW %CALLNAME:TARGET%は【楽観的】を失った
-			TALENT:楽観的 = 0
-		ENDIF
-		IF TALENT:悲観的 == 0
-			PRINTFORMW %CALLNAME:TARGET%は【悲観的】を得た
-			TALENT:悲観的 = 1
-		ENDIF
-		IF TALENT:狂気 == 0
-			PRINTFORMW %CALLNAME:TARGET%は【狂気】を得た
-			TALENT:狂気 = 1
-		ENDIF
+		REPEAT VARSIZE("TALENT")
+			SELECTCASE TALENTNAME:COUNT
+				CASE "恋慕", "淫乱", "服従", "親愛", "娼婦", "反抗的", "プライド高い", "生意気", "自制心", "好奇心", "楽観的"
+					IF TALENT:COUNT
+						PRINTFORMW %CALLNAME:TARGET%は【%TALENTNAME:COUNT%】を失った
+						TALENT:COUNT = 0
+					ENDIF
+				CASE "崩壊", "無関心", "感情乏しい", "悲観的", "狂気"
+					IF !TALENT:COUNT
+						PRINTFORMW %CALLNAME:TARGET%は【%TALENTNAME:COUNT%】を得た
+						TALENT:COUNT = 1
+					ENDIF
+			ENDSELECT
+		REND
 		PRINTW 異常経験+3
 		EXP:異常経験 += 3
 	ENDIF
@@ -251,41 +186,118 @@ ENDIF
 ;---------------------------------------------------------
 @EVENTCHECK_M
 ;主人の感度：各経験が20、100、250、400、600のたびに上昇、Lv5まで
-IF (EXP:MASTER:Ｖ経験 >= 600 && ABL:MASTER:Ｖ感覚 <= 4) || (EXP:MASTER:Ｖ経験 >= 400 && ABL:MASTER:Ｖ感覚 <= 3) || (EXP:MASTER:Ｖ経験 >= 250 && ABL:MASTER:Ｖ感覚 <= 2) || (EXP:MASTER:Ｖ経験 >= 100 && ABL:MASTER:Ｖ感覚 <= 1) || (EXP:MASTER:Ｖ経験 >= 20 && ABL:MASTER:Ｖ感覚 <= 0)
-	ABL:MASTER:Ｖ感覚++
-	PRINTFORMW %NAME:MASTER%のＶ感覚が{ABL:MASTER:Ｖ感覚}に上がった
-ENDIF
-IF (EXP:MASTER:Ａ経験 >= 600 && ABL:MASTER:Ａ感覚 <= 4) || (EXP:MASTER:Ａ経験 >= 400 && ABL:MASTER:Ａ感覚 <= 3) || (EXP:MASTER:Ａ経験 >= 250 && ABL:MASTER:Ａ感覚 <= 2) || (EXP:MASTER:Ａ経験 >= 100 && ABL:MASTER:Ａ感覚 <= 1) || (EXP:MASTER:Ａ経験 >= 20 && ABL:MASTER:Ａ感覚 <= 0)
-	ABL:MASTER:Ａ感覚++
-	PRINTFORMW %NAME:MASTER%のＡ感覚が{ABL:MASTER:Ａ感覚}に上がった
-ENDIF
-;主人のＣ感覚：射精回数、絶頂回数で上昇 LV5まで
-IF (EXP:MASTER:射精経験 >= 600 && ABL:MASTER:Ｃ感覚 <= 4) || (EXP:MASTER:射精経験 >= 400 && ABL:MASTER:Ｃ感覚 <= 3) || (EXP:MASTER:射精経験 >= 250 && ABL:MASTER:Ｃ感覚 <= 2) || (EXP:MASTER:射精経験 >= 100 && ABL:MASTER:Ｃ感覚 <= 1) || (EXP:MASTER:射精経験 >= 20 && ABL:MASTER:Ｃ感覚 <= 0)
-	ABL:MASTER:Ｃ感覚++
-	PRINTFORMW %NAME:MASTER%のＣ感覚が{ABL:MASTER:Ｃ感覚}に上がった
-ENDIF
-IF (EXP:MASTER:絶頂経験 >= 600 && ABL:MASTER:Ｃ感覚 <= 4) || (EXP:MASTER:絶頂経験 >= 400 && ABL:MASTER:Ｃ感覚 <= 3) || (EXP:MASTER:絶頂経験 >= 250 && ABL:MASTER:Ｃ感覚 <= 2) || (EXP:MASTER:絶頂経験 >= 100 && ABL:MASTER:Ｃ感覚 <= 1) || (EXP:MASTER:絶頂経験 >= 20 && ABL:MASTER:Ｃ感覚 <= 0)
-	ABL:MASTER:Ｃ感覚++
-	PRINTFORMW %NAME:MASTER%のＣ感覚が{ABL:MASTER:Ｃ感覚}に上がった
-ENDIF
+SELECTCASE ABL:MASTER:Ｖ感覚
+	CASE 0
+		SIF EXP:MASTER:Ｖ経験 >= 20
+			ABL:MASTER:Ｖ感覚++
+	CASE 1
+		SIF EXP:MASTER:Ｖ経験 >= 100
+			ABL:MASTER:Ｖ感覚++
+	CASE 2
+		SIF EXP:MASTER:Ｖ経験 >= 250
+			ABL:MASTER:Ｖ感覚++
+	CASE 3
+		SIF EXP:MASTER:Ｖ経験 >= 400
+			ABL:MASTER:Ｖ感覚++
+	CASE 4
+		SIF EXP:MASTER:Ｖ経験 >= 600
+			ABL:MASTER:Ｖ感覚++
+ENDSELECT
+
+SELECTCASE ABL:MASTER:Ａ感覚
+	CASE 0
+		SIF EXP:MASTER:Ａ経験 >= 20
+			ABL:MASTER:Ａ感覚++
+	CASE 1
+		SIF EXP:MASTER:Ａ経験 >= 100
+			ABL:MASTER:Ａ感覚++
+	CASE 2
+		SIF EXP:MASTER:Ａ経験 >= 250
+			ABL:MASTER:Ａ感覚++
+	CASE 3
+		SIF EXP:MASTER:Ａ経験 >= 400
+			ABL:MASTER:Ａ感覚++
+	CASE 4
+		SIF EXP:MASTER:Ａ経験 >= 600
+			ABL:MASTER:Ａ感覚++
+ENDSELECT
+
+SELECTCASE ABL:MASTER:Ｃ感覚
+	CASE 0
+		SIF EXP:MASTER:射精経験 >= 20 || EXP:MASTER:絶頂経験 >= 20
+			ABL:MASTER:Ｃ感覚++
+	CASE 1
+		SIF EXP:MASTER:射精経験 >= 100 || EXP:MASTER:絶頂経験 >= 100
+			ABL:MASTER:Ｃ感覚++
+	CASE 2
+		SIF EXP:MASTER:射精経験 >= 250 || EXP:MASTER:絶頂経験 >= 250
+			ABL:MASTER:Ｃ感覚++
+	CASE 3
+		SIF EXP:MASTER:射精経験 >= 400 || EXP:MASTER:絶頂経験 >= 400
+			ABL:MASTER:Ｃ感覚++
+	CASE 4
+		SIF EXP:MASTER:射精経験 >= 600 || EXP:MASTER:絶頂経験 >= 600
+			ABL:MASTER:Ｃ感覚++
+ENDSELECT
 
 ;主人の技巧：調教経験が50、400、800、3000、10000のたびに上昇、Lv5まで
-IF (EXP:MASTER:調教経験 >= 10000 && ABL:MASTER:技巧 <= 4) || (EXP:MASTER:調教経験 >= 3000 && ABL:MASTER:技巧 <= 3) || (EXP:MASTER:調教経験 >= 800 && ABL:MASTER:技巧 <= 2) || (EXP:MASTER:調教経験 >= 400 && ABL:MASTER:技巧 <= 1) || (EXP:MASTER:調教経験 >= 50 && ABL:MASTER:技巧 <= 0)
-	ABL:MASTER:技巧++
-	PRINTFORMW %NAME:MASTER%の技巧が{ABL:MASTER:技巧}に上がった
-ENDIF
+SELECTCASE ABL:MASTER:技巧
+	CASE 0
+		SIF EXP:MASTER:調教経験 >= 50
+			ABL:MASTER:技巧++
+	CASE 1
+		SIF EXP:MASTER:調教経験 >= 400
+			ABL:MASTER:技巧++
+	CASE 2
+		SIF EXP:MASTER:調教経験 >= 800
+			ABL:MASTER:技巧++
+	CASE 3
+		SIF EXP:MASTER:調教経験 >= 3000
+			ABL:MASTER:技巧++
+	CASE 4
+		SIF EXP:MASTER:調教経験 >= 10000
+			ABL:MASTER:技巧++
+ENDSELECT
 
 ;主人のサドっ気：嗜虐快楽経験が30、200、500、1000、3000のたびに上昇、Lv5まで
-IF (EXP:MASTER:嗜虐快楽経験 >= 3000 && ABL:MASTER:サドっ気 <= 4) || (EXP:MASTER:嗜虐快楽経験 >= 1000 && ABL:MASTER:サドっ気 <= 3) || (EXP:MASTER:嗜虐快楽経験 >= 500 && ABL:MASTER:サドっ気 <= 2) || (EXP:MASTER:嗜虐快楽経験 >= 200 && ABL:MASTER:サドっ気 <= 1) || (EXP:MASTER:嗜虐快楽経験 >= 30 && ABL:MASTER:サドっ気 <= 0)
-	ABL:MASTER:サドっ気++
-	PRINTFORMW %NAME:MASTER%のサドっ気が{ABL:MASTER:サドっ気}に上がった
-ENDIF
+SELECTCASE ABL:MASTER:サドっ気
+	CASE 0
+		SIF EXP:MASTER:嗜虐快楽経験 >= 30
+			ABL:MASTER:サドっ気++
+	CASE 1
+		SIF EXP:MASTER:嗜虐快楽経験 >= 200
+			ABL:MASTER:サドっ気++
+	CASE 2
+		SIF EXP:MASTER:嗜虐快楽経験 >= 500
+			ABL:MASTER:サドっ気++
+	CASE 3
+		SIF EXP:MASTER:嗜虐快楽経験 >= 1000
+			ABL:MASTER:サドっ気++
+	CASE 4
+		SIF EXP:MASTER:嗜虐快楽経験 >= 3000
+			ABL:MASTER:サドっ気++
+ENDSELECT
+
+
 
 ;主人の撮影技能：撮影経験が10、50、200、500、1000のたびに上昇、Lv5まで
-IF (EXP:MASTER:撮影経験 >= 1000 && ABL:MASTER:撮影技能 <= 4) || (EXP:MASTER:撮影経験 >= 500 && ABL:MASTER:撮影技能 <= 3) || (EXP:MASTER:撮影経験 >= 200 && ABL:MASTER:撮影技能 <= 2) || (EXP:MASTER:撮影経験 >= 50 && ABL:MASTER:撮影技能 <= 1) || (EXP:MASTER:撮影経験 >= 10 && ABL:MASTER:撮影技能 <= 0)
-	ABL:MASTER:撮影技能++
-	PRINTFORMW %NAME:MASTER%の撮影技能が{ABL:MASTER:撮影技能}に上がった
-ENDIF
+SELECTCASE ABL:MASTER:撮影技能
+	CASE 0
+		SIF EXP:MASTER:撮影経験 >= 10
+			ABL:MASTER:撮影技能++
+	CASE 1
+		SIF EXP:MASTER:撮影経験 >= 50
+			ABL:MASTER:撮影技能++
+	CASE 2
+		SIF EXP:MASTER:撮影経験 >= 200
+			ABL:MASTER:撮影技能++
+	CASE 3
+		SIF EXP:MASTER:撮影経験 >= 500
+			ABL:MASTER:撮影技能++
+	CASE 4
+		SIF EXP:MASTER:撮影経験 >= 1000
+			ABL:MASTER:撮影技能++
+ENDSELECT
 
 ;主人の絶倫：調教中の射精回数10回以上（出し尽くす）
 IF CFLAG:MASTER:残数 <= 0 && !TALENT:MASTER:絶倫 && PENIS(MASTER) && FLAG:休憩フラグ == 0

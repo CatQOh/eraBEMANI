@@ -30,12 +30,12 @@ LOCAL = -1
 REPEAT CHARANUM
 	IF !TALENT:COUNT:妊娠 && PREG:COUNT:11 && PREG:COUNT:10 == 0
 		;父親の番号を取得
-		FOR LCOUNT, 0, CHARANUM
-			IF NO:LCOUNT == PREG:COUNT:21
-				LOCAL = LCOUNT
-				BREAK
-			ENDIF
-		NEXT
+;		FOR LCOUNT, 0, CHARANUM
+;			IF NO:LCOUNT == PREG:COUNT:21
+				LOCAL = FINDCHARA(NO, PREG:COUNT:21)
+;				BREAK
+;			ENDIF
+;		NEXT
 		;獣人と獣は早く産める
 		SELECTCASE CSTR:COUNT:種族
 			CASE "獣人", "獣"
@@ -58,16 +58,17 @@ VARSET LOCAL, 0
 ;竿役 = 0,MASTERによる中出し 1,助手による中出し 2,奴隷による中出し 3,その他労役での中出し(現在未使用)
 
 ;LOCAL = 中出ししたヤツ
-IF 竿役 == 0
-	LOCAL = MASTER
-ELSEIF 竿役 == 1
-	LOCAL = ASSI
-ELSEIF 竿役 == 2
-	LOCAL = TARGET
-ENDIF
+SELECTCASE 竿役
+	CASE 0
+		LOCAL = MASTER
+	CASE 1
+		LOCAL = ASSI
+	CASE 2
+		LOCAL = TARGET
+ENDSELECT
 
 ;中だしされてないなら関数終了(一応)
-SIF PREG:母親:竿役 == 0
+SIF !PREG:母親:竿役
 	RETURN 0
 
 ;対象が助手もしくは奴隷でなければ不具合起こりそうなのでフラグリセットして終了
@@ -172,7 +173,7 @@ PREG:母親:竿役 = 0
 VARSET LOCAL, 0
 
 ;中出ししていないなら関数終了(一応)
-SIF PREG:竿役:4 == 0
+SIF !PREG:竿役:4
 	RETURN 0
 
 ;MASTERが生殖能力無いなら関数終了
@@ -319,37 +320,43 @@ IF ARG != MASTER || !TALENT:ARG:妊娠確定
 	LOCAL = 100
 	;父親が主人
 	IF PREG:ARG:21 == NO:MASTER
-		;恋慕もしくは親愛
-		SIF TALENT:ARG:恋慕 || TALENT:ARG:親愛
-			LOCAL -= 100
-		;淫乱もしくは娼婦
-		SIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
-			LOCAL -= 60
-		;服従もしくは隷属
-		SIF TALENT:ARG:服従 || TALENT:ARG:隷属
-			LOCAL -= 80
+		SELECTCASE FALLTYPE(ARG)
+			;恋慕もしくは親愛
+			CASE 1
+				LOCAL -= 100
+			;淫乱もしくは娼婦
+			CASE 2
+				LOCAL -= 60
+			;服従もしくは隷属
+			CASE 3
+				LOCAL -= 80
+		ENDSELECT
 	;父親が奴隷または助手
 	ELSEIF PREG:ARG:21 != -1
-		;恋慕もしくは親愛
-		SIF TALENT:ARG:恋慕 || TALENT:ARG:親愛
-			LOCAL -= 40
-		;淫乱もしくは娼婦
-		SIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
-			LOCAL -= 60
-		;服従もしくは隷属
-		SIF TALENT:ARG:服従 || TALENT:ARG:隷属
-			LOCAL -= 50
+		SELECTCASE FALLTYPE(ARG)
+			;恋慕もしくは親愛
+			CASE 1
+				LOCAL -= 40
+			;淫乱もしくは娼婦
+			CASE 2
+				LOCAL -= 60
+			;服従もしくは隷属
+			CASE 3
+				LOCAL -= 50
+		ENDSELECT
 	;父親が顧客
 	ELSEIF PREG:ARG:21 == -1
-		;恋慕もしくは親愛
-		SIF TALENT:ARG:恋慕 || TALENT:ARG:親愛
-			LOCAL -= 10
-		;淫乱もしくは娼婦
-		SIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
-			LOCAL -= 60
-		;服従もしくは隷属
-		SIF TALENT:ARG:服従 || TALENT:ARG:隷属
-			LOCAL -= 50
+		SELECTCASE FALLTYPE(ARG)
+			;恋慕もしくは親愛
+			CASE 1
+				LOCAL -= 10
+			;淫乱もしくは娼婦
+			CASE 2
+				LOCAL -= 60
+			;服従もしくは隷属
+			CASE 3
+				LOCAL -= 50
+		ENDSELECT
 	ENDIF
 	;相性による変動
 	IF PREG:ARG:21 != -1
@@ -481,17 +488,9 @@ FOR LCOUNT, 0, CHARANUM
 			DRAWLINE
 			IF LCOUNT == MASTER
 				PRINTFORML %CALLNAME:LCOUNT%は出産が近づいている……
-				IF PREG:MASTER:5
-					LOCAL = -1
-					REPEAT CHARANUM
-						IF NO:COUNT == PREG:MASTER:21
-							LOCAL = COUNT
-							BREAK
-						ENDIF
-					REND
-					SIF LOCAL >= 0
-						CALL KOJO_MESSAGE_EVENT, 62, LOCAL
-				ENDIF
+				LOCAL = FINDCHARA(NO, PREG:MASTER:21)
+				SIF LOCAL >= 0
+					CALL KOJO_MESSAGE_EVENT, 62, LOCAL
 			ELSE
 				PRINTFORML %CALLNAME:LCOUNT%は出産が近づいているようだ……
 				CALL CHILD_CARE_ROOM_SELECT, LCOUNT
@@ -510,13 +509,7 @@ FOR LCOUNT, 0, CHARANUM
 				PRINTFORML %CALLNAME:LCOUNT%の出産から一日経ちました
 				;主人の妊娠で、父親が認知していれば会いに来るイベント
 				IF PREG:MASTER:5
-					LOCAL = -1
-					REPEAT CHARANUM
-						IF NO:COUNT == PREG:MASTER:21
-							LOCAL = COUNT
-							BREAK
-						ENDIF
-					REND
+					LOCAL = FINDCHARA(NO, PREG:MASTER:21)
 					SIF LOCAL >= 0
 						CALL KOJO_MESSAGE_EVENT, 62, LOCAL
 				ENDIF
@@ -531,13 +524,7 @@ FOR LCOUNT, 0, CHARANUM
 				PRINTFORML %CALLNAME:LCOUNT%の出産から三日経ちました
 				;主人の妊娠で、父親が認知していれば会いに来るイベント
 				IF PREG:MASTER:5
-					LOCAL = -1
-					REPEAT CHARANUM
-						IF NO:COUNT == PREG:MASTER:21
-							LOCAL = COUNT
-							BREAK
-						ENDIF
-					REND
+					LOCAL = FINDCHARA(NO, PREG:MASTER:21)
 					SIF LOCAL >= 0
 						CALL KOJO_MESSAGE_EVENT, 62, LOCAL
 				ENDIF
@@ -559,12 +546,7 @@ NEXT
 VARSET LOCAL, 0
 
 IF PREG:ARG:20 == 1
-	FOR LCOUNT, 0, CHARANUM
-		IF NO:LCOUNT == 0
-			LOCAL = LCOUNT
-			BREAK
-		ENDIF
-	NEXT
+	LOCAL = FINDCHARA(NO, 0)
 	PRINTFORMW %CALLNAME:ARG%は、%CALLNAME:LOCAL%の子供を無事出産しました
 	LOCAL = 0
 ELSEIF PREG:ARG:20 != 4
@@ -579,13 +561,7 @@ CHILDBIRTHDAY:ARG:0 = MONTH*100+DAYS
 
 IF ARG == MASTER
 	IF PREG:MASTER:5
-		LOCAL = -1
-		REPEAT CHARANUM
-			IF NO:COUNT == PREG:MASTER:21
-				LOCAL = COUNT
-				BREAK
-			ENDIF
-		REND
+		LOCAL = FINDCHARA(NO, PREG:MASTER:21)
 		SIF LOCAL >= 0
 			CALL KOJO_MESSAGE_EVENT, 61, LOCAL
 	ENDIF
@@ -722,7 +698,7 @@ RETURN 0
 #DIM DYNAMIC テーブル
 SIF 母体 == -1
 	母体 = 母親
-
+WAIT
 VARSET LOCAL, 0
 
 ;父親が不明、もしくは採取精液なら母親の種族を受け継ぐ
@@ -789,6 +765,17 @@ SELECTCASE CHILDTALENT:母体:TALENTF("性別")
 				CHILDTALENT:母体:TALENTF("バストサイズ") = 4
 		ENDSELECT
 ENDSELECT
+
+LOCAL = 0
+;狐の遺伝子を持っていれば、獣なら狐、獣人なら妖狐になる
+SIF TALENT:母親:狐 || TALENT:母親:妖狐 || (父親 > 0 && (TALENT:父親:狐 || TALENT:父親:妖狐))
+	LOCAL = 1
+
+SIF CHILDRACE:母体:0 == "獣" && LOCAL
+	CHILDTALENT:母体:TALENTF("狐") = 1
+
+SIF CHILDRACE:母体:0 == "獣人" && LOCAL
+	CHILDTALENT:母体:TALENTF("妖狐") = 1
 
 ;だいたい6～8個の素質が付く
 LOCAL = RAND(6, 9)
