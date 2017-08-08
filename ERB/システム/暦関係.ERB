@@ -98,7 +98,7 @@ CALL 月齢逆算, 30, -1
 ;過去19年で最も新月に近いと思われる元日と現在の日付の日数差を調べる
 LOCAL = GETDAYS(YEAR, MONTH, DAYS) - GETDAYS(RESULT, RESULT:1, RESULT:2)
 
-PRINTFORMW {LOCAL}
+;PRINTFORMW {LOCAL}
 
 ;月齢 += (MONTH-1)*97
 ;月齢 %= 3000
@@ -174,7 +174,7 @@ FOR LCOUNT, 1*SIGN(ARG:1), 366*SIGN(ARG:1), 1*SIGN(ARG:1)
 ;		CASE 6 TO 12
 ;			LOCAL:1 = LMONTH-2
 	ENDSELECT
-	PRINTFORMW {RESULT:0} {RESULT:1} {RESULT:2} {LOCAL+LOCAL:1+LDAYS}
+;	PRINTFORMW {RESULT:0} {RESULT:1} {RESULT:2} {LOCAL+LOCAL:1+LDAYS}
 	SIF (LOCAL+LOCAL:1+LDAYS) == ARG
 		RETURN LYEAR, LMONTH, LDAYS
 NEXT
@@ -238,13 +238,30 @@ NEXT
 ;1582年10月5日～1582年10月14日は存在しないため、真っ最中なら経過日数を
 ;1582年10月15日以降なら10日分減算する
 IF LYEAR == 1582 && LMONTH == 10 && INRANGE(LDAYS, 5, 14)
-	LOCAL -= LDAYS-5
-ELSEIF LYEAR >= 1582 && LMONTH >= 10 && LDAYS >= 15
-	LOCAL -= 10
+	経過日数 -= LDAYS-5
+ELSEIF LYEAR > 1582 || (LYEAR == 1582 && LMONTH > 10) || (LYEAR == 1582 && LMONTH == 10 && LDAYS > 14)
+	経過日数 -= 10
 ENDIF
 
+
+;LYEARが閏年かどうかを判別
+SELECTCASE LYEAR
+	;グレゴリオ暦
+	CASE IS > 1582
+		SIF (LYEAR%4 == 0 && LYEAR%100 != 0) || LYEAR%400 == 0
+			IS閏年 = 1
+	;間違った運用がされていた頃のユリウス暦
+	CASE -44 TO -5
+		SIF ABS(LYEAR)%3 == 1
+			IS閏年 = 1
+	;(紀元前46年以前を含め)残りの期間すべてをユリウス暦とする
+	CASEELSE
+		SIF ABS(LYEAR)%4 == 0
+			IS閏年 = 1
+ENDSELECT
+
 ;閏年の数を計算する
-SELECTCASE YEAR
+SELECTCASE LYEAR
 	;グレゴリオ暦
 	CASE IS > 1582
 		;単純にグレゴリオ暦の方法でまず計算する
@@ -284,31 +301,26 @@ SELECTCASE YEAR
 		閏年 -= 2
 ENDSELECT
 
+;対象年が閏年なら1引く
+SIF IS閏年
+	閏年--
+
 ;経過日数に閏年の分を加算
 経過日数 += 閏年
-
-IS閏年 = 0
-
-;LYEARが閏年かどうかを判別
-SELECTCASE LYEAR
-	;グレゴリオ暦
-	CASE IS > 1582
-		SIF (LYEAR%4 == 0 && LYEAR%100 != 0) || LYEAR%400 == 0
-			IS閏年 = 1
-	;間違った運用がされていた頃のユリウス暦
-	CASE -44 TO -5
-		SIF ABS(LYEAR)%3 == 1
-			IS閏年 = 1
-	;(紀元前46年以前を含め)残りの期間すべてをユリウス暦とする
-	CASEELSE
-		SIF ABS(LYEAR)%4 == 0
-			IS閏年 = 1
-ENDSELECT
 
 月補正 += (LMONTH-1)*30
 
 SIF LMONTH > 1
 	月補正++
+
+;2月以降なら2日分減算
+IF LMONTH > 2
+	月補正 -= 2
+	;閏年ならもう1日加算
+	SIF IS閏年
+		月補正++
+ENDIF
+
 SIF LMONTH > 3
 	月補正++
 SIF LMONTH > 5
@@ -320,13 +332,6 @@ SIF LMONTH > 8
 SIF LMONTH > 10
 	月補正++
 
-;2月以降なら2日分減算
-IF LMONTH > 2
-	月補正 -= 2
-	;閏年ならもう1日加算
-	SIF IS閏年
-		月補正++
-ENDIF
 
 ;年に対応した正負の値で計算
 経過日数 += 月補正*SIGN(LYEAR)
