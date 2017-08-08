@@ -1,4 +1,7 @@
 ﻿@NEXTDAY
+#DIM DYNAMIC LYEAR
+#DIM DYNAMIC LMONTH
+#DIM DYNAMIC LDAYS
 VARSET LOCAL, 0
 
 ;日付加算
@@ -60,26 +63,416 @@ SIF DAYS == 1 && MONTH == 1
 	YEAR++
 
 ;月齢計算
-LOCAL:2 = YEAR-11
+;過去19年で最も新月に近いと思われる元日と現在の日付を比べて月齢を導き出してみる
+;LOCAL = (YEAR-(YEAR%19))*100
+;LOCAL:1 = (MONTH-1)*100
+;LOCAL:2 = (DAYS-1)*100
+;TIMES LOCAL, 10.88
+;TIMES LOCAL:1, 0.97
+
+;月齢 = LOCAL+LOCAL:1+LOCAL:2
+;月齢 /= 1000
+
+CALL 月齢逆算, 30, -1
+
+;WAIT
+;LOCAL:2 = YEAR-11
 ;負の数の剰余に対応
-IF LOCAL:2 < 0
-	LOCAL:2 = 19 + (LOCAL:2)%19
-ELSE
-	LOCAL:2 %= 19
-ENDIF
-LOCAL = (LOCAL:2)*11
-SELECTCASE MONTH
-	CASE 1, 3
-		LOCAL:1 = 0
-	CASE 2, 4, 5
-		LOCAL:1 = 2
-	CASE 6 TO 12
-		LOCAL:1 = MONTH-2
+;IF LOCAL:2 < 0
+;	LOCAL:2 = 19 + (LOCAL:2)%19
+;ELSE
+;	LOCAL:2 %= 19
+;ENDIF
+;LOCAL = (LOCAL:2)*11
+;SELECTCASE MONTH
+;	CASE 1, 3
+;		LOCAL:1 = 0
+;	CASE 2, 4, 5
+;		LOCAL:1 = 2
+;	CASE 6 TO 12
+;		LOCAL:1 = MONTH-2
+;ENDSELECT
+;月齢 = (LOCAL+LOCAL:1+DAYS)%30
+
+;月齢 = 0
+;過去19年で最も新月に近いと思われる元日と現在の日付の日数差を調べる
+LOCAL = GETDAYS(YEAR, MONTH, DAYS) - GETDAYS(RESULT, RESULT:1, RESULT:2)
+
+PRINTFORMW {LOCAL}
+
+;月齢 += (MONTH-1)*97
+;月齢 %= 3000
+;月齢 += (DAYS-1)*100
+;月齢 %= 3000
+
+SELECTCASE LOCAL
+	CASE IS <= 30
+		月齢 = LOCAL*100
+	CASE IS <= 365
+		月齢 = (LOCAL/30)*97
+		月齢 %= 3000
+		月齢 += (LOCAL%30)*100
+		月齢 %= 3000
+	CASEELSE
+		月齢 = (LOCAL/365)*1088
+		月齢 %= 3000
+		月齢 += (LOCAL%365)*100
+		月齢 %= 3000
 ENDSELECT
-月齢 = (LOCAL+LOCAL:1+DAYS)%30
+
+;月齢 = (LOCAL*10000%2953059)/100
+
+
+
+
 
 ;曜日計算
 FLAG:曜日 = ZELLER(YEAR,MONTH,DAYS)
+
+
+;簡易月齢計算法を用いて、指定した月齢に現時点から最も近いと思われる日付を返す
+;ARG:1が正の値なら未来で、負の値なら過去で調べる
+@月齢逆算, ARG, ARG:1
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LYEAR
+#DIM DYNAMIC LMONTH
+#DIM DYNAMIC LDAYS
+#DIM DYNAMIC 朔年
+#DIM DYNAMIC 朔月
+#DIM DYNAMIC 朔日
+
+LOCAL:3 = YEAR-(YEAR%19)+11
+;SIF LOCAL:3 >= YEAR
+;	LOCAL:3 -= 19
+
+FOR LCOUNT, 1*SIGN(ARG:1), 366*SIGN(ARG:1), 1*SIGN(ARG:1)
+	CALL 日数逆算, LCOUNT, LOCAL:3, MONTH, DAYS
+	LYEAR = RESULT:0
+	LMONTH = RESULT:1
+	LDAYS = RESULT:2
+	IF LYEAR > YEAR || (LYEAR == YEAR && LMONTH > MONTH) || (LYEAR == YEAR && LMONTH == MONTH && LDAYS > DAYS)
+		LOCAL:3 -= 19
+		CONTINUE
+	ENDIF
+
+	;月齢計算
+	LOCAL:2 = LYEAR-11
+	;負の数の剰余に対応
+	IF LOCAL:2 < 0
+		LOCAL:2 = 19 + (LOCAL:2)%19
+	ELSE
+		LOCAL:2 %= 19
+	ENDIF
+	LOCAL = (LOCAL:2)*11
+	SELECTCASE LMONTH
+		CASE 1, 3
+			LOCAL:1 = 0
+		CASEELSE
+			CONTINUE
+;		CASE 2, 4, 5
+;			LOCAL:1 = 2
+;		CASE 6 TO 12
+;			LOCAL:1 = LMONTH-2
+	ENDSELECT
+	PRINTFORMW {RESULT:0} {RESULT:1} {RESULT:2} {LOCAL+LOCAL:1+LDAYS}
+	SIF (LOCAL+LOCAL:1+LDAYS) == ARG
+		RETURN LYEAR, LMONTH, LDAYS
+NEXT
+
+;簡易月齢計算法を用いて、過去
+;@月齢逆算, ARG, ARG:1
+;#DIM DYNAMIC LCOUNT
+;#DIM DYNAMIC LYEAR
+;#DIM DYNAMIC LMONTH
+;#DIM DYNAMIC LDAYS
+;#DIM DYNAMIC 朔年
+;#DIM DYNAMIC 朔月
+;#DIM DYNAMIC 朔日
+
+;LYEAR = YEAR-(YEAR%19)
+;LMONTH = 1
+;LDAYS = 1
+
+
+;FOR LCOUNT, 0, 366
+;	CALL 日数逆算, LCOUNT, LYEAR, LMONTH, LDAYS
+;	LYEAR = RESULT:0
+;	LMONTH = RESULT:1
+;	LDAYS = RESULT:2
+;
+;	;月齢計算
+;	LOCAL:2 = LYEAR-11
+;	;負の数の剰余に対応
+;	IF LOCAL:2 < 0
+;		LOCAL:2 = 19 + (LOCAL:2)%19
+;	ELSE
+;		LOCAL:2 %= 19
+;	ENDIF
+;	LOCAL = (LOCAL:2)*11
+;	SELECTCASE LMONTH
+;		CASE 1, 3
+;			LOCAL:1 = 0
+;		CASE 2, 4, 5
+;			LOCAL:1 = 2
+;		CASE 6 TO 12
+;			LOCAL:1 = LMONTH-2
+;	ENDSELECT
+;	SIF (LOCAL+LOCAL:1+LDAYS)%30 == ARG
+;		RETURN LYEAR, LMONTH, LDAYS
+;NEXT
+
+
+;西暦0年1月0日からの経過日数を返す式中関数
+@GETDAYS, LYEAR, LMONTH, LDAYS
+#FUNCTION
+#DIM DYNAMIC LYEAR
+#DIM DYNAMIC LMONTH
+#DIM DYNAMIC LDAYS
+#DIM DYNAMIC 閏年
+#DIM DYNAMIC 経過日数
+#DIM DYNAMIC IS閏年
+#DIM DYNAMIC 月補正
+
+経過日数 = 365*LYEAR
+
+;1582年10月5日～1582年10月14日は存在しないため、真っ最中なら経過日数を
+;1582年10月15日以降なら10日分減算する
+IF LYEAR == 1582 && LMONTH == 10 && INRANGE(LDAYS, 5, 14)
+	LOCAL -= LDAYS-5
+ELSEIF LYEAR >= 1582 && LMONTH >= 10 && LDAYS >= 15
+	LOCAL -= 10
+ENDIF
+
+;閏年の数を計算する
+SELECTCASE YEAR
+	;グレゴリオ暦
+	CASE IS > 1582
+		;単純にグレゴリオ暦の方法でまず計算する
+		;4年に一回
+		閏年 = LYEAR%4
+		;ただし100年に一回は閏年無いので減算
+		閏年 -= LYEAR%100
+		;ただしただし400年に一回は閏年強制発動なので加算
+		閏年 += LYEAR%400
+		;そしてユリウス暦の計算 ユリウス暦では100年に一回ルールは無いので、400年に一回の3回分差し引いて1500年までの計12回を加算
+		閏年 += 12
+		;しかし西暦4年(と西暦0年)は閏年中止したので減算
+		閏年--
+	;西暦0年からユリウス暦廃止まで
+	CASE 0 TO 1582
+		;4年に一回
+		閏年 = LYEAR%4
+		;西暦4年は閏年中止したので減算
+		SIF LYEAR >= 4
+			閏年--
+	;西暦-5年(BC6年)から西暦0年(BC1年)の間は閏年が無い
+	CASE -5 TO 0
+		閏年 = 0
+	;西暦-44年(BC45年)から西暦-5年(BC6年)までの閏年失敗期間
+	CASE -44 TO -5
+		;紀元前の返り値はマイナスになるので閏年カウントもマイナスで考える
+		;西暦-44年～-5年までは3年ごとに閏年になってた
+		閏年 = (LYEAR+1)%3
+		;西暦-5年に間違い発覚 西暦-5年と-2年の閏年の分減算
+		閏年 += 2
+	;当ゲームでは西暦-45年(BC46年)以前も全てユリウス暦で計算
+	CASE IS <= -45
+		;4年に一回
+		閏年 = LYEAR%4
+		;ただし西暦-44年～-5年は3年毎に閏年になっており、本来なら10回のところ13回になっている
+		;西暦0年以降に2年分のしわ寄せを行ったので、西暦-1年以前は2回分閏年が多くなる
+		閏年 -= 2
+ENDSELECT
+
+;経過日数に閏年の分を加算
+経過日数 += 閏年
+
+IS閏年 = 0
+
+;LYEARが閏年かどうかを判別
+SELECTCASE LYEAR
+	;グレゴリオ暦
+	CASE IS > 1582
+		SIF (LYEAR%4 == 0 && LYEAR%100 != 0) || LYEAR%400 == 0
+			IS閏年 = 1
+	;間違った運用がされていた頃のユリウス暦
+	CASE -44 TO -5
+		SIF ABS(LYEAR)%3 == 1
+			IS閏年 = 1
+	;(紀元前46年以前を含め)残りの期間すべてをユリウス暦とする
+	CASEELSE
+		SIF ABS(LYEAR)%4 == 0
+			IS閏年 = 1
+ENDSELECT
+
+月補正 += (LMONTH-1)*30
+
+SIF LMONTH > 1
+	月補正++
+SIF LMONTH > 3
+	月補正++
+SIF LMONTH > 5
+	月補正++
+SIF LMONTH > 7
+	月補正++
+SIF LMONTH > 8
+	月補正++
+SIF LMONTH > 10
+	月補正++
+
+;2月以降なら2日分減算
+IF LMONTH > 2
+	月補正 -= 2
+	;閏年ならもう1日加算
+	SIF IS閏年
+		月補正++
+ENDIF
+
+;年に対応した正負の値で計算
+経過日数 += 月補正*SIGN(LYEAR)
+
+;そして最後に同じ方法でLDAYSを計算
+経過日数 += LDAYS*SIGN(LYEAR)
+
+;西暦0年1月0日からの経過日数を返す
+RETURNF 経過日数
+
+
+;現在時刻からARG日後、もしくはARG日前の日付を求める関数。式中関数ではない
+;ARGが正の値ならARG日後、負の値ならARG日前の日付をRESULT:0～2に入れて返す
+@日数逆算, ARG, ARG:1 = -1, ARG:2 = -1, ARG:3 = -1
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LDAYS
+#DIM DYNAMIC LMONTH
+#DIM DYNAMIC LYEAR
+
+IF ARG:1 == -1
+	LYEAR = YEAR
+ELSE
+	LYEAR = ARG:1
+ENDIF
+IF ARG:2 == -1
+	LMONTH = MONTH
+ELSE
+	LMONTH = ARG:2
+ENDIF
+IF ARG:3 == -1
+	LDAYS = DAYS
+ELSE
+	LDAYS = ARG:3
+ENDIF
+
+FOR LCOUNT, 0, ABS(ARG)
+	;日付加算・減産
+	LDAYS += SIGN(ARG)
+	;未来を求める場合
+	IF SIGN(ARG) == 1
+		SELECTCASE LMONTH
+			CASE 1, 3, 5, 7, 8, 10, 12
+				SIF LDAYS > 31
+					LDAYS = 1
+			CASE 4, 6, 9, 11
+				SIF LDAYS > 30
+					LDAYS = 1
+			CASE 2
+				;うるう年かどうかで場合分け
+				SELECTCASE LYEAR
+					;グレゴリオ暦
+					CASE IS > 1582
+						IF (LYEAR%4 == 0 && LYEAR%100 != 0) || LYEAR%400 == 0
+							SIF LDAYS > 29
+								LDAYS = 1
+						ELSE
+							SIF LDAYS > 28
+								LDAYS = 1
+						ENDIF
+					;間違った運用がされていた頃のユリウス暦
+					CASE -44 TO -5
+						IF ABS(LYEAR)%3 == 1
+							SIF LDAYS > 29
+								LDAYS = 1
+						ELSE
+							SIF LDAYS > 28
+								LDAYS = 1
+						ENDIF
+					;上の間違った運用のシワ寄せ期間
+					CASE -4 TO 4
+						SIF LDAYS > 28
+							LDAYS = 1
+					;(紀元前46年以前を含め)残りの期間すべてをユリウス暦とする
+					CASEELSE
+						IF ABS(LYEAR)%4 == 0
+							SIF LDAYS > 29
+								LDAYS = 1
+						ELSE
+							SIF LDAYS > 28
+								LDAYS = 1
+						ENDIF
+				ENDSELECT
+		ENDSELECT
+		;1582年10月5日～1582年10月14日は存在しない
+		SIF LYEAR == 1582 && LMONTH == 10 && INRANGE(LDAYS, 5, 14)
+			LDAYS = 15
+		;繰り上げ処理
+		IF LDAYS == 1
+			LMONTH++
+			SIF LMONTH == 13
+				LMONTH = 1
+			SIF LDAYS == 1 && LMONTH == 1
+				LYEAR++
+		ENDIF
+	;過去を求める場合
+	ELSEIF SIGN(ARG) == -1
+		;1582年10月5日～1582年10月14日は存在しない
+		SIF LYEAR == 1582 && LMONTH == 10 && INRANGE(LDAYS, 5, 14)
+			LDAYS = 4
+		;繰り下げ処理
+		IF LDAYS == 0
+			LMONTH--
+			IF LMONTH == 0
+				LYEAR--
+				LMONTH = 12
+			ENDIF
+			SELECTCASE LMONTH
+				CASE 1, 3, 5, 7, 8, 10, 12
+					LDAYS = 31
+				CASE 4, 6, 9, 11
+					LDAYS = 30
+				CASE 2
+					;うるう年かどうかで場合分け
+					SELECTCASE LYEAR
+						;グレゴリオ暦
+						CASE IS > 1582
+							IF (LYEAR%4 == 0 && LYEAR%100 != 0) || LYEAR%400 == 0
+								LDAYS = 29
+							ELSE
+								LDAYS = 28
+							ENDIF
+						;間違った運用がされていた頃のユリウス暦
+						CASE -44 TO -5
+							IF ABS(LYEAR)%3 == 1
+								LDAYS = 29
+							ELSE
+								LDAYS = 28
+							ENDIF
+						;上の間違った運用のシワ寄せ期間
+						CASE -4 TO 4
+							LDAYS = 28
+						;(紀元前46年以前を含め)残りの期間すべてをユリウス暦とする
+						CASEELSE
+							IF ABS(LYEAR)%4 == 0
+								LDAYS = 29
+							ELSE
+								LDAYS = 28
+							ENDIF
+					ENDSELECT
+			ENDSELECT
+		ENDIF
+	ENDIF
+NEXT
+
+RETURN LYEAR, LMONTH, LDAYS
+
 
 @HOLIDAY
 HOLIDAY =
