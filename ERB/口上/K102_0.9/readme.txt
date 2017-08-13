@@ -32,8 +32,8 @@ eraBEMANI 大犬のお姉さん口上 作者:Enter 最終更新日:2017/06/19
 
 
 【連絡先・リンク】
-Twitter
-└@CatQOh
+IRC([irc.friend-chat.jp] ほぼ年中無休で接続中)
+└#eraEVENT_KXX
 
 Skype
 └you-remember
