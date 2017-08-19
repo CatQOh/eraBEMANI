@@ -43,18 +43,14 @@ SIF TARGET == -1 && ASSI == -1
 	RETURN 0
 
 LOCAL = 0
-IF TARGET > 0
-	SELECTCASE CALLNAME:TARGET
-		CASE "モード", "リリーゼ"
-			LOCAL++
-	ENDSELECT
-ENDIF
-IF ASSI > 0
-	SELECTCASE CALLNAME:ASSI
-		CASE "モード", "リリーゼ"
-			LOCAL++
-	ENDSELECT
-ENDIF
+SELECTCASE CHARANAMEF(TARGET)
+	CASE "モード", "リリーゼ"
+		LOCAL++
+ENDSELECT
+SELECTCASE CHARANAMEF(ASSI)
+	CASE "モード", "リリーゼ"
+		LOCAL++
+ENDSELECT
 
 ;表示するかはランダム 10％くらい
 SIF RAND:10 != 0 || LOCAL == 0
@@ -65,7 +61,7 @@ LOCAL = 0
 REPEAT CHARANUM
 	SIF !CFLAG:COUNT:陥落
 		CONTINUE
-	SELECTCASE NAME:COUNT
+	SELECTCASE CHARANAMEF(COUNT)
 		CASE "モード"
 			LOCAL++
 			モード = COUNT
@@ -77,12 +73,15 @@ REPEAT CHARANUM
 		BREAK
 REND
 
+SIF !CFLAG:モード:陥落 || !CFLAG:リリーゼ:陥落
+	RETURN 0
+
 ;SIF TARGET < 0 || CALLNAME:TARGET != "モード"
 ;	RETURN 0
 
 ;陥落済みのモードとリリーゼが居て、昼に休憩フラグが立っていれば日常イベント発生
 LOCAL:1 = 5
-SIF FLAG:天気 == 5
+SIF TIME == 1
 	LOCAL:1++
 IF LOCAL == 2
 	SELECTCASE RAND:(LOCAL:1)
@@ -97,48 +96,139 @@ IF LOCAL == 2
 		CASE 2
 			SELECTCASE MONTH
 				CASE 6 TO 9
-					SELECTCASE FLAG:天気
-						CASE 3, 4, 5
-							PRINTFORMW 「雨降ってるのになんでこんなに暑いのかしら。ジメジメして嫌だわ」
-							PRINTFORMW 「夜までには止んでくれるといいですね。雨音がうるさいと眠れなくなっちゃいそう……」
-						CASE 2
-							GOTO CLOUD
-						CASEELSE
-							IF FLAG:気温 >= 200
-								SELECTCASE RAND:2
-									CASE 0
-										PRINTFORMW 「暑い～、アイス食べたい～」
-										PRINTFORMW 「水浴びでもしましょうか？ ここの近くにちょっとした川があったような……」
-										PRINTFORMW 「賛成！ そうと決まればほら、あんたも準備して！」
-									CASE 1
-										PRINTFORMW 「今日も暑いわ～。やんなっちゃう」
-										PRINTFORMW 縁側で、汲んだ水に足を浸して涼むリリーゼ。風鈴も鳴らない猛暑にご機嫌斜めのようだ
-										PRINTFORMW 「オレは炎龍ですからこのくらいへっちゃらですけどね」
-										PRINTFORMW 「ほんと、あんたがいると暑苦しくてしょうがないわ。それよりモードちゃんはどこかしら？」
-										PRINTFORMW 「モードは暑さに負けて安静にしている。かく言う私も暑いのは苦手でな……」
-								ENDSELECT
+					IF TIME == 0
+						SELECTCASE FLAG:天気
+							CASE 3, 4, 5
+								PRINTFORMW 「雨降ってるのになんでこんなに暑いのかしら。ジメジメして嫌だわ」
+								PRINTFORMW 「夜までには止んでくれるといいですね。雨音がうるさいと眠れなくなっちゃいそう……」
+							CASE 2
+								GOTO CLOUD
+							CASEELSE
+								IF FLAG:気温 >= 200
+									SELECTCASE RAND:2
+										CASE 0
+											PRINTFORMW 「暑い～、アイス食べたい～」
+											PRINTFORMW 「水浴びでもしましょうか？ ここの近くにちょっとした川があったような……」
+											PRINTFORMW 「賛成！ そうと決まればほら、あんたも準備して！」
+										CASE 1
+											PRINTFORMW 「今日も暑いわ～。やんなっちゃう」
+											PRINTFORMW 縁側で、汲んだ水に足を浸して涼むリリーゼ。風鈴も鳴らない猛暑にご機嫌斜めのようだ
+											PRINTFORMW 「オレは炎龍ですからこのくらいへっちゃらですけどね」
+											PRINTFORMW 「ほんと、あんたがいると暑苦しくてしょうがないわ。それよりモードちゃんはどこかしら？」
+											PRINTFORMW 「モードは暑さに負けて安静にしている。かく言う私も暑いのは苦手でな……」
+									ENDSELECT
+								ELSE
+									$CLOUD
+									PRINTFORMW 「今の季節にしては涼しくて過ごしやすいわね。毎日このくらいなら助かるわ」
+									PRINTFORMW 「リントヴルムは暑いのが苦手ですものね。私も涼しいほうが好き」
+									PRINTFORMW 「天候は時に残酷だ……私とモードを容赦なく攻撃してくる……」
+								ENDIF
+						ENDSELECT
+					ELSE
+						PRINTFORMW 「昼よりはマシだけど……なんでこんなに暑いのかしら。温暖化が進んでるのね」
+						PRINTFORMW 「こういう日はお風呂も緩くしないと入れないです、私……」
+						PRINTFORMW 「えっ、いつもお風呂をぬるま湯にしてるのあんたなの？ 嫌よ?、あたしは夏でも暑いお風呂に入りたいんだから、次からあたしの次に入って」
+						PRINTFORMW 「むぅ、リリーゼさん夜更かしばかりでいつもお風呂に入るのが遅いんだもん……」
+					ENDIF
+				CASE 10, 11
+					IF TIME == 0
+						PRINTFORMW 「木の葉が散る……綺麗だったあの木も、今年の役目を終えたのですね」
+						SIF MAUD:99
+							PRINTFORMW 「また来年、美しい花が咲くだろう。そこにずっと立っているのだ、季節のひとつふたつくらい休ませてあげよう」
+						PRINTFORMW 「そっちの\@ MAUD:99 ? 詩人ふたり # 感傷的なネガティブちゃん \@は置いといて、こんなに落ち葉あったら焼き芋でもやりたいわね。集めちゃお」
+						SIF MAUD:98
+							PRINTFORMW 「じゃあオレは芋のほう探してきまスかね」
+					ELSEIF FLAG:天気 == 1
+						SELECTCASE FLAG:月齢
+							CASE 1500 TO 1599
+								PRINTFORMW 「見て見て、モードちゃん、お月様が真ん丸で、すごく明るいの！」
+								PRINTFORMW 「わぁ……すごい、夜なのに、辺りががはっきり見える。虫さんが鳴いて、すすきが靡いて、なんだろう、とても楽しい」
+								PRINTFORMW 「ワクワクするわね。今が夜なんて信じられない、ずっと続いて欲しいわ」
+							CASEELSE
+								PRINTFORMW 「月が綺麗……あっ、別に変な意味で言ったわけではないですけどっ」
+								PRINTFORMW 「んー？ どゆこと？ でも確かに、今日の月は綺麗ね、モードちゃん」
+								CALL SLINEWAIT, "「えっと、あ、あー……Ｗはい、そうですね、えへへ……」"
+								PRINTFORMW 「何ニヤニヤしてんのよ、気持ち悪い」
+						ENDSELECT
+					ELSEIF FLAG:天気 == 5
+						PRINTFORMW 「雷が鳴ってて落ち着かない……リリーゼさん、一緒に居ていいですか？」
+						PRINTFORMW 「にゃはは、あんた雷なんて怖がってるの？ だいじょーぶ、あたしがついててあげる」
+					ENDIF
+				CASE 4, 5
+					LOCAL = 2
+					SIF TIME == 0
+						LOCAL++
+					SELECTCASE RAND:LOCAL
+						CASE 0
+							PRINTFORMW 「くしゅん、んぅ、うあぁ……目がかゆい……鼻の奥も」
+							PRINTFORMW 「モードちゃん花粉症なの？ あんたってば、悪い病気はだいたい持ってるんじゃないかってくらい虚弱よね?」
+							PRINTFORMW 「どう過ごしていても、体質は変わりませんので……やっぱり私は、図書室に引きこもることにします」
+							PRINTFORMW 「あたしも後で行くわ。面白そうな本があれば取っといて」
+						CASE 1
+							PRINTFORMW 「綺麗な桜ですよね。見とれちゃう」
+							PRINTFORMW 「もう見飽きちゃったわ。そろそろ、花より団子ってことで、いただきまーす」
+							PRINTFORMW 「食べてばっかり。どこからそんな食欲が？」
+							PRINT 「あたしらは食べて動いて暴れて、っていうようにできてんのよ。
+							IF MAUD:98
+								PRINTFORMW ね、レーヴァテイン」
+								PRINTFORMW 「いっぱい食べていっぱい遊んで逞しく育つ、がセオリーなんスけど、モードちゃんにはちょ～っと荷が重いかもしれないッスね」
+								IF MAUD:99
+									PRINTFORMW 「まったくその通り。モードは華奢な華のように、優しく育てるのが私のセオリーなのでな」
+									PRINTFORMW 「言い過ぎですよ、リントヴリム。私はそこまで立派ではないし、脆くもありません。リリーゼさんたちと一緒に、私ももう少し動き回ってみようかな」
+									PRINTFORMW 「無理はしないように。水分補給と栄養補給と、あと日焼け対策や熱中症にも気を付けて……」
+									PRINTFORMW 「くっどいわねぇ、あたしが面倒見るから大丈夫よ、お節介さん」
+								ENDIF
 							ELSE
-								$CLOUD
-								PRINTFORMW 「今の季節にしては涼しくて過ごしやすいわね。毎日このくらいなら助かるわ」
-								PRINTFORMW 「リントヴルムは暑いのが苦手ですものね。私も涼しいほうが好き」
-								PRINTFORMW 「天候は時に残酷だ……私とモードを容赦なく攻撃してくる……」
+								PRINTFORMW あんたら大人しめ民族と違って」
 							ENDIF
+						CASE 2
+							SELECTCASE FLAG:天気
+								CASE 0, 1
+									PRINTFORMW 「この庭は一年中、花が咲いてますね。誰が手入れしてるんだろう？」
+									PRINTFORMW 「うーん、あいつ、意外とお花好きだったりするのかしら、ロリコンのくせに」
+									PRINTFORMW 「私もガーデニングしてみたいな……綺麗なお花をいっぱい咲かせられたら、嬉しい」
+									SIF MAUD:99
+										PRINTFORMW 「肌を焼かぬよう、日当たりへの対策は欠かさずにな。モードが育てた花たちを、ぜひとも私もお目にかかりたい」
+								CASEELSE
+									PRINTFORMW 「雨、かぁ。嫌いじゃないですけど……」
+									IF MAUD:99
+										PRINTFORMW 「何か思うところがあるのだな、モードよ」
+										PRINTFORMW 「はい、ここに来てから、考えるようになったのですが……」
+									ENDIF
+									CALL SLINEWAIT, "「居た居た、モードちゃんったらほんと、この縁側が好きなのねぇ。Ｗお昼ご飯できたから呼びに来たけど、切なそうな顔しちゃってどしたの？」"
+									PRINTFORMW 「いえ、大したことではないのです。天気が悪いと、綺麗なお花たちも暗く見えちゃうのが勿体無くて」
+									PRINTFORMW 「あんたと同じねー。綺麗で可愛いのに、気分が落ち込んでるせいで暗?いのよ。今日のモードちゃんは曇り時々雨ってことで、午後から晴れるといいわね」
+							ENDSELECT
 					ENDSELECT
 				CASEELSE
 					IF FLAG:気温 <= 50
-						PRINTFORMW 「寒いわね……うぅ、布団から出たくなーい」
-						PRINTFORMW 「だからって一日中寝てるのも不健康ですよ。一緒に図書室に行きませんか？」
-						PRINTFORMW 「あんたに不健康言われるなんてね……ほら、モードちゃんも布団王国にご案内！」
-						PRINTFORMW 「きゃっ……！」
-						PRINTFORMW ベッドからモードを布団の中に引きずり込んだリリーゼは、逃がさんとばかりにその体を抱きしめている
-						PRINTFORMW 「今日くらいは寝ててもいいじゃない。モードちゃんも一緒にね？」
-						PRINTFORMW 「も、もうっ、リリーゼさん……でも、布団もリリーゼさんも暖かくて、気持ち良い……たまには、こういうのも……」
+						IF TIME == 0
+							PRINTFORMW 「寒いわね……うぅ、布団から出たくなーい」
+							PRINTFORMW 「だからって一日中寝てるのも不健康ですよ。一緒に図書室に行きませんか？」
+							PRINTFORMW 「あんたに不健康言われるなんてね……ほら、モードちゃんも布団王国にご案内！」
+							PRINTFORMW 「きゃっ……！」
+							PRINTFORMW ベッドからモードを布団の中に引きずり込んだリリーゼは、逃がさんとばかりにその体を抱きしめている
+							PRINTFORMW 「今日くらいは寝ててもいいじゃない。モードちゃんも一緒にね？」
+							PRINTFORMW 「も、もうっ、リリーゼさん……でも、布団もリリーゼさんも暖かくて、気持ち良い……たまには、こういうのも……」
+						ELSE
+							PRINTFORMW 「ちゃんとお風呂で温まった、モードちゃん？ 熱いの苦手でも中途半端なお風呂じゃ風邪引いちゃうからね」
+							PRINTFORMW 「リリーゼさんほどではないですけど、それなりに。でも、んぅ……立ちくらみ、かな、目眩が……」
+							PRINTFORMW 「あらら、ほら、座って座って。髪はあたしが乾かしてあげるから、楽にしてていいわよ」
+							PRINTFORMW 「いつも気遣ってくれてありがとうございます、リリーゼさん」
+						ENDIF
 					ELSE
-						PRINTFORMW 「ふぁー、暖かい天気ね。眠くなってきちゃう」
-						PRINTFORMW 「リリーゼさんは寒くても暖かくても寝てますよね」
-						PRINTFORMW 「にゃはは、寝る子は育つって言うじゃない。モードちゃんも一緒に育とう？」
-						PRINTFORMW 「んっ、じゃあ、ちょっとだけ……」
-						PRINTFORMW 「暖かくても風邪引いたら困るもんね。毛布持ってくるわ」
+						IF TIME == 0
+							PRINTFORMW 「ふぁー、暖かい天気ね。眠くなってきちゃう」
+							PRINTFORMW 「リリーゼさんは寒くても暖かくても寝てますよね」
+							PRINTFORMW 「にゃはは、寝る子は育つって言うじゃない。モードちゃんも一緒に育とう？」
+							PRINTFORMW 「んっ、じゃあ、ちょっとだけ……」
+							PRINTFORMW 「暖かくても風邪引いたら困るもんね。毛布持ってくるわ」
+						ELSE
+							PRINTFORMW 「あれ？ リリーゼさんもお風呂ですか？ 私も今から入ろうと思ってたのですが」
+							PRINTFORMW 「奇遇ねぇ、じゃあ一緒に入ろっか」
+							PRINTFORMW 「そ、それは……そうですね。でも、えっと、服を脱ぐ間はあちらのほう見ててもらえると……」
+							PRINTFORMW 「もー、いつまで経ってもシャイな子ねぇ。あたし先入ってるから」
+						ENDIF
 					ENDIF
 			ENDSELECT
 		CASE 3
@@ -160,47 +250,74 @@ IF LOCAL == 2
 			ELSE
 				PRINTFORMW 思わず聴き惚れてしまいそうな歌声を響かせるモードが居た
 			ENDIF
-				PRINT 「あ、リリーゼさん……
-				IF ABL:モード:歌唱技能 <= 3
-					PRINTFORMW 私、%CALLMAUD%に喜んでもらおうと練習してたのですが、聴かれちゃうと恥ずかしいな……」
-					PRINTFORMW 「へぇ、いいじゃない。ロマンティックで
-					IF ABL:リリーゼ:歌唱技能 > 4 || ABL:リリーゼ:演奏技能 > 4
-						PRINT ひとりで練習するの大変でしょ？
-						IF ABL:リリーゼ:歌唱技能 > 4
-							PRINTFORMW あたしがレッスンしたげるわ」
-						ELSEIF ABL:リリーゼ:演奏技能 > 4
-							PRINTFORMW あたしが伴奏してあげるわ」
-						ENDIF
-						PRINTFORMW 「はい……お願いします。それと……ありがとうございます」
-					ELSE
-						PRINTFORMW あいにく音楽は苦手だけど、モードちゃんの歌ならぜひ聴きたいわね」
-						PRINTFORMW 「まだまだ下手っぴですけど、そんな私の歌でよければ……」
+			PRINT 「あ、リリーゼさん……
+			IF ABL:モード:歌唱技能 <= 3
+				PRINTFORMW 私、%CALLMAUD%に喜んでもらおうと練習してたのですが、聴かれちゃうと恥ずかしいな……」
+				PRINTFORMW 「へぇ、いいじゃない。ロマンティックで
+				IF ABL:リリーゼ:歌唱技能 > 4 || ABL:リリーゼ:演奏技能 > 4
+					PRINT ひとりで練習するの大変でしょ？
+					IF ABL:リリーゼ:歌唱技能 > 4
+						PRINTFORMW あたしがレッスンしたげるわ」
+					ELSEIF ABL:リリーゼ:演奏技能 > 4
+						PRINTFORMW あたしが伴奏してあげるわ」
 					ENDIF
+					PRINTFORMW 「はい……お願いします。それと……ありがとうございます」
 				ELSE
-					SELECTCASE RAND:2
-						CASE 0
-							PRINTFORMW 私の歌、どうでした？」
-							PRINTFORMW 「感動しちゃった。声かけられないくらいね。これも、あいつのために？」
-							PRINTFORMW 「はい……%CALLMAUD%が褒めてくれるから嬉しくて、もっともっと上手になろうと思って……」
-							PRINTFORMW 「モードちゃんにそこまで慕われてるなんて妬いちゃうわ。でもモードちゃんの歌、ほんとに素敵よ」
-							PRINTFORMW 「リリーゼさんにも褒めてもらっちゃった……嬉しいな。大切な人に捧げる歌声です。リリーゼさんにも聴いてほしいの」
-							PRINTFORMW 「うん、聴かせて」
-						CASE 1
-							PRINTFORMW その、私の歌、聴いてたんですか……？」
-							PRINTFORMW 「ええ、すごく上手だからつい、ね。アイドルにでもなれるんじゃない？」
-							PRINTFORMW 「あ、アイドルって、あの……？ そんな、私なんかには……」
-							PRINT 「照れちゃって、もう。
-							IF ABL:リリーゼ:歌唱技能 > 4
-								PRINTFORMW あたしと一緒にユニット組めば人気爆発間違いなしよ」
-							ELSE
-								PRINTFORMW あたしも歌の練習してさ、一緒に活動するの。面白そうよね？」
-							ENDIF
-							PRINTFORMW 「ふふ、リリーゼさんったら。でも……私の歌は%CALLMAUD%のためですから、%CALLMAUD%に聴いてもらえるならそれ以上は何も……」
-					ENDSELECT
+					PRINTFORMW あいにく音楽は苦手だけど、モードちゃんの歌ならぜひ聴きたいわね」
+					PRINTFORMW 「まだまだ下手っぴですけど、そんな私の歌でよければ……」
 				ENDIF
+			ELSE
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 私の歌、どうでした？」
+						PRINTFORMW 「感動しちゃった。声かけられないくらいね。これも、あいつのために？」
+						PRINTFORMW 「はい……%CALLMAUD%が褒めてくれるから嬉しくて、もっともっと上手になろうと思って……」
+						PRINTFORMW 「モードちゃんにそこまで慕われてるなんて妬いちゃうわ。でもモードちゃんの歌、ほんとに素敵よ」
+						PRINTFORMW 「リリーゼさんにも褒めてもらっちゃった……嬉しいな。大切な人に捧げる歌声です。リリーゼさんにも聴いてほしいの」
+						PRINTFORMW 「うん、聴かせて」
+					CASE 1
+						PRINTFORMW その、私の歌、聴いてたんですか……？」
+						PRINTFORMW 「ええ、すごく上手だからつい、ね。アイドルにでもなれるんじゃない？」
+						PRINTFORMW 「あ、アイドルって、あの……？ そんな、私なんかには……」
+						PRINT 「照れちゃって、もう。
+						IF ABL:リリーゼ:歌唱技能 > 4
+							PRINTFORMW あたしと一緒にユニット組めば人気爆発間違いなしよ」
+						ELSE
+							PRINTFORMW あたしも歌の練習してさ、一緒に活動するの。面白そうよね？」
+						ENDIF
+						PRINTFORMW 「ふふ、リリーゼさんったら。でも……私の歌は%CALLMAUD%のためですから、%CALLMAUD%に聴いてもらえるならそれ以上は何も……」
+				ENDSELECT
+			ENDIF
 		CASE 5
-			PRINTFORMW 「雷が鳴ってて落ち着かない……リリーゼさん、一緒に居ていいですか？」
-			PRINTFORMW 「にゃはは、あんた雷なんて怖がってるの？ だいじょーぶ、あたしがついててあげる」
+			PRINTFORMW 「あいつが寝る前にちょっかい出してやろうと思うんだけど、モードちゃんどうする？」
+			PRINTFORMW 「ちょっかい、とは……え、えっちなことですか……？」
+			PRINTFORMW 「にゃはは、そのつもりはないけど、もしものときはね。あまり期待しないで」
+			PRINTFORMW …………
+			PRINTFORMW ……
+			PRINTFORMW …
+			PRINTFORMW %CALLNAME:MASTER%が寝巻きに着替えて寝床に就こうとすると、ドアを叩く音がする。%CALLNAME:TARGET%が襲いに来たのかと覚悟してドアを開けるが、そこに立っていたのは可愛らしい二人組
+			PRINTFORMW 「あっ、起きてた？ 邪魔してごめーんね。まだ寝るには早いし、ちょっとその……」
+			PRINTFORMW 「私たち、%CALLMAUD%に可愛がってもらおうと思ってっ……少しだけお時間いただけますか？」
+			PRINTFORMW 身構えた事態とは少し違うが、赤と青の幼い二人を部屋に招き入れ、3人で共有するには少々小さいベッドの上に並ぶ
+			PRINTFORM 「%CALLMAUD%、今夜は
+			SELECTCASE FLAG:天気
+				CASE 0
+					SELECTCASE FLAG:月齢
+						CASE 500 TO 2500
+							PRINT 月が綺麗……ですね？
+						CASEELSE
+							PRINT 天気が良くて、星が綺麗ですね？
+					ENDSELECT
+				CASEELSE
+					PRINT 素敵な夜ですね？
+			ENDSELECT
+			PRINTFORMW だからこそ、良い夢見せてあげたいの……えへ……」
+			PRINTFORMW 照れ臭そうに、かつ当たり前のように唇を交わしてくるモード。浅いキスだが、モードの想いは十分に伝わってくる……
+			PRINTFORMW 「そ、そ。あたしも、悪夢ばかり見ちゃうから大変でさ。良い夢見せてよ、ね？」
+			PRINTFORMW 続いて、今度は反対側から求めてくるリリーゼが、%CALLNAME:MASTER%を引っ張って口づけを交わす。ふたりの間で愛を堪能する%CALLNAME:MASTER%は、両脇の暖かい体温を感じながら心地良い眠りに就く……
+			PRINTW 
+			PRINTFORMW ……僅かに目を覚ました時にはふたりの姿は既になく、唇の柔らかな感触――ふたり分のそれを感じながら悶々と二度寝を始めた
+			DRAWLINE
 	ENDSELECT
 ENDIF
 
