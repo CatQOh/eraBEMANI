@@ -868,7 +868,7 @@ SIF RESULT == -1
 	RETURN 0
 
 LOCAL = RESULT
-CALL KOJO_MESSAGE_EVENT, ARG, RESULT
+CALL KOJO_MESSAGE_EVENT, ITEMNAME:ARG, RESULT
 
 SELECTCASE ITEMNAME:ARG
 	;体力回復
@@ -1143,79 +1143,6 @@ ELSE
 ENDIF
 
 RETURN 0
-
-;産卵イベント　イメージとしては、非常にリスキーだが上手くやれば妊娠を無効にできるイベント
-@LAY_EGG, ARG
-CALL KOJO_MESSAGE_EVENT, 10
-
-PRINTFORMW 卵を産んだ途端、%CALLNAME:ARG%のお腹は妊娠する前の大きさに戻った
-PRINTFORMW %CALLNAME:ARG%は[妊娠]を失った
-TALENT:ARG:妊娠 = 0
-;妊娠イベントで減った体力の最大値が回復（少なめ）
-MAXBASE:ARG:体力 += 300
-CALL CLEAR_FLAG, ARG
-
-;ストレス値の補正の決定
-;ABL:従順をみる
-LOCAL:0 = ABL:ARG:従順*2
-
-;ABL:Ｖ感覚をみる
-LOCAL:1 = ABL:ARG:Ｖ感覚*2
-
-;EXP:出産経験をみる
-LOCAL:2 = 100-EXP:ARG:出産経験
-
-;陥落素質を見る
-LOCAL:3 = 100
-SIF TALENT:ARG:恋慕
-	LOCAL:3 = 140
-SIF TALENT:ARG:淫乱
-	LOCAL:3 = 80
-SIF TALENT:ARG:服従
-	LOCAL:3 = 60
-SIF TALENT:ARG:親愛
-	LOCAL:3 = 180
-SIF TALENT:ARG:娼婦
-	LOCAL:3 = 60
-SIF TALENT:ARG:隷属
-	LOCAL:3 = 40
-SIF TALENT:ARG:崩壊
-	LOCAL:3 = 0
-
-LOCAL:4 = LOCAL:2*(100-LOCAL:0+LOCAL:1)*LOCAL:3/10000
-
-PRINTL Ｖ経験+5
-PRINTL Ｖ拡張経験+1
-PRINTL 出産経験+1
-
-EXP:ARG:Ｖ経験 += 5
-EXP:ARG:Ｖ拡張経験++
-EXP:ARG:出産経験++
-
-IF EXP:ARG:出産経験 <= 1 && EXP:ARG:Ｖ拡張経験 <= 1
-	EXP:ARG:異常経験 += 3
-	PRINTL 異常経験+3
-ELSEIF EXP:ARG:出産経験 <= 1
-	EXP:ARG:異常経験 += 2
-	PRINTL 異常経験+2
-ELSEIF EXP:ARG:Ｖ拡張経験 <= 1
-	EXP:ARG:異常経験++
-	PRINTL 異常経験+1
-ENDIF
-
-CFLAG:ARG:ストレス値 += LOCAL:4
-BASE:ARG:体力 = 10
-;ストレス値100以上で崩壊
-;撤廃しました
-;SIF CFLAG:ARG:ストレス値 >= 100 && !TALENT:RESULT:崩壊
-;	CALL COLLAPSE_MIND_ITEM, ARG
-
-PRINTFORMW %CALLNAME:ARG%は体力を激しく消耗している
-PRINTFORMW 少し休ませたほうがよさそうだ
-
-;休憩フラグを立てる
-FLAG:休憩フラグ = 1
-BEGIN TURNEND
 
 ;アイテムで【崩壊】を得た場合のイベント
 @COLLAPSE_MIND_ITEM, ARG
