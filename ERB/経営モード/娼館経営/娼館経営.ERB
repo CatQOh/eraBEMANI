@@ -433,6 +433,7 @@ PRINTL 　[2] - ハード方針
 PRINTL 　[3] - SM方針
 PRINTL 　[4] - 狂気方針
 PRINTFORML 　[5] - プレイ内容を報告させる（現在\@ FLAG:娼館報告 ? オン # オフ \@）
+PRINTFORML 　[6] - 上級娼婦を任命する（現在の上級娼婦:\@ FINDCHARA(CFLAG:上級娼婦, 1) >= 0 ? %NAME:(FINDCHARA(CFLAG:上級娼婦, 1))% # 無し\@）
 DRAWLINE
 PRINTPLAIN 　PLAN　
 PRINT [10] 戻る 
@@ -447,6 +448,23 @@ DO
 				TRYCALLFORM BR_PLAN_K{FLAG:パートナー}, RESULT
 		CASE 5
 			INVERTBIT FLAG:娼館報告, 0
+		CASE 6
+			LOCAL = FINDCHARA(CFLAG:上級娼婦, 1)
+			SIF LOCAL >= 0
+				CFLAG:LOCAL:上級娼婦 = 0
+			DRAWLINE
+			PRINTL □上級娼婦に任命したいキャラを選択してください
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, CFLAG:PAGING:配属 == 2, "", "上級娼婦", "任命しない"
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					PRINTW 上級娼婦を任命しません
+				CASEELSE
+					PRINTFORMW %CALLNAME:RESULT%を上級娼婦に任命します
+					CFLAG:RESULT:上級娼婦 = 1
+			ENDSELECT
+			BREAK
 		CASE 10
 			RETURN 0
 		CASE 20
@@ -477,7 +495,11 @@ DO
 			PRINTL 
 			PRINTL 5-プレイ内容を報告させる
 			PRINTL ├売春での奉仕内容を収入計算時に報告させます。
-			PRINTW └オンオフで収入に違いは無いので奴隷の動向が気になるならオンにしてみましょう。
+			PRINTL └オンオフで収入に違いは無いので奴隷の動向が気になるならオンにしてみましょう。
+			PRINTL 
+			PRINTL 6-上級娼婦を任命する
+			PRINTL ├上級娼婦に任命されたキャラは、売春中にプレイアブル可能になります。
+			PRINTW └お客様とのより濃厚な売春を楽しみたいならぜひ任命してみましょう。
 	ENDSELECT
 LOOP LOOPRES(0, 1, 2, 3, 4, 5, 20)
 
@@ -580,6 +602,9 @@ SIF ITEM:わけのわからないもの
 #DIM DYNAMIC 素股で射精
 #DIM DYNAMIC ゲイ
 #DIM DYNAMIC レズ
+#DIM DYNAMIC LTARGET
+#DIM DYNAMIC LMASTER
+#DIM DYNAMIC LASSI
 
 収入合計 += 娼館レベル*100
 
@@ -587,6 +612,32 @@ SIF ITEM:わけのわからないもの
 収入合計 += ハードポイント*10
 収入合計 += SMポイント*10
 収入合計 += 狂気ポイント*10
+
+DRAWLINE
+
+LOCAL = FINDCHARA(CFLAG:上級娼婦, 1)
+IF LOCAL >= 0
+	;体力不足
+	IF BASE:LOCAL:体力 <= 1000
+		PRINTFORML %CALLNAME:LOCAL%は疲労で娼館を休みました
+		CFLAG:LOCAL:休憩 = 1
+		GOTO 通常営業
+	ENDIF
+	IF CFLAG:LOCAL:ストレス値 > 90 && !TALENT:LOCAL:崩壊
+		PRINTFORML %CALLNAME:LOCAL%はストレス過多のため、娼館を休みました
+		CFLAG:LOCAL:休憩 = 1
+		GOTO 通常営業
+	ENDIF
+	LTARGET = TARGET
+	LMASTER = MASTER
+	LASSI = ASSI
+	CALL 上級売春
+	TARGET = LTARGET
+	MASTER = LMASTER
+	ASSI = LASSI
+ENDIF
+
+$通常営業
 
 FOR LCOUNT, 1, CHARANUM
 	;当然配属してないとダメ
@@ -597,6 +648,9 @@ FOR LCOUNT, 1, CHARANUM
 		CFLAG:LCOUNT:配属完了 = 1
 		CONTINUE
 	ENDIF
+	;上級娼婦は上で処理してるので除外
+	SIF CFLAG:LCOUNT:上級娼婦
+		CONTINUE
 	DRAWLINE
 	;体力不足
 	IF BASE:LCOUNT:体力 <= 1000

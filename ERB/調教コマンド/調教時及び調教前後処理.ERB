@@ -1,6 +1,69 @@
 ﻿;調教前の処理
-@EVENTTRAIN
-#LATER
+;2.04でEVENTTRAINもイベント関数から解放
+@EVENTUSERTRAIN
+#DIM DYNAMIC LCOUNT
+
+;初期着衣設定に応じて、服の設定をする
+FOR LCOUNT, 100, 107
+	SIF CSTR:LCOUNT != ""
+		TEQUIP:(LCOUNT-100) = 1
+	SIF CSTR:MASTER:LCOUNT != ""
+		TEQUIP:MASTER:(LCOUNT-100) = 1
+	IF ASSI > 0
+		SIF CSTR:ASSI:LCOUNT != ""
+			TEQUIP:ASSI:(LCOUNT-100) = 1
+	ENDIF
+NEXT
+
+SELECTCASE FLAG:着衣設定
+	;下着無し
+	CASE 1
+		TEQUIP:上半身下着 = 0
+		TEQUIP:下半身下着 = 0
+	;下着姿
+	CASE 2
+		TEQUIP:上半身上着 = 0
+		TEQUIP:下半身上着 = 0
+		TEQUIP:全身上着 = 0
+	;全裸
+	CASE 3
+		REPEAT 7
+			TEQUIP:COUNT = 0
+			TEQUIP:MASTER:COUNT = 0
+			SIF ASSI > 0
+				TEQUIP:ASSI:COUNT = 0
+		REND
+ENDSELECT
+
+;調教対象・助手が特定のキャラの場合、調教開始時に豹変することがある
+;紅刃……1/5の確率で豹変
+;冷音……天気が雨・雪・雷雨で豹変
+IF TARGET >= 0
+	IF CHARANAMEF(TARGET) == "紅刃" && RAND:5 == 0
+		CALL TRANCE_ON, TARGET
+		TRANCE:200 = 1
+		DRAWLINE
+		PRINTFORMW ＜紅刃は性格が豹変した＞
+	ELSEIF CHARANAMEF(TARGET) == "春雨 冷音" && INRANGE(FLAG:天気, 3, 5)
+		CALL TRANCE_ON, TARGET
+		TRANCE:200 = 1
+		DRAWLINE
+		PRINTFORMW ＜冷音は性格が豹変した＞
+	ENDIF
+ENDIF
+IF ASSI >= 0
+	IF CHARANAMEF(ASSI) == "紅刃" && RAND:5 == 0
+		CALL TRANCE_ON, ASSI
+		TRANCE:ASSI:200 = 1
+		DRAWLINE
+		PRINTFORMW ＜紅刃は性格が豹変した＞
+	ELSEIF CHARANAMEF(ASSI) == "春雨 冷音" && INRANGE(FLAG:天気, 3, 5)
+		CALL TRANCE_ON, ASSI
+		TRANCE:ASSI:200 = 1
+		DRAWLINE
+		PRINTFORMW ＜冷音は性格が豹変した＞
+	ENDIF
+ENDIF
 
 PREVCOMS = 
 SELECTCOMS = 
@@ -327,89 +390,96 @@ IF ASSI > 0
 	TEQUIP:ASSI:媚薬 = 1
 ENDIF
 
-;体力切れ
-IF BASE:体力 <= 0
-	PRINTFORML （激しい調教で%CALLNAME:TARGET%はひどく消耗したようです　調教を終了します）
-	;従順ダウン 陥落済みなら発生しない
-	IF ABL:従順 > 0 && !CFLAG:陥落
-		ABL:従順--
-		PRINTFORML %CALLNAME:TARGET%の従順が1下がった
+IF 上級売春中
+	IF BASE:MASTER:体力 <= 500
+		PRINTFORML （%CALLNAME:MASTER%の体力が限界のため、売春を終了します）
+		上級売春中 = 2
 	ENDIF
-	;回復量低下フラグ
-	CFLAG:回復量低下 += 2
-	CFLAG:ストレス値 += 10
-	BASE:体力 = 1
-	;条件を満たしていれば吸血イベント発生するか選択できる
-	;条件：主人が吸血鬼で、対象が種族[人間]である
-	IF TALENT:MASTER:吸血鬼 && CSTR:種族 == "人間"
-		PRINTFORMW 消耗して動けない%CALLNAME:TARGET%を見下ろしながら思う……
-		PRINTFORMW このまま%CALLNAME:TARGET%を……
-		PRINTL [0] 眷属に迎え入れようか
-		PRINTL [1] 放っておこうか
-		DO
-			INPUT
-			;吸血
-			IF RESULT == 0
-				CALL KOJO_MESSAGE_EVENT, "主人吸血"
-				;吸血鬼化
-				IF TALENT:処女 || TALENT:再生処女 || TALENT:童貞
-					TALENT:吸血鬼 = 1
-					CSTR:種族 = ヴァンパイア
-					;上位陥落素質ありで妄信イベント
-					IF (TALENT:親愛 || TALENT:娼婦 || TALENT:隷属) && !TALENT:妄信
-						PRINTFORML %CALLNAME:TARGET%は[妄信]を得た。
-						TALENT:妄信 = 1
+ELSE
+	;体力切れ
+	IF BASE:体力 <= 0
+		PRINTFORML （激しい調教で%CALLNAME:TARGET%はひどく消耗したようです　調教を終了します）
+		;従順ダウン 陥落済みなら発生しない
+		IF ABL:従順 > 0 && !CFLAG:陥落
+			ABL:従順--
+			PRINTFORML %CALLNAME:TARGET%の従順が1下がった
+		ENDIF
+		;回復量低下フラグ
+		CFLAG:回復量低下 += 2
+		CFLAG:ストレス値 += 10
+		BASE:体力 = 1
+		;条件を満たしていれば吸血イベント発生するか選択できる
+		;条件：主人が吸血鬼で、対象が種族[人間]である
+		IF TALENT:MASTER:吸血鬼 && CSTR:種族 == "人間"
+			PRINTFORMW 消耗して動けない%CALLNAME:TARGET%を見下ろしながら思う……
+			PRINTFORMW このまま%CALLNAME:TARGET%を……
+			PRINTL [0] 眷属に迎え入れようか
+			PRINTL [1] 放っておこうか
+			DO
+				INPUT
+				;吸血
+				IF RESULT == 0
+					CALL KOJO_MESSAGE_EVENT, "主人吸血"
+					;吸血鬼化
+					IF TALENT:処女 || TALENT:再生処女 || TALENT:童貞
+						TALENT:吸血鬼 = 1
+						CSTR:種族 = ヴァンパイア
+						;上位陥落素質ありで妄信イベント
+						IF (TALENT:親愛 || TALENT:娼婦 || TALENT:隷属) && !TALENT:妄信
+							PRINTFORML %CALLNAME:TARGET%は[妄信]を得た。
+							TALENT:妄信 = 1
+						ENDIF
+					;ゾンビ化
+					ELSE
+						TALENT:ゾンビ = 1
+						CSTR:種族 = ゾンビ
 					ENDIF
-				;ゾンビ化
-				ELSE
-					TALENT:ゾンビ = 1
-					CSTR:種族 = ゾンビ
+					IF CFLAG:被吸血経験 == 0
+						EXP:異常経験++
+						PRINTL 異常経験+1
+					ENDIF
+					CFLAG:被吸血経験++
+					EXP:MASTER:吸血経験++
 				ENDIF
-				IF CFLAG:被吸血経験 == 0
-					EXP:異常経験++
-					PRINTL 異常経験+1
+			LOOP LOOPRES(0, 1)
+		;助手が陥落して条件を満たしていれば、助手を使った吸血イベント発生するか選択できる
+		;条件：助手が居て、助手が吸血鬼で、対象が種族[人間]である
+		ELSEIF ASSI >= 0 && CFLAG:ASSI:陥落 && CSTR:種族 == "人間"
+			PRINTFORML 今の無防備な%CALLNAME:TARGET%なら好き勝手できそうだ。
+			PRINTFORML %CALLNAME:ASSI%に血を吸わせますか？
+			PRINTL [0] - 吸わせる
+			PRINTL [1] - 吸わせない
+			DO
+				INPUT
+				IF RESULT == 0
+					CALL KOJO_MESSAGE_EVENT, "助手吸血"
+					;対象が処女、再生処女、童貞なら吸血鬼化
+					IF TALENT:処女 || TALENT:再生処女 || TALENT:童貞
+						TALENT:吸血鬼 = 1
+						CSTR:種族 = ヴァンパイア
+					;ゾンビ化
+					ELSE
+						TALENT:ゾンビ = 1
+						CSTR:種族 = ゾンビ
+					ENDIF
+					;初めて血を吸われたら異常経験追加
+					IF CFLAG:被吸血経験 == 0
+						EXP:異常経験++ 
+						PRINTL 異常経験+1
+					ENDIF
+					CFLAG:被吸血経験++
+					EXP:ASSI:吸血経験++
 				ENDIF
-				CFLAG:被吸血経験++
-				EXP:MASTER:吸血経験++
-			ENDIF
-		LOOP LOOPRES(0, 1)
-	;助手が陥落して条件を満たしていれば、助手を使った吸血イベント発生するか選択できる
-	;条件：助手が居て、助手が吸血鬼で、対象が種族[人間]である
-	ELSEIF ASSI >= 0 && CFLAG:ASSI:陥落 && CSTR:種族 == "人間"
-		PRINTFORML 今の無防備な%CALLNAME:TARGET%なら好き勝手できそうだ。
-		PRINTFORML %CALLNAME:ASSI%に血を吸わせますか？
-		PRINTL [0] - 吸わせる
-		PRINTL [1] - 吸わせない
-		DO
-			INPUT
-			IF RESULT == 0
-				CALL KOJO_MESSAGE_EVENT, "助手吸血"
-				;対象が処女、再生処女、童貞なら吸血鬼化
-				IF TALENT:処女 || TALENT:再生処女 || TALENT:童貞
-					TALENT:吸血鬼 = 1
-					CSTR:種族 = ヴァンパイア
-				;ゾンビ化
-				ELSE
-					TALENT:ゾンビ = 1
-					CSTR:種族 = ゾンビ
-				ENDIF
-				;初めて血を吸われたら異常経験追加
-				IF CFLAG:被吸血経験 == 0
-					EXP:異常経験++ 
-					PRINTL 異常経験+1
-				ENDIF
-				CFLAG:被吸血経験++
-				EXP:ASSI:吸血経験++
-			ENDIF
-		LOOP LOOPRES(0, 1)
+			LOOP LOOPRES(0, 1)
+		ENDIF
+		;実績:ガッキー博士で奴隷の体力を0にする
+		SIF CHARANAMEF(PLAYER) == "ガッキー博士"
+			CALL 実績解除, "「科学の発展に犠牲は付き物デース」"
+		BEGIN AFTERTRAIN
+	ELSEIF BASE:体力 < 500
+		PRINTL （体力が限界に来ています　調教を終了します）
+		BEGIN AFTERTRAIN
 	ENDIF
-	;実績:ガッキー博士で奴隷の体力を0にする
-	SIF CHARANAMEF(PLAYER) == "ガッキー博士"
-		CALL 実績解除, "「科学の発展に犠牲は付き物デース」"
-	BEGIN AFTERTRAIN
-ELSEIF BASE:体力 < 500
-	PRINTL （体力が限界に来ています　調教を終了します）
-	BEGIN AFTERTRAIN
 ENDIF
 
 ;流産時に体力が削りきれなかった場合は強制的に調教終了
