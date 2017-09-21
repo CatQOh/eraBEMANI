@@ -150,7 +150,7 @@ FOR LCOUNT, 1500, 1580
 		CONTINUE
 	SIF LOCAL%3 == 0
 		PRINT 　
-	PRINTFORM [{LCOUNT}] %ITEMNAME:LCOUNT%
+	PRINTFORM [{LCOUNT}] %SUBSTRINGU(ITEMNAME:LCOUNT, 2, -1)%
 	CALL PASELI, @" 維持費:{ITEMPRICE:LCOUNT}＄"
 	IF ITEM:LCOUNT == 0
 		PRINT 【
@@ -186,13 +186,13 @@ DO
 				IF 娼館道具設置数 >= 娼館広さ
 					PRINTW 【これ以上配置できません】
 				ELSE
-					PRINTFORMW %ITEMNAME:RESULT%を配置しました
+					PRINTFORMW %SUBSTRINGU(ITEMNAME:RESULT, 2, -1)%を配置しました
 					ITEM:RESULT = 1
 					SIF FLAG:口上表示
 						TRYCALLFORM BR_ITEM_K{FLAG:パートナー}, RESULT
 				ENDIF
 			ELSE
-				PRINTFORMW %ITEMNAME:RESULT%を回収しました
+				PRINTFORMW %SUBSTRINGU(ITEMNAME:RESULT, 2, -1)%を回収しました
 				ITEM:RESULT = 0
 			ENDIF
 			RESTART
@@ -499,6 +499,7 @@ DO
 			PRINTL 
 			PRINTL 6-上級娼婦を任命する
 			PRINTL ├上級娼婦に任命されたキャラは、売春中にプレイアブル可能になります。
+			PRINTL ├運営方針を設定していない場合はできません。
 			PRINTW └お客様とのより濃厚な売春を楽しみたいならぜひ任命してみましょう。
 	ENDSELECT
 LOOP LOOPRES(0, 1, 2, 3, 4, 5, 20)
@@ -519,44 +520,44 @@ FOR LCOUNT, 1500, 1580
 	SIF !ITEM:LCOUNT
 		CONTINUE
 	SELECTCASE ITEMNAME:LCOUNT
-		CASE "ローター"
+		CASE "娼館ローター"
 			ソフトポイント += 20
 			ハードポイント += 10
 			狂気ポイント += 5
-		CASE "バイブ"
+		CASE "娼館バイブ"
 			ハードポイント += 10
 			SMポイント += 20
 			狂気ポイント += 15
-		CASE "鞭"
+		CASE "娼館鞭"
 			SMポイント += 30
 			狂気ポイント += 20
-		CASE "縄"
+		CASE "娼館縄"
 			SMポイント += 25
 			狂気ポイント += 35
-		CASE "ペニスバンド"
+		CASE "娼館ペニスバンド"
 			ハードポイント += 10
 			SMポイント += 30
 			狂気ポイント += 5
-		CASE "コンドーム"
+		CASE "娼館コンドーム"
 			ソフトポイント += 5
 			ハードポイント += 20
 			SMポイント += 15
 			狂気ポイント += 5
-		CASE "ローション"
+		CASE "娼館ローション"
 			ソフトポイント += 15
 			ハードポイント += 20
 			SMポイント += 10
 			狂気ポイント += 5
-		CASE "媚薬"
+		CASE "娼館媚薬"
 			ソフトポイント += 20
 			ハードポイント += 40
 			SMポイント += 35
 			狂気ポイント += 30
-		CASE "睡眠薬"
+		CASE "娼館睡眠薬"
 			ハードポイント += 5
 			SMポイント += 10
 			狂気ポイント += 30
-		CASE "ゴム手袋"
+		CASE "娼館ゴム手袋"
 			ソフトポイント += 15
 			狂気ポイント += 5
 	ENDSELECT
@@ -617,6 +618,9 @@ DRAWLINE
 
 LOCAL = FINDCHARA(CFLAG:上級娼婦, 1)
 IF LOCAL >= 0
+	;方針設定してないとダメ
+	SIF 娼館方針 == 0
+		GOTO 通常営業
 	;体力不足
 	IF BASE:LOCAL:体力 <= 1000
 		PRINTFORML %CALLNAME:LOCAL%は疲労で娼館を休みました
@@ -649,7 +653,7 @@ FOR LCOUNT, 1, CHARANUM
 		CONTINUE
 	ENDIF
 	;上級娼婦は上で処理してるので除外
-	SIF CFLAG:LCOUNT:上級娼婦
+	SIF CFLAG:LCOUNT:上級娼婦 && 娼館方針
 		CONTINUE
 	DRAWLINE
 	;体力不足
