@@ -1,0 +1,116 @@
+﻿;-------------------------------------------------
+;素股する
+;-------------------------------------------------
+@USERCOM_ABLE_素股する, ARG
+#FUNCTION
+;対象がペニス無いとダメ
+SIF !PENIS(TARGET)
+	RETURNF 0
+;実行者がペニスあるとダメ
+SIF PENIS(PLAYER)
+	RETURNF 0
+;オナホール使用中はダメ
+SIF TEQUIP:オナホール
+	RETURNF 0
+
+COMRESULT = 1
+RETURNF 1
+
+@COM_素股する
+PRINTL 素股する
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 200
+
+;ABL:調教者の技巧をみる
+LOCAL += ((LOCAL/10)*8)*ABL:PLAYER:技巧
+
+;ABL:欲望をみる
+LOCAL += (LOCAL/10)*ABL:欲望
+
+;奴隷のABL:Ｃ感覚をみる
+SELECTCASE ABL:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASEELSE
+		LOCAL += LOCAL*(ABL:Ｃ感覚-3)
+ENDSELECT
+
+CALL 射精ゲージ増加, LOCAL, TARGET
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 20
+LOSEBASE:気力 += 60
+
+DOWNBASE:MASTER:体力 += 30
+DOWNBASE:MASTER:気力 += 30
+
+SOURCE:快C = 200
+SOURCE:達成 = 100
+SOURCE:液体 = 50
+SOURCE:露出 = 50
+SOURCE:屈従 = 100
+SOURCE:逸脱 = 200
+SOURCE:反感 = 200
+SOURCE:不潔 = 50
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 300
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+IF (TEQUIP:PLAYER:下半身下着 && CFLAG:PLAYER:挿入可) || OVER_GENITAL(PLAYER) == CSTR:PLAYER:下半身下着
+	;下着に擦りつけた場合は下着が汚れる
+	STAIN:PLAYER:下着 |= STAIN:ペニス
+	STAIN:ペニス |= STAIN:PLAYER:下着
+ELSEIF OVER_GENITAL(TARGET) == ""
+	;実行者のヴァギナ⇔対象のペニスの汚れが移動
+	STAIN:PLAYER:ヴァギナ |= STAIN:ペニス
+	STAIN:ペニス |= STAIN:PLAYER:ヴァギナ
+ENDIF
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 2, 1
+
+;依存度補正値(相性100↑かつ淫乱で1、娼婦で2）
+IF TALENT:淫乱 && RELATION:(NO:PLAYER) > 100
+	TFLAG:依存度補正 += 1
+ELSEIF TALENT:娼婦 && RELATION:(NO:PLAYER) > 100
+	TFLAG:依存度補正 += 2
+ENDIF
+
+RETURN 1
+

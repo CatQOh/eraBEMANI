@@ -1,0 +1,264 @@
+﻿;-------------------------------------------------
+;バイブ被挿入
+;-------------------------------------------------
+@USERCOM_ABLE_バイブ被挿入, ARG
+#FUNCTION
+;アイテムを持っていないとダメ
+IF 上級売春中
+	SIF !ITEM:娼館バイブ
+		RETURNF 0
+ELSE
+	SIF !ITEM:バイブ
+		RETURNF 0
+ENDIF
+;調教者が膣無いとダメ
+SIF !VAGINA(PLAYER)
+	RETURNF 0
+;縄使用中は不可
+SIF TEQUIP:縄
+	RETURNF 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURNF 0
+
+COMRESULT = 1
+RETURNF 1
+
+@実行判定_バイブ被挿入
+;-------------------------------------------------
+;実行判定処理
+;-------------------------------------------------
+;すべての命令に共通の要素を考慮
+;(従順が高いと命令に従いやすいなど)
+CALL COM_ORDER
+
+VARSET LOCAL, 0
+LOCAL = RESULT
+
+;ABL:欲望
+IF ABL:欲望
+	LOCAL += ABL:欲望
+	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望})
+ENDIF
+;ABL:奉仕精神
+IF ABL:奉仕精神
+	LOCAL += ABL:奉仕精神*4
+	PRINTFORM +奉仕精神LV{ABL:奉仕精神}({ABL:奉仕精神*4})
+ENDIF
+;ABL:精液中毒
+IF ABL:精液中毒
+	LOCAL += ABL:精液中毒*3
+	PRINTFORM +精液中毒LV{ABL:精液中毒}({ABL:精液中毒*3})
+ENDIF
+
+;PALAM:欲情
+LOCAL:1 = GETPALAMLV(PALAM:欲情, 5)
+LOCAL:2 = LOCAL:1
+SIF TALENT:衝動的
+	LOCAL:2 *= 2
+IF LOCAL:2
+	LOCAL += LOCAL:2
+	PRINTFORM +欲情LV{LOCAL:1}({LOCAL:2})
+ENDIF
+
+REPEAT VARSIZE("TALENT")
+	LOCAL:1 = 0
+	SIF !TALENT:COUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:COUNT
+		CASE "恥じらい"
+			LOCAL:1 = -3
+		CASE "献身的"
+			LOCAL:1 = 4
+		CASE "汚臭敏感"
+			LOCAL:1 = -3
+		CASE "汚臭鈍感"
+			LOCAL:1 = 2
+		CASE "女嫌い"
+			SIF SEX(PLAYER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
+				LOCAL:1 = -12
+	ENDSELECT
+	IF LOCAL:1
+		PRINTFORM \@SIGN(LOCAL:1) == 1 ? + # - \@%TALENTNAME:COUNT%({ABS(LOCAL:1)})
+		LOCAL += LOCAL:1
+	ENDIF
+REND
+
+;合計を表示(22以上で実行)
+PRINTFORM  = {LOCAL}
+
+LOCAL:2 = 22
+SIF LOCAL < LOCAL:2
+	PRINT  < 
+SIF LOCAL == LOCAL:2
+	PRINT  = 
+SIF LOCAL > LOCAL:2
+	PRINT  > 
+PRINTFORM 実行値{LOCAL:2}
+WAIT
+;実行できない
+IF LOCAL < LOCAL:2
+	CALL KOJO_MESSAGE_EVENT, "コマンド拒否時"
+	RETURN 0
+ELSE
+	RETURN 1
+ENDIF
+
+@COM_バイブ被挿入
+PRINTL バイブ被挿入
+
+SIF !TFLAG:実行判定無視
+	CALLFORM 実行判定_%SELECTCOMS%
+SIF !RESULT && !TFLAG:実行判定無視
+	RETURN 0
+
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+CALL KOJO_MESSAGE_COM
+
+;実行者が奴隷であるフラグ
+TFLAG:奴隷実行 = 1
+
+;-------------------------------------------------
+;脱衣
+;-------------------------------------------------
+IF TEQUIP:下半身下着
+	IF CFLAG:挿入可
+		TEQUIP:下半身下着 = 0
+	ELSE
+		TEQUIP:下半身下着 = 0
+		TEQUIP:下半身上着 = 0
+		TEQUIP:全身上着 = 0
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;射精ゲージチェック
+;-------------------------------------------------
+LOCAL = 400
+
+;ABL:技巧をみる
+LOCAL += LOCAL/10*4*ABL:技巧
+
+;ABL:奉仕精神をみる
+LOCAL += (LOCAL/10)*ABL:奉仕精神
+
+;プレイヤーのABL:Ｖ感覚をみる
+SELECTCASE ABL:PLAYER:Ｖ感覚
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.50
+	CASE 2
+		TIMES LOCAL , 2.00
+	CASE 3
+		TIMES LOCAL , 2.50
+	CASE 4
+		TIMES LOCAL , 3.50
+	CASEELSE
+		LOCAL += LOCAL*(ABL:PLAYER:Ｖ感覚-1)
+ENDSELECT
+
+CALL 射精ゲージ増加, LOCAL, PLAYER
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 25
+LOSEBASE:気力 += 50
+
+DOWNBASE:MASTER:体力 += 50
+DOWNBASE:MASTER:気力 += 40
+
+SOURCE:性行動 = 400
+SOURCE:達成 = 200
+SOURCE:屈従 = 200
+SOURCE:恭順 = 150
+SOURCE:逸脱 = 300
+SOURCE:反感 = 300
+SOURCE:不潔 = 100
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 200
+
+IF TALENT:PLAYER:処女
+	IF TALENT:PLAYER:性転換済
+		IF ASSIPLAY
+			IF CFLAG:ASSI:陥落
+				CFLAG:ASSI:性転換処女の奪われ方 = 2
+			ELSEIF RELATION:ASSI:(NO:TARGET)
+				CFLAG:ASSI:性転換処女の奪われ方 = 3
+			ELSE
+				CFLAG:ASSI:性転換処女の奪われ方 = 1
+			ENDIF
+		ENDIF
+		VIRGIN:PLAYER:11 = %NAME:TARGET%
+	ELSE
+		IF ASSIPLAY
+			IF CFLAG:ASSI:陥落
+				CFLAG:ASSI:処女の奪われ方 = 2
+			ELSEIF RELATION:ASSI:(NO:TARGET)
+				CFLAG:ASSI:処女の奪われ方 = 3
+			ELSE
+				CFLAG:ASSI:処女の奪われ方 = 1
+			ENDIF
+		ENDIF
+		VIRGIN:PLAYER:1 = %NAME:TARGET%
+	ENDIF
+ENDIF
+
+IF TALENT:PLAYER:処女 || TALENT:PLAYER:再生処女
+	PRINTFORMW %CALLNAME:PLAYER%処女喪失
+	SETBIT STAIN:PLAYER:膣内, 6
+ENDIF
+
+TALENT:PLAYER:処女 = 0
+TALENT:PLAYER:再生処女 = 0
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK, 6
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT, 6, NOWEX:PLAYER:射精
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 1, 2
+
+;嗜虐快楽経験
+IF ABL:サドっ気 >= 5
+	PRINTFORML 嗜虐快楽経験+{ABL:サドっ気/5}
+	EXP:嗜虐快楽経験 += ABL:サドっ気/5
+ENDIF
+
+;依存度補正値(主人かつ恋慕、淫乱、服従で1。親愛、娼婦、隷属で2）
+IF (TALENT:恋慕 || TALENT:淫乱 || TALENT:服従) && PLAYER == MASTER
+	TFLAG:依存度補正 += 1
+ELSEIF (TALENT:親愛 || TALENT:娼婦 || TALENT:隷属) && PLAYER == MASTER
+	TFLAG:依存度補正 += 2
+ENDIF
+
+;奉仕快楽フラグ
+TFLAG:奉仕快楽 = 1
+
+RETURN 1
+

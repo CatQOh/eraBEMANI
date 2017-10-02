@@ -1,0 +1,243 @@
+﻿;-------------------------------------------------
+;アナル愛撫させる
+;-------------------------------------------------
+@USERCOM_ABLE_アナル愛撫させる, ARG
+#FUNCTION
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURNF 0
+
+COMRESULT = 1
+RETURNF 1
+
+@実行判定_アナル愛撫させる
+;-------------------------------------------------
+;実行判定処理
+;-------------------------------------------------
+;すべての命令に共通の要素を考慮
+;(従順が高いと命令に従いやすいなど)
+CALL COM_ORDER
+
+VARSET LOCAL, 0
+LOCAL = RESULT
+
+;ABL:欲望
+IF ABL:欲望
+	LOCAL += ABL:欲望
+	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望})
+ENDIF
+;ABL:奉仕精神
+IF ABL:奉仕精神
+	LOCAL += ABL:奉仕精神*3
+	PRINTFORM +奉仕精神LV{ABL:奉仕精神}({ABL:奉仕精神*3})
+ENDIF
+;快楽刻印
+IF MARK:快楽刻印
+	LOCAL += MARK:快楽刻印*2
+	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印*2})
+ENDIF
+
+REPEAT VARSIZE("TALENT")
+	LOCAL:1 = 0
+	SIF !TALENT:COUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:COUNT
+		CASE "汚臭鈍感", "汚れ無視", "倒錯的", "サド"
+			LOCAL:1 = 3
+		CASE "汚臭敏感", "潔癖症"
+			LOCAL:1 = -5
+	ENDSELECT
+	IF LOCAL:1
+		PRINTFORM \@SIGN(LOCAL:1) == 1 ? + # - \@%TALENTNAME:COUNT%({ABS(LOCAL:1)})
+		LOCAL += LOCAL:1
+	ENDIF
+REND
+
+LOCAL:1 = 0
+;愛液の汚れ
+SIF GETBIT(STAIN:PLAYER:アナル, 0)
+	LOCAL:1 += 1
+;精液の汚れ
+SIF GETBIT(STAIN:PLAYER:アナル, 2)
+	LOCAL:1 += 3
+;アナルの汚れ
+SIF GETBIT(STAIN:PLAYER:アナル, 3)
+	LOCAL:1 += 5
+;尿
+SIF GETBIT(STAIN:PLAYER:アナル, 7)
+	LOCAL:1 += 5
+
+SIF TALENT:汚れ無視
+	LOCAL:1 /= 3
+SIF TALENT:潔癖症
+	LOCAL:1 *= 2
+
+;汚れあり
+IF LOCAL:1
+	LOCAL -= LOCAL:1
+	IF TALENT:汚れ無視
+		PRINT -汚れあり、汚れ無視
+	ELSEIF TALENT:潔癖症
+		PRINT -汚れあり、潔癖症
+	ELSE
+		PRINT -汚れあり
+	ENDIF
+	PRINTFORM ({LOCAL:1})
+ENDIF
+
+;合計を表示(22以上で実行)
+PRINTFORM  = {LOCAL}
+
+LOCAL:2 = 22
+SELECTCASE LOCAL
+	CASE IS < LOCAL:2
+		PRINT  < 
+	CASE IS > LOCAL:2
+		PRINT  > 
+	CASEELSE
+		PRINT  = 
+ENDSELECT
+PRINTFORM 実行値{LOCAL:2}
+WAIT
+;実行できない
+IF LOCAL < LOCAL:2
+		CALL KOJO_MESSAGE_EVENT, "コマンド拒否時"
+	RETURN 0
+ELSE
+	RETURN 1
+ENDIF
+
+@COM_アナル愛撫させる
+PRINTL アナル愛撫させる
+
+SIF !TFLAG:実行判定無視
+	CALLFORM 実行判定_%SELECTCOMS%
+SIF !RESULT && !TFLAG:実行判定無視
+	RETURN 0
+
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+CALL KOJO_MESSAGE_COM
+
+;実行者が奴隷であるフラグ
+TFLAG:奴隷実行 = 1
+
+;-------------------------------------------------
+;脱衣
+;-------------------------------------------------
+IF !CFLAG:PLAYER:挿入可
+	TEQUIP:PLAYER:下半身上着 = 0
+	TEQUIP:PLAYER:全身上着 = 0
+ENDIF
+TEQUIP:PLAYER:下半身下着 = 0
+
+;-------------------------------------------------
+;射精ゲージチェック
+;-------------------------------------------------
+LOCAL = 150
+
+;ABL:技巧をみる
+LOCAL += (LOCAL/5)*ABL:技巧
+
+;ABL:従順をみる
+LOCAL += (LOCAL/10)*ABL:従順 - (LOCAL/10)*2
+
+;ABL:奉仕精神をみる
+SELECTCASE ABL:奉仕精神
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.20
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 1.80
+	CASEELSE
+		LOCAL += LOCAL/3*ABL:奉仕精神
+ENDSELECT
+
+;プレイヤーのABL:Ａ感覚をみる
+SELECTCASE ABL:PLAYER:Ａ感覚
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.50
+	CASE 2
+		TIMES LOCAL , 2.00
+	CASE 3
+		TIMES LOCAL , 2.50
+	CASE 4
+		TIMES LOCAL , 3.50
+	CASEELSE
+		LOCAL += LOCAL*(ABL:PLAYER:Ａ感覚-1)
+ENDSELECT
+
+CALL 射精ゲージ増加, LOCAL, PLAYER
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 40
+LOSEBASE:気力 += 60
+
+DOWNBASE:MASTER:体力 += 30
+DOWNBASE:MASTER:気力 += 30
+
+SOURCE:性行動 = 400
+SOURCE:達成 = 100
+SOURCE:屈従 = 200
+SOURCE:逸脱 = 300
+SOURCE:反感 = 300
+
+;上のほうで計算した汚れデータ
+SOURCE:不潔 = LOCAL:1*50+150
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 300
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK, 6
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT, 6, NOWEX:PLAYER:射精
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;奴隷の手⇔調教者のアナルの汚れが移動
+STAIN:手 |= STAIN:PLAYER:アナル
+STAIN:PLAYER:アナル |= STAIN:手
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 2, 2
+
+;依存度補正値(服従で1、隷属で2）
+IF TALENT:服従 && PLAYER == MASTER
+	TFLAG:依存度補正 += 1
+ELSEIF TALENT:隷属 && PLAYER == MASTER
+	TFLAG:依存度補正 += 2
+ENDIF
+
+;奉仕快楽フラグ
+TFLAG:奉仕快楽 = 1
+
+RETURN 1
+
