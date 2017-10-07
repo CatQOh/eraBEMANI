@@ -125,7 +125,10 @@ IF TARGET >= 0
 	;撤廃しました
 	;SIF CFLAG:ストレス値 >= 100 && !TALENT:崩壊
 	;	CALL COLLAPSE_MIND_TRAIN
-
+	
+	;ストレス値が999より大きい場合999にする
+	SIF CFLAG:ストレス値 > 999
+		CFLAG:ストレス値 = 999
 	;依存度が-1000未満の場合、-1000にする
 	SIF CFLAG:依存度 < -1000
 		CFLAG:依存度 = -1000
@@ -369,15 +372,16 @@ REPEAT CHARANUM
 	SIF CFLAG:COUNT:配属 == 4 &&  CFLAG:COUNT:レッスン != 0
 		LOCAL /= 8
 
-	BASE:COUNT:体力 += LOCAL / (1 + CFLAG:COUNT:回復量低下)
-	SIF BASE:COUNT:体力 > MAXBASE:COUNT:体力
-		BASE:COUNT:体力 = MAXBASE:COUNT:体力
-
 	;ストレス値が0未満の場合は0にする
 	SIF CFLAG:COUNT:ストレス値 < 0
 		CFLAG:COUNT:ストレス値 = 0
-	CFLAG:COUNT:休憩 = 0
+
+	;「回復量低下」と「ストレス値」によって回復量がさらに下がる
+	BASE:COUNT:体力 += 10 * LOCAL / (1 + CFLAG:COUNT:回復量低下) / CBRT(1000*(1+CFLAG:COUNT:ストレス値))
+	SIF BASE:COUNT:体力 > MAXBASE:COUNT:体力
+		BASE:COUNT:体力 = MAXBASE:COUNT:体力
 	
+	CFLAG:COUNT:休憩 = 0
 	;回復量低下処理
 	SIF CFLAG:COUNT:回復量低下 > 0
 		CFLAG:COUNT:回復量低下--
