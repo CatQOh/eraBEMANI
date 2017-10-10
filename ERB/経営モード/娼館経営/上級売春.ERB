@@ -58,19 +58,19 @@ IF RAND:4 == 0
 	ABL:技巧 = 0
 ENDIF
 
-SELECTCASE RAND:5
+SELECTCASE RAND:4
 	CASE 0, 1
 		PRINTW 男性だ
 		TALENT:性別 = 1
 	CASE 2
 		PRINTW 女性だ
 		TALENT:性別 = 2
+;	CASE 3
+;		PRINTW ふたなり男性だ
+;		TALENT:性別 = 1
+;		TALENT:ふたなり = 1
+;		EXP:射精経験 = 10
 	CASE 3
-		PRINTW ふたなり男性だ
-		TALENT:性別 = 1
-		TALENT:ふたなり = 1
-		EXP:射精経験 = 10
-	CASE 4
 		PRINTW ふたなり女性だ
 		TALENT:性別 = 2
 		TALENT:ふたなり = 1
@@ -540,10 +540,338 @@ DO
 	CALL SHOW_USERCOM
 	INPUT
 	CALL USERCOM
+	;コマンドが実行された場合のみRETURNで0が返されるはずなのでRESULTが0の場合にいろいろ計算する
+;	SIF RESULT == 0
+;		CALL 上級売春コマンド結果
 LOOP 上級売春中 != 2
 
 ;立つ鳥跡を濁さず
 CALL CVAR_RESET
 
 DELCHARA TARGET
+
+@上級売春コマンド結果
+#DIM DYNAMIC 技巧レベル
+#DIM DYNAMIC 性格レベル
+
+技巧レベル = ABL:PLAYER:技巧
+
+性格レベル = ABL:PLAYER:従順+ABL:PLAYER:奉仕精神/2
+IF TALENT:PLAYER:生意気
+	IF 娼館方針 == 3 && TALENT:マゾ
+		性格レベル++
+	ELSE
+		性格レベル--
+	ENDIF
+ENDIF
+
+IF TALENT:PLAYER:臆病
+	SIF 娼館方針 == 3 && TALENT:サド
+		性格レベル++
+ENDIF
+
+SIF TALENT:PLAYER:素直
+	性格レベル++
+
+IF TALENT:PLAYER:反抗的
+	IF 娼館方針 == 3
+		性格レベル--
+	ELSE
+		性格レベル -= 2
+	ENDIF
+ENDIF
+
+IF TALENT:PLAYER:気丈
+	SIF 娼館方針 == 3 && TALENT:サド
+		性格レベル--
+ENDIF
+
+IF TALENT:PLAYER:衝動的
+	SIF 娼館方針 == 1
+		性格レベル--
+ENDIF
+
+IF TALENT:PLAYER:プライド高い
+	IF 娼館方針 == 3
+		性格レベル++
+	ELSE
+		性格レベル--
+	ENDIF
+ENDIF
+
+IF TALENT:PLAYER:大人しい
+	IF TALENT:マゾ
+		性格レベル--
+	ELSE
+		性格レベル++
+	ENDIF
+ENDIF
+
+IF TALENT:PLAYER:自制心
+	SIF 娼館方針 == 1
+		性格レベル++
+ENDIF
+
+IF TALENT:PLAYER:無関心
+	SIF 娼館方針 != 4
+		性格レベル--
+ENDIF
+
+IF TALENT:PLAYER:感情乏しい
+	IF 娼館方針 == 1
+		性格レベル--
+	ELSEIF 娼館方針 == 4
+		性格レベル++
+	ENDIF
+ENDIF
+
+IF TALENT:PLAYER:貞操観念
+	SIF 娼館方針 == 2
+		性格レベル -= 2
+ENDIF
+
+IF TALENT:PLAYER:抵抗
+	SIF 娼館方針 == 3 && TALENT:サド
+		性格レベル++
+ENDIF
+IF TALENT:PLAYER:恥じらい
+	IF 娼館方針 == 1
+		性格レベル--
+	ELSE
+		性格レベル++
+	ENDIF
+ENDIF
+
+IF TALENT:PLAYER:快感に素直
+	SIF 娼館方針 == 2
+		性格レベル += 2
+ENDIF
+
+IF TALENT:PLAYER:快感の否定
+	SIF 娼館方針 == 2
+		性格レベル -= 2
+ENDIF
+
+IF TALENT:PLAYER:倒錯的
+	SIF 娼館方針 == 3
+		性格レベル += 2
+ENDIF
+
+SIF TALENT:PLAYER:男嫌い && SEX(TARGET) == 1
+	性格レベル--
+
+SIF TALENT:PLAYER:女嫌い && SEX(TARGET) == 2
+	性格レベル--
+
+SIF TALENT:PLAYER:同族嫌悪 && CSTR:種族 == CSTR:PLAYER:種族
+	性格レベル--
+
+IF TALENT:PLAYER:サド
+	SIF TALENT:マゾ
+		性格レベル++
+ENDIF
+
+IF TALENT:PLAYER:マゾ
+	SIF TALENT:サド
+		性格レベル++
+ENDIF
+
+IF TALENT:PLAYER:小悪魔
+	SIF 娼館方針 == 1
+		性格レベル++
+ENDIF
+
+SIF TALENT:PLAYER:魅力
+	性格レベル++
+
+SIF TALENT:PLAYER:魅惑
+	性格レベル++
+
+SIF TALENT:PLAYER:謎の魅力
+	性格レベル += 2
+
+SIF TALENT:PLAYER:鼓舞
+	性格レベル++
+
+SIF TALENT:PLAYER:人気
+	性格レベル++
+
+IF TALENT:PLAYER:母性
+	SIF 娼館方針 == 1
+		性格レベル++
+ENDIF
+
+SELECTCASE SELECTCOMS
+	CASE "愛撫"
+		TFLAG:満足度 += 10+技巧レベル+性格レベル/2+(ABL:Ｃ感覚+ABL:Ｂ感覚)/3
+		TFLAG:上級売春収入値 += 200
+		IF 娼館方針 != 1
+			TFLAG:満足度 -= 5
+			TFLAG:上級売春収入値 -= 50
+		ENDIF
+		IF NOWEX:射精
+			TFLAG:満足度 += 3
+			TFLAG:上級売春収入値 += 50
+		ENDIF
+	CASE "クンニ"
+		TFLAG:満足度 += 15+技巧レベル+性格レベル/2+ABL:Ｃ感覚
+		TFLAG:上級売春収入値 += 300
+		IF NOWEX:射精
+			TFLAG:満足度 += 5
+			TFLAG:上級売春収入値 += 100
+		ENDIF
+	CASE "フェラする"
+		TFLAG:満足度 += 20+技巧レベル+性格レベル/2+ABL:Ｃ感覚
+		TFLAG:上級売春収入値 += 400
+		IF NOWEX:潮噴き
+			TFLAG:満足度 += 5
+			TFLAG:上級売春収入値 += 100
+			IF TALENT:マゾ
+				TFLAG:満足度 += 20
+				TFLAG:上級売春収入値 += 500
+			ENDIF
+		ENDIF
+		IF NOWEX:射精
+			TFLAG:満足度 += 10
+			TFLAG:上級売春収入値 += 200
+		ENDIF
+	CASE "指挿入れ"
+		TFLAG:満足度 += 10+技巧レベル+性格レベル/2+ABL:Ｖ感覚/2
+		TFLAG:上級売春収入値 += 200
+		IF NOWEX:Ｖ絶頂
+			TFLAG:満足度 += 15
+			TFLAG:上級売春収入値 += 250
+		ENDIF
+		IF NOWEX:射精
+			TFLAG:満足度 += 5
+			TFLAG:上級売春収入値 += 100
+		ENDIF
+	CASE "アナル舐め"
+		TFLAG:満足度 += 10+技巧レベル+性格レベル/2+ABL:Ａ感覚/3
+		TFLAG:上級売春収入値 += 250
+		IF TALENT:マゾ || ABL:Ａ感覚
+			TFLAG:満足度 += 5
+			TFLAG:上級売春収入値 += 50
+		ELSE
+			TFLAG:満足度 -= 3
+		ENDIF
+		IF NOWEX:Ａ絶頂
+			TFLAG:満足度 += 10
+			TFLAG:上級売春収入値 += 150
+		ENDIF
+		IF NOWEX:射精
+			TFLAG:満足度 += 5
+			TFLAG:上級売春収入値 += 100
+		ENDIF
+	CASE "アナル愛撫"
+		TFLAG:満足度 += 15+技巧レベル+性格レベル/2+ABL:Ａ感覚/2
+		TFLAG:上級売春収入値 += 350
+		IF TALENT:マゾ || ABL:Ａ感覚
+			TFLAG:満足度 += 10
+			TFLAG:上級売春収入値 += 100
+		ELSE
+			TFLAG:満足度 -= 5
+		ENDIF
+		IF NOWEX:Ａ絶頂
+			TFLAG:満足度 += 15
+			TFLAG:上級売春収入値 += 250
+		ENDIF
+		IF NOWEX:射精
+			TFLAG:満足度 += 10
+			TFLAG:上級売春収入値 += 200
+		ENDIF
+	CASE "胸揉み", "乳首責め", "胸愛撫"
+		TFLAG:満足度 += 10+技巧レベル+性格レベル/2+ABL:Ｂ感覚/2
+		TFLAG:上級売春収入値 += 200
+		IF NOWEX:Ｂ絶頂
+			TFLAG:満足度 += 10
+			TFLAG:上級売春収入値 += 250
+		ENDIF
+	CASE "秘貝開帳"
+		TFLAG:満足度 += 3+性格レベル
+		TFLAG:上級売春収入値 += 50
+		IF TALENT:マゾ
+			TFLAG:満足度 += 7
+			TFLAG:上級売春収入値 += 150
+		ELSEIF TALENT:サド
+			TFLAG:満足度 -= 3
+		ENDIF
+	CASE "胸自慰"
+		TFLAG:満足度 += 3+性格レベル+ABL:Ｂ感覚/3
+		TFLAG:上級売春収入値 += 50
+		IF TALENT:マゾ
+			TFLAG:満足度 += 7
+			TFLAG:上級売春収入値 += 150
+		ELSEIF TALENT:サド
+			TFLAG:満足度 -= 3
+		ENDIF
+		IF NOWEX:Ｂ絶頂
+			TFLAG:満足度 += 5
+			TFLAG:上級売春収入値 += 200
+		ENDIF
+		
+	CASE "自慰"
+		TFLAG:満足度 += 5+性格レベル+ABL:Ｃ感覚/3
+		TFLAG:上級売春収入値 += 100
+		IF TALENT:マゾ
+			TFLAG:満足度 += 10
+			TFLAG:上級売春収入値 += 250
+		ELSEIF TALENT:サド
+			TFLAG:満足度 -= 5
+		ENDIF
+		IF NOWEX:射精 || NOWEX:Ｃ絶頂
+			TFLAG:満足度 += 10
+			TFLAG:上級売春収入値 += 300
+		ENDIF
+	CASE "足扱きする"
+		TFLAG:満足度 += 15+技巧レベル+性格レベル/2+ABL:Ｃ感覚/2
+		TFLAG:上級売春収入値 += 250
+		IF TALENT:マゾ
+			TFLAG:満足度 += 15
+			TFLAG:上級売春収入値 += 250
+		ENDIF
+		IF NOWEX:射精
+			TFLAG:満足度 += 10
+			TFLAG:上級売春収入値 += 200
+			IF TALENT:マゾ
+				TFLAG:満足度 += 10
+				TFLAG:上級売春収入値 += 200
+			ENDIF
+		ENDIF
+	CASE "下着扱きする"
+		TFLAG:満足度 += 15+技巧レベル+性格レベル/2+ABL:Ｃ感覚/2
+		TFLAG:上級売春収入値 += 250
+		IF TALENT:PLAYER:小柄体型
+			TFLAG:満足度 += 5
+			TFLAG:上級売春収入値 += 100
+		ENDIF
+		IF NOWEX:射精
+			TFLAG:満足度 += 10
+			TFLAG:上級売春収入値 += 200
+		ENDIF
+	CASE "手淫する"
+		TFLAG:満足度 += 15+技巧レベル+性格レベル/2+ABL:Ｃ感覚/2
+		TFLAG:上級売春収入値 += 250
+		IF NOWEX:射精
+			TFLAG:満足度 += 20
+			TFLAG:上級売春収入値 += 350
+		ENDIF
+	CASE "自慰見せつけ"
+		TFLAG:満足度 += 5+(性格レベル*3)/2
+		TFLAG:上級売春収入値 += 200
+		IF NOWEX:PLAYER:射精
+			TFLAG:満足度 += 10
+			TFLAG:上級売春収入値 += 200
+		ENDIF
+	CASE "秘貝開帳見せつけ"
+		TFLAG:満足度 += 5+(性格レベル*3)/2
+		TFLAG:上級売春収入値 += 200
+		IF TALENT:女好き
+			TFLAG:満足度 += 10
+			TFLAG:上級売春収入値 += 150
+		ENDIF
+;	CASE ""
+;		TFLAG:満足度 += 
+;		TFLAG:上級売春収入値 += 
+ENDSELECT
 
