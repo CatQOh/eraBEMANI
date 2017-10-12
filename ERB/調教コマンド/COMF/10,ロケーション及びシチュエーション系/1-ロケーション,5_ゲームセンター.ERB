@@ -1,0 +1,130 @@
+﻿;-------------------------------------------------
+;ゲームセンター
+;-------------------------------------------------
+@USERCOM_ABLE_ゲームセンター, ARG
+#FUNCTION
+;上級売春中は不可
+SIF 上級売春中
+	RETURNF 0
+;陥落済みじゃないとダメ
+SIF !CFLAG:陥落
+	RETURNF 0
+;助手が居るなら助手も陥落してないとダメ
+SIF ASSI > 0 && !CFLAG:ASSI:陥落
+	RETURNF 0
+;ゲーセン経営してないとダメ
+SIF !GC物件 || !FLAG:ゲーセン営業中
+	RETURNF 0
+;解除はいつでも可能
+IF TEQUIP:ゲームセンター
+	COMRESULT = 1
+	RETURNF 1
+ENDIF
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURNF 0
+;お風呂場プレイ中はダメ
+SIF TEQUIP:お風呂場
+	RETURNF 0
+;新妻プレイ中はダメ
+SIF TEQUIP:エプロン
+	RETURNF 0
+;野外プレイ中はダメ
+SIF TEQUIP:野外プレイ
+	RETURNF 0
+;搾乳機使用中はダメ
+SIF TEQUIP:搾乳器
+	RETURNF 0
+;拘束中はダメ
+SIF TEQUIP:縄 || TEQUIP:ボールギャグ || TEQUIP:アイマスク
+	RETURNF 0
+;服着てないとダメ
+SIF !((TEQUIP:全身上着 && CFLAG:着衣併用 != 1) || (TEQUIP:上半身上着 && TEQUIP:下半身上着))
+	RETURNF 0
+;主人も
+SIF !((TEQUIP:MASTER:全身上着 && CFLAG:MASTER:着衣併用 != 1) || (TEQUIP:MASTER:上半身上着 && TEQUIP:MASTER:下半身上着))
+	RETURNF 0
+;助手が居るなら助手も
+SIF ASSI > 0 && !((TEQUIP:ASSI:全身上着 && CFLAG:ASSI:着衣併用 != 1) || (TEQUIP:ASSI:上半身上着 && TEQUIP:ASSI:下半身上着))
+	RETURNF 0
+
+COMRESULT = 1
+RETURNF 1
+
+@COM_ゲームセンター
+IF TEQUIP:ゲームセンター
+	PRINTL ゲームセンターを後にする
+ELSE
+	PRINTL ゲームセンターに行く
+ENDIF
+CALL KOJO_MESSAGE_COM
+
+;異物だけはここで解除しておく
+TEQUIP:Ｖ異物 = 0
+TEQUIP:Ａ異物 = 0
+
+INVERTBIT TEQUIP:ゲームセンター, 0
+
+IF !TEQUIP:ゲームセンター
+	TEQUIP:トイレ = 0
+	RETURN 1
+ENDIF
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 30
+LOSEBASE:気力 += 30
+SIF TALENT:音ゲーマー
+	LOSEBASE:気力 -= 30
+
+SOURCE:恭順 = 300
+SOURCE:露出 = 100
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+;CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+;CALL SAMEN_CHECK_T, 0
+
+;CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM_ゲームセンター
+LOSEBASE:体力 += 0
+LOSEBASE:気力 += 10
+SIF TALENT:音ゲーマー
+	LOSEBASE:気力 -= 10
+
+SOURCE:恭順 += 100
+SOURCE:露出 += 30
+
+RETURN 1
+
+;-------------------------------------------------
+;筐体がゲーセンに設置されてるかどうかの判定用関数
+;-------------------------------------------------
+@EXISTGAMES, ARGS
+#FUNCTION
+#DIM DYNAMIC 階層
+#DIM DYNAMIC LCOUNT
+
+FOR 階層, 1, GC階層+1
+	FOR LCOUNT, 1100, 1500
+		LOCAL = 0
+		SIF !設置筐体:階層:LCOUNT
+			CONTINUE
+		SIF ITEMNAME:LCOUNT == ARGS
+			RETURNF 1
+	NEXT
+NEXT
+

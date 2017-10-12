@@ -1,0 +1,99 @@
+﻿;-------------------------------------------------
+;jubeatをプレイする
+;-------------------------------------------------
+@USERCOM_ABLE_jubeatをプレイする, ARG
+#FUNCTION
+;ゲーセンに居ないとダメ
+SIF !TEQUIP:ゲームセンター
+	RETURNF 0
+;トイレに居るとダメ
+SIF TEQUIP:トイレ
+	RETURNF 0
+;筐体あるか確認
+SIF !EXISTGAMES("beatmaniaIIDX")
+	RETURNF 0
+;(ゲーセン経営してるなら特に問題は無いと思うけど)所持金無いとダメ
+IF ASSI > 0
+	SIF MONEY < 300
+		RETURNF 0
+ELSE
+	SIF MONEY < 200
+		RETURNF 0
+ENDIF
+
+COMRESULT = 1
+RETURNF 1
+
+@COM_jubeatをプレイする
+PRINTL jubeatをプレイする
+CALL KOJO_MESSAGE_COM
+
+IF ASSI > 0
+	MONEY -= 300
+ELSE
+	MONEY -= 200
+ENDIF
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 50
+LOSEBASE:気力 += 50
+SIF TALENT:音ゲーマー
+	LOSEBASE:気力 -= 20
+
+SOURCE:恭順 = 100
+SOURCE:中毒 = 100
+SOURCE:習得 = 100
+SOURCE:露出 = 100
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+IF TALENT:習得遅い
+	LOCAL = 1
+ELSEIF TALENT:習得早い
+	LOCAL = 3
+ELSE
+	LOCAL = 2
+ENDIF
+PRINTFORML 音ゲー経験+{LOCAL+1}
+EXP:音ゲー経験 += LOCAL+1
+
+IF TALENT:MASTER:習得遅い
+	LOCAL = 1
+ELSEIF TALENT:MASTER:習得早い
+	LOCAL = 3
+ELSE
+	LOCAL = 2
+ENDIF
+PRINTFORML 音ゲー経験+{LOCAL+1}(%CALLNAME:MASTER%)
+EXP:MASTER:音ゲー経験 += LOCAL+1
+
+IF ASSI > 0
+	IF TALENT:ASSI:習得遅い
+		LOCAL = 1
+	ELSEIF TALENT:ASSI:習得早い
+		LOCAL = 3
+	ELSE
+		LOCAL = 2
+	ENDIF
+	PRINTFORML 音ゲー経験+{LOCAL+1}(%CALLNAME:ASSI%)
+	EXP:ASSI:音ゲー経験 += LOCAL+1
+ENDIF
+
+RETURN 1
+

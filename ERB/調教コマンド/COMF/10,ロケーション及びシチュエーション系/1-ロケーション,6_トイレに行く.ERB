@@ -1,0 +1,79 @@
+﻿;-------------------------------------------------
+;トイレに行く
+;-------------------------------------------------
+@USERCOM_ABLE_トイレに行く, ARG
+#FUNCTION
+;ゲームセンターに居ないとダメ
+SIF !TEQUIP:ゲームセンター
+	RETURNF 0
+
+COMRESULT = 1
+RETURNF 1
+
+@COM_トイレに行く
+IF TEQUIP:トイレ
+	PRINTL トイレを出る
+ELSE
+	PRINTL トイレに行く
+ENDIF
+CALL KOJO_MESSAGE_COM
+
+INVERTBIT TEQUIP:トイレ, 0
+
+IF !TEQUIP:トイレ
+	TFLAG:トイレ使用時間 = 0
+	REPEAT 7
+		SIF CSTR:(COUNT+100) != ""
+			TEQUIP:COUNT = 1
+		SIF CSTR:MASTER:(COUNT+100) != ""
+			TEQUIP:MASTER:COUNT = 1
+		SIF ASSI > 0 && CSTR:ASSI:(COUNT+100) != ""
+			TEQUIP:ASSI:COUNT = 1
+	REND
+	RETURN 1
+ENDIF
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 10
+LOSEBASE:気力 += 30
+
+SOURCE:露出 = 300
+SOURCE:欲情 = 300
+SOURCE:不潔 = 500
+;トイレのメンテレベルで不快感下がる
+SOURCE:不潔 -= GCトイレ*20
+SIF SOURCE:不潔 < 0
+	SOURCE:不潔 = 0
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+;CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+;CALL SAMEN_CHECK_T, 0
+
+;CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM_トイレに行く
+LOSEBASE:体力 += 0
+LOSEBASE:気力 += 20
+
+;使用時間が長ければ長いほど効果が高い
+TFLAG:トイレ使用時間++
+
+SOURCE:露出 += 50*TFLAG:トイレ使用時間
+SOURCE:恐怖 += 50*TFLAG:トイレ使用時間
+
+RETURN 1
+
