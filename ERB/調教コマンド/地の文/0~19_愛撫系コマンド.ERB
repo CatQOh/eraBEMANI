@@ -16,9 +16,13 @@ ENDIF
 SIF TALENT:ファーリー
 	PRINT 体毛に覆われた
 PRINT 体を
-;着衣中 特殊と足元以外
-SIF TEQUIP:上半身上着 || TEQUIP:上半身下着 || TEQUIP:全身上着 || TEQUIP:下半身上着 || TEQUIP:下半身下着
-	PRINT 服の上から
+IF TEQUIP:ゲームセンター
+	PRINT 後ろから抱きしめ、
+ELSE
+	;着衣中 特殊と足元以外
+	SIF TEQUIP:上半身上着 || TEQUIP:上半身下着 || TEQUIP:全身上着 || TEQUIP:下半身上着 || TEQUIP:下半身下着
+		PRINT 服の上から
+ENDIF
 ;触手の有無で分岐
 IF TEQUIP:触手
 	PRINTW 触手が弄んでいる……
@@ -40,9 +44,19 @@ ENDIF
 ;-------------------------------------------------
 @MESSAGE_COM_クンニ
 PRINTFORM %CALLNAME:PLAYER%は
-SIF 上級売春中
-	PRINT 言われるままに
-PRINTFORM %CALLNAME:TARGET%の
+
+IF TEQUIP:ゲームセンター
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORM %CALLNAME:TARGET%を立たせたまましゃがみ込み
+		CASE 1
+			PRINTFORM %CALLNAME:TARGET%を便座に座らせると
+	ENDSELECT
+ELSE
+	SIF 上級売春中
+		PRINT 言われるままに
+	PRINTFORM %CALLNAME:TARGET%の
+ENDIF
 ;着衣中
 IF TEQUIP:下半身上着 || (TEQUIP:全身上着 && CFLAG:着衣併用 != 1)
 	PRINTFORM %OVER_GENITAL(TARGET)%を
@@ -130,21 +144,33 @@ WAIT
 ;2,フェラする
 ;-------------------------------------------------
 @MESSAGE_COM_フェラする
-PRINTFORM %CALLNAME:PLAYER%は%CALLNAME:TARGET%の
-;着衣中
-IF TEQUIP:下半身上着 || (TEQUIP:全身上着 && CFLAG:着衣併用 != 1)
-	SIF PALAM:欲情 >= PALAMLV:3
-		PRINT 欲に膨らむ陰部を隔てる
-	PRINTFORM %OVER_GENITAL(TARGET)%を
-	IF CFLAG:挿入可
-		PRINT 捲り上げ、
-	ELSE
-		PRINT ずらし、
+IF TEQUIP:ゲームセンター
+	IF 性器露出(TARGET)
+		IF OVER_GENITAL(TARGET) != ""
+			PRINTFORM %CALLNAME:TARGET%が%OVER_GENITAL(TARGET)%をたくし上げ、%CALLNAME:PLAYER%は
+		ELSE
+			PRINTFORM %CALLNAME:PLAYER%は%CALLNAME:TARGET%を立たせたまましゃがみ込み、
+			GOTO ELSE
+		ENDIF
 	ENDIF
-ELSEIF TEQUIP:下半身下着
-	SIF PALAM:欲情 >= PALAMLV:3
-		PRINT 窮屈そうな股ぐらを覆い隠す
-	PRINTFORM %CSTR:下半身下着%をずらして、
+ELSE
+	PRINTFORM %CALLNAME:PLAYER%は%CALLNAME:TARGET%の
+	$ELSE
+	;着衣中
+	IF TEQUIP:下半身上着 || (TEQUIP:全身上着 && CFLAG:着衣併用 != 1)
+		SIF PALAM:欲情 >= PALAMLV:3
+			PRINT 欲に膨らむ陰部を隔てる
+		PRINTFORM %OVER_GENITAL(TARGET)%を
+		IF CFLAG:挿入可
+			PRINT 捲り上げ、
+		ELSE
+			PRINT ずらし、
+		ENDIF
+	ELSEIF TEQUIP:下半身下着
+		SIF PALAM:欲情 >= PALAMLV:3
+			PRINT 窮屈そうな股ぐらを覆い隠す
+		PRINTFORM %CSTR:下半身下着%をずらして、
+	ENDIF
 ENDIF
 
 ;欲情のPALAMLV3以上
@@ -304,7 +330,11 @@ IF PLAYER == TFLAG:前コマンド実行者
 	ENDSELECT
 ENDIF
 
-PRINTFORM %CALLNAME:TARGET%の
+IF TEQUIP:ゲームセンター
+	PRINTFORM %CALLNAME:TARGET%を壁に手をつかせ
+ELSE
+	PRINTFORM %CALLNAME:TARGET%の
+ENDIF
 IF TEQUIP:下半身上着 || (TEQUIP:全身上着 && CFLAG:着衣併用 != 1)
 	PRINTFORM %OVER_GENITAL(TARGET)%を
 	IF CFLAG:挿入可
@@ -763,11 +793,17 @@ SELECTCASE PREVCOMS
 		RETURN 0
 ENDSELECT
 
-PRINTFORM %CALLNAME:PLAYER%に命令され、%CALLNAME:TARGET%は
+IF TEQUIP:ゲームセンター
+	PRINTFORM %CALLNAME:TARGET%を便座に座らせ、膣口を拡げて見せるように命じると、
+ELSE
+	PRINTFORM %CALLNAME:PLAYER%に命令され、%CALLNAME:TARGET%は
+ENDIF
 ;露出癖
 SELECTCASE ABL:露出癖
 	;LV0,1
 	CASE 0, 1
+		SIF CFLAG:陥落
+			GOTO FALL
 		PRINTFORM 涙を浮かべてこちらを睨んだが、再度命令されると、しぶしぶといった様子で
 		SIF OVER_GENITAL(TARGET) != ""
 			PRINTFORM %OVER_GENITAL(TARGET)%の中で
@@ -781,6 +817,7 @@ SELECTCASE ABL:露出癖
 		PRINT 指を挿し入れ、左右に拡げて見せた
 	;LV2,3
 	CASE 2, 3
+		$FALL
 		PRINTFORM 顔を真っ赤にしながらも、
 		SIF OVER_GENITAL(TARGET) != ""
 			PRINTFORM %OVER_GENITAL(TARGET)%から秘所を覗かせるように
@@ -978,6 +1015,8 @@ ENDIF
 ;ビデオ撮影中
 SIF TEQUIP:ビデオカメラ
 	PRINT ビデオカメラの前で
+SIF TEQUIP:ゲームセンター
+	PRINT 立ったまま
 ;露出癖LV3以上
 SIF ABL:露出癖 >= 3
 	PRINT 見せつけるようにして、
