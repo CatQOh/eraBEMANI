@@ -574,9 +574,39 @@ DO
 	INPUT
 	CALL USERCOM
 	;コマンドが実行された場合のみRETURNで0が返されるはずなのでRESULTが0の場合にいろいろ計算する
-;	SIF RESULT == 0
-;		CALL 上級売春コマンド結果
-LOOP 上級売春中 != 2
+	IF RESULT == 0
+		CALL 上級売春コマンド結果
+		IF TFLAG:満足度 >= 1000 && 上級売春中 == 1
+			DRAWLINE
+			PRINTFORML %CALLNAME:TARGET%は%CALLNAME:PLAYER%との行為に十分満足したようだ
+			PRINTFORML このまま帰ろうとする%CALLNAME:TARGET%を……
+			PRINTL [0] - 愛想良く見送る
+			PRINTL [1] - 行為を続けるべく引き止める
+			INPUT
+			DO
+				SELECTCASE RESULT
+					CASE 0
+						上級売春中 = 4
+					CASE 1
+						上級売春中 = 2
+				ENDSELECT
+			LOOP LOOPRES(0, 1)
+		ENDIF
+	ENDIF
+;4だと満足した状態 3だと満足してない状態
+LOOP 上級売春中 < 3
+
+LOCAL = TFLAG:上級売春収入値+(TFLAG:上級売春収入値*娼館レベル/10)
+
+IF 上級売春中 == 3
+	CALL PASELIW, @"%CALLNAME:TARGET%は%CALLNAME:PLAYER%との行為に満足いかなかったのか、{LOCAL/5}＄を払って娼館を後にした……"
+	MONEY += LOCAL/5
+	娼館総収入 += LOCAL/5
+ELSE
+	CALL PASELIW, @"%CALLNAME:TARGET%は%CALLNAME:PLAYER%との行為に満足して、{LOCAL}＄を報酬を払ってくれた"
+	MONEY += LOCAL
+	娼館総収入 += LOCAL
+ENDIF
 
 上級売春中 = 0
 
