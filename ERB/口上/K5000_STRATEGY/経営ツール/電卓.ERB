@@ -109,3 +109,113 @@ DO
 		RETURN DISPLAY
 	ENDIF
 LOOP 1
+
+
+@D_CALCULATOR
+;126bitの足し算引き算掛け算ができる
+;表示している値のための変数
+#DIMS DYNAMIC DISPLAY = "0"
+;格納している値のための変数
+#DIMS DYNAMIC MEMORY = "0"
+;演算子を管理する変数 1:＋ 2:－ 3:×
+#DIM DYNAMIC OPERATOR
+;指数表記の指数部分の桁数
+#DIM DYNAMIC EXPO = 1
+
+DO
+	PRINTL
+	IF OPERATOR == 1
+		PRINTFORML  {MEMORY}＋
+	ELSEIF OPERATOR == 2
+		PRINTFORML  {MEMORY}－
+	ELSEIF OPERATOR == 3
+		PRINTFORML  {MEMORY}×
+	ELSE
+		PRINTL
+	ENDIF
+	PRINTFORML 【{DISPLAY}】
+	PRINTBUTTON "[   AC   ]", "AC"
+	PRINTBUTTON "[ C ]", "C"
+	PRINTBUTTON "[ UP]", "UP"
+	PRINTL 　◆キーボードでの入力方法◆
+	PRINT [ 7 ][ 8 ][ 9 ]
+	PRINTBUTTON "[ DN]", "DN"
+	PRINTL 　数字は一度に入力することができますが、
+	PRINT [ 4 ][ 5 ][ 6 ]
+	PRINTBUTTON "[ * ]", "*"
+	PRINTL 　数字と記号はEnterキーで分けて入力してください。
+	PRINT [ 1 ][ 2 ][ 3 ]
+	PRINTBUTTON "[ - ]", "-"
+	PRINTL 　また、"Quit"などの命令は全て大文字か全て小文字
+	PRINT [ 0 ]
+	PRINTBUTTON "[   ＝   ]", "="
+	PRINTBUTTON "[ + ]", "+"
+	PRINTL 　もしくは頭文字のみでも入力できます。
+	PRINTBUTTON "[       Quit       ]", "Quit"
+	PRINTL
+	INPUTS
+	IF RESULTS == "0" || TOINT(RESULTS) != 0
+		;マイナスの値の入力は表示が0のときのみ有効
+		IF DISPLAY == "0"
+			DISPLAY = RESULTS
+		ELSEIF RESULT >= 0
+			;表示している桁数の計算
+			LOCAL = 1 + LOG10(ABS(DISPLAY))
+			;入力された桁数の計算
+			IF RESULT == 0
+				LOCAL:1 = 1
+			ELSE
+				LOCAL:1 = 1 + LOG10(RESULT)
+			ENDIF
+			;値が100京以上になるなら入力しなおし
+			SIF LOCAL + LOCAL:1 < 19
+				DISPLAY = DISPLAY * POWER(10,LOCAL:1) + SIGN(DISPLAY)*RESULT
+		ENDIF
+	ELSEIF RESULTS == "" || RESULTS == "=" || RESULTS == "+" || RESULTS == "-" || RESULTS == "*"
+		IF OPERATOR == 0
+			MEMORY = DISPLAY
+		ELSEIF OPERATOR == 1
+			MEMORY += DISPLAY
+		ELSEIF OPERATOR == 2
+			MEMORY -= DISPLAY
+		ELSEIF OPERATOR == 3
+			;値を100京未満に抑える
+			SIF DISPLAY == 0 || MEMORY == 0 || (LOG10(ABS(DISPLAY))) + (LOG10(ABS(MEMORY))) < 17
+				MEMORY *= DISPLAY
+		ELSEIF OPERATOR == 4
+			SIF DISPLAY != 0
+				MEMORY /= DISPLAY
+		ELSEIF OPERATOR == 5
+			;値を100京未満に抑える
+			SIF MEMORY == 0 ||  DISPLAY*(1+LOG10(ABS(MEMORY))) < 18
+				MEMORY = POWER(MEMORY,DISPLAY)
+		ENDIF
+		IF RESULTS != "="
+			DISPLAY = 0
+		ELSE
+			DISPLAY = MEMORY
+			MEMORY = 0
+		ENDIF
+		IF RESULTS == "+"
+			OPERATOR = 1
+		ELSEIF RESULTS == "-"
+			OPERATOR = 2
+		ELSEIF RESULTS == "*"
+			OPERATOR = 3
+		ELSEIF RESULTS == "/"
+			OPERATOR = 4
+		ELSEIF RESULTS == "^"
+			OPERATOR = 5
+		ELSE
+			OPERATOR = 0
+		ENDIF
+	ELSEIF RESULTS == "C" || RESULTS == "c"
+		DISPLAY = "0"
+	ELSEIF RESULTS == "AC" || RESULTS == "Ac" || RESULTS == "ac" || RESULTS == "A" || RESULTS == "a"
+		DISPLAY = 0
+		MEMORY = 0
+		OPERATOR = 0
+	ELSEIF RESULTS == "QUIT" || RESULTS == "Quit" || RESULTS == "quit" || RESULTS == "Q" || RESULTS == "q"
+		RETURN DISPLAY
+	ENDIF
+LOOP 1
