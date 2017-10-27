@@ -107,6 +107,19 @@ LOOP 1
 @STATUS_ETC, ARG
 #DIM DYNAMIC PAGE
 #DIM DYNAMIC ドラゴンに処女, 2
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 家族人数
+#DIM DYNAMIC 兄数
+#DIM DYNAMIC 弟数
+#DIM DYNAMIC 姉数
+#DIM DYNAMIC 妹数
+#DIM DYNAMIC 息子娘数
+#DIM DYNAMIC 孫数
+#DIM DYNAMIC 父親
+#DIM DYNAMIC 母親
+#DIM DYNAMIC 尊属
+#DIM DYNAMIC 家族番号簡易版
+#DIM DYNAMIC 兄弟姉妹番号簡易版
 
 ;処女が主人のドラゴンとなっている場合は、現在のドラゴンの名前を入れて後で戻す
 IF VIRGIN:ARG:1 == "主人のドラゴン"
@@ -196,6 +209,375 @@ ELSEIF CFLAG:ARG:専属娼婦
 ELSEIF CFLAG:ARG:傀儡
 	PRINTFORML 　現在は%CALLNAME:MASTER%の支配下に置ける傀儡である
 ENDIF
+
+IF CFLAG:ARG:血縁コード && NO:ARG < 10000
+	LOCAL = 0
+	LOCAL:1 = 0
+	FOR LCOUNT, 0, 10000
+		SIF LCOUNT == NO:ARG
+			CONTINUE
+		IF EXISTCSV(LCOUNT) && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+			;その家族で一番高齢（？）に位置する続柄を入れておく
+			SIF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) > LOCAL
+				尊属 = CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄"))
+			;「家族番号簡易版」はCSVある家族が一人だけの場合に使う
+			家族番号簡易版 = LCOUNT
+			IF CFLAG:ARG:続柄 < 1000
+				;「兄弟姉妹番号簡易版」はCSVある兄弟姉妹が一人だけの場合に使う
+				SELECTCASE CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄"))
+					CASE IS < 1000
+						兄弟姉妹番号簡易版 = LCOUNT
+						SELECTCASE CSVTALENT(LCOUNT, GETNUM(TALENT, "性別"))
+							CASE 1
+								IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:ARG:続柄
+									兄数++
+								ELSE
+									弟数++
+								ENDIF
+							CASE 2
+								IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:ARG:続柄
+									姉数++
+								ELSE
+									妹数++
+								ENDIF
+						ENDSELECT
+					CASE 1000
+						父親 = LCOUNT
+					CASE 1001
+						母親 = LCOUNT
+				ENDSELECT
+			ELSEIF CFLAG:ARG:続柄 < 2000
+				;さすがに息子娘とかくらいしか表示するつもりがない
+				SIF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000
+					息子娘数++
+			ELSEIF CFLAG:ARG:続柄 < 3000
+				SIF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000
+					孫数++
+			ENDIF
+		ENDIF
+		家族人数++
+	NEXT
+	SELECTCASE 家族人数
+		CASE 1
+			IF CFLAG:ARG:続柄 < 1000
+				IF 尊属 < 1000
+					IF CFLAG:ARG:続柄 == 1
+						PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(ARG) == 1 ? 兄 # 姉 \@にあたる
+					ELSE
+						PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(ARG) == 1 ? 弟 # 妹 \@にあたる
+					ENDIF
+				ELSEIF 尊属 < 2000
+					PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(ARG) == 1 ? 息子 # 娘 \@にあたる
+				ELSEIF 尊属 < 3000
+					PRINTFORML 　%CSVNAME(家族番号簡易版)%の孫にあたる
+				ENDIF
+			ELSEIF CFLAG:ARG:続柄 < 2000
+				PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(ARG) == 1 ? 父親 # 母親 \@にあたる
+			ELSEIF CFLAG:ARG:続柄 < 3000
+				PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(ARG) == 1 ? 祖父 # 祖母 \@にあたる
+			ENDIF
+		CASE IS >= 2
+			IF CFLAG:ARG:続柄 < 1000
+				IF 尊属 < 1000
+					;今のところ3兄弟、3姉妹までなのでそれにだけ対応
+					;ちなみにCONV_NOは英数字→漢数字変換関数
+					LOCALS = %CONV_NO(家族人数+1)%
+					IF CFLAG:ARG:続柄 == 1
+						SELECTCASE SEX(ARG)
+							CASE 1
+								LOCALS += "兄"
+								IF 姉数 || 妹数
+									LOCALS += "妹"
+								ELSE
+									LOCALS += "弟"
+								ENDIF
+							CASE 2
+								LOCALS += "姉"
+								IF 兄数 || 弟数
+									LOCALS += "弟"
+								ELSE
+									LOCALS += "妹"
+								ENDIF
+						ENDSELECT
+					ELSE
+						IF 兄数
+							LOCALS += "兄"
+							IF 姉数 || 妹数 || SEX(ARG) == 2
+								LOCALS += "妹"
+							ELSE
+								LOCALS += "弟"
+							ENDIF
+						ELSEIF 姉数
+							LOCALS += "姉"
+							IF 兄数 || 弟数 || SEX(ARG) == 1
+								LOCALS += "弟"
+							ELSE
+								LOCALS += "妹"
+							ENDIF
+						ENDIF
+					ENDIF
+					PRINTFORM 　%LOCALS%の{CFLAG:ARG:続柄}番目であり、
+					IF 兄数 || 姉数
+						LOCALS = 
+						FOR LCOUNT, 0, 10000
+							SIF !EXISTCSV(LCOUNT)
+								CONTINUE
+							IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:ARG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+								SIF LOCALS != ""
+									LOCALS += "、"
+								LOCALS += @"%CSVCALLNAME(LCOUNT)%"
+							ENDIF
+						NEXT
+						PRINTFORM %LOCALS%の\@ SEX(ARG) == 1 ? 弟 # 妹 \@
+						SIF (兄数 || 姉数) && (弟数 || 妹数)
+							PRINT 、
+					ENDIF
+					IF 弟数 || 妹数
+						LOCALS = 
+						FOR LCOUNT, 0, 10000
+							SIF !EXISTCSV(LCOUNT)
+								CONTINUE
+							IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) > CFLAG:ARG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+								SIF LOCALS != ""
+									LOCALS += "、"
+								LOCALS += @"%CSVCALLNAME(LCOUNT)%"
+							ENDIF
+						NEXT
+						PRINTFORM %LOCALS%の\@ SEX(ARG) == 1 ? 兄 # 姉 \@
+					ENDIF
+					PRINTL にあたる
+				ELSEIF 尊属 < 2000
+					IF 兄数+姉数+弟数+妹数 == 1
+						IF CFLAG:ARG:続柄 == 1
+							PRINTFORM 　%CSVNAME(兄弟姉妹番号簡易版)%の\@ SEX(ARG) == 1 ? 兄 # 姉 \@であり、
+						ELSE
+							PRINTFORM 　%CSVNAME(兄弟姉妹番号簡易版)%の\@ SEX(ARG) == 1 ? 弟 # 妹 \@であり、
+						ENDIF
+					ELSE
+						LOCALS = %CONV_NO(兄数+姉数+弟数+妹数+1)%
+						IF CFLAG:ARG:続柄 == 1
+							SELECTCASE SEX(ARG)
+								CASE 1
+									LOCALS += "兄"
+									IF 姉数 || 妹数
+										LOCALS += "妹"
+									ELSE
+										LOCALS += "弟"
+									ENDIF
+								CASE 2
+									LOCALS += "姉"
+									IF 兄数 || 弟数
+										LOCALS += "弟"
+									ELSE
+										LOCALS += "妹"
+									ENDIF
+							ENDSELECT
+						ELSE
+							IF 兄数
+								LOCALS += "兄"
+								IF 姉数 || 妹数 || SEX(ARG) == 2
+									LOCALS += "妹"
+								ELSE
+									LOCALS += "弟"
+								ENDIF
+							ELSEIF 姉数
+								LOCALS += "姉"
+								IF 兄数 || 弟数 || SEX(ARG) == 1
+									LOCALS += "弟"
+								ELSE
+									LOCALS += "妹"
+								ENDIF
+							ENDIF
+						ENDIF
+						PRINTFORM 　%LOCALS%の{CFLAG:ARG:続柄}番目であり、
+						IF 兄数 || 姉数
+							LOCALS = 
+							FOR LCOUNT, 0, 10000
+								SIF !EXISTCSV(LCOUNT)
+									CONTINUE
+								IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:ARG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+									SIF LOCALS != ""
+										LOCALS += "、"
+									LOCALS += @"%CSVCALLNAME(LCOUNT)%"
+								ENDIF
+							NEXT
+							PRINTFORM %LOCALS%の\@ SEX(ARG) == 1 ? 弟 # 妹 \@
+							SIF (兄数 || 姉数) && (弟数 || 妹数)
+								PRINT 、
+						ENDIF
+						IF 弟数 || 妹数
+							LOCALS = 
+							FOR LCOUNT, 0, 10000
+								SIF !EXISTCSV(LCOUNT)
+									CONTINUE
+								IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) > CFLAG:ARG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+									SIF LOCALS != ""
+										LOCALS += "、"
+									LOCALS += @"%CSVCALLNAME(LCOUNT)%"
+								ENDIF
+							NEXT
+							PRINTFORM %LOCALS%の\@ SEX(ARG) == 1 ? 兄 # 姉 \@
+						ENDIF
+						PRINT で、
+					ENDIF
+					SIF 父親
+						PRINTFORM %CSVCALLNAME(父親)%
+					SIF 父親 && 母親
+						PRINT と
+					SIF 母親
+						PRINTFORM %CSVCALLNAME(母親)%
+					SIF 父親 && 母親
+						PRINT 夫妻
+					PRINTFORML の\@ SEX(ARG) == 1 ? 息子 # 娘 \@にあたる
+				ELSEIF 尊属 < 3000
+					IF 兄数+姉数+弟数+妹数 == 1
+						IF CFLAG:ARG:続柄 == 1
+							PRINTFORM 　%CSVNAME(兄弟姉妹番号簡易版)%の\@ SEX(ARG) == 1 ? 兄 # 姉 \@であり、
+						ELSE
+							PRINTFORM 　%CSVNAME(兄弟姉妹番号簡易版)%の\@ SEX(ARG) == 1 ? 弟 # 妹 \@であり、
+						ENDIF
+					ELSE
+						LOCALS = %CONV_NO(兄数+姉数+弟数+妹数+1)%
+						IF CFLAG:ARG:続柄 == 1
+							SELECTCASE SEX(ARG)
+								CASE 1
+									LOCALS += "兄"
+									IF 姉数 || 妹数
+										LOCALS += "妹"
+									ELSE
+										LOCALS += "弟"
+									ENDIF
+								CASE 2
+									LOCALS += "姉"
+									IF 兄数 || 弟数
+										LOCALS += "弟"
+									ELSE
+										LOCALS += "妹"
+									ENDIF
+							ENDSELECT
+						ELSE
+							IF 兄数
+								LOCALS += "兄"
+								IF 姉数 || 妹数 || SEX(ARG) == 2
+									LOCALS += "妹"
+								ELSE
+									LOCALS += "弟"
+								ENDIF
+							ELSEIF 姉数
+								LOCALS += "姉"
+								IF 兄数 || 弟数 || SEX(ARG) == 1
+									LOCALS += "弟"
+								ELSE
+									LOCALS += "妹"
+								ENDIF
+							ENDIF
+						ENDIF
+						PRINTFORM 　%LOCALS%の{CFLAG:ARG:続柄}番目であり、
+						;さすがに親も居れば情報量を減らす
+						IF 父親 || 母親
+							SIF 父親
+								PRINTFORM %CSVCALLNAME(父親)%
+							SIF 父親 && 母親
+								PRINT と
+							SIF 母親
+								PRINTFORM %CSVCALLNAME(母親)%
+							SIF 父親 && 母親
+								PRINT 夫妻
+							PRINTFORM の\@ SEX(ARG) == 1 ? 息子 # 娘 \@で、
+						ELSE
+							IF 兄数 || 姉数
+								LOCALS = 
+								FOR LCOUNT, 0, 10000
+									SIF !EXISTCSV(LCOUNT)
+										CONTINUE
+									IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:ARG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+										SIF LOCALS != ""
+											LOCALS += "、"
+										LOCALS += @"%CSVCALLNAME(LCOUNT)%"
+									ENDIF
+								NEXT
+								PRINTFORM %LOCALS%の\@ SEX(ARG) == 1 ? 弟 # 妹 \@
+								SIF (兄数 || 姉数) && (弟数 || 妹数)
+									PRINT 、
+							ENDIF
+							IF 弟数 || 妹数
+								LOCALS = 
+								FOR LCOUNT, 0, 10000
+									SIF !EXISTCSV(LCOUNT)
+										CONTINUE
+									IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) > CFLAG:ARG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+										SIF LOCALS != ""
+											LOCALS += "、"
+										LOCALS += @"%CSVCALLNAME(LCOUNT)%"
+									ENDIF
+								NEXT
+								PRINTFORM %LOCALS%の\@ SEX(ARG) == 1 ? 兄 # 姉 \@
+							ENDIF
+							PRINT で、
+						ENDIF
+					ENDIF
+					LOCALS = 
+					FOR LCOUNT, 0, 10000
+						SIF !EXISTCSV(LCOUNT)
+							CONTINUE
+						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) >= 2000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+							SIF LOCALS != ""
+								LOCALS += "、"
+							LOCALS += @"%CSVCALLNAME(LCOUNT)%"
+						ENDIF
+					NEXT
+					PRINTFORML %LOCALS%の孫にあたる
+				ENDIF
+			ELSEIF CFLAG:ARG:続柄 < 2000
+				IF 息子娘数 == 1
+					FOR LCOUNT, 0, 10000
+						SIF !EXISTCSV(LCOUNT)
+							CONTINUE
+						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+							PRINTFORM 　%CSVNAME(LCOUNT)%
+							BREAK
+						ENDIF
+					NEXT
+					PRINTFORML の\@ SEX(ARG) == 1 ? 父親 # 母親 \@にあたる
+				ELSE
+					FOR LCOUNT, 0, 10000
+						SIF !EXISTCSV(LCOUNT)
+							CONTINUE
+						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+							SIF LOCALS != ""
+								LOCALS += "、"
+							LOCALS += @"%CSVCALLNAME(LCOUNT)%"
+						ENDIF
+					NEXT
+					PRINTFORML 　%LOCALS%の\@ SEX(ARG) == 1 ? 父親 # 母親 \@にあたる
+				ENDIF
+			ELSEIF CFLAG:ARG:続柄 < 3000
+				IF 孫数 == 1
+					FOR LCOUNT, 0, 10000
+						SIF !EXISTCSV(LCOUNT)
+							CONTINUE
+						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+							PRINTFORM 　%CSVNAME(LCOUNT)%
+							BREAK
+						ENDIF
+					NEXT
+					PRINTFORML の\@ SEX(ARG) == 1 ? 祖父 # 祖母 \@にあたる
+				ELSE
+					FOR LCOUNT, 0, 10000
+						SIF !EXISTCSV(LCOUNT)
+							CONTINUE
+						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+							SIF LOCALS != ""
+								LOCALS += "、"
+							LOCALS += @"%CSVCALLNAME(LCOUNT)%"
+						ENDIF
+					NEXT
+					PRINTFORML 　%LOCALS%の\@ SEX(ARG) == 1 ? 祖父 # 祖母 \@にあたる
+				ENDIF
+			ENDIF
+	ENDSELECT
+ENDIF
+
 IF ARG != MASTER
 	PRINT 　
 	IF TALENT:ARG:小人体型
