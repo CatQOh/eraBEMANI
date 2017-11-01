@@ -5,6 +5,8 @@ PRINTL 【ゲームセンター経営】
 PRINTL 
 DRAWLINE
 PRINTL □現在の規模
+SIF GC店名 != "ゲームセンター"
+	PRINTFORML 　店名：%GC店名%
 ;----------------------------------------------------
 PRINTFORM 　物件：%物件名(GC物件)%
 ;名声表示--------------------------------------------
@@ -28,6 +30,8 @@ IF !GC物件
 	HTML_PRINT LOCALS
 	LOCALS = <font color='gray'><nonbutton title='物件を購入してください'>　[-] - 筐体設置</nonbutton></font>
 	HTML_PRINT LOCALS
+	LOCALS = <font color='gray'><nonbutton title='物件を購入してください'>　[-] - 店名変更</nonbutton></font>
+	HTML_PRINT LOCALS
 	IF FLAG:ゲーセン営業中
 		LOCALS = <font color='gray'><nonbutton title='物件を購入してください'>　[-] - 一時休業</nonbutton></font>
 	ELSE
@@ -44,6 +48,8 @@ ELSE
 	LOCALS = <button value='5' title='ゲームセンターにアーケードゲーム筐体を設置します'>　[5] - 筐体設置</button>
 	HTML_PRINT LOCALS
 	LOCALS = <button value='6' title='ゲームセンターの人員から店長を任命します'>　[6] - 店長任命</button>
+	HTML_PRINT LOCALS
+	LOCALS = <button value='7' title='ゲームセンターの店名を変更します'>　[7] - 店名変更</button>
 	HTML_PRINT LOCALS
 	IF FLAG:ゲーセン営業中
 		LOCALS = <button value='9' title='ゲームセンターを一時休業し、収入と支出が行われないようにします'>　[9] - 一時休業</button>
@@ -80,11 +86,23 @@ DO
 			CALL SELECT_FLOOR
 		CASE 6
 			CALL GC_LEADER
+		CASE 7
+			PRINT □店名を入力してください
+			SIF GC店名 != "ゲームセンター"
+				PRINT  現在の店名：%GC店名%
+			PRINTL 
+			PRINTBUTTON "[変更しない]", "変更しない"
+			PRINTL 
+			INPUTS
+			SIF RESULTS == "変更しない"
+				RESTART
+			PRINTFORMW 店名を「%RESULTS%」に変更しました
+			GC店名 = %RESULTS%
 		CASE 9
 			IF FLAG:ゲーセン営業中
-				PRINTW ゲームセンターの経営を一時中断しました
+				PRINTFORMW %GC店名%の経営を一時中断しました
 			ELSE
-				PRINTW ゲームセンターの経営を開始しました
+				PRINTFORMW %GC店名%の経営を開始しました
 			ENDIF
 			INVERTBIT FLAG:ゲーセン営業中, 0
 		CASE 100
@@ -271,6 +289,8 @@ IF GC物件
 				BREAK
 		ENDSELECT
 	LOOP 1
+ELSE
+	GC店名 = ゲームセンター
 ENDIF
 
 PRINTFORMW ＜%物件名(LOCAL)%を購入しました＞
@@ -806,7 +826,7 @@ SIF PREMIUM_FRIDAY(YEAR, MONTH, DAYS)
 	TIMES 収入, 1.10
 
 ;収入処理--------------------------------------
-CALL PASELIL, @"ゲームセンターの収入が{収入}＄入りました"
+CALL PASELIL, @"%GC店名%の収入が{収入}＄入りました"
 MONEY += 収入
 
 
@@ -845,7 +865,7 @@ SIF GC分煙
 名声 += 名声人事補正()
 
 ;名声処理--------------------------------------
-PRINTFORML ゲームセンターの名声が{名声}上がりました
+PRINTFORML %GC店名%の名声が{名声}上がりました
 GC名声 += 名声
 
 
@@ -881,11 +901,11 @@ ENDIF
 ;評判処理--------------------------------------
 SELECTCASE 評判
 	CASE IS > 0
-		PRINTFORML ゲームセンターの評判が{評判}上がりました
+		PRINTFORML %GC店名%の評判が{評判}上がりました
 	CASE 0
-		PRINTFORML ゲームセンターの評判に変化はありませんでした
+		PRINTFORML %GC店名%の評判に変化はありませんでした
 	CASE IS < 0
-		PRINTFORML ゲームセンターの評判が{ABS(評判)}下がりました
+		PRINTFORML %GC店名%の評判が{ABS(評判)}下がりました
 ENDSELECT
 GC評判 += 評判
 ;0未満にはならない
@@ -941,7 +961,7 @@ REPEAT CHARANUM
 REND
 
 ;支出処理--------------------------------------
-CALL PASELIW, @"ゲームセンターの経費に{支出}＄かかりました"
+CALL PASELIW, @"%GC店名%の経費に{支出}＄かかりました"
 MONEY -= 支出
 基本収入 = 収入-支出
 
