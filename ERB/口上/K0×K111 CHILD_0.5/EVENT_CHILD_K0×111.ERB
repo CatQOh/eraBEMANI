@@ -1,0 +1,1125 @@
+﻿@CHILD_START_K0×111
+#DIM DYNAMIC 反抗的ポイント
+#DIM DYNAMIC 素直ポイント
+#DIM DYNAMIC 根暗ポイント
+;-------------------------------------------------
+;調教開始時 FEVE:0
+;-------------------------------------------------
+;現状は娘にのみ対応
+SIF SEX(TARGET) == 1
+	RETURN 0
+;ちなみに父親が男じゃないと非対応
+SIF SEX(MASTER) == 2
+	RETURN 0
+
+
+IF TALENT:生意気 || TALENT:ツンデレ
+	反抗的ポイント++
+ELSEIF TALENT:臆病
+	根暗ポイント++
+ENDIF
+IF TALENT:素直
+	素直ポイント++
+ELSEIF TALENT:反抗的
+	反抗的ポイント++
+ENDIF
+IF TALENT:プライド高い
+	反抗的ポイント++
+ELSEIF TALENT:プライド低い
+	根暗ポイント++
+ENDIF
+IF TALENT:ハイテンション
+	素直ポイント++
+ELSEIF TALENT:大人しい
+	根暗ポイント++
+ENDIF
+IF TALENT:自制心
+	反抗的ポイント++
+ELSEIF TALENT:無関心 || TALENT:感情乏しい
+	根暗ポイント++
+ELSEIF TALENT:好奇心
+	素直ポイント++
+ENDIF
+IF TALENT:保守的 || TALENT:悲観的
+	根暗ポイント++
+ELSEIF TALENT:楽観的
+	素直ポイント++
+ENDIF
+IF TALENT:快感に素直
+	素直ポイント++
+ELSEIF TALENT:快感の否定
+	反抗的ポイント++
+	根暗ポイント++
+ENDIF
+IF TALENT:男好き
+	素直ポイント++
+ELSEIF TALENT:男嫌い
+	反抗的ポイント++
+ENDIF
+SIF TALENT:献身的
+	素直ポイント++
+
+;以下ポイントによって口上タイプが変わる 同点なら素直＞反抗的＞根暗の順番で
+SELECTCASE MAX(素直ポイント, 反抗的ポイント, 根暗ポイント)
+	CASE 素直ポイント
+		MSH_F = 1
+	CASE 反抗的ポイント
+		MSH_F = 2
+	CASE 根暗ポイント
+		MSH_F = 3
+ENDSELECT
+
+;陥落済みのファウラさんが助手ならHERE_Fを1に
+HERE_F = 0
+SIF ASSI > 0 && CHARANAMEF(ASSI) == "ファウラ" && CFLAG:ASSI:陥落
+	HERE_F = 1
+
+IF FEVE:0 == 0
+	;一応呼称は選べるようにする
+	PRINTFORML %CALLNAME:TARGET%に、あなたをどう呼ぶように教育しますか？（何もしないコマンドで変更できます）
+	PRINTL [0] - お父さん
+	PRINTL [1] - 父さん
+	PRINTL [2] - パパ
+	PRINTL [3] - 父上
+	PRINTL [4] - クソ親父
+	INPUT
+	DO
+		SELECTCASE RESULT
+			CASE 0
+				DAD_F = お父さん
+				MOM_F = お母さん
+			CASE 1
+				DAD_F = 父さん
+				MOM_F = 母さん
+			CASE 2
+				DAD_F = パパ
+				MOM_F = ママ
+			CASE 3
+				DAD_F = 父上
+				MOM_F = 母上
+			CASE 4
+				DAD_F = クソ親父
+				MOM_F = クソババア
+		ENDSELECT
+	LOOP LOOPRES(0, 1, 2, 3, 4)
+	FEVE:0 = 1
+ENDIF
+
+SELECTCASE RAND:2
+	CASE 0
+		SELECTCASE MSH_F
+			CASE 1
+				PRINTFORMW 「%DAD_F%、今日はなにするの？」
+				SIF HERE_F
+					PRINTFORMW 「そうね、%CALLNAME:TARGET%。今日は%DAD_F%と%MOM_F%と一緒に気持ち良いことたくさんしよっか」
+					
+			CASE 2
+				PRINTFORMW 「ちょっと、いきなり部屋に入ってこないでよ、%DAD_F%嫌い！」
+				IF HERE_F
+					PRINTFORMW 「もう、%DAD_F%にそんなこと言ったらダメよ。%CALLNAME:TARGET%」
+					PRINTFORMW 「ん……ごめんなさい、%MOM_F%……%DAD_F%……」
+				ENDIF
+			CASE 3
+				PRINTFORM 「あ……%DAD_F%……
+				SIF HERE_F
+					PRINTFORM %MOM_F%も……
+				PRINTW 」
+				PRINTFORMW 「今日は何をしてくれるの……？ 私、楽しみだな……♪」
+		ENDSELECT
+	CASE 1
+		SELECTCASE MSH_F
+			CASE 1
+				IF GETCHARA(111) < 0
+					PRINTFORMW 「ねぇ、%DAD_F%、わたしの%MOM_F%は今、どこに居るのかな？」
+					PRINTFORMW 「%MOM_F%に会いたいなぁ……」
+				ELSE
+					PRINTFORMW 「見て見て、%DAD_F%！ %MOM_F%に新しいまほう教えてもらった！」
+					PRINTFORMW %CALLNAME:TARGET%がはしゃぎながら、手品レベルの小規模な魔法をあなたに見せびらかしている……
+					SIF HERE_L
+						PRINTFORMW 「もう、この子ったら……もしかしたら君にも魔力があるのかな。この子の魔法の素質、すごいよ」
+				ENDIF
+			CASE 2
+				IF GETCHARA(111) < 0
+					PRINTFORMW 「なぁに？ 今日も実の娘に手出しに来たの？」
+					PRINTFORMW 「そんなんだから%MOM_F%に逃げられるのよ。%DAD_F%のためにもあたしがしっかりしなくちゃいけないのよね」
+				ELSE
+					PRINTFORMW 「さっき、%MOM_F%に、『%DAD_F%はこうすると喜ぶのよ』って教えてもらったんだけど……」
+					IF HERE_F
+						PRINTFORMW 「ちょ、ちょっと！ %CALLNAME:TARGET%！ それは%MOM_F%との秘密だって……」
+						PRINTFORMW 「……ずるい。%MOM_F%とばっか、そういうことしてるんだ。あたしもやりたい！」
+					ELSE
+						PRINTFORMW 「べ、別に試したいわけじゃないんだからね！ いざというとき、%DAD_F%に言うこと聞かせるのに使ってやるわ」
+					ENDIF
+				ENDIF
+			CASE 3
+				IF GETCHARA(111) < 0
+					PRINTFORMW 「%DAD_F%……わたしには%MOM_F%が居ないから、わたしが……」
+					PRINTFORMW 「わたし、がんばる……」
+				ELSE
+					PRINTFORMW 「ねぇ、%DAD_F%……私、%MOM_F%に新しいまほう教えてもらったんだ……」
+					PRINTFORMW 「今はまだじょうずに唱えられないけど、できるようになったら、%DAD_F%にも見せてあげる……」
+					IF HERE_F
+						PRINTFORMW 「%CALLNAME:TARGET%の魔法は十分立派よ。%DAD_F%に披露してあげたら？」
+						PRINTFORMW 「そ、そうかな……でも、恥ずかしいからまた今度ね……えへ」
+					ENDIF
+				ENDIF
+		ENDSELECT
+ENDSELECT
+
+RETURN 0
+
+@CHILD_TURNEND_K0×111
+RETURN 0
+DRAWLINE
+;通常終了時
+IF BASE:体力 >= 500
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;その他
+	ELSE
+		PRINTFORMW 
+	ENDIF
+;体力500未満での強制終了時
+ELSEIF BASE:体力 < 500
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;その他
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+
+@CHILD_COM_K0×111
+;助手が調教した時に口上をスキップする（好みに応じて使う、行頭の;を消すとスキップするようになる）
+;SIF PLAYER != MASTER
+;	RETURN 0
+
+;下半身のみを使い地の文にファーリーの分岐があるコマンドは、一時的に「ファーリー」を付与する（ファウラ口上からの引用）
+;つまりあの下半身は娘にも受け継がれるのだ……
+SELECTCASE TRAINNAME:SELECTCOM
+	CASE "クンニ", "フェラする", "指挿入れ", "秘貝開帳", "オナホール", "バイブ", "正常位", "後背位", "対面座位", "背面座位", "素股", "兜合わせ", "乱れ牡丹",
+		TALENT:ファーリー = 1
+ENDSELECT
+
+;地の文表示関数 地の文を表示させたくないコマンドがあれば除外すると良い
+TRYCALLFORM MESSAGE_COM_%SELECTCOMS%
+
+;ファーリーを消す
+TALENT:ファーリー = 0
+
+;ボールギャグ着用時には地の文を表示して口上をスキップする
+SIF TEQUIP:ボールギャグ &&  SELECTCOMS != "ボールギャグ"
+	RETURN 0
+SIF FLAG:口上表示 == 0
+	RETURN 0
+
+
+TRYCALLFORM COM_%SELECTCOMS%_K0×111
+;-------------------------------------------------
+;コマンド実行時のセリフ FCOM:(COM番号)
+;-------------------------------------------------
+;=================================================
+;愛撫系コマンド
+;=================================================
+;-------------------------------------------------
+;愛撫
+;-------------------------------------------------
+@COM_愛撫_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	SELECTCASE MSH_F
+		CASE 1
+			PRINTFORMW 「どこさわるのー？ %DAD_F%？ きゃはっ、くすぐったいー」
+		CASE 2
+			PRINTFORMW 「何するの？ %DAD_F%？ あははっ、くすぐったい！ だめよ、%DAD_F%」
+		CASE 3
+			PRINTFORMW 「なでてくれるの、うれしい……%DAD_F%……」
+	ENDSELECT
+	SIF ABL:Ｂ感覚 >= 3 || ABL:Ｃ感覚 >= 3
+		PRINTW 「……あっ、んっ……はぁ」
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	SELECTCASE RAND:2
+		CASE 0
+			SELECTCASE MSH_F
+				CASE 1
+					PRINTFORMW 「きもちいいよぉ、%DAD_F%……もっと、なでなでして？」
+				CASE 2
+					PRINTFORMW 「もうすこし……おしっこ出るところ……あっ、そこ……」
+				CASE 3
+					PRINTFORMW 「はぁっ、はぁっ……%DAD_F%は、もっとわたしの声が聞きたいの……？ 恥ずかしいな……」
+			ENDSELECT
+		CASE 1
+			SELECTCASE MSH_F
+				CASE 1
+					PRINTFORMW 「なでなできもちいっ……もっと、くにくにってしてぇ……」
+				CASE 2
+					PRINTFORMW 「あうっ、%DAD_F%……いつもなまいき言ってごめんなさい……だから、もっときもちよくしてほしいの……」
+				CASE 3
+					PRINTFORMW 「おっぱいもさわって……うっ、さきっぽのところ、良い……」
+			ENDSELECT
+	ENDSELECT
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;クンニ
+;-------------------------------------------------
+@COM_クンニ_K0×111
+SELECTCASE RAND:2
+	CASE 0
+		SELECTCASE MSH_F
+			CASE 1
+				PRINTFORMW 「もっと舐めて……あぁっ、ん……%DAD_F%、もっとぉ……」
+			CASE 2
+				PRINTFORMW 「なかに、なかにべろ入れて……んあっ、あたたかいの入ってきたぁ……」
+			CASE 3
+				PRINTFORMW 「%MOM_F%ほどじゃないけど、わたしもどうぶつみたいで臭くないかな……？」
+				PRINTFORMW 「そう……？ やっぱり%DAD_F%ってやさしいね」
+		ENDSELECT
+	CASE 1
+		SELECTCASE MSH_F
+			CASE 1
+				PRINTFORMW 「むずむずしてきた……おしっこ出ちゃったらごめんね、%DAD_F%」
+			CASE 2
+				PRINTFORMW 「%DAD_F%、よだれ付けすぎ……え？ これ、あたしから出てるの……そっか、きもちいいと、出ちゃうんだ……」
+			CASE 3
+				PRINTFORMW 「%DAD_F%、%DAD_F%、ん～っっ……なんかへんなのきちゃいそう……」
+		ENDSELECT
+ENDSELECT
+
+RETURN 0
+
+;-------------------------------------------------
+;フェラする
+;-------------------------------------------------
+@COM_フェラする_K0×111
+SELECTCASE MSH_F
+	CASE 1
+		PRINTFORMW 「おいしいの？ %DAD_F%？」
+		PRINTFORMW 「わたしも%DAD_F%のおちんちん舐めたい……」
+	CASE 2
+		PRINTFORMW 「あたしにも舐めさせてよ。%DAD_F%ばっかりずるいわ」
+		PRINTFORMW 「んあぁ、吸われちゃうとなんだか変……おしっことかせーしとか出ちゃう……」
+	CASE 3
+		PRINTFORMW 「%DAD_F%の口の中……あたたかくて、きもちいい……っ」
+		PRINTFORMW 「わたしも%DAD_F%をきもちよくしてあげたいの……ちょうだい？」
+ENDSELECT
+
+RETURN 0
+
+;-------------------------------------------------
+;指挿入れ
+;-------------------------------------------------
+@COM_指挿入れ_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;アナル舐め
+;-------------------------------------------------
+@COM_アナル舐め_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;アナル愛撫
+;-------------------------------------------------
+@COM_アナル愛撫_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;胸揉み
+;-------------------------------------------------
+@COM_胸揉み_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;乳首責め
+;-------------------------------------------------
+@COM_乳首責め_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;胸愛撫
+;-------------------------------------------------
+@COM_胸愛撫_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;秘貝開帳
+;-------------------------------------------------
+@COM_秘貝開帳_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;胸自慰
+;-------------------------------------------------
+@COM_胸自慰_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;自慰
+;-------------------------------------------------
+@COM_自慰_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;足扱きする
+;-------------------------------------------------
+@COM_足扱きする_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;下着扱きする %CSTR:PLAYER:下半身下着%で下着の名前を取得
+;-------------------------------------------------
+@COM_下着扱きする_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;手淫する
+;-------------------------------------------------
+@COM_手淫する_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;自慰見せつけ
+;-------------------------------------------------
+@COM_自慰見せつけ_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;=================================================
+;コミュニケーション系コマンド
+;=================================================
+;-------------------------------------------------
+;キスする
+;-------------------------------------------------
+@COM_キスする_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;何もしない
+;-------------------------------------------------
+@COM_何もしない_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;会話 恋慕、親愛のみ
+;-------------------------------------------------
+@COM_会話_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	PRINTFORMW 
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;プレゼント 恋慕、親愛のみ
+;-------------------------------------------------
+@COM_プレゼント_K0×111
+;TFLAG:プレゼントでプレゼントしたものの詳細
+;0 = スマイル
+;1 = パセリカード
+;2 = 日用品
+;3 = アクセサリ
+;4 = 服
+;5 = 素敵な指輪
+;6 = IIDX筐体
+
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	PRINTFORMW 
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;スキンシップ 恋慕、親愛のみ
+;-------------------------------------------------
+@COM_スキンシップ_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	PRINTFORMW 
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;まったりする 恋慕、親愛のみ
+;-------------------------------------------------
+@COM_まったりする_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	PRINTFORMW 
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;家事 助手可能、もしくは陥落済みのみ
+;-------------------------------------------------
+@COM_家事_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;歌の練習 助手可能、もしくは陥落済みのみ
+;-------------------------------------------------
+@COM_歌の練習_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;罵倒
+;-------------------------------------------------
+@COM_罵倒_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;ビデオ鑑賞 陥落済みのみ
+;-------------------------------------------------
+@COM_ビデオ鑑賞_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	PRINTFORMW 
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;吸血する 恋慕、親愛のみ
+;-------------------------------------------------
+@COM_吸血する_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	PRINTFORMW 
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;吸血させる 恋慕、親愛のみ
+;-------------------------------------------------
+@COM_吸血させる_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	PRINTFORMW 
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;料理を作る 助手可能、もしくは陥落済みのみ
+;-------------------------------------------------
+@COM_料理を作る_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;お菓子を作る 助手可能、もしくは陥落済みのみ
+;-------------------------------------------------
+@COM_お菓子を作る_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;楽器の練習 助手可能、もしくは陥落済みのみ
+;-------------------------------------------------
+@COM_楽器の練習_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;機械の勉強 助手可能、もしくは陥落済みのみ
+;-------------------------------------------------
+@COM_機械の勉強_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;プログラミング演習 助手可能、もしくは陥落済みのみ
+;-------------------------------------------------
+@COM_プログラミング演習_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;お酒を飲ませる %酒名%で飲ませるお酒を取得
+;-------------------------------------------------
+@COM_お酒を飲ませる_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;キスしてもらう
+;-------------------------------------------------
+@COM_キスしてもらう_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+;-------------------------------------------------
+;情欲を煽る
+;-------------------------------------------------
+@COM_情欲を煽る_K0×111
+;初めて
+IF FCOM:SELECTCOM == 0
+	PRINTFORMW 
+	FCOM:SELECTCOM = 1
+;二回目以降
+ELSE
+	;陥落済み
+	IF CFLAG:陥落
+		PRINTFORMW 
+	;屈服刻印Lv3
+	ELSEIF MARK:屈服刻印 == 3
+		PRINTFORMW 
+	;それ以外
+	ELSE
+		PRINTFORMW 
+	ENDIF
+ENDIF
+
+RETURN 0
+
+@CHILD_SHOOT_K0×111
+;助手が調教した時に口上をスキップする（好みに応じて使う、行頭の;を消すとスキップするようになる）
+;SIF PLAYER != MASTER
+;	RETURN 0 
+
+;地の文表示関数 地の文を表示させたくない場合はコメントアウト
+TRYCALL SHOOT_MESSAGE
+
+;ボールギャグ着用時にはスキップする
+SIF TEQUIP:ボールギャグ &&  SELECTCOMS != "ボールギャグ"
+	RETURN 0
+SIF FLAG:口上表示 == 0
+	RETURN 0
+
+;-------------------------------------------------
+;調教者の射精時のテキスト
+;どこに射精した、という変数を削除したため、コマンドで分岐するのが確実で安心です
+;分からない場合は既存の口上を参考にするとわかりやすいかもです
+;SELECTCOMS = "実行したコマンド名"
+;-------------------------------------------------
+IF NOWEX:PLAYER:射精
+	IF TFLAG:奴隷実行 && EXP:精液経験 == 0
+		SELECTCASE MSH_F
+			CASE 1
+				PRINTFORMW 「なんか白いの出てきたぁ。なぁにこれ？ %DAD_F%？」
+			CASE 2
+				PRINTFORMW 「きゃっ……なんか出てきちゃった……だいじょうぶ？ %DAD_F%？」
+			CASE 3
+				PRINTFORMW 「わぁ……白いのが出てきたよ。これは何？ %DAD_F%？」
+		ENDSELECT
+		RETURN 0
+	ENDIF
+	SELECTCASE SELECTCOMS
+		CASE "自慰見せつけ"
+			SELECTCASE MSH_F
+				CASE 1
+					PRINTFORMW 「わぁっ、すっごい飛んだー！ %DAD_F%、もういっかい見せてー」
+				CASE 2
+					PRINTFORMW 「ちょっとぉ、顔にかかっちゃったわ……やっぱりへんなあじ……」
+				CASE 3
+					PRINTFORMW 「いっぱい出た……わたしも、%DAD_F%がいっぱい出せるかためしてもいい？」
+			ENDSELECT
+		CASE "キスする", "キスしてもらう"
+			SELECTCASE MSH_F
+				CASE 1
+					PRINTFORMW 「どうしたの、%DAD_F%？ わたしとチューしておもらししちゃうなんて」
+				CASE 2
+					IF PENIS(TARGET)
+						PRINTFORMW 「出ちゃったの？ %DAD_F%？ あたしも%DAD_F%とキスしたらおちんちんうずうずしてきた……」
+					ELSE
+						PRINTFORMW 「出ちゃったの？ %DAD_F%？ あたしもお股がうずうずしてきた……おちんちん付いてたら白いの出ちゃうかも……」
+					ENDIF
+				CASE 3
+					PRINTFORMW 「あれ？ なんだろう……%DAD_F%、出してる……ふぅん、%DAD_F%はキスすると白いの出すんだ……」
+			ENDSELECT
+		CASE "フェラチオ"
+			SELECTCASE MSH_F
+				CASE 1
+					PRINTFORMW 「んうっ……出しすぎだよ、%DAD_F%。こんなに飲めなぁい」
+				CASE 2
+					PRINTFORMW 「へんなあじ……でも、お股が熱くなってきた……%DAD_F%、さわってちょうだい？」
+				CASE 3
+					PRINTFORMW 「こぼしちゃった……ぜんぶなめてあげないと……おいしいよ、%DAD_F%……」
+			ENDSELECT
+	ENDSELECT
+ENDIF
+
