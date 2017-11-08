@@ -559,6 +559,45 @@ RETURNF GETNUM(PALAM, ARGS)
 #FUNCTION
 RETURNF GETNUM(EXP, ARGS)
 
+;第一引数に第二引数のツールチップ付けたHTML_PRINT用の完成されたタグを返す式中関数
+;"[]"で囲った部分があれば自動でボタン化する
+@SET_TOOLTIP, 本文, ツールチップ
+#FUNCTIONS
+#DIMS DYNAMIC 本文
+#DIMS DYNAMIC ツールチップ
+#DIMS DYNAMIC タグ
+;ボタンの数値が指定されたボタン番号を一致すると困るので、ボタン化されなさそうな数値に 元ネタ分かる人はすごい
+#DIM DYNAMIC ボタン = -3189415
+#DIMS DYNAMIC 文字列ボタン
+
+VARSET LOCAL, 0
+
+;STRCOUNTの使い方がわからない
+LOCAL = STRFINDU(本文, "[")
+LOCAL:1 = STRFINDU(本文, "]")
+
+IF LOCAL != -1 && LOCAL:1 != -1
+	;STRFIND系使うと"[～]"の範囲を取得してるので"["と"]"を省くために+1と-1する
+	文字列ボタン = %SUBSTRINGU(本文, LOCAL+1, LOCAL:1-LOCAL-1)%
+	SIF ISNUMERIC(文字列ボタン)
+		ボタン = TOINT(文字列ボタン)
+ENDIF
+
+タグ = <font color='#%CONVERT(GETCOLOR(), 16)%'>
+
+;紛らわしいけどtitleがツールチップなんだよなぁ
+IF ボタン != -3189415
+	タグ += @"<button value ='{ボタン}' title = '%ツールチップ%'>%本文%</button></font>"
+ELSEIF 文字列ボタン != ""
+	タグ += @"<button value ='%文字列ボタン%' title = '%ツールチップ%'>%本文%</button></font>"
+ELSE
+	タグ += @"<nonbutton title = '%ツールチップ%'>%本文%</nonbutton></font>"
+ENDIF
+
+RESETCOLOR
+
+RETURNF タグ
+
 ;引数の条件に一致するキャラをページ形式で表示する
 ;詳しくは資料フォルダの雑記.txtを参照
 @PAGING, 表示, 追加情報, ページ名, 終了表記, 使用不可も表示
