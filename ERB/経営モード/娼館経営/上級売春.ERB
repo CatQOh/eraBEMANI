@@ -3,6 +3,7 @@
 #DIM DYNAMIC 素質数
 #DIM DYNAMIC テーブル
 #DIM DYNAMIC ポイント
+#DIM DYNAMIC LCOUNT
 VARSET LOCAL, 0
 
 DRAWLINE
@@ -608,10 +609,38 @@ IF 上級売春中 == 3
 	ENDCATCH
 	MONEY += LOCAL/5
 	娼館総収入 += LOCAL/5
+	CFLAG:常連客候補--
+	IF CFLAG:常連客候補 <= 0 && CFLAG:客番号 > 0
+		SAVECHARA @"常連客_{NO:MASTER}_{CFLAG:客番号}", "削除候補", TARGET
+		常連客:MASTER:(CFLAG:客番号) = 0
+		CFLAG:MASTER:名刺++
+		SIF CFLAG:MASTER:名刺 > 5
+			CFLAG:MASTER:名刺 = 5
+	ENDIF
 ELSE
 	CALL PASELIW, @"%CALLNAME:TARGET%は%CALLNAME:PLAYER%との行為に満足して、{LOCAL}＄の報酬を払ってくれた"
 	MONEY += LOCAL
 	娼館総収入 += LOCAL
+	IF CFLAG:常連客候補 > 0
+		CFLAG:常連客候補++
+		SIF CFLAG:常連客候補 > 3
+			CFLAG:常連客候補 = 3
+		;新参の場合は空いている番号を探してそこにSAVECHARAする
+		IF CFLAG:客番号 == 0
+			FOR LCOUNT, 1, 6
+				CHKCHARADATA @"常連客_{NO:MASTER}_{LCOUNT}_{データID}"
+				IF 常連客:MASTER:(LCOUNT) == 0
+					CFLAG:客番号 = LCOUNT
+					常連客:MASTER:(CFLAG:客番号) = 1
+					SAVECHARA @"常連客_{NO:MASTER}_{LCOUNT}_{データID}", @"{GETSECOND()}", TARGET
+					BREAK
+				ENDIF
+			NEXT
+		;常連の場合は客番号のデータに上書き
+		ELSE
+			SAVECHARA @"常連客_{NO:MASTER}_{CFLAG:客番号}_{データID}", @"%NAME:MASTER%の{CFLAG:客番号}番目の常連", TARGET
+		ENDIF
+	ENDIF
 ENDIF
 
 上級売春中 = 0

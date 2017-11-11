@@ -892,7 +892,8 @@ IF COM_GO == 1
 		DRAWLINE
 		PRINTFORML コマンド連続実行({LCOUNT-ARG*10}/{LOCAL})
 		PRINTFORML □%CALLNAME:TARGET%のステータス
-		CALL SHOW_INFO_HEALTH
+		SIF !上級売春中
+			CALL SHOW_INFO_HEALTH
 		CALL SHOW_INFO_PALAM
 		IF PENIS(TARGET)
 			PRINT 　射精　　　
@@ -903,6 +904,9 @@ IF COM_GO == 1
 		ENDIF
 		SIF PENIS(MASTER) || PENIS(ASSI) || TEQUIP:触手
 			PRINTL □主人と助手のステータス
+		IF 上級売春中
+			CALL SHOW_INFO_HEALTH, MASTER
+		ENDIF
 		IF PENIS(MASTER)
 			PRINT 　射精(主人)
 			SIF CFLAG:MASTER:残数 == 0
@@ -951,8 +955,30 @@ IF COM_GO == 1
 			TRYCALL EVENTUSERCOMEND
 			VARSET LOSEBASE, 0
 			VARSET DOWNBASE:MASTER:0, 0
-			SIF BASE:体力 < 500 || TFLAG:流産
-				RETURN 0
+			IF 上級売春中
+				CALL 上級売春コマンド結果
+				IF TFLAG:満足度 >= 1000 && 上級売春中 == 1
+					DRAWLINE
+					PRINTFORML %CALLNAME:TARGET%は%CALLNAME:PLAYER%との行為に十分満足したようだ
+					PRINTFORML このまま帰ろうとする%CALLNAME:TARGET%を……
+					PRINTL [0] - 愛想良く見送る
+					PRINTL [1] - 行為を続けるべく引き止める
+					INPUT
+					DO
+						SELECTCASE RESULT
+							CASE 0
+								上級売春中 = 4
+							CASE 1
+								上級売春中 = 2
+						ENDSELECT
+					LOOP LOOPRES(0, 1)
+				ENDIF
+				SIF BASE:MASTER:体力 < 500
+					RETURN 0
+			ELSE
+				SIF BASE:体力 < 500 || TFLAG:流産
+					RETURN 0
+			ENDIF
 			WAIT
 			;RESULT = 0
 			;PRINTL [9] - 連続実行を終了する
