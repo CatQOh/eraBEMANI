@@ -114,13 +114,14 @@ LOOP 1
 @D_CALCULATOR
 ;126bitの足し算引き算掛け算ができる
 ;表示している値のための変数
-#DIMS DYNAMIC DISPLAY = "0"
+#DIM DYNAMIC DISPLAY
 ;格納している値のための変数
-#DIMS DYNAMIC MEMORY = "0"
+#DIM DYNAMIC MEMORY
 ;演算子を管理する変数 1:＋ 2:－ 3:×
 #DIM DYNAMIC OPERATOR
 ;指数表記の指数部分の桁数
 #DIM DYNAMIC EXPO = 1
+#DIM DYNAMIC 入力値
 
 DO
 	PRINTL
@@ -154,68 +155,74 @@ DO
 	PRINTBUTTON "[       Quit       ]", "Quit"
 	PRINTL
 	INPUTS
-	IF RESULTS == "0" || TOINT(RESULTS) != 0
-		;マイナスの値の入力は表示が0のときのみ有効
-		IF DISPLAY == "0"
-			DISPLAY = RESULTS
-		ELSEIF RESULT >= 0
-			;表示している桁数の計算
-			LOCAL = 1 + LOG10(ABS(DISPLAY))
-			;入力された桁数の計算
-			IF RESULT == 0
-				LOCAL:1 = 1
+	SELECTCASE TOUPPER(RESULTS)
+		CASE "", "=", "+", "-", "*"
+			SELECTCASE OPERATOR
+				CASE 0
+					MEMORY = DISPLAY
+				CASE 1
+					MEMORY += DISPLAY
+				CASE 2
+					MEMORY -= DISPLAY
+				CASE 3
+					;値を100京未満に抑える
+					SIF DISPLAY == 0 || MEMORY == 0 || (LOG10(ABS(DISPLAY))) + (LOG10(ABS(MEMORY))) < 17
+						MEMORY *= DISPLAY
+				CASE 4
+					SIF DISPLAY != 0
+						MEMORY /= DISPLAY
+				CASE 5
+					;値を100京未満に抑える
+					SIF MEMORY == 0 ||  DISPLAY*(1+LOG10(ABS(MEMORY))) < 18
+						MEMORY = POWER(MEMORY,DISPLAY)
+			ENDSELECT
+			IF RESULTS != "="
+				DISPLAY = 0
 			ELSE
-				LOCAL:1 = 1 + LOG10(RESULT)
+				DISPLAY = MEMORY
+				MEMORY = 0
 			ENDIF
-			;値が100京以上になるなら入力しなおし
-			SIF LOCAL + LOCAL:1 < 19
-				DISPLAY = DISPLAY * POWER(10,LOCAL:1) + SIGN(DISPLAY)*RESULT
-		ENDIF
-	ELSEIF RESULTS == "" || RESULTS == "=" || RESULTS == "+" || RESULTS == "-" || RESULTS == "*"
-		IF OPERATOR == 0
-			MEMORY = DISPLAY
-		ELSEIF OPERATOR == 1
-			MEMORY += DISPLAY
-		ELSEIF OPERATOR == 2
-			MEMORY -= DISPLAY
-		ELSEIF OPERATOR == 3
-			;値を100京未満に抑える
-			SIF DISPLAY == 0 || MEMORY == 0 || (LOG10(ABS(DISPLAY))) + (LOG10(ABS(MEMORY))) < 17
-				MEMORY *= DISPLAY
-		ELSEIF OPERATOR == 4
-			SIF DISPLAY != 0
-				MEMORY /= DISPLAY
-		ELSEIF OPERATOR == 5
-			;値を100京未満に抑える
-			SIF MEMORY == 0 ||  DISPLAY*(1+LOG10(ABS(MEMORY))) < 18
-				MEMORY = POWER(MEMORY,DISPLAY)
-		ENDIF
-		IF RESULTS != "="
+			SELECTCASE RESULTS
+				CASE "+"
+					OPERATOR = 1
+				CASE "-"
+					OPERATOR = 2
+				CASE "*"
+					OPERATOR = 3
+				CASE "/"
+					OPERATOR = 4
+				CASE "^"
+					OPERATOR = 5
+				CASEELSE
+					OPERATOR = 0
+			ENDSELECT
+		CASE "C"
 			DISPLAY = 0
-		ELSE
-			DISPLAY = MEMORY
+		CASE "AC", "A"
+			DISPLAY = 0
 			MEMORY = 0
-		ENDIF
-		IF RESULTS == "+"
-			OPERATOR = 1
-		ELSEIF RESULTS == "-"
-			OPERATOR = 2
-		ELSEIF RESULTS == "*"
-			OPERATOR = 3
-		ELSEIF RESULTS == "/"
-			OPERATOR = 4
-		ELSEIF RESULTS == "^"
-			OPERATOR = 5
-		ELSE
 			OPERATOR = 0
-		ENDIF
-	ELSEIF RESULTS == "C" || RESULTS == "c"
-		DISPLAY = "0"
-	ELSEIF RESULTS == "AC" || RESULTS == "Ac" || RESULTS == "ac" || RESULTS == "A" || RESULTS == "a"
-		DISPLAY = 0
-		MEMORY = 0
-		OPERATOR = 0
-	ELSEIF RESULTS == "QUIT" || RESULTS == "Quit" || RESULTS == "quit" || RESULTS == "Q" || RESULTS == "q"
-		RETURN DISPLAY
-	ENDIF
+		CASE "QUIT", "Q"
+			RETURN DISPLAY
+		CASEELSE
+			IF ISNUMERIC(RESULTS)
+				入力値 = TOINT(RESULTS)
+				;マイナスの値の入力は表示が0のときのみ有効
+				SIF DISPLAY == 0
+					DISPLAY = 入力値
+				IF 入力値 >= 0
+					;表示している桁数の計算
+					LOCAL = 1 + LOG10(ABS(DISPLAY))
+					;入力された桁数の計算
+					IF 入力値 == 0
+						LOCAL:1 = 1
+					ELSE
+						LOCAL:1 = 1 + LOG10(入力値)
+					ENDIF
+					;値が100京以上になるなら入力しなおし
+					SIF LOCAL + LOCAL:1 < 19
+						DISPLAY = DISPLAY * POWER(10,LOCAL:1) + SIGN(DISPLAY)*入力値
+				ENDIF
+			ENDIF
+	ENDSELECT
 LOOP 1
