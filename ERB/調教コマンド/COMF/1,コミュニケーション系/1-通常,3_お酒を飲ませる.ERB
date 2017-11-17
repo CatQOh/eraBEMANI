@@ -22,15 +22,21 @@ SIF TALENT:妊娠
 SIF TALENT:無機物 || CSTR:種族 == "機械"
 	RETURNF 0
 
-;お酒持ってないとダメ
-LOCAL = 0
-FOR LCOUNT, 150, 200
-	IF ITEM:LCOUNT > 0
-		LOCAL = 1
-		BREAK
-	ENDIF
-NEXT
+;お酒持ってないとダメ ただしお正月はお屠蘇があるのでおｋ
+IF MONTH == 1 && DAYS == 1
+	COMRESULT = 1
+	RETURNF 1
+ELSE
+	LOCAL = 0
+	FOR LCOUNT, 150, 200
+		IF ITEM:LCOUNT > 0
+			LOCAL = 1
+			BREAK
+		ENDIF
+	NEXT
+ENDIF
 
+COMRESULT = LOCAL
 RETURNF LOCAL
 
 @COM_お酒を飲ませる
@@ -62,6 +68,8 @@ SIF ITEM:アブソルート
 	PRINTL [8] アブソルート(ウォッカ)
 SIF ITEM:カルーア
 	PRINTL [9] カルーア
+SIF MONTH == 1 && DAYS == 1
+	PRINTL [10] お屠蘇(Alc.2%)
 ;SIF ITEM:スピリタス
 ;	PRINTL [10] スピリタス
 PRINTL [100] やっぱりやめる
@@ -569,6 +577,10 @@ DO
 				ENDSELECT
 			LOOP 1
 			BREAK
+		CASE 10
+			酒名 = お屠蘇
+			ALC = 2
+			BREAK
 		CASE 100
 			PRINTFORMW お酒を飲ませるのを止めました
 			RETURN 0
@@ -594,10 +606,11 @@ TFLAG:アルコール度数 = ALC
 
 ;実行できない お酒は特殊の地の文
 IF RESULT < 0
-	CALL KOJO_MESSAGE_EVENT, "101"
+	CALL KOJO_MESSAGE_EVENT, "飲酒拒否時"
 	RETURN 0
 ELSE
-	ITEM:お酒--
+	SIF 酒名 != "お屠蘇"
+		ITEM:お酒--
 	SELECTCASE 製法
 		CASE "ハイボール"
 			ITEM:炭酸水--
@@ -672,7 +685,7 @@ ELSE
 				CASE "山形 まり花", "和泉 一舞", "春日 咲子", "霜月 凛", "芽兎 めう", "東雲 夏陽", "東雲 心菜", "星見 日向", "久領堤 纒"
 					TEQUIP:お酒ボーナス++
 					;実績：ひなビタキャラにピュアモルトウイスキー倉吉を飲ませる
-					CALL 実績解除, "地元のお酒だめう！"
+					CALL 実績解除, "地元のお酒めう！"
 			ENDSELECT
 		;スペリオールは人魚が飲むとボーナス
 		CASE "スペリオール"
@@ -698,6 +711,8 @@ ELSE
 				LOSEBASE:体力 += 500
 				LOSEBASE:気力 += 500
 			ENDIF
+		;お屠蘇 アイテム必要無いので特にボーナスも無い
+		CASE "お屠蘇"
 	ENDSELECT
 ENDIF
 
@@ -813,6 +828,12 @@ SELECTCASE 製法
 		PRINT +美味しいカクテル(7)
 		LOCAL += 7
 ENDSELECT
+
+;PLAYERの料理技能
+IF ABL:PLAYER:料理技能 > 0 && 製法 != ""
+	PRINTFORML +%CALLNAME:PLAYER%の料理技能({ABL:PLAYER:料理技能})
+	LOCAL += ABL:PLAYER:料理技能
+ENDIF
 
 IF TALENT:衝動的
 	PRINT +衝動的(3)
