@@ -16,6 +16,8 @@ FLAG:口上表示 = 1
 ;データIDを設定
 データID = GETSECOND()
 
+LOADGLOBAL
+
 ;モード選択
 DRAWLINE
 PRINTL ★★モードを選択してください★★
@@ -78,21 +80,23 @@ LOOP 1
 ;オープニング表示
 SELECTCASE FLAG:ゲームモード
 	CASE 0
-		DRAWLINE
-		PRINTL オープニングストーリーを表示しますか？
-		PRINTL [0] - 表示する
-		PRINTL [1] - 表示しない
-		DO
-			INPUT
-			SELECTCASE RESULT
-				CASE 0
-					DRAWLINE
-					CALL OPENING
-					BREAK
-				CASE 1
-					BREAK
-			ENDSELECT
-		LOOP 1
+		IF チュートリアル設定 && デフォルトオプション
+			DRAWLINE
+			PRINTL オープニングストーリーを表示しますか？
+			PRINTL [0] - 表示する
+			PRINTL [1] - 表示しない
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						DRAWLINE
+						CALL OPENING
+						BREAK
+					CASE 1
+						BREAK
+				ENDSELECT
+			LOOP 1
+		ENDIF
 	;STRATEGYモード専用処理
 	CASE 1
 		DRAWLINE
@@ -122,64 +126,77 @@ ENDSELECT
 
 IF FLAG:ゲームモード != 7
 	;チュートリアル表示
-	DRAWLINE
-	PRINTL チュートリアルを表示しますか？（オプションからでも確認できます）
-	PRINTL [0] - 表示する
-	PRINTL [1] - 表示しない
+	IF チュートリアル設定 && デフォルトオプション
+		DRAWLINE
+		PRINTL チュートリアルを表示しますか？（オプションからでも確認できます）
+		PRINTL [0] - 表示する
+		PRINTL [1] - 表示しない
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					DRAWLINE
+					IF FLAG:ゲームモード == 8
+						CALL TEST_TUTORIAL
+					ELSE
+						CALL TUTORIAL
+					ENDIF
+					BREAK
+				CASE 1
+					BREAK
+			ENDSELECT
+		LOOP 1
+	ENDIF
+ENDIF
+
+DRAWLINE
+IF デフォルトオプション
+	FLAG:地の文表示 = 地の文設定
+	FLAG:口上表示 = 口上設定
+ELSE
+	PRINTL 口上を表示しますか？(オプションでも変更できます)
+	PRINTL [0] - 口上+地の文を表示する
+	PRINTL [1] - 口上のみ表示する
+	PRINTL [2] - 地の文のみ表示する
+	PRINTL [3] - 口上も地の文も表示しない
 	DO
 		INPUT
 		SELECTCASE RESULT
 			CASE 0
-				DRAWLINE
-				IF FLAG:ゲームモード == 8
-					CALL TEST_TUTORIAL
-				ELSE
-					CALL TUTORIAL
-				ENDIF
-				BREAK
+				FLAG:地の文表示 = 1
+				FLAG:口上表示 = 1
 			CASE 1
-				BREAK
+				FLAG:地の文表示 = 0
+				FLAG:口上表示 = 1
+			CASE 2
+				FLAG:地の文表示 = 1
+				FLAG:口上表示 = 0
+			CASE 3
+				FLAG:地の文表示 = 0
+				FLAG:口上表示 = 0
 		ENDSELECT
-	LOOP 1
+	LOOP LOOPRES(0, 1, 2, 3)
 ENDIF
 
-DRAWLINE
-PRINTL 口上を表示しますか？(オプションでも変更できます)
-PRINTL [0] - 口上+地の文を表示する
-PRINTL [1] - 口上のみ表示する
-PRINTL [2] - 地の文のみ表示する
-PRINTL [3] - 口上も地の文も表示しない
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			FLAG:地の文表示 = 1
-			FLAG:口上表示 = 1
-		CASE 1
-			FLAG:地の文表示 = 0
-			FLAG:口上表示 = 1
-		CASE 2
-			FLAG:地の文表示 = 1
-			FLAG:口上表示 = 0
-		CASE 3
-			FLAG:地の文表示 = 0
-			FLAG:口上表示 = 0
-	ENDSELECT
-LOOP LOOPRES(0, 1, 2, 3)
+IF デフォルトオプション
+	FLAG:実績メッセージ = 実績解除メッセージ設定
+ELSE
+	DRAWLINE
+	PRINTL 実績解除時のメッセージを表示しますか？(オプションからでも変更できます)
+	PRINTL [0] - 表示しない
+	PRINTL [1] - 表示する
+	DO
+		INPUT
+		FLAG:実績メッセージ = RESULT
+	LOOP LOOPRES(0, 1)
+ENDIF
 
-DRAWLINE
-PRINTL 実績解除時のメッセージを表示しますか？(オプションからでも変更できます)
-PRINTL [0] - 表示しない
-PRINTL [1] - 表示する
-DO
-	INPUT
-	FLAG:実績メッセージ = RESULT
-LOOP LOOPRES(0, 1)
-
-DRAWLINE
 IF QMA
 	通貨単位 = マジカ
+ELSEIF デフォルトオプション
+	FLAG:パセリ表示 = パセリ表示設定
 ELSE
+	DRAWLINE
 	PRINTL PASELI表示をオンにしますか？(オプションからでも変更できます)
 	PRINTL [0] - オンにしない
 	PRINTL [1] - オンにする
@@ -189,17 +206,22 @@ ELSE
 	LOOP LOOPRES(0, 1)
 ENDIF
 
-DRAWLINE
-PRINTL 奴隷の着衣設定を変更しますか？（オプションでも変更できます）
-PRINTL [0] - 服を着たままでいい
-PRINTL [1] - 面倒だから脱がせてから調教始める
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 1
-			FLAG:着衣設定 = 3
-	ENDSELECT
-LOOP LOOPRES(0, 1)
+IF デフォルトオプション
+	SIF 着衣オプション設定
+		FLAG:着衣設定 = 3
+ELSE
+	DRAWLINE
+	PRINTL 奴隷の着衣設定を変更しますか？（オプションでも変更できます）
+	PRINTL [0] - 服を着たままでいい
+	PRINTL [1] - 面倒だから脱がせてから調教始める
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 1
+				FLAG:着衣設定 = 3
+		ENDSELECT
+	LOOP LOOPRES(0, 1)
+ENDIF
 
 BEGIN SHOP
 
