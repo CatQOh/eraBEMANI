@@ -2,11 +2,13 @@
 #DIM DYNAMIC ページ数
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 各難易度
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 処理数
+#DIM DYNAMIC 次ページあり
 
 CALL REF_MUSIC
 
-
-;LOCALには総曲数が入る
+;LOCAL:0には総曲数が入る
 LOCAL = 0
 FOR LCOUNT, 1, 1000
 	SIF 楽曲情報:LCOUNT:0 == ""
@@ -14,45 +16,76 @@ FOR LCOUNT, 1, 1000
 	LOCAL++
 NEXT
 
+;LOCALSは収録機種フォルダの処理に使用
+LOCALS = 
+
 $LIST
+表示数 = 0
+処理数 = 0
+次ページあり = 0
 
 DRAWLINE
 PRINTL 楽曲を選んでください
 PRINTL 
 PRINTL No.  Vo In Da 　　　曲名
 
-FOR LCOUNT, ページ数*10+1, ページ数*10+11
+FOR LCOUNT, 0, LOCAL
+	;リストの終端に到達したらBREAK
 	SIF LCOUNT > LOCAL
 		BREAK
-	PRINTFORM [{LCOUNT, 2, RIGHT}] 
-	FOR 各難易度, 1, 4
-		SELECTCASE TOINT(楽曲情報:LCOUNT:各難易度)
-			CASE 0
-				PRINT ‐ 
-			CASE IS < 10
-				PRINTFORM %TOFULL(楽曲情報:LCOUNT:各難易度)% 
-			CASEELSE
-				PRINTFORM %楽曲情報:LCOUNT:各難易度% 
-		ENDSELECT
-	NEXT
-	PRINTFORML  %楽曲情報:LCOUNT:0%
+	;収録機種フォルダを使っている場合は収録機種の名前が配列に入ってたら表示する
+	IF LOCALS != ""
+		REPEAT 20
+			SIF 楽曲情報:LCOUNT:COUNT == LOCALS
+				GOTO 表示
+		REND
+		CONTINUE
+	ENDIF
+	$表示
+	処理数++
+	;ページ数*10までは表示しない
+	IF 処理数 > ページ数*10
+		;10曲表示してあるなら次ページ存在フラグを立ててBREAK
+		IF 表示数 >= 10
+			次ページあり = 1
+			BREAK
+		ENDIF
+		PRINTFORM [{LCOUNT, 2, RIGHT}] 
+		FOR 各難易度, 1, 4
+			SELECTCASE TOINT(楽曲情報:LCOUNT:各難易度)
+				CASE 0
+					PRINT ‐ 
+				CASE IS < 10
+					PRINTFORM %TOFULL(楽曲情報:LCOUNT:各難易度)% 
+				CASEELSE
+					PRINTFORM %楽曲情報:LCOUNT:各難易度% 
+			ENDSELECT
+		NEXT
+		PRINTFORML  %楽曲情報:LCOUNT:0%
+		表示数++
+	ENDIF
 NEXT
 
 DRAWLINE
-PRINTPLAINFORM 　PAGE.{ページ数+1}　
+IF LOCALS != ""
+	PRINTPLAINFORM 　%LOCALS%.{ページ数+1}　
+ELSE
+	PRINTPLAINFORM 　PAGE.{ページ数+1}　
+ENDIF
 IF ページ数 > 0
 	PRINTC [998]前のページへ
 ELSE
 	PRINTC  
 ENDIF
-SIF LOCAL > (ページ数*10+10)
+SIF 次ページあり
 	PRINTC [999]次のページへ
 PRINTL 
 PRINTPLAIN 　MUSIC SELECT　
 PRINT [1000]戻る 
 PRINT [1001] Voでソート 
 PRINT [1002] Instでソート 
-PRINTL [1003] Daでソート
+PRINT [1003] Daでソート 
+PRINTL [1004] 収録機種フォルダを見る
 DO
 	INPUT
 	SELECTCASE RESULT
@@ -70,7 +103,7 @@ DO
 				GOTO LIST
 			ENDIF
 		CASE 999
-			IF LOCAL > (ページ数*10+10)
+			IF 次ページあり
 				ページ数++
 				GOTO LIST
 			ENDIF
@@ -80,6 +113,65 @@ DO
 			INVERTBIT LOCAL:(LOCAL:5%100), 0
 			ページ数 = 0
 			GOTO LIST
+		CASE 1004
+			DRAWLINE
+			PRINTL □表示したい楽曲の機種を選んでください
+			PRINTL  [1] beatmania・beatmaniaIIDX
+			PRINTL  [2] pop'n music
+			PRINTL  [3] Dance Dance Revolution
+			PRINTL  [4] GuitarFreaks・drummania・GITADORA
+			PRINTL  [5] jubeat
+			PRINTL  [6] REFLEC BEAT・悠久のリフレシア
+			PRINTL  [7] SOUND VOLTEX
+			PRINTL  [8] ノスタルジア
+			PRINTL  [9] Dance Evolution
+			PRINTL [10] Beat Stream
+			PRINTL [11] CHUNITHM
+			PRINTL [12] 太鼓の達人
+			PRINTL [13] Deemo
+			PRINTL [14] BMS
+			;ミュゼカとダガッキは今のところ除外しておく
+			DRAWLINE
+			PRINTPLAIN 　機種フォルダ　
+			PRINTL [0] 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						GOTO LIST
+					CASE 1
+						LOCALS = IIDX
+					CASE 2
+						LOCALS = PM
+					CASE 3
+						LOCALS = DDR
+					CASE 4
+						LOCALS = GFDM
+					CASE 5
+						LOCALS = 指
+					CASE 6
+						LOCALS = RB
+					CASE 7
+						LOCALS = SDVX
+					CASE 8
+						LOCALS = ノスタルジア
+					CASE 9
+						LOCALS = DEA
+					CASE 10
+						LOCALS = BS
+					CASE 11
+						LOCALS = CHUNITHM
+					CASE 12
+						LOCALS = 太鼓
+					CASE 13
+						LOCALS = Deemo
+					CASE 14
+						LOCALS = BMS
+				ENDSELECT
+				ページ数 = 0
+				SIF INRANGE(RESULT, 1, 14)
+					GOTO LIST
+			LOOP 1
 	ENDSELECT
 LOOP 1
 
@@ -92,434 +184,433 @@ LOOP 1
 LOCAL = 0
 ;0-9 ----------------
 LOCAL++
-楽曲情報:LOCAL:0 '= "19,November", "3", "6", "3"
+楽曲情報:LOCAL:0 '= "19,November", "3", "6", "3", "IIDX", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "20,november", "1", "5", "3"
+楽曲情報:LOCAL:0 '= "20,november", "1", "5", "3", "IIDX", "DDR", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "2038", "0", "8", "4"
+楽曲情報:LOCAL:0 '= "2038", "0", "8", "4", "BMS"
 LOCAL++
-楽曲情報:LOCAL:0 '= "5.1.1.", "0", "5", "2"
+楽曲情報:LOCAL:0 '= "5.1.1.", "0", "5", "2", "IIDX", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "5.8.8.", "0", "3", "1"
+楽曲情報:LOCAL:0 '= "5.8.8.", "0", "3", "1", "IIDX"
+LOCAL++
+楽曲情報:LOCAL:0 '= "Ⅸ", "9", "9", "9", "IIDX", "PM", "DDR", "GFDM", "指", "RB", "SDVX", "ダガッキ"
 ;ABCD ----------------
 LOCAL++
-楽曲情報:LOCAL:0 '= "Absurd Gaff", "0", "6", "4"
+楽曲情報:LOCAL:0 '= "Absurd Gaff", "0", "6", "4", "SDVX", "BMS"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ÆTHER", "0", "7", "11"
+楽曲情報:LOCAL:0 '= "ÆTHER", "0", "7", "11", "IIDX", "DDR", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "AFTER THE GAME OF LOVE", "7", "7", "5"
+楽曲情報:LOCAL:0 '= "AFTER THE GAME OF LOVE", "7", "7", "5", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "air", "0", "5", "8"
+楽曲情報:LOCAL:0 '= "air", "0", "5", "8", "IIDX", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Air", "0", "10", "3"
+楽曲情報:LOCAL:0 '= "Air", "0", "10", "3", "BMS"
 LOCAL++
-楽曲情報:LOCAL:0 '= "All My Love", "5", "5", "5"
+楽曲情報:LOCAL:0 '= "All My Love", "5", "5", "5", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "AM-3P", "0", "6", "5"
+楽曲情報:LOCAL:0 '= "AM-3P", "0", "6", "5", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Angel Fish", "4", "6", "2"
+楽曲情報:LOCAL:0 '= "Angel Fish", "4", "6", "2", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ANiMA", "0", "12", "1"
+楽曲情報:LOCAL:0 '= "ANiMA", "0", "12", "1", "Deemo"
 LOCAL++
-楽曲情報:LOCAL:0 '= "AVE DE RAPINA", "0", "6", "6"
+楽曲情報:LOCAL:0 '= "AVE DE RAPINA", "0", "6", "6", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "AWAKE", "6", "7", "9"
+楽曲情報:LOCAL:0 '= "AWAKE", "6", "7", "9", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "awakening", "4", "5", "4"
+楽曲情報:LOCAL:0 '= "awakening", "4", "5", "4", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "A.DOGMA", "0", "12", "3"
+楽曲情報:LOCAL:0 '= "A.DOGMA", "0", "12", "3", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "B4U", "6", "6", "6"
+楽曲情報:LOCAL:0 '= "B4U", "6", "6", "6", "IIDX", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Beautiful Dream", "5", "5", "7"
+楽曲情報:LOCAL:0 '= "Beautiful Dream", "5", "5", "7", "DDR", "RB", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "BOOM BOOM DISCO NIGHT", "3", "6", "6"
+楽曲情報:LOCAL:0 '= "BOOM BOOM DISCO NIGHT", "3", "6", "6", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Bounce Bounce Bounce", "9", "5", "5"
+楽曲情報:LOCAL:0 '= "Bounce Bounce Bounce", "9", "5", "5", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "BRE∀K DOWN", "3", "7", "6"
+楽曲情報:LOCAL:0 '= "BRE∀K DOWN", "3", "7", "6", "DDR", "PM", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "BRILLIANT 2U", "5", "5", "5"
+楽曲情報:LOCAL:0 '= "BRILLIANT 2U", "5", "5", "5", "DDR", "IIDX", "DEA"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Broadway Diva", "9", "6", "4"
+楽曲情報:LOCAL:0 '= "Broadway Diva", "9", "6", "4", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "CAN'T STOP FALLIN' IN LOVE", "5", "4", "5"
+楽曲情報:LOCAL:0 '= "CAN'T STOP FALLIN' IN LOVE", "5", "4", "5", "DDR", "IIDX", "DEA"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Change the World", "6", "7", "4"
+楽曲情報:LOCAL:0 '= "Change the World", "6", "7", "4", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "CHECKING YOU OUT", "4", "7", "6"
+楽曲情報:LOCAL:0 '= "CHAOS", "0", "4", "0", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Come to Life", "6", "9", "9"
+楽曲情報:LOCAL:0 '= "CHECKING YOU OUT", "4", "7", "6", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "conflict", "10", "10", "5"
+楽曲情報:LOCAL:0 '= "Chronos", "0", "8", "7", "IIDX", "DDR", "GFDM", "指", "ダガッキ"
 LOCAL++
-楽曲情報:LOCAL:0 '= "CHAOS", "0", "4", "0"
+楽曲情報:LOCAL:0 '= "Come to Life", "6", "9", "9", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Chronos", "0", "8", "7"
+;とりあえずBMS、ボルテ、ウニ、Deemo、太鼓だけで
+楽曲情報:LOCAL:0 '= "conflict", "10", "10", "5", "BMS", "CHUNITHM", "SDVX", "Deemo", "太鼓"
 LOCAL++
-楽曲情報:LOCAL:0 '= "D2R", "7", "6", "6"
+楽曲情報:LOCAL:0 '= "D2R", "7", "6", "6", "IIDX", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Daisuke", "7", "6", "8"
+楽曲情報:LOCAL:0 '= "Daisuke", "7", "6", "8", "IIDX", "DEA"
 LOCAL++
-楽曲情報:LOCAL:0 '= "D.A.N.C.E.!", "4", "4", "8"
+楽曲情報:LOCAL:0 '= "D.A.N.C.E.!", "4", "4", "8", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Darling my LUV", "4", "5", "6"
+楽曲情報:LOCAL:0 '= "Darling my LUV", "4", "5", "6", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "DEAD END", "0", "6", "3"
+楽曲情報:LOCAL:0 '= "DEAD END", "0", "6", "6", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Don't forget", "4", "4", "4"
+楽曲情報:LOCAL:0 '= "Don't forget", "4", "4", "4", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "DROP THE BOMB", "8", "6", "6"
+楽曲情報:LOCAL:0 '= "DROP THE BOMB", "8", "6", "6", "DDR", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "DYNAMITE RAVE", "6", "6", "5"
+楽曲情報:LOCAL:0 '= "DYNAMITE RAVE", "6", "6", "5", "DDR"
 ;EFGH ----------------
 LOCAL++
-楽曲情報:LOCAL:0 '= "earth scape", "0", "1", "1"
+楽曲情報:LOCAL:0 '= "earth scape", "0", "1", "1", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "EGOISM 440", "0", "9", "12"
+楽曲情報:LOCAL:0 '= "EGOISM 440", "0", "9", "12", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Endless Summer Story", "3", "6", "2"
+楽曲情報:LOCAL:0 '= "Endless Summer Story", "3", "6", "2", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Eternal Tears", "3", "3", "2"
+楽曲情報:LOCAL:0 '= "Eternal Tears", "3", "3", "2", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ever snow", "3", "5", "3"
+楽曲情報:LOCAL:0 '= "ever snow", "3", "5", "3", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Fantasia", "6", "8", "5"
+楽曲情報:LOCAL:0 '= "Fantasia", "6", "8", "5", "PM", "IIDX", "指", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "FLOWERS for ALBION", "0", "6", "1"
+楽曲情報:LOCAL:0 '= "FLOWERS for ALBION", "0", "6", "1", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Follow Tomorrow", "6", "6", "7"
+楽曲情報:LOCAL:0 '= "Follow Tomorrow", "6", "6", "7", "IIDX", "DEA", "DDR", "指"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Freeze", "0", "5", "4"
+楽曲情報:LOCAL:0 '= "Freeze", "0", "5", "4", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "GAMBOL", "0", "3", "2"
+楽曲情報:LOCAL:0 '= "GAMBOL", "0", "3", "2", "IIDX", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "General Relativity", "0", "0", "0"
+楽曲情報:LOCAL:0 '= "General Relativity", "0", "0", "0", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "going up", "4", "7", "5"
+楽曲情報:LOCAL:0 '= "going up", "4", "7", "5", "GFDM", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Guilt & Love", "6", "6", "6"
+楽曲情報:LOCAL:0 '= "Guilt & Love", "6", "6", "6", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Ha・lle・lu・jah", "5", "5", "5"
+楽曲情報:LOCAL:0 '= "Ha・lle・lu・jah", "5", "5", "5", "SDVX", "RB", "指", "BS", "DDR", "DEA"
 LOCAL++
-楽曲情報:LOCAL:0 '= "High School Love", "4", "5", "4"
+楽曲情報:LOCAL:0 '= "High School Love", "4", "5", "4", "PM", "IIDX", "RB", "指"
 LOCAL++
-楽曲情報:LOCAL:0 '= "HORIZON", "5", "4", "4"
+楽曲情報:LOCAL:0 '= "HORIZON", "5", "4", "4", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Howling", "4", "6", "6"
+楽曲情報:LOCAL:0 '= "Howling", "4", "6", "6", "IIDX", "PM"
 ;IJKL ----------------
 LOCAL++
-楽曲情報:LOCAL:0 '= "Icecles", "0", "8", "6"
+楽曲情報:LOCAL:0 '= "I LOVE SAKURA", "2", "7", "2", "RB", "指"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Idola", "7", "10", "8"
+楽曲情報:LOCAL:0 '= "I Was The One", "3", "3", "3", "IIDX", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "IMPLANTATION", "1", "11", "1"
+楽曲情報:LOCAL:0 '= "Icecles", "0", "8", "6", "指", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "in love wit you", "6", "3", "3"
+楽曲情報:LOCAL:0 '= "Idola", "7", "10", "8", "IIDX", "PM", "DDR", "GFDM", "RB", "指", "SDVX", "BS", "ダガッキ"
 LOCAL++
-楽曲情報:LOCAL:0 '= "INJECTION OF LOVE", "7", "5", "6"
+楽曲情報:LOCAL:0 '= "IMPLANTATION", "1", "11", "1", "GFDM", "IIDX", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "INSERTiON", "0", "5", "5"
+楽曲情報:LOCAL:0 '= "in love wit you", "6", "3", "3", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "I Was The One", "3", "3", "3"
+楽曲情報:LOCAL:0 '= "INJECTION OF LOVE", "7", "5", "6", "IIDX", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "IX", "9", "9", "9"
+楽曲情報:LOCAL:0 '= "INSERTiON", "0", "5", "5", "DDR", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "I'm a loser", "3", "6", "2"
+楽曲情報:LOCAL:0 '= "I'm a loser", "3", "6", "2", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "I'm so Happy", "5", "8", "8"
+楽曲情報:LOCAL:0 '= "I'M GONNA GET YOU!", "6", "6", "4", "GFDM", "DDR", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "I LOVE SAKURA", "2", "7", "2"
+楽曲情報:LOCAL:0 '= "I'm so Happy", "5", "8", "8", "指", "DDR", "IIDX", "RB", "PM", "GFDM", "SDVX", "DEA", "ダガッキ", "MÚSECA"
 LOCAL++
-楽曲情報:LOCAL:0 '= "I'M GONNA GET YOU!", "6", "6", "4"
+楽曲情報:LOCAL:0 '= "jelly kiss", "5", "5", "4", "IIDX", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "jelly kiss", "5", "5", "4"
+楽曲情報:LOCAL:0 '= "JULIAN", "6", "6", "7", "BMS", "SDVX", "CHUNITHM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "JULIAN", "6", "6", "7"
+楽曲情報:LOCAL:0 '= "KHAMEN BREAK", "2", "7", "7", "IIDX", "PM", "DDR", "GFDM", "指", "RB", "SDVX", "ダガッキ"
 LOCAL++
-楽曲情報:LOCAL:0 '= "KHAMEN BREAK", "2", "7", "7"
+楽曲情報:LOCAL:0 '= @"KIMONO%UNICODE(0x2764)%PRINCESS", "7", "8", "9", "DDR", "DEA", "PM", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= @"KIMONO%UNICODE(0x2764)%PRINCESS", "7", "8", "9"
+楽曲情報:LOCAL:0 '= "La libertad", "6", "6", "6", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "La libertad", "6", "6", "6"
+楽曲情報:LOCAL:0 '= "La Señorita", "6", "5", "4", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "La Señorita", "6", "5", "4"
+楽曲情報:LOCAL:0 '= "LET ME BELIEVE", "8", "8", "5", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "LET ME BELIEVE", "8", "8", "5"
+楽曲情報:LOCAL:0 '= "lights", "6", "7", "5", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "lights", "6", "7", "5"
+楽曲情報:LOCAL:0 '= "Love & Justice", "5", "10", "8", "BMS"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Love & Justice", "5", "10", "8"
+楽曲情報:LOCAL:0 '= "Love2シュガ→", "4", "4", "4", "DDR", "PM", "RB", "ダガッキ"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Love & Justice", "5", "10", "8"
+楽曲情報:LOCAL:0 '= "LOVE WILL・・・", "3", "4", "3", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Love2シュガ→", "4", "4", "4"
+楽曲情報:LOCAL:0 '= "LUV TO ME", "2", "5", "4", "IIDX", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "LOVE WILL・・・", "3", "4", "3"
-LOCAL++
-楽曲情報:LOCAL:0 '= "LUV TO ME", "2", "5", "4"
-LOCAL++
-楽曲情報:LOCAL:0 '= "LUV TO ME(english version)", "4", "5", "4"
+楽曲情報:LOCAL:0 '= "LUV TO ME(english version)", "4", "5", "4", "IIDX", "DDR"
 ;MNOP ----------------
 LOCAL++
-楽曲情報:LOCAL:0 '= "MAGICAL VOICE SHOWER", "12", "0", "3"
+楽曲情報:LOCAL:0 '= "MAGICAL VOICE SHOWER", "12", "0", "3", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "MAGIC & LOVE", "5", "6", "6"
+楽曲情報:LOCAL:0 '= "MAGIC & LOVE", "5", "6", "6", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Make A Difference", "10", "8", "5"
+楽曲情報:LOCAL:0 '= "Make A Difference", "10", "8", "5", "IIDX", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "MAX LOVE", "3", "4", "4"
+楽曲情報:LOCAL:0 '= "MAX LOVE", "3", "4", "4", "IIDX", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Medicine of Love", "5", "4", "3"
+楽曲情報:LOCAL:0 '= "Medicine of Love", "5", "4", "3", "IIDX", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Melody Life", "3", "4", "3"
+楽曲情報:LOCAL:0 '= "Melody Life", "3", "4", "3", "IIDX", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Mermaid Girl", "6", "5", "4"
+楽曲情報:LOCAL:0 '= "Mermaid Girl", "6", "5", "4", "IIDX", "DDR", "PM", "RB", "SDVX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "murmur twins", "9", "10", "7"
+楽曲情報:LOCAL:0 '= "murmur twins", "9", "10", "7", "IIDX", "PM", "DDR", "RB", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "neu", "8", "12", "0"
+楽曲情報:LOCAL:0 '= "neu", "8", "12", "0", "PM", "IIDX", "指", "ノスタルジア", "SDVX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Never Fade Away", "5", "7", "6"
+楽曲情報:LOCAL:0 '= "Never Fade Away", "5", "7", "6", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "New Decade", "1", "5", "10"
+楽曲情報:LOCAL:0 '= "New Decade", "1", "5", "10", "DDR", "IIDX", "指"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Nine point eight", "7", "5", "2"
+楽曲情報:LOCAL:0 '= "Nine point eight", "7", "5", "2", "Deemo"
 LOCAL++
-楽曲情報:LOCAL:0 '= "nine seconds", "2", "2", "2"
+楽曲情報:LOCAL:0 '= "nine seconds", "2", "2", "2", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "NO DOUBT GET LOUD", "7", "3", "6"
+楽曲情報:LOCAL:0 '= "NO DOUBT GET LOUD", "7", "3", "6", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "One Phrase Blues", "0", "9", "6"
+楽曲情報:LOCAL:0 '= "One Phrase Blues", "0", "9", "6", "GFDM", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "PARANOIA survivor MAX", "0", "5", "10"
+楽曲情報:LOCAL:0 '= "PARANOIA survivor MAX", "0", "5", "10", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Piano Samurai", "0", "10", "6"
+楽曲情報:LOCAL:0 '= "Piano Samurai", "0", "10", "6", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Pink Rose", "4", "6", "4"
+楽曲情報:LOCAL:0 '= "Pink Rose", "4", "6", "4", "IIDX", "PM", "DDR", "指", "RB", "ノスタルジア"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Pluto", "0", "9", "8"
+楽曲情報:LOCAL:0 '= "Pluto", "0", "9", "8", "DDR", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Pluto Relinquish", "0", "9", "12"
+楽曲情報:LOCAL:0 '= "Pluto Relinquish", "0", "9", "12", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "PUNISHER", "6", "7", "7"
+楽曲情報:LOCAL:0 '= "PUNISHER", "6", "7", "7", "IIDX", "PM", "DDR", "GFDM", "指", "RB", "SDVX", "ダガッキ"
 ;QRST ----------------
 LOCAL++
-楽曲情報:LOCAL:0 '= "quasar", "0", "7", "4"
+楽曲情報:LOCAL:0 '= "quasar", "0", "7", "4", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "rage against usual", "0", "10", "6"
+楽曲情報:LOCAL:0 '= "rage against usual", "0", "10", "6", "IIDX", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Rainbow after snow", "5", "7", "7"
+楽曲情報:LOCAL:0 '= "Rainbow after snow", "5", "7", "7", "IIDX", "指"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Really Love", "5", "6", "3"
+楽曲情報:LOCAL:0 '= "Really Love", "5", "6", "3", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "RESISTANCE", "5", "6", "4"
+楽曲情報:LOCAL:0 '= "RESISTANCE", "5", "6", "4", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "RЁVOLUTIΦN", "6", "7", "8"
+楽曲情報:LOCAL:0 '= "RЁVOLUTIΦN", "6", "7", "8", "GFDM", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Roots of my way!", "5", "5", "3"
+楽曲情報:LOCAL:0 '= "Roots of my way!", "5", "5", "3", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Seasons", "8", "9", "4"
+楽曲情報:LOCAL:0 '= "Seasons", "8", "9", "4", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Sense 2007", "0", "11", "7"
+楽曲情報:LOCAL:0 '= "Sense 2007", "0", "11", "7", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "She is my wife", "1", "4", "3"
+楽曲情報:LOCAL:0 '= "She is my wife", "1", "4", "3", "IIDX", "DDR", "DEA"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Silent Hill", "5", "4", "2"
+楽曲情報:LOCAL:0 '= "Silent Hill", "5", "4", "2", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Somehow You Found Me", "7", "7", "9"
+楽曲情報:LOCAL:0 '= "Somehow You Found Me", "7", "7", "9", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Space Dog", "6", "4", "3"
+楽曲情報:LOCAL:0 '= "Space Dog", "6", "4", "3", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "SPEEDY CAT", "6", "7", "7"
+楽曲情報:LOCAL:0 '= "SPEEDY CAT", "6", "7", "7", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "SPICY PIECE", "0", "7", "3"
+楽曲情報:LOCAL:0 '= "SPICY PIECE", "0", "7", "3", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "super highway", "0", "5", "3"
+楽曲情報:LOCAL:0 '= "super highway", "0", "5", "3", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Stand Alone Beat Masta", "8", "10", "7"
+楽曲情報:LOCAL:0 '= "Stand Alone Beat Masta", "8", "10", "7", "指", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Summer fantasy(Darwin Remix)", "7", "6", "4"
+楽曲情報:LOCAL:0 '= "Summer fantasy(Darwin Remix)", "7", "6", "4", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Super Duper Racers", "7", "9", "8"
+楽曲情報:LOCAL:0 '= "Super Duper Racers", "7", "9", "8", "RB", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Take A Step Forward", "5", "4", "4"
+楽曲情報:LOCAL:0 '= "Take A Step Forward", "5", "4", "4", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Thank You Merry Christmas", "3", "4", "5"
+楽曲情報:LOCAL:0 '= "Thank You Merry Christmas", "3", "4", "5", "DDR", "指", "RB", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "The Least 100sec", "0", "11", "5"
+楽曲情報:LOCAL:0 '= "The Least 100sec", "0", "11", "5", "GFDM", "DDR", "IIDX", "RB", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "THE REASON", "8", "8", "8"
+楽曲情報:LOCAL:0 '= "THE REASON", "8", "8", "8", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Top The Charts", "7", "6", "6"
+楽曲情報:LOCAL:0 '= "Top The Charts", "7", "6", "6", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "True Blue", "7", "7", "5"
+楽曲情報:LOCAL:0 '= "True Blue", "7", "7", "5", "指", "IIDX", "PM", "RB", "SDVX", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Twelfth Style", "0", "5", "10"
+楽曲情報:LOCAL:0 '= "Twelfth Style", "0", "5", "10", "IIDX"
 ;UVWXYZ ----------------
 LOCAL++
-楽曲情報:LOCAL:0 '= "UNLIMITED FIRE", "2", "5", "4"
+楽曲情報:LOCAL:0 '= "UNLIMITED FIRE", "2", "5", "4", "RB", "指", "GFDM", "SDVX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Voltage", "0", "6", "2"
+楽曲情報:LOCAL:0 '= "Voltage", "0", "6", "2", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Watch Out Pt.2", "0", "9", "9"
+楽曲情報:LOCAL:0 '= "Watch Out Pt.2", "0", "9", "9", "IIDX", "DEA"
 LOCAL++
-楽曲情報:LOCAL:0 '= "White Eve", "4", "6", "3"
+楽曲情報:LOCAL:0 '= "White Eve", "4", "6", "3", "PM", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "WORLD COLOR", "4", "5", "3"
+楽曲情報:LOCAL:0 '= "WORLD COLOR", "4", "5", "3", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Wow Wow VENUS", "5", "6", "6"
+楽曲情報:LOCAL:0 '= "Wow Wow VENUS", "5", "6", "6", "RB", "指", "DEA", "PM", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "X-Plan", "7", "8", "6"
+楽曲情報:LOCAL:0 '= "X-Plan", "7", "8", "6", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "Xepher", "8", "8", "5"
+楽曲情報:LOCAL:0 '= "Xepher", "8", "8", "5", "IIDX", "DDR", "SDVX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "You are a Star", "7", "6", "5"
+楽曲情報:LOCAL:0 '= "You are a Star", "7", "6", "5", "DDR"
 ;あか ----------------
 LOCAL++
-楽曲情報:LOCAL:0 '= "アズール", "0", "9", "5"
+楽曲情報:LOCAL:0 '= "アズール", "0", "9", "5", "BMS"
 LOCAL++
-楽曲情報:LOCAL:0 '= "アズール リミックス", "0", "10", "5"
+楽曲情報:LOCAL:0 '= "アズール リミックス", "0", "10", "5", "BMS"
 LOCAL++
-楽曲情報:LOCAL:0 '= "一網打尽", "0", "12", "4"
+楽曲情報:LOCAL:0 '= "一網打尽", "0", "12", "4", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "梅雪夜", "8", "10", "7"
+楽曲情報:LOCAL:0 '= "梅雪夜", "8", "10", "7", "RB", "指", "PM", "IIDX", "ダガッキ"
 LOCAL++
-楽曲情報:LOCAL:0 '= "エコ爺", "2", "5", "2"
+楽曲情報:LOCAL:0 '= "エコ爺", "2", "5", "2", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "エンジェル ドリーム", "5", "6", "7"
+楽曲情報:LOCAL:0 '= "エンジェル ドリーム", "5", "6", "7", "太鼓"
 LOCAL++
-楽曲情報:LOCAL:0 '= "大桟橋", "5", "6", "4"
+楽曲情報:LOCAL:0 '= "大桟橋", "5", "6", "4", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "踊るフィーバーロボ", "2", "5", "3"
+楽曲情報:LOCAL:0 '= "踊るフィーバーロボ", "2", "5", "3", "PM", "RB", "SDVX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "朧", "7", "7", "7"
+楽曲情報:LOCAL:0 '= "朧", "7", "7", "7", "PM", "指", "RB", "IIDX", "DEA", "ダガッキ", "DDR", "GFDM", "SDVX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "風のファンタジー", "6", "5", "7"
+楽曲情報:LOCAL:0 '= "風のファンタジー", "6", "5", "7", "太鼓"
 LOCAL++
-楽曲情報:LOCAL:0 '= "からふるぱすてる", "5", "8", "5"
+楽曲情報:LOCAL:0 '= "からふるぱすてる", "5", "8", "5", "GFDM", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "キラキラ☆ステーション", "4", "4", "3"
+楽曲情報:LOCAL:0 '= "キラキラ☆ステーション", "4", "4", "3", "RB", "指"
 LOCAL++
-楽曲情報:LOCAL:0 '= "キルト", "6", "8", "6"
+楽曲情報:LOCAL:0 '= "キルト", "6", "8", "6", "指", "PM", "GFDM", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "紅蓮の焔", "4", "6", "5"
+楽曲情報:LOCAL:0 '= "紅蓮の焔", "4", "6", "5", "GFDM", "指", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "黒髪乱れし修羅となりて", "6", "7", "5"
+楽曲情報:LOCAL:0 '= "黒髪乱れし修羅となりて", "6", "7", "5", "PM", "IIDX", "GFDM", "指", "RB", "DDR", "SDVX", "BS", "MÚSECA"
 LOCAL++
-楽曲情報:LOCAL:0 '= "恋歌疾風！かるたクイーンいろは", "8", "9", "7"
+楽曲情報:LOCAL:0 '= "恋歌疾風！かるたクイーンいろは", "8", "9", "7", "PM", "BS"
 LOCAL++
-楽曲情報:LOCAL:0 '= "恋する☆宇宙戦争っ！！", "4", "6", "6"
+楽曲情報:LOCAL:0 '= "恋する☆宇宙戦争っ！！", "4", "6", "6", "IIDX", "RB", "SDVX", "PM", "ダガッキ", "指", "BS", "GFDM", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "恋は白帯、サンシロー", "4", "4", "4"
+楽曲情報:LOCAL:0 '= "恋は白帯、サンシロー", "4", "4", "4", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ゴーイング マイ ウェイ!", "6", "12", "3"
+楽曲情報:LOCAL:0 '= "ゴーイング マイ ウェイ!", "6", "12", "3", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "この子の七つのお祝いに", "12", "9", "7"
+楽曲情報:LOCAL:0 '= "この子の七つのお祝いに", "12", "9", "7", "GFDM", "DDR", "PM", "指"
 LOCAL++
-楽曲情報:LOCAL:0 '= @"混乱少女%UNICODE(0x2764)%そふらんちゃん!!", "4", "7", "7"
+楽曲情報:LOCAL:0 '= @"混乱少女%UNICODE(0x2764)%そふらんちゃん!!", "4", "7", "7", "SDVX", "PM"
 ;さたな ----------------
 LOCAL++
-楽曲情報:LOCAL:0 '= "防人恋歌", "5", "6", "4"
+楽曲情報:LOCAL:0 '= "防人恋歌", "5", "6", "4", "PM", "指"
 LOCAL++
-楽曲情報:LOCAL:0 '= "サクラヨゾラ", "4", "7", "4"
+楽曲情報:LOCAL:0 '= "サクラヨゾラ", "4", "7", "4", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "三度笠ポン太は今日も行く", "8", "7", "2"
+楽曲情報:LOCAL:0 '= "三度笠ポン太は今日も行く", "8", "7", "2", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "シュッパツシンコウ・シサカンコ", "5", "5", "5"
+楽曲情報:LOCAL:0 '= "シュッパツシンコウ・シサカンコ", "5", "5", "5", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "雫", "9", "11", "6"
+楽曲情報:LOCAL:0 '= "雫", "9", "11", "6", "PM", "RB", "DDR", "ノスタルジア"
 LOCAL++
-楽曲情報:LOCAL:0 '= "忍恋花", "8", "11", "7"
+楽曲情報:LOCAL:0 '= "忍恋花", "8", "11", "7", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "スイーツ・ドリーム", "3", "10", "5"
+楽曲情報:LOCAL:0 '= "スイーツ・ドリーム", "3", "10", "5", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "隅田川夏恋歌", "3", "5", "3"
+楽曲情報:LOCAL:0 '= "隅田川夏恋歌", "3", "5", "3", "指", "RB", "PM", "ダガッキ", "DDR", "BS", "GFDM", "SDVX", "ノスタルジア"
 LOCAL++
-楽曲情報:LOCAL:0 '= "すわひでおのゴロゴロ年号覚え唄完璧版", "2", "8", "4"
+楽曲情報:LOCAL:0 '= "すわひでおのゴロゴロ年号覚え唄完璧版", "2", "8", "4", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "創世ノート", "7", "10", "8"
+楽曲情報:LOCAL:0 '= "創世ノート", "7", "10", "8", "IIDX", "PM", "DDR", "GFDM", "指", "RB", "ダガッキ"
 LOCAL++
-楽曲情報:LOCAL:0 '= "太陽 ～T・A・I・Y・O～", "6", "6", "5"
+楽曲情報:LOCAL:0 '= "太陽 ～T・A・I・Y・O～", "6", "6", "5", "IIDX", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "大見解", "7", "5", "5"
+楽曲情報:LOCAL:0 '= "大見解", "7", "5", "5", "PM", "GFDM", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "たからもの", "4", "6", "4"
+楽曲情報:LOCAL:0 '= "たからもの", "4", "6", "4", "IIDX", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "打打打打打打打打打打", "6", "8", "5"
+楽曲情報:LOCAL:0 '= "打打打打打打打打打打", "6", "8", "5", "IIDX", "PM", "RB", "SDVX", "BS", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "たまゆら", "8", "10", "7"
+楽曲情報:LOCAL:0 '= "たまゆら", "8", "10", "7", "GFDM", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ちくわパフェだよ☆CKP", "4", "8", "7"
+楽曲情報:LOCAL:0 '= "ちくわパフェだよ☆CKP", "4", "8", "7", "GFDM", "DDR", "指", "PM", "RB", "ダガッキ", "DEA", "BS", "CHUNITHM", "SDVX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "チョコレートスマイル", "7", "7", "7"
+楽曲情報:LOCAL:0 '= "チョコレートスマイル", "7", "7", "7", "BS", "DDR", "DEA", "指", "PM", "RB", "ノスタルジア"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ツキミチヌ", "6", "7", "3"
+楽曲情報:LOCAL:0 '= "ツキミチヌ", "6", "7", "3", "RB", "指"
 LOCAL++
-楽曲情報:LOCAL:0 '= "罪と罰", "7", "7", "9"
+楽曲情報:LOCAL:0 '= "罪と罰", "7", "7", "9", "IIDX", "DEA"
 LOCAL++
-楽曲情報:LOCAL:0 '= "天庭", "12", "11", "6"
+楽曲情報:LOCAL:0 '= "天庭", "12", "11", "6", "GFDM", "PM", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ドーパミン", "0", "11", "11"
+楽曲情報:LOCAL:0 '= "ドーパミン", "0", "11", "11", "指", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "どきドキ バレンタイン", "4", "7", "4"
+楽曲情報:LOCAL:0 '= "どきドキ バレンタイン", "4", "7", "4", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "突撃!ガラスのニーソ姫!", "11", "5", "7"
+楽曲情報:LOCAL:0 '= "突撃!ガラスのニーソ姫!", "11", "5", "7", "IIDX", "DDR", "BS", "SDVX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "轟け！恋のビーンボール！！", "7", "9", "7"
+楽曲情報:LOCAL:0 '= "轟け！恋のビーンボール！！", "7", "9", "7", "IIDX", "PM", "DDR", "GFDM", "指", "RB", "SDVX", "ダガッキ", "DEA"
 LOCAL++
-楽曲情報:LOCAL:0 '= "†渚の小悪魔ラヴリィ～レイディオ†", "4", "4", "8"
+楽曲情報:LOCAL:0 '= "†渚の小悪魔ラヴリィ～レイディオ†", "4", "4", "8", "指", "IIDX", "RB", "PM", "ダガッキ", "GFDM", "DDR", "BS"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ねぇ？メイドさんはみんな忠実だと思う？", "11", "7", "3"
+楽曲情報:LOCAL:0 '= "ねぇ？メイドさんはみんな忠実だと思う？", "11", "7", "3", "BMS"
 ;はまやらわ ----------------
 LOCAL++
-楽曲情報:LOCAL:0 '= "パステルドリーム", "5", "7", "6"
+楽曲情報:LOCAL:0 '= "パステルドリーム", "5", "7", "6", "太鼓"
 LOCAL++
-楽曲情報:LOCAL:0 '= "花吹雪", "6", "6", "6"
+楽曲情報:LOCAL:0 '= "花吹雪", "6", "6", "6", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "春待ち花", "6", "8", "6"
+楽曲情報:LOCAL:0 '= "春待ち花", "6", "8", "6", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "華爛漫 -Flowers-", "6", "7", "7"
+楽曲情報:LOCAL:0 '= "華爛漫 -Flowers-", "6", "7", "7", "DDR", "IIDX", "PM", "RB", "DEA", "指"
 LOCAL++
-楽曲情報:LOCAL:0 '= "万物快楽理論", "1", "7", "4"
+楽曲情報:LOCAL:0 '= "万物快楽理論", "1", "7", "4", "PM", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ピアノ協奏曲第1番”蠍火”", "0", "11", "2"
+楽曲情報:LOCAL:0 '= "ピアノ協奏曲第1番”蠍火”", "0", "11", "2", "IIDX", "PM", "ノスタルジア"
 LOCAL++
-楽曲情報:LOCAL:0 '= @"表裏一体！？怪盗いいんちょの悩み%UNICODE(0x2764)%", "8", "8", "7"
+楽曲情報:LOCAL:0 '= @"表裏一体！？怪盗いいんちょの悩み%UNICODE(0x2764)%", "8", "8", "7", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ヒデオ体操第一", "2", "4", "12"
+楽曲情報:LOCAL:0 '= "ヒデオ体操第一", "2", "4", "12", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ビビットストリーム", "0", "5", "5"
+楽曲情報:LOCAL:0 '= "ビビットストリーム", "0", "5", "5", "BS", "DDR", "指", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ヒマワリ", "6", "5", "4"
+楽曲情報:LOCAL:0 '= "ヒマワリ", "6", "5", "4", "IIDX", "DDR", "GFDM", "SDVX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "フー・フローツ", "5", "6", "5"
+楽曲情報:LOCAL:0 '= "フー・フローツ", "5", "6", "5", "指", "DDR"
 LOCAL++
-楽曲情報:LOCAL:0 '= "冬椿", "7", "8", "5"
+楽曲情報:LOCAL:0 '= "冬椿", "7", "8", "5", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ブランコ", "6", "7", "4"
+楽曲情報:LOCAL:0 '= "ブランコ", "6", "7", "4", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ペリーでぇす！", "3", "7", "2"
+楽曲情報:LOCAL:0 '= "ペリーでぇす！", "3", "7", "2", "PM", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ポチコの幸せな日常", "4", "6", "8"
+楽曲情報:LOCAL:0 '= "ポチコの幸せな日常", "4", "6", "8", "PM", "指", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "星屑のキロク", "0", "8", "5"
+楽曲情報:LOCAL:0 '= "星屑のキロク", "0", "8", "5", "DDR", "指", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "猛進ソリストライフ！", "7", "10", "10"
+楽曲情報:LOCAL:0 '= "猛進ソリストライフ！", "7", "10", "10", "CHUNITHM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "モフモフしたいの", "4", "11", "3"
+楽曲情報:LOCAL:0 '= "モフモフしたいの", "4", "11", "3", "GFDM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "量子の海のリントヴルム", "0", "11", "6"
+楽曲情報:LOCAL:0 '= "量子の海のリントヴルム", "0", "11", "6", "指", "RB", "PM", "GFDM", "ダガッキ", "IIDX"
 LOCAL++
-楽曲情報:LOCAL:0 '= "リメンバーリメンバー", "7", "4", "2"
+楽曲情報:LOCAL:0 '= "リメンバーリメンバー", "7", "4", "2", "PM", "RB", "指"
 LOCAL++
-楽曲情報:LOCAL:0 '= "凛として咲く花の如く", "5", "7", "3"
+楽曲情報:LOCAL:0 '= "凛として咲く花の如く", "5", "7", "3", "PM", "GFDM", "IIDX", "指", "DDR", "ダガッキ", "RB", "DEA", "SDVX", "BS", "CHUNITHM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ルミナスデイズ", "3", "3", "2"
+楽曲情報:LOCAL:0 '= "ルミナスデイズ", "3", "3", "2", "SDVX", "指", "DDR", "ノスタルジア", "PM"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ロボット☆ライフ", "4", "5", "6"
+楽曲情報:LOCAL:0 '= "ロボット☆ライフ", "4", "5", "6", "RB"
 LOCAL++
-楽曲情報:LOCAL:0 '= "ワルツ第17番ト短調”大犬のワルツ”", "0", "12", "6"
+楽曲情報:LOCAL:0 '= "ワルツ第17番ト短調”大犬のワルツ”", "0", "12", "6", "IIDX"
 
 
 @バブルソート, 総曲数, ソート対象難易度, ARG
