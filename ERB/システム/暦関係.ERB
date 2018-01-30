@@ -399,11 +399,7 @@ RETURN LYEAR, LMONTH, LDAYS
 
 
 @HOLIDAY
-HOLIDAY =
-
-;プレミアムフライデーならまずプレミアムフライデーを入れる(下記祝日・記念日の表示が優先)
-SIF PREMIUM_FRIDAY(YEAR, MONTH, DAYS)
-	HOLIDAY = プレミアムフライデー
+VARSET HOLIDAY, 
 
 ;祝日の設定
 SELECTCASE MONTH
@@ -501,9 +497,11 @@ SELECTCASE MONTH
 				HOLIDAY = 「ミライダガッキ」稼働記念日
 			;21日
 			CASE 21
+				ARRAYSHIFT HOLIDAY, 1, ""
 				HOLIDAY = 「Dance ManiaX」稼働記念日
 			;第三日曜日
 			CASE NO_DOW(3, "日")
+				ARRAYSHIFT HOLIDAY, 1, ""
 				HOLIDAY = 父の日
 		ENDSELECT
 	;7月
@@ -524,8 +522,10 @@ SELECTCASE MONTH
 			;24日
 			CASE 24
 				HOLIDAY = 「jubeat」稼働記念日
+				HOLIDAY:1 = 「クイズマジックアカデミー」稼働記念日
 			;第三月曜日
 			CASE NO_DOW(3, "月")
+				ARRAYSHIFT HOLIDAY, 1, ""
 				HOLIDAY = 海の日
 		ENDSELECT
 	;8月
@@ -541,9 +541,6 @@ SELECTCASE MONTH
 	;9月
 	CASE 9
 		SELECTCASE DAYS
-			;第三月曜日
-			CASE NO_DOW(3, "月")
-				HOLIDAY = 敬老の日
 			CASE 12
 				HOLIDAY = 「ParaParaParadise」稼働記念日
 			;面倒だから23日
@@ -555,8 +552,14 @@ SELECTCASE MONTH
 			;15日以降
 			CASE IS >= 15
 				;満月なら十五夜
-				SIF INRANGE(月齢, 1500, 1599)
+				IF INRANGE(月齢, 1500, 1599)
+					ARRAYSHIFT HOLIDAY, 1, ""
 					HOLIDAY = 十五夜
+				ENDIF
+			;第三月曜日
+			CASE NO_DOW(3, "月")
+				ARRAYSHIFT HOLIDAY, 1, ""
+				HOLIDAY = 敬老の日
 		ENDSELECT
 	;10月
 	CASE 10
@@ -567,8 +570,10 @@ SELECTCASE MONTH
 			;15日以前
 			CASE IS <= 15
 				;満月なら十五夜
-				SIF 月齢 == 15
+				IF INRANGE(月齢, 1500, 1599)
+					ARRAYSHIFT HOLIDAY, 1, ""
 					HOLIDAY = 十五夜
+				ENDIF
 		ENDSELECT
 	;11月
 	CASE 11
@@ -607,7 +612,15 @@ SELECTCASE MONTH
 		ENDSELECT
 ENDSELECT
 
+;プレミアムフライデーならまずプレミアムフライデーを入れる(下記祝日・記念日の表示が優先)
+IF PREMIUM_FRIDAY(YEAR, MONTH, DAYS)
+	ARRAYSHIFT HOLIDAY, 1, ""
+	HOLIDAY = プレミアムフライデー
+ENDIF
+
 ;上記の休日が無く新婚モードで開始した日は結婚記念日
-SIF HOLIDAY == "" && FLAG:ゲームモード == 7 && REALTIME:1 == MONTH &&  REALTIME:2 == DAYS
+IF HOLIDAY == "" && FLAG:ゲームモード == 7 && REALTIME:1 == MONTH &&  REALTIME:2 == DAYS
+	ARRAYSHIFT HOLIDAY, 1, ""
 	HOLIDAY = 結婚記念日
+ENDIF
 
