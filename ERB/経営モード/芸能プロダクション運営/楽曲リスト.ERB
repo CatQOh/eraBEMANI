@@ -5,6 +5,7 @@
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC 処理数
 #DIM DYNAMIC 次ページあり
+#DIMS DYNAMIC ソート形式 = "バブルソート"
 
 CALL REF_MUSIC
 
@@ -93,6 +94,7 @@ PRINT [1001] Voでソート
 PRINT [1002] Instでソート 
 PRINT [1003] Daでソート 
 PRINTL [1004] 収録機種フォルダを見る
+;#; PRINTFORML [1010] ソート形式変更 現在;%ソート形式%
 DO
 	INPUT
 	SELECTCASE RESULT
@@ -116,9 +118,18 @@ DO
 			ENDIF
 		CASE 1001 TO 1003
 			LOCAL:5 = RESULT
-			CALL バブルソート, LOCAL, LOCAL:5%100, LOCAL:(LOCAL:5%100)
+			TRYCALLFORM %ソート形式%, LOCAL, LOCAL:5%100, LOCAL:(LOCAL:5%100)
 			INVERTBIT LOCAL:(LOCAL:5%100), 0
 			ページ数 = 0
+			GOTO LIST
+		CASE 1010
+			IF ソート形式 == "バブルソート"
+				ソート形式 = 選択法ソート
+			ELSEIF ソート形式 == "選択法ソート"
+				ソート形式 = クイックソート
+			ELSE
+				ソート形式 = バブルソート
+			ENDIF
 			GOTO LIST
 		CASE 1004
 			DRAWLINE
@@ -420,11 +431,11 @@ LOCAL = 0
 
 
 @バブルソート, 総曲数, ソート対象難易度, ARG
-#DIM LCOUNT
-#DIM LCOUNT2
-#DIM 総曲数
-#DIM ソート対象難易度
-#DIMS ソート順
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 処理対象
+#DIM DYNAMIC 総曲数
+#DIM DYNAMIC ソート対象難易度
+#DIMS DYNAMIC ソート順
 IF ARG == 0
 	ソート順 = FORWARD
 ELSEIF ARG == 1
@@ -432,21 +443,224 @@ ELSEIF ARG == 1
 ENDIF
 
 FOR LCOUNT, 1, 総曲数
-	FOR LCOUNT2, 総曲数, LCOUNT-1, -1
+	FOR 処理対象, 総曲数, LCOUNT-1, -1
 		;関数の第三引数に応じてソート順を変える
 		IF ソート順 == "FORWARD"
-			IF TOINT(楽曲情報:LCOUNT2:ソート対象難易度) < TOINT(楽曲情報:(LCOUNT2-1):ソート対象難易度)
+			;処理対象の曲がひとつ前の曲より難易度が低い場合は交換
+			IF TOINT(楽曲情報:処理対象:ソート対象難易度) < TOINT(楽曲情報:(処理対象-1):ソート対象難易度)
 				REPEAT 20
-					SWAP 楽曲情報:LCOUNT2:COUNT, 楽曲情報:(LCOUNT2-1):COUNT
+					SWAP 楽曲情報:処理対象:COUNT, 楽曲情報:(処理対象-1):COUNT
 				REND
 			ENDIF
 		ELSEIF ソート順 == "BACK"
-			IF LCOUNT2 != 1 &&TOINT(楽曲情報:LCOUNT2:ソート対象難易度) > TOINT(楽曲情報:(LCOUNT2-1):ソート対象難易度)
+			;処理対象の曲がひとつ前の曲より難易度が高い場合は交換
+			;楽曲情報:0:0には何も入れないため、0は対象外
+			IF 処理対象 != 1 && TOINT(楽曲情報:処理対象:ソート対象難易度) > TOINT(楽曲情報:(処理対象-1):ソート対象難易度)
 				REPEAT 20
-					SWAP 楽曲情報:LCOUNT2:COUNT, 楽曲情報:(LCOUNT2-1):COUNT
+					SWAP 楽曲情報:処理対象:COUNT, 楽曲情報:(処理対象-1):COUNT
 				REND
 			ENDIF
 		ENDIF
 	NEXT
 NEXT
+
+@選択法ソート, 総曲数, ソート対象難易度, ARG
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 処理対象
+#DIM DYNAMIC 処理数 = 1
+#DIM DYNAMIC 総曲数
+#DIM DYNAMIC ソート対象難易度
+#DIMS DYNAMIC ソート順
+IF ARG == 0
+	ソート順 = FORWARD
+ELSEIF ARG == 1
+	ソート順 = BACK
+ENDIF
+
+;関数の第三引数に応じてソート順を変える
+IF ソート順 == "FORWARD"
+	;難易度は12段階なので12回ループする
+	FOR LCOUNT, 1, 13
+		FOR 処理対象, 1, 総曲数
+			;難易度が低い順に、配列の前に詰めていく
+			IF TOINT(楽曲情報:処理対象:ソート対象難易度) == LCOUNT
+				REPEAT 20
+					SWAP 楽曲情報:処理対象:COUNT, 楽曲情報:処理数:COUNT
+				REND
+				処理数++
+			ENDIF
+		NEXT
+	NEXT
+ELSEIF ソート順 == "BACK"
+	;難易度は12段階なので12回ループする
+	FOR LCOUNT, 12, 0, -1
+		FOR 処理対象, 1, 総曲数
+			;難易度が高い順に、配列の前に詰めていく
+			IF TOINT(楽曲情報:処理対象:ソート対象難易度) == LCOUNT
+				REPEAT 20
+					SWAP 楽曲情報:処理対象:COUNT, 楽曲情報:処理数:COUNT
+				REND
+				処理数++
+			ENDIF
+		NEXT
+	NEXT
+ENDIF
+
+@挿入法ソート, 総曲数, ソート対象難易度, ARG
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 処理対象
+#DIM DYNAMIC 処理数 = 1
+#DIM DYNAMIC 総曲数
+#DIM DYNAMIC ソート対象難易度
+#DIMS DYNAMIC ソート順
+IF ARG == 0
+	ソート順 = FORWARD
+ELSEIF ARG == 1
+	ソート順 = BACK
+ENDIF
+
+FOR 処理対象, 1, 総曲数
+	;1～処理対象までの配列と比較
+	FOR 処理数, 1, 処理対象
+		IF ソート順 == "FORWARD"
+			;処理対象よりレベルが高いものが見つからなかったらその場所に居座る
+			;処理対象より1レベル高い難易度に到達したら、そのひとつ前の配列に挿入する
+			IF 楽曲情報:処理対象:ソート対象難易度 < 楽曲情報:処理数:ソート対象難易度
+				;挿入する前に以後の配列を擬似ARRAYSHIFTしておく
+				FOR LCOUNT, 処理対象, 処理数, -1
+					REPEAT 20
+						SWAP 楽曲情報:LCOUNT:COUNT, 楽曲情報:(LCOUNT-1):COUNT
+					REND
+				NEXT
+				;ここまで書いて気づいた 完全にバブルソートの下位互換だこれ
+			ENDIF
+		ENDIF
+	NEXT
+NEXT
+
+;似たような結果にしかならなさそうなのでシェルソートは省略
+
+
+
+
+
+@クイックソート, 総曲数, ソート対象難易度, ARG, 基準値 = -1, 左端 = 1, 右端 = -1
+#DIM DYNAMIC 総曲数
+#DIM DYNAMIC ソート対象難易度
+#DIMS DYNAMIC ソート順
+#DIM DYNAMIC 基準値
+#DIM DYNAMIC 左端
+#DIM DYNAMIC 右端
+#DIM DYNAMIC 左候補
+#DIM DYNAMIC 右候補
+
+IF ARG == 0
+	ソート順 = FORWARD
+ELSEIF ARG == 1
+	ソート順 = BACK
+ENDIF
+
+;左候補、右候補と銘打ってるけど、配列を横に並べた際のイメージで、左は配列の前、右は配列の後ろという意味
+左候補 = 左端
+SIF 右端 == -1
+	右端 = 総曲数-1
+右候補 = 右端
+
+;再帰処理じゃない場合は一番最後の曲を基準値にする
+SIF 基準値 == -1
+	基準値 = TOINT(楽曲情報:右端:ソート対象難易度)
+
+;クイックソート対象区間の左候補と右候補がぶつかるまでループ
+WHILE 左候補 < 右候補
+	;関数の第三引数に応じてソート順を変える
+	IF ソート順 == "FORWARD"
+		;基準値以上のデータが見つかるまで、配列の前から探す
+		WHILE TOINT(楽曲情報:左候補:ソート対象難易度) <= 基準値 && 左候補 < 右候補
+			左候補++
+		WEND
+		;基準値以下のデータが見つかるまで、配列の後ろから探す
+		WHILE TOINT(楽曲情報:右候補:ソート対象難易度) >= 基準値 && 左候補 < 右候補
+			右候補--
+		WEND
+	ELSEIF ソート順 == "BACK"
+		;基準値以下のデータが見つかるまで、配列の前から探す
+		WHILE TOINT(楽曲情報:左候補:ソート対象難易度) >= 基準値 && 左候補 < 右候補
+			左候補++
+		WEND
+		;基準値以上のデータが見つかるまで、配列の後ろから探す
+		WHILE TOINT(楽曲情報:右候補:ソート対象難易度) <= 基準値 && 左候補 < 右候補
+			右候補--
+		WEND
+	ENDIF
+	;上記の候補ふたつの値を入れ替える ただし左候補の配列が右候補の配列より前にある場合のみ
+	IF 左候補 < 右候補
+		REPEAT 20
+			SWAP 楽曲情報:左候補:COUNT, 楽曲情報:右候補:COUNT
+		REND
+	ENDIF
+WEND
+
+;左候補=右候補(中間) 左候補探しは基準値と同じかそれ以上の場合に終わってるはずなので、中間を基準値(右端)と入れ替える
+REPEAT 20
+	SWAP 楽曲情報:左候補:COUNT, 楽曲情報:右端:COUNT
+REND
+
+;中間の左側に2つ以上配列があればさらにその区間をクイックソート
+SIF 左候補-左端 >= 2
+	CALL クイックソート, 総曲数, ソート対象難易度, ARG, TOINT(楽曲情報:(左候補-1):ソート対象難易度), 左端, 左候補-1
+
+;中間の右側に2つ以上配列があればさらにその区間をクイックソート
+SIF 右端-右候補 >= 2
+	CALL クイックソート, 総曲数, ソート対象難易度, ARG, TOINT(楽曲情報:右端:ソート対象難易度), 右候補+1, 右端
+
+
+;多次元配列に対応したソートの汎用関数 を作る予定
+@ARRAYSORT_2D, ARGS, ARG
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 処理対象
+#DIM DYNAMIC 総曲数
+#DIM DYNAMIC ソート対象難易度
+#DIMS DYNAMIC ソート順
+#DIM DYNAMIC 参照変数, 1000, 20
+
+ARRAYCOPY @"%ARGS%", "参照変数"
+
+
+IF ARG == 0
+	ソート順 = FORWARD
+ELSEIF ARG == 1
+	ソート順 = BACK
+ENDIF
+
+FOR LCOUNT, 1, 総曲数
+	FOR 処理対象, 総曲数, LCOUNT-1, -1
+		;関数の第三引数に応じてソート順を変える
+		IF ソート順 == "FORWARD"
+			;処理対象の曲がひとつ前の曲より難易度が低い場合は交換
+			IF TOINT(楽曲情報:処理対象:ソート対象難易度) < TOINT(楽曲情報:(処理対象-1):ソート対象難易度)
+				REPEAT 20
+					SWAP 楽曲情報:処理対象:COUNT, 楽曲情報:(処理対象-1):COUNT
+				REND
+			ENDIF
+		ELSEIF ソート順 == "BACK"
+			;処理対象の曲がひとつ前の曲より難易度が高い場合は交換
+			;楽曲情報:0:0には何も入れないため、0は対象外
+			IF 処理対象 != 1 && TOINT(楽曲情報:処理対象:ソート対象難易度) > TOINT(楽曲情報:(処理対象-1):ソート対象難易度)
+				REPEAT 20
+					SWAP 楽曲情報:処理対象:COUNT, 楽曲情報:(処理対象-1):COUNT
+				REND
+			ENDIF
+		ENDIF
+	NEXT
+NEXT
+
+@ARRAYSWAP, ARGS, ARGS:1
+#DIMS DYNAMIC 保守用, 1000, 1000
+
+ARRAYCOPY @"%ARGS%", "保守用"
+
+ARRAYCOPY @"%ARGS:1%", @"%ARGS%"
+
+ARRAYCOPY "保守用", @"%ARGS%"
+
 
