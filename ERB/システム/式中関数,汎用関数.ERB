@@ -564,7 +564,8 @@ RETURNF GETNUM(EXP, ARGS)
 
 ;第一引数に第二引数のツールチップ付けたHTML_PRINT用の完成されたタグを返す式中関数
 ;"[]"で囲った部分があれば自動でボタン化する
-@SET_TOOLTIP, 本文, ツールチップ
+;ボタン化フラグを0にすればボタン化しない
+@SET_TOOLTIP, 本文, ツールチップ, ボタン化 = 1, 文字色
 #FUNCTIONS
 #DIMS DYNAMIC 本文
 #DIMS DYNAMIC ツールチップ
@@ -572,6 +573,8 @@ RETURNF GETNUM(EXP, ARGS)
 ;ボタンの数値が指定されたボタン番号を一致すると困るので、ボタン化されなさそうな数値に 元ネタ分かる人はすごい
 #DIM DYNAMIC ボタン = -3189415
 #DIMS DYNAMIC 文字列ボタン
+#DIM DYNAMIC ボタン化
+#DIMS DYNAMIC 文字色
 
 VARSET LOCAL, 0
 
@@ -586,7 +589,15 @@ IF LOCAL != -1 && LOCAL:1 != -1
 		ボタン = TOINT(文字列ボタン)
 ENDIF
 
-タグ = <font color='#%CONVERT(GETCOLOR(), 16)%'>
+;文字色指定してればその文字色で
+IF 文字色 != ""
+	タグ = <font color='%文字色%'>
+ELSE
+	タグ = <font color='#%CONVERT(GETCOLOR(), 16)%'>
+ENDIF
+
+SIF !ボタン化
+	GOTO NONBUTTON
 
 ;紛らわしいけどtitleがツールチップなんだよなぁ
 IF ボタン != -3189415
@@ -594,6 +605,7 @@ IF ボタン != -3189415
 ELSEIF 文字列ボタン != ""
 	タグ += @"<button value ='%文字列ボタン%' title = '%ツールチップ%'>%本文%</button></font>"
 ELSE
+	$NONBUTTON
 	タグ += @"<nonbutton title = '%ツールチップ%'>%本文%</nonbutton></font>"
 ENDIF
 
