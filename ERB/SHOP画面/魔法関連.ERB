@@ -19,14 +19,20 @@ DO
 			ENDIF
 			SIF TALENT:魔術師
 				CALL SELECT_SPELL, TARGET
+			SIF RESULT
+				RETURN 1
 			RESTART
 		CASE 1
 			SIF TALENT:MASTER:魔術師
 				CALL SELECT_SPELL, MASTER
+			SIF RESULT
+				RETURN 1
 			RESTART
 		CASE 2
 			SIF ASSI > 0 && TALENT:ASSI:魔術師
 				CALL SELECT_SPELL, ASSI
+			SIF RESULT
+				RETURN 1
 			RESTART
 		CASE 10
 			RETURN
@@ -36,57 +42,597 @@ LOOP 1
 RESTART
 
 @SELECT_SPELL, ARG
+#DIM DYNAMIC スキル
+#DIM DYNAMIC 対象, 2
+#DIM DYNAMIC 使用スペル
+#DIM DYNAMIC 年
+#DIM DYNAMIC 月
+#DIM DYNAMIC 日
+スキル = ABL:ARG:魔法技能
 DRAWLINE
-PRINTFORML □魔法一覧 詠唱者:%NAME:ARG% 魔法技能LV{ABL:ARG:魔法技能}
+PRINTFORML □魔法一覧 詠唱者:%NAME:ARG% 魔法技能LV{スキル}
+PRINTFORML 　%NAME:ARG%の魔力%BARSTR(BASE:ARG:魔力, MAXBASE:ARG:魔力, 32)%({BASE:ARG:魔力}/{MAXBASE:ARG:魔力})
+;魔力消費量は単純に詠唱可能レベル*1000
+;詠唱可能レベルから1上昇する度に魔力消費量は10%減
 ;Freezing atomosphere
-PRINTL [1] - フリージングアトモスフィア（気温の低下 魔法技能に応じて効果持続）
+LOCAL = 魔力消費量(3, スキル)
+PRINTFORML 　[ 1] - フリージングアトモスフィア（魔力消費量 {LOCAL}）
+PRINTL 　　　　 気温の低下 魔法技能に応じて効果持続
 ;BURNIN' THE FLOOR
-PRINTL [2] - バーニンザフロア（気温の上昇 魔法技能に応じて効果持続）
+PRINTFORML 　[ 2] - バーニンザフロア（魔力消費量 {LOCAL}）
+PRINTL 　　　　 気温の上昇 魔法技能に応じて効果持続
 IF ABL:ARG:魔法技能 >= 4
+	LOCAL = 魔力消費量(4, スキル)
 	;Storm Buster
-	PRINTL [3] - ストームバスター（天気を晴れにする 魔法技能に応じて効果持続）
+	PRINTFORML 　[ 3] - ストームバスター（魔力消費量 {LOCAL}）
+	PRINTL 　　　　 天気を晴れにする 魔法技能に応じて効果持続
 	;Sweet Rain
-	PRINTL [4] - スウィートレイン（天気を雨にする 魔法技能に応じて効果持続）
+	PRINTFORML 　[ 4] - スウィートレイン（魔力消費量 {LOCAL}）
+	PRINTL 　　　　 天気を雨にする 魔法技能に応じて効果持続
 	;snow prism
-	PRINTL [5] - スノープリズム（天気を雪にする 魔法技能に応じて効果持続）
+	PRINTFORML 　[ 5] - スノープリズム（魔力消費量 {LOCAL}）
+	PRINTL 　　　　 天気を雪にする 魔法技能に応じて効果持続
 ENDIF
 ;天土と緋浮美は作中で使ってるので魔法技能無しで詠唱可能
 IF ABL:ARG:魔法技能 >= 5 || CHARANAMEF(ARG) == "梅桐 天土" || CHARANAMEF(ARG) == "梅桐 緋浮美"
+	LOCAL = 魔力消費量(5, スキル)
 	;Beast Mode
-	PRINTL [6] - ビーストモード（任意のキャラに対して一時的に素質[動物耳][尻尾]を与え、種族を獣人にする 魔法技能に応じて効果持続）
-	PRINTL [7] - ビーストモードtype2（ビーストモードに加え素質[ファーリー]を与える）
+	PRINTFORML 　[ 6] - ビーストモード（魔力消費量 {LOCAL}）
+	PRINTL 　　　　 任意のキャラに対して一時的に素質[動物耳][尻尾]を与え、種族を獣人にする 魔法技能に応じて効果持続
+	PRINTFORML 　[ 7] - ビーストモードtype2（魔力消費量 {LOCAL}）
+	PRINTL 　　　　 ビーストモードに加え素質[ファーリー]を与える
 ENDIF
 IF ABL:ARG:魔法技能 >= 6
+	LOCAL = 魔力消費量(6, スキル)
 	;Re:GENERATION
-	PRINTL [8] - リ・ジェネレーション（キャラ全員の回復量上昇 魔法技能に応じて効果持続）
+	PRINTFORML 　[ 8] - リ：ジェネレーション（魔力消費量 {LOCAL}）
+	PRINTL 　　　　 キャラ全員の回復量上昇 魔法技能に応じて効果持続
 	;gentle stress
-	PRINTL [9] - ジェントルストレス（任意のキャラに対し、一時的に使用不可になる代わりにストレスを0まで引き下げる）
+	PRINTFORML 　[ 9] - ジェントルストレス（魔力消費量 {LOCAL}）
+	PRINTL 　　　　 任意のキャラに対し、一時的に使用不可になる代わりにストレスを0まで引き下げる
 ENDIF
 
+LOCAL = 魔力消費量(7, スキル)
 ;クロノダイブのみクロノスとカイロスは無条件で使える
 IF ABL:ARG:魔法技能 >= 7 || CHARANAMEF(ARG) == "クロノス" || CHARANAMEF(ARG) == "カイロス"
 	;CHRONO DIVER
-	PRINTL [10] - クロノダイブ（任意の年月日にタイムリープする）
+	PRINTFORML 　[10] - クロノダイブ（魔力消費量 {LOCAL}）
+	PRINTL 　　　　 任意の年月日にタイムリープする
 ENDIF
 IF ABL:ARG:魔法技能 >= 7
-	;HYPNΦTIC CRISIS
-	PRINTL [11] - ヒプノティッククライシス（女性主人による色仕掛けの成功率が上がる 魔法技能に応じて効果持続）
+	;HYPNΦTIC CRISIS 主人が女性じゃないとダメ
+	IF SEX(MASTER) == 2
+		PRINTFORML 　[11] - ヒプノティッククライシス（魔力消費量 {LOCAL}）
+		PRINTL 　　　　 女性主人による色仕掛けの成功率が上がる 魔法技能に応じて効果持続
+	ENDIF
+	;Tir na n'Og
+	PRINTFORML 　[12] - ティル・ナ・ノーグ（魔力消費量 {LOCAL}）
+	PRINTL 　　　　 素質[小人体型]を一時的に消滅させる 魔法技能に応じて効果持続
 ENDIF
 IF ABL:ARG:魔法技能 >= 8
+	LOCAL = 魔力消費量(8, スキル)
 	;Energy Drive
-	PRINTL [13] - エナジードライブ（主人の全ABLを一時的に1上昇させる 魔法技能に応じて効果持続）
+	PRINTFORML 　[13] - エナジードライブ（魔力消費量 {LOCAL}）
+	PRINTL 　　　　 主人の全ABLを一時的に1上昇させ、精力も上昇する 魔法技能に応じて効果持続
 ENDIF
 IF ABL:ARG:魔法技能 >= 9
+	LOCAL = 魔力消費量(9, スキル)
 	;POSESSION
-	PRINTL [19] - ポゼッション（任意のキャラのABLを一時的に詠唱者と同じにする 魔法技能に応じて効果持続）
+	PRINTFORML 　[14] - ポゼッション（魔力消費量 {LOCAL}）
+	PRINTL 　　　　 任意のキャラのABLを一時的に詠唱者と同じにする 魔法技能に応じて効果持続 主人には使用不可
+ENDIF
+LOCAL = 魔力消費量(10, スキル)
+;まり花のみレベル8から使用可能
+IF ABL:ARG:魔法技能 >= 10 || (CHARANAMEF(ARG) == "山形 まり花" && ABL:ARG:魔法技能 >= 8)
+	;ミラクル・スイート・スイーツ・マジック！！
+	PRINTFORML 　[15] - ミラクル・スイート・スイーツ・マジック！！（魔力消費量 {LOCAL}）
+	PRINTL 　　　　 任意の2キャラ間の相性を上昇させる 詠唱者は対象にできない 最大500%
 ENDIF
 IF ABL:ARG:魔法技能 >= 10
 	;Back to chronos
-	PRINTL [20] - バック・トゥ・クロノス（現在の状態を維持したまま期限・日にちを1日分戻す）
+	PRINTFORML 　[16] - バック・トゥ・クロノス（魔力消費量 {LOCAL}）
+	PRINTL 　　　　 現在の状態を維持したまま期限・日にちを1日分戻す
 ENDIF
+DRAWLINE
+PRINTPLAIN 　SPELL　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			SIF スキル < 3
+				CONTINUE
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(3, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%にフリージングアトモスフィアを詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%はフリージングアトモスフィアを唱えた
+			PRINTFORML 突然、外が寒くなった気がする……
+			フリージングアトモスフィア = スキル
+		CASE 2
+			SIF スキル < 3
+				CONTINUE
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(3, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%にバーニンザフロアを詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%はバーニンザフロアを唱えた
+			PRINTFORML 突然、外が暖かくなった気がする……
+			バーニンザフロア = スキル
+		CASE 3
+			SIF スキル < 4
+				CONTINUE
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(4, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%にストームバスターを詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%はストームバスターを唱えた
+			SELECTCASE FLAG:天気
+				CASE 1
+					IF TIME == 0
+						PRINTFORML 日差しが強くなり、雲ひとつない青空が天に広がった……
+					ELSE
+						PRINTFORML 月明かりと星明かりがよりいっそう強くなった気がする……
+					ENDIF
+				CASEELSE
+					IF TIME == 0
+						PRINTFORML 数刻が過ぎると、空は快晴となった……
+					ELSE
+						PRINTFORML 数刻が過ぎると、空には綺麗な星空が広がっていた……
+					ENDIF
+			ENDSELECT
+			ストームバスター = スキル
+			スウィートレイン = 0
+			スノープリズム = 0
+		CASE 4
+			SIF スキル < 4
+				CONTINUE
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(4, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%にスウィートレインを詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%はスウィートレインを唱えた
+			SELECTCASE FLAG:天気
+				CASE 3, 4, 5
+					;全然スウィートじゃない
+					PRINTFORML 雨はさらに強くなり、風がうなり始めた……
+				CASE 6, 7
+					PRINTFORML 雪は突然、雨と変わり、ざぁざぁと音を立てて降り始めた……
+				CASEELSE
+					PRINTFORML ぽつぽつと雨が降り始めた……
+			ENDSELECT
+			ストームバスター = 0
+			スウィートレイン = スキル
+			スノープリズム = 0
+		CASE 5
+			SIF スキル < 4
+				CONTINUE
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(4, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%にスノープリズムを詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%はスノープリズムを唱えた
+			SELECTCASE FLAG:天気
+				CASE 3, 4, 5
+					PRINTFORML 雨は突如、雹のつぶてになり、やがて白く柔らかい雪へと変わった……
+				CASE 6, 7
+					PRINTFORML 降雪はさらに勢いを増し、外の風景を真っ白に染め上げた……
+				CASEELSE
+					PRINTFORML 空模様は変わらないまま雪が降ってきた……
+			ENDSELECT
+			ストームバスター = 0
+			スウィートレイン = 0
+			スノープリズム = スキル
+		CASE 6, 7
+			SIF スキル < 5
+				CONTINUE
+			使用スペル = RESULT
+			PRINTFORML □ビーストモード\@ 使用スペル == 7 ? type2 #  \@で獣人化する対象を選んでください
+			FOR PAGING, 0, CHARANUM
+				LOCAL = 0
+				;既に付与素質全部あるキャラは無理
+				IF 使用スペル == 7
+					SIF !TALENT:PAGING:尻尾 || !TALENT:PAGING:動物耳 || !TALENT:PAGING:ファーリー
+						LOCAL = 1
+				ELSE
+					SIF !TALENT:PAGING:尻尾 || !TALENT:PAGING:動物耳
+						LOCAL = 1
+				ENDIF
+				;ビーストモード発動中のキャラは無理
+				SIF ビーストモード:PAGING:0
+					LOCAL = 0
+				;詠唱者も無理
+				SIF PAGING == ARG
+					LOCAL = 0
+				CALL PAGING, LOCAL, @"%CSTR:PAGING:種族%"
+			NEXT
+			SIF RESULT == -1
+				RESTART
+			対象 = RESULT
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(5, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%に、%CALLNAME:対象%を対象にしたビーストモード\@ 使用スペル == 7 ? type2 #  \@を詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%は%CALLNAME:対象%に対してビーストモードを唱えた
+			PRINTFORM %CALLNAME:対象%に
+			SIF !TALENT:対象:動物耳
+				PRINT 動物耳
+			SIF !TALENT:対象:動物耳 && !TALENT:対象:尻尾
+				PRINT と
+			SIF !TALENT:対象:尻尾
+				PRINT 尻尾
+			PRINT が生え
+			SIF 使用スペル == 7
+				PRINT 、全身が体毛に覆われ
+			PRINTL た……
+			;ビーストモード:0=効果時間 1=耳の有無 2=尻尾の有無 3=ファーリーの有無
+			;ビーストモードS=元の種族名
+			ビーストモード:対象:0 = スキル
+			SIF !TALENT:対象:動物耳
+				ビーストモード:対象:1 = 1
+			SIF !TALENT:対象:尻尾
+				ビーストモード:対象:2 = 1
+			ビーストモードS:対象:0 = %CSTR:対象:種族%
+			TALENT:対象:動物耳 = 1
+			TALENT:対象:尻尾 = 1
+			CSTR:対象:種族 = 獣人
+			IF 使用スペル == 7
+				SIF !TALENT:対象:ファーリー
+					ビーストモード:対象:3 = 1
+				TALENT:対象:ファーリー = 1
+			ENDIF
+		CASE 8
+			SIF スキル < 6
+				CONTINUE
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(6, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%にリ・ジェネレーションを詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%はリ：ジェネレーションを唱えた
+			PRINTFORML 館の周囲にぼんやりと魔法陣が浮かび上がり、少しだけ心身が安らかになった……
+			リジェネレーション = スキル
+		CASE 9
+			SIF スキル < 6
+				CONTINUE
+			PRINTL □ジェントルストレスでストレスを打ち消す対象を選んでください
+			LOCAL = 0
+			SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳) || TALENT:ARG:孔雀の瞳
+				LOCAL = 1
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, CFLAG:PAGING:ストレス値 > 0 && ARG != PAGING, @"\@ LOCAL ? ストレス値:{CFLAG:PAGING:ストレス値} #  \@"
+			NEXT
+			SIF RESULT == -1
+				RESTART
+			対象 = RESULT
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(6, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%に、%CALLNAME:対象%を対象にしたジェントルストレスを詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%は%CALLNAME:対象%に対してジェントルストレスを唱えた
+			PRINTFORML %CALLNAME:対象%は倒れ込むように眠りについた……
+			CFLAG:対象:使用不可 = 15-スキル
+			CFLAG:対象:ストレス値 = 0
+		CASE 10
+			SIF スキル < 7
+				CONTINUE
+			$BTTF
+			PRINTL □移動先の日付を入力してください
+			PRINTFORM 　[0] - {年}年 
+			PRINTFORM [1] - {月}月 
+			PRINTFORML [2] - {日}日
+			PRINT 　[3] - 確定 
+			PRINTL [4] - キャンセル
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						CALL TWO_DIGIT
+						年 = RESULT
+						GOTO BTTF
+					CASE 1
+						CALL TWO_DIGIT
+						月 = RESULT
+						GOTO BTTF
+					CASE 2
+						CALL TWO_DIGIT
+						日 = RESULT
+						GOTO BTTF
+					CASE 3
+						IF !EXIST_DAY(年, 月, 日)
+							PRINTFORMW {年}年{月}月{日}日は存在しません
+							GOTO BTTF
+						ENDIF
+						BREAK
+					CASE 4
+						RESTART
+				ENDSELECT
+			LOOP 1
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(7, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%に、{年}年{月}月{日}日を目標したクロノダイブを詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%はクロノダイブを唱えた
+			PRINTFORML 激しい地鳴りと地震が響き渡り、館を出ると今までとは違う風景が外に広がっていた……
+			YEAR = 年
+			MONTH = 月
+			DAYS = 日
+		CASE 11
+			SIF スキル < 7 || SEX(MASTER) == 1
+				CONTINUE
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(7, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%にヒプノティッククライシスを詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%はヒプノティッククライシスを唱えた
+			PRINTFORML %CALLNAME:MASTER%の瞳は見るものを虜にする魔力を得て、よりいっそう魅力的になった……
+			ヒプノティッククライシス = スキル
+		CASE 12
+			SIF スキル < 7
+				CONTINUE
+			PRINTL □ティル・ナ・ノーグで体を大きくする対象を選んでください
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, TALENT:PAGING:小人体型
+			NEXT
+			SIF RESULT == -1
+				RESTART
+			対象 = RESULT
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(7, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%に、%CALLNAME:対象%を対象にしたティル・ナ・ノーグを詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%は%CALLNAME:対象%に対してティル・ナ・ノーグを唱えた
+			PRINTFORML %CALLNAME:対象%はまばゆい光に包まれ、人間と比べても遜色の無い大きさの身体になった……
+			ティルナノーグ:対象:0 = スキル
+			TALENT:対象:小人体型 = 0
+			TALENT:対象:小柄体型 = 1
+		CASE 13
+			SIF スキル < 8
+				CONTINUE
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(8, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%にエナジードライブを詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%はエナジードライブを唱えた
+			PRINTFORML %CALLNAME:MASTER%の身体はさらなる活力を得た……
+			エナジードライブ = スキル
+		CASE 14
+			SIF スキル < 9
+				CONTINUE
+			PRINTL □憑依する相手を選んでください
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, PAGING != ARG && PAGING != MASTER
+			NEXT
+			SIF RESULT == -1
+				RESTART
+			対象 = RESULT
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(9, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%に、%CALLNAME:対象%を対象にしたポゼッションを詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%は%CALLNAME:対象%に対してポゼッションを唱えた
+			PRINTFORML %CALLNAME:対象%は意識を失い、再び目が覚めると自身の体の違和感に困惑している……
+			REPEAT 30
+				ポゼッション:対象:COUNT = ABL:対象:COUNT
+				ABL:対象:COUNT = ABL:ARG:COUNT
+			REND
+			CFLAG:対象:憑依中 = スキル
+		CASE 15
+			IF スキル < 10
+				IF CHARANAMEF(ARG) == "山形 まり花" && スキル < 8
+					CONTINUE
+				ELSE
+					CONTINUE
+				ENDIF
+			ENDIF
+			対象 = -1
+			対象:1 = -1
+			$MSSM
+			PRINTL □仲良しにする2人を選んでください
+			IF 対象 == -1
+				PRINTFORM 　[0] 選択する
+			ELSE
+				PRINTFORM 　[0] %NAME:対象%
+			ENDIF
+			PRINTPLAIN ×
+			IF 対象:1 == -1
+				PRINTFORML [1] 選択する
+			ELSE
+				PRINTFORML [1] %NAME:(対象:1)%
+			ENDIF
+			PRINT 　
+			SIF 対象 >= 0 && 対象:1 >= 0 && 対象 != 対象:1
+				PRINT [2] 確定 
+			PRINTL [3] キャンセル
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						FOR PAGING, 0, CHARANUM
+							CALL PAGING, PAGING != ARG && PAGING != 対象:1
+						NEXT
+						SIF RESULT == -1
+							GOTO MSSM
+						対象 = RESULT
+						GOTO MSSM
+					CASE 1
+						FOR PAGING, 0, CHARANUM
+							CALL PAGING, PAGING != ARG && PAGING != 対象
+						NEXT
+						SIF RESULT == -1
+							GOTO MSSM
+						対象:1 = RESULT
+						GOTO MSSM
+					CASE 2
+						SIF 対象 >= 0 && 対象:1 >= 0 && 対象 != 対象:1
+							BREAK
+					CASE 3
+						RESTART
+				ENDSELECT
+			LOOP 1
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(10, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%に、%CALLNAME:対象%と%CALLNAME:(対象:1)%を対象にしたミラクル・スイート・スイーツ・マジック！！を詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%は%CALLNAME:対象%と%CALLNAME:(対象:1)%にミラクル・スイート・スイーツ・マジック！！を唱えた
+			;無関心
+			IF RELATION:対象:(NO:(対象:1)) == 100 && RELATION:(対象:1):(NO:対象) == 100
+				PRINTFORML %CALLNAME:対象%と%CALLNAME:(対象:1)%は少しお互いのことを気にし始めたようだ……
+			;敵対
+			ELSEIF RELATION:対象:(NO:(対象:1)) < 100 && RELATION:(対象:1):(NO:対象) < 100
+				PRINTFORML %CALLNAME:対象%と%CALLNAME:(対象:1)%の間柄が少し改善したようだ……
+			;親密
+			ELSEIF RELATION:対象:(NO:(対象:1)) >= 100 && RELATION:(対象:1):(NO:対象) >= 100
+				PRINTFORML %CALLNAME:対象%と%CALLNAME:(対象:1)%の絆がさらに深まったようだ……
+			;片方だけ悪い
+			ELSEIF RELATION:対象:(NO:(対象:1)) < 100
+				PRINTFORML %CALLNAME:対象%は%CALLNAME:(対象:1)%に心を少し開いた…… 
+			ELSEIF RELATION:(対象:1):(NO:対象) < 100
+				PRINTFORML %CALLNAME:(対象:1)%は%CALLNAME:対象%に心を少し開いた……
+			ENDIF
+			RELATION:対象:(NO:(対象:1)) = LIMIT(RELATION:対象:(NO:(対象:1))+20, 0, 500)
+			RELATION:(対象:1):(NO:対象) = LIMIT(RELATION:(対象:1):(NO:対象)+20, 0, 500)
+		CASE 16
+			SIF スキル < 10
+				CONTINUE
+			LOCAL = BASE:ARG:魔力 - 魔力消費量(10, スキル)
+			SIF LOCAL < 0
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(LOCAL/100)+1}ターン使用不可状態になります
+			PRINTFORML %CALLNAME:ARG%にバック・トゥ・クロノスを詠唱させます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+			LOOP LOOPRES(0, 1)
+			SIF RESULT == 1
+				RESTART
+			PRINTFORML %CALLNAME:ARG%はバック・トゥ・クロノスを唱えた
+			PRINTFORML 何も起こっていないように思えるが、1日前の世界に遡ったようだ……
+			DO
+				DAYS--
+				IF DAYS <= 0
+					MONTH--
+					IF MONTH <= 0
+						YEAR--
+						MONTH = 12
+					ENDIF
+					DAYS = 31
+				ENDIF
+			LOOP !EXIST_DAY(YEAR, MONTH, DAYS)
+			DAY--
+	ENDSELECT
+	WAIT
+	BASE:ARG:魔力 = LOCAL
+	IF LOCAL < 0
+		PRINTFORMW %CALLNAME:ARG%は魔力の反動でひどく疲れてしまったようだ。少し休ませてあげよう……
+		CFLAG:ARG:使用不可 = LOCAL/100+1
+	ENDIF
+	RETURN 1
+LOOP 1
 
 
-;IF ABL:ARG:魔法技能
+@魔力消費量, ARG, ARG:1
+#FUNCTION
 
-
+RETURNF ARG*1000-(ARG*100*(ARG:1-ARG))
 

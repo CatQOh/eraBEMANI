@@ -184,7 +184,7 @@ ELSE
 	LOCALS:4 = <font color='gray'><nonbutton title='助手に選べるキャラは居ません'>[---] - 助手変更 </nonbutton></font>
 ENDIF
 ;魔法
-IF TALENT:魔術師 || TALENT:MASTER:魔術師 || (ASSI > 0 && TALENT:ASSI:魔術師)
+IF TALENT:MASTER:魔術師 || (TARGET > 0 && TALENT:魔術師) || (ASSI > 0 && TALENT:ASSI:魔術師)
 	LOCALS:5 = %SET_TOOLTIP("[204] - 魔法詠唱 ", "魔法を使用します")%
 ELSE
 	LOCALS:5 = %SET_TOOLTIP("[---] - 魔法詠唱 ", "魔法を使用するには主人、助手、もしくは調教対象が魔術師である必要があります", 0, "gray")%
@@ -379,8 +379,13 @@ SELECTCASE RESULT
 			CALL SELECT_ASSI
 	;魔法詠唱
 	CASE 204
-		SIF TALENT:魔術師 || TALENT:MASTER:魔術師 || (ASSI > 0 && TALENT:ASSI:魔術師)
+		SIF TALENT:MASTER:魔術師 || (TARGET > 0 && TALENT:魔術師) || (ASSI > 0 && TALENT:ASSI:魔術師)
 			CALL SPELLCAST
+		;魔法を詠唱したならターン終了
+		IF RESULT == 1
+			FLAG:休憩フラグ = 1
+			BEGIN TURNEND
+		ENDIF
 	;身体改造
 	CASE 205
 		SIF TALENT:MASTER:禁断の知識 && CHARANUM > 1
@@ -521,7 +526,7 @@ ENDIF
 PRINTFORM 年{MONTH}月{DAYS}日(%DOW(FLAG:曜日)%) 
 
 REPEAT 5
-	SIF HOLIDAY == ""
+	SIF HOLIDAY:COUNT == ""
 		BREAK
 	PRINTFORM %HOLIDAY:COUNT% 
 REND 
