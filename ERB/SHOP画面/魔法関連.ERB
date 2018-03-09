@@ -113,7 +113,7 @@ IF ABL:ARG:魔法技能 >= 8
 	LOCAL = 魔力消費量(8, スキル)
 	;Energy Drive
 	PRINTFORML 　[13] - エナジードライブ（魔力消費量 {LOCAL}）
-	PRINTL 　　　　 主人の全ABLを一時的に1上昇させ、精力も上昇する 魔法技能に応じて効果持続
+	PRINTFORML 　　　　 主人の全ABLを一時的に{スキル-7}上昇させ、精力も上昇する 魔法技能に応じて効果持続
 ENDIF
 IF ABL:ARG:魔法技能 >= 9
 	LOCAL = 魔力消費量(9, スキル)
@@ -159,6 +159,8 @@ DO
 			PRINTFORML %CALLNAME:ARG%はフリージングアトモスフィアを唱えた
 			PRINTFORML 突然、外が寒くなった気がする……
 			フリージングアトモスフィア = スキル
+			SIF TIME == 0
+				FLAG:気温 -= フリージングアトモスフィア*30
 		CASE 2
 			SIF スキル < 3
 				CONTINUE
@@ -176,6 +178,8 @@ DO
 			PRINTFORML %CALLNAME:ARG%はバーニンザフロアを唱えた
 			PRINTFORML 突然、外が暖かくなった気がする……
 			バーニンザフロア = スキル
+			SIF TIME == 0
+				FLAG:気温 += バーニンザフロア*30
 		CASE 3
 			SIF スキル < 4
 				CONTINUE
@@ -208,6 +212,7 @@ DO
 			ストームバスター = スキル
 			スウィートレイン = 0
 			スノープリズム = 0
+			FLAG:天気 = 1
 		CASE 4
 			SIF スキル < 4
 				CONTINUE
@@ -235,6 +240,7 @@ DO
 			ストームバスター = 0
 			スウィートレイン = スキル
 			スノープリズム = 0
+			FLAG:天気 = 3
 		CASE 5
 			SIF スキル < 4
 				CONTINUE
@@ -261,8 +267,9 @@ DO
 			ストームバスター = 0
 			スウィートレイン = 0
 			スノープリズム = スキル
+			FLAG:天気 = 6
 		CASE 6, 7
-			SIF スキル < 5
+			SIF スキル < 5 && CHARANAMEF(ARG) != "梅桐 天土" && CHARANAMEF(ARG) != "梅桐 緋浮美"
 				CONTINUE
 			使用スペル = RESULT
 			PRINTFORML □ビーストモード\@ 使用スペル == 7 ? type2 #  \@で獣人化する対象を選んでください
@@ -372,7 +379,7 @@ DO
 			CFLAG:対象:使用不可 = 15-スキル
 			CFLAG:対象:ストレス値 = 0
 		CASE 10
-			SIF スキル < 7
+			SIF スキル < 7 && CHARANAMEF(ARG) != "クロノス" && CHARANAMEF(ARG) != "カイロス"
 				CONTINUE
 			$BTTF
 			PRINTL □移動先の日付を入力してください
@@ -464,7 +471,7 @@ DO
 			PRINTFORML %CALLNAME:対象%はまばゆい光に包まれ、人間と比べても遜色の無い大きさの身体になった……
 			ティルナノーグ:対象:0 = スキル
 			TALENT:対象:小人体型 = 0
-			TALENT:対象:小柄体型 = 1
+			;TALENT:対象:小柄体型 = 1
 		CASE 13
 			SIF スキル < 8
 				CONTINUE
@@ -482,6 +489,11 @@ DO
 			PRINTFORML %CALLNAME:ARG%はエナジードライブを唱えた
 			PRINTFORML %CALLNAME:MASTER%の身体はさらなる活力を得た……
 			エナジードライブ = スキル
+			エナジードライブ:1 = スキル-7
+			REPEAT VARSIZE("ABL")
+				SIF ABLNAME:COUNT != ""
+					ABL:MASTER:COUNT += スキル-7
+			REND
 		CASE 14
 			SIF スキル < 9
 				CONTINUE
@@ -506,6 +518,8 @@ DO
 			PRINTFORML %CALLNAME:ARG%は%CALLNAME:対象%に対してポゼッションを唱えた
 			PRINTFORML %CALLNAME:対象%は意識を失い、再び目が覚めると自身の体の違和感に困惑している……
 			REPEAT 30
+				SIF ABLNAME:COUNT == "魔法技能"
+					CONTINUE
 				ポゼッション:対象:COUNT = ABL:対象:COUNT
 				ABL:対象:COUNT = ABL:ARG:COUNT
 			REND

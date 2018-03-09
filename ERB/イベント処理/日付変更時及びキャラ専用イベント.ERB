@@ -118,6 +118,7 @@ SIF MONTH == 1 && DAYS == 1
 ;ターン終了時
 ;-------------------------------------------------
 @EVENTTURNEND
+#DIM DYNAMIC LCOUNT
 VARSET LOCAL, 0
 
 IF TARGET >= 0
@@ -372,6 +373,9 @@ REPEAT CHARANUM
 		ENDSELECT
 		CALL KOJO_MESSAGE_EVENT, "お菓子"
 	ENDIF
+	
+	;リ：ジェネレーション発動中は詠唱者のスキルに応じて回復量アップ
+	LOCAL += リジェネレーション*100
 
 	;娼館配属中は回復量下がる
 	SIF CFLAG:COUNT:配属 == 2 && CFLAG:COUNT:休憩 == 0 && FLAG:娼館営業中 == 1
@@ -546,6 +550,9 @@ IF TIME == 0
 				ENDIF
 		ENDSELECT
 	REND
+	;魔法の影響
+	FLAG:気温 -= フリージングアトモスフィア*30
+	FLAG:気温 += バーニンザフロア*30
 ENDIF
 ;天気の決定
 CALL WEATHER
@@ -601,6 +608,79 @@ IF CFLAG:MASTER:使用不可
 	FLAG:休憩フラグ = 1
 	RESTART
 ENDIF
+
+;魔法の効果終了は最後
+IF フリージングアトモスフィア > 0
+	SIF --フリージングアトモスフィア == 0
+		PRINTW [フリージングアトモスフィア]の効果が切れました
+ENDIF
+IF バーニンザフロア > 0
+	SIF --バーニンザフロア == 0
+		PRINTW [バーニンザフロア]の効果が切れました
+ENDIF
+IF ストームバスター > 0
+	SIF --ストームバスター == 0
+		PRINTW [ストームバスター]の効果が切れました
+ENDIF
+IF スウィートレイン > 0
+	SIF --スウィートレイン == 0
+		PRINTW [スウィートレイン]の効果が切れました
+ENDIF
+IF スノープリズム > 0
+	SIF --スノープリズム == 0
+		PRINTW [スノープリズム]の効果が切れました
+ENDIF
+IF リジェネレーション > 0
+	SIF --リジェネレーション == 0
+		PRINTW [リ：ジェネレーション]の効果が切れました
+ENDIF
+IF ヒプノティッククライシス > 0
+	SIF --ヒプノティッククライシス == 0
+		PRINTW [ヒプノティッククライシス]の効果が切れました
+ENDIF
+IF エナジードライブ > 0
+	IF --エナジードライブ == 0
+		PRINTFORMW %CALLNAME:MASTER%にかけられた[エナジードライブ]の効果が切れました
+		REPEAT VARSIZE("ABL")
+			SIF ABLNAME:COUNT != ""
+				ABL:MASTER:COUNT -= エナジードライブ:1
+		REND
+		VARSET エナジードライブ
+	ENDIF
+ENDIF
+REPEAT CHARANUM
+	IF ビーストモード:COUNT:0 > 0
+		IF --ビーストモード:COUNT:0 == 0
+			PRINTFORMW %CALLNAME:COUNT%にかけられた[ビーストモード]の効果が切れました
+			SIF ビーストモード:COUNT:1
+				TALENT:COUNT:動物耳 = 0
+			SIF ビーストモード:COUNT:2
+				TALENT:COUNT:尻尾 = 0
+			SIF ビーストモード:COUNT:3
+				TALENT:COUNT:ファーリー = 0
+			CSTR:COUNT:種族 = %ビーストモードS:COUNT:0%
+			VARSET ビーストモード:COUNT:0
+			VARSET ビーストモードS:COUNT:0
+		ENDIF
+	ENDIF
+	IF ティルナノーグ:COUNT:0 > 0
+		IF --ティルナノーグ:COUNT:0 == 0
+			PRINTFORMW %CALLNAME:COUNT%にかけられた[ティル・ナ・ノーグ]の効果が切れました
+			TALENT:COUNT:小人体型 = 1
+		ENDIF
+	ENDIF
+	IF CFLAG:COUNT:憑依中
+		IF --CFLAG:COUNT:憑依中 == 0
+			PRINTFORMW %CALLNAME:COUNT%にかけられた[ポゼッション]の効果が切れました
+			FOR LCOUNT, 0, 30
+				SIF ABLNAME:LCOUNT == "魔法技能"
+					CONTINUE
+				ABL:COUNT:LCOUNT = ポゼッション:COUNT:LCOUNT
+			NEXT
+			VARSET ポゼッション:COUNT:0
+		ENDIF
+	ENDIF
+REND
 
 BEGIN SHOP
 
@@ -883,6 +963,8 @@ SIF TALENT:MASTER:謎の魅力
 	LOCAL += 2
 SIF TALENT:MASTER:小柄体型
 	LOCAL -= 1
+SIF ヒプノティッククライシス
+	LOCAL += RAND(15, 21)
 
 LOCAL += ABL:従順
 LOCAL += ABL:欲望
