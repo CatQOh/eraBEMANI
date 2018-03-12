@@ -217,6 +217,7 @@ SIF 射精量 <= 0
 ;6 = 主人の腸内に射精
 ;7 = 助手の腸内に射精
 ;8 = 触手による強制射精
+;9 = パイズリで射精
 ;0 = その他
 
 SELECTCASE ARG
@@ -370,6 +371,65 @@ LOSEBASE:気力 += 30*LIMIT(射精量, 1, 2)
 ;ビデオ撮影時はボーナスカウント
 SIF TEQUIP:ビデオカメラ
 	VIDEOBONUS:4++
+
+VARSET LOCAL
+;魔力回復
+IF !TEQUIP:コンドーム
+	SELECTCASE ARG
+		;主人に中出し
+		CASE 1, 6
+			IF TALENT:MASTER:魔術師
+				LOCAL = MAXBASE:MASTER:魔力/30
+				SELECTCASE CSTR:種族
+					CASE "悪魔", "神", "天使"
+						TIMES LOCAL, 1.10
+				ENDSELECT
+				SIF TALENT:魔術師
+					TIMES LOCAL, 1.10
+				LOCAL += LOCAL*LIMIT(ABL:MASTER:精液中毒, 0, 10)/10
+				BASE:MASTER:魔力 = LIMIT(BASE:MASTER:魔力+LOCAL, 0, MAXBASE:MASTER:魔力)
+			ENDIF
+		;助手に中出し
+		CASE 2, 7
+			IF TALENT:ASSI:魔術師
+				LOCAL = MAXBASE:ASSI:魔力/30
+				SELECTCASE CSTR:種族
+					CASE "悪魔", "神", "天使"
+						TIMES LOCAL, 1.10
+				ENDSELECT
+				SIF TALENT:魔術師
+					TIMES LOCAL, 1.10
+				LOCAL += LOCAL*LIMIT(ABL:ASSI:精液中毒, 0, 10)/10
+				BASE:ASSI:魔力 = LIMIT(BASE:ASSI:魔力+LOCAL, 0, MAXBASE:ASSI:魔力)
+			ENDIF
+		;口、パイズリ
+		CASE 3, 9
+			IF TALENT:PLAYER:魔術師
+				LOCAL += MAXBASE:PLAYER:魔力/50
+				SELECTCASE CSTR:種族
+					CASE "悪魔", "神", "天使"
+						TIMES LOCAL, 1.10
+				ENDSELECT
+				SIF TALENT:魔術師
+					TIMES LOCAL, 1.10
+				LOCAL += LOCAL*LIMIT(ABL:PLAYER:精液中毒, 0, 10)/10
+				BASE:PLAYER:魔力 = LIMIT(BASE:PLAYER:魔力+LOCAL, 0, MAXBASE:PLAYER:魔力)
+			ENDIF
+		CASEELSE
+			IF TALENT:PLAYER:魔術師
+				LOCAL += MAXBASE:PLAYER:魔力/100
+				SELECTCASE CSTR:種族
+					CASE "悪魔", "神", "天使"
+						TIMES LOCAL, 1.10
+				ENDSELECT
+				SIF TALENT:魔術師
+					TIMES LOCAL, 1.10
+				LOCAL += LOCAL*LIMIT(ABL:PLAYER:精液中毒, 0, 10)/10
+				BASE:PLAYER:魔力 = LIMIT(BASE:PLAYER:魔力+LOCAL, 0, MAXBASE:PLAYER:魔力)
+			ENDIF
+	ENDSELECT
+ENDIF
+
 
 ;ソース追加
 ;射精経験多いほど恥ずかしくなくなって気持ち良くなる
@@ -592,6 +652,20 @@ IF LOCAL
 				CFLAG:PLAYER:媚薬 += LIMIT(LOCAL, 1, 5)
 		ENDSELECT
 	ENDIF
+
+	SELECTCASE SELECTCOMS
+		CASE "母乳飲み", "授乳手コキ"
+			IF TALENT:PLAYER:魔術師
+				LOCAL = MAXBASE:PLAYER:魔力/40
+				SELECTCASE CSTR:種族
+					CASE "悪魔", "神", "天使"
+						TIMES LOCAL, 1.10
+				ENDSELECT
+				SIF TALENT:魔術師
+					TIMES LOCAL, 1.10
+				BASE:PLAYER:魔力 = LIMIT(BASE:PLAYER:魔力+LOCAL, 0, MAXBASE:PLAYER:魔力)
+			ENDIF
+	ENDSELECT
 	
 	LOCAL = 0
 	;飲んでる場合
@@ -599,7 +673,7 @@ IF LOCAL
 		SELECTCASE SELECTCOMS
 			CASE "母乳飲み", "授乳手コキ"
 				;不要なループを避けるための処理 CFLAGでやったほうがいいかもしれない
-				SIF 母乳飲んだ人数:(NO:TARGET)
+				SIF !母乳飲んだ人数:(NO:TARGET)
 					LOCAL = 1
 				母乳飲んだ人数:(NO:TARGET)++
 		ENDSELECT
