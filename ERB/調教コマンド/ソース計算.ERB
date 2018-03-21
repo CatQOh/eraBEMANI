@@ -1,4 +1,6 @@
 ﻿@SOURCE_CHECK
+;チェインオブペイン用の変数
+#DIM DYNAMIC COP
 ;-------------------------------------------------
 ;情愛のソース
 ;-------------------------------------------------
@@ -182,6 +184,10 @@ UP:恭順 += LOCAL
 ;-------------------------------------------------
 ;苦痛のソース
 ;-------------------------------------------------
+IF TFLAG:チェインオブペイン
+	SOURCE:苦痛 += LOSEBASE:体力*30
+	COP = LOSEBASE:体力*30
+ENDIF
 LOCAL = SOURCE:苦痛
 LOCAL:1 = SOURCE:苦痛
 LOCAL:2 = SOURCE:苦痛/20
@@ -189,49 +195,66 @@ LOCAL:2 = SOURCE:苦痛/20
 ;上級売春中は計算しない
 IF !上級売春中
 	;残り気力 百分率で計算 残り体力より消費は少ない
-	SELECTCASE BASE:気力*100/MAXBASE:気力
-		CASE 0 TO 9
-			TIMES LOCAL , 2.00
-		CASE 10 TO 19
-			TIMES LOCAL , 1.90
-		CASE 20 TO 29
-			TIMES LOCAL , 1.80
-		CASE 30 TO 39
-			TIMES LOCAL , 1.70
-		CASE 40 TO 49
-			TIMES LOCAL , 1.60
-		CASE 50 TO 59
-			TIMES LOCAL , 1.50
-		CASE 60 TO 69
-			TIMES LOCAL , 1.40
-		CASE 70 TO 79
-			TIMES LOCAL , 1.30
-		CASE 80 TO 89
-			TIMES LOCAL , 1.20
-		CASE 90 TO 99
-			TIMES LOCAL , 1.10
-		CASE 100
-			TIMES LOCAL , 1.00
-	ENDSELECT
+	LOCAL += LOCAL/10*(10-(BASE:気力*10/MAXBASE:気力))
+	COP += LOCAL/10*(10-(BASE:気力*10/MAXBASE:気力))
+;	SELECTCASE BASE:気力*100/MAXBASE:気力
+;		CASE 0 TO 9
+;			TIMES LOCAL , 2.00
+;			TIMES COP , 2.00
+;		CASE 10 TO 19
+;			TIMES LOCAL , 1.90
+;			TIMES COP , 1.90
+;		CASE 20 TO 29
+;			TIMES LOCAL , 1.80
+;			TIMES COP , 1.80
+;		CASE 30 TO 39
+;			TIMES LOCAL , 1.70
+;			TIMES COP , 1.70
+;		CASE 40 TO 49
+;			TIMES LOCAL , 1.60
+;			TIMES COP , 1.60
+;		CASE 50 TO 59
+;			TIMES LOCAL , 1.50
+;			TIMES COP , 1.50
+;		CASE 60 TO 69
+;			TIMES LOCAL , 1.40
+;			TIMES COP , 1.40
+;		CASE 70 TO 79
+;			TIMES LOCAL , 1.30
+;		CASE 80 TO 89
+;			TIMES LOCAL , 1.20
+;		CASE 90 TO 99
+;			TIMES LOCAL , 1.10
+;		CASE 100
+;			TIMES LOCAL , 1.00
+;	ENDSELECT
 
 	;残り体力 百分率で計算 体力平均は2000で体力500以下だと終了するから30%あたりが下限か
 	SELECTCASE BASE:体力*100/MAXBASE:体力
 		CASE IS <= 40
 			TIMES LOCAL , 2.50
+			TIMES COP , 2.50
 		CASE 40 TO 49
 			TIMES LOCAL , 2.20
+			TIMES COP , 2.20
 		CASE 50 TO 59
 			TIMES LOCAL , 2.00
+			TIMES COP , 2.00
 		CASE 60 TO 69
 			TIMES LOCAL , 1.80
+			TIMES COP , 1.80
 		CASE 70 TO 79
 			TIMES LOCAL , 1.60
+			TIMES COP , 1.60
 		CASE 80 TO 89
 			TIMES LOCAL , 1.40
+			TIMES COP , 1.40
 		CASE 90 TO 99
 			TIMES LOCAL , 1.20
+			TIMES COP , 1.20
 		CASE 100
 			TIMES LOCAL , 1.00
+			TIMES COP , 1.00
 	ENDSELECT
 ENDIF
 
@@ -274,6 +297,7 @@ ENDSELECT
 ;小人体型
 IF TALENT:小人体型
 	TIMES LOCAL , 2.00
+	TIMES COP , 2.00
 	TIMES LOCAL:1 , 0.75
 ENDIF
 
@@ -282,20 +306,28 @@ SIF TALENT:ゾンビ && !TALENT:PLAYER:ネクロマンサー
 	TIMES LOCAL , 0.50
 
 ;無機物
-SIF TALENT:無機物
+IF TALENT:無機物
 	TIMES LOCAL , 0.10
+	TIMES COP , 0.10
+ENDIF
 
 ;調教者が衝動的
-SIF TALENT:PLAYER:衝動的
+IF TALENT:PLAYER:衝動的
 	TIMES LOCAL , 1.20
+	TIMES COP , 1.20
+ENDIF
 
 ;調教者が冷静
-SIF TALENT:PLAYER:冷静
+IF TALENT:PLAYER:冷静
 	TIMES LOCAL , 0.75
+	TIMES COP , 0.75
+ENDIF
 
 ;痛みに弱い
-SIF TALENT:痛みに弱い
+IF TALENT:痛みに弱い
 	TIMES LOCAL , 1.50
+	TIMES COP , 1.50
+ENDIF
 
 ;調教者がサド
 SIF TALENT:PLAYER:サド
@@ -647,6 +679,8 @@ UP:屈服 += LOCAL
 ;-------------------------------------------------
 ;不潔のソース
 ;-------------------------------------------------
+SIF TFLAG:メタリックマインド
+	SOURCE:不潔 /= 3
 LOCAL = SOURCE:不潔
 
 ;下着の汚れで不潔ソース増加
@@ -715,6 +749,9 @@ UP:不快 += LOCAL
 ;-------------------------------------------------
 ;鬱屈のソース
 ;-------------------------------------------------
+SIF TFLAG:メタリックマインド
+	SOURCE:鬱屈 /= 3
+
 ;ストレス値に応じて鬱屈のソースが上がる
 ;19で2倍 32で3倍 43で4倍 54で5倍 63で6倍 73で7倍 81で8倍 90で9倍 98で10倍
 SOURCE:鬱屈 += SOURCE:鬱屈*POW4V3(CFLAG:ストレス値,2)/100
@@ -778,6 +815,9 @@ UP:抑鬱 += LOCAL
 ;-------------------------------------------------
 ;逸脱のソース
 ;-------------------------------------------------
+SIF TFLAG:メタリックマインド
+	SOURCE:逸脱 /= 3
+
 ;好奇心と保守的はここで処理
 SIF TALENT:好奇心
 	TIMES SOURCE:逸脱 , 0.80
@@ -843,6 +883,9 @@ UP:反感 += LOCAL
 ;-------------------------------------------------
 ;反感のソース
 ;-------------------------------------------------
+SIF TFLAG:メタリックマインド
+	SOURCE:反感 /= 3
+
 ;ストレス値に応じて反感のソースが上がる
 ;19で1.5倍 32で2倍 43で1.5倍 54で2倍 63で2.5倍 73で3倍 81で3.5倍 90で4倍 98で4.5倍
 SOURCE:反感 += SOURCE:反感*POW4V3(CFLAG:ストレス値)/100
@@ -924,6 +967,14 @@ IF TEQUIP:利尿剤
 	TIMES UP:恥情 , 1.20
 	TIMES UP:反感 , 1.50
 	TIMES UP:不快 , 1.20
+ENDIF
+
+;-------------------------------------------------
+;魔法
+;-------------------------------------------------
+IF TFLAG:ゴーバーサーク
+	TIMES UP:恭順 , 1.50
+	TIMES UP:欲情 , 1.50
 ENDIF
 
 ;-------------------------------------------------
@@ -1489,7 +1540,7 @@ ENDIF
 ;-------------------------------------------------
 ;同じコマンドの連続実行による上下の処理
 ;-------------------------------------------------
-IF SELECTCOM == PREVCOM && SELECTCOMS != "お酒を飲ませる"
+IF SELECTCOM == PREVCOM && SELECTCOMS != "お酒を飲ませる" && !TFLAG:リカーシブファンクション
 	;快楽系は絶頂に絡むので先に処理してある
 	UP:恭順 /= 2
 	UP:欲情 /= 2
@@ -1503,7 +1554,7 @@ ENDIF
 ;-------------------------------------------------
 ;気力０による上下の処理
 ;-------------------------------------------------
-IF BASE:気力 <= 0
+IF BASE:気力 <= 0 && !TFLAG:ゴーバーサーク
 	;快楽系は絶頂に絡むので先に処理してある
 	TIMES UP:恭順 , 0.70
 	TIMES UP:欲情 , 0.70
@@ -1511,14 +1562,15 @@ IF BASE:気力 <= 0
 	TIMES UP:恥情 , 0.70
 	TIMES UP:恐怖 , 0.70
 	TIMES UP:抑鬱 , 0.70
-
-	TIMES LOSEBASE:体力 , 1.50
 ENDIF
+SIF BASE:気力 <= 0
+	TIMES LOSEBASE:体力 , 1.50
 
 ;-------------------------------------------------
 ;苦痛からくる体力・気力の減少
 ;-------------------------------------------------
-LOCAL = UP:苦痛/100
+;チェインオブペインで上乗せされた分がLOSEBASEになったら本末転倒なので減少させる
+LOCAL = (UP:苦痛-COP)/100
 ;ABL:マゾっ気をみる
 SELECTCASE ABL:マゾっ気
 	CASE 0
@@ -1804,6 +1856,10 @@ ELSE
 		TIMES LOSEBASE:気力 , 0.80
 	ENDIF
 
+	;ゴー・バーサーク
+	SIF TFLAG:ゴーバーサーク
+		TIMES LOSEBASE:体力 , 1.20
+
 	BASE:体力 -= LOSEBASE:体力
 	IF BASE:体力 < 0
 		BASE:体力 = 0
@@ -1908,8 +1964,12 @@ SIF LOCAL != 100
 	PRINTFORML ＜相性{LOCAL/100}.{(LOCAL%100/10)}倍＞
 
 ;同じコマンドの連続実行
-SIF SELECTCOM == PREVCOM
-	PRINTL ＜同一コマンド連続実行＞
+IF SELECTCOM == PREVCOM
+	PRINT ＜同一コマンド連続実行
+	SIF TFLAG:リカーシブファンクション
+		PRINT （デメリット無効）
+	PRINTL ＞
+ENDIF
 
 ;今回のコマンドを「前回のコマンド」とする
 PREVCOM = SELECTCOM
@@ -1937,8 +1997,12 @@ IF 上級売春中
 	ENDIF
 ELSE
 	;気力０
-	SIF BASE:気力 <= 0
-		PRINTL ★気力０★
+	IF BASE:気力 <= 0
+		PRINT ★気力０
+		SIF TFLAG:ゴーバーサーク
+			PRINT （ソース低下無効）
+		PRINTL ★
+	ENDIF
 	;体力・気力の減少
 	IF LOSEBASE:体力 >= 0
 		PRINTFORM 体力-{LOSEBASE:体力} 
@@ -2023,10 +2087,10 @@ ENDIF
 CALL CREATE_PICTURE
 
 ;-------------------------------------------------
-;キス・オブ・ザ・ドラゴンのフラグを戻す
+;実行判定無視フラグの処理
 ;-------------------------------------------------
-SIF TFLAG:実行判定無視 && SELECTCOMS != "キス（ドラゴン）"
-	TFLAG:実行判定無視 = 0
+SIF TFLAG:実行判定無視 > 0
+	TFLAG:実行判定無視--
 
 ;-------------------------------------------------
 ;パラメータの上昇＆表示（DOWNもここで）
