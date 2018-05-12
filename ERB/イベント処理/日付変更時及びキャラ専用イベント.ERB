@@ -130,13 +130,6 @@ IF TARGET >= 0
 	;撤廃しました
 	;SIF CFLAG:ストレス値 >= 100 && !TALENT:崩壊
 	;	CALL COLLAPSE_MIND_TRAIN
-	
-	;ストレス値が999より大きい場合999にする
-	SIF CFLAG:ストレス値 > 999
-		CFLAG:ストレス値 = 999
-	;依存度が-1000未満の場合、-1000にする
-	SIF CFLAG:依存度 < -1000
-		CFLAG:依存度 = -1000
 
 	;売却可能&助手可能判定 陥落系で無視できるって条件はほとんど意味無いか
 	;従順+欲望が6以上
@@ -210,6 +203,33 @@ REPEAT CHARANUM
 		PRINTFORMW %CALLNAME:COUNT%が{LOCAL:1}個の%ITEMNAME:LOCAL%を拾ってきました
 		ITEM:LOCAL += LOCAL:1
 	ENDIF
+
+	LOCAL = 0
+	;ヤンデレのストレス処理
+	IF TALENT:COUNT:ヤンデレ && TARGET != COUNT
+		;陥落済み
+		IF CFLAG:COUNT:陥落
+			;MASTERとの相性が良いほど待機中のストレス増加
+			LOCAL = (RELATION:COUNT:(NO:MASTER)-100)/10+1
+			;しかしTARGETとの相性が良いと緩和 悪いと増加
+			SIF TARGET > 0
+				LOCAL -= (RELATION:COUNT:(NO:TARGET)-100)/10
+			;ASSIとの相性が悪いと増加
+			SIF ASSI > 0 && RELATION:COUNT:(NO:ASSI) < 100
+				LOCAL += ABS(RELATION:COUNT:(NO:ASSI)-100)/10+1
+		;未陥落
+		ELSE
+			;TARGETとの相性が良いと待機中のストレス増加
+			SIF TARGET > 0 && RELATION:COUNT:(NO:TARGET) > 0
+				LOCAL += (RELATION:COUNT:(NO:TARGET))/10+1
+			;ASSIとの相性が良くても待機中のストレスが増加
+			SIF ASSI > 0 && RELATION:COUNT:(NO:ASSI) > 0
+				LOCAL += (RELATION:COUNT:(NO:ASSI))/10+1
+		ENDIF
+		SIF LOCAL > 0
+			CFLAG:COUNT:ストレス値 += LOCAL
+	ENDIF
+
 	;気力の回復
 	BASE:COUNT:気力 = MAXBASE:COUNT:気力
 	
@@ -384,9 +404,11 @@ REPEAT CHARANUM
 	SIF CFLAG:COUNT:配属 == 4 &&  CFLAG:COUNT:レッスン != 0
 		LOCAL /= 8
 
-	;ストレス値が0未満の場合は0にする
-	SIF CFLAG:COUNT:ストレス値 < 0
-		CFLAG:COUNT:ストレス値 = 0
+	;ストレス値は0～999にする
+	CFLAG:COUNT:ストレス値 = LIMIT(CFLAG:COUNT:ストレス値, 0, 999)
+	;依存度が-1000未満の場合、-1000にする
+	SIF CFLAG:COUNT:依存度 < -1000
+		CFLAG:COUNT:依存度 = -1000
 
 	;「暑さに弱い」「寒さに弱い」 最低100は保証
 	IF TALENT:COUNT:暑さに弱い
