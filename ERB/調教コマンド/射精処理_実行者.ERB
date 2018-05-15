@@ -853,7 +853,7 @@ SELECTCASE 射精先
 						PRINTFORML 精液経験+{計算用射精量}(%CALLNAME:ASSI%)
 						EXP:ASSI:精液経験 += 計算用射精量
 						PRINTFORML 膣内射精経験+{計算用射精量}(%CALLNAME:ASSI%)
-						EXP:膣射経験 += 計算用射精量
+						EXP:ASSI:膣射経験 += 計算用射精量
 						PREG:ASSI:0 += 計算用射精量
 						;獣人、獣による催淫
 						SELECTCASE CSTR:射精したキャラ:種族
@@ -901,16 +901,22 @@ ENDIF
 ;射精回数カウント
 EX:(射精したキャラ):射精++
 
-;助手に射精した時以外は奴隷の精液経験増加
-IF 射精先 != 7
+;奴隷に射精した時は奴隷の精液経験増加
+IF 射精されるキャラ == TARGET
 	PRINTFORML 精液経験+{LIMIT(射精量, 1, 10)}
 	EXP:精液経験 += LIMIT(射精量, 1, 10)
 ENDIF
 ;ダブルフェラ、ダブルパイズリ時、助手を犯す時は助手の精液経験も増加
-IF SELECTCOMS == "ダブルフェラ" || SELECTCOMS == "ダブルパイズリ" || 射精先 == 7
-	PRINTFORML 精液経験+{LIMIT(射精量, 1, 10)}(%CALLNAME:ASSI%)
-	EXP:ASSI:精液経験 += LIMIT(射精量, 1, 10)
-ENDIF
+SELECTCASE SELECTCOMS
+	CASE "ダブルフェラ", "ダブルパイズリ", "ダブル素股"
+		PRINTFORML 精液経験+{LIMIT(射精量, 1, 10)}(%CALLNAME:ASSI%)
+		EXP:ASSI:精液経験 += LIMIT(射精量, 1, 10)
+	CASE "数珠繋ぎ", "3P"
+		IF 射精されるキャラ == ASSI
+			PRINTFORML 精液経験+{LIMIT(射精量, 1, 10)}(%CALLNAME:ASSI%)
+			EXP:ASSI:精液経験 += LIMIT(射精量, 1, 10)
+		ENDIF
+ENDSELECT
 
 PRINTFORML 射精経験+{LIMIT(射精量, 1, 10)}(%CALLNAME:(射精したキャラ)%)
 EXP:射精したキャラ:射精経験 += LIMIT(射精量, 1, 10)
@@ -922,20 +928,20 @@ BASE:射精したキャラ:射精 -= MAXBASE:射精したキャラ:射精*射精
 SIF BASE:射精したキャラ:射精 >= MAXBASE:射精したキャラ:射精
 	BASE:射精したキャラ:射精 = MAXBASE:射精したキャラ:射精-1
 
-;射精時に中毒、達成のソースを追加
-SELECTCASE 射精先
-	;膣、アナル
-	CASE 1, 2
-		LOCAL = 射精量*400
-	;口、胸、顔射
-	CASE 4, 5, 8
-		LOCAL = 射精量*300
-	;手、その他奉仕、3P助手射精
-	CASE 3, 6, 11
-		LOCAL = 射精量*200
-ENDSELECT
-
+LOCAL = 0
 IF 射精されるキャラ == TARGET
+	;射精時に中毒、達成のソースを追加
+	SELECTCASE 射精先
+		;膣、アナル
+		CASE 1, 2
+			LOCAL = 射精量*400
+		;口、胸、顔射
+		CASE 4, 5, 8
+			LOCAL = 射精量*300
+		;手、その他奉仕、3P助手射精
+		CASE 3, 6, 11
+			LOCAL = 射精量*200
+	ENDSELECT
 	;精液中毒を見る
 	SELECTCASE ABL:精液中毒
 		CASE 0, 1

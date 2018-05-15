@@ -649,7 +649,7 @@ IF LOCAL >= 0
 		CFLAG:LOCAL:休憩 = 1
 		GOTO 通常営業
 	ENDIF
-	IF CFLAG:LOCAL:ストレス値 > 90 && !TALENT:LOCAL:崩壊
+	IF CFLAG:LOCAL:ストレス値 > 500 && !TALENT:LOCAL:崩壊
 		PRINTFORML %CALLNAME:LOCAL%はストレス過多のため、娼館を休みました
 		CFLAG:LOCAL:休憩 = 1
 		GOTO 通常営業
@@ -657,6 +657,7 @@ IF LOCAL >= 0
 	;サボり魔は25%の確率でサボる
 	IF TALENT:LOCAL:サボり魔 && RAND:4 == 0
 		PRINTFORML %CALLNAME:LOCAL%は売春をサボりました
+		CFLAG:LOCAL:ストレス値 -= 5
 		CFLAG:LOCAL:休憩 = 1
 		GOTO 通常営業
 	ENDIF
@@ -690,7 +691,7 @@ FOR LCOUNT, 1, CHARANUM
 		CFLAG:LCOUNT:休憩 = 1
 		CONTINUE
 	ENDIF
-	IF CFLAG:LCOUNT:ストレス値 > 90 && !TALENT:LCOUNT:崩壊
+	IF CFLAG:LCOUNT:ストレス値 > 500 && !TALENT:LCOUNT:崩壊
 		PRINTFORML %CALLNAME:LCOUNT%はストレス過多のため、娼館を休みました
 		CFLAG:LCOUNT:休憩 = 1
 		CONTINUE
@@ -698,8 +699,9 @@ FOR LCOUNT, 1, CHARANUM
 	;サボり魔は25%の確率でサボる
 	IF TALENT:LCOUNT:サボり魔 && RAND:4 == 0
 		PRINTFORML %CALLNAME:LCOUNT%は売春をサボりました
-		CFLAG:LOCAL:休憩 = 1
-		GOTO 通常営業
+		CFLAG:LCOUNT:ストレス値 -= 5
+		CFLAG:LCOUNT:休憩 = 1
+		CONTINUE
 	ENDIF
 	;1000パセリは保証
 	収入 = 1000
@@ -1257,9 +1259,7 @@ FOR LCOUNT, 1, CHARANUM
 			適性 += ABL:LCOUNT:技巧/3
 	ENDSELECT
 	;体力気力消費計算
-	LOCAL = 不適性 - 適性
-	SIF LOCAL < 1
-		LOCAL = 1
+	LOCAL = MAX(不適性-適性, 1)
 	SELECTCASE 娼館方針
 		;ソフト
 		CASE 1
@@ -1612,7 +1612,7 @@ FOR LCOUNT, 1, CHARANUM
 	TALENT:LCOUNT:傷物++
 	;お風呂場があるとストレス溜まりづらくなる
 	IF ITEM:お風呂場
-		CFLAG:LCOUNT:ストレス値 += 娼館方針
+		CFLAG:LCOUNT:ストレス値 += 不適性-適性
 	ELSE
 		CFLAG:LCOUNT:ストレス値 += 娼館方針*2
 	ENDIF
@@ -1644,6 +1644,7 @@ SIF ITEM:隠しカメラ
 	収入合計 += 収入合計/10
 
 IF 収入合計
+	DRAWLINE
 	CALL PASELIL, @"%娼館店名%の収入が{収入合計}＄入りました"
 	MONEY += 収入合計
 	娼館前日の収入 = 収入合計

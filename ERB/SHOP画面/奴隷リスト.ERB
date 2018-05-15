@@ -159,7 +159,11 @@ LOOP LOOPRES(999, 1000, 1001)
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC カウント数
 #DIM DYNAMIC 未表示キャラ
+#DIM DYNAMIC 対象表示
+#DIM DYNAMIC 助手表示
 VARSET LOCAL, 0
+対象表示 = 0
+助手表示 = 0
 DRAWLINE
 IF ARG == 1
 	PRINTL □調教対象変更
@@ -185,11 +189,14 @@ FOR LCOUNT, 0, CHARANUM
 				PRINT 双
 			PRINTL 
 		ENDIF
-		;TARGET指定もしくはASSI指定で1巡目ならMASTERの下に表示する
-		IF ARG == 1 && TARGET > 0
+		;TARGETとASSIはMASTERの下に表示する
+		$表示用
+		IF TARGET > 0 && !対象表示
 			LOCAL = TARGET
-		ELSEIF ARG == 2 && ASSI > 0
+			対象表示 = 1
+		ELSEIF ASSI > 0 && !助手表示
 			LOCAL = ASSI
+			助手表示 = 1
 		ELSE
 			;表示するキャラが居なければDRAWLINEとCONTINUEして通常の表示処理に戻る
 			DRAWLINE
@@ -209,12 +216,6 @@ FOR LCOUNT, 0, CHARANUM
 		;ページ数×10まで表示を飛ばす
 		SIF TFLAG:ページ数*10 >= カウント数
 			CONTINUE
-		;調教対象の指定なら調教中のキャラは除外
-		SIF ARG == 1 && LOCAL == TARGET
-			CONTINUE
-		;助手の指定なら助手中のキャラは除外
-		SIF ARG == 2 && LOCAL == ASSI
-			CONTINUE
 		;助手の指定なら助手不可能なキャラは除外
 		SIF ARG == 2 && CFLAG:LOCAL:状態 < 2
 			CONTINUE
@@ -224,6 +225,13 @@ FOR LCOUNT, 0, CHARANUM
 		;調教対象の指定、もしくは助手の指定なら、使用不可のキャラは除外
 		SIF ARG && CFLAG:LOCAL:使用不可
 			CONTINUE
+		;主人の下に対象を表示していれば対象は除外
+		SIF 対象表示 && TARGET == LOCAL
+			CONTINUE
+		;助手も同じく
+		SIF 助手表示 && ASSI == LOCAL
+			CONTINUE
+			
 		表示数++
 	ENDIF
 
@@ -244,9 +252,11 @@ FOR LCOUNT, 0, CHARANUM
 	PRINTFORM [{LOCAL, 2}] %CALLNAME:LOCAL, 20, LEFT%
 
 	;上記のキャラを表示したら詳細情報も表示
-	PRINT 体力
-	BAR BASE:LOCAL:体力, MAXBASE:LOCAL:体力, 10
-	PRINTFORM ({BASE:LOCAL:体力}/{MAXBASE:LOCAL:体力}) 
+	;助手選択画面では表示しない
+	IF ARG != 2
+		PRINTFORM 体力%BARBASE("体力", LOCAL, 10)% 
+		PRINTFORM 気力%BARBASE("気力", LOCAL, 10)% 
+	ENDIF
 	SELECTCASE SEX(LOCAL)
 		CASE 1
 			PRINT ♂ 
@@ -281,9 +291,9 @@ FOR LCOUNT, 0, CHARANUM
 	ELSEIF ARG == 2
 		SELECTCASE SEX(LOCAL)
 			CASE 1
-				PRINTFORM ♂ 技巧Lv{ABL:LOCAL:技巧} ホモっ気Lv{ABL:LOCAL:ホモっ気} ゲイ中毒Lv{ABL:LOCAL:ゲイ中毒} 
+				PRINTFORM 技巧Lv{ABL:LOCAL:技巧} ホモっ気Lv{ABL:LOCAL:ホモっ気} ゲイ中毒Lv{ABL:LOCAL:ゲイ中毒} 
 			CASE 2
-				PRINTFORM ♀ 技巧Lv{ABL:LOCAL:技巧} レズっ気Lv{ABL:LOCAL:レズっ気} レズ中毒Lv{ABL:LOCAL:レズ中毒} 
+				PRINTFORM 技巧Lv{ABL:LOCAL:技巧} レズっ気Lv{ABL:LOCAL:レズっ気} レズ中毒Lv{ABL:LOCAL:レズ中毒} 
 		ENDSELECT
 		SIF TALENT:LOCAL:両刀
 			PRINT 両刀 
@@ -291,6 +301,9 @@ FOR LCOUNT, 0, CHARANUM
 			PRINT ふたなり
 	ENDIF
 	PRINTL 
+	;対象及び助手が表示できるなら表示
+	SIF (TARGET > 0 && !対象表示) || (ASSI > 0 && !助手表示)
+		GOTO 表示用
 	;一巡目ならDRAWLINEしてCONTINUE
 	IF LCOUNT == 0
 		DRAWLINE
