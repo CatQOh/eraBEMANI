@@ -6,25 +6,29 @@ LOCAL = 0
 VARSET LOCALS, 
 
 FOR LCOUNT, 0, 800
+	;コマンドが無ければCONTINUE
 	SIF TRAINNAME:LCOUNT == ""
 		CONTINUE
+	;CALLF系命令では返り値が無いのでCOMRESULTに結果を入れている
 	COMRESULT = 0
 	CALLFORMF USERCOM_ABLE_%TRAINNAME:LCOUNT%()
 	IF COMRESULT
+		;実行判定の表示をSKIPDISPで飛ばして結果だけ出す
 		SKIPDISP 1
 		TRYCCALLFORM 実行判定_%TRAINNAME:LCOUNT%
+			;実行不可なら灰色表示、可能ならデフォ色表示
 			IF RESULT == 0 && TFLAG:実行判定無視 == 0
 				SETCOLORBYNAME gray
-				LOCALS:(LOCAL%4+1) += "gray"
 			ELSE
-				SETCOLOR 0xc0c0c0
-				LOCALS:(LOCAL%4+1) += "#c0c0c0"
+				SETCOLORBYNAME silver
 			ENDIF
 		CATCH
-			SETCOLOR 0xc0c0c0
+			;そもそも実行判定が不要ならデフォ色表示
+			SETCOLORBYNAME silver
 		ENDCATCH
 		SKIPDISP 0
 
+		;TEQUIP系コマンドは使用時と解除時でコマンド名を変える
 		SELECTCASE TRAINNAME:LCOUNT
 			CASE "触手召喚"
 				LOCALS '= @"%\@ TEQUIP:触手 ? 触手送還 # 触手召喚 \@, 23%"
@@ -202,13 +206,10 @@ SELECTCASE RESULT
 				RETURN 1
 			CASE 1
 				;天使の技巧ボーナス
+				;欲情と屈服のPALAMLVだけ技巧に加算する
 				IF CSTR:種族 == "天使"
-					REPEAT 10
-						SIF PALAM:欲情 >= PALAMLV:COUNT
-							LOCAL:10 = COUNT
-						SIF PALAM:屈服 >= PALAMLV:COUNT
-							LOCAL:11 = COUNT
-					REND
+					LOCAL:10 = GETPALAMLV(PALAM:欲情, 10)
+					LOCAL:11 = GETPALAMLV(PALAM:屈服, 10)
 					LOCAL:12 = ABL:技巧
 					ABL:技巧 = LOCAL:10*LOCAL:11+LOCAL:12
 				ENDIF
@@ -216,6 +217,7 @@ SELECTCASE RESULT
 				SELECTCOMS = %TRAINNAME:SELECTCOM%
 				TRYCALLFORM COM_%SELECTCOMS%
 				IF RESULT == 0
+					;終わったら技巧を元に戻す
 					SIF CSTR:種族 == "天使"
 						ABL:技巧 = LOCAL:12
 					RETURN 1
@@ -224,39 +226,48 @@ SELECTCASE RESULT
 					VARSET SOURCE, 0
 					TRYCALL EVENTUSERCOMEND
 					WAIT
+					;終わったら技巧を元に戻す
 					SIF CSTR:種族 == "天使"
 						ABL:技巧 = LOCAL:12
 				ENDIF
 		ENDSELECT
+	;履歴表示
 	CASE 800
 		CALL SHOW_LOG
 		RETURN 1
+	;汚れ表示
 	CASE 801
 		CALL STAIN_INFO
 		RETURN 1
+	;能力表示
 	CASE 802
 		CALL SHOW_INFO, TARGET
 		WAIT
 		RETURN 1
+	;着衣設定
 	CASE 803
 		IF !TEQUIP:エプロン && !TEQUIP:お風呂場 && !(TEQUIP:ゲームセンター && !TEQUIP:トイレ)
 			CALL CLOTHES_CHANGE
 			RETURN 1
 		ENDIF
+	;着衣設定(PLAYER)
 	CASE 804
 		IF !TEQUIP:お風呂場 && !(TEQUIP:ゲームセンター && !TEQUIP:トイレ)
 			CALL CLOTHES_CHANGE_PLAYER
 			RETURN 1
 		ENDIF
+	;避妊具の設定
 	CASE 805
 		IF PENIS(TARGET) || PENIS(PLAYER)
 			CALL CONDOM_SETTING
 			RETURN 1
 		ENDIF
+	;PLAYERの能力表示
 	CASE 806
 		CALL SHOW_INFO, PLAYER
 		WAIT
 		RETURN 1
+	;助手と交代
 	CASE 900
 		IF ASSI > 0 && !TEQUIP:触手
 			IF ASSIPLAY
@@ -291,6 +302,7 @@ SELECTCASE RESULT
 			CALL COMMENU_START, 1
 			RETURN 1
 		ENDIF
+	;調教終了
 	CASE 999
 		IF 上級売春中
 			IF 上級売春中 == 2
@@ -426,6 +438,7 @@ WAIT
 ;調教中の着衣変更
 ;-------------------------------------------------
 @CLOTHES_CHANGE
+#DIM DYNAMIC LCOUNT
 DRAWLINE
 PRINTL 着衣について設定します
 
