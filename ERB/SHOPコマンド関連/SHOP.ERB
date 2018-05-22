@@ -9,6 +9,8 @@ VARLINE = 0
 SIF データID == 0
 	データID = GETSECOND()
 
+
+
 REPEAT CHARANUM
 	IF CFLAG:COUNT:グリム
 		SELECTCASE FLAG:グリムコンフィグ
@@ -22,6 +24,18 @@ REPEAT CHARANUM
 		MAXBASE:COUNT:魔力 = ABL:COUNT:魔法技能*1000
 		BASE:COUNT:魔力 = LIMIT(BASE:COUNT:魔力, 0, MAXBASE:COUNT:魔力)
 	ENDIF
+	;CFLAG:配属をCSTR:配属に移動
+	SELECTCASE CFLAG:COUNT:配属
+		CASE 1
+			CSTR:COUNT:配属 = ゲームセンター
+			CFLAG:COUNT:配属 = 0
+		CASE 2
+			CSTR:COUNT:配属 = 娼館
+			CFLAG:COUNT:配属 = 0
+		CASE 4
+			CSTR:COUNT:配属 = 芸能プロダクション
+			CFLAG:COUNT:配属 = 0
+	ENDSELECT
 REND
 
 CALL CVAR_RESET
@@ -133,20 +147,23 @@ LOCALS:2 = %SET_TOOLTIP("[101] - 休憩     ", @"\@ TIME == 0 ? 夜まで休憩�
 ;無条件で表示
 LOCALS:3 = %SET_TOOLTIP("[102] - 眷属の儀 ", "奴隷の種族を変更するための儀式を行います")%
 
+;無条件で表示
+;LOCALS:3 = %SET_TOOLTIP("[103] - 施設管理 ", "屋敷の施設・設備の管理をします")%
+LOCALS:3 = %SET_TOOLTIP("[---] - 施設管理 ", "調整中", 0, "gray")%
 
 ;STRATEGYモード、PFREEモードなら表示
 SELECTCASE FLAG:ゲームモード
 	CASE 1, 9
-		LOCALS:4 = %SET_TOOLTIP("[103] - 経営     ", "収益要素を管理します")%
+		LOCALS:5 = %SET_TOOLTIP("[104] - 経営     ", "収益要素を管理します")%
 		;パートナーに話しかける口上が実装されていれば表示
 		TRYCCALLFORM EXIST_STRATEGY_KOJO_K{FLAG:パートナー}
 			SIF FLAG:口上表示
-				LOCALS:5 = %SET_TOOLTIP("[104] - 経営相談 ", @"%CSVCALLNAMEF(FLAG:パートナー)%に経営の相談をします")%
+				LOCALS:6 = %SET_TOOLTIP("[105] - 経営相談 ", @"%CSVCALLNAMEF(FLAG:パートナー)%に経営の相談をします")%
 		CATCH
 		ENDCATCH
 ENDSELECT
 
-HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4+LOCALS:5
+HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4+LOCALS:5+LOCALS:6
 
 ;200番台は奴隷関連のコマンド
 VARSET LOCALS
@@ -354,14 +371,17 @@ SELECTCASE RESULT
 			FLAG:休憩フラグ = 1
 			BEGIN TURNEND
 		ENDIF
-	;経営
+	;施設管理
 	CASE 103
+		CALL 施設
+	;経営
+	CASE 104
 		SELECTCASE FLAG:ゲームモード
 			CASE 1, 9
 				CALL STRATEGY
 		ENDSELECT
 	;経営相談
-	CASE 104
+	CASE 105
 		LTARGET = TARGET
 		TARGET = GETCHARA(FLAG:パートナー)
 		SIF FLAG:口上表示
@@ -471,7 +491,7 @@ SELECTCASE RESULT
 		IF FLAG:娼館営業中
 			PRINTFORMW %娼館店名%の経営を一時中断しました
 			REPEAT CHARANUM
-				SIF CFLAG:COUNT:配属 == 2
+				SIF CSTR:COUNT:配属 == "娼館"
 					CFLAG:COUNT:配属完了 = 0
 			REND
 		ELSE

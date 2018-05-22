@@ -1,10 +1,10 @@
-﻿@STRATEGY_PERSONAL, ARGS
+﻿@STRATEGY_PERSONAL, 配属先
 #DIM DYNAMIC ページ数
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC 配属可能人数
 #DIM DYNAMIC 飛ばした人数
 #DIM DYNAMIC 配属人数
-#DIM DYNAMIC 配属先
+#DIMS DYNAMIC 配属先
 #DIM DYNAMIC 配属上限
 #DIM DYNAMIC LTARGET
 VARSET LOCAL, 0
@@ -14,27 +14,23 @@ SIF VARLINE
 	CLEARLINE LINECOUNT-VARLINE
 VARLINE = LINECOUNT
 
-;分野ごとの配属先番号、配属上限人数を設定しておく
-SELECTCASE ARGS
+;分野ごとの配属上限人数を設定しておく
+SELECTCASE 配属先
 	CASE "ゲームセンター"
-		配属先 = 1
 		配属上限 = 10
 	CASE "娼館"
-		配属先 = 2
 		配属上限 = 娼館部屋数
 	CASE "芸能プロダクション"
-		配属先 = 4
 		配属上限 = 20
+	CASE "医務室"
+		配属上限 = 3
 ENDSELECT
 
 ;既に配属されている人数を計算
-REPEAT CHARANUM
-	SIF CFLAG:COUNT:配属 == 配属先
-		配属人数++
-REND
+配属人数 = CMATCH(CSTR:配属, 配属先)
 
 DRAWLINE
-PRINTFORML □%ARGS%に配属する人員を選択してください(現在{配属人数}/{配属上限})
+PRINTFORML □%配属先%に配属する人員を選択してください(現在{配属人数}/{配属上限})
 
 配属可能人数 = 0
 
@@ -43,9 +39,9 @@ REPEAT CHARANUM
 	;主人は無理
 	SIF COUNT == MASTER
 		CONTINUE
-	SELECTCASE ARGS
-		;ゲーセンと芸能は助手可能が条件
-		CASE "ゲームセンター", "芸能プロダクション"
+	SELECTCASE 配属先
+		;ゲーセンと芸能と医務室は助手可能が条件
+		CASE "ゲームセンター", "芸能プロダクション", "医務室"
 			SIF CFLAG:COUNT:状態 < 2
 				CONTINUE
 		;娼館は売却可能で配置可能
@@ -76,13 +72,13 @@ IF 配属可能人数
 			CONTINUE
 		ENDIF
 		;その分野に配属中のキャラには◯マークが付く
-		IF CFLAG:COUNT:配属 == 配属先
+		IF CSTR:COUNT:配属 == 配属先
 			PRINT ◯
 		ELSE
 			PRINT 　
 		ENDIF
 		;配属先によって表示が違う
-		SELECTCASE ARGS
+		SELECTCASE 配属先
 			CASE "ゲームセンター"
 				PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(家事技能:{ABL:COUNT:家事技能, 2, LEFT} 工作技能:{ABL:COUNT:工作技能, 2, LEFT} 料理技能:{ABL:COUNT:料理技能, 2, LEFT}
 				SIF TALENT:COUNT:料理人
@@ -92,7 +88,7 @@ IF 配属可能人数
 				SIF TALENT:COUNT:工学博士
 					PRINT  工学博士
 				SIF TALENT:COUNT:サボり魔
-					PRINT サボり魔
+					PRINT  サボり魔
 				PRINT )
 			CASE "娼館"
 				PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(従順:{ABL:COUNT:従順} 欲望:{ABL:COUNT:欲望} 技巧:{ABL:COUNT:技巧}
@@ -109,7 +105,7 @@ IF 配属可能人数
 				SIF TALENT:COUNT:淫乳
 					PRINT  淫乳
 				SIF TALENT:COUNT:サボり魔
-					PRINT サボり魔
+					PRINT  サボり魔
 				PRINT )
 			CASE "芸能プロダクション"
 				PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(歌唱技能:{ABL:COUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:COUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:COUNT:舞踊技能, 2, LEFT}
@@ -124,11 +120,19 @@ IF 配属可能人数
 				SIF TALENT:COUNT:絶対音感
 					PRINT  絶対音感
 				SIF TALENT:COUNT:サボり魔
-					PRINT サボり魔
+					PRINT  サボり魔
 				PRINT )
+			CASE "医務室"
+				PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(技巧:{ABL:COUNT:技巧, 2, LEFT}
+				SIF TALENT:COUNT:調合知識
+					PRINT  調合知識
+				SIF TALENT:COUNT:治療
+					PRINT  治療
+				PRINT )
+				
 		ENDSELECT
-		SELECTCASE CFLAG:COUNT:配属
-			CASE 0
+		SELECTCASE CSTR:COUNT:配属
+			CASE ""
 				IF COUNT == TARGET
 					PRINTL 【調教中】
 				ELSEIF COUNT == ASSI
@@ -136,12 +140,8 @@ IF 配属可能人数
 				ELSE
 					PRINTL 【休憩中】
 				ENDIF
-			CASE 1
-				PRINTL 【ゲームセンター配属中】
-			CASE 2
-				PRINTL 【娼館配属中】
-			CASE 4
-				PRINTL 【芸能プロダクション配属中】
+			CASEELSE
+				PRINTFORML 【%CSTR:COUNT:配属%配属中】
 		ENDSELECT
 		表示数++
 		;20人表示したらページ終わり
@@ -150,7 +150,7 @@ IF 配属可能人数
 	REND
 ELSE
 	PRINTL 
-	PRINTL 【現在配属できる奴隷はいません】
+	PRINTL 【現在配属できるキャラはいません】
 	PRINTL 
 ENDIF
 DRAWLINE
@@ -184,24 +184,27 @@ DO
 				ページ数++
 		CASE 1002
 			REPEAT CHARANUM
-				IF CFLAG:COUNT:配属 == 配属先
+				IF CSTR:COUNT:配属 == 配属先
 					CFLAG:COUNT:配属完了 = 0
-					CFLAG:COUNT:配属 = 0
+					CSTR:COUNT:配属 = 
 				ENDIF
 			REND
-			PRINTFORMW %ARGS%に配属してる人員が全員帰宅しました
+			PRINTFORMW %配属先%に配属してる人員が全員帰宅しました
 		CASEELSE
 			SIF !LOCAL:RESULT
 				CONTINUE
-			SELECTCASE CFLAG:RESULT:配属
+			SELECTCASE CSTR:RESULT:配属
 				CASE 配属先
 					PRINTFORMW %CALLNAME:RESULT%が帰宅しました
-					CFLAG:RESULT:配属 = 0
+					CSTR:RESULT:配属 = 
+					CFLAG:RESULT:レッスン = 0
+					CFLAG:RESULT:配属完了 = 0
+					CFLAG:RESULT:ゲーセン店長 = 0
 					LTARGET = TARGET
 					TARGET = RESULT
 					;配属解除時の口上
 					IF FLAG:口上表示
-						SELECTCASE ARGS
+						SELECTCASE 配属先
 							CASE "ゲームセンター"
 								TRYCALLFORM GC_ASSIGNOFF_K{NO:RESULT}
 							CASE "娼館"
@@ -218,7 +221,7 @@ DO
 						RESTART
 					ENDIF
 					PRINTFORMW %CALLNAME:RESULT%を配属しました
-					CFLAG:RESULT:配属 = 配属先
+					CSTR:RESULT:配属 = %配属先%
 					CFLAG:RESULT:レッスン = 0
 					CFLAG:RESULT:配属完了 = 0
 					CFLAG:RESULT:ゲーセン店長 = 0
@@ -226,7 +229,7 @@ DO
 					TARGET = RESULT
 					;配属時の口上
 					IF FLAG:口上表示
-						SELECTCASE ARGS
+						SELECTCASE 配属先
 							CASE "ゲームセンター"
 								TRYCALLFORM GC_ASSIGNON_K{NO:RESULT}
 							CASE "娼館"
@@ -244,9 +247,9 @@ DO
 					ENDIF
 					;実績:日向美ビタースイーツ♪のメンバーを全員娼館に配属する
 					LOCAL = 0
-					IF 配属先 == 2
+					IF 配属先 == "娼館"
 						REPEAT CHARANUM
-							IF CFLAG:COUNT:配属 == 2
+							IF CSTR:COUNT:配属 == "娼館"
 								SELECTCASE CHARANAMEF(COUNT)
 									CASE "山形 まり花", "和泉 一舞", "春日 咲子", "霜月 凛", "芽兎 めう"
 										LOCAL++

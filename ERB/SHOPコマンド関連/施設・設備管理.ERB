@@ -1,0 +1,174 @@
+﻿@施設
+DRAWLINE
+PRINTL □管理したい施設・設備を選んでください
+SETCOLORBYNAME gray
+IF ITEM:医務室
+	PRINTDL 　[1] - 医務室
+ELSE
+	PRINTL 　[-] - 医務室
+ENDIF
+IF ITEM:実験室
+	PRINTDL 　[2] - 実験室
+ELSE
+	PRINTL 　[-] - 実験室
+ENDIF
+IF ITEM:図書室
+	PRINTDL 　[3] - 図書室
+ELSE
+	PRINTL 　[-] - 図書室
+ENDIF
+IF ITEM:音楽室
+	PRINTDL 　[4] - 音楽室
+ELSE
+	PRINTL 　[-] - 音楽室
+ENDIF
+RESETCOLOR
+DRAWLINE
+PRINTPLAIN 　施設　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			SIF ITEM:医務室
+				CALL 医務室
+			BREAK
+		CASE 2
+			;SIF ITEM:実験室
+			;	CALL 実験室
+			BREAK
+		CASE 3
+			;SIF ITEM:図書室
+			;	CALL 図書室
+			BREAK
+		CASE 4
+			;SIF ITEM:音楽室
+			;	CALL 音楽室
+			BREAK
+	ENDSELECT
+LOOP 1
+
+@医務室
+#DIM DYNAMIC 配属人数
+#DIM DYNAMIC LCOUNT
+配属人数 = CMATCH(CSTR:配属, "医務室")
+DRAWLINE
+PRINTL □医務室
+PRINTL 　医療班を配属させたり、医薬品の補充によってキャラクターの健康管理が可能です
+PRINTL 　配属中のキャラの能力に応じて体力・気力・ストレス値の回復量が変動します
+PRINT 　医薬品の在庫:
+SELECTCASE FLAG:医薬品
+	CASE 0
+		SETCOLORBYNAME gray
+	CASE 1 TO 15
+		SETCOLORBYNAME red
+	CASE 16 TO 50
+		SETCOLORBYNAME yellow
+	CASE 51 TO 100
+		SETCOLORBYNAME lime
+ENDSELECT
+RESETCOLOR
+CALL PASELIL, @"{FLAG:医薬品}\% 配属人数:{配属人数}/3 所持金:{MONEY}＄"
+PRINTL □担当医
+FOR LCOUNT, 0, CHARANUM
+	IF CSTR:LCOUNT:配属 == "医務室"
+		PRINTFORM 　%NAME:LCOUNT% 
+		SIF TALENT:LCOUNT:調合知識
+			PRINT [調合知識]
+		SIF TALENT:LCOUNT:治療
+			PRINT [治療]
+	ENDIF
+NEXT
+PRINTL 
+PRINTL [1] - キャラを配属させる
+;医薬品主人を除くキャラ人数*5000
+CALL PASELIL, @"[2] - 医薬品を補充する({(CHARANUM-1)*5000}＄)"
+IF 配属人数
+	PRINTL [3] - 健康診断を行う
+ELSE
+	SETCOLORBYNAME gray
+	PRINTL [-] - 健康診断を行う(キャラを配属する必要があります)
+	RESETCOLOR
+ENDIF
+DRAWLINE
+PRINTPLAIN 　医務室　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1
+			CALL STRATEGY_PERSONAL, "医務室"
+			RESTART
+		CASE 2
+			IF FLAG:医薬品 <= 100
+				PRINTW 医薬品は十分に揃っています
+			ELSEIF MONEY < (CHARANUM-1)*5000
+				MONEY -= (CHARANUM-1)*5000
+			ELSE
+				PRINTW 所持金が足りません
+			ENDIF
+		CASE 3
+			DRAWLINE
+			FOR PAGING, 0, CHARANUM
+				;色変えしたいのでここだけ特別処理
+				CALL PAGING, PAGING != 0, "健康診断用", "健康診断"
+			NEXT
+			SIF RESULT == -1
+				RESTART
+			CALL 健康診断, RESULT
+	ENDSELECT
+LOOP 1
+
+@健康診断, 対象
+#DIM DYNAMIC 対象
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC クジャクアイ
+;孔雀の瞳を持ってるキャラが主人・助手・担当医に居るかを見る
+SIF TALENT:MASTER:孔雀の瞳
+	クジャクアイ = 1
+SIF ASSI > 0 && TALENT:ASSI:孔雀の瞳
+	クジャクアイ = 1
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 == "医務室" && TALENT:LCOUNT:孔雀の瞳
+		クジャクアイ = 1
+NEXT
+
+DRAWLINE
+PRINTL □患者
+PRINTFORML 　名前:%NAME:対象%
+PRINTFORML 　体力%BARBASE("体力", 対象, 32)%
+PRINTFORML 　気力%BARBASE("気力", 対象, 32)%
+PRINT 　ストレス値:
+IF クジャクアイ
+	PRINTFORML {CFLAG:対象:ストレス値}
+ELSE
+	SELECTCASE CFLAG:対象:ストレス値
+		CASE 0
+			PRINTL 無
+		CASE 1 TO 99
+			SETCOLORBYNAME lime
+			PRINTL 低
+			RESETCOLOR
+		CASE 100 TO 299
+			SETCOLORBYNAME yellow
+			PRINTL 中
+			RESETCOLOR
+		CASE 300 TO 499
+			SETCOLORBYNAME red
+			PRINTL 高
+			RESETCOLOR
+		CASE IS >= 500
+			SETCOLORBYNAME darkred
+			PRINTL 過多
+			RESETCOLOR
+	ENDSELECT
+ENDIF
+
+PRINTL 
+

@@ -58,19 +58,25 @@ DO
 				CONTINUE
 			SIF CFLAG:RESULT:使用不可
 				CONTINUE
-			SIF RESULT != 0
-				TARGET = RESULT
-			SIF TARGET == ASSI
-				ASSI = -1
-			CALL KOJO_MESSAGE_EVENT, "調教対象指定"
-			;配属してたら自動的に外す
-			CFLAG:配属 = 0
-			CFLAG:配属完了 = 0
-			CFLAG:ゲーセン店長 = 0
-			CFLAG:上級娼婦 = 0
+			SIF RESULT == 0
+				CONTINUE
+			CALL ASIGN_TARGET, RESULT
 			BREAK
 	ENDSELECT
 LOOP LOOPRES(999, 1000, 1001)
+
+;対象指定用関数
+@ASIGN_TARGET, 対象
+#DIM DYNAMIC 対象
+TARGET = 対象
+SIF TARGET == ASSI
+	ASSI = -1
+CALL KOJO_MESSAGE_EVENT, "調教対象指定"
+;配属してたら自動的に外す
+CSTR:配属 = 
+CFLAG:配属完了 = 0
+CFLAG:ゲーセン店長 = 0
+CFLAG:上級娼婦 = 0
 
 @SELECT_ASSI, ARG
 #DIM DYNAMIC LTARGET
@@ -133,23 +139,28 @@ DO
 				CONTINUE
 			SIF CFLAG:RESULT:使用不可
 				CONTINUE
-			ASSI = RESULT
-			CALL KOJO_MESSAGE_EVENT, "助手指定", RESULT
-			;配属してたら自動的に外す
-			CFLAG:ASSI:配属 = 0
-			CFLAG:ASSI:配属完了 = 0
-			CFLAG:ASSI:ゲーセン店長 = 0
-			;助手にした際の素質変化用関数
-			CALL ASSI_CHANGE
-			ISASSI:ASSI = 1
-			SIF ASSI == TARGET
-				TARGET = -1
+			CALL ASIGN_ASSI, RESULT
 			BREAK
-			;実績:マタン主人で陥落済みのノクスを助手にする
-			SIF CHARANAMEF(MASTER) == "マタン・カトルセ" && CHARANAMEF(ASSI) == "ノクス・カトルセ" && CFLAG:ASSI:陥落
-				CALL 実績解除, "「姉さんは僕が守る」"
 	ENDSELECT
 LOOP LOOPRES(999, 1000, 1001)
+
+;助手指定用関数
+@ASIGN_ASSI, 助手
+#DIM DYNAMIC 助手
+ASSI = 助手
+CALL KOJO_MESSAGE_EVENT, "助手指定", 助手
+;配属してたら自動的に外す
+CSTR:ASSI:配属 = 
+CFLAG:ASSI:配属完了 = 0
+CFLAG:ASSI:ゲーセン店長 = 0
+;助手にした際の素質変化用関数
+CALL ASSI_CHANGE
+ISASSI:ASSI = 1
+SIF ASSI == TARGET
+	TARGET = -1
+;実績:マタン主人で陥落済みのノクスを助手にする
+SIF CHARANAMEF(MASTER) == "マタン・カトルセ" && CHARANAMEF(ASSI) == "ノクス・カトルセ" && CFLAG:ASSI:陥落
+	CALL 実績解除, "「姉さんは僕が守る」"
 
 ;LIFE_LISTは引数に1を指定すると、調教対象選択用の表示になる
 ;引数を2にすると、助手選択用の表示になる
@@ -161,6 +172,16 @@ LOOP LOOPRES(999, 1000, 1001)
 #DIM DYNAMIC 未表示キャラ
 #DIM DYNAMIC 対象表示
 #DIM DYNAMIC 助手表示
+#DIM DYNAMIC クジャクアイ
+;孔雀の瞳を持ってるキャラが主人・助手・担当医に居るかを見る
+SIF TALENT:MASTER:孔雀の瞳
+	クジャクアイ = 1
+SIF ASSI > 0 && TALENT:ASSI:孔雀の瞳
+	クジャクアイ = 1
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 == "医務室" && TALENT:LCOUNT:孔雀の瞳
+		クジャクアイ = 1
+NEXT
 VARSET LOCAL, 0
 対象表示 = 0
 助手表示 = 0
@@ -239,7 +260,7 @@ FOR LCOUNT, 0, CHARANUM
 		PRINT ☆
 	ELSEIF LOCAL == ASSI
 		PRINT ★
-	ELSEIF CFLAG:LOCAL:配属
+	ELSEIF CSTR:LOCAL:配属 != ""
 		PRINT KA
 	ELSEIF ISASSI:LOCAL
 		PRINT ●
@@ -254,8 +275,8 @@ FOR LCOUNT, 0, CHARANUM
 	;上記のキャラを表示したら詳細情報も表示
 	;助手選択画面では表示しない
 	IF ARG != 2
-		PRINTFORM 体力%BARBASE("体力", LOCAL, 10)% 
-		PRINTFORM 気力%BARBASE("気力", LOCAL, 10)% 
+		PRINTFORM 体力%BARBASE("体力", LOCAL, 10), 23, LEFT% 
+		PRINTFORM 気力%BARBASE("気力", LOCAL, 10), 23, LEFT% 
 	ENDIF
 	SELECTCASE SEX(LOCAL)
 		CASE 1
@@ -299,6 +320,29 @@ FOR LCOUNT, 0, CHARANUM
 			PRINT 両刀 
 		SIF TALENT:LOCAL:ふたなり
 			PRINT ふたなり
+	ELSE
+		PRINT 　ストレス値:
+		IF クジャクアイ
+			PRINTFORM {CFLAG:LOCAL:ストレス値}
+		ELSE
+			SELECTCASE CFLAG:LOCAL:ストレス値
+				CASE 0
+					PRINT 無
+				CASE 1 TO 99
+					SETCOLORBYNAME lime
+					PRINT 低
+				CASE 100 TO 299
+					SETCOLORBYNAME yellow
+					PRINT 中
+				CASE 300 TO 499
+					SETCOLORBYNAME red
+					PRINT 高
+				CASE IS >= 500
+					SETCOLORBYNAME darkred
+					PRINT 過多
+			ENDSELECT
+			RESETCOLOR
+		ENDIF
 	ENDIF
 	PRINTL 
 	;対象及び助手が表示できるなら表示

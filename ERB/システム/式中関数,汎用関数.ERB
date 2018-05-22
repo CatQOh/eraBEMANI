@@ -636,6 +636,7 @@ RETURNF タグ
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 表示
 #DIM DYNAMIC 使用不可も表示
+#DIM DYNAMIC クジャクアイ
 #DIMS DYNAMIC 追加情報
 #DIMS DYNAMIC ページ名
 #DIMS DYNAMIC 終了表記
@@ -663,8 +664,48 @@ IF 表示 && (使用不可も表示 || !CFLAG:PAGING:使用不可)
 	IF 表示数 > 10
 		未表示キャラ = 1
 	ELSE
-		PRINTFORML 　[{LCOUNT, 2, RIGHT}] - %NAME:LCOUNT, 26, LEFT% \@ SEX(LCOUNT) == 1 ? ♂ # ♀ \@ %追加情報%
-		LOCAL:LCOUNT = 1
+		;健康診断は色変えしたいので特別な処理
+		IF 追加情報 == "健康診断用"
+			PRINTFORM 　[{LCOUNT, 2, RIGHT}] - %NAME:LCOUNT, 26, LEFT% \@ SEX(LCOUNT) == 1 ? ♂ # ♀ \@ 体力%BARBASE("体力", PAGING, 10), 23, LEFT% 気力%BARBASE("気力", PAGING, 10), 23, LEFT% ストレス値:
+			;孔雀の瞳を持ってるキャラが主人・助手・担当医に居るかを見る
+			SIF TALENT:MASTER:孔雀の瞳
+				クジャクアイ = 1
+			SIF ASSI > 0 && TALENT:ASSI:孔雀の瞳
+				クジャクアイ = 1
+			FOR LCOUNT, 0, CHARANUM
+				SIF CSTR:LCOUNT:配属 == "医務室" && TALENT:LCOUNT:孔雀の瞳
+					クジャクアイ = 1
+			NEXT
+			LCOUNT = PAGING
+			IF クジャクアイ
+				PRINTFORML {CFLAG:LCOUNT:ストレス値}
+			ELSE
+				SELECTCASE CFLAG:LCOUNT:ストレス値
+					CASE 0
+						PRINTL 無
+					CASE 1 TO 99
+						SETCOLORBYNAME lime
+						PRINTL 低
+						RESETCOLOR
+					CASE 100 TO 299
+						SETCOLORBYNAME yellow
+						PRINTL 中
+						RESETCOLOR
+					CASE 300 TO 499
+						SETCOLORBYNAME red
+						PRINTL 高
+						RESETCOLOR
+					CASE IS >= 500
+						SETCOLORBYNAME darkred
+						PRINTL 過多
+						RESETCOLOR
+				ENDSELECT
+			ENDIF
+			LOCAL:LCOUNT = 1
+		ELSE
+			PRINTFORML 　[{LCOUNT, 2, RIGHT}] - %NAME:LCOUNT, 26, LEFT% \@ SEX(LCOUNT) == 1 ? ♂ # ♀ \@ %追加情報%
+			LOCAL:LCOUNT = 1
+		ENDIF
 	ENDIF
 ENDIF
 

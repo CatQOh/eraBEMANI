@@ -76,14 +76,27 @@ SIF !LINEISEMPTY()
 DRAWLINE
 PRINTPLAIN 　BASIC　
 PRINT [0] 戻る 
-PRINT [9] その他情報 
+PRINT [5] その他情報 
 IF ARG > 0
-	PRINT [7] 前のキャラ 
+	PRINT [6] 前のキャラ 
 ELSE
 	PRINTPLAIN 　　　　　　　 
 ENDIF
 SIF ARG < CHARANUM-1
-	PRINT [8] 次のキャラ 
+	PRINT [7] 次のキャラ 
+
+IF !CHECK_CHILD_CARE(ARG) && !CFLAG:ARG:使用不可
+	IF TARGET != ARG && ARG != 0
+		PRINT [8] 対象に指定 
+	ELSE
+		PRINTPLAIN 　　　　　　　 
+	ENDIF
+	IF ASSI != ARG && ARG != 0 && CFLAG:ARG:状態 < 2
+		PRINT [9] 助手に指定 
+	ELSE
+		PRINTPLAIN 　　　　　　　 
+	ENDIF
+ENDIF
 PRINTL 
 
 DO
@@ -91,16 +104,28 @@ DO
 	SELECTCASE RESULT
 		CASE 0
 			RETURN 0
-		CASE 7
-			SIF ARG > 0
-				ARG--
-			RESTART
-		CASE 8
-			SIF ARG < CHARANUM-1
-				ARG++
-			RESTART
-		CASE 9
+		CASE 5
+			;以下フラグリセットのためにJUMPで処理
 			JUMP STATUS_ETC, ARG
+		CASE 6
+			SIF ARG > 0
+				JUMP STATUS, ARG-1
+		CASE 7
+			SIF ARG < CHARANUM-1
+				JUMP STATUS, ARG+1
+		CASE 8, 9
+			IF !CHECK_CHILD_CARE(ARG) && !CFLAG:ARG:使用不可
+				IF RESULT == 8
+					SIF TARGET != ARG && ARG != 0
+						CALL ASIGN_TARGET, ARG
+					RETURN 0
+				ENDIF
+				IF RESULT == 9
+					SIF ASSI != ARG && ARG != 0 && CFLAG:ARG:状態 < 2
+						CALL ASIGN_ASSI, ARG
+					RETURN 0
+				ENDIF
+			ENDIF
 	ENDSELECT
 LOOP 1
 
@@ -1179,14 +1204,29 @@ VARSET ドラゴンに処女, 0
 DRAWLINE
 PRINTPLAIN 　etc.. 
 PRINT [0] 戻る 
-PRINT [9] 基本情報 
+PRINT [5] 基本情報 
 IF ARG > 0
-	PRINT [7] 前のキャラ 
+	PRINT [6] 前のキャラ 
 ELSE
 	PRINTPLAIN 　　　　　　　 
 ENDIF
-SIF ARG < CHARANUM-1
-	PRINT [8] 次のキャラ 
+IF ARG < CHARANUM-1
+	PRINT [7] 次のキャラ 
+ELSE
+	PRINTPLAIN 　　　　　　　 
+ENDIF
+IF !CHECK_CHILD_CARE(ARG) && !CFLAG:ARG:使用不可
+	IF TARGET != ARG && ARG != 0
+		PRINT [8] 対象に指定 
+	ELSE
+		PRINTPLAIN 　　　　　　　 
+	ENDIF
+	IF ASSI != ARG && ARG != 0 && CFLAG:ARG:状態 < 2
+		PRINT [9] 助手に指定 
+	ELSE
+		PRINTPLAIN 　　　　　　　 
+	ENDIF
+ENDIF
 PRINTL 
 
 DO
@@ -1203,14 +1243,27 @@ DO
 			SIF PAGE < 4
 				PAGE++
 			JUMP STATUS_ETC, ARG
-		CASE 7
+		CASE 5
+			JUMP STATUS, ARG
+		CASE 6
 			SIF ARG > 0
 				JUMP STATUS_ETC, ARG-1
-		CASE 8
+		CASE 7
 			SIF ARG < CHARANUM-1
 				JUMP STATUS_ETC, ARG+1
-		CASE 9
-			JUMP STATUS, ARG
+		CASE 8, 9
+			IF !CHECK_CHILD_CARE(ARG) && !CFLAG:ARG:使用不可
+				IF RESULT == 8
+					SIF TARGET != ARG && ARG != 0
+						CALL ASIGN_TARGET, ARG
+					RETURN 0
+				ENDIF
+				IF RESULT == 9
+					SIF ASSI != ARG && ARG != 0 && CFLAG:ARG:状態 < 2
+						CALL ASIGN_ASSI, ARG
+					RETURN 0
+				ENDIF
+			ENDIF
 	ENDSELECT
 LOOP 1
 

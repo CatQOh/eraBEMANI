@@ -19,22 +19,16 @@ PRINTFORML 娼館レベル:{娼館レベル}
 CALL PASELIL, @"次のランクアップまであと{娼館レベルアップ必要額}＄の売上が必要"
 DRAWLINE
 
-LOCALS = <button value='1' title='娼館に道具を配置します'>　[1] - 道具配置</button>
-HTML_PRINT LOCALS
-LOCALS = <button value='2' title='娼館用の物件を改装します'>　[2] - 物件増築</button>
-HTML_PRINT LOCALS
-LOCALS = <button value='3' title='娼館の運営方針を決定します'>　[3] - 運営方針</button>
-HTML_PRINT LOCALS
-LOCALS = <button value='4' title='娼館で働かせるキャラを配属します'>　[4] - 人員配置</button>
-HTML_PRINT LOCALS
-LOCALS = <button value='5' title='娼館の店名を変更します'>　[5] - 店名変更</button>
-HTML_PRINT LOCALS
+HTML_PRINT SET_TOOLTIP("　[1] - 道具配置", "娼館に道具を配置します")
+HTML_PRINT SET_TOOLTIP("　[2] - 物件増築", "娼館用の物件を改装します")
+HTML_PRINT SET_TOOLTIP("　[3] - 運営方針", "娼館の運営方針を決定します")
+HTML_PRINT SET_TOOLTIP("　[4] - 人員配置", "娼館で働かせるキャラを配属します")
+HTML_PRINT SET_TOOLTIP("　[5] - 店名変更", "娼館の店名を変更します")
 IF FLAG:娼館営業中
-	LOCALS = <button value='9' title='娼館を一時休業し、収入と支出が行われないようにします'>　[9] - 一時休業</button>
+	HTML_PRINT SET_TOOLTIP("　[9] - 道具配置", "娼館を一時休業し、収入と支出が行われないようにします")
 ELSE
-	LOCALS = <button value='9' title='娼館の営業を再開し、収入と支出が行われるようにします'>　[9] - 通常営業</button>
+	HTML_PRINT SET_TOOLTIP("　[9] - 道具配置", "娼館の営業を再開し、収入と支出が行われるようにします")
 ENDIF
-HTML_PRINT LOCALS
 
 DRAWLINE
 PRINTPLAIN 　BROTHEL　
@@ -473,7 +467,7 @@ DO
 			DRAWLINE
 			PRINTL □上級娼婦に任命したいキャラを選択してください
 			FOR PAGING, 0, CHARANUM
-				CALL PAGING, CFLAG:PAGING:配属 == 2 && FALLTYPE(PAGING) == 2, "", "上級娼婦", "任命しない"
+				CALL PAGING, CSTR:PAGING:配属 == "娼館" && FALLTYPE(PAGING) == 2, "", "上級娼婦", "任命しない"
 			NEXT
 			SELECTCASE RESULT
 				CASE -1
@@ -649,7 +643,7 @@ IF LOCAL >= 0
 		CFLAG:LOCAL:休憩 = 1
 		GOTO 通常営業
 	ENDIF
-	IF CFLAG:LOCAL:ストレス値 > 500 && !TALENT:LOCAL:崩壊
+	IF CFLAG:LOCAL:ストレス値 > 300 && !TALENT:LOCAL:崩壊
 		PRINTFORML %CALLNAME:LOCAL%はストレス過多のため、娼館を休みました
 		CFLAG:LOCAL:休憩 = 1
 		GOTO 通常営業
@@ -674,7 +668,7 @@ $通常営業
 
 FOR LCOUNT, 1, CHARANUM
 	;当然配属してないとダメ
-	SIF CFLAG:LCOUNT:配属 != 2
+	SIF CSTR:LCOUNT:配属 != "娼館"
 		CONTINUE
 	;配属完了してないとダメ 娼館なだけに召喚酔いってか
 	IF !CFLAG:LCOUNT:配属完了
@@ -691,7 +685,7 @@ FOR LCOUNT, 1, CHARANUM
 		CFLAG:LCOUNT:休憩 = 1
 		CONTINUE
 	ENDIF
-	IF CFLAG:LCOUNT:ストレス値 > 500 && !TALENT:LCOUNT:崩壊
+	IF CFLAG:LCOUNT:ストレス値 > 300 && !TALENT:LCOUNT:崩壊
 		PRINTFORML %CALLNAME:LCOUNT%はストレス過多のため、娼館を休みました
 		CFLAG:LCOUNT:休憩 = 1
 		CONTINUE
@@ -1120,6 +1114,10 @@ FOR LCOUNT, 1, CHARANUM
 				収入 += 100
 				適性++
 			ENDIF
+			IF TALENT:LCOUNT:強気
+				収入 += 150
+				適性++
+			ENDIF
 			SIF TALENT:LCOUNT:ふたなり
 				収入 += 150
 			;マイナス
@@ -1155,6 +1153,8 @@ FOR LCOUNT, 1, CHARANUM
 				収入 -= 50
 				不適性 += 5
 			ENDIF
+			SIF TALENT:LCOUNT:弱気
+				不適性 += 3
 			;SMは適性がかなり上がりにくいので適性-5
 			不適性 += 5
 			;ここから能力で倍率計算
@@ -1263,16 +1263,20 @@ FOR LCOUNT, 1, CHARANUM
 	SELECTCASE 娼館方針
 		;ソフト
 		CASE 1
-			BASE:LCOUNT:体力 -= LOCAL * 50
+			BASE:LCOUNT:体力 -= LOCAL*50
+			BASE:LCOUNT:気力 -= LOCAL*30
 		;ハード
 		CASE 2
-			BASE:LCOUNT:体力 -= LOCAL * 100
+			BASE:LCOUNT:体力 -= LOCAL*100
+			BASE:LCOUNT:気力 -= LOCAL*50
 		;SM
 		CASE 3
-			BASE:LCOUNT:体力 -= LOCAL * 300
+			BASE:LCOUNT:体力 -= LOCAL*300
+			BASE:LCOUNT:気力 -= LOCAL*70
 		;狂気
 		CASE 4
-			BASE:LCOUNT:体力 -= LOCAL * 200
+			BASE:LCOUNT:体力 -= LOCAL*200
+			BASE:LCOUNT:気力 -= LOCAL*150
 	ENDSELECT
 	SIF BASE:LCOUNT:体力 <= 0
 		BASE:LCOUNT:体力 = 1
@@ -1612,13 +1616,13 @@ FOR LCOUNT, 1, CHARANUM
 	TALENT:LCOUNT:傷物++
 	;お風呂場があるとストレス溜まりづらくなる
 	IF ITEM:お風呂場
-		CFLAG:LCOUNT:ストレス値 += 不適性-適性
+		CFLAG:LCOUNT:ストレス値 += MAX(不適性-適性, 0)
 	ELSE
-		CFLAG:LCOUNT:ストレス値 += 娼館方針*2
+		CFLAG:LCOUNT:ストレス値 += MAX((不適性-適性)*2, 0)
 	ENDIF
 	;換気口あるとさらに軽減
 	SIF ITEM:換気口
-		CFLAG:LCOUNT:ストレス値 -= 1
+		CFLAG:LCOUNT:ストレス値 -= 2
 	;実務経験を加算
 	EXP:LCOUNT:実務経験++
 NEXT

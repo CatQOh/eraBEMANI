@@ -276,7 +276,7 @@ REPEAT CHARANUM
 				ENDIF
 			;寂しがり屋 未配属でTARGETでもASSIでもない場合は+3
 			CASE "寂しがり屋"
-				SIF CFLAG:COUNT:配属 == 0 && COUNT != TARGET && COUNT != ASSI
+				SIF CSTR:COUNT:配属 == "" && COUNT != TARGET && COUNT != ASSI
 					LOCAL += 3
 			;抑圧 +ABL:欲望
 			CASE "抑圧"
@@ -284,9 +284,9 @@ REPEAT CHARANUM
 			;男好き、男嫌い、女好き、女嫌い 配属中は同じ配属先の男女キャラ数に応じてストレス増減 最大5
 			CASE "男好き", "男嫌い"
 				人数 = 0
-				IF CFLAG:COUNT:配属
+				IF CSTR:COUNT:配属 != ""
 					FOR LCOUNT2, 0, CHARANUM
-						SIF TALENT:LCOUNT2:性別 == 1 && CFLAG:LCOUNT2:配属 == CFLAG:COUNT:配属
+						SIF TALENT:LCOUNT2:性別 == 1 && CSTR:LCOUNT2:配属 == CSTR:COUNT:配属
 							人数++
 					NEXT
 				ENDIF
@@ -297,9 +297,9 @@ REPEAT CHARANUM
 				ENDIF
 			CASE "女好き", "女嫌い"
 				人数 = 0
-				IF CFLAG:COUNT:配属
+				IF CSTR:COUNT:配属 != ""
 					FOR LCOUNT2, 0, CHARANUM
-						SIF TALENT:LCOUNT2:性別 == 2 && CFLAG:LCOUNT2:配属 == CFLAG:COUNT:配属
+						SIF TALENT:LCOUNT2:性別 == 2 && CSTR:LCOUNT2:配属 == CSTR:COUNT:配属
 							人数++
 					NEXT
 				ENDIF
@@ -311,9 +311,9 @@ REPEAT CHARANUM
 			;同族嫌悪 配属中は同じ種族のキャラに応じてストレス増加 最大5
 			CASE "同族嫌悪"
 				人数 = 0
-				IF CFLAG:COUNT:配属
+				IF CSTR:COUNT:配属 != ""
 					FOR LCOUNT2, 0, CHARANUM
-						SIF CSTR:LCOUNT2:種族 == CSTR:COUNT:種族 && CFLAG:LCOUNT2:配属 == CFLAG:COUNT:配属
+						SIF CSTR:LCOUNT2:種族 == CSTR:COUNT:種族 && CSTR:LCOUNT2:配属 == CSTR:COUNT:配属
 							人数++
 					NEXT
 				ENDIF
@@ -358,9 +358,9 @@ REPEAT CHARANUM
 	NEXT
 	
 	;LOCALは毎ターン計算
-	;LOCAL:1は休憩フラグが立っていれば無視できるが、LOCAL:1の結果でストレスが低下することはない
+	;LOCAL:1は配属されてなく休憩フラグが立っていれば無視できるが、LOCAL:1の結果でストレスが低下することはない
 	CFLAG:COUNT:ストレス値 += LOCAL
-	SIF !FLAG:休憩フラグ
+	SIF !FLAG:休憩フラグ || CSTR:COUNT:配属 != ""
 		CFLAG:COUNT:ストレス値 += MAX(LOCAL:1, 0)
 	
 	
@@ -471,8 +471,8 @@ REPEAT CHARANUM
 
 	;使用不可のキャラは休憩フラグの影響を受けない
 	IF !CFLAG:COUNT:使用不可
-		;休憩フラグ（休憩フラグが経っている、もしくは調教対象でない）
-		IF FLAG:休憩フラグ; || TARGET != COUNT
+		;休憩フラグが立っていて配属中じゃない
+		IF (FLAG:休憩フラグ && CSTR:COUNT:配属 == "") || CFLAG:COUNT:休憩
 			LOCAL += 200
 			SELECTCASE FLAG:難易度
 				;NORMALなら休憩でストレス値-15
@@ -557,10 +557,10 @@ REPEAT CHARANUM
 	LOCAL += リジェネレーション*100
 
 	;娼館配属中は回復量下がる
-	SIF CFLAG:COUNT:配属 == 2 && CFLAG:COUNT:休憩 == 0 && FLAG:娼館営業中 == 1
+	SIF CSTR:COUNT:配属 == "娼館" && CFLAG:COUNT:休憩 == 0 && FLAG:娼館営業中 == 1
 		LOCAL /= 10
 	;芸能プロダクション配属中で「レッスンなし」以外でも回復量下がる
-	SIF CFLAG:COUNT:配属 == 4 &&  CFLAG:COUNT:レッスン != 0
+	SIF CSTR:COUNT:配属 == "芸能プロダクション" &&  CFLAG:COUNT:レッスン != 0
 		LOCAL /= 8
 
 	;「暑さに弱い」「寒さに弱い」 最低100は保証
@@ -602,7 +602,9 @@ REPEAT CHARANUM
 	SIF CFLAG:COUNT:依存度 < -1000
 		CFLAG:COUNT:依存度 = -1000
 
-	CFLAG:COUNT:休憩 = 0
+	;キャラごとの休憩フラグが経つのは一日の終了時（夜）なので、夜は休憩フラグを外さない
+	SIF TIME == 0
+		CFLAG:COUNT:休憩 = 0
 	;回復量低下処理
 	SIF CFLAG:COUNT:回復量低下 > 0
 		CFLAG:COUNT:回復量低下--

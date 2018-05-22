@@ -12,30 +12,21 @@ DRAWLINE
 PRINTFORML 　現在の知名度:{IDOL知名度}
 DRAWLINE
 
-IF FINDCHARA(CFLAG:配属, 4) >= 0
-	LOCALS = <button value='1' title='レッスンを受けさせる予定を入れます'>　[1] - レッスン</button>
-	HTML_PRINT LOCALS
-	LOCALS = <button value='2' title='ライブなどのイベントを行います'>　[2] - イベント</button>
-	HTML_PRINT LOCALS
+IF FINDCHARA(CSTR:配属, "芸能プロダクション") >= 0
+	HTML_PRINT SET_TOOLTIP("　[1] - レッスン", "レッスンを受けさせる予定を入れます")
+	HTML_PRINT SET_TOOLTIP("　[2] - イベント", "ライブなどのイベントを行います")
 ELSE
-	LOCALS = <font color='gray'><nonbutton title='キャラを配属してください'>　[-] - レッスン</nonbutton></font>
-	HTML_PRINT LOCALS
-	LOCALS = <font color='gray'><nonbutton title='キャラを配属してください'>　[-] - イベント</nonbutton></font>
-	HTML_PRINT LOCALS
+	HTML_PRINT SET_TOOLTIP("　[-] - レッスン", "キャラを配属してください", 0, "gray")
+	HTML_PRINT SET_TOOLTIP("　[-] - イベント", "キャラを配属してください", 0, "gray")
 ENDIF
-LOCALS = <button value='3' title='現金などを送ることにより知名度を強引に上げます'>　[3] - 贈賄する</button>
-HTML_PRINT LOCALS
-LOCALS = <button value='4' title='芸能プロダクションで働かせるキャラを配属します'>　[4] - 人員配置</button>
-HTML_PRINT LOCALS
-IF FINDCHARA(CFLAG:配属, 4) >= 0
-	LOCALS = <button value='5' title='キャラ同士でユニットを組みます'>　[5] - ユニット</button>
-	HTML_PRINT LOCALS
+HTML_PRINT SET_TOOLTIP("　[3] - 賄賂する", "現金などを送ることにより知名度を強引に上げます")
+HTML_PRINT SET_TOOLTIP("　[4] - 人員配置", "芸能プロダクションで働かせるキャラを配属します")
+IF FINDCHARA(CSTR:配属, "芸能プロダクション") >= 0
+	HTML_PRINT SET_TOOLTIP("　[5] - ユニット", "キャラ同士でユニットを組みます")
 ELSE
-	LOCALS = <font color='gray'><nonbutton title='キャラを配属してください'>　[-] - ユニット</nonbutton></font>
-	HTML_PRINT LOCALS
+	HTML_PRINT SET_TOOLTIP("　[-] - ユニット", "キャラを配属してください", 0, "gray")
 ENDIF
-LOCALS = <button value='6' title='芸能プロダクション運営に関する設定を変更します'>　[6] - 設定変更</button>
-HTML_PRINT LOCALS
+HTML_PRINT SET_TOOLTIP("　[6] - 設定変更", "芸能プロダクション運営に関する設定を変更します")
 
 
 DRAWLINE
@@ -47,7 +38,7 @@ DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 1, 2
-			SIF FINDCHARA(CFLAG:配属, 4) == -1
+			SIF FINDCHARA(CSTR:配属, "芸能プロダクション") == -1
 				CONTINUE
 	ENDSELECT
 	SELECTCASE RESULT
@@ -132,7 +123,7 @@ REPEAT CHARANUM
 	;体力不足だと無理
 	SIF BASE:COUNT:体力 < 500
 		CONTINUE
-	IF CFLAG:COUNT:配属 == 4
+	IF CSTR:COUNT:配属 == "芸能プロダクション"
 		IF CFLAG:COUNT:レッスン == 0
 			PRINT 　　　　　
 		ELSEIF CFLAG:COUNT:レッスン < 0
@@ -169,7 +160,7 @@ DO
 		CASE 0
 			RETURN 0
 		CASE 1 TO CHARANUM-1
-			IF BASE:RESULT:体力 >= 500 && CFLAG:RESULT:配属 == 4
+			IF BASE:RESULT:体力 >= 500 && CSTR:RESULT:配属 == "芸能プロダクション"
 				LOCAL = RESULT
 				PRINTL
 				PRINTL レッスンのレベルと種類を選んでください
@@ -278,7 +269,7 @@ DO
 			VARSET 技量
 			VARSET 人数
 			REPEAT CHARANUM
-				IF CFLAG:COUNT:配属 == 4
+				IF CSTR:COUNT:配属 == "芸能プロダクション"
 					SELECTCASE LOCAL:COUNT
 						CASE 1
 							技量:3 += 10000*ABL:COUNT:舞踊技能
@@ -347,7 +338,7 @@ DO
 				;体力不足だと無理
 				SIF BASE:COUNT:体力 < 500
 					CONTINUE
-				IF CFLAG:COUNT:配属 == 4
+				IF CSTR:COUNT:配属 == "芸能プロダクション"
 					PRINT 　
 					SELECTCASE LOCAL:COUNT
 						CASE 0
@@ -401,7 +392,7 @@ DO
 							;ユニットのメンバーが芸能プロダクションに配属されてるか確認する
 							IF CFLAG:LCOUNT:ユニット番号 == COUNT
 								;配属されてないメンバーが居れば選出可能フラグを折って灰色表示してBREAK
-								IF CFLAG:LCOUNT:配属 != 4
+								IF CSTR:LCOUNT:配属 != "芸能プロダクション"
 									LOCALS = <font color='gray'><nonbutton title='一部メンバーが不在です'>　[-] %ユニット名:COUNT%</nonbutton></font>
 									HTML_PRINT LOCALS
 									選出可能:COUNT = 0
@@ -464,7 +455,7 @@ DO
 					ENDIF
 					BREAK
 				ENDIF
-				IF BASE:RESULT:体力 >= 500 && CFLAG:RESULT:配属 == 4
+				IF BASE:RESULT:体力 >= 500 && CSTR:RESULT:配属 == "芸能プロダクション"
 					LMEMORY = RESULT
 					PRINTL
 					PRINTL どのパートを担当しますか？
@@ -505,7 +496,7 @@ DO
 			;ビジュアルによって難度が下がる(※かわいいは正義)ことを表現したいのだが
 			;難度を下げると収入も下がってしまうので相対的に技量を上げる
 			REPEAT CHARANUM
-				IF CFLAG:COUNT:配属 == 4 && LOCAL:COUNT
+				IF CSTR:COUNT:配属 == "芸能プロダクション" && LOCAL:COUNT
 					;サボり魔は25%の確率でサボる
 					IF TALENT:COUNT:サボり魔 && RAND:4 == 0
 						PRINTFORMW %CALLNAME:COUNT%はライブをサボりました
@@ -610,7 +601,7 @@ DO
 			;収入がプラスなら楽曲難易度合計の人気度を加算する
 			IF 収入:1 > 0
 				FOR LCOUNT, 0, CHARANUM
-					IF CFLAG:LCOUNT:配属 == 4 && LOCAL:LCOUNT
+					IF CSTR:LCOUNT:配属 == "芸能プロダクション" && LOCAL:LCOUNT
 						人気度:LCOUNT:0 += TOINT(IDOL選曲:1)
 						人気度:LCOUNT:0 += TOINT(IDOL選曲:2)
 						人気度:LCOUNT:0 += TOINT(IDOL選曲:3)
@@ -720,7 +711,7 @@ DO
 				;体力不足だと無理
 				SIF BASE:COUNT:体力 < 500
 					CONTINUE
-				IF CFLAG:COUNT:配属 == 4
+				IF CSTR:COUNT:配属 == "芸能プロダクション"
 					IF CFLAG:COUNT:レッスン == 0
 						PRINT 　　　　　
 					ELSEIF CFLAG:COUNT:レッスン < 0
@@ -744,7 +735,7 @@ DO
 					CASE 0
 						RESTART
 					CASE 1 TO CHARANUM-1
-						IF BASE:RESULT:体力 >= 500 && CFLAG:RESULT:配属 == 4
+						IF BASE:RESULT:体力 >= 500 && CSTR:RESULT:配属 == "芸能プロダクション"
 							CFLAG:RESULT:レッスン *= -1
 							CFLAG:RESULT:レッスン--
 						ENDIF
@@ -777,7 +768,7 @@ REND
 IF ユニット数 < 10
 	PRINTL □ユニットを組むキャラを選んでください
 	REPEAT CHARANUM
-		IF CFLAG:COUNT:配属 == 4
+		IF CSTR:COUNT:配属 == "芸能プロダクション"
 			SELECTCASE LOCAL:COUNT
 				CASE 0
 					IF CFLAG:COUNT:ユニット番号
@@ -1069,7 +1060,7 @@ DO
 				GOTO MEMBER_LOOP
 			ENDIF
 			;おおまかな流れはライブ時の選出と同じ
-			IF CFLAG:RESULT:配属 == 4
+			IF CSTR:RESULT:配属 == "芸能プロダクション"
 				選出キャラ = RESULT
 				PRINTL 
 				PRINTL どのパートを担当しますか？
@@ -1187,7 +1178,7 @@ LOOP 1
 VARSET LOCAL
 
 REPEAT CHARANUM
-	IF CFLAG:COUNT:配属 == 4
+	IF CSTR:COUNT:配属 == "芸能プロダクション"
 		;1人ごとにかかる基礎費用
 		LOCAL:1 += 2000
 		;レッスンの内容ごとに場合分け
