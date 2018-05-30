@@ -181,11 +181,17 @@ IF TARGET >= 0
 ENDIF
 
 IF ASSI >= 0
-	IF TALENT:ASSI:妖狐 && ITEM:媚薬 == 0
+	IF TALENT:ASSI:妖狐 && ITEM:媚薬 == 0 && !CFLAG:MASTER:使用不可
 		PRINTFORMW [妖狐]の%CALLNAME:ASSI%が媚薬を調達してきたようです
 		ITEM:媚薬++
 	ENDIF
 ENDIF
+
+REPEAT CHARANUM
+	;休憩フラグを消すが、配属中のキャラは下記収入関数でフラグ管理してるので対象外
+	SIF CSTR:COUNT:配属 == ""
+		CFLAG:COUNT:休憩 = 0
+REND
 
 IF TIME == 1
 	LASTMONEY = MONEY
@@ -197,474 +203,479 @@ ENDIF
 SIF !CFLAG:MASTER:使用不可
 	CALL TURNEND_IDOL
 
-REPEAT CHARANUM
-	;種族妖精ならランダムで消費アイテム取得
-	IF CSTR:COUNT:種族 == "妖精" && CFLAG:COUNT:陥落 && !CFLAG:MASTER:使用不可
-		LOCAL = RAND:8+100
-		LOCAL:1 = RAND:3+1
-		PRINTFORMW %CALLNAME:COUNT%が{LOCAL:1}個の%ITEMNAME:LOCAL%を拾ってきました
-		ITEM:LOCAL += LOCAL:1
-	ENDIF
-
-	LOCAL = 0
-	;ヤンデレのストレス処理
-	IF TALENT:COUNT:ヤンデレ
-		IF TARGET != COUNT
-			;陥落済み
-			IF CFLAG:COUNT:陥落
-				;MASTERとの相性が良いほど待機中のストレス増加
-				LOCAL = (RELATION:COUNT:(NO:MASTER)-100)/10+1
-				;しかしTARGETとの相性が良いと緩和 悪いと増加
-				SIF TARGET > 0
-					LOCAL -= (RELATION:COUNT:(NO:TARGET)-100)/10
-				;ASSIとの相性が悪いと増加
-				SIF ASSI > 0 && RELATION:COUNT:(NO:ASSI) < 100
-					LOCAL += ABS(RELATION:COUNT:(NO:ASSI)-100)/10+1
-			;未陥落
-			ELSE
-				;TARGETとの相性が良いと待機中のストレス増加
-				SIF TARGET > 0 && RELATION:COUNT:(NO:TARGET) > 0
-					LOCAL += (RELATION:COUNT:(NO:TARGET))/10+1
-				;ASSIとの相性が良くても待機中のストレスが増加
-				SIF ASSI > 0 && RELATION:COUNT:(NO:ASSI) > 0
-					LOCAL += (RELATION:COUNT:(NO:ASSI))/10+1
-			ENDIF
-			SIF LOCAL > 0
-				CFLAG:COUNT:ストレス値 += LOCAL
-		;逆に調教対象の場合は相性に応じて大幅にストレス値減少
-		ELSEIF TARGET == COUNT
-			;(MASTERとの相性-100)/5 つまり200%(恋慕時)だと20減少 上がることはない
-			LOCAL = MAX((RELATION:COUNT:(NO:MASTER)-100)/5, 0)
-			;(ASSIとの相性-100)/10 こちらもストレス値上がることはない
-			SIF ASSI > 0
-				LOCAL += MAX((RELATION:COUNT:(NO:ASSI)-100)/10, 0)
+;主人が使用不可だと体力・気力・ストレス値は変動しない
+IF !CFLAG:MASTER:使用不可
+	REPEAT CHARANUM
+		;休憩フラグが立っていて配属中でない場合はキャラ固有の休憩フラグが立つ
+		;配属先でいろいろあって休憩してる場合はそちらで休憩フラグが立っている
+		IF FLAG:休憩フラグ
+			SIF CSTR:COUNT:配属 == ""
+				CFLAG:COUNT:休憩 = 1
 		ENDIF
-	ENDIF
-	
-	;その他ストレス処理
-	;調教対象の場合
-	IF COUNT == TARGET
-		;未陥落 +5
-		SIF !CFLAG:陥落
-			CFLAG:ストレス値 += 5
-		;反発刻印*2
-		CFLAG:ストレス値 += MARK:反発刻印*2
-		;主人との相性 100-相性値/10(50%なら+5、70%なら+3 低下はしない)
-		CFLAG:ストレス値 += MAX(100-RELATION:(NO:MASTER), 0)/10
-		;助手が居る場合も上と同じ式で計算
-		SIF ASSI > 0
-			CFLAG:ストレス値 += MAX(100-RELATION:(NO:ASSI), 0)/10
-	ENDIF
-	;助手の場合
-	SIF COUNT == ASSI
-		CFLAG:ASSI:ストレス値 += 3
-	;反発刻印
-	CFLAG:COUNT:ストレス値 += MARK:COUNT:反発刻印
-	LOCAL = 0
-	LOCAL:1 = 0
-	;素質の計算
-	FOR LCOUNT, 0, VARSIZE("TALENT")
-		SIF !TALENT:COUNT:LCOUNT
-			CONTINUE
-		SELECTCASE TALENTNAME:LCOUNT
-			;ツンデレ 陥落済みかどうかでストレス±2
-			CASE "ツンデレ"
+		
+		;種族妖精ならランダムで消費アイテム取得 休憩中のみ
+		IF CSTR:COUNT:種族 == "妖精" && CFLAG:COUNT:陥落 && CFLAG:COUNT:休憩
+			LOCAL = RAND(100, 108)
+			LOCAL:1 = RAND(1, 4)
+			PRINTFORMW %CALLNAME:COUNT%が{LOCAL:1}個の%ITEMNAME:LOCAL%を拾ってきました
+			ITEM:LOCAL += LOCAL:1
+		ENDIF
+
+		LOCAL = 0
+		;ヤンデレのストレス処理
+		IF TALENT:COUNT:ヤンデレ
+			IF TARGET != COUNT
+				;陥落済み
 				IF CFLAG:COUNT:陥落
-					LOCAL:1 -= 2
+					;MASTERとの相性が良いほど待機中のストレス増加
+					LOCAL = (RELATION:COUNT:(NO:MASTER)-100)/10+1
+					;しかしTARGETとの相性が良いと緩和 悪いと増加
+					SIF TARGET > 0
+						LOCAL -= (RELATION:COUNT:(NO:TARGET)-100)/10
+					;ASSIとの相性が悪いと増加
+					SIF ASSI > 0 && RELATION:COUNT:(NO:ASSI) < 100
+						LOCAL += ABS(RELATION:COUNT:(NO:ASSI)-100)/10+1
+				;未陥落
 				ELSE
-					LOCAL:1 += 2
+					;TARGETとの相性が良いと待機中のストレス増加
+					SIF TARGET > 0 && RELATION:COUNT:(NO:TARGET) > 0
+						LOCAL += (RELATION:COUNT:(NO:TARGET))/10+1
+					;ASSIとの相性が良くても待機中のストレスが増加
+					SIF ASSI > 0 && RELATION:COUNT:(NO:ASSI) > 0
+						LOCAL += (RELATION:COUNT:(NO:ASSI))/10+1
 				ENDIF
-			;寂しがり屋 未配属でTARGETでもASSIでもない場合は+3
-			CASE "寂しがり屋"
-				SIF CSTR:COUNT:配属 == "" && COUNT != TARGET && COUNT != ASSI
-					LOCAL += 3
-			;抑圧 +ABL:欲望
-			CASE "抑圧"
-				LOCAL += ABL:COUNT:欲望
-			;男好き、男嫌い、女好き、女嫌い 配属中は同じ配属先の男女キャラ数に応じてストレス増減 最大5
-			CASE "男好き", "男嫌い"
-				人数 = 0
-				IF CSTR:COUNT:配属 != ""
-					FOR LCOUNT2, 0, CHARANUM
-						SIF TALENT:LCOUNT2:性別 == 1 && CSTR:LCOUNT2:配属 == CSTR:COUNT:配属
-							人数++
-					NEXT
-				ENDIF
-				IF TALENTNAME:LCOUNT == "男好き"
-					LOCAL -= MIN(人数, 5)
-				ELSEIF TALENTNAME:LCOUNT == "男嫌い"
+				SIF LOCAL > 0
+					CFLAG:COUNT:ストレス値 += LOCAL
+			;逆に調教対象の場合は相性に応じて大幅にストレス値減少
+			ELSEIF TARGET == COUNT
+				;(MASTERとの相性-100)/5 つまり200%(恋慕時)だと20減少 上がることはない
+				LOCAL = MAX((RELATION:COUNT:(NO:MASTER)-100)/5, 0)
+				;(ASSIとの相性-100)/10 こちらもストレス値上がることはない
+				SIF ASSI > 0
+					LOCAL += MAX((RELATION:COUNT:(NO:ASSI)-100)/10, 0)
+			ENDIF
+		ENDIF
+		
+		;その他ストレス処理
+		;調教対象の場合
+		IF COUNT == TARGET
+			;未陥落 +5
+			SIF !CFLAG:陥落
+				CFLAG:ストレス値 += 5
+			;反発刻印*2
+			CFLAG:ストレス値 += MARK:反発刻印*2
+			;主人との相性 100-相性値/10(50%なら+5、70%なら+3 低下はしない)
+			CFLAG:ストレス値 += MAX(100-RELATION:(NO:MASTER), 0)/10
+			;助手が居る場合も上と同じ式で計算
+			SIF ASSI > 0
+				CFLAG:ストレス値 += MAX(100-RELATION:(NO:ASSI), 0)/10
+		ENDIF
+		;助手の場合
+		SIF COUNT == ASSI
+			CFLAG:ASSI:ストレス値 += 3
+		;反発刻印
+		CFLAG:COUNT:ストレス値 += MARK:COUNT:反発刻印
+		LOCAL = 0
+		LOCAL:1 = 0
+		;素質の計算
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:COUNT:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				;ツンデレ 陥落済みかどうかでストレス±2
+				CASE "ツンデレ"
+					IF CFLAG:COUNT:陥落
+						LOCAL:1 -= 2
+					ELSE
+						LOCAL:1 += 2
+					ENDIF
+				;寂しがり屋 未配属でTARGETでもASSIでもない場合は+3
+				CASE "寂しがり屋"
+					SIF CSTR:COUNT:配属 == "" && COUNT != TARGET && COUNT != ASSI
+						LOCAL += 3
+				;抑圧 +ABL:欲望
+				CASE "抑圧"
+					LOCAL += ABL:COUNT:欲望
+				;男好き、男嫌い、女好き、女嫌い 配属中は同じ配属先の男女キャラ数に応じてストレス増減 最大5
+				CASE "男好き", "男嫌い"
+					人数 = 0
+					IF CSTR:COUNT:配属 != ""
+						FOR LCOUNT2, 0, CHARANUM
+							SIF TALENT:LCOUNT2:性別 == 1 && CSTR:LCOUNT2:配属 == CSTR:COUNT:配属
+								人数++
+						NEXT
+					ENDIF
+					IF TALENTNAME:LCOUNT == "男好き"
+						LOCAL -= MIN(人数, 5)
+					ELSEIF TALENTNAME:LCOUNT == "男嫌い"
+						LOCAL += MIN(人数, 5)
+					ENDIF
+				CASE "女好き", "女嫌い"
+					人数 = 0
+					IF CSTR:COUNT:配属 != ""
+						FOR LCOUNT2, 0, CHARANUM
+							SIF TALENT:LCOUNT2:性別 == 2 && CSTR:LCOUNT2:配属 == CSTR:COUNT:配属
+								人数++
+						NEXT
+					ENDIF
+					IF TALENTNAME:LCOUNT == "女好き"
+						LOCAL -= MIN(人数, 5)
+					ELSEIF TALENTNAME:LCOUNT == "女嫌い"
+						LOCAL += MIN(人数, 5)
+					ENDIF
+				;同族嫌悪 配属中は同じ種族のキャラに応じてストレス増加 最大5
+				CASE "同族嫌悪"
+					人数 = 0
+					IF CSTR:COUNT:配属 != ""
+						FOR LCOUNT2, 0, CHARANUM
+							SIF CSTR:LCOUNT2:種族 == CSTR:COUNT:種族 && CSTR:LCOUNT2:配属 == CSTR:COUNT:配属
+								人数++
+						NEXT
+					ENDIF
 					LOCAL += MIN(人数, 5)
-				ENDIF
-			CASE "女好き", "女嫌い"
-				人数 = 0
-				IF CSTR:COUNT:配属 != ""
-					FOR LCOUNT2, 0, CHARANUM
-						SIF TALENT:LCOUNT2:性別 == 2 && CSTR:LCOUNT2:配属 == CSTR:COUNT:配属
-							人数++
-					NEXT
-				ENDIF
-				IF TALENTNAME:LCOUNT == "女好き"
-					LOCAL -= MIN(人数, 5)
-				ELSEIF TALENTNAME:LCOUNT == "女嫌い"
-					LOCAL += MIN(人数, 5)
-				ENDIF
-			;同族嫌悪 配属中は同じ種族のキャラに応じてストレス増加 最大5
-			CASE "同族嫌悪"
-				人数 = 0
-				IF CSTR:COUNT:配属 != ""
-					FOR LCOUNT2, 0, CHARANUM
-						SIF CSTR:LCOUNT2:種族 == CSTR:COUNT:種族 && CSTR:LCOUNT2:配属 == CSTR:COUNT:配属
-							人数++
-					NEXT
-				ENDIF
-				LOCAL += MIN(人数, 5)
-			;バストサイズ 巨乳以上だと+1
-			CASE "バストサイズ"
-				SIF TALENT:COUNT:バストサイズ >= 4
+				;バストサイズ 巨乳以上だと+1
+				CASE "バストサイズ"
+					SIF TALENT:COUNT:バストサイズ >= 4
+						LOCAL:1 += 1
+				;日光浴 昼なら-1
+				CASE "日光浴"
+					SIF TIME == 0
+						LOCAL -= 1
+				;月光浴 夜なら-1
+				CASE "月光浴"
+					SIF TIME == 1
+						LOCAL -= 1
+				;-3
+				CASE "ハイテンション", "解放", "無機物"
+					LOCAL:1 -= 3
+				;-2
+				CASE "好奇心", "楽観的", "自慰しやすい", "幼稚"
+					LOCAL:1 -= 2
+				;-1
+				CASE "衝動的", "冷静", "無関心", "感情乏しい", "食欲皆伝"
+					LOCAL:1 -= 1
+				;+1
+				CASE "臆病", "強気", "弱気", "潔癖症"
 					LOCAL:1 += 1
-			;日光浴 昼なら-1
-			CASE "日光浴"
-				SIF TIME == 0
-					LOCAL -= 1
-			;月光浴 夜なら-1
-			CASE "月光浴"
-				SIF TIME == 1
-					LOCAL -= 1
-			;-3
-			CASE "ハイテンション", "解放", "無機物"
-				LOCAL:1 -= 3
-			;-2
-			CASE "好奇心", "楽観的", "自慰しやすい", "幼稚"
-				LOCAL:1 -= 2
-			;-1
-			CASE "衝動的", "冷静", "無関心", "感情乏しい", "食欲皆伝"
-				LOCAL:1 -= 1
-			;+1
-			CASE "臆病", "強気", "弱気", "潔癖症"
-				LOCAL:1 += 1
-			;+2
-			CASE "生意気","反抗的", "自制心", "悲観的"
-				LOCAL:1 += 2
-			;+3
-			CASE "性器破損", "育児中"
-				LOCAL:1 += 3
-			;+4
-			CASE "プライド高い", "弱味"
-				LOCAL:1 += 4
-			;+5
-			CASE "妊娠"
-				LOCAL:1 += 5
-		ENDSELECT
-	NEXT
-	
-	;LOCALは毎ターン計算
-	;LOCAL:1は配属されてなく休憩フラグが立っていれば無視できるが、LOCAL:1の結果でストレスが低下することはない
-	CFLAG:COUNT:ストレス値 += LOCAL
-	SIF !FLAG:休憩フラグ || CSTR:COUNT:配属 != ""
-		CFLAG:COUNT:ストレス値 += MAX(LOCAL:1, 0)
-	
-	
-	;魔剤フラグ消去
-	CFLAG:COUNT:魔剤 = 0
-	;魔剤耐性減少
-	IF TALENT:COUNT:小人体型
-		CFLAG:COUNT:魔剤耐性 -= 5
-	ELSEIF TALENT:COUNT:小柄体型
-		CFLAG:COUNT:魔剤耐性 -= 6
-	ELSE
-		CFLAG:COUNT:魔剤耐性 -= 7
-	ENDIF
-	;魔剤耐性は1000～2000の間で変動する
-	SIF CFLAG:COUNT:魔剤耐性 < 1000
-		CFLAG:COUNT:魔剤耐性 = 1000
+				;+2
+				CASE "生意気","反抗的", "自制心", "悲観的"
+					LOCAL:1 += 2
+				;+3
+				CASE "性器破損", "育児中"
+					LOCAL:1 += 3
+				;+4
+				CASE "プライド高い", "弱味"
+					LOCAL:1 += 4
+				;+5
+				CASE "妊娠"
+					LOCAL:1 += 5
+			ENDSELECT
+		NEXT
+		
+		;LOCALは毎ターン計算
+		;LOCAL:1は休憩フラグが立っていれば無視できるが、LOCAL:1の結果でストレスが低下することはない
+		CFLAG:COUNT:ストレス値 += LOCAL
+		SIF !CFLAG:COUNT:休憩
+			CFLAG:COUNT:ストレス値 += MAX(LOCAL:1, 0)
+		
+		;魔剤フラグ消去
+		CFLAG:COUNT:魔剤 = 0
+		;魔剤耐性減少
+		IF TALENT:COUNT:小人体型
+			CFLAG:COUNT:魔剤耐性 -= 5
+		ELSEIF TALENT:COUNT:小柄体型
+			CFLAG:COUNT:魔剤耐性 -= 6
+		ELSE
+			CFLAG:COUNT:魔剤耐性 -= 7
+		ENDIF
+		;魔剤耐性は1000～2000の間で変動する
+		SIF CFLAG:COUNT:魔剤耐性 < 1000
+			CFLAG:COUNT:魔剤耐性 = 1000
 
-	;気力の回復
-	;基本的に昼なら1/3回復、夜なら2/3回復
+		;気力の回復
+		;基本的に昼なら1/3回復、夜なら2/3回復
+			SELECTCASE TIME
+			CASE 0
+				LOCAL = MAXBASE:COUNT:気力/3
+			CASE 1
+				LOCAL = MAXBASE:COUNT:気力/3*2
+		ENDSELECT
+		;まずストレス値だけ引く 割合じゃないので気力が低いキャラほどストレスの影響が大きい
+		LOCAL -= CFLAG:COUNT:ストレス値
+		
+		;素質の計算
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:COUNT:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				;臆病 未陥落なら苦痛刻印と屈服刻印に応じて減少(50～150)
+				CASE "臆病"
+					SIF !CFLAG:COUNT:陥落
+						LOCAL -= 50*LIMIT(MARK:COUNT:苦痛刻印-MARK:COUNT:屈服刻印, 1, 3)
+				;+10%
+				CASE "気丈", "冷静", "楽観的", "目立ちたがり"
+					LOCAL += MAXBASE:COUNT:気力/10
+				;+5%
+				CASE "サボり魔", "貞操無頓着", "恥薄い"
+					LOCAL += MAXBASE:COUNT:気力/20
+				;-5%
+				CASE "抵抗", "恥じらい"
+					LOCAL -= MAXBASE:COUNT:気力/20
+				;-10%
+				CASE "弱気", "悲観的", "貞操観念"
+					LOCAL -= MAXBASE:COUNT:気力/10
+			ENDSELECT
+		NEXT
+		BASE:COUNT:気力 += MAX(LOCAL, 1)
+		;体力、気力の値整理
+		CALL SETBASE, COUNT
+		
+		;体力の回復（午後の調教後は夜の休みが入るので回復大きい）
 		SELECTCASE TIME
-		CASE 0
-			LOCAL = MAXBASE:COUNT:気力/3
-		CASE 1
-			LOCAL = MAXBASE:COUNT:気力/3*2
-	ENDSELECT
-	;まずストレス値だけ引く 割合じゃないので気力が低いキャラほどストレスの影響が大きい
-	LOCAL -= CFLAG:COUNT:ストレス値
-	
-	;素質の計算
-	FOR LCOUNT, 0, VARSIZE("TALENT")
-		SIF !TALENT:COUNT:LCOUNT
-			CONTINUE
-		SELECTCASE TALENTNAME:LCOUNT
-			;臆病 未陥落なら苦痛刻印と屈服刻印に応じて減少(50～150)
-			CASE "臆病"
-				SIF !CFLAG:COUNT:陥落
-					LOCAL -= 50*LIMIT(MARK:COUNT:苦痛刻印-MARK:COUNT:屈服刻印, 1, 3)
-			;+10%
-			CASE "気丈", "冷静", "楽観的", "目立ちたがり"
-				LOCAL += MAXBASE:COUNT:気力/10
-			;+5%
-			CASE "サボり魔", "貞操無頓着", "恥薄い"
-				LOCAL += MAXBASE:COUNT:気力/20
-			;-5%
-			CASE "抵抗", "恥じらい"
-				LOCAL -= MAXBASE:COUNT:気力/20
-			;-10%
-			CASE "弱気", "悲観的", "貞操観念"
-				LOCAL -= MAXBASE:COUNT:気力/10
+			CASE 0
+				SELECTCASE FLAG:難易度
+					;NORMAL
+					CASE 1
+						LOCAL = MAXBASE:COUNT:体力 / 8
+					;HYPER
+					CASE 2
+						LOCAL = MAXBASE:COUNT:体力 / 10
+					;ANOTHER
+					CASE 3
+						LOCAL = MAXBASE:COUNT:体力 / 15
+				ENDSELECT
+			CASE 1
+				SELECTCASE FLAG:難易度
+					;NORMAL
+					CASE 1
+						LOCAL = MAXBASE:COUNT:体力 / 3
+					;HYPER
+					CASE 2
+						LOCAL = MAXBASE:COUNT:体力 / 4
+					;ANOTHER
+					CASE 3
+						LOCAL = MAXBASE:COUNT:体力 / 5
+				ENDSELECT
 		ENDSELECT
-	NEXT
-	BASE:COUNT:気力 += MAX(LOCAL, 1)
-	
-	;体力の回復（午後の調教後は夜の休みが入るので回復大きい）
-	SELECTCASE TIME
-		CASE 0
-			SELECTCASE FLAG:難易度
-				;NORMAL
-				CASE 1
-					LOCAL = MAXBASE:COUNT:体力 / 8
-				;HYPER
-				CASE 2
-					LOCAL = MAXBASE:COUNT:体力 / 10
-				;ANOTHER
-				CASE 3
-					LOCAL = MAXBASE:COUNT:体力 / 15
-			ENDSELECT
-		CASE 1
-			SELECTCASE FLAG:難易度
-				;NORMAL
-				CASE 1
-					LOCAL = MAXBASE:COUNT:体力 / 3
-				;HYPER
-				CASE 2
-					LOCAL = MAXBASE:COUNT:体力 / 4
-				;ANOTHER
-				CASE 3
-					LOCAL = MAXBASE:COUNT:体力 / 5
-			ENDSELECT
-	ENDSELECT
 
-	;日光浴、月光浴（吸血鬼）、夢喰い
-	SELECTCASE TIME
-		CASE 0
-			SIF TALENT:COUNT:日光浴
-				LOCAL += 100
-		CASE 1
-			IF TALENT:COUNT:月光浴 || TALENT:COUNT:吸血鬼
-				SELECTCASE 月齢
-					CASE 0 TO 1500
-						LOCAL += 月齢/10
-					CASE 1500 TO 3000
-						LOCAL += (3000-月齢)/10
+		;日光浴、月光浴（吸血鬼）、夢喰い
+		SELECTCASE TIME
+			CASE 0
+				SIF TALENT:COUNT:日光浴 && FLAG:天気 == 1
+					LOCAL += 100
+			CASE 1
+				IF (TALENT:COUNT:月光浴 || TALENT:COUNT:吸血鬼) && FLAG:天気 == 1
+					SELECTCASE 月齢
+						CASE 0 TO 1500
+							LOCAL += 月齢/10
+						CASE 1500 TO 3000
+							LOCAL += (3000-月齢)/10
+					ENDSELECT
+				ENDIF
+				;主人と当人引いて-2
+				SIF TALENT:COUNT:夢喰い && CHARANUM-2 > 0
+					LOCAL += (CHARANUM-2)*10
+				;こちらも医務室配属での効果にしたい
+				;SIF TALENT:MASTER:夢喰い || (ASSI > 0 && TALENT:ASSI:夢喰い)
+				;	LOCAL += 50
+		ENDSELECT
+
+		;主人もしくは助手が治療持ち
+		;医務室の実装により廃止
+		;SIF TALENT:MASTER:治療 || (ASSI >= 0 && TALENT:ASSI:治療)
+		;	LOCAL += 150
+
+		;使用不可のキャラは休憩フラグの影響を受けない
+		IF !CFLAG:COUNT:使用不可
+			;休憩フラグが立っている
+			IF CFLAG:休憩
+				LOCAL += 200
+				SELECTCASE FLAG:難易度
+					;NORMALなら休憩でストレス値-15
+					CASE 1
+						CFLAG:COUNT:ストレス値 -= 15
+					;HYPERは-10
+					CASE 2
+						CFLAG:COUNT:ストレス値 -= 10
+					;ANOTHERは-5
+					CASE 3
+						CFLAG:COUNT:ストレス値 -= 5
 				ENDSELECT
 			ENDIF
-			;主人と当人引いて-2
-			SIF TALENT:COUNT:夢喰い && CHARANUM-2 > 0
-				LOCAL += (CHARANUM-2)*30
-			;こちらも医務室配属での効果にしたい
-			;SIF TALENT:MASTER:夢喰い || (ASSI > 0 && TALENT:ASSI:夢喰い)
-			;	LOCAL += 50
-	ENDSELECT
 
-	;主人もしくは助手が治療持ち
-	;医務室の実装により廃止
-	;SIF TALENT:MASTER:治療 || (ASSI >= 0 && TALENT:ASSI:治療)
-	;	LOCAL += 150
+			;休憩コマンドで休んだ場合
+			;IF FLAG:休憩フラグ == 2
+			;	TIMES LOCAL , 2.00
+			;	CFLAG:COUNT:ストレス値 -= 2
+			;	SIF TALENT:COUNT:ハイテンション
+			;		CFLAG:COUNT:ストレス値--
+			;ENDIF
+		ENDIF
 
-	;使用不可のキャラは休憩フラグの影響を受けない
-	IF !CFLAG:COUNT:使用不可
-		;休憩フラグが立っていて配属中じゃない
-		IF (FLAG:休憩フラグ && CSTR:COUNT:配属 == "") || CFLAG:COUNT:休憩
-			LOCAL += 200
-			SELECTCASE FLAG:難易度
-				;NORMALなら休憩でストレス値-15
-				CASE 1
-					CFLAG:COUNT:ストレス値 -= 15
-				;HYPERは-10
-				CASE 2
-					CFLAG:COUNT:ストレス値 -= 10
-				;ANOTHERは-5
-				CASE 3
-					CFLAG:COUNT:ストレス値 -= 5
+		;宇宙人
+		SIF CSTR:COUNT:種族 == "宇宙人"
+			TIMES LOCAL , 2.00
+
+		;回復早い、回復遅い
+		IF TALENT:COUNT:回復早い
+			TIMES LOCAL , 1.30
+		ELSEIF TALENT:COUNT:回復遅い
+			TIMES LOCAL , 0.70
+		ENDIF
+		
+		;小柄体型 子供の回復力は高いうんぬん
+		SIF TALENT:COUNT:小柄体型
+			TIMES LOCAL , 1.10
+
+		;無機物、ゾンビ
+		SIF TALENT:COUNT:無機物
+			TIMES LOCAL , 0.80
+		SIF TALENT:COUNT:ゾンビ
+			TIMES LOCAL , 0.50
+
+		;調教中に料理作った場合は料理技能に応じて全員の回復量アップ
+		IF TFLAG:料理
+			LOCAL:1 = TFLAG:料理
+			;食欲皆伝はどんな料理も美味しく食べる
+			SIF TALENT:COUNT:食欲皆伝
+				LOCAL:1 += 3
+			SELECTCASE LOCAL:1
+				;料理技能0だと逆に回復量下がる
+				CASE -1
+					LOCAL -= 50
+				CASE 1 TO 9
+					LOCAL += TFLAG:料理*20
+				CASE IS >= 10
+					LOCAL += 250
 			ENDSELECT
+			CALL KOJO_MESSAGE_EVENT, "料理"
 		ENDIF
 
-		;休憩コマンドで休んだ場合
-		;IF FLAG:休憩フラグ == 2
-		;	TIMES LOCAL , 2.00
-		;	CFLAG:COUNT:ストレス値 -= 2
-		;	SIF TALENT:COUNT:ハイテンション
-		;		CFLAG:COUNT:ストレス値--
-		;ENDIF
-	ENDIF
-
-	;宇宙人
-	SIF CSTR:COUNT:種族 == "宇宙人"
-		TIMES LOCAL , 3.00
-
-	;回復早い、回復遅い
-	IF TALENT:COUNT:回復早い
-		TIMES LOCAL , 1.50
-	ELSEIF TALENT:COUNT:回復遅い
-		TIMES LOCAL , 0.75
-	ENDIF
-	
-	;小柄体型 子供の回復力は高いうんぬん
-	SIF TALENT:COUNT:小柄体型
-		TIMES LOCAL , 1.20
-
-	;無機物、ゾンビ
-	SIF TALENT:COUNT:無機物
-		TIMES LOCAL , 0.80
-	SIF TALENT:COUNT:ゾンビ
-		TIMES LOCAL , 0.50
-
-	;調教中に料理作った場合は料理技能に応じて全員の回復量アップ
-	IF TFLAG:料理
-		LOCAL:1 = TFLAG:料理
-		;食欲皆伝はどんな料理も美味しく食べる
-		SIF TALENT:COUNT:食欲皆伝
-			LOCAL:1 += 3
-		SELECTCASE LOCAL:1
-			;料理技能0だと逆に回復量下がる
-			CASE -1
-				LOCAL -= 50
-			CASE 1 TO 9
-				LOCAL += TFLAG:料理*20
-			CASE IS >= 10
-				LOCAL += 250
-		ENDSELECT
-		CALL KOJO_MESSAGE_EVENT, "料理"
-	ENDIF
-
-	;調教中にお菓子作った場合は料理技能に応じて全員の回復量アップ
-	IF TFLAG:お菓子
-		LOCAL:1 = TFLAG:お菓子
-		;食欲皆伝はどんなお菓子も美味しく食べる
-		SIF TALENT:COUNT:食欲皆伝
-			LOCAL:1 += 3
-		SELECTCASE LOCAL:1
-			;料理技能0だと逆に回復量下がる
-			CASE -1
-				LOCAL -= 30
-			CASE 1 TO 9
-				LOCAL += TFLAG:料理*10
-			CASE 10
-				LOCAL += 120
-		ENDSELECT
-		CALL KOJO_MESSAGE_EVENT, "お菓子"
-	ENDIF
-	
-	;リ：ジェネレーション発動中は詠唱者のスキルに応じて回復量アップ
-	LOCAL += リジェネレーション*100
-
-	;娼館配属中は回復量下がる
-	SIF CSTR:COUNT:配属 == "娼館" && CFLAG:COUNT:休憩 == 0 && FLAG:娼館営業中 == 1
-		LOCAL /= 10
-	;芸能プロダクション配属中で「レッスンなし」以外でも回復量下がる
-	SIF CSTR:COUNT:配属 == "芸能プロダクション" &&  CFLAG:COUNT:レッスン != 0
-		LOCAL /= 8
-
-	;「暑さに弱い」「寒さに弱い」 最低100は保証
-	IF TALENT:COUNT:暑さに弱い
-		SIF FLAG:気温 >= 200
-			LOCAL -= FLAG:気温-200
-		LOCAL = MAX(LOCAL, 100)
-	ENDIF
-	IF TALENT:COUNT:寒さに弱い
-		SIF FLAG:気温 <= 150
-			LOCAL -= 150-FLAG:気温
-		LOCAL = MAX(LOCAL, 100)
-	ENDIF
-
-	;酔ってると回復量低下 最低100は保証
-	IF CFLAG:COUNT:酔
-		IF TALENT:COUNT:酒豪
-			LOCAL -= CFLAG:COUNT:酔
-		ELSEIF TALENT:COUNT:下戸
-			LOCAL -= CFLAG:COUNT:酔*3
-		ELSE
-			LOCAL -= CFLAG:COUNT:酔*2
+		;調教中にお菓子作った場合は料理技能に応じて全員の回復量アップ
+		IF TFLAG:お菓子
+			LOCAL:1 = TFLAG:お菓子
+			;食欲皆伝はどんなお菓子も美味しく食べる
+			SIF TALENT:COUNT:食欲皆伝
+				LOCAL:1 += 3
+			SELECTCASE LOCAL:1
+				;料理技能0だと逆に回復量下がる
+				CASE -1
+					LOCAL -= 30
+				CASE 1 TO 9
+					LOCAL += TFLAG:料理*10
+				CASE 10
+					LOCAL += 120
+			ENDSELECT
+			CALL KOJO_MESSAGE_EVENT, "お菓子"
 		ENDIF
-		LOCAL = MAX(LOCAL, 100)
-	ENDIF
+		
+		;リ：ジェネレーション発動中は詠唱者のスキルに応じて回復量アップ
+		LOCAL += リジェネレーション*30
 
-	;「回復量低下」と「ストレス値」によって回復量がさらに下がる
-	;ストレス値が気力回復量に影響するようになったので、気力の割合で回復量が決まる
-	;それぞれ100倍にしてから計算
-	LOCAL = (LOCAL*100)/((MAXBASE:COUNT:気力*100)/BASE:COUNT:気力)
+		;娼館配属中は回復量下がる
+		SIF CSTR:COUNT:配属 == "娼館" && CFLAG:COUNT:休憩 == 0 && FLAG:娼館営業中 == 1
+			LOCAL /= 10
+		;芸能プロダクション配属中で「レッスンなし」以外でも回復量下がる
+		SIF CSTR:COUNT:配属 == "芸能プロダクション" &&  CFLAG:COUNT:レッスン != 0
+			LOCAL /= 8
 
-	BASE:COUNT:体力 += LOCAL / (1 + CFLAG:COUNT:回復量低下); / CBRT(1000*(1+CFLAG:COUNT:ストレス値))
-	SIF BASE:COUNT:体力 > MAXBASE:COUNT:体力
-		BASE:COUNT:体力 = MAXBASE:COUNT:体力
+		;「暑さに弱い」「寒さに弱い」 最低100は保証
+		IF TALENT:COUNT:暑さに弱い
+			SIF FLAG:気温 >= 200
+				LOCAL -= FLAG:気温-200
+			LOCAL = MAX(LOCAL, 100)
+		ENDIF
+		IF TALENT:COUNT:寒さに弱い
+			SIF FLAG:気温 <= 150
+				LOCAL -= 150-FLAG:気温
+			LOCAL = MAX(LOCAL, 100)
+		ENDIF
 
-	;ストレス値は0～999にする
-	CFLAG:COUNT:ストレス値 = LIMIT(CFLAG:COUNT:ストレス値, 0, 999)
-	;依存度が-1000未満の場合、-1000にする
-	SIF CFLAG:COUNT:依存度 < -1000
-		CFLAG:COUNT:依存度 = -1000
-
-	;キャラごとの休憩フラグが経つのは一日の終了時（夜）なので、夜は休憩フラグを外さない
-	SIF TIME == 0
-		CFLAG:COUNT:休憩 = 0
-	;回復量低下処理
-	SIF CFLAG:COUNT:回復量低下 > 0
-		CFLAG:COUNT:回復量低下--
-
-	CFLAG:COUNT:二日酔い = 0
-	;酔が抜ける 必ずしも1ターンで全快するわけではない
-	SELECTCASE TIME
-		;昼→夜
-		CASE 0
+		;酔ってると回復量低下 最低100は保証
+		IF CFLAG:COUNT:酔
 			IF TALENT:COUNT:酒豪
-				CFLAG:COUNT:酔 -= 20
-				CFLAG:COUNT:酔 -= TEQUIP:COUNT:ウォッカ/3
+				LOCAL -= CFLAG:COUNT:酔
 			ELSEIF TALENT:COUNT:下戸
-				CFLAG:COUNT:酔 -= 5
-				CFLAG:COUNT:酔 -= TEQUIP:COUNT:ウォッカ/5
+				LOCAL -= CFLAG:COUNT:酔*3
 			ELSE
-				CFLAG:COUNT:酔 -= 10
-				CFLAG:COUNT:酔 -= TEQUIP:COUNT:ウォッカ/4
+				LOCAL -= CFLAG:COUNT:酔*2
 			ENDIF
-		;夜→昼
-		CASE 1
-			IF TALENT:COUNT:酒豪
-				CFLAG:COUNT:酔 -= 50
-				CFLAG:COUNT:酔 -= TEQUIP:COUNT:ウォッカ/2
-			ELSEIF TALENT:COUNT:下戸
-				CFLAG:COUNT:酔 -= 10
-				CFLAG:COUNT:酔 -= TEQUIP:COUNT:ウォッカ/4
-			ELSE
-				CFLAG:COUNT:酔 -= 30
-				CFLAG:COUNT:酔 -= TEQUIP:COUNT:ウォッカ/3
-			ENDIF
-			;これで酔いが残っていると二日酔いを引き起こす
-			IF CFLAG:COUNT:酔 > 0
-				CFLAG:COUNT:二日酔い = 1
-				CFLAG:COUNT:酔 = 0
-			ENDIF
-	ENDSELECT
-	TEQUIP:COUNT:ウォッカ = 0
-	SIF CFLAG:COUNT:酔 < 0
-		CFLAG:COUNT:酔 = 0
-	
-	;使用不可フラグ
-	IF CFLAG:COUNT:使用不可
-		SIF COUNT == TARGET
-			TARGET = -1
-		SIF COUNT == ASSI
-			ASSI = -1
-		CFLAG:COUNT:使用不可--
-		IF CFLAG:COUNT:使用不可 == 0
-			IF CFLAG:COUNT:改造中 == 1
-				PRINTFORMW %CALLNAME:COUNT%は体外受精を終えたため、再び調教可能になりました
-			ELSE
-				PRINTFORMW %CALLNAME:COUNT%が再び調教可能になりました
+			LOCAL = MAX(LOCAL, 100)
+		ENDIF
+
+		;「回復量低下」と「ストレス値」によって回復量がさらに下がる
+		;ストレス値が気力回復量に影響するようになったので、気力の割合で回復量が決まる
+		;それぞれ100倍にしてから計算
+		LOCAL = (LOCAL*100)/((MAXBASE:COUNT:気力*100)/BASE:COUNT:気力)
+
+		BASE:COUNT:体力 += LOCAL / (1 + CFLAG:COUNT:回復量低下); / CBRT(1000*(1+CFLAG:COUNT:ストレス値))
+		;体力、気力の値整理
+		CALL SETBASE, COUNT
+
+		;ストレス値は0～999にする
+		CFLAG:COUNT:ストレス値 = LIMIT(CFLAG:COUNT:ストレス値, 0, 999)
+		;依存度が-1000未満の場合、-1000にする
+		SIF CFLAG:COUNT:依存度 < -1000
+			CFLAG:COUNT:依存度 = -1000
+
+		;回復量低下処理
+		SIF CFLAG:COUNT:回復量低下 > 0
+			CFLAG:COUNT:回復量低下--
+
+		CFLAG:COUNT:二日酔い = 0
+		;酔が抜ける 必ずしも1ターンで全快するわけではない
+		SELECTCASE TIME
+			;昼→夜
+			CASE 0
+				IF TALENT:COUNT:酒豪
+					CFLAG:COUNT:酔 -= 20
+					CFLAG:COUNT:酔 -= TEQUIP:COUNT:ウォッカ/3
+				ELSEIF TALENT:COUNT:下戸
+					CFLAG:COUNT:酔 -= 5
+					CFLAG:COUNT:酔 -= TEQUIP:COUNT:ウォッカ/5
+				ELSE
+					CFLAG:COUNT:酔 -= 10
+					CFLAG:COUNT:酔 -= TEQUIP:COUNT:ウォッカ/4
+				ENDIF
+			;夜→昼
+			CASE 1
+				IF TALENT:COUNT:酒豪
+					CFLAG:COUNT:酔 -= 50
+					CFLAG:COUNT:酔 -= TEQUIP:COUNT:ウォッカ/2
+				ELSEIF TALENT:COUNT:下戸
+					CFLAG:COUNT:酔 -= 10
+					CFLAG:COUNT:酔 -= TEQUIP:COUNT:ウォッカ/4
+				ELSE
+					CFLAG:COUNT:酔 -= 30
+					CFLAG:COUNT:酔 -= TEQUIP:COUNT:ウォッカ/3
+				ENDIF
+				;これで酔いが残っていると二日酔いを引き起こす
+				IF CFLAG:COUNT:酔 > 0
+					CFLAG:COUNT:二日酔い = 1
+					CFLAG:COUNT:酔 = 0
+				ENDIF
+		ENDSELECT
+		TEQUIP:COUNT:ウォッカ = 0
+		SIF CFLAG:COUNT:酔 < 0
+			CFLAG:COUNT:酔 = 0
+		
+		;使用不可フラグ
+		IF CFLAG:COUNT:使用不可
+			SIF COUNT == TARGET
+				TARGET = -1
+			SIF COUNT == ASSI
+				ASSI = -1
+			CFLAG:COUNT:使用不可--
+			IF CFLAG:COUNT:使用不可 == 0
+				IF CFLAG:COUNT:改造中 == 1
+					PRINTFORMW %CALLNAME:COUNT%は体外受精を終えたため、再び調教可能になりました
+				ELSE
+					PRINTFORMW %CALLNAME:COUNT%が再び調教可能になりました
+				ENDIF
 			ENDIF
 		ENDIF
-	ENDIF
-	
-	;体力、気力の値整理
-	CALL SETBASE, COUNT
-REND
+	REND
+ENDIF
 TFLAG:料理 = 0
 TFLAG:お菓子 = 0
 

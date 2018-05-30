@@ -29,6 +29,8 @@ MAUD:7 = 0
 #PRI
 #DIM DYNAMIC リリーゼ
 #DIM DYNAMIC モード
+#DIM DYNAMIC リリーゼ陥落
+#DIM DYNAMIC モード陥落
 
 ;口上表示がオフなら表示しない
 SIF !FLAG:口上表示
@@ -70,33 +72,35 @@ REPEAT CHARANUM
 		CONTINUE
 	SELECTCASE CHARANAMEF(COUNT)
 		CASE "モード"
-			LOCAL++
+			モード陥落 = 1
 			モード = COUNT
 		CASE "リリーゼ"
-			LOCAL:1++
+			リリーゼ陥落 = 1
 			リリーゼ = COUNT
 	ENDSELECT
-	SIF LOCAL && LOCAL:1
+	SIF モード陥落 && リリーゼ陥落
 		BREAK
 REND
 
-SIF !CFLAG:モード:陥落 || !CFLAG:リリーゼ:陥落
+;大前提としてモードが陥落してること
+SIF !モード陥落
 	RETURN 0
 
 ;SIF TARGET < 0 || CALLNAME:TARGET != "モード"
 ;	RETURN 0
 
 ;陥落済みのモードとリリーゼが居て、休憩フラグが立っていれば日常イベント発生
-LOCAL:2 = 7
+LOCAL = 7
 ;リントヴルムが喋るならリントヴルムとのイベントが発生するときがある
 SIF MAUD:99
-	LOCAL:2 += 2
-LOCAL:2 = RAND:(LOCAL:2)
+	LOCAL += 2
+LOCAL = RAND:LOCAL
 ;図書室でのうたた寝イベント、リントヴルムのイベントはモード単体でも発生する
-IF (LOCAL && LOCAL:1 && MAUD:6) || (LOCAL && LOCAL:2 >= 6)
+;なお、リリーゼと会ってないと発生しない
+IF (モード陥落 && リリーゼ陥落 && MAUD:6) || (モード陥落 && LOCAL >= 6)
 	MAUD:90 = 1
 	DRAWLINE
-	SELECTCASE LOCAL:2
+	SELECTCASE LOCAL
 		CASE 0
 			PRINTFORMW 「モードちゃん、また本読んでるの？」
 			PRINTFORMW 「はい、リリーゼさんも一緒にどうですか？」
@@ -407,6 +411,7 @@ IF (LOCAL && LOCAL:1 && MAUD:6) || (LOCAL && LOCAL:2 >= 6)
 				PRINTFORMW 「まぁよい。モードも独り寝が出来ぬほど幼くはない。少しだけ、私の酌を受けてもらおうか」
 				PRINTFORMW リントヴルムは側に投げてあった茶碗を舌で綺麗に舐める。相当酔っているのだろうか……竜の作法は理解しがたい
 				PRINTFORMW 注がれた酒を何回か口に付けると、リントヴルムがゆっくりと口を開く。温かく酒臭い息を大きな口から吐きながら
+				;十段になれた喜びうんぬん
 				PRINTFORMW 「私は酔っている。滅多にないことだ。モードがあれほど笑顔を見せ、感涙し、悩み寂しがる。豊かな表情だ」
 				PRINTFORMW 「貴様が側に居ることで、モードは今、活き活きとしている。私が側に居ても出来なかったこと。モードにとって貴様は……ふん、盃を交わそう。器の大きさは桶と茶碗ほどでも、貴様の器には美味い酒が注がれるのだろう」
 			ENDIF
