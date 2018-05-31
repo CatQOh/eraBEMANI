@@ -89,7 +89,7 @@ IF ABL:ARG:魔法技能 >= 6
 	PRINTL 　　　　 キャラ全員の回復量上昇 魔法技能に応じて効果持続
 	;gentle stress
 	PRINTFORML 　[ 9] - ジェントルストレス（魔力消費量 {LOCAL}）
-	PRINTL 　　　　 任意のキャラに対し、一時的に使用不可になる代わりにストレスを0まで引き下げる
+	PRINTFORML 　　　　 任意のキャラに対し、一時的に使用不可になる代わりにストレスを{スキル*5}\%引き下げる
 ENDIF
 
 LOCAL = 魔力消費量(7, スキル)
@@ -429,6 +429,7 @@ DO
 				ENDIF
 			ENDIF
 			PRINTFORML %CALLNAME:ARG%に、%CALLNAME:対象%を対象にしたジェントルストレスを詠唱させます。よろしいですか？
+			PRINTFORML （%CALLNAME:対象%は{MAX(CFLAG:対象:ストレス値/20+1-スキル, 1)}ターン使用不可になります）
 			PRINTL [0] - はい
 			PRINTL [1] - いいえ
 			DO
@@ -440,8 +441,10 @@ DO
 			PRINTFORML %CALLNAME:対象%は倒れ込むように眠りについた……
 			PRINTFORML %CALLNAME:ARG%の詠唱経験+6
 			EXP:ARG:詠唱経験 += 6
-			CFLAG:対象:使用不可 = 15-スキル
-			CFLAG:対象:ストレス値 = 0
+			;ストレス値/20+1から気休め程度に魔法技能分だけ差し引いたターン休憩不可 最長で、ストレス値MAX(999)の場合は50-6の44ターン使用不可になる。重い
+			;ノーリスクでストレス打ち消せるのは最大で54まで 魔力と1ターン消費のことを考えると普通に休んだほうがいい
+			CFLAG:対象:使用不可 = MAX(CFLAG:対象:ストレス値/20+1-スキル, 1)
+			CFLAG:対象:ストレス値 -= CFLAG:対象:ストレス値*5*スキル/100
 		CASE 10
 			SIF スキル < 7 && CHARANAMEF(ARG) != "クロノス" && CHARANAMEF(ARG) != "カイロス"
 				CONTINUE
