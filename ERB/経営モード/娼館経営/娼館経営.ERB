@@ -644,7 +644,6 @@ SIF ITEM:わけのわからないもの
 #DIM DYNAMIC 支出
 #DIM DYNAMIC 適性
 #DIM DYNAMIC 不適性
-#DIM DYNAMIC 通常出勤, CHARANUM
 #DIM DYNAMIC 相性指数
 
 #DIM DYNAMIC 客の性別
@@ -672,6 +671,8 @@ SIF ITEM:わけのわからないもの
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC LMASTER
 #DIM DYNAMIC LASSI
+
+CVARSET 通常出勤
 
 収入合計 += 娼館レベル*100
 
@@ -748,7 +749,7 @@ FOR LCOUNT, 1, CHARANUM
 		CONTINUE
 	ENDIF
 	;上記の要素をすべてクリアしたキャラにフラグを立てる
-	通常出勤:LCOUNT = 1
+	通常出勤:LCOUNT:0 = 1
 	
 	;1000パセリは保証
 	収入 = 1000
@@ -1703,10 +1704,12 @@ SIF ITEM:隠しカメラ
 ;娼館にいる上級売春をしているキャラを除くキャラ同士の相性値をすべて掛け算する
 ;(オーバーフローしないように対数を使用)
 FOR LCOUNT, 1, CHARANUM
-	IF 通常出勤:LCOUNT
-		FOR LCOUNT2, 1, CHARANUM
-			SIF !LCOUNT2 == LCOUNT && 通常出勤:LCOUNT2
-				相性指数 += HLOG2(RELATION:LCOUNT:(NO:LCOUNT2))
+	IF 通常出勤:LCOUNT:0
+		FOR LCOUNT2, LCOUNT+1, CHARANUM
+			IF 通常出勤:LCOUNT2:0
+				LOCAL = RELATION:LCOUNT:(NO:LCOUNT2)+RELATION:LCOUNT2:(NO:LCOUNT)
+				相性指数 += HLOG2(LOCAL/2)
+			ENDIF
 		NEXT
 	ENDIF
 NEXT
