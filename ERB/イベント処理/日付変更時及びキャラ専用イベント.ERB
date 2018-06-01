@@ -488,7 +488,7 @@ IF !CFLAG:MASTER:使用不可
 		;使用不可のキャラは休憩フラグの影響を受けない
 		IF !CFLAG:COUNT:使用不可
 			;休憩フラグが立っている
-			IF CFLAG:休憩
+			IF CFLAG:COUNT:休憩
 				LOCAL += 200
 				SELECTCASE FLAG:難易度
 					;NORMALなら休憩でストレス値-15
@@ -719,6 +719,7 @@ SELECTCASE TIME
 			CALL 実績解除, "無能な経営者"
 			JUMP BADENDING, 2
 		ENDIF
+		CVARSET CFLAG:休憩, 0
 		;朝になった時のイベント呼び出し
 		CALL EVENT_NEWDAY
 		CALL EVENT_NEWDAY_SELF
@@ -938,13 +939,22 @@ BEGIN SHOP
 ;朝になった時のイベント
 ;-------------------------------------------------
 @EVENT_NEWDAY
-#DIM LCOUNT
+#DIM DYNAMIC LCOUNT
 VARSET LOCAL, 0
 
 ;日付加算関数
 CALL NEXTDAY
 
 ;祝日・記念日の処理はSHOPで行うようにしました
+
+;定休日の場合は休みにする
+IF GC定休日()
+	FLAG:ゲーセン営業中 = 0
+	FOR LCOUNT, 0, CHARANUM
+		SIF CSTR:LCOUNT:配属 == "ゲームセンター"
+			CFLAG:LCOUNT:休憩 = 1
+	NEXT
+ENDIF
 
 ;実績:新年を迎える
 SIF MONTH == 1 && DAYS == 1

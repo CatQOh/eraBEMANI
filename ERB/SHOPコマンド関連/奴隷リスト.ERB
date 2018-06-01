@@ -210,22 +210,23 @@ FOR LCOUNT, 0, CHARANUM
 				PRINT 双
 			PRINTL 
 		ENDIF
-		;TARGETとASSIはMASTERの下に表示する
 		$表示用
+		;TARGETとASSIはMASTERの下に表示する
 		IF TARGET > 0 && !対象表示
 			LOCAL = TARGET
 			対象表示 = 1
+			GOTO 対象助手
 		ELSEIF ASSI > 0 && !助手表示
 			LOCAL = ASSI
 			助手表示 = 1
+			GOTO 対象助手
 		ELSE
-			;表示するキャラが居なければDRAWLINEとCONTINUEして通常の表示処理に戻る
+			;表示するキャラが居なければDRAWLINE後にLCOUNTを1にして通常の表示処理に戻る
 			DRAWLINE
-			CONTINUE
+			LCOUNT = 1
 		ENDIF
-	ELSE
-		LOCAL = LCOUNT
 	ENDIF
+	LOCAL = LCOUNT
 	;2巡目以降は通常のキャラ表示なので条件を指定
 	IF LCOUNT > 0
 		;キャラを10人表示したら終了
@@ -233,10 +234,6 @@ FOR LCOUNT, 0, CHARANUM
 			未表示キャラ = 1
 			BREAK
 		ENDIF
-		カウント数++
-		;ページ数×10まで表示を飛ばす
-		SIF TFLAG:ページ数*10 >= カウント数
-			CONTINUE
 		;助手の指定なら助手不可能なキャラは除外
 		SIF ARG == 2 && CFLAG:LOCAL:状態 < 2
 			CONTINUE
@@ -246,16 +243,20 @@ FOR LCOUNT, 0, CHARANUM
 		;調教対象の指定、もしくは助手の指定なら、使用不可のキャラは除外
 		SIF ARG && CFLAG:LOCAL:使用不可
 			CONTINUE
-		;主人の下に対象を表示していれば対象は除外
-		SIF 対象表示 && TARGET == LOCAL
+		;対象は主人の下に表示されるので除外
+		SIF TARGET == LOCAL
 			CONTINUE
 		;助手も同じく
-		SIF 助手表示 && ASSI == LOCAL
+		SIF ASSI == LOCAL
 			CONTINUE
-			
+		カウント数++
+		;ページ数×10まで表示を飛ばす
+		SIF TFLAG:ページ数*10 >= カウント数
+			CONTINUE
 		表示数++
 	ENDIF
-
+	
+	$対象助手
 	IF LOCAL == TARGET
 		PRINT ☆
 	ELSEIF LOCAL == ASSI
