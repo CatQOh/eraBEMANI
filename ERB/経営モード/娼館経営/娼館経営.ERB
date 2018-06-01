@@ -591,11 +591,14 @@ SIF ITEM:わけのわからないもの
 ;収入計算----------------------------------------------------
 @INCOME_BR
 #DIM LCOUNT
+#DIM LCOUNT2
 #DIM DYNAMIC 収入
 #DIM DYNAMIC 収入合計
 #DIM DYNAMIC 支出
 #DIM DYNAMIC 適性
 #DIM DYNAMIC 不適性
+#DIM DYNAMIC 通常出勤, CHARANUM
+#DIM DYNAMIC 相性指数
 
 #DIM DYNAMIC 客の性別
 #DIM DYNAMIC 絶頂
@@ -697,6 +700,9 @@ FOR LCOUNT, 1, CHARANUM
 		CFLAG:LCOUNT:休憩 = 1
 		CONTINUE
 	ENDIF
+	;上記の要素をすべてクリアしたキャラにフラグを立てる
+	通常出勤:LCOUNT = 1
+	
 	;1000パセリは保証
 	収入 = 1000
 	適性 = 0
@@ -1646,6 +1652,19 @@ ENDSELECT
 ;隠し撮りビデオを売却して追加報酬
 SIF ITEM:隠しカメラ
 	収入合計 += 収入合計/10
+
+;娼館にいる上級売春をしているキャラを除くキャラ同士の相性値をすべて掛け算する
+;(オーバーフローしないように対数を使用)
+FOR LCOUNT, 1, CHARANUM
+	IF 通常出勤:LCOUNT
+		FOR LCOUNT2, 1, CHARANUM
+			SIF !LCOUNT2 == LCOUNT && 通常出勤:LCOUNT2
+				相性指数 += HLOG2(RELATION:LCOUNT:(NO:LCOUNT2))
+		NEXT
+	ENDIF
+NEXT
+収入合計 *= HPOW2(相性指数)
+収入合計 /= 100
 
 IF 収入合計
 	DRAWLINE
