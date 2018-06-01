@@ -164,12 +164,12 @@ SELECTCASE ARG
 			ITEMSALES:【汚れ無視】 = 1
 
 		;調合知識 主人の技巧が4以上なら調合知識を購入可能
-		SIF !TALENT:MASTER:調合知識 && ABL:MASTER:技巧 >= 4
-			ITEMSALES:【調合知識】 = 1
+		;SIF !TALENT:MASTER:調合知識 && ABL:MASTER:技巧 >= 4
+		;	ITEMSALES:【調合知識】 = 1
 
 		;禁断の知識 調教経験1000以上必要
-		SIF !TALENT:MASTER:禁断の知識 && EXP:MASTER:調教経験 >= 1000
-			ITEMSALES:【禁断の知識】 = 1
+		;SIF !TALENT:MASTER:禁断の知識 && EXP:MASTER:調教経験 >= 1000
+		;	ITEMSALES:【禁断の知識】 = 1
 
 		;悪趣味な宝飾品
 		SIF !TALENT:MASTER:孔雀の瞳
@@ -281,13 +281,23 @@ SELECTCASE ARG
 					ITEMSALES:リミッター解除 = 1
 			REND
 		ENDIF
-		;グリモワール
-		IF 禁断の知識有り
-			REPEAT CHARANUM
-				SIF !ABL:COUNT:魔法技能
-					ITEMSALES:グリモワール = 1
-			REND
+
+		;本
+		IF FLAG:図書室ランク >= 10
+			FOR LCOUNT, 250, 269
+				SIF ITEMNAME:LCOUNT == ""
+					CONTINUE
+				ITEMSALES:LCOUNT = 1
+			NEXT
 		ENDIF
+		IF FLAG:図書室ランク >= 20
+			FOR LCOUNT, 270, 299
+				SIF ITEMNAME:LCOUNT == ""
+					CONTINUE
+				ITEMSALES:LCOUNT = 1
+			NEXT
+		ENDIF
+
 		;経営ができるゲームモードなら表示
 		SELECTCASE FLAG:ゲームモード
 			;STRATEGY、PFREEのみ
@@ -561,7 +571,7 @@ SELECTCASE ARG
 	CASE 100 TO 199
 		;消耗品は専用の関数で
 		CALL BUY_PLURAL, ARG
-	CASE 200 TO 299
+	CASE 200 TO 249
 		PRINTFORML 本当に%ITEMNAME:ARG%を購入しますか？
 		PRINTL [0] 購入する
 		PRINTL [1] やめる
@@ -580,10 +590,10 @@ SELECTCASE ARG
 		SELECTCASE ITEMNAME:ARG
 			CASE "【汚れ無視】"
 				TALENT:MASTER:汚れ無視 = 1
-			CASE "【調合知識】"
-				TALENT:MASTER:調合知識 = 1
-			CASE "【禁断の知識】"
-				TALENT:MASTER:禁断の知識 = 1
+			;CASE "【調合知識】"
+			;	TALENT:MASTER:調合知識 = 1
+			;CASE "【禁断の知識】"
+			;	TALENT:MASTER:禁断の知識 = 1
 			CASE "【悪趣味な宝飾品】"
 				TALENT:MASTER:孔雀の瞳 = 1
 			CASE "【ドラキュラの牙】"
@@ -649,7 +659,7 @@ SELECTCASE ARG
 					ENDSELECT
 				LOOP LOOPRES(0)
 		ENDSELECT
-	CASE 300 TO 499, 1050 TO 1099
+	CASE 250 TO 499, 1050 TO 1099
 		;奴隷に使用するタイプのアイテムも専用の関数で
 		CALL USE_ITEM, ARG
 ENDSELECT
@@ -743,8 +753,22 @@ SELECTCASE ITEMNAME:ARG
 		PRINTL 一日だけ妊娠確率を上昇させます。頼れるのは祈りよりも薬です
 	CASE "リミッター解除"
 		PRINTL 使用対象の能力上限を解除します。後悔しませんね？
+	CASE "古今錬金術大全"
+		PRINTL 使用対象が【調合知識】を習得します
+	CASE "ひとりでできるもん～オトコのコのためのアナニー入門～"
+		PRINTL 男性キャラにプレゼントすると自慰しやすくなります
+	CASE "膣性感開発・中イキ完全マニュアル"
+		PRINTL 女性キャラにプレゼントすると自慰しやすくなります
+	CASE "ドラッカーの『マネジメント』"
+		PRINTL 使用対象が【鼓舞】を習得します
+	CASE "ヴォイニッチ手稿"
+		PRINTL 使用対象が【禁断の知識】を習得します
 	CASE "グリモワール"
 		PRINTL 使用対象が魔法を学べるようになります
+	CASE "解体新書"
+		PRINTL 使用対象が【治療】を習得します
+	CASE "ネクロノミコン"
+		PRINTL 使用対象が【ネクロマンサー】を習得します
 	CASE "【料理人】"
 		PRINTL 対象に素質【料理人】を習得させます
 	CASE "【専業主婦】"
@@ -762,6 +786,37 @@ PRINTL 誰に使いますか？
 FOR PAGING, 0, CHARANUM
 	LOCAL = 1
 	SELECTCASE ARG
+		;本
+		CASE 250 TO 299
+			;使用不可のキャラは除外
+			SIF CFLAG:PAGING:使用不可
+				LOCAL = 0
+			SELECTCASE ITEMNAME:ARG
+				CASE "古今錬金術大全"
+					SIF TALENT:PAGING:調合知識
+						LOCAL = 0
+				CASE "ひとりでできるもん～オトコのコのためのアナニー入門～"
+					SIF SEX(PAGING) == 2 || TALENT:PAGING:自慰しやすい
+						LOCAL = 0
+				CASE "膣性感開発・中イキ完全マニュアル"
+					SIF SEX(PAGING) == 1 || TALENT:PAGING:自慰しやすい
+						LOCAL = 0
+				CASE "ドラッカーの『マネジメント』"
+					SIF TALENT:PAGING:鼓舞
+						LOCAL = 0
+				CASE "ヴォイニッチ手稿"
+					SIF TALENT:PAGING:禁断の知識
+						LOCAL = 0
+				CASE "グリモワール"
+					SIF ABL:PAGING:魔法技能
+						LOCAL = 0
+				CASE "解体新書"
+					SIF TALENT:PAGING:治療
+						LOCAL = 0
+				CASE "ネクロノミコン"
+					SIF TALENT:PAGING:ネクロマンサー
+						LOCAL = 0
+			ENDSELECT
 		;薬品系と素質系で処理が異なる
 		CASE 300 TO 499
 			;無機物・機械は除外
@@ -842,9 +897,6 @@ FOR PAGING, 0, CHARANUM
 				CASE "リミッター解除"
 					SIF TALENT:PAGING:リミットバースト || !CFLAG:PAGING:陥落
 						LOCAL = 0
-				CASE "グリモワール"
-					SIF ABL:PAGING:魔法技能
-						LOCAL = 0
 			ENDSELECT
 		;経営用素質は誰でも習得可能 各経験、技能、実務経験が必要
 		CASE 1050 TO 1099
@@ -910,6 +962,34 @@ LOCAL = RESULT
 CALL KOJO_MESSAGE_EVENT, ITEMNAME:ARG, LOCAL
 
 SELECTCASE ITEMNAME:ARG
+	;調合知識
+	CASE "古今錬金術大全"
+		PRINTFORMW ＜%CALLNAME:LOCAL%は【調合知識】を得た＞
+		TALENT:LOCAL:調合知識 = 1
+	;あぶひゃく
+	CASE "ひとりでできるもん～オトコのコのためのアナニー入門～", "膣性感開発・中イキ完全マニュアル"
+		PRINTFORMW ＜%CALLNAME:LOCAL%は自慰に深い興味を持つようになった＞
+		TALENT:LOCAL:自慰しやすい = 1
+	;マネジメント
+	CASE "ドラッカーの『マネジメント』"
+		PRINTFORMW ＜%CALLNAME:LOCAL%は【鼓舞】を得た＞
+		TALENT:LOCAL:鼓舞 = 1
+	;禁断の知識
+	CASE "ヴォイニッチ手稿"
+		PRINTFORMW ＜%CALLNAME:LOCAL%は【禁断の知識】を得た＞
+		TALENT:LOCAL:禁断の知識 = 1
+	;グリモワール
+	CASE "グリモワール"
+		PRINTFORMW ＜%CALLNAME:LOCAL%は魔術の基礎を得た＞
+		ABL:LOCAL:魔法技能 = 1
+	;治療
+	CASE "解体新書"
+		PRINTFORMW ＜%CALLNAME:LOCAL%は【治療】を得た＞
+		TALENT:LOCAL:治療 = 1
+	;ネクロ
+	CASE "ネクロノミコン"
+		PRINTFORMW ＜%CALLNAME:LOCAL%は【ネクロマンサー】を得た＞
+		TALENT:LOCAL:ネクロマンサー = 1
 	;体力回復
 	CASE "怪しげな栄養剤"
 		PRINTFORMW ＜%CALLNAME:LOCAL%の体力が回復した＞
@@ -1156,10 +1236,6 @@ SELECTCASE ITEMNAME:ARG
 	CASE "リミッター解除"
 		PRINTFORMW ＜%NAME:LOCAL%のリミッターを解除した＞
 		TALENT:LOCAL:リミットバースト = 1
-	;グリモワール
-	CASE "グリモワール"
-		PRINTFORMW ＜%CALLNAME:LOCAL%は魔術の基礎を得た＞
-		ABL:LOCAL:魔法技能 = 1
 	CASE "【料理人】"
 		PRINTFORMW ＜%NAME:LOCAL%は料理人になった＞
 		TALENT:LOCAL:料理人 = 1

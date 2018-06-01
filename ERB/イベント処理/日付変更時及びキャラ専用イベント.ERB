@@ -200,8 +200,10 @@ IF TIME == 1
 		CALL STRATEGY_INCOME
 ENDIF
 ;主人が行動不可だと発生しない
-SIF !CFLAG:MASTER:使用不可
+IF !CFLAG:MASTER:使用不可
 	CALL TURNEND_IDOL
+	CALL TURNEND_図書室
+ENDIF
 
 ;主人が使用不可だと体力・気力・ストレス値は変動しない
 IF !CFLAG:MASTER:使用不可
@@ -948,12 +950,25 @@ CALL NEXTDAY
 ;祝日・記念日の処理はSHOPで行うようにしました
 
 ;定休日の場合は休みにする
+;営業フラグが-1の場合はコマンドでの休業中なのでオープンしない
 IF GC定休日()
 	FLAG:ゲーセン営業中 = 0
 	FOR LCOUNT, 0, CHARANUM
 		SIF CSTR:LCOUNT:配属 == "ゲームセンター"
 			CFLAG:LCOUNT:休憩 = 1
 	NEXT
+ELSEIF FLAG:ゲーセン営業中 != -1
+	FLAG:ゲーセン営業中 = DAY-1
+ENDIF
+
+IF BR定休日()
+	FLAG:娼館営業中 = 0
+	FOR LCOUNT, 0, CHARANUM
+		SIF CSTR:LCOUNT:配属 == "娼館"
+			CFLAG:LCOUNT:休憩 = 1
+	NEXT
+ELSEIF FLAG:娼館営業中 != -1
+	FLAG:娼館営業中 = DAY-1
 ENDIF
 
 ;実績:新年を迎える

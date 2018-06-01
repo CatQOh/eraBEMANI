@@ -24,6 +24,8 @@ SELECTCASE 配属先
 		配属上限 = 20
 	CASE "医務室"
 		配属上限 = 3
+	CASE "図書室"
+		配属上限 = 3
 ENDSELECT
 
 ;既に配属されている人数を計算
@@ -40,8 +42,8 @@ REPEAT CHARANUM
 	SIF COUNT == MASTER
 		CONTINUE
 	SELECTCASE 配属先
-		;ゲーセンと芸能と医務室は助手可能が条件
-		CASE "ゲームセンター", "芸能プロダクション", "医務室"
+		;ゲーセンと芸能と各施設は助手可能が条件
+		CASE "ゲームセンター", "芸能プロダクション", "医務室", "図書室"
 			SIF CFLAG:COUNT:状態 < 2
 				CONTINUE
 		;娼館は売却可能で配置可能
@@ -129,7 +131,20 @@ IF 配属可能人数
 				SIF TALENT:COUNT:治療
 					PRINT  治療
 				PRINT )
-				
+			CASE "図書室"
+				PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(実務経験:{EXP:COUNT:実務経験, 4, LEFT}
+				SIF TALENT:COUNT:買い物上手
+					PRINT  買い物上手
+				SIF TALENT:COUNT:潔癖症
+					PRINT  潔癖症
+				SIF TALENT:COUNT:禁断の知識
+					PRINT  禁断の知識
+				IF TALENT:COUNT:謎の魅力
+					PRINT  謎の魅力
+				ELSEIF TALENT:COUNT:魅力
+					PRINT  魅力
+				ENDIF
+				PRINT )
 		ENDSELECT
 		SELECTCASE CSTR:COUNT:配属
 			CASE ""
@@ -189,13 +204,23 @@ DO
 					CSTR:COUNT:配属 = 
 				ENDIF
 			REND
-			PRINTFORMW %配属先%に配属してる人員が全員帰宅しました
+				SELECTCASE 配属先
+					CASE "医務室", "図書室"
+						PRINTFORMW %配属先%の全員を担当から外しました
+					CASEELSE
+						PRINTFORMW %配属先%に配属してる人員が全員帰宅しました
+				ENDSELECT
 		CASEELSE
 			SIF !LOCAL:RESULT
 				CONTINUE
 			SELECTCASE CSTR:RESULT:配属
 				CASE 配属先
-					PRINTFORMW %CALLNAME:RESULT%が帰宅しました
+					SELECTCASE 配属先
+						CASE "医務室", "図書室"
+							PRINTFORMW %CALLNAME:RESULT%を%配属先%担当から外しました
+						CASEELSE
+							PRINTFORMW %CALLNAME:RESULT%が帰宅しました
+					ENDSELECT
 					CSTR:RESULT:配属 = 
 					CFLAG:RESULT:レッスン = 0
 					CFLAG:RESULT:配属完了 = 0
