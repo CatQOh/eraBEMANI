@@ -237,12 +237,12 @@ FOR LCOUNT, 0, CHARANUM
 		;助手の指定なら助手不可能なキャラは除外
 		SIF ARG == 2 && CFLAG:LOCAL:状態 < 2
 			CONTINUE
-		;調教対象の指定、もしくは助手の指定なら、育児部屋に移動しているキャラは除外
+		;調教対象の指定、もしくは助手の指定なら、育児部屋に移動しているキャラは灰色表示
 		SIF ARG && CHECK_CHILD_CARE(LOCAL)
-			CONTINUE
-		;調教対象の指定、もしくは助手の指定なら、使用不可のキャラは除外
+			SETCOLORBYNAME gray
+		;調教対象の指定、もしくは助手の指定なら、使用不可のキャラは灰色表示
 		SIF ARG && CFLAG:LOCAL:使用不可
-			CONTINUE
+			SETCOLORBYNAME gray
 		;対象は主人の下に表示されるので除外
 		SIF TARGET == LOCAL
 			CONTINUE
@@ -257,7 +257,11 @@ FOR LCOUNT, 0, CHARANUM
 	ENDIF
 	
 	$対象助手
-	IF LOCAL == TARGET
+	IF CFLAG:LOCAL:使用不可
+		PRINT 不
+	ELSEIF CHECK_CHILD_CARE(LOCAL)
+		PRINT 妊
+	ELSEIF LOCAL == TARGET
 		PRINT ☆
 	ELSEIF LOCAL == ASSI
 		PRINT ★
@@ -271,7 +275,12 @@ FOR LCOUNT, 0, CHARANUM
 		PRINT 　
 	ENDIF
 
-	PRINTFORM [{LOCAL, 2}] %CALLNAME:LOCAL, 20, LEFT%
+	;調教対象の指定、もしくは助手の指定なら、育児部屋に移動しているキャラと使用不可キャラは選べない
+	IF ARG && (CHECK_CHILD_CARE(LOCAL) || CFLAG:LOCAL:使用不可)
+		PRINTFORM [--] %CALLNAME:LOCAL, 20, LEFT%
+	ELSE
+		PRINTFORM [{LOCAL, 2}] %CALLNAME:LOCAL, 20, LEFT%
+	ENDIF
 
 	;上記のキャラを表示したら詳細情報も表示
 	;助手選択画面では表示しない
@@ -357,6 +366,7 @@ FOR LCOUNT, 0, CHARANUM
 		ENDIF
 	ENDIF
 	PRINTL 
+	RESETCOLOR
 	;対象及び助手が表示できるなら表示
 	SIF (TARGET > 0 && !対象表示) || (ASSI > 0 && !助手表示)
 		GOTO 表示用

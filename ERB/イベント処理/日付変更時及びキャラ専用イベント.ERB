@@ -196,14 +196,15 @@ REND
 IF TIME == 1
 	LASTMONEY = MONEY
 	;主人が行動不可だと収入入らない
-	SIF !CFLAG:MASTER:使用不可
+	IF !CFLAG:MASTER:使用不可
 		CALL STRATEGY_INCOME
+		SIF ITEM:図書室
+			CALL TURNEND_図書室
+	ENDIF
 ENDIF
 ;主人が行動不可だと発生しない
-IF !CFLAG:MASTER:使用不可
+SIF !CFLAG:MASTER:使用不可
 	CALL TURNEND_IDOL
-	CALL TURNEND_図書室
-ENDIF
 
 ;主人が使用不可だと体力・気力・ストレス値は変動しない
 IF !CFLAG:MASTER:使用不可
@@ -662,18 +663,19 @@ IF !CFLAG:MASTER:使用不可
 			CFLAG:COUNT:酔 = 0
 		
 		;使用不可フラグ
-		IF CFLAG:COUNT:使用不可
+		IF CFLAG:COUNT:使用不可 != 0
 			SIF COUNT == TARGET
 				TARGET = -1
 			SIF COUNT == ASSI
 				ASSI = -1
 			CFLAG:COUNT:使用不可--
-			IF CFLAG:COUNT:使用不可 == 0
+			IF CFLAG:COUNT:使用不可 <= 0
 				IF CFLAG:COUNT:改造中 == 1
 					PRINTFORMW %CALLNAME:COUNT%は体外受精を終えたため、再び調教可能になりました
 				ELSE
 					PRINTFORMW %CALLNAME:COUNT%が再び調教可能になりました
 				ENDIF
+				CFLAG:COUNT:使用不可 = 0
 			ENDIF
 		ENDIF
 	REND
@@ -951,8 +953,9 @@ CALL NEXTDAY
 
 ;定休日の場合は休みにする
 ;営業フラグが-1の場合はコマンドでの休業中なのでオープンしない
-IF GC定休日()
-	FLAG:ゲーセン営業中 = 0
+IF GC定休日() || FLAG:ゲーセン営業中 == -1
+	SIF FLAG:ゲーセン営業中 != -1
+		FLAG:ゲーセン営業中 = 0
 	FOR LCOUNT, 0, CHARANUM
 		SIF CSTR:LCOUNT:配属 == "ゲームセンター"
 			CFLAG:LCOUNT:休憩 = 1
@@ -961,8 +964,9 @@ ELSEIF FLAG:ゲーセン営業中 != -1
 	FLAG:ゲーセン営業中 = DAY-1
 ENDIF
 
-IF BR定休日()
-	FLAG:娼館営業中 = 0
+IF BR定休日() || FLAG:娼館営業中 == -1
+	SIF FLAG:娼館営業中 != -1
+		FLAG:娼館営業中 = 0
 	FOR LCOUNT, 0, CHARANUM
 		SIF CSTR:LCOUNT:配属 == "娼館"
 			CFLAG:LCOUNT:休憩 = 1

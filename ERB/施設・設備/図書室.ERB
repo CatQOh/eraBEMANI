@@ -1,187 +1,4 @@
-﻿@施設
-DRAWLINE
-PRINTL □管理したい施設・設備を選んでください
-SETCOLORBYNAME gray
-IF ITEM:医務室
-	PRINTDL 　[1] - 医務室
-ELSE
-	PRINTL 　[-] - 医務室
-ENDIF
-IF ITEM:実験室
-	PRINTDL 　[2] - 実験室
-ELSE
-	PRINTL 　[-] - 実験室
-ENDIF
-IF ITEM:図書室
-	PRINTDL 　[3] - 図書室
-ELSE
-	PRINTL 　[-] - 図書室
-ENDIF
-IF ITEM:音楽室
-	PRINTDL 　[4] - 音楽室
-ELSE
-	PRINTL 　[-] - 音楽室
-ENDIF
-RESETCOLOR
-DRAWLINE
-PRINTPLAIN 　施設　
-PRINTL [0] - 戻る
-
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			SIF ITEM:医務室
-				CALL 医務室
-			BREAK
-		CASE 2
-			;SIF ITEM:実験室
-			;	CALL 実験室
-			BREAK
-		CASE 3
-			SIF ITEM:図書室
-				CALL 図書室
-			BREAK
-		CASE 4
-			;SIF ITEM:音楽室
-			;	CALL 音楽室
-			BREAK
-	ENDSELECT
-LOOP 1
-
-@医務室
-#DIM DYNAMIC 配属人数
-#DIM DYNAMIC LCOUNT
-配属人数 = CMATCH(CSTR:配属, "医務室")
-DRAWLINE
-PRINTL □医務室
-PRINTL 　医療班を配属させたり、医薬品の補充によってキャラクターの健康管理が可能です
-PRINTL 　配属中のキャラの能力に応じて体力・気力・ストレス値の回復量が変動します
-PRINT 　医薬品の在庫:
-SELECTCASE FLAG:医薬品
-	CASE 0
-		SETCOLORBYNAME gray
-	CASE 1 TO 15
-		SETCOLORBYNAME red
-	CASE 16 TO 50
-		SETCOLORBYNAME yellow
-	CASE 51 TO 100
-		SETCOLORBYNAME lime
-ENDSELECT
-RESETCOLOR
-CALL PASELIL, @"{FLAG:医薬品}\% 配属人数:{配属人数}/3 所持金:{MONEY}＄"
-PRINTL □担当医
-FOR LCOUNT, 0, CHARANUM
-	IF CSTR:LCOUNT:配属 == "医務室"
-		PRINTFORM 　%NAME:LCOUNT% 
-		SIF TALENT:LCOUNT:調合知識
-			PRINT [調合知識]
-		SIF TALENT:LCOUNT:治療
-			PRINT [治療]
-		PRINTL 
-	ENDIF
-NEXT
-PRINTL 
-PRINTL [1] - キャラを配属させる
-;医薬品主人を除くキャラ人数*5000
-CALL PASELIL, @"[2] - 医薬品を補充する({(CHARANUM-1)*5000}＄)"
-IF 配属人数
-	PRINTL [3] - 健康診断を行う
-ELSE
-	SETCOLORBYNAME gray
-	PRINTL [-] - 健康診断を行う(キャラを配属する必要があります)
-	RESETCOLOR
-ENDIF
-DRAWLINE
-PRINTPLAIN 　医務室　
-PRINTL [0] - 戻る
-
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1
-			CALL STRATEGY_PERSONAL, "医務室"
-			RESTART
-		CASE 2
-			IF FLAG:医薬品 <= 100
-				PRINTW 医薬品は十分に揃っています
-			ELSEIF MONEY < (CHARANUM-1)*5000
-				MONEY -= (CHARANUM-1)*5000
-			ELSE
-				PRINTW 所持金が足りません
-			ENDIF
-		CASE 3
-			DRAWLINE
-			FOR PAGING, 0, CHARANUM
-				;色変えしたいのでここだけ特別処理
-				CALL PAGING, PAGING != 0, "健康診断用", "健康診断"
-			NEXT
-			SIF RESULT == -1
-				RESTART
-			CALL 健康診断, RESULT
-	ENDSELECT
-LOOP 1
-
-@健康診断, 対象
-#DIM DYNAMIC 対象
-#DIM DYNAMIC LCOUNT
-#DIM DYNAMIC クジャクアイ
-;孔雀の瞳を持ってるキャラが主人・助手・担当医に居るかを見る
-SIF TALENT:MASTER:孔雀の瞳
-	クジャクアイ = 1
-SIF ASSI > 0 && TALENT:ASSI:孔雀の瞳
-	クジャクアイ = 1
-FOR LCOUNT, 0, CHARANUM
-	SIF CSTR:LCOUNT:配属 == "医務室" && TALENT:LCOUNT:孔雀の瞳
-		クジャクアイ = 1
-NEXT
-
-DRAWLINE
-PRINTL □患者
-PRINTFORML 　名前:%NAME:対象%
-PRINTFORML 　体力%BARBASE("体力", 対象, 32)%
-PRINTFORML 　気力%BARBASE("気力", 対象, 32)%
-PRINT 　ストレス値:
-IF クジャクアイ
-	SELECTCASE CFLAG:対象:ストレス値
-		CASE 1 TO 99
-			SETCOLORBYNAME lime
-		CASE 100 TO 299
-			SETCOLORBYNAME yellow
-		CASE 300 TO 499
-			SETCOLORBYNAME red
-		CASE IS >= 500
-			SETCOLORBYNAME darkred
-	ENDSELECT
-	PRINTFORML {CFLAG:対象:ストレス値}/999
-	RESETCOLOR
-ELSE
-	SELECTCASE CFLAG:対象:ストレス値
-		CASE 0
-			PRINTL 無
-		CASE 1 TO 99
-			SETCOLORBYNAME lime
-			PRINTL 低
-		CASE 100 TO 299
-			SETCOLORBYNAME yellow
-			PRINTL 中
-		CASE 300 TO 499
-			SETCOLORBYNAME red
-			PRINTL 高
-		CASE IS >= 500
-			SETCOLORBYNAME darkred
-			PRINTL 過多
-	ENDSELECT
-	RESETCOLOR
-ENDIF
-
-PRINTL 
-
-@図書室
+﻿@図書室
 #DIM DYNAMIC 補充費
 #DIM DYNAMIC 割引率
 #DIM DYNAMIC 司書魅力
@@ -233,15 +50,20 @@ FOR LCOUNT, 0, CHARANUM
 	ENDIF
 NEXT
 PRINTL 
-CALL PASELIL, @"[0] - 本を補充する（{補充費}＄必要）"
-PRINTL [1] - 図書室ランクのボーナスを確認する
-PRINTL [2] - 司書を配属する
-PRINTL [9] - 戻る
+CALL PASELIL, @"[1] - 本を補充する（{補充費}＄必要）"
+PRINTL [2] - 図書室ランクのボーナスを確認する
+PRINTL [3] - 司書を配属する
+PRINTL [4] - 利用履歴を確認する（過去5日分）
+DRAWLINE
+PRINTPLAIN 　図書室　
+PRINTL [0] - 戻る
 
 DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 0
+			RETURN
+		CASE 1
 			IF MONEY < 補充費
 				PRINTW 所持金が足りません
 				RESTART
@@ -260,7 +82,7 @@ DO
 				ENDIF
 			LOOP LOOPRES(0, 1)
 			RESTART
-		CASE 1
+		CASE 2
 			DRAWLINE
 			司書魅力 = 0
 			PRINTL □詳細情報
@@ -272,7 +94,7 @@ DO
 			NEXT
 			PRINTFORML 　司書一人ごとの能力上限：{30/CMATCH(CSTR:配属, "図書室")}
 			PRINTL 
-			PRINTFORML 　利用者一人ごとの本の補充費：{補充費/CHARANUM}
+			CALL PASELIL, @"　利用者一人ごとの本の補充費：{補充費/CHARANUM}＄"
 			SIF 司書魅力
 				PRINTL 　魅力的な司書が居るため利用者増加
 			PRINTL □ランクに応じて購入可能な本
@@ -295,11 +117,12 @@ DO
 			PRINTL 上記の本はSHOPのアイテム＞特殊アイテムからお買い求めください
 			WAIT
 			RESTART
-		CASE 2
+		CASE 3
 			CALL STRATEGY_PERSONAL, "図書室"
 			RESTART
-		CASE 9
-			RETURN
+		CASE 4
+			CALL 図書室利用者
+			RESTART
 	ENDSELECT
 LOOP 1
 
@@ -338,6 +161,7 @@ RETURNF レベル
 
 @TURNEND_図書室
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC 司書魅力
 #DIM DYNAMIC 男性司書
 #DIM DYNAMIC 女性司書
@@ -369,6 +193,15 @@ NEXT
 
 ;図書室のランクを計算する
 CALL 図書室ランク計算
+
+;図書室利用履歴の変数を後ろに詰める 2次元配列ではARRAYSHIFTできないので力技
+FOR LCOUNT, 3, -1, -1
+	FOR LCOUNT2, 0, 1000
+		図書室利用履歴:(LCOUNT+1):LCOUNT2 = %図書室利用履歴:LCOUNT:LCOUNT2%
+		SIF LCOUNT == 0
+			図書室利用履歴:LCOUNT:LCOUNT2 = 
+	NEXT
+NEXT
 
 ;ここからは全員の処理
 FOR LCOUNT, 0, CHARANUM
@@ -405,6 +238,8 @@ FOR LCOUNT, 0, CHARANUM
 		興味 -= 女性司書*5
 	;{意欲*興味}%の確率で図書室を利用する
 	IF RAND(1, 101) <= 意欲*興味
+		;利用履歴変数に名前を入れる
+		図書室利用履歴:0:利用者 = %NAME:LCOUNT%
 		利用者++
 		;利用した場合は{CFLAG:本への興味*20}の習得の珠入手
 		;本への興味が皆無で司書目当てでも10は入る
@@ -434,4 +269,87 @@ NEXT
 
 DRAWLINE
 PRINTFORMW {利用者}人が図書室を利用しました
+
+@図書室利用者
+#DIM DYNAMIC 年
+#DIM DYNAMIC 月
+#DIM DYNAMIC 日
+#DIM DYNAMIC 利用年, 5
+#DIM DYNAMIC 利用月, 5
+#DIM DYNAMIC 利用日, 5
+#DIM DYNAMIC LCOUNT
+#DIM ページ
+
+;5日遡ってその日時を入れておく
+年 = YEAR
+月 = MONTH
+日 = DAYS
+FOR LCOUNT, 0, 5
+	DO
+		日--
+		IF 日 <= 0
+			月--
+			IF 月 <= 0
+				年--
+				月 = 12
+			ENDIF
+			日 = 31
+		ENDIF
+	LOOP !EXIST_DAY(年, 月, 日)
+	利用年:LCOUNT = 年
+	利用月:LCOUNT = 月
+	利用日:LCOUNT = 日
+NEXT
+
+VARLINE = 0
+
+$LOOP
+SIF VARLINE
+	CLEARLINE LINECOUNT-VARLINE
+VARLINE = LINECOUNT
+
+
+DRAWLINE
+PRINTFORML □{利用年:ページ}年{利用月:ページ}月{利用日:ページ}日の図書室利用者
+FOR LCOUNT, 0, 1000
+	IF 図書室利用履歴:ページ:LCOUNT == ""
+		IF LCOUNT == 0
+			PRINTL 
+			PRINTL 利用者無し
+			PRINTL 
+		ENDIF
+		BREAK
+	ENDIF
+	PRINTFORML 　%図書室利用履歴:ページ:LCOUNT%
+NEXT
+DRAWLINE
+PRINTPLAIN 　図書室利用履歴　
+IF ページ > 0
+	PRINT [1] 翌日の履歴 
+ELSE
+	PRINTPLAIN 　　　　　　　 
+ENDIF
+PRINT [0] 戻る 
+IF ページ < 4
+	PRINT [9] 前日の履歴
+ELSE
+	PRINTPLAIN 　　　　　　　
+ENDIF
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			VARLINE = 0
+			RETURN
+		CASE 1
+			SIF ページ > 0
+				ページ--
+			GOTO LOOP
+		CASE 9
+			SIF ページ < 4
+				ページ++
+			GOTO LOOP
+	ENDSELECT
+LOOP 1
 
