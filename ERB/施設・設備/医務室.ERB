@@ -17,30 +17,43 @@ SELECTCASE FLAG:医薬品
 	CASE 51 TO 100
 		SETCOLORBYNAME lime
 ENDSELECT
+PRINTFORM {FLAG:医薬品}\%
 RESETCOLOR
-CALL PASELIL, @"{FLAG:医薬品}\% 配属人数:{配属人数}/3 所持金:{MONEY}＄"
+CALL PASELIL, @" 配属人数:{配属人数}/3 所持金:{MONEY}＄"
 PRINTL □担当医
 FOR LCOUNT, 0, CHARANUM
 	IF CSTR:LCOUNT:配属 == "医務室"
 		PRINTFORM 　%NAME:LCOUNT% 
+		SIF !CFLAG:LCOUNT:配属完了
+			PRINT 【配属準備中】
 		SIF TALENT:LCOUNT:調合知識
 			PRINT [調合知識]
 		SIF TALENT:LCOUNT:治療
 			PRINT [治療]
+		IF TALENT:LCOUNT:謎の魅力
+			PRINT [謎の魅力]
+		ELSEIF TALENT:LCOUNT:魅力
+			PRINT [魅力]
+		ELSEIF TALENT:LCOUNT:魅惑
+			PRINT [魅惑]
+		ELSEIF TALENT:LCOUNT:人気
+			PRINT [人気]
+		ENDIF
 		PRINTL 
 	ENDIF
 NEXT
 PRINTL 
-PRINTL [1] - キャラを配属させる
 ;医薬品主人を除くキャラ人数*5000
-CALL PASELIL, @"[2] - 医薬品を補充する({(CHARANUM-1)*5000}＄)"
-IF 配属人数
-	PRINTL [3] - 健康診断を行う
-ELSE
-	SETCOLORBYNAME gray
-	PRINTL [-] - 健康診断を行う(キャラを配属する必要があります)
-	RESETCOLOR
-ENDIF
+CALL PASELIL, @"　[1] - 医薬品を補充する({(CHARANUM-1)*5000}＄)"
+PRINTL 　[2] - キャラを配属させる
+PRINTL 　[3] - 利用履歴を確認する（過去5日分）
+;IF 配属人数
+;	PRINTL [3] - 健康診断を行う
+;ELSE
+;	SETCOLORBYNAME gray
+;	PRINTL [-] - 健康診断を行う(キャラを配属する必要があります)
+;	RESETCOLOR
+;ENDIF
 DRAWLINE
 PRINTPLAIN 　医務室　
 PRINTL [0] - 戻る
@@ -51,25 +64,31 @@ DO
 		CASE 0
 			RETURN
 		CASE 1
-			CALL STRATEGY_PERSONAL, "医務室"
-			RESTART
-		CASE 2
-			IF FLAG:医薬品 <= 100
+			IF FLAG:医薬品 >= 100
 				PRINTW 医薬品は十分に揃っています
-			ELSEIF MONEY < (CHARANUM-1)*5000
+			ELSEIF MONEY > (CHARANUM-1)*5000
+				PRINTW 医薬品を補充しました
 				MONEY -= (CHARANUM-1)*5000
+				FLAG:医薬品 = 100
 			ELSE
 				PRINTW 所持金が足りません
 			ENDIF
+			RESTART
+		CASE 2
+			CALL STRATEGY_PERSONAL, "医務室"
+			RESTART
 		CASE 3
-			DRAWLINE
-			FOR PAGING, 0, CHARANUM
-				;色変えしたいのでここだけ特別処理
-				CALL PAGING, PAGING != 0, "健康診断用", "健康診断"
-			NEXT
-			SIF RESULT == -1
-				RESTART
-			CALL 健康診断, RESULT
+			CALL 医務室利用者
+			RESTART
+		;CASE 3
+		;	DRAWLINE
+		;	FOR PAGING, 0, CHARANUM
+		;		;色変えしたいのでここだけ特別処理
+		;		CALL PAGING, PAGING != 0, "健康診断用", "健康診断"
+		;	NEXT
+		;	SIF RESULT == -1
+		;		RESTART
+		;	CALL 健康診断, RESULT
 	ENDSELECT
 LOOP 1
 
@@ -127,4 +146,283 @@ ELSE
 ENDIF
 
 PRINTL 
+
+@TURNEND_医務室
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC 男性医師
+#DIM DYNAMIC 女性医師
+#DIM DYNAMIC 医師魅力
+#DIM DYNAMIC 利用確率
+#DIM DYNAMIC 利用人数
+#DIM DYNAMIC 調合知識持ち
+#DIM DYNAMIC 利用確率補正
+
+医務室体力補正 = 0
+医務室気力補正 = 0
+医務室ストレス補正 = 0
+
+;配属中のキャラを調べる
+FOR LCOUNT, 0, CHARANUM
+	IF CSTR:LCOUNT:配属 == "医務室"
+		IF CFLAG:LCOUNT:配属完了
+			医務室体力補正 += 50
+			医務室気力補正 += 50
+			医務室ストレス補正++
+			SELECTCASE SEX(LCOUNT)
+				CASE 1
+					男性医師++
+				CASE 2
+					女性医師++
+			ENDSELECT
+			;医師の素質を見る
+			FOR LCOUNT2, 0, VARSIZE("TALENT")
+				SIF !TALENT:LCOUNT:LCOUNT2
+					CONTINUE
+				SELECTCASE TALENTNAME:LCOUNT2
+					CASE "生意気", "倒錯的"
+						医務室ストレス補正--
+					CASE "気丈", "冷静", "自制心"
+						医務室体力補正 += 10
+						医務室気力補正 += 10
+					CASE "衝動的"
+						医務室体力補正 -= 10
+						医務室気力補正 -= 10
+					CASE "プライド高い"
+						医務室体力補正 += 20
+						医務室気力補正 += 20
+						医務室ストレス補正--
+					CASE "ハイテンション", "解放", "鼓舞"
+						医務室気力補正 += 10
+						医務室ストレス補正++
+					;サボり魔は25%の確率で上記の基礎補正を打ち消す
+					CASE "サボり魔"
+						IF RAND:4 == 0
+							医務室体力補正 -= 50
+							医務室気力補正 -= 50
+							医務室ストレス補正--
+						ENDIF
+					CASE "無関心"
+						医務室体力補正 += 10
+					CASE "楽観的"
+						医務室体力補正 -= 10
+						医務室気力補正 += 10
+						医務室ストレス補正++
+					CASE "悲観的"
+						医務室体力補正 += 20
+						医務室気力補正 -= 10
+						医務室ストレス補正--
+					CASE "針さばき", "潔癖症"
+						医務室体力補正 += 20
+						医務室気力補正 += 20
+					CASE "汚れ無視"
+						医務室体力補正 -= 20
+						医務室気力補正 -= 20
+					CASE "魅惑", "魅力", "人気"
+						医務室気力補正 += 10
+						利用確率補正 += 3
+					CASE "謎の魅力"
+						医務室気力補正 += 20
+						医務室ストレス補正++
+						利用確率補正 += 5
+					CASE "治療"
+						医務室体力補正 += 50
+						医務室気力補正 += 50
+						医務室ストレス補正 += 2
+						利用確率補正 += 10
+					CASE "母性"
+						医務室体力補正 += 10
+						医務室気力補正 += 10
+						医務室ストレス補正++
+						利用確率補正 += 3
+					CASE "調合知識"
+						調合知識持ち++
+				ENDSELECT
+			NEXT
+			IF ABL:LCOUNT:奉仕精神 >= 5
+				医務室体力補正 += 20
+				医務室気力補正 += 20
+				医務室ストレス補正++
+			ENDIF
+			;実務経験加算
+			EXP:LCOUNT:実務経験 += 2
+			;習得早ければ+1
+			SIF TALENT:LCOUNT:習得早い
+				EXP:LCOUNT:実務経験++
+		ENDIF
+		;配属完了にする
+		CFLAG:LCOUNT:配属完了 = 1
+	ENDIF
+NEXT
+
+医務室体力補正 = MAX(医務室体力補正, 0)
+医務室気力補正 = MAX(医務室気力補正, 0)
+医務室ストレス補正 = MAX(医務室ストレス補正, 0)
+
+;医薬品が足りてない場合はそれぞれ/10
+IF FLAG:医薬品 <= 0
+	医務室体力補正 /= 10
+	医務室気力補正 /= 10
+	医務室ストレス補正 /= 10
+ENDIF
+
+;医務室利用履歴の変数を後ろに詰める 2次元配列ではARRAYSHIFTできないので力技
+FOR LCOUNT, 3, -1, -1
+	FOR LCOUNT2, 0, 1000
+		医務室利用履歴:(LCOUNT+1):LCOUNT2 = %医務室利用履歴:LCOUNT:LCOUNT2%
+		SIF LCOUNT == 0
+			医務室利用履歴:LCOUNT:LCOUNT2 = 
+	NEXT
+NEXT
+
+;利用者の判定
+FOR LCOUNT, 0, CHARANUM
+	;MASTERは除外
+	SIF LCOUNT == MASTER
+		CONTINUE
+	;配属中の医師も除外
+	SIF CSTR:LCOUNT:配属 == "医務室"
+		CONTINUE
+	;残り体力と気力とストレス値から確率を割り出す
+	;各値それぞれ最大33%
+	利用確率 = 33-(33*BASE:LCOUNT:体力)/MAXBASE:LCOUNT:体力
+	利用確率 += 33-(33*BASE:LCOUNT:気力)/MAXBASE:LCOUNT:気力
+	利用確率 += CFLAG:LCOUNT:ストレス値/33
+	
+	;利用確率があるなら素質での補正
+	IF 利用確率
+		利用確率 += 利用確率補正
+		FOR LCOUNT2, 0, VARSIZE("TALENT")
+			SIF !TALENT:LCOUNT:LCOUNT2
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT2
+				CASE "気丈", "プライド高い", "強気", "痛みに強い"
+					利用確率 -= 5
+				CASE "生意気", "反抗的", "楽観的", "恥じらい", "薬毒耐性", "マゾ", "戦士"
+					利用確率 -= 3
+				CASE "臆病", "素直", "冷静", "悲観的", "寂しがり屋", "中毒しやすい", "暑さに弱い", "寒さに弱い"
+					利用確率 += 3
+				CASE "弱気", "痛みに弱い", "治療", "妊娠", "育児中"
+					利用確率 += 5
+			ENDSELECT
+		NEXT
+		;苦痛刻印*3
+		利用確率 += MARK:LCOUNT:苦痛刻印*3
+		;二日酔い +5
+		SIF CFLAG:LCOUNT:二日酔い
+			利用確率 += 5
+	ENDIF
+	;0以下だったら0に合わせる
+	利用確率 = MAX(0, 利用確率)
+	
+	;男好き、女好きは元気でも来訪して薬を使いやがる
+	SIF TALENT:LCOUNT:男好き
+		利用確率 += 男性医師*10
+	SIF TALENT:LCOUNT:女好き
+		利用確率 += 女性医師*10
+	
+	;利用確率を0～100に合わせる
+	利用確率 = LIMIT(利用確率, 0, 100)
+	
+	;利用するなら利用フラグを立てる
+	IF 利用確率 >= RAND(1, 101)
+		CFLAG:LCOUNT:医務室利用 = 1
+		;利用履歴変数に名前を入れる
+		医務室利用履歴:0:利用人数 = %NAME:LCOUNT%
+		利用人数++
+	ENDIF
+NEXT
+
+;最後に利用者の割合に応じて医薬品を減らす 1ターンで最大10
+;調合知識持ちだけ医薬品の消費を抑える
+SIF 利用人数
+	FLAG:医薬品 -= MAX((利用人数*10)/CHARANUM-調合知識持ち, 1)
+
+FLAG:医薬品 = LIMIT(FLAG:医薬品, 0, 100)
+
+PRINTFORML {利用人数}人が医務室を利用しました
+
+RETURN
+
+@医務室利用者
+#DIM DYNAMIC 年
+#DIM DYNAMIC 月
+#DIM DYNAMIC 日
+#DIM DYNAMIC 利用年, 5
+#DIM DYNAMIC 利用月, 5
+#DIM DYNAMIC 利用日, 5
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC ページ
+
+;5日遡ってその日時を入れておく
+年 = YEAR
+月 = MONTH
+日 = DAYS
+FOR LCOUNT, 0, 5
+	DO
+		日--
+		IF 日 <= 0
+			月--
+			IF 月 <= 0
+				年--
+				月 = 12
+			ENDIF
+			日 = 31
+		ENDIF
+	LOOP !EXIST_DAY(年, 月, 日)
+	利用年:LCOUNT = 年
+	利用月:LCOUNT = 月
+	利用日:LCOUNT = 日
+NEXT
+
+VARLINE = 0
+
+$LOOP
+SIF VARLINE
+	CLEARLINE LINECOUNT-VARLINE
+VARLINE = LINECOUNT
+
+DRAWLINE
+PRINTFORML □{利用年:ページ}年{利用月:ページ}月{利用日:ページ}日の医務室利用者
+FOR LCOUNT, 0, 1000
+	IF 医務室利用履歴:ページ:LCOUNT == ""
+		IF LCOUNT == 0
+			PRINTL 
+			PRINTL 利用者無し
+			PRINTL 
+		ENDIF
+		BREAK
+	ENDIF
+	PRINTFORML 　%医務室利用履歴:ページ:LCOUNT%
+NEXT
+DRAWLINE
+PRINTPLAIN 　医務室利用履歴　
+IF ページ > 0
+	PRINT [1] 翌日の履歴 
+ELSE
+	PRINTPLAIN 　　　　　　　 
+ENDIF
+PRINT [0] 戻る 
+IF ページ < 4
+	PRINT [9] 前日の履歴
+ELSE
+	PRINTPLAIN 　　　　　　　
+ENDIF
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			VARLINE = 0
+			RETURN
+		CASE 1
+			SIF ページ > 0
+				ページ--
+			GOTO LOOP
+		CASE 9
+			SIF ページ < 4
+				ページ++
+			GOTO LOOP
+	ENDSELECT
+LOOP 1
 

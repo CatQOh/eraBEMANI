@@ -1,0 +1,414 @@
+﻿@体力計算, ARG
+#DIM DYNAMIC LTARGET
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 体力補正
+
+LTARGET = TARGET
+TARGET = ARG
+
+;体力の回復（午後の調教後は夜の休みが入るので回復大きい）
+SELECTCASE TIME
+	CASE 0
+		SELECTCASE FLAG:難易度
+			;NORMAL
+			CASE 1
+				体力補正 = MAXBASE:体力 / 8
+			;HYPER
+			CASE 2
+				体力補正 = MAXBASE:体力 / 10
+			;ANOTHER
+			CASE 3
+				体力補正 = MAXBASE:体力 / 15
+		ENDSELECT
+	CASE 1
+		SELECTCASE FLAG:難易度
+			;NORMAL
+			CASE 1
+				体力補正 = MAXBASE:体力 / 3
+			;HYPER
+			CASE 2
+				体力補正 = MAXBASE:体力 / 4
+			;ANOTHER
+			CASE 3
+				体力補正 = MAXBASE:体力 / 5
+		ENDSELECT
+ENDSELECT
+
+;宇宙人
+SIF CSTR:種族 == "宇宙人"
+	TIMES 体力補正 , 2.00
+
+;回復早い
+SIF TALENT:回復早い
+	TIMES 体力補正 , 1.30
+
+;小柄体型 子供の回復力は高いうんぬん
+SIF TALENT:小柄体型
+	TIMES 体力補正 , 1.10
+
+
+;日光浴、月光浴（吸血鬼）、夢喰い
+SELECTCASE TIME
+	CASE 0
+		SIF TALENT:日光浴 && FLAG:天気 == 1
+			体力補正 += 100
+	CASE 1
+		IF (TALENT:月光浴 || TALENT:吸血鬼) && FLAG:天気 == 1
+			SELECTCASE 月齢
+				CASE 0 TO 1500
+					体力補正 += 月齢/10
+				CASE 1500 TO 3000
+					体力補正 += (3000-月齢)/10
+			ENDSELECT
+		ENDIF
+		;主人と当人引いて-2
+		SIF TALENT:夢喰い && CHARANUM-2 > 0
+			体力補正 += (CHARANUM-2)*10
+ENDSELECT
+
+;休憩フラグが立っている
+SIF CFLAG:休憩
+	体力補正 += 200
+
+;調教中に料理作った場合は料理技能に応じて全員の回復量アップ
+IF TFLAG:料理
+	LOCAL = TFLAG:料理
+	;食欲皆伝はどんな料理も美味しく食べる
+	SIF TALENT:食欲皆伝
+		LOCAL += 3
+	SELECTCASE LOCAL
+		;料理技能0だと逆に回復量下がる
+		CASE -1
+			体力補正 -= 50
+		CASE 1 TO 9
+			体力補正 += TFLAG:料理*20
+		CASE IS >= 10
+			体力補正 += 250
+	ENDSELECT
+	CALL KOJO_MESSAGE_EVENT, "料理"
+ENDIF
+
+;調教中にお菓子作った場合は料理技能に応じて全員の回復量アップ
+IF TFLAG:お菓子
+	LOCAL = TFLAG:お菓子
+	;食欲皆伝はどんなお菓子も美味しく食べる
+	SIF TALENT:食欲皆伝
+		LOCAL += 3
+	SELECTCASE LOCAL
+		;料理技能0だと逆に回復量下がる
+		CASE -1
+			体力補正 -= 30
+		CASE 1 TO 9
+			体力補正 += TFLAG:料理*10
+		CASE 10
+			体力補正 += 120
+	ENDSELECT
+	CALL KOJO_MESSAGE_EVENT, "お菓子"
+ENDIF
+
+;娼館配属中は回復量下がる
+SIF CSTR:配属 == "娼館" && !CFLAG:休憩 && FLAG:娼館営業中 > 0
+	体力補正 /= 10
+;芸能プロダクション配属中で「レッスンなし」以外でも回復量下がる
+SIF CSTR:配属 == "芸能プロダクション" &&  CFLAG:レッスン != 0
+	体力補正 /= 8
+
+;無機物、ゾンビ
+SIF TALENT:無機物
+	TIMES 体力補正 , 0.80
+SIF TALENT:ゾンビ
+	TIMES 体力補正 , 0.50
+;回復遅い
+SIF TALENT:回復遅い
+	TIMES 体力補正 , 0.70
+
+;リ：ジェネレーション発動中は詠唱者のスキルに応じて回復量アップ
+体力補正 += リジェネレーション*30
+
+;医務室を利用する場合は医務室の補正を加算
+SIF CFLAG:医務室利用
+	体力補正 += 医務室体力補正
+
+;「暑さに弱い」「寒さに弱い」 最低100は保証
+IF TALENT:暑さに弱い
+	SIF FLAG:気温 >= 200
+		体力補正 -= FLAG:気温-200
+	体力補正 = MAX(体力補正, 100)
+ENDIF
+IF TALENT:寒さに弱い
+	SIF FLAG:気温 <= 150
+		体力補正 -= 150-FLAG:気温
+	体力補正 = MAX(体力補正, 100)
+ENDIF
+
+;酔ってると回復量低下 最低100は保証
+IF CFLAG:酔
+	IF TALENT:酒豪
+		体力補正 -= CFLAG:酔
+	ELSEIF TALENT:下戸
+		体力補正 -= CFLAG:酔*3
+	ELSE
+		体力補正 -= CFLAG:酔*2
+	ENDIF
+	体力補正 = MAX(体力補正, 100)
+ENDIF
+
+;「回復量低下」と「気力」によって回復量がさらに下がる
+;それぞれ100倍にしてから計算
+体力補正 = (体力補正*100)/((MAXBASE:気力*100)/BASE:気力)
+
+BASE:体力 += 体力補正 / (1 + CFLAG:回復量低下); / CBRT(1000*(1+CFLAG:ストレス値))
+;体力、気力の値整理
+CALL SETBASE, TARGET
+
+TARGET = LTARGET
+
+RETURN
+
+@気力計算, ARG
+#DIM DYNAMIC LTARGET
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 気力補正
+
+LTARGET = TARGET
+TARGET = ARG
+
+;気力の回復
+;基本的に昼なら1/3回復、夜なら2/3回復
+	SELECTCASE TIME
+	CASE 0
+		気力補正 = MAXBASE:気力/3
+	CASE 1
+		気力補正 = MAXBASE:気力/3*2
+ENDSELECT
+;まずストレス値だけ引く 割合じゃないので気力が低いキャラほどストレスの影響が大きい
+気力補正 -= CFLAG:ストレス値
+
+;素質の計算
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		;臆病 未陥落なら苦痛刻印と屈服刻印に応じて減少(50～150)
+		CASE "臆病"
+			SIF !CFLAG:陥落
+				気力補正 -= 50*LIMIT(MARK:苦痛刻印-MARK:屈服刻印, 1, 3)
+		;+10%
+		CASE "気丈", "冷静", "楽観的", "目立ちたがり"
+			気力補正 += MAXBASE:気力/10
+		;+5%
+		CASE "サボり魔", "貞操無頓着", "恥薄い"
+			気力補正 += MAXBASE:気力/20
+		;-5%
+		CASE "抵抗", "恥じらい"
+			気力補正 -= MAXBASE:気力/20
+		;-10%
+		CASE "弱気", "悲観的", "貞操観念"
+			気力補正 -= MAXBASE:気力/10
+	ENDSELECT
+NEXT
+
+;医務室を利用する場合は医務室の補正を加算
+SIF CFLAG:医務室利用
+	気力補正 += 医務室気力補正
+
+BASE:気力 += MAX(気力補正, 1)
+;体力、気力の値整理
+CALL SETBASE, TARGET
+
+TARGET = LTARGET
+
+RETURN
+
+@ストレス値計算, ARG
+#DIM DYNAMIC LTARGET
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC ストレス補正, 2
+#DIM DYNAMIC 人数
+
+LTARGET = TARGET
+TARGET = ARG
+
+;ヤンデレのストレス処理
+IF TALENT:ヤンデレ
+	IF LTARGET != ARG
+		;陥落済み
+		IF CFLAG:陥落
+			;MASTERとの相性が良いほど待機中のストレス増加
+			ストレス補正 = (RELATION:(NO:MASTER)-100)/10+1
+			;しかしTARGETとの相性が良いと緩和 悪いと増加
+			SIF LTARGET > 0
+				ストレス補正 -= (RELATION:(NO:TARGET)-100)/10
+			;ASSIとの相性が悪いと増加
+			SIF ASSI > 0 && RELATION:(NO:ASSI) < 100
+				ストレス補正 += ABS(RELATION:(NO:ASSI)-100)/10+1
+		;未陥落
+		ELSE
+			;TARGETとの相性が良いと待機中のストレス増加
+			SIF LTARGET > 0 && RELATION:(NO:TARGET) > 100
+				ストレス補正 += RELATION:(NO:TARGET)/10+1
+			;ASSIとの相性が良くても待機中のストレスが増加
+			SIF ASSI > 0 && RELATION:(NO:ASSI) > 100
+				ストレス補正 += RELATION:(NO:ASSI)/10+1
+		ENDIF
+		SIF ストレス補正 > 0
+			CFLAG:ストレス値 += ストレス補正
+	;逆に調教対象の場合は相性に応じて大幅にストレス値減少
+	ELSEIF LTARGET == ARG
+		;(MASTERとの相性-100)/5 つまり200%(恋慕時)だと20減少 上がることはない
+		ストレス補正 = MAX((RELATION:(NO:MASTER)-100)/5, 0)
+		;(ASSIとの相性-100)/10 こちらもストレス値上がることはない
+		SIF ASSI > 0
+			ストレス補正 += MAX((RELATION:(NO:ASSI)-100)/10, 0)
+	ENDIF
+ENDIF
+
+;その他ストレス処理
+;調教対象の場合
+IF LTARGET == ARG
+	;未陥落 +5
+	SIF !CFLAG:陥落
+		CFLAG:ストレス値 += 5
+	;反発刻印*2
+	CFLAG:ストレス値 += MARK:反発刻印*2
+	;主人との相性 100-相性値/10(50%なら+5、70%なら+3 低下はしない)
+	CFLAG:ストレス値 += MAX(100-RELATION:(NO:MASTER), 0)/10
+	;助手が居る場合も上と同じ式で計算
+	SIF ASSI > 0
+		CFLAG:ストレス値 += MAX(100-RELATION:(NO:ASSI), 0)/10
+ELSE
+	;助手の場合
+	SIF ASSI == ARG
+		CFLAG:ASSI:ストレス値 += 3
+	;反発刻印
+	CFLAG:ストレス値 += MARK:反発刻印
+ENDIF
+
+;素質の計算
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		;ツンデレ 陥落済みかどうかでストレス±2
+		CASE "ツンデレ"
+			IF CFLAG:陥落
+				ストレス補正:1 -= 2
+			ELSE
+				ストレス補正:1 += 2
+			ENDIF
+		;寂しがり屋 未配属でTARGETでもASSIでもない場合は+3
+		CASE "寂しがり屋"
+			SIF CSTR:配属 == "" && LTARGET != ARG && TARGET != ASSI
+				ストレス補正 += 3
+		;抑圧 +ABL:欲望
+		CASE "抑圧"
+			ストレス補正 += ABL:欲望
+		;男好き、男嫌い、女好き、女嫌い 配属中は同じ配属先の男女キャラ数に応じてストレス増減 最大5
+		CASE "男好き", "男嫌い"
+			人数 = 0
+			IF CSTR:配属 != ""
+				FOR LCOUNT2, 0, CHARANUM
+					SIF TALENT:LCOUNT2:性別 == 1 && CSTR:LCOUNT2:配属 == CSTR:配属
+						人数++
+				NEXT
+			ENDIF
+			IF TALENTNAME:LCOUNT == "男好き"
+				ストレス補正 -= MIN(人数, 5)
+			ELSEIF TALENTNAME:LCOUNT == "男嫌い"
+				ストレス補正 += MIN(人数, 5)
+			ENDIF
+		CASE "女好き", "女嫌い"
+			人数 = 0
+			IF CSTR:配属 != ""
+				FOR LCOUNT2, 0, CHARANUM
+					SIF TALENT:LCOUNT2:性別 == 2 && CSTR:LCOUNT2:配属 == CSTR:配属
+						人数++
+				NEXT
+			ENDIF
+			IF TALENTNAME:LCOUNT == "女好き"
+				ストレス補正 -= MIN(人数, 5)
+			ELSEIF TALENTNAME:LCOUNT == "女嫌い"
+				ストレス補正 += MIN(人数, 5)
+			ENDIF
+		;同族嫌悪 配属中は同じ種族のキャラに応じてストレス増加 最大5
+		CASE "同族嫌悪"
+			人数 = 0
+			IF CSTR:配属 != ""
+				FOR LCOUNT2, 0, CHARANUM
+					SIF CSTR:LCOUNT2:種族 == CSTR:種族 && CSTR:LCOUNT2:配属 == CSTR:配属
+						人数++
+				NEXT
+			ENDIF
+			ストレス補正 += MIN(人数, 5)
+		;バストサイズ 巨乳以上だと+1
+		CASE "バストサイズ"
+			SIF TALENT:バストサイズ >= 4
+				ストレス補正:1 += 1
+		;日光浴 昼なら-1
+		CASE "日光浴"
+			SIF TIME == 0
+				ストレス補正 -= 1
+		;月光浴 夜なら-1
+		CASE "月光浴"
+			SIF TIME == 1
+				ストレス補正 -= 1
+		;-3
+		CASE "ハイテンション", "解放", "無機物"
+			ストレス補正:1 -= 3
+		;-2
+		CASE "好奇心", "楽観的", "自慰しやすい", "幼稚"
+			ストレス補正:1 -= 2
+		;-1
+		CASE "衝動的", "冷静", "無関心", "感情乏しい", "食欲皆伝"
+			ストレス補正:1 -= 1
+		;+1
+		CASE "臆病", "強気", "弱気", "潔癖症"
+			ストレス補正:1 += 1
+		;+2
+		CASE "生意気","反抗的", "自制心", "悲観的"
+			ストレス補正:1 += 2
+		;+3
+		CASE "性器破損", "育児中"
+			ストレス補正:1 += 3
+		;+4
+		CASE "プライド高い", "弱味"
+			ストレス補正:1 += 4
+		;+5
+		CASE "妊娠"
+			ストレス補正:1 += 5
+	ENDSELECT
+NEXT
+
+;ストレス補正:0は毎ターン計算
+;ストレス補正:1は休憩フラグが立っていれば無視できるが、ストレス補正:1の結果でストレスが低下することはない
+CFLAG:ストレス値 += ストレス補正
+SIF !CFLAG:休憩
+	CFLAG:ストレス値 += MAX(ストレス補正:1, 0)
+
+;使用不可じゃないキャラは休憩フラグ立ってればストレス減少
+IF !CFLAG:使用不可 && CFLAG:休憩
+	SELECTCASE FLAG:難易度
+		;NORMALなら休憩でストレス値-15
+		CASE 1
+			CFLAG:ストレス値 -= 15
+		;HYPERは-10
+		CASE 2
+			CFLAG:ストレス値 -= 10
+		;ANOTHERは-5
+		CASE 3
+			CFLAG:ストレス値 -= 5
+	ENDSELECT
+ENDIF
+
+;医務室を利用する場合は医務室の補正分減少
+SIF CFLAG:医務室利用
+	CFLAG:ストレス値 -= 医務室ストレス補正
+
+;ストレス値は0～999にする
+CFLAG:ストレス値 = LIMIT(CFLAG:ストレス値, 0, 999)
+
+TARGET = LTARGET
+
+RETURN
+
