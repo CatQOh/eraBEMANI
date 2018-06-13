@@ -1,0 +1,179 @@
+﻿@実験室
+#DIM DYNAMIC 配属人数
+#DIM DYNAMIC LCOUNT
+配属人数 = CMATCH(CSTR:配属, "実験室")
+
+
+
+CALL 実験室レベル計算
+DRAWLINE
+PRINTL □実験室
+PRINTL 　研究者を配属することによって、アイテムの生産や改造が可能になります
+PRINTL 　能力の高いキャラや、いささか常識から外れているキャラの適性が高いようです
+PRINTFORML □研究員:{配属人数}/5 研究レベル:{基礎研究レベル}/50 欲望レベル:{欲望研究レベル}/50
+PRINTFORML 　サディストレベル:{サド研究レベル}/50 マゾヒストレベル:{マゾ研究レベル}/50
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "実験室"
+		CONTINUE
+	PRINTFORM 　%NAME:LCOUNT% 工作技能:{ABL:LCOUNT:工作技能} サドっ気:[ABL:LCOUNT:サドっ気] マゾっ気:{ABL:LCOUNT:マゾっ気}
+	SIF !CFLAG:LCOUNT:配属完了
+		PRINT 【配属準備中】
+	SIF TALENT:LCOUNT:工学博士
+		PRINT [工学博士]
+	SIF TALENT:LCOUNT:サド
+		PRINT [サド]
+	SIF TALENT:LCOUNT:マゾ
+		PRINT [マゾ]
+	SIF TALENT:LCOUNT:倒錯的
+		PRINT [倒錯的]
+	SIF TALENT:LCOUNT:調合知識
+		PRINT [調合知識]
+NEXT
+PRINTL 
+PRINTL 　[1] - キャラを配属させる
+PRINTL 　[2] - アイテムを改造する
+PRINTL 　[3] - 実験室ボーナスを確認する
+DRAWLINE
+PRINT 　実験室　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1
+			CALL STRATEGY_PERSONAL, "実験室"
+			RESTART
+		CASE 2
+			CALL アイテム改造
+			RESTART
+		CASE 3
+	ENDSELECT
+LOOP 1
+
+@アイテム改造
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 選択アイテム
+
+PRINTL □改造するアイテムを選んでください
+FOR LCOUNT, 0, 50
+	SIF SAVESTRNAME:LCOUNT == ""
+		CONTINUE
+	;初回呼び出し時には各STRにアイテム名をセットする
+	SIF SAVESTR:LCOUNT == ""
+		SAVESTR:LCOUNT = %SAVESTRNAME:LCOUNT%
+	IF ITEM:(SAVESTRNAME:LCOUNT)
+		PRINTFORML [{LCOUNT}] - %SAVESTRNAME:LCOUNT%
+	ELSE
+		SETCOLORBYNAME gray
+		PRINTFORML [--] - %SAVESTRNAME:LCOUNT%（アイテム未所持）
+	ENDIF
+NEXT
+
+DO
+	INPUT
+	選択アイテム = %SAVESTRNAME:RESULT%
+	;アイテムの改造状態 無改造だと「通常の」接頭語が付く
+	SIF SAVESTRNAME:LCOUNT != "" && ITEM:選択アイテム
+		PRINTFORML □現在の状態 \@ SAVESTRNAME:LCOUNT == SAVESTR:LCOUNT ? 通常の #  \@%SAVESTR:選択アイテム%
+	SELECTCASE 選択アイテム
+		CASE "ローター"
+			PRINTL 　[1] - 防水仕様にする
+		CASE "電気按摩"
+			PRINTL 　[1] - 防水仕様にする
+			
+		CASE "オナホール"
+			PRINTL 　[1] - 電動オナホールに改造する
+		
+		CASE "空気ポンプ"
+			PRINTL 　[1] - 尿道ポンプに改造する
+		CASE "浣腸器"
+			PRINTL 　[1] - 媚薬浣腸に改造する
+			PRINTL 　[2] - アルコール浣腸に改造する
+			PRINTL 　[3] - 精液浣腸に改造する
+		
+		CASE "搾乳器"
+			PRINTL 　[1] - 通常の搾乳器に戻す
+			PRINTL 　[2] - 搾精器に改造する
+			PRINTL 　[3] - 
+		CASE "ペニスバンド"
+			PRINTL 　[1] - 通常のペニスバンドに戻す
+			PRINTL 　[2] - 細くする
+			PRINTL 　[3] - 太くする
+			PRINTL 　[4] - 双頭ディルド仕様に改造する
+			PRINTL 　[5] - 疑似射精機能を追加する
+		CASE "鞭"
+			PRINTL 　[1] - 威力を上げる
+			PRINTL 　[2] - 電流を流す
+		CASE "ボールギャグ"
+			PRINTL 　[1] - 強制開口器に改造する
+		CASE "大鏡"
+			PRINTL 　[1] - 三面鏡にする
+			PRINTL 　[2] - 
+		CASE "首輪"
+			PRINTL 　[1] - 尻尾プラグのオプションを追加する
+		CASE "エプロン"
+			PRINTL 　[1] - 玄人志向に改造する（料理の美味しさにボーナス）
+			
+		CASE "ローション"
+			PRINTL 　[1] - 通常のローションに戻す
+			PRINTL 　[2] - 媚薬入りローションに改造する
+	ENDSELECT
+LOOP 1
+
+
+
+@実験室レベル計算
+#DIM DYNAMIC LCOUNT
+
+基礎研究レベル = 0
+欲望研究レベル = 0
+サド研究レベル = 0
+マゾ研究レベル = 0
+
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "実験室" || !CFLAG:LCOUNT:配属完了
+		CONTINUE
+	;基礎研究レベル まず工作技能を入れる
+	基礎研究レベル += ABL:LCOUNT:工作技能
+	;欲望研究レベル (工作技能+欲望)/2
+	欲望研究レベル += (ABL:LCOUNT:工作技能+ABL:LCOUNT:欲望)/2
+	;サド研究レベル (工作技能+サドっ気)/2
+	サド研究レベル += (ABL:LCOUNT:工作技能+ABL:LCOUNT:サドっ気)/2
+	;マゾ研究レベル (工作技能+マゾっ気)/2
+	マゾ研究レベル += (ABL:LCOUNT:工作技能+ABL:LCOUNT:マゾっ気)/2
+	;素質補正
+	IF TALENT:LCOUNT:工学博士
+		基礎研究レベル += 2
+		欲望研究レベル += 2
+		サド研究レベル += 2
+		マゾ研究レベル += 2
+	ENDIF
+	SIF TALENT:LCOUNT:淫乱
+		欲望研究レベル += 2
+	SIF TALENT:LCOUNT:娼婦
+		欲望研究レベル += 3
+	SIF TALENT:LCOUNT:サド
+		サド研究レベル += 2
+	SIF TALENT:LCOUNT:マゾ
+		マゾ研究レベル += 2
+	IF TALENT:LCOUNT:倒錯的
+		サド研究レベル++
+		マゾ研究レベル++
+	ENDIF
+	SIF TALENT:調合知識
+		基礎研究レベル++
+NEXT
+
+;各値最大50
+CALL SETMIN, 基礎研究レベル, 50
+CALL SETMIN, 欲望研究レベル, 50
+CALL SETMIN, サド研究レベル, 50
+CALL SETMIN, マゾ研究レベル, 50
+
+RETURN
+
+
+
+
