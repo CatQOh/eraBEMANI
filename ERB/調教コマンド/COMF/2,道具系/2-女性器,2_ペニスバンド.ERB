@@ -1,0 +1,127 @@
+﻿;-------------------------------------------------
+;ペニスバンド
+;-------------------------------------------------
+@USERCOM_ABLE_ペニスバンド, ARG
+#FUNCTION
+;ゲーセンに居る場合はトイレじゃないとできない
+SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
+	RETURNF 0
+;上級売春中はアイテム無いとダメ
+IF 上級売春中
+	SIF !ITEM:娼館ペニスバンド
+		RETURNF 0
+ELSE
+	;アイテムを持っていないとダメ
+	SIF ITEM:ペニスバンド <= 0
+		RETURNF 0
+ENDIF
+
+;解除はいつでも可能
+IF FINDCHARA(TEQUIP:ペニスバンド, 1) >= 0
+	COMRESULT = 1
+	RETURNF 1
+ENDIF
+
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURNF 0
+;装着判定
+SIF !ペニバン装着判定(TARGET) && !ペニバン装着判定(MASTER) && !ペニバン装着判定(ASSI)
+	RETURNF 0
+
+COMRESULT = 1
+RETURNF 1
+
+@COM_ペニスバンド
+
+IF FINDCHARA(TEQUIP:ペニスバンド, 1) >= 0
+	PRINTL ペニスバンド解除
+	CALL KOJO_MESSAGE_COM
+	TEQUIP:FINDCHARA(TEQUIP:ペニスバンド, 1):ペニスバンド = 0
+ELSE
+	PRINTL 誰にペニスバンドを装着させますか？
+	SIF ペニバン装着判定(MASTER)
+		PRINTFORML [1] - %CALLNAME:MASTER%
+	SIF ペニバン装着判定(TARGET)
+		PRINTFORML [2] - %CALLNAME:TARGET%
+	SIF ペニバン装着判定(ASSI)
+		PRINTFORML [3] - %CALLNAME:ASSI%
+	PRINTL [0] - やめる
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 0
+				RETURN 0
+			CASE 1
+				IF ペニバン装着判定(MASTER)
+					TFLAG:ペニバン着用者 = MASTER
+					CALL KOJO_MESSAGE_COM
+					TEQUIP:MASTER:ペニスバンド = 1
+					IF OVER_GENITAL(MASTER) != ""
+						IF CFLAG:MASTER:挿入可
+							TEQUIP:MASTER:下半身下着 = 0
+						ELSE
+							TEQUIP:MASTER:下半身下着 = 0
+							TEQUIP:MASTER:下半身上着 = 0
+							TEQUIP:MASTER:全身上着 = 0
+						ENDIF
+					ENDIF
+					BREAK
+				ENDIF
+			CASE 2
+				IF ペニバン装着判定(TARGET)
+					TFLAG:ペニバン着用者 = TARGET
+					CALL KOJO_MESSAGE_COM
+					TEQUIP:ペニスバンド = 1
+					IF OVER_GENITAL(TARGET) != ""
+						IF CFLAG:挿入可
+							TEQUIP:下半身下着 = 0
+						ELSE
+							TEQUIP:下半身下着 = 0
+							TEQUIP:下半身上着 = 0
+							TEQUIP:全身上着 = 0
+						ENDIF
+					ENDIF
+					BREAK
+				ENDIF
+			CASE 3
+				IF ペニバン装着判定(ASSI)
+					TFLAG:ペニバン着用者 = ASSI
+					CALL KOJO_MESSAGE_COM
+					TEQUIP:ASSI:ペニスバンド = 1
+					IF OVER_GENITAL(ASSI) != ""
+						IF CFLAG:ASSI:挿入可
+							TEQUIP:ASSI:下半身下着 = 0
+						ELSE
+							TEQUIP:ASSI:下半身下着 = 0
+							TEQUIP:ASSI:下半身上着 = 0
+							TEQUIP:ASSI:全身上着 = 0
+						ENDIF
+					ENDIF
+					BREAK
+				ENDIF
+		ENDSELECT
+	LOOP 1
+	RETURN 0
+ENDIF
+
+@ペニバン装着判定, 装着者
+#FUNCTION
+#DIM DYNAMIC 装着者
+
+;-1なら不可
+SIF 装着者 == -1
+	RETURNF 0
+
+;ペニスあるとダメ
+SIF PENIS(装着者)
+	RETURNF 0
+;Ｖ使用中はダメ
+SIF Ｖ使用中(装着者)
+	RETURNF 0
+;小人体型も無理
+SIF TALENT:装着者:小人体型
+	RETURNF 0
+
+RETURNF 1
+
