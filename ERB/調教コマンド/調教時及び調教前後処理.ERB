@@ -419,84 +419,91 @@ IF 上級売春中
 ELSE
 	;体力切れ
 	IF BASE:体力 <= 0
-		PRINTFORML （激しい調教で%CALLNAME:TARGET%はひどく消耗したようです　調教を終了します）
-		;従順ダウン 陥落済みなら発生しない
-		IF ABL:従順 > 0 && !CFLAG:陥落
-			ABL:従順--
-			PRINTFORML %CALLNAME:TARGET%の従順が1下がった
-		ENDIF
-		;回復量低下フラグ
-		CFLAG:回復量低下 += 2
-		CFLAG:ストレス値 += 10
-		BASE:体力 = 1
-		;条件を満たしていれば吸血イベント発生するか選択できる
-		;条件：主人が吸血鬼で、対象が種族[人間]である
-		IF TALENT:MASTER:吸血鬼 && CSTR:種族 == "人間"
-			PRINTFORMW 消耗して動けない%CALLNAME:TARGET%を見下ろしながら思う……
-			PRINTFORMW このまま%CALLNAME:TARGET%を……
-			PRINTL [0] 眷属に迎え入れようか
-			PRINTL [1] 放っておこうか
-			DO
-				INPUT
-				;吸血
-				IF RESULT == 0
-					CALL KOJO_MESSAGE_EVENT, "主人吸血"
-					;吸血鬼化
-					IF TALENT:処女 || TALENT:再生処女 || TALENT:童貞
-						TALENT:吸血鬼 = 1
-						CSTR:種族 = ヴァンパイア
-						;上位陥落素質ありで妄信イベント
-						IF (TALENT:親愛 || TALENT:娼婦 || TALENT:隷属) && !TALENT:妄信
-							PRINTFORML %CALLNAME:TARGET%は[妄信]を得た。
-							TALENT:妄信 = 1
+		;自爆した場合
+		IF ハッキング命令 == "自爆"
+			PRINTFORML ★★★%CALLNAME:TARGET%は自爆しました★★★
+			自爆キャラ:(NO:TARGET) = 1
+			BEGIN AFTERTRAIN
+		ELSE
+			PRINTFORML （激しい調教で%CALLNAME:TARGET%はひどく消耗したようです　調教を終了します）
+			;従順ダウン 陥落済みなら発生しない
+			IF ABL:従順 > 0 && !CFLAG:陥落
+				ABL:従順--
+				PRINTFORML %CALLNAME:TARGET%の従順が1下がった
+			ENDIF
+			;回復量低下フラグ
+			CFLAG:回復量低下 += 2
+			CFLAG:ストレス値 += 10
+			BASE:体力 = 1
+			;条件を満たしていれば吸血イベント発生するか選択できる
+			;条件：主人が吸血鬼で、対象が種族[人間]である
+			IF TALENT:MASTER:吸血鬼 && CSTR:種族 == "人間"
+				PRINTFORMW 消耗して動けない%CALLNAME:TARGET%を見下ろしながら思う……
+				PRINTFORMW このまま%CALLNAME:TARGET%を……
+				PRINTL [0] 眷属に迎え入れようか
+				PRINTL [1] 放っておこうか
+				DO
+					INPUT
+					;吸血
+					IF RESULT == 0
+						CALL KOJO_MESSAGE_EVENT, "主人吸血"
+						;吸血鬼化
+						IF TALENT:処女 || TALENT:再生処女 || TALENT:童貞
+							TALENT:吸血鬼 = 1
+							CSTR:種族 = ヴァンパイア
+							;上位陥落素質ありで妄信イベント
+							IF (TALENT:親愛 || TALENT:娼婦 || TALENT:隷属) && !TALENT:妄信
+								PRINTFORML %CALLNAME:TARGET%は[妄信]を得た。
+								TALENT:妄信 = 1
+							ENDIF
+						;ゾンビ化
+						ELSE
+							TALENT:ゾンビ = 1
+							CSTR:種族 = ゾンビ
 						ENDIF
-					;ゾンビ化
-					ELSE
-						TALENT:ゾンビ = 1
-						CSTR:種族 = ゾンビ
+						IF CFLAG:被吸血経験 == 0
+							EXP:異常経験++
+							PRINTL 異常経験+1
+						ENDIF
+						CFLAG:被吸血経験++
+						EXP:MASTER:吸血経験++
 					ENDIF
-					IF CFLAG:被吸血経験 == 0
-						EXP:異常経験++
-						PRINTL 異常経験+1
+				LOOP LOOPRES(0, 1)
+			;助手が陥落して条件を満たしていれば、助手を使った吸血イベント発生するか選択できる
+			;条件：助手が居て、助手が吸血鬼で、対象が種族[人間]である
+			ELSEIF ASSI >= 0 && CFLAG:ASSI:陥落 && TALENT:ASSI:吸血鬼 && CSTR:種族 == "人間"
+				PRINTFORML 今の無防備な%CALLNAME:TARGET%なら好き勝手できそうだ。
+				PRINTFORML %CALLNAME:ASSI%に血を吸わせますか？
+				PRINTL [0] - 吸わせる
+				PRINTL [1] - 吸わせない
+				DO
+					INPUT
+					IF RESULT == 0
+						CALL KOJO_MESSAGE_EVENT, "助手吸血"
+						;対象が処女、再生処女、童貞なら吸血鬼化
+						IF TALENT:処女 || TALENT:再生処女 || TALENT:童貞
+							TALENT:吸血鬼 = 1
+							CSTR:種族 = ヴァンパイア
+						;ゾンビ化
+						ELSE
+							TALENT:ゾンビ = 1
+							CSTR:種族 = ゾンビ
+						ENDIF
+						;初めて血を吸われたら異常経験追加
+						IF CFLAG:被吸血経験 == 0
+							EXP:異常経験++ 
+							PRINTL 異常経験+1
+						ENDIF
+						CFLAG:被吸血経験++
+						EXP:ASSI:吸血経験++
 					ENDIF
-					CFLAG:被吸血経験++
-					EXP:MASTER:吸血経験++
-				ENDIF
-			LOOP LOOPRES(0, 1)
-		;助手が陥落して条件を満たしていれば、助手を使った吸血イベント発生するか選択できる
-		;条件：助手が居て、助手が吸血鬼で、対象が種族[人間]である
-		ELSEIF ASSI >= 0 && CFLAG:ASSI:陥落 && TALENT:ASSI:吸血鬼 && CSTR:種族 == "人間"
-			PRINTFORML 今の無防備な%CALLNAME:TARGET%なら好き勝手できそうだ。
-			PRINTFORML %CALLNAME:ASSI%に血を吸わせますか？
-			PRINTL [0] - 吸わせる
-			PRINTL [1] - 吸わせない
-			DO
-				INPUT
-				IF RESULT == 0
-					CALL KOJO_MESSAGE_EVENT, "助手吸血"
-					;対象が処女、再生処女、童貞なら吸血鬼化
-					IF TALENT:処女 || TALENT:再生処女 || TALENT:童貞
-						TALENT:吸血鬼 = 1
-						CSTR:種族 = ヴァンパイア
-					;ゾンビ化
-					ELSE
-						TALENT:ゾンビ = 1
-						CSTR:種族 = ゾンビ
-					ENDIF
-					;初めて血を吸われたら異常経験追加
-					IF CFLAG:被吸血経験 == 0
-						EXP:異常経験++ 
-						PRINTL 異常経験+1
-					ENDIF
-					CFLAG:被吸血経験++
-					EXP:ASSI:吸血経験++
-				ENDIF
-			LOOP LOOPRES(0, 1)
+				LOOP LOOPRES(0, 1)
+			ENDIF
+			;実績:ガッキー博士で奴隷の体力を0にする
+			SIF CHARANAMEF(PLAYER) == "ガッキー博士"
+				CALL 実績解除, "「科学の発展に犠牲は付き物デース」"
+			BEGIN AFTERTRAIN
 		ENDIF
-		;実績:ガッキー博士で奴隷の体力を0にする
-		SIF CHARANAMEF(PLAYER) == "ガッキー博士"
-			CALL 実績解除, "「科学の発展に犠牲は付き物デース」"
-		BEGIN AFTERTRAIN
 	ELSEIF BASE:体力 < 500
 		PRINTL （体力が限界に来ています　調教を終了します）
 		BEGIN AFTERTRAIN
@@ -506,6 +513,12 @@ ENDIF
 ;流産時に体力が削りきれなかった場合は強制的に調教終了
 IF TFLAG:流産
 	PRINTFORML （%CALLNAME:TARGET%が流産したため、調教を終了します）
+	BEGIN AFTERTRAIN
+ENDIF
+;自爆時も同様
+IF ハッキング命令 == "自爆"
+	PRINTFORML ★★★%CALLNAME:TARGET%は自爆しました★★★
+	自爆キャラ:(NO:TARGET) = 1
 	BEGIN AFTERTRAIN
 ENDIF
 
@@ -546,6 +559,13 @@ FOR LCOUNT, 0, VARSIZE("ITEM")
 		ITEM:LCOUNT = 1
 	ENDIF
 NEXT
+
+;自爆したらDELCHARAして全部無視してTURNEND
+IF ハッキング命令 == "自爆"
+	DELCHARA TARGET
+	TARGET = -1
+	BEGIN TURNEND
+ENDIF
 
 ;屋外プレイで雨、もしくはお風呂場プレイ中に終了した場合、人魚の体力気力を半減させる
 IF TEQUIP:お風呂場

@@ -1,0 +1,143 @@
+﻿;-------------------------------------------------
+;ハッキング
+;-------------------------------------------------
+@USERCOM_ABLE_ハッキング, ARG
+#FUNCTION
+;対象が機械じゃないとダメ
+SIF !TALENT:無機物
+	RETURNF 0
+;PLAYERが工作技能LV3以上無いとダメ
+SIF ABL:PLAYER:工作技能 < 3
+	RETURNF 0
+
+COMRESULT = 1
+RETURNF 1
+
+@COM_ハッキング
+#DIM DYNAMIC スキル
+;あえてスキルキャップは無し
+スキル = ABL:PLAYER:工作技能
+;ナニニシマスカ？
+PRINTL ハッキングで何をしますか？
+PRINTL [1] - 過電流を掛ける（苦痛効果大）
+IF スキル >= 5
+	IF PENIS(TARGET)
+		PRINTL [2] - 射精の信号を送る
+	ELSE
+		PRINTL [2] - Ｃ絶頂の信号を送る
+	ENDIF
+	PRINTL [3] - Ｂ絶頂の信号を送る
+ENDIF
+IF スキル >= 7
+	SIF VAGINA(TARGET)
+		PRINTL [4] - Ｖ絶頂の信号を送る
+	PRINTL [5] - Ａ絶頂の信号を送る
+ENDIF
+SIF スキル >= 9
+	PRINTL [6] - 従属プログラムを実行（コマンド実行判定無視）
+SIF スキル >= 10
+	PRINTL [7] - 自爆命令を実行（キャラロスト）
+PRINTL [0] - キャンセル
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			;機械は苦痛を1/10にするので大きめの値にする
+			SOURCE:苦痛 = スキル*5000
+			SOURCE:屈従 = スキル*100
+			ハッキング命令 = 過電流
+		CASE 2
+			SIF スキル < 5
+				CONTINUE
+			IF PENIS(TARGET)
+				BASE:射精 += スキル*(MAXBASE:射精/5)
+				ハッキング命令 = 射精
+			ELSE
+				PALAM:快Ｃ += スキル*2000
+				ハッキング命令 = Ｃ絶頂
+			ENDIF
+		CASE 3
+			SIF スキル < 5
+				CONTINUE
+			PALAM:快Ｂ += スキル*2000
+			ハッキング命令 = Ｂ絶頂
+		CASE 4
+			SIF スキル < 7 || !VAGINA(TARGET)
+				CONTINUE
+			PALAM:快Ｖ += スキル*2000
+			ハッキング命令 = Ｖ絶頂
+		CASE 5
+			SIF スキル < 7
+				CONTINUE
+			PALAM:快Ａ += スキル*2000
+			ハッキング命令 = Ａ絶頂
+		CASE 6
+			SIF スキル < 9
+				CONTINUE
+			TFLAG:実行判定無視 = 10000
+			ハッキング命令 = 従属
+		CASE 7
+			SIF スキル < 10
+				CONTINUE
+			PRINTL 自爆命令を実行します。本当によろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						LOSEBASE:体力 = POWER(RAND(5, 9), RAND(15, 21))
+						ハッキング命令 = 自爆
+						BREAK
+					CASE 1
+						RETURN 0
+				ENDSELECT
+			LOOP 1
+			BREAK
+	ENDSELECT
+LOOP LOOPRES(1, 2, 3, 4, 5, 6)
+
+;ハッキングするとものすごく不快感を感じる
+IF ハッキング命令 != "自爆"
+	SOURCE:不潔 = 2000
+	SOURCE:逸脱 = 2000
+	SOURCE:反感 = 2000
+ENDIF
+
+
+PRINTFORML ハッキング（%ハッキング命令%）
+CALL KOJO_MESSAGE_COM
+
+;実績：リノンをハッキングして従属させる
+IF ハッキング命令 == "従属"
+	SELECTCASE CHARANAMEF(TARGET)
+		CASE "リノン", "黒リノン"
+			CALL 実績解除, "何でも言うことを聞いてくれるリノンチャン"
+	ENDSELECT
+ENDIF
+
+SIF ハッキング命令 == "自爆"
+	RETURN 1
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 0, 3
+
+RETURN 1
+
