@@ -20,7 +20,10 @@ SIF CFLAG:二日酔い
 	RETURN 0
 
 ;朝騎乗位判定
-IF ((!TALENT:処女 && !TALENT:再生処女 && ABL:Ｖ感覚 >= 3) || ABL:Ａ感覚 >= 3) && ABL:奉仕精神 >= 7
+;出産トラウマがある場合は発生しない時がある
+LOCAL = CFLAG:出産トラウマ
+;1+(トラウマ値/10)/2+(トラウマ値/10) 
+IF ((!TALENT:処女 && !TALENT:再生処女 && ABL:Ｖ感覚 >= 3) || ABL:Ａ感覚 >= 3) && ABL:奉仕精神 >= 7 && !(LOCAL && RAND:(LOCAL/10+2) <= LOCAL/10)
 	CALL SELF_MORNING_朝騎乗位
 ;朝パイズリ判定
 ELSEIF TALENT:バストサイズ >= 2 && ABL:奉仕精神 >= 5
@@ -258,10 +261,17 @@ CFLAG:MASTER:朝騎乗位経験++
 ;調教後3P、調教後セックスどちらか一つ（強精神剤の反動が起こる時は無効）
 ;助手がいる場合は3P判定 対象と助手が陥落済み、対象と助手間の相性がそれぞれ100より↑、対象の体力500以上
 IF ASSI >= 0 && CFLAG:陥落 && CFLAG:ASSI:陥落 && RELATION:(NO:ASSI) > 100 && RELATION:ASSI:(NO:TARGET) > 100 && BASE:体力 >= 500 && TEQUIP:強精神薬 <= 2
-	CALL SELF_CHECK_調教後3P
+	;ただし出産トラウマがある場合は発生しない時がある
+	LOCAL = CFLAG:出産トラウマ+CFLAG:ASSI:出産トラウマ
+	;1+(合計値/10)/2+(合計値/10) 
+	SIF !(LOCAL && RAND:(LOCAL/10+2) <= LOCAL/10)
+		CALL SELF_CHECK_調教後3P
 ;ふたりエッチ判定 対象が陥落済み、対象の体力500以上
 ELSEIF CFLAG:陥落 && BASE:体力 >= 500 && TEQUIP:強精神薬 <= 2
-	CALL SELF_CHECK_調教後セックス
+	;出産トラウマがある場合はry 式は上と同じ1
+	LOCAL = CFLAG:出産トラウマ
+	SIF !(LOCAL && RAND:(LOCAL/10+2) <= LOCAL/10)
+		CALL SELF_CHECK_調教後セックス
 ENDIF
 
 ;強精神薬の反動、調教後搾乳、調教後自慰。どれか一つ

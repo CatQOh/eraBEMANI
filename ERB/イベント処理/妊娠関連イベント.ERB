@@ -259,6 +259,8 @@ NEXT
 
 @GET_CHILD_MESSAGE, ARG
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 父親
+父親 = PREG:ARG:21
 VARSET LOCAL, 0
 
 IF ARG == MASTER
@@ -309,10 +311,11 @@ IF !TALENT:ARG:母乳体質 && SEX(ARG) == 2
 ENDIF
 
 ;ストレス値の処理
+;PREG:12 = 出産トラウマ
 IF ARG != MASTER || !TALENT:ARG:妊娠確定
 	LOCAL = 100
 	;父親が主人
-	IF PREG:ARG:21 == NO:MASTER
+	IF 父親 == NO:MASTER
 		SELECTCASE FALLTYPE(ARG)
 			;恋慕もしくは親愛
 			CASE 1
@@ -323,42 +326,72 @@ IF ARG != MASTER || !TALENT:ARG:妊娠確定
 			;服従もしくは隷属
 			CASE 3
 				LOCAL -= 80
+			CASEELSE
+				PREG:ARG:12 = 15
 		ENDSELECT
 	;父親が奴隷または助手
-	ELSEIF PREG:ARG:21 != -1
+	ELSEIF 父親 != -1
 		SELECTCASE FALLTYPE(ARG)
 			;恋慕もしくは親愛
 			CASE 1
 				LOCAL -= 40
+				PREG:ARG:12 = 15
 			;淫乱もしくは娼婦
 			CASE 2
 				LOCAL -= 60
+				PREG:ARG:12 = 5
 			;服従もしくは隷属
 			CASE 3
 				LOCAL -= 50
+				PREG:ARG:12 = 5
+			CASEELSE
+				PREG:ARG:12 = 15
 		ENDSELECT
 	;父親が顧客
-	ELSEIF PREG:ARG:21 == -1
+	ELSEIF 父親 == -1
 		SELECTCASE FALLTYPE(ARG)
 			;恋慕もしくは親愛
 			CASE 1
 				LOCAL -= 10
+				PREG:ARG:12 = 20
 			;淫乱もしくは娼婦
 			CASE 2
 				LOCAL -= 60
+				PREG:ARG:12 = 5
 			;服従もしくは隷属
 			CASE 3
 				LOCAL -= 50
+				PREG:ARG:12 = 10
+			CASEELSE
+				PREG:ARG:12 = 20
 		ENDSELECT
 	ENDIF
 	;相性による変動
-	IF PREG:ARG:21 != -1
+	IF 父親 != -1
 		LOCAL *= 100
-		SIF RELATION:ARG:(PREG:ARG:21)
-			LOCAL /= RELATION:ARG:(PREG:ARG:21)
+		SIF RELATION:ARG:父親
+			LOCAL /= RELATION:ARG:父親
+		;出産トラウマは相性20%ごとに±1変動
+		;端的に言えば恋慕付き東雲姉妹同士で孕ませ合っても相性300%なので出産トラウマは5残ってしまう
+		PREG:ARG:12 -= (RELATION:ARG:父親-100)/20
+		SIF PREG:ARG:12 < 0
+			PREG:ARG:12 = 0
 	ENDIF
 
 	;その他素質による補正
+	;相性で出産トラウマがマイナスにはならないが素質ではマイナスになる（つまりある程度猶予ができる）
+	SIF TALENT:ARG:母性
+		PREG:ARG:12--
+	SIF TALENT:ARG:小柄体型
+		PREG:ARG:12 += 5
+	SIF TALENT:ARG:男嫌い
+		PREG:ARG:12 += 3
+	SIF TALENT:ARG:ヤンデレ
+		PREG:ARG:12--
+	SIF CSTR:ARG:種族 == "獣人" || CSTR:ARG:種族 == "獣"
+		PREG:ARG:12 -= 2
+	PREG:ARG:12 += MARK:ARG:反発刻印
+	
 	;気丈
 	SIF TALENT:ARG:気丈
 		LOCAL -= 10
@@ -375,16 +408,25 @@ IF ARG != MASTER || !TALENT:ARG:妊娠確定
 	SIF TALENT:ARG:悲観的
 		LOCAL += 5
 	;貞操観念
-	SIF TALENT:ARG:貞操観念
+	IF TALENT:ARG:貞操観念
 		LOCAL += 10
+		PREG:ARG:12++
+	ENDIF
 	;貞操無頓着
-	SIF TALENT:ARG:貞操無頓着
+	IF TALENT:ARG:貞操無頓着
 		LOCAL -= 10
+		PREG:ARG:12--
+	ENDIF
+	;出産トラウマ
+	SIF CFLAG:ARG:出産トラウマ
+		LOCAL += CFLAG:出産トラウマ*10
 
 	SIF LOCAL < 0
 		LOCAL = 0
 
 	CFLAG:ARG:ストレス値 += LOCAL
+	SIF CFLAG:ARG:ストレス値 >= 999
+		CFLAG:ARG:ストレス値 = 999
 
 ;	;ストレス値の累積が100を超えた場合
 ;	IF CFLAG:ARG:ストレス値 >= 100 && !TALENT:ARG:崩壊
@@ -537,18 +579,27 @@ NEXT
 VARSET LOCAL, 0
 
 IF PREG:ARG:20 == 1
-	LOCAL = FINDCHARA(NO, 0)
-	PRINTFORMW %CALLNAME:ARG%は、%CALLNAME:LOCAL%の子供を無事出産しました
-	LOCAL = 0
+	PRINTFORMW %CALLNAME:ARG%は、%CALLNAME:MASTER%の子供を無事出産しました
 ELSEIF PREG:ARG:20 != 4
 	PRINTFORMW %CALLNAME:ARG%は、%CSVNAMEF(PREG:ARG:21)%の子供を無事出産しました
 ELSE
 	PRINTFORMW %CALLNAME:ARG%は子供を無事出産しました
 ENDIF
 
-EXP:ARG:出産経験++
+;ストレスが高いと難産で出産トラウマが残る
+SIF CFLAG:ARG:ストレス値
+	PREG:ARG:12 = CFLAG:ARG:ストレス値/50+1
 
-CHILDBIRTHDAY:ARG:0 = YEAR+10000+MONTH*100+DAYS
+;医務室のスタッフが有能だとトラウマを軽減 最大6
+PREG:ARG:12 -= 出産用医務室ランク()
+SIF PREG:ARG:12 < 0
+	PREG:ARG:12 = 0
+
+;ヤンデレで父親が主人、陥落済みだと出産トラウマは0になる
+SIF TALENT:ARG:ヤンデレ && CFLAG:ARG:陥落 && PREG:ARG:20 == 1
+	PREG:ARG:12 = 0
+
+CHILDBIRTHDAY:ARG:0 = YEAR*10000+MONTH*100+DAYS
 
 IF ARG == MASTER
 	IF PREG:MASTER:5
@@ -559,6 +610,11 @@ IF ARG == MASTER
 ELSE
 	CALL KOJO_MESSAGE_EVENT, "出産時", ARG
 ENDIF
+
+EXP:ARG:出産経験++
+CFLAG:ARG:出産トラウマ += PREG:ARG:12
+SIF CFLAG:ARG:出産トラウマ >= 100
+	CFLAG:ARG:出産トラウマ = 100
 
 ;妊娠を失う
 TALENT:ARG:妊娠 = 0
@@ -589,47 +645,20 @@ DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 0
-			CALL CHILD_CARE_ROOM, ARG
+			DRAWLINE
+			PRINTFORMW %CALLNAME:MASTER%は%CALLNAME:ARG%のところへ向かった
+			LOCAL = TARGET
+			TARGET = ARG
+			CALL KOJO_MESSAGE_EVENT, "育児室"
+			TARGET = LOCAL
+			;育児室に顔出すと出産トラウマが僅かに緩和される
+			PREG:ARG:12--
 			BREAK
 		CASE 1
 			DRAWLINE
 			BREAK
 	ENDSELECT
 LOOP 1
-
-@CHILD_CARE_ROOM, ARG
-DRAWLINE
-PRINTL どの部屋へ様子を見に行きますか？
-
-REPEAT CHARANUM
-	IF COUNT == MASTER
-		CONTINUE
-	;現在臨月か[育児中]のキャラを羅列
-	ELSEIF (TALENT:COUNT:妊娠 && (PREG:COUNT:10-5) <= DAY) || TALENT:COUNT:育児中
-		PRINTFORML [{COUNT, 2}]%NAME:COUNT% 
-	ENDIF
-REND
-PRINTFORML [100]戻る
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 100
-			BREAK
-		CASEELSE
-			IF (TALENT:RESULT:妊娠 && (PREG:RESULT:10-5) <= DAY) || TALENT:RESULT:育児中
-				DRAWLINE
-				PRINTFORMW %CALLNAME:MASTER%は%CALLNAME:RESULT%のところへ向かった
-				LOCAL = TARGET
-				TARGET = RESULT
-				CALL KOJO_MESSAGE_EVENT, "育児室"
-				TARGET = LOCAL
-				RESTART
-			ENDIF
-	ENDSELECT
-LOOP 1
-
-RETURN 0
-
 
 ;子供の素質と種族の確定
 @CHILDSET, 母親, 父親 = -1, 母体 = -1
@@ -640,7 +669,6 @@ RETURN 0
 #DIM DYNAMIC テーブル
 SIF 母体 == -1
 	母体 = 母親
-WAIT
 VARSET LOCAL, 0
 
 ;父親が不明、もしくは採取精液なら母親の種族を受け継ぐ
@@ -1087,6 +1115,10 @@ SELECTCASE RESULT
 			CFLAG:近親交配 = 1
 		MAXBASE:体力 = RAND(16, 19)*100
 		MAXBASE:気力 = RAND(12, 16)*100
+		IF CSTR:種族 == "鳳凰"
+			MAXBASE:鳳凰基礎体力 = MAXBASE:体力
+			MAXBASE:鳳凰基礎気力 = MAXBASE:気力
+		ENDIF
 		SELECTCASE CSTR:種族
 			CASE "神", "悪魔"
 				MAXBASE:体力 += 200
