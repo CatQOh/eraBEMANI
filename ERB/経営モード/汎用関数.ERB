@@ -1,4 +1,4 @@
-﻿@STRATEGY_PERSONAL, 配属先
+﻿@STRATEGY_PERSONAL, 配属先, 配属部屋
 #DIM DYNAMIC ページ数
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC 配属可能人数
@@ -6,6 +6,7 @@
 #DIM DYNAMIC 配属人数
 #DIMS DYNAMIC 配属先
 #DIM DYNAMIC 配属上限
+#DIM DYNAMIC 配属部屋
 #DIM DYNAMIC LTARGET
 VARSET LOCAL, 0
 配属人数 = 0
@@ -19,7 +20,7 @@ SELECTCASE 配属先
 	CASE "ゲームセンター"
 		配属上限 = 10
 	CASE "娼館"
-		配属上限 = 娼館部屋数
+		配属上限 = 2
 	CASE "芸能プロダクション"
 		配属上限 = 20
 	CASE "医務室"
@@ -31,10 +32,18 @@ SELECTCASE 配属先
 ENDSELECT
 
 ;既に配属されている人数を計算
-配属人数 = CMATCH(CSTR:配属, 配属先)
+IF 配属先 == "娼館"
+	配属人数 = CMATCH(CFLAG:娼館部屋番号, 配属部屋)
+ELSE
+	配属人数 = CMATCH(CSTR:配属, 配属先)
+ENDIF
 
 DRAWLINE
-PRINTFORML □%配属先%に配属する人員を選択してください(現在{配属人数}/{配属上限})
+IF 配属先 == "娼館"
+	PRINTFORML □娼館の{配属部屋}番ルームに配属するキャラを選んでください
+ELSE
+	PRINTFORML □%配属先%に配属する人員を選択してください(現在{配属人数}/{配属上限})
+ENDIF
 
 配属可能人数 = 0
 
@@ -78,9 +87,13 @@ IF 配属可能人数
 			飛ばした人数++
 			CONTINUE
 		ENDIF
-		;その分野に配属中のキャラには◯マークが付く
+		;その分野に配属中のキャラには◯マークが付く 娼館の場合は部屋番号
 		IF CSTR:COUNT:配属 == 配属先
-			PRINT ◯
+			IF 配属先 == "娼館"
+				PRINTFORM {CFLAG:COUNT:娼館部屋番号, 2}
+			ELSE
+				PRINT ◯
+			ENDIF
 		ELSE
 			PRINT 　
 		ENDIF
@@ -240,6 +253,9 @@ DO
 				CONTINUE
 			SELECTCASE CSTR:RESULT:配属
 				CASE 配属先
+					;娼館の別部屋に配属してる場合はそちらから引っ張ってくる
+					SIF 配属先 == "娼館" && CFLAG:RESULT:娼館部屋番号 != 配属部屋
+						GOTO 娼館ELSE
 					SELECTCASE 配属先
 						CASE "医務室", "図書室", "実験室"
 							PRINTFORMW %CALLNAME:RESULT%を%配属先%担当から外しました
@@ -264,6 +280,7 @@ DO
 					TARGET = LTARGET
 					RESTART
 				CASEELSE
+					$娼館ELSE
 					IF 配属人数 >= 配属上限
 						PRINTW これ以上配属できません
 						RESTART
@@ -272,6 +289,8 @@ DO
 					LOCAL = RESULT
 					CALL 配属解除, LOCAL
 					CSTR:LOCAL:配属 = %配属先%
+					SIF 配属先 == "娼館"
+						CFLAG:LOCAL:娼館部屋番号 = 配属部屋
 					LTARGET = TARGET
 					TARGET = LOCAL
 					;配属時の口上
@@ -319,4 +338,5 @@ CFLAG:ARG:配属完了 = 0
 CFLAG:ARG:ゲーセン店長 = 0
 CFLAG:ARG:上級娼婦 = 0
 CFLAG:ARG:レッスン = 0
+CFLAG:ARG:娼館部屋番号 = 0
 

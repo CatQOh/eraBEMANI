@@ -50,7 +50,7 @@ DO
 		CASE 3
 			CALL BR_PLAN
 		CASE 4
-			CALL STRATEGY_PERSONAL, "娼館"
+			CALL SELECT_ROOM_BR
 		CASE 5
 			PRINT □店名を入力してください
 			SIF GC店名 != "娼館"
@@ -302,7 +302,14 @@ IF 娼館広さ >= 10
 ELSE
 	CALL PASELIL, @"　[1] - 広くする({LOCAL}＄)"
 ENDIF
-CALL PASELIL, @"　[2] - 部屋を増やす({LOCAL:1}＄)"
+IF 娼館部屋数 >= 20
+	SETCOLOR 120, 120, 120
+	PRINTPLAIN 　[-] - これ以上部屋を増やせません
+	PRINTL 
+	RESETCOLOR
+ELSE
+	CALL PASELIL, @"　[2] - 部屋を増やす({LOCAL:1}＄)"
+ENDIF
 PRINTFORML 　[3] - 設備を導入する
 DRAWLINE
 PRINTPLAIN 　RENOVATION　
@@ -339,6 +346,8 @@ DO
 				ENDSELECT
 			LOOP LOOPRES(0, 1)
 		CASE 2
+			SIF 娼館部屋数 >= 20
+				CONTINUE
 			IF LOCAL:1 > MONEY
 				PRINTW 所持金が足りません
 				RESTART
@@ -634,6 +643,66 @@ SIF ITEM:拷問器具
 	TIMES SMポイント , 1.50
 SIF ITEM:わけのわからないもの
 	TIMES 狂気ポイント , 1.50
+
+
+;人員配置----------------------------------------------------
+@SELECT_ROOM_BR
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 娼館部屋状態, 20, 2
+#DIM DYNAMIC 選択部屋
+DRAWLINE
+
+FOR LCOUNT, 0, CHARANUM
+	IF CSTR:LCOUNT:配属 == "娼館"
+		LOCAL = CFLAG:LCOUNT:娼館部屋番号
+		IF 娼館部屋状態:LOCAL:0 == 0
+			娼館部屋状態:LOCAL:0 = LCOUNT
+		ELSE
+			娼館部屋状態:LOCAL:1 = LCOUNT
+		ENDIF
+	ENDIF
+NEXT
+
+PRINTL □キャラを配属させる部屋を選んでください
+FOR LCOUNT, 1, 娼館部屋数+1
+	PRINTFORM 　[{LCOUNT}] {LCOUNT}番ルーム(
+	IF 娼館部屋状態:LCOUNT:0
+		PRINTFORM %CALLNAME:(娼館部屋状態:LCOUNT:0)%
+		SIF 娼館部屋状態:LCOUNT:1
+			PRINTFORM と%CALLNAME:(娼館部屋状態:LCOUNT:1)%
+		PRINTL が待機中)
+	ELSE
+		PRINTL 空き部屋)
+	ENDIF
+NEXT
+DRAWLINE
+PRINTPLAIN 　娼館配属　
+PRINTL [0] 戻る
+
+DO
+	INPUT
+	選択部屋 = RESULT
+	SIF 選択部屋 == 0
+		RETURN
+	SIF !INRANGE(選択部屋, 1, 娼館部屋数)
+		CONTINUE
+	
+	IF 娼館部屋状態:選択部屋:0 && 娼館部屋状態:選択部屋:1
+		PRINTFORML これ以上{選択部屋}番ルームには配属できません
+		PRINTL [0] - 仕方ないな
+		PRINTL [1] - その部屋に配属してるキャラを外してくれ
+		DO
+			INPUT
+			IF RESULT == 1
+				CALL 配属解除, 娼館部屋状態:選択部屋:0
+				CALL 配属解除, 娼館部屋状態:選択部屋:1
+			ENDIF
+			RESTART
+		LOOP 1
+	ENDIF
+	CALL STRATEGY_PERSONAL, "娼館", RESULT
+	RESTART
+LOOP 1
 
 ;収入計算----------------------------------------------------
 @INCOME_BR
