@@ -144,7 +144,7 @@ DO
 								ENDSELECT
 							LOOP 1
 						ELSE
-							酒名 = ITEMNAME:(RESULT+150)
+							酒名 = %ITEMNAME:(RESULT+150)%
 							製法 = ビール
 							ALC = 5
 						ENDIF
@@ -213,13 +213,17 @@ DO
 			SIF ITEM:炭酸水
 				PRINTL [5] 焼酎ハイボール(Alc.5～20%)
 			SIF ITEM:コーラ
-				PRINTL [6] 焼酎コーク
+				PRINTL [6] 焼酎コーク(Alc.5～20%)
 			SIF ITEM:ジンジャーエール
-				PRINTL [7] 焼酎ジンジャー
+				PRINTL [7] 焼酎ジンジャー(Alc.5～20%)
+			SIF FLAG:保管済み精液 >= 100
+				PRINTL [8] 精液割り(Alc.5～20%)
+			SIF FLAG:保管済み母乳 >= 100
+				PRINTL [9] 母乳割り(Alc.5～20%)
 			DO
 				INPUT
 				SELECTCASE RESULT
-					CASE 1, 2, 5, 6, 7
+					CASE 1, 2, 5, 6, 7, 8, 9
 						SELECTCASE RESULT
 							CASE 1
 								製法 = 水割り
@@ -242,6 +246,16 @@ DO
 									CONTINUE
 								製法 = ジンジャー割り
 								酒名 = 焼酎ジンジャー
+							CASE 8
+								SIF FLAG:保管済み精液 < 100
+									CONTINUE
+								製法 = 精液割り
+								酒名 = ザーメンサワー
+							CASE 9
+								SIF FLAG:保管済み母乳 < 100
+									CONTINUE
+								製法 = 母乳割り
+								酒名 = 母乳サワー
 						ENDSELECT
 						PRINTL アルコール度数を決めてください(5～20%)
 						CALL TWO_DIGIT, 20, "%", 5
@@ -273,11 +287,15 @@ DO
 				PRINTL [6] コークハイ(Alc.9～35%)
 			SIF ITEM:ジンジャーエール
 				PRINTL [7] ジンジャーハイ(Alc.9～35%)
+			SIF FLAG:保管済み精液 >= 100
+				PRINTL [8] ザーメンハイボール(Alc.9～35%)
+			SIF FLAG:保管済み母乳 >= 100
+				PRINTL [9] 母乳ハイボール(Alc.9～35%)
 				
 			DO
 				INPUT
 				SELECTCASE RESULT
-					CASE 1, 2, 5, 6, 7
+					CASE 1, 2, 5, 6, 7, 8, 9
 						SELECTCASE RESULT
 							CASE 1
 								製法 = 水割り
@@ -300,6 +318,16 @@ DO
 									CONTINUE
 								製法 = ジンジャー割り
 								酒名 = ジンジャーハイ
+							CASE 8
+								SIF FLAG:保管済み精液 < 100
+									CONTINUE
+								製法 = 精液割り
+								酒名 = ザーメンハイボール
+							CASE 9
+								SIF FLAG:保管済み母乳 < 100
+									CONTINUE
+								製法 = 母乳割り
+								酒名 = 母乳ハイボール
 						ENDSELECT
 						PRINTL アルコール度数を決めてください(9～35%)
 						CALL TWO_DIGIT, 35, "%", 9
@@ -344,7 +372,7 @@ DO
 						酒名 = スペリオールのロック
 						ALC = 37
 						BREAK
-					CASE 3, 4, 5, 6, 7
+					CASE 3 TO 7
 						SELECTCASE RESULT
 							CASE 3
 								SIF !ITEM:コーラ
@@ -416,7 +444,7 @@ DO
 						酒名 = ビーフィーターのロック
 						ALC = 44
 						BREAK
-					CASE 3, 4, 5, 6, 7
+					CASE 3 TO 7
 						SELECTCASE RESULT
 							CASE 3
 								SIF !ITEM:トニックウォーター
@@ -486,7 +514,7 @@ DO
 						酒名 = アブソルートのロック
 						ALC = 37
 						BREAK
-					CASE 3, 4, 5, 6
+					CASE 3 TO 6
 						SELECTCASE RESULT
 							CASE 3
 								SIF !ITEM:トニックウォーター
@@ -537,6 +565,8 @@ DO
 				PRINTL [4] カルーアソーダ(Alc.5～15%)
 			SIF ITEM:アブソルート
 				PRINTL [5] ブラックルシアン(Alc.25～37%)
+			SIF FLAG:保管済み母乳 >= 100
+				PRINTL [6] カルーア母乳(Alc.5～15%)
 			DO
 				INPUT
 				SELECTCASE RESULT
@@ -548,7 +578,7 @@ DO
 						酒名 = カルーアのロック
 						ALC = 37
 						BREAK
-					CASE 3, 4, 5
+					CASE 3 TO 6
 						SELECTCASE RESULT
 							CASE 3
 								製法 = カクテル
@@ -564,6 +594,11 @@ DO
 								製法 = カクテル
 								酒名 = ブラックルシアン
 								材料:0 = GETNUM(ITEM, "アブソルート")
+							CASE 6
+								SIF FLAG:保管済み母乳 < 100
+									CONTINUE
+								製法 = 母乳割り
+								酒名 = カルーア母乳
 						ENDSELECT
 						IF 酒名 == "ブラックルシアン"
 							PRINTL アルコール度数を決めてください(25～37%)
@@ -624,6 +659,10 @@ ELSE
 			ITEM:レモンジュース--
 		CASE "ライム割り"
 			ITEM:ライムジュース--
+		CASE "精液割り"
+			FLAG:保管済み精液 -= 100
+		CASE "母乳割り"
+			FLAG:保管済み母乳 -= 100
 		CASE "カクテル"
 			FOR LCOUNT, 0, VARSIZE("材料")
 				SIF 材料:LCOUNT
@@ -714,6 +753,9 @@ ELSE
 		;お屠蘇 アイテム必要無いので特にボーナスも無い
 		CASE "お屠蘇"
 	ENDSELECT
+	;精液割りは精液中毒LV3以上でボーナス
+	SIF 製法 == "精液割り" && ABL:精液中毒 >= 3
+		TEQUIP:お酒ボーナス++
 	;無理のない範囲で飲ませるとストレス低下
 	IF TALENT:酒豪
 		SIF CFLAG:酔 <= 80
@@ -738,6 +780,11 @@ CALL SOURCE_CHECK_CVAB
 CALL SAMEN_CHECK_T, 0
 
 CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+IF 製法 == "精液割り"
+	EXP:精液経験 += 2
+	PRINTL 精液経験+2
+ENDIF
 
 RETURN 1
 
@@ -829,6 +876,17 @@ IF !TALENT:下戸
 ENDIF
 
 SELECTCASE 製法
+	CASE "精液割り"
+		IF ABL:精液中毒 < 3
+			PRINTFORM -精液中毒LV{ABL:精液中毒}({(3-ABL:精液中毒)*3})
+			LOCAL -= (3-ABL:精液中毒)*3
+		ELSEIF ABL:精液中毒 > 3
+			PRINTFORM +精液中毒LV{ABL:精液中毒}({(ABL:精液中毒-3)*3})
+			LOCAL += (ABL:精液中毒-3)*3
+		ENDIF
+	CASE "母乳割り"
+		PRINT -母乳割り(3)
+		LOCAL -= 3
 	CASE "ハイボール"
 		PRINT +ハイボールは美味しい(3)
 		LOCAL += 3
