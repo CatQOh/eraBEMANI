@@ -138,7 +138,7 @@ ELSE
 	ELSEIF 調教可能
 		LOCALS:1 = %SET_TOOLTIP("[---] - 調教開始 ", "[202] - 奴隷変更 から調教対象を選択してください", 0)%
 	ELSE
-		LOCALS:1 = %SET_TOOLTIP("[---] - 調教開始 ", "[301] - 奴隷購入 からキャラを購入してください", 0)%
+		LOCALS:1 = %SET_TOOLTIP("[---] - 調教開始 ", "[302] - 奴隷購入 からキャラを購入してください", 0)%
 	ENDIF
 	RESETCOLOR
 ENDIF
@@ -164,7 +164,7 @@ SELECTCASE FLAG:ゲームモード
 		ENDCATCH
 ENDSELECT
 
-HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4+LOCALS:5+LOCALS:6
+HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4+LOCALS:5+LOCALS:6+LOCALS:7
 
 ;200番台は奴隷関連のコマンド
 VARSET LOCALS
@@ -175,7 +175,7 @@ LOCALS:1 = %SET_TOOLTIP("[200] - 能力表示 ", @"キャラの様々な情報�
 IF CHARANUM > 1
 	LOCALS:2 = %SET_TOOLTIP("[201] - 能力上昇 ", @"キャラの能力を上昇させます")%
 ELSEIF FLAG:ゲームモード != 8
-	LOCALS:2 = %SET_TOOLTIP("[---] - 能力上昇 ", "[301] - 奴隷購入 からキャラを購入してください", 0, "gray")%
+	LOCALS:2 = %SET_TOOLTIP("[---] - 能力上昇 ", "[302] - 奴隷購入 からキャラを購入してください", 0, "gray")%
 ELSE
 	LOCALS:2 = %SET_TOOLTIP("[---] - 能力上昇 ", "調教可能なキャラが居ません", 0, "gray")%
 ENDIF
@@ -193,7 +193,7 @@ ELSE
 	ELSEIF CHARANUM != 1 && TARGET >= 0
 		LOCALS:3 = %SET_TOOLTIP("[---] - 奴隷変更 ", @"%CALLNAME:TARGET%以外に調教可能なキャラが居ません", 0, "gray")%
 	ELSE
-		LOCALS:3 = %SET_TOOLTIP("[---] - 奴隷変更 ", "[301] - 奴隷購入 からキャラを購入してください", 0, "gray")%
+		LOCALS:3 = %SET_TOOLTIP("[---] - 奴隷変更 ", "[302] - 奴隷購入 からキャラを購入してください", 0, "gray")%
 	ENDIF
 ENDIF
 ;助手可能キャラが一人でもいれば表示
@@ -238,24 +238,30 @@ VARSET LOCALS
 LOCALS = 　
 ;無条件で表示
 LOCALS:1 = %SET_TOOLTIP("[300] - アイテム ", "淫具や素質追加などのアイテムを購入します")%
+
+
+;変化できるキャラが居れば表示
+SIF FINDCHARA(TALENT:変化, 1)
+	LOCALS:2 = %SET_TOOLTIP("[301] - 変化     ", "素質[変化]を持った陥落済みのキャラクターを動物の姿や人間の姿に変化させます")%
+
 ;段位認定でなければ表示
 IF FLAG:ゲームモード == 8
-	LOCALS:2 = %SET_TOOLTIP("[---] - 奴隷購入 ", "段位認定では奴隷を購入することができません")%
+	LOCALS:3 = %SET_TOOLTIP("[---] - 奴隷購入 ", "段位認定では奴隷を購入することができません")%
 ELSE
-	LOCALS:2 = %SET_TOOLTIP("[301] - 奴隷購入 ", "調教するための奴隷を購入します")%
+	LOCALS:3 = %SET_TOOLTIP("[302] - 奴隷購入 ", "調教するための奴隷を購入します")%
 ENDIF
 ;売却できるキャラがいれば表示
 IF 売却可能
-	LOCALS:3 = %SET_TOOLTIP("[302] - 売却     ", "調教で仕上がった奴隷を売却します")%
+	LOCALS:4 = %SET_TOOLTIP("[303] - 売却     ", "調教で仕上がった奴隷を売却します")%
 ELSE
-	LOCALS:3 = %SET_TOOLTIP("[---] - 売却     ", "売却可能な奴隷が居ません", 0, "gray")%
+	LOCALS:4 = %SET_TOOLTIP("[---] - 売却     ", "売却可能な奴隷が居ません", 0, "gray")%
 ENDIF
 
 ;新婚モードではアイテム購入のみ表示
 IF FLAG:ゲームモード == 7
-	HTML_PRINT LOCALS+LOCALS:1
+	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2
 ELSE
-	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3
+	HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4
 ENDIF
 
 VARSET LOCALS
@@ -435,14 +441,18 @@ SELECTCASE RESULT
 		ELSE
 			CALL SHOPITEM_BUY
 		ENDIF
-	;奴隷購入
+	;変化
 	CASE 301
+		SIF CMATCH(TALENT:変化, 1)
+			CALL 変化
+	;奴隷購入
+	CASE 302
 		SELECTCASE FLAG:ゲームモード
 			CASE IS != 7, 8
 				CALL CHARA_BUY
 		ENDSELECT
 	;売却
-	CASE 302
+	CASE 303
 		SELECTCASE FLAG:ゲームモード
 			CASE IS != 7
 				SIF 売却可能
@@ -752,6 +762,8 @@ IF TARGET > 0
 	ENDIF
 	SIF TALENT:ふたなり
 		PRINT [ふたなり]
+	SIF TALENT:アニマル
+		PRINT [獣]
 	SIF TALENT:妊娠
 		PRINT 【妊娠中】
 	SIF TALENT:恋慕
@@ -835,6 +847,8 @@ IF ASSI >= 0
 	ENDSELECT
 	SIF TALENT:ASSI:ふたなり
 		PRINT [ふたなり]
+	SIF TALENT:ASSI:アニマル
+		PRINT [獣]
 	PRINTL 
 	SIF TALENT:ASSI:魔術師
 		PRINTFORML 　魔力%BARBASE("魔力", ASSI)%
@@ -888,4 +902,42 @@ LOCAL = 0
 PRINTL □所持アイテム
 CALL ITEMPRINT
 DRAWLINE
+
+@変化
+#DIM DYNAMIC LCOUNT
+DRAWLINE
+PRINTL □変化させるキャラを選んでください
+FOR LCOUNT, 1, CHARANUM
+	IF TALENT:LCOUNT:変化
+		IF CFLAG:LCOUNT:陥落
+			PRINTFORML [{LCOUNT, 2}] %NAME:LCOUNT% 現在：\@ TALENT:COUNT:アニマル ? 獣の姿 # 人間の姿 \@
+		ELSE
+			SETCOLORBYNAME gray
+			PRINTFORML [--] %NAME:LCOUNT% 未陥落
+			RESETCOLOR
+		ENDIF
+	ENDIF
+NEXT
+DRAWLINE
+PRINTPLAIN 　変化　
+PRINTL [0] 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASEELSE
+			IF CFLAG:RESULT:陥落 && TALENT:RESULT:変化
+				IF TALENT:RESULT:アニマル
+					PRINTFORMW %CALLNAME:RESULT%は人間の姿に変化した
+					TALENT:RESULT:アニマル = 0
+				ELSE
+					PRINTFORMW %CALLNAME:RESULT%は獣の姿に変化した
+					TALENT:RESULT:アニマル = 1
+				ENDIF
+			ENDIF
+			RESTART
+	ENDSELECT
+LOOP 1
 
