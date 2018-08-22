@@ -241,7 +241,7 @@ LOCALS:1 = %SET_TOOLTIP("[300] - アイテム ", "淫具や素質追加などの
 
 
 ;変化できるキャラが居れば表示
-SIF FINDCHARA(TALENT:変化, 1)
+SIF CMATCH(TALENT:変化, 1)
 	LOCALS:2 = %SET_TOOLTIP("[301] - 変化     ", "素質[変化]を持った陥落済みのキャラクターを動物の姿や人間の姿に変化させます")%
 
 ;段位認定でなければ表示
@@ -268,7 +268,6 @@ VARSET LOCALS
 ;400番台はセーブ・ロード・オプションのシステムコマンド
 ;セーブ・ロード・オプションは無条件で表示
 LOCALS = 　
-LOCALS:1 = %SET_TOOLTIP("[400] - SAVE     ", "現在の状況をセーブします")%
 LOCALS:2 = %SET_TOOLTIP("[401] - LOAD     ", "セーブデータをロードします。保存していない進行状況は失われます")%
 LOCALS:3 = %SET_TOOLTIP("[402] - OPTION   ", "服装やテキスト表示など、様々な設定を変更します")%
 
@@ -478,6 +477,9 @@ SELECTCASE RESULT
 					;実績:キャラを一人も購入せずにパートナーだけでSTRATEGYモードをクリアする
 					SIF キャラ未購入
 						CALL 実績解除, "もう全部あいつ一人でいいんじゃないかな"
+					;実績:芸能プロダクションの収入のみでSTRATEGYモードをクリアする
+					SIF バンめし
+						CALL 実績解除, "他人がバンドで稼いだ金でめしが食いたい"
 					CALL ENDING_CHECK
 				ENDIF
 		ENDSELECT
@@ -838,7 +840,11 @@ SIF TALENT:MASTER:魔術師
 	PRINTFORML 　魔力%BARBASE("魔力", MASTER)%
 
 IF ASSI >= 0
-	PRINTFORM 　助手:%NAME:ASSI%
+	IF TALENT:ASSI:アニマル
+		PRINTFORM 　ペット:%NAME:ASSI%
+	ELSE
+		PRINTFORM 　助手:%NAME:ASSI%
+	ENDIF
 	SELECTCASE SEX(ASSI)
 		CASE 1
 			PRINT (♂)
@@ -929,12 +935,77 @@ DO
 			RETURN 0
 		CASEELSE
 			IF CFLAG:RESULT:陥落 && TALENT:RESULT:変化
+				LOCAL = RESULT
 				IF TALENT:RESULT:アニマル
+					;着衣フラグのリセット
+					FOR LCOUNT, 40, 47
+						CFLAG:LOCAL:LCOUNT = CSVCFLAG(NO:LOCAL, LCOUNT)
+					NEXT
+					FOR LCOUNT, 100, 107
+						CSTR:LOCAL:LCOUNT = %CSVCSTR(NO:LOCAL, LCOUNT)%
+					NEXT
 					PRINTFORMW %CALLNAME:RESULT%は人間の姿に変化した
 					TALENT:RESULT:アニマル = 0
+					IF !TRANCE:LOCAL:GETNUM(TALENT, "動物耳")
+						TALENT:LOCAL:動物耳 = 0
+						TRANCE:LOCAL:GETNUM(TALENT, "動物耳") = 0
+					ENDIF
+					IF !TRANCE:LOCAL:GETNUM(TALENT, "尻尾")
+						TALENT:LOCAL:尻尾 = 0
+						TRANCE:LOCAL:GETNUM(TALENT, "尻尾") = 0
+					ENDIF
+					;茶倉だけ特殊で機械処理なので人間に戻す
+					IF CHARANAMEF(LOCAL) == "茶倉"
+						IF TRANCE:LOCAL:GETNUM(TALENT, "無機物")
+							TALENT:LOCAL:無機物 = 0
+							CSTR:LOCAL:種族 = 人間
+							NAME:LOCAL = 茶倉
+							CALLNAME:LOCAL = 茶倉
+							TRANCE:LOCAL:GETNUM(TALENT, "無機物") = 0
+						ENDIF
+					ELSE
+						IF TRANCE:LOCAL:GETNUM(TALENT, "ファーリー")
+							TALENT:LOCAL:ファーリー = 0
+							TRANCE:LOCAL:GETNUM(TALENT, "ファーリー") = 0
+						ENDIF
+					ENDIF
+					TALENT:LOCAL:バストサイズ = TRANCE:LOCAL:GETNUM(TALENT, "バストサイズ")
+					TRANCE:LOCAL:GETNUM(TALENT, "バストサイズ") = 0
 				ELSE
 					PRINTFORMW %CALLNAME:RESULT%は獣の姿に変化した
-					TALENT:RESULT:アニマル = 1
+					;着衣フラグの変更
+					FOR LCOUNT, 40, 47
+						CFLAG:LOCAL:LCOUNT = 100
+					NEXT
+					FOR LCOUNT, 100, 107
+						CSTR:LOCAL:LCOUNT = 
+					NEXT
+					
+					IF !TALENT:LOCAL:動物耳
+						TALENT:LOCAL:動物耳 = 1
+						TRANCE:LOCAL:GETNUM(TALENT, "動物耳") = 1
+					ENDIF
+					IF !TALENT:LOCAL:尻尾
+						TALENT:LOCAL:尻尾 = 1
+						TRANCE:LOCAL:GETNUM(TALENT, "尻尾") = 1
+					ENDIF
+					;茶倉だけ特殊で機械（戌）になる
+					IF CHARANAMEF(LOCAL) == "茶倉"
+						IF !TALENT:LOCAL:無機物
+							TALENT:LOCAL:無機物 = 1
+							CSTR:LOCAL:種族 = 機械
+							NAME:LOCAL = 戌
+							CALLNAME:LOCAL = 戌
+							TRANCE:LOCAL:GETNUM(TALENT, "無機物") = 1
+						ENDIF
+					ELSE
+						IF !TALENT:LOCAL:ファーリー
+							TALENT:LOCAL:ファーリー = 1
+							TRANCE:LOCAL:GETNUM(TALENT, "ファーリー") = 1
+						ENDIF
+					ENDIF
+					TRANCE:LOCAL:GETNUM(TALENT, "バストサイズ") = TALENT:LOCAL:バストサイズ
+					TALENT:LOCAL:バストサイズ = 0
 				ENDIF
 			ENDIF
 			RESTART
