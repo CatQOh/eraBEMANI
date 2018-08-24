@@ -1,41 +1,42 @@
 ﻿;-------------------------------------------------
-;舐め回す（ドラゴン）
+;ペットに舐めさせる
 ;-------------------------------------------------
-@USERCOM_ABLE_舐め回す（ドラゴン）, ARG
+@USERCOM_ABLE_ペットに舐めさせる, ARG
 #FUNCTION
 ;ゲーセンに居る場合はできない
 SIF TEQUIP:ゲームセンター
 	RETURNF 0
-;上級売春中は方針が狂気じゃないと不可
-SIF 上級売春中 && 娼館方針 != 4
-	RETURNF 0
 ;触手調教中はダメ
 SIF TEQUIP:触手
 	RETURNF 0
-;風呂場だとダメ
+;お風呂場プレイ中はダメ
 SIF TEQUIP:お風呂場
 	RETURNF 0
-;PLAYERがドラゴン使い持ってないとダメ
-SIF !TALENT:PLAYER:ドラゴン使い
+;ASSIがペットじゃないとダメ
+SIF ASSI < 0 || !TALENT:ASSI:アニマル
 	RETURNF 0
-;PLAYERが助手で未陥落だとダメ
-SIF PLAYER == ASSI && !CFLAG:PLAYER:陥落
+;アニマルは無理
+SIF TALENT:アニマル
 	RETURNF 0
 
 COMRESULT = 1
 RETURNF 1
 
-@COM_舐め回す（ドラゴン）
-PRINTL 舐め回す（ドラゴン）
+@COM_ペットに舐めさせる
+PRINTL ペットに舐めさせる
 CALL KOJO_MESSAGE_COM
 
 ;-------------------------------------------------
 ;射精ゲージチェック（奴隷）
 ;-------------------------------------------------
-LOCAL = 100
+;なつき度が低いと消極的になる
 
-;ABL:調教者の技巧をみる
-LOCAL += LOCAL*ABL:PLAYER:技巧/2
+LOCAL = 30
+
+LOCAL += CFLAG:ASSI:依存度/10
+
+;ABL:助手の技巧をみる
+LOCAL += LOCAL*ABL:ASSI:技巧/2
 
 ;ABL:従順をみる
 LOCAL += (LOCAL/10)*ABL:従順 - (LOCAL/10)*2
@@ -59,6 +60,10 @@ SELECTCASE ABL:Ｃ感覚
 		LOCAL += LOCAL*(ABL:Ｃ感覚-3)
 ENDSELECT
 
+;助手のTALENT:舌使いをみる
+SIF TALENT:ASSI:舌使い
+	TIMES LOCAL , 2.00
+
 CALL 射精ゲージ増加, LOCAL, TARGET
 
 ;-------------------------------------------------
@@ -71,9 +76,13 @@ LOSEBASE:気力 += 15
 DOWNBASE:MASTER:体力 += 20
 DOWNBASE:MASTER:気力 += 20
 
-SOURCE:快C = 100
-SOURCE:快B = 100
-SOURCE:液体 = 1000
+SOURCE:快C = 30*MIN(ABL:ASSI:技巧+1, 10)
+;なつき度に応じて他の場所も舐める
+SIF CFLAG:ASSI:依存度 >= 1000
+	SOURCE:快B = 30*MIN(ABL:ASSI:技巧+1, 10)
+SIF CFLAG:ASSI:依存度 >= 1500
+	SOURCE:快A = 30*MIN(ABL:ASSI:技巧+1, 10)
+SOURCE:液体 = 500
 SOURCE:屈従 = 100
 SOURCE:露出 = 100
 SOURCE:恐怖 = 300
@@ -95,7 +104,7 @@ CALL SAMEN_SHOOT_T, 0, NOWEX:射精
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
-CALL EXPUP, 0, 1
+CALL EXPUP, 1, 2
 
 ;魔力回復
 IF TALENT:魔術師

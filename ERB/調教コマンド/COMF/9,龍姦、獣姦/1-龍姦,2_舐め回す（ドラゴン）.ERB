@@ -1,16 +1,13 @@
 ﻿;-------------------------------------------------
-;睨みつける（ドラゴン）
+;舐め回す（ドラゴン）
 ;-------------------------------------------------
-@USERCOM_ABLE_睨みつける（ドラゴン）, ARG
+@USERCOM_ABLE_舐め回す（ドラゴン）, ARG
 #FUNCTION
 ;ゲーセンに居る場合はできない
 SIF TEQUIP:ゲームセンター
 	RETURNF 0
 ;上級売春中は方針が狂気じゃないと不可
 SIF 上級売春中 && 娼館方針 != 4
-	RETURNF 0
-;アイマスク装備中はダメ
-SIF TEQUIP:アイマスク
 	RETURNF 0
 ;触手調教中はダメ
 SIF TEQUIP:触手
@@ -24,33 +21,67 @@ SIF !TALENT:PLAYER:ドラゴン使い
 ;PLAYERが助手で未陥落だとダメ
 SIF PLAYER == ASSI && !CFLAG:PLAYER:陥落
 	RETURNF 0
+;アニマルは無理
+SIF TALENT:アニマル
+	RETURNF 0
 
 COMRESULT = 1
 RETURNF 1
 
-@COM_睨みつける（ドラゴン）
-PRINTL 睨みつける（ドラゴン）
+@COM_舐め回す（ドラゴン）
+PRINTL 舐め回す（ドラゴン）
 CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 100
+
+;ABL:調教者の技巧をみる
+LOCAL += LOCAL*ABL:PLAYER:技巧/2
+
+;ABL:従順をみる
+LOCAL += (LOCAL/10)*ABL:従順 - (LOCAL/10)*2
+
+;ABL:欲望をみる
+LOCAL += (LOCAL/10)*ABL:欲望
+
+;奴隷のABL:Ｃ感覚をみる
+SELECTCASE ABL:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 0.80
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASEELSE
+		LOCAL += LOCAL*(ABL:Ｃ感覚-3)
+ENDSELECT
+
+CALL 射精ゲージ増加, LOCAL, TARGET
 
 ;-------------------------------------------------
 ;ソース追加処理
 ;-------------------------------------------------
 ;消費体力、気力
 LOSEBASE:体力 += 10
-LOSEBASE:気力 += 50
+LOSEBASE:気力 += 15
 
-DOWNBASE:MASTER:体力 += 10
-DOWNBASE:MASTER:気力 += 10
+DOWNBASE:MASTER:体力 += 20
+DOWNBASE:MASTER:気力 += 20
 
-;同じドラゴン使いには恐怖が入らない
-IF TALENT:ドラゴン使い
-	SOURCE:恭順 = 200
-	SOURCE:情愛 = 200
-ELSE
-	SOURCE:恐怖 = 1500
-ENDIF
-SOURCE:屈従 = 200
-SOURCE:逸脱 = 300
+SOURCE:快C = 100
+SOURCE:快B = 100
+SOURCE:液体 = 1000
+SOURCE:屈従 = 100
+SOURCE:露出 = 100
+SOURCE:恐怖 = 300
+SOURCE:不潔 = 300
+SOURCE:逸脱 = 100
 
 ;-------------------------------------------------
 ;絶頂チェック
@@ -62,12 +93,18 @@ CALL SOURCE_CHECK_CVAB
 ;-------------------------------------------------
 CALL SAMEN_CHECK_T, 0
 
-CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精, ASSI
 
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
 CALL EXPUP, 0, 1
+
+;魔力回復
+IF TALENT:魔術師
+	LOCAL = MAXBASE:魔力/150
+	BASE:魔力 = LIMIT(BASE:魔力+LOCAL, 0, MAXBASE:魔力)
+ENDIF
 
 RETURN 1
 

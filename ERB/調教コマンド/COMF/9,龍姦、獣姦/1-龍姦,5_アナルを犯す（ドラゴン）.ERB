@@ -1,7 +1,7 @@
 ﻿;-------------------------------------------------
-;膣を犯す（ドラゴン）
+;アナルを犯す（ドラゴン）
 ;-------------------------------------------------
-@USERCOM_ABLE_膣を犯す（ドラゴン）, ARG
+@USERCOM_ABLE_アナルを犯す（ドラゴン）, ARG
 #FUNCTION
 ;ゲーセンに居る場合はできない
 SIF TEQUIP:ゲームセンター
@@ -9,11 +9,8 @@ SIF TEQUIP:ゲームセンター
 ;上級売春中は方針が狂気じゃないと不可
 SIF 上級売春中 && 娼館方針 != 4
 	RETURNF 0
-;膣使用中はダメ
-SIF Ｖ使用中(TARGET)
-	RETURNF 0
-;ヴァギナ無いとダメ
-SIF !VAGINA(TARGET)
+;アナル使用中はダメ
+SIF Ａ使用中(TARGET)
 	RETURNF 0
 ;小人体型持ちは物理的に無理
 SIF TALENT:小人体型
@@ -30,11 +27,14 @@ SIF !TALENT:PLAYER:ドラゴン使い
 ;PLAYERが助手で未陥落だとダメ
 SIF PLAYER == ASSI && !CFLAG:PLAYER:陥落
 	RETURNF 0
+;アニマルは無理
+SIF TALENT:アニマル
+	RETURNF 0
 
 COMRESULT = 1
 RETURNF 1
 
-@実行判定_膣を犯す（ドラゴン）
+@実行判定_アナルを犯す（ドラゴン）
 ;-------------------------------------------------
 ;実行判定処理
 ;-------------------------------------------------
@@ -52,10 +52,10 @@ IF !TEQUIP:縄
 		LOCAL += ABL:欲望*3
 		PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望*3})
 	ENDIF
-	;ABL:Ｖ感覚
-	IF ABL:Ｖ感覚
-		LOCAL += ABL:Ｖ感覚*2
-		PRINTFORM +Ｖ感覚LV{ABL:Ｖ感覚}({ABL:Ｖ感覚*2})
+	;ABL:Ａ感覚
+	IF ABL:Ａ感覚
+		LOCAL += ABL:Ａ感覚*2
+		PRINTFORM +Ａ感覚LV{ABL:Ａ感覚}({ABL:Ａ感覚*2})
 	ENDIF
 	;ABL:性交中毒
 	IF ABL:性交中毒
@@ -69,8 +69,8 @@ IF !TEQUIP:縄
 	ENDIF
 	;PALAM:潤滑（の不足）
 	IF PALAM:潤滑 < PALAMLV:3
-		LOCAL -= 5
-		PRINT -潤滑不足(5)
+		LOCAL -= 10
+		PRINT -潤滑不足(10)
 	ENDIF
 
 	;PALAM:欲情
@@ -89,13 +89,11 @@ IF !TEQUIP:縄
 			CONTINUE
 		SELECTCASE TALENTNAME:COUNT
 			CASE "娼婦"
-				SIF PLAYER == MASTER
-					LOCAL:1 = 20
+				LOCAL:1 = 20
 			CASE "淫乱"
-				SIF PLAYER == MASTER
-					LOCAL:1 = 15
+				LOCAL:1 = 15
 			CASE "恥じらい"
-				LOCAL:1 = -2
+				LOCAL:1 = -7
 			CASE "快感の否定"
 				SIF FALLTYPE(TARGET) != 2
 					LOCAL:1 = -5
@@ -103,8 +101,6 @@ IF !TEQUIP:縄
 				LOCAL:1 = -8
 			CASE "男嫌い"
 				LOCAL:1 = -12
-			CASE "処女"
-				LOCAL:1 = -40
 		ENDSELECT
 		IF LOCAL:1
 			PRINTFORM \@SIGN(LOCAL:1) == 1 ? + # - \@%TALENTNAME:COUNT%({ABS(LOCAL:1)})
@@ -112,10 +108,9 @@ IF !TEQUIP:縄
 		ENDIF
 	REND
 
-	;V経験
-	IF !TALENT:処女 && EXP:Ｖ経験 < EXPLV:2
-		LOCAL -= 15
-		PRINT -Ｖ経験不足(15)
+	IF EXP:Ａ経験 < EXPLV:3
+		LOCAL -= 30
+		PRINT -Ａ経験不足(30)
 	ENDIF
 
 	;媚薬
@@ -124,10 +119,10 @@ IF !TEQUIP:縄
 		PRINT +媚薬(6)
 	ENDIF
 
-	;合計を表示(32以上で実行)
+	;合計を表示(50以上で実行)
 	PRINTFORM  = {LOCAL}
 
-	LOCAL:2 = 32
+	LOCAL:2 = 50
 	SELECTCASE LOCAL
 		CASE IS < LOCAL:2
 			PRINT  < 
@@ -149,8 +144,8 @@ ELSE
 	RETURN 1
 ENDIF
 
-@COM_膣を犯す（ドラゴン）
-PRINTL 膣を犯す（ドラゴン）
+@COM_アナルを犯す（ドラゴン）
+PRINTL アナルを犯す（ドラゴン）
 
 SIF !TFLAG:実行判定無視
 	CALLFORM 実行判定_%SELECTCOMS%
@@ -165,15 +160,6 @@ CALL KOJO_MESSAGE_COM
 ;実績「オルトリンデをドラゴンで犯す」
 SIF CHARANAMEF(TARGET) == "オルトリンデ"
 	CALL 実績解除, "くっ殺"
-
-;V経験を伴うコマンドのフラグ(処女膜再生対応)
-TFLAG:膣コマンド = 1
-
-;処女なら異常経験追加
-IF TALENT:処女
-	PRINTW 異常経験+1
-	EXP:異常経験++
-ENDIF
 
 ;-------------------------------------------------
 ;脱衣
@@ -191,7 +177,7 @@ ENDIF
 ;-------------------------------------------------
 ;射精ゲージチェック（ドラゴン）
 ;-------------------------------------------------
-LOCAL = 1000
+LOCAL = 800
 
 ;ABL:技巧をみる
 LOCAL += (LOCAL/5)*ABL:技巧
@@ -203,18 +189,18 @@ LOCAL += (LOCAL/10)*ABL:従順 - (LOCAL/10)*2
 LOCAL += (LOCAL/10)*ABL:欲望
 
 ;PALAM:潤滑をみる
-LOCAL += (GETPALAMLV(PALAM:潤滑, 4)-2)*(LOCAL/5)
+LOCAL += (GETPALAMLV(PALAM:潤滑, 4)-3)*(LOCAL/5)
 
-;処女だと増える
-SIF TALENT:処女
-	TIMES LOCAL , 1.50
+;再装填処理中は射精ゲージは20分の1に
+SIF CFLAG:PLAYER:賢者タイム > 0
+	LOCAL /= 20
 
 BASE:PLAYER:ドラゴン射精 += LOCAL
 
 ;-------------------------------------------------
 ;射精ゲージチェック（奴隷）
 ;-------------------------------------------------
-LOCAL = 500
+LOCAL = 400
 
 ;ABL:調教者の技巧をみる
 LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
@@ -229,10 +215,21 @@ LOCAL += (LOCAL/10)*ABL:従順
 LOCAL += (LOCAL/5)*ABL:欲望
 
 ;PALAM:潤滑をみる
-LOCAL += (GETPALAMLV(PALAM:潤滑, 4)-3)*(LOCAL/5)
+SELECTCASE GETPALAMLV(PALAM:潤滑, 4)
+	CASE 0
+		TIMES LOCAL , 0.20
+	CASE 1
+		TIMES LOCAL , 0.50
+	CASE 2
+		TIMES LOCAL , 1.00
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 2.50
+ENDSELECT
 
-;奴隷のABL:Ｖ感覚をみる
-SELECTCASE ABL:Ｖ感覚
+;奴隷のABL:Ａ感覚をみる
+SELECTCASE ABL:Ａ感覚
 	CASE 0
 		TIMES LOCAL , 0.50
 	CASE 1
@@ -244,11 +241,32 @@ SELECTCASE ABL:Ｖ感覚
 	CASE 4
 		TIMES LOCAL , 2.00
 	CASEELSE
-		LOCAL += (LOCAL/2)*ABL:Ｖ感覚
+		LOCAL += (LOCAL/2)*ABL:Ａ感覚
 ENDSELECT
 
 ;奴隷のABL:マゾっ気をみる
 LOCAL += (LOCAL/5)*ABL:マゾっ気
+
+;奴隷が男の場合はホモっ気を見る
+IF SEX(TARGET) == 1
+	SELECTCASE ABL:ホモっ気
+		CASE 0
+			TIMES LOCAL , 0.15
+		CASE 1
+			TIMES LOCAL , 0.30
+		CASE 2
+			TIMES LOCAL , 0.50
+		CASE 3
+			TIMES LOCAL , 0.75
+		CASE 4
+			TIMES LOCAL , 1.00
+		CASEELSE
+			LOCAL += (LOCAL/10)*ABL:ホモっ気-3
+	ENDSELECT
+;女なら無条件で半減
+ELSE
+	TIMES LOCAL , 0.50
+ENDIF
 
 ;再装填処理中は射精ゲージは20分の1に
 SIF CFLAG:賢者タイム > 0
@@ -260,47 +278,31 @@ BASE:射精 += LOCAL
 ;ソース追加処理
 ;-------------------------------------------------
 ;消費体力、気力
-LOSEBASE:体力 += 120
-LOSEBASE:気力 += 200
+LOSEBASE:体力 += 150
+LOSEBASE:気力 += 250
 
 DOWNBASE:MASTER:体力 += 20
 DOWNBASE:MASTER:気力 += 20
 
-SOURCE:快V = 700
+SOURCE:快A = 700
 SOURCE:情愛 = 100
-SOURCE:苦痛 = 1200
+SOURCE:苦痛 = 1500
 SOURCE:中毒 = 300
 SOURCE:露出 = 100
-SOURCE:反感 = 500
-SOURCE:液体 = 500
-SOURCE:恐怖 = 800
-SOURCE:逸脱 = 300
+SOURCE:逸脱 = 500
+SOURCE:反感 = 300
 SOURCE:不潔 = 300
+SOURCE:液体 = 500
+SOURCE:恐怖 = 1000
 
 ;-------------------------------------------------
 ;特殊ソース処理
 ;-------------------------------------------------
 ;抑圧、抵抗持ちには、抑鬱ソース追加
 SIF TALENT:抑圧 || TALENT:抵抗
-	SOURCE:鬱屈 += 300
+	SOURCE:鬱屈 += 500
 
-;貞操観念持ちで淫乱、娼婦持ち以外には常に反発のソースを追加する（セックス系のみ）
-SIF TALENT:貞操観念 && FALLTYPE(TARGET) != 2
-	SOURCE:反感 += 1000
-
-;処女だった場合は、苦痛のソースと反発のソースを追加する
-IF TALENT:処女
-	SOURCE:苦痛 += 2000
-	SOURCE:反感 += 3000
-ENDIF
-
-;再生処女だった場合は、苦痛のソースと反発のソースを追加する
-IF TALENT:再生処女
-	SOURCE:苦痛 += 500
-	SOURCE:反感 += 1000
-ENDIF
-
-CALL 特殊ソース処理_Ｖ
+CALL 特殊ソース処理_Ａ
 CALL 特殊ソース処理_セックス
 
 ;-------------------------------------------------
@@ -312,31 +314,39 @@ CALL SOURCE_CHECK_CVAB
 ;射精チェック
 ;-------------------------------------------------
 CALL SAMEN_CHECK_DRAGON
-CALL SAMEN_CHECK_T, 4
+CALL SAMEN_CHECK_T, 5
 
 CALL SAMEN_SHOOT_DRAGON, NOWEX:PLAYER:ドラゴン射精
-CALL SAMEN_SHOOT_T, 4, NOWEX:射精
+CALL SAMEN_SHOOT_T, 5, NOWEX:射精
 
 ;-------------------------------------------------
 ;汚れの処理
 ;-------------------------------------------------
 ;射精に関係なく行われる処理はここから
-;膣内に破瓜の血の汚れを付加
-SIF TALENT:処女 || TALENT:再生処女
-	SETBIT STAIN:膣内, 6
+;調教者のペニスにアナル汚れ
+SIF PENIS(PLAYER)
+	SETBIT STAIN:PLAYER:ペニス, 3
 
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
-;V経験
-EXP:Ｖ経験++
-PRINTL Ｖ経験+3
+;A経験
+EXP:Ａ経験 += 2
+PRINTL Ａ経験+2
 
 ;性交経験
-EXP:性交経験++
+EXP:性交経験 += 1
 PRINTL 性交経験+1
 
-CALL EXPUP, 0, 3
+;異種姦経験
+IF CFLAG:異種姦経験 == 0
+	EXP:異常経験++
+	PRINTL 異常経験+1
+ENDIF
+
+CFLAG:異種姦経験++
+
+CALL EXPUP, 0, 4
 
 ;魔力回復
 IF TALENT:魔術師
