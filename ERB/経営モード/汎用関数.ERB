@@ -29,6 +29,15 @@ SELECTCASE 配属先
 		配属上限 = 3
 	CASE "実験室"
 		配属上限 = 5
+	CASE "農業"
+		;プランターで一人、畑は各1人*8、田んぼは各3人*2、最大で合計15人
+		配属上限 = ITEM:畑+ITEM:田んぼ*3
+		SIF ITEM:プランター
+			配属上限++
+	CASE "畜産業"
+		配属上限 = 10
+	CASE "調理室"
+		配属上限 = 3
 ENDSELECT
 
 ;既に配属されている人数を計算
@@ -57,7 +66,7 @@ REPEAT CHARANUM
 		CONTINUE
 	SELECTCASE 配属先
 		;ゲーセンと芸能と各施設は助手可能が条件
-		CASE "ゲームセンター", "芸能プロダクション", "医務室", "図書室"
+		CASE "ゲームセンター", "芸能プロダクション", "医務室", "図書室", "調理室"
 			SIF CFLAG:COUNT:状態 < 2
 				CONTINUE
 		;娼館は売却可能で配置可能
@@ -65,6 +74,8 @@ REPEAT CHARANUM
 			;売却可能じゃないと無理
 			SIF !CFLAG:COUNT:状態
 				CONTINUE
+		;農業と畜産業は状態に関わらず配属可
+		CASE "農業", "畜産業"
 	ENDSELECT
 	;妊娠中、育児中は無理
 	SIF TALENT:COUNT:妊娠 || TALENT:COUNT:育児中
@@ -188,6 +199,27 @@ IF 配属可能人数
 				SIF TALENT:COUNT:調合知識
 					PRINT  調合知識
 				PRINT )
+			CASE "農業"
+				PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(栽培技能:{ABL:COUNT:栽培技能, 2, LEFT} 工作技能:{ABL:COUNT:工作技能, 2, LEFT} 魔法技能:{ABL:COUNT:魔法技能, 2, LEFT}
+				SIF TALENT:COUNT:調合知識
+					PRINT  調合知識
+				SIF TALENT:COUNT:工学博士
+					PRINT  工学博士
+				SIF TALENT:COUNT:魔術師
+					PRINT  魔術師
+				SIF TALENT:COUNT:専業主婦
+					PRINT  専業主婦
+				PRINT )
+			CASE "畜産業"
+				PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(飼育技能:{ABL:COUNT:飼育技能, 2, LEFT} 工作技能:{ABL:COUNT:工作技能, 2, LEFT} 魔法技能:{ABL:COUNT:魔法技能, 2, LEFT}
+				SIF TALENT:COUNT:触手使役術
+				SIF CSTR:COUNT:種族 == "人魚"
+					PRINT  人魚
+				SIF CSTR:COUNT:種族 == "獣人"
+					PRINT  獣人
+				SIF CSTR:COUNT:種族 == "獣"
+					PRINT  獣
+				PRINT )
 		ENDSELECT
 		SELECTCASE CSTR:COUNT:配属
 			CASE ""
@@ -246,7 +278,7 @@ DO
 					CALL 配属解除, COUNT
 			REND
 			SELECTCASE 配属先
-				CASE "医務室", "図書室", "実験室"
+				CASE "医務室", "図書室", "実験室", "調理室"
 					PRINTFORMW %配属先%の全員を担当から外しました
 				CASEELSE
 					PRINTFORMW %配属先%に配属してる人員が全員帰宅しました
@@ -261,7 +293,7 @@ DO
 					SIF 配属先 == "娼館" && CFLAG:RESULT:娼館部屋番号 != 配属部屋
 						GOTO 娼館ELSE
 					SELECTCASE 配属先
-						CASE "医務室", "図書室", "実験室"
+						CASE "医務室", "図書室", "実験室", "調理室"
 							PRINTFORMW %CALLNAME:RESULT%を%配属先%担当から外しました
 						CASEELSE
 							PRINTFORMW %CALLNAME:RESULT%が帰宅しました
