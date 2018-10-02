@@ -1,15 +1,17 @@
 ﻿@農産物
 DRAWLINE
 PRINTL □農産物の管理
-PRINTFORML 　現在の設備 田んぼ:{ITEM:田んぼ}/{田んぼ上限} 畑:{ITEM:畑}/{畑上限} プランター:{ITEM:プランター}/4
+PRINTFORML 　現在の設備 田んぼ収穫日:{ITEM:田んぼ}/{田んぼ上限} 畑収穫日:{ITEM:畑}/{畑上限} プランター収穫日:{ITEM:プランター}/4
 PRINTFORML 　現在の人員 配属人数:{CMATCH(CSTR:配属, "農業")}/{ITEM:畑+ITEM:田んぼ*3+(ITEM:プランター > 0)} 栽培レベル:{栽培レベル()}
 PRINTL 
 IF ITEM:田んぼ || ITEM:畑 || ITEM:プランター
 	PRINTFORML [0] - 作物を植える
 	PRINTFORML [1] - 人員を配置する
 ELSE
+	SETCOLORBYNAME gray
 	HTML_PRINT SET_TOOLTIP("[-] - 作物を植える", "農業用の設備を導入する必要があります")
 	HTML_PRINT SET_TOOLTIP("[-] - 人員を配置する", "農業用の設備を導入する必要があります")
+	RESETCOLOR
 ENDIF
 PRINTFORML [2] - 生産状況を確認する
 PRINTFORML [3] - 設備を導入する
@@ -41,19 +43,11 @@ LOOP 1
 
 @作物を植える
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC 栽培レベル
-#DIM DYNAMIC 魔法レベル
-#DIM DYNAMIC 科学レベル
+#DIM DYNAMIC 作物
 
-FOR LCOUNT, 1, CHARANUM
-	SIF CSTR:LCOUNT:配属 != "農業"
-		CONTINUE
-	栽培レベル += ABL:LCOUNT:栽培技能
-	魔法レベル += ABL:LCOUNT:魔法技能
-	科学レベル += ABL:LCOUNT:工作技能
-NEXT
+;成長速度補正は栽培技能合計*2+魔法技能合計+工作技能合計
+;作物の基礎成長日数-成長速度補正が収穫できるまでの日数。最短で3日
 
-$RESTART
 DRAWLINE
 PRINTL □栽培に使う土地を選んでください
 SETCOLORBYNAME gray
@@ -94,179 +88,406 @@ DO
 	ENDSELECT
 LOOP 1
 
-
-
 $プランター
-PRINTL □プランターに植えたい作物を選んでください
+DRAWLINE
+PRINTL □使用するプランターを選んでください
+FOR LCOUNT, 1, 5
+	IF ITEM:プランター < LCOUNT
+		SETCOLORBYNAME gray
+		PRINTL 　[-] - プランター未所持
+		RESETCOLOR
+	ELSE
+		PRINTFORM 　[{LCOUNT}] - 
+		IF プランターの作物:LCOUNT == ""
+			PRINTL 空のプランター
+		ELSE
+			PRINTFORML %プランターの作物:LCOUNT%のプランター
+		ENDIF
+	ENDIF
+NEXT
+DRAWLINE
+PRINTPLAIN 　プランター　
+PRINTL [0] - 戻る
 
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RESTART
+		CASE 1 TO 4
+			SIF RESULT > ITEM:プランター
+				CONTINUE
+			LOCAL = RESULT
+			IF プランターの作物:RESULT != ""
+				PRINTFORML {LOCAL}番のプランターでは%プランターの作物:LOCAL%を栽培しています。新しく別のものを栽培しますか？
+				PRINTL [0] - 新しいものに挑戦したい
+				PRINTL [1] - 考え直す
+				DO
+					INPUT
+					SIF RESULT == 1
+						GOTO プランター
+				LOOP LOOPRES(0)
+			ENDIF
+			DRAWLINE
+			PRINTFORML □{LOCAL}番プランターに何を植えますか？
+			IF !ITEM:600
+				PRINTL 
+				PRINTL 【育てられる作物がありません】
+				PRINTL 
+			ELSE
+				FOR LCOUNT, 600, 650
+					SIF ITEM:LCOUNT
+						PRINTFORML [{LCOUNT-600, 2}] - %ITEMNAME:LCOUNT%(収穫目安 およそ{MAX(ITEMPRICE:LCOUNT-成長速度補正(), 3)}日)
+				NEXT
+			ENDIF
+			DRAWLINE
+			PRINTPLAIN 　プランター　
+			PRINTL [100] - 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 100
+						GOTO プランター
+					CASEELSE
+						作物 = RESULT+600
+						IF ITEM:作物
+							PRINTFORML {LOCAL}番プランターに%ITEMNAME:作物%を植えました
+							プランター収穫日:LOCAL = MAX(ITEMPRICE:作物-成長速度補正(), 3)
+							プランターの作物:LOCAL = %ITEMNAME:作物%
+							GOTO プランター
+						ENDIF
+				ENDSELECT
+			LOOP 1
+	ENDSELECT
+LOOP 1
 
+$畑
+DRAWLINE
+PRINTL □使用する畑を選んでください
+FOR LCOUNT, 1, 9
+	IF ITEM:畑 < LCOUNT
+		SETCOLORBYNAME gray
+		PRINTL 　[-] - 畑未所持
+		RESETCOLOR
+	ELSE
+		PRINTFORM 　[{LCOUNT}] - 
+		IF 畑の作物:LCOUNT == ""
+			PRINTL 未使用の畑
+		ELSE
+			PRINTFORML %畑の作物:LCOUNT%の畑
+		ENDIF
+	ENDIF
+NEXT
+DRAWLINE
+PRINTPLAIN 　畑　
+PRINTL [0] - 戻る
 
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RESTART
+		CASE 1 TO 8
+			SIF RESULT > ITEM:畑
+				CONTINUE
+			LOCAL = RESULT
+			IF 畑の作物:RESULT != ""
+				PRINTFORML {LOCAL}番の畑では%畑の作物:LOCAL%を栽培しています。新しく別のものを栽培しますか？
+				PRINTL [0] - 新しいものに挑戦したい
+				PRINTL [1] - 考え直す
+				DO
+					INPUT
+					SIF RESULT == 1
+						GOTO 畑
+				LOOP LOOPRES(0)
+			ENDIF
+			DRAWLINE
+			PRINTFORML □{LOCAL}番の畑に何を植えますか？
+			IF !ITEM:650
+				PRINTL 
+				PRINTL 【育てられる作物がありません】
+				PRINTL 
+			ELSE
+				FOR LCOUNT, 650, 700
+					SIF ITEM:LCOUNT
+						PRINTFORML [{LCOUNT-650, 2}] - %ITEMNAME:LCOUNT%(収穫目安 およそ{MAX(ITEMPRICE:LCOUNT-成長速度補正(), 3)}日)
+				NEXT
+			ENDIF
+			DRAWLINE
+			PRINTPLAIN 　畑　
+			PRINTL [100] - 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 100
+						GOTO 畑
+					CASEELSE
+						作物 = RESULT+650
+						IF ITEM:作物
+							PRINTFORML {LOCAL}番の畑に%ITEMNAME:作物%を植えました
+							畑収穫日:LOCAL = MAX(ITEMPRICE:作物-成長速度補正(), 3)
+							畑の作物:LOCAL = %ITEMNAME:作物%
+							GOTO 畑
+						ENDIF
+				ENDSELECT
+			LOOP 1
+	ENDSELECT
+LOOP 1
+
+$田んぼ
+DRAWLINE
+PRINTL □使用する田んぼを選んでください
+FOR LCOUNT, 1, 3
+	IF ITEM:田んぼ < LCOUNT
+		SETCOLORBYNAME gray
+		PRINTL 　[-] - 田んぼ未所持
+		RESETCOLOR
+	ELSE
+		PRINTFORM 　[{LCOUNT}] - 
+		IF 田んぼの作物:LCOUNT == ""
+			PRINTL 未使用の田んぼ
+		ELSE
+			PRINTFORML %田んぼの作物:LCOUNT%の田んぼ
+		ENDIF
+	ENDIF
+NEXT
+DRAWLINE
+PRINTPLAIN 　田んぼ　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RESTART
+		CASE 1 TO 2
+			SIF RESULT > ITEM:田んぼ
+				CONTINUE
+			LOCAL = RESULT
+			IF 田んぼの作物:RESULT != ""
+				PRINTFORML {LOCAL}番の田んぼでは%田んぼの作物:LOCAL%を栽培しています。新しく別のものを栽培しますか？
+				PRINTL [0] - 新しいものに挑戦したい
+				PRINTL [1] - 考え直す
+				DO
+					INPUT
+					SIF RESULT == 1
+						GOTO 田んぼ
+				LOOP LOOPRES(0)
+			ENDIF
+			DRAWLINE
+			PRINTFORML □{LOCAL}番の田んぼに何を植えますか？
+			IF !ITEM:700
+				PRINTL 
+				PRINTL 【育てられる作物がありません】
+				PRINTL 
+			ELSE
+				FOR LCOUNT, 700, 750
+					SIF ITEM:LCOUNT
+						PRINTFORML [{LCOUNT-650, 2}] - %ITEMNAME:LCOUNT%(収穫目安 およそ{MAX(ITEMPRICE:LCOUNT-成長速度補正(), 3)}日)
+				NEXT
+			ENDIF
+			DRAWLINE
+			PRINTPLAIN 　田んぼ　
+			PRINTL [100] - 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 100
+						GOTO 田んぼ
+					CASEELSE
+						作物 = RESULT+700
+						IF ITEM:作物
+							PRINTFORML {LOCAL}番の田んぼに%ITEMNAME:作物%を植えました
+							田んぼ収穫日:LOCAL = MAX(ITEMPRICE:作物-成長速度補正(), 3)
+							田んぼの作物:LOCAL = %ITEMNAME:作物%
+							GOTO 田んぼ
+						ENDIF
+				ENDSELECT
+			LOOP 1
+	ENDSELECT
+LOOP 1
 
 
 @生産状況
 
 @栽培解禁
-#DIM DYNAMIC 栽培レベル
 #DIM DYNAMIC LCOUNT
-
-FOR LCOUNT, 1, CHARANUM
-	SIF CSTR:LCOUNT:配属 != "農業"
-		CONTINUE
-	栽培レベル += ABL:LCOUNT:栽培技能
-NEXT
-
 LOCAL = 0
 
-IF 栽培レベル >= 1 && !ハーブ
+IF 栽培レベル() >= 1 && !ITEM:ハーブ
 	PRINTL 栽培:ハーブ(プランター)を解禁しました
-	ハーブ = 1
+	ITEM:ハーブ = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 2 && !もやし
+IF 栽培レベル() >= 2 && !ITEM:もやし
 	PRINTL 栽培:もやし(プランター)を解禁しました
-	もやし = 1
+	ITEM:もやし = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 3 && !イチゴ
+IF 栽培レベル() >= 3 && !ITEM:イチゴ
 	PRINTL 栽培:イチゴ(プランター)を解禁しました
 	PRINTL 栽培:トマト(畑)を解禁しました
-	イチゴ = 1
-	トマト = 1
+	ITEM:イチゴ = 1
+	ITEM:トマト = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 4 && !唐辛子
+IF 栽培レベル() >= 4 && !ITEM:唐辛子
 	PRINTL 栽培:唐辛子(プランター)を解禁しました
 	PRINTL 栽培:きゅうり(畑)を解禁しました
-	唐辛子 = 1
-	きゅうり = 1
+	ITEM:唐辛子 = 1
+	ITEM:きゅうり = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 5 && !じゃがいも
+IF 栽培レベル() >= 5 && !ITEM:じゃがいも
 	PRINTL 栽培:じゃがいも(畑)を解禁しました
 	PRINTL 栽培:さつまいも(畑)を解禁しました
-	じゃがいも = 1
-	さつまいも = 1
+	ITEM:じゃがいも = 1
+	ITEM:さつまいも = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 6 && !ナス
+IF 栽培レベル() >= 6 && !ITEM:ナス
 	PRINTL 栽培:ナス(畑)を解禁しました
 	PRINTL 栽培:ピーマン(畑)を解禁しました
-	ナス = 1
-	ピーマン = 1
+	ITEM:ナス = 1
+	ITEM:ピーマン = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 7 && !大根
+IF 栽培レベル() >= 7 && !ITEM:大根
 	PRINTL 栽培:大根(畑)を解禁しました
 	PRINTL 栽培:人参(畑)を解禁しました
-	大根 = 1
-	人参 = 1
+	ITEM:大根 = 1
+	ITEM:人参 = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 8 && !玉ねぎ
+IF 栽培レベル() >= 8 && !ITEM:玉ねぎ
 	PRINTL 栽培:玉ねぎ(畑)を解禁しました
 	PRINTL 栽培:長ねぎ(畑)を解禁しました
-	玉ねぎ = 1
-	長ねぎ = 1
+	ITEM:玉ねぎ = 1
+	ITEM:長ねぎ = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 9 && !レモン
+IF 栽培レベル() >= 9 && !ITEM:レモン
 	PRINTL 栽培:レモン(プランター)を解禁しました
 	PRINTL 栽培:ライム(プランター)を解禁しました
-	レモン = 1
-	ライム = 1
+	ITEM:レモン = 1
+	ITEM:ライム = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 10 && !とうもろこし
+IF 栽培レベル() >= 10 && !ITEM:とうもろこし
 	PRINTL 栽培:レタス(畑)を解禁しました
 	PRINTL 栽培:ごぼう(畑)を解禁しました
-	レタス = 1
-	ごぼう = 1
+	ITEM:レタス = 1
+	ITEM:ごぼう = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 11 && !りんご
+IF 栽培レベル() >= 11 && !ITEM:りんご
 	PRINTL 栽培:りんご(畑)を解禁しました
 	PRINTL 栽培:みかん(畑)を解禁しました
-	りんご = 1
-	みかん = 1
+	ITEM:りんご = 1
+	ITEM:みかん = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 12 && !ブルーベリー
+IF 栽培レベル() >= 12 && !ITEM:ブルーベリー
 	PRINTL 栽培:ブルーベリー(プランター)を解禁しました
 	PRINTL 栽培:ラズベリー(プランター)を解禁しました
-	ブルーベリー = 1
-	ラズベリー = 1
+	ITEM:ブルーベリー = 1
+	ITEM:ラズベリー = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 13
+IF 栽培レベル() >= 13 && !ITEM:キャベツ
 	PRINTL 栽培:キャベツ(畑)を解禁しました
 	PRINTL 栽培:白菜(畑)を解禁しました
-	キャベツ = 1
-	白菜 = 1
+	ITEM:キャベツ = 1
+	ITEM:白菜 = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 14
+IF 栽培レベル() >= 14 && !ITEM:とうもろこし
 	PRINTL 栽培:とうもろこし(畑)を解禁しました
 	PRINTL 栽培:かぼちゃ(畑)を解禁しました
-	とうもろこし = 1
-	かぼちゃ = 1
+	ITEM:とうもろこし = 1
+	ITEM:かぼちゃ = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 15 && !米
+IF 栽培レベル() >= 15 && !ITEM:米
 	PRINTL 栽培:米(田んぼ)を解禁しました
 	PRINTL 栽培:麦(田んぼ)を解禁しました
-	米 = 1
-	麦 = 1
+	ITEM:米 = 1
+	ITEM:麦 = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 16 && !にんにく
+IF 栽培レベル() >= 16 && !ITEM:にんにく
 	PRINTL 栽培:にんにく(プランター)を解禁しました
-	にんにく = 1
+	ITEM:にんにく = 1
 ENDIF
-IF 栽培レベル >= 17 && !メロン
+IF 栽培レベル() >= 17 && !ITEM:メロン
 	PRINTL 栽培:メロン(畑)を解禁しました
 	PRINTL 栽培:スイカ(畑)を解禁しました
-	メロン = 1
-	スイカ = 1
+	ITEM:メロン = 1
+	ITEM:スイカ = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 18 && !薔薇
+IF 栽培レベル() >= 18 && !ITEM:薔薇
 	PRINTL 栽培:薔薇(プランター)を解禁しました
-	薔薇 = 1
+	ITEM:薔薇 = 1
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 20 && !ぶどう
+IF 栽培レベル() >= 20 && !ITEM:ぶどう
 	PRINTL 栽培:ぶどう(畑)を解禁しました
-	ぶどう = 1
+	ITEM:ぶどう = 1
+	LOCAL = 1
 ENDIF
 
-IF 栽培レベル >= 30 && !嘆きの樹
+IF 栽培レベル() >= 30 && !ITEM:嘆きの樹
 	PRINTL 栽培:嘆きの樹(プランター)を解禁しました
-	嘆きの樹 = 1
+	ITEM:嘆きの樹 = 1
 	;実績:すべての作物を解禁する
 	CALL 実績解除, "Power of Nature"
+	LOCAL = 1
 ENDIF
 
 ;畑は栽培レベル3から購入可能
-IF 栽培レベル >= 3 && 畑上限 < 1
+IF 栽培レベル() >= 3 && 畑上限 < 1
 	畑上限++
 	PRINTL 畑を購入できるようになりました
+	LOCAL = 1
 ENDIF
 
 ;以後、栽培レベル3上昇ごとに畑上限が1増える 最大で8枚
 FOR LCOUNT, 2, 8
-	IF 栽培レベル >= LCOUNT*3 && 畑上限 < LCOUNT
+	IF 栽培レベル() >= LCOUNT*3 && 畑上限 < LCOUNT
 		畑上限++
 		PRINTFORML 畑の所持上限が増えました(現在{畑上限}枚 \@ 畑上限 == 8 ? 畑全解禁！ #  \@)
+		LOCAL = 1
 	ENDIF
 NEXT
 
-IF 栽培レベル >= 15 && 田んぼ上限 < 1
+IF 栽培レベル() >= 15 && 田んぼ上限 < 1
 	田んぼ上限++
 	PRINTL 田んぼを購入できるようになりました
+	LOCAL = 1
 ENDIF
-IF 栽培レベル >= 30 && 田んぼ上限 < 2
+IF 栽培レベル() >= 30 && 田んぼ上限 < 2
 	田んぼ上限++
 	PRINTL 田んぼの所持上限が増えました
+	LOCAL = 1
 ENDIF
 
-
+RETURN LOCAL
 
 @農業設備導入
+DRAWLINE
 PRINTL □農業用設備の導入
-PRINTFORML 　現在の設備 田んぼ:{ITEM:田んぼ}/2 畑:{ITEM:畑}/4 プランター:{ITEM:プランター}/4
+PRINTFORML 　現在の設備 田んぼ収穫日:{ITEM:田んぼ}/{田んぼ上限} 畑収穫日:{ITEM:畑}/{畑上限} プランター収穫日:{ITEM:プランター}/4
 CALL PASELIL, @"　所持金:{MONEY}＄"
 PRINTL 
-IF ITEM:田んぼ < 2
+IF ITEM:田んぼ < 田んぼ上限
 	CALL PASELIL, @"　[0] - 田んぼを購入する(500000＄)"
 ELSE
 	SETCOLORBYNAME gray
 	PRINTL 　[-] - 田んぼはこれ以上買えません
 	RESETCOLOR
 ENDIF
-IF ITEM:畑 < 4
+IF ITEM:畑 < 畑上限
 	CALL PASELIL, @"　[1] - 畑を購入する(100000＄)"
 ELSE
 	SETCOLORBYNAME gray
@@ -365,8 +586,150 @@ LOCAL = 0
 FOR LCOUNT, 1, CHARANUM
 	SIF CSTR:LCOUNT:配属 != "農業"
 		CONTINUE
-	LOCAL += ABL:LCOUNT:栽培技能
+	LOCAL += MIN(ABL:LCOUNT:栽培技能, 10)
 NEXT
 
 RETURNF LOCAL
+
+@成長速度補正, ARG
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 魔法レベル
+#DIM DYNAMIC 科学レベル
+
+FOR LCOUNT, 1, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "農業"
+		CONTINUE
+	魔法レベル += MIN(ABL:LCOUNT:魔法技能, 10)
+	科学レベル += MIN(ABL:LCOUNT:工作技能, 10)
+NEXT
+
+RETURNF 栽培レベル()*2+魔法レベル+科学レベル
+
+;収穫日数の再計算
+@農業_ASSIGNON_OPTION, ARG
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 上昇値
+
+;配属したキャラが成長速度補正に及ぼす影響を調べる
+上昇値 = ABL:ARG:栽培技能*2+ABL:ARG:魔法技能+ABL:ARG:工作技能
+
+
+;成長速度補正が基礎成長日数以下なら上昇値の分収穫を早める 最短で3日まで
+FOR LCOUNT, 1, 5
+	SIF プランター収穫日:LCOUNT < 3
+		CONTINUE
+	SIF 成長速度補正()-上昇値 < ITEMPRICE:(プランターの作物:LCOUNT)
+		プランター収穫日:LCOUNT = MAX(プランター収穫日:LCOUNT-上昇値, 3)
+NEXT
+
+FOR LCOUNT, 1, 9
+	SIF 畑収穫日:LCOUNT < 3
+		CONTINUE
+	SIF 成長速度補正()-上昇値 < ITEMPRICE:(畑の作物:LCOUNT)
+		畑収穫日:LCOUNT = MAX(畑収穫日:LCOUNT-上昇値, 3)
+NEXT
+
+FOR LCOUNT, 1, 3
+	SIF 田んぼ収穫日:LCOUNT < 3
+		CONTINUE
+	SIF 成長速度補正()-上昇値 < ITEMPRICE:(田んぼの作物:LCOUNT)
+		田んぼ収穫日:LCOUNT = MAX(田んぼ収穫日:LCOUNT-上昇値, 3)
+NEXT
+
+@農業_ASSIGNOFF_OPTION, ARG
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 減少値
+
+;外したキャラが成長速度補正に及ぼしていた影響を調べる
+減少値 = ABL:ARG:栽培技能*2+ABL:ARG:魔法技能+ABL:ARG:工作技能
+
+;成長速度補正が基礎成長日数以下なら減少値の分収穫を先延ばしにする
+FOR LCOUNT, 1, 5
+	SIF プランター収穫日:LCOUNT == 0
+		CONTINUE
+	SIF 成長速度補正() < ITEMPRICE:(プランターの作物:LCOUNT)
+		プランター収穫日:LCOUNT = MIN(プランター収穫日:LCOUNT+減少値, ITEMPRICE:(プランターの作物:LCOUNT))
+NEXT
+
+FOR LCOUNT, 1, 9
+	SIF 畑収穫日:LCOUNT == 0
+		CONTINUE
+	SIF 成長速度補正() < ITEMPRICE:(畑の作物:LCOUNT)
+		畑収穫日:LCOUNT = MIN(畑収穫日:LCOUNT+減少値, ITEMPRICE:(畑の作物:LCOUNT))
+NEXT
+
+FOR LCOUNT, 1, 3
+	SIF 田んぼ収穫日:LCOUNT == 0
+		CONTINUE
+	SIF 成長速度補正() < ITEMPRICE:(田んぼの作物:LCOUNT)
+		田んぼ収穫日:LCOUNT = MIN(田んぼ収穫日:LCOUNT+減少値, ITEMPRICE:(田んぼの作物:LCOUNT))
+NEXT
+
+
+@TURNEND_農業
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 栽培数, 4
+#DIM DYNAMIC メッセージ表示
+CALL 栽培解禁
+LOCAL = RESULT
+
+;作物の成長は日付変更時のみ
+IF TIME == 1
+	FOR LCOUNT, 1, 5
+		SIF プランター収穫日:LCOUNT <= 0
+			CONTINUE
+		プランター収穫日:LCOUNT--
+		IF プランター収穫日:LCOUNT == 0
+			PRINTFORML %プランターの作物:LCOUNT%(プランター)が収穫可能になりました
+			ITEM:(プランターの作物:LCOUNT) = 2
+			メッセージ表示 = 1
+		ENDIF
+		;プランターはいくつ育てても1換算
+		栽培数 = 1
+		栽培数:1 = 1
+	NEXT
+	FOR LCOUNT, 1, 9
+		SIF 畑収穫日:LCOUNT <= 0
+			CONTINUE
+		畑収穫日:LCOUNT--
+		IF 畑収穫日:LCOUNT == 0
+			PRINTFORML %畑の作物:LCOUNT%(畑)が収穫可能になりました
+			ITEM:(畑の作物:LCOUNT) = 2
+			メッセージ表示 = 1
+		ENDIF
+		栽培数++
+		栽培数:2 = 1
+	NEXT
+	FOR LCOUNT, 1, 3
+		SIF 田んぼ収穫日:LCOUNT <= 0
+			CONTINUE
+		田んぼ収穫日:LCOUNT--
+		IF 田んぼ収穫日:LCOUNT == 0
+			PRINTFORML %田んぼの作物:LCOUNT%(田んぼ)が収穫可能になりました
+			ITEM:(田んぼの作物:LCOUNT) = 2
+			メッセージ表示 = 1
+		ENDIF
+		栽培数++
+		栽培数:3 = 1
+	NEXT
+	;栽培経験を加算 栽培数-配属人数 ただしプランター、畑、田んぼで栽培していればその分最低保証
+	;栽培数0なら1にする
+	CALL SETMIN(栽培数, 1)
+	栽培数 -= CMATCH(CSTR:配属, "農業")
+	CALL SETMAX, 栽培数, 栽培数:1+栽培数:2+栽培数:3
+	FOR LCOUNT, 1, CHARANUM
+		SIF CSTR:LCOUNT:配属 == "農業"
+			EXP:LCOUNT:栽培経験 += 栽培数
+	NEXT
+ENDIF
+
+SIF !メッセージ表示 && !LOCAL
+	PRINTL 農業の方は特に変わったことは無かったようだ
+
+IF メッセージ表示
+	RETURN 1
+ELSE
+	RETURN LOCAL
+ENDIF
 

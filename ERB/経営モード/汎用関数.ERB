@@ -201,18 +201,17 @@ IF 配属可能人数
 				PRINT )
 			CASE "農業"
 				PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(栽培技能:{ABL:COUNT:栽培技能, 2, LEFT} 工作技能:{ABL:COUNT:工作技能, 2, LEFT} 魔法技能:{ABL:COUNT:魔法技能, 2, LEFT}
-				SIF TALENT:COUNT:調合知識
-					PRINT  調合知識
-				SIF TALENT:COUNT:工学博士
-					PRINT  工学博士
-				SIF TALENT:COUNT:魔術師
-					PRINT  魔術師
-				SIF TALENT:COUNT:専業主婦
-					PRINT  専業主婦
+				;SIF TALENT:COUNT:調合知識
+				;	PRINT  調合知識
+				;SIF TALENT:COUNT:工学博士
+				;	PRINT  工学博士
+				;SIF TALENT:COUNT:魔術師
+				;	PRINT  魔術師
+				;SIF TALENT:COUNT:専業主婦
+				;	PRINT  専業主婦
 				PRINT )
 			CASE "畜産業"
 				PRINTFORM [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT%(飼育技能:{ABL:COUNT:飼育技能, 2, LEFT} 工作技能:{ABL:COUNT:工作技能, 2, LEFT} 魔法技能:{ABL:COUNT:魔法技能, 2, LEFT}
-				SIF TALENT:COUNT:触手使役術
 				SIF CSTR:COUNT:種族 == "人魚"
 					PRINT  人魚
 				SIF CSTR:COUNT:種族 == "獣人"
@@ -303,17 +302,11 @@ DO
 					LTARGET = TARGET
 					TARGET = LOCAL
 					;配属解除時の口上
-					IF FLAG:口上表示
-						SELECTCASE 配属先
-							CASE "ゲームセンター"
-								TRYCALLFORM GC_ASSIGNOFF_K{NO:LOCAL}
-							CASE "娼館"
-								TRYCALLFORM BR_ASSIGNOFF_K{NO:LOCAL}
-							CASE "芸能プロダクション"
-								TRYCALLFORM IDOL_ASSIGNOFF_K{NO:LOCAL}
-						ENDSELECT
-					ENDIF
+					SIF FLAG:口上表示
+						TRYCALLFORM %配属先%_ASSIGNOFF_K{NO:LOCAL}
 					TARGET = LTARGET
+					;配属先ごとに専用の処理がある場合は呼び出す
+					TRYCALLFORM %配属先%_ASSIGNOFF_OPTION, LOCAL
 					RESTART
 				CASEELSE
 					$娼館ELSE
@@ -330,16 +323,8 @@ DO
 					LTARGET = TARGET
 					TARGET = LOCAL
 					;配属時の口上
-					IF FLAG:口上表示
-						SELECTCASE 配属先
-							CASE "ゲームセンター"
-								TRYCALLFORM GC_ASSIGNON_K{NO:LOCAL}
-							CASE "娼館"
-								TRYCALLFORM BR_ASSIGNON_K{NO:LOCAL}
-							CASE "芸能プロダクション"
-								TRYCALLFORM IDOL_ASSIGNON_K{NO:LOCAL}
-						ENDSELECT
-					ENDIF
+					SIF FLAG:口上表示
+						TRYCALLFORM %配属先%_ASSIGNON_K{NO:LOCAL}
 					IF TARGET > 0
 						TARGET = -1
 					ELSEIF ASSI == TARGET
@@ -347,6 +332,8 @@ DO
 					ELSE
 						TARGET = LTARGET
 					ENDIF
+					;配属先ごとに専用の処理がある場合は呼び出す
+					TRYCALLFORM %配属先%_ASSIGNON_OPTION, LOCAL
 					;実績:日向美ビタースイーツ♪のメンバーを全員娼館に配属する
 					LOCAL = 0
 					IF 配属先 == "娼館"
@@ -369,10 +356,12 @@ LOOP LOOPRES(999, 1001, 1002)
 RESTART
 
 @配属解除, ARG
+LOCALS = %CSTR:ARG:配属%
 CSTR:ARG:配属 = 
 CFLAG:ARG:配属完了 = 0
 CFLAG:ARG:ゲーセン店長 = 0
 CFLAG:ARG:上級娼婦 = 0
 CFLAG:ARG:レッスン = 0
 CFLAG:ARG:娼館部屋番号 = 0
+TRYCALLFORM %LOCALS%_ASSIGNOFF_OPTION, ARG
 
