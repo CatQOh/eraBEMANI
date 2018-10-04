@@ -31,7 +31,7 @@ DO
 				CALL STRATEGY_PERSONAL, "農業"
 			RESTART
 		CASE 2
-			CALL 生産状況
+			CALL 生産状況_農業
 			RESTART
 		CASE 3
 			CALL 農業設備導入
@@ -308,7 +308,110 @@ DO
 LOOP 1
 
 
-@生産状況
+@生産状況_農業
+#DIM DYNAMIC LCOUNT
+DRAWLINE
+
+IF CMATCH(CSTR:配属, "農業")
+	PRINTL □農業の人員
+	LOCAL = TARGET
+	FOR LCOUNT, 1, CHARANUM
+		IF CSTR:LCOUNT:配属 == "農業"
+			TARGET = LCOUNT
+			CALL NEED_JUEL_栽培技能
+			CALL CHECK_JUEL_栽培技能
+			PRINTFORM 　%NAME:LCOUNT% 栽培技能:{ABL:LCOUNT:栽培技能, 2, LEFT} 魔法技能:{ABL:LCOUNT:魔法技能, 2, LEFT} 工作技能:{ABL:LCOUNT:工作技能, 2, LEFT} 
+			SIF RESULT && ABL:LCOUNT:栽培技能 < 10
+				PRINTBUTTON "[栽培技能上昇可能]", LCOUNT
+			PRINTL 
+		ENDIF
+	NEXT
+	TARGET = LOCAL
+	PRINTL 
+ENDIF
+
+PRINTL 　[-1] 植物図鑑を見る
+PRINTL 
+
+PRINTL □現在の作物
+PRINTL └プランター
+FOR LCOUNT, 1, 5
+	IF ITEM:プランター < LCOUNT
+		SETCOLORBYNAME gray
+		PRINTFORMLC 　{LCOUNT}番:未所持
+		RESETCOLOR
+	ELSE
+		IF プランターの作物:LCOUNT != ""
+			PRINTFORMLC 　{LCOUNT}番:%プランターの作物:LCOUNT%(\@ プランター収穫日:LCOUNT == 0 ? 収穫可能 # 収穫まで{プランター収穫日:LCOUNT}日 \@)
+		ELSE
+			PRINTFORMLC 　{LCOUNT}番:無し
+		ENDIF
+	ENDIF
+NEXT
+PRINTL 
+
+PRINTL └畑
+FOR LCOUNT, 1, 9
+	SIF LCOUNT == 5
+		PRINTL 
+	IF ITEM:畑 < LCOUNT
+		SETCOLORBYNAME gray
+		PRINTFORMLC 　{LCOUNT}番:未所持
+		RESETCOLOR
+	ELSE
+		IF 畑の作物:LCOUNT != ""
+			PRINTFORMLC 　{LCOUNT}番:%畑の作物:LCOUNT%(\@ 畑収穫日:LCOUNT == 0 ? 収穫可能 # 収穫まで{畑収穫日:LCOUNT}日 \@)
+		ELSE
+			PRINTFORMLC 　{LCOUNT}番:無し
+		ENDIF
+	ENDIF
+NEXT
+PRINTL 
+
+PRINTL └田んぼ
+FOR LCOUNT, 1, 3
+	IF ITEM:田んぼ < LCOUNT
+		SETCOLORBYNAME gray
+		PRINTFORMLC 　{LCOUNT}番:未所持
+		RESETCOLOR
+	ELSE
+		IF 田んぼの作物:LCOUNT != ""
+			PRINTFORMLC 　{LCOUNT}番:%田んぼの作物:LCOUNT%(\@ 田んぼ収穫日:LCOUNT == 0 ? 収穫可能 # 収穫まで{田んぼ収穫日:LCOUNT}日 \@)
+		ELSE
+			PRINTFORMLC 　{LCOUNT}番:無し
+		ENDIF
+	ENDIF
+NEXT
+
+PRINTL 
+DRAWLINE
+PRINTPLAIN 　生産状況　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE -1
+			CALL 植物図鑑
+			RESTART
+		CASEELSE
+			LOCAL = TARGET
+			TARGET = RESULT
+			IF CSTR:配属 == "農業"
+				CALL NEED_JUEL_栽培技能
+				CALL CHECK_JUEL_栽培技能
+				IF RESULT
+					CALLFORM ABLUP{GETNUM(ABL, "栽培技能")}
+					TARGET = LOCAL
+					RESTART
+				ENDIF
+			ENDIF
+			TARGET = LOCAL
+	ENDSELECT
+LOOP 1
+
 
 @栽培解禁
 #DIM DYNAMIC LCOUNT
@@ -473,6 +576,146 @@ IF 栽培レベル() >= 30 && 田んぼ上限 < 2
 ENDIF
 
 RETURN LOCAL
+
+@植物図鑑
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 次ページあり
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 総数
+DRAWLINE
+
+表示数 = 0
+次ページあり = 0
+総数 = 0
+
+FOR LCOUNT, 600, 750
+	IF ITEMNAME:LCOUNT != ""
+		IF 表示数 == 10
+			次ページあり = 1
+			BREAK
+		ENDIF
+		総数++
+		SIF 総数 < ページ数*10
+			CONTINUE
+		IF ITEM:LCOUNT
+			;1は解禁済み（白文字）、2は栽培収穫したことがある（青文字）
+			SIF ITEM:LCOUNT == 2
+				SETCOLOR 100, 150, 200
+			PRINTFORM 　{総数}.%ITEMNAME:LCOUNT, 14, LEFT% 
+			RESETCOLOR
+			SELECTCASE ITEMNAME:LCOUNT
+				CASE "ハーブ"
+					PRINTL 繁殖力がすさまじい薬草たち。ゾンビパンデミックでも重宝する
+				CASE "もやし"
+					PRINTL 買っても育ててもお手軽。シャキシャキ感がたまらない。カロリーは無いが栄養も無い
+				CASE "イチゴ"
+					PRINTL 甘くて美味しい。身近な果物の代表格
+				CASE "唐辛子"
+					PRINTL 辛党の必需品。調理する人の塩梅次第でケンカが起きる
+				CASE "レモン"
+					PRINTL ビタミンCが豊富な酸っぱい果物。ジュース、スイーツ、揚げ物と用途は幅広い
+				CASE "ライム"
+					PRINTL レモン同様に酸っぱい果物。近年の勢いはレモンの座を脅かしつつある
+				CASE "ブルーベリー"
+					PRINTL 目に良い。ジャムにもなる
+				CASE "ラズベリー"
+					PRINTL 甘酸っぱい。ジャムにもなる
+				CASE "にんにく"
+					PRINTL 元気の源。においさえ気にしなければ栄養価は最強
+				CASE "薔薇"
+					PRINTL 愛の花。きれいな花には棘がある
+				CASE "嘆きの樹"
+					PRINTL 「その嘆きこそ我の糧也」と言いながら愚痴を聞いてくれるイイやつ
+				CASE "トマト"
+					PRINTL どこにでもある野菜だがその用途は多岐にわたる。生食、煮込み、調味料などなど
+				CASE "きゅうり"
+					PRINTL 夏の風物詩。採れたてをそのままいただこう
+				CASE "じゃがいも"
+					PRINTL 畑に生る主食。熱を通せばだいたい美味しく食べられる
+				CASE "さつまいも"
+					PRINTL 和スイーツには欠かせない野菜。焼いても蒸かしても美味しい
+				CASE "ナス"
+					PRINTL 瑞々しさと肉々しさが両立した野菜。和洋中問わず何にでも使える
+				CASE "ピーマン"
+					PRINTL 子供の天敵。これを美味しく食べられるようになったら大人になった証拠
+				CASE "大根"
+					PRINTL 熱々に煮込まれた大根には根強いファンも多い。根っこだけに
+				CASE "人参"
+					PRINTL 子供の天敵その2。カレー等の助け舟があるのでピーマンほど嫌われてはいない
+				CASE "玉ねぎ"
+					PRINTL 全米を泣かせた
+				CASE "長ねぎ"
+					PRINTL 時と場合によっては長柄武器にもなる
+				CASE "レタス"
+					PRINTL キャベツほど融通が利かない不憫野菜
+				CASE "ごぼう"
+					PRINTL 煮物、きんぴら、炊き込みご飯など、和食の友
+				CASE "りんご"
+					PRINTL 皮ごとかじる派と皮をきれいに剥く派に分かれる
+				CASE "みかん"
+					PRINTL こたつ、猫とよくトリオになっている
+				CASE "キャベツ"
+					PRINTL 炒めてよし、煮込んでよし、生でもよしの万能野菜
+				CASE "白菜"
+					PRINTL 冬版キャベツ。炒めてよし、煮込んでよし、生でも以下略
+				CASE "とうもろこし"
+					PRINTL 調理するとシャキシャキだったりふわふわだったりする謎の食材
+				CASE "かぼちゃ"
+					PRINTL 甘くて美味しいが栽培難易度は高い
+				CASE "メロン"
+					PRINTL 農家の夢。高級品は一玉100クレ以上にもなる
+				CASE "スイカ"
+					PRINTL 麦わら帽子、セミの鳴き声、そして思い出す縁側で食べたこれ
+				CASE "ぶどう"
+					PRINTL そのまま食べるほか、ワインの命はぶどうの品質にも大きく左右される
+				CASE "米"
+					PRINTL ピタミンミネラル食物繊維、スーパーエナジーミラクルパワー。おこめおいし♪
+				CASE "麦"
+					PRINTL 米と対をなす二大穀物。これの有無で食生活が大きく変わる
+			ENDSELECT
+		ELSE
+			SETCOLORBYNAME gray
+			PRINTFORML 　{総数}.[未解禁]
+			RESETCOLOR
+		ENDIF
+		表示数++
+	ENDIF
+NEXT
+DRAWLINE
+PRINT 　白文字:解禁済み 
+SETCOLOR 100, 150, 200
+PRINT 青文字:栽培・収穫経験あり 
+RESETCOLOR
+SETCOLORBYNAME gray
+PRINTL 灰文字:未解禁
+RESETCOLOR
+DRAWLINE
+PRINTPLAINFORM 　植物図鑑 {ページ数+1}ページ　
+IF ページ数
+	PRINT [1] 前ページ 
+ELSE
+	PRINT 　　　　　　 
+ENDIF
+PRINT [0] 戻る 
+SIF 次ページあり
+	PRINT [9] 次ページ
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1
+			SIF ページ数
+				ページ数--
+			RESTART
+		CASE 9
+			SIF 次ページあり
+				ページ数++
+			RESTART
+	ENDSELECT
+LOOP 1
 
 @農業設備導入
 DRAWLINE
