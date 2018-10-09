@@ -5,38 +5,38 @@ PRINTFORML 　現在の設備 田んぼ収穫日:{ITEM:田んぼ}/{田んぼ上�
 PRINTFORML 　現在の人員 配属人数:{CMATCH(CSTR:配属, "農業")}/{ITEM:畑+ITEM:田んぼ*3+(ITEM:プランター > 0)} 栽培レベル:{栽培レベル()}
 PRINTL 
 IF ITEM:田んぼ || ITEM:畑 || ITEM:プランター
-	PRINTFORML [0] - 作物を植える
-	PRINTFORML [1] - 人員を配置する
+	PRINTFORML [1] - 作物を植える
+	PRINTFORML [2] - 人員を配置する
 ELSE
 	SETCOLORBYNAME gray
 	HTML_PRINT SET_TOOLTIP("[-] - 作物を植える", "農業用の設備を導入する必要があります")
 	HTML_PRINT SET_TOOLTIP("[-] - 人員を配置する", "農業用の設備を導入する必要があります")
 	RESETCOLOR
 ENDIF
-PRINTFORML [2] - 生産状況を確認する
-PRINTFORML [3] - 設備を導入する
+PRINTFORML [3] - 生産状況を確認する
+PRINTFORML [4] - 設備を導入する
 DRAWLINE
 PRINTPLAIN 　農業　
-PRINTL [9] - 戻る
+PRINTL [0] - 戻る
 
 DO
 	INPUT
 	SELECTCASE RESULT
-		CASE 0
+		CASE 1
 			SIF ITEM:田んぼ || ITEM:畑 || ITEM:プランター
 				CALL 作物を植える
 			RESTART
-		CASE 1
+		CASE 2
 			SIF ITEM:田んぼ || ITEM:畑 || ITEM:プランター
 				CALL STRATEGY_PERSONAL, "農業"
 			RESTART
-		CASE 2
+		CASE 3
 			CALL 生産状況_農業
 			RESTART
-		CASE 3
+		CASE 4
 			CALL 農業設備導入
 			RESTART
-		CASE 9
+		CASE 0
 			RETURN
 	ENDSELECT
 LOOP 1
@@ -312,21 +312,24 @@ LOOP 1
 #DIM DYNAMIC LCOUNT
 DRAWLINE
 
+PRINTL □農業の人員
 IF CMATCH(CSTR:配属, "農業")
-	PRINTL □農業の人員
 	LOCAL = TARGET
 	FOR LCOUNT, 1, CHARANUM
 		IF CSTR:LCOUNT:配属 == "農業"
 			TARGET = LCOUNT
+			PRINTFORM 　%NAME:LCOUNT% 栽培技能:{ABL:LCOUNT:栽培技能, 2, LEFT} 魔法技能:{ABL:LCOUNT:魔法技能, 2, LEFT} 工作技能:{ABL:LCOUNT:工作技能, 2, LEFT} 
 			CALL NEED_JUEL_栽培技能
 			CALL CHECK_JUEL_栽培技能
-			PRINTFORM 　%NAME:LCOUNT% 栽培技能:{ABL:LCOUNT:栽培技能, 2, LEFT} 魔法技能:{ABL:LCOUNT:魔法技能, 2, LEFT} 工作技能:{ABL:LCOUNT:工作技能, 2, LEFT} 
 			SIF RESULT && ABL:LCOUNT:栽培技能 < 10
 				PRINTBUTTON "[栽培技能上昇可能]", LCOUNT
 			PRINTL 
 		ENDIF
 	NEXT
 	TARGET = LOCAL
+	PRINTL 
+ELSE
+	PRINTL 　[無し]
 	PRINTL 
 ENDIF
 
@@ -724,21 +727,21 @@ PRINTFORML 　現在の設備 田んぼ収穫日:{ITEM:田んぼ}/{田んぼ上�
 CALL PASELIL, @"　所持金:{MONEY}＄"
 PRINTL 
 IF ITEM:田んぼ < 田んぼ上限
-	CALL PASELIL, @"　[0] - 田んぼを購入する(500000＄)"
+	CALL PASELIL, @"　[0] - 田んぼを購入する({ITEMPRICE:田んぼ}＄)"
 ELSE
 	SETCOLORBYNAME gray
 	PRINTL 　[-] - 田んぼはこれ以上買えません
 	RESETCOLOR
 ENDIF
 IF ITEM:畑 < 畑上限
-	CALL PASELIL, @"　[1] - 畑を購入する(100000＄)"
+	CALL PASELIL, @"　[1] - 畑を購入する({ITEMPRICE:畑}＄)"
 ELSE
 	SETCOLORBYNAME gray
 	PRINTL 　[-] - 畑はこれ以上買えません
 	RESETCOLOR
 ENDIF
 IF ITEM:プランター < 4
-	CALL PASELIL, @"　[2] - プランターを購入する(300＄)"
+	CALL PASELIL, @"　[2] - プランターを購入する({ITEMPRICE:プランター}＄)"
 ELSE
 	SETCOLORBYNAME gray
 	PRINTL 　[-] - プランターはこれ以上買えません
@@ -750,75 +753,46 @@ DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 0
-			IF ITEM:田んぼ < 2
-				IF MONEY < 500000
-					PRINTW 所持金が足りません
-					RESTART
-				ELSE
-					CALL PASELIL, @"田んぼを購入します。よろしいですか？(所持金:{MONEY}＄→{MONEY-500000}＄)"
-					PRINTL [0] - はい
-					PRINTL [1] - いいえ
-					DO
-						INPUT
-						SELECTCASE RESULT
-							CASE 0
-								PRINTW 田んぼを購入しました
-								ITEM:田んぼ++
-								RESTART
-							CASE 1
-								RESTART
-						ENDSELECT
-					LOOP 1
-				ENDIF
+			IF ITEM:田んぼ < 田んぼ上限
+				LOCALS = 田んぼ
+				BREAK
 			ENDIF
 		CASE 1
-			IF ITEM:畑 < 4
-				IF MONEY < 100000
-					PRINTW 所持金が足りません
-					RESTART
-				ELSE
-					CALL PASELIL, @"畑を購入します。よろしいですか？(所持金:{MONEY}＄→{MONEY-100000}＄)"
-					PRINTL [0] - はい
-					PRINTL [1] - いいえ
-					DO
-						INPUT
-						SELECTCASE RESULT
-							CASE 0
-								PRINTW 畑を購入しました
-								ITEM:畑++
-								RESTART
-							CASE 1
-								RESTART
-						ENDSELECT
-					LOOP 1
-				ENDIF
+			IF ITEM:畑 < 畑上限
+				LOCALS = 畑
+				BREAK
 			ENDIF
 		CASE 2
 			IF ITEM:プランター < 4
-				IF MONEY < 300
-					PRINTW 所持金が足りません
-					RESTART
-				ELSE
-					CALL PASELIL, @"プランターを購入します。よろしいですか？(所持金:{MONEY}＄→{MONEY-300}＄)"
-					PRINTL [0] - はい
-					PRINTL [1] - いいえ
-					DO
-						INPUT
-						SELECTCASE RESULT
-							CASE 0
-								PRINTW プランターを購入しました
-								ITEM:プランター++
-								RESTART
-							CASE 1
-								RESTART
-						ENDSELECT
-					LOOP 1
-				ENDIF
+				LOCALS = プランター
+				BREAK
 			ENDIF
 		CASE 9
 			RETURN
 	ENDSELECT
 LOOP 1
+
+IF MONEY < ITEMPRICE:LOCALS
+	PRINTW 所持金が足りません
+	RESTART
+ELSE
+	CALL PASELIL, @"%LOCALS%を購入します。よろしいですか？(所持金:{MONEY}＄→{MONEY-ITEMPRICE:LOCALS}＄)"
+	PRINTL [0] - はい
+	PRINTL [1] - いいえ
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 0
+				PRINTFORMW %LOCALS%を購入しました
+				ITEM:LOCALS++
+				MONEY -= ITEMPRICE:LOCALS
+				RESTART
+			CASE 1
+				RESTART
+		ENDSELECT
+	LOOP 1
+ENDIF
+
 
 @栽培レベル, ARG
 #FUNCTION
@@ -958,7 +932,7 @@ IF TIME == 1
 	NEXT
 	;栽培経験を加算 栽培数-配属人数 ただしプランター、畑、田んぼで栽培していればその分最低保証
 	;栽培数0なら1にする
-	CALL SETMIN(栽培数, 1)
+	CALL SETMIN, 栽培数, 1
 	栽培数 -= CMATCH(CSTR:配属, "農業")
 	CALL SETMAX, 栽培数, 栽培数:1+栽培数:2+栽培数:3
 	FOR LCOUNT, 1, CHARANUM

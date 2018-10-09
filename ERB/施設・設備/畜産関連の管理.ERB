@@ -1,3 +1,613 @@
-@�{�Y
+﻿@畜産
+DRAWLINE
+PRINTL □畜産関連の管理
+PRINTFORML 
 
-@TURNEND_�{�Y
+PRINTL 
+IF ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場
+	PRINTL [1] - 畜産業に投資する
+	PRINTL [2] - 人員を配置する
+ELSE
+	SETCOLORBYNAME gray
+	HTML_PRINT SET_TOOLTIP("[-] - 畜産業に投資する", "畜産用の設備を導入する必要があります")
+	HTML_PRINT SET_TOOLTIP("[-] - 人員を配置する", "畜産用の設備を導入する必要があります")
+	RESETCOLOR
+ENDIF
+PRINTL [3] - 生産状況を確認する
+PRINTL [4] - 設備を導入する
+DRAWLINE
+PRINTPLAIN 　畜産　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 1
+			SIF ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場
+				CALL 畜産業に投資する
+			RESTART
+		CASE 2
+			SIF ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場
+				CALL STRATEGY_PERSONAL, "畜産業"
+			RESTART
+		CASE 3
+			CALL 生産状況_畜産
+			RESTART
+		CASE 4
+			CALL 畜産設備導入
+			RESTART
+		CASE 0
+			RETURN
+	ENDSELECT
+LOOP 1
+
+@畜産業に投資する
+DRAWLINE
+PRINTL □畜産業の各施設に投資できます
+PRINTL 　予算が増えることで動物たちの環境が改善され、健康管理に良い影響を及ぼします
+CALL PASELIL, @"　現在の予算:{MONEY}＄"
+PRINTL 
+IF ITEM:牧場
+	CALL PASELIL, @"　[0] - 牧場に投資する(現在の予算:{牧場の予算}＄/1000000＄)"
+ELSE
+	SETCOLORBYNAME gray
+	PRINTL 　[-] - 牧場未所持
+	RESETCOLOR
+ENDIF
+
+IF ITEM:畜舎
+	CALL PASELIL, @"　[1] - 畜舎に投資する(現在の予算:{畜舎の予算}＄/1000000＄)"
+ELSE
+	SETCOLORBYNAME gray
+	PRINTL 　[-] - 畜舎未所持
+	RESETCOLOR
+ENDIF
+
+IF ITEM:養蜂場
+	CALL PASELIL, @"　[2] - 養蜂場に投資する(現在の予算:{養蜂場の予算}＄/100000＄)"
+ELSE
+	SETCOLORBYNAME gray
+	PRINTL 　[-] - 養蜂場未所持
+	RESETCOLOR
+ENDIF
+
+IF ITEM:生け簀
+	CALL PASELIL, @"　[3] - 養殖に投資する(現在の予算:{生け簀の予算}＄/100000＄)"
+ELSE
+	SETCOLORBYNAME gray
+	PRINTL 　[-] - 生け簀未所持
+	RESETCOLOR
+ENDIF
+
+PRINTL 　[9] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			IF ITEM:牧場
+				PRINTL □牧場への投資
+				CALL PASELIL, @"　投資する金額を入力してください 現在の所持金:{MONEY}＄"
+				PRINTBUTTON "　[MAX]", \@ MONEY > 1000000-牧場の予算 ? 1000000-牧場の予算 # MONEY \@
+				PRINTL [500000][100000][50000][10000][5000]
+				IF 牛の状態 == 0 || 馬の状態 == 0 || 羊の状態 == 0
+					PRINTL 
+					PRINTL □動物を購入
+					SIF 牛の状態 == 0
+						CALL PASELIL, @"　[-1] - 牛を買う(100000＄)"
+					SIF 馬の状態 == 0
+						CALL PASELIL, @"　[-2] - 馬を買う(100000＄)"
+					SIF 羊の状態 == 0
+						CALL PASELIL, @"　[-3] - 羊を買う(50000＄)"
+				ENDIF
+				PRINTL 　[0] - 戻る
+				DO
+					INPUT
+					LOCAL = RESULT
+					SELECTCASE LOCAL
+						CASE -1
+							SIF 牛の状態
+								CONTINUE
+							IF 100000 > MONEY
+								PRINTW 所持金が足りません
+								BREAK
+							ENDIF
+							PRINTW 牛を購入しました
+							MONEY -= 100000
+							牛の状態 = 50
+							BREAK
+						CASE -2
+							SIF 馬の状態
+								CONTINUE
+							IF 100000 > MONEY
+								PRINTW 所持金が足りません
+								BREAK
+							ENDIF
+							PRINTW 馬を購入しました
+							MONEY -= 100000
+							馬の状態 = 50
+							BREAK
+						CASE -3
+							SIF 羊の状態
+								CONTINUE
+							IF 50000 > MONEY
+								PRINTW 所持金が足りません
+								BREAK
+							ENDIF
+							PRINTW 羊を購入しました
+							MONEY -= 50000
+							羊の状態 = 50
+							BREAK
+						CASE 0
+							RESTART
+					ENDSELECT
+					IF LOCAL > MONEY
+						PRINTW 所持金が足りません
+						CONTINUE
+					ENDIF
+					CALL SETMIN, LOCAL, 1000000-牧場の予算
+					SIF LOCAL == 0
+						RESTART
+					CALL PASELIW, @"牧場に{LOCAL}＄投資しました"
+					牧場の予算 += LOCAL
+					RESTART
+				LOOP 1
+				CONTINUE
+			ENDIF
+		CASE 1
+			IF ITEM:畜舎
+				PRINTL □畜舎に投資する
+				CALL PASELIL, @"　投資する金額を入力してください 現在の所持金:{MONEY}＄"
+				PRINTBUTTON "　[MAX]", \@ MONEY > 1000000-畜舎の予算 ? 1000000-畜舎の予算 # MONEY \@
+				PRINTL [500000][100000][50000][10000][5000][0]
+				IF 豚の状態 == 0 || 鶏の状態 == 0
+					PRINTL 
+					PRINTL □動物を購入する
+					CALL PASELIL, @"　[-1] - 豚を買う(50000＄)"
+					CALL PASELIL, @"　[-2] - 鶏を買う(30000＄)"
+				ENDIF
+				PRINTL 　[0] - 戻る
+				DO
+					INPUT
+					SELECTCASE LOCAL
+						CASE -1
+							SIF 豚の状態
+								CONTINUE
+							IF 50000 > MONEY
+								PRINTW 所持金が足りません
+								BREAK
+							ENDIF
+							PRINTW 豚を購入しました
+							MONEY -= 50000
+							豚の状態 = 50
+							BREAK
+						CASE -2
+							SIF 鶏の状態
+								CONTINUE
+							IF 30000 > MONEY
+								PRINTW 所持金が足りません
+								BREAK
+							ENDIF
+							PRINTW 鶏を購入しました
+							MONEY -= 30000
+							鶏の状態 = 50
+							BREAK
+						CASE 0
+							RESTART
+					ENDSELECT
+					LOCAL = RESULT
+					IF LOCAL > MONEY
+						PRINTW 所持金が足りません
+						CONTINUE
+					ENDIF
+					CALL SETMIN, LOCAL, 1000000-畜舎の予算
+					SIF LOCAL == 0
+						RESTART
+					CALL PASELIW, @"畜舎に{LOCAL}＄投資しました"
+					畜舎の予算 += LOCAL
+					RESTART
+				LOOP 1
+				CONTINUE
+			ENDIF
+		CASE 2
+			IF ITEM:養蜂場
+				PRINTL □養蜂場に投資する
+				CALL PASELIL, @"　投資する金額を入力してください 現在の所持金:{MONEY}＄"
+				PRINTBUTTON "　[MAX]", \@ MONEY > 100000-養蜂場の予算 ? 100000-養蜂場の予算 # MONEY \@
+				PRINTL [50000][10000][5000][0]
+				IF 蜂の状態 == 0
+					PRINTL 
+					PRINTL □動物を購入する
+					CALL PASELIL, @"　[-1] - ミツバチを購入する(10000＄)"
+				ENDIF
+				PRINTL 　[0] - 戻る
+				DO
+					SELECTCASE LOCAL
+						CASE -1
+							SIF 蜂の状態
+								CONTINUE
+							IF 10000 > MONEY
+								PRINTW 所持金が足りません
+								BREAK
+							ENDIF
+							PRINTW ミツバチを購入しました
+							MONEY -= 10000
+							蜂の状態 = 50
+							BREAK
+						CASE 0
+							RESTART
+					ENDSELECT
+					INPUT
+					LOCAL = RESULT
+					IF LOCAL > MONEY
+						PRINTW 所持金が足りません
+						CONTINUE
+					ENDIF
+					CALL SETMIN, LOCAL, 100000-養蜂場の予算
+					SIF LOCAL == 0
+						RESTART
+					CALL PASELIW, @"養蜂場に{LOCAL}＄投資しました"
+					養蜂場の予算 += LOCAL
+					RESTART
+				LOOP 1
+				CONTINUE
+			ENDIF
+		CASE 3
+			IF ITEM:生け簀
+				CALL PASELIL, @"投資する金額を入力してください 現在の所持金:{MONEY}＄"
+				PRINTBUTTON "[MAX]", \@ MONEY > 1000000-生け簀の予算 ? 1000000-生け簀の予算 # MONEY \@
+				PRINTL [500000][100000][50000][10000][5000][0]
+				DO
+					INPUT
+					LOCAL = RESULT
+					IF LOCAL > MONEY
+						PRINTW 所持金が足りません
+						CONTINUE
+					ENDIF
+					CALL SETMIN, LOCAL, 1000000-生け簀の予算
+					SIF LOCAL == 0
+						RESTART
+					CALL PASELIW, @"生け簀に{LOCAL}＄投資しました"
+					生け簀の予算 += LOCAL
+					RESTART
+				LOOP 1
+			ENDIF
+		CASE 9
+			RETURN
+	ENDSELECT
+LOOP 1
+
+@生産状況_畜産
+#DIM DYNAMIC LCOUNT
+DRAWLINE
+
+PRINTL □畜産業の人員
+IF CMATCH(CSTR:配属, "畜産業")
+	LOCAL = TARGET
+	FOR LCOUNT, 1, CHARANUM
+		IF CSTR:LCOUNT:配属 == "畜産業"
+			TARGET = LCOUNT
+			PRINTFORM 　%NAME:LCOUNT% 飼育技能:{ABL:LCOUNT:飼育技能, 2, LEFT} 
+			SIF TALENT:LCOUNT:世話好き
+				PRINT 【世話好き】
+			SELECTCASE CSTR:LCOUNT:種族
+				CASE "獣人"
+					PRINT 【獣人】
+				CASE "獣"
+					PRINT 【獣】
+				CASE "人魚"
+					PRINT 【人魚】
+				CASE "精霊"
+					PRINT 【精霊】
+				CASE "妖精"
+					PRINT 【妖精】
+			ENDSELECT
+			CALL NEED_JUEL_飼育技能
+			CALL CHECK_JUEL_飼育技能
+			SIF RESULT && ABL:LCOUNT:飼育技能 < 10
+				PRINTBUTTON "[飼育技能上昇可能]", LCOUNT
+			PRINTL 
+		ENDIF
+	NEXT
+	TARGET = LOCAL
+	PRINTL 
+ELSE
+	PRINTL 　[無し]
+	PRINTL 
+ENDIF
+
+PRINTL 　[-1] 動物図鑑を見る
+PRINTL 
+
+CALL PASELIL, @"□現在の牧場 (牧場の予算:{牧場の予算}＄/1000000＄)"
+IF !ITEM:牧場
+	SETCOLORBYNAME gray
+	PRINTL 　[牧場未所持]
+	RESETCOLOR
+ELSE
+	PRINT 　牛の状態:
+	CALL 動物の具合, 牛の状態
+	PRINT 馬の状態:
+	CALL 動物の具合, 馬の状態
+	PRINT 羊の状態:
+	CALL 動物の具合, 羊の状態
+	PRINTL 
+ENDIF
+PRINTL 
+
+CALL PASELIL, @"□現在の畜舎 (畜舎の予算:{畜舎の予算}＄/1000000＄)"
+IF !ITEM:畜舎
+	SETCOLORBYNAME gray
+	PRINTL 　[畜舎未所持]
+	RESETCOLOR
+ELSE
+	PRINT 　豚の状態:
+	CALL 動物の具合, 豚の状態
+	PRINT 　鶏の状態:
+	CALL 動物の具合, 鶏の状態
+	PRINTL 
+ENDIF
+PRINTL 
+
+CALL PASELIL, @"□現在の養蜂場 (養蜂場の予算:{養蜂場の予算}＄/100000＄)"
+IF !ITEM:養蜂場
+	SETCOLORBYNAME gray
+	PRINTL 　[養蜂場未所持]
+	RESETCOLOR
+ELSE
+	PRINT 　蜂の状態:
+	CALL 動物の具合, 蜂の状態
+	PRINTL 
+ENDIF
+PRINTL 
+
+CALL PASELIL, @"□現在の生け簀 (生け簀の予算:{生け簀の予算}＄/1000000＄)"
+IF !ITEM:生け簀
+	SETCOLORBYNAME gray
+	PRINTL 　[生け簀未所持]
+	RESETCOLOR
+ELSE
+	FOR LCOUNT, 1, 5
+		SIF LCOUNT == 1
+			PRINT 　
+		PRINTFORM {LCOUNT}番の生け簀:%生け簀の養殖:LCOUNT%
+		IF 生け簀の状態:LCOUNT == 0
+			PRINTFORM 養殖中(残り{生け簀の状態:LCOUNT}日) 
+		ELSE
+			PRINT 養殖成功 
+		ENDIF
+	NEXT
+ENDIF
+PRINTL 
+
+PRINTL □現在生産できるアイテム
+LOCAL = 0
+PRINT 　
+IF 牛の状態 >= 30
+	PRINT [牛肉]
+	LOCAL++
+ENDIF
+IF 牛の状態 >= 80
+	PRINT [牛乳]
+	LOCAL++
+ENDIF
+IF 馬の状態 >= 30
+	PRINT [馬肉]
+	LOCAL++
+ENDIF
+IF 羊の状態 >= 30
+	PRINT [羊肉]
+	LOCAL++
+ENDIF
+IF 羊の状態 >= 80
+	PRINT [羊毛]
+	LOCAL++
+ENDIF
+
+IF 豚の状態 >= 30
+	PRINT [豚肉]
+	LOCAL++
+ENDIF
+IF 鶏の状態 >= 30
+	PRINT [鶏肉]
+	LOCAL++
+ENDIF
+IF 鶏の状態 >= 80
+	PRINT [卵]
+	LOCAL++
+ENDIF
+
+IF ITEM:触手使役術
+	PRINT [触手肉]
+	LOCAL++
+ENDIF
+
+IF 蜂の状態 >= 30
+	PRINT [蜂蜜]
+	LOCAL++
+ENDIF
+
+FOR LCOUNT, 1, 5
+	IF 生け簀の養殖:LCOUNT != "" && 生け簀の状態:LCOUNT == 0
+		PRINTFORM [%生け簀の養殖:LCOUNT%]
+		LOCAL++
+	ENDIF
+NEXT
+
+SIF LOCAL == 0
+	PRINT [無し]
+PRINTL 
+
+DRAWLINE
+PRINTPLAIN 　生産状況　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE -1
+			CALL 動物図鑑
+			RESTART
+		CASEELSE
+			LOCAL = TARGET
+			TARGET = RESULT
+			IF CSTR:配属 == "畜産業"
+				CALL NEED_JUEL_飼育技能
+				CALL CHECK_JUEL_飼育技能
+				IF RESULT
+					CALLFORM ABLUP{GETNUM(ABL, "飼育技能")}
+					TARGET = LOCAL
+					RESTART
+				ENDIF
+			ENDIF
+			TARGET = LOCAL
+	ENDSELECT
+LOOP 1
+
+
+@動物の具合, ARG
+SELECTCASE ARG
+	CASE 80 TO 100
+		SETCOLORBYNAME lime
+		PRINT 元気 
+	CASE 50 TO 79
+		PRINT 普通 
+	CASE 30 TO 49
+		SETCOLORBYNAME yellow
+		PRINT 微妙 
+	CASE 10 TO 29
+		SETCOLORBYNAME red
+		PRINT 悪い 
+	CASE 1 TO 9
+		SETCOLORBYNAME darkred
+		PRINT 病気 
+	CASE 0
+		SETCOLORBYNAME gray
+		PRINT 無し 
+ENDSELECT
+
+RESETCOLOR
+
+
+
+@畜産設備導入
+DRAWLINE
+PRINTL □畜産用設備の導入
+PRINT 現在の設備 
+SETCOLORBYNAME gray
+IF ITEM:牧場
+	PRINTD [牧場]
+ELSE
+	PRINT [牧場]
+ENDIF
+IF ITEM:畜舎
+	PRINTD [畜舎]
+ELSE
+	PRINT [畜舎]
+ENDIF
+IF ITEM:養蜂場
+	PRINTD [養蜂場]
+ELSE
+	PRINT [養蜂場]
+ENDIF
+IF ITEM:生け簀
+	PRINTD [生け簀]
+ELSE
+	PRINT [生け簀]
+ENDIF
+RESETCOLOR
+PRINTL 
+PRINTL 
+IF ITEM:牧場
+	PRINTL 　[-] - 牧場(購入済み)
+ELSE
+	CALL PASELIL, @"　[0] - 牧場を購入する({ITEMPRICE:牧場}＄)"
+ENDIF
+IF ITEM:畜舎
+	PRINTL 　[-] - 畜舎(購入済み)
+ELSE
+	CALL PASELIL, @"　[1] - 畜舎を購入する({ITEMPRICE:畜舎}＄)"
+ENDIF
+IF ITEM:養蜂場
+	PRINTL 　[-] - 養蜂場(導入済み)
+ELSE
+	CALL PASELIL, @"　[2] - 養蜂場を設置する({ITEMPRICE:養蜂場}＄)"
+ENDIF
+IF ITEM:生け簀
+	PRINTL 　[-] - 生け簀(購入済み)
+ELSE
+	CALL PASELIL, @"　[3] - 生け簀を購入する({ITEMPRICE:生け簀}＄)"
+ENDIF
+PRINTL 　[9] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			IF !ITEM:牧場
+				LOCALS = 牧場
+				BREAK
+			ENDIF
+		CASE 1
+			IF !ITEM:畜舎
+				LOCALS = 畜舎
+				BREAK
+			ENDIF
+		CASE 2
+			IF !ITEM:養蜂場
+				LOCALS = 養蜂場
+				BREAK
+			ENDIF
+		CASE 3
+			IF !ITEM:生け簀
+				LOCALS = 生け簀
+				BREAK
+			ENDIF
+		CASE 9
+			RETURN
+	ENDSELECT
+LOOP 1
+
+
+SELECTCASE LOCALS
+	CASE "牧場"
+		PRINTL 牧場:牛、馬、羊の飼育が可能になる
+	CASE "畜舎"
+		PRINTL 畜舎:豚、鶏の飼育が可能になる
+	CASE "養蜂場"
+		PRINTL 養蜂場:蜂蜜の採取が可能になる
+	CASE "生け簀"
+		PRINTL 生け簀:魚の養殖が可能になる
+ENDSELECT
+
+IF MONEY < ITEMPRICE:LOCALS
+	PRINTW 所持金が足りません
+ELSE
+	CALL PASELIL, @"%LOCALS%を購入します。よろしいですか？(所持金:{MONEY}＄→{MONEY-ITEMPRICE:LOCALS}＄)"
+	PRINTL [0] - はい
+	PRINTL [1] - いいえ
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 0
+				PRINTFORMW %LOCALS%を購入しました
+				ITEM:LOCALS = 1
+				MONEY -= ITEMPRICE:LOCALS
+				RESTART
+			CASE 1
+				RESTART
+		ENDSELECT
+	LOOP 1
+ENDIF
+
+@TURNEND_畜産
+#DIM DYNAMIC LCOUNT
+
+
+
+
+
+
+
