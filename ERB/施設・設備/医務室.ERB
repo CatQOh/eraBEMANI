@@ -157,6 +157,8 @@ PRINTL
 #DIM DYNAMIC 利用人数
 #DIM DYNAMIC 調合知識持ち
 #DIM DYNAMIC 利用確率補正
+#DIM DYNAMIC モチベ計算用
+#DIM DYNAMIC 世話好き人数
 
 医務室体力補正 = 0
 医務室気力補正 = 0
@@ -241,8 +243,33 @@ FOR LCOUNT, 0, CHARANUM
 						利用確率補正 += 3
 					CASE "調合知識"
 						調合知識持ち++
+					CASE "世話好き"
+						医務室体力補正 += 10
+						医務室気力補正 += 20
+						医務室ストレス補正++
+						利用確率補正 += 3
+						世話好き人数++
 				ENDSELECT
 			NEXT
+			
+			;モチベ計算用にもう一度見る
+			モチベ計算用 = 0
+			FOR LCOUNT2, 0, VARSIZE("TALENT")
+				SIF !TALENT:LCOUNT:LCOUNT2
+					CONTINUE
+				SELECTCASE TALENTNAME:LCOUNT2
+					CASE "プライド高い", "冷静", "世話好き", "自制心", "楽観的", "調合知識", "潔癖症", "サド", "母性", "治療"
+						モチベ計算用++
+					CASE "衝動的", "弱気", "無関心", "悲観的", "痛みに弱い", "男嫌い", "女嫌い", "同族嫌悪"
+						モチベ計算用--
+				ENDSELECT
+			NEXT
+
+			LOCAL = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数+(ABL:LCOUNT:奉仕精神/3)
+			SIF TALENT:LCOUNT:世話好き
+				LOCAL -= 世話好き人数
+			CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
+
 			IF ABL:LCOUNT:奉仕精神 >= 5
 				医務室体力補正 += 20
 				医務室気力補正 += 20

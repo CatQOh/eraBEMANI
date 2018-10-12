@@ -160,7 +160,7 @@ SIF CHARANAMEF(MASTER) == "マタン・カトルセ" && CHARANAMEF(ASSI) == "ノ
 ;LIFE_LISTは引数に1を指定すると、調教対象選択用の表示になる
 ;引数を2にすると、助手選択用の表示になる
 ;それ以外は通常表示
-@LIFE_LIST, ARG
+@LIFE_LIST, ARG, 表示切り替え
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC カウント数
@@ -168,6 +168,7 @@ SIF CHARANAMEF(MASTER) == "マタン・カトルセ" && CHARANAMEF(ASSI) == "ノ
 #DIM DYNAMIC 対象表示
 #DIM DYNAMIC 助手表示
 #DIM DYNAMIC クジャクアイ
+#DIM 表示切り替え
 ;孔雀の瞳を持ってるキャラが主人・助手・担当医に居るかを見る
 SIF TALENT:MASTER:孔雀の瞳
 	クジャクアイ = 1
@@ -288,8 +289,37 @@ FOR LCOUNT, 0, CHARANUM
 	;上記のキャラを表示したら詳細情報も表示
 	;助手選択画面では表示しない
 	IF ARG != 2
-		PRINTFORM 体力%BARBASE("体力", LOCAL, 10), 23, LEFT% 
-		PRINTFORM 気力%BARBASE("気力", LOCAL, 10), 23, LEFT% 
+		;表示切り替え中は経営用の情報表示
+		IF 表示切り替え
+			PRINT 配属先:
+			IF CSTR:LOCAL:配属 != ""
+				PRINTFORM %CSTR:LOCAL:配属, 20, LEFT% 
+			ELSE
+				PRINTFORM %"無し", 20, LEFT% 
+			ENDIF
+			PRINT モチベーション:
+			SELECTCASE CFLAG:LOCAL:モチベーション
+				CASE 1 TO 9
+					SETCOLORBYNAME gray
+					PRINT 皆無
+				CASE 10 TO 39
+					SETCOLORBYNAME yellow
+					PRINT 微妙
+				CASE 40 TO 60
+					PRINT 普通
+				CASE 61 TO 90
+					SETCOLORBYNAME cyan
+					PRINT 良好
+				CASE 91 TO 100
+					SETCOLORBYNAME lime
+					PRINT 最高
+			ENDSELECT
+			PRINTFORM {CFLAG:LCOUNT:モチベーション, 3}/100 
+			RESETCOLOR
+		ELSE
+			PRINTFORM 体力%BARBASE("体力", LOCAL, 10), 23, LEFT% 
+			PRINTFORM 気力%BARBASE("気力", LOCAL, 10), 23, LEFT% 
+		ENDIF
 	ENDIF
 	SELECTCASE SEX(LOCAL)
 		CASE 1
@@ -334,7 +364,7 @@ FOR LCOUNT, 0, CHARANUM
 		SIF TALENT:LOCAL:ふたなり
 			PRINT ふたなり
 	ELSE
-		PRINT 　ストレス値:
+		PRINT ストレス値:
 		IF クジャクアイ
 			SELECTCASE CFLAG:LOCAL:ストレス値
 				CASE 1 TO 99
@@ -388,6 +418,7 @@ RETURN RESULT, 未表示キャラ
 
 ;ステータス表示
 @SHOW_CHARADATA
+#DIM 表示切り替え
 DRAWLINE
 LOCALS =
 
@@ -395,7 +426,7 @@ SIF VARLINE
 	CLEARLINE LINECOUNT-VARLINE
 VARLINE = LINECOUNT
 
-CALL LIFE_LIST
+CALL LIFE_LIST, 0, 表示切り替え
 ;RESULT:0には選んだキャラ、RESULT:1にはまだ表示されてないキャラが居るかどうか
 DRAWLINE
 
@@ -413,7 +444,12 @@ ELSE
 	PRINTPLAIN                 
 ENDIF
 
-PRINTL [1010] キャラソート
+PRINT [1010] キャラソート 
+IF 表示切り替え
+	PRINTL [1011] 通常表示に切り替え
+ELSE
+	PRINTL [1011] 経営用表示に切り替え
+ENDIF
 
 DO
 	INPUT
@@ -428,6 +464,9 @@ DO
 				TFLAG:ページ数++
 		CASE 1010
 			CALL CHARA_SORT
+			BREAK
+		CASE 1011
+			INVERTBIT 表示切り替え, 0
 			BREAK
 		CASE 0 TO CHARANUM-1
 			CALL STATUS, RESULT

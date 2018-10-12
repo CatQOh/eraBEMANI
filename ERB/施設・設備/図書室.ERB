@@ -168,6 +168,8 @@ RETURNF レベル
 #DIM DYNAMIC 意欲
 #DIM DYNAMIC 興味
 #DIM DYNAMIC 利用人数
+#DIM DYNAMIC モチベ計算用
+#DIM DYNAMIC 世話好き人数
 ;まず配属中のキャラの処理
 FOR LCOUNT, 0, CHARANUM
 	IF CSTR:LCOUNT:配属 == "図書室"
@@ -188,6 +190,8 @@ FOR LCOUNT, 0, CHARANUM
 			CASE 2
 				女性司書++
 		ENDSELECT
+		SIF TALENT:LCOUNT:世話好き
+			世話好き人数++
 	ENDIF
 NEXT
 
@@ -268,6 +272,28 @@ FOR LCOUNT, 0, CHARANUM
 NEXT
 
 PRINTFORML {利用人数}人が図書室を利用しました
+
+;図書室配属中のキャラのモチベを計算する
+FOR LCOUNT, 1, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "図書室"
+		CONTINUE
+	モチベ計算用 = 0
+	FOR LCOUNT2, 0, VARSIZE("TALENT")
+		SIF !TALENT:LCOUNT:LCOUNT2
+			CONTINUE
+		SELECTCASE TALENTNAME:LCOUNT2
+			CASE "臆病", "素直", "プライド高い", "大人しい", "冷静", "弱気", "感情乏しい", "好奇心", "習得早い", "潔癖症", "魔術師", "工学博士"
+				モチベ計算用++
+			CASE "衝動的", "ハイテンション", "保守的", "目立ちたがり", "寂しがり屋", "習得遅い", "汚れ無視", "倒錯的", "幼稚"
+				モチベ計算用--
+		ENDSELECT
+	NEXT
+	
+	LOCAL = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数
+	SIF TALENT:LCOUNT:世話好き
+		LOCAL -= 世話好き人数
+	CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
+NEXT
 
 RETURN
 

@@ -822,8 +822,11 @@ DO
 			CALL THANKYOUFORPLAYING
 			QUIT
 		CASE 1
-			SIF FLAG:ゲームモード == 0
-				FLAG:周回可能 = 1
+			SELECTCASE FLAG:ゲームモード
+				;STANDARDとSTRATEGY
+				CASE 0, 1
+					FLAG:周回可能 = 1
+			ENDSELECT
 			FLAG:ゲームモード = 9
 	ENDSELECT
 LOOP LOOPRES(1)
@@ -871,8 +874,6 @@ SIF LOCAL:1 < 11
 FONTREGULAR
 ALIGNMENT LEFT
 
-
-
 ;周回処理
 ;条件を満たすことで可能
 ;クリア回数により、引き継げる奴隷の数が増える
@@ -902,11 +903,20 @@ SIF LOCAL > FLAG:周回数
 SIF LOCAL > 10
 	LOCAL = 10
 
+;STRATEGYモードではパートナーも引き継げる
+SIF FLAG:パートナー
+	LOCAL++
+
 LOCAL:1 = LOCAL
 
 ;引き継げるキャラが居なければ引き継ぎ処理は飛ばす
 SIF LOCAL == 0
 	JUMP SUCCESSION_CONTINUE
+
+IF FLAG:パートナー
+	CFLAG:FINDCHARA(NO, FLAG:パートナー):引き継ぎフラグ = 1
+	LOCAL--
+ENDIF
 
 DO
 	IF LOCAL
@@ -959,6 +969,10 @@ DO
 				CFLAG:COUNT:引き継ぎフラグ = 0
 			REND
 			LOCAL = LOCAL:1
+			IF FLAG:パートナー
+				CFLAG:FINDCHARA(NO, FLAG:パートナー):引き継ぎフラグ = 1
+				LOCAL--
+			ENDIF
 		CASE 1 TO CHARANUM
 			SIF LOCAL <= 0
 				CONTINUE
@@ -1015,7 +1029,26 @@ CALL CLEAR_STRATEGY_FLAG
 TARGET = -1
 ASSI = -1
 DAY = 1
-MONEY = 3000
+
+PRINTL ★★モードを選択してください★★
+CALL PASELIL, @"[0] - STANDARD (100日期限 目標金額1,000,000＄ 経営使用不可 クリア後は可能)"
+CALL PASELIL, @"[1] - STRATEGY (300日期限 目標金額100,000,000＄ 経営使用可能)"
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			MONEY = 3000
+			FLAG:ゲームモード = RESULT
+			FLAG:価格フィルタ上限 = 3000
+			BREAK
+		CASE 1
+			MONEY = 1000000
+			FLAG:ゲームモード = RESULT
+			ITEM:風俗店営業許可証 = 1
+			BREAK
+	ENDSELECT
+LOOP 1
 
 ;難易度選択
 PRINTL ★★難易度を選択してください★★

@@ -1174,8 +1174,16 @@ LOOP 1
 ;経験の増加・収支の計算など----------------------------------------------------
 @TURNEND_IDOL
 #DIM DYNAMIC レッスンレベル
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC モチベ計算用
+#DIM DYNAMIC 世話好き人数
 
 VARSET LOCAL
+
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 == "芸能プロダクション" && TALENT:LCOUNT:世話好き
+		世話好き人数++
+NEXT
 
 REPEAT CHARANUM
 	IF CSTR:COUNT:配属 == "芸能プロダクション"
@@ -1226,6 +1234,28 @@ REPEAT CHARANUM
 			;と変形できる
 			LOCAL:2 += 5000*レッスンレベル*(レッスンレベル+1)
 		ENDIF
+		モチベ計算用 = 0
+		;モチベーションの計算
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:COUNT:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "恋慕", "服従", "絶対音感"
+					モチベ計算用 += 2
+				CASE "親愛", "隷属"
+					モチベ計算用 += 3
+				CASE "淫乱", "娼婦"
+					モチベ計算用 -= 3
+				CASE "ハイテンション", "自制心", "好奇心", "楽観的", "目立ちたがり", "寂しがり屋", "ナルシスト"
+					モチベ計算用++
+				CASE "プライド高い", "反抗的", "大人しい", "弱気", "無関心", "悲観的", "恥じらい", "痛みに弱い"
+					モチベ計算用 -= 2
+			ENDSELECT
+		NEXT
+		LOCAL = CFLAG:COUNT:モチベーション+モチベ計算用+世話好き人数
+		SIF TALENT:COUNT:世話好き
+			LOCAL -= 世話好き人数
+		CFLAG:COUNT:モチベーション = LIMIT(LOCAL, 1, 100)
 	ENDIF
 REND
 
@@ -1257,6 +1287,7 @@ ENDIF
 #DIM DYNAMIC 奉仕で射精
 #DIM DYNAMIC 絶頂
 #DIM DYNAMIC 射精
+#DIM DYNAMIC モチベ計算用
 
 ;賄賂と違い、満足度に比例して増えるだけなので
 ;相対的に知名度が低いときの方が効果が高い
@@ -1273,48 +1304,75 @@ ENDIF
 満足度 = 3*ABL:ARG:従順 + ABL:ARG:技巧 + 3*ABL:ARG:奉仕精神
 
 ;陥落素質
-SIF TALENT:ARG:淫乱
+IF TALENT:ARG:淫乱
 	満足度 += 6
-SIF TALENT:ARG:娼婦
+	モチベ計算用 += 2
+ENDIF
+IF TALENT:ARG:娼婦
 	満足度 += 9
+	モチベ計算用 += 3
+ENDIF
 SIF TALENT:ARG:服従
 	満足度 += 20
 SIF TALENT:ARG:隷属
 	満足度 += 30
 
+SIF TALENT:恋慕|| TALENT:親愛
+	モチベ計算用 -= 5
+
 ;性格
-SIF TALENT:ARG:生意気
+IF TALENT:ARG:生意気
 	満足度 -= 10
-SIF TALENT:ARG:臆病
+	モチベ計算用 -= 2
+ENDIF
+IF TALENT:ARG:臆病
 	満足度 += 10
+	モチベ計算用 -= 2
+ENDIF
 SIF TALENT:ARG:素直
 	満足度 += 15
-SIF TALENT:ARG:反抗的
+IF TALENT:ARG:反抗的
 	満足度 -= 15
-SIF TALENT:ARG:プライド高い
+	モチベ計算用 -= 2
+ENDIF
+IF TALENT:ARG:プライド高い
 	満足度 -= 10
+	モチベ計算用 -= 2
+ENDIF
 SIF TALENT:ARG:プライド低い
 	満足度 += 10
 SIF TALENT:ARG:ツンデレ
 	満足度 -= 5
 
 ;性への関心
-SIF TALENT:ARG:自制心
+IF TALENT:ARG:自制心
 	満足度 -= 7
+	モチベ計算用 -= 2
+ENDIF
 SIF TALENT:ARG:保守的
 	満足度 -= 10
-SIF TALENT:ARG:一線越えない
+IF TALENT:ARG:一線越えない
 	満足度 -= 10
-SIF TALENT:ARG:目立ちたがり
+	モチベ計算用 -= 2
+ENDIF
+IF TALENT:ARG:目立ちたがり
 	満足度 += 2
+	モチベ計算用++
+ENDIF
 
 ;乙女心
-SIF TALENT:ARG:貞操観念
+IF TALENT:ARG:貞操観念
 	満足度 -= 20
-SIF TALENT:ARG:貞操無頓着
+	モチベ計算用 -= 3
+ENDIF
+IF TALENT:ARG:貞操無頓着
 	満足度 += 5
-SIF TALENT:ARG:恥じらい
+	モチベ計算用++
+ENDIF
+IF TALENT:ARG:恥じらい
 	満足度 -= 2
+	モチベ計算用 -= 2
+ENDIF
 
 ;体質
 SIF TALENT:ARG:濡れにくい
@@ -1323,14 +1381,22 @@ SIF TALENT:ARG:濡れにくい
 ;技術
 SIF TALENT:ARG:舌使い
 	満足度 += 5
-SIF TALENT:ARG:献身的
+IF TALENT:ARG:献身的
 	満足度 += 15
+	モチベ計算用++
+ENDIF
 SIF TALENT:ARG:潔癖症
 	満足度 -= 8
 
 ;正直度
-SIF TALENT:ARG:淫核 || TALENT:ARG:淫膣 || TALENT:ARG:淫尻 || TALENT:ARG:淫乳
+IF TALENT:ARG:淫核 || TALENT:ARG:淫膣 || TALENT:ARG:淫尻 || TALENT:ARG:淫乳
 	満足度 += 4
+	モチベ計算用++
+ENDIF
+SIF TALENT:快感に素直
+	モチベ計算用++
+SIF TALENT:快感の否定
+	モチベ計算用 -= 3
 
 ;先天的身体特徴
 SIF TALENT:ARG:小柄体型 || TALENT:ARG:小人体型
@@ -1461,6 +1527,7 @@ IF TALENT:ARG:性別 == 1
 		PRINTFORML ゲイ経験+{2*(ヴァギナ+アナル+フェラ+奉仕)}
 	EXP:ARG:ゲイ経験 += 2*(ヴァギナ+アナル+フェラ+奉仕)
 ENDIF
+CFLAG:ARG:モチベーション = LIMIT(CFLAG:ARG:モチベーション+モチベ計算用, 1, 100)
 WAIT
 
 SIF IDOL報告 < 3

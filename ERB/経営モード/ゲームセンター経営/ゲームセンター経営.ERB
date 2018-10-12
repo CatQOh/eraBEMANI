@@ -790,7 +790,10 @@ DRAWLINE
 #DIM DYNAMIC メンテ
 #DIM DYNAMIC 支出
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC LTARGET
+#DIM DYNAMIC モチベ計算用
+#DIM DYNAMIC 世話好き人数
 VARSET LOCAL, 0
 SIF !GC物件
 	RETURN 0
@@ -1009,8 +1012,35 @@ FOR LCOUNT, 1, CHARANUM
 			TRYCALLFORM GC_TURNEND_K{NO:LCOUNT}, 収入, 支出
 			TARGET = LTARGET
 		ENDIF
+		SIF CFLAG:LCOUNT:配属完了 && TALENT:LCOUNT:世話好き
+			世話好き人数++
 		CFLAG:LCOUNT:配属完了 = 1
 	ENDIF
+NEXT
+
+;モチベーションを計算する
+FOR LCOUNT, 1, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "ゲームセンター"
+		CONTINUE
+	モチベ計算用 = 0
+	FOR LCOUNT2, 0, VARSIZE("TALENT")
+		SIF !TALENT:LCOUNT:LCOUNT2
+			CONTINUE
+		SELECTCASE TALENTNAME:LCOUNT2
+			CASE "恋慕", "服従"
+				モチベ計算用++
+			CASE "親愛", "隷属"
+				モチベ計算用 += 2
+			CASE "素直", "冷静", "強気", "好奇心", "目立ちたがり", "恥薄い", "献身的", "潔癖症", "音ゲーマー"
+				モチベ計算用++
+			CASE "臆病", "プライド高い", "大人しい", "無関心", "恥じらい", "汚臭敏感", "男嫌い", "女嫌い"
+				モチベ計算用 -= 2
+		ENDSELECT
+	NEXT
+	LOCAL = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数
+	SIF TALENT:LCOUNT:世話好き
+		LOCAL -= 世話好き人数
+	CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
 NEXT
 
 ;最後に現状のメンテレベルを計算
