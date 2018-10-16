@@ -1,20 +1,57 @@
 ﻿@畜産
+#DIM DYNAMIC 飼育レベル計算用
+#DIM DYNAMIC 養殖レベル計算用
+#DIM DYNAMIC 減額率
+#DIM DYNAMIC LCOUNT
+
+FOR LCOUNT, 1, CHARANUM
+	IF CSTR:LCOUNT:配属 == "畜産業"
+		飼育レベル計算用 += 飼育レベル(LCOUNT)
+		養殖レベル計算用 += 養殖レベル(LCOUNT)
+		;出費減額率の計算 実務経験、飼育技能、その他素質で一人につき最大9%減
+		LOCAL = 0
+		;実務経験/200 最大5%
+		LOCAL += MIN(EXP:LCOUNT:実務経験, 1000)/200
+		;飼育レベル
+		LOCAL += ABL:LCOUNT:飼育技能
+		;買い物上手 2%
+		SIF TALENT:LCOUNT:買い物上手
+			LOCAL += 2
+		;専業主婦 2%
+		SIF TALENT:LCOUNT:専業主婦
+			LOCAL += 2
+		減額率 += MIN(LOCAL, 9)
+	ENDIF
+NEXT
+
 DRAWLINE
 PRINTL □畜産関連の管理
-PRINTFORML 
-
+IF ITEM:牧場 || ITEM:畜舎 || ITEM:養蜂場 || ITEM:生け簀
+	PRINT 　現在の予算 
+	SIF ITEM:牧場
+		CALL PASELI, @"牧場の予算:{牧場の予算}＄/1000000＄ "
+	SIF ITEM:畜舎
+		CALL PASELI, @"畜舎の予算:{畜舎の予算}＄/1000000＄ "
+	SIF ITEM:養蜂場
+		CALL PASELI, @"養蜂場の予算:{養蜂場の予算}＄/100000＄ "
+	SIF ITEM:生け簀
+		CALL PASELI, @"生け簀の予算:{生け簀の予算}＄/1000000＄"
+	PRINTL 
+ENDIF
+PRINTFORML 　現在の人員 配属人数:{CMATCH(CSTR:配属, "畜産業")} 飼育レベル:{飼育レベル計算用} 養殖レベル:{養殖レベル計算用} 出費の減額率:{減額率}\%/90\%
 PRINTL 
+
 IF ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場
-	PRINTL [1] - 畜産業に投資する
-	PRINTL [2] - 人員を配置する
+	PRINTL 　[1] - 畜産業に投資する
+	PRINTL 　[2] - 人員を配置する
 ELSE
 	SETCOLORBYNAME gray
-	HTML_PRINT SET_TOOLTIP("[-] - 畜産業に投資する", "畜産用の設備を導入する必要があります")
-	HTML_PRINT SET_TOOLTIP("[-] - 人員を配置する", "畜産用の設備を導入する必要があります")
+	HTML_PRINT SET_TOOLTIP("　[-] - 畜産業に投資する", "畜産用の設備を導入する必要があります")
+	HTML_PRINT SET_TOOLTIP("　[-] - 人員を配置する", "畜産用の設備を導入する必要があります")
 	RESETCOLOR
 ENDIF
-PRINTL [3] - 生産状況を確認する
-PRINTL [4] - 設備を導入する
+PRINTL 　[3] - 生産状況を確認する
+PRINTL 　[4] - 設備を導入する
 DRAWLINE
 PRINTPLAIN 　畜産　
 PRINTL [0] - 戻る
@@ -72,7 +109,7 @@ ELSE
 ENDIF
 
 IF ITEM:生け簀
-	CALL PASELIL, @"　[3] - 養殖に投資する(現在の予算:{生け簀の予算}＄/100000＄)"
+	CALL PASELIL, @"　[3] - 養殖に投資する(現在の予算:{生け簀の予算}＄/1000000＄)"
 ELSE
 	SETCOLORBYNAME gray
 	PRINTL 　[-] - 生け簀未所持
@@ -279,15 +316,20 @@ LOOP 1
 
 @生産状況_畜産
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 名前文字数
 DRAWLINE
 
 PRINTL □畜産業の人員
 IF CMATCH(CSTR:配属, "畜産業")
+	FOR LCOUNT, 1, CHARANUM
+		SIF CSTR:LCOUNT:配属 == "畜産業"
+			CALL SETMAX(名前文字数, STRLENS(NAME:LCOUNT))
+	NEXT
 	LOCAL = TARGET
 	FOR LCOUNT, 1, CHARANUM
 		IF CSTR:LCOUNT:配属 == "畜産業"
 			TARGET = LCOUNT
-			PRINTFORM 　%NAME:LCOUNT% 飼育技能:{ABL:LCOUNT:飼育技能, 2, LEFT} 
+			PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 飼育技能:{ABL:LCOUNT:飼育技能, 2, LEFT} 飼育適性:{飼育レベル(LCOUNT), 2, LEFT} 
 			SIF TALENT:LCOUNT:世話好き
 				PRINT 【世話好き】
 			SELECTCASE CSTR:LCOUNT:種族
@@ -587,15 +629,462 @@ ENDIF
 
 @TURNEND_畜産
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC 世話レベル
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC 飼育レベル計算用
+#DIM DYNAMIC 養殖レベル計算用
+#DIM DYNAMIC 世話好き人数
+#DIM DYNAMIC モチベ計算用
+#DIM DYNAMIC 出費
+#DIM DYNAMIC 減額率
+#DIM DYNAMIC メッセージ表示
+#DIM DYNAMIC 動物の死亡
 
-FOR LCOUNT, 0, CHARANUM
+SIF !ITEM:牧場 && !ITEM:畜舎 && !ITEM:養蜂場 && !ITEM:生け簀
+	RETURN 0
+
+FOR LCOUNT, 1, CHARANUM
+	;10人配属できるので飼育レベル最大はだいたい200とする
+	;養殖レベルはせいぜい70とかそこらへん
 	IF CSTR:LCOUNT:配属 == "畜産業"
+		飼育レベル計算用 += 飼育レベル(LCOUNT)
+		養殖レベル計算用 += 養殖レベル(LCOUNT)
+		SIF TALENT:LCOUNT:世話好き
+			世話好き人数++
+		;出費減額率の計算 実務経験、飼育技能、その他素質で一人につき最大9%減
+		LOCAL = 0
+		;実務経験/200 最大5%
+		LOCAL += MIN(EXP:LCOUNT:実務経験, 1000)/200
+		;飼育レベル
+		LOCAL += ABL:LCOUNT:飼育技能
+		;買い物上手 2%
+		SIF TALENT:LCOUNT:買い物上手
+			LOCAL += 2
+		;専業主婦 2%
+		SIF TALENT:LCOUNT:専業主婦
+			LOCAL += 2
+		減額率 += MIN(LOCAL, 9)
 	ENDIF
 NEXT
 
+;減額率が0なら1にする
+CALL SETMAX, 減額率, 1
 
+IF 馬の状態
+	;1日の出費は5万円±5千円とする
+	出費 = RAND(45000, 55000)
+	;減額率で計算
+	出費 = 出費*減額率/100
+	
+	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
+	IF 出費 > 牧場の予算
+		;状態が3以下の場合は1日1づつ下がっていき、0で全滅する
+		IF 馬の状態 <= 3
+			馬の状態--
+		ELSE
+			LOCAL = MAX(10-(飼育レベル計算用/20), 1)
+			;乱数で上下する ゆくゆくは気温や天候などでやりたい
+			LOCAL += RAND:3
+			馬の状態 -= LOCAL
+			SIF 馬の状態 <= 3
+				馬の状態 = 3
+		ENDIF
+	;予算が足りてると状態が良くなる
+	ELSE
+		LOCAL = MAX(飼育レベル計算用/20, 1)
+		;乱数で上下する ゆくゆくは気温や天候などでやりたい
+		LOCAL += RAND:3
+		馬の状態 += LOCAL
+	ENDIF
+	牧場の予算 -= 出費
+	;飼育レベル次第で状態の最大値が決まる 条件はゆるめ
+	SELECTCASE 飼育レベル計算用
+		CASE 0
+			CALL SETMIN, 馬の状態, 50
+		CASE IS < 10
+			CALL SETMIN, 馬の状態, 60
+		CASE IS < 20
+			CALL SETMIN, 馬の状態, 70
+		CASE IS < 30
+			CALL SETMIN, 馬の状態, 80
+		CASE IS < 40
+			CALL SETMIN, 馬の状態, 90
+		CASEELSE
+			CALL SETMIN, 馬の状態, 100
+	ENDSELECT
+	IF 馬の状態 == 0
+		PRINTL 馬たちは飢餓で全滅しました……
+		メッセージ表示 = 1
+		動物の死亡++
+	ENDIF
+ENDIF
 
+;以下馬の計算とほぼ同じ
+IF 牛の状態
+	;1日の出費は5万円±5千円とする
+	出費 = RAND(45000, 55000)
+	;減額率で計算
+	出費 = 出費*減額率/100
+	
+	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
+	IF 出費 > 牧場の予算
+		;状態が3以下の場合は1日1づつ下がっていき、0で全滅する
+		IF 牛の状態 <= 3
+			牛の状態--
+		ELSE
+			LOCAL = MAX(10-(飼育レベル計算用/20), 1)
+			;乱数で上下する ゆくゆくは気温や天候などでやりたい
+			LOCAL += RAND:3
+			牛の状態 -= LOCAL
+			SIF 牛の状態 <= 3
+				牛の状態 = 3
+		ENDIF
+	;予算が足りてると状態が良くなる
+	ELSE
+		LOCAL = MAX(飼育レベル計算用/20, 1)
+		;乱数で上下する ゆくゆくは気温や天候などでやりたい
+		LOCAL += RAND:3
+		牛の状態 += LOCAL
+	ENDIF
+	牧場の予算 -= 出費
+	;飼育レベル次第で状態の最大値が決まる 条件はゆるめ
+	SELECTCASE 飼育レベル計算用
+		CASE 0
+			CALL SETMIN, 牛の状態, 50
+		CASE IS < 10
+			CALL SETMIN, 牛の状態, 60
+		CASE IS < 20
+			CALL SETMIN, 牛の状態, 70
+		CASE IS < 30
+			CALL SETMIN, 牛の状態, 80
+		CASE IS < 40
+			CALL SETMIN, 牛の状態, 90
+		CASEELSE
+			CALL SETMIN, 牛の状態, 100
+	ENDSELECT
+	IF 牛の状態 == 0
+		PRINTL 牛たちは飢餓で全滅しました……
+		メッセージ表示 = 1
+		動物の死亡++
+	ENDIF
+ENDIF
 
+IF 羊の状態
+	;1日の出費は2万円±2千円とする
+	出費 = RAND(18000, 22000)
+	;減額率で計算
+	出費 = 出費*減額率/100
+	
+	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
+	IF 出費 > 牧場の予算
+		;状態が3以下の場合は1日1づつ下がっていき、0で全滅する
+		IF 羊の状態 <= 3
+			羊の状態--
+		ELSE
+			LOCAL = MAX(10-(飼育レベル計算用/20), 1)
+			;乱数で上下する ゆくゆくは気温や天候などでやりたい
+			LOCAL += RAND:3
+			羊の状態 -= LOCAL
+			SIF 羊の状態 <= 3
+				羊の状態 = 3
+		ENDIF
+	;予算が足りてると状態が良くなる
+	ELSE
+		LOCAL = MAX(飼育レベル計算用/20, 1)
+		;乱数で上下する ゆくゆくは気温や天候などでやりたい
+		LOCAL += RAND:3
+		羊の状態 += LOCAL
+	ENDIF
+	牧場の予算 -= 出費
+	;飼育レベル次第で状態の最大値が決まる 条件はゆるめ
+	SELECTCASE 飼育レベル計算用
+		CASE 0
+			CALL SETMIN, 羊の状態, 50
+		CASE IS < 10
+			CALL SETMIN, 羊の状態, 60
+		CASE IS < 20
+			CALL SETMIN, 羊の状態, 70
+		CASE IS < 30
+			CALL SETMIN, 羊の状態, 80
+		CASE IS < 40
+			CALL SETMIN, 羊の状態, 90
+		CASEELSE
+			CALL SETMIN, 羊の状態, 100
+	ENDSELECT
+	IF 羊の状態 == 0
+		PRINTL 羊たちは飢餓で全滅しました……
+		メッセージ表示 = 1
+		動物の死亡++
+	ENDIF
+ENDIF
 
+IF 豚の状態
+	;1日の出費は5万円±5千円とする
+	出費 = RAND(45000, 55000)
+	;減額率で計算
+	出費 = 出費*減額率/100
+	
+	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
+	IF 出費 > 畜舎の予算
+		;状態が3以下の場合は1日1づつ下がっていき、0で全滅する
+		IF 豚の状態 <= 3
+			豚の状態--
+		ELSE
+			LOCAL = MAX(10-(飼育レベル計算用/20), 1)
+			;乱数で上下する ゆくゆくは気温や天候などでやりたい
+			LOCAL += RAND:3
+			豚の状態 -= LOCAL
+			SIF 豚の状態 <= 3
+				豚の状態 = 3
+		ENDIF
+	;予算が足りてると状態が良くなる
+	ELSE
+		LOCAL = MAX(飼育レベル計算用/20, 1)
+		;乱数で上下する ゆくゆくは気温や天候などでやりたい
+		LOCAL += RAND:3
+		豚の状態 += LOCAL
+	ENDIF
+	畜舎の予算 -= 出費
+	;飼育レベル次第で状態の最大値が決まる 条件はゆるめ
+	SELECTCASE 飼育レベル計算用
+		CASE 0
+			CALL SETMIN, 豚の状態, 50
+		CASE IS < 10
+			CALL SETMIN, 豚の状態, 60
+		CASE IS < 20
+			CALL SETMIN, 豚の状態, 70
+		CASE IS < 30
+			CALL SETMIN, 豚の状態, 80
+		CASE IS < 40
+			CALL SETMIN, 豚の状態, 90
+		CASEELSE
+			CALL SETMIN, 豚の状態, 100
+	ENDSELECT
+	IF 豚の状態 == 0
+		PRINTL 豚たちは飢餓で全滅しました……
+		メッセージ表示 = 1
+		動物の死亡++
+	ENDIF
+ENDIF
+
+IF 鶏の状態
+	;1日の出費は1万円±1千円とする
+	出費 = RAND(9000, 11000)
+	;減額率で計算
+	出費 = 出費*減額率/100
+	
+	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
+	IF 出費 > 畜舎の予算
+		;状態が3以下の場合は1日1づつ下がっていき、0で全滅する
+		IF 鶏の状態 <= 3
+			鶏の状態--
+		ELSE
+			LOCAL = MAX(10-(飼育レベル計算用/20), 1)
+			;乱数で上下する ゆくゆくは気温や天候などでやりたい
+			LOCAL += RAND:3
+			鶏の状態 -= LOCAL
+			SIF 鶏の状態 <= 3
+				鶏の状態 = 3
+		ENDIF
+	;予算が足りてると状態が良くなる
+	ELSE
+		LOCAL = MAX(飼育レベル計算用/20, 1)
+		;乱数で上下する ゆくゆくは気温や天候などでやりたい
+		LOCAL += RAND:3
+		鶏の状態 += LOCAL
+	ENDIF
+	畜舎の予算 -= 出費
+	;飼育レベル次第で状態の最大値が決まる 条件はゆるめ
+	SELECTCASE 飼育レベル計算用
+		CASE 0
+			CALL SETMIN, 鶏の状態, 50
+		CASE IS < 10
+			CALL SETMIN, 鶏の状態, 60
+		CASE IS < 20
+			CALL SETMIN, 鶏の状態, 70
+		CASE IS < 30
+			CALL SETMIN, 鶏の状態, 80
+		CASE IS < 40
+			CALL SETMIN, 鶏の状態, 90
+		CASEELSE
+			CALL SETMIN, 鶏の状態, 100
+	ENDSELECT
+	IF 鶏の状態 == 0
+		PRINTL 鶏たちは飢餓で全滅しました……
+		メッセージ表示 = 1
+		動物の死亡++
+	ENDIF
+ENDIF
+
+IF 蜂の状態
+	;1日の出費は5000円±500円とする
+	出費 = RAND(4500, 5500)
+	;減額率で計算
+	出費 = 出費*減額率/100
+	
+	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
+	IF 出費 > 養蜂場の予算
+		;状態が3以下の場合は1日1づつ下がっていき、0で全滅する
+		IF 蜂の状態 <= 3
+			蜂の状態--
+		ELSE
+			LOCAL = MAX(10-(飼育レベル計算用/20), 1)
+			;乱数で上下する ゆくゆくは気温や天候などでやりたい
+			LOCAL += RAND:3
+			蜂の状態 -= LOCAL
+			SIF 蜂の状態 <= 3
+				蜂の状態 = 3
+		ENDIF
+	;予算が足りてると状態が良くなる
+	ELSE
+		LOCAL = MAX(飼育レベル計算用/20, 1)
+		;乱数で上下する ゆくゆくは気温や天候などでやりたい
+		LOCAL += RAND:3
+		蜂の状態 += LOCAL
+	ENDIF
+	養蜂場の予算 -= 出費
+	;飼育レベル次第で状態の最大値が決まる 条件はゆるめ
+	SELECTCASE 飼育レベル計算用
+		CASE 0
+			CALL SETMIN, 蜂の状態, 50
+		CASE IS < 10
+			CALL SETMIN, 蜂の状態, 60
+		CASE IS < 20
+			CALL SETMIN, 蜂の状態, 70
+		CASE IS < 30
+			CALL SETMIN, 蜂の状態, 80
+		CASE IS < 40
+			CALL SETMIN, 蜂の状態, 90
+		CASEELSE
+			CALL SETMIN, 蜂の状態, 100
+	ENDSELECT
+	IF 蜂の状態 == 0
+		PRINTL 蜂たちは病気で全滅しました……
+		メッセージ表示 = 1
+		動物の死亡++
+	ENDIF
+ENDIF
+
+IF 牧場の予算 < 0
+	PRINTL 牧場の予算が不足しています。補充しましょう
+	牧場の予算 = 0
+	メッセージ表示 = 1
+ENDIF
+IF 畜舎の予算 < 0
+	PRINTL 畜舎の予算が不足しています。補充しましょう
+	畜舎の予算 = 0
+	メッセージ表示 = 1
+ENDIF
+IF 養蜂場の予算 < 0
+	PRINTL 養蜂場の予算が不足しています。補充しましょう
+	養蜂場の予算 = 0
+	メッセージ表示 = 1
+ENDIF
+IF 生け簀の予算 < 0
+	PRINTL 生け簀の予算が不足しています。補充しましょう
+	生け簀の予算 = 0
+	メッセージ表示 = 1
+ENDIF
+
+;モチベ計算用にもう一度回す
+FOR LCOUNT, 1, CHARANUM
+	IF CSTR:LCOUNT:配属 == "畜産業"
+		モチベ計算用 = 0
+		FOR LCOUNT2, 0, VARSIZE("TALENT")
+			SIF !TALENT:LCOUNT:LCOUNT2
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT2
+				CASE "服従", "隷属", "ハイテンション", "世話好き", "好奇心", "楽観的", "恥薄い", "献身的", "幼稚"
+					モチベ計算用++
+				CASE "臆病", "気丈", "悲観的", "汚臭敏感", "潔癖症", "犬嫌い", "猫嫌い"
+					モチベ計算用--
+			ENDSELECT
+		NEXT
+		SELECTCASE CSTR:LCOUNT:種族
+			CASE "獣人", "獣", "人魚"
+				モチベ計算用++
+			CASE "ヴァンパイア"
+				モチベ計算用--
+		ENDSELECT
+		;予算がたくさん(7割以上)あるとモチベも上がる 養蜂場は例外
+		SIF 牧場の予算 >= 700000
+			モチベ計算用++
+		SIF 畜舎の予算 >= 700000
+			モチベ計算用++
+		SIF 生け簀の予算 >= 700000
+			モチベ計算用++
+		;動物が死んでるとモチベ激減する
+		モチベ計算用 -= 動物の死亡*10
+		LOCAL = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数
+		SIF TALENT:LCOUNT:世話好き
+			LOCAL -= 世話好き人数
+		CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
+		;経験も加算しとく
+		EXP:LCOUNT:飼育経験 += (馬の状態>0)+(牛の状態>0)+(羊の状態>0)+(豚の状態>0)+(鶏の状態>0)+(蜂の状態>0)
+	ENDIF
+NEXT
+
+IF メッセージ表示
+	WAIT
+ELSE
+	PRINTW 畜産業の方は特に変わってことは無かったようだ
+ENDIF
+
+@飼育レベル, ARG
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 計算用
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:ARG:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "気丈", "冷静", "自制心", "好奇心", "解放", "治療", "汚れ無視"
+			計算用++
+		CASE "臆病", "衝動的", "弱気", "無関心", "貞操観念", "恥じらい", "汚臭敏感", "潔癖症", "犬嫌い", "猫嫌い"
+			計算用--
+		CASE "世話好き"
+			計算用 += 2
+	ENDSELECT
+NEXT
+
+SELECTCASE CSTR:ARG:種族
+	CASE "獣人", "獣"
+		計算用 += 3
+	CASE "ヴァンパイア"
+		計算用 -= 2
+	CASE "精霊", "妖精"
+		計算用++
+ENDSELECT
+
+計算用 += ABL:ARG:飼育技能
+
+RETURNF MAX(計算用, 0)
+
+@養殖レベル, ARG
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 計算用
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:ARG:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "ドラゴン使い"
+			計算用++
+		CASE "猫"
+			計算用 -= 2
+		CASE "世話好き"
+			計算用 += 2
+	ENDSELECT
+NEXT
+
+SELECTCASE CSTR:ARG:種族
+	CASE "人魚"
+		計算用 += 2
+	CASE "鳳凰", "精霊", "妖精"
+		計算用--
+ENDSELECT
+計算用 += ABL:ARG:飼育技能/2
+
+RETURNF MAX(計算用, 0)
 
