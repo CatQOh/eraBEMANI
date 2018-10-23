@@ -63,25 +63,6 @@ IF ASSI >= 0
 	ENDIF
 ENDIF
 
-;日頃のモチベーション処理は経営、設備の処理前に行う
-FOR LCOUNT, 1, CHARANUM
-	IF TIME == 1
-		IF CSTR:LCOUNT:配属 != "" && !CFLAG:LCOUNT:休憩
-			;基本的にモチベーションは下がっていく
-			CFLAG:LCOUNT:モチベーション -= FLAG:難易度
-		ELSE
-			;未配属or休憩中のキャラは時間経過で50（初期値）まで戻る
-			SELECTCASE CFLAG:LCOUNT:モチベーション
-				CASE 51 TO 100
-					CFLAG:LCOUNT:モチベーション = MAX(CFLAG:LCOUNT:モチベーション-3, 50)
-				CASE 1 TO 49
-					CFLAG:LCOUNT:モチベーション = MIN(CFLAG:LCOUNT:モチベーション+3, 50)
-			ENDSELECT
-		ENDIF
-	ENDIF
-	CFLAG:LCOUNT:モチベーション = LIMIT(CFLAG:LCOUNT:モチベーション, 1, 100)
-NEXT
-
 REPEAT CHARANUM
 	;休憩フラグを消すが、配属中のキャラは下記収入関数でフラグ管理してるので対象外
 	SIF CSTR:COUNT:配属 == ""
@@ -100,6 +81,8 @@ SIF !CFLAG:MASTER:使用不可
 
 ;畜産農業関係
 CALL TURNEND_畜産農業
+;家畜の体調次第で食材が変わるので献立を確認する
+CALL 献立条件確認
 
 ;施設の計算と利用人数表示
 IF TIME == 1 && !CFLAG:MASTER:使用不可
@@ -224,6 +207,9 @@ SIF TFLAG:お菓子
 	CALL KOJO_MESSAGE_EVENT, "お菓子"
 TFLAG:料理 = 0
 TFLAG:お菓子 = 0
+
+;調理室の処理は回復後に行う
+CALL TURNEND_調理室
 
 CALL EVENTCHECK_ABL
 FLAG:休憩フラグ = 0
