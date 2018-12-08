@@ -4,7 +4,14 @@
 #DIM DYNAMIC 減額率
 #DIM DYNAMIC LCOUNT
 
-FOR LCOUNT, 1, CHARANUM
+;新婚モード
+IF FLAG:ゲームモード == 7
+	CSTR:MASTER:配属 = 畜産業
+	CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 畜産業
+ENDIF
+
+
+FOR LCOUNT, 0, CHARANUM
 	IF CSTR:LCOUNT:配属 == "畜産業"
 		飼育レベル計算用 += 飼育レベル(LCOUNT)
 		養殖レベル計算用 += 養殖レベル(LCOUNT)
@@ -24,6 +31,12 @@ FOR LCOUNT, 1, CHARANUM
 	ENDIF
 NEXT
 
+;新婚モードなら飼育レベルと養殖レベルは50にする
+IF FLAG:ゲームモード == 7
+	飼育レベル計算用 = 50
+	養殖レベル計算用 = 50
+ENDIF
+
 DRAWLINE
 PRINTL □畜産関連の管理
 IF ITEM:牧場 || ITEM:畜舎 || ITEM:養蜂場 || ITEM:生け簀
@@ -32,26 +45,37 @@ IF ITEM:牧場 || ITEM:畜舎 || ITEM:養蜂場 || ITEM:生け簀
 		CALL PASELI, @"牧場の予算:{牧場の予算}＄/1000000＄ "
 	SIF ITEM:畜舎
 		CALL PASELI, @"畜舎の予算:{畜舎の予算}＄/1000000＄ "
+	PRINTL 
+	PRINT 　　　　　　 
 	SIF ITEM:養蜂場
 		CALL PASELI, @"養蜂場の予算:{養蜂場の予算}＄/100000＄ "
 	SIF ITEM:生け簀
 		CALL PASELI, @"生け簀の予算:{生け簀の予算}＄/1000000＄"
 	PRINTL 
 ENDIF
-PRINTFORML 　現在の人員 配属人数:{CMATCH(CSTR:配属, "畜産業")} 飼育レベル:{飼育レベル計算用} 養殖レベル:{養殖レベル計算用} 出費の減額率:{減額率}\%/90\%
+SIF FLAG:ゲームモード != 7
+	PRINTFORML 　現在の人員 配属人数:{CMATCH(CSTR:配属, "畜産業")} 飼育レベル:{飼育レベル計算用} 養殖レベル:{養殖レベル計算用} 出費の減額率:{減額率}\%/90\%
 PRINTL 
 
-IF ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場
+IF (ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場) && FLAG:ゲームモード != 7
 	PRINTL 　[1] - 畜産業に投資する
 	PRINTL 　[2] - 人員を配置する
-ELSE
+ELSEIF FLAG:ゲームモード != 7
 	SETCOLORBYNAME gray
 	HTML_PRINT SET_TOOLTIP("　[-] - 畜産業に投資する", "畜産用の設備を導入する必要があります")
 	HTML_PRINT SET_TOOLTIP("　[-] - 人員を配置する", "畜産用の設備を導入する必要があります")
 	RESETCOLOR
 ENDIF
-PRINTL 　[3] - 生産状況を確認する
-PRINTL 　[4] - 設備を導入する
+IF ITEM:生け簀
+	PRINTL 　[3] - 魚の養殖を始める
+ELSE
+	SETCOLORBYNAME gray
+	HTML_PRINT SET_TOOLTIP("　[-] - 魚の養殖を始める", "生け簀を導入する必要があります")
+	RESETCOLOR
+ENDIF
+
+PRINTL 　[4] - 生産状況を確認する
+PRINTL 　[5] - 設備を導入する
 DRAWLINE
 PRINTPLAIN 　畜産　
 PRINTL [0] - 戻る
@@ -60,20 +84,29 @@ DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 1
-			SIF ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場
+			SIF (ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場) && FLAG:ゲームモード != 7
 				CALL 畜産業に投資する
 			RESTART
 		CASE 2
-			SIF ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場
+			SIF (ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場) && FLAG:ゲームモード != 7
 				CALL STRATEGY_PERSONAL, "畜産業"
 			RESTART
 		CASE 3
-			CALL 生産状況_畜産
+			SIF ITEM:生け簀
+				CALL 魚の養殖, 減額率, 養殖レベル計算用
 			RESTART
 		CASE 4
+			CALL 生産状況_畜産, 減額率
+			RESTART
+		CASE 5
 			CALL 畜産設備導入
 			RESTART
 		CASE 0
+			;新婚モード
+			IF FLAG:ゲームモード == 7
+				CSTR:MASTER:配属 = 
+				CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 
+			ENDIF
 			RETURN
 	ENDSELECT
 LOOP 1
@@ -322,19 +355,84 @@ DO
 	ENDSELECT
 LOOP 1
 
-@生産状況_畜産
+@魚の養殖, 減額率, 養殖レベル計算用
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 減額率
+#DIM DYNAMIC 養殖レベル計算用
+#DIM DYNAMIC 海産物
+
+DRAWLINE
+PRINTL □魚を養殖します
+PRINTFORML 　現在の人員での養殖成功までの日数 {50-養殖レベル計算用/2}日
+FOR LCOUNT, 1, 5
+	PRINTFORM 　[{LCOUNT}] - 
+	IF 生け簀の養殖:LCOUNT == ""
+		PRINTL 未使用の生け簀
+	ELSE
+		PRINTFORML %生け簀の養殖:LCOUNT%の生け簀\@ 生け簀の状態:LCOUNT == 0 ? (養殖成功) # (養殖中 残り{生け簀の状態:LCOUNT}日) \@
+	ENDIF
+NEXT
+DRAWLINE
+PRINTPLAIN 　魚の養殖　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1 TO 4
+			LOCAL = RESULT
+			IF 生け簀の養殖:LOCAL != ""
+				PRINTFORML {LOCAL}番の生け簀では%生け簀の養殖:LOCAL%を養殖中です。新しく別の魚を養殖しますか？
+				PRINTL [0] - 新しいものに挑戦したい
+				PRINTL [1] - もったいないからやめる
+				DO 
+					INPUT
+					SIF RESULT == 1
+						RESTART
+				LOOP LOOPRES(0)
+			ENDIF
+			DRAWLINE
+			PRINTFORML □{LOCAL}番の生け簀で何を養殖しますか？
+			FOR LCOUNT, 800, 850
+				SIF ITEMNAME:LCOUNT != ""
+					CALL PASELIL, @"　[{LCOUNT-800, 2}] - %ITEMNAME:LCOUNT%(養殖費用 およそ{ITEMPRICE:LCOUNT*(100-減額率)/100}＄/日)"
+			NEXT
+			DRAWLINE
+			PRINTPLAIN 　生け簀　
+			PRINTL [100] - 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 100
+						RESTART
+					CASEELSE
+						海産物 = RESULT+800
+						PRINTFORML {LOCAL}番の生け簀で%ITEMNAME:海産物%の養殖を始めました
+						生け簀の状態:LOCAL = 50-養殖レベル計算用/2
+						生け簀の養殖:LOCAL = %ITEMNAME:海産物%
+						ITEM:海産物 = 1
+						RESTART
+				ENDSELECT
+			LOOP 1
+	ENDSELECT
+LOOP 1
+
+@生産状況_畜産, 減額率
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 名前文字数
+#DIM DYNAMIC 減額率
 DRAWLINE
 
 PRINTL □畜産業の人員
 IF CMATCH(CSTR:配属, "畜産業")
-	FOR LCOUNT, 1, CHARANUM
+	FOR LCOUNT, 0, CHARANUM
 		SIF CSTR:LCOUNT:配属 == "畜産業"
 			CALL SETMAX(名前文字数, STRLENS(NAME:LCOUNT))
 	NEXT
 	LOCAL = TARGET
-	FOR LCOUNT, 1, CHARANUM
+	FOR LCOUNT, 0, CHARANUM
 		IF CSTR:LCOUNT:配属 == "畜産業"
 			TARGET = LCOUNT
 			PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 飼育技能:{ABL:LCOUNT:飼育技能, 2, LEFT} 飼育適性:{飼育レベル(LCOUNT), 2, LEFT} 
@@ -355,7 +453,7 @@ IF CMATCH(CSTR:配属, "畜産業")
 			CALL NEED_JUEL_飼育技能
 			CALL CHECK_JUEL_飼育技能
 			SIF RESULT && ABL:LCOUNT:飼育技能 < 10
-				PRINTBUTTON "[飼育技能上昇可能]", LCOUNT
+				PRINTBUTTON "[飼育技能上昇可能]", LCOUNT+1
 			PRINTL 
 		ENDIF
 	NEXT
@@ -418,16 +516,18 @@ IF !ITEM:生け簀
 	RESETCOLOR
 ELSE
 	FOR LCOUNT, 1, 5
-		SIF LCOUNT == 1
-			PRINT 　
-		PRINTFORM {LCOUNT}番の生け簀:%生け簀の養殖:LCOUNT%
-		IF 生け簀の状態:LCOUNT == 0
+		PRINTFORM 　{LCOUNT}番の生け簀:%生け簀の養殖:LCOUNT%
+		IF 生け簀の状態:LCOUNT != 0
 			PRINTFORM 養殖中(残り{生け簀の状態:LCOUNT}日) 
 		ELSE
 			PRINT 養殖成功 
 		ENDIF
+		CALL PASELI, @"費用:{ITEMPRICE:(生け簀の養殖:LCOUNT)*(100-減額率)/100}＄/日"
+		SIF LCOUNT == 2
+			PRINTL 
 	NEXT
 ENDIF
+PRINTL 
 PRINTL 
 
 PRINTL □現在生産できるアイテム
@@ -483,7 +583,7 @@ DO
 			RESTART
 		CASEELSE
 			LOCAL = TARGET
-			TARGET = RESULT
+			TARGET = RESULT-1
 			IF CSTR:配属 == "畜産業"
 				CALL NEED_JUEL_飼育技能
 				CALL CHECK_JUEL_飼育技能
@@ -656,11 +756,22 @@ WAIT
 #DIM DYNAMIC 減額率
 #DIM DYNAMIC メッセージ表示
 #DIM DYNAMIC 動物の死亡
+#DIM DYNAMIC 養殖中
 
 SIF !ITEM:牧場 && !ITEM:畜舎 && !ITEM:養蜂場 && !ITEM:生け簀
 	RETURN 0
 
-FOR LCOUNT, 1, CHARANUM
+;日付変更時のみ
+SIF TIME == 0
+	RETURN 0
+
+;新婚モード
+IF FLAG:ゲームモード == 7
+	CSTR:MASTER:配属 = 畜産業
+	CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 畜産業
+ENDIF
+
+FOR LCOUNT, 0, CHARANUM
 	;10人配属できるので飼育レベル最大はだいたい200とする
 	;養殖レベルはせいぜい70とかそこらへん
 	IF CSTR:LCOUNT:配属 == "畜産業"
@@ -684,6 +795,12 @@ FOR LCOUNT, 1, CHARANUM
 	ENDIF
 NEXT
 
+;新婚モードなら飼育レベルと養殖レベルは50にする
+IF FLAG:ゲームモード == 7
+	飼育レベル計算用 = 50
+	養殖レベル計算用 = 50
+ENDIF
+
 ;減額率が0なら1にする
 CALL SETMAX, 減額率, 1
 
@@ -691,7 +808,7 @@ IF 馬の状態
 	;1日の出費は5万円±5千円とする
 	出費 = RAND(45000, 55000)
 	;減額率で計算
-	出費 = 出費*減額率/100
+	出費 = 出費*(100-減額率)/100
 	
 	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
 	IF 出費 > 牧場の予算
@@ -741,7 +858,7 @@ IF 牛の状態
 	;1日の出費は5万円±5千円とする
 	出費 = RAND(45000, 55000)
 	;減額率で計算
-	出費 = 出費*減額率/100
+	出費 = 出費*(100-減額率)/100
 	
 	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
 	IF 出費 > 牧場の予算
@@ -792,7 +909,7 @@ IF 羊の状態
 	;1日の出費は2万円±2千円とする
 	出費 = RAND(18000, 22000)
 	;減額率で計算
-	出費 = 出費*減額率/100
+	出費 = 出費*(100-減額率)/100
 	
 	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
 	IF 出費 > 牧場の予算
@@ -843,7 +960,7 @@ IF 豚の状態
 	;1日の出費は5万円±5千円とする
 	出費 = RAND(45000, 55000)
 	;減額率で計算
-	出費 = 出費*減額率/100
+	出費 = 出費*(100-減額率)/100
 	
 	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
 	IF 出費 > 畜舎の予算
@@ -892,7 +1009,7 @@ IF 鶏の状態
 	;1日の出費は1万円±1千円とする
 	出費 = RAND(9000, 11000)
 	;減額率で計算
-	出費 = 出費*減額率/100
+	出費 = 出費*(100-減額率)/100
 	
 	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
 	IF 出費 > 畜舎の予算
@@ -943,8 +1060,8 @@ IF 蜂の状態
 	;1日の出費は5000円±500円とする
 	出費 = RAND(4500, 5500)
 	;減額率で計算
-	出費 = 出費*減額率/100
-	
+	出費 = 出費*(100-減額率)/100
+
 	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
 	IF 出費 > 養蜂場の予算
 		;状態が3以下の場合は1日1づつ下がっていき、0で全滅する
@@ -991,6 +1108,42 @@ ENDIF
 SIF ITEM:触手使役術
 	ITEM:触手肉 = 1
 
+IF ITEM:生け簀
+	出費 = 0
+	FOR LCOUNT, 1, 5
+		SIF 生け簀の養殖:LCOUNT != ""
+			出費 += ITEMPRICE:(生け簀の養殖:LCOUNT)
+	NEXT
+	SIF 出費 == 0
+		GOTO 養殖無し
+	
+	養殖中 = 1
+	
+	出費 = 出費*(100-減額率)/100
+	IF 生け簀の予算 < 出費
+		FOR LCOUNT, 1, 5
+			IF 生け簀の養殖:LCOUNT != ""
+				PRINTFORML 生け簀の予算不足のため、%生け簀の養殖:LCOUNT%の収穫ができませんでした
+				メッセージ表示 = 1
+				生け簀の状態:LCOUNT = 1
+			ENDIF
+		NEXT
+	ELSE
+		FOR LCOUNT, 1, 5
+			IF 生け簀の養殖:LCOUNT != ""
+				IF 生け簀の状態:LCOUNT > 0
+					IF --生け簀の状態:LCOUNT == 0
+						PRINTFORML %生け簀の養殖:LCOUNT%が収穫可能になりました
+						メッセージ表示 = 1
+					ENDIF
+				ENDIF
+			ENDIF
+		NEXT
+		生け簀の予算 -= 出費
+	ENDIF
+ENDIF
+$養殖無し
+
 IF 牧場の予算 < 0
 	PRINTL 牧場の予算が不足しています。補充しましょう
 	牧場の予算 = 0
@@ -1006,14 +1159,9 @@ IF 養蜂場の予算 < 0
 	養蜂場の予算 = 0
 	メッセージ表示 = 1
 ENDIF
-IF 生け簀の予算 < 0
-	PRINTL 生け簀の予算が不足しています。補充しましょう
-	生け簀の予算 = 0
-	メッセージ表示 = 1
-ENDIF
 
 ;モチベ計算用にもう一度回す
-FOR LCOUNT, 1, CHARANUM
+FOR LCOUNT, 0, CHARANUM
 	IF CSTR:LCOUNT:配属 == "畜産業"
 		モチベ計算用 = 0
 		FOR LCOUNT2, 0, VARSIZE("TALENT")
@@ -1046,14 +1194,27 @@ FOR LCOUNT, 1, CHARANUM
 			LOCAL -= 世話好き人数
 		CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
 		;経験も加算しとく
-		EXP:LCOUNT:飼育経験 += (馬の状態>0)+(牛の状態>0)+(羊の状態>0)+(豚の状態>0)+(鶏の状態>0)+(蜂の状態>0)
+		EXP:LCOUNT:飼育経験 += (馬の状態>0)+(牛の状態>0)+(羊の状態>0)+(豚の状態>0)+(鶏の状態>0)+(蜂の状態>0)+養殖中
 	ENDIF
 NEXT
 
-IF メッセージ表示
-	WAIT
-ELSE
-	PRINTW 畜産業の方は特に変わってたことは無かったようだ
+
+CALL CHECKDRAWLINEW
+
+;IF メッセージ表示
+;	WAIT
+;ELSE
+;	PRINTW 畜産業の方は特に変わったことは無かったようだ
+;ENDIF
+
+;新婚モード
+IF FLAG:ゲームモード == 7
+	CSTR:MASTER:配属 = 
+	CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 
+	牧場の予算 = 1000000
+	畜舎の予算 = 1000000
+	養蜂場の予算 = 100000
+	生け簀の予算 = 1000000
 ENDIF
 
 @飼育レベル, ARG
@@ -1108,7 +1269,9 @@ NEXT
 SELECTCASE CSTR:ARG:種族
 	CASE "人魚"
 		計算用 += 2
-	CASE "鳳凰", "精霊", "妖精"
+	CASE "精霊", "妖精"
+		計算用++
+	CASE "鳳凰", "ヴァンパイア"
 		計算用--
 ENDSELECT
 計算用 += ABL:ARG:飼育技能/2

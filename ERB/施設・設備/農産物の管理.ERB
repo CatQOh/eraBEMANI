@@ -1,12 +1,17 @@
 ﻿@農産物
 DRAWLINE
 PRINTL □農産物の管理
-PRINTFORML 　現在の設備 田んぼ収穫日:{ITEM:田んぼ}/{田んぼ上限} 畑収穫日:{ITEM:畑}/{畑上限} プランター収穫日:{ITEM:プランター}/4
-PRINTFORML 　現在の人員 配属人数:{CMATCH(CSTR:配属, "農業")}/{ITEM:畑+ITEM:田んぼ*3+(ITEM:プランター > 0)} 栽培レベル:{栽培レベル()}
+IF FLAG:ゲームモード == 7
+	PRINTFORML 　現在の設備 田んぼ収穫日:{ITEM:田んぼ}/{田んぼ上限} 畑収穫日:{ITEM:畑}/{畑上限} プランター収穫日:{ITEM:プランター}/4 栽培レベル:{栽培レベル()}
+ELSE
+	PRINTFORML 　現在の設備 田んぼ収穫日:{ITEM:田んぼ}/{田んぼ上限} 畑収穫日:{ITEM:畑}/{畑上限} プランター収穫日:{ITEM:プランター}/4
+	PRINTFORML 　現在の人員 配属人数:{CMATCH(CSTR:配属, "農業")}/{ITEM:畑+ITEM:田んぼ*3+(ITEM:プランター > 0)} 栽培レベル:{栽培レベル()}
+ENDIF
 PRINTL 
 IF ITEM:田んぼ || ITEM:畑 || ITEM:プランター
 	PRINTFORML 　[1] - 作物を植える
-	PRINTFORML 　[2] - 人員を配置する
+	SIF FLAG:ゲームモード != 7
+		PRINTFORML 　[2] - 人員を配置する
 ELSE
 	SETCOLORBYNAME gray
 	HTML_PRINT SET_TOOLTIP("　[-] - 作物を植える", "農業用の設備を導入する必要があります")
@@ -27,7 +32,7 @@ DO
 				CALL 作物を植える
 			RESTART
 		CASE 2
-			SIF ITEM:田んぼ || ITEM:畑 || ITEM:プランター
+			SIF (ITEM:田んぼ || ITEM:畑 || ITEM:プランター) && FLAG:ゲームモード != 7
 				CALL STRATEGY_PERSONAL, "農業"
 			RESTART
 		CASE 3
@@ -314,20 +319,27 @@ LOOP 1
 DRAWLINE
 
 PRINTL □農業の人員
+
+;新婚モード
+IF FLAG:ゲームモード == 7
+	CSTR:MASTER:配属 = 農業
+	CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 農業
+ENDIF
+
 IF CMATCH(CSTR:配属, "農業")
-	FOR LCOUNT, 1, CHARANUM
+	FOR LCOUNT, 0, CHARANUM
 		SIF CSTR:LCOUNT:配属 == "農業"
 			CALL SETMAX(名前文字数, STRLENS(NAME:LCOUNT))
 	NEXT
 	LOCAL = TARGET
-	FOR LCOUNT, 1, CHARANUM
+	FOR LCOUNT, 0, CHARANUM
 		IF CSTR:LCOUNT:配属 == "農業"
 			TARGET = LCOUNT
 			PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 栽培技能:{ABL:LCOUNT:栽培技能, 2, LEFT} 魔法技能:{ABL:LCOUNT:魔法技能, 2, LEFT} 工作技能:{ABL:LCOUNT:工作技能, 2, LEFT} 
 			CALL NEED_JUEL_栽培技能
 			CALL CHECK_JUEL_栽培技能
 			SIF RESULT && ABL:LCOUNT:栽培技能 < 10
-				PRINTBUTTON "[栽培技能上昇可能]", LCOUNT
+				PRINTBUTTON "[栽培技能上昇可能]", LCOUNT+1
 			PRINTL 
 		ENDIF
 	NEXT
@@ -400,13 +412,18 @@ DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 0
+			;新婚モード
+			IF FLAG:ゲームモード == 7
+				CSTR:MASTER:配属 = 
+				CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 
+			ENDIF
 			RETURN
 		CASE -1
 			CALL 植物図鑑
 			RESTART
 		CASEELSE
 			LOCAL = TARGET
-			TARGET = RESULT
+			TARGET = RESULT-1
 			IF CSTR:配属 == "農業"
 				CALL NEED_JUEL_栽培技能
 				CALL CHECK_JUEL_栽培技能
@@ -463,12 +480,20 @@ IF 栽培レベル() >= 6 && !ITEM:ナス
 	ITEM:ピーマン = 1
 	LOCAL = 1
 ENDIF
+IF 栽培レベル() >= 6 && !ITEM:ほうれん草
+	PRINTL 栽培:ほうれん草(畑)を解禁しました
+	ITEM:ほうれん草 = 1
+ENDIF
 IF 栽培レベル() >= 7 && !ITEM:大根
 	PRINTL 栽培:大根(畑)を解禁しました
 	PRINTL 栽培:人参(畑)を解禁しました
 	ITEM:大根 = 1
 	ITEM:人参 = 1
 	LOCAL = 1
+ENDIF
+IF 栽培レベル() >= 7 && !ITEM:れんこん
+	PRINTL 栽培:れんこん(畑)を解禁しました
+	ITEM:れんこん = 1
 ENDIF
 IF 栽培レベル() >= 8 && !ITEM:玉ねぎ
 	PRINTL 栽培:玉ねぎ(畑)を解禁しました
@@ -803,6 +828,10 @@ ENDIF
 #FUNCTION
 #DIM DYNAMIC LCOUNT
 
+;新婚モードなら無条件で50にする
+SIF FLAG:ゲームモード == 7
+	RETURNF 50
+
 LOCAL = 0
 
 FOR LCOUNT, 1, CHARANUM
@@ -819,7 +848,7 @@ RETURNF LOCAL
 #DIM DYNAMIC 魔法レベル
 #DIM DYNAMIC 科学レベル
 
-FOR LCOUNT, 1, CHARANUM
+FOR LCOUNT, 0, CHARANUM
 	SIF CSTR:LCOUNT:配属 != "農業"
 		CONTINUE
 	魔法レベル += MIN(ABL:LCOUNT:魔法技能, 10)
@@ -896,6 +925,12 @@ NEXT
 CALL 栽培解禁
 LOCAL = RESULT
 
+;新婚モード
+IF FLAG:ゲームモード == 7
+	CSTR:MASTER:配属 = 農業
+	CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 農業
+ENDIF
+
 ;作物の成長は日付変更時のみ
 IF TIME == 1
 	FOR LCOUNT, 1, 5
@@ -940,14 +975,22 @@ IF TIME == 1
 	栽培数 -= CMATCH(CSTR:配属, "農業")
 	CALL SETMAX, 栽培数, 1
 	CALL SETMAX, 栽培数, 栽培数:1+栽培数:2+栽培数:3
-	FOR LCOUNT, 1, CHARANUM
+	FOR LCOUNT, 0, CHARANUM
 		SIF CSTR:LCOUNT:配属 == "農業"
 			EXP:LCOUNT:栽培経験 += 栽培数
 	NEXT
 ENDIF
 
-SIF !メッセージ表示 && !LOCAL
-	PRINTL 農業の方は特に変わったことは無かったようだ
+CALL CHECKDRAWLINEW
+
+;SIF !メッセージ表示 && !LOCAL
+;	PRINTL 農業の方は特に変わったことは無かったようだ
+
+;新婚モード
+IF FLAG:ゲームモード == 7
+	CSTR:MASTER:配属 = 
+	CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 
+ENDIF
 
 IF メッセージ表示
 	RETURN 1

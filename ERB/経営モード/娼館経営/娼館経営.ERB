@@ -724,7 +724,6 @@ IF LOCAL >= 0
 	;方針設定してないとダメ
 	SIF 娼館方針 == 0
 		GOTO 通常営業
-	DRAWLINE
 	;体力不足
 	IF BASE:LOCAL:体力 <= 1000
 		PRINTFORML %CALLNAME:LOCAL%は疲労で娼館を休みました
@@ -752,9 +751,11 @@ IF LOCAL >= 0
 	ASSI = LASSI
 ENDIF
 
+
 $通常営業
 
 FOR LCOUNT, 1, 娼館部屋数+1
+	CALL CHECKDRAWLINE
 	部屋配属人数 = 0
 	FOR LCOUNT2, 1, CHARANUM
 		;当然配属してないとダメ
@@ -775,19 +776,16 @@ FOR LCOUNT, 1, 娼館部屋数+1
 		;以下、売春できないキャラが居る部屋は収入の対象にならない
 		;体力不足
 		IF BASE:LCOUNT2:体力 <= 1000
-			DRAWLINE
 			PRINTFORML %CALLNAME:LCOUNT2%は疲労で娼館を休みました
 			GOTO 売春不可
 		ENDIF
 		;ストレス高
 		IF CFLAG:LCOUNT2:ストレス値 > 300 && !TALENT:LCOUNT2:崩壊
-			DRAWLINE
 			PRINTFORML %CALLNAME:LCOUNT2%はストレス過多のため、娼館を休みました
 			GOTO 売春不可
 		ENDIF
 		;サボり魔は25%の確率でサボる
 		IF TALENT:LCOUNT2:サボり魔 && RAND:4 == 0
-			DRAWLINE
 			PRINTFORML %CALLNAME:LCOUNT2%は売春をサボりました
 			CFLAG:LCOUNT2:休憩 = 1
 			GOTO 売春不可
@@ -801,12 +799,10 @@ FOR LCOUNT, 1, 娼館部屋数+1
 	SELECTCASE 部屋配属人数
 		;ソロ
 		CASE 1
-			DRAWLINE
 			CALL ソロ売春, LCOUNT
 			収入合計 += RESULT
 			CONTINUE
 		CASE 2
-			DRAWLINE
 			CALL ペア売春, LCOUNT
 			収入合計 += RESULT
 			CONTINUE
@@ -824,6 +820,8 @@ FOR LCOUNT, 1, 娼館部屋数+1
 		ENDIF
 	NEXT
 NEXT
+
+CALL CHECKDRAWLINE
 
 ;方針とポイントに応じて上下する
 SELECTCASE 娼館方針
@@ -861,7 +859,6 @@ SIF ITEM:隠しカメラ
 ;収入合計 /= 100
 
 IF 収入合計
-	DRAWLINE
 	CALL PASELIL, @"%娼館店名%の収入が{収入合計}＄入りました"
 	MONEY += 収入合計
 	娼館前日の収入 = 収入合計

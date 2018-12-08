@@ -1,6 +1,7 @@
 ﻿@CSV_EDITOR
 #DIMS DYNAMIC 経験名
 #DIMS DYNAMIC 素質名
+#DIM 素質数値指定
 
 ADDVOIDCHARA
 ADDVOIDCHARA
@@ -87,6 +88,7 @@ REPEAT VARSIZE("EXP")
 	ENDSELECT
 
 	LOCALS:(LOCAL%6) = %SET_TOOLTIP(@"　[%経験名, 8%]:{EXP:COUNT, 4, LEFT}", EXP_COMMENT(EXPNAME:COUNT, TARGET))%
+	RESETCOLOR
 	LOCAL++
 REND
 SIF !LINEISEMPTY()
@@ -115,6 +117,7 @@ REPEAT VARSIZE("ABL")
 		SETCOLORBYNAME gray
 
 	LOCALS:(LOCAL%6) = %SET_TOOLTIP(@"　[%ABLNAME:COUNT, 8%]:LV{ABL:COUNT, 4, LEFT}", ABL_COMMENT(ABLNAME:COUNT, TARGET))%
+	RESETCOLOR
 	LOCAL++
 REND
 
@@ -123,7 +126,10 @@ SIF !LINEISEMPTY()
 
 DRAWLINE
 PRINTPLAIN □ 素質 
-PRINTBUTTON "[変更する]", "素質を変更する"
+SIF 素質数値指定
+	PRINT (数値指定モード) 
+PRINTBUTTON "[変更する] ", "素質を変更する"
+PRINTBUTTON "[素質を数値指定する]", "素質を数値指定する"
 PRINTL 
 LOCAL = 0
 VARSET LOCALS, 
@@ -162,7 +168,11 @@ REPEAT VARSIZE("TALENT")
 	SIF LOCAL%6 == 0
 		LOCALS = 　
 
-	LOCALS:(LOCAL%6) += @"%SET_TOOLTIP(素質名, TALENT_COMMENT(TALENTNAME:COUNT, TARGET))%"
+	IF 素質数値指定
+		LOCALS:(LOCAL%6) += @"%SET_TOOLTIP(@"%素質名%={TALENT:COUNT} ", TALENT_COMMENT(TALENTNAME:COUNT, TARGET))%"
+	ELSE
+		LOCALS:(LOCAL%6) += @"%SET_TOOLTIP(素質名, TALENT_COMMENT(TALENTNAME:COUNT, TARGET))%"
+	ENDIF
 
 	LOCAL++
 
@@ -256,9 +266,10 @@ PRINTL
 
 DRAWLINE
 PRINTBUTTON "　[0] CSVを出力する ", "0"
-PRINTBUTTON "[1] CSV作成をやめる ", "1"
-PRINTBUTTON "[2] 既存のCSVを呼び出す ", "2"
-PRINTBUTTON "[3] プロジェクトを初期化する", "3"
+PRINTBUTTON "[1] CSVを全て数値で出力する", "1"
+PRINTBUTTON "[2] CSV作成をやめる ", "2"
+PRINTBUTTON "[3] 既存のCSVを呼び出す ", "3"
+PRINTBUTTON "[4] プロジェクトを初期化する", "4"
 
 $LOOP
 INPUTS
@@ -321,8 +332,13 @@ SELECTCASE RESULTS
 						SELECTCASE TALENTNAME:COUNT
 							CASE "性別", "バストサイズ", "恋心", "既婚者"
 							CASEELSE
-								SIF TALENT:COUNT != 0
-									PRINTFORML 素質,%TALENTNAME:COUNT%
+								IF TALENT:COUNT != 0
+									IF 素質数値指定
+										PRINTFORML 素質,%TALENTNAME:COUNT%,{TALENT:COUNT}
+									ELSE
+										PRINTFORML 素質,%TALENTNAME:COUNT%
+									ENDIF
+								ENDIF
 						ENDSELECT
 					REND
 					REPEAT 10000
@@ -386,6 +402,132 @@ SELECTCASE RESULTS
 		LOOP LOOPRES(0, 1)
 		GOTO RESTART
 	CASE "1"
+		PRINTL 現在の作業状況のCSVを数値でログに出力します。よろしいですか？
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		INPUT
+		DO
+			SELECTCASE RESULT
+				CASE 0
+					CLEARLINE LINECOUNT
+					PRINTFORML 番号,{NO:TARGET}
+					PRINTFORML 名前,%NAME:TARGET%
+					IF CALLNAME:TARGET == ""
+						PRINTFORML 呼び名,%NAME:TARGET%
+					ELSE
+						PRINTFORML 呼び名,%CALLNAME:TARGET%
+					ENDIF
+					PRINTL 
+					PRINTFORML フラグ,{GETNUM(CFLAG, "価格")},{CFLAG:価格}
+					SIF CFLAG:誕生日
+						PRINTFORML フラグ,{GETNUM(CFLAG, "誕生日")},{CFLAG:誕生日}
+					SIF CFLAG:血縁コード
+						PRINTFORML フラグ,{GETNUM(CFLAG, "血縁コード")},{CFLAG:血縁コード}
+					SIF CFLAG:続柄
+						PRINTFORML フラグ,{GETNUM(CFLAG, "続柄")},{CFLAG:続柄}
+					SIF CFLAG:兄弟
+						PRINTFORML フラグ,{GETNUM(CFLAG, "兄弟")},{CFLAG:兄弟}
+					SIF CFLAG:姉妹
+						PRINTFORML フラグ,{GETNUM(CFLAG, "姉妹")},{CFLAG:姉妹}
+						
+					PRINTL 
+					PRINTFORML 基礎,0,{MAXBASE:体力}
+					PRINTFORML 基礎,1,{MAXBASE:気力}
+					REPEAT VARSIZE("EXP")
+						SIF EXP:COUNT != 0
+							PRINTFORML 経験,{COUNT},{EXP:COUNT}
+					REND
+					REPEAT VARSIZE("ABL")
+						SIF ABL:COUNT != 0
+							PRINTFORML 能力,{COUNT},{ABL:COUNT}
+					REND
+					PRINTFORML 素質,{GETNUM(TALENT, "性別")},{TALENT:性別}
+					SIF SEX(TARGET) == 2
+						PRINTFORML 素質,{GETNUM(TALENT, "バストサイズ")},{TALENT:バストサイズ}
+					IF TALENT:恋心 != 0
+						PRINTFORM 素質,{GETNUM(TALENT, "恋心")},{TALENT:恋心},
+						SIF EXISTCSV(TALENT:恋心)
+							PRINTFORML ;%CSVCALLNAME(TALENT:恋心)%
+					ENDIF
+					IF TALENT:既婚者 != 0
+						PRINTFORM 素質,{GETNUM(TALENT, "既婚者")},{TALENT:既婚者},
+						SIF EXISTCSV(TALENT:既婚者)
+							PRINTFORML ;%CSVCALLNAME(TALENT:既婚者)%
+					ENDIF
+					REPEAT VARSIZE("TALENT")
+						SELECTCASE TALENTNAME:COUNT
+							CASE "性別", "バストサイズ", "恋心", "既婚者"
+							CASEELSE
+								IF TALENT:COUNT != 0
+									IF 素質数値指定
+										PRINTFORML 素質,{COUNT},{TALENT:COUNT}
+									ELSE
+										PRINTFORML 素質,{COUNT}
+									ENDIF
+								ENDIF
+						ENDSELECT
+					REND
+					REPEAT 10000
+						SIF RELATION:COUNT != 100
+							PRINTFORML 相性,{COUNT},{RELATION:COUNT},;%CSVCALLNAME(COUNT)%
+					REND
+					
+					PRINTL 
+					
+					REPEAT 100
+						IF CSTR:COUNT != ""
+							PRINTFORML CSTR,{COUNT},%CSTR:COUNT%
+						ELSE
+							BREAK
+						ENDIF
+					REND
+					
+					PRINTL 
+					
+					PRINTL ;服装
+					REPEAT VARSIZE("CSTR")
+						SELECTCASE CSTRNAME:COUNT
+							CASE "特殊", "上半身上着", "下半身上着", "全身上着", "上半身下着", "下半身下着", "足元"
+								IF CFLAG:(CSTRNAME:COUNT) == 100
+									PRINTFORML フラグ,{COUNT},100
+								ELSEIF CSTR:COUNT != ""
+									PRINTFORML CSTR,{COUNT},%CSTR:COUNT%
+								ENDIF
+						ENDSELECT
+					REND
+					SIF CFLAG:挿入可
+						PRINTFORML フラグ,{GETNUM(CFLAG, "挿入可")},1
+					SIF CFLAG:着衣併用 != 0
+						PRINTFORML フラグ,{GETNUM(CFLAG, "着衣併用")},{CFLAG:着衣併用}
+					SIF CFLAG:上着パイズリ != 0
+						PRINTFORML フラグ,{GETNUM(CFLAG, "上着パイズリ")},{CFLAG:上着パイズリ}
+					SIF CFLAG:下着パイズリ != 0
+						PRINTFORML フラグ,{GETNUM(CFLAG, "下着パイズリ")},{CFLAG:下着パイズリ}
+
+					PRINTL 
+					PRINTFORML CSTR,{GETNUM(CSTR, "種族")},%CSTR:種族%
+					IF CFLAG:グリム
+						PRINTL 
+						PRINTL フラグ,グリム,1
+					ENDIF
+					
+					SIF CSTR:登場作品 != ""
+						PRINTFORML CSTR,{GETNUM(CSTR, "登場作品")},%CSTR:登場作品%
+					SIF CSTR:登場作品２ != ""
+						PRINTFORML CSTR,{GETNUM(CSTR, "登場作品２")},%CSTR:登場作品２%
+					SIF CSTR:登場作品３ != ""
+						PRINTFORML CSTR,{GETNUM(CSTR, "登場作品３")},%CSTR:登場作品３%
+					SIF CSTR:キャラデザ != ""
+						PRINTFORML CSTR,{GETNUM(CSTR, "キャラデザ")},%CSTR:キャラデザ%
+					SIF CSTR:キャラデザ２ != ""
+						PRINTFORML CSTR,{GETNUM(CSTR, "キャラデザ２")},%CSTR:キャラデザ２%
+					PRINTL 
+					OUTPUTLOG
+					PRINTW ログに出力しました。CSVとして利用する方法は資料フォルダ内のテキストをご覧ください
+			ENDSELECT
+		LOOP LOOPRES(0, 1)
+		GOTO RESTART
+	CASE "2"
 		PRINTL 現在の作業状況を破棄してタイトル画面に戻ります。よろしいですか？
 		PRINTL [0] - はい
 		PRINTL [1] - いいえ
@@ -399,7 +541,7 @@ SELECTCASE RESULTS
 					GOTO RESTART
 			ENDSELECT
 		LOOP 1
-	CASE "2"
+	CASE "3"
 		PRINTL 現在の作業状況を破棄して既存のCSVを呼び出します。よろしいですか？
 		PRINTL [0] - はい
 		PRINTL [1] - いいえ
@@ -419,7 +561,7 @@ SELECTCASE RESULTS
 					GOTO RESTART
 			ENDSELECT
 		LOOP 1
-	CASE "3"
+	CASE "4"
 		PRINTL 現在の作業状況を破棄してCSVを作り直します。よろしいですか？
 		PRINTL [0] - はい
 		PRINTL [1] - いいえ
@@ -484,7 +626,10 @@ SELECTCASE RESULTS
 		CSTR:TARGET:種族 = %RESULTS%
 		GOTO RESTART
 	CASE "素質を変更する"
-		CALL TALENT_CHANGE
+		CALL TALENT_CHANGE, 素質数値指定
+		GOTO RESTART
+	CASE "素質を数値指定する"
+		INVERTBIT 素質数値指定, 0
 		GOTO RESTART
 	CASE "特殊", "上半身上着", "下半身上着", "全身上着", "上半身下着", "下半身下着", "足元"
 		LOCALS = %RESULTS%
