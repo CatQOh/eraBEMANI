@@ -1,0 +1,1041 @@
+﻿@調理室
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 名前文字数
+DRAWLINE
+PRINTL □調理室
+PRINTL 　各食、間食の献立を考案できます。調理係を配属することで料理の種類が増えていきます
+PRINTL 　献立を考案してキャラクターのモチベーション向上を図りましょう
+;PRINTL 　材料は農業、畜産業で育てたものを使用。足りないものは実費で購入します（ただし購入できる材料は種類が限られている）
+;PRINTL 　一部の料理は追加の設備が必要です。レシピから必要な材料、設備を確認しましょう
+PRINTL 
+
+;新婚モード
+IF FLAG:ゲームモード == 7
+	CSTR:MASTER:配属 = 調理室
+	CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 調理室
+ENDIF
+
+IF CMATCH(CSTR:配属, "調理室")
+	PRINTL □料理当番
+	FOR LCOUNT, 0, CHARANUM
+		SIF CSTR:LCOUNT:配属 == "調理室"
+			CALL SETMAX(名前文字数, STRLENS(NAME:LCOUNT))
+	NEXT
+	FOR LCOUNT, 0, CHARANUM
+		IF CSTR:LCOUNT:配属 == "調理室"
+			PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 料理技能:{ABL:LCOUNT:料理技能, 2, LEFT}
+			SELECTCASE CMATCH(CSTR:配属, "調理室")
+				CASE 1
+					PRINT (最大10)
+				CASE 2
+					PRINT (最大5)
+				CASE 3
+					PRINT (最大4)
+			ENDSELECT
+
+			SIF TALENT:LCOUNT:料理人
+				PRINT [料理人]
+			SIF TALENT:LCOUNT:買い物上手
+				PRINT [買い物上手]
+			SIF TALENT:LCOUNT:潔癖症
+				PRINT [潔癖症]
+			SIF TALENT:LCOUNT:汚れ無視
+				PRINT [汚れ無視]
+			SELECTCASE CSTR:LCOUNT:種族
+				CASE "獣人"
+					PRINT [獣人]
+				CASE "獣"
+					PRINT [獣]
+				CASE "ゾンビ"
+					PRINT [ゾンビ]
+			ENDSELECT
+			PRINTL 
+		ENDIF
+	NEXT
+	PRINTL 
+ENDIF
+
+PRINTL 　[1] - 献立を考案する
+PRINTL 　[2] - 料理当番を配属する
+PRINTL 　[3] - レシピを確認する
+PRINTL 　[4] - 調理室の説明
+;PRINTL 　[4] - 調理器具を購入する
+DRAWLINE
+PRINTPLAIN 　調理室　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			;新婚モード
+			IF FLAG:ゲームモード == 7
+				CSTR:MASTER:配属 = 
+				CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 
+			ENDIF
+			RETURN
+		CASE 1
+			CALL 献立
+			RESTART
+		CASE 2
+			CALL STRATEGY_PERSONAL, "調理室"
+			CALL 献立条件確認
+			RESTART
+		CASE 3
+			CALL レシピ一覧
+			RESTART
+		CASE 4
+			CALL MANUAL_調理室
+			RESTART
+;		CASE 4
+;			CALL 調理器具購入
+;			RESTART
+	ENDSELECT
+LOOP 1
+
+@献立
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC LCOUNT3
+#DIMS DYNAMIC 献立, 9
+#DIM DYNAMIC モチベ計算用
+#DIM DYNAMIC ホット
+#DIM DYNAMIC コールド
+#DIM DYNAMIC 脱水
+#DIM DYNAMIC 水分
+#DIM DYNAMIC 酒あり
+#DIM DYNAMIC 鎮静
+#DIM DYNAMIC 滋養強壮
+#DIM DYNAMIC 愛情
+#DIM DYNAMIC 狂気度計算用
+#DIM DYNAMIC 酔い覚まし
+#DIMS DYNAMIC 料理効果処理用, 2
+DRAWLINE
+PRINTL □献立
+PRINTL 　朝食、昼食、夕食、間食の献立を決めることができます
+PRINTL 
+
+FOR LCOUNT, 1, 5
+	SELECTCASE LCOUNT
+		CASE 1
+			LOCALS = 朝食
+		CASE 2
+			LOCALS = 昼食
+		CASE 3
+			LOCALS = 夕食
+		CASE 4
+			LOCALS = 間食
+	ENDSELECT
+	ARRAYCOPY LOCALS, "献立"
+
+	CALL 料理効果計算, LOCALS, 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分
+	モチベ計算用 = RESULT
+
+	SIF モチベ計算用
+		PRINTFORM モチベ上昇量:{モチベ計算用/10}.{モチベ計算用%10} 
+	SIF ホット
+		PRINTFORM 温かさ:{ホット/10}.{ホット%10} 
+	SIF コールド
+		PRINTFORM 冷たさ:{コールド/10}.{コールド%10} 
+	SIF 脱水
+		PRINTFORM 脱水効果:{脱水/10}.{脱水%10} 
+	SIF 鎮静
+		PRINTFORM 鎮静作用:{鎮静} 
+	SIF 滋養強壮
+		PRINTFORM 滋養強壮:{滋養強壮} 
+	SIF 愛情
+		PRINTFORM 愛情:{愛情} 
+	SIF 狂気度計算用
+		PRINTFORM 狂気度上昇量:{狂気度計算用} 
+	SIF 酔い覚まし
+		PRINTFORM 酔い覚まし効果:{酔い覚まし} 
+	SIF 酒あり
+		PRINTFORM お酒あり 
+	
+	LOCALS:1 = %HTML_POPPRINTINGSTR()%
+	
+	PRINTFORM 　[{LCOUNT}] - %LOCALS%
+	
+	SIF LOCALS:1 != ""
+		PRINTFORM (%SUBSTRING(LOCALS:1, 0, STRLENS(LOCALS:1)-1)%)
+	PRINTL 
+
+	IF MATCH(献立, "") < 9
+		SELECTCASE LCOUNT
+			CASE 1 TO 3
+				SIF 献立:0 != ""
+					PRINTFORM 主食:%献立:0% 
+
+				IF 献立:1 != "" && 献立:2 != ""
+					PRINTFORM 主菜:%献立:1%・%献立:2% 
+				ELSEIF 献立:1 != "" || 献立:2 != ""
+					PRINTFORM 主菜:%献立:1%%献立:2% 
+				ENDIF
+
+				IF 献立:3 != "" && 献立:4 != ""
+					PRINTFORM 副菜:%献立:3%・%献立:4%
+				ELSEIF 献立:3 != "" || 献立:4 != ""
+					PRINTFORM 副菜:%献立:3%%献立:4%
+				ENDIF
+
+				LOCALS = %HTML_POPPRINTINGSTR()%
+
+				SIF LOCALS != ""
+					PRINTFORML 　　　　%LOCALS%
+				SIF 献立:5 != ""
+					PRINTFORM 汁物:%献立:5% 
+				SIF 献立:6 != ""
+					PRINTFORM 飲み物:%献立:6% 
+				SIF 献立:7 != ""
+					PRINTFORM トッピング:%献立:7% 
+				SIF 献立:8 != ""
+					PRINTFORM デザート:%献立:8%
+				LOCALS = %HTML_POPPRINTINGSTR()%
+				SIF LOCALS != ""
+					PRINTFORML 　　　　%LOCALS%
+				PRINTL 
+			CASE 4
+				IF 献立:0 != "" && 献立:1 != ""
+					PRINTFORM 間食:%献立:0%・%献立:1% 
+				ELSEIF 献立:0 != "" || 献立:1 != ""
+					PRINTFORM 間食:%献立:0%%献立:1% 
+				ENDIF
+				SIF 献立:2 != ""
+					PRINTFORM トッピング:%献立:2%
+				SIF 献立:3 != ""
+					PRINTFORM 飲み物:%献立:3%
+				LOCALS = %HTML_POPPRINTINGSTR()%
+				SIF LOCALS != ""
+					PRINTFORML 　　　　%LOCALS%
+		ENDSELECT
+	ENDIF
+NEXT
+
+VARSET 献立
+
+DRAWLINE
+PRINTPLAIN 　献立　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1 TO 3
+			SELECTCASE RESULT
+				CASE 1
+					LOCALS = 朝食
+					ARRAYCOPY "朝食", "献立"
+				CASE 2
+					LOCALS = 昼食
+					ARRAYCOPY "昼食", "献立"
+				CASE 3
+					LOCALS = 夕食
+					ARRAYCOPY "夕食", "献立"
+			ENDSELECT
+			$RESTART
+			PRINTFORML □%LOCALS%の献立を変更します
+			PRINTFORML 　[0] - 主食を変更する\@ 献立:0 != "" ? (現在:%献立:0%) #  \@
+			PRINTFORML 　[1] - 主菜を変更する\@ 献立:1 != "" ? (現在:%献立:1%) #  \@
+			PRINTFORML 　[2] - 主菜を変更する\@ 献立:2 != "" ? (現在:%献立:2%) #  \@
+			PRINTFORML 　[3] - 副菜を変更する\@ 献立:3 != "" ? (現在:%献立:3%) #  \@
+			PRINTFORML 　[4] - 副菜を変更する\@ 献立:4 != "" ? (現在:%献立:4%) #  \@
+			PRINTFORML 　[5] - 汁物を変更する\@ 献立:5 != "" ? (現在:%献立:5%) #  \@
+			PRINTFORML 　[6] - 飲み物を変更する\@ 献立:6 != "" ? (現在:%献立:6%) #  \@
+			PRINTFORML 　[7] - トッピングを変更する\@ 献立:7 != "" ? (現在:%献立:7%) #  \@
+			PRINTFORML 　[8] - デザートを変更する\@ 献立:8 != "" ? (現在:%献立:8%) #  \@
+			DRAWLINE
+			PRINTPLAINFORM 　%LOCALS%の献立　
+			PRINTL [10] - 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 10
+						ARRAYCOPY "献立", LOCALS
+						RESTART
+					CASE 0 TO 8
+						LOCAL = RESULT
+						CALL 献立選択, 献立分類(LOCAL)
+						献立:LOCAL = %料理名渡し用%
+						GOTO RESTART
+				ENDSELECT
+			LOOP 1
+		CASE 4
+			LOCALS = 間食
+			ARRAYCOPY "間食", "献立"
+			$RESTART2
+			PRINTFORML □%LOCALS%の献立を変更します
+			PRINTFORML 　[0] - 間食を変更する\@ 献立:0 != "" ? (現在:%献立:0%) #  \@
+			PRINTFORML 　[1] - 間食を変更する\@ 献立:1 != "" ? (現在:%献立:1%) #  \@
+			PRINTFORML 　[2] - トッピングを変更する\@ 献立:2 != "" ? (現在:%献立:2%) #  \@
+			PRINTFORML 　[3] - 飲み物を変更する\@ 献立:3 != "" ? (現在:%献立:3%) #  \@
+			DRAWLINE
+			PRINTPLAINFORM 　%LOCALS%の献立　
+			PRINTL [10] - 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 10
+						ARRAYCOPY "献立", LOCALS
+						RESTART
+					CASE 0 TO 3
+						LOCAL = RESULT
+						CALL 献立選択, 献立分類間食(LOCAL)
+						献立:LOCAL = %料理名渡し用%
+						GOTO RESTART2
+				ENDSELECT
+			LOOP 1
+	ENDSELECT
+LOOP 1
+
+@献立選択, 分類
+#DIMS DYNAMIC 分類
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 飛ばした数
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 次ページあり
+#DIMS DYNAMIC 料理効果処理用
+
+DRAWLINE
+表示数 = 0
+飛ばした数 = 0
+次ページあり = 0
+FOR LCOUNT, 1, VARSIZE("料理メニュー")
+	SIF 料理メニュー:LCOUNT == ""
+		BREAK
+	CALLF レシピ判定, 料理メニュー:LCOUNT
+	;献立番号に対応したメニューを表示する
+	IF 分類 == "間食"
+		SELECTCASE 料理分類:LCOUNT
+			CASE "間食", "デザート"
+			CASEELSE
+				CONTINUE
+		ENDSELECT
+	ELSEIF 分類 == "副菜"
+		SELECTCASE 料理分類:LCOUNT
+			CASE "副菜", "間食"
+			CASEELSE
+				CONTINUE
+		ENDSELECT
+	ELSE
+		SIF 料理分類:LCOUNT != 分類
+			CONTINUE
+	ENDIF
+
+	IF ページ数*10 > 飛ばした数
+		飛ばした数++
+		CONTINUE
+	ENDIF
+
+	IF 表示数 >= 10
+		次ページあり = 1
+		BREAK
+	ENDIF
+
+	;2=材料揃ってる 1=材料は揃っていないけど解禁済み 0=未解禁 料理技能足りなくても灰色表示
+	SIF レシピ判定(料理メニュー:LCOUNT) <= 1 || 必要料理レベル > 料理レベル()
+		SETCOLORBYNAME gray
+
+	料理効果処理用 = 
+	FOR LCOUNT2, 0, 3
+		SELECTCASE 料理効果:LCOUNT2
+			CASE "ALC"
+				料理効果処理用 += "[ALC]"
+			CASE IS != ""
+				SPLIT 料理効果:LCOUNT2, "/", LOCALS
+				SELECTCASE LOCALS
+					CASE "モチベ", "ホット", "コールド", "脱水"
+						料理効果処理用 += @"[%LOCALS%:{TOINT(LOCALS:1)/10}.{TOINT(LOCALS:1)%10}]"
+					CASEELSE
+						料理効果処理用 += @"[%LOCALS%:{TOINT(LOCALS:1)}]"
+				ENDSELECT
+		ENDSELECT
+	NEXT
+
+	;材料が揃っていれば表示
+	IF レシピ判定(料理メニュー:LCOUNT) >= 1
+		;レシピ判定式中関数内で必要な料理レベルを取得してるのでツールチップ用変数に追記する
+		SIF 必要料理レベル
+			レシピ用ツールチップ += @" 必要料理レベル:{必要料理レベル}"
+		SIF 料理効果処理用 != ""
+			レシピ用ツールチップ += @" 効果:%料理効果処理用%"
+		HTML_PRINT SET_TOOLTIP(@"　[{LCOUNT}] %料理メニュー:LCOUNT, 26, LEFT% %レシピ用解説%", レシピ用ツールチップ)
+	ELSE
+		;レシピ判定式中関数内で必要な料理レベルを取得してるのでツールチップ用変数に追記する
+		SIF 必要料理レベル
+			レシピ用ツールチップ += @" 必要料理レベル:{必要料理レベル}"
+		SIF 料理効果処理用 != ""
+			レシピ用ツールチップ += @" 効果:%料理効果処理用%"
+		HTML_PRINT SET_TOOLTIP(@"　[{LCOUNT}] [未解禁]", レシピ用ツールチップ)
+	ENDIF
+	RESETCOLOR
+	表示数++
+NEXT
+DRAWLINE
+PRINTPLAINFORM 　%分類%　
+IF ページ数
+	PRINT [-1] 前ページ 
+ELSE
+	PRINTPLAIN 　　　　　　　
+ENDIF
+PRINT [0] 戻る 
+SIF 次ページあり
+	PRINT [-2] 次ページ
+PRINTL 
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			料理名渡し用 = 
+			RETURN
+		CASE -1
+			SIF ページ数
+				ページ数--
+			RESTART
+		CASE -2
+			SIF 次ページあり
+				ページ数++
+			RESTART
+	ENDSELECT
+	SIF 料理メニュー:RESULT == ""
+		CONTINUE
+	LOCAL = RESULT
+	LOCALS = %料理メニュー:RESULT%
+
+	IF 分類 == "間食"
+		SELECTCASE 料理分類:LOCAL
+			CASE "間食", "デザート"
+			CASEELSE
+				CONTINUE
+		ENDSELECT
+	ELSE
+		SIF 料理分類:LOCAL != 分類
+			CONTINUE
+	ENDIF
+
+	;作れなかったらダメ
+	IF レシピ判定(LOCALS) <= 1 || 必要料理レベル > 料理レベル()
+		PRINTW 条件を満たしていません
+		RESTART
+	ENDIF
+
+	;上の条件を通ったらそれを献立にする
+	料理名渡し用 = %料理メニュー:LOCAL%
+	RETURN
+LOOP 1
+
+@レシピ一覧
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC 料理レベル合計
+#DIM DYNAMIC 最大レベル
+#DIM DYNAMIC ページ数
+#DIMS DYNAMIC 料理効果処理用
+
+PRINTL □マウスカーソルを置くことでレシピの解禁条件が表示されます
+
+FOR LCOUNT, ページ数*10+1, ページ数*10+11
+	SIF 料理メニュー:LCOUNT == ""
+		BREAK
+	必要料理レベル = 0
+	;2=材料揃ってる 1=材料は揃っていないけど解禁済み 0=未解禁 料理技能足りなくても灰色表示
+	SIF レシピ判定(料理メニュー:LCOUNT) <= 1 || 必要料理レベル > 料理レベル()
+		SETCOLORBYNAME gray
+
+	料理効果処理用 = 
+	FOR LCOUNT2, 0, 3
+		SELECTCASE 料理効果:LCOUNT2
+			CASE "ALC"
+				料理効果処理用 += "[ALC]"
+			CASE IS != ""
+				SPLIT 料理効果:LCOUNT2, "/", LOCALS
+				SELECTCASE LOCALS
+					CASE "モチベ", "ホット", "コールド", "脱水"
+						料理効果処理用 += @"[%LOCALS%:{TOINT(LOCALS:1)/10}.{TOINT(LOCALS:1)%10}]"
+					CASEELSE
+						料理効果処理用 += @"[%LOCALS%:{TOINT(LOCALS:1)}]"
+				ENDSELECT
+		ENDSELECT
+	NEXT
+
+	;材料が揃っていれば表示
+	IF レシピ判定(料理メニュー:LCOUNT) >= 1
+		;レシピ判定式中関数内で必要な料理レベルを取得してるのでツールチップ用変数に追記する
+		SIF 必要料理レベル
+			レシピ用ツールチップ += @" 必要料理レベル:{必要料理レベル}"
+		SIF 料理効果処理用 != ""
+			レシピ用ツールチップ += @" 効果:%料理効果処理用%"
+		HTML_PRINT SET_TOOLTIP(@"　{LCOUNT}.%料理メニュー:LCOUNT, 26, LEFT% %レシピ用解説% 分類:%料理分類:LCOUNT%", レシピ用ツールチップ)
+	ELSE
+		;レシピ判定式中関数内で必要な料理レベルを取得してるのでツールチップ用変数に追記する
+		SIF 必要料理レベル
+			レシピ用ツールチップ += @" 必要料理レベル:{必要料理レベル}"
+		SIF 料理効果処理用 != ""
+			レシピ用ツールチップ += @" 効果:%料理効果処理用%"
+		HTML_PRINT SET_TOOLTIP(@"　{LCOUNT}.[未解禁]", レシピ用ツールチップ)
+	ENDIF
+	RESETCOLOR
+NEXT
+DRAWLINE
+PRINT 　白文字表記:調理可能　
+SETCOLORBYNAME gray
+PRINTL 　灰文字表記:条件不足　未解禁:材料未解禁
+RESETCOLOR
+DRAWLINE
+PRINTPLAINFORM 　レシピ一覧 {ページ数+1}ページ　
+IF ページ数 > 0
+	PRINT [1] 前ページ 
+ELSE
+	PRINT 　　　　　　 
+ENDIF
+PRINT [0] 戻る 
+SIF LCOUNT < FINDELEMENT(料理メニュー, "", 1, VARSIZE("料理メニュー"), 1)
+	PRINT [9] 次ページ
+PRINTL 
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1
+			SIF ページ数 > 0
+				ページ数--
+			RESTART
+		CASE 9
+			SIF LCOUNT < VARSIZE("料理メニュー")
+				ページ数++
+			RESTART
+	ENDSELECT
+LOOP 1
+
+@材料一式判定, 材料:0, 材料:1, 材料:2, 材料:3, 材料:4, 材料:5
+#FUNCTION
+#DIMS DYNAMIC 材料, 6
+#DIM DYNAMIC LCOUNT
+
+LOCAL = 2
+
+レシピ用ツールチップ = 材料:
+
+FOR LCOUNT, 0, VARSIZE("材料")
+	SIF 材料:LCOUNT == ""
+		BREAK
+	SIF LOCAL >= 材料判定(材料:LCOUNT)
+		LOCAL = 材料判定(材料:LCOUNT)
+	レシピ用ツールチップ += @"[%材料:LCOUNT%]"
+NEXT
+
+RETURNF LOCAL
+
+;材料が存在するか 2=使える状態、1=解禁はしているが使えない状態
+@材料判定, ARGS
+#FUNCTION
+#DIMS DYNAMIC 材料, 400
+#DIM DYNAMIC 果物必要数
+#DIM DYNAMIC 魚介類必要数
+#DIM DYNAMIC 肉類必要数
+#DIM DYNAMIC LCOUNT
+
+IF STRFIND(ARGS, "魚介類|果物|肉類")
+	SPLIT ARGS, "*", LOCALS
+	SELECTCASE LOCALS
+		CASE "果物"
+			果物必要数 = TOINT(LOCALS:1)
+		CASE "魚介類"
+			魚介類必要数 = TOINT(LOCALS:1)
+		CASE "肉類"
+			肉類必要数 = TOINT(LOCALS:1)
+	ENDSELECT
+ENDIF
+
+FOR LCOUNT, 0, 5
+	SIF プランター収穫日:LCOUNT == 0 && プランターの作物:LCOUNT != ""
+		材料:FINDELEMENT(材料, "", 0, 400, 1) = %プランターの作物:LCOUNT%
+	SIF 生け簀の状態:LCOUNT == 0 && 生け簀の養殖:LCOUNT != ""
+		材料:FINDELEMENT(材料, "", 0, 400, 1) = %生け簀の養殖:LCOUNT%
+NEXT
+FOR LCOUNT, 0, 9
+	SIF 畑収穫日:LCOUNT == 0 && 畑の作物:LCOUNT != ""
+		材料:FINDELEMENT(材料, "", 0, 400, 1) = %畑の作物:LCOUNT%
+NEXT
+FOR LCOUNT, 0, 3
+	SIF 田んぼ収穫日:LCOUNT == 0 && 田んぼの作物:LCOUNT != ""
+		材料:FINDELEMENT(材料, "", 0, 400, 1) = %田んぼの作物:LCOUNT%
+NEXT
+
+SIF 牛の状態 >= 30
+	材料:FINDELEMENT(材料, "", 0, 400, 1) = 牛肉
+SIF 牛の状態 >= 80
+	材料:FINDELEMENT(材料, "", 0, 400, 1) = 牛乳
+SIF 馬の状態 >= 30
+	材料:FINDELEMENT(材料, "", 0, 400, 1) = 馬肉
+SIF 羊の状態 >= 30
+	材料:FINDELEMENT(材料, "", 0, 400, 1) = 羊肉
+SIF 羊の状態 >= 80
+	材料:FINDELEMENT(材料, "", 0, 400, 1) = チーズ
+SIF 豚の状態 >= 30
+	材料:FINDELEMENT(材料, "", 0, 400, 1) = 豚肉
+SIF 鶏の状態 >= 30
+	材料:FINDELEMENT(材料, "", 0, 400, 1) = 鶏肉
+SIF 鶏の状態 >= 80
+	材料:FINDELEMENT(材料, "", 0, 400, 1) = 卵
+SIF 蜂の状態 >= 30
+	材料:FINDELEMENT(材料, "", 0, 400, 1) = 蜂蜜
+SIF ITEM:触手使役術
+	材料:FINDELEMENT(材料, "", 0, 400, 1) = 触手肉
+
+;果物の数を数える
+LOCAL = 0
+IF 果物必要数
+	FOR LCOUNT, 600, 700
+		IF ITEMNAME:LCOUNT != ""
+			SELECTCASE ITEMNAME:LCOUNT
+				CASE "イチゴ", "レモン", "ライム", "ブルーベリー", "ラズベリー", "りんご", "みかん", "メロン", "スイカ", "ぶどう"
+					SIF MATCH(材料, ITEMNAME:LCOUNT)
+						LOCAL++
+			ENDSELECT
+		ENDIF
+	NEXT
+	SELECTCASE LOCAL
+		CASE IS >= 果物必要数
+			RETURNF 2
+		CASEELSE
+			RETURNF 1
+	ENDSELECT
+ENDIF
+
+;魚介類の数を数える
+LOCAL = 0
+IF 魚介類必要数
+	FOR LCOUNT, 800, 850
+		IF ITEMNAME:LCOUNT != ""
+			SIF ITEMNAME:LCOUNT == "海藻"
+				CONTINUE
+			SIF MATCH(材料, ITEMNAME:LCOUNT)
+				LOCAL++
+		ENDIF
+	NEXT
+	SELECTCASE LOCAL
+		CASE IS >= 魚介類必要数
+			RETURNF 2
+		CASEELSE
+			RETURNF 1
+	ENDSELECT
+ENDIF
+
+;白身魚判定
+IF ARGS == "白身魚"
+	FOR LCOUNT, 800, 850
+		IF ITEMNAME:LCOUNT != ""
+			SELECTCASE ITEMNAME:LCOUNT
+				CASE "サバ", "タラ", "イワシ", "ワカサギ", "ブリ", "サンマ"
+					SIF FINDELEMENT(材料, ITEMNAME:LCOUNT) >= 0
+						RETURNF 2
+			ENDSELECT
+		ENDIF
+	NEXT
+	RETURNF 1
+ENDIF
+
+;肉類の数を数える
+LOCAL = 0
+IF 肉類必要数
+	FOR LCOUNT, 750, 800
+		IF ITEMNAME:LCOUNT != ""
+			SELECTCASE ITEMNAME:LCOUNT
+				CASE "牛肉", "羊肉", "鶏肉", "馬肉", "豚肉"
+					SIF MATCH(材料, ITEMNAME:LCOUNT)
+						LOCAL++
+			ENDSELECT
+		ENDIF
+	NEXT
+	SELECTCASE LOCAL
+		CASE IS >= 肉類必要数
+			RETURNF 2
+		CASEELSE
+			RETURNF 1
+	ENDSELECT
+ENDIF
+
+SIF FINDELEMENT(ITEMNAME, ARGS) == -1
+	RETURNF 0
+
+IF FINDELEMENT(材料, ARGS) >= 0
+	RETURNF 2
+ELSEIF ITEM:ARGS
+	RETURNF 1
+ELSE
+	RETURNF 0
+ENDIF
+
+@料理レベル, ARG
+#FUNCTION
+#DIM DYNAMIC 最大レベル
+#DIM DYNAMIC 料理レベル合計
+#DIM DYNAMIC LCOUNT
+
+SELECTCASE CMATCH(CSTR:配属, "調理室")
+	CASE 1
+		最大レベル = 10
+	CASE 2
+		最大レベル = 5
+	CASE 3
+		最大レベル = 4
+ENDSELECT
+
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 == "調理室"
+		料理レベル合計 += MIN(ABL:LCOUNT:料理技能, 最大レベル)
+NEXT
+
+RETURNF 料理レベル合計
+
+@献立分類, 献立番号
+#FUNCTIONS
+#DIM DYNAMIC 献立番号
+
+SELECTCASE 献立番号
+	CASE 0
+		RETURNF "主食"
+	CASE 1, 2
+		RETURNF "主菜"
+	CASE 3, 4
+		RETURNF "副菜"
+	CASE 5
+		RETURNF "汁物"
+	CASE 6
+		RETURNF "飲み物"
+	CASE 7
+		RETURNF "トッピング"
+	CASE 8
+		RETURNF "デザート"
+ENDSELECT
+
+@献立分類間食, 献立番号
+#FUNCTIONS
+#DIM DYNAMIC 献立番号
+
+SELECTCASE 献立番号
+	CASE 0, 1
+		RETURNF "間食"
+	CASE 2
+		RETURNF "トッピング"
+	CASE 3
+		RETURNF "飲み物"
+ENDSELECT
+
+@献立条件確認
+#DIM DYNAMIC LCOUNT
+
+FOR LCOUNT, 0, 9
+	SIF 朝食:LCOUNT != "" && (レシピ判定(朝食:LCOUNT) < 2 || 必要料理レベル > 料理レベル())
+		朝食:LCOUNT = 
+	SIF 昼食:LCOUNT != "" && (レシピ判定(昼食:LCOUNT) < 2 || 必要料理レベル > 料理レベル())
+		昼食:LCOUNT = 
+	SIF 夕食:LCOUNT != "" && (レシピ判定(夕食:LCOUNT) < 2 || 必要料理レベル > 料理レベル())
+		夕食:LCOUNT = 
+NEXT
+
+FOR LCOUNT, 0, 4
+	SIF 間食:LCOUNT != "" && (レシピ判定(間食:LCOUNT) < 2 || 必要料理レベル > 料理レベル())
+		間食:LCOUNT = 
+NEXT
+
+@TURNEND_調理室
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC モチベ回復量
+#DIM DYNAMIC モチベ計算用
+#DIM DYNAMIC 酒あり
+#DIM DYNAMIC 鎮静
+#DIM DYNAMIC 滋養強壮
+#DIM DYNAMIC 愛情
+#DIM DYNAMIC 狂気度計算用
+#DIM DYNAMIC 世話好き人数
+#DIM DYNAMIC 酔い覚まし
+#DIM DYNAMIC ホット
+#DIM DYNAMIC コールド
+#DIM DYNAMIC 脱水
+#DIM DYNAMIC 水分
+
+;新婚モード
+IF FLAG:ゲームモード == 7
+	CSTR:MASTER:配属 = 調理室
+	CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 調理室
+ENDIF
+
+;昼 朝食と昼食の効果発動
+IF TIME == 0
+	CALL 料理効果計算, "朝食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分
+	モチベ回復量 += RESULT
+
+	CALL 料理効果計算, "昼食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分
+	モチベ回復量 += RESULT
+
+	FOR LCOUNT, 0, CHARANUM
+		;料理効果:ホットは気温が31度以上だとモチベが下がる原因になる
+		;逆に気温が9度以下ならモチベに好影響
+		IF ホット
+			LOCAL = FLAG:気温/10
+			IF LOCAL > 30
+				モチベ回復量 -= MIN(LOCAL-30, ホット)
+			ELSEIF LOCAL < 10
+				モチベ回復量 += MIN(10-LOCAL, ホット)
+			ENDIF
+		ENDIF
+		;料理効果:コールドは気温が9度以下だとモチベが下がる原因になる
+		;逆に気温が31度以上ならモチベに好影響
+		IF コールド
+			LOCAL = FLAG:気温/10
+			IF LOCAL < 10
+				モチベ回復量 -= MIN(10-LOCAL, コールド)
+			ELSEIF LOCAL > 30
+				モチベ回復量 += MIN(LOCAL-30, コールド)
+			ENDIF
+		ENDIF
+
+		;料理効果:脱水は飲み物か汁物が無いとモチベが下がる原因になる
+		SIF 脱水 && !水分
+			モチベ回復量 -= 脱水
+
+		IF CSTR:LCOUNT:配属 != ""
+			LOCAL = CFLAG:LCOUNT:モチベーション+モチベ回復量/3
+			CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
+		ENDIF
+		SIF 鎮静 && CFLAG:LCOUNT:ストレス値
+			CFLAG:LCOUNT:ストレス値 -= 鎮静
+		IF 滋養強壮
+			BASE:LCOUNT:体力 += 滋養強壮*30
+			BASE:LCOUNT:気力 += 滋養強壮*30
+		ENDIF
+		SIF 愛情 && CFLAG:LCOUNT:陥落
+			EXP:LCOUNT:愛情経験 += 愛情
+		IF 狂気度計算用
+			CFLAG:LCOUNT:狂気度 += 狂気度計算用
+			IF CFLAG:LCOUNT:狂気度 >= 100 && !TALENT:LCOUNT:狂気
+				PRINTFORML %CALLNAME:LCOUNT%はおぞましい料理を食べ過ぎたことで気が狂ってしまった……
+				TALENT:LCOUNT:狂気 = 1
+			ENDIF
+		ENDIF
+		IF 酒あり
+			IF TALENT:LCOUNT:酒豪
+				SIF CFLAG:LCOUNT:酔 < 50
+					CFLAG:LCOUNT:酔 = 50
+			ELSEIF TALENT:LCOUNT:下戸
+				SIF CFLAG:LCOUNT:酔 < 10
+					CFLAG:LCOUNT:酔 = 10
+			ELSE
+				SIF CFLAG:LCOUNT:酔 < 20
+					CFLAG:LCOUNT:酔 = 20
+			ENDIF
+		ENDIF
+		SIF CSTR:LCOUNT:配属 == "調理室" && TALENT:LCOUNT:世話好き
+			世話好き人数++
+	NEXT
+	IF モチベ回復量
+		PRINTW おいしい朝食と昼食でキャラたちのモチベーションが上がりました
+		DRAWLINE
+	ENDIF
+;夜 間食と夕食の効果発動
+ELSE
+	CALL 料理効果計算, "夕食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分
+	モチベ回復量 += RESULT
+
+	CALL 料理効果計算, "間食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分
+	モチベ回復量 += RESULT
+
+	FOR LCOUNT, 0, CHARANUM
+		;料理効果:ホットは気温が31度以上だとモチベが下がる原因になる
+		;逆に気温が9度以下ならモチベに好影響
+		IF ホット
+			LOCAL = FLAG:気温/10
+			IF LOCAL > 30
+				モチベ回復量 -= MIN(LOCAL-30, ホット)
+			ELSEIF LOCAL < 10
+				モチベ回復量 += MIN(10-LOCAL, ホット)
+			ENDIF
+		ENDIF
+		;料理効果:コールドは気温が9度以下だとモチベが下がる原因になる
+		;逆に気温が31度以上ならモチベに好影響
+		IF コールド
+			LOCAL = FLAG:気温/10
+			IF LOCAL < 10
+				モチベ回復量 -= MIN(10-LOCAL, コールド)
+			ELSEIF LOCAL > 30
+				モチベ回復量 += MIN(LOCAL-30, コールド)
+			ENDIF
+		ENDIF
+
+		;料理効果:脱水は飲み物か汁物が無いとモチベが下がる原因になる
+		SIF 脱水 && !水分
+			モチベ回復量 -= 脱水
+
+		IF CSTR:LCOUNT:配属 != "" && モチベ回復量
+			LOCAL = CFLAG:LCOUNT:モチベーション+モチベ回復量/10+1
+			CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
+		ENDIF
+		SIF 鎮静 && CFLAG:LCOUNT:ストレス値
+			CFLAG:LCOUNT:ストレス値 -= 鎮静
+		IF 滋養強壮
+			BASE:LCOUNT:体力 += 滋養強壮*30
+			BASE:LCOUNT:気力 += 滋養強壮*30
+		ENDIF
+		SIF 愛情 && CFLAG:LCOUNT:陥落
+			EXP:LCOUNT:愛情経験 += 愛情
+		IF 狂気度計算用
+			CFLAG:LCOUNT:狂気度 += 狂気度計算用
+			IF CFLAG:LCOUNT:狂気度 >= 100 && !TALENT:LCOUNT:狂気
+				PRINTFORML %CALLNAME:LCOUNT%はおぞましい料理を食べ過ぎたことで気が狂ってしまった……
+				TALENT:LCOUNT:狂気 = 1
+			ENDIF
+		ENDIF
+		SIF 酔い覚まし
+			TEQUIP:LCOUNT:ウォッカ += 酔い覚まし
+		SIF CSTR:LCOUNT:配属 == "調理室" && TALENT:LCOUNT:世話好き
+			世話好き人数++
+	NEXT
+	IF モチベ回復量
+		PRINTW おいしい間食と夕食でキャラたちのモチベーションが上がりました
+		DRAWLINE
+	ENDIF
+ENDIF
+
+
+;モチベ計算用にもう一度回す
+FOR LCOUNT, 0, CHARANUM
+	IF CSTR:LCOUNT:配属 == "調理室"
+		モチベ計算用 = 0
+		FOR LCOUNT2, 0, VARSIZE("TALENT")
+			SIF !TALENT:LCOUNT:LCOUNT2
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT2
+				CASE "恋慕", "親愛", "服従", "隷属", "食欲皆伝", "料理人", "専業主婦", "母性"
+					モチベ計算用++
+			ENDSELECT
+		NEXT
+		LOCAL = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数
+		SIF TALENT:LCOUNT:世話好き
+			LOCAL -= 世話好き人数
+		CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
+		;経験も加算しとく
+		EXP:LCOUNT:料理経験 += (MATCH(朝食, "") < 9)+(MATCH(昼食, "") < 9)+(MATCH(夕食, "") < 9)+(MATCH(間食, "") < 4)
+	ENDIF
+NEXT
+
+;新婚モード
+IF FLAG:ゲームモード == 7
+	CSTR:MASTER:配属 = 
+	CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 
+ENDIF
+
+@料理効果計算, ARGS, 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分
+#DIMS DYNAMIC 献立, 9
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC モチベ計算用
+#DIM REF ホット
+#DIM REF コールド
+#DIM REF 脱水
+#DIM REF 水分
+#DIM REF 酒あり
+#DIM REF 鎮静
+#DIM REF 滋養強壮
+#DIM REF 愛情
+#DIM REF 狂気度計算用
+#DIM REF 酔い覚まし
+
+ホット = 0
+コールド = 0
+脱水 = 0
+水分 = 0
+酒あり = 0
+鎮静 = 0
+滋養強壮 = 0
+愛情 = 0
+狂気度計算用 = 0
+酔い覚まし = 0
+
+ARRAYCOPY ARGS, "献立"
+
+FOR LCOUNT, 0, 9
+	SIF 献立:LCOUNT == ""
+		CONTINUE
+	SELECTCASE 料理分類:FINDELEMENT(料理メニュー, 献立:LCOUNT)
+		CASE "汁物", "飲み物"
+			水分 = 1
+	ENDSELECT
+	CALLF レシピ判定(献立:LCOUNT)
+	FOR LCOUNT2, 0, 3
+		SELECTCASE 料理効果:LCOUNT2
+			CASE "ALC"
+				酒あり = 1
+			CASE IS != ""
+				SPLIT 料理効果:LCOUNT2, "/", LOCALS
+				SELECTCASE LOCALS
+					CASE "モチベ"
+						モチベ計算用 += TOINT(LOCALS:1)
+					CASE "ホット"
+						ホット += TOINT(LOCALS:1)
+					CASE "コールド"
+						コールド += TOINT(LOCALS:1)
+					CASE "鎮静"
+						鎮静 += TOINT(LOCALS:1)
+					CASE "脱水"
+						脱水 += TOINT(LOCALS:1)
+					CASE "滋養強壮"
+						滋養強壮 += TOINT(LOCALS:1)
+					CASE "愛情"
+						愛情 += TOINT(LOCALS:1)
+					CASE "狂気"
+						狂気度計算用 += TOINT(LOCALS:1)
+					CASE "酔い覚まし"
+						酔い覚まし += TOINT(LOCALS:1)
+				ENDSELECT
+		ENDSELECT
+	NEXT
+NEXT
+
+RETURN モチベ計算用
+
+@MANUAL_調理室
+DRAWLINE
+PRINTL □調理室について
+PRINTL 　[1] - 調理室のシステム
+PRINTL 　[2] - 料理効果
+DRAWLINE
+PRINTPLAIN 　調理室　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1
+			PRINTL 調理室は料理担当を配属し、各食の献立を決めることで、経営に従事するキャラたちのモチベーション上昇を図ることができます
+			PRINTL 料理担当は配属人数によって能力の上限が決められており、1人の場合は10(最大)、2人の場合は5、3人の場合は3となっています
+			PRINTL 低スキルのキャラを3人配属させるもよし、高スキルのキャラ1人に任せるのもよし、キャラの能力に合わせて配属を決めましょう
+			PRINTL 献立の材料は農業・畜産業で収穫したものを使います。まずはそちらで野菜や動物などを育てましょう
+			PRINTL レシピ一覧画面で項目にマウスオーバーすることで必要な材料と料理スキルが表示されます
+			WAIT
+			RESTART
+		CASE 2
+			PRINTL [モチベ] - モチベーション上昇値 小数点以下は切り上げ
+			PRINTL [ホット] - 寒い日に効果が高く、暑い日に効果が低い
+			PRINTL [コールド] - 暑い日に効果が高く、寒い日に効果が低い
+			PRINTL [鎮静] - ストレス緩和効果あり
+			PRINTL [滋養強壮] - 体力・気力回復効果あり
+			PRINTL [愛情] - 愛情のこもった料理により愛情経験増加(陥落済みのみ)
+			PRINTL [脱水] - 飲み物・汁物が無いと効果減
+			PRINTL [ALC] - お酒。キャラクターたちがほどよく酔う
+			PRINTL [酔い覚まし] - 二日酔いを軽減する
+			WAIT
+			RESTART
+	ENDSELECT
+LOOP 1
+
