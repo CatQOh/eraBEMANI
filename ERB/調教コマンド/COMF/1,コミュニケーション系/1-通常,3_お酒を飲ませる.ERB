@@ -37,6 +37,8 @@ ELSE
 			BREAK
 		ENDIF
 	NEXT
+	;SIF レシピ判定("自家醸造日本酒") == 2 || レシピ判定("自家製ワイン") == 2 || レシピ判定("自家製ウイスキー") == 2 || レシピ判定("自家醸造ビール") == 2
+	;	LOCAL = 1
 ENDIF
 
 COMRESULT = LOCAL
@@ -55,13 +57,13 @@ PRINTL 何を飲ませますか？
 
 SIF ITEM:スーパードライ || ITEM:一番搾り || ITEM:プレミアムモルツ || ITEM:ヱビス || ITEM:ほろよい
 	PRINTL [1] 缶飲料類
-SIF ITEM:皆伝
+SIF ITEM:皆伝; || レシピ判定("自家醸造日本酒") == 2
 	PRINTL [2] 皆伝(日本酒)
-SIF ITEM:アルパカ
+SIF ITEM:アルパカ; || レシピ判定("自家製ワイン") == 2
 	PRINTL [3] アルパカ(ワイン)
 SIF ITEM:魔王
 	PRINTL [4] 魔王(焼酎)
-SIF ITEM:倉吉
+SIF ITEM:倉吉; || レシピ判定("自家製ウイスキー") == 2
 	PRINTL [5] 倉吉(ウイスキー)
 SIF ITEM:スペリオール
 	PRINTL [6] スペリオール(ラム)
@@ -96,10 +98,18 @@ DO
 				PRINTL [4] ほろよい(Alc.3%)
 			SIF ITEM:ストロングゼロ
 				PRINTL [5] ストロングゼロ(Alc.9%)
+			;SIF レシピ判定("自家醸造ビール") == 2
+			;	PRINTL [6] 自家醸造ビール(Alc.5%)
 			DO
 				INPUT
-				SIF !ITEM:(RESULT+150)
-					CONTINUE
+				SELECTCASE RESULT
+					CASE 6
+						SIF レシピ判定("自家醸造ビール") != 2
+							CONTINUE
+					CASEELSE
+						SIF !ITEM:(RESULT+150)
+							CONTINUE
+				ENDSELECT
 				SELECTCASE RESULT
 					CASE 0 TO 3
 						お酒 = RESULT+150
@@ -162,6 +172,8 @@ DO
 						酒名 = ストロングゼロ
 						ALC = 9
 						BREAK
+					;CASE 6
+					;	酒名 = 自家醸造ビール
 				ENDSELECT
 			LOOP 1
 			BREAK
@@ -639,7 +651,7 @@ ENDSELECT
 PRINT 実効値0
 WAIT
 
-TFLAG:お酒 = お酒
+TFLAG:GETNUM(TFLAG, "お酒") = お酒
 TFLAG:アルコール度数 = ALC
 
 ;実行できない お酒は特殊の地の文
