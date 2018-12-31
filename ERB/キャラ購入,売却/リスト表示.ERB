@@ -24,6 +24,7 @@ ENDIF
 #DIM DYNAMIC 単位文字数
 #DIMS 登場作品フィルタ
 #DIMS キャラデザフィルタ
+#DIMS 種族フィルタ
 
 VARSET LOCAL, 0
 ;ARG
@@ -93,6 +94,8 @@ FOR LCOUNT, 0, 10000
 		SIF 登場作品フィルタ != "" && GROUPMATCH(登場作品フィルタ, CSVCSTR(LCOUNT, GETNUM(CSTR, "登場作品")), CSVCSTR(LCOUNT, GETNUM(CSTR, "登場作品２")), CSVCSTR(LCOUNT, GETNUM(CSTR, "登場作品３"))) == 0
 			CONTINUE
 		SIF キャラデザフィルタ != "" && GROUPMATCH(キャラデザフィルタ, CSVCSTR(LCOUNT, GETNUM(CSTR, "キャラデザ")), CSVCSTR(LCOUNT, GETNUM(CSTR, "キャラデザ２"))) == 0
+			CONTINUE
+		SIF 種族フィルタ != "" && 種族フィルタ != CSVCSTR(LCOUNT, GETNUM(CSTR, "種族"))
 			CONTINUE
 
 		SELECTCASE CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格"))
@@ -258,7 +261,13 @@ IF ARG == 0 || ARG == 4
 	ENDIF
 	PRINT [20011] キャラデザイナー別カテゴリ：
 	IF キャラデザフィルタ != ""
-		PRINTFORML %キャラデザフィルタ%
+		PRINTFORM %キャラデザフィルタ% 
+	ELSE
+		PRINT 切 
+	ENDIF
+	PRINT [20012] 種族別カテゴリ：
+	IF 種族フィルタ != ""
+		PRINTFORML %種族フィルタ%
 	ELSE
 		PRINTL 切
 	ENDIF
@@ -317,6 +326,10 @@ DO
 			BREAK
 		CASE 20011
 			CALL キャラデザフィルタ設定, キャラデザフィルタ
+			TFLAG:ページ数 = 0
+			BREAK
+		CASE 20012
+			CALL 種族フィルタ設定, 種族フィルタ
 			TFLAG:ページ数 = 0
 			BREAK
 		CASEELSE
@@ -752,6 +765,56 @@ DO
 			RETURN
 		CASE -2
 			キャラデザフィルタ = 
+			RETURN
+	ENDSELECT
+LOOP 1
+
+@種族フィルタ設定, 種族フィルタ
+#DIMS REF 種族フィルタ
+#DIMS DYNAMIC 種族名, 50
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 種族
+#DIM DYNAMIC 始点
+#DIM DYNAMIC 終点
+
+VARSET 種族名
+
+種族 = GETNUM(CSTR, "種族")
+
+FOR LCOUNT, 1, 10000
+	SIF !EXISTCSV(LCOUNT)
+		CONTINUE
+	IF CSVCSTR(LCOUNT, 種族) != ""
+		SIF FINDELEMENT(種族名, ESCAPE(CSVCSTR(LCOUNT, 種族)), 0, VARSIZE("種族名"), 1) == -1
+			種族名:FINDELEMENT(種族名, "", 0, VARSIZE("種族名"), 1) = %CSVCSTR(LCOUNT, 種族)%
+	ENDIF
+NEXT
+
+PRINTL □表示したいキャラの種族を選んでください
+FOR LCOUNT, 0, VARSIZE("種族名")
+	SIF 種族名:LCOUNT == ""
+		BREAK
+	PRINTFORMLC [{LCOUNT}] %種族名:LCOUNT%
+NEXT
+SIF !LINEISEMPTY()
+	PRINTL 
+DRAWLINE
+PRINTPLAIN 　種族別カテゴリ　
+PRINT [-1] 戻る 
+PRINT [-2] フィルタをリセットする
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0 TO VARSIZE("種族名")
+			IF 種族名:RESULT != ""
+				種族フィルタ = %種族名:RESULT%
+				RETURN
+			ENDIF
+		CASE -1
+			RETURN
+		CASE -2
+			種族フィルタ = 
 			RETURN
 	ENDSELECT
 LOOP 1
