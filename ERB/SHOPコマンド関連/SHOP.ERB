@@ -156,10 +156,7 @@ ELSE
 	RESETCOLOR
 ENDIF
 ;無条件で表示
-LOCALS:2 = %SET_TOOLTIP("[101] - 休憩     ", @"\@ TIME == 0 ? 夜まで休憩します # 翌日まで休憩します \@")%
-
-;無条件で表示
-LOCALS:3 = %SET_TOOLTIP("[102] - 眷属の儀 ", "奴隷の種族を変更するための儀式を行います")%
+LOCALS:2 = %SET_TOOLTIP("[101] - 休憩     ", @"\@ TIME == 0 ? 夜まで休憩します # 翌日まで休憩します \@。体力、気力、ストレスが回復します")%
 
 ;無条件で表示
 ;段位認定では使えない
@@ -167,17 +164,17 @@ SELECTCASE FLAG:ゲームモード
 	CASE 8
 		LOCALS:3 = %SET_TOOLTIP("[---] - 施設管理 ", "段位認定では使えません", 0, "gray")%
 	CASEELSE
-		LOCALS:3 = %SET_TOOLTIP("[103] - 施設管理 ", "屋敷の施設・設備の管理をします")%
+		LOCALS:3 = %SET_TOOLTIP("[102] - 施設管理 ", "屋敷の施設・設備の管理をします")%
 ENDSELECT
 
 ;STRATEGYモード、PFREEモードなら表示
 SELECTCASE FLAG:ゲームモード
 	CASE 1, 9
-		LOCALS:5 = %SET_TOOLTIP("[104] - 経営     ", "収益要素を管理します")%
+		LOCALS:4 = %SET_TOOLTIP("[103] - 経営     ", "収益要素を管理します")%
 		;パートナーに話しかける口上が実装されていれば表示
 		TRYCCALLFORM EXIST_STRATEGY_KOJO_K{FLAG:パートナー}
 			SIF FLAG:口上表示
-				LOCALS:6 = %SET_TOOLTIP("[105] - 経営相談 ", @"%CSVCALLNAMEF(FLAG:パートナー)%に経営の相談をします")%
+				LOCALS:5 = %SET_TOOLTIP("[104] - 経営相談 ", @"%CSVCALLNAMEF(FLAG:パートナー)%に経営の相談をします")%
 		CATCH
 		ENDCATCH
 ENDSELECT
@@ -262,17 +259,20 @@ LOCALS:1 = %SET_TOOLTIP("[300] - アイテム ", "淫具や素質追加などの
 SIF CMATCH(TALENT:変化, 1)
 	LOCALS:2 = %SET_TOOLTIP("[301] - 変化     ", "素質[変化]を持った陥落済みのキャラクターを動物の姿や人間の姿に変化させます")%
 
+;無条件で表示
+LOCALS:3 = %SET_TOOLTIP("[301] - 眷属の儀 ", "奴隷の種族を変更するための儀式を行います")%
+
 ;段位認定でなければ表示
 IF FLAG:ゲームモード == 8
-	LOCALS:3 = %SET_TOOLTIP("[---] - 奴隷購入 ", "段位認定では奴隷を購入することができません", 0, "gray")%
+	LOCALS:4 = %SET_TOOLTIP("[---] - 奴隷購入 ", "段位認定では奴隷を購入することができません", 0, "gray")%
 ELSE
-	LOCALS:3 = %SET_TOOLTIP("[302] - 奴隷購入 ", "調教するための奴隷を購入します")%
+	LOCALS:4 = %SET_TOOLTIP("[303] - 奴隷購入 ", "調教するための奴隷を購入します")%
 ENDIF
 ;売却できるキャラがいれば表示
 IF 売却可能
-	LOCALS:4 = %SET_TOOLTIP("[303] - 売却     ", "調教で仕上がった奴隷を売却します")%
+	LOCALS:5 = %SET_TOOLTIP("[304] - 売却     ", "調教で仕上がった奴隷を売却します")%
 ELSE
-	LOCALS:4 = %SET_TOOLTIP("[---] - 売却     ", "売却可能な奴隷が居ません", 0, "gray")%
+	LOCALS:5 = %SET_TOOLTIP("[---] - 売却     ", "売却可能な奴隷が居ません", 0, "gray")%
 ENDIF
 
 ;新婚モードではアイテム購入のみ表示
@@ -388,25 +388,17 @@ SELECTCASE RESULT
 		;休憩フラグを立てる
 		FLAG:休憩フラグ = 1
 		BEGIN TURNEND
-	;眷属の儀
-	CASE 102
-		CALL FAMILIAR
-		;儀を行った場合はターン終了
-		IF RESULT == 1
-			FLAG:休憩フラグ = 1
-			BEGIN TURNEND
-		ENDIF
 	;施設管理
-	CASE 103
+	CASE 102
 		CALL 施設
 	;経営
-	CASE 104
+	CASE 103
 		SELECTCASE FLAG:ゲームモード
 			CASE 1, 9
 				CALL STRATEGY
 		ENDSELECT
 	;経営相談
-	CASE 105
+	CASE 104
 		LTARGET = TARGET
 		TARGET = GETCHARA(FLAG:パートナー)
 		SIF FLAG:口上表示
@@ -463,14 +455,22 @@ SELECTCASE RESULT
 	CASE 301
 		SIF CMATCH(TALENT:変化, 1)
 			CALL 変化
-	;奴隷購入
+	;眷属の儀
 	CASE 302
+		CALL FAMILIAR
+		;儀を行った場合はターン終了
+		IF RESULT == 1
+			FLAG:休憩フラグ = 1
+			BEGIN TURNEND
+		ENDIF
+	;奴隷購入
+	CASE 303
 		SELECTCASE FLAG:ゲームモード
 			CASE IS != 7, 8
 				CALL CHARA_BUY
 		ENDSELECT
 	;売却
-	CASE 303
+	CASE 304
 		SELECTCASE FLAG:ゲームモード
 			CASE IS != 7
 				SIF 売却可能
