@@ -261,7 +261,8 @@ TARGET = LOCAL
 RESTART
 
 @CHARA_CLOTHES_SETTING
-#DIM LCOUNT
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 選択部位
 DRAWLINE
 PRINTFORML □%NAME:TARGET%の服装
 CALL SHOW_INFO_CLOTHES, TARGET
@@ -367,7 +368,23 @@ DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 0 TO 6
-			CALL CHARA_CLOTHES_SETTINGNEXT, RESULT
+			SELECTCASE RESULT
+				CASE 0
+					選択部位 = 特殊
+				CASE 1
+					選択部位 = 上半身上着
+				CASE 2
+					選択部位 = 下半身上着
+				CASE 3
+					選択部位 = 全身上着
+				CASE 4
+					選択部位 = 上半身下着
+				CASE 5
+					選択部位 = 下半身下着
+				CASE 6
+					選択部位 = 足元
+			ENDSELECT
+			CALL CHARA_CLOTHES_SETTINGNEXT, 選択部位
 			BREAK
 		CASE 7
 			INVERTBIT CFLAG:挿入可, 0
@@ -424,93 +441,117 @@ LOOP 1
 
 RESTART
 
-@CHARA_CLOTHES_SETTINGNEXT, ARG
+@CHARA_CLOTHES_SETTINGNEXT, 選択部位
 #DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 選択部位
 DRAWLINE
-PRINTL □何を着せますか？(番号の他、自由入力も可能です)
-PRINTL 　[0] 何も着せない
-FOR LCOUNT, (ARG*100), (ARG*100+100)
-	SIF STR:LCOUNT == ""
-		CONTINUE
-	PRINTFORML 　[{LCOUNT}] %STR:LCOUNT%
-NEXT
-DRAWLINE
+PRINTFORML □着せたい%選択部位%の服装名を入力してください？
+
+;FOR LCOUNT, (ARG*100), (ARG*100+100)
+;	SIF STR:LCOUNT == ""
+;		CONTINUE
+;	PRINTFORML 　[{LCOUNT}] %STR:LCOUNT%
+;NEXT
+;DRAWLINE
 PRINTPLAIN 　COORDINATE　
-PRINTL [1000] 戻る
+PRINTL [0] 戻る [1] 何も着せない
 DO
 	INPUTS
 	
 	IF ISNUMERIC(RESULTS)
-		LOCAL = TOINT(RESULTS)
+		SELECTCASE TOINT(RESULTS)
+			CASE 0
+				RETURN
+			CASE 1
+				CSTR:選択部位 = 
+		ENDSELECT
 	ELSE
-		LOCAL = -1
+		CSTR:選択部位 = %RESULTS%
+		SELECTCASE 選択部位
+			CASE "上半身上着", "下半身上着"
+				SIF CFLAG:着衣併用 != 1
+					CSTR:全身上着 = 
+			CASE "上半身下着", "下半身下着"
+				SIF CFLAG:着衣併用 == 2
+					CSTR:全身上着 = 
+			CASE "全身上着"
+				IF CFLAG:着衣併用 != 1
+					CSTR:上半身上着 = 
+					CSTR:下半身上着 = 
+				ENDIF
+				IF CFLAG:着衣併用 == 2
+					CSTR:上半身下着 = 
+					CSTR:下半身下着 = 
+				ENDIF
+		ENDSELECT
 	ENDIF
-	
-	SELECTCASE LOCAL
-		CASE 0 TO 999
-			CSTR:(ARG+100) = %STR:LOCAL%
-			SELECTCASE CSTR:全身上着
-				CASE "コート", "エプロン", "ローブ"
-					CFLAG:着衣併用 = 1
-				CASE "バニースーツ", "スクール水着"
-					CFLAG:着衣併用 = 2
-				CASEELSE
-					CFLAG:着衣併用 = 0
-			ENDSELECT
-			SELECTCASE CSTR:下半身上着
-				CASE "スカート", "パレオ"
-					CFLAG:挿入可 = 1
-				CASEELSE
-					CFLAG:挿入可 = 0
-			ENDSELECT
-			SELECTCASE CSTR:全身上着
-				CASE "和服", "ローブ", "ワンピース", "チュチュ", "ドレス", "チャイナドレス", "修道服", "ゴシックロリータ", "メイド服"
-					CFLAG:挿入可 = 1
-				CASEELSE
-					CFLAG:挿入可 = 0
-			ENDSELECT
-			SELECTCASE ARG
-				CASE 1, 2
-					SIF CFLAG:着衣併用 != 1
-						CSTR:全身上着 = 
-				CASE 4, 5
-					SIF CFLAG:着衣併用 == 2
-						CSTR:全身上着 = 
-				CASE 3
-					IF CFLAG:着衣併用 != 1
-						CSTR:上半身上着 = 
-						CSTR:下半身上着 = 
-					ENDIF
-					IF CFLAG:着衣併用 == 2
-						CSTR:上半身下着 = 
-						CSTR:下半身下着 = 
-					ENDIF
-			ENDSELECT
-			BREAK
-		CASE -1
-			CSTR:(ARG+100) = %RESULTS%
-			SELECTCASE ARG
-				CASE 1, 2
-					SIF CFLAG:着衣併用 != 1
-						CSTR:全身上着 = 
-				CASE 4, 5
-					SIF CFLAG:着衣併用 == 2
-						CSTR:全身上着 = 
-				CASE 3
-					IF CFLAG:着衣併用 != 1
-						CSTR:上半身上着 = 
-						CSTR:下半身上着 = 
-					ENDIF
-					IF CFLAG:着衣併用 == 2
-						CSTR:上半身下着 = 
-						CSTR:下半身下着 = 
-					ENDIF
-			ENDSELECT
-			BREAK
-		CASE 1000
-			RETURN 0
-	ENDSELECT
-LOOP LOOPRES(1000)
+	BREAK
+
+;	SELECTCASE LOCAL
+;		CASE 0 TO 999
+;			CSTR:(ARG+100) = %STR:LOCAL%
+;			SELECTCASE CSTR:全身上着
+;				CASE "コート", "エプロン", "ローブ"
+;					CFLAG:着衣併用 = 1
+;				CASE "バニースーツ", "スクール水着"
+;					CFLAG:着衣併用 = 2
+;				CASEELSE
+;					CFLAG:着衣併用 = 0
+;			ENDSELECT
+;			SELECTCASE CSTR:下半身上着
+;				CASE "スカート", "パレオ"
+;					CFLAG:挿入可 = 1
+;				CASEELSE
+;					CFLAG:挿入可 = 0
+;			ENDSELECT
+;			SELECTCASE CSTR:全身上着
+;				CASE "和服", "ローブ", "ワンピース", "チュチュ", "ドレス", "チャイナドレス", "修道服", "ゴシックロリータ", "メイド服"
+;					CFLAG:挿入可 = 1
+;				CASEELSE
+;					CFLAG:挿入可 = 0
+;			ENDSELECT
+;			SELECTCASE ARG
+;				CASE 1, 2
+;					SIF CFLAG:着衣併用 != 1
+;						CSTR:全身上着 = 
+;				CASE 4, 5
+;					SIF CFLAG:着衣併用 == 2
+;						CSTR:全身上着 = 
+;				CASE 3
+;					IF CFLAG:着衣併用 != 1
+;						CSTR:上半身上着 = 
+;						CSTR:下半身上着 = 
+;					ENDIF
+;					IF CFLAG:着衣併用 == 2
+;						CSTR:上半身下着 = 
+;						CSTR:下半身下着 = 
+;					ENDIF
+;			ENDSELECT
+;			BREAK
+;		CASE -1
+;			CSTR:(ARG+100) = %RESULTS%
+;			SELECTCASE ARG
+;				CASE 1, 2
+;					SIF CFLAG:着衣併用 != 1
+;						CSTR:全身上着 = 
+;				CASE 4, 5
+;					SIF CFLAG:着衣併用 == 2
+;						CSTR:全身上着 = 
+;				CASE 3
+;					IF CFLAG:着衣併用 != 1
+;						CSTR:上半身上着 = 
+;						CSTR:下半身上着 = 
+;					ENDIF
+;					IF CFLAG:着衣併用 == 2
+;						CSTR:上半身下着 = 
+;						CSTR:下半身下着 = 
+;					ENDIF
+;			ENDSELECT
+;			BREAK
+;		CASE 1000
+;			RETURN 0
+;	ENDSELECT
+LOOP 1
 
 ;実績:寿々姫に和服を着せる
 SIF CHARANAMEF(TARGET) == "寿々姫" && CSTR:全身上着 == "和服"
