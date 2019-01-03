@@ -89,7 +89,7 @@ IF ABL:ARG:魔法技能 >= 6
 	PRINTL 　　　　 キャラ全員の回復量上昇 魔法技能に応じて効果持続
 	;gentle stress
 	PRINTFORML 　[ 9] - ジェントルストレス（魔力消費量 {LOCAL}）
-	PRINTFORML 　　　　 任意のキャラに対し、一時的に使用不可になる代わりにストレスを{スキル*5}\%引き下げる
+	PRINTFORML 　　　　 任意のキャラのストレスが上昇しなくなる。魔法技能に応じて効果持続
 ENDIF
 
 LOCAL = 魔力消費量(7, スキル)
@@ -409,12 +409,12 @@ DO
 		CASE 9
 			SIF スキル < 6
 				CONTINUE
-			PRINTL □ジェントルストレスでストレスを打ち消す対象を選んでください
+			PRINTL □ジェントルストレスでストレスを抑える対象を選んでください
 			LOCAL = 0
 			SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳) || TALENT:ARG:孔雀の瞳
 				LOCAL = 1
 			FOR PAGING, 0, CHARANUM
-				CALL PAGING, CFLAG:PAGING:ストレス値 > 0 && ARG != PAGING, @"\@ LOCAL ? ストレス値:{CFLAG:PAGING:ストレス値} #  \@"
+				CALL PAGING, ARG != PAGING, @"\@ LOCAL ? ストレス値:{CFLAG:PAGING:ストレス値} #  \@"
 			NEXT
 			SIF RESULT == -1
 				RESTART
@@ -429,7 +429,6 @@ DO
 				ENDIF
 			ENDIF
 			PRINTFORML %CALLNAME:ARG%に、%CALLNAME:対象%を対象にしたジェントルストレスを詠唱させます。よろしいですか？
-			PRINTFORML （%CALLNAME:対象%は{MAX(CFLAG:対象:ストレス値/20+1-スキル, 1)}ターン使用不可になります）
 			PRINTL [0] - はい
 			PRINTL [1] - いいえ
 			DO
@@ -438,14 +437,11 @@ DO
 			SIF RESULT == 1
 				RESTART
 			PRINTFORML %CALLNAME:ARG%は%CALLNAME:対象%に対してジェントルストレスを唱えた
-			PRINTFORML %CALLNAME:対象%は倒れ込むように眠りについた……
+			PRINTFORML %CALLNAME:対象%の感情はとても穏やかになった……
 			PRINTFORML %CALLNAME:ARG%の詠唱経験+6
 			EXP:ARG:詠唱経験 += 6
-			;ストレス値/20+1から気休め程度に魔法技能分だけ差し引いたターン休憩不可 最長で、ストレス値MAX(999)の場合は50-6の44ターン使用不可になる。重い
-			;ノーリスクでストレス打ち消せるのは最大で54まで 魔力と1ターン消費のことを考えると普通に休んだほうがいい
-			CFLAG:対象:使用不可 = MAX(CFLAG:対象:ストレス値/20+1-スキル, 1)
-			CFLAG:対象:ストレス値 -= CFLAG:対象:ストレス値*5*スキル/100
-			CALL 配属解除, 対象
+			ジェントルストレス:対象:0 = スキル
+			ジェントルストレス:対象:1 = CFLAG:対象:ストレス値
 		CASE 10
 			SIF スキル < 7 && CHARANAMEF(ARG) != "クロノス" && CHARANAMEF(ARG) != "カイロス"
 				CONTINUE
@@ -764,7 +760,7 @@ DO
 	BASE:ARG:魔力 = LOCAL
 	IF LOCAL < 0
 		PRINTFORMW %CALLNAME:ARG%は魔力の反動でひどく疲れてしまったようだ。少し休ませてあげよう……
-		CFLAG:ARG:使用不可 = LOCAL/100+1
+		CFLAG:ARG:使用不可 = ABS(LOCAL/100+1)
 		CALL 配属解除, ARG
 	ENDIF
 	RETURN 1
