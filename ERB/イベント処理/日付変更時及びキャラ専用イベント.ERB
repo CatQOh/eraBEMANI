@@ -6,6 +6,7 @@
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC 人数
+#DIM 着床告知;DYNAMICじゃない変数 プレーヤーへの告知用なので起動ごとに破棄してもよい
 VARSET LOCAL, 0
 
 IF TARGET >= 0
@@ -32,10 +33,58 @@ IF TARGET >= 0
 			LOCAL = 0
 	ENDIF
 
-	;段位認定裏七級の場合、陥落していないと売却できない
-	IF FLAG:ゲームモード == 8 && 受験段位名 == "裏七級"
-		SIF !CFLAG:陥落
+	;段位モード専用の特殊条件
+	IF FLAG:ゲームモード == 8
+		;段位認定裏七級の場合、陥落していないと売却できない
+		IF 受験段位名 == "裏七級"
+			SIF !CFLAG:陥落
+				LOCAL = 0
+		;「炎の孕ませポップン学園」の場合、陥落させたうえで着床を認知していないと売却できない
+		ELSEIF 受験段位名 == "炎の孕ませポップン学園"
 			LOCAL = 0
+			IF CFLAG:陥落
+				IF TALENT:妊娠
+					LOCAL = 1
+				ELSEIF (TALENT:恋慕 || TALENT:親愛) && PREG:TARGET:11
+					LOCAL = 1
+					;この場合一度だけ着床したことを教えてもらえる(再起動でフラグが消失するのは仕様)
+					;変数「着床告知」にビットで管理
+					;1:ミニッツ 2:ルート 4:翠里 8:鈴花 16:氷海
+					SELECTCASE CALLNAME
+						CASE "ミニッツ"
+							IF !(着床告知 & 1)
+								着床告知 |= 1
+								PRINTFORML ミニッツは%CALLNAME:MASTER%に妊娠検査薬の結果をこっそりと見せてきた
+								PRINTFORMW どうやら%CALLNAME:MASTER%はミニッツの幼い体に子種を植え付けたようだ……
+							ENDIF
+						CASE "ルート"
+							IF !(着床告知 & 2)
+								着床告知 |= 2
+								PRINTFORML ルートは%CALLNAME:MASTER%に妊娠の診断結果を教えてくれた
+								PRINTFORMW どうやら%CALLNAME:MASTER%はルートとの交尾によって受精させたようだ……
+							ENDIF
+						CASE "翠里"
+							IF !(着床告知 & 4)
+								着床告知 |= 4
+								PRINTFORML 翠里は%CALLNAME:MASTER%に妊娠した可能性が高いことを教えてくれた
+								PRINTFORMW どうやら%CALLNAME:MASTER%は翠里の自称超絶名器の奥に遺伝子を残せたようだ……
+							ENDIF
+						CASE "鈴花"
+							IF !(着床告知 & 8)
+								着床告知 |= 8
+								PRINTFORML 鈴花は%CALLNAME:MASTER%に妊娠検査薬の結果を嬉しそうに見せてきた
+								PRINTFORMW どうやら%CALLNAME:MASTER%は鈴花のめしべとの交配に成功したようだ……
+							ENDIF
+						CASE "氷海"
+							IF !(着床告知 & 16)
+								着床告知 |= 16
+								PRINTFORML 氷海は%CALLNAME:MASTER%に妊娠の診断結果が陽性であることを伝えてきた
+								PRINTFORMW どうやら%CALLNAME:MASTER%は氷海への膣内射精で着床させたようだ……
+							ENDIF
+					ENDSELECT
+				ENDIF
+			ENDIF
+		ENDIF
 	ENDIF
 
 	IF LOCAL
@@ -358,6 +407,8 @@ FOR LCOUNT, 0, CHARANUM
 	IF CHARANAMEF(LCOUNT) == "フローラ"
 		LOCAL = MAXBASE:LCOUNT:体力
 		MAXBASE:LCOUNT:体力 = CSVBASE(NO:LCOUNT, 0) + (FLAG:気温-180)*2
+		SIF TALENT:LCOUNT:妊娠
+			MAXBASE:LCOUNT:体力 -= 500
 		BASE:LCOUNT:体力 += MAXBASE:LCOUNT:体力-LOCAL
 		SIF BASE:LCOUNT:体力 > MAXBASE:LCOUNT:体力
 			BASE:LCOUNT:体力 = MAXBASE:LCOUNT:体力
