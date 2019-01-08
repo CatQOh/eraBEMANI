@@ -1,0 +1,242 @@
+﻿@GAMBLE
+#DIM DYNAMIC チップ
+#DIM DYNAMIC 利子
+#DIM DYNAMIC 利益計算用
+#DIM DYNAMIC パートナー
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC カードゲーム
+#DIM DYNAMIC 収支
+;新しくゲームを追加する場合はここに名称を追加する
+{
+#DIMS DYNAMIC ゲーム名, 11 = 
+"ルーレット",
+"クラップス",
+"ブラックジャック",
+"ビンゴピンボール",
+"ビデオポーカー",
+"ポーカーソリティア",
+"レットイットライド",
+"バカラ",
+"サーティー",
+"素数ダイス",
+"神経衰弱",
+}
+
+;ギャンブルで借金を背負った場合の利子(難易度によって変動)
+SELECTCASE FLAG:難易度
+	;NORMAL
+	CASE 1
+		利子 = 25
+	;HYPER
+	CASE 2
+		利子 = 55
+	;ANOTHER
+	CASE 3
+		利子 = 90
+ENDSELECT
+
+;始めるときの金額を記憶
+利益計算用 = MONEY
+
+;G:502には一緒に来た人のキャラ登録番号が代入されている
+
+DRAWLINE
+PRINTL カジノへようこそ。どのギャンブルで遊びますか？
+PRINTL ただし、ギャンブル中に新たな借金を背負って返済できなかった場合、
+PRINTFORML その借金に対し、{利子}\%の利子が付きます。
+CALL PASELIL, @"所持金:{MONEY}＄"
+
+FOR LCOUNT, 0, VARSIZE("ゲーム名")
+	PRINTFORMLC {LCOUNT} %ゲーム名:LCOUNT%
+NEXT
+SIF !LINEISEMPTY()
+	PRINTL 
+DRAWLINE
+PRINTPLAIN 　GAMBLE　
+PRINTL [99] やめておく
+$SELECT_GAMBLE
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0 TO VARSIZE("ゲーム名")
+			PRINTFORMW %CALLNAME:MASTER%は%ゲーム名:RESULT%で遊ぶことにした。
+			;カードゲームならカードゲームフラグを立てる
+			SELECTCASE ゲーム名:RESULT
+				CASE "ブラックジャック", "ビデオポーカー", "ポーカーソリティア", "レットイットライド", "バカラ"
+					カードゲーム = 1
+			ENDSELECT
+			CALLFORM %ゲーム名:RESULT%, パートナー
+			BREAK
+		CASE 99
+			RETURN
+	ENDSELECT
+LOOP 1
+
+CALL CHECKDRAWLINE
+
+;今回のギャンブルでの収支
+収支 = MONEY-利益計算用
+
+;ギャンブルでの総合収支
+;G_MONEY += 収支
+
+PRINTFORML %CALLNAME:MASTER%はギャンブルを終えた。
+SELECTCASE 収支
+	CASE IS > 0
+		CALL PASELIL, @"{収支}＄儲かった！"
+		;カードゲーム勝利数をプラス
+		;SIF カードゲーム
+		;	WIN_CARD++
+	CASE IS < 0
+		CALL PASELIL, @"{ABS(収支)}＄損してしまった……"
+	CASE 0
+		CALL PASELIL, "今回の収支はちょうど0＄のようだ。"
+ENDSELECT
+
+IF MONEY < 0
+	CALL PASELIL, @"ギャンブル中に借金{ABS(MONEY)}＄を背負ったため、"
+	CALL PASELIL, @"その{ABS(MONEY)}＄には利子{ABS(MONEY)*利子/100}＄が付き、借金は{ABS(MONEY)+ABS(MONEY)*利子/100}＄となります。"
+	借金 += ABS(MONEY)+ABS(MONEY)*利子/100
+	CALL PASELIL, @"借金の総額は{借金}＄となりました。"
+	MONEY = 0
+ENDIF
+WAIT
+
+;以下、各ゲーム共通の賭け金設定
+@STAKE, 賭け金上限
+#DIM DYNAMIC 利子
+#DIM DYNAMIC 賭け金上限
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC ループ用ステップ = 5
+#DIM DYNAMIC マックスベット可
+
+SIF 賭け金上限 <= 0
+	RETURN 0
+
+;ギャンブルで借金を背負った場合の利子(難易度によって変動)
+SELECTCASE FLAG:難易度
+	;NORMAL
+	CASE 1
+		利子 = 25
+	;HYPER
+	CASE 2
+		利子 = 55
+	;ANOTHER
+	CASE 3
+		利子 = 90
+ENDSELECT
+
+PRINTL いくら賭けますか？
+PRINTL ただし、ギャンブル中に新たな借金を背負って返済できなかった場合、
+CALL PASELIL, @"その借金に対し、{利子}\%の利子が付きます。"
+PRINT (所持金:
+SIF MONEY < 0
+	SETCOLORBYNAME red
+CALL PASELI, @"{MONEY}＄"
+RESETCOLOR
+
+CALL PASELIL, @"/MAXBET:{賭け金上限}＄"
+
+SETCOLORBYNAME skyblue
+PRINT [1] $1  
+
+FOR LCOUNT, 0, 賭け金上限+1, ループ用ステップ
+	SELECTCASE LCOUNT
+		CASE 5
+			SETCOLORBYNAME crimson
+		CASE 25
+			SETCOLORBYNAME springgreen
+		CASE 100
+			SETCOLORBYNAME darkgray
+		CASE 500
+			SETCOLORBYNAME purple
+		CASE 1000
+			SETCOLORBYNAME gold
+		CASE 5000
+			SETCOLORBYNAME brown
+		CASE 25000
+			SETCOLORBYNAME orange
+		CASEELSE
+			マックスベット可 = 1
+			CONTINUE
+	ENDSELECT
+	CALL PASELI, @"[{LCOUNT}] {LCOUNT}＄  "
+	ループ用ステップ = LCOUNT
+	マックスベット可 = 0
+NEXT
+PRINTL 
+RESETCOLOR
+SIF 賭け金上限 >= 100000
+	CALL PASELI, @"[100000] 100000＄  "
+SIF マックスベット可 && 賭け金上限 != 100000
+	CALL PASELIL, @"[{賭け金上限}] MAXBET({賭け金上限}＄)"
+$STAKE_INPUT
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE IS > 賭け金上限
+			CALL PASELIL, @"賭け金上限は{賭け金上限}です。再入力してください"
+		CASE IS > 0
+			BREAK
+	ENDSELECT
+LOOP 1
+
+RETURN RESULT
+
+;フィッシャー・イェーツのシャッフル
+;CARD:0からCARD:{ARG-1}までの配列にシャッフルした順列を返す
+@SHUFFLE, ARG
+#DIM DYNAMIC LCOUNT0
+#DIM DYNAMIC LCOUNT1
+
+FOR LCOUNT0, 0, ARG
+	CARD:LCOUNT0 = LCOUNT0
+NEXT
+
+;LCOUNT0はARGの値から1づつ下げていく
+FOR LCOUNT0, ARG, 0, -1
+	LCOUNT1 = RAND:LCOUNT0;0以上LCOUNT0未満の数を決めてこれをLCOUNT1とする
+	;LCOUNT1番目と(LCOUNT0-1)番目を入れ替える
+	SWAP CARD:(LCOUNT0-1), CARD:LCOUNT1
+NEXT
+
+;引数を52で割った余りに対し以下を表示
+;クラブK(余り0)→スペードA(余り1)→スペード2(余り2)→ … →ハートA(余り14)→ … →ダイヤA(余り27)→ … →クラブA(余り40)→ … →クラブQ(余り51)
+@PRTCARD, ARG
+
+SELECTCASE ((ARG+51)%52)/13
+	;スペード
+	CASE 0
+		SETCOLORBYNAME blue
+		PRINT ♠
+	;ハート
+	CASE 1
+		SETCOLORBYNAME hotpink
+		PRINT ♥
+	;ダイヤ
+	CASE 2
+		SETCOLORBYNAME red
+		PRINT ♦
+	;クラブ
+	CASE 3
+		SETCOLORBYNAME deepskyblue
+		PRINT ♣
+ENDSELECT
+
+SELECTCASE ARG%13
+	CASE 1
+		PRINT Ａ
+	;2～9はUIに配慮して全角にする
+	CASE 2 TO 9
+		PRINTFORM %TOFULL(TOSTR(ARG%13))%
+	CASE 10
+		PRINT 10
+	CASE 11
+		PRINT Ｊ
+	CASE 12
+		PRINT Ｑ
+	CASEELSE
+		PRINT Ｋ
+ENDSELECT
+RESETCOLOR
+
