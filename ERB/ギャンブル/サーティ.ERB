@@ -1,0 +1,268 @@
+﻿@THIRTY
+#DIM DYNAMIC NUMBER, 31;既出の数を記録
+#DIM DYNAMIC NUMBER_AI, 31;既出の数を記録(AI用)
+#DIM DYNAMIC MEMORY, 30;出た数を順番を含め記憶(AI用)
+#DIM DYNAMIC M_COUNT;出た数の個数を記憶(AI用)
+#DIM DYNAMIC AI_FGT;AIの忘れやすさ
+#DIM DYNAMIC ゲーム数 = 5
+#DIM DYNAMIC 賭け金
+#DIM DYNAMIC スタート時間
+#DIM DYNAMIC 経過時間
+#DIM DYNAMIC コール
+#DIM DYNAMIC 追加コール
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC AIコール
+;AIの記憶力について
+;AIは毎ターン出た数字を記憶(配列「NUMBER_AI」の対応する部分を1に)
+;1ターンごとに以下の判定を行う
+;N個前にコールされた数字をN*[0-3]%の確率で忘れる([0-3]の値はAIの強さによって変える/配列「NUMBER_AI」の対応する部分を0に)
+;そして、配列の0である部分からランダムで選び出す
+;また、次の番号の配列の対応部分の値が0(つまり、既出でないOR忘れた)のとき1/2でコールする
+
+PRINTL 
+PRINTL ◆サーティーのルール◆
+PRINTL 1～30の自然数のうち、1つだけ、もしくは連番の2つをコールします。
+PRINTL コールの制限時間は10秒です。
+PRINTL 先に既出の数をコールしてしまった方の負けです。
+PRINTW また、30個全ての数がコールされた場合、最後にコールした方の勝ちになります。
+
+$THIRTY_START
+PRINTL 
+PRINTFORML □サーティ <残り:{ゲーム数}ゲーム>
+PRINTL 　相手の強さを選んでください。
+PRINT 　所持金:
+SIF MONEY < 0
+	SETCOLORBYNAME red
+CALL PASELIL, @"{MONEY}＄"
+RESETCOLOR
+CALL PASELIL, "　[0] 弱い(賭け金: 1000＄)"
+CALL PASELIL, "　[1] 普通(賭け金: 4000＄)"
+CALL PASELIL, "　[2] 強い(賭け金:16000＄)"
+CALL PASELIL, "　[3] 最強(賭け金:64000＄)"
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			AI_FGT = 3
+			賭け金 = 1000
+		CASE 1
+			AI_FGT = 2
+			賭け金 = 4000
+		CASE 2
+			AI_FGT = 1
+			賭け金 = 16000
+		CASE 3
+			AI_FGT = 0
+			賭け金 = 64000
+		CASEELSE
+			CONTINUE
+	ENDSELECT
+LOOP 0
+
+MONEY -= 賭け金
+
+VARSET NUMBER
+VARSET NUMBER_AI
+VARSET MEMORY
+VARSET M_COUNT
+
+DO
+	IF M_COUNT == 0
+		SELECTCASE RAND:2
+			CASE 0
+				PRINTW 先攻は相手プレイヤーです。
+				GOTO AI_START
+			CASE 1
+				PRINTFORMW 先攻は%CALLNAME:MASTER%です。
+		ENDSELECT
+	ENDIF
+	コール = 0
+	追加コール = 0
+	PRINTL 
+	PRINTFORML <%CALLNAME:MASTER%のターン>
+	PRINTL [0] 降参する
+	PRINTL [ 1][ 2][ 3][ 4][ 5][ 6][ 7][ 8][ 9][10]
+	PRINTL [11][12][13][14][15][16][17][18][19][20]
+	PRINTL [21][22][23][24][25][26][27][28][29][30]
+	スタート時間 = GETMILLISECOND();スタート時刻の取得
+	経過時間 = 0;経過時間
+	$再入力
+	;制限時間10秒-経過時間
+	TINPUT 10000-経過時間, 0
+	SELECTCASE RESULT
+		;時間切れor降参
+		CASE 0
+			PRINTL 
+			PRINTL 降参しました。
+			PRINTW 相手プレイヤーの勝ちです。
+			BREAK
+		CASE 1 TO 30
+			コール = RESULT
+			;残り時間を計算
+			経過時間 = GETMILLISECOND()-スタート時間
+			PRINTL 
+			PRINTFORML [0]「{コール}」のみにする
+			;連番なので前後の数字を表示
+			SIF コール+1 <= 30
+				PRINTFORML [{コール+1, 2}]
+			SIF コール-1 >= 1
+				PRINTFORML [{コール-1, 2}]
+			$再入力2
+			TINPUT 10000-経過時間, 0
+			SELECTCASE RESULT
+				;前後の数字だったら追加コール扱い
+				CASE コール-1, コール+1
+					追加コール = RESULT
+				;変な数字を入れると再入力 もちろん時間は経過してる
+				CASE IS != 0
+					経過時間 = GETMILLISECOND()-スタート時間
+					GOTO 再入力2
+			ENDSELECT
+		;一桁の数字*2の場合
+		CASE 32 TO 98
+			;連番判定
+			IF ABS(RESULT/10-RESULT%10) == 1
+				コール = RESULT/10
+				追加コール = RESULT%10
+			ENDIF
+		;その他コール可能な数字2つの連番の場合
+		CASE 102 TO 3029
+			;連番判定
+			IF ABS(RESULT/100-RESULT%100) == 1
+				コール = RESULT/100
+				追加コール = RESULT%100
+			ENDIF
+		;不可解な数値を入力したら再入力 もちろん時間は経過してる
+		CASEELSE
+			経過時間 = GETMILLISECOND()-スタート時間
+			GOTO 再入力
+	ENDSELECT
+	;プレイヤーのコール
+	PRINTL 
+	SETCOLORBYNAME magenta
+	PRINTFORM %TOFULL(TOSTR(コール))%
+	SIF 追加コール
+		PRINTFORM 　%TOFULL(TOSTR(追加コール))%
+	RESETCOLOR
+	PRINTL 
+	TWAIT 3000, 0
+	SIF NUMBER:コール
+		PRINTFORM %TOFULL(TOSTR(コール))%
+	SIF NUMBER:コール &&NUMBER:追加コール && 追加コール
+		PRINT 　
+	SIF NUMBER:追加コール && 追加コール
+		PRINTFORM %TOFULL(TOSTR(追加コール))%
+	IF NUMBER:コール || (NUMBER:追加コール && 追加コール)
+		PRINTL は既にコールされています。
+		PRINTW 相手プレイヤーの勝ちです。
+		BREAK
+	ENDIF
+	;数字の処理(AIの記憶も含む)
+	NUMBER:コール = 1
+	NUMBER:追加コール = 1
+	NUMBER_AI:コール = 1
+	NUMBER_AI:追加コール = 1
+	MEMORY:(M_COUNT++) = コール
+	SIF 追加コール
+		MEMORY:(M_COUNT++) = 追加コール
+	IF M_COUNT == 30
+		PRINTL 
+		PRINTL 30個全ての数がコールされました。
+		PRINTFORMW 最後にコールした%CALLNAME:MASTER%の勝ちです。
+		MONEY += 2*賭け金
+		CALL PASELIW, @"{2*賭け金}＄手に入れた。"
+		BREAK
+	ENDIF
+	$AI_START
+	コール = 0
+	追加コール = 0
+	;AIの記憶力の処理
+	FOR LCOUNT, M_COUNT, 0, -1
+		SIF RAND(1, 101) <= LCOUNT*AI_FGT;確率で記憶を飛ばす
+			NUMBER_AI:LCOUNT = 0
+	NEXT
+	DO
+		;ランダムでAIにコールさせる
+		AIコール = RAND(1, 31)
+		;AI「待てよ……その数字はもう出てたな？」
+		SIF NUMBER_AI:AIコール
+			CONTINUE
+		コール = AIコール
+		BREAK
+	LOOP 1
+	;+1の数字が出てなければ50%で追加コールする 正確には50%より3%ほど低いけど
+	SIF AIコール < 30 && NUMBER_AI:(AIコール+1) == 0 && RAND:2 == 0
+		追加コール = AIコール+1
+	;AIのコール
+	PRINTL 
+	PRINTL <相手プレイヤーのターン>
+	SETCOLORBYNAME cyan
+	PRINTFORM %TOFULL(TOSTR(コール))%
+	SIF 追加コール
+		PRINTFORM 　%TOFULL(TOSTR(追加コール))%
+	RESETCOLOR
+	PRINTL 
+	TWAIT 3000, 0
+	SIF NUMBER:コール
+		PRINTFORM %TOFULL(TOSTR(コール))%
+	SIF NUMBER:コール &&NUMBER:追加コール && 追加コール
+		PRINT 　
+	SIF NUMBER:追加コール && 追加コール
+		PRINTFORM TOFULL(TOSTR(追加コール))
+	IF NUMBER:コール || (NUMBER:追加コール && 追加コール)
+		PRINTL は既にコールされています。
+		PRINTFORMW %CALLNAME:MASTER%の勝ちです。
+		MONEY += 2*賭け金
+		CALL PASELIW, @"{2*賭け金}＄手に入れた。"
+		BREAK
+	ENDIF
+	;数字の処理(AIの記憶も含む)
+	NUMBER:コール = 2
+	NUMBER:追加コール = 2
+	NUMBER_AI:コール = 1
+	NUMBER_AI:追加コール = 1
+	MEMORY:(M_COUNT++) = コール
+	SIF 追加コール
+		MEMORY:(M_COUNT++) = 追加コール
+	IF M_COUNT == 30
+		PRINTL 
+		PRINTL 30個全ての数がコールされました。
+		PRINTFORMW 最後にコールした相手プレイヤーの勝ちです。
+		BREAK
+	ENDIF
+LOOP 1
+
+PRINTL 
+FOR LCOUNT, 1, 31
+	SELECTCASE NUMBER:LCOUNT
+		;自分のコールした数字はマゼンタ
+		CASE 1
+			SETCOLORBYNAME magenta
+		;相手のコールした数字はシアン
+		CASE 2
+			SETCOLORBYNAME cyan
+	ENDSELECT
+	PRINTPLAINFORM [{LCOUNT, 2}
+	RESETCOLOR
+	SIF LCOUNT%10 == 0
+	PRINTL 
+NEXT
+WAIT
+
+ゲーム数--
+IF ゲーム数
+	PRINTL 
+	PRINTFORML もう一度プレイしますか？(残り:{ゲーム数}ゲーム)
+	PRINTL なお、相手の強さを変えることもできます。
+	PRINTL [0]もう一度 [1]もうやめる
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 0
+				RETURN
+			CASE 1
+				GOTO THIRTY_START
+		ENDSELECT
+	LOOP 1
+ENDIF
+
