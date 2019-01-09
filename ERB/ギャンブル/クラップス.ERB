@@ -1,0 +1,452 @@
+﻿@クラップス
+
+#DIM CONST MAX_BET = 6000;クラップスの賭け金の上限
+#DIM CONST SERIES_MAX = 6;シリーズ数の上限
+#DIM DYNAMIC SERIES;現在のシリーズ数
+#DIM DYNAMIC GAMES;ゲーム回数
+#DIM DYNAMIC ODDS_BET_MAX = 3;オッズベットの上限倍率
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC DICE1
+#DIM DYNAMIC DICE2
+#DIM DYNAMIC DICE_SUM
+#DIM DYNAMIC GET_MONEY
+#DIM DYNAMIC LNO
+#DIM DYNAMIC LARG1
+#DIM DYNAMIC LARG2
+#DIM DYNAMIC CRAPS, 1000, 5
+;2重配列CRAPSはコマンド[0],[1]に関する格納
+;X投目に対し
+;CRAPS:X:0 [0]の最初の賭け金
+;CRAPS:X:1 [0]の最終賭け金
+;CRAPS:X:2 [1]の最初の賭け金
+;CRAPS:X:3 [1]の最終賭け金
+;CRAPS:X:4 ポイント(ダイスの出目の和)
+
+FOR SERIES, 0, SERIES_MAX
+	VARSET CRAPS
+	GAMES = 1;ゲーム回数
+	;LOCALの4～27はすべてベットに関する変数
+	LOCAL:4 = 0
+	LOCAL:5 = 0
+	LOCAL:6 = 0
+	LOCAL:8 = 0
+	LOCAL:9 = 0
+	LOCAL:10 = 0
+	LOCAL:12 = 0
+	LOCAL:13 = 0
+	LOCAL:14 = 0
+	LOCAL:15 = 0
+	LOCAL:21 = 0
+	LOCAL:22 = 0
+	LOCAL:23 = 0
+	LOCAL:24 = 0
+	LOCAL:25 = 0
+	LOCAL:26 = 0
+	LOCAL:27 = 0
+	DO
+		$CRAPS_BET
+		DRAWLINE
+		PRINTFORML <{GAMES}投目 / 残り{SERIES_MAX - SERIES}シリーズ>
+		PRINT 所持金:
+		IF MONEY < 0
+			SETCOLOR 0xFF0000
+			PRINT -
+		ENDIF
+		PRINTFORM ${ABS(MONEY)} 
+		RESETCOLOR
+		PRINTFORML MAXBET:${MAX_BET}
+		FOR LCOUNT, 1, GAMES
+			IF CRAPS:LCOUNT:0 > 0
+				IF LCOUNT == 1
+					PRINTFORM  パスライン({CRAPS:LCOUNT:4}):${CRAPS:LCOUNT:0}
+				ELSE
+					PRINTFORM  カム({CRAPS:LCOUNT:4}):${CRAPS:LCOUNT:0}
+				ENDIF
+			ENDIF
+			IF CRAPS:LCOUNT:1 > 0
+				PRINTFORM +{CRAPS:LCOUNT:1}
+			ENDIF
+			IF CRAPS:LCOUNT:2 > 0
+				IF LCOUNT == 1
+					PRINTFORM  ドントパス({CRAPS:LCOUNT:4}):${CRAPS:LCOUNT:2}
+				ELSE
+					PRINTFORM  ドントカム({CRAPS:LCOUNT:4}):${CRAPS:LCOUNT:2}
+				ENDIF
+			ENDIF
+			IF CRAPS:LCOUNT:3 > 0
+				PRINTFORM +{CRAPS:LCOUNT:3}
+			ENDIF
+		NEXT
+		SIF GAMES >= 2
+			PRINTL
+		IF GAMES == 1
+			PRINTFORML  パスライン:${CRAPS:GAMES:0} ドントパス:${CRAPS:GAMES:2}
+		ELSE
+			PRINTFORML  カム:${CRAPS:GAMES:0} ドントカム:${CRAPS:GAMES:2}
+		ENDIF
+		SIF GAMES >= 2
+			PRINTFORML  プレースベット ４:${LOCAL:4} ５:${LOCAL:5} ６:${LOCAL:6} ８:${LOCAL:8} ９:${LOCAL:9} １０:${LOCAL:10}
+		SIF MAX(LOCAL:12, LOCAL:13, LOCAL:14, LOCAL:15) > 0
+			PRINTFORML  ハードウェー　 ハード4:${LOCAL:12} ハード6:${LOCAL:13} ハード8:${LOCAL:14} ハード10:${LOCAL:15}
+		SIF LOCAL:21 > 0
+			PRINTFORM  フィールドベット:${LOCAL:21}
+		SIF LOCAL:22 > 0
+			PRINTFORM  エニークラップス:${LOCAL:22}
+		SIF LOCAL:23 > 0
+			PRINTFORM  ２:${LOCAL:23}
+		SIF LOCAL:24 > 0
+			PRINTFORM  ３:${LOCAL:24}
+		SIF LOCAL:25 > 0
+			PRINTFORM  １２:${LOCAL:25}
+		SIF LOCAL:26 > 0
+			PRINTFORM  １１:${LOCAL:26}
+		SIF LOCAL:27 > 0
+			PRINTFORM  エニーセブン:${LOCAL:27}
+		SIF MAX(LOCAL:21, LOCAL:22, LOCAL:23, LOCAL:24, LOCAL:25, LOCAL:26, LOCAL:27) > 0
+			PRINTL
+		PRINTL
+		PRINTL どう賭けますか？
+		IF GAMES == 1
+			PRINTL [0]パスライン(2倍) [1]ドントパス(2倍)
+		ELSE
+			PRINTL [0]カム(2倍) [1]ドントカム(2倍) [2]オッズベット
+		ENDIF
+		SIF GAMES >= 2
+			PRINTL [4]４(2.8倍) [5]５(2.4倍) [6]６(2.17倍) [8]８(2.17倍) [9]９(2.4倍) [10]１０(2.8倍)
+		PRINTL [12]ハード4(8倍) [13]ハード6(10倍) [14]ハード8(10倍) [15]ハード10(8倍)
+		PRINTL [21]フィールドベット(2倍/2は3倍/12は4倍) [22]エニークラップス(8倍)
+		PRINTL [23]２(30倍) [24]３(15倍) [25]１２(30倍) [26]１１(15倍) [27]エニーセブン(5倍)
+		PRINTL [97]ベットを終える [98]このシリーズを終える(賭け金は戻りません) [99]もうやめる(賭け金は戻りません)
+		INPUT
+		IF RESULT == 97
+			GOTO CRAPS_BET_END
+		ELSEIF RESULT == 98
+			PRINTL 本当によろしいですか？
+			PRINTL [0]やっぱり続ける [98]このシリーズを終える
+			INPUT
+			SIF RESULT == 98
+				GOTO CRAPS_SERIES_END
+		ELSEIF RESULT == 99
+			PRINTL 本当によろしいですか？
+			PRINTL [0]やっぱり続ける [99]本当にやめる
+			INPUT
+			SIF RESULT == 99
+				GOTO CRAPS_END
+		ELSEIF RESULT == 0 || RESULT == 1
+			LNO = RESULT*2;格納する番号
+			CALL STAKE, MAX_BET - CRAPS:GAMES:LNO
+			CRAPS:GAMES:LNO += RESULT
+			MONEY -= RESULT
+		ELSEIF RESULT == 2
+			PRINTFORML どれに追加で賭けますか？(上限は最初の賭け金の{ODDS_BET_MAX}倍)
+			PRINTL [0]やっぱりやめる
+			FOR LCOUNT, 1, GAMES
+				IF CRAPS:LCOUNT:0 > 0
+					PRINTFORM [{2*LCOUNT-1}]
+					IF LCOUNT == 1
+						PRINTFORM パスライン({CRAPS:LCOUNT:4}):${CRAPS:LCOUNT:0}
+					ELSE
+						PRINTFORM カム({CRAPS:LCOUNT:4}):${CRAPS:LCOUNT:0}
+					ENDIF
+					PRINTFORM  +${CRAPS:LCOUNT:1}
+					SELECTCASE CRAPS:LCOUNT:4
+						CASE 4, 10
+							PRINTL (3倍)
+						CASE 5, 9
+							PRINTL (2.5倍)
+						CASE 6, 8
+							PRINTL (2.2倍)
+					ENDSELECT
+				ENDIF
+				IF CRAPS:LCOUNT:2 > 0
+					PRINTFORM [{2*LCOUNT}]
+					IF LCOUNT == 1
+						PRINTFORM ドントパス({CRAPS:LCOUNT:4}):${CRAPS:LCOUNT:2}
+					ELSE
+						PRINTFORM ドントカム({CRAPS:LCOUNT:4}):${CRAPS:LCOUNT:2}
+					ENDIF
+					PRINTFORM  +${CRAPS:LCOUNT:3}
+					SELECTCASE CRAPS:LCOUNT:4
+						CASE 4, 10
+							PRINTL (1.5倍)
+						CASE 5, 9
+							PRINTL (1.67倍)
+						CASE 6, 8
+							PRINTL (1.83倍)
+					ENDSELECT
+				ENDIF
+			NEXT
+			INPUT
+			IF RESULT > 0
+				;第1引数は結果を2で割って切り上げた値
+				;第2引数は結果が奇数なら0で偶数なら2
+				LARG1 = (RESULT+1)/2
+				LARG2 = 2-2*(RESULT%2)
+				IF CRAPS:LARG1:LARG2 > 0
+					CALL STAKE, CRAPS:LARG1:LARG2 * ODDS_BET_MAX - CRAPS:LARG1:(LARG2+1)
+					CRAPS:LARG1:(LARG2+1) += RESULT
+					MONEY -= RESULT
+				ENDIF
+			ENDIF 
+		ELSEIF (RESULT !=7 && INRANGE(RESULT, 4, 10)) || INRANGE(RESULT, 12, 15) || INRANGE(RESULT, 21, 27)
+			LNO = RESULT
+			CALL STAKE, MAX_BET - LOCAL:LNO
+			LOCAL:LNO += RESULT
+			MONEY -= RESULT
+		ENDIF
+		GOTO CRAPS_BET
+		$CRAPS_BET_END
+		DICE1 = RAND:6 + 1
+		DICE2 = RAND:6 + 1
+		DICE_SUM = DICE1 + DICE2
+		CRAPS:GAMES:4 = DICE_SUM
+		PRINTW ………………
+		PRINTW …………
+		PRINTW ……
+		PRINTFORMW 「『{DICE1}』『{DICE2}』で『{DICE_SUM}』です。」
+		;以下、通常の賭け方についての配当
+		GET_MONEY = 0
+		;1投目限定
+		IF GAMES == 1
+			IF DICE_SUM == 7 || DICE_SUM ==11
+				MONEY += CRAPS:1:0 * 2
+				PRINTW 「シューターの勝ちです。パスラインに賭けていた方には2倍の配当が入ります。」
+				SIF CRAPS:1:0 > 0
+					PRINTFORMW ${CRAPS:1:0 * 2}を受け取った。
+				GOTO CRAPS_SERIES_END;シリーズ終了
+			ELSEIF DICE_SUM == 2 || DICE_SUM == 3 || DICE_SUM == 12
+				MONEY += CRAPS:1:2 * 2
+				PRINTW 「シューターの負けです。ドントパスに賭けていた方には2倍の配当が入ります。」
+				SIF CRAPS:1:2 > 0
+					PRINTFORMW ${CRAPS:1:2 * 2}を受け取った。
+				GOTO CRAPS_SERIES_END;シリーズ終了
+			ENDIF
+		;2投目以降
+		ELSE
+			;7が出たらシリーズ終了
+			IF DICE_SUM == 7
+				FOR LCOUNT, 1, GAMES
+					GET_MONEY += 2 * CRAPS:GAMES:2
+					SELECTCASE CRAPS:GAMES:4
+						CASE 4, 10
+							GET_MONEY += CRAPS:GAMES:3 *3/2
+						CASE 5, 9
+							GET_MONEY += CRAPS:GAMES:3 *5/3
+						CASE 6, 8
+							GET_MONEY += CRAPS:GAMES:3 *11/6
+					ENDSELECT
+				NEXT
+				GET_MONEY += 2 * CRAPS:GAMES:0
+				MONEY += GET_MONEY
+				PRINTL 「セブンアウトです。前回までにドントパス・ドントカムに賭けていた方にはそれぞれの配当が入ります。
+				PRINTW 　また、たった今カムに賭けていた方にも2倍の配当が入ります。」
+				IF LOCAL:27 > 0
+					GET_MONEY += 5 * LOCAL:27
+					PRINTW 「エニーセブンに賭けていた方には5倍の配当が入ります。」
+					LOCAL:27 = 0
+				ENDIF
+				SIF GET_MONEY > 0
+					PRINTFORMW ${GET_MONEY}を受け取った。
+				GOTO CRAPS_SERIES_END;シリーズ終了
+			;7以外が出た場合はシリーズは終了しない
+			ELSEIF DICE_SUM == 2 || DICE_SUM == 3
+				GET_MONEY += 2 * CRAPS:GAMES:2
+				CRAPS:GAMES:0 = 0
+				CRAPS:GAMES:1 = 0
+				CRAPS:GAMES:2 = 0
+				CRAPS:GAMES:3 = 0
+				PRINTL 「たった今カムに賭けていた場合、その賭け金は没収です。」
+				PRINTW 　また、たった今ドントカムに賭けていた場合、2倍の配当が入ります。」
+				MONEY += GET_MONEY
+				SIF GET_MONEY > 0
+					PRINTFORMW ${GET_MONEY}を受け取った。
+			ELSEIF DICE_SUM == 11
+				GET_MONEY += 2 * CRAPS:GAMES:0
+				CRAPS:GAMES:0 = 0
+				CRAPS:GAMES:1 = 0
+				CRAPS:GAMES:2 = 0
+				CRAPS:GAMES:3 = 0
+				PRINTL 「たった今カムに賭けていた場合、2倍の配当が入ります。
+				PRINTW 　また、たった今ドントカムに賭けていた場合、その賭け金は没収です。」
+				MONEY += GET_MONEY
+				SIF GET_MONEY > 0
+					PRINTFORMW ${GET_MONEY}を受け取った。
+			ELSEIF DICE_SUM == 12
+				GET_MONEY += CRAPS:GAMES:2
+				CRAPS:GAMES:0 = 0
+				CRAPS:GAMES:1 = 0
+				CRAPS:GAMES:2 = 0
+				CRAPS:GAMES:3 = 0
+				PRINTL 「たった今カムに賭けていた場合、その賭け金は没収です。
+				PRINTW 　また、たった今ドントカムに賭けていた方には賭け金が戻ります。」
+				MONEY += GET_MONEY
+				SIF GET_MONEY > 0
+					PRINTFORMW ${GET_MONEY}を受け取った。
+			;出目が4,5,6,8,9,10のとき
+			ELSE
+				;パスライン・カムへの払い戻し
+				FOR LCOUNT, 1, GAMES
+					IF CRAPS:LCOUNT:4 == DICE_SUM
+						GET_MONEY += 2 * CRAPS:LCOUNT:0
+						SELECTCASE DICE_SUM
+							CASE 4, 10
+								GET_MONEY += CRAPS:LCOUNT:1 *3
+							CASE 5, 9
+								GET_MONEY += CRAPS:LCOUNT:1 *5/2
+							CASE 6, 8
+								GET_MONEY += CRAPS:LCOUNT:1 *11/5
+						ENDSELECT
+						CRAPS:LCOUNT:0 = 0
+						CRAPS:LCOUNT:1 = 0
+						CRAPS:LCOUNT:2 = 0
+						CRAPS:LCOUNT:3 = 0
+					ENDIF
+					
+				NEXT
+				;プレースベットへの払い戻し
+				SELECTCASE DICE_SUM
+					CASE 4, 10
+						GET_MONEY += LOCAL:(DICE_SUM) *14/5
+					CASE 5, 9
+						GET_MONEY += LOCAL:(DICE_SUM) *12/5
+					CASE 6, 8
+						GET_MONEY += LOCAL:(DICE_SUM) *13/6
+				ENDSELECT
+				LOCAL:(DICE_SUM) = 0
+				PRINTFORML 「ポイントが『{DICE_SUM}』のパスライン・カムに賭けていた方には配当が入り、
+				PRINTFORML 　ポイントが『{DICE_SUM}』のドントパス・ドントカムへの賭け金は没収です。
+				PRINTFORM 　また、『{DICE_SUM}』へプレースベットしていた方には
+				SELECTCASE DICE_SUM
+					CASE 4, 10
+						PRINT 2.8
+					CASE 5, 9
+						PRINT 2.4
+					CASE 6, 8
+						PRINT 2.17
+				ENDSELECT
+				PRINTW 倍の配当が入ります。」
+				MONEY += GET_MONEY
+				SIF GET_MONEY > 0
+					PRINTFORMW ${GET_MONEY}を受け取った。
+			ENDIF
+		ENDIF
+		;以下、特殊な賭け方についての配当
+		GET_MONEY = 0
+		;[12]ハード4 [13]ハード6 [14]ハード8 [15]ハード10
+		;賭けた数がゾロ目で出たら勝ち ゾロ目以外で出たら負け
+		;ハード4,6,8,10に賭けていてサイコロの出目が4,6,8,10のとき
+		IF MAX(LOCAL:12, LOCAL:13, LOCAL:14, LOCAL:15) > 0 && INRANGE(DICE_SUM, 4, 10) && DICE_SUM % 2 == 0
+			IF DICE1 == DICE2
+				PRINTFORM 「ハード{DICE_SUM}に賭けていた方には
+				SELECTCASE DICE_SUM
+					CASE 4
+						GET_MONEY += 8 * LOCAL:12
+						PRINT 8
+					CASE 6
+						GET_MONEY += 10 * LOCAL:13
+						PRINT 10
+					CASE 8
+						GET_MONEY += 10 * LOCAL:14
+						PRINT 10
+					CASE 10
+						GET_MONEY += 8 * LOCAL:15
+						PRINT 8
+				ENDSELECT
+				PRINTW 倍の配当が入ります。」
+			ELSE
+				PRINTFORMW 「ハード{DICE_SUM}への賭け金は没収です。」
+			ENDIF
+			LOCAL:(10 + DICE_SUM / 2) = 0
+		ENDIF
+		;[21]フィールドベット
+		;2,3,4,9,10,11,12が出たら勝ち それ以外は負け
+		;12なら4倍 2なら3倍 それ以外なら2倍
+		IF LOCAL:21 > 0
+			IF DICE_SUM <= 4 || 9 <= DICE_SUM
+				PRINT 「フィールドベットに賭けていた方には
+				IF DICE_SUM == 12
+					GET_MONEY += 4 * LOCAL:21
+					PRINT 4
+				ELSEIF DICE_SUM == 2
+					GET_MONEY += 3 * LOCAL:21
+					PRINT 3
+				ELSE
+					GET_MONEY += 2 * LOCAL:21
+					PRINT 2
+				ENDIF
+				PRINTW 倍の配当が入ります。」
+			ELSE
+				PRINTW 「フィールドベットへの賭け金は没収です。」
+			ENDIF
+			LOCAL:21 = 0
+		ENDIF
+		;[22]エニークラップス
+		;2,3,12なら勝ちで8倍 それ以外なら負け
+		IF LOCAL:22 > 0
+			IF DICE_SUM <= 3 || 12 == DICE_SUM
+				GET_MONEY += 8 * LOCAL:22
+				PRINTW 「エニークラップスに賭けていた方には8倍の配当が入ります。」
+			ELSE
+				PRINTW 「エニークラップスへの賭け金は没収です。」
+			ENDIF
+			LOCAL:22 = 0
+		ENDIF
+		;[23]２
+		;2が出たら勝ちで30倍 それ以外なら負け
+		IF LOCAL:23 > 0
+			IF DICE_SUM == 2
+				GET_MONEY += 30 * LOCAL:23
+				PRINTW 「『２』に賭けていた方には30倍の配当が入ります。」
+			ELSE
+				PRINTW 「『２』への賭け金は没収です。」
+			ENDIF
+			LOCAL:23 = 0
+		ENDIF
+		;[24]３
+		;3が出たら勝ちで15倍 それ以外なら負け
+		IF LOCAL:24 > 0
+			IF DICE_SUM == 3
+				GET_MONEY += 15 * LOCAL:24
+				PRINTW 「『３』に賭けていた方には15倍の配当が入ります。」
+			ELSE
+				PRINTW 「『３』への賭け金は没収です。」
+			ENDIF
+			LOCAL:24 = 0
+		ENDIF
+		;[25]１２
+		;12が出たら勝ちで30倍 それ以外なら負け
+		IF LOCAL:25 > 0
+			IF DICE_SUM == 12
+				GET_MONEY += 30 * LOCAL:25
+				PRINTW 「『１２』に賭けていた方には30倍の配当が入ります。」
+			ELSE
+				PRINTW 「『１２』への賭け金は没収です。」
+			ENDIF
+			LOCAL:25 = 0
+		ENDIF
+		;[26]１１
+		;2が出たら勝ちで30倍 それ以外なら負け
+		IF LOCAL:26 > 0
+			IF DICE_SUM == 11
+				GET_MONEY += 15 * LOCAL:26
+				PRINTW 「『１１』に賭けていた方には15倍の配当が入ります。」
+			ELSE
+				PRINTW 「『１１』への賭け金は没収です。」
+			ENDIF
+			LOCAL:26 = 0
+		ENDIF
+		;[27]エニーセブン
+		;7が出たら勝ちで5倍 それ以外なら負け
+		IF LOCAL:27 > 0
+			PRINTW 「エニーセブンへの賭け金は没収です。」
+			LOCAL:27 = 0
+		ENDIF
+		MONEY += GET_MONEY
+		SIF GET_MONEY > 0
+			PRINTFORMW ${GET_MONEY}を受け取った。
+		;ゲーム回数の加算
+		GAMES += 1
+	LOOP 1
+	$CRAPS_SERIES_END
+NEXT
+$CRAPS_END
