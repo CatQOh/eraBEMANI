@@ -1,0 +1,433 @@
+﻿@ルーレット, ARG
+#DIM DYNAMIC ゲーム数 = 8
+#DIM DYNAMIC ゲーム回数
+#DIM DYNAMIC ベット行
+#DIM DYNAMIC ベット列
+#DIM DYNAMIC 賭け番号
+#DIM DYNAMIC ベットID
+#DIM DYNAMIC 倍率
+#DIM DYNAMIC 賭けた数字, 4
+#DIM DYNAMIC 賭け金
+#DIM DYNAMIC ポケット
+#DIMS DYNAMIC 行頭
+#DIMS DYNAMIC 行末
+#DIM DYNAMIC 賭け金上限 = 30000
+#DIMS DYNAMIC 表示用変数, 28
+
+LOCAL:0 = 8;ゲーム数の設定
+LOCAL:1 = 0;現在のゲーム回数
+LOCAL:2 = 0;ベットをするテーブルで何行目か(値は3で割った余り/ただし0は3にする)
+LOCAL:3 = 0;ベットをするテーブルで何列目か
+LOCAL:4 = 0;1点賭けの番号
+LOCAL:5 = 0;配当の倍率
+LOCAL:6 = 0;賭けた数字(その1/特殊な賭け方の際にも使用)
+LOCAL:7 = 0;賭けた数字(その2)
+LOCAL:8 = 0;賭けた数字(その3)
+LOCAL:9 = 0;賭けた数字(その4)
+LOCAL:10 = 0;賭け金
+LOCAL:11 = 0;玉が落ちた場所
+LOCAL:12 = 30000;このゲームの賭け金の上限
+;2点賭けは「2831」、4点賭けは「17182021」のように全ての賭けをパターンを数値化
+;テンキー入力の場合、「1032」のように一度に置けないような複数賭けが可能
+
+DO
+	$ROULETTE_SELECT
+	DRAWLINE
+	PRINTFORML <残り{ゲーム数-ゲーム回数}回>
+	PRINT 所持金:
+	SIF MONEY < 0
+		SETCOLORBYNAME red
+
+	CALL PASELI, @"{MONEY}＄ "
+	RESETCOLOR
+	CALL PASELIL, @"MAXBET:{賭け金上限}＄"
+	PRINTL どこに賭けますか？
+	LOCALS = <shape type='rect' param='10,100,3150,1100' color='forestgreen'>
+	HTML_PRINT LOCALS
+	FOR ベット行, 3, 0, -1
+		VARSET 表示用変数
+		;ベット行は(下から)1行目、2行目は数字部分と罫線部分の二列を処理している ベット列12列目以外は同様
+		;一番上の行を罫線で揃える
+		IF ベット行 == 3
+			SETCOLORBYNAME darkgoldenrod
+			PRINTPLAIN ┌─┬
+			FOR ベット列, 0, 12
+				IF ベット列 != 11
+					PRINTPLAIN ─┬
+				ELSE
+					PRINTPLAIN ─┬──┐
+					PRINTL 
+				ENDIF
+			NEXT
+			RESETCOLOR
+		ENDIF
+		IF ベット行 <= 2
+			行頭 = %SET_TOOLTIP("│", "", 0, "darkgoldenrod")%
+			表示用変数:0 = %SET_TOOLTIPBUTTON("  ", "0", "0に賭けます", "lime")%
+
+			SETCOLORBYNAME darkgoldenrod
+			ベットID = ベット行*10100+100
+			表示用変数:1 = %SET_TOOLTIPBUTTON("├", @"{ベットID}", @"{ベットID/10000%100}、{ベットID/100}、{ベットID%100}に賭けます")%
+			FOR ベット列, 0, 12
+				賭け番号 = ベット行+ベット列*3
+				ベットID = 賭け番号*101+1
+				表示用変数:(ベット列*2+2) = %SET_TOOLTIPBUTTON("─", @"{ベットID}", @"{ベットID/100}、{ベットID%100}に賭けます")%
+				IF ベット列 !=11
+					ベットID = 賭け番号*1010101+10304
+					表示用変数:(ベット列*2+3) = %SET_TOOLTIPBUTTON("┼", @"{ベットID}", @"{ベットID/1000000}、{ベットID/10000%100}、{ベットID/100%100}、{ベットID%100}に賭けます")%
+				ELSE
+					表示用変数:26 = %SET_TOOLTIP("┼──┤", "", 0)%
+					STRJOIN 表示用変数, ""
+					HTML_PRINT 行頭+RESULTS
+				ENDIF
+			NEXT
+		ENDIF
+		VARSET 表示用変数
+		行頭 = %SET_TOOLTIP("│", "", 0, "darkgoldenrod")%
+		SETCOLORBYNAME lime
+		表示用変数:0 = %SET_TOOLTIPBUTTON(@"\@ ベット行 == 2 ? {0, 2} # 　 \@", "0", "0に賭けます", "lime")%
+
+		SETCOLORBYNAME darkgoldenrod
+		ベットID = ベット行*100
+		表示用変数:1 = %SET_TOOLTIPBUTTON("│", @"{ベットID}", @"0、{ベットID/100}に賭けます")%
+		FOR ベット列, 0, 12
+			賭け番号 =ベット行+ベット列*3
+			表示用変数:(ベット列*2+2) = %SET_TOOLTIPBUTTON(@"{賭け番号, 2}", @"{賭け番号}", @"{賭け番号}に賭けます", COLOR_ROULETTE(賭け番号))%
+			SETCOLORBYNAME darkgoldenrod
+			IF ベット列 != 11
+				ベットID = 賭け番号*101+3
+				表示用変数:(ベット列*2+3) = %SET_TOOLTIPBUTTON("│", @"{ベットID}", @"{ベットID/100}、{ベットID%100}に賭けます")%
+			ELSE
+				表示用変数:26 = %SET_TOOLTIP("│", "", 0)%
+				表示用変数:27 = %SET_TOOLTIPBUTTON("2to1", @"{賭け番号+3}", @"下から{ベット行}番目の行に賭けます", "white")%
+				行末 = %SET_TOOLTIP("│", "", 0)%
+				STRJOIN 表示用変数, ""
+				HTML_PRINT 行頭+RESULTS+行末
+			ENDIF
+		NEXT
+		IF ベット行 == 1
+			VARSET 表示用変数
+			SETCOLORBYNAME darkgoldenrod
+			表示用変数 = %SET_TOOLTIP("└─┼", "", 0)%
+			FOR ベット列, 0, 12
+				表示用変数:(ベット列*2+2) = %SET_TOOLTIP("─", "", 0)%
+				IF ベット列 == 11
+					表示用変数:(ベット列*2+3) = %SET_TOOLTIP("┼──┘", "", 0)%
+				ELSE
+					表示用変数:(ベット列*2+3) = %SET_TOOLTIPBUTTON(@"\@ ベット列%4 == 3 ? ┼ # ┴ \@", @"{40+ベット列}", @"{ベット列*3+1}～{ベット列*3+6}の数字に賭けます")%
+				ENDIF
+			NEXT
+			STRJOIN 表示用変数, ""
+			HTML_PRINT RESULTS
+			RESETCOLOR
+		ENDIF
+	NEXT
+	
+	VARSET 表示用変数
+	FOR ベット列, 0, 12
+		;まぁ4じゃなくてもいいんだけど
+		SIF ベット列%4 == 0 || ベット列 == 11
+			表示用変数:ベット列 = %SET_TOOLTIP("│", "", 0, "darkgoldenrod")%
+	NEXT
+	
+	SETCOLORBYNAME white
+	表示用変数:1 = %SET_TOOLTIPBUTTON("　　1st 12　　", "51", "1～12の数字に賭けます")%
+	表示用変数:5 = %SET_TOOLTIPBUTTON("　　2nd 12　　", "52", "13～24の数字に賭けます")%
+	表示用変数:9 = %SET_TOOLTIPBUTTON("　　3rd 12　　", "53", "25～36の数字に賭けます")%
+	STRJOIN 表示用変数, ""
+	HTML_PRINT @"　　%RESULTS%"
+	
+	SETCOLORBYNAME darkgoldenrod
+	PRINTPLAIN 　　├
+	FOR ベット列, 0, 12
+		IF ベット列 == 11
+			PRINTPLAIN ─┤
+		ELSEIF ベット列%4 == 3
+			PRINTPLAIN ─┼
+		ELSEIF ベット列%2 == 1
+			PRINTPLAIN ─┬
+		ELSE
+			PRINTPLAIN ──
+		ENDIF
+	NEXT
+	PRINTL 
+	
+	VARSET 表示用変数
+	SETCOLORBYNAME white
+	FOR ベット列, 0, 12
+		SIF ベット列%2 == 0
+			表示用変数:ベット列 = %SET_TOOLTIP("│", "", 0, "darkgoldenrod")%
+	NEXT
+	
+	表示用変数:1 = %SET_TOOLTIPBUTTON(" 1-18 ", "54", "1～18の数字に賭けます")%
+	表示用変数:3 = %SET_TOOLTIPBUTTON(" EVEN ", "57", "偶数に賭けます")%
+	表示用変数:5 = %SET_TOOLTIPBUTTON("　◆　", "58", "赤色の数字に賭けます", "red")%
+	表示用変数:7 = %SET_TOOLTIPBUTTON("　◆　", "59", "黒色の数字に賭けます", "black")%
+	表示用変数:9 = %SET_TOOLTIPBUTTON("  ODD ", "56", "奇数に賭けます")%
+	表示用変数:11 = %SET_TOOLTIPBUTTON(" 19-36", "55", "19～36の数字に賭けます")%
+	行末　= %SET_TOOLTIP("│", "", 0, "darkgoldenrod")%
+	
+	STRJOIN 表示用変数, ""
+	HTML_PRINT @"　　%RESULTS%%行末%"
+
+	SETCOLORBYNAME darkgoldenrod
+	PRINTPLAIN 　　└
+	FOR ベット列, 0, 12
+		IF ベット列 == 11
+			PRINTPLAIN ─┘
+		ELSEIF ベット列%2 == 1
+			PRINTPLAIN ─┴
+		ELSE
+			PRINTPLAIN ──
+		ENDIF
+	NEXT
+	PRINTL 
+	
+;	SETCOLOR 0xFF00FF
+;	PRINT 配当6倍…
+;	PRINTBUTTON "[ 1- 6] ", 40
+;	PRINTBUTTON "[ 4- 9] ", 41
+;	PRINTBUTTON "[ 7-12] ", 42
+;	PRINTBUTTON "[10-15] ", 43
+;	PRINTBUTTON "[13-18] ", 44
+;	PRINTBUTTON "[16-21] ", 45
+;	PRINTBUTTON "[19-24] ", 46
+;	PRINTBUTTON "[22-27] ", 47
+;	PRINTBUTTON "[25-30] ", 48
+;	PRINTBUTTON "[28-33] ", 49
+;	PRINTBUTTON "[31-36] ", 50
+;	PRINTL
+;	SETCOLOR 0xFF00FF
+;	PRINT 配当3倍…
+;	PRINTBUTTON "[ 1-12] ", 51
+;	PRINTBUTTON "[13-24] ", 52
+;	PRINTBUTTON "[25-36] ", 53
+;	PRINTL
+;	SETCOLOR 0xFF00FF
+;	PRINT 配当2倍…
+;	PRINTBUTTON "[ 1-18] ", 54
+;	PRINTBUTTON "[19-36] ", 55
+;	PRINTBUTTON "[ODD]   ", 56
+;	PRINTBUTTON "[EVEN]  ", 57
+;	SETCOLOR 0xFF0000
+;	PRINTBUTTON "[RED]   ", 58
+;	SETCOLOR 0x0000FF
+;	PRINTBUTTON "[BLACK] ", 59
+	PRINTL
+	RESETCOLOR
+	PRINTL [99] もうやめる
+	DO
+		INPUT
+		VARSET 賭けた数字
+		IF RESULT > 1000000
+			賭けた数字 = RESULT / 1000000
+			賭けた数字:1 = (RESULT / 10000) % 100
+			賭けた数字:2 = (RESULT / 100) % 100
+			賭けた数字:3 = RESULT % 100
+			;コーナー
+			IF MAXARRAY(賭けた数字) <= 36
+				IF NOSAMES(賭けた数字, 賭けた数字:1, 賭けた数字:2, 賭けた数字:3)
+					倍率 = 9
+					PRINTFORMW {賭けた数字}・{賭けた数字:1}・{賭けた数字:2}・{賭けた数字:3}の4点賭けにしよう。
+					GOTO ROULETTE_STAKE
+				ENDIF
+			ENDIF
+		ELSEIF RESULT > 10000
+			賭けた数字 = RESULT / 10000
+			賭けた数字:1 = (RESULT / 100) % 100
+			賭けた数字:2 = RESULT % 100
+			;ストリート
+			IF MAXARRAY(賭けた数字) <= 36
+				IF NOSAMES(賭けた数字, 賭けた数字:1, 賭けた数字:2)
+					倍率 = 12
+					PRINTFORMW {賭けた数字}・{賭けた数字:1}・{賭けた数字:2}の3点賭けにしよう。
+					GOTO ROULETTE_STAKE
+				ENDIF
+			ENDIF
+		ELSEIF RESULT >= 100
+			賭けた数字 = RESULT / 100
+			賭けた数字:1 = RESULT % 100
+			;スプリット
+			IF MAXARRAY(賭けた数字) <= 36
+				IF 賭けた数字 != 賭けた数字:1
+					倍率 = 18
+					PRINTFORMW {賭けた数字}・{賭けた数字:1}の2点賭けにしよう。
+					GOTO ROULETTE_STAKE
+				ENDIF
+			ENDIF
+		ELSEIF INRANGE(RESULT, 0, 59)
+			賭けた数字 = RESULT
+			;18点賭け
+			IF 賭けた数字 >= 54
+				倍率 = 2
+				SELECTCASE 賭けた数字
+					CASE 54
+						PRINTW 1から18であることに賭けよう。
+					CASE 55
+						PRINTW 19から36であることに賭けよう。
+					CASE 56
+						PRINTW 奇数であることに賭けよう。
+					CASE 57
+						PRINTW 偶数であることに賭けよう。
+					CASE 58
+						PRINTW 赤であることに賭けよう。
+					CASE 59
+						PRINTW 黒であることに賭けよう。
+				ENDSELECT
+			;ダズン
+			ELSEIF 賭けた数字 >= 51
+				倍率 = 3
+				PRINTFORMW {(賭けた数字-51)*12+1}から{(賭けた数字-50)*12}であることに賭けよう。
+			;ライン
+			ELSEIF 賭けた数字 >= 40
+				倍率 = 6
+				PRINTFORMW {(賭けた数字-40)*3+1}から{(賭けた数字-38)*3}の2列に賭けよう。
+			;コラム
+			ELSEIF 賭けた数字 >= 37
+				倍率 = 3
+				PRINTFORMW {賭けた数字-36}から{賭けた数字-3}の列であることに賭けよう。
+			;ストレートアップ
+			ELSE
+				倍率 = 36
+				PRINTFORMW {賭けた数字}の1点に賭けよう。
+			ENDIF
+			GOTO ROULETTE_STAKE
+		ELSEIF RESULT == 99
+			PRINTL 本当によろしいですか？
+			PRINTL [98] やっぱり続ける [99] 本当にやめる
+			INPUT
+			SIF RESULT == 99
+				GOTO ROULETTE_END
+			GOTO ROULETTE_SELECT
+		ENDIF
+	LOOP 1
+	$ROULETTE_STAKE
+	PRINTFORML 当たれば{倍率}倍だ。
+	PRINTL 
+	CALL STAKE, 賭け金上限
+	賭け金 = RESULT
+	CALL PASELIW, @"{賭け金}＄を賭けることにした。"
+	MONEY -= 賭け金
+	PRINTL 
+	ポケット = RAND:37
+	PRINTW ………………
+	PRINTW …………
+	PRINTW ……
+	PRINT 「
+;	SETCOLORBYNAME %COLOR_ROULETTE(ポケット)%
+	SELECTCASE COLOR_ROULETTE(ポケット)
+		CASE "red"
+			PRINT 赤の
+		CASE "black"
+			PRINT 黒の
+	ENDSELECT
+	PRINTFORM {ポケット}
+	RESETCOLOR
+	PRINTW です。」
+	SELECTCASE 倍率
+		CASE 36
+			IF 賭けた数字 == ポケット
+				PRINTL …………なんということだろう。
+				SIF 賭けた数字 == 0
+					PRINT 「0」の
+				PRINTL 1点張りで見事に当ててしまった。
+				CALL PASELIL, @"配当の{賭け金*倍率}＄もさることながら、"
+				PRINTW ギャラリーからの歓声はなかなか気分のいいものだ。
+				MONEY += 賭け金*倍率
+			ENDIF
+		CASE 18
+			IF MATCH(賭けた数字, ポケット)
+				PRINTL 2点賭けを見事に当てた。
+				CALL PASELIW, @"配当の{賭け金*倍率}＄を気分良く受け取った。"
+				MONEY += 賭け金*倍率
+			ENDIF
+		CASE 12
+			IF MATCH(賭けた数字, ポケット)
+				CALL PASELIL, @"3点賭けを見事に当て、配当の{賭け金*倍率}＄を受け取った。"
+				PRINTW よくこんな変な張り方で当てたもんだ。
+				MONEY += 賭け金*倍率
+			ENDIF
+		CASE 9
+			IF MATCH(賭けた数字, ポケット)
+				CALL PASELIW, @"4点賭けを見事に当て、配当の{賭け金*倍率}＄を受け取った。"
+				MONEY += 賭け金*倍率
+			ENDIF
+		CASE 6
+			IF INRANGE(ポケット, (賭けた数字-40)*3+1, (賭けた数字-38)*3)
+				CALL PASELIW, @"2列賭けを当て、配当の{賭け金*倍率}＄を受け取った。"
+				MONEY += 賭け金*倍率
+			ENDIF
+		CASE 3
+			IF INRANGE(賭けた数字, 37, 39)
+				IF 賭けた数字%3 == ポケット%3
+					CALL PASELIW, @"3倍付けで、{賭け金*倍率}＄を受け取った。"
+					MONEY += 賭け金*倍率
+				ENDIF
+			ELSE
+				IF INRANGE(ポケット, (賭けた数字-51)*12+1, (賭けた数字-50)*12)
+					CALL PASELIW, @"3倍付けで、{賭け金*倍率}＄を受け取った。"
+					MONEY += 賭け金*倍率
+				ENDIF
+			ENDIF
+		CASEELSE
+			IF INRANGE(賭けた数字, 54, 55)
+				IF INRANGE(ポケット, (賭けた数字-54)*18+1, (賭けた数字-54)*18+1)
+					CALL PASELIW, @"2倍付けで、{賭け金*倍率}＄を受け取った。"
+					MONEY += 賭け金*倍率
+				ENDIF
+			ELSEIF INRANGE(賭けた数字, 56, 57)
+				IF 賭けた数字%2 != ポケット%2
+					CALL PASELIW, @"2倍付けで、{賭け金*倍率}＄を受け取った。"
+					MONEY += 賭け金*倍率
+				ENDIF
+			ELSE
+				IF INRANGE(ポケット, 1, 10) || INRANGE(ポケット, 19, 28)
+					IF ポケット%2 == 1
+						IF 賭けた数字 == 58
+							CALL PASELIW, @"2倍付けで、{賭け金*倍率}＄を受け取った。"
+							MONEY += 賭け金*倍率
+						ENDIF
+					ELSE
+						IF 賭けた数字 == 59
+							CALL PASELIW, @"2倍付けで、{賭け金*倍率}＄を受け取った。"
+							MONEY += 賭け金*倍率
+						ENDIF
+					ENDIF
+				ELSE
+					IF ポケット%2 == 0
+						IF 賭けた数字 == 58
+							CALL PASELIW, @"2倍付けで、{賭け金*倍率}＄を受け取った。"
+							MONEY += 賭け金*倍率
+						ENDIF
+					ELSE
+						IF 賭けた数字 == 59
+							CALL PASELIW, @"2倍付けで、{賭け金*倍率}＄を受け取った。"
+							MONEY += 賭け金*倍率
+						ENDIF
+					ENDIF
+				ENDIF
+			ENDIF
+	ENDSELECT
+	ゲーム回数++
+LOOP ゲーム回数 != ゲーム数
+$ROULETTE_END
+
+;カラーコードを返す関数
+@COLOR_ROULETTE(ARG)
+#FUNCTIONS
+IF INRANGE(ARG, 1, 10) || INRANGE(ARG, 19, 28)
+	IF ARG%2 == 1
+		RETURNF "red";赤
+	ELSE
+		RETURNF "black";黒
+	ENDIF
+ELSEIF INRANGE(ARG, 11, 18) || INRANGE(ARG, 29, 36)
+	IF ARG%2 == 0
+		RETURNF "red";赤
+	ELSE
+		RETURNF "black";黒
+	ENDIF
+ELSE
+	RETURNF "lime";0(緑)
+ENDIF
+
