@@ -9,6 +9,33 @@ FOR LCOUNT, 0, 800
 	;コマンドが無ければCONTINUE
 	SIF TRAINNAME:LCOUNT == ""
 		CONTINUE
+	;フィルタでの表示/非表示はここで一元管理する
+	SELECTCASE TRAINNAME:LCOUNT
+		;Ｖ系コマンドフィルタの対象
+		{
+		CASE "指挿入れ", "バイブ", "正常位", "後背位", "騎乗位", "対面座位", "背面座位", "下着ずらし挿入", "フィストファック",
+			 "両穴フィスト", "異物挿入", "触手挿入", "膣を犯す（ドラゴン）", "ペットに犯させる",
+		}
+			SIF FLAG:Ｖ系コマンドフィルタ
+				CONTINUE
+		;Ａ系コマンドフィルタの対象
+		{
+		CASE "アナル舐め", "アナル愛撫", "アナルバイブ", "アナルビーズ", "浣腸器", "空気浣腸", "拡張バルーン", "アナル電極",
+			 "ローション注入", "正常位アナル", "後背位アナル", "騎乗位アナル", "対面座位アナル", "背面座位アナル", "下着ずらし挿入アナル",
+			 "アナルフィスト", "両穴フィスト", "異物挿入", "アナル触手", "触手浣腸", "アナルを犯す（ドラゴン）", "ペットに犯させる",
+			 "腸洗浄",
+		}
+			 SIF FLAG:Ａ系コマンドフィルタ
+			 	CONTINUE
+		;暴力コマンドフィルタの対象
+		{
+		CASE "スパンキング", "乳スパンキング", "鞭", "蝋燭", "針", "アイマスク", "縄", "ボールギャグ", "叩いてもらう",
+			 "踏んでもらう", "鞭打ちしてもらう", "腹パン", "踏む", "裸締め", "首を絞める", "ビンタ", "フィストファック",
+			 "アナルフィスト", "両穴フィスト", "異物挿入", "フィストファックさせる", "アナルフィストさせる",
+		}
+			SIF FLAG:暴力コマンドフィルタ
+				CONTINUE
+	ENDSELECT
 	;CALLF系命令では返り値が無いのでCOMRESULTに結果を入れている
 	COMRESULT = 0
 	CALLFORMF USERCOM_ABLE_%TRAINNAME:LCOUNT%()
@@ -178,6 +205,7 @@ SIF SELECTCOM:1 >= 0
 PRINTC コマンドセット2の設定[903]
 SIF SELECTCOM:11 >= 0
 	PRINTC コマンドセット2の実行[904]
+PRINTC コマンドフィルタの設定[950]
 IF 上級売春中
 	PRINTC 売春終了[999]
 ELSEIF FLAG:ゲームモード == 7
@@ -317,6 +345,27 @@ SELECTCASE RESULT
 			CALL COMMENU_START, 1
 			RETURN 1
 		ENDIF
+	;コマンドフィルタ設定
+	CASE 950
+		$コマンドフィルタ
+		PRINTFORML [1] Ｖ系コマンドを表示\@ FLAG:Ｖ系コマンドフィルタ ? する # しない \@
+		PRINTFORML [2] Ａ系コマンドを表示\@ FLAG:Ａ系コマンドフィルタ ? する # しない \@
+		PRINTFORML [3] 暴力系コマンドを表示\@ FLAG:暴力コマンドフィルタ ? する # しない \@
+		PRINTL [0] 戻る
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					RETURN 1
+				CASE 1
+					INVERTBIT FLAG:Ｖ系コマンドフィルタ, 0
+				CASE 2
+					INVERTBIT FLAG:Ａ系コマンドフィルタ, 0
+				CASE 3
+					INVERTBIT FLAG:暴力コマンドフィルタ, 0
+			ENDSELECT
+			GOTO コマンドフィルタ
+		LOOP 1
 	;調教終了
 	CASE 999
 		IF 上級売春中
