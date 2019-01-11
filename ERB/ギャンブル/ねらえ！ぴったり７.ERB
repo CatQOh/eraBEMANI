@@ -1,0 +1,232 @@
+﻿@ねらえ！ぴったり７, ARG
+#DIM DYNAMIC STEP, 2
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC STEP_LEFT, 2
+#DIM DYNAMIC TURN;ターン数 交互に数えるので最大4ターン
+#DIM DYNAMIC DICE
+#DIM DYNAMIC 勝利確定
+
+PRINT ねらえ！ぴったり７ (現在の賭け金:
+SETCOLORBYNAME red
+CALL PASELI, @"{ARG}＄"
+RESETCOLOR
+PRINTL )
+PRINTL 　　　　　　　　　　　　★☆★ ルール ★☆★
+PRINTL 1～6が出るサイコロを
+PRINTL ディーラー → プレイヤー → ディーラー → プレイヤー
+PRINTL の順番に振って出た目の数だけ7段ある階段を登っていきます。
+PRINTL サイコロを振らない選択もとれます。
+PRINTL ディーラー以上の位置にいたら勝ちですが、登りすぎて階段から落ちると負けです。
+PRINTL 払い戻し金は通常の勝利が2倍でぴったり7段に登ると10倍となっております。
+PRINTL
+PRINTW ......READY?
+
+TURN = -1
+PRINTL
+
+DO
+	SIF TURN > 4
+		BREAK
+	IF STEP_LEFT || STEP_LEFT:1
+		CLEARLINE 11
+		IF STEP_LEFT
+			STEP++
+			STEP_LEFT--
+		ELSE
+			STEP:1++
+			STEP_LEFT:1--
+		ENDIF
+	ENDIF
+	FOR LCOUNT, 8, 0, -1
+		IF LCOUNT == 1
+			SETCOLORBYNAME red
+			PRINT ×
+		ELSE
+			PRINT 　
+		ENDIF
+		CALL PRT_STEP(LCOUNT)
+		IF STEP == LCOUNT-1
+			IF STEP:1 == LCOUNT-1
+				PRINT PD
+			ELSE
+				PRINT Ｄ
+			ENDIF
+		ELSEIF STEP:1 == LCOUNT-1
+			PRINT Ｐ
+		ENDIF
+		PRINTL
+	NEXT
+	PRINT 　
+	CALL PRT_STEP_NO
+	PRINTL
+	PRINTL
+	PRINTW
+	
+	SIF STEP > 7
+		STEP_LEFT = 0
+	SIF STEP:1 > 7
+		STEP_LEFT:1 = 0
+	
+	IF STEP_LEFT || STEP_LEFT:1
+		CONTINUE
+	ELSE
+		TURN++
+	ENDIF
+	SIF TURN > 4
+		BREAK
+
+	IF TURN < 1
+		CLEARLINE 1
+		PRINTW ゲームスタート
+		TURN = 1
+	ENDIF
+	IF TURN == 3
+		;ディーラーの行動
+		;同じ段以下ならば必ずサイコロを振る
+		;勝っていても2,3段にいる場合は必ずサイコロを振る
+		;4段なら50%の確率でサイコロを振る
+		IF STEP > STEP:1
+			SELECTCASE STEP
+				CASE 5, 6
+					CLEARLINE 1
+					PRINTW ディーラーは2回目のサイコロを振らないようだ。
+					TURN++
+				CASE 4
+					IF RAND:2
+						CLEARLINE 1
+						PRINTW ディーラーは2回目のサイコロを振らないようだ。
+						TURN++
+					ENDIF
+			ENDSELECT
+		ENDIF
+		IF TURN == 3
+			CLEARLINE 1
+			PRINTW ディーラーは2回目のサイコロを振るようだ。
+		ENDIF
+	ENDIF
+	IF TURN == 4
+		;相手が落下しているか自分が相手以上の位置にいる場合勝利確定
+		IF STEP > 7 || STEP <= STEP:1
+			勝利確定 = 1
+			CLEARLINE 1
+			PRINTW おめでとうございます。プレーヤーの勝利が確定しました。
+			CLEARLINE 2
+			PRINTL おめでとうございます。プレーヤーの勝利が確定しました。
+			PRINTW しかしもう一度サイコロを振りちょうど7段目に止まれた場合、配当は10倍になります。
+			CLEARLINE 2
+			PRINTL しかしもう一度サイコロを振りちょうど7段目に止まれた場合、配当は10倍になります。
+			PRINTW 挑戦しますか？
+			CLEARLINE 2
+			PRINTL 挑戦しますか？
+			PRINTW [0]はい [1]いいえ
+			$INPUT_LOOP
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					CLEARLINE 3
+					PRINTL
+					PRINTW
+				CASE 1
+					CLEARLINE 3
+					PRINTL
+					PRINTW プレイヤーは2回目のサイコロを振るのをやめました。
+					TURN++
+					CONTINUE
+				CASEELSE
+					CLEARLINE 1
+					GOTO INPUT_LOOP
+			ENDSELECT
+		ELSE
+			CLEARLINE 1
+			PRINTW プレイヤーは2回目のサイコロを振る必要があります。
+		ENDIF
+	ENDIF
+
+	CLEARLINE 2
+	PRINTL
+	PRINTW …………
+	DICE = 1+RAND:6
+	CLEARLINE 2
+	PRINTL …………
+	;奇数ターンはディーラー
+	IF TURN%2
+		STEP_LEFT = DICE
+		PRINTFORMW ディーラーのサイコロの目は「{DICE}」だ。
+	;偶数ターンはプレイヤー
+	ELSE
+		STEP_LEFT:1 = DICE
+		PRINTFORMW プレイヤーのサイコロの目は「{DICE}」だ。
+	ENDIF
+LOOP 1
+
+;結果をRETURNで返す
+;3...10倍付け勝利
+;2...通常勝利
+;1...敗北
+;0...勝利確定からの深追いで敗北
+IF STEP:1 <= 7
+	IF STEP > 7 || STEP <= STEP:1
+		;勝利
+		IF STEP:1 == 7
+			RETURN 3
+		ELSE
+			RETURN 2
+		ENDIF
+	ENDIF
+ENDIF
+;敗北
+IF 勝利確定
+	RETURN 0
+ELSE
+	RETURN 1
+ENDIF
+
+
+@PRT_STEP(ARG)
+IF ARG<=7
+	SETCOLORBYNAME royalblue
+	PRINT ■
+ENDIF
+IF ARG<=6
+	SETCOLORBYNAME gold
+	PRINT ■
+ENDIF
+IF ARG<=5
+	SETCOLORBYNAME darkorange
+	PRINT ■
+ENDIF
+IF ARG<=4
+	SETCOLORBYNAME green
+	PRINT ■
+ENDIF
+IF ARG<=3
+	SETCOLORBYNAME hotpink
+	PRINT ■
+ENDIF
+IF ARG<=2
+	SETCOLORBYNAME purple
+	PRINT ■
+ENDIF
+IF ARG<=1
+	SETCOLORBYNAME turquoise
+	PRINT ■
+ENDIF
+RESETCOLOR
+
+
+@PRT_STEP_NO
+SETCOLORBYNAME orange
+PRINT ７
+SETCOLORBYNAME deepskyblue
+PRINT ６
+SETCOLORBYNAME mediumseagreen
+PRINT ５
+SETCOLORBYNAME blueviolet
+PRINT ４
+SETCOLORBYNAME cyan
+PRINT ３
+SETCOLORBYNAME plum
+PRINT ２
+SETCOLORBYNAME mediumspringgreen
+PRINT １
+RESETCOLOR
