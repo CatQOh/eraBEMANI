@@ -1,0 +1,360 @@
+﻿@ナンプレ
+#DIM DYNAMIC X座標
+#DIM DYNAMIC Y座標
+#DIM DYNAMIC カーソル = 11
+
+SIF !ナンプレプレイ中
+	CALL ナンプレ生成
+ナンプレプレイ中 = 1
+
+;Y
+;1□□□□□□□□□
+;2□□□□□□□□□
+;3□□□□□□□□□
+;4□□□□□□□□□
+;5□□□□□□□□□
+;6□□□□□□□□□
+;7□□□□□□□□□
+;8□□□□□□□□□
+;9□□□□□□□□□
+; 1 2 3 4 5 6 7 8 9 X
+
+
+PRINTL □ナンプレのルール
+PRINTL 　各列、各行、各3×3のブロック内に同じ数字が重複しないように数字を入れていきます
+PRINTL 　斜体の文字は初期配置の数のため変更できません
+PRINTL 　数字を入れたい場所をクリック、もしくはテンキーでカーソルを合わせてEnterで選べます
+PRINTL □テンキーと方向の対応
+PRINTL 　 ↖↑↗ 　７８９　
+PRINTL 　←　→　４　６　
+PRINTL 　 ↙↓↘ 　１２３　
+
+VARLINE = 0
+$ナンプレ
+SIF VARLINE
+	CLEARLINE LINECOUNT-VARLINE
+VARLINE = LINECOUNT
+
+;ナンプレの罫線を作る ↓イメージ 番号は対応のボタン
+;┌─┬─┬─┰─┬─┬─┰─┬─┬─┐
+;│11│12│13┃14│15│16┃17│18│19│
+;├─┼─┼─╂─┼─┼─╂─┼─┼─┤
+;│21│22│以┃下│略│　┃　│　│　│
+;├─┼─┼─╂─┼─┼─╂─┼─┼─┤
+;│　│　│　┃　│　│　┃　│　│　│
+;┝━┿━┿━╋━┿━┿━╋━┿━┿━┥
+;│　│　│　┃　│　│　┃　│　│　│
+;├─┼─┼─╂─┼─┼─╂─┼─┼─┤
+;│　│　│　┃　│　│　┃　│　│　│
+;├─┼─┼─╂─┼─┼─╂─┼─┼─┤
+;│　│　│　┃　│　│　┃　│　│　│
+;┝━┿━┿━╋━┿━┿━╋━┿━┿━┥
+;│　│　│　┃　│　│　┃　│　│　│
+;├─┼─┼─╂─┼─┼─╂─┼─┼─┤
+;│　│　│　┃　│　│　┃　│　│　│
+;├─┼─┼─╂─┼─┼─╂─┼─┼─┤
+;│　│　│　┃　│　│　┃　│　│　│
+;└─┴─┴─┸─┴─┴─┸─┴─┴─┘
+
+PRINTPLAIN ┌─┬─┬─┰─┬─┬─┰─┬─┬─┐
+PRINTL 
+FOR Y座標, 1, 10
+	FOR X座標, 1, 10
+		IF X座標%3 == 1 && X座標 != 1
+			PRINTPLAIN ┃
+		ELSE
+			PRINTPLAIN │
+		ENDIF
+		;カーソルが当たっていれば緑表示
+		SIF カーソル == Y座標*10+X座標
+			SETCOLORBYNAME lime
+		IF ナンプレ:X座標:Y座標 != 0
+			;初期配置の数字は太字
+			IF ナンプレ初期配置:X座標:Y座標
+				FONTITALIC
+				PRINTPLAINFORM %TOFULL(TOSTR(ナンプレ:X座標:Y座標))%
+			ELSE
+				PRINTBUTTON @"%TOFULL(TOSTR(ナンプレ:X座標:Y座標))%", UNICODE(Y座標*10+X座標+181)
+			ENDIF
+		ELSE
+			PRINTBUTTON "■", UNICODE(Y座標*10+X座標+181)
+		ENDIF
+		RESETCOLOR
+		FONTREGULAR
+	NEXT
+	;最後の罫線で締める
+	PRINTPLAIN │
+	PRINTL 
+	;次の段に行く前に罫線を引いておく
+	IF Y座標%3 == 0 && Y座標 != 9
+		PRINTPLAIN ┝━┿━┿━╋━┿━┿━╋━┿━┿━┥
+		PRINTL 
+	ELSEIF Y座標 == 9
+		;最後の段
+		PRINTPLAIN └─┴─┴─┸─┴─┴─┸─┴─┴─┘
+		PRINTL 
+	ELSE
+		PRINTPLAIN ├─┼─┼─╂─┼─┼─╂─┼─┼─┤
+		PRINTL 
+	ENDIF
+NEXT
+PRINT [0] 飽きたので中断する（内容は保存されます） 
+
+SIF ナンプレ完成確認()
+	PRINT [100] 完成！
+PRINTL 
+
+DO
+	;ONEINPUTだと一桁の数字しか扱えないので、UNICODEで文字列に変換したあとONEINPUTSで入力、
+	;その後RESULTSをENCODETOUNIで数字に戻してから処理する
+	;ボタンの最小値(11)+181=192(0xC0)から始まる発音符号付きのラテンアルファベットを使用
+	ONEINPUTS ＠
+	IF ISNUMERIC(RESULTS)
+		SIF TOINT(RESULTS) != 5
+			RESULT = TOINT(RESULTS)
+	ELSEIF RESULTS == "＠"
+		RESULT = カーソル
+	ELSE
+		RESULT = ENCODETOUNI(RESULTS)-181
+	ENDIF
+	CLEARLINE 1
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1
+			SIF INRANGE(カーソル%10, 2, 9) && INRANGE(カーソル/10, 1, 8)
+				カーソル += 9
+			BREAK
+		CASE 2
+			SIF INRANGE(カーソル/10, 1, 8)
+				カーソル += 10
+			BREAK
+		CASE 3
+			SIF INRANGE(カーソル%10, 1, 8) && INRANGE(カーソル/10, 1, 8)
+				カーソル += 11
+			BREAK
+		CASE 4
+			SIF INRANGE(カーソル%10, 2, 9)
+				カーソル--
+			BREAK
+		CASE 5
+			CONTINUE
+		CASE 6
+			SIF INRANGE(カーソル%10, 1, 8)
+				カーソル++
+			BREAK
+		CASE 7
+			SIF INRANGE(カーソル%10, 2, 9) && INRANGE(カーソル/10, 2, 9)
+				カーソル -= 11
+			BREAK
+		CASE 8
+			SIF INRANGE(カーソル/10, 2, 9)
+				カーソル -= 10
+			BREAK
+		CASE 9
+			SIF INRANGE(カーソル%10, 1, 8) && INRANGE(カーソル/10, 2, 9)
+				カーソル -= 9
+			BREAK
+		CASE 100
+			IF ナンプレ完成確認()
+				PRINTW 完成しました
+				ナンプレプレイ中 = 0
+			ENDIF
+			BREAK
+		CASEELSE
+			IF INRANGE(RESULT/10, 1, 9) && INRANGE(RESULT%10, 1, 9) && !ナンプレ初期配置:(RESULT%10):(RESULT/10)
+				カーソル = RESULT
+				PRINTL 番号を入力してください
+				DO
+					INPUT
+				LOOP !INRANGE(RESULT, 1, 9)
+				ナンプレ:(カーソル%10):(カーソル/10) = RESULT
+				BREAK
+			ENDIF
+	ENDSELECT
+LOOP 1
+
+GOTO ナンプレ
+
+@ナンプレ生成
+#DIM DYNAMIC 格納用, 10
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 繰り上げ用
+#DIM DYNAMIC X座標
+#DIM DYNAMIC Y座標
+#DIM DYNAMIC 工程
+#DIM DYNAMIC X工程
+#DIM DYNAMIC Y工程 = 1
+#DIM DYNAMIC 重複確認用
+#DIM DYNAMIC 横の数字, 10
+#DIM DYNAMIC 縦の数字, 10
+#DIM DYNAMIC 失敗回数
+#DIM DYNAMIC 初期配置数
+#DIM DYNAMIC 初期配置の配列, 10, 6
+#DIM DYNAMIC 乱数
+
+IF 失敗回数%10000 == 0
+	PRINTFORM 問題を生成中
+	FOR LCOUNT, 1, 失敗回数%3+2
+		PRINT …
+	NEXT
+	PRINTL 
+	AWAIT
+	CLEARLINE 1
+ENDIF
+
+VARSET ナンプレ
+VARSET ナンプレ初期配置
+工程 = 0
+
+;左上、真ん中、右下の3×3のブロックにランダムで数字を入れる
+DO
+	;まず連番で入れる
+	FOR LCOUNT, 1, 10
+		格納用:LCOUNT = LCOUNT
+	NEXT
+
+	;ランダムでシャッフルする
+	FOR LCOUNT, 9, 1, -1
+		SWAP 格納用:LCOUNT, 格納用:(RAND(1, LCOUNT))
+	NEXT
+
+	;↑で処理したものを真ん中の3×3に配置する
+	LCOUNT = 1
+	FOR Y座標, 工程*3+1, 工程*3+4
+		FOR X座標, 工程*3+1, 工程*3+4
+			ナンプレ:X座標:Y座標 = 格納用:(LCOUNT++)
+		NEXT
+	NEXT
+	工程++
+LOOP 工程 < 3
+
+X工程 = 0
+Y工程 = 0
+
+;他のブロックも縦と横の重複を確認しながら埋めていく
+DO
+	FOR LCOUNT, 1, 10
+		格納用:LCOUNT = LCOUNT
+	NEXT
+
+	FOR LCOUNT, 9, 1, -1
+		SWAP 格納用:LCOUNT, 格納用:(RAND(1, LCOUNT))
+	NEXT
+	
+	LCOUNT = 1
+	FOR Y座標, Y工程*3+1, Y工程*3+4
+		FOR X座標, X工程*3+1, X工程*3+4
+			;縦と横の数字を入れておく
+			FOR 重複確認用, 1, 10
+				横の数字:重複確認用 = ナンプレ:X座標:重複確認用
+				縦の数字:重複確認用 = ナンプレ:重複確認用:Y座標
+			NEXT
+			繰り上げ用 = LCOUNT+1
+			DO
+				;縦とも横とも被らなかったら入れる
+				IF !MATCH(横の数字, 格納用:LCOUNT) && !MATCH(縦の数字, 格納用:LCOUNT)
+					ナンプレ:X座標:Y座標 = 格納用:(LCOUNT++)
+					BREAK
+				;失敗したらやり直す
+				ELSEIF 繰り上げ用 == 10
+					失敗回数++
+					RESTART
+				;入らなかったら他の数字と入れ替える
+				ELSE
+					SWAP 格納用:LCOUNT, 格納用:(繰り上げ用++)
+				ENDIF
+			LOOP 1
+		NEXT
+	NEXT
+	;工程を進める
+	Y工程++
+	SIF X工程 == 2 && Y工程 == 2
+		Y工程++
+	IF Y工程 == 3
+		X工程++
+		Y工程 = 0
+	ENDIF
+LOOP X工程 < 3
+
+;デバッグ用
+FOR Y座標, 1, 10
+	FOR X座標, 1, 10
+		PRINTFORM %TOFULL(TOSTR(ナンプレ:X座標:Y座標))%
+	NEXT
+	PRINTL 
+NEXT
+
+;ランダムで28～38の対照的な配置以外の数を消す
+初期配置数 = RAND(14, 20)
+
+
+FOR LCOUNT, 1, 初期配置数
+	DO
+		乱数 = RAND(1, 6)*10+RAND(1, 10)
+		SIF 乱数 > 55
+			CONTINUE
+		IF !初期配置の配列:(乱数%10):(乱数/10)
+			初期配置の配列:(乱数%10):(乱数/10) = 1
+			BREAK
+		ENDIF
+	LOOP 1
+NEXT
+
+FOR Y座標, 1, 6
+	FOR X座標, 1, 10
+		IF !初期配置の配列:X座標:Y座標
+			ナンプレ:X座標:Y座標 = 0
+			ナンプレ:(10-X座標):(10-Y座標) = 0
+		ENDIF
+	NEXT
+NEXT
+ARRAYCOPY "ナンプレ", "ナンプレ初期配置"
+
+WAIT
+
+@ナンプレ完成確認
+#FUNCTION
+#DIM DYNAMIC X座標
+#DIM DYNAMIC Y座標
+#DIM DYNAMIC X確認用
+#DIM DYNAMIC Y確認用
+#DIM DYNAMIC 横の数字, 10
+#DIM DYNAMIC 縦の数字, 10
+#DIM DYNAMIC 区内の数字, 10
+#DIM DYNAMIC 重複確認用
+#DIM DYNAMIC LCOUNT
+
+FOR Y座標, 1, 10
+	FOR X座標, 1, 10
+		;0があると未完成
+		SIF ナンプレ:X座標:Y座標 == 0
+			RETURNF 0
+		;処理中の座標に対応した数字を入れておく
+		FOR 重複確認用, 1, 10
+			横の数字:重複確認用 = ナンプレ:X座標:重複確認用
+			縦の数字:重複確認用 = ナンプレ:重複確認用:Y座標
+		NEXT
+		重複確認用 = 1
+		FOR Y確認用, ((Y座標-1)/3*3)+1, ((Y座標-1)/3*3)+4
+			FOR X確認用, ((X座標-1)/3*3)+1, ((X座標-1)/3*3)+4
+				区内の数字:(重複確認用++) = ナンプレ:X確認用:Y確認用
+			NEXT
+		NEXT
+		;0があると未完成
+		SIF MATCH(横の数字, 0, 1, 10) || MATCH(縦の数字, 0, 1, 10) || MATCH(区内の数字, 0, 1, 10)
+			RETURNF 0
+		;重複してないか確認する 重複してたら未完成
+		ARRAYSORT 横の数字, FORWARD
+		ARRAYSORT 縦の数字, FORWARD
+		ARRAYSORT 区内の数字, FORWARD
+		FOR LCOUNT, 0, 10
+			SIF !ALLSAMES(LCOUNT, 横の数字:LCOUNT, 縦の数字:LCOUNT, 区内の数字:LCOUNT)
+				RETURNF 0
+		NEXT
+	NEXT
+NEXT
+
+;上の処理を抜けてきたら完成
+RETURNF 1
+
