@@ -55,6 +55,16 @@ IF FINDELEMENT(自爆キャラ, 1) >= 0
 		ENDIF
 	NEXT
 ENDIF
+
+;パズル雑誌
+IF ITEM:ロジカルダッシュ == YEAR*100+MONTH
+	SIF LOCAL == 0
+		PRINT 　
+	LOCALS = [ロジカルダッシュ{YEAR}年{MONTH}月号]
+	LOCAL += STRLENS(LOCALS)
+	PRINTFORM %LOCALS%
+ENDIF
+
 FOR LCOUNT, 0, 100
 	IF ITEM:LCOUNT
 		SIF LOCAL == 0
@@ -135,14 +145,14 @@ SIF ASSI > 0 && (TALENT:ASSI:禁断の知識)
 ;基本アイテム
 SELECTCASE ARG
 	CASE 0, 6
-		FOR COUNT, 0, 100
+		FOR LCOUNT, 0, 100
 			;触手使役術だけ特殊
-			SIF ITEMNAME:COUNT == "触手使役術" && !TALENT:MASTER:禁断の知識
+			SIF ITEMNAME:LCOUNT == "触手使役術" && !TALENT:MASTER:禁断の知識
 				CONTINUE
-			IF ITEM:COUNT
-				ITEMSALES:COUNT = 0
+			IF ITEM:LCOUNT
+				ITEMSALES:LCOUNT = 0
 			ELSE
-				ITEMSALES:COUNT = 1
+				ITEMSALES:LCOUNT = 1
 			ENDIF
 		NEXT
 ENDSELECT
@@ -152,19 +162,19 @@ SELECTCASE ARG
 	CASE 1, 6
 		;ローション、媚薬、ビデオテープなどはとりあえず99個まで
 		;飲みきりのお酒も99個まで
-		FOR COUNT, 100, 170
-			IF ITEM:COUNT >= 99
-				ITEMSALES:COUNT = 0
+		FOR LCOUNT, 100, 170
+			IF ITEM:LCOUNT >= 99
+				ITEMSALES:LCOUNT = 0
 			ELSE
-				ITEMSALES:COUNT = 1
+				ITEMSALES:LCOUNT = 1
 			ENDIF
 		NEXT
 		;ベースのお酒は90個以上あれば表示しない
-		FOR COUNT, 170, 200
-			IF ITEM:COUNT >= 90
-				ITEMSALES:COUNT = 0
+		FOR LCOUNT, 170, 200
+			IF ITEM:LCOUNT >= 90
+				ITEMSALES:LCOUNT = 0
 			ELSE
-				ITEMSALES:COUNT = 1
+				ITEMSALES:LCOUNT = 1
 			ENDIF
 		NEXT
 		;ビデオカメラが無いときはビデオテープの販売をしない
@@ -207,75 +217,75 @@ SELECTCASE ARG
 		ITEMSALES:バナナ = 1
 		;元気になる薬・魔剤（条件は調合知識のみ）
 		IF 調合知識有り
-			REPEAT CHARANUM
+			FOR LCOUNT, 0, CHARANUM
 				;無機物・機械には使えない
-				SIF TALENT:COUNT:無機物 || CSTR:COUNT:種族 == "機械"
+				SIF TALENT:LCOUNT:無機物 || CSTR:LCOUNT:種族 == "機械"
 					CONTINUE
 				;使用不可
-				SIF CFLAG:COUNT:使用不可
+				SIF CFLAG:LCOUNT:使用不可
 					CONTINUE
-				SIF BASE:COUNT:体力 < MAXBASE:COUNT:体力
+				SIF BASE:LCOUNT:体力 < MAXBASE:LCOUNT:体力
 					ITEMSALES:怪しげな栄養剤 = 1
-				SIF !CFLAG:COUNT:魔剤
+				SIF !CFLAG:LCOUNT:魔剤
 					ITEMSALES:魔剤 = 1
-			REND
+			NEXT
 		ENDIF
 
 		;素質変化の薬 調合知識or禁断の知識が必要
 		IF 調合知識有り || 禁断の知識有り
-			REPEAT CHARANUM
+			FOR LCOUNT, 0, CHARANUM
 				;無機物・機械には使えない
-				SIF TALENT:COUNT:無機物 || CSTR:COUNT:種族 == "機械"
+				SIF TALENT:LCOUNT:無機物 || CSTR:LCOUNT:種族 == "機械"
 					CONTINUE
 				;ふたなり化できるか
-				SIF !TALENT:COUNT:ふたなり
+				SIF !TALENT:LCOUNT:ふたなり
 					ITEMSALES:ふたなり薬 = 1
 				;ふたなりを消去できるか
-				SIF TALENT:COUNT:ふたなり && !(SEX(COUNT) == 1 && TALENT:COUNT:妊娠)
+				SIF TALENT:LCOUNT:ふたなり && !(SEX(LCOUNT) == 1 && TALENT:LCOUNT:妊娠)
 					ITEMSALES:ふたなり消去薬 = 1
 				;母乳体質にできるか 女性のみ 主人は使えない
-				SIF !TALENT:COUNT:母乳体質 && SEX(COUNT) == 1 && COUNT != MASTER
+				SIF !TALENT:LCOUNT:母乳体質 && SEX(LCOUNT) == 1 && LCOUNT != MASTER
 					ITEMSALES:天使のミルク = 1
 				;処女膜再生できるか 処女および再生処女だとダメ
-				SIF !TALENT:COUNT:処女 && !TALENT:COUNT:再生処女 && VAGINA(COUNT)
+				SIF !TALENT:LCOUNT:処女 && !TALENT:LCOUNT:再生処女 && VAGINA(LCOUNT)
 					ITEMSALES:ユニコーンテイル = 1
 				;以下アニマルは使用不可
-				SIF TALENT:COUNT:アニマル
+				SIF TALENT:LCOUNT:アニマル
 					CONTINUE
 				;豊胸できるか 爆乳以外でないとダメ
-				SIF TALENT:COUNT:バストサイズ != 5 && SEX(COUNT) == 2
+				SIF TALENT:LCOUNT:バストサイズ != 5 && SEX(LCOUNT) == 2
 					ITEMSALES:豊胸剤 = 1
 				;縮胸できるか 絶壁以外でないとダメ
-				SIF TALENT:COUNT:バストサイズ != 1 && SEX(COUNT) == 2
+				SIF TALENT:LCOUNT:バストサイズ != 1 && SEX(LCOUNT) == 2
 					ITEMSALES:縮胸剤 = 1
 				;母乳治療できるか 母乳体質じゃないとダメ 主人は使えない
-				SIF TALENT:COUNT:母乳体質 && SEX(COUNT) == 2 && COUNT != MASTER
+				SIF TALENT:LCOUNT:母乳体質 && SEX(LCOUNT) == 2 && LCOUNT != MASTER
 					ITEMSALES:止乳剤 = 1
 				;お漏らし治療できるか お漏らし癖じゃないとダメ 主人は使えない
-				SIF TALENT:COUNT:おもらし癖 && COUNT != MASTER
+				SIF TALENT:LCOUNT:おもらし癖 && LCOUNT != MASTER
 					ITEMSALES:夜尿症改善薬 = 1
 				;以下禁断の知識が必要
 				IF 禁断の知識有り
 					;ゾンビ化する。聖水で元にも戻せるがペナルティがある 主人は使えない
-					SIF !TALENT:COUNT:ゾンビ && COUNT != MASTER
+					SIF !TALENT:LCOUNT:ゾンビ && LCOUNT != MASTER
 						ITEMSALES:ゾンビパウダー = 1
 					;ゾンビを消去する。しかし回復量低下などのペナルティがある 主人は使えない
-					SIF TALENT:COUNT:ゾンビ && COUNT != MASTER
+					SIF TALENT:LCOUNT:ゾンビ && LCOUNT != MASTER
 						ITEMSALES:聖水 = 1
 					;性転換する 一度使うと二度と元には戻せない
-					SIF !TALENT:COUNT:性転換済 && !TALENT:COUNT:妊娠
+					SIF !TALENT:LCOUNT:性転換済 && !TALENT:LCOUNT:妊娠
 						ITEMSALES:性転換薬 = 1
 				ENDIF
 				;大人化or子供化する 豊胸と縮胸の効果もあるのでそのアイテムより高い
-				SIF !TALENT:COUNT:小人体型 && !TALENT:COUNT:アニマル
+				SIF !TALENT:LCOUNT:小人体型 && !TALENT:LCOUNT:アニマル
 					ITEMSALES:時の砂時計 = 1
 				;おもらしするようにする 主人は使えない
-				SIF !TALENT:COUNT:おもらし癖 && COUNT != MASTER
+				SIF !TALENT:LCOUNT:おもらし癖 && LCOUNT != MASTER
 					ITEMSALES:永続的利尿剤 = 1
 				;獣耳と尻尾を生やす
-				SIF (!TALENT:COUNT:動物耳 || !TALENT:COUNT:尻尾) && CSTR:COUNT:種族 != "獣" && !TALENT:COUNT:ファーリー
+				SIF (!TALENT:LCOUNT:動物耳 || !TALENT:LCOUNT:尻尾) && CSTR:LCOUNT:種族 != "獣" && !TALENT:LCOUNT:ファーリー
 					ITEMSALES:ビースティースターター = 1
-			REND
+			NEXT
 		ENDIF
 ENDSELECT
 
@@ -283,33 +293,36 @@ ENDSELECT
 SELECTCASE ARG
 	CASE 4, 6
 		;排卵誘発剤
-		REPEAT CHARANUM
+		FOR LCOUNT, 0, CHARANUM
 			;無機物・機械には使えない
-			SIF TALENT:COUNT:無機物 || CSTR:COUNT:種族 == "機械"
+			SIF TALENT:LCOUNT:無機物 || CSTR:LCOUNT:種族 == "機械"
 				CONTINUE
 			;使用不可
-			SIF CFLAG:COUNT:使用不可
+			SIF CFLAG:LCOUNT:使用不可
 				CONTINUE
-			SIF !CFLAG:COUNT:排卵誘発剤 && VAGINA(COUNT) && 生殖機能♀(COUNT)
+			SIF !CFLAG:LCOUNT:排卵誘発剤 && VAGINA(LCOUNT) && 生殖機能♀(LCOUNT)
 				ITEMSALES:排卵誘発剤 = 1
-		REND
+		NEXT
 		;リミッター解除 禁断の知識が必要
 		IF 禁断の知識有り
-			REPEAT CHARANUM
-				SIF !TALENT:COUNT:リミットバースト && CFLAG:COUNT:陥落
+			FOR LCOUNT, 0, CHARANUM
+				SIF !TALENT:LCOUNT:リミットバースト && CFLAG:LCOUNT:陥落
 					ITEMSALES:リミッター解除 = 1
-			REND
+			NEXT
 		ENDIF
 
-		;本
-		IF FLAG:図書室ランク >= 10
+		;本 新婚モードなら無条件で買える
+		IF FLAG:図書室ランク >= 10 || FLAG:ゲームモード == 7
 			FOR LCOUNT, 250, 269
 				SIF ITEMNAME:LCOUNT == ""
 					CONTINUE
 				ITEMSALES:LCOUNT = 1
+				;ロジカルダッシュは今月号を持っていれば表示しない
+				SIF ITEMNAME:LCOUNT == "ロジカルダッシュ" && ITEM:ロジカルダッシュ == YEAR*100+MONTH
+					ITEMSALES:LCOUNT = 0
 			NEXT
 		ENDIF
-		IF FLAG:図書室ランク >= 20
+		IF FLAG:図書室ランク >= 20 || FLAG:ゲームモード == 7
 			FOR LCOUNT, 270, 299
 				SIF ITEMNAME:LCOUNT == ""
 					CONTINUE
@@ -328,36 +341,36 @@ SELECTCASE ARG
 				SIF !ITEM:事業開発オフィス
 					ITEMSALES:事業開発オフィス = 1
 				;経営用特殊素質
-				REPEAT CHARANUM
+				FOR LCOUNT, 0, CHARANUM
 					;実務経験が必要
-					SIF EXP:COUNT:実務経験 < 1000
+					SIF EXP:LCOUNT:実務経験 < 1000
 						CONTINUE
 					;既に何か持ってる場合は無理
-					SIF TALENT:COUNT:料理人 || TALENT:COUNT:専業主婦 || TALENT:COUNT:工学博士 || TALENT:COUNT:絶対音感 || TALENT:COUNT:カメラマン
+					SIF TALENT:LCOUNT:料理人 || TALENT:LCOUNT:専業主婦 || TALENT:LCOUNT:工学博士 || TALENT:LCOUNT:絶対音感 || TALENT:LCOUNT:カメラマン
 						CONTINUE
 					;各経験、能力と実務経験があれば特殊素質を身につけられる
-					SIF EXP:COUNT:料理経験 >= 1000 && ABL:COUNT:料理技能 >= 5
+					SIF EXP:LCOUNT:料理経験 >= 1000 && ABL:LCOUNT:料理技能 >= 5
 						ITEMSALES:【料理人】 = 1
-					SIF EXP:COUNT:家事経験 >= 1000 && ABL:COUNT:家事技能 >= 5
+					SIF EXP:LCOUNT:家事経験 >= 1000 && ABL:LCOUNT:家事技能 >= 5
 						ITEMSALES:【専業主婦】 = 1
-					SIF EXP:COUNT:工作経験 >= 1000 && ABL:COUNT:工作技能 >= 5
+					SIF EXP:LCOUNT:工作経験 >= 1000 && ABL:LCOUNT:工作技能 >= 5
 						ITEMSALES:【工学博士】 = 1
-					SIF (EXP:COUNT:歌唱経験 >= 1000 && ABL:COUNT:歌唱技能 >= 5) || (EXP:COUNT:演奏経験 >= 1000 && ABL:COUNT:演奏技能 >= 5)
+					SIF (EXP:LCOUNT:歌唱経験 >= 1000 && ABL:LCOUNT:歌唱技能 >= 5) || (EXP:LCOUNT:演奏経験 >= 1000 && ABL:LCOUNT:演奏技能 >= 5)
 						ITEMSALES:【絶対音感】 = 1
-					SIF EXP:COUNT:撮影経験 >= 1000 && ABL:COUNT:撮影技能 >= 5
+					SIF EXP:LCOUNT:撮影経験 >= 1000 && ABL:LCOUNT:撮影技能 >= 5
 						ITEMSALES:【カメラマン】 = 1
-				REND
+				NEXT
 		ENDSELECT
 ENDSELECT
 
 SELECTCASE ARG
 	CASE 5, 6
 		;設備 金さえあれば買える
-		FOR COUNT, 500, 600
+		FOR LCOUNT, 500, 600
 			IF ITEM:COUNT
-				ITEMSALES:COUNT = 0
+				ITEMSALES:LCOUNT = 0
 			ELSE
-				ITEMSALES:COUNT = 1
+				ITEMSALES:LCOUNT = 1
 			ENDIF
 		NEXT
 ENDSELECT
@@ -365,18 +378,24 @@ ENDSELECT
 DRAWLINE
 
 ;主人か助手が買い物上手ならアイテム2割引き、消耗品3割引き
-REPEAT VARSIZE("ITEM")
+FOR LCOUNT, 0, VARSIZE("ITEM")
 	LOCALS =
-	SIF !ITEMSALES:COUNT || ITEMNAME:COUNT == ""
+	SIF !ITEMSALES:LCOUNT || ITEMNAME:LCOUNT == ""
 		CONTINUE
-	SELECTCASE COUNT
+	SELECTCASE LCOUNT
 		CASE 100 TO 199
-			LOCALS = [{COUNT}]%ITEMNAME:COUNT%(\@ TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手) ? {ITEMPRICE:COUNT/10*7} # {ITEMPRICE:COUNT} \@＄)
+			LOCALS = [{LCOUNT}]%ITEMNAME:LCOUNT%(\@ TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手) ? {ITEMPRICE:LCOUNT/10*7} # {ITEMPRICE:LCOUNT} \@＄)
 		CASE IS < 1000
-			LOCALS = [{COUNT}]%ITEMNAME:COUNT%(\@ TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手) ? {ITEMPRICE:COUNT/10*8} # {ITEMPRICE:COUNT} \@＄)
+			;ロジカルダッシュなら発行月も付ける
+			IF ITEMNAME:LCOUNT == "ロジカルダッシュ"
+				LOCALS = [{LCOUNT}]ロジカルダッシュ{YEAR}年{MONTH}月号(\@ TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手) ? {ITEMPRICE:LCOUNT/10*8} # {ITEMPRICE:LCOUNT} \@＄)
+			ELSE
+				LOCALS = [{LCOUNT}]%ITEMNAME:LCOUNT%(\@ TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手) ? {ITEMPRICE:LCOUNT/10*8} # {ITEMPRICE:LCOUNT} \@＄)
+			ENDIF
 		CASEELSE
-			LOCALS = [{COUNT}]%ITEMNAME:COUNT%({ITEMPRICE:COUNT}＄)
+			LOCALS = [{LCOUNT}]%ITEMNAME:LCOUNT%({ITEMPRICE:LCOUNT}＄)
 	ENDSELECT
+	
 
 	;表示数が0ならスペースを設ける
 	SIF 表示数 == 0
@@ -394,16 +413,16 @@ REPEAT VARSIZE("ITEM")
 	SIF 表示数 == 0
 		単位文字数 += 2
 	;＄の分2文字と通貨単位分
-	FOR LCOUNT, 0, 28-(STRLENS(LOCALS)-2)-単位文字数
+	REPEAT 37-(STRLENS(LOCALS)-2)-単位文字数
 		PRINT  
-	NEXT
+	REND
 	表示数++
 
-	IF 表示数 == 4
+	IF 表示数 == 3
 		PRINTL 
 		表示数 = 0
 	ENDIF
-REND
+NEXT
 
 SIF !LINEISEMPTY()
 	PRINTL 
@@ -789,6 +808,8 @@ SELECTCASE ITEMNAME:ARG
 		PRINTL 女性キャラにプレゼントすると自慰しやすくなります
 	CASE "ドラッカーの『マネジメント』"
 		PRINTL 使用対象が【鼓舞】を習得します
+	CASE "ロジカルダッシュ"
+		PRINTL 日本少年出版社が毎月発行しているパズル雑誌
 	CASE "ヴォイニッチ手稿"
 		PRINTL 使用対象が【禁断の知識】を習得します
 	CASE "グリモワール"
@@ -808,6 +829,26 @@ SELECTCASE ITEMNAME:ARG
 	CASE "【カメラマン】"
 		PRINTL 対象に素質【カメラマン】を習得させます
 ENDSELECT
+
+;ロジカルダッシュの場合は通常購入
+IF ITEMNAME:ARG == "ロジカルダッシュ"
+	PRINTFORML 本当にロジカルダッシュ{YEAR}年{MONTH}月号を購入しますか？
+	PRINTL [0] 購入する
+	PRINTL [1] やめる
+	DO
+		INPUT
+		SIF RESULT == 1
+			RETURN 0
+	LOOP LOOPRES(0, 1)
+	PRINTFORMW ＜ロジカルダッシュ{YEAR}年{MONTH}月号を購入しました＞
+	IF ARG < 100 && (TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手))
+		MONEY -= ITEMPRICE:ARG/10*8
+	ELSE
+		MONEY -= ITEMPRICE:ARG
+	ENDIF
+	ITEM:ロジカルダッシュ = YEAR*100+MONTH
+	RETURN 0
+ENDIF
 
 PRINTL 誰に使いますか？
 
