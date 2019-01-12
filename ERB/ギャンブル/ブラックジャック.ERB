@@ -1,0 +1,618 @@
+﻿@ブラックジャック
+#DIM DYNAMIC GAMES = 0;現在のゲーム数
+#DIM CONST GAMES_MAX = 10;ゲーム数の設定
+#DIM CONST MIN_BET = 3000;賭け金の下限(上限はその10倍)
+#DIM CONST USE_DECKS = 6;使用デッキ数
+#DIM DYNAMIC SHUFFLE_BORDER;デッキがこの枚数未満になったらシャッフルする
+#DIM DYNAMIC USE_CARDS;カードの使用枚数
+#DIM DYNAMIC BJ_BET;賭け金
+#DIM DYNAMIC AREA_MAX
+#DIM DYNAMIC AREA_NOW
+#DIM DYNAMIC BJ_MULTI
+#DIM DYNAMIC SURRENDER_CNT
+#DIM DYNAMIC SURRENDER
+#DIM DYNAMIC D_DOWN
+#DIM DYNAMIC INSURANCE;イーブンマネーも含む
+#DIM DYNAMIC 会話回数
+#DIM DYNAMIC 連続会話フラグ
+#DIM DYNAMIC カウンティング能力
+#DIM DYNAMIC 透視成功
+#DIM DYNAMIC NEXT_CARD
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC CC, 13;CARD COUNTの略で出た枚数を数えるものだがCC:0はK
+#DIM DYNAMIC MAX_DIGIT
+#DIM DYNAMIC DIGIT
+#DIM DYNAMIC HI_CARD
+#DIM DYNAMIC LO_CARD
+#DIM DYNAMIC HILO
+#DIM DYNAMIC HIOPT1
+#DIM DYNAMIC HIOPT2
+#DIM DYNAMIC OMEGA2
+#DIM DYNAMIC ABS_TCOUNT
+#DIM DYNAMIC WIN_MONEY
+
+;1ゲームにおけるカードの理論上最大枚数(6デッキまでは対応)
+;スプリットは3回まで
+;代入式の右のコメントは4*(プレーヤー枚数)+(ディーラー枚数) さらに右はその内訳
+;「(全角数字)×(半角数字)」は(半角数字)のカードが(全角数字)枚数あるという意味
+SELECTCASE USE_DECKS
+	CASE 1;デッキの残り57.7%(小数第2位以下を四捨五入)未満でシャッフル
+		SHUFFLE_BORDER = 30;4*6+6 ４×(2～6,X)+(1,1,1,1,8,X)
+	CASE 2;39.4%
+		SHUFFLE_BORDER = 41;4*9+5 ４×(２×(1～4),X)+(5,5,5,X)
+	CASE 3;30.1%
+		SHUFFLE_BORDER = 47;4*8+15 ４×(３×(1,2),3,3,5,X)+(４×3,4,X)
+	CASE 4;25.5%
+		SHUFFLE_BORDER = 53;4*11+9 ４×(４×(1,3),２×2,X)+(８×2,X)
+	CASE 5;21.9%
+		SHUFFLE_BORDER = 57;4*12+9 ４×(５×1,３×2,３×3,X)+(８×2,X)
+	CASE 6;19.6%
+		SHUFFLE_BORDER = 61;4*13+9 ４×(６×1,４×2,3,3,X)+(８×2,X)
+	;7デッキ以上はとりあえず理論値(23デッキ以上で成立)を代入
+	CASEELSE
+		SHUFFLE_BORDER = 96;4*21+2 ４×(２０×1,X)+(６×1,6,６×1,X)
+ENDSELECT
+CALL SHUFFLE, 52*USE_DECKS
+USE_CARDS = 0
+
+IF TARGET > 0
+	会話回数 = GAMES_MAX *3/10;会話回数上限(ゲーム数の3割)
+	SIF TALENT:小悪魔;パートナーが「小悪魔」なら少しの会話はごまかせる
+		会話回数 += GAMES_MAX /10
+	SIF TALENT:謎の魅力;パートナーが「謎の魅力」持ちなら少しの会話はごまかせる
+		会話回数 += GAMES_MAX /10
+	SIF TALENT:幼児／幼児退行;パートナーが「幼児／幼児退行」ならある程度の会話はごまかせる
+		会話回数 += GAMES_MAX *2/10
+	SIF TALENT:幼稚;パートナーが「幼稚」なら大体の会話はごまかせる
+		会話回数 += GAMES_MAX *3/10
+ELSE
+	会話回数 = 0
+ENDIF
+
+DO
+	D_DOWN = 0;ダブルダウンの管理([プレー領域]ビット目が1ならダブルダウン)
+	SURRENDER = 0;サレンダーの管理([プレー領域]ビット目が1ならサレンダー)
+	INSURANCE = 0;インシュアランス・イーブンマネーのフラグ
+	BJ_MULTI = 1;ダブルダウン・スプリット回数+1
+	SURRENDER_CNT = 0;サレンダー回数
+	連続会話フラグ = 0
+	DRAWLINE
+	$BJ_START
+	PRINTFORML <残り{GAMES_MAX - GAMES}ゲーム>
+	PRINT 所持金:
+	SIF MONEY < 0
+		SETCOLORBYNAME red
+	CALL PASELI, @"{MONEY}＄"
+	RESETCOLOR
+	CALL PASELIL, @" MINBET:{MIN_BET}＄ MAXBET:{10*MIN_BET}＄"
+	PRINTL
+	PRINTL いくら賭けますか？
+	PRINT [0]もうやめる 
+	SIF TARGET > 0 && USE_CARDS > 0 && 会話回数 > 0
+		PRINTFORM [-1]%CALLNAME%と話す(残り{会話回数}回)
+	PRINTL
+	;10個のボタンをずれずに表示する
+	FOR LCOUNT, 1, 11
+		;先頭でないならばスペースを開ける
+		SIF LCOUNT%5 != 1
+			PRINT  
+		PRINT [
+		;MAXBETと比べて桁が違うのならスペースを開ける
+		IF LOG10(LCOUNT*MIN_BET) != LOG10(10*MIN_BET)
+			PRINT  
+		ENDIF
+		PRINTFORM {LCOUNT*MIN_BET}]
+		;こっちも同じ
+		IF LOG10(LCOUNT*MIN_BET) != LOG10(10*MIN_BET)
+			PRINT  
+		ENDIF
+		PRINTFORM {LCOUNT*MIN_BET}
+		CALL PASELI, @"＄"
+		;5個表示したら改行
+		SIF LCOUNT%5 == 0
+			PRINTL
+	NEXT
+	INPUT
+	IF RESULT == -1 && TARGET > 0 && USE_CARDS > 0 && 会話回数 > 0
+		カウンティング能力 = 10
+		;点数別カウンティング能力
+		;3点以下:情報を教えてもらえない
+		;4点:Hi-Loの絶対値がデッキ数以上なら情報を教えてくれる
+		;5点:Hi-Loの絶対値が0.5*デッキ数以上なら情報を教えてくれる
+		;6点:Hi-Loの値を教えてくれる
+		;7点:上記に加えてHi-Opt Iの値を教えてくれる
+		;8点:上記に加えてHi-Opt IIの値を教えてくれる
+		;9点:上記に加えてOmega IIの値と4値のトゥルーカウント(残りデッキ数で割った値)を教えてくれる
+		;10点以上:上記に加えて今までに出たそれぞれのカードの枚数を教えてくれる
+		VARSET CC
+		FOR LCOUNT, 0, USE_CARDS
+			CC:(CARD:LCOUNT%13) += 1
+		NEXT
+		;最大値の桁数を計算
+		MAX_DIGIT = LOG10(MAX(CC:0,CC:1,CC:2,CC:3,CC:4,CC:5,CC:6,CC:7,CC:8,CC:9,CC:10,CC:11,CC:12)) + 1
+		LO_CARD = CC:2 + CC:3 + CC:4 + CC:5 + CC:6;2～6(ローカード)の枚数の合計
+		HI_CARD = CC:10 + CC:11 + CC:12 + CC:0 + CC:1;10～K,A(ハイカード)の枚数の合計
+		PRINTL
+		;10点以上なら今までに出た全部のカードを数えている
+		IF カウンティング能力 >= 10
+			PRINTFORML {USE_DECKS}デッキ({52*USE_DECKS}枚)中{USE_CARDS}枚使用していてその内訳は、
+			FOR LCOUNT, 2, 15
+				SELECTCASE LCOUNT
+					CASE 10
+						PRINT 10
+					CASE 11
+						PRINT Ｊ
+					CASE 12
+						PRINT Ｑ
+					CASE 13
+						PRINT Ｋ
+					CASE 14
+						PRINT Ａ
+					CASEELSE
+						PRINTFORM %TOFULL(TOSTR(LCOUNT))%
+				ENDSELECT
+				PRINT :
+				;それぞれの桁数を計算
+				IF CC:(LCOUNT%13) == 0
+					DIGIT = 1
+				ELSE 
+					DIGIT = LOG10(CC:(LCOUNT%13)) + 1
+				ENDIF
+				;桁数が足りない場合スペースで揃える
+				FOR LCOUNT2, 0, MAX_DIGIT-DIGIT
+					PRINT  
+				NEXT
+				PRINTFORM {CC:(LCOUNT%13)}枚 
+				SIF LCOUNT == 6
+					PRINTFORML …ローカード:{LO_CARD}枚
+				SIF LCOUNT == 9
+					PRINTL
+				SIF LCOUNT == 14
+					PRINTFORML …ハイカード:{HI_CARD}枚
+			NEXT
+		ENDIF
+		HILO = LO_CARD - HI_CARD;Hi-Lo
+		HIOPT1 = HILO - CC:2 + CC:1;Hi-Opt I...[3,4,5,6]-[10,J,Q,K]
+		HIOPT2 = 2*HIOPT1 - CC:3 - CC:6 + CC:2 + CC:7;Hi-Opt II...[2,3,6,7]+2*[4,5]-2*[10,J,Q,K]
+		OMEGA2 = HIOPT2 + CC:6 - CC:9;Omega II...[2,3,7]+2*[4,5,6]--[9]2*[10,J,Q,K]
+		SIF カウンティング能力 >= 7
+			PRINT それぞれの
+		SIF カウンティング能力 >= 6
+			PRINTFORML ランニングカウント\@ カウンティング能力 >= 9 ?(トゥルーカウント)#\@は、
+		IF カウンティング能力 >= 6
+			PRINT Hi-Lo    :
+			CALL PRINT_CC_SCORE, HILO
+			IF カウンティング能力 >= 9
+				ABS_TCOUNT = ABS(HILO)*520/(52*USE_DECKS-USE_CARDS)
+				PRINTFORM  (\@ HILO<0 ? - # \@{ABS_TCOUNT/10}.{ABS_TCOUNT%10})
+			ENDIF
+			PRINTL
+		ENDIF
+		IF カウンティング能力 >= 7
+			PRINT Hi-Opt I :
+			CALL PRINT_CC_SCORE, HIOPT1
+			IF カウンティング能力 >= 9
+				ABS_TCOUNT = ABS(HIOPT1)*520/(52*USE_DECKS-USE_CARDS)
+				PRINTFORM  (\@ HIOPT1<0 ? - # \@{ABS_TCOUNT/10}.{ABS_TCOUNT%10})
+			ENDIF
+			PRINTL
+		ENDIF
+		IF カウンティング能力 >= 8
+			PRINT Hi-Opt II:
+			CALL PRINT_CC_SCORE, HIOPT2
+			IF カウンティング能力 >= 9
+				ABS_TCOUNT = ABS(HIOPT2)*520/(52*USE_DECKS-USE_CARDS)
+				PRINTFORM  (\@ HIOPT2<0 ? - # \@{ABS_TCOUNT/10}.{ABS_TCOUNT%10})
+			ENDIF
+			PRINTL
+		ENDIF
+		IF カウンティング能力 >= 9
+			PRINTFORM  Omega II:
+			CALL PRINT_CC_SCORE, OMEGA2
+			ABS_TCOUNT = ABS(OMEGA2)*520/(52*USE_DECKS-USE_CARDS)
+			PRINTFORM  (\@ OMEGA2<0 ? - # \@{ABS_TCOUNT/10}.{ABS_TCOUNT%10})
+			PRINTL
+		ENDIF
+		IF カウンティング能力 == 5
+			PRINTL ハイカード(10,J,Q,K,A)とローカード(2,3,4,5,6)の出た枚数を比較すると、
+			IF 2*HILO >= USE_DECKS
+				PRINT ローカードの出た枚数の方が多いと
+			ELSEIF 2*HILO <= -USE_DECKS
+				PRINT ハイカードの出た枚数の方が多いと
+			ELSE
+				PRINT ハイカードもローカードも概ねバランスよく出ていると
+			ENDIF
+		ELSEIF カウンティング能力 == 4
+			PRINTL ハイカード(10,J,Q,K,A)とローカード(2,3,4,5,6)の出た枚数を比較すると、
+			IF HILO >= USE_DECKS
+				PRINT 確かローカードの出た枚数の方が多いと
+			ELSEIF HILO <= -USE_DECKS
+				PRINT 確かハイカードの出た枚数の方が多いと
+			ELSE
+				PRINT ハイカードとローカードの出た割合は大体同じくらいだと
+			ENDIF
+		ENDIF
+		SIF カウンティング能力 >= 6
+			PRINT だと
+		SIF カウンティング能力 >= 4
+			PRINTFORML %CALLNAME%はこっそり教えてくれた。
+		IF カウンティング能力 <= 3
+			PRINTFORML %CALLNAME%と雑談をした。
+		ENDIF
+		;魔術師だとたまにディーラーのホールカードを当てる
+		IF TALENT:魔術師
+			透視成功 = 10;初期値は2/10
+			透視成功 -= ABL:魔法技能
+			SIF 透視成功 < 1
+				透視成功 = 1
+			IF RAND:透視成功 <= 1
+				NEXT_CARD = CARD:(USE_CARDS+3) % 13
+			ELSE
+				NEXT_CARD = RAND:13
+			ENDIF
+			PRINT また、次のディーラーのホールカードはおそらく「
+			SELECTCASE NEXT_CARD
+				CASE 10
+					PRINT 10
+				CASE 11
+					PRINT Ｊ
+				CASE 12
+					PRINT Ｑ
+				CASE 0
+					PRINT Ｋ
+				CASE 1
+					PRINT Ａ
+				CASEELSE
+					PRINTFORM %TOFULL(TOSTR(LCOUNT))%
+			ENDSELECT
+			PRINTFORM 」だと%CALLNAME%は呟いた…………
+		ENDIF
+		PRINTW
+		会話回数 -= 1
+		連続会話フラグ += 1
+		IF 会話回数 == 0
+			PRINTFORML これ以上%CALLNAME%と話すとディーラーに怪しまれそうだ。
+			PRINTW
+		ENDIF
+		IF 連続会話フラグ >= 2
+			PRINTFORML あまりにも長々と%CALLNAME%と会話をしていたため、
+			PRINTL ディーラーはいつの間にかデッキをシャッフルしていたようだ。
+			PRINTW
+			CALL SHUFFLE, 52*USE_DECKS
+			USE_CARDS = 0;カードの使用枚数
+		ENDIF
+		GOTO BJ_START
+	ELSEIF RESULT == 0
+		PRINTL 本当にやめますか？
+		PRINTL [0]やっぱり続ける
+		PRINTL [99]本当にやめる
+		INPUT
+		SIF RESULT == 99
+			BREAK
+		GOTO BJ_START
+	ELSEIF INRANGE(RESULT, MIN_BET, 10*MIN_BET)
+		BJ_BET = RESULT;賭け金の設定
+		MONEY -= RESULT
+	ELSE
+		CALL PASELIW, @"賭け金は{MIN_BET}＄以上{10*MIN_BET}＄以下にしてください。"
+		GOTO BJ_START
+	ENDIF
+	BJCARD:1:0 = CARD:(USE_CARDS)
+	USE_CARDS += 1
+	BJCARD:0:0 = CARD:(USE_CARDS)
+	USE_CARDS += 1
+	BJCARD:1:1 = CARD:(USE_CARDS)
+	USE_CARDS += 1
+	BJCARD:0:1 = CARD:(USE_CARDS)
+	USE_CARDS += 1
+	BJCNT:0 = 1;ディーラーのカード枚数 1枚扱い
+	BJCNT:1 = 2;BJCNT:NでプレイヤーのN番目の領域のカード枚数
+	AREA_MAX = 2;プレイ領域の数(最初はディーラーとプレイヤーで2)
+	AREA_NOW = 1;現在のプレイ領域
+	$BJ_PLAY
+	PRINTL
+	PRINTFORML <残り{GAMES_MAX - GAMES}ゲーム>
+	PRINT 所持金:
+	SIF MONEY < 0
+		SETCOLORBYNAME red
+	CALL PASELI, @"{MONEY}＄"
+	RESETCOLOR
+	CALL PASELI, @" 賭け金:{BJ_BET}＄"
+	SIF BJ_MULTI > 1
+		PRINTFORM ×{BJ_MULTI}
+	SIF SURRENDER_CNT > 0
+		CALL PASELI, @"－{BJ_BET / 2 * SURRENDER_CNT}＄"
+	SIF BJ_MULTI > 1 || SURRENDER_CNT > 0
+		CALL PASELI, @"＝{BJ_BET*BJ_MULTI - BJ_BET / 2 * SURRENDER_CNT}＄"
+	PRINTL
+	PRINTFORM ディーラー:{BJSUM(0)}+? 
+	CALL PRTCARD(BJCARD:0:0)
+	SETCOLOR 0x00FF00
+	PRINTL  ？
+	RESETCOLOR
+	FOR LCOUNT, 1, AREA_MAX
+		IF LCOUNT == AREA_NOW || (AREA_NOW >= AREA_MAX && LCOUNT == 1)
+			SIF AREA_NOW < AREA_MAX
+				SETCOLOR 0xFFFFFF
+			PRINT プレイヤー
+		ELSE
+			PRINT 　　　　　
+		ENDIF
+		PRINTFORM :{BJSUM(LCOUNT)}
+		RESETCOLOR
+		FOR LCOUNT2, 0, (BJCNT:LCOUNT)
+			PRINT  
+			CALL PRTCARD(BJCARD:LCOUNT:LCOUNT2)
+		NEXT
+		SIF GETBIT(D_DOWN, LCOUNT) == 1
+			PRINT  (ダブルダウン)
+		SIF GETBIT(SURRENDER, LCOUNT) == 1
+			PRINT  (サレンダー)
+		PRINTL
+	NEXT
+	IF INSURANCE == 0 && BJCARD:0:0 % 13 == 1
+		CALL PASELIL, @"\@ BJSUM(1) == 21 ? イーブンマネー # インシュアランス(保険金{BJ_BET/2}＄が必要です) \@しますか？"
+		PRINTL [7]する [8]しない
+		$INSURANCE
+		INPUT
+		IF RESULT == 7
+			IF BJSUM(1) == 21
+				BJCNT:0 = 2
+				PRINTFORM ディーラー:{BJSUM(0)} 
+				CALL PRTCARD(BJCARD:0:0)
+				PRINT  
+				CALL PRTCARD(BJCARD:0:1)
+				PRINTL
+				PRINT プレイヤー:21 
+				CALL PRTCARD(BJCARD:1:0)
+				PRINT  
+				CALL PRTCARD(BJCARD:1:1)
+				PRINTL
+				PRINT あなたはイーブンマネーをしたため、
+				WIN_MONEY = 2 * BJ_BET
+				GOTO BJ_END
+			ELSE
+				BJCNT:0 = 2
+				IF BJSUM(0) == 21
+					PRINT ディーラー:21 
+					CALL PRTCARD(BJCARD:0:0)
+					PRINT  
+					CALL PRTCARD(BJCARD:0:1)
+					PRINTL
+					PRINTFORM プレイヤー:{BJSUM(1)} 
+					CALL PRTCARD(BJCARD:1:0)
+					PRINT  
+					CALL PRTCARD(BJCARD:1:1)
+					PRINTL
+					PRINT ディーラーが21であるため、
+					WIN_MONEY = BJ_BET
+					GOTO BJ_END
+				ELSE
+					PRINTL ディーラーが21でないため、ゲームを続行します。
+					CALL PASELIW, @"%CALLNAME:MASTER%は保険金の{BJ_BET/2}＄を失った。"
+					MONEY -= BJ_BET / 2
+					INSURANCE = 1
+					BJCNT:0 = 1
+					GOTO BJ_PLAY
+				ENDIF
+			ENDIF
+		ELSEIF RESULT == 8
+			INSURANCE = 1
+			GOTO BJ_PLAY
+		ELSE
+			GOTO INSURANCE
+		ENDIF
+	ENDIF
+	INSURANCE = 1
+	;全エリアのプレイが終わったら勝負へ
+	IF AREA_NOW >= AREA_MAX
+		PRINTW ディーラーのプレーに入ります。
+		GOTO BJ_MATCH_START
+	ENDIF
+	PRINTL プレーを選択してください。
+	PRINT [0]ヒット [1]スタンド
+	SIF BJCNT:AREA_NOW == 2
+		PRINT  [2]ダブルダウン
+	PRINT  [3]サレンダー
+	;手札が2枚 & 手札のランクが一緒 & プレイエリアが(ディーラーと合わせて)5未満
+	;これらの条件を満たすときスプリットできる
+	SIF BJCNT:AREA_NOW == 2 && (BJCARD:AREA_NOW:0 - BJCARD:AREA_NOW:1) % 13 == 0 && AREA_MAX < 5
+		PRINT  [4]スプリット
+	PRINTL
+	INPUT
+	;[0]ヒット…カードを1枚引く
+	IF RESULT == 0
+		BJCARD:AREA_NOW:(BJCNT:AREA_NOW) = CARD:USE_CARDS
+		USE_CARDS += 1
+		BJCNT:AREA_NOW += 1
+		;点数が21点以上なら次のエリアに
+		SIF BJSUM(AREA_NOW) >= 21
+			AREA_NOW += 1
+	;[1]スタンド…これ以上引かない
+	ELSEIF RESULT == 1
+		;次のエリアに
+		AREA_NOW += 1
+	;[2]ダブルダウン…手札が2枚のときのみ選択可で賭け金を2倍にして1枚だけ引く
+	ELSEIF RESULT == 2 && BJCNT:AREA_NOW == 2
+		BJCARD:AREA_NOW:(BJCNT:AREA_NOW) = CARD:USE_CARDS
+		USE_CARDS += 1
+		BJCNT:AREA_NOW += 1
+		SETBIT D_DOWN, AREA_NOW
+		;強制的に次のエリアに
+		AREA_NOW += 1
+		;賭け金を増やす処理
+		MONEY -= BJ_BET
+		BJ_MULTI += 1
+	;[3]サレンダー…賭け金の半額をもらいゲームから降りる
+	ELSEIF RESULT == 3
+		SETBIT SURRENDER, AREA_NOW
+		;次のエリアに
+		AREA_NOW += 1
+		;払い戻しの処理
+		MONEY += BJ_BET / 2
+		CALL PASELIW, @"{BJ_BET / 2}＄を手に入れた。"
+		SURRENDER_CNT += 1
+	;[4]スプリット
+	ELSEIF RESULT == 4 && BJCNT:AREA_NOW == 2 && (BJCARD:AREA_NOW:0 - BJCARD:AREA_NOW:1) % 13 == 0 && AREA_MAX < 5
+		;新しいエリアにカードを1枚移す
+		BJCARD:AREA_MAX:0 = BJCARD:AREA_NOW:1
+		;今までのエリアに新しくカードを配る
+		BJCARD:AREA_NOW:1 = CARD:USE_CARDS
+		USE_CARDS += 1
+		;新しいエリアにもカードを配る
+		BJCARD:AREA_MAX:1 = CARD:USE_CARDS
+		USE_CARDS += 1
+		;両方のエリアの手札は2枚に
+		BJCNT:AREA_NOW = 2
+		BJCNT:AREA_MAX = 2
+		;エリアの数を増やす
+		AREA_MAX += 1
+		;賭け金も増やす
+		MONEY -= BJ_BET
+		BJ_MULTI += 1
+	ENDIF
+	GOTO BJ_PLAY
+	;ここからディーラーとの勝負
+	$BJ_MATCH_START
+	BJCNT:0 = 2
+	$BJ_MATCH
+	PRINTL
+	PRINTFORM 賭け金:${BJ_BET}
+	SIF BJ_MULTI > 1
+		PRINTFORM ×{BJ_MULTI}
+	SIF SURRENDER_CNT > 0
+		PRINTFORM －{BJ_BET / 2 * SURRENDER_CNT}
+	SIF BJ_MULTI > 1 || SURRENDER_CNT > 0
+		PRINTFORM ＝{BJ_BET*BJ_MULTI - BJ_BET / 2 * SURRENDER_CNT}
+	PRINTL
+	PRINTFORM ディーラー:{BJSUM(0)}
+	FOR LCOUNT, 0, (BJCNT:0)
+		PRINT  
+		CALL PRTCARD(BJCARD:0:LCOUNT)
+	NEXT
+	PRINTL
+	FOR LCOUNT, 1, AREA_MAX
+		IF LCOUNT == 1
+			PRINT プレイヤー
+		ELSE
+			PRINT 　　　　　
+		ENDIF
+		PRINTFORM :{BJSUM(LCOUNT)}
+		FOR LCOUNT2, 0, (BJCNT:LCOUNT)
+			PRINT  
+			CALL PRTCARD(BJCARD:LCOUNT:LCOUNT2)
+		NEXT
+		SIF GETBIT(D_DOWN, LCOUNT) == 1
+			PRINT  (ダブルダウン)
+		SIF GETBIT(SURRENDER, LCOUNT) == 1
+			PRINT  (サレンダー)
+		PRINTL
+	NEXT
+	WAIT
+	IF BJSUM(0) < 17
+		BJCARD:0:(BJCNT:0) = CARD:USE_CARDS
+		USE_CARDS += 1
+		BJCNT:0 += 1
+		GOTO BJ_MATCH
+	ENDIF
+	WIN_MONEY = 0;配当の合計
+	FOR LCOUNT, 1, AREA_MAX
+		;サレンダーしていない場合に中身を見る
+		IF GETBIT(SURRENDER, LCOUNT) == 0
+			;こちらの手札が21点のとき
+			IF BJSUM(LCOUNT) == 21
+				;こちらの手札がブラックジャックのとき
+				IF BJCNT:LCOUNT == 2
+					;相手もブラックジャックなら引き分け
+					IF BJCNT:0 == 2 && BJSUM(0) == 21
+						WIN_MONEY += BJ_BET
+					;そうではないなら2.5倍付け
+					ELSE
+						WIN_MONEY += BJ_BET * 5 / 2
+					ENDIF
+				;こちらの手札が21点だがブラックジャックではないとき
+				ELSE
+					;相手の手札が21点のとき
+					IF BJSUM(0) == 21
+						;相手の手札がブラックジャックではないなら勝ちで2倍付け
+						IF BJCNT:0 != 2
+							WIN_MONEY += BJ_BET
+							;ダブルダウンをしているならさらに2倍
+							SIF GETBIT(D_DOWN, LCOUNT) == 1
+								WIN_MONEY += BJ_BET
+						ENDIF
+					;相手の手札が21点でないのなら必ず勝ちで2倍付け
+					ELSE
+						WIN_MONEY += BJ_BET * 2
+						;ダブルダウンをしているならさらに2倍
+						SIF GETBIT(D_DOWN, LCOUNT) == 1
+							WIN_MONEY += BJ_BET * 2
+					ENDIF
+				ENDIF
+			;こちらの手札が21点未満のとき
+			ELSEIF BJSUM(LCOUNT) < 21
+				;相手より点数が高いか相手がバーストしているのなら勝ちで2倍付け
+				IF BJSUM(LCOUNT) > BJSUM(0) || BJSUM(0) > 21
+					WIN_MONEY += BJ_BET * 2
+					;ダブルダウンをしているならさらに2倍
+					SIF GETBIT(D_DOWN, LCOUNT) == 1
+						WIN_MONEY += BJ_BET * 2
+				;相手と点数が同じなら引き分け
+				ELSEIF BJSUM(LCOUNT) == BJSUM(0)
+					WIN_MONEY += BJ_BET
+					;ダブルダウンをしているなら2倍払い戻す
+					SIF GETBIT(D_DOWN, LCOUNT) == 1
+						WIN_MONEY += BJ_BET
+				ENDIF
+			ENDIF
+		ENDIF
+	NEXT
+	;1ゲーム終了後の処理
+	$BJ_END
+	MONEY += WIN_MONEY
+	SIF WIN_MONEY > 0
+		CALL PASELIW, @"{WIN_MONEY}＄を手に入れた。"
+	GAMES += 1
+	SIF GAMES == GAMES_MAX
+		BREAK
+	IF 52*USE_DECKS-USE_CARDS < SHUFFLE_BORDER;デッキの残り枚数が1ゲーム使用枚数の理論値未満でシャッフル
+		PRINTFORMW 「デッキの残りが少なくなったので、デッキをシャッフルします。」
+		CALL SHUFFLE, 52*USE_DECKS
+		USE_CARDS = 0;カードの使用枚数
+	ENDIF
+LOOP 1
+
+
+@BJSUM(ARG)
+#FUNCTION
+#DIM DYNAMIC LSCORE = 0
+#DIM DYNAMIC ACE_CNT = 0
+#DIM DYNAMIC LCOUNT
+FOR LCOUNT, 0, (BJCNT:ARG)
+	IF (BJCARD:ARG:LCOUNT) % 13 >= 10 || (BJCARD:ARG:LCOUNT) % 13 == 0
+		LSCORE += 10;10,J,Q,Kは10点
+	ELSEIF BJCARD:ARG:LCOUNT % 13 == 1
+		LSCORE += 1;Aは1点
+		ACE_CNT += 1;エース枚数を数える
+	ELSE
+		LSCORE += (BJCARD:ARG:LCOUNT) % 13;2-9はそのまま
+	ENDIF
+NEXT
+SIF LSCORE <= 11 && ACE_CNT > 0
+	LSCORE += 10;11点以下かつエースを持っているのなら10点増やす
+RETURNF LSCORE
+
+
+@PRINT_CC_SCORE, ARG
+IF ARG > 0
+	SETCOLORBYNAME deepskyblue
+	PRINT +
+ELSEIF ARG == 0
+	SETCOLORBYNAME lawngreen
+	PRINT  
+ELSE
+	SETCOLORBYNAME crimson
+ENDIF
+PRINTFORM {ARG}
+RESETCOLOR
