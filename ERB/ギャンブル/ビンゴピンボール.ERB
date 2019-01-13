@@ -1,0 +1,1126 @@
+﻿@ビンゴピンボール
+
+#DIM DYNAMIC BALL_CX;ボールのX座標
+#DIM DYNAMIC BALL_CY;ボールのY座標
+#DIM DYNAMIC BALL_VX;ボールの速度ベクトルのX成分
+#DIM DYNAMIC BALL_VY;ボールの速度ベクトルのY成分
+
+#DIM DYNAMIC CDN_X;計算用 X座標/1000として使う
+#DIM DYNAMIC CDN_Y;計算用 Y座標/1000として使う
+
+#DIM DYNAMIC BALLS = 12;残りボール数
+#DIM CONST MAX_RATE = 5000;レートの最大
+#DIM DYNAMIC RATE;1玉あたりのレート
+#DIM DYNAMIC BINGOES;ビンゴ数
+#DIM DYNAMIC R_COUNTER;反射板のカウンター
+#DIM DYNAMIC L_TIME, 2
+#DIM DYNAMIC S_KRAD;ラジアンの1000倍
+#DIM DYNAMIC S_DDEG;ディグリーの10倍
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC NEXT_X
+#DIM DYNAMIC NEXT_Y
+#DIM DYNAMIC HOLE_NO
+
+;全体図(縦18マス,横32マス) ただし、座標の値は1000倍して扱う
+;例えば、左下のブロックは(0<=X<=999 ∧ 0<=Y<=999)
+;　00　　　　05　　　　10　　　　15　　　　20　　　　25　　　　3031
+;17■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■17
+;16■　　　／／　　　　　　　　　　　　　　　　　　　　　　　　＼■16
+;15■１０／／　　　　　　　　　　　　　　　　　　　　　　　　　　■15
+;14■　／／　　　　　　■　　　　　■　　　　　■　　　　　■　　■14
+;13■／／　　　　　　　　　　　　　　　　　　　　　　　　　　　　■13
+;12■／　　　　　　　　　　　■　　○　　■　　○　　■　　○　　■12
+;11■　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　■11
+;10■　　　　　　　　　■　　　　　■　　　　　■　　　　　■　　■10
+;09■　↑　　↑　　↑　　　　　　　　　　　　　　　　　　　　　　■09
+;08■　　　　　　　　　　　　■　　○　　■　　○　　■　　○　　■08
+;07■　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　■07
+;06■　　　　　　　　　■　　　　　■　　　　　■　　　　　■　　■06
+;05■　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　■05
+;04■　　　　　　　　　　　　■　　○　　■　　○　　■　　○　　■04
+;03■　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　■03
+;02■　　　　　　　　　■　　　　　■　　　　　■　　　　　■　　■02
+;01■＼　　　　　　　　　　　　　　　　　　　　　　　　　　　　／■01
+;00■■■■■■＝＝＝＝＝＝＝＝＝＝＝LOST＝＝＝＝＝＝＝＝＝＝＝＝■00
+;　00　　　　05　　　　10　　　　15　　　　20　　　　25　　　　3031
+
+;LOCAL:(1-9)はビンゴの穴に入ったか否か
+LOCAL:1 = 0
+LOCAL:2 = 0
+LOCAL:3 = 0
+LOCAL:4 = 0
+LOCAL:5 = 0
+LOCAL:6 = 0
+LOCAL:7 = 0
+LOCAL:8 = 0
+LOCAL:9 = 0
+
+R_COUNTER = -RAND:16;反射板のカウンター
+
+PRINTL
+PRINTL ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+PRINT ■　　　
+SETCOLORBYNAME greenyellow
+PRINT ／／　　　　　　　　　　　　　　　　　　　　　　　　＼
+RESETCOLOR
+PRINTL ■
+PRINT ■
+SETCOLORBYNAME limegreen
+SIF ABS(R_COUNTER) < 10
+	PRINT ０
+PRINTFORMS TOFULL(TOSTR(ABS(R_COUNTER)))
+SETCOLORBYNAME greenyellow
+PRINT ／／
+RESETCOLOR
+PRINTL 　　　　　　　　　　　　　　　　　　　　　　　　　　■
+PRINT ■　
+SETCOLORBYNAME greenyellow
+PRINT ／／
+RESETCOLOR
+PRINTL 　　　　　　■　　　　　■　　　　　■　　　　　■　　■
+PRINT ■
+SETCOLORBYNAME greenyellow
+PRINT ／／
+RESETCOLOR
+PRINTL 　　　　　　　　　　　　　　　　　　　　　　　　　　　　■
+PRINT ■
+SETCOLORBYNAME greenyellow
+PRINT ／
+RESETCOLOR
+PRINTL 　　　　　　　　　　　■　　○　　■　　○　　■　　○　　■
+PRINTL ■　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　■
+PRINTL ■　　　　　　　　　■　　　　　■　　　　　■　　　　　■　　■
+PRINT ■　
+SETCOLORBYNAME greenyellow
+PRINT ↑　　↑　　↑
+RESETCOLOR
+PRINTL 　　　　　　　　　　　　　　　　　　　　　　■
+PRINTL ■　　　　　　　　　　　　■　　○　　■　　○　　■　　○　　■
+PRINTL ■　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　■
+PRINTL ■　　　　　　　　　■　　　　　■　　　　　■　　　　　■　　■
+PRINTL ■　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　■
+PRINTL ■　ここからボールが発射　■　　○　　■　　○　　■　　○　　■
+PRINTL ■　↓　　　　　　　　　　　　　　　　　　　　　　　　　　　　■
+PRINTL ■　☆　　　　　　　■　　　　　■　　　　　■　　　　　■　　■
+PRINT ■
+SETCOLORBYNAME greenyellow
+PRINT ＼　　　　　　　　　　　　　　　　　　　　　　　　　　　　／
+RESETCOLOR
+PRINTL ■
+PRINT ■■■■■■
+SETCOLORBYNAME deepskyblue
+PRINT ＝＝＝＝＝＝＝＝＝＝＝LOST＝＝＝＝＝＝＝＝＝＝＝＝
+RESETCOLOR
+PRINTL ■
+PRINTL
+PRINTFORML このゲームは{BALLS}個の玉を1つずつ打ち込みビンゴを作っていくゲームです。
+PRINTW まず、1玉あたりのレートを決めてください。
+CALL STAKE, MAX_RATE
+RATE = RESULT;1玉あたりのレート
+MONEY -= RATE * BALLS
+
+DO
+	PRINTL
+	DRAWLINE
+	CALL PASELIL, @"<残り{BALLS}球(1玉{RATE}＄) / {BINGOES}ビンゴ>"
+	CALL PASELIL, @"1ビンゴあたり:{4*RATE}＄"
+	CALL PASELIL, @"反射板のボーナス(1発あたり):{RATE}＄"
+	$BP_START
+	PRINTL
+	PRINTL [0]ボールを発射する [1]残りの玉を等価で換金して終了
+	INPUT
+	IF RESULT != 0 && RESULT != 1
+		GOTO BP_START
+	ELSEIF RESULT == 1
+		PRINTL 本当にやめますか？
+		PRINTL [0]やっぱり続ける
+		PRINTL [1]本当にやめる
+		INPUT
+		SIF RESULT == 1
+			BREAK
+		GOTO BP_START
+	ENDIF
+	
+	PRINTL
+	PRINTL ボールの発射角度を決めます。
+	PRINTL 次のクリック・Enterキーでチャージを開始し、
+	PRINTL さらにその次のクリック・Enterキーでチャージを完了します。
+	PRINTL なお、発射角度はチャージ時間に正比例し、
+	PRINTL 1秒ちょうどのチャージで45°の角度で発射されます。
+	PRINTL ただし、発射できる最大角度は75°です。
+	FORCEWAIT
+	GETMILLISECOND
+	L_TIME = RESULT
+	PRINTL
+	PRINTL チャージ中……
+	FORCEWAIT
+	GETMILLISECOND
+	L_TIME:1 = RESULT
+	S_KRAD = (L_TIME:1 - L_TIME)*785/1000;発射角度(ラジアンの1000倍)
+	SIF S_KRAD > 1309
+		S_KRAD = 1309
+	S_DDEG = S_KRAD * 180 / 314;発射角度(ディグリーの10倍)
+	PRINTL 
+	PRINT チャージが完了しました。
+	PRINTFORMW 発射角度は{S_DDEG/10}.{S_DDEG%10}°です。
+	
+	BALL_CX = 2000+RAND:1000
+	BALL_CY = 2000+RAND:1000
+	BALL_VX = KCOS(S_KRAD)
+	BALL_VY = KSIN(S_KRAD)
+	
+	;0.1秒の動作を1200回繰り返す
+	FOR LCOUNT, 0, 1200
+		NEXT_X = BALL_CX + BALL_VX;移動予定地(X座標)
+		NEXT_Y = BALL_CY + BALL_VY;移動予定地(Y座標)
+		;壁に左からぶつかるとき
+		IF NEXT_X/1000 >= 31
+			NEXT_X = 61999 - NEXT_X
+							BALL_VX *= -1
+		;壁に右からぶつかるとき
+		ELSEIF NEXT_X/1000 < 1
+			NEXT_X = 2000 - NEXT_X
+							BALL_VX *= -1
+		ENDIF
+		;壁に下からぶつかるとき
+		IF NEXT_Y/1000 >= 17
+			NEXT_Y = 33999 - NEXT_Y
+							BALL_VY *= -1
+		;壁に上からぶつかるとき
+		ELSEIF NEXT_Y/1000 < 1 && NEXT_X/1000 < 6
+			NEXT_Y = 2000 - NEXT_Y
+							BALL_VY *= -1
+		ENDIF
+		;ブロックに関する判定
+		FOR CDN_Y, 2, 18, 4
+			FOR CDN_X, 10, 34, 6
+				IF CDN_X == NEXT_X/1000 && CDN_Y == NEXT_Y/1000;移動予定地がブロックのとき
+					;左からぶつかるとき
+					IF CDN_X > BALL_CX/1000 && CDN_Y == (BALL_CY + (1000*CDN_X - BALL_CX)*BALL_VY/BALL_VX) /1000
+						NEXT_X = CDN_X*2000 - 1 - NEXT_X
+						BALL_VX *= -1
+					;右からぶつかるとき
+					ELSEIF CDN_X < BALL_CX/1000 && CDN_Y == (BALL_CY - (BALL_CX - 999 -1000*CDN_X)*BALL_VY/BALL_VX) /1000
+						NEXT_X = (CDN_X+1)*2000 + 1 - NEXT_X
+						BALL_VX *= -1
+					;下からぶつかるとき
+					ELSEIF CDN_Y > BALL_CY/1000 && CDN_X == (BALL_CX + (1000*CDN_Y - BALL_CY)*BALL_VX/BALL_VY) /1000
+						NEXT_Y = CDN_Y*2000 - 1 - NEXT_Y
+						BALL_VY *= -1
+					;上からぶつかるとき
+					ELSEIF CDN_Y < BALL_CY/1000 && CDN_X == (BALL_CX - (BALL_CY - 999 -1000*CDN_Y)*BALL_VX/BALL_VY) /1000
+						NEXT_Y = (CDN_Y+1)*2000 + 1 - NEXT_Y
+						BALL_VY *= -1
+					ENDIF
+				ENDIF
+			NEXT
+		NEXT
+		FOR CDN_Y, 4, 16, 4
+			FOR CDN_X, 13, 31, 6
+				IF CDN_X == NEXT_X/1000 && CDN_Y == NEXT_Y/1000;移動予定地がブロックのとき
+					;左からぶつかるとき
+					IF CDN_X > BALL_CX/1000 && CDN_Y == (BALL_CY + (1000*CDN_X - BALL_CX)*BALL_VY/BALL_VX) /1000
+						NEXT_X = CDN_X*2000 - 1 - NEXT_X
+						BALL_VX *= -1
+					;右からぶつかるとき
+					ELSEIF CDN_X < BALL_CX/1000 && CDN_Y == (BALL_CY - (BALL_CX - 999 -1000*CDN_X)*BALL_VY/BALL_VX) /1000
+						NEXT_X = (CDN_X+1)*2000 + 1 - NEXT_X
+						BALL_VX *= -1
+					;下からぶつかるとき
+					ELSEIF CDN_Y > BALL_CY/1000 && CDN_X == (BALL_CX + (1000*CDN_Y - BALL_CY)*BALL_VX/BALL_VY) /1000
+						NEXT_Y = CDN_Y*2000 - 1 - NEXT_Y
+						BALL_VY *= -1
+					;上からぶつかるとき
+					ELSEIF CDN_Y < BALL_CY/1000 && CDN_X == (BALL_CX - (BALL_CY - 999 -1000*CDN_Y)*BALL_VX/BALL_VY) /1000
+						NEXT_Y = (CDN_Y+1)*2000 + 1 - NEXT_Y
+						BALL_VY *= -1
+					ENDIF
+				ENDIF
+			NEXT
+		NEXT
+		BALL_CX = NEXT_X
+		BALL_CY = NEXT_Y
+		;斜めの反射板の判定
+		;左上の反射板(式はY=X+11などの1次関数をイメージする)
+		IF (1 <= NEXT_X/1000 && NEXT_X/1000 <= 5) && (NEXT_Y/1000 == 11+NEXT_X/1000 || NEXT_Y/1000 == 12+NEXT_X/1000)
+			R_COUNTER += 1
+			;VX>0かつ傾きが1超え または VX<0かつ傾きが1未満
+			IF (BALL_VX > 0 && BALL_VY/BALL_VX > 1) || (BALL_VX < 0 && BALL_VY/BALL_VX < 1)
+				SWAP BALL_VX, BALL_VY
+			ENDIF
+		;左下の反射板
+		ELSEIF NEXT_X/1000 == 1 && NEXT_Y/1000 == 1
+			R_COUNTER += 1
+			;VX>0かつ傾きが-1未満 または VX<0かつ傾きが-1超え
+			IF (BALL_VX > 0 && BALL_VY/BALL_VX < -1) || (BALL_VX < 0 && BALL_VY/BALL_VX > -1)
+				SWAP BALL_VX, BALL_VY
+				BALL_VX *= -1
+				BALL_VY *= -1
+			ENDIF
+		;右上の反射板
+		ELSEIF NEXT_X/1000 == 30 && NEXT_Y/1000 == 16
+			R_COUNTER += 1
+			;VX>0かつ傾きが-1超え または VX<0かつ傾きが-1未満
+			IF (BALL_VX > 0 && BALL_VY/BALL_VX > -1) || (BALL_VX < 0 && BALL_VY/BALL_VX < -1)
+				SWAP BALL_VX, BALL_VY
+				BALL_VX *= -1
+				BALL_VY *= -1
+			ENDIF
+		;右下の反射板
+		ELSEIF NEXT_X/1000 == 30 && NEXT_Y/1000 == 1
+			R_COUNTER += 1
+			;VX>0かつ傾きが1未満 または VX<0かつ傾きが1超え
+			IF (BALL_VX > 0 && BALL_VY/BALL_VX < 1) || (BALL_VX < 0 && BALL_VY/BALL_VX > 1)
+				SWAP BALL_VX, BALL_VY
+			ENDIF
+		ENDIF
+		SIF R_COUNTER > 99
+			R_COUNTER = 99
+		;上向き矢印の判定(VYがマイナスなら反転させる)
+		SIF (BALL_CX/1000 == 2 || BALL_CX/1000 == 5 || BALL_CX/1000 == 8 ) && BALL_CY/1000 == 9
+			BALL_VY = ABS(BALL_VY)
+		
+		PRINTL
+		;#;PRINTFORML ({BALL_CX}, {BALL_CY}) ({BALL_VX}, {BALL_VY})
+		CDN_Y=17;------------------------------------------------------------------------------------------------
+		PRINTL ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+		CDN_Y=16;------------------------------------------------------------------------------------------------
+		PRINT ■
+		IF R_COUNTER > 0
+			SETCOLORBYNAME lime
+			PRINT BONUS!
+		ELSE
+			PRINT 　　　
+		ENDIF
+		SETCOLORBYNAME greenyellow
+		IF BALL_CX/1000 == 4 && BALL_CY/1000 == CDN_Y
+			PRINT ●
+		ELSE
+			PRINT ／
+		ENDIF
+		IF BALL_CX/1000 == 5 && BALL_CY/1000 == CDN_Y
+			PRINT ●
+		ELSE
+			PRINT ／
+		ENDIF
+		RESETCOLOR
+		FOR CDN_X, 6, 30
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		SETCOLORBYNAME greenyellow
+		IF BALL_CX/1000 == 30 && BALL_CY/1000 == CDN_Y
+			PRINT ●
+		ELSE
+			PRINT ＼
+		ENDIF
+		RESETCOLOR
+		PRINTL ■
+		CDN_Y=15;------------------------------------------------------------------------------------------------
+		PRINT ■
+		IF R_COUNTER > 0
+			SETCOLORBYNAME lime
+		ELSE
+			SETCOLORBYNAME limegreen
+		ENDIF
+		SIF ABS(R_COUNTER) < 10
+			PRINT ０
+		PRINTFORMS TOFULL(TOSTR(ABS(R_COUNTER)))
+		SETCOLORBYNAME greenyellow
+		IF BALL_CX/1000 == 3 && BALL_CY/1000 == CDN_Y
+			PRINT ●
+		ELSE
+			PRINT ／
+		ENDIF
+		IF BALL_CX/1000 == 4 && BALL_CY/1000 == CDN_Y
+			PRINT ●
+		ELSE
+			PRINT ／
+		ENDIF
+		RESETCOLOR
+		FOR CDN_X, 5, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINTL ■
+		CDN_Y=14;------------------------------------------------------------------------------------------------
+		PRINT ■　
+		SETCOLORBYNAME greenyellow
+		IF BALL_CX/1000 == 2 && BALL_CY/1000 == CDN_Y
+			PRINT ●
+		ELSE
+			PRINT ／
+		ENDIF
+		IF BALL_CX/1000 == 3 && BALL_CY/1000 == CDN_Y
+			PRINT ●
+		ELSE
+			PRINT ／
+		ENDIF
+		RESETCOLOR
+		FOR CDN_X, 4, 10
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 11, 16
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 17, 22
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 23, 28
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 29, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINTL ■
+		CDN_Y=13;------------------------------------------------------------------------------------------------
+		PRINT ■
+		SETCOLORBYNAME greenyellow
+		IF BALL_CX/1000 == 1 && BALL_CY/1000 == CDN_Y
+			PRINT ●
+		ELSE
+			PRINT ／
+		ENDIF
+		IF BALL_CX/1000 == 2 && BALL_CY/1000 == CDN_Y
+			PRINT ●
+		ELSE
+			PRINT ／
+		ENDIF
+		RESETCOLOR
+		FOR CDN_X, 3, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINTL ■
+		CDN_Y=12;------------------------------------------------------------------------------------------------
+		PRINT ■
+		SETCOLORBYNAME greenyellow
+		IF BALL_CX/1000 == 1 && BALL_CY/1000 == CDN_Y
+			PRINT ●
+		ELSE
+			PRINT ／
+		ENDIF
+		RESETCOLOR
+		FOR CDN_X, 2, 13
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 14, 16
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		IF BALL_CX/1000 == 16 && BALL_CY/1000 == CDN_Y
+			SETCOLORBYNAME gold
+			PRINT ●
+			RESETCOLOR
+		ELSEIF LOCAL:1
+			SETCOLORBYNAME darkorange
+			PRINT ★
+			RESETCOLOR
+		ELSE
+			PRINT ○
+		ENDIF
+		FOR CDN_X, 17, 19
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 20, 22
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		IF BALL_CX/1000 == 22 && BALL_CY/1000 == CDN_Y
+			SETCOLORBYNAME gold
+			PRINT ●
+			RESETCOLOR
+		ELSEIF LOCAL:2
+			SETCOLORBYNAME darkorange
+			PRINT ★
+			RESETCOLOR
+		ELSE
+			PRINT ○
+		ENDIF
+		FOR CDN_X, 23, 25
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 26, 28
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		IF BALL_CX/1000 == 28 && BALL_CY/1000 == CDN_Y
+			SETCOLORBYNAME gold
+			PRINT ●
+			RESETCOLOR
+		ELSEIF LOCAL:3
+			SETCOLORBYNAME darkorange
+			PRINT ★
+			RESETCOLOR
+		ELSE
+			PRINT ○
+		ENDIF
+		FOR CDN_X, 29, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINTL ■
+		CDN_Y=11;------------------------------------------------------------------------------------------------
+		PRINT ■
+		FOR CDN_X, 1, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINTL ■
+		CDN_Y=10;------------------------------------------------------------------------------------------------
+		PRINT ■
+		FOR CDN_X, 1, 10
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 11, 16
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 17, 22
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 23, 28
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 29, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINTL ■
+		CDN_Y=9;------------------------------------------------------------------------------------------------
+		PRINT ■
+		FOR CDN_X, 1, 10, 3
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+			SETCOLORBYNAME greenyellow
+			IF BALL_CX/1000 == CDN_X+1 && BALL_CY/1000 == CDN_Y
+				PRINT ●
+			ELSE
+				PRINT ↑
+			ENDIF
+			RESETCOLOR
+			IF BALL_CX/1000 == CDN_X+2 && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		FOR CDN_X, 10, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINTL ■
+		CDN_Y=8;------------------------------------------------------------------------------------------------
+		PRINT ■
+		FOR CDN_X, 1, 13
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 14, 16
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		IF BALL_CX/1000 == 16 && BALL_CY/1000 == CDN_Y
+			SETCOLORBYNAME gold
+			PRINT ●
+			RESETCOLOR
+		ELSEIF LOCAL:4
+			SETCOLORBYNAME darkorange
+			PRINT ★
+			RESETCOLOR
+		ELSE
+			PRINT ○
+		ENDIF
+		FOR CDN_X, 17, 19
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 20, 22
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		IF BALL_CX/1000 == 22 && BALL_CY/1000 == CDN_Y
+			SETCOLORBYNAME gold
+			PRINT ●
+			RESETCOLOR
+		ELSEIF LOCAL:5
+			SETCOLORBYNAME darkorange
+			PRINT ★
+			RESETCOLOR
+		ELSE
+			PRINT ○
+		ENDIF
+		FOR CDN_X, 23, 25
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 26, 28
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		IF BALL_CX/1000 == 28 && BALL_CY/1000 == CDN_Y
+			SETCOLORBYNAME gold
+			PRINT ●
+			RESETCOLOR
+		ELSEIF LOCAL:6
+			SETCOLORBYNAME darkorange
+			PRINT ★
+			RESETCOLOR
+		ELSE
+			PRINT ○
+		ENDIF
+		FOR CDN_X, 29, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINTL ■
+		CDN_Y=7;------------------------------------------------------------------------------------------------
+		PRINT ■
+		FOR CDN_X, 1, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINTL ■
+		CDN_Y=6;------------------------------------------------------------------------------------------------
+		PRINT ■
+		FOR CDN_X, 1, 10
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 11, 16
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 17, 22
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 23, 28
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 29, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINTL ■
+		CDN_Y=5;------------------------------------------------------------------------------------------------
+		PRINT ■
+		FOR CDN_X, 1, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINTL ■
+		CDN_Y=4;------------------------------------------------------------------------------------------------
+		PRINT ■
+		FOR CDN_X, 1, 13
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 14, 16
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		IF BALL_CX/1000 == 16 && BALL_CY/1000 == CDN_Y
+			SETCOLORBYNAME gold
+			PRINT ●
+			RESETCOLOR
+		ELSEIF LOCAL:7
+			SETCOLORBYNAME darkorange
+			PRINT ★
+			RESETCOLOR
+		ELSE
+			PRINT ○
+		ENDIF
+		FOR CDN_X, 17, 19
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 20, 22
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		IF BALL_CX/1000 == 22 && BALL_CY/1000 == CDN_Y
+			SETCOLORBYNAME gold
+			PRINT ●
+			RESETCOLOR
+		ELSEIF LOCAL:8
+			SETCOLORBYNAME darkorange
+			PRINT ★
+			RESETCOLOR
+		ELSE
+			PRINT ○
+		ENDIF
+		FOR CDN_X, 23, 25
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 26, 28
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		IF BALL_CX/1000 == 28 && BALL_CY/1000 == CDN_Y
+			SETCOLORBYNAME gold
+			PRINT ●
+			RESETCOLOR
+		ELSEIF LOCAL:9
+			SETCOLORBYNAME darkorange
+			PRINT ★
+			RESETCOLOR
+		ELSE
+			PRINT ○
+		ENDIF
+		FOR CDN_X, 29, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINTL ■
+		CDN_Y=3;------------------------------------------------------------------------------------------------
+		PRINT ■
+		FOR CDN_X, 1, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINTL ■
+		CDN_Y=2;------------------------------------------------------------------------------------------------
+		PRINT ■
+		FOR CDN_X, 1, 10
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 11, 16
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 17, 22
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 23, 28
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINT ■
+		FOR CDN_X, 29, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		PRINTL ■
+		CDN_Y=1;------------------------------------------------------------------------------------------------
+		PRINT ■
+		SETCOLORBYNAME greenyellow
+		IF BALL_CX/1000 == 1 && BALL_CY/1000 == CDN_Y
+			PRINT ●
+		ELSE
+			PRINT ＼
+		ENDIF
+		RESETCOLOR
+		FOR CDN_X, 2, 30
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ●
+				RESETCOLOR
+			ELSE
+				PRINT 　
+			ENDIF
+		NEXT
+		SETCOLORBYNAME greenyellow
+		IF BALL_CX/1000 == 30 && BALL_CY/1000 == CDN_Y
+			PRINT ●
+		ELSE
+			PRINT ／
+		ENDIF
+		RESETCOLOR
+		PRINTL ■
+		CDN_Y=0;------------------------------------------------------------------------------------------------
+		PRINT ■■■■■■
+		IF BALL_CX/1000 <= 6 && BALL_CY/1000 == CDN_Y
+			SETCOLORBYNAME gold
+			PRINT ※
+		ELSE
+			SETCOLORBYNAME deepskyblue
+			PRINT ＝
+		ENDIF
+		FOR CDN_X, 7, 17
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ※
+			ELSE
+				SETCOLORBYNAME deepskyblue
+				PRINT ＝
+			ENDIF
+		NEXT
+		IF BALL_CX/1000 == 17 && BALL_CY/1000 == CDN_Y
+			SETCOLORBYNAME gold
+			PRINT ※
+		ELSE
+			SETCOLORBYNAME deepskyblue
+			PRINT LO
+		ENDIF
+		IF BALL_CX/1000 == 18 && BALL_CY/1000 == CDN_Y
+			SETCOLORBYNAME gold
+			PRINT ※
+		ELSE
+			SETCOLORBYNAME deepskyblue
+			PRINT ST
+		ENDIF
+		FOR CDN_X, 19, 31
+			IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+				SETCOLORBYNAME gold
+				PRINT ※
+			ELSE
+				SETCOLORBYNAME deepskyblue
+				PRINT ＝
+			ENDIF
+		NEXT
+		RESETCOLOR
+		PRINTL ■
+		
+		SIF BALL_CY/1000 < 1
+			GOTO BALL_STOP
+		FOR CDN_X, 16, 34, 6
+			FOR CDN_Y, 4, 16, 4
+				IF BALL_CX/1000 == CDN_X && BALL_CY/1000 == CDN_Y
+					;(16,4)が左下の穴でX軸方向に6,Y軸方向に4ずつ配置
+					; 7 8 9
+					; 4 5 6
+					; 1 2 3
+					HOLE_NO = (CDN_X-10)/6 + 3*(12-CDN_Y)/4
+					IF LOCAL:HOLE_NO == 0
+						LOCAL:HOLE_NO = 1
+						GOTO BALL_STOP
+					ENDIF
+				ENDIF
+			NEXT
+		NEXT
+		TWAIT 100, 1
+	NEXT
+	PRINTW 2分経ってもゲームが終わらないため強制終了しました。
+	$BALL_STOP
+	WAIT
+	BALLS -= 1
+	
+	BINGOES = 0
+	SIF LOCAL:1 && LOCAL:2 && LOCAL:3
+		BINGOES += 1
+	SIF LOCAL:4 && LOCAL:5 && LOCAL:6
+		BINGOES += 1
+	SIF LOCAL:7 && LOCAL:8 && LOCAL:9
+		BINGOES += 1
+	SIF LOCAL:1 && LOCAL:4 && LOCAL:7
+		BINGOES += 1
+	SIF LOCAL:2 && LOCAL:5 && LOCAL:8
+		BINGOES += 1
+	SIF LOCAL:3 && LOCAL:6 && LOCAL:9
+		BINGOES += 1
+	SIF LOCAL:1 && LOCAL:5 && LOCAL:9
+		BINGOES += 1
+	SIF LOCAL:3 && LOCAL:5 && LOCAL:7
+		BINGOES += 1
+	
+LOOP BALLS > 0
+
+LOCAL = 0;獲得額
+PRINTL
+PRINTL <ゲーム終了>
+IF BALLS
+	CALL PASELIL, @"換金したボール:{RATE*BALLS}＄"
+	LOCAL += RATE*BALLS
+ENDIF
+IF BINGOES
+	CALL PASELIL, @"ビンゴボーナス:{BINGOES*4*RATE}＄"
+	LOCAL += BINGOES*4*RATE
+ENDIF
+IF R_COUNTER > 0
+	CALL PASELIL, @"反射板ボーナス:{R_COUNTER*RATE}＄"
+	LOCAL += R_COUNTER*RATE
+ENDIF
+CALL PASELIW, @"トータル獲得額:{LOCAL}＄"
+MONEY += LOCAL

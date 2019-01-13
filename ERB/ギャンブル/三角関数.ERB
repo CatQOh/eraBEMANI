@@ -1,0 +1,51 @@
+﻿;テイラー展開を使ってサイン(正弦)・コサイン(余弦)を求める式中関数
+;1000倍したラジアンの値に対して1000倍した三角比を返す
+;例:KSIN(524)=501  (c.f.:SIN(0.524)≒0.50035 (π/6≒0.5236))
+;360°を6.284ラジアン(この関数でいう6284)として計算
+;ここで扱う数値の最高値は785^6(< 2^63)なのでエラーは出ないはず
+;tan(x)=sin(x)/cos(x) より、タンジェント(正接)を求めることもできるが、ゼロ除算に注意
+;タンジェントのテイラー展開は面倒なのでまだ割り算のほうがマシ
+;KTAN(ARG)=1000 * KSIN(ARG) / KCOS(ARG) (ただしKCOS(ARG)≠0) で求められる
+
+@KSIN(ARG)
+#FUNCTION
+
+ARG:1 = 1;正負は後でつける
+
+SIF ARG < 0
+	ARG:1 *= -1
+ARG = ABS(ARG) % 6284;2π以下にする
+
+SIF ARG > 3142
+	ARG:1 *= -1
+ARG %= 3142;π以下にする
+
+IF ARG > 1571
+	ARG = 3142 - ARG;π/2以下にする
+ENDIF
+
+;π/4以下にして計算する
+SIF ARG > 785
+	RETURNF ARG:1 * KCOS(1571-ARG)
+RETURNF ARG:1 * (ARG - POWER(ARG,3) / (6*POWER(1000,2)) + POWER(ARG,5) / (120*POWER(1000,4)))
+
+
+@KCOS(ARG)
+#FUNCTION
+
+ARG:1 = 1;正負は後でつける
+
+ARG = ABS(ARG) % 6284;2π以下にする
+
+SIF ARG > 3142
+	ARG = 6284 - ARG;π以下にする
+	
+IF ARG > 1571
+	ARG:1 *= -1
+	ARG = 3142 - ARG;π/2以下にする
+ENDIF
+
+;π/4以下にして計算する
+SIF ARG > 785
+	RETURNF ARG:1 * KSIN(1571-ARG)
+RETURNF ARG:1 * (1000 - POWER(ARG,2) / (2*1000) + POWER(ARG,4) / (24*POWER(1000,3)) - POWER(ARG,6) / (720*POWER(1000,5)))
