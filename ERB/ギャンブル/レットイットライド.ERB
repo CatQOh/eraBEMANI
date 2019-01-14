@@ -1,0 +1,199 @@
+﻿@レットイットライド
+
+#DIM DYNAMIC LIR_CARD, 5;カードを記録(0-2:プレイヤー,3-4:コミュニティカード)
+#DIM DYNAMIC LIR_PHASE;賭けの段階
+#DIM DYNAMIC LIR_BET;賭けている場所をビットで記録(1=GETBIT(LIR_BET, 0):(1), 2=GETBIT(LIR_BET, 1):(2), 4=GETBIT(LIR_BET, 2):($), 8=GETBIT(LIR_BET, 3):BONUS)
+#DIM DYNAMIC ゲーム数 = 12
+#DIM DYNAMIC 賭け金上限 = 10000
+#DIM DYNAMIC ボーナスベット = 100
+#DIM DYNAMIC 賭け金
+#DIM DYNAMIC 配当
+#DIM DYNAMIC ボーナス配当
+
+VARLINE = 0
+
+;ここからゲーム開始
+DO
+	PRINTL 
+	DRAWLINE
+	PRINTL まず、1箇所当たりの賭け金を決めます。
+	PRINTW 実際の賭け金はその3倍になります。
+	CALL STAKE, 賭け金上限
+	賭け金 = RESULT
+	LIR_BET = 7
+	PRINTL 
+	CALL PASELIL, @"{3*賭け金}＄ベットしました。"
+	CALL PASELIL, @"ボーナスベットをしますか？(追加で{ボーナスベット}＄が必要です)"
+	PRINTL [0]する [1]しない
+	DO
+		INPUT
+		SIF RESULT == 0
+			LIR_BET = 15
+	LOOP LOOPRES(0, 1)
+
+	CALL SHUFFLE, 52
+	LIR_CARD:0 = CARD:0
+	LIR_CARD:1 = CARD:1
+	LIR_CARD:2 = CARD:2
+	LIR_CARD:3 = CARD:3
+	LIR_CARD:4 = CARD:4
+	LIR_PHASE = 0
+	DO
+		SIF VARLINE
+			CLEARLINE LINECOUNT-VARLINE
+		VARLINE = LINECOUNT
+		LIR_PHASE++
+		PRINTL 
+		PRINTFORML <残り{ゲーム数}ゲーム>
+		IF LIR_PHASE == 1
+			SETCOLORBYNAME yellow
+			FONTSTYLE 8
+		ELSEIF !GETBIT(LIR_BET, 0)
+			FONTSTYLE 4
+		ENDIF
+		PRINT (1)
+		RESETCOLOR
+		FONTSTYLE 0
+		PRINT  
+		IF LIR_PHASE == 2
+			SETCOLORBYNAME yellow
+			FONTSTYLE 8
+		ELSEIF !GETBIT(LIR_BET, 1)
+			FONTSTYLE 4
+		ENDIF
+		PRINT (2)
+		RESETCOLOR
+		FONTSTYLE 0
+		PRINT  ($)
+		SIF GETBIT(LIR_BET, 3)
+			PRINT  (B)
+		CALL PASELI, @" 賭け金:{賭け金}＄×{GETBIT(LIR_BET, 0)+GETBIT(LIR_BET, 1)+GETBIT(LIR_BET, 2)}＄"
+		SIF GETBIT(LIR_BET, 3)
+			PRINTFORM ＋{ボーナスベット}
+		PRINTL 
+		IF GETBIT(LIR_BET, 3)
+			CALL PASELIL, @"10以上のワンペア:1倍 ツーペア:2倍+{6*ボーナスベット}＄ スリーカード:3倍+{9*ボーナスベット}＄ ストレート:5倍+{25*ボーナスベット}＄"
+			CALL PASELIL, @"フラッシュ:8倍+{50*ボーナスベット}＄ フルハウス:11倍+${75*ボーナスベット}＄ フォーカード:50倍+{100*ボーナスベット}＄"
+			CALL PASELIL, @"ストレートフラッシュ:200倍+${2000*ボーナスベット}＄ ロイヤルフラッシュ:1000倍+{20000*ボーナスベット}＄"
+		ELSE
+			PRINTL 10以上のワンペア:1倍 ツーペア:2倍 スリーカード:3倍 ストレート:5倍 フラッシュ:8倍
+			PRINTL フルハウス:11倍 フォーカード:50倍 ストレートフラッシュ:200倍 ロイヤルフラッシュ:1000倍
+		ENDIF
+		PRINTL 
+		PRINT  
+		IF LIR_PHASE > 1
+			CALL PRTCARD, LIR_CARD:3
+		ELSE
+			SETCOLORBYNAME lime
+			PRINT ？ 
+			RESETCOLOR
+		ENDIF
+		PRINT   
+		IF LIR_PHASE > 2
+			CALL PRTCARD, LIR_CARD:4
+		ELSE
+			SETCOLORBYNAME lime
+			PRINT ？ 
+			RESETCOLOR
+		ENDIF
+		PRINTL 
+		PRINTL 
+		CALL PRTCARD, LIR_CARD:0
+		PRINT  
+		CALL PRTCARD, LIR_CARD:1
+		PRINT  
+		CALL PRTCARD, LIR_CARD:2
+		PRINTL 
+		PRINTL 
+		IF LIR_PHASE < 3
+			PRINTL [0]レットイットライド [1]プルベット
+			DO
+				INPUT
+				SIF RESULT == 1
+					CLEARBIT LIR_BET, LIR_PHASE-1
+			LOOP LOOPRES(0, 1)
+		ENDIF
+	LOOP LIR_PHASE < 3
+	;配当の処理
+	配当 = 0;通常の配当
+	ボーナス配当 = 0;ボーナスベットの配当
+	PRINTL 
+	IF FLUSH(LIR_CARD:0, LIR_CARD:1, LIR_CARD:2, LIR_CARD:3, LIR_CARD:4)
+		IF STRAIGHT(LIR_CARD:0, LIR_CARD:1, LIR_CARD:2, LIR_CARD:3, LIR_CARD:4) == 14
+			PRINTL ロイヤルフラッシュです。
+			配当 += 1000*賭け金
+			ボーナス配当 += 20000*ボーナスベット
+		ELSEIF STRAIGHT(LIR_CARD:0, LIR_CARD:1, LIR_CARD:2, LIR_CARD:3, LIR_CARD:4)
+			PRINTL ストレートフラッシュです。
+			配当 += 200*賭け金
+			ボーナス配当 += 2000*ボーナスベット
+		ELSE
+			PRINTL フラッシュです。
+			配当 += 8*賭け金
+			ボーナス配当 += 50*ボーナスベット
+		ENDIF
+	ELSEIF STRAIGHT(LIR_CARD:0, LIR_CARD:1, LIR_CARD:2, LIR_CARD:3, LIR_CARD:4)
+		PRINTL ストレートです。
+		配当 += 5*賭け金
+		ボーナス配当 += 25*ボーナスベット
+	ELSEIF FOUR_OF_A_KIND(LIR_CARD:0, LIR_CARD:1, LIR_CARD:2, LIR_CARD:3, LIR_CARD:4)
+		PRINTL フォーカードです。
+		配当 += 50*賭け金
+		ボーナス配当 += 100*ボーナスベット
+	ELSEIF FH_OR_THREE(LIR_CARD:0, LIR_CARD:1, LIR_CARD:2, LIR_CARD:3, LIR_CARD:4) > 1000000
+		PRINTL フルハウスです。
+		配当 += 11*賭け金
+		ボーナス配当 += 75*ボーナスベット
+	ELSEIF FH_OR_THREE(LIR_CARD:0, LIR_CARD:1, LIR_CARD:2, LIR_CARD:3, LIR_CARD:4)
+		PRINTL スリーカードです。
+		配当 += 3*賭け金
+		ボーナス配当 += 25*ボーナスベット
+	ELSEIF TWO_PAIR(LIR_CARD:0, LIR_CARD:1, LIR_CARD:2, LIR_CARD:3, LIR_CARD:4)
+		PRINTL ツーペアです。
+		配当 += 2*賭け金
+		ボーナス配当 += 6*ボーナスベット
+	ELSEIF ONE_PAIR(LIR_CARD:0, LIR_CARD:1, LIR_CARD:2, LIR_CARD:3, LIR_CARD:4) > 10000000
+		PRINTL 10以上のワンペアです。
+		配当 += 賭け金
+		ボーナス配当 -= ボーナスベット
+	ELSE
+		配当 -= 賭け金
+		ボーナス配当 -= ボーナスベット
+	ENDIF
+	SIF !GETBIT(LIR_BET, 3)
+		ボーナス配当 = 0
+	配当 *= (GETBIT(LIR_BET, 0)+GETBIT(LIR_BET, 1)+GETBIT(LIR_BET, 2))
+	MONEY += 配当+ボーナス配当
+	IF 配当 > 0
+		CALL PASELI, @"{配当}＄"
+		IF ボーナス配当 > 0
+			CALL PASELIW, @"と{ボーナス配当}＄を手に入れた。"
+		ELSEIF ボーナス配当 < 0
+			CALL PASELIW, @"を手に入れたが、{-ボーナス配当}＄は没収された。"
+		ELSE
+			PRINTW を手に入れた。
+		ENDIF
+	ELSE
+		CALL PASELIW, @"{-配当}＄\@ ボーナス配当 ? と{-ボーナス配当}＄ # \@は没収された。"
+	ENDIF
+	ゲーム数--
+	IF ゲーム数
+		DO
+			PRINTL 
+			CALL PASELIL, @"もう一度プレイしますか？(残り{ゲーム数}ゲーム / 所持金:{MONEY}＄)"
+			PRINTL [0]はい [1]いいえ
+			INPUT
+			IF RESULT == 1
+				PRINTL 
+				PRINTL 本当にやめますか？
+				PRINTL [0]やっぱり続ける [1]もうやめる
+				DO
+					INPUT
+					SIF RESULT == 1
+						BREAK
+				LOOP LOOPRES(0)
+			ENDIF
+		LOOP LOOPRES(0)
+	ENDIF
+LOOP ゲーム数
+
