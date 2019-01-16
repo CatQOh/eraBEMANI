@@ -1,9 +1,9 @@
-﻿@ビデオポーカー
+﻿@ビデオポーカー, カジノの種類
 ;※Jacks or Better 9/6の配当を参考にしています
 
 #DIM CONST GAMES_MAX = 30;ゲーム数の設定
 #DIM CONST D_UP_MAX = 10;ダブルアップの上限回数
-#DIM CONST MAX_BET = 5000;1ベットの上限金額
+#DIM DYNAMIC MAX_BET;1ベットの上限金額
 #DIM DYNAMIC GAMES;現在のゲーム数
 #DIM DYNAMIC VP_MODE = 0;ゲームモード……0:Jacks or Better 9/6 | 1:Double Bonus 10/7
 #DIM DYNAMIC D_UP_ON = 0;ダブルアップはありか？
@@ -16,12 +16,26 @@
 #DIM DYNAMIC BET_MULTI
 #DIM DYNAMIC CARD_NO
 #DIM DYNAMIC D_UP_ANS
+#DIM DYNAMIC カジノの種類
 
-PRINTL
-PRINTW 1ベット当たりの賭け金を決めます。
-CALL STAKE, MAX_BET
-ONEBET = RESULT;賭け金の設定
+;賭け金上限 表カジノなら3,000、裏カジノなら15,000、ゲーセンなら1コイン
+SELECTCASE カジノの種類
+	CASE 1
+		MAX_BET = 3000
+	CASE 2
+		MAX_BET = 15000
+	CASE 3
+		MAX_BET = 1
+ENDSELECT
 
+IF MAX_BET > 1
+	PRINTL
+	PRINTW 1ベット当たりの賭け金を決めます。
+	CALL STAKE, MAX_BET
+	ONEBET = RESULT;賭け金の設定
+ELSEIF MAX_BET == 1
+	ONEBET = 1
+ENDIF
 
 FOR GAMES, 0, GAMES_MAX
 	$VP_START
@@ -102,7 +116,11 @@ FOR GAMES, 0, GAMES_MAX
 		PRINT フォーカード:25倍
 	ENDIF
 	PRINTFORML  ストレートフラッシュ:50倍 ロイヤルフラッシュ:{100*(3+BET_MULTI)}倍
+	VARLINE = 0
 	DO
+		SIF VARLINE
+			CLEARLINE LINECOUNT-VARLINE
+		VARLINE = LINECOUNT
 		PRINTL
 		FOR LCOUNT, 0, 5
 			CALL PRTCARD(VP_CARD:LCOUNT)

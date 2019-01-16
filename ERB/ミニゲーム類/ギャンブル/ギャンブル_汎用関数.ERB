@@ -1,4 +1,4 @@
-﻿@GAMBLE
+﻿@GAMBLE, カジノの種類
 #DIM DYNAMIC チップ
 #DIM DYNAMIC 利子
 #DIM DYNAMIC 利益計算用
@@ -7,6 +7,7 @@
 #DIM DYNAMIC パートナー必要
 #DIM DYNAMIC カードゲーム
 #DIM DYNAMIC 収支
+#DIM DYNAMIC カジノの種類 = 1;引数指定が無ければ表カジノ扱い
 ;新しくゲームを追加する場合はここに名称を追加する
 {
 #DIMS DYNAMIC ゲーム名, 11 = 
@@ -39,15 +40,26 @@ ENDSELECT
 ;始めるときの金額を記憶
 利益計算用 = MONEY
 
-;G:502には一緒に来た人のキャラ登録番号が代入されている
-
 DRAWLINE
-PRINTL カジノへようこそ。どのギャンブルで遊びますか？
+SELECTCASE カジノの種類
+	;表カジノ
+	CASE 1
+		PRINTL カジノへようこそ。どのギャンブルで遊びますか？
+	;裏カジノ
+	CASE 2
+		PRINTL 大金と命を賭けたクレイジーなカジノへようこそ！どのギャンブルで遊びますか？
+ENDSELECT
 PRINTL ただし、ギャンブル中に新たな借金を背負って返済できなかった場合、
 PRINTFORML その借金に対し、{利子}\%の利子が付きます。
 CALL PASELIL, @"所持金:{MONEY}＄"
 
 FOR LCOUNT, 0, VARSIZE("ゲーム名")
+	SELECTCASE ゲーム名:LCOUNT
+		;バカラは裏専用
+		CASE "バカラ"
+			SIF カジノの種類 != 1
+				CONTINUE
+	ENDSELECT
 	PRINTFORMLC [{LCOUNT}] %ゲーム名:LCOUNT%
 NEXT
 SIF !LINEISEMPTY()
@@ -83,7 +95,7 @@ DO
 					RESTART
 				ENDCATCH
 			ELSE
-				TRYCCALLFORM %ゲーム名:RESULT%
+				TRYCCALLFORM %ゲーム名:RESULT%, カジノの種類
 				CATCH
 					PRINTFORMW %ゲーム名:RESULT%は未実装です
 					RESTART
