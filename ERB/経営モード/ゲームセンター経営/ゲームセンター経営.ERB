@@ -155,6 +155,9 @@ PRINTL [2] - 「物件増築」とは？
 PRINTL [3] - 「筐体購入」とは？
 PRINTL [4] - 「人員配置」とは？
 PRINTL [5] - 「筐体設置」とは？
+PRINTL [6] - 「店長任命」とは
+PRINTL [7] - 「店名変更」とは
+PRINTL [8] - 「定休日設定」とは？
 DRAWLINE
 PRINTPLAIN 　TUTORIAL　
 PRINTL [0] - 戻る
@@ -188,8 +191,19 @@ DO
 			PRINTL 「物件の広さ」×「物件の階層」と同じ数値の分筐体を置くことができます。
 			PRINTL 筐体は所持するだけなら経費はかかりませんが、設置した当日から経費がかかるので所持金とよく相談して決めましょう。
 			PRINTW なお、筐体にはそれぞれ大きさがあり、経済効果の高い筐体ほど大きくなるのでスペースには気を使いましょう。
+		CASE 6
+			PRINTL 「店長任命」は配属してるキャラの中から店長を任命するコマンドです。
+			PRINTL 店長に任命されたキャラはゲーセンの各ステータス・レベルへの影響が大きくなり、より多くの経験が得られるようになります。
+			PRINTW 優秀な人材や、積極的に能力を伸ばしていきたいキャラを任命することにより、効率的な運営が可能になります。
+		CASE 7
+			PRINTL 「店名変更」はゲームセンターの店名を変更するコマンドです。
+			PRINTW デフォルトのままでも変更しても収入や名声等への影響はありません。自分の好きな名前を付けましょう。
+		CASE 8
+			PRINTL 「定休日設定」はゲームセンターの定休曜日を設定するコマンドです。
+			PRINTL 配属したキャラたちは能力にもよりますがストレスが溜まりやすくなります。
+			PRINTW 適度に休みを設け、キャラたちのメンタルケアを行えばより効率的な運営ができるでしょう。
 	ENDSELECT
-LOOP LOOPRES(1, 2, 3, 4, 5)
+LOOP LOOPRES(1, 2, 3, 4, 5, 6, 7, 8)
 
 RESTART
 
@@ -235,7 +249,7 @@ DO
 		CASE 2
 			PRINTL 【中小スーパーのテナント】
 			PRINTL 
-			PRINTL 時々スーパーの片隅に申し分ない程度の筐体が置いてあるあのスペース。
+			PRINTL 時々スーパーの片隅に申し訳程度の筐体が置いてあるあのスペース。
 			PRINTL ゲーム目的で来る人はほとんど居ないと思うが、お買い物に飽きた子どもたちがよく訪れる。
 			PRINTL ボロ屋と比べると経済効果はだいぶマシではあるが、こちらはテナントなので維持費が高い。
 			PRINTL 他にも改装ができないなど、使い勝手の悪い部分がある。
@@ -489,8 +503,8 @@ PRINTL 【筐体購入】
 PRINTL アーケードゲームを購入できます
 PRINTL これが無いとゲーセン経営は話になりません
 CALL PRINT_AC_ITEM
-PRINTL 　[1] - 音ゲー
-;PRINTL [2] - メダルゲーム
+PRINTL 　[1] - 音ゲー・アーケードゲーム
+PRINTL 　[2] - メダルゲーム
 ;PRINTL [3] - プライズゲーム
 PRINTL 　[4] - 両替機・券売機・その他
 DRAWLINE
@@ -504,7 +518,7 @@ DO
 	SELECTCASE LOCAL
 		CASE 0
 			RETURN 0
-		CASE 1, 4
+		CASE 1, 2, 4
 			DRAWLINE
 			CALL PASELIL, @"所持金:{MONEY}＄"
 			PRINTL □購入する筐体を選んでください
@@ -640,6 +654,7 @@ RESTART
 @AC_SETUP, 階層
 #DIM 階層
 #DIM DYNAMIC 選択筐体
+#DIM DYNAMIC LCOUNT
 ;ページ数は初期値が1
 #DIM ページ数 = 1
 VARSET LOCAL, 0
@@ -650,15 +665,15 @@ DRAWLINE
 PRINTFORML □{階層}階 広さ:{GC広さ} 
 PRINTFORML 　使用済みスペース:{GC広さ-空きスペース:階層} 使用可能スペース:あと{空きスペース:階層}
 
-FOR COUNT, ページ数*100+1000, ページ数*100+1100
-	SIF ITEMNAME:COUNT == ""
+FOR LCOUNT, ページ数*100+1000, ページ数*100+1100
+	SIF ITEMNAME:LCOUNT == ""
 		CONTINUE
 	
-	PRINTFORML ・%ITEMNAME:COUNT%×{ITEM:COUNT}台在庫あり(必要スペース:{筐体コスト(COUNT)} {設置筐体:階層:COUNT}台設置中)
-	SIF ITEM:COUNT
-		PRINTFORML 　%ITEMNAME:COUNT%を設置[{COUNT*10}]
-	SIF 設置筐体:階層:COUNT
-		PRINTFORML 　%ITEMNAME:COUNT%を撤去[{COUNT*10+1}]
+	PRINTFORML ・%ITEMNAME:LCOUNT%×{ITEM:LCOUNT}台在庫あり(必要スペース:{筐体コスト(LCOUNT)} {設置筐体:階層:LCOUNT}台設置中)
+	SIF ITEM:LCOUNT
+		PRINTFORML 　%ITEMNAME:LCOUNT%を設置[{LCOUNT*10}]
+	SIF 設置筐体:階層:LCOUNT
+		PRINTFORML 　%ITEMNAME:LCOUNT%を撤去[{LCOUNT*10+1}]
 	PRINTL 
 NEXT
 PRINTL ・[1002] 全て撤去
@@ -676,20 +691,20 @@ DO
 	SELECTCASE RESULT
 		CASE 999
 			SIF ページ数 > 1
-				ページ数 = 1
+				ページ数--
 		CASE 1000
 			RETURN 0
 		CASE 1001
 			SIF ページ数 < 4
-				ページ数 = 4
+				ページ数++
 		CASE 1002
-			FOR COUNT, 1100, 1500
-				SIF ITEMNAME:COUNT == ""
+			FOR LCOUNT, 1100, 1500
+				SIF ITEMNAME:LCOUNT == ""
 					CONTINUE
-				SIF 設置筐体:階層:COUNT == 0
+				SIF 設置筐体:階層:LCOUNT == 0
 					CONTINUE
-				ITEM:COUNT += 設置筐体:階層:COUNT
-				設置筐体:階層:COUNT = 0
+				ITEM:LCOUNT += 設置筐体:階層:LCOUNT
+				設置筐体:階層:LCOUNT = 0
 				空きスペース:階層 = GC広さ
 			NEXT
 			PRINTW 全筐体を撤去しました
