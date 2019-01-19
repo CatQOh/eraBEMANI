@@ -9,7 +9,7 @@ SIF TARGET < 0
 
 ;アニマルで懐いてる場合は朝に甘えるイベント
 IF TALENT:アニマル && CFLAG:依存度 >= 1500
-	CALL SELF_MORNING_アニマル
+	CALL EVENT_CHECK, "アニマル"
 	RETURN
 ENDIF
 
@@ -30,14 +30,18 @@ SIF CFLAG:二日酔い
 LOCAL = CFLAG:出産トラウマ
 ;1+(トラウマ値/10)/2+(トラウマ値/10) 
 IF ((!TALENT:処女 && !TALENT:再生処女 && ABL:Ｖ感覚 >= 3) || ABL:Ａ感覚 >= 3) && ABL:奉仕精神 >= 7 && !(LOCAL && RAND:(LOCAL/10+2) <= LOCAL/10)
-	CALL SELF_MORNING_朝騎乗位
+	CALL EVENT_CHECK, "朝騎乗位"
 ;朝パイズリ判定
 ELSEIF TALENT:バストサイズ >= 2 && ABL:奉仕精神 >= 5
-	CALL SELF_MORNING_朝パイズリ
+	CALL EVENT_CHECK, "朝パイズリ"
 ;朝フェラ判定
 ELSE
-	CALL SELF_MORNING_朝フェラ
+	CALL EVENT_CHECK, "朝フェラ"
 ENDIF
+
+;DISABLE_EVENTが行われていた場合は表示しない
+SIF RESULT == 0
+	RETURN 0
 
 SELECTCASE FALLTYPE(TARGET)
 	CASE 1
@@ -83,7 +87,7 @@ ENDSELECT
 
 CALL CHECKDRAWLINEW
 
-@SELF_MORNING_朝フェラ
+@EVENT_朝フェラ
 DRAWLINE
 CALL KOJO_MESSAGE_EVENT, "朝フェラ"
 
@@ -124,7 +128,7 @@ CFLAG:朝フェラ経験++
 CFLAG:MASTER:朝フェラ経験++
 CFLAG:口で射精させた経験++
 
-@SELF_MORNING_朝パイズリ
+@EVENT_朝パイズリ
 DRAWLINE
 CALL KOJO_MESSAGE_EVENT, "朝パイズリ"
 
@@ -166,7 +170,7 @@ CFLAG:朝パイズリ経験++
 CFLAG:MASTER:朝パイズリ経験++
 CFLAG:胸で射精させた経験++
 
-@SELF_MORNING_朝騎乗位
+@EVENT_朝騎乗位
 DRAWLINE
 CALL KOJO_MESSAGE_EVENT, "朝騎乗位"
 
@@ -272,30 +276,30 @@ IF ASSI >= 0 && CFLAG:陥落 && CFLAG:ASSI:陥落 && RELATION:(NO:ASSI) > 100 &&
 	LOCAL = CFLAG:出産トラウマ+CFLAG:ASSI:出産トラウマ
 	;1+(合計値/10)/2+(合計値/10) 
 	SIF !(LOCAL && RAND:(LOCAL/10+2) <= LOCAL/10)
-		CALL SELF_CHECK_調教後3P
+		CALL EVENT_CHECK, "調教後3P"
 ;ふたりエッチ判定 対象が陥落済み、対象の体力500以上
 ELSEIF CFLAG:陥落 && BASE:体力 >= 500 && TEQUIP:強精神薬 <= 2
 	;出産トラウマがある場合はry 式は上と同じ1
 	LOCAL = CFLAG:出産トラウマ
 	SIF !(LOCAL && RAND:(LOCAL/10+2) <= LOCAL/10)
-		CALL SELF_CHECK_調教後セックス
+		CALL EVENT_CHECK, "調教後セックス"
 ENDIF
 
 ;強精神薬の反動、調教後搾乳、調教後自慰。どれか一つ
 IF TEQUIP:強精神薬 > 2
-	CALL SELF_CHECK_強精神薬の反動
+	CALL EVENT_CHECK, "強精神薬の反動"
 ELSEIF ABL:Ｂ感覚 >= 4 && (ABL:噴乳中毒 > ABL:自慰中毒) && TALENT:母乳体質
-	CALL SELF_CHECK_調教後搾乳
+	CALL EVENT_CHECK, "調教後搾乳"
 ELSEIF ABL:自慰中毒 >= 3
-	CALL SELF_CHECK_調教後自慰
+	CALL EVENT_CHECK, "調教後自慰"
 ENDIF
 
 ;調教後夜這い
 SIF CFLAG:陥落 && TIME == 1
-	CALL SELF_CHECK_調教後夜這い
+	CALL EVENT_CHECK, "調教後夜這い"
 
 ;調教後3P
-@SELF_CHECK_調教後3P
+@EVENT_調教後3P
 ;イベント口上呼び出し
 DRAWLINE
 CALL KOJO_MESSAGE_EVENT, "調教後3P"
@@ -650,7 +654,7 @@ WAIT
 DRAWLINE
 
 ;調教後セックス
-@SELF_CHECK_調教後セックス
+@EVENT_調教後セックス
 ;イベント口上呼び出し
 DRAWLINE
 CALL KOJO_MESSAGE_EVENT, "調教後セックス"
@@ -859,7 +863,7 @@ ENDIF
 WAIT
 
 ;強精神薬の反動
-@SELF_CHECK_強精神薬の反動
+@EVENT_強精神薬の反動
 ;イベント口上呼び出し
 DRAWLINE
 
@@ -919,7 +923,7 @@ IF TFLAG:Ｃ絶頂カウント+TFLAG:Ｖ絶頂カウント+TFLAG:Ａ絶頂カウ
 ENDIF
 
 ;調教後搾乳
-@SELF_CHECK_調教後搾乳
+@EVENT_調教後搾乳
 ;イベント口上呼び出し
 DRAWLINE
 CALL KOJO_MESSAGE_EVENT, "調教後搾乳"
@@ -973,7 +977,7 @@ CFLAG:調教後搾乳経験++
 WAIT
 
 ;調教後自慰
-@SELF_CHECK_調教後自慰
+@EVENT_調教後自慰
 ;イベント口上呼び出し
 DRAWLINE
 CALL KOJO_MESSAGE_EVENT, "調教後自慰"
@@ -1036,15 +1040,7 @@ CFLAG:調教後自慰経験++
 WAIT
 
 ;調教後夜這い
-@SELF_CHECK_調教後夜這い
-;イベント口上呼び出し
-;口上側でのイベント制御
-IF FLAG:口上表示
-	TRYCCALLFORM DISABLE_調教後夜這い_K{NO:TARGET}
-		RETURN
-	CATCH
-	ENDCATCH
-ENDIF
+@EVENT_調教後夜這い
 DRAWLINE
 CALL KOJO_MESSAGE_EVENT, "調教後夜這い"
 
@@ -1101,7 +1097,7 @@ ELSEIF SEX(TARGET) == 2
 	WAIT
 ENDIF
 
-@SELF_MORNING_アニマル
+@EVENT_アニマル
 DRAWLINE
 ;イベント口上呼び出し
 CALL KOJO_MESSAGE_EVENT, "アニマル"
