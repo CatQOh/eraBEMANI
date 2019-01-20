@@ -2,7 +2,7 @@
 #DIM DYNAMIC GAMES = 0;現在のゲーム数
 #DIM CONST GAMES_MAX = 15;ゲーム数の設定
 #DIM DYNAMIC MIN_BET;賭け金の下限(上限はその10倍)
-#DIM CONST USE_DECKS = 6;使用デッキ数
+#DIM DYNAMIC USE_DECKS = 6;使用デッキ数
 #DIM DYNAMIC SHUFFLE_BORDER;デッキがこの枚数未満になったらシャッフルする
 #DIM DYNAMIC USE_CARDS;カードの使用枚数
 #DIM DYNAMIC BJ_BET;賭け金
@@ -33,12 +33,15 @@
 #DIM DYNAMIC WIN_MONEY
 #DIM DYNAMIC カジノの種類
 
-;賭け金下限(上限は*10) 表カジノは2,500 裏カジノは20,000
+;賭け金下限(上限は*10) 表カジノは2,500 裏カジノは20,000 ゲーセンは1枚&デッキ数は1
 SELECTCASE カジノの種類
 	CASE 1
 		MIN_BET = 2500
 	CASE 2
 		MIN_BET = 20000
+	CASE 3
+		MIN_BET = 1
+		USE_DECKS = 1
 ENDSELECT
 
 ;1ゲームにおけるカードの理論上最大枚数(6デッキまでは対応)
@@ -98,7 +101,7 @@ DO
 	PRINTL
 	PRINTL いくら賭けますか？
 	PRINT [0]もうやめる 
-	SIF TARGET > 0 && USE_CARDS > 0 && 会話回数 > 0
+	SIF TARGET > 0 && USE_CARDS > 0 && 会話回数 > 0 && カジノの種類 != 3
 		PRINTFORM [-1]%CALLNAME%と話す(残り{会話回数}回)
 	PRINTL
 	;10個のボタンをずれずに表示する
@@ -123,7 +126,7 @@ DO
 			PRINTL
 	NEXT
 	INPUT
-	IF RESULT == -1 && TARGET > 0 && USE_CARDS > 0 && 会話回数 > 0
+	IF RESULT == -1 && TARGET > 0 && USE_CARDS > 0 && 会話回数 > 0 && カジノの種類 != 3
 		カウンティング能力 = 10
 		;点数別カウンティング能力
 		;3点以下:情報を教えてもらえない
@@ -593,7 +596,11 @@ DO
 	GAMES += 1
 	SIF GAMES == GAMES_MAX
 		BREAK
-	IF 52*USE_DECKS-USE_CARDS < SHUFFLE_BORDER;デッキの残り枚数が1ゲーム使用枚数の理論値未満でシャッフル
+	;ゲーセンの場合は毎回シャッフル
+	IF カジノの種類 == 3
+		CALL SHUFFLE, 52*USE_DECKS
+		USE_CARDS = 0
+	ELSEIF 52*USE_DECKS-USE_CARDS < SHUFFLE_BORDER;デッキの残り枚数が1ゲーム使用枚数の理論値未満でシャッフル
 		PRINTFORMW 「デッキの残りが少なくなったので、デッキをシャッフルします。」
 		CALL SHUFFLE, 52*USE_DECKS
 		USE_CARDS = 0;カードの使用枚数
