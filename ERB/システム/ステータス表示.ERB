@@ -1,17 +1,17 @@
-﻿@STATUS, ARG
+﻿@STATUS
 DRAWLINE
 PRINTL □ 基本情報
-PRINTFORM 　名前:%NAME:ARG%　
-IF NO:ARG >= 10000 || CSTR:ARG:種族 == CSVCSTR(NO:ARG, 110)
-	PRINTFORM 種族:%CSTR:ARG:種族%　
-ELSEIF CSTR:ARG:種族 != CSVCSTR(NO:ARG, 110)
-	PRINTFORM 種族:元%CSVCSTR(NO:ARG, 110)%の%CSTR:ARG:種族%　
+PRINTFORM 　名前:%NAME:TARGET%　
+IF NO:TARGET >= 10000 || CSTR:種族 == CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
+	PRINTFORM 種族:%CSTR:種族%　
+ELSEIF CSTR:種族 != CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
+	PRINTFORM 種族:元%CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))%の%CSTR:種族%　
 ENDIF
-IF ARG != MASTER
+IF TARGET != MASTER
 	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-		PRINTFORM 依存度:{CFLAG:ARG:依存度}　
+		PRINTFORM 依存度:{CFLAG:依存度}　
 	PRINT ストレス値:
-	SELECTCASE CFLAG:ARG:ストレス値
+	SELECTCASE CFLAG:ストレス値
 		CASE 1 TO 99
 			SETCOLORBYNAME lime
 		CASE 100 TO 299
@@ -21,9 +21,9 @@ IF ARG != MASTER
 		CASE IS >= 500
 			SETCOLORBYNAME darkred
 	ENDSELECT
-	PRINTFORM {CFLAG:ARG:ストレス値}/999
+	PRINTFORM {CFLAG:ストレス値}/999
 	RESETCOLOR
-ELSEIF ARG == MASTER
+ELSEIF TARGET == MASTER
 	PRINTFORM (堕した人数:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従}人)　
 	PRINT 難易度:
 	SELECTCASE FLAG:難易度
@@ -36,17 +36,17 @@ ELSEIF ARG == MASTER
 	ENDSELECT
 ENDIF
 PRINTL 
-IF ARG != MASTER
+IF TARGET != MASTER
 	DRAWLINE
 	PRINTL □ 珠
-	CALL SHOW_INFO_JUEL, ARG
+	CALL SHOW_INFO_JUEL, TARGET
 ENDIF
-CALL SHOW_INFO, ARG
+CALL SHOW_INFO, TARGET
 
 PRINTL □ 相性
-SIF TALENT:ARG:服従
+SIF TALENT:服従
 	PRINTL 　全キャラ×120%
-SIF TALENT:ARG:隷属
+SIF TALENT:隷属
 	PRINTL 　全キャラ×150%
 LOCAL = 0
 REPEAT 20000
@@ -54,24 +54,24 @@ REPEAT 20000
 		SIF COUNT > 10000 && CHILDNAME:(COUNT-10000) == ""
 			BREAK
 		LOCALS = 
-		IF RELATION:ARG:COUNT != 100
-			IF !TALENT:ARG:服従 && !TALENT:ARG:隷属
+		IF RELATION:COUNT != 100
+			IF !TALENT:服従 && !TALENT:隷属
 				IF NO:MASTER == COUNT
-					LOCALS = 　%NAME:MASTER%×{RELATION:ARG:COUNT}\%
+					LOCALS = 　%NAME:MASTER%×{RELATION:COUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAMEF(COUNT)%×{RELATION:ARG:COUNT}\%
+					LOCALS = 　%CSVNAMEF(COUNT)%×{RELATION:COUNT}\%
 				ENDIF
-			ELSEIF RELATION:ARG:COUNT > 120 && TALENT:ARG:服従
+			ELSEIF RELATION:COUNT > 120 && TALENT:服従
 				IF NO:MASTER == COUNT
-					LOCALS = 　%NAME:MASTER%×{RELATION:ARG:COUNT}\%
+					LOCALS = 　%NAME:MASTER%×{RELATION:COUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAMEF(COUNT)%×{RELATION:ARG:COUNT}\%
+					LOCALS = 　%CSVNAMEF(COUNT)%×{RELATION:COUNT}\%
 				ENDIF
-			ELSEIF RELATION:ARG:COUNT > 150 && TALENT:ARG:隷属
+			ELSEIF RELATION:COUNT > 150 && TALENT:隷属
 				IF NO:MASTER == COUNT
-					LOCALS = 　%NAME:MASTER%×{RELATION:ARG:COUNT}\%
+					LOCALS = 　%NAME:MASTER%×{RELATION:COUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAMEF(COUNT)%×{RELATION:ARG:COUNT}\%
+					LOCALS = 　%CSVNAMEF(COUNT)%×{RELATION:COUNT}\%
 				ENDIF
 			ENDIF
 		ENDIF
@@ -91,21 +91,20 @@ DRAWLINE
 PRINTPLAIN 　BASIC　
 PRINT [0] 戻る 
 PRINT [5] その他情報 
-IF ARG > 0
+IF TARGET > 0
 	PRINT [6] 前のキャラ 
 ELSE
 	PRINTPLAIN 　　　　　　　 
 ENDIF
-SIF ARG < CHARANUM-1
+IF TARGET < CHARANUM-1
 	PRINT [7] 次のキャラ 
+ELSE
+	PRINTPLAIN 　　　　　　　 
+ENDIF
 
-IF !CHECK_CHILD_CARE(ARG) && !CFLAG:ARG:使用不可
-	IF TARGET != ARG && ARG != 0
-		PRINT [8] 対象に指定 
-	ELSE
-		PRINTPLAIN 　　　　　　　 
-	ENDIF
-	IF ASSI != ARG && ARG != 0 && CFLAG:ARG:状態 >= 2
+IF !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && TARGET != MASTER
+	PRINT [8] 対象に指定 
+	IF NOSAMES(TARGET, MASTER, ASSI) && CFLAG:状態 >= 2
 		PRINT [9] 助手に指定 
 	ELSE
 		PRINTPLAIN 　　　　　　　 
@@ -120,30 +119,34 @@ DO
 			RETURN 0
 		CASE 5
 			;以下フラグリセットのためにJUMPで処理
-			JUMP STATUS_ETC, ARG
+			JUMP STATUS_ETC
 		CASE 6
-			SIF ARG > 0
-				JUMP STATUS, ARG-1
+			IF TARGET > 0
+				TARGET--
+				JUMP STATUS
+			ENDIF
 		CASE 7
-			SIF ARG < CHARANUM-1
-				JUMP STATUS, ARG+1
+			IF TARGET < CHARANUM-1
+				TARGET++
+				JUMP STATUS
+			ENDIF
 		CASE 8, 9
-			IF !CHECK_CHILD_CARE(ARG) && !CFLAG:ARG:使用不可
+			IF !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && TARGET != MASTER
 				IF RESULT == 8
-					SIF TARGET != ARG && ARG != 0
-						CALL ASIGN_TARGET, ARG
+					CALL ASIGN_TARGET, TARGET
 					RETURN 0
 				ENDIF
 				IF RESULT == 9
-					SIF ASSI != ARG && ARG != 0 && CFLAG:ARG:状態 >= 2
-						CALL ASIGN_ASSI, ARG
-					RETURN 0
+					IF NOSAMES(TARGET, MASTER, ASSI) && CFLAG:状態 >= 2
+						CALL ASIGN_ASSI, TARGET
+						RETURN 0
+					ENDIF
 				ENDIF
 			ENDIF
 	ENDSELECT
 LOOP 1
 
-@STATUS_ETC, ARG
+@STATUS_ETC
 #DIM PAGE
 #DIM DYNAMIC ドラゴンに処女, 2
 #DIM DYNAMIC LCOUNT
@@ -161,12 +164,12 @@ LOOP 1
 #DIM DYNAMIC 兄弟姉妹番号簡易版
 
 ;処女が主人のドラゴンとなっている場合は、現在のドラゴンの名前を入れて後で戻す
-IF VIRGIN:ARG:1 == "主人のドラゴン"
-	VIRGIN:ARG:1 = %CSTR:MASTER:ドラゴン%
+IF VIRGIN:1 == "主人のドラゴン"
+	VIRGIN:1 = %CSTR:MASTER:ドラゴン%
 	ドラゴンに処女:0 = 1
 ENDIF
-IF VIRGIN:ARG:11 == "主人のドラゴン"
-	VIRGIN:ARG:11 = %CSTR:MASTER:ドラゴン%
+IF VIRGIN:11 == "主人のドラゴン"
+	VIRGIN:11 = %CSTR:MASTER:ドラゴン%
 	ドラゴンに処女:1 = 1
 ENDIF
 
@@ -174,22 +177,36 @@ ENDIF
 
 DRAWLINE
 PRINTL □ 基本情報
-PRINTFORM 　名前:%NAME:ARG%　
+PRINTFORM 　名前:%NAME:TARGET%　
 PRINT 性別:
-SELECTCASE SEX(ARG)
+SELECTCASE SEX(TARGET)
 	CASE 1
 		PRINT 男　
 	CASE 2
 		PRINT 女　
 ENDSELECT
-IF NO:ARG >= 10000 || CSTR:ARG:種族 == CSVCSTR(NO:ARG, 110)
-	PRINTFORM 種族:%CSTR:ARG:種族%　
-ELSEIF CSTR:ARG:種族 != CSVCSTR(NO:ARG, 110)
-	PRINTFORM 種族:元%CSVCSTR(NO:ARG, 110)%の%CSTR:ARG:種族%　
+IF NO:TARGET >= 10000 || CSTR:種族 == CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
+	PRINTFORM 種族:%CSTR:種族%　
+ELSEIF CSTR:種族 != CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
+	PRINTFORM 種族:元%CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))%の%CSTR:種族%　
 ENDIF
-IF ARG != MASTER && (TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳))
-	PRINTFORM (依存度:{CFLAG:ARG:依存度} ストレス値{CFLAG:ARG:ストレス値})　
-ELSEIF ARG == MASTER && FLAG:ゲームモード != 7
+IF TARGET != MASTER
+	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+		PRINTFORM 依存度:{CFLAG:依存度}　
+	PRINT ストレス値:
+	SELECTCASE CFLAG:ストレス値
+		CASE 1 TO 99
+			SETCOLORBYNAME lime
+		CASE 100 TO 299
+			SETCOLORBYNAME yellow
+		CASE 300 TO 499
+			SETCOLORBYNAME red
+		CASE IS >= 500
+			SETCOLORBYNAME darkred
+	ENDSELECT
+	PRINTFORM {CFLAG:ストレス値}/999
+	RESETCOLOR
+ELSEIF TARGET == MASTER && FLAG:ゲームモード != 7
 	PRINTFORM 堕した人数:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従}人　
 	PRINT 難易度:
 	SELECTCASE FLAG:難易度
@@ -203,12 +220,12 @@ ELSEIF ARG == MASTER && FLAG:ゲームモード != 7
 ENDIF
 PRINTL 
 PRINTL □ その他情報
-IF FLAG:ゲームモード == 1 && FLAG:パートナー == NO:ARG
+IF FLAG:ゲームモード == 1 && FLAG:パートナー == NO:TARGET
 		PRINTFORML 　{REALTIME:0}年{REALTIME:1}月{REALTIME:2}日に%CALLNAME:MASTER%のパートナーになった
 ELSEIF FLAG:ゲームモード == 7
-	IF NO:ARG >= 10000
-		PRINTFORML 　%CSVNAMEF(CFLAG:ARG:血縁コード/100000)%と%CSVNAMEF(CFLAG:ARG:血縁コード%100000)%の\@ CFLAG:ARG:近親交配 ? 近親交配で # 間に \@産まれた\@ SEX(ARG) == 1 ? 息子 # 娘 \@だ
-	ELSEIF ARG == MASTER
+	IF NO:TARGET >= 10000
+		PRINTFORML 　%CSVNAMEF(CFLAG:血縁コード/100000)%と%CSVNAMEF(CFLAG:血縁コード%100000)%の\@ CFLAG:近親交配 ? 近親交配で # 間に \@産まれた\@ SEX(TARGET) ? 息子 # 娘 \@だ
+	ELSEIF TARGET == MASTER
 		REPEAT CHARANUM
 			IF CFLAG:COUNT:嫁
 				LOCAL = COUNT
@@ -220,7 +237,7 @@ ELSEIF FLAG:ゲームモード == 7
 		PRINTFORML 　{REALTIME:0}年{REALTIME:1}月{REALTIME:2}日に%CALLNAME:MASTER%と結婚した
 	ENDIF
 ELSE
-	IF ARG == MASTER
+	IF TARGET == MASTER
 		PRINTFORML 　{REALTIME:0}年{REALTIME:1}月{REALTIME:2}日にこの世界へと迷いこむ
 		PRINTFORML 　現在は{CHARANUM-1}人の奴隷を扱う調教師
 		SIF FLAG:周回数 >= 2
@@ -232,49 +249,49 @@ ELSE
 		SIF FLAG:累計服従
 			PRINTFORML 　累計{FLAG:累計服従}人の奴隷が%CALLNAME:MASTER%に服従した
 	ELSE
-		IF NO:ARG == 0
+		IF NO:TARGET == 0
 			PRINTFORML 　%CALLNAME:MASTER%が調教師を始めたと聞いて、自ら奴隷になりたいと志願してきた変人である
-		ELSEIF NO:ARG >= 10000
-			PRINTFORML 　%CSVNAMEF(CFLAG:ARG:血縁コード/100000)%と%CSVNAMEF(CFLAG:ARG:血縁コード%100000)%の\@ CFLAG:ARG:近親交配 ? 近親交配で # 間に \@産まれた\@ SEX(ARG) == 1 ? 息子 # 娘 \@だ
+		ELSEIF NO:TARGET >= 10000
+			PRINTFORML 　%CSVNAMEF(CFLAG:血縁コード/100000)%と%CSVNAMEF(CFLAG:血縁コード%100000)%の\@ CFLAG:近親交配 ? 近親交配で # 間に \@産まれた\@ SEX(TARGET) == 1 ? 息子 # 娘 \@だ
 		ELSE
-			PRINTFORML 　{BUYY:ARG:0}年{BUYM:ARG:0}月{BUYD:ARG:0}日に購入
+			PRINTFORML 　{BUYY:0}年{BUYM:0}月{BUYD:0}日に購入
 		ENDIF
 	ENDIF
 ENDIF
-IF CFLAG:ARG:嫁
+IF CFLAG:嫁
 	PRINTFORML 　現在は%CALLNAME:MASTER%の嫁である
-ELSEIF CFLAG:ARG:専属娼婦
+ELSEIF CFLAG:専属娼婦
 	PRINTFORML 　現在は%CALLNAME:MASTER%専属の娼婦である
-ELSEIF CFLAG:ARG:傀儡
+ELSEIF CFLAG:傀儡
 	PRINTFORML 　現在は%CALLNAME:MASTER%の支配下に置ける傀儡である
 ENDIF
 
-IF CFLAG:ARG:血縁コード && NO:ARG < 10000
+IF CFLAG:血縁コード && NO:TARGET < 10000
 	LOCAL = 0
 	LOCAL:1 = 0
 	FOR LCOUNT, 0, 10000
-		SIF LCOUNT == NO:ARG
+		SIF LCOUNT == NO:TARGET
 			CONTINUE
-		IF EXISTCSV(LCOUNT) && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+		IF EXISTCSV(LCOUNT) && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:血縁コード
 			;その家族で一番高齢（？）に位置する続柄を入れておく
 			SIF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) > 尊属
 				尊属 = CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄"))
 			;「家族番号簡易版」はCSVある家族が一人だけの場合に使う
 			家族番号簡易版 = LCOUNT
-			IF CFLAG:ARG:続柄 < 1000
+			IF CFLAG:続柄 < 1000
 				;「兄弟姉妹番号簡易版」はCSVある兄弟姉妹が一人だけの場合に使う
 				SELECTCASE CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄"))
 					CASE IS < 1000
 						兄弟姉妹番号簡易版 = LCOUNT
 						SELECTCASE CSVTALENT(LCOUNT, GETNUM(TALENT, "性別"))
 							CASE 1
-								IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:ARG:続柄
+								IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:続柄
 									兄数++
 								ELSE
 									弟数++
 								ENDIF
 							CASE 2
-								IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:ARG:続柄
+								IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:続柄
 									姉数++
 								ELSE
 									妹数++
@@ -285,11 +302,11 @@ IF CFLAG:ARG:血縁コード && NO:ARG < 10000
 					CASE 1001
 						母親 = LCOUNT
 				ENDSELECT
-			ELSEIF CFLAG:ARG:続柄 < 2000
+			ELSEIF CFLAG:続柄 < 2000
 				;さすがに息子娘とかくらいしか表示するつもりがない
 				SIF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000
 					息子娘数++
-			ELSEIF CFLAG:ARG:続柄 < 3000
+			ELSEIF CFLAG:続柄 < 3000
 				SIF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000
 					孫数++
 			ENDIF
@@ -298,31 +315,31 @@ IF CFLAG:ARG:血縁コード && NO:ARG < 10000
 	NEXT
 	SELECTCASE 家族人数
 		CASE 1
-			IF CFLAG:ARG:続柄 < 1000
+			IF CFLAG:続柄 < 1000
 				IF 尊属 < 1000
-					IF CFLAG:ARG:続柄 == 1
-						PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(ARG) == 1 ? 兄 # 姉 \@にあたる
+					IF CFLAG:続柄 == 1
+						PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(TARGET) == 1 ? 兄 # 姉 \@にあたる
 					ELSE
-						PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(ARG) == 1 ? 弟 # 妹 \@にあたる
+						PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(TARGET) == 1 ? 弟 # 妹 \@にあたる
 					ENDIF
 				ELSEIF 尊属 < 2000
-					PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(ARG) == 1 ? 息子 # 娘 \@にあたる
+					PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(TARGET) == 1 ? 息子 # 娘 \@にあたる
 				ELSEIF 尊属 < 3000
 					PRINTFORML 　%CSVNAME(家族番号簡易版)%の孫にあたる
 				ENDIF
-			ELSEIF CFLAG:ARG:続柄 < 2000
-				PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(ARG) == 1 ? 父親 # 母親 \@にあたる
-			ELSEIF CFLAG:ARG:続柄 < 3000
-				PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(ARG) == 1 ? 祖父 # 祖母 \@にあたる
+			ELSEIF CFLAG:続柄 < 2000
+				PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(TARGET) == 1 ? 父親 # 母親 \@にあたる
+			ELSEIF CFLAG:続柄 < 3000
+				PRINTFORML 　%CSVNAME(家族番号簡易版)%の\@ SEX(TARGET) == 1 ? 祖父 # 祖母 \@にあたる
 			ENDIF
 		CASE IS >= 2
-			IF CFLAG:ARG:続柄 < 1000
+			IF CFLAG:続柄 < 1000
 				IF 尊属 < 1000
 					;今のところ3兄弟、3姉妹までなのでそれにだけ対応
 					;ちなみにCONV_NOは英数字→漢数字変換関数
 					LOCALS = %CONV_NO(家族人数+1)%
-					IF CFLAG:ARG:続柄 == 1
-						SELECTCASE SEX(ARG)
+					IF CFLAG:続柄 == 1
+						SELECTCASE SEX(TARGET)
 							CASE 1
 								LOCALS += "兄"
 								IF 姉数 || 妹数
@@ -341,35 +358,35 @@ IF CFLAG:ARG:血縁コード && NO:ARG < 10000
 					ELSE
 						IF 兄数
 							LOCALS += "兄"
-							IF 姉数 || 妹数 || SEX(ARG) == 2
+							IF 姉数 || 妹数 || SEX(TARGET) == 2
 								LOCALS += "妹"
 							ELSE
 								LOCALS += "弟"
 							ENDIF
 						ELSEIF 姉数
 							LOCALS += "姉"
-							IF 兄数 || 弟数 || SEX(ARG) == 1
+							IF 兄数 || 弟数 || SEX(TARGET) == 1
 								LOCALS += "弟"
 							ELSE
 								LOCALS += "妹"
 							ENDIF
 						ENDIF
 					ENDIF
-					PRINTFORM 　%LOCALS%の{CFLAG:ARG:続柄}番目であり、
+					PRINTFORM 　%LOCALS%の{CFLAG:続柄}番目であり、
 					IF 兄数 || 姉数
 						LOCALS = 
 						FOR LCOUNT, 0, 10000
 							SIF !EXISTCSV(LCOUNT)
 								CONTINUE
-							SIF LCOUNT == NO:ARG
+							SIF LCOUNT == NO:TARGET
 								CONTINUE
-							IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:ARG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+							IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:血縁コード
 								SIF LOCALS != ""
 									LOCALS += "、"
 								LOCALS += @"%CSVCALLNAME(LCOUNT)%"
 							ENDIF
 						NEXT
-						PRINTFORM %LOCALS%の\@ SEX(ARG) == 1 ? 弟 # 妹 \@
+						PRINTFORM %LOCALS%の\@ SEX(TARGET) == 1 ? 弟 # 妹 \@
 						SIF (兄数 || 姉数) && (弟数 || 妹数)
 							PRINT 、
 					ENDIF
@@ -378,30 +395,30 @@ IF CFLAG:ARG:血縁コード && NO:ARG < 10000
 						FOR LCOUNT, 0, 10000
 							SIF !EXISTCSV(LCOUNT)
 								CONTINUE
-							SIF LCOUNT == NO:ARG
+							SIF LCOUNT == NO:TARGET
 								CONTINUE
-							IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) > CFLAG:ARG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+							IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) > CFLAG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:血縁コード
 								SIF LOCALS != ""
 									LOCALS += "、"
 								LOCALS += @"%CSVCALLNAME(LCOUNT)%"
 							ENDIF
 						NEXT
-						PRINTFORM %LOCALS%の\@ SEX(ARG) == 1 ? 兄 # 姉 \@
+						PRINTFORM %LOCALS%の\@ SEX(TARGET) == 1 ? 兄 # 姉 \@
 					ENDIF
 					PRINTL にあたる
 				ELSEIF 尊属 < 2000
 					PRINT 　
 					IF 兄数+姉数+弟数+妹数 == 1
-						IF CFLAG:ARG:続柄 == 1
-							PRINTFORM %CSVNAME(兄弟姉妹番号簡易版)%の\@ SEX(ARG) == 1 ? 兄 # 姉 \@であり、
+						IF CFLAG:続柄 == 1
+							PRINTFORM %CSVNAME(兄弟姉妹番号簡易版)%の\@ SEX(TARGET) == 1 ? 兄 # 姉 \@であり、
 						ELSE
-							PRINTFORM %CSVNAME(兄弟姉妹番号簡易版)%の\@ SEX(ARG) == 1 ? 弟 # 妹 \@であり、
+							PRINTFORM %CSVNAME(兄弟姉妹番号簡易版)%の\@ SEX(TARGET) == 1 ? 弟 # 妹 \@であり、
 						ENDIF
 					ELSE
 						IF 兄数+姉数+弟数+妹数 == 1
 							LOCALS = %CONV_NO(兄数+姉数+弟数+妹数+1)%
-							IF CFLAG:ARG:続柄 == 1
-								SELECTCASE SEX(ARG)
+							IF CFLAG:続柄 == 1
+								SELECTCASE SEX(TARGET)
 									CASE 1
 										LOCALS += "兄"
 										IF 姉数 || 妹数
@@ -420,35 +437,35 @@ IF CFLAG:ARG:血縁コード && NO:ARG < 10000
 							ELSE
 								IF 兄数
 									LOCALS += "兄"
-									IF 姉数 || 妹数 || SEX(ARG) == 2
+									IF 姉数 || 妹数 || SEX(TARGET) == 2
 										LOCALS += "妹"
 									ELSE
 										LOCALS += "弟"
 									ENDIF
 								ELSEIF 姉数
 									LOCALS += "姉"
-									IF 兄数 || 弟数 || SEX(ARG) == 1
+									IF 兄数 || 弟数 || SEX(TARGET) == 1
 										LOCALS += "弟"
 									ELSE
 										LOCALS += "妹"
 									ENDIF
 								ENDIF
 							ENDIF
-							PRINTFORM %LOCALS%の{CFLAG:ARG:続柄}番目であり、
+							PRINTFORM %LOCALS%の{CFLAG:続柄}番目であり、
 							IF 兄数 || 姉数
 								LOCALS = 
 								FOR LCOUNT, 0, 10000
 									SIF !EXISTCSV(LCOUNT)
 										CONTINUE
-									SIF LCOUNT == NO:ARG
+									SIF LCOUNT == NO:TARGET
 										CONTINUE
-									IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:ARG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+									IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:血縁コード
 										SIF LOCALS != ""
 											LOCALS += "、"
 										LOCALS += @"%CSVCALLNAME(LCOUNT)%"
 									ENDIF
 								NEXT
-								PRINTFORM %LOCALS%の\@ SEX(ARG) == 1 ? 弟 # 妹 \@
+								PRINTFORM %LOCALS%の\@ SEX(TARGET) == 1 ? 弟 # 妹 \@
 								SIF (兄数 || 姉数) && (弟数 || 妹数)
 									PRINT 、
 							ENDIF
@@ -457,15 +474,15 @@ IF CFLAG:ARG:血縁コード && NO:ARG < 10000
 								FOR LCOUNT, 0, 10000
 									SIF !EXISTCSV(LCOUNT)
 										CONTINUE
-									SIF LCOUNT == NO:ARG
+									SIF LCOUNT == NO:TARGET
 										CONTINUE
-									IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) > CFLAG:ARG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+									IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) > CFLAG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:血縁コード
 										SIF LOCALS != ""
 											LOCALS += "、"
 										LOCALS += @"%CSVCALLNAME(LCOUNT)%"
 									ENDIF
 								NEXT
-								PRINTFORM %LOCALS%の\@ SEX(ARG) == 1 ? 兄 # 姉 \@
+								PRINTFORM %LOCALS%の\@ SEX(TARGET) == 1 ? 兄 # 姉 \@
 							ENDIF
 							PRINT で、
 						ENDIF
@@ -478,20 +495,20 @@ IF CFLAG:ARG:血縁コード && NO:ARG < 10000
 						PRINTFORM %CSVCALLNAME(母親)%
 					SIF 父親 && 母親
 						PRINT 夫妻
-					PRINTFORML の\@ SEX(ARG) == 1 ? 息子 # 娘 \@にあたる
+					PRINTFORML の\@ SEX(TARGET) == 1 ? 息子 # 娘 \@にあたる
 				ELSEIF 尊属 < 3000
 					PRINT 　
 					IF 兄数+姉数+弟数+妹数 == 1
-						IF CFLAG:ARG:続柄 == 1
-							PRINTFORM %CSVNAME(兄弟姉妹番号簡易版)%の\@ SEX(ARG) == 1 ? 兄 # 姉 \@であり、
+						IF CFLAG:続柄 == 1
+							PRINTFORM %CSVNAME(兄弟姉妹番号簡易版)%の\@ SEX(TARGET) == 1 ? 兄 # 姉 \@であり、
 						ELSE
-							PRINTFORM %CSVNAME(兄弟姉妹番号簡易版)%の\@ SEX(ARG) == 1 ? 弟 # 妹 \@であり、
+							PRINTFORM %CSVNAME(兄弟姉妹番号簡易版)%の\@ SEX(TARGET) == 1 ? 弟 # 妹 \@であり、
 						ENDIF
 					ELSE
 						IF 兄数+姉数+弟数+妹数 == 1
 							LOCALS = %CONV_NO(兄数+姉数+弟数+妹数+1)%
-							IF CFLAG:ARG:続柄 == 1
-								SELECTCASE SEX(ARG)
+							IF CFLAG:続柄 == 1
+								SELECTCASE SEX(TARGET)
 									CASE 1
 										LOCALS += "兄"
 										IF 姉数 || 妹数
@@ -510,21 +527,21 @@ IF CFLAG:ARG:血縁コード && NO:ARG < 10000
 							ELSE
 								IF 兄数
 									LOCALS += "兄"
-									IF 姉数 || 妹数 || SEX(ARG) == 2
+									IF 姉数 || 妹数 || SEX(TARGET) == 2
 										LOCALS += "妹"
 									ELSE
 										LOCALS += "弟"
 									ENDIF
 								ELSEIF 姉数
 									LOCALS += "姉"
-									IF 兄数 || 弟数 || SEX(ARG) == 1
+									IF 兄数 || 弟数 || SEX(TARGET) == 1
 										LOCALS += "弟"
 									ELSE
 										LOCALS += "妹"
 									ENDIF
 								ENDIF
 							ENDIF
-							PRINTFORM %LOCALS%の{CFLAG:ARG:続柄}番目であり、
+							PRINTFORM %LOCALS%の{CFLAG:続柄}番目であり、
 						ENDIF
 						;さすがに親も居れば情報量を減らす
 						IF 父親 || 母親
@@ -536,22 +553,22 @@ IF CFLAG:ARG:血縁コード && NO:ARG < 10000
 								PRINTFORM %CSVCALLNAME(母親)%
 							SIF 父親 && 母親
 								PRINT 夫妻
-							PRINTFORM の\@ SEX(ARG) == 1 ? 息子 # 娘 \@で、
+							PRINTFORM の\@ SEX(TARGET) == 1 ? 息子 # 娘 \@で、
 						ELSE
 							IF 兄数 || 姉数
 								LOCALS = 
 								FOR LCOUNT, 0, 10000
 									SIF !EXISTCSV(LCOUNT)
 										CONTINUE
-									SIF LCOUNT == NO:ARG
+									SIF LCOUNT == NO:TARGET
 										CONTINUE
-									IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:ARG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+									IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < CFLAG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:血縁コード
 										SIF LOCALS != ""
 											LOCALS += "、"
 										LOCALS += @"%CSVCALLNAME(LCOUNT)%"
 									ENDIF
 								NEXT
-								PRINTFORM %LOCALS%の\@ SEX(ARG) == 1 ? 弟 # 妹 \@
+								PRINTFORM %LOCALS%の\@ SEX(TARGET) == 1 ? 弟 # 妹 \@
 								SIF (兄数 || 姉数) && (弟数 || 妹数)
 									PRINT 、
 							ENDIF
@@ -560,15 +577,15 @@ IF CFLAG:ARG:血縁コード && NO:ARG < 10000
 								FOR LCOUNT, 0, 10000
 									SIF !EXISTCSV(LCOUNT)
 										CONTINUE
-									SIF LCOUNT == NO:ARG
+									SIF LCOUNT == NO:TARGET
 										CONTINUE
-									IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) > CFLAG:ARG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+									IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) > CFLAG:続柄 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:血縁コード
 										SIF LOCALS != ""
 											LOCALS += "、"
 										LOCALS += @"%CSVCALLNAME(LCOUNT)%"
 									ENDIF
 								NEXT
-								PRINTFORM %LOCALS%の\@ SEX(ARG) == 1 ? 兄 # 姉 \@
+								PRINTFORM %LOCALS%の\@ SEX(TARGET) == 1 ? 兄 # 姉 \@
 							ENDIF
 							PRINT で、
 						ENDIF
@@ -577,9 +594,9 @@ IF CFLAG:ARG:血縁コード && NO:ARG < 10000
 					FOR LCOUNT, 0, 10000
 						SIF !EXISTCSV(LCOUNT)
 							CONTINUE
-						SIF LCOUNT == NO:ARG
+						SIF LCOUNT == NO:TARGET
 							CONTINUE
-						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) >= 2000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) >= 2000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:血縁コード
 							SIF LOCALS != ""
 								LOCALS += "、"
 							LOCALS += @"%CSVCALLNAME(LCOUNT)%"
@@ -587,85 +604,85 @@ IF CFLAG:ARG:血縁コード && NO:ARG < 10000
 					NEXT
 					PRINTFORML %LOCALS%の孫にあたる
 				ENDIF
-			ELSEIF CFLAG:ARG:続柄 < 2000
+			ELSEIF CFLAG:続柄 < 2000
 				IF 息子娘数 == 1
 					FOR LCOUNT, 0, 10000
 						SIF !EXISTCSV(LCOUNT)
 							CONTINUE
-						SIF LCOUNT == NO:ARG
+						SIF LCOUNT == NO:TARGET
 							CONTINUE
-						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:血縁コード
 							PRINTFORM 　%CSVNAME(LCOUNT)%
 							BREAK
 						ENDIF
 					NEXT
-					PRINTFORML の\@ SEX(ARG) == 1 ? 父親 # 母親 \@にあたる
+					PRINTFORML の\@ SEX(TARGET) == 1 ? 父親 # 母親 \@にあたる
 				ELSE
 					FOR LCOUNT, 0, 10000
 						SIF !EXISTCSV(LCOUNT)
 							CONTINUE
-						SIF LCOUNT == NO:ARG
+						SIF LCOUNT == NO:TARGET
 							CONTINUE
-						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:血縁コード
 							SIF LOCALS != ""
 								LOCALS += "、"
 							LOCALS += @"%CSVCALLNAME(LCOUNT)%"
 						ENDIF
 					NEXT
-					PRINTFORML 　%LOCALS%の\@ SEX(ARG) == 1 ? 父親 # 母親 \@にあたる
+					PRINTFORML 　%LOCALS%の\@ SEX(TARGET) == 1 ? 父親 # 母親 \@にあたる
 				ENDIF
-			ELSEIF CFLAG:ARG:続柄 < 3000
+			ELSEIF CFLAG:続柄 < 3000
 				IF 孫数 == 1
 					FOR LCOUNT, 0, 10000
 						SIF !EXISTCSV(LCOUNT)
 							CONTINUE
-						SIF LCOUNT == NO:ARG
+						SIF LCOUNT == NO:TARGET
 							CONTINUE
-						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:血縁コード
 							PRINTFORM 　%CSVNAME(LCOUNT)%
 							BREAK
 						ENDIF
 					NEXT
-					PRINTFORML の\@ SEX(ARG) == 1 ? 祖父 # 祖母 \@にあたる
+					PRINTFORML の\@ SEX(TARGET) == 1 ? 祖父 # 祖母 \@にあたる
 				ELSE
 					FOR LCOUNT, 0, 10000
 						SIF !EXISTCSV(LCOUNT)
 							CONTINUE
-						SIF LCOUNT == NO:ARG
+						SIF LCOUNT == NO:TARGET
 							CONTINUE
-						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:ARG:血縁コード
+						IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "続柄")) < 1000 && CSVCFLAG(LCOUNT, GETNUM(CFLAG, "血縁コード")) == CFLAG:血縁コード
 							SIF LOCALS != ""
 								LOCALS += "、"
 							LOCALS += @"%CSVCALLNAME(LCOUNT)%"
 						ENDIF
 					NEXT
-					PRINTFORML 　%LOCALS%の\@ SEX(ARG) == 1 ? 祖父 # 祖母 \@にあたる
+					PRINTFORML 　%LOCALS%の\@ SEX(TARGET) == 1 ? 祖父 # 祖母 \@にあたる
 				ENDIF
 			ENDIF
 	ENDSELECT
 ENDIF
 
-IF ARG != MASTER
+IF TARGET != MASTER
 	PRINT 　
-	IF TALENT:ARG:小人体型
+	IF TALENT:小人体型
 		PRINTFORM 人間よりとても小さな体をしており、
-	ELSEIF TALENT:ARG:小柄体型
+	ELSEIF TALENT:小柄体型
 		PRINTFORM いわゆる子供のような未成熟な体であり、
 	ENDIF
-	IF TALENT:ARG:痛みに弱い
-		IF TALENT:ARG:小人体型 || TALENT:ARG:小柄体型
+	IF TALENT:痛みに弱い
+		IF TALENT:小人体型 || TALENT:小柄体型
 			PRINTFORML 当然与えられる痛みに耐えることは難しいと思われる
 		ELSE
 			PRINTFORML 苦痛を与えられることが苦手なようだ
 		ENDIF
-	ELSEIF TALENT:ARG:痛みに強い
-		IF TALENT:ARG:小人体型 || TALENT:ARG:小柄体型
+	ELSEIF TALENT:痛みに強い
+		IF TALENT:小人体型 || TALENT:小柄体型
 			PRINTFORML その小さな体に似合わず人一倍の忍耐力があるようだ
 		ELSE
 			PRINTFORML 丈夫な体ゆえか多少の無茶も問題ないとのことだ
 		ENDIF
 	ELSE
-		IF TALENT:ARG:小人体型 || TALENT:ARG:小柄体型
+		IF TALENT:小人体型 || TALENT:小柄体型
 			PRINTFORML しかしそれなりに頑丈なのか、それなり\@FLAG:ゲームモード == 7 ? に激しい行為でも # の調教なら \@耐えられるだろう
 		ELSE
 			PRINTFORML 人並みの体が\@ FLAG:ゲームモード == 7 ? 激しい行為 # 調教 \@に耐えられるかどうか、心の問題だ
@@ -673,18 +690,18 @@ IF ARG != MASTER
 	ENDIF
 ENDIF
 
-IF SEX(ARG) == 2
-	SELECTCASE TALENT:ARG:バストサイズ
+IF SEX(TARGET) == 2
+	SELECTCASE TALENT:バストサイズ
 		CASE 5
 			PRINTFORML 　信じられないほど大きな乳房は実に官能的だ
 		CASE 4
-			IF TALENT:ARG:小柄体型
+			IF TALENT:小柄体型
 				PRINTFORML 　その幼い体には不似合いなほどに大きな乳房をしている
 			ELSE
 				PRINTFORML 　その豊満なスタイルは見ていて飽きないものだ
 			ENDIF
 		CASE 3
-			IF TALENT:ARG:小柄体型
+			IF TALENT:小柄体型
 				PRINTFORML 　その小さな体には少し不釣り合いな大きめの乳房を持っている
 			ELSE
 				PRINTFORML 　体に釣り合ったバストサイズは成るべくして成ったものだろう
@@ -696,51 +713,51 @@ IF SEX(ARG) == 2
 	ENDSELECT
 ENDIF
 
-IF TALENT:ARG:性転換済
-	IF TALENT:ARG:小柄体型
-		PRINTFORML 　幼い見た目とは裏腹に、その体はかつて\@ SEX(ARG) == 1 ? 少女から少年 # 少年から少女 \@に変貌したという特殊な過去を持つ
+IF TALENT:性転換済
+	IF TALENT:小柄体型
+		PRINTFORML 　幼い見た目とは裏腹に、その体はかつて\@ SEX(TARGET) == 1 ? 少女から少年 # 少年から少女 \@に変貌したという特殊な過去を持つ
 	ELSE
-		PRINTFORML 　かつては\@ SEX(ARG) == 1 ? 女性 # 男性 \@だったが、異性の体へと変貌してしまった過去を持つ
+		PRINTFORML 　かつては\@ SEX(TARGET) == 1 ? 女性 # 男性 \@だったが、異性の体へと変貌してしまった過去を持つ
 	ENDIF
 ENDIF
 
-IF TALENT:ARG:性転換済
-	SELECTCASE SEX(ARG)
+IF TALENT:性転換済
+	SELECTCASE SEX(TARGET)
 		CASE 1
-			IF VIRGIN:ARG:1 == "NOTLOSTVIRGIN"
+			IF VIRGIN:1 == "NOTLOSTVIRGIN"
 				PRINTFORM 　結局、誰にも処女を捧げることなく男性になった
-			ELSEIF VIRGIN:ARG:1 != ""
-				IF ARG == MASTER
-					PRINTFORM 　過去に女性だった時は%VIRGIN:ARG:1%に処女を捧げた
+			ELSEIF VIRGIN:1 != ""
+				IF TARGET == MASTER
+					PRINTFORM 　過去に女性だった時は%VIRGIN:1%に処女を捧げた
 				ELSE
-					PRINTFORM 　過去に女性だった時は%VIRGIN:ARG:1%に処女を捧げた。
-					SELECTCASE CFLAG:ARG:処女の奪われ方
+					PRINTFORM 　過去に女性だった時は%VIRGIN:1%に処女を捧げた。
+					SELECTCASE CFLAG:処女の奪われ方
 						CASE 1
-							IF TALENT:ARG:貞操観念
+							IF TALENT:貞操観念
 								PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にしていないようだ
 							ELSE
-								IF CFLAG:ARG:陥落
+								IF CFLAG:陥落
 									PRINTFORM その方法は強引なものだったが、今はもう許しているようだ
 								ELSE
 									PRINTFORM 強引に初めてを奪われたことを未だに根に持っているようだ
 								ENDIF
 							ENDIF
 						CASE 2
-							IF TALENT:ARG:恋慕 || TALENT:ARG:親愛
-								IF VIRGIN:ARG:1 == NAME:MASTER
+							IF TALENT:恋慕 || TALENT:親愛
+								IF VIRGIN:1 == NAME:MASTER
 									PRINTFORM 最愛の相手に処女を捧げられたことを幸せに思っている
 								ELSE
 									PRINTFORM 本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい
 								ENDIF
-							ELSEIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
+							ELSEIF TALENT:淫乱 || TALENT:娼婦
 								PRINTFORM 欲望の赴くままに処女を散らした故に、その時のことをよく覚えていないらしい
-							ELSEIF TALENT:ARG:服従 || TALENT:ARG:隷属
+							ELSEIF TALENT:服従 || TALENT:隷属
 								PRINTFORM %CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思っている
 							ELSE
 								PRINTFORM 同意の上での破瓜だったが、その面影は既にない
 							ENDIF
 						CASE 3
-							IF CFLAG:ARG:陥落
+							IF CFLAG:陥落
 								PRINTFORM 調教を受け入れた今でも自分の処女を奪った当人が気になっているらしい
 							ELSE
 								PRINTFORM 不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思っている
@@ -748,46 +765,46 @@ IF TALENT:ARG:性転換済
 					ENDSELECT
 				ENDIF
 			ENDIF
-			SIF VIRGIN:ARG:0 != "NOTLOSTVIRGIN" && VIRGIN:ARG:0 != ""
-				PRINTFORM 　当時、両性具有でもあった%CALLNAME:ARG%が初めて男性器で繋がった相手は%VIRGIN:ARG:0%だ
+			SIF VIRGIN:0 != "NOTLOSTVIRGIN" && VIRGIN:0 != ""
+				PRINTFORM 　当時、両性具有でもあった%CALLNAME:TARGET%が初めて男性器で繋がった相手は%VIRGIN:0%だ
 		CASE 2
-			IF VIRGIN:ARG:0 == "NOTLOSTVIRGIN"
+			IF VIRGIN:0 == "NOTLOSTVIRGIN"
 				PRINTFORM 　童貞を捨てられないまま女性になってしまった
-			ELSEIF VIRGIN:ARG:0 != ""
-				PRINTFORM 　かつて男性だった時の初めての相手は%VIRGIN:ARG:0%だ
+			ELSEIF VIRGIN:0 != ""
+				PRINTFORM 　かつて男性だった時の初めての相手は%VIRGIN:0%だ
 			ENDIF
-			IF VIRGIN:ARG:1 != "NOTLOSTVIRGIN" && VIRGIN:ARG:1 != ""
-				IF ARG == MASTER
-					PRINTFORM 　当時、両性具有でもあった%CALLNAME:ARG%が処女を捧げた相手は%VIRGIN:ARG:1%
+			IF VIRGIN:1 != "NOTLOSTVIRGIN" && VIRGIN:1 != ""
+				IF TARGET == MASTER
+					PRINTFORM 　当時、両性具有でもあった%CALLNAME:TARGET%が処女を捧げた相手は%VIRGIN:1%
 				ELSE
-					PRINTFORM 　当時、両性具有でもあった%CALLNAME:ARG%が処女を捧げた相手は%VIRGIN:ARG:1%。
-					SELECTCASE CFLAG:ARG:処女の奪われ方
+					PRINTFORM 　当時、両性具有でもあった%CALLNAME:TARGET%が処女を捧げた相手は%VIRGIN:1%。
+					SELECTCASE CFLAG:処女の奪われ方
 						CASE 1
-							IF TALENT:ARG:貞操観念
+							IF TALENT:貞操観念
 								PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にしていないようだ
 							ELSE
-								IF CFLAG:ARG:陥落
+								IF CFLAG:陥落
 									PRINTFORM その方法は強引なものだったが、今はもう許しているようだ
 								ELSE
 									PRINTFORM 強引に初めてを奪われたことを未だに根に持っているようだ
 								ENDIF
 							ENDIF
 						CASE 2
-							IF TALENT:ARG:恋慕 || TALENT:ARG:親愛
-								IF VIRGIN:ARG:1 == NAME:MASTER
+							IF TALENT:恋慕 || TALENT:親愛
+								IF VIRGIN:1 == NAME:MASTER
 									PRINTFORM 最愛の相手に処女を捧げられたことを幸せに思っている
 								ELSE
 									PRINTFORM 本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい
 								ENDIF
-							ELSEIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
+							ELSEIF TALENT:淫乱 || TALENT:娼婦
 								PRINTFORM 欲望の赴くままに処女を散らした故に、その時のことをよく覚えていないらしい
-							ELSEIF TALENT:ARG:服従 || TALENT:ARG:隷属
+							ELSEIF TALENT:服従 || TALENT:隷属
 								PRINTFORM %CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思っている
 							ELSE
 								PRINTFORM 同意の上での破瓜だったが、その面影は既にない
 							ENDIF
 						CASE 3
-							IF CFLAG:ARG:陥落
+							IF CFLAG:陥落
 								PRINTFORM 調教を受け入れた今でも自分の処女を奪った当人が気になっているらしい
 							ELSE
 								PRINTFORM 不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思っている
@@ -796,47 +813,47 @@ IF TALENT:ARG:性転換済
 				ENDIF
 			ENDIF
 	ENDSELECT
-	SELECTCASE SEX(ARG)
+	SELECTCASE SEX(TARGET)
 		CASE 1
-			IF TALENT:ARG:童貞
+			IF TALENT:童貞
 				PRINTFORM 　性転換してからはまだセックスをしたことがない
 			ELSE
-				PRINTFORM 　男性として初めて性交に及んだ相手は%VIRGIN:ARG:10%
+				PRINTFORM 　男性として初めて性交に及んだ相手は%VIRGIN:10%
 			ENDIF
-			IF TALENT:ARG:処女
+			IF TALENT:処女
 				PRINTFORM 　性転換後も両性具有という形で女性器を得たが、そちらはまだ使っていない
-			ELSEIF VIRGIN:ARG:11 != ""
-				IF ARG == MASTER
-					PRINTFORM 　性転換後も両性具有という形で女性器を取り戻し、そちらの初めての相手は%VIRGIN:ARG:11%
+			ELSEIF VIRGIN:11 != ""
+				IF TARGET == MASTER
+					PRINTFORM 　性転換後も両性具有という形で女性器を取り戻し、そちらの初めての相手は%VIRGIN:11%
 				ELSE
-					PRINTFORM 　性転換後も両性具有という形で女性器を取り戻し、そちらの初めての相手は%VIRGIN:ARG:11%。
-					SELECTCASE CFLAG:ARG:性転換処女の奪われ方
+					PRINTFORM 　性転換後も両性具有という形で女性器を取り戻し、そちらの初めての相手は%VIRGIN:11%。
+					SELECTCASE CFLAG:性転換処女の奪われ方
 						CASE 1
-							IF TALENT:ARG:貞操観念
+							IF TALENT:貞操観念
 								PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にしていないようだ
 							ELSE
-								IF CFLAG:ARG:陥落
+								IF CFLAG:陥落
 									PRINTFORM その方法は強引なものだったが、今はもう許しているようだ
 								ELSE
 									PRINTFORM 強引に初めてを奪われたことを未だに根に持っているようだ
 								ENDIF
 							ENDIF
 						CASE 2
-							IF TALENT:ARG:恋慕 || TALENT:ARG:親愛
-								IF VIRGIN:ARG:1 == NAME:MASTER
+							IF TALENT:恋慕 || TALENT:親愛
+								IF VIRGIN:1 == NAME:MASTER
 									PRINTFORM 最愛の相手に処女を捧げられたことを幸せに思っている
 								ELSE
 									PRINTFORM 本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい
 								ENDIF
-							ELSEIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
+							ELSEIF TALENT:淫乱 || TALENT:娼婦
 								PRINTFORM 欲望の赴くままに処女を散らした故に、その時のことをよく覚えていないらしい
-							ELSEIF TALENT:ARG:服従 || TALENT:ARG:隷属
+							ELSEIF TALENT:服従 || TALENT:隷属
 								PRINTFORM %CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思っている
 							ELSE
 								PRINTFORM 同意の上での破瓜だったが、その面影は既にない
 							ENDIF
 						CASE 3
-							IF CFLAG:ARG:陥落
+							IF CFLAG:陥落
 								PRINTFORM 調教を受け入れた今でも自分の処女を奪った当人が気になっているらしい
 							ELSE
 								PRINTFORM 不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思っている
@@ -845,40 +862,40 @@ IF TALENT:ARG:性転換済
 				ENDIF
 			ENDIF
 		CASE 2
-			IF TALENT:ARG:処女
+			IF TALENT:処女
 				PRINTFORM 　性転換後の身体は純血を保っており、処女のようだ
 			ELSE
-				IF ARG == MASTER
-					PRINTFORM 　性転換後は%VIRGIN:ARG:11%に処女を捧げた。
+				IF TARGET == MASTER
+					PRINTFORM 　性転換後は%VIRGIN:11%に処女を捧げた。
 				ELSE
-					PRINTFORM 　性転換後は%VIRGIN:ARG:11%に処女を捧げた。
-					SELECTCASE CFLAG:ARG:性転換処女の奪われ方
+					PRINTFORM 　性転換後は%VIRGIN:11%に処女を捧げた。
+					SELECTCASE CFLAG:性転換処女の奪われ方
 						CASE 1
-							IF TALENT:ARG:貞操観念
+							IF TALENT:貞操観念
 								PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にしていないようだ
 							ELSE
-								IF CFLAG:ARG:陥落
+								IF CFLAG:陥落
 									PRINTFORM その方法は強引なものだったが、今はもう許しているようだ
 								ELSE
 									PRINTFORM 強引に初めてを奪われたことを未だに根に持っているようだ
 								ENDIF
 							ENDIF
 						CASE 2
-							IF TALENT:ARG:恋慕 || TALENT:ARG:親愛
-								IF VIRGIN:ARG:1 == NAME:MASTER
+							IF TALENT:恋慕 || TALENT:親愛
+								IF VIRGIN:1 == NAME:MASTER
 									PRINTFORM 最愛の相手に処女を捧げられたことを幸せに思っている
 								ELSE
 									PRINTFORM 本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい
 								ENDIF
-							ELSEIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
+							ELSEIF TALENT:淫乱 || TALENT:娼婦
 								PRINTFORM 欲望の赴くままに処女を散らした故に、その時のことをよく覚えていないらしい
-							ELSEIF TALENT:ARG:服従 || TALENT:ARG:隷属
+							ELSEIF TALENT:服従 || TALENT:隷属
 								PRINTFORM %CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思っている
 							ELSE
 								PRINTFORM 同意の上での破瓜だったが、その面影は既にない
 							ENDIF
 						CASE 3
-							IF CFLAG:ARG:陥落
+							IF CFLAG:陥落
 								PRINTFORM 調教を受け入れた今でも自分の処女を奪った当人が気になっているらしい
 							ELSE
 								PRINTFORM 不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思っている
@@ -886,58 +903,58 @@ IF TALENT:ARG:性転換済
 					ENDSELECT
 				ENDIF
 			ENDIF
-			IF TALENT:ARG:童貞
+			IF TALENT:童貞
 				PRINTFORM 　性転換したにも関わらず両性具有という形でペニスがあるが、そちらはまだ未経験のようだ
-			ELSEIF VIRGIN:ARG:10 != ""
-				PRINTFORM 　性転換後も両性具有という形でペニスを使っており、性転換後の初めての相手は%VIRGIN:ARG:10%
+			ELSEIF VIRGIN:10 != ""
+				PRINTFORM 　性転換後も両性具有という形でペニスを使っており、性転換後の初めての相手は%VIRGIN:10%
 			ENDIF
 	ENDSELECT
 ELSE
-	SELECTCASE SEX(ARG)
+	SELECTCASE SEX(TARGET)
 		CASE 1
-			IF TALENT:ARG:童貞
+			IF TALENT:童貞
 				PRINTFORM 　未だ性交の経験が無いようだ
-			ELSEIF !TALENT:ARG:童貞 && VIRGIN:ARG:0 == ""
+			ELSEIF !TALENT:童貞 && VIRGIN:0 == ""
 				PRINTFORM 　女を知らないわけではないようだが、その初めての相手が誰なのかは不明である
 			ELSE
-				PRINTFORM 　初めての性交の相手は%VIRGIN:ARG:0%
+				PRINTFORM 　初めての性交の相手は%VIRGIN:0%
 			ENDIF
-			IF TALENT:ARG:処女
+			IF TALENT:処女
 				PRINTFORM 　男であるにも関わらず兼ね添えた女性器は、未だに男を知らないままだ
-			ELSEIF !TALENT:ARG:処女 && VIRGIN:ARG:1 != "" && !TALENT:ARG:ふたなり
-				PRINTFORM 　かつて両性具有となった時に%VIRGIN:ARG:1%に処女を捧げたが、今はその女性器は無い
-			ELSEIF !TALENT:ARG:処女 && TALENT:ARG:ふたなり
-				IF ARG == MASTER
-					PRINTFORM 　その女性器での初めての相手は%VIRGIN:ARG:1%
+			ELSEIF !TALENT:処女 && VIRGIN:1 != "" && !TALENT:ふたなり
+				PRINTFORM 　かつて両性具有となった時に%VIRGIN:1%に処女を捧げたが、今はその女性器は無い
+			ELSEIF !TALENT:処女 && TALENT:ふたなり
+				IF TARGET == MASTER
+					PRINTFORM 　その女性器での初めての相手は%VIRGIN:1%
 				ELSE
-					PRINTFORM 　その女性器での初めての相手は%VIRGIN:ARG:1%。
-					SELECTCASE CFLAG:ARG:処女の奪われ方
+					PRINTFORM 　その女性器での初めての相手は%VIRGIN:1%。
+					SELECTCASE CFLAG:処女の奪われ方
 						CASE 1
-							IF TALENT:ARG:貞操観念
+							IF TALENT:貞操観念
 								PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にしていないようだ
 							ELSE
-								IF CFLAG:ARG:陥落
+								IF CFLAG:陥落
 									PRINTFORM その方法は強引なものだったが、今はもう許しているようだ
 								ELSE
 									PRINTFORM 強引に初めてを奪われたことを未だに根に持っているようだ
 								ENDIF
 							ENDIF
 						CASE 2
-							IF TALENT:ARG:恋慕 || TALENT:ARG:親愛
-								IF VIRGIN:ARG:1 == NAME:MASTER
+							IF TALENT:恋慕 || TALENT:親愛
+								IF VIRGIN:1 == NAME:MASTER
 									PRINTFORM 最愛の相手に処女を捧げられたことを幸せに思っている
 								ELSE
 									PRINTFORM 本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい
 								ENDIF
-							ELSEIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
+							ELSEIF TALENT:淫乱 || TALENT:娼婦
 								PRINTFORM 欲望の赴くままに処女を散らした故に、その時のことをよく覚えていないらしい
-							ELSEIF TALENT:ARG:服従 || TALENT:ARG:隷属
+							ELSEIF TALENT:服従 || TALENT:隷属
 								PRINTFORM %CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思っている
 							ELSE
 								PRINTFORM 同意の上での破瓜だったが、その面影は既にない
 							ENDIF
 						CASE 3
-							IF CFLAG:ARG:陥落
+							IF CFLAG:陥落
 								PRINTFORM 調教を受け入れた今でも自分の処女を奪った当人が気になっているらしい
 							ELSE
 								PRINTFORM 不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思っている
@@ -946,42 +963,42 @@ ELSE
 				ENDIF
 			ENDIF
 		CASE 2
-			IF TALENT:ARG:処女
+			IF TALENT:処女
 				PRINTFORM 　未だ男を知らない生娘のようだ
-			ELSEIF !TALENT:ARG:処女 && VIRGIN:ARG:1 == ""
+			ELSEIF !TALENT:処女 && VIRGIN:1 == ""
 				PRINTFORM 　非処女だが初めての相手が誰なのかは不明
 			ELSE
-				IF ARG == MASTER
-					PRINTFORM 　%VIRGIN:ARG:1%に処女を捧げた
+				IF TARGET == MASTER
+					PRINTFORM 　%VIRGIN:1%に処女を捧げた
 				ELSE
-					PRINTFORM 　%VIRGIN:ARG:1%に処女を捧げた。
-					SELECTCASE CFLAG:ARG:処女の奪われ方
+					PRINTFORM 　%VIRGIN:1%に処女を捧げた。
+					SELECTCASE CFLAG:処女の奪われ方
 						CASE 1
-							IF TALENT:ARG:貞操観念
+							IF TALENT:貞操観念
 								PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にしていないようだ
 							ELSE
-								IF CFLAG:ARG:陥落
+								IF CFLAG:陥落
 									PRINTFORM その方法は強引なものだったが、今はもう許しているようだ
 								ELSE
 									PRINTFORM 強引に初めてを奪われたことを未だに根に持っているようだ
 								ENDIF
 							ENDIF
 						CASE 2
-							IF TALENT:ARG:恋慕 || TALENT:ARG:親愛
-								IF VIRGIN:ARG:1 == NAME:MASTER
+							IF TALENT:恋慕 || TALENT:親愛
+								IF VIRGIN:1 == NAME:MASTER
 									PRINTFORM 最愛の相手に処女を捧げられたことを幸せに思っている
 								ELSE
 									PRINTFORM 本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい
 								ENDIF
-							ELSEIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
+							ELSEIF TALENT:淫乱 || TALENT:娼婦
 								PRINTFORM 欲望の赴くままに処女を散らした故に、その時のことをよく覚えていないらしい
-							ELSEIF TALENT:ARG:服従 || TALENT:ARG:隷属
+							ELSEIF TALENT:服従 || TALENT:隷属
 								PRINTFORM %CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思っている
 							ELSE
 								PRINTFORM 同意の上での破瓜だったが、その面影は既にない
 							ENDIF
 						CASE 3
-							IF CFLAG:ARG:陥落
+							IF CFLAG:陥落
 								PRINTFORM 調教を受け入れた今でも自分の処女を奪った当人が気になっているらしい
 							ELSE
 								PRINTFORM 不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思っている
@@ -989,38 +1006,38 @@ ELSE
 					ENDSELECT
 				ENDIF
 			ENDIF
-			IF TALENT:ARG:童貞
+			IF TALENT:童貞
 				PRINTFORM 　雄の貞操は純潔を保っているようだ
-			ELSEIF !TALENT:ARG:童貞 && VIRGIN:ARG:0 != "" && !TALENT:ARG:ふたなり
-				PRINTFORM 　かつて男性器で%VIRGIN:ARG:0%と繋がったことがあるが、現在は成りを潜めている
-			ELSEIF !TALENT:ARG:童貞 && TALENT:ARG:ふたなり
-				PRINTFORM 　%VIRGIN:ARG:0%を相手に種牡としても開花したようだ
+			ELSEIF !TALENT:童貞 && VIRGIN:0 != "" && !TALENT:ふたなり
+				PRINTFORM 　かつて男性器で%VIRGIN:0%と繋がったことがあるが、現在は成りを潜めている
+			ELSEIF !TALENT:童貞 && TALENT:ふたなり
+				PRINTFORM 　%VIRGIN:0%を相手に種牡としても開花したようだ
 			ENDIF
 	ENDSELECT
 ENDIF
 PRINTL 
-IF TALENT:ARG:恋慕
+IF TALENT:恋慕
 	PRINTFORML 　%CALLNAME:MASTER%と生活を共にすることに幸せを感じている節がある
-ELSEIF TALENT:ARG:淫乱
+ELSEIF TALENT:淫乱
 	PRINTFORML 　積極的に性行為をせがむようになり、時に自らの指で快感に溺れている
-ELSEIF TALENT:ARG:服従
+ELSEIF TALENT:服従
 	PRINTFORML 　%CALLNAME:MASTER%に与えられるもの、%CALLNAME:MASTER%に抱かれることが至上の悦びだと思い込んでいる
-ELSEIF TALENT:ARG:親愛
+ELSEIF TALENT:親愛
 	PRINTFORML 　身も心も%CALLNAME:MASTER%に心酔しきっており、一生を%CALLNAME:MASTER%の伴侶として全うすると決めている
-ELSEIF TALENT:ARG:娼婦
+ELSEIF TALENT:娼婦
 	PRINTFORML 　まるで性の快感を司る淫魔であり、暇さえあれば犯し犯されるような毎日を送っている
-ELSEIF TALENT:ARG:隷属
+ELSEIF TALENT:隷属
 	PRINTFORML 　%CALLNAME:MASTER%の言葉こそ絶対であり、%CALLNAME:MASTER%の所有物である
-ELSEIF TALENT:ARG:崩壊
+ELSEIF TALENT:崩壊
 	PRINTFORML 　時たまに不可解な行動を取っては、理解し難い場所が誰かの体液で汚れていることがある
 ENDIF
-SIF CFLAG:ARG:誕生日
-	PRINTFORML 　誕生日は{CFLAG:ARG:誕生日/100}月{CFLAG:ARG:誕生日%100}日のようだ
+SIF CFLAG:誕生日
+	PRINTFORML 　誕生日は{CFLAG:誕生日/100}月{CFLAG:誕生日%100}日のようだ
 
-SIF CSTR:ARG:眷属主 != ""
-	PRINTFORML 　%CSTR:ARG:眷属主%の手により%CSTR:ARG:種族%の眷属に迎えられた
+SIF CSTR:眷属主 != ""
+	PRINTFORML 　%CSTR:眷属主%の手により%CSTR:種族%の眷属に迎えられた
 
-SELECTCASE CFLAG:ARG:出産トラウマ
+SELECTCASE CFLAG:出産トラウマ
 	CASE 1 TO 9
 		PRINTL 　出産に関して多少の嫌悪感が見られる
 	CASE 10 TO 29
@@ -1031,7 +1048,7 @@ SELECTCASE CFLAG:ARG:出産トラウマ
 		PRINTL 　子供を産むことに強いトラウマを抱えている
 ENDSELECT
 
-IF ARG != MASTER
+IF TARGET != MASTER
 	;新婚モードなら一時的にCALLNAME:MASTERは「主人」になる
 	IF FLAG:ゲームモード == 7
 		LOCALS = %CALLNAME:MASTER%
@@ -1042,48 +1059,48 @@ IF ARG != MASTER
 			PRINTPLAIN □ 日常経験 
 			PRINTPLAIN       
 			PRINTL [2]→
-			SIF CFLAG:ARG:売却寸止め
+			SIF CFLAG:売却寸止め
 				PRINTFORML 　売却されそうになったことがある
-			SIF CFLAG:ARG:被吸血経験
+			SIF CFLAG:被吸血経験
 				PRINTFORML 　血を吸われたことがある
-			SIF CFLAG:ARG:朝フェラ経験
+			SIF CFLAG:朝フェラ経験
 				PRINTFORML 　朝から%CALLNAME:MASTER%をフェラで射精させて起こしたことがある
-			SIF CFLAG:ARG:朝パイズリ経験
+			SIF CFLAG:朝パイズリ経験
 				PRINTFORML 　朝から%CALLNAME:MASTER%に胸で奉仕したことがある
-			SIF CFLAG:ARG:朝騎乗位経験
+			SIF CFLAG:朝騎乗位経験
 				PRINTFORML 　朝から%CALLNAME:MASTER%を睡姦して精液を搾り取ったことがある
-			SIF CFLAG:ARG:調教後3P経験
+			SIF CFLAG:調教後3P経験
 				PRINTFORML 　調教後に三人で乱れたことがある
-			SIF CFLAG:ARG:調教後奉仕経験
+			SIF CFLAG:調教後奉仕経験
 				PRINTFORML 　調教を終えてから後戯を愉しんだことがある
-			SIF CFLAG:ARG:調教後セックス経験
+			SIF CFLAG:調教後セックス経験
 				PRINTFORML 　調教を終えた後も満足できずに愛し合ったことがある
-			SIF CFLAG:ARG:調教後強精神薬反動経験
+			SIF CFLAG:調教後強精神薬反動経験
 				PRINTFORML 　調教後に薬の反動で強い絶頂に襲われたことがある
-			SIF CFLAG:ARG:調教後強精神薬反動経験強
+			SIF CFLAG:調教後強精神薬反動経験強
 				PRINTFORML 　調教後に薬の反動で絶頂が止まらなくなったことがある
-			SIF CFLAG:ARG:調教後搾乳経験
+			SIF CFLAG:調教後搾乳経験
 				PRINTFORML 　調教後に母乳を搾り出して%CALLNAME:MASTER%にご馳走したことがある
-			SIF CFLAG:ARG:調教後自慰経験
+			SIF CFLAG:調教後自慰経験
 				PRINTFORML 　調教に満足できず、調教後も自慰に浸ったことがある
-			SIF CFLAG:ARG:調教後添い寝経験
+			SIF CFLAG:調教後添い寝経験
 				PRINTFORML 　%CALLNAME:MASTER%と二人同じベッドで一夜を共に過ごしたことがある
-			SIF CFLAG:ARG:調教後夜這い経験
+			SIF CFLAG:調教後夜這い経験
 				PRINTFORML 　寝る前に%CALLNAME:MASTER%の子種で子宮を潤してから共に床についたことがある
-			SIF CFLAG:ARG:ありえないものをプレゼントされた経験
+			SIF CFLAG:ありえないものをプレゼントされた経験
 				PRINTFORML 　IIDX筐体をプレゼントされたことがある
-			SIF CFLAG:ARG:主人に調合知識を伝授した経験
+			SIF CFLAG:主人に調合知識を伝授した経験
 				PRINTFORML 　主人に薬調合の知識を伝授したことがある
-			IF CFLAG:ARG:眷属化した人数
+			IF CFLAG:眷属化した人数
 				IF TALENT:ネクロマンサー
-					SELECTCASE CSTR:ARG:種族
+					SELECTCASE CSTR:種族
 						CASE "人間", "改造人間", "人間(？)", "宇宙人", "不明"
-							PRINTFORML 　今までに{CFLAG:ARG:眷属化した人数}人を屍鬼の眷属に迎え入れた
+							PRINTFORML 　今までに{CFLAG:眷属化した人数}人を屍鬼の眷属に迎え入れた
 						CASEELSE
-							PRINTFORML 　今までに{CFLAG:ARG:眷属化した人数}人を%CSTR:ARG:種族%や屍鬼の眷属に迎え入れた
+							PRINTFORML 　今までに{CFLAG:眷属化した人数}人を%CSTR:種族%や屍鬼の眷属に迎え入れた
 					ENDSELECT
 				ELSE
-					PRINTFORML 　今までに{CFLAG:ARG:眷属化した人数}人を%CSTR:ARG:種族%の眷属に迎え入れた
+					PRINTFORML 　今までに{CFLAG:眷属化した人数}人を%CSTR:種族%の眷属に迎え入れた
 				ENDIF
 			ENDIF
 		CASE 1
@@ -1091,160 +1108,160 @@ IF ARG != MASTER
 			PRINT [1]←
 			PRINTPLAIN  
 			PRINTL [2]→
-			IF CFLAG:ARG:主人からの膣射経験
-				IF CFLAG:ARG:陥落
+			IF CFLAG:主人からの膣射経験
+				IF CFLAG:陥落
 					PRINTFORML 　%CALLNAME:MASTER%の精液を膣で受け入れたことがある
 				ELSE
 					PRINTFORML 　%CALLNAME:MASTER%に膣内射精されたことがある
 				ENDIF
 			ENDIF
-			SIF CFLAG:ARG:助手からの膣射経験
+			SIF CFLAG:助手からの膣射経験
 				PRINTL 　助手に膣内射精されたことがある
-			IF CFLAG:ARG:主人からの腸射経験
-				IF CFLAG:ARG:陥落
+			IF CFLAG:主人からの腸射経験
+				IF CFLAG:陥落
 					PRINTFORML 　アナルに%CALLNAME:MASTER%の精液を注がれたことがある
 				ELSE
 					PRINTFORML 　%CALLNAME:MASTER%に腸内射精されたことがある
 				ENDIF
 			ENDIF
-			SIF CFLAG:ARG:助手からの腸射経験
+			SIF CFLAG:助手からの腸射経験
 				PRINTL 　助手に腸内射精されたことがある
-			SIF CFLAG:ARG:手で射精させた経験
+			SIF CFLAG:手で射精させた経験
 				PRINTFORML 　手で%CALLNAME:MASTER%を射精させたことがある
-			SIF CFLAG:ARG:口で射精させた経験
+			SIF CFLAG:口で射精させた経験
 				PRINTFORML 　口で%CALLNAME:MASTER%を射精させたことがある
-			SIF CFLAG:ARG:お掃除フェラ経験
+			SIF CFLAG:お掃除フェラ経験
 				PRINTFORML 　%CALLNAME:MASTER%のペニスの汚れを綺麗に舐め取ったことがある
-			SIF CFLAG:ARG:胸で射精させた経験
+			SIF CFLAG:胸で射精させた経験
 				PRINTFORML 　胸の奉仕で%CALLNAME:MASTER%を射精させたことがある
-			SIF CFLAG:ARG:キスで射精させた経験
+			SIF CFLAG:キスで射精させた経験
 				PRINTFORML 　キスだけで%CALLNAME:MASTER%を射精させたことがある
-			IF CFLAG:ARG:騎乗位で射精させた経験
-				IF CFLAG:ARG:陥落
+			IF CFLAG:騎乗位で射精させた経験
+				IF CFLAG:陥落
 					PRINTFORML 　騎乗位で%CALLNAME:MASTER%から精液を搾り取ったことがある
 				ELSE
 					PRINTFORML 　%CALLNAME:MASTER%相手に騎乗位で膣内射精されてしまったことがある
 				ENDIF
 			ENDIF
-			IF CFLAG:ARG:アナル騎乗位で射精させた経験
-				IF CFLAG:ARG:陥落
+			IF CFLAG:アナル騎乗位で射精させた経験
+				IF CFLAG:陥落
 					PRINTFORML 　自らのアナルで%CALLNAME:MASTER%を射精に導いたことがある
 				ELSE
 					PRINTFORML 　アナルでの騎乗位で%CALLNAME:MASTER%を射精させたことがある
 				ENDIF
 			ENDIF
-			SIF CFLAG:ARG:足で射精させた経験
+			SIF CFLAG:足で射精させた経験
 				PRINTFORML 　%CALLNAME:MASTER%のペニスを足で扱いて射精させたことがある
-			SIF CFLAG:ARG:性交奉仕で射精させた経験
+			SIF CFLAG:性交奉仕で射精させた経験
 				PRINTFORML 　%CALLNAME:MASTER%を犯しながら%CALLNAME:MASTER%を射精させたことがある
-			SIF CFLAG:ARG:逆アナルで射精させた経験
+			SIF CFLAG:逆アナルで射精させた経験
 				PRINTFORML 　%CALLNAME:MASTER%のアナルを犯しながら%CALLNAME:MASTER%を射精させたことがある
 		CASE 2
 			PRINTPLAIN □ 絶頂経験 
 			PRINT [1]←
 			PRINTPLAIN  
 			PRINTL [2]→
-			SIF CFLAG:ARG:絶頂放尿経験
+			SIF CFLAG:絶頂放尿経験
 				PRINTFORML 　絶頂と同時に尿を漏らしてしまったことがある
-			SIF CFLAG:ARG:野外放尿経験
+			SIF CFLAG:野外放尿経験
 				PRINTFORML 　調教中に野外で放尿したことがある
-			SIF CFLAG:ARG:風呂場放尿経験
+			SIF CFLAG:風呂場放尿経験
 				PRINTFORML 　調教中にお風呂場で放尿したことがある
-			SIF CFLAG:ARG:性交放尿経験
+			SIF CFLAG:性交放尿経験
 				PRINTFORML 　セックスの最中に感極まって尿を漏らしてしまったことがある
-			SIF CFLAG:ARG:アナル性交放尿経験
+			SIF CFLAG:アナル性交放尿経験
 				PRINTFORML 　アナルセックスの最中に尿を漏らしてしまったことがある
-			SIF CFLAG:ARG:クリキャップ絶頂経験
+			SIF CFLAG:クリキャップ絶頂経験
 				PRINTFORML 　クリキャップの振動で絶頂したことがある
-			SIF CFLAG:ARG:ニプルキャップ絶頂経験
+			SIF CFLAG:ニプルキャップ絶頂経験
 				PRINTFORML 　ニプルキャップで乳首を責められて絶頂したことがある
-			SIF CFLAG:ARG:バイブ絶頂経験
+			SIF CFLAG:バイブ絶頂経験
 				PRINTFORML 　バイブで膣内を犯されて絶頂したことがある
-			SIF CFLAG:ARG:アナルバイブ絶頂経験
+			SIF CFLAG:アナルバイブ絶頂経験
 				PRINTFORML 　アナルバイブで腸内を掻き回されて絶頂したことがある
-			SIF CFLAG:ARG:アナルビーズ絶頂経験
+			SIF CFLAG:アナルビーズ絶頂経験
 				PRINTFORML 　尻穴でアナルビーズを飲み込んで絶頂したことがある
-			SIF CFLAG:ARG:主人への膣射経験
+			SIF CFLAG:主人への膣射経験
 				PRINTFORML 　%CALLNAME:MASTER%の膣内に射精したことがある
-			SIF CFLAG:ARG:助手への膣射経験
+			SIF CFLAG:助手への膣射経験
 				PRINTFORML 　助手の膣内に射精したことがある
-			SIF CFLAG:ARG:主人への腸射経験
+			SIF CFLAG:主人への腸射経験
 				PRINTFORML 　%CALLNAME:MASTER%のアナルに射精したことがある
-			SIF CFLAG:ARG:助手への腸射経験
+			SIF CFLAG:助手への腸射経験
 				PRINTFORML 　助手のアナルに射精したことがある
-			SIF CFLAG:ARG:口で射精した経験
+			SIF CFLAG:口で射精した経験
 				PRINTFORML 　%CALLNAME:MASTER%の口で射精したことがある
-			SIF CFLAG:ARG:膣を責められて射精した経験
+			SIF CFLAG:膣を責められて射精した経験
 				PRINTFORML 　膣内への刺激で射精したことがある
-			SIF CFLAG:ARG:アナルを責められて射精した経験
+			SIF CFLAG:アナルを責められて射精した経験
 				PRINTFORML 　アナルを弄られて射精したことがある
-			SIF CFLAG:ARG:犯されて射精した経験
+			SIF CFLAG:犯されて射精した経験
 				PRINTFORML 　%CALLNAME:MASTER%に抱かれながら射精したことがある
-			SIF CFLAG:ARG:アナルを犯されて射精した経験
+			SIF CFLAG:アナルを犯されて射精した経験
 				PRINTFORML 　%CALLNAME:MASTER%のペニスをアナルで受け入れながら射精したことがある
-			SIF CFLAG:ARG:オナホで射精した経験
+			SIF CFLAG:オナホで射精した経験
 				PRINTFORML 　調教中にオナホールの中で射精したことがある
-			SIF CFLAG:ARG:道具で前立腺射精経験
+			SIF CFLAG:道具で前立腺射精経験
 				PRINTFORML 　道具で前立腺を弄られて射精してしまったことがある
-			SIF CFLAG:ARG:避妊具射精経験
+			SIF CFLAG:避妊具射精経験
 				PRINTFORML 　調教中に避妊具の中に射精したことがある
-			SIF CFLAG:ARG:搾精経験
+			SIF CFLAG:搾精経験
 				PRINTFORML 　搾精目的で精液を搾り取られたことがある
-			SIF CFLAG:ARG:野外で射精した経験
+			SIF CFLAG:野外で射精した経験
 				PRINTFORML 　調教中に野外で射精したことがある
-			SIF CFLAG:ARG:兜合わせで一緒に射精した経験
+			SIF CFLAG:兜合わせで一緒に射精した経験
 				PRINTFORML 　%CALLNAME:MASTER%との兜合わせで、二人一緒に射精したことがある
-			SIF CFLAG:ARG:キスで射精した経験
+			SIF CFLAG:キスで射精した経験
 				PRINTFORML 　%CALLNAME:MASTER%とのキスだけで射精したことがある
-			SIF CFLAG:ARG:搾乳された経験
+			SIF CFLAG:搾乳された経験
 				PRINTFORML 　調教中に母乳を搾り取られたことがある
-			SIF CFLAG:ARG:浣腸器で脱糞した経験
+			SIF CFLAG:浣腸器で脱糞した経験
 				PRINTFORML 　調教中に浣腸器を使用されて排泄物を漏らしてしまったことがある
 		CASE 3
 			PRINTPLAIN □ 異種姦経験 
 			PRINT [1]←
 			PRINTPLAIN  
 			PRINTL [2]→
-			SIF CFLAG:ARG:触手Ｃ絶頂経験
+			SIF CFLAG:触手Ｃ絶頂経験
 				PRINTFORML 　触手にクリトリスを責められて絶頂したことがある
-			SIF CFLAG:ARG:触手Ｖ絶頂経験
+			SIF CFLAG:触手Ｖ絶頂経験
 				PRINTFORML 　触手に膣を犯されて絶頂したことがある
-			SIF CFLAG:ARG:触手Ａ絶頂経験
+			SIF CFLAG:触手Ａ絶頂経験
 				PRINTFORML 　触手にアナルを犯されて絶頂したことがある
-			SIF CFLAG:ARG:触手Ｂ絶頂経験
+			SIF CFLAG:触手Ｂ絶頂経験
 				PRINTFORML 　触手に乳首を弄られて絶頂したことがある
-			SIF CFLAG:ARG:触手射精経験
+			SIF CFLAG:触手射精経験
 				PRINTFORML 　触手に精液を搾り取られたことがある
-			SIF CFLAG:ARG:異種姦経験
+			SIF CFLAG:異種姦経験
 				PRINTFORML 　動物やドラゴンに犯されたことがある
-			SIF CFLAG:ARG:動物に舐められて射精した経験
+			SIF CFLAG:動物に舐められて射精した経験
 				PRINTFORML 　動物に舐められて射精したことがある
-			SIF CFLAG:ARG:動物に舐められてイった経験
+			SIF CFLAG:動物に舐められてイった経験
 				PRINTFORML 　動物に舐められて絶頂に達したことがある
-			SIF CFLAG:ARG:獣姦膣内射精経験
+			SIF CFLAG:獣姦膣内射精経験
 				PRINTFORML 　獣姦で膣内に中出しされたことがある
-			SIF CFLAG:ARG:獣姦腸内射精経験
+			SIF CFLAG:獣姦腸内射精経験
 				PRINTFORML 　獣姦でアナルに中出しされたことがある
-			SIF CFLAG:ARG:ドラゴンを口で射精させた経験
+			SIF CFLAG:ドラゴンを口で射精させた経験
 				PRINTFORML 　ドラゴンを口で射精させたことがある
-			SIF CFLAG:ARG:ドラゴン膣内射精経験
+			SIF CFLAG:ドラゴン膣内射精経験
 				PRINTFORML 　ドラゴンに膣内射精されたことがある
-			SIF CFLAG:ARG:ドラゴン腸内射精経験
+			SIF CFLAG:ドラゴン腸内射精経験
 				PRINTFORML 　ドラゴンに腸内射精されたことがある
 		CASE 4
 			PRINTPLAIN □ 撮影経験 
 			PRINTL [1]←
-			SIF CFLAG:ARG:絶頂を撮影された経験
+			SIF CFLAG:絶頂を撮影された経験
 				PRINTFORML 　撮影されながらイッたことがある
-			SIF CFLAG:ARG:放尿を撮影された経験
+			SIF CFLAG:放尿を撮影された経験
 				PRINTFORML 　放尿しているところを撮影されたことがある
-			SIF CFLAG:ARG:射精を撮影された経験
+			SIF CFLAG:射精を撮影された経験
 				PRINTFORML 　射精の瞬間を録画されたことがある
-			SIF CFLAG:ARG:噴乳を撮影された経験
+			SIF CFLAG:噴乳を撮影された経験
 				PRINTFORML 　ビデオカメラで撮影中に母乳を垂れ流したことがある
-			SIF CFLAG:ARG:自慰を撮影された経験
+			SIF CFLAG:自慰を撮影された経験
 				PRINTFORML 　自慰行為の一部始終をビデオカメラに収められたことがある
-			SIF CFLAG:ARG:脱糞を撮影された経験
+			SIF CFLAG:脱糞を撮影された経験
 				PRINTFORML 　撮影されながら浣腸液で糞便を撒き散らしたことがある
 	ENDSELECT
 	SIF FLAG:ゲームモード == 7
@@ -1252,9 +1269,9 @@ IF ARG != MASTER
 ENDIF
 
 SIF ドラゴンに処女:0
-	VIRGIN:ARG:1 = 主人のドラゴン
+	VIRGIN:1 = 主人のドラゴン
 SIF ドラゴンに処女:1
-	VIRGIN:ARG:11 = 主人のドラゴン
+	VIRGIN:11 = 主人のドラゴン
 
 VARSET ドラゴンに処女, 0
 
@@ -1262,23 +1279,20 @@ DRAWLINE
 PRINTPLAIN 　etc.. 
 PRINT [0] 戻る 
 PRINT [5] 基本情報 
-IF ARG > 0
+IF TARGET > 0
 	PRINT [6] 前のキャラ 
 ELSE
 	PRINTPLAIN 　　　　　　　 
 ENDIF
-IF ARG < CHARANUM-1
+IF TARGET < CHARANUM-1
 	PRINT [7] 次のキャラ 
 ELSE
 	PRINTPLAIN 　　　　　　　 
 ENDIF
-IF !CHECK_CHILD_CARE(ARG) && !CFLAG:ARG:使用不可
-	IF TARGET != ARG && ARG != 0
-		PRINT [8] 対象に指定 
-	ELSE
-		PRINTPLAIN 　　　　　　　 
-	ENDIF
-	IF ASSI != ARG && ARG != 0 && CFLAG:ARG:状態 >= 2
+
+IF !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && TARGET != MASTER
+	PRINT [8] 対象に指定 
+	IF NOSAMES(TARGET, MASTER, ASSI) && CFLAG:状態 >= 2
 		PRINT [9] 助手に指定 
 	ELSE
 		PRINTPLAIN 　　　　　　　 
@@ -1295,35 +1309,38 @@ DO
 		CASE 1
 			SIF PAGE > 0
 				PAGE--
-			JUMP STATUS_ETC, ARG
+			JUMP STATUS_ETC
 		CASE 2
 			SIF PAGE < 4
 				PAGE++
-			JUMP STATUS_ETC, ARG
+			JUMP STATUS_ETC
 		CASE 5
-			JUMP STATUS, ARG
+			JUMP STATUS
 		CASE 6
-			SIF ARG > 0
-				JUMP STATUS_ETC, ARG-1
+			IF TARGET > 0
+				TARGET--
+				JUMP STATUS_ETC
+			ENDIF
 		CASE 7
-			SIF ARG < CHARANUM-1
-				JUMP STATUS_ETC, ARG+1
+			IF TARGET < CHARANUM-1
+				TARGET++
+				JUMP STATUS_ETC
+			ENDIF
 		CASE 8, 9
-			IF !CHECK_CHILD_CARE(ARG) && !CFLAG:ARG:使用不可
+			IF !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && TARGET != MASTER
 				IF RESULT == 8
-					SIF TARGET != ARG && ARG != 0
-						CALL ASIGN_TARGET, ARG
+					CALL ASIGN_TARGET, TARGET
 					RETURN 0
 				ENDIF
 				IF RESULT == 9
-					SIF ASSI != ARG && ARG != 0 && CFLAG:ARG:状態 >= 2
-						CALL ASIGN_ASSI, ARG
-					RETURN 0
+					IF NOSAMES(TARGET, MASTER, ASSI) && CFLAG:状態 >= 2
+						CALL ASIGN_ASSI, TARGET
+						RETURN 0
+					ENDIF
 				ENDIF
 			ENDIF
 	ENDSELECT
 LOOP 1
-
 
 ;=============================================================================
 ;体力、気力、魔力表示
