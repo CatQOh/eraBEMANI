@@ -9,8 +9,8 @@ PRINTL 　[0] 調教道具
 PRINTL 　[1] 消耗品・お酒
 PRINTL 　[2] 素質アイテム
 PRINTL 　[3] 薬品類
-PRINTL 　[4] 特殊アイテム
-PRINTL 　[5] 施設・設備
+PRINTL 　[4] 施設・設備
+PRINTL 　[5] 本・特殊技能
 PRINTL 　[6] すべて
 DRAWLINE
 PRINTPLAIN 　ITEM　
@@ -20,7 +20,23 @@ DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 0 TO 6
-			CALL SHOPITEM_LIST, RESULT
+			SELECTCASE RESULT
+				CASE 0
+					LOCALS = 調教道具
+				CASE 1
+					LOCALS = 消耗品
+				CASE 2
+					LOCALS = 素質アイテム
+				CASE 3
+					LOCALS = 薬品類
+				CASE 4
+					LOCALS = 施設
+				CASE 5
+					LOCALS = 本
+				CASE 6
+					LOCALS = すべて
+			ENDSELECT
+			CALL SHOPITEM_LIST, LOCALS
 			BREAK
 		CASE 9
 			RETURN 0
@@ -31,106 +47,92 @@ RESTART
 
 ;PRINT_ITEM命令が微妙だったので作成 所持アイテムを表示する
 @ITEMPRINT
+#DIMS DYNAMIC 表示用
 #DIM DYNAMIC LCOUNT
-LOCAL = 0
-LOCALS = 
-IF FLAG:ゲームモード == 7
-	LOCALS = [%CALLNAME:MASTER%と%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%の結婚式の招待状]
-	LOCAL += STRLENS(LOCALS)
-	PRINTFORM 　%LOCALS%
-ENDIF
+#DIM DYNAMIC 表示可能文字数
+
+;一行で表示可能な文字数を計算する 画面横幅/フォントサイズ STRLENSは全角を2文字と数えるので*2
+表示可能文字数 = GETCONFIG("ウィンドウ幅")/GETCONFIG("フォントサイズ")*2
+
+;招待状は無条件で一番最初に表示する
+SIF FLAG:ゲームモード == 7
+	PRINTFORM 　[%CALLNAME:MASTER%と%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%の結婚式の招待状]
+
 IF FINDELEMENT(自爆キャラ, 1) >= 0
 	FOR LCOUNT, 0, 20000
 		IF 自爆キャラ:LCOUNT
-			SIF LOCAL == 0
+			表示用 = HTML_POPPRINTINGSTR()
+			;改行する場合はアイテム単位で区切る
+			IF STRLENS(表示用)+STRLENS(@"[%CSVCALLNAMEF(LCOUNT)%の破片]") >= 表示可能文字数
+				PRINTFORML %表示用%
 				PRINT 　
-			LOCALS = [%CSVCALLNAMEF(LCOUNT)%の破片]
-			LOCAL += STRLENS(LOCALS)
-			IF LOCAL > 80
-				PRINTFORML %LOCALS%
-				LOCAL = 0
-			ELSE
-				PRINTFORM %LOCALS%
 			ENDIF
+			PRINTFORM [%CSVCALLNAMEF(LCOUNT)%の破片]
 		ENDIF
 	NEXT
 ENDIF
 
 ;パズル雑誌
 IF ITEM:ロジカルダッシュ == YEAR*100+MONTH
-	SIF LOCAL == 0
+	表示用 = HTML_POPPRINTINGSTR()
+	;改行する場合はアイテム単位で区切る
+	IF STRLENS(表示用)+STRLENS(@"[ロジカルダッシュ{YEAR}年{MONTH}月号]") >= 表示可能文字数
+		PRINTFORML %表示用%
 		PRINT 　
-	LOCALS = [ロジカルダッシュ{YEAR}年{MONTH}月号]
-	LOCAL += STRLENS(LOCALS)
-	PRINTFORM %LOCALS%
+	ENDIF
+	PRINTFORM [ロジカルダッシュ{YEAR}年{MONTH}月号]
 ENDIF
 
-FOR LCOUNT, 0, 100
+;行頭には全角スペースを置く
+表示用 = %HTML_POPPRINTINGSTR()%
+SIF STRLENS(表示用) == 0
+	PRINT 　
+PRINTFORM %表示用%
+
+FOR LCOUNT, 0, 1100
 	IF ITEM:LCOUNT
-		SIF LOCAL == 0
-			PRINT 　
-		LOCAL += STRLENS(ITEMNAME:LCOUNT)
-		IF LOCAL > 80
-			PRINTFORML [%ITEMNAME:LCOUNT%]
-			LOCAL = 0
-		ELSE
-			PRINTFORM [%ITEMNAME:LCOUNT%]
-		ENDIF
+		SELECTCASE LCOUNT
+			;単一表示のアイテム
+			;0～99 = ローターなどの淫具
+			;500～599 = 施設・設備
+			;1000～1099 = 経営モード用のアイテム
+			CASE 0 TO 99, 500 TO 599, 1000 TO 1099
+				表示用 = %HTML_POPPRINTINGSTR()%
+				PRINTFORM %表示用%
+				;改行する場合はアイテム単位で区切る
+				IF STRLENS(表示用)+STRLENS(@"[%ITEMNAME:LCOUNT%]") >= 表示可能文字数
+					PRINTL 
+					PRINT 　
+				ENDIF
+				PRINTFORM [%ITEMNAME:LCOUNT%]
+			;個数表示のアイテム
+			CASE 100 TO 199
+				表示用 = %HTML_POPPRINTINGSTR()%
+				PRINTFORM %表示用%
+				;改行する場合はアイテム単位で区切る
+				IF STRLENS(表示用)+STRLENS(@"[%ITEMNAME:LCOUNT%×{ITEM:LCOUNT}]") >= 表示可能文字数
+					PRINTL 
+					PRINT 　
+				ENDIF
+				PRINTFORM [%ITEMNAME:LCOUNT%×{ITEM:LCOUNT}]
+		ENDSELECT
 	ENDIF
 NEXT
-FOR LCOUNT, 100, 200
-	IF ITEM:LCOUNT
-		LOCALS = %ITEMNAME:LCOUNT%×{ITEM:LCOUNT}
-		SIF LOCAL == 0
-			PRINT 　
-		LOCAL += STRLENS(LOCALS)
-		IF LOCAL > 80
-			PRINTFORML [%ITEMNAME:LCOUNT%×{ITEM:LCOUNT}]
-			LOCAL = 0
-		ELSE
-			PRINTFORM [%ITEMNAME:LCOUNT%×{ITEM:LCOUNT}]
-		ENDIF
-	ENDIF
-NEXT
-FOR LCOUNT, 500, 600
-	IF ITEM:LCOUNT
-		SIF LOCAL == 0
-			PRINT 　
-		LOCAL += STRLENS(ITEMNAME:LCOUNT)
-		IF LOCAL > 80
-			PRINTFORML [%ITEMNAME:LCOUNT%]
-			LOCAL = 0
-		ELSE
-			PRINTFORM [%ITEMNAME:LCOUNT%]
-		ENDIF
-	ENDIF
-NEXT
-FOR LCOUNT, 1000, 1100
-	IF ITEM:LCOUNT
-		SIF LOCAL == 0
-			PRINT 　
-		LOCAL += STRLENS(ITEMNAME:LCOUNT)
-		IF LOCAL > 80
-			PRINTFORML [%ITEMNAME:LCOUNT%]
-			LOCAL = 0
-		ELSE
-			PRINTFORM [%ITEMNAME:LCOUNT%]
-		ENDIF
-	ENDIF
-NEXT
+
 SIF !LINEISEMPTY()
 	PRINTL 
 
-@SHOPITEM_LIST, ARG
+@SHOPITEM_LIST, アイテム分類
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC アイテム分類, 2
 #DIM DYNAMIC 単位文字数
 #DIM DYNAMIC 調合知識有り
 #DIM DYNAMIC 禁断の知識有り
+#DIMS DYNAMIC 表示用
+#DIM DYNAMIC 割引
 表示数 = 0
-VARSET LOCAL, 0
 VARSET ITEMSALES, 0
-LOCAL:10 = RESULT
 ;主人もしくは助手が『調合知識』を持っている
 SIF TALENT:MASTER:調合知識
 	調合知識有り++
@@ -142,24 +144,20 @@ SIF TALENT:MASTER:禁断の知識
 SIF ASSI > 0 && (TALENT:ASSI:禁断の知識)
 	禁断の知識有り++
 
-;基本アイテム
-SELECTCASE ARG
-	CASE 0, 6
+;基本アイテム ローターなどの道具
+SELECTCASE アイテム分類
+	CASE "調教道具", "すべて"
 		FOR LCOUNT, 0, 100
 			;触手使役術だけ特殊
 			SIF ITEMNAME:LCOUNT == "触手使役術" && !TALENT:MASTER:禁断の知識
 				CONTINUE
-			IF ITEM:LCOUNT
-				ITEMSALES:LCOUNT = 0
-			ELSE
-				ITEMSALES:LCOUNT = 1
-			ENDIF
+			ITEMSALES:LCOUNT = !ITEM:LCOUNT
 		NEXT
 ENDSELECT
 
 ;消耗アイテム
-SELECTCASE ARG
-	CASE 1, 6
+SELECTCASE アイテム分類
+	CASE "消耗品", "すべて"
 		;ローション、媚薬、ビデオテープなどはとりあえず99個まで
 		;飲みきりのお酒も99個まで
 		FOR LCOUNT, 100, 170
@@ -169,7 +167,7 @@ SELECTCASE ARG
 				ITEMSALES:LCOUNT = 1
 			ENDIF
 		NEXT
-		;ベースのお酒は90個以上あれば表示しない
+		;ボトルのお酒は1個で10個分なので90個以上あれば表示しない
 		FOR LCOUNT, 170, 200
 			IF ITEM:LCOUNT >= 90
 				ITEMSALES:LCOUNT = 0
@@ -183,135 +181,64 @@ SELECTCASE ARG
 ENDSELECT
 
 ;素質付与アイテム
-SELECTCASE ARG
-	CASE 2, 6
+SELECTCASE アイテム分類
+	CASE "素質アイテム", "すべて"
 		;汚れ無視
 		SIF !TALENT:MASTER:汚れ無視
 			ITEMSALES:【汚れ無視】 = 1
-
-		;調合知識 主人の技巧が4以上なら調合知識を購入可能
-		;SIF !TALENT:MASTER:調合知識 && ABL:MASTER:技巧 >= 4
-		;	ITEMSALES:【調合知識】 = 1
-
-		;禁断の知識 調教経験1000以上必要
-		;SIF !TALENT:MASTER:禁断の知識 && EXP:MASTER:調教経験 >= 1000
-		;	ITEMSALES:【禁断の知識】 = 1
-
 		;悪趣味な宝飾品
 		SIF !TALENT:MASTER:孔雀の瞳
 			ITEMSALES:【悪趣味な宝飾品】 = 1
-
 		;ドラキュラの牙
 		SIF !TALENT:MASTER:吸血鬼
 			ITEMSALES:【ドラキュラの牙】 = 1
-
 		;ドラゴンの成体
 		SIF !TALENT:MASTER:ドラゴン使い
 			ITEMSALES:【ドラゴンの成体】 = 1
 ENDSELECT
 
 ;奴隷を対象とした薬
-SELECTCASE ARG
-	CASE 3, 6
-		;バナナは無条件で喰える
+SELECTCASE アイテム分類
+	CASE "薬品類", "すべて"
+		;無条件で使えるもの
 		ITEMSALES:バナナ = 1
-		;元気になる薬・魔剤（条件は調合知識のみ）
+		ITEMSALES:排卵誘発剤 = 1
+
+		;調合知識が必要
 		IF 調合知識有り
-			FOR LCOUNT, 0, CHARANUM
-				;無機物・機械には使えない
-				SIF TALENT:LCOUNT:無機物 || CSTR:LCOUNT:種族 == "機械"
-					CONTINUE
-				;使用不可
-				SIF CFLAG:LCOUNT:使用不可
-					CONTINUE
-				SIF BASE:LCOUNT:体力 < MAXBASE:LCOUNT:体力
-					ITEMSALES:怪しげな栄養剤 = 1
-				SIF !CFLAG:LCOUNT:魔剤
-					ITEMSALES:魔剤 = 1
-			NEXT
+			ITEMSALES:怪しげな栄養剤 = 1
+			ITEMSALES:魔剤 = 1
 		ENDIF
 
-		;素質変化の薬 調合知識or禁断の知識が必要
+		;禁断の知識が必要
+		IF 禁断の知識有り
+			ITEMSALES:ゾンビパウダー = 1
+			ITEMSALES:聖水 = 1
+			ITEMSALES:性転換薬 = 1
+			ITEMSALES:リミッター解除 = 1
+		ENDIF
+
+		;調合知識or禁断の知識が必要
 		IF 調合知識有り || 禁断の知識有り
-			FOR LCOUNT, 0, CHARANUM
-				;無機物・機械には使えない
-				SIF TALENT:LCOUNT:無機物 || CSTR:LCOUNT:種族 == "機械"
-					CONTINUE
-				;ふたなり化できるか
-				SIF !TALENT:LCOUNT:ふたなり
-					ITEMSALES:ふたなり薬 = 1
-				;ふたなりを消去できるか
-				SIF TALENT:LCOUNT:ふたなり && !(SEX(LCOUNT) == 1 && TALENT:LCOUNT:妊娠)
-					ITEMSALES:ふたなり消去薬 = 1
-				;母乳体質にできるか 女性のみ 主人は使えない
-				SIF !TALENT:LCOUNT:母乳体質 && SEX(LCOUNT) == 1 && LCOUNT != MASTER
-					ITEMSALES:天使のミルク = 1
-				;処女膜再生できるか 処女および再生処女だとダメ
-				SIF !TALENT:LCOUNT:処女 && !TALENT:LCOUNT:再生処女 && VAGINA(LCOUNT)
-					ITEMSALES:ユニコーンテイル = 1
-				;以下アニマルは使用不可
-				SIF TALENT:LCOUNT:アニマル
-					CONTINUE
-				;豊胸できるか 爆乳以外でないとダメ
-				SIF TALENT:LCOUNT:バストサイズ != 5 && SEX(LCOUNT) == 2
-					ITEMSALES:豊胸剤 = 1
-				;縮胸できるか 絶壁以外でないとダメ
-				SIF TALENT:LCOUNT:バストサイズ != 1 && SEX(LCOUNT) == 2
-					ITEMSALES:縮胸剤 = 1
-				;母乳治療できるか 母乳体質じゃないとダメ 主人は使えない
-				SIF TALENT:LCOUNT:母乳体質 && SEX(LCOUNT) == 2 && LCOUNT != MASTER
-					ITEMSALES:止乳剤 = 1
-				;お漏らし治療できるか お漏らし癖じゃないとダメ 主人は使えない
-				SIF TALENT:LCOUNT:おもらし癖 && LCOUNT != MASTER
-					ITEMSALES:夜尿症改善薬 = 1
-				;以下禁断の知識が必要
-				IF 禁断の知識有り
-					;ゾンビ化する。聖水で元にも戻せるがペナルティがある 主人は使えない
-					SIF !TALENT:LCOUNT:ゾンビ && LCOUNT != MASTER
-						ITEMSALES:ゾンビパウダー = 1
-					;ゾンビを消去する。しかし回復量低下などのペナルティがある 主人は使えない
-					SIF TALENT:LCOUNT:ゾンビ && LCOUNT != MASTER
-						ITEMSALES:聖水 = 1
-					;性転換する 一度使うと二度と元には戻せない
-					SIF !TALENT:LCOUNT:性転換済 && !TALENT:LCOUNT:妊娠
-						ITEMSALES:性転換薬 = 1
-				ENDIF
-				;大人化or子供化する 豊胸と縮胸の効果もあるのでそのアイテムより高い
-				SIF !TALENT:LCOUNT:小人体型 && !TALENT:LCOUNT:アニマル
-					ITEMSALES:時の砂時計 = 1
-				;おもらしするようにする 主人は使えない
-				SIF !TALENT:LCOUNT:おもらし癖 && LCOUNT != MASTER
-					ITEMSALES:永続的利尿剤 = 1
-				;獣耳と尻尾を生やす
-				SIF (!TALENT:LCOUNT:動物耳 || !TALENT:LCOUNT:尻尾) && CSTR:LCOUNT:種族 != "獣" && !TALENT:LCOUNT:ファーリー
-					ITEMSALES:ビースティースターター = 1
-			NEXT
+			ITEMSALES:ふたなり薬 = 1
+			ITEMSALES:ふたなり消去薬 = 1
+			ITEMSALES:天使のミルク = 1
+			ITEMSALES:ユニコーンテイル = 1
+			ITEMSALES:豊胸剤 = 1
+			ITEMSALES:縮胸剤 = 1
+			ITEMSALES:止乳剤 = 1
+			ITEMSALES:夜尿症改善薬 = 1
+			ITEMSALES:時の砂時計 = 1
+			ITEMSALES:永続的利尿剤 = 1
+			ITEMSALES:ビースティースターター = 1
 		ENDIF
 ENDSELECT
 
-;特殊アイテム
-SELECTCASE ARG
-	CASE 4, 6
-		;排卵誘発剤
-		FOR LCOUNT, 0, CHARANUM
-			;無機物・機械には使えない
-			SIF TALENT:LCOUNT:無機物 || CSTR:LCOUNT:種族 == "機械"
-				CONTINUE
-			;使用不可
-			SIF CFLAG:LCOUNT:使用不可
-				CONTINUE
-			SIF !CFLAG:LCOUNT:排卵誘発剤 && VAGINA(LCOUNT) && 生殖機能♀(LCOUNT)
-				ITEMSALES:排卵誘発剤 = 1
-		NEXT
-		;リミッター解除 禁断の知識が必要
-		IF 禁断の知識有り
-			FOR LCOUNT, 0, CHARANUM
-				SIF !TALENT:LCOUNT:リミットバースト && CFLAG:LCOUNT:陥落
-					ITEMSALES:リミッター解除 = 1
-			NEXT
-		ENDIF
-
-		;本 新婚モードなら無条件で買える
+;本
+SELECTCASE アイテム分類
+	CASE "本", "すべて"
+		;新婚モードなら無条件で買える
+		;図書室ランク10以上
 		IF FLAG:図書室ランク >= 10 || FLAG:ゲームモード == 7
 			FOR LCOUNT, 250, 269
 				SIF ITEMNAME:LCOUNT == ""
@@ -322,6 +249,7 @@ SELECTCASE ARG
 					ITEMSALES:LCOUNT = 0
 			NEXT
 		ENDIF
+		;図書室ランク20以上
 		IF FLAG:図書室ランク >= 20 || FLAG:ゲームモード == 7
 			FOR LCOUNT, 270, 299
 				SIF ITEMNAME:LCOUNT == ""
@@ -341,33 +269,19 @@ SELECTCASE ARG
 				SIF !ITEM:事業開発オフィス
 					ITEMSALES:事業開発オフィス = 1
 				;経営用特殊素質
-				FOR LCOUNT, 0, CHARANUM
-					;実務経験が必要
-					SIF EXP:LCOUNT:実務経験 < 1000
-						CONTINUE
-					;既に何か持ってる場合は無理
-					SIF TALENT:LCOUNT:料理人 || TALENT:LCOUNT:専業主婦 || TALENT:LCOUNT:工学博士 || TALENT:LCOUNT:絶対音感 || TALENT:LCOUNT:カメラマン
-						CONTINUE
-					;各経験、能力と実務経験があれば特殊素質を身につけられる
-					SIF EXP:LCOUNT:料理経験 >= 1000 && ABL:LCOUNT:料理技能 >= 5
-						ITEMSALES:【料理人】 = 1
-					SIF EXP:LCOUNT:家事経験 >= 1000 && ABL:LCOUNT:家事技能 >= 5
-						ITEMSALES:【専業主婦】 = 1
-					SIF EXP:LCOUNT:工作経験 >= 1000 && ABL:LCOUNT:工作技能 >= 5
-						ITEMSALES:【工学博士】 = 1
-					SIF (EXP:LCOUNT:歌唱経験 >= 1000 && ABL:LCOUNT:歌唱技能 >= 5) || (EXP:LCOUNT:演奏経験 >= 1000 && ABL:LCOUNT:演奏技能 >= 5)
-						ITEMSALES:【絶対音感】 = 1
-					SIF EXP:LCOUNT:撮影経験 >= 1000 && ABL:LCOUNT:撮影技能 >= 5
-						ITEMSALES:【カメラマン】 = 1
-				NEXT
+				ITEMSALES:【料理人】 = 1
+				ITEMSALES:【専業主婦】 = 1
+				ITEMSALES:【工学博士】 = 1
+				ITEMSALES:【絶対音感】 = 1
+				ITEMSALES:【カメラマン】 = 1
 		ENDSELECT
 ENDSELECT
 
-SELECTCASE ARG
-	CASE 5, 6
+SELECTCASE アイテム分類
+	CASE "施設", "すべて"
 		;設備 金さえあれば買える
-		FOR LCOUNT, 500, 600
-			IF ITEM:COUNT
+		FOR LCOUNT, 500, 510
+			IF ITEM:LCOUNT
 				ITEMSALES:LCOUNT = 0
 			ELSE
 				ITEMSALES:LCOUNT = 1
@@ -378,29 +292,44 @@ ENDSELECT
 DRAWLINE
 
 ;主人か助手が買い物上手ならアイテム2割引き、消耗品3割引き
+
+SIF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
+	割引 = 1
 FOR LCOUNT, 0, VARSIZE("ITEM")
 	LOCALS =
 	SIF !ITEMSALES:LCOUNT || ITEMNAME:LCOUNT == ""
 		CONTINUE
+	表示用 = [{LCOUNT}]%ITEMNAME:LCOUNT%
 	SELECTCASE LCOUNT
+		;消耗品
 		CASE 100 TO 199
-			LOCALS = [{LCOUNT}]%ITEMNAME:LCOUNT%(\@ TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手) ? {ITEMPRICE:LCOUNT/10*7} # {ITEMPRICE:LCOUNT} \@＄)
+			IF 割引
+				表示用 += @"({ITEMPRICE:LCOUNT/10*7}＄)"
+			ELSE
+				表示用 += @"({ITEMPRICE:LCOUNT}＄)"
+			ENDIF
+		;施設・設備は割引対象外
+		CASE 500 TO 599
+			GOTO ELSE
 		CASE IS < 1000
 			;ロジカルダッシュなら発行月も付ける
-			IF ITEMNAME:LCOUNT == "ロジカルダッシュ"
-				LOCALS = [{LCOUNT}]ロジカルダッシュ{YEAR}年{MONTH}月号(\@ TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手) ? {ITEMPRICE:LCOUNT/10*8} # {ITEMPRICE:LCOUNT} \@＄)
+			SIF ITEMNAME:LCOUNT == "ロジカルダッシュ"
+				表示用 += @"{YEAR}年{MONTH}月号"
+			IF 割引
+				表示用 += @"({ITEMPRICE:LCOUNT/10*8}＄)"
 			ELSE
-				LOCALS = [{LCOUNT}]%ITEMNAME:LCOUNT%(\@ TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手) ? {ITEMPRICE:LCOUNT/10*8} # {ITEMPRICE:LCOUNT} \@＄)
+				表示用 += @"({ITEMPRICE:LCOUNT}＄)"
 			ENDIF
+		;経営用アイテムは割引適用外
 		CASEELSE
-			LOCALS = [{LCOUNT}]%ITEMNAME:LCOUNT%({ITEMPRICE:LCOUNT}＄)
+			$ELSE
+			表示用 += @"({ITEMPRICE:LCOUNT}＄)"
 	ENDSELECT
-	
 
 	;表示数が0ならスペースを設ける
 	SIF 表示数 == 0
 		PRINT 　
-	CALL PASELI, LOCALS
+	CALL PASELI, 表示用
 	;PRINT_IMGでPRINTC系命令使うとエラーになるので疑似再現
 	IF FLAG:パセリ表示
 		単位文字数 = 2
@@ -413,11 +342,12 @@ FOR LCOUNT, 0, VARSIZE("ITEM")
 	SIF 表示数 == 0
 		単位文字数 += 2
 	;＄の分2文字と通貨単位分
-	REPEAT 37-(STRLENS(LOCALS)-2)-単位文字数
+	REPEAT 37-(STRLENS(表示用)-2)-単位文字数
 		PRINT  
 	REND
 	表示数++
 
+	;3つ表示したら改行
 	IF 表示数 == 3
 		PRINTL 
 		表示数 = 0
@@ -440,11 +370,27 @@ DO
 		CASE 10000
 			RETURN 1
 		CASEELSE
-			IF ITEMSALES:RESULT
+			IF ITEMSALES:RESULT && ITEMNAME:RESULT != ""
 				IF ITEMPRICE:RESULT > MONEY
 					PRINTW 所持金が足りません
 				ELSE
-					CALL ITEMBUY_DECIDE, RESULT
+					;アイテム分類を名前で渡す
+					SELECTCASE RESULT
+						CASE 0 TO 99, 500 TO 599, 1000 TO 1049
+							アイテム分類:1 = 買い切り
+						CASE 100 TO 199
+							アイテム分類:1 = 複数購入可
+						CASE 200 TO 249
+							アイテム分類:1 = 素質アイテム
+						CASE 250 TO 399, 1050 TO 1099
+							アイテム分類:1 = 薬品等
+					ENDSELECT
+					;以下特定のアイテムの分類を変えるときに使う
+					SELECTCASE ITEMNAME:RESULT
+						CASE "ロジカルダッシュ"
+							アイテム分類:1 = 買い切り
+					ENDSELECT
+					CALL ITEMBUY_DECIDE, ITEMNAME:RESULT, アイテム分類:1
 				ENDIF
 				RESTART
 			ENDIF
@@ -453,11 +399,685 @@ LOOP 1
 
 RETURN 0
 
-@ITEMBUY_DECIDE, ARG
+@ITEMBUY_DECIDE, アイテム名, アイテム分類
+#DIMS DYNAMIC アイテム名
+#DIMS DYNAMIC アイテム分類
+#DIM DYNAMIC 割引
+
+SIF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
+	割引 = 1
+
 DRAWLINE
+
+CALL アイテム説明, アイテム名
+
+;購入の意志を再確認するように
+SELECTCASE アイテム分類
+	CASE "買い切り"
+		PRINTFORML 本当に%アイテム名%を購入しますか？
+		PRINTL [0] 購入する
+		PRINTL [1] やめる
+		DO
+			INPUT
+			SIF RESULT == 1
+				RETURN 0
+		LOOP LOOPRES(0, 1)
+		PRINTFORMW ＜%アイテム名%を購入しました＞
+		;割引対象は淫具のみ
+		IF GETNUM(ITEM, アイテム名) < 500 && 割引
+			MONEY -= ITEMPRICE:アイテム名/10*8
+		ELSE
+			MONEY -= ITEMPRICE:アイテム名
+		ENDIF
+		ITEMSALES:アイテム名 = 0
+		ITEM:アイテム名 = 1
+		IF アイテム名 == "ロジカルダッシュ"
+			ITEM:ロジカルダッシュ = YEAR*100+MONTH
+			ナンプレプレイ中 = 0
+		ENDIF
+	CASE "複数購入可"
+		;消耗品は専用の関数で
+		CALL BUY_PLURAL, アイテム名
+	CASE "素質アイテム"
+		PRINTFORML 本当に%アイテム名%を購入しますか？
+		PRINTL [0] 購入する
+		PRINTL [1] やめる
+		DO
+			INPUT
+			SIF RESULT == 1
+				RETURN 0
+		LOOP LOOPRES(0, 1)
+		PRINTFORMW ＜%アイテム名%を購入しました＞
+		IF 割引
+			MONEY -= ITEMPRICE:アイテム名/10*8
+		ELSE
+			MONEY -= ITEMPRICE:アイテム名
+		ENDIF
+		ITEMSALES:アイテム名 = 0
+		SELECTCASE アイテム名
+			CASE "【汚れ無視】"
+				TALENT:MASTER:汚れ無視 = 1
+			CASE "【悪趣味な宝飾品】"
+				TALENT:MASTER:孔雀の瞳 = 1
+			CASE "【ドラキュラの牙】"
+				TALENT:MASTER:吸血鬼 = 1
+			CASE "【ドラゴンの成体】"
+				TALENT:MASTER:ドラゴン使い = 1
+				DO
+					PRINTL ドラゴンの名前を入力してください(何も入力しない場合、「ドラゴン」になります)
+					PRINTBUTTON "[ランダムで命名する]", "ランダムで命名する"
+					PRINTL 
+					INPUTS
+					IF RESULTS == "ランダムで命名する"
+						;元ネタは分かる人だけ分かれば
+						STRDATA RESULTS
+							DATA ローランド
+							DATA スタン
+							DATA クラッシュ
+							DATA トレント
+							DATA テッラ
+							DATA プレツァル
+							DATA スクォールン
+							DATA ヴァス
+							DATA ケルヴィン
+							DATA リドリー
+							DATA ノヴァ
+							DATA アポロ
+							DATA スピリッツ
+							DATA フリント
+							DATA ヴァージル
+							DATA クレイトン
+							DATA クラッカー
+							DATA エルデン
+							DATA デューク
+							DATA ゼルクセス
+							DATA ブルーザー
+							DATA ノクターン
+							DATA ブレイズ
+							DATA ゼラタン
+							DATA デクスター
+							DATA グリフ
+							DATA レネス
+							DATA エリオット
+							DATA ウィンストン
+							DATA スピットファイア
+						ENDDATA
+					ENDIF
+					SIF RESULTS == ""
+						RESULTS = ドラゴン
+					PRINTFORML %RESULTS%でよろしいですか？(後からオプション画面で変更できます)
+					PRINTL [0] - はい
+					PRINTL [1] - いいえ
+					INPUT
+					SELECTCASE RESULT
+						CASE 0
+							CSTR:MASTER:ドラゴン = %RESULTS%
+							SELECTCASE CSTR:MASTER:ドラゴン
+								CASE "ドラゴン"
+									PRINTFORMW ドラゴンは名前が欲しいと言わんばかりに寂しげな瞳で%CALLNAME:MASTER%を見つめている……
+								CASEELSE
+									PRINTFORMW %CSTR:MASTER:ドラゴン%は名前をつけてくれた%CALLNAME:MASTER%に懐いているようだ……
+							ENDSELECT
+						CASE 1
+							CONTINUE
+					ENDSELECT
+				LOOP LOOPRES(0)
+		ENDSELECT
+	CASE "薬品等"
+		;奴隷に使用するタイプのアイテムも専用の関数で
+		CALL USE_ITEM, アイテム名
+ENDSELECT
+
+RETURN 0
+
+;複数個所持可能なアイテムについて、同時購入個数を選択
+@BUY_PLURAL, アイテム名
+#DIM DYNAMIC アイテム価格
+#DIMS DYNAMIC アイテム名
+#DIM DYNAMIC 購入上限
+VARSET LOCAL, 0
+;購入できる最大数
+SELECTCASE アイテム名
+	CASE "皆伝", "魔王", "アルパカ", "倉吉", "スペリオール", "ビーフィーター", "アブソルート", "カルーア"
+		購入上限 = (99-ITEM:アイテム名)/10
+	CASEELSE
+		購入上限 = 99-ITEM:アイテム名
+ENDSELECT
+
+IF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
+	アイテム価格 = ITEMPRICE:アイテム名*7/10
+ELSE
+	アイテム価格 = ITEMPRICE:アイテム名
+ENDIF
+
+;予算が下回った場合、予算内で購入できる最大数に下方修正
+SIF 購入上限 > MONEY/アイテム価格
+	購入上限 = MONEY/アイテム価格
+
+PRINTFORML %アイテム名%をいくつ買いますか？ (最大{購入上限}個、0で戻る)
+CALL TWO_DIGIT, 購入上限, "個"
+IF RESULT
+	PRINTFORMW ＜%アイテム名%を{RESULT}個購入しました＞
+	SELECTCASE アイテム名
+		CASE "皆伝", "魔王", "アルパカ", "倉吉", "スペリオール", "ビーフィーター", "アブソルート", "カルーア"
+			ITEM:アイテム名 += RESULT*10
+		CASEELSE
+			ITEM:アイテム名 += RESULT
+	ENDSELECT
+	MONEY -= アイテム価格*RESULT
+	;実績:ター子の交渉で値引きしたアイテムを購入する
+	SIF CHARANAMEF(MASTER) == "ター子" || (ASSI > 0 && CHARANAMEF(ASSI) == "ター子")
+		CALL 実績解除, "「それ、もうちょい安ぅならんやろか？」"
+ENDIF
+
+RETURN 0
+
+;アイテム使用
+@USE_ITEM, アイテム名
+#DIMS DYNAMIC アイテム名
+#DIM DYNAMIC 使用可
+#DIMS DYNAMIC 追加情報
+#DIM DYNAMIC 使用対象
+#DIM DYNAMIC 表示人数
+
+PRINTL 誰に使いますか？
+
+FOR PAGING, 0, CHARANUM
+	使用可 = 1
+	SELECTCASE GETNUM(ITEM, アイテム名)
+		;本
+		CASE 250 TO 299
+			;使用不可のキャラは除外
+			SIF CFLAG:PAGING:使用不可
+				使用可 = 0
+			SELECTCASE アイテム名
+				CASE "古今錬金術大全"
+					SIF TALENT:PAGING:調合知識
+						使用可 = 0
+				CASE "ひとりでできるもん～オトコのコのためのアナニー入門～"
+					SIF SEX(PAGING) == 2 || TALENT:PAGING:自慰しやすい
+						使用可 = 0
+				CASE "膣性感開発・中イキ完全マニュアル"
+					SIF SEX(PAGING) == 1 || TALENT:PAGING:自慰しやすい
+						使用可 = 0
+				CASE "ドラッカーの『マネジメント』"
+					SIF TALENT:PAGING:鼓舞
+						使用可 = 0
+				CASE "ヴォイニッチ手稿"
+					SIF TALENT:PAGING:禁断の知識
+						使用可 = 0
+				CASE "グリモワール"
+					SIF ABL:PAGING:魔法技能
+						使用可 = 0
+				CASE "解体新書"
+					SIF TALENT:PAGING:治療
+						使用可 = 0
+				CASE "ネクロノミコン"
+					SIF TALENT:PAGING:ネクロマンサー
+						使用可 = 0
+			ENDSELECT
+		;薬品系と素質系で処理が異なる
+		CASE 300 TO 499
+			;無機物・機械は除外
+			IF TALENT:PAGING:無機物 || CSTR:PAGING:種族 == "機械"
+				使用可 = 0
+				GOTO ELSE
+			ENDIF
+			;使用不可のキャラも除外
+			IF CFLAG:PAGING:使用不可
+				使用可 = 0
+				GOTO ELSE
+			ENDIF
+			;主人は除外 ただしふたなり、処女再生、胸関連、性転換薬、時の砂時計、ビースティースターター、排卵誘発剤、バナナは可能
+			IF PAGING == MASTER
+				SELECTCASE アイテム名
+					CASE "ふたなり薬", "ユニコーンテイル", "豊胸剤", "縮胸剤", "性転換薬", "時の砂時計", "ビースティースターター", "排卵誘発剤", "バナナ"
+					CASEELSE
+						使用可 = 0
+						GOTO ELSE
+				ENDSELECT
+			ENDIF
+			SELECTCASE アイテム名
+				CASE "怪しげな栄養剤"
+					;体力がマックスだと使えない
+					SIF BASE:PAGING:体力 >= MAXBASE:PAGING:体力
+						使用可 = 0
+				CASE "ふたなり薬"
+					SIF TALENT:PAGING:ふたなり
+						使用可 = 0
+				CASE "ふたなり消去薬"
+					;男で妊娠中だとヴァギナ塞げない
+					SIF !TALENT:PAGING:ふたなり || (SEX(PAGING) == 1 && TALENT:PAGING:妊娠)
+						使用可 = 0
+				CASE "天使のミルク"
+					SIF TALENT:PAGING:母乳体質 || (SEX(PAGING) == 1 && !TALENT:PAGING:ふたなり)
+						使用可 = 0
+				CASE "ユニコーンテイル"
+					SIF TALENT:PAGING:処女 || TALENT:PAGING:再生処女 || (SEX(PAGING) == 1 && !TALENT:PAGING:ふたなり)
+						使用可 = 0
+				CASE "リミッター解除"
+					SIF TALENT:PAGING:リミットバースト || !CFLAG:PAGING:陥落
+						使用可 = 0
+				;以下アニマルは使用不可
+				CASEELSE
+					IF TALENT:PAGING:アニマル
+						使用可 = 0
+						GOTO ELSE
+					ENDIF
+			ENDSELECT
+			SELECTCASE アイテム名
+				CASE "豊胸剤"
+					SIF TALENT:PAGING:バストサイズ == 5 || SEX(PAGING) == 1
+						使用可 = 0
+				CASE "縮胸剤"
+					SIF TALENT:PAGING:バストサイズ == 1 || SEX(PAGING) == 1
+						使用可 = 0
+				CASE "止乳剤"
+					SIF !TALENT:PAGING:母乳体質 || SEX(PAGING) == 1
+						使用可 = 0
+				CASE "夜尿症改善薬"
+					SIF !TALENT:PAGING:おもらし癖
+						使用可 = 0
+				CASE "ゾンビパウダー"
+					SIF TALENT:PAGING:ゾンビ
+						使用可 = 0
+				CASE "聖水"
+					SIF !TALENT:PAGING:ゾンビ
+						使用可 = 0
+				CASE "性転換薬"
+					;妊娠時は使えない
+					SIF TALENT:PAGING:妊娠 || TALENT:PAGING:性転換済
+						使用可 = 0
+				CASE "時の砂時計"
+					SIF TALENT:PAGING:小人体型
+						使用可 = 0
+				CASE "永続的利尿剤"
+					;既におもらし癖ついてると使えない
+					SIF TALENT:PAGING:おもらし癖
+						使用可 = 0
+				CASE "ビースティースターター"
+					;ケモミミ尻尾両方あったり、既に獣だったりファーリーだったりすると使えない
+					SIF (TALENT:PAGING:動物耳 && TALENT:PAGING:尻尾) || CSTR:PAGING:種族 == "獣" || TALENT:PAGING:ファーリー
+						使用可 = 0
+				CASE "魔剤"
+					;既にキメてる場合は使えない
+					SIF CFLAG:PAGING:魔剤
+						使用可 = 0
+				CASE "排卵誘発剤"
+					SIF CFLAG:PAGING:排卵誘発剤 || !VAGINA(PAGING)
+						使用可 = 0
+			ENDSELECT
+		;経営用素質は誰でも習得可能 各経験、技能、実務経験が必要
+		CASE 1050 TO 1099
+			;実務経験が必要
+			SIF EXP:PAGING:実務経験 < 1000
+				使用可 = 0
+			;既に何か持ってる場合は無理
+			SIF TALENT:PAGING:料理人 || TALENT:PAGING:専業主婦 || TALENT:PAGING:工学博士 || TALENT:PAGING:絶対音感 || TALENT:PAGING:カメラマン
+				使用可 = 0
+			;各経験、能力と実務経験があれば特殊素質を身につけられる
+			SELECTCASE アイテム名
+				CASE "【料理人】"
+					SIF EXP:PAGING:料理経験 < 1000 || ABL:PAGING:料理技能 < 5
+						使用可 = 0
+				CASE "【専業主婦】"
+					SIF EXP:PAGING:家事経験 < 1000 || ABL:PAGING:家事技能 < 5
+						使用可 = 0
+				CASE "【工学博士】"
+					SIF EXP:PAGING:工作経験 < 1000 || ABL:PAGING:工作技能 < 5
+						使用可 = 0
+				CASE "【絶対音感】"
+					SIF (EXP:PAGING:歌唱経験 < 1000 || ABL:PAGING:歌唱技能 < 5) && (EXP:PAGING:演奏経験 < 1000 || ABL:PAGING:演奏技能 < 5)
+						使用可 = 0
+				CASE "【カメラマン】"
+					SIF EXP:PAGING:撮影経験 < 1000 || ABL:PAGING:撮影技能 < 5
+						使用可 = 0
+			ENDSELECT
+	ENDSELECT
+	
+	$ELSE
+	
+	追加情報 = 体力
+	追加情報 += @"({BASE:PAGING:体力}/{MAXBASE:PAGING:体力}) %BARSTR(BASE:PAGING:体力, MAXBASE:PAGING:体力, 16)% "
+	SIF TALENT:PAGING:処女
+		追加情報 += "処女 "
+	SIF TALENT:PAGING:再生処女
+		追加情報 += "再生処女 "
+	SIF TALENT:PAGING:童貞
+		追加情報 += "童貞 "
+	SIF TALENT:PAGING:恋慕
+		追加情報 += "恋慕 "
+	SIF TALENT:PAGING:淫乱
+		追加情報 += "淫乱 "
+	SIF TALENT:PAGING:服従
+		追加情報 += "服従 "
+	SIF TALENT:PAGING:親愛
+		追加情報 += "親愛 "
+	SIF TALENT:PAGING:娼婦
+		追加情報 += "娼婦 "
+	SIF TALENT:PAGING:隷属
+		追加情報 += "隷属 "
+	SIF TALENT:PAGING:崩壊
+		追加情報 += "崩壊 "
+	SIF TALENT:PAGING:リミットバースト
+		追加情報 += "超 "
+	SIF CFLAG:PAGING:状態 == 2
+		追加情報 += "助手可 "
+	;DISABLE
+	TRYCCALLFORM DISABLE_ITEM_%アイテム名%_K{NO:PAGING}
+		SIF RESULT == 0
+			使用可 = 0
+	CATCH
+	ENDCATCH
+	CALL PAGING, 使用可, @"%追加情報%", "ITEM USE", "戻る"
+NEXT
+
+SIF RESULT == -1
+	RETURN 0
+
+使用対象 = RESULT
+CALL KOJO_USE_ITEM, アイテム名, 使用対象
+
+SELECTCASE アイテム名
+	;調合知識
+	CASE "古今錬金術大全"
+		PRINTFORMW ＜%CALLNAME:使用対象%は【調合知識】を得た＞
+		TALENT:使用対象:調合知識 = 1
+	;あぶひゃく
+	CASE "ひとりでできるもん～オトコのコのためのアナニー入門～", "膣性感開発・中イキ完全マニュアル"
+		PRINTFORMW ＜%CALLNAME:使用対象%は自慰に深い興味を持つようになった＞
+		TALENT:使用対象:自慰しやすい = 1
+	;マネジメント
+	CASE "ドラッカーの『マネジメント』"
+		PRINTFORMW ＜%CALLNAME:使用対象%は【鼓舞】を得た＞
+		TALENT:使用対象:鼓舞 = 1
+	;禁断の知識
+	CASE "ヴォイニッチ手稿"
+		PRINTFORMW ＜%CALLNAME:使用対象%は【禁断の知識】を得た＞
+		TALENT:使用対象:禁断の知識 = 1
+	;グリモワール
+	CASE "グリモワール"
+		PRINTFORMW ＜%CALLNAME:使用対象%は魔術の基礎を得た＞
+		ABL:使用対象:魔法技能 = 1
+	;治療
+	CASE "解体新書"
+		PRINTFORMW ＜%CALLNAME:使用対象%は【治療】を得た＞
+		TALENT:使用対象:治療 = 1
+	;ネクロ
+	CASE "ネクロノミコン"
+		PRINTFORMW ＜%CALLNAME:使用対象%は【ネクロマンサー】を得た＞
+		TALENT:使用対象:ネクロマンサー = 1
+	;体力回復
+	CASE "怪しげな栄養剤"
+		PRINTFORMW ＜%CALLNAME:使用対象%の体力が回復した＞
+		IF TALENT:使用対象:回復早い
+			LOCAL = 400
+		ELSEIF TALENT:使用対象:回復遅い
+			LOCAL = 200
+		ELSE
+			LOCAL = 300
+		ENDIF
+		SIF TALENT:使用対象:小柄体型
+			LOCAL += 50
+		LOCAL += ABL:MASTER:技巧*10
+		BASE:使用対象:体力 += LOCAL
+	;ふたなり化
+	CASE "ふたなり薬"
+		PRINTFORMW ＜%CALLNAME:使用対象%はふたなりになった＞
+		TALENT:使用対象:ふたなり = 1
+		CFLAG:使用対象:ストレス値 += 50
+		SELECTCASE SEX(使用対象)
+			;対象が男なら、常に処女になる Ｖ経験があれば再生処女
+			CASE 1
+				IF !EXP:使用対象:Ｖ経験
+					TALENT:使用対象:処女 = 1
+				ELSE
+					TALENT:使用対象:再生処女 = 1
+				ENDIF
+			;対象が女で、挿入経験が無ければ童貞になる
+			CASE 2
+				IF VIRGIN:使用対象:0 == "" && !TALENT:使用対象:性転換済
+					TALENT:使用対象:童貞 = 1
+				ELSEIF VIRGIN:使用対象:10 == "" && TALENT:使用対象:性転換済
+					TALENT:使用対象:童貞 = 1
+				ENDIF
+		ENDSELECT
+	;ふたなりを消去
+	CASE "ふたなり消去薬"
+		PRINTFORMW ＜%CALLNAME:使用対象%はふたなりではなくなった＞
+		TALENT:使用対象:ふたなり = 0
+		CFLAG:使用対象:ストレス値 += 30
+		SELECTCASE SEX(使用対象)
+			CASE 1
+				TALENT:使用対象:処女 = 0
+				TALENT:使用対象:再生処女 = 0
+				CALL CLEAR_FLAG, 使用対象
+			CASE 2
+				TALENT:使用対象:童貞 = 0
+		ENDSELECT
+	;母乳体質
+	CASE "天使のミルク"
+		PRINTFORMW ＜%CALLNAME:使用対象%は母乳が出るようになった＞
+		TALENT:使用対象:母乳体質 = 1
+		CFLAG:使用対象:ストレス値 += 50
+	;処女膜再生
+	CASE "ユニコーンテイル"
+		PRINTFORMW ＜%CALLNAME:使用対象%の処女膜が再生された＞
+		TALENT:使用対象:再生処女 = 1
+		CFLAG:使用対象:ストレス値 += 50
+	;豊乳化
+	CASE "豊胸剤"
+		SELECTCASE TALENT:使用対象:バストサイズ
+			;絶壁→貧乳
+			CASE 1
+				PRINTFORMW ＜%CALLNAME:使用対象%の胸がほんの少しだけ膨らんだ＞
+			;貧乳→普乳
+			CASE 2
+				PRINTFORMW ＜%CALLNAME:使用対象%の胸が人並みに大きくなった＞
+			;普乳→巨乳
+			CASE 3
+				PRINTFORMW ＜%CALLNAME:使用対象%の胸が豊満になった＞
+				;実績:リピカをグラマラスにする
+				SIF CHARANAMEF(使用対象) == "赤のリピカ" && !TALENT:使用対象:小柄体型
+					CALL 実績解除, "「ふっふーん 『ないすばでぃ』を手に入れたのさー♪」"
+			;巨乳→爆乳
+			CASE 4
+				;小柄体型、小人体型
+				IF TALENT:使用対象:小柄体型 || TALENT:使用対象:小人体型
+					PRINTFORMW ＜%CALLNAME:使用対象%の胸が体に不釣合いなまでに大きくなった＞
+				;それ以外
+				ELSE
+					PRINTFORMW ＜%CALLNAME:使用対象%の胸が溢れんばかりの大きさになった＞
+				ENDIF
+				;実績:リピカをグラマラスにする
+				SIF CHARANAMEF(使用対象) == "赤のリピカ" && !TALENT:使用対象:小柄体型
+					CALL 実績解除, "「ふっふーん 『ないすばでぃ』を手に入れたのさー♪」"
+		ENDSELECT
+		TALENT:使用対象:バストサイズ++
+		CFLAG:使用対象:ストレス値 += 70
+	;縮乳化
+	CASE "縮胸剤"
+		SELECTCASE TALENT:使用対象:バストサイズ
+			;爆乳→巨乳
+			CASE 5
+				PRINTFORMW ＜%CALLNAME:使用対象%の豊かすぎる胸が一回り小さくなった＞
+			;巨乳→普乳
+			CASE 4
+				PRINTFORMW ＜%CALLNAME:使用対象%の胸が人並みに小さくなった＞
+			;普乳→貧乳
+			CASE 3
+				PRINTFORMW ＜%CALLNAME:使用対象%の胸が小さくなった＞
+			;貧乳→絶壁
+			CASE 2
+				PRINTFORMW ＜%CALLNAME:使用対象%の胸が極端に薄くなった＞
+				IF TALENT:使用対象:母乳体質
+					PRINTFORMW ＜%CALLNAME:使用対象%の母乳が出なくなった＞
+					TALENT:使用対象:母乳体質 = 0
+					CFLAG:使用対象:ストレス値 += 10
+				ENDIF
+		ENDSELECT
+		TALENT:使用対象:バストサイズ--
+		CFLAG:使用対象:ストレス値 += 70
+	;母乳治療
+	CASE "止乳剤"
+		PRINTFORMW ＜%CALLNAME:使用対象%は母乳が出なくなった＞
+		TALENT:使用対象:母乳体質 = 0
+		CFLAG:使用対象:ストレス値 += 30
+	;お漏らし治療
+	CASE "夜尿症改善薬"
+		PRINTFORMW ＜%CALLNAME:使用対象%のお漏らし癖が治った＞
+		TALENT:使用対象:おもらし癖 = 0
+		CFLAG:使用対象:おもらし改善フラグ = 1
+		CFLAG:使用対象:ストレス値 += 30
+	;ゾンビパウダー
+	CASE "ゾンビパウダー"
+		PRINTFORMW ＜%CALLNAME:使用対象%はゾンビになった＞
+		TALENT:使用対象:ゾンビ = 1
+		CFLAG:使用対象:ストレス値 += 100
+	;聖水
+	CASE "聖水"
+		PRINTFORMW ＜%CALLNAME:使用対象%はゾンビから蘇った＞
+		TALENT:使用対象:ゾンビ = 0
+		IF !TALENT:使用対象:回復遅い
+			PRINTW その反動で治癒力が低下しました
+			TALENT:使用対象:回復遅い = 1
+		ENDIF
+		CFLAG:使用対象:ストレス値 += 50
+	;性転換薬 ふたなり時に何があろうと無条件でバージンは復活する
+	CASE "性転換薬"
+		SELECTCASE SEX(使用対象)
+			CASE 1
+				PRINTFORMW ＜%CALLNAME:使用対象%は女になった＞
+				IF TALENT:使用対象:童貞
+					VIRGIN:使用対象:0 = NOTLOSTVIRGIN
+					TALENT:使用対象:童貞 = 0
+				ENDIF
+				TALENT:使用対象:性別 = 2
+				TALENT:使用対象:処女 = 1
+				IF TALENT:使用対象:小柄体型
+					TALENT:使用対象:バストサイズ = 2
+				ELSE
+					TALENT:使用対象:バストサイズ = 3
+				ENDIF
+			CASE 2
+				PRINTFORMW ＜%CALLNAME:使用対象%は男になった＞
+				IF TALENT:使用対象:処女
+					VIRGIN:使用対象:1 = NOTLOSTVIRGIN
+					TALENT:使用対象:処女 = 0
+				ENDIF
+				TALENT:使用対象:性別 = 1
+				TALENT:使用対象:童貞 = 1
+				TALENT:使用対象:バストサイズ = 0
+		ENDSELECT
+		CALL CLEAR_FLAG, 使用対象
+		TALENT:使用対象:性転換済 = 1
+		CFLAG:使用対象:ストレス値 += 200
+	;時の砂時計
+	CASE "時の砂時計"
+		IF TALENT:使用対象:小柄体型
+			PRINTFORMW ＜%CALLNAME:使用対象%は立派な大人の体になった＞
+			TALENT:使用対象:小柄体型 = 0
+			SIF SEX(使用対象) == 2 && TALENT:使用対象:バストサイズ != 5
+				TALENT:使用対象:バストサイズ++
+			MAXBASE:使用対象:体力 += 200
+			BASE:使用対象:体力 += 200
+			;実績:リピカをグラマラスにする
+			SIF CHARANAMEF(使用対象) == "赤のリピカ" && TALENT:使用対象:バストサイズ >= 4
+				CALL 実績解除, "「ふっふーん 『ないすばでぃ』を手に入れたのさー♪」"
+		ELSE
+			PRINTFORMW ＜%CALLNAME:使用対象%は\@ SEX(使用対象) == 1 ? 少年 # 幼女 \@のような小さな体になった＞
+			TALENT:使用対象:小柄体型 = 1
+			SIF SEX(使用対象) == 2 && TALENT:使用対象:バストサイズ != 1
+				TALENT:使用対象:バストサイズ--
+			MAXBASE:使用対象:体力 -= 200
+			BASE:使用対象:体力 -= 200
+		ENDIF
+		CFLAG:使用対象:ストレス値 += 100
+	;永続的利尿剤
+	CASE "永続的利尿剤"
+		PRINTFORMW ＜%CALLNAME:使用対象%は尿意を我慢できなくなった＞
+		TALENT:使用対象:おもらし癖 = 1
+		CFLAG:使用対象:ストレス値 += 100
+	;ビースティースターター
+	CASE "ビースティースターター"
+		PRINTFORM ＜%CALLNAME:使用対象%に
+		SIF !TALENT:使用対象:動物耳
+			PRINT 動物の耳
+		SIF !TALENT:使用対象:動物耳 && !TALENT:使用対象:尻尾
+			PRINT と
+		SIF !TALENT:使用対象:尻尾
+			PRINT 動物の尻尾
+		PRINTW が生えた＞
+		TALENT:使用対象:動物耳 = 1
+		TALENT:使用対象:尻尾 = 1
+		IF TALENT:使用対象:好奇心
+			CFLAG:使用対象:依存度 += 50
+		ELSE
+			CFLAG:使用対象:ストレス値 += 30
+		ENDIF
+	;魔剤
+	CASE "魔剤"
+		PRINTFORMW ＜%CALLNAME:使用対象%のテンションが上がってきた！＞
+		CFLAG:使用対象:魔剤 = 1
+		TIMES CFLAG:使用対象:魔剤耐性, 1.1
+		CFLAG:使用対象:魔剤耐性 = LIMIT(CFLAG:使用対象:魔剤耐性, 1100, 2000)
+		CFLAG:使用対象:回復量低下 += 5
+		CFLAG:使用対象:ストレス値 += 100
+		SIF CHARANAMEF(使用対象) == "翔"
+			CALL 実績解除, "いいからドーピングだ！"
+	;バナナ
+	CASE "バナナ"
+		PRINTFORMW ＜%CALLNAME:使用対象%は音楽ゲームが上達した……気がする＞
+		EXP:使用対象:音ゲー経験++
+		BASE:使用対象:体力 += 10
+	;排卵誘発剤
+	CASE "排卵誘発剤"
+		IF 使用対象 == MASTER
+			PRINTFORMW ＜%CALLNAME:MASTER%は排卵誘発剤を使用した＞
+		ELSE
+			PRINTFORMW ＜%CALLNAME:使用対象%に排卵誘発剤を使った＞
+		ENDIF
+		CFLAG:使用対象:排卵誘発剤 = 3
+		CFLAG:使用対象:ストレス値 += 30
+	;リミットバースト
+	CASE "リミッター解除"
+		PRINTFORMW ＜%NAME:使用対象%のリミッターを解除した＞
+		TALENT:使用対象:リミットバースト = 1
+	CASE "【料理人】"
+		PRINTFORMW ＜%NAME:使用対象%は料理人になった＞
+		TALENT:使用対象:料理人 = 1
+	CASE "【専業主婦】"
+		PRINTFORMW ＜%NAME:使用対象%は専業主婦になった＞
+		TALENT:使用対象:専業主婦 = 1
+	CASE "【工学博士】"
+		PRINTFORMW ＜%NAME:使用対象%は工学博士になった＞
+		TALENT:使用対象:工学博士 = 1
+	CASE "【絶対音感】"
+		PRINTFORMW ＜%NAME:使用対象%は絶対音感を身につけた＞
+		TALENT:使用対象:絶対音感 = 1
+	CASE "【カメラマン】"
+		PRINTFORMW ＜%NAME:使用対象%はカメラマンになった＞
+		TALENT:使用対象:カメラマン = 1
+ENDSELECT
+
+CALL SETBASE, 使用対象
+
+IF GETNUM(ITEM, アイテム名) < 1000 && (TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手))
+	MONEY -= ITEMPRICE:アイテム名/10*8
+	;実績:ター子の交渉で値引きしたアイテムを購入する
+	SIF CHARANAMEF(MASTER) == "ター子" || (ASSI > 0 && CHARANAMEF(ASSI) == "ター子")
+		CALL 実績解除, "「それ、もうちょい安ぅならんやろか？」"
+ELSE
+	MONEY -= ITEMPRICE:アイテム名
+ENDIF
+
+RETURN 0
+
+@アイテム説明, アイテム名
+#DIMS DYNAMIC アイテム名
 ;アイテムの効果を表示する
-PRINTFORM %ITEMNAME:ARG%:
-SELECTCASE ITEMNAME:ARG
+PRINTFORM %アイテム名%:
+SELECTCASE アイテム名
 	CASE "ローター"
 		PRINTL リーズナブルながらも強力な振動。器用貧乏な調教者がよく使う
 	CASE "電気按摩"
@@ -594,169 +1214,6 @@ SELECTCASE ITEMNAME:ARG
 		PRINTL 野菜の栽培が可能になる
 	CASE "プランター"
 		PRINTL 小規模な栽培が可能になる
-ENDSELECT
-
-;購入の意志を再確認するように
-SELECTCASE ARG
-	CASE 0 TO 99, 500 TO 599, 1000 TO 1049
-		PRINTFORML 本当に%ITEMNAME:ARG%を購入しますか？
-		PRINTL [0] 購入する
-		PRINTL [1] やめる
-		DO
-			INPUT
-			SIF RESULT == 1
-				RETURN 0
-		LOOP LOOPRES(0, 1)
-		PRINTFORMW ＜%ITEMNAME:ARG%を購入しました＞
-		IF ARG < 100 && (TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手))
-			MONEY -= ITEMPRICE:ARG/10*8
-		ELSE
-			MONEY -= ITEMPRICE:ARG
-		ENDIF
-		ITEMSALES:ARG = 0
-		ITEM:ARG = 1
-	CASE 100 TO 199
-		;消耗品は専用の関数で
-		CALL BUY_PLURAL, ARG
-	CASE 200 TO 249
-		PRINTFORML 本当に%ITEMNAME:ARG%を購入しますか？
-		PRINTL [0] 購入する
-		PRINTL [1] やめる
-		DO
-			INPUT
-			SIF RESULT == 1
-				RETURN 0
-		LOOP LOOPRES(0, 1)
-		PRINTFORMW ＜%ITEMNAME:ARG%を購入しました＞
-		IF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
-			MONEY -= ITEMPRICE:ARG/10*8
-		ELSE
-			MONEY -= ITEMPRICE:ARG
-		ENDIF
-		ITEMSALES:ARG = 0
-		SELECTCASE ITEMNAME:ARG
-			CASE "【汚れ無視】"
-				TALENT:MASTER:汚れ無視 = 1
-			;CASE "【調合知識】"
-			;	TALENT:MASTER:調合知識 = 1
-			;CASE "【禁断の知識】"
-			;	TALENT:MASTER:禁断の知識 = 1
-			CASE "【悪趣味な宝飾品】"
-				TALENT:MASTER:孔雀の瞳 = 1
-			CASE "【ドラキュラの牙】"
-				TALENT:MASTER:吸血鬼 = 1
-			CASE "【ドラゴンの成体】"
-				TALENT:MASTER:ドラゴン使い = 1
-				DO
-					PRINTL ドラゴンの名前を入力してください(何も入力しない場合、「ドラゴン」になります)
-					PRINTBUTTON "[ランダムで命名する]", "ランダムで命名する"
-					PRINTL 
-					INPUTS
-					IF RESULTS == "ランダムで命名する"
-						;元ネタは分かる人だけ分かれば
-						STRDATA RESULTS
-							DATA ローランド
-							DATA スタン
-							DATA クラッシュ
-							DATA トレント
-							DATA テッラ
-							DATA プレツァル
-							DATA スクォールン
-							DATA ヴァス
-							DATA ケルヴィン
-							DATA リドリー
-							DATA ノヴァ
-							DATA アポロ
-							DATA スピリッツ
-							DATA フリント
-							DATA ヴァージル
-							DATA クレイトン
-							DATA クラッカー
-							DATA エルデン
-							DATA デューク
-							DATA ゼルクセス
-							DATA ブルーザー
-							DATA ノクターン
-							DATA ブレイズ
-							DATA ゼラタン
-							DATA デクスター
-							DATA グリフ
-							DATA レネス
-							DATA エリオット
-							DATA ウィンストン
-						ENDDATA
-					ENDIF
-					SIF RESULTS == ""
-						RESULTS = ドラゴン
-					PRINTFORML %RESULTS%でよろしいですか？(後からオプション画面で変更できます)
-					PRINTL [0] - はい
-					PRINTL [1] - いいえ
-					INPUT
-					SELECTCASE RESULT
-						CASE 0
-							CSTR:MASTER:ドラゴン = %RESULTS%
-							SELECTCASE CSTR:MASTER:ドラゴン
-								CASE "ドラゴン"
-									PRINTFORMW ドラゴンは名前が欲しいと言わんばかりに寂しげな瞳で%CALLNAME:MASTER%を見つめている……
-								CASEELSE
-									PRINTFORMW %CSTR:MASTER:ドラゴン%は名前をつけてくれた%CALLNAME:MASTER%に懐いているようだ……
-							ENDSELECT
-						CASE 1
-							CONTINUE
-					ENDSELECT
-				LOOP LOOPRES(0)
-		ENDSELECT
-	CASE 250 TO 499, 1050 TO 1099
-		;奴隷に使用するタイプのアイテムも専用の関数で
-		CALL USE_ITEM, ARG
-ENDSELECT
-
-RETURN 0
-
-;複数個所持可能なアイテムについて、同時購入個数を選択
-@BUY_PLURAL, ARG
-#DIM DYNAMIC アイテム価格
-VARSET LOCAL, 0
-;購入できる最大数
-SELECTCASE ITEMNAME:ARG
-	CASE "皆伝", "魔王", "アルパカ", "倉吉", "スペリオール", "ビーフィーター", "アブソルート", "カルーア"
-		LOCAL = (99-ITEM:ARG)/10
-	CASEELSE
-		LOCAL = 99-ITEM:ARG
-ENDSELECT
-
-IF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
-	アイテム価格 = ITEMPRICE:ARG*7/10
-ELSE
-	アイテム価格 = ITEMPRICE:ARG
-ENDIF
-
-;予算が下回った場合、予算内で購入できる最大数に下方修正
-SIF LOCAL > MONEY/アイテム価格
-	LOCAL = MONEY/アイテム価格
-
-PRINTFORML %ITEMNAME:ARG%をいくつ買いますか？ (最大{LOCAL}個、0で戻る)
-CALL TWO_DIGIT, LOCAL, "個"
-IF RESULT
-	PRINTFORMW ＜%ITEMNAME:ARG%を{RESULT}個購入しました＞
-	SELECTCASE ITEMNAME:ARG
-		CASE "皆伝", "魔王", "アルパカ", "倉吉", "スペリオール", "ビーフィーター", "アブソルート", "カルーア"
-				ITEM:ARG += RESULT*10
-		CASEELSE
-			ITEM:ARG += RESULT
-	ENDSELECT
-	MONEY -= アイテム価格*RESULT
-	;実績:ター子の交渉で値引きしたアイテムを購入する
-	SIF CHARANAMEF(MASTER) == "ター子" || (ASSI > 0 && CHARANAMEF(ASSI) == "ター子")
-		CALL 実績解除, "「それ、もうちょい安ぅならんやろか？」"
-ENDIF
-
-RETURN 0
-
-;アイテム使用
-@USE_ITEM, ARG
-VARSET LOCAL, 0
-SELECTCASE ITEMNAME:ARG
 	CASE "怪しげな栄養剤"
 		PRINTL 体力を回復します。とある黒髪ロング女子高生が作ったものらしい
 	CASE "ふたなり薬"
@@ -819,549 +1276,14 @@ SELECTCASE ITEMNAME:ARG
 	CASE "ネクロノミコン"
 		PRINTL 使用対象が【ネクロマンサー】を習得します
 	CASE "【料理人】"
-		PRINTL 対象に素質【料理人】を習得させます
+		PRINTL 対象に素質【料理人】を習得させます。実務経験、料理経験、料理技能が必要です
 	CASE "【専業主婦】"
-		PRINTL 対象に素質【専業主婦】を習得させます
+		PRINTL 対象に素質【専業主婦】を習得させます。実務経験、家事経験、家事技能が必要です
 	CASE "【工学博士】"
-		PRINTL 対象に素質【工学博士】を習得させます
+		PRINTL 対象に素質【工学博士】を習得させます。実務経験、工作経験、工作技能が必要です
 	CASE "【絶対音感】"
-		PRINTL 対象に素質【絶対音感】を習得させます
+		PRINTL 対象に素質【絶対音感】を習得させます。実務経験、歌唱経験or演奏経験、歌唱技能or演奏技能が必要です
 	CASE "【カメラマン】"
-		PRINTL 対象に素質【カメラマン】を習得させます
+		PRINTL 対象に素質【カメラマン】を習得させます。実務経験、撮影経験、撮影技能が必要です
 ENDSELECT
-
-;ロジカルダッシュの場合は通常購入
-IF ITEMNAME:ARG == "ロジカルダッシュ"
-	PRINTFORML 本当にロジカルダッシュ{YEAR}年{MONTH}月号を購入しますか？
-	PRINTL [0] 購入する
-	PRINTL [1] やめる
-	DO
-		INPUT
-		SIF RESULT == 1
-			RETURN 0
-	LOOP LOOPRES(0, 1)
-	PRINTFORMW ＜ロジカルダッシュ{YEAR}年{MONTH}月号を購入しました＞
-	IF ARG < 100 && (TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手))
-		MONEY -= ITEMPRICE:ARG/10*8
-	ELSE
-		MONEY -= ITEMPRICE:ARG
-	ENDIF
-	ITEM:ロジカルダッシュ = YEAR*100+MONTH
-	ナンプレプレイ中 = 0
-	RETURN 0
-ENDIF
-
-PRINTL 誰に使いますか？
-
-FOR PAGING, 0, CHARANUM
-	LOCAL = 1
-	SELECTCASE ARG
-		;本
-		CASE 250 TO 299
-			;使用不可のキャラは除外
-			SIF CFLAG:PAGING:使用不可
-				LOCAL = 0
-			SELECTCASE ITEMNAME:ARG
-				CASE "古今錬金術大全"
-					SIF TALENT:PAGING:調合知識
-						LOCAL = 0
-				CASE "ひとりでできるもん～オトコのコのためのアナニー入門～"
-					SIF SEX(PAGING) == 2 || TALENT:PAGING:自慰しやすい
-						LOCAL = 0
-				CASE "膣性感開発・中イキ完全マニュアル"
-					SIF SEX(PAGING) == 1 || TALENT:PAGING:自慰しやすい
-						LOCAL = 0
-				CASE "ドラッカーの『マネジメント』"
-					SIF TALENT:PAGING:鼓舞
-						LOCAL = 0
-				CASE "ヴォイニッチ手稿"
-					SIF TALENT:PAGING:禁断の知識
-						LOCAL = 0
-				CASE "グリモワール"
-					SIF ABL:PAGING:魔法技能
-						LOCAL = 0
-				CASE "解体新書"
-					SIF TALENT:PAGING:治療
-						LOCAL = 0
-				CASE "ネクロノミコン"
-					SIF TALENT:PAGING:ネクロマンサー
-						LOCAL = 0
-			ENDSELECT
-		;薬品系と素質系で処理が異なる
-		CASE 300 TO 499
-			;無機物・機械は除外
-			SIF TALENT:PAGING:無機物 || CSTR:PAGING:種族 == "機械"
-				LOCAL = 0
-			;使用不可のキャラも除外
-			SIF CFLAG:PAGING:使用不可
-				LOCAL = 0
-			;主人は除外 ただしふたなり、処女再生、胸関連、性転換薬、時の砂時計、ビースティースターター、排卵誘発剤、バナナは可能
-			IF PAGING == MASTER
-				SELECTCASE ITEMNAME:ARG
-					CASE "ふたなり薬", "ユニコーンテイル", "豊胸剤", "縮胸剤", "性転換薬", "時の砂時計", "ビースティースターター", "排卵誘発剤", "バナナ"
-					CASEELSE
-						LOCAL = 0
-				ENDSELECT
-			ENDIF
-			SELECTCASE ITEMNAME:ARG
-				CASE "怪しげな栄養剤"
-					;体力がマックスだと使えない
-					SIF BASE:PAGING:体力 >= MAXBASE:PAGING:体力
-						LOCAL = 0
-				CASE "ふたなり薬"
-					SIF TALENT:PAGING:ふたなり
-						LOCAL = 0
-				CASE "ふたなり消去薬"
-					;男で妊娠中だとヴァギナ塞げない
-					SIF !TALENT:PAGING:ふたなり || (SEX(PAGING) == 1 && TALENT:PAGING:妊娠)
-						LOCAL = 0
-				CASE "天使のミルク"
-					SIF TALENT:PAGING:母乳体質 || (SEX(PAGING) == 1 && !TALENT:PAGING:ふたなり)
-						LOCAL = 0
-				CASE "ユニコーンテイル"
-					SIF TALENT:PAGING:処女 || TALENT:PAGING:再生処女 || (SEX(PAGING) == 1 && !TALENT:PAGING:ふたなり)
-						LOCAL = 0
-				;以下アニマルは使用不可
-				CASE "豊胸剤"
-					SIF TALENT:PAGING:バストサイズ == 5 || SEX(PAGING) == 1 || TALENT:PAGING:アニマル
-						LOCAL = 0
-				CASE "縮胸剤"
-					SIF TALENT:PAGING:バストサイズ == 1 || SEX(PAGING) == 1 || TALENT:PAGING:アニマル
-						LOCAL = 0
-				CASE "止乳剤"
-					SIF !TALENT:PAGING:母乳体質 || SEX(PAGING) == 1 || TALENT:PAGING:アニマル
-						LOCAL = 0
-				CASE "夜尿症改善薬"
-					SIF !TALENT:PAGING:おもらし癖 || TALENT:PAGING:アニマル
-						LOCAL = 0
-				CASE "胎児卵化薬"
-					SIF !TALENT:PAGING:妊娠 || (TALENT:PAGING:妊娠 && PREG:PAGING:10 - 3 <= DAY) || BASE:PAGING:体力 < 1000 || TALENT:PAGING:アニマル
-						LOCAL = 0
-				CASE "ゾンビパウダー"
-					SIF TALENT:PAGING:ゾンビ || TALENT:PAGING:アニマル
-						LOCAL = 0
-				CASE "聖水"
-					SIF !TALENT:PAGING:ゾンビ || TALENT:PAGING:アニマル
-						LOCAL = 0
-				CASE "性転換薬"
-					;妊娠時は使えない
-					SIF TALENT:PAGING:妊娠 || TALENT:PAGING:性転換済 || TALENT:PAGING:アニマル
-						LOCAL = 0
-				CASE "時の砂時計"
-					SIF TALENT:PAGING:小人体型 || TALENT:PAGING:アニマル
-						LOCAL = 0
-				CASE "永続的利尿剤"
-					;既におもらし癖ついてると使えない
-					SIF TALENT:PAGING:おもらし癖 || TALENT:PAGING:アニマル
-						LOCAL = 0
-				CASE "ビースティースターター"
-					;ケモミミ尻尾両方あったり、既に獣だったりファーリーだったりすると使えない
-					SIF (TALENT:PAGING:動物耳 && TALENT:PAGING:尻尾) || CSTR:PAGING:種族 == "獣" || TALENT:PAGING:ファーリー || TALENT:PAGING:アニマル
-						LOCAL = 0
-				CASE "魔剤"
-					;既にキメてる場合は使えない
-					SIF CFLAG:PAGING:魔剤 || TALENT:PAGING:アニマル
-						LOCAL = 0
-				CASE "排卵誘発剤"
-					SIF CFLAG:PAGING:排卵誘発剤 || !VAGINA(PAGING) || TALENT:PAGING:アニマル
-						LOCAL = 0
-				CASE "リミッター解除"
-					SIF TALENT:PAGING:リミットバースト || !CFLAG:PAGING:陥落
-						LOCAL = 0
-			ENDSELECT
-		;経営用素質は誰でも習得可能 各経験、技能、実務経験が必要
-		CASE 1050 TO 1099
-			;実務経験が必要
-			SIF EXP:PAGING:実務経験 < 1000
-				LOCAL = 0
-			;既に何か持ってる場合は無理
-			SIF TALENT:PAGING:料理人 || TALENT:PAGING:専業主婦 || TALENT:PAGING:工学博士 || TALENT:PAGING:絶対音感 || TALENT:PAGING:カメラマン
-				LOCAL = 0
-			;各経験、能力と実務経験があれば特殊素質を身につけられる
-			SELECTCASE ITEMNAME:ARG
-				CASE "【料理人】"
-					SIF EXP:PAGING:料理経験 < 1000 || ABL:PAGING:料理技能 < 5
-						LOCAL = 0
-				CASE "【専業主婦】"
-					SIF EXP:PAGING:家事経験 < 1000 || ABL:PAGING:家事技能 < 5
-						LOCAL = 0
-				CASE "【工学博士】"
-					SIF EXP:PAGING:工作経験 < 1000 || ABL:PAGING:工作技能 < 5
-						LOCAL = 0
-				CASE "【絶対音感】"
-					SIF (EXP:PAGING:歌唱経験 < 1000 || ABL:PAGING:歌唱技能 < 5) && (EXP:PAGING:演奏経験 < 1000 || ABL:PAGING:演奏技能 < 5)
-						LOCAL = 0
-				CASE "【カメラマン】"
-					SIF EXP:PAGING:撮影経験 < 1000 || ABL:PAGING:撮影技能 < 5
-						LOCAL = 0
-			ENDSELECT
-	ENDSELECT
-
-	LOCALS = 体力
-	LOCALS += @"({BASE:PAGING:体力}/{MAXBASE:PAGING:体力}) %BARSTR(BASE:PAGING:体力, MAXBASE:PAGING:体力, 16)% "
-	SIF TALENT:PAGING:処女
-		LOCALS += "処女 "
-	SIF TALENT:PAGING:再生処女
-		LOCALS += "再生処女 "
-	SIF TALENT:PAGING:童貞
-		LOCALS += "童貞 "
-	SIF TALENT:PAGING:恋慕
-		LOCALS += "恋慕 "
-	SIF TALENT:PAGING:淫乱
-		LOCALS += "淫乱 "
-	SIF TALENT:PAGING:服従
-		LOCALS += "服従 "
-	SIF TALENT:PAGING:親愛
-		LOCALS += "親愛 "
-	SIF TALENT:PAGING:娼婦
-		LOCALS += "娼婦 "
-	SIF TALENT:PAGING:隷属
-		LOCALS += "隷属 "
-	SIF TALENT:PAGING:崩壊
-		LOCALS += "崩壊 "
-	SIF TALENT:PAGING:リミットバースト
-		LOCALS += "超 "
-	SIF CFLAG:PAGING:状態 == 2
-		LOCALS += "助手可 "
-	CALL PAGING, LOCAL, @"%LOCALS%", "ITEM USE", "戻る"
-NEXT
-
-SIF RESULT == -1
-	RETURN 0
-
-LOCAL = RESULT
-CALL KOJO_MESSAGE_EVENT, ITEMNAME:ARG, LOCAL
-
-SELECTCASE ITEMNAME:ARG
-	;調合知識
-	CASE "古今錬金術大全"
-		PRINTFORMW ＜%CALLNAME:LOCAL%は【調合知識】を得た＞
-		TALENT:LOCAL:調合知識 = 1
-	;あぶひゃく
-	CASE "ひとりでできるもん～オトコのコのためのアナニー入門～", "膣性感開発・中イキ完全マニュアル"
-		PRINTFORMW ＜%CALLNAME:LOCAL%は自慰に深い興味を持つようになった＞
-		TALENT:LOCAL:自慰しやすい = 1
-	;マネジメント
-	CASE "ドラッカーの『マネジメント』"
-		PRINTFORMW ＜%CALLNAME:LOCAL%は【鼓舞】を得た＞
-		TALENT:LOCAL:鼓舞 = 1
-	;禁断の知識
-	CASE "ヴォイニッチ手稿"
-		PRINTFORMW ＜%CALLNAME:LOCAL%は【禁断の知識】を得た＞
-		TALENT:LOCAL:禁断の知識 = 1
-	;グリモワール
-	CASE "グリモワール"
-		PRINTFORMW ＜%CALLNAME:LOCAL%は魔術の基礎を得た＞
-		ABL:LOCAL:魔法技能 = 1
-	;治療
-	CASE "解体新書"
-		PRINTFORMW ＜%CALLNAME:LOCAL%は【治療】を得た＞
-		TALENT:LOCAL:治療 = 1
-	;ネクロ
-	CASE "ネクロノミコン"
-		PRINTFORMW ＜%CALLNAME:LOCAL%は【ネクロマンサー】を得た＞
-		TALENT:LOCAL:ネクロマンサー = 1
-	;体力回復
-	CASE "怪しげな栄養剤"
-		PRINTFORMW ＜%CALLNAME:LOCAL%の体力が回復した＞
-		IF TALENT:LOCAL:回復早い
-			LOCAL:1 = 400
-		ELSEIF TALENT:LOCAL:回復遅い
-			LOCAL:1 = 200
-		ELSE
-			LOCAL:1 = 300
-		ENDIF
-		SIF TALENT:LOCAL:小柄体型
-			LOCAL:1 += 50
-		LOCAL:1 += ABL:MASTER:技巧*10
-		BASE:LOCAL:体力 += LOCAL:1
-		SIF BASE:LOCAL:体力 > MAXBASE:LOCAL:体力
-			BASE:LOCAL:体力 = MAXBASE:LOCAL:体力
-	;ふたなり化
-	CASE "ふたなり薬"
-		PRINTFORMW ＜%CALLNAME:LOCAL%はふたなりになった＞
-		TALENT:LOCAL:ふたなり = 1
-		CFLAG:LOCAL:ストレス値 += 5
-		SELECTCASE SEX(LOCAL)
-			;対象が男なら、常に処女になる Ｖ経験があれば再生処女
-			CASE 1
-				IF !EXP:LOCAL:Ｖ経験
-					TALENT:LOCAL:処女 = 1
-				ELSE
-					TALENT:LOCAL:再生処女 = 1
-				ENDIF
-			;対象が女で、挿入経験が無ければ童貞になる
-			CASE 2
-				IF VIRGIN:LOCAL:0 == "" && !TALENT:LOCAL:性転換済
-					TALENT:LOCAL:童貞 = 1
-				ELSEIF VIRGIN:LOCAL:10 == "" && TALENT:LOCAL:性転換済
-					TALENT:LOCAL:童貞 = 1
-				ENDIF
-		ENDSELECT
-	;ふたなりを消去
-	CASE "ふたなり消去薬"
-		PRINTFORMW ＜%CALLNAME:LOCAL%はふたなりではなくなった＞
-		TALENT:LOCAL:ふたなり = 0
-		CFLAG:LOCAL:ストレス値 += 3
-		SELECTCASE SEX(LOCAL)
-			CASE 1
-				TALENT:LOCAL:処女 = 0
-				TALENT:LOCAL:再生処女 = 0
-				CALL CLEAR_FLAG, LOCAL
-			CASE 2
-				TALENT:LOCAL:童貞 = 0
-		ENDSELECT
-	;母乳体質
-	CASE "天使のミルク"
-		PRINTFORMW ＜%CALLNAME:LOCAL%は母乳が出るようになった＞
-		TALENT:LOCAL:母乳体質 = 1
-		CFLAG:LOCAL:ストレス値 += 5
-	;処女膜再生
-	CASE "ユニコーンテイル"
-		PRINTFORMW ＜%CALLNAME:LOCAL%の処女膜が再生された＞
-		TALENT:LOCAL:再生処女 = 1
-		CFLAG:LOCAL:ストレス値 += 5
-	;豊乳化
-	CASE "豊胸剤"
-		SELECTCASE TALENT:LOCAL:バストサイズ
-			;絶壁→貧乳
-			CASE 1
-				PRINTFORMW ＜%CALLNAME:LOCAL%の胸がほんの少しだけ膨らんだ＞
-			;貧乳→普乳
-			CASE 2
-				PRINTFORMW ＜%CALLNAME:LOCAL%の胸が人並みに大きくなった＞
-			;普乳→巨乳
-			CASE 3
-				PRINTFORMW ＜%CALLNAME:LOCAL%の胸が豊満になった＞
-				;実績:リピカをグラマラスにする
-				SIF CHARANAMEF(LOCAL) == "赤のリピカ" && !TALENT:LOCAL:小柄体型
-					CALL 実績解除, "「ふっふーん 『ないすばでぃ』を手に入れたのさー♪」"
-			;巨乳→爆乳
-			CASE 4
-				;小柄体型、小人体型
-				IF TALENT:LOCAL:小柄体型 || TALENT:LOCAL:小人体型
-					PRINTFORMW ＜%CALLNAME:LOCAL%の胸が体に不釣合いなまでに大きくなった＞
-				;それ以外
-				ELSE
-					PRINTFORMW ＜%CALLNAME:LOCAL%の胸が溢れんばかりの大きさになった＞
-				ENDIF
-				;実績:リピカをグラマラスにする
-				SIF CHARANAMEF(LOCAL) == "赤のリピカ" && !TALENT:LOCAL:小柄体型
-					CALL 実績解除, "「ふっふーん 『ないすばでぃ』を手に入れたのさー♪」"
-		ENDSELECT
-		TALENT:LOCAL:バストサイズ++
-		CFLAG:LOCAL:ストレス値 += 7
-	;縮乳化
-	CASE "縮胸剤"
-		SELECTCASE TALENT:LOCAL:バストサイズ
-			;爆乳→巨乳
-			CASE 5
-				PRINTFORMW ＜%CALLNAME:LOCAL%の豊かすぎる胸が一回り小さくなった＞
-			;巨乳→普乳
-			CASE 4
-				PRINTFORMW ＜%CALLNAME:LOCAL%の胸が人並みに小さくなった＞
-			;普乳→貧乳
-			CASE 3
-				PRINTFORMW ＜%CALLNAME:LOCAL%の胸が小さくなった＞
-			;貧乳→絶壁
-			CASE 2
-				PRINTFORMW ＜%CALLNAME:LOCAL%の胸が極端に薄くなった＞
-				IF TALENT:LOCAL:母乳体質
-					PRINTFORMW ＜%CALLNAME:LOCAL%の母乳が出なくなった＞
-					TALENT:LOCAL:母乳体質 = 0
-					CFLAG:LOCAL:ストレス値++
-				ENDIF
-		ENDSELECT
-		TALENT:LOCAL:バストサイズ--
-		CFLAG:LOCAL:ストレス値 += 7
-	;母乳治療
-	CASE "止乳剤"
-		PRINTFORMW ＜%CALLNAME:LOCAL%は母乳が出なくなった＞
-		TALENT:LOCAL:母乳体質 = 0
-		CFLAG:LOCAL:ストレス値 += 3
-	;お漏らし治療
-	CASE "夜尿症改善薬"
-		PRINTFORMW ＜%CALLNAME:LOCAL%のお漏らし癖が治った＞
-		TALENT:LOCAL:おもらし癖 = 0
-		CFLAG:LOCAL:おもらし改善フラグ = 1
-		CFLAG:LOCAL:ストレス値 += 3
-	;ゾンビパウダー
-	CASE "ゾンビパウダー"
-		PRINTFORMW ＜%CALLNAME:LOCAL%はゾンビになった＞
-		TALENT:LOCAL:ゾンビ = 1
-		CFLAG:LOCAL:ストレス値 += 10
-	;聖水
-	CASE "聖水"
-		PRINTFORMW ＜%CALLNAME:LOCAL%はゾンビから蘇った＞
-		TALENT:LOCAL:ゾンビ = 0
-		IF !TALENT:LOCAL:回復遅い
-			PRINTW その反動で治癒力が低下しました
-			TALENT:LOCAL:回復遅い = 1
-		ENDIF
-		CFLAG:LOCAL:ストレス値 += 5
-	;性転換薬 ふたなり時に何があろうと無条件でバージンは復活する
-	CASE "性転換薬"
-		SELECTCASE SEX(LOCAL)
-			CASE 1
-				PRINTFORMW ＜%CALLNAME:LOCAL%は女になった＞
-				IF TALENT:LOCAL:童貞
-					VIRGIN:LOCAL:0 = NOTLOSTVIRGIN
-					TALENT:LOCAL:童貞 = 0
-				ENDIF
-				TALENT:LOCAL:性別 = 2
-				TALENT:LOCAL:処女 = 1
-				IF TALENT:LOCAL:小柄体型
-					TALENT:LOCAL:バストサイズ = 2
-				ELSE
-					TALENT:LOCAL:バストサイズ = 3
-				ENDIF
-			CASE 2
-				PRINTFORMW ＜%CALLNAME:LOCAL%は男になった＞
-				IF TALENT:LOCAL:処女
-					VIRGIN:LOCAL:1 = NOTLOSTVIRGIN
-					TALENT:LOCAL:処女 = 0
-				ENDIF
-				TALENT:LOCAL:性別 = 1
-				TALENT:LOCAL:童貞 = 1
-				TALENT:LOCAL:バストサイズ = 0
-		ENDSELECT
-		CALL CLEAR_FLAG, LOCAL
-		TALENT:LOCAL:性転換済 = 1
-		CFLAG:LOCAL:ストレス値 += 20
-	;時の砂時計
-	CASE "時の砂時計"
-		IF TALENT:LOCAL:小柄体型
-			PRINTFORMW ＜%CALLNAME:LOCAL%は立派な大人の体になった＞
-			TALENT:LOCAL:小柄体型 = 0
-			SIF SEX(LOCAL) == 2 && TALENT:LOCAL:バストサイズ != 5
-				TALENT:LOCAL:バストサイズ++
-			MAXBASE:LOCAL:体力 += 200
-			BASE:LOCAL:体力 += 200
-			;実績:リピカをグラマラスにする
-			SIF CHARANAMEF(LOCAL) == "赤のリピカ" && TALENT:LOCAL:バストサイズ >= 4
-				CALL 実績解除, "「ふっふーん 『ないすばでぃ』を手に入れたのさー♪」"
-		ELSE
-			PRINTFORMW ＜%CALLNAME:LOCAL%は\@ SEX(LOCAL) == 1 ? 少年 # 幼女 \@のような小さな体になった＞
-			TALENT:LOCAL:小柄体型 = 1
-			SIF SEX(LOCAL) == 2 && TALENT:LOCAL:バストサイズ != 1
-				TALENT:LOCAL:バストサイズ--
-			MAXBASE:LOCAL:体力 -= 200
-			BASE:LOCAL:体力 -= 200
-		ENDIF
-		CFLAG:LOCAL:ストレス値 += 10
-	;永続的利尿剤
-	CASE "永続的利尿剤"
-		PRINTFORMW ＜%CALLNAME:LOCAL%は尿意を我慢できなくなった＞
-		TALENT:LOCAL:おもらし癖 = 1
-		CFLAG:LOCAL:ストレス値 += 10
-	;ビースティースターター
-	CASE "ビースティースターター"
-		PRINTFORM ＜%CALLNAME:LOCAL%に
-		SIF !TALENT:LOCAL:動物耳
-			PRINT 動物の耳
-		SIF !TALENT:LOCAL:動物耳 && !TALENT:LOCAL:尻尾
-			PRINT と
-		SIF !TALENT:LOCAL:尻尾
-			PRINT 動物の尻尾
-		PRINTW が生えた＞
-		TALENT:LOCAL:動物耳 = 1
-		TALENT:LOCAL:尻尾 = 1
-		;眷属の儀追加により獣人化は廃止
-		;SELECTCASE CSTR:LOCAL:種族
-		;	CASE "人間", "人間(？)"
-		;		CSTR:LOCAL:種族 = 獣人
-		;		CFLAG:LOCAL:種族 = 15
-		;ENDSELECT
-		IF TALENT:LOCAL:好奇心
-			CFLAG:LOCAL:依存度 += 50
-		ELSE
-			CFLAG:LOCAL:ストレス値 += 3
-		ENDIF
-	;魔剤
-	CASE "魔剤"
-		PRINTFORMW ＜%CALLNAME:LOCAL%のテンションが上がってきた！＞
-		CFLAG:LOCAL:魔剤 = 1
-		TIMES CFLAG:LOCAL:魔剤耐性, 1.1
-		CFLAG:LOCAL:魔剤耐性 = LIMIT(CFLAG:LOCAL:魔剤耐性, 1100, 2000)
-		CFLAG:LOCAL:回復量低下 += 5
-		CFLAG:LOCAL:ストレス値 += 10
-		SIF CHARANAMEF(LOCAL) == "翔"
-			CALL 実績解除, "いいからドーピングだ！"
-	;バナナ
-	CASE "バナナ"
-		PRINTFORMW ＜%CALLNAME:LOCAL%は音楽ゲームが上達した……気がする＞
-		EXP:LOCAL:音ゲー経験++
-		BASE:LOCAL:体力 += 10
-		SIF BASE:LOCAL:体力 > MAXBASE:LOCAL:体力
-			BASE:LOCAL:体力 = MAXBASE:LOCAL:体力
-	;排卵誘発剤
-	CASE "排卵誘発剤"
-		IF LOCAL == MASTER
-			PRINTFORMW ＜%CALLNAME:MASTER%は排卵誘発剤を使用した＞
-		ELSE
-			PRINTFORMW ＜%CALLNAME:LOCAL%に排卵誘発剤を使った＞
-		ENDIF
-		CFLAG:LOCAL:排卵誘発剤 = 1
-		CFLAG:LOCAL:ストレス値 += 3
-	;リミットバースト
-	CASE "リミッター解除"
-		PRINTFORMW ＜%NAME:LOCAL%のリミッターを解除した＞
-		TALENT:LOCAL:リミットバースト = 1
-	CASE "【料理人】"
-		PRINTFORMW ＜%NAME:LOCAL%は料理人になった＞
-		TALENT:LOCAL:料理人 = 1
-	CASE "【専業主婦】"
-		PRINTFORMW ＜%NAME:LOCAL%は専業主婦になった＞
-		TALENT:LOCAL:専業主婦 = 1
-	CASE "【工学博士】"
-		PRINTFORMW ＜%NAME:LOCAL%は工学博士になった＞
-		TALENT:LOCAL:工学博士 = 1
-	CASE "【絶対音感】"
-		PRINTFORMW ＜%NAME:LOCAL%は絶対音感を身につけた＞
-		TALENT:LOCAL:絶対音感 = 1
-	CASE "【カメラマン】"
-		PRINTFORMW ＜%NAME:LOCAL%はカメラマンになった＞
-		TALENT:LOCAL:カメラマン = 1
-ENDSELECT
-
-;アイテムによる崩壊の処理
-;撤廃しました
-;SIF CFLAG:LOCAL:ストレス値 >= 100 && TALENT:LOCAL:崩壊 == 0
-;	CALL COLLAPSE_MIND_ITEM, LOCAL
-
-IF ARG < 1000 && (TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手))
-	MONEY -= ITEMPRICE:ARG/10*8
-	;実績:ター子の交渉で値引きしたアイテムを購入する
-	SIF CHARANAMEF(MASTER) == "ター子" || (ASSI > 0 && CHARANAMEF(ASSI) == "ター子")
-		CALL 実績解除, "「それ、もうちょい安ぅならんやろか？」"
-ELSE
-	MONEY -= ITEMPRICE:ARG
-ENDIF
-
-RETURN 0
-
-;アイテムで【崩壊】を得た場合のイベント
-@COLLAPSE_MIND_ITEM, ARG
-PRINTFORMW %CALLNAME:ARG%の様子がおかしい
-PRINTFORMW 投薬の影響によって、%CALLNAME:ARG%の精神に異常をきたしてしまったようだ
-PRINTFORMW %NAME:ARG%は【崩壊】してしまった
-TALENT:ARG:崩壊 = 1
-SIF TALENT:ARG:恋慕
-	PRINTFORMW %CALLNAME:ARG%は[恋慕]を失った
-SIF TALENT:ARG:淫乱
-	PRINTFORMW %CALLNAME:ARG%は[淫乱]を失った
-SIF TALENT:ARG:服従
-	PRINTFORMW %CALLNAME:ARG%は[服従]を失った
-SIF TALENT:ARG:親愛
-	PRINTFORMW %CALLNAME:ARG%は[親愛]を失った
-SIF TALENT:ARG:娼婦
-	PRINTFORMW %CALLNAME:ARG%は[娼婦]を失った
-SIF TALENT:ARG:隷属
-	PRINTFORMW %CALLNAME:ARG%は[隷属]を失った
-TALENT:ARG:恋慕 = 0
-TALENT:ARG:淫乱 = 0
-TALENT:ARG:服従 = 0
-TALENT:ARG:親愛 = 0
-TALENT:ARG:娼婦 = 0
-TALENT:ARG:隷属 = 0
 
