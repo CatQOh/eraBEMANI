@@ -20,6 +20,8 @@ COMRESULT = 1
 RETURNF 1
 
 @COM_プレゼント
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 依存度計算用
 LOCAL = 0
 PRINTL プレゼント
 
@@ -31,6 +33,10 @@ CALL PASELIL, @"[3] アクセサリ(10,000＄)"
 CALL PASELIL, @"[4] 服(25,000＄)"
 CALL PASELIL, @"[5] 素敵な指輪(100,000＄)"
 CALL PASELIL, @"[6] 特別仕様のIIDX筐体(980,000＄)"
+SIF 材料判定("アルストロメリア") == 2
+	PRINTL [10] 育てたアルストロメリア
+SIF 材料判定("薔薇") == 2
+	PRINTL [11] 育てた薔薇
 PRINTFORML [100] やっぱりやめる
 
 DO
@@ -48,6 +54,20 @@ DO
 			LOCAL = 100000
 		CASE 6
 			LOCAL = 980000
+		CASE 10
+			IF 材料判定("アルストロメリア") == 2
+				RESULT = 10
+				BREAK
+			ELSE
+				CONTINUE
+			ENDIF
+		CASE 11
+			IF 材料判定("薔薇") == 2
+				RESULT = 11
+				BREAK
+			ELSE
+				CONTINUE
+			ENDIF
 	ENDSELECT
 
 	IF MONEY < LOCAL
@@ -77,6 +97,22 @@ SELECTCASE RESULT
 	CASE 6
 		;IIDX筐体をプレゼント
 		MONEY -= 980000
+	CASE 10
+		;アルストロメリアをプレゼント 栽培していたアルストロメリアは無くなる
+		FOR LCOUNT, 1, 5
+			IF プランターの作物:LCOUNT == "アルストロメリア"
+				プランターの作物:LCOUNT =
+				BREAK
+			ENDIF
+		NEXT
+	CASE 11
+		;薔薇をプレゼント 栽培していた薔薇は無くなる
+		FOR LCOUNT, 1, 5
+			IF プランターの作物:LCOUNT == "薔薇"
+				プランターの作物:LCOUNT =
+				BREAK
+			ENDIF
+		NEXT
 	CASE 100
 		PRINTFORMW プレゼントを渡すのを止めました
 		RETURN 0
@@ -120,6 +156,14 @@ SELECTCASE TFLAG:プレゼント
 	CASE 6
 		SOURCE:恐怖 = 3000
 		SOURCE:逸脱 = 5000
+	CASE 10, 11
+		IF TALENT:親愛
+			SOURCE:情愛 = 5000
+			SOURCE:恭順 = 10000
+		ELSE
+			SOURCE:情愛 = 3000
+			SOURCE:恭順 = 5000
+		ENDIF
 ENDSELECT
 
 ;愛情経験
@@ -146,6 +190,8 @@ SELECTCASE TFLAG:プレゼント
 			EXP:異常経験 += 3
 		ENDIF
 		CFLAG:ありえないものをプレゼントされた経験++
+	CASE 10, 11
+		LOCAL = 10
 ENDSELECT
 
 IF TFLAG:プレゼント != 6
@@ -165,8 +211,15 @@ CALL SAMEN_CHECK_T, 0
 
 CALL SAMEN_SHOOT_T, 0, NOWEX:射精
 
+SELECTCASE TFLAG:プレゼント
+	CASE 1 TO 5
+		依存度計算用 = TFLAG:プレゼント
+	CASE 10, 11
+		依存度計算用 = 10
+ENDSELECT
+
 ;依存度補正値
-TFLAG:依存度補正 += TFLAG:プレゼント
+TFLAG:依存度補正 += 依存度計算用
 
 RETURN 1
 
