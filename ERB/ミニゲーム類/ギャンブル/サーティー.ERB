@@ -6,6 +6,7 @@
 #DIM DYNAMIC AI_FGT;AIの忘れやすさ
 #DIM DYNAMIC ゲーム数 = 4
 #DIM DYNAMIC 賭け金
+#DIM DYNAMIC 支払い
 #DIM DYNAMIC スタート時間
 #DIM DYNAMIC 経過時間
 #DIM DYNAMIC コール
@@ -13,6 +14,10 @@
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC AIコール
 #DIM DYNAMIC カジノの種類
+;カジノの種類 1=表 2=裏
+;裏はコールされた数の個数に応じてレートが倍加する
+;難易度[3](最強)なら勝つときは必ず30個コールされるので192万$となる
+
 ;AIの記憶力について
 ;AIは毎ターン出た数字を記憶(配列「NUMBER_AI」の対応する部分を1に)
 ;1ターンごとに以下の判定を行う
@@ -24,13 +29,15 @@ PRINTL
 PRINTL ◆サーティーのルール◆
 PRINTL 1～30の自然数のうち、1つだけ、もしくは連番の2つをコールします。
 PRINTL コールの制限時間は10秒です。
-PRINTL 先に既出の数をコールしてしまった方の負けです。残りの数が少なくなるほど、勝利した時のレートが上がります。
+PRINTL 先に既出の数をコールしてしまった方の負けです。
 PRINTW また、30個全ての数がコールされた場合、最後にコールした方の勝ちになります。
 
 $THIRTY_START
 PRINTL 
 PRINTFORML □サーティ <残り:{ゲーム数}ゲーム>
 PRINTL 　相手の強さを選んでください。
+SIF カジノの種類 == 2
+	PRINTL 　※現在コールされた数の個数に応じてレートが増えるルールとなっております
 PRINT 　所持金:
 SIF MONEY < 0
 	SETCOLORBYNAME red
@@ -59,8 +66,6 @@ DO
 			CONTINUE
 	ENDSELECT
 LOOP 0
-
-MONEY -= 賭け金
 
 VARSET NUMBER
 VARSET NUMBER_AI
@@ -156,6 +161,13 @@ DO
 	IF NUMBER:コール || (NUMBER:追加コール && 追加コール)
 		PRINTL は既にコールされています。
 		PRINTW 相手プレイヤーの勝ちです。
+		IF カジノの種類 == 2
+			支払い = M_COUNT*賭け金
+		ELSE
+			支払い = 賭け金
+		ENDIF
+		MONEY -= 支払い
+		CALL PASELIW, @"{支払い}＄支払った。"
 		BREAK
 	ENDIF
 	;数字の処理(AIの記憶も含む)
@@ -170,8 +182,13 @@ DO
 		PRINTL 
 		PRINTL 30個全ての数がコールされました。
 		PRINTFORMW 最後にコールした%CALLNAME:MASTER%の勝ちです。
-		MONEY += 30*賭け金
-		CALL PASELIW, @"{30*賭け金}＄手に入れた。"
+		IF カジノの種類 == 2
+			支払い = 30*賭け金
+		ELSE
+			支払い = 賭け金
+		ENDIF
+		MONEY += 支払い
+		CALL PASELIW, @"{支払い}＄手に入れた。"
 		BREAK
 	ENDIF
 	$AI_START
@@ -213,8 +230,13 @@ DO
 	IF NUMBER:コール || (NUMBER:追加コール && 追加コール)
 		PRINTL は既にコールされています。
 		PRINTFORMW %CALLNAME:MASTER%の勝ちです。
-		MONEY += (30-M_COUNT)*賭け金
-		CALL PASELIW, @"{(30-M_COUNT)*賭け金}＄手に入れた。"
+		IF カジノの種類 == 2
+			支払い = M_COUNT*賭け金
+		ELSE
+			支払い = 賭け金
+		ENDIF
+		MONEY += 支払い
+		CALL PASELIW, @"{支払い}＄手に入れた。"
 		BREAK
 	ENDIF
 	;数字の処理(AIの記憶も含む)
@@ -229,6 +251,13 @@ DO
 		PRINTL 
 		PRINTL 30個全ての数がコールされました。
 		PRINTFORMW 最後にコールした相手プレイヤーの勝ちです。
+		IF カジノの種類 == 2
+			支払い = 30*賭け金
+		ELSE
+			支払い = 賭け金
+		ENDIF
+		MONEY -= 支払い
+		CALL PASELIW, @"{支払い}＄支払った。"
 		BREAK
 	ENDIF
 LOOP 1
