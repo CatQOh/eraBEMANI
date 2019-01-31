@@ -147,6 +147,13 @@ IF TIME == 1 && !CFLAG:MASTER:使用不可 && FLAG:ゲームモード != 7
 	CALL CHECKDRAWLINEW
 ENDIF
 
+;新婚モード以外で所持金が5000万以上なら裏カジノへの招待状が届く
+IF FLAG:ゲームモード != 7 && MONEY >= 50000000 && !FLAG:裏カジノ
+	CALL KOJO_MESSAGE_EVENT, "裏カジノ招待"
+	PRINTW 裏カジノが使用可能になりました
+	FLAG:裏カジノ = 1
+ENDIF
+
 ;主人が使用不可だと体力・気力・ストレス値は変動しない
 IF !CFLAG:MASTER:使用不可
 	FOR LCOUNT, 1, CHARANUM
@@ -294,8 +301,12 @@ SELECTCASE TIME
 			CALL 実績解除, "Without you tonight"
 		TIME = 0
 		;ゲームモード7(新婚モード)か9(PREMIUM FREE)なら10日に一度、借金の返済・新規借入ができる
-		SIF (FLAG:ゲームモード == 7 || FLAG:ゲームモード == 9) && DAY%10 == 0
+		IF (FLAG:ゲームモード == 7 || FLAG:ゲームモード == 9) && DAY%10 == 0
 			CALL DEBT
+		;借金がある場合は10日に一度返済を要求される
+		ELSEIF 借金
+			CALL DEBT, 1
+		ENDIF
 		;バッドエンドの判定
 		;期限切れ
 		SIF (DAY > 100 && FLAG:ゲームモード == 0) || (DAY > 300 && FLAG:ゲームモード == 1)
