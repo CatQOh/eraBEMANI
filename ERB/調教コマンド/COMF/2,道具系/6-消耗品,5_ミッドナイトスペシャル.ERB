@@ -1,0 +1,90 @@
+﻿;-------------------------------------------------
+;ミッドナイトスペシャル
+;-------------------------------------------------
+@USERCOM_ABLE_ミッドナイトスペシャル, ARG
+#FUNCTION
+;ゲーセンに居る場合はトイレじゃないとできない
+SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
+	RETURNF 0
+;上級売春中は不可
+SIF 上級売春中
+	RETURNF 0
+;アイテムを持っていないとダメ
+SIF !ITEM:ミッドナイトスペシャル
+	RETURNF 0
+;薬毒耐性だとダメ
+SIF TALENT:薬毒耐性
+	RETURNF 0
+;[無機物]もしくは種族:機械だとダメ
+SIF TALENT:無機物 || CSTR:種族 == "機械"
+	RETURNF 0
+;ペニス無いとダメ
+SIF !PENIS(MASTER) && !PENIS(TARGET) && !PENIS(ASSI)
+	RETURNF 0
+;アニマルは無理
+SIF TALENT:アニマル
+	RETURNF 0
+
+COMRESULT = 1
+RETURNF 1
+
+@COM_ミッドナイトスペシャル
+PRINTL ミッドナイトスペシャルを使用するキャラを選んでください
+SIF PENIS(MASTER)
+	PRINTFORML [1] - %CALLNAME:MASTER%
+SIF PENIS(TARGET)
+	PRINTFORML [2] - %CALLNAME:TARGET%
+SIF PENIS(ASSI)
+	PRINTFORML [3] - %CALLNAME:ASSI%
+PRINTL [0] - やめる
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			IF PENIS(MASTER)
+				TFLAG:ミッドナイトスペシャル使用者 = MASTER
+				CFLAG:MASTER:ミッドナイトスペシャル = 5
+				BREAK
+			ENDIF
+		CASE 2
+			IF PENIS(TARGET)
+				TFLAG:ミッドナイトスペシャル使用者 = TARGET
+				CFLAG:ミッドナイトスペシャル = 5
+				BREAK
+			ENDIF
+		CASE 3
+			IF PENIS(ASSI)
+				TFLAG:ミッドナイトスペシャル使用者 = MASTER
+				CFLAG:ミッドナイトスペシャル = 5
+				BREAK
+			ENDIF
+	ENDSELECT
+LOOP 1
+
+CALL KOJO_MESSAGE_COM
+
+ITEM:ミッドナイトスペシャル--
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 5
+LOSEBASE:気力 += 5
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+RETURN 1
+
