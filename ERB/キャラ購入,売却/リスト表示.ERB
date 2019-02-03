@@ -22,6 +22,7 @@ ENDIF
 @CHARA_LIST, ARG
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 単位文字数
+#DIM DYNAMIC 価格上限
 #DIMS 登場作品フィルタ
 #DIMS キャラデザフィルタ
 #DIMS 種族フィルタ
@@ -67,6 +68,11 @@ IF ARG == 0
 	PRINTL 
 ENDIF
 
+IF FLAG:価格フィルタ所持金依存
+	価格上限 = MONEY
+ELSE
+	価格上限 = FLAG:価格フィルタ上限
+ENDIF
 
 FOR LCOUNT, 0, 10000
 	SIF LCOUNT == 0 && ARG != 1
@@ -99,7 +105,7 @@ FOR LCOUNT, 0, 10000
 			CONTINUE
 
 		SELECTCASE CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格"))
-			CASE FLAG:価格フィルタ下限 TO FLAG:価格フィルタ上限
+			CASE FLAG:価格フィルタ下限 TO 価格上限
 				SIF FLAG:価格フィルタ == 2
 					CONTINUE
 			CASEELSE
@@ -225,7 +231,11 @@ IF ARG == 0 || ARG == 4
 	PRINTPLAIN 　PRICE  FILTER　
 	PRINT [20007] 価格フィルタ：
 	IF FLAG:価格フィルタ != 0
-		CALL PASELI, @"{FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄"
+		IF FLAG:価格フィルタ所持金依存
+			CALL PASELI, @"{FLAG:価格フィルタ下限}＄ ～ 所持金"
+		ELSE
+			CALL PASELI, @"{FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄"
+		ENDIF
 		SELECTCASE FLAG:価格フィルタ
 			CASE 1
 				PRINT (表示)
@@ -396,7 +406,11 @@ SELECTCASE FLAG:価格フィルタ
 	CASE 0
 		PRINTL オフ）
 	CASEELSE
-		CALL PASELIL, @"【{FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄】のフィルタ）"
+		IF FLAG:価格フィルタ所持金依存
+			CALL PASELIL, @"【{FLAG:価格フィルタ下限}＄ ～ 所持金】のフィルタ）"
+		ELSE
+			CALL PASELIL, @"【{FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄】のフィルタ）"
+		ENDIF
 ENDSELECT
 
 PRINT [7] 価格フィルタの切り替え（現在
@@ -540,8 +554,18 @@ SELECTCASE ARG
 		DO
 			PRINTL 価格でフィルタをかけることができます
 			CALL PASELIL, @"[101] 下限を設定する(現在{FLAG:価格フィルタ下限}＄)"
-			CALL PASELIL, @"[102] 上限を設定する(現在{FLAG:価格フィルタ上限}＄)"
-			CALL PASELIL, @"現在の設定 {FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄"
+			IF FLAG:価格フィルタ所持金依存
+				PRINTL [102] 上限を設定する(現在所持金まで)
+			ELSE
+				CALL PASELIL, @"[102] 上限を設定する(現在{FLAG:価格フィルタ上限}＄)"
+			ENDIF
+			SIF !FLAG:価格フィルタ所持金依存
+				PRINTL [103] 上限を所持金にする
+			IF FLAG:価格フィルタ所持金依存
+				CALL PASELIL, @"現在の設定 {FLAG:価格フィルタ下限}＄ ～ 所持金"
+			ELSE
+				CALL PASELIL, @"現在の設定 {FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄"
+			ENDIF
 			DRAWLINE
 			PRINTL [100] 戻る
 			DO
@@ -553,7 +577,7 @@ SELECTCASE ARG
 						PRINTL 数値を入力してください
 						DO
 							INPUT
-							IF RESULT > FLAG:価格フィルタ上限
+							IF RESULT > FLAG:価格フィルタ上限 && !FLAG:価格フィルタ所持金依存
 								PRINTL 上限より高い値を設定することはできません
 							ELSE
 								FLAG:価格フィルタ下限 = RESULT
@@ -562,6 +586,7 @@ SELECTCASE ARG
 						LOOP 1
 						BREAK
 					CASE 102
+						FLAG:価格フィルタ所持金依存 = 0
 						PRINTL 数値を入力してください
 						DO
 							INPUT
@@ -572,6 +597,9 @@ SELECTCASE ARG
 								BREAK
 							ENDIF
 						LOOP 1
+						BREAK
+					CASE 103
+						FLAG:価格フィルタ所持金依存 = 1
 						BREAK
 				ENDSELECT
 			LOOP LOOPRES(101, 102)
