@@ -348,33 +348,42 @@ ENDSELECT
 RETURN 1
 
 ;以下、各ゲーム共通の賭け金設定
-@STAKE, 賭け金上限
+@STAKE, 賭け金上限, カジノの種類
 #DIM DYNAMIC 利子
 #DIM DYNAMIC 賭け金上限
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC ループ用ステップ = 5
 #DIM DYNAMIC マックスベット可
+#DIM DYNAMIC カジノの種類
 
 SIF 賭け金上限 <= 0
 	RETURN 0
 
 ;ギャンブルで借金を背負った場合の利子(難易度によって変動)
-SELECTCASE FLAG:難易度
-	;NORMAL
-	CASE 1
-		利子 = 25
-	;HYPER
-	CASE 2
-		利子 = 55
-	;ANOTHER
-	CASE 3
-		利子 = 90
-ENDSELECT
+IF カジノの種類 == 1
+	SELECTCASE FLAG:難易度
+		;NORMAL
+		CASE 1
+			利子 = 25
+		;HYPER
+		CASE 2
+			利子 = 55
+		;ANOTHER
+		CASE 3
+			利子 = 90
+	ENDSELECT
+ENDIF
 
 PRINTL いくら賭けますか？
-PRINTL ただし、ギャンブル中に新たな借金を背負って返済できなかった場合、
-CALL PASELIL, @"その借金に対し、{利子}\%の利子が付きます。"
-PRINT (所持金:
+IF 利子
+	PRINTL ただし、ギャンブル中に新たな借金を背負って返済できなかった場合、
+	CALL PASELIL, @"その借金に対し、{利子}\%の利子が付きます。"
+ENDIF
+IF カジノの種類 == 3
+	PRINT (所持メダル:
+ELSE
+	PRINT (所持金:
+ENDIF
 SIF MONEY < 0
 	SETCOLORBYNAME red
 CALL PASELI, @"{MONEY}＄"
@@ -396,11 +405,19 @@ FOR LCOUNT, 0, 賭け金上限+1, ループ用ステップ
 		CASE 500
 			SETCOLORBYNAME purple
 		CASE 1000
-			SETCOLORBYNAME gold
+			SETCOLORBYNAME yellow
 		CASE 5000
 			SETCOLORBYNAME brown
 		CASE 25000
 			SETCOLORBYNAME orange
+		CASE 100000
+			SETCOLORBYNAME cyan
+		CASE 500000
+			SETCOLORBYNAME magenta
+		CASE 1000000
+			SETCOLORBYNAME silver
+		CASE 2000000
+			SETCOLORBYNAME gold
 		CASEELSE
 			マックスベット可 = 1
 			CONTINUE
