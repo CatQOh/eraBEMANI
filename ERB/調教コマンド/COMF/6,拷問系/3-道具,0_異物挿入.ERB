@@ -12,19 +12,19 @@ SIF 上級売春中 && 娼館方針 != 4
 ;触手召喚中はダメ
 SIF TEQUIP:触手
 	RETURNF 0
-;V感覚もしくはA感覚が3未満だと実行できない
-SIF ABL:Ｖ感覚 < 3 && ABL:Ａ感覚 < 3
+;V感覚もしくはA感覚が6以上、もしくは拡張経験200以上必要
+SIF ABL:Ｖ感覚 < 6 && ABL:Ａ感覚 < 6 && EXP:Ｖ拡張経験 < 200 && EXP:Ａ拡張経験 < 200
 	RETURNF 0
 ;両穴がふさがってると実行できない
 SIF Ｖ使用中(TARGET) && Ａ使用中(TARGET)
 	RETURNF 0
 ;挿入できる穴がふさがってると実行できない
-IF ABL:Ｖ感覚 >= 3
-	SIF ABL:Ａ感覚 < 3 && Ｖ使用中(TARGET)
+IF ABL:Ｖ感覚 >= 6 || EXP:Ｖ拡張経験 >= 200
+	SIF ABL:Ａ感覚 < 6 && EXP:Ａ拡張経験 < 200 && Ｖ使用中(TARGET)
 		RETURNF 0
 ENDIF
-IF ABL:Ａ感覚 >= 3
-	SIF ABL:Ａ感覚 < 3 && Ａ使用中(TARGET)
+IF ABL:Ａ感覚 >= 6 || EXP:Ａ拡張経験 >= 200
+	SIF ABL:Ｖ感覚 < 6 && EXP:Ｖ拡張経験 < 200 && Ａ使用中(TARGET)
 		RETURNF 0
 ENDIF
 
@@ -36,12 +36,14 @@ COMRESULT = 1
 RETURNF 1
 
 @COM_異物挿入
+#DIM DYNAMIC LABL
+#DIM DYNAMIC LEXP
 PRINTL 異物挿入
 
 IF VAGINA(TARGET)
-	IF (ABL:Ｖ感覚 >= 3 && ABL:Ａ感覚 < 3) || TEQUIP:Ａ異物
+	IF (ABL:Ｖ感覚 >= 6 || EXP:Ｖ拡張経験 >= 200) && ((ABL:Ａ感覚 < 6 && EXP:Ａ拡張経験 < 200) || TEQUIP:Ａ異物)
 		LOCAL = GETNUM(ABL, "Ｖ感覚")
-	ELSEIF (ABL:Ｖ感覚 < 3 && ABL:Ａ感覚 >= 3) || TEQUIP:Ｖ異物
+	ELSEIF (ABL:Ａ感覚 >= 6 || EXP:Ａ拡張経験 >= 200) && ((ABL:Ｖ感覚 < 6 && EXP:Ｖ拡張経験 < 200) || TEQUIP:Ｖ異物)
 		LOCAL = GETNUM(ABL, "Ａ感覚")
 	ELSE
 		PRINTL どちらの穴に挿入しますか？
@@ -54,45 +56,46 @@ IF VAGINA(TARGET)
 		
 		SELECTCASE RESULT
 			CASE 0
-				LOCAL = GETNUM(ABL, "Ｖ感覚")
+				LABL = GETNUM(ABL, "Ｖ感覚")
+				LEXP = GETNUM(EXP, "Ｖ拡張経験")
 			CASE 1
-				LOCAL = GETNUM(ABL, "Ａ感覚")
+				LABL = GETNUM(ABL, "Ａ感覚")
+				LEXP = GETNUM(ABL, "Ａ拡張経験")
 			CASE 2
 				RETURN 0
 		ENDSELECT
 	ENDIF
 ELSE
-	LOCAL = GETNUM(ABL, "Ａ感覚")
+	LABL = GETNUM(ABL, "Ａ感覚")
+	LEXP = GETNUM(ABL, "Ａ拡張経験")
 ENDIF
 
-IF LOCAL == GETNUM(ABL, "Ｖ感覚")
+IF LABL == GETNUM(ABL, "Ｖ感覚")
 	PRINT 膣穴
-ELSEIF LOCAL == GETNUM(ABL, "Ａ感覚")
+ELSEIF LABL == GETNUM(ABL, "Ａ感覚")
 	PRINT 尻穴
 ENDIF
 PRINTL に何を挿入しますか？
-SIF ABL:LOCAL >= 3
+SIF ABL:LABL >= 6 || EXP:LEXP >= 200
 	PRINTL [1] - コーヒー缶
-SIF ABL:LOCAL >= 4
+SIF ABL:LABL >= 7 || EXP:LEXP >= 250
 	PRINTL [2] - ペットボトル
-SIF ABL:LOCAL >= 5
+SIF ABL:LABL >= 8 || EXP:LEXP >= 300
 	PRINTL [3] - 空きビン
 PRINTL [4] - やめる
-;SIF ABL:LOCAL >= 6
-;	PRINTL [4] - 消火器
 
 DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 1 TO 3
-			SIF RESULT+2 > ABL:LOCAL
+			SIF RESULT+5 > ABL:LABL && RESULT*50+150 > EXP:LEXP
 				CONTINUE
 		CASE 4
 			RETURN 0
 	ENDSELECT
 LOOP LOOPRES(1, 2, 3)
 
-SELECTCASE LOCAL
+SELECTCASE LABL
 	CASE GETNUM(ABL, "Ｖ感覚")
 		TEQUIP:Ｖ異物 = RESULT
 		TFLAG:膣コマンド = 1
@@ -100,7 +103,7 @@ SELECTCASE LOCAL
 		TEQUIP:Ａ異物 = RESULT
 ENDSELECT
 
-TFLAG:異物挿入 = LOCAL
+TFLAG:異物挿入 = LABL
 LOCAL:1 = RESULT
 
 CALL KOJO_MESSAGE_COM
