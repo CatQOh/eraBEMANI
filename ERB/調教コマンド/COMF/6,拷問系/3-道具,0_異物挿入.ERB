@@ -42,9 +42,11 @@ PRINTL 異物挿入
 
 IF VAGINA(TARGET)
 	IF (ABL:Ｖ感覚 >= 6 || EXP:Ｖ拡張経験 >= 200) && ((ABL:Ａ感覚 < 6 && EXP:Ａ拡張経験 < 200) || TEQUIP:Ａ異物)
-		LOCAL = GETNUM(ABL, "Ｖ感覚")
+		LABL = GETNUM(ABL, "Ｖ感覚")
+		LEXP = GETNUM(EXP, "Ｖ拡張経験")
 	ELSEIF (ABL:Ａ感覚 >= 6 || EXP:Ａ拡張経験 >= 200) && ((ABL:Ｖ感覚 < 6 && EXP:Ｖ拡張経験 < 200) || TEQUIP:Ｖ異物)
-		LOCAL = GETNUM(ABL, "Ａ感覚")
+		LABL = GETNUM(ABL, "Ａ感覚")
+		LEXP = GETNUM(ABL, "Ａ拡張経験")
 	ELSE
 		PRINTL どちらの穴に挿入しますか？
 		PRINTL [0] - 膣穴
@@ -216,71 +218,57 @@ CALL 射精ゲージ増加, LOCAL, TARGET
 ;-------------------------------------------------
 ;ソース追加処理
 ;-------------------------------------------------
+;消費体力、気力 SOURCE:V拡張、A拡張で増加する
+LOSEBASE:体力 += 30
+LOSEBASE:気力 += 50
+;快V、快A、苦痛、恐怖、反感は拡張のソースで上乗せする
+SELECTCASE TFLAG:異物挿入
+	CASE GETNUM(ABL, "Ｖ感覚")
+		SOURCE:快V = 100
+	CASE GETNUM(ABL, "Ａ感覚")
+		SOURCE:快A = 100
+ENDSELECT
+SOURCE:苦痛 = 500
+SOURCE:恐怖 = 100
+SOURCE:反感 = 100
+
 SELECTCASE LOCAL:1
 	CASE 1
-		;消費体力、気力
-		LOSEBASE:体力 += 50
-		LOSEBASE:気力 += 150
-
 		SELECTCASE TFLAG:異物挿入
 			CASE GETNUM(ABL, "Ｖ感覚")
-				SOURCE:快V = 100
+				SOURCE:V拡張 = 50
 			CASE GETNUM(ABL, "Ａ感覚")
-				SOURCE:快A = 100
+				SOURCE:A拡張 = 50
 		ENDSELECT
-		SOURCE:苦痛 = 500
-		SOURCE:恐怖 = 200
 		SOURCE:露出 = 50
 		SOURCE:逸脱 = 100
-		SOURCE:反感 = 70
 	CASE 2
-		;消費体力、気力
-		LOSEBASE:体力 += 100
-		LOSEBASE:気力 += 200
-
 		SELECTCASE TFLAG:異物挿入
 			CASE GETNUM(ABL, "Ｖ感覚")
-				SOURCE:快V = 200
+				SOURCE:V拡張 = 100
 			CASE GETNUM(ABL, "Ａ感覚")
-				SOURCE:快A = 200
+				SOURCE:A拡張 = 100
 		ENDSELECT
-		SOURCE:苦痛 = 1000
-		SOURCE:恐怖 = 400
 		SOURCE:露出 = 50
 		SOURCE:逸脱 = 150
-		SOURCE:反感 = 100
 	CASE 3
-		;消費体力、気力
-		LOSEBASE:体力 += 200
-		LOSEBASE:気力 += 400
-
 		SELECTCASE TFLAG:異物挿入
 			CASE GETNUM(ABL, "Ｖ感覚")
-				SOURCE:快V = 300
+				SOURCE:V拡張 = 200
 			CASE GETNUM(ABL, "Ａ感覚")
-				SOURCE:快A = 300
+				SOURCE:A拡張 = 200
 		ENDSELECT
-		SOURCE:苦痛 = 1500
-		SOURCE:恐怖 = 800
 		SOURCE:露出 = 50
 		SOURCE:逸脱 = 200
-		SOURCE:反感 = 100
 	CASE 4
-		;消費体力、気力
-		LOSEBASE:体力 += 300
-		LOSEBASE:気力 += 500
-
 		SELECTCASE TFLAG:異物挿入
 			CASE GETNUM(ABL, "Ｖ感覚")
-				SOURCE:快V = 400
+				SOURCE:V拡張 = 300
 			CASE GETNUM(ABL, "Ａ感覚")
-				SOURCE:快A = 400
+				SOURCE:V拡張 = 300
 		ENDSELECT
-		SOURCE:苦痛 = 2000
-		SOURCE:恐怖 = 1000
 		SOURCE:露出 = 50
 		SOURCE:逸脱 = 250
-		SOURCE:反感 = 100
 ENDSELECT
 
 DOWNBASE:MASTER:体力 += 30
@@ -294,49 +282,28 @@ SIF TALENT:抑圧 || TALENT:抵抗
 	SOURCE:鬱屈 += 200
 
 ;処女だった場合は、苦痛のソースと反発のソースを追加する
-IF TALENT:処女
-	SOURCE:苦痛 += 2000
-	SOURCE:反感 += 3000
-ENDIF
+IF TFLAG:異物挿入 == GETNUM(ABL, "Ｖ感覚")
+	IF TALENT:処女
+		SOURCE:苦痛 += 2000
+		SOURCE:反感 += 3000
+	ENDIF
 
-;再生処女だった場合は、苦痛のソースと反発のソースを追加する
-IF TALENT:再生処女
-	SOURCE:苦痛 += 500
-	SOURCE:反感 += 1000
+	;再生処女だった場合は、苦痛のソースと反発のソースを追加する
+	IF TALENT:再生処女
+		SOURCE:苦痛 += 500
+		SOURCE:反感 += 1000
+	ENDIF
 ENDIF
 
 ;苦痛のパラメータによる苦痛のソース増加は先に処理しておく
 SOURCE:苦痛 += GETPALAMLV(PALAM:苦痛, 4)*(SOURCE:苦痛/2)
 
-;V及びAへの苦痛は先に処理しておく
-;ABL:感覚をみる（処女の反感は別途処理済みなので省略）
-SELECTCASE ABL:(TFLAG:異物挿入)
-	CASE IS <= 3
-		TIMES SOURCE:苦痛 , 2.00
-		TIMES SOURCE:反感 , 1.50
-	CASE IS <= 4
-		TIMES SOURCE:苦痛 , 1.50
-		TIMES SOURCE:反感 , 1.20
-	CASE IS <= 5
-		TIMES SOURCE:苦痛 , 1.00
-	CASE IS >= 6
-		TIMES SOURCE:苦痛 , 0.50
-ENDSELECT
-
-;PALAM:潤滑をみる
-SELECTCASE GETPALAMLV(PALAM:潤滑, 4)
-	CASE 0
-		TIMES SOURCE:苦痛 , 2.00
-		TIMES SOURCE:反感 , 1.50
-	CASE 1
-		TIMES SOURCE:苦痛 , 1.80
-		TIMES SOURCE:反感 , 1.20
-	CASE 2
-		TIMES SOURCE:苦痛 , 1.60
-	CASE 3
-		TIMES SOURCE:苦痛 , 1.40
-	CASE 4
-		TIMES SOURCE:苦痛 , 1.20
+;拡張系のソース処理
+SELECTCASE TFLAG:異物挿入
+	CASE GETNUM(ABL, "Ｖ感覚")
+		CALL 特殊ソース処理_Ｖ拡張
+	CASE GETNUM(ABL, "Ａ感覚")
+		CALL 特殊ソース処理_Ａ拡張
 ENDSELECT
 
 ;-------------------------------------------------
@@ -403,22 +370,18 @@ SIF TEQUIP:Ａ異物
 	PRINTL ＜アナル異物挿入中＞
 
 IF TEQUIP:Ｖ異物
-	LOSEBASE:体力 += (TEQUIP:Ｖ異物*30)
-	LOSEBASE:気力 += (TEQUIP:Ｖ異物*50)
-
-	SOURCE:快V += (TEQUIP:Ｖ異物*170)
-	SOURCE:苦痛 += (TEQUIP:Ｖ異物*50)
+	SOURCE:V拡張 += (TEQUIP:Ｖ異物*50)
 	SOURCE:露出 += 30
 	SOURCE:逸脱 += (TEQUIP:Ｖ異物*20)
+	
+	CALL 特殊ソース処理_Ｖ道具拡張, 50, 30, 10
 ENDIF
 IF TEQUIP:Ａ異物
-	LOSEBASE:体力 += (TEQUIP:Ａ異物*30)
-	LOSEBASE:気力 += (TEQUIP:Ａ異物*50)
-
-	SOURCE:快A += (TEQUIP:Ａ異物*170)
-	SOURCE:苦痛 += (TEQUIP:Ａ異物*50)
+	SOURCE:A拡張 += (TEQUIP:Ａ異物*50)
 	SOURCE:露出 += 30
 	SOURCE:逸脱 += (TEQUIP:Ａ異物*20)
+	
+	CALL 特殊ソース処理_Ａ道具拡張, 50, 30, 10
 ENDIF
 
 ;-------------------------------------------------
@@ -566,6 +529,15 @@ SELECTCASE SELECTCOMS
 			EXP:Ａ経験++
 		ENDIF
 ENDSELECT
+
+IF TEQUIP:Ｖ異物
+	PRINTL Ｖ拡張経験+1
+	EXP:Ｖ拡張経験++
+ENDIF
+IF TEQUIP:Ａ異物
+	PRINTL Ａ拡張経験+1
+	EXP:Ａ拡張経験++
+ENDIF
 
 RETURN 1
 
