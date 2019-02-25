@@ -72,6 +72,15 @@ INVERTBIT TEQUIP:バイブ, 0
 ;射精ゲージチェック（奴隷）
 ;-------------------------------------------------
 LOCAL = 150
+;改造済みだと変化
+IF !TEQUIP:触手
+	SELECTCASE SAVESTR:バイブ
+		CASE "強力なバイブ"
+			LOCAL += 100
+		CASE "細いバイブ"
+			LOCAL -= 100
+	ENDSELECT
+ENDIF
 
 ;ABL:調教者の技巧をみる
 LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
@@ -129,6 +138,22 @@ SOURCE:露出 = 20
 SOURCE:逸脱 = 40
 SOURCE:反感 = 100
 
+IF !TEQUIP:触手
+	SELECTCASE SAVESTR:バイブ
+		CASE "強力なバイブ"
+			SOURCE:快V += 100
+		CASE "細いバイブ"
+			LOSEBASE:体力 -= 30
+			LOSEBASE:気力 -= 70
+			SOURCE:快V -= 200
+			SOURCE:苦痛 -= 40
+			SOURCE:逸脱 -= 30
+			SOURCE:反感 -= 70
+		CASE "太いバイブ"
+			SOURCE:V拡張 = 200
+	ENDSELECT
+ENDIF
+
 ;-------------------------------------------------
 ;特殊ソース処理
 ;-------------------------------------------------
@@ -149,6 +174,8 @@ IF TALENT:再生処女
 ENDIF
 
 CALL 特殊ソース処理_Ｖ
+SIF SOURCE:V拡張
+	CALL 特殊ソース処理_Ｖ拡張
 
 ;[衝動的]持ちは3分の1でアイテム破壊する（調教終了後に修復）
 IF (TALENT:衝動的 || TALENT:PLAYER:衝動的) && RAND:3 == 0 && !TEQUIP:触手
@@ -183,11 +210,20 @@ CALL SAMEN_SHOOT_T, 4, NOWEX:射精
 ;-------------------------------------------------
 ;異常経験
 IF TALENT:処女 && TEQUIP:触手
+	PRINTL 異常経験+2(触手処女喪失)
 	EXP:異常経験 += 2
-	PRINTFORML 異常経験+2
 ELSEIF TALENT:処女
-	EXP:異常経験 += 1
-	PRINTFORML 異常経験+1
+	PRINTL 異常経験+1(バイブ処女喪失)
+	EXP:異常経験++
+ENDIF
+
+IF !TEQUIP:触手 && SAVESTR:バイブ == "太いバイブ"
+	IF EXP:Ｖ拡張経験 == 0
+		PRINTL 異常経験+1(Ｖ拡張)
+		EXP:異常経験++
+	ENDIF
+	PRINTL Ｖ拡張経験+2
+	EXP:Ｖ拡張経験 += 2
 ENDIF
 
 CALL EXPUP, 2, 1
@@ -216,10 +252,33 @@ SOURCE:露出 += 10
 SOURCE:逸脱 += 20
 SOURCE:反感 += 30
 
+IF !TEQUIP:触手
+	SELECTCASE SAVESTR:バイブ
+		CASE "強力なバイブ"
+			SOURCE:快V += 50
+		CASE "細いバイブ"
+			LOSEBASE:体力 -= 10
+			LOSEBASE:気力 -= 20
+			SOURCE:快V -= 100
+			SOURCE:逸脱 -= 10
+			SOURCE:反感 -= 20
+		CASE "太いバイブ"
+			SOURCE:V拡張 += 50
+	ENDSELECT
+ENDIF
+
 ;-------------------------------------------------
 ;射精ゲージチェック（奴隷）
 ;-------------------------------------------------
 LOCAL = 70
+IF !TEQUIP:触手
+	SELECTCASE SAVESTR:バイブ
+		CASE "強力なバイブ"
+			LOCAL += 30
+		CASE "細いバイブ"
+			LOCAL -= 40
+	ENDSELECT
+ENDIF
 
 ;ABL:調教者の技巧をみる
 LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
@@ -269,19 +328,26 @@ SIF TALENT:抑圧 || TALENT:抵抗
 	SOURCE:鬱屈 += 20
 
 CALL 特殊ソース処理_Ｖ道具, 25, 20
+SIF SOURCE:V拡張
+	CALL 特殊ソース処理_Ｖ道具拡張, 30, 20, 10
 
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
 ;自慰実行時は経験+1
 SELECTCASE SELECTCOMS
-	CASE "自慰", "指挿入れ", "バイブ", "触手挿入"
+	CASE "自慰", "指挿入れ", "触手挿入"
 		PRINTL Ｖ経験+2
 		EXP:Ｖ経験 += 2
-	CASEELSE
+	CASE IS != "バイブ"
 		PRINTL Ｖ経験+1
 		EXP:Ｖ経験++
 ENDSELECT
+
+IF SAVESTR:バイブ == "太いバイブ" && !TEQUIP:触手
+	PRINTL Ｖ拡張経験+1
+	EXP:Ｖ拡張経験++
+ENDIF
 
 ;触手経験加算
 SIF TEQUIP:触手
