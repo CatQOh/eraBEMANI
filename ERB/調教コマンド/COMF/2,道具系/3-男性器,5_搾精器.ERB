@@ -1,0 +1,173 @@
+﻿;-------------------------------------------------
+;搾精器
+;-------------------------------------------------
+@USERCOM_ABLE_搾精器, ARG
+#FUNCTION
+;ゲーセンに居る場合はできない
+SIF TEQUIP:ゲームセンター
+	RETURNF 0
+;上級売春中は不可
+SIF 上級売春中
+	RETURNF 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURNF 0
+;性器が露出してないとダメ
+SIF !性器露出(TARGET)
+	RETURNF 0
+;解除はいつでも可能
+IF TEQUIP:搾精器
+	COMRESULT = 1
+	RETURNF 1
+ENDIF
+;小人体型持ちは、実行者と対象双方が小人体型ならOK
+;それ以外の場合は主人が禁断の知識持ちじゃないとダメ
+IF TALENT:小人体型
+	SIF !TALENT:MASTER:禁断の知識 && !TALENT:PLAYER:小人体型
+		RETURNF 0
+ENDIF
+;アイテムを持っていないとダメ
+SIF ITEM:搾乳器 <= 0
+	RETURNF 0
+;Ｐ使用中はダメ
+SIF Ｐ使用中(TARGET) || TEQUIP:コンドーム || TEQUIP:搾精コンドーム
+	RETURNF 0
+;ペニス無いとダメ
+SIF !PENIS(TARGET)
+	RETURNF 0
+;搾精器に改造されてないとダメ
+SIF SAVESTR:搾乳器 != "搾精器"
+	RETURNF 0
+;新妻プレイ中はダメ
+SIF TEQUIP:エプロン
+	RETURNF 0
+
+COMRESULT = 1
+RETURNF 1
+
+@COM_搾精器
+PRINTL 搾精器
+CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+INVERTBIT TEQUIP:搾精器, 0
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 100
+
+;ABL:欲望をみる
+LOCAL += (LOCAL/10)*ABL:欲望
+
+;奴隷のABL:Ｃ感覚をみる
+SELECTCASE ABL:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 1.00
+	CASE 2
+		TIMES LOCAL , 1.50
+	CASE 3
+		TIMES LOCAL , 2.00
+	CASE 4
+		TIMES LOCAL , 3.00
+	CASEELSE
+		LOCAL += LOCAL*ABL:Ｃ感覚
+ENDSELECT
+
+CALL 射精ゲージ増加, LOCAL, TARGET
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 50
+LOSEBASE:気力 += 100
+
+SOURCE:快C = 500
+SOURCE:露出 = 200
+SOURCE:不潔 = 100
+SOURCE:逸脱 = 200
+SOURCE:反感 = 1000
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 200
+
+;[衝動的]持ちは3分の1でアイテム破壊する（調教終了後に修復）
+IF (TALENT:衝動的 || TALENT:PLAYER:衝動的) && RAND:3 == 0 && !TEQUIP:触手
+	TFLAG:アイテム破壊 = 1
+	ITEM:搾乳器 = -1
+	TEQUIP:搾精器 = 0
+ENDIF
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP, 2, 1
+
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM_搾精器
+;搾精器装備中
+PRINTL ＜搾精器装着中＞
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+LOSEBASE:体力 += 30
+LOSEBASE:気力 += 50
+
+SOURCE:快C += 100
+SOURCE:露出 += 100
+SOURCE:不潔 += 100
+SOURCE:逸脱 += 100
+SOURCE:反感 += 300
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 500
+
+;ABL:欲望をみる
+LOCAL += (LOCAL/10)*ABL:欲望
+
+;奴隷のABL:Ｃ感覚をみる
+SELECTCASE ABL:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 0.50
+	CASE 1
+		TIMES LOCAL , 1.00
+	CASE 2
+		TIMES LOCAL , 1.50
+	CASE 3
+		TIMES LOCAL , 2.00
+	CASE 4
+		TIMES LOCAL , 3.00
+	CASEELSE
+		LOCAL += LOCAL*ABL:Ｃ感覚
+ENDSELECT
+
+CALL 射精ゲージ増加, LOCAL, TARGET
+
+RETURN 1
+
