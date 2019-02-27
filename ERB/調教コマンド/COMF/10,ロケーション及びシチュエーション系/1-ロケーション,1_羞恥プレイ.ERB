@@ -14,6 +14,9 @@ IF TEQUIP:羞恥プレイ
 	COMRESULT = 1
 	RETURNF 1
 ENDIF
+;マジックミラーの場合はビデオカメラで撮影してると不可
+SIF SAVESTR:大鏡 == "マジックミラー" && TEQUIP:ビデオカメラ
+	RETURNF 0
 ;アイテム｢大鏡｣を持っていないとダメ
 SIF ITEM:大鏡 <= 0
 	RETURNF 0
@@ -43,6 +46,24 @@ CALL KOJO_MESSAGE_COM
 ;着脱の処理 終了時はソース、経験の加算は行わない
 INVERTBIT TEQUIP:羞恥プレイ, 0
 
+;着脱の処理
+IF SAVESTR:大鏡 == "マジックミラー"
+	IF TEQUIP:羞恥プレイ
+		;ビデオ撮影がされていれば終了させる
+		;テープは終了時に数を減らす、さらにこれまでの値段と経験を加算する
+		TEQUIP:ビデオカメラ = 0
+		ITEM:ビデオテープ--
+		CALL PRICE_VIDEO
+		PRINTW ★★★ビデオ撮影を終了します★★★
+	ELSE
+		;ビデオ撮影してなければ初期化して開始
+		TEQUIP:ビデオカメラ = 1
+		TFLAG:ビデオ撮影回数 = 0
+		VARSET ビデオ撮影内容, 
+		PRINTW ★★★ビデオ撮影を開始します★★★
+	ENDIF
+ENDIF
+
 SIF !TEQUIP:羞恥プレイ
 	RETURN 1
 
@@ -58,6 +79,13 @@ SOURCE:露出 += 300
 SOURCE:屈従 += 300
 SOURCE:逸脱 += 1000
 SOURCE:反感 += 1000
+
+IF SAVESTR:大鏡 == "三面鏡"
+	SOURCE:恐怖 += 500
+	SOURCE:露出 += 1200
+	SOURCE:逸脱 += 500
+	SOURCE:反感 += 500
+ENDIF
 
 ;-------------------------------------------------
 ;特殊ソース処理
@@ -75,6 +103,8 @@ ENDSELECT
 ;苦痛を伴わないマゾっ気及びマゾの処理は先にしておく
 ;マゾっ気を見る
 LOCAL = 700
+SIF SAVESTR:大鏡 == "三面鏡"
+	LOCAL += 800
 SELECTCASE ABL:マゾっ気
 	CASE 0
 		TIMES LOCAL , 0.80
@@ -124,7 +154,8 @@ ENDSELECT
 SOURCE:露出 += LOCAL
 
 ;衝動的持ちは3分の1でアイテム壊す
-IF TALENT:衝動的 && RAND:3 == 0
+;マジックミラーの場合は発生しない
+IF TALENT:衝動的 && RAND:3 == 0 && SAVESTR:大鏡 != "マジックミラー"
 	TFLAG:アイテム破壊 = 1
 	ITEM:大鏡 = -1
 	TEQUIP:羞恥プレイ = 0
@@ -159,6 +190,13 @@ SOURCE:屈従 += 200
 SOURCE:逸脱 += 500
 SOURCE:反感 += 300
 
+IF SAVESTR:大鏡 == "三面鏡"
+	SOURCE:恐怖 += 100
+	SOURCE:露出 += 700
+	SOURCE:逸脱 += 500
+	SOURCE:反感 += 700
+ENDIF
+
 ;-------------------------------------------------
 ;特殊ソース処理
 ;-------------------------------------------------
@@ -175,6 +213,8 @@ ENDSELECT
 ;苦痛を伴わないマゾっ気及びマゾの処理は先にしておく
 ;マゾっ気を見る
 LOCAL = 400
+SIF SAVESTR:大鏡 == "三面鏡"
+	LOCAL += 600
 SELECTCASE ABL:マゾっ気
 	CASE 0
 		TIMES LOCAL , 0.80
@@ -228,7 +268,29 @@ IF TALENT:ナルシスト
 	SOURCE:欲情 += 100
 	SOURCE:露出 += 200
 	SOURCE:屈従 += 100
-	SOURCE:欲情 += 2
+	SOURCE:欲情 *= 2
+ENDIF
+
+;-------------------------------------------------
+;ビデオの処理
+;-------------------------------------------------
+IF SAVESTR:大鏡 == "マジックミラー"
+	;撮影内容の保存
+	ビデオ撮影内容:(TFLAG:ビデオ撮影回数) = %SELECTCOMS%
+	TFLAG:ビデオ撮影回数++
+
+	;テープ残量がなくなると強制的にTEQUIPフラグを外す、さらにビデオの値段と経験の処理をする
+	IF TFLAG:ビデオ撮影回数 >= 10
+		TEQUIP:ビデオカメラ = 0
+		CALL PRICE_VIDEO
+		PRINTL ＜テープの残量がなくなりました　ビデオ撮影を終了します＞
+	ELSE
+		PRINTFORML ＜ビデオ撮影中{TFLAG:ビデオ撮影回数}/10＞
+	ENDIF
+
+	;実績:うさぬこの自慰を撮影する
+	SIF CHARANAMEF(TARGET) == "＊うさぬこ＊" && SELECTCOMS == "自慰"
+		CALL 実績解除,  "「F◯2アダルトに投稿するんだぬ？」"
 ENDIF
 
 RETURN 1

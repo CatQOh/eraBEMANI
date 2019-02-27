@@ -52,7 +52,7 @@ ENDSELECT
 PRINTFORML {CFLAG:ストレス値}/999
 RESETCOLOR	
 
-CALL SHOW_STATE
+;CALL SHOW_STATE
 
 IF 上級売春中
 	PRINTFORML □%CALLNAME:TARGET%のステータス
@@ -164,7 +164,6 @@ ENDIF
 
 DRAWLINE
 
-PRINT 使用中のアイテム：
 CALL SHOW_EQUIP
 
 @PLAYER_CLOTHES, ARG
@@ -249,10 +248,13 @@ REPEAT 9
 	PRINTL 
 REND
 
-@SHOW_STATE
-;状況の表示
+@SHOW_EQUIP
+#DIM DYNAMIC LCOUNT
+;使用中の道具・魔法を表示する
+;一度使用したら解除するまで止まらない道具や調教を
+;追加した場合はここに追加をしてください
+
 ;豹変は現在No.1004 紅刃とNo.1019 冷音のみ
-PRINT 　
 SIF TRANCE:200
 	PRINTFORM [%CALLNAME:TARGET%豹変中]
 SIF ASSI >= 0 && TRANCE:ASSI:200
@@ -266,62 +268,36 @@ SIF TEQUIP:ビデオカメラ
 SIF TEQUIP:触手
 	PRINT [触手召喚中] 
 SIF TEQUIP:野外プレイ
-	PRINT [野外プレイ中]
+	PRINTFORM [野外プレイ中\@ SAVESTR:首輪 == "尻尾プラグ付き首輪" ? (尻尾プラグ付き) #  \@]
 SIF TEQUIP:羞恥プレイ
-	PRINT [羞恥プレイ中]
+	PRINTFORM [羞恥プレイ中\@ SAVESTR:大鏡 != "大鏡" ? (%SAVESTR:大鏡%) #  \@]
 SIF TEQUIP:お風呂場
-	PRINT [お風呂場プレイ中]
+	PRINTFORM [お風呂場プレイ中\@ TFLAG:ハニーパーティ ? (媚薬ローション風呂) #  \@]
 SIF TEQUIP:エプロン
-	PRINT [新妻プレイ中]
-PRINTL 
-
-@SHOW_EQUIP
-;使用中の道具・魔法を表示する
-;一度使用したら解除するまで止まらない道具や調教を
-;追加した場合はここに追加をしてください
-
-LOCAL = 0
+	PRINTFORM [新妻プレイ中\@ SAVESTR:エプロン == "玄人志向エプロン" ? (玄人志向エプロン) #  \@]
 
 ;ゲームセンターにいるときはメダル所持数表示
-IF TEQUIP:ゲームセンター
+SIF TEQUIP:ゲームセンター
 	PRINTFORM [メダル:{メダル}枚所持]
-	LOCAL++
-ENDIF
 
-IF CFLAG:MASTER:排卵誘発剤
+SIF CFLAG:MASTER:排卵誘発剤
 	PRINTFORM [%CALLNAME:MASTER%排卵誘発剤服用]
-	LOCAL++
-ENDIF
-IF CFLAG:排卵誘発剤
+SIF CFLAG:排卵誘発剤
 	PRINTFORM [%CALLNAME:TARGET%排卵誘発剤服用]
-	LOCAL++
-ENDIF
-IF ASSI > 0 && CFLAG:ASSI:排卵誘発剤
+SIF ASSI > 0 && CFLAG:ASSI:排卵誘発剤
 	PRINTFORM [%CALLNAME:ASSI%排卵誘発剤服用]
-	LOCAL++
-ENDIF
 
-IF CFLAG:MASTER:ミッドナイトスペシャル
+SIF CFLAG:MASTER:ミッドナイトスペシャル
 	PRINTFORM [%CALLNAME:MASTER%ミッドナイトスペシャル服用]
-	LOCAL++
-ENDIF
-IF CFLAG:ミッドナイトスペシャル
+SIF CFLAG:ミッドナイトスペシャル
 	PRINTFORM [%CALLNAME:TARGET%ミッドナイトスペシャル服用]
-	LOCAL++
-ENDIF
-IF ASSI > 0 && CFLAG:ASSI:ミッドナイトスペシャル
+SIF ASSI > 0 && CFLAG:ASSI:ミッドナイトスペシャル
 	PRINTFORM [%CALLNAME:ASSI%ミッドナイトスペシャル服用]
-	LOCAL++
-ENDIF
 
-IF TEQUIP:MASTER:コンドーム
+SIF TEQUIP:MASTER:コンドーム
 	PRINT [主人避妊具]
-	LOCAL++
-ENDIF
-IF ASSI >= 0 && TEQUIP:ASSI:コンドーム
+SIF ASSI >= 0 && TEQUIP:ASSI:コンドーム
 	PRINT [助手避妊具]
-	LOCAL++
-ENDIF
 IF CFLAG:酔
 	IF TALENT:下戸 && CFLAG:酔 >= 20
 		PRINTFORM [%CALLNAME:TARGET%泥酔中]
@@ -330,84 +306,75 @@ IF CFLAG:酔
 	ELSE
 		PRINTFORM [%CALLNAME:TARGET%酒気帯び]
 	ENDIF
-	LOCAL++
 ENDIF
-FOR COUNT, 11, 50
-	SIF TEQUIP:COUNT == 0
+FOR LCOUNT, 11, 50
+	SIF TEQUIP:LCOUNT == 0
 		CONTINUE
-	SELECTCASE TEQUIPNAME:COUNT
+	SELECTCASE TEQUIPNAME:LCOUNT
 		;触手最優先
 		CASE "触手"
 			PRINT [触手召喚中]
 		;薬系は一番最初
 		CASE "媚薬"
 			PRINT [媚薬効果発揮中]
-			LOCAL++
 		CASE "利尿剤"
 			PRINT [利尿剤効果発揮中]
-			LOCAL++
 		CASE "強精神薬"
 			IF TEQUIP:強精神薬 == 1
 				PRINT [強精神薬反動中]
 			ELSE
 				PRINT [絶頂抑制中]
 			ENDIF
-			LOCAL++
 		CASE "クリキャップ"
 			IF TEQUIP:触手
 				PRINT [触手クリ責め]
 			ELSE
 				PRINT [クリキャップ]
 			ENDIF
-			LOCAL++
 		CASE "オナホール"
 			IF TEQUIP:触手
 				PRINT [触手オナホ]
 			ELSE
-				PRINT [オナホール]
+				PRINTFORM [%SAVESTR:オナホール%]
 			ENDIF
-			LOCAL++
 		CASE "バイブ"
 			IF TEQUIP:触手
 				PRINT [触手挿入]
 			ELSE
-				PRINT [バイブ]
+				PRINTFORM [%SAVESTR:バイブ%]
 			ENDIF
-			LOCAL++
 		CASE "アナルバイブ"
 			IF TEQUIP:触手
 				PRINT [触手アナル挿入]
 			ELSE
-				PRINT [アナルバイブ]
+				PRINTFORM [%SAVESTR:アナルバイブ%]
 			ENDIF
-			LOCAL++
 		CASE "ニプルキャップ"
 			IF TEQUIP:触手
 				PRINT [触手乳首責め]
 			ELSE
 				PRINT [ニプルキャップ]
 			ENDIF
-			LOCAL++
 		CASE "搾乳器"
 			IF TEQUIP:触手
 				PRINT [触手搾乳]
 			ELSE
 				PRINT [搾乳器]
 			ENDIF
-			LOCAL++
 		{
-		CASE "アナルビーズ", "アイマスク", "縄", "ボールギャグ", "浣腸器", "拡張バルーン", "アナル電極", 
+		CASE "アイマスク", "縄", "ボールギャグ", "拡張バルーン", "アナル電極", 
 			 "乳房電極", "シャワー", "触手口辱", "搾精器", "電動エネマグラ"
 		}
-			PRINTFORM [%TEQUIPNAME:COUNT%]
-			LOCAL++
+			PRINTFORM [%TEQUIPNAME:LCOUNT%]
+		;改造可能アイテム
+		CASE "アナルビーズ", "浣腸器"
+			PRINTFORM [%SAVESTR:(TEQUIPNAME:LCOUNT)%]
 		CASE "搾精コンドーム"
 			IF TEQUIP:触手
 				PRINTL [触手搾精中]
 			ELSE
 				PRINTL [搾精コンドーム]
 			ENDIF
-			LOCAL++
 		CASE "Ｖ異物"
 			PRINT [膣異物
 			SELECTCASE TEQUIP:Ｖ異物
@@ -420,7 +387,6 @@ FOR COUNT, 11, 50
 				CASE 4
 					PRINT (消火器)]
 			ENDSELECT
-			LOCAL++
 		CASE "Ａ異物"
 			PRINT [アナル異物
 			SELECTCASE TEQUIP:Ａ異物
@@ -433,18 +399,14 @@ FOR COUNT, 11, 50
 				CASE 4
 					PRINT (消火器)]
 			ENDSELECT
-			LOCAL++
 	ENDSELECT
 NEXT
 IF TEQUIP:MASTER:ペニスバンド
 	PRINTFORM [%CALLNAME:MASTER%ペニスバンド装着中]
-	LOCAL++
 ELSEIF TEQUIP:ペニスバンド
 	PRINTFORM [%CALLNAME:TARGET%ペニスバンド装着中]
-	LOCAL++
 ELSEIF ASSI > 0 && TEQUIP:ASSI:ペニスバンド
 	PRINTFORM [%CALLNAME:ASSI%ペニスバンド装着中]
-	LOCAL++
 ENDIF
 
 FOR COUNT, 190, 200
@@ -456,12 +418,10 @@ FOR COUNT, 190, 200
 		ENDIF
 	ELSEIF TFLAG:COUNT
 		PRINTFORM [%TFLAGNAME:COUNT%]
-		LOCAL++
 	ENDIF
 NEXT
 
-SIF LOCAL
-	PRINTL 
-SIF LOCAL == 0
-	PRINTL [無し]
+LOCALS = %HTML_POPPRINTINGSTR()%
+SIF LOCALS != ""
+	PRINTFORML 現在の状態：%LOCALS%
 
