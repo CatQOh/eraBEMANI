@@ -23,6 +23,7 @@ ENDIF
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 単位文字数
 #DIM DYNAMIC 価格上限
+#DIM DYNAMIC 選択可能, 10000
 #DIMS 登場作品フィルタ
 #DIMS キャラデザフィルタ
 #DIMS 種族フィルタ
@@ -79,9 +80,17 @@ FOR LCOUNT, 0, 10000
 		CONTINUE
 	SIF !EXISTCSV(LCOUNT)
 		CONTINUE
+	;隠しキャラは選べない
+	SIF CSVTALENT(LCOUNT, GETNUM(TALENT, "隠しキャラ"))
+		CONTINUE
 	;アニマルは主人にできない
 	SIF ARG == 2 && CSVTALENT(LCOUNT, GETNUM(TALENT, "アニマル"))
 		CONTINUE
+	;以上を抜けると選択可能
+	;すなわちキーボードの直接入力によるフィルタの無視は仕様とする
+	選択可能:LCOUNT = 1
+	
+	;フィルタによる除外
 	IF ARG == 0 || ARG == 4
 		SIF CCB:LCOUNT
 			CONTINUE
@@ -343,7 +352,7 @@ DO
 			TFLAG:ページ数 = 0
 			BREAK
 		CASEELSE
-			IF EXISTCSV(RESULT)
+			IF EXISTCSV(RESULT) && 選択可能
 				VARLINE = 0
 				DRAWLINE
 				RETURN RESULT

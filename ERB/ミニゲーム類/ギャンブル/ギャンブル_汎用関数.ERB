@@ -5,7 +5,7 @@
 #DIM DYNAMIC パートナー
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC パートナー必要
-#DIM DYNAMIC カードゲーム
+#DIM DYNAMIC ディーラーあり
 #DIM DYNAMIC 収支
 #DIM DYNAMIC カジノの種類 = 1;引数指定が無ければ表カジノ扱い
 #DIM DYNAMIC キャラ価格
@@ -78,12 +78,17 @@ SELECTCASE カジノの種類
 		PRINTL で借金の返済をしていただきます。
 ENDSELECT
 CALL PASELIL, @"所持金:{MONEY}＄"
+[IF_DEBUG]
+	CALL PASELIL, @"総収支:{ギャンブル総収支}＄"
+	PRINTFORML キャロル好感度:{キャロル好感度}
+	PRINTFORML ことみちゃん好感度:{ことみちゃん好感度}
+[ENDIF]
 
 FOR LCOUNT, 0, VARSIZE("ゲーム名")
 	SELECTCASE ゲーム名:LCOUNT
 		;バカラは裏専用
 		CASE "バカラ"
-			SIF カジノの種類 != 1
+			SIF カジノの種類 == 1
 				CONTINUE
 	ENDSELECT
 	PRINTFORMLC [{LCOUNT}] %ゲーム名:LCOUNT%
@@ -104,10 +109,10 @@ DO
 	SELECTCASE RESULT
 		CASE 0 TO VARSIZE("ゲーム名")
 			PRINTFORMW %CALLNAME:MASTER%は%ゲーム名:RESULT%で遊ぶことにした。
-			;カードゲームならカードゲームフラグを立てる
+			;ディーラーが存在するゲームならフラグを立てる
 			SELECTCASE ゲーム名:RESULT
-				CASE "ブラックジャック", "ビデオポーカー", "ポーカーソリティア", "レットイットライド", "バカラ"
-					カードゲーム = 1
+				CASE "ルーレット", "クラップス", "ブラックジャック", "ポーカーソリティア", "レットイットライド", "バカラ"
+					ディーラーあり = 1
 			ENDSELECT
 			;パートナーが必要なゲームならフラグを立てる
 			;SELECTCASE ゲーム名:RESULT
@@ -152,198 +157,239 @@ CALL CHECKDRAWLINE
 
 ;今回のギャンブルでの収支
 収支 = MONEY-利益計算用
+;ギャンブルでの総収支
+ギャンブル総収支 += 収支
 
-;ギャンブルでの総合収支
-;G_MONEY += 収支
-
+;バンドだけでめしを食ってないのでフラグを消す
 バンめし = 0
-SELECTCASE カジノの種類
-	;表カジノ 借金に上乗せ
-	CASE 1
-		PRINTFORML %CALLNAME:MASTER%はギャンブルを終えた。
-		SELECTCASE 収支
-			CASE IS > 0
-				CALL PASELIL, @"{収支}＄儲かった！"
-				;カードゲーム勝利数をプラス
-				;SIF カードゲーム
-				;	WIN_CARD++
-			CASE IS < 0
-				CALL PASELIL, @"{ABS(収支)}＄損してしまった……"
-			CASE 0
-				CALL PASELIL, "今回の収支はちょうど0＄のようだ。"
-		ENDSELECT
 
-		IF MONEY < 0
+キャロルお誘いフラグ = 0
+ことみちゃんお誘いフラグ = 0
+
+PRINTFORML %CALLNAME:MASTER%はギャンブルを終えた。
+SELECTCASE 収支
+	CASE IS > 0
+		CALL PASELIW, @"{収支}＄儲かった！"
+		;勝ち分の桁数の20倍だけキャロルの好感度が増える
+		SIF ディーラーあり
+			キャロル好感度 += 20*(1+LOG10(収支))
+		;ことみちゃんの好感度は収支が5桁なら+200,6桁なら+400,…と増える
+		SIF 収支 >= 10000
+			ことみちゃん好感度 += 200*(1+LOG10(収支/10000))
+		;総収支がプラスかつキャロルの好感度が1000以上のときお誘いを受ける
+		IF ギャンブル総収支 > 0 && キャロル好感度 >= 1000
+			SELECTCASE キャロル進行フラグ
+				CASE 0
+					PRINTFORML 今日も勝つことができた%CALLNAME:MASTER%が屋敷に戻ろうとしたとき
+					PRINTL バニーガールの格好をしたディーラーが後ろからいきなり話しかけてきた。
+					PRINTL 彼女の名前はキャロルというようだ。
+					PRINTFORML どうやら何度も勝利を収める%CALLNAME:MASTER%に惚れ込みこの後お相手してほしいそうだ。
+					キャロル進行フラグ = 1
+				CASE 1
+					PRINTFORML キャロルが%CALLNAME:MASTER%に再び誘いをかけてきた。
+			ENDSELECT
+			キャロルお誘いフラグ = 1
+		ENDIF
+		;ことみちゃんの好感度が1000以上のときお誘いを受ける
+		IF ことみちゃん好感度 >= 1000
+			SELECTCASE ことみちゃん進行フラグ
+				CASE 0
+					PRINTFORML %CALLNAME:MASTER%が帰ろうとしたそのとき、物陰から優しく袖を引っ張られた。
+					PRINTL 引っ張ってきたのは「ことみちゃん」と呼ばれる凄腕のギャンブラーであり、
+					PRINTL 派手な勝ちを挙げている%CALLNAME:MASTER%に魅力を感じたらしくこの後お相手してほしいそうだ。
+					ことみちゃん進行フラグ = 1
+				CASE 1
+					PRINTFORML ことみちゃんが%CALLNAME:MASTER%にこっそり誘いをかけてきた。
+			ENDSELECT
+			ことみちゃんお誘いフラグ = 1
+		ENDIF
+	CASE IS < 0
+		CALL PASELIW, @"{ABS(収支)}＄損してしまった……"
+		;負け分の桁数の10倍だけキャロルの好感度が減る
+		SIF ディーラーあり
+			キャロル好感度 -= 10*(1+LOG10(-収支))
+	CASE 0
+		CALL PASELIW, "今回の収支はちょうど0＄のようだ。"
+ENDSELECT
+
+;お誘いを受けたとき
+
+;借金を背負ったとき
+IF MONEY < 0
+	SELECTCASE カジノの種類
+		;表カジノ 借金に上乗せ
+		CASE 1
 			CALL PASELIL, @"ギャンブル中に借金{ABS(MONEY)}＄を背負ったため、"
 			CALL PASELIL, @"その{ABS(MONEY)}＄には利子{ABS(MONEY)*利子/100}＄が付き、借金は{ABS(MONEY)+ABS(MONEY)*利子/100}＄となります。"
 			借金 += ABS(MONEY)+ABS(MONEY)*利子/100
-			CALL PASELIL, @"借金の総額は{借金}＄となりました。"
 			MONEY = 0
-		ENDIF
-		WAIT
-	CASE 2
-		PRINTW ………………
-		PRINTW …………
-		PRINTW ……
-		$返済
-		PRINTFORMW %CALLNAME:MASTER%はギャンブルに負け、借金を背負ってしまった
-		PRINTW このカジノでは負けた場合、金銭以外のもので返済に当てなくてはならない
-		PRINTL 返済の方法は……
-		PRINTL [0] キャラを売り飛ばす
-		PRINTL [1] 自らの身体で払う
-		DO
-			INPUT
-			SELECTCASE RESULT
-				CASE 0
-					$売却キャラ選択
-					CALL PASELIL, @"□誰を売り飛ばしますか？(返済額:{ABS(収支)}＄)"
-					;売却可能でないキャラも売り飛ばせるが、総じて売値は半額になる アニマル、魔法効果発動中のキャラは売れない
-					FOR PAGING, 0, CHARANUM
-						LOCAL = 1
-						SIF PAGING == MASTER
-							LOCAL = 0
-						SIF CFLAG:PAGING:憑依中
-							LOCAL = 0
-						SIF TALENT:PAGING:アニマル
-							LOCAL = 0
-						IF PAGING > 0
-							CALL CHARA_SELL, PAGING
-							IF RESULT
-								キャラ価格 = RESULT/2
-							ELSE
-								キャラ価格 = 0
+			CALL PASELIW, @"借金の総額は{借金}＄となりました。"
+		CASE 2
+			PRINTW ………………
+			PRINTW …………
+			PRINTW ……
+			$返済
+			PRINTFORMW %CALLNAME:MASTER%はギャンブルに負け、借金を背負ってしまった
+			PRINTW このカジノでは負けた場合、金銭以外のもので返済に当てなくてはならない
+			PRINTL 返済の方法は……
+			PRINTL [0] キャラを売り飛ばす
+			PRINTL [1] 自らの身体で払う
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						$売却キャラ選択
+						CALL PASELIL, @"□誰を売り飛ばしますか？(返済額:{ABS(MONEY)}＄)"
+						;売却可能でないキャラも売り飛ばせるが、総じて売値は半額になる 隠しキャラとアニマル、魔法効果発動中のキャラは売れない
+						FOR PAGING, 0, CHARANUM
+							LOCAL = 1
+							SIF PAGING == MASTER
+								LOCAL = 0
+							SIF CFLAG:PAGING:憑依中
+								LOCAL = 0
+							SIF TALENT:PAGING:アニマル
+								LOCAL = 0
+							SIF TALENT:PAGING:隠しキャラ
+								LOCAL = 0
+							IF PAGING > 0
+								CALL CHARA_SELL, PAGING
+								IF RESULT
+									キャラ価格 = RESULT/2
+								ELSE
+									キャラ価格 = 0
+								ENDIF
 							ENDIF
-						ENDIF
-						CALL PAGING, LOCAL, @"価格:{キャラ価格} \@ 売却候補:PAGING ? 売却候補 #  \@"
-					NEXT
-					SELECTCASE RESULT
-						CASE -1
-							VARSET 売却候補
-							GOTO 返済
-						CASE 1 TO CHARANUM-1
-							INVERTBIT 売却候補:RESULT, 0
-					ENDSELECT
-					売却総額 = 0
-					FOR LCOUNT, 1, 1000
-						IF 売却候補:LCOUNT
-							CALL CHARA_SELL, LCOUNT
-							SIF RESULT > 0
-								売却総額 += RESULT/2
-						ENDIF
-						SIF 売却総額 >= ABS(MONEY)
-							BREAK
-					NEXT
-					SIF 売却総額 < ABS(収支)
-						GOTO 売却キャラ選択
-					PRINTL □以下のキャラを裏カジノに対する返済として売り飛ばします。本当によろしいですか？
-					FOR LCOUNT, 1, 1000
-						SIF 売却候補:LCOUNT
-							PRINTFORML 　%NAME:LCOUNT%
-					NEXT
-					DRAWLINE
-					PRINTFORML 　総額:{売却総額}
-					PRINTL 　[0] はい
-					PRINTL 　[1] いいえ
-					DO
-						INPUT
+							CALL PAGING, LOCAL, @"価格:{キャラ価格} \@ 売却候補:PAGING ? 売却候補 #  \@"
+						NEXT
 						SELECTCASE RESULT
-							CASE 0
-								PRINTL 裏カジノに売り飛ばされた者たちは、別れを惜しむ間もなく黒ずくめの関係者に連れて行かれてしまった
-								PRINTFORMW 皆がこれからどんな目に遭うのか、%CALLNAME:MASTER%には知る由もない……
-								MONEY += 売却総額
-								FOR LCOUNT, 1, 1000
-									IF 売却候補:LCOUNT
-										LOCAL = LCOUNT
-										;アイドルユニットに属していた場合、そのユニットは解散
-										SIF CFLAG:LOCAL:ユニット番号
-											CALL BREAKUP, CFLAG:LOCAL:ユニット番号
-										DELCHARA LOCAL
-										LTARGET = TARGET
-										LASSI = ASSI
-										SIF LOCAL == LTARGET
-											TARGET = -1
-										SIF LOCAL == LASSI
-											ASSI = -1
-										SIF LOCAL < LTARGET
-											TARGET--
-										SIF LOCAL < LASSI
-											ASSI--
-									ENDIF
-								NEXT
-								RETURN 1
-							CASE 1
+							CASE -1
 								VARSET 売却候補
-								GOTO 売却キャラ選択
+								GOTO 返済
+							CASE 1 TO CHARANUM-1
+								INVERTBIT 売却候補:RESULT, 0
 						ENDSELECT
-					LOOP 1
-				CASE 1
-					PRINTFORMW %CALLNAME:MASTER%はやむを得ず、自らの身体で借金を支払うことにした……
-					PRINTW ………………
-					PRINTW …………
-					PRINTW ……
-					;ペナルティは借金10万ごとに1日+3日
-					;STRATEGYモードで裏カジノ負けた場合はバッドエンド直行
-					IF FLAG:ゲームモード == 1
-						CALL BADENDING_GAMBLE
-					ELSE
-						PRINTFORMW 調教する立場の%CALLNAME:MASTER%が散々に乱暴な調教を受け、解放されたときには{ABS(収支)/100000+3}日が経過していた……
-						PRINTFORMW %CALLNAME:MASTER%は思い出しただけで吐き気を催す仕打ちに身を震わせながら、ぼろぼろの体を抱えてかろうじて屋敷に帰った……
-						LOCAL = ABS(収支)/100000+3
-						SELECTCASE SEX(MASTER)
-							CASE 1
-								PRINTFORML Ａ経験+{LOCAL/3}(%NAME:MASTER%)
-								PRINTFORML 絶頂経験+{LOCAL/5}(%NAME:MASTER%)
-								PRINTFORML 性交経験+{LOCAL/3}(%NAME:MASTER%)
-								PRINTFORML 射精経験+{LOCAL/5}(%NAME:MASTER%)
-								PRINTFORML 精液経験+{LOCAL}(%NAME:MASTER%)
-								PRINTFORML ゲイ経験+{LOCAL}(%NAME:MASTER%)
-								PRINTFORML フェラ経験+{LOCAL/5}(%NAME:MASTER%)
-								PRINTFORML 緊縛経験+{LOCAL/7}(%NAME:PLAYER%)
-								PRINTFORML Ａ拡張経験+{LOCAL/10}(%NAME:PLAYER%)
-								EXP:MASTER:Ａ経験 += LOCAL/3
-								EXP:MASTER:絶頂経験 += LOCAL/5
-								EXP:MASTER:性交経験 += LOCAL/3
-								EXP:MASTER:射精経験 += LOCAL/5
-								EXP:MASTER:精液経験 += LOCAL
-								EXP:MASTER:ゲイ経験 += LOCAL
-								EXP:MASTER:フェラ経験 += LOCAL/5
-								EXP:MASTER:緊縛経験 += LOCAL/7
-								EXP:MASTER:Ａ拡張経験 += LOCAL/10
-								WAIT
-							CASE 2
-								PRINTFORML Ｖ経験+{LOCAL/4}(%NAME:MASTER%)
-								PRINTFORML Ａ経験+{LOCAL/6}(%NAME:MASTER%)
-								PRINTFORML 絶頂経験+{LOCAL/5}(%NAME:MASTER%)
-								PRINTFORML 性交経験+{LOCAL/3}(%NAME:MASTER%)
-								PRINTFORML 膣射経験+{LOCAL/4}(%NAME:MASTER%)
-								PRINTFORML 放尿経験+{LOCAL/10}(%NAME:MASTER%)
-								PRINTFORML フェラ経験+{LOCAL/5}(%NAME:MASTER%)
-								PRINTFORML 緊縛経験+{LOCAL/7}(%NAME:MASTER%)
-								PRINTFORML Ｖ拡張経験+{LOCAL/10}(%NAME:MASTER%)
-								PRINTFORML Ａ拡張経験+{LOCAL/10}(%NAME:MASTER%)
-								PRINTFORML 流産経験+{LOCAL/100}(%NAME:MASTER%)
-								EXP:MASTER:Ｖ経験 += LOCAL/4
-								EXP:MASTER:Ａ経験 += LOCAL/6
-								EXP:MASTER:絶頂経験 += LOCAL/5
-								EXP:MASTER:性交経験 += LOCAL/3
-								EXP:MASTER:膣射経験 += LOCAL/4
-								EXP:MASTER:放尿経験 += LOCAL/10
-								EXP:MASTER:フェラ経験 += LOCAL/5
-								EXP:MASTER:緊縛経験 += LOCAL/7
-								EXP:MASTER:Ｖ拡張経験 += LOCAL/10
-								EXP:MASTER:Ａ拡張経験 += LOCAL/10
-								EXP:MASTER:流産経験 += LOCAL/100
-								WAIT
-						ENDSELECT
-						REPEAT ABS(収支)/100000+3
-							CALL NEXTDAY
-						REND
-						MONEY += ABS(収支)
-						RETURN 1
-					ENDIF
-			ENDSELECT
-		LOOP 1
-ENDSELECT
+						売却総額 = 0
+						FOR LCOUNT, 1, 1000
+							IF 売却候補:LCOUNT
+								CALL CHARA_SELL, LCOUNT
+								SIF RESULT > 0
+									売却総額 += RESULT/2
+							ENDIF
+							SIF 売却総額 >= ABS(MONEY)
+								BREAK
+						NEXT
+						SIF 売却総額 < ABS(MONEY)
+							GOTO 売却キャラ選択
+						PRINTL □以下のキャラを裏カジノに対する返済として売り飛ばします。本当によろしいですか？
+						FOR LCOUNT, 1, 1000
+							SIF 売却候補:LCOUNT
+								PRINTFORML 　%NAME:LCOUNT%
+						NEXT
+						DRAWLINE
+						PRINTFORML 　総額:{売却総額}
+						PRINTL 　[0] はい
+						PRINTL 　[1] いいえ
+						DO
+							INPUT
+							SELECTCASE RESULT
+								CASE 0
+									PRINTL 裏カジノに売り飛ばされた者たちは、別れを惜しむ間もなく黒ずくめの関係者に連れて行かれてしまった
+									PRINTFORMW 皆がこれからどんな目に遭うのか、%CALLNAME:MASTER%には知る由もない……
+									MONEY += 売却総額
+									FOR LCOUNT, 1, 1000
+										IF 売却候補:LCOUNT
+											LOCAL = LCOUNT
+											;アイドルユニットに属していた場合、そのユニットは解散
+											SIF CFLAG:LOCAL:ユニット番号
+												CALL BREAKUP, CFLAG:LOCAL:ユニット番号
+											DELCHARA LOCAL
+											LTARGET = TARGET
+											LASSI = ASSI
+											SIF LOCAL == LTARGET
+												TARGET = -1
+											SIF LOCAL == LASSI
+												ASSI = -1
+											SIF LOCAL < LTARGET
+												TARGET--
+											SIF LOCAL < LASSI
+												ASSI--
+										ENDIF
+									NEXT
+									RETURN 1
+								CASE 1
+									VARSET 売却候補
+									GOTO 売却キャラ選択
+							ENDSELECT
+						LOOP 1
+					CASE 1
+						PRINTFORMW %CALLNAME:MASTER%はやむを得ず、自らの身体で借金を支払うことにした……
+						PRINTW ………………
+						PRINTW …………
+						PRINTW ……
+						;ペナルティは借金10万ごとに1日+3日
+						;STRATEGYモードで裏カジノ負けた場合はバッドエンド直行
+						IF FLAG:ゲームモード == 1
+							CALL BADENDING_GAMBLE
+						ELSE
+							PRINTFORMW 調教する立場の%CALLNAME:MASTER%が散々に乱暴な調教を受け、解放されたときには{ABS(収支)/100000+3}日が経過していた……
+							PRINTFORMW %CALLNAME:MASTER%は思い出しただけで吐き気を催す仕打ちに身を震わせながら、ぼろぼろの体を抱えてかろうじて屋敷に帰った……
+							LOCAL = ABS(収支)/100000+3
+							SELECTCASE SEX(MASTER)
+								CASE 1
+									PRINTFORML Ａ経験+{LOCAL/3}(%NAME:MASTER%)
+									PRINTFORML 絶頂経験+{LOCAL/5}(%NAME:MASTER%)
+									PRINTFORML 性交経験+{LOCAL/3}(%NAME:MASTER%)
+									PRINTFORML 射精経験+{LOCAL/5}(%NAME:MASTER%)
+									PRINTFORML 精液経験+{LOCAL}(%NAME:MASTER%)
+									PRINTFORML ゲイ経験+{LOCAL}(%NAME:MASTER%)
+									PRINTFORML フェラ経験+{LOCAL/5}(%NAME:MASTER%)
+									PRINTFORML 緊縛経験+{LOCAL/7}(%NAME:PLAYER%)
+									PRINTFORML Ａ拡張経験+{LOCAL/10}(%NAME:PLAYER%)
+									EXP:MASTER:Ａ経験 += LOCAL/3
+									EXP:MASTER:絶頂経験 += LOCAL/5
+									EXP:MASTER:性交経験 += LOCAL/3
+									EXP:MASTER:射精経験 += LOCAL/5
+									EXP:MASTER:精液経験 += LOCAL
+									EXP:MASTER:ゲイ経験 += LOCAL
+									EXP:MASTER:フェラ経験 += LOCAL/5
+									EXP:MASTER:緊縛経験 += LOCAL/7
+									EXP:MASTER:Ａ拡張経験 += LOCAL/10
+									WAIT
+								CASE 2
+									PRINTFORML Ｖ経験+{LOCAL/4}(%NAME:MASTER%)
+									PRINTFORML Ａ経験+{LOCAL/6}(%NAME:MASTER%)
+									PRINTFORML 絶頂経験+{LOCAL/5}(%NAME:MASTER%)
+									PRINTFORML 性交経験+{LOCAL/3}(%NAME:MASTER%)
+									PRINTFORML 膣射経験+{LOCAL/4}(%NAME:MASTER%)
+									PRINTFORML 放尿経験+{LOCAL/10}(%NAME:MASTER%)
+									PRINTFORML フェラ経験+{LOCAL/5}(%NAME:MASTER%)
+									PRINTFORML 緊縛経験+{LOCAL/7}(%NAME:MASTER%)
+									PRINTFORML Ｖ拡張経験+{LOCAL/10}(%NAME:MASTER%)
+									PRINTFORML Ａ拡張経験+{LOCAL/10}(%NAME:MASTER%)
+									PRINTFORML 流産経験+{LOCAL/100}(%NAME:MASTER%)
+									EXP:MASTER:Ｖ経験 += LOCAL/4
+									EXP:MASTER:Ａ経験 += LOCAL/6
+									EXP:MASTER:絶頂経験 += LOCAL/5
+									EXP:MASTER:性交経験 += LOCAL/3
+									EXP:MASTER:膣射経験 += LOCAL/4
+									EXP:MASTER:放尿経験 += LOCAL/10
+									EXP:MASTER:フェラ経験 += LOCAL/5
+									EXP:MASTER:緊縛経験 += LOCAL/7
+									EXP:MASTER:Ｖ拡張経験 += LOCAL/10
+									EXP:MASTER:Ａ拡張経験 += LOCAL/10
+									EXP:MASTER:流産経験 += LOCAL/100
+									WAIT
+							ENDSELECT
+							REPEAT ABS(収支)/100000+3
+								CALL NEXTDAY
+							REND
+							MONEY += ABS(収支)
+							RETURN 1
+						ENDIF
+				ENDSELECT
+			LOOP 1
+	ENDSELECT
+ENDIF
 
 RETURN 1
 
@@ -428,9 +474,7 @@ FOR LCOUNT, 0, 賭け金上限+1, ループ用ステップ
 NEXT
 PRINTL 
 RESETCOLOR
-SIF 賭け金上限 >= 100000
-	CALL PASELI, @"[100000] 100000＄  "
-SIF マックスベット可 && 賭け金上限 != 100000
+SIF マックスベット可
 	CALL PASELIL, @"[{賭け金上限}] MAXBET({賭け金上限}＄)"
 $STAKE_INPUT
 DO
