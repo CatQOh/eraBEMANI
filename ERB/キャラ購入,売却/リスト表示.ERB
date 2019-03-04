@@ -28,6 +28,25 @@ ENDIF
 #DIMS キャラデザフィルタ
 #DIMS 種族フィルタ
 
+;選択可能キャラのフラグを立てる
+FOR LCOUNT, 0, 10000
+	SIF LCOUNT == 0 && ARG != 1
+		CONTINUE
+	SIF !EXISTCSV(LCOUNT)
+		CONTINUE
+	;隠しキャラは選べない
+	SIF CSVTALENT(LCOUNT, GETNUM(TALENT, "隠しキャラ"))
+		CONTINUE
+	;アニマルは主人にできない
+	SIF ARG == 2 && CSVTALENT(LCOUNT, GETNUM(TALENT, "アニマル"))
+		CONTINUE
+	;以上を抜けると選択可能
+	;すなわちキーボードの直接入力によるフィルタの無視は仕様とする
+	選択可能:LCOUNT = 1
+NEXT
+
+$リスト表示
+
 VARSET LOCAL, 0
 ;ARG
 ;0 = 奴隷購入用キャラリスト
@@ -76,20 +95,9 @@ ELSE
 ENDIF
 
 FOR LCOUNT, 0, 10000
-	SIF LCOUNT == 0 && ARG != 1
+	;選択可能じゃないキャラは非表示
+	SIF !選択可能:LCOUNT
 		CONTINUE
-	SIF !EXISTCSV(LCOUNT)
-		CONTINUE
-	;隠しキャラは選べない
-	SIF CSVTALENT(LCOUNT, GETNUM(TALENT, "隠しキャラ"))
-		CONTINUE
-	;アニマルは主人にできない
-	SIF ARG == 2 && CSVTALENT(LCOUNT, GETNUM(TALENT, "アニマル"))
-		CONTINUE
-	;以上を抜けると選択可能
-	;すなわちキーボードの直接入力によるフィルタの無視は仕様とする
-	選択可能:LCOUNT = 1
-	
 	;フィルタによる除外
 	IF ARG == 0 || ARG == 4
 		SIF CCB:LCOUNT
@@ -352,7 +360,7 @@ DO
 			TFLAG:ページ数 = 0
 			BREAK
 		CASEELSE
-			IF EXISTCSV(RESULT) && 選択可能
+			IF EXISTCSV(RESULT) && 選択可能:RESULT
 				VARLINE = 0
 				DRAWLINE
 				RETURN RESULT
@@ -360,7 +368,7 @@ DO
 	ENDSELECT
 LOOP LOOPRES(10001, 10009)
 
-RESTART
+GOTO リスト表示
 
 @CHARA_FILTER
 TFLAG:ページ数 = 0
