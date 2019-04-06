@@ -109,6 +109,7 @@ LOOP 1
 #DIM DYNAMIC 愛情
 #DIM DYNAMIC 狂気度計算用
 #DIM DYNAMIC 酔い覚まし
+#DIM DYNAMIC カフェイン
 #DIMS DYNAMIC 料理効果処理用, 2
 DRAWLINE
 PRINTL □献立
@@ -128,7 +129,7 @@ FOR LCOUNT, 1, 5
 	ENDSELECT
 	ARRAYCOPY LOCALS, "献立"
 
-	CALL 料理効果計算, LOCALS, 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分
+	CALL 料理効果計算, LOCALS, 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン
 	モチベ計算用 = RESULT
 
 	SIF モチベ計算用
@@ -149,6 +150,8 @@ FOR LCOUNT, 1, 5
 		PRINTFORM 狂気度上昇量:{狂気度計算用} 
 	SIF 酔い覚まし
 		PRINTFORM 酔い覚まし効果:{酔い覚まし} 
+	SIF カフェイン
+		PRINTFORM カフェイン:{カフェイン}
 	SIF 酒あり
 		PRINTFORM お酒あり 
 	
@@ -762,6 +765,7 @@ NEXT
 #DIM DYNAMIC コールド
 #DIM DYNAMIC 脱水
 #DIM DYNAMIC 水分
+#DIM DYNAMIC カフェイン
 
 ;新婚モード
 IF FLAG:ゲームモード == 7
@@ -777,10 +781,10 @@ NEXT
 
 ;昼 朝食と昼食の効果発動
 IF TIME == 0
-	CALL 料理効果計算, "朝食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分
+	CALL 料理効果計算, "朝食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン
 	モチベ回復量 += RESULT
 
-	CALL 料理効果計算, "昼食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分
+	CALL 料理効果計算, "昼食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン
 	モチベ回復量 += RESULT
 
 	FOR LCOUNT, 0, CHARANUM
@@ -870,10 +874,10 @@ IF TIME == 0
 	ENDIF
 ;夜 間食と夕食の効果発動
 ELSE
-	CALL 料理効果計算, "夕食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分
+	CALL 料理効果計算, "夕食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン
 	モチベ回復量 += RESULT
 
-	CALL 料理効果計算, "間食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分
+	CALL 料理効果計算, "間食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン
 	モチベ回復量 += RESULT
 
 	FOR LCOUNT, 0, CHARANUM
@@ -929,9 +933,14 @@ ELSE
 		ENDIF
 		SIF 鎮静 && CFLAG:LCOUNT:ストレス値
 			CFLAG:LCOUNT:ストレス値 -= 鎮静
-		IF 滋養強壮
-			BASE:LCOUNT:体力 += 滋養強壮*30
-			BASE:LCOUNT:気力 += 滋養強壮*30
+		SIF 滋養強壮
+			BASE:LCOUNT:体力 += 滋養強壮*20
+		IF カフェイン
+			BASE:LCOUNT:気力 += カフェイン*20
+			REPEAT カフェイン
+				TIMES CFLAG:LCOUNT:魔剤耐性 , 1.01
+			REND
+			CFLAG:LCOUNT:魔剤耐性 = LIMIT(CFLAG:LCOUNT:魔剤耐性, 1000, 2000)
 		ENDIF
 		SIF 愛情 && CFLAG:LCOUNT:陥落
 			EXP:LCOUNT:愛情経験 += 愛情
@@ -981,7 +990,7 @@ IF FLAG:ゲームモード == 7
 	CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 
 ENDIF
 
-@料理効果計算, ARGS, 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分
+@料理効果計算, ARGS, 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン
 #DIMS DYNAMIC 献立, 9
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
@@ -996,6 +1005,7 @@ ENDIF
 #DIM REF 愛情
 #DIM REF 狂気度計算用
 #DIM REF 酔い覚まし
+#DIM REF カフェイン
 
 ホット = 0
 コールド = 0
@@ -1007,6 +1017,7 @@ ENDIF
 愛情 = 0
 狂気度計算用 = 0
 酔い覚まし = 0
+カフェイン = 0
 
 ARRAYCOPY ARGS, "献立"
 
@@ -1043,6 +1054,8 @@ FOR LCOUNT, 0, 9
 						狂気度計算用 += TOINT(LOCALS:1)
 					CASE "酔い覚まし"
 						酔い覚まし += TOINT(LOCALS:1)
+					CASE "カフェイン"
+						カフェイン += TOINT(LOCALS:1)
 				ENDSELECT
 		ENDSELECT
 	NEXT
@@ -1077,11 +1090,12 @@ DO
 			PRINTL [ホット] - 寒い日に効果が高く、暑い日に効果が低い
 			PRINTL [コールド] - 暑い日に効果が高く、寒い日に効果が低い
 			PRINTL [鎮静] - ストレス緩和効果あり
-			PRINTL [滋養強壮] - 体力・気力回復効果あり
+			PRINTL [滋養強壮] - 体力回復効果あり
 			PRINTL [愛情] - 愛情のこもった料理により愛情経験増加(陥落済みのみ)
 			PRINTL [脱水] - 飲み物・汁物が無いと効果減
 			PRINTL [ALC] - お酒。キャラクターたちがほどよく酔う
 			PRINTL [酔い覚まし] - 二日酔いを軽減する
+			PRINTL [カフェイン] - 気力回復効果あり。摂りすぎ注意
 			WAIT
 			RESTART
 	ENDSELECT
