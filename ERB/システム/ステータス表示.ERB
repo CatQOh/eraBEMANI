@@ -1,4 +1,5 @@
 ﻿@STATUS
+#DIM DYNAMIC LCOUNT
 DRAWLINE
 PRINTL □ 基本情報
 PRINTFORM 　名前:%NAME:TARGET%　
@@ -11,29 +12,10 @@ IF TARGET != MASTER
 	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 		PRINTFORM 依存度:{CFLAG:依存度}　
 	PRINT ストレス値:
-	SELECTCASE CFLAG:ストレス値
-		CASE 1 TO 99
-			SETCOLORBYNAME lime
-		CASE 100 TO 299
-			SETCOLORBYNAME yellow
-		CASE 300 TO 499
-			SETCOLORBYNAME red
-		CASE IS >= 500
-			SETCOLORBYNAME darkred
-	ENDSELECT
-	PRINTFORM {CFLAG:ストレス値}/999
-	RESETCOLOR
+	CALL ストレス表示, TARGET
 ELSEIF TARGET == MASTER
 	PRINTFORM (堕した人数:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従}人)　
-	PRINT 難易度:
-	SELECTCASE FLAG:難易度
-		CASE 1
-			PRINT NORMAL
-		CASE 2
-			PRINT HYPER
-		CASE 3
-			PRINT ANOTHER
-	ENDSELECT
+	PRINTFORM 難易度:%難易度()%
 ENDIF
 PRINTL 
 IF TARGET != MASTER
@@ -49,29 +31,31 @@ SIF TALENT:服従
 SIF TALENT:隷属
 	PRINTL 　全キャラ×150%
 LOCAL = 0
-REPEAT 20000
-	IF EXISTCSV(COUNT) || COUNT > 10000
-		SIF COUNT > 10000 && CHILDNAME:(COUNT-10000) == ""
+FOR LCOUNT, 0, 20000
+	;CSVがあるか、子供の場合に参照
+	IF EXISTCSV(LCOUNT) || LCOUNT > 10000
+		;子供の人数を突っ切ったら終了
+		SIF LCOUNT > 10000 && CHILDNAME:(LCOUNT-10000) == ""
 			BREAK
 		LOCALS = 
-		IF RELATION:COUNT != 100
+		IF RELATION:LCOUNT != 100
 			IF !TALENT:服従 && !TALENT:隷属
-				IF NO:MASTER == COUNT
-					LOCALS = 　%NAME:MASTER%×{RELATION:COUNT}\%
+				IF NO:MASTER == LCOUNT
+					LOCALS = 　%NAME:MASTER%×{RELATION:LCOUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAMEF(COUNT)%×{RELATION:COUNT}\%
+					LOCALS = 　%CSVNAMEF(LCOUNT)%×{RELATION:LCOUNT}\%
 				ENDIF
-			ELSEIF RELATION:COUNT > 120 && TALENT:服従
-				IF NO:MASTER == COUNT
-					LOCALS = 　%NAME:MASTER%×{RELATION:COUNT}\%
+			ELSEIF RELATION:LCOUNT > 120 && TALENT:服従
+				IF NO:MASTER == LCOUNT
+					LOCALS = 　%NAME:MASTER%×{RELATION:LCOUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAMEF(COUNT)%×{RELATION:COUNT}\%
+					LOCALS = 　%CSVNAMEF(LCOUNT)%×{RELATION:LCOUNT}\%
 				ENDIF
-			ELSEIF RELATION:COUNT > 150 && TALENT:隷属
-				IF NO:MASTER == COUNT
-					LOCALS = 　%NAME:MASTER%×{RELATION:COUNT}\%
+			ELSEIF RELATION:LCOUNT > 150 && TALENT:隷属
+				IF NO:MASTER == LCOUNT
+					LOCALS = 　%NAME:MASTER%×{RELATION:LCOUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAMEF(COUNT)%×{RELATION:COUNT}\%
+					LOCALS = 　%CSVNAMEF(LCOUNT)%×{RELATION:LCOUNT}\%
 				ENDIF
 			ENDIF
 		ENDIF
@@ -84,7 +68,7 @@ REPEAT 20000
 			LOCAL = 0
 		ENDIF
 	ENDIF
-REND
+NEXT
 SIF !LINEISEMPTY()
 	PRINTL 
 DRAWLINE
@@ -169,7 +153,6 @@ LOOP 1
 #DIM DYNAMIC 兄弟姉妹性別, 10
 #DIM DYNAMIC 兄弟姉妹数
 
-
 ;処女が主人のドラゴンとなっている場合は、現在のドラゴンの名前を入れて後で戻す
 IF VIRGIN:1 == "主人のドラゴン"
 	VIRGIN:1 = %CSTR:MASTER:ドラゴン%
@@ -179,8 +162,6 @@ IF VIRGIN:11 == "主人のドラゴン"
 	VIRGIN:11 = %CSTR:MASTER:ドラゴン%
 	ドラゴンに処女:1 = 1
 ENDIF
-
-
 
 DRAWLINE
 PRINTL □ 基本情報
@@ -201,29 +182,10 @@ IF TARGET != MASTER
 	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 		PRINTFORM 依存度:{CFLAG:依存度}　
 	PRINT ストレス値:
-	SELECTCASE CFLAG:ストレス値
-		CASE 1 TO 99
-			SETCOLORBYNAME lime
-		CASE 100 TO 299
-			SETCOLORBYNAME yellow
-		CASE 300 TO 499
-			SETCOLORBYNAME red
-		CASE IS >= 500
-			SETCOLORBYNAME darkred
-	ENDSELECT
-	PRINTFORM {CFLAG:ストレス値}/999
-	RESETCOLOR
+	CALL ストレス表示, TARGET
 ELSEIF TARGET == MASTER && FLAG:ゲームモード != 7
 	PRINTFORM 堕した人数:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従}人　
-	PRINT 難易度:
-	SELECTCASE FLAG:難易度
-		CASE 1
-			PRINT NORMAL
-		CASE 2
-			PRINT HYPER
-		CASE 3
-			PRINT ANOTHER
-	ENDSELECT
+	PRINTFORM 難易度:%難易度()%
 ENDIF
 PRINTL 
 PRINTL □ その他情報
@@ -233,13 +195,7 @@ ELSEIF FLAG:ゲームモード == 7
 	IF NO:TARGET >= 10000
 		PRINTFORML 　%CSVNAMEF(CFLAG:血縁コード/100000)%と%CSVNAMEF(CFLAG:血縁コード%100000)%の\@ CFLAG:近親交配 ? 近親交配で # 間に \@産まれた\@ SEX(TARGET) ? 息子 # 娘 \@だ
 	ELSEIF TARGET == MASTER
-		REPEAT CHARANUM
-			IF CFLAG:COUNT:嫁
-				LOCAL = COUNT
-				BREAK
-			ENDIF
-		REND
-		PRINTFORML 　{REALTIME:0}年{REALTIME:1}月{REALTIME:2}日に%CALLNAME:LOCAL%と結婚した
+		PRINTFORML 　{REALTIME:0}年{REALTIME:1}月{REALTIME:2}日に%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%と結婚した
 	ELSE
 		PRINTFORML 　{REALTIME:0}年{REALTIME:1}月{REALTIME:2}日に%CALLNAME:MASTER%と結婚した
 	ENDIF
@@ -510,7 +466,7 @@ IF TARGET != MASTER
 		ENDIF
 	ELSE
 		IF TALENT:小人体型 || TALENT:小柄体型
-			PRINTFORML しかしそれなりに頑丈なのか、それなり\@FLAG:ゲームモード == 7 ? に激しい行為でも # の調教なら \@耐えられるだろう
+			PRINTFORML しかしいたって健康体で、それなり\@FLAG:ゲームモード == 7 ? に激しい行為でも # の調教なら \@耐えられるだろう
 		ELSE
 			PRINTFORML 人並みの体が\@ FLAG:ゲームモード == 7 ? 激しい行為 # 調教 \@に耐えられるかどうか、心の問題だ
 		ENDIF
@@ -548,306 +504,8 @@ IF TALENT:性転換済
 	ENDIF
 ENDIF
 
-IF TALENT:性転換済
-	SELECTCASE SEX(TARGET)
-		CASE 1
-			IF VIRGIN:1 == "NOTLOSTVIRGIN"
-				PRINTFORM 　結局、誰にも処女を捧げることなく男性になった
-			ELSEIF VIRGIN:1 != ""
-				IF TARGET == MASTER
-					PRINTFORM 　過去に女性だった時は%VIRGIN:1%に処女を捧げた
-				ELSE
-					PRINTFORM 　過去に女性だった時は%VIRGIN:1%に処女を捧げた。
-					SELECTCASE CFLAG:処女の奪われ方
-						CASE 1
-							IF TALENT:貞操観念
-								PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にしていないようだ
-							ELSE
-								IF CFLAG:陥落
-									PRINTFORM その方法は強引なものだったが、今はもう許しているようだ
-								ELSE
-									PRINTFORM 強引に初めてを奪われたことを未だに根に持っているようだ
-								ENDIF
-							ENDIF
-						CASE 2
-							IF TALENT:恋慕 || TALENT:親愛
-								IF VIRGIN:1 == NAME:MASTER
-									PRINTFORM 最愛の相手に処女を捧げられたことを幸せに思っている
-								ELSE
-									PRINTFORM 本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい
-								ENDIF
-							ELSEIF TALENT:淫乱 || TALENT:娼婦
-								PRINTFORM 欲望の赴くままに処女を散らした故に、その時のことをよく覚えていないらしい
-							ELSEIF TALENT:服従 || TALENT:隷属
-								PRINTFORM %CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思っている
-							ELSE
-								PRINTFORM 同意の上での破瓜だったが、その面影は既にない
-							ENDIF
-						CASE 3
-							IF CFLAG:陥落
-								PRINTFORM 調教を受け入れた今でも自分の処女を奪った当人が気になっているらしい
-							ELSE
-								PRINTFORM 不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思っている
-							ENDIF
-					ENDSELECT
-				ENDIF
-			ENDIF
-			SIF VIRGIN:0 != "NOTLOSTVIRGIN" && VIRGIN:0 != ""
-				PRINTFORM 　当時、両性具有でもあった%CALLNAME:TARGET%が初めて男性器で繋がった相手は%VIRGIN:0%だ
-		CASE 2
-			IF VIRGIN:0 == "NOTLOSTVIRGIN"
-				PRINTFORM 　童貞を捨てられないまま女性になってしまった
-			ELSEIF VIRGIN:0 != ""
-				PRINTFORM 　かつて男性だった時の初めての相手は%VIRGIN:0%だ
-			ENDIF
-			IF VIRGIN:1 != "NOTLOSTVIRGIN" && VIRGIN:1 != ""
-				IF TARGET == MASTER
-					PRINTFORM 　当時、両性具有でもあった%CALLNAME:TARGET%が処女を捧げた相手は%VIRGIN:1%
-				ELSE
-					PRINTFORM 　当時、両性具有でもあった%CALLNAME:TARGET%が処女を捧げた相手は%VIRGIN:1%。
-					SELECTCASE CFLAG:処女の奪われ方
-						CASE 1
-							IF TALENT:貞操観念
-								PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にしていないようだ
-							ELSE
-								IF CFLAG:陥落
-									PRINTFORM その方法は強引なものだったが、今はもう許しているようだ
-								ELSE
-									PRINTFORM 強引に初めてを奪われたことを未だに根に持っているようだ
-								ENDIF
-							ENDIF
-						CASE 2
-							IF TALENT:恋慕 || TALENT:親愛
-								IF VIRGIN:1 == NAME:MASTER
-									PRINTFORM 最愛の相手に処女を捧げられたことを幸せに思っている
-								ELSE
-									PRINTFORM 本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい
-								ENDIF
-							ELSEIF TALENT:淫乱 || TALENT:娼婦
-								PRINTFORM 欲望の赴くままに処女を散らした故に、その時のことをよく覚えていないらしい
-							ELSEIF TALENT:服従 || TALENT:隷属
-								PRINTFORM %CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思っている
-							ELSE
-								PRINTFORM 同意の上での破瓜だったが、その面影は既にない
-							ENDIF
-						CASE 3
-							IF CFLAG:陥落
-								PRINTFORM 調教を受け入れた今でも自分の処女を奪った当人が気になっているらしい
-							ELSE
-								PRINTFORM 不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思っている
-							ENDIF
-					ENDSELECT
-				ENDIF
-			ENDIF
-	ENDSELECT
-	SELECTCASE SEX(TARGET)
-		CASE 1
-			IF TALENT:童貞
-				PRINTFORM 　性転換してからはまだセックスをしたことがない
-			ELSE
-				PRINTFORM 　男性として初めて性交に及んだ相手は%VIRGIN:10%
-			ENDIF
-			IF TALENT:処女
-				PRINTFORM 　性転換後も両性具有という形で女性器を得たが、そちらはまだ使っていない
-			ELSEIF VIRGIN:11 != ""
-				IF TARGET == MASTER
-					PRINTFORM 　性転換後も両性具有という形で女性器を取り戻し、そちらの初めての相手は%VIRGIN:11%
-				ELSE
-					PRINTFORM 　性転換後も両性具有という形で女性器を取り戻し、そちらの初めての相手は%VIRGIN:11%。
-					SELECTCASE CFLAG:性転換処女の奪われ方
-						CASE 1
-							IF TALENT:貞操観念
-								PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にしていないようだ
-							ELSE
-								IF CFLAG:陥落
-									PRINTFORM その方法は強引なものだったが、今はもう許しているようだ
-								ELSE
-									PRINTFORM 強引に初めてを奪われたことを未だに根に持っているようだ
-								ENDIF
-							ENDIF
-						CASE 2
-							IF TALENT:恋慕 || TALENT:親愛
-								IF VIRGIN:1 == NAME:MASTER
-									PRINTFORM 最愛の相手に処女を捧げられたことを幸せに思っている
-								ELSE
-									PRINTFORM 本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい
-								ENDIF
-							ELSEIF TALENT:淫乱 || TALENT:娼婦
-								PRINTFORM 欲望の赴くままに処女を散らした故に、その時のことをよく覚えていないらしい
-							ELSEIF TALENT:服従 || TALENT:隷属
-								PRINTFORM %CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思っている
-							ELSE
-								PRINTFORM 同意の上での破瓜だったが、その面影は既にない
-							ENDIF
-						CASE 3
-							IF CFLAG:陥落
-								PRINTFORM 調教を受け入れた今でも自分の処女を奪った当人が気になっているらしい
-							ELSE
-								PRINTFORM 不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思っている
-							ENDIF
-					ENDSELECT
-				ENDIF
-			ENDIF
-		CASE 2
-			IF TALENT:処女
-				PRINTFORM 　性転換後の身体は純血を保っており、処女のようだ
-			ELSE
-				IF TARGET == MASTER
-					PRINTFORM 　性転換後は%VIRGIN:11%に処女を捧げた。
-				ELSE
-					PRINTFORM 　性転換後は%VIRGIN:11%に処女を捧げた。
-					SELECTCASE CFLAG:性転換処女の奪われ方
-						CASE 1
-							IF TALENT:貞操観念
-								PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にしていないようだ
-							ELSE
-								IF CFLAG:陥落
-									PRINTFORM その方法は強引なものだったが、今はもう許しているようだ
-								ELSE
-									PRINTFORM 強引に初めてを奪われたことを未だに根に持っているようだ
-								ENDIF
-							ENDIF
-						CASE 2
-							IF TALENT:恋慕 || TALENT:親愛
-								IF VIRGIN:1 == NAME:MASTER
-									PRINTFORM 最愛の相手に処女を捧げられたことを幸せに思っている
-								ELSE
-									PRINTFORM 本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい
-								ENDIF
-							ELSEIF TALENT:淫乱 || TALENT:娼婦
-								PRINTFORM 欲望の赴くままに処女を散らした故に、その時のことをよく覚えていないらしい
-							ELSEIF TALENT:服従 || TALENT:隷属
-								PRINTFORM %CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思っている
-							ELSE
-								PRINTFORM 同意の上での破瓜だったが、その面影は既にない
-							ENDIF
-						CASE 3
-							IF CFLAG:陥落
-								PRINTFORM 調教を受け入れた今でも自分の処女を奪った当人が気になっているらしい
-							ELSE
-								PRINTFORM 不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思っている
-							ENDIF
-					ENDSELECT
-				ENDIF
-			ENDIF
-			IF TALENT:童貞
-				PRINTL 
-				PRINTFORM 　性転換したにも関わらず両性具有という形でペニスがあるが、そちらはまだ未経験のようだ
-			ELSEIF VIRGIN:10 != ""
-				PRINTL 
-				PRINTFORM 　性転換後も両性具有という形でペニスを使っており、性転換後の初めての相手は%VIRGIN:10%
-			ENDIF
-	ENDSELECT
-ELSE
-	SELECTCASE SEX(TARGET)
-		CASE 1
-			IF TALENT:童貞
-				PRINTFORM 　未だ性交の経験が無いようだ
-			ELSEIF !TALENT:童貞 && VIRGIN:0 == ""
-				PRINTFORM 　女を知らないわけではないようだが、その初めての相手が誰なのかは不明である
-			ELSE
-				PRINTFORM 　初めての性交の相手は%VIRGIN:0%
-			ENDIF
-			IF TALENT:処女
-				PRINTFORM 　男であるにも関わらず兼ね添えた女性器は、未だに男を知らないままだ
-			ELSEIF !TALENT:処女 && VIRGIN:1 != "" && !TALENT:ふたなり
-				PRINTFORM 　かつて両性具有となった時に%VIRGIN:1%に処女を捧げたが、今はその女性器は無い
-			ELSEIF !TALENT:処女 && TALENT:ふたなり
-				IF TARGET == MASTER
-					PRINTFORM 　その女性器での初めての相手は%VIRGIN:1%
-				ELSE
-					PRINTFORM 　その女性器での初めての相手は%VIRGIN:1%。
-					SELECTCASE CFLAG:処女の奪われ方
-						CASE 1
-							IF TALENT:貞操観念
-								PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にしていないようだ
-							ELSE
-								IF CFLAG:陥落
-									PRINTFORM その方法は強引なものだったが、今はもう許しているようだ
-								ELSE
-									PRINTFORM 強引に初めてを奪われたことを未だに根に持っているようだ
-								ENDIF
-							ENDIF
-						CASE 2
-							IF TALENT:恋慕 || TALENT:親愛
-								IF VIRGIN:1 == NAME:MASTER
-									PRINTFORM 最愛の相手に処女を捧げられたことを幸せに思っている
-								ELSE
-									PRINTFORM 本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい
-								ENDIF
-							ELSEIF TALENT:淫乱 || TALENT:娼婦
-								PRINTFORM 欲望の赴くままに処女を散らした故に、その時のことをよく覚えていないらしい
-							ELSEIF TALENT:服従 || TALENT:隷属
-								PRINTFORM %CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思っている
-							ELSE
-								PRINTFORM 同意の上での破瓜だったが、その面影は既にない
-							ENDIF
-						CASE 3
-							IF CFLAG:陥落
-								PRINTFORM 調教を受け入れた今でも自分の処女を奪った当人が気になっているらしい
-							ELSE
-								PRINTFORM 不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思っている
-							ENDIF
-					ENDSELECT
-				ENDIF
-			ENDIF
-		CASE 2
-			IF TALENT:処女
-				PRINTFORM 　未だ男を知らない生娘のようだ
-			ELSEIF !TALENT:処女 && VIRGIN:1 == ""
-				PRINTFORM 　非処女だが初めての相手が誰なのかは不明
-			ELSE
-				IF TARGET == MASTER
-					PRINTFORM 　%VIRGIN:1%に処女を捧げた
-				ELSE
-					PRINTFORM 　%VIRGIN:1%に処女を捧げた。
-					SELECTCASE CFLAG:処女の奪われ方
-						CASE 1
-							IF TALENT:貞操観念
-								PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にしていないようだ
-							ELSE
-								IF CFLAG:陥落
-									PRINTFORM その方法は強引なものだったが、今はもう許しているようだ
-								ELSE
-									PRINTFORM 強引に初めてを奪われたことを未だに根に持っているようだ
-								ENDIF
-							ENDIF
-						CASE 2
-							IF TALENT:恋慕 || TALENT:親愛
-								IF VIRGIN:1 == NAME:MASTER
-									PRINTFORM 最愛の相手に処女を捧げられたことを幸せに思っている
-								ELSE
-									PRINTFORM 本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい
-								ENDIF
-							ELSEIF TALENT:淫乱 || TALENT:娼婦
-								PRINTFORM 欲望の赴くままに処女を散らした故に、その時のことをよく覚えていないらしい
-							ELSEIF TALENT:服従 || TALENT:隷属
-								PRINTFORM %CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思っている
-							ELSE
-								PRINTFORM 同意の上での破瓜だったが、その面影は既にない
-							ENDIF
-						CASE 3
-							IF CFLAG:陥落
-								PRINTFORM 調教を受け入れた今でも自分の処女を奪った当人が気になっているらしい
-							ELSE
-								PRINTFORM 不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思っている
-							ENDIF
-					ENDSELECT
-				ENDIF
-			ENDIF
-			IF TALENT:童貞
-				PRINTL 
-				PRINTFORM 　雄の貞操は純潔を保っているようだ
-			ELSEIF !TALENT:童貞 && VIRGIN:0 != "" && !TALENT:ふたなり
-				PRINTL 
-				PRINTFORM 　かつて男性器で%VIRGIN:0%と繋がったことがあるが、現在は成りを潜めている
-			ELSEIF !TALENT:童貞 && TALENT:ふたなり
-				PRINTL 
-				PRINTFORM 　%VIRGIN:0%を相手に種牡としても開花したようだ
-			ENDIF
-	ENDSELECT
-ENDIF
-PRINTL 
+CALL 初めての性経験
+
 IF TALENT:恋慕
 	PRINTFORML 　%CALLNAME:MASTER%と生活を共にすることに幸せを感じている節がある
 ELSEIF TALENT:淫乱
@@ -1183,6 +841,160 @@ DO
 	ENDSELECT
 LOOP 1
 
+
+;=============================================================================
+;バージンなど
+@初めての性経験
+IF TALENT:性転換済
+	SELECTCASE SEX(TARGET)
+		CASE 1
+			IF VIRGIN:1 == "NOTLOSTVIRGIN"
+				PRINTFORML 　結局、誰にも処女を捧げることなく男性になった
+			ELSEIF VIRGIN:1 != ""
+				IF TARGET == MASTER
+					PRINTFORML 　過去に女性だった時は%VIRGIN:1%に処女を捧げた
+				ELSE
+					PRINTFORM 　過去に女性だった時は%VIRGIN:1%に処女を捧げた。
+					CALL 処女の奪われ方, CFLAG:処女の奪われ方
+					PRINTL 
+				ENDIF
+			ENDIF
+			SIF VIRGIN:0 != "NOTLOSTVIRGIN" && VIRGIN:0 != ""
+				PRINTFORML 　当時、両性具有でもあった%CALLNAME:TARGET%が初めて男性器で繋がった相手は%VIRGIN:0%だ
+		CASE 2
+			IF VIRGIN:0 == "NOTLOSTVIRGIN"
+				PRINTFORML 　童貞を捨てられないまま女性になってしまった
+			ELSEIF VIRGIN:0 != ""
+				PRINTFORML 　かつて男性だった時の初めての相手は%VIRGIN:0%だ
+			ENDIF
+			IF VIRGIN:1 != "NOTLOSTVIRGIN" && VIRGIN:1 != ""
+				IF TARGET == MASTER
+					PRINTFORML 　当時、両性具有でもあった%CALLNAME:TARGET%が処女を捧げた相手は%VIRGIN:1%
+				ELSE
+					PRINTFORM 　当時、両性具有でもあった%CALLNAME:TARGET%が処女を捧げた相手は%VIRGIN:1%。
+					CALL 処女の奪われ方, CFLAG:処女の奪われ方
+					PRINTL 
+				ENDIF
+			ENDIF
+		CASEELSE
+	ENDSELECT
+	SELECTCASE SEX(TARGET)
+		CASE 1
+			IF TALENT:童貞
+				PRINTFORML 　性転換してからはまだセックスをしたことがない
+			ELSE
+				PRINTFORML 　男性として初めて性交に及んだ相手は%VIRGIN:10%
+			ENDIF
+			IF TALENT:処女
+				PRINTFORML 　性転換後も両性具有という形で女性器を得たが、そちらはまだ使っていない
+			ELSEIF VIRGIN:11 != ""
+				IF TARGET == MASTER
+					PRINTFORML 　性転換後も両性具有という形で女性器を取り戻し、そちらの初めての相手は%VIRGIN:11%
+				ELSE
+					PRINTFORM 　性転換後も両性具有という形で女性器を取り戻し、そちらの初めての相手は%VIRGIN:11%。
+					CALL 処女の奪われ方, CFLAG:性転換処女の奪われ方
+					PRINTL 
+				ENDIF
+			ENDIF
+		CASE 2
+			IF TALENT:処女
+				PRINTFORML 　性転換後の身体は純血を保っており、処女のようだ
+			ELSE
+				IF TARGET == MASTER
+					PRINTFORML 　性転換後は%VIRGIN:11%に処女を捧げた。
+				ELSE
+					PRINTFORM 　性転換後は%VIRGIN:11%に処女を捧げた。
+					CALL 処女の奪われ方, CFLAG:性転換処女の奪われ方
+					PRINTL 
+				ENDIF
+			ENDIF
+			IF TALENT:童貞
+				PRINTFORML 　性転換したにも関わらず両性具有という形でペニスがあるが、そちらはまだ未経験のようだ
+			ELSEIF VIRGIN:10 != ""
+				PRINTFORML 　性転換後も両性具有という形でペニスを使っており、性転換後の初めての相手は%VIRGIN:10%
+			ENDIF
+	ENDSELECT
+ELSE
+	SELECTCASE SEX(TARGET)
+		CASE 1
+			IF TALENT:童貞
+				PRINTFORML 　未だ性交の経験が無いようだ
+			ELSEIF !TALENT:童貞 && VIRGIN:0 == ""
+				PRINTFORML 　女を知らないわけではないようだが、その初めての相手が誰なのかは不明である
+			ELSE
+				PRINTFORML 　初めての性交の相手は%VIRGIN:0%
+			ENDIF
+			IF TALENT:処女
+				PRINTFORML 　男であるにも関わらず兼ね添えた女性器は、未だに男を知らないままだ
+			ELSEIF !TALENT:処女 && VIRGIN:1 != "" && !TALENT:ふたなり
+				PRINTFORML 　かつて両性具有となった時に%VIRGIN:1%に処女を捧げたが、今はその女性器は無い
+			ELSEIF !TALENT:処女 && TALENT:ふたなり
+				IF TARGET == MASTER
+					PRINTFORML 　両性具有であり、その女性器での初めての相手は%VIRGIN:1%
+				ELSE
+					PRINTFORM 　両性具有であり、その女性器での初めての相手は%VIRGIN:1%。
+					CALL 処女の奪われ方, CFLAG:処女の奪われ方
+					PRINTL 
+				ENDIF
+			ENDIF
+		CASE 2
+			IF TALENT:処女
+				PRINTFORM 　未だ男を知らない生娘のようだ
+			ELSEIF !TALENT:処女 && VIRGIN:1 == ""
+				PRINTFORML 　非処女だが初めての相手が誰なのかは不明
+			ELSE
+				IF TARGET == MASTER
+					PRINTFORML 　%VIRGIN:1%に処女を捧げた
+				ELSE
+					PRINTFORM 　%VIRGIN:1%に処女を捧げた。
+					CALL 処女の奪われ方, CFLAG:処女の奪われ方
+					PRINTL 
+				ENDIF
+			ENDIF
+			IF TALENT:童貞
+				PRINTFORML 　両性具有であり、雄の貞操は純潔を保っているようだ
+			ELSEIF !TALENT:童貞 && VIRGIN:0 != "" && !TALENT:ふたなり
+				PRINTFORML 　かつて男性器で%VIRGIN:0%と繋がったことがあるが、現在は成りを潜めている
+			ELSEIF !TALENT:童貞 && TALENT:ふたなり
+				PRINTFORML 　両性具有であり、%VIRGIN:0%を相手に種牡としても開花したようだ
+			ENDIF
+	ENDSELECT
+ENDIF
+
+@処女の奪われ方, ARG
+SELECTCASE ARG
+	CASE 1
+		IF TALENT:貞操観念
+			PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にしていないようだ
+		ELSE
+			IF CFLAG:陥落
+				PRINTFORM その方法は強引なものだったが、今はもう許しているようだ
+			ELSE
+				PRINTFORM 強引に初めてを奪われたことを未だに根に持っているようだ
+			ENDIF
+		ENDIF
+	CASE 2
+		IF TALENT:恋慕 || TALENT:親愛
+			IF VIRGIN:1 == NAME:MASTER
+				PRINTFORM 最愛の相手に処女を捧げられたことを幸せに思っている
+			ELSE
+				PRINTFORM 本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい
+			ENDIF
+		ELSEIF TALENT:淫乱 || TALENT:娼婦
+			PRINTFORM 欲望の赴くままに処女を散らした故に、その時のことをよく覚えていないらしい
+		ELSEIF TALENT:服従 || TALENT:隷属
+			PRINTFORM %CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思っている
+		ELSE
+			PRINTFORM 同意の上での破瓜だったが、その面影は既にない
+		ENDIF
+	CASE 3
+		IF CFLAG:陥落
+			PRINTFORM 調教を受け入れた今でも自分の処女を奪った当人が気になっているらしい
+		ELSE
+			PRINTFORM 不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思っている
+		ENDIF
+ENDSELECT
+
 ;=============================================================================
 ;体力、気力、魔力表示
 @SHOW_INFO_HEALTH, ARG = -1
@@ -1199,42 +1011,48 @@ SIF TALENT:ARG:魔術師
 ;パラメータ表示
 @SHOW_INFO_PALAM
 #DIMS DYNAMIC 記号
+#DIM DYNAMIC LCOUNT
 LOCAL = 0
 VARSET LOCALS
-REPEAT 15
+FOR LCOUNT, 0, VARSIZE("PALAM")
 	;LOCAL:0 = 表示されるパラメータの数値。kMGT等と一緒に表示される
-	;LOCALS:0 = LOCAL:0に続くkMGT等の単位(小数点表記をする場合".N"も前に付く)
+	;LOCALS:0 = いろいろな文字を組み合わせて最終的に表示される1文
+	SIF PALAMNAME:LCOUNT == ""
+		BREAK
 
 	;ヴァギナ無いなら快Ｖは灰色表示
-	IF !VAGINA(TARGET) && PALAMNAME:COUNT == "快Ｖ"
+	IF !VAGINA(TARGET) && PALAMNAME:LCOUNT == "快Ｖ"
 		SETCOLORBYNAME gray
 	ELSE
 		SETCOLORBYNAME silver
 	ENDIF
 
-	SIF COUNT%3 == 0
+	SIF LCOUNT%3 == 0
 		LOCALS = "　"
 	;パラメータの名前・パラメータレベル
-	IF !VAGINA(TARGET) && PALAMNAME:COUNT == "快Ｖ"
-		LOCALS = %PALAMNAME:COUNT%Lv-
+	IF !VAGINA(TARGET) && PALAMNAME:LCOUNT == "快Ｖ"
+		LOCALS = %PALAMNAME:LCOUNT%Lv-
 	ELSE
-		LOCALS = %PALAMNAME:COUNT%Lv{GETPALAMLV(PALAM:COUNT, 9)}
+		LOCALS = %PALAMNAME:LCOUNT%Lv{GETPALAMLV(PALAM:LCOUNT, 9)}
 	ENDIF
 
 	;ゲージ処理 パラメータレベルが9以上なら余計な処理は飛ばす
-	IF GETPALAMLV(PALAM:COUNT, 9) >= 9
+	IF GETPALAMLV(PALAM:LCOUNT, 9) >= 9
 		LOCALS += "[**********] "
 	ELSE
-		LOCALS += @"%BARSTR(PALAM:COUNT, PALAMLV:(GETPALAMLV(PALAM:COUNT, 9)+1), 10)% "
+		LOCALS += @"%BARSTR(PALAM:LCOUNT, PALAMLV:(GETPALAMLV(PALAM:LCOUNT, 9)+1), 10)% "
 	ENDIF
 
 	;これだけ特殊
-	IF PALAMNAME:COUNT == "潤滑" && PALAM:COUNT >= 20000
+	IF PALAMNAME:LCOUNT == "潤滑" && PALAM:LCOUNT >= 20000
 		LOCALS += "濡                "
 		GOTO SET
 	ENDIF
-
-;	STRLENFORM {PALAM:COUNT}
+	;これも特殊
+	IF PALAMNAME:LCOUNT == "勃起" && PALAM:LCOUNT >= PALAMLV:3
+		LOCALS += "勃                "
+		GOTO SET
+	ENDIF
 
 	; 1,000,000,000,000,000,000
 	;  E   P   T   G   M   k
@@ -1249,47 +1067,47 @@ REPEAT 15
 	;2^63≒9223P (9.223E)
 	;9,12,15,18桁を直すと残りが3桁になって寂しいので小数点表記を追加
 	記号 = 
-	STRLENS TOSTR(PALAM:COUNT)
+	STRLENS TOSTR(PALAM:LCOUNT)
 	SELECTCASE RESULT
 		CASE IS >= 18
-			LOCAL = PALAM:COUNT / POWER(10,15)
+			LOCAL = PALAM:LCOUNT / POWER(10,15)
 			IF RESULT == 18
-				記号 = .%CHARATU(TOSTR(PALAM:COUNT),3)%P
+				記号 = .%CHARATU(TOSTR(PALAM:LCOUNT),3)%P
 			ELSE
 				記号 = P
 			ENDIF
 		CASE IS >= 15
-			LOCAL = PALAM:COUNT / POWER(10,12)
+			LOCAL = PALAM:LCOUNT / POWER(10,12)
 			IF RESULT == 15
-				記号 = .%CHARATU(TOSTR(PALAM:COUNT),3)%T
+				記号 = .%CHARATU(TOSTR(PALAM:LCOUNT),3)%T
 			ELSE
 				記号 = T
 			ENDIF
 		CASE IS >= 12
-			LOCAL = PALAM:COUNT / POWER(10,9)
+			LOCAL = PALAM:LCOUNT / POWER(10,9)
 			IF RESULT == 12
-				記号 = .%CHARATU(TOSTR(PALAM:COUNT),3)%G
+				記号 = .%CHARATU(TOSTR(PALAM:LCOUNT),3)%G
 			ELSE
 				記号 = G
 			ENDIF
 		CASE IS >= 9
-			LOCAL = PALAM:COUNT / POWER(10,6)
+			LOCAL = PALAM:LCOUNT / POWER(10,6)
 			IF RESULT == 9
-				記号 = .%CHARATU(TOSTR(PALAM:COUNT),3)%M
+				記号 = .%CHARATU(TOSTR(PALAM:LCOUNT),3)%M
 			ELSE
 				記号 = M
 			ENDIF
 		CASE IS >= 7
-			LOCAL = PALAM:COUNT / POWER(10,3)
+			LOCAL = PALAM:LCOUNT / POWER(10,3)
 			記号 = k
 		CASEELSE
-			LOCAL = PALAM:COUNT
+			LOCAL = PALAM:LCOUNT
 	ENDSELECT
 
-	IF !VAGINA(TARGET) && PALAMNAME:COUNT == "快Ｖ"
+	IF !VAGINA(TARGET) && PALAMNAME:LCOUNT == "快Ｖ"
 		LOCALS += "------"
 	ELSE
-		IF PALAM:COUNT <= 999999
+		IF PALAM:LCOUNT <= 999999
 			LOCALS += @"{LOCAL, 6, LEFT}"
 		ELSE
 			LOCALS += @"%TOSTR(LOCAL)+記号, 6, LEFT%"
@@ -1297,31 +1115,32 @@ REPEAT 15
 	ENDIF
 
 	;カンストしてたら特殊表示
-	IF PALAM:COUNT == __INT_MAX__
+	IF PALAM:LCOUNT == __INT_MAX__
 		LOCALS += " CounterStop"
 	ELSE
 		LOCALS += " Next/"
 
 		;ヴァギナ無ければ快Ｖは表示しない
-		IF !VAGINA(TARGET) && PALAMNAME:COUNT == "快Ｖ"
+		IF !VAGINA(TARGET) && PALAMNAME:LCOUNT == "快Ｖ"
 			LOCALS += "------"
 		ELSE
-			IF GETPALAMLV(PALAM:COUNT, 9) >= 9
+			IF GETPALAMLV(PALAM:LCOUNT, 9) >= 9
 				LOCALS += "MAXLV!"
 			ELSE
-				LOCALS += @"{PALAMLV:(GETPALAMLV(PALAM:COUNT, 9)+1)-PALAM:COUNT, 6, LEFT}"
+				LOCALS += @"{PALAMLV:(GETPALAMLV(PALAM:LCOUNT, 9)+1)-PALAM:LCOUNT, 6, LEFT}"
 			ENDIF
 		ENDIF
 	ENDIF
 	$SET
-	LOCALS:(COUNT%3+1) = %SET_TOOLTIP(LOCALS, PALAM_COMMENT(PALAMNAME:COUNT))%
+	LOCALS:(LCOUNT%3+1) = %SET_TOOLTIP(LOCALS, PALAM_COMMENT(PALAMNAME:LCOUNT))%
 	RESETCOLOR
 
-	;COUNT仕様の都合で2
-	SIF COUNT%3 == 2
+	;LCOUNT仕様の都合で2
+	SIF LCOUNT%3 == 2
 		HTML_PRINT LOCALS:1+LOCALS:2+LOCALS:3
-
-REND
+NEXT
+;現在はPALAMの数が16あるのでここでも表示しておく
+HTML_PRINT LOCALS:1
 SIF !LINEISEMPTY()
 	PRINTL 
 
@@ -1329,14 +1148,15 @@ SIF !LINEISEMPTY()
 ;能力表示
 @SHOW_INFO_ABL, ARG
 #DIMS DYNAMIC 表示用レベル
+#DIM DYNAMIC LCOUNT
 
 LOCAL = 0
 VARSET LOCALS, 
-REPEAT VARSIZE("ABL")
-	IF COUNT == VARSIZE("ABL")-1
+FOR LCOUNT, 0, VARSIZE("ABL")
+	IF LCOUNT == VARSIZE("ABL")-1
 		HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4+LOCALS:5
 		BREAK
-	ELSEIF ABLNAME:COUNT == ""
+	ELSEIF ABLNAME:LCOUNT == ""
 		CONTINUE
 	ENDIF
 
@@ -1349,7 +1169,7 @@ REPEAT VARSIZE("ABL")
 	SELECTCASE SEX(ARG)
 		CASE 1
 			;男ならレズっ気、レズ中毒、噴乳中毒は灰色表示
-			SELECTCASE ABLNAME:COUNT
+			SELECTCASE ABLNAME:LCOUNT
 				CASE "レズっ気", "レズ中毒", "噴乳中毒"
 					SETCOLORBYNAME gray
 					表示用レベル = -----
@@ -1357,58 +1177,58 @@ REPEAT VARSIZE("ABL")
 					;ヴァギナ無ければＶ感覚も灰色
 					IF VAGINA(ARG)
 						SETCOLORBYNAME silver
-						表示用レベル = {ABL:ARG:COUNT, 5, LEFT}
+						表示用レベル = {ABL:ARG:LCOUNT, 5, LEFT}
 					ELSE
 						SETCOLORBYNAME gray
 						表示用レベル = -----
 					ENDIF
 				CASEELSE
 					SETCOLORBYNAME silver
-					表示用レベル = {ABL:ARG:COUNT, 5, LEFT}
+					表示用レベル = {ABL:ARG:LCOUNT, 5, LEFT}
 			ENDSELECT
 		CASE 2
-			;女ならホモっ気、ゲイ中毒は灰色表示
-			SELECTCASE ABLNAME:COUNT
-				CASE "ホモっ気", "ゲイ中毒"
+			;女ならホモっ気、ゲイ中毒、メス度は灰色表示
+			SELECTCASE ABLNAME:LCOUNT
+				CASE "ホモっ気", "ゲイ中毒", "メス度"
 					SETCOLORBYNAME gray
 					表示用レベル = -----
 				CASEELSE
 					SETCOLORBYNAME silver
-					表示用レベル = {ABL:ARG:COUNT, 5, LEFT}
+					表示用レベル = {ABL:ARG:LCOUNT, 5, LEFT}
 			ENDSELECT
 	ENDSELECT
 
-	LOCALS:(LOCAL%6) = %SET_TOOLTIP(@"　%ABLNAME:COUNT, 8%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:COUNT, ARG))%
+	LOCALS:(LOCAL%6) = %SET_TOOLTIP(@"　%ABLNAME:LCOUNT, 8%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, ARG))%
 	RESETCOLOR
 	LOCAL++
-REND
+NEXT
 
 SIF !LINEISEMPTY()
 	PRINTL 
-
 
 ;=============================================================================
 ;素質表示
 @SHOW_INFO_TALENT, ARG
 #DIMS DYNAMIC 素質名
+#DIM DYNAMIC LCOUNT
 LOCAL = 0
 VARSET LOCALS, 
-REPEAT VARSIZE("TALENT")
-	SELECTCASE TALENTNAME:COUNT
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SELECTCASE TALENTNAME:LCOUNT
 		CASE "性別"
 			CONTINUE
 		CASE "恋心", "既婚者"
 			SIF CFLAG:ARG:陥落
 				CONTINUE
 	ENDSELECT
-	IF COUNT == VARSIZE("TALENT")-1
+	IF LCOUNT == VARSIZE("TALENT")-1
 		HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4+LOCALS:5
 		BREAK
-	ELSEIF TALENT:ARG:COUNT == 0
+	ELSEIF TALENT:ARG:LCOUNT == 0
 		CONTINUE
 	ENDIF
 
-	IF TALENTNAME:COUNT == "バストサイズ"
+	IF TALENTNAME:LCOUNT == "バストサイズ"
 		SELECTCASE TALENT:ARG:バストサイズ
 			CASE 1
 				素質名 = [絶壁]
@@ -1422,13 +1242,13 @@ REPEAT VARSIZE("TALENT")
 				素質名 = [爆乳]
 		ENDSELECT
 	ELSE
-		素質名 = [%TALENTNAME:COUNT%]
+		素質名 = [%TALENTNAME:LCOUNT%]
 	ENDIF
 
 	SIF LOCAL%6 == 0
 		LOCALS = 　
 
-	LOCALS:(LOCAL%6) += @"%SET_TOOLTIP(素質名, TALENT_COMMENT(TALENTNAME:COUNT, ARG))%"
+	LOCALS:(LOCAL%6) += @"%SET_TOOLTIP(素質名, TALENT_COMMENT(TALENTNAME:LCOUNT, ARG))%"
 
 	LOCAL++
 
@@ -1437,7 +1257,7 @@ REPEAT VARSIZE("TALENT")
 		HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4+LOCALS:5
 		VARSET LOCALS
 	ENDIF
-REND
+NEXT
 
 SIF !LINEISEMPTY()
 	PRINTL 
@@ -1445,12 +1265,13 @@ SIF !LINEISEMPTY()
 ;=============================================================================
 ;刻印表示
 @SHOW_INFO_MARK, ARG
+#DIM DYNAMIC LCOUNT
 VARSET LOCALS, 
-REPEAT 4
-	LOCALS:COUNT = 　%SET_TOOLTIP(@"%MARKNAME:COUNT%:LV{MARK:ARG:COUNT} %BARSTR(MARK:ARG:COUNT, 3, 3)%", MARK_COMMENT(MARKNAME:COUNT))%
-	SIF COUNT == 3
+FOR LCOUNT, 0, 4
+	LOCALS:LCOUNT = 　%SET_TOOLTIP(@"%MARKNAME:LCOUNT%:LV{MARK:ARG:LCOUNT} %BARSTR(MARK:ARG:LCOUNT, 3, 3)%", MARK_COMMENT(MARKNAME:LCOUNT))%
+	SIF LCOUNT == 3
 		HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3
-REND
+NEXT
 SIF !LINEISEMPTY()
 	PRINTL 
 
@@ -1459,13 +1280,14 @@ SIF !LINEISEMPTY()
 @SHOW_INFO_EXP, ARG
 #DIMS DYNAMIC 表示用経験
 #DIMS DYNAMIC 経験名
+#DIM DYNAMIC LCOUNT
 VARSET LOCALS
 LOCAL = 0
-REPEAT VARSIZE("EXP")
-	IF COUNT == VARSIZE("EXP")-1
+FOR LCOUNT, 0, VARSIZE("EXP")
+	IF LCOUNT == VARSIZE("EXP")-1
 		HTML_PRINT LOCALS+LOCALS:1+LOCALS:2+LOCALS:3+LOCALS:4+LOCALS:5
 		BREAK
-	ELSEIF EXPNAME:COUNT == ""
+	ELSEIF EXPNAME:LCOUNT == ""
 		CONTINUE
 	ENDIF
 
@@ -1475,9 +1297,9 @@ REPEAT VARSIZE("EXP")
 		VARSET LOCALS
 	ENDIF
 
-	表示用経験 = %TOSTR(EXP:ARG:COUNT), 7%
+	表示用経験 = %TOSTR(EXP:ARG:LCOUNT), 7%
 
-	SELECTCASE EXPNAME:COUNT
+	SELECTCASE EXPNAME:LCOUNT
 		CASE "レズ経験", "噴乳経験"
 			;男ならレズ経験、噴乳経験は灰色表示
 			IF SEX(ARG) == 1
@@ -1497,7 +1319,7 @@ REPEAT VARSIZE("EXP")
 				表示用経験 = -------
 			ENDIF
 		;ペニス無ければ射精経験も灰色
-		CASE "射精経験"
+		CASE "射精経験", "射精管理経験"
 			IF !PENIS(ARG)
 				SETCOLORBYNAME gray
 				表示用経験 = -------
@@ -1505,7 +1327,7 @@ REPEAT VARSIZE("EXP")
 	ENDSELECT
 
 
-	SELECTCASE EXPNAME:COUNT
+	SELECTCASE EXPNAME:LCOUNT
 		CASE "奉仕快楽経験"
 			経験名 = 奉快経験
 		CASE "フェラ経験"
@@ -1526,36 +1348,41 @@ REPEAT VARSIZE("EXP")
 			経験名 = 舞踊経験
 		CASE "音ゲー経験"
 			経験名 = 音ゲ経験
+		CASE "射精管理経験"
+			経験名 = 射精管理
 		CASEELSE
-			経験名 = %EXPNAME:COUNT%
+			経験名 = %EXPNAME:LCOUNT%
 	ENDSELECT
 
-	LOCALS:(LOCAL%6) = %SET_TOOLTIP(@"　%経験名, 8%:%表示用経験%", EXP_COMMENT(EXPNAME:COUNT, ARG))%
+	LOCALS:(LOCAL%6) = %SET_TOOLTIP(@"　%経験名, 8%:%表示用経験%", EXP_COMMENT(EXPNAME:LCOUNT, ARG))%
 	RESETCOLOR
 	LOCAL++
-REND
+NEXT
 SIF !LINEISEMPTY()
 	PRINTL 
 
 ;=============================================================================
 ;珠表示
 @SHOW_INFO_JUEL, ARG
+#DIM DYNAMIC LCOUNT
 LOCAL = 0
-REPEAT 12
-	SIF PALAMNAME:COUNT == ""
+FOR LCOUNT, 0, VARSIZE("PALAM")
+	SIF PALAMNAME:LCOUNT == ""
 		CONTINUE
-	SIF PALAMNAME:COUNT == "潤滑"
+	SIF PALAMNAME:LCOUNT == "潤滑"
+		CONTINUE
+	SIF PALAMNAME:LCOUNT == "勃起"
 		CONTINUE
 	;改行するのか？ 続けて出力するのか？
 	SIF LOCAL % 6 == 0 && LOCAL != 0
 		PRINTL 
 	
-	PRINTFORM 　%PALAMNAME:COUNT, 4%の珠:
-	PRINTFORM {JUEL:ARG:COUNT, 7}
+	PRINTFORM 　%PALAMNAME:LCOUNT, 4%の珠:
+	PRINTFORM {JUEL:ARG:LCOUNT, 7}
 	LOCAL++
-REND
-PRINTFORM 　%PALAMNAME:100, 4%の珠:
-PRINTFORM {JUEL:ARG:100, 7}
+NEXT
+PRINT 　否定の珠:
+PRINTFORM {JUEL:ARG:否定, 7}
 SIF !LINEISEMPTY()
 	PRINTL 
 
