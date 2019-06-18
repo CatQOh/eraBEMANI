@@ -1010,8 +1010,14 @@ REPEAT CHARANUM
 	IF CSTR:COUNT:配属 == "ゲームセンター"
 		IF CFLAG:COUNT:ゲーセン店長
 			支出 += 1000
+			;浪費癖には倍額払う
+			SIF TALENT:COUNT:浪費癖
+				支出 += 1000
 		ELSE
 			支出 += 500
+			;浪費癖には倍額払う
+			SIF TALENT:COUNT:浪費癖
+				支出 += 500
 		ENDIF
 	ENDIF
 REND
@@ -1060,10 +1066,13 @@ FOR LCOUNT, 1, CHARANUM
 	LOCAL = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数
 	SIF TALENT:LCOUNT:世話好き
 		LOCAL -= 世話好き人数
+	;配属先のキャラの相性で計算
+	LOCAL += 相性モチベ補正(LCOUNT)
 	CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
 NEXT
 
 ;最後に現状のメンテレベルを計算
+LOCAL:1 = 0
 FOR LCOUNT, 1, CHARANUM
 	SIF CSTR:LCOUNT:配属 != "ゲームセンター"
 		CONTINUE
@@ -1073,7 +1082,7 @@ FOR LCOUNT, 1, CHARANUM
 		CFLAG:LCOUNT:サボり = 0
 		CONTINUE
 	ENDIF
-	LOCAL += ABL:LCOUNT:家事技能
+	LOCAL = ABL:LCOUNT:家事技能
 	LOCAL += ABL:LCOUNT:工作技能
 	SIF TALENT:LCOUNT:音ゲーマー
 		LOCAL += 5
@@ -1106,4 +1115,5 @@ NEXT
 
 ;店長を2倍で計上して最高値110なので10/11に圧縮(最高値100)
 GCメンテ = LOCAL:1 * 10 / 11
+GCメンテ = LIMIT(GCメンテ, 0, 100)
 

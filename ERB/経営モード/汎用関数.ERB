@@ -128,6 +128,8 @@ IF 配属可能人数
 					PRINT  音ゲーマー
 				SIF TALENT:LCOUNT:サボり魔
 					PRINT  サボり魔
+				SIF TALENT:LCOUNT:浪費癖
+					PRINT  浪費癖
 				PRINT )
 			CASE "娼館"
 				PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 26, LEFT%(従順:{ABL:LCOUNT:従順, 2, LEFT} 欲望:{ABL:LCOUNT:欲望, 2, LEFT} 技巧:{ABL:LCOUNT:技巧, 2, LEFT}
@@ -145,6 +147,8 @@ IF 配属可能人数
 					PRINT  淫乳
 				SIF TALENT:LCOUNT:サボり魔
 					PRINT  サボり魔
+				SIF TALENT:LCOUNT:浪費癖
+					PRINT  浪費癖
 				PRINT )
 			CASE "芸能プロダクション"
 				PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 26, LEFT%(歌唱技能:{ABL:LCOUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:LCOUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:LCOUNT:舞踊技能, 2, LEFT}
@@ -167,6 +171,8 @@ IF 配属可能人数
 					PRINT  調合知識
 				SIF TALENT:LCOUNT:治療
 					PRINT  治療
+				SIF TALENT:LCOUNT:浪費癖
+					PRINT  浪費癖
 				IF TALENT:LCOUNT:謎の魅力
 					PRINT  謎の魅力
 				ELSEIF TALENT:LCOUNT:魅力
@@ -185,6 +191,8 @@ IF 配属可能人数
 					PRINT  潔癖症
 				SIF TALENT:LCOUNT:禁断の知識
 					PRINT  禁断の知識
+				SIF TALENT:LCOUNT:浪費癖
+					PRINT  浪費癖
 				IF TALENT:LCOUNT:謎の魅力
 					PRINT  謎の魅力
 				ELSEIF TALENT:LCOUNT:魅力
@@ -203,6 +211,8 @@ IF 配属可能人数
 					PRINT  倒錯的
 				SIF TALENT:LCOUNT:調合知識
 					PRINT  調合知識
+				SIF TALENT:LCOUNT:浪費癖
+					PRINT  浪費癖
 				PRINT )
 			CASE "農業"
 				PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 26, LEFT%(栽培技能:{ABL:LCOUNT:栽培技能, 2, LEFT} 工作技能:{ABL:LCOUNT:工作技能, 2, LEFT} 魔法技能:{ABL:LCOUNT:魔法技能, 2, LEFT}
@@ -219,6 +229,8 @@ IF 配属可能人数
 				PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 26, LEFT%(飼育技能:{ABL:LCOUNT:飼育技能, 2, LEFT} 飼育適性:{飼育レベル(LCOUNT), 2, LEFT}
 				SIF TALENT:LCOUNT:世話好き
 					PRINT  世話好き
+				SIF TALENT:LCOUNT:浪費癖
+					PRINT  浪費癖
 				SELECTCASE CSTR:LCOUNT:種族
 					CASE "人魚"
 						PRINT  人魚
@@ -236,8 +248,8 @@ IF 配属可能人数
 				PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 26, LEFT%(料理技能:{ABL:LCOUNT:料理技能, 2, LEFT}
 				SIF TALENT:LCOUNT:料理人
 					PRINT  料理人
-				SIF TALENT:LCOUNT:買い物上手
-					PRINT  買い物上手
+				;SIF TALENT:LCOUNT:買い物上手
+				;	PRINT  買い物上手
 				SELECTCASE CSTR:LCOUNT:種族
 					CASE "獣人"
 						PRINT  獣人
@@ -407,3 +419,38 @@ CFLAG:ARG:レッスン = 0
 CFLAG:ARG:娼館部屋番号 = 0
 TRYCALLFORM %LOCALS%_ASSIGNOFF_OPTION, ARG
 
+@浪費癖人数, ARGS
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+
+LOCAL = 0
+
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 == ARGS && TALENT:LCOUNT:浪費癖
+		LOCAL++
+NEXT
+
+RETURNF LOCAL
+
+;同じ配属先に相性が良いキャラが居る場合にモチベに補正がかかる
+;相性悪いともちろん下がる
+@相性モチベ補正, ARG
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 計算用
+#DIM DYNAMIC 相性
+
+FOR LCOUNT, 0, CHARANUM
+	SIF LCOUNT == ARG
+		CONTINUE
+	IF CSTR:ARG:配属 == CSTR:LCOUNT:配属
+		相性 = RELATION:ARG:(NO:LCOUNT) > 100
+		IF 相性 > 100
+			計算用 += 相性/100
+		ELSEIF 相性 < 100
+			計算用 -= (100-MIN(相性, 80))/20
+		ENDIF
+	ENDIF
+NEXT
+
+RETURNF 計算用

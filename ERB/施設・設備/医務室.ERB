@@ -1,6 +1,7 @@
 ﻿@医務室
 #DIM DYNAMIC 配属人数
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 補充費
 配属人数 = CMATCH(CSTR:配属, "医務室")
 DRAWLINE
 PRINTL □医務室
@@ -44,7 +45,9 @@ FOR LCOUNT, 0, CHARANUM
 NEXT
 PRINTL 
 ;医薬品主人を除くキャラ人数*5000
-CALL PASELIL, @"　[1] - 医薬品を補充する({(CHARANUM-1)*5000}＄)"
+;浪費癖一人につき一人頭1000アップ
+補充費 = (CHARANUM-1)*(5000+浪費癖人数("医務室")*1000)
+CALL PASELIL, @"　[1] - 医薬品を補充する({補充費}＄)"
 PRINTL 　[2] - キャラを配属させる
 PRINTL 　[3] - 利用履歴を確認する（過去5日分）
 ;IF 配属人数
@@ -66,9 +69,9 @@ DO
 		CASE 1
 			IF FLAG:医薬品 >= 100
 				PRINTW 医薬品は十分に揃っています
-			ELSEIF MONEY > (CHARANUM-1)*5000
+			ELSEIF MONEY > 補充費
 				PRINTW 医薬品を補充しました
-				MONEY -= (CHARANUM-1)*5000
+				MONEY -= 補充費
 				FLAG:医薬品 = 100
 			ELSE
 				PRINTW 所持金が足りません
@@ -278,6 +281,8 @@ FOR LCOUNT, 0, CHARANUM
 			LOCAL = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数+(ABL:LCOUNT:奉仕精神/3)
 			SIF TALENT:LCOUNT:世話好き
 				LOCAL -= 世話好き人数
+			;配属先のキャラの相性で計算
+			LOCAL += 相性モチベ補正(LCOUNT)
 			CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
 
 			IF ABL:LCOUNT:奉仕精神 >= 5
