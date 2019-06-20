@@ -103,34 +103,34 @@ SIF ASSI >= 0 && CFLAG:ASSI:使用不可
 CALL SHOP_UI
 
 ;現助手＋元助手のキャラ数の確認
-REPEAT CHARANUM
+FOR LCOUNT, 1, CHARANUM
 	;育児部屋に移動しているキャラは除外
-	SIF CHECK_CHILD_CARE(COUNT)
+	SIF CHECK_CHILD_CARE(LCOUNT)
 		CONTINUE
 	;助手可能
-	SIF CFLAG:COUNT:状態 == 2
+	SIF CFLAG:LCOUNT:状態 == 2
 		助手可能++
 	;売却可能
-	SIF CFLAG:COUNT:状態 >= 1 && !CFLAG:COUNT:売却不可
+	SIF CFLAG:LCOUNT:状態 >= 1 && !CFLAG:LCOUNT:売却不可
 		売却可能++
-REND
+NEXT
 
 ;TARGETの他に調教できるキャラがいるかどうか
-REPEAT CHARANUM
+FOR LCOUNT, 0, CHARANUM
 	;主人は除外
-	SIF COUNT == MASTER
+	SIF LCOUNT == MASTER
 		CONTINUE
 	;奴隷も除外
-	SIF COUNT == TARGET
+	SIF LCOUNT == TARGET
 		CONTINUE
 	;使用不可は除外
-	SIF CFLAG:COUNT:使用不可
+	SIF CFLAG:LCOUNT:使用不可
 		CONTINUE
 	;育児部屋に移動しているキャラは除外
-	SIF CHECK_CHILD_CARE(COUNT)
+	SIF CHECK_CHILD_CARE(LCOUNT)
 		CONTINUE
 	調教可能++
-REND
+NEXT
 
 VARSET コマンド表示用
 
@@ -757,27 +757,7 @@ IF FLAG:ゲームモード != 8
 	;新婚生活中は非表示
 	IF FLAG:ゲームモード != 7
 		;難易度表示
-		PRINT 　難易度:
-		IF QMA
-			SELECTCASE FLAG:難易度
-				CASE 1
-					PRINTL フェアリー級
-				CASE 2
-					PRINTL ミノフェニ級
-				CASE 3
-					PRINTL ドラゴン級
-			ENDSELECT
-		ELSE
-			SELECTCASE FLAG:難易度
-				CASE 1
-					PRINTL NORMAL
-				CASE 2
-					PRINTL HYPER
-				CASE 3
-					PRINTL ANOTHER
-			ENDSELECT
-		ENDIF
-
+		PRINTFORM 　難易度:%難易度()%
 		;奴隷人数表示
 		LOCAL = 0
 		;陥落人数計算
@@ -793,27 +773,7 @@ ELSE
 	PRINTL 
 
 	;難易度表示
-	PRINT 　難易度:
-	IF QMA
-		SELECTCASE FLAG:難易度
-			CASE 1
-				PRINTL フェアリー級 
-			CASE 2
-				PRINTL ミノフェニ級 
-			CASE 3
-				PRINTL ドラゴン級 
-		ENDSELECT
-	ELSE
-		SELECTCASE FLAG:難易度
-			CASE 1
-				PRINT NORMAL 
-			CASE 2
-				PRINT HYPER 
-			CASE 3
-				PRINT ANOTHER 
-		ENDSELECT
-	ENDIF
-
+	PRINTFORM 　難易度:%難易度()%
 	;奴隷人数表示
 	LOCAL = 0
 	;売却可能人数計算
@@ -848,21 +808,7 @@ IF TARGET > 0
 		PRINTL 
 		PRINTFORM 　No.{TARGET} %NAME:TARGET%
 	ENDIF
-	IF TALENT:性転換済
-		SELECTCASE SEX(TARGET)
-			CASE 1
-				PRINT (元♀の♂) 
-			CASE 2
-				PRINT (元♂の♀) 
-		ENDSELECT
-	ELSE
-		SELECTCASE SEX(TARGET)
-			CASE 1
-				PRINT (♂) 
-			CASE 2
-				PRINT (♀) 
-		ENDSELECT
-	ENDIF
+	PRINTFORM %性別表示(TARGET)% 
 	SIF TALENT:ふたなり
 		PRINT [ふたなり]
 	SIF TALENT:アニマル
@@ -905,7 +851,6 @@ IF TARGET > 0
 	能力表示用:1 = %SET_TOOLTIP(@"欲望:LV{ABL:欲望, 2, LEFT}", ABL_COMMENT("欲望"))%
 	能力表示用:2 = %SET_TOOLTIP(@"技巧:LV{ABL:技巧, 2, LEFT}", ABL_COMMENT("技巧"))%
 	HTML_PRINT STRJOIN(能力表示用, "")
-	;PRINTFORM 　従順:LV{ABL:従順, 2, LEFT} 欲望:LV{ABL:欲望, 2, LEFT} 技巧:LV{ABL:技巧, 2, LEFT}
 
 	VARSET 能力表示用
 	能力表示用 = %SET_TOOLTIP(@"　Ｃ感:LV{ABL:Ｃ感覚, 2, LEFT}", ABL_COMMENT("Ｃ感覚"))%
@@ -914,11 +859,6 @@ IF TARGET > 0
 	能力表示用:2 = %SET_TOOLTIP(@"Ａ感:LV{ABL:Ａ感覚, 2, LEFT}", ABL_COMMENT("Ａ感覚"))%
 	能力表示用:3 = %SET_TOOLTIP(@"Ｂ感:LV{ABL:Ｂ感覚, 2, LEFT}", ABL_COMMENT("Ｂ感覚"))%
 	HTML_PRINT STRJOIN(能力表示用, "")
-	;PRINTFORM 　Ｃ感:LV{ABL:Ｃ感覚, 2, LEFT} 
-	;SIF SEX(TARGET) == 2 || TALENT:ふたなり
-	;	PRINTFORM Ｖ感:LV{ABL:Ｖ感覚, 2, LEFT} 
-	;PRINTFORM Ａ感:LV{ABL:Ａ感覚, 2, LEFT} Ｂ感:LV{ABL:Ｂ感覚, 2, LEFT}
-	;PRINTL 
 	
 	CALL SHOW_INFO_MARK, TARGET
 	PRINTFORML 　体力%BARBASE("体力")%
@@ -929,13 +869,7 @@ ENDIF
 PRINTL 
 PRINTFORML 　保管済み母乳:{FLAG:保管済み母乳}ml　保管済み精液:{FLAG:保管済み精液}ml
 
-PRINTFORM 　主人:%NAME:MASTER%
-SELECTCASE SEX(MASTER)
-	CASE 1
-		PRINT (♂)
-	CASE 2
-		PRINT (♀)
-ENDSELECT
+PRINTFORM 　主人:%NAME:MASTER% %性別表示(MASTER)% 
 SIF TALENT:MASTER:ふたなり
 	PRINT [ふたなり]
 PRINTL 
@@ -948,12 +882,7 @@ IF ASSI >= 0
 	ELSE
 		PRINTFORM 　助手:%NAME:ASSI%
 	ENDIF
-	SELECTCASE SEX(ASSI)
-		CASE 1
-			PRINT (♂)
-		CASE 2
-			PRINT (♀)
-	ENDSELECT
+	PRINTFORM %性別表示(ASSI)% 
 	SIF TALENT:ASSI:ふたなり
 		PRINT [ふたなり]
 	SIF TALENT:ASSI:アニマル
