@@ -272,6 +272,9 @@ SIF TALENT:アニマル
 ;調教後3P、調教後セックスどちらか一つ（強精神剤の反動が起こる時は無効）
 ;助手がいる場合は3P判定 対象と助手が陥落済み、対象と助手間の相性がそれぞれ100より↑、対象の体力500以上
 IF ASSI >= 0 && CFLAG:陥落 && CFLAG:ASSI:陥落 && RELATION:(NO:ASSI) > 100 && RELATION:ASSI:(NO:TARGET) > 100 && BASE:体力 >= 500 && TEQUIP:強精神薬 <= 2
+	;どちらかが貞操帯つけてると発生しない
+	SIF CFLAG:貞操帯 || CFLAG:ASSI:貞操帯
+		GOTO ELSE
 	;ただし出産トラウマがある場合は発生しない時がある
 	LOCAL = CFLAG:出産トラウマ+CFLAG:ASSI:出産トラウマ
 	;1+(合計値/10)/2+(合計値/10) 
@@ -279,18 +282,23 @@ IF ASSI >= 0 && CFLAG:陥落 && CFLAG:ASSI:陥落 && RELATION:(NO:ASSI) > 100 &&
 		CALL EVENT_CHECK, "調教後3P"
 ;ふたりエッチ判定 対象が陥落済み、対象の体力500以上
 ELSEIF CFLAG:陥落 && BASE:体力 >= 500 && TEQUIP:強精神薬 <= 2
+	;貞操帯装着中は発生しない
+	SIF CFLAG:貞操帯
+		GOTO ELSE
 	;出産トラウマがある場合はry 式は上と同じ1
 	LOCAL = CFLAG:出産トラウマ
 	SIF !(LOCAL && RAND:(LOCAL/10+2) <= LOCAL/10)
 		CALL EVENT_CHECK, "調教後セックス"
 ENDIF
 
+$ELSE
+
 ;強精神薬の反動、調教後搾乳、調教後自慰。どれか一つ
 IF TEQUIP:強精神薬 > 2
 	CALL EVENT_CHECK, "強精神薬の反動"
 ELSEIF ABL:Ｂ感覚 >= 4 && (ABL:噴乳中毒 > ABL:自慰中毒) && TALENT:母乳体質
 	CALL EVENT_CHECK, "調教後搾乳"
-ELSEIF ABL:自慰中毒 >= 3
+ELSEIF ABL:自慰中毒 >= 3 && !CFLAG:貞操帯
 	CALL EVENT_CHECK, "調教後自慰"
 ENDIF
 
@@ -1046,7 +1054,7 @@ CALL KOJO_MESSAGE_EVENT, "調教後夜這い"
 
 ;対象が男or対象が処女or主人竿無しor残数0or体力500未満で添い寝イベント
 ;添い寝イベントなので体力が大きく回復する
-IF SEX(TARGET) == 1 || TALENT:処女 || TALENT:再生処女 || !PENIS(MASTER) || !CFLAG:MASTER:残数 || BASE:体力 < 500
+IF SEX(TARGET) == 1 || TALENT:処女 || TALENT:再生処女 || !PENIS(MASTER) || !CFLAG:MASTER:残数 || BASE:体力 < 500 || CFLAG:貞操帯
 	PRINTFORMW %CALLNAME:TARGET%の体力が大きく回復しました
 	BASE:体力 += EXP:愛情経験+200
 	SIF BASE:体力 > MAXBASE:体力
