@@ -16,7 +16,20 @@ PRINTL
 DRAWLINE
 SIF 娼館店名 != "娼館"
 	PRINTFORM 娼館の店名：%娼館店名% 
-PRINTFORML 娼館レベル：{娼館レベル}
+PRINTFORM 娼館レベル：{娼館レベル} 運営方針：%娼館方針名(娼館方針)%
+IF 娼館方針名(娼館方針) != "ソフト方針"
+	PRINT 客の性別：
+	SELECTCASE 娼館性別固定
+		CASE 0
+			PRINT 固定無し
+		CASE 1
+			PRINT 男性のみ
+		CASE 2
+			PRINT 女性のみ
+	ENDSELECT
+ENDIF
+PRINTL 
+
 PRINTFORML 定休日：\@ 娼館定休日 == "" ? 無し # %娼館定休日%曜日 \@
 CALL PASELIL, @"次のランクアップまであと{娼館レベルアップ必要額}＄の売上が必要"
 DRAWLINE
@@ -502,14 +515,32 @@ PRINTFORMLC SM - {SMポイント}
 PRINTFORMLC 狂気 - {狂気ポイント}
 PRINTL 
 DRAWLINE
-PRINTFORML □現在の方針：%娼館方針名(娼館方針)%
+PRINTFORM □現在の方針：%娼館方針名(娼館方針)% 客の性別：
+SIF 娼館方針名(娼館方針) == "ソフト方針"
+	SETCOLORBYNAME gray
+SELECTCASE 娼館性別固定
+	CASE 0
+		PRINT 固定無し
+	CASE 1
+		PRINT 男性のみ
+	CASE 2
+		PRINT 女性のみ
+ENDSELECT
+SIF 娼館方針名(娼館方針) == "ソフト方針"
+	PRINT (ソフト方針では男性客のみの対応となります)
+PRINTL
+RESETCOLOR
+
 ;PRINTL 　[0] - 方針無し
 PRINTL 　[1] - ソフト方針
 PRINTL 　[2] - ハード方針
 PRINTL 　[3] - SM方針
 PRINTL 　[4] - 狂気方針
-PRINTFORML 　[5] - プレイ内容を報告させる（現在\@ FLAG:娼館報告 ? オン # オフ \@）
-PRINTFORML 　[6] - 上級娼婦を任命する（現在の上級娼婦:\@ FINDCHARA(CFLAG:上級娼婦, 1) >= 0 ? %NAME:(FINDCHARA(CFLAG:上級娼婦, 1))% # 無し\@）
+PRINTL 　[5] - 客の性別を固定しない
+PRINTL 　[6] - 男性客専門店にする
+PRINTL 　[7] - 女性客専門店にする
+PRINTFORML 　[8] - プレイ内容を報告させる（現在\@ FLAG:娼館報告 ? オン # オフ \@）
+PRINTFORML 　[9] - 上級娼婦を任命する（現在の上級娼婦:\@ FINDCHARA(CFLAG:上級娼婦, 1) >= 0 ? %NAME:(FINDCHARA(CFLAG:上級娼婦, 1))% # 無し\@）
 DRAWLINE
 PRINTPLAIN 　PLAN　
 PRINT [10] 戻る 
@@ -524,9 +555,11 @@ DO
 				SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
 					TRYCALLFORM BR_PLAN_K{FLAG:パートナー}, RESULT
 			ENDIF
-		CASE 5
+		CASE 5 TO 7
+			娼館性別固定 = RESULT-5
+		CASE 8
 			INVERTBIT FLAG:娼館報告, 0
-		CASE 6
+		CASE 9
 			LOCAL = FINDCHARA(CFLAG:上級娼婦, 1)
 			SIF LOCAL >= 0
 				CFLAG:LOCAL:上級娼婦 = 0
@@ -584,7 +617,7 @@ DO
 			PRINTL ├運営方針に応じて可能な行為、効果的な行為が変わり、お客様の満足度によって得られる報酬も増減します。
 			PRINTW └お客様とのより濃厚な売春を楽しみたいならぜひ任命してみましょう。
 	ENDSELECT
-LOOP LOOPRES(0, 1, 2, 3, 4, 5, 20)
+LOOP LOOPRES(0, 1, 2, 3, 4, 5, 6, 7, 8, 20)
 
 RESTART
 
@@ -977,6 +1010,13 @@ SELECTCASE 娼館方針
 		;稀にふたなり女性客が来る
 		SIF RAND:5 == 0
 			客の性別 = 3
+		;女性固定の場合はふたなりのみ
+		SELECTCASE 娼館性別固定
+			CASE 1
+				客の性別 = 0
+			CASE 2
+				客の性別 = 3
+		ENDSELECT
 		IF VAGINA(娼婦)
 			ヴァギナ = RAND:11
 		ELSE
@@ -990,13 +1030,25 @@ SELECTCASE 娼館方針
 			中出し = RAND:3
 		SIF PENIS(娼婦)
 			射精 = RAND:6
-		SIF SEX(娼婦) == 1
-			ゲイ = RAND:10+3
+		SELECTCASE SEX(娼婦)
+			CASE 1
+				SIF 客の性別 <= 1
+					ゲイ = RAND:10+3
+			CASE 2
+				SIF 客の性別 >= 2
+					レズ = RAND:10+3
+		ENDSELECT
 		SIF ヴァギナ == 0 && アナル == 0
 			アナル++
 		客の射精 = 中出し+アナル中出し+フェラで射精
 	CASE 3
 		客の性別 = RAND:4
+		SELECTCASE 娼館性別固定
+			CASE 1
+				客の性別 = 0
+			CASE 2
+				客の性別 = RAND(2, 4)
+		ENDSELECT
 		;たまにマゾが来る
 		IF 客の性別 != 2 && RAND:5 == 0
 			手コキで射精 = RAND:3+1
@@ -1036,6 +1088,12 @@ SELECTCASE 娼館方針
 		客の射精 = 中出し+アナル中出し+手コキで射精+足コキで射精+フェラで射精
 	CASE 4
 		客の性別 = RAND:4
+		SELECTCASE 娼館性別固定
+			CASE 1
+				客の性別 = 0
+			CASE 2
+				客の性別 = RAND(2, 4)
+		ENDSELECT
 		SIF VAGINA(娼婦)
 			ヴァギナ = RAND:26+5
 		アナル = RAND:26+5
@@ -1454,6 +1512,12 @@ SELECTCASE 娼館方針
 		;稀にふたなり女性客が来る
 		SIF RAND:5 == 0
 			客の性別 = 3
+		SELECTCASE 娼館性別固定
+			CASE 1
+				客の性別 = 0
+			CASE 2
+				客の性別 = 3
+		ENDSELECT
 		;相性が良いと交互に騎乗位
 		IF 相性 >= 400 && RAND:3 == 0
 			交互騎乗位 = 1
@@ -1542,16 +1606,22 @@ SELECTCASE 娼館方針
 			フェラで射精 = RAND:2
 			客の射精:LOCAL += フェラで射精
 		ENDIF
-		SIF SEX(娼婦:0) == 1 && 客の性別 == 0
+		SIF SEX(娼婦:0) == 1 && 客の性別 <= 1
 			ゲイ:0 = RAND(3, 10)
-		SIF SEX(娼婦:1) == 1 && 客の性別 == 0
+		SIF SEX(娼婦:1) == 1 && 客の性別 <= 1
 			ゲイ:1 = RAND(3, 10)
-		SIF SEX(娼婦:0) == 2 && 客の性別 == 3
+		SIF SEX(娼婦:0) == 2 && 客の性別 >= 2
 			レズ:0 = RAND(3, 10)
-		SIF SEX(娼婦:1) == 2 && 客の性別 == 3
+		SIF SEX(娼婦:1) == 2 && 客の性別 >= 2
 			レズ:1 = RAND(3, 10)
 	CASE 3
 		客の性別 = RAND:4
+		SELECTCASE 娼館性別固定
+			CASE 1
+				客の性別 = 0
+			CASE 2
+				客の性別 = RAND(2, 4)
+		ENDSELECT
 		;たまにマゾが来る
 		IF 客の性別 <= 1 && RAND:5 == 0
 			LOCAL = RAND:2
@@ -1675,15 +1745,21 @@ SELECTCASE 娼館方針
 				客の射精:LOCAL += フェラで射精
 			ENDIF
 		ENDIF
-		SIF SEX(娼婦:0) == 1 && 客の性別 == 0
+		SIF SEX(娼婦:0) == 1 && 客の性別 <= 1
 			ゲイ:0 = RAND(3, 10)
-		SIF SEX(娼婦:1) == 1 && 客の性別 == 0
+		SIF SEX(娼婦:1) == 1 && 客の性別 <= 1
 			ゲイ:1 = RAND(3, 10)
-		SIF SEX(娼婦:0) == 2 && 客の性別 == 3
+		SIF SEX(娼婦:0) == 2 && 客の性別 >= 2
 			レズ:0 = RAND(3, 10)
-		SIF SEX(娼婦:1) == 2 && 客の性別 == 3
+		SIF SEX(娼婦:1) == 2 && 客の性別 >= 2
 			レズ:1 = RAND(3, 10)
 	CASE 4
+		SELECTCASE 娼館性別固定
+			CASE 1
+				客の性別 = 0
+			CASE 2
+				客の性別 = 3
+		ENDSELECT
 		拘束プレイ = RAND:2
 		IF VAGINA(娼婦:0)
 			ヴァギナ:0 = RAND(10, 30)
@@ -1710,10 +1786,14 @@ SELECTCASE 娼館方針
 		SIF PENIS(娼婦:1)
 			射精:1 = RAND(4, 10)
 
-		SIF SEX(娼婦:0) == 1
+		SIF SEX(娼婦:0) == 1 && 客の性別 <= 1
 			ゲイ:0 = RAND(10, 20)
-		SIF SEX(娼婦:1) == 1
+		SIF SEX(娼婦:1) == 1 && 客の性別 <= 1
 			ゲイ:1 = RAND(10, 20)
+		SIF SEX(娼婦:0) == 2 && 客の性別 >= 2
+			レズ:0 = RAND(10, 20)
+		SIF SEX(娼婦:1) == 2 && 客の性別 >= 2
+			レズ:1 = RAND(10, 20)
 ENDSELECT
 
 IF FLAG:娼館報告 && 娼館方針
