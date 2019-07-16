@@ -1,0 +1,253 @@
+﻿@INCOME_GC_BR
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 総収入
+
+FOR LCOUNT, 0, CHARANUM
+	IF CSTR:LCOUNT:配属 == "ゲーセン売春"
+		CALL ゲーセン売春, LCOUNT
+		総収入 = RESULT
+	ENDIF
+NEXT
+
+
+@ゲーセン売春, ARG
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LTARGET
+#DIM DYNAMIC 奉仕ポイント
+#DIM DYNAMIC 淫乱ポイント
+#DIMS DYNAMIC 筐体名, 50
+#DIM DYNAMIC 筐体数
+
+LTARGET = TARGET
+TARGET = ARG
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	 SIF !TALENT:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "処女", "恋慕", "親愛"
+			淫乱ポイント -= 3
+			奉仕ポイント -= 3
+		CASE "一線超えない", "貞操観念"
+			奉仕ポイント -= 2
+			淫乱ポイント -= 2
+		CASE "淫乱", "隷属"
+			奉仕ポイント += 2
+			淫乱ポイント += 2
+		CASE "娼婦"
+			奉仕ポイント += 2
+			淫乱ポイント += 2
+		CASE "献身的"
+			奉仕ポイント += 2
+		CASE "服従", "貞操無頓着"
+			奉仕ポイント++
+			淫乱ポイント++
+		CASE "臆病", "冷静", "サボり魔", "恥じらい"
+			奉仕ポイント--
+			淫乱ポイント--
+		CASE "傷物", "プライド低い", "世話好き", "解放", "寂しがり屋", "小柄体型"
+			奉仕ポイント++
+		CASE "生意気", "プライド高い", "ツンデレ"
+			奉仕ポイント--
+		CASE "衝動的", "ハイテンション", "強気", "目立ちたがり", "快感に素直", "淫核", "淫膣", "淫尻", "淫乳", "両刀", "遊び人"
+			淫乱ポイント++
+		CASE "大人しい", "弱気", "自制心", "無関心", "快感の否定"
+			淫乱ポイント--
+		CASE "感情乏しい"
+			奉仕ポイント++
+			淫乱ポイント--
+		CASE "好奇心"
+			奉仕ポイント--
+			淫乱ポイント++
+	ENDSELECT
+NEXT
+
+奉仕ポイント += ABL:奉仕精神/2
+奉仕ポイント += ABL:露出癖/2
+奉仕ポイント += ABL:欲望/2
+
+淫乱ポイント += ABL:Ｖ感覚/2
+淫乱ポイント += ABL:Ａ感覚/2
+淫乱ポイント += ABL:精液中毒/2
+淫乱ポイント += ABL:メス度/2
+CALL CHECKDRAWLINE
+;合計が0以下ならば売春はしない
+IF 奉仕ポイント+淫乱ポイント <= 0
+	IF TALENT:恥じらい
+		PRINTFORMW %CALLNAME:TARGET%はゲーセンでの売春を任されたものの、恥ずかしがって客引きができなかったようだ……
+	ELSE
+		PRINTFORMW %CALLNAME:TARGET%はゲーセンでの売春を任されたものの、客を引き込む素振りは見せなかったようだ……
+	ENDIF
+ELSE
+	VARSET LOCALS
+	FOR LCOUNT, 1100, 1200
+		SIF ITEMNAME:LCOUNT == ""
+			CONTINUE
+		IF EXISTGAMES(ITEMNAME:LCOUNT)
+			筐体名:筐体数 = %ITEMNAME:LCOUNT%
+			筐体数++
+		ENDIF
+	NEXT
+	SELECTCASE 奉仕ポイント+淫乱ポイント
+		CASE IS >= 20
+			IF 奉仕ポイント > 淫乱ポイント
+				PRINTFORML %CALLNAME:TARGET%が今日の仕事を報告してきた
+				IF 筐体数 == 0
+					;経験は先に処理しておく
+					SELECTCASE SEX(TARGET)
+						CASE 1
+							EXP:Ａ経験 += 5
+							EXP:精液経験 += 3
+							EXP:性交経験 += 3
+							EXP:ゲイ経験 += 5
+							モブ経験人数:0++
+							モブアナル中出され回数:0 += 3
+						CASE 2
+							EXP:Ｖ経験 += 5
+							EXP:精液経験 += 3
+							EXP:性交経験 += 3
+							モブ経験人数:0++
+							モブ中出され回数:0 += 3
+					ENDSELECT
+					PRINTFORML %CALLNAME:TARGET%はゲームセンターに来ていた客に声をかけ、相手の趣味を伺いながら会話を弾ませていった
+					PRINTFORML 一通り相手の情報を聞き出した%CALLNAME:TARGET%は、ゲームセンターでの男漁りが趣味だと切り出し、相手はその誘いに乗ったようだ
+					PRINTFORM 人目の付かないフロアの陰で
+					SELECTCASE RAND:2
+						CASE 0
+							CALL PASELIL, "正面から激しいキスと共に犯され、満足した客は{奉仕ポイント*1000}＄のお金を支払ってくれたようだ"
+						CASE 1
+							CALL PASELIL, "立ちバックで激しく犯され、満足した客は{奉仕ポイント*1000}＄のお金を支払ってくれたようだ"
+					ENDSELECT
+				ELSE
+					EXP:音ゲー経験 += 2
+					LOCALS = 筐体名:(RAND:筐体数)
+					PRINTFORML %CALLNAME:TARGET%が今日の仕事を報告してきた
+					PRINTFORML %CALLNAME:TARGET%は%LOCALS%を遊んでいたプレイヤーに声をかけ、相手の趣味や性格を伺いながら会話を弾ませていった
+					SELECTCASE 筐体名:(RAND:筐体数)
+						CASE "beatmaniaIIDX",  "pop'n music", "SOUND VOLTEX", "jubeat", "REFLEC BEAT", "クイズマジックアカデミー", "maimai", "CHUNITHM"
+							SELECTCASE SEX(TARGET)
+								CASE 1
+									EXP:Ａ経験 += 5
+									EXP:精液経験 += 3
+									EXP:性交経験 += 3
+									EXP:ゲイ経験 += 5
+									モブ経験人数:0++
+									モブアナル中出され回数:0 += 3
+								CASE 2
+									EXP:Ｖ経験 += 5
+									EXP:精液経験 += 3
+									EXP:性交経験 += 3
+									モブ経験人数:0++
+									モブ中出され回数:0 += 3
+							ENDSELECT
+							PRINTFORML 他にプレイヤーが居ないことを確認した%CALLNAME:TARGET%は下着を降ろし、顔を赤らめながら%LOCALS%をプレイし始め、察した客はプレイ中の%CALLNAME:TARGET%に後ろから襲いかかった
+							CALL PASELIL, "プレイもままならないほどの激しい行為のあとには、{奉仕ポイント*1000}＄のお金を手渡されたようだ"
+						CASE "Dance Dance Revolution", "Dance Evolution"
+							EXP:奉仕快楽経験 += 3
+							JUEL:恥情 += 10000
+							EXP:精液経験 += 2
+							EXP:フェラ経験 += 3
+							EXP:自慰経験++
+							PRINTFORML 他にプレイヤーが居ないことを確認した%CALLNAME:TARGET%は服を脱ぎ、%LOCALS%で自慰行為も含めたストリップダンスを披露した
+							CALL PASELIL, "その光景に興奮した客をしっかりと慰めつつ、{奉仕ポイント*1000}＄のお金を受け取ったようだ"
+						CASE "GITADORA"
+							EXP:奉仕快楽経験 += 3
+							JUEL:習得 += 3000
+							EXP:精液経験 += 2
+							EXP:フェラ経験 += 3
+							PRINTFORML 他にプレイヤーが居ないことを確認した%CALLNAME:TARGET%はゲームプレイ中の客の下着を降ろし、口で奉仕した
+							CALL PASELIL, "ゲームには集中できなかった客だが、性行為には非常に満足したようで、{奉仕ポイント*1000}＄のお金を支払ってくれたようだ"
+					ENDSELECT
+				ENDIF
+				RETURN 奉仕ポイント*1000
+			ELSE
+				PRINTFORML %CALLNAME:TARGET%が今日の仕事を報告してきた
+				IF 筐体数 == 0
+					SELECTCASE SEX(TARGET)
+						CASE 1
+							EXP:Ａ経験 += 5
+							EXP:精液経験 += 3
+							EXP:性交経験 += 3
+							EXP:ゲイ経験 += 5
+							モブ経験人数:0++
+							モブアナル中出され回数:0 += 3
+						CASE 2
+							EXP:Ｖ経験 += 5
+							EXP:精液経験 += 3
+							EXP:性交経験 += 3
+							モブ経験人数:0++
+							モブ中出され回数:0 += 3
+					ENDSELECT
+					PRINTFORML %CALLNAME:TARGET%はゲーセンに来ていた客の中で手軽そうな人を見つけると、視線を送りながら誘惑する仕草を見せた
+					PRINTFORM 動揺の興奮を露わにする客を%CALLNAME:TARGET%はフロアの陰に連れ込み、報酬の条件付きで性器を露出させると、
+					SELECTCASE RAND:2
+						CASE 0
+							CALL PASELIL, "押し倒されて激しく犯された。満足した客は{淫乱ポイント*1000}の報酬を支払ってくれたようだ"
+						CASE 1
+							CALL PASELIL, "激しい立ちバックで何度も中出しされた。満足した客は{淫乱ポイント*1000}の報酬を支払ってくれたようだ"
+					ENDSELECT
+				ELSE
+					EXP:音ゲー経験 += 2
+					LOCALS = 筐体名:(RAND:筐体数)
+					PRINTFORML %CALLNAME:TARGET%が今日の仕事を報告してきた
+					PRINTFORML %CALLNAME:TARGET%は%LOCALS%を遊んでいたプレイヤーに言い寄り、卑猥な言葉を交えて情欲を煽った
+					SELECTCASE 筐体名:(RAND:筐体数)
+						CASE "beatmaniaIIDX",  "pop'n music", "SOUND VOLTEX", "jubeat", "REFLEC BEAT", "クイズマジックアカデミー", "maimai", "CHUNITHM", "GITADORA"
+							SELECTCASE SEX(TARGET)
+								CASE 1
+									EXP:Ａ経験 += 5
+									EXP:精液経験 += 3
+									EXP:性交経験 += 3
+									EXP:ゲイ経験 += 5
+									モブ経験人数:0++
+									モブアナル中出され回数:0 += 3
+								CASE 2
+									EXP:Ｖ経験 += 5
+									EXP:精液経験 += 3
+									EXP:性交経験 += 3
+									モブ経験人数:0++
+									モブ中出され回数:0 += 3
+							ENDSELECT
+							PRINTFORM ギャラリーが居ないことを確認した%CALLNAME:TARGET%は大胆にも筐体の上に座り、プレイヤーに
+							SELECTCASE SEX(TARGET)
+								CASE 1
+									PRINTL 勃起したペニスと潤滑油に濡れたアナルをさらけ出した
+								CASE 2
+									PRINTL すっかり濡れそぼった膣口を拡げてみせた 
+							ENDSELECT
+							CALL PASELIL, "挑発に耐えきれなくなった客はゲームよりも性行為に没頭し、{淫乱ポイント*1000}＄のクレジットを支払ってくれたようだ"
+						CASE "Dance Dance Revolution", "Dance Evolution"
+							EXP:奉仕快楽経験 += 3
+							JUEL:習得 += 3000
+							EXP:精液経験 += 2
+							EXP:フェラ経験 += 3
+							PRINTFORM ギャラリーが居ないことを確認した%CALLNAME:TARGET%はゲームプレイの疲れた客の服を脱がし、汗に蒸れたペニスに口で奉仕した
+							CALL PASELIL, "疲労と射精で動けないほどに困憊した客から半ば盗み取るように、{淫乱ポイント*1000}＄を報酬として財布から掠め取ってきたようだ……"
+					ENDSELECT
+				ENDIF
+			ENDIF
+		CASE IS >= 20
+		CASE IS >= 10
+		CASEELSE
+	ENDSELECT
+ENDIF
+
+
+
+
+
+TARGET = LTARGET
+RETURN MAX(奉仕ポイント, 淫乱ポイント)*1000
+
+						
+
+
+
+
+
+
+
+
+
+
+
