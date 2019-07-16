@@ -10,6 +10,7 @@
 #DIM DYNAMIC 役, 12
 #DIM DYNAMIC 総合点
 #DIM DYNAMIC カジノの種類
+#DIM DYNAMIC ハッキング残数
 
 ;参加料、賞金、クリアライン 1=表カジノ 2=裏カジノ 3=ゲーセン
 SELECTCASE カジノの種類
@@ -27,6 +28,11 @@ SELECTCASE カジノの種類
 		賞金 = 1
 		クリアライン = 30
 ENDSELECT
+
+;パートナー(TARGET)もしくはMASTERの工作技能に応じてハッキング可能
+ハッキング残数 = MIN(ABL:MASTER:工作技能, 10)
+SIF TARGET > 0
+	ハッキング残数 += MIN(ABL:工作技能, 10)
 
 PRINTL 
 PRINTL ◆ポーカーソリティアのルール◆
@@ -54,6 +60,7 @@ CALL SHUFFLE, 52
 カード枚数 = 0
 VARLINE = 0
 DO
+	$TOP
 	SIF VARLINE
 		CLEARLINE LINECOUNT-VARLINE
 	VARLINE = LINECOUNT
@@ -114,14 +121,23 @@ DO
 	ENDIF
 	PRINT NEXT:
 	CALL PRTCARD, CARD:カード枚数
+	IF ハッキング残数 > 0
+		PRINTPLAIN  
+		PRINTFORM [0] ハッキングする(残り{ハッキング残数}回 NEXTカードをスキップする)
+	ENDIF
 	DO
 		INPUT
+		IF RESULT == 0
+			ARRAYSHIFT CARD, -1, CARD:カード枚数, カード枚数
+			ハッキング残数--
+			GOTO TOP
+		ENDIF
 		SIF INRANGE(RESULT/10, 1, 5) && INRANGE(RESULT%10, 1, 5)
 			CONTINUE
 	LOOP 0
 	PS_CARD:(RESULT%10):(RESULT/10) = CARD:カード枚数
 	カード枚数++
-LOOP LOCAL <= 25
+LOOP カード枚数 <= 25
 VARLINE = 0
 IF 総合点 > クリアライン
 	MONEY += 賞金*(総合点-クリアライン)

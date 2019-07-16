@@ -17,6 +17,7 @@
 #DIM DYNAMIC CARD_NO
 #DIM DYNAMIC D_UP_ANS
 #DIM DYNAMIC カジノの種類
+#DIM DYNAMIC ハッキング残数
 
 ;賭け金上限 表カジノなら3,000、裏カジノなら15,000、ゲーセンなら1コイン
 SELECTCASE カジノの種類
@@ -36,6 +37,11 @@ IF MAX_BET > 1
 ELSEIF MAX_BET == 1
 	ONEBET = 1
 ENDIF
+
+;パートナー(TARGET)もしくはMASTERの工作技能に応じてハッキング可能
+ハッキング残数 = MIN(ABL:MASTER:工作技能, 10)
+SIF TARGET > 0
+	ハッキング残数 += MIN(ABL:工作技能, 10)
 
 FOR GAMES, 0, GAMES_MAX
 	$VP_START
@@ -72,7 +78,7 @@ FOR GAMES, 0, GAMES_MAX
 		PRINT [8]ダブルアップをONにする  
 	ENDIF
 	PRINTL [9]賭け金を変える
-	CALL PASELIL, @"[1]{ONEBET}＄ [2]{2*ONEBET}＄ [3]{3*ONEBET}＄ [4]{4*ONEBET}＄ [5]{5*ONEBET}＄"
+	CALL PASELIL, @"[1]{ONEBET}＄ [2]{2*ONEBET}＄ [3]{3*ONEBET}＄ [4]{4*ONEBET}＄ [5]{5*ONEBET}＄ "
 	INPUT
 	IF RESULT == 0
 		PRINTL 本当にやめますか？
@@ -103,6 +109,7 @@ FOR GAMES, 0, GAMES_MAX
 	FOR LCOUNT, 0, 5
 		VP_CARD:LCOUNT = CARD:LCOUNT
 	NEXT
+	$引き直し
 	HOLD = 0;ホールドの有無(1bitずつで処理)
 	PRINTL
 	IF VP_MODE
@@ -158,6 +165,19 @@ FOR GAMES, 0, GAMES_MAX
 		PRINT   
 	NEXT
 	PRINTL
+	IF ハッキング残数 > 0
+		PRINTFORML [0] ハッキングする(残り{ハッキング残数}回 さらに引き直す)
+		TONEINPUT 3000, 1, 1, ""
+		IF RESULT == 0
+			FOR LCOUNT, 0, 5
+				CARD:LCOUNT = VP_CARD:LCOUNT
+			NEXT
+			CALL SHUFFLE, 5, 52
+			ハッキング残数--
+			DRAWLINE
+			GOTO 引き直し
+		ENDIF
+	ENDIF
 	GET_MONEY = 0;獲得金額
 	IF FLUSH(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4)
 		IF STRAIGHT(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4) == 14

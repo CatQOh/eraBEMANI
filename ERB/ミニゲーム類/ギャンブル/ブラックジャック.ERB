@@ -32,6 +32,7 @@
 #DIM DYNAMIC ABS_TCOUNT
 #DIM DYNAMIC WIN_MONEY
 #DIM DYNAMIC カジノの種類
+#DIM DYNAMIC ハッキング残数
 
 ;賭け金下限(上限は*10) 表カジノは2,500 裏カジノは20,000 ゲーセンは1枚&デッキ数は1
 SELECTCASE カジノの種類
@@ -151,6 +152,11 @@ IF TARGET > 0
 	カウンティング能力 += ABL:魔法技能/2
 	カウンティング能力 /= 10
 ENDIF
+
+;パートナー(TARGET)もしくはMASTERの工作技能に応じてハッキング可能
+ハッキング残数 = MIN(ABL:MASTER:工作技能, 10)
+SIF TARGET > 0
+	ハッキング残数 += MIN(ABL:工作技能, 10)
 
 DO
 	D_DOWN = 0;ダブルダウンの管理([プレー領域]ビット目が1ならダブルダウン)
@@ -495,6 +501,7 @@ DO
 		PRINTW ディーラーのプレーに入ります。
 		GOTO BJ_MATCH_START
 	ENDIF
+	$引き直し
 	PRINTL プレーを選択してください。
 	PRINT [0]ヒット [1]スタンド
 	SIF BJCNT:AREA_NOW == 2
@@ -512,6 +519,61 @@ DO
 		USE_CARDS += 1
 		BJCNT:AREA_NOW += 1
 		;点数が21点以上なら次のエリアに
+		;ゲーセンでバーストした場合はハッキングでなかったことにできる
+		IF カジノの種類 == 3 && BJSUM(AREA_NOW) >= 22 && ハッキング残数 > 0
+			FOR LCOUNT, 1, AREA_MAX
+				IF LCOUNT == 1
+					PRINT プレイヤー
+				ELSE
+					PRINT 　　　　　
+				ENDIF
+				PRINTFORM :{BJSUM(LCOUNT)}
+				FOR LCOUNT2, 0, (BJCNT:LCOUNT)
+					PRINT  
+					CALL PRTCARD(BJCARD:LCOUNT:LCOUNT2)
+				NEXT
+				SIF GETBIT(D_DOWN, LCOUNT) == 1
+					PRINT  (ダブルダウン)
+				SIF GETBIT(SURRENDER, LCOUNT) == 1
+					PRINT  (サレンダー)
+				SIF BJSUM(AREA_NOW) >= 22
+					PRINT （バースト）
+				PRINTL
+			NEXT
+			PRINTFORML [0] ハッキングする(残り{ハッキング残数}回 バーストカードを引かなかったことにする)
+			TONEINPUT 3000, 1, 1, ""
+			IF RESULT == 0
+				BJCNT:AREA_NOW--
+				BJCARD:AREA_NOW:(BJCNT:AREA_NOW) = 0
+				ハッキング残数--
+				CALL SHUFFLE, USE_CARDS, 52
+				PRINTFORM ディーラー:{BJSUM(0)}+? 
+				CALL PRTCARD(BJCARD:0:0)
+				SETCOLOR 0x00FF00
+				PRINTL  ？
+				RESETCOLOR
+				FOR LCOUNT, 1, AREA_MAX
+					IF LCOUNT == 1
+						PRINT プレイヤー
+					ELSE
+						PRINT 　　　　　
+					ENDIF
+					PRINTFORM :{BJSUM(LCOUNT)}
+					FOR LCOUNT2, 0, (BJCNT:LCOUNT)
+						PRINT  
+						CALL PRTCARD(BJCARD:LCOUNT:LCOUNT2)
+					NEXT
+					SIF GETBIT(D_DOWN, LCOUNT) == 1
+						PRINT  (ダブルダウン)
+					SIF GETBIT(SURRENDER, LCOUNT) == 1
+						PRINT  (サレンダー)
+					SIF BJSUM(AREA_NOW) >= 22
+						PRINT （バースト）
+					PRINTL
+				NEXT
+				GOTO 引き直し
+			ENDIF
+		ENDIF
 		SIF BJSUM(AREA_NOW) >= 21
 			AREA_NOW += 1
 	;[1]スタンド…これ以上引かない
@@ -529,6 +591,61 @@ DO
 		;賭け金を増やす処理
 		MONEY -= BJ_BET
 		BJ_MULTI += 1
+		;ゲーセンでバーストした場合はハッキングでなかったことにできる
+		IF カジノの種類 == 3 && BJSUM(AREA_NOW) >= 22 && ハッキング残数 > 0
+			FOR LCOUNT, 1, AREA_MAX
+				IF LCOUNT == 1
+					PRINT プレイヤー
+				ELSE
+					PRINT 　　　　　
+				ENDIF
+				PRINTFORM :{BJSUM(LCOUNT)}
+				FOR LCOUNT2, 0, (BJCNT:LCOUNT)
+					PRINT  
+					CALL PRTCARD(BJCARD:LCOUNT:LCOUNT2)
+				NEXT
+				SIF GETBIT(D_DOWN, LCOUNT) == 1
+					PRINT  (ダブルダウン)
+				SIF GETBIT(SURRENDER, LCOUNT) == 1
+					PRINT  (サレンダー)
+				SIF BJSUM(AREA_NOW) >= 22
+					PRINT （バースト）
+				PRINTL
+			NEXT
+			PRINTFORML [0] ハッキングする(残り{ハッキング残数}回 バーストカードを引かなかったことにする)
+			TONEINPUT 3000, 1, 1, ""
+			IF RESULT == 0
+				BJCNT:AREA_NOW--
+				BJCARD:AREA_NOW:(BJCNT:AREA_NOW) = 0
+				ハッキング残数--
+				CALL SHUFFLE, USE_CARDS, 52
+				PRINTFORM ディーラー:{BJSUM(0)}+? 
+				CALL PRTCARD(BJCARD:0:0)
+				SETCOLOR 0x00FF00
+				PRINTL  ？
+				RESETCOLOR
+				FOR LCOUNT, 1, AREA_MAX
+					IF LCOUNT == 1
+						PRINT プレイヤー
+					ELSE
+						PRINT 　　　　　
+					ENDIF
+					PRINTFORM :{BJSUM(LCOUNT)}
+					FOR LCOUNT2, 0, (BJCNT:LCOUNT)
+						PRINT  
+						CALL PRTCARD(BJCARD:LCOUNT:LCOUNT2)
+					NEXT
+					SIF GETBIT(D_DOWN, LCOUNT) == 1
+						PRINT  (ダブルダウン)
+					SIF GETBIT(SURRENDER, LCOUNT) == 1
+						PRINT  (サレンダー)
+					SIF BJSUM(AREA_NOW) >= 22
+						PRINT （バースト）
+					PRINTL
+				NEXT
+				GOTO 引き直し
+			ENDIF
+		ENDIF
 	;[3]サレンダー…賭け金の半額をもらいゲームから降りる
 	ELSEIF RESULT == 3
 		SETBIT SURRENDER, AREA_NOW
@@ -596,6 +713,8 @@ DO
 			PRINT  (ダブルダウン)
 		SIF GETBIT(SURRENDER, LCOUNT) == 1
 			PRINT  (サレンダー)
+		SIF BJSUM(AREA_NOW) >= 22
+			PRINT （バースト）
 		PRINTL
 	NEXT
 	WAIT
