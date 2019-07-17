@@ -54,13 +54,14 @@ FOR LCOUNT, 0, CHARANUM
 	ENDIF
 NEXT
 
-@NAKADASHI_CHECK, 対象, 竿役
+@NAKADASHI_CHECK, 対象, 竿役, 確率チェック=0
 #DIMS DYNAMIC 対象種族
 #DIMS DYNAMIC 竿役種族
 #DIM DYNAMIC 妊娠確率, 2
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 竿役
 #DIM DYNAMIC 精液量
+#DIM DYNAMIC 確率チェック
 
 #DIM CONST 主人膣内射精 = 0
 #DIM CONST 助手膣内射精 = 1
@@ -179,6 +180,8 @@ ENDSELECT
 ;ちなみにTEQUIP:妊娠確率分子/TEQUIP:妊娠確率分母の結果で妊娠確率を口上側で変えることもできる
 ;分母=0で100%孕む 分子=0で100%孕まない
 LOCAL = 妊娠確率*妊娠確率:1
+SIF 確率チェック
+	RETURN LOCAL
 
 LOCAL *= TEQUIP:対象:妊娠確率分母
 ;0なら1にする
@@ -202,11 +205,13 @@ IF RAND:LOCAL <= TEQUIP:対象:妊娠確率分子-1
 	PREG:対象:母親 = NO:対象
 ENDIF
 
-@NAKADASHI_CHECK_MASTER, 竿役
+
+@NAKADASHI_CHECK_MASTER, 竿役, 確率チェック=0
 #DIM DYNAMIC 竿役
 #DIMS DYNAMIC 竿役種族
 #DIMS DYNAMIC 主人種族
 #DIM DYNAMIC 妊娠確率, 2
+#DIM DYNAMIC 確率チェック
 
 #DIM CONST 主人への膣内射精 = 4
 #DIM CONST 出産予定日 = 10
@@ -290,6 +295,8 @@ ENDSELECT
 ;ちなみにTEQUIP:妊娠確率分子/TEQUIP:妊娠確率分母の結果で妊娠確率を口上側で変えることもできる
 ;分母=0で100%孕む 分子=0で100%孕まない
 LOCAL = 妊娠確率*妊娠確率:1
+SIF 確率チェック
+	RETURN LOCAL
 
 LOCAL *= TEQUIP:MASTER:妊娠確率分母
 ;0なら1にする
@@ -312,11 +319,11 @@ ENDIF
 #DIM CONST 妊娠確定フラグ = 11
 
 FOR LCOUNT, 0, CHARANUM
-    SIF PREG:LCOUNT:妊娠確定フラグ == 0
-        CONTINUE
-    ;出産予定日より20日前で妊娠発覚
-    SIF !TALENT:LCOUNT:妊娠 && !TALENT:LCOUNT:育児中 && DAY >= PREG:LCOUNT:出産予定日-20
-        CALL GET_CHILD_MESSAGE, LCOUNT
+	SIF PREG:LCOUNT:妊娠確定フラグ == 0
+		CONTINUE
+	;出産予定日より20日前で妊娠発覚
+	SIF !TALENT:LCOUNT:妊娠 && !TALENT:LCOUNT:育児中 && DAY >= PREG:LCOUNT:出産予定日-20
+		CALL GET_CHILD_MESSAGE, LCOUNT
 NEXT
 
 @GET_CHILD_MESSAGE, ARG
@@ -338,6 +345,13 @@ IF ARG == MASTER
 	PRINTW ここ最近つわりのようなものがひどい……
 	PRINTFORMW %CALLNAME:MASTER%はどうやら%CSVCALLNAMEF(PREG:ARG:父親)%の子供を身籠ってしまったようだ
 	TALENT:MASTER:妊娠 = 1
+	FOR LCOUNT, 0, CHARANUM
+		IF NO:LCOUNT == PREG:ARG:父親
+			孕ませ回数:LCOUNT:(NO:ARG)++
+			BREAK
+		ENDIF
+	NEXT
+	孕み回数:ARG:(PREG:ARG:父親)++
 	CALL KOJO_MASTER_EVENT, 1
 ELSE
 	PRINTFORMW %CALLNAME:ARG%の様子がおかしい……
@@ -345,8 +359,16 @@ ELSE
 		PRINTFORMW %CALLNAME:ARG%は妊娠の自覚症状が出てきたようだ
 	ELSEIF PREG:ARG:父親 == -1
 		PRINTFORMW %CALLNAME:ARG%は名も知らぬ男の子供を身篭ったようだ
+		モブ孕み回数:ARG:0++
 	ELSE
 		PRINTFORMW %CALLNAME:ARG%は%CSVCALLNAMEF(PREG:ARG:父親)%の子供を身篭ったようだ
+		FOR LCOUNT, 0, CHARANUM
+			IF NO:LCOUNT == PREG:ARG:父親
+				孕ませ回数:LCOUNT:(NO:ARG)++
+				BREAK
+			ENDIF
+		NEXT
+		孕み回数:ARG:(PREG:ARG:父親)++
 	ENDIF
 	PRINTFORMW %NAME:ARG%は[妊娠]した
 	TALENT:ARG:妊娠 = 1
