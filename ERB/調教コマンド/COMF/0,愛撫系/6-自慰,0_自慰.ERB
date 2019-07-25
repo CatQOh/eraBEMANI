@@ -35,68 +35,10 @@ RETURNF 1
 ;すべての命令に共通の要素を考慮
 ;(従順が高いと命令に従いやすいなど)
 CALL COM_ORDER
-
-VARSET LOCAL, 0
 LOCAL = RESULT
 
-IF ABL:欲望
-	LOCAL += ABL:欲望*3
-	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望*3})
-ENDIF
-IF ABL:露出癖
-	LOCAL += ABL:露出癖*4
-	PRINTFORM +露出癖LV{ABL:露出癖}({ABL:露出癖*4})
-ENDIF
-IF ABL:自慰中毒
-	LOCAL += ABL:自慰中毒*3
-	PRINTFORM +自慰中毒LV{ABL:自慰中毒}({ABL:自慰中毒*3})
-ENDIF
-IF MARK:快楽刻印
-	LOCAL += MARK:快楽刻印*3
-	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印*3})
-ENDIF
-
-CALL COM_ORDER_欲情, 0
+CALL COM_ORDER_自慰
 LOCAL += RESULT
-
-;自制心
-IF TALENT:自制心
-	LOCAL -= 5
-	PRINTFORM -自制心(5)
-ENDIF
-;恥じらい
-IF TALENT:恥じらい
-	LOCAL -= 5
-	PRINTFORM -恥じらい(5)
-ENDIF
-;恥薄い
-IF TALENT:恥薄い
-	LOCAL += 2
-	PRINTFORM +恥薄い(2)
-ENDIF
-;自慰しやすい
-IF TALENT:自慰しやすい
-	LOCAL += 5
-	PRINTFORM +自慰しやすい(5)
-ENDIF
-;快感に素直
-IF TALENT:快感に素直
-	LOCAL += 5
-	PRINTFORM +快感に素直(5)
-ENDIF
-;快感の否定 淫乱or娼婦で無効
-IF TALENT:快感の否定 && FALLTYPE(TARGET) != 2
-	LOCAL -= 5
-	PRINTFORM -快感の否定(5)
-ENDIF
-;媚薬
-IF TEQUIP:媚薬
-	LOCAL += 8
-	PRINTFORM +媚薬(8)
-ENDIF
-
-;合計を表示(33以上で実行)
-PRINTFORM  = {LOCAL}
 
 ;難易度上昇
 ;公開で+10、バイブで+5、アナルバイブで+5、シャワーで＋3
@@ -110,25 +52,9 @@ SIF TEQUIP:アナルバイブ
 SIF TEQUIP:シャワー
 	LOCAL:1 += 3
 
-SELECTCASE LOCAL
-	CASE IS < LOCAL:1
-		PRINT  < 
-	CASE LOCAL:1
-		PRINT  = 
-	CASE IS > LOCAL:1
-		PRINT  > 
-ENDSELECT
-PRINTFORM 実行値{LOCAL:1}
+CALL 実効値判定, LOCAL, LOCAL:1
 
-WAIT
-
-;実行できない
-IF LOCAL < LOCAL:1
-		CALL KOJO_MESSAGE_EVENT, "コマンド拒否時"
-	RETURN 0
-ELSE
-	RETURN 1
-ENDIF
+RETURN RESULT
 
 @COM_自慰
 #DIM DYNAMIC LABL
@@ -428,42 +354,6 @@ ENDIF
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
-;ビデオ撮影時は経験にプラス
-IF TEQUIP:ビデオカメラ
-	EXP:自慰経験 += 2
-	PRINTL 自慰経験+2
-ELSE
-	EXP:自慰経験 += 1
-	PRINTL 自慰経験+1
-ENDIF
-;公開オナニー時は異常経験付加
-IF TEQUIP:ビデオカメラ
-	IF !CFLAG:自慰を撮影された経験
-		EXP:異常経験++
-		PRINTL 異常経験+1
-	ENDIF
-	CFLAG:自慰を撮影された経験++
-ENDIF
-
-;装備中関数で計算してるのでコメントアウト
-;挿入物による経験増加
-;IF TEQUIP:バイブ
-;	EXP:Ｖ経験 += 1
-;	PRINTL Ｖ経験+1
-;ENDIF
-;IF TEQUIP:アナルバイブ
-;	EXP:Ａ経験 += 1
-;	PRINTL Ａ経験+1
-;ENDIF
-;IF TEQUIP:Ｖ異物
-;	EXP:Ｖ経験 += TEQUIP:Ｖ異物
-;	PRINTFORML Ｖ経験+{TEQUIP:Ｖ異物}
-;ENDIF
-;IF TEQUIP:Ａ異物
-;	EXP:Ａ経験 += TEQUIP:Ａ異物
-;	PRINTFORML Ａ経験+{TEQUIP:Ａ異物}
-;ENDIF
-
 ;撮影時の調教内容チェック フロー図的には上書きしてるので問題なし
 IF TEQUIP:バイブ && TEQUIP:アナルバイブ
 	ビデオ撮影内容:(TFLAG:ビデオ撮影回数) = 二穴バイブオナニー
@@ -495,13 +385,19 @@ SIF TEQUIP:電動エネマグラ
 
 CALL EXPUP_BASE, 2, LOCAL:1
 
-;依存度補正値(服従で1、隷属で2）
-IF TALENT:服従
-	TFLAG:依存度補正 += 1
-ELSEIF TALENT:隷属
-	TFLAG:依存度補正 += 2
+;ビデオ撮影時は経験にプラス
+IF TEQUIP:ビデオカメラ
+	CALL EXPUP, "自慰経験", 2
+ELSE
+	CALL EXPUP, "自慰経験", 1
 ENDIF
-
+;公開オナニー時は異常経験付加
+IF TEQUIP:ビデオカメラ
+	IF !CFLAG:自慰を撮影された経験
+		CALL EXPUP, "異常経験", 1
+	ENDIF
+	CFLAG:自慰を撮影された経験++
+ENDIF
 
 LOCAL = 0
 ;不要なループを避けるための処理 CFLAGでやったほうがいいかもしれない

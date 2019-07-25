@@ -495,187 +495,47 @@ SELECTCASE ABL:性交中毒
 		TIMES SOURCE:中毒 , 5.00
 ENDSELECT
 
-@射精ゲージ増加, ARG, ARG:1 = -1
-SIF ARG:1 == -1
-	ARG:1 = TARGET
+;対象の魔力を0.{回復率}%回復させる関数
+@魔力回復, 回復率, 対象 = -1
+#DIM DYNAMIC 回復率
+#DIM DYNAMIC 回復量
+#DIM DYNAMIC 対象
 
-;再装填処理中は射精ゲージは20分の1に
-SIF CFLAG:(ARG:1):賢者タイム > 0
-	ARG /= 20
+SIF 対象 == -1
+	対象 = TARGET
 
-;メス度が1上がるにつれ8%減る
-ARG -= (ARG*MIN(ABL:(ARG:1):メス度, 10)*8)/100
+SIF !TALENT:対象:魔術師
+	RETURN
 
-;子供好きで対象が子供だとイきやすい
-IF ARG:1 == TARGET
-	SIF TALENT:子供好き && TALENT:PLAYER:小柄体型
-		TIMES ARG , 1.20
-ELSEIF ARG:1 == MASTER
-	SIF TALENT:MASTER:子供好き && TALENT:小柄体型
-		TIMES ARG , 1.20
-ELSEIF ARG:1 == ASSI
-	SIF TALENT:ASSI:子供好き && TALENT:小柄体型
-		TIMES ARG , 1.20
+回復量 = MAXBASE:対象:魔力*回復率/1000
+BASE:対象:魔力 = LIMIT(BASE:対象:魔力+回復量, 0, MAXBASE:対象:魔力)
+
+RETURN
+
+;獣人、獣のフェロモンによる催淫の関数
+@獣人催淫, 催淫強度 = 1, 対象 = -1, 催淫主 = -1
+#DIM DYNAMIC 催淫強度
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 催淫主
+
+SIF 対象 == -1
+	対象 = TARGET
+
+IF 催淫主 == -1
+	SELECTCASE 対象
+		CASE TARGET
+			催淫主 = PLAYER
+		CASE PLAYER, MASTER, ASSI
+			催淫主 = TARGET
+	ENDSELECT
 ENDIF
 
-SIF PENIS(ARG:1)
-	BASE:(ARG:1):射精 += ARG
+;獣人、獣による催淫
+SELECTCASE CSTR:催淫主:種族
+	CASE "獣人", "獣"
+		CFLAG:対象:媚薬++
+		SIF CFLAG:対象:媚薬%5 == 0
+			CFLAG:対象:残数++
+ENDSELECT
 
-@USERCOM_ABLE_性交, ARG
-#FUNCTION
-;ゲーセンに居る場合はトイレじゃないとできない
-SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
-	RETURNF 0
-;上級売春中は方針がハード、SMじゃないとダメ
-SIF 上級売春中 && !GROUPMATCH(娼館方針, 2, 3)
-	RETURNF 0
-;調教者がペニス有り、もしくはペニスバンドがないとダメ
-SIF !PENIS(PLAYER) && !TEQUIP:PLAYER:ペニスバンド
-	RETURNF 0
-;膣に何か入ってるとダメ
-SIF Ｖ使用中(TARGET)
-	RETURNF 0
-;Ｐ使用中か使用不可のときはダメ
-SIF Ｐ使用中(PLAYER) || Ｐ使用不可(PLAYER)
-	RETURNF 0
-;ヴァギナ無いとダメ
-SIF !VAGINA(TARGET)
-	RETURNF 0
-;小人体型持ちは、調教者と調教対象が小人体型ならOK
-;それ以外の場合は主人が禁断の知識持ちじゃないとダメ
-SIF TALENT:小人体型 && !TALENT:MASTER:禁断の知識 && !TALENT:PLAYER:小人体型
-	RETURNF 0
-;触手調教中はダメ
-SIF TEQUIP:触手
-	RETURNF 0
-;お風呂場プレイ中はプレイマットが無いとダメ
-IF TEQUIP:お風呂場
-	SIF !ITEM:プレイマット
-		RETURNF 0
-ENDIF
-
-RETURNF 1
-
-;助手実行の判定 騎乗位以外で行う
-@USERCOM_ABLE_性交助手, ARG
-#FUNCTION
-;処女で、従順4以下・レズっ気4以下のASSIの場合背面座位はできない（男もしくはサドならＯＫ）
-IF TALENT:処女 && ASSIPLAY
-	SIF SEX(ASSI) == 2 && (ABL:ASSI:従順 <= 4 || ABL:ASSI:レズっ気 <= 4) && !TALENT:ASSI:サド
-		RETURNF 0
-ENDIF
-;潤滑不足で、従順3以下のASSIの場合背面座位はできない（サドならＯＫ）
-IF PALAM:潤滑 < PALAMLV:2 && ASSIPLAY
-	SIF ABL:ASSI:従順 <= 3 && !TALENT:ASSI:サド
-		RETURNF 0
-ENDIF
-
-RETURNF 1
-
-@USERCOM_ABLE_Ａ性交, ARG
-#FUNCTION
-;ゲーセンに居る場合はトイレじゃないとできない
-SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
-	RETURNF 0
-;上級売春中は方針がハード、SMじゃないとダメ 男ならゲイじゃないとダメ
-IF 上級売春中
-	SIF !GROUPMATCH(娼館方針, 2, 3) || (SEX(TARGET) == 1 && !ABL:ゲイ中毒)
-		RETURNF 0
-ENDIF
-;調教者がペニス有り、もしくはペニスバンドがないとダメ
-SIF !PENIS(PLAYER) && !TEQUIP:PLAYER:ペニスバンド
-	RETURNF 0
-;アナル使用中はダメ
-SIF Ａ使用中(TARGET)
-	RETURNF 0
-;Ｐ使用中か使用不可のときはダメ
-SIF Ｐ使用中(PLAYER) || Ｐ使用不可(PLAYER)
-	RETURNF 0
-;小人体型持ちは、調教者と調教対象が小人体型ならOK
-;それ以外の場合は主人が禁断の知識持ちじゃないとダメ
-SIF TALENT:小人体型 && !TALENT:MASTER:禁断の知識 && !TALENT:PLAYER:小人体型
-	RETURNF 0
-;触手調教中はダメ
-SIF TEQUIP:触手
-	RETURNF 0
-;お風呂場プレイ中はプレイマットが無いとダメ
-IF TEQUIP:お風呂場
-	SIF !ITEM:プレイマット
-		RETURNF 0
-ENDIF
-
-RETURNF 1
-
-@USERCOM_ABLE_Ａ性交助手, ARG
-#FUNCTION
-;潤滑不足で、従順3以下のASSIの場合正常位アナルはできない（サドならＯＫ）
-IF PALAM:潤滑 < PALAMLV:2 && ASSIPLAY
-	SIF ABL:ASSI:従順 <= 3 && !TALENT:ASSI:サド
-		RETURNF 0
-ENDIF
-
-RETURNF 1
-
-@USERCOM_ABLE_性交させる, ARG
-#FUNCTION
-;ゲーセンに居る場合はトイレじゃないとできない
-SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
-	RETURNF 0
-;上級売春中は方針がハード、SMじゃないとダメ
-SIF 上級売春中 && !GROUPMATCH(娼館方針, 2, 3)
-	RETURNF 0
-;上級売春中で方針がSM、それでもって客がマゾだと実行できない
-SIF 上級売春中 && TALENT:マゾ
-	RETURNF 0
-;対象がペニス有り、もしくはペニスバンドがないとダメ
-SIF !PENIS(TARGET) && !TEQUIP:ペニスバンド
-	RETURNF 0
-;助手の場合は助手が陥落していないとダメ
-SIF ASSIPLAY && !CFLAG:ASSI:陥落
-	RETURNF 0
-;調教者が小人体型のとき主人が禁断の知識持ちじゃないとダメ
-SIF TALENT:PLAYER:小人体型 && !TALENT:MASTER:禁断の知識 && !TALENT:小人体型
-	RETURNF 0
-;Ｐ使用中、使用不可はダメ
-SIF Ｐ使用中(TARGET) || Ｐ使用不可(TARGET)
-	RETURNF 0
-;触手調教中はダメ
-SIF TEQUIP:触手
-	RETURNF 0
-;お風呂場プレイ中はプレイマットが無いとダメ
-SIF TEQUIP:お風呂場 && !ITEM:プレイマット
-	RETURNF 0
-;新妻プレイ中はダメ
-SIF TEQUIP:エプロン
-	RETURNF 0
-;勃起が一定以上じゃないとダメ(ペニバン装着中なら無視できる)
-SIF PALAM:勃起 < PALAMLV:3 && !TEQUIP:ペニスバンド
-	RETURNF 0
-;縄使用中は出来ない
-SIF TEQUIP:縄
-	RETURNF 0
-
-RETURNF 1
-
-@USERCOM_ABLE_Ｐ奉仕, ARG
-#FUNCTION
-;ゲーセンに居る場合はトイレじゃないとできない
-SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
-	RETURNF 0
-;上級売春中は客が男嫌いだとダメ
-SIF 上級売春中 && TALENT:男嫌い
-	RETURNF 0
-;調教者がペニス無いとダメ
-SIF !PENIS(PLAYER)
-	RETURNF 0
-;Ｐ使用中はダメ
-SIF Ｐ使用中(PLAYER)
-	RETURNF 0
-;縄使用中は不可
-SIF TEQUIP:縄
-	RETURNF 0
-;触手調教中はダメ
-SIF TEQUIP:触手
-	RETURNF 0
-
-RETURNF 1
+RETURN

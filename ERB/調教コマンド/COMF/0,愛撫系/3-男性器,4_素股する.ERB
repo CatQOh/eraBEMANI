@@ -29,29 +29,16 @@ CALL KOJO_MESSAGE_COM
 ;-------------------------------------------------
 ;射精ゲージチェック（奴隷）
 ;-------------------------------------------------
-LOCAL = 200
+LOCAL = 射精ゲージ計算_Ｐ責め(200)
 
-;ABL:調教者の技巧をみる
-LOCAL += ((LOCAL/10)*8)*ABL:PLAYER:技巧
-
-;ABL:欲望をみる
-LOCAL += (LOCAL/10)*ABL:欲望
-
-;奴隷のABL:Ｃ感覚をみる
-SELECTCASE ABL:Ｃ感覚
-	CASE 0
-		TIMES LOCAL , 0.50
-	CASE 1
-		TIMES LOCAL , 0.80
-	CASE 2
-		TIMES LOCAL , 1.00
-	CASE 3
+;素肌、下着なら汚れ次第で増加
+IF 性器露出(PLAYER)
+	SIF GET_STAIN(STAIN:PLAYER:ヴァギナ, "愛液", "精液")
 		TIMES LOCAL , 1.50
-	CASE 4
-		TIMES LOCAL , 2.00
-	CASEELSE
-		LOCAL += LOCAL*(ABL:Ｃ感覚-3)
-ENDSELECT
+ELSEIF (TEQUIP:PLAYER:下半身下着 && CFLAG:PLAYER:挿入可) || OVER_GENITAL(PLAYER) == CSTR:PLAYER:下半身下着
+	SIF GET_STAIN(STAIN:PLAYER:下着, "愛液", "精液")
+		TIMES LOCAL , 1.20
+ENDIF
 
 CALL 射精ゲージ増加, LOCAL, TARGET
 
@@ -111,18 +98,8 @@ ENDIF
 ;-------------------------------------------------
 CALL EXPUP_BASE, 2, 1
 
-;魔力回復
-IF TALENT:PLAYER:魔術師
-	LOCAL = MAXBASE:PLAYER:魔力/300
-	BASE:PLAYER:魔力 = LIMIT(BASE:PLAYER:魔力+LOCAL, 0, MAXBASE:PLAYER:魔力)
-ENDIF
-
-;依存度補正値(相性100↑かつ淫乱で1、娼婦で2）
-IF TALENT:淫乱 && RELATION:(NO:PLAYER) > 100
-	TFLAG:依存度補正 += 1
-ELSEIF TALENT:娼婦 && RELATION:(NO:PLAYER) > 100
-	TFLAG:依存度補正 += 2
-ENDIF
+SIF !避妊具(TARGET)
+	CALL 魔力回復, 1, PLAYER
 
 RETURN 1
 

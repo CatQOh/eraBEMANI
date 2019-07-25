@@ -1,33 +1,47 @@
 ﻿@EXPUP_BASE, ARG, ARG:1
 IF ARG
 	IF SEX(TARGET) == 1 && SEX(PLAYER) == 1
-		PRINTFORML ゲイ経験+{ARG}
-		EXP:ゲイ経験 += ARG
-		PRINTFORML ゲイ経験+{ARG} (%CALLNAME:PLAYER%)
-		EXP:PLAYER:ゲイ経験 += ARG
+		CALL EXPUP, "ゲイ経験", ARG
+		CALL EXPUP, "ゲイ経験", ARG, PLAYER
 	ELSEIF SEX(TARGET) == 2 && SEX(PLAYER) == 2
-		PRINTFORML レズ経験+{ARG}
-		EXP:レズ経験 += ARG
-		PRINTFORML レス経験+{ARG} (%CALLNAME:PLAYER%)
-		EXP:PLAYER:レズ経験 += ARG
+		CALL EXPUP, "レズ経験", ARG
+		CALL EXPUP, "レズ経験", ARG, PLAYER
 	ENDIF
 ENDIF
 
 IF ARG:1
 	IF PLAYER == MASTER
-		PRINTFORML 主人調教経験+{ARG:1}
-		EXP:主人調教経験 += ARG:1
+		CALL EXPUP, "主人調教経験", ARG:1
 	ELSEIF PLAYER == ASSI
-		PRINTFORML 助手調教経験+{ARG:1}
-		EXP:助手調教経験 += ARG:1
+		CALL EXPUP, "助手調教経験", ARG:1
 	ENDIF
 	IF TALENT:アニマル
-		PRINTFORML 飼育経験+{ARG:1} (%CALLNAME:PLAYER%)
-		EXP:PLAYER:飼育経験 += ARG:1
+		CALL EXPUP, "飼育経験", ARG:1, PLAYER
 	ENDIF
 ENDIF
 
 RETURN 0
+
+;-------------------------------------------------
+;経験増加関数 メッセージ表示と増加処理を行う
+;第一引数:経験名(文字列変数) 第二引数:上昇値 第三引数:上昇させるキャラ(省略でTARGET)
+;-------------------------------------------------
+@EXPUP, 経験名, 上昇値, 対象 = -1
+#DIMS DYNAMIC 経験名
+#DIM DYNAMIC 上昇値
+#DIM DYNAMIC 対象
+
+SIF 対象 == -1
+	対象 = TARGET
+
+IF 上昇値 < 0
+	PRINTFORML %経験名%-{ABS(上昇値)}(%CALLNAME:対象%)
+ELSE
+	PRINTFORML %経験名%+{上昇値}(%CALLNAME:対象%)
+ENDIF
+EXP:対象:経験名 += 上昇値
+
+RETURN
 
 ;-------------------------------------------------
 ;苦痛快楽経験、奉仕快楽経験のチェック
@@ -59,62 +73,63 @@ IF TFLAG:奉仕快楽
 			LOCAL = 16
 			TIMES UP:恐怖 , 0.65
 			TIMES UP:反感 , 0.30
+			TIMES UP:恭順 , 1.50
 		CASE IS >= 8000
 			LOCAL = 12
 			TIMES UP:恐怖 , 0.70
 			TIMES UP:反感 , 0.40
+			TIMES UP:恭順 , 1.40
 		CASE IS >= 5000
 			LOCAL = 8
 			TIMES UP:恐怖 , 0.75
 			TIMES UP:反感 , 0.50
+			TIMES UP:恭順 , 1.30
 		CASE IS >= 3000
 			LOCAL = 4
 			TIMES UP:恐怖 , 0.80
 			TIMES UP:反感 , 0.60
+			TIMES UP:恭順 , 1.20
 		CASE IS >= 2000
 			LOCAL = 2
 			TIMES UP:恐怖 , 0.85
 			TIMES UP:反感 , 0.70
+			TIMES UP:恭順 , 1.10
 		CASE IS >= 1000
 			LOCAL = 1
 			TIMES UP:恐怖 , 0.90
 			TIMES UP:反感 , 0.80
+			TIMES UP:恭順 , 1.05
 	ENDSELECT
-	IF LOCAL
-		PRINTFORML 奉仕快楽経験+{LOCAL}
-		EXP:奉仕快楽経験 += LOCAL
-	ENDIF
+	SIF LOCAL
+		CALL EXPUP, "奉仕快楽経験", LOCAL
 ENDIF
 
 ;苦痛快楽のチェック
 LOCAL = 0
-IF UP:欲情 >= 3000 && UP:苦痛 >= 2000
+IF UP:欲情 >= 30000 && UP:苦痛 >= 20000
 	LOCAL = 16
 	TIMES UP:恐怖 , 0.65
-ELSEIF UP:欲情 >= 2500 && UP:苦痛 >= 1500
+ELSEIF UP:欲情 >= 15000 && UP:苦痛 >= 10000
 	LOCAL = 12
 	TIMES UP:恐怖 , 0.70
-ELSEIF UP:欲情 >= 1500 && UP:苦痛 >= 1000
+ELSEIF UP:欲情 >= 10000 && UP:苦痛 >= 7000
 	LOCAL = 8
 	TIMES UP:恐怖 , 0.75
-ELSEIF UP:欲情 >= 1000 && UP:苦痛 >= 500
+ELSEIF UP:欲情 >= 7000 && UP:苦痛 >= 5000
 	LOCAL = 4
 	TIMES UP:恐怖 , 0.80
-ELSEIF UP:欲情 >= 600 && UP:苦痛 >= 300
+ELSEIF UP:欲情 >= 5000 && UP:苦痛 >= 2000
 	LOCAL = 2
 	TIMES UP:恐怖 , 0.85
-ELSEIF UP:欲情 >= 300 && UP:苦痛 >= 100
+ELSEIF UP:欲情 >= 1000 && UP:苦痛 >= 500
 	LOCAL = 1
 	TIMES UP:恐怖 , 0.90
 ENDIF
 IF LOCAL
-	PRINTFORML 苦痛快楽経験+{LOCAL}
-	EXP:苦痛快楽経験 += LOCAL
+	CALL EXPUP, "苦痛快楽経験", LOCAL
 	;嗜虐快楽経験
 	LOCAL = (ABL:PLAYER:サドっ気+ABL:マゾっ気)/2
-	IF LOCAL > 0
-		PRINTFORML 嗜虐快楽経験(%CALLNAME:PLAYER%)+{LOCAL}
-		EXP:PLAYER:嗜虐快楽経験 += LOCAL
-	ENDIF
+	SIF LOCAL > 0
+		CALL EXPUP, "嗜虐快楽経験", LOCAL, PLAYER
 ENDIF
 
