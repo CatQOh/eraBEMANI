@@ -10,8 +10,11 @@ SIF TEQUIP:ゲームセンター
 SIF 上級売春中
 	RETURNF 0
 ;奴隷が服従か隷属でないとダメ
-SIF !TALENT:服従 && !TALENT:隷属
-	RETURNF 0
+IF !TALENT:服従 && !TALENT:隷属
+	;ただしPLAYERがサドならおＫ
+	SIF !TALENT:PLAYER:サド
+		RETURNF 0
+ENDIF
 
 ;胸が露出してないとダメ
 SIF OVER_BUST(TARGET) != ""
@@ -30,17 +33,9 @@ SIF ITEM:電極プラグ <= 0
 ;胸に道具ついてるとダメ
 SIF Ｂ使用中(TARGET)
 	RETURNF 0
-;搾乳器使用中は不可
-SIF TEQUIP:搾乳器
-	RETURNF 0
 ;お風呂場プレイ中はダメ
 SIF TEQUIP:お風呂場
 	RETURNF 0
-;ASSIの場合、技巧3以上じゃないと使えない。
-IF PLAYER == ASSI
-	SIF ABL:ASSI:技巧 < 3
-		RETURNF 0
-ENDIF
 
 COMRESULT = 1
 RETURNF 1
@@ -99,19 +94,12 @@ CALL SAMEN_SHOOT_T, 0, NOWEX:射精
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
-;異常経験が3未満のとき、異常経験追加
-IF EXP:異常経験 < 3
-	EXP:異常経験 += 1
-	PRINTL 異常経験+1
-ENDIF
-
 CALL EXPUP_BASE, 1, 5
 
-;依存度補正値(服従で1、隷属で2）
-IF TALENT:服従 && PLAYER == MASTER
-	TFLAG:依存度補正 += 1
-ELSEIF TALENT:隷属 && PLAYER == MASTER
-	TFLAG:依存度補正 += 2
+;初めてなら異常経験追加
+IF !CFLAG:電極で責められた経験
+	PRINTL ＜初電極調教＞
+	CALL EXPUP, "異常経験", 1
 ENDIF
 
 RETURN 1

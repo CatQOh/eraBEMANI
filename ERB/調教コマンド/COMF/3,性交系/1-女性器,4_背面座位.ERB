@@ -28,138 +28,25 @@ IF !TEQUIP:縄
 	;すべての命令に共通の要素を考慮
 	;(従順が高いと命令に従いやすいなど)
 	CALL COM_ORDER
-
-	VARSET LOCAL, 0
 	LOCAL = RESULT
 
-	;ABL:欲望
-	IF ABL:欲望
-		LOCAL += ABL:欲望*3
-		PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望*3})
-	ENDIF
-	;ABL:Ｖ感覚
-	IF ABL:Ｖ感覚
-		LOCAL += ABL:Ｖ感覚*2
-		PRINTFORM +Ｖ感覚LV{ABL:Ｖ感覚}({ABL:Ｖ感覚*2})
-	ENDIF
-	;ABL:性交中毒
-	IF ABL:性交中毒
-		LOCAL += ABL:性交中毒
-		PRINTFORM +性交中毒LV{ABL:性交中毒}({ABL:性交中毒})
-	ENDIF
-	;快楽刻印
-	IF MARK:快楽刻印
-		LOCAL += MARK:快楽刻印*3
-		PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印*3})
-	ENDIF
-	;PALAM:潤滑（の不足）
-	IF PALAM:潤滑 < PALAMLV:3
-		LOCAL -= 5
-		PRINT -潤滑不足(5)
-	ENDIF
-
-	CALL COM_ORDER_欲情, 0
+	CALL COM_ORDER_セックス
 	LOCAL += RESULT
 
-	REPEAT VARSIZE("TALENT")
-		LOCAL:1 = 0
-		SIF !TALENT:COUNT
-			CONTINUE
-		SELECTCASE TALENTNAME:COUNT
-			CASE "親愛"
-				SIF PLAYER == MASTER
-					LOCAL:1 = 20
-			CASE "恋慕"
-				SIF PLAYER == MASTER
-					LOCAL:1 = 15
-			CASE "快感の否定"
-				SIF FALLTYPE(TARGET) != 2
-					LOCAL:1 = -5
-			CASE "羽", "尻尾", "恥じらい"
-				LOCAL:1 = -5
-			CASE "男嫌い"
-				SIF SEX(PLAYER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
-					LOCAL:1 = -12
-			CASE "処女"
-				LOCAL:1 = -40
-		ENDSELECT
-		IF LOCAL:1
-			PRINTFORM \@SIGN(LOCAL:1) == 1 ? + # - \@%TALENTNAME:COUNT%({ABS(LOCAL:1)})
-			LOCAL += LOCAL:1
-		ENDIF
-	REND
-
-	;V経験
-	IF !TALENT:処女 && EXP:Ｖ経験 < EXPLV:2
-		LOCAL -= 15
-		PRINT -Ｖ経験不足(15)
+	IF TALENT:羽
+		LOCAL -= 5
+		PRINT -羽(5)
 	ENDIF
 
-	;出産トラウマ
-	IF CFLAG:出産トラウマ
-		LOCAL -= CFLAG:出産トラウマ
-		PRINTFORM -妊娠出産トラウマ({CFLAG:出産トラウマ})
+	IF TALENT:尻尾
+		LOCAL -= 5
+		PRINT -尻尾(5)
 	ENDIF
 
-	;媚薬
-	IF TEQUIP:媚薬
-		LOCAL += 6
-		PRINT +媚薬(6)
-	ENDIF
+	;40以上で実行
+	CALL 実効値判定, LOCAL, 40
 
-	LOCAL:1 = 0
-	;精液の汚れ
-	SIF GETBIT(STAIN:PLAYER:ペニス, 2)
-		LOCAL:1 += 5
-	;アナルの汚れ
-	SIF GETBIT(STAIN:PLAYER:ペニス, 3)
-		LOCAL:1 += 7
-	;母乳
-	SIF GETBIT(STAIN:PLAYER:ペニス, 4)
-		LOCAL:1 += 2
-	;尿
-	SIF GETBIT(STAIN:PLAYER:ペニス, 7)
-		LOCAL:1 += 5
-
-	SIF TALENT:汚れ無視
-		LOCAL:1 /= 3
-	SIF TALENT:潔癖症
-		LOCAL:1 *= 2
-
-	;汚れあり
-	IF LOCAL:1
-		LOCAL -= LOCAL:1
-		IF TALENT:汚れ無視
-			PRINT -汚れあり、汚れ無視
-		ELSEIF TALENT:潔癖症
-			PRINT -汚れあり、潔癖症
-		ELSE
-			PRINT -汚れあり
-		ENDIF
-		PRINTFORM ({LOCAL:1})
-	ENDIF
-
-	;合計を表示(40以上で実行)
-	PRINTFORM  = {LOCAL}
-
-	LOCAL:2 = 40
-	SELECTCASE LOCAL
-		CASE IS < LOCAL:2
-			PRINT  < 
-		CASE IS > LOCAL:2
-			PRINT  > 
-		CASEELSE
-			PRINT  = 
-	ENDSELECT
-	PRINTFORM 実行値{LOCAL:2}
-	WAIT
-	;実行できない
-	IF LOCAL < LOCAL:2
-		CALL KOJO_MESSAGE_EVENT, "コマンド拒否時"
-		RETURN 0
-	ELSE
-		RETURN 1
-	ENDIF
+	RETURN RESULT
 ELSE
 	RETURN 1
 ENDIF
@@ -215,84 +102,26 @@ ENDIF
 ;-------------------------------------------------
 ;射精ゲージチェック（主人）
 ;-------------------------------------------------
-LOCAL = 900
+LOCAL = 射精ゲージ計算_Ｖ挿入実行者(900)
 
 ;ABL:調教者の技巧をみる
 LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
 
 ;ABL:技巧をみる
 LOCAL += (LOCAL/10)*ABL:技巧
-
-;ABL:従順をみる
-LOCAL += (LOCAL/10)*ABL:従順 - (LOCAL/10)*2
-
-;ABL:欲望をみる
-LOCAL += (LOCAL/10)*ABL:欲望
-
-;PALAM:潤滑をみる
-LOCAL += (GETPALAMLV(PALAM:潤滑, 4)-2)*(LOCAL/5)
-
-;プレイヤーのABL:Ｃ感覚をみる
-SELECTCASE ABL:PLAYER:Ｃ感覚
-	CASE 0
-		TIMES LOCAL , 1.00
-	CASE 1
-		TIMES LOCAL , 1.50
-	CASE 2
-		TIMES LOCAL , 2.00
-	CASE 3
-		TIMES LOCAL , 2.50
-	CASE 4
-		TIMES LOCAL , 3.50
-	CASEELSE
-		LOCAL += LOCAL*(ABL:PLAYER:Ｃ感覚-1)
-ENDSELECT
-
-;処女だと増える
-SIF TALENT:処女
-	TIMES LOCAL , 1.50
-
-;子供は締まりが良いので増える
-SIF TALENT:小柄体型
-	TIMES LOCAL , 1.20
 
 CALL 射精ゲージ増加, LOCAL, PLAYER
 
 ;-------------------------------------------------
 ;射精ゲージチェック（奴隷）
 ;-------------------------------------------------
-LOCAL = 700
+LOCAL = 射精ゲージ計算_Ｖ挿入(700)
 
 ;ABL:調教者の技巧をみる
 LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
 
 ;ABL:技巧をみる
 LOCAL += (LOCAL/10)*ABL:技巧
-
-;ABL:従順をみる
-LOCAL += (LOCAL/10)*ABL:従順
-
-;ABL:欲望をみる
-LOCAL += (LOCAL/5)*ABL:欲望
-
-;PALAM:潤滑をみる
-LOCAL += (GETPALAMLV(PALAM:潤滑, 4)-3)*(LOCAL/5)
-
-;奴隷のABL:Ｖ感覚をみる
-SELECTCASE ABL:Ｖ感覚
-	CASE 0
-		TIMES LOCAL , 0.50
-	CASE 1
-		TIMES LOCAL , 0.80
-	CASE 2
-		TIMES LOCAL , 1.00
-	CASE 3
-		TIMES LOCAL , 1.50
-	CASE 4
-		TIMES LOCAL , 2.00
-	CASEELSE
-		LOCAL += (LOCAL/2)*ABL:Ｖ感覚
-ENDSELECT
 
 ;奴隷のABL:マゾっ気をみる
 LOCAL += (LOCAL/5)*ABL:マゾっ気
@@ -319,8 +148,9 @@ SOURCE:露出 = 300
 SOURCE:逸脱 = 300
 SOURCE:反感 = 500
 
-;上のほうで計算した汚れデータ
-SOURCE:不潔 = LOCAL:1*40+60
+;汚れ
+SIF GET_STAIN(STAIN:PLAYER:ペニス, "精液", "アナル", "尿")
+	SOURCE:不潔 = 100
 
 ;-------------------------------------------------
 ;特殊ソース処理
@@ -376,38 +206,21 @@ STAIN:PLAYER:ペニス |= STAIN:膣内
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
-;V経験
-EXP:Ｖ経験++
-PRINTL Ｖ経験+1
-
-;性交経験
-EXP:性交経験++
-EXP:PLAYER:性交経験++
-PRINTL 性交経験+1
-
 CALL EXPUP_BASE, 3, 3
 
+CALL EXPUP, "Ｖ経験", 1
+CALL EXPUP, "性交経験", 1
+CALL EXPUP, "性交経験", 1, PLAYER
+
 ;愛情経験
-IF TALENT:恋慕 && PLAYER == MASTER
-	PRINTL 愛情経験+2
-	EXP:愛情経験 += 2
-ELSEIF TALENT:親愛 && PLAYER == MASTER
-	PRINTL 愛情経験+4
-	EXP:愛情経験 += 4
-ENDIF
+SIF TALENT:恋慕 && PLAYER == MASTER
+	CALL EXPUP, "愛情経験", 2
+SIF TALENT:親愛 && PLAYER == MASTER
+	CALL EXPUP, "愛情経験", 4
 
 ;魔力回復
-IF TALENT:魔術師 && !TEQUIP:PLAYER:コンドーム && !TEQUIP:PLAYER:搾精コンドーム
-	LOCAL = MAXBASE:魔力/300
-	BASE:魔力 = LIMIT(BASE:魔力+LOCAL, 0, MAXBASE:魔力)
-ENDIF
-
-;依存度補正値(恋慕で1、親愛で2）
-IF TALENT:恋慕 && PLAYER == MASTER
-	TFLAG:依存度補正 += 2
-ELSEIF TALENT:親愛 && PLAYER == MASTER
-	TFLAG:依存度補正 += 4
-ENDIF
+SIF !避妊具(PLAYER)
+	CALL 魔力回復, 3
 
 経験回数:PLAYER:(NO:TARGET) += 1
 経験回数:TARGET:(NO:PLAYER) += 1
