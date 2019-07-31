@@ -298,17 +298,15 @@ SELECTCASE TFLAG:主人挿入箇所
 			TALENT:ASSI:処女 = 0
 			PRINTL ＜助手処女喪失＞
 			IF !CFLAG:助手の処女喪失を見せつけられた経験
+				PRINTL ＜公開処女喪失＞
 				IF RELATION:(NO:ASSI) > 100
-					PRINTL 異常経験+2
-					EXP:異常経験 += 2
+					CALL EXPUP, "異常経験", 2
 				ELSE
-					PRINTL 異常経験+1
-					EXP:異常経験++
+					CALL EXPUP, "異常経験", 1
 				ENDIF
 			ENDIF
 			CFLAG:助手の処女喪失を見せつけられた経験++
-			PRINTFORML 異常経験+1(%CALLNAME:ASSI%)
-			EXP:ASSI:異常経験++
+			CALL EXPUP, "異常経験", 1, ASSI
 			IF TALENT:ASSI:性転換済
 				CFLAG:ASSI:性転換処女の奪われ方 = 2
 				VIRGIN:ASSI:11 = %NAME:MASTER%
@@ -327,43 +325,32 @@ SELECTCASE TFLAG:主人挿入箇所
 		ENDIF
 
 		;助手のＶ経験
-		PRINTFORML Ｖ経験+1(%CALLNAME:ASSI%)
-		EXP:ASSI:Ｖ経験++
-		PRINTL 性交経験+1
-		EXP:PLAYER:性交経験++
-		EXP:ASSI:性交経験++
+		CALL EXPUP, "Ｖ経験", 2, ASSI
+		CALL EXPUP, "性交経験", 1, ASSI
+		CALL EXPUP, "性交経験", 1, MASTER
 	CASE 2
 		;助手のＡ経験
-		PRINTFORML Ａ経験+2(%CALLNAME:ASSI%)
-		EXP:ASSI:Ａ経験 += 2
-		PRINTL 性交経験+1
-		EXP:PLAYER:性交経験++
-		EXP:ASSI:性交経験++
+		CALL EXPUP, "Ａ経験", 2, ASSI
+		CALL EXPUP, "性交経験", 1, ASSI
+		CALL EXPUP, "性交経験", 1, MASTER
 ENDSELECT
 
 ;助手の同性愛経験
 IF SEX(MASTER) == SEX(ASSI)
 	SELECTCASE SEX(ASSI)
 		CASE 1
-			PRINTFORML ゲイ経験+3(%CALLNAME:ASSI%)
-			EXP:ASSI:ゲイ経験 += 3
+			CALL EXPUP, "ゲイ経験", 3, ASSI
+			CALL EXPUP, "ゲイ経験", 3, MASTER
 		CASE 2
-			PRINTFORML レズ経験+3(%CALLNAME:ASSI%)
-			EXP:ASSI:レズ経験 += 3
+			CALL EXPUP, "レズ経験", 3, ASSI
+			CALL EXPUP, "レズ経験", 3, MASTER
 	ENDSELECT
 ENDIF
 
 ;魔力回復
-IF TALENT:ASSI:魔術師 && !TEQUIP:PLAYER:コンドーム && !TEQUIP:PLAYER:搾精コンドーム
-	LOCAL = MAXBASE:ASSI:魔力/300
-	BASE:ASSI:魔力 = LIMIT(BASE:ASSI:魔力+LOCAL, 0, MAXBASE:ASSI:魔力)
-ENDIF
-
-;依存度補正値(助手との相性100↑かつ淫乱で1、娼婦で2）
-IF TALENT:淫乱 && RELATION:(NO:ASSI) > 100
-	TFLAG:依存度補正 += 1
-ELSEIF TALENT:娼婦 && RELATION:(NO:ASSI) > 100
-	TFLAG:依存度補正 += 2
+IF !避妊具(MASTER)
+	CALL 魔力回復, 3, ASSI
+	CALL 獣人催淫, 1, ASSI, MASTER
 ENDIF
 
 経験回数:MASTER:(NO:ASSI) += 1

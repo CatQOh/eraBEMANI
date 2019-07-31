@@ -44,117 +44,20 @@ RETURNF 1
 ;すべての命令に共通の要素を考慮
 ;(従順が高いと命令に従いやすいなど)
 CALL COM_ORDER
-
-VARSET LOCAL, 0
 LOCAL = RESULT
 
-;ABL:欲望
-IF ABL:欲望
-	LOCAL += ABL:欲望
-	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望})
-ENDIF
-;ABL:奉仕精神
-IF ABL:奉仕精神
-	LOCAL += ABL:奉仕精神*4
-	PRINTFORM +奉仕精神LV{ABL:奉仕精神}({ABL:奉仕精神*4})
-ENDIF
-;ABL:精液中毒
-IF ABL:精液中毒
-	LOCAL += ABL:精液中毒*3
-	PRINTFORM +精液中毒LV{ABL:精液中毒}({ABL:精液中毒*3})
-ENDIF
-;快楽刻印
-IF MARK:快楽刻印
-	LOCAL += MARK:快楽刻印
-	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印})
-ENDIF
-
-CALL COM_ORDER_欲情, 1
+CALL COM_ORDER_フェラ
 LOCAL += RESULT
 
-REPEAT VARSIZE("TALENT")
-	LOCAL:1 = 0
-	SIF !TALENT:COUNT
-		CONTINUE
-	SELECTCASE TALENTNAME:COUNT
-		CASE "娼婦"
-			LOCAL:1 = 10
-		CASE "淫乱"
-			LOCAL:1 = 5
-		CASE "恥じらい"
-			LOCAL:1 = -3
-		CASE "献身的"
-			LOCAL:1 = 6
-		CASE "汚臭敏感"
-			LOCAL:1 = -5
-		CASE "汚臭鈍感"
-			LOCAL:1 = 3
-		CASE "男嫌い"
-			SIF SEX(MASTER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
-				LOCAL:1 = -12
-	ENDSELECT
-	IF LOCAL:1
-		PRINTFORM \@SIGN(LOCAL:1) == 1 ? + # - \@%TALENTNAME:COUNT%({ABS(LOCAL:1)})
-		LOCAL += LOCAL:1
-	ENDIF
-REND
-
-LOCAL:1 = 0
-;愛液の汚れ
-SIF GETBIT(STAIN:PLAYER:ペニス, 0)
-	LOCAL:1 += 1
-;精液の汚れ
-SIF GETBIT(STAIN:PLAYER:ペニス, 2)
-	LOCAL:1 += 3
-;アナルの汚れ
-SIF GETBIT(STAIN:PLAYER:ペニス, 3)
-	LOCAL:1 += 5
-;母乳汚れ
-SIF GETBIT(STAIN:PLAYER:ペニス, 4)
-	LOCAL:1 += 1
-;尿
-SIF GETBIT(STAIN:PLAYER:ペニス, 7)
-	LOCAL:1 += 3
-
-SIF TALENT:汚れ無視
-	LOCAL:1 /= 3
-SIF TALENT:潔癖症
-	LOCAL:1 *= 2
-
-;汚れあり
-IF LOCAL:1
-	LOCAL -= LOCAL:1
-	IF TALENT:汚れ無視
-		PRINT -汚れあり、汚れ無視
-	ELSEIF TALENT:潔癖症
-		PRINT -汚れあり、潔癖症
-	ELSE
-		PRINT -汚れあり
-	ENDIF
-	PRINTFORM ({LOCAL:1})
+IF RELATION:ASSI:(NO:TARGET) > 100 && RELATION:(NO:ASSI) > 100
+	LOCAL += 3
+	PRINTFORM +%CALLNAME:TARGET%と%CALLNAME:ASSI%の相性良好(3)
 ENDIF
 
-;合計を表示(34以上で実行)
-PRINTFORM  = {LOCAL}
+;34以上で実行
+CALL 実効値判定, LOCAL, 34
 
-LOCAL:2 = 34
-SELECTCASE LOCAL
-	CASE IS < LOCAL:2
-		PRINT  < 
-	CASE IS > LOCAL:2
-		PRINT  > 
-	CASEELSE
-		PRINT  = 
-ENDSELECT
-PRINTFORM 実行値{LOCAL:2}
-WAIT
-;実行できない
-IF LOCAL < LOCAL:2
-		CALL KOJO_MESSAGE_EVENT, "コマンド拒否時"
-	RETURN 0
-ELSE
-	RETURN 1
-ENDIF
+RETURN RESULT
 
 @COM_ダブルフェラ
 PRINTL ダブルフェラ
@@ -175,29 +78,7 @@ TFLAG:奴隷実行 = 1
 ;-------------------------------------------------
 ;射精ゲージチェック
 ;-------------------------------------------------
-LOCAL = 400
-
-;ABL:技巧をみる
-LOCAL += (LOCAL/5)*ABL:技巧
-
-;ABL:従順をみる
-LOCAL += (LOCAL/10)*ABL:従順 - (LOCAL/10)*2
-
-;ABL:奉仕精神をみる
-SELECTCASE ABL:奉仕精神
-	CASE 0
-		TIMES LOCAL , 0.50
-	CASE 1
-		TIMES LOCAL , 0.80
-	CASE 2
-		TIMES LOCAL , 1.20
-	CASE 3
-		TIMES LOCAL , 1.50
-	CASE 4
-		TIMES LOCAL , 1.80
-	CASEELSE
-		LOCAL += LOCAL/3*ABL:奉仕精神
-ENDSELECT
+LOCAL = 射精ゲージ計算_奉仕(400)
 
 ;TALENT:舌使いをみる
 SIF TALENT:舌使い
@@ -225,25 +106,9 @@ SELECTCASE ABL:ASSI:奉仕精神
 		LOCAL += LOCAL/3*ABL:奉仕精神
 ENDSELECT
 
-;助手のTALENT:舌使い、猫舌をみる
-SIF TALENT:ASSI:舌使い || TALENT:猫舌
+;助手のTALENT:舌使いをみる
+SIF TALENT:ASSI:舌使い
 	TIMES LOCAL , 1.50
-
-;プレイヤーのABL:Ｃ感覚をみる
-SELECTCASE ABL:PLAYER:Ｃ感覚
-	CASE 0
-		TIMES LOCAL , 1.00
-	CASE 1
-		TIMES LOCAL , 1.50
-	CASE 2
-		TIMES LOCAL , 2.00
-	CASE 3
-		TIMES LOCAL , 2.50
-	CASE 4
-		TIMES LOCAL , 3.50
-	CASEELSE
-		LOCAL += LOCAL*(ABL:PLAYER:Ｃ感覚-1)
-ENDSELECT
 
 CALL 射精ゲージ増加, LOCAL, MASTER
 
@@ -260,9 +125,11 @@ SOURCE:達成 = 200
 SOURCE:屈従 = 600
 SOURCE:逸脱 = 200
 SOURCE:反感 = 200
+SOURCE:不潔 = 100
 
-;上のほうで計算した汚れデータ
-SOURCE:不潔 = LOCAL:1*30+100
+;汚れ
+SIF GET_STAIN(STAIN:PLAYER:ペニス, "アナル", "尿")
+	SOURCE:不潔 += 50
 
 ;-------------------------------------------------
 ;特殊ソース処理
@@ -289,76 +156,58 @@ CALL SAMEN_SHOOT_T, 0, NOWEX:射精
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
-;射精に関係なく行われる処理はここから
-PRINTL フェラ経験+1
-EXP:フェラ経験++
-PRINTFORML フェラ経験+1(%CALLNAME:ASSI%)
-EXP:ASSI:フェラ経験++
-
 ;同性愛経験
 IF SEX(TARGET) == SEX(MASTER) && SEX(TARGET) == SEX(ASSI)
 	SELECTCASE SEX(TARGET)
 		CASE 1
-			PRINTL ゲイ経験+7
-			EXP:ゲイ経験 += 7
+			CALL EXPUP, "ゲイ経験", 7
+			CALL EXPUP, "ゲイ経験", 7, ASSI
+			CALL EXPUP, "ゲイ経験", 7, MASTER
 		CASE 2
-			PRINTL レズ経験+7
-			EXP:レズ経験 += 7
+			CALL EXPUP, "レズ経験", 7
+			CALL EXPUP, "レズ経験", 7, ASSI
+			CALL EXPUP, "レズ経験", 7, MASTER
 	ENDSELECT
 ELSEIF SEX(TARGET) == SEX(MASTER) || SEX(TARGET) == SEX(ASSI)
 	SELECTCASE SEX(TARGET)
 		CASE 1
-			PRINTL ゲイ経験+4
-			EXP:ゲイ経験 += 4
+			CALL EXPUP, "ゲイ経験", 4
+			SIF SEX(TARGET) == SEX(ASSI)
+				CALL EXPUP, "ゲイ経験", 4, ASSI
+			SIF SEX(TARGET) == SEX(MASTER)
+				CALL EXPUP, "ゲイ経験", 4, MASTER
 		CASE 2
-			PRINTL レズ経験+4
-			EXP:レズ経験 += 4
+			CALL EXPUP, "レズ経験", 4
+			SIF SEX(TARGET) == SEX(ASSI)
+				CALL EXPUP, "レズ経験", 4, ASSI
+			SIF SEX(TARGET) == SEX(MASTER)
+				CALL EXPUP, "レズ経験", 4, MASTER
 	ENDSELECT
 ENDIF
 
 ;調教経験
-PRINTL 主人調教経験+2
-EXP:主人調教経験 += 2
-PRINTL 助手調教経験+1
-EXP:助手調教経験 += 1
+CALL EXPUP, "主人調教経験", 2
+CALL EXPUP, "助手調教経験", 1
+
+;射精に関係なく行われる処理はここから
+CALL EXPUP, "フェラ経験", 1
+CALL EXPUP, "フェラ経験", 1, ASSI
+
 
 ;奴隷が猫舌持ちの場合は、調教者に嗜虐快楽経験を追加
-IF TALENT:猫舌
-	EXP:嗜虐快楽経験 += 1
-	PRINTL 嗜虐快楽経験+1
-ENDIF
+SIF TALENT:猫舌
+	CALL EXPUP, "嗜虐快楽経験", 1
+
 ;助手が猫舌持ちの場合はry
-IF TALENT:ASSI:猫舌
-	EXP:ASSI:嗜虐快楽経験 += 1
-	PRINTL 嗜虐快楽経験+1
-ENDIF
+SIF TALENT:ASSI:猫舌
+	CALL EXPUP, "嗜虐快楽経験", 1, ASSI
 
 ;魔力回復
-IF TALENT:魔術師 && !TEQUIP:MASTER:コンドーム && !TEQUIP:MASTER:搾精コンドーム
-	LOCAL = MAXBASE:魔力/200
-	BASE:魔力 = LIMIT(BASE:魔力+LOCAL, 0, MAXBASE:魔力)
-ENDIF
-IF TALENT:ASSI:魔術師 && !TEQUIP:コンドーム && !TEQUIP:搾精コンドーム
-	LOCAL = MAXBASE:ASSI:魔力/200
-	BASE:ASSI:魔力 = LIMIT(BASE:ASSI:魔力+LOCAL, 0, MAXBASE:ASSI:魔力)
-ENDIF
-
-;獣人、獣による催淫
-SELECTCASE CSTR:PLAYER:種族
-	CASE "獣人", "獣"
-		CFLAG:媚薬++
-		CFLAG:ASSI:媚薬++
-		SIF CFLAG:媚薬%5 == 0
-			CFLAG:残数++
-		SIF CFLAG:ASSI:媚薬%5 == 0
-			CFLAG:ASSI:残数++
-ENDSELECT
-
-;依存度補正値(相性100↑かつ淫乱で1、娼婦で2）
-IF TALENT:淫乱 && RELATION:(NO:PLAYER) > 100
-	TFLAG:依存度補正 += 1
-ELSEIF TALENT:娼婦 && RELATION:(NO:PLAYER) > 100
-	TFLAG:依存度補正 += 2
+IF !避妊具(MASTER)
+	CALL 魔力回復, 5
+	CALL 魔力回復, 5, ASSI
+	CALL 獣人催淫, 1, TARGET, MASTER
+	CALL 獣人催淫, 1, ASSI, MASTER
 ENDIF
 
 TFLAG:奉仕快楽 = 1

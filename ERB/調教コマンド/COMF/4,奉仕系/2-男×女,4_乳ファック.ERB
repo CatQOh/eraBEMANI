@@ -17,14 +17,8 @@ ENDSELECT
 ;調教者がペニス無いとダメ
 SIF !PENIS(PLAYER) || Ｐ使用中(PLAYER)
 	RETURNF 0
-;ニプルキャップ使用中は不可
-SIF TEQUIP:ニプルキャップ
-	RETURNF 0
-;搾乳器使用中は不可
-SIF TEQUIP:搾乳器
-	RETURNF 0
-;乳房電極装着中はダメ
-SIF TEQUIP:乳房電極
+;Ｂ使用中は不可
+SIF Ｂ使用中(TARGET)
 	RETURNF 0
 ;お風呂場プレイ中はプレイマットが無いとダメ
 SIF TEQUIP:お風呂場 && !ITEM:プレイマット
@@ -189,27 +183,10 @@ IF !TEQUIP:縄
 		PRINTFORM ({LOCAL:1})
 	ENDIF
 
-	;合計を表示(15以上で実行)
-	PRINTFORM  = {LOCAL}
+	;15以上で実行
+	CALL 実効値判定, LOCAL, 15
 
-	LOCAL:2 = 15
-	SELECTCASE LOCAL
-		CASE IS < LOCAL:2
-			PRINT  < 
-		CASE IS > LOCAL:2
-			PRINT  > 
-		CASEELSE
-			PRINT  = 
-	ENDSELECT
-	PRINTFORM 実行値{LOCAL:2}
-	WAIT
-	;実行できない
-	IF LOCAL < LOCAL:2
-		CALL KOJO_MESSAGE_EVENT, "コマンド拒否時"
-		RETURN 0
-	ELSE
-		RETURN 1
-	ENDIF
+	RETURN RESULT
 ELSE
 	RETURN 1
 ENDIF
@@ -293,9 +270,10 @@ SOURCE:中毒 = 150
 SOURCE:露出 = 100
 SOURCE:逸脱 = 150
 SOURCE:反感 = 200
+SOURCE:不潔 = 100
 
 ;上のほうで計算した汚れデータ
-SOURCE:不潔 = LOCAL:1*50+100
+SOURCE:不潔 += LOCAL:1*50
 
 ;-------------------------------------------------
 ;特殊ソース処理
@@ -331,17 +309,9 @@ STAIN:PLAYER:ペニス |= STAIN:胸
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
-PRINTL パイズリ経験+1
-EXP:パイズリ経験 += 1
-
 CALL EXPUP_BASE, 2, 2
 
-;依存度補正値(主人かつ恋慕、淫乱、服従で1。親愛、娼婦、隷属で2）
-IF (TALENT:恋慕 || TALENT:淫乱 || TALENT:服従) && !ASSIPLAY
-	TFLAG:依存度補正 += 1
-ELSEIF (TALENT:親愛 || TALENT:娼婦 || TALENT:隷属) && !ASSIPLAY
-	TFLAG:依存度補正 += 2
-ENDIF
+CALL EXPUP, "パイズリ経験", 1
 
 RETURN 1
 

@@ -5,7 +5,7 @@
 #FUNCTION
 ;パイズリ実行判定
 SELECTCASE TALENT:バストサイズ
-	;男or絶壁だとダメ
+	;絶壁だとダメ
 	CASE 0, 1
 		RETURNF 0
 	;貧乳なら技巧6以上必要
@@ -60,119 +60,15 @@ RETURNF 1
 ;すべての命令に共通の要素を考慮
 ;(従順が高いと命令に従いやすいなど)
 CALL COM_ORDER
-
-VARSET LOCAL, 0
 LOCAL = RESULT
 
-;ABL:欲望
-IF ABL:欲望
-	LOCAL += ABL:欲望
-	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望})
-ENDIF
-;ABL:奉仕精神
-IF ABL:奉仕精神
-	LOCAL += ABL:奉仕精神*4
-	PRINTFORM +奉仕精神LV{ABL:奉仕精神}({ABL:奉仕精神*4})
-ENDIF
-;ABL:精液中毒
-IF ABL:精液中毒
-	LOCAL += ABL:精液中毒*3
-	PRINTFORM +精液中毒LV{ABL:精液中毒}({ABL:精液中毒*3})
-ENDIF
-
-;快楽刻印
-IF MARK:快楽刻印
-	LOCAL += MARK:快楽刻印
-	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印})
-ENDIF
-
-CALL COM_ORDER_欲情, 1
+CALL COM_ORDER_フェラ
 LOCAL += RESULT
 
-REPEAT VARSIZE("TALENT")
-	LOCAL:1 = 0
-	SIF !TALENT:COUNT
-		CONTINUE
-	SELECTCASE TALENTNAME:COUNT
-		CASE "親愛"
-			SIF PLAYER == MASTER
-				LOCAL:1 = 10
-		CASE "恋慕"
-			SIF PLAYER == MASTER
-				LOCAL:1 = 5
-		CASE "恥じらい"
-			LOCAL:1 = -3
-		CASE "献身的"
-			LOCAL:1 = 6
-		CASE "汚臭敏感"
-			LOCAL:1 = -3
-		CASE "快感の否定"
-			SIF FALLTYPE(TARGET) != 2
-				LOCAL:1 = -3
-		CASE "汚臭鈍感"
-			LOCAL:1 = 1
-		CASE "男嫌い"
-			SIF SEX(PLAYER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
-				LOCAL:1 = -12
-	ENDSELECT
-	IF LOCAL:1
-		PRINTFORM \@SIGN(LOCAL:1) == 1 ? + # - \@%TALENTNAME:COUNT%({ABS(LOCAL:1)})
-		LOCAL += LOCAL:1
-	ENDIF
-REND
+;42以上で実行
+CALL 実効値判定, LOCAL, 42
 
-LOCAL:1 = 0
-;愛液の汚れ
-SIF GETBIT(STAIN:PLAYER:ペニス, 0)
-	LOCAL:1 += 1
-;精液の汚れ
-SIF GETBIT(STAIN:PLAYER:ペニス, 2)
-	LOCAL:1 += 5
-;アナルの汚れ
-SIF GETBIT(STAIN:PLAYER:ペニス, 3)
-	LOCAL:1 += 7
-;尿
-SIF GETBIT(STAIN:PLAYER:ペニス, 7)
-	LOCAL:1 += 7
-
-SIF TALENT:汚れ無視
-	LOCAL:1 /= 3
-SIF TALENT:潔癖症
-	LOCAL:1 *= 2
-;汚れあり
-IF LOCAL:1
-	LOCAL -= LOCAL:1
-	IF TALENT:汚れ無視
-		PRINT -汚れあり、汚れ無視
-	ELSEIF TALENT:潔癖症
-		PRINT -汚れあり、潔癖症
-	ELSE
-		PRINT -汚れあり
-	ENDIF
-	PRINTFORM ({LOCAL:1})
-ENDIF
-
-;合計を表示(42以上で実行)
-PRINTFORM  = {LOCAL}
-
-LOCAL:2 = 42
-SELECTCASE LOCAL
-	CASE IS < LOCAL:2
-		PRINT  < 
-	CASE IS > LOCAL:2
-		PRINT  > 
-	CASEELSE
-		PRINT  = 
-ENDSELECT
-PRINTFORM 実行値{LOCAL:2}
-WAIT
-;実行できない
-IF LOCAL < LOCAL:2
-		CALL KOJO_MESSAGE_EVENT, "コマンド拒否時"
-	RETURN 0
-ELSE
-	RETURN 1
-ENDIF
+RETURN RESULT
 
 @COM_パイズリフェラ
 ;-------------------------------------------------
@@ -208,45 +104,7 @@ TFLAG:奴隷実行 = 1
 ;-------------------------------------------------
 ;射精ゲージチェック
 ;-------------------------------------------------
-LOCAL = 900
-
-;ABL:技巧をみる
-LOCAL += (LOCAL/5)*ABL:技巧
-
-;ABL:従順をみる
-LOCAL += (LOCAL/10)*ABL:従順 - (LOCAL/10)*2
-
-;ABL:奉仕精神をみる
-SELECTCASE ABL:奉仕精神
-	CASE 0
-		TIMES LOCAL , 0.50
-	CASE 1
-		TIMES LOCAL , 0.80
-	CASE 2
-		TIMES LOCAL , 1.20
-	CASE 3
-		TIMES LOCAL , 1.50
-	CASE 4
-		TIMES LOCAL , 1.80
-	CASEELSE
-		LOCAL += LOCAL/3*ABL:奉仕精神
-ENDSELECT
-
-;プレイヤーのABL:Ｃ感覚をみる
-SELECTCASE ABL:PLAYER:Ｃ感覚
-	CASE 0
-		TIMES LOCAL , 1.00
-	CASE 1
-		TIMES LOCAL , 1.50
-	CASE 2
-		TIMES LOCAL , 2.00
-	CASE 3
-		TIMES LOCAL , 2.50
-	CASE 4
-		TIMES LOCAL , 3.50
-	CASEELSE
-		LOCAL += LOCAL*(ABL:PLAYER:Ｃ感覚-1)
-ENDSELECT
+LOCAL = 射精ゲージ計算_奉仕(900)
 
 ;TALENT:バストサイズをみる
 SELECTCASE TALENT:バストサイズ
@@ -261,6 +119,7 @@ SELECTCASE TALENT:バストサイズ
 	CASEELSE
 		TIMES LOCAL , 1.30
 ENDSELECT
+
 ;PLAYERが小柄体型・小人体型なら相対的に胸が大きくなるので少し増やす
 SIF TALENT:PLAYER:小柄体型 || TALENT:PLAYER:小人体型
 	TIMES LOCAL , 1.15
@@ -300,9 +159,11 @@ SOURCE:達成 = 800
 SOURCE:屈従 = 1200
 SOURCE:逸脱 = 400
 SOURCE:反感 = 400
+SOURCE:不潔 = 100
 
-;上のほうで計算した汚れデータ
-SOURCE:不潔 = LOCAL:1*70+60
+;汚れ
+SIF GET_STAIN(STAIN:PLAYER:ペニス, "アナル", "尿")
+	SOURCE:不潔 += 80
 
 ;-------------------------------------------------
 ;特殊ソース処理
@@ -339,45 +200,22 @@ SIF ABL:奉仕精神 >= 2 && ABL:技巧 >= 2
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
-;フェラ経験
-PRINTL フェラ経験+1
-EXP:フェラ経験 += 1
-PRINTL パイズリ経験+1
-EXP:パイズリ経験 += 1
-
 CALL EXPUP_BASE, 3, 3
 
+CALL EXPUP, "フェラ経験", 1
+CALL EXPUP, "フェラ経験", 1
+
 ;愛情経験
-IF (TALENT:恋慕 || TALENT:親愛) && PLAYER == MASTER
-	PRINTL 愛情経験+1
-	EXP:愛情経験 += 1
-ENDIF
+SIF (TALENT:恋慕 || TALENT:親愛) && PLAYER == MASTER
+	CALL EXPUP, "愛情経験", 1
 
-;奴隷が猫舌持ちの場合は、調教者に嗜虐快楽経験を追加
-IF TALENT:猫舌
-	EXP:嗜虐快楽経験 += 1
-	PRINTL 嗜虐快楽経験+1
-ENDIF
+;奴隷が猫舌持ちの場合は嗜虐快楽経験を追加
+SIF TALENT:猫舌
+	CALL EXPUP, "嗜虐快楽経験", 1
 
-;魔力回復
-IF TALENT:魔術師 && !TEQUIP:PLAYER:コンドーム && !TEQUIP:PLAYER:搾精コンドーム
-	LOCAL = MAXBASE:魔力/200
-	BASE:魔力 = LIMIT(BASE:魔力+LOCAL, 0, MAXBASE:魔力)
-ENDIF
-
-;獣人、獣による催淫
-SELECTCASE CSTR:PLAYER:種族
-	CASE "獣人", "獣"
-		CFLAG:媚薬++
-		SIF CFLAG:媚薬%5 == 0
-			CFLAG:残数++
-ENDSELECT
-
-;依存度補正値(主人かつ恋慕、淫乱、服従で1。親愛、娼婦、隷属で2）
-IF (TALENT:恋慕 || TALENT:淫乱 || TALENT:服従) && PLAYER == MASTER
-	TFLAG:依存度補正 += 1
-ELSEIF (TALENT:親愛 || TALENT:娼婦 || TALENT:隷属) && PLAYER == MASTER
-	TFLAG:依存度補正 += 2
+IF !避妊具(PLAYER)
+	CALL 魔力回復, 5
+	CALL 獣人催淫, 1
 ENDIF
 
 TFLAG:奉仕快楽 = 1

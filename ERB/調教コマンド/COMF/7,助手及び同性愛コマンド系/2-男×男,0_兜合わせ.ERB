@@ -133,27 +133,10 @@ IF LOCAL:1
 	PRINTFORM ({LOCAL:1})
 ENDIF
 
-;合計を表示(20以上で実行)
-PRINTFORM  = {LOCAL}
+;20以上で実行
+CALL 実効値判定, LOCAL, 20
 
-LOCAL:2 = 20
-SELECTCASE LOCAL
-	CASE IS < LOCAL:2
-		PRINT  < 
-	CASE IS > LOCAL:2
-		PRINT  > 
-	CASEELSE
-		PRINT  = 
-ENDSELECT
-PRINTFORM 実行値{LOCAL:2}
-WAIT
-;実行できない
-IF LOCAL < LOCAL:2
-		CALL KOJO_MESSAGE_EVENT, "コマンド拒否時"
-	RETURN 0
-ELSE
-	RETURN 1
-ENDIF
+RETURN RESULT
 
 @COM_兜合わせ
 PRINTL 兜合わせ
@@ -184,47 +167,7 @@ ENDIF
 ;-------------------------------------------------
 ;射精ゲージチェック
 ;-------------------------------------------------
-LOCAL = 500
-
-;ABL:技巧をみる
-LOCAL += (LOCAL/5)*ABL:技巧
-
-;ABL:従順をみる
-LOCAL += (LOCAL/10)*ABL:従順 - (LOCAL/10)*2
-
-;ABL:奉仕精神をみる
-SELECTCASE ABL:奉仕精神
-	CASE 0
-		TIMES LOCAL , 0.50
-	CASE 1
-		TIMES LOCAL , 0.80
-	CASE 2
-		TIMES LOCAL , 1.20
-	CASE 3
-		TIMES LOCAL , 1.50
-	CASE 4
-		TIMES LOCAL , 1.80
-	CASEELSE
-		LOCAL += LOCAL/3*ABL:奉仕精神
-ENDSELECT
-
-;プレイヤーのABL:Ｃ感覚をみる
-SELECTCASE ABL:PLAYER:Ｃ感覚
-	CASE 0
-		TIMES LOCAL , 1.00
-	CASE 1
-		TIMES LOCAL , 1.50
-	CASE 2
-		TIMES LOCAL , 2.00
-	CASE 3
-		TIMES LOCAL , 2.50
-	CASE 4
-		TIMES LOCAL , 3.50
-	CASEELSE
-		LOCAL += LOCAL*(ABL:PLAYER:Ｃ感覚-1)
-ENDSELECT
-
-CALL 射精ゲージ増加, LOCAL, PLAYER
+CALL 射精ゲージ増加, 射精ゲージ計算_奉仕(500), PLAYER
 
 ;-------------------------------------------------
 ;射精ゲージチェック（奴隷）
@@ -250,7 +193,7 @@ SELECTCASE ABL:奉仕精神
 		LOCAL += LOCAL/3*ABL:奉仕精神
 ENDSELECT
 
-;プレイヤーのABL:Ｃ感覚をみる
+;ABL:Ｃ感覚をみる
 SELECTCASE ABL:Ｃ感覚
 	CASE 0
 		TIMES LOCAL , 1.00
@@ -287,9 +230,11 @@ SOURCE:屈従 = 300
 SOURCE:露出 = 50
 SOURCE:逸脱 = 100
 SOURCE:反感 = 100
+SOURCE:不潔 = 60
 
-;上のほうで計算した汚れデータ
-SOURCE:不潔 = LOCAL:1*40+60
+;汚れ
+SIF GET_STAIN(STAIN:PLAYER:ペニス, "アナル", "尿")
+	SOURCE:不潔 += 40
 
 ;-------------------------------------------------
 ;特殊ソース処理
@@ -325,23 +270,12 @@ STAIN:PLAYER:ペニス |= STAIN:ペニス
 ;-------------------------------------------------
 CALL EXPUP_BASE, 3, 2
 
-;依存度補正値(主人かつ恋慕、淫乱、服従で1。親愛、娼婦、隷属で2）
-IF (TALENT:恋慕 || TALENT:淫乱 || TALENT:服従) && PLAYER == MASTER
-	TFLAG:依存度補正 += 1
-ELSEIF (TALENT:親愛 || TALENT:娼婦 || TALENT:隷属) && PLAYER == MASTER
-	TFLAG:依存度補正 += 2
-ENDIF
-
 ;魔力回復
-IF !TEQUIP:コンドーム && !TEQUIP:搾精コンドーム && !TEQUIP:PLAYER:コンドーム
-	IF TALENT:魔術師
-		LOCAL = MAXBASE:魔力/300
-		BASE:魔力 = LIMIT(BASE:魔力+LOCAL, 0, MAXBASE:魔力)
-	ENDIF
-	IF TALENT:PLAYER:魔術師
-		LOCAL = MAXBASE:PLAYER:魔力/300
-		BASE:PLAYER:魔力 = LIMIT(BASE:PLAYER:魔力+LOCAL, 0, MAXBASE:PLAYER:魔力)
-	ENDIF
+IF !避妊具(PLAYER) && !避妊具(TARGET)
+	CALL 魔力回復, 3
+	CALL 魔力回復, 3, PLAYER
+	CALL 獣人催淫, 1
+	CALL 獣人催淫, 1, PLAYER
 ENDIF
 
 TFLAG:奉仕快楽 = 1

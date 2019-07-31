@@ -47,120 +47,15 @@ RETURNF 1
 ;すべての命令に共通の要素を考慮
 ;(従順が高いと命令に従いやすいなど)
 CALL COM_ORDER
-
-VARSET LOCAL, 0
 LOCAL = RESULT
 
-;ABL:欲望
-IF ABL:欲望
-	LOCAL += ABL:欲望
-	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望})
-ENDIF
-;ABL:奉仕精神
-IF ABL:奉仕精神
-	LOCAL += ABL:奉仕精神*4
-	PRINTFORM +奉仕精神LV{ABL:奉仕精神}({ABL:奉仕精神*4})
-ENDIF
-;ABL:精液中毒
-IF ABL:精液中毒
-	LOCAL += ABL:精液中毒*3
-	PRINTFORM +精液中毒LV{ABL:精液中毒}({ABL:精液中毒*3})
-ENDIF
-
-;快楽刻印
-IF MARK:快楽刻印
-	LOCAL += MARK:快楽刻印
-	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印})
-ENDIF
-
-CALL COM_ORDER_欲情, 1
+CALL COM_ORDER_奉仕
 LOCAL += RESULT
 
-REPEAT VARSIZE("TALENT")
-	LOCAL:1 = 0
-	SIF !TALENT:COUNT
-		CONTINUE
-	SELECTCASE TALENTNAME:COUNT
-		CASE "親愛"
-			SIF PLAYER == MASTER
-				LOCAL:1 = 10
-		CASE "恋慕"
-			SIF PLAYER == MASTER
-				LOCAL:1 = 5
-		CASE "恥じらい"
-			LOCAL:1 = -3
-		CASE "献身的"
-			LOCAL:1 = 6
-		CASE "快感の否定"
-			SIF FALLTYPE(TARGET) != 2
-				LOCAL:1 = -3
-		CASE "汚臭敏感"
-			LOCAL:1 = -3
-		CASE "汚臭鈍感"
-			LOCAL:1 = 3
-		CASE "男嫌い"
-			SIF SEX(PLAYER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
-				LOCAL:1 = -5
-	ENDSELECT
-	IF LOCAL:1
-		PRINTFORM \@SIGN(LOCAL:1) == 1 ? + # - \@%TALENTNAME:COUNT%({ABS(LOCAL:1)})
-		LOCAL += LOCAL:1
-	ENDIF
-REND
+;40以上で実行
+CALL 実効値判定, LOCAL, 40
 
-LOCAL:1 = 0
-;愛液の汚れ
-SIF GETBIT(STAIN:PLAYER:ペニス, 0)
-	LOCAL:1 += 1
-;精液の汚れ
-SIF GETBIT(STAIN:PLAYER:ペニス, 2)
-	LOCAL:1 += 2
-;アナルの汚れ
-SIF GETBIT(STAIN:PLAYER:ペニス, 3)
-	LOCAL:1 += 3
-;尿
-SIF GETBIT(STAIN:PLAYER:ペニス, 7)
-	LOCAL:1 += 3
-
-SIF TALENT:汚れ無視
-	LOCAL:1 /= 3
-SIF TALENT:潔癖症
-	LOCAL:1 *= 2
-
-;汚れあり
-IF LOCAL:1
-	LOCAL -= LOCAL:1
-	IF TALENT:汚れ無視
-		PRINT -汚れあり、汚れ無視
-	ELSEIF TALENT:潔癖症
-		PRINT -汚れあり、潔癖症
-	ELSE
-		PRINT -汚れあり
-	ENDIF
-	PRINTFORM ({LOCAL:1})
-ENDIF
-
-;合計を表示(40以上で実行)
-PRINTFORM  = {LOCAL}
-
-LOCAL:2 = 40
-SELECTCASE LOCAL
-	CASE IS < LOCAL:2
-		PRINT  < 
-	CASE IS > LOCAL:2
-		PRINT  > 
-	CASEELSE
-		PRINT  = 
-ENDSELECT
-PRINTFORM 実行値{LOCAL:2}
-WAIT
-;実行できない
-IF LOCAL < LOCAL:2
-		CALL KOJO_MESSAGE_EVENT, "コマンド拒否時"
-	RETURN 0
-ELSE
-	RETURN 1
-ENDIF
+RETURN RESULT
 
 @COM_泡踊り
 PRINTL 泡踊り
@@ -181,49 +76,13 @@ TFLAG:奴隷実行 = 1
 ;-------------------------------------------------
 ;射精ゲージチェック
 ;-------------------------------------------------
-IF !CFLAG:PLAYER:貞操帯
+IF CFLAG:PLAYER:貞操帯
 	LOCAL = 0
 ELSE
 	LOCAL = 300
 ENDIF
 
-;ABL:技巧をみる
-LOCAL += (LOCAL/5)*ABL:技巧
-
-;ABL:従順をみる
-LOCAL += (LOCAL/10)*ABL:従順 - (LOCAL/10)*2
-
-;ABL:奉仕精神をみる
-SELECTCASE ABL:奉仕精神
-	CASE 0
-		TIMES LOCAL , 0.50
-	CASE 1
-		TIMES LOCAL , 0.80
-	CASE 2
-		TIMES LOCAL , 1.20
-	CASE 3
-		TIMES LOCAL , 1.50
-	CASE 4
-		TIMES LOCAL , 1.80
-	CASEELSE
-		LOCAL += LOCAL/3*ABL:奉仕精神
-ENDSELECT
-
-;プレイヤーのABL:Ｃ感覚をみる
-SELECTCASE ABL:PLAYER:Ｃ感覚
-	CASE 0
-		TIMES LOCAL , 1.00
-	CASE 1
-		TIMES LOCAL , 1.50
-	CASE 2
-		TIMES LOCAL , 2.00
-	CASE 3
-		TIMES LOCAL , 2.50
-	CASE 4
-		TIMES LOCAL , 3.50
-	CASEELSE
-		LOCAL += LOCAL*(ABL:PLAYER:Ｃ感覚-1)
-ENDSELECT
+LOCAL = 射精ゲージ計算_奉仕(LOCAL)
 
 ;種族:人魚なら水の扱いが得意なので増やす
 SIF CSTR:種族 == "人魚"
@@ -288,17 +147,8 @@ ENDIF
 CALL EXPUP_BASE, 2, 2
 
 ;愛情経験
-IF (TALENT:恋慕 || TALENT:親愛) && PLAYER == MASTER
-	PRINTL 愛情経験+1
-	EXP:愛情経験++
-ENDIF
-
-;依存度補正値(主人かつ恋慕、淫乱、服従で1。親愛、娼婦、隷属で2）
-IF (TALENT:恋慕 || TALENT:淫乱 || TALENT:服従) && PLAYER == MASTER
-	TFLAG:依存度補正 += 1
-ELSEIF (TALENT:恋慕 || TALENT:淫乱 || TALENT:隷属) && PLAYER == MASTER
-	TFLAG:依存度補正 += 2
-ENDIF
+SIF FALLTYPE(TARGET) == 1 && PLAYER == MASTER
+	CALL EXPUP, "愛情経験", 1
 
 TFLAG:奉仕快楽 = 1
 

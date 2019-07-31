@@ -23,34 +23,19 @@ RETURNF 1
 ;すべての命令に共通の要素を考慮
 ;(従順が高いと命令に従いやすいなど)
 CALL COM_ORDER
-
-VARSET LOCAL, 0
 LOCAL = RESULT
 
-;ABL:欲望
-IF ABL:欲望
-	LOCAL += ABL:欲望
-	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望})
-ENDIF
-;ABL:奉仕精神
-IF ABL:奉仕精神
-	LOCAL += ABL:奉仕精神*3
-	PRINTFORM +奉仕精神LV{ABL:奉仕精神}({ABL:奉仕精神*3})
-ENDIF
-;快楽刻印
-IF MARK:快楽刻印
-	LOCAL += MARK:快楽刻印*2
-	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印*2})
-ENDIF
+CALL COM_ORDER_奉仕
+LOCAL += RESULT
 
 REPEAT VARSIZE("TALENT")
 	LOCAL:1 = 0
 	SIF !TALENT:COUNT
 		CONTINUE
 	SELECTCASE TALENTNAME:COUNT
-		CASE "汚臭鈍感", "汚れ無視", "倒錯的", "サド"
+		CASE "汚れ無視", "倒錯的", "サド"
 			LOCAL:1 = 3
-		CASE "汚臭敏感", "潔癖症"
+		CASE "潔癖症"
 			LOCAL:1 = -5
 	ENDSELECT
 	IF LOCAL:1
@@ -91,27 +76,10 @@ IF LOCAL:1
 	PRINTFORM ({LOCAL:1})
 ENDIF
 
-;合計を表示(22以上で実行)
-PRINTFORM  = {LOCAL}
+;22以上で実行
+CALL 実効値判定, LOCAL, 22
 
-LOCAL:2 = 22
-SELECTCASE LOCAL
-	CASE IS < LOCAL:2
-		PRINT  < 
-	CASE IS > LOCAL:2
-		PRINT  > 
-	CASEELSE
-		PRINT  = 
-ENDSELECT
-PRINTFORM 実行値{LOCAL:2}
-WAIT
-;実行できない
-IF LOCAL < LOCAL:2
-		CALL KOJO_MESSAGE_EVENT, "コマンド拒否時"
-	RETURN 0
-ELSE
-	RETURN 1
-ENDIF
+RETURN RESULT
 
 @COM_アナル愛撫させる
 PRINTL アナル愛撫させる
@@ -141,47 +109,7 @@ TEQUIP:PLAYER:下半身下着 = 0
 ;-------------------------------------------------
 ;射精ゲージチェック
 ;-------------------------------------------------
-LOCAL = 150
-
-;ABL:技巧をみる
-LOCAL += (LOCAL/5)*ABL:技巧
-
-;ABL:従順をみる
-LOCAL += (LOCAL/10)*ABL:従順 - (LOCAL/10)*2
-
-;ABL:奉仕精神をみる
-SELECTCASE ABL:奉仕精神
-	CASE 0
-		TIMES LOCAL , 0.50
-	CASE 1
-		TIMES LOCAL , 0.80
-	CASE 2
-		TIMES LOCAL , 1.20
-	CASE 3
-		TIMES LOCAL , 1.50
-	CASE 4
-		TIMES LOCAL , 1.80
-	CASEELSE
-		LOCAL += LOCAL/3*ABL:奉仕精神
-ENDSELECT
-
-;プレイヤーのABL:Ａ感覚をみる
-SELECTCASE ABL:PLAYER:Ａ感覚
-	CASE 0
-		TIMES LOCAL , 1.00
-	CASE 1
-		TIMES LOCAL , 1.50
-	CASE 2
-		TIMES LOCAL , 2.00
-	CASE 3
-		TIMES LOCAL , 2.50
-	CASE 4
-		TIMES LOCAL , 3.50
-	CASEELSE
-		LOCAL += LOCAL*(ABL:PLAYER:Ａ感覚-1)
-ENDSELECT
-
-CALL 射精ゲージ増加, LOCAL, PLAYER
+CALL 射精ゲージ増加, 射精ゲージ計算_Ａ奉仕(150), PLAYER
 
 ;-------------------------------------------------
 ;ソース追加処理
@@ -235,12 +163,7 @@ STAIN:PLAYER:アナル |= STAIN:手
 ;-------------------------------------------------
 CALL EXPUP_BASE, 2, 2
 
-;依存度補正値(服従で1、隷属で2）
-IF TALENT:服従 && PLAYER == MASTER
-	TFLAG:依存度補正 += 1
-ELSEIF TALENT:隷属 && PLAYER == MASTER
-	TFLAG:依存度補正 += 2
-ENDIF
+CALL EXPUP, "Ａ経験", 1, PLAYER
 
 ;奉仕快楽フラグ
 TFLAG:奉仕快楽 = 1
