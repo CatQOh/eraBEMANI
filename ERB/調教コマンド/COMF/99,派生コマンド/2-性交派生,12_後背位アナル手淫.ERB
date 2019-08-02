@@ -23,42 +23,13 @@ CALL KOJO_MESSAGE_COM
 ;-------------------------------------------------
 ;射精ゲージチェック（主人）
 ;-------------------------------------------------
-LOCAL = 900
+LOCAL = 射精ゲージ計算_Ａ挿入実行者(900)
 
 ;ABL:調教者の技巧をみる
 LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
 
 ;ABL:技巧をみる
 LOCAL += (LOCAL/10)*ABL:技巧
-
-;ABL:従順をみる
-LOCAL += (LOCAL/10)*ABL:従順 - (LOCAL/10)*2
-
-;ABL:欲望をみる
-LOCAL += (LOCAL/10)*ABL:欲望
-
-;PALAM:潤滑をみる
-LOCAL += (GETPALAMLV(PALAM:潤滑, 4)-2)*(LOCAL/5)
-
-;プレイヤーのABL:Ｃ感覚をみる
-SELECTCASE ABL:PLAYER:Ｃ感覚
-	CASE 0
-		TIMES LOCAL , 1.00
-	CASE 1
-		TIMES LOCAL , 1.50
-	CASE 2
-		TIMES LOCAL , 2.00
-	CASE 3
-		TIMES LOCAL , 2.50
-	CASE 4
-		TIMES LOCAL , 3.50
-	CASEELSE
-		LOCAL += LOCAL*(ABL:PLAYER:Ｃ感覚-1)
-ENDSELECT
-
-;子供は締まりが良いので増える
-SIF TALENT:小柄体型
-	TIMES LOCAL , 1.20
 
 CALL 射精ゲージ増加, LOCAL, PLAYER
 
@@ -82,31 +53,15 @@ LOCAL += (LOCAL/5)*ABL:欲望
 ;PALAM:潤滑をみる
 SELECTCASE GETPALAMLV(PALAM:潤滑, 4)
 	CASE 0
+		TIMES LOCAL , 0.05
+	CASE 1
 		TIMES LOCAL , 0.20
-	CASE 1
-		TIMES LOCAL , 0.50
 	CASE 2
-		TIMES LOCAL , 1.00
-	CASE 3
-		TIMES LOCAL , 1.50
-	CASE 4
-		TIMES LOCAL , 2.50
-ENDSELECT
-
-;奴隷のABL:Ａ感覚をみる
-SELECTCASE ABL:Ａ感覚
-	CASE 0
 		TIMES LOCAL , 0.50
-	CASE 1
-		TIMES LOCAL , 0.80
-	CASE 2
-		TIMES LOCAL , 1.00
 	CASE 3
-		TIMES LOCAL , 1.50
+		TIMES LOCAL , 1.00
 	CASE 4
-		TIMES LOCAL , 2.00
-	CASEELSE
-		LOCAL += (LOCAL/2)*ABL:Ａ感覚
+		TIMES LOCAL , 1.50
 ENDSELECT
 
 ;奴隷のABL:Ａ感覚をみる
@@ -134,7 +89,6 @@ SELECTCASE ABL:Ａ感覚
 	CASEELSE
 		LOCAL *= ABL:Ａ感覚*3/2
 ENDSELECT
-
 
 ;奴隷のABL:マゾっ気をみる
 LOCAL += (LOCAL/5)*ABL:マゾっ気
@@ -220,29 +174,15 @@ STAIN:PLAYER:ペニス |= STAIN:アナル
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
-;A経験
-EXP:Ａ経験 += 2
-PRINTL Ａ経験+2
-
-;性交経験
-EXP:性交経験++
-EXP:PLAYER:性交経験++
-PRINTL 性交経験+1
-
 CALL EXPUP_BASE, 3, 3
 
-;魔力回復
-IF TALENT:魔術師 && !TEQUIP:PLAYER:コンドーム
-	LOCAL = MAXBASE:魔力/300
-	BASE:魔力 = LIMIT(BASE:魔力+LOCAL, 0, MAXBASE:魔力)
-ENDIF
+CALL EXPUP, "Ａ経験", 2
+CALL EXPUP, "性交経験", 1
+CALL EXPUP, "性交経験", 1, PLAYER
 
-;依存度補正値(服従で1、隷属で2）
-IF TALENT:服従 && !ASSIPLAY
-	TFLAG:依存度補正 += 1
-ELSEIF TALENT:隷属 && !ASSIPLAY
-	TFLAG:依存度補正 += 2
-ENDIF
+;魔力回復
+SIF !避妊具(PLAYER)
+	CALL 魔力回復, 3
 
 経験回数:PLAYER:(NO:TARGET) += 1
 経験回数:TARGET:(NO:PLAYER) += 1

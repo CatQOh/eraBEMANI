@@ -39,7 +39,12 @@ INVERTBIT TEQUIP:触手, 0
 ;装備は外す
 FOR LCOUNT, 11, 50
 	SELECTCASE TEQUIPNAME:LCOUNT
-		CASE "クリキャップ", "オナホール", "バイブ", "アナルバイブ", "アナルビーズ", "ニプルキャップ", "搾乳器", "アイマスク", "縄", "ボールギャグ", "浣腸器", "拡張バルーン", "アナル電極", "乳房電極", "コンドーム", "触手口辱", "搾精コンドーム", "Ｖ異物", "Ａ異物", "ペニスバンド", "電動エネマグラ", "搾精器"
+		{
+		CASE "クリキャップ", "オナホール", "バイブ", "アナルバイブ", "アナルビーズ", "ニプルキャップ", "搾乳器", 
+			 "アイマスク", "縄", "ボールギャグ", "浣腸器", 
+			 "拡張バルーン", "アナル電極", "乳房電極", "コンドーム", "触手口辱", 
+			 "搾精コンドーム", "Ｖ異物", "Ａ異物", "ペニスバンド", "電動エネマグラ", "搾精器"
+		}
 			TEQUIP:LCOUNT = 0
 	ENDSELECT
 NEXT
@@ -119,11 +124,10 @@ ENDSELECT
 ;経験の処理
 ;-------------------------------------------------
 IF !EXP:触手経験
-	EXP:異常経験++
-	PRINTL 異常経験+1
+	PRINTL ＜初触手経験＞
+	CALL EXPUP, "異常経験", 1
 ENDIF
-PRINTL 触手経験+1
-EXP:触手経験++
+CALL EXPUP, "触手経験", 1
 
 RETURN 1
 
@@ -148,7 +152,7 @@ SOURCE:反感 += 1000
 ;射精チェック
 ;-------------------------------------------------
 SELECTCASE SELECTCOM
-	CASE 161 TO 170
+	CASE 500 TO 550
 		IF MAXBASE:MASTER:触手射精 != 0
 			LOCAL = 1000
 			;ABL:技巧をみる
@@ -284,34 +288,26 @@ SOURCE:中毒 += LOCAL:1
 ;射精時の処理
 ;大量射精
 IF LOCAL >= 2
-	EXP:精液経験 += 3
 	PRINTL 触手大量射精
-	PRINTL 精液経験+3
+	CALL EXPUP, "精液経験", 3
 	TENTACLE++
 	BASE:MASTER:触手射精 -= MAXBASE:MASTER:触手射精*LOCAL
 	NOWEX:MASTER:触手射精 = LOCAL
 	EX:MASTER:触手射精++
 	VIDEOBONUS:11++
 	;魔力回復
-	IF TALENT:魔術師
-		LOCAL = MAXBASE:魔力/50
-		BASE:魔力 = LIMIT(BASE:魔力+LOCAL, 0, MAXBASE:魔力)
-	ENDIF
+	CALL 魔力回復, 20
 ;通常の射精
 ELSEIF LOCAL == 1
-	EXP:精液経験 += 1
 	PRINTL 触手射精
-	PRINTL 精液経験+1
+	CALL EXPUP, "精液経験", 2
 	TENTACLE++
 	BASE:MASTER:触手射精 -= MAXBASE:MASTER:触手射精
 	NOWEX:MASTER:触手射精 = LOCAL
 	EX:MASTER:触手射精++
 	VIDEOBONUS:12++
 	;魔力回復
-	IF TALENT:魔術師
-		LOCAL = MAXBASE:魔力/50
-		BASE:魔力 = LIMIT(BASE:魔力+LOCAL, 0, MAXBASE:魔力)
-	ENDIF
+	CALL 魔力回復, 20
 ENDIF
 
 ;-------------------------------------------------
@@ -356,17 +352,8 @@ ENDIF
 ;-------------------------------------------------
 ;各触手派生コマンドから集めた触手経験を一括処理
 TENTACLE++
-PRINTFORML 触手経験+{TENTACLE}
-EXP:触手経験 += TENTACLE
+CALL EXPUP, "触手経験", TENTACLE
 TENTACLE = 0
-
-;依存度補正値(服従で1、隷属で2 強制変更なので、これまでの数値をリセット）
-TFLAG:依存度補正 = 0
-IF TALENT:服従 && PLAYER == MASTER
-	TFLAG:依存度補正 = 2
-ELSEIF TALENT:隷属 && PLAYER == MASTER
-	TFLAG:依存度補正 = 4
-ENDIF
 
 RETURN 1
 

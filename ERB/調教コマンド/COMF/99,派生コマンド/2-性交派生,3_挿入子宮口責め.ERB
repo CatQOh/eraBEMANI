@@ -22,101 +22,20 @@ TFLAG:膣コマンド = 1
 ;-------------------------------------------------
 ;射精ゲージチェック
 ;-------------------------------------------------
-LOCAL = 900
+LOCAL = 射精ゲージ計算_Ｖ挿入実行者(900)
 
 ;ABL:調教者の技巧をみる
 LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
 
 ;ABL:技巧をみる
 LOCAL += (LOCAL/10)*ABL:技巧
-
-;ABL:従順をみる
-LOCAL += (LOCAL/10)*ABL:従順 - (LOCAL/10)*2
-
-;ABL:欲望をみる
-LOCAL += (LOCAL/10)*ABL:欲望
-
-;PALAM:潤滑をみる
-LOCAL += (GETPALAMLV(PALAM:潤滑, 4)-2)*(LOCAL/5)
-
-;プレイヤーのABL:Ｃ感覚をみる
-SELECTCASE ABL:PLAYER:Ｃ感覚
-	CASE 0
-		TIMES LOCAL , 1.00
-	CASE 1
-		TIMES LOCAL , 1.50
-	CASE 2
-		TIMES LOCAL , 2.00
-	CASE 3
-		TIMES LOCAL , 2.50
-	CASE 4
-		TIMES LOCAL , 3.50
-	CASEELSE
-		LOCAL += LOCAL*(ABL:PLAYER:Ｃ感覚-1)
-ENDSELECT
-
-;子供は締まりが良いので増える
-SIF TALENT:小柄体型
-	TIMES LOCAL , 1.20
 
 CALL 射精ゲージ増加, LOCAL, PLAYER
 
 ;-------------------------------------------------
 ;射精ゲージチェック（奴隷）
 ;-------------------------------------------------
-LOCAL = 700
-
-;ABL:調教者の技巧をみる
-LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
-
-;ABL:技巧をみる
-LOCAL += (LOCAL/10)*ABL:技巧
-
-;ABL:従順をみる
-LOCAL += (LOCAL/10)*ABL:従順
-
-;ABL:欲望をみる
-LOCAL += (LOCAL/5)*ABL:欲望
-
-;PALAM:潤滑をみる
-LOCAL += (GETPALAMLV(PALAM:潤滑, 4)-3)*(LOCAL/5)
-
-;奴隷のABL:Ｖ感覚をみる
-SELECTCASE ABL:Ｖ感覚
-	CASE 0
-		TIMES LOCAL , 1.00
-	CASE 1
-		TIMES LOCAL , 2.00
-	CASE 2
-		TIMES LOCAL , 4.00
-	CASE 3
-		TIMES LOCAL , 7.00
-	CASE 4
-		TIMES LOCAL , 10.00
-	CASEELSE
-		LOCAL *= ABL:Ｖ感覚*3
-ENDSELECT
-
-;奴隷のABL:マゾっ気をみる
-SELECTCASE ABL:マゾっ気
-	CASE 0
-		TIMES LOCAL , 1.00
-	CASE 1
-		TIMES LOCAL , 1.20
-	CASE 2
-		TIMES LOCAL , 1.40
-	CASE 3
-		TIMES LOCAL , 1.60
-	CASE 4
-		TIMES LOCAL , 1.80
-	CASEELSE
-		TIMES LOCAL , 2.00
-ENDSELECT
-
-;奴隷のABL:マゾっ気をみる
-LOCAL += (LOCAL/5)*ABL:マゾっ気
-
-CALL 射精ゲージ増加, LOCAL, TARGET
+CALL 射精ゲージ増加, 射精ゲージ計算_Ｖ挿入強(700), TARGET
 
 ;-------------------------------------------------
 ;ソース追加処理
@@ -187,36 +106,22 @@ STAIN:PLAYER:ペニス |= STAIN:膣内
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
-PRINTL Ｖ経験+1
-EXP:Ｖ経験 += 2
-
-;性交経験
-EXP:性交経験++
-EXP:PLAYER:性交経験++
-PRINTL 性交経験+1
-
 CALL EXPUP_BASE, 3, 2
 
+CALL EXPUP, "Ｖ経験", 2
+CALL EXPUP, "性交経験", 1
+CALL EXPUP, "性交経験", 1, PLAYER
+
 ;愛情経験
-IF TALENT:恋慕 && PLAYER == MASTER
-	PRINTL 愛情経験+2
-	EXP:愛情経験 += 2
-ELSEIF TALENT:親愛 && PLAYER == MASTER
-	PRINTL 愛情経験+4
-	EXP:愛情経験 += 4
-ENDIF
+SIF TALENT:恋慕 && PLAYER == MASTER
+	CALL EXPUP, "愛情経験", 2
+SIF TALENT:親愛 && PLAYER == MASTER
+	CALL EXPUP, "愛情経験", 4
 
 ;魔力回復
-IF TALENT:魔術師 && !TEQUIP:PLAYER:コンドーム
-	LOCAL = MAXBASE:魔力/150
-	BASE:魔力 = LIMIT(BASE:魔力+LOCAL, 0, MAXBASE:魔力)
-ENDIF
-
-;依存度補正値(恋慕で1、親愛で2）
-IF TALENT:恋慕 && PLAYER == MASTER
-	TFLAG:依存度補正 += 1
-ELSEIF TALENT:親愛 && PLAYER == MASTER
-	TFLAG:依存度補正 += 2
+IF !避妊具(PLAYER)
+	CALL 魔力回復, 7
+	CALL 獣人催淫, 1
 ENDIF
 
 経験回数:PLAYER:(NO:TARGET) += 1

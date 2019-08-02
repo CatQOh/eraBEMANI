@@ -456,89 +456,75 @@ ENDSELECT
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
-;Vに挿入している場合
-IF TFLAG:主人挿入箇所 == 1 || TFLAG:助手挿入箇所 == 1
-	EXP:Ｖ経験 += 2
-	PRINTL Ｖ経験+2
+;同性愛経験
+IF SEX(TARGET) == SEX(MASTER) && SEX(TARGET) == SEX(ASSI)
+	SELECTCASE SEX(TARGET)
+		CASE 1
+			CALL EXPUP, "ゲイ経験", 6
+			CALL EXPUP, "ゲイ経験", 3, MASTER
+			CALL EXPUP, "ゲイ経験", 3, ASSI
+		CASE 2
+			CALL EXPUP, "レズ経験", 6
+			CALL EXPUP, "レズ経験", 3, MASTER
+			CALL EXPUP, "レズ経験", 3, ASSI
+	ENDSELECT
+ELSEIF SEX(TARGET) == SEX(MASTER) || SEX(TARGET) == SEX(ASSI)
+	SELECTCASE SEX(TARGET)
+		CASE 1
+			CALL EXPUP, "ゲイ経験", 3
+			SIF SEX(MASTER) == 1
+				CALL EXPUP, "ゲイ経験", 2, MASTER
+			SIF SEX(ASSI) == 1
+				CALL EXPUP, "ゲイ経験", 2, ASSI
+		CASE 2
+			CALL EXPUP, "レズ経験", 3
+			SIF SEX(MASTER) == 2
+				CALL EXPUP, "レズ経験", 2, MASTER
+			SIF SEX(ASSI) == 2
+				CALL EXPUP, "レズ経験", 2, ASSI
+	ENDSELECT
 ENDIF
 
+CALL EXPUP, "主人調教経験", 2
+CALL EXPUP, "助手調教経験", 2
+
+;Vに挿入している場合
+SIF TFLAG:主人挿入箇所 == 1 || TFLAG:助手挿入箇所 == 1
+	CALL EXPUP, "Ｖ経験", 2
+
 ;Aに挿入している場合
-IF TFLAG:主人挿入箇所 == 2 || TFLAG:助手挿入箇所 == 2
-	EXP:Ａ経験 += 2
-	PRINTL Ａ経験+2
-ENDIF
+SIF TFLAG:主人挿入箇所 == 2 || TFLAG:助手挿入箇所 == 2
+	CALL EXPUP, "Ａ経験", 2
 
 ;性交経験
 ;VとAに挿入している場合（口に挿入していない場合）
 IF TFLAG:主人挿入箇所 != 3 && TFLAG:助手挿入箇所 != 3
-	EXP:性交経験 += 2
-	EXP:MASTER:性交経験++
-	EXP:ASSI:性交経験++
-	PRINTL 性交経験+2
+	CALL EXPUP, "性交経験", 2
+	CALL EXPUP, "性交経験", 1, MASTER
+	CALL EXPUP, "性交経験", 1, ASSI
 	経験回数:MASTER:(NO:TARGET) += 1
 	経験回数:ASSI:(NO:TARGET) += 1
 	経験回数:TARGET:(NO:MASTER) += 1
 	経験回数:TARGET:(NO:ASSI) += 1
 ;主人だけ挿入している場合
 ELSEIF TFLAG:主人挿入箇所 != 3
-	EXP:性交経験++
-	EXP:MASTER:性交経験++
-	PRINTL 性交経験+1
+	CALL EXPUP, "性交経験", 1
+	CALL EXPUP, "性交経験", 1, MASTER
 	経験回数:MASTER:(NO:TARGET) += 1
 	経験回数:TARGET:(NO:MASTER) += 1
 ;助手だけ挿入している場合
 ELSE
-	EXP:性交経験++
-	EXP:ASSI:性交経験++
-	PRINTL 性交経験+1
+	CALL EXPUP, "性交経験", 1
+	CALL EXPUP, "性交経験", 1, ASSI
 	経験回数:ASSI:(NO:TARGET) += 1
 	経験回数:TARGET:(NO:ASSI) += 1
 ENDIF
 
-;同性愛経験
-IF SEX(TARGET) == SEX(MASTER) && SEX(TARGET) == SEX(ASSI)
-	SELECTCASE SEX(TARGET)
-		CASE 1
-			PRINTL ゲイ経験+6
-			EXP:ゲイ経験 += 6
-		CASE 2
-			PRINTL レズ経験+6
-			EXP:レズ経験 += 6
-	ENDSELECT
-ELSEIF SEX(TARGET) == SEX(MASTER) || SEX(TARGET) == SEX(ASSI)
-	SELECTCASE SEX(TARGET)
-		CASE 1
-			PRINTL ゲイ経験+3
-			EXP:ゲイ経験 += 3
-		CASE 2
-			PRINTL レズ経験+3
-			EXP:レズ経験 += 3
-	ENDSELECT
-ENDIF
-
-PRINTL 主人調教経験+2
-PRINTL 助手調教経験+2
-EXP:主人調教経験 += 2
-EXP:助手調教経験 += 2
-
 ;魔力回復
-IF TALENT:魔術師
-	IF !TEQUIP:ASSI:コンドーム
-		LOCAL = MAXBASE:魔力/300
-		BASE:魔力 = LIMIT(BASE:魔力+LOCAL, 0, MAXBASE:魔力)
-	ENDIF
-	IF !TEQUIP:PLAYER:コンドーム
-		LOCAL = MAXBASE:魔力/300
-		BASE:魔力 = LIMIT(BASE:魔力+LOCAL, 0, MAXBASE:魔力)
-	ENDIF
-ENDIF
-
-;依存度補正値(主人かつ恋慕で1、親愛で2）
-IF TALENT:恋慕
-	TFLAG:依存度補正 += 1
-ELSEIF TALENT:親愛
-	TFLAG:依存度補正 += 2
-ENDIF
+SIF !避妊具(MASTER) && PENIS(MASTER)
+	CALL 魔力回復, 3
+SIF !避妊具(ASSI) && PENIS(ASSI)
+	CALL 魔力回復, 3
 
 RETURN 1
 

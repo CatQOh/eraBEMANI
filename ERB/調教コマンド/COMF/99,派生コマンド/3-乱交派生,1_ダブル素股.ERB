@@ -18,8 +18,6 @@ PRINTL ダブル素股
 ;すべての命令に共通の要素を考慮
 ;(従順が高いと命令に従いやすいなど)
 CALL COM_ORDER
-
-VARSET LOCAL, 0
 LOCAL = RESULT
 
 ;ABL:欲望
@@ -44,15 +42,8 @@ IF MARK:快楽刻印
 	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印*2})
 ENDIF
 
-;PALAM:欲情
-LOCAL:1 = GETPALAMLV(PALAM:欲情, 5)
-LOCAL:2 = LOCAL:1
-SIF TALENT:衝動的
-	LOCAL:2 *= 2
-IF LOCAL:2
-	LOCAL += LOCAL:2
-	PRINTFORM +欲情LV{LOCAL:1}({LOCAL:2*3})
-ENDIF
+CALL COM_ORDER_欲情, 1
+LOCAL += RESULT
 
 REPEAT VARSIZE("TALENT")
 	LOCAL:1 = 0
@@ -118,23 +109,10 @@ IF LOCAL:1
 	PRINTFORM ({LOCAL:1})
 ENDIF
 
-;合計を表示(25以上で実行)
-PRINTFORM  = {LOCAL}
+;25以上で実行
+CALL 実効値判定, LOCAL, 25
 
-LOCAL:2 = 25
-SIF LOCAL < LOCAL:2
-	PRINT  < 
-SIF LOCAL == LOCAL:2
-	PRINT  = 
-SIF LOCAL > LOCAL:2
-	PRINT  > 
-PRINTFORM 実行値{LOCAL:2}
-WAIT
-;実行できない
-IF LOCAL < LOCAL:2
-	CALL KOJO_MESSAGE_EVENT, "コマンド拒否時"
-	RETURN 0
-ENDIF
+RETURN RESULT
 
 ;-------------------------------------------------
 ;実行決定
@@ -149,29 +127,7 @@ TFLAG:奴隷実行 = 1
 ;-------------------------------------------------
 ;射精ゲージチェック
 ;-------------------------------------------------
-LOCAL = 300
-
-;ABL:技巧をみる
-LOCAL += (LOCAL/5)*ABL:技巧
-
-;ABL:従順をみる
-LOCAL += (LOCAL/10)*ABL:従順 - (LOCAL/10)*2
-
-;ABL:奉仕精神をみる
-SELECTCASE ABL:奉仕精神
-	CASE 0
-		TIMES LOCAL , 0.50
-	CASE 1
-		TIMES LOCAL , 0.80
-	CASE 2
-		TIMES LOCAL , 1.20
-	CASE 3
-		TIMES LOCAL , 1.50
-	CASE 4
-		TIMES LOCAL , 1.80
-	CASEELSE
-		LOCAL += LOCAL/3*ABL:奉仕精神
-ENDSELECT
+LOCAL = 射精ゲージ計算_奉仕(300)
 
 ;ABL:助手の技巧をみる
 LOCAL += (LOCAL/5)*ABL:ASSI:技巧
@@ -193,22 +149,6 @@ SELECTCASE ABL:ASSI:奉仕精神
 		TIMES LOCAL , 1.80
 	CASEELSE
 		LOCAL += LOCAL/3*ABL:奉仕精神
-ENDSELECT
-
-;プレイヤーのABL:Ｃ感覚をみる
-SELECTCASE ABL:PLAYER:Ｃ感覚
-	CASE 0
-		TIMES LOCAL , 1.00
-	CASE 1
-		TIMES LOCAL , 1.50
-	CASE 2
-		TIMES LOCAL , 2.00
-	CASE 3
-		TIMES LOCAL , 2.50
-	CASE 4
-		TIMES LOCAL , 3.50
-	CASEELSE
-		LOCAL += LOCAL*(ABL:PLAYER:Ｃ感覚-1)
 ENDSELECT
 
 CALL 射精ゲージ増加, LOCAL, PLAYER
@@ -270,15 +210,6 @@ STAIN:ASSI:3 |= STAIN:ヴァギナ
 ;経験の処理
 ;-------------------------------------------------
 CALL EXPUP_BASE, 4, 1
-
-LOCAL = RELATION:(NO:ASSI)
-
-;依存度補正値(相性100↑で淫乱で2、娼婦で4）
-IF TALENT:淫乱 && LOCAL > 100
-	TFLAG:依存度補正 += 2
-ELSEIF TALENT:娼婦 && LOCAL > 100
-	TFLAG:依存度補正 += 4
-ENDIF
 
 ;奉仕快楽フラグ
 TFLAG:奉仕快楽 = 1
