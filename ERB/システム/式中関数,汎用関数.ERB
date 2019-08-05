@@ -1050,8 +1050,12 @@ RESETCOLOR
 
 @難易度, ARG
 #FUNCTIONS
+
+SIF ARG == 0
+	ARG = FLAG:難易度
+
 IF QMA
-	SELECTCASE FLAG:難易度
+	SELECTCASE ARG
 		CASE 1
 			RETURNF "フェアリー級"
 		CASE 2
@@ -1060,7 +1064,7 @@ IF QMA
 			RETURNF "ドラゴン級"
 	ENDSELECT
 ELSE
-	SELECTCASE FLAG:難易度
+	SELECTCASE ARG
 		CASE 1
 			RETURNF "NORMAL"
 		CASE 2
@@ -1070,8 +1074,12 @@ ELSE
 	ENDSELECT
 ENDIF
 
-@天気表示, ARG
+@天気, ARG
 #FUNCTIONS
+
+SIF ARG == 0
+	ARG = FLAG:天気
+
 SELECTCASE ARG
 	CASE 1
 		RETURNF "晴れ"
@@ -1089,8 +1097,12 @@ SELECTCASE ARG
 		RETURNF "大雪"
 ENDSELECT
 
-@月齢表示, ARG
+@月齢, ARG = -1
 #FUNCTIONS
+
+SIF ARG == -1
+	ARG = 月齢
+
 SELECTCASE ARG
 	CASE 0 TO 199
 		RETURNF "新月"
@@ -1123,6 +1135,26 @@ SELECTCASE ARG
 	CASE 2900 TO 3000
 		RETURNF "三十日月"
 ENDSELECT
+
+@ゲームモード, ARG = 1
+#FUNCTIONS
+
+SIF ARG == -1
+	ARG = FLAG:ゲームモード
+
+SELECTCASE ARG
+	CASE 0
+		RETURNF "通常モード"
+	CASE 1
+		RETURNF "経営モード"
+	CASE 7
+		RETURNF "新婚モード"
+	CASE 8
+		RETURNF "段位認定"
+	CASE 9
+		RETURNF "フリーモード"
+ENDSELECT
+	
 
 @日付表示
 #DIM DYNAMIC LCOUNT
@@ -1219,3 +1251,73 @@ FOR LCOUNT, 0, 8
 NEXT
 
 RETURNF 0
+
+;Digit Separator(桁区切り)関数
+;大きな数字を扱うとき桁を区切っても使えるようにする
+;実情はREPLACEの正規表現で数字以外を消してるのでどんな滅茶苦茶な区切りでも使える
+@DIG_SEP, ARGS
+#FUNCTION
+
+REPLACE ARGS, "[^0-9]", ""
+
+RETURNF TOINT(RESULTS)
+
+;数字に3桁区切りコンマを挿入する関数
+@TODIGSEP, 数値
+#FUNCTIONS
+#DIMS DYNAMIC 返り値
+#DIM DYNAMIC 数値
+
+SIF 数値 > 999
+	返り値 += TODIGSEP(数値/1000)+","
+
+;上記処理を通ってきた場合は下三桁に0補完を行う
+IF 返り値 != ""
+	RETURNF @"%返り値%\@ 数値%1000 < 100 ? 0 #\@\@ 数値%1000 < 10 ? 0 #\@{数値%1000}"
+ELSE
+	RETURNF TOSTR(数値%1000)
+ENDIF
+
+;漢字桁を数字に変換する
+@TONUM, 区切り対象
+#FUNCTION
+#DIM DYNAMIC 返り値
+#DIMS DYNAMIC 区切り対象
+
+IF STRFIND(区切り対象, "京") > 0
+	SPLIT 区切り対象, "京", LOCALS
+	返り値 += TOINT(LOCALS)*DIG_SEP("10,000,000,000,000,000")
+	区切り対象 = %LOCALS:1%
+ENDIF
+IF STRFIND(区切り対象, "兆") > 0
+	SPLIT 区切り対象, "兆", LOCALS
+	返り値 += TOINT(LOCALS)*DIG_SEP("1,000,000,000,000")
+	区切り対象 = %LOCALS:1%
+ENDIF
+IF STRFIND(区切り対象, "億") > 0
+	SPLIT 区切り対象, "億", LOCALS
+	返り値 += TOINT(LOCALS)*DIG_SEP("100,000,000")
+	区切り対象 = %LOCALS:1%
+ENDIF
+IF STRFIND(区切り対象, "万") > 0
+	SPLIT 区切り対象, "万", LOCALS
+	返り値 += TOINT(LOCALS)*DIG_SEP("10,000")
+	区切り対象 = %LOCALS:1%
+ENDIF
+
+返り値 += TOINT(区切り対象)
+
+RETURNF 返り値
+
+;DIVIDE10 10で割って小数点付ける関数 マイナスにも対応 ほぼ気温表示用
+@DIV10, ARG
+#FUNCTIONS
+
+RETURNF @"{ARG/10}.{ABS(ARG%10)}"
+
+;DIVIDE100 100で割って小数点付ける関数 ほぼ月齢表示用
+@DIV100, ARG
+#FUNCTIONS
+
+RETURNF @"{ARG/100}.\@ARG%100 < 10 ? 0 # \@{ABS(ARG%100)}"
+

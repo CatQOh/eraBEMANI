@@ -11,7 +11,7 @@ SIF データID == 0
 	データID = GETSECOND()
 
 ;STRATEGYモードクリアデータを周回可能にする
-SIF FLAG:ゲームモード == 9 && FLAG:パートナー
+SIF ゲームモード() == "フリーモード" && FLAG:パートナー
 	FLAG:周回可能 = 1
 
 FOR LCOUNT, 0, CHARANUM
@@ -68,7 +68,7 @@ SIF 娼館店名 == ""
 	娼館店名 = 娼館
 
 ;実績:STRATEGYモードで期限内に100億円稼ぐ
-SIF FLAG:ゲームモード == 1 && MONEY >= 10000000000
+SIF ゲームモード() == "経営モード" && MONEY >= 10000000000
 	CALL 実績解除, "10，000，000，000"
 
 ;実績:5000兆円稼ぐ
@@ -156,9 +156,9 @@ ELSEIF TARGET > 0
 	ENDSELECT
 ELSE
 	SETCOLORBYNAME gray
-	IF CHARANUM == 1 && FLAG:ゲームモード == 8
+	IF CHARANUM == 1 && ゲームモード() == "段位認定"
 		コマンド表示用:1 = %SET_TOOLTIP("[---] - 調教開始 ", "調教可能なキャラが居ません", 0)%
-	ELSEIF FLAG:ゲームモード == 7
+	ELSEIF ゲームモード() == "新婚モード"
 		コマンド表示用:1 = %SET_TOOLTIP("[---] - 愛を育む ", "[202] - 対象変更 から対象を選択してください", 0)%
 	ELSEIF 調教可能
 		コマンド表示用:1 = %SET_TOOLTIP("[---] - 調教開始 ", "[202] - 奴隷変更 から調教対象を選択してください", 0)%
@@ -172,27 +172,27 @@ ENDIF
 
 ;無条件で表示
 ;段位認定では使えない
-SELECTCASE FLAG:ゲームモード
-	CASE 8
+SELECTCASE ゲームモード()
+	CASE "段位認定"
 		コマンド表示用:3 = %SET_TOOLTIP("[---] - 施設管理 ", "段位認定では使えません", 0, "gray")%
 	CASEELSE
 		コマンド表示用:3 = %SET_TOOLTIP("[102] - 施設管理 ", "屋敷の施設・設備の管理をします")%
 ENDSELECT
 
 ;STRATEGYモード、PFREEモードなら表示
-SELECTCASE FLAG:ゲームモード
-	CASE 1, 9
+SELECTCASE ゲームモード()
+	CASE "経営モード", "フリーモード"
 		コマンド表示用:4 = %SET_TOOLTIP("[103] - 経営     ", "収益要素を管理します")%
 		;パートナーに話しかける口上が実装されていれば表示
 		TRYCCALLFORM EXIST_STRATEGY_KOJO_K{FLAG:パートナー}
-			SIF FLAG:口上表示
+			SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
 				コマンド表示用:5 = %SET_TOOLTIP("[104] - 経営相談 ", @"%CSVCALLNAMEF(FLAG:パートナー)%に経営の相談をします")%
 		CATCH
 		ENDCATCH
 ENDSELECT
 
 ;新婚モードの一転攻勢
-IF FLAG:ゲームモード == 7
+IF ゲームモード() == "新婚モード"
 	IF TALENT:FINDCHARA(CFLAG:嫁, 1):妊娠 || TALENT:FINDCHARA(CFLAG:嫁, 1):育児中
 		コマンド表示用:6 = %SET_TOOLTIP("[---] - 一転攻勢 ", @"%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%が身篭っているため、できません", 0, "gray")%
 	ELSE
@@ -210,21 +210,21 @@ VARSET コマンド表示用
 ;奴隷が一人でもいれば表示
 IF CHARANUM > 1
 	コマンド表示用:2 = %SET_TOOLTIP("[201] - 能力上昇 ", @"キャラの能力を上昇させます")%
-ELSEIF FLAG:ゲームモード != 8
+ELSEIF ゲームモード() != "段位認定"
 	コマンド表示用:2 = %SET_TOOLTIP("[---] - 能力上昇 ", "[302] - 奴隷購入 からキャラを購入してください", 0, "gray")%
 ELSE
 	コマンド表示用:2 = %SET_TOOLTIP("[---] - 能力上昇 ", "調教可能なキャラが居ません", 0, "gray")%
 ENDIF
 IF 調教可能
-	IF FLAG:ゲームモード == 7
+	IF ゲームモード() == "新婚モード"
 		コマンド表示用:3 = %SET_TOOLTIP("[202] - 対象変更 ", "お相手を変更します")%
 	ELSE
 		コマンド表示用:3 = %SET_TOOLTIP("[202] - 奴隷変更 ", "調教対象を変更します")%
 	ENDIF
 ELSE
-	IF FLAG:ゲームモード == 7
+	IF ゲームモード() == "新婚モード"
 		コマンド表示用:3 = %SET_TOOLTIP("[---] - 対象変更 ", @"%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%以外にキャラが居ません", 0, "gray")%
-	ELSEIF CHARANUM == 1 && FLAG:ゲームモード == 8
+	ELSEIF CHARANUM == 1 && ゲームモード() == "段位認定"
 		コマンド表示用:3 = %SET_TOOLTIP("[---] - 奴隷変更 ", "調教可能なキャラが居ません", 0, "gray")%
 	ELSEIF CHARANUM != 1 && TARGET >= 0
 		コマンド表示用:3 = %SET_TOOLTIP("[---] - 奴隷変更 ", @"%CALLNAME:TARGET%以外に調教可能なキャラが居ません", 0, "gray")%
@@ -269,7 +269,7 @@ SIF ITEM:ロジカルダッシュ == YEAR*100+MONTH
 	コマンド表示用:1 = %SET_TOOLTIP("[300] - パズル   ", "今月号のパズル雑誌で遊びます")%
 
 ;経営、PFREEなら表示
-SIF FLAG:ゲームモード == 1 || FLAG:ゲームモード == 9
+SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード")
 	コマンド表示用:2 = %SET_TOOLTIP("[301] - カジノ   ", "カジノに行ってギャンブルをします")%
 
 ;裏カジノ行ければ表示
@@ -290,20 +290,20 @@ VARSET コマンド表示用
 SIF CMATCH(TALENT:変化, 1)
 	コマンド表示用:2 = %SET_TOOLTIP("[401] - 変化     ", "素質[変化]を持った陥落済みのキャラクターを動物の姿や人間の姿に変化させます")%
 
-;無条件で表示
-SIF FLAG:ゲームモード != 7
+;新婚モード以外で表示
+SIF ゲームモード() != "新婚モード"
 	コマンド表示用:3 = %SET_TOOLTIP("[402] - 眷属の儀 ", "奴隷の種族を変更するための儀式を行います")%
 
-;段位認定でなければ表示
-IF FLAG:ゲームモード == 8
+;段位認定、新婚モード以外で表示
+IF ゲームモード() == "段位認定"
 	コマンド表示用:4 = %SET_TOOLTIP("[---] - 奴隷購入 ", "段位認定では奴隷を購入することができません", 0, "gray")%
-ELSEIF FLAG:ゲームモード != 7
+ELSEIF ゲームモード() != "新婚モード"
 	コマンド表示用:4 = %SET_TOOLTIP("[403] - 奴隷購入 ", "調教するための奴隷を購入します")%
 ENDIF
 ;売却できるキャラがいれば表示
 IF 売却可能
 	コマンド表示用:5 = %SET_TOOLTIP("[404] - 売却     ", "調教で仕上がった奴隷を売却します")%
-ELSEIF FLAG:ゲームモード != 7
+ELSEIF ゲームモード() != "新婚モード"
 	コマンド表示用:5 = %SET_TOOLTIP("[---] - 売却     ", "売却可能な奴隷が居ません", 0, "gray")%
 ENDIF
 
@@ -324,42 +324,45 @@ HTML_PRINT STRJOIN(コマンド表示用, "")
 ;所持金が条件に達していて、ゲームモードがSTANDARDもしくはSTRATEGYなら表示
 VARSET コマンド表示用
 コマンド表示用 = 　
-SELECTCASE FLAG:ゲームモード
+SELECTCASE ゲームモード()
 	;STANDARD
-	CASE 0
-		IF MONEY < 1000000
+	CASE "通常モード"
+		IF MONEY < DIG_SEP("1,000,000")
 			コマンド表示用:1 = %SET_TOOLTIP("[---] - 納金     ", "1,000,000の所持金が必要です", 0, "gray")%
 		ELSE
 			コマンド表示用:1 = %SET_TOOLTIP("[600] - 納金     ", "1,000,000の所持金を納め、ゲームをクリアします")%
 		ENDIF
 	;STRATEGY
-	CASE 1
-		IF MONEY < 100000000
+	CASE "経営モード"
+		IF MONEY < DIG_SEP("100,000,000")
 			コマンド表示用:1 = %SET_TOOLTIP("[---] - 納金     ", "100,000,000の所持金が必要です", 0, "gray")%
 		ELSE
 			コマンド表示用:1 = %SET_TOOLTIP("[600] - 納金     ", "100,000,000の所持金を納め、ゲームをクリアします")%
 		ENDIF
 	;新婚
-	CASE 7
+	CASE "新婚モード"
 		コマンド表示用:1 = %SET_TOOLTIP("[---] - 納金     ", "新婚モードでは納金の必要はありません", 0, "gray")%
 	;段位認定
-	CASE 8
+	CASE "段位認定"
 		コマンド表示用:1 = %SET_TOOLTIP("[---] - 納金     ", "段位認定では納金の必要はありません", 0, "gray")%
 	;PFREE
-	CASE 9
+	CASE "フリーモード"
 		コマンド表示用:1 = %SET_TOOLTIP("[---] - 納金     ", "PREMIUM FREE MODEでは納金の必要はありません", 0, "gray")%
 ENDSELECT
 ;周回可能なら表示
 IF FLAG:周回可能
 	コマンド表示用:2 = %SET_TOOLTIP("[601] - 周回     ", "この周を終了し、引き継いでニューゲームを開始します")%
-ELSEIF FLAG:ゲームモード == 7
-	コマンド表示用:2 = %SET_TOOLTIP("[---] - 周回     ", "新婚モードでは周回出来ません", 0, "gray")%
-ELSEIF FLAG:ゲームモード == 8
-	コマンド表示用:2 = %SET_TOOLTIP("[---] - 周回     ", "段位認定では周回出来ません", 0, "gray")%
-ELSEIF FLAG:ゲームモード == 9
-	コマンド表示用:2 = %SET_TOOLTIP("[---] - 周回     ", "PREMIUM FREE MODEでは周回出来ません", 0, "gray")%
 ELSE
-	コマンド表示用:2 = %SET_TOOLTIP("[---] - 周回     ", "ゲームをクリアしないと周回は出来ません", 0, "gray")%
+	SELECTCASE ゲームモード()
+		CASE "新婚モード"
+			コマンド表示用:2 = %SET_TOOLTIP("[---] - 周回     ", "新婚モードでは周回出来ません", 0, "gray")%
+		CASE "段位認定"
+			コマンド表示用:2 = %SET_TOOLTIP("[---] - 周回     ", "段位認定では周回出来ません", 0, "gray")%
+		CASE "フリーモード"
+			コマンド表示用:2 = %SET_TOOLTIP("[---] - 周回     ", "PREMIUM FREE MODEでは周回出来ません", 0, "gray")%
+		CASEELSE
+			コマンド表示用:2 = %SET_TOOLTIP("[---] - 周回     ", "ゲームをクリアしないと周回は出来ません", 0, "gray")%
+	ENDSELECT
 ENDIF
 
 HTML_PRINT STRJOIN(コマンド表示用, "")
@@ -422,20 +425,20 @@ SELECTCASE RESULT
 		CALL 施設
 	;経営
 	CASE 103
-		SELECTCASE FLAG:ゲームモード
-			CASE 1, 9
+		SELECTCASE ゲームモード()
+			CASE "経営モード", "フリーモード"
 				CALL STRATEGY
 		ENDSELECT
 	;経営相談
 	CASE 104
 		LTARGET = TARGET
 		TARGET = GETCHARA(FLAG:パートナー)
-		SIF FLAG:口上表示
+		SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
 			TRYCALLFORM TALK_PARTNER_K{FLAG:パートナー}
 		TARGET = LTARGET
 	;一転攻勢
 	CASE 105
-		IF FLAG:ゲームモード == 7
+		IF ゲームモード() == "新婚モード"
 			LOCAL = FINDCHARA(CFLAG:嫁, 1)
 			IF !TALENT:LOCAL:妊娠 && !TALENT:LOCAL:育児中
 				TALENT:MASTER:親愛 = 1
@@ -479,7 +482,7 @@ SELECTCASE RESULT
 			CALL PUZZLE
 	;カジノ
 	CASE 301
-		SIF FLAG:ゲームモード == 1 || FLAG:ゲームモード == 9
+		SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード")
 			CALL GAMBLE, 1
 		;ギャンブルしたならターン終了
 		IF RESULT == 1
@@ -497,7 +500,7 @@ SELECTCASE RESULT
 		ENDIF
 	;アイテム
 	CASE 400
-		IF FLAG:ゲームモード == 8
+		IF ゲームモード() == "段位認定"
 			CALL GORILLA_ITEM
 		ELSE
 			CALL SHOPITEM_BUY
@@ -516,17 +519,12 @@ SELECTCASE RESULT
 		ENDIF
 	;奴隷購入
 	CASE 403
-		SELECTCASE FLAG:ゲームモード
-			CASE IS != 7, 8
-				CALL CHARA_BUY
-		ENDSELECT
+		SIF !GROUPMATCH(ゲームモード(), "新婚モード", "段位認定")
+			CALL CHARA_BUY
 	;売却
 	CASE 404
-		SELECTCASE FLAG:ゲームモード
-			CASE IS != 7
-				SIF 売却可能
-					CALL CHARA_SELL
-		ENDSELECT
+		SIF ゲームモード() != "新婚モード" && 売却可能
+			CALL CHARA_SELL
 	;セーブ
 	CASE 500
 		CALL USERSAVE
@@ -538,12 +536,14 @@ SELECTCASE RESULT
 		CALL OPTION
 	;納金
 	CASE 600
-		SELECTCASE FLAG:ゲームモード
-			CASE 0
-				SIF MONEY >= 1000000
+		SELECTCASE ゲームモード()
+			CASE "通常モード"
+				;100万
+				SIF MONEY >= DIG_sEP("1,000,000")
 					CALL ENDING_CHECK
-			CASE 1
-				IF MONEY >= 100000000
+			CASE "経営モード"
+				;1億
+				IF MONEY >= DIG_SEP("100,000,000")
 					;実績:キャラを一人も購入せずにパートナーだけでSTRATEGYモードをクリアする
 					SIF キャラ未購入
 						CALL 実績解除, "もう全部あいつ一人でいいんじゃないかな"
@@ -574,10 +574,6 @@ SELECTCASE RESULT
 	CASE 701
 		IF FLAG:娼館営業中 > 0
 			PRINTFORMW %娼館店名%の経営を一時中断しました
-			;REPEAT CHARANUM
-			;	SIF CSTR:COUNT:配属 == "娼館"
-			;		CFLAG:COUNT:配属完了 = 0
-			;REND
 			FLAG:娼館営業中 = -1
 		ELSE
 			PRINTFORMW %娼館店名%の経営を開始しました
@@ -619,10 +615,10 @@ RETURN 0
 ;　難易度:XXXX
 ;　総奴隷数:X/陥落済み:X
 ;
-;□調教中
-;　No.X XXXXXX(♂♀)[ふたなり]【陥落素質】(依存度 ストレス値)
-;　従順:LVXX 欲望:LVXX 技巧:LVXX [BURST]
-;　Ｃ感:LVXX Ｖ感:LVXX Ａ感:LVXX Ｂ感:LVXX [部位陥落素質]
+;□調教中 [750]　前のキャラ [751] 次のキャラ
+;　No.X XXXXXX(♂♀)[ふたなり]【陥落素質等】依存度:XX ストレス値:XXX/999
+;　従順:LVXX 欲望:LVXX 技巧:LVXX
+;　Ｃ感:LVXX Ｖ感:LVXX Ａ感:LVXX Ｂ感:LVXX
 ;　苦痛刻印:LVX [XXX]　快楽刻印:LVX [XXX]　屈服刻印:LVX [XXX]　反発刻印:LVX [XXX]
 ;　体力[********************************](XXXX/XXXX)[排卵誘発中]
 ;　気力[********************************](XXXX/XXXX)
@@ -650,10 +646,10 @@ SIF FLAG:周回数 > 1
 CALL ゲームモード表示
 PRINTL 
 
-PRINTFORML 　天気:%天気表示(FLAG:天気)% 気温:{FLAG:気温/10}.{ABS(FLAG:気温)%10}℃  %月齢表示(月齢)%(月齢:{月齢/100}.\@月齢%100 < 10 ? 0 # \@{月齢%100})
+PRINTFORML 　天気:%天気()% 気温:%DIV10(FLAG:気温)%℃ %月齢()%(月齢:%DIV100(月齢)%)
 
 ;段位認定のときのみ表示を変える
-IF FLAG:ゲームモード != 8
+IF ゲームモード() != "段位認定"
 	;所持金表示
 	CALL PASELI, @"　所持金:{MONEY}＄"
 	SIF 借金 > 0
@@ -668,7 +664,7 @@ IF FLAG:ゲームモード != 8
 	ENDIF
 
 	;新婚生活中は非表示
-	IF FLAG:ゲームモード != 7
+	IF ゲームモード() != "新婚モード"
 		;難易度表示
 		PRINTFORM 　難易度:%難易度()%
 		;奴隷人数表示
@@ -676,8 +672,7 @@ IF FLAG:ゲームモード != 8
 	ENDIF
 ELSE
 	;所持金表示
-	CALL PASELI, @"　所持金:{MONEY}＄"
-	PRINTL 
+	CALL PASELIL, @"　所持金:{MONEY}＄"
 
 	;難易度表示
 	PRINTFORM 　難易度:%難易度()%
@@ -697,7 +692,7 @@ ENDIF
 ;奴隷の状態
 IF TARGET > 0
 	PRINTL 
-	IF FLAG:ゲームモード == 7
+	IF ゲームモード() == "新婚モード"
 		PRINTL □同棲中
 		PRINTFORM 　%NAME:TARGET%
 	ELSE
@@ -720,33 +715,18 @@ IF TARGET > 0
 		PRINT [ふたなり]
 	SIF TALENT:アニマル
 		PRINT [獣]
-	SIF TALENT:妊娠
-		PRINT 【妊娠中】
-	SIF TALENT:恋慕
-		PRINT 【恋慕】
-	SIF TALENT:淫乱
-		PRINT 【淫乱】
-	SIF TALENT:服従
-		PRINT 【服従】
-	SIF TALENT:親愛
-		PRINT 【親愛】
-	SIF TALENT:娼婦
-		PRINT 【娼婦】
-	SIF TALENT:隷属
-		PRINT 【隷属】
-	SIF TALENT:崩壊
-		PRINT 【崩壊】
-	SIF TALENT:リミットバースト
-		PRINT 【BURST】
-	IF TALENT:淫核
-		PRINT 【淫核】
-	ELSEIF TALENT:淫膣
-		PRINT 【淫膣】
-	ELSEIF TALENT:淫尻
-		PRINT 【淫尻】
-	ELSEIF TALENT:淫乳
-		PRINT 【淫乳】
-	ENDIF
+	FOR LCOUNT, 0, VARSIZE("TALENT")
+		SIF !TALENT:LCOUNT
+			CONTINUE
+		SELECTCASE TALENTNAME:LCOUNT
+			CASE "恋慕", "淫乱", "服従", "親愛", "娼婦", "隷属", "崩壊", "淫核", "淫膣", "淫尻", "淫乳"
+				PRINTFORM 【%TALENTNAME:LCOUNT%】
+			CASE "妊娠"
+				PRINT 【妊娠中】
+			CASE "リミットバースト"
+				PRINT 【BURST】
+		ENDSELECT
+	NEXT
 	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 		PRINTFORM 依存度:{CFLAG:依存度} 
 	PRINT ストレス値:
