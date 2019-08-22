@@ -16,15 +16,21 @@ RETURNF 1
 ;式中関数「SEX」
 ;性別を判別するための関数
 ;引数で指定された対象の性別が、男なら1、女なら2を返す
+
+SIF ARG == -1
+	RETURNF 0
+
 RETURNF TALENT:ARG:性別
 
-@CHECK_CHILD_CARE, ARG
+@CHECK_CHILD_CARE, ARG = -1
 #FUNCTION
 ;式中関数「CHECK_CHILD_CARE」
 ;育児室に居るかどうか判別するための関数
 ;引数で指定されたキャラを対象に判別する
 ;オリコ「くノ一忍法帖」ならスルー
 SIF 受験段位名 == "くノ一忍法帖"
+	RETURNF 0
+SIF ARG == -1
 	RETURNF 0
 SIF (TALENT:ARG:妊娠 && PREG:ARG:10-5 <= DAY) || TALENT:ARG:育児中
 	RETURNF 1
@@ -60,6 +66,9 @@ RETURNF 0
 ;式中関数「OVER_GENITAL」
 ;対象の性器を覆い隠している服は何か 一番上の服が返される 下半身上着＝全身上着＞下半身下着＞貞操帯
 
+SIF ARG == -1
+	RETURNF 
+
 SIF TEQUIP:ARG:全身上着 && CFLAG:ARG:着衣併用 != 1
 	RETURNF CSTR:ARG:全身上着
 
@@ -75,6 +84,10 @@ SIF CFLAG:ARG:貞操帯
 #FUNCTIONS
 ;式中関数「OVER_BUST」
 ;対象の乳房を覆い隠している服は何か 一番上の服が返される 上半身上着＝全身上着＞上半身下着
+
+SIF ARG == -1
+	RETURNF 
+
 SIF TEQUIP:ARG:全身上着 && CFLAG:ARG:着衣併用 != 1
 	RETURNF CSTR:ARG:全身上着
 
@@ -90,6 +103,10 @@ SIF TEQUIP:ARG:上半身下着
 ;対象ARGの服が自主的に服に穴などを作ることによりパイズリできる状態かを判別する
 ;ARG:1 = 0 なら通常のパイズリ ARG:1 = 1 なら縦パイズリ
 ;できる場合、1を返す
+
+SIF ARG == -1
+	RETURNF 0
+
 IF TEQUIP:ARG:上半身上着 || (TEQUIP:ARG:全身上着 && CFLAG:ARG:着衣併用!=1)
 	IF CFLAG:ARG:上着パイズリ == 5
 		IF TEQUIP:ARG:上半身下着
@@ -115,6 +132,10 @@ RETURNF 0
 ;式中関数「FALLTYPE」
 ;陥落素質のタイプ eraBEMANIでは恋慕系、淫乱系、服従系のどれか一つしか取得できないので、
 ;恋慕or親愛だと1 淫乱or娼婦だと2 服従or隷属だと3を返す 未陥落は0
+
+SIF ARG == -1
+	RETURNF 0
+
 IF TALENT:ARG:恋慕 || TALENT:ARG:親愛
 	RETURNF 1
 ELSEIF TALENT:ARG:淫乱 || TALENT:ARG:娼婦
@@ -129,6 +150,10 @@ ENDIF
 #FUNCTION
 ;式中関数「性器露出」
 ;単に性器が露出している状態かどうかを判別 OVER_GENITALとは少し違う(スカート系が対象にならない)
+
+SIF ARG == -1
+	RETURNF 0
+
 SELECTCASE OVER_GENITAL(ARG)
 	CASE ""
 		RETURNF 1
@@ -151,7 +176,7 @@ RETURNF 0
 @生殖機能♂, ARG = -1
 #FUNCTION
 SIF ARG == -1
-	ARG = TARGET
+	RETURNF 0
 
 SIF TALENT:ARG:無機物
 	RETURNF 0
@@ -175,7 +200,7 @@ RETURNF 1
 @生殖機能♀, ARG = -1
 #FUNCTION
 SIF ARG == -1
-	ARG = TARGET
+	RETURNF 0
 
 SIF !VAGINA(ARG)
 	RETURNF 0
@@ -196,19 +221,21 @@ ENDSELECT
 
 RETURNF 1
 
-;引数で指定した素質名の番号を返す式中関数
 @TALENTF, ARGS
 #FUNCTION
 #DIM DYNAMIC LCOUNT
+;引数で指定した素質名の番号を返す式中関数
 
 FOR LCOUNT, 0, VARSIZE("TALENT")
 	SIF TALENTNAME:LCOUNT == ARGS
 		RETURNF LCOUNT
 NEXT
 
-;引数のキャラのNAMEを返すが、NOの範囲が1～9999じゃないと返さない プレイヤーの名前入力による予期せぬ挙動を防ぐため
+;#;THROW 素質名「%ARGS%」は存在しないか、表記ゆれです
+
 @CHARANAMEF, ARG
 #FUNCTIONS
+;引数のキャラのNAMEを返すが、NOの範囲が1～9999じゃないと返さない プレイヤーの名前入力による予期せぬ挙動を防ぐため
 
 SIF ARG < 0 || ARG >= CHARANUM
 	RETURNF 
@@ -220,10 +247,9 @@ SELECTCASE NO:ARG
 		RETURNF 
 ENDSELECT
 
-;
-;引数のキャラ番号のNAMEを返す。CSVが無い子供の場合はあらかじめ記録しておいたCHILDNAMEを返す
 @CSVNAMEF, ARG
 #FUNCTIONS
+;引数のキャラ番号のNAMEを返す。CSVが無い子供の場合はあらかじめ記録しておいたCHILDNAMEを返す
 
 SELECTCASE ARG
 	CASE 0 TO 9999
@@ -233,9 +259,9 @@ SELECTCASE ARG
 		RETURNF CHILDNAME:(ARG-10000)
 ENDSELECT
 
-;引数のキャラ番号のCALLNAMEを返す。CSVが無い子供の場合はあらかじめ記録しておいたCHILDNAMEを返す
 @CSVCALLNAMEF, ARG
 #FUNCTIONS
+;引数のキャラ番号のCALLNAMEを返す。CSVが無い子供の場合はあらかじめ記録しておいたCHILDNAMEを返す
 
 SELECTCASE ARG
 	CASE 0 TO 9999
@@ -245,9 +271,9 @@ SELECTCASE ARG
 		RETURNF CHILDNAME:(ARG-10000)
 ENDSELECT
 
-;GETCHARAのNAME版 上記CHARANAMEFと同じでNOの範囲が1～9999じゃないと返さない プレイヤーの名前入力による予期せぬ挙動を防ぐため
 @GETCHARANAME, ARGS
 #FUNCTION
+;GETCHARAのNAME版 上記CHARANAMEFと同じでNOの範囲が1～9999じゃないと返さない プレイヤーの名前入力による予期せぬ挙動を防ぐため
 
 LOCAL = FINDCHARA(NAME, ARGS)
 
@@ -256,8 +282,8 @@ SIF LOCAL >= 0 && INRANGE(NO:LOCAL, 1, 9999)
 
 RETURNF -1
 
-;以下パセリロゴ表示のための関数 式中関数じゃないけどほとんど式中関数みたいな使い方なので
 @通貨単位
+;以下パセリロゴ表示のための関数 式中関数じゃないけどほとんど式中関数みたいな使い方なので
 IF FLAG:パセリ表示
 	PRINT_IMG "PASELI"
 ELSEIF 通貨単位 != ""
@@ -326,15 +352,15 @@ FOR LCOUNT, 0, RESULT
 	PRINTPLAINFORM %LOCALS:LCOUNT%
 NEXT
 
-;2桁の数値を直接入力するための関数
-;ARGは最大値
-;ARGSは単位
-;ARG:1は最低値
 @TWO_DIGIT, 最大値, 単位, 最低値
 #DIM 最大値
 #DIMS 単位
 #DIM 最低値
 #DIM DYNAMIC LCOUNT
+;2桁の数値を直接入力するための関数
+;ARGは最大値
+;ARGSは単位
+;ARG:1は最低値
 
 VARSET LOCAL, 0
 
@@ -396,11 +422,11 @@ DO
 	CLEARLINE 14
 LOOP 1
 
-
-;素数かどうかを判定する
-;素数なら1,それ以外(合成数・1以下の整数)なら0
 @ISPRIME(ARG)
 #FUNCTION
+;素数かどうかを判定する
+;素数なら1,それ以外(合成数・1以下の整数)なら0
+
 SIF ARG < 2
 	RETURNF 0
 SIF ARG == 2
@@ -413,10 +439,10 @@ FOR ARG:1, 3, SQRT(ARG)+1, 2
 NEXT
 RETURNF 1
 
-
-;平方数(整数を2乗してできる数)なら1を返す式中関数
 @ISSQUARE(ARG)
 #FUNCTION
+;平方数(整数を2乗してできる数)なら1を返す式中関数
+
 SIF ARG < 0
 	RETURNF 0
 IF ARG == SQRT(ARG)*SQRT(ARG)
@@ -425,15 +451,14 @@ ELSE
 	RETURNF 0
 ENDIF
 
-
-;約数関数
-;ARGの正の約数全てをARG:1乗した総和を表す
-;ARG:1が0で約数の個数、ARG:1が1で約数の総和を求める
-;ARGが0のとき特例で0、ARGが負でABS(ARG)での値にマイナスをつける
 @SIGMA(ARG, ARG:1=1)
 #FUNCTION
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LSUM
+;約数関数
+;ARGの正の約数全てをARG:1乗した総和を表す
+;ARG:1が0で約数の個数、ARG:1が1で約数の総和を求める
+;ARGが0のとき特例で0、ARGが負でABS(ARG)での値にマイナスをつける
 
 SIF ARG == 0
 	RETURNF 0
@@ -446,14 +471,14 @@ LSUM *= SIGN(ARG)
 
 RETURNF LSUM
 
-
+@POW4V3(ARG, ARG:1=1)
+#FUNCTION
+#DIM DYNAMIC LCL
 ;整数ARGの4/3乗を返す関数
 ;負の数でもエラーは吐かないようになっている
 ;また、結果をARG:1倍にもできる(3乗根の中で計算するので誤差があまり大きくならない)
 ;係数による2^63エラーの対策はとっていないので注意
-@POW4V3(ARG, ARG:1=1)
-#FUNCTION
-#DIM DYNAMIC LCL
+
 IF ABS(ARG) < 9800
 	LCL = CBRT( 1000 * POWER(ARG,4) * POWER(ABS(ARG:1),3) ) / 10
 ELSE
@@ -461,21 +486,18 @@ ELSE
 ENDIF
 RETURNF LCL
 
-
-;1/ARGの確率を表示
 @確率表示, ARG
+;1/ARGの確率を表示
 PRINTFORM 1/{ARG} ({100/ARG}.{(1000/ARG)%10}\%)
 
-
-;1/ARGまたは1/(ARG:1)が起きる確率を表示
 @確率表示2, ARG, ARG:1
+;1/ARGまたは1/(ARG:1)が起きる確率を表示
 PRINTFORM {ARG+ARG:1+1}/{ARG*ARG:1} ({ 100*(ARG+ARG:1+1)/(ARG*ARG:1) }.{ (1000*(ARG+ARG:1+1)/(ARG*ARG:1))%10 }\%)
 
-
-;近親相姦の判定用関数
-;1なら兄弟間、2なら親子間、それ以外なら0
 @近親相姦, ARG, ARG:1
 #FUNCTION
+;近親相姦の判定用関数
+;1なら兄弟姉妹間、2なら親子間、それ以外なら0
 
 SIF ARG < 0 && ARG:1 < 0
 	RETURNF 0
@@ -496,11 +518,12 @@ ENDIF
 RETURNF 0
 
 
-;膣に道具入ってるかどうかの式中関数
 @Ｖ使用中, ARG = -1
 #FUNCTION
+;膣に道具入ってるかどうかの式中関数
+
 SIF ARG == -1
-	ARG = TARGET
+	RETURNF 0
 
 SIF TEQUIP:ARG:バイブ
 	RETURNF 1
@@ -511,16 +534,18 @@ SIF TEQUIP:ARG:ペニスバンド
 
 RETURNF 0
 
-;表記ゆれ（半角）にも対応
 @V使用中, ARG = -1
 #FUNCTION
+;表記ゆれ（半角）にも対応
+
 RETURNF Ｖ使用中(ARG)
 
-;アナルに道具入ってるかどうかの式中関数
 @Ａ使用中, ARG = -1
 #FUNCTION
+;アナルに道具入ってるかどうかの式中関数
+
 SIF ARG == -1
-	ARG = TARGET
+	RETURNF 0
 
 SIF TEQUIP:ARG:アナルバイブ
 	RETURNF 1
@@ -541,16 +566,18 @@ SIF TEQUIP:ARG:野外プレイ && SAVESTR:首輪 == "尻尾プラグ付き首輪
 
 RETURNF 0
 
-;表記ゆれ（半角）にも対応
 @A使用中, ARG = -1
 #FUNCTION
+;表記ゆれ（半角）にも対応
+
 RETURNF Ａ使用中(ARG)
 
-;胸で道具使ってるかどうかの式中関数
 @Ｂ使用中, ARG = -1
 #FUNCTION
+;胸で道具使ってるかどうかの式中関数
+
 SIF ARG == -1
-	ARG = TARGET
+	RETURNF 0
 
 SIF TEQUIP:ARG:ニプルキャップ
 	RETURNF 1
@@ -561,16 +588,18 @@ SIF TEQUIP:ARG:乳房電極
 
 RETURNF 0
 
-;表記ゆれ（半角）にも対応
 @B使用中, ARG = -1
 #FUNCTION
+;表記ゆれ（半角）にも対応
+
 RETURNF Ｂ使用中(ARG)
 
-;ペニスに道具使ってるかどうかの式中関数
 @Ｐ使用中, ARG = -1
 #FUNCTION
+;ペニスに道具使ってるかどうかの式中関数
+
 SIF ARG == -1
-	ARG = TARGET
+	RETURNF 0
 
 SIF TEQUIP:ARG:オナホール
 	RETURNF 1
@@ -581,11 +610,12 @@ SIF CFLAG:ARG:貞操帯
 
 RETURNF 0
 
-;コンドーム、搾精コンドームの使用判定
 @避妊具, ARG = -1
 #FUNCTION
+;コンドーム、搾精コンドームの使用判定
+
 SIF ARG == -1
-	ARG = TARGET
+	RETURNF 0
 
 SIF TEQUIP:ARG:コンドーム
 	RETURNF 1
@@ -594,16 +624,18 @@ SIF TEQUIP:ARG:搾精コンドーム
 
 RETURNF 0
 
-;表記ゆれ（半角）にも対応
 @P使用中, ARG = -1
 #FUNCTION
+;表記ゆれ（半角）にも対応
+
 RETURNF Ｐ使用中(ARG)
 
-;男性器使用不可の判定
 @Ｐ使用不可, ARG = -1
 #FUNCTION
+;男性器使用不可の判定
+
 SIF ARG == -1
-	ARG = TARGET
+	RETURNF 0
 
 SIF CFLAG:ARG:貞操帯
 	RETURNF 1
@@ -614,19 +646,21 @@ SIF ABL:ARG:メス度 >= 10
 
 RETURNF 0
 
-;道具解除系の関数
 @Ｖ道具解除, ARG = -1
+;道具解除系の関数
+
 SIF ARG == -1
-	ARG = TARGET
+	RETURN
 
 TEQUIP:ARG:バイブ = 0
 TEQUIP:ARG:Ｖ異物 = 0
 TEQUIP:ARG:ペニスバンド = 0
 
-;ただし野外プレイ+尻尾プラグは解除不可
 @Ａ道具解除, ARG = -1
+;ただし野外プレイ+尻尾プラグは解除不可
+
 SIF ARG == -1
-	ARG = TARGET
+	RETURN
 
 TEQUIP:ARG:アナルバイブ = 0
 TEQUIP:ARG:アナルビーズ = 0
@@ -638,7 +672,7 @@ TEQUIP:ARG:電動エネマグラ = 0
 
 @Ｂ道具解除, ARG = -1
 SIF ARG == -1
-	ARG = TARGET
+	RETURN
 
 TEQUIP:ARG:ニプルキャップ = 0
 TEQUIP:ARG:搾乳器 = 0
@@ -646,26 +680,31 @@ TEQUIP:ARG:乳房電極 = 0
 
 @Ｐ道具解除, ARG = -1
 SIF ARG == -1
-	ARG = TARGET
+	RETURN
 
 TEQUIP:ARG:オナホール = 0
 TEQUIP:ARG:搾精器 = 0
 
-;GETNUM(PALAM, "STR")をさらに簡略化したもの。ABL上昇処理で頻繁に使用しているのでPALAM用に作った
-;GETPALAMLVではない
 @GETPALAM, ARGS
 #FUNCTION
+;GETNUM(PALAM, "STR")をさらに簡略化したもの。ABL上昇処理で頻繁に使用しているのでPALAM用に作った
+;GETPALAMLVではない
+
+;#;SIF GETNUM(PALAM, ARGS) == -1
+;#;	THROW 能力名「%ARGS%」は存在しないか、表記ゆれです
+
 RETURNF GETNUM(PALAM, ARGS)
 
-;GETNUM(EXP, "STR")をさらに簡略化したもの。ABL上昇処理で頻繁に使用しているのでEXP用に作った
-;GETEXPLVではない
 @GETEXP, ARGS
 #FUNCTION
+;GETNUM(EXP, "STR")をさらに簡略化したもの。ABL上昇処理で頻繁に使用しているのでEXP用に作った
+;GETEXPLVではない
+
+;#;SIF GETNUM(EXP, ARGS) == -1
+;#;	THROW 経験名「%ARGS%」は存在しないか、表記ゆれです
+
 RETURNF GETNUM(EXP, ARGS)
 
-;第一引数に第二引数のツールチップ付けたHTML_PRINT用の完成されたタグを返す式中関数
-;"[]"で囲った部分があれば自動でボタン化する
-;ボタン化フラグを0にすればボタン化しない
 @SET_TOOLTIP, 本文, ツールチップ, ボタン化 = 1, 文字色
 #FUNCTIONS
 #DIMS DYNAMIC 本文
@@ -676,6 +715,9 @@ RETURNF GETNUM(EXP, ARGS)
 #DIMS DYNAMIC 文字列ボタン
 #DIM DYNAMIC ボタン化
 #DIMS DYNAMIC 文字色
+;第一引数に第二引数のツールチップ付けたHTML_PRINT用の完成されたタグを返す式中関数
+;"[]"で囲った部分があれば自動でボタン化する
+;ボタン化フラグを0にすればボタン化しない
 
 VARSET LOCAL
 
@@ -726,9 +768,6 @@ ENDIF
 
 RETURNF タグ
 
-;PRINTBUTTONのツールチップ付与版
-;PRINTBUTTONと同じ使い方に加え、第三引数のツールチップ付けたHTML_PRINT用の完成されたタグを返す式中関数
-;ただしPRINTBUTTONとは違い、第二引数がINT型であってもダブルクォーテーションて括らなければならない
 @SET_TOOLTIPBUTTON, 本文, 文字列ボタン, ツールチップ, 文字色
 #FUNCTIONS
 #DIMS DYNAMIC 本文
@@ -739,6 +778,9 @@ RETURNF タグ
 #DIMS DYNAMIC 文字列ボタン
 #DIM DYNAMIC ボタン化
 #DIMS DYNAMIC 文字色
+;PRINTBUTTONのツールチップ付与版
+;PRINTBUTTONと同じ使い方に加え、第三引数のツールチップ付けたHTML_PRINT用の完成されたタグを返す式中関数
+;ただしPRINTBUTTONとは違い、第二引数がINT型であってもダブルクォーテーションて括らなければならない
 
 VARSET LOCAL
 
@@ -771,8 +813,6 @@ ENDIF
 
 RETURNF タグ
 
-;引数の条件に一致するキャラをページ形式で表示する
-;詳しくは資料フォルダの雑記.txtを参照
 @PAGING, 表示, 追加情報, ページ名, 終了表記, 使用不可も表示
 #DIM ページ数
 #DIM 表示数
@@ -788,6 +828,8 @@ RETURNF タグ
 #DIMS DYNAMIC 追加情報
 #DIMS DYNAMIC ページ名
 #DIMS DYNAMIC 終了表記
+;引数の条件に一致するキャラをページ形式で表示する
+;詳しくは資料フォルダの雑記.txtを参照
 
 LCOUNT = PAGING
 
@@ -922,14 +964,14 @@ IF 表示数 > 10 || LCOUNT == CHARANUM-1
 	LOOP 1
 ENDIF
 
-;第一引数(比較元)と第二引数(比較先)を比較して、条件で指定した動作を行う
-;条件=UPの場合 - 比較先が比較元より大きい数だった場合は比較元を同じ値にする
-;条件=DOWNの場合 - 比較先が比較元より小さい数だった場合は比較元を同じ値にする
-;条件を指定しない場合はUPの動作 参照型変数なので比較元はこの関数内で変更される
 @REF_DIFF, 比較元, 比較先, 条件 = "UP"
 #DIM DYNAMIC REF 比較元
 #DIM DYNAMIC 比較先
 #DIMS DYNAMIC 条件
+;第一引数(比較元)と第二引数(比較先)を比較して、条件で指定した動作を行う
+;条件=UPの場合 - 比較先が比較元より大きい数だった場合は比較元を同じ値にする
+;条件=DOWNの場合 - 比較先が比較元より小さい数だった場合は比較元を同じ値にする
+;条件を指定しない場合はUPの動作 参照型変数なので比較元はこの関数内で変更される
 
 SELECTCASE 条件
 	CASE "UP"
@@ -940,26 +982,27 @@ SELECTCASE 条件
 			比較元 = 比較先
 ENDSELECT
 
-;上記REF_DIFFの改良版 第一引数が第二引数より大きい場合は第二引数の値に合わせる
 @SETMIN, 比較元, 比較先
 #DIM DYNAMIC REF 比較元
 #DIM DYNAMIC 比較先
+;上記REF_DIFFの改良版 第一引数が第二引数より大きい場合は第二引数の値に合わせる
 
 SIF 比較元 > 比較先
 	比較元 = 比較先
 
-;上記SETMINのMAX版
 @SETMAX, 比較元, 比較先
 #DIM DYNAMIC REF 比較元
 #DIM DYNAMIC 比較先
+;上記SETMINのMAX版
 
 SIF 比較元 < 比較先
 	比較元 = 比較先
 
-;BASEのBARを表示する汎用関数
-;指定が無ければ32分
 @BARBASE, ARGS, ARG = -1, ARG:1 = 32
 #FUNCTIONS
+;BASEのBARを表示する汎用関数
+;指定が無ければ32分
+
 SIF ARG == -1
 	ARG = TARGET
 SIF ARG == -1
@@ -967,16 +1010,16 @@ SIF ARG == -1
 
 RETURNF @"%BARSTR(BASE:ARG:ARGS, MAXBASE:ARG:ARGS, ARG:1)%({BASE:ARG:ARGS}/{MAXBASE:ARG:ARGS})"
 
+@SETBASE, ARG
 ;対象のBASEがMAXBASEより高かったり0より低かったりしたら合わせる関数
 ;体力気力魔力のみ
-@SETBASE, ARG
 BASE:ARG:体力 = LIMIT(BASE:ARG:体力, 0, MAXBASE:ARG:体力)
 BASE:ARG:気力 = LIMIT(BASE:ARG:気力, 0, MAXBASE:ARG:気力)
 BASE:ARG:魔力 = LIMIT(BASE:ARG:魔力, 0, MAXBASE:ARG:魔力)
 
-;改行しないウェイトする関数 大犬口上から本体に移動
 @SLINEWAIT, ARGS
 #DIM DYNAMIC LCOUNT, 2
+;改行しないウェイトする関数 大犬口上から本体に移動
 
 VARSET LOCALS, 
 
@@ -995,24 +1038,26 @@ FOR LCOUNT, 0, RESULT
 NEXT
 PRINTW 
 
-;CHECKDRAWLINE 現在表示してる最後の行がDRAWLINE行かどうかをチェックし、そうでなければDRAWLINEを引く関数
 @CHECKDRAWLINE
+;現在表示してる最後の行がDRAWLINE行かどうかをチェックし、そうでなければDRAWLINEを引く関数
+
 SIF HTML_TOPLAINTEXT(HTML_GETPRINTEDSTR(0)) != DRAWLINESTR
 	DRAWLINE
 
-;CHECKDRAWLINEのWAIT付き版
 @CHECKDRAWLINEW
+;上記CHECKDRAWLINEのWAIT付き版
+
 IF HTML_TOPLAINTEXT(HTML_GETPRINTEDSTR(0)) != DRAWLINESTR
 	WAIT
 	DRAWLINE
 ENDIF
 
-;GETNO 引数のNAMEのキャラのNOを返す 子供にも対応しているが、同姓同名のキャラが入れば番号が若い方が優先される
 @GETNO, 名前
 #FUNCTION
 #DIMS DYNAMIC 名前
 #DIMS 名前保存用, 20000
 #DIM DYNAMIC LCOUNT
+;引数のNAMEのキャラのNOを返す 子供にも対応しているが、同姓同名のキャラが入れば番号が若い方が優先される
 
 IF 名前保存用 == ""
 	FOR LCOUNT, 0, 20000
@@ -1033,8 +1078,12 @@ ENDIF
 
 RETURNF FINDELEMENT(名前保存用, 名前, 0, VARSIZE("名前保存用"), 1)
 
-;ストレス値の表示
 @ストレス表示, ARG
+;ストレス値の表示
+
+SIF ARG == -1
+	RETURN
+
 SELECTCASE CFLAG:ARG:ストレス値
 	CASE 1 TO 99
 		SETCOLORBYNAME lime
@@ -1050,6 +1099,7 @@ RESETCOLOR
 
 @難易度, ARG
 #FUNCTIONS
+;難易度を単語で返す
 
 SIF ARG == 0
 	ARG = FLAG:難易度
@@ -1076,6 +1126,7 @@ ENDIF
 
 @天気, ARG
 #FUNCTIONS
+;天気を単語で返す
 
 SIF ARG == 0
 	ARG = FLAG:天気
@@ -1099,6 +1150,7 @@ ENDSELECT
 
 @月齢, ARG = -1
 #FUNCTIONS
+;月齢を単語で返す
 
 SIF ARG == -1
 	ARG = 月齢
@@ -1138,6 +1190,7 @@ ENDSELECT
 
 @ゲームモード, ARG = 1
 #FUNCTIONS
+;ゲームモードを単語で返す
 
 SIF ARG == -1
 	ARG = FLAG:ゲームモード
@@ -1158,6 +1211,8 @@ ENDSELECT
 
 @日付表示
 #DIM DYNAMIC LCOUNT
+;現在の日付を「XX年XX月XX日(X曜日) 祝日(あれば) XX日目」の形式でPRINTする
+
 IF YEAR > 0
 	PRINTFORM {YEAR}
 ELSE
@@ -1174,6 +1229,8 @@ NEXT
 PRINTFORM  {DAY}日目(\@ TIME == 0 ? 昼 # 夜 \@) 
 
 @ゲームモード表示
+;ゲームモードをPRINTする
+
 SELECTCASE FLAG:ゲームモード
 	CASE 0
 		PRINT  MODE:STANDARD
@@ -1192,6 +1249,8 @@ SIF FLAG:チャレンジモード
 
 @性別表示, ARG = -1
 #FUNCTIONS
+;性別の表記を返す
+
 SIF ARG == -1
 	ARG = TARGET
 SIF ARG == -1
@@ -1213,11 +1272,11 @@ ELSE
 	ENDSELECT
 ENDIF
 
-;渡されたSTAINに指定された汚れがあるかを返す関数
 @GET_STAIN, ARG, 汚れ:0, 汚れ:1, 汚れ:2, 汚れ:3, 汚れ:4, 汚れ:5, 汚れ:6, 汚れ:7
 #FUNCTION
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC 汚れ, 8
+;渡されたSTAINに指定された汚れがあるかを返す関数
 
 FOR LCOUNT, 0, 8
 	IF GETBIT(ARG, LCOUNT)
@@ -1252,21 +1311,21 @@ NEXT
 
 RETURNF 0
 
+@DIG_SEP, ARGS
+#FUNCTION
 ;Digit Separator(桁区切り)関数
 ;大きな数字を扱うとき桁を区切っても使えるようにする
 ;実情はREPLACEの正規表現で数字以外を消してるのでどんな滅茶苦茶な区切りでも使える
-@DIG_SEP, ARGS
-#FUNCTION
 
 REPLACE ARGS, "[^0-9]", ""
 
 RETURNF TOINT(RESULTS)
 
-;数字に3桁区切りコンマを挿入する関数
 @TODIGSEP, 数値
 #FUNCTIONS
 #DIMS DYNAMIC 返り値
 #DIM DYNAMIC 数値
+;数字に3桁区切りコンマを挿入する関数
 
 SIF 数値 > 999
 	返り値 += TODIGSEP(数値/1000)+","
@@ -1278,11 +1337,13 @@ ELSE
 	RETURNF TOSTR(数値%1000)
 ENDIF
 
-;漢字桁を数字に変換する
 @TONUM, 区切り対象
 #FUNCTION
 #DIM DYNAMIC 返り値
 #DIMS DYNAMIC 区切り対象
+#DIMS DYNAMIC エラー通知用
+エラー通知用 = %区切り対象%
+;漢字桁を数字に変換する
 
 IF STRFIND(区切り対象, "京") > 0
 	SPLIT 区切り対象, "京", LOCALS
@@ -1305,19 +1366,22 @@ IF STRFIND(区切り対象, "万") > 0
 	区切り対象 = %LOCALS:1%
 ENDIF
 
-返り値 += TOINT(区切り対象)
+;#;SIF ISNUMERIC(区切り対象)
+;#; THROW 「%エラー通知用%」は正常に変換できません
+
+返り値 += DIG_SEP(区切り対象)
 
 RETURNF 返り値
 
-;DIVIDE10 10で割って小数点付ける関数 マイナスにも対応 ほぼ気温表示用
 @DIV10, ARG
 #FUNCTIONS
+;DIVIDE10 10で割って小数点付ける関数 マイナスにも対応 ほぼ気温表示用
 
 RETURNF @"{ARG/10}.{ABS(ARG%10)}"
 
-;DIVIDE100 100で割って小数点付ける関数 ほぼ月齢表示用
 @DIV100, ARG
 #FUNCTIONS
+;DIVIDE100 100で割って小数点付ける関数 ほぼ月齢表示用
 
-RETURNF @"{ARG/100}.\@ARG%100 < 10 ? 0 # \@{ABS(ARG%100)}"
+RETURNF @"{ARG/100}.\@ABS(ARG%100) < 10 ? 0 # \@{ABS(ARG%100)}"
 
