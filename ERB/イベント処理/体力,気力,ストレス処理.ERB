@@ -50,10 +50,10 @@ SIF TALENT:小柄体型
 ;日光浴、月光浴（吸血鬼）、夢喰い
 SELECTCASE TIME
 	CASE 0
-		SIF TALENT:日光浴 && FLAG:天気 == 1
+		SIF TALENT:日光浴 && 天気()== "晴れ"
 			体力補正 += 100
 	CASE 1
-		IF (TALENT:月光浴 || TALENT:吸血鬼) && FLAG:天気 == 1
+		IF (TALENT:月光浴 || TALENT:吸血鬼) && 天気() == "晴れ"
 			SELECTCASE 月齢
 				CASE 0 TO 1500
 					体力補正 += 月齢/10
@@ -298,7 +298,7 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 		CONTINUE
 	SELECTCASE TALENTNAME:LCOUNT
 		;陥落素質があれば特殊処理(代入後BREAK)
-		;淫乱系 非TARGET時にストレス上昇 ただし娼館配属中はそちらの処理で打ち消し
+		;淫乱系 非TARGET時にストレス上昇 ただし娼館配属中はそちらの補正で打ち消し
 		CASE "淫乱"
 			SIF LTARGET != ARG
 				ストレス補正 += 1
@@ -454,9 +454,9 @@ IF !CFLAG:使用不可 && CFLAG:休憩
 ENDIF
 
 ;陥落種族でストレス低下 各ゲームモードでストレスの減り方が違う
-SELECTCASE FLAG:ゲームモード
+SELECTCASE ゲームモード()
 	;STANDARD、段位認定
-	CASE 0, 8
+	CASE "通常モード", "段位認定"
 		SELECTCASE FALLTYPE(TARGET)
 			;恋慕、親愛、服従、隷属
 			CASE 1, 3
@@ -466,18 +466,17 @@ SELECTCASE FLAG:ゲームモード
 				CFLAG:ストレス値 -= 5
 		ENDSELECT
 	;STRATEGY、PFREE 一律-5 その他要素で
-	CASE 1, 9
+	CASE "経営モード", "フリーモード"
 		SIF FALLTYPE(TARGET) > 0
 			CFLAG:ストレス値 -= 5
 	;新婚モード 陥落素質不問で一律-50
-	CASE 7
+	CASE "新婚モード"
 		CFLAG:ストレス値 -= 50
-	;その他 ペットは依存度に応じてストレス低下
-	CASEELSE
-		SIF TALENT:アニマル
-			CFLAG:ストレス値 -= MAX(0, CFLAG:依存度)/100
 ENDSELECT
 
+;ペットは依存度に応じてストレス低下
+SIF TALENT:アニマル
+	CFLAG:ストレス値 -= MAX(0, CFLAG:依存度)/100
 
 ;アニマルが居るとストレス減少 最大3
 CFLAG:ストレス値 -= MIN(CMATCH(TALENT:アニマル, 1), 3)
@@ -485,7 +484,7 @@ CFLAG:ストレス値 -= MIN(CMATCH(TALENT:アニマル, 1), 3)
 ;プランターで嘆きの樹を育てているとストレス減少
 FOR LCOUNT, 1, 5
 	SIF プランターの作物:LCOUNT == "嘆きの樹" && プランター収穫日:LCOUNT == 0
-		CFLAG:ストレス値--
+		CFLAG:ストレス値 -= 2
 NEXT
 
 ;医務室を利用する場合は医務室の補正分減少

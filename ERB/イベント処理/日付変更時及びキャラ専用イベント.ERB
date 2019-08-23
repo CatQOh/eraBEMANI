@@ -90,7 +90,10 @@ IF TARGET >= 0
 
 	IF LOCAL
 		;上記をクリアし、技巧3以上or奉仕精神3以上orマゾっ気3以上orCVAB感覚合計8以上or従順5以上or欲望5以上なら売却可能
-		IF ABL:技巧 >= 3 || ABL:奉仕精神 >= 3 || ABL:マゾっ気 >= 3 || ABL:Ｃ感覚+ABL:Ｖ感覚+ABL:Ａ感覚+ABL:Ｂ感覚 >= 8 || ABL:従順 >= 5 || ABL:欲望 >= 5
+		{
+		IF ABL:技巧 >= 3 || ABL:奉仕精神 >= 3 || ABL:マゾっ気 >= 3 || 
+		   ABL:Ｃ感覚+ABL:Ｖ感覚+ABL:Ａ感覚+ABL:Ｂ感覚 >= 8 || ABL:従順 >= 5 || ABL:欲望 >= 5
+		}
 			IF CFLAG:状態 <= 0 && FLAG:ゲームモード != 7
 				PRINTFORMW %NAME:TARGET%が売却可能になりました
 				CFLAG:状態 = 1
@@ -117,11 +120,11 @@ ENDIF
 
 CALL CHECKDRAWLINE
 
-REPEAT CHARANUM
+FOR LCOUNT, 0, CHARANUM
 	;休憩フラグを消すが、配属中のキャラは下記収入関数でフラグ管理してるので対象外
-	SIF CSTR:COUNT:配属 == ""
-		CFLAG:COUNT:休憩 = 0
-REND
+	SIF CSTR:LCOUNT:配属 == ""
+		CFLAG:LCOUNT:休憩 = 0
+NEXT
 
 IF TIME == 1
 	LASTMONEY = MONEY
@@ -315,7 +318,7 @@ SELECTCASE TIME
 			CALL 実績解除, "Without you tonight"
 		TIME = 0
 		;ゲームモード7(新婚モード)か9(PREMIUM FREE)なら10日に一度、借金の返済・新規借入ができる
-		IF (FLAG:ゲームモード == 7 || FLAG:ゲームモード == 9) && DAY%10 == 0
+		IF GROUPMATCH(ゲームモード(), "新婚モード", "フリーモード") && DAY%10 == 0
 			CALL DEBT
 		;借金がある場合は10日に一度返済を要求される
 		ELSEIF 借金
@@ -323,11 +326,11 @@ SELECTCASE TIME
 		ENDIF
 		;バッドエンドの判定
 		;期限切れ
-		SIF (DAY > 100 && FLAG:ゲームモード == 0) || (DAY > 300 && FLAG:ゲームモード == 1)
+		SIF (DAY > 100 && ゲームモード() == "通常モード") || (DAY > 300 && ゲームモード() == "経営モード")
 			JUMP BADENDING, 1
 		;金欠エンド
 		;ただしゲームモード7(新婚モード)と9(PREMIUM FREE)では呼び出されない
-		IF MONEY < 0 && FLAG:ゲームモード != 7 && FLAG:ゲームモード != 9
+		IF MONEY < 0 && !GROUPMATCH(ゲームモード(), "新婚モード", "フリーモード")
 			;実績:STRATEGYモードで金欠エンドを迎える
 			CALL 実績解除, "無能な経営者"
 			JUMP BADENDING, 2
@@ -389,37 +392,37 @@ IF TIME == 0
 	FOR LCOUNT, 0, CHARANUM
 		SELECTCASE CHARANAMEF(LCOUNT)
 			CASE "フローラ"
-				IF LCOUNT == MASTER || LCOUNT == TARGET || LCOUNT == ASSI
+				IF GROUPMATCH(LCOUNT, MASTER, TARGET, ASSI)
 					FLAG:気温 += 60
 				ELSE
 					FLAG:気温 += 6
 				ENDIF
 			CASE "烈"
-				IF LCOUNT == MASTER || LCOUNT == TARGET || LCOUNT == ASSI
+				IF GROUPMATCH(LCOUNT, MASTER, TARGET, ASSI)
 					FLAG:気温 += 30
 				ELSE
 					FLAG:気温 += 3
 				ENDIF
 			CASE "氷海"
-				IF LCOUNT == MASTER || LCOUNT == TARGET || LCOUNT == ASSI
+				IF GROUPMATCH(LCOUNT, MASTER, TARGET, ASSI)
 					FLAG:気温 -= 30
 				ELSE
 					FLAG:気温 -= 3
 				ENDIF
 			CASE "茜"
-				IF LCOUNT == MASTER || LCOUNT == TARGET || LCOUNT == ASSI
+				IF GROUPMATCH(LCOUNT, MASTER, TARGET, ASSI)
 					FLAG:気温 += 50
 				ELSE
 					FLAG:気温 += 5
 				ENDIF
 			CASE "スノーフェアリー"
-				IF LCOUNT == MASTER || LCOUNT == TARGET || LCOUNT == ASSI
+				IF GROUPMATCH(LCOUNT, MASTER, TARGET, ASSI)
 					FLAG:気温 -= 60
 				ELSE
 					FLAG:気温 -= 6
 				ENDIF
 			CASE "氷雪ちゃん"
-				IF LCOUNT == MASTER || LCOUNT == TARGET || LCOUNT == ASSI
+				IF GROUPMATCH(LCOUNT, MASTER, TARGET, ASSI)
 					FLAG:気温 -= 150
 				ELSE
 					FLAG:気温 -= 15
@@ -447,10 +450,11 @@ FOR LCOUNT, 0, CHARANUM
 	;鳳凰専用イベント
 	IF CSTR:LCOUNT:種族 == "鳳凰" && FLAG:気温 > 0
 		LOCAL = FLAG:気温
-		SELECTCASE FLAG:天気
-			CASE 2
+		SELECTCASE 天気()
+			CASE "晴れ"
+			CASE "曇り"
 				TIMES LOCAL , 0.50
-			CASE 3 TO 7
+			CASEELSE
 				TIMES LOCAL , 0.20
 		ENDSELECT
 		;気温と天気で計算したボーナス分体力気力が増加
@@ -619,7 +623,7 @@ IF TARGET >= 0
 ENDIF
 
 ;段位認定におけるゲージ処理
-SIF FLAG:ゲームモード == 8 && !CFLAG:MASTER:使用不可
+SIF ゲームモード() == "段位認定" && !CFLAG:MASTER:使用不可
 	CALL 段位ゲージ処理
 
 ;素質でのイベント
@@ -782,7 +786,7 @@ FOR LCOUNT, 0, CHARANUM
 		SIF TALENT:LCOUNT:小柄体型
 			LOCAL += 200
 		CALL PASELIW, @"%CALLNAME:LCOUNT%の不妊治療薬に{LOCAL}＄の費用が発生しました"
-		CFLAG:LCOUNT:ストレス値 += 10
+		CFLAG:LCOUNT:ストレス値 += 5
 	ENDIF
 NEXT
 
@@ -906,6 +910,8 @@ ENDSELECT
 ;女主人による色仕掛けイベント
 ;-------------------------------------------------
 @EVENT_HONEYTRAP
+#DIM DYNAMIC LCOUNT
+
 LOCAL = 0
 ;調教後夜這いが発生してたら発生しない
 IF TFLAG:調教後夜這い
@@ -920,50 +926,27 @@ SIF TARGET < 0
 SIF TALENT:MASTER:性別 != 2
 	RETURN 0
 
-SIF TALENT:生意気
-	LOCAL -= 1
-SIF TALENT:素直
-	LOCAL += 1
-SIF TALENT:反抗的
-	LOCAL -= 2
-SIF TALENT:衝動的
-	LOCAL += 1
-SIF TALENT:ツンデレ
-	LOCAL -= 2
-SIF TALENT:自制心
-	LOCAL -= 2
-SIF TALENT:無関心
-	LOCAL -= 1
-SIF TALENT:好奇心
-	LOCAL += 2
-SIF TALENT:一線越えない
-	LOCAL -= 2
-SIF TALENT:貞操観念
-	LOCAL -= 1
-SIF TALENT:貞操無頓着
-	LOCAL += 2
-SIF TALENT:抑圧
-	LOCAL -= 1
-SIF TALENT:解放
-	LOCAL += 2
-SIF TALENT:抵抗
-	LOCAL -= 1
-SIF TALENT:冷静
-	LOCAL -= 1
-SIF TALENT:弱味
-	LOCAL += 1
-SIF TALENT:強気
-	LOCAL -= 1
-SIF TALENT:弱気
-	LOCAL += 1
-SIF TALENT:献身的
-	LOCAL += 1
-SIF (TALENT:潔癖症 || TALENT:汚臭敏感) && TALENT:MASTER:ファーリー
-	LOCAL -= 2
-SIF TALENT:快感に素直
-	LOCAL += 2
-SIF TALENT:快感の否定
-	LOCAL -= 2
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "生意気", "無関心", "貞操観念", "抑圧", "抵抗", "冷静", "強気"
+			LOCAL -= 1
+		CASE "素直", "衝動的", "弱味", "弱気", "献身的", "妄信"
+			LOCAL += 1
+		CASE "反抗的", "ツンデレ", "自制心", "一線越えない", "快感の否定"
+			LOCAL -= 2
+		CASE "好奇心", "貞操無頓着", "解放", "快感に素直", "女好き"
+			LOCAL += 2
+		CASE "潔癖症", "汚臭敏感"
+			SIF TALENT:MASTER:ファーリー
+				LOCAL -= 2
+		CASE "同族嫌悪"
+			SIF CSTR:種族 == CSTR:MASTER:種族
+				LOCAL -= 2
+	ENDSELECT
+NEXT
+
 IF TALENT:性別 == 2
 	IF TALENT:両刀
 		LOCAL += 1
@@ -971,20 +954,14 @@ IF TALENT:性別 == 2
 		LOCAL -= 2
 	ENDIF
 ENDIF
-SIF TALENT:女好き
-	LOCAL += 2
-SIF TALENT:同族嫌悪 && CSTR:種族 == CSTR:MASTER:種族
-	LOCAL -= 2
-SIF TALENT:妄信
-	LOCAL += 1
-IF TALENT:恋心 
+IF TALENT:恋心 >= 0
 	IF TALENT:恋心 != MASTER && !CFLAG:陥落
 		LOCAL -= 3
 	ELSEIF TALENT:恋心 == MASTER
 		LOCAL += 3
 	ENDIF
 ENDIF
-IF TALENT:既婚者
+IF TALENT:既婚者 >= 0
 	IF TALENT:既婚者 != MASTER && !CFLAG:陥落
 		LOCAL -= 5
 	ELSEIF TALENT:既婚者 == MASTER
@@ -1057,55 +1034,42 @@ SELECTCASE RESULT
 				ENDIF
 			ENDIF
 			IF PENIS(TARGET)
-				EXP:射精経験 += 2
-				EXP:MASTER:Ｖ経験 += 1
-				EXP:MASTER:膣射経験 += 1
 				中出し回数:(NO:MASTER)++
 				中出され回数:MASTER:(NO:TARGET)++
-				PRINTL 射精経験+2
-				PRINTFORML %CALLNAME:MASTER%のＶ経験+1、膣内射精経験+1
+				CALL EXPUP, "射精経験", 2
+				CALL EXPUP, "Ｖ経験", 1, MASTER
+				CALL EXPUP, "膣射経験", 1, MASTER
 			ELSE
-				EXP:絶頂経験 += 3
-				PRINTL 絶頂経験+3
+				CALL EXPUP, "絶頂経験", 3
 			ENDIF
 			IF PENIS(MASTER)
-				EXP:MASTER:射精経験 += 1
-				EXP:精液経験 += 1
-				PRINTFORML %CALLNAME:MASTER%の射精経験+1
-				PRINTL 精液経験+1
+				CALL EXPUP, "精液経験", 1
+				CALL EXPUP, "射精経験", 1, MASTER
 			ENDIF
 			IF TALENT:性別 == 2
-				EXP:レズ経験 += 3
-				PRINTL レズ経験+3
-			ELSE
-				EXP:MASTER:性交経験 += 1
-				EXP:性交経験 += 1
+				CALL EXPUP, "レズ経験", 3
+				CALL EXPUP, "レズ経験", 3, MASTER
+			ENDIF
+			IF PENIS(TARGET)
+				CALL EXPUP, "性交経験", 1
+				CALL EXPUP, "性交経験", 1, MASTER
 				経験回数:MASTER:(NO:TARGET)++
 				経験回数:(NO:MASTER)++
-				PRINTL お互いの性交経験+1
 			ENDIF
-			EXP:主人調教経験 += 2
-			PRINTL 主人調教経験+2
+			CALL EXPUP, "主人調教経験", 2
 			CFLAG:依存度 += TFLAG:誘惑ポイント
 			PRINTL 依存度増加
-			JUEL:快Ｃ += TFLAG:誘惑ポイント*50
-			JUEL:恭順 += TFLAG:誘惑ポイント*50
-			JUEL:欲情 += TFLAG:誘惑ポイント*70
-			JUEL:屈服 += TFLAG:誘惑ポイント*100
-			PRINTFORML 快Ｃの珠+{TFLAG:誘惑ポイント*50}
-			PRINTFORML 恭順の珠+{TFLAG:誘惑ポイント*50}
-			PRINTFORML 欲情の珠+{TFLAG:誘惑ポイント*70}
-			PRINTFORML 屈服の珠+{TFLAG:誘惑ポイント*100}
+			CALL JUELUP, "快Ｃ", TFLAG:誘惑ポイント*50
+			CALL JUELUP, "恭順", TFLAG:誘惑ポイント*50
+			CALL JUELUP, "欲情", TFLAG:誘惑ポイント*70
+			CALL JUELUP, "屈服", TFLAG:誘惑ポイント*100
 		ELSE
 			TFLAG:色仕掛け = 2
 			CALL KOJO_MESSAGE_EVENT, "色仕掛け"
 			IF TFLAG:誘惑ポイント > 0
-				JUEL:恭順 += TFLAG:誘惑ポイント*10
-				JUEL:欲情 += TFLAG:誘惑ポイント*10
-				JUEL:恐怖 += TFLAG:誘惑ポイント*30
-				PRINTFORML 恭順の珠+{TFLAG:誘惑ポイント*10}
-				PRINTFORML 欲情の珠+{TFLAG:誘惑ポイント*10}
-				PRINTFORML 恐怖の珠+{TFLAG:誘惑ポイント*30}
+				CALL JUELUP, "恭順", TFLAG:誘惑ポイント*10
+				CALL JUELUP, "欲情", TFLAG:誘惑ポイント*10
+				CALL JUELUP, "恐怖", TFLAG:誘惑ポイント*30
 			ENDIF
 		ENDIF
 	CASE 1
@@ -1131,57 +1095,43 @@ SELECTCASE RESULT
 				ENDIF
 			ENDIF
 			IF PENIS(TARGET)
-				EXP:射精経験 += 2
-				EXP:MASTER:Ｖ経験 += 2
-				EXP:MASTER:膣射経験 += 2
 				中出し回数:(NO:MASTER) += 2
 				中出され回数:MASTER:(NO:TARGET) += 2
-				PRINTL 射精経験+2
-				PRINTFORML %CALLNAME:MASTER%のＶ経験+2、膣内射精経験+2
+				CALL EXPUP, "射精経験", 2
+				CALL EXPUP, "Ｖ経験", 2, MASTER
+				CALL EXPUP, "膣射経験", 2, MASTER
 			ELSE
-				EXP:絶頂経験 += 3
-				PRINTL 絶頂経験+3
+				CALL EXPUP, "絶頂経験", 3
 			ENDIF
 			IF PENIS(MASTER)
-				EXP:MASTER:射精経験 += 2
-				EXP:精液経験 += 2
-				PRINTFORML %CALLNAME:MASTER%の射精経験+2
-				PRINTL 精液経験+2
+				CALL EXPUP, "精液経験", 2
+				CALL EXPUP, "射精経験", 2, MASTER
 			ENDIF
 			IF TALENT:性別 == 2
-				EXP:レズ経験 += 5
-				PRINTL レズ経験+5
-			ELSE
-				EXP:MASTER:性交経験 += 2
-				EXP:性交経験 += 2
+				CALL EXPUP, "レズ経験", 5
+				CALL EXPUP, "レズ経験", 5, MASTER
+			ENDIF
+			IF PENIS(TARGET)
+				CALL EXPUP, "性交経験", 2
+				CALL EXPUP, "性交経験", 2, MASTER
 				経験回数:MASTER:(NO:TARGET) += 2
 				経験回数:(NO:MASTER) += 2
-				PRINTL お互いの性交経験+2
 			ENDIF
-			EXP:奉仕快楽経験 += 3
-			PRINTL 奉仕快楽経験+3
+			CALL EXPUP, "奉仕快楽経験", 3
 			CFLAG:依存度 += TFLAG:誘惑ポイント*3/2
 			PRINTL 依存度増加
-			JUEL:快Ｃ += TFLAG:誘惑ポイント*70
-			JUEL:恭順 += TFLAG:誘惑ポイント*100
-			JUEL:欲情 += TFLAG:誘惑ポイント*150
-			JUEL:屈服 += TFLAG:誘惑ポイント*50
-			JUEL:習得 += TFLAG:誘惑ポイント*70
-			PRINTFORML 快Ｃの珠+{TFLAG:誘惑ポイント*70}
-			PRINTFORML 恭順の珠+{TFLAG:誘惑ポイント*100}
-			PRINTFORML 欲情の珠+{TFLAG:誘惑ポイント*150}
-			PRINTFORML 屈服の珠+{TFLAG:誘惑ポイント*50}
-			PRINTFORML 習得の珠+{TFLAG:誘惑ポイント*70}
+			CALL JUELUP, "快Ｃ", TFLAG:誘惑ポイント*70
+			CALL JUELUP, "恭順", TFLAG:誘惑ポイント*100
+			CALL JUELUP, "欲情", TFLAG:誘惑ポイント*150
+			CALL JUELUP, "屈服", TFLAG:誘惑ポイント*50
+			CALL JUELUP, "習得", TFLAG:誘惑ポイント*70
 		ELSE
 			TFLAG:色仕掛け = 4
 			CALL KOJO_MESSAGE_EVENT, "色仕掛け"
 			IF TFLAG:誘惑ポイント > 0
-				JUEL:恭順 += TFLAG:誘惑ポイント*10
-				JUEL:欲情 += TFLAG:誘惑ポイント*10
-				JUEL:恥情 += TFLAG:誘惑ポイント*30
-				PRINTFORML 恭順の珠+{TFLAG:誘惑ポイント*10}
-				PRINTFORML 欲情の珠+{TFLAG:誘惑ポイント*10}
-				PRINTFORML 恥情の珠+{TFLAG:誘惑ポイント*30}
+				CALL JUELUP, "恭順", TFLAG:誘惑ポイント*10
+				CALL JUELUP, "欲情", TFLAG:誘惑ポイント*10
+				CALL JUELUP, "恥情", TFLAG:誘惑ポイント*30
 			ENDIF
 		ENDIF
 ENDSELECT
