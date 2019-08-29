@@ -305,15 +305,19 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 		CASE "娼婦"
 			SIF LTARGET != ARG
 				ストレス補正 += 3
-		;服従系、恋慕系 基本的に上がらない
+		;服従系、恋慕系 基本的に上がらない ただしヤンデレは除く
 		CASE "服従", "恋慕"
-			ストレス補正 = -3
-			ストレス補正:1 = 0
-			BREAK
+			IF !TALENT:ヤンデレ
+				ストレス補正 = -3
+				ストレス補正:1 = 0
+				BREAK
+			ENDIF
 		CASE "親愛", "隷属"
-			ストレス補正 = -5
-			ストレス補正:1 = 0
-			BREAK
+			IF !TALENT:ヤンデレ
+				ストレス補正 = -5
+				ストレス補正:1 = 0
+				BREAK
+			ENDIF
 		;ツンデレ 陥落済みかどうかでストレス±2
 		CASE "ツンデレ"
 			IF CFLAG:陥落
@@ -453,22 +457,26 @@ IF !CFLAG:使用不可 && CFLAG:休憩
 	ENDSELECT
 ENDIF
 
-;陥落種族でストレス低下 各ゲームモードでストレスの減り方が違う
+;陥落素質でストレス低下 各ゲームモードでストレスの減り方が違う
 SELECTCASE ゲームモード()
 	;STANDARD、段位認定
 	CASE "通常モード", "段位認定"
-		SELECTCASE FALLTYPE(TARGET)
-			;恋慕、親愛、服従、隷属
-			CASE 1, 3
-				CFLAG:ストレス値 -= 20
-			;淫乱、娼婦
-			CASE 2
-				CFLAG:ストレス値 -= 5
-		ENDSELECT
+		IF !TALENT:ヤンデレ || ARG == LTARGET
+			SELECTCASE FALLTYPE(TARGET)
+				;恋慕、親愛、服従、隷属
+				CASE 1, 3
+					CFLAG:ストレス値 -= 20
+				;淫乱、娼婦
+				CASE 2
+					CFLAG:ストレス値 -= 5
+			ENDSELECT
+		ENDIF
 	;STRATEGY、PFREE 一律-5 その他要素で
 	CASE "経営モード", "フリーモード"
-		SIF FALLTYPE(TARGET) > 0
-			CFLAG:ストレス値 -= 5
+		IF !TALENT:ヤンデレ || ARG == LTARGET
+			SIF FALLTYPE(TARGET) > 0
+				CFLAG:ストレス値 -= 5
+		ENDIF
 	;新婚モード 陥落素質不問で一律-50
 	CASE "新婚モード"
 		CFLAG:ストレス値 -= 50
