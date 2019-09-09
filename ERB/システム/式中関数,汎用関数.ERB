@@ -503,7 +503,12 @@ SIF ARG < 0 && ARG:1 < 0
 	RETURNF 0
 
 IF CFLAG:ARG:血縁コード >= 1 && CFLAG:ARG:血縁コード == CFLAG:(ARG:1):血縁コード
-	IF CFLAG:ARG:続柄 >= 1000 || CFLAG:(ARG:1):続柄 >= 1000
+	;夫婦同士なら近親相姦じゃない
+	IF GROUPMATCH(CFLAG:ARG:続柄, 1000, 1001) && GROUPMATCH(CFLAG:(ARG:1):続柄, 1000, 1001)
+		RETURNF 0
+	ELSEIF GROUPMATCH(CFLAG:ARG:続柄, 2000, 2001) && GROUPMATCH(CFLAG:(ARG:1):続柄, 2000, 2001)
+		RETURNF 0
+	ELSEIF CFLAG:ARG:続柄 >= 1000 || CFLAG:(ARG:1):続柄 >= 1000
 		RETURNF 2
 	ELSE
 		RETURNF 1
@@ -1415,3 +1420,25 @@ RETURNF @"{ARG/10}.{ABS(ARG%10)}"
 
 RETURNF @"{ARG/100}.\@ABS(ARG%100) < 10 ? 0 # \@{ABS(ARG%100)}"
 
+@ヨミの性別, ARG
+;性別不明キャラ ヨミの性別選択巻数
+
+IF CHARANAMEF(ARG) == "ヨミ"
+	PRINTL ヨミの性別を選択してください
+	PRINTL [1] - 男の子
+	PRINTL [2] - 女の子
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 1
+				TALENT:ARG:性別 = 1
+				TALENT:ARG:童貞 = 1
+			CASE 2
+				TALENT:ARG:性別 = 2
+				TALENT:ARG:処女 = 1
+				TALENT:ARG:バストサイズ = 1
+		ENDSELECT
+	LOOP LOOPRES(1, 2)
+ENDIF
+
+RETURN
