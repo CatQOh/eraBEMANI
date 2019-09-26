@@ -4,6 +4,7 @@
 #DIM DYNAMIC 調教可能
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC コマンド表示用, 10
+#DIM UPDATE
 
 VARLINE = 0
 
@@ -33,6 +34,9 @@ FOR LCOUNT, 0, CHARANUM
 		MAXBASE:LCOUNT:魔力 = ABL:LCOUNT:魔法技能*1000
 		BASE:LCOUNT:魔力 = LIMIT(BASE:LCOUNT:魔力, 0, MAXBASE:LCOUNT:魔力)
 	ENDIF
+	;以下セーブデータのアップデート用
+	SIF UPDATE
+		BREAK
 	;CFLAG:配属をCSTR:配属に移動
 	SELECTCASE CFLAG:LCOUNT:配属
 		CASE 1
@@ -51,13 +55,14 @@ FOR LCOUNT, 0, CHARANUM
 	;モチベーションが設定されてなければ初期値(50)にする
 	SIF CFLAG:LCOUNT:モチベーション == 0
 		CFLAG:LCOUNT:モチベーション = 50
+	;各SAVESTRにアイテム名をセットする
+	FOR LCOUNT, 0, 50
+		SIF SAVESTR:LCOUNT == ""
+			SAVESTR:LCOUNT = %SAVESTRNAME:LCOUNT%
+	NEXT
+	UPDATE = 1
 NEXT
 
-;各SAVESTRにアイテム名をセットする
-FOR LCOUNT, 0, 50
-	SIF SAVESTR:LCOUNT == ""
-		SAVESTR:LCOUNT = %SAVESTRNAME:LCOUNT%
-NEXT
 
 CALL CVAR_RESET
 
@@ -541,11 +546,11 @@ SELECTCASE RESULT
 		SELECTCASE ゲームモード()
 			CASE "通常モード"
 				;100万
-				SIF MONEY >= DIG_sEP("1,000,000")
+				SIF MONEY >= TONUM("100万")
 					CALL ENDING_CHECK
 			CASE "経営モード"
 				;1億
-				IF MONEY >= DIG_SEP("100,000,000")
+				IF MONEY >= TONUM("1億")
 					;実績:キャラを一人も購入せずにパートナーだけでSTRATEGYモードをクリアする
 					SIF キャラ未購入
 						CALL 実績解除, "もう全部あいつ一人でいいんじゃないかな"
@@ -680,12 +685,8 @@ ELSE
 	PRINTFORM 　難易度:%難易度()%
 	;奴隷人数表示
 	LOCAL = 0
-	;売却可能人数計算
-	FOR LCOUNT, 1, CHARANUM
-		SIF CFLAG:LCOUNT:状態
-			LOCAL++
-	NEXT
-	PRINTFORML 総奴隷数:{CHARANUM-1}\/売却可能:{LOCAL}
+	;売却可能人数表示
+	PRINTFORML 総奴隷数:{CHARANUM-1}\/売却可能:{CMATCH(CFLAG:状態, 1)+CMATCH(CFLAG:状態, 2)}
 	
 	PRINT 　
 	CALL 段位ゲージ表示
