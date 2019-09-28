@@ -119,6 +119,7 @@ RESTART
 
 ;エンディングチェック
 @ENDING_CHECK
+#DIM DYNAMIC LCOUNT
 #DIM DYNAMIC KANRAKU
 #DIM DYNAMIC SIN_AI
 #DIM DYNAMIC SYOHU
@@ -131,23 +132,23 @@ RESTART
 
 PRINTL 納金の手段を選択してください（エンディング内容が変化します）
 PRINTL [0] - 直接納める（通常エンド)
-REPEAT CHARANUM
-	SIF CFLAG:COUNT:陥落 == 0
+FOR LCOUNT, 0, CHARANUM
+	SIF CFLAG:LCOUNT:陥落 == 0
 		CONTINUE
-	SIF CFLAG:COUNT:陥落
+	SIF CFLAG:LCOUNT:陥落
 		KANRAKU++
-	SIF TALENT:COUNT:親愛
-		SIN_AI = COUNT
-	SIF TALENT:COUNT:娼婦
-		SYOHU = COUNT
-	SIF TALENT:COUNT:隷属
-		REIZOKU = COUNT
+	SIF TALENT:LCOUNT:親愛
+		SIN_AI = LCOUNT
+	SIF TALENT:LCOUNT:娼婦
+		SYOHU = LCOUNT
+	SIF TALENT:LCOUNT:隷属
+		REIZOKU = LCOUNT
 	;名前で判定するので「あなた」は除外
-	SIF NO:COUNT == 0
+	SIF NO:LCOUNT == 0
 		CONTINUE
 	;特殊ハーレムエンド判定
 	;菱宮エンド
-	SELECTCASE CHARANAMEF(COUNT)
+	SELECTCASE CHARANAMEF(LCOUNT)
 		CASE "水城 セリカ","北見 エリカ","菱宮 津軽"
 			HISHIMIYA++
 		CASE "菱宮 春一"
@@ -159,7 +160,7 @@ REPEAT CHARANUM
 			KANZAKI:1++
 		;梅桐エンド 恋慕もしくは親愛が条件
 		CASE "梅桐 彩葉","梅桐 緋浮美","梅桐 天土"
-			SIF TALENT:COUNT:恋慕 || TALENT:COUNT:親愛
+			SIF TALENT:LCOUNT:恋慕 || TALENT:LCOUNT:親愛
 				UMEGIRI++
 		;Lincle Kingdomエンド
 		CASE "マモニス","アーシェム","ベルフェゴーラ","ベリゼベス","ルシェ","レーヴァスレーター"
@@ -170,7 +171,7 @@ REPEAT CHARANUM
 		CASE "モード", "リリーゼ"
 			ML++
 	ENDSELECT
-REND
+NEXT
 
 ;親愛エンド
 SIF SIN_AI && FLAG:累計恋慕 == 1
@@ -296,9 +297,9 @@ LOOP 1
 @MONEY_DUE
 SELECTCASE FLAG:ゲームモード
 	CASE 0
-		MONEY -= 1000000
+		MONEY -= TONUM("100万")
 	CASE 1
-		MONEY -= 100000000
+		MONEY -= TONUM("1億")
 ENDSELECT
 
 
@@ -868,11 +869,9 @@ DO
 			CALL THANKYOUFORPLAYING
 			QUIT
 		CASE 1
-			SELECTCASE FLAG:ゲームモード
-				;STANDARDとSTRATEGY
-				CASE 0, 1
-					FLAG:周回可能 = 1
-			ENDSELECT
+			;STANDARDとSTRATEGY
+			SIF GROUPMATCH(ゲームモード(), "通常モード", "経営モード")
+				FLAG:周回可能 = 1
 			FLAG:ゲームモード = 9
 	ENDSELECT
 LOOP LOOPRES(1)
@@ -924,9 +923,8 @@ ALIGNMENT LEFT
 ;条件を満たすことで可能
 ;クリア回数により、引き継げる奴隷の数が増える
 @SUCCESSION
-VARSET LOCAL, 0
-;LOCAL = 引き継ぎ可能なキャラ数
-;LOCAL:1 = LOCALの退避変数
+#DIM DYNAMIC 引き継ぎ可能, 2
+#DIM DYNAMIC LCOUNT
 PRINTFORML {FLAG:周回数+1}周目を開始しますか？
 PRINTFORML [0] はい
 PRINTFORML [1] いいえ
@@ -938,65 +936,58 @@ LOOP LOOPRES(0)
 
 FLAG:周回数++
 
-LOCAL = 0
-REPEAT CHARANUM
-	SIF CFLAG:COUNT:陥落
-		LOCAL++
-REND
-
-SIF LOCAL > FLAG:周回数
-	LOCAL = FLAG:周回数
-SIF LOCAL > 10
-	LOCAL = 10
+;周回数と同じ、もしくは10人まで
+引き継ぎ可能 = MIN(CMATCH(CFLAG:陥落, 1), FLAG:周回数, 10)
 
 ;STRATEGYモードではパートナーも引き継げる
 SIF FLAG:パートナー
-	LOCAL++
+	引き継ぎ可能++
 
-LOCAL:1 = LOCAL
+引き継ぎ可能:1 = 引き継ぎ可能
 
 ;引き継げるキャラが居なければ引き継ぎ処理は飛ばす
-SIF LOCAL == 0
+SIF 引き継ぎ可能 == 0
 	JUMP SUCCESSION_CONTINUE
 
+;パートナーは強制的に引き継ぎ対象
 IF FLAG:パートナー
 	CFLAG:FINDCHARA(NO, FLAG:パートナー):引き継ぎフラグ = 1
-	LOCAL--
+	引き継ぎ可能--
 ENDIF
 
 DO
-	IF LOCAL
-		PRINTFORML 陥落済みの奴隷を、あと{LOCAL}人引き継ぐことができます
+	IF 引き継ぎ可能
+		PRINTFORML 陥落済みの奴隷を、あと{引き継ぎ可能}人引き継ぐことができます
 		PRINTFORML 誰を引き継ぎますか？
 		DRAWLINE
 		PRINTL □引き継ぐキャラ
-		REPEAT CHARANUM
-			SIF CFLAG:COUNT:引き継ぎフラグ
-				PRINTFORML 　No.{COUNT, 2, LEFT} %NAME:COUNT%
-		REND
+		FOR LCOUNT, 0, CHARANUM
+			SIF CFLAG:LCOUNT:引き継ぎフラグ
+				PRINTFORML 　No.{LCOUNT, 2, LEFT} %NAME:LCOUNT%
+		NEXT
 		DRAWLINE
 		PRINTL □引き継ぎ候補
-		REPEAT CHARANUM
-			SIF COUNT == MASTER
+		FOR LCOUNT, 0, CHARANUM
+			SIF LCOUNT == MASTER
 				CONTINUE
-			SIF CFLAG:COUNT:引き継ぎフラグ
+			SIF CFLAG:LCOUNT:引き継ぎフラグ
 				CONTINUE
-			SIF !CFLAG:COUNT:陥落
+			SIF !CFLAG:LCOUNT:陥落
 				CONTINUE
-			PRINTFORML 　[{COUNT, 2}] %NAME:COUNT%
-		REND
+			PRINTFORML 　[{LCOUNT, 2}] %NAME:LCOUNT%
+		NEXT
 		DRAWLINE
 		PRINTPLAIN 　NEXT GAME　
 		PRINT [10000] 引き継ぎ手続きを終了する
 		PRINTPLAIN 　
 		PRINTL [10001] 選びなおす
-	ELSEIF LOCAL == 0
+	ELSEIF 引き継ぎ可能 == 0
 		DRAWLINE
 		PRINTL □引き継ぐキャラ
-		REPEAT CHARANUM
-			SIF CFLAG:COUNT:引き継ぎフラグ
-				PRINTFORML 　No.{COUNT, 2, LEFT} %NAME:COUNT%
-		REND
+		FOR LCOUNT, 0, CHARANUM
+			SIF CFLAG:LCOUNT:引き継ぎフラグ
+				PRINTFORML 　No.{LCOUNT, 2, LEFT} %NAME:LCOUNT%
+		NEXT
 		DRAWLINE
 		PRINTL 　以上のキャラを引き継ぎます。よろしいですか？
 		DRAWLINE
@@ -1009,34 +1000,30 @@ DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 10000
-			JUMP SUCCESSION_CONTINUE, LOCAL:1-LOCAL
+			JUMP SUCCESSION_CONTINUE, 引き継ぎ可能:1-引き継ぎ可能
 		CASE 10001
-			REPEAT CHARANUM
-				CFLAG:COUNT:引き継ぎフラグ = 0
-			REND
-			LOCAL = LOCAL:1
+			CVARSET CFLAG, GETNUM(CFLAG, "引き継ぎフラグ"), 0
+			引き継ぎ可能 = 引き継ぎ可能:1
 			IF FLAG:パートナー
 				CFLAG:FINDCHARA(NO, FLAG:パートナー):引き継ぎフラグ = 1
-				LOCAL--
+				引き継ぎ可能--
 			ENDIF
 		CASE 1 TO CHARANUM
-			SIF LOCAL <= 0
+			SIF 引き継ぎ可能 <= 0
 				CONTINUE
 			SIF !CFLAG:RESULT:陥落
 				CONTINUE
 			SIF CFLAG:RESULT:引き継ぎフラグ
 				CONTINUE
 			CFLAG:RESULT:引き継ぎフラグ = 1
-			LOCAL--
+			引き継ぎ可能--
 	ENDSELECT
 LOOP 1
 
 
 @SUCCESSION_CONTINUE, ARG
 #DIM DYNAMIC LCOUNT
-VARSET LOCAL, 0
 ;ARG = 引き継ぐキャラ数
-;LOCAL = 引き継ぎ処理を終えたキャラ数
 
 FOR LCOUNT, CHARANUM-1, 0, -1
 	SIF LCOUNT == MASTER
@@ -1045,18 +1032,19 @@ FOR LCOUNT, CHARANUM-1, 0, -1
 		DELCHARA LCOUNT
 NEXT
 
-REPEAT CHARANUM
-	IF TALENT:COUNT:妊娠 || TALENT:COUNT:育児中
+;妊娠中なら出産予定日を調整する それ以外はフラグリセット
+FOR LCOUNT, 0, CHARANUM
+	IF TALENT:LCOUNT:妊娠 || TALENT:LCOUNT:育児中
 		PREG:10 -= DAY
 	ELSE
-		CALL CLEAR_FLAG, COUNT
+		CALL CLEAR_FLAG, LCOUNT
 	ENDIF
-	CFLAG:COUNT:引き継ぎフラグ = 0
-	CFLAG:COUNT:周回数++
-REND
+	CFLAG:LCOUNT:引き継ぎフラグ = 0
+	CFLAG:LCOUNT:周回数++
+NEXT
 
 REPEAT VARSIZE("FLAG")
-	SELECTCASE FLAGNAME:COUNT
+	SELECTCASE FLAGNAME:LCOUNT
 		CASE "難易度", "ゲームモード", "ゲーセン営業中", "娼館営業中", "娼館報告"
 			FLAG:COUNT = 0
 	ENDSELECT
@@ -1089,7 +1077,7 @@ DO
 			FLAG:価格フィルタ上限 = 3000
 			BREAK
 		CASE 1
-			MONEY = 1000000
+			MONEY = TONUM("100万")
 			FLAG:ゲームモード = RESULT
 			ITEM:風俗店営業許可証 = 1
 			BREAK
