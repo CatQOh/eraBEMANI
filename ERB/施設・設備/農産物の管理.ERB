@@ -336,6 +336,10 @@ IF CMATCH(CSTR:配属, "農業")
 		IF CSTR:LCOUNT:配属 == "農業"
 			TARGET = LCOUNT
 			PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 栽培技能:{ABL:LCOUNT:栽培技能, 2, LEFT} 魔法技能:{ABL:LCOUNT:魔法技能, 2, LEFT} 工作技能:{ABL:LCOUNT:工作技能, 2, LEFT} 
+			SIF 統率者("農業") && !TALENT:LCOUNT:統率
+				PRINT 統率者ボーナス+1 
+			SIF TALENT:LCOUNT:統率
+				PRINT [統率]
 			CALL NEED_JUEL_栽培技能
 			CALL CHECK_JUEL_栽培技能
 			SIF RESULT && ABL:LCOUNT:栽培技能 < 10
@@ -830,7 +834,12 @@ LOCAL = 0
 FOR LCOUNT, 1, CHARANUM
 	SIF CSTR:LCOUNT:配属 != "農業"
 		CONTINUE
-	LOCAL += MIN(ABL:LCOUNT:栽培技能, 10)
+	CFLAG:LCOUNT:配属完了 = 1
+	IF 統率者("農業") && !TALENT:LCOUNT:統率
+		LOCAL += MIN((ABL:LCOUNT:栽培技能+1), 10)
+	ELSE
+		LOCAL += MIN(ABL:LCOUNT:栽培技能, 10)
+	ENDIF
 NEXT
 
 RETURNF LOCAL
@@ -844,8 +853,13 @@ RETURNF LOCAL
 FOR LCOUNT, 0, CHARANUM
 	SIF CSTR:LCOUNT:配属 != "農業"
 		CONTINUE
-	魔法レベル += MIN(ABL:LCOUNT:魔法技能, 10)
-	科学レベル += MIN(ABL:LCOUNT:工作技能, 10)
+	IF 統率者("農業") && !TALENT:LCOUNT:統率
+		魔法レベル += MIN((ABL:LCOUNT:魔法技能+1), 10)
+		科学レベル += MIN((ABL:LCOUNT:工作技能+1), 10)
+	ELSE
+		魔法レベル += MIN(ABL:LCOUNT:魔法技能, 10)
+		科学レベル += MIN(ABL:LCOUNT:工作技能, 10)
+	ENDIF
 NEXT
 
 RETURNF 栽培レベル()*2+魔法レベル+科学レベル

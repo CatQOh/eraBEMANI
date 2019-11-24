@@ -16,6 +16,7 @@ ENDIF
 
 FOR LCOUNT, 0, CHARANUM
 	IF CSTR:LCOUNT:配属 == "畜産業"
+		CFLAG:LCOUNT:配属完了 = 1
 		飼育レベル計算用 += 飼育レベル(LCOUNT)
 		養殖レベル計算用 += 養殖レベル(LCOUNT)
 		;出費減額率の計算 実務経験、飼育技能、その他素質で一人につき最大9%減
@@ -439,6 +440,8 @@ IF CMATCH(CSTR:配属, "畜産業")
 		IF CSTR:LCOUNT:配属 == "畜産業"
 			TARGET = LCOUNT
 			PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 飼育技能:{ABL:LCOUNT:飼育技能, 2, LEFT} 飼育適性:{飼育レベル(LCOUNT), 2, LEFT} 
+			SIF 統率者("畜産業") && !TALENT:LCOUNT:統率
+				PRINT 統率者ボーナス+1 
 			SIF TALENT:LCOUNT:世話好き
 				PRINT 【世話好き】
 			SELECTCASE CSTR:LCOUNT:種族
@@ -453,6 +456,8 @@ IF CMATCH(CSTR:配属, "畜産業")
 				CASE "妖精"
 					PRINT 【妖精】
 			ENDSELECT
+			SIF TALENT:LCOUNT:統率
+				PRINT 【統率】
 			CALL NEED_JUEL_飼育技能
 			CALL CHECK_JUEL_飼育技能
 			SIF RESULT && ABL:LCOUNT:飼育技能 < 10
@@ -810,6 +815,8 @@ FOR LCOUNT, 0, CHARANUM
 		LOCAL += MIN(EXP:LCOUNT:実務経験, 1000)/200
 		;飼育レベル
 		LOCAL += ABL:LCOUNT:飼育技能
+		SIF 統率者("畜産業") && !TALENT:LCOUNT:統率
+			LOCAL++
 		;買い物上手 2%
 		SIF TALENT:LCOUNT:買い物上手
 			LOCAL += 2
@@ -1312,6 +1319,8 @@ SELECTCASE CSTR:ARG:種族
 ENDSELECT
 
 計算用 += ABL:ARG:飼育技能
+SIF 統率者("畜産業") && !TALENT:ARG:統率
+	計算用++
 
 RETURNF MAX(計算用, 0)
 
@@ -1341,7 +1350,11 @@ SELECTCASE CSTR:ARG:種族
 	CASE "鳳凰", "ヴァンパイア"
 		計算用--
 ENDSELECT
-計算用 += ABL:ARG:飼育技能/2
+IF 統率者("畜産業") && !TALENT:ARG:統率
+	計算用 += (ABL:ARG:飼育技能+1)/2
+ELSE
+	計算用 += ABL:ARG:飼育技能/2
+ENDIF
 
 RETURNF MAX(計算用, 0)
 
