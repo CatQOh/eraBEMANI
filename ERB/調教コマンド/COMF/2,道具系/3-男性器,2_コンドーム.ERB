@@ -17,7 +17,7 @@ ELSE
 ENDIF
 
 ;主人か助手が竿ありならOK
-IF (PENIS(MASTER) && Ｐ使用不可(MASTER)) || (PENIS(ASSI) && !Ｐ使用不可(ASSI))
+IF (PENIS(MASTER) && !Ｐ使用不可(MASTER)) || (PENIS(ASSI) && !Ｐ使用不可(ASSI)) || (PENIS(TARGET) && !Ｐ使用不可(TARGET))
 	COMRESULT = 1
 	RETURNF 1
 ENDIF
@@ -70,6 +70,7 @@ IF PENIS(TARGET) && !TEQUIP:触手 && !TEQUIP:搾精コンドーム && !TEQUIP:�
 	ENDIF
 ENDIF
 PRINTL [3] やめる
+PRINTL [4] コンドーム自動装着設定
 DO
 	INPUT
 	SELECTCASE RESULT
@@ -98,6 +99,9 @@ DO
 			TFLAG:避妊具着用者 = TARGET
 			BREAK
 		CASE 3
+			RETURN 0
+		CASE 4
+			CALL CONDOM_SETTING
 			RETURN 0
 	ENDSELECT
 LOOP 1
@@ -147,3 +151,141 @@ PRINTL ＜コンドーム装備中＞
 
 RETURN 1
 
+@CONDOM_SETTING
+LOCAL++
+SIF ITEM:コンドーム == 0
+	RETURN LOCAL-1
+DRAWLINE
+PRINTL コンドームの設定を行う対象を選択してください
+PRINTL  
+IF PENIS(MASTER)
+	PRINTFORM [0] - %CALLNAME:MASTER%
+	IF TEQUIP:MASTER:コンドーム && GETBIT(FLAG:避妊具設定, 0)
+		PRINTL (装着済み、常備)
+	ELSEIF TEQUIP:MASTER:コンドーム
+		PRINTL (装着済み)
+	ELSE
+		PRINTL (未装着)
+	ENDIF
+ENDIF
+
+IF ASSI >= 0
+	IF PENIS(ASSI)
+		PRINTFORM [1] - %CALLNAME:ASSI%
+		IF TEQUIP:ASSI:コンドーム && GETBIT(FLAG:避妊具設定, 1)
+			PRINTL (装着済み、常備)
+		ELSEIF TEQUIP:ASSI:コンドーム
+			PRINTL (装着済み)
+		ELSE
+			PRINTL (未装着)
+		ENDIF
+	ENDIF
+ENDIF
+
+IF PENIS(TARGET)
+	PRINTFORM [2] - %CALLNAME:TARGET%
+	IF TEQUIP:コンドーム && GETBIT(FLAG:避妊具設定, 2)
+		PRINTL (装着済み、常備)
+	ELSEIF TEQUIP:コンドーム
+		PRINTL (装着済み)
+	ELSEIF TEQUIP:搾精コンドーム && GETBIT(FLAG:避妊具設定, 3)
+		PRINTL (搾精コンドーム装着済み、常備)
+	ELSEIF TEQUIP:搾精コンドーム
+		PRINTL (搾精コンドーム装着済み)
+	ELSE
+		PRINTL (未装着)
+	ENDIF
+ENDIF
+
+PRINTL [3] - 戻る
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			PRINTL 避妊具の設定をしてください
+			PRINTL  
+			IF GETBIT(FLAG:避妊具設定, 0)
+				PRINTL [0] 常に避妊しない
+			ELSE
+				PRINTL [0] 常に避妊する
+			ENDIF
+			PRINTL [1] 戻る
+			DO
+				INPUT
+				IF RESULT == 0
+					INVERTBIT FLAG:避妊具設定, 0
+					SELECTCASE GETBIT(FLAG:避妊具設定, 0)
+						CASE 0
+							TEQUIP:MASTER:コンドーム = 0
+						CASE 1
+							TEQUIP:MASTER:コンドーム = 1
+							SIF !上級売春中
+								ITEM:コンドーム--
+					ENDSELECT
+				ENDIF
+			LOOP LOOPRES(0, 1)
+			RESTART
+		CASE 1
+			PRINTL 避妊具の設定をしてください
+			PRINTL  
+			IF GETBIT(FLAG:避妊具設定, 1)
+				PRINTL [0] 常に避妊しない
+			ELSE
+				PRINTL [0] 常に避妊する
+			ENDIF
+			PRINTL [1] 戻る
+			DO
+				INPUT
+				IF RESULT == 0
+					INVERTBIT FLAG:避妊具設定, 1
+					SELECTCASE GETBIT(FLAG:避妊具設定, 1)
+						CASE 0
+							TEQUIP:ASSI:コンドーム = 0
+						CASE 1
+							TEQUIP:ASSI:コンドーム = 1
+							SIF !上級売春中
+								ITEM:コンドーム--
+					ENDSELECT
+				ENDIF
+			LOOP LOOPRES(0, 1)
+			RESTART
+		CASE 2
+			PRINTL 避妊具の設定をしてください
+			PRINTL  
+			IF GETBIT(FLAG:避妊具設定, 2) || GETBIT(FLAG:避妊具設定, 3)
+				PRINTL [0] 常に何も付けない
+			ELSE 
+				PRINTL [0] 常に避妊する
+				SIF !上級売春中 && ITEM:搾精コンドーム
+					PRINTL [1] 常に搾精コンドームを付ける
+			ENDIF
+			PRINTL [2] 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						IF GETBIT(FLAG:避妊具設定, 2) || GETBIT(FLAG:避妊具設定, 3)
+							CLEARBIT FLAG:避妊具設定, 2, 3
+							TEQUIP:コンドーム = 0
+							TEQUIP:搾精コンドーム = 0
+						ELSE
+							SETBIT FLAG:避妊具設定, 2
+							TEQUIP:コンドーム = 1
+							SIF !上級売春中
+								ITEM:コンドーム--
+						ENDIF
+					CASE 1
+						IF !GETBIT(FLAG:避妊具設定, 2) && !GETBIT(FLAG:避妊具設定, 3)
+							SETBIT FLAG:避妊具設定, 3
+							TEQUIP:搾精コンドーム = 1
+							ITEM:搾精コンドーム--
+						ENDIF
+				ENDSELECT
+			LOOP LOOPRES(0, 1, 2)
+			RESTART
+		CASE 3
+			RETURN LOCAL-1
+	ENDSELECT
+LOOP 1
+
+RETURN 0
