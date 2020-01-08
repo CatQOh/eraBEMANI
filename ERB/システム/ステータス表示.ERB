@@ -859,29 +859,42 @@ SIF 設定 != 1
 	CALL 基本情報
 
 PRINTL □ 性経験履歴
-SIF 設定
-	GOTO SET
 [IF_DEBUG]
-	$SET
 	SEX_TOTAL = 0
 	NAKADASHI_TOTAL = 0
 	LIST_NO:LIST_ = LCOUNT
 	PRINTFORML [{LIST_}] 新しく加える
 	LIST_++
 [ENDIF]
+[IF_NDEBUG]
+	IF 設定
+		SEX_TOTAL = 0
+		NAKADASHI_TOTAL = 0
+		LIST_NO:LIST_ = LCOUNT
+		PRINTFORML [{LIST_}] 新しく加える
+		LIST_++
+	ENDIF
+[ENDIF]
 FOR LCOUNT, 0, 20000
 	IF 経験回数:TARGET:LCOUNT
 		PRINTFORM %CSVNAMEF(LCOUNT)%:{経験回数:TARGET:LCOUNT}回
-		SIF 設定
-			GOTO SET_経験回数
 		[IF_DEBUG]
-			$SET_経験回数
 			SEX_TOTAL += 経験回数:TARGET:LCOUNT
 			NAKADASHI_TOTAL += 中出され回数:TARGET:LCOUNT
 			LIST_NO:LIST_ = LCOUNT
 			PRINTPLAIN  ―――― 
 			PRINTFORM [{LIST_}] 変更
 			LIST_++
+		[ENDIF]
+		[IF_NDEBUG]
+			IF 設定
+				SEX_TOTAL += 経験回数:TARGET:LCOUNT
+				NAKADASHI_TOTAL += 中出され回数:TARGET:LCOUNT
+				LIST_NO:LIST_ = LCOUNT
+				PRINTPLAIN  ―――― 
+				PRINTFORM [{LIST_}] 変更
+				LIST_++
+			ENDIF
 		[ENDIF]
 		PRINTL
 		ID = NO:TARGET
@@ -911,15 +924,21 @@ FOR LCOUNT, 0, 20000
 NEXT
 IF モブ経験人数:TARGET:0
 	PRINTFORM 不明:{モブ経験回数:TARGET:0}回/{モブ経験人数:TARGET:0}人
-	SIF 設定
-		GOTO SET_中出され回数
 	[IF_DEBUG]
-		$SET_中出され回数
 		SEX_TOTAL += モブ経験回数:TARGET:0
 		NAKADASHI_TOTAL += モブ中出され回数:TARGET:0
 		LIST_NO:LIST_ = -1
 		PRINTPLAIN  ―――― 
 		PRINTFORM [{LIST_}] 変更
+	[ENDIF]
+	[IF_NDEBUG]
+		IF 設定
+			SEX_TOTAL += モブ経験回数:TARGET:0
+			NAKADASHI_TOTAL += モブ中出され回数:TARGET:0
+			LIST_NO:LIST_ = -1
+			PRINTPLAIN  ―――― 
+			PRINTFORM [{LIST_}] 変更
+		ENDIF
 	[ENDIF]
 	PRINTL
 	ID = NO:TARGET
@@ -946,26 +965,35 @@ IF モブ経験人数:TARGET:0
 		PRINTL ている。
 	ENDIF
 ELSE
-	SIF 設定
-		GOTO SET_モブ経験
 	[IF_DEBUG]
-		$SET_モブ経験
 		LIST_NO:LIST_ = -1
-		PRINTFORML [{LIST_}] モブ経験人数を加える
+		PRINTFORML  [{LIST_}] モブ経験人数を加える
+	[ENDIF]
+	[IF_NDEBUG]
+		IF 設定
+			LIST_NO:LIST_ = -1
+			PRINTFORML  [{LIST_}] モブ経験人数を加える
+		ENDIF
 	[ENDIF]
 ENDIF
-SIF 設定
-	GOTO SET_EXP
 [IF_DEBUG]
-	$SET_EXP
-	PRINTFORML [{LIST_+1}] 性交経験をこれに合わせる(現在:{EXP:性交経験}回)
-	PRINTFORML [{LIST_+2}] 膣射経験をこれに合わせる(現在:{EXP:膣射経験}回)
+	PRINTFORML  [{LIST_+1}] 性交経験をこれに合わせる(現在:{EXP:性交経験}回)
+	PRINTFORML  [{LIST_+2}] 膣射経験をこれに合わせる(現在:{EXP:膣射経験}回)
 	SIF !TALENT:童貞
 		PRINTFORML  [{LIST_+3}] 童貞を捧げた相手………………\@ CSTR:童貞 != "" ? %CSTR:童貞% # 不明 \@
 	SIF !TALENT:処女
 		PRINTFORML  [{LIST_+4}] 処女を捧げた相手………………\@ CSTR:処女 != "" ? %CSTR:処女% # 不明 \@
 [ENDIF]
-
+[IF_NDEBUG]
+	IF 設定
+		PRINTFORML  [{LIST_+1}] 性交経験をこれに合わせる(現在:{EXP:性交経験}回)
+		PRINTFORML  [{LIST_+2}] 膣射経験をこれに合わせる(現在:{EXP:膣射経験}回)
+		SIF !TALENT:童貞
+			PRINTFORML  [{LIST_+3}] 童貞を捧げた相手………………\@ CSTR:童貞 != "" ? %CSTR:童貞% # 不明 \@
+		SIF !TALENT:処女
+			PRINTFORML  [{LIST_+4}] 処女を捧げた相手………………\@ CSTR:処女 != "" ? %CSTR:処女% # 不明 \@
+	ENDIF
+[ENDIF]
 
 DRAWLINE
 PRINTPLAIN 　 EXP 　
@@ -1037,10 +1065,7 @@ DO
 				ENDIF
 			ENDIF
 		CASEELSE
-		SIF 設定
-			GOTO DEBUG
 		[IF_DEBUG]
-			$DEBUG
 			IF INRANGE(RESULT, 10, LIST_)
 				BREAK
 			ELSEIF GROUPMATCH(RESULT, LIST_+3, LIST_+4)
@@ -1051,6 +1076,21 @@ DO
 			ELSEIF RESULT == 2+LIST_
 				EXP:膣射経験 = NAKADASHI_TOTAL
 				RESTART
+			ENDIF
+		[ENDIF]
+		[IF_NDEBUG]
+			IF 設定
+				IF INRANGE(RESULT, 10, LIST_)
+					BREAK
+				ELSEIF GROUPMATCH(RESULT, LIST_+3, LIST_+4)
+					BREAK
+				ELSEIF RESULT == 1+LIST_
+					EXP:性交経験 = SEX_TOTAL
+					RESTART
+				ELSEIF RESULT == 2+LIST_
+					EXP:膣射経験 = NAKADASHI_TOTAL
+					RESTART
+				ENDIF
 			ENDIF
 		[ENDIF]
 	ENDSELECT
