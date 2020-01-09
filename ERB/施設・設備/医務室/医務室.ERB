@@ -2,6 +2,7 @@
 #DIM DYNAMIC 配属人数
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 補充費
+#DIM DYNAMIC 名前文字数
 配属人数 = CMATCH(CSTR:配属, "医務室")
 DRAWLINE
 PRINTL □医務室
@@ -22,29 +23,37 @@ PRINTFORM {FLAG:医薬品}\%
 RESETCOLOR
 CALL PASELIL, @" 配属人数:{配属人数}/3 所持金:{MONEY}＄"
 PRINTL □担当医
-FOR LCOUNT, 0, CHARANUM
-	IF CSTR:LCOUNT:配属 == "医務室"
-		PRINTFORM 　%NAME:LCOUNT% 
-		SIF !CFLAG:LCOUNT:配属完了
-			PRINT 【配属準備中】
-		SIF TALENT:LCOUNT:調合知識
-			PRINT [調合知識]
-		SIF TALENT:LCOUNT:治療
-			PRINT [治療]
-		IF TALENT:LCOUNT:謎の魅力
-			PRINT [謎の魅力]
-		ELSEIF TALENT:LCOUNT:魅力
-			PRINT [魅力]
-		ELSEIF TALENT:LCOUNT:魅惑
-			PRINT [魅惑]
-		ELSEIF TALENT:LCOUNT:人気
-			PRINT [人気]
+IF CMATCH(CSTR:配属, "医務室")
+	FOR LCOUNT, 0, CHARANUM
+		SIF CSTR:LCOUNT:配属 == "医務室"
+			CALL SETMAX(名前文字数, STRLENS(NAME:LCOUNT))
+	NEXT
+	FOR LCOUNT, 0, CHARANUM
+		IF CSTR:LCOUNT:配属 == "医務室"
+			PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 
+			SIF !CFLAG:LCOUNT:配属完了
+				PRINT 【配属準備中】
+			SIF TALENT:LCOUNT:調合知識
+				PRINT [調合知識]
+			SIF TALENT:LCOUNT:治療
+				PRINT [治療]
+			IF TALENT:LCOUNT:謎の魅力
+				PRINT [謎の魅力]
+			ELSEIF TALENT:LCOUNT:魅力
+				PRINT [魅力]
+			ELSEIF TALENT:LCOUNT:魅惑
+				PRINT [魅惑]
+			ELSEIF TALENT:LCOUNT:人気
+				PRINT [人気]
+			ENDIF
+			SIF TALENT:LCOUNT:統率
+				PRINT [統率]
+			PRINTL 
 		ENDIF
-		SIF TALENT:LCOUNT:統率
-			PRINT [統率]
-		PRINTL 
-	ENDIF
-NEXT
+	NEXT
+ELSE
+	PRINTL [無し]
+ENDIF
 PRINTL 
 ;医薬品主人を除くキャラ人数*5000
 ;浪費癖一人につき一人頭1000アップ
@@ -52,6 +61,7 @@ PRINTL
 CALL PASELIL, @"　[1] - 医薬品を補充する({補充費}＄)"
 PRINTL 　[2] - キャラを配属させる
 PRINTL 　[3] - 利用履歴を確認する（過去5日分）
+PRINTL 　[4] - 身体改造を行う
 ;IF 配属人数
 ;	PRINTL [3] - 健康診断を行う
 ;ELSE
@@ -84,6 +94,9 @@ DO
 			RESTART
 		CASE 3
 			CALL 医務室利用者
+			RESTART
+		CASE 4
+			CALL BODY_MOD
 			RESTART
 		;CASE 3
 		;	DRAWLINE

@@ -3,6 +3,7 @@
 #DIM DYNAMIC 割引率
 #DIM DYNAMIC 司書魅力
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 名前文字数
 
 ;本の補充費と司書レベルを計算
 CALL 図書室ランク計算
@@ -32,32 +33,40 @@ PRINTFORM 　図書室のランク:{FLAG:図書室ランク}/30
 SIF FLAG:本の最終補充日
 	PRINTFORM 本の最終補充日:{FLAG:本の最終補充日/10000}年{FLAG:本の最終補充日/100%100}月{FLAG:本の最終補充日%100}日
 PRINTL 
-PRINTL □担当司書
-FOR LCOUNT, 0, CHARANUM
-	IF CSTR:LCOUNT:配属 == "図書室"
-		PRINTFORM 　%NAME:LCOUNT% 
-		IF !CFLAG:LCOUNT:配属完了
-			PRINT 【配属準備中】
-		ELSE
-			SIF 統率者("図書室") && !TALENT:LCOUNT:統率
-				PRINT  統率者ボーナス+1 
+PRINTFORML □担当司書:{CMATCH(CSTR:配属, "図書室")}/3
+IF CMATCH(CSTR:配属, "図書室")
+	FOR LCOUNT, 0, CHARANUM
+		SIF CSTR:LCOUNT:配属 == "図書室"
+			CALL SETMAX(名前文字数, STRLENS(NAME:LCOUNT))
+	NEXT
+	FOR LCOUNT, 0, CHARANUM
+		IF CSTR:LCOUNT:配属 == "図書室"
+			PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 
+			IF !CFLAG:LCOUNT:配属完了
+				PRINT 【配属準備中】
+			ELSE
+				SIF 統率者("図書室") && !TALENT:LCOUNT:統率
+					PRINT  統率者ボーナス+1 
+			ENDIF
+			SIF TALENT:LCOUNT:買い物上手
+				PRINT [買い物上手]
+			SIF TALENT:LCOUNT:潔癖症
+				PRINT [潔癖症]
+			SIF TALENT:LCOUNT:禁断の知識
+				PRINT [禁断の知識]
+			IF TALENT:LCOUNT:謎の魅力
+				PRINT [謎の魅力]
+			ELSEIF TALENT:LCOUNT:魅力
+				PRINT [魅力]
+			ENDIF
+			SIF TALENT:LCOUNT:統率
+				PRINT [統率]
+			PRINTL 
 		ENDIF
-		SIF TALENT:LCOUNT:買い物上手
-			PRINT [買い物上手]
-		SIF TALENT:LCOUNT:潔癖症
-			PRINT [潔癖症]
-		SIF TALENT:LCOUNT:禁断の知識
-			PRINT [禁断の知識]
-		IF TALENT:LCOUNT:謎の魅力
-			PRINT [謎の魅力]
-		ELSEIF TALENT:LCOUNT:魅力
-			PRINT [魅力]
-		ENDIF
-		SIF TALENT:LCOUNT:統率
-			PRINT [統率]
-		PRINTL 
-	ENDIF
-NEXT
+	NEXT
+ELSE
+	PRINTL 　[無し]
+ENDIF
 PRINTL 
 CALL PASELIL, @"　[1] - 本を補充する（{補充費}＄必要）"
 IF CMATCH(CSTR:配属, "図書室")
@@ -67,6 +76,7 @@ ELSE
 ENDIF
 PRINTL 　[3] - 司書を配属する
 PRINTL 　[4] - 利用履歴を確認する（過去5日分）
+PRINTL 　[5] - 図書室の説明
 DRAWLINE
 PRINTPLAIN 　図書室　
 PRINTL [0] - 戻る
@@ -137,6 +147,9 @@ DO
 			RESTART
 		CASE 4
 			CALL 図書室利用者
+			RESTART
+		CASE 5
+			CALL MANUAL_図書室
 			RESTART
 	ENDSELECT
 LOOP 1
@@ -409,3 +422,37 @@ DO
 	ENDSELECT
 LOOP 1
 
+@MANUAL_図書室
+DRAWLINE
+PRINTL □図書室について
+PRINTL 　[1] - 図書室のシステム
+PRINTL 　[2] - 図書室ランクとは？
+DRAWLINE
+PRINTPLAIN 　図書室　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1
+			PRINTL 図書室はキャラクターたちが日常的に使用する施設であり、使用者は習得の珠を得ることができます
+			PRINTL キャラクターたちもそれぞれ本に対する興味や関心を持っており、積極的に通うキャラもいれば興味の無いキャラもいます
+			PRINTL しかし本棚が代わり映えしないことにはどのキャラも次第に興味を失っていき、最終的には図書室を利用しなくなります
+			PRINTL 定期的に本を補充し、キャラクターたちの興味を惹きましょう
+			PRINTL 本の補充費は司書たちの能力（司書レベル）で変動し、仕事慣れしていたり本の扱いが丁寧なキャラは補充費を安く抑えられます
+			PRINTL その他、キャラクターたちは本だけでなく司書との交流を目的として利用することもあります
+			PRINTL いろいろなキャラで司書の適性を試してみるとよいでしょう
+			WAIT
+			RESTART
+		CASE 2
+			PRINTL 図書室ランクとは、配属した司書の実務経験に応じて上昇するランクです。司書レベルとは違うので注意してください
+			PRINTL 最大値は30で、司書の人数に応じて一人あたりの上限が変わります。少人数でランクを上げるには相応の実務経験が必要になります
+			PRINTL 逆に多人数でランクを上げるには個々の司書が実務経験を重ねていないとランクが上昇しづらくなります
+			PRINTL ランクが上昇することで、素質を取得できる本などの特別なアイテムを購入できるようになります
+			PRINTL 購入可能なアイテムは「図書室ランクのボーナスを確認する」から見てみましょう
+			WAIT
+			RESTART
+	ENDSELECT
+LOOP 1

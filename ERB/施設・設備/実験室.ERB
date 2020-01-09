@@ -1,6 +1,7 @@
 ﻿@実験室
 #DIM DYNAMIC 配属人数
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 名前文字数
 配属人数 = CMATCH(CSTR:配属, "実験室")
 
 CALL 実験室レベル計算
@@ -11,32 +12,41 @@ PRINTL 　能力の高いキャラや、いささか常識から外れている�
 PRINTFORML □研究レベル:{基礎研究レベル}/50 欲望レベル:{欲望研究レベル}/50
 PRINTFORML 　サディストレベル:{サド研究レベル}/50 マゾヒストレベル:{マゾ研究レベル}/50
 PRINTFORML □研究員:{配属人数}/5
-FOR LCOUNT, 0, CHARANUM
-	SIF CSTR:LCOUNT:配属 != "実験室"
-		CONTINUE
-	PRINTFORM 　%NAME:LCOUNT% 工作技能:{ABL:LCOUNT:工作技能} サドっ気:{ABL:LCOUNT:サドっ気} マゾっ気:{ABL:LCOUNT:マゾっ気}
-	IF !CFLAG:LCOUNT:配属完了
-		PRINT 【配属準備中】
-	ELSE
-		SIF 統率者("実験室") && !TALENT:LCOUNT:統率
-			PRINT  統率者ボーナス+1 
-	ENDIF
-	SIF TALENT:LCOUNT:工学博士
-		PRINT [工学博士]
-	SIF TALENT:LCOUNT:サド
-		PRINT [サド]
-	SIF TALENT:LCOUNT:マゾ
-		PRINT [マゾ]
-	SIF TALENT:LCOUNT:倒錯的
-		PRINT [倒錯的]
-	SIF TALENT:LCOUNT:調合知識
-		PRINT [調合知識]
-	SIF TALENT:LCOUNT:統率
-	PRINTL 
-NEXT
+IF CMATCH(CSTR:配属, "実験室")
+	FOR LCOUNT, 0, CHARANUM
+		SIF CSTR:LCOUNT:配属 == "実験室"
+			CALL SETMAX(名前文字数, STRLENS(NAME:LCOUNT))
+	NEXT
+	FOR LCOUNT, 0, CHARANUM
+		SIF CSTR:LCOUNT:配属 != "実験室"
+			CONTINUE
+		PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 工作技能:{ABL:LCOUNT:工作技能} サドっ気:{ABL:LCOUNT:サドっ気} マゾっ気:{ABL:LCOUNT:マゾっ気}
+		IF !CFLAG:LCOUNT:配属完了
+			PRINT 【配属準備中】
+		ELSE
+			SIF 統率者("実験室") && !TALENT:LCOUNT:統率
+				PRINT  統率者ボーナス+1 
+		ENDIF
+		SIF TALENT:LCOUNT:工学博士
+			PRINT [工学博士]
+		SIF TALENT:LCOUNT:サド
+			PRINT [サド]
+		SIF TALENT:LCOUNT:マゾ
+			PRINT [マゾ]
+		SIF TALENT:LCOUNT:倒錯的
+			PRINT [倒錯的]
+		SIF TALENT:LCOUNT:調合知識
+			PRINT [調合知識]
+		SIF TALENT:LCOUNT:統率
+		PRINTL 
+	NEXT
+ELSE
+	PRINTL 　[無し]
+ENDIF
 PRINTL 
 PRINTL 　[1] - キャラを配属させる
 PRINTL 　[2] - アイテムを改造する
+PRINTL 　[3] - 実験室の説明
 ;PRINTL 　[3] - 実験室ボーナスを確認する
 DRAWLINE
 PRINT 　実験室　
@@ -54,6 +64,8 @@ DO
 			CALL アイテム改造
 			RESTART
 		CASE 3
+			CALL MANUAL_実験室
+			RESTART
 	ENDSELECT
 LOOP 1
 
@@ -664,3 +676,14 @@ FOR LCOUNT, 0, CHARANUM
 		CFLAG:LCOUNT:配属完了 = 1
 NEXT
 
+@MANUAL_実験室
+DRAWLINE
+PRINTL □実験室について
+PRINTL 　購入済みのアイテムを改造して効果を高めることができます
+PRINTL 　改造したアイテムは名前が変わり、調教中に使用することが可能です
+PRINTL 　アイテム改造には相応の人員と費用が必要です。よりアブノーマルな効果を施すには、工作技能の他に、
+PRINTL 　より高い[欲望][サドっ気][マゾっ気]の能力が求められます
+PRINTL 　まずはアイテムを購入するところから始めてみましょう
+DRAWLINE
+PRINTL　　実験室
+WAIT
