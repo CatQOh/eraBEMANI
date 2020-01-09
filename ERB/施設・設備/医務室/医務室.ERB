@@ -3,6 +3,11 @@
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 補充費
 #DIM DYNAMIC 名前文字数
+#DIM DYNAMIC 禁断の知識あり
+
+SIF TALENT:MASTER:禁断の知識
+	禁断の知識あり = 1
+
 配属人数 = CMATCH(CSTR:配属, "医務室")
 DRAWLINE
 PRINTL □医務室
@@ -33,10 +38,12 @@ IF CMATCH(CSTR:配属, "医務室")
 			PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 
 			SIF !CFLAG:LCOUNT:配属完了
 				PRINT 【配属準備中】
-			SIF TALENT:LCOUNT:調合知識
-				PRINT [調合知識]
-			SIF TALENT:LCOUNT:治療
-				PRINT [治療]
+			CALL ISTALENT, LCOUNT, "調合知識"
+			CALL ISTALENT, LCOUNT, "治療"
+			IF TALENT:LCOUNT:禁断の知識
+				PRINT [禁断の知識]
+				禁断の知識あり = 1
+			ENDIF
 			IF TALENT:LCOUNT:謎の魅力
 				PRINT [謎の魅力]
 			ELSEIF TALENT:LCOUNT:魅力
@@ -46,8 +53,7 @@ IF CMATCH(CSTR:配属, "医務室")
 			ELSEIF TALENT:LCOUNT:人気
 				PRINT [人気]
 			ENDIF
-			SIF TALENT:LCOUNT:統率
-				PRINT [統率]
+			CALL ISTALENT, LCOUNT, "統率"
 			PRINTL 
 		ENDIF
 	NEXT
@@ -61,7 +67,11 @@ PRINTL
 CALL PASELIL, @"　[1] - 医薬品を補充する({補充費}＄)"
 PRINTL 　[2] - キャラを配属させる
 PRINTL 　[3] - 利用履歴を確認する（過去5日分）
-PRINTL 　[4] - 身体改造を行う
+IF 禁断の知識あり
+	PRINTL 　[4] - 身体改造を行う
+ELSE
+	PRINTL 　[-] - 身体改造を行う(主人か配属中のキャラが[禁断の知識]を持っている必要があります)
+ENDIF
 ;IF 配属人数
 ;	PRINTL [3] - 健康診断を行う
 ;ELSE
@@ -96,7 +106,8 @@ DO
 			CALL 医務室利用者
 			RESTART
 		CASE 4
-			CALL BODY_MOD
+			SIF 禁断の知識あり
+				CALL BODY_MOD
 			RESTART
 		;CASE 3
 		;	DRAWLINE

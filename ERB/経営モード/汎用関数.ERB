@@ -10,6 +10,8 @@
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 配属可能, 10000
+#DIM DYNAMIC 名前文字数
+#DIM DYNAMIC 配属先文字数
 VARSET LOCAL, 0
 配属人数 = 0
 
@@ -97,9 +99,31 @@ NEXT
 
 飛ばした人数 = 0
 表示数 = 0
+名前文字数 = 0
+配属先文字数 = 0
 
 ;配属できるキャラがいる
 IF 配属可能人数
+	;表示を揃えるために名前の文字数と配属先の文字数を取得する
+	FOR LCOUNT, 0, CHARANUM
+		SIF !配属可能:LCOUNT
+			CONTINUE
+		;2ページ目以降はページ×20まで表示を飛ばす
+		IF 飛ばした人数 < ページ数*20
+			飛ばした人数++
+			CONTINUE
+		ENDIF
+		CALL SETMAX(名前文字数, STRLENS(NAME:LCOUNT))
+		CALL SETMAX(配属先文字数, STRLENS(CSTR:LCOUNT:配属))
+		表示数++
+		;20人表示したらページ終わり
+		SIF 表示数 == 20
+			BREAK
+	NEXT
+	飛ばした人数 = 0
+	表示数 = 0
+	;「【配属中】」「【調教中】」などの10文字分追加
+	配属先文字数 += 10
 	FOR LCOUNT, 0, CHARANUM
 		SIF !配属可能:LCOUNT
 			CONTINUE
@@ -118,176 +142,101 @@ IF 配属可能人数
 		ELSE
 			PRINT 　
 		ENDIF
-		;配属先によって表示が違う
-		SELECTCASE 配属先
-			CASE "ゲームセンター"
-				PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 26, LEFT%(家事技能:{ABL:LCOUNT:家事技能, 2, LEFT} 工作技能:{ABL:LCOUNT:工作技能, 2, LEFT} 料理技能:{ABL:LCOUNT:料理技能, 2, LEFT}
-				SIF TALENT:LCOUNT:料理人
-					PRINT  料理人
-				SIF TALENT:LCOUNT:工学博士
-					PRINT  工学博士
-				SIF TALENT:LCOUNT:音ゲーマー
-					PRINT  音ゲーマー
-				SIF TALENT:LCOUNT:サボり魔
-					PRINT  サボり魔
-				SIF TALENT:LCOUNT:浪費癖
-					PRINT  浪費癖
-				SIF TALENT:LCOUNT:統率
-					PRINT  統率
-				PRINT )
-			CASE "娼館", "ゲーセン売春"
-				PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 26, LEFT%(従順:{ABL:LCOUNT:従順, 2, LEFT} 欲望:{ABL:LCOUNT:欲望, 2, LEFT} 技巧:{ABL:LCOUNT:技巧, 2, LEFT}
-				SIF TALENT:LCOUNT:淫乱
-					PRINT  淫乱
-				SIF TALENT:LCOUNT:娼婦
-					PRINT  娼婦
-				SIF TALENT:LCOUNT:淫核
-					PRINT  淫核
-				SIF TALENT:LCOUNT:淫膣
-					PRINT  淫膣
-				SIF TALENT:LCOUNT:淫尻
-					PRINT  淫尻
-				SIF TALENT:LCOUNT:淫乳
-					PRINT  淫乳
-				SIF TALENT:LCOUNT:サボり魔
-					PRINT  サボり魔
-				SIF TALENT:LCOUNT:統率
-					PRINT  統率
-				PRINT )
-			CASE "芸能プロダクション"
-				PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 26, LEFT%(歌唱技能:{ABL:LCOUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:LCOUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:LCOUNT:舞踊技能, 2, LEFT}
-				SIF TALENT:LCOUNT:魅力
-					PRINT  魅力
-				SIF TALENT:LCOUNT:魅惑
-					PRINT  魅惑
-				SIF TALENT:LCOUNT:謎の魅力
-					PRINT  謎の魅力
-				SIF TALENT:LCOUNT:人気
-					PRINT  人気
-				SIF TALENT:LCOUNT:絶対音感
-					PRINT  絶対音感
-				SIF TALENT:LCOUNT:サボり魔
-					PRINT  サボり魔
-				PRINT )
-			CASE "医務室"
-				PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 26, LEFT%(奉仕精神:{ABL:LCOUNT:奉仕精神, 2, LEFT}
-				SIF TALENT:LCOUNT:調合知識
-					PRINT  調合知識
-				SIF TALENT:LCOUNT:治療
-					PRINT  治療
-				SIF TALENT:LCOUNT:浪費癖
-					PRINT  浪費癖
-				IF TALENT:LCOUNT:謎の魅力
-					PRINT  謎の魅力
-				ELSEIF TALENT:LCOUNT:魅力
-					PRINT  魅力
-				ELSEIF TALENT:LCOUNT:魅惑
-					PRINT  魅惑
-				ELSEIF TALENT:LCOUNT:人気
-					PRINT  人気
-				ENDIF
-				SIF TALENT:LCOUNT:統率
-					PRINT  統率
-				PRINT )
-			CASE "図書室"
-				PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 26, LEFT%(実務経験:{EXP:LCOUNT:実務経験, 4, LEFT}
-				SIF TALENT:LCOUNT:買い物上手
-					PRINT  買い物上手
-				SIF TALENT:LCOUNT:潔癖症
-					PRINT  潔癖症
-				SIF TALENT:LCOUNT:禁断の知識
-					PRINT  禁断の知識
-				SIF TALENT:LCOUNT:浪費癖
-					PRINT  浪費癖
-				IF TALENT:LCOUNT:謎の魅力
-					PRINT  謎の魅力
-				ELSEIF TALENT:LCOUNT:魅力
-					PRINT  魅力
-				ENDIF
-				SIF TALENT:LCOUNT:統率
-					PRINT  統率
-				PRINT )
-			CASE "実験室"
-				PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 26, LEFT%(工作技能:{ABL:LCOUNT:工作技能, 2, LEFT} サドっ気:{ABL:LCOUNT:サドっ気, 2, LEFT} マゾっ気:{ABL:LCOUNT:マゾっ気, 2, LEFT}
-				SIF TALENT:LCOUNT:工学博士
-					PRINT  工学博士
-				SIF TALENT:LCOUNT:サド
-					PRINT  サド
-				SIF TALENT:LCOUNT:マゾ
-					PRINT  マゾ
-				SIF TALENT:LCOUNT:倒錯的
-					PRINT  倒錯的
-				SIF TALENT:LCOUNT:調合知識
-					PRINT  調合知識
-				SIF TALENT:LCOUNT:浪費癖
-					PRINT  浪費癖
-				SIF TALENT:LCOUNT:統率
-					PRINT  統率
-				PRINT )
-			CASE "農業"
-				PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 26, LEFT%(栽培技能:{ABL:LCOUNT:栽培技能, 2, LEFT} 工作技能:{ABL:LCOUNT:工作技能, 2, LEFT} 魔法技能:{ABL:LCOUNT:魔法技能, 2, LEFT}
-				;SIF TALENT:LCOUNT:調合知識
-				;	PRINT  調合知識
-				;SIF TALENT:LCOUNT:工学博士
-				;	PRINT  工学博士
-				;SIF TALENT:LCOUNT:魔術師
-				;	PRINT  魔術師
-				;SIF TALENT:LCOUNT:専業主婦
-				;	PRINT  専業主婦
-				SIF TALENT:LCOUNT:統率
-					PRINT  統率
-				PRINT )
-			CASE "畜産業"
-				PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 26, LEFT%(飼育技能:{ABL:LCOUNT:飼育技能, 2, LEFT} 飼育適性:{飼育レベル(LCOUNT), 2, LEFT}
-				SIF TALENT:LCOUNT:世話好き
-					PRINT  世話好き
-				SIF TALENT:LCOUNT:浪費癖
-					PRINT  浪費癖
-				SELECTCASE CSTR:LCOUNT:種族
-					CASE "人魚"
-						PRINT  人魚
-					CASE "獣人"
-						PRINT  獣人
-					CASE "獣"
-						PRINT  獣
-					CASE "精霊"
-						PRINT  精霊
-					CASE "妖精"
-						PRINT  妖精
-				ENDSELECT
-				SIF TALENT:LCOUNT:統率
-					PRINT  統率
-				PRINT )
-			CASE "調理室"
-				PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 26, LEFT%(料理技能:{ABL:LCOUNT:料理技能, 2, LEFT}
-				SIF TALENT:LCOUNT:料理人
-					PRINT  料理人
-				;SIF TALENT:LCOUNT:買い物上手
-				;	PRINT  買い物上手
-				SELECTCASE CSTR:LCOUNT:種族
-					CASE "獣人"
-						PRINT  獣人
-					CASE "獣"
-						PRINT  獣
-					CASE "ゾンビ"
-						PRINT  ゾンビ
-				ENDSELECT
-				SIF TALENT:LCOUNT:統率
-					PRINT  統率
-				PRINT )
-		ENDSELECT
+		PRINTFORM [{LCOUNT, 2}] - %NAME:LCOUNT, 名前文字数+1, LEFT% 
 		SELECTCASE CSTR:LCOUNT:配属
 			CASE ""
 				IF LCOUNT == TARGET
-					PRINTL 【調教中】
+					PRINTFORM %"【調教中】", 配属先文字数, LEFT%
 				ELSEIF LCOUNT == ASSI
-					PRINTL 【助手中】
+					PRINTFORM %"【助手中】", 配属先文字数, LEFT%
 				ELSE
-					PRINTL 【休憩中】
+					PRINTFORM %"【休憩中】", 配属先文字数, LEFT%
 				ENDIF
 			CASEELSE
-				PRINTFORML 【%CSTR:LCOUNT:配属%配属中】
+				PRINTFORM %@"【%CSTR:LCOUNT:配属%配属中】", 配属先文字数, LEFT%
 		ENDSELECT
+
+		;配属先によって表示が違う
+		SELECTCASE 配属先
+			CASE "ゲームセンター"
+				PRINTFORM 家事技能:{ABL:LCOUNT:家事技能, 2, LEFT} 工作技能:{ABL:LCOUNT:工作技能, 2, LEFT} 料理技能:{ABL:LCOUNT:料理技能, 2, LEFT}
+				CALL ISTALENT, LCOUNT, "料理人"
+				CALL ISTALENT, LCOUNT, "工学博士"
+				CALL ISTALENT, LCOUNT, "音ゲーマー"
+				CALL ISTALENT, LCOUNT, "サボり魔"
+				CALL ISTALENT, LCOUNT, "浪費癖"
+				CALL ISTALENT, LCOUNT, "統率"
+			CASE "娼館", "ゲーセン売春"
+				PRINTFORM 従順:{ABL:LCOUNT:従順, 2, LEFT} 欲望:{ABL:LCOUNT:欲望, 2, LEFT} 技巧:{ABL:LCOUNT:技巧, 2, LEFT}
+				CALL ISTALENT, LCOUNT, "淫乱"
+				CALL ISTALENT, LCOUNT, "娼婦"
+				CALL ISTALENT, LCOUNT, "淫核"
+				CALL ISTALENT, LCOUNT, "淫膣"
+				CALL ISTALENT, LCOUNT, "淫尻"
+				CALL ISTALENT, LCOUNT, "淫乳"
+				CALL ISTALENT, LCOUNT, "サボり魔"
+			CASE "芸能プロダクション"
+				PRINTFORM 歌唱技能:{ABL:LCOUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:LCOUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:LCOUNT:舞踊技能, 2, LEFT}
+				CALL ISTALENT, LCOUNT, "魅力"
+				CALL ISTALENT, LCOUNT, "魅惑"
+				CALL ISTALENT, LCOUNT, "謎の魅力"
+				CALL ISTALENT, LCOUNT, "人気"
+				CALL ISTALENT, LCOUNT, "絶対音感"
+				CALL ISTALENT, LCOUNT, "サボり魔"
+			CASE "医務室"
+				PRINTFORM 奉仕精神:{ABL:LCOUNT:奉仕精神, 2, LEFT}
+				CALL ISTALENT, LCOUNT, "調合知識"
+				CALL ISTALENT, LCOUNT, "治療"
+				CALL ISTALENT, LCOUNT, "浪費癖"
+				CALL ISTALENT, LCOUNT, "謎の魅力"
+				CALL ISTALENT, LCOUNT, "魅力"
+				CALL ISTALENT, LCOUNT, "魅惑"
+				CALL ISTALENT, LCOUNT, "人気"
+				CALL ISTALENT, LCOUNT, "統率"
+			CASE "図書室"
+				PRINTFORM 実務経験:{EXP:LCOUNT:実務経験, 4, LEFT}
+				CALL ISTALENT, LCOUNT, "買い物上手"
+				CALL ISTALENT, LCOUNT, "潔癖症"
+				CALL ISTALENT, LCOUNT, "禁断の知識"
+				CALL ISTALENT, LCOUNT, "浪費癖"
+				CALL ISTALENT, LCOUNT, "謎の魅力"
+				CALL ISTALENT, LCOUNT, "魅力"
+				CALL ISTALENT, LCOUNT, "統率"
+			CASE "実験室"
+				PRINTFORM 工作技能:{ABL:LCOUNT:工作技能, 2, LEFT} サドっ気:{ABL:LCOUNT:サドっ気, 2, LEFT} マゾっ気:{ABL:LCOUNT:マゾっ気, 2, LEFT}
+				CALL ISTALENT, LCOUNT, "工学博士"
+				CALL ISTALENT, LCOUNT, "サド"
+				CALL ISTALENT, LCOUNT, "マゾ"
+				CALL ISTALENT, LCOUNT, "倒錯的"
+				CALL ISTALENT, LCOUNT, "調合知識"
+				CALL ISTALENT, LCOUNT, "浪費癖"
+				CALL ISTALENT, LCOUNT, "統率"
+			CASE "農業"
+				PRINTFORM 栽培技能:{ABL:LCOUNT:栽培技能, 2, LEFT} 工作技能:{ABL:LCOUNT:工作技能, 2, LEFT} 魔法技能:{ABL:LCOUNT:魔法技能, 2, LEFT}
+				CALL ISTALENT, LCOUNT, "統率"
+			CASE "畜産業"
+				PRINTFORM 飼育技能:{ABL:LCOUNT:飼育技能, 2, LEFT} 飼育適性:{飼育レベル(LCOUNT), 2, LEFT}
+				CALL ISTALENT, LCOUNT, "世話好き"
+				CALL ISTALENT, LCOUNT, "浪費癖"
+				SELECTCASE CSTR:LCOUNT:種族
+					CASE "人魚"
+						PRINT [人魚]
+					CASE "獣人"
+						PRINT [獣人]
+					CASE "獣"
+						PRINT [獣]
+					CASE "精霊"
+						PRINT [精霊]
+					CASE "妖精"
+						PRINT [妖精]
+				ENDSELECT
+				CALL ISTALENT, LCOUNT, "統率"
+			CASE "調理室"
+				PRINTFORM 料理技能:{ABL:LCOUNT:料理技能, 2, LEFT}
+				CALL ISTALENT, LCOUNT, "料理人"
+				CALL ISTALENT, LCOUNT, "統率"
+		ENDSELECT
+		PRINTL
 		表示数++
 		;20人表示したらページ終わり
 		SIF 表示数 == 20
