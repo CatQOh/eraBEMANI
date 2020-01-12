@@ -1,0 +1,144 @@
+﻿@スキルツリー
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 項目
+#DIM DYNAMIC 必要経験値
+DRAWLINE
+;　　　　　　　　　　　　　　　　◇小悪魔　　◇
+;　　　　　　　　　　　　サドっ気│　　　　　│
+;　　　　　　　　サド◇─◇─◇─◇─◇─◇─◇
+;　　　　サドっ気　　│　　　　　　　　　　　│
+;　　　　◇─◇─◇─◇　　　　　　　　　　　◇倒錯的
+;技巧　　│技巧　　　　　　　　　　　　　┌─┴◇触手使役術
+;◇─◇─◇─◇─◇─◇─◇─◇─◇─◇─◇禁断の知識
+;│ 　　  │同性愛っ気
+;◇Ｃ感覚◇─◇─◇─◇─◇─◇─◇─◇─◇─◇
+;│　　　　　　　│　　　　　　　│　　　　　│
+;◇─◇─◇─◇　◇男好き、女好き◇両刀　　　◇謎の魅力
+;│Ｃ│Ａ│Ｖ│Ｂ
+;◇感◇感◇感◇感
+;│覚│覚│覚│覚
+;◇　◇　◇　◇
+
+PRINTFORML 残り経験値:{FLAG:経験値}
+
+
+
+
+SPLIT RESULTS, "/", LOCALS
+項目 = %LOCALS:0%
+必要経験値 = TOINT(LOCALS:1)
+
+IF 必要経験値 >= FLAG:経験値
+	PRINTW 経験値が足りません
+	RESTART
+ENDIF
+
+SELECTCASE 項目
+	CASE "技巧"
+		ABL:MASTER:技巧++
+	CASE "サドっ気"
+		ABL:MASTER:サドっ気++
+	;ホモっ気、レズっ気は性別に関係無く両方上げる
+	CASE "ホモっ気", "レズっ気"
+		ABL:MASTER:ホモっ気++
+		ABL:MASTER:レズっ気++
+	CASE "技巧"
+ENDSELECT
+
+FLAG:経験値 -= 必要経験値
+
+@経験値取得, ARG, ARGS
+#DIM DYNAMIC 点数
+
+;アニマルは対象外
+SIF TALENT:アニマル
+	RETURN
+
+点数 = 経験値計算(ARG)
+
+SELECTCASE ARGS
+	;売却可能で3分の1の経験値を得る 切り上げ
+	CASE "売却可能"
+		点数 = (点数%3 > 0 ? (点数/3)+1 # 点数/3)
+	;陥落で残りの3分の2の経験値を得る 切り上げ
+	CASE "陥落"
+		点数 = (点数%3 > 0 ? (点数/3*2)+1 # 点数/3*2)
+ENDSELECT
+
+;最低1は保証
+SIF 点数 < 1
+	点数 = 1
+FLAG:経験値 += 点数
+PRINTFORMW %CALLNAME:MASTER%は{点数}の経験値を得た(現在の経験値:{FLAG:経験値})
+RETURN
+
+@経験値計算, ARG
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LTARGET
+#DIM DYNAMIC 点数
+
+LTARGET = TARGET
+TARGET = ARG
+
+;即落ちは無条件で最低値
+IF TALENT:即落ち
+	TARGET = LTARGET
+	RETURNF 1
+ENDIF
+
+;攻略の難しさで取得できる経験値が変わる
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "性別"
+			SIF SEX(TARGET) == 1
+				点数 += 2
+		CASE "恋心"
+			SIF TALENT:恋心 != NO:MASTER
+				点数 += 2
+		CASE "既婚者"
+			SIF TALENT:既婚者 != NO:MASTER
+				点数 += 3
+		CASE "男好き"
+			SIF SEX(MASTER) == 1
+				点数--
+		CASE "女好き"
+			SIF SEX(MASTER) == 2
+				点数--
+		CASE "男嫌い"
+			SIF SEX(MASTER) == 1
+				点数 += 2
+		CASE "女嫌い"
+			SIF SEX(MASTER) == 2
+				点数 += 2
+		CASE "同族嫌悪"
+			SIF CSTR:種族 == CSTR:MASTER:種族
+				点数 += 2
+		CASE "献身的", "快感に素直"
+			点数 -= 2
+		{
+		CASE "臆病", "素直", "プライド低い", "大人しい", "弱気", "好奇心", "楽観的", "悲観的",
+			"目立ちたがり", "貞操無頓着", "弱味", "痛みに強い", "自慰しやすい", "Ｖ敏感",
+			"Ｃ敏感", "Ａ敏感", "Ｂ敏感", "回復早い"
+		}
+			点数--
+		{
+		CASE "生意気", "反抗的", "プライド高い", "気丈", "ツンデレ", "強気", "自制心", "無関心",
+			"感情乏しい", "保守的", "貞操観念", "痛みに弱い", "濡れにくい", "Ｖ鈍感", "Ｃ鈍感",
+			"Ａ鈍感", "Ｂ鈍感", "足使用不可", "回復遅い"
+		}
+			点数 += 2
+		CASE "一線超えない", "快感の否定", "小人体型"
+			点数 += 3
+	ENDSELECT
+NEXT
+
+TARGET = LTARGET
+
+;0以下なら1にする
+SIF 点数 <= 0
+	点数 = 1
+
+RETURNF 点数
