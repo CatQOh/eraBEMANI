@@ -12,6 +12,7 @@ SIF TEQUIP:アイマスク || TEQUIP:縄 || TEQUIP:ボールギャグ || TEQUIP:
 ;上級売春中は常連客で依存度300以上じゃないとダメ
 SIF 上級売春中 && CFLAG:常連客候補 < 3 && CFLAG:依存度 < 300
 	RETURNF 0
+
 ;アニマルだと無理
 SIF TALENT:アニマル
 	RETURNF 0
@@ -22,6 +23,19 @@ RETURNF 1
 @COM_会話
 PRINTL 会話
 CALL KOJO_MESSAGE_COM
+
+IF 上級売春中
+	;一度名前を聞いてるとできない
+	IF !CFLAG:会話済み
+		PRINTL [0] - 名前を尋ねる
+		PRINTL [1] - 会話を終える
+		DO
+			INPUT
+		LOOP LOOPRES(0, 1)
+		SIF RESULT == 0
+			CALL 娼館客名前候補
+	ENDIF
+ENDIF
 
 ;-------------------------------------------------
 ;ソース追加処理
@@ -381,6 +395,18 @@ SELECTCASE CSTR:種族
 			DATA 白尾
 			DATA 百舌
 		ENDDATA
-
 ENDSELECT
 
+CFLAG:会話済み = 1
+
+PRINTFORMW %CALLNAME:MASTER%が客に名前を尋ねると、\@ SEX(TARGET) == 1 ? 彼 # 彼女 \@は「%名前%」と答えた
+PRINTL [0] - これからは名前で呼ぶ
+PRINTL [1] - 聞かなかったことにする
+DO
+	INPUT
+LOOP LOOPRES(0, 1)
+
+IF RESULT == 0
+	NAME:TARGET = %名前%
+	CALLNAME:TARGET = %名前%
+ENDIF
