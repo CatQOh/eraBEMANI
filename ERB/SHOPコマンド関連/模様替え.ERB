@@ -1,0 +1,140 @@
+﻿@模様替え
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC X座標
+#DIM DYNAMIC Y座標
+#DIM DYNAMIC グリッド表示 = 1
+#DIM CONST レッスン室 = 1
+#DIM CONST 医務室 = 2
+#DIM CONST 実験室 = 3
+#DIM CONST 調理室 = 4
+#DIM CONST 図書室 = 5
+#DIM CONST プランター = 6, 5, 7, 8
+#DIM CONST 畑 = 9, 10, 11, 12
+#DIM CONST 田んぼ = 13, 14
+#DIM CONST 牧場 = 15
+#DIM CONST 畜舎 = 16
+#DIM CONST 養蜂場 = 17
+#DIM CONST 生け簀 = 18
+#DIM DYNAMIC 部屋, 20
+#DIMS DYNAMIC 表示用変数, 40
+#DIM DYNAMIC 選択部屋
+#DIM DYNAMIC 幅, 2
+#DIM DYNAMIC 始点, 2
+
+VARLINE = LINECOUNT
+
+選択部屋 = レッスン室
+
+;部屋ごとの X座標の長さ, Y座標の長さ
+SELECTCASE 選択部屋
+	CASE レッスン室
+		幅 = 4, 5
+	CASE 医務室
+		幅 = 3, 4
+	CASE 実験室
+		幅 = 3, 4
+	CASE 調理室
+		幅 = 5, 6
+	CASE 図書室
+		幅 = 7, 10
+	CASE プランター:0 TO プランター:3
+		幅 = 1, 1
+	CASE 畑:0 TO 畑:3
+		幅 = 3, 3
+	CASE 田んぼ:0 TO 田んぼ:1
+		幅 = 5, 5
+	CASE 牧場
+		幅 = 10, 10
+	CASE 畜舎
+		幅 = 7, 7
+	CASE 生け簀
+		幅 = 7, 7
+	CASE 養蜂場
+		幅 = 4, 4
+ENDSELECT
+
+SPRITEDISPOSE "GRID"
+SPRITEDISPOSE "GRID_OVER"
+GDISPOSE 0
+GDISPOSE 1
+
+;マウスオーバー時の画像を作成
+;SELECTCASE 選択部屋番号
+;	CASE レッスン室
+;	CASE 医務室
+;	CASEELSE
+		;GCREATEFROMFILE 0, "GRID"
+		;GCLEAR 0, COLOR_FROMNAME("white")
+		;SPRITECREATE "GRID_OVER", 0
+;ENDSELECT
+IF グリッド表示
+	GCREATEFROMFILE 0, "□.bmp"
+	SPRITECREATE "GRID", 0
+	GCREATEFROMFILE 1, "□.bmp"
+	;α値(不透明)+yellow
+	GCLEAR 1, 0xFFFFFF00
+	SPRITECREATE "GRID_OVER", 1
+ELSE
+	GCREATEFROMFILE 0, "□.bmp"
+	;α値(不透明)+white
+	GCLEAR 0, 0xFFFFFFFF
+	SPRITECREATE "GRID", 0
+	GCREATEFROMFILE 1, "□.bmp"
+	;α値(不透明)+yellow
+	GCLEAR 1, 0xFFFFFF00
+	SPRITECREATE "GRID_OVER", 1
+ENDIF
+
+;40*40のマップを表示する
+IF 選択部屋
+	FOR Y座標, 0, 40
+		FOR X座標, 0, 40
+			;始点の座標から計算して部屋を描画する
+			IF X座標 >= 始点:0 && Y座標 >= 始点:1 && INRANGE(X座標-始点:0, 0, 幅:0-1) && INRANGE(Y座標-始点:1, 0, 幅:1-1)
+				表示用変数:X座標 = <img src='GRID_OVER'>
+			ELSE
+				表示用変数:X座標 = <img src='GRID'>
+			ENDIF
+		NEXT
+		HTML_PRINT STRJOIN(表示用変数, "")
+	NEXT
+ELSE
+	FOR Y座標, 0, 40
+		FOR X座標, 0, 40
+			;メニュー表示の分縦幅はプラスする
+			;CBGSETSPRITE "GRID", 横幅*X座標, -(縦幅+1)*Y座標, 1
+			;DEBUGPRINTFORML {X座標}*{Y座標}
+			;表示用変数:X座標 '= @"<button value='{X座標+(Y座標*100)}'><img src='GRID' srcb='GRID_OVER'></button>"
+			表示用変数:X座標 = <img src='GRID'>
+		NEXT
+		HTML_PRINT STRJOIN(表示用変数, "")
+	NEXT
+ENDIF
+
+PRINTFORM [5] グリッド表示\@ グリッド表示 ? しない # する \@ [0] 戻る
+
+ONEINPUT
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 5
+		INVERTBIT グリッド表示, 0
+	CASE 8
+		始点:1--
+	CASE 4
+		始点:0--
+	CASE 6
+		始点:0++
+	CASE 2
+		始点:1++
+ENDSELECT
+
+CLEARLINE LINECOUNT-VARLINE
+RESTART
+
+
+
+
+
+
