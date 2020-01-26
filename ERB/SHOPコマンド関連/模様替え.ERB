@@ -3,8 +3,8 @@
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC X座標
 #DIM DYNAMIC Y座標
-#DIM DYNAMIC グリッド表示 = 1
-#DIMS DYNAMIC 表示用変数, 40
+#DIM グリッド表示 = 1
+#DIMS DYNAMIC 表示用変数, 100
 #DIM DYNAMIC 部屋配置
 #DIM DYNAMIC 幅, 2
 #DIM DYNAMIC 始点, 2
@@ -12,6 +12,9 @@
 #DIM DYNAMIC 設置済み, 100
 #DIMS DYNAMIC 部屋名
 #DIMS DYNAMIC 表示チップ
+#DIM DYNAMIC マップ横幅
+#DIM DYNAMIC マップ縦幅
+#DIM DYNAMIC 壁無し
 
 VARLINE = LINECOUNT
 
@@ -46,6 +49,11 @@ GDISPOSE 0
 GDISPOSE 1
 GDISPOSE 2
 GDISPOSE 3
+GDISPOSE 4
+GDISPOSE 5
+GDISPOSE 6
+GDISPOSE 7
+GDISPOSE 8
 
 GCREATEFROMFILE 0, "□.png"
 SPRITECREATE "GRID", 0
@@ -61,16 +69,52 @@ GCLEAR 2, 0xFF000000+COLOR_FROMNAME("yellow")
 SPRITECREATE "GRID_OVER", 2
 
 GCREATEFROMFILE 3, "□.png"
-GCLEAR 3, 0xFF000000+COLOR_FROMNAME("gold")
-SPRITECREATE "GRID_GOLD", 3
+;α値(不透明)+peru
+GCLEAR 3, 0xFF000000+COLOR_FROMNAME("peru")
+SPRITECREATE "GRID_WOOD", 3
+
+GCREATEFROMFILE 4, "□.png"
+;α値(不透明)+saddlebrown
+GCLEAR 4, 0xFF000000+COLOR_FROMNAME("saddlebrown")
+SPRITECREATE "GRID_GROUND", 4
+
+GCREATEFROMFILE 5, "□.png"
+;α値(不透明)+silver
+GCLEAR 5, 0xFF000000+COLOR_FROMNAME("silver")
+SPRITECREATE "GRID_SILVER", 5
+
+GCREATEFROMFILE 6, "□.png"
+;α値(不透明)+aqua
+GCLEAR 6, 0xFF000000+COLOR_FROMNAME("aqua")
+SPRITECREATE "GRID_WATER", 6
+
+GCREATEFROMFILE 7, "□.png"
+;α値(不透明)+gold
+GCLEAR 7, 0xFF000000+COLOR_FROMNAME("gold")
+SPRITECREATE "GRID_BEEHIVE", 7
+
+GCREATEFROMFILE 8, "□.png"
+;α値(不透明)+gray
+GCLEAR 8, 0xFF000000+COLOR_FROMNAME("gray")
+SPRITECREATE "GRID_GRAY", 8
+
+GCREATEFROMFILE 9, "□.png"
+;α値(不透明)+greenyellow
+GCLEAR 9, 0xFF000000+COLOR_FROMNAME("greenyellow")
+SPRITECREATE "GRID_GRASS", 9
+
+
+マップ横幅 = 60
+マップ縦幅 = 30
 
 DO
 	$RESTART
 	VARSIZE 設置済み
-	;40*40のマップを表示する
-	FOR Y座標, 0, 40
+	壁無し = 0
+	;マップを表示する
+	FOR Y座標, 0, マップ縦幅
 		VARSET 表示用変数
-		FOR X座標, 0, 40
+		FOR X座標, 0, マップ横幅
 			SIF X座標 == 0
 				表示用変数:X座標 = <nobr>
 			IF 部屋配置
@@ -78,6 +122,9 @@ DO
 				幅:1 = TOINT(部屋情報:部屋配置:2)
 			ENDIF
 			部屋名 = 
+			;重複対策に配置しようとしてる部屋は削除
+			SIF 部屋配置 && 土地:Y座標:X座標 == 部屋配置
+				土地:Y座標:X座標 = 0
 			;始点の座標から計算して配置用の部屋を描画する
 			IF 部屋配置 && X座標 >= 始点:0 && Y座標 >= 始点:1 && INRANGE(X座標-始点:0, 0, 幅:0-1) && INRANGE(Y座標-始点:1, 0, 幅:1-1)
 				表示用変数:X座標 += "<img src='GRID_OVER'>"
@@ -87,7 +134,23 @@ DO
 					部屋名 = %部屋情報:(土地:Y座標:X座標):0%
 					;設置済み判定に始点も入れておく
 					設置済み:(土地:Y座標:X座標) = Y座標*100+X座標
-					表示チップ = GRID_GOLD
+					SELECTCASE 部屋名
+						CASE "レッスン室", "調理室", "図書室", "畜舎"
+							表示チップ = GRID_WOOD
+						CASE "医務室", "実験室"
+							表示チップ = GRID_SILVER
+						CASE "畑", "田んぼ"
+							表示チップ = GRID_GROUND
+							壁無し = 1
+						CASE "プランター"
+							表示チップ = GRID_GRAY
+						CASE "牧場"
+							表示チップ = GRID_GRASS
+						CASE "生け簀"
+							表示チップ = GRID_WATER
+						CASE "養蜂場"
+							表示チップ = GRID_BEEHIVE
+					ENDSELECT							
 				ELSEIF グリッド表示
 					表示チップ = GRID
 				ELSE
@@ -95,40 +158,42 @@ DO
 				ENDIF
 				表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'><img src='%表示チップ%'></button>"
 				;壁の確認 端でも壁表示
-				;左壁
-				IF X座標 == 0 || 土地:Y座標:(X座標-1) != 土地:Y座標:X座標
-					;上壁もあれば┌壁
-					IF Y座標 == 0 || 土地:(Y座標-1):X座標 != 土地:Y座標:X座標
-						表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='┌壁'></nonbutton>"
-					;下壁もあれば└壁
-					ELSEIF Y座標 == 39 || 土地:(Y座標+1):X座標 != 土地:Y座標:X座標
-						表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='└壁'></nonbutton>"
-					ELSE
-						表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='左壁'></nonbutton>"
+				IF !壁無し
+					;左壁
+					IF X座標 == 0 || 土地:Y座標:(X座標-1) != 土地:Y座標:X座標
+						;上壁もあれば┌壁
+						IF Y座標 == 0 || 土地:(Y座標-1):X座標 != 土地:Y座標:X座標
+							表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='┌壁'></nonbutton>"
+						;下壁もあれば└壁
+						ELSEIF Y座標 == マップ縦幅-1 || 土地:(Y座標+1):X座標 != 土地:Y座標:X座標
+							表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='└壁'></nonbutton>"
+						ELSE
+							表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='左壁'></nonbutton>"
+						ENDIF
+					;上壁
+					ELSEIF Y座標 == 0 || 土地:(Y座標-1):X座標 != 土地:Y座標:X座標
+						;右壁もあれば┐壁
+						IF X座標 == マップ横幅-1 || 土地:Y座標:(X座標+1) != 土地:Y座標:X座標
+							表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='┐壁'></nonbutton>"
+						ELSE
+							表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='上壁'></nonbutton>"
+						ENDIF
+					;右壁
+					ELSEIF X座標 == マップ横幅-1 || 土地:Y座標:(X座標+1) != 土地:Y座標:X座標
+						;下壁もあれば┘壁
+						IF Y座標 == マップ縦幅-1 || 土地:(Y座標+1):X座標 != 土地:Y座標:X座標
+							表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='┘壁'></nonbutton>"
+						ELSE
+							表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='右壁'></nonbutton>"
+						ENDIF
+					;下壁
+					ELSEIF Y座標 == マップ縦幅-1 || 土地:(Y座標+1):X座標 != 土地:Y座標:X座標
+						表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='下壁'></nonbutton>"
 					ENDIF
-				;上壁
-				ELSEIF Y座標 == 0 || 土地:(Y座標-1):X座標 != 土地:Y座標:X座標
-					;右壁もあれば┐壁
-					IF X座標 == 39 || 土地:Y座標:(X座標+1) != 土地:Y座標:X座標
-						表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='┐壁'></nonbutton>"
-					ELSE
-						表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='上壁'></nonbutton>"
-					ENDIF
-				;右壁
-				ELSEIF X座標 == 39 || 土地:Y座標:(X座標+1) != 土地:Y座標:X座標
-					;下壁もあれば┘壁
-					IF Y座標 == 39 || 土地:(Y座標+1):X座標 != 土地:Y座標:X座標
-						表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='┘壁'></nonbutton>"
-					ELSE
-						表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='右壁'></nonbutton>"
-					ENDIF
-				;下壁
-				ELSEIF Y座標 == 39 || 土地:(Y座標+1):X座標 != 土地:Y座標:X座標
-					表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='下壁'></nonbutton>"
 				ENDIF
 			ENDIF
 		NEXT
-		SIF X座標 == 39
+		SIF X座標 == マップ横幅-1
 			表示用変数:X座標 += "</nobr>"
 		HTML_PRINT STRJOIN(表示用変数, "")
 	NEXT
@@ -136,6 +201,7 @@ DO
 
 	IF 部屋配置
 		PRINTL [4] ← [2] ↓ [8] ↑ [6] →
+		PRINTL [7] 左回転　　　　 [9] 右回転
 		PRINTL [5] 決定 [0] キャンセル
 
 		ONEINPUT
@@ -144,16 +210,28 @@ DO
 			CASE 0
 				部屋配置 = 0
 			CASE 8
-				始点:1--
+				SIF 始点:1 > 0
+					始点:1--
 			CASE 4
-				始点:0--
+				SIF 始点:0 > 0
+					始点:0--
 			CASE 6
-				始点:0++
+				SIF 始点:0+幅:0 < マップ横幅 
+					始点:0++
 			CASE 2
-				始点:1++
+				SIF 始点:1+幅:1 < マップ縦幅
+					始点:1++
+			;四角形だから同義
+			CASE 7, 9
+				SWAP 部屋情報:部屋配置:1, 部屋情報:部屋配置:2
 			CASE 5
+				CLEARLINE LINECOUNT-VARLINE
 				FOR LCOUNT, 始点:1, 始点:1+幅:1
+					SIF LCOUNT >= マップ縦幅
+						GOTO RESTART
 					FOR LCOUNT2, 始点:0, 始点:0+幅+0
+						SIF LCOUNT2 >= マップ横幅
+							GOTO RESTART
 						SIF 土地:LCOUNT:LCOUNT2 != 0
 							GOTO RESTART
 					NEXT
@@ -164,6 +242,7 @@ DO
 					NEXT
 				NEXT
 				部屋配置 = 0
+				GOTO RESTART
 		ENDSELECT
 
 		CLEARLINE LINECOUNT-VARLINE
