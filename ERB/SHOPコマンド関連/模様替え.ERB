@@ -9,6 +9,7 @@
 #DIM DYNAMIC 幅, 2
 #DIM DYNAMIC 始点, 2
 #DIMS DYNAMIC 部屋情報, 100, 5
+#DIM DYNAMIC 設置済み, 100
 #DIMS DYNAMIC 部屋名
 #DIMS DYNAMIC 表示チップ
 
@@ -64,6 +65,8 @@ GCLEAR 3, 0xFF000000+COLOR_FROMNAME("gold")
 SPRITECREATE "GRID_GOLD", 3
 
 DO
+	$RESTART
+	VARSIZE 設置済み
 	;40*40のマップを表示する
 	FOR Y座標, 0, 40
 		VARSET 表示用変数
@@ -82,6 +85,8 @@ DO
 				;その土地に部屋が設置してあったら対応した色で表示する
 				IF 土地:Y座標:X座標 != 0
 					部屋名 = %部屋情報:(土地:Y座標:X座標):0%
+					;設置済み判定に始点も入れておく
+					設置済み:(土地:Y座標:X座標) = Y座標*100+X座標
 					表示チップ = GRID_GOLD
 				ELSEIF グリッド表示
 					表示チップ = GRID
@@ -149,6 +154,12 @@ DO
 			CASE 5
 				FOR LCOUNT, 始点:1, 始点:1+幅:1
 					FOR LCOUNT2, 始点:0, 始点:0+幅+0
+						SIF 土地:LCOUNT:LCOUNT2 != 0
+							GOTO RESTART
+					NEXT
+				NEXT
+				FOR LCOUNT, 始点:1, 始点:1+幅:1
+					FOR LCOUNT2, 始点:0, 始点:0+幅+0
 						土地:LCOUNT:LCOUNT2 = 部屋配置
 					NEXT
 				NEXT
@@ -158,17 +169,51 @@ DO
 		CLEARLINE LINECOUNT-VARLINE
 		CONTINUE
 	ELSE
-		PRINTL [1] レッスン室配置 [2] 医務室配置
-		PRINTFORML [5] グリッド表示\@ グリッド表示 ? しない # する \@ [0] 戻る
+		PRINTL [50] - 部屋を配置する [51] - 部屋を初期化する
+		PRINTFORML [52]  - グリッド表示\@ グリッド表示 ? しない # する \@ [60] 戻る
 		INPUT
 		SELECTCASE RESULT
-			CASE 0
+			CASE 60
 				RETURN
-			CASE 5
+			CASE 50
+				PRINTL □配置する部屋を選んでください 名前(横幅×縦幅)
+				FOR LCOUNT, 1, VARSIZE("部屋情報", 0)
+					SIF 部屋情報:LCOUNT:0 == ""
+						BREAK
+					PRINTFORMLC 　[{LCOUNT}] %部屋情報:LCOUNT:0%({TOINT(部屋情報:LCOUNT:1)}×{TOINT(部屋情報:LCOUNT:2)}\@ 設置済み:LCOUNT ? /設置済み #\@)
+				NEXT
+				SIF !LINEISEMPTY()
+					PRINTL 
+				DRAWLINE
+				PRINTL [0] 戻る
+				DO
+					INPUT
+					SELECTCASE RESULT
+						CASE 0
+							BREAK
+						CASE 1 TO VARSIZE("部屋情報", 0)
+							部屋配置 = RESULT
+							IF 設置済み:LCOUNT
+								始点:0 = (設置済み:LCOUNT)%100
+								始点:1 = (設置済み:LCOUNT)/100
+							ENDIF
+							BREAK
+					ENDSELECT
+				LOOP 1
+				CONTINUE
+			CASE 51
+				PRINTL 部屋情報を初期化します。よろしいですか？
+				PRINTL [0] - はい
+				PRINTL [1] - いいえ
+				DO
+					INPUT
+				LOOP LOOPRES(0, 1)
+				SIF RESULT == 0
+					VARSET 土地
+				CONTINUE
+			CASE 52
 				INVERTBIT グリッド表示, 0
 				CONTINUE
-			CASEELSE
-				部屋配置 = RESULT
 		ENDSELECT
 	ENDIF
 LOOP 1
