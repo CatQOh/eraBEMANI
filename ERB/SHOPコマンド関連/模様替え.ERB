@@ -19,6 +19,10 @@
 #DIM DYNAMIC タイル表示幅
 #DIM DYNAMIC タイル始点, 100, 2
 #DIM DYNAMIC 生け簀始点, 2
+#DIMS DYNAMIC オブジェクト名
+#DIM DYNAMIC オブジェクト幅, 2
+#DIM DYNAMIC オブジェクト配置
+#DIM DYNAMIC オブジェクト表示済み
 
 VARLINE = LINECOUNT
 
@@ -44,14 +48,13 @@ LOCAL = 1
 部屋情報:(LOCAL++):0 '= "生け簀", "8", "8"
 部屋情報:(LOCAL++):0 '= "養蜂場", "4", "4"
 
-オブジェクト情報:(LOCAL++):0 '= "タコ", "4", "4"
-オブジェクト情報:(LOCAL++):0 '= "イカ", "4", "4"
-オブジェクト情報:(LOCAL++):0 '= "エビ", "4", "4"
-オブジェクト情報:(LOCAL++):0 '= "ウナギ", "4", "4"
-オブジェクト情報:(LOCAL++):0 '= "海藻", "4", "4"
-オブジェクト情報:(LOCAL++):0 '= "貝類", "4", "4"
-オブジェクト情報:(LOCAL++):0 '= "カニ", "4", "4"
-オブジェクト情報:(LOCAL++):0 '= "魚", "4", "4"
+LOCAL = 1
+オブジェクト情報:(LOCAL++):0 '= "ベッド1", "2", "1"
+オブジェクト情報:(LOCAL++):0 '= "ベッド2", "2", "1"
+オブジェクト情報:(LOCAL++):0 '= "椅子1", "1", "1"
+オブジェクト情報:(LOCAL++):0 '= "椅子2", "1", "1"
+オブジェクト情報:(LOCAL++):0 '= "テーブル1", "2", "1"
+オブジェクト情報:(LOCAL++):0 '= "本棚1", "2", "2"
 
 部屋配置 = 0
 
@@ -125,13 +128,16 @@ DO
 			IF 部屋配置
 				幅:0 = TOINT(部屋情報:部屋配置:1)
 				幅:1 = TOINT(部屋情報:部屋配置:2)
+			ELSEIF オブジェクト配置
+				幅:0 = TOINT(オブジェクト情報:オブジェクト配置:1)
+				幅:1 = TOINT(オブジェクト情報:オブジェクト配置:2)
 			ENDIF
 			部屋名 = 
 			;重複対策に配置しようとしてる部屋は削除
 			SIF 部屋配置 && 土地:Y座標:X座標 == 部屋配置
 				土地:Y座標:X座標 = 0
 			;始点の座標から計算して配置用の部屋を描画する
-			IF 部屋配置 && X座標 >= 始点:0 && Y座標 >= 始点:1 && INRANGE(X座標-始点:0, 0, 幅:0-1) && INRANGE(Y座標-始点:1, 0, 幅:1-1)
+			IF (部屋配置 || オブジェクト配置) && X座標 >= 始点:0 && Y座標 >= 始点:1 && INRANGE(X座標-始点:0, 0, 幅:0-1) && INRANGE(Y座標-始点:1, 0, 幅:1-1)
 				表示用変数:X座標 += "<img src='GRID_OVER'>"
 			ELSE
 				表示チップ =
@@ -281,9 +287,20 @@ DO
 				ENDIF
 			ENDIF
 		NEXT
+		LOCALS = %STRJOIN(表示用変数, "")%
+		VARSET 表示用変数
+		FOR X座標, 0, 60
+			IF オブジェクト:Y座標:X座標 != 0
+				オブジェクト名 = %オブジェクト情報:(オブジェクト:Y座標:X座標):0%
+				オブジェクト幅:0 = TOINT(オブジェクト情報:(オブジェクト:Y座標:X座標):1)
+				オブジェクト幅:1 = TOINT(オブジェクト情報:(オブジェクト:Y座標:X座標):2)
+				表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト名%' pos='{X座標*100}'><img src='%オブジェクト名%' srcb='' height='{オブジェクト幅:1*100}' width='{オブジェクト幅:0*100}' ypos='{(オブジェクト幅:1-1)*(-100)}'></button>"
+			ENDIF
+		NEXT
 		SIF X座標 == マップ横幅-1
 			表示用変数:X座標 += "</nobr>"
-		HTML_PRINT STRJOIN(表示用変数, "")
+		LOCALS += @"%STRJOIN(表示用変数, "")%"
+		HTML_PRINT LOCALS
 	NEXT
 	PRINTL 
 
@@ -335,14 +352,52 @@ DO
 
 		CLEARLINE LINECOUNT-VARLINE
 		CONTINUE
+	ELSEIF オブジェクト配置
+		PRINTL [4] ← [2] ↓ [8] ↑ [6] →
+		PRINTL [5] 決定 [0] キャンセル
+
+		ONEINPUT
+
+		SELECTCASE RESULT
+			CASE 0
+				オブジェクト配置 = 0
+			CASE 8
+				SIF 始点:1 > 0
+					始点:1--
+			CASE 4
+				SIF 始点:0 > 0
+					始点:0--
+			CASE 6
+				SIF 始点:0+幅:0 < マップ横幅 
+					始点:0++
+			CASE 2
+				SIF 始点:1+幅:1 < マップ縦幅
+					始点:1++
+			CASE 5
+				CLEARLINE LINECOUNT-VARLINE
+				FOR LCOUNT, 始点:1, 始点:1+幅:1
+					SIF LCOUNT >= マップ縦幅
+						GOTO RESTART
+					FOR LCOUNT2, 始点:0, 始点:0+幅+0
+						SIF LCOUNT2 >= マップ横幅
+							GOTO RESTART
+					NEXT
+				NEXT
+				オブジェクト:(始点:1+幅:1-1):(始点:0) = オブジェクト配置
+				オブジェクト配置 = 0
+				GOTO RESTART
+		ENDSELECT
+
+		CLEARLINE LINECOUNT-VARLINE
+		CONTINUE
 	ELSE
-		PRINTL [50] - 部屋を配置する [51] - 部屋を初期化する
-		PRINTFORML [52]  - グリッド表示\@ グリッド表示 ? しない # する \@ [60] 戻る
+		PRINTL [60] - 部屋を配置する [61] - オブジェクトを配置する [62] - 部屋を初期化する
+		PRINTFORML [63]  - グリッド表示\@ グリッド表示 ? しない # する \@ [70] 戻る
 		INPUT
 		SELECTCASE RESULT
-			CASE 60
+			CASE 70
 				RETURN
-			CASE 50
+			CASE 60
 				PRINTL □配置する部屋を選んでください 名前(横幅×縦幅)
 				FOR LCOUNT, 1, VARSIZE("部屋情報", 0)
 					SIF 部屋情報:LCOUNT:0 == ""
@@ -368,7 +423,29 @@ DO
 					ENDSELECT
 				LOOP 1
 				CONTINUE
-			CASE 51
+			CASE 61
+				PRINTL □配置するオブジェクトを選んでください 名前(横幅×縦幅)
+				FOR LCOUNT, 1, VARSIZE("オブジェクト情報", 0)
+					SIF オブジェクト情報:LCOUNT:0 == ""
+						BREAK
+					PRINTFORMLC 　[{LCOUNT}] %オブジェクト情報:LCOUNT:0%({TOINT(オブジェクト情報:LCOUNT:1)}×{TOINT(オブジェクト情報:LCOUNT:2)}
+				NEXT
+				SIF !LINEISEMPTY()
+					PRINTL 
+				DRAWLINE
+				PRINTL [0] 戻る
+				DO
+					INPUT
+					SELECTCASE RESULT
+						CASE 0
+							BREAK
+						CASE 1 TO VARSIZE("オブジェクト情報", 0)
+							オブジェクト配置 = RESULT
+							BREAK
+					ENDSELECT
+				LOOP 1
+				CONTINUE
+			CASE 62
 				PRINTL 部屋情報を初期化します。よろしいですか？
 				PRINTL [0] - はい
 				PRINTL [1] - いいえ
@@ -378,7 +455,7 @@ DO
 				SIF RESULT == 0
 					VARSET 土地
 				CONTINUE
-			CASE 52
+			CASE 63
 				INVERTBIT グリッド表示, 0
 				CONTINUE
 		ENDSELECT
