@@ -8,13 +8,17 @@
 #DIM DYNAMIC 部屋配置
 #DIM DYNAMIC 幅, 2
 #DIM DYNAMIC 始点, 2
-#DIMS DYNAMIC 部屋情報, 100, 5
+#DIMS DYNAMIC 部屋情報, 100, 3
+#DIMS DYNAMIC オブジェクト情報, 100, 3
 #DIM DYNAMIC 設置済み, 100
 #DIMS DYNAMIC 部屋名
 #DIMS DYNAMIC 表示チップ
 #DIM DYNAMIC マップ横幅
 #DIM DYNAMIC マップ縦幅
 #DIM DYNAMIC 壁無し
+#DIM DYNAMIC タイル表示幅
+#DIM DYNAMIC タイル始点, 100, 2
+#DIM DYNAMIC 生け簀始点, 2
 
 VARLINE = LINECOUNT
 
@@ -40,6 +44,15 @@ LOCAL = 1
 部屋情報:(LOCAL++):0 '= "生け簀", "8", "8"
 部屋情報:(LOCAL++):0 '= "養蜂場", "4", "4"
 
+オブジェクト情報:(LOCAL++):0 '= "タコ", "4", "4"
+オブジェクト情報:(LOCAL++):0 '= "イカ", "4", "4"
+オブジェクト情報:(LOCAL++):0 '= "エビ", "4", "4"
+オブジェクト情報:(LOCAL++):0 '= "ウナギ", "4", "4"
+オブジェクト情報:(LOCAL++):0 '= "海藻", "4", "4"
+オブジェクト情報:(LOCAL++):0 '= "貝類", "4", "4"
+オブジェクト情報:(LOCAL++):0 '= "カニ", "4", "4"
+オブジェクト情報:(LOCAL++):0 '= "魚", "4", "4"
+
 部屋配置 = 0
 
 VARSET 始点
@@ -59,8 +72,8 @@ GCREATEFROMFILE 0, "□.png"
 SPRITECREATE "GRID", 0
 
 GCREATEFROMFILE 1, "□.png"
-;α値(不透明)+snow
-GCLEAR 1, 0xFF000000+COLOR_FROMNAME("snow")
+;α値(不透明)+peru
+GCLEAR 1, 0xFF000000+COLOR_FROMNAME("peru")
 SPRITECREATE "GRID_SNOW", 1
 
 GCREATEFROMFILE 2, "□.png"
@@ -69,24 +82,19 @@ GCLEAR 2, 0xFF000000+COLOR_FROMNAME("yellow")
 SPRITECREATE "GRID_OVER", 2
 
 GCREATEFROMFILE 3, "□.png"
-;α値(不透明)+peru
-GCLEAR 3, 0xFF000000+COLOR_FROMNAME("peru")
+;α値(不透明)+saddlebrow
+GCLEAR 3, 0xFF000000+COLOR_FROMNAME("saddlebrown")
 SPRITECREATE "GRID_WOOD", 3
 
 GCREATEFROMFILE 4, "□.png"
-;α値(不透明)+saddlebrown
-GCLEAR 4, 0xFF000000+COLOR_FROMNAME("saddlebrown")
+;α値(不透明)+chocolate
+GCLEAR 4, 0xFF000000+COLOR_FROMNAME("chocolate")
 SPRITECREATE "GRID_GROUND", 4
 
 GCREATEFROMFILE 5, "□.png"
 ;α値(不透明)+silver
 GCLEAR 5, 0xFF000000+COLOR_FROMNAME("silver")
 SPRITECREATE "GRID_SILVER", 5
-
-GCREATEFROMFILE 6, "□.png"
-;α値(不透明)+aqua
-GCLEAR 6, 0xFF000000+COLOR_FROMNAME("aqua")
-SPRITECREATE "GRID_WATER", 6
 
 GCREATEFROMFILE 7, "□.png"
 ;α値(不透明)+gold
@@ -98,10 +106,6 @@ GCREATEFROMFILE 8, "□.png"
 GCLEAR 8, 0xFF000000+COLOR_FROMNAME("gray")
 SPRITECREATE "GRID_GRAY", 8
 
-GCREATEFROMFILE 9, "□.png"
-;α値(不透明)+greenyellow
-GCLEAR 9, 0xFF000000+COLOR_FROMNAME("greenyellow")
-SPRITECREATE "GRID_GRASS", 9
 
 
 マップ横幅 = 60
@@ -109,7 +113,8 @@ SPRITECREATE "GRID_GRASS", 9
 
 DO
 	$RESTART
-	VARSIZE 設置済み
+	VARSET 設置済み
+	VARSET タイル始点, -1
 	壁無し = 0
 	;マップを表示する
 	FOR Y座標, 0, マップ縦幅
@@ -129,34 +134,98 @@ DO
 			IF 部屋配置 && X座標 >= 始点:0 && Y座標 >= 始点:1 && INRANGE(X座標-始点:0, 0, 幅:0-1) && INRANGE(Y座標-始点:1, 0, 幅:1-1)
 				表示用変数:X座標 += "<img src='GRID_OVER'>"
 			ELSE
+				表示チップ =
+				部屋名 = %部屋情報:(土地:Y座標:X座標):0%
+				表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'>"
+				;まずオブジェクトを表示する
+				;IF オブジェクト:Y座標:X座標 != ""
+				;	;始点(左上)を記録しておく
+				;	IF タイル始点:(オブジェクト:Y座標:X座標):0 == -1
+				;		タイル始点:(オブジェクト:Y座標:X座標):0 = X座標
+				;		タイル始点:(オブジェクト:Y座標:X座標):1 = Y座標
+				;	ENDIF
 				;その土地に部屋が設置してあったら対応した色で表示する
 				IF 土地:Y座標:X座標 != 0
-					部屋名 = %部屋情報:(土地:Y座標:X座標):0%
+					;始点(左上)を記録しておく
+					IF タイル始点:(土地:Y座標:X座標):0 == -1
+						タイル始点:(土地:Y座標:X座標):0 = X座標
+						タイル始点:(土地:Y座標:X座標):1 = Y座標
+					ENDIF
 					;設置済み判定に始点も入れておく
 					設置済み:(土地:Y座標:X座標) = Y座標*100+X座標
 					SELECTCASE 部屋名
 						CASE "レッスン室", "調理室", "図書室", "畜舎"
 							表示チップ = GRID_WOOD
+							表示用変数:X座標 += @"<img src='%表示チップ%'>"
 						CASE "医務室", "実験室"
 							表示チップ = GRID_SILVER
+							表示用変数:X座標 += @"<img src='%表示チップ%'>"
 						CASE "畑", "田んぼ"
 							表示チップ = GRID_GROUND
 							壁無し = 1
+							表示用変数:X座標 += @"<img src='%表示チップ%'>"
 						CASE "プランター"
 							表示チップ = GRID_GRAY
+							表示用変数:X座標 += @"<img src='%表示チップ%'>"
 						CASE "牧場"
+							;牧場 12*12
 							表示チップ = GRID_GRASS
+							表示用変数:X座標 += @"<img src='%表示チップ%'>"
 						CASE "生け簀"
-							表示チップ = GRID_WATER
+							;生け簀は8*8
+							;養殖中ならその画像を表示
+							DEBUGPRINTFORML {X座標}*{Y座標} {X座標-タイル始点:(土地:Y座標:X座標):0} {Y座標-タイル始点:(土地:Y座標:X座標):1}
+
+							IF (X座標-タイル始点:(土地:Y座標:X座標):0) == 0 && (Y座標-タイル始点:(土地:Y座標:X座標):1) == 0
+								LOCAL = 1
+							ELSEIF (X座標-タイル始点:(土地:Y座標:X座標):0) == 4 && (Y座標-タイル始点:(土地:Y座標:X座標):1) == 0
+								LOCAL = 2
+							ELSEIF (X座標-タイル始点:(土地:Y座標:X座標):0) == 0 && (Y座標-タイル始点:(土地:Y座標:X座標):1) == 4
+								LOCAL = 3
+							ELSEIF (X座標-タイル始点:(土地:Y座標:X座標):0) == 4 && (Y座標-タイル始点:(土地:Y座標:X座標):1) == 4
+								LOCAL = 4
+							ELSE
+								LOCAL = 0
+							ENDIF
+							;始点から4つ区切りで表示
+							IF 生け簀の養殖:LOCAL != ""
+								DEBUGPRINTL OK
+								SELECTCASE 生け簀の養殖:LOCAL
+									CASE "タコ"
+										表示用変数:X座標 += "<img src='タコ'"
+									CASE "イカ"
+										表示用変数:X座標 += "<img src='イカ'"
+									CASE "エビ"
+										表示用変数:X座標 += "<img src='エビ'"
+									CASE "ウナギ"
+										表示用変数:X座標 += "<img src='ウナギ'"
+									CASE "貝類"
+										表示用変数:X座標 += "<img src='貝類'"
+									CASE "海藻"
+										表示用変数:X座標 += "<img src='海藻'"
+									CASE "カニ"
+										表示用変数:X座標 += "<img src='カニ'"
+									CASEELSE
+										表示用変数:X座標 += "<img src='魚'"
+								ENDSELECT
+								表示用変数:X座標 += " srcb='' height='400' width='400'>"
+							ENDIF
+							IF (X座標-タイル始点:(土地:Y座標:X座標):0)%4 == 0 && (Y座標-タイル始点:(土地:Y座標:X座標):1)%4 == 0
+								表示チップ = GRID_WATER
+								表示用変数:X座標 += @"<img src='%表示チップ%' srcb='' height='400' width='400'>"
+							ENDIF
 						CASE "養蜂場"
 							表示チップ = GRID_BEEHIVE
+							表示用変数:X座標 += @"<img src='%表示チップ%'>"
 					ENDSELECT							
 				ELSEIF グリッド表示
 					表示チップ = GRID
+					表示用変数:X座標 += @"<img src='%表示チップ%'>"
 				ELSE
 					表示チップ = GRID_SNOW
+					表示用変数:X座標 += @"<img src='%表示チップ%'>"
 				ENDIF
-				表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'><img src='%表示チップ%'></button>"
+				表示用変数:X座標 += "</button>"
 				;壁の確認 端でも壁表示
 				IF !壁無し
 					;左壁
