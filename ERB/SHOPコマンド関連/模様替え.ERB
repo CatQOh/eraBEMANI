@@ -23,6 +23,12 @@
 #DIM DYNAMIC オブジェクト幅, 2
 #DIM DYNAMIC オブジェクト配置
 #DIM DYNAMIC オブジェクト表示済み
+#DIM DYNAMIC 選択座標, 2
+#DIMS DYNAMIC 選択部屋
+#DIMS DYNAMIC 選択オブジェクト
+#DIM DYNAMIC 畑始点
+#DIM DYNAMIC プランター始点
+#DIM DYNAMIC 田んぼ始点
 
 VARLINE = LINECOUNT
 
@@ -33,14 +39,22 @@ LOCAL = 1
 部屋情報:(LOCAL++):0 '= "実験室", "5", "4"
 部屋情報:(LOCAL++):0 '= "調理室", "8", "6"
 部屋情報:(LOCAL++):0 '= "図書室", "12", "8"
+;1から始まるので調整
+プランター始点 = LOCAL-1
 部屋情報:(LOCAL++):0 '= "プランター", "2", "2"
 部屋情報:(LOCAL++):0 '= "プランター", "2", "2"
 部屋情報:(LOCAL++):0 '= "プランター", "2", "2"
 部屋情報:(LOCAL++):0 '= "プランター", "2", "2"
+畑始点 = LOCAL-1
 部屋情報:(LOCAL++):0 '= "畑", "4", "4"
 部屋情報:(LOCAL++):0 '= "畑", "4", "4"
 部屋情報:(LOCAL++):0 '= "畑", "4", "4"
 部屋情報:(LOCAL++):0 '= "畑", "4", "4"
+部屋情報:(LOCAL++):0 '= "畑", "4", "4"
+部屋情報:(LOCAL++):0 '= "畑", "4", "4"
+部屋情報:(LOCAL++):0 '= "畑", "4", "4"
+部屋情報:(LOCAL++):0 '= "畑", "4", "4"
+田んぼ始点 = LOCAL-1
 部屋情報:(LOCAL++):0 '= "田んぼ", "6", "6"
 部屋情報:(LOCAL++):0 '= "田んぼ", "6", "6"
 部屋情報:(LOCAL++):0 '= "牧場", "12", "12"
@@ -160,13 +174,35 @@ DO
 					;設置済み判定に始点も入れておく
 					設置済み:(土地:Y座標:X座標) = Y座標*100+X座標
 					SELECTCASE 部屋名
-						CASE "レッスン室", "調理室", "図書室", "畜舎"
+						CASE "レッスン室", "調理室", "図書室"
 							表示チップ = GRID_WOOD
 							表示用変数:X座標 += @"<img src='%表示チップ%'>"
 						CASE "医務室", "実験室"
 							表示チップ = GRID_SILVER
 							表示用変数:X座標 += @"<img src='%表示チップ%'>"
-						CASE "畑", "田んぼ"
+						CASE "畑"
+							;畑 4*4
+							;作物があれば画像を表示する
+							IF (X座標-タイル始点:(土地:Y座標:X座標):0) == 0 && (Y座標-タイル始点:(土地:Y座標:X座標):1) == 0
+								表示チップ = GRID_GROUND
+								表示用変数:X座標 += @"<img src='%表示チップ%' srcb='' height='400' width='400'></button>"
+								表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'>"
+								IF 畑の作物:(土地:Y座標:X座標-畑始点) != ""
+									表示用変数:X座標 += "<img src='"
+									;収穫可能かどうかで色が変わる
+									SELECTCASE 畑の作物:(土地:Y座標:X座標-畑始点)
+										CASE "ぶどう"
+											IF 畑収穫日:(土地:Y座標:X座標-畑始点)
+												表示用変数:X座標 += "ぶどう1"
+											ELSE
+												表示用変数:X座標 += "ぶどう2"
+											ENDIF
+									ENDSELECT
+									表示用変数:X座標 += "' srcb='' height='400' width='400'>"
+								ENDIF
+								壁無し = 1
+							ENDIF
+						CASE "田んぼ"
 							表示チップ = GRID_GROUND
 							壁無し = 1
 							表示用変数:X座標 += @"<img src='%表示チップ%'>"
@@ -196,6 +232,31 @@ DO
 									表示用変数:X座標 += "<img src='牛' srcb='' height='600' width='600'>"
 								ELSEIF LOCAL == 2 && 羊の状態
 									表示用変数:X座標 += "<img src='羊' srcb='' height='600' width='600'>"
+								ENDIF
+							ENDIF
+						CASE "畜舎"
+							;畜舎 8*8
+							;豚か鶏がいるならその画像を表示
+							IF (X座標-タイル始点:(土地:Y座標:X座標):0) == 0 && (Y座標-タイル始点:(土地:Y座標:X座標):1) == 0
+								LOCAL = 1
+							ELSEIF (X座標-タイル始点:(土地:Y座標:X座標):0) == 4 && (Y座標-タイル始点:(土地:Y座標:X座標):1) == 0
+								LOCAL = 2
+							ELSEIF (X座標-タイル始点:(土地:Y座標:X座標):0) == 0 && (Y座標-タイル始点:(土地:Y座標:X座標):1) == 4
+								LOCAL = 2
+							ELSEIF (X座標-タイル始点:(土地:Y座標:X座標):0) == 4 && (Y座標-タイル始点:(土地:Y座標:X座標):1) == 4
+								LOCAL = 1
+							ELSE
+								LOCAL = 0
+							ENDIF
+							;始点から4つ区切りで表示
+							IF (X座標-タイル始点:(土地:Y座標:X座標):0)%4 == 0 && (Y座標-タイル始点:(土地:Y座標:X座標):1)%4 == 0
+								表示チップ = GRID_WOOD
+								表示用変数:X座標 += @"<img src='%表示チップ%' srcb='' height='400' width='400'></button>"
+								表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'>"
+								IF LOCAL == 1 && 豚の状態
+									表示用変数:X座標 += "<img src='豚' srcb='' height='400' width='400'>"
+								ELSEIF LOCAL == 2 && 鶏の状態
+									表示用変数:X座標 += "<img src='鶏' srcb='' height='400' width='400'>"
 								ENDIF
 							ENDIF
 						CASE "生け簀"
@@ -402,6 +463,14 @@ DO
 				FOR LCOUNT, 1, VARSIZE("部屋情報", 0)
 					SIF 部屋情報:LCOUNT:0 == ""
 						BREAK
+					;現在は部屋名とアイテム名が一致してるからこれでいい
+					LOCALS = %部屋情報:LCOUNT:0%
+					SELECTCASE LOCALS
+						CASE "レッスン室", "調理室"
+						CASEELSE
+							SIF ITEM:LOCALS == 0
+								CONTINUE
+					ENDSELECT
 					PRINTFORMLC 　[{LCOUNT}] %部屋情報:LCOUNT:0%({TOINT(部屋情報:LCOUNT:1)}×{TOINT(部屋情報:LCOUNT:2)}\@ 設置済み:LCOUNT ? /設置済み #\@)
 				NEXT
 				SIF !LINEISEMPTY()
@@ -414,10 +483,18 @@ DO
 						CASE 0
 							BREAK
 						CASE 1 TO VARSIZE("部屋情報", 0)
+							;現在は部屋名とアイテム名が一致してるからこれでいい
+							LOCALS = %部屋情報:RESULT:0%
+							SELECTCASE LOCALS
+								CASE "レッスン室", "調理室"
+								CASEELSE
+									SIF ITEM:LOCALS == 0
+										CONTINUE
+							ENDSELECT
 							部屋配置 = RESULT
-							IF 設置済み:LCOUNT
-								始点:0 = (設置済み:LCOUNT)%100
-								始点:1 = (設置済み:LCOUNT)/100
+							IF 設置済み:RESULT
+								始点:0 = タイル始点:RESULT:0
+								始点:1 = タイル始点:RESULT:1
 							ENDIF
 							BREAK
 					ENDSELECT
@@ -428,7 +505,7 @@ DO
 				FOR LCOUNT, 1, VARSIZE("オブジェクト情報", 0)
 					SIF オブジェクト情報:LCOUNT:0 == ""
 						BREAK
-					PRINTFORMLC 　[{LCOUNT}] %オブジェクト情報:LCOUNT:0%({TOINT(オブジェクト情報:LCOUNT:1)}×{TOINT(オブジェクト情報:LCOUNT:2)}
+					PRINTFORMLC 　[{LCOUNT}] %オブジェクト情報:LCOUNT:0%({TOINT(オブジェクト情報:LCOUNT:1)}×{TOINT(オブジェクト情報:LCOUNT:2)})
 				NEXT
 				SIF !LINEISEMPTY()
 					PRINTL 
@@ -458,6 +535,176 @@ DO
 			CASE 63
 				INVERTBIT グリッド表示, 0
 				CONTINUE
+			CASEELSE
+				;RESULTからX,Y座標を調べる
+				;X
+				選択座標:0 = RESULT/100
+				;Y
+				選択座標:1 = RESULT%100
+				選択部屋 = %部屋情報:(土地:(選択座標:1):(選択座標:0)):0%
+				選択オブジェクト = %オブジェクト情報:(オブジェクト:(選択座標:1):(選択座標:0)):0%
+				;座標の情報表示
+				PRINT □
+				SIF 土地:(選択座標:1):(選択座標:0)
+					PRINTFORM %選択部屋% 
+				SIF オブジェクト:(選択座標:1):(選択座標:0)
+					PRINTFORM %選択オブジェクト%配置中 
+				PRINTFORML {選択座標:0}×{選択座標:1}
+				;オブジェクトの扱い
+				IF 選択オブジェクト != ""
+					PRINTFORML 　[1] - %選択オブジェクト%を動かす
+					PRINTFORML 　[2] - %選択オブジェクト%を片付ける
+				ELSE
+					PRINTL 　[3] - オブジェクトを配置する
+				ENDIF
+				;配置してある部屋の昨日にクイックアクセス
+				IF 選択部屋 != ""
+					PRINTFORML 　[4] - %選択部屋%を動かす
+					PRINTFORML 　[5] - %選択部屋%を取り壊す
+					SELECTCASE 選択部屋
+						CASE "レッスン室", "医務室", "実験室", "調理室", "図書室"
+							SIF ITEM:選択部屋
+								PRINTFORML 　[6] - %選択部屋%に行く
+						CASE "プランター", "畑", "田んぼ"
+							PRINTL 　[6] - 農作物を管理する
+						CASE "牧場", "畜舎", "生け簀", "養蜂場"
+							PRINTL 　[6] - 畜産物を管理する
+					ENDSELECT
+				ELSE
+					PRINTL 　[7] - 部屋を配置する
+				ENDIF
+				DRAWLINE
+				PRINTPLAINFORM 　{選択座標:0}×{選択座標:1}　
+				PRINTL [0] - 戻る
+				始点:0 = 選択座標:0
+				始点:1 = 選択座標:1
+				DO
+					INPUT
+					SELECTCASE RESULT
+						CASE 0
+							VARSET 始点
+							GOTO RESTART
+						CASE 1
+							SIF 選択オブジェクト == ""
+								CONTINUE
+							オブジェクト配置 = オブジェクト:(始点:1):(始点:0)
+							オブジェクト:(始点:1):(始点:0) = 0
+							;縦にずれてる分を調整
+							始点:1 -= TOINT(オブジェクト情報:オブジェクト配置:2)-1
+							GOTO RESTART
+						CASE 2
+							SIF 選択オブジェクト == ""
+								CONTINUE
+							オブジェクト:(始点:1):(始点:0) = 0
+							GOTO RESTART
+						CASE 3
+							PRINTL □配置するオブジェクトを選んでください 名前(横幅×縦幅)
+							FOR LCOUNT, 1, VARSIZE("オブジェクト情報", 0)
+								SIF オブジェクト情報:LCOUNT:0 == ""
+									BREAK
+								PRINTFORMLC 　[{LCOUNT}] %オブジェクト情報:LCOUNT:0%({TOINT(オブジェクト情報:LCOUNT:1)}×{TOINT(オブジェクト情報:LCOUNT:2)})
+							NEXT
+							SIF !LINEISEMPTY()
+								PRINTL 
+							DRAWLINE
+							PRINTL [0] 戻る
+							DO
+								INPUT
+								SELECTCASE RESULT
+									CASE 0
+										BREAK
+									CASE 1 TO VARSIZE("オブジェクト情報", 0)
+										オブジェクト配置 = RESULT
+										GOTO RESTART
+								ENDSELECT
+							LOOP 1
+							BREAK
+						CASE 4
+							SIF 選択部屋 == ""
+								CONTINUE
+							部屋配置 = 土地:(始点:1):(始点:0)
+							IF 設置済み:部屋配置
+								始点:0 = タイル始点:部屋配置:0
+								始点:1 = タイル始点:部屋配置:1
+							ENDIF
+							GOTO RESTART
+						CASE 5
+							SIF 選択部屋 == ""
+								CONTINUE
+							PRINTFORML %選択部屋%を取り壊します。よろしいですか？(マップ上から消えるだけで機能は失われません)
+							PRINTL [0] - はい
+							PRINTL [1] - いいえ
+							LOCAL = 土地:(選択座標:1):(選択座標:0)
+							DO
+								INPUT
+								IF RESULT == 0
+									FOR LCOUNT, 0, 30
+										FOR LCOUNT2, 0, 60
+											SIF 土地:LCOUNT:LCOUNT2 == LOCAL
+												土地:LCOUNT:LCOUNT2 = 0
+										NEXT
+									NEXT
+									VARSET 始点
+								ENDIF
+								GOTO RESTART
+							LOOP 1
+						CASE 6
+							SELECTCASE 選択部屋
+								CASE "レッスン室"
+									CALL STRATEGY_IDOL
+									GOTO RESTART
+								CASE "図書室", "実験室", "調理室", "医務室"
+									SIF !ITEM:選択部屋
+										CONTINUE
+									CALLFORM %選択部屋%
+									GOTO RESTART
+								CASE "プランター", "畑", "田んぼ"
+									CALL 農産物
+									GOTO RESTART
+								CASE "牧場", "畜舎", "生け簀", "養蜂場"
+									CALL 畜産
+									GOTO RESTART
+							ENDSELECT
+						CASE 7
+							PRINTL □配置する部屋を選んでください 名前(横幅×縦幅)
+							FOR LCOUNT, 1, VARSIZE("部屋情報", 0)
+								SIF 部屋情報:LCOUNT:0 == ""
+									BREAK
+								;現在は部屋名とアイテム名が一致してるからこれでいい
+								LOCALS = %部屋情報:LCOUNT:0%
+								SELECTCASE LOCALS
+									CASE "レッスン室", "調理室"
+									CASEELSE
+										SIF ITEM:LOCALS == 0
+											CONTINUE
+								ENDSELECT
+								PRINTFORMLC 　[{LCOUNT}] %部屋情報:LCOUNT:0%({TOINT(部屋情報:LCOUNT:1)}×{TOINT(部屋情報:LCOUNT:2)}\@ 設置済み:LCOUNT ? /設置済み #\@)
+							NEXT
+							SIF !LINEISEMPTY()
+								PRINTL 
+							DRAWLINE
+							PRINTL [0] 戻る
+							DO
+								INPUT
+								SELECTCASE RESULT
+									CASE 0
+										BREAK
+									CASE 1 TO VARSIZE("部屋情報", 0)
+										;現在は部屋名とアイテム名が一致してるからこれでいい
+										LOCALS = %部屋情報:RESULT:0%
+										SELECTCASE LOCALS
+											CASE "レッスン室", "調理室"
+											CASEELSE
+												SIF ITEM:LOCALS == 0
+													CONTINUE
+										ENDSELECT
+										部屋配置 = RESULT
+										GOTO RESTART
+								ENDSELECT
+							LOOP 1
+							CONTINUE
+					ENDSELECT
+				LOOP 1
 		ENDSELECT
 	ENDIF
 LOOP 1
