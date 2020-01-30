@@ -41,10 +41,10 @@ LOCAL = 1
 部屋情報:(LOCAL++):0 '= "図書室", "12", "8"
 ;1から始まるので調整
 プランター始点 = LOCAL-1
-部屋情報:(LOCAL++):0 '= "プランター", "2", "2"
-部屋情報:(LOCAL++):0 '= "プランター", "2", "2"
-部屋情報:(LOCAL++):0 '= "プランター", "2", "2"
-部屋情報:(LOCAL++):0 '= "プランター", "2", "2"
+部屋情報:(LOCAL++):0 '= "プランター", "3", "3"
+部屋情報:(LOCAL++):0 '= "プランター", "3", "3"
+部屋情報:(LOCAL++):0 '= "プランター", "3", "3"
+部屋情報:(LOCAL++):0 '= "プランター", "3", "3"
 畑始点 = LOCAL-1
 部屋情報:(LOCAL++):0 '= "畑", "4", "4"
 部屋情報:(LOCAL++):0 '= "畑", "4", "4"
@@ -117,11 +117,6 @@ GCREATEFROMFILE 5, "□.png"
 GCLEAR 5, 0xFF000000+COLOR_FROMNAME("silver")
 SPRITECREATE "GRID_SILVER", 5
 
-GCREATEFROMFILE 7, "□.png"
-;α値(不透明)+gold
-GCLEAR 7, 0xFF000000+COLOR_FROMNAME("gold")
-SPRITECREATE "GRID_BEEHIVE", 7
-
 GCREATEFROMFILE 8, "□.png"
 ;α値(不透明)+gray
 GCLEAR 8, 0xFF000000+COLOR_FROMNAME("gray")
@@ -134,6 +129,7 @@ SPRITECREATE "GRID_GRAY", 8
 
 DO
 	$RESTART
+	CLEARLINE LINECOUNT-VARLINE
 	VARSET 設置済み
 	VARSET タイル始点, -1
 	壁無し = 0
@@ -201,8 +197,20 @@ DO
 											ELSE
 												表示用変数:X座標 += @"%畑の作物:(土地:Y座標:X座標-畑始点)%"
 											ENDIF
+											表示用変数:X座標 += "' srcb='' height='200' width='200'>"
+										CASE "トマト", "きゅうり", "ナス", "ピーマン", "りんご", "みかん", "ぶどう", "カカオ"
+											IF (X座標-タイル始点:(土地:Y座標:X座標):0) == 0 && (Y座標-タイル始点:(土地:Y座標:X座標):1) == 0
+												表示用変数:X座標 += @"<img src='%表示チップ%' srcb='' height='400' width='400'></button>"
+												表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'>"
+												表示用変数:X座標 += @"<img src='%畑の作物:(土地:Y座標:X座標-畑始点)%"
+												IF 畑収穫日:(土地:Y座標:X座標-畑始点)
+													表示用変数:X座標 += "1"
+												ELSE
+													表示用変数:X座標 += "2"
+												ENDIF
+												表示用変数:X座標 += "' srcb='' height='400' width='400'>"
+											ENDIF
 									ENDSELECT
-									表示用変数:X座標 += "' srcb='' height='200' width='200'>"
 								ELSEIF (X座標-タイル始点:(土地:Y座標:X座標):0) == 0 && (Y座標-タイル始点:(土地:Y座標:X座標):1) == 0
 									表示用変数:X座標 += @"<img src='%表示チップ%' srcb='' height='400' width='400'></button>"
 									表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'>"
@@ -211,11 +219,45 @@ DO
 							ENDIF
 						CASE "田んぼ"
 							表示チップ = GRID_GROUND
+							;田んぼ 6*6
+							;作物があれば画像を表示する
+							IF (X座標-タイル始点:(土地:Y座標:X座標):0)%3 == 0 && (Y座標-タイル始点:(土地:Y座標:X座標):1)%3 == 0
+								表示チップ = GRID_GROUND
+								IF 田んぼの作物:(土地:Y座標:X座標-田んぼ始点) != ""
+									;収穫可能かどうかで画像が変わる
+									表示用変数:X座標 += @"<img src='%表示チップ%' srcb='' height='300' width='300'></button>"
+									表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'>"
+									表示用変数:X座標 += "<img src='稲"
+									IF 田んぼ収穫日:(土地:Y座標:X座標-田んぼ始点)
+										表示用変数:X座標 += "1"
+									ELSE
+										表示用変数:X座標 += "2"
+									ENDIF
+									表示用変数:X座標 += "' srcb='' height='300' width='300'>"
+								ELSE
+									表示用変数:X座標 += @"<img src='%表示チップ%' srcb='' height='300' width='300'></button>"
+									表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'>"
+								ENDIF
+							ENDIF
 							壁無し = 1
-							表示用変数:X座標 += @"<img src='%表示チップ%'>"
 						CASE "プランター"
-							表示チップ = GRID_GRAY
-							表示用変数:X座標 += @"<img src='%表示チップ%'>"
+							表示チップ = GRID
+							IF (X座標-タイル始点:(土地:Y座標:X座標):0) == 0 && (Y座標-タイル始点:(土地:Y座標:X座標):1) == 0
+								;収穫可能かどうかで画像が変わる
+								表示用変数:X座標 += @"<img src='%表示チップ%' srcb='' height='300' width='300'></button>"
+								表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'>"
+								IF プランターの作物:(土地:Y座標:X座標-プランター始点) != ""
+									IF プランター収穫日:(土地:Y座標:X座標-プランター始点)
+										表示用変数:X座標 += "<img src='プランター苗"
+									ELSE
+										表示用変数:X座標 += @"<img src='%プランターの作物:(土地:Y座標:X座標-プランター始点)%"
+									ENDIF
+									表示用変数:X座標 += "' srcb='' height='300' width='300'>"
+								ELSE
+									表示用変数:X座標 += @"<img src='%表示チップ%' srcb='' height='300' width='300'></button>"
+									表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'><img src='プランター容器' srcb='' height='300' width='300'>"
+								ENDIF
+							ENDIF
 						CASE "牧場"
 							;牧場 12*12
 							;牛か羊がいるならその画像を表示
@@ -226,7 +268,7 @@ DO
 							ELSEIF (X座標-タイル始点:(土地:Y座標:X座標):0) == 0 && (Y座標-タイル始点:(土地:Y座標:X座標):1) == 6
 								LOCAL = 2
 							ELSEIF (X座標-タイル始点:(土地:Y座標:X座標):0) == 6 && (Y座標-タイル始点:(土地:Y座標:X座標):1) == 6
-								LOCAL = 1
+								LOCAL = 2
 							ELSE
 								LOCAL = 0
 							ENDIF
@@ -239,6 +281,8 @@ DO
 									表示用変数:X座標 += "<img src='牛' srcb='' height='600' width='600'>"
 								ELSEIF LOCAL == 2 && 羊の状態
 									表示用変数:X座標 += "<img src='羊' srcb='' height='600' width='600'>"
+								ELSEIF LOCAL == 3 && 馬の状態
+									表示用変数:X座標 += "<img src='鶏' srcb='' height='400' width='400'>"
 								ENDIF
 							ENDIF
 						CASE "畜舎"
@@ -308,8 +352,15 @@ DO
 								ENDIF
 							ENDIF
 						CASE "養蜂場"
-							表示チップ = GRID_BEEHIVE
-							表示用変数:X座標 += @"<img src='%表示チップ%'>"
+							;養蜂場 4*4
+							;蜂がいれば画像を表示する
+							IF (X座標-タイル始点:(土地:Y座標:X座標):0)%2 == 0 && (Y座標-タイル始点:(土地:Y座標:X座標):1)%2 == 0
+								表示チップ = GRID_BEEHIVE
+								表示用変数:X座標 += @"<img src='%表示チップ%' srcb='' height='200' width='200'></button>"
+								表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'>"
+								SIF 蜂の状態
+									表示用変数:X座標 += "<img src='蜂' srcb='' height='200' width='200'>"
+							ENDIF
 					ENDSELECT							
 				ELSEIF グリッド表示
 					表示チップ = GRID
@@ -398,7 +449,6 @@ DO
 			CASE 7, 9
 				SWAP 部屋情報:部屋配置:1, 部屋情報:部屋配置:2
 			CASE 5
-				CLEARLINE LINECOUNT-VARLINE
 				FOR LCOUNT, 始点:1, 始点:1+幅:1
 					SIF LCOUNT >= マップ縦幅
 						GOTO RESTART
@@ -418,7 +468,6 @@ DO
 				GOTO RESTART
 		ENDSELECT
 
-		CLEARLINE LINECOUNT-VARLINE
 		CONTINUE
 	ELSEIF オブジェクト配置
 		PRINTL [4] ← [2] ↓ [8] ↑ [6] →
@@ -442,7 +491,6 @@ DO
 				SIF 始点:1+幅:1 < マップ縦幅
 					始点:1++
 			CASE 5
-				CLEARLINE LINECOUNT-VARLINE
 				FOR LCOUNT, 始点:1, 始点:1+幅:1
 					SIF LCOUNT >= マップ縦幅
 						GOTO RESTART
@@ -456,16 +504,37 @@ DO
 				GOTO RESTART
 		ENDSELECT
 
-		CLEARLINE LINECOUNT-VARLINE
 		CONTINUE
 	ELSE
-		PRINTL [60] - 部屋を配置する [61] - オブジェクトを配置する [62] - 部屋を初期化する
+		PRINTL [60] - オブジェクトを配置する [61] - 部屋を配置する [62] - 部屋を初期化する
 		PRINTFORML [63]  - グリッド表示\@ グリッド表示 ? しない # する \@ [70] 戻る
 		INPUT
 		SELECTCASE RESULT
 			CASE 70
 				RETURN
 			CASE 60
+				PRINTL □配置するオブジェクトを選んでください 名前(横幅×縦幅)
+				FOR LCOUNT, 1, VARSIZE("オブジェクト情報", 0)
+					SIF オブジェクト情報:LCOUNT:0 == ""
+						BREAK
+					PRINTFORMLC 　[{LCOUNT}] %オブジェクト情報:LCOUNT:0%({TOINT(オブジェクト情報:LCOUNT:1)}×{TOINT(オブジェクト情報:LCOUNT:2)})
+				NEXT
+				SIF !LINEISEMPTY()
+					PRINTL 
+				DRAWLINE
+				PRINTL [0] 戻る
+				DO
+					INPUT
+					SELECTCASE RESULT
+						CASE 0
+							GOTO RESTART
+						CASE 1 TO VARSIZE("オブジェクト情報", 0)
+							オブジェクト配置 = RESULT
+							BREAK
+					ENDSELECT
+				LOOP 1
+				CONTINUE
+			CASE 61
 				PRINTL □配置する部屋を選んでください 名前(横幅×縦幅)
 				FOR LCOUNT, 1, VARSIZE("部屋情報", 0)
 					SIF 部屋情報:LCOUNT:0 == ""
@@ -488,7 +557,7 @@ DO
 					INPUT
 					SELECTCASE RESULT
 						CASE 0
-							BREAK
+							GOTO RESTART
 						CASE 1 TO VARSIZE("部屋情報", 0)
 							;現在は部屋名とアイテム名が一致してるからこれでいい
 							LOCALS = %部屋情報:RESULT:0%
@@ -503,28 +572,6 @@ DO
 								始点:0 = タイル始点:RESULT:0
 								始点:1 = タイル始点:RESULT:1
 							ENDIF
-							BREAK
-					ENDSELECT
-				LOOP 1
-				CONTINUE
-			CASE 61
-				PRINTL □配置するオブジェクトを選んでください 名前(横幅×縦幅)
-				FOR LCOUNT, 1, VARSIZE("オブジェクト情報", 0)
-					SIF オブジェクト情報:LCOUNT:0 == ""
-						BREAK
-					PRINTFORMLC 　[{LCOUNT}] %オブジェクト情報:LCOUNT:0%({TOINT(オブジェクト情報:LCOUNT:1)}×{TOINT(オブジェクト情報:LCOUNT:2)})
-				NEXT
-				SIF !LINEISEMPTY()
-					PRINTL 
-				DRAWLINE
-				PRINTL [0] 戻る
-				DO
-					INPUT
-					SELECTCASE RESULT
-						CASE 0
-							BREAK
-						CASE 1 TO VARSIZE("オブジェクト情報", 0)
-							オブジェクト配置 = RESULT
 							BREAK
 					ENDSELECT
 				LOOP 1
@@ -619,7 +666,7 @@ DO
 								INPUT
 								SELECTCASE RESULT
 									CASE 0
-										BREAK
+										GOTO RESTART
 									CASE 1 TO VARSIZE("オブジェクト情報", 0)
 										オブジェクト配置 = RESULT
 										GOTO RESTART
@@ -695,7 +742,7 @@ DO
 								INPUT
 								SELECTCASE RESULT
 									CASE 0
-										BREAK
+										GOTO RESTART
 									CASE 1 TO VARSIZE("部屋情報", 0)
 										;現在は部屋名とアイテム名が一致してるからこれでいい
 										LOCALS = %部屋情報:RESULT:0%
