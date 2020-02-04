@@ -177,7 +177,7 @@ SELECTCASE 収支
 		SIF 収支 >= 10000
 			ことみちゃん好感度 += 200*(1+LOG10(収支/10000))
 		;総収支がプラスかつキャロルの好感度が1000以上のときお誘いを受ける
-		IF ギャンブル総収支 > 0 && キャロル好感度 >= 1000
+		IF ギャンブル総収支 > 0 && キャロル好感度 >= 1000 && GETCHARANAME("キャロル") == -1
 			SELECTCASE キャロル進行フラグ
 				CASE 0
 					PRINTFORML 今日も勝つことができた%CALLNAME:MASTER%が屋敷に戻ろうとしたとき
@@ -191,7 +191,7 @@ SELECTCASE 収支
 			キャロルお誘いフラグ = 1
 		ENDIF
 		;ことみちゃんの好感度が1000以上のときお誘いを受ける
-		IF ことみちゃん好感度 >= 1000
+		IF ことみちゃん好感度 >= 1000 && GETCHARANAME("ことみちゃん") == -1
 			SELECTCASE ことみちゃん進行フラグ
 				CASE 0
 					PRINTFORML %CALLNAME:MASTER%が帰ろうとしたそのとき、物陰から優しく袖を引っ張られた。
@@ -213,6 +213,11 @@ SELECTCASE 収支
 ENDSELECT
 
 ;お誘いを受けたとき
+IF キャロル進行フラグ
+	CALL キャロルイベント
+ELSEIF ことみちゃん進行フラグ
+	CALL ことみちゃんイベント
+ENDIF
 
 ;借金を背負ったとき
 IF MONEY < 0
@@ -392,6 +397,158 @@ IF MONEY < 0
 ENDIF
 
 RETURN 1
+
+@キャロルイベント
+#DIM DYNAMIC 道具フラグ退避用, 2000
+PRINTL [0] - キャロルの誘いを受ける
+PRINTL [1] - キャロルの誘いを断る
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			PRINTFORMW キャロルの誘いに乗ると、%CALLNAME:MASTER%はカジノ施設の一級スイートルームへと案内された
+			PRINTFORML きらびやかな装飾や家具、ワイングラスが部屋を彩る中、キャロルは制服のバニースーツで淫らなポーズを取りながら、
+			PRINTFORMW %CALLNAME:MASTER%をベッドへと誘惑している。さて、どうしようか……
+			;道具は一時的に無しにする
+			ARRAYCOPY "ITEM", "道具フラグ退避用"
+			;お酒と避妊具は用意してある
+			ITEM:コンドーム = 99
+			ITEM:スーパードライ = 12
+			ITEM:一番搾り = 12
+			ITEM:プレミアムモルツ = 12
+			ITEM:ヱビス = 12
+			ITEM:皆伝 = 10
+			ITEM:魔王 = 10
+			ITEM:アルパカ = 10
+			ITEM:倉吉 = 10
+			;調教開始準備
+			;過去に誘いに乗ったならそのステータスを引き継ぎ
+			IF CHKCHARADATA(@"キャロル_{データID}") == 0
+				LOADCHARA @"キャロル_{データID}"
+			ELSE
+				ADDCHARA GETNO("キャロル")
+			ENDIF
+			TARGET = CHARANUM-1
+			;高感度がそのまま依存度になる
+			CFLAG:依存度 = キャロル好感度
+			;ここから調教開始
+			;BEGIN TRAINで行われる変数初期化
+			ASSIPLAY:0 = 0
+			PREVCOMS = 
+			SELECTCOMS = 
+
+			CALL EVENTUSERTRAIN
+			DO
+				CALL SHOW_STATUS
+				CALL SHOW_USERCOM
+				INPUT
+				CALL USERCOM
+			LOOP TFLAG:調教終了 == 0
+			CALLEVENT EVENTEND
+			DO
+				CALL SHOW_JUEL
+				CALL SHOW_ABLUP_SELECT
+				INPUT
+				SIF RESULT == 100
+					BREAK
+				TRYCALLFORM ABLUP{RESULT}
+			LOOP RESULT != 100
+			CALL EVENTCHECK_T
+			;陥落したら加入する
+			IF CFLAG:陥落
+				PRINTFORMW とうとう%CALLNAME:MASTER%の虜になったキャロルは、カジノの仕事よりも%CALLNAME:MASTER%のことを優先したいようだ
+				PRINTFORMW ＜キャロルを家に迎え入れました＞
+			ELSE
+				SAVECHARA　@"キャロル_{データID}", "", TARGET
+				DELCHARA TARGET
+				TARGET = -1
+				DRAWLINE
+				PRINTFORMW キャロルは%CALLNAME:MASTER%との行為も大変気に入った様子で、またのご来店を促している
+				PRINTFORMW 彼女に見損なわれないようにカジノで勝ち続けよう
+				ARRAYCOPY "道具フラグ退避用", "ITEM"
+			ENDIF
+			BREAK
+		CASE 1
+			PRINTFORMW %CALLNAME:MASTER%はキャロルの誘いを丁寧に断った……
+			BREAK
+	ENDSELECT
+LOOP 1
+
+@ことみちゃんイベント
+#DIM DYNAMIC 道具フラグ退避用, 2000
+PRINTL [0] - ことみちゃんの誘いを受ける
+PRINTL [1] - ことみちゃんの誘いを断る
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			PRINTFORMW ことみちゃんの誘いに乗ると、%CALLNAME:MASTER%はカジノ施設の一級スイートルームへと案内された
+			PRINTFORML きらびやかな装飾や家具、ワイングラスが部屋を彩る中、ことみちゃんはドレスの裾をたくし上げ、
+			PRINTFORMW %CALLNAME:MASTER%をベッドへと誘惑している。さて、どうしようか……
+			;道具は一時的に無しにする
+			ARRAYCOPY "ITEM", "道具フラグ退避用"
+			;お酒と避妊具は用意してある
+			ITEM:コンドーム = 99
+			ITEM:スーパードライ = 12
+			ITEM:一番搾り = 12
+			ITEM:プレミアムモルツ = 12
+			ITEM:ヱビス = 12
+			ITEM:皆伝 = 10
+			ITEM:魔王 = 10
+			ITEM:アルパカ = 10
+			ITEM:倉吉 = 10
+			;調教開始準備
+			;過去に誘いに乗ったならそのステータスを引き継ぎ
+			IF CHKCHARADATA(@"ことみちゃん_{データID}") == 0
+				LOADCHARA @"ことみちゃん_{データID}"
+			ELSE
+				ADDCHARA GETNO("ことみちゃん")
+			ENDIF
+			TARGET = CHARANUM-1
+			;高感度がそのまま依存度になる
+			CFLAG:依存度 = ことみちゃん好感度
+			;ここから調教開始
+			;BEGIN TRAINで行われる変数初期化
+			ASSIPLAY:0 = 0
+			PREVCOMS = 
+			SELECTCOMS = 
+
+			CALL EVENTUSERTRAIN
+			DO
+				CALL SHOW_STATUS
+				CALL SHOW_USERCOM
+				INPUT
+				CALL USERCOM
+			LOOP TFLAG:調教終了 == 0
+			CALLEVENT EVENTEND
+			DO
+				CALL SHOW_JUEL
+				CALL SHOW_ABLUP_SELECT
+				INPUT
+				SIF RESULT == 100
+					BREAK
+				TRYCALLFORM ABLUP{RESULT}
+			LOOP RESULT != 100
+			CALL EVENTCHECK_T
+			;陥落したら加入する
+			IF CFLAG:陥落
+				PRINTFORMW とうとう%CALLNAME:MASTER%の虜になったことみちゃんは、カジノ遊びよりも%CALLNAME:MASTER%のことを優先したいようだ
+				PRINTFORMW ＜ことみちゃんを家に迎え入れました＞
+			ELSE
+				SAVECHARA　@"ことみちゃん_{データID}", "", TARGET
+				DELCHARA TARGET
+				TARGET = -1
+				DRAWLINE
+				PRINTFORMW ことみちゃんは%CALLNAME:MASTER%との行為も大変気に入った様子で、またのご来店を促している
+				PRINTFORMW 彼女に見損なわれないようにカジノで勝ち続けよう
+				ARRAYCOPY "道具フラグ退避用", "ITEM"
+			ENDIF
+			BREAK
+		CASE 1
+			PRINTFORMW %CALLNAME:MASTER%はことみちゃんの誘いを丁寧に断った……
+			BREAK
+	ENDSELECT
+LOOP 1
 
 ;以下、各ゲーム共通の賭け金設定
 @STAKE, 賭け金上限, カジノの種類
