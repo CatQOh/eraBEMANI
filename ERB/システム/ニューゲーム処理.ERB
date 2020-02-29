@@ -46,38 +46,14 @@ LOCALS:2 =<button value='9' pos='3300'> <img src='MODE' srcb='MODEB' height='700
 HTML_PRINT STRJOIN(LOCALS, "")
 
 FONTBOLD
-PRINT 　　　　
-SETCOLORBYNAME black
-PRINT WE
-SETCOLORBYNAME hotpink
-PRINT DD
-SETCOLORBYNAME black
-PRINT ING
-PRINT 　　　　　　　　　　 
-
-PRINT CLA
-SETCOLORBYNAME darkseagreen
-PRINT SS
-
-SETCOLORBYNAME black
-PRINT 　　　　　　　　　　　 
-PRINT PRE
-SETCOLORBYNAME lime
-PRINT M
-SETCOLORBYNAME black
-PRINT IU
-SETCOLORBYNAME lime
-PRINT M
-SETCOLORBYNAME black
+CALL MANUALPRINT, "　　　　(COLOR:black:WE)(COLOR:hotpink:DD)(COLOR:black:ING)　　　　　　　　　　 (COLOR:black:CLA)(COLOR:darkseagreen:SS)　　　　　　　　　　　 (COLOR:black:PRE)(COLOR:lime:M)(COLOR:black:IU)(COLOR:lime:M)"
 PRINTL 
-PRINT 　　　　新婚モード　　　　　　　　　 段位認定　　　　　　　　　　
-PRINT FREE
-PRINTL 
-PRINTL 　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　　プレミアムフリー
+SETCOLORBYNAME black
+PRINTL　　　　　新婚モード　　　　　　　　　 段位認定　　　　　　　　　　FREE
 FONTREGULAR
 PRINTL 　　　　期限無し　　　　　　　　　　　期限あり　　　　　　　　　　
 PRINTL 　　　　所持金:3億＄　　　　　　　　　特定の4人を攻略　　　　　　　　期限無し
-RESETCOLOR
+PRINTL 
 PRINTL 
 
 VARSET LOCALS
@@ -88,28 +64,9 @@ LOCALS:1 =<button value='1' pos='2500'> <img src='MODE' srcb='MODEB' height='700
 HTML_PRINT STRJOIN(LOCALS, "")
 
 FONTBOLD
-PRINT 　　　　　　　　　　　
-SETCOLORBYNAME black
-PRINT STAN
-SETCOLORBYNAME darkorange
-PRINT D
-SETCOLORBYNAME black
-PRINT AR
-SETCOLORBYNAME darkorange
-PRINT D
-
-PRINT 　　　　　　　　　　
-SETCOLORBYNAME black
-PRINT S
-SETCOLORBYNAME deepskyblue
-PRINT T
-SETCOLORBYNAME black
-PRINT RA
-SETCOLORBYNAME deepskyblue
-PRINT T
-SETCOLORBYNAME black
-PRINT EGY
+CALL MANUALPRINT, "　　　　　　　　　　　(COLOR:black:STAN)(COLOR:darkorange:D)(COLOR:black:AR)(COLOR:darkorange:D)　　　　　　　　　　(COLOR:black:S)(COLOR:deepskyblue:T)(COLOR:black:RA)(COLOR:deepskyblue:T)(COLOR:black:EGY)"
 PRINTL 
+SETCOLORBYNAME black
 PRINTL 　　　　　　　　　　　通常モード　　　　　　　　　 経営モード
 PRINTL 
 FONTREGULAR
@@ -137,6 +94,7 @@ DO
 				FLAG:チャレンジモード = RESULT
 			LOOP LOOPRES(0, 1)
 			CALL SETUP_GAMESTART
+			CALL PLAYER_CUSTOM, 0
 			CALL SELECT_SEX
 			CALL INPUT_NAME
 			CALL SELECT_VIRGIN
@@ -364,11 +322,7 @@ CALL CHARA_LIST, 2
 SELECTCASE RESULT
 	CASE 10000
 		PRINTW プレイヤーを変更しませんでした
-		CALL SELECT_SEX
-		CALL INPUT_NAME
-		CALL SELECT_STYLE
-		SIF ゲームモード() == "フリーモード"
-			CALL SELECT_VIRGIN
+		CALL PLAYER_CUSTOM, 0
 	CASEELSE
 		DELCHARA 0
 		CALL CHARA_ADD, RESULT
@@ -385,10 +339,7 @@ SELECTCASE RESULT
 					CASE 0
 						CALL CHARA_ADD, 0
 						TARGET = 1
-						CALL SELECT_SEX, TARGET
-						CALL INPUT_NAME, TARGET
-						CALL SELECT_VIRGIN, TARGET
-						CALL SELECT_STYLE, TARGET
+						CALL PLAYER_CUSTOM, TARGET
 						BREAK
 					CASE 1
 						BREAK
@@ -405,11 +356,8 @@ IF ゲームモード() == "新婚モード"
 	CALL CHARA_LIST, 1
 	CALL CHARA_ADD, RESULT
 	TARGET = 1
-	IF NO:TARGET == 0
-		CALL SELECT_SEX, TARGET
-		CALL INPUT_NAME, TARGET
-		CALL SELECT_STYLE, TARGET
-	ENDIF
+	SIF NO:TARGET == 0
+		CALL PLAYER_CUSTOM, TARGET
 	CALL ヨミの性別, TARGET
 	RESULT = 0
 	TRYCALLFORM WEDDING_K{NO:TARGET}
@@ -547,6 +495,307 @@ ENDIF
 
 RETURN 0
 
+@PLAYER_CUSTOM, ARG = -1
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 種族名, 50
+#DIM DYNAMIC 種族
+#DIM DYNAMIC 始点
+#DIM DYNAMIC 終点
+
+SIF VARLINE
+	CLEARLINE LINECOUNT-VARLINE
+VARLINE = LINECOUNT
+
+SIF ARG == -1
+	ARG = MASTER
+SIF CSTR:ARG:種族 == ""
+	CSTR:ARG:種族 = 人間
+DRAWLINE
+PRINTL 【基礎】
+PRINTFORM 　名前:%NAME:ARG% [1] - 名前を変更する
+PRINTPLAIN  
+
+PRINT 性別:
+SELECTCASE SEX(ARG)
+	CASE 1
+		PRINT 男性
+	CASE 2
+		PRINT 女性
+ENDSELECT
+SIF TALENT:ARG:ふたなり
+	PRINT (ふたなり)
+
+PRINT [2] - 性別を変更する
+PRINTPLAIN  
+PRINTFORM 種族:%CSTR:ARG:種族% [3] - 種族を変更する
+PRINTL 
+
+PRINTL 【容姿】
+PRINT 　体格:
+IF TALENT:ARG:小柄体型
+	PRINT 子供 
+ELSE
+	PRINT 普通 
+ENDIF
+PRINT [4] - 体格を変更する
+PRINTPLAIN  
+IF SEX(ARG) == 2
+	PRINT バストサイズ:
+	SELECTCASE TALENT:ARG:バストサイズ
+		CASE 1
+			PRINT 絶壁 
+		CASE 2
+			PRINT 貧乳 
+		CASE 3
+			PRINT 並乳 
+		CASE 4
+			PRINT 巨乳 
+		CASE 5
+			PRINT 爆乳 
+	ENDSELECT
+	PRINT [5] - バストサイズを変更する
+ENDIF
+PRINTL
+
+PRINTFORM 　動物耳:\@ TALENT:ARG:動物耳 ? 有り # 無し\@ [6] - 変更
+PRINTPLAIN  
+PRINTFORM 尻尾:\@ TALENT:ARG:尻尾 ? 有り # 無し\@ [7] - 変更 
+PRINTPLAIN  
+PRINTFORM 羽:\@ TALENT:ARG:羽 ? 有り # 無し\@ [8] - 変更 
+PRINTPLAIN  
+PRINTFORM もふもふ:\@ TALENT:ARG:ファーリー ? 有り # 無し\@ [9] - 変更 
+PRINTPLAIN  
+PRINTFORM 生命活動:\@ !TALENT:ARG:ゾンビ ? 有り # 無し\@ [10] - 変更
+PRINTL 
+PRINTL 【性経験】
+PRINTL 　[11] - 無し [12] - 普通 [13] -すごい
+LOCAL = 0
+FOR LCOUNT, 0, 100
+	SELECTCASE EXPNAME:LCOUNT
+		CASE "Ｖ経験", "膣射経験", "出産経験", "流産経験"
+			SIF !VAGINA(ARG)
+				CONTINUE
+		CASE "射精経験"
+			SIF !PENIS(ARG)
+				CONTINUE
+		CASE "レズ経験", "パイズリ経験"
+			SIF SEX(ARG) != 2
+				CONTINUE
+		CASE "ゲイ経験"
+			SIF SEX(ARG) != 1
+				CONTINUE
+		CASE "Ａ経験", "絶頂経験", "性交経験", "精液経験", "フェラ経験", "自慰経験"
+		CASEELSE
+			CONTINUE
+	ENDSELECT
+	SIF LOCAL == 0
+		PRINT 　
+	PRINTFORMLC %EXPNAME:LCOUNT%:{EXP:ARG:LCOUNT} [{LCOUNT+20}] - 変更
+	PRINTPLAIN  
+	LOCAL++
+	IF LOCAL%3 == 0 && LOCAL != 0
+		PRINTL 
+		LOCAL = 0
+	ENDIF
+NEXT
+SIF !LINEISEMPTY()
+	PRINTL 
+DRAWLINE
+PRINTPLAIN 　PLAYER CUSTOM　
+PRINTL [0] - 完了 [100] - キャラデータを保存 [101] - キャラデータをロード
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1
+			CALL INPUT_NAME, ARG
+		CASE 2
+			CALL SELECT_SEX, ARG
+		CASE 3
+			VARSET 種族名
+
+			種族 = GETNUM(CSTR, "種族")
+
+			FOR LCOUNT, 1, 10000
+				SIF !EXISTCSV(LCOUNT)
+					CONTINUE
+				;変数「種族名」の配列に該当種族名がまだ入ってない場合は入れる
+				IF CSVCSTR(LCOUNT, 種族) != ""
+					SIF FINDELEMENT(種族名, ESCAPE(CSVCSTR(LCOUNT, 種族)), 0, VARSIZE("種族名"), 1) == -1
+						種族名:FINDELEMENT(種族名, "", 0, VARSIZE("種族名"), 1) = %CSVCSTR(LCOUNT, 種族)%
+				ENDIF
+			NEXT
+			FOR LCOUNT, 0, VARSIZE("種族名")
+				SIF 種族名:LCOUNT == ""
+					BREAK
+				PRINTFORMLC [{LCOUNT}] %種族名:LCOUNT%
+			NEXT
+			SIF !LINEISEMPTY()
+				PRINTL 
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0 TO VARSIZE("種族名")
+						CSTR:ARG:種族 = %種族名:RESULT%
+						BREAK
+					CASEELSE
+						CONTINUE
+				ENDSELECT
+			LOOP 1
+		CASE 4
+			INVERTBIT TALENT:ARG:小柄体型, 0
+		CASE 5
+			PRINTL [1] - 絶壁にする
+			PRINTL [2] - 貧乳にする
+			PRINTL [3] - 並乳にする
+			PRINTL [4] - 巨乳にする
+			PRINTL [5] - 爆乳にする
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 1 TO 5
+						TALENT:ARG:バストサイズ = RESULT
+						BREAK
+				ENDSELECT
+			LOOP 1
+		CASE 6
+			INVERTBIT TALENT:ARG:動物耳, 0
+		CASE 7
+			INVERTBIT TALENT:ARG:尻尾, 0
+		CASE 8
+			INVERTBIT TALENT:ARG:羽, 0
+		CASE 9
+			INVERTBIT TALENT:ARG:ファーリー, 0
+		CASE 10
+			INVERTBIT TALENT:ARG:ゾンビ, 0
+		CASE 11
+			VARSET EXP:ARG:0, 0
+		CASE 12
+			EXP:ARG:絶頂経験 = 0
+			IF VAGINA(ARG)
+				EXP:ARG:Ｖ経験 = RAND(10, 31)
+				EXP:ARG:膣射経験 = RAND(0, 6)
+				EXP:ARG:絶頂経験 += RAND(10, 21)
+				EXP:ARG:精液経験 = RAND(20, 51)+EXP:ARG:膣射経験
+			ENDIF
+			IF PENIS(ARG)
+				EXP:ARG:射精経験 = RAND(50, 101)
+				EXP:ARG:絶頂経験 += EXP:ARG:射精経験
+			ENDIF
+			IF SEX(ARG) == 2
+				EXP:ARG:パイズリ経験 = RAND(3, 11)
+				EXP:ARG:フェラ経験 = RAND(5, 21)
+			ENDIF
+			EXP:ARG:性交経験 = RAND(5, 11)
+			EXP:ARG:自慰経験 = RAND(10, 31)
+		CASE 13
+			IF VAGINA(ARG)
+				EXP:ARG:Ｖ経験 = RAND(500, 1001)
+				EXP:ARG:膣射経験 = RAND(300, 501)
+				EXP:ARG:出産経験 = RAND(1, 4)
+				SIF RAND:5 == 0
+					EXP:ARG:流産経験 = 1
+			ENDIF
+			SIF PENIS(ARG)
+				EXP:ARG:射精経験 = RAND(2000, 5001)
+			SELECTCASE SEX(ARG)
+				CASE 1
+					EXP:ARG:ゲイ経験 = RAND(500, 1001)
+				CASE 2
+					EXP:ARG:レズ経験 = RAND(500, 1001)
+					EXP:ARG:パイズリ経験 = RAND(200, 301)
+			ENDSELECT
+			EXP:ARG:Ａ経験 = RAND(500, 1001)
+			EXP:ARG:性交経験 = RAND(300, 501)
+			EXP:ARG:自慰経験 = RAND(1000, 2001)
+			EXP:ARG:フェラ経験 = RAND(500, 1001)
+			EXP:ARG:絶頂経験 = RAND(500, 1001)+EXP:ARG:射精経験
+			EXP:ARG:精液経験 = RAND(2000, 5001)+EXP:ARG:膣射経験
+		CASE 20 TO 85
+			LOCAL = RESULT
+			IF EXPNAME:(LOCAL-20) != ""
+				PRINTFORML %EXPNAME:(LOCAL-20)%の数値を入力してください
+				INPUT
+				SIF RESULT < 0
+					RESULT = 0
+				EXP:ARG:(LOCAL-20) = RESULT
+			ENDIF
+		CASE 100
+			FOR LCOUNT, 0, 10
+				IF CHKCHARADATA(@"CUSTOMPLAYER_{LCOUNT}") == 0
+					PRINTFORML [{LCOUNT}] - %RESULTS%
+				ELSE
+					SETCOLORBYNAME gray
+					PRINTFORML [{LCOUNT}] - 空きスロット
+					RESETCOLOR
+				ENDIF
+			NEXT
+			DRAWLINE
+			PRINTPLAIN 　PC SAVE　
+			PRINTL [10] - 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 10
+						RESTART
+					CASE 0 TO 9
+						LOCAL = RESULT
+						IF CHKCHARADATA(@"CUSTOMPLAYER_{RESULT}") == 0
+							PRINTL 既にカスタムデータが存在します。上書きしてもよろしいですか？
+							PRINTL [0] - はい
+							PRINTL [1] - いいえ
+							DO
+								INPUT
+							LOOP LOOPRES(0, 1)
+							SIF RESULT == 1
+								BREAK
+						ENDIF
+						LOCAL:1 = TOINT(SUBSTRING(GETTIMES(), 0, 4))
+						LOCAL:2 = TOINT(SUBSTRING(GETTIMES(), 5, 2))
+						LOCAL:3 = TOINT(SUBSTRING(GETTIMES(), 8, 2))
+						SAVECHARA @"CUSTOMPLAYER_{LOCAL}", @"%NAME:ARG% {LOCAL:1}/{LOCAL:2}/{LOCAL:3}に作成", ARG
+						BREAK
+				ENDSELECT
+			LOOP 1
+		CASE 101
+			FOR LCOUNT, 0, 10
+				IF CHKCHARADATA(@"CUSTOMPLAYER_{LCOUNT}") == 0
+					PRINTFORML [{LCOUNT}] - %RESULTS%
+				ELSE
+					SETCOLORBYNAME gray
+					PRINTFORML [{LCOUNT}] - 空きスロット
+					RESETCOLOR
+				ENDIF
+			NEXT
+			DRAWLINE
+			PRINTPLAIN 　PC LOAD　
+			PRINTL [10] - 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 10
+						RESTART
+					CASE 0, 9
+						IF CHKCHARADATA(@"CUSTOMPLAYER_{RESULT}") == 0
+							DELCHARA ARG
+							LOADCHARA @"CUSTOMPLAYER_{RESULT}"
+							RESTART
+						ELSE
+							CONTINUE
+						ENDIF
+				ENDSELECT
+			LOOP 1
+	ENDSELECT
+	BREAK
+LOOP 1
+
+RESTART
+
+
+
+
 @SELECT_SEX, ARG = -1
 SIF ARG == -1
 	ARG = MASTER
@@ -554,15 +803,21 @@ DRAWLINE
 PRINTL 性別を選択してください
 PRINTL [0] - 男性
 PRINTL [1] - 女性
+SELECTCASE ゲームモード()
+	CASE "通常モード", "経営モード"
+	CASEELSE
+		PRINTL [2] - 男性(ふたなり)
+		PRINTL [3] - 女性(ふたなり)
+ENDSELECT
 DO
 	INPUT
 	SELECTCASE RESULT
-		CASE 0
+		CASE 0, 2
 			TALENT:ARG:性別 = 1
 			CSTR:ARG:上半身上着 = シャツ
 			CSTR:ARG:下半身上着 = ズボン
 			CSTR:ARG:下半身下着 = トランクス
-		CASE 1
+		CASE 1, 3
 			TALENT:ARG:性別 = 2
 			TALENT:ARG:バストサイズ = 3
 			CSTR:ARG:全身上着 = ワンピース
@@ -570,7 +825,9 @@ DO
 			CSTR:ARG:下半身下着 = パンティ
 			CFLAG:ARG:挿入可 = 1
 	ENDSELECT
-LOOP LOOPRES(0, 1)
+	SIF GROUPMATCH(RESULT, 2, 3)
+		TALENT:ARG:ふたなり = 1
+LOOP LOOPRES(0, 1, 2, 3)
 
 @INPUT_NAME, ARG = -1
 SIF ARG == -1
