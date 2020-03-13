@@ -177,7 +177,7 @@ SELECTCASE 収支
 		SIF 収支 >= 10000
 			ことみちゃん好感度 += 100*(1+LOG10(収支/10000))
 		;総収支がプラスかつキャロルの好感度が1000以上のときお誘いを受ける
-		IF ギャンブル総収支 > 0 && キャロル好感度 >= 1000 && GETCHARANAME("キャロル") == -1
+		IF ギャンブル総収支 > 0 && キャロル好感度 >= 1000 && GETCHARANAME("キャロル") == -1 && キャロル進行フラグ >= 0
 			SELECTCASE キャロル進行フラグ
 				CASE 0
 					PRINTFORML 今日も勝つことができた%CALLNAME:MASTER%が屋敷に戻ろうとしたとき
@@ -190,7 +190,7 @@ SELECTCASE 収支
 			ENDSELECT
 			キャロルお誘いフラグ = 1
 		;ことみちゃんの好感度が1000以上のときお誘いを受ける
-		ELSEIF ことみちゃん好感度 >= 1000 && GETCHARANAME("ことみちゃん") == -1
+		ELSEIF ことみちゃん好感度 >= 1000 && GETCHARANAME("ことみちゃん") == -1 && ことみちゃん進行フラグ >= 0
 			SELECTCASE ことみちゃん進行フラグ
 				CASE 0
 					PRINTFORML %CALLNAME:MASTER%が帰ろうとしたそのとき、物陰から優しく袖を引っ張られた。
@@ -398,6 +398,7 @@ ENDIF
 RETURN 1
 
 @キャロルイベント
+#DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 道具フラグ退避用, 2000
 PRINTL [0] - キャロルの誘いを受ける
 SIF ASSI > 0
@@ -443,6 +444,12 @@ DO
 			ASSIPLAY:0 = 0
 			PREVCOMS = 
 			SELECTCOMS = 
+			;体力気力を回復する
+			FOR LCOUNT, 0, VARSIZE("BASE")
+				SIF BASENAME:LCOUNT == ""
+					CONTINUE
+				BASE:LCOUNT = MAXBASE:LCOUNT
+			NEXT
 
 			CALL EVENTUSERTRAIN
 			DO
@@ -466,6 +473,7 @@ DO
 				PRINTFORMW とうとう%CALLNAME:MASTER%の虜になったキャロルは、カジノの仕事よりも%CALLNAME:MASTER%のことを優先したいようだ
 				PRINTFORMW ＜キャロルを家に迎え入れました＞
 				CFLAG:売却不可 = 1
+				キャロル進行フラグ = -1
 			ELSE
 				SAVECHARA　@"キャロル_{データID}", "", TARGET
 				DELCHARA TARGET
@@ -483,6 +491,7 @@ DO
 LOOP 1
 
 @ことみちゃんイベント
+#DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 道具フラグ退避用, 2000
 PRINTL [0] - ことみちゃんの誘いを受ける
 SIF ASSI > 0
@@ -528,6 +537,12 @@ DO
 			ASSIPLAY:0 = 0
 			PREVCOMS = 
 			SELECTCOMS = 
+			;体力気力を回復する
+			FOR LCOUNT, 0, VARSIZE("BASE")
+				SIF BASENAME:LCOUNT == ""
+					CONTINUE
+				BASE:LCOUNT = MAXBASE:LCOUNT
+			NEXT
 
 			CALL EVENTUSERTRAIN
 			DO
@@ -551,6 +566,7 @@ DO
 				PRINTFORMW とうとう%CALLNAME:MASTER%の虜になったことみちゃんは、カジノ遊びよりも%CALLNAME:MASTER%のことを優先したいようだ
 				PRINTFORMW ＜ことみちゃんを家に迎え入れました＞
 				CFLAG:売却不可 = 1
+				ことみちゃん進行フラグ = -1
 			ELSE
 				SAVECHARA　@"ことみちゃん_{データID}", "", TARGET
 				DELCHARA TARGET
@@ -812,3 +828,7 @@ ENDSELECT
 PRINTBUTTON @"%スート%%数字%", ボタン
 RESETCOLOR
 
+;カジノフラグリセット
+@CLEAR_CASINO_FLAG
+キャロル進行フラグ = 0
+ことみちゃん進行フラグ = 0
