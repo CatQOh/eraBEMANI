@@ -109,8 +109,6 @@ SIF TARGET >= 0 && CFLAG:使用不可
 	TARGET = -1
 SIF ASSI >= 0 && CFLAG:ASSI:使用不可
 	ASSI = -1
-SIF ASSI >= 0
-	ASSI = -1
 
 ;コマンド以外の情報表示は別関数で行う
 CALL SHOP_UI
@@ -295,6 +293,10 @@ SIF FLAG:裏カジノ
 
 ;無条件表示（暫定）
 コマンド表示用:4 = %SET_TOOLTIP("[303] - 模様替え ", "家の模様替えを行います")%
+
+;ビデオ所持していれば表示
+SIF FINDELEMENT(所持ビデオ, "", 0, VARSIZE("所持ビデオ"), 1) > 0
+	コマンド表示用:5 = %SET_TOOLTIP("[304] - VIDEO    ", "所持しているビデオの一覧を表示します")%
 
 SIF STRJOIN(コマンド表示用, "") != "　"
 	HTML_PRINT STRJOIN(コマンド表示用, "")
@@ -526,6 +528,10 @@ SELECTCASE RESULT
 	;模様替え
 	CASE 303
 		CALL 模様替え
+	;ビデオ一覧
+	CASE 304
+		SIF FINDELEMENT(所持ビデオ, "", 0, VARSIZE("所持ビデオ"), 1) > 0
+			CALL 所持ビデオ一覧
 	;アイテム
 	CASE 400
 		IF ゲームモード() == "段位認定"
@@ -955,3 +961,46 @@ DO
 	ENDSELECT
 LOOP 1
 
+@所持ビデオ一覧
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 総ページ数
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 総本数
+
+総本数 = FINDELEMENT(所持ビデオ, "", 0, VARSIZE("所持ビデオ"), 1)
+
+総ページ数 = 総本数/10+1
+$TOP
+DRAWLINE
+PRINTFORML □所持ビデオ一覧 総本数:{総本数}
+FOR LCOUNT, ページ数*10, ページ数*10+10
+	SIF LCOUNT >= 総本数
+		BREAK
+	PRINTFORML 　{LCOUNT+1}.%所持ビデオ:LCOUNT%
+NEXT
+DRAWLINE
+PRINTPLAINFORM 　VIDEO.{ページ数+1}　
+PRINT [0] - 戻る 
+IF ページ数 > 0
+	PRINT [1] - 前ページ
+ELSE
+	PRINTPLAIN 　　　　　　　
+ENDIF
+SIF ページ数+1 < 総ページ数
+	PRINTL [9] - 次ページ
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1
+			SIF ページ数 > 1
+				ページ数--
+		CASE 9
+			SIF ページ数 < 総ページ数
+				ページ数++
+	ENDSELECT
+LOOP LOOPRES(1, 9)
+
+GOTO TOP
