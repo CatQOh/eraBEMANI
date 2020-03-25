@@ -1,4 +1,4 @@
-タイトル：EmueraEE 最終更新日:2020/03/22
+タイトル：EmueraEE 最終更新日:2020/03/25
 バージョン：1.824+v8+EE
 改変者：Enter
 元となったアプリケーション：Emuera1.824+v8（妊）|дﾟ)の中の人、及びMinorShift制作）
@@ -28,6 +28,12 @@ PLAYBGMで再生中の音声ファイルを停止します
 
 ・EXISTSOUND("ファイル名.拡張子")
 同名命令の式中関数版
+
+・SETSOUNDVOLUME int
+PLAYSOUNDの音量を変更します。引数には0～100を指定できます
+
+・SETBGMVOLUME
+PLAYBGMの音量を変更します。引数には0～100を指定できます
 
 Windows Media Playerのライブラリを使っているのでWMPがインストールされてるPCであれば、
 WMPで動く音声ファイルは全て動くと思います。
