@@ -1,48 +1,48 @@
-�^�C�g���FEmueraEE �ŏI�X�V��:2020/03/25
-�o�[�W�����F1.824+v8+EE
-���ώҁFEnter
-���ƂȂ����A�v���P�[�V�����FEmuera1.824+v8�i�D�j|�t�)�̒��̐l�A�y��MinorShift����j
-�A����FTwitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
+﻿タイトル：EmueraEE 最終更新日:2020/03/25
+バージョン：1.824+v8+EE
+改変者：Enter
+元となったアプリケーション：Emuera1.824+v8（妊）|дﾟ)の中の人、及びMinorShift制作）
+連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
 
-��eramaker�̍�җl�y��MinorShift�l�A�D�̐l�l��EmueraEE�̐���ɂ͊֗^���Ă��܂���B
-���A�v���̕s��͏�L�A����ɂ��񍐂�������
+※eramakerの作者様及びMinorShift様、妊の人様はEmueraEEの製作には関与していません。
+当アプリの不具合は上記連絡先にご報告ください
 
 
-[�T�v]
-Emuera���x�[�X�ɉ������{�����o�[�W�����ł��B�ǉ����ꂽ�@�\�͈ȉ��̒ʂ�
+[概要]
+Emueraをベースに改造を施したバージョンです。追加された機能は以下の通り
 
-�EPLAYSOUND "�t�@�C����.�g���q"
-�umusic�v�t�H���_���ɂ��鉹���t�@�C����1��Đ����܂�
+・PLAYSOUND "ファイル名.拡張子"
+「music」フォルダ内にある音声ファイルを1回再生します
 
-�ESTOPSOUND
-PLAYSOUND�ōĐ����̉����t�@�C�����~���܂�
+・STOPSOUND
+PLAYSOUNDで再生中の音声ファイルを停止します
 
-�EPLAYBGM "�t�@�C����.�g���q"
-�umusic�v�t�H���_���ɂ��鉹���t�@�C�������[�v�Đ����܂�
+・PLAYBGM "ファイル名.拡張子"
+「music」フォルダ内にある音声ファイルをループ再生します
 
-�ESTOPBGM
-PLAYBGM�ōĐ����̉����t�@�C�����~���܂�
+・STOPBGM
+PLAYBGMで再生中の音声ファイルを停止します
 
-�EEXISTSOUND "�t�@�C����.�g���q"
-�umusic�v�t�H���_���Ɏw�肵�������t�@�C�������݂��邩���肵�܂��B���݂����1���A���Ȃ����0��RESULT�ɓ���܂�
+・EXISTSOUND "ファイル名.拡張子"
+「music」フォルダ内に指定した音声ファイルが存在するか判定します。存在すれば1が、しなければ0がRESULTに入ります
 
-�EEXISTSOUND("�t�@�C����.�g���q")
-�������߂̎����֐���
+・EXISTSOUND("ファイル名.拡張子")
+同名命令の式中関数版
 
-�ESETSOUNDVOLUME int
-PLAYSOUND�̉��ʂ�ύX���܂��B�����ɂ�0�`100���w��ł��܂�
+・SETSOUNDVOLUME int
+PLAYSOUNDの音量を変更します。引数には0～100を指定できます
 
-�ESETBGMVOLUME
-PLAYBGM�̉��ʂ�ύX���܂��B�����ɂ�0�`100���w��ł��܂�
+・SETBGMVOLUME
+PLAYBGMの音量を変更します。引数には0～100を指定できます
 
-Windows Media Player�̃��C�u�������g���Ă���̂�WMP���C���X�g�[������Ă�PC�ł���΁A
-WMP�œ��������t�@�C���͑S�ē����Ǝv���܂��B
+Windows Media Playerのライブラリを使っているのでWMPがインストールされてるPCであれば、
+WMPで動く音声ファイルは全て動くと思います。
 
-[�g�p���@]
-Emuera������ɓ��삷��era�o���A���g�̃f�B���N�g���ɂ�Emuera�Ɠ��l�̕��@�ł��g����������
+[使用方法]
+Emueraが正常に動作するeraバリアントのディレクトリにてEmueraと同様の方法でお使いください
 
-[���C�Z���X]
-���t�H���_����Emuera_readme.txt��[���C�Z���X]�̍��ɏ����܂�
-���AEnter�͈�؂̌������咣���܂���
+[ライセンス]
+同フォルダ内のEmuera_readme.txtの[ライセンス]の項に準じます
+私、Enterは一切の権利を主張しません
 
 
