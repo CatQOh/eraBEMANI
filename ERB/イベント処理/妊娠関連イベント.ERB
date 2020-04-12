@@ -1121,6 +1121,9 @@ SIF CSTR:母親:種族 == "魔術師" || CSTR:父親:種族 == "魔術師" || TA
 ;親離れ、もしくは子供を迎え入れる
 @DEPEARENT, ARG
 #DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 子供の名前
+#DIM DYNAMIC 命名パターン
+#DIMS DYNAMIC 命名用変数, 10
 
 #DIM CONST 父親の認知 = 5
 #DIM CONST 出産予定日 = 10
@@ -1171,29 +1174,79 @@ SELECTCASE RESULT
 			CALL KOJO_MESSAGE_EVENT, "親離れ", ARG
 	CASE 1
 		MONEY -= 30000
-		PRINTL 名前をつけてあげよう。この子の名前は……(入力してください)
+		$命名
+		DRAWLINE
+		PRINTL この子に名前を付ける手段を選んで下さい
+		SIF 子供の名前 != ""
+			PRINTFORML 候補:%子供の名前%
+		PRINTL [1] ランダム生成(カタカナ)
+		PRINTL [2] ランダム生成(ひらがな)
+		PRINTL [3] ランダム生成(漢字)
+		PRINTL [4] 自分で入力
+		SIF 子供の名前 != ""
+			PRINTL [0] 決定
 		DO
-			INPUTS
-			IF RESULTS != ""
-				PRINTFORML 「%RESULTS%」でいいですか？
-				PRINTL [0] - はい
-				PRINTL [1] - 考え直す
-				DO
-					INPUT
-				LOOP LOOPRES(0, 1)
-				SELECTCASE RESULT
-					CASE 0
-						BREAK
-					CASE 1
-						PRINTL 名前をつけてあげよう。この子の名前は……(入力してください)
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					SIF 子供の名前 == ""
 						CONTINUE
-				ENDSELECT
-			ENDIF
+					BREAK
+				CASE 1 TO 3
+					命名パターン = RESULT
+					$ランダム生成
+					FOR LCOUNT, 0, 10
+						命名用変数:LCOUNT = %ランダム命名(命名パターン)%
+						PRINTFORML [{LCOUNT, 2, RIGHT}] %命名用変数:LCOUNT%
+					NEXT
+					DRAWLINE
+					PRINTL [10] 再生成
+					PRINTL [99] 戻る
+					DO
+						INPUT
+						SELECTCASE RESULT
+							CASE 0 TO 9
+								子供の名前 = %命名用変数:RESULT%
+								BREAK
+							CASE 10
+								GOTO ランダム生成
+							CASE 99
+								BREAK
+						ENDSELECT
+					LOOP 1
+					GOTO 命名
+				CASE 4
+					PRINTL 名前をつけてあげよう。この子の名前は……(入力してください)
+					DO
+						INPUTS
+						IF RESULTS != ""
+							PRINTFORML 「%RESULTS%」でいいですか？
+							PRINTL [0] - はい
+							PRINTL [1] - 考え直す
+							PRINTL [9] - 戻る
+							DO
+								INPUT
+							LOOP LOOPRES(0, 1, 9)
+							SELECTCASE RESULT
+								CASE 0
+									子供の名前 = %RESULTS%
+									BREAK
+								CASE 1
+									PRINTL 名前をつけてあげよう。この子の名前は……(入力してください)
+									CONTINUE
+								CASE 9
+									BREAK
+							ENDSELECT
+						ENDIF
+					LOOP 1
+					GOTO 命名
+			ENDSELECT
 		LOOP 1
+		
 		ADDVOIDCHARA
 		TARGET = CHARANUM-1
-		NAME:TARGET = %RESULTS%
-		CALLNAME:TARGET = %RESULTS%
+		NAME:TARGET = %子供の名前%
+		CALLNAME:TARGET = %子供の名前%
 		CFLAG:誕生日 = CHILDBIRTHDAY:ARG:0%10000
 		CSTR:種族 = %CHILDRACE:ARG:0%
 		BUYY = CHILDBIRTHDAY:ARG:0 / 10000
