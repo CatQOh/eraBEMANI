@@ -1,17 +1,25 @@
 ﻿@EVENTFIRST
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC 学園乱数固定用, 100
+#DIM DYNAMIC 入学先 = -1
 
 ;学園モードじゃないと呼び出さない
 SIF ゲームモード() != "学園モード"
 	RETURN
 
+ADDCHARA 0
+MASTER = 0
+CALL PLAYER_CUSTOM
+
+$クラス分け
 PRINTL クラス分け処理中...
 AWAIT
 
 SKIPDISP 1
 FOR LCOUNT, 1, 10000
 	SIF !EXISTCSV(LCOUNT)
+		CONTINUE
+	SIF NO:MASTER == LCOUNT
 		CONTINUE
 	CALL CHARA_ADD, LCOUNT
 NEXT
@@ -273,7 +281,10 @@ SORTCHARA
 $学校一覧表示
 DRAWLINE
 FOR LCOUNT, 0, VARSIZE("学校名")
-	PRINTFORML 　[{LCOUNT}] %学校名:LCOUNT%(生徒:{CMATCH(CSTR:在校, 学校名:LCOUNT)}人 教師:{CMATCH(CSTR:在任, 学校名:LCOUNT)}人)
+	PRINTFORM 　[{LCOUNT}] %学校名:LCOUNT%(生徒:{CMATCH(CSTR:在校, 学校名:LCOUNT)}人 教師:{CMATCH(CSTR:在任, 学校名:LCOUNT)}人) 
+	SIF 入学先 == LCOUNT
+		PRINTFORM %NAME:MASTER%の入学先
+	PRINTL 
 NEXT
 PRINTL
 PRINTL 　[99] 学園モード未実装のキャラ一覧
@@ -298,7 +309,22 @@ DO
 					CONTINUE
 				PRINTFORML 　担当科目:%CSTR:LCOUNT:担当科目% No.{NO:LCOUNT} %NAME:LCOUNT% 
 			NEXT
-			WAIT
+			DRAWLINE
+			PRINTPLAINFORM 　%学校名:RESULT%　
+			PRINTL [0] - 戻る [1] - ここに入学する
+
+			LOCAL = RESULT
+
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						BREAK
+					CASE 1
+						入学先 = LOCAL
+						BREAK
+				ENDSELECT
+			LOOP 1
 			GOTO 学校一覧表示
 		CASE 99
 			DRAWLINE
@@ -315,14 +341,25 @@ DO
 			WAIT
 			GOTO 学校一覧表示
 		CASE 100
+			IF 入学先 == -1
+				PRINTW 入学先を選んでください
+				GOTO 学校一覧表示
+			ENDIF
+			CSTR:MASTER:在校 = %学校名:入学先%
 			BREAK
 		CASE 101
-			DELALLCHARA
+			FOR LCOUNT, CHARANUM-1, 0, -1
+				DELCHARA LCOUNT
+			NEXT
 			VARSET 学園乱数固定用
-			ADDCHARA 0
-			RESTART
+			入学先 = -1
+			GOTO クラス分け
 	ENDSELECT
 LOOP 1
+
+CALL SETUP_GAMESTART
+
+CALL SYSTEM_AUTOSAVE
 
 BEGIN SHOP
 
@@ -403,20 +440,3 @@ DO
 LOOP 1
 
 RETURNF 赴任先
-
-SELECTCASE ARGS
-	CASE "国語"
-		
-	CASE "数学"
-	CASE "英語"
-	CASE "科学"
-	CASE "社会"
-	CASE "音楽"
-	CASE "体育"
-	CASE "美術"
-	CASE "保健"
-	CASE "家庭科"
-	CASE "校長"
-ENDSELECT
-
-
