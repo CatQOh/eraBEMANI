@@ -200,12 +200,13 @@ RETURN 0
 #DIM DYNAMIC LCOUNT
 ;今のところは50人まで
 #DIMS DYNAMIC 相性設定用, 50
+#DIM DYNAMIC 名前例外処理
 
 購入人数++
 ADDCHARA ARG
 TARGET = CHARANUM-1
-;ヨミは性別を選択する
-CALL ヨミの性別, TARGET
+;一部のキャラは性別を選択する
+CALL 性別選択, TARGET
 CCB:ARG = 1
 キャラ未購入 = 0
 ;マルクトとミリアは片方しか奴隷にできない
@@ -256,6 +257,13 @@ FOR LCOUNT, 0, RESULT
 	SIF 相性設定用:LCOUNT == ""
 		BREAK
 	SPLIT 相性設定用:LCOUNT, "*", LOCALS
+	;サタンだけ相性設定用のアスタリスク文字が名前に入ってるので例外的に処理する
+	;「サタン-P」+「L-イブリース」
+	名前例外処理 = FINDELEMENT(LOCALS, "サタン-P", 0, 50, 1)
+	IF 名前例外処理 >= 0
+		LOCALS:名前例外処理 += @"*%LOCALS:(名前例外処理+1)%"
+		ARRAYREMOVE LOCALS, 名前例外処理+1, 1
+	ENDIF
 	RELATION:GETNO(LOCALS) = TOINT(LOCALS:1)
 NEXT
 
