@@ -4,27 +4,48 @@
 VARSET LOCAL, 0
 
 IF GETCHARA(ARG) > 0
-	PRINTFORMW %CSVNAMEF(ARG)%は既に購入されています
+	IF LANGUAGE == "ENG"
+		PRINTFORMW %CSVENGNAME(ARG)% was been unlocked.
+	ELSE
+		PRINTFORMW %CSVNAMEF(ARG)%は既に購入されています
+	ENDIF
 	RETURN 1
 ELSEIF CCB:ARG
-	PRINTFORMW %CSVNAMEF(ARG)%は購入できません
+	IF LANGUAGE == "ENG"
+		PRINTFORMW %CSVENGNAME(ARG)% is can't unlocked.
+	ELSE
+		PRINTFORMW %CSVNAMEF(ARG)%は購入できません
+	ENDIF
 	RETURN 1
 ELSEIF ARG == NO:MASTER
 	RETURN 1
 ENDIF
 
-FOR LCOUNT, 0, 100
-	SIF CSVCSTR(ARG, LCOUNT) == ""
-		BREAK
-	CALL MANUALPRINT, CSVCSTR(ARG, LCOUNT)
-	SIF !LINEISEMPTY()
-		PRINTL 
-NEXT
+IF LANGUAGE == ""
+	FOR LCOUNT, 0, 100
+		SIF CSVCSTR(ARG, LCOUNT) == ""
+			BREAK
+		CALL MANUALPRINT, CSVCSTR(ARG, LCOUNT)
+		SIF !LINEISEMPTY()
+			PRINTL 
+	NEXT
+ENDIF
 
-SIF CSVTALENT(ARG, GETNUM(TALENT, "アニマル"))
-	PRINTL ※このキャラはペット候補なので売却できません。所持金が少ない状態で購入するとゲームの攻略が不可能になる場合があります
-SIF FLAG:チャレンジモード
-	PRINTL ※CHALLENGEモードに挑戦中です。表示されているマニュアル・素質とは齟齬がある場合があります
+IF CSVTALENT(ARG, GETNUM(TALENT, "アニマル"))
+	IF LANGUAGE == "ENG"
+		PRINTL ※This character is Pet chara. If you unlocked with little money, You can't clear games.
+	ELSE
+		PRINTL ※このキャラはペット候補なので売却できません。所持金が少ない状態で購入するとゲームの攻略が不可能になる場合があります
+	ENDIF
+ENDIF
+
+IF FLAG:チャレンジモード
+	IF LANGUAGE == "ENG"
+		PRINTL ※You trying CHALLENGE mode. There has difference from this talents.
+	ELSE
+		PRINTL ※CHALLENGEモードに挑戦中です。表示されているマニュアル・素質とは齟齬がある場合があります
+	ENDIF
+ENDIF
 
 ;キャラマニュアル内でタグ付けされていれば特殊表示する
 ;これでCSV内でマニュアルも完結できる
@@ -140,11 +161,19 @@ ELSEIF MONEY < CSVCFLAG(ARG, 50)
 	PRINTW ＜金額が足りません＞
 	RETURN 1
 ELSE
+	SIF LANGUAGE == "ENG"
+		GOTO SHOW_TALENTS
 	DO
 		PRINTL 
-		PRINTL 購入しますか？
-		PRINTL [0]はい
-		PRINTL [1]いいえ
+		IF LANGUAGE == "ENG"
+			PRINTL Are you unlock this character?
+			PRINTL [0]Yes
+			PRINTL [1]No
+		ELSE
+			PRINTL 購入しますか？
+			PRINTL [0]はい
+			PRINTL [1]いいえ
+		ENDIF
 		SIF LOCAL == 0
 			PRINTL [2]素質を表示する
 		INPUT
@@ -163,31 +192,51 @@ ELSE
 			CASE 1
 				RETURN 1
 			CASE 2
+				$SHOW_TALENTS
 				LOCAL = 1
 				PRINTL 
-				PRINTFORML 種族:%CSVCSTR(ARG, GETNUM(CSTR, "種族"))%
+				IF LANGUAGE == "ENG"
+					PRINTFORML Race:%CSVCSTR(ARG, GETNUM(CSTR, "種族"))%
+				ELSE
+					PRINTFORML 種族:%CSVCSTR(ARG, GETNUM(CSTR, "種族"))%
+				ENDIF
 				PRINT 素質
 				REPEAT 200
 					SELECTCASE TALENTNAME:COUNT
 						CASE "性別"
 							CONTINUE
 						CASE "バストサイズ"
-							SELECTCASE CSVTALENT(ARG, COUNT)
-								CASE 1
-									PRINT 【絶壁】
-								CASE 2
-									PRINT 【貧乳】
-								CASE 3
-									PRINT 【並乳】
-								CASE 4
-									PRINT 【巨乳】
-								CASE 5
-									PRINT 【爆乳】
-							ENDSELECT
+							IF LANGUAGE == "ENG"
+								SELECTCASE CSVTALENT(ARG, COUNT)
+									CASE 1
+										PRINT 【NoneBreast】
+									CASE 2
+										PRINT 【LittleBreast】
+									CASE 3
+										PRINT 【BasicBreast】
+									CASE 4
+										PRINT 【LargeBreast】
+									CASE 5
+										PRINT 【HugeBreast】
+								ENDSELECT
+							ELSE
+								SELECTCASE CSVTALENT(ARG, COUNT)
+									CASE 1
+										PRINT 【絶壁】
+									CASE 2
+										PRINT 【貧乳】
+									CASE 3
+										PRINT 【並乳】
+									CASE 4
+										PRINT 【巨乳】
+									CASE 5
+										PRINT 【爆乳】
+								ENDSELECT
+							ENDIF
 							CONTINUE
 					ENDSELECT
 					SIF CSVTALENT(ARG, COUNT)
-						PRINTFORM 【%TALENTNAME:COUNT%】
+						PRINTFORM 【%TALENTDISP(COUNT)%】
 				REND
 				PRINTL 
 		ENDSELECT

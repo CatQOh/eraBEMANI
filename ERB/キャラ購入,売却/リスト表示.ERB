@@ -65,14 +65,25 @@ DRAWLINE
 IF ARG == 0
 	PRINT 　
 	CALL 日付表示
-	CALL PASELI, @"所持金:{MONEY}＄"
-	PRINTFORM  難易度:%難易度()% 
-	PRINTFORM 主人:%NAME:MASTER% 
-	SIF TARGET >= 0
-		PRINTFORM 奴隷:%NAME:TARGET% 
-	SIF ASSI >= 0
-		PRINTFORM 助手:%NAME:ASSI%
-	PRINTL 
+	IF LANGUAGE == "ENG"
+		CALL PASELI, @"Moneys:{MONEY}＄"
+		PRINTFORM  Difficulty:%難易度()% 
+		PRINTFORM Master:%NAME:MASTER% 
+		SIF TARGET >= 0
+			PRINTFORM Target:%NAME:TARGET% 
+		SIF ASSI >= 0
+			PRINTFORM Assistant:%NAME:ASSI%
+		PRINTL 
+	ELSE
+		CALL PASELI, @"所持金:{MONEY}＄"
+		PRINTFORM  難易度:%難易度()% 
+		PRINTFORM 主人:%NAME:MASTER% 
+		SIF TARGET >= 0
+			PRINTFORM 奴隷:%NAME:TARGET% 
+		SIF ASSI >= 0
+			PRINTFORM 助手:%NAME:ASSI%
+		PRINTL 
+	ENDIF
 	DRAWLINE 
 ENDIF
 
@@ -141,9 +152,17 @@ FOR LCOUNT, 0, 10000
 	ENDIF
 
 	IF ARG != 0
-		LOCALS = [{LCOUNT, 4}] %CSVNAMEF(LCOUNT)%
+		IF LANGUAGE == "ENG"
+			LOCALS = [{LCOUNT, 4}] %CSVENGNAME(LCOUNT)%
+		ELSE
+			LOCALS = [{LCOUNT, 4}] %CSVNAMEF(LCOUNT)%
+		ENDIF
 	ELSE
-		LOCALS = [{LCOUNT, 4}] %CSVNAMEF(LCOUNT)% ({CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格"))}＄)
+		IF LANGUAGE == "ENG"
+			LOCALS = [{LCOUNT, 4}] %CSVENGNAME(LCOUNT)% ({CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格"))}＄)
+		ELSE
+			LOCALS = [{LCOUNT, 4}] %CSVNAMEF(LCOUNT)% ({CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格"))}＄)
+		ENDIF
 	ENDIF
 	
 	;口上表示設定、かつ口上の存在するキャラは青文字表示
@@ -196,118 +215,235 @@ PRINTL
 
 DRAWLINE
 IF GROUPMATCH(ARG, 0, 4)
-	PRINTPLAIN 　CHARA  FILTER　
-	PRINT [20000] フィルタ設定
-	PRINTPLAIN 　
-	PRINTFORM [20001] 男女フィルタ：
-	SELECTCASE FLAG:男女フィルタ
-		CASE 0
-			PRINTL 切
-		CASE 1
-			PRINTL 男性を表示
-		CASE 2
-			PRINTL 女性を表示
-	ENDSELECT
-	PRINTPLAIN 　CUSTOM FILTER　
-	PRINT [20003] カスタムフィルタ1：
-	IF FLAG:カスタムフィルタ１ >= 0 && FLAG:フィルタスイッチ１
-		PRINTFORM %TALENTNAME:(FLAG:カスタムフィルタ１)%
-		SELECTCASE FLAG:フィルタスイッチ１
+	IF LANGUAGE == "ENG"
+		PRINTPLAIN 　CHARA  FILTER　
+		PRINT [20000] Filter Setting
+		PRINTPLAIN 　
+		PRINTFORM [20001] Gender Filter：
+		SELECTCASE FLAG:男女フィルタ
+			CASE 0
+				PRINTL None
 			CASE 1
-				PRINT (表示)
+				PRINTL Show Male
 			CASE 2
-				PRINT (除外)
+				PRINTL Show Female
 		ENDSELECT
-	ELSE
-		PRINT 切
-	ENDIF
-	PRINTPLAIN 　
-	PRINT [20005] カスタムフィルタ2：
-	IF FLAG:カスタムフィルタ２ >= 0 && FLAG:フィルタスイッチ２
-		PRINTFORM %TALENTNAME:(FLAG:カスタムフィルタ２)%
-		SELECTCASE FLAG:フィルタスイッチ２
-			CASE 1
-				PRINT (表示)
-			CASE 2
-				PRINT (除外)
-		ENDSELECT
-	ELSE
-		PRINT 切
-	ENDIF
-	PRINTL 
-
-	PRINTPLAIN 　PRICE  FILTER　
-	PRINT [20007] 価格フィルタ：
-	IF FLAG:価格フィルタ != 0
-		IF FLAG:価格フィルタ所持金依存
-			CALL PASELI, @"{FLAG:価格フィルタ下限}＄ ～ 所持金"
+		PRINTPLAIN 　CUSTOM FILTER　
+		PRINT [20003] Talent Filter1：
+		IF FLAG:カスタムフィルタ１ >= 0 && FLAG:フィルタスイッチ１
+			PRINTFORM %TALENTNAME:(FLAG:カスタムフィルタ１)%
+			SELECTCASE FLAG:フィルタスイッチ１
+				CASE 1
+					PRINT (Show)
+				CASE 2
+					PRINT (Hide)
+			ENDSELECT
 		ELSE
-			CALL PASELI, @"{FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄"
+			PRINT None
 		ENDIF
-		SELECTCASE FLAG:価格フィルタ
+		PRINTPLAIN 　
+		PRINT [20005] Talent Filter2：
+		IF FLAG:カスタムフィルタ２ >= 0 && FLAG:フィルタスイッチ２
+			PRINTFORM %TALENTNAME:(FLAG:カスタムフィルタ２)%
+			SELECTCASE FLAG:フィルタスイッチ２
+				CASE 1
+					PRINT (Show)
+				CASE 2
+					PRINT (Hide)
+			ENDSELECT
+		ELSE
+			PRINT None
+		ENDIF
+		PRINTL 
+
+		PRINTPLAIN 　             　
+		PRINT [20007] Price Filter：
+		IF FLAG:価格フィルタ != 0
+			IF FLAG:価格フィルタ所持金依存
+				CALL PASELI, @"{FLAG:価格フィルタ下限}＄ ～ Moneys"
+			ELSE
+				CALL PASELI, @"{FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄"
+			ENDIF
+			SELECTCASE FLAG:価格フィルタ
+				CASE 1
+					PRINT (Show)
+				CASE 2
+					PRINT (Hide)
+			ENDSELECT
+		ELSE
+			PRINT None
+		ENDIF
+		PRINTPLAIN 　
+		PRINT [20008] BreastSize Filter：
+		SELECTCASE FLAG:バストサイズフィルタ
+			CASE 0
+				PRINTL None
 			CASE 1
-				PRINT (表示)
+				PRINTL Show none breast
 			CASE 2
-				PRINT (除外)
+				PRINTL Show little breast
+			CASE 3
+				PRINTL Show basic breast
+			CASE 4
+				PRINTL Show large breast
+			CASE 5
+				PRINTL Show huge breast
 		ENDSELECT
+		
+		PRINTPLAIN 　EXTRA  FILTER　
+		PRINT [20010] Original Category：
+		IF 登場作品フィルタ != ""
+			PRINTFORM %登場作品フィルタ% 
+		ELSE
+			PRINT None 
+		ENDIF
+		PRINT [20011] Designer Category：
+		IF キャラデザフィルタ != ""
+			PRINTFORM %キャラデザフィルタ% 
+		ELSE
+			PRINT None 
+		ENDIF
+		PRINT [20012] Race Category：
+		IF 種族フィルタ != ""
+			PRINTFORML %種族フィルタ%
+		ELSE
+			PRINTL None
+		ENDIF
+		DRAWLINE
 	ELSE
-		PRINT 切
-	ENDIF
-	PRINTPLAIN 　
-	PRINT [20008] バストサイズフィルタ：
-	SELECTCASE FLAG:バストサイズフィルタ
-		CASE 0
+		PRINTPLAIN 　CHARA  FILTER　
+		PRINT [20000] フィルタ設定
+		PRINTPLAIN 　
+		PRINTFORM [20001] 男女フィルタ：
+		SELECTCASE FLAG:男女フィルタ
+			CASE 0
+				PRINTL 切
+			CASE 1
+				PRINTL 男性を表示
+			CASE 2
+				PRINTL 女性を表示
+		ENDSELECT
+		PRINTPLAIN 　CUSTOM FILTER　
+		PRINT [20003] カスタムフィルタ1：
+		IF FLAG:カスタムフィルタ１ >= 0 && FLAG:フィルタスイッチ１
+			PRINTFORM %TALENTNAME:(FLAG:カスタムフィルタ１)%
+			SELECTCASE FLAG:フィルタスイッチ１
+				CASE 1
+					PRINT (表示)
+				CASE 2
+					PRINT (除外)
+			ENDSELECT
+		ELSE
+			PRINT 切
+		ENDIF
+		PRINTPLAIN 　
+		PRINT [20005] カスタムフィルタ2：
+		IF FLAG:カスタムフィルタ２ >= 0 && FLAG:フィルタスイッチ２
+			PRINTFORM %TALENTNAME:(FLAG:カスタムフィルタ２)%
+			SELECTCASE FLAG:フィルタスイッチ２
+				CASE 1
+					PRINT (表示)
+				CASE 2
+					PRINT (除外)
+			ENDSELECT
+		ELSE
+			PRINT 切
+		ENDIF
+		PRINTL 
+
+		PRINTPLAIN 　PRICE  FILTER　
+		PRINT [20007] 価格フィルタ：
+		IF FLAG:価格フィルタ != 0
+			IF FLAG:価格フィルタ所持金依存
+				CALL PASELI, @"{FLAG:価格フィルタ下限}＄ ～ 所持金"
+			ELSE
+				CALL PASELI, @"{FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄"
+			ENDIF
+			SELECTCASE FLAG:価格フィルタ
+				CASE 1
+					PRINT (表示)
+				CASE 2
+					PRINT (除外)
+			ENDSELECT
+		ELSE
+			PRINT 切
+		ENDIF
+		PRINTPLAIN 　
+		PRINT [20008] バストサイズフィルタ：
+		SELECTCASE FLAG:バストサイズフィルタ
+			CASE 0
+				PRINTL 切
+			CASE 1
+				PRINTL 絶壁キャラを表示
+			CASE 2
+				PRINTL 貧乳キャラを表示
+			CASE 3
+				PRINTL 並乳キャラを表示
+			CASE 4
+				PRINTL 巨乳キャラを表示
+			CASE 5
+				PRINTL 爆乳キャラを表示
+		ENDSELECT
+		
+		PRINTPLAIN 　EXTRA  FILTER　
+		PRINT [20010] 原作別カテゴリ：
+		IF 登場作品フィルタ != ""
+			PRINTFORM %登場作品フィルタ% 
+		ELSE
+			PRINT 切 
+		ENDIF
+		PRINT [20011] キャラデザイナー別カテゴリ：
+		IF キャラデザフィルタ != ""
+			PRINTFORM %キャラデザフィルタ% 
+		ELSE
+			PRINT 切 
+		ENDIF
+		PRINT [20012] 種族別カテゴリ：
+		IF 種族フィルタ != ""
+			PRINTFORML %種族フィルタ%
+		ELSE
 			PRINTL 切
-		CASE 1
-			PRINTL 絶壁キャラを表示
-		CASE 2
-			PRINTL 貧乳キャラを表示
-		CASE 3
-			PRINTL 並乳キャラを表示
-		CASE 4
-			PRINTL 巨乳キャラを表示
-		CASE 5
-			PRINTL 爆乳キャラを表示
-	ENDSELECT
-	
-	PRINTPLAIN 　EXTRA  FILTER　
-	PRINT [20010] 原作別カテゴリ：
-	IF 登場作品フィルタ != ""
-		PRINTFORM %登場作品フィルタ% 
-	ELSE
-		PRINT 切 
+		ENDIF
+		DRAWLINE
 	ENDIF
-	PRINT [20011] キャラデザイナー別カテゴリ：
-	IF キャラデザフィルタ != ""
-		PRINTFORM %キャラデザフィルタ% 
-	ELSE
-		PRINT 切 
-	ENDIF
-	PRINT [20012] 種族別カテゴリ：
-	IF 種族フィルタ != ""
-		PRINTFORML %種族フィルタ%
-	ELSE
-		PRINTL 切
-	ENDIF
-	DRAWLINE
 ENDIF
 
 PRINTPLAINFORM 　PAGE.{TFLAG:ページ数+1}　
 IF TFLAG:ページ数 > 0
-	PRINTLC [10001] 前のページ
+	IF LANGUAGE == "ENG"
+		PRINTLC [10001] Prev Page
+	ELSE
+		PRINTLC [10001] 前のページ
+	ENDIF
 ELSE
 	PRINTLC  
 ENDIF
-SELECTCASE ARG
-	CASE 0
-		PRINT [10000] 購入しない
-	CASE 2
-		PRINT [10000] 変更しない
-	CASE 4
-		PRINT [10000] 最初から設定する
-ENDSELECT
-SIF LOCAL:4
-	PRINTC [10009] 後のページ
+IF LANGUAGE == "ENG"
+	SELECTCASE ARG
+		CASE 0
+			PRINT [10000] Don't unlock
+		CASE 2
+			PRINT [10000] Don't change
+		CASE 4
+			PRINT [10000] Set from the beggining
+	ENDSELECT
+ELSE
+	SELECTCASE ARG
+		CASE 0
+			PRINT [10000] 購入しない
+		CASE 2
+			PRINT [10000] 変更しない
+		CASE 4
+			PRINT [10000] 最初から設定する
+	ENDSELECT
+ENDIF
+IF LOCAL:4
+	IF LANGUAGE == "ENG"
+		PRINTC [10009] Next Page
+	ELSE
+		PRINTC [10009] 後のページ
+	ENDIF
+ENDIF
 PRINTL 
 
 DO
@@ -368,89 +504,195 @@ GOTO リスト表示
 @CHARA_FILTER
 TFLAG:ページ数 = 0
 DRAWLINE
-PRINTL キャラ購入画面にフィルタをかけることができます
+IF LANGUAGE == "ENG"
+	PRINTL You can set filter the characters.
+ELSE
+	PRINTL キャラ購入画面にフィルタをかけることができます
+ENDIF
 PRINTL 
-SELECTCASE FLAG:男女フィルタ
-	CASE 0
-		PRINTL [1] 男性キャラだけ表示する
-	CASE 1
-		PRINTL [1] 女性キャラだけ表示する
-	CASE 2
-		PRINTL [1] 全キャラ表示する
-ENDSELECT
-
-PRINT [2] カスタムフィルタ1を設定する（現在
-IF FLAG:カスタムフィルタ１ >= 0
-	PRINTFORML 【%TALENTNAME:(FLAG:カスタムフィルタ１)%】のフィルタ）
+IF LANGUAGE == "ENG"
+	SELECTCASE FLAG:男女フィルタ
+		CASE 0
+			PRINTL [1] Show male characters only
+		CASE 1
+			PRINTL [1] Show female characters only
+		CASE 2
+			PRINTL [1] Show all characters
+	ENDSELECT
 ELSE
-	PRINTL フィルタは設定されていません）
+	SELECTCASE FLAG:男女フィルタ
+		CASE 0
+			PRINTL [1] 男性キャラだけ表示する
+		CASE 1
+			PRINTL [1] 女性キャラだけ表示する
+		CASE 2
+			PRINTL [1] 全キャラ表示する
+	ENDSELECT
 ENDIF
 
-PRINT [3] カスタムフィルタ1の切り替え（現在
-SELECTCASE FLAG:フィルタスイッチ１
-	CASE 0
-		PRINTL オフ）
-	CASE 1
-		PRINTL 【マッチフィルタオン】）
-	CASE 2
-		PRINTL 【除外フィルタオン】）
-ENDSELECT
-
-PRINT [4] カスタムフィルタ2を設定する（現在
-IF FLAG:カスタムフィルタ２ >= 0
-	PRINTFORML 【%TALENTNAME:(FLAG:カスタムフィルタ２)%】のフィルタ）
+IF LANGUAGE == "ENG"
+	PRINT [2] Set talent filter 1(Now:
+	IF FLAG:カスタムフィルタ１ >= 0
+		PRINTFORML 【%TALENTDISP(FLAG:カスタムフィルタ１)%】)
+	ELSE
+		PRINTL None)
+	ENDIF
 ELSE
-	PRINTL フィルタは設定されていません）
+	PRINT [2] カスタムフィルタ1を設定する（現在
+	IF FLAG:カスタムフィルタ１ >= 0
+		PRINTFORML 【%TALENTDISP(FLAG:カスタムフィルタ１)%】のフィルタ）
+	ELSE
+		PRINTL フィルタは設定されていません）
+	ENDIF
 ENDIF
 
-PRINT [5] カスタムフィルタ2の切り替え（現在
-SELECTCASE FLAG:フィルタスイッチ２
-	CASE 0
-		PRINTL オフ）
-	CASE 1
-		PRINTL 【マッチフィルタオン】）
-	CASE 2
-		PRINTL 【除外フィルタオン】）
-ENDSELECT
+IF LANGUAGE == "ENG"
+	PRINT [3] Switch talent filter 1(Now
+	SELECTCASE FLAG:フィルタスイッチ１
+		CASE 0
+			PRINTL :OFF)
+		CASE 1
+			PRINTL 【Show filter ON】)
+		CASE 2
+			PRINTL 【Hide filter ON】)
+	ENDSELECT
+ELSE
+	PRINT [3] カスタムフィルタ1の切り替え（現在
+	SELECTCASE FLAG:フィルタスイッチ１
+		CASE 0
+			PRINTL オフ）
+		CASE 1
+			PRINTL 【マッチフィルタオン】）
+		CASE 2
+			PRINTL 【除外フィルタオン】）
+	ENDSELECT
+ENDIF
 
-PRINT [6] 価格フィルタを設定する（現在
-SELECTCASE FLAG:価格フィルタ
-	CASE 0
-		PRINTL オフ）
-	CASEELSE
-		IF FLAG:価格フィルタ所持金依存
-			CALL PASELIL, @"【{FLAG:価格フィルタ下限}＄ ～ 所持金】のフィルタ）"
-		ELSE
-			CALL PASELIL, @"【{FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄】のフィルタ）"
-		ENDIF
-ENDSELECT
+IF LANGUAGE == "ENG"
+	PRINT [4] Set talent filter 2(Now:
+	IF FLAG:カスタムフィルタ２ >= 0
+		PRINTFORML 【%TALENTDISP(FLAG:カスタムフィルタ２)%】)
+	ELSE
+		PRINTL None)
+	ENDIF
+ELSE
+	PRINT [4] カスタムフィルタ2を設定する（現在
+	IF FLAG:カスタムフィルタ２ >= 0
+		PRINTFORML 【%TALENTDISP(FLAG:カスタムフィルタ２)%】のフィルタ）
+	ELSE
+		PRINTL フィルタは設定されていません）
+	ENDIF
+ENDIF
 
-PRINT [7] 価格フィルタの切り替え（現在
-SELECTCASE FLAG:価格フィルタ
-	CASE 0
-		PRINTL オフ）
-	CASE 1
-		PRINTL 【マッチフィルタオン】）
-	CASE 2
-		PRINTL 【除外フィルタオン】）
-ENDSELECT
-PRINT [8] バストサイズフィルタの切り替え（現在
-SELECTCASE FLAG:バストサイズフィルタ
-	CASE 0
-		PRINTL オフ）
-	CASE 1
-		PRINTL 絶壁キャラを表示）
-	CASE 2
-		PRINTL 貧乳キャラを表示）
-	CASE 3
-		PRINTL 並乳キャラを表示）
-	CASE 4
-		PRINTL 巨乳キャラを表示）
-	CASE 5
-		PRINTL 爆乳キャラを表示）
-ENDSELECT
+IF LANGUAGE == "ENG"
+	PRINT [5] Switch talent filter 2(Now
+	SELECTCASE FLAG:フィルタスイッチ２
+		CASE 0
+			PRINTL :OFF)
+		CASE 1
+			PRINTL 【Show filter ON】)
+		CASE 2
+			PRINTL 【Hide filter ON】)
+	ENDSELECT
+ELSE
+	PRINT [5] カスタムフィルタ2の切り替え（現在
+	SELECTCASE FLAG:フィルタスイッチ２
+		CASE 0
+			PRINTL オフ）
+		CASE 1
+			PRINTL 【マッチフィルタオン】）
+		CASE 2
+			PRINTL 【除外フィルタオン】）
+	ENDSELECT
+ENDIF
 
-PRINTL [0] 戻る
+IF LANGUAGE == "ENG"
+	PRINT [6] Set price filter(Now
+	SELECTCASE FLAG:価格フィルタ
+		CASE 0
+			PRINTL :None)
+		CASEELSE
+			IF FLAG:価格フィルタ所持金依存
+				CALL PASELIL, @"【{FLAG:価格フィルタ下限}＄ ～ Moneys】)"
+			ELSE
+				CALL PASELIL, @"【{FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄】)"
+			ENDIF
+	ENDSELECT
+ELSE
+	PRINT [6] 価格フィルタを設定する（現在
+	SELECTCASE FLAG:価格フィルタ
+		CASE 0
+			PRINTL オフ）
+		CASEELSE
+			IF FLAG:価格フィルタ所持金依存
+				CALL PASELIL, @"【{FLAG:価格フィルタ下限}＄ ～ 所持金】のフィルタ）"
+			ELSE
+				CALL PASELIL, @"【{FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄】のフィルタ）"
+			ENDIF
+	ENDSELECT
+ENDIF
+
+IF LANGUAGE == "ENG"
+	PRINT [7] Switch price filter(Now
+	SELECTCASE FLAG:価格フィルタ
+		CASE 0
+			PRINTL :OFF)
+		CASE 1
+			PRINTL 【Show filter ON】）
+		CASE 2
+			PRINTL 【Hide filter ON】）
+	ENDSELECT
+ELSE
+	PRINT [7] 価格フィルタの切り替え（現在
+	SELECTCASE FLAG:価格フィルタ
+		CASE 0
+			PRINTL オフ）
+		CASE 1
+			PRINTL 【マッチフィルタオン】）
+		CASE 2
+			PRINTL 【除外フィルタオン】）
+	ENDSELECT
+ENDIF
+
+IF LANGUAGE == "ENG"
+	PRINT [8] BriestSize filter(Now:
+	SELECTCASE FLAG:バストサイズフィルタ
+		CASE 0
+			PRINTL None)
+		CASE 1
+			PRINTL Show none breast characters)
+		CASE 2
+			PRINTL Show little breast characters)
+		CASE 3
+			PRINTL Show basic breast characters)
+		CASE 4
+			PRINTL Show large breast characters)
+		CASE 5
+			PRINTL Show huge breast characters)
+	ENDSELECT
+ELSE
+	PRINT [8] バストサイズフィルタの切り替え（現在
+	SELECTCASE FLAG:バストサイズフィルタ
+		CASE 0
+			PRINTL オフ）
+		CASE 1
+			PRINTL 絶壁キャラを表示）
+		CASE 2
+			PRINTL 貧乳キャラを表示）
+		CASE 3
+			PRINTL 並乳キャラを表示）
+		CASE 4
+			PRINTL 巨乳キャラを表示）
+		CASE 5
+			PRINTL 爆乳キャラを表示）
+	ENDSELECT
+ENDIF
+
+IF LANGUAGE == "ENG"
+	PRINTL [0] Back
+ELSE
+	PRINTL [0] 戻る
+ENDIF
 DO
 	INPUT
 	SELECTCASE RESULT
@@ -469,40 +711,66 @@ SELECTCASE ARG
 	CASE 1
 		SELECTCASE FLAG:男女フィルタ
 			CASE 0
-				PRINTW 男性キャラのみ表示します
+				IF LANGUAGE == "ENG"
+					PRINTW Show male characters only.
+				ELSE
+					PRINTW 男性キャラのみ表示します
+				ENDIF
 				FLAG:男女フィルタ = 1
 			CASE 1
-				PRINTW 女性キャラのみ表示します
+				IF LANGUAGE == "ENG"
+					PRINTW Show female characters only.
+				ELSE
+					PRINTW 女性キャラのみ表示します
+				ENDIF
 				FLAG:男女フィルタ = 2
 			CASE 2
-				PRINTW 全キャラ表示します
+				IF LANGUAGE == "ENG"
+					PRINTW Show all characters.
+				ELSE
+					PRINTW 全キャラ表示します
+				ENDIF
 				FLAG:男女フィルタ = 0
 		ENDSELECT
 	CASE 2
 		DO
+			CALL TALENT_PRINT
 			DRAWLINE
-			PRINTL フィルタをかけたい素質番号を入力してください。
-			PRINTL [1000] 戻る
-			PRINTL [1001] フィルタをリセット
-			PRINTL [1002] 素質一覧表示
+			IF LANGUAGE == "ENG"
+				PRINT [1000] Back 
+				PRINTL [1001] Clear filter
+			ELSE
+				PRINT [1000] 戻る 
+				PRINTL [1001] フィルタをリセット
+			ENDIF
 			DO
 				INPUT
 				SELECTCASE RESULT
 					CASE 1000
 						RETURN 0
 					CASE 1001
-						PRINTW フィルタをリセットしました
+						IF LANGUAGE == "ENG"
+							PRINTW Filter was been cleared.
+						ELSE
+							PRINTW フィルタをリセットしました
+						ENDIF
 						FLAG:フィルタスイッチ１ = 0
-					CASE 1002
-						CALL TALENT_PRINT
 					CASEELSE
 						IF TALENTNAME:RESULT == ""
-							PRINTFORML {RESULT}番には素質が設定されていません
+							IF LANGUAGE == "ENG"
+								PRINTFORML Does not define No.{RESULT} in TALENT.
+							ELSE
+								PRINTFORML {RESULT}番には素質が設定されていません
+							ENDIF
 						ELSE
 							FLAG:カスタムフィルタ１ = RESULT
 							SIF FLAG:フィルタスイッチ１ == 0
 								FLAG:フィルタスイッチ１ = 1
-							PRINTFORMW 素質「%TALENTNAME:(FLAG:カスタムフィルタ１)%」にフィルタをかけました。
+							IF LANGUAGE == "ENG"
+								PRINTFORMW Now filtering "%TALENTDISP(FLAG:カスタムフィルタ１)%"
+							ELSE
+								PRINTFORMW 素質「%TALENTDISP(FLAG:カスタムフィルタ１)%」にフィルタをかけました。
+							ENDIF
 							RETURN 0
 						ENDIF
 				ENDSELECT
@@ -511,40 +779,66 @@ SELECTCASE ARG
 	CASE 3
 		SELECTCASE FLAG:フィルタスイッチ１
 			CASE 0
-				PRINTW 条件にマッチするキャラのみ表示します
+				IF LANGUAGE == "ENG"
+					PRINTW Show the characters talent have.
+				ELSE
+					PRINTW 条件にマッチするキャラのみ表示します
+				ENDIF
 				FLAG:フィルタスイッチ１ = 1
 			CASE 1
-				PRINTW 条件にマッチするキャラを除外します
+				IF LANGUAGE == "ENG"
+					PRINTW Hide the characters talent have.
+				ELSE
+					PRINTW 条件にマッチするキャラを除外します
+				ENDIF
 				FLAG:フィルタスイッチ１ = 2
 			CASE 2
-				PRINTW カスタムフィルタ1をオフにしました
+				IF LANGUAGE == "ENG"
+					PRINTW Turned Talent filter 1 off.
+				ELSE
+					PRINTW カスタムフィルタ1をオフにしました
+				ENDIF
 				FLAG:フィルタスイッチ１ = 0
 		ENDSELECT
 	CASE 4
 		DO
+			CALL TALENT_PRINT
 			DRAWLINE
-			PRINTL フィルタをかけたい素質番号を入力してください。
-			PRINTL [1000] 戻る
-			PRINTL [1001] フィルタをリセット
-			PRINTL [1002] 素質一覧表示
+			IF LANGUAGE == "ENG"
+				PRINT [1000] Back 
+				PRINTL [1001] Clear filter
+			ELSE
+				PRINT [1000] 戻る 
+				PRINTL [1001] フィルタをリセット
+			ENDIF
 			DO
 				INPUT
 				SELECTCASE RESULT
 					CASE 1000
 						RETURN 0
 					CASE 1001
-						PRINTW フィルタをリセットしました
+						IF LANGUAGE == "ENG"
+							PRINTW Filter was been cleared.
+						ELSE
+							PRINTW フィルタをリセットしました
+						ENDIF
 						FLAG:フィルタスイッチ２ = 0
-					CASE 1002
-						CALL TALENT_PRINT
 					CASEELSE
 						IF TALENTNAME:RESULT == ""
-							PRINTFORMW {RESULT}番には素質が設定されていません
+							IF LANGUAGE == "ENG"
+								PRINTFORML Does not define No.{RESULT} in TALENT.
+							ELSE
+								PRINTFORML {RESULT}番には素質が設定されていません
+							ENDIF
 						ELSE
 							FLAG:カスタムフィルタ２ = RESULT
 							SIF FLAG:フィルタスイッチ２ == 0
 								FLAG:フィルタスイッチ２ = 1
-							PRINTFORMW 素質「%TALENTNAME:(FLAG:カスタムフィルタ２)%」にフィルタをかけました。
+							IF LANGUAGE == "ENG"
+								PRINTFORMW Now filtering "%TALENTDISP(FLAG:カスタムフィルタ２)%"
+							ELSE
+								PRINTFORMW 素質「%TALENTDISP(FLAG:カスタムフィルタ２)%」にフィルタをかけました。
+							ENDIF
 							RETURN 0
 						ENDIF
 				ENDSELECT
@@ -553,44 +847,83 @@ SELECTCASE ARG
 	CASE 5
 		SELECTCASE FLAG:フィルタスイッチ２
 			CASE 0
-				PRINTW 条件にマッチするキャラのみ表示します
+				IF LANGUAGE == "ENG"
+					PRINTW Show the characters talent have.
+				ELSE
+					PRINTW 条件にマッチするキャラのみ表示します
+				ENDIF
 				FLAG:フィルタスイッチ２ = 1
 			CASE 1
-				PRINTW 条件にマッチするキャラを除外します
+				IF LANGUAGE == "ENG"
+					PRINTW Hide the characters talent have.
+				ELSE
+					PRINTW 条件にマッチするキャラを除外します
+				ENDIF
 				FLAG:フィルタスイッチ２ = 2
 			CASE 2
-				PRINTW カスタムフィルタ2をオフにしました
+				IF LANGUAGE == "ENG"
+					PRINTW Turned Talent filter 2 off.
+				ELSE
+					PRINTW カスタムフィルタ2をオフにしました
+				ENDIF
 				FLAG:フィルタスイッチ２ = 0
 		ENDSELECT
 	CASE 6
 		DO
-			PRINTL 価格でフィルタをかけることができます
-			CALL PASELIL, @"[101] 下限を設定する(現在{FLAG:価格フィルタ下限}＄)"
-			IF FLAG:価格フィルタ所持金依存
-				PRINTL [102] 上限を設定する(現在所持金まで)
+			IF LANGUAGE == "ENG"
+				PRINTL You can filter for price.
+				CALL PASELIL, @"[101] Set price the min(Now:{FLAG:価格フィルタ下限}＄)"
+				IF FLAG:価格フィルタ所持金依存
+					PRINTL [102] Set price your money
+				ELSE
+					CALL PASELIL, @"[102] Set price the max(Now:{FLAG:価格フィルタ上限}＄)"
+				ENDIF
+				SIF !FLAG:価格フィルタ所持金依存
+					PRINTL [103] Set price the max(Your money)
+				IF FLAG:価格フィルタ所持金依存
+					CALL PASELIL, @"Now:{FLAG:価格フィルタ下限}＄ ～ {MONEY}"
+				ELSE
+					CALL PASELIL, @"Now:{FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄"
+				ENDIF
+				DRAWLINE
+				PRINTL [100] Back
 			ELSE
-				CALL PASELIL, @"[102] 上限を設定する(現在{FLAG:価格フィルタ上限}＄)"
+				PRINTL 価格でフィルタをかけることができます
+				CALL PASELIL, @"[101] 下限を設定する(現在{FLAG:価格フィルタ下限}＄)"
+				IF FLAG:価格フィルタ所持金依存
+					PRINTL [102] 上限を設定する(現在所持金まで)
+				ELSE
+					CALL PASELIL, @"[102] 上限を設定する(現在{FLAG:価格フィルタ上限}＄)"
+				ENDIF
+				SIF !FLAG:価格フィルタ所持金依存
+					PRINTL [103] 上限を所持金にする
+				IF FLAG:価格フィルタ所持金依存
+					CALL PASELIL, @"現在の設定 {FLAG:価格フィルタ下限}＄ ～ 所持金"
+				ELSE
+					CALL PASELIL, @"現在の設定 {FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄"
+				ENDIF
+				DRAWLINE
+				PRINTL [100] 戻る
 			ENDIF
-			SIF !FLAG:価格フィルタ所持金依存
-				PRINTL [103] 上限を所持金にする
-			IF FLAG:価格フィルタ所持金依存
-				CALL PASELIL, @"現在の設定 {FLAG:価格フィルタ下限}＄ ～ 所持金"
-			ELSE
-				CALL PASELIL, @"現在の設定 {FLAG:価格フィルタ下限}＄ ～ {FLAG:価格フィルタ上限}＄"
-			ENDIF
-			DRAWLINE
-			PRINTL [100] 戻る
 			DO
 				INPUT
 				SELECTCASE RESULT
 					CASE 100
 						RETURN 0
 					CASE 101
-						PRINTL 数値を入力してください
+						IF LANGUAGE == "ENG"
+							PRINTL Please enter min price.
+						ELSE
+							PRINTL 数値を入力してください
+						ENDIF
 						DO
 							INPUT
 							IF RESULT > FLAG:価格フィルタ上限 && !FLAG:価格フィルタ所持金依存
-								PRINTL 上限より高い値を設定することはできません
+								IF LANGUAGE == "ENG"
+									PRINTL Can't set expensive than max price.
+								ELSE
+									PRINTL 上限より高い値を設定することはできません
+								ENDIF
 							ELSE
 								FLAG:価格フィルタ下限 = RESULT
 								BREAK
@@ -599,11 +932,19 @@ SELECTCASE ARG
 						BREAK
 					CASE 102
 						FLAG:価格フィルタ所持金依存 = 0
-						PRINTL 数値を入力してください
+						IF LANGUAGE == "ENG"
+							PRINTL Please enter max price.
+						ELSE
+							PRINTL 数値を入力してください
+						ENDIF
 						DO
 							INPUT
 							IF RESULT < FLAG:価格フィルタ下限
-								PRINTL 下限より低い値を設定することはできません
+								IF LANGUAGE == "ENG"
+									PRINTL Can't set lower than min price.
+								ELSE
+									PRINTL 下限より低い値を設定することはできません
+								ENDIF
 							ELSE
 								FLAG:価格フィルタ上限 = RESULT
 								BREAK
@@ -619,24 +960,46 @@ SELECTCASE ARG
 	CASE 7
 		SELECTCASE FLAG:価格フィルタ
 			CASE 0
-				PRINTW 条件にマッチするキャラを除外します
+				IF LANGUAGE == "ENG"
+					PRINTW Show characters range have.
+				ELSE
+					PRINTW 条件にマッチするキャラのみ表示します
+				ENDIF
 				FLAG:価格フィルタ = 1
 			CASE 1
-				PRINTW 条件にマッチするキャラのみ表示します
+				IF LANGUAGE == "ENG"
+					PRINTW Hide characters range have.
+				ELSE
+					PRINTW 条件にマッチするキャラを除外します
+				ENDIF
 				FLAG:価格フィルタ = 2
 			CASE 2
-				PRINTW 価格フィルタをオフにしました
+				IF LANGUAGE == "ENG"
+					PRINTW Turned price filter OFF.
+				ELSE
+					PRINTW 価格フィルタをオフにしました
+				ENDIF
 				FLAG:価格フィルタ = 0
 		ENDSELECT
 	CASE 8
 		DO
-			PRINTL 表示したいキャラの胸のサイズを選んでください
-			PRINTL [1] 絶壁
-			PRINTL [2] 貧乳
-			PRINTL [3] 並乳
-			PRINTL [4] 巨乳
-			PRINTL [5] 爆乳
-			PRINTL [0] フィルタオフ
+			IF LANGUAGE == "ENG"
+				PRINTL Want size do you want?
+				PRINTL [1] None breast
+				PRINTL [2] Little breast
+				PRINTL [3] Basic breast
+				PRINTL [4] Large breast
+				PRINTL [5] Huge breast
+				PRINTL [0] Filter OFF
+			ELSE
+				PRINTL 表示したいキャラの胸のサイズを選んでください
+				PRINTL [1] 絶壁
+				PRINTL [2] 貧乳
+				PRINTL [3] 並乳
+				PRINTL [4] 巨乳
+				PRINTL [5] 爆乳
+				PRINTL [0] フィルタオフ
+			ENDIF
 			INPUT
 			SELECTCASE RESULT
 				CASE 0 TO 5
