@@ -684,133 +684,267 @@ SIF FLAG:周回数 > 1
 CALL ゲームモード表示
 PRINTL 
 
-PRINTFORML 　天気:%天気()% 気温:%DIV10(FLAG:気温)%℃ %月齢()%(月齢:%DIV100(月齢)%)
+IF LANGUAGE == "ENG"
+	PRINTFORML 　Weather:%WEATHERDISP()% Temperature:%DIV10(FLAG:気温)%℃
+ELSE
+	PRINTFORML 　天気:%天気()% 気温:%DIV10(FLAG:気温)%℃ %月齢()%(月齢:%DIV100(月齢)%)
+ENDIF
 
 ;段位認定のときのみ表示を変える
 IF ゲームモード() != "段位認定"
-	;所持金表示
-	CALL PASELI, @"　所持金:{MONEY}＄"
-	SIF 借金 > 0
-		CALL PASELI, @" 借金:{借金}＄"
-	CALL PASELI, @" 昨日の所持金:{LASTMONEY}＄"
-	IF MONEY == LASTMONEY
-		PRINTL →0 KEEP
-	ELSEIF MONEY > LASTMONEY
-		PRINTFORML ↑{MONEY-LASTMONEY} UP!
-	ELSEIF MONEY < LASTMONEY
-		PRINTFORML ↓{LASTMONEY-MONEY} DOWN...
-	ENDIF
+	IF LANGUAGE == "ENG"
+		;所持金表示
+		CALL PASELI, @"　Moneys:{MONEY}＄"
+		SIF 借金 > 0
+			CALL PASELI, @" Debts:{借金}＄"
+		CALL PASELI, @" Moneys(Yesterday):{LASTMONEY}＄"
+		IF MONEY == LASTMONEY
+			PRINTL →0 KEEP
+		ELSEIF MONEY > LASTMONEY
+			PRINTFORML ↑{MONEY-LASTMONEY} UP!
+		ELSEIF MONEY < LASTMONEY
+			PRINTFORML ↓{LASTMONEY-MONEY} DOWN...
+		ENDIF
 
-	;新婚生活中は非表示
-	IF ゲームモード() != "新婚モード"
+		;新婚生活中は非表示
+		IF ゲームモード() != "新婚モード"
+			;難易度表示
+			PRINTFORM 　Difficulty:%難易度()%
+			;奴隷人数表示
+			PRINTFORML 　Characters:{CHARANUM-1}\/Falling:{CMATCH(CFLAG:陥落, 1)}
+		ENDIF
+	ELSE
+		;所持金表示
+		CALL PASELI, @"　所持金:{MONEY}＄"
+		SIF 借金 > 0
+			CALL PASELI, @" 借金:{借金}＄"
+		CALL PASELI, @" 昨日の所持金:{LASTMONEY}＄"
+		IF MONEY == LASTMONEY
+			PRINTL →0 KEEP
+		ELSEIF MONEY > LASTMONEY
+			PRINTFORML ↑{MONEY-LASTMONEY} UP!
+		ELSEIF MONEY < LASTMONEY
+			PRINTFORML ↓{LASTMONEY-MONEY} DOWN...
+		ENDIF
+
+		;新婚生活中は非表示
+		IF ゲームモード() != "新婚モード"
+			;難易度表示
+			PRINTFORM 　難易度:%難易度()%
+			;奴隷人数表示
+			PRINTFORML 　総奴隷数:{CHARANUM-1}\/陥落済み:{CMATCH(CFLAG:陥落, 1)}
+		ENDIF
+	ENDIF
+ELSE
+	IF LANGUAGE == "ENG"
+		;所持金表示
+		CALL PASELIL, @"　Moneys:{MONEY}＄"
+
+		;難易度表示
+		PRINTFORM 　Difficulty:%難易度()%
+		;奴隷人数表示
+		LOCAL = 0
+		;売却可能人数表示
+		PRINTFORML Characters:{CHARANUM-1}\/Can sell:{CMATCH(CFLAG:状態, 1)+CMATCH(CFLAG:状態, 2)}
+	ELSE
+		;所持金表示
+		CALL PASELIL, @"　所持金:{MONEY}＄"
+
 		;難易度表示
 		PRINTFORM 　難易度:%難易度()%
 		;奴隷人数表示
-		PRINTFORML 　総奴隷数:{CHARANUM-1}\/陥落済み:{CMATCH(CFLAG:陥落, 1)}
+		LOCAL = 0
+		;売却可能人数表示
+		PRINTFORML 総奴隷数:{CHARANUM-1}\/売却可能:{CMATCH(CFLAG:状態, 1)+CMATCH(CFLAG:状態, 2)}
 	ENDIF
-ELSE
-	;所持金表示
-	CALL PASELIL, @"　所持金:{MONEY}＄"
-
-	;難易度表示
-	PRINTFORM 　難易度:%難易度()%
-	;奴隷人数表示
-	LOCAL = 0
-	;売却可能人数表示
-	PRINTFORML 総奴隷数:{CHARANUM-1}\/売却可能:{CMATCH(CFLAG:状態, 1)+CMATCH(CFLAG:状態, 2)}
-	
 	PRINT 　
 	CALL 段位ゲージ表示
 ENDIF
 
-;奴隷の状態
+;奴隷の状態------------------------------------------------------------
 IF TARGET > 0
 	PRINTL 
 	IF ゲームモード() == "新婚モード"
-		PRINTL □同棲中
+		IF LANGUAGE == "ENG"
+			PRINTL □Partner
+		ELSE
+			PRINTL □同棲中
+		ENDIF
 		PRINTFORM 　%NAME:TARGET%
 	ELSE
-		PRINTPLAIN □調教中 
-		IF TARGET > 1
-			PRINT [750] 前のキャラ 
+		IF LANGUAGE == "ENG"
+			PRINTPLAIN □Training 
+			IF TARGET > 1
+				PRINT [750] Prev character 
+			ELSE
+				PRINTPLAIN 　　　　　　　　  
+			ENDIF
+			IF TARGET < CHARANUM-1
+				PRINT [751] Next character
+			ELSE
+				PRINTPLAIN 　　　　　　　　
+			ENDIF
+			PRINTL 
 		ELSE
-			PRINTPLAIN 　　　　　　　　  
+			PRINTPLAIN □調教中 
+			IF TARGET > 1
+				PRINT [750] 前のキャラ 
+			ELSE
+				PRINTPLAIN 　　　　　　　　  
+			ENDIF
+			IF TARGET < CHARANUM-1
+				PRINT [751] 次のキャラ
+			ELSE
+				PRINTPLAIN 　　　　　　　　
+			ENDIF
+			PRINTL 
 		ENDIF
-		IF TARGET < CHARANUM-1
-			PRINT [751] 次のキャラ
-		ELSE
-			PRINTPLAIN 　　　　　　　　
-		ENDIF
-		PRINTL 
-		PRINTFORM 　No.{TARGET} %NAME:TARGET%
+		PRINTFORM 　No.{TARGET} %NAMEDISP(TARGET)%
 	ENDIF
 	PRINTFORM %性別表示(TARGET)% 
-	SIF TALENT:ふたなり
-		PRINT [ふたなり]
-	SIF TALENT:アニマル
-		PRINT [獣]
-	FOR LCOUNT, 0, VARSIZE("TALENT")
-		SIF !TALENT:LCOUNT
-			CONTINUE
-		SELECTCASE TALENTNAME:LCOUNT
-			CASE "恋慕", "淫乱", "服従", "親愛", "娼婦", "隷属", "崩壊", "淫核", "淫膣", "淫尻", "淫乳"
-				PRINTFORM 【%TALENTNAME:LCOUNT%】
-			CASE "妊娠"
-				PRINT 【妊娠中】
-			CASE "リミットバースト"
-				PRINT 【BURST】
-		ENDSELECT
-	NEXT
-	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-		PRINTFORM 依存度:{CFLAG:依存度} 
-	PRINT ストレス値:
-	CALL ストレス表示, TARGET
-	PRINTL 
-	VARSET 能力表示用
-	
-	能力表示用 = %SET_TOOLTIP(@"　従順:LV{ABL:従順, 2, LEFT}", ABL_COMMENT("従順"))%
-	能力表示用:1 = %SET_TOOLTIP(@"欲望:LV{ABL:欲望, 2, LEFT}", ABL_COMMENT("欲望"))%
-	能力表示用:2 = %SET_TOOLTIP(@"技巧:LV{ABL:技巧, 2, LEFT}", ABL_COMMENT("技巧"))%
-	HTML_PRINT STRJOIN(能力表示用, "")
+	IF LANGUAGE == "ENG"
+		SIF TALENT:ふたなり
+			PRINT [Futanari]
+		SIF TALENT:アニマル
+			PRINT [Animal]
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "恋慕", "淫乱", "服従", "親愛", "娼婦", "隷属", "崩壊", "淫核", "淫膣", "淫尻", "淫乳"
+					PRINTFORM 【%TALENTDISP(LCOUNT)%】
+				CASE "妊娠"
+					PRINT 【Prengnant】
+				CASE "リミットバースト"
+					PRINT 【BURST】
+			ENDSELECT
+		NEXT
+		SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+			PRINTFORM Depend:{CFLAG:依存度} 
+		PRINT Stress:
+		CALL ストレス表示, TARGET
+		PRINTL 
+		VARSET 能力表示用
+		
+		能力表示用 = %SET_TOOLTIP(@"　Obedience:LV{ABL:従順, 2, LEFT}", ABL_COMMENT("従順"))%
+		能力表示用:1 = %SET_TOOLTIP(@"Lust:LV{ABL:欲望, 2, LEFT}", ABL_COMMENT("欲望"))%
+		能力表示用:2 = %SET_TOOLTIP(@"Technique:LV{ABL:技巧, 2, LEFT}", ABL_COMMENT("技巧"))%
+		HTML_PRINT STRJOIN(能力表示用, "")
 
-	VARSET 能力表示用
-	能力表示用 = %SET_TOOLTIP(@"　Ｃ感:LV{ABL:Ｃ感覚, 2, LEFT}", ABL_COMMENT("Ｃ感覚"))%
-	SIF VAGINA(TARGET)
-		能力表示用:1 = %SET_TOOLTIP(@"Ｖ感:LV{ABL:Ｖ感覚, 2, LEFT}", ABL_COMMENT("Ｖ感覚"))%
-	能力表示用:2 = %SET_TOOLTIP(@"Ａ感:LV{ABL:Ａ感覚, 2, LEFT}", ABL_COMMENT("Ａ感覚"))%
-	能力表示用:3 = %SET_TOOLTIP(@"Ｂ感:LV{ABL:Ｂ感覚, 2, LEFT}", ABL_COMMENT("Ｂ感覚"))%
-	HTML_PRINT STRJOIN(能力表示用, "")
-	
-	CALL SHOW_INFO_MARK, TARGET
-	PRINTFORML 　体力%BARBASE("体力")%
-	PRINTFORML 　気力%BARBASE("気力")%
-	SIF TALENT:魔術師
-		PRINTFORML 　魔力%BARBASE("魔力")%
+		VARSET 能力表示用
+		能力表示用 = %SET_TOOLTIP(@"　CSence:LV{ABL:Ｃ感覚, 2, LEFT}", ABL_COMMENT("Ｃ感覚"))%
+		SIF VAGINA(TARGET)
+			能力表示用:1 = %SET_TOOLTIP(@"VSence:LV{ABL:Ｖ感覚, 2, LEFT}", ABL_COMMENT("Ｖ感覚"))%
+		能力表示用:2 = %SET_TOOLTIP(@"ASence:LV{ABL:Ａ感覚, 2, LEFT}", ABL_COMMENT("Ａ感覚"))%
+		能力表示用:3 = %SET_TOOLTIP(@"BSence:LV{ABL:Ｂ感覚, 2, LEFT}", ABL_COMMENT("Ｂ感覚"))%
+		HTML_PRINT STRJOIN(能力表示用, "")
+		
+		CALL SHOW_INFO_MARK, TARGET
+		PRINTFORML 　Health%BARBASE("体力")%
+		PRINTFORML 　Energy%BARBASE("気力")%
+		SIF TALENT:魔術師
+			PRINTFORML 　MagicP%BARBASE("魔力")%
+	ELSE
+		SIF TALENT:ふたなり
+			PRINT [ふたなり]
+		SIF TALENT:アニマル
+			PRINT [獣]
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "恋慕", "淫乱", "服従", "親愛", "娼婦", "隷属", "崩壊", "淫核", "淫膣", "淫尻", "淫乳"
+					PRINTFORM 【%TALENTDISP(LCOUNT)%】
+				CASE "妊娠"
+					IF LANGUAGE == "ENG"
+						PRINT 【Prengnant】
+					ELSE
+						PRINT 【妊娠中】
+					ENDIF
+				CASE "リミットバースト"
+					PRINT 【BURST】
+			ENDSELECT
+		NEXT
+		SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+			PRINTFORM 依存度:{CFLAG:依存度} 
+		PRINT ストレス値:
+		CALL ストレス表示, TARGET
+		PRINTL 
+		VARSET 能力表示用
+		
+		能力表示用 = %SET_TOOLTIP(@"　従順:LV{ABL:従順, 2, LEFT}", ABL_COMMENT("従順"))%
+		能力表示用:1 = %SET_TOOLTIP(@"欲望:LV{ABL:欲望, 2, LEFT}", ABL_COMMENT("欲望"))%
+		能力表示用:2 = %SET_TOOLTIP(@"技巧:LV{ABL:技巧, 2, LEFT}", ABL_COMMENT("技巧"))%
+		HTML_PRINT STRJOIN(能力表示用, "")
+
+		VARSET 能力表示用
+		能力表示用 = %SET_TOOLTIP(@"　Ｃ感:LV{ABL:Ｃ感覚, 2, LEFT}", ABL_COMMENT("Ｃ感覚"))%
+		SIF VAGINA(TARGET)
+			能力表示用:1 = %SET_TOOLTIP(@"Ｖ感:LV{ABL:Ｖ感覚, 2, LEFT}", ABL_COMMENT("Ｖ感覚"))%
+		能力表示用:2 = %SET_TOOLTIP(@"Ａ感:LV{ABL:Ａ感覚, 2, LEFT}", ABL_COMMENT("Ａ感覚"))%
+		能力表示用:3 = %SET_TOOLTIP(@"Ｂ感:LV{ABL:Ｂ感覚, 2, LEFT}", ABL_COMMENT("Ｂ感覚"))%
+		HTML_PRINT STRJOIN(能力表示用, "")
+		
+		CALL SHOW_INFO_MARK, TARGET
+		PRINTFORML 　体力%BARBASE("体力")%
+		PRINTFORML 　気力%BARBASE("気力")%
+		SIF TALENT:魔術師
+			PRINTFORML 　魔力%BARBASE("魔力")%
+	ENDIF
 ENDIF
 PRINTL 
-PRINTFORML 　保管済み母乳:{FLAG:保管済み母乳}ml　保管済み精液:{FLAG:保管済み精液}ml
 
-PRINTFORM 　主人:%NAME:MASTER% %性別表示(MASTER)% 
-SIF TALENT:MASTER:ふたなり
-	PRINT [ふたなり]
-PRINTL 
-SIF TALENT:MASTER:魔術師
-	PRINTFORML 　魔力%BARBASE("魔力", MASTER)%
+;主人・助手の状態------------------------------------------------------------
+IF LANGUAGE == "ENG"
+	PRINTFORML 　Saved Milk:{FLAG:保管済み母乳}ml　Saved Samen:{FLAG:保管済み精液}ml
 
-IF ASSI >= 0
-	IF TALENT:ASSI:アニマル
-		PRINTFORM 　ペット:%NAME:ASSI%
-	ELSE
-		PRINTFORM 　助手:%NAME:ASSI%
-	ENDIF
-	PRINTFORM %性別表示(ASSI)% 
-	SIF TALENT:ASSI:ふたなり
-		PRINT [ふたなり]
-	SIF TALENT:ASSI:アニマル
-		PRINT [獣]
+	PRINTFORM 　Master:%NAME:MASTER% %性別表示(MASTER)% 
+	SIF TALENT:MASTER:ふたなり
+		PRINT [Futanari]
 	PRINTL 
-	SIF TALENT:ASSI:魔術師
-		PRINTFORML 　魔力%BARBASE("魔力", ASSI)%
+	SIF TALENT:MASTER:魔術師
+		PRINTFORML 　MagicP%BARBASE("魔力", MASTER)%
+
+	IF ASSI >= 0
+		IF TALENT:ASSI:アニマル
+			PRINTFORM 　Pet:%NAME:ASSI%
+		ELSE
+			PRINTFORM 　Assistant:%NAME:ASSI%
+		ENDIF
+		PRINTFORM %性別表示(ASSI)% 
+		SIF TALENT:ASSI:ふたなり
+			PRINT [Futanari]
+		SIF TALENT:ASSI:アニマル
+			PRINT [Animal]
+		PRINTL 
+		SIF TALENT:ASSI:魔術師
+			PRINTFORML 　MagicP%BARBASE("魔力", ASSI)%
+	ENDIF
+ELSE
+	PRINTFORML 　保管済み母乳:{FLAG:保管済み母乳}ml　保管済み精液:{FLAG:保管済み精液}ml
+
+	PRINTFORM 　主人:%NAME:MASTER% %性別表示(MASTER)% 
+	SIF TALENT:MASTER:ふたなり
+		PRINT [ふたなり]
+	PRINTL 
+	SIF TALENT:MASTER:魔術師
+		PRINTFORML 　魔力%BARBASE("魔力", MASTER)%
+
+	IF ASSI >= 0
+		IF TALENT:ASSI:アニマル
+			PRINTFORM 　ペット:%NAME:ASSI%
+		ELSE
+			PRINTFORM 　助手:%NAME:ASSI%
+		ENDIF
+		PRINTFORM %性別表示(ASSI)% 
+		SIF TALENT:ASSI:ふたなり
+			PRINT [ふたなり]
+		SIF TALENT:ASSI:アニマル
+			PRINT [獣]
+		PRINTL 
+		SIF TALENT:ASSI:魔術師
+			PRINTFORML 　魔力%BARBASE("魔力", ASSI)%
+	ENDIF
 ENDIF
 
 DRAWLINE

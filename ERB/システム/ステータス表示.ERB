@@ -5,16 +5,28 @@ CALL 基本情報
 
 IF TARGET != MASTER
 	DRAWLINE
-	PRINTL □ 珠
+	IF LANGUAGE == "ENG"
+		PRINTL □ Jewel
+	ELSE
+		PRINTL □ 珠
+	ENDIF
 	CALL SHOW_INFO_JUEL, TARGET
 ENDIF
 CALL SHOW_INFO, TARGET
 
-PRINTL □ 相性
-SIF TALENT:服従
-	PRINTL 　全キャラ×120%
-SIF TALENT:隷属
-	PRINTL 　全キャラ×150%
+IF LANGUAGE == "ENG"
+	PRINTL □ Relation
+	SIF TALENT:服従
+		PRINTL 　All Characters×120%
+	SIF TALENT:隷属
+		PRINTL 　All Characters×150%
+ELSE
+	PRINTL □ 相性
+	SIF TALENT:服従
+		PRINTL 　全キャラ×120%
+	SIF TALENT:隷属
+		PRINTL 　全キャラ×150%
+ENDIF
 LOCAL = 0
 FOR LCOUNT, 0, 20000
 	;CSVがあるか、子供の場合に参照
@@ -26,21 +38,21 @@ FOR LCOUNT, 0, 20000
 		IF RELATION:LCOUNT != 100
 			IF !TALENT:服従 && !TALENT:隷属
 				IF NO:MASTER == LCOUNT
-					LOCALS = 　%NAME:MASTER%×{RELATION:LCOUNT}\%
+				LOCALS = 　%NAMEDISP(MASTER)%×{RELATION:LCOUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAMEF(LCOUNT)%×{RELATION:LCOUNT}\%
+					LOCALS = 　%CSVNAMEDISP(LCOUNT)%×{RELATION:LCOUNT}\%
 				ENDIF
 			ELSEIF RELATION:LCOUNT > 120 && TALENT:服従
 				IF NO:MASTER == LCOUNT
-					LOCALS = 　%NAME:MASTER%×{RELATION:LCOUNT}\%
+					LOCALS = 　%NAMEDISP(MASTER)%×{RELATION:LCOUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAMEF(LCOUNT)%×{RELATION:LCOUNT}\%
+					LOCALS = 　%CSVNAMEDISP(LCOUNT)%×{RELATION:LCOUNT}\%
 				ENDIF
 			ELSEIF RELATION:LCOUNT > 150 && TALENT:隷属
 				IF NO:MASTER == LCOUNT
-					LOCALS = 　%NAME:MASTER%×{RELATION:LCOUNT}\%
+					LOCALS = 　%NAMEDISP(MASTER)%×{RELATION:LCOUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAMEF(LCOUNT)%×{RELATION:LCOUNT}\%
+					LOCALS = 　%CSVNAMEDISP(LCOUNT)%×{RELATION:LCOUNT}\%
 				ENDIF
 			ENDIF
 		ENDIF
@@ -58,31 +70,58 @@ SIF !LINEISEMPTY()
 	PRINTL 
 DRAWLINE
 PRINTPLAIN 　BASIC　
-PRINT [0] 戻る 
-SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-	PRINT [4] 性経験履歴 
-PRINT [5] その他情報 
-IF TARGET > 0
-	PRINT [6] 前のキャラ 
-ELSE
-	PRINTPLAIN 　　　　　　　 
-ENDIF
-IF TARGET < CHARANUM-1
-	PRINT [7] 次のキャラ 
-ELSE
-	PRINTPLAIN 　　　　　　　 
-ENDIF
-
-IF !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && TARGET != MASTER
-	SIF SHOW_TARGET != TARGET
-		PRINT [8] 対象に指定 
-	IF NOSAMES(TARGET, MASTER, ASSI) && CFLAG:状態 >= 2
-		PRINT [9] 助手に指定 
+IF LANGUAGE == "ENG"
+	PRINT [0] Back 
+	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+		PRINT [4] Sexual History 
+	PRINT [5] Other Info 
+	IF TARGET > 0
+		PRINT [6] Prev Character 
+	ELSE
+		PRINTPLAIN                    
+	ENDIF
+	IF TARGET < CHARANUM-1
+		PRINT [7] Next Character 
 	ELSE
 		PRINTPLAIN 　　　　　　　 
 	ENDIF
+	PRINTL
+
+	PRINTPLAIN          
+	IF !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && TARGET != MASTER
+		SIF SHOW_TARGET != TARGET
+			PRINT [8] Assign on Target 
+		SIF NOSAMES(TARGET, MASTER, ASSI) && CFLAG:状態 >= 2
+			PRINT [9] Assign on Assistant 
+	ENDIF
+	PRINTL 
+ELSE
+	PRINT [0] 戻る 
+	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+		PRINT [4] 性経験履歴 
+	PRINT [5] その他情報 
+	IF TARGET > 0
+		PRINT [6] 前のキャラ 
+	ELSE
+		PRINTPLAIN 　　　　　　　 
+	ENDIF
+	IF TARGET < CHARANUM-1
+		PRINT [7] 次のキャラ 
+	ELSE
+		PRINTPLAIN 　　　　　　　 
+	ENDIF
+
+	IF !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && TARGET != MASTER
+		SIF SHOW_TARGET != TARGET
+			PRINT [8] 対象に指定 
+		IF NOSAMES(TARGET, MASTER, ASSI) && CFLAG:状態 >= 2
+			PRINT [9] 助手に指定 
+		ELSE
+			PRINTPLAIN 　　　　　　　 
+		ENDIF
+	ENDIF
+	PRINTL 
 ENDIF
-PRINTL 
 
 DO
 	INPUT
@@ -122,25 +161,47 @@ DO
 LOOP 1
 
 @基本情報
-PRINTL □ 基本情報
-PRINTFORM 　名前:%NAME:TARGET% 性別:%性別表示(TARGET)% 
-IF NO:TARGET >= 10000 || CSTR:種族 == CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
-	PRINTFORM 種族:%CSTR:種族% 
-ELSEIF CSTR:種族 != CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
-	PRINTFORM 種族:元%CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))%の%CSTR:種族% 
-ENDIF
-IF TARGET != MASTER
-	PRINT ストレス値:
-	CALL ストレス表示, TARGET
+IF LANGUAGE == "ENG"
+	PRINTL □ Basic Infomation
+	PRINTFORM 　Name:%NAMEDISP(TARGET)% Gender:%性別表示(TARGET)% 
+	IF NO:TARGET >= 10000 || CSTR:種族 == CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
+		PRINTFORM Race:%CSTR:種族% 
+	ELSEIF CSTR:種族 != CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
+		PRINTFORM Race:%CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))%→%CSTR:種族% 
+	ENDIF
+	IF TARGET != MASTER
+		PRINT Stress:
+		CALL ストレス表示, TARGET
+		SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+			PRINTFORM 　Depend:{CFLAG:依存度}
+	ELSEIF TARGET == MASTER && ゲームモード() != "新婚モード"
+		PRINTFORM (Fallen characters:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従})　
+		PRINTFORM Difficulty:%難易度()%
+	ENDIF
 	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-		PRINTFORM 　依存度:{CFLAG:依存度}
-ELSEIF TARGET == MASTER && ゲームモード() != "新婚モード"
-	PRINTFORM (堕した人数:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従}人)　
-	PRINTFORM 難易度:%難易度()%
+		PRINTFORM 　Experienced Count:{経験人数(TARGET)}
+	PRINTL 
+ELSE
+	PRINTL □ 基本情報
+	PRINTFORM 　名前:%NAMEDISP(TARGET)% 性別:%性別表示(TARGET)% 
+	IF NO:TARGET >= 10000 || CSTR:種族 == CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
+		PRINTFORM 種族:%CSTR:種族% 
+	ELSEIF CSTR:種族 != CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
+		PRINTFORM 種族:元%CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))%の%CSTR:種族% 
+	ENDIF
+	IF TARGET != MASTER
+		PRINT ストレス値:
+		CALL ストレス表示, TARGET
+		SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+			PRINTFORM 　依存度:{CFLAG:依存度}
+	ELSEIF TARGET == MASTER && ゲームモード() != "新婚モード"
+		PRINTFORM (堕した人数:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従}人)　
+		PRINTFORM 難易度:%難易度()%
+	ENDIF
+	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+		PRINTFORM 　経験人数:{経験人数(TARGET)}
+	PRINTL 
 ENDIF
-SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-	PRINTFORM 　経験人数:{経験人数(TARGET)}
-PRINTL 
 
 @STATUS_ETC
 #DIM PAGE
@@ -1433,11 +1494,17 @@ ENDSELECT
 SIF ARG == -1
 	ARG = TARGET
 LOCAL = 0
-PRINTFORML 　体力%BARBASE("体力", ARG)%
-PRINTFORML 　気力%BARBASE("気力", ARG)%
-SIF TALENT:ARG:魔術師
-	PRINTFORML 　魔力%BARBASE("魔力", ARG)%
-
+IF LANGUAGE == "ENG"
+	PRINTFORML 　Health%BARBASE("体力", ARG)%
+	PRINTFORML 　Energy%BARBASE("気力", ARG)%
+	SIF TALENT:ARG:魔術師
+		PRINTFORML 　MagicP%BARBASE("魔力", ARG)%
+ELSE
+	PRINTFORML 　体力%BARBASE("体力", ARG)%
+	PRINTFORML 　気力%BARBASE("気力", ARG)%
+	SIF TALENT:ARG:魔術師
+		PRINTFORML 　魔力%BARBASE("魔力", ARG)%
+ENDIF
 
 ;=============================================================================
 ;パラメータ表示
@@ -1472,10 +1539,18 @@ FOR LCOUNT, 0, VARSIZE("PALAM")
 	SIF LCOUNT%3 == 0
 		LOCALS = "　"
 	;パラメータの名前・パラメータレベル
-	IF !VAGINA(TARGET) && PALAMNAME:LCOUNT == "快Ｖ"
-		LOCALS = %PALAMNAME:LCOUNT%Lv-
+	IF LANGUAGE == "ENG"
+		IF !VAGINA(TARGET) && PALAMNAME:LCOUNT == "快Ｖ"
+			LOCALS = %PALAMDISP(LCOUNT), 6, LEFT%Lv-
+		ELSE
+			LOCALS = %PALAMDISP(LCOUNT), 6, LEFT%Lv{GETPALAMLV(PALAM:LCOUNT, 9)}
+		ENDIF
 	ELSE
-		LOCALS = %PALAMNAME:LCOUNT%Lv{GETPALAMLV(PALAM:LCOUNT, 9)}
+		IF !VAGINA(TARGET) && PALAMNAME:LCOUNT == "快Ｖ"
+			LOCALS = %PALAMDISP(LCOUNT)%Lv-
+		ELSE
+			LOCALS = %PALAMDISP(LCOUNT)%Lv{GETPALAMLV(PALAM:LCOUNT, 9)}
+		ENDIF
 	ENDIF
 
 	;ゲージ処理 パラメータレベルが9以上なら余計な処理は飛ばす
@@ -1491,12 +1566,20 @@ FOR LCOUNT, 0, VARSIZE("PALAM")
 
 	;これだけ特殊
 	IF PALAMNAME:LCOUNT == "潤滑" && PALAM:LCOUNT >= 20000
-		LOCALS += "濡                "
+		IF LANGUAGE == "ENG"
+			LOCALS += "Wet               "
+		ELSE
+			LOCALS += "濡                "
+		ENDIF
 		GOTO SET
 	ENDIF
 	;これも特殊
 	IF PALAMNAME:LCOUNT == "勃起" && PALAM:LCOUNT >= PALAMLV:3
-		LOCALS += "勃                "
+		IF LANGUAGE == "ENG"
+			LOCALS += "Erection          "
+		ELSE
+			LOCALS += "勃                "
+		ENDIF
 		GOTO SET
 	ENDIF
 
@@ -1647,7 +1730,11 @@ FOR LCOUNT, 0, VARSIZE("ABL")
 			ENDSELECT
 	ENDSELECT
 
-	LOCALS:(LOCAL%6) = %SET_TOOLTIP(@"　%ABLNAME:LCOUNT, 8%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, ARG))%
+	IF LANGUAGE == "ENG"
+		LOCALS:(LOCAL%6) = %SET_TOOLTIP(@"　%ABLDISP(LCOUNT), 12%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, ARG))%
+	ELSE
+		LOCALS:(LOCAL%6) = %SET_TOOLTIP(@"　%ABLDISP(LCOUNT), 8%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, ARG))%
+	ENDIF
 	RESETCOLOR
 	LOCAL++
 NEXT
@@ -1678,20 +1765,35 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 	ENDIF
 
 	IF TALENTNAME:LCOUNT == "バストサイズ"
-		SELECTCASE TALENT:ARG:バストサイズ
-			CASE 1
-				素質名 = [絶壁]
-			CASE 2
-				素質名 = [貧乳]
-			CASE 3
-				素質名 = [並乳]
-			CASE 4
-				素質名 = [巨乳]
-			CASE 5
-				素質名 = [爆乳]
-		ENDSELECT
+		IF LANGUAGE == "ENG"
+			SELECTCASE TALENT:ARG:バストサイズ
+				CASE 1
+					素質名 = [NoneBreast]
+				CASE 2
+					素質名 = [LittleBreast]
+				CASE 3
+					素質名 = [BasicBreast]
+				CASE 4
+					素質名 = [LargeBreast]
+				CASE 5
+					素質名 = [HugeBreast]
+			ENDSELECT
+		ELSE
+			SELECTCASE TALENT:ARG:バストサイズ
+				CASE 1
+					素質名 = [絶壁]
+				CASE 2
+					素質名 = [貧乳]
+				CASE 3
+					素質名 = [並乳]
+				CASE 4
+					素質名 = [巨乳]
+				CASE 5
+					素質名 = [爆乳]
+			ENDSELECT
+		ENDIF
 	ELSE
-		素質名 = [%TALENTNAME:LCOUNT%]
+		素質名 = [%TALENTDISP(LCOUNT)%]
 	ENDIF
 
 	SIF LOCAL%6 == 0
@@ -1717,7 +1819,7 @@ SIF !LINEISEMPTY()
 #DIM DYNAMIC LCOUNT
 VARSET LOCALS, 
 FOR LCOUNT, 0, 4
-	LOCALS:LCOUNT = 　%SET_TOOLTIP(@"%MARKNAME:LCOUNT%:LV{MARK:ARG:LCOUNT} %BARSTR(MARK:ARG:LCOUNT, 3, 3)%", MARK_COMMENT(MARKNAME:LCOUNT))%
+	LOCALS:LCOUNT = 　%SET_TOOLTIP(@"%MARKDISP(LCOUNT)%:LV{MARK:ARG:LCOUNT} %BARSTR(MARK:ARG:LCOUNT, 3, 3)%", MARK_COMMENT(MARKNAME:LCOUNT))%
 	SIF LCOUNT == 3
 		HTML_PRINT STRJOIN(LOCALS, "")
 NEXT
@@ -1730,8 +1832,17 @@ SIF !LINEISEMPTY()
 #DIMS DYNAMIC 表示用経験
 #DIMS DYNAMIC 経験名
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 一行表示数
 VARSET LOCALS
 LOCAL = 0
+
+;英語と日本語で文字数が違いすぎるので一行の表示数を変える
+IF LANGUAGE == "ENG"
+	一行表示数 = 4
+ELSE
+	一行表示数 = 5
+ENDIF
+
 FOR LCOUNT, 0, VARSIZE("EXP")
 	IF LCOUNT == VARSIZE("EXP")-1
 		HTML_PRINT STRJOIN(LOCALS, "")
@@ -1741,7 +1852,7 @@ FOR LCOUNT, 0, VARSIZE("EXP")
 	ENDIF
 
 	;改行するのか？ 続けて出力するのか？
-	IF LOCAL%5 == 0 && LOCAL != 0
+	IF LOCAL%一行表示数 == 0 && LOCAL != 0
 		HTML_PRINT STRJOIN(LOCALS, "")
 		VARSET LOCALS
 	ENDIF
@@ -1778,36 +1889,40 @@ FOR LCOUNT, 0, VARSIZE("EXP")
 	ENDSELECT
 
 
-	SELECTCASE EXPNAME:LCOUNT
-		CASE "奉仕快楽経験"
-			経験名 = 奉快経験
-		CASE "フェラ経験"
-			経験名 = 口淫経験
-		CASE "パイズリ経験"
-			経験名 = 乳擦経験
-		CASE "射精管理経験"
-			経験名 = 射精管理
-		CASE "苦痛快楽経験"
-			経験名 = 痛楽経験
-		CASE "嗜虐快楽経験"
-			経験名 = 虐快経験
-		CASE "主人調教経験"
-			経験名 = 主調経験
-		CASE "助手調教経験"
-			経験名 = 助調経験
-		CASE "Ｖ拡張経験"
-			経験名 = Ｖ拡経験
-		CASE "Ａ拡張経験"
-			経験名 = Ａ拡経験
-		CASE "ダンス経験"
-			経験名 = 舞踊経験
-		CASE "音ゲー経験"
-			経験名 = 音ゲ経験
-		CASEELSE
-			経験名 = %EXPNAME:LCOUNT%
-	ENDSELECT
+	IF LANGUAGE == "ENG"
+		経験名 = %EXPDISP(LCOUNT), 16, LEFT%
+	ELSE
+		SELECTCASE EXPNAME:LCOUNT
+			CASE "奉仕快楽経験"
+				経験名 = 奉快経験
+			CASE "フェラ経験"
+				経験名 = 口淫経験
+			CASE "パイズリ経験"
+				経験名 = 乳擦経験
+			CASE "射精管理経験"
+				経験名 = 射精管理
+			CASE "苦痛快楽経験"
+				経験名 = 痛楽経験
+			CASE "嗜虐快楽経験"
+				経験名 = 虐快経験
+			CASE "主人調教経験"
+				経験名 = 主調経験
+			CASE "助手調教経験"
+				経験名 = 助調経験
+			CASE "Ｖ拡張経験"
+				経験名 = Ｖ拡経験
+			CASE "Ａ拡張経験"
+				経験名 = Ａ拡経験
+			CASE "ダンス経験"
+				経験名 = 舞踊経験
+			CASE "音ゲー経験"
+				経験名 = 音ゲ経験
+			CASEELSE
+				経験名 = %EXPNAME:LCOUNT%
+		ENDSELECT
+	ENDIF
 
-	LOCALS:(LOCAL%5) = %SET_TOOLTIP(@"　%経験名, 8%:%表示用経験%", EXP_COMMENT(EXPNAME:LCOUNT, ARG))%
+	LOCALS:(LOCAL%一行表示数) = %SET_TOOLTIP(@"　%経験名, 8%:%表示用経験%", EXP_COMMENT(EXPNAME:LCOUNT, ARG))%
 	RESETCOLOR
 	LOCAL++
 NEXT
@@ -1818,20 +1933,30 @@ SIF !LINEISEMPTY()
 ;珠表示
 @SHOW_INFO_JUEL, ARG
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 一行表示数
 LOCAL = 0
+
+;英語と日本語で文字数が違いすぎるので一行の表示数を変える
+IF LANGUAGE == "ENG"
+	一行表示数 = 4
+ELSE
+	一行表示数 = 5
+ENDIF
+
 FOR LCOUNT, 0, VARSIZE("PALAM")
-	SIF PALAMNAME:LCOUNT == ""
-		CONTINUE
-	SIF PALAMNAME:LCOUNT == "潤滑"
-		CONTINUE
-	SIF PALAMNAME:LCOUNT == "勃起"
-		CONTINUE
+	SELECTCASE PALAMNAME:LCOUNT
+		CASE "", "潤滑", "勃起", "反感", "不快", "抑鬱"
+			CONTINUE
+	ENDSELECT
 	;改行するのか？ 続けて出力するのか？
-	SIF LOCAL%5 == 0 && LOCAL != 0
+	SIF LOCAL%一行表示数 == 0 && LOCAL != 0
 		PRINTL 
 	
-	PRINTFORM 　%PALAMNAME:LCOUNT, 4%の珠:
-	PRINTFORM {JUEL:ARG:LCOUNT, 12}
+	IF LANGUAGE == "ENG"
+		PRINTFORM 　Jewel of %PALAMDISP(LCOUNT), 6, LEFT%:{JUEL:ARG:LCOUNT, 12}
+	ELSE
+		PRINTFORM 　%PALAMDISP(LCOUNT), 4%の珠:{JUEL:ARG:LCOUNT, 12}
+	ENDIF
 	LOCAL++
 NEXT
 ;PRINT 　否定の珠:
@@ -1863,21 +1988,40 @@ SIF CFLAG:ARG:貞操帯
 
 @SHOW_INFO, ARG
 DRAWLINE
-PRINTL □ 経験
-CALL SHOW_INFO_EXP, ARG
-DRAWLINE
-PRINTL □ 能力
-CALL SHOW_INFO_ABL, ARG
-DRAWLINE
-IF ARG != MASTER
-	PRINTL □ 刻印
-	CALL SHOW_INFO_MARK, ARG
+IF LANGUAGE == "ENG"
+	PRINTL □ Experience
+	CALL SHOW_INFO_EXP, ARG
 	DRAWLINE
+	PRINTL □ Ability
+	CALL SHOW_INFO_ABL, ARG
+	DRAWLINE
+	IF ARG != MASTER
+		PRINTL □ Mark
+		CALL SHOW_INFO_MARK, ARG
+		DRAWLINE
+	ENDIF
+	PRINTL □ Talents
+	CALL SHOW_INFO_TALENT, ARG
+	DRAWLINE
+	PRINTL □ Clothes
+	CALL SHOW_INFO_CLOTHES, ARG
+ELSE
+	PRINTL □ 経験
+	CALL SHOW_INFO_EXP, ARG
+	DRAWLINE
+	PRINTL □ 能力
+	CALL SHOW_INFO_ABL, ARG
+	DRAWLINE
+	IF ARG != MASTER
+		PRINTL □ 刻印
+		CALL SHOW_INFO_MARK, ARG
+		DRAWLINE
+	ENDIF
+	PRINTL □ 素質
+	CALL SHOW_INFO_TALENT, ARG
+	DRAWLINE
+	PRINTL □ 服装
+	CALL SHOW_INFO_CLOTHES, ARG
 ENDIF
-PRINTL □ 素質
-CALL SHOW_INFO_TALENT, ARG
-DRAWLINE
-PRINTL □ 服装
-CALL SHOW_INFO_CLOTHES, ARG
 DRAWLINE
 
