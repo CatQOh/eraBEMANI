@@ -1,9 +1,5 @@
 ﻿@SHOW_SHOP
-#DIM DYNAMIC 助手可能
-#DIM DYNAMIC 売却可能
-#DIM DYNAMIC 調教可能
 #DIM DYNAMIC LCOUNT
-#DIMS DYNAMIC コマンド表示用, 10
 #DIM UPDATE
 
 ;学園モードでは別途SHOPを使うためこの関数は使わない
@@ -78,9 +74,14 @@ CALL CVAR_RESET
 
 SIF GC店名 == ""
 	GC店名 = ゲームセンター
+SIF GC店名 == "ゲームセンター" && LANGUAGE == "ENG"
+	GC店名 = Game Center
+
 
 SIF 娼館店名 == ""
 	娼館店名 = 娼館
+SIF 娼館店名 == "娼館" && LANGUAGE == "ENG" 
+	娼館店名 = Brothel
 
 ;実績:STRATEGYモードで期限内に100億円稼ぐ
 SIF ゲームモード() == "経営モード" && MONEY >= 10000000000
@@ -117,6 +118,20 @@ SIF ASSI >= 0 && CFLAG:ASSI:使用不可
 ;コマンド以外の情報表示は別関数で行う
 CALL SHOP_UI
 
+;長くなるので言語で関数分け
+IF LANGUAGE == "ENG"
+	CALL SHOPCOM_ENG
+ELSE
+	CALL SHOPCOM_JP
+ENDIF
+
+@SHOPCOM_JP
+#DIM DYNAMIC 助手可能
+#DIM DYNAMIC 売却可能
+#DIM DYNAMIC 調教可能
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC コマンド表示用, 10
+
 ;現助手＋元助手のキャラ数の確認
 FOR LCOUNT, 1, CHARANUM
 	;育児部屋に移動しているキャラは除外
@@ -146,8 +161,6 @@ FOR LCOUNT, 0, CHARANUM
 		CONTINUE
 	調教可能++
 NEXT
-
-VARSET コマンド表示用
 
 ;コマンド名は現在全角4文字の範囲で統一
 ;100番台は行動のコマンド
@@ -242,11 +255,11 @@ IF 調教可能
 	ENDIF
 ELSE
 	IF ゲームモード() == "新婚モード"
-		コマンド表示用:3 = %SET_TOOLTIP("[---] - 対象変更 ", @"%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%以外にキャラが居ません", 0, "gray")%
+		コマンド表示用:3 = %SET_TOOLTIP("[---] - 対象変更 ", @"%CALLNAMEDISP(FINDCHARA(CFLAG:嫁, 1))%以外にキャラが居ません", 0, "gray")%
 	ELSEIF CHARANUM == 1 && ゲームモード() == "段位認定"
 		コマンド表示用:3 = %SET_TOOLTIP("[---] - 奴隷変更 ", "調教可能なキャラが居ません", 0, "gray")%
 	ELSEIF CHARANUM != 1 && TARGET >= 0
-		コマンド表示用:3 = %SET_TOOLTIP("[---] - 奴隷変更 ", @"%CALLNAME:TARGET%以外に調教可能なキャラが居ません", 0, "gray")%
+		コマンド表示用:3 = %SET_TOOLTIP("[---] - 奴隷変更 ", @"%CALLNAMEDISP(TARGET)%以外に調教可能なキャラが居ません", 0, "gray")%
 	ELSE
 		コマンド表示用:3 = %SET_TOOLTIP("[---] - 奴隷変更 ", "[403] - 奴隷購入 からキャラを購入してください", 0, "gray")%
 	ENDIF
@@ -398,6 +411,304 @@ HTML_PRINT STRJOIN(コマンド表示用, "")
 ;デバッグモードなら表示
 ;#;PRINTPLAIN 　
 ;#;PRINTL [998] - デバッグ
+
+DRAWLINE
+PRINTPLAIN 　SHOP　
+
+@SHOPCOM_ENG
+#DIM DYNAMIC 助手可能
+#DIM DYNAMIC 売却可能
+#DIM DYNAMIC 調教可能
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC コマンド表示用, 10
+#DIMS DYNAMIC LCALL
+
+;現助手＋元助手のキャラ数の確認
+FOR LCOUNT, 1, CHARANUM
+	;育児部屋に移動しているキャラは除外
+	SIF CHECK_CHILD_CARE(LCOUNT)
+		CONTINUE
+	;助手可能
+	SIF CFLAG:LCOUNT:状態 == 2
+		助手可能++
+	;売却可能
+	SIF CFLAG:LCOUNT:状態 >= 1 && !CFLAG:LCOUNT:売却不可
+		売却可能++
+NEXT
+
+;TARGETの他に調教できるキャラがいるかどうか
+FOR LCOUNT, 0, CHARANUM
+	;主人は除外
+	SIF LCOUNT == MASTER
+		CONTINUE
+	;奴隷も除外
+	SIF LCOUNT == TARGET
+		CONTINUE
+	;使用不可は除外
+	SIF CFLAG:LCOUNT:使用不可
+		CONTINUE
+	;育児部屋に移動しているキャラは除外
+	SIF CHECK_CHILD_CARE(LCOUNT)
+		CONTINUE
+	調教可能++
+NEXT
+
+SELECTCASE SEX(TARGET)
+	CASE 1
+		LCALL = him
+	CASE 2
+		LCALL = her
+ENDSELECT
+
+;コマンド名は現在全角4文字の範囲で統一
+;100番台は行動のコマンド
+コマンド表示用 = 　
+;TARGETがいれば表示
+;九尾狐夜行では夜だけ調教可能
+IF 受験段位名 == "九尾狐夜行" && TIME == 0
+	SETCOLORBYNAME gray
+	コマンド表示用:1 = %SET_TOOLTIP("[---] - Start Training    ", "You can training at night only.", 0)%
+	RESETCOLOR
+ELSEIF TARGET > 0
+	SELECTCASE FALLTYPE(TARGET)
+		CASE 1
+			コマンド表示用:1 = %SET_TOOLTIP("[100] - Foster Love       ", @"Make love to %CALLNAMEDISP(TARGET)%.")%
+		CASE 2
+			コマンド表示用:1 = %SET_TOOLTIP(@"[100] - Lewd %LCALL%          ", @"Get laid by %CALLNAMEDISP(TARGET)%")%
+		CASE 3
+			コマンド表示用:1 = %SET_TOOLTIP("[100] - Dominate          ", @"Dominate %LCALL%")%
+		CASEELSE
+			コマンド表示用:1 = %SET_TOOLTIP("[100] - Start Training    ", @"Training with %CALLNAMEDISP(TARGET)%")%
+	ENDSELECT
+ELSE
+	SETCOLORBYNAME gray
+	IF CHARANUM == 1 && ゲームモード() == "段位認定"
+		コマンド表示用:1 = %SET_TOOLTIP("[---] - Start Training    ", "Characters are can't train.", 0)%
+	ELSEIF ゲームモード() == "新婚モード"
+		コマンド表示用:1 = %SET_TOOLTIP("[---] - Foster Love       ", "Please select a character from [202] - Change Target", 0)%
+	ELSEIF 調教可能
+		コマンド表示用:1 = %SET_TOOLTIP("[---] - Start Training    ", "Please select a character from [202] - Change Target", 0)%
+	ELSE
+		コマンド表示用:1 = %SET_TOOLTIP("[---] - Start Training    ", "Please buy character from [403] - Buy Slaves", 0)%
+	ENDIF
+	RESETCOLOR
+ENDIF
+;無条件で表示
+コマンド表示用:2 = %SET_TOOLTIP("[101] - Rest              ", @"Take a half day break")%
+
+;無条件で表示
+;段位認定では使えない
+SELECTCASE ゲームモード()
+	CASE "段位認定"
+		コマンド表示用:3 = %SET_TOOLTIP("[---] - Facility          ", "Can't use at 段位認定 mode", 0, "gray")%
+	CASEELSE
+		コマンド表示用:3 = %SET_TOOLTIP("[102] - Facility          ", "屋敷の施設・設備の管理をします")%
+ENDSELECT
+
+;STRATEGYモード、PFREEモードなら表示
+SELECTCASE ゲームモード()
+	CASE "経営モード", "フリーモード"
+		コマンド表示用:4 = %SET_TOOLTIP("[103] - Management        ", "収益要素を管理します")%
+		;パートナーに話しかける口上が実装されていれば表示
+		TRYCCALLFORM EXIST_STRATEGY_KOJO_K{FLAG:パートナー}
+			SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
+				コマンド表示用:5 = %SET_TOOLTIP("[104] - Talk with Manager ", @"%CSVCALLNAMEDISP(FLAG:パートナー)%に経営の相談をします")%
+		CATCH
+		ENDCATCH
+ENDSELECT
+
+;新婚モードの一転攻勢
+IF ゲームモード() == "新婚モード"
+	IF TALENT:FINDCHARA(CFLAG:嫁, 1):妊娠 || TALENT:FINDCHARA(CFLAG:嫁, 1):育児中
+		コマンド表示用:6 = %SET_TOOLTIP("[---] - Replace a Master  ", @"%CALLNAMEDISP(FINDCHARA(CFLAG:嫁, 1))%が身篭っているため、できません", 0, "gray")%
+	ELSE
+		コマンド表示用:6 = %SET_TOOLTIP("[105] - Replace a Master  ", @"%CALLNAMEDISP(MASTER)%と%CALLNAMEDISP(FINDCHARA(CFLAG:嫁, 1))%の受け攻めを変えます")%
+	ENDIF
+ENDIF
+
+;主人のスキルアップ
+コマンド表示用:7 = %SET_TOOLTIP("[106] - SKILL UP          ", @"%CALLNAMEDISP(MASTER)%のスキルツリーを表示します")%
+
+
+HTML_PRINT STRJOIN(コマンド表示用, "")
+
+;200番台は奴隷関連のコマンド
+VARSET コマンド表示用
+コマンド表示用 = 　
+;調教者含め誰かがいれば表示 現在は必ず表示される
+コマンド表示用:1 = %SET_TOOLTIP("[200] - Abilities         ", @"Display characters infomation")%
+;奴隷が一人でもいれば表示
+IF CHARANUM > 1
+	コマンド表示用:2 = %SET_TOOLTIP("[201] - Raise Abilities   ", @"Raise characters ability")%
+ELSEIF ゲームモード() != "段位認定"
+	コマンド表示用:2 = %SET_TOOLTIP("[---] - Raise Abilities   ", "Please buy characters from [403] - Buy Slaves", 0, "gray")%
+ELSE
+	コマンド表示用:2 = %SET_TOOLTIP("[---] - Raise Abilities   ", "Characters are not here", 0, "gray")%
+ENDIF
+IF 調教可能
+	IF ゲームモード() == "新婚モード"
+		コマンド表示用:3 = %SET_TOOLTIP("[202] - Change Target     ", "お相手を変更します")%
+	ELSE
+		コマンド表示用:3 = %SET_TOOLTIP("[202] - Change Target     ", "調教対象を変更します")%
+	ENDIF
+ELSE
+	IF ゲームモード() == "新婚モード"
+		コマンド表示用:3 = %SET_TOOLTIP("[---] - Change Target     ", @"%CALLNAMEDISP(FINDCHARA(CFLAG:嫁, 1))%以外にキャラが居ません", 0, "gray")%
+	ELSEIF CHARANUM == 1 && ゲームモード() == "段位認定"
+		コマンド表示用:3 = %SET_TOOLTIP("[---] - Change Target     ", "調教可能なキャラが居ません", 0, "gray")%
+	ELSEIF CHARANUM != 1 && TARGET >= 0
+		コマンド表示用:3 = %SET_TOOLTIP("[---] - Change Target     ", @"%CALLNAMEDISP(TARGET)%以外に調教可能なキャラが居ません", 0, "gray")%
+	ELSE
+		コマンド表示用:3 = %SET_TOOLTIP("[---] - Change Target     ", "[403] - 奴隷購入 からキャラを購入してください", 0, "gray")%
+	ENDIF
+ENDIF
+;助手可能キャラが一人でもいれば表示
+IF 助手可能
+	IF ASSI > 0
+		コマンド表示用:4 = %SET_TOOLTIP("[203] - Change Assistant  ", "助手を変更します")%
+	ELSE
+		コマンド表示用:4 = %SET_TOOLTIP("[203] - Change Assistant  ", "助手を選出します")%
+	ENDIF
+ELSE
+	コマンド表示用:4 = %SET_TOOLTIP("[---] - Change Assistant  ", "助手に選べるキャラは居ません", 0, "gray")%
+ENDIF
+;魔法
+IF TALENT:MASTER:魔術師 || (TARGET > 0 && TALENT:魔術師) || (ASSI > 0 && TALENT:ASSI:魔術師)
+	コマンド表示用:5 = %SET_TOOLTIP("[204] - Magic Chant       ", "魔法を使用します")%
+ELSE
+	コマンド表示用:5 = %SET_TOOLTIP("[---] - Magic Chant       ", "魔法を使用するには主人、助手、もしくは調教対象が魔術師である必要があります", 0, "gray")%
+ENDIF
+
+;主人が禁断の知識持ってる場合
+;IF TALENT:MASTER:禁断の知識
+;	IF CHARANUM > 1
+;		コマンド表示用:6 = %SET_TOOLTIP("[205] - 身体改造 ", "キャラの体に改造を施します")%
+;	ELSE
+;		コマンド表示用:6 = %SET_TOOLTIP("[---] - 身体改造 ", "改造可能なキャラが居ません", 0, "gray")%
+;	ENDIF
+;ENDIF
+
+HTML_PRINT STRJOIN(コマンド表示用, "")
+
+VARSET コマンド表示用
+;300番台はミニゲームのコマンド
+コマンド表示用 = 　
+
+;今月号のパズル雑誌持ってれば表示
+SIF ITEM:ロジカルダッシュ == YEAR*100+MONTH
+	コマンド表示用:1 = %SET_TOOLTIP("[300] - Puzzle            ", "今月号のパズル雑誌で遊びます")%
+
+;経営、PFREEなら表示
+SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード")
+	コマンド表示用:2 = %SET_TOOLTIP("[301] - Casino            ", "カジノに行ってギャンブルをします")%
+
+;裏カジノ行ければ表示
+SIF FLAG:裏カジノ
+	コマンド表示用:3 = %SET_TOOLTIP("[302] - Darkness Casino   ", "高レートの裏カジノに行ってギャンブルをします")%
+
+;無条件表示（暫定）
+コマンド表示用:4 = %SET_TOOLTIP("[303] - Redesign          ", "家の模様替えを行います")%
+
+;ビデオ所持していれば表示
+SIF FINDELEMENT(所持ビデオ, "", 0, VARSIZE("所持ビデオ"), 1) > 0
+	コマンド表示用:5 = %SET_TOOLTIP("[304] - VIDEO             ", "所持しているビデオの一覧を表示します")%
+
+SIF STRJOIN(コマンド表示用, "") != "　"
+	HTML_PRINT STRJOIN(コマンド表示用, "")
+
+VARSET コマンド表示用
+
+;400番台は購入・売却のコマンド
+コマンド表示用 = 　
+;無条件で表示
+コマンド表示用:1 = %SET_TOOLTIP("[400] - Item              ", "淫具や素質追加などのアイテムを購入します")%
+
+;変化できるキャラが居れば表示
+SIF CMATCH(TALENT:変化, 1)
+	コマンド表示用:2 = %SET_TOOLTIP("[401] - Transform         ", "素質[変化]を持った陥落済みのキャラクターを動物の姿や人間の姿に変化させます")%
+
+;新婚モード以外で表示
+SIF ゲームモード() != "新婚モード"
+	コマンド表示用:3 = %SET_TOOLTIP("[402] - Household         ", "奴隷の種族を変更するための儀式を行います")%
+
+;段位認定、新婚モード以外で表示
+IF ゲームモード() == "段位認定"
+	コマンド表示用:4 = %SET_TOOLTIP("[---] - Buy Slaves        ", "段位認定では奴隷を購入することができません", 0, "gray")%
+ELSEIF ゲームモード() != "新婚モード"
+	コマンド表示用:4 = %SET_TOOLTIP("[403] - Buy Slaves        ", "調教するための奴隷を購入します")%
+ENDIF
+;売却できるキャラがいれば表示
+IF 受験段位名 != "ヤンデレの音ゲーキャラに死ぬほど愛されて眠れないコース"
+	IF 売却可能
+		コマンド表示用:5 = %SET_TOOLTIP("[404] - Sell Slaves       ", "調教で仕上がった奴隷を売却します")%
+	ELSEIF ゲームモード() != "新婚モード"
+		コマンド表示用:5 = %SET_TOOLTIP("[---] - Sell Slaves       ", "売却可能な奴隷が居ません", 0, "gray")%
+	ENDIF
+ENDIF
+
+;新婚モードではアイテム購入のみ表示
+HTML_PRINT STRJOIN(コマンド表示用, "")
+
+VARSET コマンド表示用
+;500番台はセーブ・ロード・オプションのシステムコマンド
+;セーブ・ロード・オプションは無条件で表示
+コマンド表示用 = 　
+コマンド表示用:1 = %SET_TOOLTIP("[500] - SAVE              ", "現在の状況をセーブします")%
+コマンド表示用:2 = %SET_TOOLTIP("[501] - LOAD              ", "セーブデータをロードします。保存していない進行状況は失われます")%
+コマンド表示用:3 = %SET_TOOLTIP("[502] - OPTION            ", "服装やテキスト表示など、様々な設定を変更します")%
+
+HTML_PRINT STRJOIN(コマンド表示用, "")
+
+;600番台は周回コマンド
+;所持金が条件に達していて、ゲームモードがSTANDARDもしくはSTRATEGYなら表示
+VARSET コマンド表示用
+コマンド表示用 = 　
+SELECTCASE ゲームモード()
+	;STANDARD
+	CASE "通常モード"
+		IF MONEY < DIG_SEP("1,000,000")
+			コマンド表示用:1 = %SET_TOOLTIP("[---] - Payment           ", "1,000,000の所持金が必要です", 0, "gray")%
+		ELSE
+			コマンド表示用:1 = %SET_TOOLTIP("[600] - Payment           ", "1,000,000の所持金を納め、ゲームをクリアします")%
+		ENDIF
+	;STRATEGY
+	CASE "経営モード"
+		IF MONEY < DIG_SEP("100,000,000")
+			コマンド表示用:1 = %SET_TOOLTIP("[---] - Payment           ", "100,000,000の所持金が必要です", 0, "gray")%
+		ELSE
+			コマンド表示用:1 = %SET_TOOLTIP("[600] - Payment           ", "100,000,000の所持金を納め、ゲームをクリアします")%
+		ENDIF
+	;新婚
+	CASE "新婚モード"
+		コマンド表示用:1 = %SET_TOOLTIP("[---] - Payment           ", "新婚モードでは納金の必要はありません", 0, "gray")%
+	;段位認定
+	CASE "段位認定"
+		コマンド表示用:1 = %SET_TOOLTIP("[---] - Payment           ", "段位認定では納金の必要はありません", 0, "gray")%
+	;PFREE
+	CASE "フリーモード"
+		コマンド表示用:1 = %SET_TOOLTIP("[---] - Payment           ", "PREMIUM FREE MODEでは納金の必要はありません", 0, "gray")%
+ENDSELECT
+;周回可能なら表示
+IF FLAG:周回可能
+	コマンド表示用:2 = %SET_TOOLTIP("[601] - New Game+         ", "この周を終了し、引き継いでニューゲームを開始します")%
+ELSE
+	SELECTCASE ゲームモード()
+		CASE "新婚モード"
+			コマンド表示用:2 = %SET_TOOLTIP("[---] - New Game+         ", "新婚モードでは周回出来ません", 0, "gray")%
+		CASE "段位認定"
+			コマンド表示用:2 = %SET_TOOLTIP("[---] - New Game+         ", "段位認定では周回出来ません", 0, "gray")%
+		CASE "フリーモード"
+			コマンド表示用:2 = %SET_TOOLTIP("[---] - New Game+         ", "PREMIUM FREE MODEでは周回出来ません", 0, "gray")%
+		CASEELSE
+			コマンド表示用:2 = %SET_TOOLTIP("[---] - New Game+         ", "ゲームをクリアしないと周回は出来ません", 0, "gray")%
+	ENDSELECT
+ENDIF
+
+HTML_PRINT STRJOIN(コマンド表示用, "")
+
+;デバッグモードなら表示
+;#;PRINTPLAIN 　
+;#;PRINTL [998] - Debug
 
 DRAWLINE
 PRINTPLAIN 　SHOP　
@@ -770,7 +1081,7 @@ IF TARGET > 0
 		ELSE
 			PRINTL □同棲中
 		ENDIF
-		PRINTFORM 　%NAME:TARGET%
+		PRINTFORM 　%NAMEDISP(TARGET)%
 	ELSE
 		IF LANGUAGE == "ENG"
 			PRINTPLAIN □Training 
@@ -827,16 +1138,16 @@ IF TARGET > 0
 		VARSET 能力表示用
 		
 		能力表示用 = %SET_TOOLTIP(@"　Obedience:LV{ABL:従順, 2, LEFT}", ABL_COMMENT("従順"))%
-		能力表示用:1 = %SET_TOOLTIP(@"Lust:LV{ABL:欲望, 2, LEFT}", ABL_COMMENT("欲望"))%
-		能力表示用:2 = %SET_TOOLTIP(@"Technique:LV{ABL:技巧, 2, LEFT}", ABL_COMMENT("技巧"))%
+		能力表示用:1 = %SET_TOOLTIP(@" Lust:LV{ABL:欲望, 2, LEFT}", ABL_COMMENT("欲望"))%
+		能力表示用:2 = %SET_TOOLTIP(@" Technique:LV{ABL:技巧, 2, LEFT}", ABL_COMMENT("技巧"))%
 		HTML_PRINT STRJOIN(能力表示用, "")
 
 		VARSET 能力表示用
 		能力表示用 = %SET_TOOLTIP(@"　CSence:LV{ABL:Ｃ感覚, 2, LEFT}", ABL_COMMENT("Ｃ感覚"))%
 		SIF VAGINA(TARGET)
-			能力表示用:1 = %SET_TOOLTIP(@"VSence:LV{ABL:Ｖ感覚, 2, LEFT}", ABL_COMMENT("Ｖ感覚"))%
-		能力表示用:2 = %SET_TOOLTIP(@"ASence:LV{ABL:Ａ感覚, 2, LEFT}", ABL_COMMENT("Ａ感覚"))%
-		能力表示用:3 = %SET_TOOLTIP(@"BSence:LV{ABL:Ｂ感覚, 2, LEFT}", ABL_COMMENT("Ｂ感覚"))%
+			能力表示用:1 = %SET_TOOLTIP(@" VSence:LV{ABL:Ｖ感覚, 2, LEFT}", ABL_COMMENT("Ｖ感覚"))%
+		能力表示用:2 = %SET_TOOLTIP(@" ASence:LV{ABL:Ａ感覚, 2, LEFT}", ABL_COMMENT("Ａ感覚"))%
+		能力表示用:3 = %SET_TOOLTIP(@" BSence:LV{ABL:Ｂ感覚, 2, LEFT}", ABL_COMMENT("Ｂ感覚"))%
 		HTML_PRINT STRJOIN(能力表示用, "")
 		
 		CALL SHOW_INFO_MARK, TARGET
@@ -898,7 +1209,7 @@ PRINTL
 IF LANGUAGE == "ENG"
 	PRINTFORML 　Saved Milk:{FLAG:保管済み母乳}ml　Saved Samen:{FLAG:保管済み精液}ml
 
-	PRINTFORM 　Master:%NAME:MASTER% %性別表示(MASTER)% 
+	PRINTFORM 　Master:%NAMEDISP(MASTER)% %性別表示(MASTER)% 
 	SIF TALENT:MASTER:ふたなり
 		PRINT [Futanari]
 	PRINTL 
@@ -907,9 +1218,9 @@ IF LANGUAGE == "ENG"
 
 	IF ASSI >= 0
 		IF TALENT:ASSI:アニマル
-			PRINTFORM 　Pet:%NAME:ASSI%
+			PRINTFORM 　Pet:%NAMEDISP(ASSI)%
 		ELSE
-			PRINTFORM 　Assistant:%NAME:ASSI%
+			PRINTFORM 　Assistant:%NAMEDISP(ASSI)%
 		ENDIF
 		PRINTFORM %性別表示(ASSI)% 
 		SIF TALENT:ASSI:ふたなり
@@ -923,7 +1234,7 @@ IF LANGUAGE == "ENG"
 ELSE
 	PRINTFORML 　保管済み母乳:{FLAG:保管済み母乳}ml　保管済み精液:{FLAG:保管済み精液}ml
 
-	PRINTFORM 　主人:%NAME:MASTER% %性別表示(MASTER)% 
+	PRINTFORM 　主人:%NAMEDISP(MASTER)% %性別表示(MASTER)% 
 	SIF TALENT:MASTER:ふたなり
 		PRINT [ふたなり]
 	PRINTL 
@@ -932,9 +1243,9 @@ ELSE
 
 	IF ASSI >= 0
 		IF TALENT:ASSI:アニマル
-			PRINTFORM 　ペット:%NAME:ASSI%
+			PRINTFORM 　ペット:%NAMEDISP(ASSI)%
 		ELSE
-			PRINTFORM 　助手:%NAME:ASSI%
+			PRINTFORM 　助手:%NAMEDISP(ASSI)%
 		ENDIF
 		PRINTFORM %性別表示(ASSI)% 
 		SIF TALENT:ASSI:ふたなり
@@ -950,30 +1261,57 @@ ENDIF
 DRAWLINE
 IF GC物件
 	LOCAL = 0
-	PRINTFORML □%GC店名%の状況
-	IF FLAG:ゲーセン営業中 > 0
-		PRINTPLAIN 　営業中 
-		PRINTL [700] - 一時休業する
-		LOCAL = FINDCHARA(CFLAG:ゲーセン店長, 1)
-		SIF LOCAL == -1
-			LOCAL = 0
-		CALL PASELIL, @"　前日の収入:{基本収入}＄ 店長:%NAME:LOCAL%"
+	IF LANGUAGE == "ENG"
+		PRINTFORML □%GC店名%
+		IF FLAG:ゲーセン営業中 > 0
+			PRINTPLAIN 　OPEN 
+			PRINTL [700] - Take a leave
+			LOCAL = FINDCHARA(CFLAG:ゲーセン店長, 1)
+			SIF LOCAL == -1
+				LOCAL = 0
+			CALL PASELIL, @"　Income of yesterday:{基本収入}＄ Store manager:%NAMEDISP(LOCAL)%"
+		ELSE
+			PRINTPLAIN 　CLOSED 
+			PRINTL [700] - Take a open
+		ENDIF
 	ELSE
-		PRINTPLAIN 　休業中 
-		PRINTL [700] - 営業を開始する
+		PRINTFORML □%GC店名%の状況
+		IF FLAG:ゲーセン営業中 > 0
+			PRINTPLAIN 　営業中 
+			PRINTL [700] - 一時休業する
+			LOCAL = FINDCHARA(CFLAG:ゲーセン店長, 1)
+			SIF LOCAL == -1
+				LOCAL = 0
+			CALL PASELIL, @"　前日の収入:{基本収入}＄ 店長:%NAMEDISP(LOCAL)%"
+		ELSE
+			PRINTPLAIN 　休業中 
+			PRINTL [700] - 営業を開始する
+		ENDIF
 	ENDIF
 	DRAWLINE
 ENDIF
 
 IF ITEM:風俗店営業許可証
-	PRINTFORML □%娼館店名%の状況
-	IF FLAG:娼館営業中 > 0
-		PRINTPLAIN 　営業中 
-		PRINTL [701] - 一時休業する
-		CALL PASELIL, @"　前日の収入:{娼館前日の収入}＄"
+	IF LANGUAGE == "ENG"
+		PRINTFORML □%娼館店名%
+		IF FLAG:娼館営業中 > 0
+			PRINTPLAIN 　OPEN 
+			PRINTL [701] - Take a leave
+			CALL PASELIL, @"　Income of yesterday:{娼館前日の収入}＄"
+		ELSE
+			PRINTPLAIN 　CLOSED 
+			PRINTL [701] - Take a open
+		ENDIF
 	ELSE
-		PRINTPLAIN 　休業中 
-		PRINTL [701] - 営業を開始する
+		PRINTFORML □%娼館店名%の状況
+		IF FLAG:娼館営業中 > 0
+			PRINTPLAIN 　営業中 
+			PRINTL [701] - 一時休業する
+			CALL PASELIL, @"　前日の収入:{娼館前日の収入}＄"
+		ELSE
+			PRINTPLAIN 　休業中 
+			PRINTL [701] - 営業を開始する
+		ENDIF
 	ENDIF
 	DRAWLINE
 ENDIF
@@ -983,12 +1321,20 @@ FOR LCOUNT, 0, 10000
 	SIF !EXISTCSV(LCOUNT)
 		CONTINUE
 	IF (CSVCFLAG(LCOUNT, GETNUM(CFLAG, "誕生日"))/100) == MONTH && (CSVCFLAG(LCOUNT, 0)%100) == DAYS
-		PRINTFORML 　今日は%CSVNAMEF(LCOUNT)%の誕生日です
+		IF LANGUAGE == "ENG"
+			PRINTFORML 　Today is %CSVNAMEDISP(LCOUNT)%'s birthday.
+		ELSE
+			PRINTFORML 　今日は%CSVNAMEF(LCOUNT)%の誕生日です
+		ENDIF
 		LOCAL++
 	ENDIF
 NEXT
 IF LOCAL
-	PRINTL 　ハッピーバースデー！
+	IF LANGUAGE == "ENG"
+		PRINTL 　Happy Birthday!
+	ELSE
+		PRINTL 　ハッピーバースデー！
+	ENDIF
 	DRAWLINE
 ENDIF
 LOCAL = 0
