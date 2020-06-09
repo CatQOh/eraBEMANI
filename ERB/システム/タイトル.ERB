@@ -29,7 +29,29 @@ REND
 
 SAVEGLOBAL
 
-IF LICENSE == 0
+IF LANGUAGE == ""
+	ALIGNMENT CENTER
+	PRINTL 言語を選択してください
+	PRINTL Please select a language
+	PRINTL [0] - 日本語(Japanese)
+	PRINTL [1] - 英語(English)
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 0
+				LANGUAGE = JP
+				BREAK
+			CASE 1
+				LANGUAGE = ENG
+				BREAK
+		ENDSELECT
+	LOOP 1
+ENDIF
+
+SAVEGLOBAL
+ALIGNMENT LEFT
+
+IF LICENSE == 0 && LANGUAGE == "JP"
 	LOCALS = <shape type='rect' param='1000,75,4500,575' color='white'>
 	LOCALS:1 = <font color='black' bcolor='red'><button value='1'>　　　　　　　　　　[1] - 次へ</button></font>
 	LOCALS:2 = <font color='black' bcolor='red'><button value='8'>　　　　　　　　　　[8] - ライセンスに同意する</button></font>　<font color='black' bcolor='red'><button value='9'>[9] - ライセンスに同意しない</button></font>
@@ -159,12 +181,20 @@ DO
 		SIF !EXISTCSV(COUNT)
 			CONTINUE
 		IF (CSVCFLAG(COUNT, GETNUM(CFLAG, "誕生日"))/100) == LMONTH && (CSVCFLAG(COUNT, 0)%100) == LDAYS
-			PRINTFORML 今日は%CSVNAMEF(COUNT)%の誕生日です
+			IF LANGUAGE == "ENG"
+				PRINTFORML Today is %CSVENGNAME(COUNT)%'s birthday.
+			ELSE
+				PRINTFORML 今日は%CSVNAMEF(COUNT)%の誕生日です
+			ENDIF
 			LOCAL++
 		ENDIF
 	REND
 	IF LOCAL
-		PRINTL ハッピーバースデー！
+		IF LANGUAGE == "ENG"
+			PRINTL Happy Birthday!
+		ELSE
+			PRINTL ハッピーバースデー！
+		ENDIF
 		DRAWLINE
 	ENDIF
 	LOCAL = 0
@@ -174,33 +204,64 @@ DO
 	PRINTFORML (2013-2020)
 	PRINTFORML Ver.2010/03/08
 	PRINTFORML TOTAL CHARA {CSVCOUNT}
-	PRINTFORM 現在の段位:
-	CALL GRADE, 段位
-	PRINTL 
-	CALLFORM TITLECOMMENT
-	DRAWLINE
 
-	PRINTL [0] 最初からはじめる
-	PRINTL [1] ロードしてはじめる
-	PRINTL [2] アチーブメントを確認する
-	REPEAT ENDING+1
-		SIF COUNT == 0
-			CONTINUE
-		IF ENDING:COUNT
-			LOCAL = 1
-			PRINTL [3] エンディングを見る
-			BREAK
+	IF LANGUAGE == "ENG"
+		PRINTFORM Now Grade:
+		CALL GRADE, 段位
+		PRINTL 
+		CALLFORM TITLECOMMENT
+		DRAWLINE
+
+		PRINTL [0] New Game
+		PRINTL [1] Load Game
+		PRINTL [2] Achievement
+		REPEAT ENDING+1
+			SIF COUNT == 0
+				CONTINUE
+			IF ENDING:COUNT
+				LOCAL = 1
+				PRINTL [3] Show Epilogues
+				BREAK
+			ENDIF
+		REND
+		IF QMA
+			PRINTL [4] Set eraBEMANI mode
+		ELSE
+			PRINTL [4] Set eraQMA mode
 		ENDIF
-	REND
-	IF QMA
-		PRINTL [4] eraBEMANI仕様に戻す
+		PRINTL [5] Run CSV Editor
+		PRINTL [6] Option Preset
+	;#;	PRINTL [7] School Mode
+		PRINTL [9] Change Language
 	ELSE
-		PRINTL [4] eraQMA仕様にする
+		PRINTFORM 現在の段位:
+		CALL GRADE, 段位
+		PRINTL 
+		CALLFORM TITLECOMMENT
+		DRAWLINE
+
+		PRINTL [0] 最初からはじめる
+		PRINTL [1] ロードしてはじめる
+		PRINTL [2] アチーブメントを確認する
+		REPEAT ENDING+1
+			SIF COUNT == 0
+				CONTINUE
+			IF ENDING:COUNT
+				LOCAL = 1
+				PRINTL [3] エンディングを見る
+				BREAK
+			ENDIF
+		REND
+		IF QMA
+			PRINTL [4] eraBEMANI仕様に戻す
+		ELSE
+			PRINTL [4] eraQMA仕様にする
+		ENDIF
+		PRINTL [5] CSVエディターを開く
+		PRINTL [6] オプションの初期設定を変更する
+	;#;	PRINTL [7] 学園モードデバッグ
+		PRINTL [9] 言語変更
 	ENDIF
-	PRINTL [5] CSVエディターを開く
-	PRINTL [6] オプションの初期設定を変更する
-;#;	PRINTL [7] 学園モードデバッグ
-;#; PRINTFORML [9] 言語変更(現在:%LANGUAGE%)
 
 	ALIGNMENT LEFT
 
@@ -238,7 +299,7 @@ DO
 				BREAK
 			CASE 9
 				IF LANGUAGE == "ENG"
-					LANGUAGE =
+					LANGUAGE = JP
 				ELSE
 					LANGUAGE = ENG
 				ENDIF
