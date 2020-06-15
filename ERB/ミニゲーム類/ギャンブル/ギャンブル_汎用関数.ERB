@@ -47,43 +47,85 @@ ENDSELECT
 
 DRAWLINE
 IF (TARGET > 0 && TALENT:アニマル) || (ASSI > 0 && TALENT:ASSI:アニマル)
-	PRINT カジノにペットの入店は許可されていません。
-	IF TALENT:アニマル
-		PRINTFORM %CALLNAME:TARGET%
-		TARGET = -1
-		IF ASSI > 0 && TALENT:ASSI:アニマル
-			PRINTFORM と%CALLNAME:ASSI%
+	IF LANGUAGE == "ENG"
+		PRINT Casino is not allowed entry with pet. 
+		IF TALENT:アニマル
+			PRINTFORM %CALLNAMEDISP(TARGET)% 
+			TARGET = -1
+			IF ASSI > 0 && TALENT:ASSI:アニマル
+				PRINTFORM and %CALLNAMEDISP(ASSI)% are 
+				ASSI = -1
+			ELSE
+				PRINT is 
+			ENDIF
+		ELSEIF ASSI > 0 && TALENT:ASSI:アニマル
+			PRINTFORM %CALLNAMEDISP(ASSI)% is 
 			ASSI = -1
 		ENDIF
-	ELSEIF ASSI > 0 && TALENT:ASSI:アニマル
-		PRINTFORM %CALLNAME:ASSI%
-		ASSI = -1
+		PRINTFORMW stay at home.
+	ELSE
+		PRINT カジノにペットの入店は許可されていません。
+		IF TALENT:アニマル
+			PRINTFORM %CALLNAME:TARGET%
+			TARGET = -1
+			IF ASSI > 0 && TALENT:ASSI:アニマル
+				PRINTFORM と%CALLNAME:ASSI%
+				ASSI = -1
+			ENDIF
+		ELSEIF ASSI > 0 && TALENT:ASSI:アニマル
+			PRINTFORM %CALLNAME:ASSI%
+			ASSI = -1
+		ENDIF
+		PRINTFORMW を家に置いてきました
 	ENDIF
-	PRINTFORMW を家に置いてきました
 	DRAWLINE
 ENDIF
 SELECTCASE カジノの種類
 	;表カジノ
 	CASE 1
 		PLAYBGM カジノBGM
-		PRINTL カジノへようこそ。どのギャンブルで遊びますか？
-		PRINTL ただし、ギャンブル中に借金を背負って返済できなかった場合、
-		PRINTFORML その借金に対し、{利子}\%の利子が付きます。(10日に一度、返済を要求されます。その度に利子が発生します)
+		IF LANGUAGE == "ENG"
+			PRINTL Welcome to casino! What play game you do?
+			PRINTL But If you debt and can't payment,
+			PRINTFORML {利子}\% interest rate will arise.(We claim debt every 10 days)
+		ELSE
+			PRINTL カジノへようこそ。どのギャンブルで遊びますか？
+			PRINTL ただし、ギャンブル中に借金を背負って返済できなかった場合、
+			PRINTFORML その借金に対し、{利子}\%の利子が付きます。(10日に一度、返済を要求されます。その度に利子が発生します)
+		ENDIF
 	;裏カジノ
 	CASE 2
-		PRINTL 大金と命を賭けたクレイジーなカジノへようこそ！どのギャンブルで遊びますか？
-		PRINTL ただし、ギャンブル中に借金を背負って返済できなかった場合、
-		FONTBOLD
-		PRINT 裏カジノ特有のやり方
-		FONTREGULAR
-		PRINTL で借金の返済をしていただきます。
+		IF LANGUAGE == "ENG"
+			PRINTL Welcome to Darkness casino! What play game you do?
+			PRINTL But If you debt and can't payment,
+			PRINTL You will get 
+			FONTBOLD
+			PRINTL TERRIBLE PENALTY.
+			FONTREGULAR
+		ELSE
+			PRINTL 大金と命を賭けたクレイジーなカジノへようこそ！どのギャンブルで遊びますか？
+			PRINTL ただし、ギャンブル中に借金を背負って返済できなかった場合、
+			FONTBOLD
+			PRINT 裏カジノ特有のやり方
+			FONTREGULAR
+			PRINTL で借金の返済をしていただきます。
+		ENDIF
 ENDSELECT
-CALL PASELIL, @"所持金:{MONEY}＄"
-[IF_DEBUG]
-	CALL PASELIL, @"総収支:{ギャンブル総収支}＄"
-	PRINTFORML キャロル好感度:{キャロル好感度}
-	PRINTFORML ことみちゃん好感度:{ことみちゃん好感度}
-[ENDIF]
+IF LANGUAGE== "ENG"
+	CALL PASELIL, @"Moneys:{MONEY}＄"
+	[IF_DEBUG]
+		CALL PASELIL, @"Total Income:{ギャンブル総収支}＄"
+		PRINTFORML Carol's Rating:{キャロル好感度}
+		PRINTFORML Kotomi's Rating:{ことみちゃん好感度}
+	[ENDIF]
+ELSE
+	CALL PASELIL, @"所持金:{MONEY}＄"
+	[IF_DEBUG]
+		CALL PASELIL, @"総収支:{ギャンブル総収支}＄"
+		PRINTFORML キャロル好感度:{キャロル好感度}
+		PRINTFORML ことみちゃん好感度:{ことみちゃん好感度}
+	[ENDIF]
+ENDIF
 
 FOR LCOUNT, 0, VARSIZE("ゲーム名")
 	SELECTCASE ゲーム名:LCOUNT
@@ -92,7 +134,11 @@ FOR LCOUNT, 0, VARSIZE("ゲーム名")
 			SIF カジノの種類 == 1
 				CONTINUE
 	ENDSELECT
-	PRINTFORMLC [{LCOUNT}] %ゲーム名:LCOUNT%
+	IF LANGUAGE == "ENG"
+		PRINTFORMLC [{LCOUNT}] %GAMBLEDISP(ゲーム名:LCOUNT)%
+	ELSE
+		PRINTFORMLC [{LCOUNT}] %ゲーム名:LCOUNT%
+	ENDIF
 NEXT
 SIF !LINEISEMPTY()
 	PRINTL
@@ -109,7 +155,8 @@ DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 0 TO VARSIZE("ゲーム名")
-			PRINTFORMW %CALLNAME:MASTER%は%ゲーム名:RESULT%で遊ぶことにした。
+			SIF LANGUAGE == "JP"
+				PRINTFORMW %CALLNAME:MASTER%は%ゲーム名:RESULT%で遊ぶことにした。
 			;ディーラーが存在するゲームならフラグを立てる
 			SELECTCASE ゲーム名:RESULT
 				CASE "ルーレット", "クラップス", "ブラックジャック", "ポーカーソリティア", "レットイットライド", "バカラ"
@@ -172,7 +219,11 @@ PRINTFORML %CALLNAME:MASTER%はギャンブルを終えた。
 SELECTCASE 収支
 	CASE IS > 0
 		PLAYSOUND 出入金
-		CALL PASELIW, @"{収支}＄儲かった！"
+		IF LANGUAGE == "ENG"
+			CALL PASELIW, @"You profited {収支}＄!"
+		ELSE
+			CALL PASELIW, @"{収支}＄儲かった！"
+		ENDIF
 		;勝ち分の桁数の20倍だけキャロルの好感度が増える
 		SIF ディーラーあり
 			キャロル好感度 += 20*(1+LOG10(収支))
@@ -226,27 +277,47 @@ IF MONEY < 0
 	SELECTCASE カジノの種類
 		;表カジノ 借金に上乗せ
 		CASE 1
-			CALL PASELIL, @"ギャンブル中に借金{ABS(MONEY)}＄を背負ったため、"
-			CALL PASELIL, @"その{ABS(MONEY)}＄には利子{ABS(MONEY)*利子/100}＄が付き、借金は{ABS(MONEY)+ABS(MONEY)*利子/100}＄となります。"
-			借金 += ABS(MONEY)+ABS(MONEY)*利子/100
-			MONEY = 0
-			CALL PASELIW, @"借金の総額は{借金}＄となりました。"
+			IF LANGUAGE == "ENG"
+				CALL PASELIL, @"You debted {ABS(MONEY)}＄,"
+				CALL PASELIL, @"Added {ABS(MONEY)*利子/100}＄ interest. You got {ABS(MONEY)+ABS(MONEY)*利子/100}＄ debt."
+				借金 += ABS(MONEY)+ABS(MONEY)*利子/100
+				MONEY = 0
+				CALL PASELIW, @"You have total of {借金}＄ debt."
+			ELSE
+				CALL PASELIL, @"ギャンブル中に借金{ABS(MONEY)}＄を背負ったため、"
+				CALL PASELIL, @"その{ABS(MONEY)}＄には利子{ABS(MONEY)*利子/100}＄が付き、借金は{ABS(MONEY)+ABS(MONEY)*利子/100}＄となります。"
+				借金 += ABS(MONEY)+ABS(MONEY)*利子/100
+				MONEY = 0
+				CALL PASELIW, @"借金の総額は{借金}＄となりました。"
+			ENDIF
 		CASE 2
 			PRINTW ………………
 			PRINTW …………
 			PRINTW ……
 			$返済
-			PRINTFORMW %CALLNAME:MASTER%はギャンブルに負け、借金を背負ってしまった
-			PRINTW このカジノでは負けた場合、金銭以外のもので返済に当てなくてはならない
-			PRINTL 返済の方法は……
-			PRINTL [0] キャラを売り飛ばす
-			PRINTL [1] 自らの身体で払う
+			IF LANGUAGE == "ENG"
+				PRINTFORMW %CALLNAMEDISP(MASTER)% is losed and debt.
+				PRINTFORMW We give TERRIBLE PENALTY for %CALLNAMEDISP(MASTER)%.
+				PRINTL It is...
+				PRINTL [0] Sell Characters
+				PRINTL [1] You payment your body
+			ELSE
+				PRINTFORMW %CALLNAME:MASTER%はギャンブルに負け、借金を背負ってしまった
+				PRINTW このカジノでは負けた場合、金銭以外のもので返済に当てなくてはならない
+				PRINTL 返済の方法は……
+				PRINTL [0] キャラを売り飛ばす
+				PRINTL [1] 自らの身体で払う
+			ENDIF
 			DO
 				INPUT
 				SELECTCASE RESULT
 					CASE 0
 						$売却キャラ選択
-						CALL PASELIL, @"□誰を売り飛ばしますか？(返済額:{ABS(MONEY)}＄)"
+						IF LANGUAGE == "ENG"
+							CALL PASELIL, @"□Who do you sell?(Total Debt:{ABS(MONEY)}＄)"
+						ELSE
+							CALL PASELIL, @"□誰を売り飛ばしますか？(返済額:{ABS(MONEY)}＄)"
+						ENDIF
 						;売却可能でないキャラも売り飛ばせるが、総じて売値は半額になる 隠しキャラとアニマル、魔法効果発動中のキャラは売れない
 						FOR PAGING, 0, CHARANUM
 							LOCAL = 1
@@ -266,7 +337,11 @@ IF MONEY < 0
 									キャラ価格 = 0
 								ENDIF
 							ENDIF
-							CALL PAGING, LOCAL, @"価格:{キャラ価格} \@ 売却候補:PAGING ? 売却候補 #  \@"
+							IF LANGUAGE == "ENG"
+								CALL PAGING, LOCAL, @"Price:{キャラ価格} \@ 売却候補:PAGING ? [SELECT] #  \@"
+							ELSE
+								CALL PAGING, LOCAL, @"価格:{キャラ価格} \@ 売却候補:PAGING ? 売却候補 #  \@"
+							ENDIF
 						NEXT
 						SELECTCASE RESULT
 							CASE -1
@@ -615,15 +690,28 @@ IF カジノの種類 == 1
 	ENDSELECT
 ENDIF
 
-PRINTL いくら賭けますか？
-IF 利子
-	PRINTL ただし、ギャンブル中に新たな借金を背負って返済できなかった場合、
-	CALL PASELIL, @"その借金に対し、{利子}\%の利子が付きます。"
-ENDIF
-IF カジノの種類 == 3
-	PRINT (所持メダル:
+IF LANGUAGE == "ENG"
+	PRINTL How many stake you do?
+	IF 利子
+		PRINTL But If you debt and can't payment,
+		CALL PASELIL, @"{利子}\% interest rate will arise."
+	ENDIF
+	IF カジノの種類 == 3
+		PRINT (Medal:
+	ELSE
+		PRINT (Moneys:
+	ENDIF
 ELSE
-	PRINT (所持金:
+	PRINTL いくら賭けますか？
+	IF 利子
+		PRINTL ただし、ギャンブル中に新たな借金を背負って返済できなかった場合、
+		CALL PASELIL, @"その借金に対し、{利子}\%の利子が付きます。"
+	ENDIF
+	IF カジノの種類 == 3
+		PRINT (所持メダル:
+	ELSE
+		PRINT (所持金:
+	ENDIF
 ENDIF
 SIF MONEY < 0
 	SETCOLORBYNAME red
@@ -676,7 +764,11 @@ DO
 	INPUT
 	SELECTCASE RESULT
 		CASE IS > 賭け金上限
-			CALL PASELIL, @"賭け金上限は{賭け金上限}です。再入力してください"
+			IF LANGUAGE == "ENG"
+				CALL PASELIL, @"You can stake lower than {賭け金上限}. Please reinput."
+			ELSE
+				CALL PASELIL, @"賭け金上限は{賭け金上限}です。再入力してください"
+			ENDIF
 		CASE IS > 0
 			BREAK
 	ENDSELECT
