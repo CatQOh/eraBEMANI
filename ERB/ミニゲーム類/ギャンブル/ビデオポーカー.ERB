@@ -31,7 +31,11 @@ ENDSELECT
 
 IF MAX_BET > 1
 	PRINTL
-	PRINTW 1ベット当たりの賭け金を決めます。
+	IF LANGUAGE == "ENG"
+		PRINTW Confirm stake of 1 bet.
+	ELSE
+		PRINTW 1ベット当たりの賭け金を決めます。
+	ENDIF
 	CALL STAKE, MAX_BET, カジノの種類
 	ONEBET = RESULT;賭け金の設定
 ELSEIF MAX_BET == 1
@@ -46,18 +50,29 @@ SIF TARGET > 0
 FOR GAMES, 0, GAMES_MAX
 	$VP_START
 	DRAWLINE
-	PRINTFORM <残り{GAMES_MAX - GAMES}ゲーム> 
+	IF LANGUAGE == "ENG"
+		PRINTFORM <Round:{GAMES}/{GAMES_MAX}> 
+	ELSE
+		PRINTFORM <残り{GAMES_MAX - GAMES}ゲーム> 
+	ENDIF
+
 	IF VP_MODE
 		PRINT (Double Bonus 10/7    
 	ELSE
 		PRINT (Jacks or Better 9/6  
 	ENDIF
-	IF D_UP_ON
-		PRINTL ダブルアップ:ON )
+
+	IF LANGUAGE == "ENG"
+		PRINTFORML Double Up:\@ D_UP_ON ? ON # OFF \@)
 	ELSE
-		PRINTL ダブルアップ:OFF)
+		PRINTFORML ダブルアップ:\@ D_UP_ON ? ON # OFF \@)
 	ENDIF
-	PRINT 所持金:
+
+	IF LANGUAGE == "ENG"
+		PRINT Moneys:
+	ELSE
+		PRINT 所持金:
+	ENDIF
 	IF MONEY < 0
 		SETCOLORBYNAME red
 		PRINT -
@@ -65,25 +80,39 @@ FOR GAMES, 0, GAMES_MAX
 	CALL PASELI, @"{ABS(MONEY)}＄ "
 	RESETCOLOR
 	CALL PASELIL, @"1BET:{ONEBET}＄ MAXBET:{5*ONEBET}＄"
-	PRINTL いくら賭けますか？
-	PRINT [0]もうやめる 
-	IF VP_MODE
-		PRINT [7]Jacks or Better 9/6に変える 
+	IF LANGUAGE == "ENG"
+		PRINTL How much bets?
+		PRINT [0]Finish the Game 
+		IF VP_MODE
+			PRINT [7]Change for Jacks or Better 9/6 
+		ELSE
+			PRINT [7]Change for Double Bonus 10/7   
+		ENDIF
+		PRINTFORM [8]Turn \@ D_UP_ON ? OFF # ON \@ the Double Up 
+		PRINTL [9]Change stake of 1 bet
 	ELSE
-		PRINT [7]Double Bonus 10/7に変える   
+		PRINTL いくら賭けますか？
+		PRINT [0]もうやめる 
+		IF VP_MODE
+			PRINT [7]Jacks or Better 9/6に変える 
+		ELSE
+			PRINT [7]Double Bonus 10/7に変える   
+		ENDIF
+		PRINTFORM [8]ダブルアップを\@ D_UP_ON ? OFF # ON \@にする 
+		PRINTL [9]賭け金を変える
 	ENDIF
-	IF D_UP_ON
-		PRINT [8]ダブルアップをOFFにする 
-	ELSE
-		PRINT [8]ダブルアップをONにする  
-	ENDIF
-	PRINTL [9]賭け金を変える
 	CALL PASELIL, @"[1]{ONEBET}＄ [2]{2*ONEBET}＄ [3]{3*ONEBET}＄ [4]{4*ONEBET}＄ [5]{5*ONEBET}＄ "
 	INPUT
 	IF RESULT == 0
-		PRINTL 本当にやめますか？
-		PRINTL [0]やっぱり続ける
-		PRINTL [99]本当にやめる
+		IF LANGUAGE == "ENG"
+			PRINTL Do you want to stop?
+			PRINTL [0]No
+			PRINTL [99]Yes
+		ELSE
+			PRINTL 本当にやめますか？
+			PRINTL [0]やっぱり続ける
+			PRINTL [99]本当にやめる
+		ENDIF
 		INPUT
 		SIF RESULT == 99
 			BREAK
@@ -112,17 +141,31 @@ FOR GAMES, 0, GAMES_MAX
 	$引き直し
 	HOLD = 0;ホールドの有無(1bitずつで処理)
 	PRINTL
-	IF VP_MODE
-		PRINTL ワンペア(J以上):1倍 ツーペア:1倍 スリーカード:3倍 ストレート:5倍 フラッシュ:7倍 フルハウス:10倍
+	IF LANGUAGE == "ENG"
+		IF VP_MODE
+			PRINTL One Pair(High than J):×1 Two Pair:×1 Three of a kind:×3 Straight:×5 Flush:×7 Full House:×10
+		ELSE
+			PRINTL One Pair(High than J):×1 Two Pair:×2 Three of a kind:×3 Straight:×4 Flush:×6 Full House:×9
+		ENDIF
+		IF VP_MODE
+			PRINT Four of a kind(5-K/2-4/A):×50/×80/×160
+		ELSE
+			PRINT Four of a kind:×25
+		ENDIF
+		PRINTFORML  Straght Flush:×50 Royal Flush:×{100*(3+BET_MULTI)}
 	ELSE
-		PRINTL ワンペア(J以上):1倍 ツーペア:2倍 スリーカード:3倍 ストレート:4倍 フラッシュ:6倍 フルハウス:9倍
+		IF VP_MODE
+			PRINTL ワンペア(J以上):1倍 ツーペア:1倍 スリーカード:3倍 ストレート:5倍 フラッシュ:7倍 フルハウス:10倍
+		ELSE
+			PRINTL ワンペア(J以上):1倍 ツーペア:2倍 スリーカード:3倍 ストレート:4倍 フラッシュ:6倍 フルハウス:9倍
+		ENDIF
+		IF VP_MODE
+			PRINT フォーカード(5-K/2-4/A):50/80/160倍
+		ELSE
+			PRINT フォーカード:25倍
+		ENDIF
+		PRINTFORML  ストレートフラッシュ:50倍 ロイヤルフラッシュ:{100*(3+BET_MULTI)}倍
 	ENDIF
-	IF VP_MODE
-		PRINT フォーカード(5-K/2-4/A):50/80/160倍
-	ELSE
-		PRINT フォーカード:25倍
-	ENDIF
-	PRINTFORML  ストレートフラッシュ:50倍 ロイヤルフラッシュ:{100*(3+BET_MULTI)}倍
 	VARLINE = 0
 	PLAYSOUND トランプ配布
 	DO
@@ -168,7 +211,11 @@ FOR GAMES, 0, GAMES_MAX
 	NEXT
 	PRINTL
 	IF ハッキング残数 > 0
-		PRINTFORML [0] ハッキングする(残り{ハッキング残数}回 さらに引き直す)
+		IF LANGUAGE == "ENG"
+			PRINTFORML [0] Do Hacking(Remaining:{ハッキング残数} One more draw)
+		ELSE
+			PRINTFORML [0] ハッキングする(残り{ハッキング残数}回 さらに引き直す)
+		ENDIF
 		TONEINPUT 3000, 1, 1, ""
 		IF RESULT == 0
 			FOR LCOUNT, 0, 5
@@ -183,13 +230,25 @@ FOR GAMES, 0, GAMES_MAX
 	GET_MONEY = 0;獲得金額
 	IF FLUSH(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4)
 		IF STRAIGHT(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4) == 14
-			PRINTL ロイヤルフラッシュです。
+			IF LANGUAGE == "ENG"
+				PRINTL It is "Royal Flush".
+			ELSE
+				PRINTL ロイヤルフラッシュです。
+			ENDIF
 			GET_MONEY += 100*(3+BET_MULTI)*ONEBET*BET_MULTI
 		ELSEIF STRAIGHT(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4)
-			PRINTL ストレートフラッシュです。
+			IF LANGUAGE == "ENG"
+				PRINTL It is "Straight Flush".
+			ELSE
+				PRINTL ストレートフラッシュです。
+			ENDIF
 			GET_MONEY += 50*ONEBET*BET_MULTI
 		ELSE
-			PRINTL フラッシュです。
+			IF LANGUAGE == "ENG"
+				PRINTL It is "Flush".
+			ELSE
+				PRINTL フラッシュです。
+			ENDIF
 			IF VP_MODE
 				GET_MONEY += 7*ONEBET*BET_MULTI
 			ELSE
@@ -197,7 +256,11 @@ FOR GAMES, 0, GAMES_MAX
 			ENDIF
 		ENDIF
 	ELSEIF STRAIGHT(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4)
-		PRINTL ストレートです。
+		IF LANGUAGE == "ENG"
+			PRINTL It is "Straight".
+		ELSE
+			PRINTL ストレートです。
+		ENDIF
 		IF VP_MODE
 			GET_MONEY += 5*ONEBET*BET_MULTI
 		ELSE
@@ -206,13 +269,36 @@ FOR GAMES, 0, GAMES_MAX
 	ELSEIF FOUR_OF_A_KIND(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4)
 		IF VP_MODE
 			IF FOUR_OF_A_KIND(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4) > 1400
-				PRINTL Aのフォーカードです。
+				IF LANGUAGE == "ENG"
+					PRINTL It is "Quad A's(Four of a kind)".
+				ELSE
+					PRINTL Aのフォーカードです。
+				ENDIF
 				GET_MONEY += 160*ONEBET*BET_MULTI
 			ELSEIF FOUR_OF_A_KIND(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4) < 500
-				PRINTL 2-4のフォーカードです。
+				IF LANGUAGE == "ENG"
+					PRINTFORML It is "Quad {FOUR_OF_A_KIND(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4)/100}'s(Four of a kind)".
+				ELSE
+					PRINTL 2-4のフォーカードです。
+				ENDIF
 				GET_MONEY += 80*ONEBET*BET_MULTI
 			ELSE
-				PRINTL 5-Kのフォーカードです。
+				LOCAL = FOUR_OF_A_KIND(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4)/100
+				SELECTCASE LOCAL
+					CASE 5 TO 10
+						LOCALS = TOSTR(LOCAL)
+					CASE 11
+						LOCALS = J
+					CASE 12
+						LOCALS = Q
+					CASE 13
+						LOCALS = K
+				ENDSELECT
+				IF LANGUAGE == "ENG"
+					PRINTFORML It is "Quad %LOCALS%'s(Four of a kind)".
+				ELSE
+					PRINTL 5-Kのフォーカードです。
+				ENDIF
 				GET_MONEY += 50*ONEBET*BET_MULTI
 			ENDIF
 		ELSE
@@ -220,32 +306,55 @@ FOR GAMES, 0, GAMES_MAX
 			GET_MONEY += 25*ONEBET*BET_MULTI
 		ENDIF
 	ELSEIF FH_OR_THREE(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4) > 1000000
-		PRINTL フルハウスです。
+		IF LANGUAGE == "ENG"
+			PRINTL It is "Full House".
+		ELSE
+			PRINTL フルハウスです。
+		ENDIF
 		IF VP_MODE
 			GET_MONEY += 10*ONEBET*BET_MULTI
 		ELSE
 			GET_MONEY += 9*ONEBET*BET_MULTI
 		ENDIF
 	ELSEIF FH_OR_THREE(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4)
-		PRINTL スリーカードです。
+		IF LANGUAGE == "ENG"
+			PRINTL It is "Three of a kind".
+		ELSE
+			PRINTL スリーカードです。
+		ENDIF
 		GET_MONEY += 3*ONEBET*BET_MULTI
 	ELSEIF TWO_PAIR(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4)
-		PRINTL ツーペアです。
+		IF LANGUAGE == "ENG"
+			PRINTL It is "Two Pair".
+		ELSE
+			PRINTL ツーペアです。
+		ENDIF
 		IF VP_MODE
 			GET_MONEY += ONEBET*BET_MULTI
 		ELSE
 			GET_MONEY += 2*ONEBET*BET_MULTI
 		ENDIF
 	ELSEIF ONE_PAIR(VP_CARD:0, VP_CARD:1, VP_CARD:2, VP_CARD:3, VP_CARD:4) > 11000000
-		PRINTL J以上のワンペアです。
+		IF LANGUAGE == "ENG"
+			PRINTL It is "One Pair(High than J)".
+		ELSE
+			PRINTL J以上のワンペアです。
+		ENDIF
 		GET_MONEY += ONEBET*BET_MULTI
 	ENDIF
 	;ここからダブルアップ
 	IF GET_MONEY > 0 && D_UP_ON
-		CALL PASELIL, @"配当は{GET_MONEY}＄ですが、ダブルアップに挑戦しますか？"
-		PRINT [0]挑戦しない [1]ダブルアップ
-		SIF GET_MONEY >= 2
-			PRINT  [2]ハーフダブル
+		IF LANGUAGE == "ENG"
+			CALL PASELIL, @"You'll get {GET_MONEY}＄, Do you Double Up?"
+			PRINT [0]No [1]Ok, I challenge Double Up
+			SIF GET_MONEY >= 2
+				PRINT  [2]Yes, But I betting half rewards
+		ELSE
+			CALL PASELIL, @"配当は{GET_MONEY}＄ですが、ダブルアップに挑戦しますか？"
+			PRINT [0]挑戦しない [1]ダブルアップ
+			SIF GET_MONEY >= 2
+				PRINT  [2]ハーフダブル
+		ENDIF
 		PRINTL
 		$VP_DOUBLE
 		INPUT
@@ -253,8 +362,13 @@ FOR GAMES, 0, GAMES_MAX
 			GOTO VP_DOUBLE_END
 		ELSEIF RESULT == 1
 		ELSEIF RESULT == 2 && GET_MONEY >= 2
+			PLAYSOUND カジノコイン
 			MONEY += GET_MONEY - GET_MONEY/2
-			CALL PASELIW, @"${GET_MONEY - GET_MONEY/2}＄を手に入れた。"
+			IF LANGUAGE == "ENG"
+				CALL PASELIW, @"$You got {GET_MONEY - GET_MONEY/2}＄"
+			ELSE
+				CALL PASELIW, @"${GET_MONEY - GET_MONEY/2}＄を手に入れた。"
+			ENDIF
 			GET_MONEY /= 2
 		ELSE
 			GOTO VP_DOUBLE
@@ -264,6 +378,7 @@ FOR GAMES, 0, GAMES_MAX
 		FOR D_UP_CNT, 0, 1+D_UP_MAX
 			PRINTL
 			FOR LCOUNT, 0, D_UP_CNT
+				PLAYSOUND トランプドロー
 				CALL PRTCARD(CARD:(LCOUNT))
 				PRINT  
 			NEXT
@@ -283,9 +398,15 @@ FOR GAMES, 0, GAMES_MAX
 			RESETCOLOR
 			PRINTL
 			IF D_UP_CNT < D_UP_MAX && GET_MONEY > 0
-				CALL PASELIL, @"賭け金:{GET_MONEY/POWER(2,D_UP_CNT)}＄×{POWER(2,D_UP_CNT)}＄＝{GET_MONEY}＄"
-				PRINTL 赤か黒かを左から順に当ててください。
-				PRINTL [0]赤 [1]黒 [2]配当を受け取る
+				IF LANGUAGE == "ENG"
+					CALL PASELIL, @"Stake:{GET_MONEY/POWER(2,D_UP_CNT)}＄×{POWER(2,D_UP_CNT)}＄＝{GET_MONEY}＄"
+					PRINTL Please apply red or black in order from the left
+					PRINTL [0]Red [1]Black [2]Finish and get rewards
+				ELSE
+					CALL PASELIL, @"賭け金:{GET_MONEY/POWER(2,D_UP_CNT)}＄×{POWER(2,D_UP_CNT)}＄＝{GET_MONEY}＄"
+					PRINTL 赤か黒かを左から順に当ててください。
+					PRINTL [0]赤 [1]黒 [2]配当を受け取る
+				ENDIF
 				$VP_DOUBLE_PLAY
 				INPUT
 				;52で割った余りが14-39が赤なので、38足して0-25が赤になるようにする
@@ -308,7 +429,12 @@ FOR GAMES, 0, GAMES_MAX
 	ENDIF
 	$VP_DOUBLE_END
 	IF GET_MONEY > 0
-		CALL PASELIW, @"{GET_MONEY}＄を手に入れた。"
+		PLAYSOUND カジノコイン
+		IF LANGUAGE == "ENG"
+			CALL PASELIW, @"You got {GET_MONEY}＄"
+		ELSE
+			CALL PASELIW, @"{GET_MONEY}＄を手に入れた。"
+		ENDIF
 		MONEY += GET_MONEY
 	ELSE
 		PRINTW
