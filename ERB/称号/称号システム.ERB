@@ -1,0 +1,376 @@
+﻿@称号表示
+;誰に
+#DIM CONST ロリコンP = 0
+#DIM CONST ショタコンP = 1
+#DIM CONST 男性P = 2
+#DIM CONST 女性P = 3
+#DIM CONST 貧乳P = 4
+#DIM CONST 巨乳P = 5
+#DIM CONST ふたなりP = 6
+#DIM DYNAMIC WHO_P, 7
+
+;何をしたか
+#DIM CONST 通常P = 0
+#DIM CONST 加虐P = 1
+#DIM CONST 被虐P = 2
+#DIM CONST 受けP = 3
+#DIM CONST 攻めP = 4
+#DIM DYNAMIC DID_P, 5
+
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC CHARA_1
+#DIM DYNAMIC CHARA_2
+#DIM DYNAMIC CHARA_3
+#DIM DYNAMIC 特殊称号計算用, 3
+#DIM DYNAMIC 特殊称号候補, 3
+
+;将来的に色付けたりするかもしれないので式中関数ではなく普通の関数
+
+;特定の1人または2人の調教回数だけがやたら多い場合は特殊称号
+IF MAXCARRAY(CFLAG:調教回数) >= 30
+	FOR LCOUNT, 1, CHARANUM
+		IF CFLAG:LCOUNT:調教回数 > 特殊称号計算用:0
+			ARRAYSHIFT 特殊称号計算用, 1, CFLAG:LCOUNT:調教回数
+			ARRAYSHIFT 特殊称号候補, 1, LCOUNT
+		ELSEIF CFLAG:LCOUNT:調教回数 > 特殊称号計算用:1
+			ARRAYSHIFT 特殊称号計算用, 1, CFLAG:LCOUNT:調教回数, 1
+			ARRAYSHIFT 特殊称号候補, 1, LCOUNT, 1
+		ELSEIF CFLAG:LCOUNT:調教回数 > 特殊称号計算用:2
+			ARRAYSHIFT 特殊称号計算用, 1, CFLAG:LCOUNT:調教回数, 2
+			ARRAYSHIFT 特殊称号候補, 1, LCOUNT, 2
+		ENDIF
+	NEXT
+	CHARA_1 = 特殊称号候補:0
+	CHARA_2 = 特殊称号候補:1
+	CHARA_3 = 特殊称号候補:2
+	;1人だけ30以上の差をつけてるとここ
+	IF 特殊称号計算用:0-特殊称号計算用:1 >= 30
+		DID_P:通常P = CFLAG:CHARA_1:通常調教
+		DID_P:加虐P = CFLAG:CHARA_1:加虐調教
+		DID_P:被虐P = CFLAG:CHARA_1:被虐調教
+		;キャラに取って攻めだった場合、主人にとっては受け、とかそんな感じ
+		DID_P:受けP = CFLAG:CHARA_1:攻め調教
+		DID_P:攻めP = CFLAG:CHARA_1:受け調教
+
+		PRINTFORM %CALLNAME:CHARA_1%
+		SELECTCASE SEX(MASTER)
+			CASE 1
+				IF EXP:CHARA_1:助手調教経験 > EXP:CHARA_1:主人調教経験
+					PRINT を眺める会の会長
+				;SM寄り
+				ELSEIF DID_P:加虐P > DID_P:通常P
+					PRINT のご主人様
+				ELSEIF DID_P:被虐P > DID_P:通常P
+					PRINT の犬
+				ELSE
+					IF DID_P:受けP > DID_P:攻めP
+						PRINT の愛人
+					ELSE
+						PRINT の夫
+					ENDIF
+				ENDIF
+			CASE 2
+				IF EXP:CHARA_1:助手調教経験 > EXP:CHARA_1:主人調教経験
+					PRINT を眺める会の会長
+				;SM寄り
+				ELSEIF DID_P:加虐P > DID_P:通常P
+					PRINT の女王様
+				ELSEIF DID_P:被虐P > DID_P:通常P
+					PRINT のメス犬
+				ELSE
+					IF DID_P:攻めP > DID_P:受けP
+						PRINT は俺の嫁
+					ELSE
+						IF TALENT:MASTER:小柄体型
+							PRINT の幼妻
+						ELSE
+							PRINT の妻
+						ENDIF
+					ENDIF
+				ENDIF
+		ENDSELECT
+		RETURN
+	;2人の差が30未満で3人目と30以上離れてる場合
+	ELSEIF 特殊称号計算用:0-特殊称号計算用:1 < 30 && 特殊称号計算用:1-特殊称号計算用:2 >= 30
+		;主人だけ男性&他女性
+		IF SEX(MASTER) == 1 && SEX(CHARA_1) == 2 && SEX(CHARA_2) == 2
+			PRINTFORM %CALLNAME:CHARA_1%と%CALLNAME:CHARA_2%で両手に花
+		;主人だけ女性&他男性
+		ELSEIF SEX(MASTER) == 2 && SEX(CHARA_1) == 1 && SEX(CHARA_2) == 1
+			PRINTFORM %CALLNAME:CHARA_1%と%CALLNAME:CHARA_2%の間で揺れ動く乙女
+		ELSE
+			PRINTFORM %CALLNAME:CHARA_1%と%CALLNAME:CHARA_2%との三角関係
+		ENDIF
+		RETURN
+	ENDIF
+ENDIF
+
+;ここから普通のプレイ称号・調教称号
+IF MAXARRAY(プレイ称号) == 0
+	PRINT どこにでも居る
+ELSE
+	CALL プレイ称号計算, "プレイ称号表示"
+ENDIF
+
+;「調教称号」変数は二次元配列
+;調教称号:(誰に):(何をしたか)
+
+VARSET WHO_P
+FOR LCOUNT, 0, VARSIZE("WHO_P")
+	FOR LCOUNT2, 0, VARSIZE("DID_P")
+		WHO_P:LCOUNT += 調教称号:LCOUNT:LCOUNT2
+	NEXT
+NEXT
+
+
+
+IF MAXARRAY(WHO_P) == 0
+	PRINT 調教師
+ELSE
+	SELECTCASE FINDELEMENT(WHO_P, MAXARRAY(WHO_P))
+		CASE WHO_P:ロリコンP, WHO_P:ショタコンP
+			;各ポイントが片方の2倍以上なら◯◯コン、差が小さければペドフィリア
+			IF WHO_P:ロリコンP > WHO_P:ショタコンP*2
+				FOR LCOUNT2, 0, VARSIZE("DID_P")
+					DID_P:LCOUNT2 = 調教称号:ロリコンP:LCOUNT2
+				NEXT
+				IF DID_P:加虐P > DID_P:通常P
+					PRINT 女児虐待常習者
+				ELSEIF DID_P:被虐P > DID_P:通常P || DID_P:受けP > DID_P:攻めP
+					PRINT 女児に踏まれたい人
+				ELSE
+					PRINT ロリコン
+				ENDIF
+			ELSEIF WHO_P:ショタコンP > WHO_P:ロリコンP*2
+				FOR LCOUNT2, 0, VARSIZE("DID_P")
+					DID_P:LCOUNT2 = 調教称号:ショタコンP:LCOUNT2
+				NEXT
+				IF DID_P:加虐P > DID_P:通常P
+					PRINT 男児虐待の常習者
+				ELSEIF DID_P:攻めP > DID_P:受けP
+					PRINT ショタをメス堕ちさせたい人
+				ELSE
+					PRINT ショタコン
+				ENDIF
+			ELSE
+				FOR LCOUNT2, 0, VARSIZE("DID_P")
+					IF WHO_P:ロリコンP > WHO_P:ショタコンP
+						DID_P:LCOUNT2 = 調教称号:ロリコンP:LCOUNT2
+					ELSE
+						DID_P:LCOUNT2 = 調教称号:ショタコンP:LCOUNT2
+					ENDIF
+				NEXT
+				IF DID_P:加虐P > DID_P:通常P
+					PRINT 児童虐待常習者
+				ELSEIF DID_P:被虐P > DID_P:通常P || DID_P:受けP > DID_P:攻めP
+					PRINT 児童に劣情を抱く者
+				ELSE
+					PRINT 小児性愛者
+				ENDIF
+			ENDIF
+		CASE WHO_P:男性P
+			FOR LCOUNT2, 0, VARSIZE("DID_P")
+				DID_P:LCOUNT2 = 調教称号:男性P:LCOUNT2
+			NEXT
+			SELECTCASE SEX(MASTER)
+				CASE 1
+					IF DID_P:加虐P > DID_P:通常P || DID_P:被虐P > DID_P:通常P
+						PRINT SM愛好ゲイ
+					ELSEIF DID_P:攻めP > DID_P:受けP
+						PRINT タチ寄りゲイ
+					ELSEIF DID_P:受けP > DID_P:攻めP
+						PRINT ネコ寄りゲイ
+					ELSE
+						PRINT ゲイ
+					ENDIF
+				CASE 2
+					IF DID_P:加虐P > DID_P:通常P || DID_P:攻めP > DID_P:受けP
+						IF TALENT:MASTER:小柄体型
+							PRINT メスガキ
+						ELSE
+							PRINT 女王様気質
+						ENDIF
+					ELSE
+						PRINT 女調教師
+					ENDIF
+			ENDSELECT
+		CASE WHO_P:女性P
+			FOR LCOUNT2, 0, VARSIZE("DID_P")
+				DID_P:LCOUNT2 = 調教称号:女性P:LCOUNT2
+			NEXT
+			SELECTCASE SEX(MASTER)
+				CASE 1
+					IF DID_P:加虐P > DID_P:通常P
+						PRINT サディストな調教師
+					ELSEIF DID_P:被虐P > DID_P:通常P
+						PRINT マゾヒストな調教師
+					ELSE
+						PRINT 調教師
+					ENDIF
+				CASE 2
+					IF DID_P:加虐P > DID_P:通常P || DID_P:攻めP > DID_P:受けP
+						PRINT 小悪魔系レズ
+					ELSE
+						PRINT 百合好き女調教師
+					ENDIF
+			ENDSELECT
+		CASE WHO_P:貧乳P
+			PRINT 貧乳好き
+		CASE WHO_P:巨乳P
+			PRINT 巨乳好き
+		CASE WHO_P:ふたなりP
+			FOR LCOUNT2, 0, VARSIZE("DID_P")
+				DID_P:LCOUNT2 = 調教称号:ふたなりP:LCOUNT2
+			NEXT
+			IF DID_P:受けP > DID_P:攻めP && SEX(MASTER) == 1
+				PRINT メス堕ちしがちの調教師
+			ELSE
+				PRINT ふたなり好き
+			ENDIF
+	ENDSELECT
+ENDIF
+
+
+@プレイ称号計算, ARGS
+{
+#DIMS CONST プレイ称号一覧 = 
+"休憩",
+"スキル",
+"能力表示",
+"魔法詠唱",
+"ギャンブル",
+"マップ",
+"アイテム",
+"眷属",
+"セーブ",
+"テキスト設定",
+"着衣設定",
+"チュートリアル",
+"ゲーセン経営",
+"娼館経営",
+"芸プロ運営",
+"医務室",
+"実験室",
+"図書室",
+"調理室",
+"農業",
+"畜産業"
+}
+
+IF ARGS == "プレイ称号表示"
+	SELECTCASE プレイ称号一覧:FINDELEMENT(プレイ称号, MAXARRAY(プレイ称号))
+		CASE "休憩"
+			PRINT やたら疲れやすい
+		CASE "スキル"
+			PRINT 向上心がある
+		CASE "能力表示"
+			PRINT キャラの能力が気になる
+		CASE "魔法詠唱"
+			PRINT 魔法を使いこなす
+		CASE "ギャンブル"
+			PRINT ギャンブラーな
+		CASE "マップ"
+			PRINT 風水にこだわる
+		CASE "アイテム"
+			PRINT 物欲の多い
+		CASE "眷属"
+			PRINT 種族の垣根を越える
+		CASE "セーブ"
+			PRINT 心配性な
+		CASE "テキスト設定"
+			PRINT いろいろ読みたい
+		CASE "着衣設定"
+			PRINT オシャレな
+		CASE "チュートリアル"
+			PRINT 初心を忘れない
+		CASE "ゲーセン経営"
+			PRINT ゲーマーな
+		CASE "娼館経営"
+			PRINT 娼婦を束ねる
+		CASE "芸プロ運営"
+			PRINT エンターテイナーな
+		CASE "医務室"
+			PRINT 医学に明るい
+		CASE "実験室"
+			PRINT サイエンティストな
+		CASE "図書室"
+			PRINT 読書家な
+		CASE "調理室"
+			PRINT グルメな
+		CASE "農業"
+			PRINT 農業が趣味の
+		CASE "畜産業"
+			PRINT 動物を愛する
+	ENDSELECT
+ELSE
+	プレイ称号:FINDELEMENT(プレイ称号一覧, ARGS, 0, VARSIZE("プレイ称号一覧"))++
+ENDIF
+
+
+@調教称号計算
+;誰に
+#DIM CONST ロリコンP = 0
+#DIM CONST ショタコンP = 1
+#DIM CONST 男性P = 2
+#DIM CONST 女性P = 3
+#DIM CONST 貧乳P = 4
+#DIM CONST 巨乳P = 5
+#DIM CONST ふたなりP = 6
+
+;何をしたか
+#DIM CONST 通常P = 0
+#DIM CONST 加虐P = 1
+#DIM CONST 被虐P = 2
+#DIM CONST 受けP = 3
+#DIM CONST 攻めP = 4
+#DIM DYNAMIC DID_P
+
+CFLAG:調教回数++
+
+IF PALAM:苦痛+PALAM:恐怖 > PALAM:恭順+PALAM:屈服
+	CFLAG:加虐調教++
+	DID_P = 加虐P
+ELSEIF EXP:嗜虐快楽経験 > 嗜虐経験計算用
+	CFLAG:被虐調教++
+	DID_P = 被虐P
+ELSEIF (EXP:MASTER:Ａ経験+EXP:MASTER:Ｖ経験)-主人ＡＶ経験計算用 > (EXP:Ａ経験+EXP:Ｖ経験)-ＡＶ経験計算用
+	CFLAG:攻め調教++
+	DID_P = 受けP
+ELSEIF (EXP:MASTER:Ａ経験+EXP:MASTER:Ｖ経験)-主人ＡＶ経験計算用 < (EXP:Ａ経験+EXP:Ｖ経験)-ＡＶ経験計算用
+	CFLAG:受け調教++
+	DID_P = 攻めP
+ELSE
+	CFLAG:通常調教++
+	DID_P = 通常P
+ENDIF
+
+SELECTCASE SEX(TARGET)
+	CASE 1
+		IF TALENT:小柄体型
+			調教称号:ショタコンP:DID_P++
+		ELSE
+			調教称号:男性P:DID_P++
+		ENDIF
+	CASE 2
+		IF TALENT:小柄体型
+			調教称号:ロリコンP:DID_P++
+		ELSE
+			調教称号:女性P:DID_P++
+		ENDIF
+		SELECTCASE TALENT:バストサイズ
+			CASE 1, 2
+				調教称号:貧乳P:DID_P++
+			CASE 4, 5
+				調教称号:巨乳P:DID_P++
+		ENDSELECT
+ENDSELECT
+
+SIF TALENT:ふたなり
+	調教称号:ふたなりP:DID_P++
+
+
+
+
+
+
