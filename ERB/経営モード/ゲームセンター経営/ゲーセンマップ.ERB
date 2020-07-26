@@ -1,0 +1,409 @@
+﻿@GC_MAP
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC X座標
+#DIM DYNAMIC Y座標
+#DIM グリッド表示 = 1
+#DIMS DYNAMIC 表示用変数, 100
+#DIM DYNAMIC 幅, 2
+#DIM DYNAMIC 始点, 2
+#DIMS DYNAMIC オブジェクト情報, 2000, 4
+#DIMS DYNAMIC 部屋名
+#DIMS DYNAMIC 表示チップ
+#DIM DYNAMIC マップ横幅
+#DIM DYNAMIC マップ縦幅
+#DIM DYNAMIC 壁無し
+#DIM DYNAMIC タイル表示幅
+#DIM DYNAMIC タイル始点, 100, 2
+#DIMS DYNAMIC オブジェクト名
+#DIM DYNAMIC オブジェクト幅, 2
+#DIM DYNAMIC オブジェクト配置
+#DIM DYNAMIC オブジェクト表示済み
+#DIM DYNAMIC 選択座標, 2
+#DIMS DYNAMIC 選択部屋
+#DIMS DYNAMIC 選択オブジェクト
+#DIMS DYNAMIC 筐体向き = "", "←", "↓", "↑", "→"
+#DIM DYNAMIC 重複確認, 100, 100
+#DIM DYNAMIC 重複確認X
+#DIM DYNAMIC 重複確認Y
+
+VARLINE = LINECOUNT
+
+LOCAL = 1
+;オブジェクト名, X座標の長さ, Y座標の長さ 1次元目の数値はオブジェクトIDとしても扱う 0は欠番
+;幅:0(X幅)と幅:1(Y幅)はそれぞれ筐体が↓もしくは↑の場合の数字
+FOR LCOUNT, 1100, 1500
+	SIF ITEMNAME:LCOUNT == ""
+		CONTINUE
+	SELECTCASE ITEMNAME:LCOUNT
+		CASE "beatmaniaIIDX"
+			オブジェクト名 = IIDX
+			幅:0 = 4
+			幅:1 = 3
+		CASE "pop'n music"
+			オブジェクト名 = ポップン
+			幅:0 = 3
+			幅:1 = 3
+		CASE "Dance Dance Revolution"
+			オブジェクト名 = DDR
+			幅:0 = 4
+			幅:1 = 4
+		CASE "GITADORA"
+			オブジェクト名 = GITADORA
+			幅:0 = 5
+			幅:1 = 3
+		CASE "jubeat"
+			オブジェクト名 = 指
+			幅:0 = 2
+			幅:1 = 2
+		CASE "REFLEC BEAT"
+			オブジェクト名 = リフレク
+			幅:0 = 2
+			幅:1 = 2
+		CASE "SOUND VOLTEX"
+			オブジェクト名 = SDVX
+			幅:0 = 2
+			幅:1 = 2
+		CASE "Dance Evolution"
+			オブジェクト名 = ダンエボ
+			幅:0 = 4
+			幅:1 = 4
+		CASE "maimai"
+			オブジェクト名 = maimai
+			幅:0 = 4
+			幅:1 = 2
+		CASE "CHUNITHM"
+			オブジェクト名 = ウニ
+			幅:0 = 2
+			幅:1 = 2
+		CASE "クイズマジックアカデミー"
+			オブジェクト名 = QMA
+			幅:0 = 2
+			幅:1 = 2
+		{
+		CASE "両替機", "メダル両替機", "PASELI券売機", "PASELIチャージ機", 
+			 "自販機（飲み物）", "自販機（軽食）", "自販機（アイス）", 
+			 "マッサージチェア", "待ち椅子", 
+			 "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
+		}
+			オブジェクト名 = %ITEMNAME:LCOUNT%
+			幅:0 = 2
+			幅:1 = 2
+	ENDSELECT
+
+	FOR LCOUNT2, 1, 5
+		SELECTCASE 筐体向き:LCOUNT2
+			CASE "←", "→"
+				オブジェクト情報:((LCOUNT-1100)*4+LCOUNT2):0 '= @"%オブジェクト名%_%筐体向き:LCOUNT2%", @"{幅:1}", @"{幅:0}"
+			CASE "↓", "↑"
+				オブジェクト情報:((LCOUNT-1100)*4+LCOUNT2):0 '= @"%オブジェクト名%_%筐体向き:LCOUNT2%", @"{幅:0}", @"{幅:1}"
+		ENDSELECT
+	NEXT
+NEXT
+
+オブジェクト配置 = 0
+
+VARSET 始点
+
+;SPRITEはここで作成しておく
+GDISPOSE 0
+GDISPOSE 1
+GDISPOSE 2
+
+GCREATEFROMFILE 0, "□.png"
+SPRITECREATE "GRID", 0
+
+GCREATEFROMFILE 1, "□.png"
+;α値(不透明)+peru
+GCLEAR 1, 0xFF000000+COLOR_FROMNAME("peru")
+SPRITECREATE "GRID_OFF", 1
+
+GCREATEFROMFILE 2, "□.png"
+;α値(不透明)+yellow
+GCLEAR 2, 0xFF000000+COLOR_FROMNAME("yellow")
+SPRITECREATE "GRID_OVER", 2
+
+;ゲーセンの拡張度合いに応じて広くなる
+マップ横幅 = 10+GC広さ
+マップ縦幅 = 10+GC広さ
+
+DO
+	$RESTART
+	CLEARLINE LINECOUNT-VARLINE
+	VARSET タイル始点, -1
+	VARSET 重複確認
+	;マップを表示する
+	FOR Y座標, 0, マップ縦幅
+		VARSET 表示用変数
+		FOR X座標, 0, マップ横幅
+			SIF X座標 == 0
+				表示用変数:X座標 = <nobr>
+			IF オブジェクト配置
+				幅:0 = TOINT(オブジェクト情報:オブジェクト配置:1)
+				幅:1 = TOINT(オブジェクト情報:オブジェクト配置:2)
+			ENDIF
+			;始点の座標から計算して配置用のオブジェクトを描画する
+			IF オブジェクト配置 && X座標 >= 始点:0 && Y座標 >= 始点:1 && INRANGE(X座標-始点:0, 0, 幅:0-1) && INRANGE(Y座標-始点:1, 0, 幅:1-1)
+				表示用変数:X座標 += "<img src='GRID_OVER'>"
+			ELSE
+				表示チップ =
+				表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' pos='{X座標*100}'>"
+				;グリッド線の有無でタイルを変える
+				IF グリッド表示
+					表示チップ = GRID
+					表示用変数:X座標 += @"<img src='%表示チップ%'>"
+				ELSE
+					表示チップ = GRID_OFF
+					表示用変数:X座標 += @"<img src='%表示チップ%'>"
+				ENDIF
+				表示用変数:X座標 += "</button>"
+				;壁の確認 端でも壁表示
+				IF !壁無し
+					;左壁
+					IF X座標 == 0
+						;上壁もあれば┌壁
+						IF Y座標 == 0
+							表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='┌壁'></nonbutton>"
+						;下壁もあれば└壁
+						ELSEIF Y座標 == マップ縦幅-1
+							表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='└壁'></nonbutton>"
+						ELSE
+							表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='左壁'></nonbutton>"
+						ENDIF
+					;上壁
+					ELSEIF Y座標 == 0
+						;右壁もあれば┐壁
+						IF X座標 == マップ横幅-1
+							表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='┐壁'></nonbutton>"
+						ELSE
+							表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='上壁'></nonbutton>"
+						ENDIF
+					;右壁
+					ELSEIF X座標 == マップ横幅-1
+						;下壁もあれば┘壁
+						IF Y座標 == マップ縦幅-1
+							表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='┘壁'></nonbutton>"
+						ELSE
+							表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='右壁'></nonbutton>"
+						ENDIF
+					;下壁
+					ELSEIF Y座標 == マップ縦幅-1
+						表示用変数:X座標 += @"<nonbutton pos='{X座標*100}'><img src='下壁'></nonbutton>"
+					ENDIF
+				ENDIF
+			ENDIF
+		NEXT
+		LOCALS = %STRJOIN(表示用変数, "")%
+		VARSET 表示用変数
+		;地面を描画したあとその上からオブジェクトを描画
+		FOR X座標, 0, マップ横幅
+			IF GCオブジェクト:Y座標:X座標 != 0
+				オブジェクト名 = %オブジェクト情報:(GCオブジェクト:Y座標:X座標):0%
+				オブジェクト幅:0 = TOINT(オブジェクト情報:(GCオブジェクト:Y座標:X座標):1)
+				オブジェクト幅:1 = TOINT(オブジェクト情報:(GCオブジェクト:Y座標:X座標):2)
+				表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト名%' pos='{X座標*100}'><img src='%オブジェクト名%' srcb='' height='{オブジェクト幅:1*100}' width='{オブジェクト幅:0*100}' ypos='{(オブジェクト幅:1-1)*(-100)}'></button>"
+
+				FOR 重複確認Y, Y座標, Y座標-オブジェクト幅:1, -1
+					FOR 重複確認X, X座標, X座標+オブジェクト幅:0
+						重複確認:重複確認X:重複確認Y = 1
+					NEXT
+				NEXT
+			ENDIF
+		NEXT
+		SIF X座標 == マップ横幅-1
+			表示用変数:X座標 += "</nobr>"
+		LOCALS += @"%STRJOIN(表示用変数, "")%"
+		HTML_PRINT LOCALS
+	NEXT
+	PRINTL 
+
+	IF オブジェクト配置
+		PRINTFORML 現在の筐体向き:%筐体向き%
+		PRINTL [4] ← [2] ↓ [8] ↑ [6] →
+		PRINTL [7] 左回転　　　　 [9] 右回転
+		PRINTL [5] 決定 [0] キャンセル
+
+		ONEINPUT
+
+		SELECTCASE RESULT
+			CASE 0
+				オブジェクト配置 = 0
+			CASE 8
+				SIF 始点:1 > 0
+					始点:1--
+			CASE 4
+				SIF 始点:0 > 0
+					始点:0--
+			CASE 6
+				SIF 始点:0+幅:0 < マップ横幅 
+					始点:0++
+			CASE 2
+				SIF 始点:1+幅:1 < マップ縦幅
+					始点:1++
+			CASE 7
+				SELECTCASE 筐体向き
+					CASE "↓"
+						筐体向き = →
+						オブジェクト配置 += 2
+					CASE "→"
+						筐体向き = ↑
+						オブジェクト配置 -= 1
+					CASE "↑"
+						筐体向き = ←
+						オブジェクト配置 -= 2
+					CASE "←"
+						筐体向き = ↓
+						オブジェクト配置 += 1
+				ENDSELECT
+			CASE 9
+				SELECTCASE 筐体向き
+					CASE "↓"
+						筐体向き = ←
+						オブジェクト配置 -= 1
+					CASE "←"
+						筐体向き = ↑
+						オブジェクト配置 += 2
+					CASE "↑"
+						筐体向き = →
+						オブジェクト配置 += 1
+					CASE "→"
+						筐体向き = ↓
+						オブジェクト配置 -= 2
+				ENDSELECT
+			CASE 5
+				FOR LCOUNT, 始点:1, 始点:1+幅:1
+					SIF LCOUNT >= マップ縦幅
+						GOTO RESTART
+					FOR LCOUNT2, 始点:0, 始点:0+幅+0
+						SIF LCOUNT2 >= マップ横幅
+							GOTO RESTART
+						SIF 重複確認:LCOUNT2:LCOUNT
+							GOTO RESTART
+					NEXT
+				NEXT
+				GCオブジェクト:(始点:1+幅:1-1):(始点:0) = オブジェクト配置
+				オブジェクト配置 = 0
+				GOTO RESTART
+		ENDSELECT
+
+		CONTINUE
+	ELSE
+		PRINTL [101] - 筐体を配置する [102] - マップを初期化する
+		PRINTFORML [103]  - グリッド表示\@ グリッド表示 ? しない # する \@ [110] 戻る
+		INPUT
+		SELECTCASE RESULT
+			CASE 110
+				RETURN
+			CASE 101
+				PRINTL □配置する筐体を選んでください 名前(横幅×縦幅)
+				FOR LCOUNT, 1100, 1500
+					SIF ITEMNAME:LCOUNT == ""
+						CONTINUE
+					PRINTFORMLC 　[{LCOUNT-1100}] %ITEMNAME:LCOUNT%({TOINT(オブジェクト情報:((LCOUNT-1100)*4+1):2)}×{TOINT(オブジェクト情報:((LCOUNT-1100)*4+1):1)})
+				NEXT
+				SIF !LINEISEMPTY()
+					PRINTL 
+				DRAWLINE
+				PRINTL [-1] 戻る
+				DO
+					INPUT
+					SELECTCASE RESULT
+						CASE -1
+							GOTO RESTART
+						CASE 0 TO 400
+							SIF ITEMNAME:(RESULT+1100) == ""
+								CONTINUE
+							オブジェクト配置 = RESULT*4+2
+							筐体向き = ↓
+							BREAK
+					ENDSELECT
+				LOOP 1
+				CONTINUE
+			CASE 102
+				PRINTL マップを初期化します。よろしいですか？
+				PRINTL [0] - はい
+				PRINTL [1] - いいえ
+				DO
+					INPUT
+				LOOP LOOPRES(0, 1)
+				SIF RESULT == 0
+					VARSET GCオブジェクト
+				CONTINUE
+			CASE 103
+				INVERTBIT グリッド表示, 0
+				CONTINUE
+			CASEELSE
+				;RESULTからX,Y座標を調べる
+				;X
+				選択座標:0 = RESULT/100
+				;Y
+				選択座標:1 = RESULT%100
+				選択オブジェクト = %オブジェクト情報:(GCオブジェクト:(選択座標:1):(選択座標:0)):0%
+				;座標の情報表示
+				PRINT □
+				SIF GCオブジェクト:(選択座標:1):(選択座標:0)
+					PRINTFORM %選択オブジェクト%配置中 
+				PRINTFORML {選択座標:0}×{選択座標:1}
+				;オブジェクトの扱い
+				IF 選択オブジェクト != ""
+					PRINTFORML 　[1] - %選択オブジェクト%を動かす
+					PRINTFORML 　[2] - %選択オブジェクト%を片付ける
+				ELSE
+					PRINTL 　[3] - オブジェクトを配置する
+				ENDIF
+				DRAWLINE
+				PRINTPLAINFORM 　{選択座標:0}×{選択座標:1}　
+				PRINTL [0] - 戻る
+				始点:0 = 選択座標:0
+				始点:1 = 選択座標:1
+				DO
+					INPUT
+					SELECTCASE RESULT
+						CASE 0
+							VARSET 始点
+							GOTO RESTART
+						CASE 1
+							SIF 選択オブジェクト == ""
+								CONTINUE
+							オブジェクト配置 = GCオブジェクト:(始点:1):(始点:0)
+							GCオブジェクト:(始点:1):(始点:0) = 0
+							;縦にずれてる分を調整
+							始点:1 -= TOINT(オブジェクト情報:オブジェクト配置:2)-1
+							GOTO RESTART
+						CASE 2
+							SIF 選択オブジェクト == ""
+								CONTINUE
+							GCオブジェクト:(始点:1):(始点:0) = 0
+							GOTO RESTART
+						CASE 3
+							PRINTL □配置する筐体を選んでください 名前(横幅×縦幅)
+							FOR LCOUNT, 1100, 1500
+								SIF ITEMNAME:LCOUNT == ""
+									CONTINUE
+								PRINTFORMLC 　[{LCOUNT-1100}] %ITEMNAME:LCOUNT%({TOINT(オブジェクト情報:((LCOUNT-1100)*4+1):2)}×{TOINT(オブジェクト情報:((LCOUNT-1100)*4+1):1)})
+							NEXT
+							SIF !LINEISEMPTY()
+								PRINTL 
+							DRAWLINE
+							PRINTL [-1] 戻る
+							DO
+								INPUT
+								SELECTCASE RESULT
+									CASE -1
+										GOTO RESTART
+									CASE 0 TO 400
+										SIF ITEMNAME:(RESULT+1100) == ""
+											CONTINUE
+										オブジェクト配置 = RESULT*4+2
+										筐体向き = ↓
+										GOTO RESTART
+								ENDSELECT
+							LOOP 1
+							BREAK
+					ENDSELECT
+				LOOP 1
+		ENDSELECT
+	ENDIF
+LOOP 1
+
+
