@@ -5,6 +5,9 @@ PRINTL
 PRINTL 【ゲームセンター経営】
 PRINTL 
 DRAWLINE
+
+CALL GCバージョン管理
+
 PRINTL □現在の規模
 SIF GC店名 != "ゲームセンター"
 	PRINTFORML 　店名：%GC店名%
@@ -45,7 +48,6 @@ ELSE
 	ENDIF
 	SIF FINDCHARA(CSTR:配属, "ゲーセン売春") >= 0
 		HTML_PRINT SET_TOOLTIP("　[10] - 売春方針", "ゲームセンターで売春させるキャラに方針を命じます")
-	PRINTL 　[11] - マップ
 ENDIF
 
 DRAWLINE
@@ -85,7 +87,7 @@ DO
 				ENDSELECT
 			LOOP 1
 		CASE 5
-			CALL SELECT_FLOOR
+			CALL GC_MAP, 1
 		CASE 6
 			CALL GC_LEADER
 		CASE 7
@@ -218,8 +220,6 @@ DO
 				LOOP 1
 				CONTINUE
 			LOOP 1
-		CASE 11
-			CALL GC_MAP
 		CASE 100
 			CALL GC_TUTORIAL
 		CASEELSE
@@ -275,7 +275,6 @@ DO
 			PRINTW 特に序盤は名声を上げることが大事なので、配属できるキャラは配属してみるのがいいでしょう。
 		CASE 5
 			PRINTL 「筐体設置」は所有する物件に筐体を設置するコマンドです。
-			PRINTL 「物件の広さ」×「物件の階層」と同じ数値の分筐体を置くことができます。
 			PRINTL 筐体は所持するだけなら経費はかかりませんが、設置した当日から経費がかかるので所持金とよく相談して決めましょう。
 			PRINTW なお、筐体にはそれぞれ大きさがあり、経済効果の高い筐体ほど大きくなるのでスペースには気を使いましょう。
 		CASE 6
@@ -396,7 +395,6 @@ PRINTL 購入しますか？
 PRINTL [0] - 購入しない
 PRINTL [1] - 購入する
 
-
 DO
 	INPUT
 	SIF RESULT == 0
@@ -405,7 +403,7 @@ LOOP LOOPRES(0, 1)
 
 IF GC物件
 	PRINTFORML 現在%物件名(GC物件)%を所持しています。本当に買い替えますか？
-	PRINTFORML （%物件名(GC物件)%に設置されている筐体は自動的に回収されます）
+	PRINTFORML （編集した%物件名(GC物件)%のマップは初期化されます）
 	PRINTL [0] - それは困る
 	PRINTL [1] - 大丈夫だ、問題ない
 	DO
@@ -414,16 +412,8 @@ IF GC物件
 			CASE 0
 				RETURN 0
 			CASE 1
-				FOR 階層, 1, GC階層+1
-					FOR 筐体, 1100, 2000
-						SIF ITEMNAME:筐体 == ""
-							CONTINUE
-						SIF 設置筐体:階層:筐体 == 0
-							CONTINUE
-						ITEM:筐体 += 設置筐体:階層:筐体
-						設置筐体:階層:筐体 = 0
-					NEXT
-				NEXT
+				VARSET GCオブジェクト
+				CALL 設置済み筐体計算
 				BREAK
 		ENDSELECT
 	LOOP 1
@@ -484,7 +474,7 @@ VARSET LOCAL, 0
 DRAWLINE
 PRINTL 【物件増築】
 PRINTL 物件を増築できます。
-PRINTL スペースを広げたり設備を強化すると、置ける筐体の数が増えたり評判が上がったりします。
+PRINTL スペースを広げたり設備を強化すると、マップが広がったり評判が上がったりします。
 DRAWLINE
 PRINTFORMLC 　物件：%物件名(GC物件)%
 CALL PASELIL, @"所持金：{MONEY}＄"
@@ -512,9 +502,11 @@ PRINTFORMLC お手洗いレベル：{GCトイレ}
 PRINTL 
 DRAWLINE
 
-LOCAL:1 = GC広さ*3000+5000
+;広さは最大で20まで
+LOCAL:1 = GC広さ*30000+50000
 LOCAL:2 = 30000
-LOCAL:3 = GC階層*1000000
+;階層は100まで
+LOCAL:3 = (GC階層*GC階層)*1000000
 LOCAL:4 = GC外装*100000
 LOCAL:5 = 100000
 LOCAL:6 = GCトイレ*2000+5000
@@ -525,10 +517,18 @@ SELECTCASE GC物件
 		PRINTL 【増築できません】
 		PRINTL 
 	CASEELSE
-		CALL PASELIL, @"　[1] - 広くする({LOCAL:1}＄)"
+		IF GC広さ >= 20
+			PRINTL 　[-] - 広さは最大です
+		ELSE
+			CALL PASELIL, @"　[1] - 広くする({LOCAL:1}＄)"
+		ENDIF
 		SIF !GC分煙
 			CALL PASELIL, @"　[2] - 分煙施設を作る({LOCAL:2}＄)"
-		CALL PASELIL, @"　[3] - 階層を増やす({LOCAL:3}＄)"
+		IF GC階層 >= 100
+			PRINTL 　[-] - 階層は最大です
+		ELSE
+			CALL PASELIL, @"　[3] - 階層を増やす({LOCAL:3}＄)"
+		ENDIF
 		CALL PASELIL, @"　[4] - 外装強化({LOCAL:4}＄)"
 		SIF !GCフードコート
 			CALL PASELIL, @"　[5] - フードコートを作る({LOCAL:5}＄)"
@@ -542,8 +542,14 @@ PRINTL [0] 戻る
 DO
 	INPUT
 	SELECTCASE RESULT
+		CASE 1
+			SIF GC広さ >= 20
+				CONTINUE
 		CASE 2
 			SIF GC分煙
+				CONTINUE
+		CASE 3
+			SIF GC階層 >= 100
 				CONTINUE
 		CASE 5
 			SIF GCフードコート
@@ -702,141 +708,6 @@ DO
 	ENDSELECT
 LOOP 1
 
-;階層選択処理----------------------------------------------------
-@SELECT_FLOOR
-#DIM ページ数
-IF GC階層 >= 2
-	DRAWLINE
-	PRINTFORML □%物件名(GC物件)% {GC階層}階建て
-	PRINTL 　階層を選んでください
-	FOR COUNT, ページ数*10+1, ページ数*10+11
-		SIF COUNT > GC階層
-			BREAK
-		PRINTFORML 　[{COUNT}] {COUNT}階 {GC広さ-空きスペース:COUNT}/{GC広さ}使用中
-	NEXT
-	DRAWLINE
-	PRINTPLAINFORM 　PAGE:{ページ数+1}　
-	IF ページ数 > 0
-		PRINTLC [999] 前ページ
-	ELSE
-		PRINTLC  
-	ENDIF
-	PRINTLC [1000] 戻る
-	SIF GC階層 > ページ数*10+10
-		PRINTLC [1001] 次ページ
-	
-	DO
-		INPUT
-		SELECTCASE RESULT
-			CASE 999
-				SIF ページ数 > 0
-					ページ数--
-			CASE 1000
-				RETURN 0
-			CASE 1001
-				SIF GC階層 > ページ数*10+10
-					ページ数++
-			CASE IS >= 1, IS <= GC階層
-				CALL AC_SETUP, RESULT
-				RESTART
-		ENDSELECT
-	LOOP LOOPRES(999, 1001)
-ELSE
-	CALL AC_SETUP, 1
-	RETURN 0
-ENDIF
-
-RESTART
-
-;----------------------------------------------------
-;筐体設置処理
-;----------------------------------------------------
-@AC_SETUP, 階層
-#DIM 階層
-#DIM DYNAMIC 選択筐体
-#DIM DYNAMIC LCOUNT
-;ページ数は初期値が1
-#DIM ページ数 = 1
-VARSET LOCAL, 0
-DRAWLINE
-
-;階層を選んでここに飛んで来るので、あとは設置する筐体(1100～2000)を選ぶだけ
-
-PRINTFORML □{階層}階 広さ:{GC広さ} 
-PRINTFORML 　使用済みスペース:{GC広さ-空きスペース:階層} 使用可能スペース:あと{空きスペース:階層}
-
-FOR LCOUNT, ページ数*100+1000, ページ数*100+1100
-	SIF ITEMNAME:LCOUNT == ""
-		CONTINUE
-	
-	PRINTFORML ・%ITEMNAME:LCOUNT%×{ITEM:LCOUNT}台在庫あり(必要スペース:{筐体コスト(LCOUNT)} {設置筐体:階層:LCOUNT}台設置中)
-	SIF ITEM:LCOUNT
-		PRINTFORML 　%ITEMNAME:LCOUNT%を設置[{LCOUNT*10}]
-	SIF 設置筐体:階層:LCOUNT
-		PRINTFORML 　%ITEMNAME:LCOUNT%を撤去[{LCOUNT*10+1}]
-	PRINTL 
-NEXT
-PRINTL ・[1002] 全て撤去
-
-DRAWLINE
-PRINTPLAINFORM 　PAGE.{ページ数}　
-SIF ページ数 > 1
-	PRINTLC [999] 前ページ
-PRINTLC [1000] 戻る
-SIF ページ数 < 4
-	PRINTLC [1001] 次ページ
-
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 999
-			SIF ページ数 > 1
-				ページ数--
-		CASE 1000
-			RETURN 0
-		CASE 1001
-			SIF ページ数 < 4
-				ページ数++
-		CASE 1002
-			FOR LCOUNT, 1100, 1500
-				SIF ITEMNAME:LCOUNT == ""
-					CONTINUE
-				SIF 設置筐体:階層:LCOUNT == 0
-					CONTINUE
-				ITEM:LCOUNT += 設置筐体:階層:LCOUNT
-				設置筐体:階層:LCOUNT = 0
-				空きスペース:階層 = GC広さ
-			NEXT
-			PRINTW 全筐体を撤去しました
-		CASEELSE
-			選択筐体 = RESULT/10
-			IF RESULT%10 == 0 && 筐体コスト(選択筐体) > 空きスペース:階層
-				PRINTW スペースが足りません
-				RESTART
-			ELSEIF ITEMNAME:選択筐体 != ""
-				SELECTCASE RESULT%10
-					CASE 0
-						IF ITEM:選択筐体
-							設置筐体:階層:選択筐体++
-							ITEM:選択筐体--
-							空きスペース:階層 -= 筐体コスト(選択筐体)
-							PRINTFORMW {階層}階に%ITEMNAME:選択筐体%を設置しました(現在{設置筐体:階層:選択筐体}台)
-						ENDIF
-					CASE 1
-						IF 設置筐体:階層:選択筐体
-							設置筐体:階層:選択筐体--
-							ITEM:選択筐体++
-							空きスペース:階層 += 筐体コスト(選択筐体)
-							PRINTFORMW {階層}階の%ITEMNAME:選択筐体%を撤去しました(現在{設置筐体:階層:選択筐体}台)
-						ENDIF
-				ENDSELECT
-				RESTART
-			ENDIF
-	ENDSELECT
-LOOP LOOPRES(999, 1001, 1002)
-
-RESTART
-
 ;----------------------------------------------------
 ;所持筐体表示処理
 ;----------------------------------------------------
@@ -857,6 +728,33 @@ SIF !LOCAL
 SIF !LINEISEMPTY()
 	PRINTL 
 DRAWLINE
+
+;----------------------------------------------------
+;設置済み筐体の確認
+;最大で9万回ループのため重くなりそうなら別の処理を考える
+;----------------------------------------------------
+@設置済み筐体計算
+#DIM DYNAMIC 階層
+#DIM DYNAMIC X座標
+#DIM DYNAMIC Y座標
+#DIM DYNAMIC 筐体NO
+
+VARSET 設置済み筐体
+
+;各階層、各マップに設置してある筐体数を計算
+;オブジェクトナンバーはそれぞれ上下左右の向きで4つ分ある
+;それと1からカウントしてるので式は (オブジェクトナンバー-1)/4
+FOR 階層, 1, GC階層+1
+	FOR X座標, 0, 10+GC広さ
+		FOR Y座標, 0, 10+GC広さ
+			IF GCオブジェクト:階層:X座標:Y座標
+				筐体NO = (GCオブジェクト:階層:X座標:Y座標-1)/4
+				設置済み筐体:筐体NO++
+			ENDIF
+		NEXT
+	NEXT
+NEXT
+
 
 ;----------------------------------------------------
 ;所持物件表示処理
@@ -910,6 +808,9 @@ DRAWLINE
 #DIM DYNAMIC モチベ計算用
 #DIM DYNAMIC 世話好き人数
 VARSET LOCAL, 0
+
+CALL 設置済み筐体計算
+
 SIF !GC物件
 	RETURN 0
 ;収入計算--------------------------------------------------------
@@ -990,8 +891,8 @@ ENDSELECT
 
 ;筐体補正--------------------------------------
 ;単純に筐体数が多ければそれだけで名声が上がる
-FOR LCOUNT, 1, GC階層+1
-	名声 += 名声筐体補正(LCOUNT)
+FOR LCOUNT, 0, 400
+	名声 += 名声筐体補正(LCOUNT)*設置済み筐体:LCOUNT
 NEXT
 
 ;広さ補正-------------------------------------
@@ -1029,10 +930,8 @@ SIF GCフードコート
 
 評判 += GCメンテ/5
 
-FOR LCOUNT, 1, GC階層+1
-	;機種が偏ると評判は下がる
-	評判 += 評判筐体補正(COUNT)
-NEXT
+CALL 評判筐体補正
+評判 += RESULT
 
 ;お手洗い補正---------------------------------
 評判 += GCトイレ*GC物件/3
@@ -1081,15 +980,15 @@ SELECTCASE GC物件
 ENDSELECT
 
 ;筐体補正--------------------------------------
-FOR LCOUNT, 1, GC階層+1
-	支出 += 筐体支出補正(LCOUNT)
+FOR LCOUNT, 0, 400
+	支出 += 筐体支出補正(LCOUNT)*設置済み筐体:LCOUNT
 NEXT
 
 ;広さ補正-------------------------------------
-支出 += GC広さ*50
+支出 += GC広さ*500
 
 ;階層補正-------------------------------------
-支出 += GC階層*1000
+支出 += GC階層*10000
 
 ;フードコート補正-------------------------
 ;フードコートレベルに応じて支出を抑えられる
@@ -1219,3 +1118,25 @@ NEXT
 GCメンテ = LOCAL:1 * 10 / 11
 GCメンテ = LIMIT(GCメンテ, 0, 100)
 
+
+@GCバージョン管理
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 階層
+
+;マップシステム導入版は20200729
+IF GCバージョン < 20200729
+	;広さと階層に上限を設けた
+	CALL SETMIN, GC広さ, 20
+	CALL SETMIN, GC階層, 100
+	;設置済みの筐体を全て回収する
+	FOR LCOUNT, 1100, 1500
+		SIF ITEMNAME:LCOUNT == ""
+			CONTINUE
+		SIF 設置筐体:階層:LCOUNT == 0
+			CONTINUE
+		ITEM:LCOUNT += 設置筐体:階層:LCOUNT
+		設置筐体:階層:LCOUNT = 0
+		空きスペース:階層 = GC広さ
+	NEXT
+	GCバージョン = 20200729
+ENDIF

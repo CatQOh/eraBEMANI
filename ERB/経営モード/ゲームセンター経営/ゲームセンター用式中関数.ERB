@@ -230,6 +230,21 @@ RETURNF 合計値
 #DIM DYNAMIC LCOUNT, 2
 #DIM DYNAMIC 計算用名声
 #DIM DYNAMIC 計算用評判
+#DIM DYNAMIC 階層筐体計算, 400
+#DIM DYNAMIC X座標
+#DIM DYNAMIC Y座標
+#DIM DYNAMIC 筐体NO
+
+;オブジェクトナンバーはそれぞれ上下左右の向きで4つ分ある
+;それと1からカウントしてるので式は (オブジェクトナンバー-1)/4
+FOR X座標, 0, 10+GC広さ
+	FOR Y座標, 0, 10+GC広さ
+		IF GCオブジェクト:階層:X座標:Y座標
+			筐体NO = (GCオブジェクト:階層:X座標:Y座標-1)/4
+			階層筐体計算:筐体NO++
+		ENDIF
+	NEXT
+NEXT
 
 計算用名声 = GC名声
 計算用評判 = GC評判
@@ -260,39 +275,37 @@ SELECTCASE FLAG:天気
 		TIMES 計算用評判 , 0.50
 ENDSELECT
 
-FOR LCOUNT, 1100, 1500
-	SIF ITEMNAME:LCOUNT == ""
+FOR LCOUNT, 0, 400
+	SIF !階層筐体計算:LCOUNT
 		CONTINUE
-	SIF !設置筐体:階層:LCOUNT
-		CONTINUE
-	SELECTCASE ITEMNAME:LCOUNT
+	SELECTCASE ITEMNAME:(LCOUNT+1100)
 		CASE "beatmaniaIIDX"
 			;IIDXは最高で名声+20000 メンテでだいぶ左右される
 			;メンテ次第で名声×5の収入になるので最終的には一番の収入源になる……はず
 			LOCAL = (計算用名声/20+200)*GCメンテ
 			;待ち椅子ボーナス
-			LOCAL += 設置筐体:階層:1820*70
-			LOCAL += 設置筐体:階層:1821*10
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		CASE "pop'n music"
 			;ポップンは最高で評判+10000 こっちはIIDXほどメンテの影響は大きくない
 			LOCAL = 計算用評判+2000+(GCメンテ*80)
 			;待ち椅子ボーナス
-			LOCAL += 設置筐体:階層:1820*70
-			LOCAL += 設置筐体:階層:1821*10
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		CASE "Dance Dance Revolution"
 			;DDRは立地の差が大きい メンテ次第で最低2000、最高28000
 			LOCAL = GC物件*2000+(GC物件*20*GCメンテ)
 			LOCAL += GC物件*(計算用名声/10)+GC物件*(計算用評判/10)
 			;待ち椅子ボーナスが大きい
-			LOCAL += 設置筐体:階層:1820*200
-			LOCAL += 設置筐体:階層:1821*50
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*200
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*50
 		CASE "GITADORA"
 			;ギタドラは評判、名声、メンテの総合型 最高で名声+評判がそのまま収入になる ギタとドラで2倍
 			;逆に言えば評判も名声もメンテもダメだとインカムが悲惨なことになる
 			LOCAL = ((計算用評判/100+1)*GCメンテ+(計算用名声/100+1)*GCメンテ)*2
 			;待ち椅子ボーナス
-			LOCAL += 設置筐体:階層:1820*70
-			LOCAL += 設置筐体:階層:1821*10
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		CASE "jubeat"
 			;指は名声に左右され最高で3000 名声50000で最高額に達し、メンテスキルの必要性は皆無 一番安定感ある
 			LOCAL = 500
@@ -302,8 +315,8 @@ FOR LCOUNT, 1100, 1500
 				LOCAL += 計算用名声/20
 			ENDIF
 			;待ち椅子ボーナス
-			LOCAL += 設置筐体:階層:1820*70
-			LOCAL += 設置筐体:階層:1821*10
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		CASE "REFLEC BEAT"
 			;リフレクは指より少しシビアだが最高額が5000 最高額には名声100000必要
 			IF 計算用名声 >= 100000
@@ -312,8 +325,8 @@ FOR LCOUNT, 1100, 1500
 				LOCAL = 計算用名声/1000*25+(GCメンテ*25)
 			ENDIF
 			;待ち椅子ボーナス
-			LOCAL += 設置筐体:階層:1820*70
-			LOCAL += 設置筐体:階層:1821*10
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		CASE "SOUND VOLTEX"
 			;ボルテは評判寄り メンテも必要だが名声はあまり関係無い 最高7000
 			LOCAL += GCメンテ*20
@@ -323,14 +336,14 @@ FOR LCOUNT, 1100, 1500
 				LOCAL = (計算用評判+計算用名声/100)/10
 			ENDIF
 			;待ち椅子ボーナス
-			LOCAL += 設置筐体:階層:1820*70
-			LOCAL += 設置筐体:階層:1821*10
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		CASE "Dance Evolution"
 			;ダンエボは名声と立地次第で評判とメンテの必要性は皆無 最大で1400+名声×1.4
 			LOCAL = (1000+計算用名声/5)*GC物件
 			;DDRほどではないが待ち椅子ボーナスが大きい
-			LOCAL += 設置筐体:階層:1820*100
-			LOCAL += 設置筐体:階層:1821*30
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*100
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*30
 		CASE "クイズマジックアカデミー"
 			;マジアカはそこまで収入には貢献しないが、名声上昇量が割と大きい メンテの必要性は無し 最大2000
 			LOCAL = 500
@@ -349,8 +362,8 @@ FOR LCOUNT, 1100, 1500
 				LOCAL += 計算用名声/20
 			ENDIF
 			;待ち椅子ボーナス
-			LOCAL += 設置筐体:階層:1820*70
-			LOCAL += 設置筐体:階層:1821*10
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		CASE "CHUNITHM"
 			;簡単に稼げるが評判に悪影響（ひどい） 名声のみ影響するが他店と取り合いになるのでそれなりに名声が必要 最大5000
 			LOCAL = 1000
@@ -359,8 +372,8 @@ FOR LCOUNT, 1100, 1500
 			ELSE
 				LOCAL += 計算用名声/40
 			ENDIF
-			LOCAL += 設置筐体:階層:1820*50
-			LOCAL += 設置筐体:階層:1821*10
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*50
+			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		;ギャンブル系（コインゲーム） 腕と運次第でいくらでも続けられるので正直収入に期待してはいけない
 		;ただし下記自販機とのシナジーは筐体コストの割には大きい
 		;メダル両替機が無いと収入にならない
@@ -368,13 +381,11 @@ FOR LCOUNT, 1100, 1500
 			SIF EXISTGAMES("メダル両替機")
 				LOCAL = 200
 		CASE "自販機（飲み物）"
-			FOR LCOUNT:1, 1100, 1200
-				SIF ITEMNAME:LCOUNT == ""
-					CONTINUE
-				SIF !設置筐体:階層:(LCOUNT:1)
+			FOR LCOUNT:1, 0, 100
+				SIF !階層筐体計算:(LCOUNT:1)
 					CONTINUE
 				;筐体ごとにシナジーがある
-				SELECTCASE ITEMNAME:(LCOUNT:1)
+				SELECTCASE ITEMNAME:(LCOUNT:1+1100)
 					CASE "beatmaniaIIDX"
 						LOCAL = 300
 					CASE "pop'n music"
@@ -402,13 +413,11 @@ FOR LCOUNT, 1100, 1500
 				ENDSELECT
 			NEXT
 		CASE "自販機（軽食）"
-			FOR LCOUNT:1, 1100, 1200
-				SIF ITEMNAME:LCOUNT == ""
-					CONTINUE
-				SIF !設置筐体:階層:(LCOUNT:1)
+			FOR LCOUNT:1, 0, 100
+				SIF !階層筐体計算:(LCOUNT:1)
 					CONTINUE
 				;筐体ごとにシナジーがある
-				SELECTCASE ITEMNAME:(LCOUNT:1)
+				SELECTCASE ITEMNAME:(LCOUNT:1+1100)
 					CASE "beatmaniaIIDX"
 						LOCAL = 500
 					CASE "pop'n music"
@@ -436,13 +445,11 @@ FOR LCOUNT, 1100, 1500
 				ENDSELECT
 			NEXT
 		CASE "自販機（アイス）"
-			FOR LCOUNT:1, 1100, 1200
-				SIF ITEMNAME:LCOUNT == ""
-					CONTINUE
-				SIF !設置筐体:階層:(LCOUNT:1)
+			FOR LCOUNT:1, 0, 100
+				SIF !階層筐体計算:(LCOUNT:1)
 					CONTINUE
 				;筐体ごとにシナジーがある
-				SELECTCASE ITEMNAME:(LCOUNT:1)
+				SELECTCASE ITEMNAME:(LCOUNT:1+1100)
 					CASE "beatmaniaIIDX"
 						LOCAL = 150
 					CASE "pop'n music"
@@ -470,7 +477,7 @@ FOR LCOUNT, 1100, 1500
 				ENDSELECT
 			NEXT
 	ENDSELECT
-	LOCAL:1 += LOCAL*設置筐体:階層:LCOUNT
+	LOCAL:1 += LOCAL*階層筐体計算:LCOUNT
 NEXT
 
 ;RANDの仕様で1低くなるので1を加算(例として、RAND:0とかになってエラー吐く)
@@ -478,110 +485,54 @@ LOCAL:1++
 
 RETURNF LOCAL:1
 
-@筐体支出補正, 階層
+@筐体支出補正, 筐体ナンバー
 #FUNCTION
-#DIM 階層
-#DIM 筐体
+#DIM DYNAMIC 筐体ナンバー
 
 VARSET LOCAL, 0
-
-FOR 筐体, 1100, 1500
-	SIF !設置筐体:階層:筐体
-		CONTINUE
-	SELECTCASE ITEMNAME:筐体
-		CASE "beatmaniaIIDX"
-			LOCAL = 1000
-		CASE "pop'n music"
-			LOCAL = 900
-		CASE "Dance Dance Revolution"
-			LOCAL = 1500
-		CASE "GITADORA"
-			LOCAL = 1000
-		CASE "jubeat"
-			LOCAL = 500
-		CASE "REFLEC BEAT"
-			LOCAL = 500
-		CASE "SOUND VOLTEX"
-			LOCAL = 600
-		CASE "Dance Evolution"
-			LOCAL = 1500
-		CASE "両替機"
-			LOCAL = 300
-		CASE "メダル両替機"
-			LOCAL = 300
-		CASE "PASELI券売機"
-			LOCAL = 500
-		CASE "PASELIチャージ機"
-			LOCAL = 500
-		CASE "自販機（飲み物）"
-			LOCAL = 700
-		CASE "自販機（軽食）"
-			LOCAL = 900
-		CASE "自販機（アイス）"
-			LOCAL = 800
-		CASE "マッサージチェア"
-			LOCAL = 200
-		CASE "maimai"
-			LOCAL = 500
-		CASE "CHUNITHM"
-			LOCAL = 500
-		CASE "クイズマジックアカデミー"
-			LOCAL = 300
-		CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
-			LOCAL = 100
-	ENDSELECT
-	LOCAL += LOCAL/10*浪費癖人数("ゲームセンター")
-	LOCAL:1 += LOCAL*設置筐体:階層:筐体
-NEXT
-
-RETURNF LOCAL:1
-
-@筐体コスト, ARG
-#FUNCTION
-SELECTCASE ITEMNAME:ARG
+SELECTCASE ITEMNAME:(筐体ナンバー+1100)
 	CASE "beatmaniaIIDX"
-		LOCAL = 2
+		LOCAL = 1000
 	CASE "pop'n music"
-		LOCAL = 2
+		LOCAL = 900
 	CASE "Dance Dance Revolution"
-		LOCAL = 3
+		LOCAL = 1500
 	CASE "GITADORA"
-		LOCAL = 3
+		LOCAL = 1000
 	CASE "jubeat"
-		LOCAL = 1
+		LOCAL = 500
 	CASE "REFLEC BEAT"
-		LOCAL = 1
+		LOCAL = 500
 	CASE "SOUND VOLTEX"
-		LOCAL = 1
+		LOCAL = 600
 	CASE "Dance Evolution"
-		LOCAL = 3
+		LOCAL = 1500
 	CASE "両替機"
-		LOCAL = 1
+		LOCAL = 300
 	CASE "メダル両替機"
-		LOCAL = 1
+		LOCAL = 300
 	CASE "PASELI券売機"
-		LOCAL = 1
+		LOCAL = 500
 	CASE "PASELIチャージ機"
-		LOCAL = 1
+		LOCAL = 500
 	CASE "自販機（飲み物）"
-		LOCAL = 1
+		LOCAL = 700
 	CASE "自販機（軽食）"
-		LOCAL = 1
+		LOCAL = 900
 	CASE "自販機（アイス）"
-		LOCAL = 1
+		LOCAL = 800
 	CASE "マッサージチェア"
-		LOCAL = 2
-	CASE "待ち椅子"
-		LOCAL = 1
+		LOCAL = 200
 	CASE "maimai"
-		LOCAL = 1
+		LOCAL = 500
 	CASE "CHUNITHM"
-		LOCAL = 1
+		LOCAL = 500
 	CASE "クイズマジックアカデミー"
-		LOCAL = 1
+		LOCAL = 300
 	CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
-		LOCAL = 1
+		LOCAL = 100
 ENDSELECT
+LOCAL += LOCAL/10*浪費癖人数("ゲームセンター")
 
 RETURNF LOCAL
 
@@ -714,65 +665,57 @@ LOCAL:2 += LOCAL:1
 
 RETURNF LOCAL:2
 
-@名声筐体補正, 階層
+@名声筐体補正, 筐体ナンバー
 #FUNCTION
-#DIM 階層
-#DIM 筐体
-
-VARSET LOCAL, 0
+#DIM DYNAMIC 筐体ナンバー
 
 ;大体筐体コストと同じ
-FOR 筐体, 1100, 1500
-	SIF !設置筐体:階層:筐体
-		CONTINUE
-	SELECTCASE ITEMNAME:筐体
-		CASE "beatmaniaIIDX"
-			LOCAL = 2
-		CASE "pop'n music"
-			LOCAL = 2
-		CASE "Dance Dance Revolution"
-			LOCAL = 3
-		CASE "GITADORA"
-			LOCAL = 3
-		CASE "jubeat"
-			LOCAL = 1
-		CASE "REFLEC BEAT"
-			LOCAL = 1
-		CASE "SOUND VOLTEX"
-			LOCAL = 1
-		CASE "Dance Evolution"
-			LOCAL = 3
-		CASE "両替機"
-			LOCAL = 1
-		CASE "メダル両替機"
-			LOCAL = 1
-		CASE "PASELI券売機"
-			LOCAL = 2
-		CASE "PASELIチャージ機"
-			LOCAL = 2
-		CASE "自販機（飲み物）"
-			LOCAL = 1
-		CASE "自販機（軽食）"
-			LOCAL = 2
-		CASE "自販機（アイス）"
-			LOCAL = 1
-		CASE "マッサージチェア"
-			LOCAL = 3
-		CASE "待ち椅子"
-			LOCAL = 1
-		CASE "maimai"
-			LOCAL = 1
-		CASE "CHUNITHM"
-			LOCAL = 1
-		CASE "クイズマジックアカデミー"
-			LOCAL = 3
-		CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
-			LOCAL = 1
-	ENDSELECT
-	LOCAL:1 += LOCAL*設置筐体:階層:筐体
-NEXT
+SELECTCASE ITEMNAME:(筐体ナンバー+1100)
+	CASE "beatmaniaIIDX"
+		LOCAL = 2
+	CASE "pop'n music"
+		LOCAL = 2
+	CASE "Dance Dance Revolution"
+		LOCAL = 3
+	CASE "GITADORA"
+		LOCAL = 3
+	CASE "jubeat"
+		LOCAL = 1
+	CASE "REFLEC BEAT"
+		LOCAL = 1
+	CASE "SOUND VOLTEX"
+		LOCAL = 1
+	CASE "Dance Evolution"
+		LOCAL = 3
+	CASE "両替機"
+		LOCAL = 1
+	CASE "メダル両替機"
+		LOCAL = 1
+	CASE "PASELI券売機"
+		LOCAL = 2
+	CASE "PASELIチャージ機"
+		LOCAL = 2
+	CASE "自販機（飲み物）"
+		LOCAL = 1
+	CASE "自販機（軽食）"
+		LOCAL = 2
+	CASE "自販機（アイス）"
+		LOCAL = 1
+	CASE "マッサージチェア"
+		LOCAL = 3
+	CASE "待ち椅子"
+		LOCAL = 1
+	CASE "maimai"
+		LOCAL = 1
+	CASE "CHUNITHM"
+		LOCAL = 1
+	CASE "クイズマジックアカデミー"
+		LOCAL = 3
+	CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
+		LOCAL = 1
+ENDSELECT
 
-RETURNF LOCAL:1
+RETURNF LOCAL
 
 @名声人事補正
 #FUNCTION
@@ -880,54 +823,58 @@ NEXT
 
 RETURNF LOCAL:1
 
-@評判筐体補正, 階層
-#FUNCTION
-#DIM 階層
-#DIM 筐体
+@評判筐体補正
+#DIM DYNAMIC 筐体
+#DIM DYNAMIC LCOUNT
 
 VARSET LOCAL, 0
 
-FOR 筐体, 1100, 2000
-	SIF !設置筐体:階層:筐体
+
+FOR LCOUNT, 0, 400
+	SIF !設置済み筐体:LCOUNT
 		CONTINUE
-	SELECTCASE 筐体
-		;CHUNITHMは評判に悪影響
-		CASE IS == GETNUM(ITEM, "CHUNITHM")
-			LOCAL--
+	;CHUNITHMは評判に悪影響
+	IF ITEMNAME:LCOUNT == "CHUNITHM"
+		LOCAL -= 設置済み筐体:LCOUNT
+	ELSE
 		;置いてあるアーケードゲーム筐体の種類
-		CASE 1100 TO 1299
-			LOCAL++
-		;その他
-		CASEELSE
-			LOCAL:1++
-	ENDSELECT
+		SELECTCASE LCOUNT
+			CASE 0 TO 199
+				LOCAL++
+			;その他
+			CASEELSE
+				LOCAL:1++
+		ENDSELECT
+	ENDIF
 NEXT
-FOR 筐体, 1100, 1500
-	SIF !設置筐体:階層:筐体
+FOR LCOUNT, 0, 400
+	SIF !設置済み筐体:LCOUNT
 		CONTINUE
-	SELECTCASE 筐体
-		CASE 1100 TO 1199
+	SELECTCASE LCOUNT
+		CASE 0 TO 99
 			;各種筐体数＞置いてある種類だと偏ってるため評判が下がる
-			IF 設置筐体:階層:筐体 > LOCAL
-				LOCAL:2 += (設置筐体:階層:筐体-LOCAL)*(設置筐体:階層:筐体-LOCAL)
+			IF 設置済み筐体:LCOUNT > LOCAL
+				LOCAL:2 += (設置済み筐体:LCOUNT-LOCAL)*(設置済み筐体:LCOUNT-LOCAL)
 			;偏ってなければ筐体の数だけ上がる
 			ELSE
-				LOCAL:2 += 設置筐体:階層:筐体
+				LOCAL:2 += 設置済み筐体:LCOUNT
 			ENDIF
 		;待ち椅子だけ例外
-		CASE IS != 1421
-			;各種筐体数＞置いてある種類だと偏ってるため評判が下がる
-			IF 設置筐体:階層:筐体 > LOCAL:1
-				LOCAL:2 += (設置筐体:階層:筐体-LOCAL:1)*(設置筐体:階層:筐体-LOCAL:1)
-			;偏ってなければ筐体の数だけ上がる
-			ELSE
-				LOCAL:2 += 設置筐体:階層:筐体
+		CASEELSE
+			IF ITEMNAME:LCOUNT != "待ち椅子"
+				;各種筐体数＞置いてある種類だと偏ってるため評判が下がる
+				IF 設置済み筐体:LCOUNT > LOCAL:1
+					LOCAL:2 += (設置済み筐体:LCOUNT-LOCAL:1)*(設置済み筐体:LCOUNT-LOCAL:1)
+				;偏ってなければ筐体の数だけ上がる
+				ELSE
+					LOCAL:2 += 設置済み筐体:LCOUNT
+				ENDIF
 			ENDIF
 	ENDSELECT
 NEXT
 LOCAL:2 += LOCAL+LOCAL:1
 
-RETURNF LOCAL:2
+RETURN LOCAL:2
 
 ;引数で指定した曜日が定休日かどうか 省略すれば今日の曜日
 ;書式 GC定休日("木") みたいな
@@ -949,16 +896,17 @@ ENDIF
 ;筐体がゲーセンに設置されてるかどうかの判定用関数
 @EXISTGAMES, ARGS
 #FUNCTION
-#DIM DYNAMIC 階層
+#DIM DYNAMIC 筐体ナンバー
 #DIM DYNAMIC LCOUNT
 
-FOR 階層, 1, GC階層+1
-	FOR LCOUNT, 1100, 1500
-		LOCAL = 0
-		SIF !設置筐体:階層:LCOUNT
-			CONTINUE
-		SIF ITEMNAME:LCOUNT == ARGS
-			RETURNF 1
-	NEXT
-NEXT
+筐体ナンバー = GETNUM(ITEM, ARGS)-1100
+
+SIF 筐体ナンバー < 0
+	RETURNF 0
+
+IF 設置済み筐体:筐体ナンバー > 0
+	RETURNF 1
+ELSE
+	RETURNF 0
+ENDIF
 
