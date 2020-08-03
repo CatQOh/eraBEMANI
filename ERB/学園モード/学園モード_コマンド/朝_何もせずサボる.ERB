@@ -1,0 +1,96 @@
+﻿@朝_何もせずサボる
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 訪問者
+#DIM DYNAMIC LRESULT
+
+PRINTFORMW %CALLNAME:PLAYER%は今日は学校をサボることにした……
+DRAWLINE
+
+;同じ学校で連絡先を知ってるキャラから連絡が来ることがある
+FOR LCOUNT, 1, CHARANUM
+	IF CSTR:LCOUNT:在校 == CSTR:PLAYER:在校 && 連絡先:LCOUNT
+		;確率は 1/同じ学校の在校生の人数
+		IF RAND:CMATCH(CSTR:在校, CSTR:PLAYER:在校) == 0
+			PRINTFORML 学校を休んだ%CALLNAME:PLAYER%を心配してか、%CALLNAME:LCOUNT%が電話をかけてきた
+			PRINTL [0] - 大丈夫だと伝える
+			PRINTL [1] - 具合が悪いから看病してほしいと言う
+			PRINTL [2] - 正直にサボりだと答える
+			DO
+				INPUT
+				LRESULT = RESULT
+				SELECTCASE LRESULT
+					CASE 0
+						;素質で反応が変わる
+						IF TALENT:LCOUNT:強気 || TALENT:LCOUNT:ツンデレ
+							PRINTFORML %CALLNAME:PLAYER%が大丈夫と答えると、%CALLNAME:LCOUNT%は心配して損したといった様子で電話を切ってしまった……
+						ELSEIF TALENT:LCOUNT:弱気 || TALENT:LCOUNT:寂しがり屋
+							PRINTFORML %CALLNAME:PLAYER%は大丈夫と答えたものの、%CALLNAME:LCOUNT%は未だ不安げな様子のまま通話を終えた
+						ELSEIF TALENT:LCOUNT:冷静 || TALENT:LCOUNT:無関心
+							PRINTFORML %CALLNAME:PLAYER%が大丈夫と答えると、それを確認した%CALLNAME:LCOUNT%は早々に通話を切った
+						ELSE
+							PRINTFORML %CALLNAME:PLAYER%が大丈夫と答えると、%CALLNAME:LCOUNT%は安心した様子で通話を終えた
+						ENDIF
+						BREAK
+					CASE 1
+						;好感度（相性）が高いと聞き入れてもらえる
+						IF RELATION:LCOUNT:PLAYER >= 200
+							;素質で反応が変わる
+							IF TALENT:LCOUNT:強気 || TALENT:LCOUNT:ツンデレ
+								PRINTFORML %CALLNAME:PLAYER%が仮病を装うと、%CALLNAME:LCOUNT%は呆れた様子で、後でそちらに向かうと答えた
+							ELSEIF TALENT:LCOUNT:弱気 || TALENT:LCOUNT:寂しがり屋
+								PRINTFORML %CALLNAME:PLAYER%が仮病を装うと、%CALLNAME:LCOUNT%は今にも駆け出しそうな慌てぶりで、看病に向かうと答えた
+							ELSEIF TALENT:LCOUNT:冷静 || TALENT:LCOUNT:無関心
+								PRINTFORML %CALLNAME:PLAYER%が仮病を装うと、%CALLNAME:LCOUNT%はその様子を疑いつつも、後でそちらに向かうと答えた
+							ELSE
+								PRINTFORML %CALLNAME:PLAYER%が仮病を装うと、%CALLNAME:LCOUNT%は心配した様子で、後でそちらに向かうと答えた
+							ENDIF
+							訪問者 = LCOUNT
+						ELSE
+							;素質で反応が変わる
+							IF TALENT:LCOUNT:強気 || TALENT:LCOUNT:ツンデレ
+								PRINTFORML %CALLNAME:PLAYER%は仮病を装うが、%CALLNAME:LCOUNT%には無情にも拒否されてしまった……
+							ELSEIF TALENT:LCOUNT:弱気 || TALENT:LCOUNT:寂しがり屋
+								PRINTFORML %CALLNAME:PLAYER%が仮病を装うが、%CALLNAME:LCOUNT%はそっちに向かえないと言って謝られてしまった……
+							ELSEIF TALENT:LCOUNT:冷静 || TALENT:LCOUNT:無関心
+								PRINTFORML %CALLNAME:PLAYER%は仮病を装うが、%CALLNAME:LCOUNT%には簡単に見抜かれ通話を切られてしまった……
+							ELSE
+								PRINTFORML %CALLNAME:PLAYER%が仮病を装うが、%CALLNAME:LCOUNT%には授業があるから無理と断られてしまった……
+							ENDIF
+						ENDIF
+						BREAK
+					CASE 2
+						;サボり魔持ちにはサボりが伝染する
+						IF TALENT:LCOUNT:サボり魔
+							PRINTFORML %CALLNAME:PLAYER%が正直にサボりだと答えると、%CALLNAME:LCOUNT%も笑いながら自分もサボると言ってきた
+							訪問者 = LCOUNT
+						;相性が良いと許される
+						ELSEIF RELATION:LCOUNT:PLAYER >= 150
+							PRINTFORML %CALLNAME:PLAYER%が正直にサボりだと答えると、%CALLNAME:LCOUNT%は呆れた様子で通話を終えた
+						ELSE
+							PRINTFORML %CALLNAME:PLAYER%が正直にサボりだと答えると、%CALLNAME:LCOUNT%にサボったことを咎められてしまった……
+						ENDIF
+						BREAK
+				ENDSELECT
+			LOOP 1
+			CALL 相性増加, LCOUNT, PLAYER, 1
+			WAIT
+			BREAK
+		ENDIF
+	ENDIF
+NEXT
+
+;上記の処理で訪問者が居る場合
+IF 訪問者
+	SELECTCASE LRESULT
+		;看病を要請
+		CASE 1
+			PRINTFORMW その後、授業を終えた%CALLNAME:訪問者%が家まで看病に来てくれた
+			CSTR:訪問者:現在地 = %CALLNAME:PLAYER%の家
+		;サボり
+		CASE 2
+			PRINTFORMW その後、授業をサボった%CALLNAME:訪問者%が%CALLNAME:PLAYER%の家にやってきた
+			CSTR:訪問者:現在地 = %CALLNAME:PLAYER%の家
+	ENDSELECT
+ENDIF
+
+
