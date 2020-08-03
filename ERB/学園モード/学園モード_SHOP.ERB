@@ -1,5 +1,6 @@
 ﻿@SHOP_SCHOOL
 #DIM DYNAMIC LRESULT
+#DIM DYNAMIC 滞在者, 2
 
 ;日数表示
 CALL CHECKDRAWLINE
@@ -16,15 +17,51 @@ DRAWLINE
 PRINTFORML □時間:%ターン%
 SELECTCASE ターン
 	CASE "朝"
-		PRINTL 　[100] - 学校へ行く 
-		PRINTL 　[101] - クラスメイトと一緒に登校する
-		PRINTL 　[102] - 学校の保健室へ行く
-		PRINTL 　[103] - 他の学校に行く
-		PRINTL 　[104] - 何もせずサボる
+		SELECTCASE DOW(FLAG:曜日)
+			CASE "土", "日"
+				PRINTL 　[100] - 遊びに行く
+				PRINTL 　[101] - 友人と遊びに行く
+				PRINTL 　[102] - 家に友人を呼ぶ
+				PRINTL 　[103] - 家で過ごす
+			CASEELSE
+				PRINTL 　[100] - 学校へ行く 
+				PRINTL 　[101] - クラスメイトと一緒に登校する
+				PRINTL 　[102] - 学校の保健室へ行く
+				PRINTL 　[103] - 他の学校に行く
+				PRINTL 　[104] - 何もせずサボる
+		ENDSELECT
 	CASE "昼"
-		PRINTL 　[200] - 校内を散策する
-		PRINTL 　[201] - 校外を散策する
-		PRINTL 　[202] - 午後の授業をサボる
+		IF CSTR:PLAYER:現在地 == @"%CALLNAME:PLAYER%の家"
+			滞在者 = FINDCHARA(CSTR:現在地, @"%CALLNAME:PLAYER%の家", 1)
+			IF 滞在者
+				SELECTCASE CSTR:滞在者:目的
+					CASE "遊び"
+						PRINTFORML 　[200] - %CALLNAME:滞在者%と家でくつろぐ
+						PRINTFORML 　[201] - %CALLNAME:滞在者%とアダルトサイトを見る
+						PRINTFORML 　[202] - %CALLNAME:滞在者%に思い切った提案をする
+						PRINTFORML 　[203] - %CALLNAME:滞在者%と遊びに行く
+					CASE "看病"
+						PRINTFORML 　[200] - %CALLNAME:滞在者%に面倒を見てもらう
+						PRINTFORML 　[201] - %CALLNAME:滞在者%と遊びに行く
+						PRINTFORML 　[202] - %CALLNAME:滞在者%に過度に甘えてみる
+					CASE "セックス"
+						PRINTFORML 　[200] - %CALLNAME:滞在者%と（性的に）遊ぶ
+						PRINTFORML 　[201] - %CALLNAME:滞在者%と（性的な）遊びに行く
+						PRINTFORML 　[202] - %CALLNAME:滞在者%と健全に過ごす
+				ENDSELECT
+			ELSE
+				PRINTL 　[200] - 遊びに行く
+				PRINTL 　[201] - 友人と遊びに行く
+				PRINTL 　[202] - 家に友人を呼ぶ
+				PRINTL 　[203] - 家で過ごす
+			ENDIF
+		ELSE
+			PRINTL 　[200] - 校内を散策する
+			PRINTL 　[201] - 校外を散策する
+			PRINTL 　[202] - 午後の授業をサボる
+			SIF CSTR:PLAYER:現在地 == "保健室"
+				PRINTL [203] - 保健室でくつろぐ
+		ENDIF
 	CASE "夜"
 		PRINTL 　[300] - 遊びに行く
 		PRINTL 　[301] - 寝る
@@ -45,9 +82,9 @@ DO
 				CASE 101
 					CALL 朝_クラスメイトと一緒に登校する
 				CASE 102
-					;CALL 朝_学校の保健室に行く
+					CALL 朝_学校の保健室に行く
 				CASE 103
-					;CALL 朝_他の学校に行く
+					CALL 朝_他の学校に行く
 				CASE 104
 					CALL 朝_何もせずサボる
 			ENDSELECT
