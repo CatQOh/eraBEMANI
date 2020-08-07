@@ -45,5 +45,180 @@ RETURN
 RELATION:ARG:(ARG:1) += 上昇値
 RELATION:(ARG:1):ARG += 上昇値
 
+@クラスメイト選出, 対象, 選出タイプ
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 選出タイプ
+;無所属が一番多くなるので余裕を持つ
+#DIM DYNAMIC クラスメイト, 300
+#DIM DYNAMIC 候補, 5
+#DIM DYNAMIC 人数
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+
+;第一引数のキャラと同じ学校の生徒を、第二引数で指定した条件で選出する
+;RESULT:0～4で最大5人返す 必要なぶんだけRESULTを参照すると良い
+
+;グループ候補は出現率を-1に設定する
+出現率:対象 = -1
+
+人数 = 0
+
+FOR LCOUNT, 1, CHARANUM
+	SIF CSTR:対象:在校 == CSTR:LCOUNT:在校
+		クラスメイト:(人数++) = LCOUNT
+NEXT
+
+;クラスメイト変数の順番をシャッフルする
+FOR LCOUNT, 0, 人数
+	SWAP クラスメイト:LCOUNT, クラスメイト:(RAND(LCOUNT, 人数))
+NEXT
 
 
+SELECTCASE 選出タイプ
+	;相性の良いクラスメイトを優先
+	;同値のキャラが複数いればランダムで選出（上で既にシャッフルしてある）
+	CASE "相性"
+		FOR LCOUNT, 0, 人数
+			;対象は除外
+			SIF クラスメイト:LCOUNT == 対象
+				CONTINUE
+			;既にグループ候補の場合は入れない
+			SIF 出現率:(クラスメイト:LCOUNT) == -1
+				CONTINUE
+			;現在地が確定してる場合も無理
+			SIF CSTR:(クラスメイト:LCOUNT):現在地 != ""
+				CONTINUE
+			FOR LCOUNT2, 0, 5
+				{
+				IF 候補:LCOUNT2 == 0 ||
+				RELATION:(クラスメイト:LCOUNT):(NO:対象) > RELATION:(候補:LCOUNT2):(NO:対象) ||
+				RELATION:対象:(NO:(クラスメイト:LCOUNT)) > RELATION:対象:(NO:(候補:LCOUNT2))
+				}
+					ARRAYSHIFT 候補, 1, クラスメイト:LCOUNT, LCOUNT2
+					;グループ候補は出現率を-1に設定する
+					出現率:(クラスメイト:LCOUNT) = -1
+					BREAK
+				ENDIF
+			NEXT
+		NEXT
+	;ランダム選出
+	CASEELSE
+		FOR LCOUNT, 0, 人数
+			;対象は除外
+			SIF クラスメイト:LCOUNT == 対象
+				CONTINUE
+			;既にグループ候補の場合は入れない
+			SIF 出現率:(クラスメイト:LCOUNT) == -1
+				CONTINUE
+			;現在地が確定してる場合も無理
+			SIF CSTR:(クラスメイト:LCOUNT):現在地 != ""
+				CONTINUE
+			ARRAYSHIFT 候補, 1, クラスメイト:LCOUNT
+		NEXT
+		ARRAYCOPY "クラスメイト", "候補"
+ENDSELECT
+
+RETURN 候補:0, 候補:1, 候補:2, 候補:3, 候補:4
+
+@グループキャラ選出, 対象, 選出タイプ
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 選出タイプ
+#DIM DYNAMIC 候補, 5
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+
+;上のとほぼ同じだが、こちらは学校ごとではなく全体でグループを作る
+;ただし学校が同じでもない、相性が良いわけでもない、何も接点の無いキャラはグループにならない
+;RESULT:0～4で最大5人返す 必要なぶんだけRESULTを参照すると良い
+
+;グループ候補は出現率を-1に設定する
+出現率:対象 = -1
+
+;番号が変わるので対象の値をNOにしておく
+対象 = NO:対象
+
+;キャラの順番をシャッフルする
+FOR LCOUNT, 1, CHARANUM
+	SWAPCHARA LCOUNT, RAND(LCOUNT, CHARANUM)
+NEXT
+
+SELECTCASE 選出タイプ
+	;相性の良いキャラを優先
+	;同値のキャラが複数いればランダムで選出
+	CASE "相性"
+		FOR LCOUNT, 1, CHARANUM
+			;対象自身は除外
+			SIF LCOUNT == GETCHARA(対象)
+				CONTINUE
+			;既にグループ候補の場合は入れない
+			SIF 出現率:LCOUNT == -1
+				CONTINUE
+			;現在地が確定してる場合も無理
+			SIF CSTR:LCOUNT:現在地 != ""
+				CONTINUE
+			;相性、学校、血縁のいずれかも接点が無いキャラは除外
+			SIF CSTR:GETCHARA(対象):在校 != "" && CSTR:GETCHARA(対象):在校 == CSTR:LCOUNT:在校
+				GOTO CLEAR
+			SIF CSTR:GETCHARA(対象):在任 != "" && CSTR:GETCHARA(対象):在任 == CSTR:LCOUNT:在任
+				GOTO CLEAR
+			SIF CFLAG:血縁コード && CFLAG:GETCHARA(対象):血縁コード == CFLAG:LCOUNT:血縁コード
+				GOTO CLEAR
+			SIF RELATION:GETCHARA(対象):(NO:LCOUNT) > 100
+				GOTO CLEAR
+			SIF RELATION:LCOUNT:対象 > 100
+				GOTO CLEAR
+			CONTINUE
+
+			$CLEAR
+			FOR LCOUNT2, 0, 5
+				{
+				IF 候補:LCOUNT2 == 0 ||
+				RELATION:LCOUNT:対象 > RELATION:GETCHARA(候補:LCOUNT2):対象 ||
+				RELATION:GETCHARA(対象):(NO:LCOUNT) > RELATION:GETCHARA(対象):(候補:LCOUNT2)
+				}
+					;こっちは後でキャラ番号戻るのでNOで入れる
+					ARRAYSHIFT 候補, 1, NO:LCOUNT, LCOUNT2
+					;グループ候補は出現率を-1に設定する
+					出現率:LCOUNT = -1
+					BREAK
+				ENDIF
+			NEXT
+		NEXT
+	;接点のあるキャラをランダム選出
+	CASEELSE
+		FOR LCOUNT, 1, CHARANUM
+			;対象自身は除外
+			SIF LCOUNT == GETCHARA(対象)
+				CONTINUE
+			;既にグループ候補の場合は入れない
+			SIF 出現率:LCOUNT == -1
+				CONTINUE
+			;現在地が確定してる場合も無理
+			SIF CSTR:LCOUNT:現在地 != ""
+				CONTINUE
+			;相性、学校、血縁のいずれかも接点が無いキャラは除外
+			SIF CSTR:GETCHARA(対象):在校 == CSTR:LCOUNT:在校
+				GOTO CLEARELSE
+			SIF CSTR:GETCHARA(対象):在任 == CSTR:LCOUNT:在任
+				GOTO CLEARELSE
+			SIF CFLAG:GETCHARA(対象):血縁コード && CFLAG:GETCHARA(対象):血縁コード == CFLAG:LCOUNT:血縁コード
+				GOTO CLEARELSE
+			SIF RELATION:GETCHARA(対象):(NO:LCOUNT) > 100
+				GOTO CLEARELSE
+			SIF RELATION:LCOUNT:対象 > 100
+				GOTO CLEARELSE
+			CONTINUE
+
+			$CLEARELSE
+			;こっちは後でキャラ番号戻るのでNOで入れる
+			ARRAYSHIFT 候補, 1, NO:LCOUNT
+			;グループ候補は出現率を-1に設定する
+			出現率:LCOUNT = -1
+		NEXT
+ENDSELECT
+
+;最後にNOでソートしなおす
+
+SORTCHARA NO
+
+RETURN GETCHARA(候補:0), GETCHARA(候補:1), GETCHARA(候補:2), GETCHARA(候補:3), GETCHARA(候補:4)
