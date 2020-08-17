@@ -1,3 +1,49 @@
 ﻿@ロケーション条件_ライブハウス
 ;汎用ロケーション 条件無し
 RETURN 1
+
+@出現キャラ_ライブハウス
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC グループ数
+
+FOR LCOUNT, 1, CHARANUM
+	;学校などに行ってるキャラは居ない
+	SIF CSTR:LCOUNT:現在地 != ""
+		CONTINUE
+	;音楽やってる人がいる 非常に多いので各5%
+	SELECTCASE CHARANAMEF(LCOUNT)
+		{
+		CASE "菱宮 春一", "樹野 あんず", "ミミ", "ニャミ", "ジュディ", "マリィ",
+			 "ザ・キング", "ショルキー", "タイマー", "ユーリ", "アッシュ", "スマイル",
+			 "ウーノ", "ツースト", "若さん", "フォース", "セシル", "HOT.D", "ロッテ", 
+			 "ナカジ", "ナズナ", "スズナ", "虹野 ひかり", "夢野 みらい", "星野 そら",
+			 "ホワイトメリー", "歩", "ミニッツ", "オオカミ少年", "レナ", "パンデス",
+			 "スモーク", "アン", "ンビリ", "サン", "クアトロ", "ゲレゲレ", "ライラ", 
+			 "まりん", "熊井さん", "シェリー", "うた", "アフロ", "レディ", "オトベア",
+			 "璃音",
+		}
+			$出現
+			出現率:LCOUNT = 5
+		CASEELSE
+			SIF GROUPMATCH("ときめきアイドル", CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３)
+				GOTO 出現
+			SIF GROUPMATCH("CHUNITHM", CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３)
+				GOTO 出現
+			SIF GROUPMATCH("オンゲキ", CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３)
+				GOTO 出現
+			SIF GROUPMATCH("ひなビタ♪", CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３)
+				GOTO 出現
+			;休日または夜なら集団で来ているグループとかがある
+			IF (ISHOLIDAY() || ターン == "夜") && CSTR:LCOUNT:在校 != "" && RANDPER(3) && グループ数 < 10
+				;相性の良いキャラと3人で行動している
+				CALL クラスメイト選出, LCOUNT, "相性"
+				;2人以上揃わなかったら無かったことにする
+				SIF RESULT:0 == 0
+					CONTINUE
+				集団行動:グループ数:0 = LCOUNT
+				集団行動:グループ数:1 = RESULT:0
+				集団行動:グループ数:2 = RESULT:1
+				グループ数++
+			ENDIF
+	ENDSELECT
+NEXT
