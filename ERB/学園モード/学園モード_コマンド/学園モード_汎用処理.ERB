@@ -222,3 +222,107 @@ ENDSELECT
 SORTCHARA NO
 
 RETURN GETCHARA(候補:0), GETCHARA(候補:1), GETCHARA(候補:2), GETCHARA(候補:3), GETCHARA(候補:4)
+
+@学園データベース
+#DIM DYNAMIC LCOUNT
+
+PRINTL [1] - 学校一覧
+PRINTL [2] - 
+DRAWLINE
+PRINTPLAIN 　DATABASE　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0 
+			RETURN
+		CASE 1
+			CALL 学校一覧_データベース
+			RESTART
+	ENDSELECT
+LOOP 1
+
+@学校一覧_データベース
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 名称抜き取り用, 2
+#DIM DYNAMIC 選択校
+#DIM DYNAMIC 選択キャラ
+
+FOR LCOUNT, 0, VARSIZE("学校名")
+	PRINTFORMLC 　[{LCOUNT, 2}] - %学校名:LCOUNT%
+NEXT
+SIF !LINEISEMPTY()
+	PRINTL 
+
+DRAWLINE
+PRINTPLAIN 　DATABASE　
+PRINTL [-1] - 戻る
+
+DO
+	INPUT
+	選択校 = RESULT
+	SELECTCASE 選択校
+		CASE -1
+			RETURN
+		CASE 0 TO VARSIZE("学校名")-1
+			$生徒選択
+			DRAWLINE
+			PRINTFORML □%学校名:選択校%の在校生
+			FOR LCOUNT, 0, CHARANUM
+				SIF CSTR:LCOUNT:在校 != 学校名:RESULT
+					CONTINUE
+				PRINTFORML 　[{LCOUNT}] %NAME:LCOUNT%
+			NEXT
+			PRINTFORML □%学校名:選択校%の教師
+			FOR LCOUNT, 0, CHARANUM
+				SIF CSTR:LCOUNT:在任 != 学校名:RESULT
+					CONTINUE
+				PRINTFORML 　担当科目:%CSTR:LCOUNT:担当科目% [{LCOUNT}] %NAME:LCOUNT% 
+			NEXT
+			DRAWLINE
+			PRINTPLAINFORM 　%学校名:選択校%　
+			PRINTL [-1] - 戻る
+
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE -1
+						RESTART
+					CASE 0 TO CHARANUM-1
+						選択キャラ = RESULT
+						DRAWLINE
+						PRINTFORML □%NAME:選択キャラ%の情報
+						PRINTFORML 　倫理観崩壊度:{CFLAG:選択キャラ:倫理観}
+						PRINTL □各ロケーションでの出現率
+						;どこのロケーションに出現するのかを表示
+						FOR LCOUNT, 0, VARSIZE("ロケーション")
+							VARSET 出現率
+							SPLIT ロケーション:LCOUNT, "/", 名称抜き取り用
+							;分割されてたらスラッシュより後の部分だけを使用する
+							IF RESULT >= 2
+								RESULT = 0
+								TRYCALLFORM 出現キャラ_%名称抜き取り用:1%
+							ELSE
+								RESULT = 0
+								TRYCALLFORM 出現キャラ_%ロケーション:LCOUNT%
+							ENDIF
+							;出現率も表示
+							SIF 出現率:選択キャラ > 0
+								PRINTFORMLC 　%ロケーション:LCOUNT%({出現率:選択キャラ}\%)
+						NEXT
+						SIF !LINEISEMPTY()
+							PRINTL 
+						DRAWLINE
+						PRINTPLAIN 　DATABASE　
+						PRINTW クリック・Enterで戻る
+						BREAK
+				ENDSELECT
+			LOOP 1
+			GOTO 生徒選択
+	ENDSELECT
+LOOP 1
+
+
+
+
