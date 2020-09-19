@@ -1,0 +1,177 @@
+﻿@GAME_MANUAL
+#DIM DYNAMIC LCOUNT
+{
+#DIMS DYNAMIC 項目 = "",
+"チュートリアル",
+"キャラの売却条件",
+"キャラの陥落条件",
+"その他素質の会得条件",
+"各経験が上昇するコマンド一覧",
+"異常経験の条件",
+"コマンドが実行できない！",
+"お金が無い！",
+"主人の能力上昇、及びスキルツリーについて",
+"経営モードの概要",
+"施設・設備の概要",
+"",
+}
+
+DRAWLINE
+PRINTL □確認したい項目を選んでください
+FOR LCOUNT, 1, VARSIZE("項目")
+	PRINTFORML [{LCOUNT}] - %項目:LCOUNT%
+NEXT
+DRAWLINE
+PRINTPLAIN 　MANUAL　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1 TO VARSIZE("項目")
+			DRAWLINE
+			CALLFORM MANUAL_%項目:RESULT%
+			DRAWLINE
+			RESTART
+	ENDSELECT
+LOOP 1
+
+@MANUAL_チュートリアル
+CALL プレイ称号計算, "チュートリアル"
+IF ゲームモード() == "段位認定"
+	CALL TEST_TUTORIAL
+ELSE
+	CALL TUTORIAL
+ENDIF
+DRAWLINE
+
+
+@MANUAL_キャラの売却条件
+PRINTL 【キャラの売却可能条件】
+PRINTL 下記の全てを満たす
+PRINTL ├従順と欲望の能力が合計で6以上
+PRINTL ├素質[反抗的][気丈]を持っている場合
+PRINTL │└従順の能力が4以上
+PRINTL ├素質[自制心][無関心]を持っている場合
+PRINTL │└欲望の能力が4以上
+PRINTL └素質[プライド高い][生意気]を持っている場合
+PRINTL 　└奉仕精神の能力が3以上
+PRINTL 
+PRINTL 上記の条件を満たしたのち、下記のいずれかを満たす
+PRINTL ├技巧の能力が3以上
+PRINTL ├奉仕精神の能力が3以上
+PRINTL ├マゾっ気の能力が3以上
+PRINTL ├各性感覚の合計が8以上
+PRINTL ├従順の能力が5以上
+PRINTL └欲望の能力が5以上
+PRINTL 
+PRINTL 売却可能条件を満たした上で、下記条件を満たすと助手として使用可能になる
+PRINTL └従順と欲望と技巧の能力が合計で14以上
+WAIT
+
+@MANUAL_各経験が上昇するコマンド一覧
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 参照経験
+#DIM DYNAMIC LTARGET
+#DIM DYNAMIC LASSI
+#DIM DYNAMIC 表示数
+
+FOR LCOUNT, 0, VARSIZE("EXP")
+	SIF EXPNAME:LCOUNT != ""
+		PRINTFORMLC [{LCOUNT}] - %EXPNAME:LCOUNT%
+NEXT
+
+SIF !LINEISEMPTY()
+	PRINTL
+
+DRAWLINE
+PRINTFORML [{VARSIZE("EXP")}] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE VARSIZE("EXP")
+			RETURN
+		CASE 0 TO VARSIZE("EXP")
+			参照経験 = RESULT
+			;ダミーのTARGET、ASSI、保持用のMASTERを追加する
+			LTARGET = TARGET
+			LASSI = ASSI
+			ADDVOIDCHARA
+			TARGET = CHARANUM-1
+			ADDVOIDCHARA
+			ASSI = CHARANUM-1
+			;性別は両者女ふたなりで見る
+			TALENT:性別 = 2
+			TALENT:ふたなり = 1
+			MAXBASE:射精 = __INT_MAX__
+			TALENT:ASSI:性別 = 2
+			TALENT:ASSI:ふたなり = 1
+			MAXBASE:ASSI:射精 = __INT_MAX__
+
+			ADDCOPYCHARA MASTER
+			MAXBASE:MASTER:射精 = __INT_MAX__
+
+			TFLAG:実行判定無視 = 1
+			表示数 = 0
+
+			PRINTFORML □%EXPNAME:参照経験%が上昇するコマンド一覧 ()内は上昇値
+			FOR LCOUNT, 0, VARSIZE("TRAINNAME")
+				IF TRAINNAME:LCOUNT != ""
+					;表示を飛ばす
+					SKIPDISP 1
+					SELECTCOM = LCOUNT
+					SELECTCOMS = %TRAINNAME:LCOUNT%
+					VARSET TEQUIP
+					TRYCALLFORM COM_%TRAINNAME:LCOUNT%
+					SKIPDISP 0
+					IF EXP:参照経験 > 0
+						PRINTFORMLC 　%TRAINNAME:LCOUNT%({EXP:参照経験})
+						;SKIPDISPが絡むとPRINTC系がうまく動かないので変数使う
+						表示数++
+					ENDIF
+					SIF 表示数 != 0 && 表示数%4 == 0 && !LINEISEMPTY()
+						PRINTL 
+					EXP:参照経験 = 0
+				ENDIF
+			NEXT
+			;保持用MASTERで元に戻す
+			SWAPCHARA MASTER, CHARANUM-1
+			;用済みになった3人を消す
+			DELCHARA CHARANUM-1
+			DELCHARA ASSI
+			DELCHARA TARGET
+			TARGET = LTARGET
+			ASSI = LASSI
+			VARSET SELECTCOM
+			VARSET SELECTCOMS
+
+			TFLAG:実行判定無視 = 0
+
+			SIF !LINEISEMPTY()
+				PRINTL
+			DRAWLINE
+			WAIT
+			RESTART
+	ENDSELECT
+LOOP 1
+
+
+
+
+
+
+
+@MANUAL_異常経験の条件
+
+@MANUAL_コマンドが実行できない！
+
+@MANUAL_お金が無い！
+
+@MANUAL_主人の能力上昇、及びスキルツリーについて
+
+@MANUAL_経営モードの概要
+
+@MANUAL_施設・設備の概要
