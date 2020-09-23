@@ -46,9 +46,15 @@ FOR LCOUNT, 0, CHARANUM
 		SELECTCASE CSTR:LCOUNT:種族
 			CASE "獣人", "獣"
 				PREG:LCOUNT:出産予定日 = DAY+RAND(30, 41)
+				;人口飽和MODなら次の日にはもう出産する
+				SIF 人口飽和MOD
+					PREG:LCOUNT:出産予定日 = DAY+1
 				CALL CHILDSET, LCOUNT, FINDCHARA(NO, PREG:LCOUNT:父親)
 			CASEELSE
 				PREG:LCOUNT:出産予定日 = DAY+RAND(60, 81)
+				;人口飽和MODなら次の日にはもう出産する
+				SIF 人口飽和MOD
+					PREG:LCOUNT:出産予定日 = DAY+1
 				CALL CHILDSET, LCOUNT, FINDCHARA(NO, PREG:LCOUNT:父親)
 		ENDSELECT
 	ENDIF
@@ -182,6 +188,10 @@ ENDSELECT
 ;ちなみにTEQUIP:妊娠確率分子/TEQUIP:妊娠確率分母の結果で妊娠確率を口上側で変えることもできる
 ;分母=0で100%孕む 分子=0で100%孕まない
 LOCAL = 妊娠確率*妊娠確率:1
+;百発百中MODなら1(妊娠確定)にする
+SIF 人口飽和MOD
+	LOCAL = 1
+
 SIF 確率チェック
 	RETURN LOCAL
 
@@ -290,6 +300,10 @@ ENDSELECT
 ;ちなみにTEQUIP:妊娠確率分子/TEQUIP:妊娠確率分母の結果で妊娠確率を口上側で変えることもできる
 ;分母=0で100%孕む 分子=0で100%孕まない
 LOCAL = 妊娠確率*妊娠確率:1
+;百発百中MODなら1(妊娠確定)にする
+SIF 人口飽和MOD
+	LOCAL = 1
+
 SIF 確率チェック
 	RETURN LOCAL
 
@@ -378,6 +392,14 @@ ENDIF
 IF CSTR:ARG:配属 != ""
 	PRINTFORMW 様子を見るため、%CALLNAME:ARG%に休暇を与えます
 	CALL 配属解除, ARG
+ENDIF
+
+;人口飽和MOD導入中ならTARGET、ASSIから外す
+IF 人口飽和MOD
+	SIF TARGET == ARG
+		TARGET = -1
+	SIF ASSI == ARG
+		ASSI = -1
 ENDIF
 
 ;妊娠時のステータスの変化
@@ -589,6 +611,9 @@ FOR LCOUNT, 0, CHARANUM
 		ENDIF
 	;PREG:6は他人の子を育てているフラグ 立っているとイベントは発生しない
 	ELSEIF TALENT:LCOUNT:育児中
+		;人口飽和MODならすぐに親離れする
+		SIF 人口飽和MOD
+			GOTO 親離れ
 		;出産後翌日には育児室への訪問を問うイベント発生
 		IF (PREG:LCOUNT:出産予定日+1) == DAY:1 && !PREG:LCOUNT:乳母
 			CALL CHECKDRAWLINE
@@ -621,6 +646,7 @@ FOR LCOUNT, 0, CHARANUM
 			ENDIF
 		;出産後5日で親離れで調教可能に
 		ELSEIF (PREG:LCOUNT:出産予定日+5) == DAY:1
+			$親離れ
 			CALL CHECKDRAWLINE
 			CALL DEPEARENT, LCOUNT
 		ENDIF
@@ -1189,9 +1215,14 @@ LOOP LOOPRES(0, 1)
 
 SELECTCASE RESULT
 	CASE 0
-		PRINTFORMW %CALLNAME:ARG%の育てていた子供を養子に出しました
+		PRINTFORML %CALLNAME:ARG%の育てていた子供を養子に出しました
+		;主人との間にできた恋慕、親愛キャラの子供なら仕送りが来るようになる
+		IF NO:ARG == PREG:ARG:母親 && NO:MASTER == PREG:ARG:父親 && FALLTYPE(ARG) == 1
+			PRINTFORML 自立した子供から定期的に仕送りが来るようになりました
+			FLAG:仕送り++
+		ENDIF
 		CALL CLEAR_FLAG, ARG
-
+		WAIT
 		SIF ARG != MASTER
 			CALL KOJO_MESSAGE_EVENT, "親離れ", ARG
 	CASE 1
