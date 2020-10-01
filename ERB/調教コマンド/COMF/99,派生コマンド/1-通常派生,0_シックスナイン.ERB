@@ -43,18 +43,24 @@ SIF TEQUIP:触手
 ;お風呂場プレイ中はプレイマットが無いとダメ
 SIF TEQUIP:お風呂場 && !ITEM:プレイマット
 	RETURNF 0
+;ゲームセンターでもできない
+SIF TEQUIP:ゲームセンター
+	RETURNF 0
 
-COMRESULT = 1
-RETURNF 1
+;派生確認
+;前回と今回の調教者が同じで縄、ボールギャグ使用中でない場合
+IF PLAYER == TFLAG:前コマンド実行者 && !TEQUIP:縄 && !TEQUIP:ボールギャグ
+	;前回のコマンド
+	SELECTCASE PREVCOMS
+		;フェラチオ、クンニ、シックスナイン系だと派生可能
+		CASE "フェラチオ", "クンニ", "クンニさせる", "フェラする", "シックスナイン", "69パイズリ"
+			COMRESULT = 1
+			RETURNF 1
+	ENDSELECT
+ENDIF
 
-@COM_シックスナイン
-PRINTL シックスナイン
-
-;-------------------------------------------------
-;実行判定処理
-;-------------------------------------------------
+@実行判定_シックスナイン
 ;すべての命令に共通の要素を考慮
-;(従順が高いと命令に従いやすいなど)
 CALL COM_ORDER
 LOCAL = RESULT
 
@@ -64,14 +70,16 @@ LOCAL += RESULT
 ;33以上で実行
 CALL 実効値判定, LOCAL, 33
 
-SIF !RESULT
+RETURN RESULT
+
+@COM_シックスナイン
+PRINTL シックスナイン
+
+SIF !TFLAG:実行判定無視
+	CALLFORM 実行判定_%SELECTCOMS%
+SIF !RESULT && !TFLAG:実行判定無視
 	RETURN 0
 
-;-------------------------------------------------
-;実行決定
-;-------------------------------------------------
-SELECTCOMS = シックスナイン
-SELECTCOM = GETNUM(TRAINNAME, "シックスナイン")
 CALL KOJO_MESSAGE_COM
 
 ;実行者が奴隷であるフラグ

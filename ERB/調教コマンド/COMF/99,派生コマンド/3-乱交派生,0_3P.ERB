@@ -55,10 +55,23 @@ SIF TALENT:アニマル
 SIF TALENT:ASSI:アニマル
 	RETURNF 0
 
-COMRESULT = 1
-RETURNF 1
+;以下のコマンド実行時
+SELECTCASE PREVCOMS
+	;3Pなら続行可能
+	CASE "3P"
+		COMRESULT = 1
+		RETURNF 1
+	;既に膣か尻か口に入ってると派生可能
+	CASE "正常位", "後背位", "騎乗位", "背面座位", "正常位アナル", "後背位アナル", "騎乗位アナル", "背面座位アナル", "フェラチオ", "イラマチオ"
+		IF TFLAG:前コマンド実行者 != PLAYER
+			COMRESULT = 1
+			RETURNF 1
+		ENDIF
+ENDSELECT
 
 @COM_3P
+#DIM DYNAMIC 一本目
+#DIM DYNAMIC 二本目
 
 ;-------------------------------------------------
 ;挿入部位管理
@@ -70,35 +83,60 @@ RETURNF 1
 ;派生条件は正常位等の各コマンド内で行っているので、膣に挿入しながら膣に挿入して3Pなんてことにはならないはず
 ;前回のコマンドが3Pなら挿入部位は変わらず
 IF PREVCOMS != "3P"
-	SELECTCASE TRAINNAME:SELECTCOM
-		CASE "正常位", "後背位"
-			LOCAL = 1
-		CASE "正常位アナル", "後背位アナル"
-			LOCAL = 2
-		CASE "フェラチオ", "イラマチオ"
-			LOCAL = 3
-	ENDSELECT
 	SELECTCASE PREVCOMS
-		CASE "正常位", "後背位"
-			LOCAL:1 = 1
-		CASE "正常位アナル", "後背位アナル"
-			LOCAL:1 = 2
+		CASE "正常位", "後背位", "騎乗位", "背面座位"
+			一本目 = 1
+		CASE "正常位アナル", "後背位アナル", "騎乗位アナル", "背面座位アナル"
+			一本目 = 2
 		CASE "フェラチオ", "イラマチオ"
-			LOCAL:1 = 3
+			一本目 = 3
 	ENDSELECT
+	;対象に穴が2つしか無ければ確定
+	IF !VAGINA(TARGET)
+		SELECTCASE 一本目
+			CASE 2
+				二本目 = 3
+			CASE 3
+				二本目 = 2
+		ENDSELECT
+	ELSE
+		;どこに挿れるか選ぶ
+		PRINTFORM \@ PLAYER == MASTER ? %CALLNAME:ASSI% # %CALLNAME:MASTER% \@のペニスは%CALLNAME:TARGET%の
+		SELECTCASE 一本目
+			CASE 1
+				PRINT 膣に挿れられています。
+			CASE 2
+				PRINT アナルに挿れられています。
+			CASE 3
+				PRINT 口に挿れられています。
+		ENDSELECT
+		PRINTFORML どこを犯しますか？
+		SIF 一本目 != 1
+			PRINTL [1] - 膣穴
+		SIF 一本目 != 2
+			PRINTL [2] - アナル
+		SIF 一本目 != 3
+			PRINTL [3] - 口
+		DO
+			SIF ISSKIP()
+				BREAK
+			INPUT
+			SIF 一本目 == RESULT
+				CONTINUE
+		LOOP LOOPRES(1, 2, 3)
+		二本目 = RESULT
+	ENDIF
 
 	IF PLAYER == MASTER
-		TFLAG:主人挿入箇所 = LOCAL
-		TFLAG:助手挿入箇所 = LOCAL:1
+		TFLAG:助手挿入箇所 = 一本目
+		TFLAG:主人挿入箇所 = 二本目
 	ELSEIF PLAYER == ASSI
-		TFLAG:助手挿入箇所 = LOCAL
-		TFLAG:主人挿入箇所 = LOCAL:1
+		TFLAG:主人挿入箇所 = 一本目
+		TFLAG:助手挿入箇所 = 二本目
 	ENDIF
 ENDIF
 
 PRINTL 3P
-SELECTCOMS = 3P
-SELECTCOM = GETNUM(TRAINNAME, "3P")
 CALL KOJO_MESSAGE_COM
 
 ;V経験を伴うコマンドのフラグ(処女膜再生対応)

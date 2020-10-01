@@ -3,40 +3,16 @@
 ;-------------------------------------------------
 @USERCOM_ABLE_乱れ牡丹, ARG
 #FUNCTION
-;乱れ牡丹実行判定
-;羞恥プレイ中じゃないとダメ
+;羞恥プレイ中に可能
 SIF !TEQUIP:羞恥プレイ
 	RETURNF 0
-;Ｖ使用中はダメ
-SIF Ｖ使用中(TARGET)
-	RETURNF 0
-;アナル使用中はダメ
-SIF Ａ使用中(TARGET)
-	RETURNF 0
-;触手調教中はダメ
-SIF TEQUIP:触手
-	RETURNF 0
-;調教者がペニスないとダメ
-SIF !PENIS(PLAYER)
-	RETURNF 0
-;潤滑不足で、従順3以下のASSIの場合乱れ牡丹はできない（サドならＯＫ）
-IF PALAM:潤滑 < PALAMLV:2 && PLAYER == ASSI
-	SIF ABL:ASSI:従順 <= 3 && !TALENT:ASSI:サド
-		RETURNF 0
+;背面座位のABLE通れば可能
+IF USERCOM_ABLE_背面座位()
+	COMRESULT = 1
+	RETURNF 1
 ENDIF
 
-;服着てるとダメ
-SIF !性器露出(TARGET)
-	RETURNF 0
-
-COMRESULT = 1
-RETURNF 1
-
-@COM_乱れ牡丹
-PRINTL 乱れ牡丹
-;-------------------------------------------------
-;実行判定処理
-;-------------------------------------------------
+@実行判定_乱れ牡丹
 ;縄で縛られている場合は無視（縄が無い時のみ実行判定を行う）
 IF !TEQUIP:縄
 	;すべての命令に共通の要素を考慮
@@ -59,15 +35,19 @@ IF !TEQUIP:縄
 	;47以上で実行
 	CALL 実効値判定, LOCAL, 47
 
-	SIF RESULT == 0
-		RETURN 0
+	RETURN RESULT
+ELSE
+	RETURN 1
 ENDIF
 
-;-------------------------------------------------
-;実行決定
-;-------------------------------------------------
-SELECTCOMS = 乱れ牡丹
-SELECTCOM = GETNUM(TRAINNAME, "乱れ牡丹")
+@COM_乱れ牡丹
+PRINTL 乱れ牡丹
+
+SIF !TFLAG:実行判定無視
+	CALLFORM 実行判定_%SELECTCOMS%
+SIF !RESULT && !TFLAG:実行判定無視
+	RETURN 0
+
 CALL KOJO_MESSAGE_COM
 
 ;V経験を伴うコマンドのフラグ(処女膜再生対応)

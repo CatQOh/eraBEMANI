@@ -65,16 +65,20 @@ ENDIF
 SIF TALENT:アニマル
 	RETURNF 0
 
-COMRESULT = 1
-RETURNF 1
+;特殊確認
+;前回と今回の調教者が同じで、縄とボールギャグを使ってない。ただしゲームセンター中はダメ
+IF PLAYER == TFLAG:前コマンド実行者 && !TEQUIP:縄 && !TEQUIP:ボールギャグ && !TEQUIP:ゲームセンター
+	;前コマンド
+	SELECTCASE PREVCOMS
+		;前回の調教がパイズリ系か舐める系か69パイズリだと派生可能
+		CASE "パイズリ", "縦パイズリ", "パイズリフェラ", "クンニ", "フェラする", "シックスナイン", "69パイズリ"
+			COMRESULT = 1
+			RETURNF 1
+	ENDSELECT
+ENDIF
 
-@COM_69パイズリ
-PRINTL 69パイズリ
-;-------------------------------------------------
-;実行判定処理
-;-------------------------------------------------
+@実行判定_69パイズリ
 ;すべての命令に共通の要素を考慮
-;(従順が高いと命令に従いやすいなど)
 CALL COM_ORDER
 LOCAL = RESULT
 
@@ -84,14 +88,16 @@ LOCAL += RESULT
 ;45以上で実行
 CALL 実効値判定, LOCAL, 45
 
-SIF !RESULT
+RETURN RESULT
+
+@COM_69パイズリ
+PRINTL 69パイズリ
+
+SIF !TFLAG:実行判定無視
+	CALLFORM 実行判定_%SELECTCOMS%
+SIF !RESULT && !TFLAG:実行判定無視
 	RETURN 0
 
-;-------------------------------------------------
-;実行決定
-;-------------------------------------------------
-SELECTCOMS = 69パイズリ
-SELECTCOM = GETNUM(TRAINNAME, "69パイズリ")
 CALL KOJO_MESSAGE_COM
 
 ;実行者が奴隷であるフラグ

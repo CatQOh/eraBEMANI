@@ -3,8 +3,6 @@
 ;-------------------------------------------------
 @USERCOM_ABLE_オナフェラ, ARG
 #FUNCTION
-;シックスナイン実行判定
-
 ;従順3以上、奉仕精神3以上必要
 SIF ABL:従順 < 3 || ABL:奉仕精神 < 3
 	RETURNF 0
@@ -33,15 +31,17 @@ SIF TEQUIP:触手
 SIF TEQUIP:お風呂場 && !ITEM:プレイマット
 	RETURNF 0
 
-COMRESULT = 1
-RETURNF 1
+;前回と今回の調教者が同じ
+IF PLAYER == TFLAG:前コマンド実行者
+	;フェラ系、自慰系、オナフェラなら可能
+	SELECTCASE PREVCOMS
+		CASE "フェラチオ", "イラマチオ", "自慰", "胸自慰", "オナフェラ"
+			COMRESULT = 1
+			RETURNF 1
+	ENDSELECT
+ENDIF
 
-@COM_オナフェラ
-PRINTL オナフェラ
-
-;-------------------------------------------------
-;実行判定処理
-;-------------------------------------------------
+@実行判定_オナフェラ
 ;すべての命令に共通の要素を考慮
 ;(従順が高いと命令に従いやすいなど)
 CALL COM_ORDER
@@ -53,14 +53,16 @@ LOCAL += RESULT
 ;30以上で実行
 CALL 実効値判定, LOCAL, 30
 
-SIF !RESULT
+RETURN RESULT
+
+@COM_オナフェラ
+PRINTL オナフェラ
+
+SIF !TFLAG:実行判定無視
+	CALLFORM 実行判定_%SELECTCOMS%
+SIF !RESULT && !TFLAG:実行判定無視
 	RETURN 0
 
-;-------------------------------------------------
-;実行決定
-;-------------------------------------------------
-SELECTCOMS = オナフェラ
-SELECTCOM = GETNUM(TRAINNAME, "オナフェラ")
 CALL KOJO_MESSAGE_COM
 
 ;実行者が奴隷であるフラグ

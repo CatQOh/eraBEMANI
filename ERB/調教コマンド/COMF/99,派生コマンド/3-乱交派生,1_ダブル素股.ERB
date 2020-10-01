@@ -6,17 +6,33 @@
 ;服着てるとダメ
 SIF !性器露出(TARGET)
 	RETURNF 0
+;潤滑が高くないとダメ
+SIF PALAM:潤滑 < 2000
+	RETURNF 0
+;Ｖ使用中はダメ
+SIF Ｖ使用中(TARGET)
+	RETURNF 0
+;お風呂場プレイ中はプレイマットが無いとダメ
+SIF TEQUIP:お風呂場 && !ITEM:プレイマット
+	RETURNF 0
+;ペニスある場合はダメ（代わりに兜合わせコマンドが使える）
+SIF PENIS(TARGET)
+	RETURNF 0
 
-COMRESULT = 1
-RETURNF 1
+;汎用COMABLE通らなかったらダメ
+SIF !USERCOM_ABLE_Ｐ奉仕()
+	RETURNF 0
 
-@COM_ダブル素股
-PRINTL ダブル素股
-;-------------------------------------------------
-;実行判定処理
-;-------------------------------------------------
+;調教者が主人で、前回の調教が貝あわせ(助手)かダブル素股だと可能
+IF !TEQUIP:ゲームセンター
+	IF PLAYER == MASTER && (PREVCOMS == "ダブル素股" || (TFLAG:前コマンド実行者 == ASSI && PREVCOMS == "貝あわせ"))
+		COMRESULT = 1
+		RETURNF 1
+	ENDIF
+ENDIF
+
+@実行判定_ダブル素股
 ;すべての命令に共通の要素を考慮
-;(従順が高いと命令に従いやすいなど)
 CALL COM_ORDER
 LOCAL = RESULT
 
@@ -112,14 +128,16 @@ ENDIF
 ;25以上で実行
 CALL 実効値判定, LOCAL, 25
 
-SIF !RESULT
+RETURN RESULT
+
+@COM_ダブル素股
+PRINTL ダブル素股
+
+SIF !TFLAG:実行判定無視
+	CALLFORM 実行判定_%SELECTCOMS%
+SIF !RESULT && !TFLAG:実行判定無視
 	RETURN 0
 
-;-------------------------------------------------
-;実行決定
-;-------------------------------------------------
-SELECTCOMS = ダブル素股
-SELECTCOM = GETNUM(TRAINNAME, "ダブル素股")
 CALL KOJO_MESSAGE_COM
 
 ;実行者が奴隷であるフラグ
