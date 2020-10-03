@@ -1,0 +1,198 @@
+﻿;-------------------------------------------------
+;背面座位吸血
+;-------------------------------------------------
+@USERCOM_ABLE_背面座位吸血, ARG
+#FUNCTION
+;吸血のABLE
+SIF USERCOM_ABLE_吸血する()
+	RETURNF 0
+COMRESULT = 0
+
+;対面座位から派生可能
+IF TFLAG:前コマンド実行者 == PLAYER
+	SELECTCASE PREVCOMS
+		CASE "背面座位", "背面座位アナル"
+			COMRESULT = 1
+			RETURNF 1
+	ENDSELECT
+ENDIF
+
+@COM_背面座位吸血
+#DIM DYNAMIC 挿入箇所
+PRINTL 背面座位吸血
+CALL KOJO_MESSAGE_COM
+
+SELECTCASE PREVCOMS
+	CASE "背面座位"
+		;V経験を伴うコマンドのフラグ(処女膜再生対応)
+		TFLAG:膣コマンド = 1
+		SELECTCASE PLAYER
+			CASE MASTER
+				TFLAG:主人挿入箇所 = 1
+			CASE ASSI
+				TFLAG:助手挿入箇所 = 1
+		ENDSELECT
+		挿入箇所 = 1
+	CASE "背面座位アナル"
+		SELECTCASE PLAYER
+			CASE MASTER
+				TFLAG:主人挿入箇所 = 2
+			CASE ASSI
+				TFLAG:助手挿入箇所 = 2
+		ENDSELECT
+		挿入箇所 = 2
+ENDSELECT
+
+;-------------------------------------------------
+;脱衣
+;-------------------------------------------------
+IF OVER_GENITAL(TARGET) != ""
+	IF CFLAG:挿入可
+		TEQUIP:下半身下着 = 0
+	ELSE
+		TEQUIP:下半身下着 = 0
+		TEQUIP:下半身上着 = 0
+		TEQUIP:全身上着 = 0
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;射精ゲージチェック（主人）
+;-------------------------------------------------
+IF 挿入箇所 == 1
+	LOCAL = 射精ゲージ計算_Ｖ挿入実行者(900)
+ELSEIF 挿入箇所 == 2
+	LOCAL = 射精ゲージ計算_Ａ挿入実行者(800)
+ENDIF
+
+;ABL:調教者の技巧をみる
+LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
+
+;ABL:技巧をみる
+LOCAL += (LOCAL/10)*ABL:技巧
+
+CALL 射精ゲージ増加, LOCAL, PLAYER
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+IF 挿入箇所 == 1
+	LOCAL = 射精ゲージ計算_Ｖ挿入(700)
+	;奴隷のABL:マゾっ気をみる
+	LOCAL += (LOCAL/5)*ABL:マゾっ気
+ELSEIF 挿入箇所 == 2
+	LOCAL = 射精ゲージ計算_Ａ挿入(700)
+	;ABL:従順をみる
+	LOCAL += (LOCAL/10)*ABL:従順
+ENDIF
+
+;ABL:調教者の技巧をみる
+LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
+
+;ABL:技巧をみる
+LOCAL += (LOCAL/10)*ABL:技巧
+
+;TALENT:舌使いをみる
+SIF TALENT:舌使い
+	TIMES LOCAL , 1.20
+
+CALL 射精ゲージ増加, LOCAL, TARGET
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 200
+LOSEBASE:気力 += 100
+
+IF 挿入箇所 == 1
+	SOURCE:快V = 400
+ELSE
+	SOURCE:快A = 400
+ENDIF
+SOURCE:情愛 = 1500
+SOURCE:苦痛 = 500
+SOURCE:恭順 = 3000
+SOURCE:屈従 = 1500
+SOURCE:恐怖 = 1500
+SOURCE:逸脱 = 500
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 800
+
+IF 挿入箇所 == 1
+	;貞操観念持ちで恋慕、親愛持ち以外には常に反発のソースを追加する（セックス系のみ）
+	SIF TALENT:貞操観念 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
+		SOURCE:反感 += 1000
+
+	CALL 特殊ソース処理_Ｖ
+ELSEIF 挿入箇所 == 2
+	;抑圧、抵抗持ちには、抑鬱ソース追加
+	SIF TALENT:抑圧 || TALENT:抵抗
+		SOURCE:鬱屈 += 900
+
+	CALL 特殊ソース処理_Ａ
+ENDIF
+CALL 特殊ソース処理_セックス
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+IF 挿入箇所 == 1
+	CALL SAMEN_CHECK, 1
+	CALL SAMEN_CHECK_T, 4
+
+	CALL SAMEN_SHOOT, 1, NOWEX:PLAYER:射精
+	CALL SAMEN_SHOOT_T, 4, NOWEX:射精
+ELSEIF 挿入箇所 == 2
+	CALL SAMEN_CHECK, 2
+	CALL SAMEN_CHECK_T, 5
+
+	CALL SAMEN_SHOOT, 2, NOWEX:PLAYER:射精
+	CALL SAMEN_SHOOT_T, 5, NOWEX:射精
+ENDIF
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP_BASE, 3, 3
+
+IF 挿入箇所 == 1
+	CALL EXPUP, "Ｖ経験", 1
+ELSEIF 挿入箇所 == 2
+	CALL EXPUP, "Ａ経験", 1
+ENDIF
+CALL EXPUP, "性交経験", 1
+CALL EXPUP, "性交経験", 1, PLAYER
+
+;愛情経験
+SIF TALENT:恋慕 && PLAYER == MASTER
+	CALL EXPUP, "愛情経験", 2
+SIF TALENT:親愛 && PLAYER == MASTER
+	CALL EXPUP, "愛情経験", 4
+SIF !CFLAG:被吸血経験
+	CALL EXPUP, "異常経験", 2
+
+CFLAG:被吸血経験++
+CALL EXPUP, "吸血経験", 1, PLAYER
+
+;魔力回復
+SIF !避妊具(PLAYER)
+	CALL 魔力回復, 5
+CALL 魔力回復, 30, PLAYER
+CALL 獣人催淫, 1, PLAYER
+
+経験回数:PLAYER:(NO:TARGET) += 1
+経験回数:TARGET:(NO:PLAYER) += 1
+
+RETURN 1
+

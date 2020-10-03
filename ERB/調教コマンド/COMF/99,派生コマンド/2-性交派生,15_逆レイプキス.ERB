@@ -1,0 +1,228 @@
+﻿;-------------------------------------------------
+;逆レイプキス
+;-------------------------------------------------
+@USERCOM_ABLE_逆レイプキス, ARG
+#FUNCTION
+;陥落していないとダメ
+SIF !CFLAG:陥落
+	RETURNF 0
+;ボールギャグ中は無理
+SIF TEQUIP:ボールギャグ
+	RETURNF 0
+;上級売春中は不可
+SIF 上級売春中
+	RETURNF 0
+
+;前回と今回の調教者が同じ
+IF TFLAG:前コマンド実行者 == PLAYER
+	;逆レから派生可能
+	SELECTCASE PREVCOMS
+		CASE "逆レイプ"
+			COMRESULT = 1
+			RETURNF 1
+	ENDSELECT
+ENDIF
+
+@COM_逆レイプキス
+PRINTL 逆レイプキス
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;脱衣
+;-------------------------------------------------
+IF OVER_GENITAL(PLAYER) != ""
+	IF CFLAG:PLAYER:挿入可
+		TEQUIP:PLAYER:下半身下着 = 0
+	ELSE
+		TEQUIP:PLAYER:下半身下着 = 0
+		TEQUIP:PLAYER:下半身上着 = 0
+		TEQUIP:PLAYER:全身上着 = 0
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;射精ゲージチェック（主人）
+;-------------------------------------------------
+LOCAL = 射精ゲージ計算_実行者受け(500)
+
+;ABL:調教者の技巧をみる
+LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
+
+;ABL:技巧をみる
+LOCAL += LOCAL/10*4*ABL:技巧
+
+;TALENT:舌使いをみる
+SIF TALENT:舌使い
+	TIMES LOCAL , 2.00
+
+CALL 射精ゲージ増加, LOCAL, PLAYER
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 1000
+
+;ABL:調教者の技巧をみる
+LOCAL += (LOCAL/2)*ABL:PLAYER:技巧
+
+;ABL:従順をみる
+LOCAL += (LOCAL/10)*ABL:従順
+
+;ABL:欲望をみる
+LOCAL += (LOCAL/5)*ABL:欲望
+
+;ABL:Ｃ感覚をみる
+SELECTCASE ABL:Ｃ感覚
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.50
+	CASE 2
+		TIMES LOCAL , 2.00
+	CASE 3
+		TIMES LOCAL , 2.50
+	CASE 4
+		TIMES LOCAL , 3.50
+	CASEELSE
+		LOCAL += LOCAL*(ABL:Ｃ感覚-1)
+ENDSELECT
+
+;調教者のTALENT:舌使いをみる
+SIF TALENT:PLAYER:舌使い
+	TIMES LOCAL , 2.00
+
+;TALENT:陥落系素質をみる
+IF PLAYER == MASTER
+	SIF TALENT:淫乱 || TALENT:服従
+		TIMES LOCAL , 1.50
+	SIF TALENT:恋慕 || TALENT:娼婦 || TALENT:隷属
+		TIMES LOCAL , 2.00
+	SIF TALENT:親愛
+		TIMES LOCAL , 3.00
+ENDIF
+
+;相性を見る
+LOCAL *= RELATION:TARGET:(NO:PLAYER)
+LOCAL /= 100
+
+;子供は締まりが良いので増える
+SIF TALENT:PLAYER:小柄体型
+	TIMES LOCAL , 1.20
+
+CALL 射精ゲージ増加, LOCAL, TARGET
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 50
+LOSEBASE:気力 += 100
+
+DOWNBASE:MASTER:体力 += 120
+DOWNBASE:MASTER:気力 += 80
+
+SOURCE:快C = 400
+SOURCE:恐怖 = 200
+SOURCE:性行動 = 500
+SOURCE:屈従 = 700
+SOURCE:逸脱 = 500
+SOURCE:反感 = 500
+SOURCE:露出 = 100
+SOURCE:不潔 = 300
+SOURCE:恭順 = 800
+SIF TFLAG:ニコニコサンフラワーキッス
+	SOURCE:恐怖 += 500
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 300
+
+;貞操観念持ちで恋慕、親愛持ち以外には常に反発のソースを追加する（セックス系のみ）
+SIF TALENT:貞操観念 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
+	SOURCE:反感 += 1000
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+SELECTCASE TFLAG:奴隷挿入箇所
+	CASE 1
+		IF PLAYER == MASTER
+			LOCAL = 1
+		ELSEIF PLAYER == ASSI
+			LOCAL = 2
+		ENDIF
+
+		CALL SAMEN_CHECK, 6
+		CALL SAMEN_CHECK_T, LOCAL
+
+		CALL SAMEN_SHOOT, 6, NOWEX:PLAYER:射精
+		CALL SAMEN_SHOOT_T, LOCAL, NOWEX:射精
+	CASE 2
+		IF PLAYER == MASTER
+			LOCAL = 6
+		ELSEIF PLAYER == ASSI
+			LOCAL = 7
+		ENDIF
+
+		CALL SAMEN_CHECK, 6
+		CALL SAMEN_CHECK_T, LOCAL
+
+		CALL SAMEN_SHOOT, 6, NOWEX:PLAYER:射精
+		CALL SAMEN_SHOOT_T, LOCAL, NOWEX:射精
+ENDSELECT
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;奴隷の膣内⇔調教者のペニスの汚れが移動
+STAIN:膣内 |= STAIN:PLAYER:ペニス
+STAIN:PLAYER:ペニス |= STAIN:膣内
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP_BASE, 3, 2
+
+CALL EXPUP, "性交経験", 1
+CALL EXPUP, "性交経験", 1, PLAYER
+SELECTCASE TFLAG:奴隷挿入箇所
+	CASE 1
+		CALL EXPUP, "Ｖ経験", 2, PLAYER
+	CASE 2
+		CALL EXPUP, "Ａ経験", 2, PLAYER
+ENDSELECT
+CALL EXPUP, "苦痛快楽経験", 1, PLAYER
+
+;恋慕or親愛なら愛情経験+ 中出しでさらに+
+IF FALLTYPE(TARGET) == 1 && PLAYER == MASTER
+	IF NOWEX:射精 && !GETBIT(TFLAG:避妊具射精, 2)
+		CALL EXPUP, "愛情経験", 2
+	ELSE
+		CALL EXPUP, "愛情経験", 1
+	ENDIF
+ENDIF
+
+;奉仕快楽フラグ
+TFLAG:奉仕快楽 = 1
+
+CALL 魔力回復, 5
+SIF !避妊具(PLAYER)
+	CALL 魔力回復, 3
+CALL 魔力回復, 5, PLAYER
+
+CALL 獣人催淫, 1
+CALL 獣人催淫, 1, PLAYER
+
+経験回数:PLAYER:(NO:TARGET) += 1
+経験回数:TARGET:(NO:PLAYER) += 1
+
+RETURN 1
+

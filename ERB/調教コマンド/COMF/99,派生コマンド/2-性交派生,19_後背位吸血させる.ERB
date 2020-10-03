@@ -1,0 +1,173 @@
+﻿;-------------------------------------------------
+;後背位吸血させる
+;-------------------------------------------------
+@USERCOM_ABLE_後背位吸血させる, ARG
+#FUNCTION
+;吸血のABLE
+SIF !USERCOM_ABLE_吸血させる()
+	RETURNF 0
+COMRESULT = 0
+
+;正常位させるから派生可能
+SELECTCASE PREVCOMS
+	CASE "後背位させる", "後背位アナルさせる"
+		COMRESULT = 1
+		RETURNF 1
+ENDSELECT
+
+@COM_後背位吸血させる
+PRINTL 後背位吸血させる
+CALL KOJO_MESSAGE_COM
+
+;実行者が奴隷フラグ
+TFLAG:奴隷実行 = 1
+SELECTCASE PREVCOMS
+	CASE "後背位させる"
+		TFLAG:奴隷挿入箇所 = 1
+	CASE "後背位アナルさせる"
+		TFLAG:奴隷挿入箇所 = 2
+ENDSELECT
+
+;-------------------------------------------------
+;脱衣
+;-------------------------------------------------
+IF OVER_GENITAL(PLAYER) != ""
+	IF CFLAG:PLAYER:挿入可
+		TEQUIP:PLAYER:下半身下着 = 0
+	ELSE
+		TEQUIP:PLAYER:下半身下着 = 0
+		TEQUIP:PLAYER:下半身上着 = 0
+		TEQUIP:PLAYER:全身上着 = 0
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;射精ゲージチェック（主人）
+;-------------------------------------------------
+IF TFLAG:奴隷挿入箇所 == 1
+	LOCAL = 射精ゲージ計算_実行者受け(500)
+ELSEIF TFLAG:奴隷挿入箇所 == 2
+	LOCAL = 射精ゲージ計算_実行者受け(600)
+ENDIF
+
+;ABL:調教者の技巧をみる
+LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
+
+;ABL:技巧をみる
+LOCAL += LOCAL/10*4*ABL:技巧
+
+CALL 射精ゲージ増加, LOCAL, PLAYER
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+IF TFLAG:奴隷挿入箇所 == 1
+	LOCAL = 射精ゲージ計算_奴隷挿入(1000)
+ELSEIF TFLAG:奴隷挿入箇所 == 1
+	LOCAL = 射精ゲージ計算_奴隷挿入(900)
+ENDIF
+
+;ABL:調教者の技巧をみる
+LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
+
+;ABL:技巧をみる
+LOCAL += LOCAL/10*4*ABL:技巧
+
+CALL 射精ゲージ増加, LOCAL, TARGET
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 0
+LOSEBASE:気力 += 0
+
+SOURCE:快C = 400
+SOURCE:情愛 = 1000
+SOURCE:恐怖 = 50
+SOURCE:性行動 = 1000
+SOURCE:逸脱 = 100
+SOURCE:恭順 = 1500
+
+;体力回復
+PRINTFORML %CALLNAME:TARGET%の体力+500
+BASE:体力 += 500
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+;射精時の処理
+IF TFLAG:奴隷挿入箇所 == 1
+	IF PLAYER == MASTER
+		LOCAL = 1
+	ELSEIF PLAYER == ASSI
+		LOCAL = 2
+	ENDIF
+
+	CALL SAMEN_CHECK, 6
+	CALL SAMEN_CHECK_T, LOCAL
+
+	CALL SAMEN_SHOOT, 6, NOWEX:PLAYER:射精
+	CALL SAMEN_SHOOT_T, LOCAL, NOWEX:射精
+ELSEIF TFLAG:奴隷挿入箇所 == 2
+	IF PLAYER == MASTER
+		LOCAL = 6
+	ELSEIF PLAYER == ASSI
+		LOCAL = 7
+	ENDIF
+
+	CALL SAMEN_CHECK, 6
+	CALL SAMEN_CHECK_T, LOCAL
+
+	CALL SAMEN_SHOOT, 6, NOWEX:PLAYER:射精
+	CALL SAMEN_SHOOT_T, LOCAL, NOWEX:射精
+ENDIF
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP_BASE, 3, 2
+
+CALL EXPUP, "性交経験", 1
+CALL EXPUP, "性交経験", 1, PLAYER
+IF TFLAG:奴隷挿入箇所 == 1
+	CALL EXPUP, "Ｖ経験", 2, PLAYER
+ELSEIF TFLAG:奴隷挿入箇所 == 2
+	CALL EXPUP, "Ａ経験", 2, PLAYER
+ENDIF
+CALL EXPUP, "苦痛快楽経験", 1, PLAYER
+
+;愛情経験
+;恋慕or親愛なら愛情経験+ 中出しでさらに+
+IF FALLTYPE(TARGET) == 1 && PLAYER == MASTER
+	IF NOWEX:射精 && !GETBIT(TFLAG:避妊具射精, 2)
+		CALL EXPUP, "愛情経験", 4
+	ELSE
+		CALL EXPUP, "愛情経験", 2
+	ENDIF
+ENDIF
+
+CALL EXPUP, "吸血経験", 1
+
+;吸血済みフラグ
+TFLAG:吸血済み = 1
+
+;魔力回復
+CALL 魔力回復, 30
+SIF !避妊具(TARGET)
+	CALL 魔力回復, 3, PLAYER
+CALL 獣人催淫, 1
+
+;奉仕快楽フラグ
+TFLAG:奉仕快楽 = 1
+
+経験回数:PLAYER:(NO:TARGET) += 1
+経験回数:TARGET:(NO:PLAYER) += 1
+
+RETURN 1
+
