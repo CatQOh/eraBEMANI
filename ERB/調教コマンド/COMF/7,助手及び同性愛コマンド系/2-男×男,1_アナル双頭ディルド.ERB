@@ -1,0 +1,143 @@
+﻿;-------------------------------------------------
+;アナル双頭ディルド
+;-------------------------------------------------
+@USERCOM_ABLE_アナル双頭ディルド, ARG
+#FUNCTION
+;ゲーセンに居る場合はできない
+SIF TEQUIP:ゲームセンター
+	RETURNF 0
+;上級売春中はダメ
+SIF 上級売春中
+	RETURNF 0
+;アイテムを持っていないとダメ
+SIF ITEM:双頭ディルド <= 0
+	RETURNF 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURNF 0
+;性器が露出してないとダメ
+SIF !性器露出(TARGET)
+	RETURNF 0
+;アナル使用中はダメ
+SIF Ａ使用中(TARGET)
+	RETURNF 0
+SIF Ａ使用中(PLAYER)
+	RETURNF 0
+;アニマルだと無理
+SIF TALENT:アニマル
+	RETURNF 0
+;小人体型持ちは主人が禁断の知識持ちじゃないとダメ
+SIF TALENT:小人体型 && !TALENT:MASTER:禁断の知識
+	RETURNF 0
+;男×男でのみ使用可能
+SIF SEX(PLAYER) == 2 || SEX(TARGET) == 2
+	RETURNF 0
+;ホモっ気3以上じゃないと無理
+SIF ABL:ホモっ気 < 3
+	RETURNF 0
+
+COMRESULT = 1
+RETURNF 1
+
+@COM_アナル双頭ディルド
+PRINTL アナル双頭ディルド
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 射精ゲージ計算_Ａ挿入(50)
+
+;ABL:調教者の技巧をみる
+LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
+
+;ABL:技巧をみる
+LOCAL += (LOCAL/10)*ABL:技巧
+
+;ABL:自慰中毒をみる
+SELECTCASE ABL:自慰中毒
+	CASE 0
+		TIMES LOCAL , 1.00
+	CASE 1
+		TIMES LOCAL , 1.10
+	CASE 2
+		TIMES LOCAL , 1.30
+	CASE 3
+		TIMES LOCAL , 1.50
+	CASE 4
+		TIMES LOCAL , 2.00
+	CASEELSE
+		LOCAL += (LOCAL/3)*ABL:自慰中毒
+ENDSELECT
+
+CALL 射精ゲージ増加, LOCAL, TARGET
+
+;-------------------------------------------------
+;射精ゲージチェック
+;-------------------------------------------------
+TFLAG:奴隷挿入箇所 = 2
+LOCAL = 射精ゲージ計算_実行者受け(200)
+
+;ABL:技巧をみる
+LOCAL += LOCAL/10*4*ABL:技巧
+
+CALL 射精ゲージ増加, LOCAL, PLAYER
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 70
+LOSEBASE:気力 += 120
+
+SOURCE:快A = 250
+SOURCE:苦痛 = 100
+SOURCE:性行動 = 200
+SOURCE:達成 = 100
+SOURCE:屈従 = 200
+SOURCE:恭順 = 250
+SOURCE:露出 = 50
+SOURCE:不潔 = 30
+SOURCE:逸脱 = 50
+SOURCE:反感 = 150
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 70
+
+CALL 特殊ソース処理_Ａ
+SIF SOURCE:A拡張
+	CALL 特殊ソース処理_Ａ拡張
+
+;[衝動的]持ちは3分の1でアイテム破壊する（調教終了後に修復）
+IF (TALENT:衝動的 || TALENT:PLAYER:衝動的) && RAND:3 == 0 && !TEQUIP:触手
+	TFLAG:アイテム破壊 = 1
+	ITEM:双頭ディルド = -1
+ENDIF
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK, 6
+CALL SAMEN_CHECK_T, 5
+
+CALL SAMEN_SHOOT, 6, NOWEX:PLAYER:射精
+CALL SAMEN_SHOOT_T, 5, NOWEX:射精
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP_BASE, 4, 1
+
+CALL EXPUP, "Ａ経験", 1
+CALL EXPUP, "Ａ経験", 1, PLAYER
+
+RETURN 1

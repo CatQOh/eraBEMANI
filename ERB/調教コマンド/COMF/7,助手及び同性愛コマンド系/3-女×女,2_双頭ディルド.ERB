@@ -1,0 +1,194 @@
+﻿;-------------------------------------------------
+;双頭ディルド
+;-------------------------------------------------
+@USERCOM_ABLE_双頭ディルド, ARG
+#FUNCTION
+;ゲーセンに居る場合はできない
+SIF TEQUIP:ゲームセンター
+	RETURNF 0
+;上級売春中はダメ
+SIF 上級売春中
+	RETURNF 0
+;アイテムを持っていないとダメ
+SIF ITEM:双頭ディルド <= 0
+	RETURNF 0
+;触手調教中はダメ
+SIF TEQUIP:触手
+	RETURNF 0
+;性器が露出してないとダメ
+SIF !性器露出(TARGET)
+	RETURNF 0
+;アイテム使用中は不可
+SIF Ｖ使用中(TARGET)
+	RETURNF 0
+SIF Ｖ使用中(PLAYER)
+	RETURNF 0
+;アニマルだと無理
+SIF TALENT:アニマル
+	RETURNF 0
+;ヴァギナ無いとダメ
+SIF !VAGINA(TARGET)
+	RETURNF 0
+;調教者が膣無いとダメ
+SIF !VAGINA(PLAYER)
+	RETURNF 0
+;調教対象が小人体型の場合は主人が禁断の知識持ちじゃないとダメ
+SIF TALENT:小人体型 && !TALENT:MASTER:禁断の知識
+	RETURNF 0
+
+;処女で、従順4以下・レズっ気4以下の女性ASSIの場合バイブはできない（サドならＯＫ）
+IF TALENT:処女 && ASSIPLAY
+	SIF SEX(ASSI) == 2 && (ABL:ASSI:従順 <= 4 || ABL:ASSI:レズっ気 <= 4) && !TALENT:ASSI:サド
+		RETURNF 0
+ENDIF
+;潤滑不足で、従順3以下のASSIの場合バイブはできない（サドならＯＫ）
+IF PALAM:潤滑 < PALAMLV:2 && ASSIPLAY
+	SIF ABL:ASSI:従順 <= 3 && !TALENT:ASSI:サド
+		RETURNF 0
+ENDIF
+
+COMRESULT = 1
+RETURNF 1
+
+@COM_双頭ディルド
+PRINTL 双頭ディルド
+CALL KOJO_MESSAGE_COM
+
+;V経験を伴うコマンドのフラグ(処女膜再生対応)
+TFLAG:膣コマンド = 1
+
+;-------------------------------------------------
+;脱衣
+;-------------------------------------------------
+IF CFLAG:挿入可
+	TEQUIP:下半身下着 = 0
+ELSE
+	TEQUIP:下半身下着 = 0
+	TEQUIP:下半身上着 = 0
+	TEQUIP:全身上着 = 0
+ENDIF
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 100
+
+CALL 射精ゲージ増加, 射精ゲージ計算_Ｖ道具(LOCAL), TARGET
+
+;-------------------------------------------------
+;射精ゲージチェック
+;-------------------------------------------------
+TFLAG:奴隷挿入箇所 = 1
+LOCAL = 射精ゲージ計算_実行者受け(300)
+
+;ABL:技巧をみる
+LOCAL += LOCAL/10*4*ABL:技巧
+
+CALL 射精ゲージ増加, LOCAL, PLAYER
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 60
+LOSEBASE:気力 += 100
+
+SOURCE:快V = 300
+SOURCE:性行動 = 200
+SOURCE:苦痛 = 50
+SOURCE:達成 = 100
+SOURCE:屈従 = 100
+SOURCE:恭順 = 250
+SOURCE:露出 = 20
+SOURCE:逸脱 = 40
+SOURCE:反感 = 100
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 40
+
+;処女だった場合は、苦痛のソースと反発のソースを追加する
+IF TALENT:処女
+	SOURCE:苦痛 += 2000
+	SOURCE:反感 += 3000
+ENDIF
+
+;再生処女だった場合は、苦痛のソースと反発のソースを追加する
+IF TALENT:再生処女
+	SOURCE:苦痛 += 500
+	SOURCE:反感 += 1000
+ENDIF
+
+CALL 特殊ソース処理_Ｖ
+SIF SOURCE:V拡張
+	CALL 特殊ソース処理_Ｖ拡張
+
+IF TALENT:PLAYER:処女
+	IF TALENT:PLAYER:性転換済
+		IF ASSIPLAY
+			IF CFLAG:ASSI:陥落
+				CFLAG:ASSI:性転換処女の奪われ方 = 2
+			ELSEIF RELATION:ASSI:(NO:TARGET)
+				CFLAG:ASSI:性転換処女の奪われ方 = 3
+			ELSE
+				CFLAG:ASSI:性転換処女の奪われ方 = 1
+			ENDIF
+		ENDIF
+		CSTR:PLAYER:性転換処女 = %NAME:TARGET%
+	ELSE
+		IF ASSIPLAY
+			IF CFLAG:ASSI:陥落
+				CFLAG:ASSI:処女の奪われ方 = 2
+			ELSEIF RELATION:ASSI:(NO:TARGET)
+				CFLAG:ASSI:処女の奪われ方 = 3
+			ELSE
+				CFLAG:ASSI:処女の奪われ方 = 1
+			ENDIF
+		ENDIF
+		CSTR:PLAYER:処女 = %NAME:TARGET%
+	ENDIF
+ENDIF
+
+IF TALENT:PLAYER:処女 || TALENT:PLAYER:再生処女
+	PRINTFORMW %CALLNAME:PLAYER%処女喪失
+	SETBIT STAIN:PLAYER:膣内, 6
+ENDIF
+
+;[衝動的]持ちは3分の1でアイテム破壊する（調教終了後に修復）
+IF (TALENT:衝動的 || TALENT:PLAYER:衝動的) && RAND:3 == 0 && !TEQUIP:触手
+	TFLAG:アイテム破壊 = 1
+	ITEM:双頭ディルド = -1
+ENDIF
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK, 6
+CALL SAMEN_CHECK_T, 4
+
+CALL SAMEN_SHOOT, 6, NOWEX:PLAYER:射精
+CALL SAMEN_SHOOT_T, 4, NOWEX:射精
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP_BASE, 4, 1
+
+CALL EXPUP, "Ｖ経験", 1
+CALL EXPUP, "Ｖ経験", 1, PLAYER
+
+;異常経験
+IF TALENT:処女
+	PRINTL ＜ディルド処女喪失＞
+	CALL EXPUP, "異常経験", 1
+ENDIF
+
+RETURN 1
