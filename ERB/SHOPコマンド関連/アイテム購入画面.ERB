@@ -222,6 +222,7 @@ SELECTCASE アイテム分類
 		;無条件で使えるもの
 		ITEMSALES:バナナ = 1
 		ITEMSALES:排卵誘発剤 = 1
+		ITEMSALES:特殊技能研修 = 1
 
 		;調合知識が必要
 		IF 調合知識有り
@@ -605,163 +606,8 @@ RETURN 0
 PRINTL 誰に使いますか？
 
 FOR PAGING, 0, CHARANUM
-	使用可 = 1
-	SELECTCASE GETNUM(ITEM, アイテム名)
-		;本
-		CASE 250 TO 299
-			;使用不可のキャラは除外
-			SIF CFLAG:PAGING:使用不可
-				使用可 = 0
-			SELECTCASE アイテム名
-				CASE "古今錬金術大全"
-					SIF TALENT:PAGING:調合知識
-						使用可 = 0
-				CASE "ひとりでできるもん～オトコのコのためのアナニー入門～"
-					SIF SEX(PAGING) == 2 || TALENT:PAGING:自慰しやすい
-						使用可 = 0
-				CASE "膣性感開発・中イキ完全マニュアル"
-					SIF SEX(PAGING) == 1 || TALENT:PAGING:自慰しやすい
-						使用可 = 0
-				CASE "ドラッカーの『マネジメント』"
-					SIF TALENT:PAGING:鼓舞
-						使用可 = 0
-				CASE "ヴォイニッチ手稿"
-					SIF TALENT:PAGING:禁断の知識
-						使用可 = 0
-				CASE "グリモワール"
-					SIF ABL:PAGING:魔法技能
-						使用可 = 0
-				CASE "解体新書"
-					SIF TALENT:PAGING:治療
-						使用可 = 0
-				CASE "ネクロノミコン"
-					SIF TALENT:PAGING:ネクロマンサー
-						使用可 = 0
-			ENDSELECT
-		;薬品系と素質系で処理が異なる
-		CASE 300 TO 499
-			;無機物・機械は除外
-			IF TALENT:PAGING:無機物 || CSTR:PAGING:種族 == "機械"
-				使用可 = 0
-				GOTO ELSE
-			ENDIF
-			;使用不可のキャラも除外
-			IF CFLAG:PAGING:使用不可
-				使用可 = 0
-				GOTO ELSE
-			ENDIF
-			;主人は除外 ただしふたなり、処女再生、胸関連、性転換薬、時の砂時計、ビースティースターター、排卵誘発剤、バナナは可能
-			IF PAGING == MASTER
-				SELECTCASE アイテム名
-					CASE "ふたなり薬", "ふたなり消去薬", "ユニコーンテイル", "豊胸剤", "縮胸剤", "性転換薬", "時の砂時計", "ビースティースターター", "排卵誘発剤", "バナナ"
-					CASEELSE
-						使用可 = 0
-						GOTO ELSE
-				ENDSELECT
-			ENDIF
-			SELECTCASE アイテム名
-				CASE "怪しげな栄養剤"
-					;体力がマックスだと使えない
-					SIF BASE:PAGING:体力 >= MAXBASE:PAGING:体力
-						使用可 = 0
-				CASE "ふたなり薬"
-					SIF TALENT:PAGING:ふたなり
-						使用可 = 0
-				CASE "ふたなり消去薬"
-					;男で妊娠中だとヴァギナ塞げない
-					SIF !TALENT:PAGING:ふたなり || (SEX(PAGING) == 1 && TALENT:PAGING:妊娠)
-						使用可 = 0
-					;男性器移植でふたなり化してると薬では戻せない
-					SIF CFLAG:PAGING:男性器提供者 >= 0
-						使用可 = 0
-				CASE "天使のミルク"
-					SIF TALENT:PAGING:母乳体質 || (SEX(PAGING) == 1 && !TALENT:PAGING:ふたなり)
-						使用可 = 0
-				CASE "ユニコーンテイル"
-					SIF TALENT:PAGING:処女 || TALENT:PAGING:再生処女 || (SEX(PAGING) == 1 && !TALENT:PAGING:ふたなり)
-						使用可 = 0
-				CASE "リミッター解除"
-					SIF TALENT:PAGING:リミットバースト || !CFLAG:PAGING:陥落
-						使用可 = 0
-				;以下アニマルは使用不可
-				CASEELSE
-					IF TALENT:PAGING:アニマル
-						使用可 = 0
-						GOTO ELSE
-					ENDIF
-			ENDSELECT
-			SELECTCASE アイテム名
-				CASE "豊胸剤"
-					SIF TALENT:PAGING:バストサイズ == 6 || SEX(PAGING) == 1
-						使用可 = 0
-				CASE "縮胸剤"
-					SIF TALENT:PAGING:バストサイズ == 1 || SEX(PAGING) == 1
-						使用可 = 0
-				CASE "止乳剤"
-					SIF !TALENT:PAGING:母乳体質 || SEX(PAGING) == 1
-						使用可 = 0
-				CASE "夜尿症改善薬"
-					SIF !TALENT:PAGING:おもらし癖
-						使用可 = 0
-				CASE "ゾンビパウダー"
-					SIF TALENT:PAGING:ゾンビ
-						使用可 = 0
-				CASE "聖水"
-					SIF !TALENT:PAGING:ゾンビ
-						使用可 = 0
-				CASE "性転換薬"
-					;妊娠時は使えない
-					SIF TALENT:PAGING:妊娠 || TALENT:PAGING:性転換済
-						使用可 = 0
-				CASE "時の砂時計"
-					SIF TALENT:PAGING:小人体型
-						使用可 = 0
-				CASE "永続的利尿剤"
-					;既におもらし癖ついてると使えない
-					SIF TALENT:PAGING:おもらし癖
-						使用可 = 0
-				CASE "ビースティースターター"
-					;ケモミミ尻尾両方あったり、既に獣だったりファーリーだったりすると使えない
-					SIF (TALENT:PAGING:動物耳 && TALENT:PAGING:尻尾) || CSTR:PAGING:種族 == "獣" || TALENT:PAGING:ファーリー
-						使用可 = 0
-				CASE "魔剤"
-					;既にキメてる場合は使えない
-					SIF CFLAG:PAGING:魔剤
-						使用可 = 0
-				CASE "排卵誘発剤"
-					SIF CFLAG:PAGING:排卵誘発剤 || !VAGINA(PAGING)
-						使用可 = 0
-			ENDSELECT
-		;経営用素質は誰でも習得可能 各経験、技能、実務経験が必要
-		CASE 1050 TO 1099
-			;実務経験が必要
-			SIF EXP:PAGING:実務経験 < 1000
-				使用可 = 0
-			;既に何か持ってる場合は無理
-			SIF TALENT:PAGING:料理人 || TALENT:PAGING:専業主婦 || TALENT:PAGING:工学博士 || TALENT:PAGING:絶対音感 || TALENT:PAGING:カメラマン
-				使用可 = 0
-			;各経験、能力と実務経験があれば特殊素質を身につけられる
-			SELECTCASE アイテム名
-				CASE "【料理人】"
-					SIF EXP:PAGING:料理経験 < 1000 || ABL:PAGING:料理技能 < 5
-						使用可 = 0
-				CASE "【専業主婦】"
-					SIF EXP:PAGING:家事経験 < 1000 || ABL:PAGING:家事技能 < 5
-						使用可 = 0
-				CASE "【工学博士】"
-					SIF EXP:PAGING:工作経験 < 1000 || ABL:PAGING:工作技能 < 5
-						使用可 = 0
-				CASE "【絶対音感】"
-					SIF (EXP:PAGING:歌唱経験 < 1000 || ABL:PAGING:歌唱技能 < 5) && (EXP:PAGING:演奏経験 < 1000 || ABL:PAGING:演奏技能 < 5)
-						使用可 = 0
-				CASE "【カメラマン】"
-					SIF EXP:PAGING:撮影経験 < 1000 || ABL:PAGING:撮影技能 < 5
-						使用可 = 0
-			ENDSELECT
-	ENDSELECT
-	
-	$ELSE
-	
+	使用可 = ITEM_ABLE(PAGING, アイテム名)
+
 	追加情報 = 体力
 	追加情報 += @"({BASE:PAGING:体力}/{MAXBASE:PAGING:体力}) %BARSTR(BASE:PAGING:体力, MAXBASE:PAGING:体力, 16)% "
 	SIF TALENT:PAGING:処女
@@ -802,7 +648,15 @@ NEXT
 SIF RESULT == -1
 	RETURN 0
 
-使用対象 = RESULT
+CALL アイテム使用, RESULT, アイテム名
+
+RETURN
+
+@アイテム使用, 使用対象, アイテム名
+#DIM DYNAMIC 使用対象
+#DIMS DYNAMIC アイテム名
+
+;口上表示
 CALL KOJO_USE_ITEM, アイテム名, 使用対象
 
 SELECTCASE アイテム名
@@ -1159,6 +1013,9 @@ SELECTCASE アイテム名
 		PLAYSOUND リミッター
 		PRINTFORMW ＜%NAME:使用対象%のリミッターを解除した＞
 		TALENT:使用対象:リミットバースト = 1
+	CASE "特殊技能研修"
+		PRINTFORMW ＜%NAME:使用対象%は3日間の研修を受講し始めた＞
+		CFLAG:使用対象:使用不可 = 6
 	;テレレレッテレー
 	CASE "【料理人】"
 		PLAYSOUND 特殊素質取得
@@ -1193,7 +1050,189 @@ ELSE
 	MONEY -= ITEMPRICE:アイテム名
 ENDIF
 
-RETURN 0
+RETURN
+
+@ITEM_ABLE, 使用対象, アイテム名
+#FUNCTION
+#DIM DYNAMIC 使用対象
+#DIM DYNAMIC 使用可 = 1
+#DIM DYNAMIC アイテムNO
+#DIMS DYNAMIC アイテム名
+
+アイテムNO = GETNUM(ITEM, アイテム名)
+
+SELECTCASE アイテムNO
+	;本
+	CASE 250 TO 299
+		;使用不可のキャラは除外
+		SIF CFLAG:使用対象:使用不可
+			RETURNF 0
+		SELECTCASE アイテム名
+			CASE "古今錬金術大全"
+				SIF !TALENT:使用対象:調合知識
+					RETURNF 1
+			CASE "ひとりでできるもん～オトコのコのためのアナニー入門～"
+				SIF SEX(使用対象) == 1 && !TALENT:使用対象:自慰しやすい
+					RETURNF 1
+			CASE "膣性感開発・中イキ完全マニュアル"
+				SIF SEX(使用対象) == 2 && !TALENT:使用対象:自慰しやすい
+					RETURNF 1
+			CASE "ドラッカーの『マネジメント』"
+				SIF !TALENT:使用対象:鼓舞
+					RETURNF 1
+			CASE "ヴォイニッチ手稿"
+				SIF !TALENT:使用対象:禁断の知識
+					RETURNF 1
+			CASE "グリモワール"
+				SIF ABL:使用対象:魔法技能 == 0
+					RETURNF 1
+			CASE "解体新書"
+				SIF !TALENT:使用対象:治療
+					RETURNF 1
+			CASE "ネクロノミコン"
+				SIF !TALENT:使用対象:ネクロマンサー
+					RETURNF 1
+		ENDSELECT
+	;薬品系と素質系で処理が異なる
+	CASE 300 TO 499
+		;無機物・機械は除外
+		SIF TALENT:使用対象:無機物 || CSTR:使用対象:種族 == "機械"
+			RETURNF 0
+		;使用不可のキャラも除外
+		SIF CFLAG:使用対象:使用不可
+			RETURNF 0
+		;主人は除外 ただしふたなり、処女再生、胸関連、性転換薬、時の砂時計、ビースティースターター、排卵誘発剤、バナナは可能
+		IF 使用対象 == MASTER
+			SELECTCASE アイテム名
+				CASE "ふたなり薬", "ふたなり消去薬", "ユニコーンテイル", "豊胸剤", "縮胸剤", "性転換薬", "時の砂時計", "ビースティースターター", "排卵誘発剤", "バナナ"
+				CASEELSE
+					RETURNF 0
+			ENDSELECT
+		ENDIF
+		SELECTCASE アイテム名
+			CASE "怪しげな栄養剤"
+				;体力がマックスだと使えない
+				SIF BASE:使用対象:体力 < MAXBASE:使用対象:体力
+					RETURNF 1
+			CASE "ふたなり薬"
+				SIF !TALENT:使用対象:ふたなり
+					RETURNF 1
+			CASE "ふたなり消去薬"
+				;男で妊娠中だとヴァギナ塞げない
+				SIF !TALENT:使用対象:ふたなり || (SEX(使用対象) == 1 && TALENT:使用対象:妊娠)
+					RETURNF 0
+				;男性器移植でふたなり化してると薬では戻せない
+				SIF CFLAG:使用対象:男性器提供者 >= 0
+					RETURNF 0
+				RETURNF 1
+			CASE "天使のミルク"
+				SIF TALENT:使用対象:母乳体質 || (SEX(使用対象) == 1 && !TALENT:使用対象:ふたなり)
+					RETURNF 0
+				RETURNF 1
+			CASE "ユニコーンテイル"
+				SIF TALENT:使用対象:処女 || TALENT:使用対象:再生処女 || !VAGINA(使用対象)
+					RETURNF 0
+				RETURNF 1
+			CASE "リミッター解除"
+				SIF TALENT:使用対象:リミットバースト || !CFLAG:使用対象:陥落
+					RETURNF 0
+				RETURNF 1
+			CASE "特殊技能研修"
+				SIF MATCH(ABL:使用対象:0, -1) > 0
+					RETURNF 1
+			;以下アニマルは使用不可
+			CASEELSE
+				SIF TALENT:使用対象:アニマル
+					RETURNF 0
+		ENDSELECT
+		SELECTCASE アイテム名
+			CASE "豊胸剤"
+				SIF TALENT:使用対象:バストサイズ == 6 || SEX(使用対象) == 1
+					RETURNF 0
+				RETURNF 1
+			CASE "縮胸剤"
+				SIF TALENT:使用対象:バストサイズ == 1 || SEX(使用対象) == 1
+					RETURNF 0
+				RETURNF 1
+			CASE "止乳剤"
+				SIF !TALENT:使用対象:母乳体質 || SEX(使用対象) == 1
+					RETURNF 0
+				RETURNF 1
+			CASE "夜尿症改善薬"
+				SIF !TALENT:使用対象:おもらし癖
+					RETURNF 0
+				RETURNF 1
+			CASE "ゾンビパウダー"
+				SIF TALENT:使用対象:ゾンビ
+					RETURNF 0
+				RETURNF 1
+			CASE "聖水"
+				SIF !TALENT:使用対象:ゾンビ
+					RETURNF 0
+				RETURNF 1
+			CASE "性転換薬"
+				;妊娠時は使えない
+				SIF TALENT:使用対象:妊娠 || TALENT:使用対象:性転換済
+					RETURNF 0
+				RETURNF 1
+			CASE "時の砂時計"
+				SIF TALENT:使用対象:小人体型
+					RETURNF 0
+				RETURNF 1
+			CASE "永続的利尿剤"
+				;既におもらし癖ついてると使えない
+				SIF TALENT:使用対象:おもらし癖
+					RETURNF 0
+				RETURNF 1
+			CASE "ビースティースターター"
+				;ケモミミ尻尾両方あったり、既に獣だったりファーリーだったりすると使えない
+				SIF (TALENT:使用対象:動物耳 && TALENT:使用対象:尻尾) || CSTR:使用対象:種族 == "獣" || TALENT:使用対象:ファーリー
+					RETURNF 0
+				RETURNF 1
+			CASE "魔剤"
+				;既にキメてる場合は使えない
+				SIF CFLAG:使用対象:魔剤
+					RETURNF 0
+				RETURNF 1
+			CASE "排卵誘発剤"
+				SIF CFLAG:使用対象:排卵誘発剤 || !VAGINA(使用対象)
+					RETURNF 0
+				RETURNF 1
+		ENDSELECT
+	;経営用素質は誰でも習得可能 各経験、技能、実務経験が必要
+	CASE 1050 TO 1099
+		;実務経験が必要
+		SIF EXP:使用対象:実務経験 < 1000
+			RETURNF 0
+		;既に何か持ってる場合は無理
+		SIF TALENT:使用対象:料理人 || TALENT:使用対象:専業主婦 || TALENT:使用対象:工学博士 || TALENT:使用対象:絶対音感 || TALENT:使用対象:カメラマン
+			RETURNF 0
+		;各経験、能力と実務経験があれば特殊素質を身につけられる
+		SELECTCASE アイテム名
+			CASE "【料理人】"
+				SIF EXP:使用対象:料理経験 < 1000 || ABL:使用対象:料理技能 < 5
+					RETURNF 0
+				RETURNF 1
+			CASE "【専業主婦】"
+				SIF EXP:使用対象:家事経験 < 1000 || ABL:使用対象:家事技能 < 5
+					RETURNF 0
+				RETURNF 1
+			CASE "【工学博士】"
+				SIF EXP:使用対象:工作経験 < 1000 || ABL:使用対象:工作技能 < 5
+					RETURNF 0
+				RETURNF 1
+			CASE "【絶対音感】"
+				SIF (EXP:使用対象:歌唱経験 < 1000 || ABL:使用対象:歌唱技能 < 5) && (EXP:使用対象:演奏経験 < 1000 || ABL:使用対象:演奏技能 < 5)
+					RETURNF 0
+				RETURNF 1
+			CASE "【カメラマン】"
+				SIF EXP:使用対象:撮影経験 < 1000 || ABL:使用対象:撮影技能 < 5
+					RETURNF 0
+				RETURNF 1
+		ENDSELECT
+ENDSELECT
+
+RETURNF 0
 
 @アイテム説明, アイテム名
 #DIMS DYNAMIC アイテム名
@@ -1413,5 +1452,54 @@ SELECTCASE アイテム名
 		PRINTL 対象に素質【絶対音感】を習得させます。実務経験、歌唱経験or演奏経験、歌唱技能or演奏技能が必要です
 	CASE "【カメラマン】"
 		PRINTL 対象に素質【カメラマン】を習得させます。実務経験、撮影経験、撮影技能が必要です
+	CASE "特殊技能研修"
+		PRINTL 特殊な研修と訓練を行い、能力のマイナス値を打ち消します。3日間使用不可になります
 ENDSELECT
+
+@アイテム使用_逆引き, 使用対象
+#DIM DYNAMIC 使用対象
+#DIM DYNAMIC 使用アイテム
+#DIM DYNAMIC LCOUNT
+
+DRAWLINE
+PRINTFORML □%CALLNAME:使用対象%に使用するアイテムを選択してください
+
+FOR LCOUNT, 250, 499
+	SIF ITEMNAME:LCOUNT == ""
+		CONTINUE
+	SIF ITEM_ABLE(使用対象, ITEMNAME:LCOUNT)
+		CALL PASELIL, @"　[{LCOUNT}] - %ITEMNAME:LCOUNT%({ITEMPRICE:LCOUNT}＄)"
+NEXT
+FOR LCOUNT, 1050, 1099
+	SIF ITEMNAME:LCOUNT == ""
+		CONTINUE
+	SIF ITEM_ABLE(使用対象, ITEMNAME:LCOUNT)
+		CALL PASELIL, @"　[{LCOUNT}] - %ITEMNAME:LCOUNT%({ITEMPRICE:LCOUNT}＄)"
+NEXT
+
+DRAWLINE
+PRINTPLAIN 　アイテム使用　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 250 TO 499, 1050 TO 1099
+			使用アイテム = RESULT
+			SIF ITEMNAME:使用アイテム == ""
+				CONTINUE
+			SIF !ITEM_ABLE(使用対象, ITEMNAME:使用アイテム)
+				CONTINUE
+			IF ITEMPRICE:使用アイテム > MONEY
+				PRINTW 所持金が足りません
+				RESTART
+			ENDIF
+			CALL アイテム使用, 使用対象, ITEMNAME:使用アイテム
+			RETURN
+	ENDSELECT
+LOOP 1
+
+
 
