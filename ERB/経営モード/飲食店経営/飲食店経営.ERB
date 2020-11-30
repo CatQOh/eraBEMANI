@@ -33,7 +33,7 @@ LOOP 1
 PRINTL [1] - 温泉を探す
 PRINTL [2] - 宿泊施設を増築する
 
-@経営方針_飲食店
+@経営方針_飲食店_
 
 PRINTL [1] - 業種の変更
 PRINTFORML [2] - 料理のジャンル(現在のジャンル:\@ 飲食ジャンル == "" ? 無し # %飲食ジャンル% \@)
@@ -42,7 +42,7 @@ PRINTL [2] -
 DO
 	SELECTCASE RESULT
 		CASE 1
-			CALL 業種変更_飲食店
+			;CALL 業種変更_飲食店
 		CASE 2
 			PRINTL □ジャンルを選んでください
 			PRINTL 　[1] - 和食
@@ -78,7 +78,25 @@ DO
 LOOP 1
 
 
-@業種変更_飲食店
+@経営方針_飲食店
+#DIM DYNAMIC 条件可否, 20
+{
+#DIMS DYNAMIC 業種名 = 
+"飲食店",
+"ビジネスホテル",
+"リゾートホテル",
+"飲食店(裏)",
+"リゾートホテル(裏)",
+"ラブホテル",
+"日帰り温泉",
+"バー",
+"ピンクサロン",
+"ライブハウス",
+"ホストクラブ",
+"キャバクラ"
+}
+#DIM DYNAMIC LCOUNT
+
 IF 温泉レベル == 0
 	SETCOLORBYNAME gray
 	PRINTL [-] - 温泉の併設(温泉設備が無いと併設できません)
@@ -87,22 +105,127 @@ ELSE
 	PRINTL [1] - 温泉の併設
 ENDIF
 IF ホテル部屋数 == 0
+	SETCOLORBYNAME gray
 	PRINTL [-] - 宿の併設(宿泊施設の増築を行わないと併設できません)
+	RESETCOLOR
 ELSE
 	PRINTL [2] - 宿の併設
 ENDIF
 IF CMATCH(CSTR:配属, "娼館") == 0
+	SETCOLORBYNAME gray
 	PRINTL [-] - 娼館との連携(娼館に配属してるキャラが居ないと連携できません)
+	RESETCOLOR
 ELSE
 	PRINTL [3] - 娼館との連携
 ENDIF
 IF CMATCH(CSTR:配属, "芸能プロダクション") == 0
+	SETCOLORBYNAME gray
 	PRINTL [-] - 芸能プロダクションとの連携(芸プロの配属してるキャラが居ないと連携できません)
+	RESETCOLOR
 ELSE
 	PRINTL [4] - 芸能プロダクションとの連携
 ENDIF
-PRINTL [10] - 上記の条件から業種を選択
+SELECTCASE 業種
+	CASE "ラブホテル", "日帰り温泉"
+		SETCOLORBYNAME gray
+		PRINTL [-] - 料理のジャンル(提供無し)
+		RESETCOLOR
+	CASE "バー", "ピンクサロン", "ライブハウス", "ホストクラブ", "キャバクラ"
+		PRINTL [-] - 料理のジャンル(お酒で固定)
+	CASEELSE
+		PRINTFORML [5] - 料理のジャンル(現在:%飲食ジャンル%)
+ENDSELECT
 
+
+PRINTL 上記の条件から業種を選択
+PRINT 業種候補:
+
+LCOUNT = 0
+VARSET 条件可否
+
+FOR LCOUNT, 0, VARSIZE("業種名")
+	SELECTCASE 業種名:LCOUNT
+		;無条件解放
+		CASE "飲食店", "バー", "ホストクラブ", "キャバクラ"
+			条件可否:LCOUNT = 1
+		;宿泊施設あり
+		CASE "ビジネスホテル", "ラブホテル"
+			SIF ホテル部屋数
+				条件可否:LCOUNT = 1
+		;宿泊施設+温泉
+		CASE "リゾートホテル"
+			SIF ホテル部屋数 && 温泉レベル
+				条件可否:LCOUNT = 1
+		;娼館との連携必須
+		CASE "飲食店(裏)", "ピンクサロン"
+			SIF 娼館連携
+				条件可否:LCOUNT = 1
+		;リゾートホテル+娼館連携
+		CASE "リゾートホテル(裏)"
+			SIF 娼館連携 && ホテル部屋数 && 温泉レベル
+				条件可否:LCOUNT = 1
+		;温泉あり
+		CASE "日帰り温泉"
+			SIF 温泉レベル
+				条件可否:LCOUNT = 1
+		;芸プロとの連携
+		CASE "ライブハウス"
+			SIF 芸プロ連携
+				条件可否:LCOUNT = 1
+	ENDSELECT
+	SIF !条件可否
+		SETCOLORBYNAME gray
+	PRINTFORM [{LCOUNT+20}]%業種名:LCOUNT% 
+	RESETCOLOR
+NEXT
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 5
+			PRINTL □ジャンルを選んでください
+			PRINTL 　[1] - 和食
+			PRINTL 　[2] - 洋食
+			PRINTL 　[3] - 中華
+			PRINTL 　[4] - スイーツ
+			PRINTL 　[5] - ファストフード
+			PRINTL 　[6] - お酒
+			PRINTL 　[0] - 無し
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						飲食ジャンル = 
+					CASE 1
+						飲食ジャンル = 和食
+					CASE 2
+						飲食ジャンル = 洋食
+					CASE 3
+						飲食ジャンル = 中華
+					CASE 4
+						飲食ジャンル = スイーツ
+					CASE 5
+						飲食ジャンル = ファストフード
+					CASE 6
+						飲食ジャンル = お酒
+					CASEELSE
+						CONTINUE
+				ENDSELECT
+			LOOP 0
+		CASE 20 TO 40
+			SIF 業種名:(RESULT-20) == ""
+				CONTINUE
+			SIF !条件可否:(RESULT-20)
+				CONTINUE
+			業種 = %業種名:(RESULT-20)%
+			;酒がメインのサービスなら酒で固定
+			SELECTCASE 業種
+				CASE "バー", "ピンクサロン", "ライブハウス", "ホストクラブ", "キャバクラ"
+					飲食ジャンル = お酒
+			ENDSELECT
+	ENDSELECT
+	RESTART
+LOOP 1
 
 
 @人員管理_飲食店
@@ -118,11 +241,11 @@ SELECTCASE 業種
 		PRINTL (食事の提供)
 	CASE "ビジネスホテル"
 		PRINTL (宿泊施設と軽食の提供)
-	CASE "ホテル"
+	CASE "リゾートホテル"
 		PRINTL (温泉と宿泊施設及び食事の提供)
 	CASE "飲食店(裏)"
 		PRINTL (食事とその他のサービスの提供)
-	CASE "ホテル(裏)"
+	CASE "リゾートホテル(裏)"
 		PRINTL (宿泊施設と併設された多数の娯楽及び食事の提供)
 	CASE "ラブホテル"
 		PRINTL (宿泊施設のみの提供)
