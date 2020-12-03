@@ -1,11 +1,13 @@
 ﻿@飲食店経営
+#DIM DYNAMIC LCOUNT
 
 CALL 飲食店ステータス
 
 PRINTL [1] - 物件の管理
 PRINTL [2] - 経営方針の管理
 PRINTL [3] - 人員の管理
-PRINTL 
+PRINTFORML [4] - \@ FLAG:飲食店営業中 == -1 ? 営業を再開する # 営業を休止する \@
+PRINTL [5] - 定休日の設定
 DRAWLINE
 PRINTPLAIN 　飲食店・ホテル　
 PRINTL [0] - 戻る
@@ -21,6 +23,57 @@ DO
 			CALL 経営方針_飲食店
 		CASE 3
 			CALL 人員管理_飲食店
+		CASE 4
+			IF FLAG:飲食店営業中 > 0
+				PRINTFORMW %飲食店名%の経営を一時中断しました
+				;定休日じゃない休業は-1
+				FLAG:飲食店営業中 = -1
+			ELSE
+				PRINTFORMW %飲食店名%の経営を開始しました
+				FLAG:飲食店営業中 = DAY
+			ENDIF
+		CASE 5
+			VARLINE = 0
+			DO
+				SIF VARLINE
+					CLEARLINE LINECOUNT-VARLINE
+				VARLINE = LINECOUNT
+				LOCALS = 
+				DRAWLINE
+				PRINTL □定休日を選んでください
+				PRINTFORML 　[1] - 日曜日（\@ INN定休日("日") ? 定休 # 営業 \@）
+				PRINTFORML 　[2] - 月曜日（\@ INN定休日("月") ? 定休 # 営業 \@）
+				PRINTFORML 　[3] - 火曜日（\@ INN定休日("火") ? 定休 # 営業 \@）
+				PRINTFORML 　[4] - 水曜日（\@ INN定休日("水") ? 定休 # 営業 \@）
+				PRINTFORML 　[5] - 木曜日（\@ INN定休日("木") ? 定休 # 営業 \@）
+				PRINTFORML 　[6] - 金曜日（\@ INN定休日("金") ? 定休 # 営業 \@）
+				PRINTFORML 　[0] - 土曜日（\@ INN定休日("土") ? 定休 # 営業 \@）
+				PRINTL 　[9] - 設定終了
+				INPUT
+				LOCAL = RESULT
+				SELECTCASE LOCAL
+					CASE 0 TO 6
+						FOR LCOUNT, 0, 7
+							IF LOCAL == LCOUNT
+								IF !INN定休日(DOW(LOCAL))
+									飲食店定休日 += @"・%DOW(LOCAL)%"
+								ELSE
+									CONTINUE
+								ENDIF
+							ENDIF
+							IF INN定休日(DOW(LCOUNT))
+								IF LOCALS == ""
+									LOCALS = %DOW(LCOUNT)%
+								ELSE
+									LOCALS += @"・%DOW(LCOUNT)%"
+								ENDIF
+							ENDIF
+						NEXT
+						飲食店定休日 = %LOCALS%
+					CASE 9
+						BREAK
+				ENDSELECT
+			LOOP 1
 		CASEELSE
 			CONTINUE
 	ENDSELECT
@@ -218,6 +271,9 @@ DO
 			SIF !条件可否:(RESULT-20)
 				CONTINUE
 			業種 = %業種名:(RESULT-20)%
+			;デフォルト名のままなら業種に合わせて店名変更
+			SIF MATCH(業種名, 飲食店名) || 飲食店名 == ""
+				飲食店名 = %業種%
 			;酒がメインのサービスなら酒で固定
 			SELECTCASE 業種
 				CASE "バー", "ピンクサロン", "ライブハウス", "ホストクラブ", "キャバクラ"
@@ -230,10 +286,118 @@ LOOP 1
 
 @人員管理_飲食店
 
+DRAWLINE
+
+;連携する業種ではそちらから追加で配属できる
+SELECTCASE 業種
+	CASE "飲食店(裏)", "リゾートホテル(裏)", "ピンクサロン"
+		SIF CMATCH(CSTR:配属, "娼館") == 0
+			GOTO ELSE
+		PRINTL □人員を配属します
+		PRINTFORML 　[1] - 娼館からの配属(現在:{CMATCH(CSTR:転属, "飲食店")}人/3人)
+	CASE "ライブハウス"
+		SIF CMATCH(CSTR:配属, "芸能プロダクション") == 0
+			GOTO ELSE
+		PRINTL □人員を配属します
+		PRINTFORML 　[1] - 芸プロからの配属(現在:{CMATCH(CSTR:転属, "飲食店")}人/3人)
+	CASEELSE
+		$ELSE
+		CALL STRATEGY_PERSONAL, "飲食店"
+		RETURN
+ENDSELECT
+PRINTFORML 　[2] - 通常の配属(現在:{CMATCH(CSTR:配属, "飲食店")}人/{飲食店配属上限()}人)
+PRINTL 　[0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1
+			SELECTCASE 業種
+				CASE "飲食店(裏)", "リゾートホテル(裏)", "ピンクサロン"
+					CALL 転属_飲食店, "娼館"
+				CASE "ライブハウス"
+					CALL 転属_飲食店, "芸プロ"
+			ENDSELECT
+			RESTART
+		CASE 2
+			CALL STRATEGY_PERSONAL
+			RESTART
+	ENDSELECT
+LOOP 1
+
+@転属_飲食店, ARGS
+#DIM DYNAMIC LCOUNT
+
+DRAWLINE
+PRINTFORML □%飲食店名%に転属するキャラを選択してください(本業の配属は解除されません)
+
+FOR LCOUNT, 1, CHARANUM
+	SELECTCASE ARGS
+		CASE "娼館"
+			SIF CSTR:LCOUNT:配属 != "娼館"
+				CONTINUE
+			PRINTFORML 　[{LCOUNT, 2}] - %NAME:LCOUNT%\@ CSTR:LCOUNT:転属 == "飲食店" ? (転属中) # \@
+		CASE "芸プロ"
+			SIF CSTR:LCOUNT:配属 != "芸能プロダクション"
+				CONTINUE
+			PRINTFORML 　[{LCOUNT, 2}] - %NAME:LCOUNT%\@ CSTR:LCOUNT:転属 == "飲食店" ? (転属中) # \@
+	ENDSELECT
+NEXT
+DRAWLINE
+PRINTPLAIN 　転属　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1 TO CHARANUM-1
+			SELECTCASE ARGS
+				CASE "娼館"
+					SIF CSTR:RESULT:配属 != "娼館"
+						CONTINUE
+				CASE "芸プロ"
+					SIF CSTR:RESULT:配属 != "芸能プロダクション"
+						CONTINUE
+			ENDSELECT
+			IF CSTR:RESULT:転属 == "飲食店"
+				CSTR:RESULT:転属 = 
+			ELSE
+				CSTR:RESULT:転属 = 飲食店
+			ENDIF
+			RESTART
+	ENDSELECT
+LOOP 1
+
+@飲食店配属上限
+#FUNCTION
+
+;業種によって配属上限人数が違う
+SELECTCASE 業種
+	CASE "ラブホテル", "日帰り温泉"
+		RETURNF 3
+	CASE "リゾートホテル", "リゾートホテル(裏)"
+		RETURNF 10
+	;それ以外は全部5人
+	CASEELSE
+		RETURNF 5
+ENDSELECT
 
 @飲食店ステータス
 
-PRINTFORML □%飲食店名%のステータス
+PRINTFORM □%飲食店名%のステータス
+IF FLAG:飲食店営業中
+	IF INN定休日()
+		PRINTL (本日定休日)
+	ELSE
+		PRINTL (営業中)
+	ENDIF
+ELSE
+	PRINTL (休業中)
+ENDIF
 PRINTFORML 　飲食業の名声:{飲食店名声} ホテル業の名声:{ホテル名声}
 PRINTFORM 　現在の業種:%業種%
 SELECTCASE 業種
@@ -260,6 +424,7 @@ SELECTCASE 業種
 	CASE "ホストクラブ", "キャバクラ"
 		PRINTL (アルコール類と軽食、至福のひとときを提供)
 ENDSELECT
+PRINTFORML 　定休日:\@ 飲食店定休日 == "" ? 無し # %飲食店定休日% \@
 PRINTL □設備等
 IF 温泉レベル == 0
 	PRINT 　[温泉無し]
@@ -282,6 +447,23 @@ ELSE
 	PRINT [芸プロとの連携無し]
 ENDIF
 PRINTL 
+
+;引数で指定した曜日が定休日かどうか 省略すれば今日の曜日
+;書式 INN定休日("木") みたいな
+@INN定休日, ARGS
+#FUNCTION
+VARSET LOCALS
+
+SIF ARGS == ""
+	ARGS = %DOW(FLAG:曜日)%
+
+SPLIT 飲食店定休日, "・", LOCALS
+
+IF FINDELEMENT(LOCALS, ARGS) >= 0
+	RETURNF 1
+ELSE
+	RETURNF 0
+ENDIF
 
 
 
