@@ -1,0 +1,237 @@
+﻿@温泉探索
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 名前文字数
+
+CALL CHECKDRAWLINE
+PRINTFORML □温泉探索班(現在:{CMATCH(CSTR:配属, "温泉探索")}/3人) 本日の残り魔法使用回数:{MS魔法ストック}回
+IF CMATCH(CSTR:配属, "温泉探索") == 0
+	PRINTL 　[配属無し]
+ELSE
+	FOR LCOUNT, 0, CHARANUM
+		SIF CSTR:LCOUNT:配属 == "温泉探索"
+			CALL SETMAX(名前文字数, STRLENS(NAME:LCOUNT))
+	NEXT
+	FOR LCOUNT, 0, CHARANUM
+		IF CSTR:LCOUNT:配属 == "温泉探索"
+			IF CFLAG:LCOUNT:配属完了
+				PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 工作技能:{ABL:LCOUNT:工作技能, 2, LEFT} 魔法技能:{ABL:LCOUNT:魔法技能, 2, LEFT} 実務経験:{EXP:LCOUNT:実務経験, 2, LEFT}
+				SIF 統率者("温泉探索") && !TALENT:LCOUNT:統率
+					PRINT  統率者ボーナス+1 
+				CALL ISTALENT, LCOUNT, "地質学"
+				CALL ISTALENT, LCOUNT, "統率"
+				PRINTL 
+			ELSE
+				PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT%(配属準備中)
+			ENDIF
+		ENDIF
+	NEXT
+ENDIF
+PRINTL □温泉を探します
+FOR LCOUNT, 1, 4
+	IF MS広さ:LCOUNT == ""
+		CALL PRINTCOLORL, "　[-] - 発掘現場が保存されていません", "gray"
+	ELSE
+		PRINTFORML 　[{LCOUNT}] - 広さ:%MS広さ:LCOUNT% 難易度:{MS難易度:LCOUNT}の発掘現場
+	ENDIF
+NEXT
+PRINTL 　[10] - 新しく温泉を探す
+PRINTL 　[11] - 温泉探索班を編成する
+DRAWLINE
+PRINTPLAIN 　温泉探索　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1 TO 3
+			SIF MS広さ:RESULT == ""
+				CONTINUE
+			CALL マインスイーパ, RESULT
+			RESTART
+		CASE 10
+			CALL 温泉探索_候補
+			RESTART
+		CASE 11
+			CALL STRATEGY_PERSONAL, "温泉探索"
+			RESTART
+	ENDSELECT
+LOOP 1
+
+@マインスイーパ, ARG
+
+@温泉探索_候補
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 広さ上限X
+#DIM DYNAMIC 広さ上限Y
+#DIM DYNAMIC 難易度上限
+#DIM DYNAMIC X指定 = 10
+#DIM DYNAMIC Y指定 = 10
+#DIM DYNAMIC 難易度指定 = 1
+
+広さ上限X = 10
+広さ上限Y = 10
+難易度上限 = 1
+
+;広さ上限は実務経験で、難易度上限は工作技能で、各地質学の有無でポイント付く
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "温泉探索"
+		CONTINUE
+	IF TALENT:LCOUNT:地質学
+		広さ上限X += (EXP:LCOUNT:実務経験/10)+2
+		広さ上限Y += (EXP:LCOUNT:実務経験/20)+2
+		難易度上限 += ABL:LCOUNT:工作技能/2
+	ELSE
+		広さ上限X += (EXP:LCOUNT:実務経験/20)+1
+		広さ上限Y += (EXP:LCOUNT:実務経験/40)+1
+		難易度上限 += ABL:LCOUNT:工作技能/3
+	ENDIF
+NEXT
+
+CALL SETMIN, 広さ上限X, 60
+CALL SETMIN, 広さ上限Y, 30
+CALL SETMIN, 難易度上限, 6
+
+PRINTL □温泉を探します。条件を指定してください
+PRINTFORML 　広さ:{X指定}×{Y指定}(最大:{広さ上限X}×{広さ上限Y}) [1]広さの横幅を変更 [2]広さの縦幅を変更
+PRINTFORML 　難易度:{難易度指定}(最大:{難易度上限}) [3]難易度を変更
+PRINTL 
+PRINTL 　[5] - この条件で探す
+PRINTL 　[0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1
+			PRINTL 広さの横幅を指定してください
+			CALL TWO_DIGIT, 広さ上限X, "", 10
+			X指定 = RESULT
+			RESTART
+		CASE 2
+			PRINTL 広さの縦幅を指定してください
+			CALL TWO_DIGIT, 広さ上限Y, "", 10
+			Y指定 = RESULT
+			RESTART
+		CASE 3
+			PRINTL 難易度を選択してください
+			CALL TWO_DIGIT, 難易度上限, "", 1
+			難易度指定 = RESULT
+			RESTART
+		CASE 5
+			PRINTL 発掘現場を保存するスロットを選んでください
+			FOR LCOUNT, 1, 4
+				IF MS広さ:LCOUNT == ""
+					PRINTFORML [{LCOUNT}] - 空きスロット
+				ELSE
+					PRINTFORML [{LCOUNT}] - 広さ:%MS広さ:LCOUNT% 難易度:{MS難易度:LCOUNT}の発掘現場 が保存されています
+				ENDIF
+			NEXT
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 1 TO 3
+						LOCAL = RESULT
+						IF MS広さ:RESULT != ""
+							PRINTL 既に発掘現場が保存されています。上書きしますか？
+							PRINTL [0] - はい
+							PRINTL [1] - いいえ
+							DO
+								INPUT
+								SIF RESULT == 1
+									RESTART
+							LOOP LOOPRES(0)
+						ENDIF
+						CALL マインスイーパ生成, @"{X指定}/{Y指定}", 難易度指定, LOCAL
+						RETURN
+				ENDSELECT
+			LOOP 1
+	ENDSELECT
+LOOP 1
+
+@マインスイーパ生成, 広さ, 難易度, ARG
+#DIM DYNAMIC LCOUNTX
+#DIM DYNAMIC LCOUNTY
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 広さ
+#DIM DYNAMIC X幅
+#DIM DYNAMIC Y幅
+#DIM DYNAMIC X候補
+#DIM DYNAMIC Y候補
+#DIM DYNAMIC 難易度
+#DIM DYNAMIC 爆弾数
+#DIM DYNAMIC 温泉数
+;60*30は最大の広さ 廃人用
+#DIM DYNAMIC MS, 60, 30
+
+;広さはXX/XXなのでSPLIT
+MS広さ:ARG = %広さ%
+SPLIT 広さ, "/", LOCALS
+X幅 = TOINT(LOCALS:0)
+Y幅 = TOINT(LOCALS:1)
+
+;難易度は6段階(暫定) 1ごとにマップの5%が爆弾と温泉マークになる
+LOCAL = (X幅*Y幅*難易度)/20
+爆弾数 = LOCAL
+温泉数 = LOCAL
+
+;ランダムで爆弾と温泉を設置
+;変数内訳は0=未解明 1=解明 2=温泉ありかつ解明 3=温泉ありかつ未解明 4=爆弾
+;乱数次第では少し時間がかかるかもしれない
+DO
+	X候補 = RAND:X幅
+	Y候補 = RAND:Y幅
+	;この時点で1～3が入ってることはありえないけど
+	SIF MS:X候補:Y候補 >= 3
+		CONTINUE
+	;爆弾を設置(物騒)
+	MS:X候補:Y候補 = 4
+	;デクリメントからループ確認
+	爆弾数--
+LOOP 爆弾数 != 0
+
+;爆弾の置いてない場所に温泉を配置
+DO
+	X候補 = RAND:X幅
+	Y候補 = RAND:Y幅
+	;温泉か爆弾入ってたら再選定
+	SIF MS:X候補:Y候補 >= 3
+		CONTINUE
+	;温泉を設置
+	MS:X候補:Y候補 = 3
+	;デクリメントからループ確認
+	温泉数--
+LOOP 温泉数 != 0
+
+;デバッグ用
+FOR LCOUNTY, 0, Y幅
+	FOR LCOUNTX, 0, X幅
+		PRINTFORM {MS:LCOUNTX:LCOUNTY}
+	NEXT
+	PRINTL
+NEXT
+WAIT
+
+;ARGで指定されたセーブデータ変数に結果をコピーする
+SELECTCASE ARG
+	CASE 1
+		MS広さ:1 = %広さ%
+		MS難易度:1 = 難易度
+		ARRAYCOPY "MS", "MS1"
+	CASE 2
+		MS広さ:2 = %広さ%
+		MS難易度:2 = 難易度
+		ARRAYCOPY "MS", "MS2"
+	CASE 3
+		MS広さ:3 = %広さ%
+		MS難易度:3 = 難易度
+		ARRAYCOPY "MS", "MS3"
+ENDSELECT
+
+RETURN
+
+@TURNEND_温泉探索
+
+
