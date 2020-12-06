@@ -60,6 +60,316 @@ DO
 LOOP 1
 
 @マインスイーパ, ARG
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNTX
+#DIM DYNAMIC LCOUNTY
+#DIM DYNAMIC 隣接爆弾数
+#DIM DYNAMIC X幅
+#DIM DYNAMIC Y幅
+#DIM DYNAMIC X座標
+#DIM DYNAMIC Y座標
+#DIM DYNAMIC X開放
+#DIM DYNAMIC Y開放
+#DIM DYNAMIC 失敗
+#DIM DYNAMIC マーク画面
+#DIM DYNAMIC 未解明マス
+#DIM DYNAMIC 解明マス
+#DIM DYNAMIC 温泉マス
+#DIM DYNAMIC 目印マス
+#DIM DYNAMIC 総温泉数
+
+VARSET MS
+
+;保存してあるやつを呼び出す
+SELECTCASE ARG
+	CASE 1
+		ARRAYCOPY "MS1", "MS"
+	CASE 2
+		ARRAYCOPY "MS2", "MS"
+	CASE 3
+		ARRAYCOPY "MS3", "MS"
+ENDSELECT
+
+SPLIT MS広さ:ARG, "/", LOCALS
+
+X幅 = TOINT(LOCALS:0)
+Y幅 = TOINT(LOCALS:1)
+
+$RESTART
+
+DRAWLINE
+IF マーク画面
+	PRINTL □任意の場所に目印を付けます
+ELSE
+	PRINTFORML □温泉を探します 広さ:%MS広さ:ARG% 難易度:{MS難易度:ARG}
+ENDIF
+
+;カウント用変数リセット
+未解明マス = 0
+解明マス = 0
+温泉マス = 0
+目印マス = 0
+総温泉数 = 0
+
+FOR LCOUNTY, 0, Y幅
+	PRINT 　
+	FOR LCOUNTX, 0, X幅
+		;変数内訳は0=未解明 1=解明 2=温泉ありかつ未解明 3=温泉ありかつ解明 4=爆弾ありかつ未解明 5=爆弾をありかつ解明 6~=マーク
+		SELECTCASE MS:LCOUNTX:LCOUNTY
+			;未解明
+			CASE 0, 2, 4
+				PRINTBUTTON "■", @"{LCOUNTX}/{LCOUNTY}"
+				未解明マス++
+				SIF MS:LCOUNTX:LCOUNTY == 2
+					総温泉数++
+			;解明
+			CASE 1
+				;周囲8方向にある爆弾をカウント
+				隣接爆弾数 = 0
+				FOR LCOUNT, -1, 2
+					SIF !INRANGE(LCOUNTY+LCOUNT, 0, Y幅-1)
+						CONTINUE
+					SIF INRANGE(LCOUNTX-1, 0, X幅-1) && GROUPMATCH(MS:(LCOUNTX-1):(LCOUNTY+LCOUNT), 4, 5, 10)
+						隣接爆弾数++
+					SIF GROUPMATCH(MS:LCOUNTX:(LCOUNTY+LCOUNT), 4, 10)
+						隣接爆弾数++
+					SIF INRANGE(LCOUNTX+1, 0, X幅-1) && GROUPMATCH(MS:(LCOUNTX+1):(LCOUNTY+LCOUNT), 4, 5, 10)
+						隣接爆弾数++
+				NEXT
+				;あれば数字を表示
+				IF 隣接爆弾数
+					SELECTCASE 隣接爆弾数
+						CASE 1
+							SETCOLORBYNAME deepskyblue
+						CASE 2
+							SETCOLORBYNAME lime
+						CASE 3
+							SETCOLORBYNAME yellow
+						CASE IS >= 4
+							SETCOLORBYNAME coral
+					ENDSELECT
+					PRINTFORM %TOFULL(TOSTR(隣接爆弾数))%
+					RESETCOLOR
+				ELSE
+					PRINT □
+				ENDIF
+				解明マス++
+			;♨
+			CASE 3
+				PRINT ♨
+				温泉マス++
+				総温泉数++
+			;爆弾 これが開けられていたら失敗
+			CASE 5
+				PRINT 💣
+				失敗 = 1
+			;マーク済み
+			CASE 6, 8, 10
+				SETCOLORBYNAME red
+				IF マーク画面
+					PRINTBUTTON "危", @"{LCOUNTX}/{LCOUNTY}"
+				ELSE
+					PRINT 危
+				ENDIF
+				RESETCOLOR
+				目印マス++
+				SIF MS:LCOUNTX:LCOUNTY == 8
+					総温泉数++
+		ENDSELECT
+	NEXT
+	PRINTL
+NEXT
+
+IF 失敗
+	FONTBOLD
+	PRINTW 爆弾を掘り当ててしまった！逃げろ！
+	FONTREGULAR
+	DRAWLINE
+	PRINTW ………………
+	PRINTW …………
+	PRINTW ……
+	PRINTW 温泉の発掘に失敗しました
+	CALL MS消去, ARG
+	RETURN
+ENDIF
+
+PRINTFORML 　・総マス数:{(X幅)*(Y幅)} ■=未解明({未解明マス}) □=解明({解明マス}) 数字=隣接する爆弾の数 ♨=見事掘り当てた温泉({温泉マス}) 危=マーク済み({目印マス})
+DRAWLINE
+PRINTPLAIN 　温泉発掘　
+;すべての温泉見つけた場合は完了のみ
+IF 温泉マス >= 総温泉数
+	PRINTBUTTON @"[-4] - 全ての温泉を掘り当てた！採掘を完了する(温泉レベル:{温泉マス})", "-4"
+ELSE
+	PRINTBUTTON "[-1] - 休憩 ", "-1" 
+	IF マーク画面
+		PRINTBUTTON "[-2] - 採掘に戻る ", "-2"
+	ELSE
+		PRINTBUTTON "[-2] - 目印を付ける ", "-2"
+	ENDIF
+	SIF MS魔法ストック
+		PRINTBUTTON @"[-3] - 透視魔法(ランダムで安全マス開放 残り{MS魔法ストック}回) ", "-3"
+	PRINTBUTTON @"[-4] - 採掘を完了する(温泉レベル:{温泉マス})", "-4"
+ENDIF
+PRINTL
+
+DO
+	INPUTS
+	SELECTCASE RESULTS
+		CASE "-1"
+			SELECTCASE ARG
+				CASE 1
+					ARRAYCOPY "MS", "MS1"
+				CASE 2
+					ARRAYCOPY "MS", "MS2"
+				CASE 3
+					ARRAYCOPY "MS", "MS3"
+			ENDSELECT
+			RETURN
+		CASE "-2"
+			INVERTBIT マーク画面, 0
+			GOTO RESTART
+		CASE "-3"
+			IF MS魔法ストック && 温泉マス < 総温泉数
+				X開放 = -1
+				Y開放 = -1
+				LOCAL = 0
+				DO
+					;終盤だと一生乱数回すようになってしまうので加算式にする
+					IF X開放 >= 0 && Y開放 >= 0
+						IF LOCAL
+							X開放++
+							SIF X開放 >= X幅
+								X開放 = 0
+						ELSE
+							Y開放++
+							SIF Y開放 >= Y幅
+								Y開放 = 0
+						ENDIF
+						INVERTBIT LOCAL, 0
+					ELSE
+						X開放 = RAND:X幅
+						Y開放 = RAND:Y幅
+					ENDIF
+					SELECTCASE MS:X開放:Y開放
+						CASE 0, 2
+							MS:X開放:Y開放++
+							CALL マス目開放, X開放, Y開放, X幅, Y幅
+							MS魔法ストック--
+							GOTO RESTART
+						CASE 6, 8
+							MS:X開放:Y開放 -= 5
+							CALL マス目開放, X開放, Y開放, X幅, Y幅
+							MS魔法ストック--
+							GOTO RESTART
+					ENDSELECT
+				LOOP 1
+			ENDIF
+			GOTO RESTART
+		CASE "-4"
+			PRINTFORML 温泉レベル[{温泉マス}]で採掘を完了します。よろしいですか？(現在の温泉レベル:{温泉レベル})
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+				IF RESULT == 0
+					PRINTL 無事に採掘を終えた！
+					IF 温泉マス > 温泉レベル
+						PRINTFORML 温泉レベルが{温泉マス}に上がった！
+						温泉レベル = 温泉マス
+					ENDIF
+					WAIT
+					CALL MS消去, ARG
+					RETURN
+				ENDIF
+			LOOP LOOPRES(1)
+			GOTO RESTART
+		CASEELSE
+			SIF RESULTS == ""
+				CONTINUE
+			SPLIT RESULTS, "/", LOCALS
+			X座標 = TOINT(LOCALS:0)
+			SIF X座標 > X幅
+				CONTINUE
+			Y座標 = TOINT(LOCALS:1)
+			SIF Y座標 > Y幅
+				CONTINUE
+			SIF !GROUPMATCH(MS:X座標:Y座標, 0, 2, 4, 6, 8, 10)
+				CONTINUE
+			IF マーク画面
+				IF MS:X座標:Y座標 >= 6
+					MS:X座標:Y座標 -= 6
+				ELSE
+					MS:X座標:Y座標 += 6
+				ENDIF
+			ELSE
+				SELECTCASE MS:X座標:Y座標
+					CASE 0, 2, 4
+						MS:X座標:Y座標 += 1
+						;爆弾以外だったら安全圏を解放する
+						SIF MS:X座標:Y座標 != 4
+							CALL マス目開放, X座標, Y座標, X幅, Y幅
+				ENDSELECT
+			ENDIF
+			GOTO RESTART
+	ENDSELECT
+LOOP 1
+
+@マス目開放, X座標, Y座標, X幅, Y幅
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC X座標
+#DIM DYNAMIC Y座標
+#DIM DYNAMIC X幅
+#DIM DYNAMIC Y幅
+#DIM DYNAMIC 隣接爆弾数
+
+FOR LCOUNT, -1, 2
+	;周囲8マスに爆弾があるか確認
+	SIF !INRANGE(Y座標+LCOUNT, 0, Y幅-1)
+		CONTINUE
+	SIF INRANGE(X座標-1, 0, X幅-1) && MS:(X座標-1):(Y座標+LCOUNT) == 4
+		隣接爆弾数++
+	SIF MS:X座標:(Y座標+LCOUNT) == 4
+		隣接爆弾数++
+	SIF INRANGE(X座標+1, 0, X幅-1) && MS:(X座標+1):(Y座標+LCOUNT) == 4
+		隣接爆弾数++
+NEXT
+
+;無かった場合は周囲8マスを解放しつつ再帰
+IF 隣接爆弾数 == 0
+	FOR LCOUNT, -1, 2
+		SIF !INRANGE(Y座標+LCOUNT, 0, Y幅-1)
+			CONTINUE
+		IF INRANGE(X座標-1, 0, X幅-1)
+			SELECTCASE MS:(X座標-1):(Y座標+LCOUNT)
+				CASE 0, 2
+					MS:(X座標-1):(Y座標+LCOUNT)++
+					CALL マス目開放, X座標-1, Y座標+LCOUNT, X幅, Y幅
+				CASE 6, 8
+					MS:(X座標-1):(Y座標+LCOUNT) -= 5
+					CALL マス目開放, X座標-1, Y座標+LCOUNT, X幅, Y幅
+			ENDSELECT
+		ENDIF
+		SELECTCASE MS:(X座標):(Y座標+LCOUNT)
+			CASE 0, 2
+				MS:(X座標):(Y座標+LCOUNT)++
+				CALL マス目開放, X座標, Y座標+LCOUNT, X幅, Y幅
+			CASE 6, 8
+				MS:(X座標):(Y座標+LCOUNT) -= 5
+				CALL マス目開放, X座標, Y座標+LCOUNT, X幅, Y幅
+		ENDSELECT
+		IF INRANGE(X座標+1, 0, X幅-1)
+			SELECTCASE MS:(X座標+1):(Y座標+LCOUNT)
+				CASE 0, 2
+					MS:(X座標+1):(Y座標+LCOUNT)++
+					CALL マス目開放, X座標+1, Y座標+LCOUNT, X幅, Y幅
+				CASE 6, 8
+					MS:(X座標+1):(Y座標+LCOUNT) -= 5
+					CALL マス目開放, X座標+1, Y座標+LCOUNT, X幅, Y幅
+			ENDSELECT
+		ENDIF
+	NEXT
+ENDIF
+
 
 @温泉探索_候補
 #DIM DYNAMIC LCOUNT
@@ -94,7 +404,8 @@ CALL SETMIN, 広さ上限Y, 30
 CALL SETMIN, 難易度上限, 6
 
 PRINTL □温泉を探します。条件を指定してください
-PRINTFORML 　広さ:{X指定}×{Y指定}(最大:{広さ上限X}×{広さ上限Y}) [1]広さの横幅を変更 [2]広さの縦幅を変更
+PRINTPLAINFORM 　広さ:{X指定}×{Y指定}(最大:{広さ上限X}×{広さ上限Y}) 
+PRINTL [1]広さの横幅を変更 [2]広さの縦幅を変更
 PRINTFORML 　難易度:{難易度指定}(最大:{難易度上限}) [3]難易度を変更
 PRINTL 
 PRINTL 　[5] - この条件で探す
@@ -164,7 +475,7 @@ LOOP 1
 #DIM DYNAMIC 爆弾数
 #DIM DYNAMIC 温泉数
 ;60*30は最大の広さ 廃人用
-#DIM DYNAMIC MS, 60, 30
+VARSET MS
 
 ;広さはXX/XXなのでSPLIT
 MS広さ:ARG = %広さ%
@@ -178,13 +489,12 @@ LOCAL = (X幅*Y幅*難易度)/20
 温泉数 = LOCAL
 
 ;ランダムで爆弾と温泉を設置
-;変数内訳は0=未解明 1=解明 2=温泉ありかつ解明 3=温泉ありかつ未解明 4=爆弾
+;変数内訳は0=未解明 1=解明 2=温泉ありかつ未解明 3=温泉ありかつ解明 4=爆弾ありかつ未解明 5=爆弾ありかつ解明
 ;乱数次第では少し時間がかかるかもしれない
 DO
 	X候補 = RAND:X幅
 	Y候補 = RAND:Y幅
-	;この時点で1～3が入ってることはありえないけど
-	SIF MS:X候補:Y候補 >= 3
+	SIF MS:X候補:Y候補 >= 2
 		CONTINUE
 	;爆弾を設置(物騒)
 	MS:X候補:Y候補 = 4
@@ -197,10 +507,10 @@ DO
 	X候補 = RAND:X幅
 	Y候補 = RAND:Y幅
 	;温泉か爆弾入ってたら再選定
-	SIF MS:X候補:Y候補 >= 3
+	SIF MS:X候補:Y候補 >= 2
 		CONTINUE
 	;温泉を設置
-	MS:X候補:Y候補 = 3
+	MS:X候補:Y候補 = 2
 	;デクリメントからループ確認
 	温泉数--
 LOOP 温泉数 != 0
@@ -230,8 +540,31 @@ SELECTCASE ARG
 		ARRAYCOPY "MS", "MS3"
 ENDSELECT
 
+VARSET MS
+
 RETURN
 
+@MS消去, ARG
+MS広さ:ARG = 
+MS難易度:ARG = 0
+SELECTCASE ARG
+	CASE 1
+		VARSET MS1
+	CASE 2
+		VARSET MS2
+	CASE 3
+		VARSET MS3
+ENDSELECT
+
 @TURNEND_温泉探索
+#DIM DYNAMIC LCOUNT
 
+MS魔法ストック = 0
 
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "温泉探索"
+		CONTINUE
+	SIF CFLAG:LCOUNT:配属完了
+		MS魔法ストック += ABL:LCOUNT:魔法技能
+	CFLAG:LCOUNT:配属完了 = 1
+NEXT
