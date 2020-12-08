@@ -77,6 +77,9 @@ LOOP 1
 #DIM DYNAMIC 温泉マス
 #DIM DYNAMIC 目印マス
 #DIM DYNAMIC 総温泉数
+#DIM DYNAMIC ログ表示 = 1
+#DIM DYNAMIC ログ削除用
+#DIM DYNAMIC 発掘費用
 
 VARSET MS
 
@@ -95,14 +98,28 @@ SPLIT MS広さ:ARG, "/", LOCALS
 X幅 = TOINT(LOCALS:0)
 Y幅 = TOINT(LOCALS:1)
 
+発掘費用 = X幅*Y幅*(MS難易度:ARG)/2
+
+VARLINE = 0
+ログ削除用 = LINECOUNT
+
 $RESTART
+IF !ログ表示
+	SIF VARLINE
+		CLEARLINE LINECOUNT-VARLINE
+	VARLINE = LINECOUNT
+ENDIF
 
 DRAWLINE
 IF マーク画面
-	PRINTL □任意の場所に目印を付けます
+	PRINTPLAIN □任意の場所に目印を付けます 
 ELSE
-	PRINTFORML □温泉を探します 広さ:%MS広さ:ARG% 難易度:{MS難易度:ARG}
+	PRINTPLAINFORM □温泉を探します 広さ:%MS広さ:ARG% 難易度:{MS難易度:ARG} 
 ENDIF
+PRINTBUTTON @"[10] - \@ ログ表示 ? ログを表示しない # ログを表示する \@ ", "10"
+PRINTBUTTON "[11] - ログを消す", "11"
+PRINTL 
+CALL PASELIL, @"　現在の所持金:{MONEY}＄÷発掘費用:{発掘費用}＄=発掘可能回数:{MONEY/発掘費用}回"
 
 ;カウント用変数リセット
 未解明マス = 0
@@ -193,29 +210,29 @@ IF 失敗
 	RETURN
 ENDIF
 
-PRINTFORML 　・総マス数:{(X幅)*(Y幅)} ■=未解明({未解明マス}) □=解明({解明マス}) 数字=隣接する爆弾の数 ♨=見事掘り当てた温泉({温泉マス}) 危=マーク済み({目印マス})
+PRINTFORML 　・総マス数:{(X幅)*(Y幅)} ■=未解明({未解明マス}) □=解明({解明マス}) 数字=隣接する爆弾の数 ♨=見事掘り当てた温泉({温泉マス}/{総温泉数}) 危=マーク済み({目印マス})
 DRAWLINE
 PRINTPLAIN 　温泉発掘　
 ;すべての温泉見つけた場合は完了のみ
 IF 温泉マス >= 総温泉数
-	PRINTBUTTON @"[-4] - 全ての温泉を掘り当てた！採掘を完了する(温泉レベル:{温泉マス})", "-4"
+	PRINTBUTTON @"[4] - 全ての温泉を掘り当てた！採掘を完了する(温泉レベル:{温泉マス})", "4"
 ELSE
-	PRINTBUTTON "[-1] - 休憩 ", "-1" 
+	PRINTBUTTON "[1] - 休憩 ", "1"
 	IF マーク画面
-		PRINTBUTTON "[-2] - 採掘に戻る ", "-2"
+		PRINTBUTTON "[2] - 採掘に戻る ", "2"
 	ELSE
-		PRINTBUTTON "[-2] - 目印を付ける ", "-2"
+		PRINTBUTTON "[2] - 目印を付ける ", "2"
 	ENDIF
 	SIF MS魔法ストック
-		PRINTBUTTON @"[-3] - 透視魔法(ランダムで安全マス開放 残り{MS魔法ストック}回) ", "-3"
-	PRINTBUTTON @"[-4] - 採掘を完了する(温泉レベル:{温泉マス})", "-4"
+		PRINTBUTTON @"[3] - 透視魔法(ランダムで安全マス開放 残り{MS魔法ストック}回) ", "3"
+	PRINTBUTTON @"[4] - 採掘を完了する(温泉レベル:{温泉マス})", "4"
 ENDIF
 PRINTL
 
 DO
 	INPUTS
 	SELECTCASE RESULTS
-		CASE "-1"
+		CASE "1"
 			SELECTCASE ARG
 				CASE 1
 					ARRAYCOPY "MS", "MS1"
@@ -225,11 +242,15 @@ DO
 					ARRAYCOPY "MS", "MS3"
 			ENDSELECT
 			RETURN
-		CASE "-2"
+		CASE "2"
 			INVERTBIT マーク画面, 0
 			GOTO RESTART
-		CASE "-3"
+		CASE "3"
 			IF MS魔法ストック && 温泉マス < 総温泉数
+				IF 発掘費用 > MONEY
+					PRINTW 所持金が足りません
+					GOTO RESTART
+				ENDIF
 				X開放 = -1
 				Y開放 = -1
 				LOCAL = 0
@@ -255,17 +276,19 @@ DO
 							MS:X開放:Y開放++
 							CALL マス目開放, X開放, Y開放, X幅, Y幅
 							MS魔法ストック--
+							MONEY -= 発掘費用
 							GOTO RESTART
 						CASE 6, 8
 							MS:X開放:Y開放 -= 5
 							CALL マス目開放, X開放, Y開放, X幅, Y幅
 							MS魔法ストック--
+							MONEY -= 発掘費用
 							GOTO RESTART
 					ENDSELECT
 				LOOP 1
 			ENDIF
 			GOTO RESTART
-		CASE "-4"
+		CASE "4"
 			PRINTFORML 温泉レベル[{温泉マス}]で採掘を完了します。よろしいですか？(現在の温泉レベル:{温泉レベル})
 			PRINTL [0] - はい
 			PRINTL [1] - いいえ
@@ -283,9 +306,19 @@ DO
 				ENDIF
 			LOOP LOOPRES(1)
 			GOTO RESTART
+		CASE "10"
+			INVERTBIT ログ表示, 0
+			GOTO RESTART
+		CASE "11"
+			CLEARLINE LINECOUNT-ログ削除用
+			GOTO RESTART
 		CASEELSE
 			SIF RESULTS == ""
 				CONTINUE
+			IF 発掘費用 > MONEY
+				PRINTW 所持金が足りません
+				GOTO RESTART
+			ENDIF
 			SPLIT RESULTS, "/", LOCALS
 			X座標 = TOINT(LOCALS:0)
 			SIF X座標 > X幅
@@ -302,10 +335,12 @@ DO
 					MS:X座標:Y座標 += 6
 				ENDIF
 			ELSE
+				;自動開放では費用がかからない
+				MONEY -= 発掘費用
 				SELECTCASE MS:X座標:Y座標
 					CASE 0, 2, 4
 						MS:X座標:Y座標 += 1
-						;爆弾以外だったら安全圏を解放する
+						;爆弾以外だったら安全圏を開放する
 						SIF MS:X座標:Y座標 != 4
 							CALL マス目開放, X座標, Y座標, X幅, Y幅
 				ENDSELECT
@@ -379,6 +414,9 @@ ENDIF
 #DIM DYNAMIC X指定 = 10
 #DIM DYNAMIC Y指定 = 10
 #DIM DYNAMIC 難易度指定 = 1
+#DIM DYNAMIC 探索費用
+#DIM DYNAMIC 発掘費用
+#DIM DYNAMIC 総温泉数
 
 広さ上限X = 10
 広さ上限Y = 10
@@ -403,12 +441,16 @@ CALL SETMIN, 広さ上限X, 60
 CALL SETMIN, 広さ上限Y, 30
 CALL SETMIN, 難易度上限, 6
 
-PRINTL □温泉を探します。条件を指定してください
+CALL PASELIL, @"□温泉を探します。条件を指定してください 現在の所持金:{MONEY}＄"
 PRINTPLAINFORM 　広さ:{X指定}×{Y指定}(最大:{広さ上限X}×{広さ上限Y}) 
 PRINTL [1]広さの横幅を変更 [2]広さの縦幅を変更
 PRINTFORML 　難易度:{難易度指定}(最大:{難易度上限}) [3]難易度を変更
+総温泉数 = (X指定*Y指定*難易度指定)/20
+探索費用 = X指定*Y指定*難易度指定*10
+発掘費用 = 総温泉数*10
+CALL PASELIL, @"　探索費用:横幅{X指定}×縦幅{Y指定}×難易度{難易度指定*10}={探索費用}＄ 発掘費用:{発掘費用}＄(1マスあたり)"
 PRINTL 
-PRINTL 　[5] - この条件で探す
+PRINTFORML 　[5] - この条件で探す(最大温泉レベル:{総温泉数})
 PRINTL 　[0] - 戻る
 
 DO
@@ -432,6 +474,10 @@ DO
 			難易度指定 = RESULT
 			RESTART
 		CASE 5
+			IF 探索費用 > MONEY
+				PRINTW 所持金が足りません
+				RESTART
+			ENDIF
 			PRINTL 発掘現場を保存するスロットを選んでください
 			FOR LCOUNT, 1, 4
 				IF MS広さ:LCOUNT == ""
@@ -456,6 +502,7 @@ DO
 							LOOP LOOPRES(0)
 						ENDIF
 						CALL マインスイーパ生成, @"{X指定}/{Y指定}", 難易度指定, LOCAL
+						MONEY -= 探索費用
 						RETURN
 				ENDSELECT
 			LOOP 1
