@@ -550,15 +550,65 @@ LOCAL = 2
 
 レシピ用ツールチップ = 材料:
 
+;この関数で材料から料理原価を計算する
+料理原価 = 0
+新鮮食材 = 0
+
 FOR LCOUNT, 0, VARSIZE("材料")
 	SIF 材料:LCOUNT == ""
 		BREAK
 	SIF LOCAL >= 材料判定(材料:LCOUNT)
 		LOCAL = 材料判定(材料:LCOUNT)
+	;材料がある場合は新鮮食材ボーナス
+	IF LOCAL >= 2
+		新鮮食材++
+	ELSE
+		;材料が無かった場合は4分の1を原価にプラス
+		料理原価 += 料理価格_FUNCTION(材料:LCOUNT)/4
+	ENDIF
 	レシピ用ツールチップ += @"[%材料:LCOUNT%]"
 NEXT
 
 RETURNF LOCAL
+
+@料理価格_FUNCTION, 材料名
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 材料名
+
+;ここまでは良かったが実際にやってみると各メニューの価格がめちゃくちゃになったので原価計算にのみ使う
+
+SELECTCASE GETNUM(ITEM, 材料名)
+	;畑、プランターの作物はITEMPRICEに設定した成長速度×2
+	CASE 600 TO 699
+		RETURNF ITEMPRICE:材料名*2
+	;肉類と畜産で収穫できる食べ物はITEMPRICEそのまま
+	CASE 750 TO 799
+		RETURNF ITEMPRICE:材料名
+	;魚類は養殖費用/100
+	CASE 800 TO 850
+		RETURNF ITEMPRICE:材料名/100
+	CASEELSE
+		SELECTCASE 材料名
+			;米と麦だけ別 ITEMPRICEそのまま(180)
+			CASE "米", "麦"
+				RETURNF ITEMPRICE:材料名
+			CASEELSE
+			;果物、魚介類、肉類で指定されてる場合は数に応じて
+			IF STRFIND(材料名, "魚介類|果物|肉類")
+				SPLIT 材料名, "*", LOCALS
+				SELECTCASE LOCALS
+					CASE "果物"
+						RETURNF 100*TOINT(LOCALS:1)
+					CASE "魚介類"
+						RETURNF 300*TOINT(LOCALS:1)
+					CASE "肉類"
+						RETURNF 500*TOINT(LOCALS:1)
+				ENDSELECT
+			ENDIF
+		ENDSELECT
+ENDSELECT
+
 
 ;材料が存在するか 2=使える状態、1=解禁はしているが使えない状態
 @材料判定, ARGS

@@ -6,9 +6,14 @@ PRINTL
 PRINTL 　[1] - 宿泊施設の増築
 PRINTL 　[2] - 温泉を探す
 PRINTL 　[3] - 経営方針の管理
-PRINTL 　[4] - 人員の管理
-PRINTFORML 　[5] - \@ FLAG:飲食店営業中 == -1 ? 営業を再開する # 営業を休止する \@
-PRINTL 　[6] - 定休日の設定
+IF 飲食ジャンル != ""
+	PRINTL 　[4] - メニューを変更
+ELSE
+	CALL PRINTCOLORL ,@"　[-] - %飲食店名%では料理の提供を行っていません", "gray"
+ENDIF
+PRINTL 　[5] - 人員の管理
+PRINTFORML 　[6] - \@ FLAG:飲食店営業中 == -1 ? 営業を再開する # 営業を休止する \@
+PRINTL 　[7] - 定休日の設定
 DRAWLINE
 PRINTPLAIN 　飲食店・ホテル　
 PRINTL [0] - 戻る
@@ -25,8 +30,11 @@ DO
 		CASE 3
 			CALL 経営方針_飲食店
 		CASE 4
-			CALL 人員管理_飲食店
+			SIF 飲食ジャンル != ""
+				CALL メニュー変更_飲食店
 		CASE 5
+			CALL 人員管理_飲食店
+		CASE 6
 			IF FLAG:飲食店営業中 > 0
 				PRINTFORMW %飲食店名%の経営を一時中断しました
 				;定休日じゃない休業は-1
@@ -35,7 +43,7 @@ DO
 				PRINTFORMW %飲食店名%の経営を開始しました
 				FLAG:飲食店営業中 = DAY
 			ENDIF
-		CASE 6
+		CASE 7
 			VARLINE = 0
 			DO
 				SIF VARLINE
@@ -98,53 +106,9 @@ DO
 	ENDSELECT
 LOOP 1
 
-@経営方針_飲食店_
-
-PRINTL [1] - 業種の変更
-PRINTFORML [2] - 料理のジャンル(現在のジャンル:\@ 飲食ジャンル == "" ? 無し # %飲食ジャンル% \@)
-PRINTL [2] - 
-
-DO
-	SELECTCASE RESULT
-		CASE 1
-			;CALL 業種変更_飲食店
-		CASE 2
-			PRINTL □ジャンルを選んでください
-			PRINTL 　[1] - 和食
-			PRINTL 　[2] - 洋食
-			PRINTL 　[3] - 中華
-			PRINTL 　[4] - スイーツ
-			PRINTL 　[5] - ファストフード
-			PRINTL 　[6] - お酒
-			PRINTL 　[0] - 無し
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						飲食ジャンル = 
-					CASE 1
-						飲食ジャンル = 和食
-					CASE 2
-						飲食ジャンル = 洋食
-					CASE 3
-						飲食ジャンル = 中華
-					CASE 4
-						飲食ジャンル = スイーツ
-					CASE 5
-						飲食ジャンル = ファストフード
-					CASE 6
-						飲食ジャンル = お酒
-					CASEELSE
-						CONTINUE
-				ENDSELECT
-			LOOP 0
-	ENDSELECT
-	RESTART
-LOOP 1
-
-
 @経営方針_飲食店
 #DIM DYNAMIC 条件可否, 20
+#DIM DYNAMIC 表示数
 {
 #DIMS DYNAMIC 業種名 = 
 "飲食店",
@@ -162,50 +126,46 @@ LOOP 1
 }
 #DIM DYNAMIC LCOUNT
 
+DRAWLINE
+PRINTL □経営方針を設定します
+
 IF 温泉レベル == 0
-	SETCOLORBYNAME gray
-	PRINTL [-] - 温泉の併設(温泉設備が無いと併設できません)
-	RESETCOLOR
+	CALL PRINTCOLORL, "　[-] - 温泉の併設(温泉設備が無いと併設できません)", "gray"
 ELSE
-	PRINTL [1] - 温泉の併設
+	PRINTL 　[1] - 温泉の併設
 ENDIF
 IF ホテル部屋数 == 0
-	SETCOLORBYNAME gray
-	PRINTL [-] - 宿の併設(宿泊施設の増築を行わないと併設できません)
+	CALL PRINTCOLORL, "　[-] - 宿の併設(宿泊施設の増築を行わないと併設できません)", "gray"
 	RESETCOLOR
 ELSE
-	PRINTL [2] - 宿の併設
+	PRINTL 　[2] - 宿の併設
 ENDIF
 IF CMATCH(CSTR:配属, "娼館") == 0
-	SETCOLORBYNAME gray
-	PRINTL [-] - 娼館との連携(娼館に配属してるキャラが居ないと連携できません)
-	RESETCOLOR
+	CALL PRINTCOLORL, "　[-] - 娼館との連携(娼館に配属してるキャラが居ないと連携できません)", "gray"
 ELSE
-	PRINTL [3] - 娼館との連携
+	PRINTL 　[3] - 娼館との連携
 ENDIF
 IF CMATCH(CSTR:配属, "芸能プロダクション") == 0
-	SETCOLORBYNAME gray
-	PRINTL [-] - 芸能プロダクションとの連携(芸プロの配属してるキャラが居ないと連携できません)
-	RESETCOLOR
+	CALL PRINTCOLORL, "　[-] - 芸能プロダクションとの連携(芸プロの配属してるキャラが居ないと連携できません)", "gray"
 ELSE
-	PRINTL [4] - 芸能プロダクションとの連携
+	PRINTL 　[4] - 芸能プロダクションとの連携
 ENDIF
 SELECTCASE 業種
 	CASE "ラブホテル", "日帰り温泉"
-		SETCOLORBYNAME gray
-		PRINTL [-] - 料理のジャンル(提供無し)
-		RESETCOLOR
+		CALL PRINTCOLORL, "　[-] - 料理のジャンル(提供無し)", "gray"
 	CASE "バー", "ピンクサロン", "ライブハウス", "ホストクラブ", "キャバクラ"
-		PRINTL [-] - 料理のジャンル(お酒で固定)
+		PRINTL 　[-] - 料理のジャンル(お酒で固定)
 	CASEELSE
-		PRINTFORML [5] - 料理のジャンル(現在:%飲食ジャンル%)
+		PRINTFORML 　[5] - 料理のジャンル(現在:%飲食ジャンル%)
 ENDSELECT
 
+PRINTL 
 
-PRINTL 上記の条件から業種を選択
-PRINT 業種候補:
+PRINTFORML 　上記の条件から業種を選択 現在:%業種%
+PRINT 　業種候補:
 
 LCOUNT = 0
+表示数 = 0
 VARSET 条件可否
 
 FOR LCOUNT, 0, VARSIZE("業種名")
@@ -238,15 +198,32 @@ FOR LCOUNT, 0, VARSIZE("業種名")
 			SIF 芸プロ連携
 				条件可否:LCOUNT = 1
 	ENDSELECT
-	SIF !条件可否
+	IF !条件可否:LCOUNT
 		SETCOLORBYNAME gray
-	PRINTFORM [{LCOUNT+20}]%業種名:LCOUNT% 
+		PRINTPLAINFORM [--]%業種名:LCOUNT% 
+	ELSE
+		PRINTFORM [{LCOUNT+20}]%業種名:LCOUNT% 
+	ENDIF
+	表示数++
+	IF 表示数%5 == 0 && 表示数
+		PRINTL 
+		PRINTPLAIN 　　　　　 
+	ENDIF
 	RESETCOLOR
 NEXT
+
+SIF !LINEISEMPTY()
+	PRINTL 
+
+DRAWLINE
+PRINTPLAIN 　経営方針(飲食店)　
+PRINTL [0] - 戻る
 
 DO
 	INPUT
 	SELECTCASE RESULT
+		CASE 0
+			RETURN
 		CASE 5
 			PRINTL □ジャンルを選んでください
 			PRINTL 　[1] - 和食
@@ -286,15 +263,101 @@ DO
 			;デフォルト名のままなら業種に合わせて店名変更
 			SIF MATCH(業種名, 飲食店名) || 飲食店名 == ""
 				飲食店名 = %業種%
-			;酒がメインのサービスなら酒で固定
 			SELECTCASE 業種
+				;酒がメインのサービスなら酒で固定
 				CASE "バー", "ピンクサロン", "ライブハウス", "ホストクラブ", "キャバクラ"
 					飲食ジャンル = お酒
+				;飲食物を提供しない店
+				CASE "日帰り温泉"
+					飲食ジャンル = 
 			ENDSELECT
 	ENDSELECT
 	RESTART
 LOOP 1
 
+@メニュー変更_飲食店
+#DIM DYNAMIC LCOUNT
+
+DRAWLINE
+
+PRINTFORML □現在の業種:%業種%
+
+FOR LCOUNT, 0, 10
+	IF 飲食店メニュー:LCOUNT == ""
+		PRINTFORML 　[{LCOUNT}] - メニュー無し
+	ELSE
+		CALLF レシピ判定, 飲食店メニュー:LCOUNT
+		CALL PASELIL, @"　[{LCOUNT}] - %飲食店メニュー:LCOUNT% {料理価格}＄\@ 料理原価 ? (原価:{料理原価}＄) # \@ \@ 新鮮食材 ? 新鮮食材:{新鮮食材}個 # \@"
+	ENDIF
+NEXT
+DRAWLINE
+PRINTPLAIN 　メニュー変更　
+PRINTL [10] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 10
+			RETURN
+		CASE 0 TO 9
+			CALL レシピ選択_飲食店, RESULT
+			RESTART
+	ENDSELECT
+LOOP 1
+
+@レシピ選択_飲食店, メニュー番号
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC メニュー番号
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 次ページあり
+
+DRAWLINE
+PRINTL □料理を選んでください
+FOR LCOUNT, (ページ数*20)+1, (ページ数*20)+21
+	SIF LCOUNT >= VARSIZE("料理メニュー")
+		BREAK
+	SIF 料理メニュー:LCOUNT == ""
+		CONTINUE
+	CALLF レシピ判定, 料理メニュー:LCOUNT
+	CALL PASELIL, @"　[{LCOUNT, 3}]%料理メニュー:LCOUNT, 28, LEFT% ジャンル:%料理ジャンル, 28, LEFT% 価格:{料理価格, 4}＄\@ 料理原価 ? (原価:{料理原価, 3}＄) # \@ \@ 新鮮食材 ? 新鮮食材:{新鮮食材}個 # \@"
+NEXT
+
+次ページあり = 0
+SIF 料理メニュー:(LCOUNT+1) != ""
+	次ページあり = 1
+
+DRAWLINE
+PRINTPLAIN 　レシピ一覧　
+IF ページ数
+	PRINT [-1] - 前ページ 
+ELSE
+	PRINTPLAIN 　　　　　　　  
+ENDIF
+PRINT [0] - 戻る 
+SIF 次ページあり
+	PRINT [-2] - 次ページ
+PRINTL 
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE -1
+			SIF ページ数
+				ページ数--
+			RESTART
+		CASE -2
+			SIF 次ページあり
+				ページ数++
+			RESTART
+		CASE 1 TO VARSIZE("料理メニュー")-1
+			SIF 料理メニュー:RESULT == ""
+				CONTINUE
+			飲食店メニュー:メニュー番号 = %料理メニュー:RESULT%
+			RETURN
+	ENDSELECT
+LOOP 1
 
 @人員管理_飲食店
 
@@ -399,6 +462,9 @@ SELECTCASE 業種
 ENDSELECT
 
 @飲食店ステータス
+
+SIF 飲食店名 == ""
+	飲食店名 = 飲食店
 
 PRINTFORM □%飲食店名%のステータス
 IF FLAG:飲食店営業中
