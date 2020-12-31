@@ -54,18 +54,33 @@ RESTART
 ;一行で表示可能な文字数を計算する 画面横幅/フォントサイズ STRLENSは全角を2文字と数えるので*2
 表示可能文字数 = GETCONFIG("ウィンドウ幅")*2/(GETCONFIG("フォントサイズ")+1)
 
+PRINT 　
+
 ;招待状は無条件で一番最初に表示する
 SIF ゲームモード() == "新婚モード"
-	PRINTFORM 　[%CALLNAME:MASTER%と%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%の結婚式の招待状]
+	PRINTFORM [%CALLNAME:MASTER%と%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%の結婚式の招待状]
+
+;スライム感染実施中は表示
+IF FLAG:抗スライム
+	表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
+	PRINTFORM %表示用%
+	;改行する場合はアイテム単位で区切る
+	IF STRLENS(表示用)+STRLENS("[スライム感染予防中]") >= 表示可能文字数
+		PRINTL 
+		PRINT 　
+	ENDIF
+	PRINTFORM [スライム感染予防中]
+ENDIF
 
 ;自爆したキャラの形見を表示
 IF FINDELEMENT(自爆キャラ, 1) > 0
 	FOR LCOUNT, 0, 20000
 		IF 自爆キャラ:LCOUNT
 			表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
+			PRINTFORM %表示用%
 			;改行する場合はアイテム単位で区切る
 			IF STRLENS(表示用)+STRLENS(@"[%CSVCALLNAMEF(LCOUNT)%の破片]") >= 表示可能文字数
-				PRINTFORML %表示用%
+				PRINTL 
 				PRINT 　
 			ENDIF
 			PRINTFORM [%CSVCALLNAMEF(LCOUNT)%の破片]
@@ -76,9 +91,10 @@ ENDIF
 ;パズル雑誌
 IF ITEM:ロジカルダッシュ == YEAR*100+MONTH
 	表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
+	PRINTFORM %表示用%
 	;改行する場合はアイテム単位で区切る
 	IF STRLENS(表示用)+STRLENS(@"[ロジカルダッシュ{YEAR}年{MONTH}月号]") >= 表示可能文字数
-		PRINTFORML %表示用%
+		PRINTL 
 		PRINT 　
 	ENDIF
 	PRINTFORM [ロジカルダッシュ{YEAR}年{MONTH}月号]
@@ -223,6 +239,7 @@ SELECTCASE アイテム分類
 		ITEMSALES:バナナ = 1
 		ITEMSALES:排卵誘発剤 = 1
 		ITEMSALES:特殊技能研修 = 1
+		ITEMSALES:抗スライム薬 = 1
 
 		;調合知識が必要
 		IF 調合知識有り
@@ -548,8 +565,13 @@ SELECTCASE アイテム分類
 				LOOP LOOPRES(0)
 		ENDSELECT
 	CASE "薬品等"
-		;奴隷に使用するタイプのアイテムも専用の関数で
-		CALL USE_ITEM, アイテム名
+		;抗スライム薬だけ特殊
+		IF アイテム名 == "抗スライム薬"
+			CALL USE_抗スライム薬
+		ELSE
+			;奴隷に使用するタイプのアイテムも専用の関数で
+			CALL USE_ITEM, アイテム名
+		ENDIF
 ENDSELECT
 
 RETURN 0
@@ -1056,6 +1078,48 @@ ENDIF
 
 RETURN
 
+@USE_抗スライム薬
+PRINTL □抗スライム薬を購入します
+IF FLAG:抗スライム
+	PRINTL 　[1] - スライムの感染予防をやめる(再度抗スライム薬を購入時に切り替え可能)
+ELSE
+	PRINTL 　[1] - スライムの感染を予防する(再度抗スライム薬を購入時に切り替え可能)
+ENDIF
+PRINTL 　[2] - すべてのキャラのスライム化を治癒する(感染源も含め)
+PRINTL 　[0] - キャンセル
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1
+			IF FLAG:抗スライム
+				PRINTW ＜スライムの感染予防を止めました＞
+			ELSE
+				PRINTW ＜スライムの感染予防を実施しました＞
+			ENDIF
+			INVERTBIT FLAG:抗スライム, 0
+			BREAK
+		CASE 2
+			CVARSET TALENT, GETNUM(TALENT, "スライム"), 0
+			CVARSET CFLAG, GETNUM(CFLAG, "スライム度"), 0
+			PRINTW 全てのキャラの[スライム]及びスライムの感染を治癒しました
+			BREAK
+	ENDSELECT
+LOOP 1
+
+IF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
+	MONEY -= ITEMPRICE:抗スライム薬/10*8
+	;実績:ター子の交渉で値引きしたアイテムを購入する
+	SIF CHARANAMEF(MASTER) == "ター子" || (ASSI > 0 && CHARANAMEF(ASSI) == "ター子")
+		CALL 実績解除, "「それ、もうちょい安ぅならんやろか？」"
+ELSE
+	MONEY -= ITEMPRICE:抗スライム薬
+ENDIF
+
+RETURN
+
 @ITEM_ABLE, 使用対象, アイテム名
 #FUNCTION
 #DIM DYNAMIC 使用対象
@@ -1479,6 +1543,8 @@ SELECTCASE アイテム名
 		PRINTL 対象に素質【カメラマン】を習得させます。実務経験、撮影経験、撮影技能が必要です
 	CASE "特殊技能研修"
 		PRINTL 特殊な研修と訓練を行い、能力のマイナス値を打ち消します。3日間使用不可になります
+	CASE "抗スライム薬"
+		PRINTL スライムの感染を予防or治癒する
 ENDSELECT
 
 @アイテム使用_逆引き, 使用対象
