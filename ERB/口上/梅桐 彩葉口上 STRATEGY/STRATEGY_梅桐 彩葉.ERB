@@ -1,0 +1,740 @@
+﻿;-------------------------------------------------
+;梅桐 彩葉口上（キャラクターの名前を入れる、下にコンセプトなど一言あれば入れる）
+;--------------------------------------------------
+;口上の存在判定 18だけ置換して、処理は書き加えないでください
+;--------------------------------------------------
+@EXIST_STRATEGY_KOJO_梅桐_彩葉
+
+;--------------------------------------------------
+;SHOP画面開始時に呼ばれるイベント関数
+;--------------------------------------------------
+@EVENTSHOP
+#PRI
+IF TIME == 0
+	昼の気温 = FLAG:気温
+	昼の天気 = FLAG:天気
+ENDIF
+
+;--------------------------------------------------
+;パートナーに選んだときの口上
+;デフォルトで服従が付く パートナーはTARGETではなくASSIとなる
+;※パートナー専用
+;--------------------------------------------------
+@PARTNER_梅桐_彩葉
+PRINTFORMW 「なんや、ウチ選んだんか。よろしくな～。よろよろ～」
+
+;下記の文は必要に応じて改変・コメントアウトを行ってもよし
+PRINTFORMW %NAME:ASSI%をパートナーに選択しました
+
+;--------------------------------------------------
+;パートナーに話しかけたときの口上
+;※パートナー専用
+;--------------------------------------------------
+@TALK_PARTNER_梅桐_彩葉
+#DIM DYNAMIC LCOUNT
+
+;ゲーセン物件無し
+IF GC物件 == 0
+	LOCAL = 2
+	SIF MONEY < 1000000
+		LOCAL++
+	SELECTCASE RAND:LOCAL
+		CASE 0
+			PRINTFORMW 「はよゲームセンターの物件を買ったほうがええで。なんたって稼ぎの要なんやからな！」
+		CASE 1
+			PRINTFORML 「あかんあかん、娼館だけでノルマ達成するのは至難の業や……」
+			PRINTFORMW 「初期資金さえあればとりあえず利益にはなるからゲームセンター経営せーへん？」
+		CASE 2
+			PRINTFORMW 「物件も買わんと別のことに金使うて……あんたもとんだ物好きやなぁ」
+	ENDSELECT
+ELSE
+	SELECTCASE RAND:2
+		CASE 0
+			IF 基本収入 <= 20000
+				LOCAL = 0
+				FOR LCOUNT, 1, GC階層+1
+					LOCAL += 筐体支出補正(LCOUNT)
+				NEXT
+				PRINTFORM 「ゲームセンターの利益が奮わんて？ 
+				IF LOCAL == 0
+					PRINTFORMW 筐体も設置せんで利益になるわけ無いやろ……何置くか悩んだらとりあえずjubeat置いとこか」
+				ELSEIF GC外装 <= 5 && GC物件%2 == 1
+					PRINTFORMW そらあれや、外装がなってない思うわ。汚い店なんて誰も入りたくないやろ？」
+				ELSEIF GC名声 <= 2000
+					PRINTFORM 名声が足りないんとちゃう？ 
+					SELECTCASE 名声人事補正()
+						CASE IS < 20
+							PRINTFORMW 今の人事やと名声上げるのはちょ～っと厳しいんちゃうかな。変えるか増やすか考えたほうがええと思う」
+						CASEELSE
+							PRINTFORMW ウチみたいな人当たりの良い子を配属するとええで～。あ、ちなみにここだけの話、姉さんたちは向かんと思う」
+					ENDSELECT
+				ELSE
+					PRINTFORMW う～ん、環境は整ってるはずやから、今は名声が上がるまで耐え忍ぶ時や」
+				ENDIF
+			ELSE
+				PRINTFORM 「昨日のゲームセンターの収入は……{(基本収入/1000)*1000}くらいか。
+				SELECTCASE 基本収入
+					CASE IS <= 25000
+						PRINTFORMW もっと稼がなあかんで。ウチに体売らせるようなマネはさせんといて！」
+					CASE IS <= 50000
+						IF DAY >= 150 && MONEY <= 10000000
+							PRINTFORMW さすがにこのペースでは期限に間に合わんで～。頑張ってや！」
+						ELSE
+							PRINTFORMW まぁええんちゃう？ これを元手にもーちょい利益上げなあかん思うけど」
+						ENDIF
+					CASE IS <= 100000
+						PRINTFORMW うんうん、安定してきたやんか！ この調子でもっと稼いでいこか～♪」
+					CASE IS >= 100000
+						IF CFLAG:ゲーセン店長
+							PRINTFORMW いや～、やっぱウチが店長やってるお陰やな！ 感謝せなアカンよ～、へへーん」
+						ELSE
+							PRINTFORMW さっすが凄腕の経営者やな！ やなやな♪ ウチもパートナーとして鼻が高いわ～」
+						ENDIF
+				ENDSELECT
+			ENDIF
+		CASE 1
+			IF 基本収入 <= 20000 && 娼館前日の収入 <= 20000
+				SELECTCASE CSTR:配属
+					CASE "ゲームセンター"
+						PRINTFORMW 「娼館がうまくいってない以上、ウチらが頑張らなあかんいうのは分かっとるんやけど……なかなか思い通りには稼げんわ」
+					CASE "芸能プロダクション"
+						PRINTFORMW 「ゲームセンターも娼館もジリ貧……ウチも恥ずかしい思いして稼いでるいうのに、かなんわ……」
+					CASEELSE
+						IF 娼館部屋数 <= 3
+							PRINTFORMW 「娼館のほうはもうちょい部屋増やしてもええんとちゃう？ 人事は……まぁやりたい人にやらせとけば……」
+						ELSE
+							PRINTFORMW 「稼ぎが少ない以上、ウチが一肌脱いで……やっぱ恥ずかしいわ。なぁ、ウチが娼館で働かんでもええように、もっと稼がなあかんよ？」
+						ENDIF
+				ENDSELECT
+			ELSEIF 娼館前日の収入 <= 100000
+				SELECTCASE 基本収入
+					CASE IS >= 50000
+						PRINTFORMW 「娼館のほうはイマイチやけど、ゲームセンターが稼げてるし気にせんでもええかな。人に体売らせるよりはずっとマシやね」
+					CASEELSE
+						PRINTFORMW 「あまり娼館力入れてーとは言わんけど、ゲームセンターも娼館もどっちつかずの状況じゃお先真っ暗や」
+				ENDSELECT
+			ELSEIF 娼館前日の収入 >= 100000
+				SELECTCASE 基本収入
+					CASE IS <= 100000
+						PRINTFORMW 「はぁー、娼館の稼ぎがすこぶるええやんか。ウチとしてはあまり喜ばしくないけど……破産するよりはマシかも、わからんわ」
+					CASEELSE
+						PRINTFORMW 「ゲームセンターもこれだけ稼げてるなら、娼館のほうはなぁ……足を洗うというのも変やけど」
+				ENDSELECT
+			ENDIF
+	ENDSELECT
+ENDIF
+
+;--------------------------------------------------
+;ゲーセンに配属した時の口上
+;--------------------------------------------------
+@ゲームセンター_ASSIGNON_梅桐_彩葉
+IF FLAG:パートナー == 18
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 「よぉ～し！ ウチに任しとき！」
+		CASE 1
+			PRINTFORMW 「ふっふっふ、とうとうウチの手腕を発揮する時が来たようやな」
+	ENDSELECT
+ENDIF
+
+;--------------------------------------------------
+;ゲーセンの配属から外した時の口上
+;--------------------------------------------------
+@ゲームセンター_ASSIGNOFF_梅桐_彩葉
+IF FLAG:パートナー == 18
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 「なんでや！ ウチ適任やろ！」
+		CASE 1
+			PRINTFORMW 「あんたがそう言うんならしゃーないわ。しばらく休んどく～」
+	ENDSELECT
+ENDIF
+
+;--------------------------------------------------
+;ゲーセンの店長に任命した時の口上
+;現店長 = 店長に選んだキャラ つまりこの口上のキャラ
+;元店長 = その名の通り元店長 掛け合いとか書きたいときにお使いください
+;--------------------------------------------------
+@GC_ASSIGNLEADER_梅桐_彩葉, 現店長, 元店長
+#DIM DYNAMIC 現店長
+#DIM DYNAMIC 元店長
+IF FLAG:パートナー == 18
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 「う、ウチが店長に！？ あーどないしよ、緊張してきた……」
+		CASE 1
+			PRINTFORMW 「そうかー……よし、ウチもあんたのパートナーや。一蓮托生、よろしゅ頼むで！」
+	ENDSELECT
+ENDIF
+
+;--------------------------------------------------
+;ゲーセン配属中に一日が終わった時の口上
+;変数「収入」「支出」にはそのままその日の収入額と支出額が入る
+;--------------------------------------------------
+@GC_TURNEND_梅桐_彩葉, 収入, 支出
+#DIM 収入
+#DIM 支出
+#DIM 階層
+#DIM 筐体
+#DIM DYNAMIC LCOUNT
+
+VARSET LOCAL, 0
+FOR 階層, 1, GC階層+1
+	FOR 筐体, 1100, 1500
+		SIF ITEMNAME:筐体 == ""
+			CONTINUE
+		SIF !EXISTGAMES(ITEMNAME:筐体)
+			CONTINUE
+		SELECTCASE ITEMNAME:筐体
+			{
+			CASE "beatmaniaIIDX", "pop'n music", "Dance Dance Revolution", "GITADORA", "jubeat", "REFLEC BEAT", "SOUND VOLTEX", 
+			     "Dance Evolution", "maimai", "CHUNITHM", "クイズマジックアカデミー", "ビデオポーカー", "ポーカーソリティア", 
+			     "モンテカルロ", "ブラックジャック", 
+			}
+				LOCAL++
+			CASE "両替機", "メダル両替機"
+				LOCAL:1++
+			CASE "PASELI券売機", "PASELIチャージ機"
+				LOCAL:2++
+			CASE "自販機（飲み物）", "自販機（軽食）", "自販機（アイス）"
+				LOCAL:3++
+			CASE "待ち椅子", "マッサージチェア"
+				LOCAL:4++
+		ENDSELECT
+	NEXT
+NEXT
+
+;筐体無し
+IF LOCAL == 0
+	DRAWLINE
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 「『ゲーセン勤務頑張れ』言われたんはいいけど……ゲーム機も無しに何を頑張ればええんやウチは？ 掃除？」
+		CASE 1
+			PRINTFORML 「お客さんみんな困惑しながら帰ってったで。『遊ぶゲームが無い』言うてな」
+			FOR LCOUNT, 0, 5
+				SIF LOCAL:LCOUNT
+					LOCAL:5++
+			NEXT
+			IF LOCAL:5 == 0
+				PRINTFORMW 「ゲームセンターの看板掲げといて中は空き家とかシャレにならんで」
+			ELSEIF LOCAL:5 >= 2
+				WAIT
+			ELSE
+				IF LOCAL:1
+					PRINTFORMW 「当然や。両替機しか置いてへんもん」
+				ELSEIF LOCAL:2
+					PRINTFORMW 「そらそうや。パセリチャージできても使うゲーム機があらへんがな」
+				ELSEIF LOCAL:3
+					PRINTFORMW 「ゲームセンター来たのに自販機しか置いてなかったときの客の気持ち考えたらごっつ切なくなるわぁ～」
+				ELSEIF LOCAL:4 <= 3
+					PRINTFORMW 「ぽつんと椅子だけ置いてあってもホラーやで」
+				ELSEIF LOCAL:4 > 3
+					PRINTFORMW 「椅子だけぎょーさん置いてあって、ウチんとこは公民館か何かか？」
+				ENDIF
+			ENDIF
+	ENDSELECT
+ELSEIF LOCAL == 1
+	DRAWLINE
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 「一個のゲーム機にぎょーさん並んでて地獄絵図やったで。もっといろいろ置いたほうがええんちゃう？」
+		CASE 1
+			PRINTFORMW 「ゲームセンターいうてもゲーム機の数がなぁ……ウチんとこは少なすぎや」
+	ENDSELECT
+ELSE
+	IF CFLAG:ゲーセン店長
+		DRAWLINE
+		PRINTFORM 「{MONTH}月{DAYS}日、天気は
+		SELECTCASE FLAG:天気
+			CASE 1
+				PRINT 晴れ
+			CASE 2
+				PRINT 曇り
+			CASE 3, 4, 5
+				PRINT 雨
+			CASE 6, 7
+				PRINT 雪
+		ENDSELECT
+		CALL PASELIW, @"、今日の利益は{収入-支出}＄、っと」"
+		IF 収入-支出 <= 0
+			PRINT 「……あかーんっ！！ 赤字やで！
+			SELECTCASE RAND:3
+				CASE 0
+					PRINTW 経営見直すべきや！」
+				CASE 1
+					PRINTW さすがにウチもあんたと首括るのはイヤやぁ！」
+				CASE 2
+					PRINTW う、ウチのせいちゃうわ！ 頑張っとるもん……」
+			ENDSELECT
+		ELSE
+			SELECTCASE RAND:3
+				CASE 0
+					PRINT 「店長やるのも一苦労やなぁ。
+				CASE 1
+					PRINT 「今日の帳簿よし。
+				CASE 2
+					PRINT 「今日も疲れたわ～。
+			ENDSELECT
+			SELECTCASE RAND:2
+				CASE 0
+					SELECTCASE FLAG:天気
+						CASE 1
+							;昼も晴れ
+							IF 昼の天気 == 1
+								IF FLAG:梅雨
+									PRINTW 今日は晴れてたからええけど、この時期は雨が続くから客足も減るやろな」
+								ELSE
+									PRINTW 今日は天気良かったしお客さんもまぁまぁ来てたんとちゃう？」
+								ENDIF
+							ELSE
+								PRINTW 午前はともかく午後から晴れて助かったわ～」
+							ENDIF
+						CASE 2
+							SELECTCASE RAND:2
+								CASE 0
+									PRINTW なんか空模様が怪しいけど明日雨降らんとええな」
+								CASE 1
+									PRINTW 今日みたいなびみょーな天気だとウチのテンションまでびみょーになるわ」
+							ENDSELECT
+						CASE 3, 4, 5
+							SELECTCASE 昼の天気
+								;昼も雨
+								CASE 3, 4, 5
+									IF FLAG:梅雨
+										PRINTW 梅雨やからしゃーないけど、雨の日は掃除が大変やねん。やんなるわぁ」
+									ELSE
+										PRINTW 今日みたいな雨やと客足も遠のいて利益減ってまうわ。店長やってると嫌でも分かるもんやなぁ」
+									ENDIF
+								CASEELSE
+									PRINTW 日中は晴れてたのに午後からぽつぽつ降ってきてな……大変やねん」
+							ENDSELECT
+						CASE 6, 7
+							SELECTCASE MONTH
+								CASE 11, 12, 1, 2, 3
+									SELECTCASE RAND:2
+										CASE 0
+											PRINTW ホンマ雪は勘弁してほしいわぁ～、誰が雪かきすると思うてんのや」
+										CASE 1
+											PRINTW うー、さぶい。駐車場の雪どないかせんと明日は悲惨やでぇ……」
+									ENDSELECT
+								CASEELSE
+									PRINTW まさかこないな時期に雪降るとは思わんかったわ……」
+							ENDSELECT
+					ENDSELECT
+				CASE 1
+					SELECTCASE MONTH
+						CASE 12, 1, 2
+							SELECTCASE 昼の気温-平均気温_梅桐_彩葉()
+								CASE IS >= 30
+									PRINTW 今日はいつもよりは暖かかったかな。雪も溶けてくれると助かるんやけど」
+								CASE IS <= -30
+									PRINTW 今日はよりいっそう寒ぅて大変やった……店は暖房ついてるからええんやけど」
+								CASEELSE
+									PRINTW いつまで寒い日が続くんかなぁ。寒い日は指がかじかんでゲームも上手くできひんのや」
+							ENDSELECT
+						CASE 3 TO 5
+							SELECTCASE 昼の気温-平均気温_梅桐_彩葉()
+								CASE IS >= 30
+									PRINTW だんだん暖かなってきて、春って感じやな。この忙しい時期にゲーセン来るやつあんまおらんやろな」
+								CASE IS <= -30
+									PRINTW 冬は過ぎたいうのにまだ寒いわ……もしかしてまだ冬なんやろか」
+								CASEELSE
+									PRINTW さてさて、そろそろあれか？ 人事異動とか入社式とか……ウチんとこにはそんなの無いって？」
+							ENDSELECT
+						CASE 6 TO 8
+							SELECTCASE 昼の気温-平均気温_梅桐_彩葉()
+								CASE IS >= 30
+									PRINTW 今日はごっつ暑くてな、明日はもーちょい冷房効かせたるわ！」
+								CASE IS <= -30
+									PRINT 今日は結構涼しくて過ごしやすかったかな。
+									IF MONTH == 6
+										PRINTW そろそろウチんとこも夏用の制服に変えたろかな……」
+									ELSE
+										PRINTW 夏用の制服も可愛くてウチは気に入っとるで♪」
+									ENDIF
+								CASEELSE
+									PRINTW すっかり夏の暑さや。灼熱ってこういうことを言うんやろな」
+							ENDSELECT
+						CASE 9 TO 11
+							SELECTCASE 昼の気温-平均気温_梅桐_彩葉()
+								CASE IS >= 30
+									PRINTW 残暑が続くなぁ。涼しなったとはいえ、暑いと無駄に体力持ってかれてまうわ」
+								CASE IS <= -30
+									PRINTW けっこー寒なってきとるわ……せやな、もう秋で、すぐに冬がやってくるんやな」
+								CASEELSE
+									PRINTW 今年も後半や思うと、店長として身が引き締まる思いや。お互い頑張ろな～♪」
+							ENDSELECT
+					ENDSELECT
+			ENDSELECT
+		ENDIF
+	ELSE
+		;こっちは5分の1で表示
+		SIF RAND:5 != 0
+			RETURN
+		DRAWLINE
+		SELECTCASE RAND:3
+			CASE 0
+				PRINTW 「はー、結構忙しかったけど、利益のほうがどうなんやろか。ウチが気にすることでもないか……」
+			CASE 1
+				PRINTW 「今日もお疲れ様やで～。さ、ウチも帰って寝よ」
+			CASE 2
+				PRINTW 「ほらほら、今日も頑張ったで！ 何かご褒美ちょーだい♪」
+		ENDSELECT
+	ENDIF
+ENDIF
+
+;--------------------------------------------------
+;ゲーセン用の物件を購入した時の口上
+;※パートナー専用
+;--------------------------------------------------
+@BUY_OBJECT_梅桐_彩葉, ARG
+SELECTCASE 物件名(ARG)
+	CASE "ボロ屋"
+		PRINTFORMW 「心もとないとこやけど無いよりはマシかー」
+	CASE "中小スーパーのテナント"
+		PRINTFORMW 「お客は子供が多いねんけど、ここから将来のランカーが生まれるんやろか」
+	CASE "商店街の一角"
+		PRINTFORMW 「なかなかええとこやん。人通りも多いし、交通の便も悪ぅない」
+	CASE "駅中テナント"
+		PRINTFORMW 「賑わいそうな場所やな～。周りも良さげな店多くて、売上も見込めるかもしれへん」
+	CASE "街中物件"
+		PRINTFORMW 「うっわ……ここ全部ウチらの敷地なんか？ ここまで広ければなんだって出来るで～！」
+	CASE "百貨店テナント"
+		PRINTFORMW 「ウチみたいな若者にとって流行の最先端を走る有名店……まさかこないええ場所に店構える日が来るとは思わんかった」
+	CASE "アミューズメント"
+		PRINTFORMW 「ウチらもとうとうここまで来よったか……こうなったら日本一のゲームセンター目指したるで！」
+ENDSELECT
+
+;--------------------------------------------------
+;ゲーセン用の物件を増築した時の口上
+;※パートナー専用
+;--------------------------------------------------
+@GC_RENOVATION_梅桐_彩葉, ARG
+SELECTCASE ARG
+	;広くした
+	CASE 1
+		SIF RAND:3 == 0
+			PRINTFORMW 「お～、ちょっと広くなったやん。ここにゲーム1台くらいは置けそう」
+	;分煙施設を設置した
+	CASE 2
+		PRINTFORMW 「タバコ臭いのはやんなるしな。働く身としても助かるわ」
+	;階層を増やした
+	CASE 3
+		SIF RAND:3 == 0
+			PRINTFORMW 「ずいぶん思い切った大工事やな。新しくゲーム機置くの忘れんよーに！」
+	;外装を強化した
+	CASE 4
+		SIF RAND:3 == 0
+			PRINTFORMW 「また一段と目立つ外装になったなー。これなら遠くからでも目につくわ」
+	;フードコート施設を設置した
+	CASE 5
+		PRINTFORMW 「とうとう料理の提供まで始めるんか！ メニューは3倍アイスクリームか？ 紫芋プリンか？」
+		;ラーメンだなあ
+	;トイレを改装した
+	CASE 6
+		SIF RAND:3 == 0
+			PRINTFORMW 「ウチらも使う分、綺麗に越したことはないわ。で、改装するたびに増えていく怪しげな機能はなんやねん？」
+ENDSELECT
+
+;--------------------------------------------------
+;ゲーセン用の筐体を購入した時の口上
+;※パートナー専用
+;--------------------------------------------------
+@BUY_ARCADEGAME_KX1, ARG
+SELECTCASE ITEMNAME:ARG
+	CASE "beatmaniaIIDX"
+		PRINTFORMW 
+	CASE "pop'n music"
+		PRINTFORMW 
+	CASE "Dance Dance Revolution"
+		PRINTFORMW 
+	CASE "GITADORA"
+		PRINTFORMW 
+	CASE "jubeat"
+		PRINTFORMW 
+	CASE "REFLEC BEAT"
+		PRINTFORMW 
+	CASE "SOUND VOLTEX"
+		PRINTFORMW 
+	CASE "Dance Evolution"
+		PRINTFORMW 
+	CASE "両替機"
+		PRINTFORMW 
+	CASE "メダル両替機"
+		PRINTFORMW 
+	CASE "PASELI券売機"
+		PRINTFORMW 
+	CASE "PASELIチャージ機"
+		PRINTFORMW 
+	CASE "自販機（飲み物）"
+		PRINTFORMW 
+	CASE "自販機（軽食）"
+		PRINTFORMW 
+	CASE "自販機（アイス）"
+		PRINTFORMW 
+	CASE "マッサージチェア"
+		PRINTFORMW 
+	CASE "待ち椅子"
+		PRINTFORMW 
+ENDSELECT
+
+;--------------------------------------------------
+;店長の時にコマンド「ゲームセンター」を選んだ時の口上 TARGETに口上あると表示されない
+;--------------------------------------------------
+@PARTNER_COM_ゲームセンター_梅桐_彩葉
+;ゲームセンターに来た時
+IF !TEQUIP:ゲームセンター
+	SELECTCASE CHARANAMEF(TARGET)
+		CASE "梅桐 緋浮美"
+			PRINTFORMW 「ヒー姉！？ どうしてここに？」
+			PRINTFORMW 「どうも何も、頑張る妹の姿を見に来ただけ。さかい、サボり癖のあるイロハを、ウサギがどうこういうわけではあらへんどす」
+			PRINTFORMW 「なんや、毎度、神出鬼没で心臓に悪い……う、ウチは裏方にまわるわ。ヒー姉を頼んだで～」
+			PRINTFORMW 「ほな、頑張ってぇな。イロハ」
+		CASE "梅桐 天土"
+			PRINTFORMW 「あめと姉さんたち？ 遊びに来たんか？」
+			PRINTFORMW 「うむうむ、イロハちゃんが店長やってると聞いて応援しに来た次第じゃ。あーちゃんはゲームするから頑張ってね～♪」
+			PRINTFORMW 「任しとき！ 何かあったらいつでも呼んで！」
+		CASE "神崎 慧靂"
+			PRINTFORMW 「うえぇ、エレキ！？ な、何しに来たんや……はよ帰ってもええんやで……」
+			PRINTFORMW 「俺だって帰りたいよ……恥ずかしいし」
+			PRINTFORMW 「？ ゲーセンの何が恥ずかしいん？ そんなシャイやったっけ？」
+		CASE "雛月 理々奈"
+			PRINTFORMW 「りりちん？ どないした～ん？ 遊びに来たんか？」
+			PRINTFORMW 「い、イロハが居るというから……この人に連れられて、来ました、デス……」
+			PRINTFORMW 「なんや、いつになくカタコトやな～。楽しんでいってや～」
+		CASEELSE
+			LOCAL = 3
+			SIF メダル
+				LOCAL++
+			SELECTCASE RAND:LOCAL
+				CASE 0
+					PRINTFORMW 「おわぁ！ 来るなら来る言うてや！ さ、サボってなんかあらへんわ！」
+				CASE 1
+					PRINTFORMW 「なんや、ウチらが多忙な時に、あんたらはのうのうと遊びに来よって」
+					PRINTFORMW 「ここでまで変なことヤり始めたら、店長のウチが許さんで？」
+				CASE 2
+					PRINT 「イロイロイロハ～、ア～ロハ～。そちらはっと、
+					IF TALENT:小柄体型
+						PRINTFORMW %CALLNAME:TARGET%\@ SEX(TARGET) == 1 ? くん # ちゃん \@やね。楽しんでいってや～」
+					ELSE
+						PRINTFORMW %CALLNAME:TARGET%か。そいつと二人でデートでもしてるん？」
+					ENDIF
+				CASE 3
+					PRINTFORMW 「いらっしゃいませ～、ってあれ、あんたか」
+					PRINTFORMW 「今日もメダルゲームで遊ぶん？ ほいっ、と。引き出してやったで」
+			ENDSELECT
+	ENDSELECT
+;ゲームセンターから帰る時
+ELSEIF TEQUIP:ゲームセンター
+	SELECTCASE CHARANAMEF(TARGET)
+		CASE "梅桐 緋浮美"
+			PRINTFORMW 「それでは、イロハ。ウチらはこのへんで帰らせていただきますぅ。サボったら、あきまへんえ？」
+			PRINTFORMW 「あー！ わぁってますわぁってます！ 真面目に働くって！」
+		CASE "梅桐 天土"
+			PRINTFORMW 「楽しかった～♪ じゃあイロハ、あーちゃんたちは帰るからまた後でね～」
+			PRINTFORMW 「はーい、また来てーや♪」
+		CASE "神崎 慧靂"
+			PRINTFORMW 「もう帰るん？ なんだか顔色が真っ青なような真っ赤なような……ウチとりりちんの薬飲ませた時みたいや。何かあったん？」
+			IF Ａ使用中(TARGET)
+				PRINTFORMW 「な、なんでもな……うぁっ……」
+			ELSE
+				PRINTFORMW 「な、なんでもないって……俺は大丈夫だから、お仕事頑張って」
+			ENDIF
+		CASE "雛月 理々奈"
+			PRINTFORMW 「じゃぁねー、りりちん。またいつでも来てーや」
+			IF Ｖ使用中(TARGET) || Ａ使用中(TARGET)
+				PRINTFORMW 「は、はっ……ぃ、んっ、ぅ、～」
+			ELSE
+				PRINTFORMW 「はい……イロハが仕事をこなす姿、とても素敵だった、デス……」
+			ENDIF
+		CASEELSE
+			LOCAL = 2
+			SIF メダル
+				LOCAL++
+			SELECTCASE RAND:LOCAL
+				CASE 0
+					PRINTFORMW 「帰るんか？ ほな、また後でな～」
+					PRINTFORMW （ふぅ、これで少しサボる時間はできたか……）
+				CASE 1
+					PRINTFORMW 「なんや、もう帰るん？ もう少し金落としていってもえんやで～？」
+				CASE 2
+					PRINTFORMW 「またのご来店を……って、メダルは持って帰ったらあかん！ ちゃんとフロントに預けてや！」
+			ENDSELECT
+	ENDSELECT
+ENDIF
+
+;--------------------------------------------------
+;娼館に配属した時の口上
+;--------------------------------------------------
+@娼館_ASSIGNON_KX1
+PRINTFORMW 
+
+;--------------------------------------------------
+;娼館の配属から外した時の口上
+;--------------------------------------------------
+@娼館_ASSIGNOFF_KX1
+PRINTFORMW 
+
+;--------------------------------------------------
+;娼館に道具を配置した&娼館に設備を導入した時の口上
+;※パートナー専用
+;--------------------------------------------------
+@BR_ITEM_KX1, ARG
+SELECTCASE ITEMNAME:ARG
+	CASE "ローター"
+		PRINTFORMW 
+	CASE "バイブ"
+		PRINTFORMW 
+	CASE "鞭"
+		PRINTFORMW 
+	CASE "縄"
+		PRINTFORMW 
+	CASE "ペニスバンド"
+		PRINTFORMW 
+	CASE "コンドーム"
+		PRINTFORMW 
+	CASE "ローション"
+		PRINTFORMW 
+	CASE "媚薬"
+		PRINTFORMW 
+	CASE "睡眠薬"
+		PRINTFORMW 
+	CASE "ゴム手袋"
+		PRINTFORMW 
+	CASE "お風呂場"
+		PRINTFORMW 
+	CASE "高級ベッド"
+		PRINTFORMW 
+	CASE "隠しカメラ"
+		PRINTFORMW 
+	CASE "換気扇"
+		PRINTFORMW 
+	CASE "ピンクライト"
+		PRINTFORMW 
+	CASE "防音壁"
+		PRINTFORMW 
+	CASE "拷問器具"
+		PRINTFORMW 
+	CASE "わけのわからないもの"
+		PRINTFORMW 
+ENDSELECT
+
+;--------------------------------------------------
+;娼館を増築した時の口上
+;※パートナー専用
+;--------------------------------------------------
+@BR_RENOVATION_KX1, ARG
+SELECTCASE ARG
+	;広くした
+	CASE 1
+		PRINTFORMW 
+	;部屋を増やした
+	CASE 2
+		PRINTFORMW 
+ENDSELECT
+
+;--------------------------------------------------
+;娼館の方針を決めた時の口上
+;※パートナー専用
+;--------------------------------------------------
+@BR_PLAN_KX1, ARG
+SELECTCASE 娼館方針
+	;ソフト
+	CASE 1
+		PRINTFORMW 
+	;ハード
+	CASE 2
+		PRINTFORMW 
+	;SM
+	CASE 3
+		PRINTFORMW 
+	;狂気
+	CASE 4
+		PRINTFORMW 
+ENDSELECT
+
+;--------------------------------------------------
+;娼館でプレイ内容を報告させた時の口上
+;ぶっちゃけここ書くの相当難易度高いので、自信が無ければ関数名差し戻し推奨
+;--------------------------------------------------
+@BR_PLAY_KX1, 客の性別, 絶頂, 射精, 客の射精, 自慰, 自慰で射精, フェラ, フェラで射精, ヴァギナ, 中出し, アナル, アナル中出し, 手コキ, 手コキで射精, 足コキ, 足コキで射精, 兜合わせ, 兜合わせで射精, 素股, 素股で射精, ゲイ, レズ
+#DIM DYNAMIC 客の性別
+#DIM DYNAMIC 絶頂
+#DIM DYNAMIC 射精
+#DIM DYNAMIC 客の射精
+#DIM DYNAMIC 自慰
+#DIM DYNAMIC 自慰で射精
+#DIM DYNAMIC フェラ
+#DIM DYNAMIC フェラで射精
+#DIM DYNAMIC ヴァギナ
+#DIM DYNAMIC 中出し
+#DIM DYNAMIC アナル
+#DIM DYNAMIC アナル中出し
+#DIM DYNAMIC 手コキ
+#DIM DYNAMIC 手コキで射精
+#DIM DYNAMIC 足コキ
+#DIM DYNAMIC 足コキで射精
+#DIM DYNAMIC 兜合わせ
+#DIM DYNAMIC 兜合わせで射精
+#DIM DYNAMIC 素股
+#DIM DYNAMIC 素股で射精
+#DIM DYNAMIC ゲイ
+#DIM DYNAMIC レズ
+
+PRINTFORMW 
+
+;--------------------------------------------------
+;芸プロに配属した時の口上
+;--------------------------------------------------
+@芸能プロダクション_ASSIGNON_梅桐_彩葉
+IF FLAG:パートナー == 18
+	;初めて
+	IF IROHA:0 == 0
+		PRINTW 「ウチがアイドルに？ 想像付かへんわ～。あんたがプロデュースするん？」
+		PRINTW 「やってはみるけど、あまり期待せんほうがええと思うで」
+		IROHA:0 = 1
+	ELSE
+		SELECTCASE RAND:2
+			CASE 0
+				PRINTW 「またあっちの事務所に配属！？ ウチは銭勘定しとったほうが性に合うんやけどなー」
+			CASE 1
+				PRINTW 「はぁ、またレッスンの日々が始まるんか……憂鬱なるで」
+		ENDSELECT
+	ENDIF
+ENDIF
+
+;--------------------------------------------------
+;芸プロの配属から外した時の口上
+;--------------------------------------------------
+@芸能プロダクション_ASSIGNOFF_梅桐_彩葉
+IF FLAG:パートナー == 18
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTW 「終わった終わったぁ！ あそこは覚えることも多いし厳しいし、もう行きとうないわ！」
+		CASE 1
+			PRINTW 「芸能人の世界いうんは思った以上にハードやな……ウチには荷が重いかもしれへん」
+	ENDSELECT
+ENDIF
+
+;--------------------------------------------------
+;ライブで人気を取得した時の口上
+;--------------------------------------------------
+@IDOL_人気取得_梅桐_彩葉
+PRINTW 「なんや！？ この大量の手紙やら箱やら？ 全部ウチ宛てのもんかいな？」
+PRINTW 「ふむん……ウチもそろそろプロとしての自覚を持たなあかんみたいやな。みんながくれたファンレターもプレゼントも、大事にするで」
+
+;--------------------------------------------------
+;芸プロで賄賂を送った時の口上
+;※パートナー専用
+;--------------------------------------------------
+@IDOL_賄賂_梅桐_彩葉
+SELECTCASE RAND:3
+	CASE 0
+		PRINTW 「ここはちょいと気を利かせて、飴ちゃんも一緒に送っておかんと……」
+	CASE 1
+		PRINTW 「なんやー、こんなにポチ袋には納まらんやないか。しゃあない、ここは豪華に風呂敷で……」
+	CASE 2
+		PRINTW 「……ウチら別に、悪いことしてへんよね？ ほんのお気持ちやねんな。そや、悪いことじゃあらへん……」
+ENDSELECT
+
