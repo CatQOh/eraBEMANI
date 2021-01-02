@@ -1,6 +1,5 @@
 ﻿@SHOW_SHOP
 #DIM DYNAMIC LCOUNT
-#DIM UPDATE
 
 ;学園モードでは別途SHOPを使うためこの関数は使わない
 SIF ゲームモード() == "学園モード"
@@ -12,15 +11,14 @@ SIF ゲームモード() == "段位認定" && サウンド
 
 VARLINE = 0
 
-SIF データID == 0
-	データID = GETSECOND()
-
 SIF TARGET == 0
 	TARGET = -1
 
 ;STRATEGYモードクリアデータを周回可能にする
 SIF ゲームモード() == "フリーモード" && FLAG:パートナー
 	FLAG:周回可能 = 1
+
+CALL セーブデータアップデート
 
 FOR LCOUNT, 0, CHARANUM
 	;CSVを確認する
@@ -47,37 +45,6 @@ FOR LCOUNT, 0, CHARANUM
 		BASE:LCOUNT:魔力 = LIMIT(BASE:LCOUNT:魔力, 0, MAXBASE:LCOUNT:魔力)
 	ENDIF
 NEXT
-
-FOR LCOUNT, 0, CHARANUM
-	;以下セーブデータのアップデート用
-	SIF UPDATE
-		BREAK
-	;CFLAG:配属をCSTR:配属に移動
-	SELECTCASE CFLAG:LCOUNT:配属
-		CASE 1
-			CSTR:LCOUNT:配属 = ゲームセンター
-			CFLAG:LCOUNT:配属 = 0
-		CASE 2
-			CSTR:LCOUNT:配属 = 娼館
-			CFLAG:LCOUNT:配属 = 0
-		CASE 4
-			CSTR:LCOUNT:配属 = 芸能プロダクション
-			CFLAG:LCOUNT:配属 = 0
-	ENDSELECT
-	;娼館に配属してるキャラで、部屋番号実装前に配属してたキャラの配属を外す
-	SIF CSTR:LCOUNT:配属 == "娼館" && CFLAG:LCOUNT:娼館部屋番号 == 0
-		CALL 配属解除, LCOUNT
-	;モチベーションが設定されてなければ初期値(50)にする
-	SIF CFLAG:LCOUNT:モチベーション == 0
-		CFLAG:LCOUNT:モチベーション = 50
-	;各SAVESTRにアイテム名をセットする
-	FOR LCOUNT, 0, 50
-		SIF SAVESTR:LCOUNT == ""
-			SAVESTR:LCOUNT = %SAVESTRNAME:LCOUNT%
-	NEXT
-	UPDATE = 1
-NEXT
-
 
 CALL CVAR_RESET
 
