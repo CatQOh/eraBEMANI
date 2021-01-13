@@ -3,6 +3,8 @@
 ;-------------------------------------------------
 @USERCOM_ABLE_浣腸器, ARG
 #FUNCTION
+#DIM DYNAMIC 条件確定
+
 ;ゲーセンに居る場合はトイレじゃないとできない
 コマンド実行条件 += "ゲーセンではトイレじゃないと実行できない/"
 SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
@@ -13,6 +15,7 @@ SIF 上級売春中
 	COMRESULT = 0
 
 ;その調教で既に排便済みなら出来ない
+コマンド実行条件 += "1回の調教で1回まで"
 SIF TFLAG:腸洗浄済み
 	COMRESULT = 0
 
@@ -26,28 +29,32 @@ SIF !性器露出(TARGET)
 SIF TEQUIP:触手
 	COMRESULT = 0
 ;解除はいつでも可能
-IF TEQUIP:浣腸器
-	COMRESULT = 1
-	RETURNF 1
-ENDIF
+SIF TEQUIP:浣腸器 && COMRESULT
+	条件確定 = 1
 
 ;精液浣腸は保管済み精液が100mlから必要
+コマンド実行条件 += "精液浣腸の場合は100mlの保管済み精液が必要/"
 SIF SAVESTR:浣腸器 == "精液浣腸" && FLAG:保管済み精液 < 100
 	COMRESULT = 0
 
 ;無機物はダメ
+コマンド実行条件 += "対象が[無機物]だと実行できない/"
 SIF TALENT:無機物
 	COMRESULT = 0
 ;調教対象が小人体型の場合は主人が禁断の知識持ちじゃないとダメ
+コマンド実行条件 += "対象が[小人体型]の場合、主人に[禁断の知識]が必要/"
 SIF TALENT:小人体型 && !TALENT:MASTER:禁断の知識
 	COMRESULT = 0
 ;アイテムを持っていないとダメ
+コマンド実行条件 += "アイテム[浣腸器]が必要/"
 SIF !ITEM:浣腸器
 	COMRESULT = 0
 ;Ａ経験が100未満じゃできない
+コマンド実行条件 += "対象のA経験が100以上必要/"
 SIF EXP:Ａ経験 < 100
 	COMRESULT = 0
 ;従順、欲望の合計が6ないとできない
+コマンド実行条件 += "対象の従順、欲望の合計がLV6以上必要/"
 SIF ABL:従順+ABL:欲望 < 6
 	COMRESULT = 0
 
@@ -56,6 +63,10 @@ SIF ABL:従順+ABL:欲望 < 6
 SIF Ａ使用中(TARGET)
 	COMRESULT = 0
 
+IF 条件確定
+	COMRESULT = 1
+	RETURNF 1
+ENDIF
 RETURNF COMRESULT
 
 @COM_浣腸器
