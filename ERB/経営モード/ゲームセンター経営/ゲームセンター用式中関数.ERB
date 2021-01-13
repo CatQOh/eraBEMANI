@@ -826,24 +826,23 @@ RETURNF LOCAL:1
 @評判筐体補正
 #DIM DYNAMIC 筐体
 #DIM DYNAMIC LCOUNT
-
-VARSET LOCAL, 0
-
+#DIM DYNAMIC ゲーム種類, 2
+#DIM DYNAMIC 評判補正
 
 FOR LCOUNT, 0, 400
 	SIF !設置済み筐体:LCOUNT
 		CONTINUE
 	;CHUNITHMは評判に悪影響
 	IF ITEMNAME:LCOUNT == "CHUNITHM"
-		LOCAL -= 設置済み筐体:LCOUNT
+		ゲーム種類 -= 設置済み筐体:LCOUNT
 	ELSE
 		;置いてあるアーケードゲーム筐体の種類
 		SELECTCASE LCOUNT
 			CASE 0 TO 199
-				LOCAL++
+				ゲーム種類++
 			;その他
 			CASEELSE
-				LOCAL:1++
+				ゲーム種類:1++
 		ENDSELECT
 	ENDIF
 NEXT
@@ -853,28 +852,28 @@ FOR LCOUNT, 0, 400
 	SELECTCASE LCOUNT
 		CASE 0 TO 99
 			;各種筐体数＞置いてある種類だと偏ってるため評判が下がる
-			IF 設置済み筐体:LCOUNT > LOCAL
-				LOCAL:2 += (設置済み筐体:LCOUNT-LOCAL)*(設置済み筐体:LCOUNT-LOCAL)
+			IF 設置済み筐体:LCOUNT > ゲーム種類 && ゲーム種類 < 10
+				評判補正 += POWER(設置済み筐体:LCOUNT-ゲーム種類, 2)
 			;偏ってなければ筐体の数だけ上がる
 			ELSE
-				LOCAL:2 += 設置済み筐体:LCOUNT
+				評判補正 += 設置済み筐体:LCOUNT
 			ENDIF
 		;待ち椅子だけ例外
 		CASEELSE
 			IF ITEMNAME:LCOUNT != "待ち椅子"
 				;各種筐体数＞置いてある種類だと偏ってるため評判が下がる
-				IF 設置済み筐体:LCOUNT > LOCAL:1
-					LOCAL:2 += (設置済み筐体:LCOUNT-LOCAL:1)*(設置済み筐体:LCOUNT-LOCAL:1)
+				IF 設置済み筐体:LCOUNT > ゲーム種類:1 && ゲーム種類:1 < 10
+					評判補正 += POWER(設置済み筐体:LCOUNT-ゲーム種類, 2)
 				;偏ってなければ筐体の数だけ上がる
 				ELSE
-					LOCAL:2 += 設置済み筐体:LCOUNT
+					評判補正 += 設置済み筐体:LCOUNT
 				ENDIF
 			ENDIF
 	ENDSELECT
 NEXT
-LOCAL:2 += LOCAL+LOCAL:1
+評判補正 += ゲーム種類+ゲーム種類:1
 
-RETURN LOCAL:2
+RETURN 評判補正
 
 ;引数で指定した曜日が定休日かどうか 省略すれば今日の曜日
 ;書式 GC定休日("木") みたいな
