@@ -3,11 +3,14 @@
 ;-------------------------------------------------
 @USERCOM_ABLE_バイブ, ARG
 #FUNCTION
+#DIM DYNAMIC 条件確定
+
 ;ゲーセンに居る場合はトイレじゃないとできない
 コマンド実行条件 += "ゲーセンではトイレじゃないと実行できない/"
 SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
 	COMRESULT = 0
 ;上級売春中はアイテム無いとダメ
+コマンド実行条件 += "アイテム[バイブ]が必要/"
 IF 上級売春中
 	SIF !ITEM:娼館バイブ
 		COMRESULT = 0
@@ -25,10 +28,9 @@ SIF TEQUIP:触手
 SIF !性器露出(TARGET)
 	COMRESULT = 0
 ;解除はいつでも可能
-IF TEQUIP:バイブ
-	COMRESULT = 1
-	RETURNF 1
-ENDIF
+SIF TEQUIP:バイブ && COMRESULT
+	条件確定 = 1
+
 ;アイテム使用中は不可
 コマンド実行条件 += "対象がV使用中は実行できない/"
 SIF Ｖ使用中(TARGET)
@@ -38,20 +40,28 @@ SIF Ｖ使用中(TARGET)
 SIF !VAGINA(TARGET)
 	COMRESULT = 0
 ;調教対象が小人体型の場合は主人が禁断の知識持ちじゃないとダメ
-SIF TALENT:小人体型 && !TALENT:MASTER:禁断の知識
+コマンド実行条件 += "対象が[小人体型]の場合は実行者に[禁断の知識]が必要/"
+コマンド実行条件 += "　もしくはバイブを[細いバイブ]に改造していると実行可能/"
+SIF TALENT:小人体型 && !TALENT:MASTER:禁断の知識 && SAVESTR:バイブ != "細いバイブ"
 	COMRESULT = 0
 
 ;処女で、従順4以下・レズっ気4以下の女性ASSIの場合バイブはできない（サドならＯＫ）
+コマンド実行条件 += "対象が処女で実行者が助手(女性)の場合、従順LV5以上とレズっ気LV5以上or[サド]が必要/"
 IF TALENT:処女 && ASSIPLAY
 	SIF SEX(ASSI) == 2 && (ABL:ASSI:従順 <= 4 || ABL:ASSI:レズっ気 <= 4) && !TALENT:ASSI:サド
 		COMRESULT = 0
 ENDIF
 ;潤滑不足で、従順3以下のASSIの場合バイブはできない（サドならＯＫ）
+コマンド実行条件 += @"対象が潤滑{PALAMLV:2}未満で実行者が助手の場合、従順LV3or[サド]が必要/"
 IF PALAM:潤滑 < PALAMLV:2 && ASSIPLAY
 	SIF ABL:ASSI:従順 <= 3 && !TALENT:ASSI:サド
 		COMRESULT = 0
 ENDIF
 
+IF 条件確定
+	COMRESULT = 1
+	RETURNF 1
+ENDIF
 RETURNF COMRESULT
 
 @COM_バイブ

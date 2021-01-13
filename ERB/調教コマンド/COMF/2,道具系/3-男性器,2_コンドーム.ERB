@@ -3,11 +3,14 @@
 ;-------------------------------------------------
 @USERCOM_ABLE_コンドーム, ARG
 #FUNCTION
+#DIM DYNAMIC 条件確定
+
 ;ゲーセンに居る場合はトイレじゃないとできない
 コマンド実行条件 += "ゲーセンではトイレじゃないと実行できない/"
 SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
 	COMRESULT = 0
 ;上級売春中はアイテム無いとダメ
+コマンド実行条件 += "アイテム[コンドーム]が必要"
 IF 上級売春中
 	SIF !ITEM:娼館コンドーム
 		COMRESULT = 0
@@ -18,36 +21,40 @@ ELSE
 ENDIF
 
 ;主人か助手が竿ありならOK
-IF (PENIS(MASTER) && !Ｐ使用不可(MASTER)) || (PENIS(ASSI) && !Ｐ使用不可(ASSI)) || (PENIS(TARGET) && !Ｐ使用不可(TARGET))
-	COMRESULT = 1
-	RETURNF 1
-ENDIF
+コマンド実行条件 += "主人、助手、対象に男性器があれば実行可能"
+SIF ((PENIS(MASTER) && !Ｐ使用不可(MASTER)) || (PENIS(ASSI) && !Ｐ使用不可(ASSI)) || (PENIS(TARGET) && !Ｐ使用不可(TARGET))) && COMRESULT
+	条件確定 = 1
 
 ;解除はいつでも可能
-SIF TEQUIP:コンドーム
-	RETURNF COMRESULT
+SIF TEQUIP:コンドーム && COMRESULT
+	条件確定 = 1
 
 ;奴隷は条件で判定する
+コマンド実行条件 += "対象の場合は/"
 IF !TEQUIP:コンドーム
 	;触手調教中はダメ
+	コマンド実行条件 += "　触手召喚中は実行できない/"
 	SIF TEQUIP:触手
 		COMRESULT = 0
 	;少なくとも半立ち状態じゃないとダメ
+	コマンド実行条件 += @"　勃起{PALAMLV:2}未満だと実行できない/"
 	SIF PALAM:勃起 < PALAMLV:2
 		COMRESULT = 0
 	;性器が露出してないとダメ
+	コマンド実行条件 += "　性器が露出していないと実行できない/"
 	SIF !性器露出(TARGET)
 		COMRESULT = 0
 	;オナホール及び搾精コンドーム使用中は不可
+	コマンド実行条件 += "　男性期に道具使用中は実行できない"
 	SIF Ｐ使用中(TARGET) || TEQUIP:搾精コンドーム
 		COMRESULT = 0
-	;上記条件を満たしてペニスあればOK
-	SIF PENIS(TARGET)
-		COMRESULT = 1
-	RETURNF 1
 ENDIF
 
-COMRESULT = 0
+IF 条件確定
+	COMRESULT = 1
+	RETURNF 1
+ENDIF
+RETURNF COMRESULT
 
 @COM_コンドーム
 VARSET LOCAL, 0
