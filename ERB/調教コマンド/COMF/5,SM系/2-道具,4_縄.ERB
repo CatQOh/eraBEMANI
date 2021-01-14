@@ -3,11 +3,14 @@
 ;-------------------------------------------------
 @USERCOM_ABLE_縄, ARG
 #FUNCTION
+#DIM DYNAMIC 条件確定
+
 ;ゲーセンに居る場合はできない
 コマンド実行条件 += "ゲーセンでは実行不可/"
 SIF TEQUIP:ゲームセンター
 	COMRESULT = 0
 ;上級売春中は方針がSMで客がマゾじゃないとダメ
+コマンド実行条件 += "上級売春中は経営方針がSMで客に[マゾ]が必要/"
 SIF 上級売春中 && (娼館方針 != 3 || !TALENT:マゾ)
 	COMRESULT = 0
 ;触手調教中はダメ
@@ -15,11 +18,11 @@ SIF 上級売春中 && (娼館方針 != 3 || !TALENT:マゾ)
 SIF TEQUIP:触手
 	COMRESULT = 0
 ;解除はいつでも可能
-IF TEQUIP:縄
-	COMRESULT = 1
-	RETURNF 1
-ENDIF
+SIF TEQUIP:縄 && COMRESULT
+	条件確定 = 1
+
 ;アイテムを持っていないとダメ
+コマンド実行条件 += "アイテム[縄]が必要/"
 IF 上級売春中
 	SIF !ITEM:娼館縄
 		COMRESULT = 0
@@ -28,9 +31,11 @@ ELSE
 		COMRESULT = 0
 ENDIF
 ;調教者の技巧が1無いとできない
+コマンド実行条件 += "実行者に技巧LV1以上必要/"
 SIF ABL:PLAYER:技巧 < 1
 	COMRESULT = 0
 ;助手は技巧3でないとダメ
+コマンド実行条件 += "実行者が助手の場合、技巧LV3以上必要/"
 IF PLAYER == ASSI
 	SIF ABL:ASSI:技巧 < 3
 		COMRESULT = 0
@@ -41,6 +46,10 @@ ENDIF
 SIF TALENT:アニマル
 	COMRESULT = 0
 
+IF 条件確定
+	COMRESULT = 1
+	RETURNF 1
+ENDIF
 RETURNF COMRESULT
 
 @COM_縄
