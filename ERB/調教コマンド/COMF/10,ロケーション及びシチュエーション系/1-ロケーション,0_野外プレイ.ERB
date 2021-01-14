@@ -3,6 +3,8 @@
 ;-------------------------------------------------
 @USERCOM_ABLE_野外プレイ, ARG
 #FUNCTION
+#DIM DYNAMIC 条件確定
+
 ;ゲーセンに居る場合はできない
 コマンド実行条件 += "ゲーセンでは実行不可/"
 SIF TEQUIP:ゲームセンター
@@ -12,17 +14,19 @@ SIF TEQUIP:ゲームセンター
 SIF 上級売春中
 	COMRESULT = 0
 ;アイテム｢首輪｣を持っていないとダメ
+コマンド実行条件 += "アイテム[首輪]が必要/"
 SIF !ITEM:首輪
 	COMRESULT = 0
 ;解除はいつでも可能
-IF TEQUIP:野外プレイ
-	COMRESULT = 1
-	RETURNF 1
-ENDIF
+SIF TEQUIP:野外プレイ && COMRESULT
+	条件確定 = 1
+
 ;従順かマゾっ気が3以上ないとダメ
+コマンド実行条件 += "対象に従順LV3以上orマゾっ気LV3以上が必要/"
 SIF ABL:従順 < 3 && ABL:マゾっ気 < 3
 	COMRESULT = 0
 ;対象か主人か助手が種族:ヴァンパイアで、時間が昼だとダメ
+コマンド実行条件 += "ヴァンパイアが居る場合、昼間は実行できない/"
 IF TIME == 0
 	SIF CSTR:種族 == "ヴァンパイア" || CSTR:MASTER:種族 == "ヴァンパイア" || (ASSI > 0 && CSTR:ASSI:種族 == "ヴァンパイア")
 		COMRESULT = 0
@@ -40,9 +44,14 @@ SIF TEQUIP:お風呂場
 SIF TEQUIP:エプロン
 	COMRESULT = 0
 ;羞恥プレイ中はダメ
+コマンド実行条件 += "羞恥プレイ中は実行できない/"
 SIF TEQUIP:羞恥プレイ
 	COMRESULT = 0
 
+IF 条件確定
+	COMRESULT = 1
+	RETURNF 1
+ENDIF
 RETURNF COMRESULT
 
 @COM_野外プレイ
