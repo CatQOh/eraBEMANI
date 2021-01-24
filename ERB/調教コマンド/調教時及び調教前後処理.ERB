@@ -187,7 +187,7 @@ BASE:MASTER:触手射精 = 0
 CFLAG:残数 = 10
 SIF TALENT:絶倫
 	CFLAG:残数 += 5
-SIF !PENIS(TARGET) && !TALENT:去勢済み && !TALENT:スライム
+SIF !PENIS(TARGET) && !TALENT:去勢済み && !TALENT:スライム && !TALENT:溶ける快
 	CFLAG:残数 = 0
 
 CFLAG:MASTER:残数 = 10
@@ -195,14 +195,14 @@ SIF TALENT:MASTER:絶倫
 	CFLAG:MASTER:残数 += 5
 SIF エナジードライブ
 	CFLAG:MASTER:残数 += エナジードライブ:1*3
-SIF !PENIS(MASTER) && !TALENT:MASTER:去勢済み && !TALENT:MASTER:スライム
+SIF !PENIS(MASTER) && !TALENT:MASTER:去勢済み && !TALENT:MASTER:スライム && !TALENT:溶ける快
 	CFLAG:MASTER:残数 = 0
 
 IF ASSI >= 0
 	CFLAG:ASSI:残数 = 10
 	SIF TALENT:ASSI:絶倫
 		CFLAG:ASSI:残数 += 5
-	SIF !PENIS(ASSI) && !TALENT:ASSI:去勢済み && !TALENT:ASSI:スライム
+	SIF !PENIS(ASSI) && !TALENT:ASSI:去勢済み && !TALENT:ASSI:スライム && !TALENT:溶ける快
 		CFLAG:ASSI:残数 = 0
 ENDIF
 
@@ -331,7 +331,7 @@ ENDIF
 
 ;種族妖精ならランダムで消費アイテム取得
 IF CSTR:種族 == "妖精"
-	LOCAL = RAND(100, 108)
+	LOCAL = RAND(100, 110)
 	LOCAL:1 = RAND(1, 4)
 	PRINTFORML %CALLNAME:TARGET%の部屋にあった{LOCAL:1}個の%ITEMNAME:LOCAL%を回収しました
 	ITEM:LOCAL += LOCAL:1
@@ -576,7 +576,7 @@ ELSE
 				LOOP LOOPRES(0, 1)
 			;条件を満たしていればスライム浸食イベント発生するか選択できる
 			;条件：主人がスライムで、対象が種族[人間]である
-			ELSEIF TALENT:MASTER:スライム && CSTR:種族 == "人間"
+			ELSEIF (TALENT:MASTER:スライム || TALENT:MASTER:溶ける快) && CSTR:種族 == "人間" && !FLAG:抗スライム
 				PRINTFORMW 消耗して動けない%CALLNAME:TARGET%を見下ろしながら思う……
 				PRINTFORMW このまま%CALLNAME:TARGET%を……
 				PRINTL [0] 少しずつスライム化させていこう
@@ -607,32 +607,46 @@ ELSE
 						ENDIF
 					ELSEIF RESULT == 1
 						;深度を無視して一気にスライム化
-							CALL KOJO_MESSAGE_EVENT, "主人スライム強制変化"
+						CALL KOJO_MESSAGE_EVENT, "主人スライム強制変化"
+						IF TALENT:MASTER:溶ける快
+							CFLAG:スライム度 += 1500
+							TALENT:溶ける快 = 1
+							TALENT:妄信 = 1
+							RELATION:(NO:MASTER) += 50
+							CSTR:種族 = スライム
+						ELSE
 							CFLAG:スライム度 += 30
 							TALENT:スライム = 1
 							TALENT:崩壊 = 1
 							CSTR:種族 = スライム
-						IF CFLAG:陥落
-							PRINTFORMW %CALLNAME:TARGET%が、%CALLNAME:MASTER%に抱いてた関係は、スライムの本能に塗りつぶされてしまった……
-							SIF TALENT:恋慕
-								PRINTFORMW %CALLNAME:TARGET%は[恋慕]を失った
-							SIF TALENT:淫乱
-								PRINTFORMW %CALLNAME:TARGET%は[淫乱]を失った
-							SIF TALENT:服従
-								PRINTFORMW %CALLNAME:TARGET%は[服従]を失った
-							SIF TALENT:親愛
-								PRINTFORMW %CALLNAME:TARGET%は[親愛]を失った
-							SIF TALENT:娼婦
-								PRINTFORMW %CALLNAME:TARGET%は[娼婦]を失った
-							SIF TALENT:隷属
-								PRINTFORMW %CALLNAME:TARGET%は[隷属]を失った
-							CFLAG:陥落 = 0
+							IF CFLAG:陥落
+								PRINTFORMW %CALLNAME:TARGET%が、%CALLNAME:MASTER%に抱いてた感情は、スライムの本能に塗りつぶされてしまった……
+								SIF TALENT:恋慕
+									PRINTFORMW %CALLNAME:TARGET%は[恋慕]を失った
+								TALENT:恋慕 = 0
+								SIF TALENT:淫乱
+									PRINTFORMW %CALLNAME:TARGET%は[淫乱]を失った
+								TALENT:淫乱 = 0
+								SIF TALENT:服従
+									PRINTFORMW %CALLNAME:TARGET%は[服従]を失った
+								TALENT:服従 = 0
+								SIF TALENT:親愛
+									PRINTFORMW %CALLNAME:TARGET%は[親愛]を失った
+								TALENT:親愛 = 0
+								SIF TALENT:娼婦
+									PRINTFORMW %CALLNAME:TARGET%は[娼婦]を失った
+								TALENT:娼婦 = 0
+								SIF TALENT:隷属
+									PRINTFORMW %CALLNAME:TARGET%は[隷属]を失った
+								TALENT:隷属 = 0
+								CFLAG:陥落 = 0
+							ENDIF
 						ENDIF
 					ENDIF
 				LOOP LOOPRES(0, 2)
 			;助手が陥落して条件を満たしていれば、助手を使った吸血イベント発生するか選択できる
 			;条件：助手が居て、助手がスライムで、対象が種族[人間]である
-			ELSEIF ASSI >= 0 && CFLAG:ASSI:陥落 && TALENT:ASSI:スライム && CSTR:種族 == "人間"
+			ELSEIF ASSI >= 0 && CFLAG:ASSI:陥落 && (TALENT:ASSI:スライム || TALENT:ASSI:溶ける快) && CSTR:種族 == "人間" && !FLAG:抗スライム
 				PRINTFORML 今の無防備な%CALLNAME:TARGET%なら好き勝手できそうだ。
 				PRINTFORML %CALLNAME:ASSI%に襲わせますか？
 				PRINTL [0] - 襲わせる
@@ -731,7 +745,7 @@ ELSE
 				LOOP LOOPRES(0, 1)
 			;条件を満たしていればスライム浸食イベント発生するか選択できる
 			;条件：主人がスライムで、対象が種族[人間]である
-			ELSEIF TALENT:MASTER:スライム && CSTR:種族 == "人間"
+			ELSEIF (TALENT:MASTER:スライム || TALENT:MASTER:溶ける快) && CSTR:種族 == "人間" && !FLAG:抗スライム
 				PRINTFORMW 消耗して動けない%CALLNAME:TARGET%を見下ろしながら思う……
 				PRINTFORMW このまま%CALLNAME:TARGET%を……
 				PRINTL [0] 少しずつスライム化させていこう
@@ -762,38 +776,46 @@ ELSE
 						ENDIF
 					ELSEIF RESULT == 1
 						;深度を無視して一気にスライム化
-							CALL KOJO_MESSAGE_EVENT, "主人スライム強制変化"
+						CALL KOJO_MESSAGE_EVENT, "主人スライム強制変化"
+						IF TALENT:MASTER:溶ける快
+							CFLAG:スライム度 += 1500
+							TALENT:溶ける快 = 1
+							TALENT:妄信 = 1
+							RELATION:(NO:MASTER) += 50
+							CSTR:種族 = スライム
+						ELSE
 							CFLAG:スライム度 += 30
 							TALENT:スライム = 1
 							TALENT:崩壊 = 1
 							CSTR:種族 = スライム
-						IF CFLAG:陥落
-							PRINTFORMW %CALLNAME:TARGET%が、%CALLNAME:MASTER%に抱いてた感情は、スライムの本能に塗りつぶされてしまった……
-							SIF TALENT:恋慕
-								PRINTFORMW %CALLNAME:TARGET%は[恋慕]を失った
-								TALENT:恋慕 = 0
-							SIF TALENT:淫乱
-								PRINTFORMW %CALLNAME:TARGET%は[淫乱]を失った
-								TALENT:淫乱 = 0
-							SIF TALENT:服従
-								PRINTFORMW %CALLNAME:TARGET%は[服従]を失った
-								TALENT:服従 = 0
-							SIF TALENT:親愛
-								PRINTFORMW %CALLNAME:TARGET%は[親愛]を失った
-								TALENT:親愛 = 0
-							SIF TALENT:娼婦
-								PRINTFORMW %CALLNAME:TARGET%は[娼婦]を失った
-								TALENT:娼婦 = 0
-							SIF TALENT:隷属
-								PRINTFORMW %CALLNAME:TARGET%は[隷属]を失った
-								TALENT:隷属 = 0
-							CFLAG:陥落 = 0
+							IF CFLAG:陥落
+								PRINTFORMW %CALLNAME:TARGET%が、%CALLNAME:MASTER%に抱いてた感情は、スライムの本能に塗りつぶされてしまった……
+								SIF TALENT:恋慕
+									PRINTFORMW %CALLNAME:TARGET%は[恋慕]を失った
+									TALENT:恋慕 = 0
+								SIF TALENT:淫乱
+									PRINTFORMW %CALLNAME:TARGET%は[淫乱]を失った
+									TALENT:淫乱 = 0
+								SIF TALENT:服従
+									PRINTFORMW %CALLNAME:TARGET%は[服従]を失った
+									TALENT:服従 = 0
+								SIF TALENT:親愛
+									PRINTFORMW %CALLNAME:TARGET%は[親愛]を失った
+									TALENT:親愛 = 0
+								SIF TALENT:娼婦
+									PRINTFORMW %CALLNAME:TARGET%は[娼婦]を失った
+									TALENT:娼婦 = 0
+								SIF TALENT:隷属
+									PRINTFORMW %CALLNAME:TARGET%は[隷属]を失った
+									TALENT:隷属 = 0
+								CFLAG:陥落 = 0
+							ENDIF
 						ENDIF
 					ENDIF
 				LOOP LOOPRES(0, 2)
 			;助手が陥落して条件を満たしていれば、助手を使った吸血イベント発生するか選択できる
 			;条件：助手が居て、助手がスライムで、対象が種族[人間]である
-			ELSEIF ASSI >= 0 && CFLAG:ASSI:陥落 && TALENT:ASSI:スライム && CSTR:種族 == "人間"
+			ELSEIF ASSI >= 0 && CFLAG:ASSI:陥落 && (TALENT:ASSI:スライム || TALENT:ASSI:溶ける快) && CSTR:種族 == "人間" && !FLAG:抗スライム
 				PRINTFORML 今の無防備な%CALLNAME:TARGET%なら好き勝手できそうだ。
 				PRINTFORML %CALLNAME:ASSI%に襲わせますか？
 				PRINTL [0] - 襲わせる
