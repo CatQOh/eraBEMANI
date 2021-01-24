@@ -1035,8 +1035,15 @@ SELECTCASE アイテム名
 		EXP:使用対象:音ゲー経験++
 		BASE:使用対象:体力 += 10
 	CASE "TheSlimeOfYou"
-		PRINTFORMW ＜%CALLNAME:使用対象%はスライムに感染した＞
-		CFLAG:使用対象:スライム度 += RAND(1, 4)
+		IF TALENT:使用対象:スライム
+			PRINTFORMW ＜%CALLNAME:使用対象%はスライムとしての快楽に完全に目覚め、永久的にスライムとなった＞
+			TALENT:使用対象:溶ける快 = 1
+			TALENT:使用対象:スライム = 0
+			CFLAG:使用対象:スライム度 = 1500
+		ELSE
+			PRINTFORMW ＜%CALLNAME:使用対象%はスライムに感染した＞
+			CFLAG:使用対象:スライム度 += RAND(1, 4)
+		ENDIF
 	;排卵誘発剤
 	CASE "排卵誘発剤"
 		PLAYSOUND ドリンク
@@ -1100,7 +1107,7 @@ IF FLAG:抗スライム
 ELSE
 	PRINTL 　[1] - スライムの感染を予防する(再度抗スライム薬を購入時に切り替え可能)
 ENDIF
-PRINTL 　[2] - すべてのキャラのスライム化を治癒する(感染源も含め)
+PRINTL 　[2] - すべてのキャラのスライム化を治癒し、感染予防を行う(先天性のスライム持ち、及び溶ける快に目覚めた者は治療できない)
 PRINTL 　[0] - キャンセル
 
 DO
@@ -1118,13 +1125,14 @@ DO
 			BREAK
 		CASE 2
 			;変えた種族まで戻ってしまうけど致し方ない
+			FLAG:抗スライム = 1
 			FOR LCOUNT, 0, CHARANUM
 				SIF TALENT:LCOUNT:スライム
 					CSTR:LCOUNT:種族 = %CSVCSTR(NO:LCOUNT, GETNUM(CSTR, "種族"))%
-;				IF CHARANAMEF(LCOUNT) != "偽トラン" && !TALENT:LCOUNT:溶ける快
+				IF CHARANAMEF(LCOUNT) != "偽トラン" && !TALENT:LCOUNT:溶ける快
 					TALENT:LCOUNT:スライム = 0
 					CFLAG:LCOUNT:スライム度 = 0
-;				ENDIF
+				ENDIF
 			NEXT
 			PRINTW 全てのキャラの[スライム]及びスライムの感染を治癒しました
 			BREAK
@@ -1290,8 +1298,8 @@ SELECTCASE アイテムNO
 					RETURNF 0
 				RETURNF 1
 			CASE "TheSlimeOfYou"
-				;既に感染してると使えない
-				SIF CFLAG:使用対象:スライム度 || TALENT:使用対象:スライム
+				;既に感染してると使えないが、スライム化した後は再度使用可能になる
+				SIF (CFLAG:使用対象:スライム度 && !TALENT:使用対象:スライム) || TALENT:使用対象:溶ける快
 					RETURNF 0
 				RETURNF 1
 		ENDSELECT
@@ -1532,6 +1540,8 @@ SELECTCASE アイテム名
 		PRINTL eraBEMANIでモンエナ買えるって魔剤ンゴ！？
 	CASE "バナナ"
 		PRINTL 音ゲー廃人の主食
+	CASE "TheSlimeOfYou"
+		PRINTL 謎の液体金属から成分を抽出して作られた、とろけるような感覚を得る謎の薬。既にとろけてる者に与えると…？
 	CASE "排卵誘発剤"
 		PRINTL 一日だけ妊娠確率を上昇させます。頼れるのは祈りよりも薬です
 	CASE "リミッター解除"
@@ -1567,7 +1577,7 @@ SELECTCASE アイテム名
 	CASE "特殊技能研修"
 		PRINTL 特殊な研修と訓練を行い、能力のマイナス値を打ち消します。3日間使用不可になります
 	CASE "抗スライム薬"
-		PRINTL スライムの感染を予防or治癒する
+		PRINTL スライムの感染を予防or治癒します。干物が材料に使われているらしい…
 ENDSELECT
 
 @アイテム使用_逆引き, 使用対象
