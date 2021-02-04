@@ -21,9 +21,12 @@ SIF TEQUIP:アイマスク || TEQUIP:縄 || TEQUIP:ボールギャグ || TEQUIP:
 SIF TALENT:アニマル
 	COMRESULT = 0
 
-;ジュース持ってないとダメ
-コマンド実行条件 += "ジュース系アイテムが必要/"
+;ジュース持ってない or 保管済み粘液が200ml以上ないとダメ
+コマンド実行条件 += "ジュース系アイテム、もしくは保管済み粘液が200ml以上必要/"
 LOCAL = 0
+SIF FLAG:保管済み粘液 >= 200
+	LOCAL = 1
+
 FOR LCOUNT, 150, 200
 	SIF !ITEM:LCOUNT
 		CONTINUE
@@ -54,6 +57,8 @@ SIF ITEM:レモンジュース
 	PRINTL [5] レモンジュース
 SIF ITEM:ライムジュース
 	PRINTL [6] ライムジュース
+SIF FLAG:保管済み粘液 >= 200
+	PRINTL [7] スライムジュース
 
 PRINTL [100]やっぱりやめる
 
@@ -81,11 +86,14 @@ DO
 		CASE 6
 			ITEM:ライムジュース--
 			酒名 = ライムジュース
+		CASE 7
+			FLAG:保管済み粘液 -= 200
+			酒名 = スライムジュース
 		CASE 100
 			PRINTW ジュースを飲ませるのを止めました
 			RETURN 0
 	ENDSELECT
-LOOP LOOPRES(1, 2, 3, 4, 5, 6)
+LOOP LOOPRES(1, 2, 3, 4, 5, 6, 7)
 
 ;-------------------------------------------------
 ;実行決定
@@ -96,6 +104,13 @@ CALL KOJO_MESSAGE_COM
 ;ソース追加処理
 ;-------------------------------------------------
 SOURCE:恭順 = 10
+IF 酒名 == "スライムジュース"
+	IF  TALENT:スライム
+		CFLAG:スライム度 += RAND(10, 25)
+	ELSE
+		CFLAG:スライム度++
+	ENDIF
+ENDIF
 
 ;-------------------------------------------------
 ;絶頂チェック
