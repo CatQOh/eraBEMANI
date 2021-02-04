@@ -1,0 +1,181 @@
+﻿@監禁室選択
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LRESULT
+#DIM DYNAMIC 監禁室使用キャラ, 11
+
+
+
+PRINTL □使用する監禁施設を選択してください
+FOR LCOUNT, 1, ITEM:監禁室+1
+	PRINTFORM 　[{LCOUNT}] - 監禁室{LCOUNT} 
+	IF 監禁室使用状況:LCOUNT == ""
+		PRINTL [空き]
+	ELSE
+		監禁室使用キャラ:LCOUNT = FINDCHARA(CFLAG:監禁, LCOUNT)
+		PRINTFORML [使用中:%監禁室使用状況%]
+	ENDIF
+NEXT
+
+DRAWLINE
+PRINTPLAIN 　監禁室　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	LRESULT = RESULT
+	SELECTCASE LRESULT
+		CASE 0
+			RETURN
+		CASE 1 TO 10
+			IF 監禁室使用キャラ:LRESULT > 0
+				PRINTFORMW 監禁室{LRESULT}には現在%CALLNAME:(監禁室使用キャラ:LRESULT)%を監禁中です。ここを使いますか？
+				PRINTL [0] - はい
+				PRINTL [1] - いいえ
+				DO
+					INPUT
+					SIF RESULT == 1
+						RESTART
+				LOOP LOOPRES(0)
+			ENDIF
+			CALL 監禁室使用, LRESULT
+			RESTART
+	ENDSELECT
+LOOP 1
+
+
+@監禁室使用, 監禁室番号
+#DIM DYNAMIC 監禁室番号
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 配属人数
+#DIM DYNAMIC 配属スライム
+#DIM DYNAMIC 監禁可能
+#DIM DYNAMIC 監禁対象
+
+配属人数 = 0
+配属スライム = 0
+FOR LCOUNT, 1, CHARANUM
+	IF CSTR:LCOUNT:配属 == "監禁室"
+		配属人数++
+		SIF TALENT:LCOUNT:スライム || TALENT:LCOUNT:溶ける快
+			配属スライム++
+	ENDIF
+NEXT
+
+PRINTL □誰を監禁しますか？
+FOR PAGING, 1, CHARANUM
+	CALL PAGING, !CFLAG:PAGING:監禁, @"\@ TALENT:PAGING:ふたなり ? [ふたなり] # \@\@ TALENT:PAGING:去勢済み ? [去勢済み] # \@\@ TALENT:PAGING:母乳体質 ? [母乳体質] # \@\@ TALENT:PAGING:スライム ? [スライム] # \@\@ TALENT:PAGING:溶ける快 ? [溶ける快] # \@"
+NEXT
+SELECTCASE RESULT
+	CASE 1000
+		RETURN
+	CASEELSE
+		監禁対象 = RESULT
+ENDSELECT
+
+PRINTL □どのように監禁しますか？
+IF ITEM:触手使役術
+	PRINTL 　[1] - 触手監禁(触手による各性感帯の開発)
+ELSE
+	CALL PRINTCOLORL, "[-] - 触手監禁(触手使役術が必要)", "gray"
+ENDIF
+IF TALENT:監禁対象:母乳体質
+	PRINTL 　[2] - 搾乳監禁(母乳の採集)
+ELSE
+	CALL PRINTCOLORL, "[-] - 搾乳監禁(対象に母乳体質が必要)", "gray"
+ENDIF
+IF PENIS(監禁対象)
+	PRINTL 　[3] - 搾精監禁(精液の採集)
+ELSE
+	CALL PRINTCOLORL, "[-] - 搾精監禁(対象に男性器が必要)", "gray"
+ENDIF
+PRINTL 　[4] - 採血監禁(血液の採集)
+IF TALENT:監禁対象:スライム || TALENT:監禁対象:溶ける快 || 配属スライム
+	PRINTL 　[5] - スライム監禁(粘液の採集及びスライム侵食度の加速)
+ELSE
+	CALL PRINTCOLORL, "[-] - スライム監禁(スライムが必要)", "gray"
+ENDIF
+DRAWLINE
+PRINTPLAIN 　監禁室　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 1
+			SIF !ITEM:触手使役術
+				CONTINUE
+			$触手監禁
+			PRINTL □どこを開発しますか？
+			IF VAGINA(監禁対象)
+				PRINTFORML 　[1] - Ｖ(\@ GETBIT(CFLAG:監禁対象:監禁, 1) ? ○ # ×\@)
+			ELSE
+				CALL PRINTCOLORL, "[-] - Ｖ", "gray"
+			ENDIF
+			IF !TALENT:監禁対象:去勢済み
+				PRINTFORML 　[2] - Ｃ(\@ GETBIT(CFLAG:監禁対象:監禁, 2) ? ○ # ×\@)
+			ELSE
+				CALL PRINTCOLORL, "[-] - Ｃ", "gray"
+			ENDIF
+			PRINTFORML 　[3] - Ａ(\@ GETBIT(CFLAG:監禁対象:監禁, 3) ? ○ # ×\@)
+			PRINTFORML 　[4] - Ｂ(\@ GETBIT(CFLAG:監禁対象:監禁, 4) ? ○ # ×\@)
+			PRINTL 　[0] - 戻る [10] - 確定
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						RESTART
+					CASE 10
+						IF CFLAG:監禁対象:監禁 == 0
+							PRINTW 開発する部位を選んでください
+							GOTO 触手監禁
+						ENDIF
+						BREAK
+					CASE 1 TO 4
+						INVERTBIT CFLAG:監禁対象:監禁, RESULT
+						GOTO 触手監禁
+				ENDSELECT
+			LOOP 1
+		CASE 2
+		CASE 3
+			SIF !PENIS(監禁対象)
+				CONTINUE
+			$搾精監禁
+			PRINTL □搾精の方法を選んでください
+			IF 配属人数
+				PRINTFORML 　[1] - スタッフの手で行う(\@ GETBIT(CFLAG:監禁対象:監禁, 1) ? ○ # ×\@)
+			ELSE
+				CALL PRINTCOLORL, "[-] - スタッフの手で行う(人員の配属が必要)", "gray"
+			ENDIF
+			IF 基礎研究レベル
+				PRINTFORML 　[2] - 道具と機械を使用する(\@ GETBIT(CFLAG:監禁対象:監禁, 2) ? ○ # ×\@)
+			ELSE
+				CALL PRINTCOLORL, "[-] - 道具と機械を使用する(実験室ランクが必要)", "gray"
+			ENDIF
+			IF CMATCH(CSTR:配属, "医務室")
+				PRINTFORML 　[3] - 薬を使用する(\@ GETBIT(CFLAG:監禁対象:監禁, 3) ? ○ # ×\@)
+				PRINTFORML 　[4] - 尿道を使用する(\@ GETBIT(CFLAG:監禁対象:監禁, 4) ? ○ # ×\@)
+			ELSE
+				CALL PRINTCOLORL, "[-] - 薬を使用する(医務室ランクが必要)", "gray"
+				CALL PRINTCOLORL, "[-] - 尿道を使用する(医務室ランクが必要)", "gray"
+			ENDIF
+			PRINTL 　[0] - 戻る [10] - 確定
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						RESTART
+					CASE 10
+						IF CFLAG:監禁対象:監禁 == 0
+							PRINTW 搾精方法を選んでください
+							GOTO 搾精監禁
+						ENDIF
+						BREAK
+					CASE 1 TO 4
+						INVERTBIT CFLAG:監禁対象:監禁, RESULT
+						GOTO 搾精監禁
+				ENDSELECT
+			LOOP 1
+	ENDSELECT
+LOOP 1
+
+
