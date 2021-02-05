@@ -4,7 +4,7 @@ eraBEMANI_SP
 インストール方法<br>
 [μEmueraのAPK](https://github.com/xerysherry/uEmuera/releases)をインストールする<br>
 端末のストレージに「emuera」フォルダを作成する<br>
-emueraフォルダ内に[eraBEMANI_SP](https://github.com/CatQOh/eraBEMANI/releases/tag/SP_0.9)を解凍してコピーする<br>
+emueraフォルダ内に[eraBEMANI_SP](https://github.com/CatQOh/eraBEMANI/releases/tag/SP_20210205)を解凍してコピーする<br>
 アプリを起動すれば遊べる！<br>
 
 PC版eraBEMANI:https://github.com/CatQOh/eraBEMANI<br>
