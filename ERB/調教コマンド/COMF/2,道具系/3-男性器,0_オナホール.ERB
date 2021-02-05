@@ -3,54 +3,61 @@
 ;-------------------------------------------------
 @USERCOM_ABLE_オナホール, ARG
 #FUNCTION
+#DIM DYNAMIC 条件確定
 ;ゲーセンに居る場合はトイレじゃないとできない
+コマンド実行条件 += "ゲーセンではトイレじゃないと実行できない/"
 SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
-	RETURNF 0
+	COMRESULT = 0
 ;上級売春中は不可
+コマンド実行条件 += "上級売春中は実行不可/"
 SIF 上級売春中
-	RETURNF 0
+	COMRESULT = 0
 ;触手調教中はダメ
+コマンド実行条件 += "触手召喚中は実行できない/"
 SIF TEQUIP:触手
-	RETURNF 0
+	COMRESULT = 0
 ;性器が露出してないとダメ
+コマンド実行条件 += "性器が露出していないと実行できない/"
 SIF !性器露出(TARGET)
-	RETURNF 0
+	COMRESULT = 0
 ;解除はいつでも可能
-IF TEQUIP:オナホール
+SIF TEQUIP:オナホール && COMRESULT
+	条件確定 = 1
+
+;小人体型持ちは、実行者と対象双方が小人体型ならOK
+;それ以外の場合は主人が禁断の知識持ちじゃないとダメ
+コマンド実行条件 += "対象が[小人体型]の場合は、実行者の体格が同じか、主人に[禁断の知識]が必要/"
+IF TALENT:小人体型
+	SIF !TALENT:MASTER:禁断の知識 && !TALENT:PLAYER:小人体型
+		COMRESULT = 0
+ENDIF
+;アイテムを持っていないとダメ
+コマンド実行条件 += "アイテム[オナホール]が必要"
+SIF ITEM:オナホール <= 0
+	COMRESULT = 0
+;ペニス無いとダメ
+コマンド実行条件 += "対象に男性器が必要/"
+SIF !PENIS(TARGET)
+	COMRESULT = 0
+;少なくとも半立ち状態じゃないとダメ
+コマンド実行条件 += @"対象の勃起{PALAMLV:2}未満だと実行できない/"
+SIF PALAM:勃起 < PALAMLV:2
+	COMRESULT = 0
+
+;Ｐ使用中はダメ
+コマンド実行条件 += "男性器に道具使用中は実行できない/"
+SIF Ｐ使用中(TARGET)
+	COMRESULT = 0
+;新妻プレイ中はダメ
+コマンド実行条件 += "エプロン使用中は実行できない/"
+SIF TEQUIP:エプロン
+	COMRESULT = 0
+
+IF 条件確定
 	COMRESULT = 1
 	RETURNF 1
 ENDIF
-;小人体型持ちは、実行者と対象双方が小人体型ならOK
-;それ以外の場合は主人が禁断の知識持ちじゃないとダメ
-IF TALENT:小人体型
-	SIF !TALENT:MASTER:禁断の知識 && !TALENT:PLAYER:小人体型
-		RETURNF 0
-ENDIF
-;アイテムを持っていないとダメ
-SIF ITEM:オナホール <= 0
-	RETURNF 0
-;ペニス無いとダメ
-SIF !PENIS(TARGET)
-	RETURNF 0
-;少なくとも半立ち状態じゃないとダメ
-SIF PALAM:勃起 < PALAMLV:2
-	RETURNF 0
-
-;Ｐ使用中はダメ
-SIF Ｐ使用中(TARGET)
-	RETURNF 0
-
-;ASSIの場合、技巧3以上じゃないと使えない。
-IF ASSIPLAY
-	SIF ABL:ASSI:技巧 < 3
-		RETURNF 0
-ENDIF
-;新妻プレイ中はダメ
-SIF TEQUIP:エプロン
-	RETURNF 0
-
-COMRESULT = 1
-RETURNF 1
+RETURNF COMRESULT
 
 @COM_オナホール
 ;-------------------------------------------------
@@ -80,6 +87,9 @@ LOCAL = 500
 ;電動オナホなら快感アップ
 SIF SAVESTR:オナホール == "電動オナホール" && !TEQUIP:触手
 	LOCAL += 300
+;スライムオナホだとより快感アップ
+SIF SAVESTR:オナホール == "スライムオナホール" && !TEQUIP:触手
+	LOCAL += 500
 
 CALL 射精ゲージ増加, 射精ゲージ計算_オナホール(LOCAL), TARGET
 
@@ -94,6 +104,14 @@ SOURCE:快C = 300
 ;電動オナホなら快感アップ
 SIF SAVESTR:オナホール == "電動オナホール" && !TEQUIP:触手
 	SOURCE:快C += 200
+
+;スライムオナホなら快感アップに加えて僅かに負担軽減
+IF SAVESTR:オナホール == "スライムオナホール" && !TEQUIP:触手
+	SOURCE:快C += 300
+	LOSEBASE:体力 -= 5
+	LOSEBASE:気力 -= 10
+ENDIF
+
 SOURCE:露出 = 20
 SOURCE:不潔 = 50
 SOURCE:逸脱 = 30
@@ -162,6 +180,20 @@ SOURCE:快C += 50
 ;電動オナホなら快感アップ
 SIF SAVESTR:オナホール == "電動オナホール" && !TEQUIP:触手
 	SOURCE:快C += 50
+
+;スライムオナホなら快感アップに加えて僅かに負担軽減、ただしスライム感染のオマケ付き
+IF SAVESTR:オナホール == "スライムオナホール" && !TEQUIP:触手
+	SOURCE:快C += 100
+	LOSEBASE:気力 -= 10
+	IF !FLAG:抗スライム
+		IF TALENT:スライム
+			CFLAG:スライム度 += RAND(5, 20)
+		ELSE
+			CFLAG:スライム度++
+		ENDIF
+	ENDIF
+ENDIF
+
 SOURCE:露出 += 10
 SOURCE:不潔 += 10
 SOURCE:逸脱 += 15
@@ -174,6 +206,8 @@ LOCAL = 100
 ;電動オナホなら快感アップ
 SIF SAVESTR:オナホール == "電動オナホール" && !TEQUIP:触手
 	LOCAL += 100
+SIF SAVESTR:オナホール == "スライムオナホール" && !TEQUIP:触手
+	LOCAL += 200
 
 CALL 射精ゲージ増加, 射精ゲージ計算_オナホール(LOCAL), TARGET
 

@@ -5,44 +5,44 @@
 #FUNCTION
 #DIM DYNAMIC LCOUNT
 ;ゲーセンに居る場合はできない
+コマンド実行条件 += "ゲーセンでは実行不可/"
 SIF TEQUIP:ゲームセンター
-	RETURNF 0
+	COMRESULT = 0
 ;上級売春中は不可
+コマンド実行条件 += "上級売春中は実行不可/"
 SIF 上級売春中
-	RETURNF 0
+	COMRESULT = 0
 ;拘束中はダメ
+コマンド実行条件 += "拘束中は実行できない/"
 SIF TEQUIP:アイマスク || TEQUIP:縄 || TEQUIP:ボールギャグ || TEQUIP:触手
-	RETURNF 0
+	COMRESULT = 0
 ;アニマルだと無理
+コマンド実行条件 += "対象が[アニマル]の場合は実行できない/"
 SIF TALENT:アニマル
-	RETURNF 0
+	COMRESULT = 0
 
 ;妊娠中は飲ませされない
+コマンド実行条件 += "対象が妊娠中は実行できない/"
 SIF TALENT:妊娠
-	RETURNF 0
+	COMRESULT = 0
 
 ;機械と無機物は飲めない
+コマンド実行条件 += "対象が[無機物]or[機械]だと実行できない/"
 SIF TALENT:無機物 || CSTR:種族 == "機械"
-	RETURNF 0
+	COMRESULT = 0
 
 ;お酒持ってないとダメ ただしお正月はお屠蘇があるのでおｋ
+コマンド実行条件 += "お酒アイテムが必要/"
 IF MONTH == 1 && DAYS == 1
-	COMRESULT = 1
-	RETURNF 1
-ELSE
-	LOCAL = 0
-	FOR LCOUNT, 150, 200
-		IF ITEM:LCOUNT > 0
-			LOCAL = 1
-			BREAK
-		ENDIF
-	NEXT
+	RETURNF COMRESULT
+ELSEIF COMRESULT
+	SIF SUMARRAY(ITEM, 150, 200) == 0
+		COMRESULT = 0
 	;SIF レシピ判定("自家醸造日本酒") == 2 || レシピ判定("自家製ワイン") == 2 || レシピ判定("自家製ウイスキー") == 2 || レシピ判定("自家醸造ビール") == 2
 	;	LOCAL = 1
 ENDIF
 
-COMRESULT = LOCAL
-RETURNF LOCAL
+RETURNF COMRESULT
 
 @COM_お酒を飲ませる
 #DIM DYNAMIC ALC
@@ -273,6 +273,11 @@ DO
 									CONTINUE
 								製法 = 母乳割り
 								酒名 = 母乳サワー
+							CASE 10
+								SIF FLAG:保管済み粘液 < 100
+									CONTINUE
+								製法 = 粘液混ぜ
+								酒名 = 焼酎ゼリー
 						ENDSELECT
 						PRINTL アルコール度数を決めてください(5～20%)
 						CALL TWO_DIGIT, 20, "%", 5
@@ -308,11 +313,13 @@ DO
 				PRINTL [8] ザーメンハイボール(Alc.9～35%)
 			SIF FLAG:保管済み母乳 >= 100
 				PRINTL [9] 母乳ハイボール(Alc.9～35%)
+			SIF FLAG:保管済み粘液 >= 100
+				PRINTL [10] ウイスキージュレ(Alc.9～35%)
 				
 			DO
 				INPUT
 				SELECTCASE RESULT
-					CASE 1, 2, 5, 6, 7, 8, 9
+					CASE 1, 2, 5, 6, 7, 8, 9, 10
 						SELECTCASE RESULT
 							CASE 1
 								製法 = 水割り
@@ -345,6 +352,11 @@ DO
 									CONTINUE
 								製法 = 母乳割り
 								酒名 = 母乳ハイボール
+							CASE 10
+								SIF FLAG:保管済み粘液 < 100
+									CONTINUE
+								製法 = 粘液混ぜ
+								酒名 = ウイスキージュレ
 						ENDSELECT
 						PRINTL アルコール度数を決めてください(9～35%)
 						CALL TWO_DIGIT, 35, "%", 9
@@ -584,6 +596,8 @@ DO
 				PRINTL [5] ブラックルシアン(Alc.25～37%)
 			SIF FLAG:保管済み母乳 >= 100
 				PRINTL [6] カルーア母乳(Alc.5～15%)
+			SIF FLAG:保管済み粘液 >= 100
+				PRINTL [7] カルーアジュレ(Alc.5～15%)
 			DO
 				INPUT
 				SELECTCASE RESULT
@@ -595,7 +609,7 @@ DO
 						酒名 = カルーアのロック
 						ALC = 37
 						BREAK
-					CASE 3 TO 6
+					CASE 3 TO 7
 						SELECTCASE RESULT
 							CASE 3
 								製法 = カクテル
@@ -616,6 +630,11 @@ DO
 									CONTINUE
 								製法 = 母乳割り
 								酒名 = カルーア母乳
+							CASE 7
+								SIF FLAG:保管済み粘液 < 100
+									CONTINUE
+								製法 = 粘液混ぜ
+								酒名 = カルーアジュレ
 						ENDSELECT
 						IF 酒名 == "ブラックルシアン"
 							PRINTL アルコール度数を決めてください(25～37%)
@@ -680,6 +699,8 @@ ELSE
 			FLAG:保管済み精液 -= 100
 		CASE "母乳割り"
 			FLAG:保管済み母乳 -= 100
+		CASE "粘液混ぜ"
+			FLAG:保管済み粘液 -= 100
 		CASE "カクテル"
 			FOR LCOUNT, 0, VARSIZE("材料")
 				SIF 材料:LCOUNT
@@ -786,6 +807,23 @@ ELSE
 	ENDIF
 ENDIF
 
+;粘液混ぜを飲ませるとそこそこのスライム浸食、深化が発生、泥酔してると効力が落ちる。酔い上限を超えてても起きる
+IF 製法 == "粘液混ぜ"
+	IF CSTR:種族 == "スライム"
+		IF (TALENT:下戸 && CFLAG:酔 >= 20) || CFLAG:酔 >= 50
+			CFLAG:スライム度 += RAND(3, 6)
+		ELSE
+			CFLAG:スライム度 += RAND(30, 60)
+		ENDIF
+	ELSE
+		IF (TALENT:下戸 && CFLAG:酔 >= 20) || CFLAG:酔 >= 50
+			CFLAG:スライム度 += RAND(0, 2)
+		ELSE
+			CFLAG:スライム度 += RAND(2, 5)
+		ENDIF
+	ENDIF
+ENDIF
+
 ;-------------------------------------------------
 ;絶頂チェック
 ;-------------------------------------------------
@@ -812,6 +850,7 @@ SOURCE:恭順 += TEQUIP:お酒ボーナス*30
 
 ;依存度補正がお酒ボーナス最大のメリット
 TFLAG:依存度補正 += TEQUIP:お酒ボーナス
+
 
 ;-------------------------------------------------
 ;お酒を飲ませるコマンドのCOM_ORDERは特殊
@@ -902,6 +941,14 @@ SELECTCASE 製法
 	CASE "母乳割り"
 		PRINT -母乳割り(3)
 		LOCAL -= 3
+	CASE "粘液混ぜ"
+		IF CSTR:種族 == "スライム"
+			PRINT +スライムに粘液ゼリー(8)
+			LOCAL += 8
+		ELSE
+			PRINT +スイーツ感覚の粘液ゼリー(3)
+			LOCAL += 3
+		ENDIF
 	CASE "ハイボール"
 		PRINT +ハイボールは美味しい(3)
 		LOCAL += 3

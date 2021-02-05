@@ -210,9 +210,9 @@ FOR COUNT, 1100, 1500
 	SIF !設置筐体:ARG:COUNT
 		CONTINUE
 	SELECTCASE ITEMNAME:COUNT
-		CASE "beatmaniaIIDX", "pop'n music"
+		CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）", "pop'n music"
 			LOCAL = 2
-		CASE "Dance Dance Revolution", "GITADORA", "Dance Evolution", "クイズマジックアカデミー"
+		CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）", "GITADORA", "Dance Evolution", "クイズマジックアカデミー"
 			LOCAL = 3
 		CASE "jubeat", "REFLEC BEAT", "SOUND VOLTEX", "maimai", "CHUNITHM"
 			LOCAL = 1
@@ -279,7 +279,7 @@ FOR LCOUNT, 0, 400
 	SIF !階層筐体計算:LCOUNT
 		CONTINUE
 	SELECTCASE ITEMNAME:(LCOUNT+1100)
-		CASE "beatmaniaIIDX"
+		CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
 			;IIDXは最高で名声+20000 メンテでだいぶ左右される
 			;メンテ次第で名声×5の収入になるので最終的には一番の収入源になる……はず
 			LOCAL = (計算用名声/20+200)*GCメンテ
@@ -292,7 +292,7 @@ FOR LCOUNT, 0, 400
 			;待ち椅子ボーナス
 			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
 			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
-		CASE "Dance Dance Revolution"
+		CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
 			;DDRは立地の差が大きい メンテ次第で最低2000、最高28000
 			LOCAL = GC物件*2000+(GC物件*20*GCメンテ)
 			LOCAL += GC物件*(計算用名声/10)+GC物件*(計算用評判/10)
@@ -386,11 +386,11 @@ FOR LCOUNT, 0, 400
 					CONTINUE
 				;筐体ごとにシナジーがある
 				SELECTCASE ITEMNAME:(LCOUNT:1+1100)
-					CASE "beatmaniaIIDX"
+					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
 						LOCAL = 300
 					CASE "pop'n music"
 						LOCAL = 300
-					CASE "Dance Dance Revolution"
+					CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
 						LOCAL = 1000
 					CASE "GITADORA"
 						LOCAL = 500
@@ -418,11 +418,11 @@ FOR LCOUNT, 0, 400
 					CONTINUE
 				;筐体ごとにシナジーがある
 				SELECTCASE ITEMNAME:(LCOUNT:1+1100)
-					CASE "beatmaniaIIDX"
+					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
 						LOCAL = 500
 					CASE "pop'n music"
 						LOCAL = 150
-					CASE "Dance Dance Revolution"
+					CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
 						LOCAL = 300
 					CASE "GITADORA"
 						LOCAL = 500
@@ -450,11 +450,11 @@ FOR LCOUNT, 0, 400
 					CONTINUE
 				;筐体ごとにシナジーがある
 				SELECTCASE ITEMNAME:(LCOUNT:1+1100)
-					CASE "beatmaniaIIDX"
+					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
 						LOCAL = 150
 					CASE "pop'n music"
 						LOCAL = 500
-					CASE "Dance Dance Revolution"
+					CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
 						LOCAL = 500
 					CASE "GITADORA"
 						LOCAL = 150
@@ -491,11 +491,11 @@ RETURNF LOCAL:1
 
 VARSET LOCAL, 0
 SELECTCASE ITEMNAME:(筐体ナンバー+1100)
-	CASE "beatmaniaIIDX"
+	CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
 		LOCAL = 1000
 	CASE "pop'n music"
 		LOCAL = 900
-	CASE "Dance Dance Revolution"
+	CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
 		LOCAL = 1500
 	CASE "GITADORA"
 		LOCAL = 1000
@@ -671,11 +671,11 @@ RETURNF LOCAL:2
 
 ;大体筐体コストと同じ
 SELECTCASE ITEMNAME:(筐体ナンバー+1100)
-	CASE "beatmaniaIIDX"
+	CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
 		LOCAL = 2
 	CASE "pop'n music"
 		LOCAL = 2
-	CASE "Dance Dance Revolution"
+	CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
 		LOCAL = 3
 	CASE "GITADORA"
 		LOCAL = 3
@@ -826,24 +826,23 @@ RETURNF LOCAL:1
 @評判筐体補正
 #DIM DYNAMIC 筐体
 #DIM DYNAMIC LCOUNT
-
-VARSET LOCAL, 0
-
+#DIM DYNAMIC ゲーム種類, 2
+#DIM DYNAMIC 評判補正
 
 FOR LCOUNT, 0, 400
 	SIF !設置済み筐体:LCOUNT
 		CONTINUE
 	;CHUNITHMは評判に悪影響
 	IF ITEMNAME:LCOUNT == "CHUNITHM"
-		LOCAL -= 設置済み筐体:LCOUNT
+		ゲーム種類 -= 設置済み筐体:LCOUNT
 	ELSE
 		;置いてあるアーケードゲーム筐体の種類
 		SELECTCASE LCOUNT
 			CASE 0 TO 199
-				LOCAL++
+				ゲーム種類++
 			;その他
 			CASEELSE
-				LOCAL:1++
+				ゲーム種類:1++
 		ENDSELECT
 	ENDIF
 NEXT
@@ -853,28 +852,28 @@ FOR LCOUNT, 0, 400
 	SELECTCASE LCOUNT
 		CASE 0 TO 99
 			;各種筐体数＞置いてある種類だと偏ってるため評判が下がる
-			IF 設置済み筐体:LCOUNT > LOCAL
-				LOCAL:2 += (設置済み筐体:LCOUNT-LOCAL)*(設置済み筐体:LCOUNT-LOCAL)
+			IF 設置済み筐体:LCOUNT > ゲーム種類 && ゲーム種類 < 10
+				評判補正 += POWER(設置済み筐体:LCOUNT-ゲーム種類, 2)
 			;偏ってなければ筐体の数だけ上がる
 			ELSE
-				LOCAL:2 += 設置済み筐体:LCOUNT
+				評判補正 += 設置済み筐体:LCOUNT
 			ENDIF
 		;待ち椅子だけ例外
 		CASEELSE
 			IF ITEMNAME:LCOUNT != "待ち椅子"
 				;各種筐体数＞置いてある種類だと偏ってるため評判が下がる
-				IF 設置済み筐体:LCOUNT > LOCAL:1
-					LOCAL:2 += (設置済み筐体:LCOUNT-LOCAL:1)*(設置済み筐体:LCOUNT-LOCAL:1)
+				IF 設置済み筐体:LCOUNT > ゲーム種類:1 && ゲーム種類:1 < 10
+					評判補正 += POWER(設置済み筐体:LCOUNT-ゲーム種類, 2)
 				;偏ってなければ筐体の数だけ上がる
 				ELSE
-					LOCAL:2 += 設置済み筐体:LCOUNT
+					評判補正 += 設置済み筐体:LCOUNT
 				ENDIF
 			ENDIF
 	ENDSELECT
 NEXT
-LOCAL:2 += LOCAL+LOCAL:1
+評判補正 += ゲーム種類+ゲーム種類:1
 
-RETURN LOCAL:2
+RETURN 評判補正
 
 ;引数で指定した曜日が定休日かどうか 省略すれば今日の曜日
 ;書式 GC定休日("木") みたいな
@@ -904,9 +903,30 @@ ENDIF
 SIF 筐体ナンバー < 0
 	RETURNF 0
 
-IF 設置済み筐体:筐体ナンバー > 0
-	RETURNF 1
-ELSE
-	RETURNF 0
-ENDIF
-
+SELECTCASE ARGS
+	CASE "beatmaniaIIDX"
+		{
+		IF 設置済み筐体:(GETNUM(ITEM, "beatmaniaIIDX")-1100) || 
+		   設置済み筐体:(GETNUM(ITEM, "beatmaniaIIDX（LM）")-1100)
+		}
+			RETURNF 1
+		ELSE
+			RETURNF 0
+		ENDIF
+	CASE "Dance Dance Revolution"
+		{
+		IF 設置済み筐体:(GETNUM(ITEM, "Dance Dance Revolution")-1100) || 
+		   設置済み筐体:(GETNUM(ITEM, "Dance Dance Revolution（白）")-1100) || 
+		   設置済み筐体:(GETNUM(ITEM, "Dance Dance Revolution（金）")-1100)
+		}
+			RETURNF 1
+		ELSE
+			RETURNF 0
+		ENDIF
+	CASEELSE
+		IF 設置済み筐体:筐体ナンバー > 0
+			RETURNF 1
+		ELSE
+			RETURNF 0
+		ENDIF
+ENDSELECT

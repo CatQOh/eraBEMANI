@@ -1,6 +1,5 @@
 ﻿@SHOW_SHOP
 #DIM DYNAMIC LCOUNT
-#DIM UPDATE
 
 ;学園モードでは別途SHOPを使うためこの関数は使わない
 SIF ゲームモード() == "学園モード"
@@ -12,15 +11,14 @@ SIF ゲームモード() == "段位認定" && サウンド
 
 VARLINE = 0
 
-SIF データID == 0
-	データID = GETSECOND()
-
 SIF TARGET == 0
 	TARGET = -1
 
 ;STRATEGYモードクリアデータを周回可能にする
 SIF ゲームモード() == "フリーモード" && FLAG:パートナー
 	FLAG:周回可能 = 1
+
+CALL セーブデータアップデート
 
 FOR LCOUNT, 0, CHARANUM
 	;CSVを確認する
@@ -47,37 +45,6 @@ FOR LCOUNT, 0, CHARANUM
 		BASE:LCOUNT:魔力 = LIMIT(BASE:LCOUNT:魔力, 0, MAXBASE:LCOUNT:魔力)
 	ENDIF
 NEXT
-
-FOR LCOUNT, 0, CHARANUM
-	;以下セーブデータのアップデート用
-	SIF UPDATE
-		BREAK
-	;CFLAG:配属をCSTR:配属に移動
-	SELECTCASE CFLAG:LCOUNT:配属
-		CASE 1
-			CSTR:LCOUNT:配属 = ゲームセンター
-			CFLAG:LCOUNT:配属 = 0
-		CASE 2
-			CSTR:LCOUNT:配属 = 娼館
-			CFLAG:LCOUNT:配属 = 0
-		CASE 4
-			CSTR:LCOUNT:配属 = 芸能プロダクション
-			CFLAG:LCOUNT:配属 = 0
-	ENDSELECT
-	;娼館に配属してるキャラで、部屋番号実装前に配属してたキャラの配属を外す
-	SIF CSTR:LCOUNT:配属 == "娼館" && CFLAG:LCOUNT:娼館部屋番号 == 0
-		CALL 配属解除, LCOUNT
-	;モチベーションが設定されてなければ初期値(50)にする
-	SIF CFLAG:LCOUNT:モチベーション == 0
-		CFLAG:LCOUNT:モチベーション = 50
-	;各SAVESTRにアイテム名をセットする
-	FOR LCOUNT, 0, 50
-		SIF SAVESTR:LCOUNT == ""
-			SAVESTR:LCOUNT = %SAVESTRNAME:LCOUNT%
-	NEXT
-	UPDATE = 1
-NEXT
-
 
 CALL CVAR_RESET
 
@@ -221,7 +188,7 @@ SELECTCASE ゲームモード()
 	CASE "経営モード", "フリーモード"
 		コマンド表示用:4 = %SET_TOOLTIP("[103] - 経営     ", "収益要素を管理します")%
 		;パートナーに話しかける口上が実装されていれば表示
-		TRYCCALLFORM EXIST_STRATEGY_KOJO_K{FLAG:パートナー}
+		TRYCCALLFORM EXIST_STRATEGY_KOJO_%CSVNAMERPS(FLAG:パートナー)%
 			SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
 				コマンド表示用:5 = %SET_TOOLTIP("[104] - 経営相談 ", @"%CSVCALLNAMEF(FLAG:パートナー)%に経営の相談をします")%
 		CATCH
@@ -522,7 +489,7 @@ SELECTCASE ゲームモード()
 	CASE "経営モード", "フリーモード"
 		コマンド表示用:4 = %SET_TOOLTIP("[103] - Management        ", "収益要素を管理します")%
 		;パートナーに話しかける口上が実装されていれば表示
-		TRYCCALLFORM EXIST_STRATEGY_KOJO_K{FLAG:パートナー}
+		TRYCCALLFORM EXIST_STRATEGY_KOJO_%CSVNAMERPS(FLAG:パートナー)%
 			SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
 				コマンド表示用:5 = %SET_TOOLTIP("[104] - Talk with Manager ", @"%CSVCALLNAMEDISP(FLAG:パートナー)%に経営の相談をします")%
 		CATCH
@@ -787,7 +754,7 @@ SELECTCASE RESULT
 		LTARGET = TARGET
 		TARGET = GETCHARA(FLAG:パートナー)
 		SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
-			TRYCALLFORM TALK_PARTNER_K{FLAG:パートナー}
+			TRYCALLFORM TALK_PARTNER_%CSVNAMERPS(FLAG:パートナー)%
 		TARGET = LTARGET
 	;一転攻勢
 	CASE 105
@@ -1009,7 +976,7 @@ RETURN 0
 ;　体力[********************************](XXXX/XXXX)[排卵誘発中]
 ;　気力[********************************](XXXX/XXXX)
 ;
-;　保管済み母乳:Xml　保管済み精液:Xml　保管済み血液:Xml
+;　保管済み母乳:Xml　保管済み精液:Xml　保管済み血液:Xml　保管済み粘液:Xml
 ;　主人:XXX
 ;　助手:XXX
 ;-------------------------------------------------------------------------------------
@@ -1263,6 +1230,8 @@ IF LANGUAGE == "ENG"
 		PRINTFORM 　Saved Samen:{FLAG:保管済み精液}ml
 	SIF FLAG:保管済み血液
 		PRINTFORM 　Saved Blood:{FLAG:保管済み血液}ml
+	SIF FLAG:保管済み粘液
+		PRINTFORM 　Saved Mucus:{FLAG:保管済み粘液}ml
 	SIF !LINEISEMPTY()
 		PRINTL 
 
@@ -1295,6 +1264,8 @@ ELSE
 		PRINTFORM 　保管済み精液:{FLAG:保管済み精液}ml
 	SIF FLAG:保管済み血液
 		PRINTFORM 　保管済み血液:{FLAG:保管済み血液}ml
+	SIF FLAG:保管済み粘液
+		PRINTFORM 　保管済み粘液:{FLAG:保管済み粘液}ml
 	SIF !LINEISEMPTY()
 		PRINTL 
 

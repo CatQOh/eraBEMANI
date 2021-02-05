@@ -1,0 +1,93 @@
+﻿;-------------------------------------------------
+;魔法の練習
+;-------------------------------------------------
+@USERCOM_ABLE_魔法の練習, ARG
+#FUNCTION
+;ゲーセンに居る場合はできない
+コマンド実行条件 += "ゲーセンでは実行不可/"
+SIF TEQUIP:ゲームセンター
+	COMRESULT = 0
+;助手可能もしくは陥落済みじゃないとダメ
+コマンド実行条件 += "対象が陥落済みか、助手可能でないと実行できない/"
+SIF !CFLAG:陥落 && CFLAG:状態 != 2
+	COMRESULT = 0
+;拘束中はダメ
+コマンド実行条件 += "拘束中は実行できない/"
+SIF TEQUIP:アイマスク || TEQUIP:縄 || TEQUIP:ボールギャグ || TEQUIP:触手
+	COMRESULT = 0
+;お風呂場でもダメ
+コマンド実行条件 += "お風呂場では実行できない/"
+SIF TEQUIP:お風呂場
+	COMRESULT = 0
+;主人か対象が魔法技能無いとダメ
+コマンド実行条件 += "実行者か対象に魔法技能が必要/"
+SIF !ABL:魔法技能 && !ABL:PLAYER:魔法技能
+	COMRESULT = 0
+
+RETURNF COMRESULT
+
+@COM_魔法の練習
+PRINTL 魔法の練習
+CALL KOJO_MESSAGE_COM
+
+;実行者が奴隷であるフラグ
+TFLAG:奴隷実行 = 1
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 50
+LOSEBASE:気力 += 150
+
+SOURCE:習得 = 300
+SOURCE:恭順 = 30
+SOURCE:屈従 = 100
+SOURCE:恐怖 = 50
+SOURCE:逸脱 = 50
+SOURCE:苦痛 = 30
+SOURCE:反感 = 100
+SOURCE:達成 = 200
+SOURCE:鬱屈 = 300
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;魔術師は効果が低い
+IF ABL:魔法技能
+	IF TALENT:魔術師
+		CALL EXPUP, "詠唱経験", 1
+	ELSE
+		IF TALENT:習得早い
+			CALL EXPUP, "詠唱経験", 3
+		ELSE
+			CALL EXPUP, "詠唱経験", 2
+		ENDIF
+	ENDIF
+ENDIF
+IF ABL:PLAYER:魔法技能
+	IF TALENT:PLAYER:魔術師
+		CALL EXPUP, "詠唱経験", 1, PLAYER
+	ELSE
+		IF TALENT:PLAYER:習得早い
+			CALL EXPUP, "詠唱経験", 3, PLAYER
+		ELSE
+			CALL EXPUP, "詠唱経験", 2, PLAYER
+		ENDIF
+	ENDIF
+ENDIF
+
+RETURN 1
+

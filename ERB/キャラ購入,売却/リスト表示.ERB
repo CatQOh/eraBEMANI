@@ -102,18 +102,68 @@ FOR LCOUNT, 0, 10000
 		CONTINUE
 	;フィルタによる除外
 	IF GROUPMATCH(ARG, 0, 4)
+		SIF LCOUNT == NO:MASTER
+			CONTINUE
 		SIF CCB:LCOUNT
 			CONTINUE
 		SIF FLAG:男女フィルタ != CSVTALENT(LCOUNT , GETNUM(TALENT, "性別")) && FLAG:男女フィルタ
 			CONTINUE
-		SIF FLAG:フィルタスイッチ１ == 1 && CSVTALENT(LCOUNT, FLAG:カスタムフィルタ１) == 0
-			CONTINUE
-		SIF FLAG:フィルタスイッチ１ == 2 && CSVTALENT(LCOUNT, FLAG:カスタムフィルタ１) == 1
-			CONTINUE
-		SIF FLAG:フィルタスイッチ２ == 1 && CSVTALENT(LCOUNT, FLAG:カスタムフィルタ２) == 0
-			CONTINUE
-		SIF FLAG:フィルタスイッチ２ == 2 && CSVTALENT(LCOUNT, FLAG:カスタムフィルタ２) == 1
-			CONTINUE
+		;一致するキャラだけ表示
+		IF FLAG:フィルタスイッチ１ == 1
+			SELECTCASE TALENTNAME:(FLAG:カスタムフィルタ１)
+				CASE "恋心"
+					SIF CSVCSTR(LCOUNT, GETNUM(CSTR, "恋心")) == ""
+						CONTINUE
+				CASE "既婚者"
+					SIF CSVCSTR(LCOUNT, GETNUM(CSTR, "既婚者")) == ""
+						CONTINUE
+				CASEELSE
+					SIF CSVTALENT(LCOUNT, FLAG:カスタムフィルタ１) == 0
+						CONTINUE
+			ENDSELECT
+		ENDIF
+		;一致するキャラを除外
+		IF FLAG:フィルタスイッチ１ == 2
+			SELECTCASE TALENTNAME:(FLAG:カスタムフィルタ１)
+				CASE "恋心"
+					SIF CSVCSTR(LCOUNT, GETNUM(CSTR, "恋心")) != ""
+						CONTINUE
+				CASE "既婚者"
+					SIF CSVCSTR(LCOUNT, GETNUM(CSTR, "既婚者")) != ""
+						CONTINUE
+				CASEELSE
+					SIF CSVTALENT(LCOUNT, FLAG:カスタムフィルタ１) == 1
+						CONTINUE
+			ENDSELECT
+		ENDIF
+		;一致するキャラだけ表示
+		IF FLAG:フィルタスイッチ２ == 1
+			SELECTCASE TALENTNAME:(FLAG:カスタムフィルタ２)
+				CASE "恋心"
+					SIF CSVCSTR(LCOUNT, GETNUM(CSTR, "恋心")) == ""
+						CONTINUE
+				CASE "既婚者"
+					SIF CSVCSTR(LCOUNT, GETNUM(CSTR, "既婚者")) == ""
+						CONTINUE
+				CASEELSE
+					SIF CSVTALENT(LCOUNT, FLAG:カスタムフィルタ２) == 0
+						CONTINUE
+			ENDSELECT
+		ENDIF
+		;一致するキャラを除外
+		IF FLAG:フィルタスイッチ２ == 2
+			SELECTCASE TALENTNAME:(FLAG:カスタムフィルタ２)
+				CASE "恋心"
+					SIF CSVCSTR(LCOUNT, GETNUM(CSTR, "恋心")) != ""
+						CONTINUE
+				CASE "既婚者"
+					SIF CSVCSTR(LCOUNT, GETNUM(CSTR, "既婚者")) != ""
+						CONTINUE
+				CASEELSE
+					SIF CSVTALENT(LCOUNT, FLAG:カスタムフィルタ２) == 1
+						CONTINUE
+			ENDSELECT
+		ENDIF
 		SIF FLAG:バストサイズフィルタ != CSVTALENT(LCOUNT, GETNUM(TALENT, "バストサイズ")) && FLAG:バストサイズフィルタ
 			CONTINUE
 		SIF 登場作品フィルタ != "" && GROUPMATCH(登場作品フィルタ, CSVCSTR(LCOUNT, GETNUM(CSTR, "登場作品")), CSVCSTR(LCOUNT, GETNUM(CSTR, "登場作品２")), CSVCSTR(LCOUNT, GETNUM(CSTR, "登場作品３"))) == 0
@@ -122,6 +172,12 @@ FOR LCOUNT, 0, 10000
 			CONTINUE
 		SIF 種族フィルタ != "" && 種族フィルタ != CSVCSTR(LCOUNT, GETNUM(CSTR, "種族"))
 			CONTINUE
+		IF FLAG:口上キャラフィルタ
+			TRYCCALLFORM EXIST_KOJO_%CSVNAMERPS(LCOUNT)%
+			CATCH
+				CONTINUE
+			ENDCATCH
+		ENDIF
 
 		SELECTCASE CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格"))
 			CASE FLAG:価格フィルタ下限 TO 価格上限
@@ -171,17 +227,17 @@ FOR LCOUNT, 0, 10000
 	;口上表示設定、かつ口上の存在するキャラは青文字表示
 	IF FLAG:口上表示
 		IF ARG == 0
-			TRYCCALLFORM EXIST_KOJO_K{LCOUNT}
+			TRYCCALLFORM EXIST_KOJO_%CSVNAMERPS(LCOUNT)%
 				SETCOLOR 100, 150, 200
 			CATCH
 			ENDCATCH
 		ELSEIF ARG == 2
-			TRYCCALLFORM EXIST_MASTER_KOJO_K{LCOUNT}
+			TRYCCALLFORM EXIST_MASTER_KOJO_%CSVNAMERPS(LCOUNT)%
 				SETCOLOR 100, 150, 200
 			CATCH
 			ENDCATCH
 		ELSEIF ARG == 3
-			TRYCCALLFORM EXIST_STRATEGY_KOJO_K{LCOUNT}
+			TRYCCALLFORM EXIST_STRATEGY_KOJO_%CSVNAMERPS(LCOUNT)%
 				SETCOLOR 100, 150, 200
 			CATCH
 			ENDCATCH
@@ -225,12 +281,14 @@ IF GROUPMATCH(ARG, 0, 4)
 		PRINTFORM [20001] Gender Filter：
 		SELECTCASE FLAG:男女フィルタ
 			CASE 0
-				PRINTL None
+				PRINT None
 			CASE 1
-				PRINTL Show Male
+				PRINT Show Male
 			CASE 2
-				PRINTL Show Female
+				PRINT Show Female
 		ENDSELECT
+		PRINTPLAIN 　
+		PRINTFORML [20002] Dialogue Filter：\@ FLAG:口上キャラフィルタ ? ON # OFF \@
 		PRINTPLAIN 　CUSTOM FILTER　
 		PRINT [20003] Talent Filter1：
 		IF FLAG:カスタムフィルタ１ >= 0 && FLAG:フィルタスイッチ１
@@ -322,12 +380,14 @@ IF GROUPMATCH(ARG, 0, 4)
 		PRINTFORM [20001] 男女フィルタ：
 		SELECTCASE FLAG:男女フィルタ
 			CASE 0
-				PRINTL 切
+				PRINT 切
 			CASE 1
-				PRINTL 男性を表示
+				PRINT 男性を表示
 			CASE 2
-				PRINTL 女性を表示
+				PRINT 女性を表示
 		ENDSELECT
+		PRINTPLAIN 　
+		PRINTFORML [20002] 口上キャラフィルタ：\@ FLAG:口上キャラフィルタ ? オン # オフ \@
 		PRINTPLAIN 　CUSTOM FILTER　
 		PRINT [20003] カスタムフィルタ1：
 		IF FLAG:カスタムフィルタ１ >= 0 && FLAG:フィルタスイッチ１
@@ -481,6 +541,9 @@ DO
 					TFLAG:ページ数 = 0
 					BREAK
 			ENDSELECT
+		CASE 20002
+			INVERTBIT FLAG:口上キャラフィルタ, 0
+			BREAK
 		CASE 20010
 			CALL 登場作品フィルタ設定, 登場作品フィルタ
 			TFLAG:ページ数 = 0

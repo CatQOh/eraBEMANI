@@ -1,0 +1,252 @@
+﻿;-------------------------------------------------
+;粘液ぶっかけ
+;-------------------------------------------------
+@USERCOM_ABLE_粘液ぶっかけ, ARG
+#FUNCTION
+
+;ゲーセンに居る場合はできない
+コマンド実行条件 += "ゲーセンでは実行不可/"
+SIF TEQUIP:ゲームセンター
+	COMRESULT = 0
+;上級売春中は不可
+コマンド実行条件 += "上級売春中は実行不可/"
+SIF 上級売春中
+	COMRESULT = 0
+;触手調教中はダメ
+コマンド実行条件 += "触手召喚中は実行できない/"
+SIF TEQUIP:触手
+	COMRESULT = 0
+コマンド実行条件 += "スライム付着中は実行できない/"
+SIF TEQUIP:粘液ぶっかけ
+	COMRESULT = 0
+;新妻プレイ中はダメ
+コマンド実行条件 += "エプロン使用中は実行できない/"
+SIF TEQUIP:エプロン
+	COMRESULT = 0
+;シャワー使用中は不可
+コマンド実行条件 += "シャワー使用中は実行できない/"
+SIF TEQUIP:シャワー
+	COMRESULT = 0
+;機械、無機物には実行不可
+コマンド実行条件 += "機械及び無機物には実行できない/"
+IF TALENT:無機物 || CSTR:種族 == "機械"
+	COMRESULT = 0
+ENDIF
+;保管済み粘液が10000ml以上でなければいけない
+コマンド実行条件 += "保管済み粘液が10000ml以上必要/"
+SIF FLAG:保管済み粘液 < 10000
+	COMRESULT = 0
+
+
+RETURNF COMRESULT
+
+@COM_粘液ぶっかけ
+PRINTL 粘液ぶっかけ
+CALL KOJO_MESSAGE_COM
+
+;粘液ぶっかけの処理
+TEQUIP:粘液ぶっかけ = 1
+FLAG:保管済み粘液 -= 10000
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 50
+LOSEBASE:気力 += 100
+
+SOURCE:快C += 30
+SOURCE:快V += 30
+SOURCE:快A += 30
+SOURCE:快B += 30
+SOURCE:液体 = 1000
+SOURCE:恐怖 = 1000
+SOURCE:不潔 = 1000
+SOURCE:逸脱 = 1000
+SOURCE:反感 = 2500
+
+IF TALENT:スライム 
+	LOSEBASE:体力 -= 20
+	LOSEBASE:気力 -= 20
+	SOURCE:欲情 = 100
+	SOURCE:不潔 -= 200
+	SOURCE:恐怖 -= 200
+	SOURCE:反感 -= 2000
+ELSEIF TALENT:溶ける快
+	LOSEBASE:体力 -= 35
+	LOSEBASE:気力 -= 50
+	SOURCE:欲情 = 300
+	SOURCE:不潔 -= 800
+	SOURCE:恐怖 -= 250
+	SOURCE:反感 -= 2500
+ENDIF
+
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 600
+
+;苦痛を伴わないマゾっ気及びマゾの処理は先にしておく
+;マゾっ気を見る
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		SOURCE:欲情 += 0
+	CASE 1
+		SOURCE:欲情 += 30
+	CASE 2
+		SOURCE:欲情 += 70
+	CASE 3
+		SOURCE:欲情 += 120
+	CASE 4
+		SOURCE:欲情 += 180
+	CASE 5
+		SOURCE:欲情 += 250
+	CASE 6
+		SOURCE:欲情 += 300
+	CASE 7
+		SOURCE:欲情 += 350
+	CASE 8
+		SOURCE:欲情 += 400
+	CASE 9
+		SOURCE:欲情 += 450
+	CASE IS >= 10
+		SOURCE:欲情 += 500
+ENDSELECT
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+
+;異常経験
+IF CSTR:種族 != "スライム" && !CFLAG:スライム姦された経験
+	PRINTL ＜スライム姦＞
+	CALL EXPUP, "異常経験", 1
+ENDIF
+CFLAG:スライム姦された経験++
+
+;スライム予防無しでスライム度増加判定が発生する
+;対象がスライムならばスライム度大幅増加
+IF !FLAG:抗スライム
+	IF TALENT:スライム
+		CFLAG:スライム度 += RAND(50, 100)
+	ELSE
+		CFLAG:スライム度 += RAND(1, 3)
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+CALL EXPUP_BASE, 1, 3
+
+
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM_粘液ぶっかけ
+PRINTL ＜スライム付着中＞
+
+LOSEBASE:体力 += 20
+LOSEBASE:気力 += 50
+
+SOURCE:快C += 200
+SOURCE:快V += 200
+SOURCE:快A += 200
+SOURCE:快B += 200
+SOURCE:液体 += 500
+SOURCE:恐怖 += 800
+SOURCE:不潔 += 800
+SOURCE:逸脱 += 1000
+SOURCE:反感 += 1000
+
+IF TALENT:スライム 
+	LOSEBASE:体力 -= 10
+	LOSEBASE:気力 -= 20
+	SOURCE:快C += 50
+	SOURCE:快V += 50
+	SOURCE:快A += 50
+	SOURCE:快B += 50
+	SOURCE:欲情 += 100
+	SOURCE:不潔 -= 300
+	SOURCE:恐怖 -= 300
+	SOURCE:反感 -= 500
+ELSEIF TALENT:溶ける快
+	LOSEBASE:体力 -= 15
+	LOSEBASE:気力 -= 30
+	SOURCE:快C += 100
+	SOURCE:快V += 100
+	SOURCE:快A += 100
+	SOURCE:快B += 100
+	SOURCE:欲情 += 300
+	SOURCE:不潔 -= 600
+	SOURCE:恐怖 -= 600
+	SOURCE:反感 -= 1000
+ENDIF
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 700
+
+;苦痛を伴わないマゾっ気及びマゾの処理は先にしておく
+;マゾっ気を見る
+
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		SOURCE:欲情 += 0
+	CASE 1
+		SOURCE:欲情 += 30
+	CASE 2
+		SOURCE:欲情 += 70
+	CASE 3
+		SOURCE:欲情 += 120
+	CASE 4
+		SOURCE:欲情 += 180
+	CASE 5
+		SOURCE:欲情 += 250
+	CASE 6
+		SOURCE:欲情 += 300
+	CASE 7
+		SOURCE:欲情 += 350
+	CASE 8
+		SOURCE:欲情 += 400
+	CASE 9
+		SOURCE:欲情 += 450
+	CASE IS >= 10
+		SOURCE:欲情 += 500
+ENDSELECT
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+
+CALL EXPUP, "Ｖ経験", 1
+CALL EXPUP, "Ａ経験", 1
+
+IF !FLAG:抗スライム
+	IF TALENT:スライム
+		CFLAG:スライム度 += RAND(30, 60)
+	ELSE
+		CFLAG:スライム度 += RAND(1, 3)
+	ENDIF
+ENDIF
+
+
+RETURN 1
+

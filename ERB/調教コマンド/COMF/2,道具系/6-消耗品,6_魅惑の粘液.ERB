@@ -1,0 +1,119 @@
+﻿;-------------------------------------------------
+;魅惑の粘液
+;-------------------------------------------------
+@USERCOM_ABLE_魅惑の粘液, ARG
+#FUNCTION
+;ゲーセンに居る場合はできない
+コマンド実行条件 += "ゲーセンでは実行不可/"
+SIF TEQUIP:ゲームセンター
+	COMRESULT = 0
+;上級売春中は実行不可
+コマンド実行条件 += "上級売春中は実行不可/"
+SIF 上級売春中
+	COMRESULT = 0
+;上級売春中はアイテム無いとダメ
+コマンド実行条件 += "アイテム[魅惑の粘液]が必要/"
+;アイテムを持っていないとダメ
+SIF !ITEM:魅惑の粘液
+	COMRESULT = 0
+
+;全裸じゃないとダメ
+コマンド実行条件 += "対象が服を着てると実行できない/"
+SIF OVER_GENITAL(TARGET) != "" || OVER_BUST(TARGET) != ""
+	COMRESULT = 0
+;シャワー中はダメ
+コマンド実行条件 += "シャワー中は実行できない/"
+SIF TEQUIP:シャワー
+	COMRESULT = 0
+
+RETURNF COMRESULT
+
+@COM_魅惑の粘液
+PRINTL 魅惑の粘液
+CALL KOJO_MESSAGE_COM
+
+SIF !上級売春中
+	ITEM:魅惑の粘液--
+
+;媚薬効果は対象が薬毒耐性持ちだったり、[無機物]or[機械]だと発生せず
+IF !TALENT:薬毒耐性 || !TALENT:無機物 || CSTR:種族 != "機械"
+	CFLAG:媚薬 += 10
+	TEQUIP:媚薬 = 1
+	IF PENIS(TARGET)
+		CFLAG:残数 += 2
+	ENDIF
+ENDIF
+
+;スライム予防がなく、対象が[無機物]or[機械]でなければスライム度増加判定が発生する
+;対象がスライムならばスライム度大幅増加、調教者がスライム及び溶ける快を持っている場合にもスライム度増加に補正が発生する
+IF !FLAG:抗スライム || !TALENT:無機物 || CSTR:種族 != "機械"
+	IF TALENT:スライム
+		CFLAG:スライム度 += RAND(30, 60)
+	ELSE
+		CFLAG:スライム度 += RAND(3, 6)
+	ENDIF
+
+	IF TALENT:PLAYER:溶ける快
+		CFLAG:スライム度 += RAND(12, 24)
+	ELSEIF TALENT:PLAYER:スライム
+		CFLAG:スライム度 += RAND(6, 12)
+	ENDIF
+ENDIF
+
+IF !TALENT:PLAYER:薬毒耐性 || !TALENT:PLAYER:無機物 || CSTR:PLAYER:種族 != "機械"
+	CFLAG:PLAYER:媚薬 += 5
+	TEQUIP:PLAYER:媚薬 = 1
+	IF PENIS(PLAYER)
+		CFLAG:PLAYER:残数++
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+;調教者がスライム及び溶ける快を持っていれば消費を抑えられる
+IF TALENT:PLAYER:溶ける快
+	LOSEBASE:体力 += 80
+	LOSEBASE:気力 += 80
+ELSEIF TALENT:PLAYER:スライム
+	LOSEBASE:体力 += 120
+	LOSEBASE:気力 += 120
+ELSE
+	LOSEBASE:体力 += 200
+	LOSEBASE:気力 += 200
+ENDIF
+
+DOWNBASE:MASTER:体力 += 80
+DOWNBASE:MASTER:気力 += 80
+
+;媚薬効果で欲情のアップが2倍になるので実際には+5000（薬毒耐性持ちだったり、[無機物]or[機械]だと欲情発生無し）
+IF !TALENT:薬毒耐性 || !TALENT:無機物 || CSTR:種族 != "機械"
+	UP:欲情 = 2500
+ENDIF
+
+SOURCE:逸脱 = 1000
+SOURCE:液体 = 10000
+SOURCE:露出 = 100
+SOURCE:反感 = 100
+SOURCE:不潔 = 100
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP_BASE, 1, 1
+
+RETURN 1
+

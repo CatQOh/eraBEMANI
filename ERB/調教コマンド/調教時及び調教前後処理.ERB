@@ -187,7 +187,7 @@ BASE:MASTER:触手射精 = 0
 CFLAG:残数 = 10
 SIF TALENT:絶倫
 	CFLAG:残数 += 5
-SIF !PENIS(TARGET) && !TALENT:去勢済み
+SIF !PENIS(TARGET) && !TALENT:去勢済み && !TALENT:スライム && !TALENT:溶ける快
 	CFLAG:残数 = 0
 
 CFLAG:MASTER:残数 = 10
@@ -195,14 +195,14 @@ SIF TALENT:MASTER:絶倫
 	CFLAG:MASTER:残数 += 5
 SIF エナジードライブ
 	CFLAG:MASTER:残数 += エナジードライブ:1*3
-SIF !PENIS(MASTER) && !TALENT:MASTER:去勢済み
+SIF !PENIS(MASTER) && !TALENT:MASTER:去勢済み && !TALENT:MASTER:スライム && !TALENT:溶ける快
 	CFLAG:MASTER:残数 = 0
 
 IF ASSI >= 0
 	CFLAG:ASSI:残数 = 10
 	SIF TALENT:ASSI:絶倫
 		CFLAG:ASSI:残数 += 5
-	SIF !PENIS(ASSI) && !TALENT:ASSI:去勢済み
+	SIF !PENIS(ASSI) && !TALENT:ASSI:去勢済み && !TALENT:ASSI:スライム && !TALENT:溶ける快
 		CFLAG:ASSI:残数 = 0
 ENDIF
 
@@ -331,7 +331,7 @@ ENDIF
 
 ;種族妖精ならランダムで消費アイテム取得
 IF CSTR:種族 == "妖精"
-	LOCAL = RAND(100, 108)
+	LOCAL = RAND(100, 110)
 	LOCAL:1 = RAND(1, 4)
 	PRINTFORML %CALLNAME:TARGET%の部屋にあった{LOCAL:1}個の%ITEMNAME:LOCAL%を回収しました
 	ITEM:LOCAL += LOCAL:1
@@ -574,6 +574,103 @@ ELSE
 						EXP:ASSI:吸血経験++
 					ENDIF
 				LOOP LOOPRES(0, 1)
+			;条件を満たしていればスライム浸食イベント発生するか選択できる
+			;条件：主人がスライムで、対象が種族[人間]である
+			ELSEIF (TALENT:MASTER:スライム || TALENT:MASTER:溶ける快) && CSTR:種族 == "人間" && !FLAG:抗スライム
+				PRINTFORMW 消耗して動けない%CALLNAME:TARGET%を見下ろしながら思う……
+				PRINTFORMW このまま%CALLNAME:TARGET%を……
+				PRINTL [0] 少しずつスライム化させていこう
+				PRINTL [1] 一気にスライムに変えてしまおう
+				PRINTL [2] いや、今は休ませておこう
+				DO
+					INPUT
+					IF RESULT == 0
+						;未感染ならスライム感染
+						IF CFLAG:スライム度 == 0
+							CALL KOJO_MESSAGE_EVENT, "主人スライム感染初回"
+							CFLAG:スライム度++
+						;感染済みでスライム度が20以下ならスライム度+10（１段階進行）
+						ELSEIF CFLAG:スライム度 < 20
+							CALL KOJO_MESSAGE_EVENT, "主人スライム感染深化"
+							CFLAG:スライム度 += 10
+						ELSE
+							;感染済みでスライム度が20以上なら完全スライム化
+							CALL KOJO_MESSAGE_EVENT, "主人スライム感染完了"
+							CFLAG:スライム度 += 10
+							TALENT:スライム = 1
+							CSTR:種族 = スライム
+							;上位陥落素質ありで妄信イベント
+							IF (TALENT:親愛 || TALENT:娼婦 || TALENT:隷属) && !TALENT:妄信
+								PRINTFORML %CALLNAME:TARGET%は[妄信]を得た。
+								TALENT:妄信 = 1
+							ENDIF
+						ENDIF
+					ELSEIF RESULT == 1
+						;深度を無視して一気にスライム化
+						CALL KOJO_MESSAGE_EVENT, "主人スライム強制変化"
+						IF TALENT:MASTER:溶ける快
+							CFLAG:スライム度 += 1500
+							TALENT:溶ける快 = 1
+							TALENT:妄信 = 1
+							RELATION:(NO:MASTER) += 50
+							CSTR:種族 = スライム
+						ELSE
+							CFLAG:スライム度 += 30
+							TALENT:スライム = 1
+							TALENT:崩壊 = 1
+							CSTR:種族 = スライム
+							IF CFLAG:陥落
+								PRINTFORMW %CALLNAME:TARGET%が、%CALLNAME:MASTER%に抱いてた感情は、スライムの本能に塗りつぶされてしまった……
+								SIF TALENT:恋慕
+									PRINTFORMW %CALLNAME:TARGET%は[恋慕]を失った
+								TALENT:恋慕 = 0
+								SIF TALENT:淫乱
+									PRINTFORMW %CALLNAME:TARGET%は[淫乱]を失った
+								TALENT:淫乱 = 0
+								SIF TALENT:服従
+									PRINTFORMW %CALLNAME:TARGET%は[服従]を失った
+								TALENT:服従 = 0
+								SIF TALENT:親愛
+									PRINTFORMW %CALLNAME:TARGET%は[親愛]を失った
+								TALENT:親愛 = 0
+								SIF TALENT:娼婦
+									PRINTFORMW %CALLNAME:TARGET%は[娼婦]を失った
+								TALENT:娼婦 = 0
+								SIF TALENT:隷属
+									PRINTFORMW %CALLNAME:TARGET%は[隷属]を失った
+								TALENT:隷属 = 0
+								CFLAG:陥落 = 0
+							ENDIF
+						ENDIF
+					ENDIF
+				LOOP LOOPRES(0, 2)
+			;助手が陥落して条件を満たしていれば、助手を使った吸血イベント発生するか選択できる
+			;条件：助手が居て、助手がスライムで、対象が種族[人間]である
+			ELSEIF ASSI >= 0 && CFLAG:ASSI:陥落 && (TALENT:ASSI:スライム || TALENT:ASSI:溶ける快) && CSTR:種族 == "人間" && !FLAG:抗スライム
+				PRINTFORML 今の無防備な%CALLNAME:TARGET%なら好き勝手できそうだ。
+				PRINTFORML %CALLNAME:ASSI%に襲わせますか？
+				PRINTL [0] - 襲わせる
+				PRINTL [1] - 襲わせない
+				DO
+					INPUT
+					IF RESULT == 0
+						;未感染ならスライム感染
+						IF CFLAG:スライム度 == 0
+							CALL KOJO_MESSAGE_EVENT, "助手スライム感染初回"
+							CFLAG:スライム度++
+						;感染済みでスライム度が20以下ならスライム度+10（１段階進行）
+						ELSEIF CFLAG:スライム度 < 20
+							CALL KOJO_MESSAGE_EVENT, "助手スライム感染深化"
+							CFLAG:スライム度 += 10
+						ELSE
+							;感染済みでスライム度が20以上なら完全スライム化
+							CALL KOJO_MESSAGE_EVENT, "助手スライム感染完了"
+							CFLAG:スライム度 += 10
+							TALENT:スライム = 1
+							CSTR:種族 = スライム
+						ENDIF
+					ENDIF
+				LOOP LOOPRES(0, 1)
 			ENDIF
 			;実績:ガッキー博士で奴隷の体力を0にする
 			SIF CHARANAMEF(PLAYER) == "ガッキー博士"
@@ -583,6 +680,167 @@ ELSE
 	ELSEIF BASE:体力 < 500
 		TFLAG:調教終了 = 1
 		PRINTL （体力が限界に来ています　調教を終了します）
+			;条件を満たしていれば吸血イベント発生するか選択できる
+			;条件：主人が吸血鬼で、対象が種族[人間]である
+			IF TALENT:MASTER:吸血鬼 && CSTR:種族 == "人間"
+				PRINTFORMW 消耗して動けない%CALLNAME:TARGET%を見下ろしながら思う……
+				PRINTFORMW このまま%CALLNAME:TARGET%を……
+				PRINTL [0] 眷属に迎え入れようか
+				PRINTL [1] 放っておこうか
+				DO
+					INPUT
+					;吸血
+					IF RESULT == 0
+						CALL KOJO_MESSAGE_EVENT, "主人吸血"
+						;吸血鬼化
+						IF TALENT:処女 || TALENT:再生処女 || TALENT:童貞
+							TALENT:吸血鬼 = 1
+							CSTR:種族 = ヴァンパイア
+							;上位陥落素質ありで妄信イベント
+							IF (TALENT:親愛 || TALENT:娼婦 || TALENT:隷属) && !TALENT:妄信
+								PRINTFORML %CALLNAME:TARGET%は[妄信]を得た。
+								TALENT:妄信 = 1
+							ENDIF
+						;ゾンビ化
+						ELSE
+							TALENT:ゾンビ = 1
+							CSTR:種族 = ゾンビ
+						ENDIF
+						IF CFLAG:被吸血経験 == 0
+							EXP:異常経験++
+							PRINTL 異常経験+1
+						ENDIF
+						CFLAG:被吸血経験++
+						EXP:MASTER:吸血経験++
+					ENDIF
+				LOOP LOOPRES(0, 1)
+			;助手が陥落して条件を満たしていれば、助手を使った吸血イベント発生するか選択できる
+			;条件：助手が居て、助手が吸血鬼で、対象が種族[人間]である
+			ELSEIF ASSI >= 0 && CFLAG:ASSI:陥落 && TALENT:ASSI:吸血鬼 && CSTR:種族 == "人間"
+				PRINTFORML 今の無防備な%CALLNAME:TARGET%なら好き勝手できそうだ。
+				PRINTFORML %CALLNAME:ASSI%に血を吸わせますか？
+				PRINTL [0] - 吸わせる
+				PRINTL [1] - 吸わせない
+				DO
+					INPUT
+					IF RESULT == 0
+						CALL KOJO_MESSAGE_EVENT, "助手吸血"
+						;対象が処女、再生処女、童貞なら吸血鬼化
+						IF TALENT:処女 || TALENT:再生処女 || TALENT:童貞
+							TALENT:吸血鬼 = 1
+							CSTR:種族 = ヴァンパイア
+						;ゾンビ化
+						ELSE
+							TALENT:ゾンビ = 1
+							CSTR:種族 = ゾンビ
+						ENDIF
+						;初めて血を吸われたら異常経験追加
+						IF CFLAG:被吸血経験 == 0
+							EXP:異常経験++ 
+							PRINTL 異常経験+1
+						ENDIF
+						CFLAG:被吸血経験++
+						EXP:ASSI:吸血経験++
+					ENDIF
+				LOOP LOOPRES(0, 1)
+			;条件を満たしていればスライム浸食イベント発生するか選択できる
+			;条件：主人がスライムで、対象が種族[人間]である
+			ELSEIF (TALENT:MASTER:スライム || TALENT:MASTER:溶ける快) && CSTR:種族 == "人間" && !FLAG:抗スライム
+				PRINTFORMW 消耗して動けない%CALLNAME:TARGET%を見下ろしながら思う……
+				PRINTFORMW このまま%CALLNAME:TARGET%を……
+				PRINTL [0] 少しずつスライム化させていこう
+				PRINTL [1] 一気にスライムに変えてしまおう
+				PRINTL [2] いや、今は休ませておこう
+				DO
+					INPUT
+					IF RESULT == 0
+						;未感染ならスライム感染
+						IF CFLAG:スライム度 == 0
+							CALL KOJO_MESSAGE_EVENT, "主人スライム感染初回"
+							CFLAG:スライム度++
+						;感染済みでスライム度が20以下ならスライム度+10（１段階進行）
+						ELSEIF CFLAG:スライム度 < 20
+							CALL KOJO_MESSAGE_EVENT, "主人スライム感染深化"
+							CFLAG:スライム度 += 10
+						ELSE
+							;感染済みでスライム度が20以上なら完全スライム化
+							CALL KOJO_MESSAGE_EVENT, "主人スライム感染完了"
+							CFLAG:スライム度 += 10
+							TALENT:スライム = 1
+							CSTR:種族 = スライム
+							;上位陥落素質ありで妄信イベント
+							IF (TALENT:親愛 || TALENT:娼婦 || TALENT:隷属) && !TALENT:妄信
+								PRINTFORML %CALLNAME:TARGET%は[妄信]を得た。
+								TALENT:妄信 = 1
+							ENDIF
+						ENDIF
+					ELSEIF RESULT == 1
+						;深度を無視して一気にスライム化
+						CALL KOJO_MESSAGE_EVENT, "主人スライム強制変化"
+						IF TALENT:MASTER:溶ける快
+							CFLAG:スライム度 += 1500
+							TALENT:溶ける快 = 1
+							TALENT:妄信 = 1
+							RELATION:(NO:MASTER) += 50
+							CSTR:種族 = スライム
+						ELSE
+							CFLAG:スライム度 += 30
+							TALENT:スライム = 1
+							TALENT:崩壊 = 1
+							CSTR:種族 = スライム
+							IF CFLAG:陥落
+								PRINTFORMW %CALLNAME:TARGET%が、%CALLNAME:MASTER%に抱いてた感情は、スライムの本能に塗りつぶされてしまった……
+								SIF TALENT:恋慕
+									PRINTFORMW %CALLNAME:TARGET%は[恋慕]を失った
+									TALENT:恋慕 = 0
+								SIF TALENT:淫乱
+									PRINTFORMW %CALLNAME:TARGET%は[淫乱]を失った
+									TALENT:淫乱 = 0
+								SIF TALENT:服従
+									PRINTFORMW %CALLNAME:TARGET%は[服従]を失った
+									TALENT:服従 = 0
+								SIF TALENT:親愛
+									PRINTFORMW %CALLNAME:TARGET%は[親愛]を失った
+									TALENT:親愛 = 0
+								SIF TALENT:娼婦
+									PRINTFORMW %CALLNAME:TARGET%は[娼婦]を失った
+									TALENT:娼婦 = 0
+								SIF TALENT:隷属
+									PRINTFORMW %CALLNAME:TARGET%は[隷属]を失った
+									TALENT:隷属 = 0
+								CFLAG:陥落 = 0
+							ENDIF
+						ENDIF
+					ENDIF
+				LOOP LOOPRES(0, 2)
+			;助手が陥落して条件を満たしていれば、助手を使った吸血イベント発生するか選択できる
+			;条件：助手が居て、助手がスライムで、対象が種族[人間]である
+			ELSEIF ASSI >= 0 && CFLAG:ASSI:陥落 && (TALENT:ASSI:スライム || TALENT:ASSI:溶ける快) && CSTR:種族 == "人間" && !FLAG:抗スライム
+				PRINTFORML 今の無防備な%CALLNAME:TARGET%なら好き勝手できそうだ。
+				PRINTFORML %CALLNAME:ASSI%に襲わせますか？
+				PRINTL [0] - 襲わせる
+				PRINTL [1] - 襲わせない
+				DO
+					INPUT
+					IF RESULT == 0
+						;未感染ならスライム感染
+						IF CFLAG:スライム度 == 0
+							CALL KOJO_MESSAGE_EVENT, "助手スライム感染初回"
+							CFLAG:スライム度++
+						;感染済みでスライム度が20以下ならスライム度+10（１段階進行）
+						ELSEIF CFLAG:スライム度 < 20
+							CALL KOJO_MESSAGE_EVENT, "助手スライム感染深化"
+							CFLAG:スライム度 += 10
+						ELSE
+							;感染済みでスライム度が20以上なら完全スライム化
+							CALL KOJO_MESSAGE_EVENT, "助手スライム感染完了"
+							CFLAG:スライム度 += 10
+							TALENT:スライム = 1
+							CSTR:種族 = スライム
+						ENDIF
+					ENDIF
+				LOOP LOOPRES(0, 1)
+			ENDIF
 		BEGIN AFTERTRAIN
 	ENDIF
 ENDIF

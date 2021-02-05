@@ -3,38 +3,50 @@
 ;-------------------------------------------------
 @USERCOM_ABLE_女装させる, ARG
 #FUNCTION
+#DIM DYNAMIC 条件確定
+
 ;ゲーセンに居る場合はできない
+コマンド実行条件 += "ゲーセンでは実行不可/"
 SIF TEQUIP:ゲームセンター
-	RETURNF 0
+	COMRESULT = 0
 ;上級売春中は不可
+コマンド実行条件 += "上級売春中は実行不可/"
 SIF 上級売春中
-	RETURNF 0
+	COMRESULT = 0
 ;男限定
+コマンド実行条件 += "対象が男性じゃないと実行できない/"
 SIF SEX(TARGET) == 2
-	RETURNF 0
+	COMRESULT = 0
 ;従順3以上必要
+コマンド実行条件 += "対象の従順LV3以上が必要/"
 SIF ABL:従順 < 3
-	RETURNF 0
+	COMRESULT = 0
 ;解除はいつでも可能
-IF TEQUIP:女装
+SIF TEQUIP:女装 && COMRESULT
+	条件確定 = 1
+
+;助手じゃダメ
+コマンド実行条件 += "実行者が主人じゃないと実行できない/"
+SIF PLAYER != MASTER
+	COMRESULT = 0
+;お風呂場プレイ中はダメ
+コマンド実行条件 += "お風呂場では実行できない/"
+SIF TEQUIP:お風呂場
+	COMRESULT = 0
+;触手調教中はダメ
+コマンド実行条件 += "触手召喚中は実行できない/"
+SIF TEQUIP:触手
+	COMRESULT = 0
+;アニマルだと無理
+コマンド実行条件 += "対象が[アニマル]の場合は実行できない/"
+SIF TALENT:アニマル
+	COMRESULT = 0
+
+IF 条件確定
 	COMRESULT = 1
 	RETURNF 1
 ENDIF
-;助手じゃダメ
-SIF PLAYER != MASTER
-	RETURNF 0
-;お風呂場プレイ中はダメ
-SIF TEQUIP:お風呂場
-	RETURNF 0
-;触手調教中はダメ
-SIF TEQUIP:触手
-	RETURNF 0
-;アニマルだと無理
-SIF TALENT:アニマル
-	RETURNF 0
-
-COMRESULT = 1
-RETURNF 1
+RETURNF COMRESULT
 
 @COM_女装させる
 #DIM DYNAMIC LCOUNT
@@ -75,6 +87,8 @@ SELECTCASE TEQUIP:女装
 		PRINTL [2] - 和服
 		PRINTL [3] - スク水
 		DO
+			SIF ISSKIP()
+				BREAK
 			INPUT
 			SELECTCASE RESULT
 				CASE 1
