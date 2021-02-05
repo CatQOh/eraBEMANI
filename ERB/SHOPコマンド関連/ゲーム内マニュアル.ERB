@@ -9,6 +9,7 @@
 "各経験が上昇するコマンド一覧",
 "異常経験の条件",
 "コマンドが実行できない！",
+"各コマンドの実行条件",
 "お金が無い！",
 "主人の能力上昇、及びスキルツリーについて",
 }
@@ -377,6 +378,94 @@ WAIT
 @MANUAL_主人の能力上昇、及びスキルツリーについて
 PRINTL 【主人の能力上昇、及びスキルツリーについて】
 CALL MANUAL_スキルツリー
+
+@MANUAL_各コマンドの実行条件
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LRESULT
+#DIM DYNAMIC 対象無し
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 次ページあり
+#DIM DYNAMIC 表示数
+#DIMS DYNAMIC VAR_実行条件, 100
+
+IF TARGET == -1
+	対象無し = 1
+	ADDVOIDCHARA
+	TARGET = CHARANUM-1
+	NAME:TARGET = 調教対象
+	CALLNAME:TARGET = 調教対象
+ENDIF
+
+SIF VARLINE
+	CLEARLINE LINECOUNT-VARLINE
+VARLINE = LINECOUNT
+PRINTL 【各コマンドの実行条件】
+表示数 = 0
+次ページあり = 0
+FOR LCOUNT, 0, VARSIZE("TRAINNAME")
+	IF TRAINNAME:LCOUNT != ""
+		IF 表示数 >= ページ数*40+40
+			次ページあり = 1
+			BREAK
+		ENDIF
+		SIF INRANGE(表示数, ページ数*40, ページ数*40+40)
+			PRINTFORMLC [{LCOUNT, 3}]%TRAINNAME:LCOUNT%
+		表示数++
+	ENDIF
+NEXT
+
+SIF !LINEISEMPTY()
+	PRINTL 
+DRAWLINE
+PRINTPLAIN 　COM　
+IF ページ数 > 0
+	PRINT [-7] 前ページ 
+ELSE
+	PRINTPLAIN 　　　　　　　
+ENDIF
+PRINT [-1] 戻る 
+SIF 次ページあり
+	PRINT [-9] 次ページ
+PRINTL
+
+DO
+	INPUT
+	LRESULT = RESULT
+	SELECTCASE LRESULT
+		CASE -1
+			IF 対象無し
+				DELCHARA TARGET
+				TARGET = -1
+			ENDIF
+			RETURN
+		CASE -7
+			SIF ページ数 > 0
+				ページ数--
+			RESTART
+		CASE -9
+			SIF 次ページあり
+				ページ数++
+			RESTART
+		CASE 0 TO VARSIZE("TRAINNAME")
+			SIF TRAINNAME:LRESULT == ""
+				CONTINUE
+			コマンド実行条件 = 
+			CALLFORMF USERCOM_ABLE_%TRAINNAME:LRESULT%
+			DRAWLINE
+			PRINTFORML □%TRAINNAME:LRESULT%の実行条件
+			SPLIT コマンド実行条件, "/", VAR_実行条件
+			IF RESULT == 0
+				PRINTL 　無条件で実行可能
+			ELSE
+				FOR LCOUNT, 0, RESULT-1
+					PRINTFORML 　%VAR_実行条件:LCOUNT%
+				NEXT
+			ENDIF
+			DRAWLINE
+			WAIT
+			RESTART
+	ENDSELECT
+LOOP 1
 
 @MANUAL_経営モードの概要
 PRINTL 【経営モードの概要】
