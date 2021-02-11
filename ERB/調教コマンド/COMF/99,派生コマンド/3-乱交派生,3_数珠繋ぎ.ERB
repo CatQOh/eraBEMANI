@@ -3,6 +3,7 @@
 ;-------------------------------------------------
 @USERCOM_ABLE_数珠繋ぎ, ARG
 #FUNCTION
+
 ;1=MASTER 2=ASSI 3=TARGET
 ;132だったら主人→奴隷→助手
 ;312だったら奴隷→主人→助手
@@ -13,87 +14,125 @@
 ;数珠繋ぎ実行判定
 ;助手がいないとダメ
 コマンド実行条件 += "助手が必要/"
-SIF ASSI < 1
+SIF ASSI < 0
 	COMRESULT = 0
+DEBUGPRINTFORML 助手,{COMRESULT}
 ;ペニスバンド使ってるとダメ、入れられる側が処女でもダメ
-コマンド実行条件 += "ペニスバンドでは代用不可 入れられる側が処女でも実行不可"
-IF ASSI > 0
-	SELECTCASE TFLAG:数珠繋ぎ
-		;主人→助手→奴隷
-		CASE 123
-			SIF !PENIS(MASTER) || Ｐ使用不可(MASTER)
-				COMRESULT = 0
-			SIF !PENIS(ASSI) || Ｐ使用不可(ASSI)
-				COMRESULT = 0
-			SIF TALENT:ASSI:処女 && TFLAG:主人挿入箇所 == 1
-				COMRESULT = 0
-			SIF TALENT:処女 && TFLAG:助手挿入箇所 == 1
-				COMRESULT = 0
-		;主人→奴隷→助手
-		CASE 132
-			SIF !PENIS(MASTER) || Ｐ使用不可(MASTER)
-				COMRESULT = 0
-			SIF !PENIS(TARGET) || Ｐ使用不可(TARGET)
-				COMRESULT = 0
-			SIF TALENT:ASSI:処女 && TFLAG:奴隷挿入箇所 == 1
-				COMRESULT = 0
-			SIF TALENT:処女 && TFLAG:主人挿入箇所 == 1
-				COMRESULT = 0
-		;助手→奴隷→主人
-		CASE 231
-			SIF !PENIS(TARGET) || Ｐ使用不可(TARGET)
-				COMRESULT = 0
-			SIF !PENIS(ASSI) || Ｐ使用不可(ASSI)
-				COMRESULT = 0
-			SIF TALENT:処女 && TFLAG:助手挿入箇所 == 1
-				COMRESULT = 0
-			SIF TALENT:MASTER:処女 && TFLAG:奴隷挿入箇所 == 1
-				COMRESULT = 0
-		;奴隷→主人→助手
-		CASE 312
-			SIF !PENIS(MASTER) || Ｐ使用不可(MASTER)
-				COMRESULT = 0
-			SIF !PENIS(TARGET) || Ｐ使用不可(TARGET)
-				COMRESULT = 0
-			SIF TALENT:MASTER:処女 && TFLAG:奴隷挿入箇所 == 1
-				COMRESULT = 0
-			SIF TALENT:ASSI:処女 && TFLAG:主人挿入箇所 == 1
-				COMRESULT = 0
-	ENDSELECT
+コマンド実行条件 += "ペニスバンドでは代用不可 入れられる側が処女でも実行不可/"
+IF ASSI >= 0
+	SIF !数珠繋ぎ_ABLE_123() && !数珠繋ぎ_ABLE_132() && !数珠繋ぎ_ABLE_231() && !数珠繋ぎ_ABLE_312()
+		COMRESULT = 0
 ENDIF
+DEBUGPRINTFORML 数珠繋ぎ,{COMRESULT}
 
-;汎用COMABLEが通らなかったらダメ
-SIF !USERCOM_ABLE_性交()
-	COMRESULT = 0
-SIF !USERCOM_ABLE_性交助手()
-	COMRESULT = 0
-;汎用COMABLEが通らなかったらダメ
-SIF !USERCOM_ABLE_Ａ性交()
-	COMRESULT = 0
-SIF !USERCOM_ABLE_Ａ性交助手()
-	COMRESULT = 0
-
-;前回のコマンドと実行者が違う場合
 コマンド実行条件 += "前回と今回の実行者が別で性交系コマンドから、/"
 コマンド実行条件 += "もしくは前回と今回の実行者が同じで助手を犯す、助手を犯させるから派生可能/"
-IF TFLAG:前コマンド実行者 != PLAYER
+
+コマンド実行条件 += "助手と対象が陥落済みでないと実行不可/"
+SIF !CFLAG:陥落 || !CFLAG:ASSI:陥落
+	COMRESULT = 0
+
+RETURNF COMRESULT
+
+@数珠繋ぎ_ABLE_123, ARG
+#FUNCTION
+#DIM DYNAMIC 実行可能
+
+IF TFLAG:前コマンド実行者 == ASSI && PLAYER == MASTER
 	SELECTCASE PREVCOMS
-		{
-		CASE "正常位", "後背位", "正常位アナル", "後背位アナル",
-			 "正常位させる", "後背位させる", "正常位アナルさせる", "後背位アナルさせる"
-		}
-			RETURNF COMRESULT
+		CASE "正常位", "後背位", "正常位アナル", "後背位アナル"
+			SIF PENIS(MASTER) && !Ｐ使用不可(MASTER) && PENIS(ASSI) && !Ｐ使用不可(ASSI)
+				実行可能 = 1
 	ENDSELECT
-;同じ場合
-ELSEIF TFLAG:前コマンド実行者 == PLAYER
+ELSEIF TFLAG:前コマンド実行者 == MASTER && PLAYER == ASSI
 	SELECTCASE PREVCOMS
-		CASE "助手を犯す", "助手を犯させる"
-			RETURNF COMRESULT
+		CASE "助手を犯す"
+			SIF PENIS(MASTER) && !Ｐ使用不可(MASTER) && PENIS(ASSI) && !Ｐ使用不可(ASSI)
+				実行可能 = 1
 	ENDSELECT
 ENDIF
 
-COMRESULT = 0
-RETURNF 0
+SIF TALENT:ASSI:処女 && TFLAG:主人挿入箇所 == 1
+	実行可能 = 0
+SIF TALENT:処女 && TFLAG:助手挿入箇所 == 1
+	実行可能 = 0
+
+RETURNF 実行可能
+
+@数珠繋ぎ_ABLE_231, ARG
+#FUNCTION
+#DIM DYNAMIC 実行可能
+
+IF TFLAG:前コマンド実行者 == ASSI && PLAYER == MASTER
+	SELECTCASE PREVCOMS
+		CASE "正常位", "後背位", "正常位アナル", "後背位アナル"
+			SIF PENIS(TARGET) && !Ｐ使用不可(TARGET) && PENIS(ASSI) && !Ｐ使用不可(ASSI)
+				実行可能 = 1
+	ENDSELECT
+ELSEIF TFLAG:前コマンド実行者 == MASTER && PLAYER == ASSI
+	SELECTCASE PREVCOMS
+		CASE "正常位させる", "後背位させる", "正常位アナルさせる", "後背位アナルさせる"
+			SIF PENIS(TARGET) && !Ｐ使用不可(TARGET) && PENIS(ASSI) && !Ｐ使用不可(ASSI)
+				実行可能 = 1
+	ENDSELECT
+ENDIF
+
+SIF TALENT:MASTER:処女 && TFLAG:奴隷挿入箇所 == 1
+	実行可能 = 0
+SIF TALENT:処女 && TFLAG:助手挿入箇所 == 1
+	実行可能 = 0
+
+RETURNF 実行可能
+
+@数珠繋ぎ_ABLE_132, ARG
+#FUNCTION
+#DIM DYNAMIC 実行可能
+
+IF TFLAG:前コマンド実行者 == ASSI && PLAYER == MASTER
+	SELECTCASE PREVCOMS
+		CASE "正常位させる", "後背位させる", "正常位アナルさせる", "後背位アナルさせる"
+			SIF PENIS(TARGET) && !Ｐ使用不可(TARGET) && PENIS(MASTER) && !Ｐ使用不可(MASTER)
+				実行可能 = 1
+	ENDSELECT
+ELSEIF TFLAG:前コマンド実行者 == MASTER && PLAYER == ASSI
+	SELECTCASE PREVCOMS
+		CASE "正常位", "後背位", "正常位アナル", "後背位アナル"
+			SIF PENIS(TARGET) && !Ｐ使用不可(TARGET) && PENIS(MASTER) && !Ｐ使用不可(MASTER)
+				実行可能 = 1
+	ENDSELECT
+ELSEIF TFLAG:前コマンド実行者 == MASTER && PLAYER == MASTER
+	SELECTCASE PREVCOMS
+		CASE "助手を犯させる"
+			SIF PENIS(TARGET) && !Ｐ使用不可(TARGET) && PENIS(MASTER) && !Ｐ使用不可(MASTER)
+				実行可能 = 1
+	ENDSELECT
+ENDIF
+
+SIF TALENT:ASSI:処女 && TFLAG:奴隷挿入箇所 == 1
+	RETURNF 0
+SIF TALENT:処女 && TFLAG:主人挿入箇所 == 1
+	RETURNF 0
+
+RETURNF 実行可能
+
+@数珠繋ぎ_ABLE_312, ARG
+#FUNCTION
+#DIM DYNAMIC 実行可能
+
+IF TFLAG:前コマンド実行者 == MASTER && PLAYER == ASSI
+	SELECTCASE PREVCOMS
+		CASE "正常位させる", "後背位させる", "正常位アナルさせる", "後背位アナルさせる", "助手を犯す"
+			SIF PENIS(TARGET) && !Ｐ使用不可(TARGET) && PENIS(MASTER) && !Ｐ使用不可(MASTER)
+				実行可能 = 1
+	ENDSELECT
+ENDIF
+
+SIF TALENT:ASSI:処女 && TFLAG:主人挿入箇所 == 1
+	RETURNF 0
+SIF TALENT:MASTER:処女 && TFLAG:奴隷挿入箇所 == 1
+	RETURNF 0
+
+RETURNF 実行可能
 
 @COM_数珠繋ぎ
 ;挿れる場所を選択
