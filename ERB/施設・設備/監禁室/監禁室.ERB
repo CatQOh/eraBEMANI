@@ -1,5 +1,7 @@
 ﻿@監禁室
 
+CALL 実験室レベル計算
+
 PRINTL □監禁室
 PRINTL 　キャラクターを監禁して、強烈なデメリットの代わりに非人道的な調教を行う施設です
 PRINTL 　各要素にはそれぞれある程度の医務室ランク、実験室ランクが必要になります
@@ -15,13 +17,17 @@ PRINTL [0] - 戻る
 DO
 	INPUT
 	SELECTCASE RESULT
+		CASE 0
+			RETURN
 		CASE 1
 			CALL 監禁室選択
+			RESTART
 		CASE 2
 			CALL STRATEGY_PERSONAL, "監禁室"
 			RESTART
 		CASE 3
 			CALL 監禁室_状況
+			RESTART
 	ENDSELECT
 LOOP 1
 
@@ -63,4 +69,256 @@ DRAWLINE
 PRINTPLAIN 　監禁室　
 PRINTL 
 WAIT
+
+@TURNEND_監禁室
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 監禁方法, 10
+#DIM DYNAMIC 監禁対象
+#DIM DYNAMIC スタッフ, 4;監禁室スタッフは最大3人+1
+#DIM DYNAMIC スライム配属
+#DIM DYNAMIC スライムスタッフ
+#DIM DYNAMIC 技巧合計
+#DIM DYNAMIC Ｖ内容, 5
+#DIM DYNAMIC Ｃ内容, 5
+#DIM DYNAMIC Ａ内容, 5
+#DIM DYNAMIC Ｂ内容, 5
+#DIM DYNAMIC 尿道内容, 5
+#DIM DYNAMIC 搾精内容, 5
+#DIM DYNAMIC 合計回数, 3
+#DIM DYNAMIC 搾精量
+#DIM DYNAMIC 比率
+
+LOCAL = 0
+FOR LCOUNT, 1, CHARANUM
+	IF CSTR:LCOUNT:配属 == "監禁室"
+		スタッフ:(++LOCAL) = LCOUNT
+		IF TALENT:LCOUNT:淫乱 || TALENT:LCOUNT:服従
+			技巧合計 += ABL:LCOUNT:技巧
+		ELSEIF TALENT:LCOUNT:娼婦 || TALENT:LCOUNT:隷属
+			技巧合計 += ABL:LCOUNT:技巧*2
+		ENDIF
+		SIF ISSLIME(LCOUNT)
+			スライム配属 = 1
+	ENDIF
+NEXT
+
+FOR LCOUNT, 1, ITEM:監禁室+1
+	SIF 監禁室使用状況:LCOUNT == ""
+		CONTINUE
+	CALL CHECKDRAWLINE
+	監禁対象 = FINDCHARA(CFLAG:監禁, LCOUNT)
+	;スタッフはランダムで決まる 効果は変わらない
+	DO
+		スタッフ:0 = スタッフ:RAND(1, 4)
+	LOOP スタッフ:0 == 0 && スタッフ:1 != 0
+	IF スライム配属
+		DO
+			スライムスタッフ = スタッフ:RAND(1, 4)
+		LOOP スタッフ:0 == 0 || ISSLIME(スタッフ:0)
+	ENDIF
+
+	VARSET 監禁方法
+	SPLIT 監禁室使用状況:LCOUNT, "/", 監禁方法
+	;比率を求める
+	SIF RESULT >= 2
+		比率 = 100/(RESULT-1)
+	PRINTFORM 監禁室{LCOUNT}番では、
+	SELECTCASE 監禁方法:0
+		CASE "触手監禁"
+			PRINTFORML %CALLNAME:監禁対象%が触手に拘束されている
+			;内容に応じて経験などを計算する
+			;0=経験上昇値
+			;1=絶頂回数
+			;2=取得珠数
+			;3=射精回数
+			;4=噴乳回数
+			VARSET Ｖ内容
+			IF FINDELEMENT(監禁方法, "Ｖ") > 0
+				Ｖ内容:0 = 比率/10
+				Ｖ内容:1 = ABL:監禁対象:Ｖ感覚*比率/200
+				Ｖ内容:2 = (ABL:監禁対象:Ｖ感覚+1)*比率+Ｖ内容:1*300
+				SIF PENIS(監禁対象)
+					Ｖ内容:3 = Ｖ内容:1/3
+			ENDIF
+			VARSET Ｃ内容
+			IF FINDELEMENT(監禁方法, "Ｃ") > 0
+				Ｃ内容:0 = 比率/10
+				Ｃ内容:1 = ABL:監禁対象:Ｃ感覚*比率/100
+				Ｃ内容:2 = (ABL:監禁対象:Ｃ感覚+1)*比率+Ｃ内容:1*100
+				SIF PENIS(監禁対象)
+					Ｃ内容:3 = Ｃ内容:1
+			ENDIF
+			VARSET Ａ内容
+			IF FINDELEMENT(監禁方法, "Ａ") > 0
+				Ａ内容:0 = 比率/10
+				Ａ内容:1 = ABL:監禁対象:Ａ感覚*比率/300
+				Ａ内容:2 = (ABL:監禁対象:Ａ感覚+1)*比率+Ａ内容:1*500
+				SIF PENIS(監禁対象)
+					Ａ内容:3 = Ａ内容:1/2
+			ENDIF
+			VARSET Ｂ内容
+			IF FINDELEMENT(監禁方法, "Ｂ") > 0
+				Ｂ内容:0 = 比率/10
+				Ｂ内容:1 = ABL:監禁対象:Ｂ感覚*比率/100
+				Ｂ内容:2 = (ABL:監禁対象:Ｂ感覚+1)*比率+Ｂ内容:1*100
+				SIF TALENT:監禁対象:母乳体質
+					Ｂ内容:4 = Ｂ内容:1
+			ENDIF
+			VARSET 尿道内容
+			IF FINDELEMENT(監禁方法, "尿道") > 0
+				尿道内容:0 = 比率/10
+				尿道内容:1 = 比率*EXP:監禁対象:尿道経験/200
+			ENDIF
+			VARSET 合計回数
+			;絶頂回数
+			合計回数:0 = Ｖ内容:1+Ｃ内容:1+Ａ内容:1+Ｂ内容:1
+			;射精回数
+			合計回数:1 = Ｖ内容:3+Ｃ内容:3+Ａ内容:3+Ｂ内容:3
+
+			PRINTFORM 触手の容赦無い責めで、%CALLNAME:監禁対象%は
+			IF 合計回数:0
+				PRINTFORM {合計回数:0}回の絶頂
+				SIF 合計回数:1
+					PRINTFORM と{合計回数:1}回の射精
+				PRINT に達した
+			ELSE
+				PRINT 性感帯がより敏感になった
+			ENDIF
+			PRINTL 
+			IF 尿道内容:0 && Ｂ内容:4
+				PRINTFORML また、尿道はより拡げられ、{Ｂ内容:4}回母乳を噴き出したようだ
+			ELSEIF 尿道内容:0
+				PRINTL また、尿道がより拡げられ、昨日よりも太い触手が入ったようだ
+			ELSEIF Ｂ内容:4
+				PRINTFORML また、行為中に{Ｂ内容:4}回母乳が噴き出たようだ
+			ENDIF
+			CALL EXPUP, "Ｖ経験", Ｖ内容, 監禁対象
+			CALL EXPUP, "Ａ経験", Ａ内容, 監禁対象
+			CALL EXPUP, "尿道経験", 尿道内容, 監禁対象
+			CALL EXPUP, "絶頂経験", 合計回数:0, 監禁対象
+			SIF 合計回数:0
+				PRINTFORML └\@ Ｖ内容:1 ? Ｖ:{Ｖ内容:1}回　 #\@\@ Ｃ内容:1 ? Ｃ:{Ｃ内容:1}回　 #\@\@ Ａ内容:1 ? Ａ:{Ａ内容:1}回　 #\@\@ Ｂ内容:1 ? Ｂ:{Ｂ内容:1}回 #\@
+			CALL EXPUP, "射精経験", 合計回数:1, 監禁対象
+			SIF 合計回数:1
+				PRINTFORML └\@ Ｖ内容:3 ? Ｖ:{Ｖ内容:3}回　 #\@\@ Ｃ内容:3 ? Ｃ:{Ｃ内容:3}回　 #\@\@ Ａ内容:3 ? Ａ:{Ａ内容:3}回　 #\@\@ Ｂ内容:3 ? Ｂ:{Ｂ内容:3}回 #\@
+			CALL EXPUP, "噴乳経験", Ｂ内容:4, 監禁対象
+			CALL JUELUP, "快Ｖ",Ｖ内容:2, 監禁対象
+			CALL JUELUP, "快Ｃ",Ｃ内容:2, 監禁対象
+			CALL JUELUP, "快Ａ",Ａ内容:2, 監禁対象
+			CALL JUELUP, "快Ｂ",Ｂ内容:2, 監禁対象
+		CASE "搾乳監禁"
+		CASE "搾精監禁"
+			PRINTFORML %CALLNAME:監禁対象%が搾精されている
+			VARSET 搾精内容, 0
+			PRINTFORM %CALLNAME:監禁対象%は
+			IF FINDELEMENT(監禁方法, "薬品") > 0
+				SELECTCASE RAND:3
+					CASE 0
+						PRINT 精力剤で精巣を活発にされると、
+					CASE 1
+						PRINT 媚薬を飲まされると、
+					CASE 2
+						PRINT 搾精用の薬を投与されると、
+				ENDSELECT
+				搾精内容:0 = 3
+			ENDIF
+			IF FINDELEMENT(監禁方法, "尿道") > 0
+				SELECTCASE RAND:3
+					CASE 0
+						PRINTL 体内で作られた精子をすぐさま尿道から吸い上げられることを一日中続けていた
+					CASE 1
+						PRINTL 精巣まで直接通された管から精液を採取されていた
+					CASE 2
+						PRINTL 射精の度に尿道から直接括約筋への刺激を受け、大量の精液を出した
+				ENDSELECT
+				搾精内容:1 = 2
+			ENDIF
+			IF FINDELEMENT(監禁方法, "道具機械") > 0
+				SELECTCASE RAND:4
+					CASE 0
+						PRINT 道具の振動や電流で射精を誘発され、
+					CASE 1
+						PRINTFORM 道具でペニスや\@ SEX(監禁対象) == 1 ? 前立腺 # ヴァギナ \@など体中の性感帯を刺激され、
+					CASE 2
+						PRINTFORM ペニスを扱き続ける道具や\@ SEX(監禁対象) == 1 ? アナル # ヴァギナ \@への挿入を繰り返す機械に拘束され、
+					CASE 3
+						PRINT 電流で無理やり射精の動きを再現する機械を繋がれ、
+				ENDSELECT
+				搾精内容:2 = 3
+			ENDIF
+			IF FINDELEMENT(監禁方法, "スタッフの手") > 0
+				;尿道も機械も無し
+				IF !搾精内容:1 && !搾精内容:2
+					SELECTCASE RAND:2
+						CASE 0
+							PRINTFORM 数時間ごとに%CALLNAME:スタッフ%の手淫で精液を搾り取られた
+						CASE 1
+							PRINTFORM %CALLNAME:スタッフ%の指使いで何度も搾精された
+					ENDSELECT
+				ELSE
+					SELECTCASE RAND:2
+						CASE 0
+							PRINTFORM 時には%CALLNAME:スタッフ%の手で精液を搾り取られた
+						CASE 1
+							PRINTFORM それを扱う%CALLNAME:スタッフ%の技量が%CALLNAME:監禁対象%を終わりのない射精の循環に突き落とした
+					ENDSELECT
+				ENDIF
+				搾精内容:3 = 技巧合計+30
+			ELSE
+				;尿道も機械も人の手も無し
+				IF !搾精内容:1 && !搾精内容:2
+					;薬はあり
+					IF 搾精内容:0
+						IF FALLTYPE(監禁対象) == 2
+							PRINT 性欲と渇望のままに何度も自慰を行い、精液採取用の道具を一杯にしていた
+							搾精内容:3 = 30
+						ELSE
+							PRINT とうとう我慢できなくなったのか自慰を行って精液採取用の道具に精液を溜めた
+							搾精内容:3 = 15
+						ENDIF
+					ELSE
+						IF FALLTYPE(監禁対象) == 2
+							PRINT 精液の提出を要求されると、監禁室にある本や道具を使って自慰を行っていた
+							搾精内容:3 = 15
+						ELSE
+							PRINT 監禁に不満を示し、最後まで自慰と精液の提出を行うことはなかった
+							搾精内容:3 = 0
+						ENDIF
+					ENDIF
+				ELSE
+					PRINT 搾精された
+				ENDIF
+			ENDIF
+			SIF !LINEISEMPTY()
+				PRINTL 
+			IF 搾精内容:3
+				搾精量 = MAX(搾精内容:0*搾精内容:1*搾精内容:2, 1)*搾精内容:3
+				PRINTFORML {搾精量}mlの精液を採取した
+				FLAG:保管済み精液 += 搾精量
+				採取精液:(NO:監禁対象)++
+				CALL EXPUP, "射精経験", 搾精量/15, 監禁対象
+				CALL EXPUP, "射精管理経験", 搾精内容:1+搾精内容:2, 監禁対象
+				CALL EXPUP, "緊縛経験", 2, 監禁対象
+			ENDIF
+
+
+
+
+
+		CASE "スライム監禁"
+			IF TALENT:監禁対象:スライム || TALENT:監禁対象:溶ける快
+				IF スタッフ
+					PRINTFORML %CALLNAME:スタッフ%の手によって%CALLNAME:監禁対象%粘液を採集されたようだ
+				ELSE
+					PRINTFORML %CALLNAME:監禁対象%から溢れ出た余分な粘液が採集されたようだ
+				ENDIF
+				PRINTFORML {50+技巧合計*10}mlの粘液を採集した
+				FLAG:保管済み粘液 += 50+技巧合計*10
+			ELSE
+				PRINTFORM %CALLNAME:スライムスタッフ%の手によって%CALLNAME:監禁対象%のスライム化が進められている……
+				CFLAG:監禁対象:スライム度 += 5
+			ENDIF
+		CASE "採血監禁"
+	ENDSELECT
+NEXT
 
