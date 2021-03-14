@@ -75,13 +75,20 @@ PRINTL 　[3] - 利用履歴を確認する（過去5日分）
 IF 禁断の知識あり
 	PRINTL 　[4] - 身体改造を行う
 ELSE
-	PRINTL 　[-] - 身体改造を行う(主人か配属中のキャラが[禁断の知識]を持っている必要があります)
+	CALL PRINTCOLORL, "　[-] - 身体改造を行う(主人か配属中のキャラが[禁断の知識]を持っている必要があります)", "gray"
 ENDIF
 IF 調合知識あり
 	PRINTL 　[5] - 薬品系アイテムを強化する
 ELSE
-	PRINTL 　[-] - 薬品系アイテムを強化する(主人か配属中のキャラが[調合知識]を持っている必要があります)
+	CALL PRINTCOLORL, "　[-] - 薬品系アイテムを強化する(主人か配属中のキャラが[調合知識]を持っている必要があります)", "gray"
 ENDIF
+IF 禁断の知識あり
+	PRINTL 　[6] - 人体錬成をする
+ELSE
+	CALL PRINTCOLORL, "　[-] - 人体錬成をする(主人か配属中のキャラが[禁断の知識]を持っている必要があります)"
+ENDIF
+SIF STSMOD
+	PRINTL 　[9] - キャラを解体する
 
 ;IF 配属人数
 ;	PRINTL [3] - 健康診断を行う
@@ -123,6 +130,14 @@ DO
 		CASE 5
 			SIF 調合知識あり
 				CALL MED_MOD
+			RESTART
+		CASE 6
+			SIF 禁断の知識あり
+				CALL 人体錬成
+			RESTART
+		CASE 9
+			SIF STSMOD
+				CALL STS_BLOOD
 			RESTART
 		;CASE 3
 		;	DRAWLINE
@@ -548,4 +563,182 @@ NEXT
 
 ;3人まで配属できるので最大6
 RETURNF 医務室ランク
+
+@STS_BLOOD
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 飛ばした数
+#DIM DYNAMIC 次ページあり
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 対象
+
+DRAWLINE
+
+PRINT □解体するキャラを選んでください。
+FONTBOLD
+PRINTL 解体したキャラは死亡します
+FONTREGULAR
+
+表示数 = 0
+次ページあり = 0
+FOR LCOUNT, 1, CHARANUM
+	SIF TALENT:LCOUNT:無機物
+		CONTINUE
+	表示数++
+	IF 表示数 > ページ数*20+20
+		次ページあり = 1
+		BREAK
+	ENDIF
+	SIF !INRANGE(表示数, ページ数*20, ページ数*20+20)
+		CONTINUE
+	PRINTFORM 　[{LCOUNT, 2}] %NAME:LCOUNT, 26, LEFT% 回収できる物:
+	IF ISSLIME(LCOUNT)
+		IF TALENT:LCOUNT:小柄体型
+			PRINT 粘液2500ml 
+		ELSE
+			PRINT 粘液4000ml 
+		ENDIF
+	ELSE
+		IF TALENT:LCOUNT:小柄体型
+			PRINT 血液2500ml 
+		ELSE
+			PRINT 血液4000ml 
+		ENDIF
+	ENDIF
+	SIF 生殖機能♂(LCOUNT)
+		PRINT 精液100ml 
+	SIF TALENT:LCOUNT:母乳体質
+		PRINT 母乳200ml 
+	SIF TALENT:LCOUNT:動物耳
+		PRINT ケモミミが付いた頭 
+	SIF TALENT:LCOUNT:羽
+		PRINT 翼の生えた胴体 
+	SIF TALENT:LCOUNT:足使用不可
+		PRINT 人魚の下半身 
+	SIF TALENT:LCOUNT:尻尾
+		PRINT 切断された尻尾 
+	SELECTCASE CSTR:LCOUNT:種族
+		CASE "悪魔"
+			PRINT 悪魔の心臓 
+		CASE "天使"
+			PRINT 天使の心臓 
+		CASE "神"
+			PRINT 神の心臓 
+		CASE "魔術師"
+			PRINT 魔術師の心臓 
+	ENDSELECT
+	PRINTL 
+NEXT
+IF 表示数 == 0
+	PRINTL 
+	PRINTL 　解体可能なキャラは居ません
+	PRINTL 
+ENDIF
+
+DRAWLINE
+PRINTPLAINFORM 　解体.{ページ数+1}　
+IF ページ数 > 0
+	PRINT [-1] - 前ページ
+ELSE
+	PRINTPLAIN                
+ENDIF
+PRINT [0] - 戻る
+SIF 次ページあり
+	PRINT [-9] - 次ページ
+PRINTL 
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE -1
+			SIF ページ数 > 0
+				ページ数--
+			RESTART
+		CASE -9
+			SIF 次ページあり
+				ページ数++
+			RESTART
+		CASE 1 TO CHARANUM
+			対象 = RESULT
+			SIF TALENT:対象:無機物
+				CONTINUE
+			PRINTFORML %NAME:対象%を解体します。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			DO
+				INPUT
+				SIF RESULT == 1
+					RESTART
+			LOOP LOOPRES(0)
+			SETCOLORBYNAME red
+			CUSTOMDRAWLINE ✂----------
+			RESETCOLOR
+			PRINTFORML %NAME:対象%を解体しました
+			IF ISSLIME(対象)
+				IF TALENT:対象:小柄体型
+					PRINTL 保管済み粘液+2500ml
+					FLAG:保管済み粘液 += 2500
+				ELSE
+					PRINTL 保管済み粘液+4000ml
+					FLAG:保管済み粘液 += 4000
+				ENDIF
+			ELSE
+				IF TALENT:対象:小柄体型
+					PRINTL 保管済み血液+2500ml
+					FLAG:保管済み血液 += 2500
+				ELSE
+					PRINTL 保管済み血液+4000ml
+					FLAG:保管済み血液 += 4000
+				ENDIF
+			ENDIF
+			IF 生殖機能♂(対象)
+				PRINTL 保管済み精液+100ml
+				FLAG:保管済み精液 += 100
+			ENDIF
+			IF TALENT:対象:母乳体質
+				PRINTL 保管済み母乳+200ml
+				FLAG:保管済み母乳 += 200
+			ENDIF
+			IF TALENT:対象:動物耳
+				PRINTL ケモミミが付いた頭+1
+				ITEM:ケモミミが付いた頭 += 1
+			ENDIF
+			IF TALENT:対象:羽
+				PRINTL 翼の生えた胴体+1
+				ITEM:翼の生えた胴体 += 1
+			ENDIF
+			IF TALENT:対象:足使用不可
+				PRINTL 人魚の下半身+1
+				ITEM:人魚の下半身 += 1
+			ENDIF
+			IF TALENT:対象:尻尾
+				PRINTL 切断された尻尾+1
+				ITEM:切断された尻尾 += 1
+			ENDIF
+			SELECTCASE CSTR:対象:種族
+				CASE "悪魔"
+					PRINTL 悪魔の心臓+1
+					ITEM:悪魔の心臓 += 1
+				CASE "天使"
+					PRINTL 天使の心臓+1
+					ITEM:天使の心臓 += 1
+				CASE "神"
+					PRINTL 神の心臓+1
+					ITEM:神の心臓 += 1
+				CASE "魔術師"
+					PRINTL 魔術師の心臓+1
+					ITEM:魔術師の心臓 += 1
+			ENDSELECT
+			IF NO:対象 < 10000 && !DNAデータ:(NO:対象)
+				PRINTFORML %CALLNAME:対象%のDNAデータを解析できるようになりました
+				DNAデータ:(NO:対象) = 1
+			ENDIF
+			WAIT
+			CALL CLEAR_CHARA, 対象
+			RESTART
+	ENDSELECT
+LOOP 1
+
 

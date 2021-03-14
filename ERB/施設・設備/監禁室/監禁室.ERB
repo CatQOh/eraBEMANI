@@ -91,14 +91,18 @@ WAIT
 LOCAL = 0
 FOR LCOUNT, 1, CHARANUM
 	IF CSTR:LCOUNT:配属 == "監禁室"
-		スタッフ:(++LOCAL) = LCOUNT
-		IF TALENT:LCOUNT:淫乱 || TALENT:LCOUNT:服従
-			技巧合計 += ABL:LCOUNT:技巧
-		ELSEIF TALENT:LCOUNT:娼婦 || TALENT:LCOUNT:隷属
-			技巧合計 += ABL:LCOUNT:技巧*2
+		IF CFLAG:LCOUNT:配属完了
+			スタッフ:(++LOCAL) = LCOUNT
+			IF TALENT:LCOUNT:淫乱 || TALENT:LCOUNT:服従
+				技巧合計 += ABL:LCOUNT:技巧
+			ELSEIF TALENT:LCOUNT:娼婦 || TALENT:LCOUNT:隷属
+				技巧合計 += ABL:LCOUNT:技巧*2
+			ENDIF
+			SIF ISSLIME(LCOUNT)
+				スライム配属 = 1
+		ELSE
+			CFLAG:LCOUNT:配属完了 = 1
 		ENDIF
-		SIF ISSLIME(LCOUNT)
-			スライム配属 = 1
 	ENDIF
 NEXT
 
@@ -202,6 +206,9 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 			SIF 合計回数:1
 				PRINTFORML └\@ Ｖ内容:3 ? Ｖ:{Ｖ内容:3}回　 #\@\@ Ｃ内容:3 ? Ｃ:{Ｃ内容:3}回　 #\@\@ Ａ内容:3 ? Ａ:{Ａ内容:3}回　 #\@\@ Ｂ内容:3 ? Ｂ:{Ｂ内容:3}回 #\@
 			CALL EXPUP, "噴乳経験", Ｂ内容:4, 監禁対象
+			SIF EXP:監禁対象:触手経験 == 0
+				CALL EXPUP, "異常経験", 1, 監禁対象
+			CALL EXPUP, "触手経験", 3, 監禁対象
 			CALL JUELUP, "快Ｖ",Ｖ内容:2, 監禁対象
 			CALL JUELUP, "快Ｃ",Ｃ内容:2, 監禁対象
 			CALL JUELUP, "快Ａ",Ａ内容:2, 監禁対象
@@ -244,7 +251,7 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 					CASE 3
 						PRINT 電流で無理やり射精の動きを再現する機械を繋がれ、
 				ENDSELECT
-				搾精内容:2 = 3
+				搾精内容:2 = 基礎研究レベル/5+2
 			ENDIF
 			IF FINDELEMENT(監禁方法, "スタッフの手") > 0
 				;尿道も機械も無し
@@ -263,7 +270,7 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 							PRINTFORM それを扱う%CALLNAME:スタッフ%の技量が%CALLNAME:監禁対象%を終わりのない射精の循環に突き落とした
 					ENDSELECT
 				ENDIF
-				搾精内容:3 = 技巧合計+30
+				搾精内容:3 = 技巧合計+5
 			ELSE
 				;尿道も機械も人の手も無し
 				IF !搾精内容:1 && !搾精内容:2
@@ -271,15 +278,15 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 					IF 搾精内容:0
 						IF FALLTYPE(監禁対象) == 2
 							PRINT 性欲と渇望のままに何度も自慰を行い、精液採取用の道具を一杯にしていた
-							搾精内容:3 = 30
+							搾精内容:3 = 10
 						ELSE
 							PRINT とうとう我慢できなくなったのか自慰を行って精液採取用の道具に精液を溜めた
-							搾精内容:3 = 15
+							搾精内容:3 = 5
 						ENDIF
 					ELSE
 						IF FALLTYPE(監禁対象) == 2
 							PRINT 精液の提出を要求されると、監禁室にある本や道具を使って自慰を行っていた
-							搾精内容:3 = 15
+							搾精内容:3 = 5
 						ELSE
 							PRINT 監禁に不満を示し、最後まで自慰と精液の提出を行うことはなかった
 							搾精内容:3 = 0
@@ -300,11 +307,31 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 				CALL EXPUP, "射精管理経験", 搾精内容:1+搾精内容:2, 監禁対象
 				CALL EXPUP, "緊縛経験", 2, 監禁対象
 			ENDIF
-
-
-
-
-
+		CASE "採血監禁"
+			PRINTFORML %CALLNAME:監禁対象%が採血のために監禁されている
+			IF FINDELEMENT(監禁方法, "道具機械") > 0
+				PRINTFORML 腕に採血用の機械を繋いだ%CALLNAME:監禁対象%から、健康に支障が無い程度に採血を行ったようだ
+				比率 = 2
+			ELSEIF FINDELEMENT(監禁方法, "道具機械") > 0
+				PRINTFORML %CALLNAME:スタッフ%の手で数回に分けて採血を行ったようだ
+				比率 = 1
+			ENDIF
+			IF TALENT:監禁対象:小人体型
+				PRINTFORML {比率*50}mlの血液を採取した
+				FLAG:保管済み血液 += 比率*50
+			ELSEIF TALENT:監禁対象:小柄体型
+				PRINTFORML {比率*100}mlの血液を採取した
+				FLAG:保管済み血液 += 比率*100
+			ELSE
+				PRINTFORML {比率*200}mlの血液を採取した
+				FLAG:保管済み血液 += 比率*200
+			ENDIF
+			CALL JUELUP, "否定", 比率*500, 監禁対象
+			;DNAデータ
+			IF NO:監禁対象 < 10000 && !DNAデータ:(NO:監禁対象)
+				PRINTFORMW %CALLNAME:監禁対象%のDNAデータを解析できるようになりました
+				DNAデータ:(NO:監禁対象) = 1
+			ENDIF
 		CASE "スライム監禁"
 			IF TALENT:監禁対象:スライム || TALENT:監禁対象:溶ける快
 				IF スタッフ
@@ -318,7 +345,6 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 				PRINTFORM %CALLNAME:スライムスタッフ%の手によって%CALLNAME:監禁対象%のスライム化が進められている……
 				CFLAG:監禁対象:スライム度 += 5
 			ENDIF
-		CASE "採血監禁"
 	ENDSELECT
 NEXT
 

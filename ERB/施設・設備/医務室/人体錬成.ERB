@@ -1,0 +1,102 @@
+﻿@人体錬成
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 性別設定 = 1
+#DIM DYNAMIC 体型設定
+
+DRAWLINE
+
+PRINTL □保管した血液から新しいキャラを作ることができます
+PRINTFORM 　保管済み血液:{FLAG:保管済み血液} 
+FOR LCOUNT, GETNUM(ITEM, "ケモミミが付いた頭"), GETNUM(ITEM, "ケモミミが付いた頭")+30
+	SIF ITEM:LCOUNT
+		PRINTFORM %ITEMNAME:LCOUNT%×{ITEM:LCOUNT} 
+NEXT
+PRINTL 
+PRINTL □人体錬成の条件を選択してください
+PRINTFORML [1] - 性別を変更する(\@ 性別設定 == 1 ? 男性 # 女性 \@)
+PRINTFORML [2] - 体型を変更する(\@ 体型設定 == 1 ? 子供(3000mlの血液が必要) # 普通(5000mlの血液が必要) \@)
+PRINTL [3] - 上記の条件でシミュレートする
+PRINTL [4] - DNAデータからクローンを作る
+PRINTL 　[0] - 戻る
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN
+		CASE 1
+			IF 性別設定 == 1
+				性別設定 = 2
+			ELSE
+				性別設定 = 1
+			ENDIF
+			RESTART
+		CASE 2
+			INVERTBIT 体型設定, 0
+			RESTART
+		CASE 3
+			CALL ADD_ランダムキャラ, 性別設定, 体型設定, 1
+			BREAK
+		CASE 4
+			CALL 所持DNA
+			SIF RESULT == 0
+				RESTART
+			ADDCHARA RESULT
+			対象 = CHARANUM-1
+			;10000以降のNOを使うので子供の数と共用
+			NO:対象 = FLAG:子供の数+10001
+			BREAK
+	ENDSELECT
+LOOP 1
+
+対象 = CHARANUM-1
+
+CALL ADD_ランダムキャラ_STATUS, 対象, 1
+
+@所持DNA
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 次ページあり
+DRAWLINE
+PRINTL □誰のDNAを使用しますか？
+FOR LCOUNT, 1, 10000
+	IF DNAデータ:LCOUNT
+		表示数++
+		IF 表示数 > ページ数*20+20
+			次ページあり = 1
+			BREAK
+		ENDIF
+		PRINTFORML [{LCOUNT, 5}]- %CSVNAME(LCOUNT)%
+	ENDIF
+NEXT
+
+PRINTPLAINFORM 　DNA.{ページ数+1}　
+IF ページ数 > 0
+	PRINT [-1] - 前ページ
+ELSE
+	PRINTPLAIN                
+ENDIF
+PRINT [0] - 戻る
+SIF 次ページあり
+	PRINT [-9] - 次ページ
+PRINTL 
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE -1
+			SIF ページ数 > 0
+				ページ数--
+			RESTART
+		CASE -9
+			SIF 次ページあり
+				ページ数++
+			RESTART
+		CASEELSE
+			SIF DNAデータ:RESULT
+				RETURN RESULT
+	ENDSELECT
+LOOP 1

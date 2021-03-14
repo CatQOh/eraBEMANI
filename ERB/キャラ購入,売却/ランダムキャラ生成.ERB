@@ -1,39 +1,47 @@
-﻿@ADD_ランダムキャラ, ARG
+﻿@ADD_ランダムキャラ, ARG, 体型設定, 人体錬成
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC テーブル
 #DIM DYNAMIC 素質数
+#DIM DYNAMIC 人体錬成
+#DIM DYNAMIC 体型設定
 
 ADDVOIDCHARA
 
 LTARGET = TARGET
 TARGET = CHARANUM-1
 
-STRDATA LOCALS
-	DATA 人間
-	DATA 悪魔
-	DATA 天使
-	DATA 獣人
-	DATA 精霊
-	DATA 機械
-	DATA ヴァンパイア
-	DATA 妖精
-ENDDATA
+IF 人体錬成
+	LOCALS = 人間
+ELSE
+	STRDATA LOCALS
+		DATA 人間
+		DATA 悪魔
+		DATA 天使
+		DATA 獣人
+		DATA 精霊
+		DATA 機械
+		DATA ヴァンパイア
+		DATA 妖精
+	ENDDATA
+ENDIF
 
 CSTR:種族 = %LOCALS%
 
 NAME:TARGET = %ランダム命名(RAND(1, 4))%
 CALLNAME:TARGET = %NAME:TARGET%
 
-TALENT:性別 = 2
+TALENT:性別 = ARG
 
-IF RAND:4 == 0
+IF RAND:4 == 0 || 体型設定 == 1
 	TALENT:小柄体型 = 1
-	TALENT:バストサイズ = RAND(1, 4)
+	SIF ARG == 2
+		TALENT:バストサイズ = RAND(1, 4)
 	MAXBASE:体力 = RAND(16, 20)*100
 	MAXBASE:気力 = RAND(16, 20)*100
 ELSE
-	TALENT:バストサイズ = RAND(1, 7)
+	SIF ARG == 2
+		TALENT:バストサイズ = RAND(1, 7)
 	MAXBASE:体力 = RAND(17, 22)*100
 	MAXBASE:気力 = RAND(17, 22)*100
 ENDIF
@@ -302,71 +310,84 @@ SELECTCASE CSTR:種族
 		TALENT:無機物 = 1
 ENDSELECT
 
-ARG = TARGET
+;人体錬成では能力ABL共にまっさらな状態
+IF !人体錬成
+	SELECTCASE RAND:3
+		CASE 0
+			VARSET EXP:0, 0
+		CASE 1
+			EXP:絶頂経験 = 0
+			IF VAGINA(ARG)
+				EXP:Ｖ経験 = RAND(10, 31)
+				EXP:膣射経験 = RAND(0, 6)
+				EXP:絶頂経験 += RAND(10, 21)
+				EXP:精液経験 = RAND(20, 51)+EXP:膣射経験
+			ENDIF
+			IF PENIS(ARG)
+				EXP:射精経験 = RAND(50, 101)
+				EXP:絶頂経験 += EXP:射精経験
+			ENDIF
+			IF SEX(ARG) == 2
+				EXP:パイズリ経験 = RAND(3, 11)
+				EXP:フェラ経験 = RAND(5, 21)
+			ENDIF
+			EXP:性交経験 = RAND(5, 11)
+			EXP:自慰経験 = RAND(10, 31)
+		CASE 2
+			IF VAGINA(ARG)
+				EXP:Ｖ経験 = RAND(500, 1001)
+				EXP:膣射経験 = RAND(300, 501)
+				EXP:出産経験 = RAND(1, 4)
+				SIF RAND:5 == 0
+					EXP:流産経験 = 1
+			ENDIF
+			SIF PENIS(ARG)
+				EXP:射精経験 = RAND(2000, 5001)
+			SELECTCASE SEX(ARG)
+				CASE 1
+					EXP:ゲイ経験 = RAND(500, 1001)
+				CASE 2
+					EXP:レズ経験 = RAND(500, 1001)
+					EXP:パイズリ経験 = RAND(200, 301)
+			ENDSELECT
+			EXP:Ａ経験 = RAND(500, 1001)
+			EXP:性交経験 = RAND(300, 501)
+			EXP:自慰経験 = RAND(1000, 2001)
+			EXP:フェラ経験 = RAND(500, 1001)
+			EXP:絶頂経験 = RAND(500, 1001)+EXP:射精経験
+			EXP:精液経験 = RAND(2000, 5001)+EXP:膣射経験
+	ENDSELECT
 
-SELECTCASE RAND:3
-	CASE 0
-		VARSET EXP:ARG:0, 0
-	CASE 1
-		EXP:ARG:絶頂経験 = 0
-		IF VAGINA(ARG)
-			EXP:ARG:Ｖ経験 = RAND(10, 31)
-			EXP:ARG:膣射経験 = RAND(0, 6)
-			EXP:ARG:絶頂経験 += RAND(10, 21)
-			EXP:ARG:精液経験 = RAND(20, 51)+EXP:ARG:膣射経験
-		ENDIF
-		IF PENIS(ARG)
-			EXP:ARG:射精経験 = RAND(50, 101)
-			EXP:ARG:絶頂経験 += EXP:ARG:射精経験
-		ENDIF
-		IF SEX(ARG) == 2
-			EXP:ARG:パイズリ経験 = RAND(3, 11)
-			EXP:ARG:フェラ経験 = RAND(5, 21)
-		ENDIF
-		EXP:ARG:性交経験 = RAND(5, 11)
-		EXP:ARG:自慰経験 = RAND(10, 31)
-	CASE 2
-		IF VAGINA(ARG)
-			EXP:ARG:Ｖ経験 = RAND(500, 1001)
-			EXP:ARG:膣射経験 = RAND(300, 501)
-			EXP:ARG:出産経験 = RAND(1, 4)
-			SIF RAND:5 == 0
-				EXP:ARG:流産経験 = 1
-		ENDIF
-		SIF PENIS(ARG)
-			EXP:ARG:射精経験 = RAND(2000, 5001)
-		SELECTCASE SEX(ARG)
-			CASE 1
-				EXP:ARG:ゲイ経験 = RAND(500, 1001)
-			CASE 2
-				EXP:ARG:レズ経験 = RAND(500, 1001)
-				EXP:ARG:パイズリ経験 = RAND(200, 301)
-		ENDSELECT
-		EXP:ARG:Ａ経験 = RAND(500, 1001)
-		EXP:ARG:性交経験 = RAND(300, 501)
-		EXP:ARG:自慰経験 = RAND(1000, 2001)
-		EXP:ARG:フェラ経験 = RAND(500, 1001)
-		EXP:ARG:絶頂経験 = RAND(500, 1001)+EXP:ARG:射精経験
-		EXP:ARG:精液経験 = RAND(2000, 5001)+EXP:ARG:膣射経験
-ENDSELECT
+	;経験に応じて感度とかいろいろ上がる
+	ABL:Ｃ感覚 = MAX(ABL:Ｃ感覚, LIMIT(EXP:絶頂経験/50, 0, 10))
+	ABL:Ｂ感覚 = MAX(ABL:Ｂ感覚, LIMIT(EXP:絶頂経験/50, 0, 10))
+	ABL:Ｖ感覚 = MAX(ABL:Ｖ感覚, LIMIT(EXP:Ｖ経験/100, 0, 10))
+	ABL:Ａ感覚 = MAX(ABL:Ａ感覚, LIMIT(EXP:Ａ経験/100, 0, 10))
+	ABL:精液中毒 = MAX(ABL:精液中毒, LIMIT(EXP:精液経験/300, 0, 10))
+	ABL:ゲイ中毒 = MAX(ABL:ゲイ中毒, LIMIT(EXP:ゲイ経験/300, 0, 10))
+	ABL:レズ中毒 = MAX(ABL:レズ中毒, LIMIT(EXP:レズ経験/300, 0, 10))
+	ABL:自慰中毒 = MAX(ABL:自慰中毒, LIMIT(EXP:自慰経験/300, 0, 10))
+	ABL:奉仕精神 = MAX(ABL:奉仕精神, LIMIT(EXP:奉仕快楽経験/200, 0, 10))
+	ABL:性交中毒 = MAX(ABL:性交中毒, LIMIT(EXP:性交経験/300, 0, 10))
+	ABL:マゾっ気 = MAX(ABL:マゾっ気, LIMIT(EXP:苦痛快楽経験/300, 0, 10))
+ENDIF
 
-;経験に応じて感度とかいろいろ上がる
-ABL:Ｃ感覚 = MAX(ABL:TARGET:Ｃ感覚, LIMIT(EXP:絶頂経験/50, 0, 10))
-ABL:Ｂ感覚 = MAX(ABL:TARGET:Ｂ感覚, LIMIT(EXP:絶頂経験/50, 0, 10))
-ABL:Ｖ感覚 = MAX(ABL:TARGET:Ｖ感覚, LIMIT(EXP:Ｖ経験/100, 0, 10))
-ABL:Ａ感覚 = MAX(ABL:TARGET:Ａ感覚, LIMIT(EXP:Ａ経験/100, 0, 10))
-ABL:精液中毒 = MAX(ABL:TARGET:精液中毒, LIMIT(EXP:精液経験/300, 0, 10))
-ABL:ゲイ中毒 = MAX(ABL:TARGET:ゲイ中毒, LIMIT(EXP:ゲイ経験/300, 0, 10))
-ABL:レズ中毒 = MAX(ABL:TARGET:レズ中毒, LIMIT(EXP:レズ経験/300, 0, 10))
-ABL:自慰中毒 = MAX(ABL:TARGET:自慰中毒, LIMIT(EXP:自慰経験/300, 0, 10))
-ABL:奉仕精神 = MAX(ABL:TARGET:奉仕精神, LIMIT(EXP:奉仕快楽経験/200, 0, 10))
-ABL:性交中毒 = MAX(ABL:TARGET:性交中毒, LIMIT(EXP:性交経験/300, 0, 10))
-ABL:マゾっ気 = MAX(ABL:TARGET:マゾっ気, LIMIT(EXP:苦痛快楽経験/300, 0, 10))
+SIF VAGINA(TARGET) && !EXP:Ｖ経験
+	TALENT:処女 = 1
+SIF PENIS(TARGET) && !EXP:性交経験
+	TALENT:童貞 = 1
 
-SIF VAGINA(ARG) && !EXP:ARG:Ｖ経験
-	TALENT:ARG:処女 = 1
-SIF PENIS(ARG) && !EXP:ARG:性交経験
-	TALENT:ARG:童貞 = 1
+SIF !人体錬成
+	CALL ADD_ランダムキャラ_STATUS, TARGET
+
+SIF !RESULT
+	TARGET = LTARGET
+
+
+
+@ADD_ランダムキャラ_STATUS, ARG, 人体錬成
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 人体錬成
 
 DRAWLINE
 IF LANGUAGE == "ENG"
@@ -464,14 +485,16 @@ ELSE
 	ENDIF
 	PRINTL
 
-	PRINTFORMLC 　動物耳:\@ TALENT:ARG:動物耳 ? 有り # 無し\@
-	PRINTFORMLC 尻尾:\@ TALENT:ARG:尻尾 ? 有り # 無し\@
-	PRINTFORMLC 羽:\@ TALENT:ARG:羽 ? 有り # 無し\@
-	PRINTL 
-	PRINTFORMLC 　もふもふ:\@ TALENT:ARG:ファーリー ? 有り # 無し\@
-	PRINTFORMLC 生命活動:\@ !TALENT:ARG:ゾンビ ? 有り # 無し\@
-	PRINTL 
-	PRINTL 【能力・性経験】
+	IF !人体錬成
+		PRINTFORMLC 　動物耳:\@ TALENT:ARG:動物耳 ? 有り # 無し\@
+		PRINTFORMLC 尻尾:\@ TALENT:ARG:尻尾 ? 有り # 無し\@
+		PRINTFORMLC 羽:\@ TALENT:ARG:羽 ? 有り # 無し\@
+		PRINTL 
+		PRINTFORMLC 　もふもふ:\@ TALENT:ARG:ファーリー ? 有り # 無し\@
+		PRINTFORMLC 生命活動:\@ !TALENT:ARG:ゾンビ ? 有り # 無し\@
+		PRINTL 
+		PRINTL 【能力・性経験】
+	ENDIF
 ENDIF
 LOCAL = 0
 FOR LCOUNT, 0, VARSIZE("ABL")
@@ -546,7 +569,7 @@ IF LANGUAGE == "ENG"
 ELSE
 	PRINT 【素質】
 ENDIF
-CALL SHOW_INFO_TALENT, TARGET
+CALL SHOW_INFO_TALENT, ARG
 DRAWLINE
 PRINTPLAIN 　PLAYER CUSTOM　
 IF LANGUAGE == "ENG"
@@ -568,10 +591,10 @@ DO
 				RESTART
 			ENDIF
 			VARLINE = 0
-			RETURN
+			RETURN 1
 		CASE 1
-			DELCHARA TARGET
-			TARGET = LTARGET
+			DELCHARA ARG
+			CALL ADD_ランダムキャラ, 2, -1
 			RESTART
 	ENDSELECT
 	BREAK
