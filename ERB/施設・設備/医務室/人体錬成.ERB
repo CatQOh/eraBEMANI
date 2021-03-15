@@ -1,23 +1,26 @@
 ﻿@人体錬成
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 対象
-#DIM DYNAMIC 性別設定 = 1
-#DIM DYNAMIC 体型設定
+#DIM 性別設定 = 1
+#DIM 体型設定
+#DIM スライム設定
+#DIM DYNAMIC 魔法技能記録用
 
 DRAWLINE
 
 PRINTL □保管した血液から新しいキャラを作ることができます
-PRINTFORM 　保管済み血液:{FLAG:保管済み血液} 
+PRINTFORM 　保管済み血液:{FLAG:保管済み血液}ml 保管済み粘液:{FLAG:保管済み粘液}ml 
 FOR LCOUNT, GETNUM(ITEM, "ケモミミが付いた頭"), GETNUM(ITEM, "ケモミミが付いた頭")+30
 	SIF ITEM:LCOUNT
 		PRINTFORM %ITEMNAME:LCOUNT%×{ITEM:LCOUNT} 
 NEXT
 PRINTL 
 PRINTL □人体錬成の条件を選択してください
-PRINTFORML [1] - 性別を変更する(\@ 性別設定 == 1 ? 男性 # 女性 \@)
-PRINTFORML [2] - 体型を変更する(\@ 体型設定 == 1 ? 子供(3000mlの血液が必要) # 普通(5000mlの血液が必要) \@)
-PRINTL [3] - 上記の条件でシミュレートする
-PRINTL [4] - DNAデータからクローンを作る
+PRINTFORML 　[1] - 性別を変更する(\@ 性別設定 == 1 ? 男性 # 女性 \@)
+PRINTFORML 　[2] - 体型を変更する(\@ 体型設定 == 1 ? 子供(3000mlの血液が必要) # 普通(5000mlの血液が必要) \@)
+PRINTFORML 　[3] - スライムの粘液(\@ スライム設定 == 1 ? 混ぜる(500ml必要) # 混ぜない \@)
+PRINTL 　[4] - 上記の条件でシミュレートする
+PRINTL 　[5] - DNAデータからクローンを作る
 PRINTL 　[0] - 戻る
 DO
 	INPUT
@@ -35,23 +38,214 @@ DO
 			INVERTBIT 体型設定, 0
 			RESTART
 		CASE 3
-			CALL ADD_ランダムキャラ, 性別設定, 体型設定, 1
-			BREAK
+			INVERTBIT スライム設定, 0
+			RESTART
 		CASE 4
+			$REROLL
+			CALL ADD_ランダムキャラ, 性別設定, 体型設定, 1
+			対象 = CHARANUM-1
+			BREAK
+		CASE 5
 			CALL 所持DNA
 			SIF RESULT == 0
 				RESTART
 			ADDCHARA RESULT
 			対象 = CHARANUM-1
-			;10000以降のNOを使うので子供の数と共用
-			NO:対象 = FLAG:子供の数+10001
+			CFLAG:対象:複製 = RESULT
+			魔法技能記録用 = ABL:対象:魔法技能
+			;EXPとABLを初期化するが魔法技能だけ例外
+			VARSET EXP:対象:0
+			VARSET ABL:対象:0
+			ABL:対象:魔法技能 = 魔法技能記録用
+			;相性や関係も初期化する
+			VARSET RELATION:対象:0, 100
+			CALL 初期経験リセット, 対象
+			SIF PENIS(対象)
+				TALENT:対象:童貞 = 1
+			SIF VAGINA(対象)
+				TALENT:対象:処女 = 1
 			BREAK
 	ENDSELECT
 LOOP 1
 
-対象 = CHARANUM-1
+IF TALENT:対象:小柄体型
+	IF FLAG:保管済み血液 < 3000
+		PRINTW 材料の血液が足りません
+		CALL CLEAR_CHARA, 対象
+		RESTART
+	ENDIF
+ELSE
+	IF FLAG:保管済み血液 < 5000
+		PRINTW 材料の血液が足りません
+		CALL CLEAR_CHARA, 対象
+		RESTART
+	ENDIF
+ENDIF
+
+IF スライム設定
+	IF FLAG:保管済み粘液 < 500
+		PRINTW 材料の粘液が足りません
+		CALL CLEAR_CHARA, 対象
+		RESTART
+	ENDIF
+	TALENT:対象:スライム = 1
+ENDIF
+;10000以降のNOを使うので子供の数と共用
+NO:対象 = FLAG:子供の数+10001
+CFLAG:対象:人工物 = 1
+VARSET HIDE_TALENT
+IF CFLAG:対象:複製
+	NAME:対象 = %NAME:対象%(クローン\@ DNAデータ:(CFLAG:対象:複製) >= 2 ? {DNAデータ:(CFLAG:対象:複製)} #\@)
+	CALLNAME:対象 = %NAME:対象%
+ENDIF
+
+CALL 人体錬成_調整, 対象
+
+SIF RESULT
+	GOTO REROLL
+
+RESTART
+
+@人体錬成_調整, 対象
+#DIM DYNAMIC 対象
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LRESULT
 
 CALL ADD_ランダムキャラ_STATUS, 対象, 1
+
+DRAWLINE
+IF !CFLAG:対象:複製
+	FOR LCOUNT, GETNUM(ITEM, "ケモミミが付いた頭"), GETNUM(ITEM, "ケモミミが付いた頭")+30
+		SIF ITEM:LCOUNT
+			PRINTFORMLC 　[{LCOUNT}]%ITEMNAME:LCOUNT%×{ITEM:LCOUNT} 
+	NEXT
+ENDIF
+SIF !LINEISEMPTY()
+	PRINTL
+
+CALL CHECKDRAWLINE
+PRINTPLAIN 　人体錬成　
+PRINT [0] - 戻る 
+PRINT [1] - このキャラを錬成する 
+IF !CFLAG:対象:複製
+	PRINT [2] - 名前を変更する 
+	PRINT [3] - シミュレートし直す
+ENDIF
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			TARGET = 対象
+			PRINTFORML %NAME:TARGET%を錬成しました
+			;子供と同じ扱い
+			FLAG:子供の数++
+			IF TALENT:小柄体型
+				PRINTL 保管済み血液を3000ml使用しました
+				FLAG:保管済み血液 -= 3000
+			ELSE
+				PRINTL 保管済み血液を5000ml使用しました
+				FLAG:保管済み血液 -= 5000
+			ENDIF
+			IF ISSLIME(TARGET)
+				PRINTL 保管済み粘液を500ml使用しました
+				FLAG:保管済み粘液 -= 500
+			ENDIF
+			IF !CFLAG:対象:複製
+				IF TALENT:動物耳
+					PRINTL ケモミミが付いた頭を付けました
+					ITEM:ケモミミが付いた頭--
+				ENDIF
+				IF TALENT:羽
+					PRINTL 翼の生えた胴体を付けました
+					ITEM:翼の生えた胴体--
+				ENDIF
+				IF TALENT:尻尾
+					PRINTL 切断された尻尾を使用しました
+					ITEM:切断された尻尾--
+				ENDIF
+				IF TALENT:足使用不可
+					PRINTL 人魚の下半身を付けました
+					ITEM:人魚の下半身--
+				ENDIF
+				SELECTCASE CSTR:種族
+					CASE "悪魔"
+						PRINTL 悪魔の心臓を植え付けました
+						ITEM:悪魔の心臓--
+					CASE "天使"
+						PRINTL 天使の心臓を植え付けました
+						ITEM:天使の心臓--
+					CASE "神"
+						PRINTL 神の心臓を植え付けました
+						ITEM:神の心臓--
+					CASE "魔術師"
+						PRINTL 魔術師の心臓を植え付けました
+						ITEM:魔術師の心臓--
+						ABL:魔法技能 = 3
+						MAXBASE:魔力 = 3000
+						BASE:魔力 = 3000
+				ENDSELECT
+			ELSE
+				IF GETCHARA(CFLAG:対象:複製) > 0
+					CALL JUELUP, "否定", 10000, GETCHARA(CFLAG:対象:複製)
+					PRINTFORML オリジナルの%NAME:GETCHARA(CFLAG:対象:複製)%の反発刻印がLv3になった
+					MARK:GETCHARA(CFLAG:対象:複製):反発刻印 = 3
+				ENDIF
+				DNAデータ:(CFLAG:対象:複製)++
+			ENDIF
+			WAIT
+			RETURN 0
+		CASE 2
+			PRINTL [1] - ランダムで命名する
+			PRINTL [2] - 名前を入力する
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 1
+						NAME:対象 = %ランダム命名(RAND(1, 4))%
+						CALLNAME:対象 = %NAME:TARGET%
+						RESTART
+					CASE 2
+						PRINTL 名前を入力してください（何も入力しなかった場合は変更されません）
+						INPUTS
+						SIF RESULTS == ""
+							RESTART
+						NAME:対象 = %RESULTS%
+						CALLNAME:対象 = %RESULTS%
+						RESTART
+				ENDSELECT
+			LOOP 1
+		CASE 3
+			CALL CLEAR_CHARA, 対象
+			RETURN 1
+		CASEELSE
+			LRESULT = RESULT
+			IF INRANGE(LRESULT, 0, VARSIZE("ITEM")) && ITEM:LRESULT
+				SELECTCASE ITEMNAME:LRESULT
+					CASE "ケモミミが付いた頭"
+						INVERTBIT TALENT:対象:動物耳, 0
+					CASE "翼の生えた胴体"
+						INVERTBIT TALENT:対象:羽, 0
+					CASE "人魚の下半身"
+						INVERTBIT TALENT:対象:足使用不可, 0
+					CASE "切断された尻尾"
+						INVERTBIT TALENT:対象:尻尾, 0
+					CASE "悪魔の心臓"
+						CSTR:対象:種族 = 悪魔
+					CASE "天使の心臓"
+						CSTR:対象:種族 = 天使
+					CASE "神の心臓"
+						CSTR:対象:種族 = 神
+					CASE "魔術師の心臓"
+						CSTR:対象:種族 = 魔術師
+				ENDSELECT
+				RESTART
+			ENDIF
+	ENDSELECT
+LOOP 1
+
 
 @所持DNA
 #DIM DYNAMIC LCOUNT
@@ -67,10 +261,10 @@ FOR LCOUNT, 1, 10000
 			次ページあり = 1
 			BREAK
 		ENDIF
-		PRINTFORML [{LCOUNT, 5}]- %CSVNAME(LCOUNT)%
+		PRINTFORML 　[{LCOUNT, 5}]- %CSVNAME(LCOUNT)%
 	ENDIF
 NEXT
-
+DRAWLINE
 PRINTPLAINFORM 　DNA.{ページ数+1}　
 IF ページ数 > 0
 	PRINT [-1] - 前ページ

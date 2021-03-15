@@ -1,4 +1,4 @@
-﻿@ADD_ランダムキャラ, ARG, 体型設定, 人体錬成
+﻿@ADD_ランダムキャラ, ARG, 体型設定 = -1, 人体錬成
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC テーブル
@@ -33,13 +33,22 @@ CALLNAME:TARGET = %NAME:TARGET%
 
 TALENT:性別 = ARG
 
-IF RAND:4 == 0 || 体型設定 == 1
+SELECTCASE 体型設定
+	CASE 0
+		GOTO 普通
+	CASE 1
+		GOTO 小柄
+ENDSELECT
+
+IF RAND:4 == 0
+	$小柄
 	TALENT:小柄体型 = 1
 	SIF ARG == 2
 		TALENT:バストサイズ = RAND(1, 4)
 	MAXBASE:体力 = RAND(16, 20)*100
 	MAXBASE:気力 = RAND(16, 20)*100
 ELSE
+	$普通
 	SIF ARG == 2
 		TALENT:バストサイズ = RAND(1, 7)
 	MAXBASE:体力 = RAND(17, 22)*100
@@ -497,79 +506,86 @@ ELSE
 	ENDIF
 ENDIF
 LOCAL = 0
-FOR LCOUNT, 0, VARSIZE("ABL")
-	SELECTCASE ABLNAME:LCOUNT
-		CASE "Ｖ感覚"
-			SIF !VAGINA(ARG)
+IF !人体錬成
+	FOR LCOUNT, 0, VARSIZE("ABL")
+		SELECTCASE ABLNAME:LCOUNT
+			CASE "Ｖ感覚"
+				SIF !VAGINA(ARG)
+					CONTINUE
+			CASE "ゲイ中毒"
+				SIF SEX(ARG) != 1
+					CONTINUE
+			CASE "レズ中毒"
+				SIF SEX(ARG) != 2
+					CONTINUE
+			CASE "Ｃ感覚", "Ｂ感覚", "Ａ感覚", "精液中毒", "自慰中毒", "奉仕精神", "性交中毒", "マゾっ気"
+			CASEELSE
 				CONTINUE
-		CASE "ゲイ中毒"
-			SIF SEX(ARG) != 1
-				CONTINUE
-		CASE "レズ中毒"
-			SIF SEX(ARG) != 2
-				CONTINUE
-		CASE "Ｃ感覚", "Ｂ感覚", "Ａ感覚", "精液中毒", "自慰中毒", "奉仕精神", "性交中毒", "マゾっ気"
-		CASEELSE
-			CONTINUE
-	ENDSELECT
-	SIF LOCAL == 0
-		PRINT 　
-	IF LANGUAGE == "ENG"
-		PRINTFORMLC %ABLDISP(LCOUNT)%:{ABL:ARG:LCOUNT}
-	ELSE
-		PRINTFORMLC %ABLDISP(LCOUNT)%:{ABL:ARG:LCOUNT}
-	ENDIF
-	PRINTPLAIN  
-	LOCAL++
-	IF LOCAL%3 == 0 && LOCAL != 0
+		ENDSELECT
+		SIF LOCAL == 0
+			PRINT 　
+		IF LANGUAGE == "ENG"
+			PRINTFORMLC %ABLDISP(LCOUNT)%:{ABL:ARG:LCOUNT}
+		ELSE
+			PRINTFORMLC %ABLDISP(LCOUNT)%:{ABL:ARG:LCOUNT}
+		ENDIF
+		PRINTPLAIN  
+		LOCAL++
+		IF LOCAL%3 == 0 && LOCAL != 0
+			PRINTL 
+			LOCAL = 0
+		ENDIF
+	NEXT
+	SIF !LINEISEMPTY()
 		PRINTL 
-		LOCAL = 0
-	ENDIF
-NEXT
-SIF !LINEISEMPTY()
 	PRINTL 
-PRINTL 
-LOCAL = 0
-FOR LCOUNT, 0, 100
-	SELECTCASE EXPNAME:LCOUNT
-		CASE "Ｖ経験", "膣射経験", "出産経験", "流産経験"
-			SIF !VAGINA(ARG)
+	LOCAL = 0
+	FOR LCOUNT, 0, 100
+		SELECTCASE EXPNAME:LCOUNT
+			CASE "Ｖ経験", "膣射経験", "出産経験", "流産経験"
+				SIF !VAGINA(ARG)
+					CONTINUE
+			CASE "射精経験"
+				SIF !PENIS(ARG)
+					CONTINUE
+			CASE "レズ経験", "パイズリ経験"
+				SIF SEX(ARG) != 2
+					CONTINUE
+			CASE "ゲイ経験"
+				SIF SEX(ARG) != 1
+					CONTINUE
+			CASE "Ａ経験", "絶頂経験", "性交経験", "精液経験", "フェラ経験", "自慰経験"
+			CASEELSE
 				CONTINUE
-		CASE "射精経験"
-			SIF !PENIS(ARG)
-				CONTINUE
-		CASE "レズ経験", "パイズリ経験"
-			SIF SEX(ARG) != 2
-				CONTINUE
-		CASE "ゲイ経験"
-			SIF SEX(ARG) != 1
-				CONTINUE
-		CASE "Ａ経験", "絶頂経験", "性交経験", "精液経験", "フェラ経験", "自慰経験"
-		CASEELSE
-			CONTINUE
-	ENDSELECT
-	SIF LOCAL == 0
-		PRINT 　
-	IF LANGUAGE == "ENG"
-		PRINTFORMLC %EXPDISP(LCOUNT)%:{EXP:ARG:LCOUNT}
-	ELSE
-		PRINTFORMLC %EXPDISP(LCOUNT)%:{EXP:ARG:LCOUNT}
-	ENDIF
-	PRINTPLAIN  
-	LOCAL++
-	IF LOCAL%3 == 0 && LOCAL != 0
+		ENDSELECT
+		SIF LOCAL == 0
+			PRINT 　
+		IF LANGUAGE == "ENG"
+			PRINTFORMLC %EXPDISP(LCOUNT)%:{EXP:ARG:LCOUNT}
+		ELSE
+			PRINTFORMLC %EXPDISP(LCOUNT)%:{EXP:ARG:LCOUNT}
+		ENDIF
+		PRINTPLAIN  
+		LOCAL++
+		IF LOCAL%3 == 0 && LOCAL != 0
+			PRINTL 
+			LOCAL = 0
+		ENDIF
+	NEXT
+	SIF !LINEISEMPTY()
 		PRINTL 
-		LOCAL = 0
-	ENDIF
-NEXT
-SIF !LINEISEMPTY()
-	PRINTL 
+ENDIF
 IF LANGUAGE == "ENG"
 	PRINT 【Talents】
 ELSE
 	PRINT 【素質】
 ENDIF
-CALL SHOW_INFO_TALENT, ARG
+IF 人体錬成
+	CALL SHOW_INFO_TALENT_人体錬成, ARG
+	RETURN
+ELSE
+	CALL SHOW_INFO_TALENT, ARG
+ENDIF
 DRAWLINE
 PRINTPLAIN 　PLAYER CUSTOM　
 IF LANGUAGE == "ENG"
@@ -601,3 +617,109 @@ DO
 LOOP 1
 
 RESTART
+
+@SHOW_INFO_TALENT_人体錬成, ARG
+#DIMS DYNAMIC 素質名
+#DIM DYNAMIC LCOUNT
+#DIMS 文字色
+
+IF MATCH(HIDE_TALENT, 1) == 0 && !CFLAG:ARG:複製
+	FOR LCOUNT, 0, 200
+		SELECTCASE TALENTNAME:LCOUNT
+			{
+			CASE "処女", "童貞", "バストサイズ", "性別", "恋心", "既婚者", "小柄体型", "ファーリー", 
+				 "尻尾", "動物耳", "羽", "無機物", "小人体型", "アニマル", "足使用不可",
+				 "ゾンビ", "スライム", "溶ける快", "ふたなり", "犬", "猫",
+			}
+			CASEELSE
+				HIDE_TALENT:LCOUNT = RAND:2
+		ENDSELECT
+	NEXT
+ENDIF
+
+LOCAL = 0
+VARSET LOCALS, 
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "性別"
+			CONTINUE
+		CASE "恋心", "既婚者"
+			SIF CFLAG:ARG:陥落
+				CONTINUE
+	ENDSELECT
+	IF LCOUNT == VARSIZE("TALENT")-1
+		HTML_PRINT STRJOIN(LOCALS, "")
+		BREAK
+	ELSEIF TALENT:ARG:LCOUNT == 0
+		CONTINUE
+	ENDIF
+
+	IF TALENTNAME:LCOUNT == "バストサイズ"
+		IF LANGUAGE == "ENG"
+			SELECTCASE TALENT:ARG:バストサイズ
+				CASE 1
+					素質名 = [NoneBreast]
+				CASE 2
+					素質名 = [LittleBreast]
+				CASE 3
+					素質名 = [BasicBreast]
+				CASE 4
+					素質名 = [LargeBreast]
+				CASE 4
+					素質名 = [XLargeBreast]
+				CASE 6
+					素質名 = [HugeBreast]
+			ENDSELECT
+		ELSE
+			SELECTCASE TALENT:ARG:バストサイズ
+				CASE 1
+					素質名 = [絶壁]
+				CASE 2
+					素質名 = [貧乳]
+				CASE 3
+					素質名 = [並乳]
+				CASE 4
+					素質名 = [巨乳]
+				CASE 5
+					素質名 = [豊乳]
+				CASE 6
+					素質名 = [爆乳]
+			ENDSELECT
+		ENDIF
+	ELSE
+		IF HIDE_TALENT:LCOUNT
+			素質名 = [？？？]
+		ELSE
+			素質名 = [%TALENTDISP(LCOUNT)%]
+		ENDIF
+	ENDIF
+
+	SIF LOCAL%6 == 0
+		LOCALS = 　
+
+	;アイテムで付与できる素質は青くする
+	IF !CFLAG:ARG:複製
+		SELECTCASE TALENTNAME:LCOUNT
+			CASE "動物耳", "羽", "足使用不可", "尻尾"
+				文字色 = deepskyblue
+			CASEELSE
+				文字色 = 
+		ENDSELECT
+	ENDIF
+	IF HIDE_TALENT:LCOUNT
+		LOCALS:(LOCAL%6) += @"%SET_TOOLTIP(素質名, "不明な素質です", 0, "gray")%"
+	ELSE
+		LOCALS:(LOCAL%6) += @"%SET_TOOLTIP(素質名, TALENT_COMMENT(TALENTNAME:LCOUNT, ARG), 0, 文字色)%"
+	ENDIF
+
+	LOCAL++
+
+	;改行するのか？ 続けて出力するのか？
+	IF LOCAL%6 == 0 && LOCAL != 0
+		HTML_PRINT STRJOIN(LOCALS, "")
+		VARSET LOCALS
+	ENDIF
+NEXT
+
+SIF !LINEISEMPTY()
+	PRINTL 
