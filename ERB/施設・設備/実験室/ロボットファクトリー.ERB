@@ -1,7 +1,19 @@
 ﻿@ロボットファクトリー
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LTARGET
 
 PRINTL □ここではロボットの制作ができます
-PRINTFORML 　所持マテリアル:{ITEM:マテリアル} (製作時にお金の代わりに使用可能)
+PRINT 　
+FOR LCOUNT, GETNUM(ITEM, "マテリアル"), GETNUM(ITEM, "マテリアル")+10
+	IF ITEM:LCOUNT
+		SIF LINEISEMPTY()
+			PRINT 　
+		PRINTFORM %ITEMNAME:LCOUNT%×{ITEM:LCOUNT} 
+	ENDIF
+NEXT
+SIF !LINEISEMPTY()
+	PRINTL 
+PRINTL 
 CALL 実験室レベル計算
 PRINTFORML □研究レベル:{基礎研究レベル}/50 欲望レベル:{欲望研究レベル}/50
 PRINTFORML 　サディストレベル:{サド研究レベル}/50 マゾヒストレベル:{マゾ研究レベル}/50
@@ -19,11 +31,229 @@ DO
 	SELECTCASE RESULT
 		CASE 0
 			RETURN
+		CASE 1
+			LTARGET = TARGET
+			CALL ADD_ランダムキャラ, RAND(1, 3), -1, 1
+			TARGET = CHARANUM-1
+			CSTR:種族 = 機械
+			TALENT:無機物 = 1
+			MAXBASE:体力 = 1500
+			MAXBASE:気力 = 1500
+			VARSET TALENT:0
+			CALL ロボット制作
+			SIF !RESULT
+				TARGET = LTARGET
+			RESTART
+		CASE 2
+			;CALL ロボット調整
 		CASE 3
-			CALL STS_MACHINE
+			SIF STSMOD
+				CALL STS_MACHINE
 			RESTART
 	ENDSELECT
 LOOP 1
+
+@ロボット制作
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC アイテムあり
+;余分に要素数を取っておく
+#DIM DYNAMIC 素質変更可能, 300
+#DIM DYNAMIC LRESULT
+#DIM DYNAMIC 製作コスト
+
+;選択可能な素質とコストを設定する
+VARSET 素質変更可能
+製作コスト = 0
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SELECTCASE TALENTNAME:LCOUNT
+		;コスト-1
+		CASE "小柄体型"
+			素質変更可能 = -1
+			SIF TALENT:LCOUNT
+				製作コスト -= 1
+		;コスト1
+		{
+		CASE "生意気", "臆病", "素直", "反抗的", "ハイテンション", "大人しい", "世話好き",
+			 "浪費癖", "無関心", "好奇心", "痛みに弱い", "習得遅い", "潔癖症", "汚れ無視",
+			 "快感の否定", "倒錯的", "男好き", "女好き", "サド", "マゾ", "小悪魔", "遊び人",
+			 "Ｃ鈍感", "Ｖ鈍感", "Ａ鈍感", "Ｂ鈍感", "動物耳", "回復遅い", "鼓舞", "幼稚", 
+		}
+			素質変更可能:LCOUNT = 1
+			SIF TALENT:LCOUNT
+				製作コスト += 1
+		;コスト2
+		{
+		CASE "痛みに強い", "習得早い", "舌使い", "買い物上手", "献身的", "快感に素直", "魅力", "魅惑",
+			 "統率", "Ｃ敏感", "Ｖ敏感", "Ａ敏感", "Ｂ敏感", "ふたなり", "回復早い", "治療", "孔雀の瞳"
+		}
+			素質変更可能 = 2
+			SIF TALENT:LCOUNT
+				製作コスト += 2
+		;コスト3
+		CASE "調合知識", "謎の魅力", "ネクロマンサー", "禁断の知識"
+			素質変更可能 = 3
+			SIF TALENT:LCOUNT
+				製作コスト += 3
+	ENDSELECT
+NEXT
+
+PRINTL □ロボットを制作します
+FOR LCOUNT, GETNUM(ITEM, "マテリアル"), GETNUM(ITEM, "マテリアル")+10
+	IF ITEM:LCOUNT
+		SIF LINEISEMPTY()
+			PRINT 　
+		PRINTFORM %ITEMNAME:LCOUNT%×{ITEM:LCOUNT} 
+		SIF ITEMNAME:LCOUNT != "マテリアル"
+			アイテムあり = 1
+	ENDIF
+NEXT
+SIF !LINEISEMPTY()
+	PRINTL 
+PRINTL 
+PRINTL □完成後の性能
+PRINTFORML 性別:\@ TALENT:性別 == 1 ? 男性 # 女性 \@ [8] 変更する
+PRINTFORML 体力:{MAXBASE:体力} 気力:{MAXBASE:気力} [-9] -300/コスト-1 [9] +300/コスト+1
+;初期値は1500 300ごとにコスト1上がる
+製作コスト += (MAXBASE:体力-1500)/300
+PRINT 素質:
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "性別", "恋心", "既婚者", "バストサイズ"
+		CASEELSE
+			SIF TALENT:LCOUNT
+				PRINTFORM [%TALENTNAME:LCOUNT%]
+	ENDSELECT
+NEXT
+PRINTL 
+CALL PASELIL, @"必要製作コスト:{製作コスト*30000}＄"
+PRINTL 
+PRINTL 　[1] - 素質を変更する
+PRINTL 　[2] - 素質をプリセットから選ぶ
+SIF アイテムあり
+	PRINTL 　[3] - 部品を使用する
+DRAWLINE
+PRINTPLAIN 　ロボットファクトリー　
+PRINTL [0] - 戻る [10] - 作成する
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			$TALENT
+			FOR LCOUNT, 0, VARSIZE("TALENT")
+				SIF 素質変更可能:LCOUNT
+					PRINTFORMLC [{LCOUNT, 3}] %TALENTNAME:LCOUNT%(コスト:{素質変更可能:LCOUNT})
+			NEXT
+			SIF !LINEISEMPTY()
+				PRINTL 
+			SIF TALENT:性別 == 2
+				PRINTFORML [{TALENTF("バストサイズ")}] バストサイズ:%バストサイズ(TALENT:バストサイズ)%
+			DRAWLINE
+			PRINTPLAIN 　ロボットファクトリー　
+			PRINTL [-1] - 戻る
+			DO
+				INPUT
+				SIF RESULT == -1
+					RESTART
+				LRESULT = RESULT
+				IF INRANGE(LRESULT, 0, VARSIZE("TALENT"))
+					IF TALENTNAME:LRESULT == "バストサイズ" && TALENT:性別 == 2
+						PRINTL [1] 絶壁にする
+						PRINTL [2] 貧乳にする
+						PRINTL [3] 並乳にする
+						PRINTL [4] 巨乳にする
+						PRINTL [5] 豊乳にする
+						PRINTL [6] 爆乳にする
+						INPUT
+						DO
+						LOOP LOOPRES(1, 2, 3, 4, 5, 6)
+						TALENT:バストサイズ = RESULT
+						GOTO TALENT
+					ELSEIF 素質変更可能:LRESULT
+						INVERTBIT TALENT:LRESULT, 0
+						GOTO TALENT
+					ENDIF
+				ENDIF
+			LOOP 1
+			RESTART
+		CASE 2
+			PRINTL プリセットを選択してください
+			PRINTL [1] - 従順
+			PRINTL [2] - 家事手伝い
+			PRINTL [3] - セクサロイド
+			PRINTL [4] - ポンコツ
+			PRINTL [0] - 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0
+						RESTART
+					CASE 1
+						VARSET TALENT:0
+						TALENT:素直 = 1
+						TALENT:快感に素直 = 1
+						TALENT:大人しい = 1
+						TALENT:献身的 = 1
+						TALENT:汚れ無視 = 1
+						RESTART
+					CASE 2
+						VARSET TALENT:0
+						TALENT:世話好き = 1
+						TALENT:習得早い = 1
+						TALENT:買い物上手 = 1
+						TALENT:潔癖症 = 1
+						TALENT:鼓舞 = 1
+						RESTART
+					CASE 3
+						VARSET TALENT:0
+						TALENT:好奇心 = 1
+						TALENT:汚れ無視 = 1
+						TALENT:回復早い = 1
+						TALENT:男好き = 1
+						TALENT:女好き = 1
+						TALENT:舌使い = 1
+						TALENT:小悪魔 = 1
+						TALENT:倒錯的 = 1
+						RESTART
+					CASE 4
+						VARSET TALENT:0
+						TALENT:反抗的 = 1
+						TALENT:回復遅い = 1
+						TALENT:浪費癖 = 1
+						TALENT:痛みに弱い = 1
+						TALENT:習得遅い = 1
+						TALENT:遊び人 = 1
+						RESTART
+				ENDSELECT
+			LOOP 1
+		CASE 8
+			SELECTCASE TALENT:性別
+				CASE 1
+					TALENT:性別 = 2
+				CASE 2
+					TALENT:性別 = 1
+			ENDSELECT
+		CASE -9
+			SIF MAXBASE:体力 <= 1500
+				CONTINUE
+			MAXBASE:体力 -= 300
+			MAXBASE:気力 -= 300
+			RESTART
+		CASE 9
+			MAXBASE:体力 += 300
+			MAXBASE:気力 += 300
+			RESTART
+	ENDSELECT
+LOOP 1
+
+
+
+
+
+
+
 
 
 @STS_MACHINE
