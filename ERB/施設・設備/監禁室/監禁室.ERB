@@ -5,11 +5,14 @@ CALL 実験室レベル計算
 PRINTL □監禁室
 PRINTL 　キャラクターを監禁して、強烈なデメリットの代わりに非人道的な調教を行う施設です
 PRINTL 　各要素にはそれぞれある程度の医務室ランク、実験室ランクが必要になります
+CALL PASELIL, @"　部屋数:{ITEM:監禁室}/10 所持金:{MONEY}＄"
 PRINTL 
 
 PRINTL 　[1] - キャラを監禁する
 PRINTL 　[2] - キャラを配属する
 PRINTL 　[3] - 監禁室の状況を確認する
+SIF ITEM:監禁室 < 10
+	CALL PASELIL, @"　[4] - 部屋を追加する(1000000＄)"
 DRAWLINE
 PRINTPLAIN 　監禁室　
 PRINTL [0] - 戻る
@@ -27,6 +30,17 @@ DO
 			RESTART
 		CASE 3
 			CALL 監禁室_状況
+			RESTART
+		CASE 4
+			SIF ITEM:監禁室 >= 10
+				CONTINUE
+			IF MONEY < TONUM("100万")
+				PRINTW 所持金が足りません
+				RESTART
+			ENDIF
+			PRINTW 部屋を増築しました
+			ITEM:監禁室++
+			MONEY -= TONUM("100万")
 			RESTART
 	ENDSELECT
 LOOP 1
@@ -214,6 +228,25 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 			CALL JUELUP, "快Ａ",Ａ内容:2, 監禁対象
 			CALL JUELUP, "快Ｂ",Ｂ内容:2, 監禁対象
 		CASE "搾乳監禁"
+			PRINTFORML %CALLNAME:監禁対象%が搾乳のために監禁されている
+			IF FINDELEMENT(監禁方法, "道具機械") > 0
+				PRINTFORML 乳房に搾乳用のポンプを繋いだ%CALLNAME:監禁対象%から、瓶いっぱいの母乳を搾り取った
+				比率 = 5
+			ELSEIF FINDELEMENT(監禁方法, "道具機械") > 0
+				PRINTFORML %CALLNAME:スタッフ%の手で数回に分けて搾乳を行ったようだ
+				比率 = 3
+			ENDIF
+			IF TALENT:監禁対象:小人体型
+				PRINTFORML {比率*30}mlの母乳を採取した
+				FLAG:保管済み母乳 += 比率*30
+			ELSEIF TALENT:監禁対象:小柄体型
+				PRINTFORML {比率*50}mlの母乳を採取した
+				FLAG:保管済み母乳 += 比率*50
+			ELSE
+				PRINTFORML {比率*100}mlの母乳を採取した
+				FLAG:保管済み母乳 += 比率*100
+			ENDIF
+			CALL EXPUP, "噴乳経験", 比率, 監禁対象
 		CASE "搾精監禁"
 			PRINTFORML %CALLNAME:監禁対象%が搾精されている
 			VARSET 搾精内容, 0
