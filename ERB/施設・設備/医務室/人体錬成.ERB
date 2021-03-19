@@ -131,8 +131,13 @@ PRINT [0] - 戻る
 PRINT [1] - このキャラを錬成する 
 IF !CFLAG:対象:複製
 	PRINT [2] - 名前を変更する 
-	PRINT [3] - シミュレートし直す
+	PRINT [3] - シミュレートし直す 
 ENDIF
+IF CFLAG:対象:複製
+	PRINT [4] - 性別を変更する 
+	PRINT [5] - 体型を変更する 
+ENDIF
+PRINTL 
 
 DO
 	INPUT
@@ -144,6 +149,10 @@ DO
 			PRINTFORML %NAME:TARGET%を錬成しました
 			;子供と同じ扱い
 			FLAG:子供の数++
+			BUYY = YEAR
+			BUYM = MONTH
+			BUYD = DAYS
+			CFLAG:誕生日 = MONTH*100+DAYS
 			IF TALENT:小柄体型
 				PRINTL 保管済み血液を3000ml使用しました
 				FLAG:保管済み血液 -= 3000
@@ -207,7 +216,7 @@ DO
 				SELECTCASE RESULT
 					CASE 1
 						NAME:対象 = %ランダム命名(RAND(1, 4))%
-						CALLNAME:対象 = %NAME:TARGET%
+						CALLNAME:対象 = %NAME:対象%
 						RESTART
 					CASE 2
 						PRINTL 名前を入力してください（何も入力しなかった場合は変更されません）
@@ -222,6 +231,37 @@ DO
 		CASE 3
 			CALL CLEAR_CHARA, 対象
 			RETURN 1
+		CASE 4
+			SELECTCASE TALENT:対象:性別
+				CASE 1
+					TALENT:対象:性別 = 2
+				CASE 2
+					TALENT:対象:性別 = 1
+					TALENT:対象:バストサイズ = 0
+			ENDSELECT
+			TALENT:対象:童貞 = PENIS(対象)
+			TALENT:対象:処女 = VAGINA(対象)
+			RESTART
+		CASE 5
+			PRINTL 体型を選んでください
+			PRINTL [1] - 普通体型
+			PRINTL [2] - 小柄体型
+			PRINTL [3] - 小人体型
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 1
+						TALENT:対象:小柄体型 = 0
+						TALENT:対象:小人体型 = 0
+					CASE 2
+						TALENT:対象:小柄体型 = 1
+						TALENT:対象:小人体型 = 0
+					CASE 3
+						TALENT:対象:小柄体型 = 0
+						TALENT:対象:小人体型 = 1
+				ENDSELECT
+			LOOP LOOPRES(1, 2, 3)
+			RESTART
 		CASEELSE
 			LRESULT = RESULT
 			IF INRANGE(LRESULT, 0, VARSIZE("ITEM")) && ITEM:LRESULT
@@ -249,15 +289,17 @@ DO
 LOOP 1
 
 
-@所持DNA
+@所持DNA, ロボット
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC ページ数
 #DIM DYNAMIC 次ページあり
+#DIM DYNAMIC ロボット
+
 DRAWLINE
-PRINTL □誰のDNAを使用しますか？
+PRINTFORML □誰の\@ ロボット ? データ # DNA \@を使用しますか？
 FOR LCOUNT, 1, 10000
-	IF DNAデータ:LCOUNT
+	IF (!ロボット && DNAデータ:LCOUNT) || (ロボット && 分析データ:LCOUNT)
 		表示数++
 		IF 表示数 > ページ数*20+20
 			次ページあり = 1
@@ -267,7 +309,7 @@ FOR LCOUNT, 1, 10000
 	ENDIF
 NEXT
 DRAWLINE
-PRINTPLAINFORM 　DNA.{ページ数+1}　
+PRINTPLAINFORM 　\@ ロボット ? データ # DNA \@.{ページ数+1}　
 IF ページ数 > 0
 	PRINT [-1] - 前ページ
 ELSE
@@ -292,7 +334,7 @@ DO
 				ページ数++
 			RESTART
 		CASEELSE
-			SIF DNAデータ:RESULT
+			SIF (!ロボット && DNAデータ:RESULT) || (ロボット && 分析データ:RESULT)
 				RETURN RESULT
 	ENDSELECT
 LOOP 1
