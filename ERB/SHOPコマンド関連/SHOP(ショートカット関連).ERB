@@ -1,0 +1,285 @@
+﻿@ショートカットコマンド, コマンド番号
+#DIM DYNAMIC コマンド番号
+#DIMS DYNAMIC コマンド内容, 2
+#DIM DYNAMIC 対象
+#DIM DYNAMIC ロード番号
+
+SPLIT LNK:コマンド番号, "/", コマンド内容
+
+SELECTCASE コマンド内容:0
+	CASE "対象選択", "助手選択", "調教"
+		対象 = GETCHARA(TOINT(コマンド内容:1))
+ENDSELECT
+
+SELECTCASE コマンド内容:0
+	CASE "対象選択"
+		IF コマンド内容:1 == "-1"
+			TARGET = -1
+			RETURN
+		ENDIF
+		IF 対象 == -1
+			PRINTFORMW %CSVNAMEF(TOINT(コマンド内容:1))%は居ません
+		ELSEIF !調教可能(対象)
+			PRINTFORMW %NAME:対象%は現在調教できません
+		ELSE
+			CALL ASSIGN_TARGET, 対象
+		ENDIF
+	CASE "助手選択"
+		IF コマンド内容:1 == "-1"
+			ASSI = -1
+			RETURN
+		ENDIF
+		IF 対象 == -1
+			PRINTFORMW %CSVNAMEF(TOINT(コマンド内容:1))%は居ません
+		ELSEIF !助手可能(対象)
+			PRINTFORMW %NAME:対象%は現在助手に指定できません
+		ELSE
+			CALL ASSIGN_ASSI, 対象
+		ENDIF
+	CASE "調教"
+		IF 対象 == -1
+			PRINTFORMW %CSVNAMEF(TOINT(コマンド内容:1))%は居ません
+		ELSEIF !調教可能(対象)
+			PRINTFORMW %NAME:対象%は現在調教できません
+		ELSE
+			CALL ASSIGN_TARGET, 対象
+			BEGIN TRAIN
+		ENDIF
+	CASE "施設"
+		SELECTCASE コマンド内容:1
+			CASE "ゲームセンター"
+				CALL STRATEGY_GC
+			CASE "娼館"
+				CALL STRATEGY_BROTHEL
+			CASE "芸プロ"
+				CALL STRATEGY_IDOL
+			CASE "飲食店"
+				CALL 飲食店経営
+			CASEELSE
+				CALLFORM %コマンド内容:1%
+		ENDSELECT
+	CASE "セーブ"
+		SAVEDATA TOINT(コマンド内容:1), セーブデータ情報()
+		PRINTW セーブしました
+	CASE "チェックポイント"
+		ロード番号 = (94+((DAY-1)*2%6+TIME)-1)
+		SIF ロード番号 == 93
+			ロード番号 = 99
+		IF CHKDATA(ロード番号) == 0
+			PRINTFORMW 「%RESULTS%」をロードします
+			STOPBGM
+			LOADDATA ロード番号
+		ELSE
+			PRINTFORMW %コマンド内容:1%ターン前のセーブデータはロードできません
+		ENDIF
+	CASE "ロード"
+		IF CHKDATA(TOINT(コマンド内容:1)) == 0
+			PRINTFORMW 「%RESULTS%」をロードします
+			STOPBGM
+			LOADDATA TOINT(コマンド内容:1)
+		ELSE
+			PRINTFORMW %コマンド内容:1%番のセーブデータはロードできません
+		ENDIF
+ENDSELECT
+
+
+@ショートカット登録
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 登録番号
+#DIM DYNAMIC LRESULT
+{
+#DIMS DYNAMIC 施設名 = 
+"ゲームセンター",
+"娼館",
+"芸プロ",
+"飲食店",
+"医務室",
+"監禁室",
+"実験室",
+"調理室",
+"図書室",
+"畜産",
+"農産物",
+}
+
+DRAWLINE
+PRINTL □登録する番号を選んでください
+FOR LCOUNT, 0, VARSIZE("LNK")
+	IF LNK:LCOUNT == ""
+		PRINTFORMLC [{LCOUNT, 2}] - 登録する
+	ELSE
+		PRINTFORMLC [{LCOUNT, 2}] - %LNKCOM(LNK:LCOUNT)%
+	ENDIF
+NEXT
+SIF !LINEISEMPTY()
+	PRINTL 
+DRAWLINE
+PRINTPLAIN 　ショートカット　
+PRINTL [-1] - 戻る
+
+DO
+	INPUT
+	登録番号 = RESULT
+	SELECTCASE 登録番号
+		CASE -1
+			RETURN 0
+		CASE 0 TO VARSIZE("LNK")
+			BREAK
+	ENDSELECT
+LOOP 1
+			
+$コマンド選択
+DRAWLINE
+PRINTL □コマンドの内容を選んでください
+PRINTL 　[1] - ○○(キャラ)を調教する
+PRINTL 　[2] - ○○(キャラ)を調教対象にする
+PRINTL 　[3] - ○○(キャラ)を助手にする
+PRINTL 　[4] - ○○(施設)の管理をする
+PRINTL 　[5] - セーブ関連
+PRINTL 　[6] - ロード関連
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 1
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, 1, "", "TARGET"
+			NEXT
+			SIF RESULT == -1
+				GOTO コマンド選択
+			LNK:登録番号 = 調教/{NO:RESULT}
+		CASE 2
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, 1, "", "TARGET", "調教対象を外す"
+			NEXT
+			LRESULT = RESULT
+			IF LRESULT == -1
+				LNK:登録番号 = 対象選択/-1
+			ELSE
+				SIF !調教可能(LRESULT)
+					CONTINUE
+				LNK:登録番号 = 対象選択/{NO:LRESULT}
+			ENDIF
+		CASE 3
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, CFLAG:PAGING:状態 >= 2, "", "ASSI", "助手を外す"
+			NEXT
+			LRESULT = RESULT
+			IF LRESULT == -1
+				LNK:登録番号 = 助手選択/-1
+			ELSE
+				SIF !助手可能(LRESULT)
+					CONTINUE
+				LNK:登録番号 = 助手選択/{NO:LRESULT}
+			ENDIF
+		CASE 4
+			FOR LCOUNT, 0, VARSIZE("施設名")
+				PRINTFORMLC [{LCOUNT}] %施設名:LCOUNT%
+			NEXT
+			SIF !LINEISEMPTY()
+				PRINTL 
+			DO
+				INPUT
+				IF 施設名:RESULT != ""
+					LNK:登録番号 = 施設/%施設名:RESULT%
+					BREAK
+				ENDIF
+			LOOP 1
+		CASE 5
+			FOR LCOUNT, 0, 20
+				PRINTFORML 　[{LCOUNT, 2}] - {LCOUNT}番にセーブ
+			NEXT
+			DO
+				INPUT
+				SIF !INRANGE(RESULT, 0, 19)
+					CONTINUE
+				LNK:登録番号 = セーブ/{RESULT}
+			LOOP 0
+		CASE 6
+			FOR LCOUNT, 0, 20
+				PRINTFORML 　[{LCOUNT, 2}] - {LCOUNT}番のセーブデータをロード
+			NEXT
+			DRAWLINE
+			FOR LCOUNT, 1, 7
+				PRINTFORML 　[{LCOUNT+90, 2}] - {LCOUNT}ターン前のセーブデータをロード
+			NEXT
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0 TO 19
+						LNK:登録番号 = セーブ/{RESULT}
+						BREAK
+					CASE 91 TO 96
+						LNK:登録番号 = チェックポイント/{RESULT-90}
+						BREAK
+				ENDSELECT
+			LOOP 1
+	ENDSELECT
+	RESTART
+LOOP 1
+
+@LNKCOM, コマンド内容
+#FUNCTIONS
+#DIMS DYNAMIC コマンド内容, 2
+
+SPLIT コマンド内容, "/", コマンド内容
+
+SELECTCASE コマンド内容:0
+	CASE "対象選択"
+		IF コマンド内容:1 == "-1"
+			RETURNF "調教対象を外す"
+		ELSE
+			RETURNF @"%CSVCALLNAMEF(TOINT(コマンド内容:1))%を調教対象に指定"
+		ENDIF
+	CASE "助手選択"
+		IF コマンド内容:1 == "-1"
+			RETURNF "助手を外す"
+		ELSE
+			RETURNF @"%CSVCALLNAMEF(TOINT(コマンド内容:1))%を助手に指定"
+		ENDIF
+	CASE "調教"
+		RETURNF @"%CSVCALLNAMEF(TOINT(コマンド内容:1))%を調教"
+	CASE "施設"
+		RETURNF @"%コマンド内容:1%の管理"
+	CASE "セーブ"
+		RETURNF @"%コマンド内容:1%番にセーブ"
+	CASE "チェックポイント"
+		RETURNF @"%コマンド内容:1%ターン前のセーブデータをロード"
+	CASE "ロード"
+		RETURNF @"%コマンド内容:1%番のセーブデータをロード"
+ENDSELECT
+
+
+@ショートカット削除
+#DIM DYNAMIC LCOUNT
+
+DRAWLINE
+FOR LCOUNT, 0, VARSIZE("LNK")
+	SIF LNK:LCOUNT != ""
+		PRINTFORMLC 　[{LCOUNT}] - %LNKCOM(LNK:LCOUNT)%
+NEXT
+IF MATCH(LNK, "") == VARSIZE("LNK")
+	PRINTL 
+	PRINTL 　ショートカットはありません
+	PRINTL 
+ENDIF
+SIF !LINEISEMPTY()
+	PRINTL 
+DRAWLINE
+PRINTPLAIN 　ショートカット削除　
+PRINTL [-1] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE -1
+			RETURN
+		CASE 0 TO VARSIZE("LNK")-1
+			LNK:RESULT = 
+			RESTART
+	ENDSELECT
+LOOP 1
+
+
+
+
