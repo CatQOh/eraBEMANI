@@ -1,6 +1,7 @@
 ﻿@模様替え
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC LRESULT
 #DIM DYNAMIC X座標
 #DIM DYNAMIC Y座標
 #DIM グリッド表示 = 1
@@ -8,16 +9,16 @@
 #DIM DYNAMIC 部屋配置
 #DIM DYNAMIC 幅, 2
 #DIM DYNAMIC 始点, 2
-#DIMS DYNAMIC 部屋情報, 100, 3
+#DIMS DYNAMIC 部屋情報, 200, 3
 #DIMS DYNAMIC オブジェクト情報, 100, 4
-#DIM DYNAMIC 設置済み, 100
+#DIM DYNAMIC 設置済み, 200
 #DIMS DYNAMIC 部屋名
 #DIMS DYNAMIC 表示チップ
 #DIM DYNAMIC マップ横幅
 #DIM DYNAMIC マップ縦幅
 #DIM DYNAMIC 壁無し
 #DIM DYNAMIC タイル表示幅
-#DIM DYNAMIC タイル始点, 100, 2
+#DIM DYNAMIC タイル始点, 200, 2
 #DIM DYNAMIC 生け簀始点, 2
 #DIMS DYNAMIC オブジェクト名
 #DIM DYNAMIC オブジェクト幅, 2
@@ -29,6 +30,12 @@
 #DIM DYNAMIC 畑始点
 #DIM DYNAMIC プランター始点
 #DIM DYNAMIC 田んぼ始点
+#DIM DYNAMIC 居住区設置数
+#DIM DYNAMIC 居住区, 100
+#DIMS DYNAMIC 住人, 2
+#DIM DYNAMIC 部屋番号
+#DIM DYNAMIC 居住LCOUNT
+#DIM DYNAMIC 住人数
 
 VARLINE = LINECOUNT
 
@@ -61,6 +68,11 @@ LOCAL = 1
 部屋情報:(LOCAL++):0 '= "畜舎", "8", "8"
 部屋情報:(LOCAL++):0 '= "生け簀", "8", "8"
 部屋情報:(LOCAL++):0 '= "養蜂場", "4", "4"
+
+;100から居住用の部屋
+FOR LCOUNT, 101, 200
+	部屋情報:LCOUNT:0 '= "居住部屋", "4", "4"
+NEXT
 
 LOCAL = 1
 オブジェクト情報:(LOCAL++):0 '= "ベッド1_右向き", "2", "1"
@@ -168,6 +180,8 @@ DO
 	CLEARLINE LINECOUNT-VARLINE
 	VARSET 設置済み
 	VARSET タイル始点, -1
+	VARSET 居住区
+	住人数 = 0
 	;マップを表示する
 	FOR Y座標, 0, マップ縦幅
 		VARSET 表示用変数
@@ -191,7 +205,23 @@ DO
 			ELSE
 				表示チップ =
 				部屋名 = %部屋情報:(土地:Y座標:X座標):0%
-				表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'>"
+				;居住部屋の場合は部屋番号と住んでいるキャラをツールチップに加える
+				IF 部屋名 == "居住部屋"
+					部屋番号 = 土地:Y座標:X座標-100
+					住人 = 
+					FOR 居住LCOUNT, 1, CHARANUM
+						IF CFLAG:居住LCOUNT:居住 == 部屋番号
+							IF 住人 == ""
+								住人 = %CALLNAME:居住LCOUNT%
+							ELSE
+								住人 += @"と%CALLNAME:居住LCOUNT%"
+							ENDIF
+						ENDIF
+					NEXT
+					表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='居住部屋,{部屋番号} \@ 住人 == "" ? 空き部屋 # %住人%の部屋 \@' pos='{X座標*100}'>"
+				ELSE
+					表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'>"
+				ENDIF
 				;まずオブジェクトを表示する
 				;IF オブジェクト:Y座標:X座標 != ""
 				;	;始点(左上)を記録しておく
@@ -209,6 +239,40 @@ DO
 					;設置済み判定に始点も入れておく
 					設置済み:(土地:Y座標:X座標) = Y座標*100+X座標
 					SELECTCASE 部屋名
+						CASE "居住部屋"
+							表示チップ = GRID_WOOD
+							表示用変数:X座標 += @"<img src='%表示チップ%'>"
+							;部屋のIDから設置済み居住部屋を記録
+							居住区:((土地:Y座標:X座標)-100) = 1
+
+							;顔グラ表示の失敗作
+							;表示用変数:X座標 += @"<img src='%表示チップ%' srcb='' height='400' width='400'>"
+
+							;VARSET 住人
+							;FOR 居住LCOUNT, 1, CHARANUM
+							;	IF CFLAG:居住LCOUNT:居住 == 部屋番号
+							;		住人:FINDELEMENT(住人, "", 0, 2, 1) = %NAME:居住LCOUNT%
+							;		GDISPOSE 住人数+100
+							;		GCREATEFROMFILE 住人数+100, @"%NAME:居住LCOUNT%_FACE.png"
+							;		SPRITECREATE @"%NAME:居住LCOUNT%_FACE", 住人数+100
+							;		住人数++
+							;	ENDIF
+							;NEXT
+
+							;IF 住人:0 != "" && 住人:1 != ""
+							;	IF SPRITECREATED(@"%住人:0%_FACE") && SPRITECREATED(@"%住人:1%_FACE")
+							;		表示用変数:X座標 += @"</button><button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'>"
+							;		表示用変数:X座標 += @"<img src='%住人:0%_FACE' srcb='' height='200' width='200' ypos='100'></button>"
+							;		表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100+300}'>"
+							;		表示用変数:X座標 += @"<img src='%住人:1%_FACE' srcb='' height='200' width='200' ypos='100'>"
+							;	ENDIF
+							;ELSEIF 住人:0 != ""
+							;	IF SPRITECREATED(@"%住人:0%_FACE")
+							;		表示用変数:X座標 += @"</button><button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100+100}'>"
+							;		表示用変数:X座標 += @"<img src='%住人:0%_FACE' srcb='' height='300' width='300' ypos='100'>"
+							;	ENDIF
+							;ENDIF
+
 						CASE "レッスン室", "調理室", "図書室"
 							表示チップ = GRID_WOOD
 							表示用変数:X座標 += @"<img src='%表示チップ%'>"
@@ -443,7 +507,7 @@ DO
 										表示用変数:X座標 += @"<img src='蜂-{RAND(1, 4)}' srcb='' height='200' width='200'>"
 								ENDSELECT
 							ENDIF
-					ENDSELECT							
+					ENDSELECT
 				ELSEIF グリッド表示
 					表示チップ = GRID
 					表示用変数:X座標 += @"<img src='%表示チップ%'>"
@@ -624,13 +688,13 @@ DO
 				CONTINUE
 			CASE 61
 				PRINTL □配置する部屋を選んでください 名前(横幅×縦幅)
-				FOR LCOUNT, 1, VARSIZE("部屋情報", 0)
+				FOR LCOUNT, 1, 102
 					SIF 部屋情報:LCOUNT:0 == ""
-						BREAK
+						CONTINUE
 					;現在は部屋名とアイテム名が一致してるからこれでいい
 					LOCALS = %部屋情報:LCOUNT:0%
 					SELECTCASE LOCALS
-						CASE "レッスン室", "調理室"
+						CASE "レッスン室", "調理室", "居住部屋"
 						CASEELSE
 							SIF ITEM:LOCALS == 0
 								CONTINUE
@@ -651,15 +715,27 @@ DO
 							LOCALS = %部屋情報:RESULT:0%
 							SELECTCASE LOCALS
 								CASE "レッスン室", "調理室"
+									部屋配置 = RESULT
+									IF 設置済み:RESULT
+										始点:0 = タイル始点:RESULT:0
+										始点:1 = タイル始点:RESULT:1
+									ENDIF
+								;居住部屋は空いている番号を使う
+								CASE "居住部屋"
+									部屋配置 = FINDELEMENT(居住区, 0, 1, 100)+100
+									IF 部屋配置 >= 200
+										PRINTW これ以上居住部屋を置けません
+										GOTO RESTART
+									ENDIF
 								CASEELSE
 									SIF ITEM:LOCALS == 0
 										CONTINUE
+									部屋配置 = RESULT
+									IF 設置済み:RESULT
+										始点:0 = タイル始点:RESULT:0
+										始点:1 = タイル始点:RESULT:1
+									ENDIF
 							ENDSELECT
-							部屋配置 = RESULT
-							IF 設置済み:RESULT
-								始点:0 = タイル始点:RESULT:0
-								始点:1 = タイル始点:RESULT:1
-							ENDIF
 							BREAK
 					ENDSELECT
 				LOOP 1
@@ -693,12 +769,27 @@ DO
 				選択座標:0 = RESULT/100
 				;Y
 				選択座標:1 = RESULT%100
+				$部屋オプション
 				選択部屋 = %部屋情報:(土地:(選択座標:1):(選択座標:0)):0%
 				選択オブジェクト = %オブジェクト情報:(オブジェクト:(選択座標:1):(選択座標:0)):0%
 				;座標の情報表示
+				部屋番号 = 0
+				住人 = 
+				IF 選択部屋 == "居住部屋"
+					部屋番号 = 土地:(選択座標:1):(選択座標:0)-100
+					FOR 居住LCOUNT, 1, CHARANUM
+						IF CFLAG:居住LCOUNT:居住 == 部屋番号
+							IF 住人 == ""
+								住人 = %CALLNAME:居住LCOUNT%
+							ELSE
+								住人 += @"と%CALLNAME:居住LCOUNT%"
+							ENDIF
+						ENDIF
+					NEXT
+				ENDIF
 				PRINT □
 				SIF 土地:(選択座標:1):(選択座標:0)
-					PRINTFORM %選択部屋% 
+					PRINTFORM %選択部屋%\@ 部屋番号 ? ,{部屋番号} #\@ \@ 住人 == "" ? 空き部屋 # %住人%の部屋 \@ 
 				SIF オブジェクト:(選択座標:1):(選択座標:0)
 					PRINTFORM %選択オブジェクト%配置中 
 				PRINTFORML {選択座標:0}×{選択座標:1}
@@ -711,12 +802,12 @@ DO
 				ENDIF
 				;配置してある部屋の昨日にクイックアクセス
 				IF 選択部屋 != ""
-					PRINTFORML 　[4] - %選択部屋%を動かす
-					PRINTFORML 　[5] - %選択部屋%を取り壊す
+					PRINTFORML 　[4] - %選択部屋%\@ 部屋番号 ? ,{部屋番号} #\@を動かす
+					PRINTFORML 　[5] - %選択部屋%\@ 部屋番号 ? ,{部屋番号} #\@を取り壊す
 					SELECTCASE 選択部屋
-						CASE "レッスン室", "医務室", "実験室", "調理室", "図書室"
+						CASE "レッスン室", "医務室", "実験室", "調理室", "図書室", "居住部屋"
 							SIF GETNUM(ITEM, 選択部屋) == -1 || ITEM:選択部屋
-								PRINTFORML 　[6] - %選択部屋%に行く
+								PRINTFORML 　[6] - %選択部屋%\@ 部屋番号 ? ,{部屋番号} #\@に行く
 						CASE "プランター", "畑", "田んぼ"
 							PRINTL 　[6] - 農作物を管理する
 						CASE "牧場", "畜舎", "生け簀", "養蜂場"
@@ -725,6 +816,8 @@ DO
 				ELSE
 					PRINTL 　[7] - 部屋を配置する
 				ENDIF
+				SIF 選択部屋 == "居住部屋"
+					PRINTL 　[8] - 住人を割り当てる
 				DRAWLINE
 				PRINTPLAINFORM 　{選択座標:0}×{選択座標:1}　
 				PRINTL [0] - 戻る
@@ -783,7 +876,12 @@ DO
 						CASE 5
 							SIF 選択部屋 == ""
 								CONTINUE
-							PRINTFORML %選択部屋%を取り壊します。よろしいですか？(マップ上から消えるだけで機能は失われません)
+							IF 選択部屋 == "居住部屋"
+								部屋番号 = 土地:(選択座標:1):(選択座標:0)-100
+								PRINTFORML %選択部屋%,{部屋番号}を取り壊します。よろしいですか？(マップ上から消えるだけで機能は失われません)
+							ELSE
+								PRINTFORML %選択部屋%を取り壊します。よろしいですか？(マップ上から消えるだけで機能は失われません)
+							ENDIF
 							PRINTL [0] - はい
 							PRINTL [1] - いいえ
 							LOCAL = 土地:(選択座標:1):(選択座標:0)
@@ -797,6 +895,12 @@ DO
 										NEXT
 									NEXT
 									VARSET 始点
+								ENDIF
+								IF 選択部屋 == "居住部屋"
+									FOR 居住LCOUNT, 0, CHARANUM
+										SIF CFLAG:居住LCOUNT:居住 == 部屋番号
+											CFLAG:居住LCOUNT:居住 = 0
+									NEXT
 								ENDIF
 								GOTO RESTART
 							LOOP 1
@@ -819,13 +923,13 @@ DO
 							ENDSELECT
 						CASE 7
 							PRINTL □配置する部屋を選んでください 名前(横幅×縦幅)
-							FOR LCOUNT, 1, VARSIZE("部屋情報", 0)
+							FOR LCOUNT, 1, 102
 								SIF 部屋情報:LCOUNT:0 == ""
-									BREAK
+									CONTINUE
 								;現在は部屋名とアイテム名が一致してるからこれでいい
 								LOCALS = %部屋情報:LCOUNT:0%
 								SELECTCASE LOCALS
-									CASE "レッスン室", "調理室"
+									CASE "レッスン室", "調理室", "居住部屋"
 									CASEELSE
 										SIF ITEM:LOCALS == 0
 											CONTINUE
@@ -846,21 +950,33 @@ DO
 										LOCALS = %部屋情報:RESULT:0%
 										SELECTCASE LOCALS
 											CASE "レッスン室", "調理室"
+												部屋配置 = RESULT
+											;居住部屋は空いている番号を使う
+											CASE "居住部屋"
+												部屋配置 = FINDELEMENT(居住区, 0, 1, 100)+100
+												IF 部屋配置 >= 200
+													PRINTW これ以上居住部屋を置けません
+													GOTO RESTART
+												ENDIF
 											CASEELSE
 												SIF ITEM:LOCALS == 0
 													CONTINUE
+												部屋配置 = RESULT
 										ENDSELECT
-										部屋配置 = RESULT
 										GOTO RESTART
 								ENDSELECT
 							LOOP 1
 							CONTINUE
+						CASE 8
+							SIF 選択部屋 != "居住部屋"
+								CONTINUE
+							CALL 住人配置, 部屋番号
+							GOTO 部屋オプション
 					ENDSELECT
 				LOOP 1
 		ENDSELECT
 	ENDIF
 LOOP 1
-
 
 
 
