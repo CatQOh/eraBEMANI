@@ -1,4 +1,274 @@
-﻿
+﻿@居住部屋, 部屋番号
+#DIM DYNAMIC 部屋番号
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 住人数
+#DIM DYNAMIC 住人, 2
+#DIM DYNAMIC 来客数 = -1
+#DIM DYNAMIC 来客, 3
+#DIM DYNAMIC SHUFFLE, 1000
+
+DRAWLINE
+
+VARSET 同行者
+
+住人数 = 0
+FOR LCOUNT, 1, CHARANUM
+	IF CFLAG:LCOUNT:居住 == 部屋番号
+		住人:住人数 = LCOUNT
+		住人数++
+	ENDIF
+	SIF 住人数 == 2
+		BREAK
+NEXT
+
+;住人と仲の良いキャラがランダムで1～3人来ることがある
+VARSET SHUFFLE, -1
+IF 来客数 == -1
+	来客数 = 0
+	;頭からループ回すと来客が偏るので一度シャッフルかける
+	FOR LCOUNT, 0, CHARANUM
+		SHUFFLE:LCOUNT = LCOUNT
+	NEXT
+	FOR LCOUNT, 0, CHARANUM
+		SWAP SHUFFLE:LCOUNT, SHUFFLE:RAND(LCOUNT, CHARANUM)
+	NEXT
+	REPEAT RAND:4
+		FOR LCOUNT, 0, CHARANUM
+			;主人は来客対象外
+			SIF SHUFFLE:LCOUNT == 0
+				CONTINUE
+			;もちろん住人は来客にならない
+			SIF GROUPMATCH(SHUFFLE:LCOUNT, 住人:0, 住人:1)
+				CONTINUE
+			;妊娠育児中、使用不可中、配属中で昼の場合は来ない
+			SIF TALENT:(SHUFFLE:LCOUNT):妊娠
+				CONTINUE
+			SIF TALENT:(SHUFFLE:LCOUNT):育児中
+				CONTINUE
+			SIF CFLAG:(SHUFFLE:LCOUNT):使用不可
+				CONTINUE
+			SIF CSTR:(SHUFFLE:LCOUNT):配属 != "" && TIME == 0
+				CONTINUE
+			;監禁中のキャラは来ない
+			SIF CFLAG:(SHUFFLE:LCOUNT):監禁
+				CONTINUE
+			;来客→住人の相性が良いと遊びに来ている
+			SIF RELATION:(SHUFFLE:LCOUNT):(NO:住人) > 100 || RELATION:(SHUFFLE:LCOUNT):(NO:(住人:1)) > 100
+				来客:(来客数++) = SHUFFLE:LCOUNT
+			SIF 来客数 >= 3
+				BREAK
+		NEXT
+	REND
+ENDIF
+
+IF 住人数 == 2
+	PRINTFORML □部屋,{部屋番号}には%CALLNAME:住人%と%CALLNAME:(住人:1)%が住んでいます
+ELSEIF 住人数 == 1
+	PRINTFORML □部屋,{部屋番号}には%CALLNAME:住人%が住んでいます
+ENDIF
+IF 来客数 > 0
+	PRINT 　
+	FOR LCOUNT, 0, 来客数
+		SIF LCOUNT >= 1
+			PRINT と
+		PRINTFORM %CALLNAME:(来客:LCOUNT)%
+	NEXT
+	PRINTL が遊びに来ています
+	;表示の関係で2回回す
+	FOR LCOUNT, 0, 来客数
+		IF !同伴判定(来客:LCOUNT)
+			PRINTDATA
+				DATAFORM 　%CALLNAME:(来客:LCOUNT)%は%CALLNAME:MASTER%を見ると、嫌な顔をして部屋を出て行ってしまった……
+				DATAFORM 　%CALLNAME:(来客:LCOUNT)%は%CALLNAME:MASTER%の居る部屋は居心地が悪いらしく、どこかに行ってしまった……
+				DATAFORM 　%CALLNAME:(来客:LCOUNT)%は%CALLNAME:MASTER%の登場に興ざめして、部屋を出て行ってしまった……
+			ENDDATA
+			PRINTL 
+		ENDIF
+	NEXT
+	FOR LCOUNT, 0, 来客数
+		SIF !同伴判定(来客:LCOUNT)
+			ARRAYREMOVE 来客, LCOUNT, 1
+	NEXT
+ENDIF
+
+
+PRINTL 　[1] - 遊びに行く
+PRINTL 　[2] - 部屋でくつろぐ
+PRINTL 　[3] - 雰囲気を作る
+DRAWLINE
+PRINTPLAIN 　部屋　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			IF !同伴判定(住人:0)
+				;妊娠育児中は無理
+				IF TALENT:住人:妊娠
+					PRINTFORMW %CALLNAME:住人%は妊娠中だ。しばらく無茶は控えたほうがいいだろう
+					RESTART
+				ELSEIF TALENT:住人:育児中
+					PRINTFORMW %CALLNAME:住人%が育てている子供を外に連れ出すには、まだ早いだろう
+					RESTART
+				ELSEIF CFLAG:住人:使用不可
+					PRINTFORML %CALLNAME:住人%は今は行動できない状態だ
+				ELSEIF CSTR:住人:配属 != ""
+					PRINTFORML %CALLNAME:住人%は仕事中だ
+				ELSE
+					PRINTFORML %CALLNAME:住人%は%CALLNAME:MASTER%とは出かけたくないようだ……
+				ENDIF
+			ENDIF
+			;もうひとり居ればそっちも判定
+			IF 住人:1 && !同伴判定(住人:1)
+				IF TALENT:(住人:1):妊娠
+					PRINTFORMW %CALLNAME:(住人:1)%は妊娠中だ。しばらく無茶は控えたほうがいいだろう
+					RESTART
+				ELSEIF TALENT:(住人:1):育児中
+					PRINTFORMW %CALLNAME:(住人:1)%が育てている子供を外に連れ出すには、まだ早いだろう
+					RESTART
+				ELSEIF CFLAG:(住人:1):使用不可
+					PRINTFORML %CALLNAME:(住人:1)%は今は行動できない状態だ
+				ELSEIF CSTR:住人:配属 != ""
+					PRINTFORML %CALLNAME:(住人:1)%は仕事中だ
+				ELSE
+					PRINTFORML %CALLNAME:(住人:1)%は%CALLNAME:MASTER%とは出かけたくないようだ……
+				ENDIF
+			ENDIF
+			;片方が無理でもう片方が行けるときのみ確認する
+			IF !同伴判定(住人) && 同伴判定(住人:1)
+				PRINTFORML %CALLNAME:(住人:1)%と遊びに行きますか？
+				PRINTL [0] - はい
+				PRINTL [1] - いいえ
+				DO
+					INPUT
+					SIF RESULT == 1
+						RESTART
+				LOOP LOOPRES(0)
+				CALL 遊びに行く, 0, 住人:1, 来客:0, 来客:1, 来客:2
+				BREAK
+			ENDIF
+			IF 同伴判定(住人) && 住人:1 && !同伴判定(住人:1)
+				PRINTFORML %CALLNAME:(住人)%と遊びに行きますか？
+				PRINTL [0] - はい
+				PRINTL [1] - いいえ
+				DO
+					INPUT
+					SIF RESULT == 1
+						RESTART
+				LOOP LOOPRES(0)
+				CALL 遊びに行く, 住人, 0, 来客:0, 来客:1, 来客:2
+				BREAK
+			ENDIF
+			IF !同伴判定(住人) && !同伴判定(住人:1)
+				WAIT
+				RESTART
+			ENDIF
+			CALL 遊びに行く, 住人, 住人:1, 来客:0, 来客:1, 来客:2
+			BREAK
+		CASE 2
+			CALL 部屋でくつろぐ, 住人, 住人:1, 来客:0, 来客:1, 来客:2
+			BREAK
+		CASE 3
+			IF !同伴判定(住人:0)
+				;妊娠育児中は無理
+				IF TALENT:住人:妊娠
+					PRINTFORMW %CALLNAME:住人%は妊娠中だ。しばらく無茶は控えたほうがいいだろう
+				ELSEIF TALENT:住人:育児中
+					PRINTFORMW %CALLNAME:住人%は育児が忙しくてそれどころではないようだ
+				ELSEIF CFLAG:住人:使用不可
+					PRINTFORMW %CALLNAME:住人%は今は行動できない状態だ
+				ELSEIF CSTR:住人:配属 != ""
+					PRINTFORMW %CALLNAME:住人%は仕事が忙しくてそれどころではないようだ
+				ELSE
+					PRINTFORMW %CALLNAME:住人%とはとても良い雰囲気を作れそうにない……
+				ENDIF
+				RESTART
+			ENDIF
+			;もうひとり居ればそっちも判定
+			IF 住人:1 && !同伴判定(住人:1)
+				IF TALENT:(住人:1):妊娠
+					PRINTFORMW %CALLNAME:(住人:1)%は妊娠中だ。しばらく無茶は控えたほうがいいだろう
+				ELSEIF TALENT:(住人:1):育児中
+					PRINTFORMW %CALLNAME:(住人:1)%は育児が忙しくてそれどころではないようだ
+				ELSEIF CFLAG:(住人:1):使用不可
+					PRINTFORMW %CALLNAME:(住人:1)%は今は行動できない状態だ
+				ELSEIF CSTR:住人:配属 != ""
+					PRINTFORMW %CALLNAME:(住人:1)%は仕事中忙しくてそれどころではないようだ
+				ELSE
+					PRINTFORMW %CALLNAME:(住人:1)%とはとても良い雰囲気を作れそうにない……
+				ENDIF
+				RESTART
+			ENDIF
+			CALL 雰囲気を作る, 住人, 住人:1, 来客:0, 来客:1, 来客:2
+			BREAK
+	ENDSELECT
+LOOP 1
+
+FLAG:休憩フラグ = 1
+BEGIN TURNEND
+
+RETURN 1
+
+@同伴判定, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+
+SIF 対象 == 0
+	RETURNF 0
+
+SIF !CFLAG:対象:陥落 && CFLAG:対象:状態 < 2 && RELATION:対象:(NO:MASTER) <= 100
+	RETURNF 0
+SIF TALENT:対象:妊娠 || TALENT:対象:育児中 || CFLAG:対象:使用不可
+	RETURNF 0
+SIF CSTR:対象:配属 != "" && TIME == 0
+	RETURNF 0
+
+RETURNF 1
+
+
+@遊びに行く, 同行者, 同行者:1, 同行者:2, 同行者:3, 同行者:4
+#DIM DYNAMIC 同行人数
+#DIM DYNAMIC LCOUNT
+
+FOR LCOUNT, 0, 5
+	IF 同行者:LCOUNT
+		CALL KOJO_MESSAGE_EVENT, "遊びに行く", 同行者:LCOUNT
+		同行人数++
+	ENDIF
+NEXT
+
+@部屋でくつろぐ, 同行者, 同行者:1, 同行者:2, 同行者:3, 同行者:4
+#DIM DYNAMIC 同行人数
+#DIM DYNAMIC LCOUNT
+
+FOR LCOUNT, 0, 5
+	IF 同行者:LCOUNT
+		CALL KOJO_MESSAGE_EVENT, "部屋でくつろぐ", 同行者:LCOUNT
+		同行人数++
+	ENDIF
+NEXT
+
+@雰囲気を作る, 同行者, 同行者:1, 同行者:2, 同行者:3, 同行者:4
+#DIM DYNAMIC 同行人数
+#DIM DYNAMIC LCOUNT
+
+FOR LCOUNT, 0, 5
+	IF 同行者:LCOUNT
+		CALL KOJO_MESSAGE_EVENT, "雰囲気を作る", 同行者:LCOUNT
+		同行人数++
+	ENDIF
+NEXT
+
+@乱交参加, 対象
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象
+
+
+
 @住人配置, 部屋番号
 #DIM DYNAMIC 部屋番号
 #DIM DYNAMIC LCOUNT
@@ -40,7 +310,10 @@ ELSE
 		PRINTL □誰を配置しますか？
 	ENDIF
 	FOR PAGING, 1, CHARANUM
-		CALL PAGING, 1
+		SIF GROUPMATCH(PAGING, 住人:0, 住人:1)
+			CONTINUE
+		;監禁中のキャラのみ配置できない
+		CALL PAGING, !CFLAG:PAGING:監禁
 	NEXT
 	SIF RESULT == -1
 		RETURN
