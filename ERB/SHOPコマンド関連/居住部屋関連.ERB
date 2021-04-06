@@ -6,6 +6,7 @@
 #DIM DYNAMIC 来客数 = -1
 #DIM DYNAMIC 来客, 3
 #DIM DYNAMIC SHUFFLE, 1000
+#DIM DYNAMIC 来客上限
 
 DRAWLINE
 
@@ -32,33 +33,35 @@ IF 来客数 == -1
 	FOR LCOUNT, 0, CHARANUM
 		SWAP SHUFFLE:LCOUNT, SHUFFLE:RAND(LCOUNT, CHARANUM)
 	NEXT
-	REPEAT RAND:4
-		FOR LCOUNT, 0, CHARANUM
-			;主人は来客対象外
-			SIF SHUFFLE:LCOUNT == 0
-				CONTINUE
-			;もちろん住人は来客にならない
-			SIF GROUPMATCH(SHUFFLE:LCOUNT, 住人:0, 住人:1)
-				CONTINUE
-			;妊娠育児中、使用不可中、配属中で昼の場合は来ない
-			SIF TALENT:(SHUFFLE:LCOUNT):妊娠
-				CONTINUE
-			SIF TALENT:(SHUFFLE:LCOUNT):育児中
-				CONTINUE
-			SIF CFLAG:(SHUFFLE:LCOUNT):使用不可
-				CONTINUE
-			SIF CSTR:(SHUFFLE:LCOUNT):配属 != "" && TIME == 0
-				CONTINUE
-			;監禁中のキャラは来ない
-			SIF CFLAG:(SHUFFLE:LCOUNT):監禁
-				CONTINUE
-			;来客→住人の相性が良いと遊びに来ている
-			SIF RELATION:(SHUFFLE:LCOUNT):(NO:住人) > 100 || RELATION:(SHUFFLE:LCOUNT):(NO:(住人:1)) > 100
-				来客:(来客数++) = SHUFFLE:LCOUNT
-			SIF 来客数 >= 3
-				BREAK
-		NEXT
-	REND
+	;0～4人
+	来客上限 = RAND:4
+	FOR LCOUNT, 0, CHARANUM
+		SIF 来客上限 <= 来客数
+			BREAK
+		;主人は来客対象外
+		SIF SHUFFLE:LCOUNT == 0
+			CONTINUE
+		;もちろん住人は来客にならない
+		SIF GROUPMATCH(SHUFFLE:LCOUNT, 住人:0, 住人:1)
+			CONTINUE
+		;妊娠育児中、使用不可中、配属中で昼の場合は来ない
+		SIF TALENT:(SHUFFLE:LCOUNT):妊娠
+			CONTINUE
+		SIF TALENT:(SHUFFLE:LCOUNT):育児中
+			CONTINUE
+		SIF CFLAG:(SHUFFLE:LCOUNT):使用不可
+			CONTINUE
+		SIF CSTR:(SHUFFLE:LCOUNT):配属 != "" && TIME == 0
+			CONTINUE
+		;監禁中のキャラは来ない
+		SIF CFLAG:(SHUFFLE:LCOUNT):監禁
+			CONTINUE
+		;来客→住人の相性が良いと遊びに来ている
+		SIF RELATION:(SHUFFLE:LCOUNT):(NO:住人) > 100 || RELATION:(SHUFFLE:LCOUNT):(NO:(住人:1)) > 100
+			来客:(来客数++) = SHUFFLE:LCOUNT
+		SIF 来客数 >= 3
+			BREAK
+	NEXT
 ENDIF
 
 IF 住人数 == 2
@@ -76,7 +79,7 @@ IF 来客数 > 0
 	PRINTL が遊びに来ています
 	;表示の関係で2回回す
 	FOR LCOUNT, 0, 来客数
-		IF !同伴判定(来客:LCOUNT)
+		IF 来客:LCOUNT && !同伴判定(来客:LCOUNT)
 			PRINTDATA
 				DATAFORM 　%CALLNAME:(来客:LCOUNT)%は%CALLNAME:MASTER%を見ると、嫌な顔をして部屋を出て行ってしまった……
 				DATAFORM 　%CALLNAME:(来客:LCOUNT)%は%CALLNAME:MASTER%の居る部屋は居心地が悪いらしく、どこかに行ってしまった……
@@ -85,9 +88,11 @@ IF 来客数 > 0
 			PRINTL 
 		ENDIF
 	NEXT
-	FOR LCOUNT, 0, 来客数
-		SIF !同伴判定(来客:LCOUNT)
+	FOR LCOUNT, 2, -1, -1
+		IF 来客:LCOUNT && !同伴判定(来客:LCOUNT)
 			ARRAYREMOVE 来客, LCOUNT, 1
+			来客数--
+		ENDIF
 	NEXT
 ENDIF
 
@@ -228,7 +233,6 @@ SIF CSTR:対象:配属 != "" && TIME == 0
 
 RETURNF 1
 
-
 @遊びに行く, 同行者, 同行者:1, 同行者:2, 同行者:3, 同行者:4
 #DIM DYNAMIC 同行人数
 #DIM DYNAMIC LCOUNT
@@ -237,6 +241,8 @@ FOR LCOUNT, 0, 5
 	IF 同行者:LCOUNT
 		CALL KOJO_MESSAGE_EVENT, "遊びに行く", 同行者:LCOUNT
 		同行人数++
+		;ストレス5低下
+		CFLAG:(同行者:LCOUNT):ストレス値 -= 3
 	ENDIF
 NEXT
 
@@ -248,12 +254,24 @@ FOR LCOUNT, 0, 5
 	IF 同行者:LCOUNT
 		CALL KOJO_MESSAGE_EVENT, "部屋でくつろぐ", 同行者:LCOUNT
 		同行人数++
+		;体力気力魔力3%回復
+		BASE:(同行者:LCOUNT):体力 += MAXBASE:(同行者:LCOUNT):体力*3/100
+		BASE:(同行者:LCOUNT):気力 += MAXBASE:(同行者:LCOUNT):気力*3/100
+		BASE:(同行者:LCOUNT):魔力 += MAXBASE:(同行者:LCOUNT):魔力*3/100
+		CALL SETBASE, 同行者:LCOUNT
 	ENDIF
 NEXT
 
 @雰囲気を作る, 同行者, 同行者:1, 同行者:2, 同行者:3, 同行者:4
 #DIM DYNAMIC 同行人数
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC 参加者, 6
+#DIM DYNAMIC 参加人数
+#DIM DYNAMIC 竿あり
+#DIM DYNAMIC 穴あり
+#DIM DYNAMIC 男性数
+#DIM DYNAMIC 女性数
 
 FOR LCOUNT, 0, 5
 	IF 同行者:LCOUNT
@@ -262,18 +280,133 @@ FOR LCOUNT, 0, 5
 	ENDIF
 NEXT
 
+FOR LCOUNT, 0, 5
+	SIF !同行者:LCOUNT
+		CONTINUE
+	IF 乱交参加(同行者:LCOUNT)
+		参加人数++
+		参加者:(参加人数) = 同行者:LCOUNT
+		SIF PENIS(同行者:LCOUNT)
+			竿あり++
+		SIF (VAGINA(参加者:LCOUNT) && !処女膜(参加者:LCOUNT)) || ABL:(参加者:LCOUNT):Ａ感覚 >= 2
+			穴あり++
+		SELECTCASE SEX(同行者:LCOUNT)
+			CASE 1
+				男性数++
+			CASE 2
+				女性数++
+		ENDSELECT
+	ENDIF
+NEXT
+
+SIF PENIS(MASTER)
+	竿あり++
+SIF (VAGINA(MASTER) && !処女膜(MASTER)) || ABL:(参加者:LCOUNT):Ａ感覚 >= 2
+	穴あり++
+SELECTCASE SEX(MASTER)
+	CASE 1
+		男性数++
+	CASE 2
+		女性数++
+ENDSELECT
+
+IF 参加人数 >= 1
+	FOR LCOUNT, 0, 6
+		IF 参加者:LCOUNT || LCOUNT == 0
+			IF VAGINA(参加者:LCOUNT) && !処女膜(参加者:LCOUNT)
+				CALL EXPUP, "Ｖ経験", 参加人数+1, 参加者:LCOUNT
+				CALL JUELUP, "快Ｖ", (参加人数+1)*50, 参加者:LCOUNT
+			ENDIF
+			SIF PENIS(参加者:LCOUNT)
+				CALL EXPUP, "射精経験", 参加人数+1, 参加者:LCOUNT
+			CALL JUELUP, "快Ｃ", (参加人数+1)*50, 参加者:LCOUNT
+			IF ABL:(参加者:LCOUNT):Ａ感覚 >= 2
+				CALL EXPUP, "Ａ経験", 参加人数+1, 参加者:LCOUNT
+				CALL JUELUP, "快Ａ", (参加人数+1)*50, 参加者:LCOUNT
+			ENDIF
+			IF VAGINA(参加者:LCOUNT) && !処女膜(参加者:LCOUNT) && 竿あり
+				CALL EXPUP, "性交経験", 竿あり, 参加者:LCOUNT
+			ELSEIF ABL:(参加者:LCOUNT):Ａ感覚 >= 2 && 竿あり
+				CALL EXPUP, "性交経験", 竿あり, 参加者:LCOUNT
+			ELSEIF PENIS(参加者:LCOUNT) && 穴あり
+				CALL EXPUP, "性交経験", 穴あり, 参加者:LCOUNT
+			ENDIF
+			CALL EXPUP, "精液経験", 竿あり, 参加者:LCOUNT
+			CALL JUELUP, "欲情", (参加人数+1)*50, 参加者:LCOUNT
+			SELECTCASE SEX(参加者:LCOUNT)
+				CASE 1
+					CALL EXPUP, "ゲイ経験", 男性数-1, 参加者:LCOUNT
+				CASE 2
+					CALL EXPUP, "レズ経験", 女性数-1, 参加者:LCOUNT
+			ENDSELECT
+			FOR LCOUNT2, 0, 5
+				SIF LCOUNT == LCOUNT2 
+					CONTINUE
+				IF PENIS(参加者:LCOUNT)
+					IF VAGINA(参加者:LCOUNT2) && !処女膜(参加者:LCOUNT2)
+						中出し回数:(参加者:LCOUNT):(NO:(参加者:LCOUNT2))++
+						中出され回数:(参加者:LCOUNT2):(NO:(参加者:LCOUNT))++
+						経験回数:(参加者:LCOUNT):(NO:(参加者:LCOUNT2))++
+						経験回数:(参加者:LCOUNT2):(NO:(参加者:LCOUNT))++
+					ENDIF
+					IF ABL:(参加者:LCOUNT2):Ａ感覚 >= 2
+						アナル中出し回数:(参加者:LCOUNT):(NO:(参加者:LCOUNT2))++
+						アナル中出され回数:(参加者:LCOUNT2):(NO:(参加者:LCOUNT))++
+						経験回数:(参加者:LCOUNT):(NO:(参加者:LCOUNT2))++
+						経験回数:(参加者:LCOUNT2):(NO:(参加者:LCOUNT))++
+					ENDIF
+				ENDIF
+			NEXT
+		ENDIF
+	NEXT
+ENDIF
+WAIT
+
 @乱交参加, 対象
 #FUNCTION
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 対象
+#DIM DYNAMIC ポイント
 
+;ここにたどり着いた時点で最低限の同行条件は満たしている
 
+;淫乱娼婦は参加する
+SIF FALLTYPE(対象) == 2
+	RETURNF 1
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		{
+		CASE "衝動的", "弱気", "好奇心", "目立ちたがり", "貞操無頓着", "解放",
+			 "濡れやすい", "勃ちやすい", "自慰しやすい", "快感に素直", "両刀", "男好き", "女好き",
+		}
+			ポイント++
+		{
+		CASE "プライド高い", "大人しい", "ツンデレ", "冷静", "サボり魔", "自制心", 
+			 "無関心", "一線越えない", "恥じらい", "潔癖症", "男嫌い", "女嫌い", "同族嫌悪"
+		}
+			ポイント--
+		CASE "貞操観念"
+			ポイント -= 2
+	ENDSELECT
+NEXT
+
+ポイント += ABL:対象:欲望
+
+;ポイント10以上で参加
+SIF ポイント >= 10
+	RETURNF 1
+
+RETURNF 0
 
 @住人配置, 部屋番号
 #DIM DYNAMIC 部屋番号
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 住人数
 #DIM DYNAMIC 住人, 2
+#DIM DYNAMIC 表示
 
 DRAWLINE
 住人数 = 0
@@ -309,11 +442,16 @@ ELSE
 	ELSE
 		PRINTL □誰を配置しますか？
 	ENDIF
-	FOR PAGING, 1, CHARANUM
+	FOR PAGING, 0, CHARANUM
+		表示 = 1
+		SIF PAGING == 0
+			表示 = 0
 		SIF GROUPMATCH(PAGING, 住人:0, 住人:1)
-			CONTINUE
+			表示 = 0
 		;監禁中のキャラのみ配置できない
-		CALL PAGING, !CFLAG:PAGING:監禁
+		SIF CFLAG:PAGING:監禁
+			表示 = 0
+		CALL PAGING, 表示
 	NEXT
 	SIF RESULT == -1
 		RETURN

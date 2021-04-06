@@ -7,7 +7,7 @@
 SPLIT LNK:コマンド番号, "/", コマンド内容
 
 SELECTCASE コマンド内容:0
-	CASE "対象選択", "助手選択", "調教"
+	CASE "対象選択", "助手選択", "調教", "居住部屋"
 		対象 = GETCHARA(TOINT(コマンド内容:1))
 ENDSELECT
 
@@ -58,6 +58,12 @@ SELECTCASE コマンド内容:0
 			CASEELSE
 				CALLFORM %コマンド内容:1%
 		ENDSELECT
+	CASE "居住部屋"
+		IF CFLAG:対象:居住 == 0
+			PRINTFORMW %NAME:対象%が住んでいる部屋はありません
+		ELSE
+			CALL 居住部屋, CFLAG:対象:居住
+		ENDIF
 	CASE "セーブ"
 		SAVEDATA TOINT(コマンド内容:1), セーブデータ情報()
 		PRINTW セーブしました
@@ -135,8 +141,9 @@ PRINTL 　[1] - ○○(キャラ)を調教する
 PRINTL 　[2] - ○○(キャラ)を調教対象にする
 PRINTL 　[3] - ○○(キャラ)を助手にする
 PRINTL 　[4] - ○○(施設)の管理をする
-PRINTL 　[5] - セーブ関連
-PRINTL 　[6] - ロード関連
+PRINTL 　[5] - ○○(キャラ)の部屋に行く
+PRINTL 　[6] - セーブ関連
+PRINTL 　[7] - ロード関連
 
 DO
 	INPUT
@@ -186,6 +193,11 @@ DO
 				ENDIF
 			LOOP 1
 		CASE 5
+			FOR PAGING, 0, CHARANUM
+				CALL PAGING, CFLAG:PAGING:居住, "", "ROOM"
+			NEXT
+			LNK:登録番号 = 居住部屋/{NO:RESULT}
+		CASE 6
 			FOR LCOUNT, 0, 20
 				PRINTFORML 　[{LCOUNT, 2}] - {LCOUNT}番にセーブ
 			NEXT
@@ -195,7 +207,7 @@ DO
 					CONTINUE
 				LNK:登録番号 = セーブ/{RESULT}
 			LOOP 0
-		CASE 6
+		CASE 7
 			FOR LCOUNT, 0, 20
 				PRINTFORML 　[{LCOUNT, 2}] - {LCOUNT}番のセーブデータをロード
 			NEXT
@@ -241,6 +253,8 @@ SELECTCASE コマンド内容:0
 		RETURNF @"%CSVCALLNAMEF(TOINT(コマンド内容:1))%を調教"
 	CASE "施設"
 		RETURNF @"%コマンド内容:1%の管理"
+	CASE "居住部屋"
+		RETURNF @"%CSVCALLNAMEF(TOINT(コマンド内容:1))%の部屋に行く"
 	CASE "セーブ"
 		RETURNF @"%コマンド内容:1%番にセーブ"
 	CASE "チェックポイント"
