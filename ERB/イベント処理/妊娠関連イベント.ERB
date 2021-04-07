@@ -60,7 +60,7 @@ FOR LCOUNT, 0, CHARANUM
 	ENDIF
 NEXT
 
-@NAKADASHI_CHECK, 対象, 竿役, 確率チェック=0
+@NAKADASHI_CHECK, 対象, 竿役, 確率チェック=0, 精液量=0
 #DIMS DYNAMIC 対象種族
 #DIMS DYNAMIC 竿役種族
 #DIM DYNAMIC 妊娠確率, 2
@@ -93,10 +93,11 @@ IF 竿役 >= 0
 ENDIF
 
 ;対象が助手もしくは奴隷でなければ不具合起こりそうなのでフラグリセットして終了
-IF 対象 != TARGET && 対象 != ASSI
-	VARSET PREG:対象:0, 0, 0, 4
-	RETURN 0
-ENDIF
+;一時的にオミット
+;IF 対象 != TARGET && 対象 != ASSI
+;	VARSET PREG:対象:0, 0, 0, 4
+;	RETURN 0
+;ENDIF
 
 ;対象が生殖能力無いなら関数終了
 SIF !生殖機能♀(対象)
@@ -136,14 +137,16 @@ SIF 竿役種族 != "神" && 竿役種族 != 対象種族
 ;射精量による妊娠判定
 ;小柄体型だと妊娠しにくい
 ;小人体型だともっと妊娠しにくい
-SELECTCASE 竿役
-	CASE MASTER
-		精液量 = PREG:対象:主人膣内射精
-	CASE ASSI
-		精液量 = PREG:対象:助手膣内射精
-	CASE TARGET
-		精液量 = PREG:対象:奴隷膣内射精
-ENDSELECT
+IF 精液量 == 0
+	SELECTCASE 竿役
+		CASE MASTER
+			精液量 = PREG:対象:主人膣内射精
+		CASE ASSI
+			精液量 = PREG:対象:助手膣内射精
+		CASE TARGET
+			精液量 = PREG:対象:奴隷膣内射精
+	ENDSELECT
+ENDIF
 
 ;排卵マッサージフラグを加算して計算する
 SELECTCASE 精液量+CFLAG:対象:排卵マッサージ
@@ -404,11 +407,6 @@ ENDIF
 
 ;妊娠時のステータスの変化
 ;共通処理
-;体力上限を減らす
-MAXBASE:ARG:体力 -= 500
-SIF BASE:ARG:体力 >= MAXBASE:ARG:体力
-	BASE:ARG:体力 = MAXBASE:ARG:体力
-
 ;女だと母乳出るようになる
 IF !TALENT:ARG:母乳体質 && SEX(ARG) == 2
 	PRINTFORMW %CALLNAME:ARG%は母乳が出るようになった
@@ -1188,9 +1186,6 @@ IF ARG == MASTER
 ELSE
 	PRINTFORMW %CALLNAME:ARG%は再び調教可能になりました
 ENDIF
-;妊娠時に減った体力の最大値が回復
-SIF PREG:ARG:出産予定日 != 0
-	MAXBASE:ARG:体力 += 500
 TALENT:ARG:育児中 = 0
 IF TALENT:ARG:母乳体質 && PREG:ARG:母乳体質付与 == 1
 	PRINTFORMW %CALLNAME:ARG%は母乳が出なくなりました

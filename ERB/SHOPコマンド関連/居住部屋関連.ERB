@@ -459,3 +459,243 @@ ELSE
 	RESTART
 ENDIF
 
+@TURNEND_居住部屋
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC 住人, 2
+#DIM DYNAMIC 来客, 3
+#DIMS DYNAMIC 内容, 2
+#DIM DYNAMIC SHUFFLE, 1000
+#DIM DYNAMIC 来客数 = -1
+#DIM DYNAMIC 来客上限
+
+;部屋単位でLCOUNTを回す
+FOR LCOUNT, 1, 100
+	住人 = FINDCHARA(CFLAG:居住, LCOUNT)
+	住人:1 = FINDLASTCHARA(CFLAG:居住, LCOUNT)
+	SIF 住人 == -1
+		CONTINUE
+	SIF 住人 == 住人:1
+		住人:1 = 0
+	
+	;発生率は20%程度
+	SIF !RANDPER(20)
+		CONTINUE
+
+	;いくつかの傾向からランダムで選ぶ
+	SELECTCASE RAND:2
+		;ユニットを組んでいる場合
+		CASE 0
+			SIF CFLAG:住人:ユニット番号 || CFLAG:住人:ユニット番号
+				内容 = 自主練
+		;二人同棲している
+		CASE 1
+			IF 住人 && 住人:1
+				SELECTCASE 同棲判定(住人, 住人:1)
+					;お勉強タイム
+					CASE 1
+						内容 = 勉強
+					;盛る
+					CASE 2
+						内容 = 性交
+				ENDSELECT
+			ENDIF
+	ENDSELECT
+	;内容決まらなかった場合は適当なイベントで濁す
+	SIF 内容 == ""
+		内容 = その他
+
+	IF 内容 == "その他"
+		VARSET SHUFFLE, -1
+		IF 来客数 == -1
+			来客数 = 0
+			;頭からループ回すと来客が偏るので一度シャッフルかける
+			FOR LCOUNT2, 0, CHARANUM
+				SHUFFLE:LCOUNT2 = LCOUNT2
+			NEXT
+			FOR LCOUNT2, 0, CHARANUM
+				SWAP SHUFFLE:LCOUNT2, SHUFFLE:RAND(LCOUNT2, CHARANUM)
+			NEXT
+			;0～4人
+			来客上限 = RAND:4
+			FOR LCOUNT2, 0, CHARANUM
+				SIF 来客上限 <= 来客数
+					BREAK
+				;主人は来客対象外
+				SIF SHUFFLE:LCOUNT2 == 0
+					CONTINUE
+				;もちろん住人は来客にならない
+				SIF GROUPMATCH(SHUFFLE:LCOUNT2, 住人:0, 住人:1)
+					CONTINUE
+				;妊娠育児中、使用不可中、配属中で昼の場合は来ない
+				SIF TALENT:(SHUFFLE:LCOUNT2):妊娠
+					CONTINUE
+				SIF TALENT:(SHUFFLE:LCOUNT2):育児中
+					CONTINUE
+				SIF CFLAG:(SHUFFLE:LCOUNT2):使用不可
+					CONTINUE
+				SIF CSTR:(SHUFFLE:LCOUNT2):配属 != "" && TIME == 0
+					CONTINUE
+				;監禁中のキャラは来ない
+				SIF CFLAG:(SHUFFLE:LCOUNT2):監禁
+					CONTINUE
+				;来客→住人の相性が良いと遊びに来ている
+				SIF RELATION:(SHUFFLE:LCOUNT2):(NO:住人) > 100 || RELATION:(SHUFFLE:LCOUNT):(NO:(住人:1)) > 100
+					来客:(来客数++) = SHUFFLE:LCOUNT2
+				SIF 来客数 >= 3
+					BREAK
+			NEXT
+		ENDIF
+	ENDIF
+
+	SELECTCASE 内容
+		CASE "勉強"
+			;試行回数10回
+			REPEAT 10
+				;ランダムでABLを決める
+				内容 = %ABLNAME:(RAND(GETNUM(ABL, "料理技能"), GETNUM(ABL, "栽培技能")))%
+				;住人がそのABLを持ってるか
+				IF ABL:住人:内容 || ABL:(住人:1):内容
+					SELECTCASE 内容
+						CASE "料理技能"
+							EXP:住人:料理経験 += ABL:(住人:1):内容
+							EXP:(住人:1):料理経験 += ABL:住人:内容
+							内容:1 = 料理
+						CASE "家事技能"
+							EXP:住人:家事経験 += ABL:(住人:1):内容
+							EXP:(住人:1):家事経験 += ABL:住人:内容
+							内容:1 = 家事
+						CASE "工作技能"
+							EXP:住人:工作経験 += ABL:(住人:1):内容
+							EXP:(住人:1):工作経験 += ABL:住人:内容
+							内容:1 = 機械の扱い方
+						CASE "歌唱技能"
+							EXP:住人:歌唱経験 += ABL:(住人:1):内容
+							EXP:(住人:1):歌唱経験 += ABL:住人:内容
+							内容:1 = 歌
+						CASE "演奏技能"
+							EXP:住人:演奏経験 += ABL:(住人:1):内容
+							EXP:(住人:1):演奏経験 += ABL:住人:内容
+							内容:1 = 楽器演奏
+						CASE "撮影技能"
+							EXP:住人:撮影経験 += ABL:(住人:1):内容
+							EXP:(住人:1):撮影経験 += ABL:住人:内容
+							内容:1 = カメラの扱い方
+						CASE "舞踊技能"
+							EXP:住人:ダンス経験 += ABL:(住人:1):内容
+							EXP:(住人:1):ダンス経験 += ABL:住人:内容
+							内容:1 = ダンス
+						CASE "飼育技能"
+							EXP:住人:飼育経験 += ABL:(住人:1):内容
+							EXP:(住人:1):飼育経験 += ABL:住人:内容
+							内容:1 = 動物の飼い方
+						CASE "栽培技能"
+							EXP:住人:栽培経験 += ABL:(住人:1):内容
+							EXP:(住人:1):栽培経験 += ABL:住人:内容
+							内容:1 = 植物の育て方
+					ENDSELECT
+
+					IF ABL:住人:内容 > ABL:(住人:1):内容
+						ARRAYSHIFT 部屋ログ, 1, ""
+						部屋ログ:0 = {YEAR}年{MONTH}月{DAYS}日\@ TIME == 0 ? 昼 # 夜 \@ %CALLNAME:(住人:1)%が%CALLNAME:住人%に%内容:1%を教わった
+					ELSEIF ABL:住人:内容 < ABL:(住人:1):内容
+						ARRAYSHIFT 部屋ログ, 1, ""
+						部屋ログ:0 = {YEAR}年{MONTH}月{DAYS}日\@ TIME == 0 ? 昼 # 夜 \@ %CALLNAME:住人%が%CALLNAME:(住人:1)%に%内容:1%を教わった
+					ELSE
+						ARRAYSHIFT 部屋ログ, 1, ""
+						部屋ログ:0 = {YEAR}年{MONTH}月{DAYS}日\@ TIME == 0 ? 昼 # 夜 \@ %CALLNAME:住人%と%CALLNAME:(住人:1)%は%内容:1%を勉強した
+					ENDIF
+					BREAK
+				ENDIF
+			REND
+		CASE "性交"
+			ARRAYSHIFT 部屋ログ, 1, ""
+			部屋ログ:0 = {YEAR}年{MONTH}月{DAYS}日\@ TIME == 0 ? 昼 # 夜 \@ %CALLNAME:住人%と%CALLNAME:(住人:1)%は素敵なひと時を過ごした
+			IF PENIS(住人)
+				EXP:住人:射精経験++
+				EXP:(住人:1):精液経験++
+				IF VAGINA(住人:1) && !処女膜(住人:1)
+					EXP:住人:性交経験++
+					EXP:(住人:1):性交経験++
+					EXP:(住人:1):Ｖ経験++
+					CALL 経験回数増加, 住人, 住人:1, 1, "中出し"
+					;一応妊娠してみるようにしてみる
+					CALL NAKADASHI_CHECK, 住人:1, 住人, 0, 1
+				ELSEIF ABL:(住人:1):Ａ感覚 >= 3
+					EXP:住人:性交経験++
+					EXP:(住人:1):性交経験++
+					EXP:(住人:1):Ａ経験++
+					CALL 経験回数増加, 住人, 住人:1, 1, "アナル中出し"
+				ENDIF
+			ENDIF
+			IF PENIS(住人:1)
+				EXP:(住人:1):射精経験++
+				EXP:住人:精液経験++
+				IF VAGINA(住人) && !処女膜(住人)
+					EXP:住人:性交経験++
+					EXP:(住人:1):性交経験++
+					EXP:住人:Ｖ経験++
+					CALL 経験回数増加, 住人:1, 住人, 1, "中出し"
+					;一応妊娠するようにしてみる
+					CALL NAKADASHI_CHECK, 住人, 住人:1, 0, 1
+				ELSEIF ABL:住人:Ａ感覚 >= 3
+					EXP:住人:性交経験++
+					EXP:(住人:1):性交経験++
+					EXP:住人:Ａ経験++
+					CALL 経験回数増加, 住人:1, 住人, 1, "アナル中出し"
+				ENDIF
+			ENDIF
+			IF SEX(住人) == SEX(住人:1)
+				SELECTCASE 住人
+					CASE 1
+						EXP:住人:ゲイ経験++
+						EXP:(住人:1):ゲイ経験++
+					CASE 2
+						EXP:住人:レズ経験++
+						EXP:(住人:1):レズ経験++
+				ENDSELECT
+			ENDIF
+		CASE ""
+	ENDSELECT
+NEXT
+
+@同棲判定, 住人, 住人:1
+#FUNCTION
+#DIM DYNAMIC 住人, 2
+
+;相性が良く、かつ既成事実があると盛り始める
+IF RELATION:住人:(NO:(住人:1)) > 100 && RELATION:(住人:1):(NO:住人) > 100
+	IF 経験回数:住人:(NO:(住人:1)) && 経験回数:(住人:1):(NO:住人)
+		;ただし既婚者のみ例外
+		IF TALENT:住人:既婚者 || TALENT:(住人:1):既婚者
+			IF TALENT:住人:既婚者 == NO:(住人:1) && TALENT:(住人:1):既婚者 == NO:住人
+				RETURNF 2
+			ELSE
+				GOTO ELSE
+			ENDIF
+		ENDIF
+		RETURNF 2
+	ELSEIF TALENT:住人:恋心 == NO:(住人:1) && TALENT:(住人:1):恋心 == NO:住人
+		RETURNF 2
+	ELSEIF TALENT:住人:既婚者 == NO:(住人:1) && TALENT:(住人:1):既婚者 == NO:住人
+		RETURNF 2
+	ENDIF
+ENDIF
+
+$ELSE
+;相性が悪くない場合はお勉強
+SIF RELATION:住人:(NO:(住人:1)) >= 100 && RELATION:(住人:1):(NO:住人) >= 100
+	RETURNF 1
+
+RETURNF 0
+
+@部屋ログ表示
+#DIM DYNAMIC LCOUNT
+
+DRAWLINE
+FOR LCOUNT, 99, -1, -1
+	SIF 部屋ログ:LCOUNT != ""
+		PRINTFORML 　%部屋ログ:LCOUNT%
+NEXT
+DRAWLINE
+PRINTW 　部屋ログ　
