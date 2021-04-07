@@ -478,6 +478,7 @@ FOR LCOUNT, 1, 100
 	SIF 住人 == 住人:1
 		住人:1 = 0
 	
+	内容 = 
 	;発生率は20%程度
 	SIF !RANDPER(20)
 		CONTINUE
@@ -507,45 +508,43 @@ FOR LCOUNT, 1, 100
 
 	IF 内容 == "その他"
 		VARSET SHUFFLE, -1
-		IF 来客数 == -1
-			来客数 = 0
-			;頭からループ回すと来客が偏るので一度シャッフルかける
-			FOR LCOUNT2, 0, CHARANUM
-				SHUFFLE:LCOUNT2 = LCOUNT2
-			NEXT
-			FOR LCOUNT2, 0, CHARANUM
-				SWAP SHUFFLE:LCOUNT2, SHUFFLE:RAND(LCOUNT2, CHARANUM)
-			NEXT
-			;0～4人
-			来客上限 = RAND:4
-			FOR LCOUNT2, 0, CHARANUM
-				SIF 来客上限 <= 来客数
-					BREAK
-				;主人は来客対象外
-				SIF SHUFFLE:LCOUNT2 == 0
-					CONTINUE
-				;もちろん住人は来客にならない
-				SIF GROUPMATCH(SHUFFLE:LCOUNT2, 住人:0, 住人:1)
-					CONTINUE
-				;妊娠育児中、使用不可中、配属中で昼の場合は来ない
-				SIF TALENT:(SHUFFLE:LCOUNT2):妊娠
-					CONTINUE
-				SIF TALENT:(SHUFFLE:LCOUNT2):育児中
-					CONTINUE
-				SIF CFLAG:(SHUFFLE:LCOUNT2):使用不可
-					CONTINUE
-				SIF CSTR:(SHUFFLE:LCOUNT2):配属 != "" && TIME == 0
-					CONTINUE
-				;監禁中のキャラは来ない
-				SIF CFLAG:(SHUFFLE:LCOUNT2):監禁
-					CONTINUE
-				;来客→住人の相性が良いと遊びに来ている
-				SIF RELATION:(SHUFFLE:LCOUNT2):(NO:住人) > 100 || RELATION:(SHUFFLE:LCOUNT):(NO:(住人:1)) > 100
-					来客:(来客数++) = SHUFFLE:LCOUNT2
-				SIF 来客数 >= 3
-					BREAK
-			NEXT
-		ENDIF
+		来客数 = 0
+		;頭からループ回すと来客が偏るので一度シャッフルかける
+		FOR LCOUNT2, 0, CHARANUM
+			SHUFFLE:LCOUNT2 = LCOUNT2
+		NEXT
+		FOR LCOUNT2, 0, CHARANUM
+			SWAP SHUFFLE:LCOUNT2, SHUFFLE:RAND(LCOUNT2, CHARANUM)
+		NEXT
+		;0～4人
+		来客上限 = RAND:4
+		FOR LCOUNT2, 0, CHARANUM
+			SIF 来客上限 <= 来客数
+				BREAK
+			;主人は来客対象外
+			SIF SHUFFLE:LCOUNT2 == 0
+				CONTINUE
+			;住人は来客にならない
+			SIF CFLAG:(SHUFFLE:LCOUNT2):居住
+				CONTINUE
+			;妊娠育児中、使用不可中、配属中で昼の場合は来ない
+			SIF TALENT:(SHUFFLE:LCOUNT2):妊娠
+				CONTINUE
+			SIF TALENT:(SHUFFLE:LCOUNT2):育児中
+				CONTINUE
+			SIF CFLAG:(SHUFFLE:LCOUNT2):使用不可
+				CONTINUE
+			SIF CSTR:(SHUFFLE:LCOUNT2):配属 != "" && TIME == 0
+				CONTINUE
+			;監禁中のキャラは来ない
+			SIF CFLAG:(SHUFFLE:LCOUNT2):監禁
+				CONTINUE
+			;来客→住人の相性が良いと遊びに来ている
+			SIF RELATION:(SHUFFLE:LCOUNT2):(NO:住人) > 100 || RELATION:(SHUFFLE:LCOUNT2):(NO:(住人:1)) > 100
+				来客:(来客数++) = SHUFFLE:LCOUNT2
+			SIF 来客数 >= 3
+				BREAK
+		NEXT
 	ENDIF
 
 	SELECTCASE 内容
@@ -593,6 +592,8 @@ FOR LCOUNT, 1, 100
 							EXP:住人:栽培経験 += ABL:(住人:1):内容
 							EXP:(住人:1):栽培経験 += ABL:住人:内容
 							内容:1 = 植物の育て方
+						CASEELSE
+							CONTINUE
 					ENDSELECT
 
 					IF ABL:住人:内容 > ABL:(住人:1):内容
@@ -655,7 +656,54 @@ FOR LCOUNT, 1, 100
 						EXP:(住人:1):レズ経験++
 				ENDSELECT
 			ENDIF
-		CASE ""
+		CASE "その他"
+			ARRAYSHIFT 部屋ログ, 1, ""
+			部屋ログ = {YEAR}年{MONTH}月{DAYS}日\@ TIME == 0 ? 昼 # 夜 \@ %CALLNAME:住人%\@ 住人:1 ? と%CALLNAME:(住人:1)% #\@
+			IF 来客数
+				部屋ログ += "の部屋に"
+				FOR LCOUNT2, 0, 来客数
+					SIF LCOUNT2 >= 1
+						部屋ログ += "、"
+					部屋ログ += @"%CALLNAME:(来客:LCOUNT2)%"
+				NEXT
+				部屋ログ += "が訪れ、"
+			ELSE
+				部屋ログ += "は"
+			ENDIF
+			IF 来客数 == 0 && 住人:1
+				IF 相性値(住人, 住人:1) > 100 && 相性値(住人:1, 住人) > 100
+					SELECTCASE RAND:3
+						CASE 0
+							部屋ログ += "部屋でくつろいで過ごした"
+						CASE 1
+							部屋ログ += "2人で遊びに出かけた"
+						CASE 2
+							部屋ログ += "特筆することのない時間を過ごした"
+					ENDSELECT
+				ELSE
+					部屋ログ += "別行動で過ごした"
+				ENDIF
+			ELSEIF 来客数
+				SELECTCASE RAND:4
+					CASE 0
+						部屋ログ += "部屋で談笑しながら過ごした"
+					CASE 1
+						部屋ログ += "みんなで遊びに出かけた"
+					CASE 2
+						部屋ログ += "部屋で遊んで過ごした"
+					CASE 3
+						部屋ログ += "部屋でくつろいで過ごした"
+				ENDSELECT
+			ELSE
+				SELECTCASE RAND:3
+					CASE 0
+						部屋ログ += "とりとめのない時間を過ごした"
+					CASE 1
+						部屋ログ += "部屋でくつろいで過ごした"
+					CASE 2
+						部屋ログ += "特に何もせずに過ごした"
+				ENDSELECT
+			ENDIF
 	ENDSELECT
 NEXT
 
