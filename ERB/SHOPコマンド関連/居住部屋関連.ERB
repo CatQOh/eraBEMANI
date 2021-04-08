@@ -468,6 +468,7 @@ ENDIF
 #DIM DYNAMIC SHUFFLE, 1000
 #DIM DYNAMIC 来客数 = -1
 #DIM DYNAMIC 来客上限
+#DIM DYNAMIC 対象
 
 ;部屋単位でLCOUNTを回す
 FOR LCOUNT, 1, 100
@@ -478,6 +479,12 @@ FOR LCOUNT, 1, 100
 	SIF 住人 == 住人:1
 		住人:1 = 0
 	
+	;イベント前にスライム感染の処理
+	SIF ISSLIME(住人)
+		CFLAG:(住人:1):スライム度++
+	SIF ISSLIME(住人:1)
+		CFLAG:住人:スライム度++
+
 	内容 = 
 	;発生率は20%程度
 	SIF !RANDPER(20)
@@ -487,7 +494,7 @@ FOR LCOUNT, 1, 100
 	SELECTCASE RAND:2
 		;ユニットを組んでいる場合
 		CASE 0
-			SIF CFLAG:住人:ユニット番号 || CFLAG:住人:ユニット番号
+			SIF CFLAG:住人:ユニット番号 || CFLAG:(住人:1):ユニット番号
 				内容 = 自主練
 		;二人同棲している
 		CASE 1
@@ -506,7 +513,7 @@ FOR LCOUNT, 1, 100
 	SIF 内容 == ""
 		内容 = その他
 
-	IF 内容 == "その他"
+	IF GROUPMATCH(内容, "その他", "自主練")
 		VARSET SHUFFLE, -1
 		来客数 = 0
 		;頭からループ回すと来客が偏るので一度シャッフルかける
@@ -539,15 +546,83 @@ FOR LCOUNT, 1, 100
 			;監禁中のキャラは来ない
 			SIF CFLAG:(SHUFFLE:LCOUNT2):監禁
 				CONTINUE
-			;来客→住人の相性が良いと遊びに来ている
-			SIF RELATION:(SHUFFLE:LCOUNT2):(NO:住人) > 100 || RELATION:(SHUFFLE:LCOUNT2):(NO:(住人:1)) > 100
-				来客:(来客数++) = SHUFFLE:LCOUNT2
-			SIF 来客数 >= 3
-				BREAK
+			SELECTCASE 内容
+				CASE "その他"
+					;来客→住人の相性が良いと遊びに来ている
+					SIF 相性値(SHUFFLE:LCOUNT2, 住人) > 100 || 相性値(SHUFFLE:LCOUNT2, 住人:1) > 100
+						来客:(来客数++) = SHUFFLE:LCOUNT2
+					SIF 来客数 >= 3
+						BREAK
+				CASE "自主練"
+					;同じユニットのメンバーが来る
+					SIF CFLAG:(SHUFFLE:LCOUNT2):ユニット番号 && GROUPMATCH(CFLAG:(SHUFFLE:LCOUNT2):ユニット番号, CFLAG:住人:ユニット番号, CFLAG:(住人:1):ユニット番号)
+						来客:(来客数++) = SHUFFLE:LCOUNT2
+					SIF 来客数 >= 3
+						BREAK
+			ENDSELECT
 		NEXT
 	ENDIF
 
 	SELECTCASE 内容
+		CASE "自主練"
+			部屋ログ = {YEAR}年{MONTH}月{DAYS}日\@ TIME == 0 ? 昼 # 夜 \@ 
+			SIF CFLAG:住人:ユニット番号
+				部屋ログ += @"%CALLNAME:住人%"
+			SIF CFLAG:住人:ユニット番号 && CFLAG:(住人:1):ユニット番号
+				部屋ログ += "と"
+			SIF CFLAG:(住人:1):ユニット番号
+				部屋ログ += @"%CALLNAME:(住人:1)%"
+			IF 来客数
+				部屋ログ += "の部屋に"
+				FOR LCOUNT2, 0, 来客数
+					SIF LCOUNT2 >= 1
+						部屋ログ += "、"
+					部屋ログ += @"%CALLNAME:(来客:LCOUNT2)%"
+				NEXT
+				部屋ログ += "が訪れ、音楽ユニットでの自主練を行った"
+			ELSE
+				部屋ログ += "は部屋で音楽ユニットの自主練を行った"
+			ENDIF
+			FOR LCOUNT2, 0, 5
+				SELECTCASE LCOUNT2
+					CASE 0
+						対象 = 住人
+					CASE 1
+						対象 = 住人:1
+					CASE 2
+						対象 = 来客
+					CASE 3
+						対象 = 来客:1
+					CASE 4
+						対象 = 来客:2
+				ENDSELECT
+				SIF 対象 <= 0
+					CONTINUE
+				IF CFLAG:対象:ユニット番号
+					SELECTCASE CFLAG:対象:ユニット担当
+						CASE 1
+							EXP:対象:ダンス経験 += 2
+							JUEL:対象:習得 += 50
+						CASE 2
+							EXP:対象:演奏経験 += 2
+							JUEL:対象:習得 += 50
+						CASE IS >= 10
+							SELECTCASE CFLAG:対象:ユニット担当/10
+								CASE 3
+									EXP:対象:歌唱経験 += 2
+									JUEL:対象:習得 += 50
+								CASE 4
+									EXP:対象:歌唱経験++
+									EXP:対象:ダンス経験++
+									JUEL:対象:習得 += 50
+								CASE 5
+									EXP:対象:歌唱経験++
+									EXP:対象:演奏経験++
+									JUEL:対象:習得 += 50
+							ENDSELECT
+					ENDSELECT
+				ENDIF
+			NEXT
 		CASE "勉強"
 			;試行回数10回
 			REPEAT 10

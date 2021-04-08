@@ -224,6 +224,7 @@ LOOP 1
 #DIM DYNAMIC 収入, 2
 #DIM DYNAMIC ユニット数
 #DIM DYNAMIC 選出可能, 11
+#DIM DYNAMIC ユニット担当記録用, 1000
 
 ユニット数 = 0
 
@@ -252,8 +253,8 @@ DO
 				RESTART
 			IF IDOL選曲:1 == "0"
 				REPEAT CHARANUM
-					SIF LOCAL:COUNT >= 3
-						LOCAL:COUNT -= 3
+					SIF ユニット担当記録用:COUNT >= 3
+						ユニット担当記録用:COUNT -= 3
 				REND
 			ENDIF
 			$MEMBER_LOOP
@@ -265,7 +266,7 @@ DO
 			VARSET 人数
 			FOR LCOUNT, 0, CHARANUM
 				IF CSTR:LCOUNT:配属 == "芸能プロダクション"
-					SELECTCASE LOCAL:LCOUNT
+					SELECTCASE ユニット担当記録用:LCOUNT
 						CASE 1
 							技量:3 += 10000*ABL:LCOUNT:舞踊技能
 							人数:3++
@@ -335,7 +336,7 @@ DO
 					CONTINUE
 				IF CSTR:LCOUNT:配属 == "芸能プロダクション"
 					PRINT 　
-					SELECTCASE LOCAL:LCOUNT
+					SELECTCASE ユニット担当記録用:LCOUNT
 						CASE 0
 							PRINT 　　
 						CASE 1
@@ -417,14 +418,14 @@ DO
 										SELECTCASE CFLAG:LCOUNT:ユニット担当
 											CASE IS < 10
 												;ダンス、楽器演奏はそのまま代入
-												LOCAL:LCOUNT = CFLAG:LCOUNT:ユニット担当
+												ユニット担当記録用:LCOUNT = CFLAG:LCOUNT:ユニット担当
 											CASEELSE
 												;ボーカル必要無い選曲の場合、予備の担当に切り替える(1桁目)
 												IF IDOL選曲:1 == "0"
-													LOCAL:LCOUNT = CFLAG:LCOUNT:ユニット担当%10
+													ユニット担当記録用:LCOUNT = CFLAG:LCOUNT:ユニット担当%10
 												;オンボーカルならメインの担当(2桁目)
 												ELSE
-													LOCAL:LCOUNT = CFLAG:LCOUNT:ユニット担当/10
+													ユニット担当記録用:LCOUNT = CFLAG:LCOUNT:ユニット担当/10
 												ENDIF
 										ENDSELECT
 									ENDIF
@@ -466,11 +467,11 @@ DO
 					INPUT
 					SELECTCASE RESULT
 						CASE 0, 1, 2
-							LOCAL:LMEMORY = RESULT
+							ユニット担当記録用:LMEMORY = RESULT
 						CASE 3, 4, 5
 							SIF IDOL選曲:1 == "0"
 								GOTO PART_INPUT
-							LOCAL:LMEMORY = RESULT
+							ユニット担当記録用:LMEMORY = RESULT
 						CASEELSE
 							GOTO PART_INPUT
 					ENDSELECT
@@ -491,12 +492,12 @@ DO
 			;ビジュアルによって難度が下がる(※かわいいは正義)ことを表現したいのだが
 			;難度を下げると収入も下がってしまうので相対的に技量を上げる
 			FOR LCOUNT, 0, CHARANUM
-				IF CSTR:LCOUNT:配属 == "芸能プロダクション" && LOCAL:LCOUNT
+				IF CSTR:LCOUNT:配属 == "芸能プロダクション" && ユニット担当記録用:LCOUNT
 					;サボり魔は25%の確率でサボる
 					IF TALENT:LCOUNT:サボり魔 && RAND:4 == 0 && !ワーカホリックレベル(LCOUNT)
 						PRINTFORMW %CALLNAME:LCOUNT%はライブをサボりました
 						CFLAG:LCOUNT:ストレス値 -= 5
-						SELECTCASE LOCAL:LCOUNT
+						SELECTCASE ユニット担当記録用:LCOUNT
 							CASE 1
 								技量:3 -= 10000*ABL:LCOUNT:舞踊技能
 								人数:3--
@@ -517,7 +518,7 @@ DO
 								技量:1 -= 7500*ABL:LCOUNT:歌唱技能
 								人数:1--
 						ENDSELECT
-						LOCAL:LCOUNT = 0
+						ユニット担当記録用:LCOUNT = 0
 						CONTINUE
 					ENDIF
 					CFLAG:LCOUNT:レッスン = 0
@@ -599,7 +600,7 @@ DO
 			;収入がプラスなら楽曲難易度合計の人気度を加算する
 			IF 収入:1 > 0
 				FOR LCOUNT, 0, CHARANUM
-					IF CSTR:LCOUNT:配属 == "芸能プロダクション" && LOCAL:LCOUNT
+					IF CSTR:LCOUNT:配属 == "芸能プロダクション" && ユニット担当記録用:LCOUNT
 						人気度:LCOUNT:0 += TOINT(IDOL選曲:1)
 						人気度:LCOUNT:0 += TOINT(IDOL選曲:2)
 						人気度:LCOUNT:0 += TOINT(IDOL選曲:3)
@@ -611,7 +612,7 @@ DO
 						TALENT:LCOUNT:人気 = 1
 					ENDIF
 					;実績:ライブでボーカリストが[人気]を取得する
-					SELECTCASE LOCAL:LCOUNT
+					SELECTCASE ユニット担当記録用:LCOUNT
 						CASE 3 TO 5
 							CALL 実績解除, "プロジェクト・ディーヴァ"
 					ENDSELECT
@@ -754,6 +755,7 @@ LOOP 1
 #DIM DYNAMIC ユニット人数
 #DIM DYNAMIC 特殊ユニット, 100
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC ユニット担当記録用, 1000
 DRAWLINE
 
 VARSET LOCAL, 0
@@ -772,7 +774,7 @@ IF ユニット数 < 10
 	PRINTL □ユニットを組むキャラを選んでください
 	FOR LCOUNT, 0, CHARANUM
 		IF CSTR:LCOUNT:配属 == "芸能プロダクション"
-			SELECTCASE LOCAL:LCOUNT
+			SELECTCASE ユニット担当記録用:LCOUNT
 				CASE 0
 					IF CFLAG:LCOUNT:ユニット番号
 						PRINT  盟 
@@ -784,7 +786,7 @@ IF ユニット数 < 10
 				CASE 2
 					PRINT In. 
 				CASE IS > 10
-					SELECTCASE LOCAL:LCOUNT/10
+					SELECTCASE ユニット担当記録用:LCOUNT/10
 						CASE 3
 							PRINT Vo. 
 						CASE 4
@@ -834,7 +836,7 @@ DO
 				CONTINUE
 			ユニット人数 = 0
 			FOR LCOUNT, 0, CHARANUM
-				SIF LOCAL:LCOUNT
+				SIF ユニット担当記録用:LCOUNT
 					ユニット人数++
 			NEXT
 			IF ユニット人数 == 0
@@ -848,7 +850,7 @@ DO
 			SELECTCASE ユニット人数
 				CASE 2
 					FOR LCOUNT, 0, CHARANUM
-						SIF !LOCAL:LCOUNT
+						SIF !ユニット担当記録用:LCOUNT
 							CONTINUE
 						SELECTCASE CHARANAMEF(LCOUNT)
 							CASE "梅桐 彩葉", "雛月 理々奈"
@@ -875,7 +877,7 @@ DO
 						LOCALS = Virtual Kiss
 				CASE 3
 					FOR LCOUNT, 0, CHARANUM
-						SIF !LOCAL:LCOUNT
+						SIF !ユニット担当記録用:LCOUNT
 							CONTINUE
 						SELECTCASE CHARANAMEF(LCOUNT)
 							CASE "クジャク", "ジルチ", "刃雪 達磨"
@@ -922,7 +924,7 @@ DO
 						LOCALS = ソーファンタスティック
 				CASE 4
 					FOR LCOUNT, 0, CHARANUM
-						SIF !LOCAL:LCOUNT
+						SIF !ユニット担当記録用:LCOUNT
 							CONTINUE
 						SELECTCASE CHARANAMEF(LCOUNT)
 							CASE "ウーノ", "ツースト", "若さん", "フォース"
@@ -949,7 +951,7 @@ DO
 						LOCALS = リトルシスター親衛隊
 				CASE 5
 					FOR LCOUNT, 0, CHARANUM
-						SIF !LOCAL:LCOUNT
+						SIF !ユニット担当記録用:LCOUNT
 							CONTINUE
 						SELECTCASE CHARANAMEF(LCOUNT)
 							CASE "明坂 芹菜", "御形 アリシアナ", "天王洲 なずな", "小仏 凪", "箱部 なる"
@@ -970,7 +972,7 @@ DO
 				INPUTS
 				IF RESULTS == ""
 					FOR LCOUNT, 0, CHARANUM
-						IF LOCAL:LCOUNT
+						IF ユニット担当記録用:LCOUNT
 							SIF LOCALS != ""
 								LOCALS += "、"
 							LOCALS += NAME:LCOUNT
@@ -983,10 +985,10 @@ DO
 			;自動で前詰め処理をするのでユニット数+1のインデックスが空いている
 			ユニット名:(ユニット数+1) = %LOCALS%
 			FOR LCOUNT, 0, CHARANUM
-				IF LOCAL:LCOUNT
+				IF ユニット担当記録用:LCOUNT
 					;選んだキャラのCFLAGに、属するユニット番号と役割担当を記録する
 					CFLAG:LCOUNT:ユニット番号 = ユニット数+1
-					CFLAG:LCOUNT:ユニット担当 = LOCAL:LCOUNT
+					CFLAG:LCOUNT:ユニット担当 = ユニット担当記録用:LCOUNT
 				ENDIF
 			NEXT
 			RESTART
@@ -1039,9 +1041,9 @@ DO
 					INPUT
 					SELECTCASE RESULT
 						CASE 0, 1, 2
-							LOCAL:選出キャラ = RESULT
+							ユニット担当記録用:選出キャラ = RESULT
 						CASE 3, 4, 5
-							LOCAL:選出キャラ = RESULT
+							ユニット担当記録用:選出キャラ = RESULT
 							PRINTL ボーカル曲でない場合の予備の担当を指定してください
 							PRINTL [1] ダンス
 							PRINTL [2] 楽器演奏
@@ -1050,7 +1052,7 @@ DO
 								SELECTCASE RESULT
 									CASE 1, 2
 										;ハイブリッド担当は予備の情報を二桁で記録する。担当/10でメイン、担当%10で予備
-										LOCAL:選出キャラ = LOCAL:選出キャラ*10+RESULT
+										ユニット担当記録用:選出キャラ = ユニット担当記録用:選出キャラ*10+RESULT
 								ENDSELECT
 							LOOP LOOPRES(1, 2)
 					ENDSELECT
@@ -1142,8 +1144,9 @@ LOOP 1
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC モチベ計算用
 #DIM DYNAMIC 世話好き人数
+#DIM DYNAMIC ユニット担当記録用, 1000
 
-VARSET LOCAL
+VARSET ユニット担当記録用
 
 FOR LCOUNT, 0, CHARANUM
 	SIF CSTR:LCOUNT:配属 == "芸能プロダクション" && TALENT:LCOUNT:世話好き
@@ -1153,7 +1156,7 @@ NEXT
 REPEAT CHARANUM
 	IF CSTR:COUNT:配属 == "芸能プロダクション"
 		;1人ごとにかかる基礎費用
-		LOCAL:1 += 2000
+		ユニット担当記録用:1 += 2000
 		;レッスンの内容ごとに場合分け
 		;0未満は枕営業中
 		IF CFLAG:COUNT:レッスン < 0
@@ -1198,7 +1201,7 @@ REPEAT CHARANUM
 			;であるから、①は
 			;	5000N(N+1)
 			;と変形できる
-			LOCAL:2 += 5000*レッスンレベル*(レッスンレベル+1)
+			ユニット担当記録用:2 += 5000*レッスンレベル*(レッスンレベル+1)
 		ENDIF
 		モチベ計算用 = 0
 		;モチベーションの計算
@@ -1218,21 +1221,21 @@ REPEAT CHARANUM
 					モチベ計算用 -= 2
 			ENDSELECT
 		NEXT
-		LOCAL = CFLAG:COUNT:モチベーション+モチベ計算用+世話好き人数
+		ユニット担当記録用 = CFLAG:COUNT:モチベーション+モチベ計算用+世話好き人数
 		SIF TALENT:COUNT:世話好き
-			LOCAL -= 世話好き人数
+			ユニット担当記録用 -= 世話好き人数
 		;配属先のキャラの相性で計算
-		LOCAL += 相性モチベ補正(COUNT)
-		CFLAG:COUNT:モチベーション = LIMIT(LOCAL, 1, 100)
+		ユニット担当記録用 += 相性モチベ補正(COUNT)
+		CFLAG:COUNT:モチベーション = LIMIT(ユニット担当記録用, 1, 100)
 	ENDIF
 REND
 
-LOCAL = LOCAL:1 + LOCAL:2
-MONEY -= LOCAL
-IF LOCAL && IDOL報告%4 < 2
-	CALL PASELI, @"事務所の維持費用に{LOCAL:1}＄"
-	IF LOCAL:2
-		CALL PASELIL, @"とレッスン費用に{LOCAL:2}＄かかったので、合計{LOCAL}＄を支払いました。"
+ユニット担当記録用 = ユニット担当記録用:1 + ユニット担当記録用:2
+MONEY -= ユニット担当記録用
+IF ユニット担当記録用 && IDOL報告%4 < 2
+	CALL PASELI, @"事務所の維持費用に{ユニット担当記録用:1}＄"
+	IF ユニット担当記録用:2
+		CALL PASELIL, @"とレッスン費用に{ユニット担当記録用:2}＄かかったので、合計{ユニット担当記録用}＄を支払いました。"
 	ELSE
 		PRINTL かかりました。
 	ENDIF
