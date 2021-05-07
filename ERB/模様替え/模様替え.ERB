@@ -10,7 +10,6 @@
 #DIM DYNAMIC 幅, 2
 #DIM DYNAMIC 始点, 2
 #DIMS DYNAMIC 部屋情報, 200, 3
-#DIMS DYNAMIC オブジェクト情報, 100, 4
 #DIM DYNAMIC 設置済み, 200
 #DIMS DYNAMIC 部屋名
 #DIMS DYNAMIC 表示チップ
@@ -22,7 +21,8 @@
 #DIM DYNAMIC 生け簀始点, 2
 #DIMS DYNAMIC オブジェクト名
 #DIM DYNAMIC オブジェクト幅, 2
-#DIM DYNAMIC オブジェクト配置
+#DIMS DYNAMIC オブジェクト配置
+#DIMS DYNAMIC オブジェクト配置向き
 #DIM DYNAMIC オブジェクト表示済み
 #DIM DYNAMIC 選択座標, 2
 #DIMS DYNAMIC 選択部屋
@@ -38,6 +38,8 @@
 #DIM DYNAMIC 住人数
 
 VARLINE = LINECOUNT
+CALL マップバージョン管理
+CALL オブジェクトデータ
 
 LOCAL = 1
 ;部屋名, X座標の長さ, Y座標の長さ 1次元目の数値は部屋IDとしても扱う 0は欠番
@@ -73,54 +75,6 @@ LOCAL = 1
 FOR LCOUNT, 101, 200
 	部屋情報:LCOUNT:0 '= "居住部屋", "4", "4"
 NEXT
-
-LOCAL = 1
-オブジェクト情報:(LOCAL++):0 '= "ベッド1_右向き", "2", "1"
-オブジェクト情報:(LOCAL++):0 '= "ベッド1_左向き", "2", "1"
-オブジェクト情報:(LOCAL++):0 '= "ベッド2_右向き", "2", "1"
-オブジェクト情報:(LOCAL++):0 '= "ベッド2_左向き", "2", "1"
-
-LOCAL = 11
-オブジェクト情報:(LOCAL++):0 '= "椅子1_右向き", "1", "1"
-オブジェクト情報:(LOCAL++):0 '= "椅子1_左向き", "1", "1"
-オブジェクト情報:(LOCAL++):0 '= "椅子2_右向き", "1", "1"
-オブジェクト情報:(LOCAL++):0 '= "椅子2_左向き", "1", "1"
-
-LOCAL = 21
-オブジェクト情報:(LOCAL++):0 '= "テーブル1", "2", "1"
-オブジェクト情報:(LOCAL++):0 '= "ランプ1", "1", "1", "小物"
-オブジェクト情報:(LOCAL++):0 '= "地球儀", "1", "1", "小物"
-
-LOCAL = 31
-オブジェクト情報:(LOCAL++):0 '= "本棚1", "2", "2"
-オブジェクト情報:(LOCAL++):0 '= "本1", "1", "1", "小物"
-オブジェクト情報:(LOCAL++):0 '= "カウンター_右向き", "3", "2"
-オブジェクト情報:(LOCAL++):0 '= "カウンター_左向き", "3", "2"
-
-LOCAL = 41
-オブジェクト情報:(LOCAL++):0 '= "救急箱", "2", "1", "小物"
-オブジェクト情報:(LOCAL++):0 '= "心電図", "2", "1", "小物"
-
-LOCAL = 51
-オブジェクト情報:(LOCAL++):0 '= "シンク", "2", "1"
-オブジェクト情報:(LOCAL++):0 '= "コンロ", "2", "1"
-オブジェクト情報:(LOCAL++):0 '= "冷蔵庫", "2", "2"
-
-LOCAL = 61
-オブジェクト情報:(LOCAL++):0 '= "テレビ", "2", "1", "小物"
-オブジェクト情報:(LOCAL++):0 '= "鏡", "1", "1", "小物"
-オブジェクト情報:(LOCAL++):0 '= "タンス", "2", "1"
-オブジェクト情報:(LOCAL++):0 '= "クローゼット_右向き", "1", "2"
-オブジェクト情報:(LOCAL++):0 '= "クローゼット_左向き", "1", "2"
-オブジェクト情報:(LOCAL++):0 '= "ソファ", "2", "1"
-オブジェクト情報:(LOCAL++):0 '= "絨毯", "3", "2"
-
-LOCAL = 71
-オブジェクト情報:(LOCAL++):0 '= "三角マーク", "1", "1", "小物"
-オブジェクト情報:(LOCAL++):0 '= "生体ディスプレイ", "2", "2", "小物"
-オブジェクト情報:(LOCAL++):0 '= "培養槽", "2", "3"
-オブジェクト情報:(LOCAL++):0 '= "フラスコセット", "2", "1", "小物"
-オブジェクト情報:(LOCAL++):0 '= "テーブル_白", "2", "1"
 
 部屋配置 = 0
 
@@ -193,17 +147,23 @@ DO
 			IF 部屋配置
 				幅:0 = TOINT(部屋情報:部屋配置:1)
 				幅:1 = TOINT(部屋情報:部屋配置:2)
-			ELSEIF オブジェクト配置
-				幅:0 = TOINT(オブジェクト情報:オブジェクト配置:1)
-				幅:1 = TOINT(オブジェクト情報:オブジェクト配置:2)
+			ELSEIF オブジェクト配置 != ""
+				;幅が設定されていないならデフォルトの幅を返す
+				IF 幅:0 == 0
+					幅:0 = TOINT(オブジェクト情報(オブジェクト配置, "横幅"))
+					幅:1 = TOINT(オブジェクト情報(オブジェクト配置, "縦幅"))
+				ENDIF
+				;向きも設定されてなかったら右向きデフォ
+				SIF オブジェクト配置向き == ""
+					オブジェクト配置向き = 右向き
 			ENDIF
 			部屋名 = 
 			;重複対策に配置しようとしてる部屋は削除
 			SIF 部屋配置 && 土地:Y座標:X座標 == 部屋配置
 				土地:Y座標:X座標 = 0
 			;始点の座標から計算して配置用の部屋を描画する
-			IF (部屋配置 || オブジェクト配置) && X座標 >= 始点:0 && Y座標 >= 始点:1 && INRANGE(X座標-始点:0, 0, 幅:0-1) && INRANGE(Y座標-始点:1, 0, 幅:1-1)
-				表示用変数:X座標 += "<img src='GRID_OVER'>"
+			IF (部屋配置 || オブジェクト配置 != "") && X座標 >= 始点:0 && Y座標 >= 始点:1 && INRANGE(X座標-始点:0, 0, 幅:0-1) && INRANGE(Y座標-始点:1, 0, 幅:1-1)
+				表示用変数:X座標 += "<img src='GRID_OVER' srcb='' height='100' width='100'>"
 			ELSE
 				表示チップ =
 				部屋名 = %部屋情報:(土地:Y座標:X座標):0%
@@ -557,16 +517,19 @@ DO
 		LOCALS = %STRJOIN(表示用変数, "")%
 		VARSET 表示用変数
 		FOR X座標, 0, 60
-			IF オブジェクト:Y座標:X座標 != 0
-				オブジェクト名 = %オブジェクト情報:(オブジェクト:Y座標:X座標):0%
-				オブジェクト幅:0 = TOINT(オブジェクト情報:(オブジェクト:Y座標:X座標):1)
-				オブジェクト幅:1 = TOINT(オブジェクト情報:(オブジェクト:Y座標:X座標):2)
-				SELECTCASE オブジェクト情報:(オブジェクト:Y座標:X座標):3
+			;配置しようとするオブジェクトも仮表示してみる
+			SIF オブジェクト配置 != "" && Y座標 == 始点:1+幅:1-1 && X座標 == 始点:0
+				表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト配置%' pos='{X座標*100}'><img src='%オブジェクト配置%' srcb='' height='{幅:1*100}' width='\@ オブジェクト配置向き == "右向き" ? {幅:0*100} # -{幅:0*100} \@' ypos='{(幅:1-1)*(-100)}'></button>"
+			IF OBJECTS:Y座標:X座標 != ""
+				オブジェクト名 = %オブジェクト(OBJECTS:Y座標:X座標, "名前")%
+				オブジェクト幅:0 = TOINT(オブジェクト(OBJECTS:Y座標:X座標, "横幅"))
+				オブジェクト幅:1 = TOINT(オブジェクト(OBJECTS:Y座標:X座標, "縦幅"))
+				SELECTCASE オブジェクト情報(オブジェクト名, "オブジェクトタイプ")
 					;小物は机等に置いて表示するように少しずらす
 					CASE "小物"
-						表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト名%' pos='{X座標*100}'><img src='%オブジェクト名%' srcb='' height='{オブジェクト幅:1*100}' width='{オブジェクト幅:0*100}' ypos='{(オブジェクト幅:1-1)*(-100)+1}'></button>"
+						表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト名%' pos='{X座標*100}'><img src='%オブジェクト名%' srcb='' height='{オブジェクト幅:1*100}' width='\@ オブジェクト(OBJECTS:Y座標:X座標, "向き") == "右向き" ? {オブジェクト幅:0*100} # -{オブジェクト幅:0*100} \@' ypos='{(オブジェクト幅:1-1)*(-100)+1}'></button>"
 					CASEELSE
-						表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト名%' pos='{X座標*100}'><img src='%オブジェクト名%' srcb='' height='{オブジェクト幅:1*100}' width='{オブジェクト幅:0*100}' ypos='{(オブジェクト幅:1-1)*(-100)}'></button>"
+						表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト名%' pos='{X座標*100}'><img src='%オブジェクト名%' srcb='' height='{オブジェクト幅:1*100}' width='\@ オブジェクト(OBJECTS:Y座標:X座標, "向き") == "右向き" ? {オブジェクト幅:0*100} # -{オブジェクト幅:0*100} \@' ypos='{(オブジェクト幅:1-1)*(-100)}'></button>"
 				ENDSELECT
 			ENDIF
 		NEXT
@@ -623,28 +586,44 @@ DO
 		ENDSELECT
 
 		CONTINUE
-	ELSEIF オブジェクト配置
+	ELSEIF オブジェクト配置 != ""
 		PRINTL [4] ← [2] ↓ [8] ↑ [6] →
+		PRINTL [7] 横幅を縮小 [9] 横幅を拡大
+		PRINTL [1] 縦幅を縮小 [3] 縦幅を拡大
+		PRINTBUTTON "[R] 反転", "R"
+		PRINTL 
 		PRINTL [5] 決定 [0] キャンセル
 
-		ONEINPUT
+		ONEINPUTS
 
-		SELECTCASE RESULT
-			CASE 0
-				オブジェクト配置 = 0
-			CASE 8
+		SELECTCASE RESULTS
+			CASE "0"
+				オブジェクト配置 = 
+			CASE "8"
 				SIF 始点:1 > 0
 					始点:1--
-			CASE 4
+			CASE "4"
 				SIF 始点:0 > 0
 					始点:0--
-			CASE 6
+			CASE "6"
 				SIF 始点:0+幅:0 < マップ横幅 
 					始点:0++
-			CASE 2
+			CASE "2"
 				SIF 始点:1+幅:1 < マップ縦幅
 					始点:1++
-			CASE 5
+			CASE "7"
+				SIF 幅:0 > 1
+					幅:0--
+			CASE "9"
+				SIF 幅:0 < 60
+					幅:0++
+			CASE "1"
+				SIF 幅:1 > 1
+					幅:1--
+			CASE "3"
+				SIF 幅:1 < 30
+					幅:1++
+			CASE "5"
 				FOR LCOUNT, 始点:1, 始点:1+幅:1
 					SIF LCOUNT >= マップ縦幅
 						GOTO RESTART
@@ -653,8 +632,17 @@ DO
 							GOTO RESTART
 					NEXT
 				NEXT
-				オブジェクト:(始点:1+幅:1-1):(始点:0) = オブジェクト配置
-				オブジェクト配置 = 0
+				OBJECTS:(始点:1+幅:1-1):(始点:0) = %オブジェクト配置%_%オブジェクト配置向き%_{幅:0}_{幅:1}
+				オブジェクト配置 = 
+				幅:0 = 0
+				幅:1 = 0
+				GOTO RESTART
+			CASE "r", "R"
+				IF オブジェクト配置向き == "右向き"
+					オブジェクト配置向き = 左向き
+				ELSE
+					オブジェクト配置向き = 右向き
+				ENDIF
 				GOTO RESTART
 		ENDSELECT
 
@@ -669,26 +657,9 @@ DO
 				RETURN
 			CASE 60
 				PRINTL □配置するオブジェクトを選んでください 名前(横幅×縦幅)
-				FOR LCOUNT, 1, VARSIZE("オブジェクト情報", 0)
-					SIF オブジェクト情報:LCOUNT:0 == ""
-						CONTINUE
-					PRINTFORMLC 　[{LCOUNT}] %オブジェクト情報:LCOUNT:0%({TOINT(オブジェクト情報:LCOUNT:1)}×{TOINT(オブジェクト情報:LCOUNT:2)})
-				NEXT
-				SIF !LINEISEMPTY()
-					PRINTL 
-				DRAWLINE
-				PRINTL [0] 戻る
-				DO
-					INPUT
-					SELECTCASE RESULT
-						CASE 0
-							GOTO RESTART
-						CASE 1 TO VARSIZE("オブジェクト情報", 0)
-							オブジェクト配置 = RESULT
-							BREAK
-					ENDSELECT
-				LOOP 1
-				CONTINUE
+				;オブジェクト一覧関数でオブジェクト名入れるところまで処理する
+				CALL オブジェクト一覧, オブジェクト配置
+				GOTO RESTART
 			CASE 61
 				PRINTL □配置する部屋を選んでください 名前(横幅×縦幅)
 				FOR LCOUNT, 1, 102
@@ -751,7 +722,7 @@ DO
 					INPUT
 				LOOP LOOPRES(0, 1)
 				SIF RESULT == 0
-					VARSET オブジェクト
+					VARSET OBJECTS
 				CONTINUE
 			CASE 63
 				PRINTL 部屋情報を初期化します。よろしいですか？
@@ -774,7 +745,7 @@ DO
 				選択座標:1 = RESULT%100
 				$部屋オプション
 				選択部屋 = %部屋情報:(土地:(選択座標:1):(選択座標:0)):0%
-				選択オブジェクト = %オブジェクト情報:(オブジェクト:(選択座標:1):(選択座標:0)):0%
+				選択オブジェクト = %OBJECTS:(選択座標:1):(選択座標:0)%
 				;座標の情報表示
 				部屋番号 = 0
 				住人 = 
@@ -793,7 +764,7 @@ DO
 				PRINT □
 				SIF 土地:(選択座標:1):(選択座標:0)
 					PRINTFORM %選択部屋%\@ 部屋番号 ? ,{部屋番号} #\@ \@ 住人 == "" ? 空き部屋 # %住人%の部屋 \@ 
-				SIF オブジェクト:(選択座標:1):(選択座標:0)
+				SIF 選択オブジェクト != ""
 					PRINTFORM %選択オブジェクト%配置中 
 				PRINTFORML {選択座標:0}×{選択座標:1}
 				;オブジェクトの扱い
@@ -838,38 +809,22 @@ DO
 						CASE 1
 							SIF 選択オブジェクト == ""
 								CONTINUE
-							オブジェクト配置 = オブジェクト:(始点:1):(始点:0)
-							オブジェクト:(始点:1):(始点:0) = 0
+							オブジェクト配置 = %オブジェクト(OBJECTS:(始点:1):(始点:0), "名前")%
+							幅:0 = TOINT(オブジェクト(OBJECTS:(始点:1):(始点:0), "横幅"))
+							幅:1 = TOINT(オブジェクト(OBJECTS:(始点:1):(始点:0), "縦幅"))
 							;縦にずれてる分を調整
-							始点:1 -= TOINT(オブジェクト情報:オブジェクト配置:2)-1
+							始点:1 -= TOINT(オブジェクト(OBJECTS:(始点:1):(始点:0), "縦幅"))-1
+							OBJECTS:(始点:1):(始点:0) = 
 							GOTO RESTART
 						CASE 2
 							SIF 選択オブジェクト == ""
 								CONTINUE
-							オブジェクト:(始点:1):(始点:0) = 0
+							OBJECTS:(始点:1):(始点:0) = 
 							GOTO RESTART
 						CASE 3
 							PRINTL □配置するオブジェクトを選んでください 名前(横幅×縦幅)
-							FOR LCOUNT, 1, VARSIZE("オブジェクト情報", 0)
-								SIF オブジェクト情報:LCOUNT:0 == ""
-									CONTINUE
-								PRINTFORMLC 　[{LCOUNT}] %オブジェクト情報:LCOUNT:0%({TOINT(オブジェクト情報:LCOUNT:1)}×{TOINT(オブジェクト情報:LCOUNT:2)})
-							NEXT
-							SIF !LINEISEMPTY()
-								PRINTL 
-							DRAWLINE
-							PRINTL [0] 戻る
-							DO
-								INPUT
-								SELECTCASE RESULT
-									CASE 0
-										GOTO RESTART
-									CASE 1 TO VARSIZE("オブジェクト情報", 0)
-										オブジェクト配置 = RESULT
-										GOTO RESTART
-								ENDSELECT
-							LOOP 1
-							BREAK
+							CALL オブジェクト一覧, オブジェクト配置
+							GOTO RESTART
 						CASE 4
 							SIF 選択部屋 == ""
 								CONTINUE
@@ -991,6 +946,170 @@ DO
 	ENDIF
 LOOP 1
 
+;OBJECTS_DATAから目的の情報を抽出して返す
+@オブジェクト情報, オブジェクト名, 指定タイプ
+#FUNCTIONS
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 配列
+#DIMS DYNAMIC オブジェクト名
+#DIMS DYNAMIC 指定タイプ
+
+FOR LCOUNT, 1, VARSIZE("OBJECTS_DATA", 0)
+	IF OBJECTS_DATA:LCOUNT:0 == オブジェクト名
+		配列 = LCOUNT
+		BREAK
+	ENDIF
+NEXT
+
+;#; SIF 配列 == 0
+;#; 	THROW %オブジェクト名%のオブジェクト情報が存在しません
+
+SELECTCASE 指定タイプ
+	CASE "横幅"
+		RETURNF OBJECTS_DATA:配列:1
+	CASE "縦幅"
+		RETURNF OBJECTS_DATA:配列:2
+	CASE "オブジェクトタイプ"
+		RETURNF OBJECTS_DATA:配列:3
+ENDSELECT
+
+@オブジェクト一覧, オブジェクト配置
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LRESULT
+#DIMS REF オブジェクト配置
+
+SIF VARLINE
+	CLEARLINE LINECOUNT-VARLINE
+VARLINE = LINECOUNT
+
+;とりあえず上限は1000で設定しておく
+FOR LCOUNT, 1, 1000
+	SIF OBJECTS_DATA:LCOUNT:0 == ""
+		BREAK
+	PRINTFORMLC 　[{LCOUNT}] %OBJECTS_DATA:LCOUNT:0%(%OBJECTS_DATA:LCOUNT:1%×%OBJECTS_DATA:LCOUNT:2%)
+NEXT
+SIF !LINEISEMPTY()
+	PRINTL 
+DRAWLINE
+PRINTL [0] 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			オブジェクト配置 = 
+			RETURN
+		CASEELSE
+			LRESULT = RESULT
+			IF OBJECTS_DATA:LRESULT:0 != ""
+				オブジェクト配置 = %OBJECTS_DATA:LRESULT:0%
+				RETURN
+			ELSE
+				CONTINUE
+			ENDIF
+	ENDSELECT
+LOOP 1
+
+@オブジェクト, オブジェクト名, タイプ指定
+#FUNCTIONS
+#DIMS DYNAMIC オブジェクト名
+#DIMS DYNAMIC タイプ指定
+
+;OBJECTSの中身は「%オブジェクト名%_%向き%_%横幅%_%縦幅%」となっている
+;SPLITで分解して目的の情報を返す
+
+SPLIT オブジェクト名, "_", LOCALS
+
+SELECTCASE タイプ指定
+	CASE "名前"
+		RETURNF LOCALS:0
+	CASE "向き"
+		RETURNF LOCALS:1
+	CASE "横幅"
+		RETURNF LOCALS:2
+	CASE "縦幅"
+		RETURNF LOCALS:3
+	CASEELSE
+		;#; THROW タイプ指定が表記ゆれです
+ENDSELECT
+
+@マップバージョン管理
+#DIMS DYNAMIC オブジェクト情報, 100, 4
+#DIM DYNAMIC X座標
+#DIM DYNAMIC Y座標
+
+LOCAL = 1
+オブジェクト情報:(LOCAL++):0 '= "ベッド1_右向き", "2", "1"
+オブジェクト情報:(LOCAL++):0 '= "ベッド1_左向き", "2", "1"
+オブジェクト情報:(LOCAL++):0 '= "ベッド2_右向き", "2", "1"
+オブジェクト情報:(LOCAL++):0 '= "ベッド2_左向き", "2", "1"
+
+LOCAL = 11
+オブジェクト情報:(LOCAL++):0 '= "椅子1_右向き", "1", "1"
+オブジェクト情報:(LOCAL++):0 '= "椅子1_左向き", "1", "1"
+オブジェクト情報:(LOCAL++):0 '= "椅子2_右向き", "1", "1"
+オブジェクト情報:(LOCAL++):0 '= "椅子2_左向き", "1", "1"
+
+LOCAL = 21
+オブジェクト情報:(LOCAL++):0 '= "テーブル1", "2", "1"
+オブジェクト情報:(LOCAL++):0 '= "ランプ1", "1", "1", "小物"
+オブジェクト情報:(LOCAL++):0 '= "地球儀", "1", "1", "小物"
+
+LOCAL = 31
+オブジェクト情報:(LOCAL++):0 '= "本棚1", "2", "2"
+オブジェクト情報:(LOCAL++):0 '= "本1", "1", "1", "小物"
+オブジェクト情報:(LOCAL++):0 '= "カウンター_右向き", "3", "2"
+オブジェクト情報:(LOCAL++):0 '= "カウンター_左向き", "3", "2"
+
+LOCAL = 41
+オブジェクト情報:(LOCAL++):0 '= "救急箱", "2", "1", "小物"
+オブジェクト情報:(LOCAL++):0 '= "心電図", "2", "1", "小物"
+
+LOCAL = 51
+オブジェクト情報:(LOCAL++):0 '= "シンク", "2", "1"
+オブジェクト情報:(LOCAL++):0 '= "コンロ", "2", "1"
+オブジェクト情報:(LOCAL++):0 '= "冷蔵庫", "2", "2"
+
+LOCAL = 61
+オブジェクト情報:(LOCAL++):0 '= "テレビ", "2", "1", "小物"
+オブジェクト情報:(LOCAL++):0 '= "鏡", "1", "1", "小物"
+オブジェクト情報:(LOCAL++):0 '= "タンス", "2", "1"
+オブジェクト情報:(LOCAL++):0 '= "クローゼット_右向き", "1", "2"
+オブジェクト情報:(LOCAL++):0 '= "クローゼット_左向き", "1", "2"
+オブジェクト情報:(LOCAL++):0 '= "ソファ", "2", "1"
+オブジェクト情報:(LOCAL++):0 '= "絨毯", "3", "2"
+
+LOCAL = 71
+オブジェクト情報:(LOCAL++):0 '= "三角マーク", "1", "1", "小物"
+オブジェクト情報:(LOCAL++):0 '= "生体ディスプレイ", "2", "2", "小物"
+オブジェクト情報:(LOCAL++):0 '= "培養槽", "2", "3"
+オブジェクト情報:(LOCAL++):0 '= "フラスコセット", "2", "1", "小物"
+オブジェクト情報:(LOCAL++):0 '= "テーブル_白", "2", "1"
+
+;Ver.2.14 2021/05/XX～導入
+;変数「オブジェクト」にオブジェクト情報を数値で入れてたのを文字列変数「OBJECTS」に変更
+IF マップバージョン == 0
+	FOR Y座標, 0, 30
+		FOR X座標, 0, 60
+			IF オブジェクト:Y座標:X座標
+				;テーブル_白だけハイフンが使われてるので別処理
+				IF オブジェクト情報:(オブジェクト:Y座標:X座標):0 == "テーブル_白"
+					OBJECTS:Y座標:X座標 = テーブル（白）_%オブジェクト情報:(オブジェクト:Y座標:X座標):1%_%オブジェクト情報:(オブジェクト:Y座標:X座標):2%
+				ELSE
+					SPLIT オブジェクト情報:(オブジェクト:Y座標:X座標):0, "_", LOCALS
+					IF RESULT >= 2
+						OBJECTS:Y座標:X座標 = %オブジェクト情報:(オブジェクト:Y座標:X座標):0%_%オブジェクト情報:(オブジェクト:Y座標:X座標):1%_%オブジェクト情報:(オブジェクト:Y座標:X座標):2%
+					ELSE
+						OBJECTS:Y座標:X座標 = %オブジェクト情報:(オブジェクト:Y座標:X座標):0%_右向き_%オブジェクト情報:(オブジェクト:Y座標:X座標):1%_%オブジェクト情報:(オブジェクト:Y座標:X座標):2%
+					ENDIF
+				ENDIF
+				DEBUGPRINTFORML X({X座標})×Y({Y座標})に%オブジェクト情報:(オブジェクト:Y座標:X座標):0% %オブジェクト情報:(オブジェクト:Y座標:X座標):1%×%オブジェクト情報:(オブジェクト:Y座標:X座標):2%
+			ENDIF
+		NEXT
+	NEXT
+	;以降、上記の「オブジェクト情報」は枠が足りなくなるので使わない
+	マップバージョン = 21400
+ENDIF
 
 
 
