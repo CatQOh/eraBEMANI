@@ -48,7 +48,12 @@ DO
 			CALL IDOL_LESSON
 		CASE 2
 			CALL IDOL_EVENT
-			RETURN RESULT
+			;何もしないで戻ってきた場合
+			SIF RESULT == 0
+				RESTART
+			;ライブを終えて戻ってきた場合はターン終了
+			BEGIN TURNEND
+			RETURN 1
 		CASE 3
 			CALL IDOL_BRIBE
 		CASE 4
@@ -225,9 +230,10 @@ CALL INPUTF, 0, 1
 
 SELECTCASE RESULT
 	CASE 0
-		RETURN 0
+		RETURN
 	CASE 1
 		CALL IDOL_LIVE
+		RETURN RESULT
 ENDSELECT
 
 @IDOL_LIVE
@@ -250,24 +256,13 @@ FOR LCOUNT, 1, 11
 	SIF ユニット名:LCOUNT != ""
 		ユニット数++
 NEXT
-;それぞれの担当を記録する
-FOR LCOUNT, 0, CHARANUM
-	ユニット担当記録用:LCOUNT = CFLAG:LCOUNT:ユニット担当
-NEXT
 
 VARSET LOCAL
 
 $MUSIC_SELECT
 CALL MUSIC_LIST
 SIF IDOL選曲 == ""
-	RESTART
-;インスト曲なら、ボーカル担当は予備の担当に切り替える
-IF IDOL選曲:1 == "0"
-	FOR LCOUNT, 0, CHARANUM
-		SIF ユニット担当記録用:LCOUNT >= 3
-			ユニット担当記録用:LCOUNT %= 10
-	NEXT
-ENDIF
+	RETURN 0
 
 $MEMBER_LOOP
 ;◆◆◆技量の計算◆◆◆
@@ -622,13 +617,14 @@ IF 収入:1 > 0
 			PRINTFORML %CALLNAME:LCOUNT%は度重なるライブ経験の功を経て、たくさんのファンが付いたようだ
 			PRINTFORMW %CALLNAME:LCOUNT%は[人気]を得た
 			TRYCALLFORM IDOL_人気取得_K{NO:LCOUNT}
+			;実績:ライブでボーカリストが[人気]を取得する
+			SELECTCASE ユニット担当記録用:LCOUNT
+				CASE IS >= 30
+					SIF 難度:1 > 0
+						CALL 実績解除, "プロジェクト・ディーヴァ"
+			ENDSELECT
 			TALENT:LCOUNT:人気 = 1
 		ENDIF
-		;実績:ライブでボーカリストが[人気]を取得する
-		SELECTCASE ユニット担当記録用:LCOUNT
-			CASE 3 TO 5
-				CALL 実績解除, "プロジェクト・ディーヴァ"
-		ENDSELECT
 	NEXT
 ENDIF
 IF 技量:1 >= 難度:1 && 技量:2 >= 難度:2 && 技量:3 >= 難度:3
@@ -653,7 +649,6 @@ IF 技量:1 >= 難度:1 && 技量:2 >= 難度:2 && 技量:3 >= 難度:3
 ENDIF
 ;ライブを行った場合はRETURN 1
 RETURN 1
-
 
 ;賄賂・枕営業----------------------------------------------------
 @IDOL_BRIBE
@@ -767,41 +762,44 @@ DRAWLINE
 
 VARSET LOCAL, 0
 
-$MEMBER_LOOP
-
 ユニット数 = 0
-
 FOR LCOUNT, 0, 11
 	SIF ユニット名:LCOUNT != ""
 		ユニット数++
 NEXT
+;それぞれの担当を記録する
+FOR LCOUNT, 0, CHARANUM
+	ユニット担当記録用:LCOUNT = CFLAG:LCOUNT:ユニット担当
+NEXT
+
+$MEMBER_LOOP
 
 ;組めるユニットは10チームまで
 IF ユニット数 < 10
 	PRINTL □ユニットを組むキャラを選んでください
 	FOR LCOUNT, 0, CHARANUM
 		IF CSTR:LCOUNT:配属 == "芸能プロダクション"
-			SELECTCASE ユニット担当記録用:LCOUNT
-				CASE 0
-					IF CFLAG:LCOUNT:ユニット番号
-						PRINT  盟 
-					ELSE
+			IF CFLAG:LCOUNT:ユニット番号
+				PRINT  盟 
+			ELSE
+				SELECTCASE ユニット担当記録用:LCOUNT
+					CASE 0
 						PRINT 　　
-					ENDIF
-				CASE 1
-					PRINT Da. 
-				CASE 2
-					PRINT In. 
-				CASE IS > 10
-					SELECTCASE ユニット担当記録用:LCOUNT/10
-						CASE 3
-							PRINT Vo. 
-						CASE 4
-							PRINT D&V 
-						CASE 5
-							PRINT I&V 
-					ENDSELECT
-			ENDSELECT
+					CASE 1
+						PRINT Da. 
+					CASE 2
+						PRINT In. 
+					CASE IS > 10
+						SELECTCASE ユニット担当記録用:LCOUNT/10
+							CASE 3
+								PRINT Vo. 
+							CASE 4
+								PRINT D&V 
+							CASE 5
+								PRINT I&V 
+						ENDSELECT
+				ENDSELECT
+			ENDIF
 			PRINTFORM [{LCOUNT, 2, RIGHT}] - %NAME:LCOUNT, 26, LEFT%(歌唱技能:{ABL:LCOUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:LCOUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:LCOUNT:舞踊技能, 2, LEFT}
 			SIF TALENT:LCOUNT:魅力
 				PRINT  魅力
@@ -831,7 +829,6 @@ ELSE
 	PRINT [ 0] - 戻る　
 	PRINTL [-2] - 既存ユニットの解散
 ENDIF
-
 
 DO
 	INPUT
@@ -1018,7 +1015,7 @@ DO
 							CONTINUE
 						;解散は別関数で行う
 						CALL BREAKUP, RESULT
-						GOTO MEMBER_LOOP
+						RESTART
 					CASE 0
 						GOTO MEMBER_LOOP
 					CASEELSE

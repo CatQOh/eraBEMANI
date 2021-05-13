@@ -75,17 +75,13 @@ DO
 			PRINTL 配属する部署を選んでください
 			PRINTL [0] - 経営部(通常のゲームセンター勤務)
 			PRINTL [1] - 売春部(ゲームセンターで客を誘惑する)
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						CALL STRATEGY_PERSONAL, "ゲームセンター"
-						BREAK
-					CASE 1
-						CALL STRATEGY_PERSONAL, "ゲーセン売春"
-						BREAK
-				ENDSELECT
-			LOOP 1
+			CALL INPUTF, 0, 1
+			SELECTCASE RESULT
+				CASE 0
+					CALL STRATEGY_PERSONAL, "ゲームセンター"
+				CASE 1
+					CALL STRATEGY_PERSONAL, "ゲーセン売春"
+			ENDSELECT
 		CASE 5
 			CALL GC_MAP, 1
 		CASE 6
@@ -196,28 +192,24 @@ DO
 				;ELSE
 				;	HTML_PRINT SET_TOOLTIP("　[3] - お持ち帰り待機", "客と一夜を共にさせます")
 				;ENDIF
-				DO
-					INPUT
-					SELECTCASE RESULT
-						CASE 0, 1
-							CFLAG:LOCAL:ゲーセン売春方針 = RESULT
-							BREAK
-						CASE 2
-							SIF FALLTYPE(LOCAL) != 2 && 経験人数(LOCAL) < 50
-								CONTINUE
-							CFLAG:LOCAL:ゲーセン売春方針 = 2
-							BREAK
-						;CASE 3
-						;	SIF FALLTYPE(LOCAL) != 2 && 経験人数(LOCAL) < 50
-						;		CONTINUE
-						;	SIF !TALENT:LOCAL:音ゲーマー
-						;		CONTINUE
-						;	CFLAG:LOCAL:ゲーセン売春方針 = 3
-						;	BREAK
-						CASEELSE
+
+				CALL INPUTF, 0, 1, 2
+
+				SELECTCASE RESULT
+					CASE 0, 1
+						CFLAG:LOCAL:ゲーセン売春方針 = RESULT
+					CASE 2
+						SIF FALLTYPE(LOCAL) != 2 && 経験人数(LOCAL) < 50
 							CONTINUE
-					ENDSELECT
-				LOOP 1
+						CFLAG:LOCAL:ゲーセン売春方針 = 2
+					;CASE 3
+					;	SIF FALLTYPE(LOCAL) != 2 && 経験人数(LOCAL) < 50
+					;		CONTINUE
+					;	SIF !TALENT:LOCAL:音ゲーマー
+					;		CONTINUE
+					;	CFLAG:LOCAL:ゲーセン売春方針 = 3
+					;	BREAK
+				ENDSELECT
 				CONTINUE
 			LOOP 1
 		CASE 100
@@ -377,8 +369,10 @@ DO
 			PRINTL 初期コストが30万、基本経費が5000ととんでもないコストがかかるが、経済効果もコスト同等のものだと思っていいだろう。
 			PRINTL 初期から二階建て、所有物件唯一の分煙設備、他高水準の設備もあり、フードコートもある。
 			PRINTL 増築も自由にできるため、経営での物件は最終的にここに行き着くだろう。
+		CASEELSE
+			CONTINUE
 	ENDSELECT
-LOOP LOOPRES(1, 2, 3, 4, 5, 6, 7)
+LOOP 0
 
 IF MONEY < 物件価格(RESULT)
 	PRINTW 所持金が足りません
@@ -395,28 +389,20 @@ PRINTL 購入しますか？
 PRINTL [0] - 購入しない
 PRINTL [1] - 購入する
 
-DO
-	INPUT
-	SIF RESULT == 0
-		RESTART
-LOOP LOOPRES(0, 1)
+CALL INPUTF, 0, 1
+SIF RESULT == 0
+	RESTART
 
 IF GC物件
 	PRINTFORML 現在%物件名(GC物件)%を所持しています。本当に買い替えますか？
 	PRINTFORML （編集した%物件名(GC物件)%のマップは初期化されます）
 	PRINTL [0] - それは困る
 	PRINTL [1] - 大丈夫だ、問題ない
-	DO
-		INPUT
-		SELECTCASE RESULT
-			CASE 0
-				RETURN 0
-			CASE 1
-				VARSET GCオブジェクト
-				CALL 設置済み筐体計算
-				BREAK
-		ENDSELECT
-	LOOP 1
+	CALL INPUTF, 0, 1
+	SIF RESULT == 0
+		RETURN
+	VARSET GCオブジェクト
+	CALL 設置済み筐体計算
 ELSE
 	GC店名 = ゲームセンター
 ENDIF
@@ -542,6 +528,8 @@ PRINTL [0] 戻る
 DO
 	INPUT
 	SELECTCASE RESULT
+		CASE 0
+			RETURN
 		CASE 1
 			SIF GC広さ >= 20
 				CONTINUE
@@ -556,9 +544,6 @@ DO
 				CONTINUE
 	ENDSELECT
 LOOP LOOPRES(0, 1, 2, 3, 4, 5, 6)
-
-SIF RESULT == 0
-	RETURN 0
 
 IF MONEY < LOCAL:RESULT
 	PRINTW 所持金が足りません
@@ -602,6 +587,7 @@ RETURN 0
 ;筐体購入処理----------------------------------------------------
 @GC_ARCADEGAME
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC ページ
 DRAWLINE
 PRINTL 【筐体購入】
 PRINTL アーケードゲームを購入できます
@@ -615,18 +601,18 @@ DRAWLINE
 PRINTPLAIN 　ARCADE　
 PRINTL [0] - 戻る
 
+CALL INPUTF, 0, 1, 2, 3
+
+ページ = RESULT
 DO
-	INPUT
-	LOCAL = RESULT
-	$BREAK
-	SELECTCASE LOCAL
+	SELECTCASE ページ
 		CASE 0
-			RETURN 0
+			RETURN
 		CASE 1, 2, 4
 			DRAWLINE
 			CALL PASELIL, @"所持金:{MONEY}＄"
 			PRINTL □購入する筐体を選んでください
-			FOR LCOUNT, LOCAL*100+1000, LOCAL*100+1100
+			FOR LCOUNT, ページ*100+1000, ページ*100+1100
 				SIF ITEMNAME:LCOUNT != ""
 					CALL PASELIL, @"　[{LCOUNT}] - %ITEMNAME:LCOUNT%({ITEMPRICE:LCOUNT}＄)"
 			NEXT
@@ -643,7 +629,7 @@ DO
 						IF ITEMNAME:RESULT != ""
 							IF MONEY < ITEMPRICE:RESULT
 								PRINTW 所持金が足りません
-								GOTO BREAK
+								BREAK
 							ELSE
 								PRINTFORMW ＜%ITEMNAME:RESULT%を購入しました＞
 								ITEM:RESULT++
@@ -652,7 +638,7 @@ DO
 									SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
 										TRYCALLFORM BUY_ARCADEGAME_K{FLAG:パートナー}, RESULT
 								ENDIF
-								GOTO BREAK
+								BREAK
 							ENDIF
 						ENDIF
 				ENDSELECT
@@ -695,7 +681,7 @@ DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 0
-			RETURN 0
+			RETURN
 		CASEELSE
 			IF CSTR:RESULT:配属 == "ゲームセンター"
 				PRINTFORMW %NAME:RESULT%を店長に任命しました
