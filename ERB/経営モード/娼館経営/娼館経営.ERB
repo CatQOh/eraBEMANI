@@ -1,5 +1,6 @@
 ﻿@STRATEGY_BROTHEL
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LRESULT
 CALL BR_ITEM_POINT
 
 SIF 娼館広さ == 0
@@ -94,13 +95,13 @@ DO
 				PRINTFORML 　[0] - 土曜日（\@ BR定休日("土") ? 定休 # 営業 \@）
 				PRINTL 　[9] - 設定終了
 				INPUT
-				LOCAL = RESULT
-				SELECTCASE LOCAL
+				LRESULT = RESULT
+				SELECTCASE LRESULT
 					CASE 0 TO 6
 						FOR LCOUNT, 0, 7
-							IF LOCAL == LCOUNT
-								IF !BR定休日(DOW(LOCAL))
-									娼館定休日 += @"・%DOW(LOCAL)%"
+							IF LRESULT == LCOUNT
+								IF !BR定休日(DOW(LRESULT))
+									娼館定休日 += @"・%DOW(LRESULT)%"
 								ELSE
 									CONTINUE
 								ENDIF
@@ -152,38 +153,38 @@ DRAWLINE
 PRINTPLAIN 　TUTORIAL　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			PRINTL 道具を配置するコマンドです。
-			PRINTL 調教用の道具とはまた別物で、娼館で使用するものは配置分だけ毎日コストを支払う必要があります。
-			PRINTL 道具にはそれぞれ用途に合わせたポイントがあり、経営方針に見合った道具を配置することで収入にプラスの補正が入ります。
-			PRINTW デフォルトでは1種類しか配置できませんが、増築することによって配置可能な数が増えます。
-		CASE 2
-			PRINTL 物件を増築し、より多くの道具や奴隷を配置できるようにするコマンドです。
-			PRINTL ゲームセンター経営と違い、物件はデフォルトで所持しているので経営自体はすぐに始められます。
-			PRINTW 増築には当然お金がかかりますが、序盤は小規模でも特に気になるものではないと思います。
-		CASE 3
-			PRINTL 運営方針を決めるコマンドです。
-			PRINTL 運営には方針が必要であり、これを決めないとほとんど経営放棄も同然です。
-			PRINTW 奴隷の身体をよく案じて考えて、適切な方針を定めましょう。
-		CASE 4
-			PRINTL 奴隷から人員を選出するコマンドです。
-			PRINTL 当然身体を売る奴隷がいないと収入はありません。売春を行ったキャラは、売春の回数に応じて売却額が下がっていきます。
-			PRINTL 体力が減っている、もしくはストレス過多の奴隷は配置しても売春できないため、奴隷の身体をちゃんと考えてあげましょう。
-			PRINTW (数値上1000以上減っていると自動で休憩に入り、回復後に売春を行います)
-		CASEELSE
-			CONTINUE
-	ENDSELECT
-	RESTART
-LOOP 1
+CALL INPUTF, 0, 1, 2, 3, 4
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		PRINTL 道具を配置するコマンドです。
+		PRINTL 調教用の道具とはまた別物で、娼館で使用するものは配置分だけ毎日コストを支払う必要があります。
+		PRINTL 道具にはそれぞれ用途に合わせたポイントがあり、経営方針に見合った道具を配置することで収入にプラスの補正が入ります。
+		PRINTW デフォルトでは1種類しか配置できませんが、増築することによって配置可能な数が増えます。
+	CASE 2
+		PRINTL 物件を増築し、より多くの道具や奴隷を配置できるようにするコマンドです。
+		PRINTL ゲームセンター経営と違い、物件はデフォルトで所持しているので経営自体はすぐに始められます。
+		PRINTW 増築には当然お金がかかりますが、序盤は小規模でも特に気になるものではないと思います。
+	CASE 3
+		PRINTL 運営方針を決めるコマンドです。
+		PRINTL 運営には方針が必要であり、これを決めないとほとんど経営放棄も同然です。
+		PRINTW 奴隷の身体をよく案じて考えて、適切な方針を定めましょう。
+	CASE 4
+		PRINTL 奴隷から人員を選出するコマンドです。
+		PRINTL 当然身体を売る奴隷がいないと収入はありません。売春を行ったキャラは、売春の回数に応じて売却額が下がっていきます。
+		PRINTL 体力が減っている、もしくはストレス過多の奴隷は配置しても売春できないため、奴隷の身体をちゃんと考えてあげましょう。
+		PRINTW (数値上1000以上減っていると自動で休憩に入り、回復後に売春を行います)
+ENDSELECT
+
+RESTART
 
 @BR_ITEM
-#DIM LCOUNT
-#DIM 娼館道具設置数
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LRESULT
+#DIM DYNAMIC 娼館道具設置数
+
 CALL BR_ITEM_POINT
 PRINTL □道具を配置します
 DRAWLINE
@@ -248,26 +249,27 @@ PRINTL [100] - 戻る
 
 DO
 	INPUT
-	SELECTCASE RESULT
+	LRESULT = RESULT
+	SELECTCASE LRESULT
 		CASE 100
 			RETURN 0
 		CASEELSE
-			SIF ITEMNAME:RESULT == ""
+			SIF ITEMNAME:LRESULT == ""
 				CONTINUE
-			IF ITEM:RESULT == 0
+			IF ITEM:LRESULT == 0
 				IF 娼館道具設置数 >= 娼館広さ
 					PRINTW 【これ以上配置できません】
 				ELSE
-					PRINTFORMW %SUBSTRINGU(ITEMNAME:RESULT, 2, -1)%を配置しました
-					ITEM:RESULT = 1
-						IF FLAG:パートナー > 0
-							SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
-								TRYCALLFORM BR_ITEM_K{FLAG:パートナー}, RESULT
-						ENDIF
+					PRINTFORMW %SUBSTRINGU(ITEMNAME:LRESULT, 2, -1)%を配置しました
+					ITEM:LRESULT = 1
+					IF FLAG:パートナー > 0
+						SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
+							TRYCALLFORM BR_ITEM_K{FLAG:パートナー}, LRESULT
+					ENDIF
 				ENDIF
 			ELSE
-				PRINTFORMW %SUBSTRINGU(ITEMNAME:RESULT, 2, -1)%を回収しました
-				ITEM:RESULT = 0
+				PRINTFORMW %SUBSTRINGU(ITEMNAME:LRESULT, 2, -1)%を回収しました
+				ITEM:LRESULT = 0
 			ENDIF
 			RESTART
 	ENDSELECT
@@ -330,72 +332,64 @@ DRAWLINE
 PRINTPLAIN 　RENOVATION　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			SIF 娼館広さ >= 10
-				CONTINUE
-			IF LOCAL > MONEY
-				PRINTW 所持金が足りません
+CALL INPUTF, 0, 1, 2, 3
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		SIF 娼館広さ >= 10
+			RESTART
+		IF LOCAL > MONEY
+			PRINTW 所持金が足りません
+			RESTART
+		ENDIF
+		PRINTL 娼館を広くしますか？
+		PRINTFORML 広さ {娼館広さ}→{娼館広さ+1}
+		CALL PASELIL, @"増設後の所持金 {MONEY-LOCAL}＄"
+		PRINTL 
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		CALL INPUTF, 0, 1
+		SELECTCASE RESULT
+			CASE 0
+				PRINTW 娼館を広くしました
+				MONEY -= LOCAL
+				娼館広さ++
+				IF FLAG:パートナー > 0
+					SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
+						TRYCALLFORM BR_RENOVATION_K{FLAG:パートナー}, 1
+				ENDIF
 				RESTART
-			ENDIF
-			PRINTL 娼館を広くしますか？
-			PRINTFORML 広さ {娼館広さ}→{娼館広さ+1}
-			CALL PASELIL, @"増設後の所持金 {MONEY-LOCAL}＄"
-			PRINTL 
-			PRINTL [0] - はい
-			PRINTL [1] - いいえ
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						PRINTW 娼館を広くしました
-						MONEY -= LOCAL
-						娼館広さ++
-						IF FLAG:パートナー > 0
-							SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
-								TRYCALLFORM BR_RENOVATION_K{FLAG:パートナー}, 1
-						ENDIF
-						RESTART
-				ENDSELECT
-			LOOP LOOPRES(0, 1)
-		CASE 2
-			SIF 娼館部屋数 >= 20
-				CONTINUE
-			IF LOCAL:1 > MONEY
-				PRINTW 所持金が足りません
+		ENDSELECT
+	CASE 2
+		SIF 娼館部屋数 >= 20
+			RESTART
+		IF LOCAL:1 > MONEY
+			PRINTW 所持金が足りません
+			RESTART
+		ENDIF
+		PRINTL 娼館の部屋を増やしますか？
+		PRINTFORML 部屋数 {娼館部屋数}→{娼館部屋数+1}
+		CALL PASELIL, @"増設後の所持金 {MONEY-LOCAL:1}＄"
+		PRINTL 
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		CALL INPUTF, 0, 1
+		SELECTCASE RESULT
+			CASE 0
+				PRINTW 娼館の部屋を増やしました
+				MONEY -= LOCAL:1
+				娼館部屋数++
+				IF FLAG:パートナー > 0
+					SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
+						TRYCALLFORM BR_RENOVATION_K{FLAG:パートナー}, 2
+				ENDIF
 				RESTART
-			ENDIF
-			PRINTL 娼館の部屋を増やしますか？
-			PRINTFORML 部屋数 {娼館部屋数}→{娼館部屋数+1}
-			CALL PASELIL, @"増設後の所持金 {MONEY-LOCAL:1}＄"
-			PRINTL 
-			PRINTL [0] - はい
-			PRINTL [1] - いいえ
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						PRINTW 娼館の部屋を増やしました
-						MONEY -= LOCAL:1
-						娼館部屋数++
-						IF FLAG:パートナー > 0
-							SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
-								TRYCALLFORM BR_RENOVATION_K{FLAG:パートナー}, 2
-						ENDIF
-						RESTART
-				ENDSELECT
-			LOOP LOOPRES(0, 1)
-		CASE 3
-			CALL BR_ITEM_BUY
-		CASEELSE
-			CONTINUE
-	ENDSELECT
-	RESTART
-LOOP 1
+		ENDSELECT
+	CASE 3
+		CALL BR_ITEM_BUY
+ENDSELECT
 
 ;設備導入----------------------------------------------------
 @BR_ITEM_BUY
@@ -486,19 +480,17 @@ DO
 			CALL PASELIL, @"導入後の所持金 {MONEY}＄→{MONEY-ITEMPRICE:RESULT}＄"
 			PRINTL [0] - 導入する
 			PRINTL [1] - 導入しない
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						PRINTFORMW %ITEMNAME:LOCAL%を導入しました
-						ITEM:LOCAL = 1
-						MONEY -= ITEMPRICE:LOCAL
-						IF FLAG:パートナー > 0
-							SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
-								TRYCALLFORM BR_ITEM_K{FLAG:パートナー}, LOCAL
-						ENDIF
-				ENDSELECT
-			LOOP LOOPRES(0, 1)
+			CALL INPUTF, 0, 1
+			SELECTCASE RESULT
+				CASE 0
+					PRINTFORMW %ITEMNAME:LOCAL%を導入しました
+					ITEM:LOCAL = 1
+					MONEY -= ITEMPRICE:LOCAL
+					IF FLAG:パートナー > 0
+						SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
+							TRYCALLFORM BR_ITEM_K{FLAG:パートナー}, LOCAL
+					ENDIF
+			ENDSELECT
 			RESTART
 	ENDSELECT
 LOOP 1
@@ -543,12 +535,14 @@ PRINTFORML 　[8] - プレイ内容を報告させる（現在\@ FLAG:娼館報�
 PRINTFORML 　[9] - 上級娼婦を任命する（現在の上級娼婦:\@ FINDCHARA(CFLAG:上級娼婦, 1) >= 0 ? %NAME:(FINDCHARA(CFLAG:上級娼婦, 1))% # 無し\@）
 DRAWLINE
 PRINTPLAIN 　PLAN　
-PRINT [10] 戻る 
+PRINT [0] 戻る 
 PRINTL [20] 各方針の説明
 
 DO
 	INPUT
 	SELECTCASE RESULT
+		CASE 0
+			RETURN
 		CASE 1 TO 4
 			娼館方針 = RESULT
 			IF FLAG:パートナー > 0
@@ -578,9 +572,6 @@ DO
 						CFLAG:RESULT:名刺 = 5
 					CFLAG:RESULT:上級娼婦に任命された経験++
 			ENDSELECT
-			BREAK
-		CASE 10
-			RETURN 0
 		CASE 20
 			PRINTL 0-方針無し
 			PRINTL ├特に方針を指定しません。初期設定でもあります。
@@ -616,8 +607,10 @@ DO
 			PRINTL ├上級娼婦に任命されたキャラは、売春中にプレイアブル可能になります。
 			PRINTL ├運営方針に応じて可能な行為、効果的な行為が変わり、お客様の満足度によって得られる報酬も増減します。
 			PRINTW └お客様とのより濃厚な売春を楽しみたいならぜひ任命してみましょう。
+		CASEELSE
+			CONTINUE
 	ENDSELECT
-LOOP LOOPRES(0, 1, 2, 3, 4, 5, 6, 7, 8, 20)
+LOOP 0
 
 RESTART
 
@@ -736,14 +729,12 @@ DO
 		PRINTFORML これ以上{選択部屋}番ルームには配属できません
 		PRINTL [0] - 仕方ないな
 		PRINTL [1] - その部屋に配属してるキャラを外してくれ
-		DO
-			INPUT
-			IF RESULT == 1
-				CALL 配属解除, 娼館部屋状態:選択部屋:0
-				CALL 配属解除, 娼館部屋状態:選択部屋:1
-			ENDIF
-			RESTART
-		LOOP 1
+		CALL INPUTF, 0, 1
+		IF RESULT == 1
+			CALL 配属解除, 娼館部屋状態:選択部屋:0
+			CALL 配属解除, 娼館部屋状態:選択部屋:1
+		ENDIF
+		RESTART
 	ENDIF
 	CALL STRATEGY_PERSONAL, "娼館", RESULT
 	RESTART
