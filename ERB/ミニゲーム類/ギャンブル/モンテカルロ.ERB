@@ -1,4 +1,4 @@
-﻿@モンテカルロ, ゲーセンの種類
+﻿@モンテカルロ, カジノの種類
 
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
@@ -10,13 +10,32 @@
 #DIM DYNAMIC TIME_START
 #DIM DYNAMIC TIME_NOW
 #DIM DYNAMIC TIME_REMAIN = 300000
-#DIM DYNAMIC ゲーセンの種類
+#DIM DYNAMIC カジノの種類
+#DIM DYNAMIC MAX_RATE
+#DIM DYNAMIC 賭け金
+#DIM DYNAMIC 配当
 
+SELECTCASE カジノの種類
+	CASE 1
+		MAX_RATE = 100000
+	CASE 2
+		MAX_RATE = 1000000
+ENDSELECT
 
+IF LANGUAGE == "ENG"
+	PRINTL This game is adjacent cards with same numbers and remove them.
+	PRINTL All cards removing within the time limit, You are win.
+	PRINTW If you win, You will get reward of per remaining seconds.
+ELSE
+	PRINTL このゲームは隣り合った同じ数字のカードを選んで取り除き、
+	PRINTL 制限時間内に全てのカードを取り除くことで勝利します。
+	PRINTW 賭け金に残り時間(秒)%を掛けた額が配当されます。
+ENDIF
+CALL STAKE, MAX_RATE, カジノの種類
+賭け金 = RESULT
+MONEY -= 賭け金
 
-
-GETMILLISECOND
-TIME_START = RESULT
+TIME_START = GETMILLISECOND()
 
 $MC_START
 
@@ -67,13 +86,20 @@ DO
 	;	PRINTL
 	;NEXT
 	IF SELECTED != -1
-		PRINT    [-1]戻る　　　　　　
+		IF LANGUAGE == "ENG"
+			PRINT    [-1]Back　　　　　　
+		ELSE
+			PRINT    [-1]戻る　　　　　　
+		ENDIF
 	ELSE
 		PRINT    　　　　　　　　　　
 	ENDIF
-	PRINTL [77]最初からやり直す　　　　　[99]諦める
-	GETMILLISECOND
-	TIME_NOW = RESULT
+	IF LANGUAGE == "ENG"
+		PRINTL [77]Restart game　　　　　　　[99]Quit game
+	ELSE
+		PRINTL [77]最初からやり直す　　　　　[99]諦める
+	ENDIF
+	TIME_NOW = GETMILLISECOND()
 	TINPUT (TIME_REMAIN - (TIME_NOW-TIME_START)), 99
 	SELECTCASE RESULT
 		CASE -1
@@ -105,11 +131,26 @@ DO
 		CASE 77
 			GOTO MC_START
 		CASE 99
-			RETURN 0
+			GOTO FAILED
 	ENDSELECT
 LOOP C_COUNT < 52
+TIME_NOW = GETMILLISECOND()
+DRAWLINE
+配当 = 賭け金*((TIME_REMAIN-(TIME_NOW-TIME_START))/1000)/100
+IF LANGUAGE == "ENG"
+	CALL PASELIW ,@"You are win {(TIME_REMAIN-(TIME_NOW-TIME_START))/1000} seconds left and You got rewards:{賭け金}×{(TIME_NOW-TIME_START)/1000}\%＝{配当}＄."
+ELSE
+	CALL PASELIW ,@"残り時間{(TIME_REMAIN-(TIME_NOW-TIME_START))/1000}秒でゲームに勝利し、{賭け金}×{(TIME_NOW-TIME_START)/1000}\%＝{配当}＄を配当を得ました。"
+ENDIF
 RETURN 1
 
+$FAILED
+IF LANGUAGE == "ENG"
+	PRINTFORMW You are failed the game and bets were forfeiture.
+ELSE
+	PRINTFORMW ゲームに負け、{賭け金}は没収されました。
+ENDIF
+RETURN 1
 
 ;IS NEIGHBORHOOD関数
 ;カードが隣り合わせなら1を返す
