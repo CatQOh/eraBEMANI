@@ -469,11 +469,9 @@ SELECTCASE アイテム分類
 		PRINTFORML 本当に%アイテム名%を購入しますか？
 		PRINTL [0] 購入する
 		PRINTL [1] やめる
-		DO
-			INPUT
-			SIF RESULT == 1
-				RETURN 0
-		LOOP LOOPRES(0, 1)
+		CALL INPUTF, 0, 1
+		SIF RESULT == 1
+			RETURN
 		CALL SE再生, 出入金
 		PRINTFORMW ＜%アイテム名%を購入しました＞
 		;割引対象は淫具のみ
@@ -496,11 +494,9 @@ SELECTCASE アイテム分類
 		PRINTFORML 本当に%アイテム名%を購入しますか？
 		PRINTL [0] 購入する
 		PRINTL [1] やめる
-		DO
-			INPUT
-			SIF RESULT == 1
-				RETURN 0
-		LOOP LOOPRES(0, 1)
+		CALL INPUTF, 0, 1
+		SIF RESULT == 1
+			RETURN
 		CALL SE再生, 出入金
 		PRINTFORMW ＜%アイテム名%を購入しました＞
 		IF 割引
@@ -563,7 +559,7 @@ SELECTCASE アイテム分類
 					PRINTFORML %RESULTS%でよろしいですか？(後からオプション画面で変更できます)
 					PRINTL [0] - はい
 					PRINTL [1] - いいえ
-					INPUT
+					CALL INPUTF, 0, 1
 					SELECTCASE RESULT
 						CASE 0
 							CSTR:MASTER:ドラゴン = %RESULTS%
@@ -573,10 +569,11 @@ SELECTCASE アイテム分類
 								CASEELSE
 									PRINTFORMW %CSTR:MASTER:ドラゴン%は名前をつけてくれた%CALLNAME:MASTER%に懐いているようだ……
 							ENDSELECT
+							BREAK
 						CASE 1
 							CONTINUE
 					ENDSELECT
-				LOOP LOOPRES(0)
+				LOOP 1
 		ENDSELECT
 	CASE "薬品等"
 		;抗スライム薬だけ特殊
@@ -1114,34 +1111,31 @@ ENDIF
 PRINTL 　[2] - すべてのキャラのスライム化を治癒し、感染予防を行う(先天性のスライム持ち、及び溶ける快に目覚めた者は治療できない)
 PRINTL 　[0] - キャンセル
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1
-			IF FLAG:抗スライム
-				PRINTW ＜スライムの感染予防を止めました＞
-			ELSE
-				PRINTW ＜スライムの感染予防を実施しました＞
+CALL INPUTF, 0, 1, 2
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		IF FLAG:抗スライム
+			PRINTW ＜スライムの感染予防を止めました＞
+		ELSE
+			PRINTW ＜スライムの感染予防を実施しました＞
+		ENDIF
+		INVERTBIT FLAG:抗スライム, 0
+	CASE 2
+		;変えた種族まで戻ってしまうけど致し方ない
+		FLAG:抗スライム = 1
+		FOR LCOUNT, 0, CHARANUM
+			SIF TALENT:LCOUNT:スライム
+				CSTR:LCOUNT:種族 = %CSVCSTR(NO:LCOUNT, GETNUM(CSTR, "種族"))%
+			IF CHARANAMEF(LCOUNT) != "偽トラン" && !TALENT:LCOUNT:溶ける快
+				TALENT:LCOUNT:スライム = 0
+				CFLAG:LCOUNT:スライム度 = 0
 			ENDIF
-			INVERTBIT FLAG:抗スライム, 0
-			BREAK
-		CASE 2
-			;変えた種族まで戻ってしまうけど致し方ない
-			FLAG:抗スライム = 1
-			FOR LCOUNT, 0, CHARANUM
-				SIF TALENT:LCOUNT:スライム
-					CSTR:LCOUNT:種族 = %CSVCSTR(NO:LCOUNT, GETNUM(CSTR, "種族"))%
-				IF CHARANAMEF(LCOUNT) != "偽トラン" && !TALENT:LCOUNT:溶ける快
-					TALENT:LCOUNT:スライム = 0
-					CFLAG:LCOUNT:スライム度 = 0
-				ENDIF
-			NEXT
-			PRINTW 全てのキャラの[スライム]及びスライムの感染を治癒しました
-			BREAK
-	ENDSELECT
-LOOP 1
+		NEXT
+		PRINTW 全てのキャラの[スライム]及びスライムの感染を治癒しました
+ENDSELECT
 
 IF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
 	MONEY -= ITEMPRICE:抗スライム薬/10*8

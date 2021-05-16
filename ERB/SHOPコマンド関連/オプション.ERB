@@ -40,14 +40,12 @@ DO
 					PRINTFORML %RESULTS%でよろしいですか？(後からオプション画面で変更できます)
 					PRINTL [0] - はい
 					PRINTL [1] - いいえ
-					INPUT
-					SELECTCASE RESULT
-						CASE 0
-							CSTR:MASTER:ドラゴン = %RESULTS%
-							BREAK
-						CASE 1
-							CONTINUE
-					ENDSELECT
+					CALL INPUTF, 0, 1
+					IF RESULT == 0
+						CSTR:MASTER:ドラゴン = %RESULTS%
+						BREAK
+					ENDIF
+					CONTINUE
 				LOOP 1
 			ENDIF
 		CASE 4
@@ -189,10 +187,8 @@ DO
 			PRINTL グリムキャラの名前表示
 			PRINTL [0] - 通常の名前で表示する
 			PRINTL [1] - 名前の先頭に「グリム・」を付ける
-			DO
-				INPUT
-				FLAG:グリムコンフィグ = RESULT
-			LOOP LOOPRES(0, 1)
+			CALL INPUTF, 0, 1
+			FLAG:グリムコンフィグ = RESULT
 		CASE 8
 			$TOOLTIP
 			PRINTL ツールチップ設定
@@ -231,7 +227,7 @@ DO
 						LOOP 1
 						BREAK
 					CASE 3
-						RETURN
+						RESTART
 				ENDSELECT
 			LOOP 1
 			SAVEGLOBAL
@@ -241,23 +237,22 @@ DO
 			PRINTL [0] - 通常表示
 			PRINTL [1] - 3桁区切りで表示
 			PRINTL [2] - 漢字で桁を表示する
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						数値表示設定 = 
-					CASE 1
-						数値表示設定 = 3桁区切り
-					CASE 2
-						数値表示設定 = 漢字桁表示
-				ENDSELECT
-			LOOP LOOPRES(0, 1, 2)
+			CALL INPUTF, 0, 1, 2
+			SELECTCASE RESULT
+				CASE 0
+					数値表示設定 = 
+				CASE 1
+					数値表示設定 = 3桁区切り
+				CASE 2
+					数値表示設定 = 漢字桁表示
+			ENDSELECT
 			SAVEGLOBAL
-			RESTART
 		CASE 100
 			RETURN 0
+		CASEELSE
+			CONTINUE
 	ENDSELECT
-LOOP LOOPRES(0, 1, 2, 3, 4, 5, 6, 100)
+LOOP 0
 
 RESTART
 
@@ -270,17 +265,15 @@ PRINTL 　[1] - 服装の設定
 DRAWLINE
 PRINTPLAIN 　CLOTHES　
 PRINTL [100] - 戻る
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			CALL CLOTHES_SETTING_TRAIN
-		CASE 1
-			CALL CLOTHES_SETTING_USUALLY
-		CASE 100
-			RETURN 0
-	ENDSELECT
-LOOP LOOPRES(0, 1, 100)
+CALL INPUTF, 0, 1, 100
+SELECTCASE RESULT
+	CASE 0
+		CALL CLOTHES_SETTING_TRAIN
+	CASE 1
+		CALL CLOTHES_SETTING_USUALLY
+	CASE 100
+		RETURN
+ENDSELECT
 
 RESTART
 
@@ -306,25 +299,23 @@ PRINTL 　[3] - 全裸
 DRAWLINE
 PRINTPLAIN 　CLOTHES SETTING　
 PRINTL [100] - 戻る
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			PRINTW 初期の着衣を全着に設定しました
-			FLAG:着衣設定 = 0
-		CASE 1
-			PRINTW 初期の着衣を下着無しに設定しました
-			FLAG:着衣設定 = 1
-		CASE 2
-			PRINTW 初期の着衣を下着姿に設定しました
-			FLAG:着衣設定 = 2
-		CASE 3
-			PRINTW 初期の着衣を全裸に設定しました
-			FLAG:着衣設定 = 3
-		CASE 100
-			RETURN 0
-	ENDSELECT
-LOOP LOOPRES(0, 1, 2, 3, 100)
+CALL INPUTF, 0, 1, 2, 3, 100
+SELECTCASE RESULT
+	CASE 0
+		PRINTW 初期の着衣を全着に設定しました
+		FLAG:着衣設定 = 0
+	CASE 1
+		PRINTW 初期の着衣を下着無しに設定しました
+		FLAG:着衣設定 = 1
+	CASE 2
+		PRINTW 初期の着衣を下着姿に設定しました
+		FLAG:着衣設定 = 2
+	CASE 3
+		PRINTW 初期の着衣を全裸に設定しました
+		FLAG:着衣設定 = 3
+	CASE 100
+		RETURN
+ENDSELECT
 
 RESTART
 
@@ -452,9 +443,7 @@ DO
 			PRINTL 　[0] - 通常の全身上着(上半身上着、下半身上着との併用が不可)
 			PRINTL 　[1] - 上着の上に着用するもの(上半身上着、下半身上着との併用が可能)
 			PRINTL 　[2] - 肌着も兼ねるもの(上半身上着、下半身上着、及び下着との併用が不可能)
-			DO
-				INPUT
-			LOOP LOOPRES(0, 1, 2)
+			CALL INPUTF, 0, 1, 2
 			CFLAG:着衣併用 = RESULT
 			RESTART
 		CASE 9
@@ -552,28 +541,22 @@ DRAWLINE
 PRINTPLAIN 　EVENT　
 PRINTL [100] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			INVERTBIT FLAG:色仕掛け, 0
-			RESTART
-		CASE 1
-			INVERTBIT FLAG:借入, 0
-			RESTART
-		CASE 2
-			INVERTBIT FLAG:お誘い, 0
-			RESTART
-		CASE 3
-			INVERTBIT FLAG:TSBランダム, 0
-			RESTART
-		CASE 4
-			INVERTBIT FLAG:メスイキ豊胸ランダム, 0
-			RESTART
-		CASE 100
-			RETURN 0
-	ENDSELECT
-LOOP 1
+CALL INPUTF, 0, 1, 2, 3, 4, 100
+
+SELECTCASE RESULT
+	CASE 0
+		INVERTBIT FLAG:色仕掛け, 0
+	CASE 1
+		INVERTBIT FLAG:借入, 0
+	CASE 2
+		INVERTBIT FLAG:お誘い, 0
+	CASE 3
+		INVERTBIT FLAG:TSBランダム, 0
+	CASE 4
+		INVERTBIT FLAG:メスイキ豊胸ランダム, 0
+	CASE 100
+		RETURN 0
+ENDSELECT
 
 ;デフォルトオプションの設定
 @DEFAULT_OPTION
@@ -621,9 +604,7 @@ DO
 			PRINTL □常にチュートリアルの表示を確認しますか？
 			PRINTL 　[0] - 確認しなくてもいいよ
 			PRINTL 　[1] - 不安だから確認して
-			DO
-				INPUT
-			LOOP LOOPRES(0, 1)
+			CALL INPUTF, 0, 1
 			チュートリアル設定 = RESULT
 			SAVEGLOBAL
 			RESTART
@@ -633,9 +614,7 @@ DO
 			PRINTL 　[1] - 口上のみ
 			PRINTL 　[2] - 地の文のみ
 			PRINTL 　[3] - テキストを表示しない
-			DO
-				INPUT
-			LOOP LOOPRES(0, 1, 2, 3)
+			CALL INPUTF, 0, 1, 2, 3
 			SELECTCASE RESULT
 				CASE 0
 					地の文設定 = 1
@@ -656,9 +635,7 @@ DO
 			PRINTL □実績解除メッセージの初期設定を選んでください
 			PRINTL 　[0] - 表示しなくてもいいよ
 			PRINTL 　[1] - 表示されると嬉しいな
-			DO
-				INPUT
-			LOOP LOOPRES(0, 1)
+			CALL INPUTF, 0, 1
 			実績解除メッセージ設定 = RESULT
 			SAVEGLOBAL
 			RESTART
@@ -666,9 +643,7 @@ DO
 			PRINTL □PASELI表示設定の初期設定を選んでください
 			PRINTL 　[0] - 商標権侵害だから表示しなくていい
 			PRINTL 　[1] - BEMANIやってる感あるから表示したい
-			DO
-				INPUT
-			LOOP LOOPRES(0, 1)
+			CALL INPUTF, 0, 1
 			パセリ表示設定 = RESULT
 			SAVEGLOBAL
 			RESTART
@@ -676,9 +651,7 @@ DO
 			PRINTL □調教開始時の着衣設定を選んでください
 			PRINTL 　[0] - 着衣プレイはエロいから着せたまま始める
 			PRINTL 　[1] - さっさとヤりたいので脱がせてから始める
-			DO
-				INPUT
-			LOOP LOOPRES(0, 1)
+			CALL INPUTF, 0, 1
 			着衣オプション設定 = RESULT
 			SAVEGLOBAL
 			RESTART

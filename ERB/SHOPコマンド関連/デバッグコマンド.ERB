@@ -181,17 +181,13 @@ SELECTCASE TALENTNAME:RESULT
 		PRINTL [1] - 男にする
 		PRINTL [2] - 女にする
 		PRINTL [-1] - 戻る
-
-		INPUT
-		
-		SIF RESULT == -1
-			RETURN
-		
+		CALL INPUTF, -1, 1, 2
 		SELECTCASE RESULT
+			CASE -1
+				RETURN
 			CASE 1, 2
 				TALENT:TARGET:性別 = RESULT
 		ENDSELECT
-		
 		RESTART
 	CASE "バストサイズ"
 		SIF SEX(TARGET) == 1
@@ -202,48 +198,50 @@ SELECTCASE TALENTNAME:RESULT
 		PRINTL [4] 巨乳にする
 		PRINTL [5] 豊乳にする
 		PRINTL [6] 爆乳にする
-		DO
-			INPUT
-		LOOP LOOPRES(1, 2, 3, 4, 5, 6)
+		CALL INPUTF, 1, 2, 3, 4, 5, 6
 		TALENT:バストサイズ = RESULT
 		RESTART
 	CASE "恋心"
 		PRINT 相手のキャラ番号を入力してください（未実装・不明の場合は
 		PRINTBUTTON "[10000]", 10000
 		PRINTL ）
-		$LOOP
-		INPUT
-		SELECTCASE RESULT
-			CASE 0 TO 9999
-				IF EXISTCSV(RESULT)
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0 TO 9999
+					IF EXISTCSV(RESULT)
+						TALENT:恋心 = RESULT
+					ELSE
+						PRINTFORMW {RESULT}にはキャラが登録されていません
+						CONTINUE
+					ENDIF
+				CASE 10000
 					TALENT:恋心 = RESULT
-				ELSE
-					PRINTFORMW {RESULT}にはキャラが登録されていません
-				ENDIF
-			CASE 10000
-				TALENT:恋心 = RESULT
-			CASEELSE
-				GOTO LOOP
-		ENDSELECT
+				CASEELSE
+					CONTINUE
+			ENDSELECT
+		LOOP 0
 		RESTART
 	CASE "既婚者"
 		PRINT 相手のキャラ番号を入力してください（未実装・不明の場合は
 		PRINTBUTTON "[10000]", 10000
 		PRINTL ）
-		$LOOP2
-		INPUT
-		SELECTCASE RESULT
-			CASE 0 TO 9999
-				IF EXISTCSV(RESULT)
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0 TO 9999
+					IF EXISTCSV(RESULT)
+						TALENT:既婚者 = RESULT
+					ELSE
+						PRINTFORMW {RESULT}にはキャラが登録されていません
+						CONTINUE
+					ENDIF
+				CASE 10000
 					TALENT:既婚者 = RESULT
-				ELSE
-					PRINTFORMW {RESULT}にはキャラが登録されていません
-				ENDIF
-			CASE 10000
-				TALENT:既婚者 = RESULT
-			CASEELSE
-				GOTO LOOP2
-		ENDSELECT
+				CASEELSE
+					CONTINUE
+			ENDSELECT
+		LOOP 0
 		RESTART
 	CASEELSE
 		;数値指定
@@ -494,200 +492,202 @@ PRINTLC [3] - 所持金
 PRINTLC [4] - 気温
 PRINTLC [-1] - 戻る
 
-INPUT
+CALL INPUTF, -1, 0, 1, 2,, 3, 4
 
 DRAWLINE
-SIF RESULT == -1
-	RETURN
-IF RESULT == 0
-	PRINTFORML 何日にしますか？　　現在の日数：{DAY}
-	PRINTL [1][9][99][999][9999][99999][999999]
-	PRINTL [-1] 戻る
-	INPUT
-	SIF RESULT == -1
-		RESTART
-	DAY = RESULT
-	PRINTFORMW {DAY}日目に変更しました
-ELSEIF RESULT == 1
-	DO
-		PRINTFORM どれを変更しますか？　　現在の日付：
-		IF YEAR > 0
-			PRINTFORM {YEAR}
-		ELSE
-			PRINTFORM BC{ABS(YEAR)+1}
-		ENDIF
-		PRINTFORML 年{MONTH}月{DAYS}日(%DOW(ZELLER(YEAR,MONTH,DAYS))%)
-		PRINTL [0] - 年
-		PRINTL [1] - 月
-		PRINTL [2] - 日
-		PRINTL [3] - 現在の日時を取得
-		PRINTL [-1] - 戻る
+SELECTCASE RESULT
+	CASE -1
+		RETURN
+	CASE 0
+		PRINTFORML 何日にしますか？　　現在の日数：{DAY}
+		PRINTL [1][9][99][999][9999][99999][999999]
+		PRINTL [-1] 戻る
 		INPUT
 		SIF RESULT == -1
 			RESTART
-		IF RESULT == 0
-			PRINTL 何年に変更しますか？値を入力してください
-			CALL INPUT_YEAR
-			YEAR = RESULT
-			PRINTL
+		DAY = LIMIT(RESULT, 0, __INT_MAX__)
+		PRINTFORMW {DAY}日目に変更しました
+	CASE 1
+		DO
+			PRINTFORM どれを変更しますか？　　現在の日付：
 			IF YEAR > 0
 				PRINTFORM {YEAR}
 			ELSE
 				PRINTFORM BC{ABS(YEAR)+1}
 			ENDIF
-			PRINTFORML 年に変更しました
-			PRINTL
-		ELSEIF RESULT == 1
-			PRINTL 何月に変更しますか？
-			PRINTL [ 1]１月 [ 2]２月 [ 3]３月 [ 4]４月 [ 5]５月 [ 6]６月
-			PRINTL [ 7]７月 [ 8]８月 [ 9]９月 [10]10月 [11]11月 [12]12月
-			$MONTH_INPUT
-			INPUT
+			PRINTFORML 年{MONTH}月{DAYS}日(%DOW(ZELLER(YEAR,MONTH,DAYS))%)
+			PRINTL [0] - 年
+			PRINTL [1] - 月
+			PRINTL [2] - 日
+			PRINTL [3] - 現在の日時を取得
+			PRINTL [-1] - 戻る
+			CALL INPUTF, -1, 0, 1, 2, 3
 			SELECTCASE RESULT
-				CASE 1 TO 12
-					MONTH = RESULT
+				CASE -1
+					RETURN
+				CASE 0
+					PRINTL 何年に変更しますか？値を入力してください
+					CALL INPUT_YEAR
+					YEAR = RESULT
 					PRINTL
-					PRINTFORML {MONTH}月に変更しました
+					IF YEAR > 0
+						PRINTFORM {YEAR}
+					ELSE
+						PRINTFORM BC{ABS(YEAR)+1}
+					ENDIF
+					PRINTFORML 年に変更しました
 					PRINTL
-				CASEELSE
-					GOTO MONTH_INPUT
+				CASE 1
+					PRINTL 何月に変更しますか？
+					PRINTL [ 1]１月 [ 2]２月 [ 3]３月 [ 4]４月 [ 5]５月 [ 6]６月
+					PRINTL [ 7]７月 [ 8]８月 [ 9]９月 [10]10月 [11]11月 [12]12月
+					DO
+						INPUT
+						SELECTCASE RESULT
+							CASE 1 TO 12
+								MONTH = RESULT
+								PRINTL
+								PRINTFORML {MONTH}月に変更しました
+								PRINTL
+							CASEELSE
+								CONTINUE
+						ENDSELECT
+					LOOP 0
+				CASE 2
+					PRINTL 何日に変更しますか？値を入力してください
+					CALL TWO_DIGIT, 31, "日"
+					DAYS = RESULT
+					SIF DAYS < 0
+						DAYS = 1
+					PRINTL
+					PRINTFORML {DAYS}日に変更しました
+					PRINTL
+				CASE 3
+					GETTIME
+					LOCAL = RESULT
+					;年月日だけの桁に減らす
+					LOCAL /= POWER(10,9)
+					YEAR = LOCAL/10000
+					MONTH = LOCAL/100%100
+					DAYS = LOCAL%100
+					PRINTL
+					PRINTFORML {YEAR}年{MONTH}月{DAYS}日に変更しました
+					PRINTL
 			ENDSELECT
-		ELSEIF RESULT == 2
-			PRINTL 何日に変更しますか？値を入力してください
-			CALL TWO_DIGIT, 31, "日"
-			DAYS = RESULT
-			SIF DAYS < 0
+			;不正な値の修正
+			SIF DAYS <= 0
 				DAYS = 1
-			PRINTL
-			PRINTFORML {DAYS}日に変更しました
-			PRINTL
-		ELSEIF RESULT == 3
-			GETTIME
-			LOCAL = RESULT
-			;年月日だけの桁に減らす
-			LOCAL /= POWER(10,9)
-			YEAR = LOCAL / 10000
-			MONTH = LOCAL /100 %100
-			DAYS = LOCAL %100
-			PRINTL
-			PRINTFORML {YEAR}年{MONTH}月{DAYS}日に変更しました
-			PRINTL
-		ENDIF
-		;不正な値の修正
-		SIF DAYS <= 0
-			DAYS = 1
-		SELECTCASE MONTH
-			CASE 1, 3, 5, 7, 8, 10, 12
-				SIF DAYS > 31
-					DAYS = 31
-			CASE 4, 6, 9, 11
-				SIF DAYS > 30
-					DAYS = 30
-			CASE 2
-				;うるう年かどうかで場合分け
-				SELECTCASE YEAR
-					;グレゴリオ暦
-					CASE IS > 1582
-						IF (YEAR%4 == 0 && YEAR%100 != 0) || YEAR%400 == 0
-							SIF DAYS > 29
-								DAYS = 29
-						ELSE
+			SELECTCASE MONTH
+				CASE 1, 3, 5, 7, 8, 10, 12
+					SIF DAYS > 31
+						DAYS = 31
+				CASE 4, 6, 9, 11
+					SIF DAYS > 30
+						DAYS = 30
+				CASE 2
+					;うるう年かどうかで場合分け
+					SELECTCASE YEAR
+						;グレゴリオ暦
+						CASE IS > 1582
+							IF (YEAR%4 == 0 && YEAR%100 != 0) || YEAR%400 == 0
+								SIF DAYS > 29
+									DAYS = 29
+							ELSE
+								SIF DAYS > 28
+									DAYS = 28
+							ENDIF
+						;間違った運用がされていた頃のユリウス暦
+						CASE -44 TO -5
+							IF ABS(YEAR)%3 == 1
+								SIF DAYS > 29
+									DAYS = 29
+							ELSE
+								SIF DAYS > 28
+									DAYS = 28
+							ENDIF
+						;上の間違った運用のシワ寄せ期間
+						CASE -4 TO 4
 							SIF DAYS > 28
 								DAYS = 28
-						ENDIF
-					;間違った運用がされていた頃のユリウス暦
-					CASE -44 TO -5
-						IF ABS(YEAR)%3 == 1
-							SIF DAYS > 29
-								DAYS = 29
-						ELSE
-							SIF DAYS > 28
-								DAYS = 28
-						ENDIF
-					;上の間違った運用のシワ寄せ期間
-					CASE -4 TO 4
-						SIF DAYS > 28
-							DAYS = 28
-					;(紀元前46年以前を含め)残りの期間すべてをユリウス暦とする
-					CASEELSE
-						IF ABS(YEAR)%4 == 0
-							SIF DAYS > 29
-								DAYS = 29
-						ELSE
-							SIF DAYS > 28
-								DAYS = 28
-						ENDIF
-				ENDSELECT
-		ENDSELECT
-		;1582年10月5日～1582年10月14日は存在しないのでその期間の日付はすべて10月15日にする
-		IF YEAR == 1582 && MONTH == 10
-			IF 5 <= DAYS && DAYS <= 14
-				DAYS = 15
+						;(紀元前46年以前を含め)残りの期間すべてをユリウス暦とする
+						CASEELSE
+							IF ABS(YEAR)%4 == 0
+								SIF DAYS > 29
+									DAYS = 29
+							ELSE
+								SIF DAYS > 28
+									DAYS = 28
+							ENDIF
+					ENDSELECT
+			ENDSELECT
+			;1582年10月5日～1582年10月14日は存在しないのでその期間の日付はすべて10月15日にする
+			IF YEAR == 1582 && MONTH == 10
+				IF 5 <= DAYS && DAYS <= 14
+					DAYS = 15
+				ENDIF
 			ENDIF
+		LOOP 1
+	CASE 2
+		PRINT いつにしますか？　　現在の時間帯：
+		IF TIME == 0
+			PRINTL 昼
+		ELSE
+			PRINTL 夜
 		ENDIF
-	LOOP 1
-ELSEIF RESULT == 2
-	PRINT いつにしますか？　　現在の時間帯：
-	IF TIME == 0
-		PRINTL 昼
-	ELSE
-		PRINTL 夜
-	ENDIF
-	PRINTL [0] - 昼
-	PRINTL [1] - 夜
-	PRINTL [-1] - 戻る
-	INPUT
-	SIF RESULT == -1
-		RESTART
-	TIME = RESULT
-	PRINT 現在の時間帯を
-	IF TIME == 0
-		PRINTL 昼
-	ELSE
-		PRINTL 夜
-	ENDIF
-	PRINTW に変更しました
-ELSEIF RESULT == 3
-	CALL PASELIL, @"いくらにしますか？　　現在の所持金：{MONEY}＄"
-	PRINTLC [0] 無一文
-	PRINTLC [10000] 1万
-	PRINTLC [1000000] 100万
-	PRINTLC [1000000000] 10億
-	PRINTLC [1000000000000] 1兆
-	PRINTLC [10000000000000000] 1京
-	PRINTLC [-1] 戻る
-	INPUTS
-	IF RESULTS == "BEMANI学円"
-		CALL 実績解除, "-5pt"
-	ELSEIF ISNUMERIC(RESULTS)
-		SIF TOINT(RESULTS) == -1
+		PRINTL [0] - 昼
+		PRINTL [1] - 夜
+		PRINTL [-1] - 戻る
+		CALL INPUTF, -1, 0, 1
+		SIF RESULT == -1
 			RESTART
-		MONEY = TOINT(RESULTS)
-	ENDIF
-	PRINTFORMW 所持金を{MONEY}に変更しました
-ELSEIF RESULT == 4
-	;今何度？ とか書こうとした
-	PRINTL 何度にしますか？　※10倍した値で入力してください
-	PRINTFORML 現在の気温：{FLAG:気温/10}.{ABS(FLAG:気温)%10}℃
-	PRINTLC [-50] -5℃
-	PRINTLC [  0] 0℃
-	PRINTLC [ 50] 5℃
-	PRINTLC [100] 10℃
-	PRINTLC [150] 15℃
-	PRINTLC [200] 20℃
-	PRINTLC [250] 25℃
-	PRINTLC [300] 30℃
-	INPUTS
-	IF RESULTS == "アペン度" || RESULTS == "So Goo度" || RESULTS == "New Deca度" || RESULTS == "TECH-NOI度"
-		CALL 実績解除, "-5pt"
-	ELSEIF ISNUMERIC(RESULTS)
-		FLAG:気温 = TOINT(RESULTS)
-		PRINTFORMW 気温を{FLAG:気温/10}.{ABS(FLAG:気温)%10}℃に変更しました
-	ENDIF
-ENDIF
+		TIME = RESULT
+		PRINT 現在の時間帯を
+		IF TIME == 0
+			PRINTL 昼
+		ELSE
+			PRINTL 夜
+		ENDIF
+		PRINTW に変更しました
+	CASE 3
+		CALL PASELIL, @"いくらにしますか？　　現在の所持金：{MONEY}＄"
+		PRINTLC [0] 無一文
+		PRINTLC [10000] 1万
+		PRINTLC [1000000] 100万
+		PRINTLC [1000000000] 10億
+		PRINTLC [1000000000000] 1兆
+		PRINTLC [10000000000000000] 1京
+		PRINTLC [-1] 戻る
+		INPUTS
+		IF RESULTS == "BEMANI学円"
+			CALL 実績解除, "-5pt"
+		ELSEIF ISNUMERIC(RESULTS)
+			SIF TOINT(RESULTS) == -1
+				RESTART
+			MONEY = TOINT(RESULTS)
+		ENDIF
+		PRINTFORMW 所持金を{MONEY}に変更しました
+	CASE 4
+		;今何度？ とか書こうとした
+		PRINTL 何度にしますか？　※10倍した値で入力してください
+		PRINTFORML 現在の気温：{FLAG:気温/10}.{ABS(FLAG:気温)%10}℃
+		PRINTLC [-50] -5℃
+		PRINTLC [  0] 0℃
+		PRINTLC [ 50] 5℃
+		PRINTLC [100] 10℃
+		PRINTLC [150] 15℃
+		PRINTLC [200] 20℃
+		PRINTLC [250] 25℃
+		PRINTLC [300] 30℃
+		INPUTS
+		IF RESULTS == "アペン度" || RESULTS == "So Goo度" || RESULTS == "New Deca度" || RESULTS == "TECH-NOI度"
+			CALL 実績解除, "-5pt"
+		ELSEIF ISNUMERIC(RESULTS)
+			FLAG:気温 = TOINT(RESULTS)
+			PRINTFORMW 気温を{FLAG:気温/10}.{ABS(FLAG:気温)%10}℃に変更しました
+		ENDIF
+ENDSELECT
 
 RESTART
-
 
 ;年を入力するための関数
 @INPUT_YEAR
@@ -816,9 +816,7 @@ PRINTL このデータをデバッグ用セーブデータ（大量の所持金�
 PRINTL [0] - はい
 PRINTL [1] - はい（ログを表示する）
 PRINTL [2] - いいえ
-DO
-	INPUT
-LOOP LOOPRES(0, 1, 2)
+CALL INPUTF, 0, 1, 2
 SELECTCASE RESULT
 	CASE 0
 		FOR LCOUNT, 0, 10000
