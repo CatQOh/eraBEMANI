@@ -56,7 +56,7 @@ DO
 			CALL ASSIGN_TARGET, RESULT
 			BREAK
 	ENDSELECT
-LOOP LOOPRES(999, 1000, 1001)
+LOOP 1
 
 ;対象指定用関数
 @ASSIGN_TARGET, 対象
@@ -125,7 +125,7 @@ DO
 			CALL ASSIGN_ASSI, RESULT
 			BREAK
 	ENDSELECT
-LOOP LOOPRES(999, 1000, 1001)
+LOOP 1
 
 ;助手指定用関数
 @ASSIGN_ASSI, 助手
@@ -330,7 +330,9 @@ FOR LCOUNT, 0, CHARANUM
 		SIF TALENT:LOCAL:ふたなり
 			PRINT 双 
 		SIF TALENT:LOCAL:リミットバースト
-			PRINT 超
+			PRINT 超 
+		SIF TALENT:LOCAL:スライム || TALENT:LOCAL:溶ける快
+			PRINT 粘 
 	ELSEIF ARG == 2
 		SELECTCASE SEX(LOCAL)
 			CASE 1
@@ -405,17 +407,19 @@ DO
 		CASE 999
 			SIF TFLAG:ページ数 > 0
 				TFLAG:ページ数--
+			RESTART
 		CASE 1000
 			RETURN 0
 		CASE 1001
 			SIF RESULT:1
 				TFLAG:ページ数++
+			RESTART
 		CASE 1010
 			CALL CHARA_SORT
-			BREAK
+			RESTART
 		CASE 1011
 			INVERTBIT 表示切り替え, 0
-			BREAK
+			RESTART
 		CASE 0 TO CHARANUM-1
 			LTARGET = TARGET
 			TARGET = RESULT
@@ -426,13 +430,12 @@ DO
 			ENDIF
 			CALL STATUS
 			;TARGET変更がされてる場合は戻さない
-			SIF !RESULT && LTARGET != ASSI
+			SIF !RESULT
 				TARGET = LTARGET
-			BREAK
+			RESTART
 	ENDSELECT
-LOOP LOOPRES(999, 1000, 1001)
+LOOP 1
 
-RESTART
 
 @CHARA_SORT
 #DIM DYNAMIC LCOUNT
@@ -466,34 +469,26 @@ DO
 			DRAWLINE
 			PRINTPLAIN 　MARK　
 			PRINTL [100] - 戻る
-			DO
-				INPUT
-				LOCAL = RESULT
-				SELECTCASE RESULT
-					CASE 0 TO 4
-						SIF MARKNAME:RESULT == ""
-							CONTINUE
-						PRINTL □並べ替え
-						PRINTL 　[0] - 昇順
-						PRINTL 　[1] - 降順
-						DRAWLINE
-						PRINTPLAIN 　MARK　
-						PRINTL [10] - 戻る
-						DO
-							INPUT
-							SELECTCASE RESULT
-								CASE 0
-									PRINTFORMW %MARKNAME:LOCAL%で昇順にソートしました
-									SORTCHARA MARK:LOCAL
-								CASE 1
-									PRINTFORMW %MARKNAME:LOCAL%で降順にソートしました
-									SORTCHARA MARK:LOCAL, BACK
-							ENDSELECT
-						LOOP LOOPRES(0, 1, 10)
-						BREAK
-				ENDSELECT
-			LOOP LOOPRES(100)
-			RETURN 0
+			CALL INPUTF, 0, 1, 2, 3, 100
+			LOCAL = RESULT
+			SIF RESULT == 100
+				RETURN 0
+			PRINTL □並べ替え
+			PRINTL 　[0] - 昇順
+			PRINTL 　[1] - 降順
+			DRAWLINE
+			PRINTPLAIN 　MARK　
+			PRINTL [10] - 戻る
+			CALL INPUTF, 0, 1, 10
+			SELECTCASE RESULT
+				CASE 0
+					PRINTFORMW %MARKNAME:LOCAL%で昇順にソートしました
+					SORTCHARA MARK:LOCAL
+				CASE 1
+					PRINTFORMW %MARKNAME:LOCAL%で降順にソートしました
+					SORTCHARA MARK:LOCAL, BACK
+			ENDSELECT
+			RETURN
 		CASE 2
 			DRAWLINE
 			LOCAL = 0
@@ -518,29 +513,28 @@ DO
 				LOCAL = RESULT
 				SELECTCASE RESULT
 					CASE 0 TO 50
-						PRINTL □並べ替え
 						SIF ABLNAME:RESULT == ""
 							CONTINUE
+						PRINTL □並べ替え
 						PRINTL 　[0] - 昇順
 						PRINTL 　[1] - 降順
 						DRAWLINE
 						PRINTPLAIN 　ABL　
 						PRINTL [10] - 戻る
-						DO
-							INPUT
-							SELECTCASE RESULT
-								CASE 0
-									PRINTFORMW %ABLNAME:LOCAL%で昇順にソートしました
-									SORTCHARA ABL:LOCAL
-								CASE 1
-									PRINTFORMW %ABLNAME:LOCAL%で降順にソートしました
-									SORTCHARA ABL:LOCAL, BACK
-							ENDSELECT
-						LOOP LOOPRES(0, 1, 10)
-						BREAK
+						CALL INPUTF, 0, 1, 10
+						SELECTCASE RESULT
+							CASE 0
+								PRINTFORMW %ABLNAME:LOCAL%で昇順にソートしました
+								SORTCHARA ABL:LOCAL
+							CASE 1
+								PRINTFORMW %ABLNAME:LOCAL%で降順にソートしました
+								SORTCHARA ABL:LOCAL, BACK
+						ENDSELECT
+						RETURN
+					CASE 100
+						RETURN
 				ENDSELECT
-			LOOP LOOPRES(100)
-			RETURN 0
+			LOOP 1
 		CASE 3
 			DRAWLINE
 			LOCAL = 0
@@ -573,18 +567,16 @@ DO
 						DRAWLINE
 						PRINTPLAIN 　ABL　
 						PRINTL [10] - 戻る
-						DO
-							INPUT
-							SELECTCASE RESULT
-								CASE 0
-									PRINTFORMW %EXPNAME:LOCAL%で昇順にソートしました
-									SORTCHARA EXP:LOCAL
-								CASE 1
-									PRINTFORMW %EXPNAME:LOCAL%で降順にソートしました
-									SORTCHARA EXP:LOCAL, BACK
-							ENDSELECT
-						LOOP LOOPRES(0, 1, 10)
-						BREAK
+						CALL INPUTF, 0, 1, 10
+						SELECTCASE RESULT
+							CASE 0
+								PRINTFORMW %EXPNAME:LOCAL%で昇順にソートしました
+								SORTCHARA EXP:LOCAL
+							CASE 1
+								PRINTFORMW %EXPNAME:LOCAL%で降順にソートしました
+								SORTCHARA EXP:LOCAL, BACK
+						ENDSELECT
+						RETURN
 				ENDSELECT
 			LOOP LOOPRES(100)
 			RETURN 0
@@ -596,18 +588,16 @@ DO
 			DRAWLINE
 			PRINTPLAIN 　NAME　
 			PRINTL [10] - 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						PRINTW 名前で昇順にソートしました
-						SORTCHARA NAME
-					CASE 1
-						PRINTW 名前で降順にソートしました
-						SORTCHARA NAME, BACK
-				ENDSELECT
-			LOOP LOOPRES(0, 1, 10)
-			RETURN 0
+			CALL INPUTF, 0, 1, 10
+			SELECTCASE RESULT
+				CASE 0
+					PRINTW 名前で昇順にソートしました
+					SORTCHARA NAME
+				CASE 1
+					PRINTW 名前で降順にソートしました
+					SORTCHARA NAME, BACK
+			ENDSELECT
+			RETURN
 		CASE 5
 			DRAWLINE
 			PRINTL □番号
@@ -616,18 +606,16 @@ DO
 			DRAWLINE
 			PRINTPLAIN 　NUMBER　
 			PRINTL [10] - 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						PRINTW キャラ番号で昇順にソートしました
-						SORTCHARA
-					CASE 1
-						PRINTW キャラ番号で降順にソートしました
-						SORTCHARA BACK
-				ENDSELECT
-			LOOP LOOPRES(0, 1, 10)
-			RETURN 0
+			CALL INPUTF, 0, 1, 10
+			SELECTCASE RESULT
+				CASE 0
+					PRINTW キャラ番号で昇順にソートしました
+					SORTCHARA
+				CASE 1
+					PRINTW キャラ番号で降順にソートしました
+					SORTCHARA BACK
+			ENDSELECT
+			RETURN
 		CASE 6
 			DRAWLINE
 			PRINTL □体力
@@ -636,18 +624,16 @@ DO
 			DRAWLINE
 			PRINTPLAIN 　HEALTH　
 			PRINTL [10] - 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						PRINTW 体力で昇順にソートしました
-						SORTCHARA BASE:体力
-					CASE 1
-						PRINTW 体力で降順にソートしました
-						SORTCHARA BASE:体力, BACK
-				ENDSELECT
-			LOOP LOOPRES(0, 1, 10)
-			RETURN 0
+			CALL INPUTF, 0, 1, 10
+			SELECTCASE RESULT
+				CASE 0
+					PRINTW 体力で昇順にソートしました
+					SORTCHARA BASE:体力
+				CASE 1
+					PRINTW 体力で降順にソートしました
+					SORTCHARA BASE:体力, BACK
+			ENDSELECT
+			RETURN
 		CASE 7
 			DRAWLINE
 			PRINTL □気力
@@ -656,18 +642,16 @@ DO
 			DRAWLINE
 			PRINTPLAIN 　VITAL　
 			PRINTL [10] - 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						PRINTW 気力で昇順にソートしました
-						SORTCHARA BASE:気力
-					CASE 1
-						PRINTW 気力で降順にソートしました
-						SORTCHARA BASE:気力, BACK
-				ENDSELECT
-			LOOP LOOPRES(0, 1, 10)
-			RETURN 0
+			CALL INPUTF, 0, 1, 10
+			SELECTCASE RESULT
+				CASE 0
+					PRINTW 気力で昇順にソートしました
+					SORTCHARA BASE:気力
+				CASE 1
+					PRINTW 気力で降順にソートしました
+					SORTCHARA BASE:気力, BACK
+			ENDSELECT
+			RETURN
 		CASE 8
 			FOR LCOUNT, 0, CHARANUM
 				ソート用購入日:LCOUNT:0 = BUYY:LCOUNT:0*10000+BUYM:LCOUNT:0*100+BUYD:LCOUNT:0
@@ -678,20 +662,16 @@ DO
 			DRAWLINE
 			PRINTPLAIN 　UNLOCK　
 			PRINTL [10] - 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						PRINTW 解禁日で昇順にソートしました
-						SORTCHARA ソート用購入日:0
-					CASE 1
-						PRINTW 解禁日で降順にソートしました
-						SORTCHARA ソート用購入日:0, BACK
-				ENDSELECT
-			LOOP LOOPRES(0, 1, 10)
-			RETURN 0
+			CALL INPUTF, 0, 1, 10
+			SELECTCASE RESULT
+				CASE 0
+					PRINTW 解禁日で昇順にソートしました
+					SORTCHARA ソート用購入日:0
+				CASE 1
+					PRINTW 解禁日で降順にソートしました
+					SORTCHARA ソート用購入日:0, BACK
+			ENDSELECT
+			RETURN
 	ENDSELECT
-LOOP LOOPRES(0, 1, 2, 3, 4, 5, 6, 7, 8)
-
-RETURN 0
+LOOP 1
 

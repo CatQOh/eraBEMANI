@@ -37,7 +37,7 @@ PRINTL 　[100] 各コマンドの説明
 DO
 	INPUT
 	SELECTCASE RESULT
-		CASE 1, 2
+		CASE 1, 2, 5
 			SIF FINDCHARA(CSTR:配属, "芸能プロダクション") == -1
 				CONTINUE
 	ENDSELECT
@@ -48,7 +48,12 @@ DO
 			CALL IDOL_LESSON
 		CASE 2
 			CALL IDOL_EVENT
-			RETURN RESULT
+			;何もしないで戻ってきた場合
+			SIF RESULT == 0
+				RESTART
+			;ライブを終えて戻ってきた場合はターン終了
+			BEGIN TURNEND
+			RETURN 1
 		CASE 3
 			CALL IDOL_BRIBE
 		CASE 4
@@ -62,8 +67,8 @@ DO
 		CASEELSE
 			CONTINUE
 	ENDSELECT
-	RESTART
-LOOP 1
+LOOP 0
+RESTART
 
 ;----------------------------------------------------
 ;芸能プロダクション運営モードチュートリアル
@@ -80,35 +85,35 @@ DRAWLINE
 PRINTPLAIN 　TUTORIAL　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			PRINTL 「レッスン」はこれから受けるレッスンの予定を入れるコマンドです。
-			PRINTL お金を払うことによりボーカル・ダンス・楽器演奏のいずれかのレッスンを受けることができます。
-			PRINTL ここで予定を入れなくても全ての経験を少しずつ得ていきますが、
-			PRINTL 能力をより強くしたり何かの技能に特化させたり際に必要となるでしょう。
-			PRINTW 高い効果のレッスンは相応の知名度がないと受けることができません。
-		CASE 2
-			PRINTL 「イベント」はライブなどの催し物で利益を上げるコマンドです。
-			PRINTW このコマンドを選択したときのみ、主人は半日間拘束されます。
-		CASE 3
-			PRINTL 「贈賄する」は賄賂を送ることなどの裏工作により知名度を上げるコマンドです。
-			PRINTL 知名度が高いほど賄賂に必要な金額は増えていきます。
-			PRINTW また、枕営業をさせることでも取引ができますが、その効果は奴隷の働き次第です。
-		CASE 4
-			PRINTL 「人員配置」は芸能プロダクションに人員を配置するコマンドです。
-			PRINTW 配属された人数に応じてお金はかかってしまうので、誰を配属するかはよく考えましょう。
-	ENDSELECT
-LOOP LOOPRES(1, 2, 3, 4)
+CALL INPUTF, 1, 2, 3, 4
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		PRINTL 「レッスン」はこれから受けるレッスンの予定を入れるコマンドです。
+		PRINTL お金を払うことによりボーカル・ダンス・楽器演奏のいずれかのレッスンを受けることができます。
+		PRINTL ここで予定を入れなくても全ての経験を少しずつ得ていきますが、
+		PRINTL 能力をより強くしたり何かの技能に特化させたり際に必要となるでしょう。
+		PRINTW 高い効果のレッスンは相応の知名度がないと受けることができません。
+	CASE 2
+		PRINTL 「イベント」はライブなどの催し物で利益を上げるコマンドです。
+		PRINTW このコマンドを選択したときのみ、主人は半日間拘束されます。
+	CASE 3
+		PRINTL 「贈賄する」は賄賂を送ることなどの裏工作により知名度を上げるコマンドです。
+		PRINTL 知名度が高いほど賄賂に必要な金額は増えていきます。
+		PRINTW また、枕営業をさせることでも取引ができますが、その効果は奴隷の働き次第です。
+	CASE 4
+		PRINTL 「人員配置」は芸能プロダクションに人員を配置するコマンドです。
+		PRINTW 配属された人数に応じてお金はかかってしまうので、誰を配属するかはよく考えましょう。
+ENDSELECT
 
 RESTART
 
 
 ;レッスン----------------------------------------------------
 @IDOL_LESSON
+#DIM DYNAMIC レッスン対象
 ;「CFLAG:レッスン」について
 ;3で割った余りでレッスンの種類、3の倍数に切り上げたときの値でレッスンのレベルを判別
 ;Vocal:1, 4, 7, 10, 13
@@ -156,7 +161,7 @@ DO
 			RETURN 0
 		CASE 1 TO CHARANUM-1
 			IF BASE:RESULT:体力 >= 500 && CSTR:RESULT:配属 == "芸能プロダクション"
-				LOCAL = RESULT
+				レッスン対象 = RESULT
 				PRINTL
 				PRINTL レッスンのレベルと種類を選んでください
 				PRINTL
@@ -183,26 +188,26 @@ DO
 					INPUT
 					SELECTCASE RESULT
 						CASE 0 TO 3
-							CFLAG:LOCAL:レッスン = RESULT
+							CFLAG:レッスン対象:レッスン = RESULT
 							RESTART
 						CASE 4 TO 6
 							IF IDOL知名度 > 40
-								CFLAG:LOCAL:レッスン = RESULT
+								CFLAG:レッスン対象:レッスン = RESULT
 								RESTART
 							ENDIF
 						CASE 7 TO 9
 							IF IDOL知名度 > 160
-								CFLAG:LOCAL:レッスン = RESULT
+								CFLAG:レッスン対象:レッスン = RESULT
 								RESTART
 							ENDIF
 						CASE 10 TO 12
 							IF IDOL知名度 > 640
-								CFLAG:LOCAL:レッスン = RESULT
+								CFLAG:レッスン対象:レッスン = RESULT
 								RESTART
 							ENDIF
 						CASE 13 TO 15
 							IF IDOL知名度 > 2560
-								CFLAG:LOCAL:レッスン = RESULT
+								CFLAG:レッスン対象:レッスン = RESULT
 								RESTART
 							ENDIF
 					ENDSELECT
@@ -214,24 +219,6 @@ LOOP 1
 
 ;イベント----------------------------------------------------
 @IDOL_EVENT
-#DIM DYNAMIC 分野
-#DIM DYNAMIC 技量, 4
-#DIM DYNAMIC 難度, 4
-#DIM DYNAMIC 難度合計
-#DIM DYNAMIC 人数, 4
-#DIM DYNAMIC LMEMORY
-#DIM DYNAMIC LCOUNT
-#DIM DYNAMIC 収入, 2
-#DIM DYNAMIC ユニット数
-#DIM DYNAMIC 選出可能, 11
-
-ユニット数 = 0
-
-REPEAT 11
-	SIF ユニット名:COUNT != ""
-		ユニット数++
-REND
-
 DRAWLINE
 PRINTL □何のイベントを開催しますか？
 PRINTL 　[1] ライブ
@@ -239,409 +226,429 @@ DRAWLINE
 PRINTPLAIN 　EVENT　
 PRINTL [0] 戻る
 
+CALL INPUTF, 0, 1
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		CALL IDOL_LIVE
+		RETURN RESULT
+ENDSELECT
+
+@IDOL_LIVE
+#DIM DYNAMIC 分野
+#DIM DYNAMIC 技量, 4
+#DIM DYNAMIC 難度, 4
+#DIM DYNAMIC 難度合計
+#DIM DYNAMIC 人数, 4
+#DIM DYNAMIC LMEMORY
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC 収入, 2
+#DIM DYNAMIC ユニット数
+#DIM DYNAMIC 選出可能, 11
+#DIM DYNAMIC ユニット担当記録用, 1000
+
+;ユニット数を数える
+ユニット数 = 0
+FOR LCOUNT, 1, 11
+	SIF ユニット名:LCOUNT != ""
+		ユニット数++
+NEXT
+
+VARSET LOCAL
+
+$MUSIC_SELECT
+CALL MUSIC_LIST
+SIF IDOL選曲 == ""
+	RETURN 0
+
+$MEMBER_LOOP
+;◆◆◆技量の計算◆◆◆
+;	技量 = 技能LVの合計値 / √(担当人数)
+;D&VやI&Vの場合は、それぞれで1人として数えるが技能LVを0.75倍で計算する
+;技量は10000倍にして計算する(表記上は小数第4位まで計算する)
+VARSET 技量
+VARSET 人数
+FOR LCOUNT, 0, CHARANUM
+	IF CSTR:LCOUNT:配属 == "芸能プロダクション"
+		SELECTCASE ユニット担当記録用:LCOUNT
+			CASE 1
+				技量:3 += 10000*ABL:LCOUNT:舞踊技能
+				人数:3++
+			CASE 2
+				技量:2 += 10000*ABL:LCOUNT:演奏技能
+				人数:2++
+			CASE 3
+				技量:1 += 10000*ABL:LCOUNT:歌唱技能
+				人数:1++
+			CASE 4
+				技量:3 += 7500*ABL:LCOUNT:舞踊技能
+				人数:3++
+				技量:1 += 7500*ABL:LCOUNT:歌唱技能
+				人数:1++
+			CASE 5
+				技量:2 += 7500*ABL:LCOUNT:演奏技能
+				人数:2++
+				技量:1 += 7500*ABL:LCOUNT:歌唱技能
+				人数:1++
+		ENDSELECT
+	ENDIF
+NEXT
+FOR 分野, 1, 4
+	SIF 人数:分野 <= 0
+		CONTINUE
+	技量:分野 *= 10000
+	技量:分野 /= SQRT(人数:分野*10000*10000)
+NEXT
+DRAWLINE
+PRINTL □ライブに出すメンバーと担当するパートを選んでください
+PRINTL 　(ボーカル曲の場合、最低でも1人はボーカルを担当する必要があります)
+PRINTL 
+PRINTFORML 　選曲　　　　%IDOL選曲%
+PRINT 　楽曲難易度　
+FOR 分野, 1, 4
+	SELECTCASE 分野
+		CASE 1
+			PRINT Vocal:
+		CASE 2
+			PRINT Inst.:
+		CASE 3
+			PRINT Dance:
+	ENDSELECT
+	SELECTCASE TOINT(IDOL選曲:分野)
+		CASE 0
+			PRINT ‐ 
+		CASE IS < 10
+			PRINTFORM %TOFULL(IDOL選曲:分野)% 
+		CASEELSE
+			PRINTFORM %IDOL選曲:分野% 
+	ENDSELECT
+NEXT
+PRINTL 
+PRINT 　現在の技量　
+FOR 分野, 1, 4
+	PRINTFORM {技量:分野/10000, 3, RIGHT}.
+	FOR LCOUNT, 0, 4-STRLENS(TOSTR(技量:分野%10000))
+		PRINT 0
+	NEXT
+	PRINTFORM {技量:分野%10000} 
+NEXT
+PRINTL 
+PRINTL 
+FOR LCOUNT, 0, CHARANUM
+	;体力不足だと無理
+	SIF BASE:LCOUNT:体力 < 500
+		CONTINUE
+	IF CSTR:LCOUNT:配属 == "芸能プロダクション"
+		PRINT 　
+		SELECTCASE ユニット担当記録用:LCOUNT
+			CASE 0
+				PRINT 　　
+			CASE 1
+				PRINT Da. 
+			CASE 2
+				PRINT In. 
+			CASE 3
+				PRINT Vo. 
+			CASE 4
+				PRINT D&V 
+			CASE 5
+				PRINT I&V 
+		ENDSELECT
+		PRINTFORM [{LCOUNT, 2, RIGHT}] - %NAME:LCOUNT, 26, LEFT%(歌唱技能:{ABL:LCOUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:LCOUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:LCOUNT:舞踊技能, 2, LEFT}
+		SIF TALENT:LCOUNT:魅力
+			PRINT  魅力
+		SIF TALENT:LCOUNT:魅惑
+			PRINT  魅惑
+		SIF TALENT:LCOUNT:謎の魅力
+			PRINT  謎の魅力
+		SIF TALENT:LCOUNT:人気
+			PRINT  人気
+		SIF TALENT:LCOUNT:絶対音感
+			PRINT  絶対音感
+		PRINTL )
+	ENDIF
+NEXT
+DRAWLINE
+PRINTPLAIN 　LIVE　
+PRINT [ 0] - ライブを始める　
+PRINT [-1] - 選曲画面に戻る　
+PRINTL [-2] - 戻る
+SIF ユニット数
+	PRINTL 　　　　[-3] - ユニットで選出する
 DO
 	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			VARSET LOCAL
-			$MUSIC_SELECT
-			CALL MUSIC_LIST
-			SIF IDOL選曲 == ""
-				RESTART
-			IF IDOL選曲:1 == "0"
-				REPEAT CHARANUM
-					SIF LOCAL:COUNT >= 3
-						LOCAL:COUNT -= 3
-				REND
-			ENDIF
-			$MEMBER_LOOP
-			;◆◆◆技量の計算◆◆◆
-			;	技量 = 技能LVの合計値 / √(担当人数)
-			;D&VやI&Vの場合は、それぞれで1人として数えるが技能LVを0.75倍で計算する
-			;技量は10000倍にして計算する(表記上は小数第4位まで計算する)
-			VARSET 技量
-			VARSET 人数
-			FOR LCOUNT, 0, CHARANUM
-				IF CSTR:LCOUNT:配属 == "芸能プロダクション"
-					SELECTCASE LOCAL:LCOUNT
-						CASE 1
-							技量:3 += 10000*ABL:LCOUNT:舞踊技能
-							人数:3++
-						CASE 2
-							技量:2 += 10000*ABL:LCOUNT:演奏技能
-							人数:2++
-						CASE 3
-							技量:1 += 10000*ABL:LCOUNT:歌唱技能
-							人数:1++
-						CASE 4
-							技量:3 += 7500*ABL:LCOUNT:舞踊技能
-							人数:3++
-							技量:1 += 7500*ABL:LCOUNT:歌唱技能
-							人数:1++
-						CASE 5
-							技量:2 += 7500*ABL:LCOUNT:演奏技能
-							人数:2++
-							技量:1 += 7500*ABL:LCOUNT:歌唱技能
-							人数:1++
-					ENDSELECT
+	IF RESULT == -3
+		SIF !ユニット数
+			CONTINUE
+		DRAWLINE
+		PRINTL □ユニットを選択してください
+		FOR LCOUNT, 1, ユニット数+1
+			;ユニット全部表示したらBREAK
+			SIF ユニット名:LCOUNT == ""
+				BREAK
+			;選出可能フラグは予め立てておく
+			選出可能:LCOUNT = 1
+			FOR LCOUNT2, 1, CHARANUM
+				;ユニットのメンバーが芸能プロダクションに配属されてるか確認する
+				IF CFLAG:LCOUNT2:ユニット番号 == LCOUNT
+					;配属されてないメンバーが居れば選出可能フラグを折って灰色表示してBREAK
+					IF CSTR:LCOUNT2:配属 != "芸能プロダクション"
+						LOCALS = <font color='gray'><nonbutton title='一部メンバーが不在です'>　[-] %ユニット名:LCOUNT%</nonbutton></font>
+						HTML_PRINT LOCALS
+						選出可能:LCOUNT = 0
+						BREAK
+					ENDIF
 				ENDIF
 			NEXT
-			FOR 分野, 1, 4
-				SIF 人数:分野 <= 0
-					CONTINUE
-				技量:分野 *= 10000
-				技量:分野 /= SQRT(人数:分野*10000*10000)
-			NEXT
-			DRAWLINE
-			PRINTL □ライブに出すメンバーと担当するパートを選んでください
-			PRINTL 　(ボーカル曲の場合、最低でも1人はボーカルを担当する必要があります)
-			PRINTL 
-			PRINTFORML 　選曲　　　　%IDOL選曲%
-			PRINT 　楽曲難易度　
-			FOR 分野, 1, 4
-				SELECTCASE 分野
-					CASE 1
-						PRINT Vocal:
-					CASE 2
-						PRINT Inst.:
-					CASE 3
-						PRINT Dance:
-				ENDSELECT
-				SELECTCASE TOINT(IDOL選曲:分野)
-					CASE 0
-						PRINT ‐ 
-					CASE IS < 10
-						PRINTFORM %TOFULL(IDOL選曲:分野)% 
-					CASEELSE
-						PRINTFORM %IDOL選曲:分野% 
-				ENDSELECT
-			NEXT
-			PRINTL 
-			PRINT 　現在の技量　
-			FOR 分野, 1, 4
-				PRINTFORM {技量:分野/10000, 3, RIGHT}.
-				FOR LCOUNT, 0, 4-STRLENS(TOSTR(技量:分野%10000))
-					PRINT 0
-				NEXT
-				PRINTFORM {技量:分野%10000} 
-			NEXT
-			PRINTL 
-			PRINTL 
-			FOR LCOUNT, 0, CHARANUM
-				;体力不足だと無理
-				SIF BASE:LCOUNT:体力 < 500
-					CONTINUE
-				IF CSTR:LCOUNT:配属 == "芸能プロダクション"
-					PRINT 　
-					SELECTCASE LOCAL:LCOUNT
-						CASE 0
-							PRINT 　　
-						CASE 1
-							PRINT Da. 
-						CASE 2
-							PRINT In. 
-						CASE 3
-							PRINT Vo. 
-						CASE 4
-							PRINT D&V 
-						CASE 5
-							PRINT I&V 
-					ENDSELECT
-					PRINTFORM [{LCOUNT, 2, RIGHT}] - %NAME:LCOUNT, 26, LEFT%(歌唱技能:{ABL:LCOUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:LCOUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:LCOUNT:舞踊技能, 2, LEFT}
-					SIF TALENT:LCOUNT:魅力
-						PRINT  魅力
-					SIF TALENT:LCOUNT:魅惑
-						PRINT  魅惑
-					SIF TALENT:LCOUNT:謎の魅力
-						PRINT  謎の魅力
-					SIF TALENT:LCOUNT:人気
-						PRINT  人気
-					SIF TALENT:LCOUNT:絶対音感
-						PRINT  絶対音感
-					PRINTL )
-				ENDIF
-			NEXT
-			DRAWLINE
-			PRINTPLAIN 　LIVE　
-			PRINT [ 0] - ライブを始める　
-			PRINT [-1] - 選曲画面に戻る　
-			PRINTL [-2] - 戻る
-			SIF ユニット数
-				PRINTL 　　　　[-3] - ユニットで選出する
-			DO
-				INPUT
-				IF RESULT == -3
-					SIF !ユニット数
+			;上記のチェックを抜けてきたら選出可能
+			SIF 選出可能:LCOUNT
+				PRINTFORML 　[{LCOUNT}] %ユニット名:LCOUNT%
+		NEXT
+		DRAWLINE
+		PRINTPLAIN 　UNIT　
+		PRINTL [0] - メンバー選定に戻る
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 1 TO 10
+					SIF !選出可能:RESULT
 						CONTINUE
-					DRAWLINE
-					PRINTL □ユニットを選択してください
-					FOR COUNT, 1, ユニット数+1
-						;ユニット全部表示したらBREAK
-						SIF ユニット名:COUNT == ""
-							BREAK
-						;選出可能フラグは予め立てておく
-						選出可能:COUNT = 1
-						FOR LCOUNT, 1, CHARANUM
-							;ユニットのメンバーが芸能プロダクションに配属されてるか確認する
-							IF CFLAG:LCOUNT:ユニット番号 == COUNT
-								;配属されてないメンバーが居れば選出可能フラグを折って灰色表示してBREAK
-								IF CSTR:LCOUNT:配属 != "芸能プロダクション"
-									LOCALS = <font color='gray'><nonbutton title='一部メンバーが不在です'>　[-] %ユニット名:COUNT%</nonbutton></font>
-									HTML_PRINT LOCALS
-									選出可能:COUNT = 0
-									BREAK
-								ENDIF
-							ENDIF
-						NEXT
-						;上記のチェックを抜けてきたら選出可能
-						SIF 選出可能:COUNT
-							PRINTFORML 　[{COUNT}] %ユニット名:COUNT%
-					NEXT
-					DRAWLINE
-					PRINTPLAIN 　UNIT　
-					PRINTL [0] - メンバー選定に戻る
-					DO
-						INPUT
-						SELECTCASE RESULT
-							CASE 1 TO 10
-								SIF !選出可能:RESULT
-									CONTINUE
-								;ユニットメンバーだけにするのでLOCALにVARSETかけておく
-								VARSET LOCAL, 0
-								FOR LCOUNT, 0, CHARANUM
-									IF CFLAG:LCOUNT:ユニット番号 == RESULT
-										;ユニット結成時にあらかじめ決めておいた担当に分担する
-										;ボーカル担当の場合内部数値は2桁 2桁目がメイン、1桁目がサブ
-										SELECTCASE CFLAG:LCOUNT:ユニット担当
-											CASE IS < 10
-												;ダンス、楽器演奏はそのまま代入
-												LOCAL:LCOUNT = CFLAG:LCOUNT:ユニット担当
-											CASEELSE
-												;ボーカル必要無い選曲の場合、予備の担当に切り替える(1桁目)
-												IF IDOL選曲:1 == "0"
-													LOCAL:LCOUNT = CFLAG:LCOUNT:ユニット担当%10
-												;オンボーカルならメインの担当(2桁目)
-												ELSE
-													LOCAL:LCOUNT = CFLAG:LCOUNT:ユニット担当/10
-												ENDIF
-										ENDSELECT
+					;ユニットメンバーだけにするのでLOCALにVARSETかけておく
+					VARSET LOCAL, 0
+					FOR LCOUNT, 0, CHARANUM
+						IF CFLAG:LCOUNT:ユニット番号 == RESULT
+							;ユニット結成時にあらかじめ決めておいた担当に分担する
+							;ボーカル担当の場合内部数値は2桁 2桁目がメイン、1桁目がサブ
+							SELECTCASE CFLAG:LCOUNT:ユニット担当
+								CASE IS < 10
+									;ダンス、楽器演奏はそのまま代入
+									ユニット担当記録用:LCOUNT = CFLAG:LCOUNT:ユニット担当
+								CASEELSE
+									;ボーカル必要無い選曲の場合、予備の担当に切り替える(1桁目)
+									IF IDOL選曲:1 == "0"
+										ユニット担当記録用:LCOUNT = CFLAG:LCOUNT:ユニット担当%10
+									;オンボーカルならメインの担当(2桁目)
+									ELSE
+										ユニット担当記録用:LCOUNT = CFLAG:LCOUNT:ユニット担当/10
 									ENDIF
-								NEXT
-								GOTO MEMBER_LOOP
-							CASE 0
-								GOTO MEMBER_LOOP
-						ENDSELECT
-					LOOP 1
-				ENDIF
-				SIF RESULT == -2
-					RESTART
-				SIF RESULT == -1
-					GOTO MUSIC_SELECT
-				IF RESULT == 0
-					IF 人数:1 == 0  && 人数:2 == 0 && 人数:3 == 0
-						PRINTW メンバーを1人以上選び出してください
-						GOTO MEMBER_LOOP
-					ENDIF
-					IF IDOL選曲:1 != "0" && 人数:1 == 0
-						PRINTW ボーカルを1人以上選び出してください
-						GOTO MEMBER_LOOP
-					ENDIF
-					BREAK
-				ENDIF
-				IF BASE:RESULT:体力 >= 500 && CSTR:RESULT:配属 == "芸能プロダクション"
-					LMEMORY = RESULT
-					PRINTL
-					PRINTL どのパートを担当しますか？
-					PRINTL [0] 担当しない
-					PRINTL [1] ダンス
-					PRINTL [2] 楽器演奏
-					IF IDOL選曲:1 != "0"
-						PRINTL [3] ボーカル
-						PRINTL [4] ダンス&ボーカル
-						PRINTL [5] 楽器演奏&ボーカル
-					ENDIF
-					$PART_INPUT
-					INPUT
-					SELECTCASE RESULT
-						CASE 0, 1, 2
-							LOCAL:LMEMORY = RESULT
-						CASE 3, 4, 5
-							SIF IDOL選曲:1 == "0"
-								GOTO PART_INPUT
-							LOCAL:LMEMORY = RESULT
-						CASEELSE
-							GOTO PART_INPUT
-					ENDSELECT
+							ENDSELECT
+						ENDIF
+					NEXT
 					GOTO MEMBER_LOOP
-				ENDIF
-			LOOP 1
-			;上記のループを超えるとライブ開始
-			難度:1 = 10000*TOINT(IDOL選曲:1)
-			難度:2 = 10000*TOINT(IDOL選曲:2)
-			;CHAOSはダンス難易度が4～9の間で変動する
-			SELECTCASE IDOL選曲
-				CASE "CHAOS"
-					IDOL選曲:3 = RAND(4, 10)
+				CASE 0
+					GOTO MEMBER_LOOP
 			ENDSELECT
-			難度:3 = 10000*TOINT(IDOL選曲:3)
-			難度合計 = (難度:1 + 難度:2 + 難度:3) / 10000
-			;魅惑で2%、魅力で3%、謎の魅力で4%、人気で5%技量が上がる(乗算で重複する)
-			;ビジュアルによって難度が下がる(※かわいいは正義)ことを表現したいのだが
-			;難度を下げると収入も下がってしまうので相対的に技量を上げる
-			FOR LCOUNT, 0, CHARANUM
-				IF CSTR:LCOUNT:配属 == "芸能プロダクション" && LOCAL:LCOUNT
-					;サボり魔は25%の確率でサボる
-					IF TALENT:LCOUNT:サボり魔 && RAND:4 == 0
-						PRINTFORMW %CALLNAME:LCOUNT%はライブをサボりました
-						CFLAG:LCOUNT:ストレス値 -= 5
-						SELECTCASE LOCAL:LCOUNT
-							CASE 1
-								技量:3 -= 10000*ABL:LCOUNT:舞踊技能
-								人数:3--
-							CASE 2
-								技量:2 -= 10000*ABL:LCOUNT:演奏技能
-								人数:2--
-							CASE 3
-								技量:1 -= 10000*ABL:LCOUNT:歌唱技能
-								人数:1--
-							CASE 4
-								技量:3 -= 7500*ABL:LCOUNT:舞踊技能
-								人数:3--
-								技量:1 -= 7500*ABL:LCOUNT:歌唱技能
-								人数:1--
-							CASE 5
-								技量:2 -= 7500*ABL:LCOUNT:演奏技能
-								人数:2--
-								技量:1 -= 7500*ABL:LCOUNT:歌唱技能
-								人数:1--
-						ENDSELECT
-						LOCAL:LCOUNT = 0
+		LOOP 1
+	ENDIF
+	SIF RESULT == -2
+		RESTART
+	SIF RESULT == -1
+		GOTO MUSIC_SELECT
+	IF RESULT == 0
+		IF 人数:1 == 0  && 人数:2 == 0 && 人数:3 == 0
+			PRINTW メンバーを1人以上選び出してください
+			GOTO MEMBER_LOOP
+		ENDIF
+		IF IDOL選曲:1 != "0" && 人数:1 == 0
+			PRINTW ボーカルを1人以上選び出してください
+			GOTO MEMBER_LOOP
+		ENDIF
+		BREAK
+	ENDIF
+	IF BASE:RESULT:体力 >= 500 && CSTR:RESULT:配属 == "芸能プロダクション"
+		LMEMORY = RESULT
+		PRINTL
+		PRINTL どのパートを担当しますか？
+		PRINTL [0] 担当しない
+		PRINTL [1] ダンス
+		PRINTL [2] 楽器演奏
+		IF IDOL選曲:1 != "0"
+			PRINTL [3] ボーカル
+			PRINTL [4] ダンス&ボーカル
+			PRINTL [5] 楽器演奏&ボーカル
+		ENDIF
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0, 1, 2
+					ユニット担当記録用:LMEMORY = RESULT
+				CASE 3, 4, 5
+					SIF IDOL選曲:1 == "0"
 						CONTINUE
-					ENDIF
-					CFLAG:LCOUNT:レッスン = 0
-					BASE:LCOUNT:体力 -= 50*(難度合計)
-					IF BASE:LCOUNT:体力 < 1
-						BASE:LCOUNT:体力 = 1
-						CFLAG:LCOUNT:回復量低下 += 2
-					ENDIF
-					IF TALENT:LCOUNT:魅惑
-						TIMES 技量:1, 1.02
-						TIMES 技量:2, 1.02
-						TIMES 技量:3, 1.02
-					ENDIF
-					IF TALENT:LCOUNT:魅力
-						TIMES 技量:1, 1.03
-						TIMES 技量:2, 1.03
-						TIMES 技量:3, 1.03
-					ENDIF
-					IF TALENT:LCOUNT:謎の魅力
-						TIMES 技量:1, 1.04
-						TIMES 技量:2, 1.04
-						TIMES 技量:3, 1.04
-					ENDIF
-					IF TALENT:LCOUNT:人気
-						TIMES 技量:1, 1.05
-						TIMES 技量:2, 1.05
-						TIMES 技量:3, 1.05
-					ENDIF
-					;去勢済みの男性はボーカルにボーナス
-					SIF TALENT:LCOUNT:去勢済み && SEX(LCOUNT) == 1
-						TIMES 技量:1, 1.05
-				ENDIF
-			NEXT
-			;GAMBOL・nine seconds・SPICY PIECEの場合は判定が厳しくなる
-			SELECTCASE IDOL選曲
-				CASE "GAMBOL", "nine seconds", "SPICY PIECE"
-				TIMES 技量:1, 0.33
-				TIMES 技量:2, 0.33
-				TIMES 技量:3, 0.33
+					ユニット担当記録用:LMEMORY = RESULT
+				CASEELSE
+					CONTINUE
 			ENDSELECT
-			収入 = 0
-			;それぞれの分野についての基本収入を出す
-			;収入は難度Xに対して技量が同じだとX*10000となり、
-			;不足分1あたり25000ずつ減り、超過分1あたり4000ずつ増える
-			FOR 分野, 1, 4
-				収入 += 難度:分野
-				IF 技量:分野 >= 難度:分野
-					収入 += (技量:分野 - 難度:分野)*2/5
-				ELSE
-					収入 += (技量:分野 - 難度:分野)*5/2
-				ENDIF
-			NEXT
-			;2乗して10万で割る
-			収入 *= ABS(収入)
-			収入 /= 100000
-			収入:1 = 収入
-			;最後に知名度による補正
-			;マイナスも増幅するので、知名度が高いときにしくじると大惨事
-			収入:1 *= (100+IDOL知名度)
-			収入:1 /= 100
-			MONEY += 収入:1
-			;最終的な収益の計算の後に知名度の増減を行う
-			IDOL知名度 += 収入/1000
-			PRINTL
-			PRINTL ライブが終了しました
-			IF 収入:1 >= 0
-				CALL PASELI, @"{収入:1}＄の利益を出し、"
-			ELSE
-				CALL PASELI, @"{ABS(収入:1)}＄の損失を出し、"
-			ENDIF
-			PRINT 知名度が
-			IF 収入 >= 0
-				PRINTFORMW {収入/1000}増えました
-			ELSE
-				PRINTFORMW {ABS(収入/1000)}減りました
-			ENDIF
-			SIF IDOL知名度 < 0
-				IDOL知名度 = 0
-			;収入がプラスなら楽曲難易度合計の人気度を加算する
-			IF 収入:1 > 0
-				FOR LCOUNT, 0, CHARANUM
-					IF CSTR:LCOUNT:配属 == "芸能プロダクション" && LOCAL:LCOUNT
-						人気度:LCOUNT:0 += TOINT(IDOL選曲:1)
-						人気度:LCOUNT:0 += TOINT(IDOL選曲:2)
-						人気度:LCOUNT:0 += TOINT(IDOL選曲:3)
-					ENDIF
-					IF !TALENT:LCOUNT:人気 && 人気度:LCOUNT:0 >= 1000
-						PRINTFORML %CALLNAME:LCOUNT%は度重なるライブ経験の功を経て、たくさんのファンが付いたようだ
-						PRINTFORMW %CALLNAME:LCOUNT%は[人気]を得た
-						TRYCALLFORM IDOL_人気取得_K{NO:LCOUNT}
-						TALENT:LCOUNT:人気 = 1
-					ENDIF
-					;実績:ライブでボーカリストが[人気]を取得する
-					SELECTCASE LOCAL:LCOUNT
-						CASE 3 TO 5
-							CALL 実績解除, "プロジェクト・ディーヴァ"
-					ENDSELECT
-				NEXT
-			ENDIF
-			IF 技量:1 >= 難度:1 && 技量:2 >= 難度:2 && 技量:3 >= 難度:3
-				;実績：Sense 2007のライブを成功させる
-				SELECTCASE IDOL選曲
-					CASE "Sense 2007"
-						CALL 実績解除, "You're pretty good."
-					CASE "ビビットストリーム"
-						MGR:0 = 1
-					CASE "Voltage"
-						MGR:1 = 1
-					CASE "Freeze"
-						MGR:2 = 1
-					CASE "CHAOS"
-						MGR:3 = 1
-					CASE "Air", "air"
-						MGR:4 = 1
-				ENDSELECT
-				;実績:マイグルーヴレーダーを完成させる
-				SIF MINARRAY(MGR) == 1
-					CALL 実績解除, "真・足神様"
-			ENDIF
-			;ライブを行った場合はRETURN 1
-			RETURN 1
-	ENDSELECT
+			GOTO MEMBER_LOOP
+		LOOP 1
+	ENDIF
 LOOP 1
-
+;上記のループを超えるとライブ開始
+難度:1 = 10000*TOINT(IDOL選曲:1)
+難度:2 = 10000*TOINT(IDOL選曲:2)
+;CHAOSはダンス難易度が4～9の間で変動する
+SELECTCASE IDOL選曲
+	CASE "CHAOS"
+		IDOL選曲:3 = RAND(4, 10)
+ENDSELECT
+難度:3 = 10000*TOINT(IDOL選曲:3)
+難度合計 = (難度:1 + 難度:2 + 難度:3) / 10000
+;魅惑で2%、魅力で3%、謎の魅力で4%、人気で5%技量が上がる(乗算で重複する)
+;ビジュアルによって難度が下がる(※かわいいは正義)ことを表現したいのだが
+;難度を下げると収入も下がってしまうので相対的に技量を上げる
+FOR LCOUNT, 0, CHARANUM
+	IF CSTR:LCOUNT:配属 == "芸能プロダクション" && ユニット担当記録用:LCOUNT
+		;サボり魔は25%の確率でサボる
+		IF TALENT:LCOUNT:サボり魔 && RAND:4 == 0 && !ワーカホリックレベル(LCOUNT)
+			PRINTFORMW %CALLNAME:LCOUNT%はライブをサボりました
+			CFLAG:LCOUNT:ストレス値 -= 5
+			SELECTCASE ユニット担当記録用:LCOUNT
+				CASE 1
+					技量:3 -= 10000*ABL:LCOUNT:舞踊技能
+					人数:3--
+				CASE 2
+					技量:2 -= 10000*ABL:LCOUNT:演奏技能
+					人数:2--
+				CASE 3
+					技量:1 -= 10000*ABL:LCOUNT:歌唱技能
+					人数:1--
+				CASE 4
+					技量:3 -= 7500*ABL:LCOUNT:舞踊技能
+					人数:3--
+					技量:1 -= 7500*ABL:LCOUNT:歌唱技能
+					人数:1--
+				CASE 5
+					技量:2 -= 7500*ABL:LCOUNT:演奏技能
+					人数:2--
+					技量:1 -= 7500*ABL:LCOUNT:歌唱技能
+					人数:1--
+			ENDSELECT
+			ユニット担当記録用:LCOUNT = 0
+			CONTINUE
+		ENDIF
+		CFLAG:LCOUNT:レッスン = 0
+		BASE:LCOUNT:体力 -= 50*(難度合計)
+		IF BASE:LCOUNT:体力 < 1
+			BASE:LCOUNT:体力 = 1
+			CFLAG:LCOUNT:回復量低下 += 2
+		ENDIF
+		IF TALENT:LCOUNT:魅惑
+			TIMES 技量:1, 1.02
+			TIMES 技量:2, 1.02
+			TIMES 技量:3, 1.02
+		ENDIF
+		IF TALENT:LCOUNT:魅力
+			TIMES 技量:1, 1.03
+			TIMES 技量:2, 1.03
+			TIMES 技量:3, 1.03
+		ENDIF
+		IF TALENT:LCOUNT:謎の魅力
+			TIMES 技量:1, 1.04
+			TIMES 技量:2, 1.04
+			TIMES 技量:3, 1.04
+		ENDIF
+		IF TALENT:LCOUNT:人気
+			TIMES 技量:1, 1.05
+			TIMES 技量:2, 1.05
+			TIMES 技量:3, 1.05
+		ENDIF
+		;去勢済みの男性はボーカルにボーナス
+		SIF TALENT:LCOUNT:去勢済み && SEX(LCOUNT) == 1
+			TIMES 技量:1, 1.05
+	ENDIF
+NEXT
+;GAMBOL・nine seconds・SPICY PIECEの場合は判定が厳しくなる
+SELECTCASE IDOL選曲
+	CASE "GAMBOL", "nine seconds", "SPICY PIECE"
+	TIMES 技量:1, 0.33
+	TIMES 技量:2, 0.33
+	TIMES 技量:3, 0.33
+ENDSELECT
+収入 = 0
+;それぞれの分野についての基本収入を出す
+;収入は難度Xに対して技量が同じだとX*10000となり、
+;不足分1あたり25000ずつ減り、超過分1あたり4000ずつ増える
+FOR 分野, 1, 4
+	収入 += 難度:分野
+	IF 技量:分野 >= 難度:分野
+		収入 += (技量:分野 - 難度:分野)*2/5
+	ELSE
+		収入 += (技量:分野 - 難度:分野)*5/2
+	ENDIF
+NEXT
+;2乗して10万で割る
+収入 *= ABS(収入)
+収入 /= 100000
+収入:1 = 収入
+;最後に知名度による補正
+;マイナスも増幅するので、知名度が高いときにしくじると大惨事
+収入:1 *= (100+IDOL知名度)
+収入:1 /= 100
+MONEY += 収入:1
+;最終的な収益の計算の後に知名度の増減を行う
+IDOL知名度 += 収入/1000
+PRINTL
+PRINTL ライブが終了しました
+IF 収入:1 >= 0
+	CALL PASELI, @"{収入:1}＄の利益を出し、"
+ELSE
+	CALL PASELI, @"{ABS(収入:1)}＄の損失を出し、"
+ENDIF
+PRINT 知名度が
+IF 収入 >= 0
+	PRINTFORMW {収入/1000}増えました
+ELSE
+	PRINTFORMW {ABS(収入/1000)}減りました
+ENDIF
+SIF IDOL知名度 < 0
+	IDOL知名度 = 0
+;収入がプラスなら楽曲難易度合計の人気度を加算する
+IF 収入:1 > 0
+	FOR LCOUNT, 0, CHARANUM
+		IF CSTR:LCOUNT:配属 == "芸能プロダクション" && ユニット担当記録用:LCOUNT
+			人気度:LCOUNT:0 += TOINT(IDOL選曲:1)
+			人気度:LCOUNT:0 += TOINT(IDOL選曲:2)
+			人気度:LCOUNT:0 += TOINT(IDOL選曲:3)
+		ENDIF
+		IF !TALENT:LCOUNT:人気 && 人気度:LCOUNT:0 >= 1000
+			PRINTFORML %CALLNAME:LCOUNT%は度重なるライブ経験の功を経て、たくさんのファンが付いたようだ
+			PRINTFORMW %CALLNAME:LCOUNT%は[人気]を得た
+			TRYCALLFORM IDOL_人気取得_K{NO:LCOUNT}
+			;実績:ライブでボーカリストが[人気]を取得する
+			SELECTCASE ユニット担当記録用:LCOUNT
+				CASE IS >= 30
+					SIF 難度:1 > 0
+						CALL 実績解除, "プロジェクト・ディーヴァ"
+			ENDSELECT
+			TALENT:LCOUNT:人気 = 1
+		ENDIF
+	NEXT
+ENDIF
+IF 技量:1 >= 難度:1 && 技量:2 >= 難度:2 && 技量:3 >= 難度:3
+	;実績：Sense 2007のライブを成功させる
+	SELECTCASE IDOL選曲
+		CASE "Sense 2007"
+			CALL 実績解除, "You're pretty good."
+		CASE "ビビットストリーム"
+			MGR:0 = 1
+		CASE "Voltage"
+			MGR:1 = 1
+		CASE "Freeze"
+			MGR:2 = 1
+		CASE "CHAOS"
+			MGR:3 = 1
+		CASE "Air", "air"
+			MGR:4 = 1
+	ENDSELECT
+	;実績:マイグルーヴレーダーを完成させる
+	SIF MINARRAY(MGR) == 1
+		CALL 実績解除, "真・足神様"
+ENDIF
+;ライブを行った場合はRETURN 1
+RETURN 1
 
 ;賄賂・枕営業----------------------------------------------------
 @IDOL_BRIBE
@@ -654,98 +661,94 @@ DRAWLINE
 PRINTPLAIN 　BRIBE　
 PRINTL [0] 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			;知名度が50上昇したあと1%上昇する
-			;贈賄に必要な金額は、知名度をX(ただしXが40未満のとき40にする)と置くと
-			;1000*X^1.5
-			LOCAL = IDOL知名度
-			LOCAL:1 = IDOL知名度
-			SIF LOCAL < 40
-				LOCAL = 40
-			LOCAL *= SQRT(LOCAL*1000*1000)
-			;1000の倍数に四捨五入
-			LOCAL += 500
-			LOCAL /= 1000
-			LOCAL *= 1000
-			CALL PASELIL, @"賄賂による裏工作をするには{LOCAL}＄必要です"
-			IF MONEY < LOCAL
-				PRINTW お金が足りません
-				RESTART
-			ENDIF
-			CALL PASELIL, @"支払いますか？(所持金:{MONEY}＄)"
-			PRINTL [0] はい
-			PRINTL [1] いいえ
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						MONEY -= LOCAL
-						IDOL知名度 += 50
-						TIMES IDOL知名度, 1.01
-						CALL PASELIW, @"{LOCAL}＄を支払い知名度を{IDOL知名度-LOCAL:1}上昇させました"
-						IF FLAG:パートナー > 0
-							SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
-								TRYCALLFORM IDOL_賄賂_K{FLAG:パートナー}
-						ENDIF
-				ENDSELECT
-			LOOP LOOPRES(0, 1)
-			RESTART
-		CASE 2
-			;枕営業とレッスンの切り替えについて
-			;CFLAG:レッスンの変数を次のように変換する
-			;0と-1、1と-2、2と-3、3と-4……
-			;負の数ならば枕営業となる
-			;	Y = -X-1
-			;のような式になるうえに、この逆関数は
-			;	X = -Y-1
-			;となるので枕営業の設定・解除のどちらの場合も
-			;「-1倍して1引く」という演算で済む
-			$MAKURA_LOOP
-			DRAWLINE
-			PRINTL □枕営業をさせるキャラを選んでください
+CALL INPUTF, 0, 1, 2
 
-			FOR LCOUNT, 0, CHARANUM
-				;体力不足だと無理
-				SIF BASE:LCOUNT:体力 < 500
-					CONTINUE
-				IF CSTR:LCOUNT:配属 == "芸能プロダクション"
-					IF CFLAG:LCOUNT:レッスン == 0
-						PRINT 　　　　　
-					ELSEIF CFLAG:LCOUNT:レッスン < 0
-						PRINT 枕営業予定
-					ELSEIF CFLAG:LCOUNT:レッスン%3 == 1
-						PRINTFORM Vocal(Lv{(CFLAG:LCOUNT:レッスン+2)/3})
-					ELSEIF CFLAG:LCOUNT:レッスン%3 == 2
-						PRINTFORM Inst.(Lv{(CFLAG:LCOUNT:レッスン+1)/3})
-					ELSE
-						PRINTFORM Dance(Lv{CFLAG:LCOUNT:レッスン/3})
-					ENDIF
-					PRINTFORML  [{LCOUNT, 2, RIGHT}] - %NAME:LCOUNT, 26, LEFT%(従順:{ABL:LCOUNT:従順, 2, LEFT} 技巧:{ABL:LCOUNT:技巧, 2, LEFT} 奉仕精神:{ABL:LCOUNT:奉仕精神, 2, LEFT})
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		;知名度が50上昇したあと1%上昇する
+		;贈賄に必要な金額は、知名度をX(ただしXが40未満のとき40にする)と置くと
+		;1000*X^1.5
+		LOCAL = IDOL知名度
+		LOCAL:1 = IDOL知名度
+		SIF LOCAL < 40
+			LOCAL = 40
+		LOCAL *= SQRT(LOCAL*1000*1000)
+		;1000の倍数に四捨五入
+		LOCAL += 500
+		LOCAL /= 1000
+		LOCAL *= 1000
+		CALL PASELIL, @"賄賂による裏工作をするには{LOCAL}＄必要です"
+		IF MONEY < LOCAL
+			PRINTW お金が足りません
+			RESTART
+		ENDIF
+		CALL PASELIL, @"支払いますか？(所持金:{MONEY}＄)"
+		PRINTL [0] はい
+		PRINTL [1] いいえ
+		CALL INPUTF, 0, 1
+		IF RESULT == 0
+			MONEY -= LOCAL
+			IDOL知名度 += 50
+			TIMES IDOL知名度, 1.01
+			CALL PASELIW, @"{LOCAL}＄を支払い知名度を{IDOL知名度-LOCAL:1}上昇させました"
+			IF FLAG:パートナー > 0
+				SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
+					TRYCALLFORM IDOL_賄賂_K{FLAG:パートナー}
+			ENDIF
+		ENDIF
+		RESTART
+	CASE 2
+		;枕営業とレッスンの切り替えについて
+		;CFLAG:レッスンの変数を次のように変換する
+		;0と-1、1と-2、2と-3、3と-4……
+		;負の数ならば枕営業となる
+		;	Y = -X-1
+		;のような式になるうえに、この逆関数は
+		;	X = -Y-1
+		;となるので枕営業の設定・解除のどちらの場合も
+		;「-1倍して1引く」という演算で済む
+		$MAKURA_LOOP
+		DRAWLINE
+		PRINTL □枕営業をさせるキャラを選んでください
+
+		FOR LCOUNT, 0, CHARANUM
+			;体力不足だと無理
+			SIF BASE:LCOUNT:体力 < 500
+				CONTINUE
+			IF CSTR:LCOUNT:配属 == "芸能プロダクション"
+				IF CFLAG:LCOUNT:レッスン == 0
+					PRINT 　　　　　
+				ELSEIF CFLAG:LCOUNT:レッスン < 0
+					PRINT 枕営業予定
+				ELSEIF CFLAG:LCOUNT:レッスン%3 == 1
+					PRINTFORM Vocal(Lv{(CFLAG:LCOUNT:レッスン+2)/3})
+				ELSEIF CFLAG:LCOUNT:レッスン%3 == 2
+					PRINTFORM Inst.(Lv{(CFLAG:LCOUNT:レッスン+1)/3})
+				ELSE
+					PRINTFORM Dance(Lv{CFLAG:LCOUNT:レッスン/3})
 				ENDIF
-			NEXT
-			DRAWLINE
-			PRINTPLAIN 　MAKURA　
-			PRINTL [0] 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						RESTART
-					CASE 1 TO CHARANUM-1
-						IF BASE:RESULT:体力 >= 500 && CSTR:RESULT:配属 == "芸能プロダクション"
-							CFLAG:RESULT:レッスン *= -1
-							CFLAG:RESULT:レッスン--
-						ENDIF
-						GOTO MAKURA_LOOP
-				ENDSELECT
-			LOOP 1
-	ENDSELECT
-LOOP 1
+				PRINTFORML  [{LCOUNT, 2, RIGHT}] - %NAME:LCOUNT, 26, LEFT%(従順:{ABL:LCOUNT:従順, 2, LEFT} 技巧:{ABL:LCOUNT:技巧, 2, LEFT} 奉仕精神:{ABL:LCOUNT:奉仕精神, 2, LEFT})
+			ENDIF
+		NEXT
+		DRAWLINE
+		PRINTPLAIN 　MAKURA　
+		PRINTL [0] 戻る
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					RESTART
+				CASE 1 TO CHARANUM-1
+					IF BASE:RESULT:体力 >= 500 && CSTR:RESULT:配属 == "芸能プロダクション"
+						CFLAG:RESULT:レッスン *= -1
+						CFLAG:RESULT:レッスン--
+					ENDIF
+					GOTO MAKURA_LOOP
+			ENDSELECT
+		LOOP 1
+ENDSELECT
 
 ;ユニット----------------------------------------------------
 @IDOL_UNIT
@@ -754,45 +757,49 @@ LOOP 1
 #DIM DYNAMIC ユニット人数
 #DIM DYNAMIC 特殊ユニット, 100
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC ユニット担当記録用, 1000
 DRAWLINE
 
 VARSET LOCAL, 0
 
-$MEMBER_LOOP
-
 ユニット数 = 0
-
 FOR LCOUNT, 0, 11
 	SIF ユニット名:LCOUNT != ""
 		ユニット数++
 NEXT
+;それぞれの担当を記録する
+FOR LCOUNT, 0, CHARANUM
+	ユニット担当記録用:LCOUNT = CFLAG:LCOUNT:ユニット担当
+NEXT
+
+$MEMBER_LOOP
 
 ;組めるユニットは10チームまで
 IF ユニット数 < 10
 	PRINTL □ユニットを組むキャラを選んでください
 	FOR LCOUNT, 0, CHARANUM
 		IF CSTR:LCOUNT:配属 == "芸能プロダクション"
-			SELECTCASE LOCAL:LCOUNT
-				CASE 0
-					IF CFLAG:LCOUNT:ユニット番号
-						PRINT  盟 
-					ELSE
+			IF CFLAG:LCOUNT:ユニット番号
+				PRINT  盟 
+			ELSE
+				SELECTCASE ユニット担当記録用:LCOUNT
+					CASE 0
 						PRINT 　　
-					ENDIF
-				CASE 1
-					PRINT Da. 
-				CASE 2
-					PRINT In. 
-				CASE IS > 10
-					SELECTCASE LOCAL:LCOUNT/10
-						CASE 3
-							PRINT Vo. 
-						CASE 4
-							PRINT D&V 
-						CASE 5
-							PRINT I&V 
-					ENDSELECT
-			ENDSELECT
+					CASE 1
+						PRINT Da. 
+					CASE 2
+						PRINT In. 
+					CASE IS > 10
+						SELECTCASE ユニット担当記録用:LCOUNT/10
+							CASE 3
+								PRINT Vo. 
+							CASE 4
+								PRINT D&V 
+							CASE 5
+								PRINT I&V 
+						ENDSELECT
+				ENDSELECT
+			ENDIF
 			PRINTFORM [{LCOUNT, 2, RIGHT}] - %NAME:LCOUNT, 26, LEFT%(歌唱技能:{ABL:LCOUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:LCOUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:LCOUNT:舞踊技能, 2, LEFT}
 			SIF TALENT:LCOUNT:魅力
 				PRINT  魅力
@@ -823,7 +830,6 @@ ELSE
 	PRINTL [-2] - 既存ユニットの解散
 ENDIF
 
-
 DO
 	INPUT
 	SELECTCASE RESULT
@@ -834,7 +840,7 @@ DO
 				CONTINUE
 			ユニット人数 = 0
 			FOR LCOUNT, 0, CHARANUM
-				SIF LOCAL:LCOUNT
+				SIF ユニット担当記録用:LCOUNT
 					ユニット人数++
 			NEXT
 			IF ユニット人数 == 0
@@ -848,7 +854,7 @@ DO
 			SELECTCASE ユニット人数
 				CASE 2
 					FOR LCOUNT, 0, CHARANUM
-						SIF !LOCAL:LCOUNT
+						SIF !ユニット担当記録用:LCOUNT
 							CONTINUE
 						SELECTCASE CHARANAMEF(LCOUNT)
 							CASE "梅桐 彩葉", "雛月 理々奈"
@@ -875,7 +881,7 @@ DO
 						LOCALS = Virtual Kiss
 				CASE 3
 					FOR LCOUNT, 0, CHARANUM
-						SIF !LOCAL:LCOUNT
+						SIF !ユニット担当記録用:LCOUNT
 							CONTINUE
 						SELECTCASE CHARANAMEF(LCOUNT)
 							CASE "クジャク", "ジルチ", "刃雪 達磨"
@@ -922,7 +928,7 @@ DO
 						LOCALS = ソーファンタスティック
 				CASE 4
 					FOR LCOUNT, 0, CHARANUM
-						SIF !LOCAL:LCOUNT
+						SIF !ユニット担当記録用:LCOUNT
 							CONTINUE
 						SELECTCASE CHARANAMEF(LCOUNT)
 							CASE "ウーノ", "ツースト", "若さん", "フォース"
@@ -949,7 +955,7 @@ DO
 						LOCALS = リトルシスター親衛隊
 				CASE 5
 					FOR LCOUNT, 0, CHARANUM
-						SIF !LOCAL:LCOUNT
+						SIF !ユニット担当記録用:LCOUNT
 							CONTINUE
 						SELECTCASE CHARANAMEF(LCOUNT)
 							CASE "明坂 芹菜", "御形 アリシアナ", "天王洲 なずな", "小仏 凪", "箱部 なる"
@@ -970,7 +976,7 @@ DO
 				INPUTS
 				IF RESULTS == ""
 					FOR LCOUNT, 0, CHARANUM
-						IF LOCAL:LCOUNT
+						IF ユニット担当記録用:LCOUNT
 							SIF LOCALS != ""
 								LOCALS += "、"
 							LOCALS += NAME:LCOUNT
@@ -983,10 +989,10 @@ DO
 			;自動で前詰め処理をするのでユニット数+1のインデックスが空いている
 			ユニット名:(ユニット数+1) = %LOCALS%
 			FOR LCOUNT, 0, CHARANUM
-				IF LOCAL:LCOUNT
+				IF ユニット担当記録用:LCOUNT
 					;選んだキャラのCFLAGに、属するユニット番号と役割担当を記録する
 					CFLAG:LCOUNT:ユニット番号 = ユニット数+1
-					CFLAG:LCOUNT:ユニット担当 = LOCAL:LCOUNT
+					CFLAG:LCOUNT:ユニット担当 = ユニット担当記録用:LCOUNT
 				ENDIF
 			NEXT
 			RESTART
@@ -1009,7 +1015,7 @@ DO
 							CONTINUE
 						;解散は別関数で行う
 						CALL BREAKUP, RESULT
-						GOTO MEMBER_LOOP
+						RESTART
 					CASE 0
 						GOTO MEMBER_LOOP
 					CASEELSE
@@ -1035,26 +1041,19 @@ DO
 				PRINTL [3] ボーカル
 				PRINTL [4] ダンス&ボーカル
 				PRINTL [5] 楽器演奏&ボーカル
-				DO
-					INPUT
-					SELECTCASE RESULT
-						CASE 0, 1, 2
-							LOCAL:選出キャラ = RESULT
-						CASE 3, 4, 5
-							LOCAL:選出キャラ = RESULT
-							PRINTL ボーカル曲でない場合の予備の担当を指定してください
-							PRINTL [1] ダンス
-							PRINTL [2] 楽器演奏
-							DO
-								INPUT
-								SELECTCASE RESULT
-									CASE 1, 2
-										;ハイブリッド担当は予備の情報を二桁で記録する。担当/10でメイン、担当%10で予備
-										LOCAL:選出キャラ = LOCAL:選出キャラ*10+RESULT
-								ENDSELECT
-							LOOP LOOPRES(1, 2)
-					ENDSELECT
-				LOOP LOOPRES(0, 1, 2, 3, 4, 5)
+				CALL INPUTF, 0, 1, 2, 3, 4, 5
+				SELECTCASE RESULT
+					CASE 0, 1, 2
+						ユニット担当記録用:選出キャラ = RESULT
+					CASE 3, 4, 5
+						ユニット担当記録用:選出キャラ = RESULT
+						PRINTL ボーカル曲でない場合の予備の担当を指定してください
+						PRINTL [1] ダンス
+						PRINTL [2] 楽器演奏
+						CALL INPUTF, 1, 2
+						;ハイブリッド担当は予備の情報を二桁で記録する。担当/10でメイン、担当%10で予備
+						ユニット担当記録用:選出キャラ = ユニット担当記録用:選出キャラ*10+RESULT
+				ENDSELECT
 				GOTO MEMBER_LOOP
 			ENDIF
 	ENDSELECT
@@ -1109,14 +1108,11 @@ DO
 			PRINTL [0] する(メッセージWAITあり)
 			PRINTL [1] する(メッセージWAITなし)
 			PRINTL [2] しない
-			DO
-				INPUT
-				IF INRANGE(RESULT, 0, 2)
-					IDOL報告 = IDOL報告/4*4 + RESULT
-					PRINTW 設定を変更しました
-					RESTART
-				ENDIF
-			LOOP 1
+			CALL INPUTF, 0, 1, 2
+
+			IDOL報告 = IDOL報告/4*4 + RESULT
+			PRINTW 設定を変更しました
+			RESTART
 		CASE 2
 			PRINTL
 			PRINTL 枕営業の報告をしますか？
@@ -1124,14 +1120,11 @@ DO
 			PRINTL [1] 経験・知名度の上昇値のみ報告
 			PRINTL [2] 知名度の上昇値のみ報告
 			PRINTL [3] 一切しない
-			DO
-				INPUT
-				IF INRANGE(RESULT, 0, 3)
-					IDOL報告 = IDOL報告%4 + RESULT*4
-					PRINTW 設定を変更しました
-					RESTART
-				ENDIF
-			LOOP 1
+			CALL INPUTF, 0, 1, 2, 3
+
+			IDOL報告 = IDOL報告%4 + RESULT*4
+			PRINTW 設定を変更しました
+			RESTART
 	ENDSELECT
 LOOP 1
 
@@ -1142,8 +1135,9 @@ LOOP 1
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC モチベ計算用
 #DIM DYNAMIC 世話好き人数
+#DIM DYNAMIC ユニット担当記録用, 1000
 
-VARSET LOCAL
+VARSET ユニット担当記録用
 
 FOR LCOUNT, 0, CHARANUM
 	SIF CSTR:LCOUNT:配属 == "芸能プロダクション" && TALENT:LCOUNT:世話好き
@@ -1153,14 +1147,14 @@ NEXT
 REPEAT CHARANUM
 	IF CSTR:COUNT:配属 == "芸能プロダクション"
 		;1人ごとにかかる基礎費用
-		LOCAL:1 += 2000
+		ユニット担当記録用:1 += 2000
 		;レッスンの内容ごとに場合分け
 		;0未満は枕営業中
 		IF CFLAG:COUNT:レッスン < 0
 			CALL IDOL_MAKURA, COUNT
 		;0の場合はレッスンなしで、歌唱・演奏・ダンスの経験がどれか1つ増える
 		;サボり魔は25%の確率でサボる 費用はちゃんと持ってかれる
-		IF TALENT:COUNT:サボり魔 && RAND:4 == 0
+		IF TALENT:COUNT:サボり魔 && RAND:4 == 0 && !ワーカホリックレベル(COUNT)
 			PRINTFORML %CALLNAME:COUNT%はレッスンをサボりました
 			CFLAG:COUNT:サボり = 1
 			CFLAG:COUNT:ストレス値 -= 5
@@ -1198,7 +1192,7 @@ REPEAT CHARANUM
 			;であるから、①は
 			;	5000N(N+1)
 			;と変形できる
-			LOCAL:2 += 5000*レッスンレベル*(レッスンレベル+1)
+			ユニット担当記録用:2 += 5000*レッスンレベル*(レッスンレベル+1)
 		ENDIF
 		モチベ計算用 = 0
 		;モチベーションの計算
@@ -1218,21 +1212,21 @@ REPEAT CHARANUM
 					モチベ計算用 -= 2
 			ENDSELECT
 		NEXT
-		LOCAL = CFLAG:COUNT:モチベーション+モチベ計算用+世話好き人数
+		ユニット担当記録用 = CFLAG:COUNT:モチベーション+モチベ計算用+世話好き人数
 		SIF TALENT:COUNT:世話好き
-			LOCAL -= 世話好き人数
+			ユニット担当記録用 -= 世話好き人数
 		;配属先のキャラの相性で計算
-		LOCAL += 相性モチベ補正(COUNT)
-		CFLAG:COUNT:モチベーション = LIMIT(LOCAL, 1, 100)
+		ユニット担当記録用 += 相性モチベ補正(COUNT)
+		CFLAG:COUNT:モチベーション = LIMIT(ユニット担当記録用, 1, 100)
 	ENDIF
 REND
 
-LOCAL = LOCAL:1 + LOCAL:2
-MONEY -= LOCAL
-IF LOCAL && IDOL報告%4 < 2
-	CALL PASELI, @"事務所の維持費用に{LOCAL:1}＄"
-	IF LOCAL:2
-		CALL PASELIL, @"とレッスン費用に{LOCAL:2}＄かかったので、合計{LOCAL}＄を支払いました。"
+ユニット担当記録用 = ユニット担当記録用:1 + ユニット担当記録用:2
+MONEY -= ユニット担当記録用
+IF ユニット担当記録用 && IDOL報告%4 < 2
+	CALL PASELI, @"事務所の維持費用に{ユニット担当記録用:1}＄"
+	IF ユニット担当記録用:2
+		CALL PASELIL, @"とレッスン費用に{ユニット担当記録用:2}＄かかったので、合計{ユニット担当記録用}＄を支払いました。"
 	ELSE
 		PRINTL かかりました。
 	ENDIF
@@ -1267,7 +1261,7 @@ NEXT
 ;基本的に言われたことを何でもするような従順な子の方が満足してもらえる
 
 ;サボり魔は25%の確率でサボる
-IF TALENT:ARG:サボり魔 && RAND:4 == 0
+IF TALENT:ARG:サボり魔 && RAND:4 == 0 && !ワーカホリックレベル(ARG)
 	PRINTFORMW %CALLNAME:ARG%は枕営業をサボりました
 	CFLAG:ARG:ストレス値 -= 5
 	RETURN 0

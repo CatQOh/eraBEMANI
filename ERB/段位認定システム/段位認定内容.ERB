@@ -1,6 +1,12 @@
 ﻿@段位内容, ARG
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 攻略人数
+#DIM DYNAMIC 主人の性別 = 1
+#DIM DYNAMIC 要ペニス
+
+SIF VARLINE
+	CLEARLINE LINECOUNT-VARLINE
+VARLINE = LINECOUNT
 
 LOCALS =
 VARSET LOCAL
@@ -157,7 +163,7 @@ SELECTCASE ARG
 	CASE 50
 		LOCALS = 難易度ANOTHERで、陥落素質をつけないと売却できません
 		LOCAL:0 = GETNO("オフィーリア")
-		LOCAL:1 = GETNO("うさぬこ")
+		LOCAL:1 = GETNO("＊うさぬこ＊")
 		LOCAL:2 = GETNO("BisCo")
 		LOCAL:3 = GETNO("Bis子")
 		受験段位名 = 裏七級
@@ -358,6 +364,7 @@ SELECTCASE ARG
 		LOCAL:3 = GETNO("鈴花")
 		LOCAL:4 = GETNO("氷海")
 		受験段位名 = 炎の孕ませポップン学園
+		要ペニス = 1
 	;BisCoのEX-HARD☆大作戦
 	CASE 73
 		LOCALS = ゲージが通常の5倍減少します
@@ -407,6 +414,7 @@ SELECTCASE ARG
 		LOCAL:2 = GETNO("椿")
 		LOCAL:3 = GETNO("ヤンヤン")
 		受験段位名 = THE 房中術
+		要ペニス = 1
 	;何かを間違えた房中術
 	CASE 79
 		LOCALS = ゲージが10倍減りますが、調教中に1回射精するたびに$2000得ます
@@ -415,6 +423,7 @@ SELECTCASE ARG
 		LOCAL:2 = GETNO("東雲 夏陽")
 		LOCAL:3 = GETNO("東雲 心菜")
 		受験段位名 = 何かを間違えた房中術
+		要ペニス = 1
 	;ヤンデレの音ゲーキャラに死ぬほど愛されて眠れないコース
 	CASE 80
 		SETCOLORBYNAME red
@@ -486,9 +495,11 @@ SELECTCASE 受験段位名
 		PRINTL 　No.7520or7720 ユウorグリム・ユウ
 ENDSELECT
 DRAWLINE
+
 PRINTPLAIN 　READY?　
 PRINTLC [0] - 受験する
 PRINTLC [1] - やめる
+PRINTFORMLC [2] - 主人の性別(\@ 主人の性別 == 1 ? 男性 # 女性 \@)
 PRINTL 
 
 DO
@@ -496,6 +507,22 @@ DO
 	SELECTCASE RESULT
 		CASE 0
 			PRINTW 段位認定を開始します。
+			SELECTCASE 主人の性別
+				CASE 1
+					TALENT:MASTER:性別 = 1
+					CSTR:MASTER:上半身上着 = シャツ
+					CSTR:MASTER:下半身上着 = ズボン
+					CSTR:MASTER:下半身下着 = トランクス
+				CASE 2
+					TALENT:MASTER:性別 = 2
+					TALENT:MASTER:バストサイズ = 3
+					CSTR:MASTER:全身上着 = ワンピース
+					CSTR:MASTER:上半身下着 = ブラジャー
+					CSTR:MASTER:下半身下着 = パンティ
+					CFLAG:MASTER:挿入可 = 1
+					SIF 要ペニス
+						TALENT:MASTER:ふたなり = 1
+			ENDSELECT
 			FOR LCOUNT, 0, 攻略人数
 				CALL CHARA_ADD, LOCAL:LCOUNT
 			NEXT
@@ -557,7 +584,13 @@ DO
 			;ただし、ゲーム難易度は「ニューゲーム処理」で
 			SELECTCASE 受験段位名
 				CASE "えっちなお姉さんたちが教えてア・ゲ・ル♪"
+					;ショタで固定
+					TALENT:MASTER:性別 = 1
+					CSTR:MASTER:上半身上着 = シャツ
+					CSTR:MASTER:下半身上着 = ズボン
+					CSTR:MASTER:下半身下着 = トランクス
 					TALENT:MASTER:小柄体型 = 1
+					TALENT:MASTER:バストサイズ = 0
 					MAXBASE:MASTER:体力 -= 200
 					BASE:MASTER:体力 -= 200
 				CASE "神よ、ニャンコを与えたまえ!"
@@ -571,6 +604,7 @@ DO
 				CASE "シュレーディンガーのネコ"
 					TALENT:MASTER:性別 = 2
 					TALENT:MASTER:バストサイズ = 3
+					TALENT:MASTER:ふたなり = 1
 					CSTR:MASTER:全身上着 = ワンピース
 					CSTR:MASTER:上半身下着 = ブラジャー
 					CSTR:MASTER:下半身下着 = パンティ
@@ -591,11 +625,21 @@ DO
 					ABL:MASTER:技巧 = 4
 					ABL:MASTER:サドっ気 = 4
 					EXP:MASTER:Ａ経験 = 350
-					EXP:MASTER:射精経験 = 600
+					SIF PENIS(MASTER)
+						EXP:MASTER:射精経験 = 600
+					IF VAGINA(MASTER)
+						EXP:MASTER:Ｖ経験 = 1000
+						ABL:MASTER:Ｖ感覚 = 5
+					ENDIF
 					EXP:MASTER:絶頂経験 = 600
 					EXP:MASTER:性交経験 = 2100
 					EXP:MASTER:精液経験 = 200
-					EXP:MASTER:ゲイ経験 = 500
+					SELECTCASE SEX(MASTER)
+						CASE 1
+							EXP:MASTER:ゲイ経験 = 500
+						CASE 2
+							EXP:MASTER:レズ経験 = 700
+					ENDSELECT
 					EXP:MASTER:調教経験 = 3000
 					EXP:MASTER:嗜虐快楽経験 = 1000
 					EXP:MASTER:フェラ経験 = 300
@@ -603,27 +647,31 @@ DO
 					TALENT:MASTER:サド = 1
 					TALENT:MASTER:謎の魅力 = 1
 					TALENT:MASTER:絶倫 = 1
-					経験回数:MASTER:GETNO("ルシェ") = 300
-					アナル中出し回数:MASTER:GETNO("ルシェ") = 100
-					アナル中出され回数:MASTER:GETNO("ルシェ") = 70
-					経験回数:MASTER:GETNO("ファウラ") = 300
-					中出し回数:MASTER:GETNO("ファウラ") = 80
-					アナル中出し回数:MASTER:GETNO("ファウラ") = 10
-					経験回数:MASTER:GETNO("スモモ") = 300
-					中出し回数:MASTER:GETNO("スモモ") = 80
-					アナル中出し回数:MASTER:GETNO("スモモ") = 30
-					経験回数:MASTER:GETNO("フェリーラ") = 300
-					中出し回数:MASTER:GETNO("フェリーラ") = 80
-					アナル中出し回数:MASTER:GETNO("フェリーラ") = 10
-					経験回数:MASTER:GETNO("赤のリピカ") = 300
-					中出し回数:MASTER:GETNO("赤のリピカ") = 120
-					アナル中出し回数:MASTER:GETNO("赤のリピカ") = 10
-					経験回数:MASTER:GETNO("青のルピカ") = 300
-					中出し回数:MASTER:GETNO("青のルピカ") = 80
-					アナル中出し回数:MASTER:GETNO("青のルピカ") = 10
-					経験回数:MASTER:GETNO("黄のラピカ") = 300
-					中出し回数:MASTER:GETNO("黄のラピカ") = 80
-					アナル中出し回数:MASTER:GETNO("黄のラピカ") = 10
+					FLAG:経験値 = 10
+					;初期経験の処理は男の場合だけ 手抜きともいう
+					IF SEX(MASTER) == 1
+						経験回数:MASTER:GETNO("ルシェ") = 300
+						アナル中出し回数:MASTER:GETNO("ルシェ") = 100
+						アナル中出され回数:MASTER:GETNO("ルシェ") = 70
+						経験回数:MASTER:GETNO("ファウラ") = 300
+						中出し回数:MASTER:GETNO("ファウラ") = 80
+						アナル中出し回数:MASTER:GETNO("ファウラ") = 10
+						経験回数:MASTER:GETNO("スモモ") = 300
+						中出し回数:MASTER:GETNO("スモモ") = 80
+						アナル中出し回数:MASTER:GETNO("スモモ") = 30
+						経験回数:MASTER:GETNO("フェリーラ") = 300
+						中出し回数:MASTER:GETNO("フェリーラ") = 80
+						アナル中出し回数:MASTER:GETNO("フェリーラ") = 10
+						経験回数:MASTER:GETNO("赤のリピカ") = 300
+						中出し回数:MASTER:GETNO("赤のリピカ") = 120
+						アナル中出し回数:MASTER:GETNO("赤のリピカ") = 10
+						経験回数:MASTER:GETNO("青のルピカ") = 300
+						中出し回数:MASTER:GETNO("青のルピカ") = 80
+						アナル中出し回数:MASTER:GETNO("青のルピカ") = 10
+						経験回数:MASTER:GETNO("黄のラピカ") = 300
+						中出し回数:MASTER:GETNO("黄のラピカ") = 80
+						アナル中出し回数:MASTER:GETNO("黄のラピカ") = 10
+					ENDIF
 				CASE "メスガキわからせる"
 					;全員共通の処理
 					FOR LCOUNT, 1, 8
@@ -1005,6 +1053,14 @@ DO
 			VARSET CCB, 0
 			RESETCOLOR
 			JUMP 段位認定緑
+		CASE 2
+			SELECTCASE 主人の性別
+				CASE 1
+					主人の性別 = 2
+				CASE 2
+					主人の性別 = 1
+			ENDSELECT
+			RESTART
 	ENDSELECT
 LOOP 1
 

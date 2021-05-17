@@ -66,7 +66,7 @@ SELECTCASE USE_DECKS
 	CASEELSE
 		SHUFFLE_BORDER = 96;4*21+2 ４×(２０×1,X)+(６×1,6,６×1,X)
 ENDSELECT
-;PLAYSOUND トランプシャッフル
+CALL SE再生, トランプシャッフル
 CALL SHUFFLE, 52*USE_DECKS
 USE_CARDS = 0
 
@@ -170,7 +170,7 @@ DO
 	$BJ_START
 	IF LANGUAGE == "ENG"
 		PRINTFORML <Round:{GAMES}/{GAMES_MAX}>
-		PRINT Moneys:
+		PRINT Money:
 	ELSE
 		PRINTFORML <残り{GAMES_MAX - GAMES}ゲーム>
 		PRINT 所持金:
@@ -454,7 +454,7 @@ DO
 			PRINTW
 		ENDIF
 		IF 連続会話フラグ >= 2
-			;PLAYSOUND トランプシャッフル
+			CALL SE再生, トランプシャッフル
 			IF LANGUAGE == "ENG"
 				PRINTL Dealer shuffled decks.
 				PRINTFORML Because you so long talk with %CALLNAMEDISP(TARGET)%.
@@ -471,14 +471,14 @@ DO
 		IF LANGUAGE == "ENG"
 			PRINTL Do you finish the game?
 			PRINTL [0]Continue
-			PRINTL [99]Yes
+			PRINTL [1]Yes
 		ELSE
 			PRINTL 本当にやめますか？
 			PRINTL [0]やっぱり続ける
-			PRINTL [99]本当にやめる
+			PRINTL [1]本当にやめる
 		ENDIF
-		INPUT
-		SIF RESULT == 99
+		CALL INPUTF, 0, 1
+		SIF RESULT == 1
 			BREAK
 		GOTO BJ_START
 	ELSEIF INRANGE(RESULT, MIN_BET, 10*MIN_BET)
@@ -492,7 +492,7 @@ DO
 		ENDIF
 		GOTO BJ_START
 	ENDIF
-	;PLAYSOUND トランプ配布
+	CALL SE再生, トランプ配布
 	BJCARD:1:0 = CARD:(USE_CARDS)
 	USE_CARDS += 1
 	BJCARD:0:0 = CARD:(USE_CARDS)
@@ -513,7 +513,7 @@ DO
 	PRINTL
 	IF LANGUAGE == "ENG"
 		PRINTFORML <Round:{GAMES}/{GAMES_MAX}>
-		PRINT Moneys:
+		PRINT Money:
 	ELSE
 		PRINTFORML <残り{GAMES_MAX - GAMES}ゲーム>
 		PRINT 所持金:
@@ -576,85 +576,88 @@ DO
 	NEXT
 	IF INSURANCE == 0 && BJCARD:0:0 % 13 == 1
 		IF LANGUAGE == "ENG"
-			CALL PASELIL, @"Does you \@ BJSUM(1) == 21 ? Even Money # Insurance({BJ_BET/2}＄ is required) \@?"
+			CALL PASELIL, @"Do you \@ BJSUM(1) == 21 ? Even Money # Insurance({BJ_BET/2}＄ is required) \@?"
 			PRINTL [7]Yes [8]No
 		ELSE
 			CALL PASELIL, @"\@ BJSUM(1) == 21 ? イーブンマネー # インシュアランス(保険金{BJ_BET/2}＄が必要です) \@しますか？"
 			PRINTL [7]する [8]しない
 		ENDIF
-		$INSURANCE
-		INPUT
-		IF RESULT == 7
-			IF BJSUM(1) == 21
-				BJCNT:0 = 2
-				IF LANGUAGE == "ENG"
-					PRINTFORM Dealer:{BJSUM(0)} 
-				ELSE
-					PRINTFORM ディーラー:{BJSUM(0)} 
-				ENDIF
-				CALL PRTCARD(BJCARD:0:0)
-				PRINT  
-				CALL PRTCARD(BJCARD:0:1)
-				PRINTL
-				IF LANGUAGE == "ENG"
-					PRINT Player:21 
-				ELSE
-					PRINT プレイヤー:21 
-				ENDIF
-				CALL PRTCARD(BJCARD:1:0)
-				PRINT  
-				CALL PRTCARD(BJCARD:1:1)
-				PRINTL
-				IF LANGUAGE == "ENG"
-					PRINT Because did you Even Money, 
-				ELSE
-					PRINT あなたはイーブンマネーをしたため、
-				ENDIF
-				WIN_MONEY = 2 * BJ_BET
-				GOTO BJ_END
-			ELSE
-				BJCNT:0 = 2
-				IF BJSUM(0) == 21
+		CALL INPUTF, 7, 8
+		SELECTCASE RESULT
+			CASE 7
+				IF BJSUM(1) == 21
+					BJCNT:0 = 2
 					IF LANGUAGE == "ENG"
-						PRINT Dealer:21 
+						PRINTFORM Dealer:{BJSUM(0)} 
 					ELSE
-						PRINT ディーラー:21 
+						PRINTFORM ディーラー:{BJSUM(0)} 
 					ENDIF
 					CALL PRTCARD(BJCARD:0:0)
 					PRINT  
 					CALL PRTCARD(BJCARD:0:1)
 					PRINTL
 					IF LANGUAGE == "ENG"
-						PRINTFORM Player:{BJSUM(1)} 
+						PRINT Player:21 
 					ELSE
-						PRINTFORM プレイヤー:{BJSUM(1)} 
+						PRINT プレイヤー:21 
 					ENDIF
 					CALL PRTCARD(BJCARD:1:0)
 					PRINT  
 					CALL PRTCARD(BJCARD:1:1)
 					PRINTL
 					IF LANGUAGE == "ENG"
-						PRINT Because dealer is twenty-one, 
+						PRINT Because did you Even Money, 
 					ELSE
-						PRINT ディーラーが21であるため、
+						PRINT あなたはイーブンマネーをしたため、
 					ENDIF
-					WIN_MONEY = BJ_BET
+					WIN_MONEY = 2 * BJ_BET
 					GOTO BJ_END
 				ELSE
-					PRINTL Because dealer is not twenty-one, Continue the game.
-					CALL PASELIW, @"{BJ_BET/2}＄ of insurance is forfeited."
-					MONEY -= BJ_BET / 2
-					INSURANCE = 1
-					BJCNT:0 = 1
-					GOTO BJ_PLAY
+					BJCNT:0 = 2
+					IF BJSUM(0) == 21
+						IF LANGUAGE == "ENG"
+							PRINT Dealer:21 
+						ELSE
+							PRINT ディーラー:21 
+						ENDIF
+						CALL PRTCARD(BJCARD:0:0)
+						PRINT  
+						CALL PRTCARD(BJCARD:0:1)
+						PRINTL
+						IF LANGUAGE == "ENG"
+							PRINTFORM Player:{BJSUM(1)} 
+						ELSE
+							PRINTFORM プレイヤー:{BJSUM(1)} 
+						ENDIF
+						CALL PRTCARD(BJCARD:1:0)
+						PRINT  
+						CALL PRTCARD(BJCARD:1:1)
+						PRINTL
+						IF LANGUAGE == "ENG"
+							PRINT Because dealer is twenty-one, 
+						ELSE
+							PRINT ディーラーが21であるため、
+						ENDIF
+						WIN_MONEY = BJ_BET
+						GOTO BJ_END
+					ELSE
+						IF LANGUAGE == "ENG"
+							PRINTL Because dealer is not twenty-one, Continue the game.
+							CALL PASELIW, @"{BJ_BET/2}＄ of insurance is forfeited."
+						ELSE
+							PRINTL ディーラーが21でないため、ゲームを続行します。
+							CALL PASELIW, @"%CALLNAME:MASTER%は保険金の{BJ_BET/2}＄を失った。"
+						ENDIF
+						MONEY -= BJ_BET / 2
+						INSURANCE = 1
+						BJCNT:0 = 1
+						GOTO BJ_PLAY
+					ENDIF
 				ENDIF
-			ENDIF
-		ELSEIF RESULT == 8
-			INSURANCE = 1
-			GOTO BJ_PLAY
-		ELSE
-			GOTO INSURANCE
-		ENDIF
+			CASE 8
+				INSURANCE = 1
+				GOTO BJ_PLAY
+		ENDSELECT
 	ENDIF
 	INSURANCE = 1
 	;全エリアのプレイが終わったら勝負へ
@@ -690,68 +693,17 @@ DO
 		ENDIF
 	ENDIF
 	PRINTL
-	INPUT
-	;[0]ヒット…カードを1枚引く
-	IF RESULT == 0
-		;PLAYSOUND トランプドロー
-		BJCARD:AREA_NOW:(BJCNT:AREA_NOW) = CARD:USE_CARDS
-		USE_CARDS += 1
-		BJCNT:AREA_NOW += 1
-		;点数が21点以上なら次のエリアに
-		;ゲーセンでバーストした場合はハッキングでなかったことにできる
-		IF カジノの種類 == 3 && BJSUM(AREA_NOW) >= 22 && ハッキング残数 > 0
-			FOR LCOUNT, 1, AREA_MAX
-				IF LCOUNT == 1
-					IF LANGUAGE == "ENG"
-						PRINT Player
-					ELSE
-						PRINT プレイヤー
-					ENDIF
-				ELSE
-					PRINT 　　　　　
-				ENDIF
-				PRINTFORM :{BJSUM(LCOUNT)}
-				FOR LCOUNT2, 0, (BJCNT:LCOUNT)
-					PRINT  
-					CALL PRTCARD(BJCARD:LCOUNT:LCOUNT2)
-				NEXT
-				IF LANGUAGE == "ENG"
-					SIF GETBIT(D_DOWN, LCOUNT) == 1
-						PRINT  (Double Down)
-					SIF GETBIT(SURRENDER, LCOUNT) == 1
-						PRINT  (Surrender)
-					SIF BJSUM(AREA_NOW) >= 22
-						PRINT （Bust）
-				ELSE
-					SIF GETBIT(D_DOWN, LCOUNT) == 1
-						PRINT  (ダブルダウン)
-					SIF GETBIT(SURRENDER, LCOUNT) == 1
-						PRINT  (サレンダー)
-					SIF BJSUM(AREA_NOW) >= 22
-						PRINT （バースト）
-				ENDIF
-				PRINTL
-			NEXT
-			IF LANGUAGE == "ENG"
-				PRINTFORML [0] Do Hacking(Remaining:{ハッキング残数} Decided not to draw bust card)
-			ELSE
-				PRINTFORML [0] ハッキングする(残り{ハッキング残数}回 バーストカードを引かなかったことにする)
-			ENDIF
-			TONEINPUT 3000, 1, 1, ""
-			IF RESULT == 0
-				BJCNT:AREA_NOW--
-				BJCARD:AREA_NOW:(BJCNT:AREA_NOW) = 0
-				ハッキング残数--
-				CALL SHUFFLE, USE_CARDS, 52
-				IF LANGUAGE == "ENG"
-					PRINTFORM Dealer:{BJSUM(0)}+? 
-				ELSE
-					PRINTFORM ディーラー:{BJSUM(0)}+? 
-				ENDIF
-				CALL PRTCARD(BJCARD:0:0)
-				SETCOLOR 0x00FF00
-				PRINTL  ？
-				RESETCOLOR
+	DO
+		INPUT
+		;[0]ヒット…カードを1枚引く
+		IF RESULT == 0
+			CALL SE再生, トランプドロー
+			BJCARD:AREA_NOW:(BJCNT:AREA_NOW) = CARD:USE_CARDS
+			USE_CARDS += 1
+			BJCNT:AREA_NOW += 1
+			;点数が21点以上なら次のエリアに
+			;ゲーセンでバーストした場合はハッキングでなかったことにできる
+			IF カジノの種類 == 3 && BJSUM(AREA_NOW) >= 22 && ハッキング残数 > 0
 				FOR LCOUNT, 1, AREA_MAX
 					IF LCOUNT == 1
 						IF LANGUAGE == "ENG"
@@ -784,81 +736,81 @@ DO
 					ENDIF
 					PRINTL
 				NEXT
-				GOTO 引き直し
+				IF LANGUAGE == "ENG"
+					PRINTFORML [0] Do Hacking(Remaining:{ハッキング残数} Reject to bust card)
+				ELSE
+					PRINTFORML [0] ハッキングする(残り{ハッキング残数}回 バーストカードを引かなかったことにする)
+				ENDIF
+				TONEINPUT 3000, 1, 1, ""
+				IF RESULT == 0
+					BJCNT:AREA_NOW--
+					BJCARD:AREA_NOW:(BJCNT:AREA_NOW) = 0
+					ハッキング残数--
+					CALL SHUFFLE, USE_CARDS, 52
+					IF LANGUAGE == "ENG"
+						PRINTFORM Dealer:{BJSUM(0)}+? 
+					ELSE
+						PRINTFORM ディーラー:{BJSUM(0)}+? 
+					ENDIF
+					CALL PRTCARD(BJCARD:0:0)
+					SETCOLOR 0x00FF00
+					PRINTL  ？
+					RESETCOLOR
+					FOR LCOUNT, 1, AREA_MAX
+						IF LCOUNT == 1
+							IF LANGUAGE == "ENG"
+								PRINT Player
+							ELSE
+								PRINT プレイヤー
+							ENDIF
+						ELSE
+							PRINT 　　　　　
+						ENDIF
+						PRINTFORM :{BJSUM(LCOUNT)}
+						FOR LCOUNT2, 0, (BJCNT:LCOUNT)
+							PRINT  
+							CALL PRTCARD(BJCARD:LCOUNT:LCOUNT2)
+						NEXT
+						IF LANGUAGE == "ENG"
+							SIF GETBIT(D_DOWN, LCOUNT) == 1
+								PRINT  (Double Down)
+							SIF GETBIT(SURRENDER, LCOUNT) == 1
+								PRINT  (Surrender)
+							SIF BJSUM(AREA_NOW) >= 22
+								PRINT （Bust）
+						ELSE
+							SIF GETBIT(D_DOWN, LCOUNT) == 1
+								PRINT  (ダブルダウン)
+							SIF GETBIT(SURRENDER, LCOUNT) == 1
+								PRINT  (サレンダー)
+							SIF BJSUM(AREA_NOW) >= 22
+								PRINT （バースト）
+						ENDIF
+						PRINTL
+					NEXT
+					GOTO 引き直し
+				ENDIF
 			ENDIF
-		ENDIF
-		SIF BJSUM(AREA_NOW) >= 21
+			SIF BJSUM(AREA_NOW) >= 21
+				AREA_NOW += 1
+		;[1]スタンド…これ以上引かない
+		ELSEIF RESULT == 1
+			;次のエリアに
 			AREA_NOW += 1
-	;[1]スタンド…これ以上引かない
-	ELSEIF RESULT == 1
-		;次のエリアに
-		AREA_NOW += 1
-	;[2]ダブルダウン…手札が2枚のときのみ選択可で賭け金を2倍にして1枚だけ引く
-	ELSEIF RESULT == 2 && BJCNT:AREA_NOW == 2
-		;PLAYSOUND トランプドロー
-		BJCARD:AREA_NOW:(BJCNT:AREA_NOW) = CARD:USE_CARDS
-		USE_CARDS += 1
-		BJCNT:AREA_NOW += 1
-		SETBIT D_DOWN, AREA_NOW
-		;強制的に次のエリアに
-		AREA_NOW += 1
-		;賭け金を増やす処理
-		MONEY -= BJ_BET
-		BJ_MULTI += 1
-		;ゲーセンでバーストした場合はハッキングでなかったことにできる
-		IF カジノの種類 == 3 && BJSUM(AREA_NOW) >= 22 && ハッキング残数 > 0
-			FOR LCOUNT, 1, AREA_MAX
-				IF LCOUNT == 1
-					IF LANGUAGE == "ENG"
-						PRINT Player
-					ELSE
-						PRINT プレイヤー
-					ENDIF
-				ELSE
-					PRINT 　　　　　
-				ENDIF
-				PRINTFORM :{BJSUM(LCOUNT)}
-				FOR LCOUNT2, 0, (BJCNT:LCOUNT)
-					PRINT  
-					CALL PRTCARD(BJCARD:LCOUNT:LCOUNT2)
-				NEXT
-				IF LANGUAGE == "ENG"
-					SIF GETBIT(D_DOWN, LCOUNT) == 1
-						PRINT  (Double Down)
-					SIF GETBIT(SURRENDER, LCOUNT) == 1
-						PRINT  (Surrender)
-					SIF BJSUM(AREA_NOW) >= 22
-						PRINT （Bust）
-				ELSE
-					SIF GETBIT(D_DOWN, LCOUNT) == 1
-						PRINT  (ダブルダウン)
-					SIF GETBIT(SURRENDER, LCOUNT) == 1
-						PRINT  (サレンダー)
-					SIF BJSUM(AREA_NOW) >= 22
-						PRINT （バースト）
-				ENDIF
-				PRINTL
-			NEXT
-			IF LANGUAGE == "ENG"
-				PRINTFORML [0] Do Hacking(Remaining:{ハッキング残数} Decided not to draw bust card)
-			ELSE
-				PRINTFORML [0] ハッキングする(残り{ハッキング残数}回 バーストカードを引かなかったことにする)
-			ENDIF
-			TONEINPUT 3000, 1, 1, ""
-			IF RESULT == 0
-				BJCNT:AREA_NOW--
-				BJCARD:AREA_NOW:(BJCNT:AREA_NOW) = 0
-				ハッキング残数--
-				CALL SHUFFLE, USE_CARDS, 52
-				IF LANGUAGE == "ENG"
-					PRINTFORM Dealer:{BJSUM(0)}+? 
-				ELSE
-					PRINTFORM ディーラー:{BJSUM(0)}+? 
-				ENDIF
-				CALL PRTCARD(BJCARD:0:0)
-				SETCOLOR 0x00FF00
-				PRINTL  ？
-				RESETCOLOR
+		;[2]ダブルダウン…手札が2枚のときのみ選択可で賭け金を2倍にして1枚だけ引く
+		ELSEIF RESULT == 2 && BJCNT:AREA_NOW == 2
+			CALL SE再生, トランプドロー
+			BJCARD:AREA_NOW:(BJCNT:AREA_NOW) = CARD:USE_CARDS
+			USE_CARDS += 1
+			BJCNT:AREA_NOW += 1
+			SETBIT D_DOWN, AREA_NOW
+			;強制的に次のエリアに
+			AREA_NOW += 1
+			;賭け金を増やす処理
+			MONEY -= BJ_BET
+			BJ_MULTI += 1
+			;ゲーセンでバーストした場合はハッキングでなかったことにできる
+			IF カジノの種類 == 3 && BJSUM(AREA_NOW) >= 22 && ハッキング残数 > 0
 				FOR LCOUNT, 1, AREA_MAX
 					IF LCOUNT == 1
 						IF LANGUAGE == "ENG"
@@ -891,43 +843,98 @@ DO
 					ENDIF
 					PRINTL
 				NEXT
-				GOTO 引き直し
+				IF LANGUAGE == "ENG"
+					PRINTFORML [0] Do Hacking(Remaining:{ハッキング残数} Reject to bust card)
+				ELSE
+					PRINTFORML [0] ハッキングする(残り{ハッキング残数}回 バーストカードを引かなかったことにする)
+				ENDIF
+				TONEINPUT 3000, 1, 1, ""
+				IF RESULT == 0
+					BJCNT:AREA_NOW--
+					BJCARD:AREA_NOW:(BJCNT:AREA_NOW) = 0
+					ハッキング残数--
+					CALL SHUFFLE, USE_CARDS, 52
+					IF LANGUAGE == "ENG"
+						PRINTFORM Dealer:{BJSUM(0)}+? 
+					ELSE
+						PRINTFORM ディーラー:{BJSUM(0)}+? 
+					ENDIF
+					CALL PRTCARD(BJCARD:0:0)
+					SETCOLOR 0x00FF00
+					PRINTL  ？
+					RESETCOLOR
+					FOR LCOUNT, 1, AREA_MAX
+						IF LCOUNT == 1
+							IF LANGUAGE == "ENG"
+								PRINT Player
+							ELSE
+								PRINT プレイヤー
+							ENDIF
+						ELSE
+							PRINT 　　　　　
+						ENDIF
+						PRINTFORM :{BJSUM(LCOUNT)}
+						FOR LCOUNT2, 0, (BJCNT:LCOUNT)
+							PRINT  
+							CALL PRTCARD(BJCARD:LCOUNT:LCOUNT2)
+						NEXT
+						IF LANGUAGE == "ENG"
+							SIF GETBIT(D_DOWN, LCOUNT) == 1
+								PRINT  (Double Down)
+							SIF GETBIT(SURRENDER, LCOUNT) == 1
+								PRINT  (Surrender)
+							SIF BJSUM(AREA_NOW) >= 22
+								PRINT （Bust）
+						ELSE
+							SIF GETBIT(D_DOWN, LCOUNT) == 1
+								PRINT  (ダブルダウン)
+							SIF GETBIT(SURRENDER, LCOUNT) == 1
+								PRINT  (サレンダー)
+							SIF BJSUM(AREA_NOW) >= 22
+								PRINT （バースト）
+						ENDIF
+						PRINTL
+					NEXT
+					GOTO 引き直し
+				ENDIF
 			ENDIF
-		ENDIF
-	;[3]サレンダー…賭け金の半額をもらいゲームから降りる
-	ELSEIF RESULT == 3
-		SETBIT SURRENDER, AREA_NOW
-		;次のエリアに
-		AREA_NOW += 1
-		;払い戻しの処理
-		MONEY += BJ_BET / 2
-		;PLAYSOUND カジノコイン
-		IF LANGUAGE == "ENG"
-			CALL PASELIW, @"You got {BJ_BET / 2}＄"
+		;[3]サレンダー…賭け金の半額をもらいゲームから降りる
+		ELSEIF RESULT == 3
+			SETBIT SURRENDER, AREA_NOW
+			;次のエリアに
+			AREA_NOW += 1
+			;払い戻しの処理
+			MONEY += BJ_BET / 2
+			CALL SE再生, カジノコイン
+			IF LANGUAGE == "ENG"
+				CALL PASELIW, @"You got {BJ_BET / 2}＄"
+			ELSE
+				CALL PASELIW, @"{BJ_BET / 2}＄を手に入れた。"
+			ENDIF
+			SURRENDER_CNT += 1
+		;[4]スプリット
+		ELSEIF RESULT == 4 && BJCNT:AREA_NOW == 2 && (BJCARD:AREA_NOW:0 - BJCARD:AREA_NOW:1) % 13 == 0 && AREA_MAX < 5
+			CALL SE再生, トランプ配布
+			;新しいエリアにカードを1枚移す
+			BJCARD:AREA_MAX:0 = BJCARD:AREA_NOW:1
+			;今までのエリアに新しくカードを配る
+			BJCARD:AREA_NOW:1 = CARD:USE_CARDS
+			USE_CARDS += 1
+			;新しいエリアにもカードを配る
+			BJCARD:AREA_MAX:1 = CARD:USE_CARDS
+			USE_CARDS += 1
+			;両方のエリアの手札は2枚に
+			BJCNT:AREA_NOW = 2
+			BJCNT:AREA_MAX = 2
+			;エリアの数を増やす
+			AREA_MAX += 1
+			;賭け金も増やす
+			MONEY -= BJ_BET
+			BJ_MULTI += 1
 		ELSE
-			CALL PASELIW, @"{BJ_BET / 2}＄を手に入れた。"
+			CONTINUE
 		ENDIF
-		SURRENDER_CNT += 1
-	;[4]スプリット
-	ELSEIF RESULT == 4 && BJCNT:AREA_NOW == 2 && (BJCARD:AREA_NOW:0 - BJCARD:AREA_NOW:1) % 13 == 0 && AREA_MAX < 5
-		;PLAYSOUND トランプ配布
-		;新しいエリアにカードを1枚移す
-		BJCARD:AREA_MAX:0 = BJCARD:AREA_NOW:1
-		;今までのエリアに新しくカードを配る
-		BJCARD:AREA_NOW:1 = CARD:USE_CARDS
-		USE_CARDS += 1
-		;新しいエリアにもカードを配る
-		BJCARD:AREA_MAX:1 = CARD:USE_CARDS
-		USE_CARDS += 1
-		;両方のエリアの手札は2枚に
-		BJCNT:AREA_NOW = 2
-		BJCNT:AREA_MAX = 2
-		;エリアの数を増やす
-		AREA_MAX += 1
-		;賭け金も増やす
-		MONEY -= BJ_BET
-		BJ_MULTI += 1
-	ENDIF
+	LOOP 0
 	GOTO BJ_PLAY
 	;ここからディーラーとの勝負
 	$BJ_MATCH_START
@@ -994,7 +1001,7 @@ DO
 	NEXT
 	WAIT
 	IF BJSUM(0) < 17
-		;PLAYSOUND トランプドロー
+		CALL SE再生, トランプドロー
 		BJCARD:0:(BJCNT:0) = CARD:USE_CARDS
 		USE_CARDS += 1
 		BJCNT:0 += 1
@@ -1056,7 +1063,7 @@ DO
 	$BJ_END
 	MONEY += WIN_MONEY
 	IF WIN_MONEY > 0
-		;PLAYSOUND カジノコイン
+		CALL SE再生, カジノコイン
 		IF LANGUAGE == "ENG"
 			CALL PASELIW, @"You got {WIN_MONEY}＄"
 		ELSE

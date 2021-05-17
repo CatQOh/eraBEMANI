@@ -5,9 +5,15 @@
 SIF ゲームモード() == "学園モード"
 	JUMP SHOP_SCHOOL
 
-;段位認定モードはBGMを鳴らす関数を呼ぶ
-SIF ゲームモード() == "段位認定" && サウンド
-	CALL 段位認定_BGM
+;モードに応じてBGMを流す
+SELECTCASE ゲームモード()
+	CASE "新婚モード"
+		CALL 新婚モード_BGM
+	CASE "段位認定"
+		CALL 段位認定_BGM
+	CASEELSE
+		CALL 通常モード_BGM
+ENDSELECT
 
 VARLINE = 0
 
@@ -291,6 +297,10 @@ SIF FLAG:裏カジノ
 SIF FINDELEMENT(所持ビデオ, "", 0, VARSIZE("所持ビデオ"), 1) > 0
 	コマンド表示用:5 = %SET_TOOLTIP("[304] - VIDEO    ", "所持しているビデオの一覧を表示します")%
 
+;部屋ログあれば表示
+SIF 部屋ログ != ""
+	コマンド表示用:6 = %SET_TOOLTIP("[305] - 部屋ログ ", "居住部屋で起きた出来事を確認します")%
+
 SIF STRJOIN(コマンド表示用, "") != "　"
 	HTML_PRINT STRJOIN(コマンド表示用, "")
 
@@ -307,7 +317,7 @@ SIF CMATCH(TALENT:変化, 1)
 
 ;新婚モード以外で表示
 SIF ゲームモード() != "新婚モード"
-	コマンド表示用:3 = %SET_TOOLTIP("[402] - 眷属の儀 ", "奴隷の種族を変更するための儀式を行います")%
+	コマンド表示用:3 = %SET_TOOLTIP("[402] - 儀式     ", "眷属の義、もしくは印の義を行います")%
 
 ;段位認定、新婚モード以外で表示
 IF ゲームモード() == "段位認定"
@@ -390,6 +400,22 @@ HTML_PRINT STRJOIN(コマンド表示用, "")
 ;#;PRINTPLAIN 　
 ;#;PRINT [997] - 乱キャラ 
 ;#;PRINTL [998] - デバッグ
+
+;ショートカット有効にしていれば表示
+IF ショートカット
+	DRAWLINE
+	PRINTL □ショートカット一覧
+	FOR LCOUNT, 0, VARSIZE("LNK")
+		SIF LNK:LCOUNT != ""
+			PRINTFORMLC 　[{LCOUNT+1000}] - %LNKCOM(LNK:LCOUNT)%
+	NEXT
+	SIF !LINEISEMPTY()
+		PRINTL 
+	SIF FINDELEMENT(LNK, "", 0, VARSIZE("LNK"), 1) >= 0
+		PRINTLC 　[1100] - ショートカットコマンドの登録
+	PRINTLC 　[1101] - ショートカットキーの削除
+	PRINTL 
+ENDIF
 
 DRAWLINE
 PRINTPLAIN 　SHOP　
@@ -608,7 +634,7 @@ SIF CMATCH(TALENT:変化, 1)
 
 ;新婚モード以外で表示
 SIF ゲームモード() != "新婚モード"
-	コマンド表示用:3 = %SET_TOOLTIP("[402] - Household         ", "奴隷の種族を変更するための儀式を行います")%
+	コマンド表示用:3 = %SET_TOOLTIP("[402] - Ritual            ", "眷属の義、もしくは印の義を行います")%
 
 ;段位認定、新婚モード以外で表示
 IF ゲームモード() == "段位認定"
@@ -834,6 +860,10 @@ SELECTCASE RESULT
 	CASE 304
 		SIF FINDELEMENT(所持ビデオ, "", 0, VARSIZE("所持ビデオ"), 1) > 0
 			CALL 所持ビデオ一覧
+	;部屋ログ
+	CASE 305
+		SIF 部屋ログ != ""
+			CALL 部屋ログ表示
 	;アイテム
 	CASE 400
 		CALL プレイ称号計算, "アイテム"
@@ -848,13 +878,33 @@ SELECTCASE RESULT
 			CALL 変化
 	;眷属の儀
 	CASE 402
-		CALL FAMILIAR
-		;儀を行った場合はターン終了
-		IF RESULT == 1
-			CALL プレイ称号計算, "眷属"
-			FLAG:休憩フラグ = 1
-			BEGIN TURNEND
-		ENDIF
+		PRINTL どの儀式を執り行いますか？
+		PRINTL [1] - 眷属の儀
+		PRINTL [2] - 印の儀
+		PRINTL [0] - 戻る
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 1
+					CALL FAMILIAR
+					;儀を行った場合はターン終了
+					IF RESULT == 1
+						CALL プレイ称号計算, "眷属"
+						FLAG:休憩フラグ = 1
+						BEGIN TURNEND
+					ENDIF
+				CASE 2
+					CALL RITUAL_OF_SIGN
+					;儀を行った場合はターン終了
+					IF RESULT == 1
+						CALL プレイ称号計算, "印"
+						FLAG:休憩フラグ = 1
+						BEGIN TURNEND
+					ENDIF
+				CASEELSE
+					CONTINUE
+			ENDSELECT
+		LOOP 0
 	;奴隷購入
 	CASE 403
 		SIF !GROUPMATCH(ゲームモード(), "新婚モード", "段位認定")
@@ -948,9 +998,16 @@ SELECTCASE RESULT
 		LOOP INRANGE(LOCAL, 1, CHARANUM-2)
 	;デバッグ用
 	;#;CASE 997
-	;#;	CALL ADD_ランダムキャラ
+	;#;	CALL ADD_ランダムキャラ, 2, -1
 	;#;CASE 998
 	;#;	CALL DEBUG
+	;ショートカット
+	CASE 1000 TO VARSIZE("LNK")+1000
+		CALL ショートカットコマンド, RESULT-1000
+	CASE 1100
+		CALL ショートカット登録
+	CASE 1101
+		CALL ショートカット削除
 	CASEELSE
 		CLEARLINE 1
 		REUSELASTLINE {RESULT}に対応するコマンドはありません
@@ -1016,10 +1073,10 @@ ENDIF
 IF ゲームモード() != "段位認定"
 	IF LANGUAGE == "ENG"
 		;所持金表示
-		CALL PASELI, @"　Moneys:{MONEY}＄"
+		CALL PASELI, @"　Money:{MONEY}＄"
 		SIF 借金 > 0
 			CALL PASELI, @" Debts:{借金}＄"
-		CALL PASELI, @" Moneys(Yesterday):{LASTMONEY}＄"
+		CALL PASELI, @" Money(Yesterday):{LASTMONEY}＄"
 		IF MONEY == LASTMONEY
 			PRINTL →0 KEEP
 		ELSEIF MONEY > LASTMONEY
@@ -1535,18 +1592,44 @@ ENDIF
 SIF ページ数+1 < 総ページ数
 	PRINTL [9] - 次ページ
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1
-			SIF ページ数 > 1
-				ページ数--
-		CASE 9
-			SIF ページ数 < 総ページ数
-				ページ数++
-	ENDSELECT
-LOOP LOOPRES(1, 9)
+CALL INPUTF, 0, 1, 9
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		SIF ページ数 > 1
+			ページ数--
+	CASE 9
+		SIF ページ数 < 総ページ数
+			ページ数++
+ENDSELECT
 
 GOTO TOP
+
+@通常モード_BGM
+;季節で変わる
+SELECTCASE MONTH
+	CASE 3 TO 5
+		CALL BGM再生, 通常_春
+	CASE 6 TO 8
+		CALL BGM再生, 通常_夏
+	CASE 9 TO 11
+		CALL BGM再生, 通常_秋
+	CASE 12, 1, 2
+		CALL BGM再生, 通常_冬
+ENDSELECT
+
+@新婚モード_BGM
+;季節で変わる
+SELECTCASE MONTH
+	CASE 3 TO 5
+		CALL BGM再生, 新婚_春
+	CASE 6 TO 8
+		CALL BGM再生, 新婚_夏
+	CASE 9 TO 11
+		CALL BGM再生, 新婚_秋
+	CASE 12, 1, 2
+		CALL BGM再生, 新婚_冬
+ENDSELECT
+
+

@@ -69,7 +69,7 @@ FOR GAMES, 0, GAMES_MAX
 	ENDIF
 
 	IF LANGUAGE == "ENG"
-		PRINT Moneys:
+		PRINT Money:
 	ELSE
 		PRINT 所持金:
 	ENDIF
@@ -102,38 +102,41 @@ FOR GAMES, 0, GAMES_MAX
 		PRINTL [9]賭け金を変える
 	ENDIF
 	CALL PASELIL, @"[1]{ONEBET}＄ [2]{2*ONEBET}＄ [3]{3*ONEBET}＄ [4]{4*ONEBET}＄ [5]{5*ONEBET}＄ "
-	INPUT
-	IF RESULT == 0
-		IF LANGUAGE == "ENG"
-			PRINTL Do you want to stop?
-			PRINTL [0]No
-			PRINTL [99]Yes
-		ELSE
-			PRINTL 本当にやめますか？
-			PRINTL [0]やっぱり続ける
-			PRINTL [99]本当にやめる
-		ENDIF
+	DO
 		INPUT
-		SIF RESULT == 99
-			BREAK
-		GOTO VP_START
-	ELSEIF INRANGE(RESULT, 1, 5)
-		BET_MULTI = RESULT;ベット数の設定
-		MONEY -= RESULT*ONEBET
-	ELSEIF RESULT == 7
-		INVERTBIT VP_MODE, 0
-		GOTO VP_START
-	ELSEIF RESULT == 8
-		INVERTBIT D_UP_ON, 0
-		GOTO VP_START
-	ELSEIF RESULT == 9
-		PRINTW 1ベット当たりの賭け金を決めます。
-		CALL STAKE, MAX_BET, カジノの種類
-		ONEBET = RESULT;賭け金の設定
-		GOTO VP_START
-	ELSE
-		GOTO VP_START
-	ENDIF
+		SELECTCASE RESULT
+			CASE 0
+				IF LANGUAGE == "ENG"
+					PRINTL Do you finish the game?
+					PRINTL [0]Continue
+					PRINTL [1]Yes
+				ELSE
+					PRINTL 本当にやめますか？
+					PRINTL [0]やっぱり続ける
+					PRINTL [1]本当にやめる
+				ENDIF
+				CALL INPUTF, 0, 1
+				SIF RESULT == 1
+					RETURN
+				GOTO VP_START
+			CASE 1 TO 5
+				BET_MULTI = RESULT;ベット数の設定
+				MONEY -= RESULT*ONEBET
+			CASE 7
+				INVERTBIT VP_MODE, 0
+				GOTO VP_START
+			CASE 8
+				INVERTBIT D_UP_ON, 0
+				GOTO VP_START
+			CASE 9
+				PRINTW 1ベット当たりの賭け金を決めます。
+				CALL STAKE, MAX_BET, カジノの種類
+				ONEBET = RESULT;賭け金の設定
+				GOTO VP_START
+			CASEELSE
+				CONTINUE
+		ENDSELECT
+	LOOP 0
 	CALL SHUFFLE, 52
 	FOR LCOUNT, 0, 5
 		VP_CARD:LCOUNT = CARD:LCOUNT
@@ -167,7 +170,7 @@ FOR GAMES, 0, GAMES_MAX
 		PRINTFORML  ストレートフラッシュ:50倍 ロイヤルフラッシュ:{100*(3+BET_MULTI)}倍
 	ENDIF
 	VARLINE = 0
-	;PLAYSOUND トランプ配布
+	CALL SE再生, トランプ配布
 	DO
 		SIF VARLINE
 			CLEARLINE LINECOUNT-VARLINE
@@ -199,7 +202,7 @@ FOR GAMES, 0, GAMES_MAX
 	CARD_NO = 5;使用カード枚数
 	FOR LCOUNT, 0, 5
 		IF GETBIT(HOLD, LCOUNT) == 0
-			;PLAYSOUND トランプドロー
+			CALL SE再生, トランプドロー
 			VP_CARD:LCOUNT = CARD:(CARD_NO)
 			CARD_NO += 1
 		ENDIF
@@ -212,7 +215,7 @@ FOR GAMES, 0, GAMES_MAX
 	PRINTL
 	IF ハッキング残数 > 0
 		IF LANGUAGE == "ENG"
-			PRINTFORML [0] Do Hacking(Remaining:{ハッキング残数} One more draw)
+			PRINTFORML [0] Do Hacking(Remaining:{ハッキング残数} One more redraw)
 		ELSE
 			PRINTFORML [0] ハッキングする(残り{ハッキング残数}回 さらに引き直す)
 		ENDIF
@@ -356,13 +359,11 @@ FOR GAMES, 0, GAMES_MAX
 				PRINT  [2]ハーフダブル
 		ENDIF
 		PRINTL
-		$VP_DOUBLE
-		INPUT
+		CALL INPUTF, 0, 1, 2
 		IF RESULT == 0
 			GOTO VP_DOUBLE_END
-		ELSEIF RESULT == 1
 		ELSEIF RESULT == 2 && GET_MONEY >= 2
-			;PLAYSOUND カジノコイン
+			CALL SE再生, カジノコイン
 			MONEY += GET_MONEY - GET_MONEY/2
 			IF LANGUAGE == "ENG"
 				CALL PASELIW, @"$You got {GET_MONEY - GET_MONEY/2}＄"
@@ -370,15 +371,13 @@ FOR GAMES, 0, GAMES_MAX
 				CALL PASELIW, @"${GET_MONEY - GET_MONEY/2}＄を手に入れた。"
 			ENDIF
 			GET_MONEY /= 2
-		ELSE
-			GOTO VP_DOUBLE
 		ENDIF
 		CALL SHUFFLE, 52
 		;ここでFOR文を+1まで回しているのはダブルアップを完全に成功させたあとにもカードを一度表示するため
 		FOR D_UP_CNT, 0, 1+D_UP_MAX
 			PRINTL
 			FOR LCOUNT, 0, D_UP_CNT
-				;PLAYSOUND トランプドロー
+				CALL SE再生, トランプドロー
 				CALL PRTCARD(CARD:(LCOUNT))
 				PRINT  
 			NEXT
@@ -408,7 +407,7 @@ FOR GAMES, 0, GAMES_MAX
 					PRINTL [0]赤 [1]黒 [2]配当を受け取る
 				ENDIF
 				$VP_DOUBLE_PLAY
-				INPUT
+				CALL INPUTF, 0, 1, 2
 				;52で割った余りが14-39が赤なので、38足して0-25が赤になるようにする
 				;その後26で割って奇数か偶数か調べる
 				D_UP_ANS = (38+CARD:D_UP_CNT) / 26
@@ -419,8 +418,6 @@ FOR GAMES, 0, GAMES_MAX
 					GET_MONEY = 0
 				ELSEIF RESULT == 2
 					BREAK
-				ELSE
-					GOTO VP_DOUBLE_PLAY
 				ENDIF
 			ELSE
 				BREAK
@@ -429,7 +426,7 @@ FOR GAMES, 0, GAMES_MAX
 	ENDIF
 	$VP_DOUBLE_END
 	IF GET_MONEY > 0
-		;PLAYSOUND カジノコイン
+		CALL SE再生, カジノコイン
 		IF LANGUAGE == "ENG"
 			CALL PASELIW, @"You got {GET_MONEY}＄"
 		ELSE

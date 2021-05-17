@@ -9,6 +9,7 @@
 #DIM DYNAMIC フェイズ
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 配当
+#DIMS DYNAMIC SIDE_ENG
 
 
 #DIM DYNAMIC B_CARD, 2, 3;カードを記録(0はプレイヤー,1はバンカー)
@@ -16,7 +17,7 @@
 ;LOCAL = 16;残りゲーム数
 ;LOCAL:1 = 200000;MAXBET
 ;LOCAL:4 = 6;使用デッキ数
-;PLAYSOUND トランプシャッフル
+CALL SE再生, トランプシャッフル
 CALL SHUFFLE, 52 * デッキ数
 
 ;LOCAL:5 = 0;使用カード数
@@ -25,8 +26,12 @@ DO
 	IF 8*(52*デッキ数-カード数) / (52*デッキ数) < 1;デッキの残りが1/8を切るとシャッフル
 		CALL SHUFFLE, 52*デッキ数
 		カード数 = 0;使用カード数
-		;PLAYSOUND トランプシャッフル
-		PRINTW デッキの残りが少なくなったのでシャッフルしました。
+		CALL SE再生, トランプシャッフル
+		IF LANGUAGE == "ENG"
+			PRINTW The deck was runnning low, shuffled deck.
+		ELSE
+			PRINTW デッキの残りが少なくなったのでシャッフルしました。
+		ENDIF
 	ENDIF
 	VARSET B_CARD, -1
 	B_CARD:0:0 = CARD:カード数
@@ -39,56 +44,81 @@ DO
 	カード数++
 	PRINTL 
 	DRAWLINE
-	CALL PASELIL, @"<残り{ゲーム数}ゲーム MAXBET:{賭け金上限}＄>"
+	IF LANGUAGE == "ENG"
+		CALL PASELIL, @"<残り{ゲーム数}ゲーム MAXBET:{賭け金上限}＄>"
+	ELSE
+		CALL PASELIL, @"<Remaining games:{ゲーム数} MAXBET:{賭け金上限}＄>"
+	ENDIF
 	$BACCARAT_INPUT
 	PRINTL 
-	PRINTL [1]プレイヤー(2倍) [2]バンカー(1.95倍) [3]タイ(9倍) [9]もうやめる
-	DO
-		INPUT
-		IF RESULT == 9
+	IF LANGUAGE == "ENG"
+		PRINTL [1]Player(2x) [2]Banker(1.95x) [3]Tie(9x) [9]Finish the Game
+	ELSE
+		PRINTL [1]プレイヤー(2倍) [2]バンカー(1.95倍) [3]タイ(9倍) [9]もうやめる
+	ENDIF
+	CALL INPUTF, 1, 2, 3, 9
+	SELECTCASE RESULT
+		CASE 9
 			PRINTL 
-			PRINTL もうやめますか？
-			PRINTL [0]やっぱり続ける [9]本当にやめる
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						GOTO BACCARAT_INPUT
-					CASE 9
-						RETURN
-				ENDSELECT
-			LOOP 1
-		ELSEIF !INRANGE(RESULT, 1, 3)
-			GOTO BACCARAT_INPUT
-		ENDIF
-	LOOP 0
+			IF LANGUAGE == "ENG"
+				PRINTL Do you finish the Game?
+				PRINTL [0]Continue
+				PRINTL [1]Yes
+			ELSE
+				PRINTL もうやめますか？
+				PRINTL [0]やっぱり続ける
+				PRINTL [1]本当にやめる
+			ENDIF
+			CALL INPUTF, 0, 1
+			SELECTCASE RESULT
+				CASE 0
+					GOTO BACCARAT_INPUT
+				CASE 1
+					RETURN
+			ENDSELECT
+	ENDSELECT
 	SELECTCASE RESULT
 		CASE 1
 			ベット = プレイヤー
+			SIDE_ENG = Player
 		CASE 2
 			ベット = バンカー
+			SIDE_ENG = Banker
 		CASE 3
 			ベット= タイ
+			SIDE_ENG = Tie
 	ENDSELECT
 	PRINTL 
 	CALL STAKE, 賭け金上限, 2
 	賭け金 = RESULT
 	MONEY -= 賭け金
 	フェイズ = 0;プレイの段階
-	;PLAYSOUND トランプ配布
+	CALL SE再生, トランプ配布
 	$BACCARAT_PLAY
 	PRINTL 
-	CALL PASELIL, @"<残り{ゲーム数}ゲーム MAXBET:{賭け金上限}＄>"
-	CALL PASELIL, @" ベット:{賭け金}(%ベット%)＄"
+	IF LANGUAGE == "ENG"
+		CALL PASELIL, @"<Remaining games:{ゲーム数} MAXBET:{賭け金上限}＄>"
+		CALL PASELIL, @" Your BET:{賭け金}(%SIDE_ENG%)＄"
+	ELSE
+		CALL PASELIL, @"<残り{ゲーム数}ゲーム MAXBET:{賭け金上限}＄>"
+		CALL PASELIL, @" ベット:{賭け金}(%ベット%)＄"
+	ENDIF
 	PRINTL 
-	
 
 	FOR LCOUNT, 0, 2
 		SELECTCASE LCOUNT
 			CASE 0
-				PRINTFORM プレイヤー:{B_SUM(B_CARD:0:0, B_CARD:0:1, B_CARD:0:2)} 
+				IF LANGUAGE == "ENG"
+					PRINTFORM Player:{B_SUM(B_CARD:0:0, B_CARD:0:1, B_CARD:0:2)} 
+				ELSE
+					PRINTFORM プレイヤー:{B_SUM(B_CARD:0:0, B_CARD:0:1, B_CARD:0:2)} 
+				ENDIF
 			CASE 1
-				PRINTFORM 　バンカー:{B_SUM(B_CARD:1:0, B_CARD:1:1, B_CARD:1:2)} 
+				IF LANGUAGE == "ENG"
+					PRINTFORM 　Banker:{B_SUM(B_CARD:1:0, B_CARD:1:1, B_CARD:1:2)} 
+				ELSE
+					PRINTFORM 　バンカー:{B_SUM(B_CARD:1:0, B_CARD:1:1, B_CARD:1:2)} 
+				ENDIF
 		ENDSELECT
 		CALL PRTCARD, B_CARD:LCOUNT:0
 		PRINT  
@@ -97,9 +127,17 @@ DO
 			PRINT  
 			CALL PRTCARD, B_CARD:LCOUNT:2
 		ELSEIF B_SUM(B_CARD:LCOUNT:0, B_CARD:LCOUNT:1, 0) == 8
-			PRINT  (ナチュラル8)
+			IF LANGUAGE == "ENG"
+				PRINT  (Natural 8)
+			ELSE
+				PRINT  (ナチュラル8)
+			ENDIF
 		ELSEIF B_SUM(B_CARD:LCOUNT:0, B_CARD:LCOUNT:1, 0) == 9
-			PRINT  (ナチュラル9)
+			IF LANGUAGE == "ENG"
+				PRINT  (Natural 9)
+			ELSE
+				PRINT  (ナチュラル9)
+			ENDIF
 		ENDIF
 		SELECTCASE LCOUNT
 			CASE 0
@@ -116,7 +154,7 @@ DO
 		ELSEIF B_SUM(B_CARD:0:0, B_CARD:0:1, B_CARD:0:2) >= 6 && B_SUM(B_CARD:1:0, B_CARD:1:1, B_CARD:1:2) >= 6
 		;そうでなければカードを引いてフェイズを進める
 		ELSEIF B_SUM(B_CARD:0:0, B_CARD:0:1, B_CARD:0:2) <= 5
-			;PLAYSOUND トランプドロー
+			CALL SE再生, トランプドロー
 			B_CARD:0:2 = CARD:カード数
 			カード数++
 			フェイズ++
@@ -130,14 +168,14 @@ DO
 	ELSEIF フェイズ == 1
 		;プレイヤーの3枚目のカードに応じてバンカー側に配られるかどうかが決まる
 		IF B_SUM(B_CARD:1:0, B_CARD:1:1, B_CARD:1:2) <= 2
-			;PLAYSOUND トランプドロー
+			CALL SE再生, トランプドロー
 			B_CARD:1:2 = CARD:カード数
 			カード数++
 			フェイズ++
 			GOTO BACCARAT_PLAY
 		ELSEIF B_SUM(B_CARD:1:0, B_CARD:1:1, B_CARD:1:2) == 3
 			IF B_SUM(0,0,B_CARD:0:2) != 8
-				;PLAYSOUND トランプドロー
+				CALL SE再生, トランプドロー
 				B_CARD:1:2 = CARD:カード数
 				カード数++
 				フェイズ++
@@ -145,7 +183,7 @@ DO
 			ENDIF
 		ELSEIF B_SUM(B_CARD:1:0, B_CARD:1:1, B_CARD:1:2) == 4
 			IF B_CARD:0:2 == -1 || INRANGE(B_SUM(0,0,B_CARD:0:2), 2, 7)
-				;PLAYSOUND トランプドロー
+				CALL SE再生, トランプドロー
 				B_CARD:1:2 = CARD:カード数
 				カード数++
 				フェイズ++
@@ -153,7 +191,7 @@ DO
 			ENDIF
 		ELSEIF B_SUM(B_CARD:1:0, B_CARD:1:1, B_CARD:1:2) == 5
 			IF B_CARD:0:2 == -1 || INRANGE(B_SUM(0,0,B_CARD:0:2), 4, 7)
-				;PLAYSOUND トランプドロー
+				CALL SE再生, トランプドロー
 				B_CARD:1:2 = CARD:カード数
 				カード数++
 				フェイズ++
@@ -161,7 +199,7 @@ DO
 			ENDIF
 		ELSEIF B_SUM(B_CARD:1:0, B_CARD:1:1, B_CARD:1:2) == 6
 			IF INRANGE(B_SUM(0,0,B_CARD:0:2), 6, 7)
-				;PLAYSOUND トランプドロー
+				CALL SE再生, トランプドロー
 				B_CARD:1:2 = CARD:カード数
 				カード数++
 				フェイズ++
@@ -172,29 +210,49 @@ DO
 	配当 = 0
 	PRINTL 
 	IF B_SUM(B_CARD:0:0, B_CARD:0:1, B_CARD:0:2) > B_SUM(B_CARD:1:0, B_CARD:1:1, B_CARD:1:2)
-		PRINTL プレイヤーの勝ちです。
+		IF LANGUAGE == "ENG"
+			PRINTL Player's win.
+		ELSE
+			PRINTL プレイヤーの勝ちです。
+		ENDIF
 		IF ベット == "プレイヤー"
 			配当 = 2*賭け金
-			;PLAYSOUND カジノコイン
-			CALL PASELIL,  @"配当:{賭け金}＄×2＝{配当}＄"
+			CALL SE再生, カジノコイン
+			IF LANGUAGE == "ENG"
+				CALL PASELIL,  @"You got reward:{賭け金}＄×2＝{配当}＄"
+			ELSE
+				CALL PASELIL,  @"配当:{賭け金}＄×2＝{配当}＄"
+			ENDIF
 		ENDIF
 	ELSEIF B_SUM(B_CARD:0:0, B_CARD:0:1, B_CARD:0:2) < B_SUM(B_CARD:1:0, B_CARD:1:1, B_CARD:1:2)
 		PRINTL バンカーの勝ちです。
 		IF ベット == "バンカー"
 			配当 = 39*賭け金/20
-			;PLAYSOUND カジノコイン
-			CALL PASELIL, @" 配当:{賭け金}＄×1.95＝{配当}＄"
+			CALL SE再生, カジノコイン
+			IF LANGUAGE == "ENG"
+				CALL PASELIL, @"You got reward:{賭け金}＄×1.95＝{配当}＄"
+			ELSE
+				CALL PASELIL, @"配当:{賭け金}＄×1.95＝{配当}＄"
+			ENDIF
 		ENDIF
 	ELSE
 		PRINTL タイです。
 		IF ベット == "タイ"
 			配当 = 9*賭け金
-			;PLAYSOUND カジノコイン
-			CALL PASELIL, @"配当:{賭け金}＄×9＝{配当}＄"
+			CALL SE再生, カジノコイン
+			IF LANGUAGE == "ENG"
+				CALL PASELIL, @"You got reward:{賭け金}＄×9＝{配当}＄"
+			ELSE
+				CALL PASELIL, @"配当:{賭け金}＄×9＝{配当}＄"
+			ENDIF
 		ELSE
-			;PLAYSOUND カジノコイン
+			CALL SE再生, カジノコイン
 			配当 = 賭け金
-			CALL PASELIL, @"配当:{賭け金}＄×1＝{配当}＄"
+			IF LANGUAGE == "ENG"
+				CALL PASELIL, @"You got reward:{賭け金}＄×1＝{配当}＄"
+			ELSE
+				CALL PASELIL, @"配当:{賭け金}＄×1＝{配当}＄"
+			ENDIF
 		ENDIF
 	ENDIF
 	MONEY += 配当

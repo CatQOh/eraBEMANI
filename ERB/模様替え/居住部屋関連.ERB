@@ -1,0 +1,828 @@
+﻿@居住部屋, 部屋番号
+#DIM DYNAMIC 部屋番号
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 住人数
+#DIM DYNAMIC 住人, 2
+#DIM DYNAMIC 来客数 = -1
+#DIM DYNAMIC 来客, 3
+#DIM DYNAMIC SHUFFLE, 1000
+#DIM DYNAMIC 来客上限
+
+DRAWLINE
+
+VARSET 同行者
+
+住人数 = 0
+FOR LCOUNT, 1, CHARANUM
+	IF CFLAG:LCOUNT:居住 == 部屋番号
+		住人:住人数 = LCOUNT
+		住人数++
+	ENDIF
+	SIF 住人数 == 2
+		BREAK
+NEXT
+
+;住人と仲の良いキャラがランダムで1～3人来ることがある
+VARSET SHUFFLE, -1
+IF 来客数 == -1
+	来客数 = 0
+	;頭からループ回すと来客が偏るので一度シャッフルかける
+	FOR LCOUNT, 0, CHARANUM
+		SHUFFLE:LCOUNT = LCOUNT
+	NEXT
+	FOR LCOUNT, 0, CHARANUM
+		SWAP SHUFFLE:LCOUNT, SHUFFLE:RAND(LCOUNT, CHARANUM)
+	NEXT
+	;0～4人
+	来客上限 = RAND:4
+	FOR LCOUNT, 0, CHARANUM
+		SIF 来客上限 <= 来客数
+			BREAK
+		;主人は来客対象外
+		SIF SHUFFLE:LCOUNT == 0
+			CONTINUE
+		;もちろん住人は来客にならない
+		SIF GROUPMATCH(SHUFFLE:LCOUNT, 住人:0, 住人:1)
+			CONTINUE
+		;妊娠育児中、使用不可中、配属中で昼の場合は来ない
+		SIF TALENT:(SHUFFLE:LCOUNT):妊娠
+			CONTINUE
+		SIF TALENT:(SHUFFLE:LCOUNT):育児中
+			CONTINUE
+		SIF CFLAG:(SHUFFLE:LCOUNT):使用不可
+			CONTINUE
+		SIF CSTR:(SHUFFLE:LCOUNT):配属 != "" && TIME == 0
+			CONTINUE
+		;監禁中のキャラは来ない
+		SIF CFLAG:(SHUFFLE:LCOUNT):監禁
+			CONTINUE
+		;来客→住人の相性が良いと遊びに来ている
+		SIF RELATION:(SHUFFLE:LCOUNT):(NO:住人) > 100 || RELATION:(SHUFFLE:LCOUNT):(NO:(住人:1)) > 100
+			来客:(来客数++) = SHUFFLE:LCOUNT
+		SIF 来客数 >= 3
+			BREAK
+	NEXT
+ENDIF
+
+IF 住人数 == 2
+	PRINTFORML □部屋,{部屋番号}には%CALLNAME:住人%と%CALLNAME:(住人:1)%が住んでいます
+ELSEIF 住人数 == 1
+	PRINTFORML □部屋,{部屋番号}には%CALLNAME:住人%が住んでいます
+ENDIF
+IF 来客数 > 0
+	PRINT 　
+	FOR LCOUNT, 0, 来客数
+		SIF LCOUNT >= 1
+			PRINT と
+		PRINTFORM %CALLNAME:(来客:LCOUNT)%
+	NEXT
+	PRINTL が遊びに来ています
+	;表示の関係で2回回す
+	FOR LCOUNT, 0, 来客数
+		IF 来客:LCOUNT && !同伴判定(来客:LCOUNT)
+			PRINTDATA
+				DATAFORM 　%CALLNAME:(来客:LCOUNT)%は%CALLNAME:MASTER%を見ると、嫌な顔をして部屋を出て行ってしまった……
+				DATAFORM 　%CALLNAME:(来客:LCOUNT)%は%CALLNAME:MASTER%の居る部屋は居心地が悪いらしく、どこかに行ってしまった……
+				DATAFORM 　%CALLNAME:(来客:LCOUNT)%は%CALLNAME:MASTER%の登場に興ざめして、部屋を出て行ってしまった……
+			ENDDATA
+			PRINTL 
+		ENDIF
+	NEXT
+	FOR LCOUNT, 2, -1, -1
+		IF 来客:LCOUNT && !同伴判定(来客:LCOUNT)
+			ARRAYREMOVE 来客, LCOUNT, 1
+			来客数--
+		ENDIF
+	NEXT
+ENDIF
+
+CALL KOJO_MESSAGE_EVENT, "部屋に行く", 住人
+SIF 住人:1
+	CALL KOJO_MESSAGE_EVENT, "部屋に行く", 住人:1
+
+PRINTL 　[1] - 遊びに行く
+PRINTL 　[2] - 部屋でくつろぐ
+PRINTL 　[3] - 雰囲気を作る
+DRAWLINE
+PRINTPLAIN 　部屋　
+PRINTL [0] - 戻る
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE 1
+			IF !同伴判定(住人:0)
+				;妊娠育児中は無理
+				IF TALENT:住人:妊娠
+					PRINTFORMW %CALLNAME:住人%は妊娠中だ。しばらく無茶は控えたほうがいいだろう
+					RESTART
+				ELSEIF TALENT:住人:育児中
+					PRINTFORMW %CALLNAME:住人%が育てている子供を外に連れ出すには、まだ早いだろう
+					RESTART
+				ELSEIF CFLAG:住人:使用不可
+					PRINTFORML %CALLNAME:住人%は今は行動できない状態だ
+				ELSEIF CSTR:住人:配属 != ""
+					PRINTFORML %CALLNAME:住人%は仕事中だ
+				ELSE
+					PRINTFORML %CALLNAME:住人%は%CALLNAME:MASTER%とは出かけたくないようだ……
+				ENDIF
+			ENDIF
+			;もうひとり居ればそっちも判定
+			IF 住人:1 && !同伴判定(住人:1)
+				IF TALENT:(住人:1):妊娠
+					PRINTFORMW %CALLNAME:(住人:1)%は妊娠中だ。しばらく無茶は控えたほうがいいだろう
+					RESTART
+				ELSEIF TALENT:(住人:1):育児中
+					PRINTFORMW %CALLNAME:(住人:1)%が育てている子供を外に連れ出すには、まだ早いだろう
+					RESTART
+				ELSEIF CFLAG:(住人:1):使用不可
+					PRINTFORML %CALLNAME:(住人:1)%は今は行動できない状態だ
+				ELSEIF CSTR:住人:配属 != ""
+					PRINTFORML %CALLNAME:(住人:1)%は仕事中だ
+				ELSE
+					PRINTFORML %CALLNAME:(住人:1)%は%CALLNAME:MASTER%とは出かけたくないようだ……
+				ENDIF
+			ENDIF
+			;片方が無理でもう片方が行けるときのみ確認する
+			IF !同伴判定(住人) && 同伴判定(住人:1)
+				PRINTFORML %CALLNAME:(住人:1)%と遊びに行きますか？
+				PRINTL [0] - はい
+				PRINTL [1] - いいえ
+				DO
+					INPUT
+					SIF RESULT == 1
+						RESTART
+				LOOP LOOPRES(0)
+				CALL 遊びに行く, 0, 住人:1, 来客:0, 来客:1, 来客:2
+				BREAK
+			ENDIF
+			IF 同伴判定(住人) && 住人:1 && !同伴判定(住人:1)
+				PRINTFORML %CALLNAME:(住人)%と遊びに行きますか？
+				PRINTL [0] - はい
+				PRINTL [1] - いいえ
+				DO
+					INPUT
+					SIF RESULT == 1
+						RESTART
+				LOOP LOOPRES(0)
+				CALL 遊びに行く, 住人, 0, 来客:0, 来客:1, 来客:2
+				BREAK
+			ENDIF
+			IF !同伴判定(住人) && !同伴判定(住人:1)
+				WAIT
+				RESTART
+			ENDIF
+			CALL 遊びに行く, 住人, 住人:1, 来客:0, 来客:1, 来客:2
+			BREAK
+		CASE 2
+			CALL 部屋でくつろぐ, 住人, 住人:1, 来客:0, 来客:1, 来客:2
+			BREAK
+		CASE 3
+			IF !同伴判定(住人:0)
+				;妊娠育児中は無理
+				IF TALENT:住人:妊娠
+					PRINTFORMW %CALLNAME:住人%は妊娠中だ。しばらく無茶は控えたほうがいいだろう
+				ELSEIF TALENT:住人:育児中
+					PRINTFORMW %CALLNAME:住人%は育児が忙しくてそれどころではないようだ
+				ELSEIF CFLAG:住人:使用不可
+					PRINTFORMW %CALLNAME:住人%は今は行動できない状態だ
+				ELSEIF CSTR:住人:配属 != ""
+					PRINTFORMW %CALLNAME:住人%は仕事が忙しくてそれどころではないようだ
+				ELSE
+					PRINTFORMW %CALLNAME:住人%とはとても良い雰囲気を作れそうにない……
+				ENDIF
+				RESTART
+			ENDIF
+			;もうひとり居ればそっちも判定
+			IF 住人:1 && !同伴判定(住人:1)
+				IF TALENT:(住人:1):妊娠
+					PRINTFORMW %CALLNAME:(住人:1)%は妊娠中だ。しばらく無茶は控えたほうがいいだろう
+				ELSEIF TALENT:(住人:1):育児中
+					PRINTFORMW %CALLNAME:(住人:1)%は育児が忙しくてそれどころではないようだ
+				ELSEIF CFLAG:(住人:1):使用不可
+					PRINTFORMW %CALLNAME:(住人:1)%は今は行動できない状態だ
+				ELSEIF CSTR:住人:配属 != ""
+					PRINTFORMW %CALLNAME:(住人:1)%は仕事中忙しくてそれどころではないようだ
+				ELSE
+					PRINTFORMW %CALLNAME:(住人:1)%とはとても良い雰囲気を作れそうにない……
+				ENDIF
+				RESTART
+			ENDIF
+			CALL 雰囲気を作る, 住人, 住人:1, 来客:0, 来客:1, 来客:2
+			BREAK
+	ENDSELECT
+LOOP 1
+
+FLAG:休憩フラグ = 1
+BEGIN TURNEND
+
+RETURN 1
+
+@同伴判定, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+
+SIF 対象 == 0
+	RETURNF 0
+
+SIF !CFLAG:対象:陥落 && CFLAG:対象:状態 < 2 && RELATION:対象:(NO:MASTER) <= 100
+	RETURNF 0
+SIF TALENT:対象:妊娠 || TALENT:対象:育児中 || CFLAG:対象:使用不可
+	RETURNF 0
+SIF CSTR:対象:配属 != "" && TIME == 0
+	RETURNF 0
+
+RETURNF 1
+
+@遊びに行く, 同行者, 同行者:1, 同行者:2, 同行者:3, 同行者:4
+#DIM DYNAMIC 同行人数
+#DIM DYNAMIC LCOUNT
+
+FOR LCOUNT, 0, 5
+	IF 同行者:LCOUNT
+		CALL KOJO_MESSAGE_EVENT, "遊びに行く", 同行者:LCOUNT
+		同行人数++
+		;ストレス5低下
+		CFLAG:(同行者:LCOUNT):ストレス値 -= 3
+	ENDIF
+NEXT
+
+@部屋でくつろぐ, 同行者, 同行者:1, 同行者:2, 同行者:3, 同行者:4
+#DIM DYNAMIC 同行人数
+#DIM DYNAMIC LCOUNT
+
+FOR LCOUNT, 0, 5
+	IF 同行者:LCOUNT
+		CALL KOJO_MESSAGE_EVENT, "部屋でくつろぐ", 同行者:LCOUNT
+		同行人数++
+		;体力気力魔力3%回復
+		BASE:(同行者:LCOUNT):体力 += MAXBASE:(同行者:LCOUNT):体力*3/100
+		BASE:(同行者:LCOUNT):気力 += MAXBASE:(同行者:LCOUNT):気力*3/100
+		BASE:(同行者:LCOUNT):魔力 += MAXBASE:(同行者:LCOUNT):魔力*3/100
+		CALL SETBASE, 同行者:LCOUNT
+	ENDIF
+NEXT
+
+@雰囲気を作る, 同行者, 同行者:1, 同行者:2, 同行者:3, 同行者:4
+#DIM DYNAMIC 同行人数
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC 参加者, 6
+#DIM DYNAMIC 参加人数
+#DIM DYNAMIC 竿あり
+#DIM DYNAMIC 穴あり
+#DIM DYNAMIC 男性数
+#DIM DYNAMIC 女性数
+
+FOR LCOUNT, 0, 5
+	IF 同行者:LCOUNT
+		CALL KOJO_MESSAGE_EVENT, "雰囲気を作る", 同行者:LCOUNT
+		同行人数++
+	ENDIF
+NEXT
+
+FOR LCOUNT, 0, 5
+	SIF !同行者:LCOUNT
+		CONTINUE
+	IF 乱交参加(同行者:LCOUNT)
+		参加人数++
+		参加者:(参加人数) = 同行者:LCOUNT
+		SIF PENIS(同行者:LCOUNT)
+			竿あり++
+		SIF (VAGINA(参加者:LCOUNT) && !処女膜(参加者:LCOUNT)) || ABL:(参加者:LCOUNT):Ａ感覚 >= 2
+			穴あり++
+		SELECTCASE SEX(同行者:LCOUNT)
+			CASE 1
+				男性数++
+			CASE 2
+				女性数++
+		ENDSELECT
+	ENDIF
+NEXT
+
+SIF PENIS(MASTER)
+	竿あり++
+SIF (VAGINA(MASTER) && !処女膜(MASTER)) || ABL:(参加者:LCOUNT):Ａ感覚 >= 2
+	穴あり++
+SELECTCASE SEX(MASTER)
+	CASE 1
+		男性数++
+	CASE 2
+		女性数++
+ENDSELECT
+
+IF 参加人数 >= 1
+	FOR LCOUNT, 0, 6
+		IF 参加者:LCOUNT || LCOUNT == 0
+			IF VAGINA(参加者:LCOUNT) && !処女膜(参加者:LCOUNT)
+				CALL EXPUP, "Ｖ経験", 参加人数+1, 参加者:LCOUNT
+				CALL JUELUP, "快Ｖ", (参加人数+1)*50, 参加者:LCOUNT
+			ENDIF
+			SIF PENIS(参加者:LCOUNT)
+				CALL EXPUP, "射精経験", 参加人数+1, 参加者:LCOUNT
+			CALL JUELUP, "快Ｃ", (参加人数+1)*50, 参加者:LCOUNT
+			IF ABL:(参加者:LCOUNT):Ａ感覚 >= 2
+				CALL EXPUP, "Ａ経験", 参加人数+1, 参加者:LCOUNT
+				CALL JUELUP, "快Ａ", (参加人数+1)*50, 参加者:LCOUNT
+			ENDIF
+			IF VAGINA(参加者:LCOUNT) && !処女膜(参加者:LCOUNT) && 竿あり
+				CALL EXPUP, "性交経験", 竿あり, 参加者:LCOUNT
+			ELSEIF ABL:(参加者:LCOUNT):Ａ感覚 >= 2 && 竿あり
+				CALL EXPUP, "性交経験", 竿あり, 参加者:LCOUNT
+			ELSEIF PENIS(参加者:LCOUNT) && 穴あり
+				CALL EXPUP, "性交経験", 穴あり, 参加者:LCOUNT
+			ENDIF
+			CALL EXPUP, "精液経験", 竿あり, 参加者:LCOUNT
+			CALL JUELUP, "欲情", (参加人数+1)*50, 参加者:LCOUNT
+			SELECTCASE SEX(参加者:LCOUNT)
+				CASE 1
+					CALL EXPUP, "ゲイ経験", 男性数-1, 参加者:LCOUNT
+				CASE 2
+					CALL EXPUP, "レズ経験", 女性数-1, 参加者:LCOUNT
+			ENDSELECT
+			FOR LCOUNT2, 0, 5
+				SIF LCOUNT == LCOUNT2 
+					CONTINUE
+				IF PENIS(参加者:LCOUNT)
+					IF VAGINA(参加者:LCOUNT2) && !処女膜(参加者:LCOUNT2)
+						中出し回数:(参加者:LCOUNT):(NO:(参加者:LCOUNT2))++
+						中出され回数:(参加者:LCOUNT2):(NO:(参加者:LCOUNT))++
+						経験回数:(参加者:LCOUNT):(NO:(参加者:LCOUNT2))++
+						経験回数:(参加者:LCOUNT2):(NO:(参加者:LCOUNT))++
+					ENDIF
+					IF ABL:(参加者:LCOUNT2):Ａ感覚 >= 2
+						アナル中出し回数:(参加者:LCOUNT):(NO:(参加者:LCOUNT2))++
+						アナル中出され回数:(参加者:LCOUNT2):(NO:(参加者:LCOUNT))++
+						経験回数:(参加者:LCOUNT):(NO:(参加者:LCOUNT2))++
+						経験回数:(参加者:LCOUNT2):(NO:(参加者:LCOUNT))++
+					ENDIF
+				ENDIF
+			NEXT
+		ENDIF
+	NEXT
+ENDIF
+WAIT
+
+@乱交参加, 対象
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象
+#DIM DYNAMIC ポイント
+
+;ここにたどり着いた時点で最低限の同行条件は満たしている
+
+;淫乱娼婦は参加する
+SIF FALLTYPE(対象) == 2
+	RETURNF 1
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		{
+		CASE "衝動的", "弱気", "好奇心", "目立ちたがり", "貞操無頓着", "解放",
+			 "濡れやすい", "勃ちやすい", "自慰しやすい", "快感に素直", "両刀", "男好き", "女好き",
+		}
+			ポイント++
+		{
+		CASE "プライド高い", "大人しい", "ツンデレ", "冷静", "サボり魔", "自制心", 
+			 "無関心", "一線越えない", "恥じらい", "潔癖症", "男嫌い", "女嫌い", "同族嫌悪"
+		}
+			ポイント--
+		CASE "貞操観念"
+			ポイント -= 2
+	ENDSELECT
+NEXT
+
+ポイント += ABL:対象:欲望
+
+;ポイント10以上で参加
+SIF ポイント >= 10
+	RETURNF 1
+
+RETURNF 0
+
+@住人配置, 部屋番号
+#DIM DYNAMIC 部屋番号
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 住人数
+#DIM DYNAMIC 住人, 2
+#DIM DYNAMIC 表示
+
+DRAWLINE
+住人数 = 0
+FOR LCOUNT, 1, CHARANUM
+	IF CFLAG:LCOUNT:居住 == 部屋番号
+		住人:住人数 = LCOUNT
+		住人数++
+	ENDIF
+	SIF 住人数 == 2
+		BREAK
+NEXT
+
+IF 住人数 == 2
+	PRINTFORML □部屋,{部屋番号}には%CALLNAME:住人%と%CALLNAME:(住人:1)%が住んでいます
+	PRINTL 　一部屋に住めるのは二人までです
+	PRINTL 
+	PRINTL [0] - 戻る
+	PRINTL [1] - 空き部屋にする
+	DO
+		INPUT
+		SELECTCASE RESULT
+			CASE 0
+				RETURN
+			CASE 1
+				CFLAG:(住人:0):居住 = 0
+				CFLAG:(住人:1):居住 = 0
+				RESTART
+		ENDSELECT
+	LOOP 1
+ELSE
+	IF 住人数 == 1
+		PRINTFORML □部屋,{部屋番号}には%CALLNAME:住人%が住んでいます。もう一人住むことができます
+	ELSE
+		PRINTL □誰を配置しますか？
+	ENDIF
+	FOR PAGING, 0, CHARANUM
+		表示 = 1
+		SIF PAGING == 0
+			表示 = 0
+		SIF GROUPMATCH(PAGING, 住人:0, 住人:1)
+			表示 = 0
+		;監禁中のキャラのみ配置できない
+		SIF CFLAG:PAGING:監禁
+			表示 = 0
+		CALL PAGING, 表示
+	NEXT
+	SIF RESULT == -1
+		RETURN
+	CFLAG:RESULT:居住 = 部屋番号
+	RESTART
+ENDIF
+
+@TURNEND_居住部屋
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC 住人, 2
+#DIM DYNAMIC 来客, 3
+#DIMS DYNAMIC 内容, 2
+#DIM DYNAMIC SHUFFLE, 1000
+#DIM DYNAMIC 来客数 = -1
+#DIM DYNAMIC 来客上限
+#DIM DYNAMIC 対象
+
+;部屋単位でLCOUNTを回す
+FOR LCOUNT, 1, 100
+	住人 = FINDCHARA(CFLAG:居住, LCOUNT)
+	住人:1 = FINDLASTCHARA(CFLAG:居住, LCOUNT)
+	SIF 住人 == -1
+		CONTINUE
+	SIF 住人 == 住人:1
+		住人:1 = 0
+	
+	;イベント前にスライム感染の処理
+	SIF 住人 > 0 && ISSLIME(住人) && 住人:1
+		CFLAG:(住人:1):スライム度++
+	SIF 住人:1 > 0 && ISSLIME(住人:1) && 住人
+		CFLAG:住人:スライム度++
+
+	内容 = 
+	;発生率は20%程度
+	SIF !RANDPER(20)
+		CONTINUE
+
+	;いくつかの傾向からランダムで選ぶ
+	SELECTCASE RAND:2
+		;ユニットを組んでいる場合
+		CASE 0
+			SIF CFLAG:住人:ユニット番号 || CFLAG:(住人:1):ユニット番号
+				内容 = 自主練
+		;二人同棲している
+		CASE 1
+			IF 住人 && 住人:1
+				SELECTCASE 同棲判定(住人, 住人:1)
+					;お勉強タイム
+					CASE 1
+						内容 = 勉強
+					;盛る
+					CASE 2
+						内容 = 性交
+				ENDSELECT
+			ENDIF
+	ENDSELECT
+	;内容決まらなかった場合は適当なイベントで濁す
+	SIF 内容 == ""
+		内容 = その他
+
+	IF GROUPMATCH(内容, "その他", "自主練")
+		VARSET SHUFFLE, -1
+		来客数 = 0
+		;頭からループ回すと来客が偏るので一度シャッフルかける
+		FOR LCOUNT2, 0, CHARANUM
+			SHUFFLE:LCOUNT2 = LCOUNT2
+		NEXT
+		FOR LCOUNT2, 0, CHARANUM
+			SWAP SHUFFLE:LCOUNT2, SHUFFLE:RAND(LCOUNT2, CHARANUM)
+		NEXT
+		;0～4人
+		来客上限 = RAND:4
+		FOR LCOUNT2, 0, CHARANUM
+			SIF 来客上限 <= 来客数
+				BREAK
+			;主人は来客対象外
+			SIF SHUFFLE:LCOUNT2 == 0
+				CONTINUE
+			;住人は来客にならない
+			SIF CFLAG:(SHUFFLE:LCOUNT2):居住
+				CONTINUE
+			;妊娠育児中、使用不可中、配属中で昼の場合は来ない
+			SIF TALENT:(SHUFFLE:LCOUNT2):妊娠
+				CONTINUE
+			SIF TALENT:(SHUFFLE:LCOUNT2):育児中
+				CONTINUE
+			SIF CFLAG:(SHUFFLE:LCOUNT2):使用不可
+				CONTINUE
+			SIF CSTR:(SHUFFLE:LCOUNT2):配属 != "" && TIME == 0
+				CONTINUE
+			;監禁中のキャラは来ない
+			SIF CFLAG:(SHUFFLE:LCOUNT2):監禁
+				CONTINUE
+			SELECTCASE 内容
+				CASE "その他"
+					;来客→住人の相性が良いと遊びに来ている
+					SIF 相性値(SHUFFLE:LCOUNT2, 住人) > 100 || 相性値(SHUFFLE:LCOUNT2, 住人:1) > 100
+						来客:(来客数++) = SHUFFLE:LCOUNT2
+					SIF 来客数 >= 3
+						BREAK
+				CASE "自主練"
+					;同じユニットのメンバーが来る
+					SIF CFLAG:(SHUFFLE:LCOUNT2):ユニット番号 && GROUPMATCH(CFLAG:(SHUFFLE:LCOUNT2):ユニット番号, CFLAG:住人:ユニット番号, CFLAG:(住人:1):ユニット番号)
+						来客:(来客数++) = SHUFFLE:LCOUNT2
+					SIF 来客数 >= 3
+						BREAK
+			ENDSELECT
+		NEXT
+	ENDIF
+
+	SELECTCASE 内容
+		CASE "自主練"
+			部屋ログ = {YEAR}年{MONTH}月{DAYS}日\@ TIME == 0 ? 昼 # 夜 \@
+			部屋ログ += " "
+			SIF CFLAG:住人:ユニット番号
+				部屋ログ += @"%CALLNAME:住人%"
+			SIF CFLAG:住人:ユニット番号 && CFLAG:(住人:1):ユニット番号
+				部屋ログ += "と"
+			SIF CFLAG:(住人:1):ユニット番号
+				部屋ログ += @"%CALLNAME:(住人:1)%"
+			IF 来客数
+				部屋ログ += "の部屋に"
+				FOR LCOUNT2, 0, 来客数
+					SIF LCOUNT2 >= 1
+						部屋ログ += "、"
+					部屋ログ += @"%CALLNAME:(来客:LCOUNT2)%"
+				NEXT
+				部屋ログ += "が訪れ、音楽ユニットでの自主練を行った"
+			ELSE
+				部屋ログ += "は部屋で音楽ユニットの自主練を行った"
+			ENDIF
+			FOR LCOUNT2, 0, 5
+				SELECTCASE LCOUNT2
+					CASE 0
+						対象 = 住人
+					CASE 1
+						対象 = 住人:1
+					CASE 2
+						対象 = 来客
+					CASE 3
+						対象 = 来客:1
+					CASE 4
+						対象 = 来客:2
+				ENDSELECT
+				SIF 対象 <= 0
+					CONTINUE
+				IF CFLAG:対象:ユニット番号
+					SELECTCASE CFLAG:対象:ユニット担当
+						CASE 1
+							EXP:対象:ダンス経験 += 2
+							JUEL:対象:習得 += 50
+						CASE 2
+							EXP:対象:演奏経験 += 2
+							JUEL:対象:習得 += 50
+						CASE IS >= 10
+							SELECTCASE CFLAG:対象:ユニット担当/10
+								CASE 3
+									EXP:対象:歌唱経験 += 2
+									JUEL:対象:習得 += 50
+								CASE 4
+									EXP:対象:歌唱経験++
+									EXP:対象:ダンス経験++
+									JUEL:対象:習得 += 50
+								CASE 5
+									EXP:対象:歌唱経験++
+									EXP:対象:演奏経験++
+									JUEL:対象:習得 += 50
+							ENDSELECT
+					ENDSELECT
+				ENDIF
+			NEXT
+		CASE "勉強"
+			;試行回数10回
+			REPEAT 10
+				;ランダムでABLを決める
+				内容 = %ABLNAME:(RAND(GETNUM(ABL, "料理技能"), GETNUM(ABL, "栽培技能")))%
+				;住人がそのABLを持ってるか
+				IF ABL:住人:内容 || ABL:(住人:1):内容
+					SELECTCASE 内容
+						CASE "料理技能"
+							EXP:住人:料理経験 += ABL:(住人:1):内容
+							EXP:(住人:1):料理経験 += ABL:住人:内容
+							内容:1 = 料理
+						CASE "家事技能"
+							EXP:住人:家事経験 += ABL:(住人:1):内容
+							EXP:(住人:1):家事経験 += ABL:住人:内容
+							内容:1 = 家事
+						CASE "工作技能"
+							EXP:住人:工作経験 += ABL:(住人:1):内容
+							EXP:(住人:1):工作経験 += ABL:住人:内容
+							内容:1 = 機械の扱い方
+						CASE "歌唱技能"
+							EXP:住人:歌唱経験 += ABL:(住人:1):内容
+							EXP:(住人:1):歌唱経験 += ABL:住人:内容
+							内容:1 = 歌
+						CASE "演奏技能"
+							EXP:住人:演奏経験 += ABL:(住人:1):内容
+							EXP:(住人:1):演奏経験 += ABL:住人:内容
+							内容:1 = 楽器演奏
+						CASE "撮影技能"
+							EXP:住人:撮影経験 += ABL:(住人:1):内容
+							EXP:(住人:1):撮影経験 += ABL:住人:内容
+							内容:1 = カメラの扱い方
+						CASE "舞踊技能"
+							EXP:住人:ダンス経験 += ABL:(住人:1):内容
+							EXP:(住人:1):ダンス経験 += ABL:住人:内容
+							内容:1 = ダンス
+						CASE "飼育技能"
+							EXP:住人:飼育経験 += ABL:(住人:1):内容
+							EXP:(住人:1):飼育経験 += ABL:住人:内容
+							内容:1 = 動物の飼い方
+						CASE "栽培技能"
+							EXP:住人:栽培経験 += ABL:(住人:1):内容
+							EXP:(住人:1):栽培経験 += ABL:住人:内容
+							内容:1 = 植物の育て方
+						CASEELSE
+							CONTINUE
+					ENDSELECT
+
+					IF ABL:住人:内容 > ABL:(住人:1):内容
+						ARRAYSHIFT 部屋ログ, 1, ""
+						部屋ログ:0 = {YEAR}年{MONTH}月{DAYS}日\@ TIME == 0 ? 昼 # 夜 \@ %CALLNAME:(住人:1)%が%CALLNAME:住人%に%内容:1%を教わった
+					ELSEIF ABL:住人:内容 < ABL:(住人:1):内容
+						ARRAYSHIFT 部屋ログ, 1, ""
+						部屋ログ:0 = {YEAR}年{MONTH}月{DAYS}日\@ TIME == 0 ? 昼 # 夜 \@ %CALLNAME:住人%が%CALLNAME:(住人:1)%に%内容:1%を教わった
+					ELSE
+						ARRAYSHIFT 部屋ログ, 1, ""
+						部屋ログ:0 = {YEAR}年{MONTH}月{DAYS}日\@ TIME == 0 ? 昼 # 夜 \@ %CALLNAME:住人%と%CALLNAME:(住人:1)%は%内容:1%を勉強した
+					ENDIF
+					BREAK
+				ENDIF
+			REND
+		CASE "性交"
+			ARRAYSHIFT 部屋ログ, 1, ""
+			部屋ログ:0 = {YEAR}年{MONTH}月{DAYS}日\@ TIME == 0 ? 昼 # 夜 \@ %CALLNAME:住人%と%CALLNAME:(住人:1)%は素敵なひと時を過ごした
+			IF PENIS(住人)
+				EXP:住人:射精経験++
+				EXP:(住人:1):精液経験++
+				IF VAGINA(住人:1) && !処女膜(住人:1)
+					EXP:住人:性交経験++
+					EXP:(住人:1):性交経験++
+					EXP:(住人:1):Ｖ経験++
+					CALL 経験回数増加, 住人, 住人:1, 1, "中出し"
+					;一応妊娠してみるようにしてみる
+					CALL NAKADASHI_CHECK, 住人:1, 住人, 0, 1
+				ELSEIF ABL:(住人:1):Ａ感覚 >= 3
+					EXP:住人:性交経験++
+					EXP:(住人:1):性交経験++
+					EXP:(住人:1):Ａ経験++
+					CALL 経験回数増加, 住人, 住人:1, 1, "アナル中出し"
+				ENDIF
+			ENDIF
+			IF PENIS(住人:1)
+				EXP:(住人:1):射精経験++
+				EXP:住人:精液経験++
+				IF VAGINA(住人) && !処女膜(住人)
+					EXP:住人:性交経験++
+					EXP:(住人:1):性交経験++
+					EXP:住人:Ｖ経験++
+					CALL 経験回数増加, 住人:1, 住人, 1, "中出し"
+					;一応妊娠するようにしてみる
+					CALL NAKADASHI_CHECK, 住人, 住人:1, 0, 1
+				ELSEIF ABL:住人:Ａ感覚 >= 3
+					EXP:住人:性交経験++
+					EXP:(住人:1):性交経験++
+					EXP:住人:Ａ経験++
+					CALL 経験回数増加, 住人:1, 住人, 1, "アナル中出し"
+				ENDIF
+			ENDIF
+			IF SEX(住人) == SEX(住人:1)
+				SELECTCASE 住人
+					CASE 1
+						EXP:住人:ゲイ経験++
+						EXP:(住人:1):ゲイ経験++
+					CASE 2
+						EXP:住人:レズ経験++
+						EXP:(住人:1):レズ経験++
+				ENDSELECT
+			ENDIF
+		CASE "その他"
+			ARRAYSHIFT 部屋ログ, 1, ""
+			部屋ログ = {YEAR}年{MONTH}月{DAYS}日\@ TIME == 0 ? 昼 # 夜 \@ %CALLNAME:住人%\@ 住人:1 ? と%CALLNAME:(住人:1)% #\@
+			IF 来客数
+				部屋ログ += "の部屋に"
+				FOR LCOUNT2, 0, 来客数
+					SIF LCOUNT2 >= 1
+						部屋ログ += "、"
+					部屋ログ += @"%CALLNAME:(来客:LCOUNT2)%"
+				NEXT
+				部屋ログ += "が訪れ、"
+			ELSE
+				部屋ログ += "は"
+			ENDIF
+			IF 来客数 == 0 && 住人:1
+				IF 相性値(住人, 住人:1) > 100 && 相性値(住人:1, 住人) > 100
+					SELECTCASE RAND:3
+						CASE 0
+							部屋ログ += "部屋でくつろいで過ごした"
+						CASE 1
+							部屋ログ += "2人で遊びに出かけた"
+						CASE 2
+							部屋ログ += "特筆することのない時間を過ごした"
+					ENDSELECT
+				ELSE
+					部屋ログ += "別行動で過ごした"
+				ENDIF
+			ELSEIF 来客数
+				SELECTCASE RAND:4
+					CASE 0
+						部屋ログ += "部屋で談笑しながら過ごした"
+					CASE 1
+						部屋ログ += "みんなで遊びに出かけた"
+					CASE 2
+						部屋ログ += "部屋で遊んで過ごした"
+					CASE 3
+						部屋ログ += "部屋でくつろいで過ごした"
+				ENDSELECT
+			ELSE
+				SELECTCASE RAND:3
+					CASE 0
+						部屋ログ += "とりとめのない時間を過ごした"
+					CASE 1
+						部屋ログ += "部屋でくつろいで過ごした"
+					CASE 2
+						部屋ログ += "特に何もせずに過ごした"
+				ENDSELECT
+			ENDIF
+	ENDSELECT
+NEXT
+
+@同棲判定, 住人, 住人:1
+#FUNCTION
+#DIM DYNAMIC 住人, 2
+
+;相性が良く、かつ既成事実があると盛り始める
+IF RELATION:住人:(NO:(住人:1)) > 100 && RELATION:(住人:1):(NO:住人) > 100
+	IF 経験回数:住人:(NO:(住人:1)) && 経験回数:(住人:1):(NO:住人)
+		;ただし既婚者のみ例外
+		IF TALENT:住人:既婚者 || TALENT:(住人:1):既婚者
+			IF TALENT:住人:既婚者 == NO:(住人:1) && TALENT:(住人:1):既婚者 == NO:住人
+				RETURNF 2
+			ELSE
+				GOTO ELSE
+			ENDIF
+		ENDIF
+		RETURNF 2
+	ELSEIF TALENT:住人:恋心 == NO:(住人:1) && TALENT:(住人:1):恋心 == NO:住人
+		RETURNF 2
+	ELSEIF TALENT:住人:既婚者 == NO:(住人:1) && TALENT:(住人:1):既婚者 == NO:住人
+		RETURNF 2
+	ENDIF
+ENDIF
+
+$ELSE
+;相性が悪くない場合はお勉強
+SIF RELATION:住人:(NO:(住人:1)) >= 100 && RELATION:(住人:1):(NO:住人) >= 100
+	RETURNF 1
+
+RETURNF 0
+
+@部屋ログ表示
+#DIM DYNAMIC LCOUNT
+
+DRAWLINE
+FOR LCOUNT, 99, -1, -1
+	SIF 部屋ログ:LCOUNT != ""
+		PRINTFORML 　%部屋ログ:LCOUNT%
+NEXT
+DRAWLINE
+PRINTW 　部屋ログ　

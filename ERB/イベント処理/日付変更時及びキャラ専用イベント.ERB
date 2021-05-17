@@ -134,8 +134,11 @@ IF TIME == 1
 		CALL STRATEGY_INCOME
 ENDIF
 ;主人が行動不可だと発生しない
-SIF !CFLAG:MASTER:使用不可
+IF !CFLAG:MASTER:使用不可
 	CALL TURNEND_IDOL
+	SIF TIME == 1
+		CALL TURNEND_監禁室
+ENDIF
 
 ;畜産農業関係
 CALL TURNEND_畜産農業
@@ -157,8 +160,11 @@ IF !CFLAG:MASTER:使用不可 && ゲームモード() != "新婚モード"
 	CALL CHECKDRAWLINEW
 ENDIF
 
+;居住部屋
+CALL TURNEND_居住部屋
+
 ;新婚モード以外で所持金が5000万以上なら裏カジノへの招待状が届く
-IF ゲームモード() != "新婚モード" && MONEY >= TONUM("50000万") && !FLAG:裏カジノ
+IF ゲームモード() != "新婚モード" && MONEY >= TONUM("5000万") && !FLAG:裏カジノ
 	CALL KOJO_MESSAGE_EVENT, "裏カジノ招待"
 	PRINTW 裏カジノが使用可能になりました
 	FLAG:裏カジノ = 1
@@ -234,25 +240,25 @@ IF !CFLAG:MASTER:使用不可
 			;昼→夜
 			CASE 0
 				IF TALENT:LCOUNT:酒豪
-					CFLAG:LCOUNT:酔 -= 20
+					CFLAG:LCOUNT:酔 -= 20+(特質("代謝強化", LCOUNT)/2)
 					CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/3
 				ELSEIF TALENT:LCOUNT:下戸
-					CFLAG:LCOUNT:酔 -= 5
+					CFLAG:LCOUNT:酔 -= 5+(特質("代謝強化", LCOUNT)/4)
 					CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/5
 				ELSE
-					CFLAG:LCOUNT:酔 -= 10
+					CFLAG:LCOUNT:酔 -= 10+(特質("代謝強化", LCOUNT)/3)
 					CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/4
 				ENDIF
 			;夜→昼
 			CASE 1
 				IF TALENT:LCOUNT:酒豪
-					CFLAG:LCOUNT:酔 -= 50
+					CFLAG:LCOUNT:酔 -= 50+(特質("代謝強化", LCOUNT)/2)
 					CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/2
 				ELSEIF TALENT:LCOUNT:下戸
-					CFLAG:LCOUNT:酔 -= 10
+					CFLAG:LCOUNT:酔 -= 10+(特質("代謝強化", LCOUNT)/4)
 					CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/4
 				ELSE
-					CFLAG:LCOUNT:酔 -= 30
+					CFLAG:LCOUNT:酔 -= 30+(特質("代謝強化", LCOUNT)/3)
 					CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/3
 				ENDIF
 				;これで酔いが残っていると二日酔いを引き起こす
@@ -1068,21 +1074,19 @@ SIF CFLAG:陥落
 TFLAG:誘惑ポイント = LOCAL
 
 CALL CHECKDRAWLINE
-DO
-	PRINTFORML 就寝間際、寝付こうとしている%CALLNAME:TARGET%の姿を目撃した
-	PRINTL [0] 夜這いをかける
-	PRINTL [1] 誘惑する
-	PRINTL [2] 今日はやめとく
-	PRINTL [3] そんなつもりは無い(イベント非表示 オプションから再度表示出来ます)
-	INPUT
-	SELECTCASE RESULT
-		CASE 2
-			RETURN 0
-		CASE 3
-			FLAG:色仕掛け = 0
-			RETURN 0
-	ENDSELECT
-LOOP LOOPRES(0, 1)
+PRINTFORML 就寝間際、寝付こうとしている%CALLNAME:TARGET%の姿を目撃した
+PRINTL [0] 夜這いをかける
+PRINTL [1] 誘惑する
+PRINTL [2] 今日はやめとく
+PRINTL [3] そんなつもりは無い(イベント非表示 オプションから再度表示出来ます)
+CALL INPUTF, 0, 1, 2, 3
+SELECTCASE RESULT
+	CASE 2
+		RETURN 0
+	CASE 3
+		FLAG:色仕掛け = 0
+		RETURN 0
+ENDSELECT
 
 ;夜這い
 SELECTCASE RESULT

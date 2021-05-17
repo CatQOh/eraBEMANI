@@ -65,6 +65,16 @@ IF 配属先 == "娼館"
 ELSE
 	PRINTFORML □%配属先%に配属する人員を選択してください(現在{配属人数}/{配属上限})
 ENDIF
+SELECTCASE 配属先
+	CASE "農業", "畜産業", "温泉探索", "飲食店"
+		PRINTL 　配属可能条件：無条件
+	CASE "娼館", "ゲーセン売春"
+		PRINTL 　配属可能条件：売却可能であること
+	CASE "監禁室"
+		PRINTL 　配属可能条件：淫乱系陥落か服従系陥落であること
+	CASEELSE
+		PRINTL 　配属可能条件：助手可能であること
+ENDSELECT
 
 配属可能人数 = 0
 
@@ -76,11 +86,10 @@ FOR LCOUNT, 0, CHARANUM
 	;アニマルも当然無理
 	SIF TALENT:LCOUNT:アニマル
 		CONTINUE
+	;監禁中は無理
+	SIF CFLAG:LCOUNT:監禁
+		CONTINUE
 	SELECTCASE 配属先
-		;ゲーセンと芸能と各施設は助手可能が条件
-		CASE "ゲームセンター", "芸能プロダクション", "医務室", "図書室", "調理室"
-			SIF CFLAG:LCOUNT:状態 < 2
-				CONTINUE
 		;娼館とゲーセン売春は売却可能で配置可能
 		CASE "娼館", "ゲーセン売春"
 			;売却可能じゃないと無理
@@ -93,8 +102,12 @@ FOR LCOUNT, 0, CHARANUM
 		CASE "監禁室"
 			SIF !GROUPMATCH(FALLTYPE(LCOUNT), 2, 3)
 				CONTINUE
-		;農業と畜産業と温泉は状態に関わらず配属可
-		CASE "農業", "畜産業", "温泉探索"
+		;農業と畜産業と温泉と飲食店は状態に関わらず配属可
+		CASE "農業", "畜産業", "温泉探索", "飲食店"
+		;その他 助手可能が条件
+		CASEELSE
+			SIF CFLAG:LCOUNT:状態 < 2
+				CONTINUE
 	ENDSELECT
 	;妊娠中、育児中は無理
 	SIF TALENT:LCOUNT:妊娠 || TALENT:LCOUNT:育児中
@@ -176,6 +189,8 @@ IF 配属可能人数
 				CALL ISTALENT, LCOUNT, "サボり魔"
 				CALL ISTALENT, LCOUNT, "浪費癖"
 				CALL ISTALENT, LCOUNT, "統率"
+				SIF ワーカホリックレベル(LCOUNT)
+					PRINTFORM [ワーカホリック+{ワーカホリックレベル(LCOUNT)}]
 			CASE "娼館", "ゲーセン売春"
 				PRINTFORM 従順:{ABL:LCOUNT:従順, 2, LEFT} 欲望:{ABL:LCOUNT:欲望, 2, LEFT} 技巧:{ABL:LCOUNT:技巧, 2, LEFT}
 				CALL ISTALENT, LCOUNT, "淫乱"
@@ -221,10 +236,14 @@ IF 配属可能人数
 				CALL ISTALENT, LCOUNT, "調合知識"
 				CALL ISTALENT, LCOUNT, "浪費癖"
 				CALL ISTALENT, LCOUNT, "統率"
+				SIF ワーカホリックレベル(LCOUNT)
+					PRINTFORM [ワーカホリック+{ワーカホリックレベル(LCOUNT)}]
 			CASE "農業"
 				PRINTFORM 栽培技能:{ABL:LCOUNT:栽培技能, 2, LEFT} 工作技能:{ABL:LCOUNT:工作技能, 2, LEFT} 魔法技能:{ABL:LCOUNT:魔法技能, 2, LEFT}
 				CALL ISTALENT, LCOUNT, "統率"
 				CALL ISTALENT, LCOUNT, "植生学"
+				SIF ワーカホリックレベル(LCOUNT)
+					PRINTFORM [ワーカホリック+{ワーカホリックレベル(LCOUNT)}]
 			CASE "畜産業"
 				PRINTFORM 飼育技能:{ABL:LCOUNT:飼育技能, 2, LEFT} 飼育適性:{飼育レベル(LCOUNT), 2, LEFT}
 				CALL ISTALENT, LCOUNT, "世話好き"
@@ -242,19 +261,27 @@ IF 配属可能人数
 						PRINT [妖精]
 				ENDSELECT
 				CALL ISTALENT, LCOUNT, "統率"
+				SIF ワーカホリックレベル(LCOUNT)
+					PRINTFORM [ワーカホリック+{ワーカホリックレベル(LCOUNT)}]
 			CASE "調理室"
 				PRINTFORM 料理技能:{ABL:LCOUNT:料理技能, 2, LEFT}
 				CALL ISTALENT, LCOUNT, "料理人"
 				CALL ISTALENT, LCOUNT, "統率"
+				SIF ワーカホリックレベル(LCOUNT)
+					PRINTFORM [ワーカホリック+{ワーカホリックレベル(LCOUNT)}]
 			CASE "温泉探索"
 				PRINTFORM 魔法技能:{ABL:LCOUNT:魔法技能, 2, LEFT}
 				PRINTFORM 工作技能:{ABL:LCOUNT:工作技能, 2, LEFT}
 				PRINTFORM 実務経験:{EXP:LCOUNT:実務経験, 2, LEFT}
 				CALL ISTALENT, LCOUNT, "地質学"
+				SIF ワーカホリックレベル(LCOUNT)
+					PRINTFORM [ワーカホリック+{ワーカホリックレベル(LCOUNT)}]
 			CASE "飲食店"
 				PRINTFORM 料理技能:{ABL:LCOUNT:料理技能, 2, LEFT}
 				CALL ISTALENT, LCOUNT, "料理人"
 				CALL ISTALENT, LCOUNT, "統率"
+				SIF ワーカホリックレベル(LCOUNT)
+					PRINTFORM [ワーカホリック+{ワーカホリックレベル(LCOUNT)}]
 				SIF !CFLAG:LCOUNT:配属完了 && CSTR:LCOUNT:配属 == "飲食店"
 					PRINT 【配属準備中】
 		ENDSELECT
@@ -390,7 +417,7 @@ DO
 					RESTART
 			ENDSELECT
 	ENDSELECT
-LOOP LOOPRES(999, 1001, 1002)
+LOOP 0
 
 RESTART
 

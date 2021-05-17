@@ -5,6 +5,7 @@
 #FUNCTION
 ;岩清水実行判定
 ;羞恥プレイ中じゃないとダメ
+コマンド実行条件 += "大鏡使用中である/"
 SIF !TEQUIP:羞恥プレイ
 	COMRESULT = 0
 ;猫舌の調教者の場合は技巧Lv2以上必要
@@ -13,27 +14,21 @@ SIF TALENT:PLAYER:猫舌 && ABL:PLAYER:技巧 < 2
 	COMRESULT = 0
 ;性器が汚れている場合（愛液、母乳の汚れ以外）
 コマンド実行条件 += "性器が汚れていると実行できない(素質[汚れ無視]なら可)/"
-REPEAT 8
-	IF GETBIT(STAIN:ヴァギナ, COUNT)
-		SELECTCASE COUNT
-			CASE 1, 2, 3, 5, 6, 7
-				;実行者
-				SELECTCASE PLAYER
-					;主人
-					CASE MASTER
-						;汚れ無視を持っていない場合はクンニできない
-						SIF !TALENT:MASTER:汚れ無視
-							COMRESULT = 0
-					;助手
-					CASE ASSI
-						;汚臭敏感で従順3以下の場合クンニはできない（汚れ無視なら可能）
-						SIF ABL:ASSI:従順 <= 3 && TALENT:ASSI:汚臭敏感 && !TALENT:ASSI:汚れ無視
-							COMRESULT = 0
-				ENDSELECT
-				BREAK
-		ENDSELECT
-	ENDIF
-REND
+IF GET_STAIN(STAIN:ヴァギナ, "先走り", "精液", "アナル", "粘液", "破瓜血", "尿")
+	;実行者
+	SELECTCASE PLAYER
+		;主人
+		CASE MASTER
+			;汚れ無視を持っていない場合はクンニできない
+			SIF !TALENT:MASTER:汚れ無視
+				COMRESULT = 0
+		;助手
+		CASE ASSI
+			;汚臭敏感で従順3以下の場合クンニはできない（汚れ無視なら可能）
+			SIF ABL:ASSI:従順 <= 3 && TALENT:ASSI:汚臭敏感 && !TALENT:ASSI:汚れ無視
+				COMRESULT = 0
+	ENDSELECT
+ENDIF
 
 ;服着てるとダメ
 コマンド実行条件 += "性器が露出していないと実行できない/"
@@ -57,7 +52,7 @@ RETURNF COMRESULT
 
 @COM_岩清水
 ;実績「野増菜かなでの愛液を岩清水で啜り上げる」
-SIF CHARANAMEF(TARGET) == "野増菜かなで"
+SIF CHARANAMEF(TARGET) == "野増菜 かなで"
 	CALL 実績解除, "「ごちそうさまでした」をちゃーんとゆってね"
 PRINTL 岩清水
 CALL KOJO_MESSAGE_COM

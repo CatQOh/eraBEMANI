@@ -60,7 +60,7 @@ FOR LCOUNT, 0, CHARANUM
 	ENDIF
 NEXT
 
-@NAKADASHI_CHECK, 対象, 竿役, 確率チェック=0
+@NAKADASHI_CHECK, 対象, 竿役, 確率チェック=0, 精液量=0
 #DIMS DYNAMIC 対象種族
 #DIMS DYNAMIC 竿役種族
 #DIM DYNAMIC 妊娠確率, 2
@@ -93,10 +93,11 @@ IF 竿役 >= 0
 ENDIF
 
 ;対象が助手もしくは奴隷でなければ不具合起こりそうなのでフラグリセットして終了
-IF 対象 != TARGET && 対象 != ASSI
-	VARSET PREG:対象:0, 0, 0, 4
-	RETURN 0
-ENDIF
+;一時的にオミット
+;IF 対象 != TARGET && 対象 != ASSI
+;	VARSET PREG:対象:0, 0, 0, 4
+;	RETURN 0
+;ENDIF
 
 ;対象が生殖能力無いなら関数終了
 SIF !生殖機能♀(対象)
@@ -136,14 +137,16 @@ SIF 竿役種族 != "神" && 竿役種族 != 対象種族
 ;射精量による妊娠判定
 ;小柄体型だと妊娠しにくい
 ;小人体型だともっと妊娠しにくい
-SELECTCASE 竿役
-	CASE MASTER
-		精液量 = PREG:対象:主人膣内射精
-	CASE ASSI
-		精液量 = PREG:対象:助手膣内射精
-	CASE TARGET
-		精液量 = PREG:対象:奴隷膣内射精
-ENDSELECT
+IF 精液量 == 0
+	SELECTCASE 竿役
+		CASE MASTER
+			精液量 = PREG:対象:主人膣内射精
+		CASE ASSI
+			精液量 = PREG:対象:助手膣内射精
+		CASE TARGET
+			精液量 = PREG:対象:奴隷膣内射精
+	ENDSELECT
+ENDIF
 
 ;排卵マッサージフラグを加算して計算する
 SELECTCASE 精液量+CFLAG:対象:排卵マッサージ
@@ -404,11 +407,6 @@ ENDIF
 
 ;妊娠時のステータスの変化
 ;共通処理
-;体力上限を減らす
-MAXBASE:ARG:体力 -= 500
-SIF BASE:ARG:体力 >= MAXBASE:ARG:体力
-	BASE:ARG:体力 = MAXBASE:ARG:体力
-
 ;女だと母乳出るようになる
 IF !TALENT:ARG:母乳体質 && SEX(ARG) == 2
 	PRINTFORMW %CALLNAME:ARG%は母乳が出るようになった
@@ -540,20 +538,16 @@ IF ARG == MASTER
 		PRINTFORML %CALLNAME:LOCAL%に妊娠したことを伝えますか？
 		PRINTL [0] - そっとしておこう
 		PRINTL [1] - 伝えよう
-		DO
-			INPUT
-			SELECTCASE RESULT
-				CASE 0
-					PRINTFORMW %CALLNAME:LOCAL%には報告しないことにしました
-					PREG:MASTER:父親の認知 = 0
-					BREAK
-				CASE 1
-					PRINTFORMW %CALLNAME:LOCAL%に、\@ SEX(LOCAL) == 1 ? 彼 # 彼女 \@の子を身籠ったことを報告しました
-					CALL KOJO_MESSAGE_EVENT, "妊娠報告時", LOCAL
-					PREG:MASTER:父親の認知 = 1
-					BREAK
-			ENDSELECT
-		LOOP 1
+		CALL INPUTF, 0, 1
+		SELECTCASE RESULT
+			CASE 0
+				PRINTFORMW %CALLNAME:LOCAL%には報告しないことにしました
+				PREG:MASTER:父親の認知 = 0
+			CASE 1
+				PRINTFORMW %CALLNAME:LOCAL%に、\@ SEX(LOCAL) == 1 ? 彼 # 彼女 \@の子を身籠ったことを報告しました
+				CALL KOJO_MESSAGE_EVENT, "妊娠報告時", LOCAL
+				PREG:MASTER:父親の認知 = 1
+		ENDSELECT
 	ENDIF
 ELSE
 	CALL KOJO_MESSAGE_EVENT, "妊娠発覚時", ARG
@@ -739,24 +733,20 @@ SIF CHARANAMEF(ARG) == "育江" && !この子の七つのお祝いに
 PRINTFORML %CALLNAME:ARG%の様子を見に行きますか？
 PRINTL [0] - 育児室へ行く
 PRINTL [1] - 育児室へ行かない
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			DRAWLINE
-			PRINTFORMW %CALLNAME:MASTER%は%CALLNAME:ARG%のところへ向かった
-			LOCAL = TARGET
-			TARGET = ARG
-			CALL KOJO_MESSAGE_EVENT, "育児室"
-			TARGET = LOCAL
-			;育児室に顔出すと出産トラウマが僅かに緩和される
-			PREG:ARG:出産トラウマ計算用--
-			BREAK
-		CASE 1
-			DRAWLINE
-			BREAK
-	ENDSELECT
-LOOP 1
+CALL INPUTF, 0, 1
+SELECTCASE RESULT
+	CASE 0
+		DRAWLINE
+		PRINTFORMW %CALLNAME:MASTER%は%CALLNAME:ARG%のところへ向かった
+		LOCAL = TARGET
+		TARGET = ARG
+		CALL KOJO_MESSAGE_EVENT, "育児室"
+		TARGET = LOCAL
+		;育児室に顔出すと出産トラウマが僅かに緩和される
+		PREG:ARG:出産トラウマ計算用--
+	CASE 1
+		DRAWLINE
+ENDSELECT
 
 ;子供の素質と種族の確定
 @CHILDSET, 母親, 父親 = -1, 母体 = -1
@@ -1188,9 +1178,6 @@ IF ARG == MASTER
 ELSE
 	PRINTFORMW %CALLNAME:ARG%は再び調教可能になりました
 ENDIF
-;妊娠時に減った体力の最大値が回復
-SIF PREG:ARG:出産予定日 != 0
-	MAXBASE:ARG:体力 += 500
 TALENT:ARG:育児中 = 0
 IF TALENT:ARG:母乳体質 && PREG:ARG:母乳体質付与 == 1
 	PRINTFORMW %CALLNAME:ARG%は母乳が出なくなりました
@@ -1205,13 +1192,11 @@ ENDSELECT
 PRINTL [0] - 養子に出す
 CALL PASELIL,  @"[1] - 一緒に暮らす(育児費用30000＄が必要)"
 
-DO
-	INPUT
-	IF RESULT == 1 && MONEY < 30000
-		PRINTW 育児費用が足りないため、やむなく養子に出すことにしました
-		RESULT = 0
-	ENDIF
-LOOP LOOPRES(0, 1)
+CALL INPUTF, 0, 1
+IF RESULT == 1 && MONEY < 30000
+	PRINTW 育児費用が足りないため、やむなく養子に出すことにしました
+	RESULT = 0
+ENDIF
 
 SELECTCASE RESULT
 	CASE 0
@@ -1238,63 +1223,52 @@ SELECTCASE RESULT
 		PRINTL [4] 自分で入力
 		SIF 子供の名前 != ""
 			PRINTL [0] 決定
-		DO
-			INPUT
-			SELECTCASE RESULT
-				CASE 0
-					SIF 子供の名前 == ""
-						CONTINUE
-					BREAK
-				CASE 1 TO 3
-					命名パターン = RESULT
-					$ランダム生成
-					FOR LCOUNT, 0, 10
-						命名用変数:LCOUNT = %ランダム命名(命名パターン)%
-						PRINTFORML [{LCOUNT, 2, RIGHT}] %命名用変数:LCOUNT%
-					NEXT
-					DRAWLINE
-					PRINTL [10] 再生成
-					PRINTL [99] 戻る
-					DO
-						INPUT
+		CALL INPUTF, 0, 1, 2, 3
+		SELECTCASE RESULT
+			CASE 0
+				SIF 子供の名前 == ""
+					GOTO 命名
+			CASE 1 TO 3
+				命名パターン = RESULT
+				$ランダム生成
+				FOR LCOUNT, 0, 10
+					命名用変数:LCOUNT = %ランダム命名(命名パターン)%
+					PRINTFORML [{LCOUNT, 2, RIGHT}] %命名用変数:LCOUNT%
+				NEXT
+				DRAWLINE
+				PRINTL [10] 再生成
+				PRINTL [99] 戻る
+				DO
+					INPUT
+					SELECTCASE RESULT
+						CASE 0 TO 9
+							子供の名前 = %命名用変数:RESULT%
+						CASE 10
+							GOTO ランダム生成
+					ENDSELECT
+				LOOP 0
+				GOTO 命名
+			CASE 4
+				PRINTL 名前をつけてあげよう。この子の名前は……(入力してください)
+				DO
+					INPUTS
+					IF RESULTS != ""
+						PRINTFORML 「%RESULTS%」でいいですか？
+						PRINTL [0] - はい
+						PRINTL [1] - 考え直す
+						PRINTL [9] - 戻る
+						CALL INPUTF, 0, 1, 9
 						SELECTCASE RESULT
-							CASE 0 TO 9
-								子供の名前 = %命名用変数:RESULT%
-								BREAK
-							CASE 10
-								GOTO ランダム生成
-							CASE 99
-								BREAK
+							CASE 0
+								子供の名前 = %RESULTS%
+							CASE 1
+								PRINTL 名前をつけてあげよう。この子の名前は……(入力してください)
+								CONTINUE
 						ENDSELECT
-					LOOP 1
-					GOTO 命名
-				CASE 4
-					PRINTL 名前をつけてあげよう。この子の名前は……(入力してください)
-					DO
-						INPUTS
-						IF RESULTS != ""
-							PRINTFORML 「%RESULTS%」でいいですか？
-							PRINTL [0] - はい
-							PRINTL [1] - 考え直す
-							PRINTL [9] - 戻る
-							DO
-								INPUT
-							LOOP LOOPRES(0, 1, 9)
-							SELECTCASE RESULT
-								CASE 0
-									子供の名前 = %RESULTS%
-									BREAK
-								CASE 1
-									PRINTL 名前をつけてあげよう。この子の名前は……(入力してください)
-									CONTINUE
-								CASE 9
-									BREAK
-							ENDSELECT
-						ENDIF
-					LOOP 1
-					GOTO 命名
-			ENDSELECT
-		LOOP 1
+					ENDIF
+				LOOP 0
+				GOTO 命名
+		ENDSELECT
 		
 		ADDVOIDCHARA
 		TARGET = CHARANUM-1
@@ -1322,10 +1296,10 @@ SELECTCASE RESULT
 				MAXBASE:気力 += 200
 			CASEELSE
 				;近親交配だと虚弱になりやすい
-				;IF CFLAG:近親交配
-				;	MAXBASE:体力 -= RAND(1, 4)*100
-				;	MAXBASE:気力 -= RAND(1, 4)*100
-				;ENDIF
+				IF CFLAG:近親交配
+					MAXBASE:体力 -= RAND(1, 4)*100
+					MAXBASE:気力 -= RAND(1, 4)*100
+				ENDIF
 		ENDSELECT
 		;両親が魔術師だと魔法技能が付く
 		SIF PREG:魔法の才能
@@ -1372,19 +1346,17 @@ SELECTCASE RESULT
 		PRINTFORML %CALLNAME:TARGET%に性交渉を行えるようになるまでどう育てますか？
 		PRINTL [0] - 普通に育てる(年月経過、期限に影響は無し)
 		PRINTL [1] - 時の砂時計を使う
-		DO
-			INPUT
-			SELECTCASE RESULT
-				CASE 0
-					PRINTW ………………
-					PRINTW …………
-					PRINTW ……
-					PRINTFORMW 数年の月日を経て、%CALLNAME:TARGET%が調教可能になりました
-					YEAR += 8
-				CASE 1
-					PRINTFORMW 時の砂時計を使用して、%CALLNAME:TARGET%を調教可能な体まで成長させました
-			ENDSELECT
-		LOOP LOOPRES(0, 1)
+		CALL INPUTF, 0, 1
+		SELECTCASE RESULT
+			CASE 0
+				PRINTW ………………
+				PRINTW …………
+				PRINTW ……
+				PRINTFORMW 数年の月日を経て、%CALLNAME:TARGET%が調教可能になりました
+				YEAR += 8
+			CASE 1
+				PRINTFORMW 時の砂時計を使用して、%CALLNAME:TARGET%を調教可能な体まで成長させました
+		ENDSELECT
 		;実績:ルピカと幸せな家庭を築く
 		SIF CHARANAMEF(ARG) == "青のルピカ" && CFLAG:ARG:嫁
 			CALL 実績解除, "Q.E.D."

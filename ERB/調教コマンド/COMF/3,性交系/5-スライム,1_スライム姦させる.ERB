@@ -1,0 +1,426 @@
+﻿;-------------------------------------------------
+;スライム姦させる
+;-------------------------------------------------
+@USERCOM_ABLE_スライム姦させる, ARG
+#FUNCTION
+;対象の種族がスライムでないとダメ
+;ただし、種族がスライムでなくとも、特性としてのスライムを所持してる場合は可
+コマンド実行条件 += "対象が[スライム]でないと実行できない/"
+SIF !TALENT:スライム && !TALENT:溶ける快
+	COMRESULT = 0
+;ゲーセンに居る場合はできない
+コマンド実行条件 += "ゲーセンでは実行不可/"
+SIF TEQUIP:ゲームセンター
+	COMRESULT = 0
+;上級売春中は方針がハード、SMじゃないとダメ
+コマンド実行条件 += "上級売春中は経営方針がハードorSMじゃないと実行できない/"
+SIF 上級売春中 && !GROUPMATCH(娼館方針, 2, 3)
+	COMRESULT = 0
+コマンド実行条件 += "各部位に道具使用中は実行できない/"
+SIF TEQUIP:クリキャップ
+	COMRESULT = 0
+SIF Ｂ使用中(TARGET)
+	COMRESULT = 0
+SIF Ｐ使用中(TARGET)
+	COMRESULT = 0
+SIF Ｖ使用中(TARGET)
+	COMRESULT = 0
+SIF Ａ使用中(TARGET)
+	COMRESULT = 0
+;触手調教中はダメ
+コマンド実行条件 += "触手召喚中は実行できない/"
+SIF TEQUIP:触手
+	COMRESULT = 0
+;助手の場合は助手が陥落していないとダメ
+コマンド実行条件 += "実行者が助手の場合、助手が陥落していないと実行できない/"
+SIF ASSIPLAY && !CFLAG:ASSI:陥落
+	COMRESULT = 0
+;対象が無機物、もしくは種族:機械だとダメ
+コマンド実行条件 += "対象が[無機物]or[機械]だと実行できない/"
+SIF TALENT:PLAYER:無機物 || CSTR:PLAYER:種族 == "機械"
+	COMRESULT = 0
+
+RETURNF COMRESULT
+
+@実行判定_スライム姦させる
+;-------------------------------------------------
+;実行判定処理
+;-------------------------------------------------
+;すべての命令に共通の要素を考慮
+;(従順が高いと命令に従いやすいなど)
+CALL COM_ORDER
+LOCAL = RESULT
+
+CALL COM_ORDER_欲情, 0
+LOCAL += RESULT
+
+REPEAT VARSIZE("TALENT")
+	LOCAL:1 = 0
+	SIF !TALENT:COUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:COUNT
+		CASE "恥じらい"
+			LOCAL:1 = -7
+		CASE "快感の否定"
+			SIF FALLTYPE(TARGET) != 2
+				LOCAL:1 = -10
+		CASE "貞操観念"
+			SIF FALLTYPE(TARGET) != 1 || PLAYER != MASTER
+				LOCAL:1 = -10
+		CASE "貞操無頓着"
+			LOCAL:1 = 3
+		CASE "男嫌い"
+			SIF SEX(PLAYER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
+				LOCAL:1 = -12
+		CASE "女嫌い"
+			SIF SEX(PLAYER) == 2 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
+				LOCAL:1 = -12
+		CASE "処女"
+			LOCAL:1 = -40
+	ENDSELECT
+	IF LOCAL:1
+		PRINTFORM \@SIGN(LOCAL:1) == 1 ? + # - \@%TALENTNAME:COUNT%({ABS(LOCAL:1)})
+		LOCAL += LOCAL:1
+	ENDIF
+REND
+
+;V経験
+IF !TALENT:処女 && EXP:Ｖ経験 < 30
+	LOCAL -= 15
+	PRINT -Ｖ経験不足(15)
+ENDIF
+
+;A経験
+IF EXP:Ａ経験 < 100
+	LOCAL -= 30
+	PRINT -Ａ経験不足(30)
+ENDIF
+
+;媚薬
+IF TEQUIP:媚薬
+	LOCAL += 6
+	PRINT +媚薬(6)
+ENDIF
+
+;溶ける快を持たない
+IF !TALENT:溶ける快
+	LOCAL -= 34
+	PRINT -溶ける快に目覚めてない(34)
+ENDIF
+
+;35以上で実行
+CALL 実効値判定, LOCAL, 35
+
+RETURN RESULT
+
+@COM_スライム姦させる
+PRINTL スライム姦させる
+
+SIF !TFLAG:実行判定無視
+	CALLFORM 実行判定_%SELECTCOMS%
+SIF !RESULT && !TFLAG:実行判定無視
+	RETURN 0
+
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+CALL KOJO_MESSAGE_COM
+
+;実行者が奴隷フラグ
+TFLAG:奴隷実行 = 1
+
+;V経験を伴うコマンドのフラグ(処女膜再生対応)
+TFLAG:膣コマンド = 1
+SIF FALLTYPE(TARGET) == 1 && PLAYER == MASTER && TALENT:処女
+	TFLAG:恋慕処女 = 1
+
+;童貞喪失
+IF TALENT:PLAYER:童貞
+	TALENT:PLAYER:童貞 = 0
+	IF TALENT:PLAYER:性転換済
+		CSTR:PLAYER:性転換童貞 = %NAME:TARGET%
+	ELSE
+		CSTR:PLAYER:童貞 = %NAME:TARGET%
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;脱衣
+;-------------------------------------------------
+IF OVER_GENITAL(TARGET) != ""
+	IF CFLAG:挿入可
+		TEQUIP:下半身下着 = 0
+	ELSE
+		TEQUIP:下半身下着 = 0
+		TEQUIP:下半身上着 = 0
+		TEQUIP:全身上着 = 0
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+;射精ゲージチェック（主人）
+;-------------------------------------------------
+LOCAL = 射精ゲージ計算_実行者受け(600)
+
+;ABL:調教者の技巧をみる
+LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
+
+;ABL:技巧をみる
+LOCAL += LOCAL/10*4*ABL:技巧
+
+CALL 射精ゲージ増加, LOCAL, PLAYER
+
+;-------------------------------------------------
+;射精ゲージチェック（奴隷）
+;-------------------------------------------------
+LOCAL = 射精ゲージ計算_奴隷挿入(800)
+
+;ABL:調教者の技巧をみる
+LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
+
+;ABL:技巧をみる
+LOCAL += LOCAL/10*4*ABL:技巧
+
+CALL 射精ゲージ増加, LOCAL, TARGET
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 150
+LOSEBASE:気力 += 200
+
+DOWNBASE:MASTER:体力 += 80
+DOWNBASE:MASTER:気力 += 60
+
+;元々の形を捨てての行為なので、各感覚へのソースがランダム変動
+SELECTCASE RAND:5
+	CASE 0
+		SOURCE:快C = 300
+	CASE 1
+		SOURCE:快C = 350
+	CASE 2
+		SOURCE:快C = 400
+	CASE 3
+		SOURCE:快C = 450
+	CASE 4
+		SOURCE:快C = 500
+ENDSELECT
+SELECTCASE RAND:5
+	CASE 0
+		SOURCE:快B = 300
+	CASE 1
+		SOURCE:快B = 350
+	CASE 2
+		SOURCE:快B = 400
+	CASE 3
+		SOURCE:快B = 450
+	CASE 4
+		SOURCE:快B = 500
+ENDSELECT
+SELECTCASE RAND:5
+	CASE 0
+		SOURCE:快V = 300
+	CASE 1
+		SOURCE:快V = 350
+	CASE 2
+		SOURCE:快V = 400
+	CASE 3
+		SOURCE:快V = 450
+	CASE 4
+		SOURCE:快V = 500
+ENDSELECT
+SELECTCASE RAND:5
+	CASE 0
+		SOURCE:快A = 300
+	CASE 1
+		SOURCE:快A = 350
+	CASE 2
+		SOURCE:快A = 400
+	CASE 3
+		SOURCE:快A = 450
+	CASE 4
+		SOURCE:快A = 500
+ENDSELECT
+
+SOURCE:性行動 = 500
+SOURCE:屈従 = 1000
+SOURCE:逸脱 = 800
+SOURCE:露出 = 100
+SOURCE:反感 = 100
+SOURCE:恐怖 = 50
+SOURCE:恭順 = 200
+SOURCE:不潔 = 300
+
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 800
+
+IF TALENT:PLAYER:処女
+	IF TALENT:PLAYER:性転換済
+		IF ASSIPLAY
+			IF CFLAG:ASSI:陥落
+				CFLAG:ASSI:性転換処女の奪われ方 = 2
+			ELSEIF RELATION:ASSI:(NO:TARGET)
+				CFLAG:ASSI:性転換処女の奪われ方 = 3
+			ELSE
+				CFLAG:ASSI:性転換処女の奪われ方 = 1
+			ENDIF
+		ENDIF
+		CSTR:PLAYER:性転換処女 = %NAME:TARGET%
+	ELSE
+		IF ASSIPLAY
+			IF CFLAG:ASSI:陥落
+				CFLAG:ASSI:処女の奪われ方 = 2
+			ELSEIF RELATION:ASSI:(NO:TARGET)
+				CFLAG:ASSI:処女の奪われ方 = 3
+			ELSE
+				CFLAG:ASSI:処女の奪われ方 = 1
+			ENDIF
+		ENDIF
+		CSTR:PLAYER:処女 = %NAME:TARGET%
+	ENDIF
+ENDIF
+
+IF TALENT:PLAYER:処女 || TALENT:PLAYER:再生処女
+	PRINTFORMW %CALLNAME:PLAYER%処女喪失
+	SETBIT STAIN:PLAYER:膣内, 6
+ENDIF
+
+TALENT:PLAYER:処女 = 0
+TALENT:PLAYER:再生処女 = 0
+
+;貞操観念持ちで恋慕、親愛持ち以外には常に反発のソースを追加する（セックス系のみ）
+SIF TALENT:貞操観念 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
+	SOURCE:反感 += 1000
+
+;処女だった場合は、苦痛のソースと反発のソースを追加する
+IF TALENT:処女
+	SOURCE:苦痛 += 2000
+	SOURCE:反感 += 3000
+ENDIF
+
+;再生処女だった場合は、苦痛のソースと反発のソースを追加する
+IF TALENT:再生処女
+	SOURCE:苦痛 += 500
+	SOURCE:反感 += 1000
+ENDIF
+
+;溶ける快を持たない場合は苦痛、恐怖、反発のソースを追加する
+IF !TALENT:溶ける快
+	SOURCE:苦痛 += 450
+	SOURCE:恐怖 += 1150
+	SOURCE:反感 += 700
+ENDIF
+
+;スライム同士の行為であれば４感覚のソースを追加する
+IF CSTR:PLAYER:種族 == "スライム" || TALENT:PLAYER:スライム
+	SOURCE:快C += 100
+	SOURCE:快B += 100
+	SOURCE:快V += 100
+	SOURCE:快A += 100
+ENDIF
+
+
+CALL 特殊ソース処理_Ｖ
+CALL 特殊ソース処理_Ａ
+CALL 特殊ソース処理_セックス
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+;射精時の処理
+IF PLAYER == MASTER
+	LOCAL = 1
+ELSEIF PLAYER == ASSI
+	LOCAL = 2
+ENDIF
+
+CALL SAMEN_CHECK, 6
+CALL SAMEN_CHECK_T, LOCAL
+
+CALL SAMEN_SHOOT, 6, NOWEX:PLAYER:射精
+CALL SAMEN_SHOOT_T, LOCAL, NOWEX:射精
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;射精に関係なく行われる処理はここから
+;膣内に破瓜の血の汚れを付加
+SIF (TALENT:処女 || TALENT:再生処女) && CSTR:種族 != "スライム"
+	SETBIT STAIN:膣内, 6
+;奴隷の膣内⇔調教者のペニスの汚れが移動
+STAIN:膣内 |= STAIN:PLAYER:ペニス
+STAIN:PLAYER:ペニス |= STAIN:膣内
+
+;調教者の全ての部位に粘液汚れを付加
+SETBIT STAIN:PLAYER:口, 5
+SETBIT STAIN:PLAYER:手, 5
+SIF PENIS(PLAYER)
+	SETBIT STAIN:PLAYER:ペニス, 5
+SIF VAGINA(PLAYER)
+	SETBIT STAIN:PLAYER:ヴァギナ, 5
+SETBIT STAIN:PLAYER:アナル, 5
+SETBIT STAIN:PLAYER:胸, 5
+SETBIT STAIN:PLAYER:膣内, 5
+SIF TEQUIP:PLAYER:下半身下着
+	SETBIT STAIN:PLAYER:下着, 5
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP_BASE, 3, 2
+
+CALL EXPUP, "Ｖ経験", 1
+CALL EXPUP, "Ａ経験", 1
+CALL EXPUP, "性交経験", 1
+CALL EXPUP, "性交経験", 1, PLAYER
+CALL EXPUP, "苦痛快楽経験", 1, PLAYER
+
+;異常経験
+IF CSTR:PLAYER:種族 != "スライム" && !CFLAG:PLAYER:スライム姦された経験
+	PRINTL ＜スライム姦＞
+	CALL EXPUP, "異常経験", 1, PLAYER
+ENDIF
+CFLAG:PLAYER:スライム姦された経験++
+
+;スライム深度増加処理
+IF !FLAG:抗スライム
+	CFLAG:スライム度 += RAND(50, 100)
+	IF CSTR:PLAYER:種族 == "スライム"
+		CFLAG:PLAYER:スライム度 += RAND(50, 100)
+	ELSE
+		CFLAG:PLAYER:スライム度 += RAND(1, 3)
+	ENDIF
+ENDIF
+
+;恋慕or親愛なら愛情経験+ 中出しでさらに+
+IF FALLTYPE(TARGET) == 1 && PLAYER == MASTER
+	IF NOWEX:射精 && !GETBIT(TFLAG:避妊具射精, 2)
+		CALL EXPUP, "愛情経験", 2
+	ELSE
+		CALL EXPUP, "愛情経験", 1
+	ENDIF
+ENDIF
+
+;魔力回復
+CALL 魔力回復, 3, PLAYER
+
+;奉仕快楽フラグ
+TFLAG:奉仕快楽 = 1
+
+
+経験回数:PLAYER:(NO:TARGET) += 1
+経験回数:TARGET:(NO:PLAYER) += 1
+
+RETURN 1
+

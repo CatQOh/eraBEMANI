@@ -1,0 +1,402 @@
+﻿@RITUAL_OF_SIGN
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 刻印部位
+#DIM DYNAMIC LTARGET
+#DIM DYNAMIC 変数番号
+#DIM DYNAMIC LRESULT
+
+DRAWLINE
+
+PRINTL □印を刻むキャラを選択してください
+FOR PAGING, 1, CHARANUM
+	刻印部位 = 
+	SIF CSTR:PAGING:右腕の印 != ""
+		刻印部位 += @"[右腕:%CSTR:PAGING:右腕の印%(\@ CSTR:PAGING:右腕の特質 == "" ? 特質無し # %CSTR:PAGING:右腕の特質% \@)]"
+	SIF CSTR:PAGING:左腕の印 != ""
+		刻印部位 += @"[左腕:%CSTR:PAGING:左腕の印%(\@ CSTR:PAGING:左腕の特質 == "" ? 特質無し # %CSTR:PAGING:左腕の特質% \@)]"
+	SIF CSTR:PAGING:右足の印 != ""
+		刻印部位 += @"[右足:%CSTR:PAGING:右足の印%(\@ CSTR:PAGING:右足の特質 == "" ? 特質無し # %CSTR:PAGING:右足の特質% \@)]"
+	SIF CSTR:PAGING:左足の印 != ""
+		刻印部位 += @"[左足:%CSTR:PAGING:左足の印%(\@ CSTR:PAGING:左足の特質 == "" ? 特質無し # %CSTR:PAGING:左足の特質% \@)]"
+	SIF CSTR:PAGING:背中の印 != ""
+		刻印部位 += @"[背中:%CSTR:PAGING:背中の印%(\@ CSTR:PAGING:背中の特質 == "" ? 特質無し # %CSTR:PAGING:背中の特質% \@)]"
+	SIF CSTR:PAGING:胴体の印 != ""
+		刻印部位 += @"[胴体:%CSTR:PAGING:胴体の印%(\@ CSTR:PAGING:胴体の特質 == "" ? 特質無し # %CSTR:PAGING:胴体の特質% \@)]"
+
+	CALL PAGING, 1, @"\@ 刻印部位 != "" ? %刻印部位% #\@", "印の義"
+NEXT
+
+SELECTCASE RESULT
+	CASE -1
+		RETURN 0
+ENDSELECT
+
+LTARGET = TARGET
+TARGET = RESULT
+
+DRAWLINE
+
+$部位選択
+
+PRINTFORML □%CALLNAME:TARGET%に何をしますか？(印を刻むには経験値を1消費します 現在の経験値:{FLAG:経験値})
+FOR LCOUNT, GETNUM(CSTR, "右腕の印"), GETNUM(CSTR, "胴体の印")+1
+	IF CSTR:LCOUNT == ""
+		IF GROUPMATCH(CSTRNAME:LCOUNT, "右足の印", "左足の印") && TALENT:足使用不可
+			CALL PRINTCOLORL, @"　[-] - %CSTRNAME:LCOUNT% 使用不可", "gray"
+		ELSEIF CSTRNAME:LCOUNT == "背中の印" && GROUPMATCH(CSTR:背中の印, "淫売の焼印", "奴隷の焼印")
+			PRINTFORML 　[-] - 背中の印(%CSTR:背中の印%)
+		ELSE
+			PRINTFORML 　[{LCOUNT%10}] - %CSTRNAME:LCOUNT%を施す
+		ENDIF
+	ELSE
+		PRINTFORML 　[{LCOUNT%10}] - %CSTR:LCOUNT%の特質を変更する(現在の特質:\@ CSTR:(LCOUNT+10) == "" ? 無し # %CSTR:(LCOUNT+10)% \@)
+	ENDIF
+NEXT
+DRAWLINE
+PRINTPLAIN 　印の義　
+PRINTL [10] - キャラを変更する [11] - 儀式をやめる
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 10
+			TARGET = LTARGET
+			RESTART
+		CASE 11
+			TARGET = LTARGET
+			RETURN 0
+		CASE 0 TO 6
+			LRESULT = RESULT
+			変数番号 = GETNUM(CSTR, "右腕の印")
+			IF CSTR:(変数番号+LRESULT) == ""
+				IF FLAG:経験値 < 1
+					PRINTW 経験値が足りません
+					GOTO 部位選択
+				ENDIF
+				CALL 印を刻む, CSTRNAME:(変数番号+LRESULT)
+			ELSE
+				CALL 特質を刻む, CSTRNAME:(変数番号+LRESULT)
+			ENDIF
+			IF RESULT
+				TARGET = LTARGET
+				RETURN 1
+			ELSE
+				GOTO 部位選択
+			ENDIF
+	ENDSELECT
+LOOP 1
+
+@印を刻む, 対象部位
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 対象部位
+#DIM DYNAMIC 魔術師あり
+#DIM DYNAMIC ネクロマンサーあり
+#DIM DYNAMIC 価額低下
+
+SELECTCASE 対象部位
+	CASE "背中の印"
+		価額低下 = 15
+	CASE "胴体の印"
+		価額低下 = 20
+	CASEELSE
+		価額低下 = 10
+ENDSELECT
+
+DRAWLINE
+
+PRINTFORML □%CALLNAME:TARGET%に%対象部位%を刻みます(１ターン消費 印によって下がる売却額:{価額低下}\%)
+SIF TALENT:MASTER:魔術師 || (ASSI > 0 && TALENT:ASSI:魔術師)
+	魔術師あり = 1
+SIF TALENT:MASTER:ネクロマンサー || (ASSI > 0 && TALENT:ASSI:ネクロマンサー)
+	ネクロマンサーあり = 1
+
+IF 魔術師あり
+	PRINTL 　[1] - 強化のタトゥー(身体能力を強化する特質を宿す)
+ELSE
+	CALL PRINTCOLORL, @"　[-] - 強化のタトゥー(主人もしくは助手に[魔術師]が必要)", "gray"
+ENDIF
+IF ネクロマンサーあり
+	PRINTL 　[2] - 制御のタトゥー(行動を制御する特質を宿す)
+ELSE
+	CALL PRINTCOLORL, @"　[-] - 制御のタトゥー(主人もしくは助手に[ネクロマンサー]が必要)", "gray"
+ENDIF
+PRINTL 　[3] - 異質のタトゥー(体質が変化する特質を宿す)
+;IF 対象部位 == "背中の印"
+;	PRINTL 　[4] - 淫売の焼印(未陥落、もしくは[淫乱][娼婦]のみ選択可 [淫乱][娼婦]以外の陥落素質が得られなくなる)
+;	PRINTL 　[5] - 奴隷の焼印(未陥落、もしくは[服従][隷属]のみ選択可 [服従][隷属]以外の陥落素質が得られなくなる)
+;ENDIF
+DRAWLINE
+PRINTPLAINFORM 　%対象部位%　
+PRINTL [0] - 戻る [10] - 特質一覧を見る
+
+CALL INPUTF, 0, 1, 2, 3
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 10
+		CALL 特質を刻む, 対象部位, 1
+		RESTART
+	CASE 1
+		PRINTFORML 経験値を1消費して%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「強化のタトゥー」を刻みます。よろしいですか？
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		CALL INPUTF, 0, 1
+		SIF RESULT
+			RESTART
+		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「強化のタトゥー」を刻みました
+		CSTR:対象部位 = 強化のタトゥー
+		FLAG:経験値--
+		RETURN 1
+	CASE 2
+		PRINTFORML 経験値を1消費して%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「制御のタトゥー」を刻みます。よろしいですか？
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		CALL INPUTF, 0, 1
+		SIF RESULT
+			RESTART
+		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「制御のタトゥー」を刻みました
+		CSTR:対象部位 = 制御のタトゥー
+		FLAG:経験値--
+		RETURN 1
+	CASE 3
+		PRINTFORML 経験値を1消費して%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「異質のタトゥー」を刻みます。よろしいですか？
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		CALL INPUTF, 0, 1
+		SIF RESULT
+			RESTART
+		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「異質のタトゥー」を刻みました
+		CSTR:対象部位 = 異質のタトゥー
+		FLAG:経験値--
+		RETURN 1
+;	CASE 4
+;		PRINTFORML %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「淫売の焼印」を押します。よろしいですか？
+;		PRINTL [0] - はい
+;		PRINTL [1] - いいえ
+;		DO
+;			INPUT
+;			SIF RESULT
+;				RESTART
+;		LOOP LOOPRES(0)
+;		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「淫売の焼印」を押しました
+;		CSTR:対象部位 = 淫売の焼印
+;		RETURN 1
+;	CASE 5
+;		PRINTFORML %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「奴隷の焼印」を押します。よろしいですか？
+;		PRINTL [0] - はい
+;		PRINTL [1] - いいえ
+;		DO
+;			INPUT
+;			SIF RESULT
+;				RESTART
+;		LOOP LOOPRES(0)
+;		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「奴隷の焼印」を押しました
+;		CSTR:対象部位 = 奴隷の焼印
+;		RETURN 1
+ENDSELECT
+
+PRINTL 
+
+@特質を刻む, 対象部位, マニュアル
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 対象部位
+#DIM DYNAMIC 効果倍率
+#DIM DYNAMIC マニュアル
+#DIM DYNAMIC 体力上昇量
+#DIM DYNAMIC 気力上昇量
+{
+#DIMS DYNAMIC 強化特質 = 
+"体力強化",
+"気力強化",
+"代謝強化",
+"精力強化",
+"魔力強化",
+}
+{
+#DIMS DYNAMIC 制御特質 = 
+"意志薄弱",
+"ワーカホリック",
+"しつけ",
+"洗脳",
+"無理強い",
+}
+{
+#DIMS DYNAMIC 異質特質 = 
+"研ぎ澄まされた感覚",
+"中性",
+"相貌失認",
+"無痛症",
+"異種族融和",
+"薬効増強",
+}
+
+DRAWLINE
+
+SELECTCASE 対象部位
+	CASE "背中の印"
+		効果倍率 = 15
+	CASE "胴体の印"
+		効果倍率 = 20
+	CASEELSE
+		効果倍率 = 10
+ENDSELECT
+
+IF マニュアル
+	効果倍率 = 10
+	GOTO 強化のタトゥー
+ELSE
+	SIF VARLINE
+		CLEARLINE LINECOUNT-VARLINE
+	VARLINE = LINECOUNT
+ENDIF
+
+PRINTFORML □%対象部位%に刻む特質を選択してください(この部位の効果:{効果倍率/10}.{効果倍率%10}倍)
+SELECTCASE CSTR:対象部位
+	CASE "強化のタトゥー"
+		$強化のタトゥー
+		IF !マニュアル
+			PRINTFORML 　体力%BARBASE("体力")%
+			PRINTFORML 　気力%BARBASE("気力")%
+			SIF TALENT:魔術師
+				PRINTFORML 　魔力%BARBASE("魔力")%
+		ENDIF
+		FOR LCOUNT, 0, VARSIZE("強化特質")
+			IF マニュアル
+				PRINTFORML 　・%強化特質:LCOUNT% 宿せる印:強化のタトゥー
+			ELSE
+				PRINTFORML 　[{LCOUNT}] - %強化特質:LCOUNT% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == 強化特質:LCOUNT ? 装備中 #\@
+			ENDIF
+			SELECTCASE 強化特質:LCOUNT
+				CASE "体力強化"
+					PRINTFORML 　　　　最大体力を{5*効果倍率}上昇させる
+				CASE "気力強化"
+					PRINTFORML 　　　　最大気力を{10*効果倍率}上昇させる
+				CASE "代謝強化"
+					PRINTFORML 　　　　毎ターンの回復量を{効果倍率*10}\%増加させる(効果倍率は加算される) 二日酔いのリスクも減る
+				CASE "精力強化"
+					PRINTFORML 　　　　射精のクールダウンを{効果倍率/10}ターン減らす 男性器が無いと効果無し
+				CASE "魔力強化"
+					PRINTFORML 　　　　最大魔力を{100*効果倍率}上昇させる
+			ENDSELECT
+		NEXT
+		SIF マニュアル
+			GOTO 制御のタトゥー
+	CASE "制御のタトゥー"
+		$制御のタトゥー
+		FOR LCOUNT, 0, VARSIZE("制御特質")
+			IF マニュアル
+				PRINTFORML 　・%制御特質:LCOUNT% 宿せる印:制御のタトゥー
+			ELSE
+				PRINTFORML 　[{LCOUNT}] - %制御特質:LCOUNT% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == 制御特質:LCOUNT ? 装備中 #\@
+			ENDIF
+			SELECTCASE 制御特質:LCOUNT
+				CASE "意志薄弱"
+					PRINTFORML 　　　　コマンド実行判定時のポイントを{効果倍率}上昇させる
+				CASE "ワーカホリック"
+					PRINTFORML 　　　　配属時に主要能力値に{効果倍率/10}加算される 仕事をサボらなくなる
+				CASE "しつけ"
+					PRINTFORML 　　　　[衝動的]なキャラがアイテムを壊さなくなる 重複効果無し
+				CASE "洗脳"
+					PRINTFORML 　　　　マイナスパラメータの上昇を{効果倍率}\%抑える(効果倍率は加算される)
+				CASE "無理強い"
+					PRINTFORML 　　　　体力500以下で調教終了しなくなる 重複効果無し
+			ENDSELECT
+		NEXT
+		SIF マニュアル
+			GOTO 異質のタトゥー
+	CASE "異質のタトゥー"
+		$異質のタトゥー
+		FOR LCOUNT, 0, VARSIZE("異質特質")
+			IF マニュアル
+				PRINTFORML 　・%異質特質:LCOUNT% 宿せる印:異質のタトゥー
+			ELSE
+				PRINTFORML 　[{LCOUNT}] - %異質特質:LCOUNT% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == 異質特質:LCOUNT ? 装備中 #\@
+			ENDIF
+			SELECTCASE 異質特質:LCOUNT
+				CASE "研ぎ澄まされた感覚"
+					PRINTFORML 　　　　調教開始時に各感覚に{効果倍率*100}が初期値で加算される
+				CASE "中性"
+					PRINTFORML 　　　　コマンドで同性愛経験が上がらなくなる 重複効果無し
+				CASE "相貌失認"
+					PRINTFORML 　　　　助手調教経験が上がらなくなる 重複効果無し
+				CASE "無痛症"
+					PRINTFORML 　　　　苦痛のパラメータと苦痛刻印が上がらなくなる 重複効果無し
+				CASE "異種族融和"
+					PRINTFORML 　　　　異なる種族から調教を受けた際の各パラメータの上昇が{効果倍率*4/10}\%増加する(効果倍率は加算される)
+				CASE "薬効増強"
+					PRINTFORML 　　　　一部の薬アイテムの効果時間が{効果倍率/5}倍になる(効果倍率は加算される)
+			ENDSELECT
+		NEXT
+ENDSELECT
+DRAWLINE
+IF マニュアル
+	WAIT
+	RETURN
+ENDIF
+
+PRINTPLAINFORM 　%対象部位%　
+PRINTL [10] - 戻る
+
+DO
+	INPUT
+	SIF RESULT == 10
+		RETURN 0
+	SELECTCASE CSTR:対象部位
+		CASE "強化のタトゥー"
+			体力上昇量 = 特質("体力強化")
+			気力上昇量 = 特質("気力強化")
+			IF INRANGE(RESULT, 0, VARSIZE("強化特質")-1)
+				CSTR:(GETNUM(CSTR, 対象部位)+10) = %強化特質:RESULT%
+				SIF 体力上昇量 != 特質("体力強化")
+					MAXBASE:体力 -= (体力上昇量-特質("体力強化"))*5
+				SIF 気力上昇量 != 特質("気力強化")
+					MAXBASE:気力 -= (気力上昇量-特質("気力強化"))*10
+				SIF TALENT:魔術師
+					MAXBASE:魔力 = (ABL:魔法技能*1000)+(特質("魔力強化")*100)
+				RESTART
+			ENDIF
+		CASE "制御のタトゥー"
+			IF INRANGE(RESULT, 0, VARSIZE("制御特質")-1)
+				CSTR:(GETNUM(CSTR, 対象部位)+10) = %制御特質:RESULT%
+				RESTART
+			ENDIF
+		CASE "異質のタトゥー"
+			IF INRANGE(RESULT, 0, VARSIZE("異質特質")-1)
+				CSTR:(GETNUM(CSTR, 対象部位)+10) = %異質特質:RESULT%
+				RESTART
+			ENDIF
+	ENDSELECT
+LOOP 1
+
+;各部位の効果倍率の和を返す
+@特質, 特質名, 対象 = -1
+#FUNCTION
+#DIMS DYNAMIC 特質名
+#DIM DYNAMIC 対象
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 倍率合計
+
+SIF 対象 == -1
+	対象 = TARGET
+
+FOR LCOUNT, GETNUM(CSTR, "右腕の特質"), GETNUM(CSTR, "胴体の特質")+1
+	IF CSTR:対象:LCOUNT == 特質名
+		SELECTCASE CSTRNAME:LCOUNT
+			CASE "背中の特質"
+				倍率合計 += 15
+			CASE "胴体の特質"
+				倍率合計 += 20
+			CASEELSE
+				倍率合計 += 10
+		ENDSELECT
+	ENDIF
+NEXT
+
+RETURNF 倍率合計
+
+@ワーカホリックレベル, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+
+RETURNF 特質("ワーカホリック", 対象)/10
+

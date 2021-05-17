@@ -332,8 +332,6 @@ SELECTCASE アイテム分類
 			ELSE
 				ITEMSALES:LCOUNT = 1
 			ENDIF
-			SIF ITEMNAME:LCOUNT == "監禁室"
-				ITEMSALES:LCOUNT = 0
 		NEXT
 ENDSELECT
 
@@ -471,12 +469,10 @@ SELECTCASE アイテム分類
 		PRINTFORML 本当に%アイテム名%を購入しますか？
 		PRINTL [0] 購入する
 		PRINTL [1] やめる
-		DO
-			INPUT
-			SIF RESULT == 1
-				RETURN 0
-		LOOP LOOPRES(0, 1)
-		;PLAYSOUND 出入金
+		CALL INPUTF, 0, 1
+		SIF RESULT == 1
+			RETURN
+		CALL SE再生, 出入金
 		PRINTFORMW ＜%アイテム名%を購入しました＞
 		;割引対象は淫具のみ
 		IF GETNUM(ITEM, アイテム名) < 500 && 割引
@@ -498,12 +494,10 @@ SELECTCASE アイテム分類
 		PRINTFORML 本当に%アイテム名%を購入しますか？
 		PRINTL [0] 購入する
 		PRINTL [1] やめる
-		DO
-			INPUT
-			SIF RESULT == 1
-				RETURN 0
-		LOOP LOOPRES(0, 1)
-		;PLAYSOUND 出入金
+		CALL INPUTF, 0, 1
+		SIF RESULT == 1
+			RETURN
+		CALL SE再生, 出入金
 		PRINTFORMW ＜%アイテム名%を購入しました＞
 		IF 割引
 			MONEY -= ITEMPRICE:アイテム名/10*8
@@ -565,7 +559,7 @@ SELECTCASE アイテム分類
 					PRINTFORML %RESULTS%でよろしいですか？(後からオプション画面で変更できます)
 					PRINTL [0] - はい
 					PRINTL [1] - いいえ
-					INPUT
+					CALL INPUTF, 0, 1
 					SELECTCASE RESULT
 						CASE 0
 							CSTR:MASTER:ドラゴン = %RESULTS%
@@ -575,10 +569,11 @@ SELECTCASE アイテム分類
 								CASEELSE
 									PRINTFORMW %CSTR:MASTER:ドラゴン%は名前をつけてくれた%CALLNAME:MASTER%に懐いているようだ……
 							ENDSELECT
+							BREAK
 						CASE 1
 							CONTINUE
 					ENDSELECT
-				LOOP LOOPRES(0)
+				LOOP 1
 		ENDSELECT
 	CASE "薬品等"
 		;抗スライム薬だけ特殊
@@ -597,6 +592,8 @@ RETURN 0
 #DIM DYNAMIC アイテム価格
 #DIMS DYNAMIC アイテム名
 #DIM DYNAMIC 購入上限
+#DIM DYNAMIC 購入数
+
 ;購入できる最大数
 SELECTCASE アイテム名
 	CASE "皆伝", "魔王", "アルパカ", "倉吉", "スペリオール", "ビーフィーター", "アブソルート", "カルーア"
@@ -617,16 +614,17 @@ SIF 購入上限 > MONEY/アイテム価格
 
 PRINTFORML %アイテム名%をいくつ買いますか？ (最大{購入上限}個、0で戻る)
 CALL TWO_DIGIT, 購入上限, "個"
+購入数 = RESULT
 IF RESULT
-	;PLAYSOUND 出入金
-	PRINTFORMW ＜%アイテム名%を{RESULT}個購入しました＞
+	CALL SE再生, 出入金
+	PRINTFORMW ＜%アイテム名%を{購入数}個購入しました＞
 	SELECTCASE アイテム名
 		CASE "皆伝", "魔王", "アルパカ", "倉吉", "スペリオール", "ビーフィーター", "アブソルート", "カルーア"
-			ITEM:アイテム名 += RESULT*10
+			ITEM:アイテム名 += 購入数*10
 		CASEELSE
-			ITEM:アイテム名 += RESULT
+			ITEM:アイテム名 += 購入数
 	ENDSELECT
-	MONEY -= アイテム価格*RESULT
+	MONEY -= アイテム価格*購入数
 	;実績:ター子の交渉で値引きしたアイテムを購入する
 	SIF CHARANAMEF(MASTER) == "ター子" || (ASSI > 0 && CHARANAMEF(ASSI) == "ター子")
 		CALL 実績解除, "「それ、もうちょい安ぅならんやろか？」"
@@ -701,42 +699,42 @@ CALL KOJO_USE_ITEM, アイテム名, 使用対象
 SELECTCASE アイテム名
 	;調合知識
 	CASE "古今錬金術大全"
-		;PLAYSOUND 本
+		CALL SE再生, 本
 		PRINTFORMW ＜%CALLNAME:使用対象%は【調合知識】を得た＞
 		TALENT:使用対象:調合知識 = 1
 	;あぶひゃく
 	CASE "ひとりでできるもん～オトコのコのためのアナニー入門～", "膣性感開発・中イキ完全マニュアル"
-		;PLAYSOUND 本
+		CALL SE再生, 本
 		PRINTFORMW ＜%CALLNAME:使用対象%は自慰に深い興味を持つようになった＞
 		TALENT:使用対象:自慰しやすい = 1
 	;マネジメント
 	CASE "ドラッカーの『マネジメント』"
-		;PLAYSOUND 本
+		CALL SE再生, 本
 		PRINTFORMW ＜%CALLNAME:使用対象%は【鼓舞】を得た＞
 		TALENT:使用対象:鼓舞 = 1
 	;禁断の知識
 	CASE "ヴォイニッチ手稿"
-		;PLAYSOUND 本
+		CALL SE再生, 本
 		PRINTFORMW ＜%CALLNAME:使用対象%は【禁断の知識】を得た＞
 		TALENT:使用対象:禁断の知識 = 1
 	;グリモワール
 	CASE "グリモワール"
-		;PLAYSOUND 本
+		CALL SE再生, 本
 		PRINTFORMW ＜%CALLNAME:使用対象%は魔術の基礎を得た＞
 		ABL:使用対象:魔法技能 = 1
 	;治療
 	CASE "解体新書"
-		;PLAYSOUND 本
+		CALL SE再生, 本
 		PRINTFORMW ＜%CALLNAME:使用対象%は【治療】を得た＞
 		TALENT:使用対象:治療 = 1
 	;ネクロ
 	CASE "ネクロノミコン"
-		;PLAYSOUND 本
+		CALL SE再生, 本
 		PRINTFORMW ＜%CALLNAME:使用対象%は【ネクロマンサー】を得た＞
 		TALENT:使用対象:ネクロマンサー = 1
 	;体力回復
 	CASE "怪しげな栄養剤"
-		;PLAYSOUND ドリンク
+		CALL SE再生, ドリンク
 		PRINTFORMW ＜%CALLNAME:使用対象%の体力が回復した＞
 		IF TALENT:使用対象:回復早い
 			LOCAL = 400
@@ -751,7 +749,7 @@ SELECTCASE アイテム名
 		BASE:使用対象:体力 += LOCAL
 	;ふたなり化
 	CASE "ふたなり薬"
-		;PLAYSOUND ドリンク
+		CALL SE再生, ドリンク
 		PRINTFORMW ＜%CALLNAME:使用対象%はふたなりになった＞
 		TALENT:使用対象:ふたなり = 1
 		CFLAG:使用対象:男性器提供者 = -1
@@ -774,7 +772,7 @@ SELECTCASE アイテム名
 		ENDSELECT
 	;ふたなりを消去
 	CASE "ふたなり消去薬"
-		;PLAYSOUND ドリンク
+		CALL SE再生, ドリンク
 		PRINTFORMW ＜%CALLNAME:使用対象%はふたなりではなくなった＞
 		TALENT:使用対象:ふたなり = 0
 		CFLAG:使用対象:ストレス値 += 30
@@ -788,19 +786,19 @@ SELECTCASE アイテム名
 		ENDSELECT
 	;母乳体質
 	CASE "天使のミルク"
-		;PLAYSOUND ドリンク
+		CALL SE再生, ドリンク
 		PRINTFORMW ＜%CALLNAME:使用対象%は母乳が出るようになった＞
 		TALENT:使用対象:母乳体質 = 1
 		CFLAG:使用対象:ストレス値 += 50
 	;処女膜再生
 	CASE "ユニコーンテイル"
-		;PLAYSOUND 神聖
+		CALL SE再生, 神聖
 		PRINTFORMW ＜%CALLNAME:使用対象%の処女膜が再生された＞
 		TALENT:使用対象:再生処女 = 1
 		CFLAG:使用対象:ストレス値 += 50
 	;豊乳化
 	CASE "豊胸剤"
-		;PLAYSOUND ドリンク
+		CALL SE再生, ドリンク
 		SELECTCASE TALENT:使用対象:バストサイズ
 			;絶壁→貧乳
 			CASE 1
@@ -837,7 +835,7 @@ SELECTCASE アイテム名
 		CFLAG:使用対象:ストレス値 += 70
 	;縮乳化
 	CASE "縮胸剤"
-		;PLAYSOUND ドリンク
+		CALL SE再生, ドリンク
 		SELECTCASE TALENT:使用対象:バストサイズ
 			;爆乳→巨乳→豊乳
 			CASE 5, 6
@@ -861,26 +859,26 @@ SELECTCASE アイテム名
 		CFLAG:使用対象:ストレス値 += 70
 	;母乳治療
 	CASE "止乳剤"
-		;PLAYSOUND ドリンク
+		CALL SE再生, ドリンク
 		PRINTFORMW ＜%CALLNAME:使用対象%は母乳が出なくなった＞
 		TALENT:使用対象:母乳体質 = 0
 		CFLAG:使用対象:ストレス値 += 30
 	;お漏らし治療
 	CASE "夜尿症改善薬"
-		;PLAYSOUND ドリンク
+		CALL SE再生, ドリンク
 		PRINTFORMW ＜%CALLNAME:使用対象%のお漏らし癖が治った＞
 		TALENT:使用対象:おもらし癖 = 0
 		CFLAG:使用対象:おもらし改善フラグ = 1
 		CFLAG:使用対象:ストレス値 += 30
 	;ゾンビパウダー
 	CASE "ゾンビパウダー"
-		;PLAYSOUND ゾンビ化
+		CALL SE再生, ゾンビ化
 		PRINTFORMW ＜%CALLNAME:使用対象%はゾンビになった＞
 		TALENT:使用対象:ゾンビ = 1
 		CFLAG:使用対象:ストレス値 += 100
 	;聖水
 	CASE "聖水"
-		;PLAYSOUND 神聖
+		CALL SE再生, 神聖
 		PRINTFORMW ＜%CALLNAME:使用対象%はゾンビから蘇った＞
 		TALENT:使用対象:ゾンビ = 0
 		IF !TALENT:使用対象:回復遅い
@@ -890,7 +888,7 @@ SELECTCASE アイテム名
 		CFLAG:使用対象:ストレス値 += 50
 	;性転換薬 ふたなり時に何があろうと無条件でバージンは復活する
 	CASE "性転換薬"
-		;PLAYSOUND ドリンク
+		CALL SE再生, ドリンク
 		SELECTCASE SEX(使用対象)
 			CASE 1
 				PRINTFORMW ＜%CALLNAME:使用対象%は女になった＞
@@ -901,7 +899,7 @@ SELECTCASE アイテム名
 				TALENT:使用対象:性別 = 2
 				TALENT:使用対象:処女 = 1
 				;毛玉氏のパッチ
-				IF TALENT:使用対象:バストサイズ >= 0
+				IF TALENT:使用対象:バストサイズ >= 1
 				ELSEIF FLAG:TSBランダム == 0
 					IF TALENT:使用対象:小柄体型
 						TALENT:使用対象:バストサイズ = 2
@@ -976,7 +974,7 @@ SELECTCASE アイテム名
 		CFLAG:使用対象:ストレス値 += 200
 	;時の砂時計
 	CASE "時の砂時計"
-		;PLAYSOUND 神聖
+		CALL SE再生, 神聖
 		IF TALENT:使用対象:小柄体型
 			PRINTFORMW ＜%CALLNAME:使用対象%は立派な大人の体になった＞
 			TALENT:使用対象:小柄体型 = 0
@@ -998,13 +996,13 @@ SELECTCASE アイテム名
 		CFLAG:使用対象:ストレス値 += 100
 	;永続的利尿剤
 	CASE "永続的利尿剤"
-		;PLAYSOUND ドリンク
+		CALL SE再生, ドリンク
 		PRINTFORMW ＜%CALLNAME:使用対象%は尿意を我慢できなくなった＞
 		TALENT:使用対象:おもらし癖 = 1
 		CFLAG:使用対象:ストレス値 += 100
 	;ビースティースターター
 	CASE "ビースティースターター"
-		;PLAYSOUND ポワン
+		CALL SE再生, ポワン
 		PRINTFORM ＜%CALLNAME:使用対象%に
 		SIF !TALENT:使用対象:動物耳
 			PRINT 動物の耳
@@ -1022,7 +1020,7 @@ SELECTCASE アイテム名
 		ENDIF
 	;魔剤
 	CASE "魔剤"
-		;PLAYSOUND 缶オープン
+		CALL SE再生, 缶オープン
 		PRINTFORMW ＜%CALLNAME:使用対象%のテンションが上がってきた！＞
 		CFLAG:使用対象:魔剤 = 1
 		TIMES CFLAG:使用対象:魔剤耐性, 1.1
@@ -1034,7 +1032,7 @@ SELECTCASE アイテム名
 	;バナナ
 	CASE "バナナ"
 		;バナナは飲み物
-		;PLAYSOUND ドリンク
+		CALL SE再生, ドリンク
 		PRINTFORMW ＜%CALLNAME:使用対象%は音楽ゲームが上達した……気がする＞
 		EXP:使用対象:音ゲー経験++
 		BASE:使用対象:体力 += 10
@@ -1050,17 +1048,19 @@ SELECTCASE アイテム名
 		ENDIF
 	;排卵誘発剤
 	CASE "排卵誘発剤"
-		;PLAYSOUND ドリンク
+		CALL SE再生, ドリンク
 		IF 使用対象 == MASTER
 			PRINTFORMW ＜%CALLNAME:MASTER%は排卵誘発剤を使用した＞
 		ELSE
 			PRINTFORMW ＜%CALLNAME:使用対象%に排卵誘発剤を使った＞
 		ENDIF
 		CFLAG:使用対象:排卵誘発剤 = 3
+		SIF 特質("薬効強化", 使用対象)
+			CFLAG:使用対象:排卵誘発剤 *= 特質("薬効強化", 使用対象)/5
 		CFLAG:使用対象:ストレス値 += 30
 	;リミットバースト
 	CASE "リミッター解除"
-		;PLAYSOUND リミッター
+		CALL SE再生, リミッター
 		PRINTFORMW ＜%NAME:使用対象%のリミッターを解除した＞
 		TALENT:使用対象:リミットバースト = 1
 	CASE "特殊技能研修"
@@ -1068,23 +1068,23 @@ SELECTCASE アイテム名
 		CFLAG:使用対象:使用不可 = 6
 	;テレレレッテレー
 	CASE "【料理人】"
-		;PLAYSOUND 特殊素質取得
+		CALL SE再生, 特殊素質取得
 		PRINTFORMW ＜%NAME:使用対象%は料理人になった＞
 		TALENT:使用対象:料理人 = 1
 	CASE "【専業主婦】"
-		;PLAYSOUND 特殊素質取得
+		CALL SE再生, 特殊素質取得
 		PRINTFORMW ＜%NAME:使用対象%は専業主婦になった＞
 		TALENT:使用対象:専業主婦 = 1
 	CASE "【工学博士】"
-		;PLAYSOUND 特殊素質取得
+		CALL SE再生, 特殊素質取得
 		PRINTFORMW ＜%NAME:使用対象%は工学博士になった＞
 		TALENT:使用対象:工学博士 = 1
 	CASE "【絶対音感】"
-		;PLAYSOUND 特殊素質取得
+		CALL SE再生, 特殊素質取得
 		PRINTFORMW ＜%NAME:使用対象%は絶対音感を身につけた＞
 		TALENT:使用対象:絶対音感 = 1
 	CASE "【カメラマン】"
-		;PLAYSOUND 特殊素質取得
+		CALL SE再生, 特殊素質取得
 		PRINTFORMW ＜%NAME:使用対象%はカメラマンになった＞
 		TALENT:使用対象:カメラマン = 1
 ENDSELECT
@@ -1114,34 +1114,31 @@ ENDIF
 PRINTL 　[2] - すべてのキャラのスライム化を治癒し、感染予防を行う(先天性のスライム持ち、及び溶ける快に目覚めた者は治療できない)
 PRINTL 　[0] - キャンセル
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1
-			IF FLAG:抗スライム
-				PRINTW ＜スライムの感染予防を止めました＞
-			ELSE
-				PRINTW ＜スライムの感染予防を実施しました＞
+CALL INPUTF, 0, 1, 2
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		IF FLAG:抗スライム
+			PRINTW ＜スライムの感染予防を止めました＞
+		ELSE
+			PRINTW ＜スライムの感染予防を実施しました＞
+		ENDIF
+		INVERTBIT FLAG:抗スライム, 0
+	CASE 2
+		;変えた種族まで戻ってしまうけど致し方ない
+		FLAG:抗スライム = 1
+		FOR LCOUNT, 0, CHARANUM
+			SIF TALENT:LCOUNT:スライム
+				CSTR:LCOUNT:種族 = %CSVCSTR(NO:LCOUNT, GETNUM(CSTR, "種族"))%
+			IF CHARANAMEF(LCOUNT) != "偽トラン" && !TALENT:LCOUNT:溶ける快
+				TALENT:LCOUNT:スライム = 0
+				CFLAG:LCOUNT:スライム度 = 0
 			ENDIF
-			INVERTBIT FLAG:抗スライム, 0
-			BREAK
-		CASE 2
-			;変えた種族まで戻ってしまうけど致し方ない
-			FLAG:抗スライム = 1
-			FOR LCOUNT, 0, CHARANUM
-				SIF TALENT:LCOUNT:スライム
-					CSTR:LCOUNT:種族 = %CSVCSTR(NO:LCOUNT, GETNUM(CSTR, "種族"))%
-				IF CHARANAMEF(LCOUNT) != "偽トラン" && !TALENT:LCOUNT:溶ける快
-					TALENT:LCOUNT:スライム = 0
-					CFLAG:LCOUNT:スライム度 = 0
-				ENDIF
-			NEXT
-			PRINTW 全てのキャラの[スライム]及びスライムの感染を治癒しました
-			BREAK
-	ENDSELECT
-LOOP 1
+		NEXT
+		PRINTW 全てのキャラの[スライム]及びスライムの感染を治癒しました
+ENDSELECT
 
 IF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
 	MONEY -= ITEMPRICE:抗スライム薬/10*8
@@ -1616,8 +1613,6 @@ IF LINECOUNT == VARLINE
 	PRINTL 　***使用できるアイテムはありません***
 	PRINTL
 ENDIF
-	
-
 
 DRAWLINE
 PRINTPLAIN 　アイテム使用　

@@ -1,13 +1,11 @@
-﻿@LOOPRES(ARG:0 = -1, ARG:1 = -1, ARG:2 = -1, ARG:3 = -1, ARG:4 = -1, ARG:5 = -1, ARG:6 = -1, ARG:7 = -1, ARG:8 = -1, ARG:9 = -1)
+﻿@LOOPRES, ARG:0 = __INT_MAX__, ARG:1 = __INT_MAX__, ARG:2 = __INT_MAX__, ARG:3 = __INT_MAX__, ARG:4 = __INT_MAX__, ARG:5 = __INT_MAX__, ARG:6 = __INT_MAX__, ARG:7 = __INT_MAX__, ARG:8 = __INT_MAX__, ARG:9 = __INT_MAX__
 #FUNCTION
 ;式中関数「LOOPRES(LOOP RESULT)」
 ;DO～LOOP構文の記述を簡略化するための関数
 ;引数で指定された数字とRESULTを参照し、一致していれば0を返す(つまりLOOPを抜ける)
 ;現在同時に指定できるのは10個まで
-REPEAT 10
-	SIF RESULT == ARG:COUNT
-		RETURNF 0
-REND
+SIF MATCH(ARG, RESULT)
+	RETURNF 0
 
 RETURNF 1
 
@@ -192,7 +190,10 @@ SIF TALENT:ARG:ゾンビ
 SIF TALENT:ARG:去勢済み
 	RETURNF 0
 
-SIF TALENT:ARG:スライム
+SIF ISSLIME(ARG)
+	RETURNF 0
+
+SIF !PENIS(ARG)
 	RETURNF 0
 
 SELECTCASE CFLAG:ARG:精管結紮
@@ -219,7 +220,7 @@ SIF TALENT:ARG:無機物
 SIF CSTR:ARG:種族 == "機械"
 	RETURNF 0
 
-SIF TALENT:ARG:スライム
+SIF ISSLIME(ARG)
 	RETURNF 0
 
 SELECTCASE CFLAG:ARG:卵管結紮
@@ -1527,22 +1528,18 @@ SELECTCASE CHARANAMEF(ARG)
 		PRINTFORML %CHARANAMEF(ARG)%の性別を選択してください
 		PRINTL [1] - 男の子
 		PRINTL [2] - 女の子
-		DO
-			INPUT
-			SELECTCASE RESULT
-				CASE 1
-					$GENDER_1
-					TALENT:ARG:性別 = 1
-					TALENT:ARG:童貞 = 1
-				CASE 2
-					$GENDER_2
-					TALENT:ARG:性別 = 2
-					TALENT:ARG:処女 = 1
-					TALENT:ARG:バストサイズ = 1
-			ENDSELECT
-			SIF ISSKIP()
-				BREAK
-		LOOP LOOPRES(1, 2)
+		CALL INPUTF, 1, 2
+		SELECTCASE RESULT
+			CASE 1
+				$GENDER_1
+				TALENT:ARG:性別 = 1
+				TALENT:ARG:童貞 = 1
+			CASE 2
+				$GENDER_2
+				TALENT:ARG:性別 = 2
+				TALENT:ARG:処女 = 1
+				TALENT:ARG:バストサイズ = 1
+		ENDSELECT
 ENDSELECT
 
 RETURN
@@ -1568,29 +1565,6 @@ IF TALENT:キャラ:素質名
 ENDIF
 
 RETURN
-
-;BGMのフェードアウト用関数 0.5秒使ってフェードアウトする
-@FADEOUTBGM
-
-SIF !サウンド
-	RETURN
-
-;SETBGMVOLUME BGM音量/5*4
-TWAIT 100, 0
-
-;SETBGMVOLUME BGM音量/5*3
-TWAIT 100, 0
-
-;SETBGMVOLUME BGM音量/5*2
-TWAIT 100, 0
-
-;SETBGMVOLUME BGM音量/5*1
-TWAIT 100, 0
-
-;SETBGM
-TWAIT 100, 0
-
-;SETBGMVOLUME BGM音量
 
 ;100分率で(引数)%で1を返す
 @RANDPER, 確率
@@ -1622,3 +1596,85 @@ RESETCOLOR
 
 CALL PRINTCOLOR, ARGS, 色名
 PRINTL
+
+;スライムor溶ける快
+@ISSLIME, ARG
+#FUNCTION
+
+SIF !INRANGE(ARG, 0, CHARANUM-1)
+	RETURNF 0
+
+SIF TALENT:ARG:スライム || TALENT:ARG:溶ける快
+	RETURNF 1
+RETURNF 0
+
+;処女or再生処女
+@処女膜, ARG
+#FUNCTION
+
+SIF TALENT:ARG:処女 || TALENT:ARG:再生処女
+	RETURNF 1
+RETURNF 0
+
+;バストサイズ
+@バストサイズ, ARG
+#FUNCTIONS
+
+SELECTCASE ARG
+	CASE 1
+		RETURNF "絶壁"
+	CASE 2
+		RETURNF "貧乳"
+	CASE 3
+		RETURNF "並乳"
+	CASE 4
+		RETURNF "巨乳"
+	CASE 5
+		RETURNF "豊乳"
+	CASE 6
+		RETURNF "爆乳"
+ENDSELECT
+
+@調教可能, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+
+SIF CHECK_CHILD_CARE(対象)
+	RETURNF 0
+SIF CFLAG:対象:使用不可
+	RETURNF 0
+
+RETURNF 1
+
+@助手可能, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+
+SIF CHECK_CHILD_CARE(対象)
+	RETURNF 0
+SIF CFLAG:対象:使用不可
+	RETURNF 0
+SIF CFLAG:対象:状態 < 2
+	RETURNF 0
+
+RETURNF 1
+
+@相性値, 対象, 相手
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 相手
+
+RETURNF RELATION:対象:(NO:相手)
+
+@INPUTF, 数値:0 = __INT_MAX__, 数値:1 = __INT_MAX__,数値:2 = __INT_MAX__,数値:3 = __INT_MAX__,数値:4 = __INT_MAX__,数値:5 = __INT_MAX__,数値:6 = __INT_MAX__,数値:7 = __INT_MAX__,数値:8 = __INT_MAX__,数値:9 = __INT_MAX__,
+#DIM DYNAMIC 数値, 10
+;DO
+;	INPUT
+;LOOP LOOPRES(XX, XX, XX)
+;を一行でやる関数 単純な選択肢などに使える
+
+DO
+	INPUT
+LOOP LOOPRES(数値:0, 数値:1, 数値:2, 数値:3, 数値:4, 数値:5, 数値:6, 数値:7, 数値:8, 数値:9)
+
+RETURN RESULT

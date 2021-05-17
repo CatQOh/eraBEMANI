@@ -19,6 +19,8 @@ ELSE
 					PRINT  統率者ボーナス+1 
 				CALL ISTALENT, LCOUNT, "地質学"
 				CALL ISTALENT, LCOUNT, "統率"
+				SIF ワーカホリックレベル(LCOUNT)
+					PRINTFORM [ワーカホリック+{ワーカホリックレベル(LCOUNT)}]
 				PRINTL 
 			ELSE
 				PRINTFORML 　%NAME:LCOUNT, 名前文字数, LEFT%(配属準備中)
@@ -41,24 +43,22 @@ DRAWLINE
 PRINTPLAIN 　温泉探索　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1 TO 3
-			SIF MS広さ:RESULT == ""
-				CONTINUE
-			CALL マインスイーパ, RESULT
+CALL INPUTF, 0, 1, 2, 3, 10, 11
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1 TO 3
+		SIF MS広さ:RESULT == ""
 			RESTART
-		CASE 10
-			CALL 温泉探索_候補
-			RESTART
-		CASE 11
-			CALL STRATEGY_PERSONAL, "温泉探索"
-			RESTART
-	ENDSELECT
-LOOP 1
+		CALL マインスイーパ, RESULT
+	CASE 10
+		CALL 温泉探索_候補
+	CASE 11
+		CALL STRATEGY_PERSONAL, "温泉探索"
+ENDSELECT
+
+RESTART
 
 @マインスイーパ, ARG
 #DIM DYNAMIC LCOUNT
@@ -294,20 +294,17 @@ DO
 			PRINTL 
 			PRINTL [0] - はい
 			PRINTL [1] - いいえ
-			DO
-				INPUT
-				IF RESULT == 0
-					PRINTL 無事に採掘を終えた！
-					IF 温泉マス > 温泉レベル
-						PRINTFORML 温泉レベルが{温泉マス}に上がった！
-						温泉レベル = 温泉マス
-					ENDIF
-					WAIT
-					CALL MS消去, ARG
-					RETURN
-				ENDIF
-			LOOP LOOPRES(1)
-			GOTO RESTART
+			CALL INPUTF, 0, 1
+			SIF RESULT == 1
+				GOTO RESTART
+			PRINTL 無事に採掘を終えた！
+			IF 温泉マス > 温泉レベル
+				PRINTFORML 温泉レベルが{温泉マス}に上がった！
+				温泉レベル = 温泉マス
+			ENDIF
+			WAIT
+			CALL MS消去, ARG
+			RETURN
 		CASE "10"
 			INVERTBIT ログ表示, 0
 			GOTO RESTART
@@ -431,11 +428,11 @@ FOR LCOUNT, 0, CHARANUM
 	IF TALENT:LCOUNT:地質学
 		広さ上限X += (EXP:LCOUNT:実務経験/10)+2
 		広さ上限Y += (EXP:LCOUNT:実務経験/20)+2
-		難易度上限 += ABL:LCOUNT:工作技能/2
+		難易度上限 += ABL:LCOUNT:工作技能/2+ワーカホリックレベル(LCOUNT)
 	ELSE
 		広さ上限X += (EXP:LCOUNT:実務経験/20)+1
 		広さ上限Y += (EXP:LCOUNT:実務経験/40)+1
-		難易度上限 += ABL:LCOUNT:工作技能/3
+		難易度上限 += ABL:LCOUNT:工作技能/3+ワーカホリックレベル(LCOUNT)
 	ENDIF
 NEXT
 
@@ -455,61 +452,52 @@ PRINTL
 PRINTFORML 　[5] - この条件で探す(最大温泉レベル:{総温泉数})
 PRINTL 　[0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1
-			PRINTL 広さの横幅を指定してください
-			CALL TWO_DIGIT, 広さ上限X, "", 10
-			X指定 = LIMIT(RESULT, 10, 広さ上限X)
+CALL INPUTF, 0, 1, 2, 3, 5
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		PRINTL 広さの横幅を指定してください
+		CALL TWO_DIGIT, 広さ上限X, "", 10
+		X指定 = LIMIT(RESULT, 10, 広さ上限X)
+	CASE 2
+		PRINTL 広さの縦幅を指定してください
+		CALL TWO_DIGIT, 広さ上限Y, "", 10
+		Y指定 = LIMIT(RESULT, 10, 広さ上限Y)
+	CASE 3
+		PRINTL 難易度を選択してください
+		CALL TWO_DIGIT, 難易度上限, "", 1
+		難易度指定 = LIMIT(RESULT, 1, 難易度上限)
+	CASE 5
+		IF 探索費用 > MONEY
+			PRINTW 所持金が足りません
 			RESTART
-		CASE 2
-			PRINTL 広さの縦幅を指定してください
-			CALL TWO_DIGIT, 広さ上限Y, "", 10
-			Y指定 = LIMIT(RESULT, 10, 広さ上限Y)
-			RESTART
-		CASE 3
-			PRINTL 難易度を選択してください
-			CALL TWO_DIGIT, 難易度上限, "", 1
-			難易度指定 = LIMIT(RESULT, 1, 難易度上限)
-			RESTART
-		CASE 5
-			IF 探索費用 > MONEY
-				PRINTW 所持金が足りません
-				RESTART
+		ENDIF
+		PRINTL 発掘現場を保存するスロットを選んでください
+		FOR LCOUNT, 1, 4
+			IF MS広さ:LCOUNT == ""
+				PRINTFORML [{LCOUNT}] - 空きスロット
+			ELSE
+				PRINTFORML [{LCOUNT}] - 広さ:%MS広さ:LCOUNT% 難易度:{MS難易度:LCOUNT}の発掘現場 が保存されています
 			ENDIF
-			PRINTL 発掘現場を保存するスロットを選んでください
-			FOR LCOUNT, 1, 4
-				IF MS広さ:LCOUNT == ""
-					PRINTFORML [{LCOUNT}] - 空きスロット
-				ELSE
-					PRINTFORML [{LCOUNT}] - 広さ:%MS広さ:LCOUNT% 難易度:{MS難易度:LCOUNT}の発掘現場 が保存されています
-				ENDIF
-			NEXT
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 1 TO 3
-						LOCAL = RESULT
-						IF MS広さ:RESULT != ""
-							PRINTL 既に発掘現場が保存されています。上書きしますか？
-							PRINTL [0] - はい
-							PRINTL [1] - いいえ
-							DO
-								INPUT
-								SIF RESULT == 1
-									RESTART
-							LOOP LOOPRES(0)
-						ENDIF
-						CALL マインスイーパ生成, @"{X指定}/{Y指定}", 難易度指定, LOCAL
-						MONEY -= 探索費用
-						RETURN
-				ENDSELECT
-			LOOP 1
-	ENDSELECT
-LOOP 1
+		NEXT
+		CALL INPUTF, 1, 2, 3
+		LOCAL = RESULT
+		IF MS広さ:RESULT != ""
+			PRINTL 既に発掘現場が保存されています。上書きしますか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			CALL INPUTF, 0, 1
+			SIF RESULT == 1
+				RESTART
+		ENDIF
+		CALL マインスイーパ生成, @"{X指定}/{Y指定}", 難易度指定, LOCAL
+		MONEY -= 探索費用
+		RETURN
+ENDSELECT
+
+RESTART
 
 @マインスイーパ生成, 広さ, 難易度, ARG
 #DIM DYNAMIC LCOUNTX
