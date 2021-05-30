@@ -27,6 +27,9 @@
 #DIM DYNAMIC 重複確認X
 #DIM DYNAMIC 重複確認Y
 #DIM DYNAMIC 階層
+#DIM DYNAMIC 階層保存用
+#DIM DYNAMIC レイアウトスロット
+#DIM DYNAMIC 適用不可
 
 VARLINE = LINECOUNT
 
@@ -170,6 +173,41 @@ DO
 	NEXT
 	PRINTL 
 
+	;階層101～103はレイアウト保存用なので別処理
+	IF 階層 > 100
+		;レイアウト適用後の筐体数を計算する
+		CALL 設置済み筐体計算, 階層保存用, 階層
+		FOR LCOUNT, 1100, 1500
+			IF ITEM:LCOUNT < 設置済み筐体:(LCOUNT-1100)
+				PRINTFORML レイアウトの適用には%ITEMNAME:LCOUNT%が{ABS((ITEM:LCOUNT)-(設置済み筐体:(LCOUNT-1100)))}個足りません
+				適用不可 = 1
+			ENDIF
+		NEXT
+		IF 適用不可
+			WAIT
+			$適用終了
+			適用不可 = 0
+			階層 = 階層保存用
+			CALL 設置済み筐体計算
+			GOTO RESTART
+		ENDIF
+		PRINTL このレイアウトを使用します。よろしいですか？
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		CALL INPUTF, 0, 1
+		SELECTCASE RESULT
+			CASE 0
+				FOR X座標, 0, 30
+					FOR Y座標, 0, 30
+						GCオブジェクト:階層保存用:Y座標:X座標 = GCオブジェクト:階層:Y座標:X座標
+					NEXT
+				NEXT
+				GOTO 適用終了
+			CASE 1
+				GOTO 適用終了
+		ENDSELECT
+	ENDIF
+
 	IF オブジェクト配置
 		PRINTFORML 現在の筐体向き:%筐体向き%
 		PRINTL [4] ← [2] ↓ [8] ↑ [6] →
@@ -196,32 +234,32 @@ DO
 			CASE 7
 				SELECTCASE 筐体向き
 					CASE "↓"
-						筐体向き = →
-						オブジェクト配置 += 2
-					CASE "→"
-						筐体向き = ↑
-						オブジェクト配置 -= 1
-					CASE "↑"
 						筐体向き = ←
-						オブジェクト配置 -= 2
+						オブジェクト配置 -= 1
 					CASE "←"
-						筐体向き = ↓
+						筐体向き = ↑
+						オブジェクト配置 += 2
+					CASE "↑"
+						筐体向き = →
 						オブジェクト配置 += 1
+					CASE "→"
+						筐体向き = ↓
+						オブジェクト配置 -= 2
 				ENDSELECT
 			CASE 9
 				SELECTCASE 筐体向き
 					CASE "↓"
-						筐体向き = ←
-						オブジェクト配置 -= 1
-					CASE "←"
-						筐体向き = ↑
-						オブジェクト配置 += 2
-					CASE "↑"
 						筐体向き = →
-						オブジェクト配置 += 1
+						オブジェクト配置 += 2
 					CASE "→"
-						筐体向き = ↓
+						筐体向き = ↑
+						オブジェクト配置 -= 1
+					CASE "↑"
+						筐体向き = ←
 						オブジェクト配置 -= 2
+					CASE "←"
+						筐体向き = ↓
+						オブジェクト配置 += 1
 				ENDSELECT
 			CASE 5
 				FOR LCOUNT, 始点:1, 始点:1+幅:1
@@ -267,6 +305,8 @@ DO
 		ENDIF
 		PRINTL 
 		PRINTFORML 　[70]  - グリッド表示\@ グリッド表示 ? しない # する \@ [80] 戻る
+		PRINTFORML 　[81] - レイアウト保存1 [82] - レイアウト保存2 [83] - レイアウト保存3
+		PRINTFORML 　[91] - レイアウト呼出1 [92] - レイアウト呼出2 [93] - レイアウト呼出3
 		INPUT
 		SELECTCASE RESULT
 			CASE 80
@@ -302,6 +342,31 @@ DO
 			CASE 70
 				INVERTBIT グリッド表示, 0
 				CONTINUE
+			CASE 81 TO 83
+				;レイアウトスロットは階層101～103を使う
+				レイアウトスロット = RESULT-80+100
+				FOR LCOUNT, 0, 900
+					IF GCオブジェクト:レイアウトスロット:(LCOUNT/30):(LCOUNT%30)
+						PRINTFORML 保存用スロット{レイアウトスロット-100}には既にマップデータが存在します。上書きしますか？
+						PRINTL [0] - はい
+						PRINTL [1] - いいえ
+						CALL INPUTF, 0, 1
+						SIF RESULT
+							GOTO RESTART
+						BREAK
+					ENDIF
+				NEXT
+				FOR Y座標, 0, 30
+					FOR X座標, 0, 30
+						GCオブジェクト:レイアウトスロット:Y座標:X座標 = GCオブジェクト:階層:Y座標:X座標
+					NEXT
+				NEXT
+				PRINTW レイアウトを保存しました
+			CASE 91 TO 93
+				レイアウトスロット = RESULT-90+100
+				階層保存用 = 階層
+				階層 = レイアウトスロット
+				RESTART
 			CASEELSE
 				;RESULTからX,Y座標を調べる
 				;X
