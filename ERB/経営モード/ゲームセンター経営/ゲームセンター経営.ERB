@@ -493,6 +493,7 @@ LOCAL:1 = GC広さ*30000+50000
 LOCAL:2 = 30000
 ;階層は100まで
 LOCAL:3 = (GC階層*GC階層)*1000000
+;外装も100まで
 LOCAL:4 = GC外装*100000
 LOCAL:5 = 100000
 LOCAL:6 = GCトイレ*2000+5000
@@ -515,7 +516,11 @@ SELECTCASE GC物件
 		ELSE
 			CALL PASELIL, @"　[3] - 階層を増やす({LOCAL:3}＄)"
 		ENDIF
-		CALL PASELIL, @"　[4] - 外装強化({LOCAL:4}＄)"
+		IF GC外装 >= 100
+			PRINTL 　[-] - 外装は最大です
+		ELSE
+			CALL PASELIL, @"　[4] - 外装強化({LOCAL:4}＄)"
+		ENDIF
 		SIF !GCフードコート
 			CALL PASELIL, @"　[5] - フードコートを作る({LOCAL:5}＄)"
 		CALL PASELIL, @"　[6] - お手洗い改装({LOCAL:6}＄)"
@@ -807,6 +812,7 @@ NEXT
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC モチベ計算用
 #DIM DYNAMIC 世話好き人数
+#DIM DYNAMIC 設置済み筐体数
 VARSET LOCAL, 0
 
 CALL 設置済み筐体計算
@@ -827,13 +833,10 @@ FOR LCOUNT, 1, GC階層+1
 			収入 += 階層収入期待値(LCOUNT)
 		;それ以外ならRAND:階層ごとの収入期待値を加算
 		CASEELSE
-			;外装レベル数だけロール 一番高い値を加算
-			REPEAT GC外装
-				LOCAL:1 = RAND:階層収入期待値(LCOUNT)
-				SIF LOCAL:2 < LOCAL:1
-					LOCAL:2 = LOCAL:1
-			REND
-			収入 += LOCAL:2
+			;RAND:期待値で出す 外装レベル%の収入が保証される
+			LOCAL:1 = RAND:階層収入期待値(LCOUNT)
+			CALL SETMAX, LOCAL:1, 階層収入期待値(LCOUNT)*GC外装/100
+			収入 += LOCAL:1
 	ENDSELECT
 NEXT
 ;分煙補正-------------------------------------
@@ -841,18 +844,6 @@ NEXT
 
 ;外装補正-------------------------------------
 ;上で計算済み
-
-;お手洗い補正---------------------------------
-;レベル数だけ最大期待値をロール 一番高い値を加算
-LOCAL:2 = 0
-IF LOCAL > 0
-	REPEAT GCトイレ
-		LOCAL:1 = RAND:LOCAL
-		SIF LOCAL:2 < LOCAL:1
-			LOCAL:2 = LOCAL:1
-	REND
-ENDIF
-収入 += LOCAL:2
 
 ;フードコート補正-------------------------
 ;レベルに応じて支出を抑えられるのでフードコートによる収入は保留
@@ -893,7 +884,12 @@ ENDSELECT
 ;単純に筐体数が多ければそれだけで名声が上がる
 FOR LCOUNT, 0, 400
 	名声 += 名声筐体補正(LCOUNT)*設置済み筐体:LCOUNT
+	設置済み筐体数++
 NEXT
+
+;お手洗い補正---------------------------------
+;レベルに応じて最大筐体設置数と同じまで上がる
+名声 += MIN(GCトイレ, 設置済み筐体数)
 
 ;広さ補正-------------------------------------
 名声 += GC広さ
