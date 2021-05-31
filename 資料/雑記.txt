@@ -354,3 +354,57 @@ NEXTCOMのように本体側で推奨されてないほど不安定でもなく�
 DOTRAINほどの制約もなく、フローに則った挙動を行います
 初期値は-1で、コマンド番号を代入することで次のコマンド選択時に自動で入力されます
 GETNUMを使用してうまいこと活用してください。実行後は値は初期値に戻ります
+
+
+・eraBEMANIのフロー図について
+TRAIN関係----------------------------------------
+BEGIN TRAIN
+↓
+@EVENTTRAIN(下記EVENTUSERTRAINを呼び出すだけ)
+↓
+@EVENTUSERTRAIN(CALL可能関数)
+│↓
+│@CVAR_RESET(BEGIN TRAINで行われる変数初期化処理 GOTJUEL、TEQUIP等)
+↓↓
+@SHOW_STATUS(CALL可能関数)
+↓
+※Emueraで行われるCOM_ABLE参照は行わない 下記SHOW_USERCOM内でコマンド表示
+↓
+@SHOW_USERCOM(CALL可能関数)
+│↓
+│@SHOW_USERCOM内でEmueraのフロー同等にUP、DOWN、LOSEBASE及びDOWNBASEの初期化を行う
+↓↓
+INPUT(入力待ち Emueraのフローで行われる)
+↓
+@USERCOM(CALL可能)
+│↓
+│入力されたコマンドの実行判定、存在判定など 判定失敗で0を返す
+││↓1(判定が通った場合)
+││@TVAR_RESET(NOWEX、TFLAG:100以下のリセットを行う)
+││ほぼ同じタイミングでSELECTCOM、SELECTCOMSにコマンドを代入
+││↓
+││@COMXX(CALL可能 コマンドが実行されると1、実行できなければ0を返す
+│├┘↓1(コマンドが実行された場合)
+││　@SOURCE_CHECK(CALL可能 体力気力PALAMの処理)
+││　↓
+││　SOURCE初期化
+││　↓
+││　※Emueraで行われるEVENTCOMENDの呼び出しは行わない 下記EVENTUSERCOMENDで代用する
+││　↓
+││　@EVENTUSERCOMEND(体力切れなどでの調教終了を行う)
+↓↓　↓└上級売春以外は体力切れ等でBEGIN AFTERTRAIN 上級売春では満足度に応じて終了
+@SHOW_STATUSに戻る
+--------------------------------------------------
+
+上記のフローをBEGIN TRAINを介さず再現するには
+例文----------------------------------------
+CALL EVENTUSERTRAIN
+DO
+	CALL SHOW_STATUS
+	CALL SHOW_USERCOM
+	INPUT
+	CALL USERCOM
+LOOP TFLAG:調教終了 == 0
+--------------------------------------------
+となる 仕様上、BEGIN AFTERTRAIN後にループも正常に終了させる必要がある
+
