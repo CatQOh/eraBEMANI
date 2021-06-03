@@ -472,15 +472,19 @@ ENDIF
 #DIM DYNAMIC 来客数 = -1
 #DIM DYNAMIC 来客上限
 #DIM DYNAMIC 対象
+#DIM DYNAMIC 性別一致
 
 ;部屋単位でLCOUNTを回す
 FOR LCOUNT, 1, 100
 	住人 = FINDCHARA(CFLAG:居住, LCOUNT)
+	性別一致 = SEX(住人)
 	住人:1 = FINDLASTCHARA(CFLAG:居住, LCOUNT)
 	SIF 住人 == -1
 		CONTINUE
 	SIF 住人 == 住人:1
 		住人:1 = 0
+	SIF 性別一致 != SEX(住人:1)
+		性別一致 = 0
 	
 	;イベント前にスライム感染の処理
 	SIF 住人 > 0 && ISSLIME(住人) && 住人:1
@@ -512,6 +516,7 @@ FOR LCOUNT, 1, 100
 				ENDSELECT
 			ENDIF
 	ENDSELECT
+
 	;内容決まらなかった場合は適当なイベントで濁す
 	SIF 内容 == ""
 		内容 = その他
@@ -552,8 +557,12 @@ FOR LCOUNT, 1, 100
 			SELECTCASE 内容
 				CASE "その他"
 					;来客→住人の相性が良いと遊びに来ている
-					SIF 相性値(SHUFFLE:LCOUNT2, 住人) > 100 || 相性値(SHUFFLE:LCOUNT2, 住人:1) > 100
-						来客:(来客数++) = SHUFFLE:LCOUNT2
+					IF 相性値(SHUFFLE:LCOUNT2, 住人) > 100 || 相性値(SHUFFLE:LCOUNT2, 住人:1) > 100
+						来客:来客数 = SHUFFLE:LCOUNT2
+						SIF 性別一致 != SEX(来客:来客数)
+							性別一致 = 0
+						来客数++
+					ENDIF
 					SIF 来客数 >= 3
 						BREAK
 				CASE "自主練"
@@ -564,6 +573,19 @@ FOR LCOUNT, 1, 100
 						BREAK
 			ENDSELECT
 		NEXT
+	ENDIF
+
+	;その他はさらに確率で分岐
+	IF 内容 == "その他" && RAND:3 == 0
+		;施設設備に関して
+		SELECTCASE RAND:2
+			CASE 0
+				SIF GC物件
+					内容 = ゲーセン
+			CASE 1
+				SIF 温泉レベル && 性別一致
+					内容 = 温泉
+		ENDSELECT
 	ENDIF
 
 	SELECTCASE 内容
@@ -735,7 +757,7 @@ FOR LCOUNT, 1, 100
 						EXP:(住人:1):レズ経験++
 				ENDSELECT
 			ENDIF
-		CASE "その他"
+		CASE "その他", "ゲーセン", "温泉"
 			ARRAYSHIFT 部屋ログ, 1, ""
 			部屋ログ = {YEAR}年{MONTH}月{DAYS}日\@ TIME == 0 ? 昼 # 夜 \@ %CALLNAME:住人%\@ 住人:1 ? と%CALLNAME:(住人:1)% #\@
 			IF 来客数
@@ -749,40 +771,92 @@ FOR LCOUNT, 1, 100
 			ELSE
 				部屋ログ += "は"
 			ENDIF
-			IF 来客数 == 0 && 住人:1
-				IF 相性値(住人, 住人:1) > 100 && 相性値(住人:1, 住人) > 100
-					SELECTCASE RAND:3
-						CASE 0
-							部屋ログ += "部屋でくつろいで過ごした"
-						CASE 1
-							部屋ログ += "2人で遊びに出かけた"
-						CASE 2
-							部屋ログ += "特筆することのない時間を過ごした"
-					ENDSELECT
-				ELSE
-					部屋ログ += "別行動で過ごした"
-				ENDIF
-			ELSEIF 来客数
-				SELECTCASE RAND:4
-					CASE 0
-						部屋ログ += "部屋で談笑しながら過ごした"
-					CASE 1
-						部屋ログ += "みんなで遊びに出かけた"
-					CASE 2
-						部屋ログ += "部屋で遊んで過ごした"
-					CASE 3
-						部屋ログ += "部屋でくつろいで過ごした"
-				ENDSELECT
-			ELSE
-				SELECTCASE RAND:3
-					CASE 0
-						部屋ログ += "とりとめのない時間を過ごした"
-					CASE 1
-						部屋ログ += "部屋でくつろいで過ごした"
-					CASE 2
-						部屋ログ += "特に何もせずに過ごした"
-				ENDSELECT
-			ENDIF
+			SELECTCASE 内容
+				CASE "ゲーセン"
+					IF 来客数 == 0 && 住人:1
+						IF 相性値(住人, 住人:1) > 100 && 相性値(住人:1, 住人) > 100
+							SELECTCASE RAND:2
+								CASE 0
+									部屋ログ += @"%GC店名%で過ごした"
+								CASE 1
+									部屋ログ += @"2人で%GC店名%に遊びに行った"
+							ENDSELECT
+						ELSE
+							部屋ログ += "別行動で過ごした"
+						ENDIF
+					ELSEIF 来客数
+						SELECTCASE RAND:2
+							CASE 0
+								部屋ログ += @"みんなで%GC店名%に遊びに行った"
+							CASE 1
+								部屋ログ += @"%GC店名%で楽しく過ごした"
+						ENDSELECT
+					ELSE
+						SELECTCASE RAND:2
+							CASE 0
+								部屋ログ += @"%GC店名%に遊びに行った"
+							CASE 1
+								部屋ログ += @"%GC店名%でハイスコアを目指した"
+						ENDSELECT
+					ENDIF
+				CASE "温泉"
+					IF 来客数 == 0 && 住人:1
+						IF 相性値(住人, 住人:1) > 100 && 相性値(住人:1, 住人) > 100
+							SELECTCASE RAND:2
+								CASE 0
+									部屋ログ += "2人で温泉に行った"
+								CASE 1
+									部屋ログ += @"%CALLNAME:MASTER%が経営する温泉に浸かりに行った"
+							ENDSELECT
+						ELSE
+							部屋ログ += "別行動で過ごした"
+						ENDIF
+					ELSEIF 来客数
+						SELECTCASE RAND:2
+							CASE 0
+								部屋ログ += "みんなで一緒に温泉に行った"
+							CASE 1
+								部屋ログ += @"%CALLNAME:MASTER%が経営する温泉に行き、リラックスした"
+						ENDSELECT
+					ELSE
+						部屋ログ += @"%CALLNAME:MASTER%の経営する温泉に行った"
+					ENDIF
+				CASE "その他"
+					IF 来客数 == 0 && 住人:1
+						IF 相性値(住人, 住人:1) > 100 && 相性値(住人:1, 住人) > 100
+							SELECTCASE RAND:3
+								CASE 0
+									部屋ログ += "部屋でくつろいで過ごした"
+								CASE 1
+									部屋ログ += "2人で遊びに出かけた"
+								CASE 2
+									部屋ログ += "特筆することのない時間を過ごした"
+							ENDSELECT
+						ELSE
+							部屋ログ += "別行動で過ごした"
+						ENDIF
+					ELSEIF 来客数
+						SELECTCASE RAND:4
+							CASE 0
+								部屋ログ += "部屋で談笑しながら過ごした"
+							CASE 1
+								部屋ログ += "みんなで遊びに出かけた"
+							CASE 2
+								部屋ログ += "部屋で遊んで過ごした"
+							CASE 3
+								部屋ログ += "部屋でくつろいで過ごした"
+						ENDSELECT
+					ELSE
+						SELECTCASE RAND:3
+							CASE 0
+								部屋ログ += "とりとめのない時間を過ごした"
+							CASE 1
+								部屋ログ += "部屋でくつろいで過ごした"
+							CASE 2
+								部屋ログ += "特に何もせずに過ごした"
+						ENDSELECT
+					ENDIF
+			ENDSELECT
 	ENDSELECT
 NEXT
 

@@ -1,0 +1,1222 @@
+﻿;-------------------------------------------------
+;ライブ配信
+;-------------------------------------------------
+@USERCOM_ABLE_ライブ配信, ARG
+#FUNCTION
+#DIM DYNAMIC 条件確定
+
+;ゲーセンに居る場合はできない
+コマンド実行条件 += "ゲーセンでは実行不可/"
+SIF TEQUIP:ゲームセンター
+	COMRESULT = 0
+;上級売春中は不可
+コマンド実行条件 += "上級売春中は実行不可/"
+SIF 上級売春中
+	COMRESULT = 0
+;普通に撮影中も無理
+コマンド実行条件 += "ビデオカメラによる撮影中は実行できない"
+SIF TEQUIP:ビデオカメラ
+	COMRESULT = 0
+;マジックミラー撮影中はダメ
+コマンド実行条件 += "マジックミラーによる撮影中は実行できない/"
+SIF TEQUIP:羞恥プレイ && SAVESTR:大鏡 == "マジックミラー"
+	COMRESULT = 0
+;解除はいつでも可能
+SIF TEQUIP:ライブ配信 && COMRESULT
+	条件確定 = 1
+
+;ビデオカメラ持っていないとダメ
+コマンド実行条件 += "アイテム[ビデオカメラ]が必要/"
+SIF !ITEM:ビデオカメラ
+	COMRESULT = 0
+;主人か助手の撮影技能3以上必要
+コマンド実行条件 += "主人もしくは助手の撮影技能Lv3以上が必要"
+SIF ABL:MASTER:撮影技能 < 3 && (ASSI > 0 && ABL:ASSI:撮影技能 < 3)
+	COMRESULT = 0
+
+IF 条件確定
+	COMRESULT = 1
+	RETURNF 1
+ENDIF
+RETURNF COMRESULT
+
+@COM_ライブ配信
+;撮影者の処理
+IF !TEQUIP:ライブ配信
+	IF ABL:MASTER:撮影技能 >= 3 && (ASSI > 0 && ABL:ASSI:撮影技能 >= 3)
+		PRINTL 撮影者を選択してください　途中変更はできません
+		PRINTL （撮影者を変更する場合、一度撮影を終了してください）
+		PRINTFORML [0] %CALLNAME:MASTER%
+		PRINTFORML [1] %CALLNAME:ASSI%
+		PRINTL [2] やめる
+		DO
+			SIF ISSKIP()
+				BREAK
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					TFLAG:ビデオ撮影者 = 1
+					PRINTFORML 撮影者は%CALLNAME:MASTER%です
+					BREAK
+				CASE 1
+					TFLAG:ビデオ撮影者 = 2
+					PRINTFORML 撮影者は%CALLNAME:ASSI%です
+					BREAK
+				CASE 2
+					RETURN 0
+			ENDSELECT
+		LOOP 1
+	ELSEIF ABL:MASTER:撮影技能 >= 3
+		TFLAG:ビデオ撮影者 = 1
+		PRINTFORML 撮影者は%CALLNAME:MASTER%です
+	ELSE
+		TFLAG:ビデオ撮影者 = 2
+		PRINTFORML 撮影者は%CALLNAME:ASSI%です
+	ENDIF
+ENDIF
+
+CALL KOJO_MESSAGE_COM
+
+;着脱の処理
+IF TEQUIP:ライブ配信
+	PRINTW ★★★ライブ配信を終了します★★★
+	TFLAG:ビデオ撮影回数 = 0
+	TEQUIP:ライブ配信 = 0
+ELSE
+	PRINTW ★★★ライブ配信を開始します★★★
+	;視聴者は1人はいる
+	視聴者数 = 1
+	;チャンネル登録者数に応じて増加
+	視聴者数 += RAND(チャンネル登録者数/2+1)
+	LIKE = 0
+	DISLIKE = 0
+	コメント数 = 0
+	VARSET 視聴コメント
+	TEQUIP:ライブ配信 = 1
+ENDIF
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+RETURN 1
+
+;-------------------------------------------------
+;装着継続の処理
+;-------------------------------------------------
+@EQUIP_COM_ライブ配信
+#DIM DYNAMIC ポイント
+#DIM DYNAMIC 視聴者数補正
+;ビデオ撮影とは違って開始時もカウントする
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 0
+LOSEBASE:気力 += 50
+
+SOURCE:恐怖 += 1000
+SOURCE:露出 += 5000
+SOURCE:逸脱 += 2000
+SOURCE:反感 += 1000
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 700
+
+;苦痛を伴わないマゾっ気及びマゾの処理は先にしておく
+;マゾっ気を見る
+LOCAL = 1000
+SELECTCASE ABL:マゾっ気
+	CASE 0
+		TIMES LOCAL , 0.80
+		SOURCE:液体 += 0
+		SOURCE:欲情 += 0
+	CASE 1
+		TIMES LOCAL , 1.00
+		SOURCE:液体 += 50
+		SOURCE:欲情 += 100
+	CASE 2
+		TIMES LOCAL , 1.20
+		SOURCE:液体 += 100
+		SOURCE:欲情 += 200
+	CASE 3
+		TIMES LOCAL , 1.40
+		SOURCE:液体 += 200
+		SOURCE:欲情 += 400
+	CASE 4
+		TIMES LOCAL , 1.50
+		SOURCE:液体 += 400
+		SOURCE:欲情 += 600
+	CASE 5
+		TIMES LOCAL , 1.70
+		SOURCE:液体 += 600
+		SOURCE:欲情 += 800
+	CASE 6
+		TIMES LOCAL , 1.90
+		SOURCE:液体 += 800
+		SOURCE:欲情 += 1000
+	CASE 7
+		TIMES LOCAL , 2.10
+		SOURCE:液体 += 1000
+		SOURCE:欲情 += 1200
+	CASE 8
+		TIMES LOCAL , 2.30
+		SOURCE:液体 += 1200
+		SOURCE:欲情 += 1500
+	CASE 9
+		TIMES LOCAL , 2.50
+		SOURCE:液体 += 1500
+		SOURCE:欲情 += 2000
+	CASE IS >= 10
+		TIMES LOCAL , 3.00
+		SOURCE:液体 += 2000
+		SOURCE:欲情 += 3000
+ENDSELECT
+
+;ナルシスト
+IF TALENT:ナルシスト
+	SOURCE:欲情 += 200
+	SOURCE:露出 += 1000
+	SOURCE:屈従 += 100
+ENDIF
+
+SOURCE:露出 += LOCAL
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+SELECTCASE TFLAG:ビデオ撮影者
+	CASE 1
+		CALL EXPUP, "撮影経験", 1, MASTER
+	CASE 2
+		CALL EXPUP, "撮影経験", 1, ASSI
+ENDSELECT
+CALL EXPUP, "被写経験", 1
+
+;-------------------------------------------------
+;ビデオの処理
+;-------------------------------------------------
+;撮影内容の保存
+TFLAG:ビデオ撮影回数++
+
+;視聴者数の補正
+視聴者数補正 = 100
+SIF TALENT:人気
+	視聴者数補正 += 100
+SIF TALENT:小柄体型
+	視聴者数補正 += 50
+SIF TALENT:バストサイズ >= 5
+	視聴者数補正 += 30
+SIF TALENT:ふたなり
+	視聴者数補正 += 30
+SIF FALLTYPE(TARGET) == 2
+	視聴者数補正 += 30
+SIF TALENT:無関心
+	視聴者数補正 -= 30
+SIF TALENT:動物耳 || TALENT:尻尾 || TALENT:羽 || TALENT:足使用不可
+	視聴者数補正 += 30
+SIF SEX(TARGET) == 1
+	視聴者数補正 -= 30
+
+;補正はターン数でも決まる最初は10%、1ターンで+10% 最高100%
+視聴者数補正 *= 10*MIN(TFLAG:ビデオ撮影回数, 10)
+
+;コマンドごとのポイント
+ポイント = ビデオポイント(SELECTCOMS)
+;イってるとポイント2倍
+SIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂 || NOWEX:射精 || NOWEX:潮噴き || NOWEX:噴乳
+	ポイント *= 2
+
+CALL ライブコメント, SELECTCOMS
+
+;ポイント高いコマンドを選ぶといいねが増える
+;撮影が進んでるのにソフトなことばかりしてるとDISLIKEも増える
+LIKE += ビデオポイント(SELECTCOMS)/10
+SIF ビデオポイント(SELECTCOMS) < TFLAG:ビデオ撮影回数*10
+	DISLIKE += ビデオポイント(SELECTCOMS)/10
+
+;ポイント*補正(100.00%)/10が視聴者数に加算される
+IF ポイント*視聴者数補正/10000/10
+	視聴者数 += ポイント*視聴者数補正/10000/10
+	PRINTFORML 視聴者数増加+{ポイント*視聴者数補正/10000/10}人(現在{視聴者数}人)
+ENDIF
+
+;視聴者数>チャンネル登録者数なら1割の超過分がチャンネル登録される
+IF (視聴者数-チャンネル登録者数)/10 > 0
+	チャンネル登録者数 += (視聴者数-チャンネル登録者数)/10
+	PRINTFORML チャンネル登録者数増加+{(視聴者数-チャンネル登録者数)/10}(現在{チャンネル登録者数}人)
+ENDIF
+
+;実績:うさぬこの自慰を撮影する
+SIF CHARANAMEF(TARGET) == "＊うさぬこ＊" && SELECTCOMS == "自慰"
+	CALL 実績解除,  "「F◯2アダルトに投稿するんだぬ？」"
+
+RETURN 1
+
+@ライブコメント, コマンド名
+#DIM LCOUNT
+#DIMS DYNAMIC コマンド名
+
+SELECTCASE コマンド名
+	;愛撫系
+	CASE "愛撫", "アナル愛撫", "胸愛撫"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 紳士
+				DATA 気持ちよさそう
+				DATA やわらかそう
+				DATA 触りたい
+				DATA かわいい
+				DATA エロい
+				DATA 汚したい
+				DATA えっち
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "クンニ", "指挿入れ", "アナル舐め", "胸揉み", "乳首責め"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA やわらかそう
+				DATA かわいい
+				DATA エロい
+				DATA 吸いてえ
+				DATA 触りたい
+				DATA 汚したい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "フェラする", "お掃除フェラする"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA ちんぽ
+				DATA 勃ってる
+				DATA おいしそう
+				DATA むしゃぶりつきたい竿
+				DATA ごっくんしたい
+				DATA くさそう
+				DATAFORM \@ TALENT:ファーリー ? ケモチンはいいぞ # イキそう \@
+				DATAFORM \@ TALENT:ふたなり ? ふたなりっ子は至宝 # 咥えて差し上げろ \@
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "秘貝開帳"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATAFORM \@ TALENT:小柄体型 ? ロリマンコやばい # もっとカメラ寄せて \@
+				DATAFORM \@ TALENT:小柄体型 ? まったく幼女は最高だぜ！ # ヒクヒクしてる \@
+				DATA いれたい
+				DATA やりたい
+				DATAFORM \@ EXP:Ｖ経験 >= 200 ? 使い込まれてそう # きれいなマンコ \@
+				DATA 濡れてる
+				DATA エロい・・・
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "秘貝開帳見せつけ"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATAFORM \@ TALENT:PLAYER:小柄体型 ? ロリマンコやばい # もっとカメラ寄せて \@
+				DATAFORM \@ TALENT:PLAYER:小柄体型 ? まったく幼女は最高だぜ！ # ヒクヒクしてる \@
+				DATA いれたい
+				DATA やりたい
+				DATAFORM \@ EXP:PLAYER:Ｖ経験 >= 200 ? 使い込まれてそう # きれいなマンコ \@
+				DATA 濡れてる
+				DATA エロい・・・
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "胸自慰"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 乳首でイくの？
+				DATA チクオナキター
+				DATA 乳首勃ってんじゃん
+				DATA おっぱい！
+				DATAFORM \@ SEX(TARGET) == 1 ? ちんちんも写して # 母乳出るの？ \@
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "足扱きする", "下着扱きする", "手淫する", "素股する"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 気持ちよさそう
+				DATA カウパーすごい
+				DATA されたい
+				DATA 搾られたい
+				DATA がんばって
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "自慰"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 激しい
+				DATA すげえオナニー
+				DATA これは絶対感じてる
+				DATA 手伝いたい
+				DATA 今イったよね
+			ENDDATA
+			コメント数++
+		NEXT
+	{
+	CASE "パイズリする", "パイズリフェラする",
+		 "パイズリ", "縦パイズリ", "パイズリフェラ", "乳ファック", 
+	}
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA おっぱい！
+				DATA 気持ちよさそう
+				DATA 挟まれたい
+				DATA 揉みたい
+				DATA 音がエロい
+				DATA やわらかそう
+				DATA されたい
+			ENDDATA
+			コメント数++
+		NEXT
+	;コミュニケーション系
+	CASE "キスする", "キスしてもらう"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA ふたりは幸せなキスをして終了
+				DATA 愛を感じる
+				DATA 相手も応じてるのがエロい
+				DATA ちゅっちゅ
+				DATA いいなぁ・・・
+				DATA これ好き
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "吸血する", "吸血させる"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA ぎゃあああああ
+				DATA グロ動画
+				DATA 痛そう
+				DATA ひどい
+				DATA 愛を感じる
+				DATA 相手も応じてるのがエロい
+			ENDDATA
+			コメント数++
+		NEXT
+	{
+	CASE "何もしない", "プレゼント", "まったりする", "家事", "機械の勉強", "スキンシップ", "尻尾を撫でる",
+		 "会話", "歌の練習", "料理を作る", "お菓子を作る", "楽器の練習", "ハッキング", "排卵マッサージ",
+		 "ビデオ鑑賞", "情欲を煽る"
+	}
+		FOR LCOUNT, 0, RAND:4
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 安物のAVみたい
+				DATA 恒例の日常パート
+				DATA これはいらない
+				DATA 和む
+				DATA トイレ休憩
+				DATA この間にコンビニ行ってくる
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "お酒を飲ませる", "ジュースを飲ませる"
+		FOR LCOUNT, 0, RAND:3
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA あのさぁ・・・
+				DATA お　ま　た　せ
+				DATA アイスティー
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "罵倒"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA ぴえん
+				DATA ちくちく言葉
+				DATA ひどい
+				DATA うちの上司みたい
+				DATA これはないわ
+				DATA かわいそう
+			ENDDATA
+			コメント数++
+		NEXT
+	;道具系
+	{
+	CASE "ローター", "貞操帯", "電気按摩", "クリキャップ", "ニプルキャップ",
+		 "オナホール", "バイブ", "アナルバイブ", "アナルビーズ", "電動エネマグラ",
+		 "ニプルキャップ", "乳首ローター"
+	}
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 使い方うまい
+				DATA これ持ってる
+				DATA すごい感じてる
+				DATA エロい
+				DATA いいね
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "貞操帯", "射精寸止め"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA ああ・・・
+				DATA これはつらい
+				DATA 我々の業界ではご褒美です
+				DATA 射精管理はじまた
+				DATA わるいちんちんはしまっちゃおうね～
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "搾乳器"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA どんどん溜まってく
+				DATA 飲みたい
+				DATA すごい量
+				DATA 牛みたい
+				DATA エロすぎ
+				DATA ストローで啜りたい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "搾精器"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA どんどん溜まってく
+				DATA 飲みたい
+				DATA すごい量
+				DATA 我々の業界ではご褒美です
+				DATA エロすぎ
+				DATA 搾られたい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "搾精コンドーム", "コンドーム"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 生じゃないのか・・・
+				DATA 生でやって
+				DATA 咥えゴムエロい
+				DATA 避妊大事
+			ENDDATA
+			コメント数++
+		NEXT
+	;セックス系
+	{
+	CASE "正常位", "対面座位", "背面座位", "正常位アナル", "対面座位アナル", "背面座位アナル", "正常位させる", "後背位させる", "正常位アナルさせる", "後背位アナルさせる",
+		 "後背位", "後背位アナル", "下着ずらし挿入", "下着ずらし挿入アナル",
+		 "騎乗位", "騎乗位アナル", "スライム姦", "スライム姦させる",
+		 "逆レイプ", "逆レイプキス", "助手を犯させる",
+		 "後背位手淫", "騎乗位手淫", "後背位アナル手淫", "騎乗位アナル手淫", "対面座位吸血", "背面座位吸血", "正常位吸血させる", "後背位吸血させる",
+		 "挿入Gスポ責め", "挿入子宮口責め", "乱れ牡丹", "助手を犯す"
+	}
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA おおっ
+				DATA エロすぎ
+				DATA 今絶対イったよね
+				DATA めっちゃ激しい
+				DATA ふぅ・・・
+				DATA ここから本編
+				DATA すげええ
+				DATA 声がエロい
+				DATA 抜いた
+				DATA 最高
+				DATA ぐぅシコ
+			ENDDATA
+			コメント数++
+		NEXT
+	;奉仕系
+	{
+	CASE "手淫", "泡踊り", "足扱き", "兜合わせ", "下着扱き", "フェラチオ",
+		 "オナホ扱き", "バイブ被挿入", "アナルバイブ被挿入",
+		 "ローター愛撫させる", "電気按摩愛撫させる", "アナル愛撫させる"
+	}
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA されたい
+				DATA 気持ちよさそう
+				DATA 汚したい
+				DATA エロい
+				DATA かわいい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "素股"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA これ絶対入ってるよね
+				DATAFORM \@ TALENT:小柄体型 ? ぷにまんに擦られたい # すごい濡れてる \@
+				DATA 実質セックス
+				DATA エロい
+				DATA かわいい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "足を舐めさせる"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 汚い
+				DATA くさそう
+				DATA かわいそう
+				DATA 足エロい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "母乳飲み", "搾乳", "授乳手コキ"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 飲みたい
+				DATA おいしそう
+				DATA エロい
+				DATA バブみ
+				DATA ママ・・・
+			ENDDATA
+			コメント数++
+		NEXT
+	;SM系
+	{
+	CASE "スパンキング", "乳スパンキング", "アイマスク", "ボールギャグ", "ビンタ", "異物挿入解除",
+		 "鞭", "蝋燭", "縄", "腹パン", "踏む", "裸締め", "鞭打ちしてもらう", "踏んでもらう", "叩いてもらう",
+		 "針", "首を絞める", "異物挿入", "採血"
+	}
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA おしおきタイム
+				DATA いいぞもっとやれ
+				DATA かわいそう
+				DATA ひどい
+				DATA 痛そう
+				DATA 怯える声がエロい
+				DATA かわいい
+				DATA 急にホラー映画になった
+				DATA ！？
+				DATA これ嫌い
+				DATA 無理
+				DATA やめたげてよぉ
+			ENDDATA
+			コメント数++
+		NEXT
+	;助手系、レズ系
+	CASE "クンニさせる", "岩清水"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATAFORM \@ SEX(TARGET) == 2 ? あら＾～ # ご褒美 \@
+				DATA で、味は？
+				DATA 濡れてる
+				DATA くさそう
+				DATA 舐めたい
+				DATA エロい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "貝あわせ", "双頭ディルド", "乳の揉み合い"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA あら＾～
+				DATA 破廉恥ですわ～
+				DATA 百合はいいぞ
+				DATA レズもの助かる
+				DATA かわいい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "ダブルフェラ", "ダブルパイズリ", "3P", "ダブル素股", "数珠繋ぎ"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 男の夢
+				DATA エロゲみたい
+				DATA おいそこ代われ
+				DATA 最高
+				DATA ふぅ・・・
+				DATA シコい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "アナル双頭ディルド"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA ┌(┌^o^)┐ホモォ...
+				DATA エロすぎ
+				DATA 完全にメスの顔
+				DATA 全部入ってる
+				DATA 先走りすごい
+				DATA アーッ！
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "顔面騎乗する"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA されたい
+				DATA 我々の業界ではご褒美です
+				DATA いい匂いしそう
+				DATA エロい
+			ENDDATA
+			コメント数++
+		NEXT
+	;ハードなコマンド
+	CASE "イラマチオ"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 苦しそう
+				DATA エロすぎ
+				DATA かわいそう
+				DATA 喉コキ
+				DATA したい
+				DATA やりたい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "浣腸器"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA きたない
+				DATA くさそう
+				DATA かわいそう
+				DATA まずそう
+				DATA これ嫌い
+				DATA うんちぶり
+				DATA ﾌﾞﾘﾌﾞﾘﾌﾞﾘﾌﾞﾘｭﾘｭﾘｭﾘｭﾘｭﾘｭ！
+				DATA ウンドボ
+				DATA これ好き
+				DATA 食べたい
+				DATA 糞が出るう～
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "アナル電極", "乳房電極"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA ひぎぃ
+				DATA 痛そう
+				DATA かわいそう
+				DATA ビクビクしててエロい
+				DATA うわ
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "フィストファック", "アナルフィスト",　"フィストファックさせる", "アナルフィストさせる", "両穴フィスト"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA ガバ穴
+				DATA ガバガバじゃねえか
+				DATA 肘まで入りそう
+				DATA 痛そう
+				DATA エロい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "放尿"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA きたない
+				DATA くさそう
+				DATA これ好き
+				DATA おいしそう
+				DATA 飲みたい
+				DATA お茶漬けにしたい
+				DATA 直飲みしたい
+				DATA かわいい
+				DATA おもらし
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "空気浣腸", "拡張バルーン"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA きたない
+				DATA くさそう
+				DATA かわいそう
+				DATA 痛そう
+				DATA これ好き
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "アナルを舐めさせる"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA きたない
+				DATA くさそう
+				DATA かわいそう
+				DATA まずそう
+				DATA 病気になりそう
+			ENDDATA
+			コメント数++
+		NEXT
+	;触手系
+	{
+	CASE "触手召喚", "触手搾乳", "触手緊縛", "触手浣腸", "触手ペニス責め", "触手搾精",
+		 "触手挿入", "アナル触手", "触手強制搾精", "触手強制放尿",
+		 "触手クリ責め", "触手乳首責め", "触手口辱", "触手射精止め"
+	}
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 触手先輩キター！
+				DATA 触手かわいい
+				DATA ペットにしたい
+				DATA 触手は癒し
+				DATA 触手おいしそう
+				DATA 触手エロい
+				DATA 触手好き
+				DATA 触手愛してる
+			ENDDATA
+			コメント数++
+		NEXT
+	;その他
+	CASE "尿道カテーテル"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA ﾋｴｯ
+				DATA 痛そう
+				DATA かわいそう
+				DATA 我々の業界ではご褒美です
+				DATA ひぎぃ
+				DATA 気持ちよさそう
+				DATA 怪我しそう
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "粘液ぶっかけ", "魅惑の粘液"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA スライムになっちゃう
+				DATA おいしそう
+				DATA エロい
+				DATA べとべと
+				DATA 病気になりそう
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "新妻プレイ"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA エロゲみたい
+				DATA AVみたい
+				DATA あざとい
+				DATA 狙いすぎ
+				DATA 茶番
+				DATA かわいい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "コンドーム精飲（奴隷）", "コンドーム精飲（助手）"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA まずそう
+				DATA くさそう
+				DATA きたない
+				DATA エロい
+				DATA 飲ザーはちょっと・・・
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "女装させる"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA かわいい
+				DATA 女の子みたい
+				DATA 美少女
+				DATA 結婚して
+				DATA 嫁に来い
+				DATA 似合ってる
+			ENDDATA
+			コメント数++
+		NEXT
+	;龍姦系
+	CASE "キス（ドラゴン）"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA ペットにしたい
+				DATA かっこいい
+				DATA イケメン
+				DATA ドラゴン好き
+				DATA 惚れる
+				DATA エロい
+				DATA 舌使いすごい
+				DATA ドラゴンのほうが良い
+				DATA 気持ちよさそう
+				DATA 最高
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "フェラさせる（ドラゴン）"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA でかい
+				DATA でかすぎ
+				DATA すごく・・・大きいです
+				DATA ペットにしたい
+				DATA ドラゴン好き
+				DATA 惚れる
+				DATA エロい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "舐め回す（ドラゴン）", "ペットに舐めさせる"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA かわいい
+				DATA 癒し
+				DATA ホームビデオ
+				DATA 唯一の良心
+				DATA ぺろぺろされたい
+				DATA ケモナー歓喜
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "睨みつける（ドラゴン）"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 怖い
+				DATA かっこいい
+				DATA イケメン
+				DATA ドラゴン好き
+				DATA 惚れる
+				DATA エロい
+				DATA 口説かれたい
+				DATA 抱かれたい
+				DATA フィギュア化希望
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "膣を犯す（ドラゴン）", "アナルを犯す（ドラゴン）", "ペットに犯させる"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 異種姦キター！
+				DATA 血出てない？
+				DATA よくこんなの入るな
+				DATA 腹ボコ良い・・・
+				DATA こわれちゃう
+				DATA エロい
+			ENDDATA
+			コメント数++
+		NEXT
+	;派生コマンド
+	CASE "二本フェラ"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA ビッチ
+				DATA 俺のも舐めてくれ
+				DATA 両手に竿
+				DATA エロい
+				DATA ぶっかけたい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "前立腺刺激"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA メス落ちしそう
+				DATA 男も尻で感じるのか・・・
+				DATA 先走りめっちゃ出てる
+				DATA エロい
+				DATA かわいい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "シックスナイン", "69パイズリ"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 感じてる顔がエロい
+				DATA きみ体やわらかいねぇ～
+				DATA されたい
+				DATA 気持ちよさそう
+				DATA かわいい
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "正常位キス", "対面座位キス", "正常位アナルキス", "対面座位アナルキス", "騎乗乳房自慰", "騎乗位キス", "騎乗位アナルキス", "正常位キスさせる"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA リア充爆発しろ！
+				DATA 愛を感じる
+				DATA めっちゃ気持ちよさそう
+				DATA エロい
+				DATA かわいい
+				DATA ふたりは幸せなキスをして終了
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "正常位首絞め", "後背位首絞め", "正常位アナル首絞め", "後背位アナル首絞め", "逆レイプ首絞め"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA 通報しました
+				DATA 首絞めックスはちょっと・・・
+				DATA 死にそう
+				DATA エロい
+				DATA よくない
+				DATA これ嫌い
+				DATA 怖い
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE "バイブオナニー", "アナルバイブオナニー", "シャワーオナニー", "PC筋エネマグラオナニー", "二穴バイブオナニー", "オナフェラ"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA sugoi
+				DATA 激しすぎ
+				DATA 気持ちよさそう
+				DATA エロすぎ
+				DATA やばい
+				DATA 手伝いたい
+			ENDDATA
+			コメント数++
+		NEXT
+	;汎用
+	CASE IS != "ライブ配信"
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, ""
+			STRDATA 視聴コメント
+				DATA エロい
+				DATA かわいい
+				DATA 気持ちよさそう
+				DATA これ好き
+				DATA やりたい
+				DATA 最高
+				DATA えっち
+			ENDDATA
+			コメント数++
+		NEXT
+ENDSELECT
+
+;汎用コメント
+SELECTCASE TFLAG:ビデオ撮影回数
+	CASE 1
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, "", 0, 5
+			STRDATA 視聴コメント
+				DATA わこつ
+				DATA 枠乙
+				DATA 待ってたー！
+				DATA 全裸待機中
+				DATA はじまった
+				DATA １※
+				DATA 1コメげと
+				DATA 1
+				DATA また来てしまった
+				DATA 定期的に見たくなる
+				DATA 息子がお世話になってます
+				DATA 新作ktkr
+				DATAFORM \@ SEX(TARGET) == 1 ? ちんちん見せて # まんこ見せて \@
+				DATA いつもありがとう
+				DATAFORM %CALLNAME:TARGET%、脱げ！
+				DATAFORM %CALLNAME:TARGET%は俺の嫁
+				DATA いきがい
+				DATA 間に合った
+				DATA いつもの
+				DATA 実家のような安心感
+			ENDDATA
+			コメント数++
+		NEXT
+	CASE 2
+		FOR LCOUNT, 0, RAND(0, 視聴者数)
+			ARRAYSHIFT 視聴コメント, 1, "", 0, 5
+			STRDATA 視聴コメント
+				DATA いきなり！？
+				DATA ｗｗｗｗｗｗ
+				DATA ｗ
+				DATA 草
+				DATA エロい
+				DATAFORM \@ TALENT:動物耳 ? ケモミミかわいい # かわいい \@ 
+				DATAFORM \@ GROUPMATCH(1, SEX(PLAYER), SEX(TARGET)) ? アーッ！ # いいね \@
+				DATAFORM \@ SEX(TARGET) && TALENT:戦士 ? ウホッ イイ男 # 早く早く \@
+				DATAFORM \@ TALENT:バストサイズ >= 5 ? めっちゃでかい # 最高 \@
+				DATAFORM \@ 性器露出(TARGET) ? 早く脱げよ # 着衣プレイがまた良い \@
+			ENDDATA
+			コメント数++
+		NEXT
+	;3ターン目から汎用コメ激減
+	CASEELSE
+		FOR LCOUNT, 0, RAND(0, 視聴者数)/100
+			ARRAYSHIFT 視聴コメント, 1, "", 0, 5
+			STRDATA 視聴コメント
+				DATA おお・・・
+				DATA すごい
+				DATA やばい
+				DATA エロい
+				DATA ｗｗｗ
+				DATA やりたい
+				DATA (*´Д`)ﾊｧﾊｧ
+				DATA ←禿同
+				DATA 抜いた
+				DATA うっ
+				DATAFORM %CALLNAME:TARGET%\@ SEX(TARGET) == 1 ? くん # ちゃん \@やっぱエロいわ・・・
+				DATAFORM %CALLNAME:TARGET%\@ SEX(TARGET) == 1 ? くん # ちゃん \@結婚してくだしあ
+				DATAFORM %CALLNAME:TARGET%\@ SEX(TARGET) == 1 ? くん # ちゃん \@好き
+				DATAFORM %CALLNAME:TARGET%、脱げ！
+				DATA これ好き
+				DATA 最the高
+				DATA ぺろぺろ
+				DATAFORM \@ TALENT:バストサイズ >= 5 ? おっぱいでけえ # おっぱい見せて \@
+				DATAFORM \@ TALENT:母性 ? ママ・・・ # 嫁にしたい \@
+				DATAFORM \@ TALENT:動物耳 ? ケモミミかわいい # かわいい \@ 
+				DATAFORM \@ GROUPMATCH(1, SEX(PLAYER), SEX(TARGET)) ? アーッ！ # いいね \@
+				DATAFORM \@ SEX(TARGET) && TALENT:戦士 ? ウホッ イイ男 # 早く早く \@
+				DATAFORM \@ TALENT:バストサイズ >= 5 ? めっちゃでかい # 最高 \@
+				DATAFORM \@ 性器露出(TARGET) ? 早く脱げよ # 着衣プレイがまた良い \@
+				DATAFORM \@ TALENT:ファーリー ? ケモナー歓喜 # かわいい \@
+				DATA 2回抜いた
+				DATA ←草
+				DATA セックスしたのか俺以外のやつと
+			ENDDATA
+			コメント数++
+		NEXT
+ENDSELECT
+
+;絶頂
+IF NOWEX:Ｃ絶頂 && NOWEX:Ｖ絶頂 && NOWEX:Ａ絶頂 && NOWEX:Ｂ絶頂
+	FOR LCOUNT, 0, RAND(0, 視聴者数)
+		ARRAYSHIFT 視聴コメント, 1, "", 0, 5
+		STRDATA 視聴コメント
+			DATA 四　重　絶　頂
+			DATA イキすぎぃ！
+			DATA 最高のイキ顔
+			DATA テクニカルあなたやばすぎ
+			DATA これは陥落しますわ
+		ENDDATA
+		コメント数++
+	NEXT
+ELSEIF NOWEX:射精
+	FOR LCOUNT, 0, RAND(0, 視聴者数)
+		ARRAYSHIFT 視聴コメント, 1, "", 0, 5
+		STRDATA 視聴コメント
+			DATA ドピュッ
+			DATA 射精たー！
+			DATA 気持ちよさそう
+			DATA エロすぎ
+			DATA やばい
+			DATAFORM \@ TALENT:小柄体型 ? ショタちんぽぴゅっぴゅしててかわいい # すごい量 \@
+			DATA まだ出てる
+			DATA こんなに出るんだ・・・
+			DATAFORM \@ TALENT:ふたなり ? ふたなりっ子の射精量はすごいなぁ # 賢者タイム突入 \@
+			DATA 出したのにまだ大きい
+			DATA ふぅ・・・
+			DATAFORM \@ TALENT:ファーリー ? ケモチンの射精は抜ける # おいしそう \@
+		ENDDATA
+		コメント数++
+	NEXT
+ELSEIF NOWEX:潮噴き
+	FOR LCOUNT, 0, RAND(0, 視聴者数)
+		ARRAYSHIFT 視聴コメント, 1, "", 0, 5
+		STRDATA 視聴コメント
+			DATA ！？
+			DATA おもらし？
+			DATA おしっこ出てない？
+			DATA 潮吹いた
+			DATAFORM \@ TALENT:小柄体型 ? ちんちん壊れちゃうショタかわいい # びしょびしょじゃん \@
+			DATA 気持ちよさそう
+			DATA いつ止まるの？
+			DATA すげえ
+		ENDDATA
+		コメント数++
+	NEXT
+ELSEIF NOWEX:噴乳
+	FOR LCOUNT, 0, RAND(0, 視聴者数)
+		ARRAYSHIFT 視聴コメント, 1, "", 0, 5
+		STRDATA 視聴コメント
+			DATA おっぱい
+			DATA エロ同人みたい
+			DATA 飲みたい
+			DATA エロすぎ
+			DATA やばい
+			DATA ママ・・・
+		ENDDATA
+		コメント数++
+	NEXT
+ELSEIF NOWEX:Ａ絶頂 && SEX(TARGET) == 2
+	FOR LCOUNT, 0, RAND(0, 視聴者数)
+		ARRAYSHIFT 視聴コメント, 1, "", 0, 5
+		STRDATA 視聴コメント
+			DATA メス堕ち確定
+			DATA 完全にメスの顔
+			DATA こんなん誰でもメス堕ちしますわ
+			DATA アナルじゃないとイけない体に
+			DATA エロい
+			DATA 女の子になっちゃったねぇ
+			DATA お尻でイったの？
+		ENDDATA
+		コメント数++
+	NEXT
+ELSEIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂
+	FOR LCOUNT, 0, RAND(0, 視聴者数)
+		ARRAYSHIFT 視聴コメント, 1, "", 0, 5
+		STRDATA 視聴コメント
+			DATA イってる
+			DATA イった
+			DATA 気持ちよさそう
+			DATA エロい
+			DATA かわいい
+			DATA 声エロい
+			DATA 最高
+			DATA やばい
+			DATA ふぅ・・・
+		ENDDATA
+		コメント数++
+	NEXT
+ENDIF
+
+
