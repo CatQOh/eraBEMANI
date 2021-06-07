@@ -113,6 +113,7 @@ RESTART
 
 ;レッスン----------------------------------------------------
 @IDOL_LESSON
+#DIM DYNAMIC LCOUNT
 #DIM DYNAMIC レッスン対象
 ;「CFLAG:レッスン」について
 ;3で割った余りでレッスンの種類、3の倍数に切り上げたときの値でレッスンのレベルを判別
@@ -124,31 +125,31 @@ RESTART
 DRAWLINE
 PRINTL □レッスンを受けさせるキャラを選んでください
 
-REPEAT CHARANUM
+FOR LCOUNT, 1, CHARANUM
 	;体力不足だと無理
-	SIF BASE:COUNT:体力 < 500
+	SIF BASE:LCOUNT:体力 < 500
 		CONTINUE
-	IF CSTR:COUNT:配属 == "芸能プロダクション"
-		IF CFLAG:COUNT:レッスン == 0
+	IF CSTR:LCOUNT:配属 == "芸能プロダクション"
+		IF CFLAG:LCOUNT:レッスン == 0
 			PRINT 　　　　　
-		ELSEIF CFLAG:COUNT:レッスン < 0
+		ELSEIF CFLAG:LCOUNT:レッスン < 0
 			PRINT 枕営業予定
-		ELSEIF CFLAG:COUNT:レッスン%3 == 1
-			PRINTFORM Vocal(Lv{(CFLAG:COUNT:レッスン+2)/3})
-		ELSEIF CFLAG:COUNT:レッスン%3 == 2
-			PRINTFORM Inst.(Lv{(CFLAG:COUNT:レッスン+1)/3})
+		ELSEIF CFLAG:LCOUNT:レッスン%3 == 1
+			PRINTFORM Vocal(Lv{(CFLAG:LCOUNT:レッスン+2)/3})
+		ELSEIF CFLAG:LCOUNT:レッスン%3 == 2
+			PRINTFORM Inst.(Lv{(CFLAG:LCOUNT:レッスン+1)/3})
 		ELSE
-			PRINTFORM Dance(Lv{CFLAG:COUNT:レッスン/3})
+			PRINTFORM Dance(Lv{CFLAG:LCOUNT:レッスン/3})
 		ENDIF
-		PRINTFORM  [{COUNT, 2, RIGHT}] - %NAME:COUNT, 26, LEFT% 歌唱技能:{ABL:COUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:COUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:COUNT:舞踊技能, 2, LEFT}
-		CALL ISTALENT, COUNT, "魅力"
-		CALL ISTALENT, COUNT, "魅惑"
-		CALL ISTALENT, COUNT, "謎の魅力"
-		CALL ISTALENT, COUNT, "人気"
-		CALL ISTALENT, COUNT, "絶対音感"
+		PRINTFORM  [{LCOUNT, 2, RIGHT}] - %NAME:LCOUNT, 26, LEFT% 歌唱技能:{ABL:LCOUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:LCOUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:LCOUNT:舞踊技能, 2, LEFT}
+		CALL ISTALENT, LCOUNT, "魅力"
+		CALL ISTALENT, LCOUNT, "魅惑"
+		CALL ISTALENT, LCOUNT, "謎の魅力"
+		CALL ISTALENT, LCOUNT, "人気"
+		CALL ISTALENT, LCOUNT, "絶対音感"
 		PRINTL 
 	ENDIF
-REND
+NEXT
 
 DRAWLINE
 PRINTPLAIN 　LESSON　
@@ -1133,6 +1134,7 @@ LOOP 1
 @TURNEND_IDOL
 #DIM DYNAMIC レッスンレベル
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC モチベ計算用
 #DIM DYNAMIC 世話好き人数
 #DIM DYNAMIC ユニット担当記録用, 1000
@@ -1144,46 +1146,46 @@ FOR LCOUNT, 0, CHARANUM
 		世話好き人数++
 NEXT
 
-REPEAT CHARANUM
-	IF CSTR:COUNT:配属 == "芸能プロダクション"
+FOR LCOUNT, 1, CHARANUM
+	IF CSTR:LCOUNT:配属 == "芸能プロダクション"
 		;1人ごとにかかる基礎費用
 		ユニット担当記録用:1 += 2000
 		;レッスンの内容ごとに場合分け
 		;0未満は枕営業中
-		IF CFLAG:COUNT:レッスン < 0
-			CALL IDOL_MAKURA, COUNT
+		IF CFLAG:LCOUNT:レッスン < 0
+			CALL IDOL_MAKURA, LCOUNT
 		;0の場合はレッスンなしで、歌唱・演奏・ダンスの経験がどれか1つ増える
 		;サボり魔は25%の確率でサボる 費用はちゃんと持ってかれる
-		IF TALENT:COUNT:サボり魔 && RAND:4 == 0 && !ワーカホリックレベル(COUNT)
-			PRINTFORML %CALLNAME:COUNT%はレッスンをサボりました
-			CFLAG:COUNT:サボり = 1
-			CFLAG:COUNT:ストレス値 -= 5
+		IF TALENT:LCOUNT:サボり魔 && RAND:4 == 0 && !ワーカホリックレベル(LCOUNT)
+			PRINTFORML %CALLNAME:LCOUNT%はレッスンをサボりました
+			CFLAG:LCOUNT:サボり = 1
+			CFLAG:LCOUNT:ストレス値 -= 5
 			CONTINUE
 		ENDIF
 		;増えるものはローテーション
-		ELSEIF CFLAG:COUNT:レッスン == 0
+		ELSEIF CFLAG:LCOUNT:レッスン == 0
 			SELECTCASE (2*DAY+TIME)%3
 				CASE 2
-					EXP:COUNT:歌唱経験++
+					EXP:LCOUNT:歌唱経験++
 				CASE 0
-					EXP:COUNT:演奏経験++
+					EXP:LCOUNT:演奏経験++
 				CASE 1
-					EXP:COUNT:ダンス経験++
+					EXP:LCOUNT:ダンス経験++
 			ENDSELECT
 		;1以上の場合は何らかのレッスンを受けており、5*Lvの経験が入る
 		ELSE
 			;3で割って1余るとき、ボーカルのレッスン
-			IF CFLAG:COUNT:レッスン%3 == 1
-				レッスンレベル = (CFLAG:COUNT:レッスン+2)/3
-				EXP:COUNT:歌唱経験 += 5*レッスンレベル
+			IF CFLAG:LCOUNT:レッスン%3 == 1
+				レッスンレベル = (CFLAG:LCOUNT:レッスン+2)/3
+				EXP:LCOUNT:歌唱経験 += 5*レッスンレベル
 			;3で割って2余るとき、楽器演奏のレッスン
-			ELSEIF CFLAG:COUNT:レッスン%3 == 2
-				レッスンレベル = (CFLAG:COUNT:レッスン+1)/3
-				EXP:COUNT:演奏経験 += 5*レッスンレベル
+			ELSEIF CFLAG:LCOUNT:レッスン%3 == 2
+				レッスンレベル = (CFLAG:LCOUNT:レッスン+1)/3
+				EXP:LCOUNT:演奏経験 += 5*レッスンレベル
 			;3で割り切れるとき、ダンスのレッスン
 			ELSE
-				レッスンレベル = CFLAG:COUNT:レッスン/3
-				EXP:COUNT:ダンス経験 += 5*レッスンレベル
+				レッスンレベル = CFLAG:LCOUNT:レッスン/3
+				EXP:LCOUNT:ダンス経験 += 5*レッスンレベル
 			ENDIF
 			;レベルNのレッスン費用は
 			;	(1+2+3+…+N)*10000 ―①
@@ -1196,10 +1198,10 @@ REPEAT CHARANUM
 		ENDIF
 		モチベ計算用 = 0
 		;モチベーションの計算
-		FOR LCOUNT, 0, VARSIZE("TALENT")
-			SIF !TALENT:COUNT:LCOUNT
+		FOR LCOUNT2, 0, VARSIZE("TALENT")
+			SIF !TALENT:LCOUNT:LCOUNT2
 				CONTINUE
-			SELECTCASE TALENTNAME:LCOUNT
+			SELECTCASE TALENTNAME:LCOUNT2
 				CASE "恋慕", "服従", "絶対音感"
 					モチベ計算用 += 2
 				CASE "親愛", "隷属"
@@ -1212,14 +1214,14 @@ REPEAT CHARANUM
 					モチベ計算用 -= 2
 			ENDSELECT
 		NEXT
-		ユニット担当記録用 = CFLAG:COUNT:モチベーション+モチベ計算用+世話好き人数
-		SIF TALENT:COUNT:世話好き
+		ユニット担当記録用 = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数
+		SIF TALENT:LCOUNT:世話好き
 			ユニット担当記録用 -= 世話好き人数
 		;配属先のキャラの相性で計算
-		ユニット担当記録用 += 相性モチベ補正(COUNT)
-		CFLAG:COUNT:モチベーション = LIMIT(ユニット担当記録用, 1, 100)
+		ユニット担当記録用 += 相性モチベ補正(LCOUNT)
+		CFLAG:LCOUNT:モチベーション = LIMIT(ユニット担当記録用, 1, 100)
 	ENDIF
-REND
+NEXT
 
 ユニット担当記録用 = ユニット担当記録用:1 + ユニット担当記録用:2
 MONEY -= ユニット担当記録用

@@ -34,12 +34,10 @@ SELECTCASE FLAG:着衣設定
 		TEQUIP:全身上着 = 0
 	;全裸
 	CASE 3
-		REPEAT 7
-			TEQUIP:COUNT = 0
-			TEQUIP:MASTER:COUNT = 0
-			SIF ASSI > 0
-				TEQUIP:ASSI:COUNT = 0
-		REND
+		VARSET TEQUIP:MASTER:0, 0, 0, 7
+		VARSET TEQUIP:TARGET:0, 0, 0, 7
+		SIF ASSI > 0
+			VARSET TEQUIP:ASSI:0, 0, 0, 7
 ENDSELECT
 
 ;調教対象・助手が特定のキャラの場合、調教開始時に豹変することがある
@@ -350,23 +348,23 @@ IF CSTR:種族 == "鳳凰" && FLAG:気温 > 0
 			TIMES LOCAL , 0.20
 	ENDSELECT
 	;気温と天気で計算したボーナスを一部の初期PALAMに付与する
-	REPEAT VARSIZE("PALAM")
-		SELECTCASE PALAMNAME:COUNT
+	FOR LCOUNT, 0, VARSIZE("PALAM")
+		SELECTCASE PALAMNAME:LCOUNT
 			CASE "快Ａ", "快Ｂ", "潤滑", "恭順", "欲情", "屈服", "習得"
-				PALAM:COUNT += LOCAL
+				PALAM:LCOUNT += LOCAL
 			CASE "快Ｃ"
 				SELECTCASE SEX(TARGET)
 					CASE 1
 						SIF PENIS(TARGET)
-							PALAM:COUNT += LOCAL
+							PALAM:LCOUNT += LOCAL
 					CASE 2
-						PALAM:COUNT += LOCAL
+						PALAM:LCOUNT += LOCAL
 				ENDSELECT
 			CASE "快Ｖ"
 				SIF VAGINA(TARGET)
-					PALAM:COUNT += LOCAL
+					PALAM:LCOUNT += LOCAL
 		ENDSELECT
-	REND
+	NEXT
 ENDIF
 
 ;特質
@@ -430,17 +428,8 @@ IF 受験段位名 == "ワガママ姫たちの接待調教プログラム"
 ENDIF
 
 ;実績:アイテムを何も持ってない状態で調教を始める
-LOCAL = 0
-REPEAT VARSIZE("ITEM")
-	IF ITEM:COUNT
-		LOCAL = 1
-		BREAK
-	ENDIF
-REND
-SIF LOCAL == 0
+SIF SUMARRAY(ITEM) == 0
 	CALL 実績解除, "そんな装備で大丈夫か？"
-
-LOCAL = 0
 
 ;実績:ロッテとラッテを対面させる
 IF ASSI > 0

@@ -174,10 +174,10 @@ DO
 		CASE 4
 			DRAWLINE
 			PRINTL □誰の精子を使いますか？
-			REPEAT 10000
-				SIF 採取精液:COUNT
-					PRINTFORML 　[{COUNT, 5, RIGHT}] %CSVNAMEF(COUNT)%
-			REND
+			FOR LCOUNT, 0, 10000
+				SIF 採取精液:LCOUNT
+					PRINTFORML 　[{LCOUNT, 5, RIGHT}] %CSVNAMEF(LCOUNT)%
+			NEXT
 			DRAWLINE
 			PRINTPLAIN 　採取精子　
 			PRINT [-1] 戻る
@@ -294,6 +294,7 @@ LOOP 1
 #DIM DYNAMIC 費用, 2
 #DIM DYNAMIC 術師 = -1
 #DIM DYNAMIC 契約対象 = -1
+#DIM DYNAMIC LCOUNT
 
 IF 対象 >= 0 && 術師 >= 0
 	SIF CFLAG:対象:生殖力担当魔術師 == NO:術師
@@ -364,36 +365,24 @@ DO
 			FOR PAGING, 0, CHARANUM
 				LOCAL = -1
 				;魔術師に契約済みのキャラが居ればそれも表示
-				IF CSTR:PAGING:種族 == "魔術師"
-					REPEAT CHARANUM
-						IF CFLAG:COUNT:生殖力担当魔術師 == NO:PAGING
-							LOCAL = COUNT
-							BREAK
-						ENDIF
-					REND
-				ENDIF
+				SIF CSTR:PAGING:種族 == "魔術師"
+					LOCAL = FINDCHARA(CFLAG:生殖力担当魔術師, NO:PAGING)
 				CALL PAGING, CSTR:PAGING:種族 == "魔術師", @"技巧:LV{ABL:PAGING:技巧} \@ LOCAL >= 0 ? %CALLNAME:LOCAL%と契約中 #  \@", "術師"
 			NEXT
 			SELECTCASE RESULT
 				CASE -1
 					RESTART
 				CASEELSE
-					契約対象 = -1
-					REPEAT CHARANUM
-						IF CFLAG:COUNT:生殖力担当魔術師 == NO:RESULT
-							契約対象 = COUNT
-							BREAK
-						ENDIF
-					REND
+					術師 = RESULT
+					契約対象 = FINDCHARA(CFLAG:生殖力担当魔術師, NO:術師)
 					費用:1 = 30000
 					;技巧次第で費用は下がる
-					SELECTCASE ABL:RESULT:技巧
+					SELECTCASE ABL:術師:技巧
 						CASE IS <= 9
-							費用:1 /= ABL:RESULT:技巧
+							費用:1 /= ABL:術師:技巧
 						CASEELSE
 							費用:1 = 3000
 					ENDSELECT
-					術師 = RESULT
 					RESTART
 			ENDSELECT
 		CASE 3
@@ -418,7 +407,6 @@ DO
 			RETURN 1
 	ENDSELECT
 LOOP 1
-
 
 @卵管結紮
 #DIM DYNAMIC 患者 = -1
@@ -478,8 +466,6 @@ DO
 			RETURN 1
 	ENDSELECT
 LOOP 1
-
-
 
 @精管結紮
 #DIM DYNAMIC 患者 = -1
@@ -667,38 +653,25 @@ DO
 			DRAWLINE
 			PRINTL □対象を選んでください
 			FOR PAGING, 0, CHARANUM
-				LOCAL = -1
 				;魔術師に契約済みのキャラが居ればそれも表示
-				IF CSTR:PAGING:種族 == "魔術師"
-					REPEAT CHARANUM
-						IF CFLAG:COUNT:不妊担当魔術師 == NO:PAGING
-							LOCAL = COUNT
-							BREAK
-						ENDIF
-					REND
-				ENDIF
+				SIF CSTR:PAGING:種族 == "魔術師"
+					LOCAL = FINDCHARA(CFLAG:不妊担当魔術師, NO:PAGING)
 				CALL PAGING, CSTR:PAGING:種族 == "魔術師", @"技巧:LV{ABL:PAGING:技巧} \@ LOCAL >= 0 ? %CALLNAME:LOCAL%と契約中 #  \@", "術師"
 			NEXT
 			SELECTCASE RESULT
 				CASE -1
 					RESTART
 				CASEELSE
-					契約対象 = -1
-					REPEAT CHARANUM
-						IF CFLAG:COUNT:不妊担当魔術師 == NO:RESULT
-							契約対象 = COUNT
-							BREAK
-						ENDIF
-					REND
+					術師 = RESULT
+					契約対象 = FINDCHARA(CFLAG:不妊担当魔術師, NO:術師)
 					費用:1 = 30000
 					;技巧次第で費用は下がる
-					SELECTCASE ABL:RESULT:技巧
+					SELECTCASE ABL:術師:技巧
 						CASE IS <= 9
-							費用:1 /= ABL:RESULT:技巧
+							費用:1 /= ABL:術師:技巧
 						CASEELSE
 							費用:1 = 3000
 					ENDSELECT
-					術師 = RESULT
 					RESTART
 			ENDSELECT
 		CASE 3
