@@ -17,8 +17,8 @@ NEXT
 PRINTL 
 PRINTL □人体錬成の条件を選択してください
 PRINTFORML 　[1] - 性別を変更する(\@ 性別設定 == 1 ? 男性 # 女性 \@)
-PRINTFORML 　[2] - 体型を変更する(\@ 体型設定 == 1 ? 子供(3000mlの血液が必要) # 普通(5000mlの血液が必要) \@)
-PRINTFORML 　[3] - スライムの粘液(\@ スライム設定 == 1 ? 混ぜる(500ml必要) # 混ぜない \@)
+PRINTFORML 　[2] - 体型を変更する(\@ 体型設定 == 1 ? 子供:3000mlの血液が必要 # 普通:5000mlの血液が必要 \@)
+PRINTFORML 　[3] - スライムの粘液(\@ スライム設定 == 1 ? 混ぜる:500ml必要 # 混ぜない \@)
 PRINTL 　[4] - 上記の条件でシミュレートする
 PRINTL 　[5] - DNAデータからクローンを作る
 DRAWLINE
@@ -137,6 +137,8 @@ ENDIF
 IF CFLAG:対象:複製
 	PRINT [4] - 性別を変更する 
 	PRINT [5] - 体型を変更する 
+	SIF SEX(対象) == 2
+		PRINT [6] - バストサイズを変更する
 ENDIF
 PRINTL 
 
@@ -212,6 +214,8 @@ DO
 			WAIT
 			RETURN 0
 		CASE 2
+			SIF CFLAG:対象:複製
+				CONTINUE
 			PRINTL [1] - ランダムで命名する
 			PRINTL [2] - 名前を入力する
 			DO
@@ -232,12 +236,21 @@ DO
 				ENDSELECT
 			LOOP 1
 		CASE 3
+			SIF CFLAG:対象:複製
+				CONTINUE
 			CALL CLEAR_CHARA, 対象
 			RETURN 1
 		CASE 4
+			SIF !CFLAG:対象:複製
+				CONTINUE
 			SELECTCASE TALENT:対象:性別
 				CASE 1
 					TALENT:対象:性別 = 2
+					IF TALENT:対象:小柄体型
+						TALENT:対象:バストサイズ = 2
+					ELSE
+						TALENT:対象:バストサイズ = 3
+					ENDIF
 				CASE 2
 					TALENT:対象:性別 = 1
 					TALENT:対象:バストサイズ = 0
@@ -246,24 +259,37 @@ DO
 			TALENT:対象:処女 = VAGINA(対象)
 			RESTART
 		CASE 5
+			SIF !CFLAG:対象:複製
+				CONTINUE
 			PRINTL 体型を選んでください
 			PRINTL [1] - 普通体型
 			PRINTL [2] - 小柄体型
 			PRINTL [3] - 小人体型
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 1
-						TALENT:対象:小柄体型 = 0
-						TALENT:対象:小人体型 = 0
-					CASE 2
-						TALENT:対象:小柄体型 = 1
-						TALENT:対象:小人体型 = 0
-					CASE 3
-						TALENT:対象:小柄体型 = 0
-						TALENT:対象:小人体型 = 1
-				ENDSELECT
-			LOOP LOOPRES(1, 2, 3)
+			CALL INPUTF, 1, 2, 3
+			SELECTCASE RESULT
+				CASE 1
+					TALENT:対象:小柄体型 = 0
+					TALENT:対象:小人体型 = 0
+				CASE 2
+					TALENT:対象:小柄体型 = 1
+					TALENT:対象:小人体型 = 0
+				CASE 3
+					TALENT:対象:小柄体型 = 0
+					TALENT:対象:小人体型 = 1
+			ENDSELECT
+			RESTART
+		CASE 6
+			SIF SEX(対象) != 2 || !CFLAG:対象:複製
+				CONTINUE
+			PRINTL バストサイズを選んでください
+			PRINTL [1] - 絶壁
+			PRINTL [2] - 貧乳
+			PRINTL [3] - 並乳
+			PRINTL [4] - 巨乳
+			PRINTL [5] - 豊乳
+			PRINTL [6] - 爆乳
+			CALL INPUTF, 1, 2, 3, 4, 5, 6
+			TALENT:対象:バストサイズ = RESULT
 			RESTART
 		CASEELSE
 			LRESULT = RESULT
