@@ -397,8 +397,14 @@ BASE:射精 -= MAXBASE:射精*射精量
 SIF BASE:射精 >= MAXBASE:射精
 	BASE:射精 = MAXBASE:射精-1
 
-LOSEBASE:体力 += 20*LIMIT(射精量, 1, 2)
-LOSEBASE:気力 += 30*LIMIT(射精量, 1, 2)
+;インキュバスなら消費1/5
+IF TALENT:インキュバス
+	LOSEBASE:体力 += 4*LIMIT(射精量, 1, 2)
+	LOSEBASE:気力 += 6*LIMIT(射精量, 1, 2)
+ELSE
+	LOSEBASE:体力 += 20*LIMIT(射精量, 1, 2)
+	LOSEBASE:気力 += 30*LIMIT(射精量, 1, 2)
+ENDIF
 
 ;ビデオ撮影時はボーナスカウント
 SIF TEQUIP:ビデオカメラ
@@ -502,6 +508,11 @@ ENDSELECT
 SOURCE:中毒 += 500*射精量
 SOURCE:液体 += 100*射精量
 
+;インキュバスなら効果大&追加ソース
+SOURCE:恭順 += 300*射精量
+SOURCE:欲情 += 300*射精量
+SOURCE:中毒 += 500*射精量
+
 ;射精後は再装填の時間を設ける ミッドナイトスペシャル使用時は賢者タイム無し
 IF !CFLAG:ミッドナイトスペシャル
 	SELECTCASE 射精量
@@ -510,11 +521,13 @@ IF !CFLAG:ミッドナイトスペシャル
 		CASE IS >= 2
 			CFLAG:賢者タイム += 5
 	ENDSELECT
-	IF 特質("精力強化")
+	;インキュバスだと-1
+	SIF TALENT:インキュバス
+		CFLAG:賢者タイム--
+	SIF 特質("精力強化")
 		CFLAG:賢者タイム -= 特質("精力強化")/10
-		SIF CFLAG:賢者タイム < 0
-			CFLAG:賢者タイム = 0
-	ENDIF
+	SIF CFLAG:賢者タイム < 0
+		CFLAG:賢者タイム = 0
 ENDIF
 CFLAG:残数--
 ;ミッドナイトスペシャル使用時は無尽蔵

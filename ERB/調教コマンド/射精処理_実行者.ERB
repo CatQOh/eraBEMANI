@@ -745,8 +745,8 @@ SELECTCASE 射精先
 						CFLAG:射精されるキャラ:残数 += ((CFLAG:射精されるキャラ:媚薬%5)+計算用射精量)/5
 						CFLAG:射精されるキャラ:媚薬 += 計算用射精量
 				ENDSELECT
-				;出産トラウマがあればストレスが溜まる
-				SIF CFLAG:出産トラウマ
+				;出産トラウマがあればストレスが溜まる サキュバスで無効
+				SIF CFLAG:出産トラウマ && !TALENT:サキュバス
 					CFLAG:ストレス値 += CFLAG:出産トラウマ
 				SIF CFLAG:ストレス値 >= 999
 					CFLAG:ストレス値 = 999
@@ -773,8 +773,8 @@ SELECTCASE 射精先
 						CFLAG:射精されるキャラ:残数 += ((CFLAG:射精されるキャラ:媚薬%5)+計算用射精量)/5
 						CFLAG:射精されるキャラ:媚薬 += 計算用射精量
 				ENDSELECT
-				;出産トラウマがあればストレスが溜まる
-				SIF CFLAG:出産トラウマ
+				;出産トラウマがあればストレスが溜まる サキュバスなら無効
+				SIF CFLAG:出産トラウマ && !TALENT:サキュバス
 					CFLAG:ストレス値 += CFLAG:出産トラウマ
 				SIF CFLAG:ストレス値 >= 999
 					CFLAG:ストレス値 = 999
@@ -985,11 +985,16 @@ IF 射精されるキャラ == TARGET
 		CASE IS >= 10
 			TIMES LOCAL , 5.00
 	ENDSELECT
+	;サキュバスだと2倍
+	SIF TALENT:サキュバス
+		LOCAL *= 2
 ENDIF
 
 SOURCE:中毒 += LOCAL
 SOURCE:達成 += LOCAL
-
+;サキュバスなら追加ソース
+SOURCE:恭順 += LOCAL/10
+SOURCE:欲情 += LOCAL/10
 
 LOCAL = 0
 LOCAL:1 = 0
@@ -1086,11 +1091,13 @@ IF !CFLAG:射精したキャラ:ミッドナイトスペシャル
 	;大量射精時
 	SIF 射精量 >= 2
 		CFLAG:射精したキャラ:賢者タイム = 5
-	IF 特質("精力強化", 射精したキャラ)
+	;インキュバスなら-1
+	SIF TALENT:射精したキャラ:インキュバス
+		CFLAG:射精したキャラ:賢者タイム--
+	SIF 特質("精力強化", 射精したキャラ)
 		CFLAG:射精したキャラ:賢者タイム -= 特質("精力強化", 射精したキャラ)/10
-		SIF CFLAG:射精したキャラ:賢者タイム < 0
-			CFLAG:射精したキャラ:賢者タイム = 0
-	ENDIF
+	SIF CFLAG:射精したキャラ:賢者タイム < 0
+		CFLAG:射精したキャラ:賢者タイム = 0
 ENDIF
 
 ;媚薬の効果に応じて賢者タイムが短くなる
@@ -1162,16 +1169,16 @@ IF (TALENT:恋慕 || TALENT:親愛) && ARG == MASTER
 ;淫乱、娼婦なら欲情のソース増加
 ELSEIF TALENT:淫乱 || TALENT:娼婦
 	SOURCE:欲情 += 1500
-ELSE
+ELSEIF !TALENT:サキュバス
 	SOURCE:恐怖 += 1500
 ENDIF
 
 ;未陥落の場合は反発増加
-SIF !CFLAG:陥落
+SIF !CFLAG:陥落 && !TALENT:サキュバス
 	SOURCE:反感 += 1000
 
 ;出産トラウマがあればさらに恐怖と鬱屈追加
-IF CFLAG:出産トラウマ
+IF CFLAG:出産トラウマ && !TALENT:サキュバス
 	SOURCE:恐怖 += CFLAG:出産トラウマ*50
 	SOURCE:鬱屈 += CFLAG:出産トラウマ*300
 ENDIF
