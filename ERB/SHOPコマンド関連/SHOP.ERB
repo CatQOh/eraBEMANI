@@ -66,11 +66,11 @@ SIF 娼館店名 == "娼館" && LANGUAGE == "ENG"
 	娼館店名 = Brothel
 
 ;実績:STRATEGYモードで期限内に100億円稼ぐ
-SIF ゲームモード() == "経営モード" && MONEY >= 10000000000
+SIF ゲームモード() == "経営モード" && MONEY >= TONUM("100億")
 	CALL 実績解除, "10，000，000，000"
 
 ;実績:5000兆円稼ぐ
-SIF MONEY >= 5000000000000000
+SIF MONEY >= TONUM("5000兆")
 	CALL 実績解除, "5000兆円欲しい！"
 
 ;陥落済みなら陥落済みフラグをオン
@@ -726,6 +726,7 @@ PRINTPLAIN 　SHOP　
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC LRESULT
+#DIM DYNAMIC 伴侶
 ;現助手＋元助手のキャラ数の確認
 FOR LCOUNT, 0, CHARANUM
 	;育児部屋に移動しているキャラは除外
@@ -785,13 +786,13 @@ SELECTCASE RESULT
 	;一転攻勢
 	CASE 105
 		IF ゲームモード() == "新婚モード"
-			LOCAL = FINDCHARA(CFLAG:嫁, 1)
-			IF !TALENT:LOCAL:妊娠 && !TALENT:LOCAL:育児中
+			伴侶 = FINDCHARA(CFLAG:嫁, 1)
+			IF !TALENT:伴侶:妊娠 && !TALENT:伴侶:育児中
 				TALENT:MASTER:親愛 = 1
-				TALENT:LOCAL:親愛 = 0
+				TALENT:伴侶:親愛 = 0
 				CFLAG:MASTER:嫁 = 1
-				CFLAG:LOCAL:嫁 = 0
-				SWAPCHARA LOCAL, MASTER
+				CFLAG:伴侶:嫁 = 0
+				SWAPCHARA 伴侶, MASTER
 			ENDIF
 		ENDIF
 	;スキルツリー
@@ -982,20 +983,21 @@ SELECTCASE RESULT
 		ENDIF
 	;キャラ変更
 	CASE 750, 751
-		LOCAL = TARGET
+		LTARGET = TARGET
 		LRESULT = RESULT
 		DO
 			SELECTCASE LRESULT
 				CASE 750
-					LOCAL--
+					LTARGET--
 				CASE 751
-					LOCAL++
+					LTARGET++
 			ENDSELECT
-			IF !CHECK_CHILD_CARE(LOCAL) && !CFLAG:LOCAL:使用不可 && LOCAL != MASTER
-				CALL ASSIGN_TARGET, LOCAL
+			;調教可能かどうか確認してからTARGETにアサインする 不可能だった場合は次のキャラに飛ぶ
+			IF !CHECK_CHILD_CARE(LTARGET) && !CFLAG:LTARGET:使用不可 && LTARGET != MASTER
+				CALL ASSIGN_TARGET, LTARGET
 				BREAK
 			ENDIF
-		LOOP INRANGE(LOCAL, 1, CHARANUM-2)
+		LOOP INRANGE(LTARGET, 1, CHARANUM-2)
 	;デバッグ用
 	;#;CASE 997
 	;#;	CALL ADD_ランダムキャラ, 2, -1
@@ -1018,6 +1020,8 @@ RETURN 0
 @SHOP_UI
 #DIMS DYNAMIC 能力表示用, 4
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 店長
+#DIM DYNAMIC 誕生日キャラ
 ;ゲーム内で表示されるショップ画面
 ;□XXXX年XX月XX日(曜日) X日目(昼夜) X周目 MODE:XXXXX
 ;　天気:XX 気温:XX.X℃ XXX(月齢.XXX) 
@@ -1124,8 +1128,6 @@ ELSE
 
 		;難易度表示
 		PRINTFORM 　Difficulty:%難易度()%
-		;奴隷人数表示
-		LOCAL = 0
 		;売却可能人数表示
 		PRINTFORML Characters:{CHARANUM-1}\/Can sell:{CMATCH(CFLAG:状態, 1)+CMATCH(CFLAG:状態, 2)}
 	ELSE
@@ -1137,8 +1139,6 @@ ELSE
 
 		;難易度表示
 		PRINTFORM 　難易度:%難易度()%
-		;奴隷人数表示
-		LOCAL = 0
 		;売却可能人数表示
 		PRINTFORML 総奴隷数:{CHARANUM-1}\/売却可能:{CMATCH(CFLAG:状態, 1)+CMATCH(CFLAG:状態, 2)}
 	ENDIF
@@ -1352,16 +1352,15 @@ ENDIF
 
 DRAWLINE
 IF GC物件
-	LOCAL = 0
 	IF LANGUAGE == "ENG"
 		PRINTFORML □%GC店名%
 		IF FLAG:ゲーセン営業中 > 0
 			PRINTPLAIN 　OPEN 
 			PRINTL [700] - Take a leave
-			LOCAL = FINDCHARA(CFLAG:ゲーセン店長, 1)
-			SIF LOCAL == -1
-				LOCAL = 0
-			CALL PASELIL, @"　Yesterday income:{基本収入}＄ Store manager:%NAMEDISP(LOCAL)%"
+			店長 = FINDCHARA(CFLAG:ゲーセン店長, 1)
+			SIF 店長 == -1
+				店長 = 0
+			CALL PASELIL, @"　Yesterday income:{基本収入}＄ Store manager:%NAMEDISP(店長)%"
 		ELSE
 			PRINTPLAIN 　CLOSED 
 			PRINTL [700] - Take a open
@@ -1371,10 +1370,10 @@ IF GC物件
 		IF FLAG:ゲーセン営業中 > 0
 			PRINTPLAIN 　営業中 
 			PRINTL [700] - 一時休業する
-			LOCAL = FINDCHARA(CFLAG:ゲーセン店長, 1)
-			SIF LOCAL == -1
-				LOCAL = 0
-			CALL PASELIL, @"　前日の収入:{基本収入}＄ 店長:%NAMEDISP(LOCAL)%"
+			店長 = FINDCHARA(CFLAG:ゲーセン店長, 1)
+			SIF 店長 == -1
+				店長 = 0
+			CALL PASELIL, @"　前日の収入:{基本収入}＄ 店長:%NAMEDISP(店長)%"
 		ELSE
 			PRINTPLAIN 　休業中 
 			PRINTL [700] - 営業を開始する
@@ -1435,7 +1434,7 @@ ENDIF
 
 CALL SHOW_MODS
 
-LOCAL = 0
+誕生日キャラ = 0
 FOR LCOUNT, 0, 10000
 	SIF !EXISTCSV(LCOUNT)
 		CONTINUE
@@ -1445,10 +1444,10 @@ FOR LCOUNT, 0, 10000
 		ELSE
 			PRINTFORML 　今日は%CSVNAMEF(LCOUNT)%の誕生日です
 		ENDIF
-		LOCAL++
+		誕生日キャラ++
 	ENDIF
 NEXT
-IF LOCAL
+IF 誕生日キャラ
 	IF LANGUAGE == "ENG"
 		PRINTL 　Happy Birthday!
 	ELSE
@@ -1456,13 +1455,13 @@ IF LOCAL
 	ENDIF
 	DRAWLINE
 ENDIF
-LOCAL = 0
 PRINTL □所持アイテム
 CALL ITEMPRINT
 DRAWLINE
 
 @変化
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LTARGET
 DRAWLINE
 PRINTL □変化させるキャラを選んでください
 FOR LCOUNT, 1, CHARANUM
@@ -1486,80 +1485,80 @@ DO
 		CASE 0
 			RETURN 0
 		CASEELSE
-			IF CFLAG:RESULT:陥落 && TALENT:RESULT:変化
-				LOCAL = RESULT
-				IF TALENT:RESULT:アニマル
+			;TRANCE変数を使うのは変化後に付いた素質を維持するため
+			LTARGET = TARGET
+			TARGET = RESULT
+			IF CFLAG:陥落 && TALENT:変化
+				IF TALENT:アニマル
 					;着衣フラグのリセット
-					FOR LCOUNT, 40, 47
-						CFLAG:LOCAL:LCOUNT = CSVCFLAG(NO:LOCAL, LCOUNT)
+					FOR LCOUNT, GETNUM(CFLAG, "特殊"), GETNUM(CFLAG, "足元")+1
+						CFLAG:LCOUNT = CSVCFLAG(NO:TARGET, LCOUNT)
 					NEXT
-					FOR LCOUNT, 100, 107
-						CSTR:LOCAL:LCOUNT = %CSVCSTR(NO:LOCAL, LCOUNT)%
+					FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
+						CSTR:LCOUNT = %CSVCSTR(NO:TARGET, LCOUNT)%
 					NEXT
-					PRINTFORMW %CALLNAME:RESULT%は人間の姿に変化した
+					PRINTFORMW %CALLNAME:TARGET%は人間の姿に変化した
 					TALENT:RESULT:アニマル = 0
-					IF !TRANCE:LOCAL:GETNUM(TALENT, "動物耳")
-						TALENT:LOCAL:動物耳 = 0
-						TRANCE:LOCAL:GETNUM(TALENT, "動物耳") = 0
+					IF !TRANCE:TALENTF("動物耳")
+						TALENT:動物耳 = 0
+						TRANCE:TALENTF("動物耳") = 0
 					ENDIF
-					IF !TRANCE:LOCAL:GETNUM(TALENT, "尻尾")
-						TALENT:LOCAL:尻尾 = 0
-						TRANCE:LOCAL:GETNUM(TALENT, "尻尾") = 0
+					IF !TRANCE:TALENTF("尻尾")
+						TALENT:尻尾 = 0
+						TRANCE:TALENTF("尻尾") = 0
 					ENDIF
 					;茶倉だけ特殊で機械処理なので人間に戻す
-					IF CHARANAMEF(LOCAL) == "茶倉"
-						IF TRANCE:LOCAL:GETNUM(TALENT, "無機物")
-							TALENT:LOCAL:無機物 = 0
-							CSTR:LOCAL:種族 = 人間
-							NAME:LOCAL = 茶倉
-							CALLNAME:LOCAL = 茶倉
-							TRANCE:LOCAL:GETNUM(TALENT, "無機物") = 0
+					IF CHARANAMEF(TARGET) == "戌"
+						IF TRANCE:TALENTF("無機物")
+							TALENT:無機物 = 0
+							CSTR:種族 = %TRANCERACE:TARGET:0%
+							NAME:TARGET = 茶倉
+							CALLNAME:TARGET = 茶倉
+							TRANCE:TALENTF("無機物") = 0
 						ENDIF
 					ELSE
-						IF TRANCE:LOCAL:GETNUM(TALENT, "ファーリー")
-							TALENT:LOCAL:ファーリー = 0
-							TRANCE:LOCAL:GETNUM(TALENT, "ファーリー") = 0
+						IF TRANCE:TALENTF("ファーリー")
+							TALENT:ファーリー = 0
+							TRANCE:TALENTF("ファーリー") = 0
 						ENDIF
 					ENDIF
-					TALENT:LOCAL:バストサイズ = TRANCE:LOCAL:GETNUM(TALENT, "バストサイズ")
-					TRANCE:LOCAL:GETNUM(TALENT, "バストサイズ") = 0
+					TALENT:バストサイズ = TRANCE:TALENTF("バストサイズ")
+					TRANCE:TALENTF("バストサイズ") = 0
 				ELSE
-					PRINTFORMW %CALLNAME:RESULT%は獣の姿に変化した
+					PRINTFORMW %CALLNAME:TARGET%は獣の姿に変化した
 					;着衣フラグの変更
-					FOR LCOUNT, 40, 47
-						CFLAG:LOCAL:LCOUNT = 100
-					NEXT
-					FOR LCOUNT, 100, 107
-						CSTR:LOCAL:LCOUNT = 
-					NEXT
-					TALENT:LOCAL:アニマル = 1
-					IF !TALENT:LOCAL:動物耳
-						TALENT:LOCAL:動物耳 = 1
-						TRANCE:LOCAL:GETNUM(TALENT, "動物耳") = 1
+					VARSET CFLAG, 100, GETNUM(CFLAG, "特殊"), GETNUM(CFLAG, "足元")+1
+					VARSET CSTR, "", GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
+					TALENT:アニマル = 1
+					IF !TALENT:動物耳
+						TALENT:動物耳 = 1
+						TRANCE:TALENTF("動物耳") = 1
 					ENDIF
-					IF !TALENT:LOCAL:尻尾
-						TALENT:LOCAL:尻尾 = 1
-						TRANCE:LOCAL:GETNUM(TALENT, "尻尾") = 1
+					IF !TALENT:尻尾
+						TALENT:尻尾 = 1
+						TRANCE:TALENTF("尻尾") = 1
 					ENDIF
 					;茶倉だけ特殊で機械（戌）になる
-					IF CHARANAMEF(LOCAL) == "茶倉"
-						IF !TALENT:LOCAL:無機物
-							TALENT:LOCAL:無機物 = 1
-							CSTR:LOCAL:種族 = 機械
-							NAME:LOCAL = 戌
-							CALLNAME:LOCAL = 戌
-							TRANCE:LOCAL:GETNUM(TALENT, "無機物") = 1
+					IF CHARANAMEF(TARGET) == "茶倉"
+						IF !TALENT:無機物
+							TALENT:無機物 = 1
+							TRANCERACE:TARGET:0 = %CSTR:種族%
+							CSTR:種族 = 機械
+							NAME:TARGET = 戌
+							CALLNAME:TARGET = 戌
+							TRANCE:TALENTF("無機物") = 1
 						ENDIF
 					ELSE
-						IF !TALENT:LOCAL:ファーリー
-							TALENT:LOCAL:ファーリー = 1
-							TRANCE:LOCAL:GETNUM(TALENT, "ファーリー") = 1
+						IF !TALENT:ファーリー
+							TALENT:ファーリー = 1
+							TRANCE:TALENTF("ファーリー") = 1
 						ENDIF
 					ENDIF
-					TRANCE:LOCAL:GETNUM(TALENT, "バストサイズ") = TALENT:LOCAL:バストサイズ
-					TALENT:LOCAL:バストサイズ = 0
+					TRANCE:TALENTF("バストサイズ") = TALENT:バストサイズ
+					TALENT:バストサイズ = 0
 				ENDIF
 			ENDIF
+			TARGET = LTARGET
 			RESTART
 	ENDSELECT
 LOOP 1
