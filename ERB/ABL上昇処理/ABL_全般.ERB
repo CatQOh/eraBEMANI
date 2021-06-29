@@ -1,8 +1,7 @@
 ﻿@SHOW_JUEL
 ;見た目を整えるためのCLEARLINE処理
-SIF VARLINE
-	CLEARLINE LINECOUNT-VARLINE
-VARLINE = LINECOUNT
+CALL LOOP_CLEARLINE
+
 DRAWLINE
 ;経験と珠の表示はそれぞれ別関数だったりする
 PRINTL □経験
@@ -30,8 +29,8 @@ FOR LCOUNT, 0, VARSIZE("ABL")
 		CASE "レズっ気", "レズ中毒", "噴乳中毒"
 			SIF SEX(TARGET) == 1
 				CONTINUE
-		;女ならホモっ気とゲイ中毒は上げられない
-		CASE "ホモっ気", "ゲイ中毒"
+		;女ならホモっ気とゲイ中毒とメス度は上げられない
+		CASE "ホモっ気", "ゲイ中毒", "メス度"
 			SIF SEX(TARGET) == 2
 				CONTINUE
 		;グリモワールを使ってない、魔法技能初期値が設定されてないキャラは魔法技能を伸ばせない
@@ -48,7 +47,6 @@ FOR LCOUNT, 0, VARSIZE("ABL")
 		CALLFORM NEED_JUEL_%ABLNAME:LCOUNT%
 		;条件を満たしているか確認
 		CALLFORM CHECK_JUEL_%ABLNAME:LCOUNT%
-		LOCAL = RESULT
 		;満たしていれば青色表示、満たしてなければ灰色表示
 		SETCOLOR 条件成否(RESULT)
 		;リミットバースト無しでABLがMAX(10)なら白文字
@@ -70,7 +68,6 @@ FOR LCOUNT, 0, VARSIZE("ABL")
 		RESETCOLOR
 		CALLFORM ABLUP_MESSAGE_%ABLNAME:LCOUNT%
 	ENDIF
-
 	PRINTL 
 NEXT
 
@@ -122,31 +119,33 @@ IF RESULT == 100
 		TARGET = FLAG:能力上昇
 		FLAG:能力上昇 = 0
 		BEGIN SHOP
+	ELSE
+		BEGIN TURNEND
 	ENDIF
-	BEGIN TURNEND
 ENDIF
 
 @SHOP_ABLUP
+#DIMS DYNAMIC BUTTONS
+#DIM DYNAMIC 次ページあり
 DRAWLINE
 PRINTL 能力を上昇させたいキャラを選んでください
 
 ;見た目を整えるためのCLEARLINE処理
-SIF VARLINE
-	CLEARLINE LINECOUNT-VARLINE
-VARLINE = LINECOUNT
+CALL LOOP_CLEARLINE
 
 CALL LIFE_LIST
 ;RESULT:0には選んだキャラ、RESULT:1にはまだ表示されてないキャラが居るかどうか
+次ページあり = RESULT:1
 DRAWLINE
 PRINTPLAIN 　ABLUP　
-LOCALS = 
+BUTTONS = 
 SIF TFLAG:ページ数 > 0
-	LOCALS = [999] 前ページ 
+	BUTTONS = [999] 前ページ 
 
-PRINTFORM %LOCALS, 15, LEFT%
+PRINTFORM %BUTTONS, 15, LEFT%
 
 PRINTFORM [1000] 戻る 
-SIF RESULT:1
+SIF 次ページあり
 	PRINTFORM [1001] 次ページ 
 PRINTL 
 DO
@@ -161,7 +160,7 @@ DO
 		CASE 1000
 			RETURN 0
 		CASE 1001
-			SIF RESULT:1
+			SIF 次ページあり
 				TFLAG:ページ数++
 		CASE 0 TO CHARANUM-1
 			FLAG:能力上昇 = TARGET
