@@ -1,5 +1,6 @@
 ﻿;アイテムインターフェース改良用の関数郡
 @SHOPITEM_BUY
+#DIMS DYNAMIC アイテム分類
 DRAWLINE
 CALL PASELIL, @"所持金:{MONEY}＄"
 CALL ITEMPRINT
@@ -22,21 +23,21 @@ DO
 		CASE 0 TO 6
 			SELECTCASE RESULT
 				CASE 0
-					LOCALS = 調教道具
+					アイテム分類 = 調教道具
 				CASE 1
-					LOCALS = 消耗品
+					アイテム分類 = 消耗品
 				CASE 2
-					LOCALS = 素質アイテム
+					アイテム分類 = 素質アイテム
 				CASE 3
-					LOCALS = 薬品類
+					アイテム分類 = 薬品類
 				CASE 4
-					LOCALS = 施設
+					アイテム分類 = 施設
 				CASE 5
-					LOCALS = 本
+					アイテム分類 = 本
 				CASE 6
-					LOCALS = すべて
+					アイテム分類 = すべて
 			ENDSELECT
-			CALL SHOPITEM_LIST, LOCALS
+			CALL SHOPITEM_LIST, アイテム分類
 			BREAK
 		CASE 9
 			RETURN 0
@@ -168,7 +169,7 @@ SIF !LINEISEMPTY()
 #DIM DYNAMIC 割引
 #DIM DYNAMIC 条件判定
 
-;条件判定フラグが立っている場合は一応SKIPDISPをかける
+;条件判定フラグ(能力表示画面からのアイテム使用)が立っている場合は一応SKIPDISPをかける
 SIF 条件判定
 	SKIPDISP 1
 
@@ -189,9 +190,6 @@ SIF ASSI > 0 && (TALENT:ASSI:禁断の知識)
 SELECTCASE アイテム分類
 	CASE "調教道具", "すべて"
 		FOR LCOUNT, 0, 100
-			;触手使役術だけ特殊
-			SIF ITEMNAME:LCOUNT == "触手使役術" && !TALENT:MASTER:禁断の知識
-				CONTINUE
 			ITEMSALES:LCOUNT = !ITEM:LCOUNT
 		NEXT
 ENDSELECT
@@ -342,7 +340,6 @@ DRAWLINE
 SIF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
 	割引 = 1
 FOR LCOUNT, 0, VARSIZE("ITEM")
-	LOCALS =
 	SIF !ITEMSALES:LCOUNT || ITEMNAME:LCOUNT == ""
 		CONTINUE
 	表示用 = [{LCOUNT}]%ITEMNAME:LCOUNT%
@@ -690,6 +687,7 @@ RETURN
 @アイテム使用, 使用対象, アイテム名
 #DIM DYNAMIC 使用対象
 #DIMS DYNAMIC アイテム名
+#DIM DYNAMIC 回復量
 
 ;口上表示
 CALL KOJO_USE_ITEM, アイテム名, 使用対象
@@ -735,16 +733,16 @@ SELECTCASE アイテム名
 		CALL SE再生, ドリンク
 		PRINTFORMW ＜%CALLNAME:使用対象%の体力が回復した＞
 		IF TALENT:使用対象:回復早い
-			LOCAL = 400
+			回復量 = 400
 		ELSEIF TALENT:使用対象:回復遅い
-			LOCAL = 200
+			回復量 = 200
 		ELSE
-			LOCAL = 300
+			回復量 = 300
 		ENDIF
 		SIF TALENT:使用対象:小柄体型
-			LOCAL += 50
-		LOCAL += ABL:MASTER:技巧*10
-		BASE:使用対象:体力 += LOCAL
+			回復量 += 50
+		回復量 += ABL:MASTER:技巧*10
+		BASE:使用対象:体力 += 回復量
 	;ふたなり化
 	CASE "ふたなり薬"
 		CALL SE再生, ドリンク
