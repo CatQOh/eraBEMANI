@@ -1,26 +1,26 @@
-﻿;調教対象選択(eraBEMANI)
+﻿;調教対象選択
 @CHANGE_TARGET
 #DIM DYNAMIC LCOUNT
 
 CALL LOOP_CLEARLINE
 
 DRAWLINE
-CALL LIFE_LIST, 1
-;RESULT:0には選んだキャラ、RESULT:1には未表示キャラが居るかどうか
+CALL LIFE_LIST, "調教対象選択"
+;RESULTには未表示キャラが居るかどうか
 DRAWLINE
 PRINTPLAIN 　CHANGE TARGET　
 IF TFLAG:ページ数 > 0
 	PRINTFORM [999] 前ページ 
 ELSE
-	PRINTPLAIN                
+	PRINTPLAINFORM %SPACES(15)%
 ENDIF
 
 PRINTFORM [1000] 戻る 
 
-IF RESULT:1
+IF RESULT
 	PRINTFORM [1001] 次ページ 
 ELSE
-	PRINTPLAIN                 
+	PRINTPLAINFORM %SPACES(16)%
 ENDIF
 
 PRINTL [1010] キャラソート
@@ -36,9 +36,9 @@ DO
 				TFLAG:ページ数--
 			RESTART
 		CASE 1000
-			RETURN 0
+			RETURN
 		CASE 1001
-			SIF RESULT:1
+			SIF RESULT
 				TFLAG:ページ数++
 			RESTART
 		CASE 1010
@@ -69,27 +69,25 @@ CALL 配属解除, TARGET
 @SELECT_ASSI, ARG
 #DIM DYNAMIC LTARGET
 
-SIF VARLINE
-	CLEARLINE LINECOUNT-VARLINE
-VARLINE = LINECOUNT
+CALL LOOP_CLEARLINE
 
 DRAWLINE
-CALL LIFE_LIST, 2
-;RESULT:0には選んだキャラ、RESULT:1にはまだ表示されてないキャラが居るかどうか
+CALL LIFE_LIST, "助手選択"
+;RESULTにはまだ表示されてないキャラが居るかどうか
 DRAWLINE
 PRINTPLAIN 　SELECT ASSI　
 IF TFLAG:ページ数 > 0
 	PRINTFORM [999] 前ページ 
 ELSE
-	PRINTPLAIN                
+	PRINTPLAINFORM %SPACES(15)%
 ENDIF
 
 PRINTFORM [1000] 戻る 
 
-IF RESULT:1
+IF RESULT
 	PRINTFORM [1001] 次ページ 
 ELSE
-	PRINTPLAIN                 
+	PRINTPLAINFORM %SPACES(16)%
 ENDIF
 
 PRINTL [1010] キャラソート
@@ -102,9 +100,9 @@ DO
 				TFLAG:ページ数--
 			RESTART
 		CASE 1000
-			RETURN 0
+			RETURN
 		CASE 1001
-			SIF RESULT:1
+			SIF RESULT
 				TFLAG:ページ数++
 			RESTART
 		CASE 1010
@@ -141,228 +139,207 @@ SIF ASSI == TARGET
 SIF CHARANAMEF(MASTER) == "マタン・カトルセ" && CHARANAMEF(ASSI) == "ノクス・カトルセ" && CFLAG:ASSI:陥落
 	CALL 実績解除, "「姉さんは僕が守る」"
 
-;LIFE_LISTは引数に1を指定すると、調教対象選択用の表示になる
-;引数を2にすると、助手選択用の表示になる
-;それ以外は通常表示
-@LIFE_LIST, ARG, 表示切り替え
+@LIFE_LIST, 表示情報, 表示切り替え
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC カウント数
 #DIM DYNAMIC 未表示キャラ
-#DIM DYNAMIC 対象表示
-#DIM DYNAMIC 助手表示
+#DIM DYNAMIC LTARGET
 #DIM 表示切り替え
-対象表示 = 0
-助手表示 = 0
+#DIMS DYNAMIC 表示情報
+
 DRAWLINE
 IF ゲームモード() == "新婚モード"
 	PRINTL □キャラ一覧
 ELSE
-	SELECTCASE ARG
-		CASE 1
+	SELECTCASE 表示情報
+		CASE "調教対象選択"
 			PRINTL □調教対象変更
-		CASE 2
+		CASE "助手選択"
 			PRINTL □助手変更
 		CASEELSE
-			PRINTL □奴隷一覧
+			PRINTL □キャラ一覧
 	ENDSELECT
 ENDIF
 FOR LCOUNT, 0, CHARANUM
 	RESETCOLOR
 	;1巡目はMASTERとTARGET及びASSIの能力表示
 	IF LCOUNT == 0
-		IF ARG == 2
+		IF 表示情報 == "助手選択"
 			PRINTL 　[ 0] 助手無し
 		ELSE
-			PRINTFORM 　[ 0] %CALLNAME:MASTER%(主人) 
-			SELECTCASE SEX(MASTER)
-				CASE 1
-					PRINT ♂ 
-				CASE 2
-					PRINT ♀ 
-			ENDSELECT
+			PRINTFORM 　[ 0] %CALLNAME:MASTER%(主人) \@ SEX(MASTER) == 1 ? ♂ # ♀ \@ 
 			SIF TALENT:MASTER:ふたなり
 				PRINT 双
 			PRINTL 
 		ENDIF
-		$表示用
 		;TARGETとASSIはMASTERの下に表示する
-		IF TARGET > 0 && !対象表示
-			LOCAL = TARGET
-			対象表示 = 1
-			SIF ARG == 2 && CFLAG:状態 < 2 && !TALENT:アニマル
-				GOTO 表示用
-			GOTO 対象助手
+		IF TARGET > 0
+			;助手の指定なら助手不可能なキャラは除外
+			SIF 表示情報 == "助手選択" && CFLAG:状態 < 2 && !TALENT:アニマル
+				CONTINUE
+			CALL STATUS_BAR, TARGET, 表示情報, 表示切り替え
 		ENDIF
-		IF ASSI > 0 && !助手表示
-			LOCAL = ASSI
-			助手表示 = 1
-			GOTO 対象助手
-		ENDIF
-		;表示するキャラが居なければDRAWLINE後にLCOUNTを1にして通常の表示処理に戻る
-		DRAWLINE
-		LCOUNT = 1
-		SIF CHARANUM == 1
-			BREAK
-	ENDIF
-	LOCAL = LCOUNT
-	;2巡目以降は通常のキャラ表示なので条件を指定
-	IF LCOUNT > 0
-		;キャラを10人表示したら終了
-		IF 表示数 >= 10
-			未表示キャラ = 1
-			BREAK
-		ENDIF
-		;助手の指定なら助手不可能なキャラは除外
-		SIF ARG == 2 && CFLAG:LOCAL:状態 < 2 && !TALENT:LOCAL:アニマル
-			CONTINUE
-		;調教対象の指定、もしくは助手の指定なら、育児部屋に移動しているキャラは灰色表示
-		SIF ARG && CHECK_CHILD_CARE(LOCAL)
-			SETCOLORBYNAME gray
-		;調教対象の指定、もしくは助手の指定なら、使用不可のキャラは灰色表示
-		SIF ARG && CFLAG:LOCAL:使用不可
-			SETCOLORBYNAME gray
-		;対象は主人の下に表示されるので除外
-		SIF TARGET == LOCAL
-			CONTINUE
-		;助手も同じく
-		SIF ASSI == LOCAL
-			CONTINUE
-		カウント数++
-		;ページ数×10まで表示を飛ばす
-		SIF TFLAG:ページ数*10 >= カウント数
-			CONTINUE
-		表示数++
-	ENDIF
-	
-	$対象助手
-	IF CFLAG:LOCAL:使用不可
-		PRINT 不
-	ELSEIF TALENT:LOCAL:アニマル
-		PRINT 獣
-	ELSEIF CHECK_CHILD_CARE(LOCAL)
-		PRINT 妊
-	ELSEIF LOCAL == TARGET
-		PRINT ☆
-	ELSEIF LOCAL == ASSI
-		PRINT ★
-	ELSEIF CSTR:LOCAL:配属 != ""
-		PRINT KA
-	ELSEIF ISASSI:LOCAL
-		PRINT ●
-	ELSEIF CFLAG:LOCAL:状態 >= 2
-		PRINT ○
-	ELSE
-		PRINT 　
-	ENDIF
-
-	;調教対象の指定、もしくは助手の指定なら、育児部屋に移動しているキャラと使用不可キャラは選べない
-	IF ARG && (CHECK_CHILD_CARE(LOCAL) || CFLAG:LOCAL:使用不可)
-		PRINTFORM [--] %CALLNAME:LOCAL, 20, LEFT%
-	ELSE
-		PRINTFORM [{LOCAL, 2}] %CALLNAME:LOCAL, 20, LEFT%
-	ENDIF
-
-	;上記のキャラを表示したら詳細情報も表示
-	;助手選択画面では表示しない
-	IF ARG != 2
-		;表示切り替え中は経営用の情報表示
-		IF 表示切り替え
-			PRINT 配属先:
-			IF CSTR:LOCAL:配属 != ""
-				PRINTFORM %CSTR:LOCAL:配属, 20, LEFT% 
-			ELSE
-				PRINTFORM %"無し", 20, LEFT% 
-			ENDIF
-			PRINT モチベーション:
-			SELECTCASE CFLAG:LOCAL:モチベーション
-				CASE 1 TO 9
-					SETCOLORBYNAME gray
-					PRINT 皆無
-				CASE 10 TO 39
-					SETCOLORBYNAME yellow
-					PRINT 微妙
-				CASE 40 TO 60
-					PRINT 普通
-				CASE 61 TO 90
-					SETCOLORBYNAME cyan
-					PRINT 良好
-				CASE 91 TO 100
-					SETCOLORBYNAME lime
-					PRINT 最高
-			ENDSELECT
-			PRINTFORM {CFLAG:LCOUNT:モチベーション, 3}/100 
-			RESETCOLOR
-		ELSE
-			PRINTFORM 体力%BARBASE("体力", LOCAL, 10), 23, LEFT% 
-			PRINTFORM 気力%BARBASE("気力", LOCAL, 10), 23, LEFT% 
-		ENDIF
-	ENDIF
-	SELECTCASE SEX(LOCAL)
-		CASE 1
-			PRINT ♂ 
-		CASE 2
-			PRINT ♀ 
-	ENDSELECT
-	IF ARG == 1
-		SIF TALENT:LOCAL:処女
-			PRINT 処女 
-		SIF TALENT:LOCAL:再生処女
-			PRINT 再生処女 
-		SIF TALENT:LOCAL:童貞
-			PRINT 童貞 
-		SIF TALENT:LOCAL:恋慕
-			PRINT 恋慕 
-		SIF TALENT:LOCAL:淫乱
-			PRINT 淫乱 
-		SIF TALENT:LOCAL:服従
-			PRINT 服従 
-		SIF TALENT:LOCAL:親愛
-			PRINT 親愛 
-		SIF TALENT:LOCAL:娼婦
-			PRINT 娼婦 
-		SIF TALENT:LOCAL:隷属
-			PRINT 隷属 
-		SIF TALENT:LOCAL:崩壊
-			PRINT 崩壊 
-		SIF TALENT:LOCAL:ふたなり
-			PRINT 双 
-		SIF TALENT:LOCAL:リミットバースト
-			PRINT 超 
-		SIF TALENT:LOCAL:スライム || TALENT:LOCAL:溶ける快
-			PRINT 粘 
-	ELSEIF ARG == 2
-		SELECTCASE SEX(LOCAL)
-			CASE 1
-				PRINTFORM 技巧Lv{ABL:LOCAL:技巧} ホモっ気Lv{ABL:LOCAL:ホモっ気} ゲイ中毒Lv{ABL:LOCAL:ゲイ中毒} 
-			CASE 2
-				PRINTFORM 技巧Lv{ABL:LOCAL:技巧} レズっ気Lv{ABL:LOCAL:レズっ気} レズ中毒Lv{ABL:LOCAL:レズ中毒} 
-		ENDSELECT
-		SIF TALENT:LOCAL:両刀
-			PRINT 両刀 
-		SIF TALENT:LOCAL:ふたなり
-			PRINT ふたなり
-	ELSE
-		PRINT ストレス値:
-		CALL ストレス表示, LOCAL
-	ENDIF
-	PRINTL 
-	RESETCOLOR
-	;対象及び助手が表示できるなら表示
-	SIF (TARGET > 0 && !対象表示) || (ASSI > 0 && !助手表示)
-		GOTO 表示用
-	;一巡目ならDRAWLINEしてCONTINUE
-	IF LCOUNT == 0
+		SIF ASSI > 0
+			CALL STATUS_BAR, ASSI, 表示情報, 表示切り替え
 		DRAWLINE
 		CONTINUE
 	ENDIF
+
+	;2巡目以降は通常のキャラ表示なので条件を指定
+	;助手の指定なら助手不可能なキャラは除外
+	SIF 表示情報 == "助手選択" && CFLAG:LCOUNT:状態 < 2 && !TALENT:LCOUNT:アニマル
+		CONTINUE
+	;キャラを10人表示したら終了
+	IF 表示数 >= 10
+		未表示キャラ = 1
+		BREAK
+	ENDIF
+	;対象と助手は主人の下に表示されるので除外
+	SIF GROUPMATCH(LCOUNT, TARGET, ASSI)
+		CONTINUE
+	カウント数++
+	;ページ数×10まで表示を飛ばす
+	SIF TFLAG:ページ数*10 >= カウント数
+		CONTINUE
+	CALL STATUS_BAR, LCOUNT, 表示情報, 表示切り替え
+	表示数++
 NEXT
 DRAWLINE
 PRINTL 　☆：調教中　★：助手　○：助手可　●：元助手
 PRINTL 　KA：経営モードに配属中　不：使用不可　妊：妊娠育児中　獣：ペット候補　を表しています
 
 ;条件を満たしているにも関わらずまだリスト表示されてないキャラが居れば未表示キャラフラグは1になる
-RETURN RESULT, 未表示キャラ
+RETURN 未表示キャラ
+
+;一行で表示できる内容
+@STATUS_BAR, 対象, 表示情報, 表示切り替え
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 表示情報
+#DIM DYNAMIC 表示切り替え
+
+;調教対象の指定、もしくは助手の指定なら、育児部屋に移動しているキャラは灰色表示
+SIF 表示情報 != "通常表示" && CHECK_CHILD_CARE(対象)
+	SETCOLORBYNAME gray
+;調教対象の指定、もしくは助手の指定なら、使用不可のキャラは灰色表示
+SIF 表示情報 != "通常表示" && CFLAG:対象:使用不可
+	SETCOLORBYNAME gray
+
+IF CFLAG:対象:使用不可
+	PRINT 不
+ELSEIF TALENT:対象:アニマル
+	PRINT 獣
+ELSEIF CHECK_CHILD_CARE(対象)
+	PRINT 妊
+ELSEIF 対象 == TARGET
+	PRINT ☆
+ELSEIF 対象 == ASSI
+	PRINT ★
+ELSEIF CSTR:対象:配属 != ""
+	PRINT KA
+;助手経験あり
+ELSEIF ISASSI:対象
+	PRINT ●
+;助手可能
+ELSEIF CFLAG:対象:状態 >= 2
+	PRINT ○
+ELSE
+	PRINT 　
+ENDIF
+
+;調教対象の指定、もしくは助手の指定なら、育児部屋に移動しているキャラと使用不可キャラは選べない
+IF 表示情報 != "通常表示" && (CHECK_CHILD_CARE(対象) || CFLAG:対象:使用不可)
+	PRINTFORM [--] %CALLNAME:対象, 20, LEFT%
+ELSE
+	PRINTFORM [{対象, 2}] %CALLNAME:対象, 20, LEFT%
+ENDIF
+
+;上記のキャラを表示したら詳細情報も表示
+;助手選択画面では表示しない
+IF 表示情報 != "助手選択"
+	;表示切り替え中は経営用の情報表示
+	IF 表示切り替え
+		PRINT 配属先:
+		IF CSTR:対象:配属 != ""
+			PRINTFORM %CSTR:対象:配属, 20, LEFT% 
+		ELSE
+			PRINTFORM %"無し", 20, LEFT% 
+		ENDIF
+		PRINT モチベーション:
+		SELECTCASE CFLAG:対象:モチベーション
+			CASE 1 TO 9
+				SETCOLORBYNAME gray
+				PRINT 皆無
+			CASE 10 TO 39
+				SETCOLORBYNAME yellow
+				PRINT 微妙
+			CASE 40 TO 60
+				PRINT 普通
+			CASE 61 TO 90
+				SETCOLORBYNAME cyan
+				PRINT 良好
+			CASE 91 TO 100
+				SETCOLORBYNAME lime
+				PRINT 最高
+		ENDSELECT
+		PRINTFORM {CFLAG:対象:モチベーション, 3}/100 
+		RESETCOLOR
+	ELSE
+		PRINTFORM 体力%BARBASE("体力", 対象, 10), 23, LEFT% 
+		PRINTFORM 気力%BARBASE("気力", 対象, 10), 23, LEFT% 
+	ENDIF
+ENDIF
+SELECTCASE SEX(対象)
+	CASE 1
+		PRINT ♂ 
+	CASE 2
+		PRINT ♀ 
+ENDSELECT
+SELECTCASE 表示情報
+	CASE "調教対象選択"
+		SIF TALENT:対象:処女
+			PRINT 処女 
+		SIF TALENT:対象:再生処女
+			PRINT 再生処女 
+		SIF TALENT:対象:童貞
+			PRINT 童貞 
+		SIF TALENT:対象:恋慕
+			PRINT 恋慕 
+		SIF TALENT:対象:淫乱
+			PRINT 淫乱 
+		SIF TALENT:対象:服従
+			PRINT 服従 
+		SIF TALENT:対象:親愛
+			PRINT 親愛 
+		SIF TALENT:対象:娼婦
+			PRINT 娼婦 
+		SIF TALENT:対象:隷属
+			PRINT 隷属 
+		SIF TALENT:対象:崩壊
+			PRINT 崩壊 
+		SIF TALENT:対象:ふたなり
+			PRINT 双 
+		SIF TALENT:対象:リミットバースト
+			PRINT 超 
+		SIF TALENT:対象:スライム || TALENT:対象:溶ける快
+			PRINT 粘 
+	CASE "助手選択"
+		SELECTCASE SEX(対象)
+			CASE 1
+				PRINTFORM 技巧Lv{ABL:対象:技巧} ホモっ気Lv{ABL:対象:ホモっ気} ゲイ中毒Lv{ABL:対象:ゲイ中毒} 
+			CASE 2
+				PRINTFORM 技巧Lv{ABL:対象:技巧} レズっ気Lv{ABL:対象:レズっ気} レズ中毒Lv{ABL:対象:レズ中毒} 
+		ENDSELECT
+		SIF TALENT:対象:両刀
+			PRINT 両刀 
+		SIF TALENT:対象:ふたなり
+			PRINT ふたなり
+	CASEELSE
+		PRINT ストレス値:
+		CALL ストレス表示, 対象
+ENDSELECT
+RESETCOLOR
+PRINTL 
 
 ;ステータス表示
 @SHOW_CHARADATA
@@ -370,26 +347,24 @@ RETURN RESULT, 未表示キャラ
 #DIM DYNAMIC LTARGET
 DRAWLINE
 
-SIF VARLINE
-	CLEARLINE LINECOUNT-VARLINE
-VARLINE = LINECOUNT
+CALL LOOP_CLEARLINE
 
-CALL LIFE_LIST, 0, 表示切り替え
-;RESULT:0には選んだキャラ、RESULT:1にはまだ表示されてないキャラが居るかどうか
+CALL LIFE_LIST, "通常表示", 表示切り替え
+;RESULTにはまだ表示されてないキャラが居るかどうか
 DRAWLINE
 
 PRINTPLAIN 　CHARADATA　
 IF TFLAG:ページ数 > 0
 	PRINTFORM [999] 前ページ 
 ELSE
-	PRINTPLAIN                
+	PRINTPLAINFORM %SPACES(15)%
 ENDIF
 
 PRINTFORM [1000] 戻る 
-IF RESULT:1
+IF RESULT
 	PRINTFORM [1001] 次ページ 
 ELSE
-	PRINTPLAIN                 
+	PRINTPLAIN %SPACES(16)%
 ENDIF
 
 PRINT [1010] キャラソート 
@@ -407,9 +382,9 @@ DO
 				TFLAG:ページ数--
 			RESTART
 		CASE 1000
-			RETURN 0
+			RETURN
 		CASE 1001
-			SIF RESULT:1
+			SIF RESULT
 				TFLAG:ページ数++
 			RESTART
 		CASE 1010
@@ -421,6 +396,7 @@ DO
 		CASE 0 TO CHARANUM-1
 			LTARGET = TARGET
 			TARGET = RESULT
+			;TARGETの能力表示中はあっちで「調教対象に指定」を表示させないためのフラグ
 			IF TARGET == LTARGET
 				SHOW_TARGET = LTARGET
 			ELSE
@@ -434,10 +410,10 @@ DO
 	ENDSELECT
 LOOP 1
 
-
 @CHARA_SORT
 #DIM DYNAMIC LCOUNT
-VARSET LOCAL, 0
+#DIM DYNAMIC 番号
+#DIM DYNAMIC 表示数
 DRAWLINE
 PRINTL □どの要素でソートしますか？
 PRINTL 　[1] - 刻印
@@ -468,7 +444,7 @@ DO
 			PRINTPLAIN 　MARK　
 			PRINTL [100] - 戻る
 			CALL INPUTF, 0, 1, 2, 3, 100
-			LOCAL = RESULT
+			番号 = RESULT
 			SIF RESULT == 100
 				RETURN 0
 			PRINTL □並べ替え
@@ -480,26 +456,20 @@ DO
 			CALL INPUTF, 0, 1, 10
 			SELECTCASE RESULT
 				CASE 0
-					PRINTFORMW %MARKNAME:LOCAL%で昇順にソートしました
-					SORTCHARA MARK:LOCAL
+					PRINTFORMW %MARKNAME:番号%で昇順にソートしました
+					SORTCHARA MARK:番号
 				CASE 1
-					PRINTFORMW %MARKNAME:LOCAL%で降順にソートしました
-					SORTCHARA MARK:LOCAL, BACK
+					PRINTFORMW %MARKNAME:番号%で降順にソートしました
+					SORTCHARA MARK:番号, BACK
 			ENDSELECT
 			RETURN
 		CASE 2
 			DRAWLINE
-			LOCAL = 0
 			PRINTL □能力
 			FOR LCOUNT, 0, 50
 				SIF ABLNAME:LCOUNT == ""
 					CONTINUE
-				IF LOCAL == 0 || LOCAL % 4 == 0
-					PRINTFORMLC 　[{LCOUNT, 2}] - %ABLNAME:LCOUNT%
-				ELSE
-					PRINTFORMLC [{LCOUNT, 2}] - %ABLNAME:LCOUNT%
-				ENDIF
-				LOCAL++
+				PRINTFORMLC 　[{LCOUNT, 2}] - %ABLNAME:LCOUNT%
 			NEXT
 			SIF LINEISEMPTY() == 0
 				PRINTL 
@@ -508,7 +478,7 @@ DO
 			PRINTL [100] - 戻る
 			DO
 				INPUT
-				LOCAL = RESULT
+				番号 = RESULT
 				SELECTCASE RESULT
 					CASE 0 TO 50
 						SIF ABLNAME:RESULT == ""
@@ -522,30 +492,23 @@ DO
 						CALL INPUTF, 0, 1, 10
 						SELECTCASE RESULT
 							CASE 0
-								PRINTFORMW %ABLNAME:LOCAL%で昇順にソートしました
-								SORTCHARA ABL:LOCAL
+								PRINTFORMW %ABLNAME:番号%で昇順にソートしました
+								SORTCHARA ABL:番号
 							CASE 1
-								PRINTFORMW %ABLNAME:LOCAL%で降順にソートしました
-								SORTCHARA ABL:LOCAL, BACK
+								PRINTFORMW %ABLNAME:番号%で降順にソートしました
+								SORTCHARA ABL:番号, BACK
 						ENDSELECT
 						RETURN
-					CASE 100
-						RETURN
 				ENDSELECT
-			LOOP 1
+			LOOP LOOPRES(100)
+			RETURN
 		CASE 3
 			DRAWLINE
-			LOCAL = 0
 			PRINTL □経験
 			FOR LCOUNT, 0, 100
 				SIF EXPNAME:LCOUNT == ""
 					CONTINUE
-				IF LOCAL == 0 || LOCAL % 4 == 0
-					PRINTFORMLC 　[{LCOUNT, 2}] - %EXPNAME:LCOUNT%
-				ELSE
-					PRINTFORMLC [{LCOUNT, 2}] - %EXPNAME:LCOUNT%
-				ENDIF
-				LOCAL++
+				PRINTFORMLC 　[{LCOUNT, 2}] - %EXPNAME:LCOUNT%
 			NEXT
 			SIF LINEISEMPTY() == 0
 				PRINTL 
@@ -554,11 +517,11 @@ DO
 			PRINTL [100] - 戻る
 			DO
 				INPUT
-				LOCAL = RESULT
+				番号 = RESULT
 				SELECTCASE RESULT
 					CASE 0 TO 99
 						PRINTL □並べ替え
-						SIF EXPNAME:LOCAL == ""
+						SIF EXPNAME:番号 == ""
 							CONTINUE
 						PRINTL 　[0] - 昇順
 						PRINTL 　[1] - 降順
@@ -568,16 +531,16 @@ DO
 						CALL INPUTF, 0, 1, 10
 						SELECTCASE RESULT
 							CASE 0
-								PRINTFORMW %EXPNAME:LOCAL%で昇順にソートしました
-								SORTCHARA EXP:LOCAL
+								PRINTFORMW %EXPNAME:番号%で昇順にソートしました
+								SORTCHARA EXP:番号
 							CASE 1
-								PRINTFORMW %EXPNAME:LOCAL%で降順にソートしました
-								SORTCHARA EXP:LOCAL, BACK
+								PRINTFORMW %EXPNAME:番号%で降順にソートしました
+								SORTCHARA EXP:番号, BACK
 						ENDSELECT
 						RETURN
 				ENDSELECT
 			LOOP LOOPRES(100)
-			RETURN 0
+			RETURN
 		CASE 4
 			DRAWLINE
 			PRINTL □名前
