@@ -3,6 +3,7 @@
 ;朝に起こるイベント
 ;-------------------------------------------------
 @EVENT_NEWDAY_SELF
+#DIM DYNAMIC 不発確率
 ;調教対象が居ない場合は終了
 SIF TARGET < 0
 	RETURN 0
@@ -27,9 +28,9 @@ SIF CFLAG:二日酔い
 
 ;朝騎乗位判定
 ;出産トラウマがある場合は発生しない時がある
-LOCAL = CFLAG:出産トラウマ
-;1+(トラウマ値/10)/2+(トラウマ値/10) 
-IF ((!TALENT:処女 && !TALENT:再生処女 && ABL:Ｖ感覚 >= 3) || ABL:Ａ感覚 >= 3) && ABL:奉仕精神 >= 7 && !(LOCAL && RAND:(LOCAL/10+2) <= LOCAL/10)
+不発確率 = CFLAG:出産トラウマ
+;RAND:(トラウマ値/10+2) <= (トラウマ値/10)だと発生しない 1あるだけでも50%で不発
+IF ((!TALENT:処女 && !TALENT:再生処女 && ABL:Ｖ感覚 >= 3) || ABL:Ａ感覚 >= 3) && ABL:奉仕精神 >= 7 && !(不発確率 && RAND:(不発確率/10+2) <= 不発確率/10)
 	CALL EVENT_CHECK, "朝騎乗位"
 ;朝パイズリ判定
 ELSEIF TALENT:バストサイズ >= 2 && ABL:奉仕精神 >= 5
@@ -344,6 +345,7 @@ SIF CFLAG:スライム度 <= 0 && ISSLIME(MASTER) && CSTR:種族 != "機械" && 
 ;調教後に起こるイベント
 ;-------------------------------------------------
 @SELF_CHECK
+#DIM DYNAMIC 不発確率
 ;調教者がペニス持ちで、調教者の射精残数が0の場合は発生しない
 ;SIF PENIS(MASTER) && CFLAG:MASTER:残数 == 0
 ;	RETURN 0
@@ -359,9 +361,9 @@ IF ASSI >= 0 && CFLAG:陥落 && CFLAG:ASSI:陥落 && RELATION:(NO:ASSI) > 100 &&
 	SIF CFLAG:貞操帯 || CFLAG:ASSI:貞操帯
 		GOTO ELSE
 	;ただし出産トラウマがある場合は発生しない時がある
-	LOCAL = CFLAG:出産トラウマ+CFLAG:ASSI:出産トラウマ
-	;1+(合計値/10)/2+(合計値/10) 
-	SIF !(LOCAL && RAND:(LOCAL/10+2) <= LOCAL/10)
+	不発確率 = CFLAG:出産トラウマ+CFLAG:ASSI:出産トラウマ
+	;RAND:(合計値/10+2) <= (合計値/10)
+	SIF !(不発確率 && RAND:(不発確率/10+2) <= 不発確率/10)
 		CALL EVENT_CHECK, "調教後3P"
 ;ふたりエッチ判定 対象が陥落済み、対象の体力500以上
 ELSEIF CFLAG:陥落 && BASE:体力 >= 500 && TEQUIP:強精神薬 <= 2
@@ -369,8 +371,8 @@ ELSEIF CFLAG:陥落 && BASE:体力 >= 500 && TEQUIP:強精神薬 <= 2
 	SIF CFLAG:貞操帯
 		GOTO ELSE
 	;出産トラウマがある場合はry 式は上と同じ
-	LOCAL = CFLAG:出産トラウマ
-	SIF !(LOCAL && RAND:(LOCAL/10+2) <= LOCAL/10)
+	不発確率 = CFLAG:出産トラウマ
+	SIF !(不発確率 && RAND:(不発確率/10+2) <= 不発確率/10)
 		CALL EVENT_CHECK, "調教後セックス"
 ENDIF
 
@@ -395,6 +397,8 @@ SIF CFLAG:陥落 && TIME == 1
 #DIM DYNAMIC 射精回数基礎値, 3;0,1,2でMASTER,ASSI,TARGET
 #DIM DYNAMIC 射精回数, 3, 3;射精回数:(出す人):(出される人)
 #DIM DYNAMIC V2
+#DIM DYNAMIC 奉仕ポイント
+#DIM DYNAMIC 受けＡ
 
 射精回数基礎値:0 = CFLAG:MASTER:残数/5+1
 射精回数基礎値:1 = CFLAG:ASSI:残数/5+1
@@ -403,44 +407,44 @@ SIF CFLAG:陥落 && TIME == 1
 ;イベント口上呼び出し
 CALL CHECKDRAWLINE
 CALL KOJO_MESSAGE_EVENT, "調教後3P"
-LOCAL = 1
+奉仕ポイント = 1
 
 ;対象：主人か助手に同性がいればレズ中毒、ゲイ中毒を見る
 IF SEX(TARGET) == SEX(MASTER) || SEX(TARGET) == SEX(ASSI)
 	IF SEX(TARGET) == 1
 		SELECTCASE ABL:ゲイ中毒
 			CASE 1
-				LOCAL += 1
+				奉仕ポイント += 1
 			CASE 2
-				LOCAL += 2
+				奉仕ポイント += 2
 			CASE 3
-				LOCAL += 3
+				奉仕ポイント += 3
 			CASE 4
-				LOCAL += 5
+				奉仕ポイント += 5
 			CASE IS >= 5
-				LOCAL += 7
+				奉仕ポイント += 7
 		ENDSELECT
 	ELSEIF SEX(TARGET) == 2
 		SELECTCASE ABL:レズ中毒
 			CASE 1
-				LOCAL += 1
+				奉仕ポイント += 1
 			CASE 2
-				LOCAL += 2
+				奉仕ポイント += 2
 			CASE 3
-				LOCAL += 3
+				奉仕ポイント += 3
 			CASE 4
-				LOCAL += 5
+				奉仕ポイント += 5
 			CASE IS >= 5
-				LOCAL += 7
+				奉仕ポイント += 7
 		ENDSELECT
 	ENDIF
 ;いなければ奉仕精神を見る
 ELSE
 	SELECTCASE ABL:奉仕精神
 		CASE 1 TO 4
-			LOCAL += ABL:奉仕精神+1
+			奉仕ポイント += ABL:奉仕精神+1
 		CASE IS >= 5
-			LOCAL += 6
+			奉仕ポイント += 6
 	ENDSELECT
 ENDIF
 
@@ -449,73 +453,73 @@ IF SEX(ASSI) == SEX(TARGET)
 	IF SEX(TARGET) == 1
 		SELECTCASE ABL:ゲイ中毒
 			CASE 1
-				LOCAL += 1
+				奉仕ポイント += 1
 			CASE 2
-				LOCAL += 2
+				奉仕ポイント += 2
 			CASE 3
-				LOCAL += 5
+				奉仕ポイント += 5
 			CASE 4
-				LOCAL += 8
+				奉仕ポイント += 8
 			CASE IS >= 5
-				LOCAL += 13
+				奉仕ポイント += 13
 		ENDSELECT
 	ELSEIF SEX(TARGET) == 2
 		SELECTCASE ABL:レズ中毒
 			CASE 1
-				LOCAL += 1
+				奉仕ポイント += 1
 			CASE 2
-				LOCAL += 2
+				奉仕ポイント += 2
 			CASE 3
-				LOCAL += 5
+				奉仕ポイント += 5
 			CASE 4
-				LOCAL += 8
+				奉仕ポイント += 8
 			CASE IS >= 5
-				LOCAL += 13
+				奉仕ポイント += 13
 		ENDSELECT
 	ENDIF
 ;同性でなければ技巧を見る
 ELSE
 	SELECTCASE ABL:技巧
 		CASE 1 TO 4
-			LOCAL += ABL:技巧+2
+			奉仕ポイント += ABL:技巧+2
 		CASE IS >= 5
-			LOCAL += 7
+			奉仕ポイント += 7
 	ENDSELECT
 ENDIF
 
 ;両刀
 SIF TALENT:両刀
-	LOCAL += 3
+	奉仕ポイント += 3
 
 ;相性処理
-LOCAL *= RELATION:(NO:ASSI)
-LOCAL /= 100
+奉仕ポイント *= RELATION:(NO:ASSI)
+奉仕ポイント /= 100
 
 ;主人か助手に同性がいれば同性愛経験増加
 IF SEX(TARGET) == SEX(MASTER) || SEX(TARGET) == SEX(ASSI)
 	SELECTCASE SEX(TARGET)
 		CASE 1
-			CALL EXPUP, "ゲイ経験", LOCAL
+			CALL EXPUP, "ゲイ経験", 奉仕ポイント
 		CASE 2
-			CALL EXPUP, "レズ経験", LOCAL
+			CALL EXPUP, "レズ経験", 奉仕ポイント
 	ENDSELECT
 ENDIF
 
 ;数値次第で絶頂
-SIF LOCAL*100*ABL:従順/2500 > 0
-	CALL EXPUP, "絶頂経験", LOCAL*100*ABL:従順/2500
-CALL JUELUP, "快Ｃ", LOCAL*10*ABL:Ｃ感覚 
-CALL JUELUP, "欲情", LOCAL*50
+SIF 奉仕ポイント*100*ABL:従順/2500 > 0
+	CALL EXPUP, "絶頂経験", 奉仕ポイント*100*ABL:従順/2500
+CALL JUELUP, "快Ｃ", 奉仕ポイント*10*ABL:Ｃ感覚 
+CALL JUELUP, "欲情", 奉仕ポイント*50
 
 ;奴隷が男で他に竿役がいれば奴隷掘られる
 IF SEX(TARGET) == 1 && (PENIS(MASTER) || PENIS(ASSI))
 	SELECTCASE ABL:Ａ感覚
 		CASE 0 TO 4
-			LOCAL:1 = ABL:Ａ感覚+1
+			受けＡ = ABL:Ａ感覚+1
 		CASE IS >= 5
-			LOCAL:1 = 6
+			受けＡ = 6
 	ENDSELECT
-	プレイ回数 = (LOCAL/5+1)*LOCAL:1
+	プレイ回数 = (奉仕ポイント/5+1)*受けＡ
 	IF PENIS(MASTER)
 		EXP:性交経験 += プレイ回数
 		EXP:MASTER:性交経験 += プレイ回数
@@ -546,11 +550,11 @@ ENDIF
 IF SEX(ASSI) == 1 && (PENIS(MASTER) || PENIS(TARGET))
 	SELECTCASE ABL:ASSI:Ａ感覚
 		CASE 0 TO 4
-			LOCAL:1 = ABL:ASSI:Ａ感覚+1
+			受けＡ = ABL:ASSI:Ａ感覚+1
 		CASE IS >= 5
-			LOCAL:1 = 6
+			受けＡ = 6
 	ENDSELECT
-	プレイ回数 = (LOCAL/5+1)*LOCAL:1
+	プレイ回数 = (奉仕ポイント/5+1)*受けＡ
 	IF PENIS(MASTER)
 		EXP:MASTER:性交経験 += プレイ回数
 		EXP:ASSI:性交経験 += プレイ回数
@@ -581,11 +585,11 @@ ENDIF
 IF SEX(MASTER) == 1 && (PENIS(ASSI) || PENIS(TARGET))
 	SELECTCASE ABL:MASTER:Ａ感覚
 		CASE 0 TO 4
-			LOCAL:1 = ABL:MASTER:Ａ感覚+1
+			受けＡ = ABL:MASTER:Ａ感覚+1
 		CASE IS >= 5
-			LOCAL:1 = 6
+			受けＡ = 6
 	ENDSELECT
-	プレイ回数 = (LOCAL/5+1)*LOCAL:1
+	プレイ回数 = (奉仕ポイント/5+1)*受けＡ
 	IF PENIS(TARGET)
 		EXP:TARGET:性交経験 += プレイ回数
 		EXP:MASTER:性交経験 += プレイ回数
@@ -814,7 +818,7 @@ IF TALENT:ASSI:童貞
 ENDIF
 
 IF PENIS(MASTER)
-	プレイ回数 = LOCAL
+	プレイ回数 = 奉仕ポイント
 	IF TALENT:バストサイズ >= 4 && TALENT:ASSI:バストサイズ >= 4
 		プレイ回数++
 		SIF TALENT:バストサイズ >= 5 && TALENT:ASSI:バストサイズ >= 5
@@ -849,10 +853,10 @@ SIF 射精回数:0:1+射精回数:2:1 > 0
 SIF 射精回数:1:0+射精回数:2:0 > 0
 	CALL EXPUP, "精液経験", 射精回数:1:0+射精回数:2:0, MASTER
 
-CALL EXPUP, "奉仕快楽経験", LOCAL
-CALL JUELUP, "欲情", LOCAL*100
-CALL JUELUP, "屈服", LOCAL*10*(ABL:技巧+ABL:奉仕精神)/2
-CALL JUELUP, "習得", LOCAL*10*(ABL:技巧+ABL:奉仕精神)/2
+CALL EXPUP, "奉仕快楽経験", 奉仕ポイント
+CALL JUELUP, "欲情", 奉仕ポイント*100
+CALL JUELUP, "屈服", 奉仕ポイント*10*(ABL:技巧+ABL:奉仕精神)/2
+CALL JUELUP, "習得", 奉仕ポイント*10*(ABL:技巧+ABL:奉仕精神)/2
 
 CFLAG:調教後3P経験++
 CFLAG:ASSI:調教後3P経験++
@@ -866,19 +870,20 @@ DRAWLINE
 
 ;調教後セックス
 @EVENT_調教後セックス
+#DIM DYNAMIC 奉仕ポイント
 ;イベント口上呼び出し
 DRAWLINE
 CALL KOJO_MESSAGE_EVENT, "調教後セックス"
 
-LOCAL = 3
+奉仕ポイント = 3
 
 ;非処女ならV感覚
 IF VAGINA(TARGET) && !TALENT:処女 && !TALENT:再生処女
 	SELECTCASE ABL:Ｖ感覚
 		CASE 1 TO 4
-			LOCAL += ABL:Ｖ感覚
+			奉仕ポイント += ABL:Ｖ感覚
 		CASE IS >= 5
-			LOCAL += 5
+			奉仕ポイント += 5
 	ENDSELECT
 ENDIF
 
@@ -886,48 +891,48 @@ ENDIF
 IF SEX(TARGET) == 1
 	SELECTCASE ABL:Ａ感覚
 		CASE 1 TO 4
-			LOCAL += ABL:Ａ感覚+2
+			奉仕ポイント += ABL:Ａ感覚+2
 		CASE IS >= 5
-			LOCAL += 7
+			奉仕ポイント += 7
 	ENDSELECT
 ELSEIF SEX(TARGET) == 2
 	SELECTCASE ABL:Ａ感覚
 		CASE 1 TO 4
-			LOCAL += ABL:Ａ感覚
+			奉仕ポイント += ABL:Ａ感覚
 		CASE IS >= 5
-			LOCAL += 5
+			奉仕ポイント += 5
 	ENDSELECT
 ENDIF
 
 ;欲望と奉仕精神によるボーナス
 IF ABL:欲望 >= 5 && ABL:奉仕精神 >= 5 && PALAM:恭順 >= PALAMLV:5
-	LOCAL += 3
+	奉仕ポイント += 3
 ELSEIF ABL:欲望 >= 4 && ABL:奉仕精神 >= 4 && PALAM:恭順 >= PALAMLV:4
-	LOCAL += 2
+	奉仕ポイント += 2
 ELSEIF ABL:欲望 >= 3 && ABL:奉仕精神 >= 3 && PALAM:恭順 >= PALAMLV:3
-	LOCAL += 1
+	奉仕ポイント += 1
 ENDIF
 
 ;淫膣
 SIF TALENT:淫膣
-	LOCAL += 3
+	奉仕ポイント += 3
 
 ;主人の射精制限
-;SIF LOCAL > CFLAG:MASTER:残数
-;	LOCAL = CFLAG:MASTER:残数
+;SIF 奉仕ポイント > CFLAG:MASTER:残数
+;	奉仕ポイント = CFLAG:MASTER:残数
 
 ;場合によってはオーラル、手淫に
 IF (SEX(TARGET) == 1 && SEX(MASTER) == 1 && ABL:Ａ感覚 <= 3) || (SEX(TARGET) == 2 && (TALENT:妊娠 || TALENT:処女 || TALENT:再生処女))
 	IF SEX(TARGET) == 1 && SEX(MASTER) == 1 && ABL:Ａ感覚 <= 3
-		CALL EXPUP, "フェラ経験", LOCAL
-		CALL EXPUP, "奉仕快楽経験", LOCAL
-		CALL EXPUP, "ゲイ経験", LOCAL/2+1
+		CALL EXPUP, "フェラ経験", 奉仕ポイント
+		CALL EXPUP, "奉仕快楽経験", 奉仕ポイント
+		CALL EXPUP, "ゲイ経験", 奉仕ポイント/2+1
 		CALL EXPUP, "射精経験", CFLAG:残数/5+1
 		CALL EXPUP, "絶頂経験", CFLAG:残数/5+1
 		CALL EXPUP, "精液経験", CFLAG:MASTER:残数/5+1
-		CALL JUELUP, "習得", LOCAL*150
-		CALL EXPUP, "フェラ経験", LOCAL, MASTER
-		CALL EXPUP, "ゲイ経験", LOCAL/2+1
+		CALL JUELUP, "習得", 奉仕ポイント*150
+		CALL EXPUP, "フェラ経験", 奉仕ポイント, MASTER
+		CALL EXPUP, "ゲイ経験", 奉仕ポイント/2+1
 		CALL EXPUP, "射精経験", CFLAG:MASTER:残数/5+1, MASTER
 		CALL EXPUP, "絶頂経験", CFLAG:MASTER:残数/5+1, MASTER
 		CFLAG:調教後奉仕経験++
@@ -937,36 +942,36 @@ IF (SEX(TARGET) == 1 && SEX(MASTER) == 1 && ABL:Ａ感覚 <= 3) || (SEX(TARGET) 
 			CALL EXPUP, "射精経験", CFLAG:残数/5+1
 			CALL EXPUP, "絶頂経験", CFLAG:残数/5+1
 			CALL EXPUP, "精液経験", CFLAG:残数/5+1, MASTER
-			CALL EXPUP, "フェラ経験", LOCAL, MASTER
+			CALL EXPUP, "フェラ経験", 奉仕ポイント, MASTER
 		ENDIF
 		IF PENIS(MASTER)
 			CALL EXPUP, "射精経験", CFLAG:MASTER:残数/5+1, MASTER
 			CALL EXPUP, "絶頂経験", CFLAG:MASTER:残数/5+1, MASTER
 			CALL EXPUP, "精液経験", CFLAG:MASTER:残数/5+1
-			CALL EXPUP, "フェラ経験", LOCAL
+			CALL EXPUP, "フェラ経験", 奉仕ポイント
 		ENDIF
-		CALL EXPUP, "奉仕快楽経験", LOCAL
+		CALL EXPUP, "奉仕快楽経験", 奉仕ポイント
 		IF SEX(MASTER) == 2
-			CALL EXPUP, "レズ経験", LOCAL/2+1
-			CALL EXPUP, "レズ経験", LOCAL/2+1, MASTER
+			CALL EXPUP, "レズ経験", 奉仕ポイント/2+1
+			CALL EXPUP, "レズ経験", 奉仕ポイント/2+1, MASTER
 		ENDIF
-		CALL EXPUP, "絶頂経験", LOCAL/3
-		CALL JUELUP, "習得", LOCAL*150
+		CALL EXPUP, "絶頂経験", 奉仕ポイント/3
+		CALL JUELUP, "習得", 奉仕ポイント*150
 		CFLAG:調教後奉仕経験++
 		CFLAG:MASTER:調教後奉仕経験++
 	ENDIF
 ELSEIF SEX(TARGET) == 2
 	IF PENIS(MASTER) && !TALENT:処女 && !TALENT:再生処女
-		CALL EXPUP, "Ｖ経験", LOCAL
+		CALL EXPUP, "Ｖ経験", 奉仕ポイント
 		CALL EXPUP, "膣射経験", CFLAG:MASTER:残数/2+1
 		CALL EXPUP, "精液経験", CFLAG:MASTER:残数
-		CALL EXPUP, "性交経験", LOCAL
-		CALL JUELUP, "快Ｖ", LOCAL*400
+		CALL EXPUP, "性交経験", 奉仕ポイント
+		CALL JUELUP, "快Ｖ", 奉仕ポイント*400
 		CALL EXPUP, "射精経験", CFLAG:MASTER:残数, MASTER
 		CALL EXPUP, "絶頂経験", CFLAG:MASTER:残数, MASTER
-		CALL EXPUP, "性交経験", LOCAL, MASTER
-		経験回数:MASTER:(NO:TARGET) += LOCAL
-		経験回数:(NO:MASTER) += LOCAL
+		CALL EXPUP, "性交経験", 奉仕ポイント, MASTER
+		経験回数:MASTER:(NO:TARGET) += 奉仕ポイント
+		経験回数:(NO:MASTER) += 奉仕ポイント
 		中出し回数:MASTER:(NO:TARGET) += CFLAG:MASTER:残数/2+1
 		中出され回数:(NO:MASTER) += CFLAG:MASTER:残数/2+1
 		PREG:0 += CFLAG:MASTER:残数/2+1
@@ -983,14 +988,14 @@ ELSEIF SEX(TARGET) == 2
 		CALL EXPUP, "射精経験", CFLAG:残数/2+1
 		CALL EXPUP, "絶頂経験", CFLAG:残数/2+1
 		IF VAGINA(MASTER) && !TALENT:MASTER:処女 && !TALENT:MASTER:再生処女
-			CALL EXPUP, "Ｖ経験", LOCAL/2+1, MASTER
+			CALL EXPUP, "Ｖ経験", 奉仕ポイント/2+1, MASTER
 			CALL EXPUP, "膣射経験", CFLAG:残数/2+1, MASTER
 			中出し回数:(NO:MASTER) += CFLAG:残数/2+1
 			中出され回数:MASTER:(NO:TARGET) += CFLAG:残数/2+1
 			PREG:4 += CFLAG:残数/2+1
 			PREG:9 = TARGET
 		ELSEIF SEX(MASTER) == 1
-			CALL EXPUP, "Ａ経験", LOCAL/2+1, MASTER
+			CALL EXPUP, "Ａ経験", 奉仕ポイント/2+1, MASTER
 			アナル中出し回数:(NO:MASTER) += CFLAG:残数/2+1
 			アナル中出され回数:MASTER:(NO:TARGET) += CFLAG:残数/2+1
 		ENDIF
@@ -1004,18 +1009,18 @@ ELSEIF SEX(TARGET) == 2
 		ENDIF
 	ENDIF 
 	IF SEX(MASTER) == 2
-		CALL EXPUP, "レズ経験", LOCAL/2+1
-		CALL EXPUP, "レズ経験", LOCAL/2+1, MASTER
+		CALL EXPUP, "レズ経験", 奉仕ポイント/2+1
+		CALL EXPUP, "レズ経験", 奉仕ポイント/2+1, MASTER
 	ENDIF
-	CALL JUELUP, "恭順", LOCAL*200
-	CALL JUELUP, "欲情", LOCAL*400
+	CALL JUELUP, "恭順", 奉仕ポイント*200
+	CALL JUELUP, "欲情", 奉仕ポイント*400
 	CFLAG:調教後セックス経験++
 	CFLAG:MASTER:調教後セックス経験++
 ELSEIF SEX(TARGET) == 1
 	IF PENIS(MASTER)
-		CALL EXPUP, "Ａ経験", LOCAL
+		CALL EXPUP, "Ａ経験", 奉仕ポイント
 		CALL EXPUP, "精液経験", CFLAG:MASTER:残数
-		CALL JUELUP, "快Ａ", LOCAL*500
+		CALL JUELUP, "快Ａ", 奉仕ポイント*500
 		アナル中出し回数:MASTER:(NO:TARGET) += CFLAG:MASTER:残数
 		アナル中出され回数:(NO:MASTER) += CFLAG:MASTER:残数
 		IF TALENT:MASTER:童貞
@@ -1028,9 +1033,9 @@ ELSEIF SEX(TARGET) == 1
 		ENDIF
 	ENDIF
 	IF SEX(MASTER) == 2
-		CALL EXPUP, "奉仕快楽経験", LOCAL
+		CALL EXPUP, "奉仕快楽経験", 奉仕ポイント
 		CALL EXPUP, "膣射経験", CFLAG:TARGET:残数/2+1, MASTER
-		CALL EXPUP, "Ｖ経験", LOCAL, MASTER
+		CALL EXPUP, "Ｖ経験", 奉仕ポイント, MASTER
 		中出し回数:(NO:MASTER) += CFLAG:残数/2+1
 		中出され回数:MASTER:(NO:TARGET) += CFLAG:残数/2+1
 		PREG:4 += CFLAG:TARGET:残数/2+1
@@ -1038,19 +1043,19 @@ ELSEIF SEX(TARGET) == 1
 	ENDIF
 	IF SEX(MASTER) == 1
 		CALL EXPUP, "射精経験", CFLAG:残数/2+1
-		CALL EXPUP, "Ａ経験", LOCAL/2+1, MASTER
-		CALL EXPUP, "ゲイ経験", LOCAL/2+1
-		CALL EXPUP, "ゲイ経験", LOCAL/2+1, MASTER
+		CALL EXPUP, "Ａ経験", 奉仕ポイント/2+1, MASTER
+		CALL EXPUP, "ゲイ経験", 奉仕ポイント/2+1
+		CALL EXPUP, "ゲイ経験", 奉仕ポイント/2+1, MASTER
 		アナル中出し回数:(NO:MASTER) += CFLAG:残数/2+1
 		アナル中出され回数:MASTER:(NO:TARGET) += CFLAG:残数/2+1
 	ENDIF
 
-	CALL EXPUP, "性交経験", LOCAL
-	CALL EXPUP, "性交経験", LOCAL, MASTER
-	CALL JUELUP, "恭順", LOCAL*200
-	CALL JUELUP, "欲情", LOCAL*400
-	経験回数:MASTER:(NO:TARGET) += LOCAL
-	経験回数:(NO:MASTER) += LOCAL
+	CALL EXPUP, "性交経験", 奉仕ポイント
+	CALL EXPUP, "性交経験", 奉仕ポイント, MASTER
+	CALL JUELUP, "恭順", 奉仕ポイント*200
+	CALL JUELUP, "欲情", 奉仕ポイント*400
+	経験回数:MASTER:(NO:TARGET) += 奉仕ポイント
+	経験回数:(NO:MASTER) += 奉仕ポイント
 	CFLAG:調教後セックス経験++
 	CFLAG:MASTER:調教後セックス経験++
 	IF TALENT:童貞
@@ -1067,38 +1072,38 @@ WAIT
 
 ;強精神薬の反動
 @EVENT_強精神薬の反動
+#DIM DYNAMIC 絶頂強度
 ;イベント口上呼び出し
 DRAWLINE
 
 ;強精神薬による絶頂チェック
-LOCAL = 0
 IF TFLAG:Ｃ絶頂カウント+TFLAG:Ｖ絶頂カウント+TFLAG:Ａ絶頂カウント+TFLAG:Ｂ絶頂カウント > 0
 	CALL KOJO_MESSAGE_EVENT, "強精神薬の反動"
 	;強精神薬の効果が残ったまま調教を終了した場合の処理
 	;通常時の効果が再現できそうにないので同時多重絶頂したという処理に変更
-	;LOCALは多重絶頂の種類を示す(1の場合は○絶頂、2の場合は○＋△絶頂、4の場合は四重絶頂となっている)
+	;絶頂強度は多重絶頂の種類を示す(1の場合は○絶頂、2の場合は○＋△絶頂、4の場合は四重絶頂となっている)
 	SIF TFLAG:Ｃ絶頂カウント
-		LOCAL++
+		絶頂強度++
 	SIF TFLAG:Ｖ絶頂カウント
-		LOCAL++
+		絶頂強度++
 	SIF TFLAG:Ａ絶頂カウント
-		LOCAL++
+		絶頂強度++
 	SIF TFLAG:Ｂ絶頂カウント
-		LOCAL++
+		絶頂強度++
 
 	CALL EXPUP, "絶頂経験", TFLAG:Ｃ絶頂カウント+TFLAG:Ｖ絶頂カウント+TFLAG:Ａ絶頂カウント+TFLAG:Ｂ絶頂カウント
 	SIF TFLAG:Ｃ絶頂カウント > 0
-		CALL JUELUP, "快Ｃ", LOCAL*TFLAG:Ｃ絶頂カウント*1000
+		CALL JUELUP, "快Ｃ", 絶頂強度*TFLAG:Ｃ絶頂カウント*1000
 	SIF TFLAG:Ｖ絶頂カウント > 0
-		CALL JUELUP, "快Ｖ", LOCAL*TFLAG:Ｖ絶頂カウント*1000
+		CALL JUELUP, "快Ｖ", 絶頂強度*TFLAG:Ｖ絶頂カウント*1000
 	SIF TFLAG:Ａ絶頂カウント > 0
-		CALL JUELUP, "快Ａ", LOCAL*TFLAG:Ａ絶頂カウント*1000
+		CALL JUELUP, "快Ａ", 絶頂強度*TFLAG:Ａ絶頂カウント*1000
 	SIF TFLAG:Ｂ絶頂カウント > 0
-		CALL JUELUP, "快Ｂ", LOCAL*TFLAG:Ｂ絶頂カウント*1000
+		CALL JUELUP, "快Ｂ", 絶頂強度*TFLAG:Ｂ絶頂カウント*1000
 	PRINTL 
 
 	;絶頂強度合計が10以上で四重絶頂だとその経験が加算される
-	IF TFLAG:Ｃ絶頂カウント+TFLAG:Ｖ絶頂カウント+TFLAG:Ａ絶頂カウント+TFLAG:Ｂ絶頂カウント >= 10 && LOCAL == 4
+	IF TFLAG:Ｃ絶頂カウント+TFLAG:Ｖ絶頂カウント+TFLAG:Ａ絶頂カウント+TFLAG:Ｂ絶頂カウント >= 10 && 絶頂強度 == 4
 		SIF !CFLAG:調教後強精神薬反動経験強
 			CALL EXPUP, "異常経験", 1
 		CFLAG:調教後強精神薬反動経験強++
@@ -1120,109 +1125,112 @@ ENDIF
 
 ;調教後搾乳
 @EVENT_調教後搾乳
+#DIM DYNAMIC 奉仕ポイント
 ;イベント口上呼び出し
 DRAWLINE
 CALL KOJO_MESSAGE_EVENT, "調教後搾乳"
 
 ;噴乳中毒による搾乳チェック
 ;男はだめ。母乳体質、噴乳中毒、一定能力、体力が必要
-LOCAL = 1
+奉仕ポイント = 1
 
 SELECTCASE ABL:噴乳中毒
 	CASE 1
-		LOCAL += 1
+		奉仕ポイント += 1
 	CASE 2
-		LOCAL += 2
+		奉仕ポイント += 2
 	CASE 3
-		LOCAL += 3
+		奉仕ポイント += 3
 	CASE 4
-		LOCAL += 5
+		奉仕ポイント += 5
 	CASE IS >= 5
-		LOCAL += 7
+		奉仕ポイント += 7
 ENDSELECT
 
 ;欲望と奉仕精神によるボーナス
 IF ABL:欲望 >= 5 && ABL:奉仕精神 >= 5 && PALAM:恭順 >= PALAMLV:5
-	LOCAL += 3
+	奉仕ポイント += 3
 ELSEIF ABL:欲望 >= 4 && ABL:奉仕精神 >= 4 && PALAM:恭順 >= PALAMLV:4
-	LOCAL += 2
+	奉仕ポイント += 2
 ELSEIF ABL:欲望 >= 3 && ABL:奉仕精神 >= 3 && PALAM:恭順 >= PALAMLV:3
-	LOCAL += 1
+	奉仕ポイント += 1
 ENDIF
 
 ;自慰しやすい
 SIF TALENT:自慰しやすい
-	LOCAL += 2
+	奉仕ポイント += 2
 ;淫乳
 SIF TALENT:淫乳
-	LOCAL += 3
+	奉仕ポイント += 3
 
-CALL EXPUP, "噴乳経験", LOCAL
-CALL JUELUP, "快Ｂ", LOCAL*300
-CALL JUELUP, "欲情", LOCAL*50
-CALL JUELUP, "習得", LOCAL*20
+CALL EXPUP, "噴乳経験", 奉仕ポイント
+CALL JUELUP, "快Ｂ", 奉仕ポイント*300
+CALL JUELUP, "欲情", 奉仕ポイント*50
+CALL JUELUP, "習得", 奉仕ポイント*20
 SIF ABL:従順+ABL:露出癖+ABL:マゾっ気 >= 10
-	CALL JUELUP, "恥情", LOCAL*150
+	CALL JUELUP, "恥情", 奉仕ポイント*150
 CFLAG:調教後搾乳経験++
 WAIT
 
 ;調教後自慰
 @EVENT_調教後自慰
+#DIM DYNAMIC 奉仕ポイント
 ;イベント口上呼び出し
 DRAWLINE
 CALL KOJO_MESSAGE_EVENT, "調教後自慰"
 
 ;自慰中毒による自慰チェック
-LOCAL = 1
+奉仕ポイント = 1
 ;自慰中毒を見る
 SELECTCASE ABL:自慰中毒
 	CASE IS <= 3
-		LOCAL += 3
+		奉仕ポイント += 3
 	CASE 4
-		LOCAL += 4
+		奉仕ポイント += 4
 	CASE 5
-		LOCAL += 5
+		奉仕ポイント += 5
 	CASE 6
-		LOCAL += 7
+		奉仕ポイント += 7
 	CASE IS >= 7
-		LOCAL += 9
+		奉仕ポイント += 9
 ENDSELECT
 
 ;欲望とＣ感覚によるボーナス
 IF ABL:欲望 >= 5 && ABL:Ｃ感覚 >= 5 && PALAM:恭順 >= PALAMLV:5
-	LOCAL += 3
+	奉仕ポイント += 3
 ELSEIF ABL:欲望 >= 4 && ABL:Ｃ感覚 >= 4 && PALAM:恭順 >= PALAMLV:4
-	LOCAL += 2
+	奉仕ポイント += 2
 ELSEIF ABL:欲望 >= 3 && ABL:Ｃ感覚 >= 3 && PALAM:恭順 >= PALAMLV:3
-	LOCAL += 1
+	奉仕ポイント += 1
 ENDIF
 
 ;自慰しやすい
 SIF TALENT:自慰しやすい
-	LOCAL += 2
+	奉仕ポイント += 2
 ;淫核
 SIF TALENT:淫核
-	LOCAL += 3
+	奉仕ポイント += 3
 
 ;助手が鼓舞
 IF ASSI >= 0
 	SIF TALENT:ASSI:鼓舞
-		LOCAL += 1
+		奉仕ポイント += 1
 ENDIF
 
-CALL EXPUP, "自慰経験", LOCAL
+CALL EXPUP, "自慰経験", 奉仕ポイント
 SIF PENIS(TARGET)
-	CALL EXPUP, "射精経験", LOCAL/3+1
-CALL JUELUP, "快Ｃ", LOCAL*500
-CALL JUELUP, "恭順", LOCAL*100
-CALL JUELUP, "欲情", LOCAL*250
+	CALL EXPUP, "射精経験", 奉仕ポイント/3+1
+CALL JUELUP, "快Ｃ", 奉仕ポイント*500
+CALL JUELUP, "恭順", 奉仕ポイント*100
+CALL JUELUP, "欲情", 奉仕ポイント*250
 SIF ABL:自慰中毒+ABL:Ｃ感覚+ABL:欲望 >= 10 && TIME == 0
-	CALL JUELUP, "恥情", LOCAL*200
+	CALL JUELUP, "恥情", 奉仕ポイント*200
 CFLAG:調教後自慰経験++
 WAIT
 
 ;調教後夜這い
 @EVENT_調教後夜這い
+#DIM DYNAMIC 奉仕ポイント
 DRAWLINE
 CALL KOJO_MESSAGE_EVENT, "調教後夜這い"
 
@@ -1239,40 +1247,40 @@ IF SEX(TARGET) == 1 || TALENT:処女 || TALENT:再生処女 || !PENIS(MASTER) ||
 	SIF CHARANAMEF(TARGET) == "キュベリア"
 		CALL 実績解除, "天空の夜明け"
 ELSEIF SEX(TARGET) == 2
-	LOCAL = 1
+	奉仕ポイント = 1
 	;V感覚
 	SELECTCASE ABL:Ｖ感覚
 		CASE 1, 2
-			LOCAL += 1
+			奉仕ポイント += 1
 		CASE 3, 4
-			LOCAL += 2
+			奉仕ポイント += 2
 		CASE IS >= 5
-			LOCAL += 3
+			奉仕ポイント += 3
 	ENDSELECT
 
 	;淫膣い
 	SIF TALENT:淫膣
-		LOCAL += 3
+		奉仕ポイント += 3
 
 	;主人の射精制限
-	SIF LOCAL > CFLAG:MASTER:残数
-		LOCAL = CFLAG:MASTER:残数
+	SIF 奉仕ポイント > CFLAG:MASTER:残数
+		奉仕ポイント = CFLAG:MASTER:残数
 
-	CALL EXPUP, "Ｖ経験", LOCAL
-	CALL EXPUP, "性交経験", LOCAL
-	CALL EXPUP, "性交経験", LOCAL, MASTER
-	CALL EXPUP, "膣射経験", LOCAL/2
-	CALL EXPUP, "精液経験", LOCAL/2
-	CALL EXPUP, "射精経験", LOCAL/2, MASTER
-	CALL JUELUP, "快Ｖ", LOCAL*600
-	CALL JUELUP, "恭順", LOCAL*400
-	CALL JUELUP, "欲情", LOCAL*400
-	経験回数:MASTER:(NO:TARGET) += LOCAL
-	経験回数:(NO:MASTER) += LOCAL
-	中出し回数:MASTER:(NO:TARGET) += LOCAL/2
-	中出され回数:(NO:MASTER) += LOCAL/2
-	PREG:0 += LOCAL/2
-	CFLAG:MASTER:残数 -= LOCAL
+	CALL EXPUP, "Ｖ経験", 奉仕ポイント
+	CALL EXPUP, "性交経験", 奉仕ポイント
+	CALL EXPUP, "性交経験", 奉仕ポイント, MASTER
+	CALL EXPUP, "膣射経験", 奉仕ポイント/2
+	CALL EXPUP, "精液経験", 奉仕ポイント/2
+	CALL EXPUP, "射精経験", 奉仕ポイント/2, MASTER
+	CALL JUELUP, "快Ｖ", 奉仕ポイント*600
+	CALL JUELUP, "恭順", 奉仕ポイント*400
+	CALL JUELUP, "欲情", 奉仕ポイント*400
+	経験回数:MASTER:(NO:TARGET) += 奉仕ポイント
+	経験回数:(NO:MASTER) += 奉仕ポイント
+	中出し回数:MASTER:(NO:TARGET) += 奉仕ポイント/2
+	中出され回数:(NO:MASTER) += 奉仕ポイント/2
+	PREG:0 += 奉仕ポイント/2
+	CFLAG:MASTER:残数 -= 奉仕ポイント
 	CFLAG:調教後夜這い経験++
 	CFLAG:MASTER:調教後夜這い経験++
 	SIF CFLAG:スライム度 <= 0 && ISSLIME(MASTER) && CSTR:種族 != "機械" && !TALENT:無機物 && !FLAG:抗スライム

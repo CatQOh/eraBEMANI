@@ -68,6 +68,7 @@ NEXT
 #DIM DYNAMIC 竿役
 #DIM DYNAMIC 精液量
 #DIM DYNAMIC 確率チェック
+#DIM DYNAMIC 妊娠乱数
 
 #DIM CONST 主人膣内射精 = 0
 #DIM CONST 助手膣内射精 = 1
@@ -190,22 +191,22 @@ ENDSELECT
 ;排卵誘発剤使用、種族一致もしくは竿役が神、膣内射精量15以上で対象が小柄体型小人体型共に無しなら100%孕む
 ;ちなみにTEQUIP:妊娠確率分子/TEQUIP:妊娠確率分母の結果で妊娠確率を口上側で変えることもできる
 ;分母=0で100%孕む 分子=0で100%孕まない
-LOCAL = 妊娠確率*妊娠確率:1
+妊娠乱数 = 妊娠確率*妊娠確率:1
 ;百発百中MODなら1(妊娠確定)にする
 SIF 百発百中MOD && ゲームモード() != "段位認定"
-	LOCAL = 1
+	妊娠乱数 = 1
 
 SIF 確率チェック
-	RETURN LOCAL
+	RETURN 妊娠乱数
 
-LOCAL *= TEQUIP:対象:妊娠確率分母
+妊娠乱数 *= TEQUIP:対象:妊娠確率分母
 ;0なら1にする
-CALL SETMAX(LOCAL, 1)
+CALL SETMAX(妊娠乱数, 1)
 
 SIF TEQUIP:対象:妊娠確率分母 == 0
 	TEQUIP:対象:妊娠確率分子 = 1
 
-IF RAND:LOCAL <= TEQUIP:対象:妊娠確率分子-1
+IF RAND:妊娠乱数 <= TEQUIP:対象:妊娠確率分子-1
 	PREG:対象:妊娠確定フラグ = 1
 	PREG:対象:父親 = NO:竿役
 	PREG:対象:母親 = NO:対象
@@ -218,6 +219,7 @@ ENDIF
 #DIMS DYNAMIC 主人種族
 #DIM DYNAMIC 妊娠確率, 2
 #DIM DYNAMIC 確率チェック
+#DIM DYNAMIC 妊娠乱数
 
 #DIM CONST 主人への膣内射精 = 4
 #DIM CONST 出産予定日 = 10
@@ -296,28 +298,28 @@ SELECTCASE CSTR:MASTER:種族
 			妊娠確率:1 /= 2
 ENDSELECT
 
-;LOCAL:1は最大18、最低1
-;LOCAL:2は最大11、最低1（小柄体型と小人体型が両立するのか微妙なところだが）
+;妊娠確率:0は最大18、最低1
+;妊娠確率:1は最大11、最低1（小柄体型と小人体型が両立するのか微妙なところだが）
 ;妊娠確率は一番低くて1/198 一番高いと100%妊娠する
 ;排卵誘発剤使用、種族一致もしくは竿役が神、膣内射精量15以上で対象が小柄体型小人体型共に無しなら100%孕む
 ;ちなみにTEQUIP:妊娠確率分子/TEQUIP:妊娠確率分母の結果で妊娠確率を口上側で変えることもできる
 ;分母=0で100%孕む 分子=0で100%孕まない
-LOCAL = 妊娠確率*妊娠確率:1
+妊娠乱数 = 妊娠確率*妊娠確率:1
 ;百発百中MODなら1(妊娠確定)にする
 SIF 百発百中MOD && ゲームモード() != "段位認定"
-	LOCAL = 1
+	妊娠乱数 = 1
 
 SIF 確率チェック
-	RETURN LOCAL
+	RETURN 妊娠乱数
 
-LOCAL *= TEQUIP:MASTER:妊娠確率分母
+妊娠乱数 *= TEQUIP:MASTER:妊娠確率分母
 ;0なら1にする
-CALL SETMAX(LOCAL, 1)
+CALL SETMAX(妊娠乱数, 1)
 
 SIF TEQUIP:MASTER:妊娠確率分母 == 0
 	TEQUIP:MASTER:妊娠確率分子 = 1
 
-IF RAND:LOCAL <= TEQUIP:MASTER:妊娠確率分子-1
+IF RAND:妊娠乱数 <= TEQUIP:MASTER:妊娠確率分子-1
 	PREG:MASTER:妊娠確定フラグ = 1
 	PREG:MASTER:父親 = NO:竿役
 	PREG:MASTER:母親 = NO:MASTER
@@ -341,6 +343,7 @@ NEXT
 @GET_CHILD_MESSAGE, ARG
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC ストレス計算用
+#DIM DYNAMIC 父親ID
 
 #DIM CONST 父親の認知 = 5
 #DIM CONST 出産予定日 = 10
@@ -351,7 +354,6 @@ NEXT
 #DIM CONST 母乳体質付与 = 25
 
 ;父親 = PREG:ARG:21
-VARSET LOCAL, 0
 
 IF ARG == MASTER
 	PRINTW ここ最近つわりのようなものがひどい……
@@ -533,19 +535,19 @@ IF ARG != MASTER || !TALENT:ARG:妊娠確定
 ENDIF
 
 IF ARG == MASTER
-	LOCAL = FINDCHARA(NO, PREG:MASTER:父親)
-	IF LOCAL >= 0
-		PRINTFORML %CALLNAME:LOCAL%に妊娠したことを伝えますか？
+	父親ID = FINDCHARA(NO, PREG:MASTER:父親)
+	IF 父親ID >= 0
+		PRINTFORML %CALLNAME:父親ID%に妊娠したことを伝えますか？
 		PRINTL [0] - そっとしておこう
 		PRINTL [1] - 伝えよう
 		CALL INPUTF, 0, 1
 		SELECTCASE RESULT
 			CASE 0
-				PRINTFORMW %CALLNAME:LOCAL%には報告しないことにしました
+				PRINTFORMW %CALLNAME:父親ID%には報告しないことにしました
 				PREG:MASTER:父親の認知 = 0
 			CASE 1
-				PRINTFORMW %CALLNAME:LOCAL%に、\@ SEX(LOCAL) == 1 ? 彼 # 彼女 \@の子を身籠ったことを報告しました
-				CALL KOJO_MESSAGE_EVENT, "妊娠報告時", LOCAL
+				PRINTFORMW %CALLNAME:父親ID%に、\@ SEX(父親ID) == 1 ? 彼 # 彼女 \@の子を身籠ったことを報告しました
+				CALL KOJO_MESSAGE_EVENT, "妊娠報告時", 父親ID
 				PREG:MASTER:父親の認知 = 1
 		ENDSELECT
 	ENDIF
@@ -566,6 +568,7 @@ SIF ASSI == ARG
 
 @PREG_READY
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 父親ID
 
 #DIM CONST 父親の認知 = 5
 #DIM CONST 乳母 = 6
@@ -591,9 +594,9 @@ FOR LCOUNT, 0, CHARANUM
 			CALL CHECKDRAWLINE
 			IF LCOUNT == MASTER
 				PRINTFORML %CALLNAME:LCOUNT%は出産が近づいている……
-				LOCAL = FINDCHARA(NO, PREG:MASTER:父親)
-				SIF LOCAL >= 0
-					CALL KOJO_MESSAGE_EVENT, "主人育児室", LOCAL
+				父親ID = FINDCHARA(NO, PREG:MASTER:父親)
+				SIF 父親ID >= 0
+					CALL KOJO_MESSAGE_EVENT, "主人育児室", 父親ID
 			ELSE
 				PRINTFORML %CALLNAME:LCOUNT%は出産が近づいているようだ……
 				CALL CHILD_CARE_ROOM_SELECT, LCOUNT
@@ -615,9 +618,9 @@ FOR LCOUNT, 0, CHARANUM
 				PRINTFORML %CALLNAME:LCOUNT%の出産から一日経ちました
 				;主人の妊娠で、父親が認知していれば会いに来るイベント
 				IF PREG:MASTER:父親の認知
-					LOCAL = FINDCHARA(NO, PREG:MASTER:父親)
-					SIF LOCAL >= 0
-						CALL KOJO_MESSAGE_EVENT, "主人育児室", LOCAL
+					父親ID = FINDCHARA(NO, PREG:MASTER:父親)
+					SIF 父親ID >= 0
+						CALL KOJO_MESSAGE_EVENT, "主人育児室", 父親ID
 				ENDIF
 			ELSE
 				PRINTFORML %CALLNAME:LCOUNT%の出産から一日経ちました
@@ -630,9 +633,9 @@ FOR LCOUNT, 0, CHARANUM
 				PRINTFORML %CALLNAME:LCOUNT%の出産から三日経ちました
 				;主人の妊娠で、父親が認知していれば会いに来るイベント
 				IF PREG:MASTER:父親の認知
-					LOCAL = FINDCHARA(NO, PREG:MASTER:父親)
-					SIF LOCAL >= 0
-						CALL KOJO_MESSAGE_EVENT, "主人育児室", LOCAL
+					父親ID = FINDCHARA(NO, PREG:MASTER:父親)
+					SIF 父親ID >= 0
+						CALL KOJO_MESSAGE_EVENT, "主人育児室", 父親ID
 				ENDIF
 			ELSE
 				PRINTFORML %CALLNAME:LCOUNT%の出産から三日経ちました
@@ -650,12 +653,11 @@ NEXT
 ;出産
 @CHILD_BIRTH, ARG
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 父親ID
 
 #DIM CONST 父親の認知 = 5
 #DIM CONST 出産トラウマ計算用 = 12
 #DIM CONST 父親 = 21
-
-VARSET LOCAL, 0
 
 IF PREG:ARG:父親 >= 0
 	PRINTFORMW %CALLNAME:ARG%は、%CSVNAMEF(PREG:ARG:父親)%の子供を無事出産しました
@@ -694,9 +696,9 @@ CHILDBIRTHDAY:ARG:0 = YEAR*10000+MONTH*100+DAYS
 
 IF ARG == MASTER
 	IF PREG:MASTER:父親の認知
-		LOCAL = FINDCHARA(NO, PREG:MASTER:父親)
-		SIF LOCAL >= 0
-			CALL KOJO_MESSAGE_EVENT, "主人出産時", LOCAL
+		父親ID = FINDCHARA(NO, PREG:MASTER:父親)
+		SIF 父親ID >= 0
+			CALL KOJO_MESSAGE_EVENT, "主人出産時", 父親ID
 	ENDIF
 ELSE
 	CALL KOJO_MESSAGE_EVENT, "出産時", ARG
@@ -729,7 +731,10 @@ SIF CHARANAMEF(ARG) == "育江" && !この子の七つのお祝いに
 	この子の七つのお祝いに = YEAR*10000+MONTH*100+DAYS
 
 @CHILD_CARE_ROOM_SELECT, ARG
+#DIM DYNAMIC LTARGET
+
 #DIM CONST 出産トラウマ計算用 = 12
+
 PRINTFORML %CALLNAME:ARG%の様子を見に行きますか？
 PRINTL [0] - 育児室へ行く
 PRINTL [1] - 育児室へ行かない
@@ -738,10 +743,10 @@ SELECTCASE RESULT
 	CASE 0
 		DRAWLINE
 		PRINTFORMW %CALLNAME:MASTER%は%CALLNAME:ARG%のところへ向かった
-		LOCAL = TARGET
+		LTARGET = TARGET
 		TARGET = ARG
 		CALL KOJO_MESSAGE_EVENT, "育児室"
-		TARGET = LOCAL
+		TARGET = LTARGET
 		;育児室に顔出すと出産トラウマが僅かに緩和される
 		PREG:ARG:出産トラウマ計算用--
 	CASE 1
@@ -755,13 +760,15 @@ ENDSELECT
 #DIM DYNAMIC 母体
 #DIM DYNAMIC 素質数
 #DIM DYNAMIC テーブル
+#DIM DYNAMIC 素質上限
+#DIM DYNAMIC 素質付与判定, 30
+#DIM DYNAMIC 特殊素質上限
 
 #DIM CONST 近親交配フラグ = 27
 #DIM CONST 魔法の才能 = 28
 
 SIF 母体 == -1
 	母体 = 母親
-VARSET LOCAL, 0
 
 ;父親が不明、もしくは採取精液なら母親の種族を受け継ぐ
 IF 父親 == -1
@@ -844,7 +851,6 @@ SELECTCASE CHILDTALENT:母体:TALENTF("性別")
 			CHILDTALENT:母体:TALENTF("母乳体質") = 1
 ENDSELECT
 
-LOCAL = 0
 ;狐の遺伝子を持っていれば、獣なら狐、獣人なら妖狐になる
 IF TALENT:母親:狐 || TALENT:母親:妖狐 || (父親 > 0 && (TALENT:父親:狐 || TALENT:父親:妖狐))
 	SIF CHILDRACE:母体:0 == "獣"
@@ -859,16 +865,16 @@ ELSEIF TALENT:母親:猫 || (父親 > 0 && TALENT:父親:猫)
 ENDIF
 
 ;だいたい6～8個の素質が付く
-LOCAL = RAND(6, 9)
+素質上限 = RAND(6, 9)
 
 ;親が神ならさらに2～4個追加
 SIF CSTR:母親:種族 == "神" || (父親 >= 0 && CSTR:父親:種族 == "神")
-	LOCAL += RAND(2, 5)
+	素質上限 += RAND(2, 5)
 
 DO
 	テーブル = RAND(1, 23)
 	;既に決定済みのテーブルならやり直し
-	SIF LOCAL:テーブル
+	SIF 素質付与判定:テーブル
 		CONTINUE
 	;素質の種類ごとにテーブルを置く
 	SELECTCASE テーブル
@@ -1094,24 +1100,24 @@ DO
 					CHILDTALENT:母体:TALENTF("食欲皆伝") = 1
 			ENDSELECT
 	ENDSELECT
-	LOCAL:テーブル = 1
+	素質付与判定:テーブル = 1
 	素質数++
-LOOP LOCAL != 素質数
+LOOP 素質上限 != 素質数
 
-VARSET LOCAL, 0
 素質数 = 0
+VARSET 素質付与判定
 
 ;以下プラス素質から必ず何かひとつ付く
-LOCAL = 1
+特殊素質上限 = 1
 
 ;親が神ならさらに1～3個追加
 SIF CSTR:母親:種族 == "神" || (父親 >= 0 && CSTR:父親:種族 == "神")
-	LOCAL += RAND(1, 4)
+	特殊素質上限 += RAND(1, 4)
 
 DO
 	テーブル = RAND(1, 11)
 	;既に決定済みのテーブルならやり直し
-	SIF LOCAL:テーブル
+	SIF 素質付与判定:テーブル
 		CONTINUE
 	;目立ちたがり、舌使い、献身的、小悪魔、孔雀の瞳、夢喰い、買い物上手、治療、音ゲーマー
 	SELECTCASE テーブル
@@ -1136,9 +1142,9 @@ DO
 		CASE 10
 			CHILDTALENT:母体:TALENTF("ふたなり") = 1
 	ENDSELECT
-	LOCAL:テーブル = 1
+	素質付与判定:テーブル = 1
 	素質数++
-LOOP LOCAL != 素質数
+LOOP 特殊素質上限 != 素質数
 
 ;種族によって固定素質
 SELECTCASE CHILDRACE:母体:0

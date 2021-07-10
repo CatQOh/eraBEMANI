@@ -8,30 +8,34 @@
 #DIM DYNAMIC 人数
 #DIM 着床告知;DYNAMICじゃない変数 プレーヤーへの告知用なので起動ごとに破棄してもよい
 #DIM DYNAMIC DEUIL
-VARSET LOCAL, 0
+#DIM DYNAMIC 売却可能条件
+#DIM DYNAMIC 妖精イベント, 2
+#DIM DYNAMIC YORIDORI
+#DIM DYNAMIC 最大体力
+#DIM DYNAMIC 鳳凰イベント, 3
 
 IF TARGET >= 0
 	;売却可能&助手可能判定 陥落系で無視できるって条件はほとんど意味無いか
 	;従順+欲望が6以上
 	SIF ABL:従順+ABL:欲望 >= 6
-		LOCAL = 1
+		売却可能条件 = 1
 
 	;[反抗的][気丈]なら従順LV4以上必要 服従系陥落素質があれば無視できる
 	IF (TALENT:反抗的 || TALENT:気丈) && !TALENT:服従 && !TALENT:隷属
 		SIF ABL:従順 < 4
-			LOCAL = 0
+			売却可能条件 = 0
 	ENDIF
 
 	;[自制心][無関心]なら欲望LV4以上必要 淫乱系陥落素質があれば無視できる
 	IF (TALENT:自制心 || TALENT:無関心) && !TALENT:淫乱 && !TALENT:娼婦
 		SIF ABL:欲望 < 4
-			LOCAL = 0
+			売却可能条件 = 0
 	ENDIF
 
 	;[プライド高い][生意気]なら奉仕精神LV3以上必要
 	IF TALENT:プライド高い || TALENT:生意気
 		SIF ABL:奉仕精神 < 3
-			LOCAL = 0
+			売却可能条件 = 0
 	ENDIF
 
 	;段位モード専用の特殊条件
@@ -39,46 +43,46 @@ IF TARGET >= 0
 		;段位認定裏七級の場合、陥落していないと売却できない
 		IF 受験段位名 == "裏七級"
 			SIF !CFLAG:陥落
-				LOCAL = 0
+				売却可能条件 = 0
 		;「炎の孕ませポップン学園」の場合、陥落させたうえで着床を認知していないと売却できない
 		ELSEIF 受験段位名 == "炎の孕ませポップン学園"
-			LOCAL = 0
+			売却可能条件 = 0
 			IF CFLAG:陥落
 				IF TALENT:妊娠
-					LOCAL = 1
-				ELSEIF (TALENT:恋慕 || TALENT:親愛) && PREG:TARGET:11
-					LOCAL = 1
+					売却可能条件 = 1
+				ELSEIF FALLTYPE(TARGET) == 1 && PREG:TARGET:11
+					売却可能条件 = 1
 					;この場合一度だけ着床したことを教えてもらえる(再起動でフラグが消失するのは仕様)
 					;変数「着床告知」にビットで管理
-					;1:ミニッツ 2:ルート 4:翠里 8:鈴花 16:氷海
-					SELECTCASE CALLNAME
+					;(GETBIT)0:ミニッツ 1:ルート 2:翠里 3:鈴花 4:氷海
+					SELECTCASE CALLNAME:TARGET
 						CASE "ミニッツ"
-							IF !(着床告知 & 1)
-								着床告知 |= 1
+							IF !GETBIT(着床告知, 0)
+								SETBIT 着床告知, 0
 								PRINTFORML ミニッツは%CALLNAME:MASTER%に妊娠検査薬の結果をこっそりと見せてきた
 								PRINTFORMW どうやら%CALLNAME:MASTER%はミニッツの幼い体に子種を植え付けたようだ……
 							ENDIF
 						CASE "ルート"
-							IF !(着床告知 & 2)
-								着床告知 |= 2
+							IF !GETBIT(着床告知, 1)
+								SETBIT 着床告知, 1
 								PRINTFORML ルートは%CALLNAME:MASTER%に妊娠の診断結果を教えてくれた
 								PRINTFORMW どうやら%CALLNAME:MASTER%はルートとの交尾によって受精させたようだ……
 							ENDIF
 						CASE "翠里"
-							IF !(着床告知 & 4)
-								着床告知 |= 4
+							IF !GETBIT(着床告知, 2)
+								SETBIT 着床告知, 2
 								PRINTFORML 翠里は%CALLNAME:MASTER%に妊娠した可能性が高いことを教えてくれた
 								PRINTFORMW どうやら%CALLNAME:MASTER%は翠里の自称超絶名器の奥に遺伝子を残せたようだ……
 							ENDIF
 						CASE "鈴花"
-							IF !(着床告知 & 8)
-								着床告知 |= 8
+							IF !GETBIT(着床告知, 3)
+								SETBIT 着床告知, 3
 								PRINTFORML 鈴花は%CALLNAME:MASTER%に妊娠検査薬の結果を嬉しそうに見せてきた
 								PRINTFORMW どうやら%CALLNAME:MASTER%は鈴花のめしべとの交配に成功したようだ……
 							ENDIF
 						CASE "氷海"
-							IF !(着床告知 & 16)
-								着床告知 |= 16
+							IF !GETBIT(着床告知, 4)
+								SETBIT 着床告知, 4
 								PRINTFORML 氷海は%CALLNAME:MASTER%に妊娠の診断結果が陽性であることを伝えてきた
 								PRINTFORMW どうやら%CALLNAME:MASTER%は氷海への膣内射精で着床させたようだ……
 							ENDIF
@@ -88,7 +92,7 @@ IF TARGET >= 0
 		ENDIF
 	ENDIF
 
-	IF LOCAL
+	IF 売却可能条件
 		;上記をクリアし、技巧3以上or奉仕精神3以上orマゾっ気3以上orCVAB感覚合計8以上or従順5以上or欲望5以上なら売却可能
 		{
 		IF ABL:技巧 >= 3 || ABL:奉仕精神 >= 3 || ABL:マゾっ気 >= 3 || 
@@ -193,10 +197,10 @@ IF !CFLAG:MASTER:使用不可
 
 		;種族妖精ならランダムで消費アイテム取得 休憩中のみ
 		IF CSTR:LCOUNT:種族 == "妖精" && CFLAG:LCOUNT:陥落 && CFLAG:LCOUNT:休憩
-			LOCAL = RAND(100, 110)
-			LOCAL:1 = RAND(1, 4)
-			PRINTFORMW %CALLNAME:LCOUNT%が{LOCAL:1}個の%ITEMNAME:LOCAL%を拾ってきました
-			ITEM:LOCAL += LOCAL:1
+			妖精イベント = RAND(GETNUM(ITEM, "ローション"), GETNUM(ITEM, "魅惑の粘液")+1)
+			妖精イベント:1 = RAND(1, 4)
+			PRINTFORMW %CALLNAME:LCOUNT%が{妖精イベント:1}個の%ITEMNAME:妖精イベント%を拾ってきました
+			ITEM:妖精イベント += 妖精イベント:1
 		ENDIF
 
 		;ストレス値の計算
@@ -415,16 +419,15 @@ SIF タルタ童貞喰い & 7
 
 ;実績：陥落したイロドリミドリの全員と同棲する
 ;実績：ユーリ、アッシュ、スマイルの三人を陥落させる
-LOCAL = 0
 FOR LCOUNT, 0, CHARANUM
 	IF CFLAG:LCOUNT:陥落
 		SELECTCASE CHARANAMEF(LCOUNT)
 			CASE "明坂 芹菜", "御形 アリシアナ", "天王洲 なずな", "小仏 凪", "箱部 なる"
-				LOCAL++
+				YORIDORI++
 			CASE "ユーリ", "アッシュ", "スマイル"
 				DEUIL++
 		ENDSELECT
-		SIF LOCAL == 5
+		SIF YORIDORI == 5
 			CALL 実績解除, "ヨリドリミドリ"
 		SIF DEUIL == 3
 			CALL 実績解除, "Deuilの熱烈すぎる追っかけ"
@@ -494,35 +497,33 @@ CALL WEATHER
 FOR LCOUNT, 0, CHARANUM
 	;フローラ専用イベント
 	IF CHARANAMEF(LCOUNT) == "フローラ"
-		LOCAL = MAXBASE:LCOUNT:体力
+		最大体力 = MAXBASE:LCOUNT:体力
 		MAXBASE:LCOUNT:体力 = CSVBASE(NO:LCOUNT, 0) + (FLAG:気温-180)*2
 		SIF TALENT:LCOUNT:妊娠
 			MAXBASE:LCOUNT:体力 -= 500
-		BASE:LCOUNT:体力 += MAXBASE:LCOUNT:体力-LOCAL
-		SIF BASE:LCOUNT:体力 > MAXBASE:LCOUNT:体力
-			BASE:LCOUNT:体力 = MAXBASE:LCOUNT:体力
+		BASE:LCOUNT:体力 += MAXBASE:LCOUNT:体力-最大体力
+		;体力、気力の値整理
+		CALL SETBASE, TARGET
 	ENDIF
 	;鳳凰専用イベント
 	IF CSTR:LCOUNT:種族 == "鳳凰" && FLAG:気温 > 0
-		LOCAL = FLAG:気温
+		鳳凰イベント = FLAG:気温
 		SELECTCASE 天気()
 			CASE "晴れ"
 			CASE "曇り"
-				TIMES LOCAL , 0.50
+				TIMES 鳳凰イベント , 0.50
 			CASEELSE
-				TIMES LOCAL , 0.20
+				TIMES 鳳凰イベント , 0.20
 		ENDSELECT
 		;気温と天気で計算したボーナス分体力気力が増加
-		LOCAL:1 = MAXBASE:LCOUNT:体力
-		LOCAL:2 = MAXBASE:LCOUNT:気力
-		MAXBASE:LCOUNT:体力 = MAXBASE:LCOUNT:鳳凰基礎体力+LOCAL
-		MAXBASE:LCOUNT:気力 = MAXBASE:LCOUNT:鳳凰基礎気力+LOCAL
-		BASE:LCOUNT:体力 += MAXBASE:LCOUNT:体力-LOCAL:1
-		BASE:LCOUNT:気力 += MAXBASE:LCOUNT:気力-LOCAL:2
-		SIF BASE:LCOUNT:体力 > MAXBASE:LCOUNT:体力
-			BASE:LCOUNT:体力 = MAXBASE:LCOUNT:体力
-		SIF BASE:LCOUNT:気力 > MAXBASE:LCOUNT:気力
-			BASE:LCOUNT:気力 = MAXBASE:LCOUNT:気力
+		鳳凰イベント:1 = MAXBASE:LCOUNT:体力
+		鳳凰イベント:2 = MAXBASE:LCOUNT:気力
+		MAXBASE:LCOUNT:体力 = MAXBASE:LCOUNT:鳳凰基礎体力+鳳凰イベント
+		MAXBASE:LCOUNT:気力 = MAXBASE:LCOUNT:鳳凰基礎気力+鳳凰イベント
+		BASE:LCOUNT:体力 += MAXBASE:LCOUNT:体力-鳳凰イベント:1
+		BASE:LCOUNT:気力 += MAXBASE:LCOUNT:気力-鳳凰イベント:2
+		;体力、気力の値整理
+		CALL SETBASE, TARGET
 	ENDIF
 NEXT
 
@@ -639,7 +640,7 @@ BEGIN SHOP
 ;現在豹変し得るのは、紅刃・冷音
 IF TARGET >= 0 && TRANCE:200
 	SELECTCASE CHARANAMEF(TARGET)
-		CASE "紅刃", "春雨 冷音"
+		CASE "紅刃", "青雨 冷音"
 			CALL TRANCE_OFF, TARGET
 			TRANCE:200 = 0
 			PRINTFORMW ＜%CALLNAME:TARGET%は元の性格にもどった＞
@@ -647,7 +648,7 @@ IF TARGET >= 0 && TRANCE:200
 ENDIF
 IF ASSI >= 0 && TRANCE:ASSI:200
 	SELECTCASE CHARANAMEF(ASSI)
-		CASE "紅刃", "春雨 冷音"
+		CASE "紅刃", "青雨 冷音"
 			CALL TRANCE_OFF, ASSI
 			TRANCE:ASSI:200 = 0
 			PRINTFORMW ＜%CALLNAME:ASSI%は元の性格にもどった＞
@@ -690,88 +691,12 @@ ENDIF
 SIF ゲームモード() == "段位認定" && !CFLAG:MASTER:使用不可
 	CALL 段位ゲージ処理
 
-;素質でのイベント
-;REPEAT CHARANUM
-;	IF TALENT:COUNT:娼婦
-;		IF RAND:5 == 0
-;			LOCAL = RAND:(CHARANUM-1)
-;			SIF TALENT:COUNT:処女 || TALENT:LOCAL:再生処女
-;				CONTINUE
-;			SIF LOCAL == 0
-;				CONTINUE
-;			IF TALENT:LOCAL:淫乱 || TALENT:LOCAL:娼婦
-;				PRINTFORML %CALLNAME:COUNT%と%CALLNAME:LOCAL%は互いの肉欲を満たすように何度も体を重ねたらしい……
-;				IF SEX:LOCAL:0 == 2 && TALENT:LOCAL:処女 == 0 && TALENT:LOCAL:再生処女 == 0
-;					PRINTFORML %CALLNAME:LOCAL%のＶ経験+3
-;					EXP:LOCAL:Ｖ経験 += 3
-;				ENDIF
-;				IF SEX:COUNT:0 == 1 || TALENT:COUNT:ふたなり
-;					PRINTFORML %CALLNAME:LOCAL%の精液経験+2
-;					EXP:LOCAL:精液経験 += 2
-;					IF TALENT:LOCAL:処女 == 0 && TALENT:LOCAL:再生処女 == 0
-;						PRINTFORML %CALLNAME:LOCAL%の性交経験
-;				ENDIF
-;				IF SEX:LOCAL:0 == 1
-;					PRINTFORML %CALLNAME:LOCAL%のＡ経験+3
-;					EXP:LOCAL:Ａ経験 += 3
-;				ENDIF
-;				IF SEX:LOCAL:0 == 1 || TALENT:LOCAL:ふたなり
-;					PRINTFORML %CALLNAME:LOCAL%の射精経験+2
-;					EXP:COUNT:射精経験 += 2
-;				ENDIF
-;
-;				IF SEX:COUNT:0 == 2
-;					PRINTFORML %CALLNAME:COUNT%のＶ経験+3
-;					EXP:COUNT:Ｖ経験 += 3
-;				ENDIF
-;				IF SEX:LOCAL:0 == 1 || TALENT:LOCAL:ふたなり
-;					PRINTFORML %CALLNAME:COUNT%の精液経験+2
-;					EXP:COUNT:精液経験 += 2
-;				ENDIF
-;				IF SEX:COUNT:0 == 1
-;					PRINTFORML %CALLNAME:COUNT%のＡ経験+3
-;					EXP:COUNT:Ａ経験 += 3
-;				ENDIF
-;				IF SEX:COUNT:0 == 1 || TALENT:COUNT:ふたなり
-;					PRINTFORML %CALLNAME:COUNT%の射精経験+2
-;					EXP:COUNT:射精経験 += 2
-;				ENDIF
-;
-;			ELSEIF SEX:COUNT:0 == 1
-;				IF TALENT:LOCAL:処女 || TALENT:LOCAL:再生処女 || SEX:LOCAL:0 == 1
-;					PRINTFORML %CALLNAME:COUNT%は%CALLNAME:LOCAL%のアナルを無理やり犯したらしい……
-;					
-;				ELSE
-;					PRINTFORML %CALLNAME:COUNT%は%CALLNAME:LOCAL%と半ば強引にセックスをしたらしい……
-;				ENDIF
-;			ELSEIF SEX:COUNT:0 == 2
-;				IF SEX:LOCAL:0 == 1 || TALENT:LOCAL:ふたなり
-;					PRINTFORML %CALLNAME:COUNT%は%CALLNAME:LOCAL%を捕まえて精液を搾り取ったらしい……
-;				ELSEIF SEX:LOCAL:0 == 2
-;					PRINTFORML %CALLNAME:COUNT%の誘いで%CALLNAME:LOCAL%はレズプレイに興じたらしい……
-;				ENDIF
-;			ENDIF
-;			SIF
-;			EXP:
-;			WAIT
-;		ELSEIF RAND:5 == 1
-;			PRINTFORML %CALLNAME:COUNT%は特製の媚薬を作り上げたようだ……
-;			ITEM:媚薬 += 3
-;	ENDIF
-;REND
-;WAIT
-;	
-;				
-;				
-;		PRINTFORM %CALLNAME:COUNT%は
-;		IF TALENT:LOCAL:処女 || TALENT:LOCAL:再生処女
-
 ;-------------------------------------------------
 ;朝になった時のイベント
 ;-------------------------------------------------
 @EVENT_NEWDAY
 #DIM DYNAMIC LCOUNT
-VARSET LOCAL, 0
+#DIM DYNAMIC 治療コスト
 
 ;日付加算関数
 CALL NEXTDAY
@@ -857,10 +782,11 @@ FOR LCOUNT, 0, CHARANUM
 			PRINTFORMW %CALLNAME:LCOUNT%の排卵誘発剤の効果が切れたようだ
 	ENDIF
 	IF CFLAG:LCOUNT:生殖力強化 == 1
-		LOCAL = 300
+		治療コスト = 300
 		SIF TALENT:LCOUNT:小柄体型
-			LOCAL += 200
-		CALL PASELIW, @"%CALLNAME:LCOUNT%の不妊治療薬に{LOCAL}＄の費用が発生しました"
+			治療コスト += 200
+		CALL PASELIW, @"%CALLNAME:LCOUNT%の不妊治療薬に{治療コスト}＄の費用が発生しました"
+		MONEY -= 治療コスト
 		CFLAG:LCOUNT:ストレス値 += 5
 	ENDIF
 NEXT
@@ -908,7 +834,7 @@ SELECTCASE CHARANAMEF(ARG)
 					ENDIF
 			ENDSELECT
 		NEXT
-	CASE "春雨 冷音"
+	CASE "青雨 冷音"
 		;雨が降ると気力にボーナス
 		;無条件に700増えるほかに、Y=1000/XのグラフでのX=1～X=[雨量]までの面積
 		;つまり1000LOG([雨量])だけ増加する
@@ -965,7 +891,7 @@ SELECTCASE CHARANAMEF(ARG)
 					ENDIF
 			ENDSELECT
 		NEXT
-	CASE "春雨 冷音"
+	CASE "青雨 冷音"
 		MAXBASE:ARG:気力 = CSVBASE(NO:ARG, 1)
 		FOR LCOUNT, 0, VARSIZE("TALENT")
 			;変身解除時、習得処理を行なう
@@ -994,8 +920,9 @@ ENDSELECT
 ;-------------------------------------------------
 @EVENT_HONEYTRAP
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC ポイント
 
-LOCAL = 0
+ポイント = 0
 ;調教後夜這いが発生してたら発生しない
 IF TFLAG:調教後夜這い
 	TFLAG:調教後夜這い = 0
@@ -1014,66 +941,66 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 		CONTINUE
 	SELECTCASE TALENTNAME:LCOUNT
 		CASE "生意気", "無関心", "貞操観念", "抑圧", "抵抗", "冷静", "強気"
-			LOCAL -= 1
+			ポイント -= 1
 		CASE "素直", "衝動的", "弱味", "弱気", "献身的", "妄信"
-			LOCAL += 1
+			ポイント += 1
 		CASE "反抗的", "ツンデレ", "自制心", "一線越えない", "快感の否定"
-			LOCAL -= 2
+			ポイント -= 2
 		CASE "好奇心", "貞操無頓着", "解放", "快感に素直", "女好き"
-			LOCAL += 2
+			ポイント += 2
 		CASE "潔癖症", "汚臭敏感"
 			SIF TALENT:MASTER:ファーリー
-				LOCAL -= 2
+				ポイント -= 2
 		CASE "同族嫌悪"
 			SIF CSTR:種族 == CSTR:MASTER:種族
-				LOCAL -= 2
+				ポイント -= 2
 	ENDSELECT
 NEXT
 
 IF TALENT:性別 == 2
 	IF TALENT:両刀
-		LOCAL += 1
+		ポイント += 1
 	ELSE
-		LOCAL -= 2
+		ポイント -= 2
 	ENDIF
 ENDIF
 IF TALENT:恋心 >= 0
 	IF TALENT:恋心 != MASTER && !CFLAG:陥落
-		LOCAL -= 3
+		ポイント -= 3
 	ELSEIF TALENT:恋心 == MASTER
-		LOCAL += 3
+		ポイント += 3
 	ENDIF
 ENDIF
 IF TALENT:既婚者 >= 0
 	IF TALENT:既婚者 != MASTER && !CFLAG:陥落
-		LOCAL -= 5
+		ポイント -= 5
 	ELSEIF TALENT:既婚者 == MASTER
-		LOCAL += 5
+		ポイント += 5
 	ENDIF
 ENDIF
 
 SIF TALENT:MASTER:魅力
-	LOCAL += 1
+	ポイント += 1
 SIF TALENT:MASTER:魅惑
-	LOCAL += 1
+	ポイント += 1
 SIF TALENT:MASTER:謎の魅力
-	LOCAL += 2
+	ポイント += 2
 SIF TALENT:MASTER:小柄体型
-	LOCAL -= 1
+	ポイント -= 1
 SIF ヒプノティッククライシス
-	LOCAL += RAND(15, 21)
+	ポイント += RAND(15, 21)
 
-LOCAL += ABL:従順
-LOCAL += ABL:欲望
-LOCAL += ABL:奉仕精神
-LOCAL -= MARK:反発刻印*2
-LOCAL -= MARK:苦痛刻印
+ポイント += ABL:従順
+ポイント += ABL:欲望
+ポイント += ABL:奉仕精神
+ポイント -= MARK:反発刻印*2
+ポイント -= MARK:苦痛刻印
 
 SIF CFLAG:陥落
-	LOCAL += 20
+	ポイント += 20
 
 ;地の文分岐に使う
-TFLAG:誘惑ポイント = LOCAL
+TFLAG:誘惑ポイント = ポイント
 
 CALL CHECKDRAWLINE
 PRINTFORML 就寝間際、寝付こうとしている%CALLNAME:TARGET%の姿を目撃した
