@@ -617,9 +617,10 @@ FOR LCOUNT, 0, CHARANUM
 			IF LCOUNT == MASTER
 				PRINTFORML %CALLNAME:LCOUNT%の出産から一日経ちました
 				;主人の妊娠で、父親が認知していれば会いに来るイベント
+				;陥落済みじゃないと発生しない
 				IF PREG:MASTER:父親の認知
 					父親ID = FINDCHARA(NO, PREG:MASTER:父親)
-					SIF 父親ID >= 0
+					SIF 父親ID >= 0 && CFLAG:父親ID:陥落
 						CALL KOJO_MESSAGE_EVENT, "主人育児室", 父親ID
 				ENDIF
 			ELSE
@@ -632,11 +633,12 @@ FOR LCOUNT, 0, CHARANUM
 			IF LCOUNT == MASTER
 				PRINTFORML %CALLNAME:LCOUNT%の出産から三日経ちました
 				;主人の妊娠で、父親が認知していれば会いに来るイベント
-				IF PREG:MASTER:父親の認知
-					父親ID = FINDCHARA(NO, PREG:MASTER:父親)
-					SIF 父親ID >= 0
-						CALL KOJO_MESSAGE_EVENT, "主人育児室", 父親ID
-				ENDIF
+				;翌日に一度やってるから発生しないようにしてみる
+				;IF PREG:MASTER:父親の認知
+				;	父親ID = FINDCHARA(NO, PREG:MASTER:父親)
+				;	SIF 父親ID >= 0 && CFLAG:父親ID:陥落
+				;		CALL KOJO_MESSAGE_EVENT, "主人育児室", 父親ID
+				;ENDIF
 			ELSE
 				PRINTFORML %CALLNAME:LCOUNT%の出産から三日経ちました
 				CALL CHILD_CARE_ROOM_SELECT, LCOUNT
@@ -690,6 +692,10 @@ SIF PREG:ARG:出産トラウマ計算用 < 0
 
 ;ヤンデレで父親が主人、陥落済みだと出産トラウマは0になる
 SIF TALENT:ARG:ヤンデレ && CFLAG:ARG:陥落 && PREG:ARG:父親 == NO:MASTER
+	PREG:ARG:出産トラウマ計算用 = 0
+
+;主人には出産トラウマ付かない
+SIF ARG == MASTER
 	PREG:ARG:出産トラウマ計算用 = 0
 
 CHILDBIRTHDAY:ARG:0 = YEAR*10000+MONTH*100+DAYS
