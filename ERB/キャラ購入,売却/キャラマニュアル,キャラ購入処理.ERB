@@ -1,8 +1,6 @@
 ﻿@CHARA_MANUAL, ARG
 #DIM DYNAMIC LCOUNT
 
-VARSET LOCAL, 0
-
 IF GETCHARA(ARG) > 0
 	IF LANGUAGE == "ENG"
 		PRINTFORMW %CSVENGNAME(ARG)% was been unlocked.
@@ -58,6 +56,8 @@ ENDIF
 #DIMS DYNAMIC マニュアル, 2
 #DIM DYNAMIC 始点
 #DIM DYNAMIC 文字数
+#DIMS DYNAMIC 字体, 3
+#DIMS DYNAMIC 本文
 
 ;タグを探す
 始点 = STRFINDU(マニュアル, "(", 検索位置)
@@ -67,42 +67,43 @@ IF 始点 >= 0
 	;タグ付けまでの文章を通常表示
 	PRINTFORM %SUBSTRINGU(マニュアル, 0, 始点)%
 	;処理、内容、本文でSPLITする
-	SPLIT SUBSTRINGU(マニュアル, 始点+1, 文字数-1), ":", LOCALS
-	;LOCAL:0 = 特殊処理の種類 LOCAL:1 = 特殊処理の内容 LOCAL:2 = 本文
+	SPLIT SUBSTRINGU(マニュアル, 始点+1, 文字数-1), ":", 字体
+	本文 = %字体:2%
+	;字体:0 = 特殊処理の種類 字体:1 = 特殊処理の内容 本文 = 本文
 	;必要に応じて追加するとよい
-	SELECTCASE LOCALS:0
+	SELECTCASE 字体:0
 		;フォント変更系
 		CASE "FONT"
-			SELECTCASE LOCALS:1
+			SELECTCASE 字体:1
 				;太字
 				CASE "BOLD"
 					FONTBOLD
-					CALL MANUALPRINT, LOCALS:2
+					CALL MANUALPRINT, 本文
 					FONTREGULAR
 				;打ち消し線
 				CASE "STRIKE"
 					FONTSTYLE 4
-					CALL MANUALPRINT, LOCALS:2
+					CALL MANUALPRINT, 本文
 					FONTSTYLE 0
 			ENDSELECT
 		;色指定 現時点では色名のみで数値指定はできない
 		;指定した色名が無効であればデフォルト色表示
 		CASE "COLOR"
-			IF COLOR_FROMNAME(LOCALS:1) == -1
-				CALL MANUALPRINT, LOCALS:2
+			IF COLOR_FROMNAME(字体:1) == -1
+				CALL MANUALPRINT, 本文
 			ELSE
-				SETCOLOR COLOR_FROMNAME(LOCALS:1)
-				CALL MANUALPRINT, LOCALS:2
+				SETCOLOR COLOR_FROMNAME(字体:1)
+				CALL MANUALPRINT, 本文
 				RESETCOLOR
 			ENDIF
 		;その他
 		CASE "OTHER"
-			SELECTCASE LOCALS:1
+			SELECTCASE 字体:1
 				;反転タグ 実質シャルロット専用 ALIGHNMENT命令の仕様上、タグ重複使用は不可能
 				CASE "REVERSE"
 					マニュアル:1 =
-					FOR LCOUNT, STRLENSU(LOCALS:2), -1, -1
-						SELECTCASE CHARATU(LOCALS:2, LCOUNT)
+					FOR LCOUNT, STRLENSU(本文), -1, -1
+						SELECTCASE CHARATU(本文, LCOUNT)
 							CASE "【"
 								マニュアル:1 += "】"
 							CASE "】"
@@ -120,7 +121,7 @@ IF 始点 >= 0
 							CASE "）"
 								マニュアル:1 += "（"
 							CASEELSE
-								マニュアル:1 += CHARATU(LOCALS:2, LCOUNT)
+								マニュアル:1 += CHARATU(本文, LCOUNT)
 						ENDSELECT
 					NEXT
 					ALIGNMENT RIGHT
@@ -128,12 +129,12 @@ IF 始点 >= 0
 					ALIGNMENT LEFT
 				;WAIT このタグを使用すると改行されるので、文末までタグに含めないと表示がおかしくなる
 				CASE "WAIT"
-					CALL MANUALPRINT, LOCALS:2
+					CALL MANUALPRINT, 本文
 					WAIT
 			ENDSELECT
 	ENDSELECT
 	;次の始動位置をタグ終了後の次の文字に設定
-	検索位置 = STRFINDU(マニュアル, LOCALS:2)+STRLENSU(LOCALS:2)
+	検索位置 = STRFINDU(マニュアル, 本文)+STRLENSU(本文)
 	IF 検索位置 < STRLENSU(マニュアル)
 		;残りの文章が閉じカッコならループ終了
 		IF 検索位置+1 == STRLENSU(マニュアル) && CHARATU(マニュアル, 検索位置) == ")"
@@ -153,7 +154,8 @@ ENDIF
 
 @CHARA_BUY_CHECK, ARG
 #DIM DYNAMIC LCOUNT
-LOCAL = 0
+#DIM DYNAMIC 素質表示済み
+
 IF !EXISTCSV(ARG)
 	PRINTL 
 	IF LANGUAGE == "ENG"
@@ -184,20 +186,20 @@ ELSE
 			PRINTL [0]はい
 			PRINTL [1]いいえ
 		ENDIF
-		SIF LOCAL == 0
+		SIF !素質表示済み
 			PRINTL [2]素質を表示する
 		CALL INPUTF, 0, 1, 2
 		SELECTCASE RESULT
 			CASE 0
 				CALL CHARA_ADD, ARG
-				MONEY -= CSVCFLAG(ARG , 50)
+				MONEY -= CSVCFLAG(ARG , GETNUM(CFLAG, "価格"))
 				IF LANGUAGE == "ENG"
 					PRINTFORMW ＜You unlocked %CSVENGNAME(ARG)%＞
 				ELSE
 					PRINTFORMW ＜%CSVNAMEF(ARG)%を解禁しました＞
 				ENDIF
-				TRYCALLFORM K{ARG}_CHARABUY
-				TRYCALLFORM MASTER_K{NO:MASTER}_CHARABUY, ARG
+				TRYCALLFORM %CSVNAMERPS(ARG)%_CHARABUY
+				TRYCALLFORM MASTER_%CSVNAMERPS(ARG)%_CHARABUY, ARG
 				SIF CFLAG:誕生日 == (MONTH*100)+DAYS
 					CALL 実績解除, "アンハッピーバースデー"
 				SIF CHARANAMEF(TARGET) == "つらら" && MONTH == 12 && (DAYS == 24 || DAYS == 25)
@@ -207,7 +209,7 @@ ELSE
 				RETURN 1
 			CASE 2
 				$SHOW_TALENTS
-				LOCAL = 1
+				素質表示済み = 1
 				PRINTL 
 				IF LANGUAGE == "ENG"
 					PRINTFORML Race:%CSVCSTR(ARG, GETNUM(CSTR, "種族"))%
@@ -231,6 +233,8 @@ ELSE
 									CASE 4
 										PRINT 【LargeBreast】
 									CASE 5
+										PRINT 【XLargeBreast】
+									CASE 6
 										PRINT 【HugeBreast】
 								ENDSELECT
 							ELSE
@@ -244,6 +248,8 @@ ELSE
 									CASE 4
 										PRINT 【巨乳】
 									CASE 5
+										PRINT 【豊乳】
+									CASE 6
 										PRINT 【爆乳】
 								ENDSELECT
 							ENDIF
@@ -264,6 +270,7 @@ RETURN 0
 ;今のところは50人まで
 #DIMS DYNAMIC 相性設定用, 50
 #DIM DYNAMIC 名前例外処理
+#DIMS DYNAMIC 相性値, 100
 
 購入人数++
 ADDCHARA ARG
@@ -351,15 +358,15 @@ FOR LCOUNT, 0, RESULT
 	相性設定用:LCOUNT = %SUBSTRINGU(相性設定用:LCOUNT, 1)%
 	SIF 相性設定用:LCOUNT == ""
 		BREAK
-	SPLIT 相性設定用:LCOUNT, "*", LOCALS
+	SPLIT 相性設定用:LCOUNT, "*", 相性値
 	;サタンだけ相性設定用のアスタリスク文字が名前に入ってるので例外的に処理する
 	;「サタン-P」+「L-イブリース」
-	名前例外処理 = FINDELEMENT(LOCALS, "サタン-P", 0, 50, 1)
+	名前例外処理 = FINDELEMENT(相性値, "サタン-P", 0, 50, 1)
 	IF 名前例外処理 >= 0
-		LOCALS:名前例外処理 += @"*%LOCALS:(名前例外処理+1)%"
-		ARRAYREMOVE LOCALS, 名前例外処理+1, 1
+		相性値:名前例外処理 += @"*%相性値:(名前例外処理+1)%"
+		ARRAYREMOVE 相性値, 名前例外処理+1, 1
 	ENDIF
-	SIF GETNO(LOCALS) >= 0
-		RELATION:GETNO(LOCALS) = TOINT(LOCALS:1)
+	SIF GETNO(相性値) >= 0
+		RELATION:GETNO(相性値) = TOINT(相性値:1)
 NEXT
 

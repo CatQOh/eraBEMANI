@@ -5,6 +5,9 @@
 #DIM DYNAMIC 素質数
 #DIM DYNAMIC 人体錬成
 #DIM DYNAMIC 体型設定
+#DIMS DYNAMIC 種族候補
+#DIM DYNAMIC 素質上限
+#DIM DYNAMIC 素質付与判定, 30
 
 ADDVOIDCHARA
 
@@ -12,9 +15,9 @@ LTARGET = TARGET
 TARGET = CHARANUM-1
 
 IF 人体錬成
-	LOCALS = 人間
+	種族候補 = 人間
 ELSE
-	STRDATA LOCALS
+	STRDATA 種族候補
 		DATA 人間
 		DATA 悪魔
 		DATA 天使
@@ -26,7 +29,7 @@ ELSE
 	ENDDATA
 ENDIF
 
-CSTR:種族 = %LOCALS%
+CSTR:種族 = %種族候補%
 
 NAME:TARGET = %ランダム命名(RAND(1, 4))%
 CALLNAME:TARGET = %NAME:TARGET%
@@ -71,14 +74,13 @@ IF PENIS(TARGET)
 ENDIF
 
 ;6～10個の素質が付く
-VARSET LOCAL
-LOCAL = RAND(6, 11)
+素質上限 = RAND(6, 11)
 素質数 = 0
 
 DO
 	テーブル = RAND(1, 23)
 	;既に決定済みのテーブルならやり直し
-	SIF LOCAL:テーブル
+	SIF 素質付与判定:テーブル
 		CONTINUE
 	;素質の種類ごとにテーブルを置く
 	SELECTCASE テーブル
@@ -304,9 +306,9 @@ DO
 					TALENT:食欲皆伝 = 1
 			ENDSELECT
 	ENDSELECT
-	LOCAL:テーブル = 1
+	素質付与判定:テーブル = 1
 	素質数++
-LOOP LOCAL != 素質数
+LOOP 素質上限 != 素質数
 
 ;種族によって固定素質
 SELECTCASE CSTR:種族
@@ -397,6 +399,7 @@ SIF !RESULT
 @ADD_ランダムキャラ_STATUS, ARG, 人体錬成
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 人体錬成
+#DIM DYNAMIC 表示数
 
 DRAWLINE
 IF LANGUAGE == "ENG"
@@ -505,7 +508,7 @@ ELSE
 		PRINTL 【能力・性経験】
 	ENDIF
 ENDIF
-LOCAL = 0
+表示数 = 0
 IF !人体錬成
 	FOR LCOUNT, 0, VARSIZE("ABL")
 		SELECTCASE ABLNAME:LCOUNT
@@ -522,7 +525,7 @@ IF !人体錬成
 			CASEELSE
 				CONTINUE
 		ENDSELECT
-		SIF LOCAL == 0
+		SIF 表示数 == 0
 			PRINT 　
 		IF LANGUAGE == "ENG"
 			PRINTFORMLC %ABLDISP(LCOUNT)%:{ABL:ARG:LCOUNT}
@@ -530,16 +533,16 @@ IF !人体錬成
 			PRINTFORMLC %ABLDISP(LCOUNT)%:{ABL:ARG:LCOUNT}
 		ENDIF
 		PRINTPLAIN  
-		LOCAL++
-		IF LOCAL%3 == 0 && LOCAL != 0
+		表示数++
+		IF 表示数%3 == 0 && 表示数 != 0
 			PRINTL 
-			LOCAL = 0
+			表示数 = 0
 		ENDIF
 	NEXT
 	SIF !LINEISEMPTY()
 		PRINTL 
 	PRINTL 
-	LOCAL = 0
+	表示数 = 0
 	FOR LCOUNT, 0, 100
 		SELECTCASE EXPNAME:LCOUNT
 			CASE "Ｖ経験", "膣射経験", "出産経験", "流産経験"
@@ -558,7 +561,7 @@ IF !人体錬成
 			CASEELSE
 				CONTINUE
 		ENDSELECT
-		SIF LOCAL == 0
+		SIF 表示数 == 0
 			PRINT 　
 		IF LANGUAGE == "ENG"
 			PRINTFORMLC %EXPDISP(LCOUNT)%:{EXP:ARG:LCOUNT}
@@ -566,10 +569,10 @@ IF !人体錬成
 			PRINTFORMLC %EXPDISP(LCOUNT)%:{EXP:ARG:LCOUNT}
 		ENDIF
 		PRINTPLAIN  
-		LOCAL++
-		IF LOCAL%3 == 0 && LOCAL != 0
+		表示数++
+		IF 表示数%3 == 0 && 表示数 != 0
 			PRINTL 
-			LOCAL = 0
+			表示数 = 0
 		ENDIF
 	NEXT
 	SIF !LINEISEMPTY()
@@ -616,6 +619,8 @@ RESTART
 #DIMS DYNAMIC 素質名
 #DIM DYNAMIC LCOUNT
 #DIMS 文字色
+#DIMS DYNAMIC 文字列表示用, 6
+#DIM DYNAMIC 表示数
 
 IF MATCH(HIDE_TALENT, 1) == 0 && !CFLAG:ARG:複製
 	FOR LCOUNT, 0, 200
@@ -631,8 +636,8 @@ IF MATCH(HIDE_TALENT, 1) == 0 && !CFLAG:ARG:複製
 	NEXT
 ENDIF
 
-LOCAL = 0
-VARSET LOCALS, 
+表示数 = 0
+VARSET 文字列表示用
 FOR LCOUNT, 0, VARSIZE("TALENT")
 	SELECTCASE TALENTNAME:LCOUNT
 		CASE "性別"
@@ -642,7 +647,7 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 				CONTINUE
 	ENDSELECT
 	IF LCOUNT == VARSIZE("TALENT")-1
-		HTML_PRINT STRJOIN(LOCALS, "")
+		HTML_PRINT STRJOIN(文字列表示用, "")
 		BREAK
 	ELSEIF TALENT:ARG:LCOUNT == 0
 		CONTINUE
@@ -688,8 +693,8 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 		ENDIF
 	ENDIF
 
-	SIF LOCAL%6 == 0
-		LOCALS = 　
+	SIF 表示数%6 == 0
+		文字列表示用 = 　
 
 	;アイテムで付与できる素質は青くする
 	IF !CFLAG:ARG:複製
@@ -701,17 +706,17 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 		ENDSELECT
 	ENDIF
 	IF HIDE_TALENT:LCOUNT
-		LOCALS:(LOCAL%6) += @"%SET_TOOLTIP(素質名, "不明な素質です", 0, "gray")%"
+		文字列表示用:(表示数%6) += @"%SET_TOOLTIP(素質名, "不明な素質です", 0, "gray")%"
 	ELSE
-		LOCALS:(LOCAL%6) += @"%SET_TOOLTIP(素質名, TALENT_COMMENT(TALENTNAME:LCOUNT, ARG), 0, 文字色)%"
+		文字列表示用:(表示数%6) += @"%SET_TOOLTIP(素質名, TALENT_COMMENT(TALENTNAME:LCOUNT, ARG), 0, 文字色)%"
 	ENDIF
 
-	LOCAL++
+	表示数++
 
 	;改行するのか？ 続けて出力するのか？
-	IF LOCAL%6 == 0 && LOCAL != 0
-		HTML_PRINT STRJOIN(LOCALS, "")
-		VARSET LOCALS
+	IF 表示数%6 == 0 && 表示数 != 0
+		HTML_PRINT STRJOIN(文字列表示用, "")
+		VARSET 文字列表示用
 	ENDIF
 NEXT
 

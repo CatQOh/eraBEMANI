@@ -27,6 +27,10 @@ ENDIF
 #DIMS 登場作品フィルタ
 #DIMS キャラデザフィルタ
 #DIMS 種族フィルタ
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 次ページあり
+#DIM DYNAMIC 飛ばした数
+#DIMS DYNAMIC 文字列表示用
 
 ;選択可能キャラのフラグを立てる
 FOR LCOUNT, 0, 10000
@@ -47,7 +51,6 @@ NEXT
 
 $リスト表示
 
-VARSET LOCAL, 0
 ;ARG
 ;0 = 奴隷購入用キャラリスト
 ;1 = その他とりあえず全キャラ羅列するためのキャラリスト
@@ -95,7 +98,9 @@ IF FLAG:価格フィルタ所持金依存
 ELSE
 	価格上限 = FLAG:価格フィルタ上限
 ENDIF
-
+飛ばした数 = 0
+次ページあり = 0
+表示数 = 0
 FOR LCOUNT, 0, 10000
 	;選択可能じゃないキャラは非表示
 	SIF !選択可能:LCOUNT
@@ -193,34 +198,31 @@ FOR LCOUNT, 0, 10000
 	ENDIF
 
 	;表示上限(デフォルト30人)表示したら次ページフラグ立ててBREAK
-	IF LOCAL >= 表示上限
-		LOCAL:4 = 1
+	IF 表示数 >= 表示上限
+		次ページあり = 1
 		BREAK
 	ENDIF
 
 	;ページ数に該当するカウントまでスキップ
-	LOCAL:2++
-	SIF LOCAL:2 <= (TFLAG:ページ数*表示上限)
+	飛ばした数++
+	SIF 飛ばした数 <= (TFLAG:ページ数*表示上限)
 		CONTINUE
 
 	;3人表示したら改行
-	IF LOCAL:1 >= 3
-		;SIF LINEISEMPTY() == 0
-			PRINTL 
-		LOCAL:1 = 0
-	ENDIF
+	SIF 表示数%3 == 0 && 表示数 != 0
+		PRINTL 
 
 	IF ARG != 0
 		IF LANGUAGE == "ENG"
-			LOCALS = [{LCOUNT, 4}] %CSVENGNAME(LCOUNT)%
+			文字列表示用 = [{LCOUNT, 4}] %CSVENGNAME(LCOUNT)%
 		ELSE
-			LOCALS = [{LCOUNT, 4}] %CSVNAMEF(LCOUNT)%
+			文字列表示用 = [{LCOUNT, 4}] %CSVNAMEF(LCOUNT)%
 		ENDIF
 	ELSE
 		IF LANGUAGE == "ENG"
-			LOCALS = [{LCOUNT, 4}] %CSVENGNAME(LCOUNT)% ({CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格"))}＄)
+			文字列表示用 = [{LCOUNT, 4}] %CSVENGNAME(LCOUNT)% ({CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格"))}＄)
 		ELSE
-			LOCALS = [{LCOUNT, 4}] %CSVNAMEF(LCOUNT)% ({CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格"))}＄)
+			文字列表示用 = [{LCOUNT, 4}] %CSVNAMEF(LCOUNT)% ({CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格"))}＄)
 		ENDIF
 	ENDIF
 	
@@ -244,11 +246,11 @@ FOR LCOUNT, 0, 10000
 		ENDIF
 	ENDIF
 	IF ARG == 1
-		PRINTFORM %LOCALS , 38 , LEFT%
+		PRINTFORM %文字列表示用 , 38 , LEFT%
 	ELSE
-		CALL PASELI, LOCALS
+		CALL PASELI, 文字列表示用
 		;3人目は空白埋めしない
-		IF LOCAL:1 != 2
+		IF 表示数%3 != 2
 			;PRINT_IMGでPRINTC系命令使うとエラーになるので疑似再現
 			IF FLAG:パセリ表示
 				単位文字数 = 2
@@ -258,14 +260,12 @@ FOR LCOUNT, 0, 10000
 				単位文字数 = 1
 			ENDIF
 			;＄の分2文字と通貨単位分
-			PRINTFORM %SPACES(44-(STRLENS(LOCALS)-2)-単位文字数)%
+			PRINTFORM %SPACES(44-(STRLENS(文字列表示用)-2)-単位文字数)%
 		ENDIF
 	ENDIF
 	RESETCOLOR
 	
-	LOCAL:1++
-
-	LOCAL++
+	表示数++
 NEXT
 
 PRINTL 
@@ -505,7 +505,7 @@ ELSE
 			PRINT [10000] 最初から設定する
 	ENDSELECT
 ENDIF
-IF LOCAL:4
+IF 次ページあり
 	IF LANGUAGE == "ENG"
 		PRINTC [10009] Next Page
 	ELSE
@@ -527,7 +527,7 @@ DO
 			SIF TFLAG:ページ数
 				TFLAG:ページ数--
 		CASE 10009
-			SIF LOCAL:4
+			SIF 次ページあり
 				TFLAG:ページ数++
 		CASE 20000
 			SELECTCASE ARG
