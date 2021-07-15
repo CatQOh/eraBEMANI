@@ -291,12 +291,13 @@ ENDSELECT
 
 @GETCHARANAME, ARGS
 #FUNCTION
+#DIM DYNAMIC 対象
 ;GETCHARAのNAME版 上記CHARANAMEFと同じでNOの範囲が1～9999じゃないと返さない プレイヤーの名前入力による予期せぬ挙動を防ぐため
 
-LOCAL = FINDCHARA(NAME, ARGS)
+対象 = FINDCHARA(NAME, ARGS)
 
-SIF LOCAL >= 0 && INRANGE(NO:LOCAL, 1, 9999)
-	RETURNF LOCAL
+SIF 対象 >= 0 && INRANGE(NO:対象, 1, 9999)
+	RETURNF 対象
 
 RETURNF -1
 
@@ -313,29 +314,28 @@ ENDIF
 @PASELI, ARGS
 ;PRINT
 #DIM DYNAMIC LCOUNT
+;上限は20くらい取っておく
+#DIMS DYNAMIC 表示用, 20
 
-VARSET LOCALS
-
-SPLIT ARGS, "＄", LOCALS
+SPLIT ARGS, "＄", 表示用
 
 FOR LCOUNT, 0, RESULT
 	SIF LCOUNT >= 1
 		CALL 通貨単位
-	PRINTFORM %LOCALS:LCOUNT%
+	PRINTFORM %表示用:LCOUNT%
 NEXT
 
 @PASELIL, ARGS
 ;PRINTL
 #DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 表示用, 20
 
-VARSET LOCALS
-
-SPLIT ARGS, "＄", LOCALS
+SPLIT ARGS, "＄", 表示用
 
 FOR LCOUNT, 0, RESULT
 	SIF LCOUNT >= 1
 		CALL 通貨単位
-	PRINTFORM %LOCALS:LCOUNT%
+	PRINTFORM %表示用:LCOUNT%
 NEXT
 
 PRINTL 
@@ -343,15 +343,14 @@ PRINTL
 @PASELIW, ARGS
 ;PRINTW
 #DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 表示用, 20
 
-VARSET LOCALS
-
-SPLIT ARGS, "＄", LOCALS
+SPLIT ARGS, "＄", 表示用
 
 FOR LCOUNT, 0, RESULT
 	SIF LCOUNT >= 1
 		CALL 通貨単位
-	PRINTFORM %LOCALS:LCOUNT%
+	PRINTFORM %表示用:LCOUNT%
 NEXT
 
 PRINTW 
@@ -359,15 +358,14 @@ PRINTW
 @PASELIPLAIN, ARGS
 ;PRINTPLAIN
 #DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 表示用, 20
 
-VARSET LOCALS
-
-SPLIT ARGS, "＄", LOCALS
+SPLIT ARGS, "＄", 表示用
 
 FOR LCOUNT, 0, RESULT
 	SIF LCOUNT >= 1
 		CALL 通貨単位
-	PRINTPLAINFORM %LOCALS:LCOUNT%
+	PRINTPLAINFORM %表示用:LCOUNT%
 NEXT
 
 @TWO_DIGIT, 最大値, 単位, 最低値
@@ -375,38 +373,38 @@ NEXT
 #DIMS 単位
 #DIM 最低値
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 入力値
+#DIMS DYNAMIC HTML用, 2
 ;2桁の数値を直接入力するための関数
 ;ARGは最大値
 ;ARGSは単位
 ;ARG:1は最低値
 
-VARSET LOCAL, 0
-
 PRINTL キーボードによる直接入力もできます
 
 DO
 	PRINTL
-	IF LOCAL >= 10
-		PRINTFORM 【 %TOFULL(TOSTR(LOCAL/10))%
+	IF 入力値 >= 10
+		PRINTFORM 【 %TOFULL(TOSTR(入力値/10))%
 	ELSE
 		PRINT 【 　
 	ENDIF
-	PRINTFORML %TOFULL(TOSTR(LOCAL%10))% 】%単位%
+	PRINTFORML %TOFULL(TOSTR(入力値%10))% 】%単位%
 
 	
 	;一の位は100～109を入力されると決まる RESULT-100とかRESULT%100とか
 	;十の位は200～290を入力されると決まる (RESULT-200)/10とか？
 	FOR LCOUNT, 0, 10
-		VARSET LOCALS, 
+		VARSET HTML用
 		IF 最大値 >= LCOUNT*10 && 最低値 <= LCOUNT*10
-			LOCALS = <font color='#c0c0c0'><button value='{200+LCOUNT*10}'>[ {LCOUNT} ]</button></font>
+			HTML用 = <font color='#c0c0c0'><button value='{200+LCOUNT*10}'>[ {LCOUNT} ]</button></font>
 		ELSE
-			LOCALS = <font color='#c0c0c0'>     </font>
+			HTML用 = <font color='#c0c0c0'>     </font>
 		ENDIF
 		IF 最大値 >= LCOUNT
-			LOCALS:1 = <font color='#c0c0c0'><button value='{100+LCOUNT}'>[ {LCOUNT} ]</button></font>
+			HTML用:1 = <font color='#c0c0c0'><button value='{100+LCOUNT}'>[ {LCOUNT} ]</button></font>
 		ENDIF
-		HTML_PRINT LOCALS+LOCALS:1
+		HTML_PRINT HTML用+HTML用:1
 	NEXT
 	PRINTBUTTON "[  決定  ]", 999
 	PRINTBUTTON "[ 最大値 ]", 最大値
@@ -418,29 +416,29 @@ DO
 	SIF INRANGE(RESULT, 最低値, 最大値)
 		RETURN RESULT
 
-	;決定が押されればLOCALの値を返す
+	;決定が押されれば入力値の値を返す
 	IF RESULT == 999
-		IF LOCAL < 最低値
+		IF 入力値 < 最低値
 			PRINTFORMW 最低値({最低値})以上の数値を指定してください
 			CONTINUE
 		ENDIF
 		CLEARLINE 1
-		RETURN LOCAL
+		RETURN 入力値
 	ENDIF
 
 	SELECTCASE RESULT
 		;一の位の処理 一の位を0にしてから加算する
 		CASE 100 TO 109
-			LOCAL = (LOCAL/10)*10+(RESULT-100)
+			入力値 = (入力値/10)*10+(RESULT-100)
 		;十の位の処理 十の位を0にしてから加算する
 		CASE 200 TO 290
 			;プレイヤーが変なの入力した時用に一の位を抹消する
 			RESULT -= RESULT%10
-			LOCAL = (LOCAL%10)+(RESULT-200)
+			入力値 = (入力値%10)+(RESULT-200)
 	ENDSELECT
 	;最低値～最大値を超えてたらそれぞれ最低値か最高値に置き換える
-	SIF !INRANGE(LOCAL, 最低値, 最大値)
-		LOCAL = LIMIT(LOCAL, 最低値, 最大値)
+	SIF !INRANGE(入力値, 最低値, 最大値)
+		入力値 = LIMIT(入力値, 最低値, 最大値)
 	CLEARLINE 14
 LOOP 1
 
@@ -744,19 +742,18 @@ RETURNF GETNUM(EXP, ARGS)
 #DIMS DYNAMIC 文字列ボタン
 #DIM DYNAMIC ボタン化
 #DIMS DYNAMIC 文字色
+#DIM DYNAMIC 括弧, 2
 ;第一引数に第二引数のツールチップ付けたHTML_PRINT用の完成されたタグを返す式中関数
 ;"[]"で囲った部分があれば自動でボタン化する
 ;ボタン化フラグを0にすればボタン化しない
 
-VARSET LOCAL
-
 ;STRCOUNTの使い方がわからない
-LOCAL = STRFINDU(本文, "[")
-LOCAL:1 = STRFINDU(本文, "]")
+括弧 = STRFINDU(本文, "[")
+括弧:1 = STRFINDU(本文, "]")
 
-IF LOCAL != -1 && LOCAL:1 != -1
+IF 括弧 != -1 && 括弧:1 != -1
 	;STRFIND系使うと"[～]"の範囲を取得してるので"["と"]"を省くために+1と-1する
-	文字列ボタン = %SUBSTRINGU(本文, LOCAL+1, LOCAL:1-LOCAL-1)%
+	文字列ボタン = %SUBSTRINGU(本文, 括弧+1, 括弧:1-括弧-1)%
 	SIF ISNUMERIC(文字列ボタン)
 		ボタン = TOINT(文字列ボタン)
 ENDIF
@@ -810,8 +807,6 @@ RETURNF タグ
 ;PRINTBUTTONのツールチップ付与版
 ;PRINTBUTTONと同じ使い方に加え、第三引数のツールチップ付けたHTML_PRINT用の完成されたタグを返す式中関数
 ;ただしPRINTBUTTONとは違い、第二引数がINT型であってもダブルクォーテーションて括らなければならない
-
-VARSET LOCAL
 
 SIF ISNUMERIC(文字列ボタン)
 	ボタン = TOINT(文字列ボタン)
@@ -1049,13 +1044,12 @@ BASE:ARG:魔力 = LIMIT(BASE:ARG:魔力, 0, MAXBASE:ARG:魔力)
 
 @SLINEWAIT, ARGS
 #DIM DYNAMIC LCOUNT, 2
+#DIMS DYNAMIC 表示用, 10
 ;改行しないウェイトする関数 大犬口上から本体に移動
 
-VARSET LOCALS, 
+SPLIT ARGS, "Ｗ", 表示用
 
-SPLIT ARGS, "Ｗ", LOCALS
-
-LOCALS = %HTML_POPPRINTINGSTR()%%LOCALS%
+表示用 = %HTML_POPPRINTINGSTR()%%表示用%
 
 FOR LCOUNT, 0, RESULT
 	IF LCOUNT >= 1
@@ -1063,7 +1057,7 @@ FOR LCOUNT, 0, RESULT
 		CLEARLINE 1
 	ENDIF
 	FOR LCOUNT:1, 0, LCOUNT+1
-		PRINTFORM %LOCALS:(LCOUNT:1)%
+		PRINTFORM %表示用:(LCOUNT:1)%
 	NEXT
 NEXT
 PRINTW 
@@ -1448,28 +1442,30 @@ ENDIF
 #DIM DYNAMIC 返り値
 #DIMS DYNAMIC 区切り対象
 #DIMS DYNAMIC エラー通知用
+;万が一同じ桁が2回使われたとき用に3取ってみる
+#DIMS DYNAMIC 表示用, 3
 エラー通知用 = %区切り対象%
 ;漢字桁を数字に変換する
 
 IF STRFIND(区切り対象, "京") > 0
-	SPLIT 区切り対象, "京", LOCALS
-	返り値 += TOINT(LOCALS)*DIG_SEP("10,000,000,000,000,000")
-	区切り対象 = %LOCALS:1%
+	SPLIT 区切り対象, "京", 表示用
+	返り値 += TOINT(表示用)*DIG_SEP("10,000,000,000,000,000")
+	区切り対象 = %表示用:1%
 ENDIF
 IF STRFIND(区切り対象, "兆") > 0
-	SPLIT 区切り対象, "兆", LOCALS
-	返り値 += TOINT(LOCALS)*DIG_SEP("1,000,000,000,000")
-	区切り対象 = %LOCALS:1%
+	SPLIT 区切り対象, "兆", 表示用
+	返り値 += TOINT(表示用)*DIG_SEP("1,000,000,000,000")
+	区切り対象 = %表示用:1%
 ENDIF
 IF STRFIND(区切り対象, "億") > 0
-	SPLIT 区切り対象, "億", LOCALS
-	返り値 += TOINT(LOCALS)*DIG_SEP("100,000,000")
-	区切り対象 = %LOCALS:1%
+	SPLIT 区切り対象, "億", 表示用
+	返り値 += TOINT(表示用)*DIG_SEP("100,000,000")
+	区切り対象 = %表示用:1%
 ENDIF
 IF STRFIND(区切り対象, "万") > 0
-	SPLIT 区切り対象, "万", LOCALS
-	返り値 += TOINT(LOCALS)*DIG_SEP("10,000")
-	区切り対象 = %LOCALS:1%
+	SPLIT 区切り対象, "万", 表示用
+	返り値 += TOINT(表示用)*DIG_SEP("10,000")
+	区切り対象 = %表示用:1%
 ENDIF
 
 ;#;SIF ISNUMERIC(区切り対象)
@@ -1706,6 +1702,14 @@ FOR LCOUNT, 0, 文字数
 NEXT
 
 RETURNF SPACE
+
+@SPACESLENS, 文字列
+#FUNCTIONS
+#DIMS DYNAMIC 文字列
+;上記SPACESとSTRLENSを組み合わせたもの
+;REPLACE置換を使うので実はSTRLENSは使わない
+
+RETURNF REPLACE(文字列, ".", " ")
 
 ;サキュバスorインキュバス
 @淫魔, 対象

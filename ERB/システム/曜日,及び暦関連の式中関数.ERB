@@ -1,11 +1,16 @@
 ﻿@ZELLER(年, 月, 日)
 #FUNCTION
-#DIM 年
-#DIM 月
-#DIM 日
+#DIM DYNAMIC 年
+#DIM DYNAMIC 月
+#DIM DYNAMIC 日
+#DIM DYNAMIC 結果
+#DIM DYNAMIC 上二桁
+#DIM DYNAMIC 下二桁
+#DIM DYNAMIC 暦補正
+#DIM DYNAMIC 日数補正
+
 ;曜日を求める公式(ツェラーの公式)
 ;ARG=年 ARG:1=月 ARG:2=日  に対して「1:日,2:月,3:火,4:水,5:木,6:金,0:土」で返す
-;Enter:ARG変数を「年」「月」「日」に置き換え
 
 ;1月と2月は前年の13月と14月として扱う
 IF 月 < 3
@@ -13,30 +18,30 @@ IF 月 < 3
 	月 += 12
 ENDIF
 
-;年/100に床関数を通したものをLOCAL:1とする
+;年/100で床関数を計算
 ;負の数の床関数は面倒
-LOCAL:1 = 年/100
+上二桁 = 年/100
 SIF 年 < 0 && 年%100 != 0
-	LOCAL:1--
+	上二桁--
 
-;年と100を法として合同である値をLOCAL:2とする
+;年と100を法として合同である値を計算
 ;負の数の剰余も面倒
 ;(-34)%10 は -4と出る
-LOCAL:2 = 年%100
+下二桁 = 年%100
 SIF 年 < 0 && 年%100 != 0
-	LOCAL:2 = 100 + LOCAL:2
+	下二桁 = 100 + 下二桁
 
-;グレゴリオ暦かユリウス暦かによる補正をLOCAL:3とする
+;グレゴリオ暦かユリウス暦かによる補正を計算
 IF GREGORIAN(年, 月, 日)
-	LOCAL:3 = 5* LOCAL:1 + LOCAL:1 /4
+	暦補正 = 5* 上二桁 + 上二桁 /4
 ELSE
-	LOCAL:3 = 6* LOCAL:1 +5
+	暦補正 = 6* 上二桁 +5
 ENDIF
 
-;ユリウス暦を間違った運用をしていた期間の補正をLOCAL:4とする
+;ユリウス暦を間違った運用をしていた期間の補正を日数補正とする
 ;AD1年～AD3年は存在しない(けど計算上は存在する)AD4年2月29日のせいで+1を補正する
 IF 年 == 1 || 年 == 2 || 年 == 3
-	LOCAL:4 = 1
+	日数補正 = 1
 ;ここから紀元前
 ;同様にずれた分の補正をいれる
 ;例えば、BC45年2月29日は計算上は存在するべきなのに、実際はなかったので-1日分ずらす
@@ -44,32 +49,30 @@ ELSEIF 年 <= 0
 	;0年を紀元前1年、-1年を紀元前2年、-2年を紀元前3年……とおいて見た目を分かりやすくする
 	SELECTCASE ABS(年)+1
 		CASE 1, 21, 24, 25, 27 TO 32, 34, 35, 38
-			LOCAL:4 = 1
+			日数補正 = 1
 		CASE 2 TO 5, 9, 12, 13, 15 TO 20, 22, 23, 26
-			LOCAL:4 = 2
+			日数補正 = 2
 		CASE 6 TO 8, 10, 11, 14
-			LOCAL:4 = 3
+			日数補正 = 3
 		;7日ループで-1日は+6日と同じ
 		CASE 45
-			LOCAL:4 = 6
+			日数補正 = 6
 		CASEELSE
-			LOCAL:4 = 0
+			日数補正 = 0
 	ENDSELECT
 ENDIF
 
-;求める値をLOCALとおく
-;Enter:ウィキペディア風に括弧閉じ
-LOCAL = LOCAL:2 + (LOCAL:2 /4) + (26*(1+月)/10) + 日 + LOCAL:3 + LOCAL:4
-LOCAL %= 7
+結果 = 下二桁 + (下二桁 /4) + (26*(1+月)/10) + 日 + 暦補正 + 日数補正
+結果 %= 7
 
-RETURNF LOCAL
+RETURNF 結果
 
 
 @GREGORIAN(年, 月, 日)
 #FUNCTION
-#DIM 年
-#DIM 月
-#DIM 日
+#DIM DYNAMIC 年
+#DIM DYNAMIC 月
+#DIM DYNAMIC 日
 ;ARG年 ARG:1月 ARG:2日  にグレゴリオ暦が使われているか
 ;使われているなら1、そうでないなら0
 ;グレゴリオ暦は1582年10月15日から施行
@@ -117,9 +120,12 @@ ENDSELECT
 
 @NO_WEEK, 年 = -1, 月 = -1, 日 = -1
 #FUNCTION
-#DIM 日
-#DIM 月
-#DIM 年
+#DIM DYNAMIC 日
+#DIM DYNAMIC 月
+#DIM DYNAMIC 年
+#DIM DYNAMIC 月始め曜日
+#DIM DYNAMIC 対象曜日
+#DIM DYNAMIC 週
 SIF 年 == -1
 	年 = YEAR
 SIF 月 == -1
@@ -129,25 +135,25 @@ SIF 日 == -1
 
 ;式中関数「NO_WEEK」
 ;その日が月の何週目かを返す 週始めは日曜日
+;ZELLER関数は0が土曜日なのでずらす
 ;引数を省略した場合は今日、今月、今年で計算される
 
-LOCAL = ZELLER(年, 月, 1)
+月始め曜日 = ZELLER(年, 月, 1)-1
+SIF 月始め曜日 == -1
+	月始め曜日 = 6
 
-SELECTCASE LOCAL
-	CASE 0
-		LOCAL = 5
-	CASEELSE
-		LOCAL -= 2
-ENDSELECT
+週 = (日+月始め曜日-1)/7+1
 
-RETURNF (日+LOCAL)/7
+RETURNF 週
 
 @NO_DOW, 週, 曜日, 月 = -1 , 年 = -1
 #FUNCTION
-#DIMS 曜日
-#DIM 週
-#DIM 月
-#DIM 年
+#DIMS DYNAMIC 曜日
+#DIM DYNAMIC 週
+#DIM DYNAMIC 月
+#DIM DYNAMIC 年
+#DIM DYNAMIC 曜日補正
+#DIM DYNAMIC 月始め曜日
 SIF 年 == -1
 	年 = YEAR
 SIF 月 == -1
@@ -159,34 +165,34 @@ SIF 月 == -1
 
 SELECTCASE 曜日
 	CASE "日"
-		LOCAL = 1
+		曜日補正 = 1
 	CASE "月"
-		LOCAL = 2
+		曜日補正 = 2
 	CASE "火"
-		LOCAL = 3
+		曜日補正 = 3
 	CASE "水"
-		LOCAL = 4
+		曜日補正 = 4
 	CASE "木"
-		LOCAL = 5
+		曜日補正 = 5
 	CASE "金"
-		LOCAL = 6
+		曜日補正 = 6
 	CASE "土"
-		LOCAL = 7
+		曜日補正 = 7
 ENDSELECT
 
-LOCAL:1 = ZELLER(年, 月, 1)
+月始め曜日 = ZELLER(年, 月, 1)
 
-SELECTCASE LOCAL:1
+SELECTCASE 月始め曜日
 	CASE 0
-		LOCAL:1 = 6
+		月始め曜日 = 6
 	CASEELSE
-		LOCAL:1--
+		月始め曜日--
 ENDSELECT
 
-IF LOCAL < LOCAL:1+1
-	RETURNF LOCAL-LOCAL:1+週*7
+IF 曜日補正 < 月始め曜日+1
+	RETURNF 曜日補正-月始め曜日+週*7
 ELSE
-	RETURNF LOCAL-LOCAL:1+(週-1)*7
+	RETURNF 曜日補正-月始め曜日+(週-1)*7
 ENDIF
 
 @PREMIUM_FRIDAY, 年, 月, 日

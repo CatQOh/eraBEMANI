@@ -1,5 +1,7 @@
 ﻿@STATUS
 #DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 相性表示用
+#DIM DYNAMIC 表示数
 DRAWLINE
 CALL 基本情報
 
@@ -27,42 +29,42 @@ ELSE
 	SIF TALENT:隷属
 		PRINTL 　全キャラ×150%
 ENDIF
-LOCAL = 0
+表示数 = 0
 FOR LCOUNT, 0, 20000
 	;CSVがあるか、子供の場合に参照
 	IF EXISTCSV(LCOUNT) || LCOUNT > 10000
 		;子供の人数を突っ切ったら終了
 		SIF LCOUNT > 10000 && CHILDNAME:(LCOUNT-10000) == ""
 			BREAK
-		LOCALS = 
+		相性表示用 = 
 		IF RELATION:LCOUNT != 100
 			IF !TALENT:服従 && !TALENT:隷属
 				IF NO:MASTER == LCOUNT
-				LOCALS = 　%NAMEDISP(MASTER)%×{RELATION:LCOUNT}\%
+				相性表示用 = 　%NAMEDISP(MASTER)%×{RELATION:LCOUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAMEDISP(LCOUNT)%×{RELATION:LCOUNT}\%
+					相性表示用 = 　%CSVNAMEDISP(LCOUNT)%×{RELATION:LCOUNT}\%
 				ENDIF
 			ELSEIF RELATION:LCOUNT > 120 && TALENT:服従
 				IF NO:MASTER == LCOUNT
-					LOCALS = 　%NAMEDISP(MASTER)%×{RELATION:LCOUNT}\%
+					相性表示用 = 　%NAMEDISP(MASTER)%×{RELATION:LCOUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAMEDISP(LCOUNT)%×{RELATION:LCOUNT}\%
+					相性表示用 = 　%CSVNAMEDISP(LCOUNT)%×{RELATION:LCOUNT}\%
 				ENDIF
 			ELSEIF RELATION:LCOUNT > 150 && TALENT:隷属
 				IF NO:MASTER == LCOUNT
-					LOCALS = 　%NAMEDISP(MASTER)%×{RELATION:LCOUNT}\%
+					相性表示用 = 　%NAMEDISP(MASTER)%×{RELATION:LCOUNT}\%
 				ELSE
-					LOCALS = 　%CSVNAMEDISP(LCOUNT)%×{RELATION:LCOUNT}\%
+					相性表示用 = 　%CSVNAMEDISP(LCOUNT)%×{RELATION:LCOUNT}\%
 				ENDIF
 			ENDIF
 		ENDIF
-		IF LOCALS != ""
-			PRINTFORMLC %LOCALS%
-			LOCAL++
+		IF 相性表示用 != ""
+			PRINTFORMLC %相性表示用%
+			表示数++
 		ENDIF
-		IF LOCAL == 4 && !LINEISEMPTY()
+		IF 表示数 == 4 && !LINEISEMPTY()
 			PRINTL 
-			LOCAL = 0
+			表示数 = 0
 		ENDIF
 	ENDIF
 NEXT
@@ -78,23 +80,23 @@ IF LANGUAGE == "ENG"
 	IF TARGET > 0
 		PRINT [6] Prev Character 
 	ELSE
-		PRINTPLAIN                    
+		PRINTPLAINFORM %SPACES(STRLENS("[6] Prev Character "))%
 	ENDIF
 	IF TARGET < CHARANUM-1
 		PRINT [7] Next Character 
 	ELSE
-		PRINTPLAIN 　　　　　　　 
+		PRINTPLAINFORM %SPACES(STRLENS("[7] Next Character "))%
 	ENDIF
 	PRINTL
 
-	PRINTPLAIN          
+	PRINTPLAINFORM %SPACESLENS("　BASIC　")%
 	IF !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && TARGET != MASTER
 		SIF SHOW_TARGET != TARGET
 			PRINT [8] Assign on Target 
 		IF NOSAMES(TARGET, MASTER, ASSI) && CFLAG:状態 >= 2
 			PRINT [9] Assign on Assistant 
 		ELSE
-			PRINT                         
+			PRINTFORM %SPACESLENS("[9] Assign on Assistant ")%
 		ENDIF
 		PRINT [10] Give Item
 	ENDIF
@@ -107,12 +109,12 @@ ELSE
 	IF TARGET > 0
 		PRINT [6] 前のキャラ 
 	ELSE
-		PRINTPLAIN 　　　　　　　 
+		PRINTPLAINFORM %SPACESLENS("[6] 前のキャラ ")%
 	ENDIF
 	IF TARGET < CHARANUM-1
 		PRINT [7] 次のキャラ 
 	ELSE
-		PRINTPLAIN 　　　　　　　 
+		PRINTPLAINFORM %SPACESLENS("[7] 次のキャラ ")%
 	ENDIF
 
 	IF !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && TARGET != MASTER
@@ -121,7 +123,7 @@ ELSE
 		IF NOSAMES(TARGET, MASTER, ASSI) && CFLAG:状態 >= 2
 			PRINT [9] 助手に指定 
 		ELSE
-			PRINTPLAIN 　　　　　　　 
+			PRINTPLAINFORM %SPACESLENS("[9] 助手に指定")%
 		ENDIF
 		PRINT [10] アイテム使用
 	ENDIF
@@ -263,6 +265,7 @@ ENDIF
 #DIMS DYNAMIC 立場
 #DIM DYNAMIC 兄弟姉妹性別, 10
 #DIM DYNAMIC 兄弟姉妹数
+#DIMS DYNAMIC 主人名保存用
 
 ;処女が主人のドラゴンとなっている場合は、現在のドラゴンの名前を入れて後で戻す
 IF CSTR:処女 == "主人のドラゴン"
@@ -698,13 +701,13 @@ SIF CSTR:適用MOD != ""
 IF TARGET != MASTER
 	;新婚モードなら一時的にCALLNAME:MASTERは「主人」になる
 	IF ゲームモード() == "新婚モード"
-		LOCALS = %CALLNAME:MASTER%
+		主人名保存用 = %CALLNAME:MASTER%
 		CALLNAME:MASTER = 主人
 	ENDIF
 	SELECTCASE PAGE
 		CASE 0
-			PRINTPLAIN □ 日常経験 
-			PRINTPLAIN       
+			PRINTLC □ 日常経験
+			PRINTPLAINFORM %SPACESLENS(" [1]← ")%
 			PRINTL [2]→
 			SIF CFLAG:売却寸止め
 				PRINTFORML 　売却されそうになったことがある({CFLAG:売却寸止め})
@@ -751,10 +754,9 @@ IF TARGET != MASTER
 				ENDIF
 			ENDIF
 		CASE 1
-			PRINTPLAIN □ 奉仕経験(回数) 
-			PRINT [1]←
-			PRINTPLAIN  
-			PRINTL [2]→
+			PRINTLC □ 奉仕経験(回数) 
+			PRINTPLAIN 
+			PRINTL [1]← [2]→
 			IF CFLAG:主人からの膣射経験
 				IF CFLAG:陥落
 					PRINTFORML 　%CALLNAME:MASTER%の精液を膣で受け入れたことがある({CFLAG:主人からの膣射経験})
@@ -804,10 +806,9 @@ IF TARGET != MASTER
 			SIF CFLAG:逆アナルで射精させた経験
 				PRINTFORML 　%CALLNAME:MASTER%のアナルを犯しながら%CALLNAME:MASTER%を射精させたことがある({CFLAG:逆アナルで射精させた経験})
 		CASE 2
-			PRINTPLAIN □ 絶頂経験 
-			PRINT [1]←
-			PRINTPLAIN  
-			PRINTL [2]→
+			PRINTLC □ 絶頂経験
+			PRINTPLAIN 
+			PRINTL [1]← [2]→
 			SIF CFLAG:絶頂放尿経験
 				PRINTFORML 　絶頂と同時に尿を漏らしてしまったことがある({CFLAG:絶頂放尿経験})
 			SIF CFLAG:野外放尿経験
@@ -865,10 +866,9 @@ IF TARGET != MASTER
 			SIF CFLAG:浣腸器で脱糞した経験
 				PRINTFORML 　調教中に浣腸器を使用されて排泄物を漏らしてしまったことがある({CFLAG:浣腸器で脱糞した経験})
 		CASE 3
-			PRINTPLAIN □ 異種姦経験 
-			PRINT [1]←
-			PRINTPLAIN  
-			PRINTL [2]→
+			PRINTLC □ 異種姦経験
+			PRINTPLAIN 
+			PRINTL [1]← [2]→
 			SIF CFLAG:触手Ｃ絶頂経験
 				PRINTFORML 　触手にクリトリスを責められて絶頂したことがある({CFLAG:触手Ｃ絶頂経験})
 			SIF CFLAG:触手Ｖ絶頂経験
@@ -898,7 +898,8 @@ IF TARGET != MASTER
 			SIF CFLAG:スライム姦された経験
 				PRINTFORML 　スライムに犯されたことがある({CFLAG:スライム姦された経験})
 		CASE 4
-			PRINTPLAIN □ 撮影経験 
+			PRINTLC □ 撮影経験
+			PRINTPLAIN 
 			PRINTL [1]←
 			SIF CFLAG:絶頂を撮影された経験
 				PRINTFORML 　撮影されながらイッたことがある({CFLAG:絶頂を撮影された経験})
@@ -914,7 +915,7 @@ IF TARGET != MASTER
 				PRINTFORML 　撮影されながら浣腸液で糞便を撒き散らしたことがある({CFLAG:脱糞を撮影された経験})
 	ENDSELECT
 	SIF ゲームモード() == "新婚モード"
-		CALLNAME:MASTER = %LOCALS%
+		CALLNAME:MASTER = %主人名保存用%
 ENDIF
 
 SIF ドラゴンに処女:0
@@ -933,12 +934,12 @@ PRINT [5] 基本情報　
 IF TARGET > 0
 	PRINT [6] 前のキャラ 
 ELSE
-	PRINTPLAIN 　　　　　　　 
+	PRINTPLAINFORM %SPACESLENS("[6] 前のキャラ ")%
 ENDIF
 IF TARGET < CHARANUM-1
 	PRINT [7] 次のキャラ 
 ELSE
-	PRINTPLAIN 　　　　　　　 
+	PRINTPLAINFORM %SPACESLENS("[7] 次のキャラ ")%
 ENDIF
 
 IF !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && TARGET != MASTER
@@ -947,7 +948,7 @@ IF !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && TARGET != MASTER
 	IF NOSAMES(TARGET, MASTER, ASSI) && CFLAG:状態 >= 2
 		PRINT [9] 助手に指定 
 	ELSE
-		PRINTPLAIN 　　　　　　　 
+		PRINTPLAINFORM %SPACESLENS("[9] 助手に指定 ")%
 	ENDIF
 	PRINT [10] アイテム使用 
 ENDIF
@@ -1164,12 +1165,12 @@ IF 設定 != 1
 	IF TARGET > 0
 		PRINT [6] 前のキャラ 
 	ELSE
-		PRINTPLAIN 　　　　　　　 
+		PRINTPLAINFORM %SPACESLENS("[6] 前のキャラ ")%
 	ENDIF
 	IF TARGET < CHARANUM-1
 		PRINT [7] 次のキャラ 
 	ELSE
-		PRINTPLAIN 　　　　　　　 
+		PRINTPLAINFORM %SPACESLENS("[7] 次のキャラ ")%
 	ENDIF
 ENDIF
 
@@ -1179,7 +1180,7 @@ IF !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && TARGET != MASTER
 	IF NOSAMES(TARGET, MASTER, ASSI) && CFLAG:状態 >= 2
 		PRINT [9] 助手に指定 
 	ELSE
-		PRINTPLAIN 　　　　　　　 
+		PRINTPLAINFORM %SPACESLENS("[9] 助手に指定 ")%
 	ENDIF
 ENDIF
 PRINTL 
@@ -1563,7 +1564,6 @@ ENDSELECT
 @SHOW_INFO_HEALTH, ARG = -1
 SIF ARG == -1
 	ARG = TARGET
-LOCAL = 0
 IF LANGUAGE == "ENG"
 	PRINTFORML 　Health%BARBASE("体力", ARG)%
 	PRINTFORML 　Energy%BARBASE("気力", ARG)%
@@ -1581,11 +1581,12 @@ ENDIF
 @SHOW_INFO_PALAM
 #DIMS DYNAMIC 記号
 #DIM DYNAMIC LCOUNT
-LOCAL = 0
-VARSET LOCALS
+#DIM DYNAMIC パラメータ
+#DIMS DYNAMIC 表示用, 4
+
 FOR LCOUNT, 0, VARSIZE("PALAM")
-	;LOCAL:0 = 表示されるパラメータの数値。kMGT等と一緒に表示される
-	;LOCALS:0 = いろいろな文字を組み合わせて最終的に表示される1文
+	;パラメータ = 表示されるパラメータの数値。kMGT等と一緒に表示される
+	;表示用 = いろいろな文字を組み合わせて最終的に表示される1文
 	SIF PALAMNAME:LCOUNT == ""
 		BREAK
 
@@ -1606,49 +1607,50 @@ FOR LCOUNT, 0, VARSIZE("PALAM")
 		ENDIF
 	ENDIF
 
+	;文頭に全角スペースを置く
 	SIF LCOUNT%3 == 0
-		LOCALS = "　"
+		表示用 = "　"
 	;パラメータの名前・パラメータレベル
 	IF LANGUAGE == "ENG"
 		IF !VAGINA(TARGET) && PALAMNAME:LCOUNT == "快Ｖ"
-			LOCALS = %PALAMDISP(LCOUNT), 6, LEFT%Lv-
+			表示用 = %PALAMDISP(LCOUNT), 6, LEFT%Lv-
 		ELSE
-			LOCALS = %PALAMDISP(LCOUNT), 6, LEFT%Lv{GETPALAMLV(PALAM:LCOUNT, 9)}
+			表示用 = %PALAMDISP(LCOUNT), 6, LEFT%Lv{GETPALAMLV(PALAM:LCOUNT, 9)}
 		ENDIF
 	ELSE
 		IF !VAGINA(TARGET) && PALAMNAME:LCOUNT == "快Ｖ"
-			LOCALS = %PALAMDISP(LCOUNT)%Lv-
+			表示用 = %PALAMDISP(LCOUNT)%Lv-
 		ELSE
-			LOCALS = %PALAMDISP(LCOUNT)%Lv{GETPALAMLV(PALAM:LCOUNT, 9)}
+			表示用 = %PALAMDISP(LCOUNT)%Lv{GETPALAMLV(PALAM:LCOUNT, 9)}
 		ENDIF
 	ENDIF
 
 	;ゲージ処理 パラメータレベルが9以上なら余計な処理は飛ばす
 	IF GETPALAMLV(PALAM:LCOUNT, 9) >= 9
-		LOCALS += "[**********] "
+		表示用 += "[**********] "
 	ELSEIF PALAMNAME:LCOUNT == "潤滑" && PALAM:LCOUNT >= 20000
-		LOCALS += "[**********] "
+		表示用 += "[**********] "
 	ELSEIF PALAMNAME:LCOUNT == "勃起" && PALAM:LCOUNT >= PALAMLV:3
-		LOCALS += "[**********] "
+		表示用 += "[**********] "
 	ELSE
-		LOCALS += @"%BARSTR(PALAM:LCOUNT, PALAMLV:(GETPALAMLV(PALAM:LCOUNT, 9)+1), 10)% "
+		表示用 += @"%BARSTR(PALAM:LCOUNT, PALAMLV:(GETPALAMLV(PALAM:LCOUNT, 9)+1), 10)% "
 	ENDIF
 
 	;これだけ特殊
 	IF PALAMNAME:LCOUNT == "潤滑" && PALAM:LCOUNT >= 20000
 		IF LANGUAGE == "ENG"
-			LOCALS += "Wet               "
+			表示用 += "Wet               "
 		ELSE
-			LOCALS += "濡                "
+			表示用 += "濡                "
 		ENDIF
 		GOTO SET
 	ENDIF
 	;これも特殊
 	IF PALAMNAME:LCOUNT == "勃起" && PALAM:LCOUNT >= PALAMLV:3
 		IF LANGUAGE == "ENG"
-			LOCALS += "Erection          "
+			表示用 += "Erection          "
 		ELSE
-			LOCALS += "勃                "
+			表示用 += "勃                "
 		ENDIF
 		GOTO SET
 	ENDIF
@@ -1669,80 +1671,80 @@ FOR LCOUNT, 0, VARSIZE("PALAM")
 	STRLENS TOSTR(PALAM:LCOUNT)
 	SELECTCASE RESULT
 		CASE IS >= 18
-			LOCAL = PALAM:LCOUNT / POWER(10,15)
+			パラメータ = PALAM:LCOUNT / POWER(10,15)
 			IF RESULT == 18
 				記号 = .%CHARATU(TOSTR(PALAM:LCOUNT),3)%P
 			ELSE
 				記号 = P
 			ENDIF
 		CASE IS >= 15
-			LOCAL = PALAM:LCOUNT / POWER(10,12)
+			パラメータ = PALAM:LCOUNT / POWER(10,12)
 			IF RESULT == 15
 				記号 = .%CHARATU(TOSTR(PALAM:LCOUNT),3)%T
 			ELSE
 				記号 = T
 			ENDIF
 		CASE IS >= 12
-			LOCAL = PALAM:LCOUNT / POWER(10,9)
+			パラメータ = PALAM:LCOUNT / POWER(10,9)
 			IF RESULT == 12
 				記号 = .%CHARATU(TOSTR(PALAM:LCOUNT),3)%G
 			ELSE
 				記号 = G
 			ENDIF
 		CASE IS >= 9
-			LOCAL = PALAM:LCOUNT / POWER(10,6)
+			パラメータ = PALAM:LCOUNT / POWER(10,6)
 			IF RESULT == 9
 				記号 = .%CHARATU(TOSTR(PALAM:LCOUNT),3)%M
 			ELSE
 				記号 = M
 			ENDIF
 		CASE IS >= 7
-			LOCAL = PALAM:LCOUNT / POWER(10,3)
+			パラメータ = PALAM:LCOUNT / POWER(10,3)
 			記号 = k
 		CASEELSE
-			LOCAL = PALAM:LCOUNT
+			パラメータ = PALAM:LCOUNT
 	ENDSELECT
 
 	IF !VAGINA(TARGET) && PALAMNAME:LCOUNT == "快Ｖ"
-		LOCALS += "------"
+		表示用 += "------"
 	ELSE
 		IF PALAM:LCOUNT <= 999999
-			LOCALS += @"{LOCAL, 6, LEFT}"
+			表示用 += @"{パラメータ, 6, LEFT}"
 		ELSE
-			LOCALS += @"%TOSTR(LOCAL)+記号, 6, LEFT%"
+			表示用 += @"%TOSTR(パラメータ)+記号, 6, LEFT%"
 		ENDIF
 	ENDIF
 
 	;カンストしてたら特殊表示
 	IF PALAM:LCOUNT == __INT_MAX__
-		LOCALS += " CounterStop"
+		表示用 += " CounterStop"
 	ELSE
-		LOCALS += " Next/"
+		表示用 += " Next/"
 
 		;ヴァギナ無ければ快Ｖは表示しない
 		IF !VAGINA(TARGET) && PALAMNAME:LCOUNT == "快Ｖ"
-			LOCALS += "------"
+			表示用 += "------"
 		;ペニス無ければ勃起は表示しない
 		ELSEIF !PENIS(TARGET) && PALAMNAME:LCOUNT == "勃起"
-			LOCALS += "------"
+			表示用 += "------"
 		ELSE
 			IF GETPALAMLV(PALAM:LCOUNT, 9) >= 9
-				LOCALS += "MAXLV!"
+				表示用 += "MAXLV!"
 			ELSE
-				LOCALS += @"{PALAMLV:(GETPALAMLV(PALAM:LCOUNT, 9)+1)-PALAM:LCOUNT, 6, LEFT}"
+				表示用 += @"{PALAMLV:(GETPALAMLV(PALAM:LCOUNT, 9)+1)-PALAM:LCOUNT, 6, LEFT}"
 			ENDIF
 		ENDIF
 	ENDIF
 	$SET
-	LOCALS:(LCOUNT%3+1) = %SET_TOOLTIP(LOCALS, PALAM_COMMENT(PALAMNAME:LCOUNT))%
+	表示用:(LCOUNT%3+1) = %SET_TOOLTIP(表示用, PALAM_COMMENT(PALAMNAME:LCOUNT))%
 	RESETCOLOR
 
 	;LCOUNT仕様の都合で2
 	SIF LCOUNT%3 == 2
-		HTML_PRINT STRJOIN(LOCALS, "", 1)
+		HTML_PRINT STRJOIN(表示用, "", 1)
 NEXT
 ;現在はPALAMの数が16あるのでここでも表示しておく
-HTML_PRINT LOCALS:1
+HTML_PRINT 表示用:1
 SIF !LINEISEMPTY()
 	PRINTL 
 
@@ -1751,21 +1753,21 @@ SIF !LINEISEMPTY()
 @SHOW_INFO_ABL, ARG
 #DIMS DYNAMIC 表示用レベル
 #DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 表示用, 7
+#DIM DYNAMIC 表示数
 
-LOCAL = 0
-VARSET LOCALS, 
 FOR LCOUNT, 0, VARSIZE("ABL")
 	IF LCOUNT == VARSIZE("ABL")-1
-		HTML_PRINT STRJOIN(LOCALS, "")
+		HTML_PRINT STRJOIN(表示用, "")
 		BREAK
 	ELSEIF ABLNAME:LCOUNT == ""
 		CONTINUE
 	ENDIF
 
 	;改行するのか？ 続けて出力するのか？
-	IF LOCAL%6 == 0 && LOCAL != 0
-		HTML_PRINT STRJOIN(LOCALS, "")
-		VARSET LOCALS
+	IF 表示数%6 == 0 && 表示数 != 0
+		HTML_PRINT STRJOIN(表示用, "")
+		VARSET 表示用
 	ENDIF
 
 	SELECTCASE SEX(ARG)
@@ -1801,12 +1803,12 @@ FOR LCOUNT, 0, VARSIZE("ABL")
 	ENDSELECT
 
 	IF LANGUAGE == "ENG"
-		LOCALS:(LOCAL%6) = %SET_TOOLTIP(@"　%ABLDISP(LCOUNT), 12%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, ARG))%
+		表示用:(表示数%6) = %SET_TOOLTIP(@"　%ABLDISP(LCOUNT), 12%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, ARG))%
 	ELSE
-		LOCALS:(LOCAL%6) = %SET_TOOLTIP(@"　%ABLDISP(LCOUNT), 8%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, ARG))%
+		表示用:(表示数%6) = %SET_TOOLTIP(@"　%ABLDISP(LCOUNT), 8%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, ARG))%
 	ENDIF
 	RESETCOLOR
-	LOCAL++
+	表示数++
 NEXT
 
 SIF !LINEISEMPTY()
@@ -1817,8 +1819,8 @@ SIF !LINEISEMPTY()
 @SHOW_INFO_TALENT, ARG
 #DIMS DYNAMIC 素質名
 #DIM DYNAMIC LCOUNT
-LOCAL = 0
-VARSET LOCALS, 
+#DIMS DYNAMIC 表示用, 6
+#DIM DYNAMIC 表示数
 FOR LCOUNT, 0, VARSIZE("TALENT")
 	SELECTCASE TALENTNAME:LCOUNT
 		CASE "性別"
@@ -1828,7 +1830,7 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 				CONTINUE
 	ENDSELECT
 	IF LCOUNT == VARSIZE("TALENT")-1
-		HTML_PRINT STRJOIN(LOCALS, "")
+		HTML_PRINT STRJOIN(表示用, "")
 		BREAK
 	ELSEIF TALENT:ARG:LCOUNT == 0
 		CONTINUE
@@ -1870,17 +1872,17 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 		素質名 = [%TALENTDISP(LCOUNT)%]
 	ENDIF
 
-	SIF LOCAL%6 == 0
-		LOCALS = 　
+	SIF 表示数%6 == 0
+		表示用 = 　
 
-	LOCALS:(LOCAL%6) += @"%SET_TOOLTIP(素質名, TALENT_COMMENT(TALENTNAME:LCOUNT, ARG))%"
+	表示用:(表示数%6) += @"%SET_TOOLTIP(素質名, TALENT_COMMENT(TALENTNAME:LCOUNT, ARG))%"
 
-	LOCAL++
+	表示数++
 
 	;改行するのか？ 続けて出力するのか？
-	IF LOCAL%6 == 0 && LOCAL != 0
-		HTML_PRINT STRJOIN(LOCALS, "")
-		VARSET LOCALS
+	IF 表示数%6 == 0 && 表示数 != 0
+		HTML_PRINT STRJOIN(表示用, "")
+		VARSET 表示用
 	ENDIF
 NEXT
 
@@ -1891,11 +1893,12 @@ SIF !LINEISEMPTY()
 ;刻印表示
 @SHOW_INFO_MARK, ARG
 #DIM DYNAMIC LCOUNT
-VARSET LOCALS, 
+#DIMS DYNAMIC 表示用, 4
+
 FOR LCOUNT, 0, 4
-	LOCALS:LCOUNT = 　%SET_TOOLTIP(@"%MARKDISP(LCOUNT)%:LV{MARK:ARG:LCOUNT} %BARSTR(MARK:ARG:LCOUNT, 3, 3)%", MARK_COMMENT(MARKNAME:LCOUNT, ARG))%
+	表示用:LCOUNT = 　%SET_TOOLTIP(@"%MARKDISP(LCOUNT)%:LV{MARK:ARG:LCOUNT} %BARSTR(MARK:ARG:LCOUNT, 3, 3)%", MARK_COMMENT(MARKNAME:LCOUNT, ARG))%
 	SIF LCOUNT == 3
-		HTML_PRINT STRJOIN(LOCALS, "")
+		HTML_PRINT STRJOIN(表示用, "")
 NEXT
 SIF !LINEISEMPTY()
 	PRINTL 
@@ -1907,8 +1910,8 @@ SIF !LINEISEMPTY()
 #DIMS DYNAMIC 経験名
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 一行表示数
-VARSET LOCALS
-LOCAL = 0
+#DIMS DYNAMIC 表示用, 5
+#DIM DYNAMIC 表示数
 
 ;英語と日本語で文字数が違いすぎるので一行の表示数を変える
 IF LANGUAGE == "ENG"
@@ -1919,16 +1922,16 @@ ENDIF
 
 FOR LCOUNT, 0, VARSIZE("EXP")
 	IF LCOUNT == VARSIZE("EXP")-1
-		HTML_PRINT STRJOIN(LOCALS, "")
+		HTML_PRINT STRJOIN(表示用, "")
 		BREAK
 	ELSEIF EXPNAME:LCOUNT == ""
 		CONTINUE
 	ENDIF
 
 	;改行するのか？ 続けて出力するのか？
-	IF LOCAL%一行表示数 == 0 && LOCAL != 0
-		HTML_PRINT STRJOIN(LOCALS, "")
-		VARSET LOCALS
+	IF 表示数%一行表示数 == 0 && 表示数 != 0
+		HTML_PRINT STRJOIN(表示用, "")
+		VARSET 表示用
 	ENDIF
 
 	表示用経験 = %TOSTR(EXP:ARG:LCOUNT), 12%
@@ -1996,9 +1999,9 @@ FOR LCOUNT, 0, VARSIZE("EXP")
 		ENDSELECT
 	ENDIF
 
-	LOCALS:(LOCAL%一行表示数) = %SET_TOOLTIP(@"　%経験名, 8%:%表示用経験%", EXP_COMMENT(EXPNAME:LCOUNT, ARG))%
+	表示用:(表示数%一行表示数) = %SET_TOOLTIP(@"　%経験名, 8%:%表示用経験%", EXP_COMMENT(EXPNAME:LCOUNT, ARG))%
 	RESETCOLOR
-	LOCAL++
+	表示数++
 NEXT
 SIF !LINEISEMPTY()
 	PRINTL 
@@ -2008,7 +2011,7 @@ SIF !LINEISEMPTY()
 @SHOW_INFO_JUEL, ARG
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 一行表示数
-LOCAL = 0
+#DIM DYNAMIC 表示数
 
 ;英語と日本語で文字数が違いすぎるので一行の表示数を変える
 IF LANGUAGE == "ENG"
@@ -2023,7 +2026,7 @@ FOR LCOUNT, 0, VARSIZE("PALAM")
 			CONTINUE
 	ENDSELECT
 	;改行するのか？ 続けて出力するのか？
-	SIF LOCAL%一行表示数 == 0 && LOCAL != 0
+	SIF 表示数%一行表示数 == 0 && 表示数 != 0
 		PRINTL 
 	
 	IF LANGUAGE == "ENG"
@@ -2031,7 +2034,7 @@ FOR LCOUNT, 0, VARSIZE("PALAM")
 	ELSE
 		PRINTFORM 　%PALAMDISP(LCOUNT), 4%の珠:{JUEL:ARG:LCOUNT, 12}
 	ENDIF
-	LOCAL++
+	表示数++
 NEXT
 ;PRINT 　否定の珠:
 ;PRINTFORM {JUEL:ARG:否定, 10}
@@ -2041,7 +2044,7 @@ SIF !LINEISEMPTY()
 ;=============================================================================
 ;服装表示
 @SHOW_INFO_CLOTHES, ARG
-#DIM LCOUNT
+#DIM DYNAMIC LCOUNT
 
 FOR LCOUNT, 0, VARSIZE("CSTR")
 	SELECTCASE CSTRNAME:LCOUNT

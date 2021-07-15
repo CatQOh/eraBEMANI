@@ -1,4 +1,5 @@
 ﻿@EVENTFIRST
+#DIMS DYNAMIC HTML用, 3
 
 ;学園モードでは別のEVENTFIRSTで処理する
 SIF ゲームモード() == "学園モード"
@@ -46,13 +47,11 @@ ELSE
 	PRINTL 　クリックで選択 価格はすべて税込みとなります　　＼／DP＼
 ENDIF
 
-VARSET LOCALS
+HTML用 =<nobr><button value='7' pos='100'> <img src='MODE' srcb='MODEB' height='700'></button>
+HTML用:1 =<button value='8' pos='1700'> <img src='MODE' srcb='MODEB' height='700'></button>
+HTML用:2 =<button value='9' pos='3300'> <img src='MODE' srcb='MODEB' height='700'></button>
 
-LOCALS =<nobr><button value='7' pos='100'> <img src='MODE' srcb='MODEB' height='700'></button>
-LOCALS:1 =<button value='8' pos='1700'> <img src='MODE' srcb='MODEB' height='700'></button>
-LOCALS:2 =<button value='9' pos='3300'> <img src='MODE' srcb='MODEB' height='700'></button>
-
-HTML_PRINT STRJOIN(LOCALS, "")
+HTML_PRINT STRJOIN(HTML用, "")
 
 FONTBOLD
 CALL MANUALPRINT, "　　　　(COLOR:black:WE)(COLOR:hotpink:DD)(COLOR:black:ING)　　　　　　　　　　 (COLOR:black:CLA)(COLOR:darkseagreen:SS)　　　　　　　　　　　 (COLOR:black:PRE)(COLOR:lime:M)(COLOR:black:IU)(COLOR:lime:M)"
@@ -72,12 +71,12 @@ ENDIF
 PRINTL 
 PRINTL 
 
-VARSET LOCALS
+VARSET HTML用
 
-LOCALS =<nobr><button value='0' pos='900'> <img src='MODE' srcb='MODEB' height='700'></button>
-LOCALS:1 =<button value='1' pos='2500'> <img src='MODE' srcb='MODEB' height='700'></button>
+HTML用 =<nobr><button value='0' pos='900'> <img src='MODE' srcb='MODEB' height='700'></button>
+HTML用:1 =<button value='1' pos='2500'> <img src='MODE' srcb='MODEB' height='700'></button>
 
-HTML_PRINT STRJOIN(LOCALS, "")
+HTML_PRINT STRJOIN(HTML用, "")
 
 FONTBOLD
 CALL MANUALPRINT, "　　　　　　　　　　　(COLOR:black:STAN)(COLOR:darkorange:D)(COLOR:black:AR)(COLOR:darkorange:D)　　　　　　　　　　(COLOR:black:S)(COLOR:deepskyblue:T)(COLOR:black:RA)(COLOR:deepskyblue:T)(COLOR:black:EGY)"
@@ -244,7 +243,7 @@ ELSE
 	IF LANGUAGE == "ENG"
 		PRINTL Want you dialogues?(Can change options command)
 		PRINTL [0] - Character Dialogues+General Dialogues
-		PRINTL [1] - Character Dialogus only
+		PRINTL [1] - Character Dialogues only
 		PRINTL [2] - General Dialogues only
 		PRINTL [3] - No, Don't wanna
 	ELSE
@@ -335,6 +334,8 @@ BEGIN SHOP
 ;ここまでがメインとなる@EVENTFIRST
 ;以下@EVENTFIRST内で処理される関数
 @START_CHARA_SELECT
+#DIM DYNAMIC LRESULT
+
 LOADGLOBAL
 DRAWLINE
 IF LANGUAGE == "ENG"
@@ -401,7 +402,7 @@ IF ゲームモード() == "新婚モード"
 	;CALL 性別選択, TARGET
 	RESULT = 0
 	TRYCALLFORM WEDDING_%CSVNAMERPS(NO:TARGET)%
-	LOCAL = RESULT
+	LRESULT = RESULT
 	IF LANGUAGE == "ENG"
 		PRINTW Congratulations on your wedding!
 	ELSE
@@ -452,7 +453,7 @@ IF ゲームモード() == "新婚モード"
 	SIF RELATION:MASTER:(NO:TARGET) < 300
 		RELATION:MASTER:(NO:TARGET) = 300
 	;WEDDING口上の返り値による
-	SELECTCASE LOCAL
+	SELECTCASE LRESULT
 		CASE 0
 			IF LANGUAGE == "ENG"
 				PRINTFORML Did you experience with %CALLNAMEDISP(TARGET)%?
@@ -547,6 +548,11 @@ RETURN 0
 #DIM DYNAMIC 種族
 #DIM DYNAMIC 始点
 #DIM DYNAMIC 終点
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC LRESULT
+#DIM DYNAMIC 年
+#DIM DYNAMIC 月
+#DIM DYNAMIC 日
 
 SIF VARLINE
 	CLEARLINE LINECOUNT-VARLINE
@@ -682,7 +688,7 @@ ELSE
 	PRINTL 【性経験】
 	PRINTL 　[11] - 無し [12] - 普通 [13] -すごい
 ENDIF
-LOCAL = 0
+表示数 = 0
 FOR LCOUNT, 0, 100
 	SELECTCASE EXPNAME:LCOUNT
 		CASE "Ｖ経験", "膣射経験", "出産経験", "流産経験"
@@ -701,7 +707,7 @@ FOR LCOUNT, 0, 100
 		CASEELSE
 			CONTINUE
 	ENDSELECT
-	SIF LOCAL == 0
+	SIF 表示数 == 0
 		PRINT 　
 	IF LANGUAGE == "ENG"
 		PRINTFORMLC %EXPDISP(LCOUNT)%:{EXP:ARG:LCOUNT} [{LCOUNT+20}] - Change
@@ -709,10 +715,10 @@ FOR LCOUNT, 0, 100
 		PRINTFORMLC %EXPDISP(LCOUNT)%:{EXP:ARG:LCOUNT} [{LCOUNT+20}] - 変更
 	ENDIF
 	PRINTPLAIN  
-	LOCAL++
-	IF LOCAL%3 == 0 && LOCAL != 0
+	表示数++
+	IF 表示数%3 == 0 && 表示数 != 0
 		PRINTL 
-		LOCAL = 0
+		表示数 = 0
 	ENDIF
 NEXT
 SIF !LINEISEMPTY()
@@ -866,17 +872,17 @@ DO
 			EXP:ARG:絶頂経験 = RAND(500, 1001)+EXP:ARG:射精経験
 			EXP:ARG:精液経験 = RAND(2000, 5001)+EXP:ARG:膣射経験
 		CASE 20 TO 85
-			LOCAL = RESULT
-			IF EXPNAME:(LOCAL-20) != ""
+			LRESULT = RESULT-20
+			IF EXPNAME:(LRESULT) != ""
 				IF LANGUAGE == "ENG"
-					PRINTFORML Please input %EXPDISP(LOCAL-20)% count.
+					PRINTFORML Please input %EXPDISP(LRESULT)% count.
 				ELSE
-					PRINTFORML %EXPDISP(LOCAL-20)%の数値を入力してください
+					PRINTFORML %EXPDISP(LRESULT)%の数値を入力してください
 				ENDIF
 				INPUT
 				SIF RESULT < 0
 					RESULT = 0
-				EXP:ARG:(LOCAL-20) = RESULT
+				EXP:ARG:(LRESULT) = RESULT
 			ENDIF
 		CASE 100
 			FOR LCOUNT, 0, 10
@@ -905,7 +911,7 @@ DO
 					CASE 10
 						RESTART
 					CASE 0 TO 9
-						LOCAL = RESULT
+						LRESULT = RESULT
 						IF CHKCHARADATA(@"CUSTOMPLAYER_{RESULT}") == 0
 							IF LANGUAGE == "ENG"
 								PRINTL It was exist charadata. Overwrite sure?
@@ -920,13 +926,13 @@ DO
 							SIF RESULT == 1
 								BREAK
 						ENDIF
-						LOCAL:1 = TOINT(SUBSTRING(GETTIMES(), 0, 4))
-						LOCAL:2 = TOINT(SUBSTRING(GETTIMES(), 5, 2))
-						LOCAL:3 = TOINT(SUBSTRING(GETTIMES(), 8, 2))
+						年 = TOINT(SUBSTRING(GETTIMES(), 0, 4))
+						月 = TOINT(SUBSTRING(GETTIMES(), 5, 2))
+						日 = TOINT(SUBSTRING(GETTIMES(), 8, 2))
 						IF LANGUAGE == "ENG"
-							SAVECHARA @"CUSTOMPLAYER_{LOCAL}", @"%NAME:ARG% Created in {LOCAL:1}/{LOCAL:2}/{LOCAL:3}", ARG
+							SAVECHARA @"CUSTOMPLAYER_{LRESULT}", @"%NAME:ARG% Created in {年}/{月}/{日}", ARG
 						ELSE
-							SAVECHARA @"CUSTOMPLAYER_{LOCAL}", @"%NAME:ARG% {LOCAL:1}/{LOCAL:2}/{LOCAL:3}に作成", ARG
+							SAVECHARA @"CUSTOMPLAYER_{LRESULT}", @"%NAME:ARG% {年}/{月}/{日}に作成", ARG
 						ENDIF
 						BREAK
 				ENDSELECT
@@ -1127,6 +1133,7 @@ IF RESULT == 1
 ENDIF
 
 @SETUP_GAMESTART
+#DIM DYNAMIC 日数, 2
 DAY = 1
 SELECTCASE ゲームモード()
 	CASE "通常モード"
@@ -1180,20 +1187,18 @@ FLAG:曜日 = ZELLER(YEAR, MONTH, DAYS)
 CALL 月齢逆算, 30, -1
 
 ;過去19年の午前0時で最も新月に近いと思われる日と現在の日付の日数差を調べる
-LOCAL = GETDAYS(YEAR, MONTH, DAYS) - GETDAYS(RESULT, RESULT:1, RESULT:2)
+日数 = GETDAYS(YEAR, MONTH, DAYS) - GETDAYS(RESULT, RESULT:1, RESULT:2)
 
-SELECTCASE LOCAL
+SELECTCASE 日数
 	CASE IS <= 30
-		月齢 = LOCAL*100
+		月齢 = 日数*100
 	CASEELSE
-		LOCAL:1 = LOCAL-(LOCAL%30)
-		月齢 = ((LOCAL:1*100000)%2953059)/1000
-		月齢 += (LOCAL%30)*100
+		日数:1 = 日数-(日数%30)
+		月齢 = ((日数:1*100000)%2953059)/1000
+		月齢 += (日数%30)*100
 ENDSELECT
 
 月齢 %= 3000
-
-VARSET LOCAL, 0
 
 VARSET SELECTCOM, -1
 SELECTCOM = 0
