@@ -1,6 +1,8 @@
 ﻿@飲食店経営
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 増築費用
+#DIMS DYNAMIC 定休日設定
+#DIM DYNAMIC LRESULT
 
 ;増築費用は(部屋数+1)^2*100000(暫定)
 増築費用 = POWER((ホテル部屋数+1), 2)*100000
@@ -105,10 +107,8 @@ DO
 		CASE 9
 			VARLINE = 0
 			DO
-				SIF VARLINE
-					CLEARLINE LINECOUNT-VARLINE
-				VARLINE = LINECOUNT
-				LOCALS = 
+				CALL LOOP_CLEARLINE
+				定休日設定 = 
 				DRAWLINE
 				PRINTL □定休日を選んでください
 				PRINTFORML 　[1] - 日曜日（\@ INN定休日("日") ? 定休 # 営業 \@）
@@ -120,26 +120,26 @@ DO
 				PRINTFORML 　[0] - 土曜日（\@ INN定休日("土") ? 定休 # 営業 \@）
 				PRINTL 　[9] - 設定終了
 				INPUT
-				LOCAL = RESULT
-				SELECTCASE LOCAL
+				LRESULT = RESULT
+				SELECTCASE LRESULT
 					CASE 0 TO 6
 						FOR LCOUNT, 0, 7
-							IF LOCAL == LCOUNT
-								IF !INN定休日(DOW(LOCAL))
-									飲食店定休日 += @"・%DOW(LOCAL)%"
+							IF LRESULT == LCOUNT
+								IF !INN定休日(DOW(LRESULT))
+									飲食店定休日 += @"・%DOW(LRESULT)%"
 								ELSE
 									CONTINUE
 								ENDIF
 							ENDIF
 							IF INN定休日(DOW(LCOUNT))
-								IF LOCALS == ""
-									LOCALS = %DOW(LCOUNT)%
+								IF 定休日設定 == ""
+									定休日設定 = %DOW(LCOUNT)%
 								ELSE
-									LOCALS += @"・%DOW(LCOUNT)%"
+									定休日設定 += @"・%DOW(LCOUNT)%"
 								ENDIF
 							ENDIF
 						NEXT
-						飲食店定休日 = %LOCALS%
+						飲食店定休日 = %定休日設定%
 					CASE 9
 						BREAK
 				ENDSELECT
@@ -350,6 +350,7 @@ LOOP 1
 
 @メニュー変更_飲食店
 #DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 分割用
 
 DRAWLINE
 
@@ -360,8 +361,8 @@ FOR LCOUNT, 0, 10
 		PRINTFORML 　[{LCOUNT}] - メニュー無し
 	ELSE
 		CALLF レシピ判定, 飲食店メニュー:LCOUNT
-		SPLIT 料理ジャンル, "/", LOCALS
-		SIF MATCH(LOCALS, 飲食ジャンル)
+		SPLIT 料理ジャンル, "/", 分割用
+		SIF MATCH(分割用, 飲食ジャンル)
 			SETCOLORBYNAME lime
 		CALL PASELIL, @"　[{LCOUNT}] - %飲食店メニュー:LCOUNT, 28, LEFT% {(料理価格*飲食店価格倍率)/10, 4}＄\@ 料理原価 ? (原価:{料理原価}＄) # \@ \@ 新鮮食材 ? 新鮮食材:{新鮮食材}個 # \@"
 		RESETCOLOR
@@ -666,14 +667,14 @@ PRINTL
 ;書式 INN定休日("木") みたいな
 @INN定休日, ARGS
 #FUNCTION
-VARSET LOCALS
+#DIMS DYNAMIC 分割用, 10
 
 SIF ARGS == ""
 	ARGS = %DOW(FLAG:曜日)%
 
-SPLIT 飲食店定休日, "・", LOCALS
+SPLIT 飲食店定休日, "・", 分割用
 
-IF FINDELEMENT(LOCALS, ARGS) >= 0
+IF FINDELEMENT(分割用, ARGS) >= 0
 	RETURNF 1
 ELSE
 	RETURNF 0
@@ -698,6 +699,10 @@ ENDIF
 #DIM DYNAMIC メニュー数
 #DIM DYNAMIC 基本料金
 #DIM DYNAMIC 名声上昇値
+#DIM DYNAMIC 料理種類
+#DIMS DYNAMIC 分割用
+#DIM DYNAMIC モチベ加算値
+#DIM DYNAMIC 日給
 
 基本料金 = 飲食店基本料金
 
@@ -781,26 +786,26 @@ SELECTCASE 業種
 		;各メニューの注文数を計算する
 		;基本的にどれかは出る
 		DO
-			LOCAL = RAND:10
+			料理種類 = RAND:10
 			$RECIPELOOP飲食店
-			IF 飲食店メニュー:LOCAL == ""
-				LOCAL++
-				SIF LOCAL == 10
-					LOCAL = 0
+			IF 飲食店メニュー:料理種類 == ""
+				料理種類++
+				SIF 料理種類 == 10
+					料理種類 = 0
 				GOTO RECIPELOOP飲食店
 			ENDIF
-			注文数:LOCAL++
+			注文数:料理種類++
 		LOOP SUMARRAY(注文数) < 来客数
 		FOR LCOUNT, 0, 10
 			SIF 飲食店メニュー:LCOUNT == ""
 				CONTINUE
 			CALLF レシピ判定, 飲食店メニュー:LCOUNT
-			SPLIT 料理ジャンル, "/", LOCALS
+			SPLIT 料理ジャンル, "/", 分割用
 
 			;料理レベルに応じてこの追加注文処理を再度行う(合計料理レベル%の確率)
 			REPEAT 1+RANDPER(料理レベル)
 				;店のジャンルに合ってる場合は3割くらいが追加注文する
-				SIF MATCH(LOCALS, 飲食ジャンル)
+				SIF MATCH(分割用, 飲食ジャンル)
 					注文数:LCOUNT += RAND(来客数/5, (来客数/3)+1)
 				;飲食店だと主食が出やすい
 				SIF 料理分類:FINDELEMENT(料理メニュー, 飲食店メニュー:LCOUNT) == "主食"
@@ -886,10 +891,10 @@ SELECTCASE 業種
 			SIF 飲食店メニュー:LCOUNT == ""
 				CONTINUE
 			CALLF レシピ判定, 飲食店メニュー:LCOUNT
-			SPLIT 料理ジャンル, "/", LOCALS
+			SPLIT 料理ジャンル, "/", 分割用
 
 			;お酒でも出るときと出ないときある
-			SIF MATCH(LOCALS, "お酒")
+			SIF MATCH(分割用, "お酒")
 				注文数:LCOUNT += RAND(来客数/2, 来客数+1)
 		NEXT
 		;各注文数に応じて売上と支出が変動
@@ -935,29 +940,29 @@ SELECTCASE 業種
 		;各メニューの注文数を計算する
 		;基本的にどれかは出る
 		DO
-			LOCAL = RAND:10
+			料理種類 = RAND:10
 			$RECIPELOOPバー
-			IF 飲食店メニュー:LOCAL == ""
-				LOCAL++
-				SIF LOCAL == 10
-					LOCAL = 0
+			IF 飲食店メニュー:料理種類 == ""
+				料理種類++
+				SIF 料理種類 == 10
+					料理種類 = 0
 				GOTO RECIPELOOPバー
 			ENDIF
-			注文数:LOCAL++
+			注文数:料理種類++
 		LOOP SUMARRAY(注文数) < 来客数
 		FOR LCOUNT, 0, 10
 			SIF 飲食店メニュー:LCOUNT == ""
 				CONTINUE
 			CALLF レシピ判定, 飲食店メニュー:LCOUNT
-			SPLIT 料理ジャンル, "/", LOCALS
+			SPLIT 料理ジャンル, "/", 分割用
 
 			;料理レベルに応じてこの追加注文処理を再度行う(合計料理レベル%の確率)
 			REPEAT 1+RANDPER(料理レベル)
 				;店のジャンルに合ってる場合は3割くらいが追加注文する
-				SIF MATCH(LOCALS, 飲食ジャンル)
+				SIF MATCH(分割用, 飲食ジャンル)
 					注文数:LCOUNT += RAND(来客数/5, (来客数/3)+1)
 				;バーだとファストフードが出やすい傾向にある
-				SIF MATCH(LOCALS, "ファストフード")
+				SIF MATCH(分割用, "ファストフード")
 					注文数:LCOUNT += RAND(来客数/5, (来客数/3)+1)
 			REND
 		NEXT
@@ -1035,12 +1040,12 @@ FOR LCOUNT, 1, CHARANUM
 				モチベ計算用--
 		ENDSELECT
 	NEXT
-	LOCAL = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数
+	モチベ加算値 = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数
 	SIF TALENT:LCOUNT:世話好き
-		LOCAL -= 世話好き人数
+		モチベ加算値 -= 世話好き人数
 	;配属先のキャラの相性で計算
-	LOCAL += 相性モチベ補正(LCOUNT)
-	CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
+	モチベ加算値 += 相性モチベ補正(LCOUNT)
+	CFLAG:LCOUNT:モチベーション = LIMIT(モチベ加算値, 1, 100)
 
 	SELECTCASE 業種
 		;宿を併設してると1部屋につき1万
@@ -1055,13 +1060,13 @@ FOR LCOUNT, 1, CHARANUM
 	ENDSELECT
 	;ゲーセンと同じく 日給500 超絶ブラック
 	;メニュー価格の倍率が1以上ならそれに比例する
-	LOCAL = 500
+	日給 = 500
 	SIF 飲食店価格倍率 > 10
-		LOCAL = LOCAL*飲食店価格倍率/10
+		日給 = 日給*飲食店価格倍率/10
 	;浪費癖だとさらに1.2倍
 	SIF TALENT:LCOUNT:浪費癖
-		TIMES LOCAL, 1.20
-	支出 += LOCAL
+		TIMES 日給, 1.20
+	支出 += 日給
 	;実務経験を加算
 	EXP:LCOUNT:実務経験++
 	;料理を提供する店なら料理経験も加算

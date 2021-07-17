@@ -206,22 +206,23 @@ ENDSELECT
 #FUNCTION
 #DIM DYNAMIC 合計値
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 加算値
 
 FOR LCOUNT, 1100, 1500
-	LOCAL = 0
+	加算値 = 0
 	SIF !設置筐体:ARG:LCOUNT
 		CONTINUE
 	SELECTCASE ITEMNAME:LCOUNT
 		CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）", "pop'n music"
-			LOCAL = 2
+			加算値 = 2
 		CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）", "GITADORA", "Dance Evolution", "クイズマジックアカデミー"
-			LOCAL = 3
+			加算値 = 3
 		CASE "jubeat", "REFLEC BEAT", "SOUND VOLTEX", "maimai", "CHUNITHM"
-			LOCAL = 1
+			加算値 = 1
 		CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
-			LOCAL = 1
+			加算値 = 1
 	ENDSELECT
-	合計値 += 設置筐体:ARG:LCOUNT*LOCAL
+	合計値 += 設置筐体:ARG:LCOUNT*加算値
 NEXT
 
 RETURNF 合計値
@@ -236,6 +237,8 @@ RETURNF 合計値
 #DIM DYNAMIC X座標
 #DIM DYNAMIC Y座標
 #DIM DYNAMIC 筐体NO
+#DIM DYNAMIC 加算値
+#DIM DYNAMIC 合計額
 
 ;オブジェクトナンバーはそれぞれ上下左右の向きで4つ分ある
 ;それと1からカウントしてるので式は (オブジェクトナンバー-1)/4
@@ -250,8 +253,6 @@ NEXT
 
 計算用名声 = GC名声
 計算用評判 = GC評判
-
-VARSET LOCAL, 0
 
 ;天候
 SELECTCASE FLAG:天気
@@ -284,104 +285,104 @@ FOR LCOUNT, 0, 400
 		CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
 			;IIDXは最高で名声+20000 メンテでだいぶ左右される
 			;メンテ次第で名声×5の収入になるので最終的には一番の収入源になる……はず
-			LOCAL = (計算用名声/20+200)*GCメンテ
+			加算値 = (計算用名声/20+200)*GCメンテ
 			;待ち椅子ボーナス
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		CASE "pop'n music"
 			;ポップンは最高で評判+10000 こっちはIIDXほどメンテの影響は大きくない
-			LOCAL = 計算用評判+2000+(GCメンテ*80)
+			加算値 = 計算用評判+2000+(GCメンテ*80)
 			;待ち椅子ボーナス
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
 			;DDRは立地の差が大きい メンテ次第で最低2000、最高28000
-			LOCAL = GC物件*2000+(GC物件*20*GCメンテ)
-			LOCAL += GC物件*(計算用名声/10)+GC物件*(計算用評判/10)
+			加算値 = GC物件*2000+(GC物件*20*GCメンテ)
+			加算値 += GC物件*(計算用名声/10)+GC物件*(計算用評判/10)
 			;待ち椅子ボーナスが大きい
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*200
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*50
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*200
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*50
 		CASE "GITADORA"
 			;ギタドラは評判、名声、メンテの総合型 最高で名声+評判がそのまま収入になる ギタとドラで2倍
 			;逆に言えば評判も名声もメンテもダメだとインカムが悲惨なことになる
-			LOCAL = ((計算用評判/100+1)*GCメンテ+(計算用名声/100+1)*GCメンテ)*2
+			加算値 = ((計算用評判/100+1)*GCメンテ+(計算用名声/100+1)*GCメンテ)*2
 			;待ち椅子ボーナス
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		CASE "jubeat"
 			;指は名声に左右され最高で3000 名声50000で最高額に達し、メンテスキルの必要性は皆無 一番安定感ある
-			LOCAL = 500
+			加算値 = 500
 			IF 計算用名声 >= 50000
-				LOCAL += 2500
+				加算値 += 2500
 			ELSE
-				LOCAL += 計算用名声/20
+				加算値 += 計算用名声/20
 			ENDIF
 			;待ち椅子ボーナス
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		CASE "REFLEC BEAT"
 			;リフレクは指より少しシビアだが最高額が5000 最高額には名声100000必要
 			IF 計算用名声 >= 100000
-				LOCAL = 2500+(GCメンテ*25)
+				加算値 = 2500+(GCメンテ*25)
 			ELSE
-				LOCAL = 計算用名声/1000*25+(GCメンテ*25)
+				加算値 = 計算用名声/1000*25+(GCメンテ*25)
 			ENDIF
 			;待ち椅子ボーナス
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		CASE "SOUND VOLTEX"
 			;ボルテは評判寄り メンテも必要だが名声はあまり関係無い 最高7000
-			LOCAL += GCメンテ*20
+			加算値 += GCメンテ*20
 			IF 計算用評判+計算用名声/100 >= 50000
-				LOCAL = 5000
+				加算値 = 5000
 			ELSE
-				LOCAL = (計算用評判+計算用名声/100)/10
+				加算値 = (計算用評判+計算用名声/100)/10
 			ENDIF
 			;待ち椅子ボーナス
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		CASE "Dance Evolution"
 			;ダンエボは名声と立地次第で評判とメンテの必要性は皆無 最大で1400+名声×1.4
-			LOCAL = (1000+計算用名声/5)*GC物件
+			加算値 = (1000+計算用名声/5)*GC物件
 			;DDRほどではないが待ち椅子ボーナスが大きい
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*100
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*30
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*100
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*30
 		CASE "クイズマジックアカデミー"
 			;マジアカはそこまで収入には貢献しないが、名声上昇量が割と大きい メンテの必要性は無し 最大2000
-			LOCAL = 500
+			加算値 = 500
 			IF 計算用名声+計算用評判 >= 30000
-				LOCAL += 1500
+				加算値 += 1500
 			ELSE
-				LOCAL += (計算用名声+計算用評判)/20
+				加算値 += (計算用名声+計算用評判)/20
 			ENDIF
 			;座ってやるゲームなので待ち椅子ボーナスは無い
 		CASE "maimai"
 			;洗濯機 指と同じ計算式だが最大4000
-			LOCAL = 500
+			加算値 = 500
 			IF 計算用名声 >= 70000
-				LOCAL += 3500
+				加算値 += 3500
 			ELSE
-				LOCAL += 計算用名声/20
+				加算値 += 計算用名声/20
 			ENDIF
 			;待ち椅子ボーナス
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		CASE "CHUNITHM"
 			;簡単に稼げるが評判に悪影響（ひどい） 名声のみ影響するが他店と取り合いになるのでそれなりに名声が必要 最大5000
-			LOCAL = 1000
+			加算値 = 1000
 			IF 計算用名声 >= 160000
-				LOCAL += 4000
+				加算値 += 4000
 			ELSE
-				LOCAL += 計算用名声/40
+				加算値 += 計算用名声/40
 			ENDIF
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*50
-			LOCAL += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*50
+			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
 		;ギャンブル系（コインゲーム） 腕と運次第でいくらでも続けられるので正直収入に期待してはいけない
 		;ただし下記自販機とのシナジーは筐体コストの割には大きい
 		;メダル両替機が無いと収入にならない
 		CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ"
 			SIF EXISTGAMES("メダル両替機")
-				LOCAL = 200
+				加算値 = 200
 		CASE "自販機（飲み物）"
 			FOR LCOUNT:1, 0, 100
 				SIF !階層筐体計算:(LCOUNT:1)
@@ -389,29 +390,29 @@ FOR LCOUNT, 0, 400
 				;筐体ごとにシナジーがある
 				SELECTCASE ITEMNAME:(LCOUNT:1+1100)
 					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
-						LOCAL = 300
+						加算値 = 300
 					CASE "pop'n music"
-						LOCAL = 300
+						加算値 = 300
 					CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
-						LOCAL = 1000
+						加算値 = 1000
 					CASE "GITADORA"
-						LOCAL = 500
+						加算値 = 500
 					CASE "jubeat"
-						LOCAL = 150
+						加算値 = 150
 					CASE "REFLEC BEAT"
-						LOCAL = 150
+						加算値 = 150
 					CASE "SOUND VOLTEX"
-						LOCAL = 150
+						加算値 = 150
 					CASE "Dance Evolution"
-						LOCAL = 700
+						加算値 = 700
 					CASE "maimai"
-						LOCAL = 300
+						加算値 = 300
 					CASE "CHUNITHM"
-						LOCAL = 150
+						加算値 = 150
 					CASE "クイズマジックアカデミー"
-						LOCAL = 150
+						加算値 = 150
 					CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
-						LOCAL = 300
+						加算値 = 300
 				ENDSELECT
 			NEXT
 		CASE "自販機（軽食）"
@@ -421,29 +422,29 @@ FOR LCOUNT, 0, 400
 				;筐体ごとにシナジーがある
 				SELECTCASE ITEMNAME:(LCOUNT:1+1100)
 					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
-						LOCAL = 500
+						加算値 = 500
 					CASE "pop'n music"
-						LOCAL = 150
+						加算値 = 150
 					CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
-						LOCAL = 300
+						加算値 = 300
 					CASE "GITADORA"
-						LOCAL = 500
+						加算値 = 500
 					CASE "jubeat"
-						LOCAL = 300
+						加算値 = 300
 					CASE "REFLEC BEAT"
-						LOCAL = 300
+						加算値 = 300
 					CASE "SOUND VOLTEX"
-						LOCAL = 150
+						加算値 = 150
 					CASE "Dance Evolution"
-						LOCAL = 150
+						加算値 = 150
 					CASE "maimai"
-						LOCAL = 300
+						加算値 = 300
 					CASE "CHUNITHM"
-						LOCAL = 300
+						加算値 = 300
 					CASE "クイズマジックアカデミー"
-						LOCAL = 300
+						加算値 = 300
 					CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
-						LOCAL = 500
+						加算値 = 500
 				ENDSELECT
 			NEXT
 		CASE "自販機（アイス）"
@@ -453,102 +454,101 @@ FOR LCOUNT, 0, 400
 				;筐体ごとにシナジーがある
 				SELECTCASE ITEMNAME:(LCOUNT:1+1100)
 					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
-						LOCAL = 150
+						加算値 = 150
 					CASE "pop'n music"
-						LOCAL = 500
+						加算値 = 500
 					CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
-						LOCAL = 500
+						加算値 = 500
 					CASE "GITADORA"
-						LOCAL = 150
+						加算値 = 150
 					CASE "jubeat"
-						LOCAL = 300
+						加算値 = 300
 					CASE "REFLEC BEAT"
-						LOCAL = 150
+						加算値 = 150
 					CASE "SOUND VOLTEX"
-						LOCAL = 500
+						加算値 = 500
 					CASE "Dance Evolution"
-						LOCAL = 500
+						加算値 = 500
 					CASE "maimai"
-						LOCAL = 300
+						加算値 = 300
 					CASE "CHUNITHM"
-						LOCAL = 150
+						加算値 = 150
 					CASE "クイズマジックアカデミー"
-						LOCAL = 150
+						加算値 = 150
 					CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
-						LOCAL = 300
+						加算値 = 300
 				ENDSELECT
 			NEXT
 	ENDSELECT
-	LOCAL:1 += LOCAL*階層筐体計算:LCOUNT
+	合計額 += 加算値*階層筐体計算:LCOUNT
 NEXT
 
 ;RANDの仕様で1低くなるので1を加算(例として、RAND:0とかになってエラー吐く)
-LOCAL:1++
+合計額++
 
-RETURNF LOCAL:1
+RETURNF 合計額
 
 @筐体支出補正, 筐体ナンバー
 #FUNCTION
 #DIM DYNAMIC 筐体ナンバー
+#DIM DYNAMIC 補正額
 
-VARSET LOCAL, 0
 SELECTCASE ITEMNAME:(筐体ナンバー+1100)
 	CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
-		LOCAL = 1000
+		補正額 = 1000
 	CASE "pop'n music"
-		LOCAL = 900
+		補正額 = 900
 	CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
-		LOCAL = 1500
+		補正額 = 1500
 	CASE "GITADORA"
-		LOCAL = 1000
+		補正額 = 1000
 	CASE "jubeat"
-		LOCAL = 500
+		補正額 = 500
 	CASE "REFLEC BEAT"
-		LOCAL = 500
+		補正額 = 500
 	CASE "SOUND VOLTEX"
-		LOCAL = 600
+		補正額 = 600
 	CASE "Dance Evolution"
-		LOCAL = 1500
+		補正額 = 1500
 	CASE "両替機"
-		LOCAL = 300
+		補正額 = 300
 	CASE "メダル両替機"
-		LOCAL = 300
+		補正額 = 300
 	CASE "PASELI券売機"
-		LOCAL = 500
+		補正額 = 500
 	CASE "PASELIチャージ機"
-		LOCAL = 500
+		補正額 = 500
 	CASE "自販機（飲み物）"
-		LOCAL = 700
+		補正額 = 700
 	CASE "自販機（軽食）"
-		LOCAL = 900
+		補正額 = 900
 	CASE "自販機（アイス）"
-		LOCAL = 800
+		補正額 = 800
 	CASE "マッサージチェア"
-		LOCAL = 200
+		補正額 = 200
 	CASE "maimai"
-		LOCAL = 500
+		補正額 = 500
 	CASE "CHUNITHM"
-		LOCAL = 500
+		補正額 = 500
 	CASE "クイズマジックアカデミー"
-		LOCAL = 300
+		補正額 = 300
 	CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
-		LOCAL = 100
+		補正額 = 100
 ENDSELECT
-LOCAL += LOCAL/10*浪費癖人数("ゲームセンター")
+補正額 += 補正額/10*浪費癖人数("ゲームセンター")
 
-RETURNF LOCAL
+RETURNF 補正額
 
 @GC収入人事補正
 #FUNCTION
 #DIM DYNAMIC LCOUNT
-#DIM 素質
-
-;LOCALに基準値 LOCAL:1に倍率 LOCAL:2に全体の合計
-
-VARSET LOCAL, 0
+#DIM DYNAMIC 素質
+#DIM DYNAMIC 基準値
+#DIM DYNAMIC 倍率
+#DIM DYNAMIC 合計値
 
 FOR LCOUNT, 1, CHARANUM
-	LOCAL = 0
+	基準値 = 0
 	SIF CSTR:LCOUNT:配属 != "ゲームセンター" || !CFLAG:LCOUNT:配属完了
 		CONTINUE
 	;サボり魔は25%の確率でサボる
@@ -556,277 +556,282 @@ FOR LCOUNT, 1, CHARANUM
 		CFLAG:LCOUNT:サボり = 1
 		CONTINUE
 	ENDIF
-	LOCAL += ABL:LCOUNT:従順*30
-	LOCAL += ABL:LCOUNT:技巧*10
-	LOCAL += ABL:LCOUNT:奉仕精神*20
-	LOCAL += ABL:LCOUNT:工作技能*30
-	LOCAL += ABL:LCOUNT:家事技能*30
+	基準値 += ABL:LCOUNT:従順*30
+	基準値 += ABL:LCOUNT:技巧*10
+	基準値 += ABL:LCOUNT:奉仕精神*20
+	基準値 += ABL:LCOUNT:工作技能*30
+	基準値 += ABL:LCOUNT:家事技能*30
 	;統率持ちが入れば上の各能力を1づつ加算
 	;店長が統率持ちなら効果2倍
 	IF FINDCHARA(CFLAG:ゲーセン店長, 1) >= 0 && TALENT:FINDCHARA(CFLAG:ゲーセン店長, 1):統率 && !TALENT:LCOUNT:統率
-		LOCAL += 240
+		基準値 += 240
 	ELSEIF 統率者("ゲームセンター") && !TALENT:LCOUNT:統率
-		LOCAL += 120
+		基準値 += 120
 	ENDIF
 	;ワーカホリックレベルに応じても上がる
-	LOCAL += ワーカホリックレベル(LCOUNT)*120
+	基準値 += ワーカホリックレベル(LCOUNT)*120
 	SIF TALENT:LCOUNT:音ゲーマー
-		LOCAL += 100
+		基準値 += 100
 	
-	LOCAL:1 = 100
+	倍率 = 100
 	FOR 素質, 0, VARSIZE("TALENT")
 		SIF !TALENT:LCOUNT:素質
 			CONTINUE
 		SELECTCASE TALENTNAME:素質
 			CASE "生意気", "反抗的", "衝動的", "同族嫌悪"
-				LOCAL:1 -= 20
+				倍率 -= 20
 			CASE "臆病", "プライド高い", "無関心", "男嫌い", "女嫌い", "幼稚", "ツンデレ", "汚れ無視"
-				LOCAL:1 -= 10
+				倍率 -= 10
 			CASE "気丈", "ハイテンション", "好奇心", "潔癖症", "ファーリー", "尻尾", "動物耳", "羽"
-				LOCAL:1 += 10
+				倍率 += 10
 			CASE "素直", "自制心", "献身的", "魅力", "魅惑"
-				LOCAL:1 += 20
+				倍率 += 20
 			CASE "人気", "謎の魅力"
-				LOCAL:1 += 30
+				倍率 += 30
 			CASE "バストサイズ"
 				SELECTCASE TALENT:LCOUNT:バストサイズ
 					CASE 4, 5
-						LOCAL:1 += 10
+						倍率 += 10
 					CASE 6
-						LOCAL:1 += 20
+						倍率 += 20
 				ENDSELECT
 		ENDSELECT
 	NEXT
 	SIF CFLAG:LCOUNT:ゲーセン店長
-		LOCAL *= 2
-	SIF LOCAL:1 < 10
-		LOCAL:1 = 10
-	LOCAL:2 += LOCAL*LOCAL:1/100
+		基準値 *= 2
+	SIF 倍率 < 10
+		倍率 = 10
+	合計値 += 基準値*倍率/100
 NEXT
 
-RETURNF LOCAL:2
+RETURNF 合計値
 
 @フードコートレベル
 #FUNCTION
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 基準値
+#DIM DYNAMIC 料理人数
+#DIM DYNAMIC レベル
+#DIM DYNAMIC 合計値
 
 SIF !GCフードコート
 	RETURNF 0
 
-VARSET LOCAL, 0
-
 FOR LCOUNT, 1, CHARANUM
+	基準値 = 0
 	SIF CSTR:LCOUNT:配属 != "ゲームセンター" || !CFLAG:LCOUNT:配属完了
 		CONTINUE
 	SIF CFLAG:LCOUNT:サボり
 		CONTINUE
 	;リミットバースト分は計上しない
 	IF ABL:LCOUNT:料理技能 >= 10
-		LOCAL += 10
+		基準値 = 10
 	ELSE
-		LOCAL += ABL:LCOUNT:料理技能
+		基準値 = ABL:LCOUNT:料理技能
 		IF FINDCHARA(CFLAG:ゲーセン店長, 1) >= 0 && TALENT:FINDCHARA(CFLAG:ゲーセン店長, 1):統率 && !TALENT:LCOUNT:統率
-			LOCAL += 2
+			基準値 += 2
 		ELSEIF 統率者("ゲームセンター") && !TALENT:LCOUNT:統率
-			LOCAL++
+			基準値++
 		ENDIF
-		LOCAL += ワーカホリックレベル(LCOUNT)
-		SIF LOCAL > 10
-			LOCAL = 10
+		基準値 += ワーカホリックレベル(LCOUNT)
+		SIF 基準値 > 10
+			基準値 = 10
 	ENDIF
+	合計値 += 基準値
 	SIF TALENT:LCOUNT:料理人
-		LOCAL:1++
+		料理人数++
 NEXT
 
 ;配属してるキャラの料理技能合計でレベルが決まる 最大20
 ;配属できるのは10人まで
-SELECTCASE LOCAL
-	CASE 100
-		LOCAL:2 = 20
+SELECTCASE 合計値
+	CASE IS >= 100
+		レベル = 20
 	CASE 97 TO 99
-		LOCAL:2 = 19
+		レベル = 19
 	CASE 92 TO 96
-		LOCAL:2 = 18
+		レベル = 18
 	CASE 85 TO 91
-		LOCAL:2 = 17
+		レベル = 17
 	CASE 35 TO 84
-		LOCAL:2 = LOCAL/5
+		レベル = 合計値/5
 	CASE 25 TO 34
-		LOCAL:2 = 6
+		レベル = 6
 	CASE 16 TO 24
-		LOCAL:2 = 5
+		レベル = 5
 	CASE 9 TO 15
-		LOCAL:2 = 4
+		レベル = 4
 	CASE 4 TO 8
-		LOCAL:2 = 3
+		レベル = 3
 	CASE 1 TO 3
-		LOCAL:2 = 2
+		レベル = 2
 	CASE 0
-		LOCAL:2 = 1
+		レベル = 1
 ENDSELECT
 
 ;料理人の数だけレベルが上がる
-LOCAL:2 += LOCAL:1
+レベル += 料理人数
 
-RETURNF LOCAL:2
+RETURNF レベル
 
 @名声筐体補正, 筐体ナンバー
 #FUNCTION
 #DIM DYNAMIC 筐体ナンバー
+#DIM DYNAMIC 補正値
 
 ;大体筐体コストと同じ
 SELECTCASE ITEMNAME:(筐体ナンバー+1100)
 	CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
-		LOCAL = 2
+		補正値 = 2
 	CASE "pop'n music"
-		LOCAL = 2
+		補正値 = 2
 	CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
-		LOCAL = 3
+		補正値 = 3
 	CASE "GITADORA"
-		LOCAL = 3
+		補正値 = 3
 	CASE "jubeat"
-		LOCAL = 1
+		補正値 = 1
 	CASE "REFLEC BEAT"
-		LOCAL = 1
+		補正値 = 1
 	CASE "SOUND VOLTEX"
-		LOCAL = 1
+		補正値 = 1
 	CASE "Dance Evolution"
-		LOCAL = 3
+		補正値 = 3
 	CASE "両替機"
-		LOCAL = 1
+		補正値 = 1
 	CASE "メダル両替機"
-		LOCAL = 1
+		補正値 = 1
 	CASE "PASELI券売機"
-		LOCAL = 2
+		補正値 = 2
 	CASE "PASELIチャージ機"
-		LOCAL = 2
+		補正値 = 2
 	CASE "自販機（飲み物）"
-		LOCAL = 1
+		補正値 = 1
 	CASE "自販機（軽食）"
-		LOCAL = 2
+		補正値 = 2
 	CASE "自販機（アイス）"
-		LOCAL = 1
+		補正値 = 1
 	CASE "マッサージチェア"
-		LOCAL = 3
+		補正値 = 3
 	CASE "待ち椅子"
-		LOCAL = 1
+		補正値 = 1
 	CASE "maimai"
-		LOCAL = 1
+		補正値 = 1
 	CASE "CHUNITHM"
-		LOCAL = 1
+		補正値 = 1
 	CASE "クイズマジックアカデミー"
-		LOCAL = 3
+		補正値 = 3
 	CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
-		LOCAL = 1
+		補正値 = 1
 ENDSELECT
 
-RETURNF LOCAL
+RETURNF 補正値
 
 @名声人事補正
 #FUNCTION
 #DIM DYNAMIC LCOUNT
-#DIM 素質
-
-;LOCALに基準値 LOCAL:1に倍率 LOCAL:2に全体の合計
-
-VARSET LOCAL, 0
+#DIM DYNAMIC 素質
+#DIM DYNAMIC 基準値
+#DIM DYNAMIC 合計値
 
 FOR LCOUNT, 1, CHARANUM
+	基準値 = 0
 	SIF CSTR:LCOUNT:配属 != "ゲームセンター" || !CFLAG:LCOUNT:配属完了
 		CONTINUE
 	SIF CFLAG:LCOUNT:サボり
 		CONTINUE
 	IF FINDCHARA(CFLAG:ゲーセン店長, 1) >= 0 && TALENT:FINDCHARA(CFLAG:ゲーセン店長, 1):統率 && !TALENT:LCOUNT:統率
-		LOCAL += (ABL:LCOUNT:従順+2+ワーカホリックレベル(LCOUNT))/2
-		LOCAL += (ABL:LCOUNT:工作技能+2+ワーカホリックレベル(LCOUNT))/2
-		LOCAL += (ABL:LCOUNT:家事技能+2+ワーカホリックレベル(LCOUNT))/2
+		基準値 += (ABL:LCOUNT:従順+2+ワーカホリックレベル(LCOUNT))/2
+		基準値 += (ABL:LCOUNT:工作技能+2+ワーカホリックレベル(LCOUNT))/2
+		基準値 += (ABL:LCOUNT:家事技能+2+ワーカホリックレベル(LCOUNT))/2
 	ELSEIF 統率者("ゲームセンター") && !TALENT:LCOUNT:統率
-		LOCAL += (ABL:LCOUNT:従順+1+ワーカホリックレベル(LCOUNT))/2
-		LOCAL += (ABL:LCOUNT:工作技能+1+ワーカホリックレベル(LCOUNT))/2
-		LOCAL += (ABL:LCOUNT:家事技能+1+ワーカホリックレベル(LCOUNT))/2
+		基準値 += (ABL:LCOUNT:従順+1+ワーカホリックレベル(LCOUNT))/2
+		基準値 += (ABL:LCOUNT:工作技能+1+ワーカホリックレベル(LCOUNT))/2
+		基準値 += (ABL:LCOUNT:家事技能+1+ワーカホリックレベル(LCOUNT))/2
 	ELSE
-		LOCAL += (ABL:LCOUNT:従順+ワーカホリックレベル(LCOUNT))/2
-		LOCAL += (ABL:LCOUNT:工作技能+ワーカホリックレベル(LCOUNT))/2
-		LOCAL += (ABL:LCOUNT:家事技能+ワーカホリックレベル(LCOUNT))/2
+		基準値 += (ABL:LCOUNT:従順+ワーカホリックレベル(LCOUNT))/2
+		基準値 += (ABL:LCOUNT:工作技能+ワーカホリックレベル(LCOUNT))/2
+		基準値 += (ABL:LCOUNT:家事技能+ワーカホリックレベル(LCOUNT))/2
 	ENDIF
 	FOR 素質, 0, VARSIZE("TALENT")
 		SIF !TALENT:LCOUNT:素質
 			CONTINUE
 		SELECTCASE TALENTNAME:素質
 			CASE "臆病", "大人しい", "無関心", "感情乏しい", "保守的", "恥じらい", "抵抗", "汚れ無視", "悲観的"
-				LOCAL -= 1
+				基準値 -= 1
 			CASE "ハイテンション", "好奇心", "目立ちたがり", "解放", "小柄体型", "ファーリー", "尻尾", "動物耳", "羽"
-				LOCAL += 1
+				基準値 += 1
 			CASE "人気", "謎の魅力", "小人体型", "魅力", "魅惑"
-				LOCAL += 2
+				基準値 += 2
 			CASE "音ゲーマー"
-				LOCAL += 3
+				基準値 += 3
 			CASE "バストサイズ"
 				SELECTCASE TALENT:LCOUNT:バストサイズ
 					CASE 4, 5
-						LOCAL += 1
+						基準値 += 1
 					CASE 6
-						LOCAL += 2
+						基準値 += 2
 				ENDSELECT
 		ENDSELECT
 	NEXT
 	SIF CFLAG:LCOUNT:ゲーセン店長
-		LOCAL *= 2
-	SIF LOCAL < 0
-		LOCAL = 0
-	LOCAL:1 += LOCAL
+		基準値 *= 2
+	SIF 基準値 < 0
+		基準値 = 0
+	合計値 += 基準値
 NEXT
 
-RETURNF LOCAL:1
+RETURNF 合計値
 
 @評判人事補正
 #FUNCTION
 #DIM DYNAMIC LCOUNT
-#DIM 素質
-
-VARSET LOCAL, 0
+#DIM DYNAMIC 素質
+#DIM DYNAMIC 補正値
+#DIM DYNAMIC 合計値
 
 ;他のパラメータと違って下がるときもある
 FOR LCOUNT, 1, CHARANUM
+	補正値 = 0
 	SIF CSTR:LCOUNT:配属 != "ゲームセンター" || !CFLAG:LCOUNT:配属完了
 		CONTINUE
 	SIF CFLAG:LCOUNT:サボり
 		CONTINUE
 	IF FINDCHARA(CFLAG:ゲーセン店長, 1) >= 0 && TALENT:FINDCHARA(CFLAG:ゲーセン店長, 1):統率 && !TALENT:LCOUNT:統率
-		LOCAL += (ABL:LCOUNT:従順+2+ワーカホリックレベル(LCOUNT))/5
-		LOCAL += (ABL:LCOUNT:奉仕精神+2+ワーカホリックレベル(LCOUNT))/5
+		補正値 += (ABL:LCOUNT:従順+2+ワーカホリックレベル(LCOUNT))/5
+		補正値 += (ABL:LCOUNT:奉仕精神+2+ワーカホリックレベル(LCOUNT))/5
 	ELSEIF 統率者("ゲームセンター") && !TALENT:LCOUNT:統率
-		LOCAL += (ABL:LCOUNT:従順+1+ワーカホリックレベル(LCOUNT))/5
-		LOCAL += (ABL:LCOUNT:奉仕精神+1+ワーカホリックレベル(LCOUNT))/5
+		補正値 += (ABL:LCOUNT:従順+1+ワーカホリックレベル(LCOUNT))/5
+		補正値 += (ABL:LCOUNT:奉仕精神+1+ワーカホリックレベル(LCOUNT))/5
 	ELSE
-		LOCAL += (ABL:LCOUNT:従順+ワーカホリックレベル(LCOUNT))/5
-		LOCAL += (ABL:LCOUNT:奉仕精神+ワーカホリックレベル(LCOUNT))/5
+		補正値 += (ABL:LCOUNT:従順+ワーカホリックレベル(LCOUNT))/5
+		補正値 += (ABL:LCOUNT:奉仕精神+ワーカホリックレベル(LCOUNT))/5
 	ENDIF
 	FOR 素質, 0, VARSIZE("TALENT")
 		SIF !TALENT:LCOUNT:素質
 			CONTINUE
 		SELECTCASE TALENTNAME:素質
 			CASE "生意気", "反抗的", "衝動的", "同族嫌悪", "崩壊"
-				LOCAL -= 3
+				補正値 -= 3
 			CASE "プライド高い", "無関心", "男嫌い", "女嫌い", "汚れ無視", "倒錯的"
-				LOCAL -= 2
+				補正値 -= 2
 			CASE "臆病", "保守的", "恥じらい", "大人しい", "寂しがり屋"
-				LOCAL -= 1
+				補正値 -= 1
 			CASE "素直", "自制心", "献身的", "気丈", "潔癖症"
-				LOCAL += 1
+				補正値 += 1
 			CASE "音ゲーマー"
-				LOCAL += 3
+				補正値 += 3
 		ENDSELECT
 	NEXT
 	SIF CFLAG:LCOUNT:ゲーセン店長
-		LOCAL *= 2
+		補正値 *= 2
 	;-ストレス/100
-	LOCAL -= CFLAG:LCOUNT:ストレス値/100
+	補正値 -= CFLAG:LCOUNT:ストレス値/100
 
-	LOCAL:1 += LOCAL
+	合計値 += 補正値
 NEXT
 
-RETURNF LOCAL:1
+RETURNF 合計値
 
 @評判筐体補正
 #DIM DYNAMIC 筐体
@@ -884,14 +889,14 @@ RETURN 評判補正
 ;書式 GC定休日("木") みたいな
 @GC定休日, ARGS
 #FUNCTION
-VARSET LOCALS
+#DIMS DYNAMIC 分割用, 10
 
 SIF ARGS == ""
 	ARGS = %DOW(FLAG:曜日)%
 
-SPLIT ゲーセン定休日, "・", LOCALS
+SPLIT ゲーセン定休日, "・", 分割用
 
-IF FINDELEMENT(LOCALS, ARGS) >= 0
+IF FINDELEMENT(分割用, ARGS) >= 0
 	RETURNF 1
 ELSE
 	RETURNF 0

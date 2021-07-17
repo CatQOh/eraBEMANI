@@ -81,6 +81,8 @@ RESTART
 #DIM DYNAMIC ログ表示 = 1
 #DIM DYNAMIC ログ削除用
 #DIM DYNAMIC 発掘費用
+#DIMS DYNAMIC 分割用, 2
+#DIM DYNAMIC 魔法判定
 
 VARSET MS
 
@@ -94,10 +96,10 @@ SELECTCASE ARG
 		ARRAYCOPY "MS3", "MS"
 ENDSELECT
 
-SPLIT MS広さ:ARG, "/", LOCALS
+SPLIT MS広さ:ARG, "/", 分割用
 
-X幅 = TOINT(LOCALS:0)
-Y幅 = TOINT(LOCALS:1)
+X幅 = TOINT(分割用:0)
+Y幅 = TOINT(分割用:1)
 
 発掘費用 = X幅*Y幅*(MS難易度:ARG)/2
 
@@ -105,11 +107,8 @@ VARLINE = 0
 ログ削除用 = LINECOUNT
 
 $RESTART
-IF !ログ表示
-	SIF VARLINE
-		CLEARLINE LINECOUNT-VARLINE
-	VARLINE = LINECOUNT
-ENDIF
+SIF !ログ表示
+	CALL LOOP_CLEARLINE
 
 DRAWLINE
 IF マーク画面
@@ -254,11 +253,11 @@ DO
 				ENDIF
 				X開放 = -1
 				Y開放 = -1
-				LOCAL = 0
+				魔法判定 = 0
 				DO
 					;終盤だと一生乱数回すようになってしまうので加算式にする
 					IF X開放 >= 0 && Y開放 >= 0
-						IF LOCAL
+						IF 魔法判定
 							X開放++
 							SIF X開放 >= X幅
 								X開放 = 0
@@ -267,7 +266,7 @@ DO
 							SIF Y開放 >= Y幅
 								Y開放 = 0
 						ENDIF
-						INVERTBIT LOCAL, 0
+						INVERTBIT 魔法判定, 0
 					ELSE
 						X開放 = RAND:X幅
 						Y開放 = RAND:Y幅
@@ -318,11 +317,11 @@ DO
 				PRINTW 所持金が足りません
 				GOTO RESTART
 			ENDIF
-			SPLIT RESULTS, "/", LOCALS
-			X座標 = TOINT(LOCALS:0)
+			SPLIT RESULTS, "/", 分割用
+			X座標 = TOINT(分割用:0)
 			SIF X座標 > X幅
 				CONTINUE
-			Y座標 = TOINT(LOCALS:1)
+			Y座標 = TOINT(分割用:1)
 			SIF Y座標 > Y幅
 				CONTINUE
 			SIF !GROUPMATCH(MS:X座標:Y座標, 0, 2, 4, 6, 8, 10)
@@ -416,6 +415,7 @@ ENDIF
 #DIM DYNAMIC 探索費用
 #DIM DYNAMIC 発掘費用
 #DIM DYNAMIC 総温泉数
+#DIM DYNAMIC LRESULT
 
 広さ上限X = 10
 広さ上限Y = 10
@@ -483,7 +483,7 @@ SELECTCASE RESULT
 			ENDIF
 		NEXT
 		CALL INPUTF, 1, 2, 3
-		LOCAL = RESULT
+		LRESULT = RESULT
 		IF MS広さ:RESULT != ""
 			PRINTL 既に発掘現場が保存されています。上書きしますか？
 			PRINTL [0] - はい
@@ -492,7 +492,7 @@ SELECTCASE RESULT
 			SIF RESULT == 1
 				RESTART
 		ENDIF
-		CALL マインスイーパ生成, @"{X指定}/{Y指定}", 難易度指定, LOCAL
+		CALL マインスイーパ生成, @"{X指定}/{Y指定}", 難易度指定, LRESULT
 		MONEY -= 探索費用
 		RETURN
 ENDSELECT
@@ -511,19 +511,20 @@ RESTART
 #DIM DYNAMIC 難易度
 #DIM DYNAMIC 爆弾数
 #DIM DYNAMIC 温泉数
+#DIMS DYNAMIC 分割用, 2
+
 ;60*30は最大の広さ 廃人用
 VARSET MS
 
 ;広さはXX/XXなのでSPLIT
 MS広さ:ARG = %広さ%
-SPLIT 広さ, "/", LOCALS
-X幅 = TOINT(LOCALS:0)
-Y幅 = TOINT(LOCALS:1)
+SPLIT 広さ, "/", 分割用
+X幅 = TOINT(分割用:0)
+Y幅 = TOINT(分割用:1)
 
 ;難易度は6段階(暫定) 1ごとにマップの5%が爆弾と温泉マークになる
-LOCAL = (X幅*Y幅*難易度)/20
-爆弾数 = LOCAL
-温泉数 = LOCAL
+爆弾数 = (X幅*Y幅*難易度)/20
+温泉数 = (X幅*Y幅*難易度)/20
 
 ;ランダムで爆弾と温泉を設置
 ;変数内訳は0=未解明 1=解明 2=温泉ありかつ未解明 3=温泉ありかつ解明 4=爆弾ありかつ未解明 5=爆弾ありかつ解明

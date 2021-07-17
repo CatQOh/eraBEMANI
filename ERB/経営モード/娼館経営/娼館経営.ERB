@@ -1,6 +1,7 @@
 ﻿@STRATEGY_BROTHEL
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LRESULT
+#DIMS DYNAMIC 定休日設定
 CALL BR_ITEM_POINT
 
 SIF 娼館広さ == 0
@@ -80,10 +81,8 @@ DO
 		CASE 8
 			VARLINE = 0
 			DO
-				SIF VARLINE
-					CLEARLINE LINECOUNT-VARLINE
-				VARLINE = LINECOUNT
-				LOCALS = 
+				CALL LOOP_CLEARLINE
+				定休日設定 = 
 				DRAWLINE
 				PRINTL □定休日を選んでください
 				PRINTFORML 　[1] - 日曜日（\@ BR定休日("日") ? 定休 # 営業 \@）
@@ -107,14 +106,14 @@ DO
 								ENDIF
 							ENDIF
 							IF BR定休日(DOW(LCOUNT))
-								IF LOCALS == ""
-									LOCALS = %DOW(LCOUNT)%
+								IF 定休日設定 == ""
+									定休日設定 = %DOW(LCOUNT)%
 								ELSE
-									LOCALS += @"・%DOW(LCOUNT)%"
+									定休日設定 += @"・%DOW(LCOUNT)%"
 								ENDIF
 							ENDIF
 						NEXT
-						娼館定休日 = %LOCALS%
+						娼館定休日 = %定休日設定%
 					CASE 9
 						BREAK
 				ENDSELECT
@@ -184,6 +183,7 @@ RESTART
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LRESULT
 #DIM DYNAMIC 娼館道具設置数
+#DIM DYNAMIC 表示数
 
 CALL BR_ITEM_POINT
 PRINTL □道具を配置します
@@ -197,14 +197,14 @@ PRINTL
 DRAWLINE
 
 娼館道具設置数 = 0
-FOR LCOUNT, 1500, 1580
+FOR LCOUNT, GETNUM(ITEM, "娼館ローター"), GETNUM(ITEM, "お風呂場")
 	SIF ITEM:LCOUNT
 		娼館道具設置数++
 NEXT
 PRINT  *配置枠*［
-LOCAL = 0
+表示数 = 0
 REPEAT 娼館広さ
-	IF LOCAL < 娼館道具設置数
+	IF 表示数 < 娼館道具設置数
 		SETCOLOR 0 , 100 , 250
 			PRINT ■
 		RESETCOLOR
@@ -213,15 +213,15 @@ REPEAT 娼館広さ
 			PRINT ■
 		RESETCOLOR
 	ENDIF
-	LOCAL++
+	表示数++
 REND
 PRINTL ］
 DRAWLINE
-LOCAL = 0
-FOR LCOUNT, 1500, 1580
+表示数 = 0
+FOR LCOUNT, GETNUM(ITEM, "娼館ローター"), GETNUM(ITEM, "お風呂場")
 	SIF ITEMNAME:LCOUNT == ""
 		CONTINUE
-	SIF LOCAL%3 == 0
+	SIF 表示数%3 == 0
 		PRINT 　
 	PRINTFORM [{LCOUNT}] %SUBSTRINGU(ITEMNAME:LCOUNT, 2, -1)%
 	CALL PASELI, @" 維持費:{ITEMPRICE:LCOUNT}＄"
@@ -238,8 +238,8 @@ FOR LCOUNT, 1500, 1580
 		RESETCOLOR
 		PRINT 】
 	ENDIF
-	LOCAL++
-	SIF LOCAL%3 == 0
+	表示数++
+	SIF 表示数%3 == 0
 		PRINTL 
 NEXT
 PRINTL 
@@ -276,33 +276,37 @@ DO
 LOOP 1
 
 @PRINT_BR_ITEM
-#DIM LCOUNT
-VARSET LOCAL, 0
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 文字数
+#DIM DYNAMIC 表示数
+
 PRINTFORML 【設備】
-FOR LCOUNT, 1580, 1600
+FOR LCOUNT, GETNUM(ITEM, "お風呂場"), GETNUM(ITEM, "わけのわからないもの")+1
 	SIF ITEMNAME:LCOUNT == ""
 		CONTINUE
 	SIF ITEM:LCOUNT == 0
 		CONTINUE
-	SIF LOCAL == 0
+	SIF 文字数 == 0
 		PRINT 　
 	PRINTFORM [%ITEMNAME:LCOUNT%]
-	LOCAL += STRLENS(ITEMNAME:LCOUNT)
-	IF LOCAL > 80
+	文字数 += STRLENS(ITEMNAME:LCOUNT)
+	IF 文字数 > 80
 		PRINTL 
-		LOCAL = 0
+		文字数 = 0
 	ENDIF
-	LOCAL:1++
+	表示数++
 NEXT
-SIF !LOCAL:1
+SIF !表示数
 	PRINT 　[設備無し]
 SIF !LINEISEMPTY()
 	PRINTL 
 
 ;娼館増設----------------------------------------------------
 @BR_RENOVATION
-LOCAL = POWER(娼館広さ, 2)*10000
-LOCAL:1 = POWER(2, 娼館部屋数)*10000
+#DIM DYNAMIC 費用, 2
+
+費用 = POWER(娼館広さ, 2)*10000
+費用:1 = POWER(2, 娼館部屋数)*10000
 PRINTL □物件を増設します
 PRINTFORMLC 　広さ:{娼館広さ}
 PRINTFORMLC 部屋数:{娼館部屋数}
@@ -317,7 +321,7 @@ IF 娼館広さ >= 10
 	PRINTL 
 	RESETCOLOR
 ELSE
-	CALL PASELIL, @"　[1] - 広くする({LOCAL}＄)"
+	CALL PASELIL, @"　[1] - 広くする({費用}＄)"
 ENDIF
 IF 娼館部屋数 >= 20
 	SETCOLORBYNAME gray
@@ -325,7 +329,7 @@ IF 娼館部屋数 >= 20
 	PRINTL 
 	RESETCOLOR
 ELSE
-	CALL PASELIL, @"　[2] - 部屋を増やす({LOCAL:1}＄)"
+	CALL PASELIL, @"　[2] - 部屋を増やす({費用:1}＄)"
 ENDIF
 PRINTFORML 　[3] - 設備を導入する
 DRAWLINE
@@ -340,13 +344,13 @@ SELECTCASE RESULT
 	CASE 1
 		SIF 娼館広さ >= 10
 			RESTART
-		IF LOCAL > MONEY
+		IF 費用 > MONEY
 			PRINTW 所持金が足りません
 			RESTART
 		ENDIF
 		PRINTL 娼館を広くしますか？
 		PRINTFORML 広さ {娼館広さ}→{娼館広さ+1}
-		CALL PASELIL, @"増設後の所持金 {MONEY-LOCAL}＄"
+		CALL PASELIL, @"増設後の所持金 {MONEY-費用}＄"
 		PRINTL 
 		PRINTL [0] - はい
 		PRINTL [1] - いいえ
@@ -354,7 +358,7 @@ SELECTCASE RESULT
 		SELECTCASE RESULT
 			CASE 0
 				PRINTW 娼館を広くしました
-				MONEY -= LOCAL
+				MONEY -= 費用
 				娼館広さ++
 				IF FLAG:パートナー > 0
 					SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
@@ -365,13 +369,13 @@ SELECTCASE RESULT
 	CASE 2
 		SIF 娼館部屋数 >= 20
 			RESTART
-		IF LOCAL:1 > MONEY
+		IF 費用:1 > MONEY
 			PRINTW 所持金が足りません
 			RESTART
 		ENDIF
 		PRINTL 娼館の部屋を増やしますか？
 		PRINTFORML 部屋数 {娼館部屋数}→{娼館部屋数+1}
-		CALL PASELIL, @"増設後の所持金 {MONEY-LOCAL:1}＄"
+		CALL PASELIL, @"増設後の所持金 {MONEY-費用:1}＄"
 		PRINTL 
 		PRINTL [0] - はい
 		PRINTL [1] - いいえ
@@ -379,7 +383,7 @@ SELECTCASE RESULT
 		SELECTCASE RESULT
 			CASE 0
 				PRINTW 娼館の部屋を増やしました
-				MONEY -= LOCAL:1
+				MONEY -= 費用:1
 				娼館部屋数++
 				IF FLAG:パートナー > 0
 					SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
@@ -396,6 +400,9 @@ ENDSELECT
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC LCOUNT, 2
 #DIM DYNAMIC 単位文字数
+#DIMS DYNAMIC 表示用
+#DIM DYNAMIC LRESULT
+
 表示数 = 0
 DRAWLINE
 PRINTL □設備を導入します
@@ -403,7 +410,7 @@ DRAWLINE
 CALL PRINT_BR_ITEM
 DRAWLINE
 
-FOR LCOUNT, 1580, 1600
+FOR LCOUNT, GETNUM(ITEM, "お風呂場"), GETNUM(ITEM, "わけのわからないもの")+1
 	SIF ITEMNAME:LCOUNT == ""
 		CONTINUE
 	SIF 表示数 == 0
@@ -413,8 +420,8 @@ FOR LCOUNT, 1580, 1600
 		PRINTFORMLC [導入済み] %ITEMNAME:LCOUNT%
 		RESETCOLOR
 	ELSE
-		LOCALS = [{LCOUNT}] %ITEMNAME:LCOUNT%({ITEMPRICE:LCOUNT}＄)
-		CALL PASELI, LOCALS
+		表示用 = [{LCOUNT}] %ITEMNAME:LCOUNT%({ITEMPRICE:LCOUNT}＄)
+		CALL PASELI, 表示用
 		;PRINT_IMGでPRINTC系命令使うとエラーになるので疑似再現
 		IF FLAG:パセリ表示
 			単位文字数 = 2
@@ -424,7 +431,7 @@ FOR LCOUNT, 1580, 1600
 			単位文字数 = 1
 		ENDIF
 		;＄の分2文字と通貨単位分
-		FOR LCOUNT:1, 0, 28-(STRLENS(LOCALS)-2)-単位文字数
+		FOR LCOUNT:1, 0, 28-(STRLENS(表示用)-2)-単位文字数
 			PRINT  
 		NEXT
 	ENDIF
@@ -457,7 +464,7 @@ DO
 				RESTART
 			ENDIF
 			DRAWLINE
-			LOCAL = RESULT
+			LRESULT = RESULT
 			PRINTFORM %ITEMNAME:RESULT%:
 			SELECTCASE ITEMNAME:RESULT
 				CASE "お風呂場"
@@ -483,12 +490,12 @@ DO
 			CALL INPUTF, 0, 1
 			SELECTCASE RESULT
 				CASE 0
-					PRINTFORMW %ITEMNAME:LOCAL%を導入しました
-					ITEM:LOCAL = 1
-					MONEY -= ITEMPRICE:LOCAL
+					PRINTFORMW %ITEMNAME:LRESULT%を導入しました
+					ITEM:LRESULT = 1
+					MONEY -= ITEMPRICE:LRESULT
 					IF FLAG:パートナー > 0
 						SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
-							TRYCALLFORM BR_ITEM_%CSVNAMERPS(FLAG:パートナー)%, LOCAL
+							TRYCALLFORM BR_ITEM_%CSVNAMERPS(FLAG:パートナー)%, LRESULT
 					ENDIF
 			ENDSELECT
 			RESTART
@@ -498,6 +505,7 @@ LOOP 1
 
 ;運営方針----------------------------------------------------
 @BR_PLAN
+#DIM DYNAMIC 現上級娼婦
 ;CALL BR_ITEM_POINT
 DRAWLINE
 PRINTL 【現在のポイント】
@@ -538,91 +546,87 @@ PRINTPLAIN 　PLAN　
 PRINT [0] 戻る 
 PRINTL [20] 各方針の説明
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1 TO 4
-			娼館方針 = RESULT
-			IF FLAG:パートナー > 0
-				SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
-					TRYCALLFORM BR_PLAN_%CSVNAMERPS(FLAG:パートナー)%, RESULT
-			ENDIF
-		CASE 5 TO 7
-			娼館性別固定 = RESULT-5
-		CASE 8
-			INVERTBIT FLAG:娼館報告, 0
-		CASE 9
-			LOCAL = FINDCHARA(CFLAG:上級娼婦, 1)
-			SIF LOCAL >= 0
-				CFLAG:LOCAL:上級娼婦 = 0
-			DRAWLINE
-			PRINTL □上級娼婦に任命したいキャラを選択してください
-			FOR PAGING, 0, CHARANUM
-				CALL PAGING, CSTR:PAGING:配属 == "娼館" && FALLTYPE(PAGING) == 2, "", "上級娼婦", "任命しない"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					PRINTW 上級娼婦を任命しません
-				CASEELSE
-					PRINTFORMW %CALLNAME:RESULT%を上級娼婦に任命します
-					CFLAG:RESULT:上級娼婦 = 1
-					SIF !CFLAG:RESULT:上級娼婦に任命された経験
-						CFLAG:RESULT:名刺 = 5
-					CFLAG:RESULT:上級娼婦に任命された経験++
-			ENDSELECT
-		CASE 20
-			PRINTL 0-方針無し
-			PRINTL ├特に方針を指定しません。初期設定でもあります。
-			PRINTL ├無計画ということなので方針としての効果は皆無。
-			PRINTL └何かしら方針は定めたほうが良いでしょう。
-			PRINTL 
-			PRINTL 1-ソフト売春
-			PRINTL ├本番無しなど店側の制約を多く設けた方針です。
-			PRINTL ├体力や気力の消費が軽く経験の浅い奴隷でもそれなりの効果があります。
-			PRINTL └しかし基本的に経験が上がりにくく、調教としての効果は薄いかもしれません。
-			PRINTL 
-			PRINTL 2-ハード方針
-			PRINTL ├経験豊富で淫乱な奴隷ほど効果が高まる方針です。
-			PRINTL ├各種経験に多めの数値が入り、収入も安定しています。
-			PRINTL └経験が浅く適正でない奴隷の場合、収入も低く体力消費も大きいため序盤にはおすすめできません。
-			PRINTL 
-			PRINTL 3-SM方針
-			PRINTL ├いろいろとマニアックなプレイを専門とする方針です。
-			PRINTL ├一部素質で強力なプラス補正がかかり、逆にこういったプレイに向かない奴隷の場合は
-			PRINTL └多大な体力消費など、マイナスの効果が大きいかもしれません。
-			PRINTL 
-			PRINTL 4-狂気方針
-			PRINTL ├ごく一部の稀有なクライアント向けの方針です。
-			PRINTL ├脱法的な経営なので、客は少なく、ランクが低いとまったく収入がありません。
-			PRINTL └崩壊した奴隷や特殊な素質を持った奴隷の効果が高く、玄人向けの方針といえるでしょう。
-			PRINTL 
-			PRINTL 5-プレイ内容を報告させる
-			PRINTL ├売春での奉仕内容を収入計算時に報告させます。
-			PRINTL └オンオフで収入に違いは無いので奴隷の動向が気になるならオンにしてみましょう。
-			PRINTL 
-			PRINTL 6-上級娼婦を任命する
-			PRINTL ├淫乱、もしくは娼婦の素質を持ったキャラを上級娼婦に任命できます。
-			PRINTL ├上級娼婦に任命されたキャラは、売春中にプレイアブル可能になります。
-			PRINTL ├運営方針に応じて可能な行為、効果的な行為が変わり、お客様の満足度によって得られる報酬も増減します。
-			PRINTW └お客様とのより濃厚な売春を楽しみたいならぜひ任命してみましょう。
-		CASEELSE
-			CONTINUE
-	ENDSELECT
-LOOP 0
+INPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1 TO 4
+		娼館方針 = RESULT
+		IF FLAG:パートナー > 0
+			SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
+				TRYCALLFORM BR_PLAN_%CSVNAMERPS(FLAG:パートナー)%, RESULT
+		ENDIF
+	CASE 5 TO 7
+		娼館性別固定 = RESULT-5
+	CASE 8
+		INVERTBIT FLAG:娼館報告, 0
+	CASE 9
+		現上級娼婦 = FINDCHARA(CFLAG:上級娼婦, 1)
+		SIF 現上級娼婦 >= 0
+			CFLAG:現上級娼婦:上級娼婦 = 0
+		DRAWLINE
+		PRINTL □上級娼婦に任命したいキャラを選択してください
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, CSTR:PAGING:配属 == "娼館" && FALLTYPE(PAGING) == 2, "", "上級娼婦", "任命しない"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
+				PRINTW 上級娼婦を任命しません
+			CASEELSE
+				PRINTFORMW %CALLNAME:RESULT%を上級娼婦に任命します
+				CFLAG:RESULT:上級娼婦 = 1
+				SIF !CFLAG:RESULT:上級娼婦に任命された経験
+					CFLAG:RESULT:名刺 = 5
+				CFLAG:RESULT:上級娼婦に任命された経験++
+		ENDSELECT
+	CASE 20
+		PRINTL 0-方針無し
+		PRINTL ├特に方針を指定しません。初期設定でもあります。
+		PRINTL ├無計画ということなので方針としての効果は皆無。
+		PRINTL └何かしら方針は定めたほうが良いでしょう。
+		PRINTL 
+		PRINTL 1-ソフト売春
+		PRINTL ├本番無しなど店側の制約を多く設けた方針です。
+		PRINTL ├体力や気力の消費が軽く経験の浅い奴隷でもそれなりの効果があります。
+		PRINTL └しかし基本的に経験が上がりにくく、調教としての効果は薄いかもしれません。
+		PRINTL 
+		PRINTL 2-ハード方針
+		PRINTL ├経験豊富で淫乱な奴隷ほど効果が高まる方針です。
+		PRINTL ├各種経験に多めの数値が入り、収入も安定しています。
+		PRINTL └経験が浅く適正でない奴隷の場合、収入も低く体力消費も大きいため序盤にはおすすめできません。
+		PRINTL 
+		PRINTL 3-SM方針
+		PRINTL ├いろいろとマニアックなプレイを専門とする方針です。
+		PRINTL ├一部素質で強力なプラス補正がかかり、逆にこういったプレイに向かない奴隷の場合は
+		PRINTL └多大な体力消費など、マイナスの効果が大きいかもしれません。
+		PRINTL 
+		PRINTL 4-狂気方針
+		PRINTL ├ごく一部の稀有なクライアント向けの方針です。
+		PRINTL ├脱法的な経営なので、客は少なく、ランクが低いとまったく収入がありません。
+		PRINTL └崩壊した奴隷や特殊な素質を持った奴隷の効果が高く、玄人向けの方針といえるでしょう。
+		PRINTL 
+		PRINTL 5-プレイ内容を報告させる
+		PRINTL ├売春での奉仕内容を収入計算時に報告させます。
+		PRINTL └オンオフで収入に違いは無いので奴隷の動向が気になるならオンにしてみましょう。
+		PRINTL 
+		PRINTL 6-上級娼婦を任命する
+		PRINTL ├淫乱、もしくは娼婦の素質を持ったキャラを上級娼婦に任命できます。
+		PRINTL ├上級娼婦に任命されたキャラは、売春中にプレイアブル可能になります。
+		PRINTL ├運営方針に応じて可能な行為、効果的な行為が変わり、お客様の満足度によって得られる報酬も増減します。
+		PRINTW └お客様とのより濃厚な売春を楽しみたいならぜひ任命してみましょう。
+ENDSELECT
 
 RESTART
 
 ;道具名----------------------------------------------------
 @BR_ITEM_POINT
-#DIM LCOUNT
+#DIM DYNAMIC LCOUNT
 ソフトポイント = 0
 ハードポイント = 0
 SMポイント = 0
 狂気ポイント = 0
 
-FOR LCOUNT, 1500, 1580
+FOR LCOUNT, GETNUM(ITEM, "娼館ローター"), GETNUM(ITEM, "お風呂場")
 	SIF ITEMNAME:LCOUNT == ""
 		CONTINUE
 	SIF !ITEM:LCOUNT
@@ -686,17 +690,18 @@ SIF ITEM:わけのわからないもの
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 娼館部屋状態, 20, 2
 #DIM DYNAMIC 選択部屋
+#DIM DYNAMIC 部屋番号
 DRAWLINE
 
 VARSET 娼館部屋状態:0:0, 0
 
 FOR LCOUNT, 0, CHARANUM
 	IF CSTR:LCOUNT:配属 == "娼館"
-		LOCAL = CFLAG:LCOUNT:娼館部屋番号
-		IF 娼館部屋状態:LOCAL:0 == 0
-			娼館部屋状態:LOCAL:0 = LCOUNT
+		部屋番号 = CFLAG:LCOUNT:娼館部屋番号
+		IF 娼館部屋状態:部屋番号:0 == 0
+			娼館部屋状態:部屋番号:0 = LCOUNT
 		ELSE
-			娼館部屋状態:LOCAL:1 = LCOUNT
+			娼館部屋状態:部屋番号:1 = LCOUNT
 		ENDIF
 	ENDIF
 NEXT
@@ -742,38 +747,40 @@ LOOP 1
 
 ;収入計算----------------------------------------------------
 @INCOME_BR
-#DIM LCOUNT
-#DIM LCOUNT2
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC 収入合計
 #DIM DYNAMIC 支出
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC LMASTER
 #DIM DYNAMIC LASSI
 #DIM DYNAMIC 部屋配属人数
+#DIM DYNAMIC 対象
+#DIM DYNAMIC ノルマ
 
 CVARSET 通常出勤
 
-LOCAL = FINDCHARA(CFLAG:上級娼婦, 1)
-IF LOCAL >= 0
+対象 = FINDCHARA(CFLAG:上級娼婦, 1)
+IF 対象 >= 0
 	;方針設定してないとダメ
 	SIF 娼館方針 == 0
 		GOTO 通常営業
 	;体力不足
-	IF BASE:LOCAL:体力 <= 1000
-		PRINTFORML %CALLNAME:LOCAL%は疲労で娼館を休みました
-		CFLAG:LOCAL:休憩 = 1
+	IF BASE:対象:体力 <= 1000
+		PRINTFORML %CALLNAME:対象%は疲労で娼館を休みました
+		CFLAG:対象:休憩 = 1
 		GOTO 通常営業
 	ENDIF
-	IF CFLAG:LOCAL:ストレス値 > 300 && !TALENT:LOCAL:崩壊
-		PRINTFORML %CALLNAME:LOCAL%はストレス過多のため、娼館を休みました
-		CFLAG:LOCAL:休憩 = 1
+	IF CFLAG:対象:ストレス値 > 300 && !TALENT:対象:崩壊
+		PRINTFORML %CALLNAME:対象%はストレス過多のため、娼館を休みました
+		CFLAG:対象:休憩 = 1
 		GOTO 通常営業
 	ENDIF
 	;サボり魔は25%の確率でサボる
-	IF TALENT:LOCAL:サボり魔 && RAND:4 == 0 && !ワーカホリックレベル(LOCAL)
-		PRINTFORML %CALLNAME:LOCAL%は売春をサボりました
-		CFLAG:LOCAL:ストレス値 -= 5
-		CFLAG:LOCAL:休憩 = 1
+	IF TALENT:対象:サボり魔 && RAND:4 == 0 && !ワーカホリックレベル(対象)
+		PRINTFORML %CALLNAME:対象%は売春をサボりました
+		CFLAG:対象:ストレス値 -= 5
+		CFLAG:対象:休憩 = 1
 		GOTO 通常営業
 	ENDIF
 	LTARGET = TARGET
@@ -784,7 +791,6 @@ IF LOCAL >= 0
 	MASTER = LMASTER
 	ASSI = LASSI
 ENDIF
-
 
 $通常営業
 
@@ -905,18 +911,18 @@ IF 収入合計
 	娼館総収入 += 収入合計
 	バンめし = 0
 	DO
-		LOCAL = 0
+		ノルマ = 0
 		;高級ベッドがあるとレベルが上がりやすくなる
 		IF ITEM:高級ベッド
-			LOCAL = 700*POWER(娼館レベル, 2)
+			ノルマ = 700*POWER(娼館レベル, 2)
 		ELSE
-			LOCAL = 1000*POWER(娼館レベル, 2)
+			ノルマ = 1000*POWER(娼館レベル, 2)
 		ENDIF
-		SIF 娼館総収入 >= LOCAL
+		SIF 娼館総収入 >= ノルマ
 			娼館レベル++
-	LOOP 娼館総収入 >= LOCAL
+	LOOP 娼館総収入 >= ノルマ
 
-	娼館レベルアップ必要額 = LOCAL-娼館総収入
+	娼館レベルアップ必要額 = ノルマ-娼館総収入
 
 	FOR LCOUNT, 1500, 1580
 		IF ITEM:LCOUNT
@@ -1302,6 +1308,10 @@ RETURN 収入
 #DIM DYNAMIC 相性
 #DIM DYNAMIC 相性ボーナス
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 娼婦計算用
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 口上対象, 2
+#DIM DYNAMIC 表示済み
 
 #DIM DYNAMIC 客の性別
 #DIM DYNAMIC 絶頂, 2
@@ -1348,10 +1358,10 @@ RETURN 収入
 #DIM DYNAMIC 射精地獄, 2
 #DIM DYNAMIC 絶頂地獄, 2
 
-LOCAL = 0
+娼婦計算用 = 0
 FOR LCOUNT, 1, CHARANUM
 	SIF CFLAG:LCOUNT:娼館部屋番号 == ARG
-		娼婦:(LOCAL++) = LCOUNT
+		娼婦:(娼婦計算用++) = LCOUNT
 NEXT
 
 ;1000パセリは保証
@@ -1456,15 +1466,15 @@ SELECTCASE 娼館方針
 				客の射精:1 += フェラで射精
 			ENDIF
 		ELSE
-			LOCAL = RAND:2
-			フェラ:LOCAL = RAND(3, 5)
+			対象 = RAND:2
+			フェラ:対象 = RAND(3, 5)
 			フェラで射精 = RAND:3
-			客の射精:LOCAL += フェラで射精
-			LOCAL = RAND:2
-			手コキ:LOCAL = RAND:3
-			SIF 手コキ:LOCAL == 2
+			客の射精:対象 += フェラで射精
+			対象 = RAND:2
+			手コキ:対象 = RAND:3
+			SIF 手コキ:対象 == 2
 				手コキで射精 = RAND:2
-			客の射精:LOCAL += 手コキで射精
+			客の射精:対象 += 手コキで射精
 		ENDIF
 
 		IF 相性 >= 400 && VAGINA(娼婦:0) && VAGINA(娼婦:1) && RAND:3 == 0
@@ -1473,16 +1483,16 @@ SELECTCASE 娼館方針
 			客の射精:0 += 素股で射精
 			客の射精:1 += 素股で射精
 		ELSE
-			LOCAL = RAND:2
-			IF PENIS(娼婦:LOCAL)
-				兜合わせ:LOCAL = 1
+			対象 = RAND:2
+			IF PENIS(娼婦:対象)
+				兜合わせ:対象 = 1
 				兜合わせで射精 = RAND:2
-				射精:LOCAL = RAND:3
-				客の射精:LOCAL += 兜合わせで射精
+				射精:対象 = RAND:3
+				客の射精:対象 += 兜合わせで射精
 			ELSE
-				素股:LOCAL = 1
+				素股:対象 = 1
 				素股で射精 = RAND:2
-				客の射精:LOCAL += 素股で射精
+				客の射精:対象 += 素股で射精
 			ENDIF
 		ENDIF
 
@@ -1583,10 +1593,10 @@ SELECTCASE 娼館方針
 			フェラ:0++
 			フェラ:1++
 		ELSE
-			LOCAL = RAND:2
-			フェラ:LOCAL = RAND(1, 3)
+			対象 = RAND:2
+			フェラ:対象 = RAND(1, 3)
 			フェラで射精 = RAND:2
-			客の射精:LOCAL += フェラで射精
+			客の射精:対象 += フェラで射精
 		ENDIF
 		SIF SEX(娼婦:0) == 1 && 客の性別 <= 1
 			ゲイ:0 = RAND(3, 10)
@@ -1606,10 +1616,10 @@ SELECTCASE 娼館方針
 		ENDSELECT
 		;たまにマゾが来る
 		IF 客の性別 <= 1 && RAND:5 == 0
-			LOCAL = RAND:2
-			手コキ:LOCAL = 1
+			対象 = RAND:2
+			手コキ:対象 = 1
 			手コキで射精 = RAND(1, 4)
-			客の射精:LOCAL += 手コキで射精
+			客の射精:対象 += 手コキで射精
 			IF 相性 >= 200
 				ダブル足コキで射精 = RAND(2, 5)
 				客の射精:0 += ダブル足コキで射精
@@ -1687,25 +1697,25 @@ SELECTCASE 娼館方針
 				自慰:0++
 				自慰:1++
 				;どちらかがイかされ地獄の餌食になる
-				LOCAL = RAND:2
-				IF PENIS(娼婦:LOCAL)
-					射精地獄:LOCAL = RAND(4, 8)
-					射精:LOCAL += 射精地獄:LOCAL
-					アナル:LOCAL += RAND(2, 5)
-					絶頂:LOCAL += RAND:2
+				対象 = RAND:2
+				IF PENIS(娼婦:対象)
+					射精地獄:対象 = RAND(4, 8)
+					射精:対象 += 射精地獄:対象
+					アナル:対象 += RAND(2, 5)
+					絶頂:対象 += RAND:2
 					IF 客の性別 != 2
-						アナル中出し:LOCAL += RAND(1, 4)
-						客の射精 += アナル中出し:LOCAL
+						アナル中出し:対象 += RAND(1, 4)
+						客の射精 += アナル中出し:対象
 					ENDIF
 				ELSE
-					絶頂地獄:LOCAL = RAND(4, 8)
-					絶頂:LOCAL += 絶頂地獄:LOCAL
-					ヴァギナ:LOCAL = RAND(2, 5)
-					アナル:LOCAL = RAND(2, 5)
+					絶頂地獄:対象 = RAND(4, 8)
+					絶頂:対象 += 絶頂地獄:対象
+					ヴァギナ:対象 = RAND(2, 5)
+					アナル:対象 = RAND(2, 5)
 					IF 客の性別 != 2
-						中出し:LOCAL = RAND(1, 4)
-						アナル中出し:LOCAL = RAND(1, 4)
-						客の射精:LOCAL += 中出し:LOCAL+アナル中出し:LOCAL
+						中出し:対象 = RAND(1, 4)
+						アナル中出し:対象 = RAND(1, 4)
+						客の射精:対象 += 中出し:対象+アナル中出し:対象
 					ENDIF
 				ENDIF
 			ENDIF
@@ -1721,10 +1731,10 @@ SELECTCASE 娼館方針
 				フェラ:0++
 				フェラ:1++
 			ELSE
-				LOCAL = RAND:2
-				フェラ:LOCAL = RAND(1, 3)
+				対象 = RAND:2
+				フェラ:対象 = RAND(1, 3)
 				フェラで射精 = RAND:2
-				客の射精:LOCAL += フェラで射精
+				客の射精:対象 += フェラで射精
 			ENDIF
 		ENDIF
 		SIF SEX(娼婦:0) == 1 && 客の性別 <= 1
@@ -1781,12 +1791,12 @@ ENDSELECT
 IF FLAG:娼館報告 && 娼館方針
 	IF FLAG:口上表示
 		;番号が小さい方を前に並べる
-		LOCAL:0 = MIN(NO:(娼婦:0), NO:(娼婦:1))
-		LOCAL:1 = MAX(NO:(娼婦:0), NO:(娼婦:1))
-		TRYCCALLFORM BR_PLAY_%CSVNAMERPS(LOCAL:0)%_%CSVNAMERPS(LOCAL:1)%, 客の性別, 絶頂, 射精, 客の射精, 自慰, 自慰で射精, フェラ, フェラで射精, ヴァギナ, 中出し, アナル, アナル中出し, 手コキ, 手コキで射精, 足コキ, 足コキで射精, 兜合わせ, 兜合わせで射精, 素股, 素股で射精, ゲイ, レズ, 
+		口上対象:0 = MIN(NO:(娼婦:0), NO:(娼婦:1))
+		口上対象:1 = MAX(NO:(娼婦:0), NO:(娼婦:1))
+		TRYCCALLFORM BR_PLAY_%CSVNAMERPS(口上対象:0)%_%CSVNAMERPS(口上対象:1)%, 客の性別, 絶頂, 射精, 客の射精, 自慰, 自慰で射精, フェラ, フェラで射精, ヴァギナ, 中出し, アナル, アナル中出し, 手コキ, 手コキで射精, 足コキ, 足コキで射精, 兜合わせ, 兜合わせで射精, 素股, 素股で射精, ゲイ, レズ, 
 		CATCH
 			$NOTKOJO
-			LOCAL = 0
+			表示済み = 0
 			IF 娼館方針 == 4
 				PRINTFORML 娼館で働いてる%CALLNAME:(娼婦:0)%と%CALLNAME:(娼婦:1)%の様子を見に行くと、何度も犯されて身動きが取れないほど消耗したふたりが居た
 			ELSE
@@ -1806,17 +1816,17 @@ IF FLAG:娼館報告 && 娼館方針
 			
 			;マゾヒスト用
 			IF 手コキで射精
-				LOCAL = FINDELEMENT(手コキ, 1)
-				PRINTFORM まずは%CALLNAME:(娼婦:LOCAL)%が手で扱いて{手コキで射精}回抜いた後、
+				対象 = FINDELEMENT(手コキ, 1)
+				PRINTFORM まずは%CALLNAME:(娼婦:対象)%が手で扱いて{手コキで射精}回抜いた後、
 				IF ダブル足コキで射精
 					PRINTFORML ふたりで言葉責めをしながら足コキをして{ダブル足コキで射精}回射精ようだ。
 				ELSE
-					LOCAL = FINDELEMENT(足コキ, 1)
-					PRINTFORML %CALLNAME:(娼婦:LOCAL)%が足コキで{足コキで射精}回射精ようだ。
+					対象 = FINDELEMENT(足コキ, 1)
+					PRINTFORML %CALLNAME:(娼婦:対象)%が足コキで{足コキで射精}回射精ようだ。
 				ENDIF
 				SIF 逆アナル責めで射精
 					PRINTFORML 次にふたりは客を拘束し、ふたりでアナルや乳首、前立腺を責めながら{逆アナル責めで射精}回射精させることに成功したらしい。
-				LOCAL = 1
+				表示済み = 1
 			ENDIF
 			
 			IF 娼婦兜合わせ
@@ -1830,7 +1840,7 @@ IF FLAG:娼館報告 && 娼館方針
 				ELSE
 					PRINTL 互いのペニスを擦り合わせて見せつけたようだ。
 				ENDIF
-				LOCAL = 1
+				表示済み = 1
 			ELSEIF 二本フェラ
 				PRINT ペニスを交互にフェラされ、
 				IF 娼婦二本フェラ射精:0 && 娼婦二本フェラ射精:1
@@ -1842,7 +1852,7 @@ IF FLAG:娼館報告 && 娼館方針
 				ELSE
 					PRINTL 客は満足そうに二本のペニスを弄んでいたようだ。
 				ENDIF
-				LOCAL = 1
+				表示済み = 1
 			ENDIF
 			
 			IF 交互騎乗位
@@ -1874,7 +1884,7 @@ IF FLAG:娼館報告 && 娼館方針
 					ENDIF
 					PRINTL 搾り取ったようだ。
 				ENDIF
-				LOCAL = 1
+				表示済み = 1
 			ELSEIF 射精我慢勝負
 				PRINTFORML 「先に射精したほうが負け」というルールで同時にペニスを弄られ、我慢も虚しく%CALLNAME:(娼婦:先に射精)%が先に射精してしまった。
 				IF 客の性別 == 2
@@ -1891,7 +1901,7 @@ IF FLAG:娼館報告 && 娼館方針
 						PRINTFORM %CALLNAME:(娼婦:先に射精)%も犯されながら{絶頂:先に射精}回イったようだ。
 					PRINTL 
 				ENDIF
-				LOCAL = 1
+				表示済み = 1
 			ELSEIF ダブル自慰
 				PRINT ふたりで自慰をするように命じられ
 				IF 自慰で射精:0 && 自慰で射精:1
@@ -1927,12 +1937,12 @@ IF FLAG:娼館報告 && 娼館方針
 				ENDIF
 				IF 娼館方針 == 3
 					IF 射精地獄:0 || 絶頂地獄:0
-						LOCAL = 0
+						対象 = 0
 					ELSE
-						LOCAL = 1
+						対象 = 1
 					ENDIF
-					PRINTFORM 客は%CALLNAME:(娼婦:LOCAL)%に目をつけて拘束すると、
-					IF 射精地獄:LOCAL
+					PRINTFORM 客は%CALLNAME:(娼婦:対象)%に目をつけて拘束すると、
+					IF 射精地獄:対象
 						PRINTL 激しくペニスを弄り始めた。
 						PRINT 一度二度射精するだけでは手が止まらず、
 						IF 客の性別 != 2
@@ -1940,17 +1950,17 @@ IF FLAG:娼館報告 && 娼館方針
 						ELSE
 							PRINT アナルを責めながら
 						ENDIF
-						PRINTFORML 精液を搾り取り、最終的に潮を噴いてしまうまで%CALLNAME:(娼婦:LOCAL)%は{射精地獄:LOCAL}回連続で射精させられた。
-					ELSEIF 絶頂地獄:LOCAL
+						PRINTFORML 精液を搾り取り、最終的に潮を噴いてしまうまで%CALLNAME:(娼婦:対象)%は{射精地獄:対象}回連続で射精させられた。
+					ELSEIF 絶頂地獄:対象
 						IF 客の性別 != 2
 							PRINTL 膣とアナルを交互に激しく犯し始めた。
 						ELSE
 							PRINTL 膣とアナルを指や道具で激しく責め始めた。
 						ENDIF
-						PRINTFORML %CALLNAME:(娼婦:LOCAL)%が何度イっても終わることはなく、{絶頂地獄:LOCAL}回ほど連続で絶頂させられて気を失いかけたようだ。
+						PRINTFORML %CALLNAME:(娼婦:対象)%が何度イっても終わることはなく、{絶頂地獄:対象}回ほど連続で絶頂させられて気を失いかけたようだ。
 					ENDIF
 				ENDIF
-				LOCAL = 1
+				表示済み = 1
 			ELSE
 				IF MAX(中出し:0, アナル中出し:0) >= 1 && MAX(中出し:1, アナル中出し:1) >= 1
 					IF 拘束プレイ
@@ -1986,7 +1996,7 @@ IF FLAG:娼館報告 && 娼館方針
 							ENDIF
 						ENDIF
 					ENDIF
-					LOCAL = 1
+					表示済み = 1
 				ELSEIF 中出し:0 || アナル中出し:0
 					PRINTL 体中を触られた後、
 					PRINTFORM %CALLNAME:(娼婦:0)%の方を気に入った客は%CALLNAME:(娼婦:0)%と
@@ -1996,7 +2006,7 @@ IF FLAG:娼館報告 && 娼館方針
 						PRINTFORM アナルセックスに及び、{アナル中出し:0}回
 					ENDIF
 					PRINTL 中出ししたようだ。
-					LOCAL = 1
+					表示済み = 1
 				ELSEIF 中出し:1 || アナル中出し:1
 					PRINTFORM %CALLNAME:(娼婦:1)%の方を気に入った客は%CALLNAME:(娼婦:1)%と
 					IF 中出し:1
@@ -2005,7 +2015,7 @@ IF FLAG:娼館報告 && 娼館方針
 						PRINTFORM アナルセックスに及び、{アナル中出し:1}回
 					ENDIF
 					PRINTL 中出ししたようだ。
-					LOCAL = 1
+					表示済み = 1
 				ENDIF
 			ENDIF
 			
@@ -2014,9 +2024,9 @@ IF FLAG:娼館報告 && 娼館方針
 					PRINTL 家畜のように縛られて放置されるふたりは並外れた回数の中出しに、妊娠したように腹を膨らませ、未だ収まりきらない激しい絶頂の余韻に足をがくがくと震わせている。
 				ELSE
 					PRINTL 散々犯されてぼろ雑巾のように打ち捨てられるふたりは、未だに体をびくびくと痙攣させている。
-					LOCAL = RAND:2
-					IF VAGINA(娼婦:LOCAL)
-						PRINTFORM %CALLNAME:(娼婦:LOCAL)%は膣内から産み落とすように精液の塊を零し、
+					対象 = RAND:2
+					IF VAGINA(娼婦:対象)
+						PRINTFORM %CALLNAME:(娼婦:対象)%は膣内から産み落とすように精液の塊を零し、
 						SELECTCASE RAND:2
 							CASE 0
 								PRINTL 絶頂に緩んだ尿道から勢い無く尿を漏らしている……
@@ -2024,7 +2034,7 @@ IF FLAG:娼館報告 && 娼館方針
 								PRINTL 膣内を這う濃厚な精液に小さい嬌声を上げた……
 						ENDSELECT
 					ELSE
-						PRINTFORM %CALLNAME:(娼婦:LOCAL)%は下品な音を立てて排泄のようにアナルから白濁液を漏らし、
+						PRINTFORM %CALLNAME:(娼婦:対象)%は下品な音を立てて排泄のようにアナルから白濁液を漏らし、
 						SELECTCASE RAND:2
 							CASE 0
 								PRINTL 犯される快感で出したのであろう精液が、拭うことも叶わずに先端から滲み出ている……
@@ -2033,10 +2043,10 @@ IF FLAG:娼館報告 && 娼館方針
 						ENDSELECT
 					ENDIF
 				ENDIF
-				LOCAL = 1
+				表示済み = 1
 			ELSE
 				IF ダブルフェラ || ダブルパイズリ
-					SIF LOCAL
+					SIF 表示済み
 						PRINT その後、
 					PRINT ふたり一緒に客のペニスを
 					IF ダブルフェラ && ダブルパイズリ
@@ -2062,7 +2072,7 @@ IF FLAG:娼館報告 && 娼館方針
 						ENDSELECT
 					ENDIF
 				ELSEIF 客の性別 != 2
-					SIF LOCAL
+					SIF 表示済み
 						PRINT その後、
 					IF 娼館方針 == 2 || 娼館方針 == 3
 						IF フェラ:0
@@ -2182,6 +2192,7 @@ RETURN 収入
 #DIM DYNAMIC 適性
 #DIM DYNAMIC 不適性
 #DIM DYNAMIC 収入
+#DIM DYNAMIC 消耗量
 
 ;方針による補正
 SELECTCASE 娼館方針
@@ -2820,24 +2831,24 @@ SELECTCASE 娼館方針
 		ENDIF
 ENDSELECT
 ;体力気力消費計算
-LOCAL = MAX(不適性-適性, 1)
+消耗量 = MAX(不適性-適性, 1)
 SELECTCASE 娼館方針
 	;ソフト
 	CASE 1
-		BASE:娼婦:体力 -= LOCAL*50
-		BASE:娼婦:気力 -= LOCAL*30
+		BASE:娼婦:体力 -= 消耗量*50
+		BASE:娼婦:気力 -= 消耗量*30
 	;ハード
 	CASE 2
-		BASE:娼婦:体力 -= LOCAL*100
-		BASE:娼婦:気力 -= LOCAL*50
+		BASE:娼婦:体力 -= 消耗量*100
+		BASE:娼婦:気力 -= 消耗量*50
 	;SM
 	CASE 3
-		BASE:娼婦:体力 -= LOCAL*300
-		BASE:娼婦:気力 -= LOCAL*70
+		BASE:娼婦:体力 -= 消耗量*300
+		BASE:娼婦:気力 -= 消耗量*70
 	;狂気
 	CASE 4
-		BASE:娼婦:体力 -= LOCAL*200
-		BASE:娼婦:気力 -= LOCAL*150
+		BASE:娼婦:体力 -= 消耗量*200
+		BASE:娼婦:気力 -= 消耗量*150
 ENDSELECT
 SIF BASE:娼婦:体力 <= 0
 	BASE:娼婦:体力 = 1

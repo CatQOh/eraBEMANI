@@ -12,7 +12,9 @@
 #DIM DYNAMIC 配属可能, 10000
 #DIM DYNAMIC 名前文字数
 #DIM DYNAMIC 配属先文字数
-VARSET LOCAL, 0
+#DIM DYNAMIC LRESULT
+#DIM DYNAMIC 実績用変数
+
 配属人数 = 0
 
 SIF VARLINE
@@ -351,16 +353,16 @@ DO
 						CASEELSE
 							PRINTFORMW %CALLNAME:RESULT%が帰宅しました
 					ENDSELECT
-					LOCAL = RESULT
-					CALL 配属解除, LOCAL
+					LRESULT = RESULT
+					CALL 配属解除, LRESULT
 					LTARGET = TARGET
-					TARGET = LOCAL
+					TARGET = LRESULT
 					;配属解除時の口上
 					SIF FLAG:口上表示 && !CFLAG:口上非表示
-						TRYCALLFORM %配属先%_ASSIGNOFF_%CSVNAMERPS(NO:LOCAL)%
+						TRYCALLFORM %配属先%_ASSIGNOFF_%CSVNAMERPS(NO:LRESULT)%
 					TARGET = LTARGET
 					;配属先ごとに専用の処理がある場合は呼び出す
-					TRYCALLFORM %配属先%_ASSIGNOFF_OPTION, LOCAL
+					TRYCALLFORM %配属先%_ASSIGNOFF_OPTION, LRESULT
 					RESTART
 				CASEELSE
 					$娼館ELSE
@@ -369,49 +371,49 @@ DO
 						RESTART
 					ENDIF
 					PRINTFORMW %CALLNAME:RESULT%を配属しました
-					LOCAL = RESULT
-					CALL 配属解除, LOCAL
-					CSTR:LOCAL:配属 = %配属先%
+					LRESULT = RESULT
+					CALL 配属解除, LRESULT
+					CSTR:LRESULT:配属 = %配属先%
 					SIF 配属先 == "娼館"
-						CFLAG:LOCAL:娼館部屋番号 = 配属部屋
+						CFLAG:LRESULT:娼館部屋番号 = 配属部屋
 					LTARGET = TARGET
-					TARGET = LOCAL
+					TARGET = LRESULT
 					;配属時の口上
 					SIF FLAG:口上表示 && !CFLAG:口上非表示
-						TRYCALLFORM %配属先%_ASSIGNON_%CSVNAMERPS(NO:LOCAL)%
+						TRYCALLFORM %配属先%_ASSIGNON_%CSVNAMERPS(NO:LRESULT)%
 					TARGET = LTARGET
-					SIF ASSI == LOCAL
+					SIF ASSI == LRESULT
 						ASSI = -1
-					SIF TARGET == LOCAL
+					SIF TARGET == LRESULT
 						TARGET = -1
 					;配属先ごとに専用の処理がある場合は呼び出す
-					TRYCALLFORM %配属先%_ASSIGNON_OPTION, LOCAL
+					TRYCALLFORM %配属先%_ASSIGNON_OPTION, LRESULT
 					;実績:日向美ビタースイーツ♪のメンバーを全員娼館に配属する
-					LOCAL = 0
+					実績用変数 = 0
 					IF 配属先 == "娼館"
 						FOR LCOUNT, 0, CHARANUM
 							IF CSTR:LCOUNT:配属 == "娼館"
 								SELECTCASE CHARANAMEF(LCOUNT)
 									CASE "山形 まり花", "和泉 一舞", "春日 咲子", "霜月 凛", "芽兎 めう"
-										LOCAL++
+										実績用変数++
 								ENDSELECT
 							ENDIF
 						NEXT
-						SIF LOCAL == 5
+						SIF 実績用変数 == 5
 							CALL 実績解除, "日向美商店街で噂の売春宿"
 					ENDIF
 					;実績:ユーズ、ター子、レイジを調理室に配属する
-					LOCALS = 0
+					実績用変数 = 0
 					IF 配属先 == "調理室"
 						FOR LCOUNT, 0, CHARANUM
 							IF CSTR:LCOUNT:配属 == "調理室"
 								SELECTCASE CHARANAMEF(LCOUNT)
 									CASE "ユーズ", "ター子", "レイジ"
-										LOCAL++
+										実績用変数++
 								ENDSELECT
 							ENDIF
 						NEXT
-						SIF LOCAL == 3
+						SIF 実績用変数 == 3
 							CALL 実績解除, "今夜はたこ焼きパーティ"
 					ENDIF
 					RESTART
@@ -422,7 +424,9 @@ LOOP 0
 RESTART
 
 @配属解除, ARG
-LOCALS = %CSTR:ARG:配属%
+#DIMS DYNAMIC 配属先
+
+配属先 = %CSTR:ARG:配属%
 CSTR:ARG:配属 = 
 CSTR:ARG:転属 = 
 CFLAG:ARG:配属完了 = 0
@@ -431,20 +435,19 @@ CFLAG:ARG:上級娼婦 = 0
 CFLAG:ARG:レッスン = 0
 CFLAG:ARG:娼館部屋番号 = 0
 飲食店リーダー:ARG:0 = 0
-TRYCALLFORM %LOCALS%_ASSIGNOFF_OPTION, ARG
+TRYCALLFORM %配属先%_ASSIGNOFF_OPTION, ARG
 
 @浪費癖人数, ARGS
 #FUNCTION
 #DIM DYNAMIC LCOUNT
-
-LOCAL = 0
+#DIM DYNAMIC 返り値
 
 FOR LCOUNT, 0, CHARANUM
 	SIF CSTR:LCOUNT:配属 == ARGS && TALENT:LCOUNT:浪費癖
-		LOCAL++
+		返り値++
 NEXT
 
-RETURNF LOCAL
+RETURNF 返り値
 
 ;同じ配属先に相性が良いキャラが居る場合にモチベに補正がかかる
 ;相性悪いともちろん下がる

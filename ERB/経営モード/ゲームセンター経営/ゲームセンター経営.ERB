@@ -1,5 +1,8 @@
 ﻿@STRATEGY_GC
 #DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 定休日設定
+#DIM DYNAMIC LRESULT
+
 DRAWLINE
 PRINTL 
 PRINTL 【ゲームセンター経営】
@@ -101,10 +104,8 @@ DO
 		CASE 8
 			VARLINE = 0
 			DO
-				SIF VARLINE
-					CLEARLINE LINECOUNT-VARLINE
-				VARLINE = LINECOUNT
-				LOCALS = 
+				CALL LOOP_CLEARLINE
+				定休日設定 = 
 				DRAWLINE
 				PRINTL □定休日を選んでください
 				PRINTFORML 　[1] - 日曜日（\@ GC定休日("日") ? 定休 # 営業 \@）
@@ -116,26 +117,26 @@ DO
 				PRINTFORML 　[0] - 土曜日（\@ GC定休日("土") ? 定休 # 営業 \@）
 				PRINTL 　[9] - 設定終了
 				INPUT
-				LOCAL = RESULT
-				SELECTCASE LOCAL
+				LRESULT = RESULT
+				SELECTCASE LRESULT
 					CASE 0 TO 6
 						FOR LCOUNT, 0, 7
-							IF LOCAL == LCOUNT
-								IF !GC定休日(DOW(LOCAL))
-									ゲーセン定休日 += @"・%DOW(LOCAL)%"
+							IF LRESULT == LCOUNT
+								IF !GC定休日(DOW(LRESULT))
+									ゲーセン定休日 += @"・%DOW(LRESULT)%"
 								ELSE
 									CONTINUE
 								ENDIF
 							ENDIF
 							IF GC定休日(DOW(LCOUNT))
-								IF LOCALS == ""
-									LOCALS = %DOW(LCOUNT)%
+								IF 定休日設定 == ""
+									定休日設定 = %DOW(LCOUNT)%
 								ELSE
-									LOCALS += @"・%DOW(LCOUNT)%"
+									定休日設定 += @"・%DOW(LCOUNT)%"
 								ENDIF
 							ENDIF
 						NEXT
-						ゲーセン定休日 = %LOCALS%
+						ゲーセン定休日 = %定休日設定%
 					CASE 9
 						BREAK
 				ENDSELECT
@@ -177,17 +178,17 @@ DO
 				SIF CSTR:RESULT:配属 != "ゲーセン売春"
 					CONTINUE
 				PRINTFORML □%CALLNAME:RESULT%の売春方針を指定してください
-				LOCAL = RESULT
+				LRESULT = RESULT
 				HTML_PRINT SET_TOOLTIP("　[0] - ホールで待機させる", "ホールで客引きをさせます")
 				HTML_PRINT SET_TOOLTIP("　[1] - ホールで待機させる(清潔)", "ホールで客引きをさせますが、従業員や他の客にばれないように設備を汚させないようにします")
-				IF FALLTYPE(LOCAL) != 2 && 経験人数(LOCAL) < 50
+				IF FALLTYPE(LRESULT) != 2 && 経験人数(LRESULT) < 50
 					HTML_PRINT SET_TOOLTIP("　[-] - トイレで待機させる", "[淫乱][娼婦]、もしくは50人以上との性経験が必要です", 0, "gray")
 				ELSE
 					HTML_PRINT SET_TOOLTIP("　[2] - トイレで待機させる", "トイレで肉便器になるように命じます")
 				ENDIF
-				;IF FALLTYPE(LOCAL) != 2 && 経験人数(LOCAL) < 50
+				;IF FALLTYPE(LRESULT) != 2 && 経験人数(LRESULT) < 50
 				;	HTML_PRINT SET_TOOLTIP("　[-] - お持ち帰り待機", "[淫乱][娼婦]、もしくは50人以上との性経験が必要です", 0, "gray")
-				;ELSEIF !TALENT:LOCAL:音ゲーマー
+				;ELSEIF !TALENT:LRESULT:音ゲーマー
 				;	HTML_PRINT SET_TOOLTIP("　[-] - お持ち帰り待機", "ある程度、客との共通の会話ができるスキル[音ゲーマー]が必要です", 0, "gray")
 				;ELSE
 				;	HTML_PRINT SET_TOOLTIP("　[3] - お持ち帰り待機", "客と一夜を共にさせます")
@@ -197,17 +198,17 @@ DO
 
 				SELECTCASE RESULT
 					CASE 0, 1
-						CFLAG:LOCAL:ゲーセン売春方針 = RESULT
+						CFLAG:LRESULT:ゲーセン売春方針 = RESULT
 					CASE 2
-						SIF FALLTYPE(LOCAL) != 2 && 経験人数(LOCAL) < 50
+						SIF FALLTYPE(LRESULT) != 2 && 経験人数(LRESULT) < 50
 							CONTINUE
-						CFLAG:LOCAL:ゲーセン売春方針 = 2
+						CFLAG:LRESULT:ゲーセン売春方針 = 2
 					;CASE 3
-					;	SIF FALLTYPE(LOCAL) != 2 && 経験人数(LOCAL) < 50
+					;	SIF FALLTYPE(LRESULT) != 2 && 経験人数(LRESULT) < 50
 					;		CONTINUE
-					;	SIF !TALENT:LOCAL:音ゲーマー
+					;	SIF !TALENT:LRESULT:音ゲーマー
 					;		CONTINUE
-					;	CFLAG:LOCAL:ゲーセン売春方針 = 3
+					;	CFLAG:LRESULT:ゲーセン売春方針 = 3
 					;	BREAK
 				ENDSELECT
 				CONTINUE
@@ -294,9 +295,12 @@ LOOP 1
 
 ;物件購入処理----------------------------------------------------
 @GC_PROPERTY
-#DIM 階層
-#DIM 筐体
-LOCAL = GC名声+GC評判
+#DIM DYNAMIC 階層
+#DIM DYNAMIC 筐体
+#DIM DYNAMIC 総スコア
+#DIM DYNAMIC LRESULT
+
+総スコア = GC名声+GC評判
 DRAWLINE
 PRINTL 【物件購入】
 PRINTL 名声や評判によって買える物件も変わります
@@ -305,15 +309,15 @@ CALL PASELIL, @"所持金：{MONEY}＄"
 PRINTL 
 CALL PASELIL, @"　[1] - ボロ屋(30000＄ - 300＄～)"
 CALL PASELIL, @"　[2] - 中小スーパーのテナント(5000＄ - 1000＄～)"
-SIF LOCAL >= 5000
+SIF 総スコア >= 5000
 	CALL PASELIL, @"　[3] - 商店街の一角(50000＄ - 1200＄～)"
-SIF LOCAL >= 10000
+SIF 総スコア >= 10000
 	CALL PASELIL, @"　[4] - 駅中テナント(10000＄ - 3000＄～)"
-SIF LOCAL >= 30000
+SIF 総スコア >= 30000
 	CALL PASELIL, @"　[5] - 街中物件(100000＄ - 2000＄～)"
-SIF LOCAL >= 50000
+SIF 総スコア >= 50000
 	CALL PASELIL, @"　[6] - 百貨店テナント(30000＄ - 10000＄～)"
-SIF LOCAL >= 100000
+SIF 総スコア >= 100000
 	CALL PASELIL, @"　[7] - アミューズメント施設(300000＄ - 5000＄～)"
 DRAWLINE
 PRINTPLAIN 　PROPERTY　
@@ -321,8 +325,8 @@ PRINTL [0] - 戻る　
 
 DO
 	INPUT
-	LOCAL = RESULT
-	SELECTCASE RESULT
+	LRESULT = RESULT
+	SELECTCASE LRESULT
 		CASE 0
 			RETURN 0
 		CASE 1
@@ -374,16 +378,16 @@ DO
 	ENDSELECT
 LOOP 0
 
-IF MONEY < 物件価格(RESULT)
+IF MONEY < 物件価格(LRESULT)
 	PRINTW 所持金が足りません
 	RESTART
-ELSEIF GC物件 == RESULT
+ELSEIF GC物件 == LRESULT
 	PRINTW 現在所持している物件です
 	RESTART
 ENDIF
 
 PRINTL 所持金変動
-CALL PASELIL, @"{MONEY}＄ > {MONEY - 物件価格(RESULT)}＄"
+CALL PASELIL, @"{MONEY}＄ > {MONEY - 物件価格(LRESULT)}＄"
 PRINTL 
 PRINTL 購入しますか？
 PRINTL [0] - 購入しない
@@ -407,23 +411,23 @@ ELSE
 	GC店名 = ゲームセンター
 ENDIF
 
-PRINTFORMW ＜%物件名(LOCAL)%を購入しました＞
-MONEY -= 物件価格(LOCAL)
+PRINTFORMW ＜%物件名(LRESULT)%を購入しました＞
+MONEY -= 物件価格(LRESULT)
 IF FLAG:パートナー > 0
 	SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
-		TRYCALLFORM BUY_OBJECT_%CSVNAMERPS(FLAG:パートナー)%, LOCAL
+		TRYCALLFORM BUY_OBJECT_%CSVNAMERPS(FLAG:パートナー)%, LRESULT
 ENDIF
 FLAG:ゲーセン営業中 = DAY
 
 ;初期値設定-------------------
 ;物件情報--------------
-GC物件 = LOCAL
+GC物件 = LRESULT
 
 ;広さ初期値------------
-GC広さ = (LOCAL * 2)
+GC広さ = LRESULT*2
 
 ;分煙施設--------------
-SELECTCASE LOCAL
+SELECTCASE LRESULT
 	;テナントとアミューズメントには分煙施設が付く
 	CASE 2, 4, 6, 7
 		GC分煙 = 1
@@ -433,32 +437,32 @@ ENDSELECT
 GC階層 = 1
 空きスペース:1 = GC広さ
 ;街中とアミューズメントは2階建て
-SELECTCASE LOCAL
+SELECTCASE LRESULT
 	CASE 5, 7
 		GC階層 = 2
 		空きスペース:2 = GC広さ
 ENDSELECT
 
 ;外装初期値------------
-GC外装 = (LOCAL/2+1)
+GC外装 = LRESULT/2+1
 
 ;フードコート----------
-SELECTCASE LOCAL
+SELECTCASE LRESULT
 	;百貨店とアミューズメントにはフードコートが付く
 	CASE 6, 7
 		GCフードコート = 1
 ENDSELECT
 
 ;お手洗い--------------
-GCトイレ = (LOCAL/2+1)
+GCトイレ = LRESULT/2+1
 
-RETURN 0
+RETURN
 
 ;物件増築処理----------------------------------------------------
 @GC_RENOVATION
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 費用, 7
 
-VARSET LOCAL, 0
 DRAWLINE
 PRINTL 【物件増築】
 PRINTL 物件を増築できます。
@@ -491,14 +495,14 @@ PRINTL
 DRAWLINE
 
 ;広さは最大で20まで
-LOCAL:1 = GC広さ*30000+50000
-LOCAL:2 = 30000
+費用:1 = GC広さ*30000+50000
+費用:2 = 30000
 ;階層は100まで
-LOCAL:3 = (GC階層*GC階層)*1000000
+費用:3 = (GC階層*GC階層)*1000000
 ;外装も100まで
-LOCAL:4 = GC外装*100000
-LOCAL:5 = 100000
-LOCAL:6 = GCトイレ*2000+5000
+費用:4 = GC外装*100000
+費用:5 = 100000
+費用:6 = GCトイレ*2000+5000
 
 SELECTCASE GC物件
 	CASE 2, 4, 6
@@ -509,23 +513,23 @@ SELECTCASE GC物件
 		IF GC広さ >= 20
 			PRINTL 　[-] - 広さは最大です
 		ELSE
-			CALL PASELIL, @"　[1] - 広くする({LOCAL:1}＄)"
+			CALL PASELIL, @"　[1] - 広くする({費用:1}＄)"
 		ENDIF
 		SIF !GC分煙
-			CALL PASELIL, @"　[2] - 分煙施設を作る({LOCAL:2}＄)"
+			CALL PASELIL, @"　[2] - 分煙施設を作る({費用:2}＄)"
 		IF GC階層 >= 100
 			PRINTL 　[-] - 階層は最大です
 		ELSE
-			CALL PASELIL, @"　[3] - 階層を増やす({LOCAL:3}＄)"
+			CALL PASELIL, @"　[3] - 階層を増やす({費用:3}＄)"
 		ENDIF
 		IF GC外装 >= 100
 			PRINTL 　[-] - 外装は最大です
 		ELSE
-			CALL PASELIL, @"　[4] - 外装強化({LOCAL:4}＄)"
+			CALL PASELIL, @"　[4] - 外装強化({費用:4}＄)"
 		ENDIF
 		SIF !GCフードコート
-			CALL PASELIL, @"　[5] - フードコートを作る({LOCAL:5}＄)"
-		CALL PASELIL, @"　[6] - お手洗い改装({LOCAL:6}＄)"
+			CALL PASELIL, @"　[5] - フードコートを作る({費用:5}＄)"
+		CALL PASELIL, @"　[6] - お手洗い改装({費用:6}＄)"
 ENDSELECT
 DRAWLINE
 PRINTPLAIN 　RENOVATION　
@@ -552,7 +556,7 @@ DO
 	ENDSELECT
 LOOP LOOPRES(0, 1, 2, 3, 4, 5, 6)
 
-IF MONEY < LOCAL:RESULT
+IF MONEY < 費用:RESULT
 	PRINTW 所持金が足りません
 	RESTART
 ENDIF
@@ -581,7 +585,7 @@ SELECTCASE RESULT
 		PRINTFORMW トイレを改装しました
 		GCトイレ++
 ENDSELECT
-MONEY -= LOCAL:RESULT
+MONEY -= 費用:RESULT
 IF FLAG:パートナー > 0
 	SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
 		TRYCALLFORM GC_RENOVATION_%CSVNAMERPS(FLAG:パートナー)%, RESULT
@@ -589,7 +593,7 @@ ENDIF
 
 RESTART
 
-RETURN 0
+RETURN
 
 ;筐体購入処理----------------------------------------------------
 @GC_ARCADEGAME
@@ -656,15 +660,17 @@ LOOP 1
 ;店長の任命----------------------------------------------------
 @GC_LEADER
 #DIM DYNAMIC LCOUNT
-LOCAL = FINDCHARA(CFLAG:ゲーセン店長, 1)
-SIF LOCAL == -1
-	LOCAL = 0
+#DIM DYNAMIC 現店長
+
+現店長 = FINDCHARA(CFLAG:ゲーセン店長, 1)
+SIF 現店長 == -1
+	現店長 = 0
 
 DRAWLINE
 
 PRINT □店長に任命するキャラを選んでください(現在の店長:
-IF LOCAL
-	PRINTFORML %NAME:LOCAL%)
+IF 現店長
+	PRINTFORML %NAME:現店長%)
 ELSE
 	PRINTL 不在)
 ENDIF
@@ -693,10 +699,10 @@ DO
 		CASEELSE
 			IF CSTR:RESULT:配属 == "ゲームセンター"
 				PRINTFORMW %NAME:RESULT%を店長に任命しました
-				CFLAG:LOCAL:ゲーセン店長 = 0
+				CFLAG:現店長:ゲーセン店長 = 0
 				CFLAG:RESULT:ゲーセン店長 = 1
 				SIF FLAG:口上表示 && !CFLAG:RESULT:口上非表示
-					TRYCALLFORM GC_ASSIGNLEADER_%CSVNAMERPS(NO:RESULT)%, RESULT, LOCAL
+					TRYCALLFORM GC_ASSIGNLEADER_%CSVNAMERPS(NO:RESULT)%, RESULT, 現店長
 				RESTART
 			ENDIF
 	ENDSELECT
@@ -707,7 +713,8 @@ LOOP 1
 ;----------------------------------------------------
 @PRINT_AC_ITEM
 #DIM DYNAMIC LCOUNT
-LOCAL = 0
+#DIM DYNAMIC 所持筐体数
+
 DRAWLINE
 FOR LCOUNT, 1100, 1500
 	SIF ITEMNAME:LCOUNT == ""
@@ -716,9 +723,9 @@ FOR LCOUNT, 1100, 1500
 		CONTINUE
 
 	PRINTFORM [%ITEMNAME:LCOUNT%×{ITEM:LCOUNT}]
-	LOCAL++
+	所持筐体数++
 NEXT
-SIF !LOCAL
+SIF !所持筐体数
 	PRINTFORM [所持筐体無し]
 SIF !LINEISEMPTY()
 	PRINTL 
@@ -762,8 +769,6 @@ FOR 階層, 1, GC階層+1
 		NEXT
 	ENDIF
 NEXT
-
-
 
 ;----------------------------------------------------
 ;所持物件表示処理
@@ -809,7 +814,6 @@ NEXT
 #DIM DYNAMIC 収入
 #DIM DYNAMIC 名声
 #DIM DYNAMIC 評判
-#DIM DYNAMIC メンテ
 #DIM DYNAMIC 支出
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
@@ -817,7 +821,9 @@ NEXT
 #DIM DYNAMIC モチベ計算用
 #DIM DYNAMIC 世話好き人数
 #DIM DYNAMIC 設置済み筐体数
-VARSET LOCAL, 0
+#DIM DYNAMIC 最高期待値
+#DIM DYNAMIC 加算値
+#DIM DYNAMIC メンテ加算値
 
 CALL 設置済み筐体計算
 
@@ -828,8 +834,8 @@ SIF !GC物件
 収入 = 300 * GC物件
 FOR LCOUNT, 1, GC階層+1
 	;一番高い期待値を調べておく
-	SIF LOCAL < 階層収入期待値(LCOUNT)
-		LOCAL = 階層収入期待値(LCOUNT)
+	SIF 最高期待値 < 階層収入期待値(LCOUNT)
+		最高期待値 = 階層収入期待値(LCOUNT)
 	;期待値--------------------------------------
 	SELECTCASE GC物件
 		;テナント店なら階層ごとの期待値をそのまま加算
@@ -838,9 +844,9 @@ FOR LCOUNT, 1, GC階層+1
 		;それ以外ならRAND:階層ごとの収入期待値を加算
 		CASEELSE
 			;RAND:期待値で出す 外装レベル%の収入が保証される
-			LOCAL:1 = RAND:階層収入期待値(LCOUNT)
-			CALL SETMAX, LOCAL:1, 階層収入期待値(LCOUNT)*GC外装/100
-			収入 += LOCAL:1
+			加算値 = RAND:階層収入期待値(LCOUNT)
+			CALL SETMAX, 加算値, 階層収入期待値(LCOUNT)*GC外装/100
+			収入 += 加算値
 	ENDSELECT
 NEXT
 ;分煙補正-------------------------------------
@@ -1020,8 +1026,6 @@ CALL PASELIL, @"%GC店名%の経費に{支出}＄かかりました"
 MONEY -= 支出
 基本収入 = 収入-支出
 
-VARSET LOCAL, 0
-
 ;人事補正計算後に配属中のキャラを配属完了にする
 FOR LCOUNT, 1, CHARANUM
 	IF CSTR:LCOUNT:配属 == "ゲームセンター"
@@ -1056,16 +1060,15 @@ FOR LCOUNT, 1, CHARANUM
 				モチベ計算用 -= 2
 		ENDSELECT
 	NEXT
-	LOCAL = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数
+	加算値 = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数
 	SIF TALENT:LCOUNT:世話好き
-		LOCAL -= 世話好き人数
+		加算値 -= 世話好き人数
 	;配属先のキャラの相性で計算
-	LOCAL += 相性モチベ補正(LCOUNT)
-	CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
+	加算値 += 相性モチベ補正(LCOUNT)
+	CFLAG:LCOUNT:モチベーション = LIMIT(加算値, 1, 100)
 NEXT
 
 ;最後に現状のメンテレベルを計算
-LOCAL:1 = 0
 FOR LCOUNT, 1, CHARANUM
 	SIF CSTR:LCOUNT:配属 != "ゲームセンター"
 		CONTINUE
@@ -1076,28 +1079,28 @@ FOR LCOUNT, 1, CHARANUM
 		CONTINUE
 	ENDIF
 	IF FINDCHARA(CFLAG:ゲーセン店長, 1) >= 0 && TALENT:FINDCHARA(CFLAG:ゲーセン店長, 1):統率 && !TALENT:LCOUNT:統率
-		LOCAL = ABL:LCOUNT:家事技能+2
-		LOCAL += ABL:LCOUNT:工作技能+2
+		加算値 = ABL:LCOUNT:家事技能+2
+		加算値 += ABL:LCOUNT:工作技能+2
 	ELSEIF 統率者("ゲームセンター") && !TALENT:LCOUNT:統率
-		LOCAL = ABL:LCOUNT:家事技能+1
-		LOCAL += ABL:LCOUNT:工作技能+1
+		加算値 = ABL:LCOUNT:家事技能+1
+		加算値 += ABL:LCOUNT:工作技能+1
 	ELSE
-		LOCAL = ABL:LCOUNT:家事技能
-		LOCAL += ABL:LCOUNT:工作技能
+		加算値 = ABL:LCOUNT:家事技能
+		加算値 += ABL:LCOUNT:工作技能
 	ENDIF
 	SIF TALENT:LCOUNT:音ゲーマー
-		LOCAL += 5
+		加算値 += 5
 	SIF TALENT:LCOUNT:工学博士
-		LOCAL += 5
+		加算値 += 5
 	IF CFLAG:LCOUNT:ゲーセン店長
-		SIF LOCAL > 20
-			LOCAL = 20
+		SIF 加算値 > 20
+			加算値 = 20
 	ELSE
-		LOCAL /= 2
-		SIF LOCAL > 10
-			LOCAL = 10
+		加算値 /= 2
+		SIF 加算値 > 10
+			加算値 = 10
 	ENDIF
-	LOCAL:1 += LOCAL
+	メンテ加算値 += 加算値
 	;ついでに配属中のキャラには実務経験を加算
 	IF CFLAG:LCOUNT:ゲーセン店長
 		EXP:LCOUNT:実務経験 += 10
@@ -1115,7 +1118,7 @@ FOR LCOUNT, 1, CHARANUM
 NEXT
 
 ;店長を2倍で計上して最高値110なので10/11に圧縮(最高値100)
-GCメンテ = LOCAL:1 * 10 / 11
+GCメンテ = メンテ加算値*10/11
 GCメンテ = LIMIT(GCメンテ, 0, 100)
 
 

@@ -4,13 +4,16 @@
 #DIM DYNAMIC テーブル
 #DIM DYNAMIC ポイント
 #DIM DYNAMIC LCOUNT
-VARSET LOCAL, 0
+#DIM DYNAMIC 客番号
+#DIM DYNAMIC 素質数上限
+#DIM DYNAMIC 素質付与判定, 30
+#DIM DYNAMIC 総収入
 
 DRAWLINE
 MASTER = FINDCHARA(CFLAG:上級娼婦, 1)
 ;上級娼婦と同じ部屋に配属されてるキャラは助手になる
 FOR LCOUNT, 0, CHARANUM
-	IF CFLAG:LOCAL:娼館部屋番号 == CFLAG:LCOUNT:娼館部屋番号 && LOCAL != LCOUNT
+	IF CFLAG:MASTER:娼館部屋番号 == CFLAG:LCOUNT:娼館部屋番号 && MASTER != LCOUNT
 		LCOUNT = ASSI
 		BREAK
 	ENDIF
@@ -28,18 +31,17 @@ FOR LCOUNT, 1, 6
 	ENDIF
 NEXT
 
-
 ;5分の1の確率で常連客が来る
 IF RAND:5 == 0
 	FOR LCOUNT, 1, 6
 		IF 常連客:MASTER:LCOUNT
 			DO
 				AWAIT
-				LOCAL = RAND(1, 6)
-				IF 常連客:MASTER:LOCAL == 1
-					SIF CHKCHARADATA(@"常連客_{NO:MASTER}_{LOCAL}_{データID}") != 0
+				客番号 = RAND(1, 6)
+				IF 常連客:MASTER:客番号 == 1
+					SIF CHKCHARADATA(@"常連客_{NO:MASTER}_{客番号}_{データID}") != 0
 						GOTO ELSE
-					LOADCHARA @"常連客_{NO:MASTER}_{LOCAL}_{データID}"
+					LOADCHARA @"常連客_{NO:MASTER}_{客番号}_{データID}"
 					TARGET = CHARANUM-1
 					ASSI = -1
 					上級売春中 = 1
@@ -136,14 +138,14 @@ ENDIF
 
 SELECTCASE 娼館性別固定
 	CASE 0
-		LOCAL = RAND:4
+		客の性別 = RAND:4
 	CASE 1
-		LOCAL = 0
+		客の性別 = 0
 	CASE 2
-		LOCAL = RAND(2, 4)
+		客の性別 = RAND(2, 4)
 ENDSELECT
 
-SELECTCASE LOCAL
+SELECTCASE 客の性別
 	CASE 0, 1
 		PRINTW 男性だ
 		TALENT:性別 = 1
@@ -222,20 +224,19 @@ ENDIF
 ;それぞれの部位感度は10のポイントからランダムで割り振られる
 ポイント = 10
 DO
-	LOCAL = RAND(0, 2)
 	SELECTCASE RAND:4
 		CASE 0
 			SIF !VAGINA(TARGET)
 				CONTINUE
-			ABL:Ｖ感覚 += LOCAL
+			ABL:Ｖ感覚++
 		CASE 1
-			ABL:Ｃ感覚 += LOCAL
+			ABL:Ｃ感覚++
 		CASE 2
-			ABL:Ａ感覚 += LOCAL
+			ABL:Ａ感覚++
 		CASE 3
-			ABL:Ｂ感覚 += LOCAL
+			ABL:Ｂ感覚++
 	ENDSELECT
-	ポイント -= LOCAL
+	ポイント--
 LOOP ポイント > 0
 
 ;ABLに応じて経験が付く
@@ -255,12 +256,12 @@ SIF PENIS(TARGET)
 SELECTCASE 娼館方針
 	;ソフトとハードは同じ
 	CASE 1, 2
-		LOCAL = RAND(4, 11)
+		素質数上限 = RAND(4, 11)
 		DO
 			AWAIT
 			テーブル = RAND(1, 21)
 			;既に決定済みのテーブルならやり直し
-			SIF LOCAL:テーブル
+			SIF 素質付与判定:テーブル
 				CONTINUE
 			;素質の種類ごとにテーブルを置く
 			SELECTCASE テーブル
@@ -461,9 +462,9 @@ SELECTCASE 娼館方針
 						ENDIF
 					ENDIF
 			ENDSELECT
-			LOCAL:テーブル = 1
+			素質付与判定:テーブル = 1
 			素質数++
-		LOOP LOCAL != 素質数
+		LOOP 素質数上限 != 素質数
 	CASE 3
 		;サドかマゾは必ず付く
 		SELECTCASE RAND:2
@@ -472,12 +473,12 @@ SELECTCASE 娼館方針
 			CASE 1
 				TALENT:サド = 1
 		ENDSELECT
-		LOCAL = RAND(6, 9)
+		素質数上限 = RAND(6, 9)
 		DO
 			AWAIT
 			テーブル = RAND(1, 15)
 			;既に決定済みのテーブルならやり直し
-			SIF LOCAL:テーブル
+			SIF 素質付与判定:テーブル
 				CONTINUE
 			;素質の種類ごとにテーブルを置く
 			SELECTCASE テーブル
@@ -603,16 +604,16 @@ SELECTCASE 娼館方針
 							TALENT:Ｂ鈍感 = 1
 					ENDSELECT
 			ENDSELECT
-			LOCAL:テーブル = 1
+			素質付与判定:テーブル = 1
 			素質数++
-		LOOP LOCAL != 素質数
+		LOOP 素質数上限 != 素質数
 	CASE 4
-		LOCAL = RAND(3, 6)
+		素質数上限 = RAND(3, 6)
 		DO
 			AWAIT
 			テーブル = RAND(1, 8)
 			;既に決定済みのテーブルならやり直し
-			SIF LOCAL:テーブル
+			SIF 素質付与判定:テーブル
 				CONTINUE
 			;素質の種類ごとにテーブルを置く
 			SELECTCASE テーブル
@@ -686,7 +687,9 @@ SELECTCASE 娼館方針
 							TALENT:Ｂ鈍感 = 1
 					ENDSELECT
 			ENDSELECT
-		LOOP LOCAL != 素質数
+			素質付与判定:テーブル = 1
+			素質数++
+		LOOP 素質数上限 != 素質数
 ENDSELECT
 
 $START
@@ -756,15 +759,15 @@ SELECTCASE GETPALAMLV(PALAM:習得, 10)
 		JUEL:習得 += PALAM:習得/20
 ENDSELECT
 
-LOCAL = TFLAG:上級売春収入値+(TFLAG:上級売春収入値*娼館レベル/10)
+総収入 = TFLAG:上級売春収入値+(TFLAG:上級売春収入値*娼館レベル/10)
 
 IF 上級売春中 == 3
 	TRYCCALLFORM BR_上級売春終了時_%CSVNAMERPS(NO:MASTER)%
 	CATCH
-		CALL PASELIW, @"%CALLNAME:TARGET%は%CALLNAME:PLAYER%との行為に満足いかなかったのか、{LOCAL/5}＄を払って%娼館店名%を後にした……"
+		CALL PASELIW, @"%CALLNAME:TARGET%は%CALLNAME:PLAYER%との行為に満足いかなかったのか、{総収入/5}＄を払って%娼館店名%を後にした……"
 	ENDCATCH
-	MONEY += LOCAL/5
-	娼館総収入 += LOCAL/5
+	MONEY += 総収入/5
+	娼館総収入 += 総収入/5
 	CFLAG:常連客候補--
 	IF CFLAG:常連客候補 == 0
 		IF CFLAG:客番号 > 0
@@ -778,9 +781,9 @@ IF 上級売春中 == 3
 		SAVECHARA @"常連客_{NO:MASTER}_{CFLAG:客番号}_{データID}", @"%NAME:MASTER%の{CFLAG:客番号}番目の常連", TARGET
 	ENDIF
 ELSE
-	CALL PASELIW, @"%CALLNAME:TARGET%は%CALLNAME:PLAYER%との行為に満足して、{LOCAL}＄の報酬を払ってくれた"
-	MONEY += LOCAL
-	娼館総収入 += LOCAL
+	CALL PASELIW, @"%CALLNAME:TARGET%は%CALLNAME:PLAYER%との行為に満足して、{総収入}＄の報酬を払ってくれた"
+	MONEY += 総収入
+	娼館総収入 += 総収入
 	IF CFLAG:常連客候補 > 0
 		CFLAG:常連客候補++
 		SIF CFLAG:常連客候補 > 3
