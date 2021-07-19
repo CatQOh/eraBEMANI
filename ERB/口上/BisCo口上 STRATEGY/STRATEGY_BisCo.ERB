@@ -23,6 +23,8 @@ PRINTFORMW %NAME:ASSI%をパートナーに選択しました
 ;--------------------------------------------------
 @TALK_PARTNER_BisCo
 #DIM DYNAMIC L_FLAG
+#DIM DYNAMIC LRESULT, 2
+#DIM DYNAMIC 終値係数
 
 ;会話ループのフラグ
 L_FLAG = 0
@@ -367,7 +369,7 @@ DO
 			INPUT
 			SIF ABS(RESULT) >= 1000
 				GOTO RATE_LOOP
-			LOCAL = RESULT
+			LRESULT = RESULT
 			SELECTCASE ABS(RESULT)
 				CASE 0
 					PRINTL 「オッケー！0%ね！……って計算するまでもないよ∑(￣ﾛ￣)」
@@ -386,29 +388,29 @@ DO
 			PRINTL
 			PRINTL 回数を入力してください
 			CALL TWO_DIGIT, 30, "回"
-			LOCAL:1 = RESULT
+			LRESULT:1 = RESULT
 			PRINTL
 			PRINT 「えーと、利率
-			SELECTCASE ABS(LOCAL)
+			SELECTCASE ABS(LRESULT)
 				CASE IS < 10
-					IF LOCAL < 0
+					IF LRESULT < 0
 						PRINT -
 					ENDIF
-					PRINTFORM 0.{ABS(LOCAL)}\%
+					PRINTFORM 0.{ABS(LRESULT)}\%
 				CASE IS < 100
-					PRINTFORM {LOCAL/10}\%
+					PRINTFORM {LRESULT/10}\%
 				CASEELSE
-					PRINTFORM {LOCAL/100*10}\%
+					PRINTFORM {LRESULT/100*10}\%
 			ENDSELECT
-			LOCAL:2 = COMP_INTEREST(LOCAL, LOCAL:1)
+			終値係数 = COMP_INTEREST(LRESULT, LRESULT:1)
 			;0.01単位に四捨五入
-			SIF LOCAL:2%10 >= 5
-				LOCAL:2 += 10
-			LOCAL:2 /= 10
-			PRINTFORM の{LOCAL:1}回複利だと……大体{LOCAL:2/100}.
-			SIF LOCAL:2%100 < 10
+			SIF 終値係数%10 >= 5
+				終値係数 += 10
+			終値係数 /= 10
+			PRINTFORM の{LRESULT:1}回複利だと……大体{終値係数/100}.
+			SIF 終値係数%100 < 10
 				PRINT 0
-			PRINTFORMW {LOCAL:2%100}倍になるみたいだよ( ＞▽＜)」
+			PRINTFORMW {終値係数%100}倍になるみたいだよ( ＞▽＜)」
 			L_FLAG = 1
 			PRINTL
 			PRINTL 「他には何かある？」
@@ -418,14 +420,14 @@ DO
 			PRINTL 「組み合わせ計算だね！まず、全体の個数はいくら？」
 			PRINTL
 			CALL TWO_DIGIT, 61, "個"
-			LOCAL = RESULT
-			PRINTFORMW 「じゃあ、{LOCAL}個のものからいくつを選ぶつもり？」
+			LRESULT = RESULT
+			PRINTFORMW 「じゃあ、{LRESULT}個のものからいくつを選ぶつもり？」
 			PRINTL
 			CALL TWO_DIGIT, 61, "個"
-			LOCAL:1 = RESULT
+			LRESULT:1 = RESULT
 			PRINTL
-			PRINTFORML 「えーと、異なる{LOCAL}個のものから{LOCAL:1}個を選んだときの組み合わせは、
-			PRINTFORML {BINOM(LOCAL, LOCAL:1)}通りになるみたいだよ(｀･ω･´)ゞ」
+			PRINTFORML 「えーと、異なる{LRESULT}個のものから{LRESULT:1}個を選んだときの組み合わせは、
+			PRINTFORML {BINOM(LRESULT, LRESULT:1)}通りになるみたいだよ(｀･ω･´)ゞ」
 			L_FLAG = 1
 			PRINTL
 			PRINTL 「他には何かある？」
@@ -475,8 +477,9 @@ PRINTW 「BisCo、頑張るからねっ(｀・ω・´)」
 ;変数「収入」「支出」にはそのままその日の収入額と支出額が入る
 ;--------------------------------------------------
 @GC_TURNEND_BisCo, 収入, 支出
-#DIM 収入
-#DIM 支出
+#DIM DYNAMIC 収入
+#DIM DYNAMIC 支出, 2
+#DIM DYNAMIC 利益
 
 PRINTFORM 「今日の収支は%BisCoV(K5000GC)%
 IF 収入 - 支出 < 0
@@ -491,11 +494,11 @@ PRINTFORMW みたいだよ%BisCoV(K5000GC)%」
 IF  収入 - 支出 < 0
 	PRINTFORMW 「赤字だね……%BisCoV(K5000GC)%どうにかしないと……%BisCoV(K5000GC)%」
 ELSE
-	LOCAL = 収入 - 支出
-	LOCAL:1 = 支出
-	SIF LOCAL:1 < 10000
-		LOCAL:1 = 10000
-	SELECTCASE LOCAL/LOCAL:1
+	利益 = 収入 - 支出
+	支出:1 = 支出
+	SIF 支出:1 < 10000
+		支出:1 = 10000
+	SELECTCASE 利益/支出:1
 		CASE 0, 1
 			PRINTFORMW 「どうにか黒字だけど、%BisCoV(K5000GC)%少しのきっかけで赤字になりそうだから注意しないと%BisCoV(K5000GC)%」
 		CASE 2 TO 7

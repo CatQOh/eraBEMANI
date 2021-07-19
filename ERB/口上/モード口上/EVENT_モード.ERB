@@ -11,7 +11,10 @@
 ;調教開始時のセリフ FEVE:0を使用
 ;--------------------------------------------------
 @KOJO_START_モード
+#DIM DYNAMIC 乱数分岐
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC キャラ存在判定, 12
+#DIM DYNAMIC イベント用
 SIF FLAG:口上表示 == 0
 	RETURN 0
 
@@ -46,8 +49,6 @@ ENDIF
 ;-------------------------------------------------
 ;調教開始時 FEVE:0
 ;-------------------------------------------------
-VARSET LOCAL, 0
-VARSET LOCALS, 
 ;助手がリリーゼフラグ
 IF CHARANAMEF(ASSI) == "リリーゼ"
 	HERE_L = 1
@@ -68,9 +69,7 @@ IF FEVE:0 == 0
 		PRINTW 「えっと、私はただのパートナー、ですよね？」
 		PRINTW 「こちらの相手もしなくてはならないのですか……別に構いませんが、優しくしてくださいね？」
 		CALLMAUD = ご主人様
-		;経営モードのパートナーは服従系陥落 うーん
 	ELSE
-		;この口上を書く上でまぎれもなく一番最初に書いた文章なんですよね いつ読んでも感慨深い
 		PRINTW 透き通った水を想起させる綺麗な髪の少女が戸惑いを見せつつも、まず案じたのは自分の身ではなく、とある親友
 		PRINTW 同じ碧の色を持つ龍が彼女のそばに居た。それは今ここに居らず、この少女を探しているのか、それとも……
 		PRINTW この場所、抜け出すことのできない暗く深い海の底のような場所で、どう動くのか、それはこれからの話
@@ -109,7 +108,6 @@ ELSEIF HERE_L
 		;リリーゼ未陥落
 		ELSE
 			PRINTFORMW 「そんなのこっちが聞きたいくらいだわ。どっかのバカがあたしたちをあれこれしたいって企てたからこうなってるんじゃないの」
-			;でモードが陥落済み 堕ちた親友に戸惑うリリーゼ
 			IF CFLAG:陥落
 				PRINTFORMW 「ふーん……どっかのお馬鹿さんって誰のことでしょう、%CALLMAUD%？」
 				PRINTFORMW 「『%CALLMAUD%』……？ 何その呼び方、冗談よしてよね。あんたらグルなの？」
@@ -250,7 +248,7 @@ ELSEIF HERE_L
 						LOOP LOOPRES(1)
 						MAUD:10 = 11
 					ELSE
-						LOCAL = 3
+						乱数分岐 = 3
 						IF TALENT:ASSI:吸血鬼
 							;リリーゼ吸血鬼化後初調教
 							IF MAUD:92 == 0
@@ -264,10 +262,10 @@ ELSEIF HERE_L
 								RETURN
 							;2回目以降は分岐を増やす
 							ELSE
-								LOCAL += 2
+								乱数分岐 += 2
 							ENDIF
 						ENDIF
-						SELECTCASE RAND:LOCAL
+						SELECTCASE RAND:乱数分岐
 							CASE 0
 								PRINTFORMW 「おはようございます、%CALLMAUD%……あっ、リリーゼさんも一緒なんですね」
 								SIF MAUD:98
@@ -474,20 +472,20 @@ ELSEIF CFLAG:陥落
 				SIF !CFLAG:LCOUNT:陥落
 					CONTINUE
 				SIF CHARANAMEF(LCOUNT) == "鹿ノ子"
-					LOCAL:1 = 1
+					キャラ存在判定:1 = 1
 				SIF CHARANAMEF(LCOUNT) == "寿々姫"
-					LOCAL:2 = 1
+					キャラ存在判定:2 = 1
 			NEXT
 			PRINTW 年が明けてから初めてモードの元を訪れると、そこには和服に身を包んだモードが居た
 			PRINTFORMW 「あ、あけましておめでとうございます。%CALLMAUD%」
 			PRINT 「いかがでしょう……
 			;陥落済みの寿々、鹿ノ子が居れば名前を出す
-			IF LOCAL:1 || LOCAL:2
-				SIF LOCAL:1
+			IF キャラ存在判定:1 || キャラ存在判定:2
+				SIF キャラ存在判定:1
 					PRINT 鹿ノ子さん
-				SIF LOCAL:1 && LOCAL:2
+				SIF キャラ存在判定:1 && キャラ存在判定:2
 					PRINT と
-				SIF LOCAL:2
+				SIF キャラ存在判定:2
 					PRINT 寿々さん
 				PRINTW が、この服を着せてくれて……」
 			ELSE
@@ -501,14 +499,14 @@ ELSEIF CFLAG:陥落
 			PRINTW モードは袖口をひらひらさせて照れくさそうに笑っている
 
 			IF HERE_L
-				IF LOCAL:1 && LOCAL:2
+				IF キャラ存在判定:1 && キャラ存在判定:2
 					PRINT 「奇遇ねぇ。あたしもあの二人におめかしされちゃって、ね。
-				ELSEIF LOCAL:1 || LOCAL:2
+				ELSEIF キャラ存在判定:1 || キャラ存在判定:2
 					PRINT 「モードちゃんもなの？ あたしも着せてもらっちゃった。
 				ELSE
 					PRINT 「あたしもモードちゃんと一緒に着てみたわ。
 				ENDIF
-				SIF LOCAL:1
+				SIF キャラ存在判定:1
 					PRINT 鹿ノ子ちゃんったら、ずっと可愛い可愛い言いっぱなしで。でも……
 				PRINTFORMW 本当に、すごく可愛いわ、モードちゃん」
 				PRINTFORMW 「リリーゼさんこそ……『姫初め』という風情のある風習には、相応しいかも……%CALLMAUD%、今年も、私たちふたりを、可愛がってくださいね？」
@@ -576,28 +574,28 @@ ELSEIF CFLAG:陥落
 					CONTINUE
 				SELECTCASE CHARANAMEF(LCOUNT)
 					CASE "梅桐 彩葉", "雛月 理々奈"
-						LOCAL:1++
+						キャラ存在判定:1++
 					CASE "水城 セリカ", "北見 エリカ"
-						LOCAL:2++
+						キャラ存在判定:2++
 					CASE "シア", "菱宮 津軽"
-						LOCAL:3++
+						キャラ存在判定:3++
 					CASE "ミミ", "ニャミ"
-						LOCAL:4++
+						キャラ存在判定:4++
 					CASE "犬見川 ユウ", "九鬼衣 シエ"
-						LOCAL:5++
+						キャラ存在判定:5++
 					CASE "璃音", "響香"
-						LOCAL:6++
+						キャラ存在判定:6++
 					CASE "リリーゼ"
-						LOCAL:7++
+						キャラ存在判定:7++
 				ENDSELECT
 			NEXT
 			;上記に陥落済みの組み合わせが居れば分岐
-			IF MAX(LOCAL:1, LOCAL:2, LOCAL:3, LOCAL:4, LOCAL:5, LOCAL:6) == 2
+			IF MAX(キャラ存在判定:1, キャラ存在判定:2, キャラ存在判定:3, キャラ存在判定:4, キャラ存在判定:5, キャラ存在判定:6) == 2
 				DO
-					LOCAL = RAND(1, 7)
-					IF LOCAL:LOCAL == 2
+					乱数分岐 = RAND(1, 7)
+					IF キャラ存在判定:乱数分岐 == 2
 						PRINT 「なんにせよ、
-						SELECTCASE LOCAL
+						SELECTCASE 乱数分岐
 							CASE 1
 								PRINT 彩葉さんとリリスさん
 							CASE 2
@@ -614,7 +612,7 @@ ELSEIF CFLAG:陥落
 						PRINTW が教えてくれました。えっと……その……」
 						PRINTW 「す、好きな人にチョコレートをプレゼントする日、でよろしかったですか……？」
 						;陥落済みのリリーゼも居る しかし助手のときはツンなので表示されない
-						IF LOCAL:7 && !HERE_L
+						IF キャラ存在判定:7 && !HERE_L
 							PRINTW 「私とリリーゼさんも、お二方に教わって作ってみました……どっ、どうかお召し上がりください……」
 							PRINTFORMW 「リリーゼさんは、素直じゃないので、ふふ……まだ受け取ってませんか？ %CALLMAUD%？」
 						ELSE
@@ -625,7 +623,7 @@ ELSEIF CFLAG:陥落
 				LOOP 1
 			ELSE
 				PRINTW 「そ、それと……すっ、好き……好きな人にチョコレートを上げる日……ですよね……？」
-				IF LOCAL:7 && !HERE_L
+				IF キャラ存在判定:7 && !HERE_L
 					PRINTW 「私も、実はその……リリーゼさんと一緒に手作りしたりして……どっ、どうか受け取ってください……」
 					PRINTFORMW 「リリーゼさんは、素直じゃないので、ふふ……まだ受け取ってませんか？ %CALLMAUD%？」
 				ELSE
@@ -677,57 +675,57 @@ ELSEIF CFLAG:陥落
 				ENDIF
 			ENDIF
 			;お相手が居るなら名前出す お相手は陥落済みじゃなくていい
-			SELECTCASE LOCAL
+			SELECTCASE 乱数分岐
 				CASE 1
 					;こういう分かりづらい分岐はしたくないが……
 					FOR LCOUNT, 1, CHARANUM
 						IF CHARANAMEF(LCOUNT) == "エレキ"
-							IF LOCAL:10 && RAND:3 == 0
-								LOCAL:10 = 1
+							IF キャラ存在判定:10 && RAND:3 == 0
+								キャラ存在判定:10 = 1
 							ELSE
-								LOCAL:10 = 1
+								キャラ存在判定:10 = 1
 							ENDIF
 						ENDIF
 						IF CHARANAMEF(LCOUNT) == "緋浮美"
-							IF LOCAL:10 && RAND:3 == 0
-								LOCAL:10 = 2
+							IF キャラ存在判定:10 && RAND:3 == 0
+								キャラ存在判定:10 = 2
 							ELSE
-								LOCAL:10 = 2
+								キャラ存在判定:10 = 2
 							ENDIF
 						ENDIF
 						IF CHARANAMEF(LCOUNT) == "天土"
-							IF LOCAL:10 && RAND:3 == 0
-								LOCAL:10 = 3
+							IF キャラ存在判定:10 && RAND:3 == 0
+								キャラ存在判定:10 = 3
 							ELSE
-								LOCAL:10 = 3
+								キャラ存在判定:10 = 3
 							ENDIF
 						ENDIF
 						IF CHARANAMEF(LCOUNT) == "セム"
-							IF LOCAL:11 && RAND:2 == 0
-								LOCAL:11 = 1
+							IF キャラ存在判定:11 && RAND:2 == 0
+								キャラ存在判定:11 = 1
 							ELSE
-								LOCAL:11 = 1
+								キャラ存在判定:11 = 1
 							ENDIF
 						ENDIF
 						IF CHARANAMEF(LCOUNT) == "サイレン"
-							IF LOCAL:11 && RAND:2 == 0
-								LOCAL:11 = 2
+							IF キャラ存在判定:11 && RAND:2 == 0
+								キャラ存在判定:11 = 2
 							ELSE
-								LOCAL:11 = 2
+								キャラ存在判定:11 = 2
 							ENDIF
 						ENDIF
 					NEXT
-					IF LOCAL:10 && LOCAL:11
+					IF キャラ存在判定:10 && キャラ存在判定:11
 						PRINTW 「私に教えてくれたふたりもちゃんと渡せるといいのですが……」
 						PRINT 「彩葉さんは
-						SELECTCASE LOCAL:10
+						SELECTCASE キャラ存在判定:10
 							CASE 1
 								PRINT エレキさんに、
 							CASE 2, 3
 								PRINT お姉さんに、
 						ENDSELECT
 						PRINT リリスさんは
-						SELECTCASE LOCAL:11
+						SELECTCASE キャラ存在判定:11
 							CASE 1
 								PRINT お兄さんに
 							CASE 2
@@ -740,11 +738,11 @@ ELSEIF CFLAG:陥落
 				CASE 2
 					FOR LCOUNT, 1, CHARANUM
 						SIF CHARANAMEF(LCOUNT) == "ユーズ"
-							LOCAL:10 = 1
+							キャラ存在判定:10 = 1
 						SIF CHARANAMEF(LCOUNT) == "士朗"
-							LOCAL:11 = 1
+							キャラ存在判定:11 = 1
 					NEXT
-					IF LOCAL:10 && LOCAL:11
+					IF キャラ存在判定:10 && キャラ存在判定:11
 						PRINTW 「私に教えてくれたふたりもちゃんと渡せるといいのですが……」
 						PRINTW 「セリカさんはユーズさんに、エリカさんは士朗さんに渡すと言っていました」
 					ELSE
@@ -753,26 +751,26 @@ ELSEIF CFLAG:陥落
 				CASE 3
 					FOR LCOUNT, 1, CHARANUM
 						IF CHARANAMEF(LCOUNT) == "冬夜"
-							IF LOCAL:10 && RAND:2 == 0
-								LOCAL:10 = 1
+							IF キャラ存在判定:10 && RAND:2 == 0
+								キャラ存在判定:10 = 1
 							ELSE
-								LOCAL:10 = 1
+								キャラ存在判定:10 = 1
 							ENDIF
 						ENDIF
 						IF CHARANAMEF(LCOUNT) == "ナイア"
-							IF LOCAL:10 && RAND:2 == 0
-								LOCAL:10 = 2
+							IF キャラ存在判定:10 && RAND:2 == 0
+								キャラ存在判定:10 = 2
 							ELSE
-								LOCAL:10 = 2
+								キャラ存在判定:10 = 2
 							ENDIF
 						ENDIF
 						SIF CHARANAMEF(LCOUNT) == "ダルマ"
-							LOCAL:11 = 1
+							キャラ存在判定:11 = 1
 					NEXT
-					IF LOCAL:10 && LOCAL:11
+					IF キャラ存在判定:10 && キャラ存在判定:11
 						PRINTW 「私に教えてくれたふたりもちゃんと渡せるといいのですが……」
 						PRINT 「シアさんは
-						SELECTCASE LOCAL:10
+						SELECTCASE キャラ存在判定:10
 							CASE 1
 								PRINT お父さんに、
 							CASE 2
@@ -785,9 +783,9 @@ ELSEIF CFLAG:陥落
 				CASE 4
 					FOR LCOUNT, 1, CHARANUM
 						SIF CHARANAMEF(LCOUNT) == "タイマー"
-							LOCAL:10 = 1
+							キャラ存在判定:10 = 1
 					NEXT
-					IF LOCAL:10
+					IF キャラ存在判定:10
 						PRINTW 「私に教えてくれたふたりもちゃんと渡せるといいのですが……」
 						PRINTFORMW 「ニャミさんはタイマーさんに、ミミさんは……ミミさんも%CALLMAUD%に渡すと言っていました」
 					ELSE
@@ -809,25 +807,25 @@ ELSEIF CFLAG:陥落
 			$MAUD1225
 			FOR LCOUNT, 1, CHARANUM
 				SIF CHARANAMEF(LCOUNT) == "アーシェム"
-					LOCAL:2 = 1
+					キャラ存在判定:2 = 1
 				SIF CHARANAMEF(LCOUNT) == "リリーゼ"
-					LOCAL:3 = 1
+					キャラ存在判定:3 = 1
 				SIF !CFLAG:LCOUNT:陥落
 					CONTINUE
 				SIF CHARANAMEF(LCOUNT) == "つらら"
-					LOCAL:1 = 1
+					キャラ存在判定:1 = 1
 			NEXT
 			;陥落済みのつらら、もしくはリリーゼが居るかどうかで分岐
-			IF LOCAL:1 || LOCAL:3
+			IF キャラ存在判定:1 || キャラ存在判定:3
 				PRINTW 「め、メリークリスマ……ス……」
 				PRINTW 「うーん、練習したのに、実際にやってみると恥ずかしい……」
 				PRINT 「何やらサンタクロースという団体がプレゼントを贈る日だと
 				;つらら居る
-				IF LOCAL:1
+				IF キャラ存在判定:1
 					PRINTW つららさんから聞いて……」
 					PRINTW 「お揃いの服を着せてもらって、私もサンタさんの仲間入りしてみました。似合いますか？」
 				;リリーゼ居る
-				ELSEIF LOCAL:3
+				ELSEIF キャラ存在判定:3
 					PRINTFORMW リリーゼさんから聞いて……」
 					PRINTFORMW 「家にあった服をいろいろ着せてもらって、これがサンタクロースの格好、ですか？ 本では男性のサンタクロースの方ばかり載ってて……」
 				ENDIF
@@ -855,32 +853,32 @@ ELSEIF CFLAG:陥落
 					PRINTFORMW それよりもモードちゃん、プレゼントあったでしょ？」
 					PRINT 「あっ、そうでした。
 					;アーシェムが居る
-					IF LOCAL:2
+					IF キャラ存在判定:2
 						PRINTW アーシェムさんが、好きな人にプレゼントするならこれがいいと教えてくれて……」
 						PRINTW …………これは媚薬だ
 						PRINTW 媚薬を手に入れた
 						ITEM:媚薬++
-						LOCAL = 1
+						イベント用 = 1
 					ELSEIF MAUD:99
 						PRINTFORMW リントヴルムが、%CALLMAUD%にプレゼントするなら、お守りが良いって……リントヴルムも%CALLMAUD%のこと心配してくれてるんですね」
 						PRINTFORMW これは……魔除けのお守りだ……。当のリントヴルムは厳しい目でこちらを見ている
 						PRINTFORMW 「貴様がもう少しまともな人間になることを願うぞ」
-						LOCAL = 0
+						イベント用 = 0
 					ELSE
 						PRINTW リリーゼさんが選んでくれたのですが……」
 						PRINTW …………これは媚薬だ
 						PRINTW 媚薬を手に入れた
 						ITEM:媚薬++
-						LOCAL = 1
+						イベント用 = 1
 					ENDIF
 				ELSE
 					;アーシェムが居る 陥落済みじゃなくても良い
-					IF LOCAL:2
+					IF キャラ存在判定:2
 						PRINTW 「プレゼントは何にしようかと悩んでいたら、アーシェムさんからこれを頂きました。受け取ってください」
 						PRINTW …………これは媚薬だ
 						PRINTW 媚薬を手に入れた
 						ITEM:媚薬++
-					ELSEIF LOCAL:3
+					ELSEIF キャラ存在判定:3
 						PRINTW 「プレゼントは何にしようかと悩んでいたら、リリーゼさんが、相手を確実に射止めるならこれが一番だ、と……」
 						PRINTW …………これは媚薬だ
 						PRINTW 媚薬を手に入れた
@@ -894,7 +892,7 @@ ELSEIF CFLAG:陥落
 					ENDIF
 				ENDIF
 				;媚薬プレゼントされた
-				IF HERE_L && (LOCAL:2 || LOCAL:3) && LOCAL
+				IF HERE_L && (キャラ存在判定:2 || キャラ存在判定:3) && イベント用
 					PRINT 「にゃはは、
 					ITEM:媚薬++
 					IF CFLAG:ASSI:陥落
@@ -1039,11 +1037,11 @@ ELSEIF CFLAG:陥落
 					PRINTW 「ん……大丈夫ですよ、リントヴルム。貴方はいつも優しいですね」
 				ENDIF
 			ELSE
-				LOCAL = 6
+				乱数分岐 = 6
 				;モードと主人の間に子供が居ると分岐増える
 				SIF MAUD:5
-					LOCAL++
-				SELECTCASE RAND:LOCAL
+					乱数分岐++
+				SELECTCASE RAND:乱数分岐
 					CASE 0
 						PRINTFORMW 「\@ TIME == 0 ? こんにちは # こんばんは \@。%CALLMAUD%。お忙しいでしょうに私のところに来てくださって嬉しい限りです」
 						PRINTW 「期待に添えられるよう頑張ります。モードとのひと時を楽しんでいただければ、私も……幸せです」
@@ -1172,13 +1170,13 @@ ELSEIF CFLAG:陥落
 					CASE 6
 						SELECTCASE MAUD:5
 							CASE 1, 2
-								LOCAL = MAUD:5
+								乱数分岐 = MAUD:5
 							CASE 3
-								LOCAL = RAND:2+1
+								乱数分岐 = RAND:2+1
 						ENDSELECT
 						;主人の子を産んだことがある
 						PRINT 「今日は私たちの子に会いに行ってました。
-						SELECTCASE LOCAL
+						SELECTCASE 乱数分岐
 							;男の子の場合
 							CASE 1
 								PRINTW 男の子ですから、きっとすぐに私よりも大きくなっちゃうかも……」
@@ -1241,7 +1239,7 @@ ELSE
 					CASE 5
 						PRINTFORMW %CALLNAME:MASTER%を見た途端パニックに陥ったモードは呼吸を乱す。わざとらしく寄り添って肩を抱くと、びくびくと怯えている
 					CASE 6
-						LOCAL = 0
+						イベント用 = 0
 						;初期状態と違った服装をしている
 						IF CSTR:全身上着 != "ワンピース" || CSTR:上半身下着 != "スポーツブラ" || CSTR:下半身下着 != "パンティ"
 							PRINTW 「私の服はどうしたんですか……？ 返してください……」
@@ -1393,12 +1391,12 @@ ELSE
 								;寒いフラグ
 								SELECTCASE MONTH
 									CASE 11, 12, 1, 2, 3
-										LOCAL = 1
+										イベント用 = 1
 									CASEELSE
-										LOCAL = 0
+										イベント用 = 0
 								ENDSELECT
 								PRINTFORMW 毛布に包まれるモードの体は服を着ておらず、%CALLNAME:MASTER%の温もりを心待ちにしている
-								PRINTFORMW 「言われた通り、服は脱いでおきました。\@ LOCAL == 1 ? 少し寒いですけどね # いつでも始められますよ \@」
+								PRINTFORMW 「言われた通り、服は脱いでおきました。\@ イベント用 == 1 ? 少し寒いですけどね # いつでも始められますよ \@」
 						ENDSELECT
 					ENDIF
 			ENDSELECT
@@ -1412,6 +1410,7 @@ RETURN 0
 ;調教終了時のセリフ
 ;-------------------------------------------------
 @KOJO_TURNEND_モード
+#DIM DYNAMIC 乱数分岐
 SIF FLAG:口上表示 == 0
 	RETURN 0
 ;--------------------------------------------------
@@ -1471,10 +1470,10 @@ IF HERE_L
 ELSEIF BASE:体力 >= 500
 	;陥落済み
 	IF CFLAG:陥落
-		LOCAL = 4
+		乱数分岐 = 4
 		SIF MAUD:99
-			LOCAL++
-		SELECTCASE RAND:LOCAL
+			乱数分岐++
+		SELECTCASE RAND:乱数分岐
 			CASE 0
 				SELECTCASE TIME
 					;昼
@@ -1558,8 +1557,8 @@ ELSEIF BASE:体力 >= 500
 ELSEIF BASE:体力 < 500
 	;陥落済み
 	IF CFLAG:陥落
-		LOCAL = RAND:4
-		SELECTCASE LOCAL
+		乱数分岐 = RAND:4
+		SELECTCASE 乱数分岐
 			CASE 0
 				PRINTFORMW 「ちょっと疲れちゃいました……\@ TIME == 0 ? お昼寝しようかな…… # うぅん……もう、眠いなぁ…… \@」
 				PRINTW モードは小さい口を広げて欠伸をし、目元を擦っている」
@@ -1584,7 +1583,7 @@ ELSEIF BASE:体力 < 500
 				PRINTFORMW 「%CALLMAUD%……私への気持ちは、嘘じゃない……ですよね？」
 				PRINTFORMW 「壊れるほど愛されるなら……私も、%CALLMAUD%が壊れるまで愛したい……」
 		ENDSELECT
-		SIF LOCAL != 0
+		SIF 乱数分岐 != 0 && MAUD:99
 			PRINTFORMW 「モードをあまり乱暴に扱うのなら私が許さん……もう少し優しく、頼むぞ」
 	;屈服刻印3
 	ELSEIF MARK:屈服刻印 == 3
@@ -1674,6 +1673,7 @@ ENDIF
 ;0,愛撫
 ;-------------------------------------------------
 @COM_愛撫_モード
+#DIM DYNAMIC 乱数分岐
 ;初めて
 IF FCOM:SELECTCOM == 0 && !CFLAG:陥落
 	PRINTW 「どこを……触るんですか？」
@@ -1739,10 +1739,10 @@ ELSE
 		CASE 2
 			;陥落済み
 			IF CFLAG:陥落
-				LOCAL = RAND:3
+				乱数分岐 = RAND:3
 				SIF TEQUIP:お風呂場
-					LOCAL = RAND:5
-				SELECTCASE LOCAL
+					乱数分岐 = RAND:5
+				SELECTCASE 乱数分岐
 					CASE 0
 						PRINTFORMW モードは%CALLNAME:MASTER%の手を取り、ゆっくりと自分の胸へと近付ける。%CALLNAME:MASTER%の指先が小さく可愛らしい乳首に触れると、モードの腕がぴくっと跳ねてその手が離れた
 						PRINTW 「ちょっと、触っただけなのに……体がじっとしていられなくて……」
@@ -1799,10 +1799,10 @@ ELSE
 			ELSE
 				;地の文表示関数
 				TRYCALLFORM MESSAGE_COM_%SELECTCOMS%
-				LOCAL = 3
+				乱数分岐 = 3
 				SIF HERE_L
-					LOCAL++
-				SELECTCASE RAND:LOCAL
+					乱数分岐++
+				SELECTCASE RAND:乱数分岐
 					CASE 0
 						PRINTW 「飽きないんですね……こんな体を触って……」
 						IF PALAM:欲情 >= PALAMLV:3
@@ -2166,6 +2166,7 @@ RETURN 0
 ;4,アナル舐め
 ;-------------------------------------------------
 @COM_アナル舐め_モード
+#DIM DYNAMIC 乱数分岐
 ;初めて
 IF FCOM:SELECTCOM == 0
 	;地の文表示関数
@@ -2187,10 +2188,10 @@ IF FCOM:SELECTCOM == 0
 ELSE
 	;陥落済み
 	IF CFLAG:陥落
-		LOCAL = 2
+		乱数分岐 = 2
 		SIF MAUD:99
-			LOCAL++
-		SELECTCASE RAND:LOCAL
+			乱数分岐++
+		SELECTCASE RAND:乱数分岐
 			CASE 0
 				;地の文表示関数
 				TRYCALLFORM MESSAGE_COM_%SELECTCOMS%
@@ -3111,6 +3112,7 @@ RETURN 0
 ;20,キスする
 ;-------------------------------------------------
 @COM_キスする_モード
+#DIM DYNAMIC 乱数分岐
 ;初めて
 IF FCOM:SELECTCOM == 0
 	;主人が実行
@@ -3220,11 +3222,11 @@ ELSE
 		;陥落済み
 		IF CFLAG:陥落
 			IF PENIS(TARGET)
-				LOCAL = RAND:9
+				乱数分岐 = RAND:9
 			ELSE
-				LOCAL = RAND:8
+				乱数分岐 = RAND:8
 			ENDIF
-			SELECTCASE LOCAL
+			SELECTCASE 乱数分岐
 				CASE 0
 					PRINTFORMW 「%CALLMAUD%……%CALLMAUD%……？ 私を愛してくれて、ありがとうございます、本当に……私も%CALLMAUD%を……」
 					PRINTFORMW 言いかける唇を再度塞ぐと、その先の言葉を伝えるかのようにモードの舌は深く%CALLNAME:PLAYER%を求めていた
@@ -3672,6 +3674,7 @@ RETURN 0
 ;27,歌の練習　恋慕、親愛のみ
 ;-------------------------------------------------
 @COM_歌の練習_モード
+#DIM DYNAMIC 乱数分岐
 IF !CFLAG:陥落
 	TRYCALLFORM MESSAGE_COM_%SELECTCOMS%
     RETURN 0
@@ -3787,10 +3790,10 @@ ELSE
 			ELSE
 				;地の文表示関数
 				TRYCALLFORM MESSAGE_COM_%SELECTCOMS%
-				LOCAL = 5
+				乱数分岐 = 5
 				SIF TALENT:性別 == 1
-					LOCAL++
-				SELECTCASE RAND:LOCAL
+					乱数分岐++
+				SELECTCASE RAND:乱数分岐
 					CASE 0
 						PRINTFORMW モードの綺麗な歌声に、%CALLNAME:PLAYER%の薄汚れた心も洗われるような気分になった
 					CASE 1
@@ -3877,6 +3880,7 @@ RETURN 0
 ;内容は捏造
 ;-------------------------------------------------
 @COM_ビデオ鑑賞_モード
+#DIM DYNAMIC 乱数分岐
 ;地の文表示関数
 TRYCALLFORM MESSAGE_COM_%SELECTCOMS%
 
@@ -3900,12 +3904,12 @@ IF HERE_L
 		MAUD:12 = 1
 		FCOM:SELECTCOM = 1
 	ELSE
-		LOCAL = 1
+		乱数分岐 = 1
 		;リリーゼとの撮影経験あり
 		SIF MAUD:13
-			LOCAL += 2
+			乱数分岐 += 2
 		IF CFLAG:ASSI:陥落
-			SELECTCASE RAND:LOCAL
+			SELECTCASE RAND:乱数分岐
 				CASE 0
 					CALL SLINEWAIT, "「なにこれ、あたしの知らないところでこんなことされてるの？ ったく、Ｗあたしも呼んでくれればいいじゃないのよ……」"
 					PRINTFORMW 「え？何か言いましたか？」
@@ -3920,7 +3924,7 @@ IF HERE_L
 					PRINTFORMW 「でも、他の誰かに見られるわけでもないですし……リリーゼさんと一緒に映ってるのが、私は嬉しいかな」
 			ENDSELECT
 		ELSE
-			SELECTCASE RAND:LOCAL
+			SELECTCASE RAND:乱数分岐
 				CASE 0
 					PRINTFORMW 「リリーゼさんにも見られてると、少し恥ずかしいかな……」
 					CALL SLINEWAIT, "「あ、あたしだって……ちょっと恥ずかしいけど……Ｗ……でも、モードちゃんがあいつに触られて幸せ、ってのは伝わってくるわ。そうなんでしょう？」"
@@ -5029,6 +5033,7 @@ RETURN 0
 ;45,アナルバイブ
 ;-------------------------------------------------
 @COM_アナルバイブ_モード
+#DIM DYNAMIC 乱数分岐
 ;装着時
 IF TEQUIP:アナルバイブ == 0
 	;初めて
@@ -5119,10 +5124,10 @@ ELSEIF TEQUIP:アナルバイブ
 	TRYCALLFORM MESSAGE_COM_%SELECTCOMS%
 	;陥落済みor屈服刻印3
 	IF CFLAG:陥落 || MARK:屈服刻印 == 3
-		LOCAL = 3
+		乱数分岐 = 3
 		SIF CFLAG:陥落
-			LOCAL++
-		SELECTCASE RAND:LOCAL
+			乱数分岐++
+		SELECTCASE RAND:乱数分岐
 			CASE 0
 				PRINTFORMW 「ま、またいつでもどうぞ……お好きなようにお使いください……」
 			CASE 1
@@ -5928,6 +5933,7 @@ RETURN 0
 ;65,正常位アナル
 ;-------------------------------------------------
 @COM_正常位アナル_モード
+#DIM DYNAMIC 乱数分岐
 ;陥落済み
 IF CFLAG:陥落
 	SELECTCASE RAND:5
@@ -5974,11 +5980,11 @@ IF CFLAG:陥落
 	ENDSELECT
 ;それ以外
 ELSE
-	LOCAL = 4
+	乱数分岐 = 4
 	;ショタ化で分岐増える
 	SIF TALENT:性転換済
-		LOCAL++
-	SELECTCASE RAND:LOCAL
+		乱数分岐++
+	SELECTCASE RAND:乱数分岐
 		CASE 0
 			IF EXP:Ａ経験 >= 50
 				;地の文表示関数
@@ -6032,17 +6038,18 @@ RETURN 0
 ;66,後背位アナル
 ;-------------------------------------------------
 @COM_後背位アナル_モード
+#DIM DYNAMIC 乱数分岐
 ;地の文表示関数
 TRYCALLFORM MESSAGE_COM_%SELECTCOMS%
 
 ;陥落済み
 IF CFLAG:陥落
 	IF TALENT:性転換済
-		LOCAL = RAND:5
+		乱数分岐 = RAND:5
 	ELSE
-		LOCAL = RAND:3
+		乱数分岐 = RAND:3
 	ENDIF
-	SELECTCASE LOCAL
+	SELECTCASE 乱数分岐
 		CASE 0
 			PRINTFORMW 「入ってる……？ %CALLMAUD%、私のお尻にちゃんと入ってますか……？」
 			PRINTW ペニスを咥え込んだ小ぶりな尻を揺らしながら深い呼吸を繰り返している……
@@ -6079,15 +6086,16 @@ RETURN 0
 ;67,騎乗位アナル
 ;-------------------------------------------------
 @COM_騎乗位アナル_モード
+#DIM DYNAMIC 乱数分岐
 ;地の文表示関数
 TRYCALLFORM MESSAGE_COM_%SELECTCOMS%
 
 ;陥落済み
 IF CFLAG:陥落
-	LOCAL = 3
+	乱数分岐 = 3
 	SIF TALENT:性転換済
-		LOCAL++
-	SELECTCASE RAND:LOCAL
+		乱数分岐++
+	SELECTCASE RAND:乱数分岐
 		CASE 0
 			PRINTFORMW 「%CALLMAUD%、見ていてくださいね……私、%CALLMAUD%のことをたくさん、気持ち良くしてあげます……」
 			PRINTFORMW %CALLNAME:MASTER%の上で健気に腰を振るモードを優しい声で褒め称えると、嬉しそうに笑っていた
@@ -7524,6 +7532,7 @@ RETURN 0
 ;121,貝あわせ
 ;-------------------------------------------------
 @COM_貝あわせ_モード
+#DIM DYNAMIC 乱数分岐
 ;陥落済み
 IF CFLAG:陥落
 	SELECTCASE RAND:3
@@ -7567,11 +7576,11 @@ ELSE
 	;地の文表示関数
 	TRYCALLFORM MESSAGE_COM_%SELECTCOMS%
 	IF FCOM:SELECTCOM == 0
-		LOCAL = 2
+		乱数分岐 = 2
 	ELSE
-		LOCAL = 3
+		乱数分岐 = 3
 	ENDIF
-	SELECTCASE RAND:LOCAL
+	SELECTCASE RAND:乱数分岐
 		CASE 0
 			PRINTW 「あ、貴方は恥ずかしくないのですか……？ いくら、女の子同士でも、私はとっても恥ずかしい……」
 		CASE 1
@@ -7821,6 +7830,7 @@ RETURN 0
 ;187,お風呂場プレイ,
 ;-------------------------------------------------
 @COM_お風呂場プレイ_モード
+#DIM DYNAMIC 乱数分岐
 ;地の文表示関数
 TRYCALLFORM MESSAGE_COM_%SELECTCOMS%
 
@@ -7858,10 +7868,10 @@ IF TEQUIP:お風呂場 == 0
 ELSEIF TEQUIP:お風呂場
 	;陥落済み
 	IF CFLAG:陥落
-		LOCAL = RAND:3
+		乱数分岐 = RAND:3
 		SIF HERE_L
-			LOCAL = RAND:4
-		SELECTCASE LOCAL
+			乱数分岐 = RAND:4
+		SELECTCASE 乱数分岐
 			CASE 0
 				PRINTW 「ふぅ、さっぱりした……それに、なんだかもう眠いや……」
 			CASE 1
@@ -7987,6 +7997,7 @@ RETURN 0
 ;-------------------------------------------------
 @KOJO_MESSAGE_SHOOT_モード
 #DIM DYNAMIC FIRST
+#DIM DYNAMIC 乱数分岐
 ;;助手が調教した時に口上をスキップする（好みに応じて使う、行頭の;を消すとスキップするようになる）
 ;ただしリリーゼは例外
 SIF PLAYER != MASTER && CHARANAMEF(ASSI) != "リリーゼ"
@@ -8297,10 +8308,10 @@ IF NOWEX:PLAYER:射精
 							PRINTW 射精の余韻に浸るペニスに、さらに積極的に股間を押しつけてふるふると腰を動かしている
 					ENDSELECT
 				ELSE
-					LOCAL = 4
+					乱数分岐 = 4
 					SIF FIRST
-						LOCAL = 1
-					SELECTCASE RAND:LOCAL
+						乱数分岐 = 1
+					SELECTCASE RAND:乱数分岐
 						CASE 0
 							PRINTFORMW 「わわっ……お股と、お腹に……\@ FIRST ? 何かが # 精液が \@……」
 							IF OVER_GENITAL(TARGET) == "" || (CFLAG:挿入可 && !TEQUIP:下半身下着)
@@ -8564,7 +8575,8 @@ ENDIF
 ;奴隷の絶頂をトリガーにした口上
 ;-------------------------------------------------
 @KOJO_MESSAGE_EX_モード
-;;助手が調教した時に口上をスキップする（好みに応じて使う、行頭の;を消すとスキップするようになる）
+#DIM DYNAMIC 乱数分岐
+;助手が調教した時に口上をスキップする（好みに応じて使う、行頭の;を消すとスキップするようになる）
 ;ただしリリーゼは例外
 SIF PLAYER != MASTER && ASSI > 0 && CALLNAME:ASSI != "リリーゼ"
 	RETURN 0
@@ -8736,10 +8748,10 @@ IF NOWEX:射精
 				ENDSELECT
 			;それ以外
 			ELSE
-				LOCAL = 2
+				乱数分岐 = 2
 				SIF TALENT:性転換済
-					LOCAL++
-				SELECTCASE RAND:LOCAL
+					乱数分岐++
+				SELECTCASE RAND:乱数分岐
 					CASE 0
 						PRINTFORMW 「あぁ、嘘……なんで……ちょっとお尻触られただけで……私の体、どうなっちゃってるの……」
 					CASE 1
@@ -9415,7 +9427,6 @@ ENDSELECT
 ;-------------------------------------------------
 @LINDWURM_モード
 #DIM DYNAMIC LCOUNT
-LOCAL = GETCHARANAME("リリーゼ") && CFLAG:GETCHARANAME("リリーゼ"):陥落
 
 SIF !MAUD:99
 	RETURN 0
@@ -9431,7 +9442,7 @@ PRINTFORMW %CALLNAME:MASTER%もモードを追うと、モードがこの場所�
 PRINTW 「リントヴルム……無事だったの、ですか？」
 PRINTFORMW 「それは私の台詞だ。ずっとお前を探していたのだ、モードよ。後ろに居る\@ SEX(MASTER) == 1 ? 男 # 女 \@がお前を連れ出したのか？」
 PRINTW 「ち、違いますっ！ この人は……その……」
-IF LOCAL
+IF GETCHARANAME("リリーゼ") && CFLAG:GETCHARANAME("リリーゼ"):陥落
 	PRINTW 「ふあぁ……何よ寝てたのに、聞き覚えのある怒鳴り声で目が覚めたと思えばあんただったのね、リントヴルム」
 	PRINTW 「リリーゼ嬢……貴女までここに居たのか。どういうことか説明してくれないか？」
 	PRINTW 「どうも何も、あたしらは今ここで暮らしてるってだけよ。リントヴルムも引っ越しに来たの？」
@@ -9625,9 +9636,11 @@ TRYCALLFORM USE_ITEM_%ARGS%_モード
 ;体力回復薬使用時
 ;-------------------------------------------------
 @USE_ITEM_怪しげな栄養剤_モード
+#DIM 連投判定
+#DIM DYNAMIC 乱数分岐
 IF CFLAG:陥落 || MARK:屈服刻印 == 3
 	;連投時
-	IF LOCAL == DAY
+	IF 連投判定 == DAY
 		SELECTCASE RAND:2
 			CASE 0
 				PRINTW 「飲みすぎも体に良くないと思いますが……」
@@ -9644,7 +9657,7 @@ IF CFLAG:陥落 || MARK:屈服刻印 == 3
 	ENDIF
 ELSE
 	;連投時
-	IF LOCAL == DAY
+	IF 連投判定 == DAY
 		SELECTCASE RAND:2
 			CASE 0
 				PRINTW 「一日に何本飲ませるつもりですか……？」
@@ -9652,10 +9665,10 @@ ELSE
 				PRINTW 「こんなにたくさん飲んだら体調を崩しちゃいそう……」
 		ENDSELECT
 	ELSE
-		LOCAL:1 = 2
+		乱数分岐 = 2
 		SIF FEVE:70
-			LOCAL:1++
-		SELECTCASE RAND:(LOCAL:1)
+			乱数分岐++
+		SELECTCASE RAND:乱数分岐
 			CASE 0
 				PRINTFORMW 「うあぁ、なんだかすごく体に悪そうな味……」
 			CASE 1
@@ -9666,7 +9679,7 @@ ELSE
 	ENDIF
 ENDIF
 
-LOCAL = DAY
+連投判定 = DAY
 FEVE:70 = 1
 
 ;-------------------------------------------------

@@ -32,6 +32,8 @@ MAUD:7 = 0
 #DIM DYNAMIC リリーゼ陥落
 #DIM DYNAMIC モード陥落
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 表示判定
+#DIM DYNAMIC 乱数分岐
 
 ;口上表示がオフなら表示しない
 SIF !FLAG:口上表示
@@ -51,22 +53,19 @@ IF LILIEZE:90
 	RETURN 0
 ENDIF
 
-LOCAL = 0
+表示判定 = 0
 SELECTCASE CHARANAMEF(TARGET)
 	CASE "モード", "リリーゼ"
-		LOCAL++
+		表示判定++
 ENDSELECT
 SELECTCASE CHARANAMEF(ASSI)
 	CASE "モード", "リリーゼ"
-		LOCAL++
+		表示判定++
 ENDSELECT
 
 ;表示するかはランダム 10％くらい
-SIF RAND:10 != 0 || LOCAL == 0
+SIF RAND:10 != 0 || 表示判定 == 0
 	RETURN 0
-
-LOCAL = 0
-LOCAL:1 = 0
 
 モード = GETCHARANAME("モード")
 SIF モード > 0 && CFLAG:モード:陥落
@@ -83,17 +82,17 @@ SIF !モード陥落
 ;	RETURN 0
 
 ;陥落済みのモードとリリーゼが居て、休憩フラグが立っていれば日常イベント発生
-LOCAL = 7
+乱数分岐 = 7
 ;リントヴルムが喋るならリントヴルムとのイベントが発生するときがある
 SIF MAUD:99
-	LOCAL += 2
-LOCAL = RAND:LOCAL
+	乱数分岐 += 2
+乱数分岐 = RAND:乱数分岐
 ;図書室でのうたた寝イベント、リントヴルムのイベントはモード単体でも発生する
 ;なお、リリーゼと会ってないと発生しない
-IF (モード陥落 && リリーゼ陥落 && MAUD:6) || (モード陥落 && LOCAL >= 6)
+IF (モード陥落 && リリーゼ陥落 && MAUD:6) || (モード陥落 && 乱数分岐 >= 6)
 	MAUD:90 = 1
 	DRAWLINE
-	SELECTCASE LOCAL
+	SELECTCASE 乱数分岐
 		CASE 0
 			;図書室無ければ終了
 			SIF !ITEM:図書室
@@ -125,10 +124,10 @@ IF (モード陥落 && リリーゼ陥落 && MAUD:6) || (モード陥落 && LOCA
 							;晴れor雪 この時期は普通にプレイしてれば雪は降らない
 							CASEELSE
 								IF FLAG:気温 >= 200
-									LOCAL = 1
+									乱数分岐 = 1
 									SIF MAUD:99
-										LOCAL++
-									SELECTCASE RAND:LOCAL
+										乱数分岐++
+									SELECTCASE RAND:乱数分岐
 										CASE 0
 											PRINTFORMW 「暑い～、アイス食べたい～」
 											PRINTFORMW 「水浴びでもしましょうか？ ここの近くにちょっとした川があったような……」
@@ -187,10 +186,10 @@ IF (モード陥落 && リリーゼ陥落 && MAUD:6) || (モード陥落 && LOCA
 					ENDIF
 				;4月～5月
 				CASE 4, 5
-					LOCAL = 2
+					乱数分岐 = 2
 					SIF TIME == 0
-						LOCAL++
-					SELECTCASE RAND:LOCAL
+						乱数分岐++
+					SELECTCASE RAND:乱数分岐
 						CASE 0
 							PRINTFORMW 「くしゅん、んぅ、うあぁ……目がかゆい……鼻の奥も」
 							PRINTFORMW 「モードちゃん花粉症なの？ あんたってば、悪い病気はだいたい持ってるんじゃないかってくらい虚弱よね～」
@@ -500,6 +499,8 @@ CALL DDR
 #DIM スコア
 #DIM リリーゼのスコア
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC NOTES
+
 DRAWLINE
 PRINTL 【遊び方】
 PRINTL 下から上がってくる矢印が判定ｴｪﾘｱに重なるﾀｧｰｲﾐﾝｸﾞで
@@ -518,7 +519,7 @@ CLEARLINE LINECOUNT
 
 CALL PARANOiA
 
-LOCAL:1 = 0
+NOTES = 0
 
 シーケンス数 = 570
 判定文字 = 
@@ -528,23 +529,23 @@ FOR LCOUNT, 0, 600
 NEXT
 
 DO
-	SIF LOCAL:1 != 0 && 始行数 != LINECOUNT
+	SIF NOTES != 0 && 始行数 != LINECOUNT
 		CLEARLINE 終行数-始行数
 	始行数 = LINECOUNT
-	LOCAL:1++
+	NOTES++
 ;	HTML_PRINT <img src='LEFT_WHITE' height='200' ypos>
 	← = 0
 	↓ = 0
 	↑ = 0
 	→ = 0
-	IF 譜面:(LOCAL:1) != ""
-		SIF STRFIND(譜面:(LOCAL:1), "←") != -1
+	IF 譜面:NOTES != ""
+		SIF STRFIND(譜面:NOTES, "←") != -1
 			← = 1
-		SIF STRFIND(譜面:(LOCAL:1), "↓") != -1
+		SIF STRFIND(譜面:NOTES, "↓") != -1
 			↓ = 1
-		SIF STRFIND(譜面:(LOCAL:1), "↑") != -1
+		SIF STRFIND(譜面:NOTES, "↑") != -1
 			↑ = 1
-		SIF STRFIND(譜面:(LOCAL:1), "→") != -1
+		SIF STRFIND(譜面:NOTES, "→") != -1
 			→ = 1
 	ENDIF
 
@@ -570,7 +571,7 @@ DO
 	
 	PRINTFORML {スコア}
 	IF ←
-		IF LOCAL:1%2 == 0
+		IF NOTES%2 == 0
 			SETCOLOR 255, 0, 0
 		ELSE
 			SETCOLOR 0, 120, 255
@@ -579,7 +580,7 @@ DO
 	PRINT ←
 	RESETCOLOR
 	IF ↓
-		IF LOCAL:1%2 == 0
+		IF NOTES%2 == 0
 			SETCOLOR 255, 0, 0
 		ELSE
 			SETCOLOR 0, 120, 255
@@ -588,7 +589,7 @@ DO
 	PRINT ↓
 	RESETCOLOR
 	IF ↑
-		IF LOCAL:1%2 == 0
+		IF NOTES%2 == 0
 			SETCOLOR 255, 0, 0
 		ELSE
 			SETCOLOR 0, 120, 255
@@ -597,7 +598,7 @@ DO
 	PRINT ↑
 	RESETCOLOR
 	IF →
-		IF LOCAL:1%2 == 0
+		IF NOTES%2 == 0
 			SETCOLOR 255, 0, 0
 		ELSE
 			SETCOLOR 0, 120, 255
@@ -606,7 +607,7 @@ DO
 	PRINTL →
 	RESETCOLOR
 	;COUNT一回につき8分
-	FOR 譜面COUNT, 1+LOCAL:1, 16+LOCAL:1
+	FOR 譜面COUNT, 1+NOTES, 16+NOTES
 		IF 譜面COUNT%2 == 0
 			SETCOLOR 255, 0, 0
 		ELSE
@@ -699,7 +700,7 @@ DO
 	DO
 	LOOP GETMILLISECOND()-判定 < 166
 	終行数 = LINECOUNT
-LOOP LOCAL:1 < シーケンス数
+LOOP NOTES < シーケンス数
 
 DRAWLINE
 PRINTFORML 【%CALLNAME:MASTER%のリザルト】

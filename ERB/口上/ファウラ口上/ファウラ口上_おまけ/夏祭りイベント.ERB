@@ -6,6 +6,9 @@
 #DIM DYNAMIC MOOD
 #DIM DYNAMIC MCHECK
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 消耗量
+#DIM DYNAMIC MOODUP
+#DIM DYNAMIC 体位
 
 MATSURI_NOW = 1
 CALL SET_ITEM_TEMPORARY
@@ -36,7 +39,7 @@ IF HOUR >= 24
 	PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%は帰ることにした
 	;18時から1分経つごとに体力を1減らす(いきなり帰っても60減っている)
 	;ただし、ホテルに泊まる場合はその減少を半分にする(疲れを忘れるほど興奮している)
-	LOCAL = 60*(HOUR-18) + 10*MINUTE
+	消耗量 = 60*(HOUR-18) + 10*MINUTE
 	IF MOOD >= 16000
 		PRINTFORML 祭りの興奮が冷めやらぬ%CALLNAME:TARGET%は、
 		PRINTFORMW このまますぐに近くのホテルに泊まらないかと提案してきた……
@@ -49,7 +52,7 @@ IF HOUR >= 24
 			INPUT
 			SELECTCASE RESULT
 				CASE 0
-					BASE:体力 -= LOCAL
+					BASE:体力 -= 消耗量
 					PRINTW ………………
 					PRINTW …………
 					PRINTW ……
@@ -61,7 +64,7 @@ IF HOUR >= 24
 						CONTINUE
 					ENDIF
 					MONEY -= 30000
-					BASE:体力 -= LOCAL/2
+					BASE:体力 -= 消耗量/2
 					;アイテム0-17,20-24を一時的に全解禁する
 					;終了時にGET_ITEM_TEMPORARYで元に戻す
 					FOR LCOUNT, 0, 25
@@ -92,7 +95,7 @@ IF HOUR >= 24
 					TEQUIP:野外プレイ = 1
 					ITEM:首輪 = 0
 					ITEM:大鏡 = 0
-					BASE:体力 -= LOCAL
+					BASE:体力 -= 消耗量
 					PRINTW ………………
 					PRINTW …………
 					PRINTW ……
@@ -101,7 +104,7 @@ IF HOUR >= 24
 			ENDSELECT
 		LOOP LOOPRES(0, 1, 2)
 	ELSE
-		BASE:体力 -= LOCAL
+		BASE:体力 -= 消耗量
 		TRYCALLFORM MATSURI_END0_K{NO:TARGET}
 		PRINTW ………………
 		PRINTW …………
@@ -157,10 +160,10 @@ SELECTCASE RESULT
 		TRYCALLFORM MATSURI0_K{NO:TARGET}
 		PRINTW キンキンに冷えたジュースは熱気に包まれて渇きがちな喉を潤してくれた……
 		;最低117%-最高141%
-		LOCAL = (FLAG:気温 - 70)/6 + 100
+		MOODUP = (FLAG:気温 - 70)/6 + 100
 		SIF GETBIT(MCHECK, 0)
-			LOCAL = (LOCAL-100)/2 +100
-		MOOD *= LOCAL
+			MOODUP = (MOODUP-100)/2 +100
+		MOOD *= MOODUP
 		MOOD /= 100
 		SETBIT MCHECK, 0
 	CASE 1
@@ -176,10 +179,10 @@ SELECTCASE RESULT
 		TRYCALLFORM MATSURI1_K{NO:TARGET}
 		PRINTW チョコが溶けないように気を付けつつ甘さのコラボレーションを楽しんだ……
 		;最低126%-最高146%
-		LOCAL = (500 - FLAG:気温)/7 + 100
+		MOODUP = (500 - FLAG:気温)/7 + 100
 		SIF GETBIT(MCHECK, 1)
-			LOCAL = (LOCAL-100)/2 +100
-		MOOD *= LOCAL
+			MOODUP = (MOODUP-100)/2 +100
+		MOOD *= MOODUP
 		MOOD /= 100
 		SETBIT MCHECK, 1
 	CASE 2
@@ -195,10 +198,10 @@ SELECTCASE RESULT
 		TRYCALLFORM MATSURI2_K{NO:TARGET}
 		PRINTW 暑い中食べるアイスクリームはどうしてこんなに美味しいのだろうか……
 		;最低104%-最高152%
-		LOCAL = (FLAG:気温 - 160)/3 + 100
+		MOODUP = (FLAG:気温 - 160)/3 + 100
 		SIF GETBIT(MCHECK, 2)
-			LOCAL = (LOCAL-100)/2 +100
-		MOOD *= LOCAL
+			MOODUP = (MOODUP-100)/2 +100
+		MOOD *= MOODUP
 		MOOD /= 100
 		SETBIT MCHECK, 2
 	CASE 3
@@ -219,29 +222,29 @@ SELECTCASE RESULT
 				TRYCALLFORM MATSURI3PERFECT_K{NO:TARGET}
 				PRINTW 屋台での出来とは思えない美味しさの焼きそばを堪能した……
 				;165%
-				LOCAL = 165
+				MOODUP = 165
 			;GREATな出来の焼きそば
 			CASE 1
 				TRYCALLFORM MATSURI3GREAT_K{NO:TARGET}
 				PRINTW 焼きそばが予想以上に美味しかったため、2人の顔はどこか満足気だった……
 				;140%
-				LOCAL = 140
+				MOODUP = 140
 			;BADな出来の焼きそば
 			CASE 2
 				TRYCALLFORM MATSURI3BAD_K{NO:TARGET}
 				PRINTW ある意味で屋台のものらしい簡素な作りの焼きそばを食べ終えた……
 				;115%
-				LOCAL = 115
+				MOODUP = 115
 			;POORな出来の焼きそば
 			CASE 3
 				TRYCALLFORM MATSURI3POOR_K{NO:TARGET}
 				PRINTW 焼きそばはお世辞にも美味しいとは言えなかった……
 				;90%
-				LOCAL = 90
+				MOODUP = 90
 		ENDSELECT
 		SIF GETBIT(MCHECK, 3)
-			LOCAL = (LOCAL-100)/2 +100
-		MOOD *= LOCAL
+			MOODUP = (MOODUP-100)/2 +100
+		MOOD *= MOODUP
 		MOOD /= 100
 		SETBIT MCHECK, 3
 	CASE 4
@@ -257,10 +260,10 @@ SELECTCASE RESULT
 		TRYCALLFORM MATSURI4_K{NO:TARGET}
 		PRINTW 砂糖が口の中に溶けていく独特の感覚を味わって食べていった……
 		;最低140%-最高150%
-		LOCAL = 140 + RAND:11
+		MOODUP = 140 + RAND:11
 		SIF GETBIT(MCHECK, 4)
-			LOCAL = (LOCAL-100)/2 +100
-		MOOD *= LOCAL
+			MOODUP = (MOODUP-100)/2 +100
+		MOOD *= MOODUP
 		MOOD /= 100
 		SETBIT MCHECK, 4
 	CASE 5
@@ -277,14 +280,14 @@ SELECTCASE RESULT
 		;最低120%-最高180%
 		IF RAND:6 == 0
 			PRINTFORMW %CALLNAME:MASTER%は焦って口の中をやけどしつつ、たこ焼きを食べきった……
-			LOCAL = 120 + RAND:11
+			MOODUP = 120 + RAND:11
 		ELSE
 			PRINTFORMW ソースとマヨネーズが程よく効いたたこ焼きを完食した……
-			LOCAL = 160 +RAND:21 
+			MOODUP = 160 +RAND:21 
 		ENDIF
 		SIF GETBIT(MCHECK, 5)
-			LOCAL = (LOCAL-100)/2 +100
-		MOOD *= LOCAL
+			MOODUP = (MOODUP-100)/2 +100
+		MOOD *= MOODUP
 		MOOD /= 100
 		SETBIT MCHECK, 5
 	CASE 6
@@ -318,7 +321,7 @@ SELECTCASE RESULT
 		PRINTW ゲームが終わった……
 		;スコアは、[ビンゴ数]*200+[反射板ボーナス]*50 で計算 (RESULTに代入される)
 		;1700点は8ビンゴのみでは達成できない
-		LOCAL = RESULT/4 +100
+		MOODUP = RESULT/4 +100
 		SELECTCASE RESULT
 			CASE IS >= 1700
 				;異常経験が入るイベントなので選択肢をおく
@@ -381,8 +384,8 @@ SELECTCASE RESULT
 		ENDSELECT
 		;最低100% (理論上は6750点取れるので)最高1430%　参考:1600点で400%
 		SIF GETBIT(MCHECK, 6)
-			LOCAL = (LOCAL-100)/5 +100
-		MOOD *= LOCAL
+			MOODUP = (MOODUP-100)/5 +100
+		MOOD *= MOODUP
 		MOOD /= 100
 		SETBIT MCHECK, 6
 	CASE 7
@@ -390,7 +393,7 @@ SELECTCASE RESULT
 		;ムードの変動値は基本的には「ABL:欲望」に依存
 		MINUTE += 1
 		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%は祭りの会場から離れ、人気の少ないところにたどり着いた……
-		LOCAL = 0
+		消耗量 = 0
 		DO
 			IF MINUTE >= 6
 				MINUTE -= 6
@@ -405,7 +408,7 @@ SELECTCASE RESULT
 				;18時から1分経つごとに体力を1減らす
 				;24時(6時間)で360減ることになる
 				;ただし、ホテルに泊まる場合はその減少を半分にする(疲れを忘れるほど興奮している)
-				LOCAL = 60*(HOUR-18) + 10*MINUTE
+				消耗量 = 60*(HOUR-18) + 10*MINUTE
 				IF MOOD >= 16000
 					PRINTFORML 祭りの興奮が冷めやらぬ%CALLNAME:TARGET%は、
 					PRINTFORMW このまますぐに近くのホテルに泊まらないかと提案してきた……
@@ -418,7 +421,7 @@ SELECTCASE RESULT
 						INPUT
 						SELECTCASE RESULT
 							CASE 0
-								BASE:体力 -= LOCAL
+								BASE:体力 -= 消耗量
 								PRINTW ………………
 								PRINTW …………
 								PRINTW ……
@@ -430,7 +433,7 @@ SELECTCASE RESULT
 									CONTINUE
 								ENDIF
 								MONEY -= 30000
-								BASE:体力 -= LOCAL/2
+								BASE:体力 -= 消耗量/2
 								;アイテム0-17,20-24を一時的に全解禁する
 								;終了時にGET_ITEM_TEMPORARYで元に戻す
 								FOR LCOUNT, 0, 25
@@ -461,7 +464,7 @@ SELECTCASE RESULT
 								TEQUIP:野外プレイ = 1
 								ITEM:首輪 = 0
 								ITEM:大鏡 = 0
-								BASE:体力 -= LOCAL
+								BASE:体力 -= 消耗量
 								PRINTW ………………
 								PRINTW …………
 								PRINTW ……
@@ -470,7 +473,7 @@ SELECTCASE RESULT
 						ENDSELECT
 					LOOP LOOPRES(0, 1, 2)
 				ELSE
-					BASE:体力 -= LOCAL
+					BASE:体力 -= 消耗量
 					TRYCALLFORM MATSURI_END0_K{NO:TARGET}
 					PRINTW ………………
 					PRINTW …………
@@ -504,7 +507,7 @@ SELECTCASE RESULT
 			INPUT
 			SELECTCASE RESULT
 				CASE 0
-					IF LOCAL
+					IF 体位
 						;対面座位キスへの派生
 						CALL MESSAGE_COM_対面座位キス
 						TRYCALLFORM COM_対面座位キス_K{NO:TARGET}
@@ -518,14 +521,14 @@ SELECTCASE RESULT
 						MOOD *= 101 + ABL:欲望
 						MOOD /= 100
 					ENDIF
-					LOCAL = 0
+					体位 = 0
 				CASE 1
 					CALL MESSAGE_COM_胸揉み
 					TRYCALLFORM COM_胸揉み_K{NO:TARGET}
 					MINUTE += 1
 					MOOD *= 101 + ABL:欲望
 					MOOD /= 100
-					LOCAL = 0
+					体位 = 0
 				CASE 2
 					SIF !(MOOD >= 4000)
 						GOTO INPUT_LOOP
@@ -534,7 +537,7 @@ SELECTCASE RESULT
 					MINUTE += 1
 					MOOD *= 101 + 2*ABL:欲望
 					MOOD /= 100
-					LOCAL = 0
+					体位 = 0
 				CASE 3
 					SIF !(MOOD >= 4000)
 						GOTO INPUT_LOOP
@@ -543,7 +546,7 @@ SELECTCASE RESULT
 					MINUTE += 1
 					MOOD *= 101 + 2*ABL:欲望
 					MOOD /= 100
-					LOCAL = 0
+					体位 = 0
 				CASE 4
 					SIF !(MOOD >= 8000 && USERCOM_ABLE_クンニ())
 						GOTO INPUT_LOOP
@@ -552,7 +555,7 @@ SELECTCASE RESULT
 					MINUTE += 1
 					MOOD *= 101 + 3*ABL:欲望
 					MOOD /= 100
-					LOCAL = 0
+					体位 = 0
 				CASE 5
 					SIF !(MOOD >= 8000 && USERCOM_ABLE_フェラする())
 						GOTO INPUT_LOOP
@@ -561,7 +564,7 @@ SELECTCASE RESULT
 					MINUTE += 1
 					MOOD *= 101 + 3*ABL:欲望
 					MOOD /= 100
-					LOCAL = 0
+					体位 = 0
 				CASE 6
 					SIF !(MOOD >= 8000 && USERCOM_ABLE_フェラチオ())
 						GOTO INPUT_LOOP
@@ -570,7 +573,7 @@ SELECTCASE RESULT
 					MINUTE += 1
 					MOOD *= 101 + 3*ABL:欲望
 					MOOD /= 100
-					LOCAL = 0
+					体位 = 0
 				CASE 7
 					SIF !(MOOD >= 11313 && MATSURI_ABLE_パイズリ())
 						GOTO INPUT_LOOP
@@ -579,7 +582,7 @@ SELECTCASE RESULT
 					MINUTE += 1
 					MOOD *= 101 + 4*ABL:欲望
 					MOOD /= 100
-					LOCAL = 0
+					体位 = 0
 				CASE 8
 					SIF !(MOOD >= 16000 && USERCOM_ABLE_対面座位())
 						GOTO INPUT_LOOP
@@ -588,16 +591,16 @@ SELECTCASE RESULT
 					MINUTE += 1
 					MOOD *= 101 + 5*ABL:欲望
 					MOOD /= 100
-					LOCAL = 1
+					体位 = 1
 				CASE 9
 					SIF !(MOOD >= 32000)
 						GOTO INPUT_LOOP
 					;18時から1分経つごとに体力を1減らす(いきなり帰っても60減っている)
-					LOCAL = 60*(HOUR-18) + 10*MINUTE
+					消耗量 = 60*(HOUR-18) + 10*MINUTE
 					TEQUIP:野外プレイ = 1
 					ITEM:首輪 = 0
 					ITEM:大鏡 = 0
-					BASE:体力 -= LOCAL
+					BASE:体力 -= 消耗量
 					PRINTFORML %CALLNAME:MASTER%は%CALLNAME:TARGET%をゆっくりと押し倒し、
 					PRINTW 周りの音も聞こえなくなるような快楽の世界へと入り込んでいった……
 					RETURN 0
@@ -616,10 +619,10 @@ SELECTCASE RESULT
 		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%は盆踊りを踊ることにした
 		TRYCALLFORM MATSURI8_K{NO:TARGET}
 		;固定で112%
-		LOCAL = 112
+		MOODUP = 112
 		SIF GETBIT(MCHECK, 8)
-			LOCAL = (LOCAL-100)/2 +100
-		MOOD *= LOCAL
+			MOODUP = (MOODUP-100)/2 +100
+		MOOD *= MOODUP
 		MOOD /= 100
 		SETBIT MCHECK, 8
 	CASE 9
@@ -647,7 +650,7 @@ SELECTCASE RESULT
 		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:TARGET%は帰ることにした
 		;18時から1分経つごとに体力を1減らす(いきなり帰っても60減っている)
 		;ただし、ホテルに泊まる場合はその減少を半分にする(疲れを忘れるほど興奮している)
-		LOCAL = 60*(HOUR-18) + 10*MINUTE
+		消耗量 = 60*(HOUR-18) + 10*MINUTE
 		IF MOOD >= 16000 && MONEY >= 30000
 			PRINTFORML 祭りの興奮が冷めやらぬ%CALLNAME:TARGET%は、
 			PRINTFORMW このまますぐに近くのホテルに泊まらないかと提案してきた……
@@ -659,7 +662,7 @@ SELECTCASE RESULT
 				INPUT
 				SELECTCASE RESULT
 					CASE 0
-						BASE:体力 -= LOCAL
+						BASE:体力 -= 消耗量
 						PRINTW ………………
 						PRINTW …………
 						PRINTW ……
@@ -667,11 +670,11 @@ SELECTCASE RESULT
 						RETURN 0
 					CASE 1
 						MONEY -= 30000
-						BASE:体力 -= LOCAL/2
+						BASE:体力 -= 消耗量/2
 						;アイテム0-17,20-24を一時的に全解禁する
 						;終了時にGET_ITEM_TEMPORARYで元に戻す
 						FOR LCOUNT, 0, 25
-							SIF LCOUNT != 18 && LCOUNT != 19
+							SIF ITEMNAME:LCOUNT != "ビデオカメラ" && ITEMNAME:LCOUNT != "カメラ"
 								ITEM:LCOUNT = 1
 						NEXT
 						;野外プレイのみ禁止
@@ -697,7 +700,7 @@ SELECTCASE RESULT
 				ENDSELECT
 			LOOP LOOPRES(0, 1)
 		ELSE
-			BASE:体力 -= LOCAL
+			BASE:体力 -= 消耗量
 			TRYCALLFORM MATSURI_END0_K{NO:TARGET}
 			PRINTW ………………
 			PRINTW …………
@@ -732,6 +735,7 @@ ENDSELECT
 
 @MATSURI_ABLE_パイズリ, ARG
 #FUNCTION
+#DIM DYNAMIC 必要技巧
 ;祭り中におけるパイズリ実行判定
 ;着衣の状況を無視して、必要ない判定も削る
 SELECTCASE TALENT:バストサイズ
@@ -740,18 +744,18 @@ SELECTCASE TALENT:バストサイズ
 		RETURNF 0
 	;貧乳なら技巧4以上必要
 	CASE 2
-		LOCAL = 4
+		必要技巧 = 4
 	;普通なら技巧3以上必要
 	CASE 3
-		LOCAL = 3
+		必要技巧 = 3
 	;巨乳、豊乳なら技巧LV2以上必要
 	CASE 4, 5
-		LOCAL = 2
+		必要技巧 = 2
 	;爆乳なら技巧LV1以上必要
 	CASE 6
-		LOCAL = 1
+		必要技巧 = 1
 ENDSELECT
-SIF ABL:技巧 < LOCAL
+SIF ABL:技巧 < 必要技巧
 	RETURNF 0
 ;調教者がペニス無いとダメ
 SIF !PENIS(PLAYER)
