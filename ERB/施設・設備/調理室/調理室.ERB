@@ -123,6 +123,9 @@ LOOP 1
 #DIM DYNAMIC カフェイン
 #DIM DYNAMIC 調理器具ボーナス
 #DIMS DYNAMIC 料理効果処理用, 2
+#DIMS DYNAMIC 食事時間
+#DIMS DYNAMIC 表示用, 2
+#DIM DYNAMIC LRESULT
 DRAWLINE
 PRINTL □献立
 PRINTL 　朝食、昼食、夕食、間食の献立を決めることができます
@@ -131,17 +134,17 @@ PRINTL
 FOR LCOUNT, 1, 5
 	SELECTCASE LCOUNT
 		CASE 1
-			LOCALS = 朝食
+			食事時間 = 朝食
 		CASE 2
-			LOCALS = 昼食
+			食事時間 = 昼食
 		CASE 3
-			LOCALS = 夕食
+			食事時間 = 夕食
 		CASE 4
-			LOCALS = 間食
+			食事時間 = 間食
 	ENDSELECT
-	ARRAYCOPY LOCALS, "献立"
+	ARRAYCOPY 食事時間, "献立"
 
-	CALL 料理効果計算, LOCALS, 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン, 調理器具ボーナス
+	CALL 料理効果計算, 食事時間, 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン, 調理器具ボーナス
 	モチベ計算用 = RESULT
 
 	SIF モチベ計算用
@@ -169,12 +172,12 @@ FOR LCOUNT, 1, 5
 	SIF 酒あり
 		PRINTFORM お酒あり 
 	
-	LOCALS:1 = %HTML_POPPRINTINGSTR()%
+	表示用 = %HTML_POPPRINTINGSTR()%
 	
-	PRINTFORM 　[{LCOUNT}] - %LOCALS%
+	PRINTFORM 　[{LCOUNT}] - %食事時間%
 	
-	SIF LOCALS:1 != ""
-		PRINTFORM (%SUBSTRING(LOCALS:1, 0, STRLENS(LOCALS:1)-1)%)
+	SIF 表示用 != ""
+		PRINTFORM (%SUBSTRING(表示用, 0, STRLENS(表示用)-1)%)
 	PRINTL 
 
 	IF MATCH(献立, "") < 9
@@ -195,10 +198,10 @@ FOR LCOUNT, 1, 5
 					PRINTFORM 副菜:%献立:3%%献立:4%
 				ENDIF
 
-				LOCALS = %HTML_POPPRINTINGSTR()%
+				表示用 = %HTML_POPPRINTINGSTR()%
 
-				SIF LOCALS != ""
-					PRINTFORML 　　　　%LOCALS%
+				SIF 表示用 != ""
+					PRINTFORML 　　　　%表示用%
 				SIF 献立:5 != ""
 					PRINTFORM 汁物:%献立:5% 
 				SIF 献立:6 != ""
@@ -207,9 +210,9 @@ FOR LCOUNT, 1, 5
 					PRINTFORM トッピング:%献立:7% 
 				SIF 献立:8 != ""
 					PRINTFORM デザート:%献立:8%
-				LOCALS = %HTML_POPPRINTINGSTR()%
-				SIF LOCALS != ""
-					PRINTFORML 　　　　%LOCALS%
+				表示用 = %HTML_POPPRINTINGSTR()%
+				SIF 表示用 != ""
+					PRINTFORML 　　　　%表示用%
 				PRINTL 
 			CASE 4
 				IF 献立:0 != "" && 献立:1 != ""
@@ -221,9 +224,9 @@ FOR LCOUNT, 1, 5
 					PRINTFORM トッピング:%献立:2%
 				SIF 献立:3 != ""
 					PRINTFORM 飲み物:%献立:3%
-				LOCALS = %HTML_POPPRINTINGSTR()%
-				SIF LOCALS != ""
-					PRINTFORML 　　　　%LOCALS%
+				表示用 = %HTML_POPPRINTINGSTR()%
+				SIF 表示用 != ""
+					PRINTFORML 　　　　%表示用%
 		ENDSELECT
 	ENDIF
 NEXT
@@ -242,18 +245,18 @@ DO
 		CASE 1 TO 3
 			SELECTCASE RESULT
 				CASE 1
-					LOCALS = 朝食
+					食事時間 = 朝食
 					ARRAYCOPY "朝食", "献立"
 				CASE 2
-					LOCALS = 昼食
+					食事時間 = 昼食
 					ARRAYCOPY "昼食", "献立"
 				CASE 3
-					LOCALS = 夕食
+					食事時間 = 夕食
 					ARRAYCOPY "夕食", "献立"
 			ENDSELECT
 			$RESTART
 			料理名渡し用 = 
-			PRINTFORML □%LOCALS%の献立を変更します
+			PRINTFORML □%食事時間%の献立を変更します
 			PRINTFORML 　[0] - 主食を変更する\@ 献立:0 != "" ? (現在:%献立:0%) #  \@
 			PRINTFORML 　[1] - 主菜を変更する\@ 献立:1 != "" ? (現在:%献立:1%) #  \@
 			PRINTFORML 　[2] - 主菜を変更する\@ 献立:2 != "" ? (現在:%献立:2%) #  \@
@@ -264,47 +267,47 @@ DO
 			PRINTFORML 　[7] - トッピングを変更する\@ 献立:7 != "" ? (現在:%献立:7%) #  \@
 			PRINTFORML 　[8] - デザートを変更する\@ 献立:8 != "" ? (現在:%献立:8%) #  \@
 			DRAWLINE
-			PRINTPLAINFORM 　%LOCALS%の献立　
+			PRINTPLAINFORM 　%食事時間%の献立　
 			PRINTL [10] - 戻る
 			DO
 				INPUT
 				SELECTCASE RESULT
 					CASE 10
-						ARRAYCOPY "献立", LOCALS
+						ARRAYCOPY "献立", 食事時間
 						RESTART
 					CASE 0 TO 8
-						LOCAL = RESULT
-						CALL 献立選択, 献立分類(LOCAL)
+						LRESULT = RESULT
+						CALL 献立選択, 献立分類(LRESULT)
 						SIF 料理名渡し用 != "" && FINDELEMENT(献立, 料理名渡し用) >= 0
 							献立:FINDELEMENT(献立, 料理名渡し用) = 
-						献立:LOCAL = %料理名渡し用%
+						献立:LRESULT = %料理名渡し用%
 						GOTO RESTART
 				ENDSELECT
 			LOOP 1
 		CASE 4
-			LOCALS = 間食
+			食事時間 = 間食
 			ARRAYCOPY "間食", "献立"
 			$RESTART2
-			PRINTFORML □%LOCALS%の献立を変更します
+			PRINTFORML □%食事時間%の献立を変更します
 			PRINTFORML 　[0] - 間食を変更する\@ 献立:0 != "" ? (現在:%献立:0%) #  \@
 			PRINTFORML 　[1] - 間食を変更する\@ 献立:1 != "" ? (現在:%献立:1%) #  \@
 			PRINTFORML 　[2] - トッピングを変更する\@ 献立:2 != "" ? (現在:%献立:2%) #  \@
 			PRINTFORML 　[3] - 飲み物を変更する\@ 献立:3 != "" ? (現在:%献立:3%) #  \@
 			DRAWLINE
-			PRINTPLAINFORM 　%LOCALS%の献立　
+			PRINTPLAINFORM 　%食事時間%の献立　
 			PRINTL [10] - 戻る
 			DO
 				INPUT
 				SELECTCASE RESULT
 					CASE 10
-						ARRAYCOPY "献立", LOCALS
+						ARRAYCOPY "献立", 食事時間
 						RESTART
 					CASE 0 TO 3
-						LOCAL = RESULT
-						CALL 献立選択, 献立分類間食(LOCAL)
+						LRESULT = RESULT
+						CALL 献立選択, 献立分類間食(LRESULT)
 						SIF 料理名渡し用 != "" && FINDELEMENT(献立, 料理名渡し用) >= 0
 							献立:FINDELEMENT(献立, 料理名渡し用) = 
-						献立:LOCAL = %料理名渡し用%
+						献立:LRESULT = %料理名渡し用%
 						GOTO RESTART2
 				ENDSELECT
 			LOOP 1
@@ -320,6 +323,9 @@ LOOP 1
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC 次ページあり
 #DIMS DYNAMIC 料理効果処理用
+#DIMS DYNAMIC 分割用, 2
+#DIM DYNAMIC LRESULT
+#DIMS DYNAMIC 選択料理
 
 DRAWLINE
 表示数 = 0
@@ -367,12 +373,12 @@ FOR LCOUNT, 1, VARSIZE("料理メニュー")
 			CASE "ALC"
 				料理効果処理用 += "[ALC]"
 			CASE IS != ""
-				SPLIT 料理効果:LCOUNT2, "/", LOCALS
-				SELECTCASE LOCALS
+				SPLIT 料理効果:LCOUNT2, "/", 分割用
+				SELECTCASE 分割用
 					CASE "モチベ", "ホット", "コールド", "脱水"
-						料理効果処理用 += @"[%LOCALS%:{TOINT(LOCALS:1)/10}.{TOINT(LOCALS:1)%10}]"
+						料理効果処理用 += @"[%分割用%:{TOINT(分割用:1)/10}.{TOINT(分割用:1)%10}]"
 					CASEELSE
-						料理効果処理用 += @"[%LOCALS%:{TOINT(LOCALS:1)}]"
+						料理効果処理用 += @"[%分割用%:{TOINT(分割用:1)}]"
 				ENDSELECT
 		ENDSELECT
 	NEXT
@@ -429,28 +435,28 @@ DO
 	ENDSELECT
 	SIF 料理メニュー:RESULT == ""
 		CONTINUE
-	LOCAL = RESULT
-	LOCALS = %料理メニュー:RESULT%
+	LRESULT = RESULT
+	選択料理 = %料理メニュー:RESULT%
 
 	IF 分類 == "間食"
-		SELECTCASE 料理分類:LOCAL
+		SELECTCASE 料理分類:LRESULT
 			CASE "間食", "デザート"
 			CASEELSE
 				CONTINUE
 		ENDSELECT
 	ELSE
-		SIF 料理分類:LOCAL != 分類
+		SIF 料理分類:LRESULT != 分類
 			CONTINUE
 	ENDIF
 
 	;作れなかったらダメ
-	IF レシピ判定(LOCALS) <= 1 || 必要料理レベル > 料理レベル()
+	IF レシピ判定(選択料理) <= 1 || 必要料理レベル > 料理レベル()
 		PRINTW 条件を満たしていません
 		RESTART
 	ENDIF
 
 	;上の条件を通ったらそれを献立にする
-	料理名渡し用 = %料理メニュー:LOCAL%
+	料理名渡し用 = %料理メニュー:LRESULT%
 	SIF STRFIND(料理メニュー:LCOUNT, "チーズ") >= 0 && GETCHARANAME("マッドラット") > 0
 		CALL 実績解除, "ごほうびをカジる権利"
 	RETURN
@@ -463,6 +469,7 @@ LOOP 1
 #DIM DYNAMIC 最大レベル
 #DIM DYNAMIC ページ数
 #DIMS DYNAMIC 料理効果処理用
+#DIMS DYNAMIC 分割用, 2
 
 PRINTL □マウスカーソルを置くことでレシピの解禁条件が表示されます
 
@@ -480,12 +487,12 @@ FOR LCOUNT, ページ数*10+1, ページ数*10+11
 			CASE "ALC"
 				料理効果処理用 += "[ALC]"
 			CASE IS != ""
-				SPLIT 料理効果:LCOUNT2, "/", LOCALS
-				SELECTCASE LOCALS
+				SPLIT 料理効果:LCOUNT2, "/", 分割用
+				SELECTCASE 分割用
 					CASE "モチベ", "ホット", "コールド", "脱水"
-						料理効果処理用 += @"[%LOCALS%:{TOINT(LOCALS:1)/10}.{TOINT(LOCALS:1)%10}]"
+						料理効果処理用 += @"[%分割用%:{TOINT(分割用:1)/10}.{TOINT(分割用:1)%10}]"
 					CASEELSE
-						料理効果処理用 += @"[%LOCALS%:{TOINT(LOCALS:1)}]"
+						料理効果処理用 += @"[%分割用%:{TOINT(分割用:1)}]"
 				ENDSELECT
 		ENDSELECT
 	NEXT
@@ -549,8 +556,7 @@ LOOP 1
 #FUNCTION
 #DIMS DYNAMIC 材料, 6
 #DIM DYNAMIC LCOUNT
-
-LOCAL = 2
+#DIM DYNAMIC 返り値 = 2
 
 レシピ用ツールチップ = 材料:
 
@@ -561,10 +567,10 @@ LOCAL = 2
 FOR LCOUNT, 0, VARSIZE("材料")
 	SIF 材料:LCOUNT == ""
 		BREAK
-	SIF LOCAL >= 材料判定(材料:LCOUNT)
-		LOCAL = 材料判定(材料:LCOUNT)
+	SIF 返り値 >= 材料判定(材料:LCOUNT)
+		返り値 = 材料判定(材料:LCOUNT)
 	;材料がある場合は新鮮食材ボーナス
-	IF LOCAL >= 2
+	IF 返り値 >= 2
 		新鮮食材++
 	ELSE
 		;材料が無かった場合は4分の1を原価にプラス
@@ -573,12 +579,13 @@ FOR LCOUNT, 0, VARSIZE("材料")
 	レシピ用ツールチップ += @"[%材料:LCOUNT%]"
 NEXT
 
-RETURNF LOCAL
+RETURNF 返り値
 
 @料理価格_FUNCTION, 材料名
 #FUNCTION
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC 材料名
+#DIMS DYNAMIC 分割用, 2
 
 ;ここまでは良かったが実際にやってみると各メニューの価格がめちゃくちゃになったので原価計算にのみ使う
 
@@ -600,14 +607,14 @@ SELECTCASE GETNUM(ITEM, 材料名)
 			CASEELSE
 			;果物、魚介類、肉類で指定されてる場合は数に応じて
 			IF STRFIND(材料名, "魚介類|果物|肉類")
-				SPLIT 材料名, "*", LOCALS
-				SELECTCASE LOCALS
+				SPLIT 材料名, "*", 分割用
+				SELECTCASE 分割用
 					CASE "果物"
-						RETURNF 100*TOINT(LOCALS:1)
+						RETURNF 100*TOINT(分割用:1)
 					CASE "魚介類"
-						RETURNF 300*TOINT(LOCALS:1)
+						RETURNF 300*TOINT(分割用:1)
 					CASE "肉類"
-						RETURNF 500*TOINT(LOCALS:1)
+						RETURNF 500*TOINT(分割用:1)
 				ENDSELECT
 			ENDIF
 		ENDSELECT
@@ -622,16 +629,18 @@ ENDSELECT
 #DIM DYNAMIC 魚介類必要数
 #DIM DYNAMIC 肉類必要数
 #DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 分割用, 2
+#DIM DYNAMIC 対象素材数
 
 IF STRFIND(ARGS, "魚介類|果物|肉類")
-	SPLIT ARGS, "*", LOCALS
-	SELECTCASE LOCALS
+	SPLIT ARGS, "*", 分割用
+	SELECTCASE 分割用
 		CASE "果物"
-			果物必要数 = TOINT(LOCALS:1)
+			果物必要数 = TOINT(分割用:1)
 		CASE "魚介類"
-			魚介類必要数 = TOINT(LOCALS:1)
+			魚介類必要数 = TOINT(分割用:1)
 		CASE "肉類"
-			肉類必要数 = TOINT(LOCALS:1)
+			肉類必要数 = TOINT(分割用:1)
 	ENDSELECT
 ENDIF
 
@@ -677,18 +686,18 @@ SIF ITEM:触手使役術
 	材料:FINDELEMENT(材料, "", 0, 400, 1) = 触手肉
 
 ;果物の数を数える
-LOCAL = 0
+対象素材数 = 0
 IF 果物必要数
 	FOR LCOUNT, 600, 700
 		IF ITEMNAME:LCOUNT != ""
 			SELECTCASE ITEMNAME:LCOUNT
 				CASE "イチゴ", "レモン", "ライム", "ブルーベリー", "ラズベリー", "りんご", "みかん", "メロン", "スイカ", "ぶどう"
 					SIF MATCH(材料, ITEMNAME:LCOUNT)
-						LOCAL++
+						対象素材数++
 			ENDSELECT
 		ENDIF
 	NEXT
-	SELECTCASE LOCAL
+	SELECTCASE 対象素材数
 		CASE IS >= 果物必要数
 			RETURNF 2
 		CASEELSE
@@ -697,17 +706,17 @@ IF 果物必要数
 ENDIF
 
 ;魚介類の数を数える
-LOCAL = 0
+対象素材数 = 0
 IF 魚介類必要数
 	FOR LCOUNT, 800, 850
 		IF ITEMNAME:LCOUNT != ""
 			SIF ITEMNAME:LCOUNT == "海藻"
 				CONTINUE
 			SIF MATCH(材料, ITEMNAME:LCOUNT)
-				LOCAL++
+				対象素材数++
 		ENDIF
 	NEXT
-	SELECTCASE LOCAL
+	SELECTCASE 対象素材数
 		CASE IS >= 魚介類必要数
 			RETURNF 2
 		CASEELSE
@@ -730,18 +739,18 @@ IF ARGS == "白身魚"
 ENDIF
 
 ;肉類の数を数える
-LOCAL = 0
+対象素材数 = 0
 IF 肉類必要数
 	FOR LCOUNT, 750, 800
 		IF ITEMNAME:LCOUNT != ""
 			SELECTCASE ITEMNAME:LCOUNT
 				CASE "牛肉", "羊肉", "鶏肉", "馬肉", "豚肉"
 					SIF MATCH(材料, ITEMNAME:LCOUNT)
-						LOCAL++
+						対象素材数++
 			ENDSELECT
 		ENDIF
 	NEXT
-	SELECTCASE LOCAL
+	SELECTCASE 対象素材数
 		CASE IS >= 肉類必要数
 			RETURNF 2
 		CASEELSE
@@ -870,6 +879,7 @@ NEXT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC モチベ回復量
 #DIM DYNAMIC モチベ計算用
+#DIM DYNAMIC モチベ合計値
 #DIM DYNAMIC 酒あり
 #DIM DYNAMIC 鎮静
 #DIM DYNAMIC 滋養強壮
@@ -883,6 +893,7 @@ NEXT
 #DIM DYNAMIC 水分
 #DIM DYNAMIC カフェイン
 #DIM DYNAMIC 調理器具ボーナス
+#DIM DYNAMIC 効果値
 
 ;新婚モード
 IF ゲームモード() == "新婚モード"
@@ -910,22 +921,22 @@ IF TIME == 0
 		;[暑さに弱い]と26度以上から悪影響になる
 		;[猫舌]だとモチベ回復量そのものが減る（2割減）
 		IF ホット
-			LOCAL = FLAG:気温/10
-			IF LOCAL < 10
+			効果値 = FLAG:気温/10
+			IF 効果値 < 10
 				IF TALENT:LCOUNT:猫舌
-					LOCAL = MIN(10-LOCAL, ホット)
-					TIMES LOCAL , 0.80
-					モチベ回復量 += LOCAL
+					効果値 = MIN(10-効果値, ホット)
+					TIMES 効果値 , 0.80
+					モチベ回復量 += 効果値
 				ELSE
-					モチベ回復量 += MIN(10-LOCAL, ホット)
+					モチベ回復量 += MIN(10-効果値, ホット)
 				ENDIF
 			ELSE
 				IF TALENT:LCOUNT:暑さに弱い
-					SIF LOCAL > 25
-						モチベ回復量 -= MIN(LOCAL-25, ホット)
+					SIF 効果値 > 25
+						モチベ回復量 -= MIN(効果値-25, ホット)
 				ELSE
-					SIF LOCAL > 30
-						モチベ回復量 -= MIN(LOCAL-30, ホット)
+					SIF 効果値 > 30
+						モチベ回復量 -= MIN(効果値-30, ホット)
 				ENDIF
 			ENDIF
 		ENDIF
@@ -933,16 +944,16 @@ IF TIME == 0
 		;逆に気温が31度以上ならモチベに好影響
 		;[寒さに弱い]と14度以下から悪影響になる
 		IF コールド
-			LOCAL = FLAG:気温/10
-			IF LOCAL > 30
-				モチベ回復量 += MIN(LOCAL-30, コールド)
+			効果値 = FLAG:気温/10
+			IF 効果値 > 30
+				モチベ回復量 += MIN(効果値-30, コールド)
 			ELSE
 				IF TALENT:LCOUNT:寒さに弱い
-					SIF LOCAL < 15
-						モチベ回復量 -= MIN(15-LOCAL, コールド)
+					SIF 効果値 < 15
+						モチベ回復量 -= MIN(15-効果値, コールド)
 				ELSE
-					SIF LOCAL < 10
-						モチベ回復量 -= MIN(10-LOCAL, コールド)
+					SIF 効果値 < 10
+						モチベ回復量 -= MIN(10-効果値, コールド)
 				ENDIF
 			ENDIF
 		ENDIF
@@ -952,8 +963,8 @@ IF TIME == 0
 			モチベ回復量 -= 脱水
 
 		IF CSTR:LCOUNT:配属 != ""
-			LOCAL = CFLAG:LCOUNT:モチベーション+モチベ回復量/3
-			CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
+			効果値 = CFLAG:LCOUNT:モチベーション+モチベ回復量/3
+			CFLAG:LCOUNT:モチベーション = LIMIT(効果値, 1, 100)
 		ENDIF
 		SIF 鎮静 && CFLAG:LCOUNT:ストレス値
 			CFLAG:LCOUNT:ストレス値 -= 鎮静
@@ -1011,22 +1022,22 @@ ELSE
 		;[暑さに弱い]と26度以上から悪影響になる
 		;[猫舌]だとモチベ回復量そのものが減る（2割減）
 		IF ホット
-			LOCAL = FLAG:気温/10
-			IF LOCAL < 10
+			効果値 = FLAG:気温/10
+			IF 効果値 < 10
 				IF TALENT:LCOUNT:猫舌
-					LOCAL = MIN(10-LOCAL, ホット)
-					TIMES LOCAL , 0.80
-					モチベ回復量 += LOCAL
+					効果値 = MIN(10-効果値, ホット)
+					TIMES 効果値 , 0.80
+					モチベ回復量 += 効果値
 				ELSE
-					モチベ回復量 += MIN(10-LOCAL, ホット)
+					モチベ回復量 += MIN(10-効果値, ホット)
 				ENDIF
 			ELSE
 				IF TALENT:LCOUNT:暑さに弱い
-					SIF LOCAL > 25
-						モチベ回復量 -= MIN(LOCAL-25, ホット)
+					SIF 効果値 > 25
+						モチベ回復量 -= MIN(効果値-25, ホット)
 				ELSE
-					SIF LOCAL > 30
-						モチベ回復量 -= MIN(LOCAL-30, ホット)
+					SIF 効果値 > 30
+						モチベ回復量 -= MIN(効果値-30, ホット)
 				ENDIF
 			ENDIF
 		ENDIF
@@ -1034,16 +1045,16 @@ ELSE
 		;逆に気温が31度以上ならモチベに好影響
 		;[寒さに弱い]と14度以下から悪影響になる
 		IF コールド
-			LOCAL = FLAG:気温/10
-			IF LOCAL > 30
-				モチベ回復量 += MIN(LOCAL-30, コールド)
+			効果値 = FLAG:気温/10
+			IF 効果値 > 30
+				モチベ回復量 += MIN(効果値-30, コールド)
 			ELSE
 				IF TALENT:LCOUNT:寒さに弱い
-					SIF LOCAL < 15
-						モチベ回復量 -= MIN(15-LOCAL, コールド)
+					SIF 効果値 < 15
+						モチベ回復量 -= MIN(15-効果値, コールド)
 				ELSE
-					SIF LOCAL < 10
-						モチベ回復量 -= MIN(10-LOCAL, コールド)
+					SIF 効果値 < 10
+						モチベ回復量 -= MIN(10-効果値, コールド)
 				ENDIF
 			ENDIF
 		ENDIF
@@ -1053,8 +1064,8 @@ ELSE
 			モチベ回復量 -= 脱水
 
 		IF CSTR:LCOUNT:配属 != "" && モチベ回復量
-			LOCAL = CFLAG:LCOUNT:モチベーション+モチベ回復量/10+1
-			CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
+			効果値 = CFLAG:LCOUNT:モチベーション+モチベ回復量/10+1
+			CFLAG:LCOUNT:モチベーション = LIMIT(効果値, 1, 100)
 		ENDIF
 		SIF 鎮静 && CFLAG:LCOUNT:ストレス値
 			CFLAG:LCOUNT:ストレス値 -= 鎮静
@@ -1095,7 +1106,6 @@ ELSE
 	ENDIF
 ENDIF
 
-
 ;モチベ計算用にもう一度回す
 FOR LCOUNT, 0, CHARANUM
 	IF CSTR:LCOUNT:配属 == "調理室"
@@ -1108,12 +1118,12 @@ FOR LCOUNT, 0, CHARANUM
 					モチベ計算用++
 			ENDSELECT
 		NEXT
-		LOCAL = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数
+		モチベ合計値 = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数
 		SIF TALENT:LCOUNT:世話好き
-			LOCAL -= 世話好き人数
+			モチベ合計値 -= 世話好き人数
 		;配属先のキャラの相性で計算
-		LOCAL += 相性モチベ補正(LCOUNT)
-		CFLAG:LCOUNT:モチベーション = LIMIT(LOCAL, 1, 100)
+		モチベ合計値 += 相性モチベ補正(LCOUNT)
+		CFLAG:LCOUNT:モチベーション = LIMIT(モチベ合計値, 1, 100)
 		;経験も加算しとく
 		EXP:LCOUNT:料理経験 += (MATCH(朝食, "") < 9)+(MATCH(昼食, "") < 9)+(MATCH(夕食, "") < 9)+(MATCH(間食, "") < 4)
 	ENDIF
@@ -1130,6 +1140,7 @@ ENDIF
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC モチベ計算用
+#DIMS DYNAMIC 分割用, 2
 #DIM REF ホット
 #DIM REF コールド
 #DIM REF 脱水
@@ -1171,28 +1182,28 @@ FOR LCOUNT, 0, 9
 			CASE "ALC"
 				酒あり = 1
 			CASE IS != ""
-				SPLIT 料理効果:LCOUNT2, "/", LOCALS
-				SELECTCASE LOCALS
+				SPLIT 料理効果:LCOUNT2, "/", 分割用
+				SELECTCASE 分割用
 					CASE "モチベ"
-						モチベ計算用 += TOINT(LOCALS:1)
+						モチベ計算用 += TOINT(分割用:1)
 					CASE "ホット"
-						ホット += TOINT(LOCALS:1)
+						ホット += TOINT(分割用:1)
 					CASE "コールド"
-						コールド += TOINT(LOCALS:1)
+						コールド += TOINT(分割用:1)
 					CASE "鎮静"
-						鎮静 += TOINT(LOCALS:1)
+						鎮静 += TOINT(分割用:1)
 					CASE "脱水"
-						脱水 += TOINT(LOCALS:1)
+						脱水 += TOINT(分割用:1)
 					CASE "滋養強壮"
-						滋養強壮 += TOINT(LOCALS:1)
+						滋養強壮 += TOINT(分割用:1)
 					CASE "愛情"
-						愛情 += TOINT(LOCALS:1)
+						愛情 += TOINT(分割用:1)
 					CASE "狂気"
-						狂気度計算用 += TOINT(LOCALS:1)
+						狂気度計算用 += TOINT(分割用:1)
 					CASE "酔い覚まし"
-						酔い覚まし += TOINT(LOCALS:1)
+						酔い覚まし += TOINT(分割用:1)
 					CASE "カフェイン"
-						カフェイン += TOINT(LOCALS:1)
+						カフェイン += TOINT(分割用:1)
 				ENDSELECT
 		ENDSELECT
 	NEXT
