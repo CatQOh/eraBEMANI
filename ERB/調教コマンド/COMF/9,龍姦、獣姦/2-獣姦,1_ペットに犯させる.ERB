@@ -42,57 +42,59 @@ SIF TALENT:アニマル
 RETURNF COMRESULT
 
 @実行判定_ペットに犯させる
+#DIM DYNAMIC 実効値
 ;-------------------------------------------------
 ;実行判定処理
 ;-------------------------------------------------
 ;縄で縛られている場合は無視（縄が無い時のみ実行判定を行う）
-IF !TEQUIP:縄
-	;すべての命令に共通の要素を考慮
-	;(従順が高いと命令に従いやすいなど)
-	CALL COM_ORDER
-	LOCAL = RESULT
-
-	CALL COM_ORDER_セックス
-	LOCAL += RESULT
-
-	IF TALENT:娼婦
-		LOCAL = 20
-		PRINT +娼婦(20)
-	ENDIF
-	IF TALENT:淫乱
-		LOCAL = 15
-		PRINT +淫乱(10)
-	ENDIF
-	IF TALENT:小柄体型
-		LOCAL = -8
-		PRINT -小柄体型(8)
-	ENDIF
-	IF TALENT:潔癖症
-		LOCAL = -8
-		PRINT -潔癖症(8)
-	ENDIF
-
-	;ABL:Ａ感覚
-	IF ABL:Ａ感覚
-		LOCAL += ABL:Ａ感覚*2
-		PRINTFORM +Ａ感覚LV{ABL:Ａ感覚}({ABL:Ａ感覚*2})
-	ENDIF
-
-	;Ａ経験
-	IF EXP:Ａ経験 < EXPLV:3
-		LOCAL -= 30
-		PRINT -Ａ経験不足(30)
-	ENDIF
-
-	;46以上で実行
-	CALL 実効値判定, LOCAL, 46
-
-	RETURN RESULT
-ELSE
+SIF TEQUIP:縄
 	RETURN 1
+
+;すべての命令に共通の要素を考慮
+;(従順が高いと命令に従いやすいなど)
+CALL COM_ORDER
+実効値 = RESULT
+
+CALL COM_ORDER_セックス
+実効値 += RESULT
+
+IF TALENT:娼婦
+	実効値 = 20
+	PRINT +娼婦(20)
+ENDIF
+IF TALENT:淫乱
+	実効値 = 15
+	PRINT +淫乱(10)
+ENDIF
+IF TALENT:小柄体型
+	実効値 = -8
+	PRINT -小柄体型(8)
+ENDIF
+IF TALENT:潔癖症
+	実効値 = -8
+	PRINT -潔癖症(8)
 ENDIF
 
+;ABL:Ａ感覚
+IF ABL:Ａ感覚
+	実効値 += ABL:Ａ感覚*2
+	PRINTFORM +Ａ感覚LV{ABL:Ａ感覚}({ABL:Ａ感覚*2})
+ENDIF
+
+;Ａ経験
+IF EXP:Ａ経験 < EXPLV:3
+	実効値 -= 30
+	PRINT -Ａ経験不足(30)
+ENDIF
+
+;46以上で実行
+CALL 実効値判定, 実効値, 46
+
+RETURN RESULT
+
 @COM_ペットに犯させる
+#DIM DYNAMIC 増加量
+
 PRINTL ペットに犯させる
 
 SIF !TFLAG:実行判定無視
@@ -137,55 +139,55 @@ ENDIF
 ;-------------------------------------------------
 ;射精ゲージチェック（助手）
 ;-------------------------------------------------
-LOCAL = 1000
+増加量 = 1000
 
 ;ABL:技巧をみる
-LOCAL += (LOCAL/5)*ABL:技巧
+増加量 += (増加量/5)*ABL:技巧
 
 ;ABL:従順をみる
-LOCAL += (LOCAL/10)*ABL:従順 - (LOCAL/10)*2
+増加量 += (増加量/10)*ABL:従順 - (増加量/10)*2
 
 ;ABL:欲望をみる
-LOCAL += (LOCAL/10)*ABL:欲望
+増加量 += (増加量/10)*ABL:欲望
 
 ;PALAM:潤滑をみる
-LOCAL += (GETPALAMLV(PALAM:潤滑, 4)-2)*(LOCAL/5)
+増加量 += (GETPALAMLV(PALAM:潤滑, 4)-2)*(増加量/5)
 
 ;処女だと増える
 SIF TALENT:処女
-	TIMES LOCAL , 1.50
+	TIMES 増加量 , 1.50
 
-CALL 射精ゲージ増加, LOCAL, ASSI
+CALL 射精ゲージ増加, 増加量, ASSI
 
 ;-------------------------------------------------
 ;射精ゲージチェック（奴隷）
 ;-------------------------------------------------
-LOCAL = 500
+増加量 = 500
 
 SELECTCASE TFLAG:助手挿入箇所
 	CASE 1
-		LOCAL = 射精ゲージ計算_Ｖ挿入(500)
+		増加量 = 射精ゲージ計算_Ｖ挿入(500)
 		;ABL:助手の技巧をみる
-		LOCAL += (LOCAL/5)*ABL:ASSI:技巧
+		増加量 += (増加量/5)*ABL:ASSI:技巧
 
 		;ABL:技巧をみる
-		LOCAL += (LOCAL/10)*ABL:技巧
+		増加量 += (増加量/10)*ABL:技巧
 	CASE 2
-		LOCAL = 射精ゲージ計算_Ａ挿入(500)
+		増加量 = 射精ゲージ計算_Ａ挿入(500)
 		;ABL:助手の技巧をみる
-		LOCAL += (LOCAL/5)*ABL:ASSI:技巧
+		増加量 += (増加量/5)*ABL:ASSI:技巧
 
 		;ABL:技巧をみる
-		LOCAL += (LOCAL/10)*ABL:技巧
+		増加量 += (増加量/10)*ABL:技巧
 
 		;ABL:従順をみる
-		LOCAL += (LOCAL/10)*ABL:従順
+		増加量 += (増加量/10)*ABL:従順
 ENDSELECT
 
 ;奴隷のABL:マゾっ気をみる
-LOCAL += (LOCAL/5)*ABL:マゾっ気
+増加量 += (増加量/5)*ABL:マゾっ気
 
-CALL 射精ゲージ増加, LOCAL, TARGET
+CALL 射精ゲージ増加, 増加量, TARGET
 
 ;-------------------------------------------------
 ;ソース追加処理

@@ -82,125 +82,126 @@ RETURNF COMRESULT
 
 @実行判定_乳ファック
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 実効値, 2
 ;-------------------------------------------------
 ;実行判定処理
 ;-------------------------------------------------
 ;縄で縛られている場合は無視（縄が無い時のみ実行判定を行う）
-IF !TEQUIP:縄
-	;すべての命令に共通の要素を考慮
-	;(従順が高いと命令に従いやすいなど)
-	CALL COM_ORDER
-
-	VARSET LOCAL, 0
-	LOCAL = RESULT
-
-	;ABL:欲望
-	IF ABL:欲望
-		LOCAL += ABL:欲望*3
-		PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望*3})
-	ENDIF
-	;ABL:Ｂ感覚
-	IF ABL:Ｂ感覚
-		LOCAL += ABL:Ｂ感覚*2
-		PRINTFORM +Ｂ感覚LV{ABL:Ｂ感覚}({ABL:Ｂ感覚*2})
-	ENDIF
-	;ABL:性交中毒
-	IF ABL:性交中毒
-		LOCAL += ABL:性交中毒
-		PRINTFORM +性交中毒LV{ABL:性交中毒}({ABL:性交中毒})
-	ENDIF
-	;快楽刻印
-	IF MARK:快楽刻印
-		LOCAL += MARK:快楽刻印*3
-		PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印*3})
-	ENDIF
-	;PALAM:潤滑（の不足）
-	IF PALAM:潤滑 < PALAMLV:3
-		LOCAL -= 5
-		PRINT -潤滑不足(5)
-	ENDIF
-
-	CALL COM_ORDER_欲情, 0
-	LOCAL += RESULT
-
-	FOR LCOUNT, 0, VARSIZE("TALENT")
-		LOCAL:1 = 0
-		SIF !TALENT:LCOUNT
-			CONTINUE
-		SELECTCASE TALENTNAME:LCOUNT
-			CASE "親愛"
-				SIF PLAYER == MASTER
-					LOCAL:1 = 10
-			CASE "恋慕"
-				SIF PLAYER == MASTER
-					LOCAL:1 = 5
-			CASE "恥じらい"
-				LOCAL:1 = -5
-			CASE "献身的"
-				LOCAL:1 = 6
-			CASE "快感の否定"
-				SIF FALLTYPE(TARGET) != 2
-					LOCAL:1 = -3
-			CASE "男嫌い"
-				SIF SEX(PLAYER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
-					LOCAL:1 = -12
-		ENDSELECT
-		IF LOCAL:1
-			PRINTFORM \@SIGN(LOCAL:1) == 1 ? + # - \@%TALENTNAME:LCOUNT%({ABS(LOCAL:1)})
-			LOCAL += LOCAL:1
-		ENDIF
-	NEXT
-
-	;媚薬
-	IF TEQUIP:媚薬
-		LOCAL += 6
-		PRINT +媚薬(6)
-	ENDIF
-
-	LOCAL:1 = 0
-	;愛液の汚れ
-	SIF GETBIT(STAIN:PLAYER:ペニス, 0)
-		LOCAL:1 += 1
-	;精液の汚れ
-	SIF GETBIT(STAIN:PLAYER:ペニス, 2)
-		LOCAL:1 += 3
-	;アナルの汚れ
-	SIF GETBIT(STAIN:PLAYER:ペニス, 3)
-		LOCAL:1 += 7
-	;母乳
-	SIF GETBIT(STAIN:PLAYER:ペニス, 4)
-		LOCAL:1 += 2
-	;尿
-	SIF GETBIT(STAIN:PLAYER:ペニス, 7)
-		LOCAL:1 += 5
-
-	SIF TALENT:汚れ無視
-		LOCAL:1 /= 3
-	SIF TALENT:潔癖症
-		LOCAL:1 *= 2
-
-	;汚れあり
-	IF LOCAL:1
-		LOCAL -= LOCAL:1
-		IF TALENT:汚臭鈍感
-			PRINT -汚れあり、汚れ無視
-		ELSEIF TALENT:汚臭敏感
-			PRINT -汚れあり、潔癖症
-		ELSE
-			PRINT -汚れあり
-		ENDIF
-		PRINTFORM ({LOCAL:1})
-	ENDIF
-
-	;15以上で実行
-	CALL 実効値判定, LOCAL, 15
-
-	RETURN RESULT
-ELSE
+SIF TEQUIP:縄
 	RETURN 1
+
+;すべての命令に共通の要素を考慮
+;(従順が高いと命令に従いやすいなど)
+CALL COM_ORDER
+
+実効値 = RESULT
+
+;ABL:欲望
+IF ABL:欲望
+	実効値 += ABL:欲望*3
+	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望*3})
+ENDIF
+;ABL:Ｂ感覚
+IF ABL:Ｂ感覚
+	実効値 += ABL:Ｂ感覚*2
+	PRINTFORM +Ｂ感覚LV{ABL:Ｂ感覚}({ABL:Ｂ感覚*2})
+ENDIF
+;ABL:性交中毒
+IF ABL:性交中毒
+	実効値 += ABL:性交中毒
+	PRINTFORM +性交中毒LV{ABL:性交中毒}({ABL:性交中毒})
+ENDIF
+;快楽刻印
+IF MARK:快楽刻印
+	実効値 += MARK:快楽刻印*3
+	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印*3})
+ENDIF
+;PALAM:潤滑（の不足）
+IF PALAM:潤滑 < PALAMLV:3
+	実効値 -= 5
+	PRINT -潤滑不足(5)
 ENDIF
 
+CALL COM_ORDER_欲情, 0
+実効値 += RESULT
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	実効値:1 = 0
+	SIF !TALENT:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "親愛"
+			SIF PLAYER == MASTER
+				実効値:1 = 10
+		CASE "恋慕"
+			SIF PLAYER == MASTER
+				実効値:1 = 5
+		CASE "恥じらい"
+			実効値:1 = -5
+		CASE "献身的"
+			実効値:1 = 6
+		CASE "快感の否定"
+			SIF FALLTYPE(TARGET) != 2
+				実効値:1 = -3
+		CASE "男嫌い"
+			SIF SEX(PLAYER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
+				実効値:1 = -12
+	ENDSELECT
+	IF 実効値:1
+		PRINTFORM \@SIGN(実効値:1) == 1 ? + # - \@%TALENTNAME:LCOUNT%({ABS(実効値:1)})
+		実効値 += 実効値:1
+	ENDIF
+NEXT
+
+;媚薬
+IF TEQUIP:媚薬
+	実効値 += 6
+	PRINT +媚薬(6)
+ENDIF
+
+実効値:1 = 0
+;愛液の汚れ
+SIF GETBIT(STAIN:PLAYER:ペニス, 0)
+	実効値:1 += 1
+;精液の汚れ
+SIF GETBIT(STAIN:PLAYER:ペニス, 2)
+	実効値:1 += 3
+;アナルの汚れ
+SIF GETBIT(STAIN:PLAYER:ペニス, 3)
+	実効値:1 += 7
+;母乳
+SIF GETBIT(STAIN:PLAYER:ペニス, 4)
+	実効値:1 += 2
+;尿
+SIF GETBIT(STAIN:PLAYER:ペニス, 7)
+	実効値:1 += 5
+
+SIF TALENT:汚れ無視
+	実効値:1 /= 3
+SIF TALENT:潔癖症
+	実効値:1 *= 2
+
+;汚れあり
+IF 実効値:1
+	実効値 -= 実効値:1
+	IF TALENT:汚臭鈍感
+		PRINT -汚れあり、汚れ無視
+	ELSEIF TALENT:汚臭敏感
+		PRINT -汚れあり、潔癖症
+	ELSE
+		PRINT -汚れあり
+	ENDIF
+	PRINTFORM ({実効値:1})
+ENDIF
+
+;15以上で実行
+CALL 実効値判定, 実効値, 15
+
+RETURN RESULT
+
 @COM_乳ファック
+#DIM DYNAMIC 増加量
+
 PRINTL 乳ファック
 
 SIF !TFLAG:実行判定無視
@@ -216,53 +217,53 @@ CALL KOJO_MESSAGE_COM
 ;-------------------------------------------------
 ;射精ゲージチェック
 ;-------------------------------------------------
-LOCAL = 500
+増加量 = 500
 
 ;ABL:調教者の技巧をみる
-LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
+増加量 += (増加量/5)*ABL:PLAYER:技巧
 
 ;ABL:従順をみる
-LOCAL += (LOCAL/10)*ABL:従順
+増加量 += (増加量/10)*ABL:従順
 
 ;ABL:欲望をみる
-LOCAL += (LOCAL/5)*ABL:欲望
+増加量 += (増加量/5)*ABL:欲望
 
 ;調教対象のバストサイズを見る
 SELECTCASE TALENT:バストサイズ
 	;爆乳
 	CASE 6
-		TIMES LOCAL , 1.50
+		TIMES 増加量 , 1.50
 	;巨乳、豊乳
 	CASE 4, 5
-		TIMES LOCAL , 1.20
+		TIMES 増加量 , 1.20
 	;普通
 	CASE 3
-		TIMES LOCAL , 1.00
+		TIMES 増加量 , 1.00
 	;貧乳
 	CASE 2
-		TIMES LOCAL , 0.90
+		TIMES 増加量 , 0.90
 	;絶壁
 	CASE 1
-		TIMES LOCAL , 0.70
+		TIMES 増加量 , 0.70
 ENDSELECT
 
 ;プレイヤーのABL:Ｃ感覚をみる
 SELECTCASE ABL:PLAYER:Ｃ感覚
 	CASE 0
-		TIMES LOCAL , 1.00
+		TIMES 増加量 , 1.00
 	CASE 1
-		TIMES LOCAL , 1.50
+		TIMES 増加量 , 1.50
 	CASE 2
-		TIMES LOCAL , 2.00
+		TIMES 増加量 , 2.00
 	CASE 3
-		TIMES LOCAL , 2.50
+		TIMES 増加量 , 2.50
 	CASE 4
-		TIMES LOCAL , 3.50
+		TIMES 増加量 , 3.50
 	CASEELSE
-		LOCAL += LOCAL*(ABL:PLAYER:Ｃ感覚-1)
+		増加量 += 増加量*(ABL:PLAYER:Ｃ感覚-1)
 ENDSELECT
 
-CALL 射精ゲージ増加, LOCAL, PLAYER
+CALL 射精ゲージ増加, 増加量, PLAYER
 
 ;-------------------------------------------------
 ;ソース追加処理
@@ -280,9 +281,6 @@ SOURCE:露出 = 100
 SOURCE:逸脱 = 150
 SOURCE:反感 = 200
 SOURCE:不潔 = 100
-
-;上のほうで計算した汚れデータ
-SOURCE:不潔 += LOCAL:1*50
 
 ;-------------------------------------------------
 ;特殊ソース処理

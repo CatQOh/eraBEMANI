@@ -860,57 +860,56 @@ TFLAG:依存度補正 += TEQUIP:お酒ボーナス
 #DIMS DYNAMIC 製法
 #DIM DYNAMIC お酒
 #DIM DYNAMIC LCOUNT
-
-LOCAL = 0
+#DIM DYNAMIC 実効値, 2
 
 IF TALENT:下戸
 	PRINTFORM -アルコール度数{ALC}\%({ALC*2})
-	LOCAL -= ALC*2
+	実効値 -= ALC*2
 ELSEIF !TALENT:酒豪
 	PRINTFORM -アルコール度数{ALC}\%({ALC})
-	LOCAL -= ALC
+	実効値 -= ALC
 ENDIF
 
-LOCAL:1 = 0
+実効値:1 = 0
 
 IF TALENT:快感に素直
-	LOCAL:1 = CFLAG:酔*3/2
+	実効値:1 = CFLAG:酔*3/2
 ELSEIF TALENT:快感の否定
-	LOCAL:1 = CFLAG:酔/2
+	実効値:1 = CFLAG:酔/2
 ELSE
-	LOCAL:1 = CFLAG:酔
+	実効値:1 = CFLAG:酔
 ENDIF
 
-IF LOCAL:1 >= 5 && TALENT:下戸
-	PRINTFORM +酒が回っている({LOCAL:1/5})
-	LOCAL += LOCAL:1/5
-ELSEIF LOCAL:1 >= 3
-	PRINTFORM +酒が回っている({LOCAL:1/3})
-	LOCAL += LOCAL:1/3
+IF 実効値:1 >= 5 && TALENT:下戸
+	PRINTFORM +酒が回っている({実効値:1/5})
+	実効値 += 実効値:1/5
+ELSEIF 実効値:1 >= 3
+	PRINTFORM +酒が回っている({実効値:1/3})
+	実効値 += 実効値:1/3
 ENDIF
 
 IF CFLAG:二日酔い
 	PRINT -二日酔い(5)
-	LOCAL -= 5
+	実効値 -= 5
 ENDIF
 
 IF CFLAG:陥落
 	PRINT +陥落(5)
-	LOCAL += 5
+	実効値 += 5
 ENDIF
 
 IF GETPALAMLV(PALAM:恭順, 10)
 	PRINTFORM +恭順({GETPALAMLV(PALAM:恭順, 10)})
-	LOCAL += GETPALAMLV(PALAM:恭順, 10)
+	実効値 += GETPALAMLV(PALAM:恭順, 10)
 ENDIF
 
 IF 製法 == "ビール" && !TALENT:酒豪 && (TALENT:小柄体型 || TALENT:下戸)
 	PRINT -ビールは苦くて無理(10)
-	LOCAL -= 10
+	実効値 -= 10
 	SELECTCASE 酒名
 		CASE "シャンディガフ", "パナシェ", "ビアスプリッツァー"
 			PRINT +ビールの苦さを軽減(5)
-			LOCAL += 5
+			実効値 += 5
 	ENDSELECT
 ENDIF
 
@@ -919,12 +918,12 @@ IF !TALENT:下戸
 		CASE "ハイボール", "ビール", "コーラ割り", "ジンジャー割り", "レモン割り", "ライム割り", "トニック割り", "カクテル"
 			IF FLAG:気温 >= 200
 				PRINTFORM +高気温&冷飲料({(FLAG:気温-190)/10})
-				LOCAL += (FLAG:気温-190)/10
+				実効値 += (FLAG:気温-190)/10
 			ENDIF
 		CASE "お湯割り", "熱燗"
 			IF FLAG:気温 <= 100
 				PRINTFORM +低気温&温飲料({(110-FLAG:気温)/10})
-				LOCAL += (110-FLAG:気温)/10
+				実効値 += (110-FLAG:気温)/10
 			ENDIF
 	ENDSELECT
 ENDIF
@@ -933,87 +932,87 @@ SELECTCASE 製法
 	CASE "精液割り"
 		IF ABL:精液中毒 < 3
 			PRINTFORM -精液中毒LV{ABL:精液中毒}({(3-ABL:精液中毒)*3})
-			LOCAL -= (3-ABL:精液中毒)*3
+			実効値 -= (3-ABL:精液中毒)*3
 		ELSEIF ABL:精液中毒 > 3
 			PRINTFORM +精液中毒LV{ABL:精液中毒}({(ABL:精液中毒-3)*3})
-			LOCAL += (ABL:精液中毒-3)*3
+			実効値 += (ABL:精液中毒-3)*3
 		ENDIF
 	CASE "母乳割り"
 		PRINT -母乳割り(3)
-		LOCAL -= 3
+		実効値 -= 3
 	CASE "粘液混ぜ"
 		IF CSTR:種族 == "スライム"
 			PRINT +スライムに粘液ゼリー(8)
-			LOCAL += 8
+			実効値 += 8
 		ELSE
 			PRINT +スイーツ感覚の粘液ゼリー(3)
-			LOCAL += 3
+			実効値 += 3
 		ENDIF
 	CASE "ハイボール"
 		PRINT +ハイボールは美味しい(3)
-		LOCAL += 3
+		実効値 += 3
 	CASE "コーラ割り", "ジンジャー割り", "トニック割り", "レモン割り", "ライム割り"
 		PRINT +飲みやすいカクテル(5)
-		LOCAL += 5
+		実効値 += 5
 	CASE "カクテル"
 		PRINT +美味しいカクテル(7)
-		LOCAL += 7
+		実効値 += 7
 ENDSELECT
 
 ;PLAYERの料理技能
 IF ABL:PLAYER:料理技能 > 0 && 製法 != ""
 	PRINTFORML +%CALLNAME:PLAYER%の料理技能({ABL:PLAYER:料理技能})
-	LOCAL += ABL:PLAYER:料理技能
+	実効値 += ABL:PLAYER:料理技能
 ENDIF
 
 IF TALENT:衝動的
 	PRINT +衝動的(3)
-	LOCAL += 3
+	実効値 += 3
 ENDIF
 
 IF TALENT:好奇心
 	PRINT +好奇心(3)
-	LOCAL += 3
+	実効値 += 3
 ENDIF
 
 IF TALENT:無関心
 	PRINT -無関心(2)
-	LOCAL -= 2
+	実効値 -= 2
 ENDIF
 
 IF TALENT:自制心
 	PRINT -自制心(5)
-	LOCAL -= 5
+	実効値 -= 5
 ENDIF
 
 IF TALENT:目立ちたがり
 	PRINT +目立ちたがり(3)
-	LOCAL += 3
+	実効値 += 3
 ENDIF
 
 SELECTCASE 製法
 	CASE "お湯割り", "熱燗"
 		IF TALENT:猫舌
 			PRINT -猫舌(3)
-			LOCAL -= 3
+			実効値 -= 3
 		ENDIF
 ENDSELECT
 
 IF TALENT:小柄体型 && !TALENT:酒豪
 	PRINT -子供(3)
-	LOCAL -= 3
+	実効値 -= 3
 ENDIF
 
 IF TALENT:MASTER:魅惑
 	PRINT +主人が魅惑持ち(2)
-	LOCAL += 2
+	実効値 += 2
 ENDIF
 
 IF ASSI > 0 && TALENT:ASSI:ハイテンション
 	PRINT +助手がハイテンション(2)
-	LOCAL += 2
+	実効値 += 2
 ENDIF
 
 
-RETURN LOCAL
+RETURN 実効値
 

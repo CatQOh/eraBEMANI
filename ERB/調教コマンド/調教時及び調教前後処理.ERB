@@ -6,6 +6,10 @@ CALL EVENTUSERTRAIN
 @EVENTUSERTRAIN
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC コマンドフィルタ変数
+#DIM DYNAMIC 最大値
+#DIM DYNAMIC アイテム種
+#DIM DYNAMIC アイテム数
+#DIM DYNAMIC 気温ボーナス
 
 ;BEGIN TRAINで行われる変数初期化を行う 上級売春やカジノから飛んでくるときの対策
 CALL CVAR_RESET
@@ -110,60 +114,60 @@ IF ASSI > 0
 ENDIF
 
 ;MAXBASEの設定
-LOCAL = 10000
+最大値 = 10000
 ;絶倫で半減
 SIF TALENT:MASTER:絶倫
-	LOCAL /= 2
+	最大値 /= 2
 ;小柄体型で2倍
 SIF TALENT:MASTER:小柄体型
-	LOCAL *= 2
+	最大値 *= 2
 ;女性で2倍
 SIF SEX(MASTER) == 2
-	LOCAL *= 2
+	最大値 *= 2
 ;Ｃ鈍感なら1.5倍
 SIF TALENT:MASTER:Ｃ鈍感
-	TIMES LOCAL, 1.50
+	TIMES 最大値, 1.50
 ;ミッドナイトスペシャル使用時は半減
 SIF CFLAG:MASTER:ミッドナイトスペシャル
-	LOCAL /= 2
-MAXBASE:MASTER:射精 = LOCAL
+	最大値 /= 2
+MAXBASE:MASTER:射精 = 最大値
 
 ;以下対象と助手にも同様の処理
-LOCAL = 10000
+最大値 = 10000
 SIF TALENT:絶倫
-	LOCAL /= 2
+	最大値 /= 2
 SIF TALENT:小柄体型
-	LOCAL *= 2
+	最大値 *= 2
 SIF SEX(TARGET) == 2
-	LOCAL *= 2
+	最大値 *= 2
 SIF TALENT:Ｃ鈍感
-	TIMES LOCAL, 1.50
+	TIMES 最大値, 1.50
 SIF CFLAG:ミッドナイトスペシャル
-	LOCAL /= 2
-MAXBASE:射精 = LOCAL
+	最大値 /= 2
+MAXBASE:射精 = 最大値
 
 IF ASSI >= 0
-	LOCAL = 10000
+	最大値 = 10000
 	SIF TALENT:ASSI:絶倫
-		LOCAL /= 2
+		最大値 /= 2
 	SIF TALENT:ASSI:小柄体型
-		LOCAL *= 2
+		最大値 *= 2
 	SIF SEX(ASSI) == 2
-		LOCAL *= 2
+		最大値 *= 2
 	SIF TALENT:ASSI:Ｃ鈍感
-		TIMES LOCAL, 1.50
+		TIMES 最大値, 1.50
 	SIF CFLAG:ASSI:ミッドナイトスペシャル
-		LOCAL /= 2
-	MAXBASE:ASSI:射精 = LOCAL
+		最大値 /= 2
+	MAXBASE:ASSI:射精 = 最大値
 ENDIF
 
 IF TALENT:母乳体質
-	LOCAL = 10000
+	最大値 = 10000
 	SIF TALENT:淫乳
-		LOCAL /= 2
+		最大値 /= 2
 	SIF TALENT:Ｂ鈍感
-		LOCAL *= 2
-	MAXBASE:母乳 = LOCAL
+		最大値 *= 2
+	MAXBASE:母乳 = 最大値
 ENDIF
 
 MAXBASE:MASTER:触手射精 = 10000
@@ -332,37 +336,37 @@ ENDIF
 
 ;種族妖精ならランダムで消費アイテム取得
 IF CSTR:種族 == "妖精"
-	LOCAL = RAND(100, 110)
-	LOCAL:1 = RAND(1, 4)
-	PRINTFORML %CALLNAME:TARGET%の部屋にあった{LOCAL:1}個の%ITEMNAME:LOCAL%を回収しました
-	ITEM:LOCAL += LOCAL:1
+	アイテム種 = RAND(100, 110)
+	アイテム数 = RAND(1, 4)
+	PRINTFORML %CALLNAME:TARGET%の部屋にあった{アイテム数}個の%ITEMNAME:アイテム種%を回収しました
+	ITEM:アイテム種 += アイテム数
 ENDIF
 
 ;鳳凰ならボーナス
 IF CSTR:種族 == "鳳凰" && FLAG:気温 > 0
-	LOCAL = FLAG:気温
+	気温ボーナス = FLAG:気温
 	SELECTCASE FLAG:天気
 		CASE 2
-			TIMES LOCAL , 0.50
+			TIMES 気温ボーナス , 0.50
 		CASE 3 TO 7
-			TIMES LOCAL , 0.20
+			TIMES 気温ボーナス , 0.20
 	ENDSELECT
 	;気温と天気で計算したボーナスを一部の初期PALAMに付与する
 	FOR LCOUNT, 0, VARSIZE("PALAM")
 		SELECTCASE PALAMNAME:LCOUNT
 			CASE "快Ａ", "快Ｂ", "潤滑", "恭順", "欲情", "屈服", "習得"
-				PALAM:LCOUNT += LOCAL
+				PALAM:LCOUNT += 気温ボーナス
 			CASE "快Ｃ"
 				SELECTCASE SEX(TARGET)
 					CASE 1
 						SIF PENIS(TARGET)
-							PALAM:LCOUNT += LOCAL
+							PALAM:LCOUNT += 気温ボーナス
 					CASE 2
-						PALAM:LCOUNT += LOCAL
+						PALAM:LCOUNT += 気温ボーナス
 				ENDSELECT
 			CASE "快Ｖ"
 				SIF VAGINA(TARGET)
-					PALAM:LCOUNT += LOCAL
+					PALAM:LCOUNT += 気温ボーナス
 		ENDSELECT
 	NEXT
 ENDIF
@@ -885,6 +889,9 @@ ENDIF
 @EVENTEND
 #LATER
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC ストレス低下量
+#DIM DYNAMIC 実績計算用
+
 CALL KOJO_TURNEND
 PRINTW 調教を終了しました
 
@@ -942,26 +949,26 @@ ELSEIF TALENT:快感の否定 && !CFLAG:陥落
 ENDIF
 
 ;恋慕系陥落で流産してなければ愛情経験に応じてストレス低下
-LOCAL = EXP:愛情経験-TFLAG:愛情経験計算用
-IF LOCAL > 0 && CFLAG:ストレス値 > 0
-	IF TALENT:恋慕 && LOCAL >= 2
+ストレス低下量 = EXP:愛情経験-TFLAG:愛情経験計算用
+IF ストレス低下量 > 0 && CFLAG:ストレス値 > 0
+	IF TALENT:恋慕 && ストレス低下量 >= 2
 		PRINTFORMW %CALLNAME:TARGET%は%CALLNAME:MASTER%の求愛によってストレスが緩和されました
-		CFLAG:ストレス値 -= LOCAL/2
+		CFLAG:ストレス値 -= ストレス低下量/2
 	ELSEIF TALENT:親愛
 		PRINTFORMW %CALLNAME:TARGET%は%CALLNAME:MASTER%からの愛を確かめることでことでストレスが緩和されました
-		CFLAG:ストレス値 -= LOCAL
+		CFLAG:ストレス値 -= ストレス低下量
 	ENDIF
 ENDIF
 
 ;淫乱系陥落で絶頂回数に応じてストレス低下
-LOCAL = EX:Ｃ絶頂+EX:Ｖ絶頂+EX:Ａ絶頂*EX:Ｂ絶頂+EX:射精
-IF LOCAL > 0
+ストレス低下量 = EX:Ｃ絶頂+EX:Ｖ絶頂+EX:Ａ絶頂*EX:Ｂ絶頂+EX:射精
+IF ストレス低下量 > 0
 	IF TALENT:淫乱
 		PRINTFORMW %CALLNAME:TARGET%は欲求を満たされることでストレスが緩和しました
-		CFLAG:ストレス値 = LOCAL
+		CFLAG:ストレス値 = ストレス低下量
 	ELSEIF TALENT:娼婦
 		PRINTFORMW %CALLNAME:TARGET%は欲求を満たされることでストレスが緩和しました
-		CFLAG:ストレス値 -= LOCAL*2
+		CFLAG:ストレス値 -= ストレス低下量*2
 	ENDIF
 ENDIF
 
@@ -972,12 +979,12 @@ IF ABL:マゾっ気 && GETPALAMLV(PALAM:苦痛, 10)
 ENDIF
 
 ;精液中毒 主人と助手の射精回数に応じてストレス低下
-LOCAL = EX:MASTER:射精+EX:MASTER:触手射精
+ストレス低下量 = EX:MASTER:射精+EX:MASTER:触手射精
 SIF ASSI > 0
-	LOCAL += EX:ASSI:射精
-IF LOCAL > 4 && ABL:精液中毒
+	ストレス低下量 += EX:ASSI:射精
+IF ストレス低下量 > 4 && ABL:精液中毒
 	PRINTFORMW %CALLNAME:TARGET%は精液への渇望を満たされることでストレスが緩和しました
-	CFLAG:ストレス値 -= MIN(ABL:精液中毒, LOCAL/5)
+	CFLAG:ストレス値 -= MIN(ABL:精液中毒, ストレス低下量/5)
 ENDIF
 
 ;採血
@@ -1012,18 +1019,18 @@ ENDSELECT
 
 ;実績「1回の調教でフローラに10回以上中出しする」
 IF CHARANAMEF(TARGET) == "フローラ"
-	LOCAL = 0
-	LOCAL += PREG:0
+	実績計算用 = 0
+	実績計算用 += PREG:0
 	SIF ASSI > -1
-		LOCAL += PREG:1
-	IF LOCAL >= 10
+		実績計算用 += PREG:1
+	IF 実績計算用 >= 10
 		CALL 実績解除, "生命の環を紡いで"
 	ENDIF
 ELSEIF ASSI > -1 && CHARANAMEF(ASSI) == "フローラ"
-	LOCAL = 0
-	LOCAL += PREG:ASSI:0
-	LOCAL += PREG:ASSI:2
-	IF LOCAL >= 10
+	実績計算用 = 0
+	実績計算用 += PREG:ASSI:0
+	実績計算用 += PREG:ASSI:2
+	IF 実績計算用 >= 10
 		CALL 実績解除, "生命の環を紡いで"
 	ENDIF
 ENDIF
@@ -1068,64 +1075,65 @@ NEXT
 
 @JUEL_CHECK
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 取得量
 
 FOR LCOUNT, 0, VARSIZE("PALAM")
 	SIF PALAMNAME:LCOUNT == ""
 		CONTINUE
 	SELECTCASE GETPALAMLV(PALAM:LCOUNT, 10)
 		CASE 0
-			LOCAL = 0
+			取得量 = 0
 		CASE 1
 			IF PALAM:LCOUNT < PALAMLV:1*3
-				LOCAL = 1
+				取得量 = 1
 			ELSE
-				LOCAL = 2
+				取得量 = 2
 			ENDIF
 		CASE 2
 			IF PALAM:LCOUNT < PALAMLV:2*3
-				LOCAL = 10
+				取得量 = 10
 			ELSE
-				LOCAL = 20
+				取得量 = 20
 			ENDIF
 		CASE 3
 			IF PALAM:LCOUNT < PALAMLV:3*2
-				LOCAL = 100
+				取得量 = 100
 			ELSE
-				LOCAL = 200
+				取得量 = 200
 			ENDIF
 		CASE 4
-			LOCAL = 500
+			取得量 = 500
 		CASE 5
-			LOCAL = 1000
+			取得量 = 1000
 		CASE 6
-			LOCAL = 2000
+			取得量 = 2000
 		CASE 7
-			LOCAL = 3000
+			取得量 = 3000
 		CASE 8
-			LOCAL = 5000
+			取得量 = 5000
 		CASE 9
-			LOCAL = 8000
+			取得量 = 8000
 		CASEELSE
-			LOCAL = PALAM:LCOUNT/20
+			取得量 = PALAM:LCOUNT/20
 	ENDSELECT
 
 	SELECTCASE PALAMNAME:LCOUNT
 		CASE "快Ｃ"
 			IF PENIS(TARGET)
-				GOTJUEL:LCOUNT = LOCAL+(EX:射精*2000)+(EX:潮噴き*3000)
+				GOTJUEL:LCOUNT = 取得量+(EX:射精*2000)+(EX:潮噴き*3000)
 			ELSE
-				GOTJUEL:LCOUNT = LOCAL+EX:Ｃ絶頂*1000
+				GOTJUEL:LCOUNT = 取得量+EX:Ｃ絶頂*1000
 			ENDIF
 		CASE "快Ｖ"
-			GOTJUEL:LCOUNT = LOCAL+EX:Ｖ絶頂*1000
+			GOTJUEL:LCOUNT = 取得量+EX:Ｖ絶頂*1000
 		CASE "快Ａ"
-			GOTJUEL:LCOUNT = LOCAL+EX:Ａ絶頂*1000
+			GOTJUEL:LCOUNT = 取得量+EX:Ａ絶頂*1000
 		CASE "快Ｂ"
-			GOTJUEL:LCOUNT = LOCAL+EX:Ｂ絶頂*1000
+			GOTJUEL:LCOUNT = 取得量+EX:Ｂ絶頂*1000
 		CASE "反感", "不快", "抑鬱", "否定"
-			GOTJUEL:否定 += LOCAL
+			GOTJUEL:否定 += 取得量
 		CASEELSE
-			GOTJUEL:LCOUNT = LOCAL
+			GOTJUEL:LCOUNT = 取得量
 	ENDSELECT
 NEXT
 
@@ -1165,6 +1173,8 @@ NEXT
 
 @DENIAL_CHECK
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 相殺量
+
 ;欲情、屈服、恭順の珠から順に打ち消される
 SIF JUEL:否定 == 0
 	RETURN 0
@@ -1173,35 +1183,35 @@ DRAWLINE
 PRINTL 否定の珠と他の珠の打ち消しが発生しています
 
 IF JUEL:否定 > 0 && (JUEL:恭順+JUEL:欲情+JUEL:屈服) > 0
-	LOCAL:1 = JUEL:否定
+	相殺量 = JUEL:否定
 	SIF JUEL:欲情 < JUEL:否定
-		LOCAL:1 = JUEL:欲情
+		相殺量 = JUEL:欲情
 
-	JUEL:欲情 -= LOCAL:1
-	JUEL:否定 -= LOCAL:1
+	JUEL:欲情 -= 相殺量
+	JUEL:否定 -= 相殺量
 
-	SIF LOCAL:1 > 0
-		PRINTFORML 欲情の珠×{LOCAL:1}減少
+	SIF 相殺量 > 0
+		PRINTFORML 欲情の珠×{相殺量}減少
 
-	LOCAL:1 = JUEL:否定
+	相殺量 = JUEL:否定
 	SIF JUEL:屈服 < JUEL:否定
-		LOCAL:1 = JUEL:屈服
+		相殺量 = JUEL:屈服
 
-	SIF LOCAL:1 > 0
-		PRINTFORML 屈服の珠×{LOCAL:1}減少
+	SIF 相殺量 > 0
+		PRINTFORML 屈服の珠×{相殺量}減少
 
-	JUEL:屈服 -= LOCAL:1
-	JUEL:否定 -= LOCAL:1
+	JUEL:屈服 -= 相殺量
+	JUEL:否定 -= 相殺量
 
-	LOCAL:1 = JUEL:否定
+	相殺量 = JUEL:否定
 	SIF JUEL:恭順 < JUEL:否定
-		LOCAL:1 = JUEL:恭順
+		相殺量 = JUEL:恭順
 
-	JUEL:恭順 -= LOCAL:1
-	JUEL:否定 -= LOCAL:1
+	JUEL:恭順 -= 相殺量
+	JUEL:否定 -= 相殺量
 
-	SIF LOCAL:1 > 0
-		PRINTFORML 恭順の珠×{LOCAL:1}減少
+	SIF 相殺量 > 0
+		PRINTFORML 恭順の珠×{相殺量}減少
 ENDIF
 
 PRINTL その結果、

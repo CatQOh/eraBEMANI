@@ -44,77 +44,81 @@ RETURNF COMRESULT
 
 @実行判定_スライム姦させる
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 実効値, 2
 ;-------------------------------------------------
 ;実行判定処理
 ;-------------------------------------------------
 ;すべての命令に共通の要素を考慮
 ;(従順が高いと命令に従いやすいなど)
 CALL COM_ORDER
-LOCAL = RESULT
+実効値 = RESULT
 
 CALL COM_ORDER_欲情, 0
-LOCAL += RESULT
+実効値 += RESULT
 
 FOR LCOUNT, 0, VARSIZE("TALENT")
-	LOCAL:1 = 0
+	実効値:1 = 0
 	SIF !TALENT:LCOUNT
 		CONTINUE
 	SELECTCASE TALENTNAME:LCOUNT
 		CASE "恥じらい"
-			LOCAL:1 = -7
+			実効値:1 = -7
 		CASE "快感の否定"
 			SIF FALLTYPE(TARGET) != 2
-				LOCAL:1 = -10
+				実効値:1 = -10
 		CASE "貞操観念"
 			SIF FALLTYPE(TARGET) != 1 || PLAYER != MASTER
-				LOCAL:1 = -10
+				実効値:1 = -10
 		CASE "貞操無頓着"
-			LOCAL:1 = 3
+			実効値:1 = 3
 		CASE "男嫌い"
 			SIF SEX(PLAYER) == 1 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
-				LOCAL:1 = -12
+				実効値:1 = -12
 		CASE "女嫌い"
 			SIF SEX(PLAYER) == 2 && (FALLTYPE(TARGET) != 1 || PLAYER != MASTER)
-				LOCAL:1 = -12
+				実効値:1 = -12
 		CASE "処女"
-			LOCAL:1 = -40
+			実効値:1 = -40
 	ENDSELECT
-	IF LOCAL:1
-		PRINTFORM \@SIGN(LOCAL:1) == 1 ? + # - \@%TALENTNAME:LCOUNT%({ABS(LOCAL:1)})
-		LOCAL += LOCAL:1
+	IF 実効値:1
+		PRINTFORM \@SIGN(実効値:1) == 1 ? + # - \@%TALENTNAME:LCOUNT%({ABS(実効値:1)})
+		実効値 += 実効値:1
 	ENDIF
 NEXT
 
 ;V経験
 IF !TALENT:処女 && EXP:Ｖ経験 < 30
-	LOCAL -= 15
+	実効値 -= 15
 	PRINT -Ｖ経験不足(15)
 ENDIF
 
 ;A経験
 IF EXP:Ａ経験 < 100
-	LOCAL -= 30
+	実効値 -= 30
 	PRINT -Ａ経験不足(30)
 ENDIF
 
 ;媚薬
 IF TEQUIP:媚薬
-	LOCAL += 6
+	実効値 += 6
 	PRINT +媚薬(6)
 ENDIF
 
 ;溶ける快を持たない
 IF !TALENT:溶ける快
-	LOCAL -= 34
+	実効値 -= 34
 	PRINT -溶ける快に目覚めてない(34)
 ENDIF
 
 ;35以上で実行
-CALL 実効値判定, LOCAL, 35
+CALL 実効値判定, 実効値, 35
 
 RETURN RESULT
 
 @COM_スライム姦させる
+#DIM DYNAMIC 増加量
+#DIM DYNAMIC 射精先
+
 PRINTL スライム姦させる
 
 SIF !TFLAG:実行判定無視
@@ -161,28 +165,28 @@ ENDIF
 ;-------------------------------------------------
 ;射精ゲージチェック（主人）
 ;-------------------------------------------------
-LOCAL = 射精ゲージ計算_実行者受け(600)
+増加量 = 射精ゲージ計算_実行者受け(600)
 
 ;ABL:調教者の技巧をみる
-LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
+増加量 += (増加量/5)*ABL:PLAYER:技巧
 
 ;ABL:技巧をみる
-LOCAL += LOCAL/10*4*ABL:技巧
+増加量 += 増加量/10*4*ABL:技巧
 
-CALL 射精ゲージ増加, LOCAL, PLAYER
+CALL 射精ゲージ増加, 増加量, PLAYER
 
 ;-------------------------------------------------
 ;射精ゲージチェック（奴隷）
 ;-------------------------------------------------
-LOCAL = 射精ゲージ計算_奴隷挿入(800)
+増加量 = 射精ゲージ計算_奴隷挿入(800)
 
 ;ABL:調教者の技巧をみる
-LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
+増加量 += (増加量/5)*ABL:PLAYER:技巧
 
 ;ABL:技巧をみる
-LOCAL += LOCAL/10*4*ABL:技巧
+増加量 += 増加量/10*4*ABL:技巧
 
-CALL 射精ゲージ増加, LOCAL, TARGET
+CALL 射精ゲージ増加, 増加量, TARGET
 
 ;-------------------------------------------------
 ;ソース追加処理
@@ -341,16 +345,16 @@ CALL SOURCE_CHECK_CVAB
 ;-------------------------------------------------
 ;射精時の処理
 IF PLAYER == MASTER
-	LOCAL = 1
+	射精先 = 1
 ELSEIF PLAYER == ASSI
-	LOCAL = 2
+	射精先 = 2
 ENDIF
 
 CALL SAMEN_CHECK, 6
-CALL SAMEN_CHECK_T, LOCAL
+CALL SAMEN_CHECK_T, 射精先
 
 CALL SAMEN_SHOOT, 6, NOWEX:PLAYER:射精
-CALL SAMEN_SHOOT_T, LOCAL, NOWEX:射精
+CALL SAMEN_SHOOT_T, 射精先, NOWEX:射精
 
 ;-------------------------------------------------
 ;汚れの処理

@@ -101,14 +101,16 @@ RETURN 1
 ;-------------------------------------------------
 @ORGASM_ADD
 #DIM DYNAMIC 絶頂倍率
-#DIM PALAM_C
-#DIM PALAM_V
-#DIM PALAM_A
-#DIM PALAM_B
-#DIM ORG_C
-#DIM ORG_V
-#DIM ORG_A
-#DIM ORG_B
+#DIM DYNAMIC PALAM_C
+#DIM DYNAMIC PALAM_V
+#DIM DYNAMIC PALAM_A
+#DIM DYNAMIC PALAM_B
+#DIM DYNAMIC ORG_C
+#DIM DYNAMIC ORG_V
+#DIM DYNAMIC ORG_A
+#DIM DYNAMIC ORG_B
+#DIM DYNAMIC 絶頂強度
+#DIM DYNAMIC 欲望変動
 
 ORG_C = 0
 ORG_V = 0
@@ -208,15 +210,15 @@ TFLAG:絶頂強度 = ORG_C+ORG_V+ORG_A+ORG_B
 
 ;快楽刻印の処理
 ;絶頂の部位と強度の合計が一定以上で刻印を取得する
-LOCAL = ORG_C+ORG_V*2+ORG_A*2+ORG_B+NOWEX:射精+NOWEX:潮噴き*2
-;LOCALが4以上で快楽刻印3に相当
-IF LOCAL >= 4 && MARK:快楽刻印 < 3
+絶頂強度 = ORG_C+ORG_V*2+ORG_A*2+ORG_B+NOWEX:射精+NOWEX:潮噴き*2
+;絶頂強度が4以上で快楽刻印3に相当
+IF 絶頂強度 >= 4 && MARK:快楽刻印 < 3
 	TFLAG:快楽刻印フラグ = 3
-;LOCALが3以上で快楽刻印2に相当
-ELSEIF LOCAL >= 3 && MARK:快楽刻印 < 2
+;絶頂強度が3以上で快楽刻印2に相当
+ELSEIF 絶頂強度 >= 3 && MARK:快楽刻印 < 2
 	TFLAG:快楽刻印フラグ = 2
-;LOCALが2以上で快楽刻印1に相当
-ELSEIF LOCAL >= 2 && MARK:快楽刻印 < 1
+;絶頂強度が2以上で快楽刻印1に相当
+ELSEIF 絶頂強度 >= 2 && MARK:快楽刻印 < 1
 	TFLAG:快楽刻印フラグ = 1
 ENDIF
 
@@ -425,24 +427,24 @@ SIF CSTR:種族 == "天使"
 	TFLAG:天使の感度ボーナス++
 
 ;絶頂による欲望LVアップ
-LOCAL = 0
+欲望変動 = 0
 SIF ORG_C >= 2 || ORG_B >= 2 || ORG_V || ORG_A
-	LOCAL = 1
+	欲望変動 = 1
 SIF ORG_V >= 2 || ORG_A >= 2
-	LOCAL = 2
+	欲望変動 = 2
 SIF (ORG_C >= 2 && ORG_B >= 2) || (ORG_C >= 2 && ORG_V) || (ORG_C >= 2 && ORG_A) || (ORG_B >= 2 && ORG_V) || (ORG_B >= 2 && ORG_A) && (ORG_V && ORG_A)
-	LOCAL = 2
+	欲望変動 = 2
 SIF (ORG_C && ORG_B && ORG_V) || (ORG_C && ORG_B && ORG_A) || (ORG_C && ORG_V && ORG_A) || (ORG_V && ORG_A && ORG_B)
-	LOCAL = 3
+	欲望変動 = 3
 SIF ORG_C && ORG_V && ORG_A && ORG_B
-	LOCAL = 4
+	欲望変動 = 4
 ;自制心があると1下がる
 SIF TALENT:自制心
-	LOCAL -= 1
+	欲望変動 -= 1
 
-IF ABL:欲望 < LOCAL
-	ABL:欲望 = LOCAL
-	PRINTFORML そして欲望がLV{LOCAL}になった
+IF ABL:欲望 < 欲望変動
+	ABL:欲望 = 欲望変動
+	PRINTFORML そして欲望がLV{欲望変動}になった
 	;欲望の上昇による[抑圧]の消滅をチェック
 	CALL ERASE_TALENT
 ENDIF
@@ -531,12 +533,13 @@ RETURN 1
 ;絶頂時の放尿処理
 ;-------------------------------------------------
 @ORGASM_ADD_URINE
-LOCAL = 0
+#DIM DYNAMIC 放尿量
+
 SELECTCASE SELECTCOMS
 	;首絞めプレイでは漏らす
 	CASE "正常位首絞め", "後背位首絞め", "正常位アナル首絞め", "後背位アナル首絞め"
 		IF (TEQUIP:利尿剤 ||  TALENT:おもらし癖) && !PENIS(TARGET)
-			LOCAL = 1
+			放尿量 = 1
 		ELSE
 			GOTO ELSE
 		ENDIF
@@ -561,30 +564,30 @@ SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
 
 SELECTCASE TFLAG:絶頂強度
 	CASE IS >= 7
-		LOCAL += 3
+		放尿量 += 3
 	CASE IS >= 5
-		LOCAL += 2
+		放尿量 += 2
 	CASE IS >= 3
-		LOCAL += 1
+		放尿量 += 1
 ENDSELECT
 
 IF TEQUIP:利尿剤
 	;利尿剤強化を行っている場合は強化値*10%の効果
 	IF 利尿剤強化値
-		LOCAL += 利尿剤強化値/10
+		放尿量 += 利尿剤強化値/10
 	ELSE
-		LOCAL++
+		放尿量++
 	ENDIF
 ENDIF
 SIF TALENT:おもらし癖
-	LOCAL++
+	放尿量++
 
 PRINTFORML %CALLNAME:TARGET%放尿
-;PRINTFORML 放尿経験+{LOCAL}
-EXP:放尿経験 += LOCAL
+;PRINTFORML 放尿経験+{放尿量}
+EXP:放尿経験 += 放尿量
 CFLAG:絶頂放尿経験++
 EX:放尿++
-NOWEX:放尿 = LOCAL
+NOWEX:放尿 = 放尿量
 SIF 撮影中()
 	CFLAG:放尿を撮影された経験++
 SIF TEQUIP:野外プレイ
@@ -599,14 +602,14 @@ SELECTCASE SELECTCOMS
 ENDSELECT
 
 ;消耗は5倍まで
-LOSEBASE:体力 += 5*MIN(LOCAL, 5)
-LOSEBASE:気力 += 10*MIN(LOCAL, 5)
-SOURCE:露出 += 500*LOCAL
+LOSEBASE:体力 += 5*MIN(放尿量, 5)
+LOSEBASE:気力 += 10*MIN(放尿量, 5)
+SOURCE:露出 += 500*放尿量
 ;ネガティブPALAMも5倍まで
-SOURCE:不潔 += 800*MIN(LOCAL, 5)
-SOURCE:反感 += 300*MIN(LOCAL, 5)
+SOURCE:不潔 += 800*MIN(放尿量, 5)
+SOURCE:反感 += 300*MIN(放尿量, 5)
 
-TEQUIP:利尿剤 -= LOCAL
+TEQUIP:利尿剤 -= 放尿量
 SIF TEQUIP:利尿剤 <= 0
 	TEQUIP:利尿剤 = 0
 

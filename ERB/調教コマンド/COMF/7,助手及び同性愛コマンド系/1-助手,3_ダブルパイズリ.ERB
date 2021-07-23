@@ -46,28 +46,31 @@ SIF ASSI > 0 && TALENT:ASSI:アニマル
 RETURNF COMRESULT
 
 @実行判定_ダブルパイズリ
+#DIM DYNAMIC 実効値
 ;-------------------------------------------------
 ;実行判定処理
 ;-------------------------------------------------
 ;すべての命令に共通の要素を考慮
 ;(従順が高いと命令に従いやすいなど)
 CALL COM_ORDER
-LOCAL = RESULT
+実効値 = RESULT
 
 CALL COM_ORDER_フェラ
-LOCAL += RESULT
+実効値 += RESULT
 
 IF RELATION:ASSI:(NO:TARGET) > 100 && RELATION:(NO:ASSI) > 100
-	LOCAL += 3
+	実効値 += 3
 	PRINTFORM +%CALLNAME:TARGET%と%CALLNAME:ASSI%の相性良好(3)
 ENDIF
 
 ;38以上で実行
-CALL 実効値判定, LOCAL, 38
+CALL 実効値判定, 実効値, 38
 
 RETURN RESULT
 
 @COM_ダブルパイズリ
+#DIM DYNAMIC 増加量
+
 PRINTL ダブルパイズリ
 
 SIF !TFLAG:実行判定無視
@@ -95,89 +98,89 @@ TFLAG:奴隷実行 = 1
 ;-------------------------------------------------
 ;射精ゲージチェック
 ;-------------------------------------------------
-LOCAL = 射精ゲージ計算_奉仕(600)
+増加量 = 射精ゲージ計算_奉仕(600)
 
 ;ABL:助手の技巧をみる
-LOCAL += (LOCAL/5)*ABL:ASSI:技巧
+増加量 += (増加量/5)*ABL:ASSI:技巧
 
 ;ABL:助手の従順をみる
-LOCAL += (LOCAL/10)*ABL:ASSI:従順 - (LOCAL/10)*2
+増加量 += (増加量/10)*ABL:ASSI:従順 - (増加量/10)*2
 
 ;ABL:助手の奉仕精神をみる
 SELECTCASE ABL:ASSI:奉仕精神
 	CASE 0
-		TIMES LOCAL , 0.50
+		TIMES 増加量 , 0.50
 	CASE 1
-		TIMES LOCAL , 0.80
+		TIMES 増加量 , 0.80
 	CASE 2
-		TIMES LOCAL , 1.20
+		TIMES 増加量 , 1.20
 	CASE 3
-		TIMES LOCAL , 1.50
+		TIMES 増加量 , 1.50
 	CASE 4
-		TIMES LOCAL , 1.80
+		TIMES 増加量 , 1.80
 	CASEELSE
-		LOCAL += LOCAL/3*ABL:奉仕精神
+		増加量 += 増加量/3*ABL:奉仕精神
 ENDSELECT
 
 ;TALENT:バストサイズをみる
 SELECTCASE TALENT:バストサイズ
 	CASE 1
-		TIMES LOCAL , 0.70
+		TIMES 増加量 , 0.70
 	CASE 2
-		TIMES LOCAL , 0.85
+		TIMES 増加量 , 0.85
 	CASE 3
-		TIMES LOCAL , 1.00
+		TIMES 増加量 , 1.00
 	CASE 4, 5
-		TIMES LOCAL , 1.15
+		TIMES 増加量 , 1.15
 	CASEELSE
-		TIMES LOCAL , 1.30
+		TIMES 増加量 , 1.30
 ENDSELECT
 
 ;機械・無機物の場合、ある程度減らす
 IF CSTR:種族 == "機械" && TALENT:無機物
-	TIMES LOCAL , 0.60
+	TIMES 増加量 , 0.60
 ELSEIF CSTR:種族 == "機械" || TALENT:無機物
-	TIMES LOCAL , 0.80
+	TIMES 増加量 , 0.80
 ENDIF
 
 ;奴隷が小柄体型・小人体型なら身体が柔らかいので増やす
 SIF TALENT:小柄体型 || TALENT:小人体型
-	TIMES LOCAL , 1.25
+	TIMES 増加量 , 1.25
 
 ;TALENT:助手のバストサイズをみる
 SELECTCASE TALENT:ASSI:バストサイズ
 	CASE 1
-		TIMES LOCAL , 0.70
+		TIMES 増加量 , 0.70
 	CASE 2
-		TIMES LOCAL , 0.85
+		TIMES 増加量 , 0.85
 	CASE 3
-		TIMES LOCAL , 1.00
+		TIMES 増加量 , 1.00
 	CASE 4, 5
-		TIMES LOCAL , 1.15
+		TIMES 増加量 , 1.15
 	CASEELSE
-		TIMES LOCAL , 1.30
+		TIMES 増加量 , 1.30
 ENDSELECT
 
 ;2つのバストサイズが同じとき効果を高くする
 SIF TALENT:バストサイズ == TALENT:ASSI:バストサイズ
-	TIMES LOCAL , 1.20
+	TIMES 増加量 , 1.20
 
 ;機械・無機物の場合、ある程度減らす
 IF CSTR:ASSI:種族 == "機械" && TALENT:ASSI:無機物
-	TIMES LOCAL , 0.60
+	TIMES 増加量 , 0.60
 ELSEIF CSTR:ASSI:種族 == "機械" || TALENT:ASSI:無機物
-	TIMES LOCAL , 0.80
+	TIMES 増加量 , 0.80
 ENDIF
 
 ;助手が小柄体型・小人体型なら身体が柔らかいので増やす
 SIF TALENT:ASSI:小柄体型 || TALENT:ASSI:小人体型
-	TIMES LOCAL , 1.25
+	TIMES 増加量 , 1.25
 
 ;PLAYERが小柄体型・小人体型なら相対的に胸が大きくなるので少し増やす
 SIF TALENT:PLAYER:小柄体型 || TALENT:PLAYER:小人体型
-	TIMES LOCAL , 1.15
+	TIMES 増加量 , 1.15
 
-CALL 射精ゲージ増加, LOCAL, MASTER
+CALL 射精ゲージ増加, 増加量, MASTER
 
 ;-------------------------------------------------
 ;ソース追加処理

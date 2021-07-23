@@ -142,6 +142,9 @@ RETURN 1
 ;装着継続の処理
 ;-------------------------------------------------
 @EQUIP_COM_触手召喚
+#DIM DYNAMIC 増加量
+#DIM DYNAMIC 射精強度
+
 PRINTL ＜触手召喚中＞
 
 ;-------------------------------------------------
@@ -159,47 +162,47 @@ SOURCE:反感 += 1000
 ;射精チェック
 ;-------------------------------------------------
 SELECTCASE SELECTCOM
-	CASE 500 TO 550
+	CASE GETNUM(TRAINNAME, "触手召喚") TO GETNUM(TRAINNAME, "触手強制放尿")+1
 		IF MAXBASE:MASTER:触手射精 != 0
-			LOCAL = 1000
+			増加量 = 1000
 			;ABL:技巧をみる
-			LOCAL += (LOCAL/10)*ABL:技巧
+			増加量 += (増加量/10)*ABL:技巧
 
 			;ABL:従順をみる
-			LOCAL += (LOCAL/10)*ABL:従順
+			増加量 += (増加量/10)*ABL:従順
 
 			;PALAM:欲情をみる
-			LOCAL += GETPALAMLV(PALAM:欲情, 5)*(LOCAL/10)
+			増加量 += GETPALAMLV(PALAM:欲情, 5)*(増加量/10)
 
 			;触手挿入
 			SIF TEQUIP:バイブ
-				TIMES LOCAL , 1.50
+				TIMES 増加量 , 1.50
 			;アナル触手
 			SIF TEQUIP:アナルバイブ
-				TIMES LOCAL , 1.50
+				TIMES 増加量 , 1.50
 			;触手クリ責め
 			SIF TEQUIP:クリキャップ
-				TIMES LOCAL , 1.20
+				TIMES 増加量 , 1.20
 			;触手乳首責め
 			SIF TEQUIP:ニプルキャップ
-				TIMES LOCAL , 1.20
+				TIMES 増加量 , 1.20
 			;触手搾乳
 			SIF TEQUIP:搾乳器
-				TIMES LOCAL , 1.30
+				TIMES 増加量 , 1.30
 			;触手ペニス責め
 			SIF TEQUIP:オナホール
-				TIMES LOCAL , 1.10
+				TIMES 増加量 , 1.10
 			;触手緊縛
 			SIF TEQUIP:縄
-				TIMES LOCAL , 1.20
+				TIMES 増加量 , 1.20
 			;触手浣腸
 			SIF TEQUIP:浣腸器
-				TIMES LOCAL , 1.30
+				TIMES 増加量 , 1.30
 			;触手口辱
 			SIF TEQUIP:触手口辱
-				TIMES LOCAL , 1.50
+				TIMES 増加量 , 1.50
 
-			BASE:MASTER:触手射精 += LOCAL
+			BASE:MASTER:触手射精 += 増加量
 		ENDIF
 ENDSELECT
 
@@ -254,63 +257,67 @@ ENDSELECT
 ;-------------------------------------------------
 ;射精チェック
 ;-------------------------------------------------
-LOCAL = BASE:MASTER:触手射精/MAXBASE:MASTER:触手射精
+射精強度 = BASE:MASTER:触手射精/MAXBASE:MASTER:触手射精
 
 ;射精時に中毒充足のソースを追加、なお触手は射精の再装填は無し
-;通常射精時
-SIF LOCAL == 1
-	LOCAL:1 = 200
-;大量射精時
-SIF LOCAL >= 2
-	LOCAL:1 = 500
+SELECTCASE 射精強度
+	;通常射精時
+	CASE 1
+		増加量 = 200
+	;大量射精時
+	CASE IS >= 2
+		増加量 = 500
+	CASEELSE
+		増加量 = 0
+ENDSELECT
 
-IF LOCAL > 0
+IF 射精強度 > 0
 	;精液中毒を見る
 	SELECTCASE ABL:精液中毒
 		CASE 0, 1
-			TIMES LOCAL:1 , 0.00
+			TIMES 増加量 , 0.00
 		CASE 2
-			TIMES LOCAL:1 , 0.30
+			TIMES 増加量 , 0.30
 		CASE 3
-			TIMES LOCAL:1 , 0.60
+			TIMES 増加量 , 0.60
 		CASE 4
-			TIMES LOCAL:1 , 0.90
+			TIMES 増加量 , 0.90
 		CASE 5
-			TIMES LOCAL:1 , 1.20
+			TIMES 増加量 , 1.20
 		CASE 6
-			TIMES LOCAL:1 , 1.50
+			TIMES 増加量 , 1.50
 		CASE 7
-			TIMES LOCAL:1 , 1.80
+			TIMES 増加量 , 1.80
 		CASE 8
-			TIMES LOCAL:1 , 2.30
+			TIMES 増加量 , 2.30
 		CASE 9
-			TIMES LOCAL:1 , 3.00
+			TIMES 増加量 , 3.00
 		CASE IS >= 10
-			TIMES LOCAL:1 , 5.00
+			TIMES 増加量 , 5.00
 	ENDSELECT
 ENDIF
 
-SOURCE:中毒 += LOCAL:1
+SOURCE:中毒 += 増加量
 
 ;射精時の処理
 ;大量射精
-IF LOCAL >= 2
+IF 射精強度 >= 2
 	PRINTL 触手大量射精
 	CALL EXPUP, "精液経験", 3
 	TENTACLE++
-	BASE:MASTER:触手射精 -= MAXBASE:MASTER:触手射精*LOCAL
-	NOWEX:MASTER:触手射精 = LOCAL
+	BASE:MASTER:触手射精 -= MAXBASE:MASTER:触手射精*射精強度
+	NOWEX:MASTER:触手射精 = 射精強度
 	EX:MASTER:触手射精++
 	VIDEOBONUS:11++
 	;魔力回復
 	CALL 魔力回復, 20
 ;通常の射精
-ELSEIF LOCAL == 1
+ELSEIF 射精強度 == 1
 	PRINTL 触手射精
 	CALL EXPUP, "精液経験", 2
 	TENTACLE++
 	BASE:MASTER:触手射精 -= MAXBASE:MASTER:触手射精
-	NOWEX:MASTER:触手射精 = LOCAL
+	NOWEX:MASTER:触手射精 = 射精強度
 	EX:MASTER:触手射精++
 	VIDEOBONUS:12++
 	;魔力回復

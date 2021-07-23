@@ -49,6 +49,7 @@ RETURNF COMRESULT
 
 @実行判定_助手を犯させる
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 実効値, 2
 ;-------------------------------------------------
 ;実行判定処理
 ;-------------------------------------------------
@@ -56,77 +57,78 @@ RETURNF COMRESULT
 ;(従順が高いと命令に従いやすいなど)
 CALL COM_ORDER
 
-VARSET LOCAL, 0
-LOCAL = RESULT
+実効値 = RESULT
 
 ;ABL:欲望
 IF ABL:欲望
-	LOCAL += ABL:欲望
+	実効値 += ABL:欲望
 	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望})
 ENDIF
 ;ABL:奉仕精神
 IF ABL:奉仕精神
-	LOCAL += ABL:奉仕精神*4
+	実効値 += ABL:奉仕精神*4
 	PRINTFORM +奉仕精神LV{ABL:奉仕精神}({ABL:奉仕精神*4})
 ENDIF
 ;快楽刻印
 IF MARK:快楽刻印
-	LOCAL += MARK:快楽刻印*2
+	実効値 += MARK:快楽刻印*2
 	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印*2})
 ENDIF
 
 CALL COM_ORDER_欲情, 0
-LOCAL += RESULT
+実効値 += RESULT
 
 FOR LCOUNT, 0, VARSIZE("TALENT")
-	LOCAL:1 = 0
+	実効値:1 = 0
 	SIF !TALENT:LCOUNT
 		CONTINUE
 	SELECTCASE TALENTNAME:LCOUNT
 		CASE "娼婦"
-			LOCAL:1 = 10
+			実効値:1 = 10
 		CASE "淫乱"
-			LOCAL:1 = 5
+			実効値:1 = 5
 		CASE "恥じらい"
-			LOCAL:1 = -5
+			実効値:1 = -5
 		CASE "献身的"
-			LOCAL:1 = 6
+			実効値:1 = 6
 		CASE "快感の否定"
 			SIF FALLTYPE(TARGET) != 2
-				LOCAL:1 = -5
+				実効値:1 = -5
 		CASE "快感に素直"
-			LOCAL:1 = 3
+			実効値:1 = 3
 		CASE "貞操観念"
-			LOCAL:1 = -12
+			実効値:1 = -12
 	ENDSELECT
-	IF LOCAL:1
-		PRINTFORM \@SIGN(LOCAL:1) == 1 ? + # - \@%TALENTNAME:LCOUNT%({ABS(LOCAL:1)})
-		LOCAL += LOCAL:1
+	IF 実効値:1
+		PRINTFORM \@SIGN(実効値:1) == 1 ? + # - \@%TALENTNAME:LCOUNT%({ABS(実効値:1)})
+		実効値 += 実効値:1
 	ENDIF
 NEXT
 
 ;助手との相性
 SELECTCASE RELATION:(NO:ASSI)
 	CASE IS < 100
-		LOCAL -= (100-RELATION:(NO:ASSI))/10+1
+		実効値 -= (100-RELATION:(NO:ASSI))/10+1
 		PRINTFORM -相性悪い({(100-RELATION:(NO:ASSI))/10+1})
 	CASE IS > 100
-		LOCAL += (RELATION:(NO:ASSI)-100)/10+1
+		実効値 += (RELATION:(NO:ASSI)-100)/10+1
 		PRINTFORM +相性良い({(RELATION:(NO:ASSI)-100)/10+1})
 ENDSELECT
 
 ;助手が処女
 IF TALENT:ASSI:処女
-	LOCAL -= 15
+	実効値 -= 15
 	PRINTFORM -助手が処女(15)
 ENDIF
 
 ;40以上で実行
-CALL 実効値判定, LOCAL, 40
+CALL 実効値判定, 実効値, 40
 
 RETURN RESULT
 
 @COM_助手を犯させる
+#DIM DYNAMIC 増加量
+
 PRINTL 助手を犯させる
 
 SIF !TFLAG:実行判定無視
@@ -164,59 +166,59 @@ TEQUIP:ASSI:下半身下着 = 0
 ;-------------------------------------------------
 ;射精ゲージチェック（奴隷）
 ;-------------------------------------------------
-LOCAL = 射精ゲージ計算_奴隷挿入(800)
+増加量 = 射精ゲージ計算_奴隷挿入(800)
 
 ;ABL:助手の技巧をみる
-LOCAL += (LOCAL/5)*ABL:PLAYER:技巧
+増加量 += (増加量/5)*ABL:PLAYER:技巧
 
 ;ABL:技巧をみる
-LOCAL += LOCAL/5*ABL:技巧
+増加量 += 増加量/5*ABL:技巧
 
-CALL 射精ゲージ増加, LOCAL, TARGET
+CALL 射精ゲージ増加, 増加量, TARGET
 
 ;-------------------------------------------------
 ;射精ゲージチェック（助手）
 ;-------------------------------------------------
-LOCAL = 500
+増加量 = 500
 
 ;ABL:技巧をみる
-LOCAL += LOCAL/10*8*ABL:技巧
+増加量 += 増加量/10*8*ABL:技巧
 
 IF VAGINA(ASSI)
 	;助手のABL:Ｖ感覚をみる
 	SELECTCASE ABL:ASSI:Ｖ感覚
 		CASE 0
-			TIMES LOCAL , 0.50
+			TIMES 増加量 , 0.50
 		CASE 1
-			TIMES LOCAL , 0.80
+			TIMES 増加量 , 0.80
 		CASE 2
-			TIMES LOCAL , 1.00
+			TIMES 増加量 , 1.00
 		CASE 3
-			TIMES LOCAL , 1.50
+			TIMES 増加量 , 1.50
 		CASE 4
-			TIMES LOCAL , 2.00
+			TIMES 増加量 , 2.00
 		CASEELSE
-			LOCAL += (LOCAL/2)*ABL:Ｖ感覚
+			増加量 += (増加量/2)*ABL:Ｖ感覚
 	ENDSELECT
 ELSE
 	;助手のABL:Ａ感覚をみる
 	SELECTCASE ABL:ASSI:Ａ感覚
 		CASE 0
-			TIMES LOCAL , 0.50
+			TIMES 増加量 , 0.50
 		CASE 1
-			TIMES LOCAL , 0.80
+			TIMES 増加量 , 0.80
 		CASE 2
-			TIMES LOCAL , 1.00
+			TIMES 増加量 , 1.00
 		CASE 3
-			TIMES LOCAL , 1.50
+			TIMES 増加量 , 1.50
 		CASE 4
-			TIMES LOCAL , 2.00
+			TIMES 増加量 , 2.00
 		CASEELSE
-			LOCAL += (LOCAL/2)*ABL:Ａ感覚
+			増加量 += (増加量/2)*ABL:Ａ感覚
 	ENDSELECT
 ENDIF
 
-CALL 射精ゲージ増加, LOCAL, ASSI
+CALL 射精ゲージ増加, 増加量, ASSI
 
 ;-------------------------------------------------
 ;ソース追加処理
