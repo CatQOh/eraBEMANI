@@ -129,6 +129,13 @@ ELSE
 	ENDIF
 	PRINTL 
 ENDIF
+PRINTPLAINFORM %SPACESLENS("　BASIC　")%
+IF ISSLIME(TARGET)
+	PRINT [11] 体色変更
+ELSE
+	PRINT [11] タグ色変更
+ENDIF
+PRINTL 
 
 DO
 	INPUT
@@ -167,6 +174,15 @@ DO
 		CASE 10
 			CALL アイテム使用_逆引き, TARGET
 			RESTART
+		CASE 11
+			IF ISSLIME(TARGET)
+				PRINTFORML □%CALLNAME:TARGET%の体色を設定してください
+			ELSE
+				PRINTFORML □%CALLNAME:TARGET%のタグ色を設定してください
+			ENDIF
+			CALL RGBBAR
+			CFLAG:タグ色 = RESULT
+			RESTART
 		;99に服装変更のボタンがある
 		CASE 99
 			CALL CHARA_CLOTHES_SETTING
@@ -178,7 +194,14 @@ LOOP 1
 #DIMS DYNAMIC 表示用変数
 
 IF LANGUAGE == "ENG"
-	PRINTL □ Basic Infomation
+	PRINT □ Basic Infomation 
+	IF CFLAG:タグ色
+		PRINT Tag Color:
+		SETCOLOR CFLAG:タグ色
+		PRINT ■
+		RESETCOLOR
+	ENDIF
+	PRINTL 
 	PRINTFORM 　Name:%NAMEDISP(TARGET)% Gender:%性別表示(TARGET)% 
 	IF NO:TARGET >= 10000 || CSTR:種族 == CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
 		PRINTFORM Race:%RACEDISP(TARGET)% 
@@ -197,7 +220,18 @@ IF LANGUAGE == "ENG"
 	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 		PRINTFORM 　Experienced Count:{経験人数(TARGET)}
 ELSE
-	PRINTL □ 基本情報
+	PRINT □ 基本情報 
+	IF CFLAG:タグ色
+		IF ISSLIME(TARGET)
+			PRINT 体色:
+		ELSE
+			PRINT タグ色:
+		ENDIF
+		SETCOLOR CFLAG:タグ色
+		PRINT ■
+		RESETCOLOR
+	ENDIF
+	PRINTL 
 	PRINTFORM 　名前:%NAMEDISP(TARGET)% 性別:%性別表示(TARGET)% 
 	IF NO:TARGET >= 10000 || CSTR:種族 == CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
 		PRINTFORM 種族:%CSTR:種族% 
@@ -552,6 +586,8 @@ ENDIF
 
 ;体型と痛み耐性
 IF TALENT:スライム
+	SIF CFLAG:タグ色
+		SETCOLOR CFLAG:タグ色
 	PRINT 　不定形なスライムの体をしている。
 	IF (NO:TARGET < 10000 && CSTR:種族 == CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))) || CFLAG:複製 || CFLAG:人工物
 		IF TALENT:MASTER:溶ける快
@@ -595,7 +631,10 @@ IF TALENT:スライム
 	SIF CFLAG:スライム度 && TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 		PRINTFORM （深度:{CFLAG:スライム度}）
 	PRINTL 
+	RESETCOLOR
 ELSEIF TALENT:溶ける快
+	SIF CFLAG:タグ色
+		SETCOLOR CFLAG:タグ色
 	IF (NO:TARGET < 10000 && CSTR:種族 == CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))) || CFLAG:複製 || CFLAG:人工物
 		PRINT 　不定形なスライムの体の中に、その本体と言うべき核を漂わせている。　スライムとしてはすっかり上位の存在であろう。
 	ELSE
@@ -604,6 +643,7 @@ ELSEIF TALENT:溶ける快
 	SIF CFLAG:スライム度 && TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 		PRINTFORM （深度:{CFLAG:スライム度}）
 	PRINTL 
+	RESETCOLOR
 ELSE
 	IF TARGET != MASTER
 		PRINT 　
@@ -1009,6 +1049,13 @@ IF !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && TARGET != MASTER
 	PRINT [10] アイテム使用 
 ENDIF
 PRINTL 
+PRINTPLAINFORM %SPACESLENS("　etcccc ")%
+IF ISSLIME(TARGET)
+	PRINT [11] 体色変更
+ELSE
+	PRINT [11] タグ色変更
+ENDIF
+PRINTL 
 
 DO
 	INPUT
@@ -1054,6 +1101,15 @@ DO
 			ENDIF
 		CASE 10
 			CALL アイテム使用_逆引き, TARGET
+			RESTART
+		CASE 11
+			IF ISSLIME(TARGET)
+				PRINTFORML □%CALLNAME:TARGET%の体色を設定してください
+			ELSE
+				PRINTFORML □%CALLNAME:TARGET%のタグ色を設定してください
+			ENDIF
+			CALL RGBBAR
+			CFLAG:タグ色 = RESULT
 			RESTART
 	ENDSELECT
 LOOP 1
@@ -1620,6 +1676,10 @@ ENDSELECT
 @SHOW_INFO_HEALTH, ARG = -1
 SIF ARG == -1
 	ARG = TARGET
+;スライムでタグ色あればそれで表示
+SIF ISSLIME(ARG) && CFLAG:ARG:タグ色
+	SETCOLOR CFLAG:ARG:タグ色
+
 IF LANGUAGE == "ENG"
 	PRINTFORML 　Health%BARBASE("体力", ARG)%
 	PRINTFORML 　Energy%BARBASE("気力", ARG)%
@@ -1631,6 +1691,8 @@ ELSE
 	SIF TALENT:ARG:魔術師
 		PRINTFORML 　魔力%BARBASE("魔力", ARG)%
 ENDIF
+
+RESETCOLOR
 
 ;=============================================================================
 ;パラメータ表示
@@ -2050,6 +2112,10 @@ FOR LCOUNT, 0, VARSIZE("EXP")
 				経験名 = 舞踊経験
 			CASE "音ゲー経験"
 				経験名 = 音ゲ経験
+			CASE "乳管拡張経験"
+				経験名 = 乳拡経験
+			CASE "臍拡張経験"
+				経験名 = 臍拡経験
 			CASEELSE
 				経験名 = %EXPNAME:LCOUNT%
 		ENDSELECT
