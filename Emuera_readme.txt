@@ -1,9 +1,11 @@
 タイトル：Emuera
-バージョン： 1.822
+バージョン： 1.824
 著作者：MinorShift, 妊）|дﾟ)の中の人
 頒布者：MinorShift
 連絡先：minorshift@hotmail.co.jp
+連絡先：https://twitter.com/MinorShift
 Webページ：http://osdn.jp/projects/emuera/
+投げ銭・寄付：https://emuera.booth.pm/items/933704
 ライセンス：[ライセンス]の項を参照。
 更新の詳細は上記Webページをご覧下さい。
 
@@ -39,6 +41,11 @@ eramakerはサークル獏の佐藤敏氏が作成したソフトです。
 詳細は下記サイトを参照してください。
 http://www.hakagi.com
 ※18歳未満の方は閲覧をご遠慮ください。
+
+[投げ銭・寄付]
+https://emuera.booth.pm/items/933704
+Emueraの作者の一人MinorShiftは上記サイトにて投げ銭を募っております。
+ご支援頂ければ幸いです。 
 
 [連絡先]
 minorshift@hotmail.co.jp

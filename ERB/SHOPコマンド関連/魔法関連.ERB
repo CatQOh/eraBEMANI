@@ -137,12 +137,19 @@ IF ABL:詠唱者:魔法技能 >= 10
 	PRINTL 　　　　 現在の状態を維持したまま期限・日にちを1日分戻す
 ENDIF
 IF STSMOD
-	IF ABL:詠唱者:魔法技能 >= 5
-		;JEWELLERY STORM
-		コスト = 魔力消費量(5, スキル)
-		PRINTFORML 　[17] - ジュエリーストーム（魔力消費量{コスト}）
-		PRINTL 　　　　 対象を鉱物に変える
-	ENDIF
+	;ロザリー、塵、アサギス、キャスは魔法技能無しで使える
+	SELECTCASE CHARANAMEF(詠唱者)
+		CASE "ロザリー", "塵", "アサギス", "キャスメラ"
+			GOTO JSTORM
+		CASEELSE
+			IF ABL:詠唱者:魔法技能 >= 5
+				$JSTORM
+				;JEWELLERY STORM
+				コスト = 魔力消費量(5, スキル)
+				PRINTFORML 　[17] - ジュエリーストーム（魔力消費量{コスト}）
+				PRINTL 　　　　 対象を鉱物に変える キャラロスト扱いで元に戻すことはできない
+			ENDIF
+	ENDSELECT
 ENDIF
 DRAWLINE
 PRINTPLAIN 　SPELL　
@@ -310,8 +317,13 @@ DO
 			スノープリズム = スキル
 			FLAG:天気 = 6
 		CASE 6, 7
-			SIF スキル < 5 && CHARANAMEF(詠唱者) != "梅桐 天土" && CHARANAMEF(詠唱者) != "梅桐 緋浮美"
-				CONTINUE
+			IF スキル < 5
+				SELECTCASE CHARANAMEF(詠唱者)
+					CASE "梅桐 天土", "梅桐 緋浮美"
+					CASEELSE
+						CONTINUE
+				ENDSELECT
+			ENDIF
 			使用スペル = RESULT
 			PRINTFORML □ビーストモード\@ 使用スペル == 7 ? type2 #  \@で獣人化する対象を選んでください
 			FOR PAGING, 0, CHARANUM
@@ -740,8 +752,13 @@ DO
 		CASE 17
 			SIF !STSMOD
 				CONTINUE
-			SIF スキル < 5
-				CONTINUE
+			IF スキル < 5
+				SELECTCASE CHARANAMEF(詠唱者)
+					CASE "ロザリー", "塵", "アサギス", "キャスメラ"
+					CASEELSE
+						CONTINUE
+				ENDSELECT
+			ENDIF
 			コスト = BASE:詠唱者:魔力 - 魔力消費量(5, スキル)
 			IF コスト < 0
 				IF 詠唱者 == MASTER
@@ -753,12 +770,12 @@ DO
 			ENDIF
 			PRINTFORML %CALLNAME:詠唱者%にジュエリーストームを詠唱させます。誰を対象にしますか？
 			FOR PAGING, 1, CHARANUM
-				CALL PAGING, PAGING != 詠唱者
+				CALL PAGING, PAGING != 詠唱者 && CSTR:PAGING:種族 != "機械" && !TALENT:PAGING:無機物
 			NEXT
 			SIF RESULT == -1
 				RESTART
 			対象 = RESULT
-			CALL ジュエリーストーム, 対象
+			CALL ジュエリーストーム, 対象, 詠唱者
 			SIF RESULT == 0
 				RESTART
 	ENDSELECT
@@ -778,29 +795,87 @@ LOOP 1
 
 RETURNF ARG*1000-(ARG*100*(ARG:1-ARG))
 
-@ジュエリーストーム, 対象
+@ジュエリーストーム, 対象, 詠唱者
 #DIM DYNAMIC 対象
+#DIM DYNAMIC 詠唱者
+#DIM DYNAMIC 価値
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC LCOUNT2
-#DIM DYNAMIC INT_R
-#DIM DYNAMIC INT_G
-#DIM DYNAMIC INT_B
-{
-#DIMS DYNAMIC 色プリセット = 
-"ゴールド",
-"ルビー",
-"サファイア",
-"アメジスト",
-"トパーズ",
-"クリスタル",
-"石",
-}
+#DIM DYNAMIC 空き変数
+#DIM DYNAMIC 色保存用
 
 PRINTFORML □%CALLNAME:対象%を鉱物化する際の色を設定してください
-CALL RGBBAR
+CALL RGBBAR, CFLAG:対象:タグ色/0x10000, CFLAG:対象:タグ色%0x10000/0x100, CFLAG:対象:タグ色%0x100
 
-@RGBBAR
-#DIM DYNAMIC 対象
+色保存用 = RESULT
+
+SIF RESULT == 0
+	RETURN 0
+
+PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%にジュエリーストームを唱えた
+PRINTFORML %CALLNAME:対象%は無機物となり、瞳の輝きも失われた。もう元に戻ることはないだろう……
+PRINTFORML %CALLNAME:詠唱者%の詠唱経験+5
+EXP:詠唱者:詠唱経験 += 5
+
+;価値は1000は保証
+価値 = 1000
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:対象:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "狐", "妖狐", "小柄体型", "戦士", "ファーリー", "尻尾", "動物耳", "羽", "ふたなり"
+			価値 += 500
+		CASE "魅力", "魅惑", "足使用不可", "スライム", "溶ける快"
+			価値 += 1000
+		CASE "謎の魅力", "人気", "妊娠"
+			価値 += 1500
+		CASE "バストサイズ"
+			SELECTCASE TALENT:対象:バストサイズ
+				CASE IS >= 4
+					価値 += (TALENT:対象:バストサイズ-3)*100
+			ENDSELECT
+	ENDSELECT
+NEXT
+
+;タトゥーでも微増
+SIF CSTR:対象:右腕の印 != ""
+	価値 += 100
+SIF CSTR:対象:左腕の印 != ""
+	価値 += 100
+SIF CSTR:対象:右足の印 != ""
+	価値 += 100
+SIF CSTR:対象:左足の印 != ""
+	価値 += 100
+SIF CSTR:対象:背中の印 != ""
+	価値 += 200
+SIF CSTR:対象:胴体の印 != ""
+	価値 += 300
+
+FOR LCOUNT, 1, VARSIZE("MUSEUM", 0)
+	IF MUSEUM:LCOUNT:0 == ""
+		空き変数 = LCOUNT
+		BREAK
+	ENDIF
+NEXT
+
+;#;SIF 空き変数 == 0
+;#;	THROW 変数「MUSEUM」に空きがありません
+
+MUSEUM:空き変数:0 = 鉱物
+MUSEUM:空き変数:1 = 鉱物化した%NAME:対象%
+MUSEUM:空き変数:2 = {NO:対象}
+MUSEUM:空き変数:3 = {価値}
+MUSEUM:空き変数:4 = {色保存用}
+MUSEUM:空き変数:5 = {CFLAG:対象:血縁コード}
+MUSEUM:空き変数:6 = CFLAG:対象:複製
+MUSEUM:空き変数:7 = 100
+MUSEUM:空き変数:8 = 0
+
+CALL CLEAR_CHARA, 対象
+
+RETURN 1
+
+@RGBBAR, INT_R, INT_G, INT_B
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC INT_R
@@ -811,6 +886,7 @@ CALL RGBBAR
 "ゴールド",
 "ルビー",
 "サファイア",
+"エメラルド",
 "アメジスト",
 "トパーズ",
 "クリスタル",
@@ -949,6 +1025,10 @@ SELECTCASE RESULTS
 		INT_R = 0x00
 		INT_G = 0x54
 		INT_B = 0xA6
+	CASE "エメラルド"
+		INT_R = 0x00
+		INT_G = 0xA9
+		INT_B = 0x68
 	CASE "アメジスト"
 		INT_R = 0x9E
 		INT_G = 0x76
