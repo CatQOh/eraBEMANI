@@ -1,11 +1,12 @@
 ﻿;調教対象選択
 @CHANGE_TARGET
 #DIM DYNAMIC LCOUNT
+#DIM 表示上限 = 10
 
 CALL LOOP_CLEARLINE
 
 DRAWLINE
-CALL LIFE_LIST, "調教対象選択"
+CALL LIFE_LIST, "調教対象選択", 0, 表示上限
 ;RESULTには未表示キャラが居るかどうか
 DRAWLINE
 PRINTPLAIN 　CHANGE TARGET　
@@ -30,6 +31,13 @@ DO
 	SELECTCASE RESULT
 		CASE MASTER
 			PRINTL 自分を調教することはできません
+			RESTART
+		CASE -1
+			SIF 表示上限 > 10
+				表示上限 -= 10
+			RESTART
+		CASE -9
+			表示上限 += 10
 			RESTART
 		CASE 999
 			SIF TFLAG:ページ数 > 0
@@ -71,11 +79,12 @@ SIF CFLAG:対象:監禁
 
 @SELECT_ASSI, ARG
 #DIM DYNAMIC LTARGET
+#DIM 表示上限 = 10
 
 CALL LOOP_CLEARLINE
 
 DRAWLINE
-CALL LIFE_LIST, "助手選択"
+CALL LIFE_LIST, "助手選択", 0, 表示上限
 ;RESULTにはまだ表示されてないキャラが居るかどうか
 DRAWLINE
 PRINTPLAIN 　SELECT ASSI　
@@ -98,6 +107,13 @@ PRINTL [1010] キャラソート
 DO
 	INPUT
 	SELECTCASE RESULT
+		CASE -1
+			SIF 表示上限 > 10
+				表示上限 -= 10
+			RESTART
+		CASE -9
+			表示上限 += 10
+			RESTART
 		CASE 999
 			SIF TFLAG:ページ数 > 0
 				TFLAG:ページ数--
@@ -145,7 +161,7 @@ SIF ASSI == TARGET
 SIF CHARANAMEF(MASTER) == "マタン・カトルセ" && CHARANAMEF(ASSI) == "ノクス・カトルセ" && CFLAG:ASSI:陥落
 	CALL 実績解除, "「姉さんは僕が守る」"
 
-@LIFE_LIST, 表示情報, 表示切り替え
+@LIFE_LIST, 表示情報, 表示切り替え, 表示上限 = 10
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC カウント数
@@ -153,20 +169,23 @@ SIF CHARANAMEF(MASTER) == "マタン・カトルセ" && CHARANAMEF(ASSI) == "ノ
 #DIM DYNAMIC LTARGET
 #DIM 表示切り替え
 #DIMS DYNAMIC 表示情報
+#DIM DYNAMIC 表示上限
 
 DRAWLINE
 IF ゲームモード() == "新婚モード"
-	PRINTL □キャラ一覧
+	PRINTPLAIN □キャラ一覧 
 ELSE
 	SELECTCASE 表示情報
 		CASE "調教対象選択"
-			PRINTL □調教対象変更
+			PRINTPLAIN □調教対象変更 
 		CASE "助手選択"
-			PRINTL □助手変更
+			PRINTPLAIN □助手変更 
 		CASEELSE
-			PRINTL □キャラ一覧
+			PRINTPLAIN □キャラ一覧 
 	ENDSELECT
 ENDIF
+PRINTL [-1] 表示上限を減らす [-9] 表示上限を増やす
+
 FOR LCOUNT, 0, CHARANUM
 	RESETCOLOR
 	;1巡目はMASTERとTARGET及びASSIの能力表示
@@ -196,8 +215,8 @@ FOR LCOUNT, 0, CHARANUM
 	;助手の指定なら助手不可能なキャラは除外
 	SIF 表示情報 == "助手選択" && CFLAG:LCOUNT:状態 < 2 && !TALENT:LCOUNT:アニマル
 		CONTINUE
-	;キャラを10人表示したら終了
-	IF 表示数 >= 10
+	;キャラを表示上限数表示したら終了
+	IF 表示数 >= 表示上限
 		未表示キャラ = 1
 		BREAK
 	ENDIF
@@ -205,8 +224,8 @@ FOR LCOUNT, 0, CHARANUM
 	SIF GROUPMATCH(LCOUNT, TARGET, ASSI)
 		CONTINUE
 	カウント数++
-	;ページ数×10まで表示を飛ばす
-	SIF TFLAG:ページ数*10 >= カウント数
+	;ページ数×表示上限まで表示を飛ばす
+	SIF TFLAG:ページ数*表示上限 >= カウント数
 		CONTINUE
 	CALL STATUS_BAR, LCOUNT, 表示情報, 表示切り替え
 	表示数++
@@ -361,11 +380,12 @@ PRINTL
 @SHOW_CHARADATA
 #DIM 表示切り替え
 #DIM DYNAMIC LTARGET
+#DIM 表示上限 = 10
 DRAWLINE
 
 CALL LOOP_CLEARLINE
 
-CALL LIFE_LIST, "通常表示", 表示切り替え
+CALL LIFE_LIST, "通常表示", 表示切り替え, 表示上限
 ;RESULTにはまだ表示されてないキャラが居るかどうか
 DRAWLINE
 
@@ -393,6 +413,13 @@ ENDIF
 DO
 	INPUT
 	SELECTCASE RESULT
+		CASE -1
+			SIF 表示上限 > 10
+				表示上限 -= 10
+			RESTART
+		CASE -9
+			表示上限 += 10
+			RESTART
 		CASE 999
 			SIF TFLAG:ページ数 > 0
 				TFLAG:ページ数--

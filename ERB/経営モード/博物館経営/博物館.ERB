@@ -24,13 +24,18 @@ CALL INPUTF, 0, 1, 2, 3
 
 SELECTCASE RESULT
 	CASE 0
-		RETURN
+		RETURN 0
 	CASE 1
 		CALL 博物館_MAP
 		RESTART
 	CASE 2
 		CALL 博物館_CREATE
-		RESTART
+		;何もしないで戻ってきた場合
+		SIF RESULT == 0
+			RESTART
+		;作品を作ったらターンエンド
+		BEGIN TURNEND
+		RETURN 1
 	CASE 3
 		IF 博物館広さ >= 30
 			PRINTW 博物館の広さは最大です
@@ -75,6 +80,10 @@ FOR LCOUNTY, 0, 博物館広さ
 	HTML用 = 
 	FOR LCOUNTX, 0, 博物館広さ
 		ID = 博物館マップ:LCOUNTY:LCOUNTX
+		IF ID > 0 && MUSEUM:ID:種類 == ""
+			博物館マップ:LCOUNTY:LCOUNTX = 0
+			ID = 0
+		ENDIF
 		IF ID > 0
 			HTML用 += SET_TOOLTIPBUTTON("■", @"{LCOUNTX*100+LCOUNTY}", @"%MUSEUM:ID:名前% 価値:%MUSEUM:ID:価値% 集客力:%MUSEUM:ID:集客力%\% \@ 博物館射 ? 汚された回数:%MUSEUM:ID:汚れ% #\@", MUSEUM:ID:色)
 			設置済み:ID = 1
@@ -174,10 +183,183 @@ SELECTCASE RESULT
 ENDSELECT
 
 @博物館_CREATE
+#DIM DYNAMIC 対象, 2
+#DIM DYNAMIC 価値
+#DIM DYNAMIC 空き変数
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 処理数
+#DIM DYNAMIC ページ数
+
+GOTO CREATE_CORPSE
+
+PRINTL □博物館用の作品を作ります 鉱物は魔法コマンドから作成してください
+PRINT 　[1] - キャラを
+SETCOLORBYNAME red
+PRINT 加工
+RESETCOLOR
+PRINTL する
+PRINTL 　[2] - 既存の作品を組み合わせる
+PRINTL 　[0] - 戻る
+
+CALL INPUTF, 0, 1, 2
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		GOTO CREATE_CORPSE
+	CASE 2
+		GOTO JOIN_CORPSE
+ENDSELECT
+
+
+$CREATE_CORPSE
+PRINT □加工するキャラを選んでください。
+FONTBOLD
+PRINTL 加工したキャラは死亡します
+FONTREGULAR
+FOR PAGING, 1, CHARANUM
+	CALL PAGING, PAGING > 0 && !TALENT:PAGING:無機物 && CSTR:PAGING:種族 != "機械" && !ISSLIME(PAGING)
+NEXT
+
+SIF RESULT == -1
+	RETURN 0
+
+対象 = RESULT
+
+PRINTFORML %NAME:対象%を加工します。どのように加工しますか？
+PRINTL [0] - やっぱりやめる
+PRINTL [1] - 剥製に加工する
+PRINTL [2] - 白骨に加工する
+CALL INPUTF, 0, 1, 2
+SELECTCASE RESULT
+	CASE 0
+		RESTART
+	CASE 1
+		SETCOLORBYNAME red
+		CUSTOMDRAWLINE ✂----------
+		RESETCOLOR
+		PRINTFORMW %NAME:対象%を剥製に加工しました
+		;価値は1000は保証
+		価値 = 1000
+
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:対象:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "狐", "妖狐", "小柄体型", "戦士", "ファーリー", "尻尾", "動物耳", "羽", "ふたなり"
+					価値 += 500
+				CASE "魅力", "魅惑", "足使用不可", "スライム", "溶ける快"
+					価値 += 1000
+				CASE "謎の魅力", "人気", "妊娠"
+					価値 += 1500
+				CASE "バストサイズ"
+					SELECTCASE TALENT:対象:バストサイズ
+						CASE IS >= 4
+							価値 += (TALENT:対象:バストサイズ-3)*100
+					ENDSELECT
+			ENDSELECT
+		NEXT
+
+		;タトゥーでも微増
+		SIF CSTR:対象:右腕の印 != ""
+			価値 += 100
+		SIF CSTR:対象:左腕の印 != ""
+			価値 += 100
+		SIF CSTR:対象:右足の印 != ""
+			価値 += 100
+		SIF CSTR:対象:左足の印 != ""
+			価値 += 100
+		SIF CSTR:対象:背中の印 != ""
+			価値 += 200
+		SIF CSTR:対象:胴体の印 != ""
+			価値 += 300
+
+		FOR LCOUNT, 1, VARSIZE("MUSEUM", 0)
+			IF MUSEUM:LCOUNT:0 == ""
+				空き変数 = LCOUNT
+				BREAK
+			ENDIF
+		NEXT
+
+		;#;SIF 空き変数 == 0
+		;#;	THROW 変数「MUSEUM」に空きがありません
+
+		MUSEUM:空き変数:0 = 剥製
+		MUSEUM:空き変数:1 = %NAME:対象%の剥製
+		MUSEUM:空き変数:2 = {NO:対象}
+		MUSEUM:空き変数:3 = {価値}
+		MUSEUM:空き変数:4 = {COLOR_FROMNAME("red")}
+		MUSEUM:空き変数:5 = {CFLAG:対象:血縁コード}
+		MUSEUM:空き変数:6 = {CFLAG:対象:複製}
+		MUSEUM:空き変数:7 = 100
+		MUSEUM:空き変数:8 = 0
+
+		CALL CLEAR_CHARA, 対象
+		RETURN 1
+	CASE 2
+		SETCOLORBYNAME red
+		CUSTOMDRAWLINE ✂----------
+		RESETCOLOR
+		PRINTFORMW %NAME:対象%を白骨に加工しました
+		;価値は1000は保証
+		価値 = 1000
+
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:対象:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "小柄体型", "尻尾", "羽"
+					価値 += 500
+				CASE "足使用不可"
+					価値 += 1000
+			ENDSELECT
+		NEXT
+
+		FOR LCOUNT, 1, VARSIZE("MUSEUM", 0)
+			IF MUSEUM:LCOUNT:0 == ""
+				空き変数 = LCOUNT
+				BREAK
+			ENDIF
+		NEXT
+
+		;#;SIF 空き変数 == 0
+		;#;	THROW 変数「MUSEUM」に空きがありません
+
+		MUSEUM:空き変数:0 = 白骨死体
+		MUSEUM:空き変数:1 = %NAME:対象%の白骨死体
+		MUSEUM:空き変数:2 = {NO:対象}
+		MUSEUM:空き変数:3 = {価値}
+		MUSEUM:空き変数:4 = {COLOR_FROMNAME("whitesmoke")}
+		MUSEUM:空き変数:5 = {CFLAG:対象:血縁コード}
+		MUSEUM:空き変数:6 = {CFLAG:対象:複製}
+		MUSEUM:空き変数:7 = 100
+		MUSEUM:空き変数:8 = 0
+
+		CALL CLEAR_CHARA, 対象
+		RETURN 1
+ENDSELECT
+
+$JOIN_CORPSE
+PRINTL □同じ種類の2つの作品を組み合わせます 何を組み合わせますか？
+処理数 = 0
+ページ数 = 0
+FOR LCOUNT, 1, 1000
+	SIF !GROUPMATCH(MUSEUM:LCOUNT:0, "剥製", "白骨死体")
+		CONTINUE
+	IF 処理数 < ページ数*10
+		処理数++
+		CONTINUE
+	ENDIF
+	PRINTFORML 　[{LCOUNT, 2}] %MUSEUM:LCOUNT:0%
+NEXT
+	
+
 
 
 @INCOME_博物館
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC LCOUNTX
 #DIM DYNAMIC LCOUNTY
 #DIM DYNAMIC ID
@@ -204,9 +386,13 @@ ENDSELECT
 SIF !ITEM:博物館
 	RETURN
 
-FOR LCOUNTY, 1, 50
-	FOR LCOUNTX, 1, 50
+FOR LCOUNTY, 0, 30
+	FOR LCOUNTX, 0, 30
 		ID = 博物館マップ:LCOUNTY:LCOUNTX
+		IF ID > 0 && MUSEUM:ID:種類 == ""
+			博物館マップ:LCOUNTY:LCOUNTX = 0
+			CONTINUE
+		ENDIF
 		IF ID
 			設置済み:ID = ID
 			総価値 += TOINT(MUSEUM:ID:価値)*TOINT(MUSEUM:ID:集客力)/100
@@ -214,6 +400,33 @@ FOR LCOUNTY, 1, 50
 			総設置数++
 		ENDIF
 	NEXT
+NEXT
+
+;同じキャラ(クローン)含むを一緒に設置した場合は価値が半減する
+FOR LCOUNT, 1, 1000
+	IF 設置済み:LCOUNT
+		FOR LCOUNT2, 1, 1000
+			SIF !設置済み:LCOUNT2
+				CONTINUE
+			SIF LCOUNT == LCOUNT2
+				CONTINUE
+			;双方のクローンフラグが無ければスルー
+			SIF MUSEUM:(設置済み:LCOUNT):クローン == "0" && MUSEUM:(設置済み:LCOUNT2):クローン == "0"
+				CONTINUE
+			IF MUSEUM:(設置済み:LCOUNT):クローン == MUSEUM:(設置済み:LCOUNT2):ナンバー || MUSEUM:(設置済み:LCOUNT):クローン == MUSEUM:(設置済み:LCOUNT2):クローン
+				IF MUSEUM:(設置済み:LCOUNT):9 == ""
+					MUSEUM:(設置済み:LCOUNT):価値 = {TOINT(MUSEUM:(設置済み:LCOUNT):価値)/2}
+					MUSEUM:(設置済み:LCOUNT):9 = 1
+					PRINTFORML %MUSEUM:(設置済み:LCOUNT):名前%は贋作の発覚により価値が半減しました
+				ENDIF
+				IF MUSEUM:(設置済み:LCOUNT2):9 == ""
+					MUSEUM:(設置済み:LCOUNT2):価値 = {TOINT(MUSEUM:(設置済み:LCOUNT2):価値)/2}
+					MUSEUM:(設置済み:LCOUNT2):9 = 1
+					PRINTFORML %MUSEUM:(設置済み:LCOUNT2):名前%は贋作の発覚により価値が半減しました
+				ENDIF
+			ENDIF
+		NEXT
+	ENDIF
 NEXT
 
 ;総価値0=何も設置してなければ計算しない
