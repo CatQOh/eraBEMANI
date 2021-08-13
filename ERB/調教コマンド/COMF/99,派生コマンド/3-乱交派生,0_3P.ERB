@@ -14,19 +14,18 @@ SIF ASSI < 1
 ;処女で、従順4以下・レズっ気4以下のASSIの場合3Pはできない（男もしくはサドならＯＫ）
 コマンド実行条件 += "対象が処女で助手が女性の場合、助手に[サド]or従順とレズっ気LV4以上が必要/"
 コマンド実行条件 += @"対象が潤滑{PALAMLV:2}未満の場合、助手に[サド]or従順LV4以上が必要/"
-IF TALENT:処女
-	SIF ASSI > 0 && (ABL:ASSI:従順 <= 4 || ABL:ASSI:レズっ気 <= 4) && !TALENT:ASSI:サド && SEX(ASSI) == 2
-		COMRESULT = 0
-;潤滑不足で、従順3以下のASSIの場合3Pはできない（サドならＯＫ）
-ELSEIF PALAM:潤滑 < PALAMLV:2
-	SIF ASSI > 0 && ABL:ASSI:従順 <= 3 && !TALENT:ASSI:サド
-		COMRESULT = 0
-ENDIF
-
-;性器が露出してないとはダメ
-コマンド実行条件 += "性器が露出していないと実行できない/"
-SIF !性器露出(TARGET)
+IF ASSI < 1
 	COMRESULT = 0
+ELSE
+	IF TALENT:処女
+		SIF (ABL:ASSI:従順 <= 4 || ABL:ASSI:レズっ気 <= 4) && !TALENT:ASSI:サド && SEX(ASSI) == 2
+			COMRESULT = 0
+	;潤滑不足で、従順3以下のASSIの場合3Pはできない（サドならＯＫ）
+	ELSEIF PALAM:潤滑 < PALAMLV:2
+		SIF ABL:ASSI:従順 <= 3 && !TALENT:ASSI:サド
+			COMRESULT = 0
+	ENDIF
+ENDIF
 
 本数 = 0
 ;MASTERがペニス持ち
@@ -41,12 +40,8 @@ SIF ASSI > 0 && (PENIS(ASSI) || TEQUIP:ASSI:ペニスバンド) && !Ｐ使用不
 SIF 本数 < 2
 	COMRESULT = 0
 ;膣使用中はダメ
-コマンド実行条件 += "対象がV使用中は実行できない/"
-SIF Ｖ使用中(TARGET)
-	COMRESULT = 0
-;アナル使用中はダメ
-コマンド実行条件 += "対象がA道具使用中は実行できない/"
-SIF Ａ使用中(TARGET)
+コマンド実行条件 += "対象がV使用中、かつA使用中は実行できない/"
+SIF Ｖ使用中(TARGET) && Ａ使用中(TARGET)
 	COMRESULT = 0
 ;主人、調教対象、助手のいずれかに小人体型がいる場合、主人が禁断の知識を持っていないとダメ
 コマンド実行条件 += "主人、助手、対象のいずれかが[小人体型]の場合、主人に禁断の知識が必要/"
@@ -55,9 +50,7 @@ IF TALENT:MASTER:小人体型 || (ASSI > 0 && TALENT:ASSI:小人体型) || TALEN
 		COMRESULT = 0
 ENDIF
 ;一定のＡ経験が必要
-コマンド実行条件 += @"対象のＡ経験{EXPLV:3}以上が必要/"
-SIF EXP:Ａ経験 < EXPLV:3
-	COMRESULT = 0
+コマンド実行条件 += @"Ａを使う場合は対象のＡ経験{EXPLV:3}以上が必要/"
 ;触手調教中はダメ
 コマンド実行条件 += "触手召喚中は実行できない/"
 SIF TEQUIP:触手
@@ -77,10 +70,8 @@ SELECTCASE PREVCOMS
 	CASE "3P"
 		RETURNF COMRESULT
 	;既に膣か尻か口に入ってると派生可能
-	CASE "正常位", "後背位", "騎乗位", "背面座位", "正常位アナル", "後背位アナル", "騎乗位アナル", "背面座位アナル", "フェラチオ", "イラマチオ"
-		IF TFLAG:前コマンド実行者 != PLAYER
-			RETURNF COMRESULT
-		ENDIF
+	CASE "正常位", "後背位", "騎乗位", "背面座位", "下着ずらし挿入", "正常位アナル", "後背位アナル", "騎乗位アナル", "背面座位アナル", "下着ずらし挿入アナル", "フェラチオ", "イラマチオ"
+		RETURNF COMRESULT
 ENDSELECT
 
 COMRESULT = 0
@@ -91,6 +82,15 @@ RETURNF 0
 #DIM DYNAMIC 二本目
 #DIM DYNAMIC 増加量
 #DIM DYNAMIC 射精先, 3
+
+;前コマンドとPLAYERが同じなら自動でPLAYERを交代する
+IF TFLAG:前コマンド実行者 == PLAYER && PREVCOMS != "3P"
+	IF PLAYER == MASTER
+		PLAYER = ASSI
+	ELSEIF PLAYER == ASSI
+		PLAYER = MASTER
+	ENDIF
+ENDIF
 
 ;-------------------------------------------------
 ;挿入部位管理
@@ -103,9 +103,9 @@ RETURNF 0
 ;前回のコマンドが3Pなら挿入部位は変わらず
 IF PREVCOMS != "3P"
 	SELECTCASE PREVCOMS
-		CASE "正常位", "後背位", "騎乗位", "背面座位"
+		CASE "正常位", "後背位", "騎乗位", "背面座位", "下着ずらし挿入"
 			一本目 = 1
-		CASE "正常位アナル", "後背位アナル", "騎乗位アナル", "背面座位アナル"
+		CASE "正常位アナル", "後背位アナル", "騎乗位アナル", "背面座位アナル", "下着ずらし挿入アナル"
 			一本目 = 2
 		CASE "フェラチオ", "イラマチオ"
 			一本目 = 3
@@ -132,7 +132,7 @@ IF PREVCOMS != "3P"
 		PRINTFORML どこを犯しますか？
 		SIF 一本目 != 1
 			PRINTL [1] - 膣穴
-		SIF 一本目 != 2
+		SIF 一本目 != 2 && EXP:Ａ経験 >= EXPLV:3
 			PRINTL [2] - アナル
 		SIF 一本目 != 3
 			PRINTL [3] - 口
@@ -141,6 +141,8 @@ IF PREVCOMS != "3P"
 				BREAK
 			INPUT
 			SIF 一本目 == RESULT
+				CONTINUE
+			SIF RESULT == 2 && EXP:Ａ経験 >= EXPLV:3
 				CONTINUE
 		LOOP LOOPRES(1, 2, 3)
 		二本目 = RESULT
@@ -189,6 +191,19 @@ SELECTCASE TFLAG:助手挿入箇所
 			ENDIF
 		ENDIF
 ENDSELECT
+
+;-------------------------------------------------
+;脱衣
+;-------------------------------------------------
+IF OVER_GENITAL(TARGET) != ""
+	IF CFLAG:挿入可
+		TEQUIP:下半身下着 = 0
+	ELSE
+		TEQUIP:下半身下着 = 0
+		TEQUIP:下半身上着 = 0
+		TEQUIP:全身上着 = 0
+	ENDIF
+ENDIF
 
 ;-------------------------------------------------
 ;射精ゲージチェック（主人）

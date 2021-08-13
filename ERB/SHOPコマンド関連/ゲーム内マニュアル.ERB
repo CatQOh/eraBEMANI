@@ -171,6 +171,7 @@ WAIT
 #DIM DYNAMIC LASSI
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC アイテム保持用, 10000
+#DIMS DYNAMIC 表示用
 
 CALL CHECKDRAWLINE
 
@@ -195,10 +196,6 @@ DO
 				CASE "絶頂経験"
 					PRINTL 性感帯を刺激することで取得できる経験です
 					PRINTW あらゆるコマンド、イベントで得る機会があります
-					RESTART
-				CASE "射精経験"
-					PRINTL 射精したときに取得できる経験です
-					PRINTW 射精についての詳しいメカニズムはウィキペディアをご覧ください
 					RESTART
 				CASE "膣射経験"
 					PRINTL 膣内射精されたときに取得できる経験です
@@ -299,7 +296,11 @@ DO
 
 			表示数 = 0
 
-			PRINTFORML □%EXPNAME:参照経験%が上昇するコマンド一覧 ()内は上昇値
+			IF EXPNAME:参照経験 == "射精経験"
+				PRINTFORML □%EXPNAME:参照経験%が上昇するコマンド一覧 ()内は対象者
+			ELSE
+				PRINTFORML □%EXPNAME:参照経験%が上昇するコマンド一覧 ()内は上昇値
+			ENDIF
 			FOR LCOUNT, 0, VARSIZE("TRAINNAME")
 				IF TRAINNAME:LCOUNT != ""
 					;表示を飛ばす
@@ -310,14 +311,37 @@ DO
 					VARSET TFLAG
 					VARSET EXP:0
 					VARSET EX:0
+					VARSET NOWEX:0
+					VARSET NOWEX:ASSI:0
+					VARSET NOWEX:MASTER:0
 					VARSET PALAM:0
+					CVARSET BASE, GETNUM(BASE, "射精"), 0
+					CFLAG:残数 = 100
+					CFLAG:ASSI:残数 = 100
+					CFLAG:MASTER:残数 = 100
 					TFLAG:実行判定無視 = 1
 					TRYCALLFORM COM_%TRAINNAME:LCOUNT%
 					SKIPDISP 0
-					IF EXP:参照経験 > 0
-						PRINTFORMLC 　%TRAINNAME:LCOUNT%({EXP:参照経験})
-						;SKIPDISPが絡むとPRINTC系がうまく動かないので変数使う
-						表示数++
+					IF EXPNAME:参照経験 == "射精経験"
+						IF BASE:MASTER:射精 > 0 || BASE:射精 > 0 || BASE:ASSI:射精 > 0
+							表示用 '= @"　%TRAINNAME:LCOUNT%("
+							SIF BASE:PLAYER:射精 > 0
+								表示用 += "主人,"
+							SIF BASE:射精 > 0
+								表示用 += "調教対象,"
+							SIF BASE:ASSI:射精 > 0
+								表示用 += "助手"
+							表示用 += ")"
+							PRINTFORMLC %表示用%
+							DEBUGPRINTFORML {BASE:射精}
+							表示数++
+						ENDIF
+					ELSE
+						IF EXP:参照経験 > 0
+							PRINTFORMLC 　%TRAINNAME:LCOUNT%({EXP:参照経験})
+							;非ボタンではPRINTC系がうまく動かないので変数使う
+							表示数++
+						ENDIF
 					ENDIF
 					SIF 表示数 != 0 && 表示数%4 == 0 && !LINEISEMPTY()
 						PRINTL 
