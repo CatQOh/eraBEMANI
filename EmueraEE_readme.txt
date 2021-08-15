@@ -1,5 +1,5 @@
-﻿タイトル：EmueraEE 最終更新日:2021/02/23
-バージョン：1.824+v11+EE
+﻿タイトル：EmueraEE 最終更新日:2021/08/15
+バージョン：1.824+v11+EEv3
 改変者：Enter
 元となったアプリケーション：Emuera1.824+v11（妊）|дﾟ)の中の人、及びMinorShift制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
@@ -37,6 +37,14 @@ PLAYBGMの音量を変更します。引数には0～100を指定できます
 
 Windows Media Playerのライブラリを使っているのでWMPがインストールされてるPCであれば、
 WMPで動く音声ファイルは全て動くと思います。
+
+・INPUTMOUSEKEYでボタン使用可能に
+命令実行時にRESULT:0=1(マウスクリック時)だった場合にRESULT:5にボタンの数値が入ります
+
+・GDRAWTEXT gID, "テキスト", X座標, Y座標
+指定したgIDにテキストを描写する 座標は省略可能
+GSETBRUSH cARGBと組み合わせることで文字の濃度と色を変更できる cARGBは濃度+文字色の16進数8桁
+
 
 [使用方法]
 Emueraが正常に動作するeraバリアントのディレクトリにてEmueraと同様の方法でお使いください
