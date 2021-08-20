@@ -17,7 +17,7 @@ IF 博物館広さ >= 30
 ELSE
 	CALL PASELIL, @"　[3] - 博物館を改装する（現在の広さ:{博物館広さ} 改装費用:{改装費用}＄）"
 ENDIF
-PRINTL [9] - 博物館マニュアル
+PRINTL 　[9] - 博物館マニュアル
 DRAWLINE
 PRINTPLAIN 　MUSEUM　
 PRINTL [0] - 戻る
@@ -192,10 +192,12 @@ ENDSELECT
 #DIM DYNAMIC 価値
 #DIM DYNAMIC 空き変数
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC 処理数
 #DIM DYNAMIC ページ数
+#DIM DYNAMIC 次ページあり
 
-GOTO CREATE_CORPSE
+;GOTO CREATE_CORPSE
 
 PRINTL □博物館用の作品を作ります 鉱物は魔法コマンドから作成してください
 PRINT 　[1] - キャラを
@@ -203,10 +205,11 @@ SETCOLORBYNAME red
 PRINT 加工
 RESETCOLOR
 PRINTL する
-PRINTL 　[2] - 既存の作品を組み合わせる
+;PRINTL 　[2] - 既存の作品を組み合わせる
+PRINTL 　[3] - 既存の作品を解体する
 PRINTL 　[0] - 戻る
 
-CALL INPUTF, 0, 1, 2
+CALL INPUTF, 0, 1, 2, 3
 
 SELECTCASE RESULT
 	CASE 0
@@ -215,6 +218,8 @@ SELECTCASE RESULT
 		GOTO CREATE_CORPSE
 	CASE 2
 		GOTO JOIN_CORPSE
+	CASE 3
+		GOTO DESTRUCT_CORPSE
 ENDSELECT
 
 
@@ -359,8 +364,102 @@ FOR LCOUNT, 1, 1000
 	PRINTFORML 　[{LCOUNT, 2}] %MUSEUM:LCOUNT:0%
 NEXT
 	
+$DESTRUCT_CORPSE
+PRINTL □作品を解体して展示物にできます 何を解体しますか？
+処理数 = 0
+FOR LCOUNT, 1, 1000
+	SIF !GROUPMATCH(MUSEUM:LCOUNT:0, "剥製", "白骨死体")
+		CONTINUE
+	IF 処理数 > ページ数*10+10
+		次ページあり = 1
+		BREAK
+	ENDIF
+	IF 処理数 < ページ数*10
+		処理数++
+		CONTINUE
+	ENDIF
+	PRINTFORML 　[{LCOUNT, 2}] %MUSEUM:LCOUNT:1%
+	処理数++
+NEXT
+DRAWLINE
+PRINTPLAINFORM 　解体　
+IF ページ数 > 0
+	PRINT [-1] 前ページ 
+ELSE
+	PRINTPLAINFORM %SPACESLENS("[-1] 前ページ ")%
+ENDIF
+PRINT [0] 戻る
+SIF 次ページあり
+	PRINT [-9] 次ページ
 
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE -1
+			SIF ページ数 > 0
+				ページ数--
+			GOTO DESTRUCT_CORPSE
+		CASE 0
+			RESTART
+		CASE -9
+			SIF 次ページあり
+				ページ数++
+			GOTO DESTRUCT_CORPSE
+		CASEELSE
+			対象 = RESULT
+			SIF !GROUPMATCH(MUSEUM:対象:0, "剥製", "白骨死体")
+				CONTINUE
+			BREAK
+	ENDSELECT
+LOOP 1
 
+PRINTFORML %MUSEUM:対象:1%を解体して展示物にします。よろしいですか？
+PRINTL [0] - はい
+PRINTL [1] - いいえ
+
+CALL INPUTF, 0, 1
+
+SIF RESULT == 1
+	GOTO DESTRUCT_CORPSE
+
+FOR LCOUNT, 0, 4
+	FOR LCOUNT2, 1, VARSIZE("MUSEUM", 0)
+		IF MUSEUM:LCOUNT2:0 == ""
+			空き変数 = LCOUNT2
+			BREAK
+		ENDIF
+	NEXT
+	MUSEUM:空き変数:0 = 部位
+	MUSEUM:空き変数:1 = %CSVNAMEF(TOINT(MUSEUM:対象:2))%の
+	SELECTCASE LCOUNT
+		CASE 0
+			MUSEUM:空き変数:1 += "頭"
+		CASE 1
+			MUSEUM:空き変数:1 += "胴体"
+		CASE 2
+			MUSEUM:空き変数:1 += "腕"
+		CASE 3
+			MUSEUM:空き変数:1 += "足"
+	ENDSELECT
+	SIF MUSEUM:対象:0 == "白骨"
+		MUSEUM:空き変数:1 += "(白骨)"
+
+	MUSEUM:空き変数:2 = %MUSEUM:対象:2%
+	MUSEUM:空き変数:3 = {TOINT(MUSEUM:対象:3)/5}
+	MUSEUM:空き変数:4 = %MUSEUM:対象:4%
+	MUSEUM:空き変数:5 = %MUSEUM:対象:5%
+	MUSEUM:空き変数:6 = 0
+	MUSEUM:空き変数:7 = 100
+	MUSEUM:空き変数:8 = 0
+	MUSEUM:空き変数:9 = %MUSEUM:対象:9%
+NEXT
+
+PRINTFORMW %MUSEUM:対象:1%を解体しました
+FOR LCOUNT, 0, 10
+	MUSEUM:対象:LCOUNT = 
+NEXT
+
+RETURN 1
 
 @INCOME_博物館
 #DIM DYNAMIC LCOUNT
@@ -407,7 +506,7 @@ FOR LCOUNTY, 0, 30
 	NEXT
 NEXT
 
-;同じキャラ(クローン)含むを一緒に設置した場合は価値が半減する
+;同じキャラ(クローン含む)を一緒に設置した場合は価値が半減する
 FOR LCOUNT, 1, 1000
 	IF 設置済み:LCOUNT
 		FOR LCOUNT2, 1, 1000
@@ -468,9 +567,9 @@ SIF 名声上昇量 > 0
 
 ;集客力の変動
 FOR LCOUNT, 1, 1000
-	;設置中なら5下げる 最低1
+	;設置中なら3下げる 最低1
 	IF 設置済み:LCOUNT
-		MUSEUM:LCOUNT:集客力 = {MAX(TOINT(MUSEUM:LCOUNT:集客力)-5, 1)}
+		MUSEUM:LCOUNT:集客力 = {MAX(TOINT(MUSEUM:LCOUNT:集客力)-3, 1)}
 	;設置してないやつは10上げる 最高150
 	ELSE
 		MUSEUM:LCOUNT:集客力 = {MIN(TOINT(MUSEUM:LCOUNT:集客力)+10, 150)}
