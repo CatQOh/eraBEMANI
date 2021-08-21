@@ -1,5 +1,5 @@
 ﻿タイトル：EmueraEE 最終更新日:2021/08/15
-バージョン：1.824+v11+EEv3
+バージョン：1.824+v11+EEv4
 改変者：Enter
 元となったアプリケーション：Emuera1.824+v11（妊）|дﾟ)の中の人、及びMinorShift制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
@@ -44,6 +44,14 @@ WMPで動く音声ファイルは全て動くと思います。
 ・GDRAWTEXT gID, "テキスト", X座標, Y座標
 指定したgIDにテキストを描写する 座標は省略可能
 GSETBRUSH cARGBと組み合わせることで文字の濃度と色を変更できる cARGBは濃度+文字色の16進数8桁
+
+・GGETFONT gID
+指定したIDの、GSETFONTで指定したフォント名を呼び出す
+同名の式中関数あり
+
+・GGETFONTSIZE gID
+指定したIDの、GSETFONTで指定したフォントサイズを呼び出す
+同名の式中関数あり
 
 
 [使用方法]
