@@ -24,7 +24,7 @@ DRAWLINE
 PRINTFORML □魔法一覧 詠唱者:%NAME:PLAYER% 魔法技能LV{スキル}
 PRINTFORML 　%NAME:PLAYER%の魔力%BARSTR(BASE:PLAYER:魔力, MAXBASE:PLAYER:魔力, 32)%({BASE:PLAYER:魔力}/{MAXBASE:PLAYER:魔力})
 IF TALENT:魔術師
-	SIF RELATION:PLAYER:(NO:TARGET) >= 150 && RELATION:TARGET:(NO:PLAYER) >= 150
+	SIF 相性値(PLAYER, TARGET) >= 150 && 相性値(TARGET, PLAYER) >= 150
 		PRINTFORML 　[ 1] - 魔力吸収 唇を介して魔力を受け取る 相性が良くないと実行不可（150％）
 	PRINTFORML 　[ 2] - 魔力譲与 唇を介して魔力を与える 相性が良いほど効率が良い（最高200％）
 ENDIF
@@ -99,7 +99,7 @@ DO
 		CASE 1
 			SIF !TALENT:魔術師
 				CONTINUE
-			SIF RELATION:PLAYER:(NO:TARGET) < 150 || RELATION:TARGET:(NO:PLAYER) < 150
+			SIF 相性値(PLAYER, TARGET) < 150 || 相性値(TARGET, PLAYER) < 150
 				CONTINUE
 			詠唱魔法 = 魔力吸収
 			CALL KOJO_MESSAGE_COM
@@ -107,7 +107,7 @@ DO
 			PRINTFORML %CALLNAME:TARGET%の魔力-{BASE:魔力-BASE:魔力/2}
 			BASE:魔力 /= 2
 			;PLAYERの魔力は相性に応じて貰った分だけ増加 200%でそのまま加算
-			消費量 = BASE:魔力*(LIMIT(RELATION:(NO:PLAYER)-100, 0, 100))/100
+			消費量 = BASE:魔力*(LIMIT(相性値(TARGET, PLAYER)-100, 0, 100))/100
 			PRINTFORML %CALLNAME:PLAYER%の魔力+{消費量}
 			BASE:PLAYER:魔力 += 消費量
 			CALL SETBASE, PLAYER
@@ -124,10 +124,10 @@ DO
 			BASE:PLAYER:魔力 /= 2
 			;魔力譲与は苦痛が伴う 相性によって効率が上がり、苦痛も軽減される
 			;効率=相性-100%
-			消費量 = BASE:PLAYER:魔力*(LIMIT(RELATION:(NO:PLAYER)-100, 0, 100))/100
+			消費量 = BASE:PLAYER:魔力*(LIMIT(相性値(TARGET, PLAYER)-100, 0, 100))/100
 			PRINTFORML %CALLNAME:TARGET%の魔力+{消費量}
 			;相性が100%以下だと最大体力の半分のダメージを受ける
-			LOSEBASE:体力 += MAXBASE:体力/2/LIMIT(RELATION:(NO:PLAYER)-100, 1, 100)
+			LOSEBASE:体力 += MAXBASE:体力/2/LIMIT(相性値(TARGET, PLAYER)-100, 1, 100)
 			BREAK
 		CASE 3
 			消費量 = 魔力消費量(3, スキル)/3
