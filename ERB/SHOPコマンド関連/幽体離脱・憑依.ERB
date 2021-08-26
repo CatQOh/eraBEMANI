@@ -1,5 +1,6 @@
 ﻿@SPECTRAL
-#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LRESULT
+#DIM DYNAMIC LTARGET
 
 PRINTL □幽体離脱・憑依ができます
 PRINTL 　[1] - 幽体離脱させる
@@ -15,6 +16,436 @@ SELECTCASE RESULT
 	CASE 0
 		RETURN
 	CASE 1
+		CALL 幽体離脱
+		RESTART
+	CASE 2
+		CALL 憑依
+		RESTART
+	CASE 3
 ENDSELECT
 
+PRINTL □依代一覧を表示します
+CALL 依代一覧
+LRESULT = RESULT
+
+SELECTCASE LRESULT
+	CASE 0
+		RESTART
+	CASEELSE
+		LOADCHARA @"依代_{LRESULT}_{データID}"
+		LTARGET = TARGET
+		TARGET = CHARANUM-1
+		DRAWLINE
+		PRINT □ 基本情報 
+		IF CFLAG:タグ色
+			IF ISSLIME(TARGET)
+				PRINT 体色:
+			ELSE
+				PRINT タグ色:
+			ENDIF
+			SETCOLOR CFLAG:タグ色
+			PRINT ■
+			RESETCOLOR
+		ENDIF
+		PRINTL 
+		PRINTFORM 　名前:%NAMEDISP(TARGET)% 性別:%性別表示(TARGET)% 
+		IF NO:TARGET >= 10000 || CSTR:種族 == CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
+			PRINTFORM 種族:%CSTR:種族% 
+		ELSEIF CSTR:種族 != CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
+			PRINTFORM 種族:元%CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))%の%CSTR:種族% 
+		ENDIF
+		PRINTL 
+		IF LANGUAGE == "ENG"
+			PRINTL □ Jewel
+		ELSE
+			PRINTL □ 珠
+		ENDIF
+		CALL SHOW_INFO_JUEL, TARGET
+		CALL SHOW_INFO, TARGET
+		WAIT
+		DELCHARA TARGET
+		TARGET = LTARGET
+		RESTART
+ENDSELECT
+
+@幽体離脱, 憑依霊 = -1
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 表示
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 幽体
+#DIM DYNAMIC 憑依霊
+
+IF 憑依霊 >= 0
+	PRINTFORML □%CALLNAME:憑依霊%を誰に憑依させますか？
+ELSE
+	PRINTL □誰を幽体離脱させますか？
+ENDIF
+
+FOR PAGING, 1, CHARANUM
+	IF 憑依霊 >= 0
+		表示 = 1
+	ELSE
+		表示 = 0
+	ENDIF
+	SIF TALENT:PAGING:霊感
+		表示 = 1
+	SIF CFLAG:PAGING:憑依 >= 0
+		表示 = 1
+	SIF TALENT:PAGING:無機物
+		表示 = 0
+	SIF CSTR:PAGING:種族 == "機械"
+		表示 = 0
+	SIF ISSLIME(PAGING)
+		表示 = 0
+	SIF 憑依霊 == PAGING
+		表示 = 0
+	CALL PAGING, 表示
+NEXT
+
+SIF RESULT == -1
+	RETURN 0
+
+対象 = RESULT
+
+IF CFLAG:対象:憑依 == NO:憑依霊
+	PRINTFORML %CSVNAMEF(NO:対象)%の精神を追い出して%CALLNAME:憑依霊%の精神を身体に戻します。よろしいですか？
+ELSEIF 憑依霊 >= 0
+	PRINTFORML %NAME:対象%の精神を追い出して%CALLNAME:憑依霊%を憑依させます。よろしいですか？
+ELSE
+	PRINTFORML %NAME:対象%を幽体離脱させます。よろしいですか？
+ENDIF
+PRINTL [0] - はい
+PRINTL [1] - いいえ
+
+CALL INPUTF, 0, 1
+
+SIF RESULT == 1
+	RESTART
+
+CALL 配属解除, 対象
+SIF 憑依霊 >= 0
+	CALL 配属解除, 憑依霊
+ADDCOPYCHARA 対象
+
+幽体 = CHARANUM-1
+
+;素質やABL等を精神と身体で分離する
+FOR LCOUNT, 0, VARSIZE("ABL")
+	SIF ABLNAME:LCOUNT == ""
+		CONTINUE
+	SELECTCASE ABLNAME:LCOUNT
+		;体に残るのは感覚系と中毒系
+		{
+		CASE "Ｃ感覚", "Ｖ感覚", "Ａ感覚", "Ｂ感覚", "メス度",
+			 "自慰中毒", "精液中毒", "レズ中毒", "ゲイ中毒", "性交中毒", "噴乳中毒",
+		}
+			ABL:幽体:LCOUNT = 0
+		CASEELSE
+			ABL:対象:LCOUNT = 0
+	ENDSELECT
+NEXT
+;CFLAGは全て身体
+VARSET CFLAG:幽体:0
+;誕生日だけ引き継ぐ
+CFLAG:幽体:誕生日 = CFLAG:対象:誕生日
+
+;CSTRは引き継ぐが種族は幽霊になる
+CSTR:幽体:種族 = 幽霊
+
+FOR LCOUNT, 0, VARSIZE("EXP")
+	SIF EXPNAME:LCOUNT == ""
+		CONTINUE
+	SELECTCASE EXPNAME:LCOUNT
+		;身体で覚える経験を分離する
+		{
+		CASE "Ｖ経験", "Ａ経験", "絶頂経験", "射精経験", "性交経験", "膣射経験", "精液経験", "噴乳経験", "放尿経験",
+			 "射精管理経験", "Ｖ拡張経験", "Ａ拡張経験", "出産経験", "流産経験", "尿道経験", "臍拡張経験", "尿管拡張経験",
+		}
+			EXP:幽体:LCOUNT = 0
+		CASEELSE
+			EXP:対象:LCOUNT = 0
+	ENDSELECT
+NEXT
+
+;MARKは全て幽体
+VARSET MARK:対象:0
+
+FOR LCOUNT, 0, VARSIZE("PALAM")
+	SIF PALAMNAME:LCOUNT == ""
+		CONTINUE
+	SELECTCASE PALAMNAME:LCOUNT
+		;快系JUELを分離する
+		CASE "快Ｃ", "快Ｖ", "快Ａ", "快Ｂ"
+			JUEL:幽体:LCOUNT = 0
+		CASEELSE
+			JUEL:対象:LCOUNT = 0
+	ENDSELECT
+NEXT
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF TALENTNAME:LCOUNT == ""
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		;身体系素質を分離する
+		{
+		CASE "処女", "再生処女", "童貞", "傷物", "改造済み",
+			 "痛みに弱い", "痛みに強い", "濡れやすい", "濡れにくい", "勃ちやすい", "勃ちにくい",
+			 "猫舌", "薬毒耐性", "おもらし癖", "淫核", "淫膣", "淫尻", "淫乳",
+			 "狐", "妖狐", "小柄体型", "Ｃ鈍感", "Ｃ敏感", "Ｖ鈍感", "Ｖ敏感", "Ａ鈍感", "Ａ敏感", "Ｂ鈍感", "Ｂ敏感",
+			 "ファーリー", "尻尾", "動物耳", "羽", "無機物", "小人体型", "暑さに弱い", "寒さに弱い", "アニマル",
+			 "足使用不可", "性転換済み", "ゾンビ", "母乳体質", "ふたなり", "絶倫", "去勢済み", "回復早い", "回復遅い",
+			 "日光浴", "月光浴", "人気", "妊娠", "育児中", "孔雀の瞳", "ドラゴン使い", "妊娠確定", "変化", "犬", "猫",
+			 "リミットバースト"
+		}
+			TALENT:幽体:LCOUNT = 0
+		CASE "性別", "バストサイズ"
+		CASEELSE
+			TALENT:対象:LCOUNT = 0
+	ENDSELECT
+NEXT
+;身体の相性を初期化
+VARSET RELATION:対象:0, 100
+
+;憑依フラグがあればNOと名前は元に戻る
+IF CFLAG:対象:憑依 >= 0
+	NAME:幽体 = %CSVNAMEF(NO:対象)%
+	CALLNAME:幽体 = %CSVCALLNAMEF(NO:対象)%
+	NAME:対象 = %CSVNAMEF(CFLAG:対象:憑依)%
+	CALLNAME:対象 = %CSVCALLNAMEF(CFLAG:対象:憑依)%
+	NO:対象 = CFLAG:対象:憑依
+	CFLAG:対象:憑依 = -1
+	TALENT:幽体:性別 = 憑依情報:対象:0
+	TALENT:幽体:バストサイズ = 憑依情報:対象:1
+	CFLAG:幽体:誕生日 = 憑依情報:対象:2
+ENDIF
+VARSET 憑依情報:対象:0
+VARSET 憑依情報:幽体:0
+
+IF 憑依霊 >= 0
+	PRINTFORML %CALLNAME:対象%の身体と精神を分離しました
+	TALENT:幽体:霊体 = 1
+	FOR LCOUNT, 1, 1000
+		IF 依代:LCOUNT == 0
+			SAVECHARA @"依代_{LCOUNT}_{データID}", @"%NAME:対象%の身体", 対象
+			依代:LCOUNT = 1
+			CALL CLEAR_CHARA, 対象
+			RETURN LCOUNT
+		ENDIF
+	NEXT
+ELSE
+	;身体は依代として保管
+	FOR LCOUNT, 1, 1000
+		IF 依代:LCOUNT == 0
+			SAVECHARA @"依代_{LCOUNT}_{データID}", @"%NAME:対象%の身体", 対象
+			依代:LCOUNT = 1
+			CALL CLEAR_CHARA, 対象
+			BREAK
+		ENDIF
+	NEXT
+
+	TARGET = CHARANUM-1
+
+	PRINTFORMW %CALLNAME:TARGET%の身体と精神を分離して、身体は依代として保管しました
+	TALENT:霊体 = 1
+
+	RETURN
+ENDIF
+
+@憑依
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 表示
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 憑依霊
+#DIMS DYNAMIC 憑依霊名
+
+PRINTL □誰を憑依させますか？
+
+FOR PAGING, 1, CHARANUM
+	表示 = 0
+	SIF TALENT:PAGING:霊体
+		表示 = 1
+	CALL PAGING, 表示
+NEXT
+
+SIF RESULT == -1
+	RETURN
+
+憑依霊 = RESULT
+憑依霊名 = %NAME:RESULT%
+
+PRINTL [0] - 他のキャラに憑依させる
+PRINTL [1] - 依代に憑依させる
+
+CALL INPUTF, 0, 1
+
+SELECTCASE RESULT
+	CASE 0
+		CALL 幽体離脱, 憑依霊
+	CASE 1
+		CALL 依代一覧
+ENDSELECT
+
+SIF RESULT == 0
+	RETURN
+
+;憑依霊名が違ってる場合は幽体離脱のCLEAR_CHARAで一人分ずれてるので修正する
+SIF 憑依霊名 != NAME:憑依霊
+	憑依霊--
+
+LOADCHARA @"依代_{RESULT}_{データID}"
+依代:RESULT = 0
+
+対象 = CHARANUM-1
+
+;幽体離脱で分離したものを合わせる
+FOR LCOUNT, 0, VARSIZE("ABL")
+	SIF ABLNAME:LCOUNT == ""
+		CONTINUE
+	SELECTCASE ABLNAME:LCOUNT
+		;体に残ってる感覚系と中毒系は身体のまま
+		{
+		CASE "Ｃ感覚", "Ｖ感覚", "Ａ感覚", "Ｂ感覚", "メス度",
+			 "自慰中毒", "精液中毒", "レズ中毒", "ゲイ中毒", "性交中毒", "噴乳中毒",
+		}
+		CASEELSE
+			ABL:対象:LCOUNT = ABL:憑依霊:LCOUNT
+	ENDSELECT
+NEXT
+
+FOR LCOUNT, 0, VARSIZE("EXP")
+	SIF EXPNAME:LCOUNT == ""
+		CONTINUE
+	SELECTCASE EXPNAME:LCOUNT
+		{
+		CASE "Ｖ経験", "Ａ経験", "絶頂経験", "射精経験", "性交経験", "膣射経験", "精液経験", "噴乳経験", "放尿経験",
+			 "射精管理経験", "Ｖ拡張経験", "Ａ拡張経験", "出産経験", "流産経験", "尿道経験", "臍拡張経験", "尿管拡張経験",
+		}
+		CASEELSE
+			EXP:対象:LCOUNT = EXP:憑依霊:LCOUNT
+	ENDSELECT
+NEXT
+
+FOR LCOUNT, 0, VARSIZE("MARK")
+	MARK:対象:LCOUNT = MARK:憑依霊:LCOUNT
+NEXT
+
+FOR LCOUNT, 0, VARSIZE("PALAM")
+	SIF PALAMNAME:LCOUNT == ""
+		CONTINUE
+	SELECTCASE PALAMNAME:LCOUNT
+		CASE "快Ｃ", "快Ｖ", "快Ａ", "快Ｂ"
+		CASEELSE
+			JUEL:対象:LCOUNT = JUEL:憑依霊:LCOUNT
+	ENDSELECT
+NEXT
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF TALENTNAME:LCOUNT == ""
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		;身体系素質を分離する
+		{
+		CASE "処女", "再生処女", "童貞", "傷物", "改造済み",
+			 "痛みに弱い", "痛みに強い", "濡れやすい", "濡れにくい", "勃ちやすい", "勃ちにくい",
+			 "猫舌", "薬毒耐性", "おもらし癖", "淫核", "淫膣", "淫尻", "淫乳",
+			 "狐", "妖狐", "小柄体型", "Ｃ鈍感", "Ｃ敏感", "Ｖ鈍感", "Ｖ敏感", "Ａ鈍感", "Ａ敏感", "Ｂ鈍感", "Ｂ敏感",
+			 "ファーリー", "尻尾", "動物耳", "羽", "無機物", "小人体型", "暑さに弱い", "寒さに弱い", "アニマル",
+			 "足使用不可", "性転換済み", "ゾンビ", "母乳体質", "ふたなり", "絶倫", "去勢済み", "回復早い", "回復遅い",
+			 "日光浴", "月光浴", "人気", "妊娠", "育児中", "孔雀の瞳", "ドラゴン使い", "妊娠確定", "変化", "犬", "猫",
+			 "リミットバースト"
+		}
+		CASE "性別", "バストサイズ"
+		CASEELSE
+			TALENT:対象:LCOUNT = TALENT:憑依霊:LCOUNT
+	ENDSELECT
+NEXT
+
+FOR LCOUNT, 0, 20000
+	RELATION:対象:LCOUNT = RELATION:憑依霊:LCOUNT
+NEXT
+
+;憑依霊の方の性別、バストサイズ、誕生日を記録しておく
+憑依情報:対象:0 = TALENT:憑依霊:性別
+憑依情報:対象:1 = TALENT:憑依霊:バストサイズ
+憑依情報:対象:2 = CFLAG:憑依霊:誕生日
+
+;憑依に身体のNOを移して憑依霊のNOに変える
+CFLAG:対象:憑依 = NO:対象
+NO:対象 = NO:憑依霊
+
+TALENT:対象:霊体 = 0
+
+IF CFLAG:対象:憑依 == NO:対象
+	PRINTFORMW %CALLNAME:対象%の身体に精神を戻しました
+	VARSET 憑依情報:対象:0
+	CFLAG:対象:憑依 = -1
+ELSE
+	PRINTFORMW %CALLNAME:対象%の身体に%CALLNAME:憑依霊%を憑依させました
+	NAME:対象 = %NAME:憑依霊%が憑依した%NAME:対象%
+	CALLNAME:対象 = %CALLNAME:憑依霊%が憑依した%CALLNAME:対象%
+ENDIF
+CALL CLEAR_CHARA, 憑依霊
+
+TARGET = CHARANUM-1
+
+RETURN
+
+
+@依代一覧
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 処理数
+#DIM DYNAMIC 次ページあり
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC LRESULT
+
+処理数 = 0
+次ページあり = 0
+FOR LCOUNT, 1, 1000
+	IF 処理数 >= ページ数*20+20
+		IF 依代:LCOUNT && CHKCHARADATA(@"依代_{LCOUNT}_{データID}") == 0
+			次ページあり = 1
+			BREAK
+		ENDIF
+	ENDIF
+	IF 依代:LCOUNT && CHKCHARADATA(@"依代_{LCOUNT}_{データID}") == 0
+		SIF ページ数*20 <= 処理数
+			PRINTFORML 　[{LCOUNT, RESULT}] - %RESULTS%
+		処理数++
+	ENDIF
+NEXT
+DRAWLINE
+PRINTPLAIN 　依代一覧　
+IF ページ数
+	PRINT [-1] - 前ページ 
+ELSE
+	PRINTPLAINFORM %SPACESLENS("[-1] - 前ページ ")%
+ENDIF
+PRINT [0] - 戻る
+IF 次ページあり
+	PRINT [-9] - 次ページ
+ELSE
+	PRINTPLAINFORM %SPACESLENS("[-9] - 次ページ")%
+ENDIF
+PRINTL 
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			RETURN 0
+		CASE -1
+			SIF ページ数
+				ページ数--
+			RESTART
+		CASE -9
+			SIF 次ページあり
+				ページ数++
+			RESTART
+		CASEELSE
+			LRESULT = RESULT
+			SIF 依代:LRESULT && CHKCHARADATA(@"依代_{LRESULT}_{データID}") == 0
+				RETURN LRESULT
+			RESTART
+	ENDSELECT
+LOOP 1
 
