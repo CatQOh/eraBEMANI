@@ -47,6 +47,7 @@ RESTART
 #DIM DYNAMIC 日
 #DIM DYNAMIC コスト
 #DIM DYNAMIC 詠唱者
+#DIM DYNAMIC 表示
 スキル = ABL:詠唱者:魔法技能
 DRAWLINE
 PRINTFORML □魔法一覧 詠唱者:%NAME:詠唱者% 魔法技能LV{スキル}
@@ -327,22 +328,25 @@ DO
 			使用スペル = RESULT
 			PRINTFORML □ビーストモード\@ 使用スペル == 7 ? type2 #  \@で獣人化する対象を選んでください
 			FOR PAGING, 0, CHARANUM
-				コスト = 0
+				表示 = 0
 				;既に付与素質全部あるキャラは無理
 				IF 使用スペル == 7
 					SIF !TALENT:PAGING:尻尾 || !TALENT:PAGING:動物耳 || !TALENT:PAGING:ファーリー
-						コスト = 1
+						表示 = 1
 				ELSE
 					SIF !TALENT:PAGING:尻尾 || !TALENT:PAGING:動物耳
-						コスト = 1
+						表示 = 1
 				ENDIF
 				;ビーストモード発動中のキャラは無理
 				SIF ビーストモード:PAGING:0
-					コスト = 0
+					表示 = 0
 				;詠唱者も無理
 				SIF PAGING == 詠唱者
-					コスト = 0
-				CALL PAGING, コスト, @"%CSTR:PAGING:種族%"
+					表示 = 0
+				;霊体も無理
+				SIF TALENT:PAGING:霊体
+					表示 = 0
+				CALL PAGING, 表示, @"%CSTR:PAGING:種族%"
 			NEXT
 			SIF RESULT == -1
 				RESTART
@@ -419,11 +423,11 @@ DO
 			SIF スキル < 6
 				CONTINUE
 			PRINTL □ジェントルストレスでストレスを抑える対象を選んでください
-			コスト = 0
+			表示 = 0
 			SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳) || TALENT:詠唱者:孔雀の瞳
-				コスト = 1
+				表示 = 1
 			FOR PAGING, 0, CHARANUM
-				CALL PAGING, 詠唱者 != PAGING, @"\@ コスト ? ストレス値:{CFLAG:PAGING:ストレス値} #  \@"
+				CALL PAGING, 詠唱者 != PAGING, @"\@ 表示 ? ストレス値:{CFLAG:PAGING:ストレス値} #  \@"
 			NEXT
 			SIF RESULT == -1
 				RESTART
@@ -626,7 +630,7 @@ DO
 				ポゼッション:対象:LCOUNT = ABL:対象:LCOUNT
 				ABL:対象:LCOUNT = ABL:詠唱者:LCOUNT
 			NEXT
-			CFLAG:対象:憑依中 = スキル
+			CFLAG:対象:ポゼ = スキル
 		CASE 15
 			IF スキル < 10
 				IF CHARANAMEF(詠唱者) == "山形 まり花" && スキル < 8
@@ -1055,4 +1059,22 @@ INT_G = LIMIT(INT_G, 0, 255)
 INT_B = LIMIT(INT_B, 0, 255)
 
 RESTART
+
+@ISENCHANT, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+;対象に魔法強化がかかっているかの判定
+SIF 対象 < 0
+	RETURNF 0
+
+SIF ビーストモード:対象:0
+	RETURNF 1
+SIF ジェントルストレス:対象:0
+	RETURNF 1
+SIF ティルナノーグ:対象:0
+	RETURNF 1
+SIF CFLAG:対象:ポゼ
+	RETURNF 1
+
+RETURNF 0
 

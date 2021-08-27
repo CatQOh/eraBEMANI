@@ -21,6 +21,7 @@ PRINTFORML 　[2] - 体型を変更する(\@ 体型設定 == 1 ? 子供:3000ml�
 PRINTFORML 　[3] - スライムの粘液(\@ スライム設定 == 1 ? 混ぜる:500ml必要 # 混ぜない \@)
 PRINTL 　[4] - 上記の条件でシミュレートする
 PRINTL 　[5] - DNAデータからクローンを作る
+PRINTL 　[6] - 霊体に依代を用意する
 DRAWLINE
 PRINTPLAIN 　人体錬成　
 PRINTL 　[0] - 戻る
@@ -67,6 +68,9 @@ DO
 			SIF VAGINA(対象)
 				TALENT:対象:処女 = 1
 			BREAK
+		CASE 6
+			CALL ANIMATE_BODY
+			RESTART
 	ENDSELECT
 LOOP 1
 
@@ -400,3 +404,52 @@ DO
 				RETURN RESULT
 	ENDSELECT
 LOOP 1
+
+@ANIMATE_BODY
+#DIM DYNAMIC 対象
+
+PRINTL □霊体に生身の身体を用意します。対象を選んでください
+PRINTL 　保管済み血液:{FLAG:保管済み血液}ml 小柄体型は3000ml、それ以外は5000ml必要
+
+FOR PAGING, 0, CHARANUM
+	CALL PAGING, TALENT:PAGING:霊体, @"\@ TALENT:PAGING:小柄体型 ? 小柄体型 #\@"
+NEXT
+
+SIF RESULT == -1
+	RETURN
+
+対象 = RESULT
+
+IF TALENT:対象:小柄体型
+	IF FLAG:保管済み血液 < 3000
+		PRINTW 血液が3000ml必要です。材料の血液が足りません
+		RESTART
+	ENDIF
+ELSE
+	IF FLAG:保管済み血液 < 5000
+		PRINTW 血液が5000ml必要です。材料の血液が足りません
+		RESTART
+	ENDIF
+ENDIF
+
+PRINTFORML 血液を\@ TALENT:対象:小柄体型 ? 3000ml # 5000ml \@使用して%NAME:対象%の身体を用意します。よろしいですか？
+PRINTL [0] - はい
+PRINTL [1] - いいえ
+
+CALL INPUTF, 0, 1
+SIF RESULT == 1
+	RESTART
+
+IF TALENT:対象:小柄体型
+	FLAG:保管済み血液 -= 3000
+ELSE
+	FLAG:保管済み血液 -= 5000
+ENDIF
+
+PRINTFORMW 身体を作り、%NAME:対象%を宿しました
+TARGET = 対象
+CSTR:種族 = 人間
+TALENT:霊体 = 0
+
+RETURN
+
