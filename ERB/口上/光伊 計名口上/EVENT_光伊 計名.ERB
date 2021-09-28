@@ -23,10 +23,6 @@ SIF CFLAG:憑依 >= 0
 SIF FLAG:口上表示 == 0 
 	RETURN 0
 
-;新婚モード以外では非表示
-SIF ゲームモード() != "新婚モード"
-	RETURN 0
-
 ;男でないと表示しない
 SIF SEX(MASTER) == 2
 	RETURN 0
@@ -65,24 +61,68 @@ SIF SEX(MASTER) == 2
 DRAWLINE
 ;初調教時
 IF FEVE:0 == 0
-	PRINTW 「無事婚式と各種手続きも済んだことですし、何だろうその、宜しくお願いしますね」
-	PRINTW 「………………って、表面で畏まる必要ないんやった」
-	PRINTW 「今後もお付き合いのほど、よろしゅうな？」
-	PRINTL [0] こちらこそ宜しく
-	PRINTL [1] 今夜は寝かせない
-	DO
-		INPUT
-		SELECTCASE RESULT
-			CASE 0
-				PRINTW 「私に出来る事なら…夫婦として暮らせるの、人生で一番嬉しいよ」
-				PRINTFORMW 伴侶として付添うケイナに、%CALLNAME:PLAYER%も期待に胸が膨らんだ
-			CASE 1
-				PRINTW 「ふふっ、寝かせない程に燃える夜…期待してるで？」
-				PRINTW  これから始まる新婚生活は熱い情事ばかりになりそうだ…
-		ENDSELECT
-	LOOP LOOPRES(0, 1)
-	FEVE:0 = 1
-	FEVE:MASTER:0 = 1
+	;新婚モードのみ
+	IF ゲームモード() == "新婚モード"
+		PRINTW 「無事婚式と各種手続きも済んだことですし、何だろうその、宜しくお願いしますね」
+		PRINTW 「………………って、表面で畏まる必要ないんやった」
+		PRINTW 「今後もお付き合いのほど、よろしゅうな？」
+		PRINTL [0] こちらこそ宜しく
+		PRINTL [1] 今夜は寝かせない
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					PRINTW 「私に出来る事なら…夫婦として暮らせるの、人生で一番嬉しいよ」
+					PRINTFORMW 伴侶として付添うケイナに、%CALLNAME:PLAYER%も期待に胸が膨らんだ
+				CASE 1
+					PRINTW 「ふふっ、寝かせない程に燃える夜…期待してるで？」
+					PRINTW  これから始まる新婚生活は熱い情事ばかりになりそうだ…
+			ENDSELECT
+		LOOP LOOPRES(0, 1)
+		FEVE:0 = 1
+		FEVE:MASTER:0 = 1
+	;通常モード時のみ初調教（経営でも非表示にしているのは陥落済み前提だから）
+	ELSEIF ゲームモード() != "経営モード"
+		PRINTW ケイナが目覚めると、そこは殺風景な地下室だった。
+		PRINTW 自分が監禁されていると知った矢先、主と思しき人物に警戒心を露わにする
+		PRINTW 「誰ですか」
+		PRINTW 「…何処の人間か知らないが、解放させてくれる気は無さそうですね…」
+		FEVE:0 = 1
+	ENDIF
+	;新婚モード以外での陥落済み初調教
+ELSEIF CFLAG:陥落 && ゲームモード() != "新婚モード"
+	IF FEVE:0 == 1
+		PRINTW 「ここまで本気に向かい合ってくるとは思いませんでしたよ。私も貴方の事を…」
+		PRINTW ケイナは照れくさそうにするが、その想いはお互い同じだ。
+		PRINTW 「んぁ～、好き…なのは分かってるんやけど…こんな事され続けてたらならない方がおかしいって」
+		PRINTW 「これからも宜しく…な？」
+		FEVE:0 = 2
+	ENDIF
+;未陥落(新婚モードでは非表示)
+ELSEIF MARK:屈服刻印 >= 2 && ゲームモード() != "新婚モード"
+	SELECTCASE RAND:3
+		CASE 0
+			PRINTFORMW 「そんな…私は別に期待なんてしてませんし…」
+		CASE 1
+			PRINTFORMW 「また、その…いやらしい事をするつもりでしょう…？」
+		CASE 2
+			PRINTFORMW 「痛い事さえしなければ良いですけど」
+	ENDSELECT
+ELSEIF MARK:反発刻印 >= 3 && ゲームモード() != "新婚モード"
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 「来るな、これ以上来たら許さない…！」
+			PRINTFORMW 「飼い殺しにされてたまるか！」
+		CASE 1
+			PRINTFORMW ケイナは強い憎悪で%CALLNAME:PLAYER%を睨んでいる…
+	ENDSELECT
+ELSEIF ゲームモード() != "新婚モード"
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 何時になれば…と一人呟きながら憂鬱な表情で眺めている
+		CASE 1
+			PRINTFORMW %CALLNAME:PLAYER%の顔を見る度、ケイナは面倒そうに溜息を付いた…
+	ENDSELECT
 ENDIF
 
 RETURN 0
@@ -91,10 +131,6 @@ RETURN 0
 ;調教終了時のセリフ
 ;-------------------------------------------------
 @KOJO_TURNEND_光伊_計名
-;憑依時に口上を表示しない 表示する場合はコメントアウト
-SIF CFLAG:憑依 >= 0
-	RETURN 0
-
 DRAWLINE
 ;通常終了時
 IF BASE:体力 >= 500
@@ -111,7 +147,7 @@ ELSEIF BASE:体力 < 500
 		PRINTFORMW 「疲れた…」
 	;その他
 	ELSE
-		;PRINTFORMW 
+		PRINTFORMW 「なんて人だ、体力無いのに…」
 	ENDIF
 ENDIF
 
@@ -122,6 +158,7 @@ RETURN 0
 ;コマンド実行時に出力されます
 ;--------------------------------------------------
 @KOJO_COM_光伊_計名
+
 ;助手が調教した時に口上をスキップする（好みに応じて使う、行頭の;を消すとスキップするようになる）
 ;SIF PLAYER != MASTER
 ;	RETURN 0
@@ -136,9 +173,6 @@ SIF CFLAG:憑依 >= 0
 SIF TEQUIP:ボールギャグ &&  SELECTCOMS != "ボールギャグ"
 	RETURN 0
 SIF FLAG:口上表示 == 0
-	RETURN 0
-;新婚モード以外では非表示
-SIF ゲームモード() != "新婚モード"
 	RETURN 0
 ;男でないと表示しない
 SIF SEX(MASTER) == 2
@@ -163,9 +197,6 @@ TRYCALLFORM MESSAGE_USERCOM_{ARG}
 ;憑依時に口上を表示しない 表示する場合はコメントアウト
 SIF CFLAG:憑依 >= 0
 	RETURN 0
-;新婚モード以外では非表示
-SIF ゲームモード() != "新婚モード"
-	RETURN 0
 
 TRYCALLFORM USERCOM_{ARG}_光伊_計名
 
@@ -180,7 +211,7 @@ IF PLAYER == ASSI
 		PRINTFORMW %CALLNAME:PLAYER%の前でも変わらぬ振る舞いをするケイナだが、どうしても%CALLNAME:MASTER%の顔に視線が来てしまう…
 	;それ以外
 	ELSE
-		;PRINTFORMW 
+		PRINTFORMW （…？）
 	ENDIF
 ;助手が主人と交代した時
 ELSEIF PLAYER == MASTER
@@ -189,7 +220,7 @@ ELSEIF PLAYER == MASTER
 		PRINTFORMW 愛しい%CALLNAME:MASTER%の前にケイナは安心感を感じている
 	;それ以外
 	ELSE
-		;PRINTFORMW 
+		PRINTFORMW 「はぁ、また貴方ですか…」
 	ENDIF
 ENDIF
 
@@ -213,9 +244,6 @@ SIF TEQUIP:ボールギャグ &&  SELECTCOMS != "ボールギャグ"
 	RETURN 0
 SIF FLAG:口上表示 == 0
 	RETURN 0
-;新婚モードのみ
-SIF ゲームモード() != "新婚モード"
-	RETURN 0
 ;男性でないと表示しない
 SIF SEX(MASTER) == 2
 	RETURN 0
@@ -227,10 +255,9 @@ SIF SEX(MASTER) == 2
 ;SELECTCOMS = "実行したコマンド名"
 ;-------------------------------------------------
 IF NOWEX:PLAYER:射精 && !TEQUIP:PLAYER:コンドーム
-	;陥落済み
-	IF CFLAG:陥落
-		SELECTCASE SELECTCOMS
-			CASE "フェラチオ", "二本フェラ", "シックスナイン"
+	SELECTCASE SELECTCOMS
+		CASE "フェラチオ", "二本フェラ", "シックスナイン"
+			IF CFLAG:陥落
 				SELECTCASE RAND:3
 					CASE 0
 						PRINTW ｢んっ……むぐぅ、んーっ！｣
@@ -241,14 +268,37 @@ IF NOWEX:PLAYER:射精 && !TEQUIP:PLAYER:コンドーム
 					CASE 2
 						PRINTFORMW 「は…ぁっ、すごく濃いの出たけど、溜ってたんやろ？この時に為に…？」
 				ENDSELECT
-			CASE "イマラチオ"
+			ELSEIF MARK:屈服刻印 == 3
+				SELECTCASE RAND:3
+					CASE 0
+						PRINTFORMW 「っはぁ…はぁ、はぁ…」
+						PRINTFORMW （どれだけ出せるんだこの人は…）
+					CASE 1
+						PRINTFORMW 「ん…ふっ…んく…」
+						PRINTFORMW 「…もう、慣れてきたかな…」
+					CASEELSE
+						PRINTFORMW 「うぐっ！？んんーっ！」
+				ENDSELECT
+			ELSE
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「げほ、ごほっ…こんな量飲み切れるか！」
+					CASE 1
+						PRINTFORMW 「……………自分だけ気持ち良くなるなんて不愉快だ」
+						PRINTFORMW 「不味いし最悪…」
+				ENDSELECT
+			ENDIF
+		CASE "イマラチオ"
+			IF CFLAG:陥落
 				SELECTCASE RAND:2
 					CASE 0
 						PRINTFORMW 喉奥に出され、勢いよく引き抜かれたがまだえづいてる様子だ…
 					CASE 1
 						PRINTFORMW  飲み切るも、その際気管に入ったのかせき込んでいる…
 				ENDSELECT
-			CASE "正常位アナル", "騎乗位アナル", "対面座位アナル"
+			ENDIF
+		CASE "正常位アナル", "騎乗位アナル", "対面座位アナル"
+			IF CFLAG:陥落
 				SELECTCASE RAND:2
 					CASE 0
 						PRINTW 「イイっ…中にいっぱい出てるぅ…」
@@ -256,7 +306,19 @@ IF NOWEX:PLAYER:射精 && !TEQUIP:PLAYER:コンドーム
 					CASE 1
 						PRINTFORMW 「ひっ、あぁあああ…！あついぃ…」
 				ENDSELECT
-			CASE "後背位アナル"
+			ELSEIF MARK:屈服刻印 == 3
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「だ、やだぁ…出さないで！中にだけは…っ！」
+					CASE 1
+						PRINTFORMW 「ぁ…あぁあああっ！…出てるぅ…………」
+				ENDSELECT
+			ELSE
+				PRINTFORMW 「……はぁ、はぁ………………さない…絶対に許さないからな………！」
+				PRINTFORMW 腸内に伝わる忌々しい痛覚に苛まれながら、ケイナは%CALLNAME:PLAYER%に向けて怨嗟の言葉を吐いた…
+			ENDIF
+		CASE "後背位アナル"
+			IF CFLAG:陥落
 				SELECTCASE RAND:2
 					CASE 0
 						PRINTFORMW 「あ゛ぁう゛う゛ぅ…ご、ごめんなさいぃ…やらしくてごめんなさいぃ…」
@@ -264,7 +326,18 @@ IF NOWEX:PLAYER:射精 && !TEQUIP:PLAYER:コンドーム
 					CASE 1
 						PRINTFORMW 「やぁあ……イってるからぁ…！」
 				ENDSELECT
-			CASE "背面座位アナル"
+			ELSEIF MARK:屈服刻印 == 3
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「だ…だめぇ！ダメですっ……」
+					CASE 1
+						PRINTFORMW 「ううっ、根本まで来て…いぁああ！」
+				ENDSELECT
+			ELSE
+				PRINTFORMW 「く…はぁ…この外道が……」
+			ENDIF
+		CASE "背面座位アナル"
+			IF CFLAG:陥落
 				SELECTCASE RAND:2
 					CASE 0
 						PRINTFORMW 「あぁ…あ、いしてる……%CALLNAME:PLAYER%、…っ！」
@@ -272,8 +345,23 @@ IF NOWEX:PLAYER:射精 && !TEQUIP:PLAYER:コンドーム
 					CASE 1
 						PRINTFORMW ｢はぁんっ！……んん……｣
 				ENDSELECT
-		ENDSELECT
-	ENDIF
+			ELSEIF MARK:屈服刻印 == 3
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「ひぐっ、うぁあああ…！」
+						PRINTFORMW 「すごい……ぁあ…熱い…！」
+					CASE 1
+						PRINTFORMW 「うぅうぁあああ…っ、はぁ…出てるぅ…」
+				ENDSELECT
+			ELSE
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 背面座位から射精された途端、絶頂に震えていた筈のケイナに罵倒されてしまった…
+					CASE 1
+						PRINTFORMW 身体を弄られ抵抗していたケイナだが、%CALLNAME:MASTER%に腰を掴まれたまま直腸に出された…
+				ENDSELECT
+			ENDIF
+	ENDSELECT
 ENDIF
 ;-------------------------------------------------
 ;@KOJO_MESSAGE_TSHOOT（X1をキャラ番号に置換）
@@ -295,8 +383,8 @@ SIF TEQUIP:ボールギャグ &&  SELECTCOMS != "ボールギャグ"
 	RETURN 0
 SIF FLAG:口上表示 == 0
 	RETURN 0
-;新婚モード以外では非表示
-SIF ゲームモード() != "新婚モード"
+;男でないと表示しない
+SIF SEX(MASTER) == 2
 	RETURN 0
 
 ;-------------------------------------------------
@@ -308,7 +396,7 @@ SIF ゲームモード() != "新婚モード"
 IF NOWEX:MASTER:触手射精
 	SELECTCASE SELECTCOMS
 		CASE "アナル触手", "触手挿入"
-			SELECTCASE RAND:3
+			SELECTCASE RAND:4
 				CASE 0
 					PRINTFORMW 「いっ！？あぁ…っ！」
 				CASE 1
@@ -331,7 +419,7 @@ ENDIF
 ;	RETURN 0 
 
 ;地の文表示関数 地の文表示させたくない場合はコメントアウト
-
+;TRYCALL EX_MESSAGE
 
 ;憑依時に口上を表示しない 表示する場合はコメントアウト
 SIF CFLAG:憑依 >= 0
@@ -340,9 +428,6 @@ SIF CFLAG:憑依 >= 0
 SIF TEQUIP:ボールギャグ &&  SELECTCOMS != "ボールギャグ"
 	RETURN 0
 SIF FLAG:口上表示 == 0
-	RETURN 0
-;新婚モードのみ
-SIF ゲームモード() != "新婚モード"
 	RETURN 0
 ;男性でないと表示しない
 SIF SEX(MASTER) == 2
@@ -355,7 +440,7 @@ SIF SEX(MASTER) == 2
 ;-------------------------------------------------
 IF NOWEX:Ｃ絶頂
 	SELECTCASE SELECTCOMS
-		CASE "手淫する"
+		CASE "自慰", "手淫する"
 			PRINTFORMW  ｢あぁ…っ！｣
 		CASEELSE 
 			PRINTFORMW 「ぃ…ぁあっ…！」
@@ -382,24 +467,98 @@ ENDIF
 IF NOWEX:Ａ絶頂
 	SELECTCASE SELECTCOMS
 		CASE "アナル愛撫", "アナル舐め"
-			SELECTCASE RAND:2
-				CASE 0
-					PRINTFORMW 「そないに弄られたら…ああっ…！」
-				CASE 1
-					PRINTFORMW 「んんっ…も、もうだめ…！」
-			ENDSELECT
-		CASE "アナルバイブ"
-			SELECTCASE ABL:Ａ感覚
-				;Ａ感覚Lv3以下
-				CASE IS <= 3
-					PRINTFORMW 「うぁ、変な気分っ…」
-				;Ａ感覚Lv4~6
-				CASE 4 TO 6
-					PRINTFORMW 「ひ…くっ…ぁあ…」
-				;Ａ感覚LV7以上
-				CASE IS >= 7
-					PRINTFORMW 「ひぃん…はぁあああ…もっとぉ…」
-			ENDSELECT
+			IF CFLAG:陥落
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「そないに弄られたら…ああっ…！」
+					CASE 1
+						PRINTFORMW 「んんっ…も、もうだめ…！」
+				ENDSELECT
+			ELSEIF MARK:屈服刻印 == 2
+				SELECTCASE ABL:Ａ感覚
+					;Ａ感覚Lv4以下
+					CASE IS <= 4
+						PRINTFORMW 「っあ…はぁ…」
+						PRINTFORMW 「少し、くすぐったい…」
+					;Ａ感覚Lv5以上
+					CASE IS >= 5
+						PRINTFORMW 「んん…っ、ひくっ…！」
+				ENDSELECT
+			ENDIF
+		CASE "アナルバイブ", "アナル触手"
+			IF CFLAG:陥落
+				SELECTCASE ABL:Ａ感覚
+					;Ａ感覚Lv3以下
+					CASE IS <= 3
+						PRINTFORMW 「うぁ、変な気分っ…」
+					;Ａ感覚Lv4~6
+					CASE 4 TO 6
+						PRINTFORMW 「ひ…くっ…ぁあ…」
+					;Ａ感覚LV7以上
+					CASE IS >= 7
+						PRINTFORMW 「ひぃん…はぁあああ…もっとぉ…」
+				ENDSELECT
+			ELSEIF MARK:屈服刻印 == 2
+				SELECTCASE ABL:Ａ感覚
+					;Ａ感覚Lv3以下
+					CASE IS <= 3
+						PRINTFORMW 「あぁ！いっ…たぁ…！」
+					;Ａ感覚Lv4以上
+					CASE IS >= 4
+						PRINTFORMW 「～～～～～～～～ッ！！」
+						PRINTFORMW 「は…はぁあああ…」
+				ENDSELECT
+			ENDIF
+		CASE  "対面座位アナル","背面座位アナル"
+			IF CFLAG:陥落
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW ｢あ…はぁあ！……ぁあ……いぃ……………｣
+						PRINTFORMW ｢うぅ……抜き差しする音がっ……はぁんっ！恥ずかし……んん……｣
+					CASE 1
+						PRINTFORMW ｢やぁう……んはぁ…あぁああああ……！｣
+						PRINTFORMW ｢も…っ………気持ち良すぎてダメっ……｣
+				ENDSELECT
+			ELSEIF MARK:屈服刻印 == 3
+				SELECTCASE RAND:3
+					CASE 0
+						PRINTFORMW 「お、ねがい…こっち見ないで…！」
+					CASE 1
+						PRINTFORMW 「ひぃ…いぃ…！」
+					CASEELSE
+						PRINTFORMW 「いっ…！」
+				ENDSELECT
+			ELSE
+				PRINTFORMW 「あぁ…こんなの、屈辱だ…」
+			ENDIF
+		CASE "後背位アナル", "正常位アナル"
+			IF CFLAG:陥落
+				SELECTCASE RAND:3
+					CASE 0
+						PRINTFORMW 「あぁああっ…っひ…！やぁ…やだやだっ！これ以上腰、動かさんといてやぁ！」
+						PRINTFORMW 「————————————————ッ！！！」
+					CASE 1
+						PRINTFORMW ｢嫌、やだぁ…！奥まで犯されるのやだぁあああ………｣
+					CASE 2
+						PRINTFORMW 「だめっ、だめぇ！これ気持ちよすぎて嫌なのにぃ………！」
+				ENDSELECT
+			ELSEIF MARK:屈服刻印 == 3
+				SELECTCASE RAND:3
+					CASE 0
+						PRINTFORMW 「い…やぁ…やだ…やめてぇ…！」
+					CASE 1
+						PRINTFORMW 「お願いっ…中に出さないで…！」
+					CASEELSE
+						PRINTFORMW 「ひぁああ…や、めろぉ…」
+				ENDSELECT
+			ELSE
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「あぐっ！うぅっ…！」
+					CASE 1
+						PRINTFORMW 「この人でなしぃ…っ！」
+				ENDSELECT
+			ENDIF
 	ENDSELECT
 ENDIF
 
@@ -409,19 +568,44 @@ ENDIF
 IF NOWEX:Ｂ絶頂
 	SELECTCASE SELECTCOMS
 		CASE "胸愛撫"
-			SELECTCASE RAND:2
-				CASE 0
-					PRINTFORMW 「ひぅ、うぁっ…！」
-				CASE 1
-					PRINTFORMW 「む、胸だけでイってる…っ！」
-			ENDSELECT
+			IF CFLAG:陥落
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「ひぅ、うぁっ…！」
+					CASE 1
+						PRINTFORMW 「む、胸だけでイってる…っ！」
+				ENDSELECT
+			ELSEIF MARK:屈服刻印 == 2
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「んん…っ…そん、なぁ…っ…」
+					CASE 1
+						PRINTFORMW 執拗に胸板を撫でられ、快感に身体を震わせている…
+				ENDSELECT
+			ENDIF
 		CASE "乳首ローター", "触手乳首責め", "乳首責め"
-			SELECTCASE RAND:2
-				CASE 0
-					PRINTFORMW 「ひ、くっ…乳首ばっか責められてぇ…」
-				CASE 1
-					PRINTFORMW 「あくぅ…乳首やだぁ…」
-			ENDSELECT
+			IF CFLAG:陥落
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「ひ、くっ…乳首ばっか責められてぇ…」
+					CASE 1
+						PRINTFORMW 「あくぅ…乳首やだぁ…」
+				ENDSELECT
+			ELSEIF MARK:屈服刻印 == 2
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「あ…くっ…弄り回すなぁ…」
+					CASE 1
+						IF TEQUIP:ニプルキャップ
+							PRINTFORMW ローターの振動で
+						ELSEIF TEQUIP:触手
+							PRINTFORMW 乳首に張り付いていた触手からの
+						ELSE
+							PRINTFORM 捏ね繰り回す指先で
+						ENDIF
+						PRINTFORMW 絶頂に背中を仰け反らせてしまっている…
+				ENDSELECT
+			ENDIF
 	ENDSELECT
 ENDIF
 
@@ -432,22 +616,55 @@ ENDIF
 IF NOWEX:射精
 	SELECTCASE SELECTCOMS
 		CASE "手淫する"
-			SELECTCASE RAND:3
-				CASE 0
-					PRINTFORMW ｢あ……はぁっ…イ、イクっ…！｣
-					PRINTFORMW 自らの射精で%CALLNAME:PLAYER%の手を白く汚したが、そのお返しと言わんばかりに指先を丁寧に舐め上げていく……
-				CASE 1
-					PRINTFORMW 「く…っ、あ、そないに扱かんで…！っあ！くぅうう…」
-				CASE 2
-					PRINTFORMW 「は…あぁ…きもち、いぃ…」
-			ENDSELECT
+			IF CFLAG:陥落
+				SELECTCASE RAND:3
+					CASE 0
+						PRINTFORMW ｢あ……はぁっ…イ、イクっ…！｣
+						PRINTFORMW 自らの射精で%CALLNAME:PLAYER%の手を白く汚したが、そのお返しと言わんばかりに指先を丁寧に舐め上げていく……
+					CASE 1
+						PRINTFORMW 「く…っ、あ、そないに扱かんで…！っあ！くぅうう…」
+					CASE 2
+						PRINTFORMW 「は…あぁ…きもち、いぃ…」
+						IF TEQUIP:オナホール
+							PRINTFORMW オナホールの程好い感触に包み込まれたまま内部に射精する…
+						ELSE
+							PRINTFORMW 自分の性感帯を知り尽くした%CALLNAME:PLAYER%に扱かれるのが幸せな様だ…
+						ENDIF
+				ENDSELECT
+			ELSEIF MARK:屈服刻印 == 3
+				SELECTCASE RAND:3
+					CASE 0
+						PRINTFORMW 「い…っ、はぁ…っ」
+					CASE 1
+						PRINTFORMW 「ひゃっ…あぁ…」
+					CASEELSE
+						PRINTFORMW 「ダメですったら…っ！」
+				ENDSELECT
+			ELSE
+				PRINTFORMW 「く…はぁっ…これ、貴方のせいですからね…っ！」
+				PRINTFORMW ケイナは人前で射精された屈辱に震えながらこちらを睨んでいる…
+			ENDIF
 		CASE "フェラする"
-			SELECTCASE RAND:2
-				CASE 0
-					PRINTFORMW 「も…ダメっ…出る…うぅっ！」
-				CASE 1
-					PRINTFORMW 「く、はぁあああ……は…まさか、飲んだりしてへんよな…？」
-			ENDSELECT
+			IF CFLAG:陥落
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「も…ダメっ…出る…うぅっ！」
+					CASE 1
+						PRINTFORMW 「く、はぁあああ……は…まさか、飲んだりしてへんよな…？」
+				ENDSELECT
+			ELSEIF MARK:屈服刻印 == 3
+				SELECTCASE RAND:3
+					CASE 0
+						PRINTFORMW 「あぁ…そんなぁ…」
+					CASE 1
+						PRINTFORMW 「口でイかされるなんて恥ずかしいのに…」
+					CASEELSE
+						PRINTFORMW 「の、飲まないで欲しいんですけど……」
+				ENDSELECT
+			ELSE
+				PRINTFORMW 「…口を離せ、この変態！」
+				PRINTFORMW ケイナは%CALLNAME:PLAYER%の頭を引き剥がし、そのまま突き放してしまった…
+			ENDIF
 		CASE "兜合わせ"
 			IF CFLAG:陥落
 				SELECTCASE RAND:2
@@ -457,58 +674,67 @@ IF NOWEX:射精
 						PRINTFORMW 「うぅ…っ！はぁ、はぁ…」
 				ENDSELECT
 			ENDIF
-		CASE  "対面座位アナル","背面座位アナル"
-			SELECTCASE RAND:2
-				CASE 0
-					PRINTFORMW ｢あ…はぁあ！……ぁあ……いぃ……………｣
-					PRINTFORMW ｢うぅ……抜き差しする音がっ……はぁんっ！恥ずかし……んん……｣
-				CASE 1
-					PRINTFORMW ｢やぁう……んはぁ…あぁああああ……！｣
-					PRINTFORMW ｢も…っ………気持ち良すぎてダメっ……｣
-			ENDSELECT
-		CASE "後背位アナル", "正常位アナル"
-			SELECTCASE RAND:3
-				CASE 0
-					PRINTFORMW 「あぁああっ…っひ…！やぁ…やだやだっ！これ以上腰、動かさんといてやぁ！」
-					PRINTFORMW 「————————————————ッ！！！」
-				CASE 1
-					PRINTFORMW ｢嫌、やだぁ…！奥まで犯されるのやだぁあああ………｣
-				CASE 2
-					PRINTFORMW 「だめっ、だめぇ！これ気持ちよすぎて嫌なのにぃ………！」
-			ENDSELECT
 		CASE "騎乗位アナル手淫"
-			SELECTCASE RAND:2
-				CASE 0
-					PRINTFORMW ｢はぁ…ん、あぁ……あはぁ……あくぅうう、イイっ……！｣
-					PRINTFORMW 
-				CASE 1
-					PRINTFORMW 「は…ぁ、あぁあああああっ！」
-			ENDSELECT
+			IF CFLAG:陥落
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW ｢はぁ…ん、あぁ……あはぁ……あくぅうう、イイっ……！｣
+						PRINTFORMW 「%CALLNAME:PLAYER%、も…イこ…？」
+					CASE 1
+						PRINTFORMW 「は…ぁ、あぁあああああっ！」
+				ENDSELECT
+			ENDIF
 		CASE "正常位アナルさせる", "後背位アナルさせる"
-			SELECTCASE　RAND:2
-				CASE 0
-					PRINTFORMW 「は…はぁっ…中…凄く気持ち、いい…」
-					PRINTFORMW %CALLNAME:PLAYER%の腸内に搾り取られるかのように射精した…
-				CASE 1
-					PRINTFORMW 「あぁああ…くぅ…」
-					PRINTFORMW 「うぅ…気持ち良すぎてつい…無理させてごめんな…」
-			ENDSELECT
+			IF CFLAG:陥落
+				SELECTCASE　RAND:2
+					CASE 0
+						PRINTFORMW 「は…はぁっ…中…凄く気持ち、いい…」
+						PRINTFORMW %CALLNAME:PLAYER%の腸内に搾り取られるかのように射精した…
+					CASE 1
+						PRINTFORMW 「あぁああ…くぅ…」
+						PRINTFORMW 「うぅ…気持ち良すぎてつい…無理させてごめんな…」
+				ENDSELECT
+			ELSEIF MARK:屈服刻印 == 3
+				SELECTCASE RAND:3
+					CASE 0
+						PRINTFORMW 「うっ、くぅう…は、はぁ…」
+						PRINTFORMW 「なぁ、気持ち良かった…？」
+					CASE 1
+						PRINTFORMW 「出る…っ、ん…」
+						PRINTFORMW 「ちゃんと受け止めてくださいね…！」
+					CASEELSE
+						PRINTFORMW 「うぁ、も…出そう…」
+				ENDSELECT
+			ELSE
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「はぁ…………」
+						PRINTFORMW （私には同性で慰み合いするのが、どうしても理解できない…）
+					CASE 1
+						PRINTFORMW 「最悪だ…っ…」
+						PRINTFORMW ケイナは絶頂で喘ぎ声を漏らす%CALLNAME:PLAYER%の姿に軽蔑な表情をしていた…
+				ENDSELECT
+			ENDIF
 		CASE "下着ずらし挿入アナル"
-			SELECTCASE RAND:2
-				CASE 0
-					PRINTFORMW 「くぅうう…！…出、ちゃった…」
-				CASE 1
-					PRINTFORMW 「いっ、く、ぁああ…」
-					PRINTFORMW 「ぁ、あぁ…もぉ…着たまま出されるなんてぇ…」
-			ENDSELECT
+			IF CFLAG:陥落
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「くぅうう…！…出、ちゃった…」
+					CASE 1
+						PRINTFORMW 「いっ、く、ぁああ…」
+						PRINTFORMW 「ぁ、あぁ…もぉ…着たまま出されるなんてぇ…」
+				ENDSELECT
+			ENDIF
 		CASE "正常位アナル首絞め", "後背位アナル首絞め", "逆レイプ首絞め"
-			SELECTCASE RAND:2
-				CASE 0
-					PRINTFORMW 「はっ…がはっ！かふぁ…！」
-					PRINTFORMW 「（こんなに苦しいのに…窒息しながらイってまう…！）」
-				CASE 1
-					PRINTFORMW 窒息寸前になりつつも全身を震わせながら絶頂した…
-			ENDSELECT
+			IF CFLAG:陥落
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「はっ…がはっ！かふぁ…！」
+						PRINTFORMW 「（こんなに苦しいのに…窒息しながらイってまう…！）」
+					CASE 1
+						PRINTFORMW 窒息寸前になりつつも全身を震わせながら絶頂した…
+				ENDSELECT
+			ENDIF
 		CASEELSE
 			TRYCALL EX_MESSAGE
 	ENDSELECT
@@ -519,20 +745,24 @@ ENDIF
 IF NOWEX:潮噴き
 	SELECTCASE SELECTCOMS
 		CASE "お掃除フェラ", "フェラする"
-			SELECTCASE RAND:2
-				CASE 0
-					PRINTFORMW 「ぅあ…はぁあああ…！」
-					PRINTFORMW 「途切れ途切れに出てる…」
-				CASE 1
-					PRINTFORMW 「ご、めん…また汚しちゃっ、たぁ…」
-			ENDSELECT
+			IF CFLAG:陥落
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「ぅあ…はぁあああ…！」
+						PRINTFORMW 「途切れ途切れに出てる…」
+					CASE 1
+						PRINTFORMW 「ご、めん…また汚しちゃっ、たぁ…」
+				ENDSELECT
+			ENDIF
 		CASE "オナフェラ"
-			SELECTCASE RAND:2
-				CASE 0
-					PRINTFORMW 「んんっ…！…っ…！」
-				CASE 1
-					PRINTFORMW 「はぁん…ふ…！」
-			ENDSELECT
+			IF CFLAG:陥落
+				SELECTCASE RAND:2
+					CASE 0
+						PRINTFORMW 「んんっ…！…っ…！」
+					CASE 1
+						PRINTFORMW 「はぁん…ふ…！」
+				ENDSELECT
+			ENDIF
 	ENDSELECT
 ENDIF
 
@@ -555,9 +785,6 @@ SIF CFLAG:憑依 >= 0
 SIF TEQUIP:ボールギャグ &&  SELECTCOMS != "ボールギャグ"
 	RETURN 0
 SIF FLAG:口上表示 == 0
-	RETURN 0
-	;新婚モードのみ
-SIF ゲームモード() != "新婚モード"
 	RETURN 0
 ;男性でないと表示しない
 SIF SEX(MASTER) == 2
@@ -590,9 +817,6 @@ SIF TEQUIP:ボールギャグ &&  SELECTCOMS != "ボールギャグ"
 	RETURN 0
 SIF FLAG:口上表示 == 0
 	RETURN 0
-	;新婚モードのみ
-SIF ゲームモード() != "新婚モード"
-	RETURN 0
 ;-------------------------------------------------
 ;パラメータ変化時のテキスト
 ;-------------------------------------------------
@@ -615,9 +839,6 @@ SIF TEQUIP:ボールギャグ &&  SELECTCOMS != "ボールギャグ"
 	RETURN 0
 SIF FLAG:口上表示 == 0
 	RETURN 0
-	;新婚モードのみ
-SIF ゲームモード() != "新婚モード"
-	RETURN 0
 
 TRYCALLFORM MARK{ARG}_KX1
 
@@ -637,14 +858,11 @@ SIF CFLAG:憑依 >= 0
 SIF FLAG:口上表示 == 0
 	RETURN 0
 
+TRYCALLFORM EVENT_%ARGS%_光伊_計名
 ;男でないと表示しない
 SIF SEX(MASTER) == 2
 	RETURN 0
-	;新婚モードのみ
-SIF ゲームモード() != "新婚モード"
-	RETURN 0
 
-TRYCALLFORM EVENT_%ARGS%_光伊_計名
 ;-------------------------------------------------
 ;朝フェラ 陥落していないと発生しない
 ;-------------------------------------------------
@@ -693,6 +911,26 @@ ELSE
 ENDIF
 
 ;-------------------------------------------------
+;調教後3P 陥落していないと発生しない
+;-------------------------------------------------
+@EVENT_調教後3P_光伊_計名
+SELECTCASE RAND:4
+	CASE 0
+		PRINTFORMW 「はぁあああ…っ、もっと…犯してもええよ…？」
+		PRINTFORMW %CALLNAME:MASTER%と%CALLNAME:PLAYER%に愛されて至福の時を味わっている
+		PRINTFORMW もう誰にも邪魔建て出来ない程に…
+	CASE 1
+		PRINTFORMW 「も…ぉ…みんなして私の身体、好き放題に抱いて…たまには抱く側になりたい…」
+		PRINTFORMW 「えー…ダメ？そん、なぁ…ひ…はぁっ！」
+	CASE 2
+		PRINTFORMW 「ん、%CALLNAME:MASTER%ったら…そないにがっつかなくても…」
+		PRINTFORMW 「%CALLNAME:PLAYER%にヤキモチ焼かんでもええのに」
+	CASE 3
+		PRINTFORMW 「もうこれでしか満足出来へんよぉ…」
+ENDSELECT
+
+
+;-------------------------------------------------
 ;調教後自慰
 ;-------------------------------------------------
 @EVENT_調教後自慰_光伊_計名
@@ -702,6 +940,21 @@ SELECTCASE RAND:2
 	CASE 1
 		PRINTFORMW 「あれだけ抱かれても、物足りなくなるのはどうしようもないん…」
 ENDSELECT
+
+;-------------------------------------------------
+;売却時
+;-------------------------------------------------
+@EVENT_売却時_光伊_計名
+SELECTCASE FALLTYPE(TARGET)
+	;恋慕、親愛
+	CASE 1
+		PRINTFORMW 「な、なんでや！？今までずっと愛してくれたのに！」
+		PRINTFORMW 「…………………幾ら何でも突然すぎるやろ…」
+	;未陥落
+	CASEELSE
+		PRINTFORMW 「今までお世話になりました。もう二度と会うことは無いでしょう」
+ENDSELECT
+
 
 ;-------------------------------------------------
 ;調教対象に選んだ時
@@ -750,23 +1003,34 @@ PRINTFORMW ｢こんなに痛いのに気持ちいいって…変だよ、な…
 ;コマンドを拒否した時
 ;-------------------------------------------------
 @EVENT_コマンド拒否時_光伊_計名
-SELECTCASE RAND:2
-	CASE 0
-		PRINTFORMW 「無理なものは無理なんよ」
-	CASE 1
-		PRINTFORMW 「あのな、出来る事と出来ない事は分かってる筈やろ」
-ENDSELECT
+IF CFLAG:陥落
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 「無理なものは無理なんよ」
+		CASE 1
+			PRINTFORMW 「あのな、出来る事と出来ない事は分かってる筈やろ」
+	ENDSELECT
+ELSE
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 「出来る訳が無いでしょう」
+		CASE 1
+			PRINTFORMW 「それ、絶対にやりませんからね」
+	ENDSELECT
+ENDIF
 
 ;-------------------------------------------------
 ;飲酒を拒否した時 酒豪ならまず飲むと考えていい
 ;-------------------------------------------------
 @EVENT_飲酒拒否時_光伊_計名
-SELECTCASE RAND:2
-	CASE 0
-		PRINTFORMW 「すまんなぁ、あまりこういうのは飲めなくて…」
-	CASE 1
-		PRINTFORMW 「うっ…！？無理、これ結構キツイやつでしょ…？」
-ENDSELECT
+IF CFLAG:陥落
+	SELECTCASE RAND:2
+		CASE 0
+			PRINTFORMW 「すまんなぁ、あまりこういうのは飲めなくて…」
+		CASE 1
+			PRINTFORMW 「うっ…！？無理、これ結構キツイやつでしょ…？」
+	ENDSELECT
+ENDIF
 
 ;-------------------------------------------------
 ;クローン生成時
@@ -781,9 +1045,6 @@ ENDIF
 ;アイテム使用時口上集（X1をキャラ番号に置換する）
 ;-------------------------------------------------
 @KOJO_USE_ITEM_光伊_計名, ARGS
-;憑依時に口上を表示しない 表示する場合はコメントアウト
-SIF CFLAG:憑依 >= 0
-	RETURN 0
 SIF FLAG:口上表示 == 0
 	RETURN 0
 
