@@ -1,0 +1,582 @@
+﻿;------------------------------------------------------------------------
+;	リピカちゃんのゲーム
+;------------------------------------------------------------------------
+;リピカちゃんが何か遊びを思いついたようです。
+;
+;リピカちゃん:
+;あなたと遊ぶためにゲームを考えたのさ。
+;遊べるのは２種類なのさ。
+;遊んだらリピカちゃんポイントが貯まるのさ。
+;リピカちゃんポイントを貯めると良いことがあるかもしれないのさ。
+;まあ、今のところないんだけどね。
+;ちなみにゲームのラインナップとルールは某RPGのミニゲームと同じなのさ。
+;知ってるかな？なのさ。
+;------------------------------------------------------------------------
+;リピカちゃんのゲームを開始する前段
+@RIPICA_GAME
+PRINTFORMW 「そしたら今なら次の２つのゲームができるのさ」
+PRINTL [0]ハイアンドロー
+PRINTL [1]数当てゲーム（ヒット＆ブロー）
+PRINTL [2]やっぱりやめる
+DO
+	INPUT
+		SELECTCASE RESULT
+			CASE 0
+				CALL LIPICA_HANDL
+			CASE 1
+				CALL LIPICA_KAZUATE
+			CASE 2
+				PRINTFORMW 「そ、そうなのさ？」
+				PRINTFORMW 「気が向いたらまた遊んでほしいのさ」
+				RETURN 0
+		ENDSELECT
+LOOP LOOPRES(0,1,2)
+
+
+;========================================================================
+;ハイアンドロー
+@LIPICA_HANDL
+;========================================================================
+;------------------------------------------------------------------------
+;動的変数の宣言
+;------------------------------------------------------------------------
+;各カードの番号を格納する変数（10枚）
+#DIM DYNAMIC LIPICA_HL,10
+
+;各カードのハイロー予想を格納する変数(10)
+#DIM DYNAMIC LIPICA_HLA,10
+
+;繰り返し処理の変数
+#DIM DYNAMIC LIPICA_C
+
+;繰り返し処理の変数２
+#DIM DYNAMIC LIPICA_CC
+
+;ハイロー結果表示用
+#DIM DYNAMIC LRESULT
+
+;リピカちゃんポイント計算用
+#DIM DYNAMIC TMPPOINT
+
+;------------------------------------------------------------------------
+;初期値処理
+;------------------------------------------------------------------------
+
+LIPICA_C = 0
+WHILE LIPICA_C < 10
+	LIPICA_HL:LIPICA_C = RAND:9 + 1
+	LIPICA_HLA:LIPICA_C = 99
+	LIPICA_C += 1
+WEND
+
+
+PRINTFORMW 「それではハイアンドローをやるのさ」
+PRINTFORMW 「ルール説明は必要なのさ？」
+PRINTL [0]はい
+PRINTL [1]いいえ
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			PRINTFORMW 「そしたらルール説明なのさ」
+			PRINTFORMW 「このゲームは伏せられた次のカードが前のカードより数字が大きいか小さいかを予想するゲームなのさ」
+			PRINTFORML 
+			PRINTFORML 順番　[1枚目]　[2枚目]　[3枚目]　[4枚目]　[5枚目]　[6枚目]　[7枚目]　[8枚目]　[9枚目]　[10枚目]
+			PRINTFORML 数字　[  3  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  9  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  ?  ]
+			PRINTFORML 
+			PRINTFORMW 「例えば上記のようなカードの並びだとするのさ」
+			PRINTFORMW 「1枚目のカードと6枚目のカードがオープンになっているけどそれ以外は伏せられている状態さ」
+			PRINTFORMW 「ここで1枚目は[3]なので、2枚目はもうちょっと高いと予想して[HIGH]を選ぶのさ」
+			PRINTFORMW 「ちなみに私は[6]くらいが来ると予想したのさ」
+			PRINTFORMW 「次に3枚目が何が来るかを予想して、4枚目は何が来るかを予想して……」
+			PRINTFORMW 「こんな具合に次の数字を予想していくゲームなのさ」
+			PRINTFORMW 「ちなみにここで5枚目は[9]なので、私の予想はこんな感じにしてみたのさ」
+			PRINTFORML 
+			PRINTFORML 順番　[1枚目]　[2枚目]　[3枚目]　[4枚目]　[5枚目]　[6枚目]　[7枚目]　[8枚目]　[9枚目]　[10枚目]
+			PRINTFORML 数字　[  3  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  9  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  ?  ]
+			PRINTFORML 予想　[  -  ]　[HIGH ]　[HIGH ]　[LOW  ]　[HIGH ]　[HIGH ]　[LOW  ]　[NONE ]　[NONE ]　[NONE ]
+			PRINTFORML 
+			PRINTFORMW 「ちなみに8枚目から先は[NONE]になってるけど、これは予想を途中でやめたのさ」
+			PRINTFORMW 「途中で予想をやめるのもアリなのさ」
+			PRINTFORMW 「ではオープンするのさ」
+			PRINTFORML 
+			PRINTFORML 順番　[1枚目]　[2枚目]　[3枚目]　[4枚目]　[5枚目]　[6枚目]　[7枚目]　[8枚目]　[9枚目]　[10枚目]
+			PRINTFORML 数字　[  3  ]　[  7  ]　[  9  ]　[  2  ]　[  5  ]　[  9  ]　[  8  ]　[  7  ]　[  7  ]　[  6  ]
+			PRINTFORML 予想　[  -  ]　[HIGH ]　[HIGH ]　[LOW  ]　[HIGH ]　[HIGH ]　[LOW  ]　[NONE ]　[NONE ]　[NONE ]
+			PRINTFORML 
+			PRINTFORMW 「ということでこの場合は7枚目まで予想的中ということになるのさ」
+			PRINTFORMW 「我ながら冴えてるのさ！ほめてほめて！！」
+			PRINTFORMW 「とまあ。こんな具合に数字を予想するゲームなのさ」
+			PRINTFORMW 「2枚目まで予想したらそれ以降は止めても良いけど、ひとつでも予想を外したらポイントは0なので気を付けるのさ」
+			PRINTFORMW 「1枚目と6枚目の数字は必ずオープンするのでそれを頼りに勘を信じるのさ」
+			PRINTFORMW 「ちなみにここで8枚目と9枚目が同じ数字になっているのだけど、この場合はハイ／ローどっちもNGというルールにするのさ」
+			PRINTFORMW 「処理が面倒だからとかじゃないのさ！ホントなのさ！！」
+			PRINTFORMW 「たくさんの回数を連続で当てるほどリピカちゃんポイントをたくさんプレゼントするのさ」
+			PRINTFORMW 「リピカちゃんポイントを貯めるといいことがあるのさ」
+			PRINTFORMW 「頑張ってみてね！」
+		CASE 1
+			PRINTFORMW 「それじゃあさっそくゲームを始めるのさ」
+	ENDSELECT
+LOOP LOOPRES(0,1)
+DRAWLINE
+
+;------------------------------------------------------------------------
+;ゲームの開始
+;------------------------------------------------------------------------
+
+LIPICA_C = 0
+LIPICA_CC = 1
+PRINTFORMW 「まずカードの並びをお見せするのさ」
+DRAWLINE
+PRINTFORML 順番　　　　　　　[1枚目]　[2枚目]　[3枚目]　[4枚目]　[5枚目]　[6枚目]　[7枚目]　[8枚目]　[9枚目]　[10枚目]
+PRINTFORML カードの数字　　　[  {LIPICA_HL:0}  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  {LIPICA_HL:5}  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  ?  ]
+DRAWLINE
+PRINTFORML 
+PRINTFORML 「それでは2枚目のカードがハイかローか選択するのさ」
+PRINTL [0]ハイ
+PRINTL [1]ロー
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			PRINTFORMW 「2枚目はハイにするのさ」
+			LIPICA_HLA:LIPICA_CC = 0
+		CASE 1
+			PRINTFORMW 「2枚目はローにするのさ」
+			LIPICA_HLA:LIPICA_CC = 1
+	ENDSELECT
+LOOP LOOPRES(0,1)
+LIPICA_C += 1
+DRAWLINE
+
+;------------------------------------------------------------------------
+;LIPICA_C はこの時点で1、表示上のカードの番号は2
+;繰り返し処理の実行
+;------------------------------------------------------------------------
+
+WHILE LIPICA_C < 9
+	PRINTFORML 「そしたら次の{LIPICA_C + 2}枚目はハイになるかローになるか予想するのさ」
+	PRINTL 順番　　　　　　　[1枚目]　[2枚目]　[3枚目]　[4枚目]　[5枚目]　[6枚目]　[7枚目]　[8枚目]　[9枚目]　[10枚目]
+	PRINTFORML カードの数字　　　[  {LIPICA_HL:0}  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  {LIPICA_HL:5}  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  ?  ]
+	PRINT プレイヤーの予想　[  -  ]　
+		LIPICA_CC = 1
+		WHILE LIPICA_CC < 10
+			IF LIPICA_HLA:LIPICA_CC == 0
+				PRINT [HIGH ]　
+			ELSEIF LIPICA_HLA:LIPICA_CC == 1
+				PRINT [LOW  ]　
+			ELSE
+				PRINT [  ?  ]　
+			ENDIF
+			LIPICA_CC += 1
+		WEND
+	PRINTL 
+	PRINTL [0]ハイ
+	PRINTL [1]ロー
+	PRINTL [99]予想をやめる
+	LIPICA_CC = LIPICA_C + 1
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					PRINTFORMW 「{LIPICA_C + 2}枚目はハイ」
+					DRAWLINE
+					LIPICA_HLA:LIPICA_CC = 0
+				CASE 1
+					PRINTFORMW 「{LIPICA_C + 2}枚目はロー」
+					DRAWLINE
+					LIPICA_HLA:LIPICA_CC = 1
+				CASE 99
+					PRINTFORMW 「ここまでにしておくのさ？」
+					LIPICA_C = 10
+			ENDSELECT
+		LOOP LOOPRES(0,1,99)
+	LIPICA_C += 1
+PRINTL
+WEND
+DRAWLINE
+
+;------------------------------------------------------------------------
+;プレイヤーの予想を表示
+;------------------------------------------------------------------------
+
+PRINTL 順番　　　　　　　[1枚目]　[2枚目]　[3枚目]　[4枚目]　[5枚目]　[6枚目]　[7枚目]　[8枚目]　[9枚目]　[10枚目]
+PRINTFORML カードの数字　　　[  {LIPICA_HL:0}  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  {LIPICA_HL:5}  ]　[  ?  ]　[  ?  ]　[  ?  ]　[  ?  ]
+PRINT プレイヤーの予想　[  -  ]　
+
+;------------------------------------------------------------------------
+;カウントを1に戻してから繰り返し処理でプレイヤーの予想を表示
+;------------------------------------------------------------------------
+
+LIPICA_C = 1
+WHILE LIPICA_C < 10
+	IF LIPICA_HLA:LIPICA_C == 0
+		PRINT [HIGH ]　
+	ELSEIF LIPICA_HLA:LIPICA_C == 1
+		PRINT [LOW  ]　
+	ELSE
+		PRINT [NONE ]　
+	ENDIF
+	LIPICA_C += 1
+WEND
+PRINTL
+DRAWLINE
+PRINTL 
+PRINTFORMW 「ということで%CALLLIPICA%の予想はこうなったのさ」
+PRINTFORMW 「それでは結果発表なのさ」
+
+;------------------------------------------------------------------------
+;プレイヤーの出目を再表示
+;------------------------------------------------------------------------
+
+DRAWLINE
+PRINTL 順番　　　　　　　[1枚目]　[2枚目]　[3枚目]　[4枚目]　[5枚目]　[6枚目]　[7枚目]　[8枚目]　[9枚目]　[10枚目]
+PRINTFORML カードの数字　　　[  {LIPICA_HL:0}  ]　[  {LIPICA_HL:1}  ]　[  {LIPICA_HL:2}  ]　[  {LIPICA_HL:3}  ]　[  {LIPICA_HL:4}  ]　[  {LIPICA_HL:5}  ]　[  {LIPICA_HL:6}  ]　[  {LIPICA_HL:7}  ]　[  {LIPICA_HL:8}  ]　[  {LIPICA_HL:9}  ]
+PRINT プレイヤーの予想　[  -  ]　
+
+;------------------------------------------------------------------------
+;カウントを1に戻してから繰り返し処理でプレイヤーの予想を表示（くどいわ！）
+;------------------------------------------------------------------------
+
+LIPICA_C = 1
+WHILE LIPICA_C < 10
+	IF LIPICA_HLA:LIPICA_C == 0
+		PRINT [HIGH ]　
+	ELSEIF LIPICA_HLA:LIPICA_C == 1
+		PRINT [LOW  ]　
+	ELSE
+		PRINT [NONE ]　
+	ENDIF
+	LIPICA_C += 1
+WEND
+PRINTL 
+
+DRAWLINE
+
+;------------------------------------------------------------------------
+;結果の判定
+;------------------------------------------------------------------------
+
+LIPICA_C = 0
+LIPICA_CC = 1
+TMPPOINT = 1
+
+WHILE LIPICA_C < 9
+	;ハイが当たった場合
+	IF LIPICA_HL:LIPICA_C < LIPICA_HL:LIPICA_CC && LIPICA_HLA:LIPICA_CC == 0
+		LRESULT += 1
+		TMPPOINT = TMPPOINT * 2
+	;ローが当たった場合
+	ELSEIF LIPICA_HL:LIPICA_C > LIPICA_HL:LIPICA_CC && LIPICA_HLA:LIPICA_CC == 1
+		LRESULT += 1
+		TMPPOINT = TMPPOINT * 2
+	;やめた判定
+	ELSEIF LIPICA_HLA:LIPICA_CC == 99
+		LRESULT += 0
+	;それ以外（つまり予想外し）
+	ELSE
+		LRESULT = 0
+		TMPPOINT = 0
+	ENDIF
+	LIPICA_C += 1
+	LIPICA_CC += 1
+WEND
+
+SIF TMPPOINT == 0
+	LRESULT = 0
+
+IF LRESULT == 0
+	PRINTFORMW 「残念ながら予想が外れてしまったのさ」
+ELSEIF LRESULT == 1
+	PRINTFORMW 「1回だけ当たったのさ」
+	PRINTFORMW 「堅実なのさ～」
+ELSEIF LRESULT > 1 && LRESULT < 8
+	PRINTFORMW 「{LRESULT}回連続で当てたのさ」
+	PRINTFORMW 「すごいのさ！おめでとうさ～♪」
+ELSEIF LRESULT == 8
+	PRINTFORMW 「なんと8回連続で当てたのさ！」
+	PRINTFORMW 「惜しいのさ～！！でも%CALLLIPICA%ってばすごいのさ！」
+ELSE
+	PRINTFORMW 「な、なんと9回連続で当てたのさ！！」
+	PRINTFORMW 「すごすぎるのさ！！%CALLLIPICA%ってばすごすぎるのさ～！！」
+ENDIF
+
+;------------------------------------------------------------------------
+;クロージング＆リピカちゃんポイントの付与
+;------------------------------------------------------------------------
+
+L_POINT = L_POINT + TMPPOINT
+
+PRINTFORMW 「ということで今回%CALLLIPICA%が手に入れたリピカちゃんポイントは{TMPPOINT}なのさ」
+PRINTFORMW 「%CALLLIPICA%が今までに貯めたリピカちゃんポイントは{L_POINT}になったのさ」
+PRINTFORMW 「楽しかったのさ？また遊んで欲しいのさ！」
+
+RETURN 0
+
+
+
+
+;========================================================================
+;数当てゲーム（ヒット＆ブロー）
+@LIPICA_KAZUATE
+;========================================================================
+;------------------------------------------------------------------------
+;動的変数の宣言
+;------------------------------------------------------------------------
+;初期配置される番号
+#DIM DYNAMIC L_COLNUM,3
+
+;回答用
+#DIM DYNAMIC L_ANSWER,3
+
+;ヒット＆ブロー確認用
+#DIM DYNAMIC L_HIT = 0
+#DIM DYNAMIC L_BLOW = 0
+
+;カウント用
+#DIM DYNAMIC LIPICA_C
+#DIM DYNAMIC LIPICA_CC
+#DIM DYNAMIC LIPICA_CCC
+;
+;リザルト用
+#DIM DYNAMIC LRESULT
+;
+;リピカちゃんポイント計算用
+#DIM DYNAMIC TMPPOINT
+;
+;------------------------------------------------------------------------
+;初期設定
+;------------------------------------------------------------------------
+L_COLNUM:0 = RAND:9
+L_COLNUM:1 = RAND:9
+L_COLNUM:2 = RAND:9
+
+LRESULT = 0
+
+;乱数同士の排他処理
+WHILE L_COLNUM:1 == L_COLNUM:0
+	L_COLNUM:1 = RAND:9
+WEND
+
+WHILE L_COLNUM:2 == L_COLNUM:0 || L_COLNUM:2 == L_COLNUM:1
+	L_COLNUM:2 = RAND:9
+WEND
+;------------------------------------------------------------------------
+;オープニング
+;------------------------------------------------------------------------
+PRINTFORMW 「それでは数当てゲーム（ヒット＆ブロー）をやるのさ」
+PRINTFORMW 「ルール説明は必要なのさ？」
+PRINTL [0]はい
+PRINTL [1]いいえ
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0
+			PRINTFORMW 「そしたらルール説明なのさ」
+			PRINTFORMW 「このゲームは私が用意する３つの数字が何かを当てるゲームなのさ」
+			PRINTFORML 
+			PRINTFORML 数字　[  ?  ]　[  ?  ]　[  ?  ]
+			PRINTFORML 回答　[  1  ]　[  2  ]　[  3  ]　　　ヒット：0　　　ブロー：1
+			PRINTFORML 
+			PRINTFORMW 「例えば最初は無難に左から順に１２３と答えてみたのさ」
+			PRINTFORMW 「ここで右にヒット：0　　　ブロー：1と出ているけどこれはつまりこういうことさ」
+			PRINTFORML ヒット：数字と順番が合っている数
+			PRINTFORML ブロー：順番は間違っているが数字は合っている
+			PRINTFORMW 「つまり１，２，３のうちどれか１つは合ってるけど順番が違うのと、残り２つは数字すら合っていないということさ」
+			PRINTFORMW 「ということで私は１がブローだと仮定して別の２つを変えてみるのさ」
+			PRINTFORML 
+			PRINTFORML 数字　[  ?  ]　[  ?  ]　[  ?  ]
+			PRINTFORML 回答　[  1  ]　[  4  ]　[  5  ]　　　ヒット：0　　　ブロー：3
+			PRINTFORML 
+			PRINTFORMW 「なんと運よく全部ブローになったのさ」
+			PRINTFORMW 「あとはこの並びを変えていくだけで良いので」
+			PRINTFORML 
+			PRINTFORML 数字　[  ?  ]　[  ?  ]　[  ?  ]
+			PRINTFORML 回答　[  5  ]　[  4  ]　[  1  ]　　　ヒット：1　　　ブロー：2
+			PRINTFORML 
+			PRINTFORMW 「これで結構答えに近づいたのさ。今度は５がヒットだと仮定して１と４を入れ替えて」
+			PRINTFORML 
+			PRINTFORML 数字　[  ?  ]　[  ?  ]　[  ?  ]
+			PRINTFORML 回答　[  5  ]　[  1  ]　[  4  ]　　　ヒット：3　　　ブロー：0
+			PRINTFORML 
+			PRINTFORMW 「やったのさ！これで正解なのさ～♪」
+			PRINTFORMW 「という具合に隠された数字が何なのかを当てていくゲームなのさ」
+			PRINTFORMW 「ちなみに同じ数字は２回以上使わないルールになっているから、000とか112とかそういうのは出ないのさ」
+			PRINTFORMW 「一応試行回数は上限１５回までとするのさ」
+			PRINTFORMW 「３桁の数字を当てるまでに試行回数が少ないほどリピカちゃんポイントをたくさんプレゼントするのさ」
+			PRINTFORMW 「リピカちゃんポイントを貯めるといいことがあるのさ」
+			PRINTFORMW 「頑張ってみてね！」
+		CASE 1
+			PRINTFORMW 「それじゃあさっそくゲームを始めるのさ」
+	ENDSELECT
+LOOP LOOPRES(0,1)
+DRAWLINE
+PRINTFORMW 「それではスタートなのさ。数字を順番に入力してね？」
+
+LIPICA_C = 0
+
+;------------------------------------------------------------------------
+;ゲームの処理
+;------------------------------------------------------------------------
+
+WHILE LIPICA_C < 15 && L_HIT < 3
+	;数字の入力
+		PRINTFORML 試行{LIPICA_C + 1}回目
+		PRINT 1個目の数字：
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					L_ANSWER:0 = 0
+				CASE 1
+					L_ANSWER:0 = 1
+				CASE 2
+					L_ANSWER:0 = 2
+				CASE 3
+					L_ANSWER:0 = 3
+				CASE 4
+					L_ANSWER:0 = 4
+				CASE 5
+					L_ANSWER:0 = 5
+				CASE 6
+					L_ANSWER:0 = 6
+				CASE 7
+					L_ANSWER:0 = 7
+				CASE 8
+					L_ANSWER:0 = 8
+				CASE 9
+					L_ANSWER:0 = 9
+			ENDSELECT
+		LOOP LOOPRES(0,1,2,3,4,5,6,7,8,9)
+
+		PRINT 2個目の数字：
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					L_ANSWER:1 = 0
+				CASE 1
+					L_ANSWER:1 = 1
+				CASE 2
+					L_ANSWER:1 = 2
+				CASE 3
+					L_ANSWER:1 = 3
+				CASE 4
+					L_ANSWER:1 = 4
+				CASE 5
+					L_ANSWER:1 = 5
+				CASE 6
+					L_ANSWER:1 = 6
+				CASE 7
+					L_ANSWER:1 = 7
+				CASE 8
+					L_ANSWER:1 = 8
+				CASE 9
+					L_ANSWER:1 = 9
+			ENDSELECT
+		LOOP LOOPRES(0,1,2,3,4,5,6,7,8,9)
+	
+		PRINT 3個目の数字：
+		DO
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					L_ANSWER:2 = 0
+				CASE 1
+					L_ANSWER:2 = 1
+				CASE 2
+					L_ANSWER:2 = 2
+				CASE 3
+					L_ANSWER:2 = 3
+				CASE 4
+					L_ANSWER:2 = 4
+				CASE 5
+					L_ANSWER:2 = 5
+				CASE 6
+					L_ANSWER:2 = 6
+				CASE 7
+					L_ANSWER:2 = 7
+				CASE 8
+					L_ANSWER:2 = 8
+				CASE 9
+					L_ANSWER:2 = 9
+			ENDSELECT
+		LOOP LOOPRES(0,1,2,3,4,5,6,7,8,9)
+	
+	;ブローの確認
+	LIPICA_CCC = 0
+	L_BLOW = 0
+	WHILE LIPICA_CCC < 3
+		LIPICA_CC = 0
+		WHILE LIPICA_CC < 3
+			SIF L_ANSWER:LIPICA_CCC == L_COLNUM:LIPICA_CC
+				L_BLOW += 1
+			LIPICA_CC += 1
+		WEND
+		LIPICA_CCC += 1
+	WEND
+	
+	;ヒットの確認
+	LIPICA_CCC = 0
+	L_HIT = 0
+	WHILE LIPICA_CCC < 3
+		SIF L_ANSWER:LIPICA_CCC == L_COLNUM:LIPICA_CCC
+			L_HIT += 1
+		LIPICA_CCC += 1
+	WEND
+	
+	;ヒットとブローの整合性の計算
+	L_BLOW = L_BLOW - L_HIT
+	
+	;結果表示
+	DRAWLINE
+	PRINTFORMW 「今回の結果はこの通りさ」
+	PRINTL
+	PRINTFORML 回答　　　[  {L_ANSWER:0}  ]　[  {L_ANSWER:1}  ]　[  {L_ANSWER:2}  ]　　　ヒット：{L_HIT}　　　ブロー：{L_BLOW}
+	DRAWLINE
+	LIPICA_C += 1
+	LRESULT += 1
+WEND
+
+;------------------------------------------------------------------------
+;終了判定
+;------------------------------------------------------------------------
+
+IF LRESULT == 1
+	PRINTFORMW 「せ、正解しちゃったのさ～！？一発って……」
+	PRINTFORMW 「まさか%CALLLIPICA%……チートを使ったのさ！？」
+ELSEIF LRESULT > 1 && LRESULT <= 5
+	PRINTFORMW 「せ、正解なのさ～！？すごいのさ！こんなあっという間に当てちゃうなんて！！」
+	PRINTFORMW 「もしかして%CALLLIPICA%って凄く運がいいのさ！？」
+ELSEIF LRESULT > 5 && LRESULT <= 10
+	PRINTFORMW 「正解なのさ～！すごい！」
+	PRINTFORMW 「{LRESULT}回は自慢できるのさ～！」
+ELSEIF LRESULT > 10 && LRESULT <= 15
+	PRINTFORMW 「正解なのさ～！よく頑張ったのさ！」
+ELSEIF LRESULT == 15
+	PRINTFORMW 「今回は残念ながら試行回数制限になってしまったのさ……」
+	PRINTFORMW 「次はきっとできるのさ！」
+ENDIF
+
+;------------------------------------------------------------------------
+;リピカちゃんポイント計算＆クロージング
+;------------------------------------------------------------------------
+TMPPOINT = 1
+LIPICA_CC = 15
+LIPICA_CC = LIPICA_CC - LIPICA_C
+
+WHILE LIPICA_CC > 0
+	TMPPOINT = TMPPOINT * 2
+	LIPICA_CC -= 1
+WEND
+
+L_POINT = L_POINT + TMPPOINT
+
+PRINTFORMW 「ということで今回%CALLLIPICA%が手に入れたリピカちゃんポイントは{TMPPOINT}なのさ」
+PRINTFORMW 「%CALLLIPICA%が今までに貯めたリピカちゃんポイントは{L_POINT}になったのさ」
+PRINTFORMW 「楽しかったのさ？また遊んで欲しいのさ！」
+
+RETURN 0
+
+
+
