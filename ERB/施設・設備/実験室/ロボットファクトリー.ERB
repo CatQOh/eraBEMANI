@@ -22,6 +22,7 @@ PRINTL 　[1] - ロボットを制作する
 PRINTL 　[2] - 分析データからロボットを複製する
 SIF STSMOD
 	PRINTL 　[3] - ロボットを廃棄する
+CALL PASELIL, @"　[4] - 人格をロボットに移植する(100000＄が必要)"
 DRAWLINE
 PRINTPLAIN 　ロボットファクトリー　
 PRINTL [0] - 戻る
@@ -65,6 +66,14 @@ DO
 		CASE 3
 			SIF STSMOD
 				CALL STS_MACHINE
+			RESTART
+		CASE 4
+			IF MONEY < 100000
+				PRINTW 所持金が足りません
+				RESTART
+			ENDIF
+			CALL 機械化
+			MONEY -= 100000
 			RESTART
 	ENDSELECT
 LOOP 1
@@ -738,3 +747,58 @@ DO
 			RESTART
 	ENDSELECT
 LOOP 1
+
+@機械化
+#DIM DYNAMIC 可否
+#DIM DYNAMIC 対象
+
+DRAWLINE
+
+PRINTL □誰を機械化しますか？
+FOR PAGING, 0, CHARANUM
+	可否 = 1
+	SIF PAGING == MASTER
+		可否 = 0
+	SIF TALENT:PAGING:無機物 || CSTR:PAGING:種族 == "機械"
+		可否 = 0
+	SIF TALENT:PAGING:妊娠
+		可否 = 0
+	CALL PAGING, 可否
+NEXT
+
+SIF RESULT == -1
+	RETURN
+対象 = RESULT
+
+PRINTFORML %NAME:対象%の人格を機械の体に移植します。よろしいですか？
+PRINTL [0] - はい
+PRINTL [1] - いいえ
+
+CALL INPUTF, 0, 1
+
+SIF RESULT == 1
+	RETURN
+
+;一度幽体離脱処理を行う
+CALL 幽体離脱, -1, 対象
+
+;対象は幽体離脱でCHARANUM-1になる
+対象 = CHARANUM-1
+
+;機械にする
+TALENT:対象:無機物 = 1
+CSTR:対象:種族 = 機械
+
+;経験が無ければ童貞、処女にする
+SELECTCASE SEX(対象)
+	CASE 1
+		SIF CSTR:対象:童貞 == ""
+			TALENT:対象:童貞 = 1
+	CASE 2
+		SIF CSTR:対象:処女 == ""
+			TALENT:対象:処女 = 1
+ENDSELECT
+
+PRINTFORMW %CALLNAME:対象%の人格を機械の体に移植し、身体は依代として保管しました
+
+RETURN

@@ -108,6 +108,8 @@ ENDSELECT
 "農産物",
 "博物館",
 }
+;上記施設を選択可能かの変数
+#DIM DYNAMIC 選択可能, 20
 
 DRAWLINE
 PRINTL □登録する番号を選んでください
@@ -181,14 +183,27 @@ DO
 				LNK:登録番号 = 助手選択/{NO:LRESULT}
 			ENDIF
 		CASE 4
+			VARSET 選択可能
 			FOR LCOUNT, 0, VARSIZE("施設名")
+				SELECTCASE 施設名:LCOUNT
+					CASE "ゲームセンター", "娼館"
+						SIF !ITEM:風俗店営業許可証
+							CONTINUE
+					CASE "博物館"
+						SIF !ITEM:博物館 || !STSMOD
+							CONTINUE
+					CASE "医務室", "実験室", "図書室"
+						SIF !ITEM:(施設名:LCOUNT)
+							CONTINUE
+				ENDSELECT
+				選択可能:LCOUNT = 1
 				PRINTFORMLC [{LCOUNT}] %施設名:LCOUNT%
 			NEXT
 			SIF !LINEISEMPTY()
 				PRINTL 
 			DO
 				INPUT
-				IF 施設名:RESULT != ""
+				IF 施設名:RESULT != "" && 選択可能:RESULT
 					LNK:登録番号 = 施設/%施設名:RESULT%
 					BREAK
 				ENDIF
@@ -197,6 +212,8 @@ DO
 			FOR PAGING, 0, CHARANUM
 				CALL PAGING, CFLAG:PAGING:居住, "", "ROOM"
 			NEXT
+			SIF RESULT == -1
+				BREAK
 			LNK:登録番号 = 居住部屋/{NO:RESULT}
 		CASE 6
 			FOR LCOUNT, 0, 20
