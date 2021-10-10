@@ -1,0 +1,99 @@
+﻿;-------------------------------------------------
+;裸体盛り
+;-------------------------------------------------
+@USERCOM_ABLE_裸体盛り, ARG
+#FUNCTION
+#DIM DYNAMIC 条件確定
+
+;ゲーセンに居る場合はできない
+コマンド実行条件 += "ゲーセンでは実行不可/"
+SIF TEQUIP:ゲームセンター
+	COMRESULT = 0
+;上級売春中は不可
+コマンド実行条件 += "上級売春中は実行不可/"
+SIF 上級売春中
+	COMRESULT = 0
+;露出癖5以上が条件
+コマンド実行条件 += "対象の露出癖LV5以上必要/"
+SIF ABL:露出癖 < 5
+	COMRESULT = 0
+
+;お風呂場プレイ中はダメ
+コマンド実行条件 += "お風呂場では実行できない/"
+SIF TEQUIP:お風呂場
+	COMRESULT = 0
+;触手調教中はダメ
+コマンド実行条件 += "触手召喚中は実行できない/"
+SIF TEQUIP:触手
+	COMRESULT = 0
+;アニマルだと無理
+コマンド実行条件 += "対象が[アニマル]の場合は実行できない/"
+SIF TALENT:アニマル
+	COMRESULT = 0
+;素材が必要
+コマンド実行条件 += "材料[魚]が2種類必要"
+SIF !材料一式判定("魚介類*2")
+	COMRESULT = 0
+
+IF 条件確定
+	COMRESULT = 1
+	RETURNF 1
+ENDIF
+RETURNF COMRESULT
+
+@COM_裸体盛り
+#DIM DYNAMIC LCOUNT
+SELECTCASE SEX(TARGET)
+	CASE 1
+		PRINTL 男体盛り
+	CASE 2
+		PRINTL 女体盛り
+ENDSELECT
+
+;脱衣処理
+FOR LCOUNT, 0, 7
+	TEQUIP:LCOUNT = 0
+NEXT
+
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 100
+LOSEBASE:気力 += 200
+
+SOURCE:露出 += 1500
+SOURCE:屈従 += 500
+SOURCE:逸脱 += 2000
+SOURCE:反感 += 2000
+SOURCE:不潔 += 3000
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+PRINTL この裸体盛りをどうしますか？
+PRINTL [0] - この場で美味しくいただく（調教続行）
+PRINTL [1] - みんなで美味しくいただく（調教終了）
+CALL INPUTF, 0, 1
+
+SELECTCASE RESULT
+	CASE 0
+		PRINTFORMW %CALLNAME:TARGET%の裸体盛りを平らげ、調教を続行することにした……
+	CASE 1
+		TFLAG:裸体盛り = 1
+		TFLAG:料理 = 5
+ENDSELECT
+
+RETURN 1
+
