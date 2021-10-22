@@ -6,17 +6,26 @@
 #DIM DYNAMIC 誕生日人数
 LOADGLOBAL
 
+;eraOriginとしてリリースするならコメントアウトを外す
+ORIGIN = 1
+
+;SP(スマホ版)でリリースするならコメントアウトを外す
+;SP = 1
+;SAVEGLOBAL
+
 SIF EXISTCSV(10000)
 	THROW キャラ番号10000は当バリアントでは使用できません。別の番号に置き換えてください
 
-SELECTCASE サウンド
-	CASE 0
-		SETBGMVOLUME 0
-		SETSOUNDVOLUME 0
-	CASE 1
-		SETBGMVOLUME BGM音量
-		SETSOUNDVOLUME SOUND音量
-ENDSELECT
+IF !SP
+	SELECTCASE サウンド
+		CASE 0
+			SETBGMVOLUME 0
+			SETSOUNDVOLUME 0
+		CASE 1
+			SETBGMVOLUME BGM音量
+			SETSOUNDVOLUME SOUND音量
+	ENDSELECT
+ENDIF
 
 ;10秒(デフォルト)
 IF ツールチップ表示時間
@@ -56,7 +65,7 @@ ENDIF
 SAVEGLOBAL
 ALIGNMENT LEFT
 
-IF LICENSE == 0 && LANGUAGE == "JP"
+IF LICENSE == 0 && LANGUAGE == "JP" && !ORIGIN
 	HTML用 = <shape type='rect' param='1000,75,4500,575' color='white'>
 	HTML用:1 = <font color='black' bcolor='red'><button value='1'>　　　　　　　　　　[1] - 次へ</button></font>
 	HTML用:2 = <font color='black' bcolor='red'><button value='8'>　　　　　　　　　　[8] - ライセンスに同意する</button></font>　<font color='black' bcolor='red'><button value='9'>[9] - ライセンスに同意しない</button></font>
@@ -206,59 +215,73 @@ DO
 	ENDIF
 	誕生日人数 = 0
 	ALIGNMENT CENTER
-	PRINTFORML eraBEMANI+α
-	PRINTFORML DJ Walt-heR vs DJ Enter with DJ QhrTea
+	IF ORIGIN
+		PRINTFORML eraOrigin
+	ELSE
+		PRINTFORML eraBEMANI+α
+		PRINTFORML DJ Walt-heR vs DJ Enter with DJ QhrTea
+	ENDIF
 	PRINTFORML (2013-2021)
 	PRINTFORML Ver.2021/10/15
 	PRINTFORML TOTAL CHARA {CSVCOUNT}
 
 	IF LANGUAGE == "ENG"
 		WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10} English Edition
-		PRINTFORM Now Grade:
-		CALL GRADE, 段位
-		PRINTL 
-		CALLFORM TITLECOMMENT
+		IF !ORIGIN
+			PRINTFORM Now Grade:
+			CALL GRADE, 段位
+			PRINTL 
+			CALLFORM TITLECOMMENT
+		ENDIF
 		DRAWLINE
-
 		PRINTL [0] New Game
 		PRINTL [1] Load Game
-		PRINTL [2] Achievement
-		SIF MAXARRAY(ENDING, 1, 100) > 0
-			PRINTL [3] Show Epilogues
-		IF QMA
-			PRINTL [4] Set eraBEMANI mode
-		ELSE
-			PRINTL [4] Set eraQMA mode
+		IF !ORIGIN
+			PRINTL [2] Achievement
+			SIF MAXARRAY(ENDING, 1, 100) > 0
+				PRINTL [3] Show Epilogues
+			IF QMA
+				PRINTL [4] Set eraBEMANI mode
+			ELSE
+				PRINTL [4] Set eraQMA mode
+			ENDIF
 		ENDIF
 		PRINTL [5] Run CSV Editor
 		PRINTL [6] Option Preset
-	;#;	PRINTL [7] School Mode
-		PRINTFORML [8] Sound&BGM(Now:\@ サウンド == 1 ? On # Off \@)
+	;#;	SIF !ORIGIN
+	;#;		PRINTL [7] School Mode
+		SIF !SP
+			PRINTFORML [8] Sound&BGM(Now:\@ サウンド == 1 ? On # Off \@)
 		PRINTL [9] Change Language - 言語変更
 		PRINTL [10] EXTRA MOD
 		PRINTL [20] Show manuals
 	ELSE
 		WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10}
-		PRINTFORM 現在の段位:
-		CALL GRADE, 段位
-		PRINTL 
-		CALLFORM TITLECOMMENT
+		IF !ORIGIN
+			PRINTFORM 現在の段位:
+			CALL GRADE, 段位
+			PRINTL 
+			CALLFORM TITLECOMMENT
+		ENDIF
 		DRAWLINE
-
 		PRINTL [0] 最初からはじめる
 		PRINTL [1] ロードしてはじめる
-		PRINTL [2] アチーブメントを確認する
-		SIF MAXARRAY(ENDING, 1, 100) > 0
-			PRINTL [3] エンディングを見る
-		IF QMA
-			PRINTL [4] eraBEMANI仕様に戻す
-		ELSE
-			PRINTL [4] eraQMA仕様にする
+		IF !ORIGIN
+			PRINTL [2] アチーブメントを確認する
+			SIF MAXARRAY(ENDING, 1, 100) > 0
+				PRINTL [3] エンディングを見る
+			IF QMA
+				PRINTL [4] eraBEMANI仕様に戻す
+			ELSE
+				PRINTL [4] eraQMA仕様にする
+			ENDIF
 		ENDIF
 		PRINTL [5] CSVエディターを開く
 		PRINTL [6] オプションの初期設定を変更する
-	;#;	PRINTL [7] 学園モードデバッグ
-		PRINTFORML [8] サウンド再生機能(現在:\@ サウンド == 1 ? オン # オフ \@)
+	;#;	SIF !ORIGIN
+	;#;		PRINTL [7] 学園モードデバッグ
+		SIF !SP
+			PRINTFORML [8] サウンド再生機能(現在:\@ サウンド == 1 ? オン # オフ \@)
 		PRINTL [9] 言語変更 - Change Language
 		PRINTL [10] エクストラMOD
 		PRINTL [20] ゲーム内マニュアルを読む
@@ -270,30 +293,44 @@ DO
 		INPUT
 		SELECTCASE RESULT
 			CASE 0
+				;ORIGINフラグだけは維持する
+				ISORIGIN = ORIGIN
 				RESETDATA
+				ORIGIN = ISORIGIN
+				ISORIGIN = 0
 				BEGIN FIRST
 			CASE 1
+				;こちらはORIGINフラグ維持しなくても大丈夫
 				RESETDATA
 				CALL USERLOAD
 			CASE 2
-				CALL ACHIEVEMENT
+				SIF !ORIGIN
+					CALL ACHIEVEMENT
 			CASE 3
-				SIF MAXARRAY(ENDING, 1, 100) > 0
-					CALL ENDING_LIST
+				IF !ORIGIN
+					SIF MAXARRAY(ENDING, 1, 100) > 0
+						CALL ENDING_LIST
+				ENDIF
 			CASE 4
-				INVERTBIT QMA, 0
-				SAVEGLOBAL
-				CLEARLINE LINECOUNT-VARLINE
+				IF !ORIGIN
+					INVERTBIT QMA, 0
+					SAVEGLOBAL
+					CLEARLINE LINECOUNT-VARLINE
+				ENDIF
 			CASE 5
 				CALL CSV_EDITOR
 			CASE 6
 				CALL DEFAULT_OPTION
 			CASE 7
-				FLAG:ゲームモード = 2
-				BEGIN FIRST
+				;#;	IF !ORIGIN
+				;#;		FLAG:ゲームモード = 2
+				;#;		BEGIN FIRST
+				;#;	ENDIF
 			CASE 8
-				CALL 音声切り替え
-				CLEARLINE LINECOUNT-VARLINE
+				IF !SP
+					CALL 音声切り替え
+					CLEARLINE LINECOUNT-VARLINE
+				ENDIF
 			CASE 9
 				IF LANGUAGE == "ENG"
 					LANGUAGE = JP
