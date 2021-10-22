@@ -10,7 +10,8 @@ PRINTL 　[1] - 着衣関連設定
 PRINTL 　[2] - イベント関連の設定
 SIF TALENT:MASTER:ドラゴン使い
 	PRINTL 　[3] - ドラゴンの名前変更
-PRINTL 　[4] - サウンドオプション
+SIF !SP
+	PRINTL 　[4] - サウンドオプション
 PRINTFORML 　[5] - 能力表示画面の顔グラ表示(現在:\@ 顔グラ表示 == 1 ? オン # オフ \@)
 PRINTFORML 　[6] - ショートカットコマンドを使用する(現在:\@ ショートカット == 1 ? オン # オフ \@)
 DRAWLINE
@@ -49,6 +50,8 @@ DO
 				LOOP 1
 			ENDIF
 		CASE 4
+			SIF SP
+				CONTINUE
 			DRAWLINE
 			VARLINE = LINECOUNT
 			$SOUNDOPTION
@@ -137,17 +140,21 @@ PRINTL 　[0] - 口上+地の文
 PRINTL 　[1] - 口上のみ
 PRINTL 　[2] - 地の文のみ
 PRINTL 　[3] - テキストを表示しない
-PRINTFORML 　[4] - 実績解除時のメッセージ(現在:\@ FLAG:実績メッセージ ? オン # オフ \@)
+SIF !ORIGIN
+	PRINTFORML 　[4] - 実績解除時のメッセージ(現在:\@ FLAG:実績メッセージ ? オン # オフ \@)
 PRINTFORML 　[5] - パセリ表示(現在:\@ FLAG:パセリ表示 ? オン # オフ \@)
 PRINTFORML 　[6] - 通貨単位設定(現在:\@ 通貨単位 == "" ? [未設定] # %通貨単位% \@)
-PRINT 　[7] - グリムキャラの名前表示設定(現在:
-SELECTCASE FLAG:グリムコンフィグ
-	CASE 0
-		PRINTL 通常表示)
-	CASE 1
-		PRINTL 名前の先頭に「グリム・」を付ける
-ENDSELECT
-PRINTL 　[8] - ツールチップ(マウスカーソルを当てた時に表示されるポップアップ)の設定
+IF !ORIGIN || FINDCHARA(CFLAG:グリム, 1)
+	PRINT 　[7] - グリムキャラの名前表示設定(現在:
+	SELECTCASE FLAG:グリムコンフィグ
+		CASE 0
+			PRINTL 通常表示)
+		CASE 1
+			PRINTL 名前の先頭に「グリム・」を付ける
+	ENDSELECT
+ENDIF
+SIF !SP
+	PRINTL 　[8] - ツールチップ(マウスカーソルを当てた時に表示されるポップアップ)の設定
 PRINTFORML 　[9] - 調教画面の数値表示の設定(現在:\@ 数値表示設定 == "" ? 設定無し # %数値表示設定% \@)
 PRINTFORML 　[10] - PAGING関数でのキャラ表示数(現在:{PAGING表示数}人)
 DRAWLINE
@@ -185,12 +192,16 @@ DO
 				BREAK
 			通貨単位 = %RESULTS%
 		CASE 7
-			PRINTL グリムキャラの名前表示
-			PRINTL [0] - 通常の名前で表示する
-			PRINTL [1] - 名前の先頭に「グリム・」を付ける
-			CALL INPUTF, 0, 1
-			FLAG:グリムコンフィグ = RESULT
+			IF !ORIGIN || FINDCHARA(CFLAG:グリム, 1)
+				PRINTL グリムキャラの名前表示
+				PRINTL [0] - 通常の名前で表示する
+				PRINTL [1] - 名前の先頭に「グリム・」を付ける
+				CALL INPUTF, 0, 1
+				FLAG:グリムコンフィグ = RESULT
+			ENDIF
 		CASE 8
+			SIF SP
+				CONTINUE
 			$TOOLTIP
 			PRINTL ツールチップ設定
 			PRINTFORML [0] - ツールチップ表示(現在:\@ ツールチップ非表示 ? オフ # オン \@)
@@ -540,8 +551,10 @@ SIF CHARANAMEF(TARGET) == "寿々姫" && CSTR:全身上着 == "和服"
 DRAWLINE
 PRINTL □イベントのオン/オフを設定できます
 PRINTFORML 　[0] - 主人による色仕掛け/夜這い(現在\@ FLAG:色仕掛け ? オン # オフ \@)
-PRINTFORML 　[1] - 借金がないときの新規借入 (現在\@ FLAG:借入 ? オン # オフ \@)
-PRINTFORML 　[2] - カジノでのお誘い (現在\@ FLAG:お誘い ? オン # オフ \@)
+IF !ORIGIN
+	PRINTFORML 　[1] - 借金がないときの新規借入 (現在\@ FLAG:借入 ? オン # オフ \@)
+	PRINTFORML 　[2] - カジノでのお誘い (現在\@ FLAG:お誘い ? オン # オフ \@)
+ENDIF
 PRINTFORML 　[3] - TSバストサイズランダム化 (現在\@ FLAG:TSBランダム ? オン # オフ \@)
 PRINTFORML 　[4] - メスイキバストサイズランダム化 (現在\@ FLAG:メスイキ豊胸ランダム ? オン # オフ \@)
 DRAWLINE
@@ -604,8 +617,10 @@ DO
 			RETURN 0
 		CASE 101
 			LOADGLOBAL
-			SETBGMVOLUME BGM音量
-			SETSOUNDVOLUME SOUND音量
+			IF !SP
+				SETBGMVOLUME BGM音量
+				SETSOUNDVOLUME SOUND音量
+			ENDIF
 			RETURN 0
 		CASE 102
 			PRINTW デフォルトオプションを使用しません
@@ -644,6 +659,8 @@ DO
 			SAVEGLOBAL
 			RESTART
 		CASE 2
+			SIF ORIGIN
+				CONTINUE
 			PRINTL □実績解除メッセージの初期設定を選んでください
 			PRINTL 　[0] - 表示しなくてもいいよ
 			PRINTL 　[1] - 表示されると嬉しいな
@@ -652,6 +669,8 @@ DO
 			SAVEGLOBAL
 			RESTART
 		CASE 3
+			SIF ORIGIN
+				CONTINUE
 			PRINTL □PASELI表示設定の初期設定を選んでください
 			PRINTL 　[0] - 商標権侵害だから表示しなくていい
 			PRINTL 　[1] - BEMANIやってる感あるから表示したい
@@ -669,7 +688,7 @@ DO
 			RESTART
 		CASE 5
 			SIF SP
-				RESTART
+				CONTINUE
 			DRAWLINE
 			VARLINE = LINECOUNT
 			$SOUNDOPTION

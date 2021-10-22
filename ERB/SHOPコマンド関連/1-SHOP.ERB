@@ -1,9 +1,22 @@
 ﻿@SHOW_SHOP
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LTARGET
+#DIM CSV読み込み
 
 ;学園モードでは別途SHOPを使うためこの関数は使わない
 SIF ゲームモード() == "学園モード"
 	JUMP SHOP_SCHOOL
+
+;ORIGINならCSV実装済みの全キャラ解禁する
+IF CSV読み込み == 0 && ORIGIN
+	LTARGET = TARGET
+	FOR LCOUNT, 0, 10000
+		SIF EXISTCSV(LCOUNT) && GETCHARA(LCOUNT) == -1 && NO:MASTER != LCOUNT
+			CALL CHARA_ADD, LCOUNT
+	NEXT
+	TARGET = LTARGET
+	CSV読み込み = 1
+ENDIF
 
 ;モードに応じてBGMを流す
 SELECTCASE ゲームモード()
@@ -221,7 +234,6 @@ ENDIF
 ;主人のスキルアップ
 コマンド表示用:7 = %SET_TOOLTIP("[106] - SKILL UP  ", @"%CALLNAME:MASTER%のスキルツリーを表示します")%
 
-
 HTML_PRINT STRJOIN(コマンド表示用, "")
 
 ;200番台は奴隷関連のコマンド
@@ -272,6 +284,7 @@ ELSE
 ENDIF
 
 ;主人が禁断の知識持ってる場合
+;これは何らかのバージョンで医務室に移行した
 ;IF TALENT:MASTER:禁断の知識
 ;	IF CHARANUM > 1
 ;		コマンド表示用:6 = %SET_TOOLTIP("[205] - 身体改造 ", "キャラの体に改造を施します")%
@@ -291,11 +304,12 @@ SIF ITEM:ロジカルダッシュ == YEAR*100+MONTH
 	コマンド表示用:1 = %SET_TOOLTIP("[300] - パズル   ", "今月号のパズル雑誌で遊びます")%
 
 ;経営、PFREEなら表示
-SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード")
+;ORIGINでは金の概念が無いので使えない
+SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード") && !ORIGIN
 	コマンド表示用:2 = %SET_TOOLTIP("[301] - カジノ   ", "カジノに行ってギャンブルをします")%
 
-;裏カジノ行ければ表示
-SIF FLAG:裏カジノ
+;裏カジノ行ければ表示 同じくORIGINではry
+SIF FLAG:裏カジノ && !ORIGIN
 	コマンド表示用:3 = %SET_TOOLTIP("[302] - 裏カジノ ", "高レートの裏カジノに行ってギャンブルをします")%
 
 ;無条件表示（暫定）
@@ -334,17 +348,20 @@ IF ゲームモード() != "新婚モード" && ゲームモード() != "段位�
 ENDIF
 
 ;段位認定、新婚モード以外で表示
-IF ゲームモード() == "段位認定"
-	コマンド表示用:4 = %SET_TOOLTIP("[---] - 奴隷購入 ", "段位認定では奴隷を購入することができません", 0, "gray")%
-ELSEIF ゲームモード() != "新婚モード"
-	コマンド表示用:4 = %SET_TOOLTIP("[403] - 奴隷購入 ", "調教するための奴隷を購入します")%
-ENDIF
-;売却できるキャラがいれば表示
-IF 受験段位名 != "ヤンデレの音ゲーキャラに死ぬほど愛されて眠れないコース"
-	IF 売却可能
-		コマンド表示用:5 = %SET_TOOLTIP("[404] - 売却     ", "調教で仕上がった奴隷を売却します")%
+;ORIGINでは全キャラ無条件解禁なので購入もできない
+IF !ORIGIN
+	IF ゲームモード() == "段位認定"
+		コマンド表示用:4 = %SET_TOOLTIP("[---] - 奴隷購入 ", "段位認定では奴隷を購入することができません", 0, "gray")%
 	ELSEIF ゲームモード() != "新婚モード"
-		コマンド表示用:5 = %SET_TOOLTIP("[---] - 売却     ", "売却可能な奴隷が居ません", 0, "gray")%
+		コマンド表示用:4 = %SET_TOOLTIP("[403] - 奴隷購入 ", "調教するための奴隷を購入します")%
+	ENDIF
+	;売却できるキャラがいれば表示
+	IF 受験段位名 != "ヤンデレの音ゲーキャラに死ぬほど愛されて眠れないコース"
+		IF 売却可能
+			コマンド表示用:5 = %SET_TOOLTIP("[404] - 売却     ", "調教で仕上がった奴隷を売却します")%
+		ELSEIF ゲームモード() != "新婚モード"
+			コマンド表示用:5 = %SET_TOOLTIP("[---] - 売却     ", "売却可能な奴隷が居ません", 0, "gray")%
+		ENDIF
 	ENDIF
 ENDIF
 
@@ -407,7 +424,9 @@ ELSE
 	ENDSELECT
 ENDIF
 
-HTML_PRINT STRJOIN(コマンド表示用, "")
+;ORIGINでは600番台のコマンドは使わない
+SIF !ORIGIN
+	HTML_PRINT STRJOIN(コマンド表示用, "")
 
 
 ;デバッグモードなら表示
@@ -548,7 +567,6 @@ ENDIF
 ;主人のスキルアップ
 コマンド表示用:7 = %SET_TOOLTIP("[106] - SKILL UP          ", @"%CALLNAMEDISP(MASTER)%のスキルツリーを表示します")%
 
-
 HTML_PRINT STRJOIN(コマンド表示用, "")
 
 ;200番台は奴隷関連のコマンド
@@ -618,11 +636,11 @@ SIF ITEM:ロジカルダッシュ == YEAR*100+MONTH
 	コマンド表示用:1 = %SET_TOOLTIP("[300] - Puzzle            ", "今月号のパズル雑誌で遊びます")%
 
 ;経営、PFREEなら表示
-SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード")
+SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード") && !ORIGIN
 	コマンド表示用:2 = %SET_TOOLTIP("[301] - Casino            ", "カジノに行ってギャンブルをします")%
 
 ;裏カジノ行ければ表示
-SIF FLAG:裏カジノ
+SIF FLAG:裏カジノ && !ORIGIN
 	コマンド表示用:3 = %SET_TOOLTIP("[302] - Darkness Casino   ", "高レートの裏カジノに行ってギャンブルをします")%
 
 ;無条件表示（暫定）
@@ -657,17 +675,19 @@ IF ゲームモード() != "新婚モード"
 ENDIF
 
 ;段位認定、新婚モード以外で表示
-IF ゲームモード() == "段位認定"
-	コマンド表示用:4 = %SET_TOOLTIP("[---] - Buy Slaves        ", "段位認定では奴隷を購入することができません", 0, "gray")%
-ELSEIF ゲームモード() != "新婚モード"
-	コマンド表示用:4 = %SET_TOOLTIP("[403] - Buy Slaves        ", "調教するための奴隷を購入します")%
-ENDIF
-;売却できるキャラがいれば表示
-IF !売却禁止
-	IF 売却可能
-		コマンド表示用:5 = %SET_TOOLTIP("[404] - Sell Slaves       ", "調教で仕上がった奴隷を売却します")%
+IF !ORIGIN
+	IF ゲームモード() == "段位認定"
+		コマンド表示用:4 = %SET_TOOLTIP("[---] - Buy Slaves        ", "段位認定では奴隷を購入することができません", 0, "gray")%
 	ELSEIF ゲームモード() != "新婚モード"
-		コマンド表示用:5 = %SET_TOOLTIP("[---] - Sell Slaves       ", "売却可能な奴隷が居ません", 0, "gray")%
+		コマンド表示用:4 = %SET_TOOLTIP("[403] - Buy Slaves        ", "調教するための奴隷を購入します")%
+	ENDIF
+	;売却できるキャラがいれば表示
+	IF !売却禁止
+		IF 売却可能
+			コマンド表示用:5 = %SET_TOOLTIP("[404] - Sell Slaves       ", "調教で仕上がった奴隷を売却します")%
+		ELSEIF ゲームモード() != "新婚モード"
+			コマンド表示用:5 = %SET_TOOLTIP("[---] - Sell Slaves       ", "売却可能な奴隷が居ません", 0, "gray")%
+		ENDIF
 	ENDIF
 ENDIF
 
@@ -730,7 +750,8 @@ ELSE
 	ENDSELECT
 ENDIF
 
-HTML_PRINT STRJOIN(コマンド表示用, "")
+SIF !ORIGIN
+	HTML_PRINT STRJOIN(コマンド表示用, "")
 
 ;デバッグモードなら表示
 ;#;PRINTPLAIN 　
@@ -855,7 +876,7 @@ SELECTCASE RESULT
 			CALL PUZZLE
 	;カジノ
 	CASE 301
-		SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード")
+		SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード") && !ORIGIN
 			CALL GAMBLE, 1
 		;ギャンブルしたならターン終了
 		IF RESULT == 1
@@ -865,7 +886,7 @@ SELECTCASE RESULT
 		ENDIF
 	;裏カジノ
 	CASE 302
-		SIF FLAG:裏カジノ
+		SIF FLAG:裏カジノ && !ORIGIN
 			CALL GAMBLE, 2
 		;ギャンブルしたならターン終了
 		IF RESULT == 1
@@ -941,11 +962,11 @@ SELECTCASE RESULT
 		ENDSELECT
 	;奴隷購入
 	CASE 403
-		SIF !GROUPMATCH(ゲームモード(), "新婚モード", "段位認定")
+		SIF !GROUPMATCH(ゲームモード(), "新婚モード", "段位認定") && !ORIGIN
 			CALL CHARA_BUY
 	;売却
 	CASE 404
-		SIF ゲームモード() != "新婚モード" && 受験段位名 != "ヤンデレの音ゲーキャラに死ぬほど愛されて眠れないコース"
+		SIF ゲームモード() != "新婚モード" && 受験段位名 != "ヤンデレの音ゲーキャラに死ぬほど愛されて眠れないコース" && !ORIGIN
 			CALL CHARA_SELL
 	;セーブ
 	CASE 500
@@ -962,6 +983,8 @@ SELECTCASE RESULT
 		CALL GAME_MANUAL
 	;納金
 	CASE 600
+		SIF ORIGIN
+			RETURN 0
 		SELECTCASE ゲームモード()
 			CASE "通常モード"
 				;100万
@@ -981,7 +1004,7 @@ SELECTCASE RESULT
 		ENDSELECT
 	;周回
 	CASE 601
-		SIF FLAG:周回可能
+		SIF FLAG:周回可能 && !ORIGIN
 			CALL SUCCESSION
 	;コナミコマンド
 	CASE 573
@@ -1095,10 +1118,16 @@ CALL CHECKDRAWLINE
 PRINT □
 CALL 日付表示
 
-SIF FLAG:周回数 > 1
-	PRINTFORM  {FLAG:周回数}周目
-CALL ゲームモード表示
-PRINTL 
+;ORIGINでは表示しない
+IF !ORIGIN
+	SIF FLAG:周回数 > 1
+		PRINTFORM  {FLAG:周回数}周目 
+	CALL ゲームモード表示
+	PRINTL 
+;ただしeraBEMANIのORIGINモードでは表示
+ELSEIF ORIGIN && GAMEBASE_TITLE == "eraBEMANI+α"
+	PRINTL MODE:Origin
+ENDIF
 
 IF LANGUAGE == "ENG"
 	PRINTFORML 　Weather:%WEATHERDISP()% Temperature:%DIV10(FLAG:気温)%℃
@@ -1107,76 +1136,79 @@ ELSE
 ENDIF
 
 ;段位認定のときのみ表示を変える
-IF ゲームモード() != "段位認定"
-	IF LANGUAGE == "ENG"
-		;所持金表示
-		CALL PASELI, @"　Money:{MONEY}＄"
-		SIF 借金 > 0
-			CALL PASELI, @" Debts:{借金}＄"
-		CALL PASELI, @" Money(Yesterday):{LASTMONEY}＄"
-		IF MONEY == LASTMONEY
-			PRINTL →0 KEEP
-		ELSEIF MONEY > LASTMONEY
-			PRINTFORML ↑{MONEY-LASTMONEY} UP!
-		ELSEIF MONEY < LASTMONEY
-			PRINTFORML ↓{LASTMONEY-MONEY} DOWN...
-		ENDIF
+;ORIGINでは所持金、難易度は表示しない
+IF !ORIGIN
+	IF ゲームモード() != "段位認定"
+		IF LANGUAGE == "ENG"
+			;所持金表示
+			CALL PASELI, @"　Money:{MONEY}＄"
+			SIF 借金 > 0
+				CALL PASELI, @" Debts:{借金}＄"
+			CALL PASELI, @" Money(Yesterday):{LASTMONEY}＄"
+			IF MONEY == LASTMONEY
+				PRINTL →0 KEEP
+			ELSEIF MONEY > LASTMONEY
+				PRINTFORML ↑{MONEY-LASTMONEY} UP!
+			ELSEIF MONEY < LASTMONEY
+				PRINTFORML ↓{LASTMONEY-MONEY} DOWN...
+			ENDIF
 
-		;新婚生活中は非表示
-		IF ゲームモード() != "新婚モード"
+			;新婚生活中は非表示
+			IF ゲームモード() != "新婚モード"
+				;難易度表示
+				PRINTFORM 　Difficulty:%難易度()%
+				;奴隷人数表示
+				PRINTFORML 　Characters:{CHARANUM-1}\/Fell:{CMATCH(CFLAG:陥落, 1)}
+			ENDIF
+		ELSE
+			;所持金表示
+			CALL PASELI, @"　所持金:{MONEY}＄"
+			SIF 借金 > 0
+				CALL PASELI, @" 借金:{借金}＄"
+			CALL PASELI, @" 昨日の所持金:{LASTMONEY}＄"
+			IF MONEY == LASTMONEY
+				PRINTL →0 KEEP
+			ELSEIF MONEY > LASTMONEY
+				PRINTFORML ↑{MONEY-LASTMONEY} UP!
+			ELSEIF MONEY < LASTMONEY
+				PRINTFORML ↓{LASTMONEY-MONEY} DOWN...
+			ENDIF
+
+			;新婚生活中は非表示
+			IF ゲームモード() != "新婚モード"
+				;難易度表示
+				PRINTFORM 　難易度:%難易度()%
+				;奴隷人数表示
+				PRINTFORML 　総奴隷数:{CHARANUM-1}\/陥落済み:{CMATCH(CFLAG:陥落, 1)}
+			ENDIF
+		ENDIF
+	ELSE
+		IF LANGUAGE == "ENG"
+			;所持金表示
+			CALL PASELI, @"　Money:{MONEY}＄"
+			SIF ストック > 0
+				CALL PASELI, @" (Stock:{ストック}＄)"
+			PRINTL
+
 			;難易度表示
 			PRINTFORM 　Difficulty:%難易度()%
-			;奴隷人数表示
-			PRINTFORML 　Characters:{CHARANUM-1}\/Falling:{CMATCH(CFLAG:陥落, 1)}
-		ENDIF
-	ELSE
-		;所持金表示
-		CALL PASELI, @"　所持金:{MONEY}＄"
-		SIF 借金 > 0
-			CALL PASELI, @" 借金:{借金}＄"
-		CALL PASELI, @" 昨日の所持金:{LASTMONEY}＄"
-		IF MONEY == LASTMONEY
-			PRINTL →0 KEEP
-		ELSEIF MONEY > LASTMONEY
-			PRINTFORML ↑{MONEY-LASTMONEY} UP!
-		ELSEIF MONEY < LASTMONEY
-			PRINTFORML ↓{LASTMONEY-MONEY} DOWN...
-		ENDIF
+			;売却可能人数表示
+			PRINTFORML Characters:{CHARANUM-1}\/Can sell:{CMATCH(CFLAG:状態, 1)+CMATCH(CFLAG:状態, 2)}
+		ELSE
+			;所持金表示
+			CALL PASELI, @"　所持金:{MONEY}＄"
+			SIF ストック > 0
+				CALL PASELI, @" (ストック:{ストック}＄)"
+			PRINTL
 
-		;新婚生活中は非表示
-		IF ゲームモード() != "新婚モード"
 			;難易度表示
 			PRINTFORM 　難易度:%難易度()%
-			;奴隷人数表示
-			PRINTFORML 　総奴隷数:{CHARANUM-1}\/陥落済み:{CMATCH(CFLAG:陥落, 1)}
+			;売却可能人数表示
+			PRINTFORML 総奴隷数:{CHARANUM-1}\/売却可能:{CMATCH(CFLAG:状態, 1)+CMATCH(CFLAG:状態, 2)}
 		ENDIF
+		PRINT 　
+		CALL 段位ゲージ表示
 	ENDIF
-ELSE
-	IF LANGUAGE == "ENG"
-		;所持金表示
-		CALL PASELI, @"　Money:{MONEY}＄"
-		SIF ストック > 0
-			CALL PASELI, @" (Stock:{ストック}＄)"
-		PRINTL
-
-		;難易度表示
-		PRINTFORM 　Difficulty:%難易度()%
-		;売却可能人数表示
-		PRINTFORML Characters:{CHARANUM-1}\/Can sell:{CMATCH(CFLAG:状態, 1)+CMATCH(CFLAG:状態, 2)}
-	ELSE
-		;所持金表示
-		CALL PASELI, @"　所持金:{MONEY}＄"
-		SIF ストック > 0
-			CALL PASELI, @" (ストック:{ストック}＄)"
-		PRINTL
-
-		;難易度表示
-		PRINTFORM 　難易度:%難易度()%
-		;売却可能人数表示
-		PRINTFORML 総奴隷数:{CHARANUM-1}\/売却可能:{CMATCH(CFLAG:状態, 1)+CMATCH(CFLAG:状態, 2)}
-	ENDIF
-	PRINT 　
-	CALL 段位ゲージ表示
 ENDIF
 
 ;奴隷の状態------------------------------------------------------------
