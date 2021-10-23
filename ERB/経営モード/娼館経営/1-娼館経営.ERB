@@ -165,7 +165,8 @@ SELECTCASE RESULT
 	CASE 2
 		PRINTL 物件を増築し、より多くの道具や奴隷を配置できるようにするコマンドです。
 		PRINTL ゲームセンター経営と違い、物件はデフォルトで所持しているので経営自体はすぐに始められます。
-		PRINTW 増築には当然お金がかかりますが、序盤は小規模でも特に気になるものではないと思います。
+		SIF !ORIGIN
+			PRINTW 増築には当然お金がかかりますが、序盤は小規模でも特に気になるものではないと思います。
 	CASE 3
 		PRINTL 運営方針を決めるコマンドです。
 		PRINTL 運営には方針が必要であり、これを決めないとほとんど経営放棄も同然です。
@@ -224,7 +225,8 @@ FOR LCOUNT, GETNUM(ITEM, "娼館ローター"), GETNUM(ITEM, "お風呂場")
 	SIF 表示数%3 == 0
 		PRINT 　
 	PRINTFORM [{LCOUNT}] %SUBSTRINGU(ITEMNAME:LCOUNT, 2, -1)%
-	CALL PASELI, @" 維持費:{ITEMPRICE:LCOUNT}＄"
+	SIF !ORIGIN
+		CALL PASELI, @" 維持費:{ITEMPRICE:LCOUNT}＄"
 	IF ITEM:LCOUNT == 0
 		PRINT 【
 		SETCOLOR 120 , 120 , 120
@@ -314,6 +316,11 @@ PRINTL
 DRAWLINE
 CALL PRINT_BR_ITEM
 DRAWLINE
+
+IF ORIGIN
+	娼館広さ = 10
+	娼館部屋数 = 20
+ENDIF
 
 IF 娼館広さ >= 10
 	SETCOLORBYNAME gray
@@ -420,24 +427,29 @@ FOR LCOUNT, GETNUM(ITEM, "お風呂場"), GETNUM(ITEM, "わけのわからない
 		PRINTFORMLC [導入済み] %ITEMNAME:LCOUNT%
 		RESETCOLOR
 	ELSE
-		表示用 = [{LCOUNT}] %ITEMNAME:LCOUNT%({ITEMPRICE:LCOUNT}＄)
-		CALL PASELI, 表示用
-		;PRINT_IMGでPRINTC系命令使うとエラーになるので疑似再現
-		IF FLAG:パセリ表示
-			単位文字数 = 2
-		ELSEIF 通貨単位 != ""
-			単位文字数 = STRLENS(通貨単位)
+		表示用 = [{LCOUNT}] %ITEMNAME:LCOUNT%\@ !ORIGIN ? ({ITEMPRICE:LCOUNT}＄)#\@
+		IF ORIGIN
+			PRINTFORMLC %表示用%
 		ELSE
-			単位文字数 = 1
+			CALL PASELI, 表示用
+			;PRINT_IMGでPRINTC系命令使うとエラーになるので疑似再現
+			IF FLAG:パセリ表示
+				単位文字数 = 2
+			ELSEIF 通貨単位 != ""
+				単位文字数 = STRLENS(通貨単位)
+			ELSE
+				単位文字数 = 1
+			ENDIF
+			;＄の分2文字と通貨単位分
+			FOR LCOUNT:1, 0, 28-(STRLENS(表示用)-2)-単位文字数
+				PRINT  
+			NEXT
 		ENDIF
-		;＄の分2文字と通貨単位分
-		FOR LCOUNT:1, 0, 28-(STRLENS(表示用)-2)-単位文字数
-			PRINT  
-		NEXT
 	ENDIF
 	表示数++
 	IF 表示数 == 4
-		PRINTL 
+		SIF !LINEISEMPTY()
+			PRINTL 
 		表示数 = 0
 	ENDIF
 NEXT
@@ -459,7 +471,7 @@ DO
 				CONTINUE
 			SIF ITEM:RESULT
 				CONTINUE
-			IF ITEMPRICE:RESULT > MONEY
+			IF ITEMPRICE:RESULT > MONEY && !ORIGIN
 				PRINTW 所持金が足りません
 				RESTART
 			ENDIF
@@ -484,7 +496,8 @@ DO
 				CASE "わけのわからないもの"
 					PRINTL わけのわからない人たちが使う
 			ENDSELECT
-			CALL PASELIL, @"導入後の所持金 {MONEY}＄→{MONEY-ITEMPRICE:RESULT}＄"
+			SIF !ORIGIN
+				CALL PASELIL, @"導入後の所持金 {MONEY}＄→{MONEY-ITEMPRICE:RESULT}＄"
 			PRINTL [0] - 導入する
 			PRINTL [1] - 導入しない
 			CALL INPUTF, 0, 1

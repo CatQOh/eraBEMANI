@@ -304,21 +304,23 @@ LOOP 1
 DRAWLINE
 PRINTL 【物件購入】
 PRINTL 名声や評判によって買える物件も変わります
-PRINT 「物件名」(金額 - 日毎の基本維持費) 
-CALL PASELIL, @"所持金：{MONEY}＄"
+IF !ORIGIN
+	PRINT 「物件名」(金額 - 日毎の基本維持費) 
+	CALL PASELIL, @"所持金：{MONEY}＄"
+ENDIF
 PRINTL 
-CALL PASELIL, @"　[1] - ボロ屋(30000＄ - 300＄～)"
-CALL PASELIL, @"　[2] - 中小スーパーのテナント(5000＄ - 1000＄～)"
+CALL PASELIL, @"　[1] - ボロ屋\@ !ORIGIN ? (30000＄ - 300＄～)#\@"
+CALL PASELIL, @"　[2] - 中小スーパーのテナント\@ !ORIGIN ? (5000＄ - 1000＄～)#\@"
 SIF 総スコア >= 5000
-	CALL PASELIL, @"　[3] - 商店街の一角(50000＄ - 1200＄～)"
+	CALL PASELIL, @"　[3] - 商店街の一角\@ !ORIGIN ? (50000＄ - 1200＄～)#\@"
 SIF 総スコア >= 10000
-	CALL PASELIL, @"　[4] - 駅中テナント(10000＄ - 3000＄～)"
+	CALL PASELIL, @"　[4] - 駅中テナント\@ !ORIGIN ? (10000＄ - 3000＄～)#\@"
 SIF 総スコア >= 30000
-	CALL PASELIL, @"　[5] - 街中物件(100000＄ - 2000＄～)"
+	CALL PASELIL, @"　[5] - 街中物件\@ !ORIGIN ? (100000＄ - 2000＄～)#\@"
 SIF 総スコア >= 50000
-	CALL PASELIL, @"　[6] - 百貨店テナント(30000＄ - 10000＄～)"
+	CALL PASELIL, @"　[6] - 百貨店テナント\@ !ORIGIN ? (30000＄ - 10000＄～)#\@"
 SIF 総スコア >= 100000
-	CALL PASELIL, @"　[7] - アミューズメント施設(300000＄ - 5000＄～)"
+	CALL PASELIL, @"　[7] - アミューズメント施設\@ !ORIGIN ? (300000＄ - 5000＄～)#\@"
 DRAWLINE
 PRINTPLAIN 　PROPERTY　
 PRINTL [0] - 戻る　
@@ -378,7 +380,7 @@ DO
 	ENDSELECT
 LOOP 0
 
-IF MONEY < 物件価格(LRESULT)
+IF MONEY < 物件価格(LRESULT) && !ORIGIN
 	PRINTW 所持金が足りません
 	RESTART
 ELSEIF GC物件 == LRESULT
@@ -386,9 +388,11 @@ ELSEIF GC物件 == LRESULT
 	RESTART
 ENDIF
 
-PRINTL 所持金変動
-CALL PASELIL, @"{MONEY}＄ > {MONEY - 物件価格(LRESULT)}＄"
-PRINTL 
+IF !ORIGIN
+	PRINTL 所持金変動
+	CALL PASELIL, @"{MONEY}＄ > {MONEY - 物件価格(LRESULT)}＄"
+	PRINTL 
+ENDIF
 PRINTL 購入しますか？
 PRINTL [0] - 購入しない
 PRINTL [1] - 購入する
@@ -513,23 +517,23 @@ SELECTCASE GC物件
 		IF GC広さ >= 20
 			PRINTL 　[-] - 広さは最大です
 		ELSE
-			CALL PASELIL, @"　[1] - 広くする({費用:1}＄)"
+			CALL PASELIL, @"　[1] - 広くする\@ !ORIGIN ? ({費用:1}＄#)\@"
 		ENDIF
 		SIF !GC分煙
-			CALL PASELIL, @"　[2] - 分煙施設を作る({費用:2}＄)"
+			CALL PASELIL, @"　[2] - 分煙施設を作る\@ !ORIGIN ? ({費用:2}＄)#\@"
 		IF GC階層 >= 100
 			PRINTL 　[-] - 階層は最大です
 		ELSE
-			CALL PASELIL, @"　[3] - 階層を増やす({費用:3}＄)"
+			CALL PASELIL, @"　[3] - 階層を増やす\@ !ORIGIN ? ({費用:3}＄)#\@"
 		ENDIF
 		IF GC外装 >= 100
 			PRINTL 　[-] - 外装は最大です
 		ELSE
-			CALL PASELIL, @"　[4] - 外装強化({費用:4}＄)"
+			CALL PASELIL, @"　[4] - 外装強化\@ !ORIGIN ? ({費用:4}＄)#\@"
 		ENDIF
 		SIF !GCフードコート
-			CALL PASELIL, @"　[5] - フードコートを作る({費用:5}＄)"
-		CALL PASELIL, @"　[6] - お手洗い改装({費用:6}＄)"
+			CALL PASELIL, @"　[5] - フードコートを作る\@ !ORIGIN ? ({費用:5}＄)#\@"
+		CALL PASELIL, @"　[6] - お手洗い改装\@ !ORIGIN ? ({費用:6}＄)#\@"
 ENDSELECT
 DRAWLINE
 PRINTPLAIN 　RENOVATION　
@@ -556,7 +560,7 @@ DO
 	ENDSELECT
 LOOP LOOPRES(0, 1, 2, 3, 4, 5, 6)
 
-IF MONEY < 費用:RESULT
+IF MONEY < 費用:RESULT && !ORIGIN
 	PRINTW 所持金が足りません
 	RESTART
 ENDIF
@@ -621,11 +625,12 @@ DO
 			RETURN
 		CASE 1, 2, 4
 			DRAWLINE
-			CALL PASELIL, @"所持金:{MONEY}＄"
+			SIF !ORIGIN
+				CALL PASELIL, @"所持金:{MONEY}＄"
 			PRINTL □購入する筐体を選んでください
 			FOR LCOUNT, ページ*100+1000, ページ*100+1100
 				SIF ITEMNAME:LCOUNT != ""
-					CALL PASELIL, @"　[{LCOUNT}] - %ITEMNAME:LCOUNT%({ITEMPRICE:LCOUNT}＄)"
+					CALL PASELIL, @"　[{LCOUNT}] - %ITEMNAME:LCOUNT%\@ !ORIGIN ? ({ITEMPRICE:LCOUNT}＄)#\@"
 			NEXT
 			DRAWLINE
 			PRINTPLAIN 　ARCADE　
@@ -638,7 +643,7 @@ DO
 						RESTART
 					CASEELSE
 						IF ITEMNAME:RESULT != ""
-							IF MONEY < ITEMPRICE:RESULT
+							IF MONEY < ITEMPRICE:RESULT && !ORIGIN
 								PRINTW 所持金が足りません
 								BREAK
 							ELSE

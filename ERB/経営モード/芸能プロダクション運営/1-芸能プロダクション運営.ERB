@@ -19,7 +19,11 @@ ELSE
 	HTML_PRINT SET_TOOLTIP("　[-] - レッスン", "キャラを配属してください", 0, "gray")
 	HTML_PRINT SET_TOOLTIP("　[-] - イベント", "キャラを配属してください", 0, "gray")
 ENDIF
-HTML_PRINT SET_TOOLTIP("　[3] - 賄賂する", "現金などを送ることにより知名度を強引に上げます")
+IF ORIGIN
+	HTML_PRINT SET_TOOLTIP("　[3] - 枕営業させる", "キャラに枕営業をさせて知名度を強引に上げます")
+ELSE
+	HTML_PRINT SET_TOOLTIP("　[3] - 賄賂する", "現金などを送ることにより知名度を強引に上げます")
+ENDIF
 HTML_PRINT SET_TOOLTIP("　[4] - 人員配置", "芸能プロダクションで働かせるキャラを配属します")
 IF FINDCHARA(CSTR:配属, "芸能プロダクション") >= 0
 	HTML_PRINT SET_TOOLTIP("　[5] - ユニット", "キャラ同士でユニットを組みます")
@@ -79,8 +83,10 @@ PRINTL 当モードは芸能プロダクションを運営して資金を稼ぐ�
 PRINTL 
 PRINTL [1] - 「レッスン」とは？
 PRINTL [2] - 「イベント」とは？
-PRINTL [3] - 「贈賄する」とは？
-PRINTL [4] - 「人員配置」とは？
+IF !ORIGIN
+	PRINTL [3] - 「贈賄する」とは？
+	PRINTL [4] - 「人員配置」とは？
+ENDIF
 DRAWLINE
 PRINTPLAIN 　TUTORIAL　
 PRINTL [0] - 戻る
@@ -167,22 +173,30 @@ DO
 				PRINTL レッスンのレベルと種類を選んでください
 				PRINTL
 				PRINTL [0]レッスンの予定を入れない
-				PRINTL 　　　　　　 Vocal Inst. Dance
-				CALL PASELIL, @"Lv1(10000＄)  [ 1]  [ 2]  [ 3]"
+				IF ORIGIN
+					PRINTL 　　Vocal Inst. Dance
+				ELSE
+					PRINTL 　　　　　　 Vocal Inst. Dance
+				ENDIF
+				CALL PASELIL, @"Lv1\@ !ORIGIN ? (10000＄)#\@  [ 1]  [ 2]  [ 3]"
 				IF IDOL知名度 > 40
-					CALL PASELIPLAIN, @"Lv2(30000＄)  "
+					CALL PASELIPLAIN, @"Lv2\@ !ORIGIN ? (30000＄)#\@ "
+					SIF ORIGIN
+						PRINT  
 					PRINTL [ 4]  [ 5]  [ 6]
 				ENDIF
 				IF IDOL知名度 > 160
-					CALL PASELIPLAIN, @"Lv3(60000＄)  "
+					CALL PASELIPLAIN, @"Lv3\@ !ORIGIN ? (60000＄)#\@ "
+					SIF ORIGIN
+						PRINT  
 					PRINTL [ 7]  [ 8]  [ 9]
 				ENDIF
 				IF IDOL知名度 > 640
-					CALL PASELIPLAIN, @"Lv4(100000＄) "
+					CALL PASELIPLAIN, @"Lv4\@ !ORIGIN ? (100000＄)#\@ "
 					PRINTL [10]  [11]  [12]
 				ENDIF
 				IF IDOL知名度 > 2560
-					CALL PASELIPLAIN, @"Lv5(150000＄) "
+					CALL PASELIPLAIN, @"Lv5\@ !ORIGIN ? (150000＄)#\@ "
 					PRINTL [13]  [14]  [15]
 				ENDIF
 				DO
@@ -655,6 +669,9 @@ RETURN 1
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 費用
 #DIM DYNAMIC 知名度計算用
+;ORIGINでは枕営業のみ
+SIF ORIGIN
+	GOTO MAKURA_LOOP
 DRAWLINE
 PRINTL 何をしますか？
 PRINTL [1] 賄賂を送る
@@ -741,7 +758,11 @@ SELECTCASE RESULT
 			INPUT
 			SELECTCASE RESULT
 				CASE 0
-					RESTART
+					IF ORIGIN
+						RETURN 0
+					ELSE
+						RESTART
+					ENDIF
 				CASE 1 TO CHARANUM-1
 					IF BASE:RESULT:体力 >= 500 && CSTR:RESULT:配属 == "芸能プロダクション"
 						CFLAG:RESULT:レッスン *= -1

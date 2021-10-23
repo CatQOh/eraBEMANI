@@ -23,7 +23,7 @@ PRINTL 　[1] - ロボットを制作する
 PRINTL 　[2] - 分析データからロボットを複製する
 SIF STSMOD
 	PRINTL 　[3] - ロボットを廃棄する
-CALL PASELIL, @"　[4] - 人格をロボットに移植する(100000＄が必要)"
+CALL PASELIL, @"　[4] - 人格をロボットに移植する\@ !ORIGIN ? (100000＄が必要)#\@"
 DRAWLINE
 PRINTPLAIN 　ロボットファクトリー　
 PRINTL [0] - 戻る
@@ -70,7 +70,7 @@ DO
 				CALL STS_MACHINE
 			RESTART
 		CASE 4
-			IF MONEY < 100000
+			IF MONEY < 100000 && !ORIGIN
 				PRINTW 所持金が足りません
 				RESTART
 			ENDIF
@@ -189,7 +189,8 @@ NEXT
 PRINTL 
 SIF 素質コスト > 10 && !CFLAG:複製
 	CALL PRINTCOLORL, @"　※警告※ コスト超過 製造中に性格プロトコルに異常発生の恐れ(素質コスト:{素質コスト}/10)", "red"
-CALL PASELIL, @"　基礎コスト{コスト基準額*5}＄+耐久コスト{耐久コスト*コスト基準額}+素質総コスト:{素質コスト*コスト基準額}＄ = 必要製作コスト:{製作コスト*コスト基準額}＄"
+SIF !ORIGIN
+	CALL PASELIL, @"　基礎コスト{コスト基準額*5}＄+耐久コスト{耐久コスト*コスト基準額}+素質総コスト:{素質コスト*コスト基準額}＄ = 必要製作コスト:{製作コスト*コスト基準額}＄"
 PRINTL 
 IF !CFLAG:複製
 	PRINTL 　[1] - 素質を変更する
@@ -473,24 +474,26 @@ DO
 			MAXBASE:気力 += 300
 			RESTART
 		CASE 10
-			IF 製作コスト*コスト基準額 > MONEY+(ITEM:マテリアル*コスト基準額)
+			IF 製作コスト*コスト基準額 > MONEY+(ITEM:マテリアル*コスト基準額) && !ORIGIN
 				PRINTW 所持金が足りません
 				RESTART
 			ENDIF
-			IF ITEM:マテリアル >= 製作コスト
-				PRINTFORML マテリアル{製作コスト}個を使用してこのロボットを作成します。よろしいですか？
-			ELSEIF ITEM:マテリアル
-				CALL PASELIL, @"マテリアルを{ITEM:マテリアル}個と{(製作コスト-ITEM:マテリアル)*コスト基準額}＄を使用してこのロボットを作成します。よろしいですか？"
+			IF ORIGIN
+				PRINTL このロボットを作成します。よろしいですか？
 			ELSE
-				CALL PASELIL, @"{製作コスト*コスト基準額}＄を使用してこのロボットを作成します。よろしいですか？"
+				IF ITEM:マテリアル >= 製作コスト
+					PRINTFORML マテリアル{製作コスト}個を使用してこのロボットを作成します。よろしいですか？
+				ELSEIF ITEM:マテリアル
+					CALL PASELIL, @"マテリアルを{ITEM:マテリアル}個と{(製作コスト-ITEM:マテリアル)*コスト基準額}＄を使用してこのロボットを作成します。よろしいですか？"
+				ELSE
+					CALL PASELIL, @"{製作コスト*コスト基準額}＄を使用してこのロボットを作成します。よろしいですか？"
+				ENDIF
 			ENDIF
 			PRINTL [0] - はい
 			PRINTL [1] - いいえ
-			DO
-				INPUT
-				SIF RESULT == 1
-					RESTART
-			LOOP LOOPRES(0)
+			CALL INPUTF, 0, 1
+			SIF RESULT == 1
+				RESTART
 			IF ITEM:マテリアル >= 製作コスト
 				ITEM:マテリアル -= 製作コスト
 			ELSEIF ITEM:マテリアル

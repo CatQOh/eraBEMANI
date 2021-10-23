@@ -42,28 +42,45 @@ IF ゲームモード() == "新婚モード"
 	養殖レベル計算用 = 50
 ENDIF
 
+;ORIGINモードなら最初から所持
+IF ORIGIN
+	ITEM:牧場 = 1
+	ITEM:畜舎 = 1
+	ITEM:養蜂場 = 1
+	ITEM:生け簀 = 1
+	牛の状態 = 50
+	馬の状態 = 50
+	羊の状態 = 50
+	豚の状態 = 50
+	鶏の状態 = 50
+	蜂の状態 = 50
+ENDIF
+
 DRAWLINE
 PRINTL □畜産関連の管理
-IF ITEM:牧場 || ITEM:畜舎 || ITEM:養蜂場 || ITEM:生け簀
-	PRINT 　現在の予算 
-	SIF ITEM:牧場
-		CALL PASELI, @"牧場の予算:{牧場の予算}＄/1000000＄ "
-	SIF ITEM:畜舎
-		CALL PASELI, @"畜舎の予算:{畜舎の予算}＄/1000000＄ "
-	PRINTL 
-	PRINT 　　　　　　 
-	SIF ITEM:養蜂場
-		CALL PASELI, @"養蜂場の予算:{養蜂場の予算}＄/100000＄ "
-	SIF ITEM:生け簀
-		CALL PASELI, @"生け簀の予算:{生け簀の予算}＄/1000000＄"
-	PRINTL 
+IF !ORIGIN
+	IF ITEM:牧場 || ITEM:畜舎 || ITEM:養蜂場 || ITEM:生け簀
+		PRINT 　現在の予算 
+		SIF ITEM:牧場
+			CALL PASELI, @"牧場の予算:{牧場の予算}＄/1000000＄ "
+		SIF ITEM:畜舎
+			CALL PASELI, @"畜舎の予算:{畜舎の予算}＄/1000000＄ "
+		PRINTL 
+		PRINT 　　　　　　 
+		SIF ITEM:養蜂場
+			CALL PASELI, @"養蜂場の予算:{養蜂場の予算}＄/100000＄ "
+		SIF ITEM:生け簀
+			CALL PASELI, @"生け簀の予算:{生け簀の予算}＄/1000000＄"
+		PRINTL 
+	ENDIF
 ENDIF
 SIF ゲームモード() != "新婚モード"
 	PRINTFORML 　現在の人員 配属人数:{CMATCH(CSTR:配属, "畜産業")}/10 飼育レベル:{飼育レベル計算用} 養殖レベル:{養殖レベル計算用} 出費の減額率:{減額率}\%/90\%
 PRINTL 
 
 IF (ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場) && ゲームモード() != "新婚モード"
-	PRINTL 　[1] - 畜産業に投資する
+	SIF !ORIGIN
+		PRINTL 　[1] - 畜産業に投資する
 	PRINTL 　[2] - 人員を配置する
 ELSEIF ゲームモード() != "新婚モード"
 	SETCOLORBYNAME gray
@@ -80,7 +97,8 @@ ELSE
 ENDIF
 
 PRINTL 　[4] - 生産状況を確認する
-PRINTL 　[5] - 設備を導入する
+SIF !ORIGIN
+	PRINTL 　[5] - 設備を導入する
 ;PRINTL 　[6] - 畜産業の説明
 DRAWLINE
 PRINTPLAIN 　畜産　
@@ -90,7 +108,7 @@ DO
 	INPUT
 	SELECTCASE RESULT
 		CASE 1
-			SIF (ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場) && ゲームモード() != "新婚モード"
+			SIF (ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場) && ゲームモード() != "新婚モード" && !ORIGIN
 				CALL 畜産業に投資する
 			RESTART
 		CASE 2
@@ -105,7 +123,8 @@ DO
 			CALL 生産状況_畜産, 減額率
 			RESTART
 		CASE 5
-			CALL 畜産設備導入
+			SIF !ORIGIN
+				CALL 畜産設備導入
 			RESTART
 		CASE 6
 			CALL MANUAL_畜産業
@@ -419,7 +438,7 @@ DO
 			PRINTFORML □{LRESULT}番の生け簀で何を養殖しますか？
 			FOR LCOUNT, 800, 850
 				SIF ITEMNAME:LCOUNT != ""
-					CALL PASELIL, @"　[{LCOUNT-800, 2}] - %ITEMNAME:LCOUNT%(養殖費用 およそ{ITEMPRICE:LCOUNT*(100-減額率)/100}＄/日)"
+					CALL PASELIL, @"　[{LCOUNT-800, 2}] - %ITEMNAME:LCOUNT%\@ !ORIGIN ? (養殖費用 およそ{ITEMPRICE:LCOUNT*(100-減額率)/100}＄/日)#\@"
 			NEXT
 			DRAWLINE
 			PRINTPLAIN 　生け簀　
@@ -872,6 +891,15 @@ NEXT
 IF ゲームモード() == "新婚モード"
 	飼育レベル計算用 = 50
 	養殖レベル計算用 = 50
+ENDIF
+
+;ORIGINなら予算は常にMAX
+IF ORIGIN
+	牧場の予算 = 1000000
+	畜舎の予算 = 1000000
+	養蜂場の予算 = 100000
+	生け簀の予算 = 1000000
+	自動投資 = 0
 ENDIF
 
 ;減額率が0なら1にする
