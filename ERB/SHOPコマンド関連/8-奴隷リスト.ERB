@@ -1,4 +1,88 @@
-﻿;調教対象選択
+﻿;ステータス表示
+@SHOW_CHARADATA
+#DIM 表示切り替え
+#DIM DYNAMIC LTARGET
+#DIM 表示上限 = 10
+DRAWLINE
+
+CALL LOOP_CLEARLINE
+
+CALL LIFE_LIST, "通常表示", 表示切り替え, 表示上限
+;RESULTにはまだ表示されてないキャラが居るかどうか
+DRAWLINE
+
+PRINTPLAIN 　CHARADATA　
+IF TFLAG:ページ数 > 0
+	PRINTFORM [999] 前ページ 
+ELSE
+	PRINTPLAINFORM %SPACESLENS("[999] 前ページ ")%
+ENDIF
+
+PRINTFORM [1000] 戻る 
+IF RESULT
+	PRINTFORM [1001] 次ページ 
+ELSE
+	PRINTPLAINFORM %SPACESLENS("[1001] 次ページ ")%
+ENDIF
+
+PRINT [1010] キャラソート 
+IF 表示切り替え
+	PRINT [1011] 通常表示に切り替え 
+ELSE
+	PRINT [1011] 経営用表示に切り替え 
+ENDIF
+SIF ORIGIN
+	PRINT [1012] 登場作品で絞る
+PRINTL
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE -1
+			SIF 表示上限 > 10
+				表示上限 -= 10
+			RESTART
+		CASE -9
+			表示上限 += 10
+			RESTART
+		CASE 999
+			SIF TFLAG:ページ数 > 0
+				TFLAG:ページ数--
+			RESTART
+		CASE 1000
+			RETURN
+		CASE 1001
+			SIF RESULT
+				TFLAG:ページ数++
+			RESTART
+		CASE 1010
+			CALL CHARA_SORT
+			RESTART
+		CASE 1011
+			INVERTBIT 表示切り替え, 0
+			RESTART
+		CASE 1012
+			CALL 登場作品フィルタ設定
+			TFLAG:ページ数 = 0
+			RESTART
+		CASE 0 TO CHARANUM-1
+			LTARGET = TARGET
+			TARGET = RESULT
+			;TARGETの能力表示中はあっちで「調教対象に指定」を表示させないためのフラグ
+			IF TARGET == LTARGET
+				SHOW_TARGET = LTARGET
+			ELSE
+				SHOW_TARGET = 0
+			ENDIF
+			CALL STATUS
+			;TARGET変更がされてる場合は戻さない
+			SIF !RESULT && ASSI != LTARGET
+				TARGET = LTARGET
+			RESTART
+	ENDSELECT
+LOOP 1
+
+;調教対象選択
 @CHANGE_TARGET
 #DIM DYNAMIC LCOUNT
 #DIM 表示上限 = 10
@@ -24,7 +108,10 @@ ELSE
 	PRINTPLAINFORM %SPACESLENS("[1001] 次ページ ")%
 ENDIF
 
-PRINTL [1010] キャラソート
+PRINT [1010] キャラソート 
+SIF ORIGIN
+	PRINT [1011] 登場作品で絞る
+PRINTL 
 
 DO
 	INPUT
@@ -51,6 +138,10 @@ DO
 			RESTART
 		CASE 1010
 			CALL CHARA_SORT
+			RESTART
+		CASE 1011
+			CALL 登場作品フィルタ設定
+			TFLAG:ページ数 = 0
 			RESTART
 		CASE 0 TO CHARANUM-1
 			SIF CHECK_CHILD_CARE(RESULT)
@@ -102,7 +193,10 @@ ELSE
 	PRINTPLAINFORM %SPACESLENS("[1001] 次ページ ")%
 ENDIF
 
-PRINTL [1010] キャラソート
+PRINT [1010] キャラソート 
+SIF ORIGIN
+	PRINT [1011] 登場作品で絞る
+PRINTL 
 
 DO
 	INPUT
@@ -126,6 +220,10 @@ DO
 			RESTART
 		CASE 1010
 			CALL CHARA_SORT
+			RESTART
+		CASE 1011
+			CALL 登場作品フィルタ設定
+			TFLAG:ページ数 = 0
 			RESTART
 		CASE 0
 			ASSI = -1
@@ -214,6 +312,9 @@ FOR LCOUNT, 0, CHARANUM
 	;2巡目以降は通常のキャラ表示なので条件を指定
 	;助手の指定なら助手不可能なキャラは除外
 	SIF 表示情報 == "助手選択" && CFLAG:LCOUNT:状態 < 2 && !TALENT:LCOUNT:アニマル
+		CONTINUE
+	;登場作品フィルタが設定してあるならそれ以外のキャラは除外
+	SIF 登場作品フィルタ != "" && GROUPMATCH(登場作品フィルタ, CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３) == 0 && ORIGIN
 		CONTINUE
 	;キャラを表示上限数表示したら終了
 	IF 表示数 >= 表示上限
@@ -376,83 +477,6 @@ ENDSELECT
 RESETCOLOR
 PRINTL 
 
-;ステータス表示
-@SHOW_CHARADATA
-#DIM 表示切り替え
-#DIM DYNAMIC LTARGET
-#DIM 表示上限 = 10
-DRAWLINE
-
-CALL LOOP_CLEARLINE
-
-CALL LIFE_LIST, "通常表示", 表示切り替え, 表示上限
-;RESULTにはまだ表示されてないキャラが居るかどうか
-DRAWLINE
-
-PRINTPLAIN 　CHARADATA　
-IF TFLAG:ページ数 > 0
-	PRINTFORM [999] 前ページ 
-ELSE
-	PRINTPLAINFORM %SPACESLENS("[999] 前ページ ")%
-ENDIF
-
-PRINTFORM [1000] 戻る 
-IF RESULT
-	PRINTFORM [1001] 次ページ 
-ELSE
-	PRINTPLAINFORM %SPACESLENS("[1001] 次ページ ")%
-ENDIF
-
-PRINT [1010] キャラソート 
-IF 表示切り替え
-	PRINTL [1011] 通常表示に切り替え
-ELSE
-	PRINTL [1011] 経営用表示に切り替え
-ENDIF
-
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE -1
-			SIF 表示上限 > 10
-				表示上限 -= 10
-			RESTART
-		CASE -9
-			表示上限 += 10
-			RESTART
-		CASE 999
-			SIF TFLAG:ページ数 > 0
-				TFLAG:ページ数--
-			RESTART
-		CASE 1000
-			RETURN
-		CASE 1001
-			SIF RESULT
-				TFLAG:ページ数++
-			RESTART
-		CASE 1010
-			CALL CHARA_SORT
-			RESTART
-		CASE 1011
-			INVERTBIT 表示切り替え, 0
-			RESTART
-		CASE 0 TO CHARANUM-1
-			LTARGET = TARGET
-			TARGET = RESULT
-			;TARGETの能力表示中はあっちで「調教対象に指定」を表示させないためのフラグ
-			IF TARGET == LTARGET
-				SHOW_TARGET = LTARGET
-			ELSE
-				SHOW_TARGET = 0
-			ENDIF
-			CALL STATUS
-			;TARGET変更がされてる場合は戻さない
-			SIF !RESULT && ASSI != LTARGET
-				TARGET = LTARGET
-			RESTART
-	ENDSELECT
-LOOP 1
-
 @CHARA_SORT
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 番号
@@ -466,7 +490,8 @@ PRINTL 　[4] - 名前
 PRINTL 　[5] - キャラ番号
 PRINTL 　[6] - 体力
 PRINTL 　[7] - 気力
-PRINTL 　[8] - 解禁日
+SIF !ORIGIN
+	PRINTL 　[8] - 解禁日
 DRAWLINE
 PRINTPLAIN 　CHARA SORT　
 PRINTL [0] - 戻る
@@ -673,6 +698,8 @@ DO
 			ENDSELECT
 			RETURN
 		CASE 8
+			SIF ORIGIN
+				CONTINUE
 			FOR LCOUNT, 0, CHARANUM
 				ソート用購入日:LCOUNT:0 = BUYY:LCOUNT:0*10000+BUYM:LCOUNT:0*100+BUYD:LCOUNT:0
 			NEXT

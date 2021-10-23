@@ -2,7 +2,8 @@
 @SHOPITEM_BUY
 #DIMS DYNAMIC アイテム分類
 DRAWLINE
-CALL PASELIL, @"所持金:{MONEY}＄"
+SIF !ORIGIN
+	CALL PASELIL, @"所持金:{MONEY}＄"
 CALL ITEMPRINT
 DRAWLINE
 
@@ -199,6 +200,11 @@ SIF TALENT:MASTER:禁断の知識
 	禁断の知識有り++
 SIF ASSI > 0 && (TALENT:ASSI:禁断の知識)
 	禁断の知識有り++
+;ORIGINモードでは無条件
+IF ORIGIN
+	調合知識有り++
+	禁断の知識有り++
+ENDIF
 
 ;基本アイテム ローターなどの道具
 SELECTCASE アイテム分類
@@ -352,20 +358,22 @@ ENDSELECT
 DRAWLINE
 
 ;主人か助手が買い物上手ならアイテム2割引き、消耗品3割引き
-
 SIF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
 	割引 = 1
 FOR LCOUNT, 0, VARSIZE("ITEM")
 	SIF !ITEMSALES:LCOUNT || ITEMNAME:LCOUNT == ""
 		CONTINUE
 	表示用 = [{LCOUNT}]%ITEMNAME:LCOUNT%
+	;ORIGINモードでは金は必要無い(価格は表示しない)
 	SELECTCASE LCOUNT
 		;消耗品
 		CASE 100 TO 199
-			IF 割引
-				表示用 += @"({ITEMPRICE:LCOUNT/10*7}＄)"
-			ELSE
-				表示用 += @"({ITEMPRICE:LCOUNT}＄)"
+			IF !ORIGIN
+				IF 割引
+					表示用 += @"({ITEMPRICE:LCOUNT/10*7}＄)"
+				ELSE
+					表示用 += @"({ITEMPRICE:LCOUNT}＄)"
+				ENDIF
 			ENDIF
 		;施設・設備は割引対象外
 		CASE 500 TO 599
@@ -374,40 +382,47 @@ FOR LCOUNT, 0, VARSIZE("ITEM")
 			;ロジカルダッシュなら発行月も付ける
 			SIF ITEMNAME:LCOUNT == "ロジカルダッシュ"
 				表示用 += @"{YEAR}年{MONTH}月号"
-			IF 割引
-				表示用 += @"({ITEMPRICE:LCOUNT/10*8}＄)"
-			ELSE
-				表示用 += @"({ITEMPRICE:LCOUNT}＄)"
+			IF !ORIGIN
+				IF 割引
+					表示用 += @"({ITEMPRICE:LCOUNT/10*8}＄)"
+				ELSE
+					表示用 += @"({ITEMPRICE:LCOUNT}＄)"
+				ENDIF
 			ENDIF
 		;経営用アイテムは割引適用外
 		CASEELSE
 			$ELSE
-			表示用 += @"({ITEMPRICE:LCOUNT}＄)"
+			SIF !ORIGIN
+				表示用 += @"({ITEMPRICE:LCOUNT}＄)"
 	ENDSELECT
 
 	;表示数が0ならスペースを設ける
 	SIF 表示数 == 0
 		PRINT 　
-	CALL PASELI, 表示用
-	;PRINT_IMGでPRINTC系命令使うとエラーになるので疑似再現
-	IF FLAG:パセリ表示
-		単位文字数 = 2
-	ELSEIF 通貨単位 != ""
-		単位文字数 = STRLENS(通貨単位)
+	IF ORIGIN
+		PRINTFORMLC %表示用%
 	ELSE
-		単位文字数 = 1
-	ENDIF
-	;表示数が0ならスペースの分追加
-	SIF 表示数 == 0
-		単位文字数 += 2
-	;＄の分2文字と通貨単位分
-	PRINTFORM %SPACES(41-(STRLENS(表示用)-2)-単位文字数)%
-	表示数++
+		CALL PASELI, 表示用
+		;PRINT_IMGでPRINTC系命令使うとエラーになるので疑似再現
+		IF FLAG:パセリ表示
+			単位文字数 = 2
+		ELSEIF 通貨単位 != ""
+			単位文字数 = STRLENS(通貨単位)
+		ELSE
+			単位文字数 = 1
+		ENDIF
+		;表示数が0ならスペースの分追加
+		SIF 表示数 == 0
+			単位文字数 += 2
+		;＄の分2文字と通貨単位分
+		PRINTFORM %SPACES(41-(STRLENS(表示用)-2)-単位文字数)%
+		表示数++
 
-	;3つ表示したら改行
-	IF 表示数 == 3
-		PRINTL 
-		表示数 = 0
+		;3つ表示したら改行
+		IF 表示数 == 3
+			PRINTL 
+			表示数 = 0
+		ENDIF
 	ENDIF
 NEXT
 
@@ -423,7 +438,6 @@ ENDIF
 SIF FINDELEMENT(ITEMSALES, 1) < 0
 	PRINTL ***購入できるアイテムはありません***
 
-
 DRAWLINE
 PRINTPLAIN 　ITEM　
 PRINTL [10000] 戻る
@@ -434,7 +448,7 @@ DO
 			RETURN 1
 		CASEELSE
 			IF ITEMSALES:RESULT && ITEMNAME:RESULT != ""
-				IF ITEMPRICE:RESULT > MONEY
+				IF ITEMPRICE:RESULT > MONEY && !ORIGIN
 					PRINTW 所持金が足りません
 				ELSE
 					;アイテム分類を名前で渡す
@@ -620,7 +634,7 @@ ELSE
 ENDIF
 
 ;予算が下回った場合、予算内で購入できる最大数に下方修正
-SIF 購入上限 > MONEY/アイテム価格
+SIF 購入上限 > MONEY/アイテム価格 && !ORIGIN
 	購入上限 = MONEY/アイテム価格
 
 PRINTFORML %アイテム名%をいくつ買いますか？ (最大{購入上限}個、0で戻る)
@@ -1655,7 +1669,7 @@ DO
 				CONTINUE
 			SIF !ITEM_ABLE(使用対象, ITEMNAME:使用アイテム)
 				CONTINUE
-			IF ITEMPRICE:使用アイテム > MONEY
+			IF ITEMPRICE:使用アイテム > MONEY && !ORIGIN
 				PRINTW 所持金が足りません
 				RESTART
 			ENDIF
