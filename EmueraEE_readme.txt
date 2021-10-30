@@ -1,7 +1,7 @@
-タイトル：EmueraEE 最終更新日:2021/10/23
-バージョン：1.824+v11+EE+v5
+タイトル：EmueraEE 最終更新日:2021/10/30
+バージョン：1.824+v12+EE+v5fix
 改変者：Enter
-元となったアプリケーション：Emuera1.824+v11（妊）|дﾟ)の中の人、及びMinorShift制作）
+元となったアプリケーション：Emuera1.824+v12（妊）|дﾟ)の中の人、及びMinorShift制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
 
 ※eramakerの作者様及びMinorShift様、妊の人様はEmueraEEの製作には関与していません。
