@@ -1,65 +1,69 @@
-�^�C�g���FEmueraEE �ŏI�X�V��:2021/10/30
-�o�[�W�����F1.824+v12+EE+v5fix
-���ώҁFEnter
-���ƂȂ����A�v���P�[�V�����FEmuera1.824+v12�i�D�j|�t�)�̒��̐l�A�y��MinorShift����j
-�A����FTwitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
+﻿タイトル：EmueraEE 最終更新日:2021/11/20
+バージョン：1.824+v13+EE+v6
+改変者：Enter
+元となったアプリケーション：Emuera1.824+v13（妊）|дﾟ)の中の人、及びMinorShift制作）
+連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
 
-��eramaker�̍�җl�y��MinorShift�l�A�D�̐l�l��EmueraEE�̐���ɂ͊֗^���Ă��܂���B
-���A�v���̕s��͏�L�A����ɂ��񍐂�������
+※eramakerの作者様及びMinorShift様、妊の人様はEmueraEEの製作には関与していません。
+当アプリの不具合は上記連絡先にご報告ください
 
 
-[�T�v]
-Emuera���x�[�X�ɉ������{�����o�[�W�����ł��B�ǉ����ꂽ�@�\�͈ȉ��̒ʂ�
+[概要]
+Emueraをベースに改造を施したバージョンです。追加された機能は以下の通り
 
-�EPLAYSOUND "�t�@�C����.�g���q"
-�usound�v�t�H���_���ɂ��鉹���t�@�C����1��Đ����܂�
+・PLAYSOUND "ファイル名.拡張子"
+「sound」フォルダ内にある音声ファイルを1回再生します
 
-�ESTOPSOUND
-PLAYSOUND�ōĐ����̉����t�@�C�����~���܂�
+・STOPSOUND
+PLAYSOUNDで再生中の音声ファイルを停止します
 
-�EPLAYBGM "�t�@�C����.�g���q"
-�usound�v�t�H���_���ɂ��鉹���t�@�C�������[�v�Đ����܂�
+・PLAYBGM "ファイル名.拡張子"
+「sound」フォルダ内にある音声ファイルをループ再生します
 
-�ESTOPBGM
-PLAYBGM�ōĐ����̉����t�@�C�����~���܂�
+・STOPBGM
+PLAYBGMで再生中の音声ファイルを停止します
 
-�EEXISTSOUND "�t�@�C����.�g���q"
-�usound�v�t�H���_���Ɏw�肵�������t�@�C�������݂��邩���肵�܂��B���݂����1���A���Ȃ����0��RESULT�ɓ���܂�
+・EXISTSOUND "ファイル名.拡張子"
+「sound」フォルダ内に指定した音声ファイルが存在するか判定します。存在すれば1が、しなければ0がRESULTに入ります
 
-�EEXISTSOUND("�t�@�C����.�g���q")
-�������߂̎����֐���
+・EXISTSOUND("ファイル名.拡張子")
+同名命令の式中関数版
 
-�ESETSOUNDVOLUME int
-PLAYSOUND�̉��ʂ�ύX���܂��B�����ɂ�0�`100���w��ł��܂�
+・SETSOUNDVOLUME int
+PLAYSOUNDの音量を変更します。引数には0～100を指定できます
 
-�ESETBGMVOLUME
-PLAYBGM�̉��ʂ�ύX���܂��B�����ɂ�0�`100���w��ł��܂�
+・SETBGMVOLUME
+PLAYBGMの音量を変更します。引数には0～100を指定できます
 
-Windows Media Player�̃��C�u�������g���Ă���̂�WMP���C���X�g�[������Ă�PC�ł���΁A
-WMP�œ��������t�@�C���͑S�ē����Ǝv���܂��B
+Windows Media Playerのライブラリを使っているのでWMPがインストールされてるPCであれば、
+WMPで動く音声ファイルは全て動くと思います。
 
-�EINPUTMOUSEKEY�Ń{�^���g�p�\��
-���ߎ��s����RESULT:0=1(�}�E�X�N���b�N��)�������ꍇ��RESULT:5�Ƀ{�^���̐��l������܂�
+・INPUTMOUSEKEYでボタン使用可能に
+命令実行時にRESULT:0=1(マウスクリック時)だった場合にRESULT:5にボタンの数値が入ります
 
-�EGDRAWTEXT gID, "�e�L�X�g", X���W, Y���W
-�w�肵��gID�Ƀe�L�X�g��`�ʂ��� ���W�͏ȗ��\
-GSETBRUSH cARGB�Ƒg�ݍ��킹�邱�Ƃŕ����̔Z�x�ƐF��ύX�ł��� cARGB�͔Z�x+�����F��16�i��8��
+・GDRAWTEXT gID, "テキスト", X座標, Y座標
+指定したgIDにテキストを描写する 座標は省略可能
+GSETBRUSH cARGBと組み合わせることで文字の濃度と色を変更できる cARGBは濃度+文字色の16進数8桁
 
-�EGGETFONT gID
-�w�肵��ID�́AGSETFONT�Ŏw�肵���t�H���g�����Ăяo��
+・GGETFONT gID
+指定したIDの、GSETFONTで指定したフォント名を呼び出す
 
-�EGGETFONTSIZE
-�w�肵��ID�́AGSETFONT�Ŏw�肵���t�H���g�T�C�Y���Ăяo��
+・GGETFONTSIZE
+指定したIDの、GSETFONTで指定したフォントサイズを呼び出す
 
-�EOUTPUTLOG�Ńt�@�C�����Ɗg���q���w��\��
-OUTPUTLOG�Ɉ����w�肷�邱�Ƃł��̃t�@�C����.�g���q�ŏo�͂ł��� ���e������PRINTS�Ƃ��Ɠ���
-v5fix�Őe�f�B���N�g�����w��ł���Ǝ㐫���C�� �q�f�B���N�g���͎w��\
+・OUTPUTLOGでファイル名と拡張子を指定可能に
+OUTPUTLOGに引数指定することでそのファイル名.拡張子で出力できる リテラルはPRINTSとかと同じ
+v5fixで親ディレクトリを指定できる脆弱性を修正 子ディレクトリは指定可能
 
-[�g�p���@]
-Emuera������ɓ��삷��era�o���A���g�̃f�B���N�g���ɂ�Emuera�Ɠ��l�̕��@�ł��g����������
+・EXISTFUNCTION("関数名")
+名前の通り関数が存在するかの式中関数 通常関数なら1を、式中関数(数値型)なら2を、式中関数(文字列型)なら3を返す
+TRYC系でCALL機能を付随させたくない場合にお使いください また、システム関数やシステム組み込み式中関数は0を返す
 
-[���C�Z���X]
-���t�H���_����Emuera_readme.txt��[���C�Z���X]�̍��ɏ����܂�
-���AEnter�͈�؂̌������咣���܂���
+[使用方法]
+Emueraが正常に動作するeraバリアントのディレクトリにてEmueraと同様の方法でお使いください
+
+[ライセンス]
+同フォルダ内のEmuera_readme.txtの[ライセンス]の項に準じます
+私、Enterは一切の権利を主張しません
 
 
