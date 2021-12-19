@@ -183,6 +183,7 @@ SIF !LINEISEMPTY()
 #DIMS DYNAMIC 表示用
 #DIM DYNAMIC 割引
 #DIM DYNAMIC 条件判定
+#DIM DYNAMIC リミットバースト有り
 
 ;条件判定フラグ(能力表示画面からのアイテム使用)が立っている場合は一応SKIPDISPをかける
 SIF 条件判定
@@ -205,6 +206,9 @@ IF ORIGIN
 	調合知識有り++
 	禁断の知識有り++
 ENDIF
+
+SIF FINDCHARA(TALENT:リミットバースト, 1) > 0
+	リミットバースト有り = 1
 
 ;基本アイテム ローターなどの道具
 SELECTCASE アイテム分類
@@ -296,6 +300,10 @@ SELECTCASE アイテム分類
 			ITEMSALES:ビースティースターター = 1
 			ITEMSALES:TheSlimeOfYou = 1
 		ENDIF
+
+		;リミットバーストのみ対象
+		SIF リミットバースト有り
+			ITEMSALES:リミッター制御 = 1
 ENDSELECT
 
 ;本
@@ -718,6 +726,7 @@ RETURN
 #DIM DYNAMIC 使用対象
 #DIMS DYNAMIC アイテム名
 #DIM DYNAMIC 回復量
+#DIM DYNAMIC LCOUNT
 
 ;口上表示
 CALL KOJO_USE_ITEM, アイテム名, 使用対象
@@ -1092,6 +1101,12 @@ SELECTCASE アイテム名
 	CASE "特殊技能研修"
 		PRINTFORMW ＜%NAME:使用対象%は3日間の研修を受講し始めた＞
 		CFLAG:使用対象:使用不可 = 6
+	CASE "リミッター制御"
+		CALL SE再生, リミッター
+		PRINTFORMW ＜%NAME:使用対象%の全ABLが半減した＞
+		FOR LCOUNT, 0, 20
+			ABL:使用対象:LCOUNT /= 2
+		NEXT
 	;テレレレッテレー
 	CASE "【料理人】"
 		CALL SE再生, 特殊素質取得
@@ -1265,6 +1280,9 @@ SELECTCASE アイテムNO
 				RETURNF 1
 			CASE "特殊技能研修"
 				SIF MATCH(ABL:使用対象:0, -1) > 0
+					RETURNF 1
+			CASE "リミッター制御"
+				SIF TALENT:使用対象:リミットバースト
 					RETURNF 1
 			;以下アニマルは使用不可
 			CASEELSE
@@ -1575,6 +1593,8 @@ SELECTCASE アイテム名
 		PRINTL 一日だけ妊娠確率を上昇させます。頼れるのは祈りよりも薬です
 	CASE "リミッター解除"
 		PRINTL 使用対象の能力上限を解除します。後悔しませんね？
+	CASE "リミッター制御"
+		PRINTL 使用対象の性関係ABLを半減させる。リミットバーストでオーバーフローした場合の最終手段としてお使いください
 	CASE "古今錬金術大全"
 		PRINTL 使用対象が【調合知識】を習得します
 	CASE "ひとりでできるもん～オトコのコのためのアナニー入門～"
