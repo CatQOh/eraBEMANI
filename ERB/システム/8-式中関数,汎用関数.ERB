@@ -348,9 +348,11 @@ FOR LCOUNT, 0, 表示数
 		GOTO 表示
 	数字始端 = -1
 	IF ISNUMERIC(CHARATU(表示用:LCOUNT, STRLENSU(表示用:LCOUNT)-1))
+		DEBUGPRINTFORML %表示用:LCOUNT% {STRLENSU(表示用:LCOUNT)}文字
 		FOR LCOUNT2, STRLENSU(表示用:LCOUNT)-1, -1, -1
-			IF ISNUMERIC(CHARATU(表示用:LCOUNT, LCOUNT2)) || LCOUNT2 == 0
+			IF ISNUMERIC(CHARATU(表示用:LCOUNT, LCOUNT2))
 				数字始端 = LCOUNT2
+				DEBUGPRINTFORML 数字始端:{LCOUNT2}
 			ELSE
 				BREAK
 			ENDIF
@@ -399,8 +401,8 @@ FOR LCOUNT, 0, 表示数
 		CALL 通貨単位
 	数字始端 = -1
 	IF ISNUMERIC(CHARATU(表示用:LCOUNT, STRLENSU(表示用:LCOUNT)-1))
-		FOR LCOUNT2, STRLENSU(表示用:LCOUNT)-1, 0, -1
-			IF ISNUMERIC(CHARATU(表示用:LCOUNT, LCOUNT2))
+		FOR LCOUNT2, STRLENSU(表示用:LCOUNT)-1, -1, -1
+			IF ISNUMERIC(CHARATU(表示用:LCOUNT, LCOUNT2)) || LCOUNT2 == 0
 				数字始端 = LCOUNT2
 			ELSE
 				BREAK
@@ -1781,6 +1783,7 @@ RETURNF 1
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 相手
 #DIM DYNAMIC 補正値
+#DIM DYNAMIC 返り値
 
 SIF TALENT:対象:犬嫌い && TALENT:相手:犬
 	補正値 -= 30
@@ -1792,12 +1795,19 @@ SIF ISHATERACE(対象, 相手)
 ;ネクロマンサーと霊感と孔雀の瞳なら中の人が見破れる
 IF CFLAG:相手:憑依 >= 0
 	IF TALENT:対象:霊感 || TALENT:対象:ネクロマンサー || TALENT:対象:孔雀の瞳
-		RETURNF RELATION:対象:(NO:相手)+補正値
+		返り値 = RELATION:対象:(NO:相手)+補正値
 	ELSE
-		RETURNF RELATION:対象:(CFLAG:相手:憑依)+補正値
+		返り値 = RELATION:対象:(CFLAG:相手:憑依)+補正値
 	ENDIF
 ELSE
-	RETURNF RELATION:対象:(NO:相手)+補正値
+	返り値 = RELATION:対象:(NO:相手)+補正値
+ENDIF
+
+;システムの都合上1未満にはならない
+IF 返り値 < 1
+	RETURNF 1
+ELSE
+	RETURNF 返り値
 ENDIF
 
 @相性加算, 対象, 相手, 上昇値, 上限
@@ -1813,12 +1823,18 @@ IF SIGN(上昇値) == 1
 		IF 対象 == MASTER || TALENT:対象:霊感 || TALENT:対象:ネクロマンサー || TALENT:対象:孔雀の瞳
 			GOTO NOTGHOSTUP
 		ELSE
+			;既に上限突っ切ってる場合は処理しない
+			SIF RELATION:対象:(CFLAG:相手:憑依) >= 上限
+				RETURN
 			RELATION:対象:(CFLAG:相手:憑依) += 上昇値
 			SIF 上限 && RELATION:対象:(CFLAG:相手:憑依) > 上限
 				RELATION:対象:(CFLAG:相手:憑依) = 上限
 		ENDIF
 	ELSE
 		$NOTGHOSTUP
+		;既に上限突っ切ってる場合は処理しない
+		SIF RELATION:対象:(NO:相手) >= 上限
+			RETURN
 		RELATION:対象:(NO:相手) += 上昇値
 		SIF 上限 && RELATION:対象:(NO:相手) > 上限
 			RELATION:対象:(NO:相手) = 上限
@@ -1831,12 +1847,18 @@ ELSEIF SIGN(上昇値) == -1
 			RELATION:対象:(CFLAG:相手:憑依) += 上昇値
 			SIF 上限 && RELATION:対象:(CFLAG:相手:憑依) < 上限
 				RELATION:対象:(CFLAG:相手:憑依) = 上限
+			;システムの都合上1未満にはならない
+			SIF RELATION:対象:(CFLAG:相手:憑依) < 1
+				RELATION:対象:(CFLAG:相手:憑依) = 1
 		ENDIF
 	ELSE
 		$NOTGHOSTDOWN
 		RELATION:対象:(NO:相手) += 上昇値
 		SIF 上限 && RELATION:対象:(NO:相手) < 上限
 			RELATION:対象:(NO:相手) = 上限
+		;システムの都合上1未満にはならない
+		SIF RELATION:対象:(NO:相手) < 1
+			RELATION:対象:(NO:相手) = 1
 	ENDIF
 ENDIF
 
