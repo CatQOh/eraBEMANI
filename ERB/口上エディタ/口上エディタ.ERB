@@ -1,0 +1,298 @@
+﻿@口上エディタ_プロジェクト選択
+#DIM DYNAMIC LCOUNT
+
+PRINTL □プロジェクトを選択してください
+FOR LCOUNT, 100, 130
+	SELECTCASE CHKDATA(LCOUNT)
+		CASE 0
+			PRINTFORML 　[{LCOUNT, 3}] %RESULTS%
+		CASE 1
+			PRINTFORML 　[{LCOUNT, 3}] 未使用のプロジェクト
+		CASE 2
+			PRINTFORML 　[{LCOUNT, 3}] 別バリアントのセーブデータです プロジェクト番号使用可能
+		CASE 3
+			PRINTFORML 　[{LCOUNT, 3}] 互換性の無いセーブデータです プロジェクト番号使用可能
+		CASE 4
+			PRINTFORML 　[{LCOUNT, 3}] ロードできないセーブデータです プロジェクト番号使用可能
+	ENDSELECT
+NEXT
+DRAWLINE
+PRINTL 　[100] 戻る
+
+INPUT
+SELECTCASE RESULT
+	CASE 100 TO 130
+		IF CHKDATA(RESULT) == 0
+			LOADDATA RESULT
+		ELSE
+			JUMP 口上エディタ, RESULT
+		ENDIF
+ENDSELECT
+
+@口上エディタ, SAVENO
+#DIM SAVENO
+#DIM DYNAMIC LRESULT
+#DIM DYNAMIC PAGE
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC 処理数
+#DIM DYNAMIC 表示数 = 80
+#DIM DYNAMIC 次ページあり
+#DIM DYNAMIC 自動保存 = 1
+#DIM DYNAMIC COMMAND
+#DIMS DYNAMIC SPLITVAR, 1000
+#DIMS DYNAMIC DETAIL, 1000, 1000
+#DIM DYNAMIC LVL, 1001
+#DIM DYNAMIC LVLNOW
+#DIM DYNAMIC LVLRTN
+#DIM DYNAMIC 行数
+#DIM DYNAMIC 分岐数
+#DIM DYNAMIC 表示行数
+#DIMS DYNAMIC COMMANDVAR
+
+IF TARGET == 0
+	PRINTL □口上を書くキャラを選んでください
+	CALL CHARA_ADD, 0
+	CALL CHARA_LIST, 1
+	CALL CHARA_ADD, RESULT
+	口上プロジェクト = SAVENO
+	SAVEDATA 口上プロジェクト, @"保存日時:%GETTIMES()% %NAME:TARGET%の口上"
+ENDIF
+
+DRAWLINE
+PRINTL □口上を書くコマンドを選んでください
+処理数 = 0
+次ページあり = 0
+FOR LCOUNT, 0, VARSIZE("TRAINNAME")
+	SIF TRAINNAME:LCOUNT == ""
+		CONTINUE
+	SIF INRANGE(処理数, PAGE*表示数, PAGE*表示数+表示数)
+		PRINTFORMLC 　[{LCOUNT, 3}]%TRAINNAME:LCOUNT%
+	処理数++
+	IF 処理数 > PAGE*表示数+表示数 && TRAINNAME:LCOUNT != ""
+		次ページあり = 1
+		BREAK
+	ENDIF
+NEXT
+DRAWLINE
+PRINTPLAIN 　COM　
+IF PAGE > 0
+	PRINT [-1] 前ページ
+ELSE
+	PRINTFORM %SPACESLENS("[-1] 前ページ")%
+ENDIF
+PRINT [1000] 保存して終了する
+IF 次ページあり
+	PRINT [-9] 次ページ
+ELSE
+	PRINTFORM %SPACESLENS("[-9] 次ページ")%
+ENDIF
+IF 自動保存
+	PRINT [-10] 自動保存(現在:オン)
+ELSE
+	SETCOLORBYNAME deepskyblue
+	PRINT [-10] 自動保存(現在:オフ ※予期せぬ終了により作業状況が破棄される危険があります オン推奨)
+	RESETCOLOR
+ENDIF
+PRINTL 
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 1000
+			CALL 口上プロジェクトセーブ, 口上プロジェクト
+		CASE -1
+			SIF PAGE > 0
+				PAGE--
+			RESTART
+		CASE -9
+			SIF 次ページあり
+				PAGE++
+			RESTART
+		CASE -10
+			INVERTBIT 自動保存, 0
+			RESTART
+		CASEELSE
+			COMMAND = RESULT
+			SIF TRAINNAME:COMMAND == ""
+				RESTART
+			GOTO WRITE_COMD
+	ENDSELECT
+LOOP 1
+
+$WRITE_COMD
+;分岐(COMD:コマンド番号:分岐番号:本文)
+;分岐番号 表示は上から優先される
+;0=陥落済み
+;上記を使わない場合陥落素質の分岐を使う
+;1=恋慕
+;2=親愛
+;3=淫乱
+;4=娼婦
+;5=服従
+;6=隷属
+;7=屈服刻印3
+;8=反発刻印3
+;9=屈服刻印2
+;10=反発刻印2
+;11=屈服刻印1
+;12=反発刻印1
+;19=その他(通常時)
+
+DRAWLINE
+PRINTFORML □コマンド「%TRAINNAME:COMMAND%」の口上
+
+VARSET DETAIL
+FOR LCOUNT, 0, 1000
+	;SPLITで情報を得る
+	VARSET SPLITVAR
+	SPLIT COMD:COMMAND:LCOUNT, "/", SPLITVAR
+	;2次元配列に保存しておく
+	FOR LCOUNT2, 0, 1000
+		DETAIL:LCOUNT:LCOUNT2 = %SPLITVAR:LCOUNT2%
+	NEXT
+	;LVL(階層数)も保存しておく DETAIL:0(種類)を差し引いて-1
+	LVL:LCOUNT = RESULT-1
+NEXT
+;もう一度FOR
+LVLNOW = 1
+表示行数 = 0
+FOR LCOUNT, 0, 999
+	;DETAILには「C(Close)」or「O(Open)」or「口上本文」が入っている
+	;Cはツリーを閉じて表示する
+	;Oはツリーを開いて表示する
+	;LVLNOWにはツリーの階層が入る
+	SELECTCASE DETAIL:LCOUNT:LVLNOW
+		;Cなら内部の行数及び分岐数を計算して簡易表示
+		CASE "C"
+			FOR LCOUNT2, LCOUNT, 999
+				;+1の階層だけを取得する
+				IF LVL:LCOUNT2 == LVLNOW+1
+					SELECTCASE DETAIL:LCOUNT2:0
+						CASE "本文"
+							行数++
+						CASE "分岐数"
+							分岐数++
+					ENDSELECT
+				ELSEIF LVL:LCOUNT2 <= LVLNOW
+					BREAK
+				ENDIF
+			NEXT
+			PRINTFORML %@"-", LVLNOW%[{LCOUNT, 4}] [+] \@ 行数 ? {行数}行の口上 #\@ \@ 分岐数 ? {分岐数}個の分岐 #\@ 
+		;Oなら分岐内容を表示しつつ階層を一つ加算
+		CASE "O"
+			;階層が合わない場合は表示しない
+			SIF LVLNOW <= LVL:LCOUNT
+				CONTINUE
+			;LVLNOW+1の場所に分岐内容があるはず
+			PRINTFORM %@"-", LVLNOW%[{LCOUNT, 4}] [-]
+			PRINTPLAIN  
+			PRINTBUTTON @"%DETAIL:LCOUNT:LVLNOW%[編集]", LCOUNT+1000
+			PRINTL 
+			表示行数++
+			;次の行で階層が深くなるなら加算 浅くなるなら減算
+			IF LVL:LCOUNT > LVL:(LCOUNT+1)
+				LVLNOW--
+			ELSEIF LVL:LCOUNT < LVL:(LCOUNT+1)
+				LVLNOW++
+			ENDIF
+		;これにたどり着いたら口上本文
+		CASEELSE
+			SIF LVL:LCOUNT == 0
+				CONTINUE
+			PRINTBUTTON @"%"-", LVLNOW%%DETAIL:LCOUNT:LVLNOW%[編集]", LCOUNT+1000
+			PRINTL 
+			表示行数++
+			;次の行で階層が下がるならLVLNOWを減算
+			SIF LVL:LCOUNT > LVL:(LCOUNT+1)
+				LVLNOW--
+	ENDSELECT
+NEXT
+SIF 表示行数 == 0
+	PRINTBUTTON "[行を追加]", 1000
+
+DO
+	INPUT
+	LRESULT = RESULT
+	SELECTCASE LRESULT
+		;0～999はツリーの開閉
+		CASE 0 TO 999
+			SELECTCASE DETAIL:LRESULT:(LVL:LRESULT-1)
+				CASE "C"
+					DETAIL:LRESULT:(LVL:LRESULT-1) = O
+				CASE "O"
+					DETAIL:LRESULT:(LVL:LRESULT-1) = C
+			ENDSELECT
+			GOTO WRITE_COMD
+		;1000～1999は編集
+		CASE 1000 TO 1999
+			LRESULT -= 1000
+			IF 表示行数 == 0
+				PRINTL [0] 行を挿入
+				PRINTL [2] 分岐を挿入
+			ELSE
+				PRINTL [0] 行を挿入(上に加筆)
+				PRINTL [1] 行を追加(下に加筆)
+				PRINTL [2] 分岐を挿入(上に加筆)
+				PRINTL [3] 分岐を追加(下に加筆)
+				PRINTL [4] 行を削除
+			ENDIF
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					PRINTL 文章を入力してください
+					INPUTS
+					COMMANDVAR = 本文
+					FOR LCOUNT, 0, LVL:LRESULT
+						COMMANDVAR += "/C"
+					NEXT
+					COMMANDVAR += @"/%RESULTS%"
+					CALL COMARRAYSHIFT, COMMAND, 1, "", LRESULT
+					COMD:COMMAND:LRESULT = %COMMANDVAR%
+				CASE 1
+					PRINTL 文章を入力してください
+					INPUTS
+					COMMANDVAR = 本文
+					FOR LCOUNT, 0, LVL:LRESULT
+						COMMANDVAR += "/C"
+					NEXT
+					COMMANDVAR += @"/%RESULTS%"
+					CALL COMARRAYSHIFT, COMMAND, 1, "", LRESULT+1
+					COMD:COMMAND:LRESULT = %COMMANDVAR%
+				CASE 2
+					PRINTW 分岐を挿入します（仮）
+					COMMANDVAR = 分岐
+					FOR LCOUNT, 0, LVL:LRESULT+1
+						COMMANDVAR += "/O"
+					NEXT
+					COMMANDVAR += "（仮）"
+					CALL COMARRAYSHIFT, COMMAND, 1, "", LRESULT
+					COMD:COMMAND:LRESULT = %COMMANDVAR%
+				CASE 3
+					PRINTW 分岐を挿入します（仮）
+					COMMANDVAR = 分岐
+					FOR LCOUNT, 0, LVL:LRESULT+1
+						COMMANDVAR += "/O"
+					NEXT
+					COMMANDVAR += "（仮）"
+					CALL COMARRAYSHIFT, COMMAND, 1, "", LRESULT+1
+					COMD:COMMAND:LRESULT = %COMMANDVAR%
+			ENDSELECT
+			GOTO WRITE_COMD
+	ENDSELECT
+LOOP 1
+
+@COMARRAYSHIFT, ARG, ARG:1, ARGS, ARG:2
+#DIM DYNAMIC LCOUNT
+
+FOR LCOUNT, 998, ARG:2, -1
+	COMD:ARG:LCOUNT = %COMD:ARG:(LCOUNT-1)%
+NEXT
+
+
+
+
+
+@口上プロジェクトセーブ, SAVENO
+#DIM DYNAMIC SAVENO
+SAVEDATA SAVENO, @"保存日時:%GETTIMES()% %NAME:TARGET%の口上"
