@@ -1,5 +1,6 @@
 ﻿@口上エディタ_プロジェクト選択
 #DIM DYNAMIC LCOUNT
+TARGET = -1
 
 PRINTL □プロジェクトを選択してください
 FOR LCOUNT, 100, 130
@@ -25,11 +26,11 @@ SELECTCASE RESULT
 		IF CHKDATA(RESULT) == 0
 			LOADDATA RESULT
 		ELSE
-			JUMP 口上エディタ, RESULT
+			JUMP 口上エディタ_COM, RESULT
 		ENDIF
 ENDSELECT
 
-@口上エディタ, SAVENO
+@口上エディタ_COM, SAVENO
 #DIM SAVENO
 #DIM DYNAMIC LRESULT
 #DIM DYNAMIC PAGE
@@ -38,20 +39,14 @@ ENDSELECT
 #DIM DYNAMIC 処理数
 #DIM DYNAMIC 表示数 = 80
 #DIM DYNAMIC 次ページあり
-#DIM DYNAMIC 自動保存 = 1
-#DIM DYNAMIC COMMAND
-#DIMS DYNAMIC SPLITVAR, 1000
-#DIMS DYNAMIC DETAIL, 1000, 1000
-#DIM DYNAMIC LVL, 1001
-#DIM DYNAMIC LVLNOW
-#DIM DYNAMIC LVLRTN
-#DIM DYNAMIC 行数
-#DIM DYNAMIC 分岐数
+#DIM DYNAMIC 執筆行数
 #DIM DYNAMIC 表示行数
-#DIMS DYNAMIC COMMANDVAR
+#DIM DYNAMIC コマンド
+#DIMS DYNAMIC SPLITVAR, 3
 
-IF TARGET == 0
+IF TARGET == -1
 	PRINTL □口上を書くキャラを選んでください
+	VARLINE = LINECOUNT
 	CALL CHARA_ADD, 0
 	CALL CHARA_LIST, 1
 	CALL CHARA_ADD, RESULT
@@ -59,39 +54,54 @@ IF TARGET == 0
 	SAVEDATA 口上プロジェクト, @"保存日時:%GETTIMES()% %NAME:TARGET%の口上"
 ENDIF
 
+SIF LINECOUNT > VARLINE
+	CLEARLINE LINECOUNT-VARLINE
+VARLINE = LINECOUNT
 DRAWLINE
-PRINTL □口上を書くコマンドを選んでください
+PRINTFORML □%NAME:TARGET%口上執筆中 コマンドを選んでください
 処理数 = 0
 次ページあり = 0
 FOR LCOUNT, 0, VARSIZE("TRAINNAME")
 	SIF TRAINNAME:LCOUNT == ""
 		CONTINUE
-	SIF INRANGE(処理数, PAGE*表示数, PAGE*表示数+表示数)
-		PRINTFORMLC 　[{LCOUNT, 3}]%TRAINNAME:LCOUNT%
+	IF INRANGE(処理数, PAGE*表示数, PAGE*表示数+表示数-1)
+		執筆行数 = 0
+		FOR LCOUNT2, 0, 1000000
+			SIF COMD:LCOUNT2 == ""
+				BREAK
+			SPLIT COMD:LCOUNT2, "/", SPLITVAR
+			SIF SPLITVAR:0 == TRAINNAME:LCOUNT && SPLITVAR:2 != "乱数分岐"
+				執筆行数++
+		NEXT
+		PRINTFORMLC 　[{LCOUNT, 3}]%TRAINNAME:LCOUNT%\@ 執筆行数 > 0 ? (総執筆行数:{執筆行数}行) #\@
+	ENDIF
 	処理数++
 	IF 処理数 > PAGE*表示数+表示数 && TRAINNAME:LCOUNT != ""
 		次ページあり = 1
 		BREAK
 	ENDIF
 NEXT
+SIF !LINEISEMPTY()
+	PRINTL 
 DRAWLINE
 PRINTPLAIN 　COM　
 IF PAGE > 0
-	PRINT [-1] 前ページ
+	PRINT [-1] 前ページ 
 ELSE
-	PRINTFORM %SPACESLENS("[-1] 前ページ")%
+	PRINTPLAINFORM %SPACESLENS("[-1] 前ページ ")%
 ENDIF
-PRINT [1000] 保存して終了する
+PRINT [1000] 保存して終了する 
 IF 次ページあり
-	PRINT [-9] 次ページ
+	PRINT [-9] 次ページ 
 ELSE
-	PRINTFORM %SPACESLENS("[-9] 次ページ")%
+	PRINTPLAINFORM %SPACESLENS("[-9] 次ページ ")%
 ENDIF
+PRINT [-10] イベント口上に切り替え 
 IF 自動保存
-	PRINT [-10] 自動保存(現在:オン)
+	PRINT [-11] 自動保存(現在:オン)
 ELSE
 	SETCOLORBYNAME deepskyblue
-	PRINT [-10] 自動保存(現在:オフ ※予期せぬ終了により作業状況が破棄される危険があります オン推奨)
+	PRINT [-11] 自動保存(現在:オフ)
 	RESETCOLOR
 ENDIF
 PRINTL 
@@ -101,6 +111,7 @@ DO
 	SELECTCASE RESULT
 		CASE 1000
 			CALL 口上プロジェクトセーブ, 口上プロジェクト
+			RETURN
 		CASE -1
 			SIF PAGE > 0
 				PAGE--
@@ -110,126 +121,177 @@ DO
 				PAGE++
 			RESTART
 		CASE -10
+			;CALL 口上エディタ_EVENT
+		CASE -11
 			INVERTBIT 自動保存, 0
 			RESTART
 		CASEELSE
-			COMMAND = RESULT
-			SIF TRAINNAME:COMMAND == ""
+			コマンド = RESULT
+			SIF TRAINNAME:コマンド == ""
 				RESTART
-			GOTO WRITE_COMD
+			CALL 口上エディタ_コマンド, コマンド
+			RESTART
 	ENDSELECT
 LOOP 1
 
-$WRITE_COMD
-;分岐(COMD:コマンド番号:分岐番号:本文)
-;分岐番号 表示は上から優先される
-;0=陥落済み
-;上記を使わない場合陥落素質の分岐を使う
-;1=恋慕
-;2=親愛
-;3=淫乱
-;4=娼婦
-;5=服従
-;6=隷属
-;7=屈服刻印3
-;8=反発刻印3
-;9=屈服刻印2
-;10=反発刻印2
-;11=屈服刻印1
-;12=反発刻印1
-;19=その他(通常時)
+@口上エディタ_コマンド, コマンド
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC コマンド
+#DIM DYNAMIC LRESULT
+#DIM DYNAMIC 段落
+#DIM DYNAMIC 乱数分岐, 1000
+#DIM DYNAMIC 選択分岐
+#DIM DYNAMIC 分岐数
+#DIMS DYNAMIC 本文
+#DIM DYNAMIC 表示行数
+#DIM DYNAMIC 執筆行数
+#DIMS DYNAMIC COMVAR
+#DIMS DYNAMIC SPLITVAR, 3
+#DIMS DYNAMIC SPLITVARTEQUIP, 2
+#DIM DYNAMIC 着脱コマンド, VARSIZE("TRAINNAME")
+#DIM DYNAMIC 着脱切り替え
+{
+#DIMS DYNAMIC 分岐 =
+"初実行時",
+"陥落済み",
+"恋慕",
+"親愛",
+"淫乱",
+"娼婦",
+"服従",
+"隷属",
+"屈服刻印LV3",
+"反発刻印LV3",
+"屈服刻印LV2",
+"反発刻印LV2",
+"屈服刻印LV1",
+"反発刻印LV1",
+"通常時",
+}
 
-DRAWLINE
-PRINTFORML □コマンド「%TRAINNAME:COMMAND%」の口上
-
-VARSET DETAIL
-FOR LCOUNT, 0, 1000
-	;SPLITで情報を得る
-	VARSET SPLITVAR
-	SPLIT COMD:COMMAND:LCOUNT, "/", SPLITVAR
-	;2次元配列に保存しておく
-	FOR LCOUNT2, 0, 1000
-		DETAIL:LCOUNT:LCOUNT2 = %SPLITVAR:LCOUNT2%
-	NEXT
-	;LVL(階層数)も保存しておく DETAIL:0(種類)を差し引いて-1
-	LVL:LCOUNT = RESULT-1
-NEXT
-;もう一度FOR
-LVLNOW = 1
-表示行数 = 0
-FOR LCOUNT, 0, 999
-	;DETAILには「C(Close)」or「O(Open)」or「口上本文」が入っている
-	;Cはツリーを閉じて表示する
-	;Oはツリーを開いて表示する
-	;LVLNOWにはツリーの階層が入る
-	SELECTCASE DETAIL:LCOUNT:LVLNOW
-		;Cなら内部の行数及び分岐数を計算して簡易表示
-		CASE "C"
-			FOR LCOUNT2, LCOUNT, 999
-				;+1の階層だけを取得する
-				IF LVL:LCOUNT2 == LVLNOW+1
-					SELECTCASE DETAIL:LCOUNT2:0
-						CASE "本文"
-							行数++
-						CASE "分岐数"
-							分岐数++
-					ENDSELECT
-				ELSEIF LVL:LCOUNT2 <= LVLNOW
-					BREAK
-				ENDIF
-			NEXT
-			PRINTFORML %@"-", LVLNOW%[{LCOUNT, 4}] [+] \@ 行数 ? {行数}行の口上 #\@ \@ 分岐数 ? {分岐数}個の分岐 #\@ 
-		;Oなら分岐内容を表示しつつ階層を一つ加算
-		CASE "O"
-			;階層が合わない場合は表示しない
-			SIF LVLNOW <= LVL:LCOUNT
-				CONTINUE
-			;LVLNOW+1の場所に分岐内容があるはず
-			PRINTFORM %@"-", LVLNOW%[{LCOUNT, 4}] [-]
-			PRINTPLAIN  
-			PRINTBUTTON @"%DETAIL:LCOUNT:LVLNOW%[編集]", LCOUNT+1000
-			PRINTL 
-			表示行数++
-			;次の行で階層が深くなるなら加算 浅くなるなら減算
-			IF LVL:LCOUNT > LVL:(LCOUNT+1)
-				LVLNOW--
-			ELSEIF LVL:LCOUNT < LVL:(LCOUNT+1)
-				LVLNOW++
-			ENDIF
-		;これにたどり着いたら口上本文
-		CASEELSE
-			SIF LVL:LCOUNT == 0
-				CONTINUE
-			PRINTBUTTON @"%"-", LVLNOW%%DETAIL:LCOUNT:LVLNOW%[編集]", LCOUNT+1000
-			PRINTL 
-			表示行数++
-			;次の行で階層が下がるならLVLNOWを減算
-			SIF LVL:LCOUNT > LVL:(LCOUNT+1)
-				LVLNOW--
+;着脱系コマンドを登録しておく
+VARSET 着脱コマンド
+FOR LCOUNT, 0, VARSIZE("TRAINNAME")
+	SELECTCASE TRAINNAME:LCOUNT
+		{
+		CASE "クリキャップ", "バイブ", "ペニスバンド", "オナホール", "搾精コンドーム", "コンドーム",
+			 "搾精器", "貞操帯", "アナルバイブ", "アナルビーズ", "浣腸器", "拡張バルーン",
+			 "アナル電極", "電動エネマグラ", "ニプルキャップ", "搾乳器", "乳房電極",
+			 "ビデオカメラ", "ライブ配信", "アイマスク", "縄", "ボールギャグ", "尿道カテーテル",
+			 "尿道ポッキー", "触手挿入", "アナル触手", "触手クリ責め", "触手乳首責め", "触手搾乳",
+			 "触手緊縛", "触手浣腸", "触手口辱", "触手搾精", "触手射精止め", "野外プレイ", "羞恥プレイ",
+			 "お風呂場プレイ", "シャワー", "ゲームセンター", "トイレに行く", "女装させる",
+		}
+			着脱コマンド:LCOUNT = 1
 	ENDSELECT
 NEXT
-SIF 表示行数 == 0
-	PRINTBUTTON "[行を追加]", 1000
+
+;分岐番号の表示は上から優先される
+
+DRAWLINE
+PRINTFORML □コマンド「%TRAINNAME:コマンド%」の口上
+
+FOR LCOUNT, 0, VARSIZE("分岐")
+	執筆行数 = 0
+	FOR LCOUNT2, 0, 1000000
+		SIF COMD:LCOUNT2 == ""
+			BREAK
+		SPLIT COMD:LCOUNT2, "/", SPLITVAR
+		SIF SPLITVAR:0 == TRAINNAME:コマンド && SPLITVAR:1 == 分岐:LCOUNT && SPLITVAR:2 != "乱数分岐"
+			執筆行数++
+	NEXT
+	SELECTCASE 分岐:LCOUNT
+		CASE "陥落済み"
+			SIF 陥落分岐簡易化
+				PRINTFORML 　[{LCOUNT, 2}] %分岐:LCOUNT%の分岐を書く\@ 執筆行数 ? (総執筆行数:{執筆行数}行)#\@
+		CASE "恋慕", "親愛", "淫乱", "娼婦", "服従", "隷属"
+			SIF !陥落分岐簡易化
+				PRINTFORML 　[{LCOUNT, 2}] %分岐:LCOUNT%の分岐を書く\@ 執筆行数 ? (総執筆行数:{執筆行数}行)#\@
+		CASEELSE
+			SIF 分岐:LCOUNT != ""
+				PRINTFORML 　[{LCOUNT, 2}] %分岐:LCOUNT%の分岐を書く\@ 執筆行数 ? (総執筆行数:{執筆行数}行)#\@
+	ENDSELECT
+NEXT
+DRAWLINE
+PRINTPLAIN 　分岐　
+PRINTFORML [100] - 戻る [101] - 陥落分岐の簡易化(現在:\@ 陥落分岐簡易化 ? オン # オフ \@)
+
+INPUT
+LRESULT = RESULT
+SELECTCASE LRESULT
+	CASE 0 TO 19
+		SIF 分岐:LRESULT == ""
+			RESTART
+		選択分岐 = LRESULT
+		VARLINE = LINECOUNT
+		GOTO WRITE
+	CASE 100
+		RETURN
+	CASE 101
+		INVERTBIT 陥落分岐簡易化, 0
+		RESTART
+ENDSELECT
+
+$WRITE
+CLEARLINE LINECOUNT-VARLINE
+DRAWLINE
+PRINTFORML □「%TRAINNAME:コマンド%」の%分岐:選択分岐%
+段落 = 0
+分岐数 = 0
+表示行数 = 0
+FOR LCOUNT, 0, 1000000
+	SIF COMD:LCOUNT == ""
+		BREAK
+	SPLIT COMD:LCOUNT, "/", SPLITVAR
+	SIF SPLITVAR:0 != TRAINNAME:コマンド || SPLITVAR:1 != 分岐:選択分岐
+		CONTINUE
+	IF 着脱コマンド:コマンド
+		SPLIT SPLITVAR:2, "|", SPLITVARTEQUIP
+		SIF (SPLITVARTEQUIP:0 == "実行時" && 着脱切り替え == 1) || (SPLITVARTEQUIP:0 == "解除時" && 着脱切り替え == 0)
+			CONTINUE
+		本文 = %SPLITVARTEQUIP:1%
+	ELSE
+		本文 = %SPLITVAR:2%
+	ENDIF
+	IF 本文 == "乱数分岐"
+		分岐数++
+		PRINTBUTTON @"　乱数分岐{分岐数} [編集]", LCOUNT
+		PRINTL 
+		段落 = 1
+		表示行数++
+	ELSEIF 本文 != ""
+		SIF 段落
+			PRINT 　
+		PRINTBUTTON @"　%本文% [編集]", LCOUNT
+		PRINTL 
+		表示行数++
+	ENDIF
+NEXT
+IF 表示行数 == 0
+	PRINTBUTTON "　[行を追加]", 0
+	PRINTL
+ENDIF
+DRAWLINE
+PRINTPLAIN 　COM　
+PRINT [-1] - 戻る 
+SIF 着脱コマンド:コマンド
+	PRINTFORM [-9] - \@ 着脱切り替え ? 実行時の口上を書く # 解除時の口上を書く \@
+PRINTL 
 
 DO
 	INPUT
 	LRESULT = RESULT
 	SELECTCASE LRESULT
-		;0～999はツリーの開閉
-		CASE 0 TO 999
-			SELECTCASE DETAIL:LRESULT:(LVL:LRESULT-1)
-				CASE "C"
-					DETAIL:LRESULT:(LVL:LRESULT-1) = O
-				CASE "O"
-					DETAIL:LRESULT:(LVL:LRESULT-1) = C
-			ENDSELECT
-			GOTO WRITE_COMD
-		;1000～1999は編集
-		CASE 1000 TO 1999
-			LRESULT -= 1000
+		CASE -1
+			RESTART
+		CASE -9
+			INVERTBIT 着脱切り替え, 0
+			GOTO WRITE
+		CASE 0 TO 999999
 			IF 表示行数 == 0
-				PRINTL [0] 行を挿入
-				PRINTL [2] 分岐を挿入
+				PRINTL [0] 行を追加
+				PRINTL [2] 乱数分岐を追加
 			ELSE
 				PRINTL [0] 行を挿入(上に加筆)
 				PRINTL [1] 行を追加(下に加筆)
@@ -242,56 +304,50 @@ DO
 				CASE 0
 					PRINTL 文章を入力してください
 					INPUTS
-					COMMANDVAR = 本文
-					FOR LCOUNT, 0, LVL:LRESULT
-						COMMANDVAR += "/C"
-					NEXT
-					COMMANDVAR += @"/%RESULTS%"
-					CALL COMARRAYSHIFT, COMMAND, 1, "", LRESULT
-					COMD:COMMAND:LRESULT = %COMMANDVAR%
+					COMVAR = %RESULTS%
+					ARRAYSHIFT COMD, 1, "", LRESULT
+					IF 着脱コマンド:コマンド
+						COMD:LRESULT = %TRAINNAME:コマンド%/%分岐:選択分岐%/\@ 着脱切り替え ? 解除時 # 実行時 \@|%COMVAR%
+					ELSE
+						COMD:LRESULT = %TRAINNAME:コマンド%/%分岐:選択分岐%/%COMVAR%
+					ENDIF
 				CASE 1
 					PRINTL 文章を入力してください
 					INPUTS
-					COMMANDVAR = 本文
-					FOR LCOUNT, 0, LVL:LRESULT
-						COMMANDVAR += "/C"
-					NEXT
-					COMMANDVAR += @"/%RESULTS%"
-					CALL COMARRAYSHIFT, COMMAND, 1, "", LRESULT+1
-					COMD:COMMAND:LRESULT = %COMMANDVAR%
+					COMVAR = %RESULTS%
+					ARRAYSHIFT COMD, 1, "", LRESULT+1
+					IF 着脱コマンド:コマンド
+						COMD:(LRESULT+1) = %TRAINNAME:コマンド%/%分岐:選択分岐%/\@ 着脱切り替え ? 解除時 # 実行時 \@|%COMVAR%
+					ELSE
+						COMD:(LRESULT+1) = %TRAINNAME:コマンド%/%分岐:選択分岐%/%COMVAR%
+					ENDIF
 				CASE 2
-					PRINTW 分岐を挿入します（仮）
-					COMMANDVAR = 分岐
-					FOR LCOUNT, 0, LVL:LRESULT+1
-						COMMANDVAR += "/O"
-					NEXT
-					COMMANDVAR += "（仮）"
-					CALL COMARRAYSHIFT, COMMAND, 1, "", LRESULT
-					COMD:COMMAND:LRESULT = %COMMANDVAR%
+					ARRAYSHIFT COMD, 1, "", LRESULT
+					IF 着脱コマンド:コマンド
+						COMD:LRESULT = %TRAINNAME:コマンド%/%分岐:選択分岐%/\@ 着脱切り替え ? 解除時 # 実行時 \@|乱数分岐
+					ELSE
+						COMD:LRESULT = %TRAINNAME:コマンド%/%分岐:選択分岐%/乱数分岐
+					ENDIF
 				CASE 3
-					PRINTW 分岐を挿入します（仮）
-					COMMANDVAR = 分岐
-					FOR LCOUNT, 0, LVL:LRESULT+1
-						COMMANDVAR += "/O"
-					NEXT
-					COMMANDVAR += "（仮）"
-					CALL COMARRAYSHIFT, COMMAND, 1, "", LRESULT+1
-					COMD:COMMAND:LRESULT = %COMMANDVAR%
+					ARRAYSHIFT COMD, 1, "", LRESULT+1
+					IF 着脱コマンド:コマンド
+						COMD:(LRESULT+1) = %TRAINNAME:コマンド%/%分岐:選択分岐%/\@ 着脱切り替え ? 解除時 # 実行時 \@|乱数分岐
+					ELSE
+						COMD:(LRESULT+1) = %TRAINNAME:コマンド%/%分岐:選択分岐%/乱数分岐
+					ENDIF
+				CASE 4
+					PRINTL 指定の行を削除します。よろしいですか？
+					PRINTL [0] - はい
+					PRINTL [1] - いいえ
+					CALL INPUTF, 0, 1
+					SIF RESULT == 0
+						ARRAYREMOVE COMD, LRESULT, 1
 			ENDSELECT
-			GOTO WRITE_COMD
+			SIF 自動保存
+				CALL 口上プロジェクトセーブ, 口上プロジェクト
+			GOTO WRITE
 	ENDSELECT
 LOOP 1
-
-@COMARRAYSHIFT, ARG, ARG:1, ARGS, ARG:2
-#DIM DYNAMIC LCOUNT
-
-FOR LCOUNT, 998, ARG:2, -1
-	COMD:ARG:LCOUNT = %COMD:ARG:(LCOUNT-1)%
-NEXT
-
-
-
-
 
 @口上プロジェクトセーブ, SAVENO
 #DIM DYNAMIC SAVENO
