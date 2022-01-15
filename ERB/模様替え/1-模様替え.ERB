@@ -131,7 +131,7 @@ GCREATEFROMFILE 8, "壁系.png"
 GCLEAR 8, 0xFF000000+COLOR_FROMNAME("gray")
 SPRITECREATE "GRID_GRAY", 8, 0, 0, 32, 32
 
-CALL BGM再生, 模様替えBGM
+;CALL BGM再生, 模様替えBGM
 
 マップ横幅 = 60
 マップ縦幅 = 30
@@ -319,7 +319,7 @@ DO
 									表示用変数:X座標 += "' srcb='' height='300' width='300'>"
 								ELSE
 									表示用変数:X座標 += @"<img src='%表示チップ%' srcb='' height='300' width='300'></button>"
-									表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'><img src='プランター容器' srcb='' height='300' width='300'>"
+									表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%部屋名%' pos='{X座標*100}'><img src='プランター' srcb='' height='300' width='300'>"
 								ENDIF
 							ENDIF
 						CASE "牧場"
@@ -654,12 +654,15 @@ DO
 		CONTINUE
 	ELSE
 		PRINTL [60] - オブジェクトを配置する [61] - 部屋を配置する [62] - オブジェクトを初期化する [63] - 部屋を初期化する
-		PRINTFORML [65]  - グリッド表示\@ グリッド表示 ? しない # する \@ [70] 戻る
+		PRINTFORML [65]  - グリッド表示\@ グリッド表示 ? しない # する \@ [70] 戻る [80] マップデータのセーブ/ロード
 		INPUT
 		SELECTCASE RESULT
 			CASE 70
 				CALL FADEOUTBGM
 				RETURN
+			CASE 80
+				CALL マップ入出力
+				GOTO RESTART
 			CASE 60
 				PRINTL □配置するオブジェクトを選んでください 名前(横幅×縦幅)
 				;オブジェクト一覧関数でオブジェクト名入れるところまで処理する
@@ -781,7 +784,7 @@ DO
 				ELSE
 					PRINTL 　[3] - オブジェクトを配置する
 				ENDIF
-				;配置してある部屋の昨日にクイックアクセス
+				;配置してある部屋の機能にクイックアクセス
 				IF 選択部屋 != ""
 					PRINTFORML 　[4] - %選択部屋%\@ 部屋番号 ? ,{部屋番号} #\@を動かす
 					PRINTFORML 　[5] - %選択部屋%\@ 部屋番号 ? ,{部屋番号} #\@を取り壊す
@@ -881,8 +884,10 @@ DO
 										RETURN
 									GOTO RESTART
 								CASE "図書室", "実験室", "医務室"
-									SIF !ITEM:選択部屋
+									IF !ITEM:選択部屋
+										PRINTFORMW %選択部屋%を所持していません
 										CONTINUE
+									ENDIF
 									CALLFORM %選択部屋%
 									GOTO RESTART
 								CASE "調理室"
@@ -1046,6 +1051,136 @@ SELECTCASE タイプ指定
 	CASEELSE
 		;#; THROW タイプ指定が表記ゆれです
 ENDSELECT
+
+@マップ入出力
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC XCOUNT
+#DIM DYNAMIC YCOUNT
+#DIM DYNAMIC LRESULT
+#DIMS DYNAMIC マップデータ, 4000
+#DIMS DYNAMIC SPLITVAR, 4
+#DIMS DYNAMIC マップ名
+#DIMS DYNAMIC JOIN用
+
+PRINTL マップデータの入出力を行います
+PRINTL [0] - 出力(セーブ)する
+PRINTL [1] - 入力(ロード)する
+PRINTL [2] - 戻る
+CALL INPUTF, 0, 1, 2
+SELECTCASE RESULT
+	CASE 0
+		GOTO SAVE
+	CASE 1
+		GOTO LOAD
+	CASE 2
+		RETURN
+ENDSELECT
+
+$SAVE
+PRINTL □模様替えのマップデータをファイル形式で出力します
+PRINTL 　出力先のデータ番号を選んでください(savフォルダ内のtxt○○○.txtに相当)
+FOR LCOUNT, 100, 130
+	IF LOADTEXT(LCOUNT) != ""
+		SPLIT LOADTEXT(LCOUNT), UNICODE(0xA), マップデータ
+		PRINTFORML 　[{LCOUNT}] %マップデータ:0%
+	ELSE
+		PRINTFORML 　[{LCOUNT}] 空きスロット
+	ENDIF
+NEXT
+DRAWLINE
+PRINTPLAIN 　MAP　
+PRINTL [0] 戻る
+DO
+	INPUT
+	LRESULT = RESULT
+	SELECTCASE LRESULT
+		CASE 0
+			RETURN
+		CASE 100 TO 129
+			IF LOADTEXT(LRESULT) != ""
+				PRINTFORML マップスロット {LRESULT}番には既にマップが登録されています。上書きしますか？
+				PRINTL [0] - はい
+				PRINTL [1] - いいえ
+				CALL INPUTF, 0, 1
+				SIF RESULT == 1
+					GOTO SAVE
+			ENDIF
+			マップ名 = 模様替えマップ %GETTIMES()%
+			PRINTFORML マップ名を入力してください(デフォルト名:%マップ名%)
+			PRINTBUTTON "[デフォルト名を使う]", "デフォルト名を使う"
+			PRINTL 
+			INPUTS
+			SIF RESULTS != "デフォルト名を使う" && RESULTS != ""
+				マップ名 = %RESULTS%
+			マップデータ:0 = マップ名/%マップ名%
+			;HOGE:Y:Xだ いいね？
+			FOR XCOUNT, 0, 60
+				FOR YCOUNT, 0, 30
+					SIF 土地:YCOUNT:XCOUNT
+						マップデータ:FINDELEMENT(マップデータ, "", 0, VARSIZE("マップデータ"), 1) = 土地/{YCOUNT}/{XCOUNT}/{土地:YCOUNT:XCOUNT}
+					SIF OBJECTS:YCOUNT:XCOUNT != ""
+						マップデータ:FINDELEMENT(マップデータ, "", 0, VARSIZE("マップデータ"), 1) =オブジェクト/{YCOUNT}/{XCOUNT}/%OBJECTS:YCOUNT:XCOUNT%
+				NEXT
+			NEXT
+			SAVETEXT STRJOIN(マップデータ, UNICODE(0xA)), LRESULT
+			PRINTFORMW マップスロット{LRESULT}番に%マップ名%を保存しました
+			RETURN
+	ENDSELECT
+	CONTINUE
+LOOP 1
+
+$LOAD
+PRINTL □模様替えのマップデータをロードします
+PRINTL 　ロードしたいデータ番号を選んでください(savフォルダ内のtxt○○○.txtに相当)
+FOR LCOUNT, 100, 130
+	IF LOADTEXT(LCOUNT) != ""
+		SPLIT LOADTEXT(LCOUNT), UNICODE(0xA), マップデータ
+		PRINTFORML 　[{LCOUNT}] %マップデータ:0%
+	ELSE
+		CALL PRINTCOLORL, @"　[{LCOUNT}] 空きスロット", "gray"
+	ENDIF
+NEXT
+DRAWLINE
+PRINTPLAIN 　MAP　
+PRINTL [0] 戻る
+DO
+	INPUT
+	LRESULT = RESULT
+	SELECTCASE LRESULT
+		CASE 0
+			RETURN
+		CASE 100 TO 129
+			IF LOADTEXT(LRESULT) == ""
+				PRINTFORMW マップスロット {LRESULT}番にはマップが登録されていません
+				GOTO LOAD
+			ENDIF
+			PRINTL マップデータをロードすると既存の模様替えマップは破棄されます。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			CALL INPUTF, 0, 1
+			SIF RESULT == 1
+				GOTO LOAD
+			VARSET 土地
+			VARSET OBJECTS
+			CVARSET CFLAG, GETNUM(CFLAG, "居住")
+			SPLIT LOADTEXT(LRESULT), UNICODE(0xA), マップデータ
+			;オブジェクトor土地/Y座標/X座標/オブジェクト名or部屋番号
+			FOR LCOUNT, 0, VARSIZE("マップデータ")
+				SIF マップデータ:LCOUNT == ""
+					BREAK
+				SPLIT マップデータ:LCOUNT, "/", SPLITVAR
+				SELECTCASE SPLITVAR:0
+					CASE "土地"
+						土地:TOINT(SPLITVAR:1):TOINT(SPLITVAR:2) = TOINT(SPLITVAR:3)
+					CASE "オブジェクト"
+						OBJECTS:TOINT(SPLITVAR:1):TOINT(SPLITVAR:2) = %SPLITVAR:3%
+				ENDSELECT
+			NEXT
+			PRINTFORMW %マップデータ:0%をロードしました
+			RETURN
+	ENDSELECT
+	CONTINUE
+LOOP 1
 
 @マップバージョン管理
 #DIMS DYNAMIC オブジェクト情報, 100, 4
