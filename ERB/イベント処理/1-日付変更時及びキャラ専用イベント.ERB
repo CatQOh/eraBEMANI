@@ -175,9 +175,9 @@ IF ゲームモード() != "新婚モード" && MONEY >= TONUM("5000万") && !FL
 	FLAG:裏カジノ = 1
 ENDIF
 
-;主人が使用不可だと体力・気力・ストレス値は変動しない
-IF !CFLAG:MASTER:使用不可
-	FOR LCOUNT, 0, CHARANUM
+FOR LCOUNT, 0, CHARANUM
+	;主人が使用不可だと体力・気力・ストレス値等は変動しない
+	IF !CFLAG:MASTER:使用不可
 		;ミッドナイトスペシャル
 		IF CFLAG:LCOUNT:ミッドナイトスペシャル > 0
 			SIF --CFLAG:LCOUNT:ミッドナイトスペシャル == 0
@@ -238,67 +238,69 @@ IF !CFLAG:MASTER:使用不可
 		;狂気度を下げる
 		SIF CFLAG:LCOUNT:狂気度 > 0
 			CFLAG:LCOUNT:狂気度--
-
-		CFLAG:LCOUNT:二日酔い = 0
-		;酔が抜ける 必ずしも1ターンで全快するわけではない
-		SELECTCASE TIME
-			;昼→夜
-			CASE 0
-				IF TALENT:LCOUNT:酒豪
-					CFLAG:LCOUNT:酔 -= 20+(特質("代謝強化", LCOUNT)/2)
-					CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/3
-				ELSEIF TALENT:LCOUNT:下戸
-					CFLAG:LCOUNT:酔 -= 5+(特質("代謝強化", LCOUNT)/4)
-					CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/5
-				ELSE
-					CFLAG:LCOUNT:酔 -= 10+(特質("代謝強化", LCOUNT)/3)
-					CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/4
-				ENDIF
-			;夜→昼
-			CASE 1
-				IF TALENT:LCOUNT:酒豪
-					CFLAG:LCOUNT:酔 -= 50+(特質("代謝強化", LCOUNT)/2)
-					CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/2
-				ELSEIF TALENT:LCOUNT:下戸
-					CFLAG:LCOUNT:酔 -= 10+(特質("代謝強化", LCOUNT)/4)
-					CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/4
-				ELSE
-					CFLAG:LCOUNT:酔 -= 30+(特質("代謝強化", LCOUNT)/3)
-					CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/3
-				ENDIF
-				;これで酔いが残っていると二日酔いを引き起こす
-				IF CFLAG:LCOUNT:酔 > 0
-					CFLAG:LCOUNT:二日酔い = 1
-					CFLAG:LCOUNT:酔 = 0
-				ENDIF
-		ENDSELECT
-		TEQUIP:LCOUNT:ウォッカ = 0
-		SIF CFLAG:LCOUNT:酔 < 0
-			CFLAG:LCOUNT:酔 = 0
-
-		;使用不可フラグ
-		IF CFLAG:LCOUNT:使用不可 != 0
-			SIF LCOUNT == TARGET
-				TARGET = -1
-			SIF LCOUNT == ASSI
-				ASSI = -1
-			CALL 配属解除, LCOUNT
-			CFLAG:LCOUNT:使用不可--
-			IF CFLAG:LCOUNT:使用不可 <= 0
-				SELECTCASE CFLAG:LCOUNT:使用不可状態
-					CASE 0
-						PRINTFORMW %CALLNAME:LCOUNT%が再び調教可能になりました
-					CASE 1
-						PRINTFORMW %CALLNAME:LCOUNT%は体外受精を終えたため、再び調教可能になりました
-					CASE 2
-						PRINTFORMW %CALLNAME:LCOUNT%は3日間の研修を受け、帰宅しました
-						CALL ABLマイナス打ち消し, LCOUNT
-				ENDSELECT
-				CFLAG:LCOUNT:使用不可 = 0
+	ENDIF
+	;以下は主人使用不可でも処理する
+	CFLAG:LCOUNT:二日酔い = 0
+	;酔が抜ける 必ずしも1ターンで全快するわけではない
+	SELECTCASE TIME
+		;昼→夜
+		CASE 0
+			IF TALENT:LCOUNT:酒豪
+				CFLAG:LCOUNT:酔 -= 20+(特質("代謝強化", LCOUNT)/2)
+				CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/3
+			ELSEIF TALENT:LCOUNT:下戸
+				CFLAG:LCOUNT:酔 -= 5+(特質("代謝強化", LCOUNT)/4)
+				CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/5
+			ELSE
+				CFLAG:LCOUNT:酔 -= 10+(特質("代謝強化", LCOUNT)/3)
+				CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/4
 			ENDIF
+		;夜→昼
+		CASE 1
+			IF TALENT:LCOUNT:酒豪
+				CFLAG:LCOUNT:酔 -= 50+(特質("代謝強化", LCOUNT)/2)
+				CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/2
+			ELSEIF TALENT:LCOUNT:下戸
+				CFLAG:LCOUNT:酔 -= 10+(特質("代謝強化", LCOUNT)/4)
+				CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/4
+			ELSE
+				CFLAG:LCOUNT:酔 -= 30+(特質("代謝強化", LCOUNT)/3)
+				CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/3
+			ENDIF
+			;これで酔いが残っていると二日酔いを引き起こす
+			IF CFLAG:LCOUNT:酔 > 0
+				CFLAG:LCOUNT:二日酔い = 1
+				CFLAG:LCOUNT:酔 = 0
+			ENDIF
+	ENDSELECT
+	TEQUIP:LCOUNT:ウォッカ = 0
+	SIF CFLAG:LCOUNT:酔 < 0
+		CFLAG:LCOUNT:酔 = 0
+
+	;使用不可フラグ
+	IF CFLAG:LCOUNT:使用不可 != 0
+		SIF LCOUNT == MASTER
+			CONTINUE
+		SIF LCOUNT == TARGET
+			TARGET = -1
+		SIF LCOUNT == ASSI
+			ASSI = -1
+		CALL 配属解除, LCOUNT
+		CFLAG:LCOUNT:使用不可--
+		IF CFLAG:LCOUNT:使用不可 <= 0
+			SELECTCASE CFLAG:LCOUNT:使用不可状態
+				CASE 0
+					PRINTFORMW %CALLNAME:LCOUNT%が再び調教可能になりました
+				CASE 1
+					PRINTFORMW %CALLNAME:LCOUNT%は体外受精を終えたため、再び調教可能になりました
+				CASE 2
+					PRINTFORMW %CALLNAME:LCOUNT%は3日間の研修を受け、帰宅しました
+					CALL ABLマイナス打ち消し, LCOUNT
+			ENDSELECT
+			CFLAG:LCOUNT:使用不可 = 0
 		ENDIF
-	NEXT
-ENDIF
+	ENDIF
+NEXT
 IF TFLAG:料理
 	IF !TFLAG:裸体盛り
 		CALL KOJO_MESSAGE_EVENT, "料理"
