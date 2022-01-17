@@ -398,33 +398,47 @@ LOOP 1
 #DIM DYNAMIC メニュー番号
 #DIM DYNAMIC ページ数
 #DIM DYNAMIC 次ページあり
+#DIMS ジャンルフィルタ
+#DIMS DYNAMIC SPLITVAR, 5
+#DIM DYNAMIC 処理数
+{
+#DIMS DYNAMIC ジャンル一覧 = 
+"和食",
+"洋食",
+"中華",
+"スイーツ",
+"ファストフード",
+"お酒",
+}
 
 DRAWLINE
 PRINTL □料理を選んでください
-FOR LCOUNT, (ページ数*20)+1, (ページ数*20)+21
-	SIF LCOUNT >= VARSIZE("料理メニュー")
-		BREAK
+処理数 = 0
+次ページあり = 0
+FOR LCOUNT, 0, VARSIZE("料理メニュー")
 	SIF 料理メニュー:LCOUNT == ""
 		CONTINUE
 	CALLF レシピ判定, 料理メニュー:LCOUNT
+	VARSET SPLITVAR
+	SPLIT 料理ジャンル, "/", SPLITVAR
+	SIF ジャンルフィルタ != "" && FINDELEMENT(SPLITVAR, ジャンルフィルタ, 0, VARSIZE("SPLITVAR"), 1) == -1
+		CONTINUE
+	処理数++
+	IF 処理数 < ページ数*20
+		CONTINUE
+	ELSEIF 処理数 >= ページ数*20+20
+		次ページあり = 1
+		BREAK
+	ENDIF
 	CALL PASELIL, @"　[{LCOUNT, 3}]%料理メニュー:LCOUNT, 28, LEFT% ジャンル:%料理ジャンル, 28, LEFT% 価格:{(料理価格*飲食店価格倍率)/10, 4}＄\@ 料理原価 ? (原価:{料理原価, 3}＄) # \@ \@ 新鮮食材 ? 新鮮食材:{新鮮食材}個 # \@"
 NEXT
 
-次ページあり = 0
-SIF 料理メニュー:(LCOUNT+1) != ""
-	次ページあり = 1
-
 DRAWLINE
 PRINTPLAIN 　レシピ一覧　
-IF ページ数
-	PRINT [-1] - 前ページ 
-ELSE
-	PRINTPLAIN 　　　　　　　  
-ENDIF
+CALL PRINTSPACE, ページ数, "[-1] - 前ページ "
 PRINT [0] - 戻る 
-SIF 次ページあり
-	PRINT [-2] - 次ページ 
-PRINTL [-3] - メニュー無し
+CALL PRINTSPACE, 次ページあり, "[-2] - 次ページ "
+PRINTFORML [-3] - メニュー無し [-4] - ジャンルから選ぶ(現在のフィルタ:\@ ジャンルフィルタ == "" ? 無し # %ジャンルフィルタ% \@)
 
 DO
 	INPUT
@@ -442,6 +456,23 @@ DO
 		CASE -3
 			飲食店メニュー:メニュー番号 = 
 			RETURN
+		CASE -4
+			PRINTL 何を表示しますか？
+			FOR LCOUNT, 0, VARSIZE("ジャンル一覧")
+				PRINTFORML [{LCOUNT}] - %ジャンル一覧:LCOUNT%
+			NEXT
+			PRINTL [10] - 戻る
+			DO
+				INPUT
+				SELECTCASE RESULT
+					CASE 0 TO VARSIZE("ジャンル一覧")-1
+						ジャンルフィルタ = %ジャンル一覧:RESULT%
+						ページ数 = 0
+						RESTART
+					CASE 10
+						RESTART
+				ENDSELECT
+			LOOP 1
 		CASE 1 TO VARSIZE("料理メニュー")-1
 			SIF 料理メニュー:RESULT == ""
 				CONTINUE
