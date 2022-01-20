@@ -12,21 +12,25 @@ ELSE
 		PRINT 半ば強引に
 	PRINT 唇を重ね
 	IF TEQUIP:ゲームセンター
-		IF ABL:露出癖 >= 3
-			PRINTW ると、個室の外にも聞こえそうな音を立てて激しく求めてきた……
+		IF CFLAG:陥落
+			IF ABL:露出癖 >= 3
+				PRINTW ると、個室の外にも聞こえそうな音を立てて激しく求めてきた……
+			ELSE
+				PRINTW るが、個室の外に誰かが居ることを察して積極的になれずにいる……
+			ENDIF
 		ELSE
-			PRINTW るが、個室の外に誰かが居ることを察して積極的になれずにいる……
+			PRINTW た……
 		ENDIF
 	ELSE
-		;従順LV3以上+同性愛経験500以上+調教者と同性
-		IF ABL:従順 >= 3 && (EXP:レズ経験 >= 500 || EXP:ゲイ経験 >= 500) && SEX(PLAYER) == SEX(TARGET)
+		;陥落+従順LV3以上+同性愛経験500以上+調教者と同性
+		IF CFLAG:陥落 && ABL:従順 >= 3 && (EXP:レズ経験 >= 500 || EXP:ゲイ経験 >= 500) && SEX(PLAYER) == SEX(TARGET)
 			PRINTFORMW 、ねっとりと舌を絡めあいながら唾液を交換した……
 		;陥落済み
 		ELSEIF CFLAG:陥落 && PLAYER == MASTER
 			PRINTFORMW ると、%CALLNAME:TARGET%も%CALLNAME:PLAYER%を求めて舌を絡めてきた……
 		;従順LV3以上
-		ELSEIF ABL:従順 >= 3
-			PRINTFORMW ると、%CALLNAME:TARGET%も積極的に舌を絡めてきた……
+		;ELSEIF ABL:従順 >= 3
+		;	PRINTFORMW ると、%CALLNAME:TARGET%も積極的に舌を絡めてきた……
 		ELSE
 			PRINTW た……
 		ENDIF
@@ -40,9 +44,8 @@ ENDIF
 PRINTFORML %CALLNAME:PLAYER%は何もせずに%CALLNAME:TARGET%を放置している
 IF TALENT:アニマル
 	PRINTFORML %CALLNAME:TARGET%は退屈そうに動物的な仕草を見せている……
-ELSE
-	SIF TEQUIP:媚薬
-		PRINTFORML %CALLNAME:TARGET%は媚薬でこみ上げる欲情に顔を赤くしながら見つめてくる……
+ELSEIF TEQUIP:媚薬 && !TEQUIP:アイマスク
+	PRINTFORML %CALLNAME:TARGET%は媚薬でこみ上げる欲情に顔を赤くしながら見つめてくる……
 ENDIF
 WAIT
 
@@ -107,16 +110,20 @@ ELSE
 					PRINTFORML %CALLNAME:PLAYER%を睨んでいるもののその表情には僅かな快感がちらついている
 				;LV3,4
 				CASE 3, 4
+					$NOTFALL
 					PRINTL 罵られることに快感を感じているようだ……
 				;LV5以上
 				CASE IS >= 5
+					;ここからは服従系陥落だけ
+					SIF FALLTYPE(TARGET) != 3
+						GOTO NOTFALL
 					PRINTL 罵られることにすっかり快感を感じているようだ
 					PRINTFORM %CALLNAME:TARGET%は顔を紅潮させて媚びるような眼差しで%CALLNAME:PLAYER%を見上げ、
 					;気丈かプライド高いがある
 					IF TALENT:気丈 || TALENT:プライド高い
 						PRINTL 言葉責めをねだるその姿にはかつての面影は既に無かった……
 					ELSE
-						PRINTL 哀願のこもった声音でさらなる言葉責めをおねだりしている……
+						PRINTL 哀願のこもった声でさらなる言葉責めをおねだりしている……
 					ENDIF
 			ENDSELECT
 		ENDIF
@@ -142,7 +149,7 @@ IF CFLAG:酔
 						PRINTFORMW %CALLNAME:TARGET%は精液の混じった酒に顔を歪めつつも、酒酔いに奪われた思考でなすがままにされている……
 					ENDIF
 				CASE "焼酎ゼリー", "ウイスキージュレ", "カルーアジュレ"
-					IF CSTR:種族 == "スライム"
+					IF ISSLIME(TARGET)
 						IF CFLAG:陥落
 							PRINTFORMW 酔いに酔った%CALLNAME:TARGET%はゼリー状の酒と溶け混ざり、自分が自分でなくなりそうな感覚すら心地良く感じている……
 						ELSE
@@ -153,7 +160,7 @@ IF CFLAG:酔
 						PRINTFORMW 酔いが回り、%CALLNAME:TARGET%の身も心もスライムに浸食され、とろけていく……
 					ENDIF
 				CASEELSE
-					IF CSTR:種族 == "スライム"
+					IF ISSLIME(TARGET)
 						IF CFLAG:陥落
 							PRINTFORMW 酒と溶け混ざった%CALLNAME:TARGET%は本来の形を崩しつつ%CALLNAME:MASTER%に抱きつくように絡みつく……
 						ELSE
@@ -190,7 +197,7 @@ IF CFLAG:酔
 						PRINTFORMW ただでさえ酔いが回っているところに精液入りの酒を飲まされ、%CALLNAME:TARGET%はえずいている……
 					ENDIF
 				CASE "焼酎ゼリー", "ウイスキージュレ", "カルーアジュレ"
-					IF CSTR:種族 == "スライム"
+					IF ISSLIME(TARGET)
 						PRINTFORMW 十二分に酔いが回っているにも関わらず、%CALLNAME:TARGET%はゼリー状の酒を喜々として取り込んだ……
 					ELSE
 						PRINTFORMW ただでさえ酔いが回っているところにゼリー状の酒を飲まされ、%CALLNAME:TARGET%はえずいている……
@@ -209,7 +216,7 @@ IF CFLAG:酔
 					ENDIF
 				CASE "焼酎ゼリー", "ウイスキージュレ", "カルーアジュレ"
 					$粘液酒
-					IF CSTR:種族 == "スライム"
+					IF ISSLIME(TARGET)
 						PRINTFORMW ゼリー状の酒がスライムと混ぜ合わされたものと気づいた%CALLNAME:TARGET%は、淫らな顔で身体に取り込み、味わってる……
 					ELSE
 						PRINTFORML ゼリー状の酒はほんのり甘く、%CALLNAME:TARGET%はスイーツ感覚で味わっている
@@ -233,7 +240,7 @@ ELSE
 				PRINTFORMW %CALLNAME:TARGET%は精液入りの酒を、顔をしかめて飲んでいる……
 			ENDIF
 		CASE "焼酎ゼリー", "ウイスキージュレ", "カルーアジュレ"
-			IF CSTR:種族 == "スライム"
+			IF ISSLIME(TARGET)
 				PRINTFORMW %CALLNAME:TARGET%は差し出された%酒名%を取り込み、味わうように自身の身体に溶け込ませていく……
 			ELSE
 				PRINTFORML %CALLNAME:TARGET%はあまり乗り気ではないようだが、%酒名%ならおやつ感覚で食べれるかもという事で口にした
@@ -369,7 +376,7 @@ SIF CFLAG:陥落
 	PRINTFORML 美味しそうに%酒名%を飲んでは、喉を潤している……
 
 IF 酒名 == "スライムジュース"
-	IF  TALENT:スライム
+	IF ISSLIME(TARGET)
 		PRINTFORML ジュースに加工されたスライムの粘液が、%CALLNAME:TARGET%の身体を構成する粘液と混ざり合っていく……
 	ELSE
 		PRINTFORML ジュースに加工されたスライムの粘液と知らずに飲んだ%CALLNAME:TARGET%の身体が、スライムに浸食されていく……
