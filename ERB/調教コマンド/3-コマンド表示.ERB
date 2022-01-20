@@ -123,6 +123,14 @@ FOR LCOUNT, 0, 900
 				CONTINUE
 		ENDSELECT
 	ENDIF
+	;各コマンドのフィルタ
+	IF USINGFILTERG
+		SIF COMFILTERG:LCOUNT
+			CONTINUE
+	ELSE
+		SIF COMFILTER:LCOUNT
+			CONTINUE
+	ENDIF
 	;CALLF系命令では返り値が無いのでCOMRESULTに結果を入れている 1で始まる
 	COMRESULT = 1
 	コマンド実行条件 = 
@@ -716,6 +724,7 @@ SELECTCASE RESULT
 		PRINTFORML [5] Ｖ系コマンドフィルタ(現在:\@ FLAG:Ｖ系コマンドフィルタ ? オン # オフ \@)
 		PRINTFORML [6] Ａ系コマンドフィルタ(現在:\@ FLAG:Ａ系コマンドフィルタ ? オン # オフ \@)
 		PRINTFORML [7] 暴力系コマンドフィルタ(現在:\@ FLAG:暴力コマンドフィルタ ? オン # オフ \@)
+		PRINTFORML [100] コマンドごとにフィルタを設定する
 		PRINTL [0] 戻る
 		DO
 			INPUT
@@ -736,6 +745,9 @@ SELECTCASE RESULT
 					INVERTBIT FLAG:Ａ系コマンドフィルタ, 0
 				CASE 7
 					INVERTBIT FLAG:暴力コマンドフィルタ, 0
+				CASE 100
+					VARLINE = 0
+					CALL コマンドフィルタ設定
 			ENDSELECT
 			GOTO コマンドフィルタ
 		LOOP 1
@@ -1457,3 +1469,70 @@ ELSE
 	RETURN 0
 ENDIF
 
+@コマンドフィルタ設定
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 処理数
+#DIM DYNAMIC 次ページあり
+
+CALL LOOP_CLEARLINE
+
+DRAWLINE
+PRINTL □コマンドフィルタを設定します
+処理数 = 0
+次ページあり = 0
+FOR LCOUNT, 0, VARSIZE("TRAINNAME")
+	SIF TRAINNAME:LCOUNT == ""
+		CONTINUE
+	IF 処理数 < ページ数*60
+		処理数++
+		CONTINUE
+	ENDIF
+	IF USINGFILTERG
+		PRINTFORMC %TRAINDISP(LCOUNT)%[{LCOUNT, 3}]\@ COMFILTERG:LCOUNT ? ✕ # ○ \@
+	ELSE
+		PRINTFORMC %TRAINDISP(LCOUNT)%[{LCOUNT, 3}]\@ COMFILTER:LCOUNT ? ✕ # ○ \@
+	ENDIF
+	処理数++
+	IF 処理数 >= ページ数*60+60
+		次ページあり = 1
+		BREAK
+	ENDIF
+NEXT
+SIF !LINEISEMPTY()
+	PRINTL
+DRAWLINE
+PRINTPLAIN 　FILTER　
+CALL PRINTSPACE, ページ数, "[1001] 前ページ "
+PRINT [1000] 戻る 
+CALL PRINTSPACE, 次ページあり, "[1009] 次ページ "
+PRINTFORML [1010] \@ USINGFILTERG ? このセーブデータ専用のフィルタに変更 # セーブデータ間共通のフィルタに変更 \@
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 0 TO VARSIZE("TRAINNAME")-1
+			SIF TRAINNAME:RESULT == ""
+				CONTINUE
+			IF USINGFILTERG
+				INVERTBIT COMFILTERG:RESULT, 0
+			ELSE
+				INVERTBIT COMFILTER:RESULT, 0
+			ENDIF
+			RESTART
+		CASE 1000
+			SAVEGLOBAL
+			RETURN
+		CASE 1001
+			SIF ページ数
+				ページ数--
+			RESTART
+		CASE 1009
+			SIF 次ページあり
+				ページ数++
+			RESTART
+		CASE 1010
+			INVERTBIT USINGFILTERG, 0
+			RESTART
+	ENDSELECT
+LOOP 1

@@ -204,6 +204,18 @@ DO
 			SIF RESULT
 				CFLAG:タグ色 = RESULT
 			JUMP STATUS
+		;50 称号の固定
+		CASE 50
+			SIF TARGET != MASTER
+				CONTINUE
+			IF 固定称号 == ""
+				CALL 称号表示
+				固定称号 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
+				PRINTFORMW 称号を「%固定称号%」で固定しました
+			ELSE
+				PRINTW 称号の固定を解除しました
+			ENDIF
+			JUMP STATUS
 		;99に服装変更のボタンがある
 		CASE 99
 			CALL CHARA_CLOTHES_SETTING
@@ -265,14 +277,22 @@ ELSE
 		SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 			PRINTFORM  依存度:{CFLAG:依存度} 
 	ELSEIF TARGET == MASTER && ゲームモード() != "新婚モード"
-		PRINTFORM (堕した人数:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従}人) 
+		PRINTFORM (堕した人数:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従}人)
 		PRINTFORM 難易度:%難易度()% 
 	ENDIF
+	PRINTL
+	PRINT 　
 	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 		PRINTFORM 経験人数:{経験人数(TARGET)} 
 	IF TARGET == MASTER
 		PRINT 称号:
-		CALL 称号表示
+		IF 固定称号 != ""
+			PRINTFORM %固定称号%
+		ELSE
+			CALL 称号表示
+		ENDIF
+		PRINTPLAIN  
+		PRINTFORM [50]\@ 固定称号 == "" ? 称号を固定する # 称号の固定を解除する \@
 	ENDIF
 ENDIF
 IF 顔グラ表示
@@ -1685,7 +1705,7 @@ ENDIF
 @処女の奪われ方, ARG
 SELECTCASE ARG
 	CASE 1
-		IF TALENT:貞操観念
+		IF TALENT:貞操無頓着
 			PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にしていないようだ
 		ELSE
 			IF CFLAG:陥落
