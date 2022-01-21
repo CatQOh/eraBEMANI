@@ -4,6 +4,7 @@
 ;-------------------------------------------------
 @EVENT_NEWDAY_SELF
 #DIM DYNAMIC 不発確率
+#DIM DYNAMIC 不発
 ;調教対象が居ない場合は終了
 SIF TARGET <= 0
 	RETURN 0
@@ -26,19 +27,34 @@ SIF !PENIS(MASTER)
 SIF CFLAG:二日酔い
 	RETURN 0
 
-;朝騎乗位判定
-;出産トラウマがある場合は発生しない時がある
-不発確率 = CFLAG:出産トラウマ
-;RAND:(トラウマ値/10+2) <= (トラウマ値/10)だと発生しない 1あるだけでも50%で不発
-IF ((!TALENT:処女 && !TALENT:再生処女 && ABL:Ｖ感覚 >= 3) || ABL:Ａ感覚 >= 3) && ABL:奉仕精神 >= 7 && !(不発確率 && RAND:(不発確率/10+2) <= 不発確率/10)
-	CALL EVENT_CHECK, "朝騎乗位"
-;朝パイズリ判定
-ELSEIF TALENT:バストサイズ >= 2 && ABL:奉仕精神 >= 5
-	CALL EVENT_CHECK, "朝パイズリ"
-;朝フェラ判定
-ELSE
-	CALL EVENT_CHECK, "朝フェラ"
-ENDIF
+;上位イベントの条件満たしている場合に各奉仕イベントがランダムで発生するように
+DO
+	SELECTCASE RAND:3
+		CASE 0
+			;朝騎乗位判定
+			;出産トラウマがある場合は発生しない時がある
+			不発確率 = CFLAG:出産トラウマ
+			;RAND:(トラウマ値/10+2) <= (トラウマ値/10)だと発生しない 1あるだけでも50%で不発
+			IF ((!TALENT:処女 && !TALENT:再生処女 && ABL:Ｖ感覚 >= 3) || ABL:Ａ感覚 >= 3) && ABL:奉仕精神 >= 7
+				IF 不発確率 && RAND:(不発確率/10+2) <= 不発確率/10
+					不発 = 1
+				ELSEIF !不発
+					CALL EVENT_CHECK, "朝騎乗位"
+					BREAK
+				ENDIF
+			ENDIF
+		CASE 1
+			;朝パイズリ判定
+			IF TALENT:バストサイズ >= 2 && ABL:奉仕精神 >= 5
+				CALL EVENT_CHECK, "朝パイズリ"
+				BREAK
+			ENDIF
+		CASE 2
+			;朝フェラ判定
+			CALL EVENT_CHECK, "朝フェラ"
+			BREAK
+	ENDSELECT
+LOOP 1
 
 ;DISABLE_EVENTが行われていた場合は表示しない
 SIF RESULT == 0
@@ -231,6 +247,7 @@ SIF CFLAG:スライム度 <= 0 && ISSLIME(MASTER) && CSTR:種族 != "機械" && 
 
 @EVENT_朝騎乗位
 #DIM DYNAMIC CHK_V;1ならＶ、0ならＡ
+#DIM DYNAMIC CHK_A
 #DIM DYNAMIC プレイ回数
 #DIM DYNAMIC 射精回数
 
@@ -242,6 +259,11 @@ IF ABL:Ｖ感覚 >= 3 && VAGINA(TARGET) && !処女膜(TARGET)
 	CHK_V = 1
 ELSE
 	CHK_V = 0
+ENDIF
+;Ａ感覚3以上ならＶとＡの感度で乱数分岐する
+IF ABL:Ａ感覚 >= 3 && CHK_V
+	SIF (RAND:(ABL:Ｖ感覚+ABL:Ａ感覚))+1 > ABL:Ｖ感覚
+		CHK_V = 0
 ENDIF
 
 ;何回するか
@@ -260,11 +282,13 @@ IF CHK_V
 		プレイ回数 += 5
 		プレイ回数 += ABL:Ｖ感覚/10
 	ENDIF
+	TFLAG:主人挿入箇所 = 1
 ELSE
 	IF TALENT:淫尻
 		プレイ回数 += 5
 		プレイ回数 += ABL:Ａ感覚/10
 	ENDIF
+	TFLAG:主人挿入箇所 = 2
 ENDIF
 SIF プレイ回数 < 1
 	プレイ回数 = 1
