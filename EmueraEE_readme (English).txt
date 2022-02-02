@@ -1,66 +1,66 @@
-App name:EmueraEE Latest update:2021/11/20
+ÔªøApp name:EmueraEE Latest update:2021/11/20
 Version:1.824+v13+EEv7plus
 Developer:Enter
-Original Application:Emuera1.824+v13ÅiDeveloped by îDÅj|Ñtﬂ)ÇÃíÜÇÃêl and MinorShiftÅj
+Original Application:Emuera1.824+v13ÔºàDeveloped by Â¶äÔºâ|–¥Ôæü)„ÅÆ‰∏≠„ÅÆ‰∫∫ and MinorShiftÔºâ
 Contact:Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
 
-Å¶eramaker's dev,MinorShift and îDÇÃêl were not relate EmueraEE's development.
+‚Äªeramaker's dev,MinorShift and Â¶ä„ÅÆ‰∫∫ were not relate EmueraEE's development.
 If you get error please report above addres.
 
 
 [Summary]
-ÅEPLAYSOUND "filename.extension"
+„ÉªPLAYSOUND "filename.extension"
 Once play sound file in "sound" directory.
 
-ÅESTOPSOUND
+„ÉªSTOPSOUND
 Stop sound file played by "PLAYSOUND".
 
-ÅEPLAYBGM "filename.extension"
+„ÉªPLAYBGM "filename.extension"
 Loop play sound file in "sound" directory.
 
-ÅESTOPBGM
+„ÉªSTOPBGM
 Stop sound file played by "PLAYBGM".
 
-ÅEEXISTSOUND "filename.extension", EXISTSOUND("filename.extension")
+„ÉªEXISTSOUND "filename.extension", EXISTSOUND("filename.extension")
 Check exist sound file in "sound" directory. If exist will return 1, not exist will return 0.
 
-ÅESETSOUNDVOLUME int
+„ÉªSETSOUNDVOLUME int
 Change PLAYSOUND's volume. Can change 0 to 100.
 
-ÅESETBGMVOLUME
+„ÉªSETBGMVOLUME
 Change PLAYBGM's volume. Can change 0 to 100.
 
 These functions are using Windows Media Player library. I think can play sound files in WMP, Can play in EmueraEE too.
 
-ÅECan use button notation in "INPUTMOUSEKEY"
+„ÉªCan use button notation in "INPUTMOUSEKEY"
 If RESULT:0=1(Left click), Button number will set to RESULT:5.
 
-ÅEGDRAWTEXT gID, "text", X, Y
+„ÉªGDRAWTEXT gID, "text", X, Y
 Draw text strings to gID. Can abbreviate X and Y.
 This function is using brush of set by "GSETBRUSH".
 If succeed will set 1 to RESULT:0, width to RESULT:1, height to RESULT:2.
 
-ÅEGGETFONT gID
+„ÉªGGETFONT gID
 Get gID's font name set by "GSETFONT".
 
-ÅEGGETFONTSIZE gID
+„ÉªGGETFONTSIZE gID
 Get gID's font size set by "GSETFONT".
 
-ÅECan specifying filename and extension in "OUTPUTLOG"
+„ÉªCan specifying filename and extension in "OUTPUTLOG"
 Can specifying output file name and directry by argument. Can abbreviate argument, That case will output "emuera.log".
 
-ÅEEXISTFUNCTION("function name")
+„ÉªEXISTFUNCTION("function name")
 Check exist function. If function is exist and normal function will return 1,
 Integer user function will return 2, String user function will return 3.
 But can't check system function, This case will return 0.
 
-ÅECan specifying font style in "GSETFONT"
+„ÉªCan specifying font style in "GSETFONT"
 Specifying GSETFONT's fourth argument 4 bit integer(1=bold 2=italic 4=strike 8=underline). Can abbreviate this.
 
-ÅEGGETFONT gID
+„ÉªGGETFONT gID
 Get 4 bit integer of gID's font style set by "GSETFONT".
 
-ÅEGGETTEXTSIZE "text", fontname, fontsize, fontstyle(4 bit int)
+„ÉªGGETTEXTSIZE "text", fontname, fontsize, fontstyle(4 bit int)
 Return width(RESULT:0) and height(RESULT:1) case of runned GDRAWTEXT with same argument.
 
 

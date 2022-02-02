@@ -27,21 +27,67 @@ RETURNF COMRESULT
 #DIM DYNAMIC 依存度計算用
 #DIM DYNAMIC 価格
 #DIM DYNAMIC 増加量
+#DIM DYNAMIC 特殊プレゼント価格
 
 PRINTL プレゼント
 
+特殊プレゼント = 
+
+;休日・祝日によってプレゼントできるアイテムが変化
+IF ISHOLIDAY("元日")
+	特殊プレゼント = お年玉
+	特殊プレゼント価格 = 10000
+ENDIF
+IF ISHOLIDAY("節分")
+	特殊プレゼント = 豆
+	特殊プレゼント価格 = 50
+ENDIF
+IF ISHOLIDAY("バレンタインデー")
+	特殊プレゼント = 手作りチョコ
+	特殊プレゼント価格 = 500
+ENDIF
+IF ISHOLIDAY("ひな祭り") && SEX(TARGET) == 2
+	特殊プレゼント = ひなあられ
+	特殊プレゼント価格 = 100
+ENDIF
+IF ISHOLIDAY("KONAMI創立記念日")
+	特殊プレゼント = コナミ株券
+	特殊プレゼント価格 = 6000
+ENDIF
+IF ISHOLIDAY("十五夜")
+	特殊プレゼント = 月見団子
+	特殊プレゼント価格 = 100
+ENDIF
+IF ISHOLIDAY("ハロウィン")
+	特殊プレゼント = お菓子
+	特殊プレゼント価格 = 500
+ENDIF
+IF ISHOLIDAY("七五三") && TALENT:小柄体型
+	特殊プレゼント = 千歳飴
+	特殊プレゼント価格 = 500
+ENDIF
+IF ISHOLIDAY("クリスマス・イブ") || ISHOLIDAY("クリスマス")
+	特殊プレゼント = クリスマスプレゼント
+	特殊プレゼント価格 = 10000
+ENDIF
+
 CALL PASELIL, @"何を贈りますか？(所持金{MONEY}＄)"
 PRINTFORML [0] スマイル(タダ)
-CALL PASELIL, @"[1] パセリカード(1,000＄)"
-CALL PASELIL, @"[2] 日用品(2,500＄)"
-CALL PASELIL, @"[3] アクセサリ(10,000＄)"
-CALL PASELIL, @"[4] 服(25,000＄)"
-CALL PASELIL, @"[5] 素敵な指輪(100,000＄)"
-CALL PASELIL, @"[6] 特別仕様のIIDX筐体(980,000＄)"
+CALL PASELIL, @"[1] パセリカード(1000＄)"
+CALL PASELIL, @"[2] 日用品(2500＄)"
+CALL PASELIL, @"[3] アクセサリ(10000＄)"
+CALL PASELIL, @"[4] 服(25000＄)"
+CALL PASELIL, @"[5] 素敵な指輪(100000＄)"
+CALL PASELIL, @"[6] 特別仕様のIIDX筐体(980000＄)"
+CALL PASELIL, @"[7] 特注品のディルド(30000＄)"
+SIF 特殊プレゼント != ""
+	CALL PASELIL, @"[8] %特殊プレゼント%({特殊プレゼント価格}＄)"
 SIF 材料判定("アルストロメリア") == 2
 	PRINTL [10] 育てたアルストロメリア
 SIF 材料判定("薔薇") == 2
 	PRINTL [11] 育てた薔薇
+
+
 PRINTFORML [100] やっぱりやめる
 
 DO
@@ -51,16 +97,30 @@ DO
 	SELECTCASE RESULT
 		CASE 1
 			価格 = 1000
+			BREAK
 		CASE 2
 			価格 = 2500
+			BREAK
 		CASE 3
 			価格 = 10000
+			BREAK
 		CASE 4
 			価格 = 25000
+			BREAK
 		CASE 5
 			価格 = 100000
+			BREAK
 		CASE 6
 			価格 = 980000
+			BREAK
+		CASE 7
+			価格 = 30000
+			BREAK
+		CASE 8
+			SIF 特殊プレゼント == ""
+				CONTINUE
+			価格 = 特殊プレゼント価格
+			BREAK
 		CASE 10
 			IF 材料判定("アルストロメリア") == 2
 				RESULT = 10
@@ -75,35 +135,20 @@ DO
 			ELSE
 				CONTINUE
 			ENDIF
+		CASE 100
+			PRINTFORMW プレゼントを渡すのを止めました
+			RETURN 0
 	ENDSELECT
+LOOP 1
 
-	IF MONEY < 価格
-		PRINTW 所持金が足りません
-		RESTART
-	ENDIF
-LOOP LOOPRES(0, 1, 2, 3, 4, 5, 6, 100)
+IF MONEY < 価格
+	PRINTW 所持金が足りません
+	RESTART
+ENDIF
+
+MONEY -= 価格
 
 SELECTCASE RESULT
-	CASE 0
-		;スマイルをプレゼント
-	CASE 1
-		;パセリカード(1000P)をプレゼント
-		MONEY -= 1000
-	CASE 2
-		;日用品をプレゼント
-		MONEY -= 2500
-	CASE 3
-		;アクセサリをプレゼント
-		MONEY -= 10000
-	CASE 4
-		;服をプレゼント
-		MONEY -= 25000
-	CASE 5
-		;素敵な指輪をプレゼント
-		MONEY -= 100000
-	CASE 6
-		;IIDX筐体をプレゼント
-		MONEY -= 980000
 	CASE 10
 		;アルストロメリアをプレゼント 栽培していたアルストロメリアは無くなる
 		FOR LCOUNT, 1, 5
@@ -120,9 +165,6 @@ SELECTCASE RESULT
 				BREAK
 			ENDIF
 		NEXT
-	CASE 100
-		PRINTFORMW プレゼントを渡すのを止めました
-		RETURN 0
 ENDSELECT
 
 TFLAG:プレゼント = RESULT
@@ -163,6 +205,13 @@ SELECTCASE TFLAG:プレゼント
 	CASE 6
 		SOURCE:恐怖 = 3000
 		SOURCE:逸脱 = 5000
+	CASE 7
+		SOURCE:欲情 = 3000
+		SOURCE:恭順 = 1000
+	;値段はまちまちだけど効果はスマイルと同じ
+	CASE 8
+		SOURCE:情愛 = 300
+		SOURCE:恭順 = 1000
 	CASE 10, 11
 		IF TALENT:親愛
 			SOURCE:情愛 = 5000
@@ -175,7 +224,7 @@ ENDSELECT
 
 ;愛情経験
 SELECTCASE TFLAG:プレゼント
-	CASE 0
+	CASE 0, 7, 8
 		増加量 = 1
 	CASE 1
 		増加量 = 5
@@ -219,6 +268,8 @@ CALL SAMEN_SHOOT_T, 0, NOWEX:射精
 SELECTCASE TFLAG:プレゼント
 	CASE 1 TO 5
 		依存度計算用 = TFLAG:プレゼント
+	CASE 7, 8
+		依存度計算用 = 1
 	CASE 10, 11
 		依存度計算用 = 10
 ENDSELECT
