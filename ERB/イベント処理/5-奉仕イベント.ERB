@@ -902,38 +902,48 @@ DRAWLINE
 ;調教後セックス
 @EVENT_調教後セックス
 #DIM DYNAMIC 奉仕ポイント
+#DIM DYNAMIC 性交経験加算済み
+#DIMS DYNAMIC 部位
 ;イベント口上呼び出し
 DRAWLINE
 CALL KOJO_MESSAGE_EVENT, "調教後セックス"
 
 奉仕ポイント = 3
 
-;非処女ならV感覚
-IF VAGINA(TARGET) && !TALENT:処女 && !TALENT:再生処女
-	SELECTCASE ABL:Ｖ感覚
-		CASE 1 TO 4
-			奉仕ポイント += ABL:Ｖ感覚
-		CASE IS >= 5
-			奉仕ポイント += 5
-	ENDSELECT
+;ＶかＡの高いほう
+IF !VAGINA(TARGET)
+	部位 = Ａ
+ELSEIF ABL:Ｖ感覚 < ABL:Ａ感覚
+	部位 = Ａ
+ELSE
+	部位 = Ｖ
 ENDIF
 
-;A感覚
-IF SEX(TARGET) == 1
-	SELECTCASE ABL:Ａ感覚
-		CASE 1 TO 4
-			奉仕ポイント += ABL:Ａ感覚+2
-		CASE IS >= 5
-			奉仕ポイント += 7
-	ENDSELECT
-ELSEIF SEX(TARGET) == 2
-	SELECTCASE ABL:Ａ感覚
-		CASE 1 TO 4
-			奉仕ポイント += ABL:Ａ感覚
-		CASE IS >= 5
-			奉仕ポイント += 5
-	ENDSELECT
-ENDIF
+SELECTCASE 部位
+	CASE "Ｖ"
+		SELECTCASE ABL:Ｖ感覚
+			CASE 1 TO 4
+				奉仕ポイント += ABL:Ｖ感覚
+			CASE IS >= 5
+				奉仕ポイント += 5
+		ENDSELECT
+	CASE "Ａ"
+		IF SEX(TARGET) == 1
+			SELECTCASE ABL:Ａ感覚
+				CASE 1 TO 4
+					奉仕ポイント += ABL:Ａ感覚+2
+				CASE IS >= 5
+					奉仕ポイント += 7
+			ENDSELECT
+		ELSEIF SEX(TARGET) == 2
+			SELECTCASE ABL:Ａ感覚
+				CASE 1 TO 4
+					奉仕ポイント += ABL:Ａ感覚
+				CASE IS >= 5
+					奉仕ポイント += 5
+			ENDSELECT
+		ENDIF
+ENDSELECT
 
 ;欲望と奉仕精神によるボーナス
 IF ABL:欲望 >= 5 && ABL:奉仕精神 >= 5 && PALAM:恭順 >= PALAMLV:5
@@ -945,7 +955,10 @@ ELSEIF ABL:欲望 >= 3 && ABL:奉仕精神 >= 3 && PALAM:恭順 >= PALAMLV:3
 ENDIF
 
 ;淫膣
-SIF TALENT:淫膣
+SIF TALENT:淫膣 && 部位 == "Ｖ"
+	奉仕ポイント += 3
+;淫尻
+SIF TALENT:淫尻 && 部位 == "Ａ"
 	奉仕ポイント += 3
 
 ;主人の射精制限
@@ -954,153 +967,102 @@ SIF TALENT:淫膣
 
 ;場合によってはオーラル、手淫に
 IF !調教後セックス判定()
-	IF SEX(TARGET) == 1 && SEX(MASTER) == 1
-		CALL EXPUP, "フェラ経験", 奉仕ポイント
-		CALL EXPUP, "奉仕快楽経験", 奉仕ポイント
-		CALL EXPUP, "ゲイ経験", 奉仕ポイント/2+1
-		CALL EXPUP, "射精経験", CFLAG:残数/5+1
-		CALL EXPUP, "絶頂経験", CFLAG:残数/5+1
-		CALL EXPUP, "精液経験", CFLAG:MASTER:残数/5+1
-		CALL JUELUP, "習得", 奉仕ポイント*150
-		CALL EXPUP, "フェラ経験", 奉仕ポイント, MASTER
-		CALL EXPUP, "ゲイ経験", 奉仕ポイント/2+1
-		CALL EXPUP, "射精経験", CFLAG:MASTER:残数/5+1, MASTER
-		CALL EXPUP, "絶頂経験", CFLAG:MASTER:残数/5+1, MASTER
-		CFLAG:調教後奉仕経験++
-		CFLAG:MASTER:調教後奉仕経験++
-	ELSEIF SEX(TARGET) == 2
-		IF PENIS(TARGET)
-			CALL EXPUP, "射精経験", CFLAG:残数/5+1
-			CALL EXPUP, "絶頂経験", CFLAG:残数/5+1
-			CALL EXPUP, "精液経験", CFLAG:残数/5+1, MASTER
-			CALL EXPUP, "フェラ経験", 奉仕ポイント, MASTER
-		ENDIF
-		IF PENIS(MASTER)
-			CALL EXPUP, "射精経験", CFLAG:MASTER:残数/5+1, MASTER
-			CALL EXPUP, "絶頂経験", CFLAG:MASTER:残数/5+1, MASTER
-			CALL EXPUP, "精液経験", CFLAG:MASTER:残数/5+1
-			CALL EXPUP, "フェラ経験", 奉仕ポイント
-		ENDIF
-		CALL EXPUP, "奉仕快楽経験", 奉仕ポイント
-		IF SEX(MASTER) == 2
-			CALL EXPUP, "レズ経験", 奉仕ポイント/2+1
-			CALL EXPUP, "レズ経験", 奉仕ポイント/2+1, MASTER
-		ENDIF
-		CALL EXPUP, "絶頂経験", 奉仕ポイント/3
-		CALL JUELUP, "習得", 奉仕ポイント*150
-		CFLAG:調教後奉仕経験++
-		CFLAG:MASTER:調教後奉仕経験++
-	ENDIF
-ELSEIF SEX(TARGET) == 2
 	IF PENIS(MASTER)
-		CALL EXPUP, "Ｖ経験", 奉仕ポイント
-		CALL EXPUP, "膣射経験", CFLAG:MASTER:残数/2+1
-		CALL EXPUP, "精液経験", CFLAG:MASTER:残数
-		CALL EXPUP, "性交経験", 奉仕ポイント
-		CALL JUELUP, "快Ｖ", 奉仕ポイント*400
-		CALL EXPUP, "射精経験", CFLAG:MASTER:残数, MASTER
-		CALL EXPUP, "絶頂経験", CFLAG:MASTER:残数, MASTER
-		CALL EXPUP, "性交経験", 奉仕ポイント, MASTER
-		経験回数:MASTER:(NO:TARGET) += 奉仕ポイント
-		経験回数:(NO:MASTER) += 奉仕ポイント
-		中出し回数:MASTER:(NO:TARGET) += CFLAG:MASTER:残数/2+1
-		中出され回数:(NO:MASTER) += CFLAG:MASTER:残数/2+1
-		PREG:0 += CFLAG:MASTER:残数/2+1
-		IF TALENT:MASTER:童貞
-			IF TALENT:MASTER:性転換済
-				CSTR:MASTER:性転換童貞 = %NAME:TARGET%
-			ELSE
-				CSTR:MASTER:童貞 = %NAME:TARGET%
-			ENDIF
-			TALENT:MASTER:童貞 = 0
-		ENDIF
+		CALL EXPUP, "精液経験", CFLAG:MASTER:残数/5+1
+		CALL EXPUP, "フェラ経験", 奉仕ポイント
+		CALL EXPUP, "射精経験", CFLAG:MASTER:残数/5+1, MASTER
 	ENDIF
 	IF PENIS(TARGET)
+		CALL EXPUP, "精液経験", CFLAG:残数/5+1, MASTER
+		CALL EXPUP, "フェラ経験", 奉仕ポイント, MASTER
+		CALL EXPUP, "射精経験", CFLAG:残数/5+1
+	ENDIF
+	CALL EXPUP, "絶頂経験", CFLAG:MASTER:残数/5+1, MASTER
+	CALL EXPUP, "絶頂経験", CFLAG:残数/5+1
+	CALL EXPUP, "奉仕快楽経験", 奉仕ポイント
+	CALL JUELUP, "習得", 奉仕ポイント*150
+	IF SEX(TARGET) == 1 && SEX(MASTER) == 1
+		CALL EXPUP, "ゲイ経験", 奉仕ポイント/2+1
+		CALL EXPUP, "ゲイ経験", 奉仕ポイント/2+1, MASTER
+	ENDIF
+	IF SEX(TARGET) == 2 && SEX(MASTER) == 2
+		CALL EXPUP, "レズ経験", 奉仕ポイント/2+1
+		CALL EXPUP, "レズ経験", 奉仕ポイント/2+1, MASTER
+	ENDIF
+	CFLAG:調教後奉仕経験++
+	CFLAG:MASTER:調教後奉仕経験++
+ELSE
+	IF PENIS(MASTER)
+		IF 部位 == "Ｖ"
+			CALL EXPUP, "Ｖ経験", 奉仕ポイント
+			CALL EXPUP, "膣射経験", CFLAG:MASTER:残数/2+1
+			CALL JUELUP, "快Ｖ", 奉仕ポイント*400
+			CALL EXPUP, "性交経験", 奉仕ポイント
+			CALL EXPUP, "性交経験", 奉仕ポイント, MASTER
+			経験回数:MASTER:(NO:TARGET) += 奉仕ポイント
+			経験回数:(NO:MASTER) += 奉仕ポイント
+			中出し回数:MASTER:(NO:TARGET) += CFLAG:MASTER:残数/2+1
+			中出され回数:(NO:MASTER) += CFLAG:MASTER:残数/2+1
+			PREG:0 += CFLAG:MASTER:残数/2+1
+			性交経験加算済み = 1
+		ELSEIF ABL:Ａ感覚 > 3 && 部位 == "Ａ"
+			CALL EXPUP, "Ａ経験", 奉仕ポイント
+			CALL EXPUP, "精液経験", CFLAG:MASTER:残数
+			CALL JUELUP, "快Ａ", 奉仕ポイント*500
+			CALL EXPUP, "性交経験", 奉仕ポイント
+			CALL EXPUP, "性交経験", 奉仕ポイント, MASTER
+			経験回数:MASTER:(NO:TARGET) += 奉仕ポイント
+			経験回数:(NO:MASTER) += 奉仕ポイント
+			アナル中出し回数:MASTER:(NO:TARGET) += CFLAG:MASTER:残数
+			アナル中出され回数:(NO:MASTER) += CFLAG:MASTER:残数
+			性交経験加算済み = 1
+		ENDIF
+		CALL EXPUP, "精液経験", CFLAG:MASTER:残数
+		CALL EXPUP, "射精経験", CFLAG:MASTER:残数, MASTER
+		CALL EXPUP, "絶頂経験", CFLAG:MASTER:残数, MASTER
+	ENDIF
+	IF PENIS(TARGET) && ABL:メス度 < 10
 		CALL EXPUP, "射精経験", CFLAG:残数/2+1
 		CALL EXPUP, "絶頂経験", CFLAG:残数/2+1
-		IF VAGINA(MASTER) && !処女膜(TARGET)
+		CALL EXPUP, "精液経験", CFLAG:残数/2+1, MASTER
+		IF VAGINA(MASTER)
 			CALL EXPUP, "Ｖ経験", 奉仕ポイント/2+1, MASTER
 			CALL EXPUP, "膣射経験", CFLAG:残数/2+1, MASTER
+			IF !性交経験加算済み
+				CALL EXPUP, "性交経験", 奉仕ポイント
+				CALL EXPUP, "性交経験", 奉仕ポイント, MASTER
+				経験回数:MASTER:(NO:TARGET) += 奉仕ポイント
+				経験回数:(NO:MASTER) += 奉仕ポイント
+			ENDIF
 			中出し回数:(NO:MASTER) += CFLAG:残数/2+1
 			中出され回数:MASTER:(NO:TARGET) += CFLAG:残数/2+1
 			PREG:4 += CFLAG:残数/2+1
 			PREG:9 = TARGET
-		ELSEIF SEX(MASTER) == 1
+		ELSE
 			CALL EXPUP, "Ａ経験", 奉仕ポイント/2+1, MASTER
+			IF !性交経験加算済み
+				CALL EXPUP, "性交経験", 奉仕ポイント
+				CALL EXPUP, "性交経験", 奉仕ポイント, MASTER
+				経験回数:MASTER:(NO:TARGET) += 奉仕ポイント
+				経験回数:(NO:MASTER) += 奉仕ポイント
+			ENDIF
 			アナル中出し回数:(NO:MASTER) += CFLAG:残数/2+1
 			アナル中出され回数:MASTER:(NO:TARGET) += CFLAG:残数/2+1
 		ENDIF
-		IF TALENT:童貞
-			IF TALENT:性転換済
-				CSTR:性転換童貞 = %NAME:MASTER%
-			ELSE
-				CSTR:童貞 = %NAME:MASTER%
-			ENDIF
-			TALENT:童貞 = 0
-		ENDIF
 	ENDIF 
-	IF SEX(MASTER) == 2
+	IF SEX(MASTER) == 2 && SEX(TARGET) == 2
 		CALL EXPUP, "レズ経験", 奉仕ポイント/2+1
 		CALL EXPUP, "レズ経験", 奉仕ポイント/2+1, MASTER
 	ENDIF
-	CALL JUELUP, "恭順", 奉仕ポイント*200
-	CALL JUELUP, "欲情", 奉仕ポイント*400
-	CFLAG:調教後セックス経験++
-	CFLAG:MASTER:調教後セックス経験++
-ELSEIF SEX(TARGET) == 1
-	IF PENIS(MASTER)
-		CALL EXPUP, "Ａ経験", 奉仕ポイント
-		CALL EXPUP, "精液経験", CFLAG:MASTER:残数
-		CALL JUELUP, "快Ａ", 奉仕ポイント*500
-		アナル中出し回数:MASTER:(NO:TARGET) += CFLAG:MASTER:残数
-		アナル中出され回数:(NO:MASTER) += CFLAG:MASTER:残数
-		IF TALENT:MASTER:童貞
-			IF TALENT:MASTER:性転換済
-				CSTR:MASTER:性転換童貞 = %NAME:TARGET%
-			ELSE
-				CSTR:MASTER:童貞 = %NAME:TARGET%
-			ENDIF
-			TALENT:MASTER:童貞 = 0
-		ENDIF
-	ENDIF
-	IF SEX(MASTER) == 2
-		CALL EXPUP, "奉仕快楽経験", 奉仕ポイント
-		CALL EXPUP, "Ｖ経験", 奉仕ポイント, MASTER
-		IF PENIS(TARGET)
-			CALL EXPUP, "膣射経験", CFLAG:TARGET:残数/2+1, MASTER
-			中出し回数:(NO:MASTER) += CFLAG:残数/2+1
-			中出され回数:MASTER:(NO:TARGET) += CFLAG:残数/2+1
-			PREG:4 += CFLAG:TARGET:残数/2+1
-			PREG:9 = TARGET
-		ENDIF
-	ENDIF
-	IF SEX(MASTER) == 1
-		CALL EXPUP, "射精経験", CFLAG:残数/2+1
-		CALL EXPUP, "Ａ経験", 奉仕ポイント/2+1, MASTER
+	IF SEX(MASTER) == 1 && SEX(TARGET) == 1
 		CALL EXPUP, "ゲイ経験", 奉仕ポイント/2+1
 		CALL EXPUP, "ゲイ経験", 奉仕ポイント/2+1, MASTER
-		IF PENIS(TARGET)
-			アナル中出し回数:(NO:MASTER) += CFLAG:残数/2+1
-			アナル中出され回数:MASTER:(NO:TARGET) += CFLAG:残数/2+1
-		ENDIF
 	ENDIF
-
-	CALL EXPUP, "性交経験", 奉仕ポイント
-	CALL EXPUP, "性交経験", 奉仕ポイント, MASTER
+	CALL EXPUP, "奉仕快楽経験", 奉仕ポイント
 	CALL JUELUP, "恭順", 奉仕ポイント*200
 	CALL JUELUP, "欲情", 奉仕ポイント*400
-	経験回数:MASTER:(NO:TARGET) += 奉仕ポイント
-	経験回数:(NO:MASTER) += 奉仕ポイント
 	CFLAG:調教後セックス経験++
 	CFLAG:MASTER:調教後セックス経験++
-	IF TALENT:童貞
-		IF TALENT:性転換済
-			CSTR:性転換童貞 = %NAME:MASTER%
-		ELSE
-			CSTR:童貞 = %NAME:MASTER%
-		ENDIF
-		TALENT:童貞 = 0
-	ENDIF
 ENDIF
 
 WAIT
@@ -1108,26 +1070,20 @@ WAIT
 @調教後セックス判定, ARG
 #FUNCTION
 
-SELECTCASE SEX(TARGET)
-	CASE 1
-		SELECTCASE SEX(MASTER)
-			CASE 1
-				SIF ABL:Ａ感覚 <= 3
-					RETURNF 0
-			CASE 2
-				SIF 処女膜(MASTER)
-					RETURNF 0
-		ENDSELECT
-	CASE 2
-		SELECTCASE SEX(MASTER)
-			CASE 1
-				SIF TALENT:妊娠 || 処女膜(TARGET)
-					RETURNF 0
-			CASE 2
-				SIF 処女膜(MASTER)
-					RETURNF 0
-		ENDSELECT
-ENDSELECT
+SIF TALENT:童貞
+	RETURNF 0
+SIF TALENT:MASTER:童貞
+	RETURNF 0
+SIF 処女膜(TARGET)
+	RETURNF 0
+SIF 処女膜(MASTER)
+	RETURNF 0
+SIF !PENIS(MASTER) && ABL:メス度 >= 10
+	RETURNF 0
+SIF TALENT:妊娠
+	RETURNF 0
+SIF !PENIS(MASTER) && !PENIS(TARGET)
+	RETURNF 0
 
 RETURNF 1
 
