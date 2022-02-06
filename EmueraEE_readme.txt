@@ -1,5 +1,5 @@
-﻿タイトル：EmueraEE 最終更新日:2021/11/20
-バージョン：1.824+v13+EE+v6
+﻿タイトル：EmueraEE 最終更新日:2022/02/06
+バージョン：1.824+v13+EE+v8
 改変者：Enter
 元となったアプリケーション：Emuera1.824+v13（妊）|дﾟ)の中の人、及びMinorShift制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
@@ -70,6 +70,15 @@ TRYC系でCALL機能を付随させたくない場合にお使いください �
 ・GGETTEXTSIZE "テキスト", フォント名, フォントサイズ, フォントスタイル
 指定の引数でGDRAWTEXTを行った場合のサイズを取得する 第4引数(フォントスタイル)は省略可能
 FONTBOLD相当のスタイルの場合、サイズが微妙に大きくなるため注意
+
+・resourcesフォルダ内の拡張子「csv」が含まれるファイルを全て読み込んでしまう不具合、及びエラーファイルのパスを正常に取得できない不具合を修正（私家版対応までの暫定措置）
+
+・TRYCALLF 関数名
+CALLFのTRY命令 CALLF同様に返り値は破棄されるが、関数が無くてもエラーにならない
+
+・TRYCALLFORMF 関数名
+CALLFORMFのTRY命令 CALLFORMF同様に返り値は破棄されるが、関数が無くてもエラーにならない
+上記2つをTRYC～CATCH式に使う場合はEXISTFUNCTIONと併用してください
 
 
 [使用方法]

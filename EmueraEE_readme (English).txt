@@ -1,5 +1,5 @@
-﻿App name:EmueraEE Latest update:2021/11/20
-Version:1.824+v13+EEv7plus
+﻿App name:EmueraEE Latest update:2022/02/06
+Version:1.824+v13+EEv8
 Developer:Enter
 Original Application:Emuera1.824+v13（Developed by 妊）|дﾟ)の中の人 and MinorShift）
 Contact:Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
@@ -62,6 +62,12 @@ Get 4 bit integer of gID's font style set by "GSETFONT".
 
 ・GGETTEXTSIZE "text", fontname, fontsize, fontstyle(4 bit int)
 Return width(RESULT:0) and height(RESULT:1) case of runned GDRAWTEXT with same argument.
+
+・TRYCALLF funtionName
+Do CALLF with TRY.
+
+・TRYCALLFORMF functionName
+Do CALLFORMF with TRY.
 
 
 [Usage]
