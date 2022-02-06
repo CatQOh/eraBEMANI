@@ -953,8 +953,8 @@ SIF TALENT:淫膣
 ;	奉仕ポイント = CFLAG:MASTER:残数
 
 ;場合によってはオーラル、手淫に
-IF (SEX(TARGET) == 1 && SEX(MASTER) == 1 && ABL:Ａ感覚 <= 3) || (SEX(TARGET) == 2 && (TALENT:妊娠 || TALENT:処女 || TALENT:再生処女))
-	IF SEX(TARGET) == 1 && SEX(MASTER) == 1 && ABL:Ａ感覚 <= 3
+IF !調教後セックス判定()
+	IF SEX(TARGET) == 1 && SEX(MASTER) == 1
 		CALL EXPUP, "フェラ経験", 奉仕ポイント
 		CALL EXPUP, "奉仕快楽経験", 奉仕ポイント
 		CALL EXPUP, "ゲイ経験", 奉仕ポイント/2+1
@@ -968,7 +968,7 @@ IF (SEX(TARGET) == 1 && SEX(MASTER) == 1 && ABL:Ａ感覚 <= 3) || (SEX(TARGET) 
 		CALL EXPUP, "絶頂経験", CFLAG:MASTER:残数/5+1, MASTER
 		CFLAG:調教後奉仕経験++
 		CFLAG:MASTER:調教後奉仕経験++
-	ELSEIF SEX(TARGET) == 2 && (TALENT:妊娠 || TALENT:処女 || TALENT:再生処女)
+	ELSEIF SEX(TARGET) == 2
 		IF PENIS(TARGET)
 			CALL EXPUP, "射精経験", CFLAG:残数/5+1
 			CALL EXPUP, "絶頂経験", CFLAG:残数/5+1
@@ -992,7 +992,7 @@ IF (SEX(TARGET) == 1 && SEX(MASTER) == 1 && ABL:Ａ感覚 <= 3) || (SEX(TARGET) 
 		CFLAG:MASTER:調教後奉仕経験++
 	ENDIF
 ELSEIF SEX(TARGET) == 2
-	IF PENIS(MASTER) && !TALENT:処女 && !TALENT:再生処女
+	IF PENIS(MASTER)
 		CALL EXPUP, "Ｖ経験", 奉仕ポイント
 		CALL EXPUP, "膣射経験", CFLAG:MASTER:残数/2+1
 		CALL EXPUP, "精液経験", CFLAG:MASTER:残数
@@ -1012,13 +1012,13 @@ ELSEIF SEX(TARGET) == 2
 			ELSE
 				CSTR:MASTER:童貞 = %NAME:TARGET%
 			ENDIF
-			TALENT:童貞 = 0
+			TALENT:MASTER:童貞 = 0
 		ENDIF
 	ENDIF
 	IF PENIS(TARGET)
 		CALL EXPUP, "射精経験", CFLAG:残数/2+1
 		CALL EXPUP, "絶頂経験", CFLAG:残数/2+1
-		IF VAGINA(MASTER) && !TALENT:MASTER:処女 && !TALENT:MASTER:再生処女
+		IF VAGINA(MASTER) && !処女膜(TARGET)
 			CALL EXPUP, "Ｖ経験", 奉仕ポイント/2+1, MASTER
 			CALL EXPUP, "膣射経験", CFLAG:残数/2+1, MASTER
 			中出し回数:(NO:MASTER) += CFLAG:残数/2+1
@@ -1060,7 +1060,7 @@ ELSEIF SEX(TARGET) == 1
 			ELSE
 				CSTR:MASTER:童貞 = %NAME:TARGET%
 			ENDIF
-			TALENT:童貞 = 0
+			TALENT:MASTER:童貞 = 0
 		ENDIF
 	ENDIF
 	IF SEX(MASTER) == 2
@@ -1104,6 +1104,32 @@ ELSEIF SEX(TARGET) == 1
 ENDIF
 
 WAIT
+
+@調教後セックス判定, ARG
+#FUNCTION
+
+SELECTCASE SEX(TARGET)
+	CASE 1
+		SELECTCASE SEX(MASTER)
+			CASE 1
+				SIF ABL:Ａ感覚 <= 3
+					RETURNF 0
+			CASE 2
+				SIF 処女膜(MASTER)
+					RETURNF 0
+		ENDSELECT
+	CASE 2
+		SELECTCASE SEX(MASTER)
+			CASE 1
+				SIF TALENT:妊娠 || 処女膜(TARGET)
+					RETURNF 0
+			CASE 2
+				SIF 処女膜(MASTER)
+					RETURNF 0
+		ENDSELECT
+ENDSELECT
+
+RETURNF 1
 
 ;強精神薬の反動
 @EVENT_強精神薬の反動
