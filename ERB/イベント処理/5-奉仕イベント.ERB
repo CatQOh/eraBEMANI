@@ -1195,9 +1195,34 @@ WAIT
 ;調教後自慰
 @EVENT_調教後自慰
 #DIM DYNAMIC 奉仕ポイント
+#DIMS DYNAMIC 部位
+#DIMS DYNAMIC 珠
 ;イベント口上呼び出し
 DRAWLINE
 CALL KOJO_MESSAGE_EVENT, "調教後自慰"
+
+;CVAの一番高いところでやる 優先度はＶ→Ｃ→Ａ
+SELECTCASE MAX(ABL:Ｃ感覚, ABL:Ｖ感覚, ABL:Ａ感覚)
+	CASE ABL:Ｖ感覚
+		IF 処女膜(TARGET)
+			SELECTCASE MAX(ABL:Ｃ感覚, ABL:Ａ感覚)
+				CASE ABL:Ｃ感覚
+					部位 = Ｃ感覚
+					珠 = 快Ｃ
+				CASE ABL:Ａ感覚
+					部位 = Ａ感覚
+					珠 = 快Ａ
+			ENDSELECT
+		ENDIF
+		部位 = Ｖ感覚
+		珠 = 快Ｖ
+	CASE ABL:Ｃ感覚
+		部位 = Ｃ感覚
+		珠 = 快Ｃ
+	CASE ABL:Ａ感覚
+		部位 = Ａ感覚
+		珠 = 快Ａ
+ENDSELECT
 
 ;自慰中毒による自慰チェック
 奉仕ポイント = 1
@@ -1216,20 +1241,28 @@ SELECTCASE ABL:自慰中毒
 ENDSELECT
 
 ;欲望とＣ感覚によるボーナス
-IF ABL:欲望 >= 5 && ABL:Ｃ感覚 >= 5 && PALAM:恭順 >= PALAMLV:5
+IF ABL:欲望 >= 5 && ABL:部位 >= 5 && PALAM:恭順 >= PALAMLV:5
 	奉仕ポイント += 3
-ELSEIF ABL:欲望 >= 4 && ABL:Ｃ感覚 >= 4 && PALAM:恭順 >= PALAMLV:4
+ELSEIF ABL:欲望 >= 4 && ABL:部位 >= 4 && PALAM:恭順 >= PALAMLV:4
 	奉仕ポイント += 2
-ELSEIF ABL:欲望 >= 3 && ABL:Ｃ感覚 >= 3 && PALAM:恭順 >= PALAMLV:3
+ELSEIF ABL:欲望 >= 3 && ABL:部位 >= 3 && PALAM:恭順 >= PALAMLV:3
 	奉仕ポイント += 1
 ENDIF
 
-;自慰しやすい
 SIF TALENT:自慰しやすい
 	奉仕ポイント += 2
-;淫核
-SIF TALENT:淫核
-	奉仕ポイント += 3
+
+SELECTCASE 部位
+	CASE "Ｃ感覚"
+		SIF TALENT:淫核
+			奉仕ポイント += 3
+	CASE "Ｖ感覚"
+		SIF TALENT:淫膣
+			奉仕ポイント += 3
+	CASE "Ａ感覚"
+		SIF TALENT:淫尻
+			奉仕ポイント += 3
+ENDSELECT
 
 ;助手が鼓舞
 IF ASSI >= 0
@@ -1240,10 +1273,10 @@ ENDIF
 CALL EXPUP, "自慰経験", 奉仕ポイント
 SIF PENIS(TARGET)
 	CALL EXPUP, "射精経験", 奉仕ポイント/3+1
-CALL JUELUP, "快Ｃ", 奉仕ポイント*500
+CALL JUELUP, 珠, 奉仕ポイント*500
 CALL JUELUP, "恭順", 奉仕ポイント*100
 CALL JUELUP, "欲情", 奉仕ポイント*250
-SIF ABL:自慰中毒+ABL:Ｃ感覚+ABL:欲望 >= 10 && TIME == 0
+SIF ABL:自慰中毒+ABL:部位+ABL:欲望 >= 10 && TIME == 0
 	CALL JUELUP, "恥情", 奉仕ポイント*200
 CFLAG:調教後自慰経験++
 WAIT
