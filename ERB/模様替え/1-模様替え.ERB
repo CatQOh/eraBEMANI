@@ -9,6 +9,7 @@
 #DIM DYNAMIC 部屋配置
 #DIM DYNAMIC 幅, 2
 #DIM DYNAMIC 始点, 2
+#DIM DYNAMIC 始点保存用 = -1, -1
 #DIMS DYNAMIC 部屋情報, 200, 3
 #DIM DYNAMIC 設置済み, 200
 #DIMS DYNAMIC 部屋名
@@ -554,6 +555,10 @@ DO
 
 		SELECTCASE RESULT
 			CASE 0
+				IF 始点保存用:0 >= 0
+					ARRAYCOPY "始点保存用", "始点"
+					GOTO DECIDE_ROOM
+				ENDIF
 				部屋配置 = 0
 			CASE 8
 				SIF 始点:1 > 0
@@ -581,13 +586,20 @@ DO
 							GOTO RESTART
 					NEXT
 				NEXT
+				$DECIDE_ROOM
 				FOR LCOUNT, 始点:1, 始点:1+幅:1
 					FOR LCOUNT2, 始点:0, 始点:0+幅+0
 						土地:LCOUNT:LCOUNT2 = 部屋配置
 					NEXT
 				NEXT
 				部屋配置 = 0
+				VARSET 始点保存用, -1
 				GOTO RESTART
+			CASEELSE
+				IF RESULT/100 > 0 && RESULT/100+幅:0 <= マップ横幅 && RESULT%100 > 0 && RESULT%100+幅:1 <= マップ縦幅
+					始点:0 = RESULT/100
+					始点:1 = RESULT%100
+				ENDIF
 		ENDSELECT
 
 		CONTINUE
@@ -603,6 +615,10 @@ DO
 
 		SELECTCASE RESULTS
 			CASE "0"
+				IF 始点保存用:0 >= 0
+					ARRAYCOPY "始点保存用", "始点"
+					GOTO DECIDE_OBJ
+				ENDIF
 				オブジェクト配置 = 
 			CASE "8"
 				SIF 始点:1 > 0
@@ -637,8 +653,10 @@ DO
 							GOTO RESTART
 					NEXT
 				NEXT
+				$DECIDE_OBJ
 				OBJECTS:(始点:1+幅:1-1):(始点:0) = %オブジェクト配置%_%オブジェクト配置向き%_{幅:0}_{幅:1}
 				オブジェクト配置 = 
+				VARSET 始点保存用, -1
 				幅:0 = 0
 				幅:1 = 0
 				GOTO RESTART
@@ -649,6 +667,14 @@ DO
 					オブジェクト配置向き = 右向き
 				ENDIF
 				GOTO RESTART
+			CASEELSE
+				SIF !ISNUMERIC(RESULTS)
+					CONTINUE
+				RESULT = TOINT(RESULTS)
+				IF RESULT/100 > 0 && RESULT/100+幅:0 <= マップ横幅 && RESULT%100 > 0 && RESULT%100+幅:1 <= マップ縦幅
+					始点:0 = RESULT/100
+					始点:1 = RESULT%100
+				ENDIF
 		ENDSELECT
 
 		CONTINUE
@@ -825,6 +851,7 @@ DO
 							L_Y = 始点:1
 							始点:1 -= TOINT(オブジェクト(OBJECTS:(始点:1):(始点:0), "縦幅"))-1
 							OBJECTS:L_Y:(始点:0) = 
+							ARRAYCOPY "始点", "始点保存用"
 							GOTO RESTART
 						CASE 2
 							SIF 選択オブジェクト == ""
@@ -843,6 +870,7 @@ DO
 								始点:0 = タイル始点:部屋配置:0
 								始点:1 = タイル始点:部屋配置:1
 							ENDIF
+							ARRAYCOPY "始点", "始点保存用"
 							GOTO RESTART
 						CASE 5
 							SIF 選択部屋 == ""

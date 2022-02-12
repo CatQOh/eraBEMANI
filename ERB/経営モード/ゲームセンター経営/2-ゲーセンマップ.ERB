@@ -7,6 +7,7 @@
 #DIMS DYNAMIC 表示用変数, 30
 #DIM DYNAMIC 幅, 2
 #DIM DYNAMIC 始点, 2
+#DIM DYNAMIC 始点保存用 = -1, -1
 #DIMS DYNAMIC オブジェクト情報, 2000, 4
 #DIMS DYNAMIC 部屋名
 #DIMS DYNAMIC 表示チップ
@@ -211,7 +212,9 @@ DO
 
 	IF オブジェクト配置
 		PRINTFORML 現在の筐体向き:%筐体向き%
-		PRINTL [4] ← [2] ↓ [8] ↑ [6] →
+		PRINTL 　　　 [8] ↑
+		PRINTL [4] ← 　　　 [6] →
+		PRINTL 　　　 [2] ↓ 
 		PRINTL [7] 左回転　　　　 [9] 右回転
 		PRINTL [5] 決定 [0] キャンセル
 
@@ -219,6 +222,10 @@ DO
 
 		SELECTCASE RESULT
 			CASE 0
+				IF 始点保存用:0 >= 0
+					ARRAYCOPY "始点保存用", "始点"
+					GOTO DECIDE
+				ENDIF
 				オブジェクト配置 = 0
 			CASE 8
 				SIF 始点:1 > 0
@@ -273,10 +280,17 @@ DO
 							GOTO RESTART
 					NEXT
 				NEXT
+				$DECIDE
 				GCオブジェクト:階層:(始点:1+幅:1-1):(始点:0) = オブジェクト配置
 				オブジェクト配置 = 0
+				VARSET 始点保存用, -1
 				CALL 設置済み筐体計算
 				GOTO RESTART
+			CASEELSE
+				IF RESULT/100 > 0 && RESULT/100+幅:0 <= マップ横幅 && RESULT%100 > 0 && RESULT%100+幅:1 <= マップ縦幅
+					始点:0 = RESULT/100
+					始点:1 = RESULT%100
+				ENDIF
 		ENDSELECT
 
 		CONTINUE
@@ -407,6 +421,7 @@ DO
 							GCオブジェクト:階層:(始点:1):(始点:0) = 0
 							;縦にずれてる分を調整
 							始点:1 -= TOINT(オブジェクト情報:オブジェクト配置:2)-1
+							ARRAYCOPY "始点", "始点保存用"
 							GOTO RESTART
 						CASE 2
 							SIF 選択オブジェクト == ""
