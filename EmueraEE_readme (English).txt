@@ -1,7 +1,7 @@
-﻿App name:EmueraEE Latest update:2022/02/06
-Version:1.824+v13+EEv8
+﻿App name:EmueraEE Latest update:2022/02/28
+Version:1.824+v14+EEv10
 Developer:Enter
-Original Application:Emuera1.824+v13（Developed by 妊）|дﾟ)の中の人 and MinorShift）
+Original Application:Emuera1.824+v14(Developed by 妊）|дﾟ)の中の人 and MinorShift),WebP-wrapper(Developed by JosePineiro)
 Contact:Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
 
 ※eramaker's dev,MinorShift and 妊の人 were not relate EmueraEE's development.
@@ -68,6 +68,17 @@ Do CALLF with TRY.
 
 ・TRYCALLFORMF functionName
 Do CALLFORMF with TRY.
+
+・Now usable WebP files
+resources/csv and GCREATEFROMFILE can use WebP files.
+
+・UPDATECHECK
+Browse server and check for new version.
+1,Write version name(バージョン名) and version infomation URL(バージョン情報URL) to GameBase.csv
+2,Upload txt to version detail URL. This txt should contain new version name and latest version's link
+3,Do UPDATECHECK, Browse and compare now version and new version. If two are not same, Message box ask open the link for player. If playing latest version, return 0 and quit function.
+4,If player select "Yes", Open the link and return 2. If player select "No", return 1. If can't open the link, return 3.
+　And added new config "Don't allow UPDATECHECK(UPDATECHECKを許可しない)" if this confing is on, Won't run UPDATECHECK and return 4.
 
 
 [Usage]
