@@ -1,5 +1,5 @@
-﻿App name:EmueraEE Latest update:2022/02/28
-Version:1.824+v14+EEv10
+﻿App name:EmueraEE Latest update:2022/03/10
+Version:1.824+v14+EEv11
 Developer:Enter
 Original Application:Emuera1.824+v14(Developed by 妊）|дﾟ)の中の人 and MinorShift),WebP-wrapper(Developed by JosePineiro)
 Contact:Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
@@ -68,6 +68,18 @@ Do CALLF with TRY.
 
 ・TRYCALLFORMF functionName
 Do CALLFORMF with TRY.
+
+・GDRAWGWITHROTATE destID, srcID, angle, X, Y
+Image drawing to destID from srcID with rotate. Can abbreviate X and Y.
+
+・QUIT_AND_RESTART
+Quit Emuera and reboot Emuera.
+
+・FORCE_QUIT
+Quit Emuera. This function is not need click/input.
+
+・FORCE_QUIT_AND_RESTART
+Quit and reboot Emuera. This function is not need click/input.
 
 ・Now usable WebP files
 resources/csv and GCREATEFROMFILE can use WebP files.

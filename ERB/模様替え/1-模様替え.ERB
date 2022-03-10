@@ -22,8 +22,10 @@
 #DIM DYNAMIC 生け簀始点, 2
 #DIMS DYNAMIC オブジェクト名
 #DIM DYNAMIC オブジェクト幅, 2
+#DIM DYNAMIC オブジェクト角度
 #DIMS DYNAMIC オブジェクト配置
 #DIMS DYNAMIC オブジェクト配置向き
+#DIM DYNAMIC オブジェクト配置角度
 #DIM DYNAMIC オブジェクト表示済み
 #DIM DYNAMIC 選択座標, 2
 #DIMS DYNAMIC 選択部屋
@@ -525,17 +527,18 @@ DO
 		FOR X座標, 0, 60
 			;配置しようとするオブジェクトも仮表示してみる
 			SIF オブジェクト配置 != "" && Y座標 == 始点:1+幅:1-1 && X座標 == 始点:0
-				表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト配置%' pos='{X座標*100}'><img src='%オブジェクト配置%' srcb='' height='{幅:1*100}' width='\@ オブジェクト配置向き == "右向き" ? {幅:0*100} # -{幅:0*100} \@' ypos='{(幅:1-1)*(-100)}'></button>"
+				表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト配置%' pos='{X座標*100}'><img src='%オブジェクト配置%_{オブジェクト配置角度}' srcb='' height='{幅:1*100}' width='\@ オブジェクト配置向き == "右向き" ? {幅:0*100} # -{幅:0*100} \@' ypos='{(幅:1-1)*(-100)}'></button>"
 			IF OBJECTS:Y座標:X座標 != ""
 				オブジェクト名 = %オブジェクト(OBJECTS:Y座標:X座標, "名前")%
 				オブジェクト幅:0 = TOINT(オブジェクト(OBJECTS:Y座標:X座標, "横幅"))
 				オブジェクト幅:1 = TOINT(オブジェクト(OBJECTS:Y座標:X座標, "縦幅"))
+				オブジェクト角度 = TOINT(オブジェクト(OBJECTS:Y座標:X座標, "角度"))
 				SELECTCASE オブジェクト情報(オブジェクト名, "オブジェクトタイプ")
 					;小物は机等に置いて表示するように少しずらす
 					CASE "小物"
-						表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト名%' pos='{X座標*100}'><img src='%オブジェクト名%' srcb='' height='{オブジェクト幅:1*100}' width='\@ オブジェクト(OBJECTS:Y座標:X座標, "向き") == "右向き" ? {オブジェクト幅:0*100} # -{オブジェクト幅:0*100} \@' ypos='{(オブジェクト幅:1-1)*(-100)+1}'></button>"
+						表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト名%' pos='{X座標*100}'><img src='%オブジェクト名%_{オブジェクト角度}' srcb='' height='{オブジェクト幅:1*100}' width='\@ オブジェクト(OBJECTS:Y座標:X座標, "向き") == "右向き" ? {オブジェクト幅:0*100} # -{オブジェクト幅:0*100} \@' ypos='{(オブジェクト幅:1-1)*(-100)+1}'></button>"
 					CASEELSE
-						表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト名%' pos='{X座標*100}'><img src='%オブジェクト名%' srcb='' height='{オブジェクト幅:1*100}' width='\@ オブジェクト(OBJECTS:Y座標:X座標, "向き") == "右向き" ? {オブジェクト幅:0*100} # -{オブジェクト幅:0*100} \@' ypos='{(オブジェクト幅:1-1)*(-100)}'></button>"
+						表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト名%' pos='{X座標*100}'><img src='%オブジェクト名%_{オブジェクト角度}' srcb='' height='{オブジェクト幅:1*100}' width='\@ オブジェクト(OBJECTS:Y座標:X座標, "向き") == "右向き" ? {オブジェクト幅:0*100} # -{オブジェクト幅:0*100} \@' ypos='{(オブジェクト幅:1-1)*(-100)}'></button>"
 				ENDSELECT
 			ENDIF
 		NEXT
@@ -607,7 +610,9 @@ DO
 		PRINTL [4] ← [2] ↓ [8] ↑ [6] →
 		PRINTL [7] 横幅を縮小 [9] 横幅を拡大
 		PRINTL [1] 縦幅を縮小 [3] 縦幅を拡大
-		PRINTBUTTON "[R] 反転", "R"
+		PRINTBUTTON "[R] 反転 ", "R"
+		PRINTBUTTON "[J] 左回転 ", "J"
+		PRINTBUTTON "[K] 右回転 ", "K"
 		PRINTL 
 		PRINTL [5] 決定 [0] キャンセル
 
@@ -654,7 +659,7 @@ DO
 					NEXT
 				NEXT
 				$DECIDE_OBJ
-				OBJECTS:(始点:1+幅:1-1):(始点:0) = %オブジェクト配置%_%オブジェクト配置向き%_{幅:0}_{幅:1}
+				OBJECTS:(始点:1+幅:1-1):(始点:0) = %オブジェクト配置%_%オブジェクト配置向き%_{幅:0}_{幅:1}_{オブジェクト配置角度}
 				オブジェクト配置 = 
 				VARSET 始点保存用, -1
 				幅:0 = 0
@@ -666,6 +671,14 @@ DO
 				ELSE
 					オブジェクト配置向き = 右向き
 				ENDIF
+				GOTO RESTART
+			CASE "j", "J"
+				オブジェクト配置角度 = (オブジェクト配置角度+270)%360
+				SWAP 幅:0, 幅:1
+				GOTO RESTART
+			CASE "k", "K"
+				オブジェクト配置角度 = (オブジェクト配置角度+90)%360
+				SWAP 幅:0, 幅:1
 				GOTO RESTART
 			CASEELSE
 				SIF !ISNUMERIC(RESULTS)
@@ -1059,9 +1072,9 @@ LOOP 1
 #FUNCTIONS
 #DIMS DYNAMIC オブジェクト名
 #DIMS DYNAMIC タイプ指定
-#DIMS DYNAMIC 分割用, 4
+#DIMS DYNAMIC 分割用, 5
 
-;OBJECTSの中身は「%オブジェクト名%_%向き%_%横幅%_%縦幅%」となっている
+;OBJECTSの中身は「%オブジェクト名%_%向き%_%横幅%_%縦幅%_%角度%」となっている
 ;SPLITで分解して目的の情報を返す
 
 SPLIT オブジェクト名, "_", 分割用
@@ -1075,6 +1088,8 @@ SELECTCASE タイプ指定
 		RETURNF 分割用:2
 	CASE "縦幅"
 		RETURNF 分割用:3
+	CASE "角度"
+		RETURNF 分割用:4
 	CASEELSE
 		;#; THROW タイプ指定が表記ゆれです
 ENDSELECT
@@ -1291,5 +1306,13 @@ IF マップバージョン == 0
 	マップバージョン = 21400
 ENDIF
 
-
-
+;2022/03/10 オブジェクトに角度を付けられるようになったので情報を補完
+IF マップバージョン <= 21400
+	FOR Y座標, 0, 30
+		FOR X座標, 0, 60
+			SIF OBJECTS:Y座標:X座標 != ""
+				OBJECTS:Y座標:X座標 = %OBJECTS:Y座標:X座標%_0
+		NEXT
+	NEXT
+	マップバージョン = 21600
+ENDIF
