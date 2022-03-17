@@ -829,19 +829,22 @@ DO
 LOOP 1
 
 ;[8] - デバッグ用セーブデータの作成  --------------------------------
-@DEBUG_SAVEDATA, コードデバッグ
+@DEBUG_SAVEDATA, コードデバッグ,
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC コードデバッグ
-SIF コードデバッグ
+SIF コードデバッグ == 1
 	GOTO 追加
+SIF コードデバッグ == 2
+	GOTO NOTLOG
 
-PRINTL このデータをデバッグ用セーブデータ（大量の所持金、全キャラ購入済み）にします。よろしいですか？
+PRINTL このデータをデバッグ用セーブデータ（大量の所持金、全キャラ購入済み、全アイテム解禁済み）にします。よろしいですか？
 PRINTL [0] - はい
 PRINTL [1] - はい（ログを表示する）
 PRINTL [2] - いいえ
 CALL INPUTF, 0, 1, 2
 SELECTCASE RESULT
 	CASE 0
+		$NOTLOG
 		FOR LCOUNT, 0, 10000
 			SIF EXISTCSV(LCOUNT) && NO:MASTER != LCOUNT && GETCHARA(LCOUNT) == -1
 				CALL CHARA_ADD, LCOUNT
@@ -859,6 +862,31 @@ SELECTCASE RESULT
 ENDSELECT
 
 MONEY = __INT_MAX__/2
+
+FOR LCOUNT, 0, VARSIZE("ITEM")
+	SIF ITEMNAME:LCOUNT == ""
+		CONTINUE
+	SELECTCASE LCOUNT
+		CASE 0 TO 99, 500 TO 549
+			ITEM:LCOUNT = 1
+		CASE 100 TO 199
+			ITEM:LCOUNT = 99
+		CASE 600 TO 750
+			SIF ITEM:LCOUNT == 0
+				ITEM:LCOUNT = 1
+		CASEELSE
+			SELECTCASE ITEMNAME:LCOUNT
+				CASE "田んぼ"
+					ITEM:LCOUNT = 2
+				CASE "畑"
+					ITEM:LCOUNT = 8
+				CASE "プランター"
+					ITEM:LCOUNT = 4
+				CASE "牧場", "畜舎", "養蜂場", "生け簀"
+					ITEM:LCOUNT = 1
+			ENDSELECT
+	ENDSELECT
+NEXT
 
 RETURN
 
