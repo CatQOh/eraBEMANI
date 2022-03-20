@@ -519,27 +519,83 @@ ENDSELECT
 
 @SELL_PICTURE
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC 総額
+#DIM DYNAMIC 保持, 10
+#DIM DYNAMIC 総枚数
 
 ;売れる写真が無ければ関数終了
 SIF !写真価格:0
 	RETURN 0
+FOR LCOUNT, 0, 50
+	SIF PICS:(NO:TARGET):LCOUNT != ""
+		総枚数++
+NEXT
+
+CALL LOOP_CLEARLINE
+
 DRAWLINE
-PRINTL 撮影した写真を売却します
+;PRINTL 撮影した写真を売却します
+PRINTL □今回撮影した写真
 FOR LCOUNT, 0, 10
 	SIF !写真価格:LCOUNT
 		BREAK
-	PRINTFORML {LCOUNT+1, 2}枚目.%写真内容:LCOUNT%
-	CALL PASELIL, @"       {写真価格:LCOUNT}＄の買値が付きました"
-	総額 += 写真価格:LCOUNT
+	PRINTFORM {LCOUNT+1, 2}枚目.%写真内容:LCOUNT% [{LCOUNT}] 
+	SIF 総枚数 < 50
+		PRINTFORM \@ 保持:LCOUNT ? 保持 # 売却 \@
+	PRINTL 
+	CALL PASELIL, @"       売却額:{写真価格:LCOUNT}＄"
 NEXT
+IF 総枚数 == 50
+	PRINTL アルバムに空きが無いため売却します
+	GOTO SELL
+ENDIF
+DRAWLINE
+PRINTL 　[10] 決定
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 10
+			BREAK
+		CASE 0 TO 9
+			SIF !写真価格:RESULT
+				CONTINUE
+			IF !保持:RESULT && SUMARRAY(保持)+総枚数 >= 50
+				PRINTW 保管できるのは一人につき50枚までです
+				RESTART
+			ENDIF
+			INVERTBIT 保持:RESULT, 0
+			RESTART
+	ENDSELECT
+LOOP 1
+FOR LCOUNT, 0, 10
+	SIF !保持:LCOUNT
+		総額 += 写真価格:LCOUNT
+NEXT
+IF 総額
+	$SELL
+	バンめし = 0
+	CALL PASELIL, @"計{総額}＄で売れました"
+	MONEY += 総額
+	WAIT
+	CALL KOJO_MESSAGE_EVENT, "写真売却時"
+ENDIF
 
-バンめし = 0
-
-CALL PASELIL, @"計{総額}＄で売れました"
-MONEY += 総額
-WAIT
-CALL KOJO_MESSAGE_EVENT, "写真売却時"
+IF SUMARRAY(保持)
+	PRINTFORML {SUMARRAY(保持)}枚の写真を保管しました
+	FOR LCOUNT, 0, 10
+		IF 保持:LCOUNT
+			;二次元配列でFINDELEMENTは使えないので手作業
+			FOR LCOUNT2, 0, 50
+				IF PICS:(NO:TARGET):LCOUNT2 == ""
+					PIC:(NO:TARGET):LCOUNT2 = 写真価格:LCOUNT
+					PICS:(NO:TARGET):LCOUNT2 = %写真内容:LCOUNT%
+					BREAK
+				ENDIF
+			NEXT
+		ENDIF
+	NEXT
+ENDIF
 
 @SELL_MILK
 #DIM DYNAMIC 売却額

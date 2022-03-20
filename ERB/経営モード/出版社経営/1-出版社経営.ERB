@@ -1,0 +1,134 @@
+﻿@出版社経営
+
+
+@所持写真一覧
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC 総枚数
+#DIM DYNAMIC 対象
+#DIM DYNAMIC ページ
+#DIM DYNAMIC 処理数
+#DIM DYNAMIC 次ページあり
+#DIM CONST 表示上限 = 20
+
+DRAWLINE
+PRINTL □写真一覧を表示します
+処理数 = 0
+次ページあり = 0
+FOR LCOUNT, 0, 20000
+	SIF PICS:LCOUNT:0 == ""
+		CONTINUE
+	IF 処理数 < ページ*表示上限
+		処理数++
+		CONTINUE
+	ENDIF
+	IF 処理数 >= ページ*表示上限+表示上限
+		次ページあり = 1
+		BREAK
+	ENDIF
+	総枚数 = 0
+	FOR LCOUNT2, 0, 50
+		SIF PICS:LCOUNT:LCOUNT2 != ""
+			総枚数++
+	NEXT
+	PRINTFORML 　[{LCOUNT, 5}] %CSVNAMEF(LCOUNT)%のアルバム({総枚数}/50枚)
+	処理数++
+NEXT
+IF 処理数 == 0
+	PRINTL 
+	PRINTL 　---写真がありません---
+	PRINTL 
+ENDIF
+DRAWLINE
+PRINTPLAINFORM 　PICTURE.{ページ+1}　
+CALL PRINTSPACE, ページ > 0, "[-1] 前ページ "
+PRINT [-5] 戻る 
+CALL PRINTSPACE, 次ページあり, "[-9] 次ページ "
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE -5
+			RETURN
+		CASE -1
+			SIF ページ > 0
+				ページ--
+			RESTART
+		CASE -9
+			SIF 次ページあり
+				ページ++
+			RESTART
+		CASE 0 TO 19999
+			SIF PICS:RESULT:0 == ""
+				CONTINUE
+			CALL アルバム, RESULT
+			RESTART
+	ENDSELECT
+LOOP 1
+
+@アルバム, 対象
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象
+#DIM DYNAMIC ページ
+#DIM DYNAMIC 売却対象
+#DIM DYNAMIC 総枚数
+
+総枚数 = 0
+FOR LCOUNT, 0, 50
+	SIF PICS:対象:LCOUNT != ""
+		総枚数++
+NEXT
+
+DRAWLINE
+PRINTFORML □%CSVNAMEF(対象)%のアルバム
+FOR LCOUNT, 0, 50
+	SIF ページ == 0 && LCOUNT >= 25
+		BREAK
+	SIF ページ == 1 && LCOUNT < 25
+		CONTINUE
+	SIF LCOUNT >= 総枚数
+		BREAK
+	CALL PASELIL, @"　%PICS:対象:LCOUNT%({PIC:対象:LCOUNT}＄) [{LCOUNT}] 売却"
+NEXT
+DRAWLINE
+PRINTPLAINFORM 　ALBUM.{ページ+1}　
+CALL PRINTSPACE, ページ > 0, "[-1] 前ページ "
+PRINT [-5] 戻る 
+CALL PRINTSPACE, ページ < 1 && 総枚数 >= 25, "[-9] 次ページ "
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE -5
+			RETURN
+		CASE -1, -9
+			INVERTBIT ページ, 0
+			RESTART
+		CASE 0 TO 49
+			SIF PICS:対象:RESULT == ""
+				CONTINUE
+			売却対象 = RESULT
+			CALL PASELIL, @"%PICS:対象:RESULT%を{PIC:対象:RESULT}＄で売却します。よろしいですか？"
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			CALL INPUTF, 0, 1
+			SIF RESULT == 1
+				RESTART
+
+			CALL PASELIW, @"%PICS:対象:売却対象%を{PIC:対象:売却対象}＄で売却しました"
+			MONEY += PIC:対象:売却対象
+			;二次元配列にはARRAYREMOVEが使えないので手作業
+			FOR LCOUNT, 0, 50
+				SIF LCOUNT < 売却対象
+					CONTINUE
+				IF LCOUNT == 49
+					PIC:対象:LCOUNT = 0
+					PICS:対象:LCOUNT =
+					BREAK
+				ENDIF
+				PIC:対象:LCOUNT = PIC:対象:(LCOUNT+1)
+				PICS:対象:LCOUNT = %PICS:対象:(LCOUNT+1)%
+			NEXT
+			RESTART
+	ENDSELECT
+LOOP 1
