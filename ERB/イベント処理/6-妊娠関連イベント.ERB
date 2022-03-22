@@ -404,7 +404,7 @@ ENDIF
 
 ;妊娠したら経営から外す
 IF CSTR:ARG:配属 != ""
-	PRINTFORMW 様子を見るため、%CALLNAME:ARG%に休暇を与えます
+	PRINTFORMW 様子を見るため、%CALLNAME:ARG%を%CSTR:ARG:配属%から外し休暇を与えます
 	CALL 配属解除, ARG
 ENDIF
 
@@ -835,9 +835,11 @@ SIF !大人化MOD
 	CHILDTALENT:母体:TALENTF("小柄体型") = 1
 
 ;ふたなりMOD
-CHILDTALENT:母体:TALENTF("ふたなり") = 1
+SIF ふたなりMOD
+	CHILDTALENT:母体:TALENTF("ふたなり") = 1
 ;おもらしMOD
-CHILDTALENT:母体:TALENTF("おもらし癖") = 1
+SIF おもらしMOD
+	CHILDTALENT:母体:TALENTF("おもらし癖") = 1
 
 ;当然子供なので童貞か処女
 SELECTCASE CHILDTALENT:母体:TALENTF("性別")
@@ -1328,7 +1330,7 @@ SELECTCASE RESULT
 				ENDIF
 		ENDSELECT
 		;両親が魔術師だと魔法技能が付く
-		SIF PREG:魔法の才能
+		SIF PREG:ARG:魔法の才能
 			ABL:魔法技能 = 1
 		BASE:体力 = MAXBASE:体力
 		BASE:気力 = MAXBASE:気力
@@ -1390,10 +1392,15 @@ SELECTCASE RESULT
 				CFLAG:下着パイズリ = 0
 			CASE 1
 				服装選出用 = RAND(1, 10000)
+				;万が一同性のキャラが一人も実装されてない状態に備えて10000回の上限を設ける
+				LCOUNT = 0
 				WHILE !EXISTCSV(服装選出用) || CSVTALENT(服装選出用, GETNUM(TALENT, "性別")) != SEX(TARGET)
 					服装選出用++
 					SIF 服装選出用 >= 10000
 						服装選出用 = 1
+					LCOUNT++
+					SIF LCOUNT >= 10000
+						GOTO NOTFOUND
 				WEND
 				FOR LCOUNT, 100, 107
 					CSTR:LCOUNT = %CSVCSTR(服装選出用, LCOUNT)%
@@ -1403,6 +1410,7 @@ SELECTCASE RESULT
 				CFLAG:上着パイズリ = CSVCFLAG(服装選出用, GETNUM(CFLAG, "上着パイズリ"))
 				CFLAG:下着パイズリ = CSVCFLAG(服装選出用, GETNUM(CFLAG, "下着パイズリ"))
 		ENDSELECT
+		$NOTFOUND
 		DRAWLINE
 		PRINTFORMW %CALLNAME:TARGET%に性教育を施すべく、一緒に暮らすことにしました
 		PRINTFORML %CALLNAME:TARGET%に性交渉を行えるようになるまでどう育てますか？

@@ -454,8 +454,10 @@ PRINTL 　[4] - 名前
 PRINTL 　[5] - キャラ番号
 PRINTL 　[6] - 体力
 PRINTL 　[7] - 気力
+PRINTL 　[8] - 素質
+PRINTL 　[9] - 配属先
 SIF !ORIGIN
-	PRINTL 　[8] - 解禁日
+	PRINTL 　[10] - 解禁日
 DRAWLINE
 PRINTPLAIN 　CHARA SORT　
 PRINTL [0] - 戻る
@@ -537,7 +539,7 @@ DO
 		CASE 3
 			DRAWLINE
 			PRINTL □経験
-			FOR LCOUNT, 0, 100
+			FOR LCOUNT, 0, VARSIZE("EXP")
 				SIF EXPNAME:LCOUNT == ""
 					CONTINUE
 				PRINTFORMLC 　[{LCOUNT, 2}] - %EXPNAME:LCOUNT%
@@ -546,15 +548,17 @@ DO
 				PRINTL 
 			DRAWLINE
 			PRINTPLAIN 　EXP　
-			PRINTL [100] - 戻る
+			PRINTFORML [{VARSIZE("EXP")}] - 戻る
 			DO
 				INPUT
 				番号 = RESULT
 				SELECTCASE RESULT
-					CASE 0 TO 99
-						PRINTL □並べ替え
+					CASE VARSIZE("EXP")
+						RETURN
+					CASE 0 TO VARSIZE("EXP")-1
 						SIF EXPNAME:番号 == ""
 							CONTINUE
+						PRINTL □並べ替え
 						PRINTL 　[0] - 昇順(低い順)
 						PRINTL 　[1] - 降順(高い順)
 						DRAWLINE
@@ -571,8 +575,7 @@ DO
 						ENDSELECT
 						RETURN
 				ENDSELECT
-			LOOP LOOPRES(100)
-			RETURN
+			LOOP 1
 		CASE 4
 			DRAWLINE
 			PRINTL □名前
@@ -662,6 +665,64 @@ DO
 			ENDSELECT
 			RETURN
 		CASE 8
+			DRAWLINE
+			PRINTL □素質
+			FOR LCOUNT, 0, VARSIZE("TALENT")
+				SIF TALENTNAME:LCOUNT == ""
+					CONTINUE
+				PRINTFORMLC 　[{LCOUNT, 2}] - %TALENTNAME:LCOUNT%
+			NEXT
+			SIF LINEISEMPTY() == 0
+				PRINTL 
+			DRAWLINE
+			PRINTPLAIN 　TALENT　
+			PRINTFORML [{VARSIZE("TALENT")}] - 戻る
+			DO
+				INPUT
+				番号 = RESULT
+				SELECTCASE RESULT
+					CASE VARSIZE("TALENT")
+						RETURN
+					CASE 0 TO VARSIZE("TALENT")-1
+						SIF TALENTNAME:番号 == ""
+							CONTINUE
+						PRINTL □並べ替え
+						PRINTL 　[0] - 昇順(素質の無いキャラ優先)
+						PRINTL 　[1] - 降順(素質のあるキャラ優先)
+						DRAWLINE
+						PRINTPLAIN 　TALENT　
+						PRINTL [10] - 戻る
+						CALL INPUTF, 0, 1, 10
+						SELECTCASE RESULT
+							CASE 0
+								PRINTFORMW %TALENTNAME:番号%で昇順にソートしました
+								SORTCHARA TALENT:番号
+							CASE 1
+								PRINTFORMW %TALENTNAME:番号%で降順にソートしました
+								SORTCHARA TALENT:番号, BACK
+						ENDSELECT
+						RETURN
+				ENDSELECT
+			LOOP 1
+		CASE 9
+			DRAWLINE
+			PRINTL □配属先
+			PRINTL 　[0] - 昇順(配属されてないキャラ優先)
+			PRINTL 　[1] - 降順(配属されてるキャラ優先)
+			DRAWLINE
+			PRINTPLAIN 　ASSIGNED　
+			PRINTL [10] - 戻る
+			CALL INPUTF, 0, 1, 10
+			SELECTCASE RESULT
+				CASE 0
+					PRINTW 配属先で昇順にソートしました
+					SORTCHARA CSTR:配属
+				CASE 1
+					PRINTW 配属先で降順にソートしました
+					SORTCHARA CSTR:配属, BACK
+			ENDSELECT
+			RETURN
+		CASE 10
 			SIF ORIGIN
 				CONTINUE
 			FOR LCOUNT, 0, CHARANUM

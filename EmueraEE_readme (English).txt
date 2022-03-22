@@ -91,6 +91,7 @@ Browse server and check for new version.
 3,Do UPDATECHECK, Browse and compare now version and new version. If two are not same, Message box ask open the link for player. If playing latest version, return 0 and quit function.
 4,If player select "Yes", Open the link and return 2. If player select "No", return 1. If can't open the link, return 3.
 　And added new config "Don't allow UPDATECHECK(UPDATECHECKを許可しない)" if this confing is on, Won't run UPDATECHECK and return 4.
+　If didn't available network, return 5.
 
 
 [Usage]
