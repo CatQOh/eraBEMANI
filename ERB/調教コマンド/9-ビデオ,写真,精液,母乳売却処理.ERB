@@ -465,6 +465,9 @@ IF VIDEOBONUS:0 || VIDEOBONUS:1 || VIDEOBONUS:2 || VIDEOBONUS:3 || VIDEOBONUS:4 
 	ENDIF
 ENDIF
 
+;人気度も加算する
+加算額 += 人気度:(NO:TARGET)
+
 DO
 	CALL PASELIL, @"録画したビデオは{TFLAG:ビデオ価格+加算額}＄程度の値が付きそうだ"
 	PRINTL 録画したビデオをどうするか選択してください
@@ -481,6 +484,7 @@ SELECTCASE RESULT
 		CALL PASELIW, @"調教時に録画したビデオを売って、{TFLAG:ビデオ価格+加算額}＄手に入れました"
 		MONEY += TFLAG:ビデオ価格+加算額
 		TFLAG:ビデオ価格 = 0
+		人気度:(NO:TARGET) += 10
 		;ニンフちゃん出演のAVを売りさばく
 		SIF CHARANAMEF(TARGET) == "ニンフちゃん"
 			CALL 実績解除, "ニンフちゃんのファンやめます"
@@ -523,6 +527,7 @@ ENDSELECT
 #DIM DYNAMIC 総額
 #DIM DYNAMIC 保持, 10
 #DIM DYNAMIC 総枚数
+#DIM DYNAMIC 売却枚数
 
 ;売れる写真が無ければ関数終了
 SIF !写真価格:0
@@ -568,15 +573,19 @@ DO
 			RESTART
 	ENDSELECT
 LOOP 1
+売却枚数 = 0
 FOR LCOUNT, 0, 10
-	SIF !保持:LCOUNT
+	IF !保持:LCOUNT
 		総額 += 写真価格:LCOUNT
+		売却枚数++
+	ENDIF
 NEXT
 IF 総額
 	$SELL
 	バンめし = 0
 	CALL PASELIL, @"計{総額}＄で売れました"
 	MONEY += 総額
+	人気度:(NO:TARGET) += 売却枚数
 	WAIT
 	CALL KOJO_MESSAGE_EVENT, "写真売却時"
 ENDIF
