@@ -1,13 +1,209 @@
 ﻿@出版社経営
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象雑誌
+#DIM DYNAMIC 頁数
 
 DRAWLINE
-PRINTL □累計純利益
+CALL PASELIL, @"□累計純利益:{出版総利益}＄ 前日の売上:{前日の出版利益}"
+PRINTFORML 　名声:{出版社名声} 購読者数:{購読者}
+IF MATCH(雑誌名, "") < 3
+	PRINTL □現在発売中の雑誌
+	FOR LCOUNT, 0, 3
+		SIF 雑誌名:LCOUNT == ""
+			CONTINUE
+		PRINTFORM 　%雑誌名:LCOUNT% 価格:{雑誌価格:LCOUNT} 残り部数:{部数:LCOUNT} 品質:{雑誌品質:LCOUNT} 需要:
+		SELECTCASE 雑誌需要:LCOUNT
+			CASE IS >= 95
+				CALL PRINTCOLOR, "最高", "gold"
+			CASE IS >= 70
+				CALL PRINTCOLOR, "高", "magenta"
+			CASE IS >= 40
+				CALL PRINTCOLOR, "中", "deepskyblue"
+			CASE IS >= 10
+				CALL PRINTCOLOR, "低", "lime"
+			CASE IS >= 1
+				PRINT 最低
+			CASE 0
+				CALL PRINTCOLOR, "皆無", "gray"
+		ENDSELECT
+		PRINTFORML  [{LCOUNT+100}] 読む [{LCOUNT+200}] 増刷する(現在:\@ 刷数 == 1 ? 初版 # 第{刷数}刷 \@) [{LCOUNT+300}] 廃刊する
+	NEXT
+ENDIF
 PRINTL 
-PRINTL [0] - 編集する
-PRINTL [1] - 
-PRINTL [9] - バックナンバーを読む
+PRINTL 　[0] - 編集、発行する
+PRINTL 　[1] - 記者を配属する
+PRINTL 　[9] - バックナンバーを読む
+DRAWLINE
+PRINTPLAIN 　PUBLISHING　
+PRINTL [10] - 戻る
 
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 10
+			RETURN
+		CASE 0
+			CALL 雑誌編集
+			RESTART
+		CASE 1
+			CALL STRATEGY_PERSONAL, "出版社"
+			RESTART
+		CASE 9
+			CALL バックナンバー
+			RESTART
+		CASE 100 TO 102
+			対象雑誌 = RESULT-100
+			SIF 雑誌名:対象雑誌 == ""
+				CONTINUE
+			DRAWLINE
+			PRINTFORML □%雑誌名:対象雑誌%
+			FOR LCOUNT, 0, 20
+				PRINTFORML 　%雑誌内容:対象雑誌:LCOUNT%
+			NEXT
+			WAIT
+			RESTART
+		CASE 200 TO 202
+			対象雑誌 = RESULT-200
+			SIF 雑誌名:対象雑誌 == ""
+				CONTINUE
+			;1ページ10パセリ
+			頁数 = 0
+			FOR LCOUNT, 0, 20
+				SIF 雑誌内容:対象雑誌:LCOUNT != ""
+					頁数++
+			NEXT
+			$REINPUT
+			CALL PASELIL, @"「%雑誌名:対象雑誌%」の増刷には1部ごとに{頁数*10}＄必要です。何部増刷しますか？(所持金:{MONEY}＄)"
+			PRINTL 需要と供給の目安:最高で1万部 高で7千部 中で4千部 低で1千部 最低で100部 皆無は売れる見込み無し 
+			PRINTL [100][1000][4000][7000][10000]
+			PRINTL [0] 戻る
+			INPUT
+			SELECTCASE RESULT
+				CASE 0
+					RESTART
+				CASE IS > 0
+					IF RESULT*頁数*10 > MONEY
+						PRINTW 所持金が足りません
+						GOTO REINPUT
+					ENDIF
+					PRINTFORMW 「%雑誌名:対象雑誌%」を{RESULT}部増刷しました
+					部数:対象雑誌 += RESULT
+					MONEY -= RESULT*頁数*10
+					刷数:対象雑誌++
+					RESTART
+				CASEELSE
+					GOTO REINPUT
+			ENDSELECT
+		CASE 300 TO 302
+			対象雑誌 = RESULT-300
+			SIF 雑誌名:対象雑誌 == ""
+				CONTINUE
+			PRINTFORML 「%雑誌名:対象雑誌%」を廃刊します。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			CALL INPUTF, 0, 1
+			SIF RESULT == 1
+				RESTART
+			PRINTFORMW 「%雑誌名:対象雑誌%」を廃刊しました
+			CALL 雑誌廃刊, 対象雑誌
+			RESTART
+	ENDSELECT
+LOOP 1
+
+@雑誌編集
+#DIM DYNAMIC 主要キャラ
+
+
+STRDATA 雑誌名
+	DATAFORM %CSVCALLNAMEF(主要キャラ)%のエロ本
+	DATAFORM %CSVCALLNAMEF(主要キャラ)%の薄い本
+	DATAFORM %CSVCALLNAMEF(主要キャラ)%の春画
+	DATAFORM %CSVCALLNAMEF(主要キャラ)%が%CALLNAME:MASTER%にあれこれされる本
+	DATAFORM 月刊%CSVCALLNAMEF(主要キャラ)%{MONTH}月号
+	DATAFORM 週刊%CSVCALLNAMEF(主要キャラ)%
+	DATAFORM 月刊エロカディア{MONTH}月号
+	DATAFORM 月刊調教のすゝめ{MONTH}月号
+	DATAFORM \@ EXISTCSV(主要キャラ) && CSVCSTR(主要キャラ, GETNUM(CSTR, "登場作品")) != "" ? %CSVCSTR(主要キャラ, GETNUM(CSTR, "登場作品"))%の裏側大暴露 # %CSVCALLNAMEF(主要キャラ)%の裏側大暴露 \@
+	DATAFORM 月刊ヘヴンリームーン{MONTH}月号
+	DATAFORM 月刊天国へようこそ{MONTH}月号
+	DATAFORM 月刊ラブ♡シャイン{MONTH}月号
+	DATAFORM 月刊ECSTACY{MONTH}月号
+ENDDATA
+
+@バックナンバー
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 終端
+#DIMS DYNAMIC SPLITVAR, 2
+
+終端 = FINDELEMENT(バックナンバー名, "", 0, VARSIZE("バックナンバー名"), 1)
+
+;バックナンバーの配列は詰めている
+FOR LCOUNT, 0, 終端
+	SIF LCOUNT >= ページ数*20+20
+		BREAK
+	IF LCOUNT >= ページ数*20
+		;SPLITVAR:0=雑誌名 1=配列
+		SPLIT バックナンバー名:LCOUNT, "/", SPLITVAR
+		PRINTFORML [{LCOUNT, 2}] %SPLITVAR:0%
+	ENDIF
+NEXT
+IF 終端 == 0
+	PRINTL
+	PRINTL ---バックナンバーはありません---
+	PRINTL 
+ENDIF
+DRAWLINE
+PRINTPLAIN 　BUCKNUMBER　
+CALL PRINTSPACE, ページ数 > 0, "[-1] 前ページ"
+PRINTL [-5] 戻る
+CALL PRINTSPACE, LCOUNT < 終端-1, "[-9] 次ページ"
+PRINTL 
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE -5
+			RETURN
+		CASE -1
+			SIF ページ数 > 0
+				ページ数--
+			RESTART
+		CASE -9
+			SIF LCOUNT < 終端-1
+				ページ数++
+			RESTART
+		CASE 0 TO 終端-1
+			DRAWLINE
+			PRINTFORML □%SPLITVAR:0%
+			FOR LCOUNT, 0, 20
+				PRINTFORML 　%バックナンバー:TOINT(SPLITVAR:1):LCOUNT%
+			NEXT
+			RESTART
+	ENDSELECT
+LOOP 1
+
+@雑誌廃刊, 対象雑誌
+#DIM DYNAMIC 対象雑誌
+#DIM DYNAMIC 配列
+#DIM DYNAMIC LCOUNT
+
+;空いてる配列を探す
+FOR LCOUNT, 0, 50000
+	IF バックナンバー:LCOUNT:0 == ""
+		配列 = LCOUNT
+		BREAK
+	ENDIF
+NEXT
+
+;バックナンバーに雑誌名と配列を記録する
+ARRAYSHIFT バックナンバー名, 1, "", 1
+バックナンバー名:0 = %雑誌名:対象雑誌%/{配列}
+
+;上で探した空いてる配列に内容を入れる
+FOR LCOUNT, 0, 20
+	バックナンバー:配列:LCOUNT = %雑誌内容:対象雑誌:LCOUNT%
+NEXT
 
 @所持写真一覧
 #DIM DYNAMIC LCOUNT
