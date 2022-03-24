@@ -4,35 +4,42 @@
 #DIM DYNAMIC 頁数
 
 DRAWLINE
-CALL PASELIL, @"□累計純利益:{出版総利益}＄ 前日の売上:{前日の出版利益}"
+CALL PASELIL, @"□累計売上:{出版総利益}＄ 前日の売上:{前日の出版利益}＄"
 PRINTFORML 　名声:{出版社名声} 購読者数:{購読者}
 IF MATCH(雑誌名, "") < 3
 	PRINTL □現在発売中の雑誌
 	FOR LCOUNT, 0, 3
 		SIF 雑誌名:LCOUNT == ""
 			CONTINUE
-		PRINTFORM 　%雑誌名:LCOUNT% 価格:{雑誌価格:LCOUNT} 残り部数:{部数:LCOUNT} 品質:{雑誌品質:LCOUNT} 需要:
-		SELECTCASE 雑誌需要:LCOUNT
-			CASE IS >= 95
-				CALL PRINTCOLOR, "最高", "gold"
-			CASE IS >= 70
-				CALL PRINTCOLOR, "高", "magenta"
-			CASE IS >= 40
-				CALL PRINTCOLOR, "中", "deepskyblue"
-			CASE IS >= 10
-				CALL PRINTCOLOR, "低", "lime"
-			CASE IS >= 1
-				PRINT 最低
-			CASE 0
-				CALL PRINTCOLOR, "皆無", "gray"
-		ENDSELECT
-		PRINTFORML  [{LCOUNT+100}] 読む [{LCOUNT+200}] 増刷する(現在:\@ 刷数 == 1 ? 初版 # 第{刷数}刷 \@) [{LCOUNT+300}] 廃刊する
+		PRINTFORM 　%雑誌名:LCOUNT% 
+		IF 雑誌発売日:LCOUNT > 0
+			PRINTFORML 発売まであと{(雑誌発売日+1)/2}日
+		ELSE
+			PRINTFORM 価格:{雑誌価格:LCOUNT} 残り部数:{部数:LCOUNT} 品質:{雑誌品質:LCOUNT} 需要:
+			SELECTCASE 雑誌需要:LCOUNT
+				CASE IS >= 95
+					CALL PRINTCOLOR, "最高", "gold"
+				CASE IS >= 70
+					CALL PRINTCOLOR, "高", "magenta"
+				CASE IS >= 40
+					CALL PRINTCOLOR, "中", "deepskyblue"
+				CASE IS >= 10
+					CALL PRINTCOLOR, "低", "lime"
+				CASE IS >= 1
+					PRINT 最低
+				CASE 0
+					CALL PRINTCOLOR, "皆無", "gray"
+			ENDSELECT
+			PRINTFORML  [{LCOUNT+100}] 読む [{LCOUNT+200}] 増刷する(現在:\@ 刷数 == 1 ? 初版 # 第{刷数}刷 \@) [{LCOUNT+300}] 廃刊する
+		ENDIF
 	NEXT
 ENDIF
 PRINTL 
 PRINTL 　[0] - 編集、発行する
 PRINTL 　[1] - 記者を配属する
-PRINTL 　[9] - バックナンバーを読む
+PRINTL 　[2] - バックナンバーを読む
+PRINTL 　[9] - 出版社経営について
+
 DRAWLINE
 PRINTPLAIN 　PUBLISHING　
 PRINTL [10] - 戻る
@@ -48,8 +55,11 @@ DO
 		CASE 1
 			CALL STRATEGY_PERSONAL, "出版社"
 			RESTART
-		CASE 9
+		CASE 2
 			CALL バックナンバー
+			RESTART
+		CASE 9
+			CALL TUTORIAL_出版社
 			RESTART
 		CASE 100 TO 102
 			対象雑誌 = RESULT-100
@@ -58,7 +68,9 @@ DO
 			DRAWLINE
 			PRINTFORML □%雑誌名:対象雑誌%
 			FOR LCOUNT, 0, 20
-				PRINTFORML 　%雑誌内容:対象雑誌:LCOUNT%
+				SIF 雑誌内容:対象雑誌:LCOUNT == ""
+					CONTINUE
+				PRINTFORML 　{LCOUNT, 2}ページ目,%雑誌内容:対象雑誌:LCOUNT%
 			NEXT
 			WAIT
 			RESTART
@@ -110,25 +122,323 @@ DO
 	ENDSELECT
 LOOP 1
 
+@TUTORIAL_出版社
+DRAWLINE
+PRINTL 出版社経営は、調教中に撮影した写真を雑誌にまとめて発売する経営システムです。事業開発オフィスが必要になります
+PRINTL 出版には雑誌を編集し、印刷代を支払って編集期間を終えると発行できるようになります
+PRINTL 雑誌の編集中は、妊娠等のやむを得ない理由が無い限りキャラの配属先を変えられないのでご注意ください
+PRINTW またモデルのキャラの人気度に応じて品質も上がります。本が売れるほど出演者の人気度も上昇します
+
 @雑誌編集
 #DIM DYNAMIC 主要キャラ
+#DIM DYNAMIC 編集者レベル
+#DIM DYNAMIC カメラマン総数
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象雑誌
+#DIM DYNAMIC 対象ページ
+#DIMS DYNAMIC ページ情報
+#DIM DYNAMIC ページ情報NO, 2
+#DIMS DYNAMIC SPLITVAR, 3
+#DIM DYNAMIC 品質
+#DIM DYNAMIC 価格
+#DIM DYNAMIC 出演者, 20000
+#DIM DYNAMIC 空きスロット
+#DIM DYNAMIC 発行部数
+#DIM DYNAMIC 頁数
+#DIM DYNAMIC 費用
+#DIM DYNAMIC 発売予定日
 
+編集者レベル = 0
+カメラマン総数 = 0
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "出版社"
+		CONTINUE
+	編集者レベル += MIN(ABL:LCOUNT:撮影技能, 10)
+	編集者レベル += MIN(EXP:LCOUNT:実務経験/100, 10)
+	SIF TALENT:LCOUNT:カメラマン
+		カメラマン総数++
+NEXT
 
-STRDATA 雑誌名
-	DATAFORM %CSVCALLNAMEF(主要キャラ)%のエロ本
-	DATAFORM %CSVCALLNAMEF(主要キャラ)%の薄い本
-	DATAFORM %CSVCALLNAMEF(主要キャラ)%の春画
-	DATAFORM %CSVCALLNAMEF(主要キャラ)%が%CALLNAME:MASTER%にあれこれされる本
-	DATAFORM 月刊%CSVCALLNAMEF(主要キャラ)%{MONTH}月号
-	DATAFORM 週刊%CSVCALLNAMEF(主要キャラ)%
-	DATAFORM 月刊エロカディア{MONTH}月号
-	DATAFORM 月刊調教のすゝめ{MONTH}月号
-	DATAFORM \@ EXISTCSV(主要キャラ) && CSVCSTR(主要キャラ, GETNUM(CSTR, "登場作品")) != "" ? %CSVCSTR(主要キャラ, GETNUM(CSTR, "登場作品"))%の裏側大暴露 # %CSVCALLNAMEF(主要キャラ)%の裏側大暴露 \@
-	DATAFORM 月刊ヘヴンリームーン{MONTH}月号
-	DATAFORM 月刊天国へようこそ{MONTH}月号
-	DATAFORM 月刊ラブ♡シャイン{MONTH}月号
-	DATAFORM 月刊ECSTACY{MONTH}月号
-ENDDATA
+DRAWLINE
+PRINTFORML □雑誌編集
+PRINTFORML 　現在の編集者レベル:{編集者レベル+カメラマン総数*20}/200
+PRINTL 
+FOR LCOUNT, 0, 3
+	PRINTFORML 　[{LCOUNT}] - \@ 編集中雑誌名:LCOUNT != "" ? 「%編集中雑誌名:LCOUNT%」を編集する # 新しい雑誌を編集する \@
+NEXT
+DRAWLINE
+PRINTPLAIN 　雑誌編集　
+PRINTL [10] - 戻る
+
+CALL INPUTF, 0, 1, 2, 10
+SELECTCASE RESULT
+	CASE 10
+		RETURN
+	CASE 0 TO 2
+		対象雑誌 = RESULT
+ENDSELECT
+
+$編集
+DRAWLINE
+PRINTFORML □\@ 編集中雑誌名:対象雑誌 == "" ? [ 0] タイトルを付ける # %編集中雑誌名:対象雑誌% [0] 変更する \@
+;編集中雑誌内容は「写真名/キャラNO/アルバムNO」の書式
+品質 = 0
+頁数 = 0
+VARSET 写真使用中
+VARSET 出演者
+FOR LCOUNT, 0, 20
+	IF 編集中雑誌内容:対象雑誌:LCOUNT != ""
+		SPLIT 編集中雑誌内容:対象雑誌:LCOUNT, "/", SPLITVAR
+		ページ情報 = %SPLITVAR:0%
+		ページ情報NO:0 = TOINT(SPLITVAR:1)
+		ページ情報NO:1 = TOINT(SPLITVAR:2)
+		;編集中に使ってる写真が消えてるか上書きされてたらそのページを削除
+		IF PICS:(ページ情報NO:0):(ページ情報NO:1) != ページ情報
+			編集中雑誌内容:対象雑誌:LCOUNT = 
+			GOTO PAGEELSE
+		ENDIF
+		PRINTFORML 　[{LCOUNT+1, 2}]ページ目,%ページ情報%
+		;価格が品質に加算される
+		品質 += PIC:(ページ情報NO:0):(ページ情報NO:1)
+		;出演者の人気も加算される これは各キャラ1回のみ
+		SIF 出演者:(ページ情報NO:0) == 0
+			品質 += 人気度:(ページ情報NO:0)
+		写真使用中:(ページ情報NO:0):(ページ情報NO:1) = 1
+		出演者:(ページ情報NO:0)++
+		SIF 出演者:主要キャラ < 出演者:(ページ情報NO:0)
+			主要キャラ = ページ情報NO:0
+		頁数++
+	ELSE
+		$PAGEELSE
+		CALL PRINTCOLORL, @"　[{LCOUNT+1, 2}]ページ目,"+"-"*30, "gray"
+	ENDIF
+NEXT
+
+;編集者レベル1につき1%アップ
+品質 += 品質*編集者レベル/100
+
+;品質/(10+編集者レベル*5)*1ターン(品質/(20+編者レベル*10)*1日)
+発売予定日 = 品質/(10+編集者レベル*5)
+;カメラマン一人につきさらに10ターン減(最低2)
+発売予定日 = MAX(発売予定日-カメラマン総数*10, 2)
+
+PRINTPLAINFORM 　品質:{品質} 
+CALL PASELI, @"価格:{価格}＄ [30] 価格を変更する"
+PRINTPLAIN  
+PRINTFORML 部数:{発行部数} [31] 部数を変更する
+
+;費用は頁数*10*部数
+費用 = 頁数*10*発行部数
+
+DRAWLINE
+PRINTPLAIN 　雑誌編集　
+PRINT [100] - 戻る 
+SIF 品質 > 0 && 価格 > 0 && 発行部数 > 0
+	CALL PASELI, @"[101] - この内容で発刊する(発刊までの必要日数:約{発売予定日/2+1}日 必要費用:{費用}＄)"
+PRINTL 
+
+DO
+	INPUT
+	SELECTCASE RESULT
+		CASE 100
+			RESTART
+		CASE 101
+			SIF !(品質 > 0 && 価格 > 0 && 発行部数 > 0)
+				CONTINUE
+			IF 編集中雑誌名:対象雑誌 == ""
+				PRINTW タイトルを決めてください
+				GOTO 編集
+			ENDIF
+			IF !MATCH(雑誌名, "")
+				PRINTW 既に3冊発売中です。新しく発刊するには既存の雑誌を廃刊する必要があります
+				GOTO 編集
+			ENDIF
+			IF 費用 > MONEY
+				PRINTW 費用が足りません
+				GOTO 編集
+			ENDIF
+			PRINTFORML 「%編集中雑誌名:対象雑誌%」を発刊します。よろしいですか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			CALL INPUTF, 0, 1
+			SIF RESULT == 1
+				GOTO 編集
+			空きスロット = FINDELEMENT(雑誌名, "", 0, 3, 1)
+			MONEY -= 費用
+			雑誌名:空きスロット = %編集中雑誌名:対象雑誌%
+			FOR LCOUNT, 0, 20
+				SPLIT 編集中雑誌内容:対象雑誌:LCOUNT, "/", SPLITVAR
+				雑誌内容:空きスロット:LCOUNT = %SPLITVAR:0%
+				雑誌出演者:空きスロット:LCOUNT = TOINT(SPLITVAR:1)
+				CALL 写真破棄, TOINT(SPLITVAR:1), 0, SPLITVAR:0
+			NEXT
+			部数:空きスロット = 発行部数
+			雑誌価格:空きスロット = 価格
+			雑誌品質:空きスロット = 品質
+			;雑誌需要(最大100)は品質=価格で50
+			;品質>価格で品質超過10%ごとに需要1増加 品質>価格*5で需要100になる
+			;品質<価格で価格超過2%ごとに需要1低下 品質*2<価格で需要0になる
+			IF 価格 > 品質
+				雑誌需要:空きスロット = MAX(50-(価格-品質)*100/品質/2, 0)
+			ELSEIF 価格 < 品質
+				雑誌需要:空きスロット = MIN(50+品質*100/価格/10, 100)
+			ELSEIF 品質 == 価格
+				雑誌需要:空きスロット = 50
+			ENDIF
+			刷数:空きスロット = 1
+			雑誌発売日:空きスロット = 発売予定日
+			PRINTFORMW 「%雑誌名:空きスロット%」の発刊作業を開始します
+			編集中雑誌名:対象雑誌 = 
+			VARSET 編集中雑誌内容:対象雑誌:0
+			RESTART
+		CASE 0
+			GOTO 雑誌名
+		CASE 1 TO 20
+			対象ページ = RESULT-1
+			CALL 所持写真一覧, 1
+			SIF PICS:(RESULT:0):(RESULT:1) == ""
+				GOTO 編集
+			編集中雑誌内容:対象雑誌:対象ページ = %PICS:(RESULT:0):(RESULT:1)%/{RESULT:0}/{RESULT:1}
+			GOTO 編集
+		CASE 30
+			PRINTL 価格を入力してください 目安:品質＞価格 品質の割合が高いほど需要が高く売れやすい
+			INPUT
+			価格 = LIMIT(RESULT, 0, __INT_MAX__)
+			GOTO 編集
+		CASE 31
+			PRINTL 発行部数を入力してください(増刷可能 まずは低部数から始めるのがおすすめです)
+			PRINTL [100][1000][10000]
+			INPUT
+			発行部数 = LIMIT(RESULT, 0, __INT_MAX__)
+			GOTO 編集
+	ENDSELECT
+LOOP 1
+
+$雑誌名
+PRINTL 雑誌名を入力してください 
+PRINTBUTTON "[ランダム命名]", "ランダム命名"
+
+INPUTS
+
+IF RESULTS == "ランダム命名"
+	STRDATA RESULTS
+		DATAFORM %CSVCALLNAMEF(主要キャラ)%のエロ本
+		DATAFORM %CSVCALLNAMEF(主要キャラ)%の薄い本
+		DATAFORM %CSVCALLNAMEF(主要キャラ)%の春画
+		DATAFORM %CSVCALLNAMEF(主要キャラ)%が%CALLNAME:MASTER%にあれこれされる本
+		DATAFORM 月刊%CSVCALLNAMEF(主要キャラ)%{YEAR}年{MONTH}月号
+		DATAFORM 週刊%CSVCALLNAMEF(主要キャラ)%
+		DATAFORM 月刊エロカディア{YEAR}年{MONTH}月号
+		DATAFORM 月刊調教のすゝめ{YEAR}年{MONTH}月号
+		DATAFORM \@ EXISTCSV(主要キャラ) && CSVCSTR(主要キャラ, GETNUM(CSTR, "登場作品")) != "" ? %CSVCSTR(主要キャラ, GETNUM(CSTR, "登場作品"))%の裏側大暴露 # %CSVCALLNAMEF(主要キャラ)%の裏側大暴露 \@
+		DATAFORM 月刊ヘヴンリームーン{YEAR}年{MONTH}月号
+		DATAFORM 月刊天国へようこそ{YEAR}年{MONTH}月号
+		DATAFORM 月刊ラブ♡シャイン{YEAR}年{MONTH}月号
+		DATAFORM 月刊ECSTACY{YEAR}年{MONTH}月号
+		DATAFORM 月刊THE DEEP THROATER{YEAR}年{MONTH}月号
+	ENDDATA
+ENDIF
+PRINTFORML 「%RESULTS%」でよろしいですか？
+PRINTL [0] - はい
+PRINTL [1] - いいえ
+CALL INPUTF, 0, 1
+SIF RESULT == 1
+	GOTO 雑誌名
+編集中雑誌名:対象雑誌 = %RESULTS%
+GOTO 編集
+
+@TURNEND_出版社
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC PAGE
+#DIM DYNAMIC 売上部数
+#DIM DYNAMIC 名声上昇値
+#DIM DYNAMIC 出演者計算済み, 20000
+#DIM DYNAMIC 総人気度
+
+VARLINE = LINECOUNT
+前日の出版利益 = 0
+SIF MATCH(雑誌名, "") == 3
+	RETURN
+
+FOR LCOUNT, 0, 3
+	SIF 雑誌名:LCOUNT == ""
+		CONTINUE
+	売上部数 = 0
+	IF 雑誌発売日:LCOUNT > 0
+		SIF --雑誌発売日:LCOUNT == 0
+			PRINTFORML 「%雑誌名:LCOUNT%」と編集と発行が終わりました。全国の本屋に出荷します
+		CONTINUE
+	ENDIF
+	;収入は1日の終わりのみ計算
+	IF TIME == 1
+		;需要*10に±20%の揺らぎを入れて売上に入れる
+		売上部数 += 雑誌需要:LCOUNT*RAND(800, 1201)/100
+		;購読者を除いた売上部数に応じて名声が上がる
+		名声上昇値 += 売上部数/10
+		;発売初日なら購読者*需要%を売上に入れる
+		IF 雑誌発売日:LCOUNT == 0
+			売上部数 += 購読者*(雑誌需要:LCOUNT)/100
+			雑誌発売日:LCOUNT = -1
+		ENDIF
+
+		;売上部数＞発行部数なら発行部数に合わせる
+		SIF 売上部数 > 部数:LCOUNT
+			売上部数 = 部数:LCOUNT
+		;売上部数の分発行部数を減らす
+		部数:LCOUNT -= 売上部数
+
+		;売上部数の1%～5%が購読者に追加される
+		SIF 売上部数 > 100
+			購読者 += RAND(売上部数/100, 売上部数/20)
+
+		;需要を低下させる
+		雑誌需要:LCOUNT -= 20
+		;品質と価格が釣り合ってなければさらに低下させる
+		SIF 雑誌価格:LCOUNT > 雑誌品質:LCOUNT
+			雑誌需要:LCOUNT -= (雑誌価格:LCOUNT-雑誌品質:LCOUNT)/雑誌品質:LCOUNT+1
+		;名声と出演者の人気度に応じて回復させる ただし名声での回復量はかなり重い(100万で1)
+		;部数が余ってる場合は需要が増加することはない
+		;出演者の人気度を合計する 2ページ以上出演してるキャラは2ページ目以降2割
+		VARSET 出演者計算済み
+		総人気度 = 0
+		FOR PAGE, 0, 20
+			IF 出演者計算済み:(雑誌出演者:LCOUNT:PAGE)
+				総人気度 += 人気度:(雑誌出演者:LCOUNT:PAGE)/5
+			ELSE
+				総人気度 += 人気度:(雑誌出演者:LCOUNT:PAGE)
+				出演者計算済み:(雑誌出演者:LCOUNT:PAGE) = 1
+				;人気度の上昇もここでやっておく 売上部数/100(最大10)
+				人気度:(雑誌出演者:LCOUNT:PAGE) += LIMIT(売上部数/100, 0, 10)
+			ENDIF
+		NEXT
+		IF 部数:LCOUNT
+			;総人気度は最大1000*20で2万 部数があるときは総人気度/1000で回復させる(最大19)
+			雑誌需要:LCOUNT += LIMIT(総人気度/1000+出版社名声/1000000, 0, 19)
+		ELSE
+			;部数が無いときは総人気度/500で回復させる 上限は無し
+			雑誌需要:LCOUNT += 総人気度/1000+出版社名声/1000000
+		ENDIF
+		雑誌需要:LCOUNT = LIMIT(雑誌需要:LCOUNT, 0, 100)
+
+		;売れないときもある
+		IF 売上部数 == 0
+			PRINTFORML 「%雑誌名:LCOUNT%」は1冊も売れませんでした……
+		ELSE
+			CALL PASELIL, @"「%雑誌名:LCOUNT%」が{売上部数}冊売れて、総売上{売上部数*雑誌価格:LCOUNT}＄から取り分80\%の{売上部数*雑誌価格:LCOUNT*80/100}＄を得ました(残り部数:{部数:LCOUNT}冊)"
+			MONEY += 売上部数*雑誌価格:LCOUNT*80/100
+			出版総利益 += 売上部数*雑誌価格:LCOUNT*80/100
+			前日の出版利益 += 売上部数*雑誌価格:LCOUNT*80/100
+			総売上部数:LCOUNT += 売上部数
+		ENDIF
+	ENDIF
+NEXT
+
+SIF 名声上昇値
+	PRINTFORML 出版社名声が{名声上昇値}増加しました
+出版社名声 += 名声上昇値
+SIF VARLINE != LINECOUNT
+	WAIT
+RETURN
 
 @バックナンバー
 #DIM DYNAMIC LCOUNT
@@ -136,6 +446,7 @@ ENDDATA
 #DIM DYNAMIC 終端
 #DIMS DYNAMIC SPLITVAR, 2
 
+DRAWLINE
 終端 = FINDELEMENT(バックナンバー名, "", 0, VARSIZE("バックナンバー名"), 1)
 
 ;バックナンバーの配列は詰めている
@@ -145,7 +456,7 @@ FOR LCOUNT, 0, 終端
 	IF LCOUNT >= ページ数*20
 		;SPLITVAR:0=雑誌名 1=配列
 		SPLIT バックナンバー名:LCOUNT, "/", SPLITVAR
-		PRINTFORML [{LCOUNT, 2}] %SPLITVAR:0%
+		PRINTFORML [{LCOUNT, 2}] %SPLITVAR:0% 総売上部数:{バックナンバー売上:TOINT(SPLITVAR:1)}
 	ENDIF
 NEXT
 IF 終端 == 0
@@ -156,7 +467,7 @@ ENDIF
 DRAWLINE
 PRINTPLAIN 　BUCKNUMBER　
 CALL PRINTSPACE, ページ数 > 0, "[-1] 前ページ"
-PRINTL [-5] 戻る
+PRINT [-5] 戻る
 CALL PRINTSPACE, LCOUNT < 終端-1, "[-9] 次ページ"
 PRINTL 
 
@@ -177,8 +488,11 @@ DO
 			DRAWLINE
 			PRINTFORML □%SPLITVAR:0%
 			FOR LCOUNT, 0, 20
-				PRINTFORML 　%バックナンバー:TOINT(SPLITVAR:1):LCOUNT%
+				SIF バックナンバー:TOINT(SPLITVAR:1):LCOUNT == ""
+					CONTINUE
+				PRINTFORML 　{LCOUNT, 2}ページ目,%バックナンバー:TOINT(SPLITVAR:1):LCOUNT%
 			NEXT
+			WAIT
 			RESTART
 	ENDSELECT
 LOOP 1
@@ -204,8 +518,20 @@ ARRAYSHIFT バックナンバー名, 1, "", 1
 FOR LCOUNT, 0, 20
 	バックナンバー:配列:LCOUNT = %雑誌内容:対象雑誌:LCOUNT%
 NEXT
+バックナンバー売上:配列 = 総売上部数:対象雑誌
 
-@所持写真一覧
+雑誌名:対象雑誌 =
+VARSET 雑誌内容:対象雑誌:0
+部数:対象雑誌 = 0
+雑誌価格:対象雑誌 = 0
+雑誌品質:対象雑誌 = 0
+雑誌需要:対象雑誌 = 0
+刷数:対象雑誌 = 0
+雑誌発売日:対象雑誌 = 0
+VARSET 雑誌出演者:対象雑誌:0
+総売上部数:対象雑誌 = 0
+
+@所持写真一覧, 雑誌編集
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC 総枚数
@@ -214,6 +540,7 @@ NEXT
 #DIM DYNAMIC 処理数
 #DIM DYNAMIC 次ページあり
 #DIM CONST 表示上限 = 20
+#DIM DYNAMIC 雑誌編集
 
 DRAWLINE
 PRINTL □写真一覧を表示します
@@ -265,17 +592,20 @@ DO
 		CASE 0 TO 19999
 			SIF PICS:RESULT:0 == ""
 				CONTINUE
-			CALL アルバム, RESULT
+			CALL アルバム, RESULT, 雑誌編集
+			SIF 雑誌編集
+				RETURN RESULT:0, RESULT:1
 			RESTART
 	ENDSELECT
 LOOP 1
 
-@アルバム, 対象
+@アルバム, 対象, 雑誌編集
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 対象
 #DIM DYNAMIC ページ
 #DIM DYNAMIC 売却対象
 #DIM DYNAMIC 総枚数
+#DIM DYNAMIC 雑誌編集
 
 総枚数 = 0
 FOR LCOUNT, 0, 50
@@ -290,9 +620,11 @@ FOR LCOUNT, 0, 50
 		BREAK
 	SIF ページ == 1 && LCOUNT < 25
 		CONTINUE
+	SIF 雑誌編集 && 写真使用中:対象:LCOUNT
+		CONTINUE
 	SIF LCOUNT >= 総枚数
 		BREAK
-	CALL PASELIL, @"　%PICS:対象:LCOUNT%({PIC:対象:LCOUNT}＄) [{LCOUNT}] 売却"
+	CALL PASELIL, @"　%PICS:対象:LCOUNT%({PIC:対象:LCOUNT}＄) [{LCOUNT}] \@ 雑誌編集 ? 使用 # 売却 \@"
 NEXT
 DRAWLINE
 PRINTPLAINFORM 　ALBUM.{ページ+1}　
@@ -311,6 +643,8 @@ DO
 		CASE 0 TO 49
 			SIF PICS:対象:RESULT == ""
 				CONTINUE
+			SIF 雑誌編集
+				RETURN 対象, RESULT
 			売却対象 = RESULT
 			CALL PASELIL, @"%PICS:対象:RESULT%を{PIC:対象:RESULT}＄で売却します。よろしいですか？"
 			PRINTL [0] - はい
@@ -318,21 +652,44 @@ DO
 			CALL INPUTF, 0, 1
 			SIF RESULT == 1
 				RESTART
-
 			CALL PASELIW, @"%PICS:対象:売却対象%を{PIC:対象:売却対象}＄で売却しました"
 			MONEY += PIC:対象:売却対象
-			;二次元配列にはARRAYREMOVEが使えないので手作業
-			FOR LCOUNT, 0, 50
-				SIF LCOUNT < 売却対象
-					CONTINUE
-				IF LCOUNT == 49
-					PIC:対象:LCOUNT = 0
-					PICS:対象:LCOUNT =
-					BREAK
-				ENDIF
-				PIC:対象:LCOUNT = PIC:対象:(LCOUNT+1)
-				PICS:対象:LCOUNT = %PICS:対象:(LCOUNT+1)%
-			NEXT
+			CALL 写真破棄, 対象, 売却対象
 			RESTART
 	ENDSELECT
 LOOP 1
+
+@写真破棄, アルバム, 写真, 写真名
+#DIM DYNAMIC アルバム
+#DIM DYNAMIC 写真
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 写真名
+#DIM DYNAMIC FOUND
+
+;二次元配列にはARRAYREMOVEが使えないので手作業
+FOR LCOUNT, 0, 50
+	;写真名を渡されたときは写真名で探して消す
+	IF 写真名 != ""
+		SIF 写真名 == PICS:アルバム:LCOUNT
+			FOUND = 1
+		SIF !FOUND
+			CONTINUE
+	ELSE
+		SIF LCOUNT < 写真
+			CONTINUE
+	ENDIF
+	IF LCOUNT == 49
+		PIC:アルバム:LCOUNT = 0
+		PICS:アルバム:LCOUNT =
+		BREAK
+	ENDIF
+	PIC:アルバム:LCOUNT = PIC:アルバム:(LCOUNT+1)
+	PICS:アルバム:LCOUNT = %PICS:アルバム:(LCOUNT+1)%
+NEXT
+
+@雑誌編集中
+#FUNCTION
+SIF 雑誌発売日:0 > 0 || 雑誌発売日:1 > 0 || 雑誌発売日:2 > 0
+	RETURNF 1
+
+RETURNF 0
