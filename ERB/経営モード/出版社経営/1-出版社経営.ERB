@@ -336,6 +336,7 @@ IF RESULTS == "ランダム命名"
 		DATAFORM 月刊ラブ♡シャイン{YEAR}年{MONTH}月号
 		DATAFORM 月刊ECSTACY{YEAR}年{MONTH}月号
 		DATAFORM 月刊THE DEEP THROATER{YEAR}年{MONTH}月号
+		DATAFORM 月刊セクシープラネット{YEAR}年{MONTH}月号
 	ENDDATA
 ENDIF
 PRINTFORML 「%RESULTS%」でよろしいですか？
@@ -349,11 +350,15 @@ GOTO 編集
 
 @TURNEND_出版社
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC PAGE
 #DIM DYNAMIC 売上部数
 #DIM DYNAMIC 名声上昇値
 #DIM DYNAMIC 出演者計算済み, 20000
 #DIM DYNAMIC 総人気度
+#DIM DYNAMIC モチベ計算用
+#DIM DYNAMIC モチベ加算値
+#DIM DYNAMIC 支出
 
 VARLINE = LINECOUNT
 前日の出版利益 = 0
@@ -436,8 +441,52 @@ NEXT
 SIF 名声上昇値
 	PRINTFORML 出版社名声が{名声上昇値}増加しました
 出版社名声 += 名声上昇値
+
+;モチベ計算
+FOR LCOUNT, 1, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "出版社"
+		CONTINUE
+	モチベ計算用 = 0
+	;素質での計算は編集中の出版物があるときのみ
+	IF 雑誌編集中()
+		FOR LCOUNT2, 0, VARSIZE("TALENT")
+			SIF TALENT:LCOUNT:LCOUNT2
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT2
+				CASE "服従", "淫乱", "大人しい", "好奇心", "保守的", "貞操無頓着", "自慰しやすい", "倒錯的"
+					モチベ計算用++
+				CASE "カメラマン", "隷属", "娼婦"
+					モチベ計算用 += 2
+				CASE "自制心", "無関心", "一線越えない", "貞操観念", "恥じらい", "潔癖症", "快感の否定"
+					モチベ計算用--
+			ENDSELECT
+		NEXT
+	ENDIF
+	モチベ加算値 = CFLAG:LCOUNT:モチベーション+モチベ計算用+世話好き人数("出版社")
+	SIF TALENT:LCOUNT:世話好き
+		モチベ加算値 -= 世話好き人数("出版社")
+	;配属先のキャラの相性で計算
+	モチベ加算値 += 相性モチベ補正(LCOUNT)
+	CFLAG:LCOUNT:モチベーション = LIMIT(モチベ加算値, 1, 100)
+
+	;ここでも日給500 やはりブラック
+	IF TALENT:LCOUNT:浪費癖
+		支出 += 600
+	ELSE
+		支出 += 500
+	ENDIF
+	;実務経験と撮影経験を加算
+	EXP:LCOUNT:実務経験++
+	EXP:LCOUNT:撮影経験++
+	;習得を加算
+	JUEL:LCOUNT:習得 += CFLAG:LCOUNT:モチベーション*10
+NEXT
+SIF 支出
+	CALL PASELIL, @"出版社のスタッフに給料{支出}＄を払いました"
+
 SIF VARLINE != LINECOUNT
 	WAIT
+
 RETURN
 
 @バックナンバー

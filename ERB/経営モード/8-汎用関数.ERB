@@ -403,6 +403,11 @@ DO
 						TARGET = -1
 					;配属先ごとに専用の処理がある場合は呼び出す
 					TRYCALLFORM %配属先%_ASSIGNON_OPTION, LRESULT
+					;配属先によっては即配属完了にする
+					SELECTCASE 配属先
+						CASE "調理室", "芸能プロダクション", "出版社"
+							CFLAG:LRESULT:配属完了 = 1
+					ENDSELECT
 					;実績:日向美ビタースイーツ♪のメンバーを全員娼館に配属する
 					実績用変数 = 0
 					IF 配属先 == "娼館"
@@ -510,3 +515,28 @@ ELSE
 ENDIF
 
 RETURNF 0
+
+@世話好き人数, ARGS, ARG
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 人数
+
+;娼館のみ同じ部屋のキャラが対象
+IF ARGS == "娼館"
+	FOR LCOUNT, 1, CHARANUM
+		SIF CSTR:LCOUNT:配属 != ARGS
+			CONTINUE
+		SIF TALENT:LCOUNT:世話好き && CFLAG:LCOUNT:配属完了 && CFLAG:LCOUNT:娼館部屋番号 == ARG
+			人数++
+	NEXT
+	RETURNF 人数
+ELSE
+	FOR LCOUNT, 1, CHARANUM
+		SIF CSTR:LCOUNT:配属 != ARGS
+			CONTINUE
+		SIF TALENT:LCOUNT:世話好き && CFLAG:LCOUNT:配属完了
+			人数++
+	NEXT
+	RETURNF 人数
+ENDIF
+
