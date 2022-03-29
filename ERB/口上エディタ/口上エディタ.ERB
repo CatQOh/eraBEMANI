@@ -18,10 +18,24 @@ FOR LCOUNT, 100, 130
 	ENDSELECT
 NEXT
 DRAWLINE
-PRINTL 　[100] 戻る
+PRINT 　[0] 戻る 
+;#; PRINT [1] 口上テンプレを出力する（作者用）
+PRINTL 
 
 INPUT
 SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		CLEARLINE LINECOUNT
+		FOR LCOUNT, 0, VARSIZE("TRAINNAME")
+			SIF TRAINNAME:LCOUNT == ""
+				CONTINUE
+			CALL 口上エディタ_コマンド, LCOUNT, 1
+		NEXT
+		OUTPUTLOG "CreatedDialogue/COM_KX1.ERB"
+		WAIT
+		RESTART
 	CASE 100 TO 130
 		IF CHKDATA(RESULT) == 0
 			LOADDATA RESULT
@@ -310,7 +324,7 @@ DO
 LOOP 1
 
 
-@口上エディタ_コマンド, コマンド
+@口上エディタ_コマンド, コマンド, テンプレ作成
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC コマンド
@@ -326,6 +340,7 @@ LOOP 1
 #DIMS DYNAMIC SPLITVARTEQUIP, 2
 #DIM DYNAMIC 着脱コマンド, VARSIZE("TRAINNAME")
 #DIM DYNAMIC 着脱切り替え
+#DIM DYNAMIC テンプレ作成
 {
 #DIMS DYNAMIC 分岐 =
 "初実行時",
@@ -362,7 +377,8 @@ FOR LCOUNT, 0, VARSIZE("TRAINNAME")
 	ENDSELECT
 NEXT
 
-;
+SIF テンプレ作成
+	GOTO テンプレ用出力
 
 ;分岐番号の表示は上から優先される
 
@@ -378,6 +394,60 @@ FOR LCOUNT, 0, VARSIZE("分岐")
 		SIF SPLITVAR:0 == TRAINNAME:コマンド && SPLITVAR:1 == 分岐:LCOUNT && SPLITVAR:2 != "乱数分岐"
 			執筆行数++
 	NEXT
+	$テンプレ用出力
+	IF テンプレ作成
+		;一部のコマンドは専用のテンプレ
+		SELECTCASE TRAINNAME:コマンド
+			CASE "下着扱きする"
+				PRINTL ;-------------------------------------------------
+				PRINTL ;下着扱きする %CSTR:PLAYER:下半身下着%で下着の名前を取得
+				PRINTL ;-------------------------------------------------
+				PRINTL @COM_下着扱きする_KX1
+				PRINTL 
+				RETURN
+			CASE "お酒を飲ませる"
+				PRINTL ;-------------------------------------------------
+				PRINTL ;お酒を飲ませる %酒名%で飲ませるお酒を取得
+				PRINTL ;-------------------------------------------------
+				PRINTL @COM_お酒を飲ませる_KX1
+				PRINTL 
+				RETURN
+			CASE "ジュースを飲ませる"
+				PRINTL ;-------------------------------------------------
+				PRINTL ;ジュースを飲ませる %酒名%で飲ませるジュースを取得 酒……？
+				PRINTL ;-------------------------------------------------
+				PRINTL @COM_ジュースを飲ませる_KX1
+				PRINTL 
+				RETURN
+			CASE "プレゼント"
+				PRINTL ;-------------------------------------------------
+				PRINTL ;プレゼント 恋慕、親愛のみ
+				PRINTL ;-------------------------------------------------
+				PRINTL @COM_プレゼント_KX1
+				PRINTL ;TFLAG:プレゼントでプレゼントしたものの詳細
+				PRINTL ;0 = スマイル
+				PRINTL ;1 = パセリカード
+				PRINTL ;2 = 日用品
+				PRINTL ;3 = アクセサリ
+				PRINTL ;4 = 服
+				PRINTL ;5 = 素敵な指輪
+				PRINTL ;6 = IIDX筐体
+				PRINTL ;7 = 特注品のディルド
+				PRINTL ;8 = 特殊プレゼント %特殊プレゼント%で名前を取得
+				PRINTL ;10 = アルストロメリア
+				PRINTL ;11 = 薔薇
+				PRINTL 
+				RETURN
+			CASE "下着扱き"
+				PRINTL ;-------------------------------------------------
+				PRINTL ;下着扱き %CSTR:下半身下着%で下着の名前を取得
+				PRINTL ;-------------------------------------------------
+				PRINTL @COM_下着扱き_KX1
+				PRINTL 
+				RETURN
+		ENDSELECT
+	ENDIF
+
 	;一部のコマンドは陥落してないと使えないのでどうにかする
 	SELECTCASE TRAINNAME:コマンド
 		;恋慕系のみのコマンド
@@ -385,10 +455,26 @@ FOR LCOUNT, 0, VARSIZE("分岐")
 		CASE "会話", "プレゼント", "スキンシップ", "まったりする", "吸血する", "吸血させる",
 			 "排卵マッサージ", "新妻プレイ"
 		}
+			IF テンプレ作成
+				PRINTL ;-------------------------------------------------
+				PRINTFORML ;%TRAINNAME:コマンド% 恋慕、親愛のみ
+				PRINTL ;-------------------------------------------------
+				PRINTFORML @COM_%TRAINNAME:コマンド%_KX1
+				PRINTL 
+				RETURN
+			ENDIF
 			SIF !GROUPMATCH(分岐:LCOUNT, "陥落済み", "恋慕", "親愛")
 				CONTINUE
 		;服従系のみのコマンド
 		CASE "アナル電極", "乳房電極", "フィストファック", "アナルフィスト", "両穴フィスト"
+			IF テンプレ作成
+				PRINTL ;-------------------------------------------------
+				PRINTFORML ;%TRAINNAME:コマンド% 服従、隷属のみ
+				PRINTL ;-------------------------------------------------
+				PRINTFORML @COM_%TRAINNAME:コマンド%_KX1
+				PRINTL 
+				RETURN
+			ENDIF
 			SIF !GROUPMATCH(分岐:LCOUNT, "陥落済み", "服従", "隷属")
 				CONTINUE
 		;陥落済みでのコマンド
@@ -399,8 +485,25 @@ FOR LCOUNT, 0, VARSIZE("分岐")
 			 "授乳手コキ", "正常位キスさせる", "逆レイプキス", "対面座位吸血", "背面座位吸血",
 			 "正常位吸血させる", "後背位吸血させる"
 		}
+			IF テンプレ作成
+				PRINTL ;-------------------------------------------------
+				PRINTFORML ;%TRAINNAME:コマンド% 陥落時のみ
+				PRINTL ;-------------------------------------------------
+				PRINTFORML @COM_%TRAINNAME:コマンド%_KX1
+				PRINTL 
+				RETURN
+			ENDIF
 			SIF !GROUPMATCH(分岐:LCOUNT, "陥落済み", "恋慕", "親愛", "淫乱", "娼婦", "服従", "隷属")
 				CONTINUE
+		CASEELSE
+			IF テンプレ作成
+				PRINTL ;-------------------------------------------------
+				PRINTFORML ;%TRAINNAME:コマンド%
+				PRINTL ;-------------------------------------------------
+				PRINTFORML @COM_%TRAINNAME:コマンド%_KX1
+				PRINTL 
+				RETURN
+			ENDIF
 	ENDSELECT
 	SELECTCASE 分岐:LCOUNT
 		CASE "陥落済み"
