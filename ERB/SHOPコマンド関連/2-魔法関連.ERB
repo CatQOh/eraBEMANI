@@ -408,94 +408,52 @@ DO
 			CALL INPUTF, 0, 1
 			SIF RESULT == 1
 				RESTART
+			詠唱魔法 = %使用スペル名%
+
+			;優先度は詠唱者の口上→対象の口上→地の文
+			;ただし地の文は口上側で管理するようになる
+			IF FLAG:口上表示
+				TRYCCALLFORM SPELLCAST_%CSVNAMERPS(詠唱者)%, 詠唱者, 対象:0, 対象:1
+				CATCH
+					TRYCCALLFORM RECIEVE_SPELLCAST_%CSVNAMERPS(対象:0)%, 詠唱者, 対象:0, 対象:1
+					CATCH
+						TRYCCALLFORM RECIEVE_SPELLCAST_%CSVNAMERPS(対象:1)%, 詠唱者, 対象:0, 対象:1
+						CATCH
+							SIF FLAG:地の文表示
+								CALL SPELLCAST_地の文, 詠唱者, 対象:0, 対象:1
+						ENDCATCH
+					ENDCATCH
+				ENDCATCH
+			ELSEIF FLAG:地の文表示
+				CALL SPELLCAST_地の文, 詠唱者, 対象:0, 対象:1
+			ENDIF
+			CALL EXPUP, "詠唱経験", 必要レベル, 詠唱者
 			;魔法の効果処理
 			SELECTCASE 使用スペル名
 				CASE "フリージングアトモスフィア"
-					PRINTFORML %CALLNAME:詠唱者%は%使用スペル名%を唱えた
-					PRINTFORML 突然、外が寒くなった気がする……
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+3
-					EXP:詠唱者:詠唱経験 += 3
 					フリージングアトモスフィア = スキル
 					SIF TIME == 0
 						FLAG:気温 -= フリージングアトモスフィア*30
 				CASE "バーニンザフロア"
-					PRINTFORML %CALLNAME:詠唱者%は%使用スペル名%を唱えた
-					PRINTFORML 突然、外が暖かくなった気がする……
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+3
-					EXP:詠唱者:詠唱経験 += 3
 					バーニンザフロア = スキル
 					SIF TIME == 0
 						FLAG:気温 += バーニンザフロア*30
 				CASE "ストームバスター"
-					PRINTFORML %CALLNAME:詠唱者%は%使用スペル名%を唱えた
-					SELECTCASE FLAG:天気
-						CASE 1
-							IF TIME == 0
-								PRINTFORML 日差しが強くなり、雲ひとつない青空が天に広がった……
-							ELSE
-								PRINTFORML 月明かりと星明かりがよりいっそう強くなった気がする……
-							ENDIF
-						CASEELSE
-							IF TIME == 0
-								PRINTFORML 数刻が過ぎると、空は快晴となった……
-							ELSE
-								PRINTFORML 数刻が過ぎると、空には綺麗な星空が広がっていた……
-							ENDIF
-					ENDSELECT
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+4
-					EXP:詠唱者:詠唱経験 += 4
 					ストームバスター = スキル
 					スウィートレイン = 0
 					スノープリズム = 0
 					FLAG:天気 = 1
 				CASE "スウィートレイン"
-					PRINTFORML %CALLNAME:詠唱者%は%使用スペル名%を唱えた
-					SELECTCASE FLAG:天気
-						CASE 3, 4, 5
-							;全然スウィートじゃない
-							PRINTFORML 雨はさらに強くなり、風がうなり始めた……
-						CASE 6, 7
-							PRINTFORML 雪は突然、雨と変わり、ざぁざぁと音を立てて降り始めた……
-						CASEELSE
-							PRINTFORML ぽつぽつと雨が降り始めた……
-					ENDSELECT
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+4
-					EXP:詠唱者:詠唱経験 += 4
 					ストームバスター = 0
 					スウィートレイン = スキル
 					スノープリズム = 0
 					FLAG:天気 = 3
 				CASE "スノープリズム"
-					PRINTFORML %CALLNAME:詠唱者%は%使用スペル名%を唱えた
-					SELECTCASE FLAG:天気
-						CASE 3, 4, 5
-							PRINTFORML 雨は突如、雹のつぶてになり、やがて白く柔らかい雪へと変わった……
-						CASE 6, 7
-							PRINTFORML 降雪はさらに勢いを増し、外の風景を真っ白に染め上げた……
-						CASEELSE
-							PRINTFORML 空模様は変わらないまま雪が降ってきた……
-					ENDSELECT
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+4
-					EXP:詠唱者:詠唱経験 += 4
 					ストームバスター = 0
 					スウィートレイン = 0
 					スノープリズム = スキル
 					FLAG:天気 = 6
 				CASE "ビーストモード", "ビーストモードtype2"
-					PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%に対してビーストモードを唱えた
-					PRINTFORM %CALLNAME:対象%に
-					SIF !TALENT:対象:動物耳
-						PRINT 動物耳
-					SIF !TALENT:対象:動物耳 && !TALENT:対象:尻尾
-						PRINT と
-					SIF !TALENT:対象:尻尾
-						PRINT 尻尾
-					PRINT が生え
-					SIF 使用スペル名 == "ビーストモードtype2"
-						PRINT 、全身が体毛に覆われ
-					PRINTL た……
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+5
-					EXP:詠唱者:詠唱経験 += 5
 					;ビーストモード:0=効果時間 1=耳の有無 2=尻尾の有無 3=ファーリーの有無
 					;ビーストモードS=元の種族名
 					ビーストモード:対象:0 = スキル
@@ -513,45 +471,21 @@ DO
 						TALENT:対象:ファーリー = 1
 					ENDIF
 				CASE "リ：ジェネレーション"
-					PRINTFORML %CALLNAME:詠唱者%はリ：ジェネレーションを唱えた
-					PRINTFORML 館の周囲にぼんやりと魔法陣が浮かび上がり、少しだけ心身が安らかになった……
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+6
-					EXP:詠唱者:詠唱経験 += 6
 					リジェネレーション = スキル
 				CASE "ジェントルストレス"
-					PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%に対してジェントルストレスを唱えた
-					PRINTFORML %CALLNAME:対象%の感情はとても穏やかになった……
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+6
-					EXP:詠唱者:詠唱経験 += 6
 					ジェントルストレス:対象:0 = スキル
 					ジェントルストレス:対象:1 = CFLAG:対象:ストレス値
 				CASE "クロノダイブ"
-					PRINTFORML %CALLNAME:詠唱者%はクロノダイブを唱えた
-					PRINTFORML 激しい地鳴りと地震が響き渡り、館を出ると今までとは違う風景が外に広がっていた……
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+7
-					EXP:詠唱者:詠唱経験 += 7
 					YEAR = 年
 					MONTH = 月
 					DAYS = 日
 				CASE "ヒプノティッククライシス"
-					PRINTFORML %CALLNAME:詠唱者%はヒプノティッククライシスを唱えた
-					PRINTFORML %CALLNAME:MASTER%の瞳は見るものを虜にする魔力を得て、よりいっそう魅力的になった……
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+7
-					EXP:詠唱者:詠唱経験 += 7
 					ヒプノティッククライシス = スキル
 				CASE "ティル・ナ・ノーグ"
-					PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%に対してティル・ナ・ノーグを唱えた
-					PRINTFORML %CALLNAME:対象%はまばゆい光に包まれ、人間と比べても遜色の無い大きさの身体になった……
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+7
-					EXP:詠唱者:詠唱経験 += 7
 					ティルナノーグ:対象:0 = スキル
 					TALENT:対象:小人体型 = 0
 					;TALENT:対象:小柄体型 = 1
 				CASE "エナジードライブ"
-					PRINTFORML %CALLNAME:詠唱者%はエナジードライブを唱えた
-					PRINTFORML %CALLNAME:MASTER%の身体はさらなる活力を得た……
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+8
-					EXP:詠唱者:詠唱経験 += 8
 					エナジードライブ = スキル
 					エナジードライブ:1 = スキル-7
 					FOR LCOUNT, 0, VARSIZE("ABL")
@@ -559,10 +493,6 @@ DO
 							ABL:MASTER:LCOUNT += スキル-7
 					NEXT
 				CASE "ポゼッション"
-					PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%に対してポゼッションを唱えた
-					PRINTFORML %CALLNAME:対象%は意識を失い、再び目が覚めると自身の体の違和感に困惑している……
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+9
-					EXP:詠唱者:詠唱経験 += 9
 					FOR LCOUNT, 0, 30
 						SIF ABLNAME:LCOUNT == "魔法技能"
 							CONTINUE
@@ -571,31 +501,9 @@ DO
 					NEXT
 					CFLAG:対象:ポゼ = スキル
 				CASE "ミラクル・スイート・スイーツ・マジック！！"
-					PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%と%CALLNAME:(対象:1)%にミラクル・スイート・スイーツ・マジック！！を唱えた
-					;無関心
-					IF 相性値(対象, 対象:1) == 100 && 相性値(対象:1, 対象) == 100
-						PRINTFORML %CALLNAME:対象%と%CALLNAME:(対象:1)%は少しお互いのことを気にし始めたようだ……
-					;敵対
-					ELSEIF 相性値(対象, 対象:1) < 100 && 相性値(対象:1, 対象) < 100
-						PRINTFORML %CALLNAME:対象%と%CALLNAME:(対象:1)%の間柄が少し改善したようだ……
-					;親密
-					ELSEIF 相性値(対象, 対象:1) >= 100 && 相性値(対象:1, 対象) >= 100
-						PRINTFORML %CALLNAME:対象%と%CALLNAME:(対象:1)%の絆がさらに深まったようだ……
-					;片方だけ悪い
-					ELSEIF 相性値(対象, 対象:1) < 100
-						PRINTFORML %CALLNAME:対象%は%CALLNAME:(対象:1)%に心を少し開いた…… 
-					ELSEIF 相性値(対象:1, 対象) < 100
-						PRINTFORML %CALLNAME:(対象:1)%は%CALLNAME:対象%に心を少し開いた……
-					ENDIF
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+10
-					EXP:詠唱者:詠唱経験 += 10
 					CALL 相性加算, 対象, 対象:1, 20
 					CALL 相性加算, 対象:1, 対象, 20
 				CASE "バック・トゥ・クロノス"
-					PRINTFORML %CALLNAME:詠唱者%はバック・トゥ・クロノスを唱えた
-					PRINTFORML 何も起こっていないように思えるが、1日前の世界に遡ったようだ……
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+10
-					EXP:詠唱者:詠唱経験 += 10
 					DO
 						DAYS--
 						IF DAYS <= 0
@@ -616,14 +524,6 @@ DO
 					SIF 対象 < 詠唱者
 						詠唱者--
 				CASE "ハニーバニー"
-					PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%に対してハニーバニーを唱えた
-					IF CFLAG:対象:陥落
-						PRINTFORML しかし%CALLNAME:対象%は既に陥落してるので意味が無かった……
-					ELSE
-						PRINTFORML 一瞬視界が眩んだ%CALLNAME:対象%は、気がつくと明らかに%CALLNAME:MASTER%への視線が変わった……
-					ENDIF
-					PRINTFORML %CALLNAME:詠唱者%の詠唱経験+6
-					EXP:詠唱者:詠唱経験 += 6
 					ハニーバニー:対象:0 = スキル
 				CASEELSE
 					CONTINUE
@@ -661,13 +561,23 @@ CALL RGBBAR, CFLAG:対象:タグ色/0x10000, CFLAG:対象:タグ色%0x10000/0x10
 SIF RESULT == 0
 	RETURN 0
 
-PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%にジュエリーストームを唱えた
-SIF CFLAG:対象:タグ色
-	SETCOLOR CFLAG:対象:タグ色
-PRINTFORML %CALLNAME:対象%は無機物となり、瞳の輝きも失われた。もう元に戻ることはないだろう……
-RESETCOLOR
-PRINTFORML %CALLNAME:詠唱者%の詠唱経験+5
-EXP:詠唱者:詠唱経験 += 5
+詠唱魔法 = ジュエリーストーム
+
+;優先度は詠唱者の口上→対象の口上→地の文
+;ただし地の文は口上側で管理するようになる
+IF FLAG:口上表示
+	TRYCCALLFORM SPELLCAST_%CSVNAMERPS(詠唱者)%, 詠唱者, 対象
+	CATCH
+		TRYCCALLFORM RECIEVE_SPELLCAST_%CSVNAMERPS(対象)%, 詠唱者, 対象
+		CATCH
+			SIF FLAG:地の文表示
+				CALL SPELLCAST_地の文, 詠唱者, 対象
+		ENDCATCH
+	ENDCATCH
+ELSEIF FLAG:地の文表示
+	CALL SPELLCAST_地の文, 詠唱者, 対象
+ENDIF
+CALL EXPUP, "詠唱経験", 5, 詠唱者
 
 ;価値は1000は保証
 価値 = 1000
@@ -1034,3 +944,120 @@ FOR LCOUNT, 0, CHARANUM
 			PRINTFORMW %CALLNAME:LCOUNT%にかけられた[ハニーバニー]の効果が切れました
 	ENDIF
 NEXT
+
+@SPELLCAST_地の文, 詠唱者, 対象:0, 対象:1
+#DIM DYNAMIC 詠唱者
+#DIM DYNAMIC 対象, 2
+
+SELECTCASE 詠唱魔法
+	CASE "フリージングアトモスフィア"
+		PRINTFORML %CALLNAME:詠唱者%は%詠唱魔法%を唱えた
+		PRINTFORML 突然、外が寒くなった気がする……
+	CASE "バーニンザフロア"
+		PRINTFORML %CALLNAME:詠唱者%は%詠唱魔法%を唱えた
+		PRINTFORML 突然、外が暖かくなった気がする……
+	CASE "ストームバスター"
+		PRINTFORML %CALLNAME:詠唱者%は%詠唱魔法%を唱えた
+		SELECTCASE FLAG:天気
+			CASE 1
+				IF TIME == 0
+					PRINTFORML 日差しが強くなり、雲ひとつない青空が天に広がった……
+				ELSE
+					PRINTFORML 月明かりと星明かりがよりいっそう強くなった気がする……
+				ENDIF
+			CASEELSE
+				IF TIME == 0
+					PRINTFORML 数刻が過ぎると、空は快晴となった……
+				ELSE
+					PRINTFORML 数刻が過ぎると、空には綺麗な星空が広がっていた……
+				ENDIF
+		ENDSELECT
+	CASE "スウィートレイン"
+		PRINTFORML %CALLNAME:詠唱者%は%詠唱魔法%を唱えた
+		SELECTCASE FLAG:天気
+			CASE 3, 4, 5
+				;全然スウィートじゃない
+				PRINTFORML 雨はさらに強くなり、風がうなり始めた……
+			CASE 6, 7
+				PRINTFORML 雪は突然、雨と変わり、ざぁざぁと音を立てて降り始めた……
+			CASEELSE
+				PRINTFORML ぽつぽつと雨が降り始めた……
+		ENDSELECT
+	CASE "スノープリズム"
+		PRINTFORML %CALLNAME:詠唱者%は%詠唱魔法%を唱えた
+		SELECTCASE FLAG:天気
+			CASE 3, 4, 5
+				PRINTFORML 雨は突如、雹のつぶてになり、やがて白く柔らかい雪へと変わった……
+			CASE 6, 7
+				PRINTFORML 降雪はさらに勢いを増し、外の風景を真っ白に染め上げた……
+			CASEELSE
+				PRINTFORML 空模様は変わらないまま雪が降ってきた……
+		ENDSELECT
+	CASE "ビーストモード", "ビーストモードtype2"
+		PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%に対してビーストモードを唱えた
+		PRINTFORM %CALLNAME:対象%に
+		SIF !TALENT:対象:動物耳
+			PRINT 動物耳
+		SIF !TALENT:対象:動物耳 && !TALENT:対象:尻尾
+			PRINT と
+		SIF !TALENT:対象:尻尾
+			PRINT 尻尾
+		PRINT が生え
+		SIF 詠唱魔法 == "ビーストモードtype2"
+			PRINT 、全身が体毛に覆われ
+		PRINTL た……
+	CASE "リ：ジェネレーション"
+		PRINTFORML %CALLNAME:詠唱者%はリ：ジェネレーションを唱えた
+		PRINTFORML 館の周囲にぼんやりと魔法陣が浮かび上がり、少しだけ心身が安らかになった……
+	CASE "ジェントルストレス"
+		PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%に対してジェントルストレスを唱えた
+		PRINTFORML %CALLNAME:対象%の感情はとても穏やかになった……
+	CASE "クロノダイブ"
+		PRINTFORML %CALLNAME:詠唱者%はクロノダイブを唱えた
+		PRINTFORML 激しい地鳴りと地震が響き渡り、館を出ると今までとは違う風景が外に広がっていた……
+	CASE "ヒプノティッククライシス"
+		PRINTFORML %CALLNAME:詠唱者%はヒプノティッククライシスを唱えた
+		PRINTFORML %CALLNAME:MASTER%の瞳は見るものを虜にする魔力を得て、よりいっそう魅力的になった……
+	CASE "ティル・ナ・ノーグ"
+		PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%に対してティル・ナ・ノーグを唱えた
+		PRINTFORML %CALLNAME:対象%はまばゆい光に包まれ、人間と比べても遜色の無い大きさの身体になった……
+	CASE "エナジードライブ"
+		PRINTFORML %CALLNAME:詠唱者%はエナジードライブを唱えた
+		PRINTFORML %CALLNAME:MASTER%の身体はさらなる活力を得た……
+	CASE "ポゼッション"
+		PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%に対してポゼッションを唱えた
+		PRINTFORML %CALLNAME:対象%は意識を失い、再び目が覚めると自身の体の違和感に困惑している……
+	CASE "ミラクル・スイート・スイーツ・マジック！！"
+		PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%と%CALLNAME:(対象:1)%にミラクル・スイート・スイーツ・マジック！！を唱えた
+		;無関心
+		IF 相性値(対象, 対象:1) == 100 && 相性値(対象:1, 対象) == 100
+			PRINTFORML %CALLNAME:対象%と%CALLNAME:(対象:1)%は少しお互いのことを気にし始めたようだ……
+		;敵対
+		ELSEIF 相性値(対象, 対象:1) < 100 && 相性値(対象:1, 対象) < 100
+			PRINTFORML %CALLNAME:対象%と%CALLNAME:(対象:1)%の間柄が少し改善したようだ……
+		;親密
+		ELSEIF 相性値(対象, 対象:1) >= 100 && 相性値(対象:1, 対象) >= 100
+			PRINTFORML %CALLNAME:対象%と%CALLNAME:(対象:1)%の絆がさらに深まったようだ……
+		;片方だけ悪い
+		ELSEIF 相性値(対象, 対象:1) < 100
+			PRINTFORML %CALLNAME:対象%は%CALLNAME:(対象:1)%に心を少し開いた…… 
+		ELSEIF 相性値(対象:1, 対象) < 100
+			PRINTFORML %CALLNAME:(対象:1)%は%CALLNAME:対象%に心を少し開いた……
+		ENDIF
+	CASE "バック・トゥ・クロノス"
+		PRINTFORML %CALLNAME:詠唱者%はバック・トゥ・クロノスを唱えた
+		PRINTFORML 何も起こっていないように思えるが、1日前の世界に遡ったようだ……
+	CASE "ジュエリーストーム"
+		PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%にジュエリーストームを唱えた
+		SIF CFLAG:対象:タグ色
+			SETCOLOR CFLAG:対象:タグ色
+		PRINTFORML %CALLNAME:対象%は無機物となり、瞳の輝きも失われた。もう元に戻ることはないだろう……
+		RESETCOLOR
+	CASE "ハニーバニー"
+		PRINTFORML %CALLNAME:詠唱者%は%CALLNAME:対象%に対してハニーバニーを唱えた
+		IF CFLAG:対象:陥落
+			PRINTFORML しかし%CALLNAME:対象%は既に陥落してるので意味が無かった……
+		ELSE
+			PRINTFORML 一瞬視界が眩んだ%CALLNAME:対象%は、気がつくと明らかに%CALLNAME:MASTER%への視線が変わった……
+		ENDIF
+ENDSELECT
