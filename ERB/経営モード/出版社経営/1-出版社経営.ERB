@@ -13,7 +13,7 @@ IF MATCH(雑誌名, "") < 3
 			CONTINUE
 		PRINTFORM 　%雑誌名:LCOUNT% 
 		IF 雑誌発売日:LCOUNT > 0
-			PRINTFORML 発売まであと{(雑誌発売日+1)/2}日
+			PRINTFORML 発売まであと{(雑誌発売日:LCOUNT+1)/2}日
 		ELSE
 			PRINTFORM 価格:{雑誌価格:LCOUNT} 残り部数:{部数:LCOUNT} 品質:{雑誌品質:LCOUNT} 需要:
 			SELECTCASE 雑誌需要:LCOUNT
@@ -30,7 +30,7 @@ IF MATCH(雑誌名, "") < 3
 				CASE 0
 					CALL PRINTCOLOR, "皆無", "gray"
 			ENDSELECT
-			PRINTFORML  [{LCOUNT+100}] 読む [{LCOUNT+200}] 増刷する(現在:\@ 刷数 == 1 ? 初版 # 第{刷数}刷 \@) [{LCOUNT+300}] 廃刊する
+			PRINTFORML  [{LCOUNT+100}] 読む [{LCOUNT+200}] 増刷する(現在:\@ 刷数:LCOUNT == 1 ? 初版 # 第{刷数:LCOUNT}刷 \@) [{LCOUNT+300}] 廃刊する
 		ENDIF
 	NEXT
 ENDIF
@@ -70,7 +70,7 @@ DO
 			FOR LCOUNT, 0, 20
 				SIF 雑誌内容:対象雑誌:LCOUNT == ""
 					CONTINUE
-				PRINTFORML 　{LCOUNT, 2}ページ目,%雑誌内容:対象雑誌:LCOUNT%
+				PRINTFORML 　{LCOUNT+1, 2}ページ目,%雑誌内容:対象雑誌:LCOUNT%
 			NEXT
 			WAIT
 			RESTART
@@ -130,7 +130,7 @@ PRINTL 雑誌の編集中は、妊娠等のやむを得ない理由が無い限�
 PRINTW またモデルのキャラの人気度に応じて品質も上がります。本が売れるほど出演者の人気度も上昇します
 
 @雑誌編集
-#DIM DYNAMIC 主要キャラ
+#DIM DYNAMIC 主要キャラ = -1
 #DIM DYNAMIC 編集者レベル
 #DIM DYNAMIC カメラマン総数
 #DIM DYNAMIC LCOUNT
@@ -180,7 +180,11 @@ ENDSELECT
 
 $編集
 DRAWLINE
-PRINTFORML □\@ 編集中雑誌名:対象雑誌 == "" ? [ 0] タイトルを付ける # %編集中雑誌名:対象雑誌% [0] 変更する \@
+IF 主要キャラ == -1
+	PRINTL □雑誌編集中
+ELSE
+	PRINTFORML □\@ 編集中雑誌名:対象雑誌 == "" ? [ 0] タイトルを付ける # %編集中雑誌名:対象雑誌% [0] 変更する \@
+ENDIF
 ;編集中雑誌内容は「写真名/キャラNO/アルバムNO」の書式
 品質 = 0
 頁数 = 0
@@ -205,7 +209,7 @@ FOR LCOUNT, 0, 20
 			品質 += 人気度:(ページ情報NO:0)
 		写真使用中:(ページ情報NO:0):(ページ情報NO:1) = 1
 		出演者:(ページ情報NO:0)++
-		SIF 出演者:主要キャラ < 出演者:(ページ情報NO:0)
+		SIF 主要キャラ == -1 || 出演者:主要キャラ < 出演者:(ページ情報NO:0)
 			主要キャラ = ページ情報NO:0
 		頁数++
 	ELSE
@@ -302,6 +306,8 @@ DO
 			SIF PICS:(RESULT:0):(RESULT:1) == ""
 				GOTO 編集
 			編集中雑誌内容:対象雑誌:対象ページ = %PICS:(RESULT:0):(RESULT:1)%/{RESULT:0}/{RESULT:1}
+			SIF 主要キャラ == -1
+				主要キャラ = RESULT:0
 			GOTO 編集
 		CASE 30
 			PRINTL 価格を入力してください 目安:品質＞価格 品質の割合が高いほど需要が高く売れやすい
@@ -331,9 +337,9 @@ IF RESULTS == "ランダム命名"
 		DATAFORM %CSVCALLNAMEF(主要キャラ)%が%CALLNAME:MASTER%にあれこれされる本
 		DATAFORM 月刊%CSVCALLNAMEF(主要キャラ)%{YEAR}年{MONTH}月号
 		DATAFORM 週刊%CSVCALLNAMEF(主要キャラ)%
+		DATAFORM 月刊\@ EXISTCSV(主要キャラ) && CSVCSTR(主要キャラ, GETNUM(CSTR, "登場作品")) != "" ? %CSVCSTR(主要キャラ, GETNUM(CSTR, "登場作品"))%の裏側大暴露 # %CSVCALLNAMEF(主要キャラ)%の裏側大暴露 \@{YEAR}年{MONTH}月号
 		DATAFORM 月刊エロカディア{YEAR}年{MONTH}月号
 		DATAFORM 月刊調教のすゝめ{YEAR}年{MONTH}月号
-		DATAFORM \@ EXISTCSV(主要キャラ) && CSVCSTR(主要キャラ, GETNUM(CSTR, "登場作品")) != "" ? %CSVCSTR(主要キャラ, GETNUM(CSTR, "登場作品"))%の裏側大暴露 # %CSVCALLNAMEF(主要キャラ)%の裏側大暴露 \@
 		DATAFORM 月刊ヘヴンリームーン{YEAR}年{MONTH}月号
 		DATAFORM 月刊天国へようこそ{YEAR}年{MONTH}月号
 		DATAFORM 月刊ラブ♡シャイン{YEAR}年{MONTH}月号
@@ -344,6 +350,8 @@ IF RESULTS == "ランダム命名"
 		DATAFORM 月刊EROICA{YEAR}年{MONTH}月号
 		DATAFORM 月刊SEX-Plan{YEAR}年{MONTH}月号
 		DATAFORM 月刊エッチダナァ{YEAR}年{MONTH}月号
+		DATAFORM 月刊ハードコアマニア{YEAR}年{MONTH}月号
+		DATAFORM 月刊HOTな夜の㊙ブック{YEAR}年{MONTH}月号
 	ENDDATA
 ENDIF
 PRINTFORML 「%RESULTS%」でよろしいですか？
@@ -488,8 +496,10 @@ FOR LCOUNT, 1, CHARANUM
 	;習得を加算
 	JUEL:LCOUNT:習得 += CFLAG:LCOUNT:モチベーション*10
 NEXT
-SIF 支出
+IF 支出 && TIME == 1
 	CALL PASELIL, @"出版社のスタッフに給料{支出}＄を払いました"
+	MONEY -= 支出
+ENDIF
 
 SIF VARLINE != LINECOUNT
 	WAIT
@@ -512,7 +522,7 @@ FOR LCOUNT, 0, 終端
 	IF LCOUNT >= ページ数*20
 		;SPLITVAR:0=雑誌名 1=配列
 		SPLIT バックナンバー名:LCOUNT, "/", SPLITVAR
-		PRINTFORML [{LCOUNT, 2}] %SPLITVAR:0% 総売上部数:{バックナンバー売上:TOINT(SPLITVAR:1)}
+		PRINTFORML [{LCOUNT+1, 2}] %SPLITVAR:0% 総売上部数:{バックナンバー売上:TOINT(SPLITVAR:1)}
 	ENDIF
 NEXT
 IF 終端 == 0
