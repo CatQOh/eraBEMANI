@@ -1,5 +1,5 @@
-﻿タイトル：EmueraEE 最終更新日:2022/03/10
-バージョン：1.824+v14+EE+v11
+﻿タイトル：EmueraEE 最終更新日:2022/04/02
+バージョン：1.824+v14+EE+v12
 改変者：Enter
 元となったアプリケーション：Emuera1.824+v14（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
@@ -16,6 +16,7 @@ Emueraをベースに改造を施したバージョンです。追加された�
 
 ・PLAYSOUND "ファイル名.拡張子"
 「sound」フォルダ内にある音声ファイルを1回再生します
+v12で10チャンネルに対応。最大10個のファイルを同時再生できる
 
 ・STOPSOUND
 PLAYSOUNDで再生中の音声ファイルを停止します
@@ -102,6 +103,9 @@ CALLFORMFのTRY命令 CALLFORMF同様に返り値は破棄されるが、関数�
 
 ・FORCE_QUIT_AND_RESTART
 入力待ちせずにQUIT_AND_RESTARTする命令 入力待ちを挟まず連続実行されるとダイアログボックスで警告が出る
+
+・FORCE_BEGIN システム関数
+BEGINの制約を受けずに強制的にBEGINを実行する。フローを意図的に壊すため、予期せぬ不具合が起こる可能性があります
 
 ・WebPに対応
 がめら氏作の「src1824+v11+webp+Secure」を参考にWebP読み込み機能を追加
