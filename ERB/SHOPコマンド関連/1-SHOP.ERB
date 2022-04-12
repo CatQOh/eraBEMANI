@@ -344,6 +344,8 @@ SIF FINDELEMENT(所持ビデオ, "", 0, VARSIZE("所持ビデオ"), 1) > 0
 SIF 部屋ログ != ""
 	コマンド表示用:7 = %SET_TOOLTIP("[306] - 部屋ログ ", "居住部屋で起きた出来事を確認します")%
 
+コマンド表示用:8 = %SET_TOOLTIP("[307] - PLAYLOG  ", "プレイログ及び現金出納帳を確認します")%
+
 SIF STRJOIN(コマンド表示用, "") != "　"
 	HTML_PRINT STRJOIN(コマンド表示用, "")
 
@@ -942,6 +944,9 @@ SELECTCASE RESULT
 	CASE 306
 		SIF 部屋ログ != ""
 			CALL 部屋ログ表示
+	;プレイログ
+	CASE 307
+		CALL プレイログ閲覧
 	;アイテム
 	CASE 400
 		CALL プレイ称号計算, "アイテム"
@@ -1715,6 +1720,70 @@ SELECTCASE RESULT
 ENDSELECT
 
 GOTO TOP
+
+@プレイログ閲覧
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 最大文字数, 4
+#DIMS DYNAMIC SPLITVAR, 3
+#DIMS DYNAMIC DETAILVAR, 4
+#DIMS DYNAMIC 同上, 3
+
+FOR LCOUNT, ページ数*30, ページ数*30+30
+	SIF 現金出納帳:LCOUNT == ""
+		BREAK
+	SPLIT 現金出納帳:LCOUNT, "/", SPLITVAR
+	SPLIT SPLITVAR:0, "-", DETAILVAR
+	SIF STRLENS(DETAILVAR:0) > 最大文字数:0
+		最大文字数:0 = STRLENS(DETAILVAR:0)
+	SIF STRLENS(DETAILVAR:3) > 最大文字数:1
+		最大文字数:1 = STRLENS(DETAILVAR:3)
+	;邪悪すぎる式
+	SIF STRLENS(TODIGSEP(ABS(TOINT(SPLITVAR:1)))) > 最大文字数:2
+		最大文字数:2 = STRLENS(TODIGSEP(ABS(TOINT(SPLITVAR:1))))
+	SIF STRLENS(TODIGSEP(TOINT(SPLITVAR:2))) > 最大文字数:3
+		最大文字数:3 = STRLENS(TODIGSEP(TOINT(SPLITVAR:2)))
+NEXT
+
+DRAWLINE
+PRINTFORML │%"年", 最大文字数:0, LEFT%│月│日│%"概要", 最大文字数:1, LEFT%│%"入金", 最大文字数:2, LEFT%│%"出金", 最大文字数:2, LEFT%│%"残高", 最大文字数:3, LEFT%│
+FOR LCOUNT, ページ数*30, ページ数*30+30
+	SIF 現金出納帳:LCOUNT == ""
+		BREAK
+	SPLIT 現金出納帳:LCOUNT, "/", SPLITVAR
+	SPLIT SPLITVAR:0, "-", DETAILVAR
+	;あまりにも長いので数行に分割する
+	PRINTFORM │\@ 同上:0 != DETAILVAR:0 ? %DETAILVAR:0, 最大文字数:0% # %"", 最大文字数:0% \@
+	PRINTFORM │\@ 同上:1 != DETAILVAR:1 ? %DETAILVAR:1, 2% # %"  "% \@
+	PRINTFORM │\@ 同上:2 != DETAILVAR:2 ? %DETAILVAR:2, 2% # %"  "% \@
+	PRINTFORM │%DETAILVAR:3, 最大文字数:1, LEFT%
+	PRINTFORM │\@ SIGN(TOINT(SPLITVAR:1)) > 0 ? %TODIGSEP(TOINT(SPLITVAR:1)), 最大文字数:2% # %"", 最大文字数:2% \@│\@ SIGN(TOINT(SPLITVAR:1)) < 0 ? %TODIGSEP(ABS(TOINT(SPLITVAR:1))), 最大文字数:2% # %"", 最大文字数:2% \@
+	PRINTFORM │%TODIGSEP(TOINT(SPLITVAR:2)), 最大文字数:3%
+	PRINTL │
+	同上:0 = %DETAILVAR:0%
+	同上:1 = %DETAILVAR:1%
+	同上:2 = %DETAILVAR:2%
+NEXT
+DRAWLINE
+PRINTPLAINFORM 　現金出納帳,{ページ数+1}　
+CALL PRINTSPACE, ページ数 > 0, "[1] - 前ページ "
+PRINT [0] - 戻る
+CALL PRINTSPACE, 現金出納帳:(ページ数*30+31) != "", "[9] - 次ページ"
+PRINTL 
+
+CALL INPUTF, 0, 1, 9
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		SIF ページ数 > 0
+			ページ数--
+	CASE 9
+		SIF 現金出納帳:(ページ数*30+31) != ""
+			ページ数++
+ENDSELECT
+
+RESTART
 
 @通常モード_BGM
 ;季節で変わる
