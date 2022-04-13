@@ -1,7 +1,7 @@
-﻿タイトル：EmueraEE 最終更新日:2022/04/02
-バージョン：1.824+v14+EE+v12
+﻿タイトル：EmueraEE 最終更新日:2022/04/13
+バージョン：1.824+v15+EM+EE+v12
 改変者：Enter
-元となったアプリケーション：Emuera1.824+v14（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)
+元となったアプリケーション：Emuera1.824+v14（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)、Emuera.EM（EvilMask制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
 
 ※eramakerの作者様及びMinorShift様、妊の人様はEmueraEEの製作には関与していません。
@@ -10,6 +10,7 @@
 ※同梱のEmuera-Anchor-EEは英語圏のeraコミュニティで使用されている「Emuera-Anchor」をEEに対応させたものです
 各UIやエラーメッセージ等が英語になっています。必要に応じて使い分けてください
 
+[v12にてEmuera.EMと機能統合。詳しくは同梱のEmuera.EM_read me.txtをご覧ください]
 
 [概要]
 Emueraをベースに改造を施したバージョンです。追加された機能は以下の通り

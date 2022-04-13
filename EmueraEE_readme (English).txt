@@ -7,6 +7,7 @@ Contact:Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
 ※eramaker's dev,MinorShift and 妊の人 were not relate EmueraEE's development.
 If you get error please report above addres.
 
+[Merged Emuera.EM in v12. Please read Emuera.EM_readme.txt too.]
 
 [Summary]
 ・PLAYSOUND "filename.extension"
