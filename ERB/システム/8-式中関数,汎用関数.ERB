@@ -2050,12 +2050,23 @@ SIF TEQUIP:ARG:尿道スライム
 ;引数のフォーマットは「イベント内容」
 ARRAYSHIFT プレイログ, 1, ""
 ;年月日を自動で付ける
-プレイログ:0 = {YEAR}年{MONTH}月{DAYS}日 %内容%
+プレイログ:0 = {YEAR}年{MONTH}月{DAYS}日\@ TIME == 0 ? 昼 # 夜 \@ %内容%
 
 @現金出納帳記録, 内容
 #DIMS DYNAMIC 内容
+#DIMS DYNAMIC SPLITVAR, 2
 
 ;引数のフォーマットは「イベント/入出金」
+;一応TOINTで解釈できない引数渡されたら記録しないorTHROW
+SPLIT 内容, "/", SPLITVAR
+IF !ISNUMERIC(SPLITVAR:1)
+	;#; THROW 現金出納帳記録で数字解釈できない引数が渡されました
+	RETURN
+ENDIF
+;ついでに0でも記録しない
+SIF TOINT(SPLITVAR:1) == 0
+	RETURN
+
 ARRAYSHIFT 現金出納帳, 1, ""
 ;年月日と所持金を自動で付ける
 現金出納帳:0 = {YEAR}-{MONTH}-{DAYS}-%内容%/{MONEY}
