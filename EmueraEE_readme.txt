@@ -1,7 +1,7 @@
-﻿タイトル：EmueraEE 最終更新日:2022/04/13
-バージョン：1.824+v15+EM+EE+v12
+﻿タイトル：EmueraEE 最終更新日:2022/04/15
+バージョン：1.824+v15+EMv2+EE+v12
 改変者：Enter
-元となったアプリケーション：Emuera1.824+v14（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)、Emuera.EM（EvilMask制作）
+元となったアプリケーション：Emuera1.824+v15（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)、Emuera.EM（EvilMask制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
 
 ※eramakerの作者様及びMinorShift様、妊の人様はEmueraEEの製作には関与していません。
