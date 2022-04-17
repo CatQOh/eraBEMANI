@@ -24,6 +24,7 @@ PRINTL 　[2] - 分析データからロボットを複製する
 SIF STSMOD
 	PRINTL 　[3] - ロボットを廃棄する
 CALL PASELIL, @"　[4] - 人格をロボットに移植する\@ !ORIGIN ? (100000＄が必要)#\@"
+PRINTL 　[5] - ロボットを改造する
 DRAWLINE
 PRINTPLAIN 　ロボットファクトリー　
 PRINTL [0] - 戻る
@@ -77,6 +78,18 @@ DO
 			CALL 機械化
 			MONEY -= 100000
 			RESTART
+		CASE 5
+			PRINTL □改造するロボットを選んでください
+			FOR PAGING, 1, CHARANUM
+				CALL PAGING, CSTR:PAGING:種族 == "機械" || TALENT:PAGING:無機物
+			NEXT
+			SELECTCASE RESULT
+				CASE -1
+					RESTART
+				CASEELSE
+					CALL ロボット改造, RESULT
+			ENDSELECT
+			RESTART
 	ENDSELECT
 LOOP 1
 
@@ -115,7 +128,7 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 	SELECTCASE TALENTNAME:LCOUNT
 		;コスト-1
 		CASE "小柄体型"
-			素質変更可能 = -1
+			素質変更可能:LCOUNT = -1
 			SIF TALENT:LCOUNT
 				素質コスト -= 1
 		;コスト1
@@ -611,6 +624,180 @@ DO
 			RETURN 1
 	ENDSELECT
 LOOP 1
+
+@ロボット改造, 対象
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LTARGET
+#DIM DYNAMIC LRESULT
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 必要マテリアル
+#DIM DYNAMIC 素質変更可能, 200
+#DIM DYNAMIC 素質変更, 200
+
+LTARGET = TARGET
+TARGET = 対象
+
+$RESTART
+DRAWLINE
+PRINTFORML □%CALLNAME:TARGET%を改造します マテリアル所持数:{ITEM:マテリアル}個
+PRINT 　素質:
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "性別", "恋心", "既婚者"
+			SIF TALENT:LCOUNT && TALENT:LCOUNT != 10000
+				PRINTFORM [%TALENTNAME:LCOUNT%]
+		CASE "バストサイズ"
+			IF TALENT:LCOUNT
+				IF !素質変更:LCOUNT || 素質変更:LCOUNT == TALENT:バストサイズ
+					PRINTFORM [%バストサイズ(TALENT:バストサイズ)%]
+				ELSE
+					CALL PRINTCOLOR, @"[%バストサイズ(素質変更:LCOUNT)%]", "deepskyblue"
+				ENDIF
+			ENDIF
+		CASEELSE
+			IF TALENT:LCOUNT
+				SIF 素質変更:LCOUNT
+					SETCOLORBYNAME gray
+				PRINTFORM [%TALENTNAME:LCOUNT%]
+				RESETCOLOR
+			ELSEIF 素質変更:LCOUNT
+				CALL PRINTCOLOR, @"[%TALENTNAME:LCOUNT%]", "deepskyblue"
+			ENDIF
+	ENDSELECT
+NEXT
+PRINTL 
+CALL PRINTCOLOR, "　青色", "deepskyblue"
+PRINT は追加素質、
+CALL PRINTCOLOR, "灰色", "gray"
+PRINTL は除去素質
+
+必要マテリアル = 0
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SELECTCASE TALENTNAME:LCOUNT
+		;コスト1
+		{
+		CASE "生意気", "臆病", "素直", "反抗的", "ハイテンション", "大人しい", "世話好き",
+			 "浪費癖", "無関心", "好奇心", "痛みに弱い", "習得遅い", "潔癖症", "汚れ無視",
+			 "快感の否定", "倒錯的", "男好き", "女好き", "サド", "マゾ", "小悪魔", "遊び人",
+			 "Ｃ鈍感", "Ｖ鈍感", "Ａ鈍感", "Ｂ鈍感", "動物耳", "回復遅い", "鼓舞", "幼稚", 
+		}
+			素質変更可能:LCOUNT = 1
+			SIF 素質変更:LCOUNT
+				必要マテリアル += 1
+		;コスト2
+		{
+		CASE "痛みに強い", "習得早い", "舌使い", "買い物上手", "献身的", "快感に素直", "魅力", "魅惑",
+			 "統率", "Ｃ敏感", "Ｖ敏感", "Ａ敏感", "Ｂ敏感", "ふたなり", "回復早い", "治療", "孔雀の瞳"
+		}
+			素質変更可能:LCOUNT = 2
+			SIF 素質変更:LCOUNT
+				必要マテリアル += 2
+		;コスト3
+		CASE "調合知識", "謎の魅力", "ネクロマンサー", "禁断の知識", "小柄体型"
+			素質変更可能:LCOUNT = 3
+			SIF 素質変更:LCOUNT
+				必要マテリアル += 3
+		CASE "バストサイズ"
+			SIF TALENT:LCOUNT && 素質変更:LCOUNT
+				必要マテリアル += ABS(TALENT:LCOUNT-素質変更:LCOUNT)
+	ENDSELECT
+NEXT
+DRAWLINE
+PRINTPLAIN 　ロボット改造　
+PRINTFORM [0] - 決定(必要マテリアル:{必要マテリアル}個) 
+PRINT [1] - 戻る 
+PRINTL [2] - 素質を変更する
+
+CALL INPUTF, 0, 1, 2
+SELECTCASE RESULT
+	CASE 0
+		IF ITEM:マテリアル < 必要マテリアル
+			PRINTW マテリアルが足りません
+			GOTO RESTART
+		ENDIF
+		PRINTFORML マテリアルを{必要マテリアル}個使用して%CALLNAME:TARGET%を改造します。よろしいですか？
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		CALL INPUTF, 0, 1
+		SIF RESULT == 1
+			GOTO RESTART
+		PRINTFORMW %CALLNAME:TARGET%に改造を施しました
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			IF 素質変更:LCOUNT
+				SELECTCASE TALENTNAME:LCOUNT
+					CASE "バストサイズ"
+						TALENT:LCOUNT = 素質変更:LCOUNT
+					CASEELSE
+						INVERTBIT TALENT:LCOUNT, 0
+				ENDSELECT
+			ENDIF
+		NEXT
+		ITEM:マテリアル -= 必要マテリアル
+		TARGET = LTARGET
+		RETURN
+	CASE 1
+		TARGET = LTARGET
+		RETURN
+	CASE 2
+		VARLINE = 0
+		$TALENT
+		SIF VARLINE
+			CLEARLINE LINECOUNT-VARLINE
+		VARLINE = LINECOUNT
+		DRAWLINE
+		PRINTL □素質を選択してください 括弧内は変更コスト
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			IF 素質変更可能:LCOUNT
+				IF 素質変更:LCOUNT
+					IF TALENT:LCOUNT
+						SETCOLORBYNAME gray
+					ELSE
+						SETCOLORBYNAME deepskyblue
+					ENDIF
+					PRINTFORMLC [{LCOUNT, 3}] %TALENTNAME:LCOUNT%({素質変更可能:LCOUNT}) \@ !TALENT:LCOUNT ? ○ # × \@
+					RESETCOLOR
+				ELSE
+					PRINTFORMLC [{LCOUNT, 3}] %TALENTNAME:LCOUNT%({素質変更可能:LCOUNT}) \@ TALENT:LCOUNT ? ○ # × \@
+				ENDIF
+			ENDIF
+		NEXT
+		SIF !LINEISEMPTY()
+			PRINTL 
+		IF TALENT:性別 == 2
+			IF 素質変更:TALENTF("バストサイズ") && 素質変更:TALENTF("バストサイズ") != TALENT:バストサイズ
+				CALL PRINTCOLORL, @"[{TALENTF("バストサイズ")}] バストサイズ:%バストサイズ(素質変更:TALENTF("バストサイズ"))%", "deepskyblue"
+			ELSE
+				PRINTFORML [{TALENTF("バストサイズ")}] バストサイズ:%バストサイズ(TALENT:バストサイズ)%
+			ENDIF
+		ENDIF
+		DRAWLINE
+		PRINTPLAIN 　ロボットファクトリー　
+		PRINTL [-1] - 戻る
+		DO
+			INPUT
+			SIF RESULT == -1
+				GOTO RESTART
+			LRESULT = RESULT
+			IF INRANGE(LRESULT, 0, VARSIZE("TALENT"))
+				IF TALENTNAME:LRESULT == "バストサイズ" && TALENT:性別 == 2
+					PRINTL [1] 絶壁にする
+					PRINTL [2] 貧乳にする
+					PRINTL [3] 並乳にする
+					PRINTL [4] 巨乳にする
+					PRINTL [5] 豊乳にする
+					PRINTL [6] 爆乳にする
+					DO
+						INPUT
+					LOOP LOOPRES(1, 2, 3, 4, 5, 6)
+					素質変更:LRESULT = RESULT
+					GOTO TALENT
+				ELSEIF 素質変更可能:LRESULT
+					INVERTBIT 素質変更:LRESULT, 0
+					GOTO TALENT
+				ENDIF
+			ENDIF
+		LOOP 1
+ENDSELECT
 
 @STS_MACHINE
 #DIM DYNAMIC LCOUNT

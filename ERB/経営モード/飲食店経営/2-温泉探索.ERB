@@ -84,6 +84,7 @@ RESTART
 #DIMS DYNAMIC 分割用, 2
 #DIM DYNAMIC 魔法判定
 #DIM DYNAMIC 総発掘費用
+#DIM DYNAMIC 地質学人数
 
 VARSET MS
 
@@ -103,6 +104,11 @@ X幅 = TOINT(分割用:0)
 Y幅 = TOINT(分割用:1)
 
 発掘費用 = X幅*Y幅*(MS難易度:ARG)/2
+
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 == "温泉探索" && TALENT:LCOUNT:地質学
+		地質学人数++
+NEXT
 
 VARLINE = 0
 ログ削除用 = LINECOUNT
@@ -129,6 +135,10 @@ SIF !ORIGIN
 温泉マス = 0
 目印マス = 0
 総温泉数 = 0
+
+;マテリアルに変換
+ITEM:マテリアル += 素材変換/100
+素材変換 %= 100
 
 FOR LCOUNTY, 0, Y幅
 	PRINT 　
@@ -214,6 +224,7 @@ IF 失敗
 ENDIF
 
 PRINTFORML 　・総マス数:{(X幅)*(Y幅)} ■=未解明({未解明マス}) □=解明({解明マス}) 数字=隣接する爆弾の数 ♨=見事掘り当てた温泉({温泉マス}/{総温泉数}) 危=マーク済み({目印マス})
+PRINTFORML 　　素材変換:{素材変換}/100→1マスごとに{地質学人数+1}個の素材入手（地質学の人数依存） 掘ってマテリアル1個入手 現在:{ITEM:マテリアル}個（ロボット製作に使用可能）
 DRAWLINE
 PRINTPLAIN 　温泉発掘　
 ;すべての温泉見つけた場合は完了のみ
@@ -277,6 +288,7 @@ DO
 					SELECTCASE MS:X開放:Y開放
 						CASE 0, 2
 							MS:X開放:Y開放++
+							素材変換 += 地質学人数+1
 							CALL マス目開放, X開放, Y開放, X幅, Y幅
 							MS魔法ストック--
 							MONEY -= 発掘費用
@@ -284,6 +296,7 @@ DO
 							GOTO RESTART
 						CASE 6, 8
 							MS:X開放:Y開放 -= 5
+							素材変換 += 地質学人数+1
 							CALL マス目開放, X開放, Y開放, X幅, Y幅
 							MS魔法ストック--
 							MONEY -= 発掘費用
@@ -347,6 +360,7 @@ DO
 				;自動開放では費用がかからない
 				MONEY -= 発掘費用
 				総発掘費用 += 発掘費用
+				素材変換 += 地質学人数+1
 				SELECTCASE MS:X座標:Y座標
 					CASE 0, 2, 4
 						MS:X座標:Y座標 += 1
@@ -366,6 +380,12 @@ LOOP 1
 #DIM DYNAMIC X幅
 #DIM DYNAMIC Y幅
 #DIM DYNAMIC 隣接爆弾数
+#DIM DYNAMIC 地質学人数
+
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 == "温泉探索" && TALENT:LCOUNT:地質学
+		地質学人数++
+NEXT
 
 FOR LCOUNT, -1, 2
 	;周囲8マスに爆弾があるか確認
@@ -388,27 +408,33 @@ IF 隣接爆弾数 == 0
 			SELECTCASE MS:(X座標-1):(Y座標+LCOUNT)
 				CASE 0, 2
 					MS:(X座標-1):(Y座標+LCOUNT)++
+					素材変換 += 地質学人数+1
 					CALL マス目開放, X座標-1, Y座標+LCOUNT, X幅, Y幅
 				CASE 6, 8
 					MS:(X座標-1):(Y座標+LCOUNT) -= 5
+					素材変換 += 地質学人数+1
 					CALL マス目開放, X座標-1, Y座標+LCOUNT, X幅, Y幅
 			ENDSELECT
 		ENDIF
 		SELECTCASE MS:(X座標):(Y座標+LCOUNT)
 			CASE 0, 2
 				MS:(X座標):(Y座標+LCOUNT)++
+				素材変換 += 地質学人数+1
 				CALL マス目開放, X座標, Y座標+LCOUNT, X幅, Y幅
 			CASE 6, 8
 				MS:(X座標):(Y座標+LCOUNT) -= 5
+				素材変換 += 地質学人数+1
 				CALL マス目開放, X座標, Y座標+LCOUNT, X幅, Y幅
 		ENDSELECT
 		IF INRANGE(X座標+1, 0, X幅-1)
 			SELECTCASE MS:(X座標+1):(Y座標+LCOUNT)
 				CASE 0, 2
 					MS:(X座標+1):(Y座標+LCOUNT)++
+					素材変換 += 地質学人数+1
 					CALL マス目開放, X座標+1, Y座標+LCOUNT, X幅, Y幅
 				CASE 6, 8
 					MS:(X座標+1):(Y座標+LCOUNT) -= 5
+					素材変換 += 地質学人数+1
 					CALL マス目開放, X座標+1, Y座標+LCOUNT, X幅, Y幅
 			ENDSELECT
 		ENDIF
@@ -457,10 +483,10 @@ PRINTPLAINFORM 　広さ:{X指定}×{Y指定}(最大:{広さ上限X}×{広さ上
 PRINTL [1]広さの横幅を変更 [2]広さの縦幅を変更
 PRINTFORML 　難易度:{難易度指定}(最大:{難易度上限}) [3]難易度を変更
 総温泉数 = (X指定*Y指定*難易度指定)/20
-探索費用 = X指定*Y指定*難易度指定*10
+探索費用 = X指定*Y指定*難易度指定*100
 発掘費用 = 総温泉数*10
 SIF !ORIGIN
-	CALL PASELIL, @"　探索費用:横幅{X指定}×縦幅{Y指定}×難易度{難易度指定*10}={探索費用}＄ 発掘費用:{発掘費用}＄(1マスあたり)"
+	CALL PASELIL, @"　探索費用:横幅{X指定}×縦幅{Y指定}×難易度{難易度指定*100}={探索費用}＄ 発掘費用:{発掘費用}＄(1マスあたり)"
 PRINTL 
 PRINTFORML 　[5] - この条件で探す(最大温泉レベル:{総温泉数})
 PRINTL 　[0] - 戻る
