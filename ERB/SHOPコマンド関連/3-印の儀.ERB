@@ -18,8 +18,13 @@ FOR PAGING, 1, CHARANUM
 		刻印部位 += @"[右足:%CSTR:PAGING:右足の印%(\@ CSTR:PAGING:右足の特質 == "" ? 特質無し # %CSTR:PAGING:右足の特質% \@)]"
 	SIF CSTR:PAGING:左足の印 != ""
 		刻印部位 += @"[左足:%CSTR:PAGING:左足の印%(\@ CSTR:PAGING:左足の特質 == "" ? 特質無し # %CSTR:PAGING:左足の特質% \@)]"
-	SIF CSTR:PAGING:背中の印 != ""
-		刻印部位 += @"[背中:%CSTR:PAGING:背中の印%(\@ CSTR:PAGING:背中の特質 == "" ? 特質無し # %CSTR:PAGING:背中の特質% \@)]"
+	IF CSTR:PAGING:背中の印 != ""
+		IF GROUPMATCH(CSTR:PAGING:背中の印, "奴隷の焼印", "淫売の焼印")
+			刻印部位 += @"[背中:%CSTR:PAGING:背中の印%]"
+		ELSE
+			刻印部位 += @"[背中:%CSTR:PAGING:背中の印%(\@ CSTR:PAGING:背中の特質 == "" ? 特質無し # %CSTR:PAGING:背中の特質% \@)]"
+		ENDIF
+	ENDIF
 	SIF CSTR:PAGING:胴体の印 != ""
 		刻印部位 += @"[胴体:%CSTR:PAGING:胴体の印%(\@ CSTR:PAGING:胴体の特質 == "" ? 特質無し # %CSTR:PAGING:胴体の特質% \@)]"
 
@@ -69,6 +74,8 @@ DO
 			変数番号 = GETNUM(CSTR, "右腕の印")
 			SIF GROUPMATCH(CSTRNAME:(変数番号+LRESULT), "右足の印", "左足の印") && TALENT:足使用不可
 				CONTINUE
+			SIF CSTRNAME:(変数番号+LRESULT) == "背中の印" && GROUPMATCH(CSTR:背中の印, "淫売の焼印", "奴隷の焼印")
+				CONTINUE
 			IF CSTR:(変数番号+LRESULT) == ""
 				IF FLAG:経験値 < 1 && !ORIGIN
 					PRINTW 経験値が足りません
@@ -93,6 +100,7 @@ LOOP 1
 #DIM DYNAMIC 魔術師あり
 #DIM DYNAMIC ネクロマンサーあり
 #DIM DYNAMIC 価額低下
+#DIM DYNAMIC 選択可, 10
 
 SELECTCASE 対象部位
 	CASE "背中の印"
@@ -105,6 +113,7 @@ ENDSELECT
 
 DRAWLINE
 
+VARSET 選択可
 PRINTFORML □%CALLNAME:TARGET%に%対象部位%を刻みます(１ターン消費 \@ !ORIGIN ? 印によって下がる売却額:{価額低下}\%#\@)
 SIF TALENT:MASTER:魔術師 || (ASSI > 0 && TALENT:ASSI:魔術師)
 	魔術師あり = 1
@@ -113,24 +122,37 @@ SIF TALENT:MASTER:ネクロマンサー || (ASSI > 0 && TALENT:ASSI:ネクロマ
 
 IF 魔術師あり
 	PRINTL 　[1] - 強化のタトゥー(身体能力を強化する特質を宿す)
+	選択可:1 = 1
 ELSE
 	CALL PRINTCOLORL, @"　[-] - 強化のタトゥー(主人もしくは助手に[魔術師]が必要)", "gray"
 ENDIF
 IF ネクロマンサーあり
 	PRINTL 　[2] - 制御のタトゥー(行動を制御する特質を宿す)
+	選択可:2 = 1
 ELSE
 	CALL PRINTCOLORL, @"　[-] - 制御のタトゥー(主人もしくは助手に[ネクロマンサー]が必要)", "gray"
 ENDIF
 PRINTL 　[3] - 異質のタトゥー(体質が変化する特質を宿す)
-;IF 対象部位 == "背中の印"
-;	PRINTL 　[4] - 淫売の焼印(未陥落、もしくは[淫乱][娼婦]のみ選択可 [淫乱][娼婦]以外の陥落素質が得られなくなる)
-;	PRINTL 　[5] - 奴隷の焼印(未陥落、もしくは[服従][隷属]のみ選択可 [服従][隷属]以外の陥落素質が得られなくなる)
-;ENDIF
+選択可:3 = 1
+IF 対象部位 == "背中の印"
+	IF GROUPMATCH(FALLTYPE(TARGET), 0, 2)
+		PRINTL 　[4] - 淫売の焼印(未陥落、もしくは[淫乱][娼婦]のみ選択可 [淫乱][娼婦]以外の陥落素質が得られなくなる)
+		選択可:4 = 1
+	ELSE
+		CALL PRINTCOLORL, "　[-] - 淫売の焼印(未陥落、もしくは[淫乱][娼婦]のみ選択可 [淫乱][娼婦]以外の陥落素質が得られなくなる)", "gray"
+	ENDIF
+	IF GROUPMATCH(FALLTYPE(TARGET), 0, 3)
+		PRINTL 　[5] - 奴隷の焼印(未陥落、もしくは[服従][隷属]のみ選択可 [服従][隷属]以外の陥落素質が得られなくなる)
+		選択可:5 = 1
+	ELSE
+		CALL PRINTCOLORL, "　[-] - 奴隷の焼印(未陥落、もしくは[服従][隷属]のみ選択可 [服従][隷属]以外の陥落素質が得られなくなる)", "gray"
+	ENDIF
+ENDIF
 DRAWLINE
 PRINTPLAINFORM 　%対象部位%　
 PRINTL [0] - 戻る [10] - 特質一覧を見る
 
-CALL INPUTF, 0, 1, 2, 3, 10
+CALL INPUTF, 0, 1, 2, 3, 4, 5, 10
 
 SELECTCASE RESULT
 	CASE 0
@@ -139,6 +161,8 @@ SELECTCASE RESULT
 		CALL 特質を刻む, 対象部位, 1
 		RESTART
 	CASE 1
+		SIF !選択可:1
+			RESTART
 		PRINTFORML \@ !ORIGIN ? 経験値を1消費して#\@%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「強化のタトゥー」を刻みます。よろしいですか？
 		PRINTL [0] - はい
 		PRINTL [1] - いいえ
@@ -150,6 +174,8 @@ SELECTCASE RESULT
 		FLAG:経験値--
 		RETURN 1
 	CASE 2
+		SIF !選択可:2
+			RESTART
 		PRINTFORML \@ !ORIGIN ? 経験値を1消費して#\@%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「制御のタトゥー」を刻みます。よろしいですか？
 		PRINTL [0] - はい
 		PRINTL [1] - いいえ
@@ -161,6 +187,8 @@ SELECTCASE RESULT
 		FLAG:経験値--
 		RETURN 1
 	CASE 3
+		SIF !選択可:3
+			RESTART
 		PRINTFORML \@ !ORIGIN ? 経験値を1消費して#\@%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「異質のタトゥー」を刻みます。よろしいですか？
 		PRINTL [0] - はい
 		PRINTL [1] - いいえ
@@ -171,30 +199,32 @@ SELECTCASE RESULT
 		CSTR:対象部位 = 異質のタトゥー
 		FLAG:経験値--
 		RETURN 1
-;	CASE 4
-;		PRINTFORML %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「淫売の焼印」を押します。よろしいですか？
-;		PRINTL [0] - はい
-;		PRINTL [1] - いいえ
-;		DO
-;			INPUT
-;			SIF RESULT
-;				RESTART
-;		LOOP LOOPRES(0)
-;		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「淫売の焼印」を押しました
-;		CSTR:対象部位 = 淫売の焼印
-;		RETURN 1
-;	CASE 5
-;		PRINTFORML %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「奴隷の焼印」を押します。よろしいですか？
-;		PRINTL [0] - はい
-;		PRINTL [1] - いいえ
-;		DO
-;			INPUT
-;			SIF RESULT
-;				RESTART
-;		LOOP LOOPRES(0)
-;		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「奴隷の焼印」を押しました
-;		CSTR:対象部位 = 奴隷の焼印
-;		RETURN 1
+	CASE 4
+		SIF !選択可:4
+			RESTART
+		PRINTFORML %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「淫売の焼印」を押します。よろしいですか？
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		CALL INPUTF, 0, 1
+		SIF RESULT
+			RESTART
+		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「淫売の焼印」を押しました
+		CSTR:対象部位 = 淫売の焼印
+		FLAG:経験値--
+		RETURN 1
+	CASE 5
+		SIF !選択可:5
+			RESTART
+		PRINTFORML %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「奴隷の焼印」を押します。よろしいですか？
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		CALL INPUTF, 0, 1
+		SIF RESULT
+			RESTART
+		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「奴隷の焼印」を押しました
+		CSTR:対象部位 = 奴隷の焼印
+		FLAG:経験値--
+		RETURN 1
 ENDSELECT
 
 PRINTL 
