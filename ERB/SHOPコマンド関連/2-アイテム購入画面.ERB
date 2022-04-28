@@ -214,6 +214,9 @@ SIF FINDCHARA(TALENT:リミットバースト, 1) > 0
 SELECTCASE アイテム分類
 	CASE "調教道具", "すべて"
 		FOR LCOUNT, 0, 100
+			;コナステ解約は契約時のみ選択可能
+			SIF ITEMNAME:LCOUNT == "コナステ解約" && ITEM:コナステベーシックコース != 2
+				CONTINUE
 			ITEMSALES:LCOUNT = !ITEM:LCOUNT
 		NEXT
 ENDSELECT
@@ -499,15 +502,26 @@ CALL アイテム説明, アイテム名
 ;購入の意志を再確認するように
 SELECTCASE アイテム分類
 	CASE "買い切り"
-		PRINTFORML 本当に%アイテム名%を購入しますか？
-		PRINTL [0] 購入する
-		PRINTL [1] やめる
+		IF アイテム名 == "コナステ解約"
+			PRINTL 本当にコナステの解約しますか？
+			PRINTL [0] 解約する
+			PRINTL [1] やめる
+		ELSE
+			PRINTFORML 本当に%アイテム名%を購入しますか？
+			PRINTL [0] 購入する
+			PRINTL [1] やめる
+		ENDIF
 		CALL INPUTF, 0, 1
 		SIF RESULT == 1
 			RETURN
-		CALL SE再生, 出入金
-		PRINTFORMW ＜%アイテム名%を購入しました＞
-		CALL プレイログ記録, @"「%アイテム名%」購入"
+		IF アイテム名 == "コナステ解約"
+			PRINTW ＜コナステを解約しました。サービスは月末までご利用できます＞
+		ELSE
+			CALL SE再生, 出入金
+			PRINTFORMW ＜%アイテム名%を購入しました＞
+			CALL プレイログ記録, @"「%アイテム名%」購入"
+			ITEM:アイテム名 = 1
+		ENDIF
 		;割引対象は淫具のみ
 		IF GETNUM(ITEM, アイテム名) < 500 && 割引
 			MONEY -= ITEMPRICE:アイテム名/10*8
@@ -517,7 +531,6 @@ SELECTCASE アイテム分類
 			CALL 現金出納帳記録, @"「%アイテム名%」購入/-{ITEMPRICE:アイテム名}"
 		ENDIF
 		ITEMSALES:アイテム名 = 0
-		ITEM:アイテム名 = 1
 		;事業開発オフィスはカメラも付いてくる
 		SIF アイテム名 == "事業開発オフィス"
 			ITEM:カメラ = 1
@@ -526,6 +539,10 @@ SELECTCASE アイテム分類
 			ナンプレプレイ中 = 0
 			ナンプレ完成 = 0
 		ENDIF
+		SIF アイテム名 == "コナステベーシックコース"
+			ITEM:コナステベーシックコース = 2
+		SIF アイテム名 == "コナステ解約"
+			ITEM:コナステベーシックコース = 1
 	CASE "複数購入可"
 		;消耗品は専用の関数で
 		CALL BUY_PLURAL, アイテム名
@@ -1689,6 +1706,12 @@ SELECTCASE アイテム名
 		PRINTL 特殊な研修と訓練を行い、能力のマイナス値を打ち消します。3日間使用不可になります
 	CASE "抗スライム薬"
 		PRINTL スライムの感染を予防or治癒します。干物が材料に使われているらしい…
+	CASE "双頭ディルド"
+		PRINTL 両端が男性器を模した道具。男女兼用
+	CASE "コナステベーシックコース"
+		PRINTL KO○AMIのアーケードゲームをPCやスマートフォンからいつでも楽しめるサービス！（毎月1日決済）
+	CASE "コナステ解約"
+		PRINTL またのご利用をお待ちしてます
 ENDSELECT
 
 @アイテム使用_逆引き, 使用対象

@@ -1,0 +1,95 @@
+﻿@USERCOM_ABLE_コナステで遊ぶ, ARG
+#FUNCTION
+;ゲーセンに居る場合はできない
+コマンド実行条件 += "ゲーセンでは実行不可/"
+SIF TEQUIP:ゲームセンター
+	COMRESULT = 0
+;ベーシックコースに加入してないとダメ
+コマンド実行条件 += "コナステベーシックコースへの加入が必要/"
+SIF !ITEM:コナステベーシックコース
+	COMRESULT = 0
+;拘束中はダメ
+コマンド実行条件 += "拘束中は実行できない/"
+SIF TEQUIP:アイマスク || TEQUIP:縄 || TEQUIP:ボールギャグ || TEQUIP:触手
+	COMRESULT = 0
+;お風呂場でもダメ
+コマンド実行条件 += "お風呂場では実行できない/"
+SIF TEQUIP:お風呂場
+	COMRESULT = 0
+;屋外でもダメ
+コマンド実行条件 += "野外プレイ中は実行できない/"
+SIF TEQUIP:野外プレイ
+	COMRESULT = 0
+
+
+RETURNF COMRESULT
+
+@COM_コナステで遊ぶ
+#DIM DYNAMIC 増加量
+
+PRINTL コナステで遊ぶ
+CALL KOJO_MESSAGE_COM
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 40
+LOSEBASE:気力 += 40
+SIF TALENT:音ゲーマー
+	LOSEBASE:気力 -= 20
+
+SOURCE:恭順 = 100
+SOURCE:中毒 = 100
+SOURCE:習得 = 100
+SOURCE:露出 = 100
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+IF TALENT:習得遅い
+	増加量 = 1
+ELSEIF TALENT:習得早い
+	増加量 = 3
+ELSE
+	増加量 = 2
+ENDIF
+CALL EXPUP, "音ゲー経験", 増加量
+CALL EXPUP, "演奏経験", 増加量
+
+IF TALENT:MASTER:習得遅い
+	増加量 = 1
+ELSEIF TALENT:MASTER:習得早い
+	増加量 = 3
+ELSE
+	増加量 = 2
+ENDIF
+CALL EXPUP, "音ゲー経験", 増加量, MASTER
+CALL EXPUP, "演奏経験", 増加量, MASTER
+
+IF ASSI > 0
+	IF TALENT:ASSI:習得遅い
+		増加量 = 1
+	ELSEIF TALENT:ASSI:習得早い
+		増加量 = 3
+	ELSE
+		増加量 = 2
+	ENDIF
+	CALL EXPUP, "音ゲー経験", 増加量, ASSI
+	CALL EXPUP, "演奏経験", 増加量, ASSI
+ENDIF
+
+RETURN 1
+
