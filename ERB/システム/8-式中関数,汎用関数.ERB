@@ -1181,21 +1181,28 @@ ENDIF
 #DIMS DYNAMIC 名前
 #DIMS 名前保存用, 20000
 #DIM DYNAMIC LCOUNT
+#DIM CHILDNO = 10000
 ;引数のNAMEのキャラのNOを返す 子供にも対応しているが、同姓同名のキャラが入れば番号が若い方が優先される
 
 IF 名前保存用 == ""
+	$RETRY
 	FOR LCOUNT, 0, 20000
 		SELECTCASE LCOUNT
 			CASE 0 TO 9999
 				SIF EXISTCSV(LCOUNT)
 					名前保存用:LCOUNT = %CSVNAME(LCOUNT)%
 			CASE IS > 10000
-				SIF CHILDNAME:(LCOUNT-10000) == ""
+				IF CHILDNAME:(LCOUNT-10000) == ""
+					CHILDNO = LCOUNT
 					BREAK
+				ENDIF
 				名前保存用:LCOUNT = %CHILDNAME:(LCOUNT-10000)%
 		ENDSELECT
 	NEXT
 ENDIF
+;子供が増えてたら再度回す
+SIF 名前保存用:CHILDNO != ""
+	GOTO RETRY
 
 ;#;SIF FINDELEMENT(名前保存用, ESCAPE(名前), 0, VARSIZE("名前保存用"), 1) == -1
 ;#;	THROW 「%名前%」というキャラは存在しないか、表記揺れです
