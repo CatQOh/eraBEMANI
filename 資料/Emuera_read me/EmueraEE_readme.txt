@@ -1,14 +1,18 @@
-﻿タイトル：EmueraEE 最終更新日:2022/05/05
-バージョン：1.824+v15+EMv5+EEv13
+﻿タイトル：EmueraEE 最終更新日:2022/05/18
+バージョン：1.824+v15+EMv6+EEv13
 改変者：Enter
 元となったアプリケーション：Emuera1.824+v15（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)、Emuera.EM（EvilMask制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
 
 ※eramakerの作者様及びMinorShift様、妊の人様はEmueraEEの製作には関与していません。
-当アプリの不具合は上記連絡先にご報告ください
+　当アプリの不具合は上記連絡先にご報告ください
 
 ※同梱のEmuera-Anchor-EEは英語圏のeraコミュニティで使用されている「Emuera-Anchor」をEEに対応させたものです
-各UIやエラーメッセージ等が英語になっています。必要に応じて使い分けてください
+　各UIやエラーメッセージ等が英語になっています。必要に応じて使い分けてください
+
+※使用しているセキュリティソフト次第では危険なファイルとして警告・削除される場合があります
+　セキュリティソフトの設定を変更して使用することはできますが、自己責任でお願いします
+　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/7f01cb80d602268eb79bb29ca2f7d8a32d6b59c873f0fd47d7107be63d6cbd7a
 
 [v12にてEmuera.EMと機能統合。詳しくは同梱のEmuera.EM_read me.txtをご覧ください]
 
@@ -112,9 +116,7 @@ BEGINの制約を受けずに強制的にBEGINを実行する。フローを意�
 がめら氏作の「src1824+v11+webp+Secure」を参考にWebP読み込み機能を追加
 あくまで参考で(=完全マージではない ベースバージョンが違うため)、ファイル読み込み処理だけWebP対応にしただけなので元のWebP版には無いエラーが起こる可能性があります
 WebPWrapperについては東etoマン氏、M氏が改良を行ったものを使用しています 僭越ながら同梱の「WebP版read me」に文書をまとめさせていただきました 感謝
-同梱の「libwebp_x64.dll」をEmueraと同ディレクトリに置いて使用＆配布してください WebPを使わないのであれば削除しても大丈夫です
-WebP-wrapperのGitHub:https://github.com/JosePineiro/WebP-wrapper
-参考にしたWebP版Emueraのリンク:http://book-shelf-end.com/up/dwlink.cgi?eraRx2231.7z
+EMv6+EEv13にてセキュリティ上の観点から別のライブラリに変更しました。同梱のlibwebp.dllをEmueraと同ディレクトリにコピーしてお使いください
 
 ・ERHで定義した変数にcsvファイルで名前を付けられるように
 ERHで定義した変数名を準拠にファイルを読み込み、既存のcsv変数と同じように配列に名前を付けることができる。現時点では一次元配列変数にのみ対応
