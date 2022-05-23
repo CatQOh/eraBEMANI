@@ -91,6 +91,12 @@ resources/csv and GCREATEFROMFILE can use WebP files.
 ・Can assign variable name to ERH variables
 Like CSV variables. Using [VariableName].csv(in CSV directory) or [VariableName].ERD(in ERB directory) file.
 
+・GETMEMORYUSAGE()
+Return memory usage of Emuera(byte).
+
+・CLEARMEMORY()
+Freeing up memory used by Emuera and return freeing memory size(byte).
+
 ・UPDATECHECK
 Browse server and check for new version.
 1,Write version name(バージョン名) and version infomation URL(バージョン情報URL) to GameBase.csv
