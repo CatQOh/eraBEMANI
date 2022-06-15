@@ -1,8 +1,10 @@
-﻿タイトル：EmueraEE 最終更新日:2022/05/21
-バージョン：1.824+v15+EMv7+EEv14
+﻿タイトル：EmueraEE 最終更新日:2022/05/31
+バージョン：1.824+v15+EMv8+EEv15
 改変者：Enter
 元となったアプリケーション：Emuera1.824+v15（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)、Emuera.EM（EvilMask制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
+eraシリーズまとめwikiのページ：https://seesaawiki.jp/eraseries/d/EmueraEM%2bEE%a4%ce%c4%c9%b2%c3%b5%a1%c7%bd
+docs：https://evilmask.gitlab.io/emuera.em.doc/
 
 ※eramakerの作者様及びMinorShift様、妊の人様はEmueraEEの製作には関与していません。
 　当アプリの不具合は上記連絡先にご報告ください
@@ -15,6 +17,7 @@
 　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/7f01cb80d602268eb79bb29ca2f7d8a32d6b59c873f0fd47d7107be63d6cbd7a
 
 [v12にてEmuera.EMと機能統合。詳しくは同梱のEmuera.EM_read me.txtをご覧ください]
+[EMv8+EEv15にてhtml形式のドキュメントを同梱。追加機能などがより詳しく書かれています]
 
 [概要]
 Emueraをベースに改造を施したバージョンです。追加された機能は以下の通り
