@@ -93,6 +93,7 @@ ENDSELECT
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 登録番号
 #DIM DYNAMIC LRESULT
+#DIM DYNAMIC ページ数
 {
 #DIMS DYNAMIC 施設名 = 
 "ゲームセンター",
@@ -115,7 +116,9 @@ DRAWLINE
 PRINTL □登録する番号を選んでください
 FOR LCOUNT, 0, VARSIZE("LNK")
 	IF LNK:LCOUNT == ""
+		SETCOLORBYNAME gray
 		PRINTFORMLC [{LCOUNT, 2}] - 登録する
+		RESETCOLOR
 	ELSE
 		PRINTFORMLC [{LCOUNT, 2}] - %LNKCOM(LNK:LCOUNT)%
 	ENDIF
@@ -214,28 +217,54 @@ DO
 				BREAK
 			LNK:登録番号 = 居住部屋/{NO:RESULT}
 		CASE 6
-			FOR LCOUNT, 0, 20
+			$SAVE
+			FOR LCOUNT, ページ数*20, ページ数*20+20
 				PRINTFORML 　[{LCOUNT, 2}] - {LCOUNT}番にセーブ
 			NEXT
+			DRAWLINE
+			CALL PRINTSPACE, ページ数 > 0, "　[101] 前ページ　"
+			CALL PRINTSPACE, ページ数 < 3, "[109] 次ページ"
 			DO
 				INPUT
-				SIF !INRANGE(RESULT, 0, 19)
+				SELECTCASE RESULT
+					CASE 101
+						SIF ページ数 > 0
+							ページ数--
+						GOTO SAVE
+					CASE 109
+						SIF ページ数 < 3
+							ページ数++
+						GOTO SAVE
+				ENDSELECT
+				SIF !INRANGE(RESULT, 0, 79)
 					CONTINUE
 				LNK:登録番号 = セーブ/{RESULT}
 			LOOP 0
 		CASE 7
-			FOR LCOUNT, 0, 20
+			$LOAD
+			FOR LCOUNT, ページ数*20, ページ数*20+20
 				PRINTFORML 　[{LCOUNT, 2}] - {LCOUNT}番のセーブデータをロード
 			NEXT
 			DRAWLINE
 			FOR LCOUNT, 1, 7
 				PRINTFORML 　[{LCOUNT+90, 2}] - {LCOUNT}ターン前のセーブデータをロード
 			NEXT
+			DRAWLINE
+			CALL PRINTSPACE, ページ数 > 0, "　[101] 前ページ　"
+			CALL PRINTSPACE, ページ数 < 3, "[109] 次ページ"
 			DO
 				INPUT
 				SELECTCASE RESULT
-					CASE 0 TO 19
-						LNK:登録番号 = セーブ/{RESULT}
+					CASE 101
+						SIF ページ数 > 0
+							ページ数--
+						GOTO LOAD
+					CASE 109
+						SIF ページ数 < 3
+							ページ数++
+						GOTO LOAD
+					CASE 0 TO 79
+						LNK:登録番号 = ロード/{RESULT}
 						BREAK
 					CASE 91 TO 96
 						LNK:登録番号 = チェックポイント/{RESULT-90}
