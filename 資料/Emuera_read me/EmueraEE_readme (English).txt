@@ -1,5 +1,5 @@
-﻿App name:EmueraEE Latest update:2022/05/18
-Version:1.824+v15+EMv6+EEv13
+﻿App name:EmueraEE Latest update:2022/05/21
+Version:1.824+v15+EMv7+EEv14
 Developer:Enter
 Original Application:Emuera1.824+v15(Developed by 妊）|дﾟ)の中の人 and MinorShift),WebP-wrapper(Developed by JosePineiro)
 Contact:Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK

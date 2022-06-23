@@ -14,10 +14,14 @@ docs：https://evilmask.gitlab.io/emuera.em.doc/
 
 ※使用しているセキュリティソフト次第では危険なファイルとして警告・削除される場合があります
 　セキュリティソフトの設定を変更して使用することはできますが、自己責任でお願いします
-　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/7f01cb80d602268eb79bb29ca2f7d8a32d6b59c873f0fd47d7107be63d6cbd7a
+　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/35d57cb06644ff7ea3b718a9c238ca7091b09f7e1e6b3c88576a830012655bdf
 
 [v12にてEmuera.EMと機能統合。詳しくは同梱のEmuera.EM_read me.txtをご覧ください]
 [EMv8+EEv15にてhtml形式のドキュメントを同梱。追加機能などがより詳しく書かれています]
+
+[報告]
+EmueraEM+EEのVSCode用拡張機能を作りました。sasami氏のerabasic拡張機能をベースにしています
+https://marketplace.visualstudio.com/items?itemName=deletedenter.erabasic-emee
 
 [概要]
 Emueraをベースに改造を施したバージョンです。追加された機能は以下の通り
@@ -134,6 +138,9 @@ CSVフォルダ内で使えるものは従来どおり「変数名.csv」、ERB�
 DELCHARAやセーブデータのロード、RESETDATA等データ削除した際に使うと効果がありますが、それらが行われないタイミングで使用しても特に効果はありません
 そこそこ重いため乱用は控えたほうが無難
 
+・ホットキー機能拡張
+Anchorからの機能移植。Ctrl+Tでタイトル画面に戻る、Ctrl+Rで再起動、Ctrl+OでERB再読み込み
+
 ・UPDATECHECK
 アップデートチェック命令を追加。以下使い方
 1,GameBase.csvに「バージョン名」「バージョン情報URL」を追加
@@ -160,4 +167,7 @@ Emueraが正常に動作するeraバリアントのディレクトリにてEmuer
 同フォルダ内のEmuera_readme.txtの[ライセンス]の項に準じます
 私、Enterは一切の権利を主張しません
 また、当Emueraを使用、同梱及び配布したバリアントについて生じた問題には責任を負いかねます
+
+[Special Thanks]
+lackbfun docsの中国語翻訳
 
