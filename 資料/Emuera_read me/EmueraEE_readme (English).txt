@@ -1,5 +1,5 @@
-﻿App name:EmueraEE Latest update:2022/05/21
-Version:1.824+v15+EMv7+EEv14
+﻿App name:EmueraEE Latest update:2022/07/30
+Version:1.824+v15+EMv10+EEv19
 Developer:Enter
 Original Application:Emuera1.824+v15(Developed by 妊）|дﾟ)の中の人 and MinorShift),WebP-wrapper(Developed by JosePineiro)
 Contact:Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
@@ -96,6 +96,12 @@ Return memory usage of Emuera(byte).
 
 ・CLEARMEMORY()
 Freeing up memory used by Emuera and return freeing memory size(byte).
+
+・COUNT can be set forbid variable in VariableSize.csv
+When forbid COUNT variable, Can not use REPEAT too.
+
+・Can assign variable name to DAY, TIME, MONEY
+Like other csv variables. Use DAYNAME, TIMENAME, MONEYNAME to access.
 
 ・UPDATECHECK
 Browse server and check for new version.

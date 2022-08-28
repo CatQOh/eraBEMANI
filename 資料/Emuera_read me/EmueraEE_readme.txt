@@ -1,5 +1,5 @@
-﻿タイトル：EmueraEE 最終更新日:2022/05/31
-バージョン：1.824+v15+EMv8+EEv15
+﻿タイトル：EmueraEE 最終更新日:2022/07/30
+バージョン：1.824+v15+EMv10+EEv19
 改変者：Enter
 元となったアプリケーション：Emuera1.824+v15（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)、Emuera.EM（EvilMask制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
@@ -14,7 +14,7 @@ docs：https://evilmask.gitlab.io/emuera.em.doc/
 
 ※使用しているセキュリティソフト次第では危険なファイルとして警告・削除される場合があります
 　セキュリティソフトの設定を変更して使用することはできますが、自己責任でお願いします
-　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/35d57cb06644ff7ea3b718a9c238ca7091b09f7e1e6b3c88576a830012655bdf
+　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/5f8bb2cb610b7a1a5de8b64fefc210b071d587b9cd82374d79575e7d990b4267
 
 [v12にてEmuera.EMと機能統合。詳しくは同梱のEmuera.EM_read me.txtをご覧ください]
 [EMv8+EEv15にてhtml形式のドキュメントを同梱。追加機能などがより詳しく書かれています]
@@ -140,6 +140,15 @@ DELCHARAやセーブデータのロード、RESETDATA等データ削除した際
 
 ・ホットキー機能拡張
 Anchorからの機能移植。Ctrl+Tでタイトル画面に戻る、Ctrl+Rで再起動、Ctrl+OでERB再読み込み
+
+・VariableSize.csvでCOUNTを使用禁止変数に設定できるように
+COUNTを使用禁止変数に設定した場合は起動時にREPEAT行を警告し、実行されるとエラー落ちするように
+
+・キーマクロをUTF-8で保存するように
+英語以外の外国語も問題なく使えるようになりました
+
+・DAY、TIME、MONEYにCSVを適用可能に
+各「DAY.csv」「TIME.csv」「MONEY.csv」に対応しています。DAYNAME、TIMENAME、MONEYNAMEも実装
 
 ・UPDATECHECK
 アップデートチェック命令を追加。以下使い方
