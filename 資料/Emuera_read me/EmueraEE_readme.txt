@@ -1,5 +1,5 @@
-﻿タイトル：EmueraEE 最終更新日:2022/07/30
-バージョン：1.824+v15+EMv10+EEv19
+﻿タイトル：EmueraEM+EE 最終更新日:2022/10/09
+バージョン：1.824+v16+EMv14+EEv24
 改変者：Enter
 元となったアプリケーション：Emuera1.824+v15（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)、Emuera.EM（EvilMask制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
@@ -14,9 +14,9 @@ docs：https://evilmask.gitlab.io/emuera.em.doc/
 
 ※使用しているセキュリティソフト次第では危険なファイルとして警告・削除される場合があります
 　セキュリティソフトの設定を変更して使用することはできますが、自己責任でお願いします
-　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/5f8bb2cb610b7a1a5de8b64fefc210b071d587b9cd82374d79575e7d990b4267
+　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/63e9f523c9ddf712e2cb3e93486e9606e8102dd1f5953574b2c17c57ed7e785b
 
-[v12にてEmuera.EMと機能統合。詳しくは同梱のEmuera.EM_read me.txtをご覧ください]
+[v12にてEmuera.EMと機能統合。上記リンクのドキュメント(docs)を参照]
 [EMv8+EEv15にてhtml形式のドキュメントを同梱。追加機能などがより詳しく書かれています]
 
 [報告]
@@ -56,6 +56,7 @@ WMPで動く音声ファイルは全て動くと思います。
 
 ・INPUTMOUSEKEYでボタン使用可能に
 命令実行時にRESULT:0=1(マウスクリック時)だった場合にRESULT:5にボタンの数値が入ります
+また、数値型と文字列型両方の入力に対応。数値型ならRESULTに、文字列型ならRESULTSに入る。PRINTBUTTONとの併用も可能
 
 ・GDRAWTEXT gID, "テキスト", X座標, Y座標
 指定したgIDにテキストを描写する 座標は省略可能
@@ -126,9 +127,10 @@ WebPWrapperについては東etoマン氏、M氏が改良を行ったものを�
 EMv6+EEv13にてセキュリティ上の観点から別のライブラリに変更しました。同梱のlibwebp.dllをEmueraと同ディレクトリにコピーしてお使いください
 
 ・ERHで定義した変数にcsvファイルで名前を付けられるように
-ERHで定義した変数名を準拠にファイルを読み込み、既存のcsv変数と同じように配列に名前を付けることができる。現時点では一次元配列変数にのみ対応
+ERHで定義した変数名を準拠にファイルを読み込み、既存のcsv変数と同じように配列に名前を付けることができる
 CSVフォルダ内で使えるものは従来どおり「変数名.csv」、ERB内で使えるものは「変数名.ERD」ファイルとなる。書式はCSV変数のファイルと同じ。これらが2つ以上存在する場合は起動時にエラー吐いて終了する
 ただしABLNAMEやTRAINNAMEに相当する変数は無し。今後命令や式中関数を実装する予定
+v23にて多次元配列にも対応。多次元配列に名前を付ける場合、左の次元から@1,@2,@3とファイル名の末尾に付けることで適用可能
 
 ・GETMEMORYUSAGE()
 現在起動中のEmueraのメモリ使用量を返す（byte）。ワーキングセットの値なのでタスクマネージャーの数値とは差異が生じます
@@ -149,6 +151,28 @@ COUNTを使用禁止変数に設定した場合は起動時にREPEAT行を警告
 
 ・DAY、TIME、MONEYにCSVを適用可能に
 各「DAY.csv」「TIME.csv」「MONEY.csv」に対応しています。DAYNAME、TIMENAME、MONEYNAMEも実装
+
+・GETTEXTSIZE
+実行時点でテキストボックスに入力されている内容を取得する
+
+・SETTEXTBOX
+テキストボックスを任意の文字列に置き換える
+
+・INPUTANY
+数値、文字列両方の入力に対応したINPUT。数値型が入力されればRESULTに、文字列型が入力されればRESULTSに代入される
+
+・GETNUM拡張
+多次元配列ERDに対応するためGETNUMで第三引数に次元を指定できるように。左から1,2,3となる。式中関数VARSETの仕様(0,1,2)とは異なるため注意
+また、オプションにて式中関数VARSETの次元指定をERDと同じく1,2,3とするオプションを追加
+
+・ERDNAME 変数名, 要素(, 次元)
+TALENTNAMEやCFLAGNAMEのように数字から要素名を逆引きできる。式中関数としても使用可。次元指定は左から1,2,3
+上記GETNUMも含め、一次元配列変数で次元指定すると機能しない
+
+・多言語化対応
+詳しくは下記リンク
+https://evilmask.gitlab.io/emuera.em.doc/i18n/
+オプション→表示 から言語を変更可能。現在は日本語、英語、中国語に対応
 
 ・UPDATECHECK
 アップデートチェック命令を追加。以下使い方
