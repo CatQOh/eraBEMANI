@@ -45,6 +45,7 @@ ELSE
 	ENDIF
 	SIF FINDCHARA(CSTR:配属, "ゲーセン売春") >= 0
 		HTML_PRINT SET_TOOLTIP("　[10] - 売春方針", "ゲームセンターで売春させるキャラに方針を命じます")
+	HTML_PRINT SET_TOOLTIP("　[11] - 売上詳細", "日毎の筐体別売上を表示します")
 ENDIF
 
 DRAWLINE
@@ -207,6 +208,8 @@ DO
 				ENDSELECT
 				CONTINUE
 			LOOP 1
+		CASE 11
+			CALL GC_売上詳細
 		CASE 100
 			CALL GC_TUTORIAL
 		CASEELSE
@@ -304,18 +307,18 @@ IF !ORIGIN
 	CALL PASELIL, @"所持金：{MONEY}＄"
 ENDIF
 PRINTL 
-CALL PASELIL, @"　[1] - ボロ屋\@ !ORIGIN ? (30000＄ - 300＄～)#\@"
-CALL PASELIL, @"　[2] - 中小スーパーのテナント\@ !ORIGIN ? (5000＄ - 1000＄～)#\@"
+CALL PASELIL, @"　[1] - ボロ屋\@ !ORIGIN ? (300000＄ - 3000＄～)#\@"
+CALL PASELIL, @"　[2] - 中小スーパーのテナント\@ !ORIGIN ? (50000＄ - 10000＄～)#\@"
 SIF 総スコア >= 5000
-	CALL PASELIL, @"　[3] - 商店街の一角\@ !ORIGIN ? (50000＄ - 1200＄～)#\@"
+	CALL PASELIL, @"　[3] - 商店街の一角\@ !ORIGIN ? (1000000＄ - 12000＄～)#\@"
 SIF 総スコア >= 10000
-	CALL PASELIL, @"　[4] - 駅中テナント\@ !ORIGIN ? (10000＄ - 3000＄～)#\@"
+	CALL PASELIL, @"　[4] - 駅中テナント\@ !ORIGIN ? (200000＄ - 30000＄～)#\@"
 SIF 総スコア >= 30000
-	CALL PASELIL, @"　[5] - 街中物件\@ !ORIGIN ? (100000＄ - 2000＄～)#\@"
+	CALL PASELIL, @"　[5] - 街中物件\@ !ORIGIN ? (10000000＄ - 30000＄～)#\@"
 SIF 総スコア >= 50000
-	CALL PASELIL, @"　[6] - 百貨店テナント\@ !ORIGIN ? (30000＄ - 10000＄～)#\@"
+	CALL PASELIL, @"　[6] - 百貨店テナント\@ !ORIGIN ? (1000000＄ - 100000＄～)#\@"
 SIF 総スコア >= 100000
-	CALL PASELIL, @"　[7] - アミューズメント施設\@ !ORIGIN ? (300000＄ - 5000＄～)#\@"
+	CALL PASELIL, @"　[7] - アミューズメント施設\@ !ORIGIN ? (300000000＄ - 50000＄～)#\@"
 DRAWLINE
 PRINTPLAIN 　PROPERTY　
 PRINTL [0] - 戻る　
@@ -367,7 +370,7 @@ DO
 			PRINTL 【アミューズメント】
 			PRINTL 
 			PRINTL 当バージョンでは最高ランクの施設。
-			PRINTL 初期コストが30万、基本経費が5000ととんでもないコストがかかるが、経済効果もコスト同等のものだと思っていいだろう。
+			PRINTL 初期コストが3億、基本経費が50000ととんでもないコストがかかるが、経済効果もコスト同等のものだと思っていいだろう。
 			PRINTL 初期から二階建て、所有物件唯一の分煙設備、他高水準の設備もあり、フードコートもある。
 			PRINTL 増築も自由にできるため、経営での物件は最終的にここに行き着くだろう。
 		CASEELSE
@@ -495,13 +498,13 @@ PRINTL
 DRAWLINE
 
 ;広さは最大で20まで
-費用:1 = GC広さ*30000+50000
-費用:2 = 30000
+費用:1 = (GC広さ*GC広さ)*30000+50000
+費用:2 = 100000
 ;階層は100まで
-費用:3 = (GC階層*GC階層)*1000000
+費用:3 = (GC階層*GC階層)*10000000
 ;外装も100まで
 費用:4 = GC外装*100000
-費用:5 = 100000
+費用:5 = 200000
 費用:6 = GCトイレ*2000+5000
 
 SELECTCASE GC物件
@@ -808,6 +811,45 @@ NEXT
 ;	PRINTL [0] - 購入する
 ;	PRINTL [1] - 購入しない
 
+@GC_売上詳細
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC ページ
+
+DRAWLINE
+IF GC売上日:ページ == ""
+	PRINTL 
+	PRINTL ---記録無し---
+	PRINTL 
+ELSE
+	PRINTFORML □%GC売上日:ページ%の売上詳細
+	FOR LCOUNT, 0, VARSIZE("GC売上", 2)
+		SIF !GC売上:ページ:LCOUNT
+			CONTINUE
+		CALL PASELIL, @"　%ERDNAME(GC売上, LCOUNT, 2), 10, LEFT%:{GC売上:ページ:LCOUNT}＄"
+	NEXT
+	CALL PASELIL, @"　来客数:{GC客数:ページ} 総売上:{GC総売上:ページ}＄"
+ENDIF
+DRAWLINE
+PRINTPLAIN 　GC売上　
+CALL PRINTSPACE, ページ, "[1] - 翌日の売上 "
+PRINT [0] - 戻る 
+CALL PRINTSPACE, ページ < VARSIZE("GC売上", 1), "[9] - 前日の売上"
+PRINTL 
+
+CALL INPUTF, 0, 1, 9
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		SIF ページ
+			ページ--
+		RESTART
+	CASE 9
+		SIF ページ < VARSIZE("GC売上", 1)
+			ページ++
+		RESTART
+ENDSELECT
 
 ;----------------------------------------------------
 ;ゲームセンター経営での収入を計算。日付変更時に呼び出されます
@@ -825,11 +867,90 @@ NEXT
 #DIM DYNAMIC 最高期待値
 #DIM DYNAMIC 加算値
 #DIM DYNAMIC メンテ加算値
+#DIM DYNAMIC 来客数
+#DIM DYNAMIC 来客確率
+#DIM DYNAMIC バッファ終端
+#DIMS DYNAMIC SPLITVAR, 2
+#DIM DYNAMIC バッファ計算用
 
 CALL 設置済み筐体計算
 
 SIF !GC物件
 	RETURN 0
+
+;来客数を計算する
+;良い物件ほど最低来客数保証
+来客数 = 3*GC物件
+;テナントかそうでないかで計算式が違う
+IF GCテナント()
+	;休日は客が多くなる
+	SELECTCASE DOW(FLAG:曜日)
+		CASE "土"
+			来客確率 = 50
+		CASE "日"
+			来客確率 = 60
+		CASEELSE
+			来客確率 = 40
+	ENDSELECT
+ELSE
+	;休日は客が多くなる
+	SELECTCASE DOW(FLAG:曜日)
+		CASE "土"
+			来客確率 = 20
+		CASE "日"
+			来客確率 = 30
+		CASEELSE
+			来客確率 = 10
+	ENDSELECT
+ENDIF
+
+;ここに評判/100の補正 最大-30%～+30%
+来客確率 += GC評判/100
+;普通に計算すると毎回同じになるので揺らぎを与える
+FOR LCOUNT, 0, GC名声/10
+	SIF RANDPER(来客確率)
+		来客数++
+NEXT
+
+;収入バッファを取得
+VARSET 収入バッファ
+FOR LCOUNT, 1, GC階層+1
+	CALL 階層収入バッファ, LCOUNT
+NEXT
+
+;来客数だけ収入バッファの抽選をする
+FOR LCOUNT, 6, -1, -1
+	FOR LCOUNT2, 0, VARSIZE("GC売上", 2)
+		IF LCOUNT == 0
+			GC売上:LCOUNT:LCOUNT2 = 0
+		ELSE
+			GC売上:LCOUNT:LCOUNT2 = GC売上:(LCOUNT-1):LCOUNT2
+		ENDIF
+	NEXT
+NEXT
+FOR LCOUNT, 0, VARSIZE("収入バッファ")
+	IF 収入バッファ:LCOUNT == ""
+		バッファ終端 = LCOUNT
+		BREAK
+	ENDIF
+NEXT
+FOR LCOUNT, 0, 来客数
+	SIF バッファ終端 == 0
+		BREAK
+	バッファ計算用 = RAND:バッファ終端
+	SPLIT 収入バッファ:バッファ計算用, "/", SPLITVAR
+	収入 += TOINT(SPLITVAR:0)
+	GC売上:0:(SPLITVAR:1) += TOINT(SPLITVAR:0)
+	;ARRAYREMOVEだと重いので手動
+	FOR LCOUNT2, バッファ計算用, バッファ終端
+		収入バッファ:LCOUNT2 = %収入バッファ:(LCOUNT2+1)%
+	NEXT
+	バッファ終端--
+NEXT
+
+
+
+[SKIPSTART]
 ;収入計算--------------------------------------------------------
 ;良い物件ほど最低額保証
 収入 = 300 * GC物件
@@ -877,10 +998,14 @@ SIF PREMIUM_FRIDAY(YEAR, MONTH, DAYS)
 	TIMES 収入, 1.10
 
 ;収入処理--------------------------------------
+[SKIPEND]
 CALL PASELIL, @"%GC店名%の収入が{収入}＄入りました"
 バンめし = 0
 MONEY += 収入
 
+ARRAYSHIFT GC売上日, 1, @"{YEAR}年{MONTH}月{DAYS}日(%DOW(FLAG:曜日)%)"
+ARRAYSHIFT GC客数, 1, 来客数
+ARRAYSHIFT GC総売上, 1, 収入
 
 ;名声計算--------------------------------------------------------
 ;テナント施設だと名声が上がりやすい

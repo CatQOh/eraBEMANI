@@ -23,6 +23,14 @@ SELECTCASE ARG
 		RETURNF "アミューズメント"
 ENDSELECT
 
+@GCテナント, ARG
+#FUNCTION
+SELECTCASE GC物件
+	CASE 2, 4, 6
+		RETURNF 1
+ENDSELECT
+RETURNF 0
+
 ;物件の値段-----------
 @物件価格, ARG
 #FUNCTION
@@ -86,21 +94,23 @@ ENDSELECT
 @GC評判グレード, ARG
 #FUNCTIONS
 SELECTCASE ARG
-	CASE IS < 100
-		RETURNF "存在すら知られていないゲーセン"
-	CASE IS < 500
-		RETURNF "近寄りがたいゲーセン"
-	CASE IS < 1000
+	CASE IS <= -2000
+		RETURNF "怖い人いっぱい居るよこのゲーセン(´；ω；)(；ω；｀)"
+	CASE IS <= -1000
+		RETURNF "なんかやばいよこのゲーセン(；・_・)(・_・;)"
+	CASE IS <= -500
 		RETURNF "治安悪いよねあそこのゲーセン(´･ω･)(･ω･｀)"
-	CASE IS < 3000
-		RETURNF "このゲーセンだったら別に……"
-	CASE IS < 5000
-		RETURNF "たまにはあそこのゲーセン行ってみる？( ･ω･)(･ω･ )"
-	CASE IS < 10000
+	CASE IS <= -100
+		RETURNF "近寄りがたいゲーセン"
+	CASE -99 TO 99
+		RETURNF "存在すら知られていないゲーセン"
+	CASE IS >= 100
 		RETURNF "意外と居心地いいよこのゲーセン"
-	CASE IS < 30000
+	CASE IS >= 500
+		RETURNF "たまにはあそこのゲーセン行ってみる？( ･ω･)(･ω･ )"
+	CASE IS >= 1000
 		RETURNF "今日も開店アタックするぞ！(｀・ω・)(・ω・´)"
-	CASE IS >= 30000
+	CASE IS >= 2000
 		RETURNF "やっぱ最高だねこのゲーセン(*´ω｀)(´ω｀*)"
 ENDSELECT
 
@@ -149,7 +159,7 @@ SELECTCASE ARG
 	CASE 0
 		RETURNF "グレード無し"
 	CASE 1 TO 14
-		SELECTCASE RAND:6
+		SELECTCASE RAND:7
 			CASE 0
 				RETURNF "筐体の周りが汚いなぁ……"
 			CASE 1
@@ -157,11 +167,13 @@ SELECTCASE ARG
 			CASE 2
 				RETURNF "投入口にコイン挟まったぞ！"
 			CASE 3
-				RETURNF "みーつまスッポ抜けた！"
+				RETURNF "つまみが取れた！"
 			CASE 4
 				RETURNF "画面の色がおかしいぞ！"
 			CASE 5
 				RETURNF "ボタンがはまった！"
+			CASE 6
+				RETURNF "コナステやったほうが100倍マシ"
 		ENDSELECT
 	CASE 15 TO 29
 		SELECTCASE RAND:6
@@ -176,7 +188,7 @@ SELECTCASE ARG
 			CASE 4
 				RETURNF "ボタン硬いなぁ……"
 			CASE 5
-				RETURNF "パネル硬……いや仕様か"
+				RETURNF "めっちゃ空POOR出る"
 		ENDSELECT
 	CASE 30 TO 49
 		SELECTCASE RAND:2
@@ -184,6 +196,8 @@ SELECTCASE ARG
 				RETURNF "うん……まぁいいんじゃない？"
 			CASE 1
 				RETURNF "出来ないことはない"
+			CASE 2
+				RETURNF "まぁこんなもんやろな"
 		ENDSELECT
 	CASE 50 TO 69
 		SELECTCASE RAND:2
@@ -191,6 +205,8 @@ SELECTCASE ARG
 				RETURNF "結構いいと思うよ"
 			CASE 1
 				RETURNF "遅延も無いし判定良好"
+			CASE 2
+				RETURNF "ボタンの押し心地最高！"
 		ENDSELECT
 	CASE 70 TO 79
 		RETURNF "ここでやったらスコア伸びました！"
@@ -227,8 +243,7 @@ NEXT
 
 RETURNF 合計値
 
-@階層収入期待値, 階層
-#FUNCTION
+@階層収入バッファ, 階層
 #DIM DYNAMIC 階層
 #DIM DYNAMIC LCOUNT, 2
 #DIM DYNAMIC 計算用名声
@@ -239,6 +254,7 @@ RETURNF 合計値
 #DIM DYNAMIC 筐体NO
 #DIM DYNAMIC 加算値
 #DIM DYNAMIC 合計額
+#DIM DYNAMIC 単価
 
 ;オブジェクトナンバーはそれぞれ上下左右の向きで4つ分ある
 ;それと1からカウントしてるので式は (オブジェクトナンバー-1)/4
@@ -251,6 +267,7 @@ FOR X座標, 0, 10+GC広さ
 	NEXT
 NEXT
 
+[SKIPSTART]
 計算用名声 = GC名声
 計算用評判 = GC評判
 
@@ -277,144 +294,128 @@ SELECTCASE FLAG:天気
 		TIMES 計算用名声 , 0.50
 		TIMES 計算用評判 , 0.50
 ENDSELECT
+[SKIPEND]
 
 FOR LCOUNT, 0, 400
+	単価 = 0
 	SIF !階層筐体計算:LCOUNT
 		CONTINUE
+	;名声と評判が与える影響は撤廃 すべてメンテのみとする
+	;バッファ数は筐体1台につき50クレ 自販機は10クレ
 	SELECTCASE ITEMNAME:(LCOUNT+1100)
 		CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
-			;IIDXは最高で名声+20000 メンテでだいぶ左右される
-			;メンテ次第で名声×5の収入になるので最終的には一番の収入源になる……はず
-			加算値 = (計算用名声/20+200)*GCメンテ
+			;IIDXは最高で1080 メンテでだいぶ左右される
+			単価 = 480+(GCメンテ/10*60)
 			;待ち椅子ボーナス
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			単価 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*20
+			単価 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*50, @"{単価}/IIDX"
 		CASE "pop'n music"
-			;ポップンは最高で評判+10000 こっちはIIDXほどメンテの影響は大きくない
-			加算値 = 計算用評判+2000+(GCメンテ*80)
+			;ポップンは最高で800 こっちはIIDXほどメンテの影響は大きくない
+			単価 = 600+(GCメンテ/10*20)
 			;待ち椅子ボーナス
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			単価 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*20
+			単価 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*50, @"{単価}/ポップン"
 		CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
-			;DDRは立地の差が大きい メンテ次第で最低2000、最高28000
-			加算値 = GC物件*2000+(GC物件*20*GCメンテ)
-			加算値 += GC物件*(計算用名声/10)+GC物件*(計算用評判/10)
+			;DDRは待ち椅子ボーナスが大きい ボーナス無しでは最高1000
+			単価 = 600+(GCメンテ/10*40)
 			;待ち椅子ボーナスが大きい
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*200
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*50
+			単価 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*50
+			単価 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*30
+			ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*50, @"{単価}/DDR"
 		CASE "GITADORA"
-			;ギタドラは評判、名声、メンテの総合型 最高で名声+評判がそのまま収入になる ギタとドラで2倍
-			;逆に言えば評判も名声もメンテもダメだとインカムが悲惨なことになる
-			加算値 = ((計算用評判/100+1)*GCメンテ+(計算用名声/100+1)*GCメンテ)*2
+			;ギタドラは最高600だが、ギタとドラでバッファが2倍確保される
+			単価 = 300+(GCメンテ/10*30)
 			;待ち椅子ボーナス
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
-		CASE "jubeat"
-			;指は名声に左右され最高で3000 名声50000で最高額に達し、メンテスキルの必要性は皆無 一番安定感ある
-			加算値 = 500
-			IF 計算用名声 >= 50000
-				加算値 += 2500
-			ELSE
-				加算値 += 計算用名声/20
-			ENDIF
+			単価 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*20
+			単価 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*100, @"{単価}/ギタドラ"
+		CASE "jubeat", "REFLEC BEAT"
+			;指とリフレクはメンテスキルが必要無い 単価は240固定
+			単価 = 240
 			;待ち椅子ボーナス
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
-		CASE "REFLEC BEAT"
-			;リフレクは指より少しシビアだが最高額が5000 最高額には名声100000必要
-			IF 計算用名声 >= 100000
-				加算値 = 2500+(GCメンテ*25)
-			ELSE
-				加算値 = 計算用名声/1000*25+(GCメンテ*25)
-			ENDIF
-			;待ち椅子ボーナス
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			単価 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*20
+			単価 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			SELECTCASE ITEMNAME:(LCOUNT+1100)
+				CASE "jubeat"
+					ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*50, @"{単価}/jubeat"
+				CASE "REFLEC BEAT"
+					ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*50, @"{単価}/リフレク"
+			ENDSELECT
 		CASE "SOUND VOLTEX"
-			;ボルテは評判寄り メンテも必要だが名声はあまり関係無い 最高7000
-			加算値 += GCメンテ*20
-			IF 計算用評判+計算用名声/100 >= 50000
-				加算値 = 5000
-			ELSE
-				加算値 = (計算用評判+計算用名声/100)/10
-			ENDIF
+			;ボルテは単価は最低だがメンテ次第で520
+			単価 = 120+(GCメンテ/10*40)
 			;待ち椅子ボーナス
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			単価 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*20
+			単価 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*50, @"{単価}/SDVX"
 		CASE "Dance Evolution"
-			;ダンエボは名声と立地次第で評判とメンテの必要性は皆無 最大で1400+名声×1.4
-			加算値 = (1000+計算用名声/5)*GC物件
+			;ダンエボは単価360で固定
+			単価 = 360
 			;DDRほどではないが待ち椅子ボーナスが大きい
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*100
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*30
+			単価 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*30
+			単価 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*20
+			ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*50, @"{単価}/ダンエボ"
 		CASE "クイズマジックアカデミー"
-			;マジアカはそこまで収入には貢献しないが、名声上昇量が割と大きい メンテの必要性は無し 最大2000
-			加算値 = 500
-			IF 計算用名声+計算用評判 >= 30000
-				加算値 += 1500
-			ELSE
-				加算値 += (計算用名声+計算用評判)/20
-			ENDIF
+			;マジアカはそこまで収入には貢献しないが、名声上昇量が割と大きい メンテの必要性は無し
+			単価 = 120
 			;座ってやるゲームなので待ち椅子ボーナスは無い
+			ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*50, @"{単価}/QMA"
 		CASE "maimai"
-			;洗濯機 指と同じ計算式だが最大4000
-			加算値 = 500
-			IF 計算用名声 >= 70000
-				加算値 += 3500
-			ELSE
-				加算値 += 計算用名声/20
-			ENDIF
+			;洗濯機はメンテスキルで伸びず単価は最低だが左右台でバッファ2倍
+			単価 = 100
 			;待ち椅子ボーナス
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*70
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			単価 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*20
+			単価 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*100, @"{単価}/maimai"
 		CASE "CHUNITHM"
-			;簡単に稼げるが評判に悪影響（ひどい） 名声のみ影響するが他店と取り合いになるのでそれなりに名声が必要 最大5000
-			加算値 = 1000
-			IF 計算用名声 >= 160000
-				加算値 += 4000
-			ELSE
-				加算値 += 計算用名声/40
-			ENDIF
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*50
-			加算値 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			;簡単に稼げるが評判に悪影響（ひどい）単価は300
+			単価 = 300
+			単価 += 階層筐体計算:(GETNUM(ITEM, "マッサージチェア")-1100)*20
+			単価 += 階層筐体計算:(GETNUM(ITEM, "待ち椅子")-1100)*10
+			ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*50, @"{単価}/CHUNITHM"
 		;ギャンブル系（コインゲーム） 腕と運次第でいくらでも続けられるので正直収入に期待してはいけない
 		;ただし下記自販機とのシナジーは筐体コストの割には大きい
 		;メダル両替機が無いと収入にならない
 		CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ"
-			SIF EXISTGAMES("メダル両替機")
-				加算値 = 200
+			IF EXISTGAMES("メダル両替機")
+				単価 = 100
+				ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*50, @"{単価}/メダルゲーム"
+			ENDIF
 		CASE "自販機（飲み物）"
 			FOR LCOUNT:1, 0, 100
 				SIF !階層筐体計算:(LCOUNT:1)
 					CONTINUE
-				;筐体ごとにシナジーがある
+				;筐体ごとにシナジーがある 階層の筐体数で単価が決まる
 				SELECTCASE ITEMNAME:(LCOUNT:1+1100)
 					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
-						加算値 = 300
+						単価 = 20
 					CASE "pop'n music"
-						加算値 = 300
+						単価 = 20
 					CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
-						加算値 = 1000
+						単価 = 80
 					CASE "GITADORA"
-						加算値 = 500
+						単価 = 40
 					CASE "jubeat"
-						加算値 = 150
+						単価 = 10
 					CASE "REFLEC BEAT"
-						加算値 = 150
+						単価 = 10
 					CASE "SOUND VOLTEX"
-						加算値 = 150
+						単価 = 10
 					CASE "Dance Evolution"
-						加算値 = 700
+						単価 = 60
 					CASE "maimai"
-						加算値 = 300
+						単価 = 20
 					CASE "CHUNITHM"
-						加算値 = 150
+						単価 = 10
 					CASE "クイズマジックアカデミー"
-						加算値 = 150
+						単価 = 10
 					CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
-						加算値 = 300
+						単価 = 30
 				ENDSELECT
 			NEXT
+			ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*10, @"{単価}/自販機"
 		CASE "自販機（軽食）"
 			FOR LCOUNT:1, 0, 100
 				SIF !階層筐体計算:(LCOUNT:1)
@@ -422,31 +423,32 @@ FOR LCOUNT, 0, 400
 				;筐体ごとにシナジーがある
 				SELECTCASE ITEMNAME:(LCOUNT:1+1100)
 					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
-						加算値 = 500
+						単価 = 20
 					CASE "pop'n music"
-						加算値 = 150
+						単価 = 10
 					CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
-						加算値 = 300
+						単価 = 20
 					CASE "GITADORA"
-						加算値 = 500
+						単価 = 50
 					CASE "jubeat"
-						加算値 = 300
+						単価 = 10
 					CASE "REFLEC BEAT"
-						加算値 = 300
+						単価 = 10
 					CASE "SOUND VOLTEX"
-						加算値 = 150
+						単価 = 10
 					CASE "Dance Evolution"
-						加算値 = 150
+						単価 = 20
 					CASE "maimai"
-						加算値 = 300
+						単価 = 20
 					CASE "CHUNITHM"
-						加算値 = 300
+						単価 = 10
 					CASE "クイズマジックアカデミー"
-						加算値 = 300
+						単価 = 20
 					CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
-						加算値 = 500
+						単価 = 40
 				ENDSELECT
 			NEXT
+			ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*10, @"{単価}/自販機"
 		CASE "自販機（アイス）"
 			FOR LCOUNT:1, 0, 100
 				SIF !階層筐体計算:(LCOUNT:1)
@@ -454,39 +456,34 @@ FOR LCOUNT, 0, 400
 				;筐体ごとにシナジーがある
 				SELECTCASE ITEMNAME:(LCOUNT:1+1100)
 					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
-						加算値 = 150
+						単価 = 10
 					CASE "pop'n music"
-						加算値 = 500
+						単価 = 40
 					CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
-						加算値 = 500
+						単価 = 40
 					CASE "GITADORA"
-						加算値 = 150
+						単価 = 10
 					CASE "jubeat"
-						加算値 = 300
+						単価 = 20
 					CASE "REFLEC BEAT"
-						加算値 = 150
+						単価 = 10
 					CASE "SOUND VOLTEX"
-						加算値 = 500
+						単価 = 30
 					CASE "Dance Evolution"
-						加算値 = 500
+						単価 = 40
 					CASE "maimai"
-						加算値 = 300
+						単価 = 20
 					CASE "CHUNITHM"
-						加算値 = 150
+						単価 = 10
 					CASE "クイズマジックアカデミー"
-						加算値 = 150
+						単価 = 10
 					CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
-						加算値 = 300
+						単価 = 30
 				ENDSELECT
 			NEXT
+			ARRAYSHIFT 収入バッファ, 階層筐体計算:LCOUNT*10, @"{単価}/自販機"
 	ENDSELECT
-	合計額 += 加算値*階層筐体計算:LCOUNT
 NEXT
-
-;RANDの仕様で1低くなるので1を加算(例として、RAND:0とかになってエラー吐く)
-合計額++
-
-RETURNF 合計額
 
 @筐体支出補正, 筐体ナンバー
 #FUNCTION
