@@ -839,16 +839,32 @@ IF !ORIGIN
 		MONEY += FLAG:仕送り*30000
 	ENDIF
 ENDIF
-;毎月1日にコナステの決済
-IF DAYS == 1 && ITEM:コナステベーシックコース
-	SELECTCASE ITEM:コナステベーシックコース
-		CASE 1
-			ITEM:コナステベーシックコース = 0
-		CASE 2
-			CALL PASELIW, @"コナステの利用料金{ITEMPRICE:コナステベーシックコース}＄を支払いました"
-			CALL 現金出納帳記録, @"コナステ決済/{ITEMPRICE:コナステベーシックコース}"
-			MONEY -= ITEMPRICE:コナステベーシックコース
-	ENDSELECT
+;コナステの決済
+IF (コナステ/10000 != YEAR || コナステ%10000/100 != MONTH)
+	IF ITEM:コナステベーシックコース
+		IF コナステ%100 == DAYS
+			SELECTCASE ITEM:コナステベーシックコース
+				CASE 1
+					ITEM:コナステベーシックコース = 0
+				CASE 2
+					CALL PASELIW, @"コナステの利用料金{ITEMPRICE:コナステベーシックコース}＄を支払いました"
+					CALL 現金出納帳記録, @"コナステ決済/{ITEMPRICE:コナステベーシックコース}"
+					MONEY -= ITEMPRICE:コナステベーシックコース
+					コナステ = YEAR*10000+MONTH*100+DAYS
+			ENDSELECT
+		;29～31が無ければ1日に決済
+		ELSEIF MONTH != 1 && DAYS == 1 && !EXIST_DAY(YEAR, MONTH-1, コナステ%100)
+			SELECTCASE ITEM:コナステベーシックコース
+				CASE 1
+					ITEM:コナステベーシックコース = 0
+				CASE 2
+					CALL PASELIW, @"コナステの利用料金{ITEMPRICE:コナステベーシックコース}＄を支払いました"
+					CALL 現金出納帳記録, @"コナステ決済/{ITEMPRICE:コナステベーシックコース}"
+					MONEY -= ITEMPRICE:コナステベーシックコース
+					コナステ = YEAR*10000+MONTH*100+DAYS
+			ENDSELECT
+		ENDIF
+	ENDIF
 ENDIF
 
 ;人気度は毎日1下がる 上限は1000
