@@ -5,13 +5,14 @@
 #DIM DYNAMIC LRESULT
 #DIM DYNAMIC 未実装キャラ
 
-;学園モードじゃないと呼び出さない
-SIF ゲームモード() != "学園モード"
+;学園モード、SLGモードじゃないと呼び出さない
+SIF !GROUPMATCH(ゲームモード(), "学園モード", "SLGモード")
 	RETURN
 
 ADDCHARA 0
 MASTER = 0
-CALL PLAYER_CUSTOM
+SIF ゲームモード() == "学園モード"
+	CALL PLAYER_CUSTOM
 
 $クラス分け
 PRINTL クラス分け処理中...
@@ -308,7 +309,7 @@ $学校一覧表示
 DRAWLINE
 FOR LCOUNT, 0, VARSIZE("学校名")
 	PRINTFORM 　[{LCOUNT}] %学校名:LCOUNT%(生徒:{CMATCH(CSTR:在校, 学校名:LCOUNT)}人 教師:{CMATCH(CSTR:在任, 学校名:LCOUNT)}人) 
-	SIF 入学先 == LCOUNT
+	SIF 入学先 == LCOUNT && ゲームモード() == "学園モード"
 		PRINTFORM %NAME:MASTER%の入学先
 	PRINTL 
 NEXT
@@ -337,7 +338,7 @@ DO
 			NEXT
 			DRAWLINE
 			PRINTPLAINFORM 　%学校名:RESULT%　
-			PRINTL [0] - 戻る [1] - ここに入学する
+			PRINTFORML [0] - 戻る  \@ ゲームモード() == "学園モード" ? [1] - ここに入学する #\@
 
 			LRESULT = RESULT
 
@@ -367,6 +368,8 @@ DO
 			WAIT
 			GOTO 学校一覧表示
 		CASE 100
+			SIF ゲームモード() == "SLGモード"
+				BREAK
 			IF 入学先 == -1
 				PRINTW 入学先を選んでください
 				GOTO 学校一覧表示
