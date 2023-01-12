@@ -1,0 +1,439 @@
+﻿;;;ラッパー関数
+@カラム生成, カラム, カラムメニュー:0, カラムメニュー:1, カラムメニュー:2, カラムメニュー:3, カラムメニュー:4, カラムメニュー:5, カラムメニュー:6, カラムメニュー:7, カラムメニュー:8, カラムメニュー:9
+#DIMS カラム
+#DIMS DYNAMIC カラムメニュー, 10
+DO
+	CALL カラム生成2, カラム, カラムメニュー:0, カラムメニュー:1, カラムメニュー:2, カラムメニュー:3, カラムメニュー:4, カラムメニュー:5, カラムメニュー:6, カラムメニュー:7, カラムメニュー:8, カラムメニュー:9
+	IF LOOP_BREAK
+		選択カラム = 0
+		BREAK
+	ENDIF
+LOOP 1
+
+@カラム生成2, カラム, カラムメニュー:0, カラムメニュー:1, カラムメニュー:2, カラムメニュー:3, カラムメニュー:4, カラムメニュー:5, カラムメニュー:6, カラムメニュー:7, カラムメニュー:8, カラムメニュー:9
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LINE
+;MAX_LINEは可変にしてみる
+;#DIM CONST MAX_LINE = 30
+#DIM 表示カラム
+#DIM DYNAMIC 文字数計算用
+#DIM DYNAMIC 行文字数 = STRLENSU(GETLINESTR("─"))
+;#DIM DYNAMIC 選択カラム = 0
+#DIM DYNAMIC 平文文字数
+#DIMS DYNAMIC カラムメニュー, 10
+#DIM DYNAMIC カラム数
+#DIMS カラム
+#DIMS DYNAMIC SPLITVAR, 2
+#DIM DYNAMIC 生成時間
+
+REDRAW 0
+CALL LOOP_CLEARLINE
+
+LOOP_BREAK = 0
+
+ARRAYCOPY "カラムメニュー", "カラム名"
+
+FOR LCOUNT, 9, -1, -1
+	SIF カラムメニュー:LCOUNT == ""
+		ARRAYREMOVE カラムメニュー, LCOUNT, 1
+NEXT
+
+FOR LCOUNT, 0, VARSIZE("カラムメニュー")
+	IF カラムメニュー:LCOUNT == ""
+		カラム数 = LCOUNT
+		BREAK
+	ENDIF
+NEXT
+
+CALL CHECKDRAWLINE
+
+FOR LCOUNT, 0, VARSIZE("カラムメニュー")
+	;/で区切られていれば表示と関数を分ける
+	SPLIT カラムメニュー:選択カラム, "/", SPLITVAR
+	IF RESULT == 2
+		文字数計算用 = MAX(STRLENSU(SPLITVAR:0)+4, 文字数計算用)
+	ELSE
+		文字数計算用 = MAX(STRLENSU(カラムメニュー:LCOUNT)+4, 文字数計算用)
+	ENDIF
+NEXT
+
+;罫線3つ分引いてSTRLENSU→STRLENS変換で2倍
+平文文字数 = (行文字数-文字数計算用-3)*2
+
+;VARSET カラム行
+VARSET COLUMNLOG
+
+CALL COLUMNRESIZE, 0, (行文字数-文字数計算用-3)*100, MAX_LINE*100
+CALL COLUMNMOVE, 0, (文字数計算用+2)*100, MAX_LINE*100
+
+COLUMNDRAW = (行文字数-文字数計算用-3)*2
+
+;/で区切られていれば表示と関数を分ける
+SPLIT カラムメニュー:選択カラム, "/", SPLITVAR
+IF RESULT == 2
+	CALLFORM %カラム%_%SPLITVAR:1%
+ELSE
+	CALLFORM %カラム%_%カラムメニュー:選択カラム%
+ENDIF
+
+FOR LINE, 0, MAX_LINE+2
+	FOR LCOUNT, 0, 行文字数
+		SELECTCASE LINE
+			CASE 0
+				SELECTCASE LCOUNT
+					CASE 0
+						PRINT ┌
+					CASE 行文字数-1
+						PRINT ┐
+					CASEELSE
+						IF LCOUNT == 文字数計算用+1 && 選択カラム != 0
+							PRINT ┬
+						ELSE
+							PRINT ─
+						ENDIF
+				ENDSELECT
+			CASE MAX_LINE+1
+				SELECTCASE LCOUNT
+					CASE IS < 文字数計算用+1
+						PRINT 　
+					CASE 文字数計算用+1
+						PRINT └
+					CASE 行文字数-1
+						PRINT ┘
+					CASEELSE
+						PRINT ─
+				ENDSELECT
+			CASEELSE
+				IF LINE/2 < カラム数
+					IF LINE%2
+						SELECTCASE LCOUNT
+							CASE 0
+								;/で区切られてれば関数と表示を分ける
+								SPLIT カラムメニュー:(LINE/2), "/", SPLITVAR
+								IF RESULT == 2
+									PRINTFORM │[{LINE/2+10000}] %SPLITVAR:0, (文字数計算用-4)*2, LEFT%
+								ELSE
+									PRINTFORM │[{LINE/2+10000}] %カラムメニュー:(LINE/2), (文字数計算用-4)*2, LEFT%
+								ENDIF
+							CASE 行文字数-1
+								PRINT │
+							CASE IS > 文字数計算用
+								IF LCOUNT == 文字数計算用+1
+									IF 選択カラム != LINE/2
+										PRINTPLAIN │
+									ELSE
+										PRINTPLAIN 　
+									ENDIF
+								ELSEIF LCOUNT == 文字数計算用+2
+									PRINTFORM %" ", 平文文字数, LEFT%
+								ENDIF
+						ENDSELECT
+					ELSE
+						SELECTCASE LCOUNT
+							CASE 0
+								PRINT ├
+							CASE IS <= 文字数計算用
+								PRINT ─
+							CASE 文字数計算用+1
+								IF 選択カラム < LINE/2
+									IF LINE == (選択カラム*2)+2
+										PRINTPLAIN ┐
+									ELSE
+										PRINTPLAIN ┤
+									ENDIF
+								ELSE
+									IF LINE == (選択カラム*2)
+										PRINTPLAIN ┘
+									ELSE
+										PRINTPLAIN ┤
+									ENDIF
+								ENDIF
+							CASE 行文字数-1
+								PRINTPLAIN │
+							CASE 文字数計算用+2
+								PRINTFORM %" ", 平文文字数, LEFT%
+						ENDSELECT
+					ENDIF
+				ELSEIF LINE/2 == カラム数 && LINE%2 == 0
+					SELECTCASE LCOUNT
+						CASE 0
+							PRINT └
+						CASE IS <= 文字数計算用
+							PRINT ─
+						CASE 文字数計算用+1
+							IF LINE == (選択カラム*2)+2
+								PRINTPLAIN ┐
+							ELSE
+								PRINTPLAIN ┤
+							ENDIF
+						CASE 行文字数-1
+							PRINTPLAIN │
+						CASE 文字数計算用+2
+							PRINTFORM %" ", 平文文字数, LEFT%
+					ENDSELECT
+				ELSE
+					SELECTCASE LCOUNT
+						CASE IS < 文字数計算用+1
+							PRINT 　
+						CASE 文字数計算用+1
+							PRINTPLAIN │
+						CASE 行文字数-1
+							PRINTPLAIN │
+						CASE 文字数計算用+2
+							PRINTFORM %" ", 平文文字数, LEFT%
+					ENDSELECT
+				ENDIF
+		ENDSELECT
+	NEXT
+	生成時間 = GETMILLISECOND()
+	IF LINE == MAX_LINE+1
+		CALL COLUMNSHOW
+	ELSE
+		PRINTL 
+	ENDIF
+	DEBUGPRINTFORML {LINE}行目:{GETMILLISECOND()-生成時間}ミリ秒
+NEXT
+
+INPUT
+
+SELECTCASE RESULT
+	CASE 10000 TO 10010
+		選択カラム = RESULT-10000
+		CRESULT:1 = -1
+		RESTART
+	CASEELSE
+		CRESULT:0 = 選択カラム
+		CRESULT:1 = RESULT
+		;/で区切られてれば関数と表示を分ける
+		SPLIT カラムメニュー:選択カラム, "/", SPLITVAR
+		IF RESULT == 2
+			TRYCALLFORM %カラム%_%SPLITVAR:1%_INPUT
+		ELSE
+			TRYCALLFORM %カラム%_%カラムメニュー:選択カラム%_INPUT
+		ENDIF
+		REDRAW 1
+		RETURN
+ENDSELECT
+
+@COLUMNCREATE, ARG
+SIF COLUMN:ARG:CREATED
+	RETURN 0
+
+COLUMN:ARG:CREATED = 1
+RETURN 1
+
+@COLUMNDISPOSE, ARG
+SIF !COLUMN:ARG:CREATED
+	RETURN 0
+
+COLUMN:ARG:CREATED = 0
+RETURN 1
+
+@COLUMNRESIZE, ARG, ARG:1, ARG:2
+
+COLUMN:ARG:WIDTH = ARG:1
+COLUMN:ARG:HEIGHT = ARG:2/100*GETCONFIG("一行の高さ")
+
+@COLUMNMOVE, ARG, ARG:1, ARG:2
+
+COLUMN:ARG:XPOS = ARG:1
+COLUMN:ARG:YPOS = -(ARG:2/100*GETCONFIG("一行の高さ"))
+
+@COLUMNBGCOLOR, ARG, ARGS
+
+IF ISNUMERIC(ARGS)
+	COLUMN:ARG:BGCOLOR = TOINT(ARGS)
+ELSE
+	COLUMN:ARG:BGCOLOR = COLOR_FROMNAME(ARGS)
+ENDIF
+
+@COLUMNPRINT, ARG, ARGS, ARGS:1
+CALL COLUMNSHIFT(ARG, ARGS, ARGS:1)
+
+@COLUMNPRINTL, ARG, ARGS, ARGS:1
+CALL COLUMNSHIFT(ARG, ARGS, ARGS:1)
+COLUMN:ARG:LINE++
+
+@COLUMNIMG, ARG, ARGS, ARG:1, ARG:2
+CALL GCREATESTACK, ARGS
+COLUMNLOG:ARG:(COLUMN:ARG:LINE) += @"<img src='%ESCAPE(ARGS)%' srcb='' width='{ARG:1}' height='{ARG:2}'>"
+
+;@COLUMNEFFECT, ARG, ARGS, ARG:1, ARG:2
+;COLUMNLOG:ARG:(COLUMN:ARG:LINE) += @"<nonbutton pos='0'><img src='%ARGS%' srcb='' width='{ARG:1}' height='{ARG:2}'></nonbutton>"
+;エフェクトあり = 1
+
+@COLUMNBAR, ARG, 数値, 最大値, 長さ
+#DIM DYNAMIC GID
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC 数値
+#DIM DYNAMIC 最大値
+#DIM DYNAMIC 長さ
+#DIM DYNAMIC 割合
+#DIM DYNAMIC ピクセル
+
+ピクセル = (長さ/100)*GETCONFIG("フォントサイズ")
+
+CALL GCREATESTACKVOID, ピクセル, GETCONFIG("一行の高さ")
+GID = RESULT
+
+割合 = (数値*100)/最大値
+
+FOR LCOUNT, 0, GWIDTH(GID)
+	FOR LCOUNT2, 0, GHEIGHT(GID)
+		IF ピクセル*割合/100 >= LCOUNT
+			GSETCOLOR GID, 0xFF000000+COLOR_FROMRGB(255, 0, 0), LCOUNT, LCOUNT2
+		ELSE
+			GSETCOLOR GID, 0xFF000000+COLOR_FROMRGB(150, 0, 0), LCOUNT, LCOUNT2
+		ENDIF
+	NEXT
+NEXT
+
+SPRITECREATE @"BAR{GID}", GID
+
+COLUMNLOG:ARG:(COLUMN:ARG:LINE) += @"<img src='BAR{GID}' srcb='' width='{長さ}' height='100'>"
+
+@COLUMNSHIFT, ARG, ARGS, ETC
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC ETC
+
+SIF COLOR_FROMNAME(ETC) >= 0
+	ARGS = <font color='%ETC%'>%ARGS%</font>
+
+COLUMNLOG:ARG:(COLUMN:ARG:LINE) += ARGS
+
+@COLUMNBGCOLOR, ARG, ARG:1
+COLUMN:ARG:BGCOLOR = ARG:1
+
+@COLUMNBORDER, ARG, ARG:1
+COLUMN:ARG:BORDER = ARG:1
+
+@COLUMNBCOLOR, ARG, ARG:1
+COLUMN:ARG:BCOLOR = ARG:1
+
+@COLUMNRADIUS, ARG, ARG:1
+COLUMN:ARG:RADIUS = ARG:1
+
+@COLUMNDRAWLINE, ARG
+
+CALL COLUMNPRINTL, ARG, "-"*COLUMNDRAW
+
+@COLUMNSHOW
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC LCOUNT3
+#DIMS DYNAMIC HTML
+#DIMS DYNAMIC REVERSELOG, 10000
+#DIM DYNAMIC LOGCOUNT
+
+#DIMS DYNAMIC 本文, 10
+#DIMS DYNAMIC ツールチップ
+#DIMS DYNAMIC タグ
+#DIM DYNAMIC ボタン, 10
+#DIMS DYNAMIC 文字列ボタン, 10
+#DIM DYNAMIC ボタン化
+#DIMS DYNAMIC 文字色
+#DIM DYNAMIC 括弧, 2
+#DIM DYNAMIC ボタン数
+#DIM DYNAMIC 開始位置
+
+#DIM DYNAMIC 改行回数
+
+CLEARLINE 1
+
+;ボタンの数値が指定されたボタン番号と一致すると困るので、ボタン化されなさそうな数値に 元ネタ分かる人はすごい
+VARSET ボタン, -3189415
+
+;CALL エフェクト生成
+
+HTML += "<nobr>"
+
+FOR LCOUNT, 0, 10
+	SIF COLUMN:LCOUNT:CREATED == 0
+		CONTINUE
+	;0のみカラムの左上で固定 1以降は0からの相対位置で表示
+	IF LCOUNT == 0
+		HTML += @"<div rect='{COLUMN:LCOUNT:XPOS}, {COLUMN:LCOUNT:YPOS}px, {COLUMN:LCOUNT:WIDTH}, {COLUMN:LCOUNT:HEIGHT}px'"
+	ELSE
+		HTML += @"<div rect='{COLUMN:0:XPOS+COLUMN:LCOUNT:XPOS}, {COLUMN:0:YPOS+COLUMN:LCOUNT:YPOS}px, {COLUMN:LCOUNT:WIDTH}, {COLUMN:LCOUNT:HEIGHT}px'"
+		; depth='-{LCOUNT}'>"
+	ENDIF
+	
+	SIF COLUMN:LCOUNT:BGCOLOR
+		HTML += @"color='#%CONVERT(COLUMN:LCOUNT:BGCOLOR, 16)%' "
+	SIF COLUMN:LCOUNT:BORDER
+		HTML += @"border='{COLUMN:LCOUNT:BORDER}px' "
+	SIF COLUMN:LCOUNT:BCOLOR
+		HTML += @"bcolor='#%CONVERT(COLUMN:LCOUNT:BCOLOR, 16)%' "
+	SIF COLUMN:LCOUNT:RADIUS
+		HTML += @"radius='{COLUMN:LCOUNT:RADIUS}px' "
+	
+	HTML += "><nobr>"
+
+	FOR LCOUNT2, 0, COLUMN:LCOUNT:LINE
+		SIF MAX_LINE <= LCOUNT2
+			BREAK
+		VARSET 本文
+		本文:0 = %COLUMNLOG:LCOUNT:LCOUNT2%
+		開始位置 = 0
+		FOR LCOUNT3, 0, 10
+			括弧 = STRFINDU(本文:LCOUNT3, "[")
+			括弧:1 = STRFINDU(本文:LCOUNT3, "]")
+
+			IF 括弧 != -1 && 括弧:1 != -1
+				;STRFIND系使うと"[～]"の範囲を取得してるので"["と"]"を省くために+1と-1する
+				文字列ボタン:LCOUNT3 = %SUBSTRINGU(本文:LCOUNT3, 括弧+1, 括弧:1-括弧-1)%
+				SIF ISNUMERIC(文字列ボタン:LCOUNT3)
+					ボタン:LCOUNT3 = TOINT(文字列ボタン:LCOUNT3)
+			ENDIF
+			開始位置 = STRFINDU(本文:LCOUNT3, "[", 括弧:1)
+			;DEBUGPRINTFORML 開始位置 {開始位置}
+			IF 開始位置 > 0
+				本文:(LCOUNT3+1) = %SUBSTRINGU(本文:LCOUNT3, 開始位置, -1)%
+			IF LCOUNT3 == 0
+				本文:LCOUNT3 = %SUBSTRINGU(本文:LCOUNT3, 0, 開始位置)%
+			ELSE
+				本文:LCOUNT3 = %SUBSTRINGU(本文:LCOUNT3, 括弧, 開始位置-括弧)%
+			ENDIF
+			ELSE
+				BREAK
+			ENDIF
+		NEXT
+		FOR LCOUNT3, 0, 10
+			;DEBUGPRINTFORML %本文:LCOUNT3% {ボタン:LCOUNT3}
+			IF ボタン:LCOUNT3 != -3189415
+				HTML += @"<button value ='{ボタン:LCOUNT3}'>%本文:LCOUNT3%</button>"
+			ELSEIF 文字列ボタン:LCOUNT3 != ""
+				HTML += @"<button value ='%文字列ボタン:LCOUNT3%'>%本文:LCOUNT3%</button>"
+			ELSE
+				HTML += @"%本文:LCOUNT3%"
+			ENDIF
+		NEXT
+		HTML += "<br>"
+		VARSET ボタン, -3189415
+		VARSET 文字列ボタン
+	NEXT
+	COLUMN:LCOUNT:LINE = 0
+	HTML += "</nobr></div>"
+NEXT
+
+HTML += "</nobr>"
+
+HTML_PRINT HTML
+
+@GCREATESTACK, ARGS
+GCREATEFROMFILE GCOUNT, ARGS
+SPRITECREATE ARGS, GCOUNT
+GCOUNT++
+
+@GCREATESTACKVOID, ARG, ARG:1
+GCREATE GCOUNT, ARG, ARG:1
+GCOUNT++
+RETURN GCOUNT-1
+
+@GDISPOSEALL
+#DIM DYNAMIC LCOUNT
+
+FOR LCOUNT, 0, GCOUNT
+	GDISPOSE LCOUNT
+NEXT

@@ -1,12 +1,6 @@
 ﻿@SYSTEM_TITLE
-#DIM DYNAMIC LMONTH
-#DIM DYNAMIC LDAYS
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC HTML用, 3
-#DIM DYNAMIC 誕生日人数
-#DIM DYNAMIC HOGE, 3
-#DIM CONST 最大文字数 = 34
-
 LOADGLOBAL
 
 ;コマンドの属性を記録する
@@ -227,215 +221,310 @@ SELECTCASE LASTSAVEMODE
 		ENDSELECT
 ENDSELECT
 
-DO
-	LMONTH = TOINT(SUBSTRING(GETTIMES(), 5, 2))
-	LDAYS = TOINT(SUBSTRING(GETTIMES(), 8, 2))
-	誕生日人数 = 0
-	DRAWLINE
-	FOR LCOUNT, 0, 10000
-		SIF !EXISTCSV(LCOUNT)
-			CONTINUE
-		IF (CSVCFLAG(LCOUNT, GETNUM(CFLAG, "誕生日"))/100) == LMONTH && (CSVCFLAG(LCOUNT, 0)%100) == LDAYS
-			IF LANGUAGE == "ENG"
-				PRINTFORML Today is %CSVENGNAME(LCOUNT)%'s birthday.
-			ELSE
-				PRINTFORML 今日は%CSVNAMEF(LCOUNT)%の誕生日です
-			ENDIF
-			誕生日人数++
-		ENDIF
-	NEXT
-	IF 誕生日人数
-		IF LANGUAGE == "ENG"
-			PRINTL Happy Birthday!
-		ELSE
-			PRINTL ハッピーバースデー！
-		ENDIF
-		DRAWLINE
+MAX_LINE = 32
+
+CALL COLUMNCREATE, 0
+
+IF LANGUAGE == "ENG"
+	WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10} English Edition
+	CALL カラム生成, "タイトル", "INFO/インフォメーション", "Load Game/セーブデータのロード", "Editor/エディター", "Settings/設定", "Database,etc/データベース・その他"
+ELSE
+	WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10}
+	CALL カラム生成, "タイトル", "インフォメーション", "セーブデータのロード", "エディター", "設定", "データベース・その他"
+ENDIF
+
+@タイトル_インフォメーション
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LMONTH
+#DIM DYNAMIC LDAYS
+#DIMS DYNAMIC HTML用, 3
+#DIM DYNAMIC 誕生日人数
+#DIM CONST 最大文字数 = 34
+
+IF ORIGIN
+	CALL COLUMNPRINTL, 0, "eraOrigin (2013-2023)"
+ELSE
+	CALL COLUMNPRINTL, 0, "eraBEMANI+α (2013-2023)"
+	CALL COLUMNPRINTL, 0, "DJ Walt-heR vs DJ Enter with DJ QhrTea"
+ENDIF
+CALL COLUMNPRINTL, 0, @"Ver.2022/09/07"
+CALL COLUMNPRINTL, 0, @"TOTAL CHARA {CSVCOUNT}"
+;CALL COLUMNPRINTL, 0, ""
+
+IF LANGUAGE == "ENG"
+	WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10} English Edition
+	IF !ORIGIN
+		CALL COLUMNPRINT, 0, "Now Grade:"
+		CALL GRADE, 段位
+		CALL COLUMNPRINTL, 0, ""
+		CALL COLUMNPRINTL, 0, TITLECOMMENT()
 	ENDIF
-	誕生日人数 = 0
-	ALIGNMENT CENTER
+ELSE
+	;経営要素をオミットするのももったいないので注意書きを載せつつ使えるようにしてみる
 	IF ORIGIN
-		PRINTFORML eraOrigin
+		CALL COLUMNPRINTL, 0, "※eraOrigin中で表示される収入・支出は全てフレーバー要素です ゲームプレイに影響はありません"
 	ELSE
-		PRINTFORML eraBEMANI+α
-		PRINTFORML DJ Walt-heR vs DJ Enter with DJ QhrTea
+		CALL COLUMNPRINT, 0, "現在の段位:"
+		CALL GRADE, 段位
+		CALL COLUMNPRINTL, 0, "" 
+		CALL COLUMNPRINTL, 0, TITLECOMMENT()
 	ENDIF
-	PRINTFORML (2013-2022)
-	PRINTFORML Ver.2022/09/07
-	PRINTFORML TOTAL CHARA {CSVCOUNT}
+ENDIF
+CALL COLUMNDRAWLINE, 0
 
-	IF LANGUAGE == "ENG"
-		WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10} English Edition
-		IF !ORIGIN
-			PRINTFORM Now Grade:
-			CALL GRADE, 段位
-			PRINTL 
-			CALLFORM TITLECOMMENT
-		ENDIF
-		DRAWLINE
-		PRINTL [0] New Game
-		PRINTL [1] Load Game
-		IF !ORIGIN
-			PRINTL [2] Achievement
-			SIF MAXARRAY(ENDING, 1, 100) > 0
-				PRINTL [3] Show Epilogues
-			IF QMA
-				PRINTL [4] Set eraBEMANI mode
-			ELSE
-				PRINTL [4] Set eraQMA mode
-			ENDIF
-		ENDIF
-		PRINTL [5] Run CSV Editor
-		PRINTL [6] Option Preset
-	;#;	SIF !ORIGIN
-	;#;		PRINTL [7] School Mode
-		SIF !SP
-			PRINTFORML [8] Sound&BGM(Now:\@ サウンド == 1 ? On # Off \@)
-		PRINTL [9] Change Language - 言語変更
-		PRINTL [10] EXTRA MOD
-		PRINTL [20] Show manuals
-	ELSE
-		WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10}
-		;経営要素をオミットするのももったいないので注意書きを載せつつ使えるようにしてみる
-		IF ORIGIN
-			PRINTL ※eraOrigin中で表示される収入・支出は全てフレーバー要素です ゲームプレイに影響はありません
+;誕生日処理
+LMONTH = TOINT(SUBSTRING(GETTIMES(), 5, 2))
+LDAYS = TOINT(SUBSTRING(GETTIMES(), 8, 2))
+誕生日人数 = 0
+FOR LCOUNT, 0, 10000
+	SIF !EXISTCSV(LCOUNT)
+		CONTINUE
+	IF (CSVCFLAG(LCOUNT, GETNUM(CFLAG, "誕生日"))/100) == LMONTH && (CSVCFLAG(LCOUNT, 0)%100) == LDAYS
+		IF LANGUAGE == "ENG"
+			CALL COLUMNPRINTL, 0, @"Today is %CSVENGNAME(LCOUNT)%'s birthday."
 		ELSE
-			PRINTFORM 現在の段位:
-			CALL GRADE, 段位
-			PRINTL 
-			CALLFORM TITLECOMMENT
+			CALL COLUMNPRINTL, 0, @"今日は%CSVNAMEF(LCOUNT)%の誕生日です"
 		ENDIF
-		DRAWLINE
-		PRINTFORML %"[0] 最初からはじめる", 最大文字数, LEFT%
-		PRINTFORML %"[1] ロードしてはじめる", 最大文字数, LEFT%
-		IF !ORIGIN
-			PRINTFORML %"[2] アチーブメントを確認する", 最大文字数, LEFT%
-			SIF MAXARRAY(ENDING, 1, 100) > 0
-				PRINTFORML %"[3] エンディングを見る", 最大文字数, LEFT%
-			IF QMA
-				PRINTFORML %"[4] eraBEMANI仕様に戻す", 最大文字数, LEFT%
-			ELSE
-				PRINTFORML %"[4] eraQMA仕様にする", 最大文字数, LEFT%
-			ENDIF
-		ENDIF
-		PRINTFORML %"[5] CSVエディターを開く", 最大文字数, LEFT%
-		PRINTFORML %"[6] オプションの初期設定を変更する", 最大文字数, %
-	;#;	SIF !ORIGIN
-	;#;		PRINTFORML %"[7] 学園モードデバッグ", 最大文字数, LEFT%
-		SIF !SP
-			PRINTFORML %@"[8] サウンド再生機能(現在:\@ サウンド == 1 ? オン # オフ \@)", 最大文字数, LEFT%
-		PRINTFORML %"[9] 言語変更 - Change Language", 最大文字数, LEFT%
-		PRINTFORML %"[10] エクストラMOD", 最大文字数, LEFT%
-		SIF !SP
-			PRINTFORML %"[11] 口上エディタ", 最大文字数, LEFT%
-		PRINTFORML %"[20] ゲーム内マニュアルを読む", 最大文字数, LEFT%
-		SIF ORIGIN
-			PRINTFORML %"[21] eraOrigin旧バージョンのCSVを再整形する", 最大文字数, LEFT%
-		SIF !SP
-			PRINTFORML %"[22] アップデートをチェックする", 最大文字数, LEFT%
-	;#;	SIF !ORIGIN
-	;#;		PRINTFORML %"[23] SLGモードデバッグ", 最大文字数, LEFT%
+		誕生日人数++
 	ENDIF
+NEXT
+IF 誕生日人数
+	IF LANGUAGE == "ENG"
+		CALL COLUMNPRINTL, 0, "Happy Birthday!"
+	ELSE
+		CALL COLUMNPRINTL, 0, "ハッピーバースデー！"
+	ENDIF
+ENDIF
+誕生日人数 = 0
 
-	ALIGNMENT LEFT
+CALL COLUMNPRINTL, 0, ""
+IF LANGUAGE == "ENG"
+	CALL COLUMNPRINTL, 0, "　[0] New Game"
+ELSE
+	CALL COLUMNPRINTL, 0, "　[0] 最初から始める"
+ENDIF
 
-	DO
-		INPUT
+@タイトル_インフォメーション_INPUT
+IF CRESULT:1 == 0
+	;ORIGINフラグだけは維持する
+	ISORIGIN = ORIGIN
+	CALL RESET_DATA
+	ORIGIN = ISORIGIN
+	ISORIGIN = 0
+	LOOP_BREAK = 1
+	BEGIN FIRST
+ENDIF
+
+;USERLOADを流用
+@タイトル_セーブデータのロード
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 最新セーブ, 2
+#DIMS DYNAMIC SPLITVAR, 2
+CALL COLUMNPRINTL, 0, "□何番をロードしますか？"
+CALL COLUMNPRINTL, 0, "　[--]　　　 現実の時間　　　　|　　　ゲーム内の時間"
+
+FOR LCOUNT, TFLAG:ページ数*20, TFLAG:ページ数*20+20
+	SELECTCASE CHKDATA(LCOUNT)
+		CASE 0
+			CALL COLUMNPRINTL, 0, @"　[{LCOUNT, 2}] %RESULTS%"
+		CASE 1
+			CALL COLUMNPRINTL, 0, @"　[{LCOUNT, 2}] ----　　　　　　　　　　|", "gray"
+		CASE 2
+			CALL COLUMNPRINTL, 0, @"　[{LCOUNT, 2}] 別バリアントのセーブデータです", "gray"
+		CASE 3
+			CALL COLUMNPRINTL, 0, @"　[{LCOUNT, 2}] 互換性の無いセーブデータです", "gray"
+		CASE 4
+			CALL COLUMNPRINTL, 0, @"　[{LCOUNT, 2}] ロードできないセーブデータです", "gray"
+	ENDSELECT
+NEXT
+CALL COLUMNDRAWLINE, 0
+FOR LCOUNT, 94, 100
+	SELECTCASE CHKDATA(LCOUNT)
+		CASE 0
+			SPLIT RESULTS, "|", SPLITVAR
+			REPLACE SPLITVAR, "[^0-9]", ""
+			IF TOINT(RESULTS) > 最新セーブ:1
+				最新セーブ:0 = LCOUNT
+				最新セーブ:1 = TOINT(RESULTS)
+			ENDIF
+	ENDSELECT
+NEXT
+FOR LCOUNT, 94, 100
+	SELECTCASE CHKDATA(LCOUNT)
+		CASE 0
+			CALL COLUMNPRINTL, 0, @"　[{LCOUNT, 2}] %RESULTS% \@ LCOUNT == 最新セーブ:0 ? 【最新】#\@"
+	ENDSELECT
+NEXT
+CALL COLUMNDRAWLINE, 0
+;PRINTPLAINFORM 　LOAD.{ページ数+1}　
+
+CALL COLUMNPRINTL, 0, @"%RETURNSPACE(TFLAG:ページ数 > 0, "[101] 前ページ")% %RETURNSPACE(TFLAG:ページ数 < 3, "[109] 次ページ")%"
+
+@タイトル_セーブデータのロード_INPUT
+
+;[戻る]対策にORIGINフラグを維持する
+;ISORIGIN = ORIGIN
+;CALL RESET_DATA
+;CALL USERLOAD
+;ORIGIN = ISORIGIN
+;ISORIGIN = 0
+
+SELECTCASE CRESULT:1
+	CASE 0 TO 79, 94 TO 99
+		SELECTCASE CHKDATA(CRESULT:1)
+			CASE 0
+				;STOPBGM
+				LOADDATA CRESULT:1
+		ENDSELECT
+	CASE 101
+		SIF TFLAG:ページ数 > 0
+			TFLAG:ページ数--
+	CASE 109
+		SIF TFLAG:ページ数 < 3
+			TFLAG:ページ数++
+ENDSELECT
+
+@タイトル_エディター
+IF LANGUAGE == "ENG"
+	CALL COLUMNPRINTL, 0, "[0] Run CSV Editor"
+	SIF !SP
+		CALL COLUMNPRINTL, 0, "[1] Run Dialog Editor"
+ELSE
+	CALL COLUMNPRINTL, 0, "[0] CSVエディターを開く"
+	SIF !SP
+		CALL COLUMNPRINTL, 0, @"[1] 口上エディタ"
+ENDIF
+
+@タイトル_エディター_INPUT
+SELECTCASE CRESULT:1
+	CASE 0
+		CSVEDITOR = 1
+		CALL CSV_EDITOR
+		CSVEDITOR = 0
+	CASE 1
+		SIF !SP
+			CALL 口上エディタ_プロジェクト選択
+ENDSELECT
+
+@タイトル_設定
+IF LANGUAGE == "ENG"
+	CALL COLUMNPRINTL, 0, "[0] Option Preset"
+	SIF !SP
+		CALL COLUMNPRINTL, 0, @"[1] Sound&BGM(Now:\@ サウンド == 1 ? On # Off \@)"
+	CALL COLUMNPRINTL, 0, "[2] Change Language - 言語変更"
+	CALL COLUMNPRINTL, 0, "[3] EXTRA MOD"
+	IF QMA
+		CALL COLUMNPRINTL, 0, "[5] Set eraBEMANI mode"
+	ELSE
+		CALL COLUMNPRINTL, 0, "[5] Set eraQMA mode"
+	ENDIF
+ELSE
+	CALL COLUMNPRINTL, 0, "[0] オプションの初期設定を変更する"
+		CALL COLUMNPRINTL, 0, @"[1] サウンド再生機能(現在:\@ サウンド == 1 ? オン # オフ \@)"
+	CALL COLUMNPRINTL, 0, "[2] 言語変更 - Change Language"
+	CALL COLUMNPRINTL, 0, "[3] エクストラMOD"
+	SIF !SP
+		CALL COLUMNPRINTL, 0, "[4] アップデートをチェックする"
+	IF QMA
+		CALL COLUMNPRINTL, 0, "[5] eraBEMANI仕様に戻す"
+	ELSE
+		CALL COLUMNPRINTL, 0, "[5] eraQMA仕様にする"
+	ENDIF
+ENDIF
+
+@タイトル_設定_INPUT
+SELECTCASE CRESULT:1
+	CASE 0
+		CALL DEFAULT_OPTION
+	CASE 1
+		SIF !SP
+			CALL 音声切り替え
+	CASE 2
+		IF LANGUAGE == "ENG"
+			LANGUAGE = JP
+		ELSE
+			LANGUAGE = ENG
+		ENDIF
+		SAVEGLOBAL
+	CASE 3
+		LOADGLOBAL
+		VARLINE = 0
+		CALL EXTRA_MOD
+	CASE 4
+		SIF SP
+			RETURN
+		UPDATECHECK
 		SELECTCASE RESULT
 			CASE 0
-				;ORIGINフラグだけは維持する
-				ISORIGIN = ORIGIN
-				CALL RESET_DATA
-				ORIGIN = ISORIGIN
-				ISORIGIN = 0
-				BEGIN FIRST
+				PRINTW このバージョンは最新です
 			CASE 1
-				;[戻る]対策にORIGINフラグを維持する
-				ISORIGIN = ORIGIN
-				CALL RESET_DATA
-				CALL USERLOAD
-				ORIGIN = ISORIGIN
-				ISORIGIN = 0
+				PRINTW 快適なプレイのために常に最新版にしておくことを推奨します
 			CASE 2
-				SIF !ORIGIN
-					CALL ACHIEVEMENT
-			CASE 3
-				IF !ORIGIN
-					SIF MAXARRAY(ENDING, 1, 100) > 0
-						CALL ENDING_LIST
-				ENDIF
+				PRINTL 最新版をDLいただきありがとうございます
+				PRINTW 「CreatedCSV」「CreatedDialogue」「dat」「sav」フォルダを最新版にコピーして引き継いでください
+			CASE 3, 5
+				PRINTW アップデートのチェックに失敗しました。ネットワークがオフでない場合、報告いただけると助かります
 			CASE 4
-				IF !ORIGIN
-					INVERTBIT QMA, 0
-					SAVEGLOBAL
-					CLEARLINE LINECOUNT-VARLINE
-				ENDIF
-			CASE 5
-				CSVEDITOR = 1
-				CALL CSV_EDITOR
-				CSVEDITOR = 0
-			CASE 6
-				CALL DEFAULT_OPTION
-			CASE 7
-				;#;	IF !ORIGIN
-				;#;		FLAG:ゲームモード = 2
-				;#;		BEGIN FIRST
-				;#;	ENDIF
-			CASE 8
-				IF !SP
-					CALL 音声切り替え
-					CLEARLINE LINECOUNT-VARLINE
-				ENDIF
-			CASE 9
-				IF LANGUAGE == "ENG"
-					LANGUAGE = JP
-				ELSE
-					LANGUAGE = ENG
-				ENDIF
-				SAVEGLOBAL
-				CLEARLINE LINECOUNT-VARLINE
-			CASE 10
-				LOADGLOBAL
-				VARLINE = 0
-				CALL EXTRA_MOD
-			CASE 11
-				SIF !SP
-					CALL 口上エディタ_プロジェクト選択
-			CASE 20
-				ADDCHARA 0
-				MASTER = 0
-				CALL GAME_MANUAL
-				DELALLCHARA
-			CASE 21
-				CALL CSV再整形
-			CASE 22
-				SIF SP
-					BREAK
-				UPDATECHECK
-				SELECTCASE RESULT
-					CASE 0
-						PRINTW このバージョンは最新です
-					CASE 1
-						PRINTW 快適なプレイのために常に最新版にしておくことを推奨します
-					CASE 2
-						PRINTL 最新版をDLいただきありがとうございます
-						PRINTW 「CreatedCSV」「CreatedDialogue」「dat」「sav」フォルダを最新版にコピーして引き継いでください
-					CASE 3, 5
-						PRINTW アップデートのチェックに失敗しました。ネットワークがオフでない場合、報告いただけると助かります
-					CASE 4
-						PRINTW UPDATECHECK機能が無効になっています。最新版をチェックする場合はオプションからコンフィグをオフにしてください
-				ENDSELECT
-				CLEARLINE LINECOUNT
-			CASE 23
-				;#;	IF !ORIGIN
-				;#;		FLAG:ゲームモード = 3
-				;#;		BEGIN FIRST
-				;#;	ENDIF
-			CASEELSE
-				CONTINUE
+				PRINTW UPDATECHECK機能が無効になっています。最新版をチェックする場合はオプションからコンフィグをオフにしてください
 		ENDSELECT
-	LOOP 0
-LOOP 1
+	CASE 5
+		IF !ORIGIN
+			INVERTBIT QMA, 0
+			SAVEGLOBAL
+		ENDIF
+ENDSELECT
+
+@タイトル_データベース・その他
+IF LANGUAGE == "ENG"
+	IF !ORIGIN
+		CALL COLUMNPRINTL, 0, "[0] Achievement"
+		SIF MAXARRAY(ENDING, 1, 100) > 0
+			CALL COLUMNPRINTL, 0, "[1] Show Epilogues"
+	ENDIF
+	CALL COLUMNPRINTL, 0, "[2] Show manuals"
+ELSE
+	IF !ORIGIN
+		CALL COLUMNPRINTL, 0, "[0] アチーブメントを確認する"
+		SIF MAXARRAY(ENDING, 1, 100) > 0
+			CALL COLUMNPRINTL, 0, "[1] エンディングを見る"
+	ENDIF
+	CALL COLUMNPRINTL, 0, "[2] ゲーム内マニュアルを読む"
+	SIF ORIGIN
+		CALL COLUMNPRINTL, 0, "[3] eraOrigin旧バージョンのCSVを再整形する"
+;#;	SIF !ORIGIN
+;#;		CALL COLUMNPRINTL, 0, "[4] 学園モードデバッグ"
+;#;	SIF !ORIGIN
+;#;		CALL COLUMNPRINTL, 0, "[5] SLGモードデバッグ"
+ENDIF
+
+@タイトル_データベース・その他_INPUT
+SELECTCASE CRESULT:1
+	CASE 0
+		SIF !ORIGIN
+			CALL ACHIEVEMENT
+	CASE 1
+		IF !ORIGIN
+			SIF MAXARRAY(ENDING, 1, 100) > 0
+				CALL ENDING_LIST
+		ENDIF
+	CASE 2
+		ADDCHARA 0
+		MASTER = 0
+		CALL GAME_MANUAL
+		DELALLCHARA
+	CASE 3
+		CALL CSV再整形
+	CASE 4
+		;#;	IF !ORIGIN
+		;#;		FLAG:ゲームモード = 2
+		;#;		BEGIN FIRST
+		;#;	ENDIF
+	CASE 5
+		;#;	IF !ORIGIN
+		;#;		FLAG:ゲームモード = 3
+		;#;		BEGIN FIRST
+		;#;	ENDIF
+ENDSELECT
 
 @ENDING_LIST
 #DIM DYNAMIC LCOUNT
@@ -519,7 +608,9 @@ DO
 LOOP 1
 
 @TITLECOMMENT
+#FUNCTIONS
 #DIMS DYNAMIC 称号, 2
+#DIMS DYNAMIC 返り値
 
 SELECTCASE RAND:5
 	CASE 0
@@ -544,7 +635,7 @@ SELECTCASE RAND:4
 		称号:1 = 足淑女
 ENDSELECT
 
-PRINTDATAL 
+STRDATA 返り値
 	DATA 時代を震わす刻印を刻め!!
 	DATA The next variant
 	DATA 恋慕(ハート)の向こうへ駆け抜けろ。
@@ -715,6 +806,8 @@ PRINTDATAL
 	DATA 「俺の口上だけ、セリフが入ってねぇ！！」というクレームすらも一つも入らないどん底アンダーグラウンド。
 	DATA いいか！この世は犯すか、犯されるかだ！おい%CALLNAME:MASTER%くん聞いているのか！！
 ENDDATA
+
+RETURNF 返り値
 
 @CSV再整形
 #DIM DYNAMIC LCOUNT
