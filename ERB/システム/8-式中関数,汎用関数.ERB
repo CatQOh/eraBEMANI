@@ -1284,23 +1284,24 @@ ENDSELECT
 
 ;;;月の画像表示
 @月齢画像
+#FUNCTIONS
 SELECTCASE 月齢
 	CASE 0 TO 187, 2813 TO 3000
-		PRINT_IMG "新月"
+		RETURNF "新月"
 	CASE 188 TO 562
-		PRINT_IMG "三日月"
+		RETURNF "三日月"
 	CASE 563 TO 937
-		PRINT_IMG "上弦の月"
+		RETURNF "上弦の月"
 	CASE 938 TO 1312
-		PRINT_IMG "十日夜"
+		RETURNF "十日夜"
 	CASE 1313 TO 1687
-		PRINT_IMG "満月"
+		RETURNF "満月"
 	CASE 1688 TO 2062
-		PRINT_IMG "二十日月"
+		RETURNF "二十日月"
 	CASE 2063 TO 2437
-		PRINT_IMG "下弦の月"
+		RETURNF "下弦の月"
 	CASE 2438 TO 2812
-		PRINT_IMG "暁月"
+		RETURNF "暁月"
 ENDSELECT
 
 ;;;ゲームモードを単語で返す
@@ -1329,97 +1330,104 @@ ENDSELECT
 
 ;;;現在の日付を「XX年XX月XX日(X曜日) 祝日(あれば) XX日目」の形式でPRINTする
 @日付表示
+#FUNCTIONS
+#DIMS DYNAMIC 返り値
+
 #DIM DYNAMIC LCOUNT
 IF LANGUAGE == "ENG"
 	SELECTCASE MONTH
 		CASE 1
-			PRINT January 
+			返り値 += "January "
 		CASE 2
-			PRINT February 
+			返り値 += "February "
 		CASE 3
-			PRINT March 
+			返り値 += "March "
 		CASE 4
-			PRINT April 
+			返り値 += "April "
 		CASE 5
-			PRINT May 
+			返り値 += "May "
 		CASE 6
-			PRINT June 
+			返り値 += "June "
 		CASE 7
-			PRINT July 
+			返り値 += "July "
 		CASE 8
-			PRINT August 
+			返り値 += "August "
 		CASE 9
-			PRINT September 
+			返り値 += "September "
 		CASE 10
-			PRINT October 
+			返り値 += "October "
 		CASE 11
-			PRINT November 
+			返り値 += "November "
 		CASE 12
-			PRINT December 
+			返り値 += "December "
 	ENDSELECT
 
-	PRINTFORM {DAYS}, 
+	返り値 += @"{DAYS}, "
 	IF YEAR > 0
-		PRINTFORM {YEAR}
+		返り値 += @"{YEAR}"
 	ELSE
-		PRINTFORM BC{ABS(YEAR)+1}
+		返り値 += @"BC{ABS(YEAR)+1}"
 	ENDIF
-	PRINTFORM (%DOWDISP(FLAG:曜日)%) 
+	返り値 += @"(%DOWDISP(FLAG:曜日)%) "
 ELSE
 	IF YEAR > 0
-		PRINTFORM {YEAR}
+		返り値 += @"{YEAR}"
 	ELSE
-		PRINTFORM BC{ABS(YEAR)+1}
+		返り値 += @"BC{ABS(YEAR)+1}"
 	ENDIF
-	PRINTFORM 年{MONTH}月{DAYS}日(%DOW(FLAG:曜日)%) 
+	返り値 += @"年{MONTH}月{DAYS}日(%DOW(FLAG:曜日)%) "
 ENDIF
 
 IF LANGUAGE == "JP"
 	FOR LCOUNT, 0, 5
 		SIF HOLIDAY:LCOUNT == ""
 			BREAK
-		PRINTFORM %HOLIDAY:LCOUNT% 
+		返り値 += @"%HOLIDAY:LCOUNT% "
 	NEXT
 ENDIF
 
 IF LANGUAGE == "ENG"
 	IF ゲームモード() == "学園モード"
-		PRINTFORM Day {DAY}
+		返り値 += @"Day {DAY}"
 		SELECTCASE ターン
 			CASE "朝"
-				PRINT (Morning) 
+				返り値 += "(Morning) "
 			CASE "昼"
-				PRINT (Noon) 
+				返り値 += "(Noon) "
 			CASE "夜"
-				PRINT (Evening) 
+				返り値 += "(Evening) "
 		ENDSELECT
 	ELSE
-		PRINTFORM Day {DAY}(\@ TIME == 0 ? Noon # Evening \@) 
+		返り値 += @"Day {DAY}(\@ TIME == 0 ? Noon # Evening \@) "
 	ENDIF
 ELSE
 	IF ゲームモード() == "学園モード"
-		PRINTFORM {DAY}日目(%ターン%) 
+		返り値 += @"{DAY}日目(%ターン%) "
 	ELSE
-		PRINTFORM {DAY}日目(\@ TIME == 0 ? 昼 # 夜 \@) 
+		返り値 += @"{DAY}日目(\@ TIME == 0 ? 昼 # 夜 \@) "
 	ENDIF
 ENDIF
 
+RETURNF 返り値
+
 ;;;ゲームモードをPRINTする
 @ゲームモード表示
+#FUNCTIONS
+
 SELECTCASE FLAG:ゲームモード
 	CASE 0
-		PRINT  MODE:STANDARD
+		RETURNF "MODE:STANDARD"
 	CASE 1
-		PRINT  MODE:STRATEGY
+		RETURNF "MODE:STRATEGY"
 	CASE 2
-		PRINT  MODE:SCHOOL
+		RETURNF "MODE:SCHOOL"
 	CASE 7
-		PRINT  MODE:新婚生活
-	CASE 8
-		PRINT  MODE:段位認定 
-		CALL GRADE, FLAG:選択段位
+		RETURNF "MODE:新婚生活"
+	;CASE 8
+	;	CALL GRADE, FLAG:選択段位, 1
+	;	RETURNF ""
 	CASE 9
-		PRINT  MODE:PREMIUM FREE
+		RETURNF "MODE:PREMIUM FREE"
 ENDSELECT
 
 ;;;性別の表記を返す

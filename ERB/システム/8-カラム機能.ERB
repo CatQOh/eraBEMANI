@@ -6,6 +6,7 @@ DO
 	CALL カラム生成2, カラム, カラムメニュー:0, カラムメニュー:1, カラムメニュー:2, カラムメニュー:3, カラムメニュー:4, カラムメニュー:5, カラムメニュー:6, カラムメニュー:7, カラムメニュー:8, カラムメニュー:9
 	IF LOOP_BREAK
 		選択カラム = 0
+		CRESULT:0 = 0
 		BREAK
 	ENDIF
 LOOP 1
@@ -49,7 +50,7 @@ CALL CHECKDRAWLINE
 
 FOR LCOUNT, 0, VARSIZE("カラムメニュー")
 	;/で区切られていれば表示と関数を分ける
-	SPLIT カラムメニュー:選択カラム, "/", SPLITVAR
+	SPLIT カラムメニュー:LCOUNT, "/", SPLITVAR
 	IF RESULT == 2
 		文字数計算用 = MAX(STRLENSU(SPLITVAR:0)+4, 文字数計算用)
 	ELSE
@@ -71,9 +72,9 @@ COLUMNDRAW = (行文字数-文字数計算用-3)*2
 ;/で区切られていれば表示と関数を分ける
 SPLIT カラムメニュー:選択カラム, "/", SPLITVAR
 IF RESULT == 2
-	CALLFORM %カラム%_%SPLITVAR:1%
+	TRYCALLFORM %カラム%_%SPLITVAR:1%
 ELSE
-	CALLFORM %カラム%_%カラムメニュー:選択カラム%
+	TRYCALLFORM %カラム%_%カラムメニュー:選択カラム%
 ENDIF
 
 FOR LINE, 0, MAX_LINE+2
@@ -258,6 +259,13 @@ COLUMN:ARG:LINE++
 CALL GCREATESTACK, ARGS
 COLUMNLOG:ARG:(COLUMN:ARG:LINE) += @"<img src='%ESCAPE(ARGS)%' srcb='' width='{ARG:1}' height='{ARG:2}'>"
 
+@COLUMNTOOLTIP, ARG, ARGS, ARGS:1, ARGS:2
+CALL COLUMNSHIFT(ARG, ARGS, ARGS:2, ARGS:1)
+
+@COLUMNTOOLTIPL, ARG, ARGS, ARGS:1, ARGS:2
+CALL COLUMNSHIFT(ARG, ARGS, ARGS:2, ARGS:1)
+COLUMN:ARG:LINE++
+
 ;@COLUMNEFFECT, ARG, ARGS, ARG:1, ARG:2
 ;COLUMNLOG:ARG:(COLUMN:ARG:LINE) += @"<nonbutton pos='0'><img src='%ARGS%' srcb='' width='{ARG:1}' height='{ARG:2}'></nonbutton>"
 ;エフェクトあり = 1
@@ -293,14 +301,53 @@ SPRITECREATE @"BAR{GID}", GID
 
 COLUMNLOG:ARG:(COLUMN:ARG:LINE) += @"<img src='BAR{GID}' srcb='' width='{長さ}' height='100'>"
 
-@COLUMNSHIFT, ARG, ARGS, ETC
+@COLUMNSHIFT, ARG, ARGS, ETC, TOOLTIP
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC ETC
+#DIMS DYNAMIC TOOLTIP
+#DIMS DYNAMIC 文字列ボタン
+#DIM DYNAMIC ボタン = -3189415
+#DIM DYNAMIC 括弧, 2
+#DIMS DYNAMIC HTML
 
 SIF COLOR_FROMNAME(ETC) >= 0
 	ARGS = <font color='%ETC%'>%ARGS%</font>
 
-COLUMNLOG:ARG:(COLUMN:ARG:LINE) += ARGS
+;パセリに対応
+ARGS = %REPLACE(ARGS, "＄", "<img src='PASELI' srcb='' width='100' height='100'>")%
+
+
+;ボタン化処理はここでツールチップと同時に行うことにした
+括弧 = STRFINDU(ARGS, "[")
+括弧:1 = STRFINDU(ARGS, "]")
+
+IF 括弧 != -1 && 括弧:1 != -1
+	;STRFIND系使うと"[～]"の範囲を取得してるので"["と"]"を省くために+1と-1する
+	文字列ボタン = %SUBSTRINGU(ARGS, 括弧+1, 括弧:1-括弧-1)%
+	SIF ISNUMERIC(文字列ボタン)
+		ボタン = TOINT(文字列ボタン)
+ENDIF
+
+;DEBUGPRINTFORML %本文:LCOUNT3% {ボタン:LCOUNT3}
+IF ボタン != -3189415
+	HTML += @"<button value ='{ボタン}' "
+	SIF TOOLTIP != ""
+		HTML += @"title='%TOOLTIP%'"
+	HTML += @">%ARGS%</button>"
+ELSEIF 文字列ボタン != ""
+	HTML += @"<button value ='%文字列ボタン%' "
+	SIF TOOLTIP != ""
+		HTML += @"title='%TOOLTIP%'"
+	HTML += @">%ARGS%</button>"
+ELSE
+	HTML += @"<nonbutton "
+	SIF TOOLTIP != ""
+		HTML += @"title='%TOOLTIP%'"
+	HTML += @">%ARGS%</nonbutton>"
+ENDIF
+
+
+COLUMNLOG:ARG:(COLUMN:ARG:LINE) += HTML
 
 @COLUMNBGCOLOR, ARG, ARG:1
 COLUMN:ARG:BGCOLOR = ARG:1
@@ -336,6 +383,7 @@ CALL COLUMNPRINTL, ARG, "-"*COLUMNDRAW
 #DIM DYNAMIC 括弧, 2
 #DIM DYNAMIC ボタン数
 #DIM DYNAMIC 開始位置
+#DIMS DYNAMIC SPLITVAR, 3
 
 #DIM DYNAMIC 改行回数
 
@@ -373,7 +421,9 @@ FOR LCOUNT, 0, 10
 	FOR LCOUNT2, 0, COLUMN:LCOUNT:LINE
 		SIF MAX_LINE <= LCOUNT2
 			BREAK
-		VARSET 本文
+		HTML += @"%COLUMNLOG:LCOUNT:LCOUNT2%"
+		;VARSET 本文
+		[SKIPSTART]
 		本文:0 = %COLUMNLOG:LCOUNT:LCOUNT2%
 		開始位置 = 0
 		FOR LCOUNT3, 0, 10
@@ -402,13 +452,29 @@ FOR LCOUNT, 0, 10
 		FOR LCOUNT3, 0, 10
 			;DEBUGPRINTFORML %本文:LCOUNT3% {ボタン:LCOUNT3}
 			IF ボタン:LCOUNT3 != -3189415
-				HTML += @"<button value ='{ボタン:LCOUNT3}'>%本文:LCOUNT3%</button>"
+				IF STRFIND(本文:LCOUNT3, "<IT_HAS_TOOLTIP>") >= 0
+					SPLIT 本文:LCOUNT3, "<IT_HAS_TOOLTIP>", SPLITVAR
+					HTML += @"<button value ='{ボタン:LCOUNT3}' title='%SPLITVAR:1%'>%SPLITVAR:0%</button>"
+				ELSE
+					HTML += @"<button value ='{ボタン:LCOUNT3}'>%本文:LCOUNT3%</button>"
+				ENDIF
 			ELSEIF 文字列ボタン:LCOUNT3 != ""
-				HTML += @"<button value ='%文字列ボタン:LCOUNT3%'>%本文:LCOUNT3%</button>"
+				IF STRFIND(本文:LCOUNT3, "<IT_HAS_TOOLTIP>") >= 0
+					SPLIT 本文:LCOUNT3, "<IT_HAS_TOOLTIP>", SPLITVAR
+					HTML += @"<button value ='%文字列ボタン:LCOUNT3%' title='%SPLITVAR:1%'>%SPLITVAR:0%</button>"
+				ELSE
+					HTML += @"<button value ='%文字列ボタン:LCOUNT3%'>%本文:LCOUNT3%</button>"
+				ENDIF
 			ELSE
-				HTML += @"%本文:LCOUNT3%"
+				IF STRFIND(本文:LCOUNT3, "<IT_HAS_TOOLTIP>") >= 0
+					SPLIT 本文:LCOUNT3, "<IT_HAS_TOOLTIP>", SPLITVAR
+					HTML += @"<nonbutton title='%SPLITVAR:1%'>%SPLITVAR:0%</nonbutton>"
+				ELSE
+					HTML += @"%本文:LCOUNT3%"
+				ENDIF
 			ENDIF
 		NEXT
+		[SKIPEND]
 		HTML += "<br>"
 		VARSET ボタン, -3189415
 		VARSET 文字列ボタン

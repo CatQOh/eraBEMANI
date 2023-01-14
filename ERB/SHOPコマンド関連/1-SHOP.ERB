@@ -156,6 +156,495 @@ ENDIF
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC コマンド表示用, 10
 
+VARLINE = LINECOUNT
+
+MAX_LINE = 40
+
+CALL カラム生成, "SHOP", "メイン", "キャラクター", "施設・経営", "キャラ・アイテム購入", "データベース", 
+
+@SHOP_メイン
+#DIMS DYNAMIC 能力表示用, 4
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 店長
+#DIM DYNAMIC 誕生日キャラ
+;ゲーム内で表示されるショップ画面
+;□XXXX年XX月XX日(曜日) X日目(昼夜) X周目 MODE:XXXXX
+;　天気:XX 気温:XX.X℃ XXX(月齢.XXX) 
+;　所持金:$XXXX 昨日の所持金:$XXXX XXXX 変動価格
+;　難易度:XXXX
+;　総奴隷数:X/陥落済み:X
+;
+;□調教中 [750]　前のキャラ [751] 次のキャラ
+;　No.X XXXXXX(♂♀)[ふたなり]【陥落素質等】依存度:XX ストレス値:XXX/999
+;　従順:LVXX 欲望:LVXX 技巧:LVXX
+;　Ｃ感:LVXX Ｖ感:LVXX Ａ感:LVXX Ｂ感:LVXX
+;　苦痛刻印:LVX [XXX]　快楽刻印:LVX [XXX]　屈服刻印:LVX [XXX]　反発刻印:LVX [XXX]
+;　体力[********************************](XXXX/XXXX)[排卵誘発中]
+;　気力[********************************](XXXX/XXXX)
+;
+;　保管済み母乳:Xml　保管済み精液:Xml　保管済み血液:Xml　保管済み粘液:Xml
+;　主人:XXX
+;　助手:XXX
+;-------------------------------------------------------------------------------------
+;□ゲームセンターの状況
+;　営業中or休業中 [700]営業を開始するor休業する
+;　前日の収入:($XXX) 店長:XXXX
+;-------------------------------------------------------------------------------------
+;□娼館の状況
+;　営業中or休業中 [701]営業を開始するor休業する
+;　前日の収入:($XXX)
+;-------------------------------------------------------------------------------------
+;□飲食店の状況
+;　営業中or休業中 [702]営業を開始するor休業する
+;　前日の収入:($XXX)
+;-------------------------------------------------------------------------------------
+;□適用中のMOD(あれば表示)
+;　[XXX][XXX]
+;
+
+;日数表示
+;CALL CHECKDRAWLINE
+CALL COLUMNPRINT, 0, @"□%日付表示()%"
+
+;ORIGINでは表示しない
+IF !ORIGIN
+	SIF FLAG:周回数 > 1
+		CALL COLUMNPRINT, 0, @" {FLAG:周回数}周目 "
+	IF ゲームモード() == "段位認定"
+		CALL GRADE, FLAG:選択段位, 1
+	ELSE
+		CALL COLUMNPRINT, 0, @"%ゲームモード表示()% "
+	ENDIF
+	CALL COLUMNPRINT, 0, ""
+;ただしeraBEMANIのORIGINモードでは表示
+ELSEIF ORIGIN && GAMEBASE_TITLE == "eraBEMANI+α"
+	CALL COLUMNPRINT, 0, "MODE:Origin "
+ENDIF
+SIF !GUI
+	CALL COLUMNPRINTL, 0, ""
+
+IF LANGUAGE == "ENG"
+	CALL COLUMNPRINTL, 0, @"　Weather:%WEATHERDISP()% Temperature:%DIV10(FLAG:気温)%℃"
+ELSE
+	CALL COLUMNPRINT, 0, @"　天気:"
+	IF GUI
+		;夜で晴れなら月アイコン
+		IF TIME == 1 && 天気() == "晴れ"
+			CALL COLUMNIMG, 0, 月齢画像(), 100, 100
+		ELSE
+			CALL COLUMNIMG, 0, 天気(), 100, 100
+		ENDIF
+	ELSE
+		CALL COLUMNPRINT, 0, @"%天気()%"
+	ENDIF
+	;GUIモードでは情報量を減らしていく
+	SIF !GUI
+		CALL COLUMNPRINTL, 0, @" 気温:%DIV10(FLAG:気温)%℃ %月齢()%(月齢:%DIV100(月齢)%)"
+ENDIF
+
+;段位認定のときのみ表示を変える
+;ORIGINでは所持金、難易度は表示しない
+IF !ORIGIN
+	IF ゲームモード() != "段位認定"
+		IF LANGUAGE == "ENG"
+			;所持金表示
+			CALL COLUMNPRINT, 0, @"　Money:{MONEY}＄"
+			SIF 借金 > 0
+				CALL COLUMNPRINT, 0, @" Debts:{借金}＄"
+			CALL COLUMNPRINT, 0, @" Money(Yesterday):{LASTMONEY}＄"
+			IF MONEY == LASTMONEY
+				CALL COLUMNPRINTL, 0, "→0 KEEP"
+			ELSEIF MONEY > LASTMONEY
+				CALL COLUMNPRINTL, 0, @"↑{MONEY-LASTMONEY} UP!"
+			ELSEIF MONEY < LASTMONEY
+				CALL COLUMNPRINTL, 0, @"↓{LASTMONEY-MONEY} DOWN..."
+			ENDIF
+
+			;新婚生活中は非表示
+			IF ゲームモード() != "新婚モード"
+				;難易度表示
+				CALL COLUMNPRINT, 0, @"　Difficulty:%難易度()%"
+				;奴隷人数表示
+				CALL COLUMNPRINTL, 0, @"　Characters:{CHARANUM-1}\/Fell:{CMATCH(CFLAG:陥落, 1)}"
+			ENDIF
+		ELSE
+			;所持金表示
+			CALL COLUMNPRINT, 0, @"　所持金:{MONEY}＄"
+			SIF 借金 > 0
+				CALL COLUMNPRINT, 0, @" 借金:{借金}＄"
+			CALL COLUMNPRINT, 0, @" 昨日の所持金:{LASTMONEY}＄"
+			IF MONEY == LASTMONEY
+				CALL COLUMNPRINTL, 0, "→0 KEEP"
+			ELSEIF MONEY > LASTMONEY
+				CALL COLUMNPRINTL, 0, @"↑{MONEY-LASTMONEY} UP!"
+			ELSEIF MONEY < LASTMONEY
+				CALL COLUMNPRINTL, 0, @"↓{LASTMONEY-MONEY} DOWN..."
+			ENDIF
+
+			;新婚生活中は非表示
+			IF ゲームモード() != "新婚モード"
+				;難易度表示
+				CALL COLUMNPRINT, 0, @"　難易度:%難易度()%"
+				;奴隷人数表示
+				CALL COLUMNPRINTL, 0, @"　総奴隷数:{CHARANUM-1}\/陥落済み:{CMATCH(CFLAG:陥落, 1)}"
+			ENDIF
+		ENDIF
+	ELSE
+		IF LANGUAGE == "ENG"
+			;所持金表示
+			CALL COLUMNPRINT, 0, @"　Money:{MONEY}＄"
+			SIF ストック > 0
+				CALL COLUMNPRINT, 0, @" (Stock:{ストック}＄)"
+			PRINTL
+
+			;難易度表示
+			CALL COLUMNPRINT, 0, @"　Difficulty:%難易度()%"
+			;売却可能人数表示
+			CALL COLUMNPRINTL, 0, @"Characters:{CHARANUM-1}\/Can sell:{CMATCH(CFLAG:状態, 1)+CMATCH(CFLAG:状態, 2)}"
+		ELSE
+			;所持金表示
+			CALL COLUMNPRINT, 0, @"　所持金:{MONEY}＄"
+			SIF ストック > 0
+				CALL COLUMNPRINT, 0, @" (ストック:{ストック}＄)"
+			PRINTL
+
+			;難易度表示
+			CALL COLUMNPRINT, 0, @"　難易度:%難易度()%"
+			;売却可能人数表示
+			CALL COLUMNPRINTL, 0, @"総奴隷数:{CHARANUM-1}\/売却可能:{CMATCH(CFLAG:状態, 1)+CMATCH(CFLAG:状態, 2)}"
+		ENDIF
+		CALL COLUMNPRINT, 0, "　"
+		CALL 段位ゲージ表示
+		CALL COLUMNPRINTL, 0, ""
+	ENDIF
+ENDIF
+
+;奴隷の状態------------------------------------------------------------
+IF TARGET > 0
+	CALL COLUMNPRINTL, 0, ""
+	IF ゲームモード() == "新婚モード"
+		IF LANGUAGE == "ENG"
+			CALL COLUMNPRINTL, 0, "□Partner"
+		ELSE
+			CALL COLUMNPRINTL, 0, "□同棲中"
+		ENDIF
+		CALL COLUMNPRINT, 0, @"　%NAMEDISP(TARGET)%"
+	ELSE
+		IF LANGUAGE == "ENG"
+			CALL COLUMNPRINT, 0, "□Training "
+			SIF TARGET > 1
+				CALL COLUMNPRINT, 0, "[750] Prev character "
+			SIF TARGET < CHARANUM-1
+				CALL COLUMNPRINT, 0, "[751] Next character"
+			CALL COLUMNPRINTL, 0, ""
+		ELSE
+			CALL COLUMNPRINT, 0, "□調教中 "
+			SIF TARGET > 1
+				CALL COLUMNPRINT, 0, "[750] 前のキャラ "
+			SIF TARGET < CHARANUM-1
+				CALL COLUMNPRINT, 0, "[751] 次のキャラ"
+			CALL COLUMNPRINTL, 0, ""
+		ENDIF
+		CALL COLUMNPRINT, 0, @"　No.{TARGET} %NAMEDISP(TARGET)%"
+	ENDIF
+	CALL COLUMNPRINT, 0, @"%性別表示(TARGET)% "
+	IF LANGUAGE == "ENG"
+		SIF TALENT:ふたなり
+			CALL COLUMNPRINT, 0, "[Futanari]"
+		SIF TALENT:アニマル
+			CALL COLUMNPRINT, 0, "[Animal]"
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "恋慕", "淫乱", "服従", "親愛", "娼婦", "隷属", "崩壊", "淫核", "淫膣", "淫尻", "淫乳"
+					CALL COLUMNPRINT, 0, @"【%TALENTDISP(LCOUNT)%】"
+				CASE "妊娠"
+					CALL COLUMNPRINT, 0, "【Prengnant】"
+				CASE "リミットバースト"
+					CALL COLUMNPRINT, 0, "【BURST】"
+			ENDSELECT
+		NEXT
+		SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+			CALL COLUMNPRINT, 0, @"Depend:{CFLAG:依存度} "
+		CALL COLUMNPRINT, 0, "Stress:"
+
+		SELECTCASE CFLAG:ストレス値
+			CASE 1 TO 99
+				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999", "lime"
+			CASE 100 TO 299
+				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999", "yellow"
+			CASE 300 TO 499
+				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999", "red"
+			CASE IS >= 500
+				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999", "darkred"
+		ENDSELECT
+
+		CALL COLUMNPRINTL, 0, ""
+		
+		CALL COLUMNTOOLTIP, 0, @"　Obedience:LV{ABL:従順, 2, LEFT}", ABL_COMMENT("従順")
+		CALL COLUMNTOOLTIP, 0, @" Lust:LV{ABL:欲望, 2, LEFT}", ABL_COMMENT("欲望")
+		CALL COLUMNTOOLTIPL, 0, @" Technique:LV{ABL:技巧, 2, LEFT}", ABL_COMMENT("技巧")
+
+		CALL COLUMNTOOLTIP, 0, @"　CSence:LV{ABL:Ｃ感覚, 2, LEFT}", ABL_COMMENT("Ｃ感覚")
+		SIF VAGINA(TARGET)
+			CALL COLUMNTOOLTIP, 0, @" VSence:LV{ABL:Ｖ感覚, 2, LEFT}", ABL_COMMENT("Ｖ感覚")
+		CALL COLUMNTOOLTIP, 0, @" ASence:LV{ABL:Ａ感覚, 2, LEFT}", ABL_COMMENT("Ａ感覚")
+		CALL COLUMNTOOLTIPL, 0, @" BSence:LV{ABL:Ｂ感覚, 2, LEFT}", ABL_COMMENT("Ｂ感覚")
+
+		CALL COLUMNTOOLTIP, 0, @" PainMark:LV{MARK:苦痛刻印, 2, LEFT}", MARK_COMMENT("苦痛刻印")
+		CALL COLUMNTOOLTIP, 0, @" PlesureMark:LV{MARK:快楽刻印, 2, LEFT}", MARK_COMMENT("快楽刻印")
+		CALL COLUMNTOOLTIPL, 0, @" YieldMark:LV{MARK:屈服刻印, 2, LEFT}", MARK_COMMENT("屈服刻印")
+
+		CALL COLUMNPRINTL, 0, @"　Health%BARBASE("体力")%"
+		CALL COLUMNPRINTL, 0, @"　Energy%BARBASE("気力")%"
+		SIF TALENT:魔術師
+			CALL COLUMNPRINTL, 0, @"　MagicP%BARBASE("魔力")%"
+	ELSE
+		SIF TALENT:ふたなり
+			CALL COLUMNPRINT, 0, "[ふたなり]"
+		SIF TALENT:アニマル
+			CALL COLUMNPRINT, 0, "[獣]"
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "恋慕", "淫乱", "服従", "親愛", "娼婦", "隷属", "崩壊", "淫核", "淫膣", "淫尻", "淫乳"
+					CALL COLUMNPRINT, 0, @"【%TALENTDISP(LCOUNT)%】"
+				CASE "妊娠"
+					IF LANGUAGE == "ENG"
+						CALL COLUMNPRINT, 0, "【Prengnant】"
+					ELSE
+						CALL COLUMNPRINT, 0, "【妊娠中】"
+					ENDIF
+				CASE "リミットバースト"
+					CALL COLUMNPRINT, 0, "【BURST】"
+			ENDSELECT
+		NEXT
+		SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+			CALL COLUMNPRINT, 0, @"依存度:{CFLAG:依存度} "
+		CALL COLUMNPRINT, 0, "ストレス値:"
+		SELECTCASE CFLAG:ストレス値
+			CASE 1 TO 99
+				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999", "lime"
+			CASE 100 TO 299
+				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999", "yellow"
+			CASE 300 TO 499
+				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999", "red"
+			CASE IS >= 500
+				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999", "darkred"
+		ENDSELECT
+		CALL COLUMNPRINTL, 0, ""
+		
+		CALL COLUMNTOOLTIP, 0, @"　従順:LV{ABL:従順, 2, LEFT}", ABL_COMMENT("従順")
+		CALL COLUMNTOOLTIP, 0, @"欲望:LV{ABL:欲望, 2, LEFT}", ABL_COMMENT("欲望")
+		CALL COLUMNTOOLTIPL, 0, @"技巧:LV{ABL:技巧, 2, LEFT}", ABL_COMMENT("技巧")
+
+		CALL COLUMNTOOLTIP, 0, @"　Ｃ感:LV{ABL:Ｃ感覚, 2, LEFT}", ABL_COMMENT("Ｃ感覚")
+		SIF VAGINA(TARGET)
+			CALL COLUMNTOOLTIP, 0, @"Ｖ感:LV{ABL:Ｖ感覚, 2, LEFT}", ABL_COMMENT("Ｖ感覚")
+		CALL COLUMNTOOLTIP, 0, @"Ａ感:LV{ABL:Ａ感覚, 2, LEFT}", ABL_COMMENT("Ａ感覚")
+		CALL COLUMNTOOLTIPL, 0, @"Ｂ感:LV{ABL:Ｂ感覚, 2, LEFT}", ABL_COMMENT("Ｂ感覚")
+		
+		CALL COLUMNTOOLTIP, 0, @"　苦痛刻印:LV{MARK:苦痛刻印, 2, LEFT}", MARK_COMMENT("苦痛刻印")
+		CALL COLUMNTOOLTIP, 0, @" 快楽刻印:LV{MARK:快楽刻印, 2, LEFT}", MARK_COMMENT("快楽刻印")
+		CALL COLUMNTOOLTIPL, 0, @" 屈服刻印:LV{MARK:屈服刻印, 2, LEFT}", MARK_COMMENT("屈服刻印")
+
+		CALL COLUMNPRINTL, 0, @"　体力%BARBASE("体力")%"
+		CALL COLUMNPRINTL, 0, @"　気力%BARBASE("気力")%"
+		SIF TALENT:魔術師
+			CALL COLUMNPRINTL, 0, @"　魔力%BARBASE("魔力")%"
+	ENDIF
+ENDIF
+CALL COLUMNPRINTL, 0, ""
+
+;主人・助手の状態------------------------------------------------------------
+IF LANGUAGE == "ENG"
+	SIF FLAG:保管済み母乳
+		CALL COLUMNPRINT, 0, @"　Saved Milk:{FLAG:保管済み母乳}ml"
+	SIF FLAG:保管済み精液
+		CALL COLUMNPRINT, 0, @"　Saved Samen:{FLAG:保管済み精液}ml"
+	SIF FLAG:保管済み血液
+		CALL COLUMNPRINT, 0, @"　Saved Blood:{FLAG:保管済み血液}ml"
+	SIF FLAG:保管済み粘液
+		CALL COLUMNPRINT, 0, @"　Saved Mucus:{FLAG:保管済み粘液}ml"
+	SIF COLUMNLOG:0:(COLUMN:0:LINE) != ""
+		CALL COLUMNPRINTL, 0, ""
+
+	CALL COLUMNPRINT, 0, @"　Master:%NAMEDISP(MASTER)% %性別表示(MASTER)% "
+	SIF TALENT:MASTER:ふたなり
+		CALL COLUMNPRINT, 0, "[Futanari]"
+	CALL COLUMNPRINTL, 0, ""
+	SIF TALENT:MASTER:魔術師
+		CALL COLUMNPRINTL, 0, @"　MagicP%BARBASE("魔力", MASTER)%"
+
+	IF ASSI >= 0
+		IF TALENT:ASSI:アニマル
+			CALL COLUMNPRINT, 0, @"　Pet:%NAMEDISP(ASSI)%"
+		ELSE
+			CALL COLUMNPRINT, 0, @"　Assistant:%NAMEDISP(ASSI)%"
+		ENDIF
+		CALL COLUMNPRINT, 0, @"%性別表示(ASSI)% "
+		SIF TALENT:ASSI:ふたなり
+			CALL COLUMNPRINT, 0, "[Futanari]"
+		SIF TALENT:ASSI:アニマル
+			CALL COLUMNPRINT, 0, "[Animal]"
+		CALL COLUMNPRINTL, 0, ""
+		SIF TALENT:ASSI:魔術師
+			CALL COLUMNPRINTL, 0, @"　MagicP%BARBASE("魔力", ASSI)%"
+	ENDIF
+ELSE
+	SIF FLAG:保管済み母乳
+		CALL COLUMNPRINT, 0, @"　保管済み母乳:{FLAG:保管済み母乳}ml"
+	SIF FLAG:保管済み精液
+		CALL COLUMNPRINT, 0, @"　保管済み精液:{FLAG:保管済み精液}ml"
+	SIF FLAG:保管済み血液
+		CALL COLUMNPRINT, 0, @"　保管済み血液:{FLAG:保管済み血液}ml"
+	SIF FLAG:保管済み粘液
+		CALL COLUMNPRINT, 0, @"　保管済み粘液:{FLAG:保管済み粘液}ml"
+	SIF COLUMNLOG:0:(COLUMN:0:LINE) != ""
+		CALL COLUMNPRINTL, 0, ""
+
+	CALL COLUMNPRINT, 0, @"　主人:%NAMEDISP(MASTER)% %性別表示(MASTER)% "
+	SIF TALENT:MASTER:ふたなり
+		CALL COLUMNPRINT, 0, "[ふたなり]"
+	CALL COLUMNPRINTL, 0, ""
+	SIF TALENT:MASTER:魔術師
+		CALL COLUMNPRINTL, 0, @"　魔力%BARBASE("魔力", MASTER)%"
+
+	IF ASSI >= 0
+		IF TALENT:ASSI:アニマル
+			CALL COLUMNPRINT, 0, @"　ペット:%NAMEDISP(ASSI)%"
+		ELSE
+			CALL COLUMNPRINT, 0, @"　助手:%NAMEDISP(ASSI)%"
+		ENDIF
+		CALL COLUMNPRINT, 0, @"%性別表示(ASSI)% "
+		SIF TALENT:ASSI:ふたなり
+			CALL COLUMNPRINT, 0, "[ふたなり]"
+		SIF TALENT:ASSI:アニマル
+			CALL COLUMNPRINT, 0, "[獣]"
+		CALL COLUMNPRINTL, 0, ""
+		SIF TALENT:ASSI:魔術師
+			CALL COLUMNPRINTL, 0, @"　魔力%BARBASE("魔力", ASSI)%"
+	ENDIF
+ENDIF
+
+CALL COLUMNDRAWLINE, 0
+IF GC物件 && ゲームモード() != "通常モード"
+	IF LANGUAGE == "ENG"
+		CALL COLUMNPRINTL, 0, @"□%GC店名%"
+		IF FLAG:ゲーセン営業中 > 0
+			CALL COLUMNPRINT, 0, "　OPEN "
+			CALL COLUMNPRINTL, 0, "[700] - Take a leave"
+			店長 = FINDCHARA(CFLAG:ゲーセン店長, 1)
+			SIF 店長 == -1
+				店長 = 0
+			CALL COLUMNPRINTL, 0, @"　Previous bussines day's income:{基本収入}＄ Store manager:%NAMEDISP(店長)%"
+		ELSE
+			CALL COLUMNPRINTL, 0, "　CLOSED "
+			CALL COLUMNPRINTL, 0, "[700] - Take a open"
+		ENDIF
+	ELSE
+		CALL COLUMNPRINTL, 0, @"□%GC店名%の状況"
+		IF FLAG:ゲーセン営業中 > 0
+			CALL COLUMNPRINT, 0, "　営業中 "
+			CALL COLUMNPRINTL, 0, "[700] - 一時休業する"
+			店長 = FINDCHARA(CFLAG:ゲーセン店長, 1)
+			SIF 店長 == -1
+				店長 = 0
+			CALL COLUMNPRINTL, 0, @"　前営業日の収入:{基本収入}＄ 店長:%NAMEDISP(店長)%"
+		ELSE
+			CALL COLUMNPRINT, 0, "　休業中 "
+			CALL COLUMNPRINTL, 0, "[700] - 営業を開始する"
+		ENDIF
+	ENDIF
+	CALL COLUMNDRAWLINE, 0
+ENDIF
+
+IF ITEM:風俗店営業許可証 && ゲームモード() != "通常モード"
+	IF LANGUAGE == "ENG"
+		CALL COLUMNPRINTL, 0, @"□%娼館店名%"
+		IF FLAG:娼館営業中 > 0
+			CALL COLUMNPRINT, 0, "　OPEN "
+			CALL COLUMNPRINTL, 0, "[701] - Take a leave"
+			CALL COLUMNPRINTL, 0, @"　Previous bussines day's income:{娼館前日の収入}＄"
+		ELSE
+			CALL COLUMNPRINT, 0, "　CLOSED "
+			CALL COLUMNPRINTL, 0, "[701] - Take a open"
+		ENDIF
+	ELSE
+		CALL COLUMNPRINTL, 0, @"□%娼館店名%の状況"
+		IF FLAG:娼館営業中 > 0
+			CALL COLUMNPRINT, 0, "　営業中 "
+			CALL COLUMNPRINTL, 0, "[701] - 一時休業する"
+			CALL COLUMNPRINTL, 0, @"　前営業日の収入:{娼館前日の収入}＄"
+		ELSE
+			CALL COLUMNPRINT, 0, "　休業中 "
+			CALL COLUMNPRINTL, 0, "[701] - 営業を開始する"
+		ENDIF
+	ENDIF
+	CALL COLUMNDRAWLINE, 0
+ENDIF
+
+IF 業種 != "" && ゲームモード() != "通常モード"
+	IF LANGUAGE == "ENG"
+		CALL COLUMNPRINTL, 0, @"□%飲食店名%"
+		IF FLAG:飲食店営業中 > 0
+			CALL COLUMNPRINT, 0, "　OPEN "
+			CALL COLUMNPRINTL, 0, "[702] - Take a leave"
+			CALL COLUMNPRINTL, 0, @"　Previous bussines day's income:{飲食店売上}＄"
+		ELSE
+			CALL COLUMNPRINT, 0, "　CLOSE "
+			CALL COLUMNPRINTL, 0, "[702] - Take a open"
+		ENDIF
+	ELSE
+		CALL COLUMNPRINTL, 0, @"□%飲食店名%の状況"
+		IF FLAG:飲食店営業中 > 0
+			CALL COLUMNPRINT, 0, "　営業中 "
+			CALL COLUMNPRINTL, 0, "[702] - 一時休業する"
+			CALL COLUMNPRINTL, 0, @"　前営業日の収入:{飲食店売上}＄"
+		ELSE
+			CALL COLUMNPRINT, 0, "　休業中 "
+			CALL COLUMNPRINTL, 0, "[702] - 営業を開始する"
+		ENDIF
+	ENDIF
+	CALL COLUMNDRAWLINE, 0
+ENDIF
+
+;CALL SHOW_MODS
+
+誕生日キャラ = 0
+FOR LCOUNT, 0, 10000
+	SIF !EXISTCSV(LCOUNT)
+		CONTINUE
+	IF (CSVCFLAG(LCOUNT, GETNUM(CFLAG, "誕生日"))/100) == MONTH && (CSVCFLAG(LCOUNT, 0)%100) == DAYS
+		IF LANGUAGE == "ENG"
+			CALL COLUMNPRINTL, 0, @"　Today is %CSVNAMEDISP(LCOUNT)%'s birthday."
+		ELSE
+			CALL COLUMNPRINTL, 0, @"　今日は%CSVNAMEF(LCOUNT)%の誕生日です"
+		ENDIF
+		誕生日キャラ++
+	ENDIF
+NEXT
+IF 誕生日キャラ
+	IF LANGUAGE == "ENG"
+		CALL COLUMNPRINTL, 0, "　Happy Birthday!"
+	ELSE
+		CALL COLUMNPRINTL, 0, "　ハッピーバースデー！"
+	ENDIF
+	CALL COLUMNDRAWLINE, 0
+ENDIF
+IF LANGUAGE == "ENG"
+	CALL COLUMNPRINTL, 0, @"□ITEM [710] \@ アイテム非表示 ? Show # Hide \@"
+ELSE
+	CALL COLUMNPRINTL, 0, @"□所持アイテム [710] \@ アイテム非表示 ? 表示する # 隠す \@"
+ENDIF
+;SIF !アイテム非表示
+;	CALL ITEMPRINT
+CALL COLUMNDRAWLINE, 0
+
+@hoge
+
 ;現助手＋元助手のキャラ数の確認
 FOR LCOUNT, 1, CHARANUM
 	;育児部屋に移動しているキャラは除外
@@ -174,7 +663,7 @@ FOR LCOUNT, 0, CHARANUM
 	;主人は除外
 	SIF LCOUNT == MASTER
 		CONTINUE
-	;奴隷も除外
+	;対象も除外
 	SIF LCOUNT == TARGET
 		CONTINUE
 	;使用不可は除外
@@ -186,7 +675,7 @@ FOR LCOUNT, 0, CHARANUM
 	調教可能++
 NEXT
 
-;コマンド名は現在全角4文字の範囲で統一
+;撤廃→コマンド名は現在全角4文字の範囲で統一
 ;100番台は行動のコマンド
 コマンド表示用 = 　
 ;TARGETがいれば表示
@@ -1127,470 +1616,6 @@ ENDSELECT
 RETURN 0
 
 @SHOP_UI
-#DIMS DYNAMIC 能力表示用, 4
-#DIM DYNAMIC LCOUNT
-#DIM DYNAMIC 店長
-#DIM DYNAMIC 誕生日キャラ
-;ゲーム内で表示されるショップ画面
-;□XXXX年XX月XX日(曜日) X日目(昼夜) X周目 MODE:XXXXX
-;　天気:XX 気温:XX.X℃ XXX(月齢.XXX) 
-;　所持金:$XXXX 昨日の所持金:$XXXX XXXX 変動価格
-;　難易度:XXXX
-;　総奴隷数:X/陥落済み:X
-;
-;□調教中 [750]　前のキャラ [751] 次のキャラ
-;　No.X XXXXXX(♂♀)[ふたなり]【陥落素質等】依存度:XX ストレス値:XXX/999
-;　従順:LVXX 欲望:LVXX 技巧:LVXX
-;　Ｃ感:LVXX Ｖ感:LVXX Ａ感:LVXX Ｂ感:LVXX
-;　苦痛刻印:LVX [XXX]　快楽刻印:LVX [XXX]　屈服刻印:LVX [XXX]　反発刻印:LVX [XXX]
-;　体力[********************************](XXXX/XXXX)[排卵誘発中]
-;　気力[********************************](XXXX/XXXX)
-;
-;　保管済み母乳:Xml　保管済み精液:Xml　保管済み血液:Xml　保管済み粘液:Xml
-;　主人:XXX
-;　助手:XXX
-;-------------------------------------------------------------------------------------
-;□ゲームセンターの状況
-;　営業中or休業中 [700]営業を開始するor休業する
-;　前日の収入:($XXX) 店長:XXXX
-;-------------------------------------------------------------------------------------
-;□娼館の状況
-;　営業中or休業中 [701]営業を開始するor休業する
-;　前日の収入:($XXX)
-;-------------------------------------------------------------------------------------
-;□飲食店の状況
-;　営業中or休業中 [702]営業を開始するor休業する
-;　前日の収入:($XXX)
-;-------------------------------------------------------------------------------------
-;□適用中のMOD(あれば表示)
-;　[XXX][XXX]
-;
-
-;日数表示
-CALL CHECKDRAWLINE
-PRINT □
-CALL 日付表示
-
-;ORIGINでは表示しない
-IF !ORIGIN
-	SIF FLAG:周回数 > 1
-		PRINTFORM  {FLAG:周回数}周目 
-	CALL ゲームモード表示
-	PRINTL 
-;ただしeraBEMANIのORIGINモードでは表示
-ELSEIF ORIGIN && GAMEBASE_TITLE == "eraBEMANI+α"
-	PRINTL MODE:Origin
-ENDIF
-
-IF LANGUAGE == "ENG"
-	PRINTFORML 　Weather:%WEATHERDISP()% Temperature:%DIV10(FLAG:気温)%℃
-ELSE
-	PRINTFORM 　天気:
-	IF GUI
-		;夜で晴れなら月アイコン
-		IF TIME == 1 && 天気() == "晴れ"
-			CALL 月齢画像
-		ELSE
-			PRINT_IMG 天気()
-		ENDIF
-	ELSE
-		PRINTFORM %天気()%
-	ENDIF
-
-	PRINTFORML  気温:%DIV10(FLAG:気温)%℃ %月齢()%(月齢:%DIV100(月齢)%)
-ENDIF
-
-;段位認定のときのみ表示を変える
-;ORIGINでは所持金、難易度は表示しない
-IF !ORIGIN
-	IF ゲームモード() != "段位認定"
-		IF LANGUAGE == "ENG"
-			;所持金表示
-			CALL PASELI, @"　Money:{MONEY}＄"
-			SIF 借金 > 0
-				CALL PASELI, @" Debts:{借金}＄"
-			CALL PASELI, @" Money(Yesterday):{LASTMONEY}＄"
-			IF MONEY == LASTMONEY
-				PRINTL →0 KEEP
-			ELSEIF MONEY > LASTMONEY
-				PRINTFORML ↑{MONEY-LASTMONEY} UP!
-			ELSEIF MONEY < LASTMONEY
-				PRINTFORML ↓{LASTMONEY-MONEY} DOWN...
-			ENDIF
-
-			;新婚生活中は非表示
-			IF ゲームモード() != "新婚モード"
-				;難易度表示
-				PRINTFORM 　Difficulty:%難易度()%
-				;奴隷人数表示
-				PRINTFORML 　Characters:{CHARANUM-1}\/Fell:{CMATCH(CFLAG:陥落, 1)}
-			ENDIF
-		ELSE
-			;所持金表示
-			CALL PASELI, @"　所持金:{MONEY}＄"
-			SIF 借金 > 0
-				CALL PASELI, @" 借金:{借金}＄"
-			CALL PASELI, @" 昨日の所持金:{LASTMONEY}＄"
-			IF MONEY == LASTMONEY
-				PRINTL →0 KEEP
-			ELSEIF MONEY > LASTMONEY
-				PRINTFORML ↑{MONEY-LASTMONEY} UP!
-			ELSEIF MONEY < LASTMONEY
-				PRINTFORML ↓{LASTMONEY-MONEY} DOWN...
-			ENDIF
-
-			;新婚生活中は非表示
-			IF ゲームモード() != "新婚モード"
-				;難易度表示
-				PRINTFORM 　難易度:%難易度()%
-				;奴隷人数表示
-				PRINTFORML 　総奴隷数:{CHARANUM-1}\/陥落済み:{CMATCH(CFLAG:陥落, 1)}
-			ENDIF
-		ENDIF
-	ELSE
-		IF LANGUAGE == "ENG"
-			;所持金表示
-			CALL PASELI, @"　Money:{MONEY}＄"
-			SIF ストック > 0
-				CALL PASELI, @" (Stock:{ストック}＄)"
-			PRINTL
-
-			;難易度表示
-			PRINTFORM 　Difficulty:%難易度()%
-			;売却可能人数表示
-			PRINTFORML Characters:{CHARANUM-1}\/Can sell:{CMATCH(CFLAG:状態, 1)+CMATCH(CFLAG:状態, 2)}
-		ELSE
-			;所持金表示
-			CALL PASELI, @"　所持金:{MONEY}＄"
-			SIF ストック > 0
-				CALL PASELI, @" (ストック:{ストック}＄)"
-			PRINTL
-
-			;難易度表示
-			PRINTFORM 　難易度:%難易度()%
-			;売却可能人数表示
-			PRINTFORML 総奴隷数:{CHARANUM-1}\/売却可能:{CMATCH(CFLAG:状態, 1)+CMATCH(CFLAG:状態, 2)}
-		ENDIF
-		PRINT 　
-		CALL 段位ゲージ表示
-	ENDIF
-ENDIF
-
-;奴隷の状態------------------------------------------------------------
-IF TARGET > 0
-	PRINTL 
-	IF ゲームモード() == "新婚モード"
-		IF LANGUAGE == "ENG"
-			PRINTL □Partner
-		ELSE
-			PRINTL □同棲中
-		ENDIF
-		PRINTFORM 　%NAMEDISP(TARGET)%
-	ELSE
-		IF LANGUAGE == "ENG"
-			PRINTPLAIN □Training 
-			IF TARGET > 1
-				PRINT [750] Prev character 
-			ELSE
-				PRINTPLAIN 　　　　　　　　  
-			ENDIF
-			IF TARGET < CHARANUM-1
-				PRINT [751] Next character
-			ELSE
-				PRINTPLAIN 　　　　　　　　
-			ENDIF
-			PRINTL 
-		ELSE
-			PRINTPLAIN □調教中 
-			IF TARGET > 1
-				PRINT [750] 前のキャラ 
-			ELSE
-				PRINTPLAIN 　　　　　　　　  
-			ENDIF
-			IF TARGET < CHARANUM-1
-				PRINT [751] 次のキャラ
-			ELSE
-				PRINTPLAIN 　　　　　　　　
-			ENDIF
-			PRINTL 
-		ENDIF
-		PRINTFORM 　No.{TARGET} %NAMEDISP(TARGET)%
-	ENDIF
-	PRINTFORM %性別表示(TARGET)% 
-	IF LANGUAGE == "ENG"
-		SIF TALENT:ふたなり
-			PRINT [Futanari]
-		SIF TALENT:アニマル
-			PRINT [Animal]
-		FOR LCOUNT, 0, VARSIZE("TALENT")
-			SIF !TALENT:LCOUNT
-				CONTINUE
-			SELECTCASE TALENTNAME:LCOUNT
-				CASE "恋慕", "淫乱", "服従", "親愛", "娼婦", "隷属", "崩壊", "淫核", "淫膣", "淫尻", "淫乳"
-					PRINTFORM 【%TALENTDISP(LCOUNT)%】
-				CASE "妊娠"
-					PRINT 【Prengnant】
-				CASE "リミットバースト"
-					PRINT 【BURST】
-			ENDSELECT
-		NEXT
-		SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-			PRINTFORM Depend:{CFLAG:依存度} 
-		PRINT Stress:
-		CALL ストレス表示, TARGET
-		PRINTL 
-		VARSET 能力表示用
-		
-		能力表示用 = %SET_TOOLTIP(@"　Obedience:LV{ABL:従順, 2, LEFT}", ABL_COMMENT("従順"))%
-		能力表示用:1 = %SET_TOOLTIP(@" Lust:LV{ABL:欲望, 2, LEFT}", ABL_COMMENT("欲望"))%
-		能力表示用:2 = %SET_TOOLTIP(@" Technique:LV{ABL:技巧, 2, LEFT}", ABL_COMMENT("技巧"))%
-		HTML_PRINT STRJOIN(能力表示用, "")
-
-		VARSET 能力表示用
-		能力表示用 = %SET_TOOLTIP(@"　CSence:LV{ABL:Ｃ感覚, 2, LEFT}", ABL_COMMENT("Ｃ感覚"))%
-		SIF VAGINA(TARGET)
-			能力表示用:1 = %SET_TOOLTIP(@" VSence:LV{ABL:Ｖ感覚, 2, LEFT}", ABL_COMMENT("Ｖ感覚"))%
-		能力表示用:2 = %SET_TOOLTIP(@" ASence:LV{ABL:Ａ感覚, 2, LEFT}", ABL_COMMENT("Ａ感覚"))%
-		能力表示用:3 = %SET_TOOLTIP(@" BSence:LV{ABL:Ｂ感覚, 2, LEFT}", ABL_COMMENT("Ｂ感覚"))%
-		HTML_PRINT STRJOIN(能力表示用, "")
-		
-		CALL SHOW_INFO_MARK, TARGET
-		PRINTFORML 　Health%BARBASE("体力")%
-		PRINTFORML 　Energy%BARBASE("気力")%
-		SIF TALENT:魔術師
-			PRINTFORML 　MagicP%BARBASE("魔力")%
-	ELSE
-		SIF TALENT:ふたなり
-			PRINT [ふたなり]
-		SIF TALENT:アニマル
-			PRINT [獣]
-		FOR LCOUNT, 0, VARSIZE("TALENT")
-			SIF !TALENT:LCOUNT
-				CONTINUE
-			SELECTCASE TALENTNAME:LCOUNT
-				CASE "恋慕", "淫乱", "服従", "親愛", "娼婦", "隷属", "崩壊", "淫核", "淫膣", "淫尻", "淫乳"
-					PRINTFORM 【%TALENTDISP(LCOUNT)%】
-				CASE "妊娠"
-					IF LANGUAGE == "ENG"
-						PRINT 【Prengnant】
-					ELSE
-						PRINT 【妊娠中】
-					ENDIF
-				CASE "リミットバースト"
-					PRINT 【BURST】
-			ENDSELECT
-		NEXT
-		SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-			PRINTFORM 依存度:{CFLAG:依存度} 
-		PRINT ストレス値:
-		CALL ストレス表示, TARGET
-		PRINTL 
-		VARSET 能力表示用
-		
-		能力表示用 = %SET_TOOLTIP(@"　従順:LV{ABL:従順, 2, LEFT}", ABL_COMMENT("従順"))%
-		能力表示用:1 = %SET_TOOLTIP(@"欲望:LV{ABL:欲望, 2, LEFT}", ABL_COMMENT("欲望"))%
-		能力表示用:2 = %SET_TOOLTIP(@"技巧:LV{ABL:技巧, 2, LEFT}", ABL_COMMENT("技巧"))%
-		HTML_PRINT STRJOIN(能力表示用, "")
-
-		VARSET 能力表示用
-		能力表示用 = %SET_TOOLTIP(@"　Ｃ感:LV{ABL:Ｃ感覚, 2, LEFT}", ABL_COMMENT("Ｃ感覚"))%
-		SIF VAGINA(TARGET)
-			能力表示用:1 = %SET_TOOLTIP(@"Ｖ感:LV{ABL:Ｖ感覚, 2, LEFT}", ABL_COMMENT("Ｖ感覚"))%
-		能力表示用:2 = %SET_TOOLTIP(@"Ａ感:LV{ABL:Ａ感覚, 2, LEFT}", ABL_COMMENT("Ａ感覚"))%
-		能力表示用:3 = %SET_TOOLTIP(@"Ｂ感:LV{ABL:Ｂ感覚, 2, LEFT}", ABL_COMMENT("Ｂ感覚"))%
-		HTML_PRINT STRJOIN(能力表示用, "")
-		
-		CALL SHOW_INFO_MARK, TARGET
-		PRINTFORML 　体力%BARBASE("体力")%
-		PRINTFORML 　気力%BARBASE("気力")%
-		SIF TALENT:魔術師
-			PRINTFORML 　魔力%BARBASE("魔力")%
-	ENDIF
-ENDIF
-PRINTL 
-
-;主人・助手の状態------------------------------------------------------------
-IF LANGUAGE == "ENG"
-	SIF FLAG:保管済み母乳
-		PRINTFORM 　Saved Milk:{FLAG:保管済み母乳}ml
-	SIF FLAG:保管済み精液
-		PRINTFORM 　Saved Samen:{FLAG:保管済み精液}ml
-	SIF FLAG:保管済み血液
-		PRINTFORM 　Saved Blood:{FLAG:保管済み血液}ml
-	SIF FLAG:保管済み粘液
-		PRINTFORM 　Saved Mucus:{FLAG:保管済み粘液}ml
-	CALL NEWLINE
-
-	PRINTFORM 　Master:%NAMEDISP(MASTER)% %性別表示(MASTER)% 
-	SIF TALENT:MASTER:ふたなり
-		PRINT [Futanari]
-	PRINTL 
-	SIF TALENT:MASTER:魔術師
-		PRINTFORML 　MagicP%BARBASE("魔力", MASTER)%
-
-	IF ASSI >= 0
-		IF TALENT:ASSI:アニマル
-			PRINTFORM 　Pet:%NAMEDISP(ASSI)%
-		ELSE
-			PRINTFORM 　Assistant:%NAMEDISP(ASSI)%
-		ENDIF
-		PRINTFORM %性別表示(ASSI)% 
-		SIF TALENT:ASSI:ふたなり
-			PRINT [Futanari]
-		SIF TALENT:ASSI:アニマル
-			PRINT [Animal]
-		PRINTL 
-		SIF TALENT:ASSI:魔術師
-			PRINTFORML 　MagicP%BARBASE("魔力", ASSI)%
-	ENDIF
-ELSE
-	SIF FLAG:保管済み母乳
-		PRINTFORM 　保管済み母乳:{FLAG:保管済み母乳}ml
-	SIF FLAG:保管済み精液
-		PRINTFORM 　保管済み精液:{FLAG:保管済み精液}ml
-	SIF FLAG:保管済み血液
-		PRINTFORM 　保管済み血液:{FLAG:保管済み血液}ml
-	SIF FLAG:保管済み粘液
-		PRINTFORM 　保管済み粘液:{FLAG:保管済み粘液}ml
-	CALL NEWLINE
-
-	PRINTFORM 　主人:%NAMEDISP(MASTER)% %性別表示(MASTER)% 
-	SIF TALENT:MASTER:ふたなり
-		PRINT [ふたなり]
-	PRINTL 
-	SIF TALENT:MASTER:魔術師
-		PRINTFORML 　魔力%BARBASE("魔力", MASTER)%
-
-	IF ASSI >= 0
-		IF TALENT:ASSI:アニマル
-			PRINTFORM 　ペット:%NAMEDISP(ASSI)%
-		ELSE
-			PRINTFORM 　助手:%NAMEDISP(ASSI)%
-		ENDIF
-		PRINTFORM %性別表示(ASSI)% 
-		SIF TALENT:ASSI:ふたなり
-			PRINT [ふたなり]
-		SIF TALENT:ASSI:アニマル
-			PRINT [獣]
-		PRINTL 
-		SIF TALENT:ASSI:魔術師
-			PRINTFORML 　魔力%BARBASE("魔力", ASSI)%
-	ENDIF
-ENDIF
-
-DRAWLINE
-IF GC物件 && ゲームモード() != "通常モード"
-	IF LANGUAGE == "ENG"
-		PRINTFORML □%GC店名%
-		IF FLAG:ゲーセン営業中 > 0
-			PRINTPLAIN 　OPEN 
-			PRINTL [700] - Take a leave
-			店長 = FINDCHARA(CFLAG:ゲーセン店長, 1)
-			SIF 店長 == -1
-				店長 = 0
-			CALL PASELIL, @"　Previous bussines day's income:{基本収入}＄ Store manager:%NAMEDISP(店長)%"
-		ELSE
-			PRINTPLAIN 　CLOSED 
-			PRINTL [700] - Take a open
-		ENDIF
-	ELSE
-		PRINTFORML □%GC店名%の状況
-		IF FLAG:ゲーセン営業中 > 0
-			PRINTPLAIN 　営業中 
-			PRINTL [700] - 一時休業する
-			店長 = FINDCHARA(CFLAG:ゲーセン店長, 1)
-			SIF 店長 == -1
-				店長 = 0
-			CALL PASELIL, @"　前営業日の収入:{基本収入}＄ 店長:%NAMEDISP(店長)%"
-		ELSE
-			PRINTPLAIN 　休業中 
-			PRINTL [700] - 営業を開始する
-		ENDIF
-	ENDIF
-	DRAWLINE
-ENDIF
-
-IF ITEM:風俗店営業許可証 && ゲームモード() != "通常モード"
-	IF LANGUAGE == "ENG"
-		PRINTFORML □%娼館店名%
-		IF FLAG:娼館営業中 > 0
-			PRINTPLAIN 　OPEN 
-			PRINTL [701] - Take a leave
-			CALL PASELIL, @"　Previous bussines day's income:{娼館前日の収入}＄"
-		ELSE
-			PRINTPLAIN 　CLOSED 
-			PRINTL [701] - Take a open
-		ENDIF
-	ELSE
-		PRINTFORML □%娼館店名%の状況
-		IF FLAG:娼館営業中 > 0
-			PRINTPLAIN 　営業中 
-			PRINTL [701] - 一時休業する
-			CALL PASELIL, @"　前営業日の収入:{娼館前日の収入}＄"
-		ELSE
-			PRINTPLAIN 　休業中 
-			PRINTL [701] - 営業を開始する
-		ENDIF
-	ENDIF
-	DRAWLINE
-ENDIF
-
-IF 業種 != "" && ゲームモード() != "通常モード"
-	IF LANGUAGE == "ENG"
-		PRINTFORML □%飲食店名%
-		IF FLAG:飲食店営業中 > 0
-			PRINTPLAIN 　OPEN 
-			PRINTL [702] - Take a leave
-			CALL PASELIL, @"　Previous bussines day's income:{飲食店売上}＄"
-		ELSE
-			PRINTPLAIN 　CLOSED 
-			PRINTL [702] - Take a open
-		ENDIF
-	ELSE
-		PRINTFORML □%飲食店名%の状況
-		IF FLAG:飲食店営業中 > 0
-			PRINTPLAIN 　営業中 
-			PRINTL [702] - 一時休業する
-			CALL PASELIL, @"　前営業日の収入:{飲食店売上}＄"
-		ELSE
-			PRINTPLAIN 　休業中 
-			PRINTL [702] - 営業を開始する
-		ENDIF
-	ENDIF
-	DRAWLINE
-ENDIF
-
-CALL SHOW_MODS
-
-誕生日キャラ = 0
-FOR LCOUNT, 0, 10000
-	SIF !EXISTCSV(LCOUNT)
-		CONTINUE
-	IF (CSVCFLAG(LCOUNT, GETNUM(CFLAG, "誕生日"))/100) == MONTH && (CSVCFLAG(LCOUNT, 0)%100) == DAYS
-		IF LANGUAGE == "ENG"
-			PRINTFORML 　Today is %CSVNAMEDISP(LCOUNT)%'s birthday.
-		ELSE
-			PRINTFORML 　今日は%CSVNAMEF(LCOUNT)%の誕生日です
-		ENDIF
-		誕生日キャラ++
-	ENDIF
-NEXT
-IF 誕生日キャラ
-	IF LANGUAGE == "ENG"
-		PRINTL 　Happy Birthday!
-	ELSE
-		PRINTL 　ハッピーバースデー！
-	ENDIF
-	DRAWLINE
-ENDIF
-IF LANGUAGE == "ENG"
-	PRINTFORML □ITEM [710] \@ アイテム非表示 ? Show # Hide \@
-ELSE
-	PRINTFORML □所持アイテム [710] \@ アイテム非表示 ? 表示する # 隠す \@
-ENDIF
-SIF !アイテム非表示
-	CALL ITEMPRINT
-DRAWLINE
 
 @変化
 #DIM DYNAMIC LCOUNT
