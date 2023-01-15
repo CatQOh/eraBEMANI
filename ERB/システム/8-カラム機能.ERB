@@ -4,6 +4,7 @@
 #DIMS DYNAMIC カラムメニュー, 10
 DO
 	CALL カラム生成2, カラム, カラムメニュー:0, カラムメニュー:1, カラムメニュー:2, カラムメニュー:3, カラムメニュー:4, カラムメニュー:5, カラムメニュー:6, カラムメニュー:7, カラムメニュー:8, カラムメニュー:9
+	CALL GIDDEL
 	IF LOOP_BREAK
 		選択カラム = 0
 		CRESULT:0 = 0
@@ -201,6 +202,7 @@ SELECTCASE RESULT
 	CASE 10000 TO 10010
 		選択カラム = RESULT-10000
 		CRESULT:1 = -1
+		CALL GIDDEL
 		RESTART
 	CASEELSE
 		CRESULT:0 = 選択カラム
@@ -255,6 +257,15 @@ CALL COLUMNSHIFT(ARG, ARGS, ARGS:1)
 CALL COLUMNSHIFT(ARG, ARGS, ARGS:1)
 COLUMN:ARG:LINE++
 
+;INSERTは整形済みのタグを入れるだけ
+@COLUMNINSERT, ARG, ARGS
+COLUMNLOG:ARG:(COLUMN:ARG:LINE) += ARGS
+
+
+@COLUMNINSERTL, ARG, ARGS, ARGS:1
+COLUMNLOG:ARG:(COLUMN:ARG:LINE) += ARGS
+COLUMN:ARG:LINE++
+
 @COLUMNIMG, ARG, ARGS, ARG:1, ARG:2
 CALL GCREATESTACK, ARGS
 COLUMNLOG:ARG:(COLUMN:ARG:LINE) += @"<img src='%ESCAPE(ARGS)%' srcb='' width='{ARG:1}' height='{ARG:2}'>"
@@ -265,6 +276,12 @@ CALL COLUMNSHIFT(ARG, ARGS, ARGS:2, ARGS:1)
 @COLUMNTOOLTIPL, ARG, ARGS, ARGS:1, ARGS:2
 CALL COLUMNSHIFT(ARG, ARGS, ARGS:2, ARGS:1)
 COLUMN:ARG:LINE++
+
+;F付きはタグ文字を返す
+@COLUMNPRINTF, ARGS, ARGS:1
+#FUNCTIONS
+RETURNF COLUMNSHIFTF(ARGS, ARGS:1)
+
 
 ;@COLUMNEFFECT, ARG, ARGS, ARG:1, ARG:2
 ;COLUMNLOG:ARG:(COLUMN:ARG:LINE) += @"<nonbutton pos='0'><img src='%ARGS%' srcb='' width='{ARG:1}' height='{ARG:2}'></nonbutton>"
@@ -310,12 +327,19 @@ COLUMNLOG:ARG:(COLUMN:ARG:LINE) += @"<img src='BAR{GID}' srcb='' width='{長さ}
 #DIM DYNAMIC 括弧, 2
 #DIMS DYNAMIC HTML
 
-SIF COLOR_FROMNAME(ETC) >= 0
+SIF ARGS == ""
+	RETURN
+
+IF COLOR_FROMNAME(ETC) >= 0
 	ARGS = <font color='%ETC%'>%ARGS%</font>
+ELSEIF ISNUMERIC(ETC) && TOINT(ETC) >= 0
+	ARGS = <font color='#%CONVERT(TOINT(ETC), 16)%'>%ARGS%</font>
+ELSE
+	ARGS = <font color='#%CONVERT(GETCOLOR(), 16)%'>%ARGS%</font>
+ENDIF
 
 ;パセリに対応
 ARGS = %REPLACE(ARGS, "＄", "<img src='PASELI' srcb='' width='100' height='100'>")%
-
 
 ;ボタン化処理はここでツールチップと同時に行うことにした
 括弧 = STRFINDU(ARGS, "[")
@@ -335,19 +359,45 @@ IF ボタン != -3189415
 		HTML += @"title='%TOOLTIP%'"
 	HTML += @">%ARGS%</button>"
 ELSEIF 文字列ボタン != ""
+	;ただし括弧内が"-"のみで構成されてるものはボタン扱いしない
+	SIF STRCOUNT(文字列ボタン, "-") == STRLENS(文字列ボタン)
+		GOTO NONBUTTON
 	HTML += @"<button value ='%文字列ボタン%' "
 	SIF TOOLTIP != ""
 		HTML += @"title='%TOOLTIP%'"
 	HTML += @">%ARGS%</button>"
 ELSE
+	$NONBUTTON
 	HTML += @"<nonbutton "
 	SIF TOOLTIP != ""
 		HTML += @"title='%TOOLTIP%'"
 	HTML += @">%ARGS%</nonbutton>"
 ENDIF
 
-
 COLUMNLOG:ARG:(COLUMN:ARG:LINE) += HTML
+
+;後でまとめてボタン化するための関数なのでボタン属性は付けない
+;いろいろと不具合が起こりそうなコードではある
+@COLUMNSHIFTF, ARGS, ETC
+#FUNCTIONS
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC ETC
+
+SIF ARGS == ""
+	RETURNF ""
+
+IF COLOR_FROMNAME(ETC) >= 0
+	ARGS = <font color='%ETC%'>%ARGS%</font>
+ELSEIF ISNUMERIC(ETC) && TOINT(ETC) >= 0
+	ARGS = <font color='#%CONVERT(TOINT(ETC), 16)%'>%ARGS%</font>
+ELSE
+	ARGS = <font color='#%CONVERT(GETCOLOR(), 16)%'>%ARGS%</font>
+ENDIF
+
+;パセリに対応
+ARGS = %REPLACE(ARGS, "＄", "<img src='PASELI' srcb='' width='100' height='100'>")%
+
+RETURNF ARGS
 
 @COLUMNBGCOLOR, ARG, ARG:1
 COLUMN:ARG:BGCOLOR = ARG:1
