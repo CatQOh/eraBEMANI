@@ -48,13 +48,18 @@ LOOP 1
 RESTART
 
 ;PRINT_ITEM命令が微妙だったので作成 所持アイテムを表示する
-@ITEMPRINT
+@ITEMPRINT, カラム
 #DIMS DYNAMIC 表示用
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 表示可能文字数
+#DIM DYNAMIC カラム
 
 ;一行で表示可能な文字数を計算する 画面横幅/フォントサイズ STRLENSは全角を2文字と数えるので*2
-表示可能文字数 = GETCONFIG("ウィンドウ幅")*2/(GETCONFIG("フォントサイズ")+1)
+IF カラム
+	表示可能文字数 = COLUMNDRAW
+ELSE
+	表示可能文字数 = GETCONFIG("ウィンドウ幅")*2/(GETCONFIG("フォントサイズ")+1)
+ENDIF
 
 PRINT 　
 
@@ -68,7 +73,11 @@ IF ゲームモード() == "新婚モード"
 			IF MUSEUM:LCOUNT:0 != "" && TOINT(MUSEUM:LCOUNT:2) < 10000
 				SETCOLOR TOINT(MUSEUM:LCOUNT:4)
 				;HTML_POPPRINTINGSTRの仕組み上色変更が難しいので改行する
-				PRINTFORML [永遠に%CALLNAME:MASTER%のモノとなった%CSVCALLNAME(TOINT(MUSEUM:LCOUNT:2))%]
+				IF カラム
+					CALL COLUMNPRINTL, 0, @"[永遠に%CALLNAME:MASTER%のモノとなった%CSVCALLNAME(TOINT(MUSEUM:LCOUNT:2))%]", MUSEUM:LCOUNT:4
+				ELSE
+					PRINTFORML [永遠に%CALLNAME:MASTER%のモノとなった%CSVCALLNAME(TOINT(MUSEUM:LCOUNT:2))%]
+				ENDIF
 				RESETCOLOR
 				BREAK
 			ENDIF
@@ -82,7 +91,12 @@ IF FLAG:抗スライム
 	PRINTFORM %表示用%
 	;改行する場合はアイテム単位で区切る
 	IF STRLENS(表示用)+STRLENS("[スライム感染予防中]") >= 表示可能文字数
-		PRINTL 
+		IF カラム
+			表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
+			CALL COLUMNPRINTL, 0, @"%表示用%"
+		ELSE
+			PRINTL 
+		ENDIF
 		PRINT 　
 	ENDIF
 	PRINTFORM [スライム感染予防中]
@@ -96,7 +110,12 @@ IF FINDELEMENT(自爆キャラ, 1) > 0
 			PRINTFORM %表示用%
 			;改行する場合はアイテム単位で区切る
 			IF STRLENS(表示用)+STRLENS(@"[%CSVCALLNAMEF(LCOUNT)%の破片]") >= 表示可能文字数
-				PRINTL 
+				IF カラム
+					表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
+					CALL COLUMNPRINTL, 0, @"%表示用%"
+				ELSE
+					PRINTL 
+				ENDIF
 				PRINT 　
 			ENDIF
 			PRINTFORM [%CSVCALLNAMEF(LCOUNT)%の破片]
@@ -110,7 +129,12 @@ IF ITEM:ロジカルダッシュ == YEAR*100+MONTH
 	PRINTFORM %表示用%
 	;改行する場合はアイテム単位で区切る
 	IF STRLENS(表示用)+STRLENS(@"[ロジカルダッシュ{YEAR}年{MONTH}月号]") >= 表示可能文字数
-		PRINTL 
+		IF カラム
+			表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
+			CALL COLUMNPRINTL, 0, @"%表示用%"
+		ELSE
+			PRINTL 
+		ENDIF
 		PRINT 　
 	ENDIF
 	PRINTFORM [ロジカルダッシュ{YEAR}年{MONTH}月号]
@@ -136,13 +160,23 @@ FOR LCOUNT, 0, 1100
 				;改造済みアイテムは接頭語付きで計算する
 				IF GETNUM(SAVESTR, ITEMNAME:LCOUNT) >= 0 && SAVESTR:(ITEMNAME:LCOUNT) != ITEMNAME:LCOUNT
 					IF STRLENS(表示用)+STRLENS(@"[%SAVESTR:(ITEMNAME:LCOUNT)%]") >= 表示可能文字数
-						PRINTL 
+						IF カラム
+							表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
+							CALL COLUMNPRINTL, 0, @"%表示用%"
+						ELSE
+							PRINTL 
+						ENDIF
 						PRINT 　
 					ENDIF
 					PRINTFORM [%SAVESTR:(ITEMNAME:LCOUNT)%]
 				ELSE
 					IF STRLENS(表示用)+STRLENS(@"[%ITEMNAME:LCOUNT%]") >= 表示可能文字数
-						PRINTL 
+						IF カラム
+							表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
+							CALL COLUMNPRINTL, 0, @"%表示用%"
+						ELSE
+							PRINTL 
+						ENDIF
 						PRINT 　
 					ENDIF
 					PRINTFORM [%ITEMNAME:LCOUNT%]
@@ -152,7 +186,12 @@ FOR LCOUNT, 0, 1100
 				PRINTFORM %表示用%
 				;改行する場合はアイテム単位で区切る
 				IF STRLENS(表示用)+STRLENS(@"[%ITEMNAME:LCOUNT%]") >= 表示可能文字数
-					PRINTL 
+					IF カラム
+						表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
+						CALL COLUMNPRINTL, 0, @"%表示用%"
+					ELSE
+						PRINTL 
+					ENDIF
 					PRINT 　
 				ENDIF
 				PRINTFORM [%ITEMNAME:LCOUNT%]
@@ -162,16 +201,28 @@ FOR LCOUNT, 0, 1100
 				PRINTFORM %表示用%
 				;改行する場合はアイテム単位で区切る
 				IF STRLENS(表示用)+STRLENS(@"[%ITEMNAME:LCOUNT%×{ITEM:LCOUNT}]") >= 表示可能文字数
-					PRINTL 
+					IF カラム
+						表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
+						CALL COLUMNPRINTL, 0, @"%表示用%"
+					ELSE
+						PRINTL 
+					ENDIF
 					PRINT 　
 				ENDIF
 				PRINTFORM [%ITEMNAME:LCOUNT%×{ITEM:LCOUNT}]
 		ENDSELECT
 	ENDIF
 NEXT
-CALL NEWLINE
+IF カラム
+	IF !LINEISEMPTY()
+		表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
+		CALL COLUMNPRINTL, 0, @"%表示用%"
+	ENDIF
+ELSE
+	CALL NEWLINE
+ENDIF
 
-@SHOPITEM_LIST, アイテム分類, 条件判定
+@SHOPITEM_LIST, アイテム分類, 条件判定, カラム
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC アイテム分類, 2
@@ -182,6 +233,7 @@ CALL NEWLINE
 #DIM DYNAMIC 割引
 #DIM DYNAMIC 条件判定
 #DIM DYNAMIC リミットバースト有り
+#DIM DYNAMIC カラム
 
 ;条件判定フラグ(能力表示画面からのアイテム使用)が立っている場合は一応SKIPDISPをかける
 SIF 条件判定
@@ -261,6 +313,17 @@ SELECTCASE アイテム分類
 		;ドラゴンの成体
 		SIF !TALENT:MASTER:ドラゴン使い
 			ITEMSALES:【ドラゴンの成体】 = 1
+		;経営ができるゲームモードなら表示
+		SELECTCASE ゲームモード()
+			;STRATEGY、PFREEのみ
+			CASE "経営モード", "フリーモード"
+				;経営用特殊素質
+				ITEMSALES:【料理人】 = 1
+				ITEMSALES:【専業主婦】 = 1
+				ITEMSALES:【工学博士】 = 1
+				ITEMSALES:【絶対音感】 = 1
+				ITEMSALES:【カメラマン】 = 1
+		ENDSELECT
 ENDSELECT
 
 ;奴隷を対象とした薬
@@ -330,26 +393,6 @@ SELECTCASE アイテム分類
 				ITEMSALES:LCOUNT = 1
 			NEXT
 		ENDIF
-
-		;経営ができるゲームモードなら表示
-		SELECTCASE ゲームモード()
-			;STRATEGY、PFREEのみ
-			CASE "経営モード", "フリーモード"
-				SIF !ITEM:風俗店営業許可証
-					ITEMSALES:風俗店営業許可証 = 1
-				SIF !ITEM:楽器セット一式
-					ITEMSALES:楽器セット一式 = 1
-				SIF !ITEM:事業開発オフィス
-					ITEMSALES:事業開発オフィス = 1
-				SIF !ITEM:博物館 && STSMOD
-					ITEMSALES:博物館 = 1
-				;経営用特殊素質
-				ITEMSALES:【料理人】 = 1
-				ITEMSALES:【専業主婦】 = 1
-				ITEMSALES:【工学博士】 = 1
-				ITEMSALES:【絶対音感】 = 1
-				ITEMSALES:【カメラマン】 = 1
-		ENDSELECT
 ENDSELECT
 
 SELECTCASE アイテム分類
@@ -362,9 +405,23 @@ SELECTCASE アイテム分類
 				ITEMSALES:LCOUNT = 1
 			ENDIF
 		NEXT
+		;経営ができるゲームモードなら表示
+		SELECTCASE ゲームモード()
+			;STRATEGY、PFREEのみ
+			CASE "経営モード", "フリーモード"
+				SIF !ITEM:風俗店営業許可証
+					ITEMSALES:風俗店営業許可証 = 1
+				SIF !ITEM:楽器セット一式
+					ITEMSALES:楽器セット一式 = 1
+				SIF !ITEM:事業開発オフィス
+					ITEMSALES:事業開発オフィス = 1
+				SIF !ITEM:博物館 && STSMOD
+					ITEMSALES:博物館 = 1
+		ENDSELECT
 ENDSELECT
 
-DRAWLINE
+SIF !カラム
+	CALL CHECKDRAWLINE
 
 ;主人か助手が買い物上手ならアイテム2割引き、消耗品3割引き
 SIF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
@@ -406,44 +463,74 @@ FOR LCOUNT, 0, VARSIZE("ITEM")
 	ENDSELECT
 
 	;表示数が0ならスペースを設ける
-	SIF 表示数 == 0
-		PRINT 　
-	IF ORIGIN
-		PRINTFORMLC %表示用%
-	ELSE
-		CALL PASELI, 表示用
-		;PRINT_IMGでPRINTC系命令使うとエラーになるので疑似再現
-		IF FLAG:パセリ表示
-			単位文字数 = 2
-		ELSEIF 通貨単位 != ""
-			単位文字数 = STRLENS(通貨単位)
+	IF 表示数 == 0
+		IF カラム
+			CALL COLUMNPRINT, 0, "　"
 		ELSE
-			単位文字数 = 1
+			PRINT 　
 		ENDIF
-		;表示数が0ならスペースの分追加
-		SIF 表示数 == 0
-			単位文字数 += 2
-		;＄の分2文字と通貨単位分
-		PRINTFORM %SPACES(41-(STRLENS(表示用)-2)-単位文字数)%
+	ENDIF
+	IF ORIGIN
+		IF カラム
+			CALL COLUMNPRINT, 0, @"%表示用, 30, LEFT%"
+		ELSE
+			PRINTFORMLC %表示用%
+		ENDIF
+	ELSE
+		IF カラム
+			CALL COLUMNPRINT, 0, @"%表示用, 40, LEFT%"
+		ELSE
+			CALL PASELI, 表示用
+			;PRINT_IMGでPRINTC系命令使うとエラーになるので疑似再現
+			IF FLAG:パセリ表示
+				単位文字数 = 2
+			ELSEIF 通貨単位 != ""
+				単位文字数 = STRLENS(通貨単位)
+			ELSE
+				単位文字数 = 1
+			ENDIF
+			;表示数が0ならスペースの分追加
+			SIF 表示数 == 0
+				単位文字数 += 2
+			;＄の分2文字と通貨単位分
+			PRINTFORM %SPACES(41-(STRLENS(表示用)-2)-単位文字数)%
+		ENDIF
 		表示数++
 
 		;3つ表示したら改行
 		IF 表示数 == 3
-			PRINTL 
+			IF カラム
+				CALL COLUMNPRINTL, 0, ""
+			ELSE
+				PRINTL 
+			ENDIF
 			表示数 = 0
 		ENDIF
 	ENDIF
 NEXT
-CALL NEWLINE
+IF カラム
+	SIF 表示数
+		CALL COLUMNPRINTL, 0, ""
+ELSE
+	CALL NEWLINE
+ENDIF
 
-IF 条件判定
+IF 条件判定 == 1
 	SKIPDISP 0
 	RETURN
 ENDIF
 
 ;表示できるアイテムが無い場合
-SIF FINDELEMENT(ITEMSALES, 1) < 0
-	PRINTL ***購入できるアイテムはありません***
+IF FINDELEMENT(ITEMSALES, 1) < 0
+	IF カラム
+		CALL COLUMNPRINTL, 0, "　***購入できるアイテムはありません***"
+	ELSE
+		PRINTL ***購入できるアイテムはありません***
+	ENDIF
+ENDIF
+
+SIF カラム
+	RETURN
 
 DRAWLINE
 PRINTPLAIN 　ITEM　

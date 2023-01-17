@@ -1597,6 +1597,19 @@ SIF 変換対象 > 0
 
 RETURNF 返り値
 
+;;;渡された数字をオプションに従ってTODIGSEPかTO漢字通して返す関数
+@TOOPTIONINT, 変換対象
+#FUNCTIONS
+#DIM DYNAMIC 変換対象
+SELECTCASE 数値表示設定
+	CASE "3桁区切り"
+		RETURNF TODIGSEP(変換対象)
+	CASE "漢字桁表示"
+		RETURNF TO漢字(変換対象)
+	CASEELSE
+		RETURNF TOSTR(変換対象)
+ENDSELECT
+
 ;;;DIVIDE10 10で割って小数点付ける関数 マイナスにも対応 ほぼ気温表示用
 @DIV10, ARG
 #FUNCTIONS
@@ -2185,11 +2198,19 @@ ENDIF
 ;VALとMAXVALとLENGTHからどのピクセルまで塗るか計算する
 ;VAL >= MAXVALなら全部
 IF VAL >= MAXVAL
-	PX = __INT_MAX__
+	PX = GWIDTH(GID)
 ELSE
 	PX = LENGTH*10000/MAXVAL*VAL*GETCONFIG("フォントサイズ")/10000
 ENDIF
 
+;EMでGCLEAR拡張されてたので使ってみる
+IF ISNUMERIC(COLOR)
+	GCLEAR GID, TOINT(COLOR)+0xFF000000, 0, 0, PX, GHEIGHT(GID)
+ELSE
+	GCLEAR GID, COLOR_FROMNAME(COLOR)+0xFF000000, 0, 0, PX, GHEIGHT(GID)
+ENDIF
+
+[SKIPSTART]
 FOR WIDTH, 0, GWIDTH(GID)
 	FOR HEIGHT, 0, GHEIGHT(GID)
 		;まさかCOLORとBGCOLORの書式を統一しないやつはいないだろう
@@ -2202,6 +2223,7 @@ FOR WIDTH, 0, GWIDTH(GID)
 		ENDIF
 	NEXT
 NEXT
+[SKIPEND]
 
 IF TEXT != ""
 	IF TEXTCOLOR != ""
@@ -2223,6 +2245,51 @@ SPRITECREATE @"GBAR{GID}", GID
 GIDDEL:GID = 1
 
 RETURNF @"GBAR{GID}"
+
+;;;体力、気力、魔力をGBARで整形したタグを返す
+@BASEBAR, ARGS, ARG = -1, ARG:1 = 16
+#FUNCTIONS
+#DIMS DYNAMIC COLOR
+
+SIF ARG == -1
+	ARG = TARGET
+
+SELECTCASE ARGS
+	CASE "体力"
+		RETURNF GBAR(BASE:ARG:体力, MAXBASE:ARG:体力, ARG:1, "coral", "gray", @"{BASE:ARG:体力}/{MAXBASE:ARG:体力}", "black")
+	CASE "気力"
+		RETURNF GBAR(BASE:ARG:気力, MAXBASE:ARG:気力, ARG:1, "deepskyblue", "gray", @"{BASE:ARG:気力}/{MAXBASE:ARG:気力}", "black")
+	CASE "魔力"
+		RETURNF GBAR(BASE:ARG:魔力, MAXBASE:ARG:魔力, ARG:1, "violet", "gray", @"{BASE:ARG:魔力}/{MAXBASE:ARG:魔力}", "black")
+	CASE "モチベ", "モチベーション"
+		SELECTCASE CFLAG:ARG:モチベーション
+			CASE 1 TO 9
+				COLOR = gray
+			CASE 10 TO 39
+				COLOR = yellow
+			CASE 40 TO 60
+				COLOR = silver
+			CASE 61 TO 90
+				COLOR = cyan
+			CASE 91 TO 100
+				COLOR = lime
+		ENDSELECT
+		RETURNF GBAR(CFLAG:ARG:モチベーション, 100, ARG:1, COLOR, "gray", @"{CFLAG:ARG:モチベーション}/100", "black")
+	CASE "ストレス値", "ストレス"
+		SELECTCASE CFLAG:ARG:ストレス値
+			CASE 0
+				COLOR = silver
+			CASE 1 TO 99
+				COLOR = lime
+			CASE 100 TO 299
+				COLOR = yellow
+			CASE 300 TO 499
+				COLOR = red
+			CASE IS >= 500
+				COLOR = darkred
+		ENDSELECT
+		RETURNF GBAR(CFLAG:ARG:ストレス値, 999, ARG:1, COLOR, "gray", @"{CFLAG:ARG:ストレス値}/999", "black")
+ENDSELECT
 
 ;;;削除フラグ立ってるGIDを全部DISPOSEする
 @GIDDEL
