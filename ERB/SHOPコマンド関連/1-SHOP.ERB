@@ -139,28 +139,16 @@ SIF TARGET >= 0 && CFLAG:使用不可
 SIF (ASSI >= 0 && CFLAG:ASSI:使用不可) || ASSI == 0
 	ASSI = -1
 
-;コマンド以外の情報表示は別関数で行う
-CALL SHOP_UI
-
-;長くなるので言語で関数分け
-IF LANGUAGE == "ENG"
-	CALL SHOPCOM_ENG
-ELSE
-	CALL SHOPCOM_JP
-ENDIF
-
-@SHOPCOM_JP
-#DIM DYNAMIC 助手可能
-#DIM DYNAMIC 売却可能
-#DIM DYNAMIC 調教可能
-#DIM DYNAMIC LCOUNT
-#DIMS DYNAMIC コマンド表示用, 10
-
 VARLINE = LINECOUNT
 
 MAX_LINE = 40
 
-CALL カラム生成, "SHOP", "メイン", "キャラクター", "施設・経営", "キャラ・アイテム購入", "データベース", "セーブ", "ロード"
+;段位認定では施設経営を外す
+IF ゲームモード() == "段位認定"
+	CALL カラム生成, "SHOP", "メイン", "キャラクター", "キャラ・アイテム購入", "その他", "データベース", "セーブ", "ロード", "ショートカット", "オプション"
+ELSE
+	CALL カラム生成, "SHOP", "メイン", "キャラクター", "施設・経営", "キャラ・アイテム購入", "その他", "データベース", "セーブ", "ロード", "ショートカット", "オプション"
+ENDIF
 
 @SHOP_メイン
 #DIMS DYNAMIC 能力表示用, 4
@@ -168,6 +156,9 @@ CALL カラム生成, "SHOP", "メイン", "キャラクター", "施設・経�
 #DIM DYNAMIC 店長
 #DIM DYNAMIC 誕生日キャラ
 #DIMS DYNAMIC LCALL
+#DIM DYNAMIC 助手可能
+#DIM DYNAMIC 売却可能
+#DIM DYNAMIC 調教可能
 ;ゲーム内で表示されるショップ画面
 ;□XXXX年XX月XX日(曜日) X日目(昼夜) X周目 MODE:XXXXX
 ;　天気:XX 気温:XX.X℃ XXX(月齢.XXX) 
@@ -202,6 +193,36 @@ CALL カラム生成, "SHOP", "メイン", "キャラクター", "施設・経�
 ;□適用中のMOD(あれば表示)
 ;　[XXX][XXX]
 ;
+
+;現助手＋元助手のキャラ数の確認
+FOR LCOUNT, 1, CHARANUM
+	;育児部屋に移動しているキャラは除外
+	SIF CHECK_CHILD_CARE(LCOUNT)
+		CONTINUE
+	;助手可能
+	SIF CFLAG:LCOUNT:状態 == 2
+		助手可能++
+	;売却可能
+	SIF CFLAG:LCOUNT:状態 >= 1 && !CFLAG:LCOUNT:売却不可
+		売却可能++
+NEXT
+
+;TARGETの他に調教できるキャラがいるかどうか
+FOR LCOUNT, 0, CHARANUM
+	;主人は除外
+	SIF LCOUNT == MASTER
+		CONTINUE
+	;対象も除外
+	SIF LCOUNT == TARGET
+		CONTINUE
+	;使用不可は除外
+	SIF CFLAG:LCOUNT:使用不可
+		CONTINUE
+	;育児部屋に移動しているキャラは除外
+	SIF CHECK_CHILD_CARE(LCOUNT)
+		CONTINUE
+	調教可能++
+NEXT
 
 ;日数表示
 ;CALL CHECKDRAWLINE
@@ -772,7 +793,7 @@ IF LANGUAGE == "ENG"
 	;新婚モードの一転攻勢
 	IF ゲームモード() == "新婚モード"
 		IF TALENT:FINDCHARA(CFLAG:嫁, 1):妊娠 || TALENT:FINDCHARA(CFLAG:嫁, 1):育児中
-			CALL COLUMNTOOLTIP, 0, "[-] Replace a Master ", @"%CALLNAMEDISP(FINDCHARA(CFLAG:嫁, 1))%が身篭っているため、できません", 0, "gray"
+			CALL COLUMNTOOLTIP, 0, "[-] Replace a Master ", @"%CALLNAMEDISP(FINDCHARA(CFLAG:嫁, 1))%が身篭っているため、できません", "gray"
 		ELSE
 			CALL COLUMNTOOLTIP, 0, "[3] Replace a Master ", @"%CALLNAMEDISP(MASTER)%と%CALLNAMEDISP(FINDCHARA(CFLAG:嫁, 1))%の受け攻めを変えます"
 		ENDIF
@@ -868,7 +889,7 @@ ELSE
 	;新婚モードの一転攻勢
 	IF ゲームモード() == "新婚モード" && FINDCHARA(CFLAG:嫁, 1) >= 0
 		IF TALENT:FINDCHARA(CFLAG:嫁, 1):妊娠 || TALENT:FINDCHARA(CFLAG:嫁, 1):育児中
-			CALL COLUMNTOOLTIP, 0, "[-] 一転攻勢 ", @"%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%が身篭っているため、できません", 0, "gray"
+			CALL COLUMNTOOLTIP, 0, "[-] 一転攻勢 ", @"%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%が身篭っているため、できません", "gray"
 		ELSE
 			CALL COLUMNTOOLTIP, 0, "[3] 一転攻勢 ", @"%CALLNAME:MASTER%と%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%の受け攻めを変えます"
 		ENDIF
@@ -922,6 +943,16 @@ ELSE
 	CALL COLUMNPRINTL, 0, ""
 ENDIF
 
+;PALAMのオーバーフロー警告をする
+VARLINE = LINECOUNT
+FOR LCOUNT, 0, 100
+	SIF PALAMOVERFLOW:LCOUNT
+		PRINTFORML 　前回の調教で%PALAMNAME:LCOUNT%がオーバーフローしました
+	SIF LCOUNT == 99 && VARLINE != LINECOUNT
+		PRINTW 　正常に続行するには、前回の調教対象にアイテム「リミッター制御」を使用してください
+NEXT
+VARSET PALAMOVERFLOW
+
 @SHOP_メイン_INPUT
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC LRESULT
@@ -963,6 +994,38 @@ SELECTCASE CRESULT:1
 	CASE 4
 		CALL プレイ称号計算, "スキル"
 		CALL スキルツリー
+	;納金
+	CASE 5
+		SIF ORIGIN
+			RETURN 0
+		SELECTCASE ゲームモード()
+			CASE "通常モード"
+				;100万
+				IF MONEY >= TONUM("100万")
+					;実績:1周目のゲームを20日以内にクリアする
+					SIF FLAG:周回数 == 1 && DAY <= 20
+						CALL 実績解除, "SPEED DEMON"
+					CALL ENDING_CHECK
+				ENDIF
+			CASE "経営モード"
+				;1億
+				IF MONEY >= TONUM("1億")
+					;実績:1周目のゲームを20日以内にクリアする
+					SIF FLAG:周回数 == 1 && DAY <= 20
+						CALL 実績解除, "SPEED DEMON"
+					;実績:キャラを一人も購入せずにパートナーだけでSTRATEGYモードをクリアする
+					SIF キャラ未購入
+						CALL 実績解除, "もう全部あいつ一人でいいんじゃないかな"
+					;実績:芸能プロダクションの収入のみでSTRATEGYモードをクリアする
+					SIF バンめし
+						CALL 実績解除, "他人がバンドで稼いだ金でめしが食いたい"
+					CALL ENDING_CHECK
+				ENDIF
+		ENDSELECT
+	;周回
+	CASE 6
+		SIF FLAG:周回可能 && !ORIGIN
+			CALL SUCCESSION
 	;キャラ変更
 	CASE 10, 19
 		LTARGET = TARGET
@@ -1021,7 +1084,7 @@ ENDSELECT
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC カウント数
-;#DIM DYNAMIC 未表示キャラ
+;#DIM DYNAMIC SHOP_未表示キャラ
 #DIM DYNAMIC LTARGET
 #DIM 表示切り替え
 #DIM DYNAMIC 表示上限
@@ -1064,7 +1127,7 @@ ENDIF
 CALL COLUMNPRINTL, 0, ""
 ;PRINTL [-1] 表示上限を減らす [-9] 表示上限を増やす
 
-未表示キャラ = 0
+SHOP_未表示キャラ = 0
 
 FOR LCOUNT, 0, CHARANUM
 	;1巡目はMASTERとTARGET及びASSIの能力表示
@@ -1096,7 +1159,7 @@ FOR LCOUNT, 0, CHARANUM
 		CONTINUE
 	;キャラを表示上限数表示したら終了
 	IF 表示数 >= 20
-		未表示キャラ = 1
+		SHOP_未表示キャラ = 1
 		BREAK
 	ENDIF
 	;対象と助手は主人の下に表示されるので除外
@@ -1122,17 +1185,17 @@ CALL COLUMNPRINTL, 0, "　☆：調教中　★：助手　○：助手可　●
 CALL COLUMNPRINTL, 0, "　KA：経営モードに配属中　不：使用不可　妊：妊娠育児中　獣：ペット候補　を表しています"
 CALL COLUMNDRAWLINE, 0
 
-;条件を満たしているにも関わらずまだリスト表示されてないキャラが居れば未表示キャラフラグは1になる
-;RETURN 未表示キャラ
+;条件を満たしているにも関わらずまだリスト表示されてないキャラが居ればSHOP_未表示キャラフラグは1になる
+;RETURN SHOP_未表示キャラ
 
 ;DRAWLINE
 ;CALL LIFE_LIST, "調教対象選択", 0, 表示上限
-;RESULTには未表示キャラが居るかどうか
+;RESULTにはSHOP_未表示キャラが居るかどうか
 ;次ページあり = RESULT
 ;DRAWLINE
 ;PRINTPLAIN 　CHANGE TARGET　
 CALL COLUMNPRINT, 0, RETURNSPACE(SHOP_キャラページ, "　[999] 前ページ ")
-CALL COLUMNPRINT, 0, RETURNSPACE(未表示キャラ, "[1001] 次ページ ")
+CALL COLUMNPRINT, 0, RETURNSPACE(SHOP_未表示キャラ, "[1001] 次ページ ")
 CALL COLUMNPRINT, 0, "[1010] キャラソート "
 IF SHOP_表示切り替え
 	CALL COLUMNPRINT, 0, "[1011] 通常表示に切り替え "
@@ -1175,7 +1238,7 @@ SELECTCASE CRESULT:1
 	CASE 1000
 		RETURN
 	CASE 1001
-		SIF 未表示キャラ
+		SIF SHOP_未表示キャラ
 			SHOP_キャラページ++
 	CASE 1010
 		CALL CHARA_SORT
@@ -1550,7 +1613,7 @@ IF LANGUAGE == "ENG"
 	IF !ORIGIN
 		CALL COLUMNDRAWLINE, 0
 		IF ゲームモード() == "段位認定"
-			CALL COLUMNTOOLTIP, 0, "[----] - Buy Slaves ", "段位認定では奴隷を購入することができません", 0, "gray"
+			CALL COLUMNTOOLTIP, 0, "[----] - Buy Slaves ", "段位認定では奴隷を購入することができません", "gray"
 		ELSEIF ゲームモード() != "新婚モード"
 			CALL COLUMNTOOLTIP, 0, "[2000] - Buy Slaves ", "調教するための奴隷を購入します"
 		ENDIF
@@ -1559,7 +1622,7 @@ IF LANGUAGE == "ENG"
 			IF 売却可能
 				CALL COLUMNTOOLTIP, 0, "[2001] - Sell Slaves ", "調教で仕上がった奴隷を売却します"
 			ELSEIF ゲームモード() != "新婚モード"
-				CALL COLUMNTOOLTIP, 0, "[----] - Sell Slaves ", "売却可能な奴隷が居ません", 0, "gray"
+				CALL COLUMNTOOLTIP, 0, "[----] - Sell Slaves ", "売却可能な奴隷が居ません", "gray"
 			ENDIF
 		ENDIF
 		CALL COLUMNPRINTL, 0, ""
@@ -1568,7 +1631,7 @@ ELSE
 	IF !ORIGIN
 		CALL COLUMNDRAWLINE, 0
 		IF ゲームモード() == "段位認定"
-			CALL COLUMNTOOLTIP, 0, "[----] - 奴隷購入 ", "段位認定では奴隷を購入することができません", 0, "gray"
+			CALL COLUMNTOOLTIP, 0, "[----] - 奴隷購入 ", "段位認定では奴隷を購入することができません", "gray"
 		ELSEIF ゲームモード() != "新婚モード"
 			CALL COLUMNTOOLTIP, 0, "[2000] - 奴隷購入 ", "調教するための奴隷を購入します"
 		ENDIF
@@ -1577,7 +1640,7 @@ ELSE
 			IF 売却可能
 				CALL COLUMNTOOLTIP, 0, "[2001] - 売却 ", "調教で仕上がった奴隷を売却します"
 			ELSEIF ゲームモード() != "新婚モード"
-				CALL COLUMNTOOLTIP, 0, "[----] - 売却 ", "売却可能な奴隷が居ません", 0, "gray"
+				CALL COLUMNTOOLTIP, 0, "[----] - 売却 ", "売却可能な奴隷が居ません", "gray"
 			ENDIF
 		ENDIF
 		CALL COLUMNPRINTL, 0, ""
@@ -1641,26 +1704,224 @@ ENDSELECT
 
 @SHOP_データベース
 
-;スマホ版では使えない
-SIF !SP
-	CALL COLUMNTOOLTIP, 0, "[303] - 模様替え ", "家の模様替えを行います")%
-
-;ビデオ所持していれば表示
-SIF FINDELEMENT(所持ビデオ, "", 0, VARSIZE("所持ビデオ"), 1) > 0
-	CALL COLUMNTOOLTIP, 0, "[304] - VIDEO    ", "所持しているビデオの一覧を表示します")%
-
-;アルバム
-CALL COLUMNTOOLTIP, 0, "[305] - アルバム ", "撮影、保管した写真を表示します")%
-
-;部屋ログあれば表示
-SIF 部屋ログ != ""
-	CALL COLUMNTOOLTIP, 0, "[306] - 部屋ログ ", "居住部屋で起きた出来事を確認します")%
-
-CALL COLUMNTOOLTIP, 0, "[307] - PLAYLOG  ", "プレイログ及び現金出納帳を確認します")%
-
-CALL COLUMNTOOLTIP, 0, "[503] - MANUAL   ", "ゲーム内マニュアルを表示します")%
+IF LANGUAGE == "ENG"
+	;ビデオ所持していれば表示
+	SIF FINDELEMENT(所持ビデオ, "", 0, VARSIZE("所持ビデオ"), 1) > 0
+		CALL COLUMNTOOLTIPL, 0, "　[0] - VIDEO", "所持しているビデオの一覧を表示します"
+	CALL COLUMNTOOLTIPL, 0, "　[4] - MANUAL", "ゲーム内マニュアルを表示します"
+ELSE
+	;ビデオ所持していれば表示
+	SIF FINDELEMENT(所持ビデオ, "", 0, VARSIZE("所持ビデオ"), 1) > 0
+		CALL COLUMNTOOLTIPL, 0, "　[0] - 所持ビデオ一覧", "所持しているビデオの一覧を表示します"
+	;アルバム
+	CALL COLUMNTOOLTIPL, 0, "　[1] - アルバム", "撮影、保管した写真を表示します"
+	;部屋ログあれば表示
+	SIF 部屋ログ != ""
+		CALL COLUMNTOOLTIPL, 0, "　[2] - 部屋ログ", "居住部屋で起きた出来事を確認します"
+	CALL COLUMNTOOLTIPL, 0, "　[3] - プレイログ", "プレイログ及び現金出納帳を確認します"
+	CALL COLUMNTOOLTIPL, 0, "　[4] - ゲームマニュアル", "ゲーム内マニュアルを表示します"
+ENDIF
 
 @SHOP_データベース_INPUT
+SELECTCASE CRESULT:1
+	;ビデオ一覧
+	CASE 0
+		SIF FINDELEMENT(所持ビデオ, "", 0, VARSIZE("所持ビデオ"), 1) > 0
+			CALL 所持ビデオ一覧
+	;アルバム
+	CASE 1
+		CALL 所持写真一覧
+	;部屋ログ
+	CASE 2
+		SIF 部屋ログ != ""
+			CALL 部屋ログ表示
+	;プレイログ
+	CASE 3
+		CALL プレイログ閲覧
+	;マニュアル
+	CASE 4
+		CALL GAME_MANUAL
+ENDSELECT
+
+@SHOP_その他
+
+IF LANGUAGE == "ENG"
+
+	;魔法
+	IF TALENT:MASTER:魔術師 || (TARGET > 0 && TALENT:魔術師) || (ASSI > 0 && TALENT:ASSI:魔術師)
+		CALL COLUMNTOOLTIPL, 0, "　[0] - Magic Chant", "魔法を使用します"
+	ELSE
+		CALL COLUMNTOOLTIPL, 0, "　[-] - Magic Chant", "魔法を使用するには主人、助手、もしくは調教対象が魔術師である必要があります", "gray"
+	ENDIF
+	;今月号のパズル雑誌持ってれば表示
+	SIF ITEM:ロジカルダッシュ == YEAR*100+MONTH
+		CALL COLUMNTOOLTIPL, 0, "　[1] - Puzzle", "今月号のパズル雑誌で遊びます"
+	;経営、PFREEなら表示
+	SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード") && !ORIGIN
+		CALL COLUMNTOOLTIPL, 0, "　[2] - Casino", "カジノに行ってギャンブルをします"
+	;裏カジノ行ければ表示
+	SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード") && FLAG:裏カジノ && !ORIGIN
+		CALL COLUMNTOOLTIPL, 0, "　[3] - Darkness Casino", "高レートの裏カジノに行ってギャンブルをします"
+	;無条件表示（暫定）
+	CALL COLUMNTOOLTIPL, 0, "[4] - Redesign", "家の模様替えを行います"
+
+	;変化できるキャラが居れば表示
+	SIF CMATCH(TALENT:変化, 1)
+		CALL COLUMNTOOLTIPL, 0, "　[5] - Transform", "素質[変化]を持った陥落済みのキャラクターを動物の姿や人間の姿に変化させます"
+
+	;新婚モード以外で表示
+	IF ゲームモード() != "新婚モード"
+		;奴隷が一人でもいれば表示
+		IF CHARANUM > 1
+			CALL COLUMNTOOLTIPL, 0, "　[-] - Ritual", "眷属の義、もしくは印の義を行います"
+			CALL COLUMNPRINTL, 0, "　　[10] - 眷属の儀"
+			CALL COLUMNPRINTL, 0, "　　[11] - 印の儀"
+			CALL COLUMNPRINTL, 0, "　　[12] - 幽体離脱・憑依の儀"
+			SIF STSMOD
+				CALL COLUMNPRINTL, 0, "　　[13] - カニバリズム"
+		ELSE
+			CALL COLUMNTOOLTIPL, 0, "　[-] - Ritual", "キャラ・アイテム購入→奴隷購入 からキャラを購入してください", "gray"
+		ENDIF
+	ENDIF
+ELSE
+	;魔法
+	IF TALENT:MASTER:魔術師 || (TARGET > 0 && TALENT:魔術師) || (ASSI > 0 && TALENT:ASSI:魔術師)
+		CALL COLUMNTOOLTIPL, 0, "　[0] - 魔法詠唱", "魔法を使用します"
+	ELSE
+		CALL COLUMNTOOLTIPL, 0, "　[-] - 魔法詠唱", "魔法を使用するには主人、助手、もしくは調教対象が魔術師である必要があります",  "gray"
+	ENDIF
+	;今月号のパズル雑誌持ってれば表示
+	SIF ITEM:ロジカルダッシュ == YEAR*100+MONTH
+		CALL COLUMNTOOLTIPL, 0, "　[1] - パズル", "今月号のパズル雑誌で遊びます"
+	;経営、PFREEなら表示
+	;ORIGINでは金の概念が無いので使えない
+	SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード") && !ORIGIN
+		CALL COLUMNTOOLTIPL, 0, "　[2] - カジノ", "カジノに行ってギャンブルをします"
+
+	;裏カジノ行ければ表示 同じくORIGINではry
+	SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード") && FLAG:裏カジノ && !ORIGIN
+		CALL COLUMNTOOLTIPL, 0, "　[3] - 裏カジノ", "高レートの裏カジノに行ってギャンブルをします"
+	;スマホ版では使えない
+	SIF !SP
+		CALL COLUMNTOOLTIPL, 0, "　[4] - 模様替え", "家の模様替えを行います"
+	;変化できるキャラが居れば表示
+	SIF CMATCH(TALENT:変化, 1)
+		CALL COLUMNTOOLTIPL, 0, "　[5] - 変化", "素質[変化]を持った陥落済みのキャラクターを動物の姿や人間の姿に変化させます"
+
+	;新婚モードと段位認定以外で表示
+	IF ゲームモード() != "新婚モード" && ゲームモード() != "段位認定"
+		;奴隷が一人でもいれば表示
+		IF CHARANUM > 1
+			CALL COLUMNTOOLTIPL, 0, "　[-] - 儀式", "眷属の義、もしくは印の義を行います"
+			CALL COLUMNPRINTL, 0, "　　[10] - 眷属の儀"
+			CALL COLUMNPRINTL, 0, "　　[11] - 印の儀"
+			CALL COLUMNPRINTL, 0, "　　[12] - 幽体離脱・憑依の儀"
+			SIF STSMOD
+				CALL COLUMNPRINTL, 0, "　　[13] - カニバリズム"
+		ELSE
+			CALL COLUMNTOOLTIPL, 0, "　[-] - 儀式", "アイテム・キャラ購入→奴隷購入 からキャラを購入してください", "gray"
+		ENDIF
+	ENDIF
+ENDIF
+
+;デバッグモードなら表示
+;#;CALL COLUMNPRINTL, 0, "　[997] - 乱キャラ"
+;#;CALL COLUMNPRINTL, 0, "　[998] - デバッグ"
+
+@SHOP_その他_INPUT
+
+SELECTCASE CRESULT:1
+	;魔法詠唱
+	CASE 0
+		SIF TALENT:MASTER:魔術師 || (TARGET > 0 && TALENT:魔術師) || (ASSI > 0 && TALENT:ASSI:魔術師)
+			CALL SPELLCAST
+		;魔法を詠唱したならターン終了
+		IF RESULT == 1
+			CALL プレイ称号計算, "魔法詠唱"
+			FLAG:休憩フラグ = 1
+			BEGIN TURNEND
+		ENDIF
+	;パズル
+	CASE 1
+		SIF ITEM:ロジカルダッシュ == YEAR*100+MONTH
+			CALL PUZZLE
+	;カジノ
+	CASE 2
+		SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード") && !ORIGIN
+			CALL GAMBLE, 1
+		;ギャンブルしたならターン終了
+		IF RESULT == 1
+			CALL プレイ称号計算, "ギャンブル"
+			FLAG:休憩フラグ = 1
+			BEGIN TURNEND
+		ENDIF
+	;裏カジノ
+	CASE 3
+		SIF FLAG:裏カジノ && !ORIGIN
+			CALL GAMBLE, 2
+		;ギャンブルしたならターン終了
+		IF RESULT == 1
+			CALL プレイ称号計算, "ギャンブル"
+			FLAG:休憩フラグ = 1
+			BEGIN TURNEND
+		ENDIF
+	;模様替え
+	CASE 4
+		SIF SP
+			RETURN 0
+		CALL プレイ称号計算, "マップ"
+		CALL 模様替え
+	;変化
+	CASE 5
+		SIF CMATCH(TALENT:変化, 1)
+			CALL 変化
+	;儀式
+	CASE 10
+		SIF CHARANUM < 2
+			RETURN
+		CALL FAMILIAR
+		;儀を行った場合はターン終了
+		IF RESULT == 1
+			CALL プレイ称号計算, "眷属"
+			FLAG:休憩フラグ = 1
+			LOOP_BREAK = 1
+			BEGIN TURNEND
+		ENDIF
+	CASE 11
+		SIF CHARANUM < 2
+			RETURN
+		CALL RITUAL_OF_SIGN
+		;儀を行った場合はターン終了
+		IF RESULT == 1
+			CALL プレイ称号計算, "印"
+			FLAG:休憩フラグ = 1
+			LOOP_BREAK = 1
+			BEGIN TURNEND
+		ENDIF
+	CASE 12
+		SIF CHARANUM < 2
+			RETURN
+		CALL SPECTRAL
+	CASE 13
+		SIF CHARANUM < 2
+			RETURN
+		SIF !STSMOD
+			RESTART
+		CALL CANNIBALISM
+		;食事をした場合はターン終了
+		IF RESULT == 1
+			CALL プレイ称号計算, "カニバリスト"
+			FLAG:休憩フラグ = 1
+			LOOP_BREAK = 1
+			BEGIN TURNEND
+		ENDIF
+	;デバッグ用
+	;#;CASE 997
+	;#;	CALL ADD_ランダムキャラ, 2, -1
+	;#;CASE 998
+	;#;	CALL DEBUG
+ENDSELECT
+
 
 ;USERSAVEの流用
 @SHOP_セーブ
@@ -1755,9 +2016,149 @@ CALL タイトル_セーブデータのロード
 @SHOP_ロード_INPUT
 CALL タイトル_セーブデータのロード_INPUT
 
+@SHOP_オプション
+LOADGLOBAL
+CALL COLUMNPRINTL, 0, "□設定項目を選択してください"
+CALL COLUMNPRINTL, 0, "　[0] - テキスト設定"
+CALL COLUMNPRINTL, 0, "　[1] - 着衣関連設定"
+CALL COLUMNPRINTL, 0, "　[2] - イベント関連の設定"
+SIF TALENT:MASTER:ドラゴン使い
+	CALL COLUMNPRINTL, 0, "　[3] - ドラゴンの名前変更"
+SIF !SP
+	CALL COLUMNPRINTL, 0, "　[4] - サウンドオプション"
+CALL COLUMNPRINTL, 0, @"　[5] - 能力表示画面の顔グラ表示(現在:\@ 顔グラ表示 == 1 ? オン # オフ \@)"
+;CALL COLUMNPRINTL, 0, @"　[6] - ショートカットコマンドを使用する(現在:\@ ショートカット == 1 ? オン # オフ \@)"
+
+@SHOP_オプション_INPUT
+#DIM DYNAMIC LRESULT
+
+SELECTCASE CRESULT:1
+	CASE 0
+		CALL プレイ称号計算, "テキスト設定"
+		CALL TEXT_SETTING
+	CASE 1
+		CALL プレイ称号計算, "着衣設定"
+		CALL CLOTHES_SETTING
+	CASE 2
+		CALL EVENT_SETTING
+	CASE 3
+		IF TALENT:MASTER:ドラゴン使い
+			DO
+				PRINTL ドラゴンの名前を入力してください(何も入力しない場合、「ドラゴン」になります)
+				INPUTS
+				SIF RESULTS == ""
+					RESULTS = ドラゴン
+				PRINTFORML %RESULTS%でよろしいですか？(後からオプション画面で変更できます)
+				PRINTL [0] - はい
+				PRINTL [1] - いいえ
+				CALL INPUTF, 0, 1
+				IF RESULT == 0
+					CSTR:MASTER:ドラゴン = %RESULTS%
+					BREAK
+				ENDIF
+				CONTINUE
+			LOOP 1
+		ENDIF
+	CASE 4
+		SIF SP
+			CONTINUE
+		DRAWLINE
+		VARLINE = LINECOUNT
+		$SOUNDOPTION
+		CLEARLINE LINECOUNT-VARLINE
+		PRINTFORML □現在の設定 サウンド再生機能:\@ サウンド == 1 ? オン # オフ \@ BGM音量:{BGM音量} SE音量:{SOUND音量}
+		PRINTFORML 　[0] - サウンド再生機能(現在:\@ サウンド == 1 ? オン # オフ \@)
+		PRINTL 　[1] - BGMの音量を上げる
+		PRINTL 　[2] - BGMの音量を下げる
+		PRINTL 　[3] - SEの音量を上げる
+		PRINTL 　[4] - SEの音量を下げる
+		DRAWLINE
+		PRINTPLAIN 　SOUND　
+		PRINTL [100] - 戻る
+		DO
+			INPUT
+			LRESULT = RESULT
+			SELECTCASE RESULT
+				CASE 0
+					INVERTBIT サウンド, 0
+					SELECTCASE サウンド
+						CASE 0
+							SETBGMVOLUME 0
+							SETSOUNDVOLUME 0
+						CASE 1
+							SETSOUNDVOLUME SOUND音量
+							SETBGMVOLUME BGM音量
+					ENDSELECT
+					GOTO SOUNDOPTION
+				CASE 1
+					BGM音量 += 10
+					CALL SETMIN(BGM音量, 100)
+				CASE 2
+					BGM音量 -= 10
+					CALL SETMAX(BGM音量, 0)
+				CASE 3
+					SOUND音量 += 10
+					CALL SETMIN(SOUND音量, 100)
+				CASE 4
+					SOUND音量 -= 10
+					CALL SETMAX(SOUND音量, 0)
+				CASE 100
+					BREAK
+				CASEELSE
+					CONTINUE
+			ENDSELECT
+
+			SETSOUNDVOLUME 0
+			SETBGMVOLUME 0
+			SETSOUNDVOLUME SOUND音量
+			SETBGMVOLUME BGM音量
+			SIF GROUPMATCH(LRESULT, 3, 4)
+				CALL SE再生, トランプドロー
+			GOTO SOUNDOPTION
+		LOOP 1
+		SAVEGLOBAL
+	CASE 5
+		INVERTBIT 顔グラ表示, 0
+		SAVEGLOBAL
+	CASE 6
+		INVERTBIT ショートカット, 0
+ENDSELECT
+
+@SHOP_ショートカット
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC LCOUNT
+;ショートカット有効にしていれば表示
+;カラム機能を作ったので常時表示
+CALL COLUMNPRINTL, 0, "□ショートカット一覧"
+FOR LCOUNT, 0, VARSIZE("LNK")
+	IF LNK:LCOUNT != ""
+		CALL COLUMNPRINT, 0, @"　[{LCOUNT, 2}] - %LNKCOM(LNK:LCOUNT), 40, LEFT%"
+		表示数++
+		SIF 表示数 != 0 && 表示数%3 == 0
+			CALL COLUMNPRINTL, 0, ""
+	ENDIF
+NEXT
+SIF 表示数%3 != 0
+	CALL COLUMNPRINTL, 0, ""
+
+CALL COLUMNDRAWLINE, 0
+
+SIF FINDELEMENT(LNK, "", 0, VARSIZE("LNK"), 1) >= 0
+	CALL COLUMNPRINT, 0, "　[100] - ショートカットコマンドの登録 "
+CALL COLUMNPRINTL, 0, "[101] - ショートカットキーの削除"
+
+@SHOP_ショートカット_INPUT
+SELECTCASE CRESULT:1
+	CASE 0 TO VARSIZE("LNK")
+		CALL ショートカットコマンド, RESULT
+	CASE 100
+		CALL ショートカット登録
+	CASE 101
+		CALL ショートカット削除
+ENDSELECT
+
+[SKIPSTART]
 @HOGE
-
-
 ;現助手＋元助手のキャラ数の確認
 FOR LCOUNT, 1, CHARANUM
 	;育児部屋に移動しているキャラは除外
@@ -1787,608 +2188,7 @@ FOR LCOUNT, 0, CHARANUM
 		CONTINUE
 	調教可能++
 NEXT
-
-
-;無条件で表示
-;段位認定では使えない
-SELECTCASE ゲームモード()
-	CASE "段位認定"
-		CALL COLUMNTOOLTIP, 0, "[---] - 施設管理 ", "段位認定では使えません", 0, "gray")%
-	CASEELSE
-		CALL COLUMNTOOLTIP, 0, "[102] - 施設管理 ", "屋敷の施設・設備の管理をします")%
-ENDSELECT
-
-
-HTML_PRINT STRJOIN(コマンド表示用, "")
-
-;魔法
-IF TALENT:MASTER:魔術師 || (TARGET > 0 && TALENT:魔術師) || (ASSI > 0 && TALENT:ASSI:魔術師)
-	CALL COLUMNTOOLTIP, 0, "[204] - 魔法詠唱 ", "魔法を使用します")%
-ELSE
-	CALL COLUMNTOOLTIP, 0, "[---] - 魔法詠唱 ", "魔法を使用するには主人、助手、もしくは調教対象が魔術師である必要があります", 0, "gray")%
-ENDIF
-
-;主人が禁断の知識持ってる場合
-;これは何らかのバージョンで医務室に移行した
-;IF TALENT:MASTER:禁断の知識
-;	IF CHARANUM > 1
-;		CALL COLUMNTOOLTIP, 0, "[205] - 身体改造 ", "キャラの体に改造を施します")%
-;	ELSE
-;		CALL COLUMNTOOLTIP, 0, "[---] - 身体改造 ", "改造可能なキャラが居ません", 0, "gray")%
-;	ENDIF
-;ENDIF
-
-HTML_PRINT STRJOIN(コマンド表示用, "")
-
-VARSET コマンド表示用
-;300番台はミニゲームのコマンド
-コマンド表示用 = 　
-
-;今月号のパズル雑誌持ってれば表示
-SIF ITEM:ロジカルダッシュ == YEAR*100+MONTH
-	CALL COLUMNTOOLTIP, 0, "[300] - パズル   ", "今月号のパズル雑誌で遊びます")%
-
-;経営、PFREEなら表示
-;ORIGINでは金の概念が無いので使えない
-SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード") && !ORIGIN
-	CALL COLUMNTOOLTIP, 0, "[301] - カジノ   ", "カジノに行ってギャンブルをします")%
-
-;裏カジノ行ければ表示 同じくORIGINではry
-SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード") && FLAG:裏カジノ && !ORIGIN
-	CALL COLUMNTOOLTIP, 0, "[302] - 裏カジノ ", "高レートの裏カジノに行ってギャンブルをします")%
-
-
-SIF STRJOIN(コマンド表示用, "") != "　"
-	HTML_PRINT STRJOIN(コマンド表示用, "")
-
-VARSET コマンド表示用
-
-;400番台は購入・売却のコマンド
-コマンド表示用 = 　
-;無条件で表示
-CALL COLUMNTOOLTIP, 0, "[400] - アイテム ", "淫具や素質追加などのアイテムを購入します")%
-
-;変化できるキャラが居れば表示
-SIF CMATCH(TALENT:変化, 1)
-	CALL COLUMNTOOLTIP, 0, "[401] - 変化     ", "素質[変化]を持った陥落済みのキャラクターを動物の姿や人間の姿に変化させます")%
-
-;新婚モードと段位認定以外で表示
-IF ゲームモード() != "新婚モード" && ゲームモード() != "段位認定"
-	;奴隷が一人でもいれば表示
-	IF CHARANUM > 1
-		CALL COLUMNTOOLTIP, 0, "[402] - 儀式     ", "眷属の義、もしくは印の義を行います")%
-	ELSE
-		CALL COLUMNTOOLTIP, 0, "[---] - 儀式     ", "[403] - 奴隷購入 からキャラを購入してください", 0, "gray")%
-	ENDIF
-ENDIF
-
-
-;新婚モードではアイテム購入のみ表示
-HTML_PRINT STRJOIN(コマンド表示用, "")
-
-VARSET コマンド表示用
-;500番台はセーブ・ロード・オプション・マニュアルのシステムコマンド
-;セーブ・ロード・オプション・マニュアルは無条件で表示
-コマンド表示用 = 　
-CALL COLUMNTOOLTIP, 0, "[500] - SAVE     ", "現在の状況をセーブします")%
-CALL COLUMNTOOLTIP, 0, "[501] - LOAD     ", "セーブデータをロードします。保存していない進行状況は失われます")%
-CALL COLUMNTOOLTIP, 0, "[502] - OPTION   ", "服装やテキスト表示など、様々な設定を変更します")%
-
-HTML_PRINT STRJOIN(コマンド表示用, "")
-
-
-;ORIGINでは600番台のコマンドは使わない
-SIF !ORIGIN
-	HTML_PRINT STRJOIN(コマンド表示用, "")
-
-
-;デバッグモードなら表示
-;#;PRINTPLAIN 　
-;#;PRINT [997] - 乱キャラ 
-;#;PRINTL [998] - デバッグ
-
-;ショートカット有効にしていれば表示
-IF ショートカット
-	DRAWLINE
-	PRINTL □ショートカット一覧
-	FOR LCOUNT, 0, VARSIZE("LNK")
-		SIF LNK:LCOUNT != ""
-			PRINTFORMLC 　[{LCOUNT+1000}] - %LNKCOM(LNK:LCOUNT)%
-	NEXT
-	CALL NEWLINE
-	SIF FINDELEMENT(LNK, "", 0, VARSIZE("LNK"), 1) >= 0
-		PRINTLC 　[1100] - ショートカットコマンドの登録
-	PRINTLC 　[1101] - ショートカットキーの削除
-	PRINTL 
-ENDIF
-
-DRAWLINE
-PRINTPLAIN 　SHOP　
-PRINTL 
-;PALAMのオーバーフロー警告をする
-VARLINE = LINECOUNT
-FOR LCOUNT, 0, 100
-	SIF PALAMOVERFLOW:LCOUNT
-		PRINTFORML 　前回の調教で%PALAMNAME:LCOUNT%がオーバーフローしました
-	SIF LCOUNT == 99 && VARLINE != LINECOUNT
-		PRINTW 　正常に続行するには、前回の調教対象にアイテム「リミッター制御」を使用してください
-NEXT
-VARSET PALAMOVERFLOW
-
-@SHOPCOM_ENG
-#DIM DYNAMIC 助手可能
-#DIM DYNAMIC 売却可能
-#DIM DYNAMIC 調教可能
-#DIM DYNAMIC LCOUNT
-#DIMS DYNAMIC コマンド表示用, 10
-#DIMS DYNAMIC LCALL
-
-;現助手＋元助手のキャラ数の確認
-FOR LCOUNT, 1, CHARANUM
-	;育児部屋に移動しているキャラは除外
-	SIF CHECK_CHILD_CARE(LCOUNT)
-		CONTINUE
-	;助手可能
-	SIF CFLAG:LCOUNT:状態 == 2
-		助手可能++
-	;売却可能
-	SIF CFLAG:LCOUNT:状態 >= 1 && !CFLAG:LCOUNT:売却不可
-		売却可能++
-NEXT
-
-;TARGETの他に調教できるキャラがいるかどうか
-FOR LCOUNT, 0, CHARANUM
-	;主人は除外
-	SIF LCOUNT == MASTER
-		CONTINUE
-	;奴隷も除外
-	SIF LCOUNT == TARGET
-		CONTINUE
-	;使用不可は除外
-	SIF CFLAG:LCOUNT:使用不可
-		CONTINUE
-	;育児部屋に移動しているキャラは除外
-	SIF CHECK_CHILD_CARE(LCOUNT)
-		CONTINUE
-	調教可能++
-NEXT
-
-SELECTCASE SEX(TARGET)
-	CASE 1
-		LCALL = him
-	CASE 2
-		LCALL = her
-ENDSELECT
-
-;コマンド名は現在全角4文字の範囲で統一
-;100番台は行動のコマンド
-コマンド表示用 = 　
-;TARGETがいれば表示
-;九尾狐夜行では夜だけ調教可能
-IF 受験段位名 == "九尾狐夜行" && TIME == 0
-	SETCOLORBYNAME gray
-	CALL COLUMNTOOLTIP, 0, "[---] - Start Training    ", "You can training at night only.", 0)%
-	RESETCOLOR
-ELSEIF TARGET > 0
-	SELECTCASE FALLTYPE(TARGET)
-		CASE 1
-			CALL COLUMNTOOLTIP, 0, "[100] - Foster Love       ", @"Make love to %CALLNAMEDISP(TARGET)%.")%
-		CASE 2
-			CALL COLUMNTOOLTIP, 0, @"[100] - Lewd %LCALL%          ", @"Get laid by %CALLNAMEDISP(TARGET)%")%
-		CASE 3
-			CALL COLUMNTOOLTIP, 0, "[100] - Dominate          ", @"Dominate %LCALL%")%
-		CASEELSE
-			CALL COLUMNTOOLTIP, 0, "[100] - Start Training    ", @"Training with %CALLNAMEDISP(TARGET)%")%
-	ENDSELECT
-ELSE
-	SETCOLORBYNAME gray
-	IF CHARANUM == 1 && ゲームモード() == "段位認定"
-		CALL COLUMNTOOLTIP, 0, "[---] - Start Training    ", "Characters are can't train.", 0)%
-	ELSEIF ゲームモード() == "新婚モード"
-		CALL COLUMNTOOLTIP, 0, "[---] - Foster Love       ", "Please select a character from [202] - Change Target", 0)%
-	ELSEIF 調教可能
-		CALL COLUMNTOOLTIP, 0, "[---] - Start Training    ", "Please select a character from [202] - Change Target", 0)%
-	ELSE
-		CALL COLUMNTOOLTIP, 0, "[---] - Start Training    ", "Please buy character from [403] - Buy Slaves", 0)%
-	ENDIF
-	RESETCOLOR
-ENDIF
-;無条件で表示
-CALL COLUMNTOOLTIP, 0, "[101] - Rest              ", @"Take a half day break")%
-
-;無条件で表示
-;段位認定では使えない
-SELECTCASE ゲームモード()
-	CASE "段位認定"
-		CALL COLUMNTOOLTIP, 0, "[---] - Facility          ", "Can't use at 段位認定 mode", 0, "gray")%
-	CASEELSE
-		CALL COLUMNTOOLTIP, 0, "[102] - Facility          ", "屋敷の施設・設備の管理をします")%
-ENDSELECT
-
-;STRATEGYモード、PFREEモードなら表示
-SELECTCASE ゲームモード()
-	CASE "経営モード", "フリーモード"
-		CALL COLUMNTOOLTIP, 0, "[103] - Management        ", "収益要素を管理します")%
-		;パートナーに話しかける口上が実装されていれば表示
-		TRYCCALLFORM EXIST_STRATEGY_KOJO_%CSVNAMERPS(FLAG:パートナー)%
-			SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
-				CALL COLUMNTOOLTIP, 0, "[104] - Talk with Manager ", @"%CSVCALLNAMEDISP(FLAG:パートナー)%に経営の相談をします")%
-		CATCH
-		ENDCATCH
-ENDSELECT
-
-;新婚モードの一転攻勢
-IF ゲームモード() == "新婚モード"
-	IF TALENT:FINDCHARA(CFLAG:嫁, 1):妊娠 || TALENT:FINDCHARA(CFLAG:嫁, 1):育児中
-		CALL COLUMNTOOLTIP, 0, "[---] - Replace a Master  ", @"%CALLNAMEDISP(FINDCHARA(CFLAG:嫁, 1))%が身篭っているため、できません", 0, "gray")%
-	ELSE
-		CALL COLUMNTOOLTIP, 0, "[105] - Replace a Master  ", @"%CALLNAMEDISP(MASTER)%と%CALLNAMEDISP(FINDCHARA(CFLAG:嫁, 1))%の受け攻めを変えます")%
-	ENDIF
-ENDIF
-
-;主人のスキルアップ
-CALL COLUMNTOOLTIP, 0, "[106] - SKILL UP          ", @"%CALLNAMEDISP(MASTER)%のスキルツリーを表示します")%
-
-HTML_PRINT STRJOIN(コマンド表示用, "")
-
-;200番台は奴隷関連のコマンド
-VARSET コマンド表示用
-コマンド表示用 = 　
-;調教者含め誰かがいれば表示 現在は必ず表示される
-CALL COLUMNTOOLTIP, 0, "[200] - Abilities         ", @"Display characters infomation")%
-;奴隷が一人でもいれば表示
-IF CHARANUM > 1
-	CALL COLUMNTOOLTIP, 0, "[201] - Raise Abilities   ", @"Raise characters ability")%
-ELSEIF ゲームモード() != "段位認定"
-	CALL COLUMNTOOLTIP, 0, "[---] - Raise Abilities   ", "Please buy characters from [403] - Buy Slaves", 0, "gray")%
-ELSE
-	CALL COLUMNTOOLTIP, 0, "[---] - Raise Abilities   ", "Characters are not here", 0, "gray")%
-ENDIF
-IF 調教可能
-	IF ゲームモード() == "新婚モード"
-		CALL COLUMNTOOLTIP, 0, "[202] - Change Target     ", "お相手を変更します")%
-	ELSE
-		CALL COLUMNTOOLTIP, 0, "[202] - Change Target     ", "調教対象を変更します")%
-	ENDIF
-ELSE
-	IF ゲームモード() == "新婚モード" && FINDCHARA(CFLAG:嫁, 1) >= 0
-		CALL COLUMNTOOLTIP, 0, "[---] - Change Target     ", @"%CALLNAMEDISP(FINDCHARA(CFLAG:嫁, 1))%以外にキャラが居ません", 0, "gray")%
-	ELSEIF CHARANUM == 1 && ゲームモード() == "段位認定"
-		CALL COLUMNTOOLTIP, 0, "[---] - Change Target     ", "調教可能なキャラが居ません", 0, "gray")%
-	ELSEIF CHARANUM != 1 && TARGET >= 0
-		CALL COLUMNTOOLTIP, 0, "[---] - Change Target     ", @"%CALLNAMEDISP(TARGET)%以外に調教可能なキャラが居ません", 0, "gray")%
-	ELSE
-		CALL COLUMNTOOLTIP, 0, "[---] - Change Target     ", "[403] - 奴隷購入 からキャラを購入してください", 0, "gray")%
-	ENDIF
-ENDIF
-;助手可能キャラが一人でもいれば表示
-IF 助手可能
-	IF ASSI > 0
-		CALL COLUMNTOOLTIP, 0, "[203] - Change Assistant  ", "助手を変更します")%
-	ELSE
-		CALL COLUMNTOOLTIP, 0, "[203] - Change Assistant  ", "助手を選出します")%
-	ENDIF
-ELSE
-	CALL COLUMNTOOLTIP, 0, "[---] - Change Assistant  ", "助手に選べるキャラは居ません", 0, "gray")%
-ENDIF
-;魔法
-IF TALENT:MASTER:魔術師 || (TARGET > 0 && TALENT:魔術師) || (ASSI > 0 && TALENT:ASSI:魔術師)
-	CALL COLUMNTOOLTIP, 0, "[204] - Magic Chant       ", "魔法を使用します")%
-ELSE
-	CALL COLUMNTOOLTIP, 0, "[---] - Magic Chant       ", "魔法を使用するには主人、助手、もしくは調教対象が魔術師である必要があります", 0, "gray")%
-ENDIF
-
-;主人が禁断の知識持ってる場合
-;IF TALENT:MASTER:禁断の知識
-;	IF CHARANUM > 1
-;		CALL COLUMNTOOLTIP, 0, "[205] - 身体改造 ", "キャラの体に改造を施します")%
-;	ELSE
-;		CALL COLUMNTOOLTIP, 0, "[---] - 身体改造 ", "改造可能なキャラが居ません", 0, "gray")%
-;	ENDIF
-;ENDIF
-
-HTML_PRINT STRJOIN(コマンド表示用, "")
-
-VARSET コマンド表示用
-;300番台はミニゲームのコマンド
-コマンド表示用 = 　
-
-;今月号のパズル雑誌持ってれば表示
-SIF ITEM:ロジカルダッシュ == YEAR*100+MONTH
-	CALL COLUMNTOOLTIP, 0, "[300] - Puzzle            ", "今月号のパズル雑誌で遊びます")%
-
-;経営、PFREEなら表示
-SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード") && !ORIGIN
-	CALL COLUMNTOOLTIP, 0, "[301] - Casino            ", "カジノに行ってギャンブルをします")%
-
-;裏カジノ行ければ表示
-SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード") && FLAG:裏カジノ && !ORIGIN
-	CALL COLUMNTOOLTIP, 0, "[302] - Darkness Casino   ", "高レートの裏カジノに行ってギャンブルをします")%
-
-;無条件表示（暫定）
-CALL COLUMNTOOLTIP, 0, "[303] - Redesign          ", "家の模様替えを行います")%
-
-;ビデオ所持していれば表示
-SIF FINDELEMENT(所持ビデオ, "", 0, VARSIZE("所持ビデオ"), 1) > 0
-	CALL COLUMNTOOLTIP, 0, "[304] - VIDEO             ", "所持しているビデオの一覧を表示します")%
-
-SIF STRJOIN(コマンド表示用, "") != "　"
-	HTML_PRINT STRJOIN(コマンド表示用, "")
-
-VARSET コマンド表示用
-
-;400番台は購入・売却のコマンド
-コマンド表示用 = 　
-;無条件で表示
-CALL COLUMNTOOLTIP, 0, "[400] - Item              ", "淫具や素質追加などのアイテムを購入します")%
-
-;変化できるキャラが居れば表示
-SIF CMATCH(TALENT:変化, 1)
-	CALL COLUMNTOOLTIP, 0, "[401] - Transform         ", "素質[変化]を持った陥落済みのキャラクターを動物の姿や人間の姿に変化させます")%
-
-;新婚モード以外で表示
-IF ゲームモード() != "新婚モード"
-	;奴隷が一人でもいれば表示
-	IF CHARANUM > 1
-		CALL COLUMNTOOLTIP, 0, "[402] - Ritual            ", "眷属の義、もしくは印の義を行います")%
-	ELSE
-		CALL COLUMNTOOLTIP, 0, "[---] - Ritual            ", "[403] - 奴隷購入 からキャラを購入してください", 0, "gray")%
-	ENDIF
-ENDIF
-
-
-;新婚モードではアイテム購入のみ表示
-HTML_PRINT STRJOIN(コマンド表示用, "")
-
-VARSET コマンド表示用
-;500番台はセーブ・ロード・オプション・マニュアルのシステムコマンド
-;セーブ・ロード・オプションは無条件で表示
-コマンド表示用 = 　
-CALL COLUMNTOOLTIP, 0, "[500] - SAVE              ", "現在の状況をセーブします")%
-CALL COLUMNTOOLTIP, 0, "[501] - LOAD              ", "セーブデータをロードします。保存していない進行状況は失われます")%
-CALL COLUMNTOOLTIP, 0, "[502] - OPTION            ", "服装やテキスト表示など、様々な設定を変更します")%
-CALL COLUMNTOOLTIP, 0, "[503] - MANUAL            ", "ゲーム内マニュアルを表示します")%
-
-HTML_PRINT STRJOIN(コマンド表示用, "")
-
-SIF !ORIGIN
-	HTML_PRINT STRJOIN(コマンド表示用, "")
-
-;デバッグモードなら表示
-;#;PRINTPLAIN 　
-;#;PRINTL [998] - Debug 
-
-DRAWLINE
-PRINTPLAIN 　SHOP　
-
-@USERSHOP
-#DIM DYNAMIC 助手可能
-#DIM DYNAMIC 売却可能
-#DIM DYNAMIC 調教可能
-#DIM DYNAMIC LCOUNT
-#DIM DYNAMIC LTARGET
-#DIM DYNAMIC LRESULT
-#DIM DYNAMIC 伴侶
-;現助手＋元助手のキャラ数の確認
-FOR LCOUNT, 0, CHARANUM
-	;育児部屋に移動しているキャラは除外
-	SIF CHECK_CHILD_CARE(LCOUNT)
-		CONTINUE
-	;助手可能
-	SIF CFLAG:LCOUNT:状態 == 2
-		助手可能++
-	;売却可能
-	SIF CFLAG:LCOUNT:状態 >= 1
-		売却可能++
-NEXT
-
-;TARGETの他に調教できるキャラがいるかどうか
-FOR LCOUNT, 0, CHARANUM
-	;主人は除外
-	SIF LCOUNT == MASTER
-		CONTINUE
-	;奴隷も除外
-	SIF LCOUNT == TARGET
-		CONTINUE
-	;育児部屋に移動しているキャラは除外
-	SIF CHECK_CHILD_CARE(LCOUNT)
-		CONTINUE
-	調教可能++
-NEXT
-
-TFLAG:ページ数 = 0
-
-SELECTCASE RESULT
-	;能力表示
-	CASE 200
-		CALL プレイ称号計算, "能力表示"
-		CALL SHOW_CHARADATA
-	;能力上昇
-	CASE 201
-		SIF CHARANUM > 1
-			CALL SHOP_ABLUP
-	;奴隷変更
-	CASE 202
-		SIF 調教可能
-			CALL CHANGE_TARGET
-	;助手変更
-	CASE 203
-		SIF 助手可能
-			CALL SELECT_ASSI
-	;魔法詠唱
-	CASE 204
-		SIF TALENT:MASTER:魔術師 || (TARGET > 0 && TALENT:魔術師) || (ASSI > 0 && TALENT:ASSI:魔術師)
-			CALL SPELLCAST
-		;魔法を詠唱したならターン終了
-		IF RESULT == 1
-			CALL プレイ称号計算, "魔法詠唱"
-			FLAG:休憩フラグ = 1
-			BEGIN TURNEND
-		ENDIF
-	;身体改造
-	;CASE 205
-	;	SIF TALENT:MASTER:禁断の知識 && CHARANUM > 1
-	;		CALL BODY_MOD
-	;パズル
-	CASE 300
-		SIF ITEM:ロジカルダッシュ == YEAR*100+MONTH
-			CALL PUZZLE
-	;カジノ
-	CASE 301
-		SIF GROUPMATCH(ゲームモード(), "経営モード", "フリーモード") && !ORIGIN
-			CALL GAMBLE, 1
-		;ギャンブルしたならターン終了
-		IF RESULT == 1
-			CALL プレイ称号計算, "ギャンブル"
-			FLAG:休憩フラグ = 1
-			BEGIN TURNEND
-		ENDIF
-	;裏カジノ
-	CASE 302
-		SIF FLAG:裏カジノ && !ORIGIN
-			CALL GAMBLE, 2
-		;ギャンブルしたならターン終了
-		IF RESULT == 1
-			CALL プレイ称号計算, "ギャンブル"
-			FLAG:休憩フラグ = 1
-			BEGIN TURNEND
-		ENDIF
-	;模様替え
-	CASE 303
-		SIF SP
-			RETURN 0
-		CALL プレイ称号計算, "マップ"
-		CALL 模様替え
-	;ビデオ一覧
-	CASE 304
-		SIF FINDELEMENT(所持ビデオ, "", 0, VARSIZE("所持ビデオ"), 1) > 0
-			CALL 所持ビデオ一覧
-	;アルバム
-	CASE 305
-		CALL 所持写真一覧
-	;部屋ログ
-	CASE 306
-		SIF 部屋ログ != ""
-			CALL 部屋ログ表示
-	;プレイログ
-	CASE 307
-		CALL プレイログ閲覧
-	;アイテム
-	CASE 400
-	;変化
-	CASE 401
-		SIF CMATCH(TALENT:変化, 1)
-			CALL 変化
-	;眷属の儀
-	CASE 402
-		SIF CHARANUM < 2
-			RETURN 0
-		PRINTL どの儀式を執り行いますか？
-		PRINTL [1] - 眷属の儀
-		PRINTL [2] - 印の儀
-		PRINTL [3] - 幽体離脱・憑依の儀
-		SIF STSMOD
-			PRINTL [4] - カニバリズム
-		PRINTL [0] - 戻る
-		CALL INPUTF, 0, 1, 2, 3, 4
-		SELECTCASE RESULT
-			CASE 1
-				CALL FAMILIAR
-				;儀を行った場合はターン終了
-				IF RESULT == 1
-					CALL プレイ称号計算, "眷属"
-					FLAG:休憩フラグ = 1
-					BEGIN TURNEND
-				ENDIF
-			CASE 2
-				CALL RITUAL_OF_SIGN
-				;儀を行った場合はターン終了
-				IF RESULT == 1
-					CALL プレイ称号計算, "印"
-					FLAG:休憩フラグ = 1
-					BEGIN TURNEND
-				ENDIF
-			CASE 3
-				CALL SPECTRAL
-			CASE 4
-				SIF !STSMOD
-					RESTART
-				CALL CANNIBALISM
-				;食事をした場合はターン終了
-				IF RESULT == 1
-					CALL プレイ称号計算, "カニバリスト"
-					FLAG:休憩フラグ = 1
-					BEGIN TURNEND
-				ENDIF
-		ENDSELECT
-	;奴隷購入
-	CASE 403
-	;売却
-	CASE 404
-	;セーブ
-	CASE 500
-		CALL USERSAVE
-	;ロード
-	CASE 501
-		CALL USERLOAD
-	;オプション
-	CASE 502
-		CALL OPTION
-	;マニュアル
-	CASE 503
-		CALL GAME_MANUAL
-	;納金
-	CASE 600
-		SIF ORIGIN
-			RETURN 0
-		SELECTCASE ゲームモード()
-			CASE "通常モード"
-				;100万
-				IF MONEY >= TONUM("100万")
-					;実績:1周目のゲームを20日以内にクリアする
-					SIF FLAG:周回数 == 1 && DAY <= 20
-						CALL 実績解除, "SPEED DEMON"
-					CALL ENDING_CHECK
-				ENDIF
-			CASE "経営モード"
-				;1億
-				IF MONEY >= TONUM("1億")
-					;実績:1周目のゲームを20日以内にクリアする
-					SIF FLAG:周回数 == 1 && DAY <= 20
-						CALL 実績解除, "SPEED DEMON"
-					;実績:キャラを一人も購入せずにパートナーだけでSTRATEGYモードをクリアする
-					SIF キャラ未購入
-						CALL 実績解除, "もう全部あいつ一人でいいんじゃないかな"
-					;実績:芸能プロダクションの収入のみでSTRATEGYモードをクリアする
-					SIF バンめし
-						CALL 実績解除, "他人がバンドで稼いだ金でめしが食いたい"
-					CALL ENDING_CHECK
-				ENDIF
-		ENDSELECT
-	;周回
-	CASE 601
-		SIF FLAG:周回可能 && !ORIGIN
-			CALL SUCCESSION
-	;デバッグ用
-	;#;CASE 997
-	;#;	CALL ADD_ランダムキャラ, 2, -1
-	;#;CASE 998
-	;#;	CALL DEBUG
-	;ショートカット
-	CASE 1000 TO VARSIZE("LNK")+1000
-		CALL ショートカットコマンド, RESULT-1000
-	CASE 1100
-		CALL ショートカット登録
-	CASE 1101
-		CALL ショートカット削除
-	CASEELSE
-		CLEARLINE 1
-		REUSELASTLINE {RESULT}に対応するコマンドはありません
-ENDSELECT
-
-RETURN 0
-
-@SHOP_UI
+[SKIPEND]
 
 @変化
 #DIM DYNAMIC LCOUNT
