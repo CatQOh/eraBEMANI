@@ -1217,6 +1217,8 @@ SELECTCASE CRESULT:1
 				PRINTW 自分を助手にすることはできません
 			CASE "ABL上昇"
 				PRINTW 主人の能力上昇はスキルツリーから行ってください
+			CASE "能力表示"
+				GOTO 能力表示
 		ENDSELECT
 	CASE -1
 		SHOP_キャラ表示情報 = 調教対象選択
@@ -1266,6 +1268,7 @@ SELECTCASE CRESULT:1
 					RESTART
 				CALL ASSIGN_ASSI, CRESULT:1
 			CASE "能力表示"
+				$能力表示
 				LTARGET = TARGET
 				TARGET = CRESULT:1
 				;TARGETの能力表示中はあっちで「調教対象に指定」を表示させないためのフラグ
@@ -1333,9 +1336,9 @@ ENDIF
 
 ;調教対象の指定、もしくは助手の指定なら、育児部屋に移動しているキャラと使用不可キャラは選べない
 IF SHOP_キャラ表示情報 != "通常表示" && (CHECK_CHILD_CARE(対象) || CFLAG:対象:使用不可)
-	文字列 += COLUMNPRINTF(@"[---] %CALLNAME:対象, 20, LEFT%")
+	文字列 += COLUMNPRINTF(@"[---] %CALLNAMEDISP(対象), 20, LEFT%")
 ELSE
-	文字列 += COLUMNPRINTF(@"[{対象, 3}] %CALLNAME:対象, 20, LEFT%")
+	文字列 += COLUMNPRINTF(@"[{対象, 3}] %CALLNAMEDISP(対象), 20, LEFT%")
 ENDIF
 
 ;上記のキャラを表示したら詳細情報も表示
@@ -1412,16 +1415,38 @@ SELECTCASE SHOP_キャラ表示情報
 		SIF TALENT:対象:スライム || TALENT:対象:溶ける快
 			文字列 += COLUMNPRINTF("粘 ")
 	CASE "助手選択"
-		SELECTCASE SEX(対象)
-			CASE 1
-				文字列 += COLUMNPRINTF(@"技巧Lv{ABL:対象:技巧} ホモっ気Lv{ABL:対象:ホモっ気} ゲイ中毒Lv{ABL:対象:ゲイ中毒} ")
-			CASE 2
-				文字列 += COLUMNPRINTF(@"技巧Lv{ABL:対象:技巧} レズっ気Lv{ABL:対象:レズっ気} レズ中毒Lv{ABL:対象:レズ中毒} ")
-		ENDSELECT
-		SIF TALENT:対象:両刀
-			文字列 += COLUMNPRINTF("両刀 ")
-		SIF TALENT:対象:ふたなり
-			文字列 += COLUMNPRINTF("ふたなり")
+		IF GUI
+			文字列 += COLUMNPRINTF(@"技巧:")
+			文字列 += COLUMNPRINTF(IMGTOTAG(GBAR(ABL:対象:技巧, 10, 3, BARCOLOR:能力, "gray", @"{ABL:対象:技巧}", "black"))) 
+			SELECTCASE SEX(対象)
+				CASE 1
+					文字列 += COLUMNPRINTF(@"ホモっ気:")
+					文字列 += COLUMNPRINTF(IMGTOTAG(GBAR(ABL:対象:ホモっ気, 10, 3, BARCOLOR:能力, "gray", @"{ABL:対象:ホモっ気}", "black"))) 
+					文字列 += COLUMNPRINTF(@"ゲイ中毒:")
+					文字列 += COLUMNPRINTF(IMGTOTAG(GBAR(ABL:対象:ゲイ中毒, 10, 3, BARCOLOR:能力, "gray", @"{ABL:対象:ゲイ中毒}", "black"))) 
+				CASE 2
+					文字列 += COLUMNPRINTF(@"レズっ気:")
+					文字列 += COLUMNPRINTF(IMGTOTAG(GBAR(ABL:対象:レズっ気, 10, 3, BARCOLOR:能力, "gray", @"{ABL:対象:レズっ気}", "black"))) 
+					文字列 += COLUMNPRINTF(@"レズ中毒:")
+					文字列 += COLUMNPRINTF(IMGTOTAG(GBAR(ABL:対象:レズ中毒, 10, 3, BARCOLOR:能力, "gray", @"{ABL:対象:レズ中毒}", "black"))) 
+			ENDSELECT
+			文字列 += " "
+			SIF TALENT:対象:両刀
+				文字列 += COLUMNPRINTF("両刀 ")
+			SIF TALENT:対象:ふたなり
+				文字列 += COLUMNPRINTF("ふたなり")
+		ELSE
+			SELECTCASE SEX(対象)
+				CASE 1
+					文字列 += COLUMNPRINTF(@"技巧Lv{ABL:対象:技巧} ホモっ気Lv{ABL:対象:ホモっ気} ゲイ中毒Lv{ABL:対象:ゲイ中毒} ")
+				CASE 2
+					文字列 += COLUMNPRINTF(@"技巧Lv{ABL:対象:技巧} レズっ気Lv{ABL:対象:レズっ気} レズ中毒Lv{ABL:対象:レズ中毒} ")
+			ENDSELECT
+			SIF TALENT:対象:両刀
+				文字列 += COLUMNPRINTF("両刀 ")
+			SIF TALENT:対象:ふたなり
+				文字列 += COLUMNPRINTF("ふたなり")
+		ENDIF
 	CASEELSE
 		IF GUI
 			文字列 += COLUMNPRINTF(@"ストレス値:%IMGTOTAG(BASEBAR("ストレス値", 対象, 4))%")

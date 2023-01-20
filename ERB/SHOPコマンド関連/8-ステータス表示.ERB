@@ -255,7 +255,11 @@ ELSE
 	ENDIF
 	IF TARGET != MASTER
 		PRINT ストレス値:
-		CALL ストレス表示, TARGET
+		IF GUI
+			HTML_PRINT IMGTOTAG(BASEBAR("ストレス値", TARGET, 4)), 1
+		ELSE
+			CALL ストレス表示, TARGET
+		ENDIF
 		SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 			PRINTFORM  依存度:{CFLAG:依存度} 
 	ELSEIF TARGET == MASTER && ゲームモード() != "新婚モード"
@@ -1713,18 +1717,45 @@ SIF ARG == -1
 SIF ISSLIME(ARG) && CFLAG:ARG:タグ色
 	SETCOLOR CFLAG:ARG:タグ色
 
-IF LANGUAGE == "ENG"
-	PRINTFORML 　Health%BARBASE("体力", ARG)%
-	PRINTFORML 　Energy%BARBASE("気力", ARG)%
-	SIF TALENT:ARG:魔術師
-		PRINTFORML 　MagicP%BARBASE("魔力", ARG)%
+IF GUI
+	IF LANGUAGE == "ENG"
+		PRINT　Health:
+		HTML_PRINT IMGTOTAG(BASEBAR("体力", ARG)), 1
+		PRINTL 
+		PRINT　Energy:
+		HTML_PRINT IMGTOTAG(BASEBAR("気力", ARG)), 1
+		PRINTL 
+		IF TALENT:ARG:魔術師
+			PRINT　MagicP:
+			HTML_PRINT IMGTOTAG(BASEBAR("魔力", ARG)), 1
+			PRINTL 
+		ENDIF
+	ELSE
+		PRINT　体力:
+		HTML_PRINT IMGTOTAG(BASEBAR("体力", ARG)), 1
+		PRINTL 
+		PRINT　気力:
+		HTML_PRINT IMGTOTAG(BASEBAR("気力", ARG)), 1
+		PRINTL 
+		IF TALENT:ARG:魔術師
+			PRINT　魔力:
+			HTML_PRINT IMGTOTAG(BASEBAR("魔力", ARG)), 1
+			PRINTL 
+		ENDIF
+	ENDIF
 ELSE
-	PRINTFORML 　体力%BARBASE("体力", ARG)%
-	PRINTFORML 　気力%BARBASE("気力", ARG)%
-	SIF TALENT:ARG:魔術師
-		PRINTFORML 　魔力%BARBASE("魔力", ARG)%
+	IF LANGUAGE == "ENG"
+		PRINTFORML 　Health%BARBASE("体力", ARG)%
+		PRINTFORML 　Energy%BARBASE("気力", ARG)%
+		SIF TALENT:ARG:魔術師
+			PRINTFORML 　MagicP%BARBASE("魔力", ARG)%
+	ELSE
+		PRINTFORML 　体力%BARBASE("体力", ARG)%
+		PRINTFORML 　気力%BARBASE("気力", ARG)%
+		SIF TALENT:ARG:魔術師
+			PRINTFORML 　魔力%BARBASE("魔力", ARG)%
+	ENDIF
 ENDIF
-
 RESETCOLOR
 
 ;=============================================================================
@@ -1734,6 +1765,8 @@ RESETCOLOR
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC パラメータ
 #DIMS DYNAMIC 表示用, 5
+#DIMS DYNAMIC COLOR
+#DIMS DYNAMIC BGCOLOR
 
 FOR LCOUNT, 0, VARSIZE("PALAM")
 	;パラメータ = 表示されるパラメータの数値。kMGT等と一緒に表示される
@@ -1778,13 +1811,15 @@ FOR LCOUNT, 0, VARSIZE("PALAM")
 
 	;ゲージ処理 パラメータレベルが9以上なら余計な処理は飛ばす
 	IF GETPALAMLV(PALAM:LCOUNT, 9) >= 9
-		表示用 += "[**********] "
+		SIF !GUI
+			表示用 += "[**********] "
 	ELSEIF PALAMNAME:LCOUNT == "潤滑" && PALAM:LCOUNT >= 20000
 		表示用 += "[**********] "
 	ELSEIF PALAMNAME:LCOUNT == "勃起" && PALAM:LCOUNT >= PALAMLV:3
 		表示用 += "[**********] "
 	ELSE
-		表示用 += @"%BARSTR(PALAM:LCOUNT, PALAMLV:(GETPALAMLV(PALAM:LCOUNT, 9)+1), 10)% "
+		SIF !GUI
+			表示用 += @"%BARSTR(PALAM:LCOUNT, PALAMLV:(GETPALAMLV(PALAM:LCOUNT, 9)+1), 10)% "
 	ENDIF
 
 	;これだけ特殊
@@ -1805,6 +1840,9 @@ FOR LCOUNT, 0, VARSIZE("PALAM")
 		ENDIF
 		GOTO SET
 	ENDIF
+
+	SIF GUI
+		表示用 += " "
 
 	; 1,000,000,000,000,000,000
 	;  E   P   T   G   M   k
@@ -1865,6 +1903,8 @@ FOR LCOUNT, 0, VARSIZE("PALAM")
 			表示用 += @"%TOSTR(パラメータ)+記号, 6, LEFT%"
 		ENDIF
 	ENDIF
+	SIF GUI
+		表示用 += " "
 
 	;カンストしてたら特殊表示
 	IF PALAM:LCOUNT == __INT_MAX__
@@ -1887,6 +1927,38 @@ FOR LCOUNT, 0, VARSIZE("PALAM")
 		ENDIF
 	ENDIF
 	$SET
+	IF GUI
+		SELECTCASE GETPALAMLV(PALAM:LCOUNT, 9)+1
+			CASE 1
+				COLOR = white
+				BGCOLOR = gray
+			CASE 2
+				COLOR = 0xC0FFFF
+				BGCOLOR = white
+			CASE 3
+				COLOR = 0x80FFFF
+				BGCOLOR = 0xC0FFFF
+			CASE 4
+				COLOR = 0x40FFFF
+				BGCOLOR = 0x80FFFF
+			CASE 5
+				COLOR = 0x00FFFF
+				BGCOLOR = 0x40FFFF
+			CASE 6
+				COLOR = 0x00C0FF
+				BGCOLOR = 0x00FFFF
+			CASE 7
+				COLOR = 0x0080FF
+				BGCOLOR = 0x00C0FF
+			CASE 8
+				COLOR = 0x40FF
+				BGCOLOR = 0x0080FF
+			CASE 9, 10
+				COLOR = darkorange
+				BGCOLOR = 0x0040FF
+		ENDSELECT
+		表示用 = 　%IMGTOTAG(GBAR(PALAM:LCOUNT, PALAMLV:(GETPALAMLV(PALAM:LCOUNT, 9)+1), 14, COLOR, BGCOLOR, 表示用, "black"))%
+	ENDIF
 	表示用:(LCOUNT%4+1) = %SET_TOOLTIP(表示用, PALAM_COMMENT(PALAMNAME:LCOUNT))%
 	RESETCOLOR
 
@@ -1906,6 +1978,7 @@ CALL NEWLINE
 @SHOW_INFO_ABL, ARG
 #DIMS DYNAMIC 表示用レベル
 #DIM DYNAMIC LCOUNT
+#DIM CONST 表示上限 = 7
 #DIMS DYNAMIC 表示用, 7
 #DIM DYNAMIC 表示数
 
@@ -1918,7 +1991,7 @@ FOR LCOUNT, 0, VARSIZE("ABL")
 	ENDIF
 
 	;改行するのか？ 続けて出力するのか？
-	IF 表示数%6 == 0 && 表示数 != 0
+	IF 表示数%表示上限 == 0 && 表示数 != 0
 		HTML_PRINT STRJOIN(表示用, "")
 		VARSET 表示用
 	ENDIF
@@ -1928,6 +2001,8 @@ FOR LCOUNT, 0, VARSIZE("ABL")
 			;男ならレズっ気、レズ中毒、噴乳中毒は灰色表示
 			SELECTCASE ABLNAME:LCOUNT
 				CASE "レズっ気", "レズ中毒", "噴乳中毒"
+					SIF GUI
+						CONTINUE
 					SETCOLORBYNAME gray
 					表示用レベル = -----
 				CASE "Ｖ感覚"
@@ -1936,6 +2011,8 @@ FOR LCOUNT, 0, VARSIZE("ABL")
 						SETCOLORBYNAME silver
 						表示用レベル = {ABL:ARG:LCOUNT, 5, LEFT}
 					ELSE
+						SIF GUI
+							CONTINUE
 						SETCOLORBYNAME gray
 						表示用レベル = -----
 					ENDIF
@@ -1947,6 +2024,8 @@ FOR LCOUNT, 0, VARSIZE("ABL")
 			;女ならホモっ気、ゲイ中毒、メス度は灰色表示
 			SELECTCASE ABLNAME:LCOUNT
 				CASE "ホモっ気", "ゲイ中毒", "メス度"
+					SIF GUI
+						CONTINUE
 					SETCOLORBYNAME gray
 					表示用レベル = -----
 				CASEELSE
@@ -1955,10 +2034,19 @@ FOR LCOUNT, 0, VARSIZE("ABL")
 			ENDSELECT
 	ENDSELECT
 
-	IF LANGUAGE == "ENG"
-		表示用:(表示数%6) = %SET_TOOLTIP(@"　%ABLDISP(LCOUNT), 12%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, ARG))%
+	IF GUI
+		IF LANGUAGE == "ENG"
+			表示用:(表示数%表示上限) = %SET_TOOLTIP(@"　%ABLDISP(LCOUNT), 12%:", ABL_COMMENT(ABLNAME:LCOUNT, ARG))%
+		ELSE
+			表示用:(表示数%表示上限) = %SET_TOOLTIP(@"　%ABLDISP(LCOUNT), 8%:", ABL_COMMENT(ABLNAME:LCOUNT, ARG))%
+		ENDIF
+		表示用:(表示数%表示上限) += IMGTOTAG(GBAR(ABL:ARG:LCOUNT, 10, 3, BARCOLOR:能力, "gray", @"{ABL:ARG:LCOUNT}", "black"))
 	ELSE
-		表示用:(表示数%6) = %SET_TOOLTIP(@"　%ABLDISP(LCOUNT), 8%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, ARG))%
+		IF LANGUAGE == "ENG"
+			表示用:(表示数%表示上限) = %SET_TOOLTIP(@"　%ABLDISP(LCOUNT), 12%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, ARG))%
+		ELSE
+			表示用:(表示数%表示上限) = %SET_TOOLTIP(@"　%ABLDISP(LCOUNT), 8%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, ARG))%
+		ENDIF
 	ENDIF
 	RESETCOLOR
 	表示数++
@@ -2045,7 +2133,12 @@ CALL NEWLINE
 #DIMS DYNAMIC 表示用, 4
 
 FOR LCOUNT, 0, 4
-	表示用:LCOUNT = 　%SET_TOOLTIP(@"%MARKDISP(LCOUNT)%:LV{MARK:ARG:LCOUNT} %BARSTR(MARK:ARG:LCOUNT, 3, 3)%", MARK_COMMENT(MARKNAME:LCOUNT, ARG))%
+	IF GUI
+		表示用:LCOUNT = 　%SET_TOOLTIP(@"%MARKDISP(LCOUNT)%:", MARK_COMMENT(MARKNAME:LCOUNT, ARG))%
+		表示用:LCOUNT += IMGTOTAG(GBAR(MARK:ARG:LCOUNT, 3, 3, BARCOLOR:能力, "gray", @"{MARK:ARG:LCOUNT}", "black"))
+	ELSE
+		表示用:LCOUNT = 　%SET_TOOLTIP(@"%MARKDISP(LCOUNT)%:LV{MARK:ARG:LCOUNT} %BARSTR(MARK:ARG:LCOUNT, 3, 3)%", MARK_COMMENT(MARKNAME:LCOUNT, ARG))%
+	ENDIF
 	SIF LCOUNT == 3
 		HTML_PRINT STRJOIN(表示用, "")
 NEXT
@@ -2058,14 +2151,14 @@ CALL NEWLINE
 #DIMS DYNAMIC 経験名
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 一行表示数
-#DIMS DYNAMIC 表示用, 5
+#DIMS DYNAMIC 表示用, 6
 #DIM DYNAMIC 表示数
 
 ;英語と日本語で文字数が違いすぎるので一行の表示数を変える
 IF LANGUAGE == "ENG"
-	一行表示数 = 4
-ELSE
 	一行表示数 = 5
+ELSE
+	一行表示数 = 6
 ENDIF
 
 FOR LCOUNT, 0, VARSIZE("EXP")
