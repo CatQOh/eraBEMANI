@@ -1,7 +1,7 @@
-﻿タイトル：EmueraEM+EE 最終更新日:2023/01/07
-バージョン：1.824+v16+EMv17+EEv27
+﻿タイトル：EmueraEM+EE 最終更新日:2023/01/15
+バージョン：1.824+v17+EMv17+EEv29
 改変者：Enter
-元となったアプリケーション：Emuera1.824+v16（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)、Emuera.EM（EvilMask制作）
+元となったアプリケーション：Emuera1.824+v17（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)、Emuera.EM（EvilMask制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
 eraシリーズまとめwikiのページ：https://seesaawiki.jp/eraseries/d/EmueraEM%2bEE%a4%ce%c4%c9%b2%c3%b5%a1%c7%bd
 docs：https://evilmask.gitlab.io/emuera.em.doc/
@@ -14,7 +14,7 @@ docs：https://evilmask.gitlab.io/emuera.em.doc/
 
 ※使用しているセキュリティソフト次第では危険なファイルとして警告・削除される場合があります
 　セキュリティソフトの設定を変更して使用することはできますが、自己責任でお願いします
-　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/4ae66b2909300d7bdf6af3bc9ef870178bd8c40e3dc69d564f87125b612240aa
+　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/d5155b80218ecbd0859868fa1acc22c2a782c5a3fd2bce99eee3d4c7f6db70b5
 
 [v12にてEmuera.EMと機能統合。上記リンクのドキュメント(docs)を参照]
 [EMv8+EEv15にてhtml形式のドキュメントを同梱。追加機能などがより詳しく書かれています]
@@ -176,6 +176,14 @@ EM版の「クリックをEnterキーとみなす」の後に引数を追加
 
 ・FLOWINPUT デフォルト値(, 左クリックをEnterキーとみなすか, 右クリックでスキップ可能か)
 SHOW_SHOP内などフロー上で行われるINPUTにデフォルト値、クリックをEnterキーとみなすオプション、右クリックでスキップ可能のオプションを設定できる
+
+・MOUSEB
+現在マウスオーバー中のボタン内容を取得する。MOUSEX,MOUSEYと同様にAWAITと組み合わせて使う
+実行時点でINPUTかINPUTSか確定していないため文字列型として返される点に注意
+
+・SPRITEDISPOSEALL
+スプライトをすべて破棄する。引数に0を指定するとERB上で作成したものだけ、非0を指定するとresourceフォルダ内のCSVで定義したものも含めて全部破棄する
+返り値はそれぞれ破棄されたスプライト数を返す
 
 ・多言語化対応
 詳しくは下記リンク
