@@ -1,5 +1,9 @@
 ﻿@CHARA_MANUAL, ARG
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 開発難易度PT
+#DIM DYNAMIC 性経験PT
+#DIM DYNAMIC 売却額PT
+#DIM DYNAMIC 屈服難易度PT
 
 IF GETCHARA(ARG) > 0
 	IF LANGUAGE == "ENG"
@@ -29,6 +33,16 @@ ELSE
 		CALL NEWLINE
 	NEXT
 ENDIF
+開発難易度PT = LIMIT(開発難易度PT計算(ARG)+50, 1, 100)
+性経験PT = LIMIT(性経験PT計算(ARG), 1, 100)
+CALL 売却額PT計算, ARG
+売却額PT = LIMIT(RESULT, 1, 100)
+屈服難易度PT = LIMIT(屈服難易度PT計算(ARG)+50, 1, 100)
+
+HTML_PRINT IMGTOTAG(CREATE_RADOR(開発難易度PT, 性経験PT, 売却額PT, 屈服難易度PT), 1000, 1000)
+FOR LCOUNT, 0, 9
+	PRINTL
+NEXT
 
 IF CSVTALENT(ARG, GETNUM(TALENT, "アニマル"))
 	IF LANGUAGE == "ENG"
@@ -411,3 +425,288 @@ FOR LCOUNT, 0, RESULT
 	SIF GETNO(相性値) >= 0
 		RELATION:GETNO(相性値) = TOINT(相性値:1)
 NEXT
+
+;;;簡単なほどPTは低くなる
+@開発難易度PT計算, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIM DYNAMIC PT
+#DIM DYNAMIC LCOUNT
+;体力 男なら2000、女なら1800を基準にする
+SELECTCASE CSVTALENT(対象, GETNUM(TALENT, "性別"))
+	CASE 1
+		PT -= (CSVBASE(対象, GETNUM(BASE, "体力"))-2000)/100
+	CASE 2
+		PT -= (CSVBASE(対象, GETNUM(BASE, "体力"))-1800)/100
+ENDSELECT
+
+;気力 男女ともに1600を基準にする
+PT -= (CSVBASE(対象, GETNUM(BASE, "気力"))-1600)/100
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !CSVTALENT(対象, LCOUNT)
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "バストサイズ"
+			SELECTCASE CSVTALENT(対象, LCOUNT)
+				CASE 1
+					PT -= 3
+				CASE 2
+					PT -= 2
+			ENDSELECT
+		CASE "霊体"
+			PT += 30
+		CASE "ゾンビ"
+			PT += 15
+		CASE "一線越えない", "Ｃ鈍感", "Ｖ鈍感", "Ａ鈍感", "Ｂ鈍感", "小人体型"
+			PT += 10
+		CASE "無関心", "痛みに弱い", "快感の否定", "無機物"
+			PT += 5
+		CASE "自制心", "感情乏しい", "解放", "濡れにくい", "勃ちにくい", "回復遅い"
+			PT += 3
+		CASE "保守的", "悲観的", "恥じらい", "暑さに弱い", "寒さに弱い"
+			PT += 2
+		CASE "習得遅い", "男嫌い", "女嫌い", "同族嫌悪", "小柄体型"
+			PT += 1
+		CASE "恥薄い", "おもらし癖", "両刀", "男好き", "女好き", "子供好き", "吸血鬼", "日光浴", "月光浴"
+			PT -= 1
+		{
+		CASE "好奇心", "楽観的", "目立ちたがり", "濡れやすい", "勃ちやすい", "習得早い", "自慰しやすい",
+			 "マゾ", "母乳体質"
+		}
+			PT -= 2
+		{
+		CASE "痛みに強い", "快感に素直", "サキュバス", "インキュバス", "ふたなり", "去勢済み",
+			 "スライム", "回復早い"
+		}
+			PT -= 3
+		CASE "Ｃ敏感", "Ｖ敏感", "Ａ敏感", "Ｂ敏感", "溶ける快"
+			PT += 10
+		;これは初期素質には無いはず
+		CASE "淫膣", "淫尻", "淫核", "淫乳"
+			PT -= 20
+		CASE "即落ち"
+			PT -= 30
+	ENDSELECT
+NEXT
+
+RETURNF PT
+
+;;;豊富なほどPTは大きくなる
+@性経験PT計算, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIM DYNAMIC PT = 1
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 経験
+
+SIF !CSVTALENT(対象, GETNUM(TALENT, "処女")) && CSVTALENT(対象, GETNUM(TALENT, "性別")) == 2
+	PT += 20
+SIF !CSVTALENT(対象, GETNUM(TALENT, "童貞")) && CSVTALENT(対象, GETNUM(TALENT, "性別")) == 1
+	PT += 20
+
+FOR LCOUNT, 0, VARSIZE("EXP")
+	経験 = CSVEXP(対象,LCOUNT)
+	SIF !経験
+		CONTINUE
+	SELECTCASE EXPNAME:LCOUNT
+		CASE "性交経験", "膣射経験"
+			PT += 経験/3
+		CASE "Ｖ経験", "Ａ経験", "レズ経験", "ゲイ経験", "Ｖ拡張経験", "Ａ拡張経験", "触手経験"
+			PT += 経験/5
+		CASE "フェラ経験", "パイズリ経験", "射精管理経験", "尿道経験"
+			PT += 経験/10
+		CASE "絶頂経験", "射精経験", "自慰経験", "噴乳経験", "放尿経験"
+			PT += 経験/30
+	ENDSELECT
+NEXT
+
+RETURNF PT
+
+@売却額PT計算, 対象
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 売却額補正
+#DIM DYNAMIC LTARGET
+
+SKIPDISP 1
+ADDCHARA 対象
+LTARGET = TARGET
+TARGET = CHARANUM-1
+CALL 売却額補正計算
+売却額補正 = RESULT
+SKIPDISP 0
+DELCHARA TARGET
+TARGET = LTARGET
+
+;4桁族を除くと700あたりが最高なので10～700で計算する
+RETURN 売却額補正*100/700
+
+;;;簡単なほどPTは低くなる
+@屈服難易度PT計算, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIM DYNAMIC PT
+#DIM DYNAMIC LCOUNT
+
+SIF CSVCSTR(対象, GETNUM(CSTR, "恋心")) != ""
+	PT += 15
+SIF CSVCSTR(対象, GETNUM(CSTR, "既婚者")) != ""
+	PT += 30
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !CSVTALENT(対象, LCOUNT)
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "一線越えない"
+			PT += 10
+		CASE "気丈", "生意気", "プライド高い", "自制心", "無関心", "快感の否定"
+			PT += 5
+		CASE "反抗的", "ツンデレ", "貞操観念", "抵抗"
+			PT += 4
+		{
+		CASE "大人しい", "強気", "保守的", "抑圧", "中毒しやすい", "男嫌い", "女嫌い",
+			 "同族嫌悪", "戦士"
+		}
+			PT += 3
+		CASE "サボり魔", "感情乏しい", "汚臭敏感", "潔癖症", "サド"
+			PT += 2
+		CASE "ハイテンション", "目立ちたがり", "汚臭鈍感", "汚れ無視", "サキュバス", "インキュバス", "幼稚"
+			PT -= 3
+		{
+		CASE "臆病", "弱気", "好奇心", "楽観的", "貞操無頓着", "弱味", "寂しがり屋", "倒錯的",
+			 "両刀", "男好き", "女好き", "マゾ", "子供好き", "小柄体型"
+		}
+			PT -= 4
+		CASE "素直", "プライド低い", "解放", "献身的", "快感に素直", "妄信"
+			PT -= 5
+		CASE "即落ち"
+			PT -= 30
+	ENDSELECT
+NEXT
+
+RETURNF PT
+
+@CREATE_RADOR, CORNER:0, CORNER:1, CORNER:2, CORNER:3
+#FUNCTIONS
+#DIM DYNAMIC XCOUNT
+#DIM DYNAMIC YCOUNT
+;四角形の各角の値 時計回りに0～3
+#DIM DYNAMIC CORNER, 4
+#DIM DYNAMIC DELAY
+#DIM 生成済み
+
+
+#DIM DYNAMIC CM, 5, 5
+
+DELAY = GETMILLISECOND()
+
+CM:0:0 = 0xFF, 0, 0, 0, 0
+CM:1:0 = 0, 0xFF, 0, 0, 0
+CM:2:0 = 0, 0, 0xFF, 0, 0
+CM:3:0 = 0, 0, 0, 0xFF, 0
+CM:4:0 = 0, 0x28, 0xFF, 0, 0
+
+[SKIPSTART]
+GDISPOSE 10
+GDISPOSE 11
+GDISPOSE 12
+GDISPOSE 13
+GDISPOSE 20
+GDISPOSE 21
+GDISPOSE 22
+[SKIPEND]
+
+;1000番台を作ってみる
+
+;DEBUGPRINTFORML {GETMILLISECOND()-DELAY}
+
+IF !SPRITECREATED("右下")
+	GDISPOSE 1000
+	GCREATE 1000, 100, 100
+	FOR XCOUNT, 0, 100
+		FOR YCOUNT, 0, 100
+			SIF XCOUNT+YCOUNT < 100
+				GSETCOLOR 1000, 0xA0FFD700, XCOUNT, YCOUNT
+		NEXT
+	NEXT
+	SPRITECREATE "右下", 1000
+ENDIF
+
+IF !SPRITECREATED("右上")
+	GDISPOSE 1001
+	GCREATE 1001, 100, 100
+	GDRAWGWITHROTATE 1001, 1000, -90
+	SPRITECREATE "右上", 1001
+ENDIF
+IF !SPRITECREATED("左下")
+	GDISPOSE 1002
+	GCREATE 1002, 100, 100
+	GDRAWGWITHROTATE 1002, 1000, 90
+	SPRITECREATE "左下", 1002
+ENDIF
+IF !SPRITECREATED("左上")
+	GDISPOSE 1003
+	GCREATE 1003, 100, 100
+	GDRAWGWITHROTATE 1003, 1000, 180
+	SPRITECREATE "左上", 1003
+ENDIF
+
+;レーダー生成
+GDISPOSE 1004
+GCREATE 1004, 2000, 2000
+GDRAWSPRITE 1004, "右上", 1000, 1000-CORNER:0*10, CORNER:1*10, CORNER:0*10
+GDRAWSPRITE 1004, "右下", 1000, 1000, CORNER:1*10, CORNER:2*10
+GDRAWSPRITE 1004, "左下", 1000-CORNER:3*10, 1000, CORNER:3*10, CORNER:2*10
+GDRAWSPRITE 1004, "左上", 1000-CORNER:3*10, 1000-CORNER:0*10, CORNER:3*10, CORNER:0*10
+SPRITEDISPOSE "RADOR"
+SPRITECREATE "RADOR", 1004
+
+IF !SPRITECREATED("RADOR_BACK")
+	GDISPOSE 1005
+	GCREATE 1005, 2400, 2400
+	GDRAWSPRITE 1005, "右上", 1200, 200, 1000, 1000, CM:0:0
+	GDRAWSPRITE 1005, "右下", 1200, 1200, 1000, 1000, CM:0:0
+	GDRAWSPRITE 1005, "左下", 200, 1200, 1000, 1000, CM:0:0
+	GDRAWSPRITE 1005, "左上", 200, 200, 1000, 1000, CM:0:0
+	FOR XCOUNT, 0, 2400
+		FOR YCOUNT, 0, 2400
+			SIF INRANGE(XCOUNT, 1195, 1204) || INRANGE(YCOUNT, 1195, 1204)
+				GSETCOLOR 1005, 0xFF000000, XCOUNT, YCOUNT
+		NEXT
+	NEXT
+	SPRITECREATE "RADOR_BACK", 1005
+ENDIF
+
+GDISPOSE 1006
+GCREATE 1006, 2400, 2400
+GDRAWSPRITE 1006, "RADOR_BACK"
+GDRAWSPRITE 1006, "RADOR", 200, 200
+
+GSETFONT 1006, "Arial", 150
+GSETBRUSH 1006, 0xD0FFFFFF
+
+GSETPEN 1006, 0xD0EE82EE, 2
+GDRAWTEXT 1006, "開発難易度", 750, 50
+GSETPEN 1006, 0xD0FF0000, 2
+GDRAWTEXT 1006, "性経験", 1800, 1100
+GSETPEN 1006, 0xD000FFFF, 2
+GDRAWTEXT 1006, "売却額", 850, 2200
+GSETPEN 1006, 0xD000FF00, 2
+GDRAWTEXT 1006, "屈服難易度", 0, 1100
+
+SPRITEDISPOSE "SQUARE_RADOR"
+SPRITECREATE "SQUARE_RADOR", 1006
+
+RETURNF "SQUARE_RADOR"
+
+@レーダーチャートデバッグ
+#DIM DYNAMIC LCOUNT
+
+FOR LCOUNT, 0, 10000
+	SIF !EXISTCSV(LCOUNT)
+		CONTINUE
+	CALL 売却額PT計算, LCOUNT
+	PRINTFORML %CSVCALLNAME(LCOUNT), 20, LEFT% 開発難易度PT:{開発難易度PT計算(LCOUNT), 4, LEFT} 性経験PT:{性経験PT計算(LCOUNT), 4, LEFT} 売却額PT:{RESULT, 4, LEFT} 屈服難易度PT:{屈服難易度PT計算(LCOUNT), 4, LEFT}
+NEXT
+
+WAIT

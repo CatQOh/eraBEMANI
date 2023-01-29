@@ -31,6 +31,14 @@ IF ORIGIN
 	GOTO ORIGIN
 ENDIF
 
+;チュートリアルならPFREE固定
+IF TUTORIAL == "FIRST"
+	FLAG:ゲームモード = 9
+	CALL TUTORIAL
+	GOTO ORIGIN
+ENDIF
+
+
 ;モード選択
 DRAWLINE
 IF SP
@@ -146,6 +154,11 @@ SELECTCASE ゲームモード()
 	CASE "フリーモード"
 		CALL START_CHARA_SELECT
 		CALL SELECT_DIFFICULT
+		;チュートリアルならいろいろ飛ばす
+		IF TUTORIAL != ""
+			FLAG:パセリ表示 = 1
+			GOTO TUTORIAL_SKIP
+		ENDIF
 		;originなら音ゲーマー素質は抜く
 		SIF ORIGIN && NO:MASTER == 0
 			TALENT:MASTER:音ゲーマー = 0
@@ -243,7 +256,7 @@ IF ゲームモード() != "新婚モード"
 			IF ゲームモード() == "段位認定"
 				CALL TEST_TUTORIAL
 			ELSE
-				CALL TUTORIAL
+				CALL MANUAL_TUTORIAL
 			ENDIF
 		ENDIF
 	ENDIF
@@ -340,6 +353,10 @@ ELSE
 	SIF RESULT == 1
 		FLAG:着衣設定 = 3
 ENDIF
+
+$TUTORIAL_SKIP
+
+CALL TUTORIAL
 
 ;プレイログに記録する
 SELECTCASE ゲームモード()
@@ -458,6 +475,10 @@ FLAG:TSBランダム = 1
 @START_CHARA_SELECT
 #DIM DYNAMIC LRESULT
 
+;チュートリアルならあなた固定
+SIF TUTORIAL != ""
+	GOTO CUSTOM
+
 DRAWLINE
 IF LANGUAGE == "ENG"
 	PRINTL ★★You can change Master★★
@@ -476,6 +497,7 @@ SELECTCASE RESULT
 		ELSE
 			PRINTW プレイヤーを変更しませんでした
 		ENDIF
+		$CUSTOM
 		CALL PLAYER_CUSTOM, 0
 	CASEELSE
 		CALL CHARA_ADD, RESULT
@@ -674,6 +696,8 @@ RETURN 0
 #DIM DYNAMIC 月
 #DIM DYNAMIC 日
 
+CALL TUTORIAL
+
 CALL LOOP_CLEARLINE
 
 SIF ARG == -1
@@ -746,15 +770,19 @@ IF LANGUAGE == "ENG"
 	PRINTL 　[11] - None [12] - Basic [13] - Awesome
 ELSE
 	PRINTL 【基礎】
+	SETCOLORBYNAME lightskyblue
 	PRINTFORM 　名前:%NAME:ARG% [1] - 名前を変更する
 	PRINTPLAIN  
 
+	SETCOLORBYNAME lightcoral
 	PRINT 性別:
 	SELECTCASE SEX(ARG)
 		CASE 1
 			PRINT 男性
 		CASE 2
 			PRINT 女性
+		CASEELSE
+			PRINT 未選択
 	ENDSELECT
 	SIF TALENT:ARG:ふたなり
 		PRINT (ふたなり)
@@ -762,10 +790,13 @@ ELSE
 
 	PRINT [2] - 性別を変更する
 	PRINTPLAIN  
+	SETCOLORBYNAME lightskyblue
 	PRINTFORM 種族:%CSTR:ARG:種族% [3] - 種族を変更する
 	PRINTL 
 
+	RESETCOLOR
 	PRINTL 【容姿】
+	SETCOLORBYNAME lightskyblue
 	PRINT 　体格:
 	IF TALENT:ARG:小柄体型
 		PRINT 子供 
@@ -774,6 +805,7 @@ ELSE
 	ENDIF
 	PRINT [4] - 体格を変更する
 	PRINTPLAIN  
+	SETCOLORBYNAME lightcoral
 	IF SEX(ARG) == 2
 		PRINT バストサイズ:
 		SELECTCASE TALENT:ARG:バストサイズ
@@ -794,17 +826,23 @@ ELSE
 	ENDIF
 	PRINTL
 
+	SETCOLORBYNAME lightskyblue
 	PRINTFORMLC 　動物耳:\@ TALENT:ARG:動物耳 ? 有り # 無し\@ [6] - 変更
 	PRINTPLAIN  
+	SETCOLORBYNAME lightcoral
 	PRINTFORMLC 尻尾:\@ TALENT:ARG:尻尾 ? 有り # 無し\@ [7] - 変更 
 	PRINTPLAIN  
+	SETCOLORBYNAME lightskyblue
 	PRINTFORMLC 羽:\@ TALENT:ARG:羽 ? 有り # 無し\@ [8] - 変更 
 	PRINTPLAIN  
 	PRINTL 
+	SETCOLORBYNAME lightskyblue
 	PRINTFORMLC 　もふもふ:\@ TALENT:ARG:ファーリー ? 有り # 無し\@ [9] - 変更 
 	PRINTPLAIN 
+	SETCOLORBYNAME lightcoral
 	PRINTFORMLC 生命活動:\@ !TALENT:ARG:ゾンビ ? 有り # 無し\@ [10] - 変更
 	PRINTL 
+	RESETCOLOR
 	PRINTL 【性経験】
 	PRINTL 　[11] - 無し [12] - 普通 [13] - すごい
 ENDIF
@@ -829,6 +867,12 @@ FOR LCOUNT, 0, 100
 	ENDSELECT
 	SIF 表示数 == 0
 		PRINT 　
+	IF 表示数%2 == 0
+		SETCOLORBYNAME lightskyblue
+	ELSE
+		SETCOLORBYNAME lightcoral
+	ENDIF
+
 	IF LANGUAGE == "ENG"
 		PRINTFORMLC %EXPDISP(LCOUNT)%:{EXP:ARG:LCOUNT} [{LCOUNT+20}] - Change
 	ELSE
@@ -841,6 +885,7 @@ FOR LCOUNT, 0, 100
 		表示数 = 0
 	ENDIF
 NEXT
+RESETCOLOR
 CALL NEWLINE
 
 DRAWLINE
@@ -876,6 +921,8 @@ DO
 			ENDSELECT
 			EXP:ARG:音ゲー経験 = 1000
 			VARLINE = 0
+			SIF TUTORIAL != ""
+				TUTORIAL = キャラクリ終了
 			RETURN
 		CASE 1
 			CALL INPUT_NAME, ARG
@@ -1191,8 +1238,8 @@ DO
 LOOP LOOPRES(0)
 
 @SELECT_DIFFICULT
-;ORIGINはNORMAL固定(暫定)
-IF ORIGIN
+;ORIGINとチュートリアルはNORMAL固定(暫定)
+IF ORIGIN || TUTORIAL != ""
 	FLAG:難易度 = 1
 	RETURN
 ENDIF
