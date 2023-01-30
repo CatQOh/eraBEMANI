@@ -38,6 +38,7 @@ ENDIF
 #DIM DYNAMIC 飛ばした数
 #DIMS DYNAMIC 文字列表示用
 #DIM DYNAMIC ランセレ, 10000
+#DIM DYNAMIC LRESULT
 
 ;選択可能キャラのフラグを立てる
 FOR LCOUNT, 0, 10000
@@ -197,6 +198,16 @@ FOR LCOUNT, 0, 10000
 				SIF FLAG:価格フィルタ == 1
 					CONTINUE
 		ENDSELECT
+
+		SIF 開発難易度フィルタ && !INRANGE(LIMIT(開発難易度PT計算(LCOUNT)+50, 1, 100), 開発難易度フィルタ%1000, 開発難易度フィルタ/1000)
+			CONTINUE
+		SIF 屈服難易度フィルタ && !INRANGE(LIMIT(屈服難易度PT計算(LCOUNT)+50, 1, 100), 屈服難易度フィルタ%1000, 屈服難易度フィルタ/1000)
+			CONTINUE
+		CALL 売却額PT計算, LCOUNT
+		SIF 売却額フィルタ && !INRANGE(LIMIT(RESULT, 1, 100), 売却額フィルタ%1000, 売却額フィルタ/1000)
+			CONTINUE
+		SIF 性経験フィルタ && !INRANGE(LIMIT(開発難易度PT計算(LCOUNT), 1, 100), 性経験フィルタ%1000, 性経験フィルタ/1000)
+			CONTINUE
 
 		SIF LCOUNT == NO:MASTER
 			CONTINUE
@@ -388,6 +399,8 @@ IF GROUPMATCH(ARG, 0, 4)
 		PRINTPLAIN 　CHARA  FILTER　
 		PRINT [20000] フィルタ設定
 		PRINTPLAIN 　
+		SIF !FLAG:男女フィルタ
+			SETCOLORBYNAME gray
 		PRINTFORM [20001] 男女フィルタ：
 		SELECTCASE FLAG:男女フィルタ
 			CASE 0
@@ -397,9 +410,12 @@ IF GROUPMATCH(ARG, 0, 4)
 			CASE 2
 				PRINT 女性を表示
 		ENDSELECT
+		RESETCOLOR
 		PRINTPLAIN 　
-		PRINTFORML [20002] 口上キャラフィルタ：\@ FLAG:口上キャラフィルタ ? オン # オフ \@
+		CALL PRINTCOLORL, @"[20002] 口上キャラフィルタ：\@ FLAG:口上キャラフィルタ ? オン # オフ \@", @"\@ !FLAG:口上キャラフィルタ ? gray #\@"
 		PRINTPLAIN 　CUSTOM FILTER　
+		SIF !FLAG:フィルタスイッチ１
+			SETCOLORBYNAME gray
 		PRINT [20003] カスタムフィルタ1：
 		IF FLAG:カスタムフィルタ１ >= 0 && FLAG:フィルタスイッチ１
 			PRINTFORM %TALENTNAME:(FLAG:カスタムフィルタ１)%
@@ -412,7 +428,10 @@ IF GROUPMATCH(ARG, 0, 4)
 		ELSE
 			PRINT 切
 		ENDIF
+		RESETCOLOR
 		PRINTPLAIN 　
+		SIF !FLAG:フィルタスイッチ２
+			SETCOLORBYNAME gray
 		PRINT [20005] カスタムフィルタ2：
 		IF FLAG:カスタムフィルタ２ >= 0 && FLAG:フィルタスイッチ２
 			PRINTFORM %TALENTNAME:(FLAG:カスタムフィルタ２)%
@@ -425,9 +444,12 @@ IF GROUPMATCH(ARG, 0, 4)
 		ELSE
 			PRINT 切
 		ENDIF
+		RESETCOLOR
 		PRINTL 
 
 		PRINTPLAIN 　PRICE  FILTER　
+		SIF !FLAG:価格フィルタ
+			SETCOLORBYNAME gray
 		PRINT [20007] 価格フィルタ：
 		IF FLAG:価格フィルタ != 0
 			IF FLAG:価格フィルタ所持金依存
@@ -444,7 +466,10 @@ IF GROUPMATCH(ARG, 0, 4)
 		ELSE
 			PRINT 切
 		ENDIF
+		RESETCOLOR
 		PRINTPLAIN 　
+		SIF !FLAG:バストサイズフィルタ
+			SETCOLORBYNAME gray
 		PRINT [20008] バストサイズフィルタ：
 		SELECTCASE FLAG:バストサイズフィルタ
 			CASE 0
@@ -462,26 +487,77 @@ IF GROUPMATCH(ARG, 0, 4)
 			CASE 6
 				PRINTL 爆乳キャラを表示
 		ENDSELECT
+		RESETCOLOR
 		
 		PRINTPLAIN 　EXTRA  FILTER　
+		SIF 登場作品フィルタ == ""
+			SETCOLORBYNAME gray
 		PRINT [20010] 原作別カテゴリ：
 		IF 登場作品フィルタ != ""
 			PRINTFORM %登場作品フィルタ% 
 		ELSE
 			PRINT 切 
 		ENDIF
+		RESETCOLOR
+		SIF キャラデザフィルタ == ""
+			SETCOLORBYNAME gray
 		PRINT [20011] キャラデザイナー別カテゴリ：
 		IF キャラデザフィルタ != ""
 			PRINTFORM %キャラデザフィルタ% 
 		ELSE
 			PRINT 切 
 		ENDIF
+		RESETCOLOR
+		SIF 種族フィルタ == ""
+			SETCOLORBYNAME gray
 		PRINT [20012] 種族別カテゴリ：
 		IF 種族フィルタ != ""
 			PRINTFORML %種族フィルタ%
 		ELSE
 			PRINTL 切
 		ENDIF
+		RESETCOLOR
+		PRINTPLAIN　　RADOR　FILTER　
+		SIF !開発難易度フィルタ
+			SETCOLORBYNAME gray
+		PRINT [20013] 開発難易度フィルタ：
+		IF 開発難易度フィルタ
+			PRINTFORM {開発難易度フィルタ%1000}～{開発難易度フィルタ/1000}
+		ELSE
+			PRINT 切
+		ENDIF
+		RESETCOLOR
+		PRINTPLAIN 　
+		SIF !屈服難易度フィルタ
+			SETCOLORBYNAME gray
+		PRINT [20014] 屈服難易度フィルタ：
+		IF 屈服難易度フィルタ
+			PRINTFORM {屈服難易度フィルタ%1000}～{屈服難易度フィルタ/1000}
+		ELSE
+			PRINT 切
+		ENDIF
+		RESETCOLOR
+		PRINTPLAIN 　
+		SIF !売却額フィルタ
+			SETCOLORBYNAME gray
+		PRINT [20015] 売却額フィルタ：
+		IF 売却額フィルタ
+			PRINTFORM {売却額フィルタ%1000}～{売却額フィルタ/1000}
+		ELSE
+			PRINT 切
+		ENDIF
+		RESETCOLOR
+		PRINTPLAIN 　
+		SIF !性経験フィルタ
+			SETCOLORBYNAME gray
+		PRINT [20016] 性経験フィルタ：
+		IF 性経験フィルタ
+			PRINTFORM {性経験フィルタ%1000}～{性経験フィルタ/1000}
+		ELSE
+			PRINT 切
+		ENDIF
+		RESETCOLOR
+		PRINTL 
 		PRINTPLAINFORM %SPACESLENS("　CUSTOM FILTER　")%
 		PRINT [20020] 表示キャラを増やす 
 		PRINTL [20021] 表示キャラを減らす
@@ -582,6 +658,14 @@ DO
 		CASE 20012
 			CALL 種族フィルタ設定, 種族フィルタ
 			TFLAG:ページ数 = 0
+		CASE 20013
+			CALL レーダーフィルタ, "開発難易度"
+		CASE 20014
+			CALL レーダーフィルタ, "屈服難易度"
+		CASE 20015
+			CALL レーダーフィルタ, "売却額"
+		CASE 20016
+			CALL レーダーフィルタ, "性経験"
 		CASE 20020
 			表示上限 += 30
 		CASE 20021
@@ -1336,3 +1420,33 @@ DO
 			種族フィルタ = 
 	ENDSELECT
 LOOP 0
+
+@レーダーフィルタ, フィルタ対象
+#DIMS DYNAMIC フィルタ対象
+#DIM DYNAMIC 現在値
+
+現在値 = GETVAR(@"%フィルタ対象%フィルタ")
+
+DRAWLINE
+PRINTFORML %フィルタ対象%の下限～上限を指定します(現在:\@ !現在値 ? フィルタオフ # {現在値%1000}～{現在値/1000}\@)
+PRINTL [1] 上限を設定する
+PRINTL [2] 下限を設定する
+PRINTL [3] オフにする
+PRINTL [0] 戻る
+CALL INPUTF, 0, 1, 2, 3
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		PRINTL 上限を入力してください
+		INPUT
+		SETVAR @"%フィルタ対象%フィルタ", 現在値%1000+LIMIT(RESULT, 0, 100)*1000
+	CASE 2
+		PRINTL 下限を入力してください
+		INPUT
+		SETVAR @"%フィルタ対象%フィルタ", 現在値/1000*1000+LIMIT(RESULT, 0, 100)
+	CASE 3
+		SETVAR @"%フィルタ対象%フィルタ", 0
+ENDSELECT
+
+RESTART
