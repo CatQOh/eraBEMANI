@@ -1,128 +1,168 @@
 ﻿@ロケーション_自宅
-#DIM DYNAMIC LRESULT
-#DIM DYNAMIC 滞在者, 2
-
 ;日数表示
-CALL CHECKDRAWLINE
+CALL カラム生成, "学園モードSHOP", "メイン"
+
+@学園モードSHOP_メイン
+CALL COLUMNPRINT, 0, @"□%日付表示()%"
+CALL COLUMNPRINT, 0, @"%ゲームモード表示()% "
 PRINT □
 PRINTFORML %日付表示()% %ゲームモード表示()%
-PRINTFORML 　天気:%天気()% 気温:%DIV10(FLAG:気温)%℃ %月齢()%(月齢:%DIV100(月齢)%)
 
-DRAWLINE
-PRINTL 　[アイテム][を表示][したり]
-DRAWLINE
-PRINTFORML □時間:%ターン%
+[SKIPSTART]
+CALL COLUMNPRINT, 0, @"　天気:"
+IF GUI
+	;夜で晴れなら月アイコン
+	IF ターン == "夜" && 天気() == "晴れ"
+		CALL COLUMNIMG, 0, 月齢画像(), 100, 100
+	ELSE
+		CALL COLUMNIMG, 0, 天気(), 100, 100
+	ENDIF
+ELSE
+	CALL COLUMNPRINT, 0, @"%天気()%"
+ENDIF
+;GUIモードでは情報量を減らしていく
+SIF !GUI
+	CALL COLUMNPRINT, 0, @" 気温:%DIV10(FLAG:気温)%℃ %月齢()%(月齢:%DIV100(月齢)%)"
+[SKIPEND]
+IF GUI
+	;ここらへんでカレンダーを表示してみる
+	CALL カレンダー生成
+	;そうそうサイズは変わらないと思うのでサイズ直指定してみる
+	CALL COLUMNPRINT, 0, "　　　　　　　"
+	CALL COLUMNIMG, 0, "カレンダー", 1095, 1162
+ENDIF
+CALL COLUMNPRINTL, 0, ""
+CALL COLUMNPRINTL, 0, @"　所持金:%TOOPTIONINT(MONEY)%＄"
+
+
+
+CALL COLUMNDRAWLINE, 0
+CALL COLUMNPRINTL, 0, @"□時間:%ターン%"
 SELECTCASE ターン
 	CASE "朝"
 		SELECTCASE DOW(FLAG:曜日)
 			CASE "土", "日"
-				PRINTL 　[100] - 遊びに行く
-				PRINTL 　[101] - 友人と遊びに行く
-				PRINTL 　[102] - 家に友人を呼ぶ
-				PRINTL 　[103] - 家で過ごす
+				CALL COLUMNPRINTL, 0, "　[100] - 遊びに行く"
+				CALL COLUMNPRINTL, 0, "　[101] - 友人と遊びに行く"
+				CALL COLUMNPRINTL, 0, "　[102] - 家に友人を呼ぶ"
+				CALL COLUMNPRINTL, 0, "　[103] - 家で過ごす"
+				IF バイト先 != ""
+					CALL COLUMNPRINTL, 0, @"　[104] - %バイト先%のバイトに行く"
+				ELSE
+					CALL COLUMNPRINTL, 0, "　[104] - バイトを探す"
+				ENDIF
 			CASEELSE
-				PRINTL 　[100] - 学校へ行く 
-				PRINTL 　[101] - クラスメイトと一緒に登校する
-				PRINTL 　[102] - 学校の保健室へ行く
-				PRINTL 　[103] - 他の学校に行く
-				PRINTL 　[104] - 何もせずサボる
+				CALL COLUMNPRINTL, 0, "　[100] - 学校へ行く "
+				CALL COLUMNPRINTL, 0, "　[101] - クラスメイトと一緒に登校する"
+				CALL COLUMNPRINTL, 0, "　[102] - 学校の保健室へ行く"
+				CALL COLUMNPRINTL, 0, "　[103] - 他の学校に行く"
+				CALL COLUMNPRINTL, 0, "　[104] - 何もせずサボる"
 		ENDSELECT
 	CASE "昼"
 		滞在者 = FINDCHARA(CSTR:現在地, @"%CALLNAME:PLAYER%の家", 1)
 		IF 滞在者 > 0
 			SELECTCASE CSTR:滞在者:目的
 				CASE "遊び"
-					PRINTFORML 　[200] - %CALLNAME:滞在者%と家でくつろぐ
-					PRINTFORML 　[201] - %CALLNAME:滞在者%とアダルトサイトを見る
-					PRINTFORML 　[202] - %CALLNAME:滞在者%に思い切った提案をする
-					PRINTFORML 　[203] - %CALLNAME:滞在者%と遊びに行く
+					CALL COLUMNPRINTL, 0, @"　[200] - %CALLNAME:滞在者%と家でくつろぐ"
+					CALL COLUMNPRINTL, 0, @"　[201] - %CALLNAME:滞在者%とアダルトサイトを見る"
+					CALL COLUMNPRINTL, 0, @"　[202] - %CALLNAME:滞在者%に思い切った提案をする"
+					CALL COLUMNPRINTL, 0, @"　[203] - %CALLNAME:滞在者%と遊びに行く"
 				CASE "看病"
-					PRINTFORML 　[200] - %CALLNAME:滞在者%に面倒を見てもらう
-					PRINTFORML 　[201] - %CALLNAME:滞在者%と遊びに行く
-					PRINTFORML 　[202] - %CALLNAME:滞在者%に過度に甘えてみる
+					CALL COLUMNPRINTL, 0, @"　[200] - %CALLNAME:滞在者%に面倒を見てもらう"
+					CALL COLUMNPRINTL, 0, @"　[201] - %CALLNAME:滞在者%と遊びに行く"
+					CALL COLUMNPRINTL, 0, @"　[202] - %CALLNAME:滞在者%に過度に甘えてみる"
 				CASE "セックス"
-					PRINTFORML 　[200] - %CALLNAME:滞在者%と（性的に）遊ぶ
-					PRINTFORML 　[201] - %CALLNAME:滞在者%と（性的な）遊びに行く
-					PRINTFORML 　[202] - %CALLNAME:滞在者%と健全に過ごす
+					CALL COLUMNPRINTL, 0, @"　[200] - %CALLNAME:滞在者%と（性的に）遊ぶ"
+					CALL COLUMNPRINTL, 0, @"　[201] - %CALLNAME:滞在者%と（性的な）遊びに行く"
+					CALL COLUMNPRINTL, 0, @"　[202] - %CALLNAME:滞在者%と健全に過ごす"
 			ENDSELECT
 		ELSE
-			PRINTL 　[200] - 遊びに行く
-			PRINTL 　[201] - 友人と遊びに行く
-			PRINTL 　[202] - 家に友人を呼ぶ
-			PRINTL 　[203] - 家で過ごす
+			CALL COLUMNPRINTL, 0, "　[200] - 遊びに行く"
+			CALL COLUMNPRINTL, 0, "　[201] - 友人と遊びに行く"
+			CALL COLUMNPRINTL, 0, "　[202] - 家に友人を呼ぶ"
+			CALL COLUMNPRINTL, 0, "　[203] - 家で過ごす"
 		ENDIF
 	CASE "夜"
-		PRINTL 　[300] - 遊びに行く
-		PRINTL 　[301] - 寝る
+		CALL COLUMNPRINTL, 0, "　[300] - 遊びに行く"
+		CALL COLUMNPRINTL, 0, "　[301] - 寝る"
 ENDSELECT
-PRINTL 　[500] - データベース
-DRAWLINE
-PRINTPLAIN 　SCHOOL MODE
+CALL COLUMNPRINTL, 0, "　[500] - データベース"
 
-DO
-	INPUT
-	LRESULT = RESULT
-	SELECTCASE LRESULT
-		CASE 100 TO 199
-			SIF ターン != "朝"
-				CONTINUE
-			SELECTCASE LRESULT
-				CASE 100
-					CALL 朝_学校へ行く
-				CASE 101
-					CALL 朝_クラスメイトと一緒に登校する
-				CASE 102
-					CALL 朝_学校の保健室に行く
-				CASE 103
-					CALL 朝_他の学校に行く
-				CASE 104
-					CALL 朝_何もせずサボる
-				CASEELSE
-					CONTINUE
-			ENDSELECT
-			CALL TURNEND_学園
-			BREAK
-		CASE 200 TO 299
-			SIF ターン != "昼"
-				CONTINUE
-			IF 滞在者 > 0
-				SELECTCASE CSTR:滞在者:目的
-					CASE "遊び"
-						SELECTCASE LRESULT
-							CASE 200
-							CASE 201
-							CASE 202
-							CASE 203
-						ENDSELECT
-				ENDSELECT
-			ELSE
+
+@学園モードSHOP_メイン_INPUT
+#DIM DYNAMIC LRESULT
+
+LRESULT = CRESULT:1
+SELECTCASE LRESULT
+	CASE 100 TO 199
+		SIF ターン != "朝"
+			RETURN
+		SELECTCASE DOW(FLAG:曜日)
+			CASE "土", "日"
 				SELECTCASE LRESULT
-					CASE 200
+					CASE 100
 						CALL ロケーション選択
-					CASE 201
-					CASE 202
-					CASE 203
+					CASE 101
+						;CALL 朝_友人と遊びに行く
+					CASE 102
+						;CALL 朝_家に友人を呼ぶ
+					CASE 103
+						;CALL 朝_家で過ごす
+					CASEELSE
+						RETURN
 				ENDSELECT
-			ENDIF
-			CALL TURNEND_学園
-			BREAK
-		CASE 300 TO 301
-			SIF ターン != "夜"
-				CONTINUE
-			SELECTCASE LRESULT 
-				CASE 300
-					CALL ロケーション選択
-				CASE 301
+			CASEELSE
+				SELECTCASE LRESULT
+					CASE 100
+						CALL 朝_学校へ行く
+					CASE 101
+						CALL 朝_クラスメイトと一緒に登校する
+					CASE 102
+						CALL 朝_学校の保健室に行く
+					CASE 103
+						CALL 朝_他の学校に行く
+					CASE 104
+						CALL 朝_何もせずサボる
+					CASEELSE
+						RETURN
+				ENDSELECT
+		ENDSELECT
+		JUMP TURNEND_学園
+	CASE 200 TO 299
+		SIF ターン != "昼"
+			RETURN
+		IF 滞在者 > 0
+			SELECTCASE CSTR:滞在者:目的
+				CASE "遊び"
+					SELECTCASE LRESULT
+						CASE 200
+						CASE 201
+						CASE 202
+						CASE 203
+					ENDSELECT
 			ENDSELECT
-			CALL TURNEND_学園
-			BREAK
-		CASE 500
-			CALL 学園データベース
-			RESTART
-	ENDSELECT
-LOOP 1
-
-RESTART
+		ELSE
+			SELECTCASE LRESULT
+				CASE 200
+					CALL ロケーション選択
+				CASE 201
+				CASE 202
+				CASE 203
+			ENDSELECT
+		ENDIF
+		JUMP TURNEND_学園
+	CASE 300 TO 301
+		SIF ターン != "夜"
+			RETURN
+		SELECTCASE LRESULT 
+			CASE 300
+				CALL ロケーション選択
+			CASE 301
+		ENDSELECT
+		JUMP TURNEND_学園
+	CASE 500
+		CALL 学園データベース
+ENDSELECT
 
 @TURNEND_学園
 

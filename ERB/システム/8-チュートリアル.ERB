@@ -1,7 +1,40 @@
-﻿@TUTORIAL
+﻿@TUTORIAL, ARGS
 #DIMS 前回のコマンド名
 SIF TUTORIAL == ""
-	RETURN
+	RETURN RESULT
+
+IF ARGS != ""
+	SELECTCASE ARGS
+		CASE "キャラクリ終了"
+			SIF TUTORIAL == "キャラクリ"
+				TUTORIAL = キャラクリ終了
+		CASE "奴隷購入"
+			SIF TUTORIAL == "SHOP_2"
+				TUTORIAL = 奴隷購入
+		CASE "調教開始"
+			SIF TUTORIAL == "奴隷購入"
+				TUTORIAL = 調教開始
+		CASE "調教_1"
+			SIF TUTORIAL == "調教開始"
+				TUTORIAL = 調教_1
+		CASE "コマンドセット"
+			SIF TUTORIAL == "調教_3"
+				TUTORIAL = コマンドセット
+		CASE "調教_4"
+			SIF TUTORIAL == "コマンドセット"
+				TUTORIAL = 調教_4
+		CASE "調教終了無効"
+			SIF TUTORIAL != "調教終了" && BASE:体力 <= 500
+				BASE:体力 = 700
+		CASE "調教終了無効_2"
+			IF TUTORIAL != "調教終了"
+				TUTORIAL_RESULT = 999
+				RETURN 0
+			ENDIF
+	ENDSELECT
+	RETURN RESULT
+ENDIF
+
 
 CALL NEWLINE
 
@@ -107,7 +140,7 @@ SELECTCASE TUTORIAL
 		ELSEIF PREVCOMS != ""
 			TUTORIAL_ICON = 牛
 			CALL TPRINTL, "メッセージが表示されてパラメータが変動したのが分かったかな？"
-			CALL TPRINTL, "このパラメータの変動こそがeraの醍醐味、eraがゲームたる所以だ。キャラの育てて大きな売却額を得たり、eraBEMANIなら経営要素に活かしたり、"
+			CALL TPRINTL, "このパラメータの変動こそがeraの醍醐味、eraがゲームたる所以だ。キャラを育てて大きな売却額を得たり、eraBEMANIなら経営要素に活かしたり、"
 			CALL TPRINTL, "メッセージの描写や口上と合わせてエロゲのエロ部分を堪能することが目的だ。別のコマンドも選んでみよう"
 			前回のコマンド名 = %PREVCOMS%
 			FLAG:Ｖ系コマンドフィルタ = 0
@@ -148,26 +181,32 @@ SELECTCASE TUTORIAL
 			CALL TPRINTL, "選べるコマンドが増えてさらに楽しくなってきたね。より難しいキャラだと、攻略にも時間がかかるし調教フェイズも長くなる"
 			CALL TPRINTL, "そんなときに便利なのがコマンドセット機能だ。予め選んでおいたコマンドを自動で実行してくれる。"
 			CALL TPRINTL, "数をこなしたいときや、何らかの事情で片手を使えない時にも有効だ。「[951] コマンドセット1の設定」を選んでみよう"
-			TUTORIAL = コマンドセット
 		ENDIF
 		CALL TSHOW
 	CASE "コマンドセット"
-		CALL TPRINTL, "これがコマンドセット画面だ。コマンドを選び、組み合わせ、一連の流れを作成できる"
-		CALL TPRINTL, "全部白文字のコマンドだけど、実際は攻略対象のステータスによって実行不可能な場合がある。その時はコマンドがスキップされて次のコマンドを実行するよ"
-		CALL TPRINTL, "コマンドセットを作ってもいいし作らなくてもいい。気が済むまで弄ったら[1000] 戻るを選ぼう"
+		TUTORIAL_ICON = 牛
+		IF TUTORIAL_RESULT == 999
+			CALL TPRINTL, "ここで終わったらチュートリアルは完了しないよ"
+		ELSE
+			CALL TPRINTL, "これがコマンドセット画面だ。コマンドを選び、組み合わせ、一連の流れを作成できる"
+			CALL TPRINTL, "全部白文字のコマンドだけど、実際は攻略対象のステータスによって実行不可能な場合がある。その時はコマンドがスキップされて次のコマンドを実行するよ"
+			CALL TPRINTL, "コマンドセットを作ってもいいし作らなくてもいい。気が済むまで弄ったら[1000] 戻るを選ぼう"
+		ENDIF
+		FLAG:暴力コマンドフィルタ = 0
 		CALL TSHOW
-	CASE ""
-		CALL TPRINTL, ""
-		CALL TPRINTL, ""
-		CALL TPRINTL, ""
+	CASE "調教_4"
+		TUTORIAL_ICON = 牛-3
+		CALL TPRINTL, "コマンド制限を全部解除した。「腹パン」とか「踏む」とか物騒なコマンドが増えたのが分かったかな？"
+		CALL TPRINTL, "残念なことに、低難易度のキャラだと真面目に攻略するようにぶん殴って言うこと聞かせたほうが早い場合もあるんだ。選ぶ人も作る人もひどいよね"
+		CALL TPRINTL, "視界に入っただけで不穏な気持ちになるなら、[960] コマンドフィルタの設定からコマンドを非表示にしよう。もしくは君の暴力的な一面を露わにしてもいい"
 		CALL TSHOW
-		WAIT
-	CASE ""
-		CALL TPRINTL, ""
-		CALL TPRINTL, ""
-		CALL TPRINTL, ""
+		TUTORIAL = 調教終了
+	CASE "調教終了"
+		TUTORIAL_ICON = 牛
+		CALL TPRINTL, "調教の一連の流れはこんな感じだ。eraBEMANIは着衣プレイに対応してるから、自由に服を着脱させてもいいし、能力を見ながら攻略の方針を模索するのもいい"
+		CALL TPRINTL, "今は口上表示をオフにしているけど、口上表示をオンにして口上が実装されているキャラなら、淡々とした地の文だけでなくエロゲさながらにキャラが喋りだすんだ"
+		CALL TPRINTL, "また、キャラの体力が500以下になると調教は中断される。500以下になるまでコマンドを選ぶか、[999] 調教終了を選ぼう"
 		CALL TSHOW
-		WAIT
 	CASE ""
 		CALL TPRINTL, ""
 		CALL TPRINTL, ""
@@ -188,6 +227,7 @@ SELECTCASE TUTORIAL
 		WAIT
 ENDSELECT
 
+TUTORIAL_RESULT = 0
 
 @TPRINT, ARGS
 TUTORIAL_TEXT:TUTORIAL_LINE += ARGS
