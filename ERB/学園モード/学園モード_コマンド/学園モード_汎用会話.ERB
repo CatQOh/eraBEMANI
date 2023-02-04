@@ -1,0 +1,111 @@
+﻿@学園モード_汎用会話, 対象
+#DIM DYNAMIC 対象
+TARGET = 対象
+
+PRINTFORML □%CALLNAME:TARGET%と会話します
+PRINTL [0] 何気ない会話をする
+PRINTL [1] 少し踏み込んだ会話をする
+PRINTL [2] 下ネタを振る
+PRINTL [3] 性的に誘う
+PRINTL [4] 思い切って告白する
+PRINTL [10] なんでもない
+
+CALL INPUTF, 0, 1, 2, 3, 4
+
+SELECTCASE RESULT
+	CASE 0
+		PRINTFORML %CALLNAME:PLAYER%は%CALLNAME:TARGET%と会話した
+		CALL 好感度上昇, TARGET, "友情", 10
+		WAIT
+		RETURN 1
+	CASE 1
+		IF 好感度合計(TARGET) < 200
+			PRINTFORML %CALLNAME:PLAYER%の踏み込んだ会話に、%CALLNAME:TARGET%は少し迷惑そうにしている……
+		ELSE
+			PRINTFORML %CALLNAME:PLAYER%の踏み込んだ会話で、%CALLNAME:TARGET%のことをより詳しく知ることができた
+			CALL 好感度上昇, TARGET, "友情", 10
+			CALL 好感度上昇, TARGET, "ときめき", 10
+		ENDIF
+		WAIT
+	CASE 2
+		IF 好感度:セフレ >= 200
+			PRINTFORML %CALLNAME:PLAYER%の品の無い会話にも、%CALLNAME:TARGET%は喜んで付き合った
+			CALL 好感度上昇, TARGET, "友情", 10
+			CALL 好感度上昇, TARGET, "セフレ", 20
+		ELSEIF TALENT:貞操無頓着 || TALENT:淫乱 || CFLAG:倫理観 >= 30
+			PRINTFORML %CALLNAME:PLAYER%の下品な会話に%CALLNAME:TARGET%もノリの良い返しをしてきた
+			CALL 好感度上昇, TARGET, "セフレ", 20
+		ELSEIF 好感度合計(TARGET) >= 200
+			PRINTFORML %CALLNAME:PLAYER%の下品な話を、%CALLNAME:TARGET%は宥めながらも聞いてくれた
+			CALL 好感度上昇, TARGET, "セフレ", 10
+		ELSEIF TALENT:幼稚
+			PRINTFORML %CALLNAME:TARGET%は%CALLNAME:PLAYER%の話をよく理解できていないようだ……
+		ELSE
+			PRINTFORML %CALLNAME:PLAYER%の下品な話に、%CALLNAME:TARGET%は若干引いている様子だ……
+			CALL 好感度上昇, TARGET, "ときめき", -10
+		ENDIF
+		WAIT
+	CASE 3
+		IF 好感度:既成事実 >= 10
+			PRINTFORML 既に何度も体を重ねている%CALLNAME:TARGET%は、%CALLNAME:PLAYER%の誘いにも二つ返事で乗ってきた
+		ELSEIF 好感度:セフレ >= 1000
+			PRINTFORML %CALLNAME:PLAYER%の提案に、興味津々な%CALLNAME:TARGET%は快く応じた
+		ELSEIF TALENT:恋慕
+			PRINTFORML %CALLNAME:TARGET%は恋人の%CALLNAME:PLAYER%の提案を聞くと、落ち着いた声で了承した
+		ELSE
+			PRINTFORML %CALLNAME:TARGET%は困惑した様子で%CALLNAME:PLAYER%との会話を打ち切った……
+			RETURN 1
+		ENDIF
+		WAIT
+		PRINTFORML □%CALLNAME:TARGET%をどこに連れ込みますか？
+		IF CSTR:在任 != ""
+			PRINTFORML 　[0] - ホテル(%CALLNAME:TARGET%が宿泊料負担)
+		ELSE
+			CALL PASELIL, 　"[0] - ホテル(宿泊料10000＄必要)"
+		ENDIF
+		PRINTL [1] - 共用トイレ
+		PRINTL [2] - 自宅
+		CALL INPUTF, 0, 1, 2
+		SELECTCASE RESULT
+			CASE 0
+				PRINTFORMW %CALLNAME:TARGET%とホテルへ向かうことにした
+				DRAWLINE
+				CALL TRAIN_SCHOOL
+				CALL CHECKDRAWLINE
+				PRINTFORMW 行為を終えた%CALLNAME:TARGET%たちは、時間差でホテルを後にして別れた
+				CALL 好感度上昇, TARGET, "友情", 30
+				CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
+				CALL 好感度上昇, TARGET, "セフレ", 50
+				CALL 好感度上昇, TARGET, "既成事実", 1
+				TARGET = -1
+				RETURN 1
+			CASE 1
+				PRINTFORMW %CALLNAME:TARGET%を手頃な広さのトイレにこっそりと連れ込んだ
+				DRAWLINE
+				トイレ使用中 = 1
+				CALL TRAIN_SCHOOL
+				CALL CHECKDRAWLINE
+				PRINTFORMW 行為を終えた%CALLNAME:TARGET%は、乱れた服を直して周りを確認しながら別れた
+				CALL 好感度上昇, TARGET, "友情", 30
+				;トイレはホテルほどときめかない
+				CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
+				CALL 好感度上昇, TARGET, "セフレ", 50
+				CALL 好感度上昇, TARGET, "既成事実", 1
+				トイレ使用中 = 0
+				TARGET = -1
+				RETURN 1
+			CASE 2
+				PRINTFORMW %CALLNAME:TARGET%を家に招き入れることにした
+				CSTR:現在地 = %CALLNAME:PLAYER%の家
+				CSTR:目的 = セックス
+				滞在者 = TARGET
+				TARGET = -1
+				JUMP SHOP_SCHOOL
+		ENDSELECT
+	CASE 4
+		PRINTW 出来てない
+	CASE 10
+		RETURN 0
+ENDSELECT
+
+RETURN 1

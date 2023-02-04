@@ -3,38 +3,8 @@
 CALL カラム生成, "学園モードSHOP", "メイン"
 
 @学園モードSHOP_メイン
-CALL COLUMNPRINT, 0, @"□%日付表示()%"
-CALL COLUMNPRINT, 0, @"%ゲームモード表示()% "
-PRINT □
-PRINTFORML %日付表示()% %ゲームモード表示()%
 
-[SKIPSTART]
-CALL COLUMNPRINT, 0, @"　天気:"
-IF GUI
-	;夜で晴れなら月アイコン
-	IF ターン == "夜" && 天気() == "晴れ"
-		CALL COLUMNIMG, 0, 月齢画像(), 100, 100
-	ELSE
-		CALL COLUMNIMG, 0, 天気(), 100, 100
-	ENDIF
-ELSE
-	CALL COLUMNPRINT, 0, @"%天気()%"
-ENDIF
-;GUIモードでは情報量を減らしていく
-SIF !GUI
-	CALL COLUMNPRINT, 0, @" 気温:%DIV10(FLAG:気温)%℃ %月齢()%(月齢:%DIV100(月齢)%)"
-[SKIPEND]
-IF GUI
-	;ここらへんでカレンダーを表示してみる
-	CALL カレンダー生成
-	;そうそうサイズは変わらないと思うのでサイズ直指定してみる
-	CALL COLUMNPRINT, 0, "　　　　　　　"
-	CALL COLUMNIMG, 0, "カレンダー", 1095, 1162
-ENDIF
-CALL COLUMNPRINTL, 0, ""
-CALL COLUMNPRINTL, 0, @"　所持金:%TOOPTIONINT(MONEY)%＄"
-
-
+CALL COLUMNSHOP_SCHOOL
 
 CALL COLUMNDRAWLINE, 0
 CALL COLUMNPRINTL, 0, @"□時間:%ターン%"
@@ -127,7 +97,9 @@ SELECTCASE LRESULT
 						RETURN
 				ENDSELECT
 		ENDSELECT
-		JUMP TURNEND_学園
+		;コマンド系関数はRETURN 1でターン終了
+		SIF RESULT
+			JUMP TURNEND_学園
 	CASE 200 TO 299
 		SIF ターン != "昼"
 			RETURN
@@ -150,7 +122,8 @@ SELECTCASE LRESULT
 				CASE 203
 			ENDSELECT
 		ENDIF
-		JUMP TURNEND_学園
+		SIF RESULT
+			JUMP TURNEND_学園
 	CASE 300 TO 301
 		SIF ターン != "夜"
 			RETURN
@@ -159,31 +132,11 @@ SELECTCASE LRESULT
 				CALL ロケーション選択
 			CASE 301
 		ENDSELECT
-		JUMP TURNEND_学園
+		SIF RESULT
+			JUMP TURNEND_学園
 	CASE 500
 		CALL 学園データベース
 ENDSELECT
-
-@TURNEND_学園
-
-;ターンを進める
-SELECTCASE ターン
-	CASE "朝"
-		PRINTW 昼になった……
-		ターン = 昼
-	CASE "昼"
-		PRINTW 夜になった……
-		ターン = 夜
-	CASE "夜"
-		PRINTW 一日が終わった……
-		ターン = 朝
-		DAY++
-		CALL NEXTDAY
-ENDSELECT
-
-CALL SYSTEM_AUTOSAVE
-
-RETURN
 
 @相性増加, ARG, ARG:1, 上昇値
 #DIM DYNAMIC 上昇値

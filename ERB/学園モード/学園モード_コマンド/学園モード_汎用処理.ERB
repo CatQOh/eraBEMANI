@@ -7,14 +7,6 @@ NEXT
 
 CALL NEWLINE
 
-@SHOP_SCHOOL
-;学園モードのSHOP画面 ここを噛ませて各ロケーション関数に飛ぶ
-
-SIF CSTR:PLAYER:現在地 == ""
-	CSTR:PLAYER:現在地 = 自宅
-
-TRYCALLFORM ロケーション_%CSTR:PLAYER:現在地%
-
 @TURNEND_学園
 
 ;ターンを進める
@@ -34,7 +26,7 @@ ENDSELECT
 
 CALL SYSTEM_AUTOSAVE
 
-RETURN
+JUMP SHOP_SCHOOL
 
 @相性増加, ARG, ARG:1, 上昇値
 #DIM DYNAMIC 上昇値
@@ -344,3 +336,74 @@ RETURNF NAME:対象
 好感度:対象:好感度種類 += 上昇値
 
 PRINTFORML 好感度上昇:%NAME:対象%(%好感度種類%+{上昇値})
+
+@TRAIN_SCHOOL
+BASE:体力 = MAXBASE:体力
+BASE:気力 = MAXBASE:気力
+
+CALL EVENTUSERTRAIN
+DO
+	CALL SHOW_STATUS
+	CALL SHOW_USERCOM
+	INPUT
+	CALL USERCOM
+LOOP !TFLAG:調教終了
+
+;習得の珠加算
+SELECTCASE GETPALAMLV(PALAM:習得, 10)
+	CASE 0
+	CASE 1
+		IF PALAM:習得 < PALAMLV:1*3
+			JUEL:習得 += 1
+		ELSE
+			JUEL:習得 += 2
+		ENDIF
+	CASE 2
+		IF PALAM:習得 < PALAMLV:2*3
+			JUEL:習得 += 10
+		ELSE
+			JUEL:習得 += 20
+		ENDIF
+	CASE 3
+		IF PALAM:習得 < PALAMLV:3*2
+			JUEL:習得 += 100
+		ELSE
+			JUEL:習得 += 200
+		ENDIF
+	CASE 5
+		JUEL:習得 += 1000
+	CASE 6
+		JUEL:習得 += 2000
+	CASE 7
+		JUEL:習得 += 3000
+	CASE 8
+		JUEL:習得 += 5000
+	CASE 9
+		JUEL:習得 += 8000
+	CASEELSE
+		JUEL:習得 += PALAM:習得/20
+ENDSELECT
+
+;とりあえず上級売春と同じ処理で自動上昇するようにしてみる
+ABL:Ｃ感覚 = MAX(ABL:TARGET:Ｃ感覚, LIMIT(EXP:絶頂経験/50, 0, 10))
+ABL:Ｂ感覚 = MAX(ABL:TARGET:Ｂ感覚, LIMIT(EXP:絶頂経験/50, 0, 10))
+ABL:Ｖ感覚 = MAX(ABL:TARGET:Ｖ感覚, LIMIT(EXP:Ｖ経験/100, 0, 10))
+ABL:Ａ感覚 = MAX(ABL:TARGET:Ａ感覚, LIMIT(EXP:Ａ経験/100, 0, 10))
+ABL:精液中毒 = MAX(ABL:TARGET:精液中毒, LIMIT(EXP:精液経験/300, 0, 10))
+ABL:ゲイ中毒 = MAX(ABL:TARGET:ゲイ中毒, LIMIT(EXP:ゲイ経験/300, 0, 10))
+ABL:レズ中毒 = MAX(ABL:TARGET:レズ中毒, LIMIT(EXP:レズ経験/300, 0, 10))
+ABL:自慰中毒 = MAX(ABL:TARGET:自慰中毒, LIMIT(EXP:自慰経験/300, 0, 10))
+ABL:奉仕精神 = MAX(ABL:TARGET:奉仕精神, LIMIT(EXP:奉仕快楽経験/200, 0, 10))
+ABL:性交中毒 = MAX(ABL:TARGET:性交中毒, LIMIT(EXP:性交経験/300, 0, 10))
+ABL:マゾっ気 = MAX(ABL:TARGET:マゾっ気, LIMIT(EXP:苦痛快楽経験/300, 0, 10))
+IF JUEL:習得 >= PALAMLV:(ABL:技巧)
+	JUEL:習得 -= PALAMLV:(ABL:技巧)
+	ABL:技巧++
+ENDIF
+
+;イった回数に応じてときめき増加
+ときめき増加量 = SUMARRAY(EX:TARGET:0)
+
+;立つ鳥跡を濁さず
+CALL アイテム修理
+CALL CVAR_RESET
