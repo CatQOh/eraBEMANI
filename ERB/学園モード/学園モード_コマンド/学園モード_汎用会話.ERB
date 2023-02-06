@@ -8,9 +8,10 @@ PRINTL [1] 少し踏み込んだ会話をする
 PRINTL [2] 下ネタを振る
 PRINTL [3] 性的に誘う
 PRINTL [4] 思い切って告白する
+PRINTL [5] 連絡先を聞いてみる
 PRINTL [10] なんでもない
 
-CALL INPUTF, 0, 1, 2, 3, 4
+BINPUT
 
 SELECTCASE RESULT
 	CASE 0
@@ -103,7 +104,54 @@ SELECTCASE RESULT
 				JUMP SHOP_SCHOOL
 		ENDSELECT
 	CASE 4
-		PRINTW 出来てない
+		PRINTFORMW %CALLNAME:PLAYER%は思い切って%CALLNAME:TARGET%に想いを伝えてみた
+		;割りと大事な場面なので素質で分岐させたりしたいかも
+		IF 好感度:セフレ >= 好感度:ときめき
+			IF 好感度:既成事実
+				PRINTFORMW しかし%CALLNAME:TARGET%は、%CALLNAME:PLAYER%とは体だけの関係で居たいと言って断られてしまった……
+				CALL 好感度上昇, TARGET, "セフレ", 10
+				WAIT
+			ELSE
+				IF 好感度:セフレ >= 1000
+					PRINTFORMW %CALLNAME:TARGET%はしばし考え込むとその告白をやんわりと断ったが、性的なことには興味があるとオブラートに包んで言ってきた……
+					CALL 好感度上昇, TARGET, "セフレ", 5
+					WAIT
+				ELSE
+					PRINTFORMW しかし%CALLNAME:TARGET%はいまいち腑に落ちない様子で、かつ遺恨を残さないようにはっきりと断った……
+				ENDIF
+			ENDIF
+		ELSEIF 好感度:ときめき >= 1000
+			PRINTFORMW %CALLNAME:TARGET%は少し驚いた様子を見せたが、自分も%CALLNAME:PLAYER%のことが気になっていたと肯定的な返事をした
+			CALL 恋仲, TARGET
+			WAIT
+		ELSEIF 好感度:ときめき >= 500 && 連絡先:TARGET
+			PRINTFORML 突然の告白に%CALLNAME:TARGET%は困惑し、今は決められないから少し時間が欲しいと言ってきた
+			PRINTFORMW 数日以内に%CALLNAME:TARGET%から連絡が来るだろう
+			告白保留:TARGET = RAND(4, 8)
+			CALL 好感度上昇, TARGET, "ときめき", 10
+			WAIT
+		ELSE
+			IF 好感度:友情 >= 300
+				PRINTFORMW しかし%CALLNAME:TARGET%は告白をはっきりと断り、友達のままで居たいと言った……
+				CALL 好感度上昇, TARGET, "友情", 10
+				CALL 好感度上昇, TARGET, "ときめき", 5
+			ELSE
+				PRINTFORMW しかしお互いの関係が浅すぎるせいか、%CALLNAME:TARGET%は明らかに気まずそうな様子で断ってきた……
+				CALL 好感度上昇, TARGET, "友情", 5
+				CALL 好感度上昇, TARGET, "ときめき", -5
+			ENDIF
+		ENDIF
+	CASE 5
+		SIF 連絡先:TARGET
+			RESTART
+		IF 好感度合計(TARGET) >= 500
+			PRINTFORMW %CALLNAME:TARGET%に連絡先を尋ねると、快く教えてくれた
+			CALL 連絡先入手, TARGET
+			CALL 好感度上昇, TARGET, "友情", 10
+			WAIT
+		ELSE
+			PRINTFORMW %CALLNAME:TARGET%はまだそこまで親密な関係だと思っていないのか、教えてもらえずにはぐらかされてしまった……
+		ENDIF
 	CASE 10
 		RETURN 0
 ENDSELECT
