@@ -8,20 +8,51 @@ NEXT
 CALL NEWLINE
 
 @TURNEND_学園
+#DIM DYNAMIC LCOUNT
 
 ;ターンを進める
 SELECTCASE ターン
 	CASE "朝"
 		PRINTW 昼になった……
 		ターン = 昼
+		;登校中のキャラを参照
+		FOR LCOUNT, 1, CHARANUM
+			;サボり魔は10%でバックレてる さすがに教師はバックレない
+			SIF CSTR:LCOUNT:現在地 == CSTR:LCOUNT:在校 && TALENT:LCOUNT:サボり魔 && RAND:10 == 0
+				CSTR:LCOUNT:現在地 = 
+		NEXT
 	CASE "昼"
+		PRINTW 夕方になった……
+		ターン = 夕
+		;生徒は放課後タイム
+		FOR LCOUNT, 1, CHARANUM
+			SIF CSTR:LCOUNT:現在地 == CSTR:LCOUNT:在校
+				CSTR:LCOUNT:現在地 = 
+			;教師陣もぼちぼち帰る
+			SIF CSTR:LCOUNT:現在地 == CSTR:LCOUNT:在任 && RAND:2
+				CSTR:LCOUNT:現在地 = 
+		NEXT
+	CASE "夕"
 		PRINTW 夜になった……
 		ターン = 夜
+		;教師陣も確定で帰る
+		SIF CSTR:LCOUNT:現在地 == CSTR:LCOUNT:在任
+			CSTR:LCOUNT:現在地 = 
 	CASE "夜"
 		PRINTW 一日が終わった……
 		ターン = 朝
 		DAY++
 		CALL NEXTDAY
+		IF ISHOLIDAY()
+			;朝は在校生と教師は学校に居る
+			FOR LCOUNT, 1, CHARANUM
+				;ただしサボり魔は10%でサボってる 教師も例外ではない
+				SIF CSTR:LCOUNT:在校 != "" && !(TALENT:LCOUNT:サボり魔 && RAND:10 == 0)
+					CSTR:LCOUNT:現在地 = %CSTR:LCOUNT:在校%
+				SIF CSTR:LCOUNT:在任 != "" && !(TALENT:LCOUNT:サボり魔 && RAND:10 == 0)
+					CSTR:LCOUNT:現在地 = %CSTR:LCOUNT:在任%
+			NEXT
+		ENDIF
 ENDSELECT
 
 CALL SYSTEM_AUTOSAVE
@@ -48,6 +79,10 @@ RELATION:(ARG:1):ARG += 上昇値
 
 ;第一引数のキャラと同じ学校の生徒を、第二引数で指定した条件で選出する
 ;RESULT:0～4で最大5人返す 必要なぶんだけRESULTを参照すると良い
+
+;既にどこかのグループに入ってる場合は無効
+SIF 出現率:対象 == -1
+	RETURN
 
 ;グループ候補は出現率を-1に設定する
 出現率:対象 = -1
@@ -122,6 +157,10 @@ RETURN 候補:0, 候補:1, 候補:2, 候補:3, 候補:4
 ;ただし学校が同じでもない、相性が良いわけでもない、何も接点の無いキャラはグループにならない
 ;RESULT:0～4で最大5人返す 必要なぶんだけRESULTを参照すると良い
 
+;既にどこかのグループに入ってる場合は無効
+SIF 出現率:対象 == -1
+	RETURN
+
 ;グループ候補は出現率を-1に設定する
 出現率:対象 = -1
 
@@ -169,8 +208,6 @@ SELECTCASE 選出タイプ
 				}
 					;こっちは後でキャラ番号戻るのでNOで入れる
 					ARRAYSHIFT 候補, 1, NO:LCOUNT, LCOUNT2
-					;グループ候補は出現率を-1に設定する
-					出現率:LCOUNT = -1
 					BREAK
 				ENDIF
 			NEXT
@@ -203,14 +240,17 @@ SELECTCASE 選出タイプ
 			$CLEARELSE
 			;こっちは後でキャラ番号戻るのでNOで入れる
 			ARRAYSHIFT 候補, 1, NO:LCOUNT
-			;グループ候補は出現率を-1に設定する
-			出現率:LCOUNT = -1
 		NEXT
 ENDSELECT
 
 ;最後にNOでソートしなおす
-
 SORTCHARA NO
+
+;グループ候補は出現率を-1に設定する
+FOR LCOUNT, 0, 5
+	SIF 候補:LCOUNT
+		出現率:GETCHARA(候補:LCOUNT) = -1
+NEXT
 
 RETURN GETCHARA(候補:0), GETCHARA(候補:1), GETCHARA(候補:2), GETCHARA(候補:3), GETCHARA(候補:4)
 

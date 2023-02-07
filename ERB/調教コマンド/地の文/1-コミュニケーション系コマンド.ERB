@@ -5,7 +5,10 @@
 IF TALENT:アニマル
 	PRINTFORMW %CALLNAME:PLAYER%が%CALLNAME:TARGET%に舌を突き出すと、%CALLNAME:TARGET%は湿った舌で口元を舐めてきた……
 ELSE
-	IF !CFLAG:陥落
+	IF TEQUIP:睡眠
+		PRINTFORMW 寝息を立てる%CALLNAME:TARGET%の唇にそっとキスをした……
+		RETURN
+	ELSEIF !CFLAG:陥落 && ゲームモード() != "学園モード"
 		IF ABL:従順 < 3
 			PRINTFORM 抵抗する%CALLNAME:TARGET%と半ば強引に
 		ELSE
@@ -15,7 +18,7 @@ ELSE
 		PRINTFORM %CALLNAME:TARGET%と
 	ENDIF
 	PRINT 唇を重ね
-	IF TEQUIP:ゲームセンター
+	IF TEQUIP:トイレ
 		IF CFLAG:陥落
 			IF ABL:露出癖 >= 3
 				PRINTW ると、個室の外にも聞こえそうな音を立てて激しく求めてきた……
@@ -26,8 +29,10 @@ ELSE
 			PRINTW た……
 		ENDIF
 	ELSE
+		IF CFLAG:死亡
+			PRINTW 冷たい口内を舌で蹂躙した……
 		;陥落+従順LV3以上+同性愛経験500以上+調教者と同性
-		IF CFLAG:陥落 && ABL:従順 >= 3 && (EXP:レズ経験 >= 500 || EXP:ゲイ経験 >= 500) && SEX(PLAYER) == SEX(TARGET)
+		ELSEIF CFLAG:陥落 && ABL:従順 >= 3 && (EXP:レズ経験 >= 500 || EXP:ゲイ経験 >= 500) && SEX(PLAYER) == SEX(TARGET)
 			PRINTFORMW 、ねっとりと舌を絡めあいながら唾液を交換した……
 		;陥落済み
 		ELSEIF CFLAG:陥落 && PLAYER == MASTER
@@ -45,11 +50,17 @@ ENDIF
 ;何もしない
 ;-------------------------------------------------
 @MESSAGE_COM_何もしない
-PRINTFORML %CALLNAME:PLAYER%は何もせずに%CALLNAME:TARGET%を放置している
-IF TALENT:アニマル
-	PRINTFORML %CALLNAME:TARGET%は退屈そうに動物的な仕草を見せている……
-ELSEIF TEQUIP:媚薬 && !TEQUIP:アイマスク
-	PRINTFORML %CALLNAME:TARGET%は媚薬でこみ上げる欲情に顔を赤くしながら見つめてくる……
+IF TEQUIP:睡眠
+	PRINTFORML %CALLNAME:PLAYER%は何もせずに%CALLNAME:TARGET%の寝顔を眺めている……
+ELSEIF CFLAG:死亡
+	PRINTFORML %CALLNAME:PLAYER%は何もせずに%CALLNAME:TARGET%の死体を眺めている……
+ELSE
+	PRINTFORML %CALLNAME:PLAYER%は何もせずに%CALLNAME:TARGET%を放置している
+	IF TALENT:アニマル
+		PRINTFORML %CALLNAME:TARGET%は退屈そうに動物的な仕草を見せている……
+	ELSEIF TEQUIP:媚薬 && !TEQUIP:アイマスク
+		PRINTFORML %CALLNAME:TARGET%は媚薬でこみ上げる欲情に顔を赤くしながら見つめてくる……
+	ENDIF
 ENDIF
 WAIT
 
@@ -340,6 +351,8 @@ ELSE
 			PRINTFORML 猥談に思考を蝕まれる%CALLNAME:TARGET%は、赤面する顔を俯かせている……
 		ELSEIF TALENT:感情乏しい || TALENT:無関心
 			PRINTFORML しかし%CALLNAME:TARGET%はまるで聞こえていないかのように表情一つ変えない……
+		ELSEIF ゲームモード() == "学園モード"
+			PRINTFORML %CALLNAME:TARGET%も行為の一環としてその会話に応じた……
 		ELSE
 			PRINTFORML %CALLNAME:TARGET%は侮蔑の目で%CALLNAME:PLAYER%を見据えている……
 		ENDIF
@@ -769,14 +782,22 @@ ENDIF
 ;-------------------------------------------------
 @MESSAGE_COM_尻尾を撫でる
 PRINTFORML %CALLNAME:TARGET%の尻尾を撫でた
-IF CFLAG:陥落 || (TALENT:アニマル && CFLAG:依存度 >= 1500)
-	IF TALENT:ツンデレ || TALENT:プライド高い || TALENT:生意気
-		PRINTFORMW %CALLNAME:TARGET%は何も言わないが、くすぐったいのか嬉しいのか口元が綻んでいる気がする……
-	ELSE
-		PRINTFORMW %CALLNAME:TARGET%は撫でられることにご満悦の様子だ……
-	ENDIF
+IF TEQUIP:睡眠
+	PRINTFORMW 寝ている%CALLNAME:TARGET%の尻尾は起きてるときとは違い、不規則にぱたぱたと動いている……
+ELSEIF CFLAG:死亡
+	PRINTFORMW 当然だが持ち主が死んでしまった尻尾は微動だにせず、毛艶も悪くなっている……
 ELSE
-	PRINTFORMW %CALLNAME:TARGET%は嫌がっているのか、掴もうとした尻尾がするすると逃げてしまう……
+	IF CFLAG:陥落 || (TALENT:アニマル && CFLAG:依存度 >= 1500)
+		IF TALENT:ツンデレ || TALENT:プライド高い || TALENT:生意気
+			PRINTFORMW %CALLNAME:TARGET%は何も言わないが、くすぐったいのか嬉しいのか口元が綻んでいる気がする……
+		ELSE
+			PRINTFORMW %CALLNAME:TARGET%は撫でられることにご満悦の様子だ……
+		ENDIF
+	ELSEIF ゲームモード() == "学園モード"
+		PRINTFORMW %CALLNAME:TARGET%は特段嫌がることもなく%CALLNAME:PLAYER%に尻尾を委ねた
+	ELSE
+		PRINTFORMW %CALLNAME:TARGET%は嫌がっているのか、掴もうとした尻尾がするすると逃げてしまう……
+	ENDIF
 ENDIF
 
 ;-------------------------------------------------
@@ -803,7 +824,7 @@ SELECTCASE ハッキング命令
 	CASE "自爆"
 		PRINTW 自爆命令を送った
 		IF CFLAG:陥落
-			PRINTFORMW %CALLNAME:TARGET%は自らの体内で起こる化学反応に気づくと慌てふためき、最期に一言%CALLNAME:MASTER%の名前を読んで爆発した――
+			PRINTFORMW %CALLNAME:TARGET%は自らの体内で起こる化学反応に気づくと慌てふためき、最期に一言%CALLNAME:MASTER%の名前を呼んで爆発した――
 		ELSE
 			PRINTFORMW 急に遠ざかる%CALLNAME:MASTER%\@ ASSI > 0 ? と%CALLNAME:ASSI% #  \@に首を傾げる%CALLNAME:TARGET%は次の瞬間爆発し、辺りに自らの破片と黒煙を撒き散らした――
 		ENDIF
@@ -815,4 +836,3 @@ SELECTCASE ハッキング命令
 		PRINTL 構成情報をダウンロードした
 		PRINTW 設備と技術者が居れば複製を作れるだろう……
 ENDSELECT
-

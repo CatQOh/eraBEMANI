@@ -50,12 +50,17 @@ NEXT
 CALL CHECKDRAWLINE
 
 FOR LCOUNT, 0, VARSIZE("カラムメニュー")
-	;/で区切られていれば表示と関数を分ける
-	SPLIT カラムメニュー:LCOUNT, "/", SPLITVAR
-	IF RESULT == 2
-		文字数計算用 = MAX(STRLENSU(SPLITVAR:0)+4, 文字数計算用)
+	;学園用セーブ＆ロードは特殊
+	IF GROUPMATCH(カラムメニュー:LCOUNT, "学園用_セーブカラム", "学園用_ロードカラム")
+		文字数計算用 = MAX(4+4, 文字数計算用)
 	ELSE
-		文字数計算用 = MAX(STRLENSU(カラムメニュー:LCOUNT)+4, 文字数計算用)
+		;/で区切られていれば表示と関数を分ける
+		SPLIT カラムメニュー:LCOUNT, "/", SPLITVAR
+		IF RESULT == 2
+			文字数計算用 = MAX(STRLENSU(SPLITVAR:0)+4, 文字数計算用)
+		ELSE
+			文字数計算用 = MAX(STRLENSU(カラムメニュー:LCOUNT)+4, 文字数計算用)
+		ENDIF
 	ENDIF
 NEXT
 
@@ -73,12 +78,17 @@ CALL COLUMNMOVE, 0, (文字数計算用+2)*100, MAX_LINE*100
 
 COLUMNDRAW = (行文字数-文字数計算用-3)*2
 
-;/で区切られていれば表示と関数を分ける
-SPLIT カラムメニュー:選択カラム, "/", SPLITVAR
-IF RESULT == 2
-	TRYCALLFORM %カラム%_%SPLITVAR:1%
+;学園用セーブ＆ロードは特殊
+IF GROUPMATCH(カラムメニュー:選択カラム, "学園用_セーブカラム", "学園用_ロードカラム")
+	TRYCALLFORM %カラムメニュー:選択カラム%
 ELSE
-	TRYCALLFORM %カラム%_%カラムメニュー:選択カラム%
+	;/で区切られていれば表示と関数を分ける
+	SPLIT カラムメニュー:選択カラム, "/", SPLITVAR
+	IF RESULT == 2
+		TRYCALLFORM %カラム%_%SPLITVAR:1%
+	ELSE
+		TRYCALLFORM %カラム%_%カラムメニュー:選択カラム%
+	ENDIF
 ENDIF
 
 FOR LINE, 0, MAX_LINE+2
@@ -113,12 +123,19 @@ FOR LINE, 0, MAX_LINE+2
 					IF LINE%2
 						SELECTCASE LCOUNT
 							CASE 0
-								;/で区切られてれば関数と表示を分ける
-								SPLIT カラムメニュー:(LINE/2), "/", SPLITVAR
-								IF RESULT == 2
-									PRINTFORM │[{LINE/2+10000}] %SPLITVAR:0, (文字数計算用-4)*2, LEFT%
+								;学園用セーブ＆ロードは特殊
+								IF カラムメニュー:(LINE/2) == "学園用_セーブカラム"
+									PRINTFORM │[{LINE/2+10000}] %"セーブ", (文字数計算用-4)*2, LEFT%
+								ELSEIF カラムメニュー:(LINE/2) == "学園用_ロードカラム"
+									PRINTFORM │[{LINE/2+10000}] %"ロード", (文字数計算用-4)*2, LEFT%
 								ELSE
-									PRINTFORM │[{LINE/2+10000}] %カラムメニュー:(LINE/2), (文字数計算用-4)*2, LEFT%
+									;/で区切られてれば関数と表示を分ける
+									SPLIT カラムメニュー:(LINE/2), "/", SPLITVAR
+									IF RESULT == 2
+										PRINTFORM │[{LINE/2+10000}] %SPLITVAR:0, (文字数計算用-4)*2, LEFT%
+									ELSE
+										PRINTFORM │[{LINE/2+10000}] %カラムメニュー:(LINE/2), (文字数計算用-4)*2, LEFT%
+									ENDIF
 								ENDIF
 							CASE 行文字数-1
 								PRINT │
@@ -217,12 +234,17 @@ SELECTCASE RESULT
 	CASEELSE
 		CRESULT:0 = 選択カラム
 		CRESULT:1 = RESULT
-		;/で区切られてれば関数と表示を分ける
-		SPLIT カラムメニュー:選択カラム, "/", SPLITVAR
-		IF RESULT == 2
-			TRYCALLFORM %カラム%_%SPLITVAR:1%_INPUT
+		;学園用セーブ＆ロードは特殊
+		IF GROUPMATCH(カラムメニュー:選択カラム, "学園用_セーブカラム", "学園用_ロードカラム")
+			TRYCALLFORM %カラムメニュー:選択カラム%_INPUT
 		ELSE
-			TRYCALLFORM %カラム%_%カラムメニュー:選択カラム%_INPUT
+			;/で区切られてれば関数と表示を分ける
+			SPLIT カラムメニュー:選択カラム, "/", SPLITVAR
+			IF RESULT == 2
+				TRYCALLFORM %カラム%_%SPLITVAR:1%_INPUT
+			ELSE
+				TRYCALLFORM %カラム%_%カラムメニュー:選択カラム%_INPUT
+			ENDIF
 		ENDIF
 		REDRAW 1
 		RETURN
