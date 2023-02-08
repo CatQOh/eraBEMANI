@@ -1,4 +1,4 @@
-﻿@ロケーション選択
+﻿@ロケーション選択, 散策
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC LRESULT
@@ -6,8 +6,20 @@
 #DIMS DYNAMIC 名称抜き取り用, 2
 #DIMS DYNAMIC 目的地
 #DIM DYNAMIC 会話候補, 1010
+#DIM DYNAMIC 散策
 
 VARSET ロケーション判定
+
+IF 散策
+	SPLIT CSTR:PLAYER:現在地, "/", 名称抜き取り用
+	;分割されてたらスラッシュより後の部分だけを使用する
+	IF RESULT >= 2
+		目的地 = %名称抜き取り用:1%
+	ELSE
+		目的地 = %CSTR:PLAYER:現在地%
+	ENDIF
+	GOTO 散策
+ENDIF
 
 DRAWLINE
 PRINTL □目的地を選択してください
@@ -18,9 +30,15 @@ FOR LCOUNT, 0, VARSIZE("ロケーション")
 	;分割されてたらスラッシュより後の部分だけを使用する
 	IF RESULT >= 2
 		RESULT = 0
+		;既に現在地の場合は無効
+		SIF CSTR:PLAYER:現在地 == 名称抜き取り用:1
+			CONTINUE
 		TRYCALLFORM ロケーション条件_%名称抜き取り用:1%
 	ELSE
 		RESULT = 0
+		;既に現在地の場合は無効
+		SIF CSTR:PLAYER:現在地 == ロケーション:LCOUNT
+			CONTINUE
 		TRYCALLFORM ロケーション条件_%ロケーション:LCOUNT%
 	ENDIF
 	;RETURN 1で返されたら条件を満たしている
@@ -55,7 +73,7 @@ DO
 			SIF !RESULT
 				CONTINUE
 			PRINTFORML %CALLNAME:PLAYER%は%目的地%に向かった
-			;CSTR:PLAYER:現在地 = %目的地%
+			CSTR:PLAYER:現在地 = %目的地%
 			BREAK
 		CASE 10000
 			RETURN 0
@@ -63,6 +81,8 @@ DO
 			CONTINUE
 	ENDSELECT
 LOOP 1
+
+$散策
 
 ;関数でロケーションごとに出現するキャラを設定する
 ;「出現キャラ」フラグの数値は1～100 出現する確率
@@ -76,7 +96,11 @@ TRYCCALLFORM ロケーション_%目的地%
 ;無ければ会話コマンド
 CATCH
 	$リロード
-	PRINTFORML □%目的地%に着いた 何をしよう？
+	IF 散策
+		PRINTFORML □%CALLNAME:PLAYER%は%目的地%を散策してみた
+	ELSE
+		PRINTFORML □%目的地%に着いた 何をしよう？
+	ENDIF
 	VARSET 会話候補
 	FOR LCOUNT, 1, CHARANUM
 		IF 出現率:LCOUNT > 0
@@ -108,7 +132,7 @@ CATCH
 	ENDIF
 	DRAWLINE
 	PRINTPLAINFORM 　%目的地%　
-	PRINTL [0] - 帰る [-1] - もう少し周りを見てみる
+	PRINTFORML [0] - 帰る [-1] - %目的地%に留まる [-2] - もう少し周りを見てみる
 	DO
 		INPUT
 		LRESULT = RESULT
@@ -117,6 +141,8 @@ CATCH
 				CSTR:PLAYER:現在地 = 自宅
 				RETURN 1
 			CASE -1
+				RETURN 1
+			CASE -2
 				GOTO リロード
 			CASE 1 TO CHARANUM
 				SIF !会話候補:LRESULT

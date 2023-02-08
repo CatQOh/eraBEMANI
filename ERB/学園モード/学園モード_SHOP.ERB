@@ -15,7 +15,6 @@ ELSE
 	CALL カラム生成, "学園用汎用カラム", "コマンド", "学園用_セーブカラム", "学園用_ロードカラム"
 ENDIF
 
-;プレイヤーがロケーションとして滞在できるのは現時点では自宅と学校だけにしたい
 TRYCALLFORM ロケーション_%CSTR:PLAYER:現在地%
 
 @COLUMNSHOP_SCHOOL
@@ -25,10 +24,11 @@ IF GUI
 	;ここらへんでカレンダーを表示してみる
 	CALL カレンダー生成
 	;そうそうサイズは変わらないと思うのでサイズ直指定してみる
-	CALL COLUMNPRINT, 0, "　　　　　　　"
+	CALL COLUMNPRINT, 0, "　　　　　　　　　　　　"
 	CALL COLUMNIMG, 0, "カレンダー", 1095, 1162
 ENDIF
 CALL COLUMNPRINTL, 0, ""
+CALL COLUMNPRINTL, 0, @"　時間:%ターン% 現在地:%CSTR:PLAYER:現在地% 同行者:\@ 同行者 ? %NAME:同行者% # 無し \@"
 CALL COLUMNPRINTL, 0, @"　所持金:%TOOPTIONINT(MONEY)%＄"
 
 @学園用_セーブカラム
@@ -42,3 +42,44 @@ CALL SHOP_ロード
 
 @学園用_ロードカラム_INPUT
 CALL SHOP_ロード_INPUT
+
+@学園用汎用カラム_コマンド
+CALL COLUMNSHOP_SCHOOL
+
+CALL COLUMNDRAWLINE, 0
+CALL COLUMNPRINTL, 0, @"□何をしよう？"
+
+;ここで0～9を使う
+TRYCALLFORM %CSTR:PLAYER:現在地%_専用コマンド
+
+CALL COLUMNPRINTL, 0, @"　[100] - \@ 同行者 ? %CALLNAME:同行者%と #\@別の場所に行く"
+CALL COLUMNPRINTL, 0, @"　[101] - %CSTR:PLAYER:現在地%を散策する"
+CALL COLUMNPRINTL, 0, "　[102] - 家に帰る"
+IF 同行者
+	CALL COLUMNPRINTL, 0, @"　[110] - %CALLNAME:同行者%と会話する"
+	CALL COLUMNPRINTL, 0, @"　[111] - %CALLNAME:同行者%と別行動する"
+ENDIF
+
+@学園用汎用カラム_コマンド_INPUT
+SELECTCASE CRESULT:1
+	CASE 100
+		CALL ロケーション選択
+	CASE 101
+		CALL ロケーション選択, 1
+	CASE 102
+		PRINTFORMW %CALLNAME:PLAYER%は\@ 同行者 ? %CALLNAME:同行者%を連れて #\@家に帰ることにした
+		CSTR:PLAYER:現在地 = 自宅
+		IF 同行者
+			CSTR:同行者:現在地 = %CALLNAME:PLAYER%の家
+			CSTR:同行者:目的 = 遊び
+		ENDIF
+	CASE 110
+		CALL 学園モード_汎用会話, 同行者
+	CASE 111
+		PRINTFORMW %CALLNAME:PLAYER%は%CALLNAME:同行者%と別れた
+		同行者 = 0
+		RETURN 0
+ENDSELECT
+
+SIF RESULT
+	JUMP TURNEND_学園
