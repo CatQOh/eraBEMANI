@@ -1,0 +1,58 @@
+﻿@友人と遊びに行く
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象
+#DIM DYNAMIC LRESULT
+#DIMS DYNAMIC 名称抜き取り用, 2
+#DIMS DYNAMIC 目的地
+
+PRINTL □誰を誘いますか？
+;連絡先を持っているキャラを羅列
+FOR LCOUNT, 1, CHARANUM
+	SIF !連絡先:LCOUNT
+		CONTINUE
+	PRINTFORML [{LCOUNT, 3}] - %SNAME(LCOUNT)%
+NEXT
+DRAWLINE
+PRINTL 　[0] - やっぱりやめる
+
+BINPUT
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASEELSE
+		対象 = RESULT
+		PRINTFORML %CALLNAME:対象%と連絡を取り、待ち合わせをすることにした
+		PRINTL どこで待ち合わせますか？
+		CALL ロケーション一覧
+		DRAWLINE
+		PRINTPLAIN 　待ち合わせ　[10000] - 用事を思い出した
+		BINPUT
+		LRESULT = RESULT
+		SELECTCASE LRESULT
+			CASE 10000
+				RETURN 0
+			CASEELSE
+				SPLIT ロケーション:LRESULT, "/", 名称抜き取り用
+				;分割されてたらスラッシュより後の部分だけを使用する
+				IF RESULT >= 2
+					目的地 = %名称抜き取り用:1%
+				ELSE
+					目的地 = %ロケーション:LRESULT%
+				ENDIF
+
+				RESULT = 0
+				TRYCALLFORM ロケーション条件_%目的地%
+				SIF !RESULT
+					CONTINUE
+				PRINTFORMW %CALLNAME:PLAYER%は%CALLNAME:TARGET%と%目的地%で待ち合わせし、そこに向かった
+				CSTR:PLAYER:現在地 = %目的地%
+				DRAWLINE
+				PRINTFORMW %目的地%で%CALLNAME:対象%と合流しました
+				CALL 好感度上昇, 対象, "友情", 5
+				CALL 好感度上昇, 対象, "ときめき", 5
+				同行者 = 対象
+		ENDSELECT
+ENDSELECT
+
+RETURN 1

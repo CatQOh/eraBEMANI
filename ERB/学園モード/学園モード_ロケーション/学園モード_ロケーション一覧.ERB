@@ -24,63 +24,30 @@ ENDIF
 DRAWLINE
 PRINTL □目的地を選択してください
 
-FOR LCOUNT, 0, VARSIZE("ロケーション")
-	;条件判定用関数でロケーションごとの出現条件を設定する
-	SPLIT ロケーション:LCOUNT, "/", 名称抜き取り用
-	;分割されてたらスラッシュより後の部分だけを使用する
-	IF RESULT >= 2
-		RESULT = 0
-		;既に現在地の場合は無効
-		SIF CSTR:PLAYER:現在地 == 名称抜き取り用:1
-			CONTINUE
-		TRYCALLFORM ロケーション条件_%名称抜き取り用:1%
-	ELSE
-		RESULT = 0
-		;既に現在地の場合は無効
-		SIF CSTR:PLAYER:現在地 == ロケーション:LCOUNT
-			CONTINUE
-		TRYCALLFORM ロケーション条件_%ロケーション:LCOUNT%
-	ENDIF
-	;RETURN 1で返されたら条件を満たしている
-	SIF !RESULT
-		CONTINUE
-	PRINTFORMLC 　[{LCOUNT}] - %ロケーション:LCOUNT%
-	ロケーション判定:LCOUNT = 1
-NEXT
-CALL NEWLINE
+CALL ロケーション一覧
 
 DRAWLINE
 PRINTPLAIN 　ロケーション選択　
 PRINTL [10000] - 戻る
 
-DO
-	INPUT
-	LRESULT = RESULT
-	SELECTCASE LRESULT
-		CASE 0 TO VARSIZE("ロケーション")-1
-			SIF !ロケーション判定:LRESULT
-				CONTINUE
-			SPLIT ロケーション:LRESULT, "/", 名称抜き取り用
-			;分割されてたらスラッシュより後の部分だけを使用する
-			IF RESULT >= 2
-				目的地 = %名称抜き取り用:1%
-			ELSE
-				目的地 = %ロケーション:LRESULT%
-			ENDIF
+BINPUT
 
-			RESULT = 0
-			TRYCALLFORM ロケーション条件_%目的地%
-			SIF !RESULT
-				CONTINUE
-			PRINTFORML %CALLNAME:PLAYER%は%目的地%に向かった
-			CSTR:PLAYER:現在地 = %目的地%
-			BREAK
-		CASE 10000
-			RETURN 0
-		CASEELSE
-			CONTINUE
-	ENDSELECT
-LOOP 1
+LRESULT = RESULT
+SELECTCASE LRESULT
+	CASE 0 TO VARSIZE("ロケーション")-1
+		SPLIT ロケーション:LRESULT, "/", 名称抜き取り用
+		;分割されてたらスラッシュより後の部分だけを使用する
+		IF RESULT >= 2
+			目的地 = %名称抜き取り用:1%
+		ELSE
+			目的地 = %ロケーション:LRESULT%
+		ENDIF
+
+		PRINTFORML %CALLNAME:PLAYER%は%目的地%に向かった
+		CSTR:PLAYER:現在地 = %目的地%
+	CASE 10000
+		RETURN 0
+ENDSELECT
 
 $散策
 
@@ -174,3 +141,31 @@ ENDCATCH
 
 
 RETURN 1
+
+@ロケーション一覧
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 名称抜き取り用, 2
+
+FOR LCOUNT, 0, VARSIZE("ロケーション")
+	;条件判定用関数でロケーションごとの出現条件を設定する
+	SPLIT ロケーション:LCOUNT, "/", 名称抜き取り用
+	;分割されてたらスラッシュより後の部分だけを使用する
+	IF RESULT >= 2
+		RESULT = 0
+		;既に現在地の場合は無効
+		SIF CSTR:PLAYER:現在地 == 名称抜き取り用:1
+			CONTINUE
+		TRYCALLFORM ロケーション条件_%名称抜き取り用:1%
+	ELSE
+		RESULT = 0
+		;既に現在地の場合は無効
+		SIF CSTR:PLAYER:現在地 == ロケーション:LCOUNT
+			CONTINUE
+		TRYCALLFORM ロケーション条件_%ロケーション:LCOUNT%
+	ENDIF
+	;RETURN 1で返されたら条件を満たしている
+	SIF !RESULT
+		CONTINUE
+	PRINTFORMLC 　[{LCOUNT}] - %ロケーション:LCOUNT%
+NEXT
+CALL NEWLINE
