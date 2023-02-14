@@ -4,6 +4,7 @@
 #DIM DYNAMIC 保健室滞在者
 #DIM DYNAMIC 候補, 50
 #DIM DYNAMIC 候補人数
+#DIM DYNAMIC 睡眠中
 
 CSTR:PLAYER:現在地 = %CSTR:PLAYER:在校%
 
@@ -35,7 +36,15 @@ ELSE
 		PRINTL [0] - 具合が悪いので保健室で休む
 		PRINTL [1] - 授業に戻る
 	ELSE
-		PRINTFORML %CALLNAME:PLAYER%が保健室に行くと、%CSTR:保健室滞在者%も保健室に訪れていた
+		;20%で睡眠中
+		SIF RANDPER(20)
+			睡眠中 = 1
+		PRINTFORM %CALLNAME:PLAYER%が保健室に行くと、
+		IF 睡眠中
+			PRINTFORML %CSTR:保健室滞在者%がベッドで眠っていた
+		ELSE
+			PRINTFORML %CSTR:保健室滞在者%も保健室に訪れていた
+		ENDIF
 		TARGET = 保健室滞在者
 		PRINTL [0] - 具合が悪いので保健室で休む
 		PRINTL [1] - 授業に戻る
@@ -89,52 +98,75 @@ SELECTCASE RESULT
 					JUMP SHOP_SCHOOL
 			ENDSELECT
 		ELSE
-			PRINTFORML □%CALLNAME:TARGET%は%CALLNAME:PLAYER%を一瞥すると、軽く声を掛けてきた
-			PRINTL 　[0] - 軽い挨拶で返す
-			PRINTL 　[1] - 盛り上がりそうな話を振る
-			PRINTL 　[2] - ベッドのシェアを提案する
-			PRINTL 　[3] - 治ったので授業に戻る
-			CALL INPUTF, 0, 1, 2, 3
-			SELECTCASE RESULT
-				CASE 0
-					PRINTFORMW %CALLNAME:TARGET%も挨拶に応え、一言二言程度の軽い会話を交わした
-					CALL 好感度上昇, TARGET, "友情", 10
-				CASE 1
-					IF 好感度:友情 >= 200 || TALENT:サボり魔
-						PRINTFORMW %CALLNAME:TARGET%は具合が悪そうな素振りも見せずに%CALLNAME:PLAYER%との会話を楽しんだ
+			IF 睡眠中
+				PRINTFORML □%CALLNAME:TARGET%はベッドで眠っている
+				PRINTL 　[0] - 適当に休む
+				PRINTFORML 　[1] - %CALLNAME:TARGET%にいたずらする
+				PRINTL 　[2] - 治ったので授業に戻る
+				BINPUT
+				SELECTCASE RESULT
+					CASE 0
+						PRINTFORMW %CALLNAME:PLAYER%は保健室で休んだ
+					CASE 1
+						PRINTFORMW %CALLNAME:TARGET%は無防備に眠っている。起こさない程度にいたずらをすることにした
+						TEQUIP:睡眠 = 15
+						DRAWLINE
+						CALL TRAIN_SCHOOL
+						CALL CHECKDRAWLINE
+						PRINTFORMW 満足した%CALLNAME:PLAYER%は、ベッドの布団を元に戻し、%CALLNAME:TARGET%が気づかないうちに保健室を後にした
+					CASE 2
+						PRINTFORMW %CALLNAME:TARGET%を起こさないように保健室を後にした
+						JUMP SHOP_SCHOOL
+				ENDSELECT
+			ELSE
+				PRINTFORML □%CALLNAME:TARGET%は%CALLNAME:PLAYER%を一瞥すると、軽く声を掛けてきた
+				PRINTL 　[0] - 軽い挨拶で返す
+				PRINTL 　[1] - 盛り上がりそうな話を振る
+				PRINTL 　[2] - ベッドのシェアを提案する
+				PRINTL 　[3] - 治ったので授業に戻る
+				BINPUT
+				SELECTCASE RESULT
+					CASE 0
+						PRINTFORMW %CALLNAME:TARGET%も挨拶に応え、一言二言程度の軽い会話を交わした
 						CALL 好感度上昇, TARGET, "友情", 10
-						CALL 好感度上昇, TARGET, "ときめき", 10
-					ELSE
-						PRINTFORMW %CALLNAME:TARGET%は本当に具合が悪いのか、%CALLNAME:PLAYER%の話を不快そうな顔で遮った……
-						CALL 好感度上昇, TARGET, "ときめき", -10
-					ENDIF
-				CASE 2
-					IF 好感度:既成事実 >= 10
-						PRINTFORMW %CALLNAME:TARGET%は%CALLNAME:PLAYER%の提案を聞くと、廊下に誰も居ないことを確認し、鍵を掛けてベッドへと向かった
-					ELSEIF CFLAG:倫理観 >= 30
-						PRINTFORMW %CALLNAME:TARGET%は少し考え込むと、制服のボタンを外しながら提案に乗った
-					ELSEIF 好感度:セフレ >= 1000
-						PRINTFORMW %CALLNAME:TARGET%は少し戸惑ったが、好奇心のほうが勝ったのか早めに済ませることを強調して提案に乗った
-					ELSE
-						PRINTFORMW %CALLNAME:TARGET%は引き気味に言葉を濁し、逃げるように保健室から出ていってしまった……
-						CALL 好感度上昇, TARGET, "ときめき", -10
-						WAIT
-						RETURN 1
-					ENDIF
-					CALL TRAIN_SCHOOL
-					CALL CHECKDRAWLINE
-					PRINTFORMW %CALLNAME:TARGET%は呼吸を整え、汗と体液で汚れた体をアルコールティッシュで拭き、保健室を後にした
-					CALL 好感度上昇, TARGET, "友情", 30
-					CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
-					CALL 好感度上昇, TARGET, "セフレ", 50
-					CALL 好感度上昇, TARGET, "既成事実", 1
-					SIF !TALENT:恋慕
+					CASE 1
+						IF 好感度:友情 >= 200 || TALENT:サボり魔
+							PRINTFORMW %CALLNAME:TARGET%は具合が悪そうな素振りも見せずに%CALLNAME:PLAYER%との会話を楽しんだ
+							CALL 好感度上昇, TARGET, "友情", 10
+							CALL 好感度上昇, TARGET, "ときめき", 10
+						ELSE
+							PRINTFORMW %CALLNAME:TARGET%は本当に具合が悪いのか、%CALLNAME:PLAYER%の話を不快そうな顔で遮った……
+							CALL 好感度上昇, TARGET, "ときめき", -10
+						ENDIF
+					CASE 2
+						IF 好感度:既成事実 >= 10
+							PRINTFORMW %CALLNAME:TARGET%は%CALLNAME:PLAYER%の提案を聞くと、廊下に誰も居ないことを確認し、鍵を掛けてベッドへと向かった
+						ELSEIF CFLAG:倫理観 >= 30
+							PRINTFORMW %CALLNAME:TARGET%は少し考え込むと、制服のボタンを外しながら提案に乗った
+						ELSEIF 好感度:セフレ >= 1000
+							PRINTFORMW %CALLNAME:TARGET%は少し戸惑ったが、好奇心のほうが勝ったのか早めに済ませることを強調して提案に乗った
+						ELSE
+							PRINTFORMW %CALLNAME:TARGET%は引き気味に言葉を濁し、逃げるように保健室から出ていってしまった……
+							CALL 好感度上昇, TARGET, "ときめき", -10
+							WAIT
+							RETURN 1
+						ENDIF
+						DRAWLINE
+						CALL TRAIN_SCHOOL
+						CALL CHECKDRAWLINE
+						PRINTFORMW %CALLNAME:TARGET%は呼吸を整え、汗と体液で汚れた体をアルコールティッシュで拭き、保健室を後にした
+						CALL 好感度上昇, TARGET, "友情", 30
+						CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
+						CALL 好感度上昇, TARGET, "セフレ", 50
+						CALL 好感度上昇, TARGET, "既成事実", 1
+						SIF !TALENT:恋慕
+							CFLAG:倫理観++
 						CFLAG:倫理観++
-					CFLAG:倫理観++
-				CASE 3
-					PRINTFORMW 怪訝そうな顔をする%CALLNAME:TARGET%に会釈して保健室を後にした……
-					JUMP SHOP_SCHOOL
-			ENDSELECT
+					CASE 3
+						PRINTFORMW 怪訝そうな顔をする%CALLNAME:TARGET%に会釈して保健室を後にした……
+						JUMP SHOP_SCHOOL
+				ENDSELECT
+			ENDIF
 		ENDIF
 	CASE 1
 		JUMP SHOP_SCHOOL
