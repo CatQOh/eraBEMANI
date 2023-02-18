@@ -95,6 +95,8 @@ ELSE
 	CALL PRINTCOLORL, "　[-] - 人体錬成をする(主人か配属中のキャラが[禁断の知識]を持っている必要があります)", "gray"
 ENDIF
 SIF STSMOD
+	PRINTL 　[8] - キャラを安楽死させる
+SIF STSMOD
 	PRINTL 　[9] - キャラを解体する
 
 ;IF 配属人数
@@ -142,6 +144,10 @@ DO
 		CASE 6
 			SIF 禁断の知識あり
 				CALL 人体錬成
+			RESTART
+		CASE 8
+			SIF STSMOD
+				CALL STS_KILL
 			RESTART
 		CASE 9
 			SIF STSMOD
@@ -579,6 +585,75 @@ NEXT
 ;3人まで配属できるので最大6
 RETURNF 医務室ランク
 
+@STS_KILL
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 飛ばした数
+#DIM DYNAMIC 次ページあり
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 対象
+
+DRAWLINE
+
+PRINTL □安楽死させるキャラを選んでください
+表示数 = 0
+次ページあり = 0
+FOR LCOUNT, 1, CHARANUM
+	SIF TALENT:LCOUNT:無機物
+		CONTINUE
+	SIF TALENT:LCOUNT:スライム || TALENT:LCOUNT:溶ける快
+		CONTINUE
+	SIF TALENT:LCOUNT:ゾンビ || TALENT:LCOUNT:霊体
+		CONTINUE
+	SIF ゲームモード() == "経営モード" && NO:LCOUNT == FLAG:パートナー
+		CONTINUE
+	表示数++
+	IF 表示数 > ページ数*20+20
+		次ページあり = 1
+		BREAK
+	ENDIF
+	SIF !INRANGE(表示数, ページ数*20, ページ数*20+20)
+		CONTINUE
+	PRINTFORM 　[{LCOUNT, 2}] %NAME:LCOUNT, 26, LEFT%
+	PRINTL 
+NEXT
+IF 表示数 == 0
+	PRINTL 
+	PRINTL 　安楽死可能なキャラは居ません
+	PRINTL 
+ENDIF
+DRAWLINE
+PRINTPLAINFORM 　安楽死.{ページ数+1}　
+CALL PRINTSPACE, ページ数 > 0, "[-1] - 前ページ "
+PRINT [0] - 戻る
+CALL PRINTSPACE, 次ページあり, "[-9] - 次ページ "
+PRINTL 
+
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE -1
+		SIF ページ数 > 0
+			ページ数--
+		RESTART
+	CASE -9
+		SIF 次ページあり
+			ページ数++
+		RESTART
+	CASEELSE
+		対象 = RESULT
+		PRINTFORML %NAME:対象%を安楽死させます。よろしいですか？
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		BINPUT
+		SIF RESULT
+			RESTART
+		PRINTFORMW %CALLNAME:対象%に薬を投与すると、%CALLNAME:対象%は眠るように死んだ……
+		CALL キャラ死亡, 対象
+		RESTART
+ENDSELECT
+
 @STS_BLOOD
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 表示数
@@ -598,6 +673,8 @@ FONTREGULAR
 次ページあり = 0
 FOR LCOUNT, 1, CHARANUM
 	SIF TALENT:LCOUNT:無機物
+		CONTINUE
+	SIF TALENT:LCOUNT:霊体
 		CONTINUE
 	SIF ゲームモード() == "経営モード" && NO:LCOUNT == FLAG:パートナー
 		CONTINUE

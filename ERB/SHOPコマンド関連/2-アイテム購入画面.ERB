@@ -347,6 +347,8 @@ SELECTCASE アイテム分類
 			ITEMSALES:聖水 = 1
 			ITEMSALES:性転換薬 = 1
 			ITEMSALES:リミッター解除 = 1
+			SIF STSMOD
+				ITEMSALES:仮死薬 = 1
 		ENDIF
 
 		;調合知識or禁断の知識が必要
@@ -1281,6 +1283,9 @@ SELECTCASE アイテム名
 		CALL SE再生, 特殊素質取得
 		PRINTFORMW ＜%NAME:使用対象%はカメラマンになった＞
 		TALENT:使用対象:カメラマン = 1
+	CASE "仮死薬"
+		PRINTFORMW ＜%NAME:使用対象%は仮死状態になった＞
+		CFLAG:使用対象:仮死薬 = 1
 ENDSELECT
 
 CALL SETBASE, 使用対象
@@ -1509,6 +1514,20 @@ SELECTCASE アイテムNO
 			CASE "TheSlimeOfYou"
 				;既に感染してると使えないが、スライム化した後は再度使用可能になる
 				SIF (CFLAG:使用対象:スライム度 && !TALENT:使用対象:スライム) || TALENT:使用対象:溶ける快
+					RETURNF 0
+				RETURNF 1
+			CASE "仮死薬"
+				;ゾンビ、霊体には使用不可
+				SIF CSTR:使用対象:種族 == "ゾンビ" || TALENT:使用対象:ゾンビ || TALENT:使用対象:霊体
+					RETURNF 0
+				;機械、無機物にも使用不可
+				SIF CSTR:使用対象:種族 == "機械" || TALENT:使用対象:無機物
+					RETURNF 0
+				;スライムにも使えない
+				SIF TALENT:使用対象:スライム || TALENT:使用対象:溶ける快
+					RETURNF 0
+				;死亡のリスクがあるのでパートナーには使えない
+				SIF ゲームモード() == "経営モード" && NO:使用対象 == FLAG:パートナー
 					RETURNF 0
 				RETURNF 1
 		ENDSELECT
@@ -1797,6 +1816,11 @@ SELECTCASE アイテム名
 		PRINTL KO○AMIのアーケードゲームをPCやスマートフォンからいつでも楽しめるサービス！
 	CASE "コナステ解約"
 		PRINTL またのご利用をお待ちしてます
+	CASE "仮死薬"
+		PRINT CIAが特殊潜入任務のために開発した、死を偽装する薬。屍姦プレイを楽しめるが
+		FONTBOLD
+		PRINTL 蘇生が遅れると本当に死んでしまう点に注意
+		FONTREGULAR
 ENDSELECT
 
 @アイテム使用_逆引き, 使用対象

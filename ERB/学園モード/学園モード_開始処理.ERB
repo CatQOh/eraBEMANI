@@ -170,12 +170,12 @@ FOR LCOUNT, 1, CHARANUM
 				学園乱数固定用:10 = %学園ランダム("小")%
 			CSTR:LCOUNT:在校 = %学園乱数固定用:10%
 		;以下大学＆ランダム入学
-		{
-		CASE "水城 セリカ", "北見 エリカ", "神崎 紗矢", "理子", "ハーティ", "夜兎姫", "夜々祇", "トヨタマヒメ", "スタンパ", "アヤ", "ヒュー", "愛子", "レナ", "彗星ローラ",
-			 "エリカ", "あやめ", "ノネット", "グリム", "エミ", "響香", "しゃま", "星見 日向", "ファロ", "マルファータ", "ベルフォート", "ローズマリー", "レイジ", 
-			 "ハーティー"
-		}
-			CSTR:LCOUNT:在校 = BEMANI大学
+		;{
+		;CASE "水城 セリカ", "北見 エリカ", "神崎 紗矢", "理子", "ハーティ", "夜兎姫", "夜々祇", "トヨタマヒメ", "スタンパ", "アヤ", "ヒュー", "愛子", "レナ", "彗星ローラ",
+		;	 "エリカ", "あやめ", "ノネット", "グリム", "エミ", "響香", "しゃま", "星見 日向", "ファロ", "マルファータ", "ベルフォート", "ローズマリー", "レイジ", 
+		;	 "ハーティー"
+		;}
+		;	CSTR:LCOUNT:在校 = BEMANI大学
 		;小中高ランダム
 		;小○校
 		{
@@ -334,7 +334,18 @@ DO
 			FOR LCOUNT, 0, CHARANUM
 				SIF CSTR:LCOUNT:在任 != 学校名:RESULT
 					CONTINUE
-				PRINTFORML 　担当科目:%CSTR:LCOUNT:担当科目% No.{NO:LCOUNT} %NAME:LCOUNT% 
+				PRINT 　担当科目:
+				IF 小中高(学校名:RESULT) == "小"
+					SELECTCASE CSTR:LCOUNT:担当科目
+						CASE "数学"
+							PRINT 算数
+						CASE "科学"
+							PRINT 理科
+					ENDSELECT
+				ELSE
+					PRINTFORM %CSTR:LCOUNT:担当科目%
+				ENDIF
+				PRINTFORML  No.{NO:LCOUNT} %NAME:LCOUNT% 
 			NEXT
 			DRAWLINE
 			PRINTPLAINFORM 　%学校名:RESULT%　
@@ -464,7 +475,8 @@ ENDSELECT
 
 DO
 	赴任先 = %学校名:(RAND:VARSIZE("学校名"))%
-
+	SIF 赴任先 == ""
+		CONTINUE
 	;マジックアカデミーは固定で付いてるので赴任しない
 	SIF 赴任先 == "マジックアカデミー"
 		CONTINUE
@@ -477,3 +489,30 @@ DO
 LOOP 1
 
 RETURNF 赴任先
+
+@小中高, ARGS
+#FUNCTIONS
+#DIM DYNAMIC LCOUNT
+#DIM 小
+#DIM 中
+
+IF !小
+	FOR LCOUNT, 0, VARSIZE("学校名")
+		IF 学校名:LCOUNT == ""
+			IF !小
+				小 = LCOUNT
+			ELSE
+				中 = LCOUNT
+				BREAK
+			ENDIF
+		ENDIF
+	NEXT
+ENDIF
+
+IF INRANGE(FINDELEMENT(学校名, ARGS, 0, VARSIZE("学校名"), 1), 0, 小)
+	RETURNF "小"
+ELSEIF INRANGE(FINDELEMENT(学校名, ARGS, 0, VARSIZE("学校名"), 1), 小, 中)
+	RETURNF "中"
+ELSE
+	RETURNF "高"
+ENDIF

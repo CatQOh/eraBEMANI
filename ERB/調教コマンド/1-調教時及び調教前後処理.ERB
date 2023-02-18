@@ -18,11 +18,6 @@ CALL CVAR_RESET
 SIF トイレ使用中
 	TEQUIP:トイレ = 1
 
-;屍姦、睡姦中は口上表示しない(暫定)
-IF CFLAG:死亡 || TEQUIP:睡眠
-	TFLAG:口上フラグ退避用 = FLAG:口上表示
-	FLAG:口上表示 = 0
-ENDIF
 ;初期着衣設定に応じて、服の設定をする
 FOR LCOUNT, 100, 107
 	SIF CSTR:LCOUNT != ""
@@ -52,6 +47,9 @@ SELECTCASE FLAG:着衣設定
 		SIF ASSI > 0
 			VARSET TEQUIP:ASSI:0, 0, 0, 7
 ENDSELECT
+
+SIF CFLAG:死亡 && !TEQUIP:仮死薬
+	CFLAG:ストレス値 = 0
 
 ;調教対象・助手が特定のキャラの場合、調教開始時に豹変することがある
 ;紅刃……1/5の確率で豹変
@@ -201,15 +199,6 @@ BASE:母乳 = 0
 ;触手の射精も0に
 BASE:MASTER:触手射精 = 0
 
-;死体は体力気力魔力0
-IF CFLAG:死亡
-	BASE:体力 = 0
-	BASE:気力 = 0
-	BASE:魔力 = 0
-	;実行判定も無視
-	TFLAG:実行判定無視 = 100
-ENDIF
-
 ;射精限界数の確保
 CFLAG:残数 = 10
 SIF TALENT:絶倫
@@ -248,13 +237,36 @@ SIF ASSI >= 0
 VARSET TFLAG
 ハッキング命令 = 
 
+IF CFLAG:仮死薬
+	CFLAG:死亡 = 1
+	TEQUIP:仮死薬 = 1
+	CFLAG:仮死薬 = 0
+ENDIF
+
+;死体は体力気力魔力0
+IF CFLAG:死亡
+	IF !TEQUIP:仮死薬
+		BASE:体力 = 0
+		BASE:気力 = 0
+		BASE:魔力 = 0
+	ENDIF
+	;実行判定も無視
+	TFLAG:実行判定無視 = 100
+ENDIF
+
+;屍姦、睡姦中は口上表示しない(暫定)
+IF CFLAG:死亡 || TEQUIP:睡眠
+	TFLAG:口上フラグ退避用 = FLAG:口上表示
+	FLAG:口上表示 = 0
+ENDIF
+
 ;淫乱なら膣内にヴァギナ汚れを付加
-SIF TALENT:淫乱 && VAGINA(TARGET)
+SIF TALENT:淫乱 && VAGINA(TARGET) && !CFLAG:死亡
 	SETBIT STAIN:膣内, 0
 SIF ASSI >= 0 && TALENT:ASSI:淫乱 && VAGINA(ASSI)
 	SETBIT STAIN:ASSI:膣内, 0
 ;淫乱ならペニスに先走り付加
-SIF TALENT:淫乱 && PENIS(TARGET)
+SIF TALENT:淫乱 && PENIS(TARGET) && !CFLAG:死亡
 	SETBIT STAIN:ペニス, 1
 SIF ASSI >= 0 && TALENT:ASSI:淫乱 && PENIS(ASSI)
 	SETBIT STAIN:ASSI:ペニス, 1
@@ -482,6 +494,13 @@ CALL KOJO_START
 ;SKIPDISP中は無視
 SIF ISSKIP()
 	RETURN
+
+IF SELECTCOMS == "蘇生薬投与"
+	;5ターン分ほど使用不可にする
+	CFLAG:使用不可 = 6
+	BEGIN AFTERTRAIN
+ENDIF
+
 IF !TEQUIP:媚薬 && CFLAG:媚薬 >= 10
 	SELECTCASE CSTR:MASTER:種族
 		CASE "獣人", "獣"
@@ -528,7 +547,9 @@ ELSE
 	;裸体盛りでの終了
 	IF TFLAG:裸体盛り
 		TFLAG:調教終了 = 1
-		PRINTFORM %CALLNAME:TARGET%の裸体盛りをみんなに振る舞うことにした
+		PRINTFORML %CALLNAME:TARGET%の裸体盛りをみんなに振る舞うことにした
+		SIF CFLAG:死亡 && CHARANUM > 2
+			PRINTFORML しかし死体に盛り付けられた料理など、ほとんどの人は気味悪がって手を出さなかった……
 		BEGIN AFTERTRAIN
 	;体力切れ
 	ELSEIF BASE:体力 <= 0
@@ -541,6 +562,8 @@ ELSE
 				PRINTFORMW %CALLNAME:TARGET%の様子がおかしい
 				PRINTW 蘇生薬を投与しても反応が無い。どうやら蘇生が遅すぎたようだ
 				PRINTFORML ★★★%CALLNAME:TARGET%は死亡しました★★★
+				TEQUIP:仮死薬 = 0
+				CFLAG:死亡 = 1
 				BEGIN AFTERTRAIN
 			;ガチ屍姦中は体力とか関係無い
 			ELSE
@@ -948,6 +971,17 @@ SIF ハッキング命令 != "自爆"
 	CALL KOJO_TURNEND
 PRINTW 調教を終了しました
 
+IF TEQUIP:仮死薬
+	PRINTW ………………
+	PRINTW …………
+	PRINTW ……
+	PRINTFORMW %CALLNAME:TARGET%の様子がおかしい
+	PRINTW 蘇生薬を投与しても反応が無い。どうやら蘇生が遅すぎたようだ
+	PRINTFORML ★★★%CALLNAME:TARGET%は死亡しました★★★
+	TEQUIP:仮死薬 = 0
+	CFLAG:死亡 = 1
+ENDIF
+
 CALL 調教称号計算
 CALL アイテム修理
 
@@ -1007,6 +1041,9 @@ IF TEQUIP:女装
 	TEQUIP:女装 = 0
 ENDIF
 
+SIF CFLAG:死亡
+	GOTO SKIP
+
 ;快感に素直、快感の否定は絶頂回数に応じてストレス増減
 IF TALENT:快感に素直
 	CFLAG:ストレス値 -= EX:Ｃ絶頂+EX:Ｖ絶頂+EX:Ａ絶頂+EX:Ｂ絶頂+EX:射精/3
@@ -1059,6 +1096,8 @@ IF TFLAG:採血量
 	FLAG:保管済み血液 += TFLAG:採血量
 ENDIF
 
+$SKIP
+
 ;搾乳した母乳の売却
 CALL SELL_MILK
 
@@ -1071,6 +1110,9 @@ CALL SELL_VIDEO
 ;調教時に撮影した写真を売却
 VARLINE = 0
 CALL SELL_PICTURE
+
+SIF CFLAG:死亡
+	GOTO SKIP2
 
 ;調教後行為のチェック 気絶、流産時、裸体盛り時はスルー
 SIF !TFLAG:気絶 && !TFLAG:流産 && !CFLAG:使用不可 && !TFLAG:裸体盛り
@@ -1133,9 +1175,16 @@ IF CFLAG:残数 <= 0 && !TALENT:絶倫 && PENIS(TARGET)
 	TALENT:絶倫 = 1
 ENDIF
 
+$SKIP2
+
 FLAG:口上表示 = TFLAG:口上フラグ退避用
 
 VARLINE = 0
+
+IF CFLAG:死亡
+	CALL キャラ死亡, TARGET
+	BEGIN TURNEND
+ENDIF
 
 ;BEGIN ABLUP
 JUMP USER_ABLUP
@@ -1309,6 +1358,7 @@ PRINTW 以上のように変化しました
 
 @CVAR_RESET
 #DIM DYNAMIC 睡眠時間保存用
+#DIM DYNAMIC 仮死薬保存用
 ;調教時のキャラ変数を初期化する BEGIN TRAINで行われる処理と同等
 ;STAINは独自仕様なので初期化しない
 ASSIPLAY = 0
@@ -1317,10 +1367,7 @@ ASSIPLAY = 0
 VARSET TFLAG
 IF TARGET >= 0
 	VARSET GOTJUEL
-	;睡眠フラグだけ残す
-	睡眠時間保存用 = TEQUIP:睡眠
 	VARSET TEQUIP
-	TEQUIP:睡眠 = 睡眠時間保存用
 	VARSET EX
 	VARSET PALAM
 	VARSET SOURCE
