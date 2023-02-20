@@ -229,10 +229,10 @@ CALL COLUMNCREATE, 0
 
 IF LANGUAGE == "ENG"
 	WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10} English Edition
-	CALL カラム生成, "タイトル", "INFO/インフォメーション", "Load Game/セーブデータのロード", "Editor/エディター", "Settings/設定", "Database,etc/データベース・その他"
+	CALL カラム生成, "タイトル", "INFO/インフォメーション", "Load Game/セーブデータのロード", "Editor/エディター", "Settings/設定", "MOD", "Database,etc/データベース・その他"
 ELSE
 	WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10}
-	CALL カラム生成, "タイトル", "インフォメーション", "セーブデータのロード", "エディター", "設定", "データベース・その他"
+	CALL カラム生成, "タイトル", "インフォメーション", "セーブデータのロード", "エディター", "設定", "エクストラMOD/MOD", "データベース・その他"
 ENDIF
 
 @タイトル_インフォメーション
@@ -387,7 +387,7 @@ SELECTCASE CRESULT:1
 	CASE 0 TO 79, 94 TO 99
 		SELECTCASE CHKDATA(CRESULT:1)
 			CASE 0
-				;STOPBGM
+				CALL FADEOUTBGM
 				LOOP_BREAK = 1
 				LOADDATA CRESULT:1
 		ENDSELECT
@@ -427,28 +427,26 @@ IF LANGUAGE == "ENG"
 	SIF !SP
 		CALL COLUMNPRINTL, 0, @"[1] Sound&amp;BGM(Now:\@ サウンド == 1 ? On # Off \@)"
 	CALL COLUMNPRINTL, 0, "[2] Change Language - 言語変更"
-	CALL COLUMNPRINTL, 0, "[3] EXTRA MOD"
 	IF QMA
-		CALL COLUMNPRINTL, 0, "[5] Set eraBEMANI mode"
+		CALL COLUMNPRINTL, 0, "[4] Set eraBEMANI mode"
 	ELSE
-		CALL COLUMNPRINTL, 0, "[5] Set eraQMA mode"
+		CALL COLUMNPRINTL, 0, "[4] Set eraQMA mode"
 	ENDIF
-	CALL COLUMNPRINTL, 0, @"[6] Enable GUI(Now:\@ GUI ? On # Off \@)"
-	CALL COLUMNPRINTL, 0, @"　　[7] Change GUI Color"
+	CALL COLUMNPRINTL, 0, @"[5] Enable GUI(Now:\@ GUI ? On # Off \@)"
+	CALL COLUMNPRINTL, 0, @"　　[6] Change GUI Color"
 ELSE
 	CALL COLUMNPRINTL, 0, "[0] オプションの初期設定を変更する"
 		CALL COLUMNPRINTL, 0, @"[1] サウンド再生機能(現在:\@ サウンド == 1 ? オン # オフ \@)"
 	CALL COLUMNPRINTL, 0, "[2] 言語変更 - Change Language"
-	CALL COLUMNPRINTL, 0, "[3] エクストラMOD"
 	SIF !SP
-		CALL COLUMNPRINTL, 0, "[4] アップデートをチェックする"
+		CALL COLUMNPRINTL, 0, "[3] アップデートをチェックする"
 	IF QMA
-		CALL COLUMNPRINTL, 0, "[5] eraBEMANI仕様に戻す"
+		CALL COLUMNPRINTL, 0, "[4] eraBEMANI仕様に戻す"
 	ELSE
-		CALL COLUMNPRINTL, 0, "[5] eraQMA仕様にする"
+		CALL COLUMNPRINTL, 0, "[4] eraQMA仕様にする"
 	ENDIF
-	CALL COLUMNPRINTL, 0, @"[6] GUIを有効にする(現在:\@ GUI ? オン # オフ \@)"
-	CALL COLUMNPRINTL, 0, @"　　[7] GUIの色変更"
+	CALL COLUMNPRINTL, 0, @"[5] GUIを有効にする(現在:\@ GUI ? オン # オフ \@)"
+	CALL COLUMNPRINTL, 0, @"　　[6] GUIの色変更"
 ENDIF
 
 @タイトル_設定_INPUT
@@ -466,10 +464,6 @@ SELECTCASE CRESULT:1
 		ENDIF
 		SAVEGLOBAL
 	CASE 3
-		LOADGLOBAL
-		VARLINE = 0
-		CALL EXTRA_MOD
-	CASE 4
 		SIF SP
 			RETURN
 		UPDATECHECK
@@ -486,17 +480,19 @@ SELECTCASE CRESULT:1
 			CASE 4
 				PRINTW UPDATECHECK機能が無効になっています。最新版をチェックする場合はオプションからコンフィグをオフにしてください
 		ENDSELECT
-	CASE 5
+	CASE 4
 		IF !ORIGIN
 			INVERTBIT QMA, 0
 			SAVEGLOBAL
 		ENDIF
-	CASE 6
+	CASE 5
 		INVERTBIT GUI, 0
 		SAVEGLOBAL
-	CASE 7
+	CASE 6
 		CALL GUI_COLOR
 ENDSELECT
+
+;MOD関連はエクストラMOD.ERBにて
 
 @タイトル_データベース・その他
 IF LANGUAGE == "ENG"
@@ -603,37 +599,32 @@ DO
 	DRAWLINE
 	PRINTPLAIN 　ENDING　
 	PRINTL [100] タイトルに戻る
-	DO
-		INPUT
-		SELECTCASE RESULT
-			CASE 100
-				SAVEGLOBAL
-				DELALLCHARA
-				RETURN 0
-			CASE 0
-				PRINTL [0] 主人の名前を変更する
-				PRINTL [1] 奴隷の名前を変更する
-				PRINTL [2] 変更しない
-				CALL INPUTF, 0, 1, 2
-				SELECTCASE RESULT
-					CASE 0
-						PRINTL 名前を入力してください
-						INPUTS
-						CALLNAME:MASTER = %RESULTS%
-						PRINTFORMW 主人の名前を「%CALLNAME:MASTER%」に変更しました
-					CASE 1
-						PRINTL 名前を入力してください
-						INPUTS
-						CALLNAME:TARGET = %RESULTS%
-						PRINTFORMW 奴隷の名前を「%CALLNAME:TARGET%」に変更しました
-				ENDSELECT
-				BREAK
-			CASE 1 TO ENDING
-				SIF ENDING:RESULT
-					CALLFORM ENDING_{RESULT}, 1
-				BREAK
-		ENDSELECT
-	LOOP 1
+	BINPUT
+	SELECTCASE RESULT
+		CASE 100
+			SAVEGLOBAL
+			DELALLCHARA
+			RETURN 0
+		CASE 0
+			PRINTL [0] 主人の名前を変更する
+			PRINTL [1] 奴隷の名前を変更する
+			PRINTL [2] 変更しない
+			BINPUT
+			SELECTCASE RESULT
+				CASE 0
+					PRINTL 名前を入力してください
+					INPUTS
+					CALLNAME:MASTER = %RESULTS%
+					PRINTFORMW 主人の名前を「%CALLNAME:MASTER%」に変更しました
+				CASE 1
+					PRINTL 名前を入力してください
+					INPUTS
+					CALLNAME:TARGET = %RESULTS%
+					PRINTFORMW 奴隷の名前を「%CALLNAME:TARGET%」に変更しました
+			ENDSELECT
+		CASE 1 TO ENDING
+			CALLFORM ENDING_{RESULT}, 1
+	ENDSELECT
 LOOP 1
 
 @TITLECOMMENT

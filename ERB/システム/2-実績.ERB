@@ -4,6 +4,7 @@
 #DIM DYNAMIC 最大ページ
 #DIM DYNAMIC 実績数
 #DIMS DYNAMIC 実績概要
+#DIM CONST 最大表示数 = 20
 
 実績数 = 0
 FOR LCOUNT, 0, VARSIZE("GLOBAL")
@@ -11,8 +12,8 @@ FOR LCOUNT, 0, VARSIZE("GLOBAL")
 		実績数 = LCOUNT
 NEXT
 
-;1ページで1～10まで表示するのでひとつ下げて計算する ページは1からカウントする
-最大ページ = ((実績数-1)/10)+1
+;1ページで1～20まで表示するのでひとつ下げて計算する ページは1からカウントする
+最大ページ = ((実績数-1)/最大表示数)+1
 
 LOADGLOBAL
 
@@ -20,7 +21,7 @@ DRAWLINE
 
 ;実績関係は0からではなく1からカウントする
 
-FOR LCOUNT, (PAGE-1)*10+1, (PAGE-1)*10+11
+FOR LCOUNT, (PAGE-1)*最大表示数+1, (PAGE-1)*最大表示数+最大表示数+1
 	IF GLOBAL:LCOUNT
 		実績概要 = <font color='#c0c0c0'><nonbutton title='
 	ELSE
@@ -272,19 +273,13 @@ FOR LCOUNT, (PAGE-1)*10+1, (PAGE-1)*10+11
 
 NEXT
 
-
 DRAWLINE
 PRINTPLAINFORM 　PAGE.{PAGE}　
-IF PAGE > 1
-	PRINT [1] 前のページ　
-ELSE
-	PRINT 　　　　　　　　
-ENDIF
+CALL PRINTSPACE, PAGE > 1, "[1] 前のページ　"
 PRINT [0] 戻る　
-SIF PAGE < 最大ページ
-	PRINTL [9] 次のページ
-
-CALL INPUTF, 0, 1, 9
+CALL PRINTSPACE, PAGE < 最大ページ, "[9] 次のページ　"
+PRINTL 
+BINPUT
 
 SELECTCASE RESULT
 	CASE 0
@@ -305,6 +300,8 @@ ENDSELECT
 SIF ORIGIN
 	RETURN
 SIF CHARANUM > 0 && MASTER >= 0 && NAME:MASTER == "BEATFREE"
+	RETURN
+SIF 実績解除不可
 	RETURN
 SIF FLAG:難易度 == -1
 	RETURN

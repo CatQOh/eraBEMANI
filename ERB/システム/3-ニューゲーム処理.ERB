@@ -38,7 +38,6 @@ IF TUTORIAL == "FIRST"
 	GOTO ORIGIN
 ENDIF
 
-
 ;モード選択
 DRAWLINE
 IF SP
@@ -120,7 +119,7 @@ PRINTL PASELI:NO ACCOUNT　　　　　　　　　　　　 ┃EFFECTOR OFF┃�
 
 ;各ゲームモードごとの初期設定
 $INPUTWAIT
-CALL INPUTF, 0, 1, 7, 8, 9, 10
+BINPUT
 FLAG:ゲームモード = RESULT
 
 $ORIGIN
@@ -172,7 +171,7 @@ SELECTCASE ゲームモード()
 			PRINTL オープニングストーリーを表示しますか？
 			PRINTL [0] - 表示する
 			PRINTL [1] - 表示しない
-			CALL INPUTF, 0, 1
+			BINPUT
 			IF RESULT == 0
 				DRAWLINE
 				CALL OPENING
@@ -192,6 +191,10 @@ SELECTCASE ゲームモード()
 		CCB:RESULT = 1
 		ASSI = 1
 		TARGET = -1
+		;MOD適用されてるかもしれないので陥落素質を一度消す
+		TALENT:ASSI:恋慕 = 0
+		TALENT:ASSI:淫乱 = 0
+		TALENT:ASSI:服従 = 0
 		;この時点では口上表示の設定はできないので強制表示
 		TRYCCALLFORM PARTNER_%CSVNAMERPS(NO:ASSI)%
 		CATCH
@@ -212,7 +215,7 @@ SELECTCASE ゲームモード()
 			PRINTL [1] - 淫乱
 			PRINTL [2] - 服従
 		ENDIF
-		CALL INPUTF, 0, 1, 2
+		BINPUT
 		SELECTCASE RESULT
 			CASE 0
 				TALENT:ASSI:恋慕 = 1
@@ -250,7 +253,7 @@ IF ゲームモード() != "新婚モード"
 		PRINTL チュートリアルを表示しますか？（オプションからでも確認できます）
 		PRINTL [0] - 表示する
 		PRINTL [1] - 表示しない
-		CALL INPUTF, 0, 1
+		BINPUT
 		IF RESULT == 0
 			DRAWLINE
 			IF ゲームモード() == "段位認定"
@@ -280,7 +283,7 @@ ELSE
 		PRINTL [2] - 地の文のみ表示する
 		PRINTL [3] - 口上も地の文も表示しない
 	ENDIF
-	CALL INPUTF, 0, 1, 2, 3
+	BINPUT
 	SELECTCASE RESULT
 		CASE 0
 			FLAG:地の文表示 = 1
@@ -310,7 +313,7 @@ ELSEIF !ORIGIN
 		PRINTL [0] - 表示しない
 		PRINTL [1] - 表示する
 	ENDIF
-	CALL INPUTF, 0, 1
+	BINPUT
 	FLAG:実績メッセージ = RESULT
 ENDIF
 
@@ -331,7 +334,7 @@ ELSE
 		PRINTL [0] - オンにしない
 		PRINTL [1] - オンにする
 	ENDIF
-	CALL INPUTF, 0, 1
+	BINPUT
 	FLAG:パセリ表示 = RESULT
 ENDIF
 
@@ -349,7 +352,7 @@ ELSE
 		PRINTL [0] - 服を着たままでいい
 		PRINTL [1] - 面倒だから脱がせてから調教始める
 	ENDIF
-	CALL INPUTF, 0, 1
+	BINPUT
 	SIF RESULT == 1
 		FLAG:着衣設定 = 3
 ENDIF
@@ -519,7 +522,7 @@ SELECTCASE RESULT
 				PRINTL [0] - 調教されたい！
 				PRINTL [1] - いらん
 			ENDIF
-			CALL INPUTF, 0, 1
+			BINPUT
 			IF RESULT == 0
 				CALL CHARA_ADD, 0
 				TARGET = 1
@@ -611,7 +614,7 @@ IF ゲームモード() == "新婚モード"
 		CASE 2
 			GOTO 経験無し
 	ENDSELECT
-	CALL INPUTF, 0, 1
+	BINPUT
 	SELECTCASE RESULT
 		CASE 0
 			$経験あり
@@ -896,259 +899,231 @@ ELSE
 	PRINTL [0] - 完了 [100] - キャラデータを保存 [101] - キャラデータをロード
 ENDIF
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			IF TALENT:ARG:性別 == 0
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		IF TALENT:ARG:性別 == 0
+			IF LANGUAGE == "ENG"
+				PRINTW Please select gender
+			ELSE
+				PRINTW 性別を選択してください
+			ENDIF
+			RESTART
+		ENDIF
+		SIF VAGINA(ARG) && !EXP:ARG:Ｖ経験
+			TALENT:ARG:処女 = 1
+		SIF PENIS(ARG) && !EXP:ARG:性交経験
+			TALENT:ARG:童貞 = 1
+		SELECTCASE CSTR:ARG:種族
+			CASE "スライム"
+				CFLAG:ARG:スライム度 = 30
+				TALENT:ARG:スライム = 1
+			CASE "ヴァンパイア"
+				TALENT:ARG:吸血鬼 = 1
+		ENDSELECT
+		EXP:ARG:音ゲー経験 = 1000
+		VARLINE = 0
+		CALL TUTORIAL, "キャラクリ終了"
+		RETURN
+	CASE 1
+		CALL INPUT_NAME, ARG
+	CASE 2
+		CALL SELECT_GENDER, ARG
+	CASE 3
+		VARSET 種族名
+
+		種族 = GETNUM(CSTR, "種族")
+
+		FOR LCOUNT, 1, 10000
+			SIF !EXISTCSV(LCOUNT)
+				CONTINUE
+			;変数「種族名」の配列に該当種族名がまだ入ってない場合は入れる
+			IF CSVCSTR(LCOUNT, 種族) != ""
+				SIF FINDELEMENT(種族名, ESCAPE(CSVCSTR(LCOUNT, 種族)), 0, VARSIZE("種族名"), 1) == -1
+					種族名:FINDELEMENT(種族名, "", 0, VARSIZE("種族名"), 1) = %CSVCSTR(LCOUNT, 種族)%
+			ENDIF
+		NEXT
+
+		;追加の特殊種族
+		種族名:FINDELEMENT(種族名, "", 0, VARSIZE("種族名"), 1) = スライム
+
+		FOR LCOUNT, 0, VARSIZE("種族名")
+			SIF 種族名:LCOUNT == ""
+				BREAK
+			PRINTFORMLC [{LCOUNT}] %種族名:LCOUNT%
+		NEXT
+		CALL NEWLINE
+		BINPUT
+		CSTR:ARG:種族 = %種族名:RESULT%
+	CASE 4
+		INVERTBIT TALENT:ARG:小柄体型, 0
+	CASE 5
+		IF LANGUAGE == "ENG"
+			PRINTL [1] - None
+			PRINTL [2] - Little
+			PRINTL [3] - Basic
+			PRINTL [4] - Large
+			PRINTL [5] - XLarge
+			PRINTL [6] - Huge
+		ELSE
+			PRINTL [1] - 絶壁にする
+			PRINTL [2] - 貧乳にする
+			PRINTL [3] - 並乳にする
+			PRINTL [4] - 巨乳にする
+			PRINTL [5] - 豊乳にする
+			PRINTL [6] - 爆乳にする
+		ENDIF
+		BINPUT
+		TALENT:ARG:バストサイズ = RESULT
+	CASE 6
+		INVERTBIT TALENT:ARG:動物耳, 0
+	CASE 7
+		INVERTBIT TALENT:ARG:尻尾, 0
+	CASE 8
+		INVERTBIT TALENT:ARG:羽, 0
+	CASE 9
+		INVERTBIT TALENT:ARG:ファーリー, 0
+	CASE 10
+		INVERTBIT TALENT:ARG:ゾンビ, 0
+	CASE 11
+		VARSET EXP:ARG:0, 0
+	CASE 12
+		VARSET EXP:ARG:0, 0
+		IF VAGINA(ARG)
+			EXP:ARG:Ｖ経験 = RAND(10, 31)
+			EXP:ARG:膣射経験 = RAND(0, 6)
+			EXP:ARG:絶頂経験 += RAND(10, 21)
+			EXP:ARG:精液経験 = RAND(20, 51)+EXP:ARG:膣射経験
+		ENDIF
+		IF PENIS(ARG)
+			EXP:ARG:射精経験 = RAND(50, 101)
+			EXP:ARG:絶頂経験 += EXP:ARG:射精経験
+		ENDIF
+		IF SEX(ARG) == 2
+			EXP:ARG:パイズリ経験 = RAND(3, 11)
+			EXP:ARG:フェラ経験 = RAND(5, 21)
+		ENDIF
+		EXP:ARG:性交経験 = RAND(5, 11)
+		EXP:ARG:自慰経験 = RAND(10, 31)
+	CASE 13
+		VARSET EXP:ARG:0, 0
+		IF VAGINA(ARG)
+			EXP:ARG:Ｖ経験 = RAND(500, 1001)
+			EXP:ARG:膣射経験 = RAND(300, 501)
+			EXP:ARG:出産経験 = RAND(1, 4)
+			SIF RAND:5 == 0
+				EXP:ARG:流産経験 = 1
+		ENDIF
+		SIF PENIS(ARG)
+			EXP:ARG:射精経験 = RAND(2000, 5001)
+		SELECTCASE SEX(ARG)
+			CASE 1
+				EXP:ARG:ゲイ経験 = RAND(500, 1001)
+			CASE 2
+				EXP:ARG:レズ経験 = RAND(500, 1001)
+				EXP:ARG:パイズリ経験 = RAND(200, 301)
+		ENDSELECT
+		EXP:ARG:Ａ経験 = RAND(500, 1001)
+		EXP:ARG:性交経験 = RAND(300, 501)
+		EXP:ARG:自慰経験 = RAND(1000, 2001)
+		EXP:ARG:フェラ経験 = RAND(500, 1001)
+		EXP:ARG:絶頂経験 = RAND(500, 1001)+EXP:ARG:射精経験
+		EXP:ARG:精液経験 = RAND(2000, 5001)+EXP:ARG:膣射経験
+	CASE 20 TO 85
+		LRESULT = RESULT-20
+		IF EXPNAME:(LRESULT) != ""
+			IF LANGUAGE == "ENG"
+				PRINTFORML Please input %EXPDISP(LRESULT)% count.
+			ELSE
+				PRINTFORML %EXPDISP(LRESULT)%の数値を入力してください
+			ENDIF
+			INPUT
+			SIF RESULT < 0
+				RESULT = 0
+			EXP:ARG:(LRESULT) = RESULT
+		ENDIF
+	CASE 100
+		FOR LCOUNT, 0, 10
+			IF CHKCHARADATA(@"CUSTOMPLAYER_{LCOUNT}") == 0
+				PRINTFORML [{LCOUNT}] - %RESULTS%
+			ELSE
+				SETCOLORBYNAME gray
 				IF LANGUAGE == "ENG"
-					PRINTW Please select gender
+					PRINTFORML [{LCOUNT}] - -----------
 				ELSE
-					PRINTW 性別を選択してください
+					PRINTFORML [{LCOUNT}] - 空きスロット
 				ENDIF
-				RESTART
+				RESETCOLOR
 			ENDIF
-			SIF VAGINA(ARG) && !EXP:ARG:Ｖ経験
-				TALENT:ARG:処女 = 1
-			SIF PENIS(ARG) && !EXP:ARG:性交経験
-				TALENT:ARG:童貞 = 1
-			SELECTCASE CSTR:ARG:種族
-				CASE "スライム"
-					CFLAG:ARG:スライム度 = 30
-					TALENT:ARG:スライム = 1
-				CASE "ヴァンパイア"
-					TALENT:ARG:吸血鬼 = 1
-			ENDSELECT
-			EXP:ARG:音ゲー経験 = 1000
-			VARLINE = 0
-			CALL TUTORIAL, "キャラクリ終了"
-			RETURN
-		CASE 1
-			CALL INPUT_NAME, ARG
-		CASE 2
-			CALL SELECT_SEX, ARG
-		CASE 3
-			VARSET 種族名
-
-			種族 = GETNUM(CSTR, "種族")
-
-			FOR LCOUNT, 1, 10000
-				SIF !EXISTCSV(LCOUNT)
-					CONTINUE
-				;変数「種族名」の配列に該当種族名がまだ入ってない場合は入れる
-				IF CSVCSTR(LCOUNT, 種族) != ""
-					SIF FINDELEMENT(種族名, ESCAPE(CSVCSTR(LCOUNT, 種族)), 0, VARSIZE("種族名"), 1) == -1
-						種族名:FINDELEMENT(種族名, "", 0, VARSIZE("種族名"), 1) = %CSVCSTR(LCOUNT, 種族)%
+		NEXT
+		DRAWLINE
+		PRINTPLAIN 　PC SAVE　
+		IF LANGUAGE == "ENG"
+			PRINTL [10] - Back
+		ELSE
+			PRINTL [10] - 戻る
+		ENDIF
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0 TO 9
+				LRESULT = RESULT
+				IF CHKCHARADATA(@"CUSTOMPLAYER_{RESULT}") == 0
+					IF LANGUAGE == "ENG"
+						PRINTL It was exist charadata. Overwrite sure?
+						PRINTL [0] - Yes
+						PRINTL [1] - No
+					ELSE
+						PRINTL 既にカスタムデータが存在します。上書きしてもよろしいですか？
+						PRINTL [0] - はい
+						PRINTL [1] - いいえ
+					ENDIF
+					BINPUT
+					SIF RESULT == 1
+						RESTART
 				ENDIF
-			NEXT
-
-			;追加の特殊種族
-			種族名:FINDELEMENT(種族名, "", 0, VARSIZE("種族名"), 1) = スライム
-
-			FOR LCOUNT, 0, VARSIZE("種族名")
-				SIF 種族名:LCOUNT == ""
-					BREAK
-				PRINTFORMLC [{LCOUNT}] %種族名:LCOUNT%
-			NEXT
-			CALL NEWLINE
-
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0 TO VARSIZE("種族名")
-						CSTR:ARG:種族 = %種族名:RESULT%
-						BREAK
-					CASEELSE
-						CONTINUE
-				ENDSELECT
-			LOOP 1
-		CASE 4
-			INVERTBIT TALENT:ARG:小柄体型, 0
-		CASE 5
-			IF LANGUAGE == "ENG"
-				PRINTL [1] - None
-				PRINTL [2] - Little
-				PRINTL [3] - Basic
-				PRINTL [4] - Large
-				PRINTL [5] - XLarge
-				PRINTL [6] - Huge
-			ELSE
-				PRINTL [1] - 絶壁にする
-				PRINTL [2] - 貧乳にする
-				PRINTL [3] - 並乳にする
-				PRINTL [4] - 巨乳にする
-				PRINTL [5] - 豊乳にする
-				PRINTL [6] - 爆乳にする
-			ENDIF
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 1 TO 6
-						TALENT:ARG:バストサイズ = RESULT
-						BREAK
-				ENDSELECT
-			LOOP 1
-		CASE 6
-			INVERTBIT TALENT:ARG:動物耳, 0
-		CASE 7
-			INVERTBIT TALENT:ARG:尻尾, 0
-		CASE 8
-			INVERTBIT TALENT:ARG:羽, 0
-		CASE 9
-			INVERTBIT TALENT:ARG:ファーリー, 0
-		CASE 10
-			INVERTBIT TALENT:ARG:ゾンビ, 0
-		CASE 11
-			VARSET EXP:ARG:0, 0
-		CASE 12
-			VARSET EXP:ARG:0, 0
-			IF VAGINA(ARG)
-				EXP:ARG:Ｖ経験 = RAND(10, 31)
-				EXP:ARG:膣射経験 = RAND(0, 6)
-				EXP:ARG:絶頂経験 += RAND(10, 21)
-				EXP:ARG:精液経験 = RAND(20, 51)+EXP:ARG:膣射経験
-			ENDIF
-			IF PENIS(ARG)
-				EXP:ARG:射精経験 = RAND(50, 101)
-				EXP:ARG:絶頂経験 += EXP:ARG:射精経験
-			ENDIF
-			IF SEX(ARG) == 2
-				EXP:ARG:パイズリ経験 = RAND(3, 11)
-				EXP:ARG:フェラ経験 = RAND(5, 21)
-			ENDIF
-			EXP:ARG:性交経験 = RAND(5, 11)
-			EXP:ARG:自慰経験 = RAND(10, 31)
-		CASE 13
-			VARSET EXP:ARG:0, 0
-			IF VAGINA(ARG)
-				EXP:ARG:Ｖ経験 = RAND(500, 1001)
-				EXP:ARG:膣射経験 = RAND(300, 501)
-				EXP:ARG:出産経験 = RAND(1, 4)
-				SIF RAND:5 == 0
-					EXP:ARG:流産経験 = 1
-			ENDIF
-			SIF PENIS(ARG)
-				EXP:ARG:射精経験 = RAND(2000, 5001)
-			SELECTCASE SEX(ARG)
-				CASE 1
-					EXP:ARG:ゲイ経験 = RAND(500, 1001)
-				CASE 2
-					EXP:ARG:レズ経験 = RAND(500, 1001)
-					EXP:ARG:パイズリ経験 = RAND(200, 301)
-			ENDSELECT
-			EXP:ARG:Ａ経験 = RAND(500, 1001)
-			EXP:ARG:性交経験 = RAND(300, 501)
-			EXP:ARG:自慰経験 = RAND(1000, 2001)
-			EXP:ARG:フェラ経験 = RAND(500, 1001)
-			EXP:ARG:絶頂経験 = RAND(500, 1001)+EXP:ARG:射精経験
-			EXP:ARG:精液経験 = RAND(2000, 5001)+EXP:ARG:膣射経験
-		CASE 20 TO 85
-			LRESULT = RESULT-20
-			IF EXPNAME:(LRESULT) != ""
+				年 = TOINT(SUBSTRING(GETTIMES(), 0, 4))
+				月 = TOINT(SUBSTRING(GETTIMES(), 5, 2))
+				日 = TOINT(SUBSTRING(GETTIMES(), 8, 2))
 				IF LANGUAGE == "ENG"
-					PRINTFORML Please input %EXPDISP(LRESULT)% count.
+					SAVECHARA @"CUSTOMPLAYER_{LRESULT}", @"%NAME:ARG% Created in {年}/{月}/{日}", ARG
 				ELSE
-					PRINTFORML %EXPDISP(LRESULT)%の数値を入力してください
+					SAVECHARA @"CUSTOMPLAYER_{LRESULT}", @"%NAME:ARG% {年}/{月}/{日}に作成", ARG
 				ENDIF
-				INPUT
-				SIF RESULT < 0
-					RESULT = 0
-				EXP:ARG:(LRESULT) = RESULT
-			ENDIF
-		CASE 100
-			FOR LCOUNT, 0, 10
-				IF CHKCHARADATA(@"CUSTOMPLAYER_{LCOUNT}") == 0
-					PRINTFORML [{LCOUNT}] - %RESULTS%
-				ELSE
-					SETCOLORBYNAME gray
-					IF LANGUAGE == "ENG"
-						PRINTFORML [{LCOUNT}] - -----------
-					ELSE
-						PRINTFORML [{LCOUNT}] - 空きスロット
-					ENDIF
-					RESETCOLOR
-				ENDIF
-			NEXT
-			DRAWLINE
-			PRINTPLAIN 　PC SAVE　
-			IF LANGUAGE == "ENG"
-				PRINTL [10] - Back
+		ENDSELECT
+	CASE 101
+		FOR LCOUNT, 0, 10
+			IF CHKCHARADATA(@"CUSTOMPLAYER_{LCOUNT}") == 0
+				PRINTFORML [{LCOUNT}] - %RESULTS%
 			ELSE
-				PRINTL [10] - 戻る
-			ENDIF
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 10
-						RESTART
-					CASE 0 TO 9
-						LRESULT = RESULT
-						IF CHKCHARADATA(@"CUSTOMPLAYER_{RESULT}") == 0
-							IF LANGUAGE == "ENG"
-								PRINTL It was exist charadata. Overwrite sure?
-								PRINTL [0] - Yes
-								PRINTL [1] - No
-							ELSE
-								PRINTL 既にカスタムデータが存在します。上書きしてもよろしいですか？
-								PRINTL [0] - はい
-								PRINTL [1] - いいえ
-							ENDIF
-							CALL INPUTF, 0, 1
-							SIF RESULT == 1
-								BREAK
-						ENDIF
-						年 = TOINT(SUBSTRING(GETTIMES(), 0, 4))
-						月 = TOINT(SUBSTRING(GETTIMES(), 5, 2))
-						日 = TOINT(SUBSTRING(GETTIMES(), 8, 2))
-						IF LANGUAGE == "ENG"
-							SAVECHARA @"CUSTOMPLAYER_{LRESULT}", @"%NAME:ARG% Created in {年}/{月}/{日}", ARG
-						ELSE
-							SAVECHARA @"CUSTOMPLAYER_{LRESULT}", @"%NAME:ARG% {年}/{月}/{日}に作成", ARG
-						ENDIF
-						BREAK
-				ENDSELECT
-			LOOP 1
-		CASE 101
-			FOR LCOUNT, 0, 10
-				IF CHKCHARADATA(@"CUSTOMPLAYER_{LCOUNT}") == 0
-					PRINTFORML [{LCOUNT}] - %RESULTS%
+				SETCOLORBYNAME gray
+				IF LANGUAGE == "ENG"
+					PRINTFORML [{LCOUNT}] - -----------
 				ELSE
-					SETCOLORBYNAME gray
-					IF LANGUAGE == "ENG"
-						PRINTFORML [{LCOUNT}] - -----------
-					ELSE
-						PRINTFORML [{LCOUNT}] - 空きスロット
-					ENDIF
-					RESETCOLOR
+					PRINTFORML [{LCOUNT}] - 空きスロット
 				ENDIF
-			NEXT
-			DRAWLINE
-			PRINTPLAIN 　PC LOAD　
-			IF LANGUAGE == "ENG"
-				PRINTL [10] - Back
-			ELSE
-				PRINTL [10] - 戻る
+				RESETCOLOR
 			ENDIF
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 10
-						RESTART
-					CASE 0 TO 9
-						IF CHKCHARADATA(@"CUSTOMPLAYER_{RESULT}") == 0
-							DELCHARA ARG
-							LOADCHARA @"CUSTOMPLAYER_{RESULT}"
-							RESTART
-						ENDIF
-				ENDSELECT
-			LOOP 1
-	ENDSELECT
-	BREAK
-LOOP 1
+		NEXT
+		DRAWLINE
+		PRINTPLAIN 　PC LOAD　
+		IF LANGUAGE == "ENG"
+			PRINTL [10] - Back
+		ELSE
+			PRINTL [10] - 戻る
+		ENDIF
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0 TO 9
+				IF CHKCHARADATA(@"CUSTOMPLAYER_{RESULT}") == 0
+					DELCHARA ARG
+					LOADCHARA @"CUSTOMPLAYER_{RESULT}"
+				ENDIF
+		ENDSELECT
+ENDSELECT
 
 RESTART
 
-@SELECT_SEX, ARG = -1
+@SELECT_GENDER, ARG = -1
 SIF ARG == -1
 	ARG = MASTER
 DRAWLINE
@@ -1173,7 +1148,7 @@ ELSE
 			PRINTL [3] - 女性(ふたなり)
 	ENDSELECT
 ENDIF
-CALL INPUTF, 0, 1, 2, 3
+BINPUT
 SELECTCASE RESULT
 	CASE 0, 2
 		TALENT:ARG:性別 = 1
@@ -1233,7 +1208,7 @@ DO
 		PRINTL [0] - はい
 		PRINTL [1] - いいえ
 	ENDIF
-	CALL INPUTF, 0, 1
+	BINPUT
 LOOP LOOPRES(0)
 
 @SELECT_DIFFICULT
@@ -1260,7 +1235,7 @@ ELSE
 	PRINTL ★★難易度を選択してください★★
 	IF QMA
 		SETCOLORBYNAME lime
-		PRINTL [-1] - ビギナー級(実績解除不可)
+		PRINTL [-1] - ビギナー級(周回不可、実績解除不可)
 		SETCOLORBYNAME deepskyblue
 		PRINTL [0] - フェアリー級(初心者でも安心)
 		SETCOLORBYNAME yellow
@@ -1271,7 +1246,7 @@ ELSE
 		PRINTL [3] - レジェンダリア級
 	ELSE
 		SETCOLORBYNAME lime
-		PRINTL [-1] - BEGINNER(実績解除不可)
+		PRINTL [-1] - BEGINNER(周回不可、実績解除不可)
 		SETCOLORBYNAME deepskyblue
 		PRINTL [0] - NORMAL
 		SETCOLORBYNAME yellow
@@ -1283,7 +1258,7 @@ ELSE
 	ENDIF
 ENDIF
 RESETCOLOR
-CALL INPUTF, 0, 1, 2, 3, -1
+BINPUT
 IF RESULT == -1
 	FLAG:難易度 = -1
 ELSE
