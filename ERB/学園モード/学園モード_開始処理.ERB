@@ -4,6 +4,8 @@
 #DIM DYNAMIC 入学先 = -1
 #DIM DYNAMIC LRESULT
 #DIM DYNAMIC 未実装キャラ
+#DIM DYNAMIC 総数
+#DIMS DYNAMIC SPLITVAR, 2
 
 ;学園モード、SLGモードじゃないと呼び出さない
 SIF !GROUPMATCH(ゲームモード(), "学園モード", "SLGモード")
@@ -228,7 +230,11 @@ FOR LCOUNT, 1, CHARANUM
 		;数学
 		CASE "マモニス", "ガユカ", "Σ", "カネノブ", "スミス氏", "コンセント", "ガス", "サトウサン", "まどか", "サーミリアス"
 			CSTR:LCOUNT:在任 = %選任ランダム("数学")%
-			CSTR:LCOUNT:担当科目 = 数学
+			IF 小中高(CSTR:LCOUNT:在任) == "小"
+				CSTR:LCOUNT:担当科目 = 算数
+			ELSE
+				CSTR:LCOUNT:担当科目 = 数学
+			ENDIF
 		;英語
 		CASE "サイレン", "六", "HOT.D", "アルフォンス・ミシェル", "エイプリル", "アイリーン", "アフロ", "モモコさん"
 			CSTR:LCOUNT:在任 = %選任ランダム("英語")%
@@ -236,7 +242,11 @@ FOR LCOUNT, 1, CHARANUM
 		;科学
 		CASE "ファウラ", "パラド", "ヴィルヘルム", "エレノア", "マサムネ", "アル・ハイア", "ガッキー博士", "正論", "ゼーグ・ルルード", "スマイル"
 			CSTR:LCOUNT:在任 = %選任ランダム("科学")%
-			CSTR:LCOUNT:担当科目 = 科学
+			IF 小中高(CSTR:LCOUNT:在任) == "小"
+				CSTR:LCOUNT:担当科目 = 理科
+			ELSE
+				CSTR:LCOUNT:担当科目 = 科学
+			ENDIF
 		;社会
 		CASE "サタヌ", "ボルテージ：マインツ", "卑弥呼", "獅子若", "エミーリオ", "ニョア", "リリアンキル"
 			CSTR:LCOUNT:在任 = %選任ランダム("社会")%
@@ -308,10 +318,15 @@ CALL FADEOUTBGM
 $学校一覧表示
 DRAWLINE
 FOR LCOUNT, 0, VARSIZE("学校名")
+	SIF 学校名:LCOUNT == ""
+		CONTINUE
+	SIF 入学先 == LCOUNT && ゲームモード() == "学園モード"
+		SETCOLORBYNAME deepskyblue
 	PRINTFORM 　[{LCOUNT}] %学校名:LCOUNT%(生徒:{CMATCH(CSTR:在校, 学校名:LCOUNT)}人 教師:{CMATCH(CSTR:在任, 学校名:LCOUNT)}人) 
 	SIF 入学先 == LCOUNT && ゲームモード() == "学園モード"
 		PRINTFORM %NAME:MASTER%の入学先
 	PRINTL 
+	RESETCOLOR
 NEXT
 PRINTL
 PRINTL 　[99] 学園モード未実装のキャラ一覧
@@ -334,18 +349,7 @@ DO
 			FOR LCOUNT, 0, CHARANUM
 				SIF CSTR:LCOUNT:在任 != 学校名:RESULT
 					CONTINUE
-				PRINT 　担当科目:
-				IF 小中高(学校名:RESULT) == "小"
-					SELECTCASE CSTR:LCOUNT:担当科目
-						CASE "数学"
-							PRINT 算数
-						CASE "科学"
-							PRINT 理科
-					ENDSELECT
-				ELSE
-					PRINTFORM %CSTR:LCOUNT:担当科目%
-				ENDIF
-				PRINTFORML  No.{NO:LCOUNT} %NAME:LCOUNT% 
+				PRINTFORML 　担当科目:%CSTR:LCOUNT:担当科目% No.{NO:LCOUNT} %NAME:LCOUNT%
 			NEXT
 			DRAWLINE
 			PRINTPLAINFORM 　%学校名:RESULT%　
@@ -402,6 +406,15 @@ CALL SETUP_GAMESTART
 ターン = 朝
 CSTR:PLAYER:現在地 = 自宅
 MONEY = 0
+
+ENUMFUNCBEGINSWITH "ロケーション条件_"
+総数 = RESULT
+FOR LCOUNT, 0, 総数
+	SPLIT RESULTS:LCOUNT, "_", SPLITVAR
+	CALLFORM %RESULTS:LCOUNT%
+	SIF RESULT
+		解禁済みロケーション:FINDELEMENTF(解禁済みロケーション, "") = %SPLITVAR:1%
+NEXT
 
 CALL SYSTEM_AUTOSAVE
 
@@ -480,6 +493,9 @@ DO
 	;マジックアカデミーは固定で付いてるので赴任しない
 	SIF 赴任先 == "マジックアカデミー"
 		CONTINUE
+	;大学には赴任しない
+	SIF 小中高(赴任先) == "大"
+		CONTINUE
 	;赴任先に担当科目の教師が居なければ赴任
 	FOR LCOUNT, 0, CHARANUM
 		SIF 赴任先 == CSTR:LCOUNT:在任 && CSTR:LCOUNT:担当科目 == ARGS
@@ -495,14 +511,17 @@ RETURNF 赴任先
 #DIM DYNAMIC LCOUNT
 #DIM 小
 #DIM 中
+#DIM 高
 
 IF !小
 	FOR LCOUNT, 0, VARSIZE("学校名")
 		IF 学校名:LCOUNT == ""
 			IF !小
 				小 = LCOUNT
-			ELSE
+			ELSEIF !中
 				中 = LCOUNT
+			ELSE
+				高 = LCOUNT
 				BREAK
 			ENDIF
 		ENDIF
@@ -513,6 +532,8 @@ IF INRANGE(FINDELEMENT(学校名, ARGS, 0, VARSIZE("学校名"), 1), 0, 小)
 	RETURNF "小"
 ELSEIF INRANGE(FINDELEMENT(学校名, ARGS, 0, VARSIZE("学校名"), 1), 小, 中)
 	RETURNF "中"
-ELSE
+ELSEIF INRANGE(FINDELEMENT(学校名, ARGS, 0, VARSIZE("学校名"), 1), 中, 高)
 	RETURNF "高"
+ELSE
+	RETURNF "大"
 ENDIF
