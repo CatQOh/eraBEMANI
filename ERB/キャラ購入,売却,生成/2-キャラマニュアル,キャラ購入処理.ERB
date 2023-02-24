@@ -52,11 +52,11 @@ IF CSVTALENT(ARG, GETNUM(TALENT, "アニマル"))
 	ENDIF
 ENDIF
 
-IF チャレンジMOD
+IF MOD:チャレンジ
 	IF LANGUAGE == "ENG"
 		PRINTL ※You trying CHALLENGE mode. There has difference from this talents.
 	ELSE
-		PRINTL ※チャレンジMODを導入中です。表示されているマニュアル・素質とは齟齬がある場合があります
+		PRINTL ※MOD:チャレンジを導入中です。表示されているマニュアル・素質とは齟齬がある場合があります
 	ENDIF
 ENDIF
 
@@ -348,36 +348,19 @@ SIF TALENT:人気
 ;MOD適用
 ;性別不明キャラは上で選んでるので性別MODは適用されない
 IF ゲームモード() != "段位認定"
-	SIF ふたなりMOD
-		CALL APPLY_ふたなりMOD, TARGET
-
-	IF CSVTALENT(NO:TARGET, GETNUM(TALENT, "性別")) != 0
-		SIF 男性化MOD
-			CALL APPLY_男性化MOD, TARGET
-		SIF 女性化MOD
-			CALL APPLY_女性化MOD, TARGET
-		SIF 性転換MOD
-			CALL APPLY_性転換MOD, TARGET
-	ENDIF
-
-	SIF 爆乳MOD
-		CALL APPLY_爆乳MOD, TARGET
-	SIF 絶壁MOD
-		CALL APPLY_絶壁MOD, TARGET
-	SIF おもらしMOD
-		CALL APPLY_おもらしMOD, TARGET
-	SIF ロリショタMOD
-		CALL APPLY_ロリショタMOD, TARGET
-	SIF 大人化MOD
-		CALL APPLY_大人化MOD, TARGET
-	SIF スライムMOD
-		CALL APPLY_スライムMOD, TARGET
-	SIF 恋慕MOD
-		CALL APPLY_恋慕MOD, TARGET
-	SIF 淫乱MOD
-		CALL APPLY_淫乱MOD, TARGET
-	SIF 服従MOD
-		CALL APPLY_服従MOD, TARGET
+	FOR LCOUNT, 0, VARSIZE("MOD")
+		SIF ERDNAME(MOD, LCOUNT) == ""
+			CONTINUE
+		SELECTCASE ERDNAME(MOD, LCOUNT)
+			CASE "男性化", "女性化", "性転換"
+				IF CSVTALENT(NO:TARGET, GETNUM(TALENT, "性別")) != 0
+					SIF MOD:LCOUNT
+						CALLFORM APPLY_MOD_%ERDNAME(MOD, LCOUNT)%, TARGET
+				ENDIF
+			CASEELSE
+				TRYCALLFORM APPLY_MOD_%ERDNAME(MOD, LCOUNT)%, TARGET
+		ENDSELECT
+	NEXT
 ENDIF
 
 IF PENIS(TARGET)
@@ -398,8 +381,8 @@ MAXBASE:魔力 = ABL:魔法技能*1000
 SIF TALENT:アニマル
 	CFLAG:状態 = 2
 TFLAG:ページ数 = 0
-;チャレンジMOD導入中なら性経験を消してバージンにする
-IF チャレンジMOD
+;MOD:チャレンジ導入中なら性経験を消してバージンにする
+IF MOD:チャレンジ
 	FOR LCOUNT, 0, 20
 		ABL:LCOUNT = 0
 	NEXT
@@ -413,7 +396,7 @@ IF チャレンジMOD
 			TALENT:処女 = 1
 	ENDSELECT
 	CALL 初期経験リセット(TARGET)
-	CSTR:適用MOD += "[チャレンジMOD]"
+	CSTR:適用MOD += "[MOD:チャレンジ]"
 ENDIF
 ;相性の設定
 SPLIT CSTR:相性, "/", 相性設定用

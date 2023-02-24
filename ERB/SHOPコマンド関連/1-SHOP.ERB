@@ -1,17 +1,9 @@
-﻿@SHOW_SHOP
+﻿@SHOP画面
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LTARGET
 #DIM CSV読み込み
 
 CALL GIDDEL
-
-;学園モードでは別途SHOPを使うためこの関数は使わない
-SIF ゲームモード() == "学園モード"
-	JUMP SHOP_SCHOOL
-
-;SLGモードも同じく
-SIF ゲームモード() == "SLGモード"
-	JUMP SHOP_SLG
 
 ;ORIGINならCSV実装済みの全キャラ解禁する
 IF CSV読み込み == 0 && ORIGIN
@@ -786,7 +778,7 @@ IF LANGUAGE == "ENG"
 		CASE "経営モード", "フリーモード"
 			;パートナーに話しかける口上が実装されていれば表示
 			TRYCCALLFORM EXIST_STRATEGY_KOJO_%CSVNAMERPS(FLAG:パートナー)%
-				SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
+				SIF OPTION:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
 					CALL COLUMNTOOLTIP, 0, "[2] Talk with Manager ", @"%CSVCALLNAMEDISP(FLAG:パートナー)%に経営の相談をします"
 			CATCH
 			ENDCATCH
@@ -882,7 +874,7 @@ ELSE
 		CASE "経営モード", "フリーモード"
 			;パートナーに話しかける口上が実装されていれば表示
 			TRYCCALLFORM EXIST_STRATEGY_KOJO_%CSVNAMERPS(FLAG:パートナー)%
-				SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
+				SIF OPTION:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
 					CALL COLUMNTOOLTIP, 0, "[2] 経営相談 ", @"%CSVCALLNAMEF(FLAG:パートナー)%に経営の相談をします"
 			CATCH
 			ENDCATCH
@@ -981,7 +973,7 @@ SELECTCASE CRESULT:1
 	CASE 2
 		LTARGET = TARGET
 		TARGET = GETCHARA(FLAG:パートナー)
-		SIF FLAG:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
+		SIF OPTION:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
 			TRYCALLFORM TALK_PARTNER_%CSVNAMERPS(FLAG:パートナー)%
 		TARGET = LTARGET
 	;一転攻勢
@@ -1496,7 +1488,7 @@ IF !GROUPMATCH(ゲームモード(), "段位認定", "通常モード")
 	ELSE
 		CALL COLUMNPRINTL, 0, "　[--] - 出版社経営（アイテム[事業開発オフィス]が必要です）", "gray"
 	ENDIF
-	IF STSMOD
+	IF MOD:STS
 		IF ITEM:博物館
 			CALL COLUMNPRINTL, 0, "　[ 5] - 博物館経営"
 		ELSE
@@ -1568,7 +1560,7 @@ SELECTCASE CRESULT:1
 	CASE 5
 		SIF GROUPMATCH(ゲームモード(), "段位認定", "通常モード")
 			RETURN
-		IF ITEM:博物館 && STSMOD
+		IF ITEM:博物館 && MOD:STS
 			CALL プレイ称号計算, "博物館"
 			CALL 博物館
 			;返り値が1ならTURNENDする
@@ -1810,7 +1802,7 @@ IF LANGUAGE == "ENG"
 			CALL COLUMNPRINTL, 0, "　　[10] - 眷属の儀"
 			CALL COLUMNPRINTL, 0, "　　[11] - 印の儀"
 			CALL COLUMNPRINTL, 0, "　　[12] - 幽体離脱・憑依の儀"
-			SIF STSMOD
+			SIF MOD:STS
 				CALL COLUMNPRINTL, 0, "　　[13] - カニバリズム"
 		ELSE
 			CALL COLUMNTOOLTIPL, 0, "　[-] - Ritual", "キャラ・アイテム購入→奴隷購入 からキャラを購入してください", "gray"
@@ -1849,13 +1841,13 @@ ELSE
 			CALL COLUMNPRINTL, 0, "　　[10] - 眷属の儀"
 			CALL COLUMNPRINTL, 0, "　　[11] - 印の儀"
 			CALL COLUMNPRINTL, 0, "　　[12] - 幽体離脱・憑依の儀"
-			SIF STSMOD
+			SIF MOD:STS
 				CALL COLUMNPRINTL, 0, "　　[13] - カニバリズム"
 		ELSE
 			CALL COLUMNTOOLTIPL, 0, "　[-] - 儀式", "アイテム・キャラ購入→奴隷購入 からキャラを購入してください", "gray"
 		ENDIF
 	ENDIF
-	SIF STSMOD && FINDELEMENT(死体, 1, 1, 1000) > 0
+	SIF MOD:STS && FINDELEMENT(死体, 1, 1, 1000) > 0
 		CALL COLUMNPRINTL, 0, "　[14] - 霊安室"
 ENDIF
 
@@ -1942,7 +1934,7 @@ SELECTCASE CRESULT:1
 	CASE 13
 		SIF CHARANUM < 2
 			RETURN
-		SIF !STSMOD
+		SIF !MOD:STS
 			RESTART
 		CALL CANNIBALISM
 		;食事をした場合はターン終了

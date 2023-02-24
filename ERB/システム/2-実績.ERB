@@ -1,34 +1,29 @@
-﻿@ACHIEVEMENT
-#DIM PAGE = 1
+﻿@タイトル_実績
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 最大ページ
 #DIM DYNAMIC 実績数
 #DIMS DYNAMIC 実績概要
 #DIM CONST 最大表示数 = 20
+#DIM DYNAMIC 表示数
 
 実績数 = 0
-FOR LCOUNT, 0, VARSIZE("GLOBAL")
-	SIF GLOBALNAME:LCOUNT != ""
+FOR LCOUNT, 0, VARSIZE("実績")
+	SIF ERDNAME(実績, LCOUNT) != ""
 		実績数 = LCOUNT
 NEXT
 
 ;1ページで1～20まで表示するのでひとつ下げて計算する ページは1からカウントする
-最大ページ = ((実績数-1)/最大表示数)+1
+最大ページ = ((実績数-1)/最大表示数)
 
 LOADGLOBAL
 
-DRAWLINE
+;DRAWLINE
 
 ;実績関係は0からではなく1からカウントする
-
-FOR LCOUNT, (PAGE-1)*最大表示数+1, (PAGE-1)*最大表示数+最大表示数+1
-	IF GLOBAL:LCOUNT
-		実績概要 = <font color='#c0c0c0'><nonbutton title='
-	ELSE
-		実績概要 = <font color='gray'><nonbutton title='
-	ENDIF
+FOR LCOUNT, 実績ページ*最大表示数+1, 実績ページ*最大表示数+最大表示数+1
+	実績概要 = 
 	
-	SELECTCASE GLOBALNAME:LCOUNT
+	SELECTCASE ERDNAME(実績, LCOUNT)
 		CASE "Welcome to eraBEMANI!!"
 			実績概要 += "eraBEMANIを起動する"
 		CASE "これで君も一人前の調教師だ"
@@ -261,37 +256,30 @@ FOR LCOUNT, (PAGE-1)*最大表示数+1, (PAGE-1)*最大表示数+最大表示数
 			CONTINUE
 	ENDSELECT
 
-	実績概要 += @"'>{LCOUNT, 2}."
-
-	IF GLOBAL:LCOUNT
-		実績概要 += @"%GLOBALNAME:LCOUNT%</nonbutton></font>"
+	IF 実績:LCOUNT
+		CALL COLUMNTOOLTIPL, 0, @"{LCOUNT, 3}.%ERDNAME(実績, LCOUNT)%", 実績概要
 	ELSE
-		実績概要 += @"[条件未達成]</nonbutton></font>"
+		CALL COLUMNTOOLTIPL, 0, @"{LCOUNT, 3}.[条件未達成]", 実績概要, "gray"
 	ENDIF
-	
-	HTML_PRINT 実績概要
-
+	表示数++
+NEXT
+FOR LCOUNT, 0, 20-表示数
+	CALL COLUMNPRINTL, 0, ""
 NEXT
 
-DRAWLINE
-PRINTPLAINFORM 　PAGE.{PAGE}　
-CALL PRINTSPACE, PAGE > 1, "[1] 前のページ　"
-PRINT [0] 戻る　
-CALL PRINTSPACE, PAGE < 最大ページ, "[9] 次のページ　"
-PRINTL 
-BINPUT
+CALL COLUMNDRAWLINE, 0
+;PRINTPLAINFORM 　実績ページ.{実績ページ}　
 
-SELECTCASE RESULT
-	CASE 0
-		RETURN 0
+CALL COLUMNPRINT, 0, @"%RETURNSPACE(実績ページ > 0, "[1] 前ページ ")%"
+CALL COLUMNPRINT, 0, @"%RETURNSPACE(実績ページ < 最大ページ, "[9] 次ページ")%"
+CALL COLUMNPRINTL, 0, ""
+
+@タイトル_実績_INPUT
+SELECTCASE CRESULT:1
 	CASE 1
-		SIF PAGE > 1
-			PAGE--
-		RESTART
+		実績ページ--
 	CASE 9
-		SIF PAGE < 最大ページ
-			PAGE++
-		RESTART
+		実績ページ++
 ENDSELECT
 
 @実績解除, ARGS
@@ -299,19 +287,19 @@ ENDSELECT
 
 SIF ORIGIN
 	RETURN
-SIF CHARANUM > 0 && MASTER >= 0 && NAME:MASTER == "BEATFREE"
-	RETURN
+;SIF CHARANUM > 0 && MASTER >= 0 && NAME:MASTER == "BEATFREE"
+;	RETURN
 SIF 実績解除不可
 	RETURN
 SIF FLAG:難易度 == -1
 	RETURN
 
 LOADGLOBAL
-FOR LCOUNT, 0, VARSIZE("GLOBAL")
-	IF GLOBALNAME:LCOUNT == @"%ARGS%" && !GLOBAL:LCOUNT
+FOR LCOUNT, 0, VARSIZE("実績")
+	IF ERDNAME(実績, LCOUNT) == @"%ARGS%" && !実績:LCOUNT
 		SIF FLAG:実績メッセージ
 			PRINTFORML 実績を解除:%ARGS%
-		GLOBAL:LCOUNT = 1
+		実績:LCOUNT = 1
 		SAVEGLOBAL
 		BREAK
 	ENDIF

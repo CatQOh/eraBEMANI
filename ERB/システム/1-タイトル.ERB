@@ -1,15 +1,10 @@
 ﻿@SYSTEM_TITLE
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC HTML用, 3
+
+;基本REDRAW 1
+REDRAW 1
 LOADGLOBAL
-
-CALL BARCOLOR初期設定
-
-;コマンドの属性を記録する
-CALL MANUAL_各経験が上昇するコマンド一覧, 1
-SKIPDISP 0
-
-CALLF メモリ解放, "SYSTEM_TITLE"
 
 ;eraOriginとしてリリースするならコメントアウトを外す
 ;ORIGIN = 1
@@ -18,64 +13,17 @@ CALLF メモリ解放, "SYSTEM_TITLE"
 ;SP = 1
 ;SAVEGLOBAL
 
-;更新チェックを行う
-IF !SP
-	IF LASTUPDATECHECK == ""
-		$CHECK
-		UPDATECHECK
-		SELECTCASE RESULT
-			;最新版、失敗もしくはUPDATECHECK切ってるなら何もしない
-			CASE 0, 3, 4
-				LASTUPDATECHECK = 
-			;アップデートある場合は日付を記録する
-			CASE 1, 2
-				LASTUPDATECHECK = %GETTIMES()%
-		ENDSELECT
-	ELSE
-		;前回の確認から3日以上経過してたらまた催促する
-		{
-		IF GETDAYS(TOINT(SUBSTRING(GETTIMES(), 0, 4)), TOINT(SUBSTRING(GETTIMES(), 5, 2)), TOINT(SUBSTRING(GETTIMES(), 8, 2)))-
-		GETDAYS(TOINT(SUBSTRING(LASTUPDATECHECK, 0, 4)), TOINT(SUBSTRING(LASTUPDATECHECK, 5, 2)), TOINT(SUBSTRING(LASTUPDATECHECK, 8, 2)))
-		>= 3
-		}
-			GOTO CHECK
-		ENDIF
-	ENDIF
-ENDIF
+;各チェックを行う
+CALL 更新チェック
+CALL CSVチェック
+CALL 起動時オプションチェック
+CALL BARCOLOR初期設定
 
-SIF EXISTCSV(10000)
-	THROW キャラ番号10000は当バリアントでは使用できません。別の番号に置き換えてください
+;コマンドの属性を記録する
+CALL MANUAL_各経験が上昇するコマンド一覧, 1
+SKIPDISP 0
 
-IF !SP
-	SELECTCASE サウンド
-		CASE 0
-			SETBGMVOLUME 0
-			SETSOUNDVOLUME 0
-		CASE 1
-			SETBGMVOLUME BGM音量
-			SETSOUNDVOLUME SOUND音量
-	ENDSELECT
-ENDIF
-
-;10秒(デフォルト)
-IF ツールチップ表示時間
-	TOOLTIP_SETDURATION ツールチップ表示時間
-ELSE
-	TOOLTIP_SETDURATION 10000
-ENDIF
-
-;ツールチップディレイ(デフォルトは無し)
-SIF ツールチップディレイ
-	TOOLTIP_SETDELAY ツールチップディレイ
-
-ENDING = 11
-CSVCOUNT = 0
-FOR LCOUNT, 0, 10000
-	SIF EXISTCSV(LCOUNT)
-		CSVCOUNT++
-NEXT
-
-SAVEGLOBAL
+CALLF メモリ解放, "SYSTEM_TITLE"
 
 IF LANGUAGE == ""
 	ALIGNMENT CENTER
@@ -96,6 +44,7 @@ SAVEGLOBAL
 ALIGNMENT LEFT
 
 IF LICENSE == 0 && LANGUAGE == "JP" && !ORIGIN && !SP
+	実績メッセージ = 1
 	HTML用 = <shape type='rect' param='1000,75,4500,575' color='white'>
 	HTML用:1 = <font color='black' bcolor='red'><button value='1'>　　　　　　　　　　[1] - 次へ</button></font>
 	HTML用:2 = <font color='black' bcolor='red'><button value='8'>　　　　　　　　　　[8] - ライセンスに同意する</button></font>　<font color='black' bcolor='red'><button value='9'>[9] - ライセンスに同意しない</button></font>
@@ -108,7 +57,7 @@ IF LICENSE == 0 && LANGUAGE == "JP" && !ORIGIN && !SP
 	PRINTL 
 	HTML_PRINT HTML用:1
 	PRINTL 
-	CALL INPUTF, 1
+	BINPUT
 	CLEARLINE 1
 
 	HTML用 = <shape type='rect' param='1000,75,4500,2075' color='white'>
@@ -133,7 +82,7 @@ IF LICENSE == 0 && LANGUAGE == "JP" && !ORIGIN && !SP
 	PRINTL 
 	HTML_PRINT HTML用:1
 	PRINTL 
-	CALL INPUTF, 1
+	BINPUT
 	CLEARLINE 1
 
 	HTML用 = <shape type='rect' param='1000,75,4500,1775' color='white'>
@@ -155,7 +104,7 @@ IF LICENSE == 0 && LANGUAGE == "JP" && !ORIGIN && !SP
 	PRINTL 
 	HTML_PRINT HTML用:1
 	PRINTL 
-	CALL INPUTF, 1
+	BINPUT
 	CLEARLINE 1
 
 	HTML用 = <shape type='rect' param='1000,75,4500,2375' color='white'>
@@ -184,7 +133,7 @@ IF LICENSE == 0 && LANGUAGE == "JP" && !ORIGIN && !SP
 	HTML_PRINT HTML用:2
 	PRINTL 
 	RESETCOLOR
-	CALL INPUTF, 8, 9
+	BINPUT
 	IF RESULT == 9
 		CLEARLINE 1
 		PRINTL 　　　　　　　　　　ライセンスに同意いただけないのであれば、当ゲームを終了します
@@ -200,8 +149,6 @@ ENDIF
 
 起動回数++
 SAVEGLOBAL
-
-FLAG:実績メッセージ = 1
 
 CALL 実績解除, "Welcome to eraBEMANI!!"
 
@@ -228,11 +175,11 @@ MAX_LINE = 32
 CALL COLUMNCREATE, 0
 
 IF LANGUAGE == "ENG"
-	WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10} English Edition
-	CALL カラム生成, "タイトル", "INFO/インフォメーション", "Load Game/セーブデータのロード", "Editor/エディター", "Settings/設定", "MOD", "Database,etc/データベース・その他"
+	WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10} English Version
+	CALL カラム生成, "タイトル", "INFO/インフォメーション", "Load Game/セーブデータのロード", "Editor/エディター", "Settings/設定", "MOD", "Achievement/実績", "Database,etc/データベース・その他"
 ELSE
 	WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10}
-	CALL カラム生成, "タイトル", "インフォメーション", "セーブデータのロード", "エディター", "設定", "エクストラMOD/MOD", "データベース・その他"
+	CALL カラム生成, "タイトル", "インフォメーション", "セーブデータのロード", "エディター", "設定", "エクストラMOD/MOD", "実績", "データベース・その他"
 ENDIF
 
 @タイトル_インフォメーション
@@ -254,9 +201,9 @@ CALL COLUMNPRINTL, 0, @"TOTAL CHARA {CSVCOUNT}"
 ;CALL COLUMNPRINTL, 0, ""
 
 IF LANGUAGE == "ENG"
-	WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10} English Edition
+	WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10} English Version
 	IF !ORIGIN
-		CALL COLUMNPRINT, 0, "Now Grade:"
+		CALL COLUMNPRINT, 0, "Grade:"
 		CALL GRADE, 段位
 		CALL COLUMNPRINTL, 0, ""
 		CALL COLUMNPRINTL, 0, TITLECOMMENT()
@@ -316,15 +263,13 @@ SELECTCASE CRESULT:1
 		CALL RESET_DATA
 		ORIGIN = ISORIGIN
 		ISORIGIN = 0
-		LOOP_BREAK = 1
-		BEGIN FIRST
+		JUMP ゲーム開始
 	CASE 1
 		SIF ORIGIN
 			RETURN
 		CALL RESET_DATA
-		LOOP_BREAK = 1
 		TUTORIAL = FIRST
-		BEGIN FIRST
+		JUMP ゲーム開始
 ENDSELECT
 
 ;USERLOADを流用
@@ -335,7 +280,7 @@ ENDSELECT
 CALL COLUMNPRINTL, 0, "□何番をロードしますか？"
 CALL COLUMNPRINTL, 0, "　[--]　　　 現実の時間　　　　|　　　ゲーム内の時間"
 
-FOR LCOUNT, TFLAG:ページ数*20, TFLAG:ページ数*20+20
+FOR LCOUNT, CPAGE*20, CPAGE*20+20
 	SELECTCASE CHKDATA(LCOUNT)
 		CASE 0
 			CALL COLUMNPRINTL, 0, @"　[{LCOUNT, 2}] %RESULTS%"
@@ -368,10 +313,9 @@ FOR LCOUNT, 94, 100
 	ENDSELECT
 NEXT
 CALL COLUMNDRAWLINE, 0
-;PRINTPLAINFORM 　LOAD.{ページ数+1}　
 
-CALL COLUMNPRINT, 0, @"%RETURNSPACE(TFLAG:ページ数 > 0, "[101] 前ページ ")%"
-CALL COLUMNPRINT, 0, @"%RETURNSPACE(TFLAG:ページ数 < 3, "[109] 次ページ")%"
+CALL COLUMNPRINT, 0, @"%RETURNSPACE(CPAGE > 0, "[101] 前ページ ")%"
+CALL COLUMNPRINT, 0, @"%RETURNSPACE(CPAGE < 3, "[109] 次ページ")%"
 CALL COLUMNPRINTL, 0, ""
 
 @タイトル_セーブデータのロード_INPUT
@@ -385,18 +329,13 @@ CALL COLUMNPRINTL, 0, ""
 
 SELECTCASE CRESULT:1
 	CASE 0 TO 79, 94 TO 99
-		SELECTCASE CHKDATA(CRESULT:1)
-			CASE 0
-				CALL FADEOUTBGM
-				LOOP_BREAK = 1
-				LOADDATA CRESULT:1
-		ENDSELECT
+		CALL FADEOUTBGM
+		LOOP_BREAK = 1
+		LOADDATA CRESULT:1
 	CASE 101
-		SIF TFLAG:ページ数 > 0
-			TFLAG:ページ数--
+		CPAGE--
 	CASE 109
-		SIF TFLAG:ページ数 < 3
-			TFLAG:ページ数++
+		CPAGE++
 ENDSELECT
 
 @タイトル_エディター
@@ -417,8 +356,7 @@ SELECTCASE CRESULT:1
 		CALL CSV_EDITOR
 		CSVEDITOR = 0
 	CASE 1
-		SIF !SP
-			CALL 口上エディタ_プロジェクト選択
+		CALL 口上エディタ_プロジェクト選択
 ENDSELECT
 
 @タイトル_設定
@@ -454,8 +392,7 @@ SELECTCASE CRESULT:1
 	CASE 0
 		CALL DEFAULT_OPTION
 	CASE 1
-		SIF !SP
-			CALL 音声切り替え
+		CALL 音声切り替え
 	CASE 2
 		IF LANGUAGE == "ENG"
 			LANGUAGE = JP
@@ -464,8 +401,6 @@ SELECTCASE CRESULT:1
 		ENDIF
 		SAVEGLOBAL
 	CASE 3
-		SIF SP
-			RETURN
 		UPDATECHECK
 		SELECTCASE RESULT
 			CASE 0
@@ -481,10 +416,8 @@ SELECTCASE CRESULT:1
 				PRINTW UPDATECHECK機能が無効になっています。最新版をチェックする場合はオプションからコンフィグをオフにしてください
 		ENDSELECT
 	CASE 4
-		IF !ORIGIN
-			INVERTBIT QMA, 0
-			SAVEGLOBAL
-		ENDIF
+		INVERTBIT QMA, 0
+		SAVEGLOBAL
 	CASE 5
 		INVERTBIT GUI, 0
 		SAVEGLOBAL
@@ -539,13 +472,13 @@ SELECTCASE CRESULT:1
 		;#;	IF !ORIGIN
 		;#;		FLAG:ゲームモード = 2
 		;#;		LOOP_BREAK = 1
-		;#;		BEGIN FIRST
+		;#;		JUMP 学園モード開始
 		;#;	ENDIF
 	CASE 5
 		;#;	IF !ORIGIN
 		;#;		FLAG:ゲームモード = 3
 		;#;		LOOP_BREAK = 1
-		;#;		BEGIN FIRST
+		;#;		JUMP 学園モード開始
 		;#;	ENDIF
 	CASE 6
 		CALL レーダーチャートデバッグ
