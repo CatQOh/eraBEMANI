@@ -2,7 +2,7 @@
 ;-------------------------------------------------
 ;ターン終了時
 ;-------------------------------------------------
-@EVENTTURNEND
+@ターン終了
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC 人数
@@ -14,6 +14,15 @@
 #DIM DYNAMIC 最大体力
 #DIM DYNAMIC 鳳凰イベント, 3
 #DIM DYNAMIC LTARGET
+#DIM DYNAMIC 関数カウント
+#DIMS DYNAMIC 関数名, 1000
+
+ENUMFUNCBEGINSWITH "KOJO_DAYEND_"
+関数カウント = RESULT
+ARRAYCOPY "RESULTS", "関数名"
+FOR LCOUNT, 0, 関数カウント
+	CALLFORM %関数名:LCOUNT%
+NEXT
 
 IF TARGET >= 0
 	;売却可能&助手可能判定 陥落系で無視できるって条件はほとんど意味無いか
@@ -138,7 +147,7 @@ FOR LCOUNT, 0, CHARANUM
 		CFLAG:LCOUNT:休憩 = 0
 NEXT
 
-IF TIME == 1
+IF ターン == "夜"
 	LASTMONEY = MONEY
 	;主人が行動不可だと収入入らない
 	SIF !CFLAG:MASTER:使用不可
@@ -148,7 +157,7 @@ ENDIF
 IF !CFLAG:MASTER:使用不可
 	CALL TURNEND_IDOL
 	CALL TURNEND_出版社
-	SIF TIME == 1
+	SIF ターン == "夜"
 		CALL TURNEND_監禁室
 ENDIF
 
@@ -205,7 +214,7 @@ FOR LCOUNT, 0, CHARANUM
 				PRINTFORMW %CALLNAME:LCOUNT%のミッドナイトスペシャルの効果が切れました
 		ENDIF
 		;夜なら貞操帯装着日数増加
-		SIF CFLAG:LCOUNT:貞操帯 && TIME == 1
+		SIF CFLAG:LCOUNT:貞操帯 && ターン == "夜"
 			CFLAG:LCOUNT:貞操帯++
 		;以下主人は除外
 		SIF LCOUNT == MASTER
@@ -263,9 +272,9 @@ FOR LCOUNT, 0, CHARANUM
 	;以下は主人使用不可でも処理する
 	CFLAG:LCOUNT:二日酔い = 0
 	;酔が抜ける 必ずしも1ターンで全快するわけではない
-	SELECTCASE TIME
+	SELECTCASE ターン
 		;昼→夜
-		CASE 0
+		CASE "昼"
 			IF TALENT:LCOUNT:酒豪
 				CFLAG:LCOUNT:酔 -= 20+(特質("代謝強化", LCOUNT)/2)
 				CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/3
@@ -277,7 +286,7 @@ FOR LCOUNT, 0, CHARANUM
 				CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/4
 			ENDIF
 		;夜→昼
-		CASE 1
+		CASE "夜"
 			IF TALENT:LCOUNT:酒豪
 				CFLAG:LCOUNT:酔 -= 50+(特質("代謝強化", LCOUNT)/2)
 				CFLAG:LCOUNT:酔 -= TEQUIP:LCOUNT:ウォッカ/2
@@ -390,11 +399,11 @@ CALL EVENTCHECK_ABL
 FLAG:休憩フラグ = 0
 
 ;午後なら次の日、午前なら午後にする
-SELECTCASE TIME
-	CASE 0
+SELECTCASE ターン
+	CASE "昼"
 		PRINTW 夜になった……
-		TIME = 1
-	CASE 1
+		ターン = 夜
+	CASE "夜"
 		;日付変更時のイベント呼び出し
 		CALL EVENT_NEXTDAY
 		;色仕掛けイベント
@@ -412,7 +421,7 @@ SELECTCASE TIME
 		;実績：調教対象が居ない状態で夜を過ごす
 		SIF TARGET == -1 && !CFLAG:MASTER:使用不可
 			CALL 実績解除, "Without you tonight"
-		TIME = 0
+		ターン = 昼
 		;ゲームモード7(新婚モード)か9(PREMIUM FREE)なら10日に一度、借金の返済・新規借入ができる
 		IF GROUPMATCH(ゲームモード(), "新婚モード", "フリーモード") && DAY%10 == 0
 			CALL DEBT
@@ -483,7 +492,7 @@ SIF DAY >= 6928
 CALL TEMPERATURE
 ;特定のキャラがいる場合、気温に補正を加える(ただし昼のみ)
 ;主人・奴隷・助手の場合の方が影響が強い
-IF TIME == 0
+IF ターン == "昼"
 	FOR LCOUNT, 0, CHARANUM
 		SELECTCASE CHARANAMEF(LCOUNT)
 			CASE "フローラ"
@@ -592,7 +601,7 @@ ENDIF
 ;魔法の効果終了は最後
 CALL TURNEND_魔法効果
 
-JUMP SHOP画面
+;JUMP SHOP画面
 
 ;-------------------------------------------------
 ;日付が変わった時のイベント
@@ -630,7 +639,7 @@ FOR LCOUNT, 0, CHARANUM
 						PRINTFORML %CALLNAME:LCOUNT%は、%CALLNAME:MASTER%を呼び止めると、とろとろにとろけた秘所からはしたなく粘液を溢れさせて瓶に入れ、それを渡してきた。
 						PRINTFORML 瓶の中で、%CALLNAME:LCOUNT%の獲れたて粘液が音を立てて蠢いている…　とりあえず保管する事にした。
 						PRINTFORMW ＜保管粘液量が100ml増加した＞
-						FLAG:保管済み粘液 += 100
+						リソース:粘液 += 100
 					CASE 1
 						PRINTFORML %CALLNAME:LCOUNT%は、もじもじとした様子で%CALLNAME:MASTER%を呼び止め、液体の詰められた瓶を渡してきた。
 						PRINTFORML どうやら彼女の粘液のようだが、調子が悪いのか微妙に粘度が低いようだ。
@@ -655,7 +664,7 @@ FOR LCOUNT, 0, CHARANUM
 						PRINTFORML %CALLNAME:LCOUNT%は、%CALLNAME:MASTER%を呼び止めると、秘所からとろりとした粘液を垂らして瓶に入れ、それを渡してきた。
 						PRINTFORML 瓶の中で、%CALLNAME:LCOUNT%の獲れたて粘液が蠢いている…　とりあえず保管する事にした。
 						PRINTFORMW ＜保管粘液量が30ml増加した＞
-						FLAG:保管済み粘液 += 30
+						リソース:粘液 += 30
 					CASE 1
 						PRINTFORML %CALLNAME:LCOUNT%は、もじもじとした様子で%CALLNAME:MASTER%を呼び止め、液体の詰められた瓶を渡してきた。
 						PRINTFORML どうやら彼女の粘液のようだが、粘度が低い。ローションの代わりとしてなら使えそうだ。
@@ -678,7 +687,7 @@ FOR LCOUNT, 0, CHARANUM
 				PRINTFORML %CALLNAME:LCOUNT%は、%CALLNAME:MASTER%を呼び止めて、研究過程で生じた副産物として、スライムの粘液を渡してきた。
 				PRINTFORML 瓶の中で、粘液が微かに蠢いている…　とりあえず保管する事にした。
 				PRINTFORMW ＜保管粘液量が10ml増加した＞
-				FLAG:保管済み粘液 += 10
+				リソース:粘液 += 10
 			ENDIF
 		ENDIF
 	ENDIF
@@ -727,45 +736,54 @@ SIF ゲームモード() == "段位認定" && !CFLAG:MASTER:使用不可
 @EVENT_NEWDAY
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 治療コスト
+#DIM DYNAMIC 関数カウント
+#DIMS DYNAMIC 関数名, 1000
 
 ;日付加算関数
 CALL NEXTDAY
+
+ENUMFUNCBEGINSWITH "KOJO_DAYSTART_"
+関数カウント = RESULT
+ARRAYCOPY "RESULTS", "関数名"
+FOR LCOUNT, 0, 関数カウント
+	CALLFORM %関数名:LCOUNT%
+NEXT
 
 ;祝日・記念日の処理はSHOPで行うようにしました
 
 ;定休日の場合は休みにする
 ;営業フラグが-1の場合はコマンドでの休業中なのでオープンしない
-IF GC定休日() || FLAG:ゲーセン営業中 == -1
-	SIF FLAG:ゲーセン営業中 != -1
-		FLAG:ゲーセン営業中 = 0
+IF GC定休日() || GC:営業中 == -1
+	SIF GC:営業中 != -1
+		GC:営業中 = 0
 	FOR LCOUNT, 0, CHARANUM
 		SIF CSTR:LCOUNT:配属 == "ゲームセンター"
 			CFLAG:LCOUNT:休憩 = 1
 	NEXT
-ELSEIF FLAG:ゲーセン営業中 != -1
-	FLAG:ゲーセン営業中 = DAY-1
+ELSEIF GC:営業中 != -1
+	GC:営業中 = DAY-1
 ENDIF
 
-IF BR定休日() || FLAG:娼館営業中 == -1
-	SIF FLAG:娼館営業中 != -1
-		FLAG:娼館営業中 = 0
+IF BR定休日() || BR:営業中 == -1
+	SIF BR:営業中 != -1
+		BR:営業中 = 0
 	FOR LCOUNT, 0, CHARANUM
 		SIF CSTR:LCOUNT:配属 == "娼館"
 			CFLAG:LCOUNT:休憩 = 1
 	NEXT
-ELSEIF FLAG:娼館営業中 != -1
-	FLAG:娼館営業中 = DAY-1
+ELSEIF BR:営業中 != -1
+	BR:営業中 = DAY-1
 ENDIF
 
-IF INN定休日() || FLAG:飲食店営業中 == -1 || 業種 == ""
-	SIF FLAG:飲食店営業中 != -1
-		FLAG:飲食店営業中 = 0
+IF INN定休日() || INN:営業中 == -1 || 業種 == ""
+	SIF INN:営業中 != -1
+		INN:営業中 = 0
 	FOR LCOUNT, 0, CHARANUM
 		SIF CSTR:LCOUNT:配属 == "飲食店"
 			CFLAG:LCOUNT:休憩 = 1
 	NEXT
-ELSEIF FLAG:飲食店営業中 != -1
-	FLAG:飲食店営業中 = DAY-1
+ELSEIF INN:営業中 != -1
+	INN:営業中 = DAY-1
 ENDIF
 
 ;実績:新年を迎える

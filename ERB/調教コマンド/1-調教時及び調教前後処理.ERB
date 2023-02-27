@@ -1,8 +1,21 @@
-﻿;調教前の処理
-;2.04でEVENTTRAINもイベント関数から解放
-@EVENTTRAIN
+﻿;;;BEGIN TRAIN相応の処理をする関数
+@調教開始
 CALL EVENTUSERTRAIN
 
+DO
+	CALL SHOW_STATUS
+	CALL SHOW_USERCOM
+	INPUT
+	CALL USERCOM
+LOOP TFLAG:調教終了 == 0
+
+CALL 調教終了
+
+CALL USER_ABLUP
+
+CALL ターン終了
+
+;調教前の処理
 @EVENTUSERTRAIN
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC コマンドフィルタ変数
@@ -450,7 +463,11 @@ IF 受験段位名 == "ワガママ姫たちの接待調教プログラム"
 	;年月日のシード値を用いて乱数を制御するため、同じ日付ならリロードしても同じ結果になる
 	;制御するのはコマンドフィルタだけなのでDUMPRANDで保存しておく
 	DUMPRAND
-	RANDOMIZE (YEAR*100000)+(MONTH*1000)+(DAYS*10)+TIME
+	IF ターン == "昼"
+		RANDOMIZE (YEAR*100000)+(MONTH*1000)+(DAYS*10)
+	ELSE
+		RANDOMIZE (YEAR*100000)+(MONTH*1000)+(DAYS*10)+1
+	ENDIF
 	;コマンドフィルタ変数に1000～10000の乱数を入れる
 	コマンドフィルタ変数 = RAND(1000, 10000)
 	;乱数の状態を戻す
@@ -498,7 +515,7 @@ SIF ISSKIP()
 IF SELECTCOMS == "蘇生薬投与"
 	;5ターン分ほど使用不可にする
 	CFLAG:使用不可 = 6
-	BEGIN AFTERTRAIN
+	JUMP 調教終了
 ENDIF
 
 IF !TEQUIP:媚薬 && CFLAG:媚薬 >= 10
@@ -550,7 +567,7 @@ ELSE
 		PRINTFORML %CALLNAME:TARGET%の裸体盛りをみんなに振る舞うことにした
 		SIF CFLAG:死亡 && CHARANUM > 2
 			PRINTFORML しかし死体に盛り付けられた料理など、ほとんどの人は気味悪がって手を出さなかった……
-		BEGIN AFTERTRAIN
+		JUMP 調教終了
 	;体力切れ
 	ELSEIF BASE:体力 <= 0
 		IF CFLAG:死亡
@@ -564,7 +581,7 @@ ELSE
 				PRINTFORML ★★★%CALLNAME:TARGET%は死亡しました★★★
 				TEQUIP:仮死薬 = 0
 				CFLAG:死亡 = 1
-				BEGIN AFTERTRAIN
+				JUMP 調教終了
 			;ガチ屍姦中は体力とか関係無い
 			ELSE
 				RETURN
@@ -575,7 +592,7 @@ ELSE
 		IF ハッキング命令 == "自爆"
 			PRINTFORML ★★★%CALLNAME:TARGET%は自爆しました★★★
 			自爆キャラ:(NO:TARGET) = 1
-			BEGIN AFTERTRAIN
+			JUMP 調教終了
 		ELSE
 			PRINTFORML （激しい調教で%CALLNAME:TARGET%はひどく消耗したようです　調教を終了します）
 			;従順ダウン 陥落済みなら発生しない
@@ -752,7 +769,7 @@ ELSE
 			SIF CHARANAMEF(PLAYER) == "ガッキー博士"
 				CALL 実績解除, "「科学の発展に犠牲は付き物デース」"
 		ENDIF
-		BEGIN AFTERTRAIN
+		JUMP 調教終了
 	ELSEIF BASE:体力 < 500 && !特質("無理強い") && !CFLAG:死亡
 		TFLAG:調教終了 = 1
 		PRINTL （体力が限界に来ています　調教を終了します）
@@ -917,7 +934,7 @@ ELSE
 				ENDIF
 			LOOP LOOPRES(0, 1)
 		ENDIF
-		BEGIN AFTERTRAIN
+		JUMP 調教終了
 	ENDIF
 ENDIF
 
@@ -928,13 +945,13 @@ IF TFLAG:流産
 	CFLAG:出産トラウマ += 50
 	SIF CFLAG:出産トラウマ >= 100
 		CFLAG:出産トラウマ = 100
-	BEGIN AFTERTRAIN
+	JUMP 調教終了
 ENDIF
 ;自爆時も同様
 IF ハッキング命令 == "自爆"
 	PRINTFORML ★★★%CALLNAME:TARGET%は自爆しました★★★
 	自爆キャラ:(NO:TARGET) = 1
-	BEGIN AFTERTRAIN
+	JUMP 調教終了
 ENDIF
 
 ;調教で【崩壊】を得た場合のイベント
@@ -961,8 +978,7 @@ ENDIF
 ;ENDIF
 
 ;調教終了時のイベント
-@EVENTEND
-#LATER
+@調教終了
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC ストレス低下量
 #DIM DYNAMIC 実績計算用
@@ -995,12 +1011,12 @@ IF ハッキング命令 == "自爆"
 	CALL プレイログ記録, @"%NAME:TARGET%自爆"
 	CALL CLEAR_CHARA, TARGET
 	TARGET = -1
-	BEGIN TURNEND
+	JUMP ターン終了
 ELSEIF SELECTCOMS == "剥製加工"
 	CALL プレイログ記録, @"%NAME:TARGET%の死体を剥製に加工"
 	CALL CLEAR_CHARA, TARGET
 	TARGET = -1
-	BEGIN TURNEND
+	JUMP ターン終了
 ENDIF
 
 ;屋外プレイで雨、もしくはお風呂場プレイ中に終了した場合、人魚の体力気力を半減させる
@@ -1093,7 +1109,7 @@ ENDIF
 ;採血
 IF TFLAG:採血量
 	PRINTFORMW 今回の調教で計{TFLAG:採血量}mlの血液を採取しました
-	FLAG:保管済み血液 += TFLAG:採血量
+	リソース:血液 += TFLAG:採血量
 ENDIF
 
 $SKIP
@@ -1183,11 +1199,8 @@ VARLINE = 0
 
 IF CFLAG:死亡
 	CALL キャラ死亡, TARGET
-	BEGIN TURNEND
+	JUMP ターン終了
 ENDIF
-
-;BEGIN ABLUP
-JUMP USER_ABLUP
 
 @アイテム修理
 #DIM DYNAMIC LCOUNT

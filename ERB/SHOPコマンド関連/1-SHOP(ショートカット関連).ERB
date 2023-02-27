@@ -43,7 +43,7 @@ SELECTCASE コマンド内容:0
 			PRINTFORMW %NAME:対象%は現在調教できません
 		ELSE
 			CALL ASSIGN_TARGET, 対象
-			BEGIN TRAIN
+			CALL 調教開始
 		ENDIF
 	CASE "施設"
 		SELECTCASE コマンド内容:1
@@ -68,7 +68,12 @@ SELECTCASE コマンド内容:0
 		SAVEDATA TOINT(コマンド内容:1), セーブデータ情報()
 		PRINTW セーブしました
 	CASE "チェックポイント"
-		ロード番号 = (94+((DAY-1)*2%6+TIME)-1)
+		SELECTCASE ターン
+			CASE "昼"
+				ロード番号 = (94+((DAY-1)*2%6)-1)
+			CASE "夜"
+				ロード番号 = (94+((DAY-1)*2%6+1)-1)
+		ENDSELECT
 		SIF ロード番号 == 93
 			ロード番号 = 99
 		IF CHKDATA(ロード番号) == 0
@@ -87,7 +92,6 @@ SELECTCASE コマンド内容:0
 			PRINTFORMW %コマンド内容:1%番のセーブデータはロードできません
 		ENDIF
 ENDSELECT
-
 
 @ショートカット登録
 #DIM DYNAMIC LCOUNT
@@ -108,6 +112,7 @@ ENDSELECT
 "畜産",
 "農産物",
 "博物館",
+"霊安室",
 }
 ;上記施設を選択可能かの変数
 #DIM DYNAMIC 選択可能, 20
@@ -196,6 +201,9 @@ DO
 							CONTINUE
 					CASE "医務室", "実験室", "図書室"
 						SIF !ITEM:(施設名:LCOUNT)
+							CONTINUE
+					CASE "霊安室"
+						SIF !MOD:STS
 							CONTINUE
 				ENDSELECT
 				選択可能:LCOUNT = 1

@@ -1398,13 +1398,13 @@ IF LANGUAGE == "ENG"
 				返り値 += "(Evening) "
 		ENDSELECT
 	ELSE
-		返り値 += @"Day {DAY}(\@ TIME == 0 ? Noon # Evening \@) "
+		返り値 += @"Day {DAY}(\@ ターン == "昼" ? Noon # Evening \@) "
 	ENDIF
 ELSE
 	IF ゲームモード() == "学園モード"
 		返り値 += @"{DAY}日目(%ターン%) "
 	ELSE
-		返り値 += @"{DAY}日目(\@ TIME == 0 ? 昼 # 夜 \@) "
+		返り値 += @"{DAY}日目(\@ ターン == "昼" ? 昼 # 夜 \@) "
 	ENDIF
 ENDIF
 
@@ -1779,6 +1779,8 @@ SIF CHECK_CHILD_CARE(対象)
 	RETURNF 0
 SIF CFLAG:対象:使用不可
 	RETURNF 0
+SIF CFLAG:対象:キャラロスト
+	RETURNF 0
 
 RETURNF 1
 
@@ -1791,7 +1793,25 @@ SIF CHECK_CHILD_CARE(対象)
 	RETURNF 0
 SIF CFLAG:対象:使用不可
 	RETURNF 0
-SIF CFLAG:対象:状態 < 2
+SIF CFLAG:対象:状態 < 2 && !TALENT:対象:アニマル
+	RETURNF 0
+SIF CFLAG:対象:キャラロスト
+	RETURNF 0
+
+RETURNF 1
+
+;;;売却可能か
+@売却可能, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+
+SIF CHECK_CHILD_CARE(対象)
+	RETURNF 0
+SIF CFLAG:対象:状態 < 1
+	RETURNF 0
+SIF CFLAG:対象:売却不可
+	RETURNF 0
+SIF CFLAG:対象:キャラロスト
 	RETURNF 0
 
 RETURNF 1
@@ -2057,7 +2077,7 @@ SIF TEQUIP:ARG:尿道スライム
 
 ARRAYSHIFT プレイログ, 1, ""
 ;年月日を自動で付ける
-プレイログ:0 = {YEAR}年{MONTH, 2}月{DAYS, 2}日\@ TIME == 0 ? 昼 # 夜 \@ %内容%
+プレイログ:0 = {YEAR}年{MONTH, 2}月{DAYS, 2}日\@ ターン == "昼" ? 昼 # 夜 \@ %内容%
 
 ;;;引数のフォーマットは「イベント/入出金」
 ;;;一応TOINTで解釈できない引数渡されたら記録しないorTHROW
@@ -2362,3 +2382,35 @@ TARGET = -1
 #DIMS DYNAMIC 検索文字列
 
 RETURNF FINDELEMENT(変数, 検索文字列, 0, VARSIZE("変数"), 1)
+
+;;;難易度に応じた色を返す
+@難易度色, ARG = -2
+#FUNCTIONS
+SIF ARG == -2
+	ARG = FLAG:難易度
+
+SELECTCASE ARG
+	CASE -1
+		RETURNF "lime"
+	CASE 1
+		RETURNF "deepskyblue"
+	CASE 2
+		RETURNF "yellow"
+	CASE 3
+		RETURNF "coral"
+	CASE 4
+		RETURNF "violet"
+ENDSELECT
+
+;;;主人対象助手のいずれかが魔術師
+@詠唱可能
+#FUNCTION
+
+SIF TALENT:MASTER:魔術師
+	RETURNF 1
+SIF TARGET > 0 && TALENT:魔術師
+	RETURNF 1
+SIF ASSI > 0 && TALENT:ASSI:魔術師
+	RETURNF 1
+
+RETURNF 0
