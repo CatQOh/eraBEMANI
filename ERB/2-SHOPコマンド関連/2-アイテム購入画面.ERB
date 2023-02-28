@@ -1,4 +1,5 @@
 ﻿;アイテムインターフェース改良用の関数郡
+[SKIPSTART]
 @SHOPITEM_BUY
 #DIMS DYNAMIC アイテム分類
 DRAWLINE
@@ -46,6 +47,7 @@ DO
 LOOP 1
 
 RESTART
+[SKIPEND]
 
 ;PRINT_ITEM命令が微妙だったので作成 所持アイテムを表示する
 @ITEMPRINT, カラム
@@ -146,14 +148,15 @@ SIF STRLENS(表示用) == 0
 	PRINT 　
 PRINTFORM %表示用%
 
-FOR LCOUNT, 0, 1100
+FOR LCOUNT, 0, 300
 	IF ITEM:LCOUNT
 		SELECTCASE LCOUNT
 			;単一表示のアイテム
 			;0～99 = ローターなどの淫具
-			;500～599 = 施設・設備
-			;1000～1099 = 経営モード用のアイテム
-			CASE 0 TO 99
+			;100～149 = 施設・設備
+			;150～199 = 経営モード用のアイテム
+			;200～299 = 複数所持可能なアイテム
+			CASE 0 TO 199
 				表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
 				PRINTFORM %表示用%
 				;改行する場合はアイテム単位で区切る
@@ -181,6 +184,7 @@ FOR LCOUNT, 0, 1100
 					ENDIF
 					PRINTFORM [%ITEMNAME:LCOUNT%]
 				ENDIF
+			[SKIPSTART]
 			CASE 500 TO 599, 1000 TO 1099
 				表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
 				PRINTFORM %表示用%
@@ -195,8 +199,9 @@ FOR LCOUNT, 0, 1100
 					PRINT 　
 				ENDIF
 				PRINTFORM [%ITEMNAME:LCOUNT%]
+			[SKIPEND]
 			;個数表示のアイテム
-			CASE 100 TO 199, GETNUM(ITEM, "ミッドナイトスペシャル")
+			CASEELSE
 				表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
 				PRINTFORM %表示用%
 				;改行する場合はアイテム単位で区切る
@@ -267,6 +272,9 @@ SELECTCASE アイテム分類
 			;コナステ解約は契約時のみ選択可能
 			SIF ITEMNAME:LCOUNT == "コナステ解約" && ITEM:コナステベーシックコース != 2
 				CONTINUE
+			;主人がドラゴン使い持ってたらドラゴン購入不可
+			SIF ITEMNAME:LCOUNT == "ドラゴンの成体" && TALENT:MASTER:ドラゴン使い
+				CONTINUE
 			ITEMSALES:LCOUNT = !ITEM:LCOUNT
 		NEXT
 ENDSELECT
@@ -276,7 +284,7 @@ SELECTCASE アイテム分類
 	CASE "消耗品", "すべて"
 		;ローション、媚薬、ビデオテープなどはとりあえず99個まで
 		;飲みきりのお酒も99個まで
-		FOR LCOUNT, 100, 170
+		FOR LCOUNT, 200, 270
 			IF ITEM:LCOUNT >= 99
 				ITEMSALES:LCOUNT = 0
 			ELSE
@@ -284,7 +292,7 @@ SELECTCASE アイテム分類
 			ENDIF
 		NEXT
 		;ボトルのお酒は1個で10個分なので90個以上あれば表示しない
-		FOR LCOUNT, 170, 200
+		FOR LCOUNT, 270, 300
 			IF ITEM:LCOUNT >= 90
 				ITEMSALES:LCOUNT = 0
 			ELSE
@@ -294,13 +302,15 @@ SELECTCASE アイテム分類
 		;ビデオカメラが無いときはビデオテープの販売をしない
 		SIF !ITEM:ビデオカメラ
 			ITEMSALES:ビデオテープ = 0
-		;魅惑の粘液は非売品なので販売しない
+		;魅惑の粘液とミッドナイトスペシャルは非売品なので販売しない
 		ITEMSALES:魅惑の粘液 = 0
+		ITEMSALES:ミッドナイトスペシャル = 0
 ENDSELECT
 
 ;素質付与アイテム
 SELECTCASE アイテム分類
 	CASE "素質アイテム", "すべて"
+		[SKIPSTART]
 		;汚れ無視
 		SIF !TALENT:MASTER:汚れ無視
 			ITEMSALES:【汚れ無視】 = 1
@@ -313,6 +323,7 @@ SELECTCASE アイテム分類
 		;ドラゴンの成体
 		SIF !TALENT:MASTER:ドラゴン使い
 			ITEMSALES:【ドラゴンの成体】 = 1
+		[SKIPEND]
 		;経営ができるゲームモードなら表示
 		SELECTCASE ゲームモード()
 			;STRATEGY、PFREEのみ
@@ -336,10 +347,8 @@ SELECTCASE アイテム分類
 		ITEMSALES:抗スライム薬 = 1
 
 		;調合知識が必要
-		IF 調合知識有り
-			ITEMSALES:怪しげな栄養剤 = 1
+		SIF 調合知識有り
 			ITEMSALES:魔剤 = 1
-		ENDIF
 
 		;禁断の知識が必要
 		IF 禁断の知識有り
@@ -376,9 +385,9 @@ ENDSELECT
 SELECTCASE アイテム分類
 	CASE "本", "すべて"
 		;新婚モードなら無条件で買える
-		;図書室ランク10以上 250～269
+		;図書室ランク10以上 450～469
 		IF FLAG:図書室ランク >= 10 || ゲームモード() == "新婚モード"
-			FOR LCOUNT, 250, 270
+			FOR LCOUNT, 450, 470
 				SIF ITEMNAME:LCOUNT == ""
 					CONTINUE
 				ITEMSALES:LCOUNT = 1
@@ -387,9 +396,9 @@ SELECTCASE アイテム分類
 					ITEMSALES:LCOUNT = 0
 			NEXT
 		ENDIF
-		;図書室ランク20以上 270～299
+		;図書室ランク20以上 470～499
 		IF FLAG:図書室ランク >= 20 || ゲームモード() == "新婚モード"
-			FOR LCOUNT, 270, 300
+			FOR LCOUNT, 470, 500
 				SIF ITEMNAME:LCOUNT == ""
 					CONTINUE
 				ITEMSALES:LCOUNT = 1
@@ -400,7 +409,7 @@ ENDSELECT
 SELECTCASE アイテム分類
 	CASE "施設", "すべて"
 		;設備 金さえあれば買える
-		FOR LCOUNT, 500, 520
+		FOR LCOUNT, 100, 150
 			IF ITEM:LCOUNT
 				ITEMSALES:LCOUNT = 0
 			ELSE
@@ -426,7 +435,7 @@ SIF !カラム
 	CALL CHECKDRAWLINE
 
 ;主人か助手が買い物上手ならアイテム2割引き、消耗品3割引き
-SIF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
+SIF 値引き可能()
 	割引 = 1
 FOR LCOUNT, 0, VARSIZE("ITEM")
 	SIF !ITEMSALES:LCOUNT || ITEMNAME:LCOUNT == ""
@@ -434,8 +443,11 @@ FOR LCOUNT, 0, VARSIZE("ITEM")
 	表示用 = [{LCOUNT}]%ITEMNAME:LCOUNT%
 	;ORIGINモードでは金は必要無い(価格は表示しない)
 	SELECTCASE LCOUNT
-		;消耗品
+		;施設・設備は割引対象外
 		CASE 100 TO 199
+			GOTO ELSE
+		;消耗品
+		CASE 200 TO 299
 			IF !ORIGIN
 				IF 割引
 					表示用 += @"({ITEMPRICE:LCOUNT/10*7}＄)"
@@ -443,10 +455,7 @@ FOR LCOUNT, 0, VARSIZE("ITEM")
 					表示用 += @"({ITEMPRICE:LCOUNT}＄)"
 				ENDIF
 			ENDIF
-		;施設・設備は割引対象外
-		CASE 500 TO 599
-			GOTO ELSE
-		CASE IS < 1000
+		CASE IS < 500
 			;ロジカルダッシュなら発行月も付ける
 			SIF ITEMNAME:LCOUNT == "ロジカルダッシュ"
 				表示用 += @"{YEAR}年{MONTH}月号"
@@ -537,38 +546,37 @@ SIF カラム
 DRAWLINE
 PRINTPLAIN 　ITEM　
 PRINTL [10000] 戻る
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 10000
-			RETURN 1
-		CASEELSE
-			IF ITEMSALES:RESULT && ITEMNAME:RESULT != ""
-				IF ITEMPRICE:RESULT > MONEY && !ORIGIN
-					PRINTW 所持金が足りません
-				ELSE
-					;アイテム分類を名前で渡す
-					SELECTCASE RESULT
-						CASE 0 TO 99, 500 TO 599, 1000 TO 1049
-							アイテム分類:1 = 買い切り
-						CASE 100 TO 199
-							アイテム分類:1 = 複数購入可
-						CASE 200 TO 249
-							アイテム分類:1 = 素質アイテム
-						CASE 250 TO 399, 1050 TO 1099
-							アイテム分類:1 = 薬品等
-					ENDSELECT
-					;以下特定のアイテムの分類を変えるときに使う
-					SELECTCASE ITEMNAME:RESULT
-						CASE "ロジカルダッシュ"
-							アイテム分類:1 = 買い切り
-					ENDSELECT
-					CALL ITEMBUY_DECIDE, ITEMNAME:RESULT, アイテム分類:1
-				ENDIF
-				RESTART
-			ENDIF
-	ENDSELECT
-LOOP 1
+
+BINPUT
+
+SELECTCASE RESULT
+	CASE 10000
+		RETURN 1
+	CASEELSE
+		IF ITEMPRICE:RESULT > MONEY && !ORIGIN
+			PRINTW 所持金が足りません
+		ELSE
+			;アイテム分類を名前で渡す
+			SELECTCASE RESULT
+				CASE 0 TO 199
+					アイテム分類:1 = 買い切り
+				CASE 200 TO 299
+					アイテム分類:1 = 複数購入可
+				;本は薬品分類
+				CASEELSE
+					アイテム分類:1 = 薬品等
+				;CASE 400 TO 449
+				;	アイテム分類:1 = 素質アイテム
+			ENDSELECT
+			;以下特定のアイテムの分類を変えるときに使う
+			SELECTCASE ITEMNAME:RESULT
+				CASE "ロジカルダッシュ"
+					アイテム分類:1 = 買い切り
+			ENDSELECT
+			CALL ITEMBUY_DECIDE, ITEMNAME:RESULT, アイテム分類:1
+		ENDIF
+		RESTART
+ENDSELECT
 
 RETURN 0
 
@@ -577,7 +585,7 @@ RETURN 0
 #DIMS DYNAMIC アイテム分類
 #DIM DYNAMIC 割引
 
-SIF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
+SIF 値引き可能()
 	割引 = 1
 
 DRAWLINE
@@ -596,11 +604,12 @@ SELECTCASE アイテム分類
 			PRINTL [0] 購入する
 			PRINTL [1] やめる
 		ENDIF
-		CALL INPUTF, 0, 1
+		BINPUT
 		SIF RESULT == 1
 			RETURN
 		IF アイテム名 == "コナステ解約"
 			PRINTFORMW ＜コナステを解約しました。サービスは次の{コナステ%100}日までご利用できます＞
+			CALL プレイログ記録, @"コナステベーシックコース解約"
 		ELSE
 			CALL SE再生, 出入金
 			PRINTFORMW ＜%アイテム名%を購入しました＞
@@ -608,12 +617,10 @@ SELECTCASE アイテム分類
 			ITEM:アイテム名 = 1
 		ENDIF
 		;割引対象は淫具のみ
-		IF GETNUM(ITEM, アイテム名) < 500 && 割引
-			MONEY -= ITEMPRICE:アイテム名/10*8
-			CALL 現金出納帳記録, @"「%アイテム名%」購入/-{ITEMPRICE:アイテム名/10*8}"
+		IF GETNUM(ITEM, アイテム名) < 100 && 割引
+			CALL PAYMENT, -ITEMPRICE:アイテム名/10*8, @"「%アイテム名%」購入"
 		ELSE
-			MONEY -= ITEMPRICE:アイテム名
-			CALL 現金出納帳記録, @"「%アイテム名%」購入/-{ITEMPRICE:アイテム名}"
+			CALL PAYMENT, -ITEMPRICE:アイテム名, @"「%アイテム名%」購入"
 		ENDIF
 		ITEMSALES:アイテム名 = 0
 		;事業開発オフィスはカメラも付いてくる
@@ -630,25 +637,128 @@ SELECTCASE アイテム分類
 		ENDIF
 		SIF アイテム名 == "コナステ解約"
 			ITEM:コナステベーシックコース = 1
+
+		IF アイテム名 == "【ドラゴンの成体】"
+			TALENT:MASTER:ドラゴン使い = 1
+			DO
+				PRINTL ドラゴンの名前を入力してください(何も入力しない場合、「ドラゴン」になります)
+				PRINTBUTTON "[ランダムで命名する]", "ランダムで命名する"
+				PRINTL 
+				INPUTS
+				IF RESULTS == "ランダムで命名する"
+					IF LANGUAGE == "ENG"
+						;元ネタは分かる人だけ分かれば
+						STRDATA RESULTS
+							DATA Roland
+							DATA Stan
+							DATA Crash
+							DATA Trent
+							DATA Terra
+							DATA Pretzal
+							DATA Scorn
+							DATA Vas
+							DATA Kelvin
+							DATA Ridley
+							DATA Nova
+							DATA Apollo
+							DATA Spritz
+							DATA Flint
+							DATA Vergil
+							DATA Clayton
+							DATA Crackers
+							DATA Elden
+							DATA Duke
+							DATA Xerxes
+							DATA Nocturne
+							DATA Blaze
+							DATA Zaratan
+							DATA Dexter
+							DATA Glyph
+							DATA Lenneth
+							DATA Winston
+							DATA Spitfire
+							DATA Baron
+							DATA Votan
+							DATA Echo
+						ENDDATA
+					ELSE
+						;元ネタは分かる人だけ分かれば
+						STRDATA RESULTS
+							DATA ローランド
+							DATA スタン
+							DATA クラッシュ
+							DATA トレント
+							DATA テッラ
+							DATA プレツァル
+							DATA スコーン
+							DATA ヴァス
+							DATA ケルヴィン
+							DATA リドリー
+							DATA ノヴァ
+							DATA アポロ
+							DATA スピリッツ
+							DATA フリント
+							DATA ヴァージル
+							DATA クレイトン
+							DATA クラッカー
+							DATA エルデン
+							DATA デューク
+							DATA ゼルクセス
+							DATA ブルーザー
+							DATA ノクターン
+							DATA ブレイズ
+							DATA ゼラタン
+							DATA デクスター
+							DATA グリフ
+							DATA レネス
+							DATA エリオット
+							DATA ウィンストン
+							DATA スピットファイア
+							DATA バロン
+							DATA ヴォタン
+							DATA エコー
+						ENDDATA
+					ENDIF
+				ENDIF
+				SIF RESULTS == ""
+					RESULTS = ドラゴン
+				PRINTFORML %RESULTS%でよろしいですか？(後からオプション画面で変更できます)
+				PRINTL [0] - はい
+				PRINTL [1] - いいえ
+				BINPUT
+				SELECTCASE RESULT
+					CASE 0
+						CSTR:MASTER:ドラゴン = %RESULTS%
+						SELECTCASE CSTR:MASTER:ドラゴン
+							CASE "ドラゴン"
+								PRINTFORMW ドラゴンは名前が欲しいと言わんばかりに寂しげな瞳で%CALLNAME:MASTER%を見つめている……
+							CASEELSE
+								PRINTFORMW %CSTR:MASTER:ドラゴン%は名前をつけてくれた%CALLNAME:MASTER%に懐いているようだ……
+						ENDSELECT
+						BREAK
+					CASE 1
+						CONTINUE
+				ENDSELECT
+			LOOP 1
+		ENDIF
 	CASE "複数購入可"
 		;消耗品は専用の関数で
 		CALL BUY_PLURAL, アイテム名
+	[SKIPSTART]
 	CASE "素質アイテム"
 		PRINTFORML 本当に%アイテム名%を購入しますか？
 		PRINTL [0] 購入する
 		PRINTL [1] やめる
-		CALL INPUTF, 0, 1
+		BINPUT
 		SIF RESULT == 1
 			RETURN
 		CALL SE再生, 出入金
 		PRINTFORMW ＜%アイテム名%を購入しました＞
 		CALL プレイログ記録, @"「%アイテム名%」購入"
 		IF 割引
-			MONEY -= ITEMPRICE:アイテム名/10*8
-			CALL 現金出納帳記録, @"「%アイテム名%」購入/-{ITEMPRICE:アイテム名/10*8}"
+			CALL PAYMENT, -ITEMPRICE:アイテム名/10*8, @"「%アイテム名%」購入"
 		ELSE
-			MONEY -= ITEMPRICE:アイテム名
-			CALL 現金出納帳記録, @"「%アイテム名%」購入/-{ITEMPRICE:アイテム名}"
+			CALL PAYMENT, -ITEMPRICE:アイテム名, @"「%アイテム名%」購入"
 		ENDIF
 		ITEMSALES:アイテム名 = 0
 		SELECTCASE アイテム名
@@ -658,109 +768,7 @@ SELECTCASE アイテム分類
 				TALENT:MASTER:孔雀の瞳 = 1
 			CASE "【ドラキュラの牙】"
 				TALENT:MASTER:吸血鬼 = 1
-			CASE "【ドラゴンの成体】"
-				TALENT:MASTER:ドラゴン使い = 1
-				DO
-					PRINTL ドラゴンの名前を入力してください(何も入力しない場合、「ドラゴン」になります)
-					PRINTBUTTON "[ランダムで命名する]", "ランダムで命名する"
-					PRINTL 
-					INPUTS
-					IF RESULTS == "ランダムで命名する"
-						IF LANGUAGE == "ENG"
-							;元ネタは分かる人だけ分かれば
-							STRDATA RESULTS
-								DATA Roland
-								DATA Stan
-								DATA Crash
-								DATA Trent
-								DATA Terra
-								DATA Pretzal
-								DATA Scorn
-								DATA Vas
-								DATA Kelvin
-								DATA Ridley
-								DATA Nova
-								DATA Apollo
-								DATA Spritz
-								DATA Flint
-								DATA Vergil
-								DATA Clayton
-								DATA Crackers
-								DATA Elden
-								DATA Duke
-								DATA Xerxes
-								DATA Nocturne
-								DATA Blaze
-								DATA Zaratan
-								DATA Dexter
-								DATA Glyph
-								DATA Lenneth
-								DATA Winston
-								DATA Spitfire
-								DATA Baron
-								DATA Votan
-								DATA Echo
-							ENDDATA
-						ELSE
-							;元ネタは分かる人だけ分かれば
-							STRDATA RESULTS
-								DATA ローランド
-								DATA スタン
-								DATA クラッシュ
-								DATA トレント
-								DATA テッラ
-								DATA プレツァル
-								DATA スコーン
-								DATA ヴァス
-								DATA ケルヴィン
-								DATA リドリー
-								DATA ノヴァ
-								DATA アポロ
-								DATA スピリッツ
-								DATA フリント
-								DATA ヴァージル
-								DATA クレイトン
-								DATA クラッカー
-								DATA エルデン
-								DATA デューク
-								DATA ゼルクセス
-								DATA ブルーザー
-								DATA ノクターン
-								DATA ブレイズ
-								DATA ゼラタン
-								DATA デクスター
-								DATA グリフ
-								DATA レネス
-								DATA エリオット
-								DATA ウィンストン
-								DATA スピットファイア
-								DATA バロン
-								DATA ヴォタン
-								DATA エコー
-							ENDDATA
-						ENDIF
-					ENDIF
-					SIF RESULTS == ""
-						RESULTS = ドラゴン
-					PRINTFORML %RESULTS%でよろしいですか？(後からオプション画面で変更できます)
-					PRINTL [0] - はい
-					PRINTL [1] - いいえ
-					CALL INPUTF, 0, 1
-					SELECTCASE RESULT
-						CASE 0
-							CSTR:MASTER:ドラゴン = %RESULTS%
-							SELECTCASE CSTR:MASTER:ドラゴン
-								CASE "ドラゴン"
-									PRINTFORMW ドラゴンは名前が欲しいと言わんばかりに寂しげな瞳で%CALLNAME:MASTER%を見つめている……
-								CASEELSE
-									PRINTFORMW %CSTR:MASTER:ドラゴン%は名前をつけてくれた%CALLNAME:MASTER%に懐いているようだ……
-							ENDSELECT
-							BREAK
-						CASE 1
-							CONTINUE
-					ENDSELECT
-				LOOP 1
-		ENDSELECT
+	[SKIPEND]
 	CASE "薬品等"
 		;抗スライム薬だけ特殊
 		IF アイテム名 == "抗スライム薬"
@@ -788,7 +796,7 @@ SELECTCASE アイテム名
 		購入上限 = 99-ITEM:アイテム名
 ENDSELECT
 
-IF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
+IF 値引き可能()
 	アイテム価格 = ITEMPRICE:アイテム名*7/10
 ELSE
 	アイテム価格 = ITEMPRICE:アイテム名
@@ -810,8 +818,7 @@ IF RESULT
 		CASEELSE
 			ITEM:アイテム名 += 購入数
 	ENDSELECT
-	MONEY -= アイテム価格*購入数
-	CALL 現金出納帳記録, @"「%アイテム名%」×{購入数}購入/-{アイテム価格*購入数}"
+	CALL PAYMENT, -アイテム価格*購入数, @"「%アイテム名%」×{購入数}購入"
 	;実績:ター子の交渉で値引きしたアイテムを購入する
 	SIF CHARANAMEF(MASTER) == "ター子" || (ASSI > 0 && CHARANAMEF(ASSI) == "ター子")
 		CALL 実績解除, "「それ、もうちょい安ぅならんやろか？」"
@@ -831,9 +838,7 @@ PRINTL 誰に使いますか？
 
 FOR PAGING, 0, CHARANUM
 	使用可 = ITEM_ABLE(PAGING, アイテム名)
-
-	追加情報 = 体力
-	追加情報 += @"({BASE:PAGING:体力, 4}/{MAXBASE:PAGING:体力}) %BARSTR(BASE:PAGING:体力, MAXBASE:PAGING:体力, 16)% "
+	追加情報 = 
 	SIF TALENT:PAGING:処女
 		追加情報 += "処女 "
 	SIF TALENT:PAGING:再生処女
@@ -922,6 +927,7 @@ SELECTCASE アイテム名
 		PRINTFORMW ＜%CALLNAME:使用対象%は【ネクロマンサー】を得た＞
 		TALENT:使用対象:ネクロマンサー = 1
 	;体力回復
+	[SKIPSTART]
 	CASE "怪しげな栄養剤"
 		CALL SE再生, ドリンク
 		PRINTFORMW ＜%CALLNAME:使用対象%の体力が回復した＞
@@ -936,6 +942,7 @@ SELECTCASE アイテム名
 			回復量 += 50
 		回復量 += ABL:MASTER:技巧*10
 		BASE:使用対象:体力 += 回復量
+	[SKIPEND]
 	;ふたなり化
 	CASE "ふたなり薬"
 		CALL SE再生, ドリンク
@@ -1007,7 +1014,7 @@ SELECTCASE アイテム名
 				;実績:リピカをグラマラスにする
 				SIF CHARANAMEF(使用対象) == "赤のリピカ" && !TALENT:使用対象:小柄体型
 					CALL 実績解除, "「ふっふーん 『ないすばでぃ』を手に入れたのさー♪」"
-			;巨乳→爆乳
+			;豊乳→爆乳
 			CASE 5
 				;小柄体型、小人体型
 				IF TALENT:使用対象:小柄体型 || TALENT:使用対象:小人体型
@@ -1026,7 +1033,7 @@ SELECTCASE アイテム名
 	CASE "縮胸剤"
 		CALL SE再生, ドリンク
 		SELECTCASE TALENT:使用対象:バストサイズ
-			;爆乳→巨乳→豊乳
+			;爆乳→豊乳→巨乳
 			CASE 5, 6
 				PRINTFORMW ＜%CALLNAME:使用対象%の豊かすぎる胸が一回り小さくなった＞
 			;巨乳→普乳
@@ -1284,6 +1291,7 @@ SELECTCASE アイテム名
 		PRINTFORMW ＜%NAME:使用対象%はカメラマンになった＞
 		TALENT:使用対象:カメラマン = 1
 	CASE "仮死薬"
+		CALL SE再生, ドリンク
 		PRINTFORMW ＜%NAME:使用対象%は仮死状態になった＞
 		CFLAG:使用対象:仮死薬 = 1
 ENDSELECT
@@ -1291,15 +1299,13 @@ ENDSELECT
 CALL SETBASE, 使用対象
 
 CALL プレイログ記録, @"%NAME:使用対象%に%アイテム名%が使われる"
-IF GETNUM(ITEM, アイテム名) < 1000 && (TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手))
-	MONEY -= ITEMPRICE:アイテム名/10*8
-	CALL 現金出納帳記録, @"「%アイテム名%」購入/-{ITEMPRICE:アイテム名/10*8}"
+IF !INRANGE(GETNUM(ITEM, アイテム名), 100, 199) && 値引き可能()
+	CALL PAYMENT, -ITEMPRICE:アイテム名/10*8, @"「%アイテム名%」購入"
 	;実績:ター子の交渉で値引きしたアイテムを購入する
 	SIF CHARANAMEF(MASTER) == "ター子" || (ASSI > 0 && CHARANAMEF(ASSI) == "ター子")
 		CALL 実績解除, "「それ、もうちょい安ぅならんやろか？」"
 ELSE
-	MONEY -= ITEMPRICE:アイテム名
-	CALL 現金出納帳記録, @"「%アイテム名%」購入/-{ITEMPRICE:アイテム名}"
+	CALL PAYMENT, -ITEMPRICE:アイテム名, @"「%アイテム名%」購入"
 ENDIF
 
 RETURN
@@ -1316,7 +1322,7 @@ ENDIF
 PRINTL 　[2] - すべてのキャラのスライム化を治癒し、感染予防を行う(先天性のスライム持ち、及び溶ける快に目覚めた者は治療できない)
 PRINTL 　[0] - キャンセル
 
-CALL INPUTF, 0, 1, 2
+BINPUT
 
 SELECTCASE RESULT
 	CASE 0
@@ -1348,15 +1354,13 @@ SELECTCASE RESULT
 ENDSELECT
 
 CALL プレイログ記録, @"「抗スライム薬」使用"
-IF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
-	MONEY -= ITEMPRICE:抗スライム薬/10*8
-	CALL 現金出納帳記録, @"「抗スライム薬」購入/-{ITEMPRICE:抗スライム薬/10*8}"
+IF 値引き可能()
+	CALL PAYMENT, -ITEMPRICE:抗スライム薬/10*8, @"「抗スライム薬」購入"
 	;実績:ター子の交渉で値引きしたアイテムを購入する
 	SIF CHARANAMEF(MASTER) == "ター子" || (ASSI > 0 && CHARANAMEF(ASSI) == "ター子")
 		CALL 実績解除, "「それ、もうちょい安ぅならんやろか？」"
 ELSE
-	MONEY -= ITEMPRICE:抗スライム薬
-	CALL 現金出納帳記録, @"「抗スライム薬」購入/-{ITEMPRICE:抗スライム薬}"
+	CALL PAYMENT, -ITEMPRICE:抗スライム薬, @"「抗スライム薬」購入"
 ENDIF
 
 RETURN
@@ -1373,7 +1377,7 @@ RETURN
 
 SELECTCASE アイテムNO
 	;本
-	CASE 250 TO 299
+	CASE 450 TO 499
 		;使用不可のキャラは除外
 		SIF CFLAG:使用対象:使用不可
 			RETURNF 0
@@ -1404,9 +1408,12 @@ SELECTCASE アイテムNO
 					RETURNF 1
 		ENDSELECT
 	;薬品系と素質系で処理が異なる
-	CASE 300 TO 499
+	CASE 300 TO 399
 		;無機物・機械は除外
 		SIF TALENT:使用対象:無機物 || CSTR:使用対象:種族 == "機械"
+			RETURNF 0
+		;霊体には使えない
+		SIF TALENT:使用対象:霊体
 			RETURNF 0
 		;使用不可のキャラも除外
 		SIF CFLAG:使用対象:使用不可
@@ -1517,11 +1524,11 @@ SELECTCASE アイテムNO
 					RETURNF 0
 				RETURNF 1
 			CASE "仮死薬"
-				;ゾンビ、霊体には使用不可
-				SIF CSTR:使用対象:種族 == "ゾンビ" || TALENT:使用対象:ゾンビ || TALENT:使用対象:霊体
+				;STSが必要
+				SIF !MOD:STS
 					RETURNF 0
-				;機械、無機物にも使用不可
-				SIF CSTR:使用対象:種族 == "機械" || TALENT:使用対象:無機物
+				;ゾンビには使用不可
+				SIF CSTR:使用対象:種族 == "ゾンビ" || TALENT:使用対象:ゾンビ
 					RETURNF 0
 				;スライムにも使えない
 				SIF TALENT:使用対象:スライム || TALENT:使用対象:溶ける快
@@ -1532,7 +1539,7 @@ SELECTCASE アイテムNO
 				RETURNF 1
 		ENDSELECT
 	;経営用素質は誰でも習得可能 各経験、技能、実務経験が必要
-	CASE 1050 TO 1099
+	CASE 400 TO 449
 		;実務経験が必要
 		SIF EXP:使用対象:実務経験 < 1000
 			RETURNF 0
@@ -1829,25 +1836,13 @@ ENDSELECT
 #DIM DYNAMIC LCOUNT
 
 DRAWLINE
-PRINTFORML □%CALLNAME:使用対象%に使用するアイテムを選択してください
+PRINTFORM □%CALLNAME:使用対象%に使用するアイテムを選択してください
+CALL PASELIL, @"(所持金:%TOOPTIONINT(MONEY)%＄)"
 VARLINE = LINECOUNT
 ;ITEMSALESを確認
 CALL SHOPITEM_LIST, "すべて", 1
 
-FOR LCOUNT, 250, 499
-	SIF ITEMNAME:LCOUNT == ""
-		CONTINUE
-	SIF !ITEMSALES:LCOUNT
-		CONTINUE
-	TRYCCALLFORM DISABLE_ITEM_%ITEMNAME:LCOUNT%_%CSVNAMERPS(NO:使用対象)%
-		SIF RESULT == 0
-			CONTINUE
-	CATCH
-	ENDCATCH
-	SIF ITEM_ABLE(使用対象, ITEMNAME:LCOUNT)
-		CALL PASELIL, @"　[{LCOUNT}] - %ITEMNAME:LCOUNT%({ITEMPRICE:LCOUNT}＄)"
-NEXT
-FOR LCOUNT, 1050, 1099
+FOR LCOUNT, 300, 499
 	SIF ITEMNAME:LCOUNT == ""
 		CONTINUE
 	SIF !ITEMSALES:LCOUNT
@@ -1870,24 +1865,17 @@ DRAWLINE
 PRINTPLAIN 　アイテム使用　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 250 TO 499, 1050 TO 1099
-			使用アイテム = RESULT
-			SIF ITEMNAME:使用アイテム == ""
-				CONTINUE
-			SIF !ITEMSALES:使用アイテム
-				CONTINUE
-			SIF !ITEM_ABLE(使用対象, ITEMNAME:使用アイテム)
-				CONTINUE
-			IF ITEMPRICE:使用アイテム > MONEY && !ORIGIN
-				PRINTW 所持金が足りません
-				RESTART
-			ENDIF
-			CALL アイテム使用, 使用対象, ITEMNAME:使用アイテム
-			RETURN
-	ENDSELECT
-LOOP 1
+BINPUT
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASEELSE
+		使用アイテム = RESULT
+		IF ITEMPRICE:使用アイテム > MONEY && !ORIGIN
+			PRINTW 所持金が足りません
+			RESTART
+		ENDIF
+		CALL アイテム使用, 使用対象, ITEMNAME:使用アイテム
+		RETURN
+ENDSELECT
