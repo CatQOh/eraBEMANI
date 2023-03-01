@@ -9,7 +9,7 @@ CALL GIDDEL
 IF CSV読み込み == 0 && ORIGIN
 	LTARGET = TARGET
 	FOR LCOUNT, 0, 10000
-		SIF EXISTCSV(LCOUNT) && GETCHARA(LCOUNT) == -1 && NO:MASTER != LCOUNT
+		SIF EXISTCSV(LCOUNT) && GETCHARA(LCOUNT) == -1 && NOF(MASTER) != LCOUNT
 			CALL CHARA_ADD, LCOUNT
 	NEXT
 	TARGET = LTARGET
@@ -36,7 +36,7 @@ SIF TARGET == 0
 	TARGET = -1
 
 ;STRATEGYモードクリアデータを周回可能にする
-SIF ゲームモード() == "フリーモード" && FLAG:パートナー
+SIF ゲームモード() == "フリーモード" && パートナー != ""
 	FLAG:周回可能 = 1
 
 CALL セーブデータアップデート
@@ -737,9 +737,9 @@ IF LANGUAGE == "ENG"
 	SELECTCASE ゲームモード()
 		CASE "経営モード", "フリーモード"
 			;パートナーに話しかける口上が実装されていれば表示
-			IF EXISTFUNCTION(@"TALK_PARTNER_%CSVNAMERPS(FLAG:パートナー)%")
-				SIF OPTION:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
-					CALL COLUMNTOOLTIP, 0, "[2] Talk with Manager ", @"%CSVCALLNAMEDISP(FLAG:パートナー)%に経営の相談をします"
+			IF EXISTFUNCTION(@"TALK_PARTNER_%CSVNAMERPS(GETNO(パートナー))%")
+				SIF OPTION:口上表示 && !CFLAG:GETCHARA(GETNO(パートナー)):口上非表示
+					CALL COLUMNTOOLTIP, 0, "[2] Talk with Manager ", @"%CSVCALLNAMEDISP(GETNO(パートナー))%に経営の相談をします"
 			ENDIF
 	ENDSELECT
 
@@ -832,9 +832,9 @@ ELSE
 	SELECTCASE ゲームモード()
 		CASE "経営モード", "フリーモード"
 			;パートナーに話しかける口上が実装されていれば表示
-			IF EXISTFUNCTION(@"TALK_PARTNER_%CSVNAMERPS(FLAG:パートナー)%")
-				SIF OPTION:口上表示 && !CFLAG:GETCHARA(FLAG:パートナー):口上非表示
-					CALL COLUMNTOOLTIP, 0, "[2] 経営相談 ", @"%CSVCALLNAMEF(FLAG:パートナー)%に経営の相談をします"
+			IF EXISTFUNCTION(@"TALK_PARTNER_%CSVNAMERPS(GETNO(パートナー))%")
+				SIF OPTION:口上表示 && !CFLAG:GETCHARA(GETNO(パートナー)):口上非表示
+					CALL COLUMNTOOLTIP, 0, "[2] 経営相談 ", @"%CSVCALLNAMEF(GETNO(パートナー))%に経営の相談をします"
 			ENDIF
 	ENDSELECT
 
@@ -917,7 +917,6 @@ SELECTCASE CRESULT:1
 	;調教開始
 	CASE 0
 		CALL 調教開始
-		CALL ターン終了
 	;休憩
 	CASE 1
 		;休憩フラグを立てる
@@ -927,8 +926,8 @@ SELECTCASE CRESULT:1
 	;経営相談
 	CASE 2
 		LTARGET = TARGET
-		TARGET = GETCHARA(FLAG:パートナー)
-		TRYCALLFORM TALK_PARTNER_%CSVNAMERPS(FLAG:パートナー)%
+		TARGET = GETCHARANAME(パートナー)
+		TRYCALLFORM TALK_PARTNER_%CSVNAMERPS(GETNO(パートナー))%
 		TARGET = LTARGET
 	;一転攻勢
 	CASE 3
@@ -1449,6 +1448,8 @@ CALL COLUMNPRINTL, 0, "　[13] - 調理室"
 CALL COLUMNPRINTL, 0, "　[14] - 農産物の管理"
 CALL COLUMNPRINTL, 0, "　[15] - 畜産関連の管理"
 CALL COLUMNPRINTL, 0, "　[16] - 監禁室"
+SIF MOD:STS && FINDELEMENT(死体, 1, 1, 1000) > 0
+	CALL COLUMNPRINTL, 0, "　[17] - 霊安室"
 
 @SHOP_施設・経営_INPUT
 SELECTCASE CRESULT:1
@@ -1498,6 +1499,8 @@ SELECTCASE CRESULT:1
 		CALL 献立条件確認
 	CASE 16
 		CALL 監禁室
+	CASE 17
+		CALL 霊安室
 ENDSELECT
 
 @SHOP_キャラ・アイテム購入
@@ -1719,7 +1722,7 @@ ELSE
 	SIF !SP
 		CALL COLUMNTOOLTIPL, 0, "　[4] - 模様替え", "家の模様替えを行います"
 	;変化できるキャラが居れば表示
-	SIF CMATCH(TALENT:変化, 1)
+	SIF 変化可能()
 		CALL COLUMNTOOLTIPL, 0, "　[5] - 変化", "素質[変化]を持った陥落済みのキャラクターを動物の姿や人間の姿に変化させます"
 
 	;新婚モードと段位認定以外で表示
@@ -1736,8 +1739,6 @@ ELSE
 			CALL COLUMNTOOLTIPL, 0, "　[-] - 儀式", "アイテム・キャラ購入→奴隷購入 からキャラを購入してください", "gray"
 		ENDIF
 	ENDIF
-	SIF MOD:STS && FINDELEMENT(死体, 1, 1, 1000) > 0
-		CALL COLUMNPRINTL, 0, "　[14] - 霊安室"
 ENDIF
 
 ;デバッグモードなら表示
@@ -1811,8 +1812,6 @@ SELECTCASE CRESULT:1
 			FLAG:休憩フラグ = 1
 			CALL ターン終了
 		ENDIF
-	CASE 14
-		CALL 霊安室
 	;デバッグ用
 	;#;CASE 997
 	;#;	CALL ADD_ランダムキャラ, 2, -1
@@ -2091,7 +2090,7 @@ NEXT
 DRAWLINE
 PRINTL □変化させるキャラを選んでください
 FOR LCOUNT, 1, CHARANUM
-	IF TALENT:LCOUNT:変化
+	IF 変化可能()
 		IF CFLAG:LCOUNT:陥落
 			PRINTFORML [{LCOUNT, 2}] %NAME:LCOUNT% 現在：\@ TALENT:LCOUNT:アニマル ? 獣の姿 # 人間の姿 \@
 		ELSE
@@ -2117,10 +2116,10 @@ SELECTCASE RESULT
 			IF TALENT:アニマル
 				;着衣フラグのリセット
 				FOR LCOUNT, GETNUM(CFLAG, "特殊"), GETNUM(CFLAG, "足元")+1
-					CFLAG:LCOUNT = CSVCFLAG(NO:TARGET, LCOUNT)
+					CFLAG:LCOUNT = CSVCFLAG(NOF(TARGET), LCOUNT)
 				NEXT
 				FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
-					CSTR:LCOUNT = %CSVCSTR(NO:TARGET, LCOUNT)%
+					CSTR:LCOUNT = %CSVCSTR(NOF(TARGET), LCOUNT)%
 				NEXT
 				PRINTFORMW %CALLNAME:TARGET%は人間の姿に変化した
 				TALENT:RESULT:アニマル = 0

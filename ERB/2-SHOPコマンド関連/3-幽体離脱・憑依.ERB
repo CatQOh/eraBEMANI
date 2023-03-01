@@ -12,7 +12,7 @@ DRAWLINE
 PRINTPLAIN 　幽体離脱・憑依　
 PRINTL [0] - 戻る
 
-CALL INPUTF, 0, 1, 2, 3
+BINPUT
 
 SELECTCASE RESULT
 	CASE 0
@@ -34,9 +34,9 @@ SELECTCASE LRESULT
 	CASE 0
 		RESTART
 	CASEELSE
-		LOADCHARA @"依代_{LRESULT}_{データID}"
+		;LOADCHARA @"依代_{LRESULT}_{データID}"
 		LTARGET = TARGET
-		TARGET = CHARANUM-1
+		TARGET = LRESULT
 		DRAWLINE
 		PRINT □ 基本情報 
 		IF CFLAG:タグ色
@@ -51,10 +51,10 @@ SELECTCASE LRESULT
 		ENDIF
 		PRINTL 
 		PRINTFORM 　名前:%NAMEDISP(TARGET)% 性別:%性別表示(TARGET)% 
-		IF NO:TARGET >= 10000 || CSTR:種族 == CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
+		IF NOF(TARGET) >= 10000 || CSTR:種族 == CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))
 			PRINTFORM 種族:%CSTR:種族% 
-		ELSEIF CSTR:種族 != CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))
-			PRINTFORM 種族:元%CSVCSTR(NO:TARGET, GETNUM(CSTR, "種族"))%の%CSTR:種族% 
+		ELSEIF CSTR:種族 != CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))
+			PRINTFORM 種族:元%CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))%の%CSTR:種族% 
 		ENDIF
 		PRINTL 
 		IF LANGUAGE == "ENG"
@@ -126,8 +126,8 @@ SIF RESULT == -1
 
 対象 = RESULT
 
-IF 憑依霊 > 0 && CFLAG:対象:憑依 == NO:憑依霊
-	PRINTFORML %CSVNAMEF(NO:対象)%の精神を追い出して%CALLNAME:憑依霊%の精神を身体に戻します。よろしいですか？
+IF 憑依霊 > 0 && CFLAG:対象:憑依 == NOF(憑依霊)
+	PRINTFORML %CSVNAMEF(NOF(対象))%の精神を追い出して%CALLNAME:憑依霊%の精神を身体に戻します。よろしいですか？
 ELSEIF 憑依霊 >= 0
 	PRINTFORML %NAME:対象%の精神を追い出して%CALLNAME:憑依霊%を憑依させます。よろしいですか？
 ELSE
@@ -136,7 +136,7 @@ ENDIF
 PRINTL [0] - はい
 PRINTL [1] - いいえ
 
-CALL INPUTF, 0, 1
+BINPUT
 
 SIF RESULT == 1
 	RESTART
@@ -233,8 +233,8 @@ CALL CLEAR_FLAG, 幽体
 
 ;憑依フラグがあればNOと名前は元に戻る
 IF CFLAG:対象:憑依 >= 0
-	NAME:幽体 = %CSVNAMEF(NO:対象)%
-	CALLNAME:幽体 = %CSVCALLNAMEF(NO:対象)%
+	NAME:幽体 = %CSVNAMEF(NOF(対象))%
+	CALLNAME:幽体 = %CSVCALLNAMEF(NOF(対象))%
 	NAME:対象 = %CSVNAMEF(CFLAG:対象:憑依)%
 	CALLNAME:対象 = %CSVCALLNAMEF(CFLAG:対象:憑依)%
 	NO:対象 = CFLAG:対象:憑依
@@ -249,24 +249,26 @@ VARSET 憑依情報:幽体:0
 IF 憑依霊 >= 0
 	PRINTFORML %CALLNAME:対象%の身体と精神を分離しました
 	TALENT:幽体:霊体 = 1
-	FOR LCOUNT, 1, 1000
-		IF 依代:LCOUNT == 0
-			SAVECHARA @"依代_{LCOUNT}_{データID}", @"%NAME:対象%の身体", 対象
-			依代:LCOUNT = 1
+	;FOR LCOUNT, 1, 1000
+	;	IF 依代:LCOUNT == 0
+	;		SAVECHARA @"依代_{LCOUNT}_{データID}", @"%NAME:対象%の身体", 対象
+	;		依代:LCOUNT = 1
+			CFLAG:対象:依代 = 1
 			CALL CLEAR_CHARA, 対象
-			RETURN LCOUNT
-		ENDIF
-	NEXT
+			RETURN 対象
+	;	ENDIF
+	;NEXT
 ELSE
 	;身体は依代として保管
-	FOR LCOUNT, 1, 1000
-		IF 依代:LCOUNT == 0
-			SAVECHARA @"依代_{LCOUNT}_{データID}", @"%NAME:対象%の身体", 対象
-			依代:LCOUNT = 1
+	;FOR LCOUNT, 1, 1000
+	;	IF 依代:LCOUNT == 0
+	;		SAVECHARA @"依代_{LCOUNT}_{データID}", @"%NAME:対象%の身体", 対象
+	;		依代:LCOUNT = 1
+			CFLAG:対象:依代 = 1
 			CALL CLEAR_CHARA, 対象
-			BREAK
-		ENDIF
-	NEXT
+	;		BREAK
+	;	ENDIF
+	;NEXT
 
 	TARGET = CHARANUM-1
 
@@ -302,7 +304,7 @@ SIF RESULT == -1
 PRINTL [0] - 他のキャラに憑依させる
 PRINTL [1] - 依代に憑依させる
 
-CALL INPUTF, 0, 1
+BINPUT
 
 SELECTCASE RESULT
 	CASE 0
@@ -315,13 +317,13 @@ SIF RESULT == 0
 	RETURN
 
 ;憑依霊名が違ってる場合は幽体離脱のCLEAR_CHARAで一人分ずれてるので修正する
-SIF 憑依霊名 != NAME:憑依霊
-	憑依霊--
+;SIF 憑依霊名 != NAME:憑依霊
+;	憑依霊--
 
-LOADCHARA @"依代_{RESULT}_{データID}"
-依代:RESULT = 0
+;LOADCHARA @"依代_{RESULT}_{データID}"
+;依代:RESULT = 0
 
-対象 = CHARANUM-1
+対象 = RESULT
 
 ;幽体離脱で分離したものを合わせる
 FOR LCOUNT, 0, VARSIZE("ABL")
@@ -396,12 +398,15 @@ NEXT
 憑依情報:対象:2 = CFLAG:憑依霊:誕生日
 
 ;憑依に身体のNOを移して憑依霊のNOに変える
-CFLAG:対象:憑依 = NO:対象
-NO:対象 = NO:憑依霊
+CFLAG:対象:憑依 = NOF(対象)
+NO:対象 = NOF(憑依霊)
+
+CFLAG:対象:キャラロスト = 0
+CFLAG:対象:依代 = 0
 
 TALENT:対象:霊体 = 0
 
-IF CFLAG:対象:憑依 == NO:対象
+IF CFLAG:対象:憑依 == NOF(対象)
 	PRINTFORMW %CALLNAME:対象%の身体に精神を戻しました
 	VARSET 憑依情報:対象:0
 	CFLAG:対象:憑依 = -1
@@ -412,7 +417,7 @@ ELSE
 ENDIF
 CALL CLEAR_CHARA, 憑依霊
 
-TARGET = CHARANUM-1
+TARGET = 対象
 
 RETURN
 
@@ -428,16 +433,16 @@ CALL CHECKDRAWLINE
 
 処理数 = 0
 次ページあり = 0
-FOR LCOUNT, 1, 1000
+FOR LCOUNT, 1, CHARANUM
 	IF 処理数 >= ページ数*20+20
-		IF 依代:LCOUNT && CHKCHARADATA(@"依代_{LCOUNT}_{データID}") == 0
+		IF CFLAG:LCOUNT:依代
 			次ページあり = 1
 			BREAK
 		ENDIF
 	ENDIF
-	IF 依代:LCOUNT && CHKCHARADATA(@"依代_{LCOUNT}_{データID}") == 0
+	IF CFLAG:LCOUNT:依代
 		SIF ページ数*20 <= 処理数
-			PRINTFORML 　[{LCOUNT, RESULT}] - %RESULTS%
+			PRINTFORML 　[{LCOUNT, 2}] - %NAME:LCOUNT%
 		処理数++
 	ENDIF
 NEXT
@@ -448,23 +453,16 @@ PRINT [0] - 戻る
 CALL PRINTSPACE, 次ページあり, "[-9] - 次ページ "
 PRINTL 
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE -1
-			SIF ページ数
-				ページ数--
-			RESTART
-		CASE -9
-			SIF 次ページあり
-				ページ数++
-			RESTART
-		CASEELSE
-			LRESULT = RESULT
-			SIF 依代:LRESULT && CHKCHARADATA(@"依代_{LRESULT}_{データID}") == 0
-				RETURN LRESULT
-			RESTART
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE -1
+		ページ数--
+	CASE -9
+		ページ数++
+	CASEELSE
+		RETURN RESULT
+ENDSELECT
+
+RESTART

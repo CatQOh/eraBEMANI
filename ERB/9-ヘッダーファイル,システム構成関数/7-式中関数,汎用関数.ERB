@@ -213,7 +213,7 @@ SELECTCASE CFLAG:ARG:精管結紮
 	CASE 1
 		RETURNF 0
 	CASE 2
-		SIF CFLAG:ARG:不妊担当魔術師 == NO:MASTER || (ASSI >= 0 && CFLAG:ARG:不妊担当魔術師 == NO:ASSI)
+		SIF CFLAG:ARG:不妊担当魔術師 == NOF(MASTER) || (ASSI >= 0 && CFLAG:ARG:不妊担当魔術師 == NOF(ASSI))
 			RETURNF 0
 ENDSELECT
 
@@ -247,7 +247,7 @@ SELECTCASE CFLAG:ARG:卵管結紮
 	CASE 1
 		RETURNF 0
 	CASE 2
-		SIF CFLAG:ARG:不妊担当魔術師 == NO:MASTER || (ASSI >= 0 && CFLAG:ARG:不妊担当魔術師 == NO:ASSI)
+		SIF CFLAG:ARG:不妊担当魔術師 == NOF(MASTER) || (ASSI >= 0 && CFLAG:ARG:不妊担当魔術師 == NOF(ASSI))
 			RETURNF 0
 ENDSELECT
 
@@ -275,7 +275,7 @@ NEXT
 SIF ARG < 0 || ARG >= CHARANUM
 	RETURNF 
 
-SELECTCASE NO:ARG
+SELECTCASE NOF(ARG)
 	CASE 1 TO 9999
 		RETURNF NAME:ARG
 	CASEELSE
@@ -283,7 +283,7 @@ SELECTCASE NO:ARG
 ENDSELECT
 
 ;;;引数のキャラ番号のNAMEを返す。CSVが無い子供の場合はあらかじめ記録しておいたCHILDNAMEを返す
-@CSVNAMEF, ARG
+@CSVNAMEF, ARG, ARG:1
 #FUNCTIONS
 SELECTCASE ARG
 	CASE 0 TO 9999
@@ -293,6 +293,8 @@ SELECTCASE ARG
 		;#; THROW CSVNAMEFに負の値が渡されています
 		RETURNF "[想定外の挙動]"
 	CASEELSE
+		SIF ARG:1
+			RETURNF ""
 		RETURNF CHILDNAME:(ARG-10000)
 ENDSELECT
 
@@ -313,11 +315,17 @@ ENDSELECT
 ;;;GETCHARAのNAME版 上記CHARANAMEFと同じでNOの範囲が1～9999じゃないと返さない プレイヤーの名前入力による予期せぬ挙動を防ぐため
 @GETCHARANAME, ARGS
 #FUNCTION
-#DIM DYNAMIC 対象
-対象 = FINDCHARA(NAME, ARGS)
+#DIM DYNAMIC LCOUNT
 
-SIF 対象 >= 0 && INRANGE(NO:対象, 1, 9999)
-	RETURNF 対象
+FOR LCOUNT, 0, CHARANUM
+	SIF ARGS != NAME:LCOUNT
+		CONTINUE
+	SIF !INRANGE(NOF(LCOUNT), 1, 9999)
+		CONTINUE
+	SIF CFLAG:LCOUNT:キャラロスト
+		RETURNF -1
+	RETURNF LCOUNT
+NEXT
 
 RETURNF -1
 
@@ -586,9 +594,9 @@ IF CFLAG:ARG:血縁コード >= 1 && CFLAG:ARG:血縁コード == CFLAG:(ARG:1):
 		RETURNF 1
 	ENDIF
 ELSE
-	SIF NO:ARG >= 10000 && (CFLAG:ARG:血縁コード/100000 == NO:(ARG:1) || CFLAG:ARG:血縁コード%100000 == NO:(ARG:1))
+	SIF NOF(ARG) >= 10000 && (CFLAG:ARG:血縁コード/100000 == NOF(ARG:1) || CFLAG:ARG:血縁コード%100000 == NOF(ARG:1))
 		RETURNF 2
-	SIF NO:(ARG:1) >= 10000 && (CFLAG:(ARG:1):血縁コード/100000 == NO:ARG || CFLAG:(ARG:1):血縁コード%100000 == NO:ARG)
+	SIF NOF(ARG:1) >= 10000 && (CFLAG:(ARG:1):血縁コード/100000 == NOF(ARG) || CFLAG:(ARG:1):血縁コード%100000 == NOF(ARG))
 		RETURNF 2
 ENDIF
 
@@ -1834,12 +1842,12 @@ SIF ISHATERACE(対象, 相手)
 ;ネクロマンサーと霊感と孔雀の瞳なら中の人が見破れる
 IF CFLAG:相手:憑依 >= 0
 	IF TALENT:対象:霊感 || TALENT:対象:ネクロマンサー || TALENT:対象:孔雀の瞳
-		返り値 = RELATION:対象:(NO:相手)+補正値
+		返り値 = RELATION:対象:NOF(相手)+補正値
 	ELSE
 		返り値 = RELATION:対象:(CFLAG:相手:憑依)+補正値
 	ENDIF
 ELSE
-	返り値 = RELATION:対象:(NO:相手)+補正値
+	返り値 = RELATION:対象:NOF(相手)+補正値
 ENDIF
 
 ;システムの都合上1未満にはならない
@@ -1872,11 +1880,11 @@ IF SIGN(上昇値) == 1
 	ELSE
 		$NOTGHOSTUP
 		;上限突っ切ってたら処理しない
-		SIF 上限 && RELATION:対象:(NO:相手) > 上限
+		SIF 上限 && RELATION:対象:NOF(相手) > 上限
 			RETURN
-		RELATION:対象:(NO:相手) += 上昇値
-		SIF 上限 && RELATION:対象:(NO:相手) > 上限
-			RELATION:対象:(NO:相手) = 上限
+		RELATION:対象:NOF(相手) += 上昇値
+		SIF 上限 && RELATION:対象:NOF(相手) > 上限
+			RELATION:対象:NOF(相手) = 上限
 	ENDIF
 ELSEIF SIGN(上昇値) == -1
 	IF CFLAG:相手:憑依 >= 0
@@ -1892,12 +1900,12 @@ ELSEIF SIGN(上昇値) == -1
 		ENDIF
 	ELSE
 		$NOTGHOSTDOWN
-		RELATION:対象:(NO:相手) += 上昇値
-		SIF 上限 && RELATION:対象:(NO:相手) < 上限
-			RELATION:対象:(NO:相手) = 上限
+		RELATION:対象:NOF(相手) += 上昇値
+		SIF 上限 && RELATION:対象:NOF(相手) < 上限
+			RELATION:対象:NOF(相手) = 上限
 		;システムの都合上1未満にはならない
-		SIF RELATION:対象:(NO:相手) < 1
-			RELATION:対象:(NO:相手) = 1
+		SIF RELATION:対象:NOF(相手) < 1
+			RELATION:対象:NOF(相手) = 1
 	ENDIF
 ENDIF
 
@@ -2430,3 +2438,41 @@ CALL 現金出納帳記録, @"%明細%/{金額}"
 
 SIF TALENT:MASTER:買い物上手 || (ASSI > 0 && TALENT:ASSI:買い物上手)
 	RETURNF 1
+
+;;;変化可能なキャラが居るかどうか
+@変化可能
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+
+FOR LCOUNT, 1, CHARANUM
+	SIF TALENT:LCOUNT:変化 && !CFLAG:LCOUNT:キャラロスト
+		RETURNF 1
+NEXT
+
+RETURNF 0
+
+;;;CSV番号を変えてもいいようにNOはこの関数を通す
+@NOF(対象)
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIM DYNAMIC LCOUNT
+#DIM 保存済み
+#DIMS 名前保存用, 10000
+
+SIF CFLAG:対象:CSV無し
+	RETURNF NO:対象
+SIF NAME:対象 == ""
+	RETURNF 0
+
+IF !保存済み
+	FOR LCOUNT, 0, 10000
+		SIF EXISTCSV(LCOUNT)
+			名前保存用:LCOUNT = %CSVNAME(LCOUNT)%
+	NEXT
+	保存済み = 1
+ENDIF
+
+SIF FINDELEMENT(名前保存用, ESCAPE(NAME:対象)) < 0
+	THROW %NAME:対象%のCSVが存在しません
+
+RETURNF FINDELEMENT(名前保存用, ESCAPE(NAME:対象))

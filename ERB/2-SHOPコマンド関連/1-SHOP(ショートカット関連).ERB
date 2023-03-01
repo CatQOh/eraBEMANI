@@ -8,7 +8,11 @@ SPLIT LNK:コマンド番号, "/", コマンド内容
 
 SELECTCASE コマンド内容:0
 	CASE "対象選択", "助手選択", "調教", "居住部屋"
-		対象 = GETCHARA(TOINT(コマンド内容:1))
+		IF ISNUMERIC(コマンド内容:1)
+			対象 = GETCHARA(TOINT(コマンド内容:1))
+		ELSE
+			対象 = GETCHARANAME(コマンド内容:1)
+		ENDIF
 ENDSELECT
 
 SELECTCASE コマンド内容:0
@@ -20,7 +24,22 @@ SELECTCASE コマンド内容:0
 		IF 対象 == -1
 			PRINTFORMW %CSVNAMEF(TOINT(コマンド内容:1))%は居ません
 		ELSEIF !調教可能(対象)
-			PRINTFORMW %NAME:対象%は現在調教できません
+			IF CFLAG:対象:キャラロスト
+				SELECTCASE CSTR:対象:ロスト要因
+					CASE "売却"
+						PRINTFORMW %NAME:対象%は売却済みです
+					CASE "死亡"
+						PRINTFORMW %NAME:対象%は死亡しています
+					CASE "自爆"
+						PRINTFORMW %NAME:対象%は自爆しました
+					CASE "捕食"
+						PRINTFORMW %NAME:対象%は捕食されました
+					CASE "鉱物化"
+						PRINTFORMW %NAME:対象%は鉱物化しました
+				ENDSELECT
+			ELSE
+				PRINTFORMW %NAME:対象%は現在調教できません
+			ENDIF
 		ELSE
 			CALL ASSIGN_TARGET, 対象
 		ENDIF
@@ -164,7 +183,11 @@ DO
 			NEXT
 			SIF RESULT == -1
 				GOTO コマンド選択
-			LNK:登録番号 = 調教/{NO:RESULT}
+			IF NOF(RESULT) > 10000
+				LNK:登録番号 = 調教/{NOF(RESULT)}
+			ELSE
+				LNK:登録番号 = 調教/%NAME:RESULT%
+			ENDIF
 		CASE 2
 			FOR PAGING, 1, CHARANUM
 				CALL PAGING, 1, "", "TARGET", "調教対象を外す"
@@ -175,7 +198,11 @@ DO
 			ELSE
 				SIF !調教可能(LRESULT)
 					CONTINUE
-				LNK:登録番号 = 対象選択/{NO:LRESULT}
+				IF NOF(LRESULT) > 10000
+					LNK:登録番号 = 対象選択/{NOF(LRESULT)}
+				ELSE
+					LNK:登録番号 = 対象選択/%NAME:LRESULT%
+				ENDIF
 			ENDIF
 		CASE 3
 			FOR PAGING, 1, CHARANUM
@@ -187,7 +214,12 @@ DO
 			ELSE
 				SIF !助手可能(LRESULT)
 					CONTINUE
-				LNK:登録番号 = 助手選択/{NO:LRESULT}
+				IF NOF(LRESULT) > 10000
+					LNK:登録番号 = 助手選択/{NOF(LRESULT)}
+				ELSE
+					LNK:登録番号 = 助手選択/%NAME:LRESULT%
+				ENDIF
+
 			ENDIF
 		CASE 4
 			VARSET 選択可能
@@ -223,7 +255,11 @@ DO
 			NEXT
 			SIF RESULT == -1
 				BREAK
-			LNK:登録番号 = 居住部屋/{NO:RESULT}
+			IF NOF(RESULT) > 10000
+				LNK:登録番号 = 居住部屋/{NOF(RESULT)}
+			ELSE
+				LNK:登録番号 = 居住部屋/%NAME:RESULT%
+			ENDIF
 		CASE 6
 			$SAVE
 			FOR LCOUNT, ページ数*20, ページ数*20+20

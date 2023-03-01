@@ -61,6 +61,7 @@ ENDSELECT
 #DIM DYNAMIC 母親 = -1
 #DIM DYNAMIC 母体 = -1
 #DIM DYNAMIC 費用, 3
+#DIM DYNAMIC LRESULT
 
 DRAWLINE
 PRINTL □体外受精
@@ -126,14 +127,15 @@ DO
 				CASE -1
 					RESTART
 				CASEELSE
+					LRESULT = RESULT
 					費用:0 = 50000
 					;小柄体型だと費用がかさむ
-					SIF TALENT:RESULT:小柄体型
+					SIF TALENT:LRESULT:小柄体型
 						費用:0 += 30000
 					;父親はNOで入れる
-					父親 = NO:RESULT
+					父親 = NOF(LRESULT)
 					;子供の素質設定用
-					父親:1 = RESULT
+					父親:1 = LRESULT
 					RESTART
 			ENDSELECT
 		CASE 2
@@ -224,7 +226,7 @@ DO
 			;妊娠は確定する
 			PREG:母体:10 = DAY+60+RAND:21
 			PREG:母体:21 = 父親
-			PREG:母体:22 = NO:母親
+			PREG:母体:22 = NOF(母親)
 			PREG:母体:26 = 1
 			TALENT:母体:妊娠確定 = 1
 			SIF 父親:1 == -1
@@ -304,7 +306,7 @@ LOOP 1
 #DIM DYNAMIC 契約主
 
 IF 対象 >= 0 && 術師 >= 0
-	SIF CFLAG:対象:生殖力担当魔術師 == NO:術師
+	SIF CFLAG:対象:生殖力担当魔術師 == NOF(術師)
 		VARSET 費用, 0
 ENDIF
 
@@ -336,7 +338,7 @@ PRINTPLAIN 　魔術師不妊治療　
 PRINT [0] - 戻る　
 IF 対象 >= 0 && 術師 >= 0
 	IF CFLAG:対象:生殖力強化 == 2
-		IF CFLAG:対象:生殖力担当魔術師 == NO:術師
+		IF CFLAG:対象:生殖力担当魔術師 == NOF(術師)
 			PRINTL [3] - 契約を破棄する
 		ELSE
 			PRINTFORML [3] - %CSVCALLNAMEF(CFLAG:対象:生殖力担当魔術師)%との契約を破棄して、新たに%CALLNAME:術師%と契約を行う
@@ -376,7 +378,7 @@ DO
 				契約主 = -1
 				;魔術師に契約済みのキャラが居ればそれも表示
 				SIF CSTR:PAGING:種族 == "魔術師"
-					契約主 = FINDCHARA(CFLAG:生殖力担当魔術師, NO:PAGING)
+					契約主 = FINDCHARA(CFLAG:生殖力担当魔術師, NOF(PAGING))
 				CALL PAGING, CSTR:PAGING:種族 == "魔術師", @"技巧:LV{ABL:PAGING:技巧} \@ 契約主 >= 0 ? %CALLNAME:契約主%と契約中 #  \@", "術師"
 			NEXT
 			SELECTCASE RESULT
@@ -384,7 +386,7 @@ DO
 					RESTART
 				CASEELSE
 					術師 = RESULT
-					契約対象 = FINDCHARA(CFLAG:生殖力担当魔術師, NO:術師)
+					契約対象 = FINDCHARA(CFLAG:生殖力担当魔術師, NOF(術師))
 					費用:1 = 30000
 					;技巧次第で費用は下がる
 					SELECTCASE ABL:術師:技巧
@@ -400,7 +402,7 @@ DO
 				PRINTW 費用が足りません
 				RESTART
 			ENDIF
-			IF CFLAG:対象:生殖力担当魔術師 == NO:術師
+			IF CFLAG:対象:生殖力担当魔術師 == NOF(術師)
 				PRINTFORMW %NAME:対象%と%NAME:術師%の契約を破棄します
 				CFLAG:対象:生殖力強化 = 0
 				CFLAG:対象:生殖力担当魔術師 = -1
@@ -409,7 +411,7 @@ DO
 				MONEY -= 費用+費用:1
 				CALL 現金出納帳記録, @"魔術師による不妊治療/-{費用:0+費用:1}"
 				CFLAG:対象:生殖力強化 = 2
-				CFLAG:対象:生殖力担当魔術師 = NO:術師
+				CFLAG:対象:生殖力担当魔術師 = NOF(術師)
 			ENDIF
 			CFLAG:対象:使用不可 = 3
 			CFLAG:術師:使用不可 = 3
@@ -618,7 +620,7 @@ DO
 
 			MUSEUM:空き変数:0 = その他
 			MUSEUM:空き変数:1 = %NAME:患者%の男性器のオブジェ
-			MUSEUM:空き変数:2 = {NO:患者}
+			MUSEUM:空き変数:2 = {NOF(患者)}
 			MUSEUM:空き変数:3 = 200
 			MUSEUM:空き変数:4 = {COLOR_FROMNAME("whitesmoke")}
 			MUSEUM:空き変数:5 = 0
@@ -664,7 +666,7 @@ PRINTPLAIN 　魔術師不妊化　
 PRINT [0] - 戻る　
 IF 対象 >= 0 && 術師 >= 0
 	SELECTCASE CFLAG:対象:不妊担当魔術師
-		CASE NO:術師
+		CASE NOF(術師)
 			PRINTL [3] - 契約を破棄する
 		CASE IS >= 0
 			PRINTFORML [3] - %CSVCALLNAMEF(CFLAG:対象:不妊担当魔術師)%との契約を破棄して、新たに%CALLNAME:術師%と契約を行う
@@ -702,7 +704,7 @@ DO
 			FOR PAGING, 0, CHARANUM
 				;魔術師に契約済みのキャラが居ればそれも表示
 				SIF CSTR:PAGING:種族 == "魔術師"
-					現契約者 = FINDCHARA(CFLAG:不妊担当魔術師, NO:PAGING)
+					現契約者 = FINDCHARA(CFLAG:不妊担当魔術師, NOF(PAGING))
 				CALL PAGING, CSTR:PAGING:種族 == "魔術師", @"技巧:LV{ABL:PAGING:技巧} \@ 現契約者 >= 0 ? %CALLNAME:現契約者%と契約中 #  \@", "術師"
 			NEXT
 			SELECTCASE RESULT
@@ -710,7 +712,7 @@ DO
 					RESTART
 				CASEELSE
 					術師 = RESULT
-					契約対象 = FINDCHARA(CFLAG:不妊担当魔術師, NO:術師)
+					契約対象 = FINDCHARA(CFLAG:不妊担当魔術師, NOF(術師))
 					費用:1 = 30000
 					;技巧次第で費用は下がる
 					SELECTCASE ABL:術師:技巧
@@ -726,7 +728,7 @@ DO
 				PRINTW 費用が足りません
 				RESTART
 			ENDIF
-			IF CFLAG:対象:不妊担当魔術師 == NO:術師
+			IF CFLAG:対象:不妊担当魔術師 == NOF(術師)
 				PRINTFORMW %NAME:対象%と%NAME:術師%の契約を破棄します
 				SIF CFLAG:対象:精管結紮 == 2
 					CFLAG:対象:精管結紮 = 0
@@ -741,7 +743,7 @@ DO
 					CFLAG:対象:精管結紮 = 2
 				SIF 生殖機能♀(対象)
 					CFLAG:対象:卵管結紮 = 2
-				CFLAG:対象:不妊担当魔術師 = NO:術師
+				CFLAG:対象:不妊担当魔術師 = NOF(術師)
 			ENDIF
 			CFLAG:対象:使用不可 = 3
 			CFLAG:術師:使用不可 = 3
@@ -1024,7 +1026,7 @@ DO
 			;	CFLAG:対象:ペニスサイズ = CFLAG:提供者:ペニスサイズ
 				CFLAG:対象:精管結紮 = 0
 				TALENT:提供者:去勢済み = 1
-				CFLAG:対象:男性器提供者 = NO:提供者
+				CFLAG:対象:男性器提供者 = NOF(提供者)
 				CFLAG:対象:男性器移植済み = 1
 				CFLAG:提供者:使用不可 = 15
 			ENDIF

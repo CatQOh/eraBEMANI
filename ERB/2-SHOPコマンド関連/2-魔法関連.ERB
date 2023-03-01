@@ -1,38 +1,36 @@
 ﻿@SPELLCAST
 DRAWLINE
 PRINTL □魔法を詠唱するキャラを選んでください
-SIF TARGET > 0 && TALENT:魔法使い
-	PRINTFORML [0] %NAME:TARGET% 魔力%BARSTR(BASE:魔力, MAXBASE:魔力, 32)% 魔法技能LV{ABL:魔法技能}
+IF TARGET > 0 && TALENT:魔法使い
+	IF CFLAG:状態 < 2
+		CALL PRINTCOLORL, @"[-] %NAME:TARGET% 魔力%BARSTR(BASE:魔力, MAXBASE:魔力, 32)% 魔法技能LV{ABL:魔法技能}(助手可能でないと魔法の詠唱を許可できません)", "gray"
+	ELSE
+		PRINTFORML [0] %NAME:TARGET% 魔力%BARSTR(BASE:魔力, MAXBASE:魔力, 32)% 魔法技能LV{ABL:魔法技能}
+	ENDIF
+ENDIF
 SIF TALENT:MASTER:魔法使い
 	PRINTFORML [1] %NAME:MASTER% 魔力%BARSTR(BASE:MASTER:魔力, MAXBASE:MASTER:魔力, 32)% 魔法技能LV{ABL:MASTER:魔法技能}
 SIF ASSI > 0 && TALENT:ASSI:魔法使い
 	PRINTFORML [2] %NAME:ASSI% 魔力%BARSTR(BASE:ASSI:魔力, MAXBASE:ASSI:魔力, 32)% 魔法技能LV{ABL:ASSI:魔法技能}
 PRINTL [10] 戻る
 
-CALL INPUTF, 0, 1, 2, 10
+BINPUT
 
 SELECTCASE RESULT
 	CASE 0
-		IF CFLAG:状態 < 2
-			PRINTL 助手可能でないと魔法の詠唱を許可できません
-			RESTART
-		ENDIF
-		SIF TALENT:魔法使い
-			CALL SELECT_SPELL, TARGET
+		CALL SELECT_SPELL, TARGET
 		SIF RESULT
 			RETURN 1
 	CASE 1
-		SIF TALENT:MASTER:魔法使い
-			CALL SELECT_SPELL, MASTER
+		CALL SELECT_SPELL, MASTER
 		SIF RESULT
 			RETURN 1
 	CASE 2
-		SIF ASSI > 0 && TALENT:ASSI:魔法使い
-			CALL SELECT_SPELL, ASSI
+		CALL SELECT_SPELL, ASSI
 		SIF RESULT
 			RETURN 1
 	CASE 10
-		RETURN
+		RETURN 0
 ENDSELECT
 
 RESTART
@@ -49,7 +47,7 @@ RESTART
 #DIM DYNAMIC 詠唱者
 #DIM DYNAMIC 表示
 #DIM DYNAMIC 必要レベル
-#DIM DYNAMIC 詠唱可能, 50
+;#DIM DYNAMIC 詠唱可能, 50
 ;魔法名, 必要レベル
 {
 #DIMS DYNAMIC 魔法一覧 = 
@@ -81,7 +79,6 @@ PRINTFORML □魔法一覧 詠唱者:%NAME:詠唱者% 魔法技能LV{スキル}
 PRINTFORML 　%NAME:詠唱者%の魔力%BARSTR(BASE:詠唱者:魔力, MAXBASE:詠唱者:魔力, 32)%({BASE:詠唱者:魔力}/{MAXBASE:詠唱者:魔力})
 ;魔力消費量は単純に詠唱可能レベル*1000
 ;詠唱可能レベルから1上昇する度に魔力消費量は10%減
-VARSET 詠唱可能
 FOR LCOUNT, 1, VARSIZE("魔法一覧")/2
 	使用スペル名 = %魔法一覧:(LCOUNT*2)%
 	必要レベル = TOINT(魔法一覧:(LCOUNT*2+1))
@@ -118,7 +115,7 @@ FOR LCOUNT, 1, VARSIZE("魔法一覧")/2
 		CONTINUE
 	$OK
 	PRINTFORML 　[{LCOUNT, 2}] - %使用スペル名%（魔力消費量{魔力消費量(必要レベル, スキル)}）
-	詠唱可能:LCOUNT = 1
+	;詠唱可能:LCOUNT = 1
 	SELECTCASE 魔法一覧:(LCOUNT*2)
 		;Freezing atomosphere
 		CASE "フリージングアトモスフィア"
@@ -182,360 +179,356 @@ DRAWLINE
 PRINTPLAIN 　SPELL　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASEELSE
-			SIF !詠唱可能:RESULT
-				CONTINUE
-			使用スペル名 = %魔法一覧:(RESULT*2)%
-			必要レベル = TOINT(魔法一覧:(RESULT*2+1))
-			コスト = BASE:詠唱者:魔力 - 魔力消費量(必要レベル, スキル)
-			IF コスト < 0
-				IF 詠唱者 == MASTER
-					PRINTFORMW 主人は魔力の限界を越えた詠唱はできません
-					RESTART
-				ELSE
-					PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(コスト/100)+1}ターン使用不可状態になります
-				ENDIF
-			ENDIF
-			対象 = -1
-			対象:1 = -1
-			年 = 0
-			月 = 0
-			日 = 0
-			;独自の入力が必要なもの
-			SELECTCASE 使用スペル名
-				CASE "ビーストモード", "ビーストモードtype2"
-					PRINTFORML □%使用スペル名%で獣人化する対象を選んでください
-					FOR PAGING, 0, CHARANUM
-						表示 = 0
-						;既に付与素質全部あるキャラは無理
-						IF 使用スペル名 == "ビーストモードtype2"
-							SIF !TALENT:PAGING:尻尾 || !TALENT:PAGING:動物耳 || !TALENT:PAGING:ファーリー
-								表示 = 1
-						ELSE
-							SIF !TALENT:PAGING:尻尾 || !TALENT:PAGING:動物耳
-								表示 = 1
-						ENDIF
-						;ビーストモード発動中のキャラは無理
-						SIF ビーストモード:PAGING:0
-							表示 = 0
-						;詠唱者も無理
-						SIF PAGING == 詠唱者
-							表示 = 0
-						;霊体も無理
-						SIF TALENT:PAGING:霊体
-							表示 = 0
-						CALL PAGING, 表示, @"%CSTR:PAGING:種族%"
-					NEXT
-					SIF RESULT == -1
-						RESTART
-					対象 = RESULT
-				CASE "ジェントルストレス"
-					PRINTL □ジェントルストレスでストレスを抑える対象を選んでください
-					表示 = 0
-					SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳) || TALENT:詠唱者:孔雀の瞳
-						表示 = 1
-					FOR PAGING, 0, CHARANUM
-						CALL PAGING, 詠唱者 != PAGING, @"\@ 表示 ? ストレス値:{CFLAG:PAGING:ストレス値} #  \@"
-					NEXT
-					SIF RESULT == -1
-						RESTART
-					対象 = RESULT
-				CASE "クロノダイブ"
-					$BTTF
-					PRINTL □移動先の日付を入力してください
-					PRINTFORM 　[0] - {年}年 
-					PRINTFORM [1] - {月}月 
-					PRINTFORML [2] - {日}日
-					PRINT 　[3] - 確定 
-					PRINTL [4] - キャンセル
-					CALL INPUTF, 0, 1, 2, 3, 4
-					SELECTCASE RESULT
-						CASE 0
-							PRINT 移動先の西暦を入力してください
-							INPUT
-							年 = RESULT
-							GOTO BTTF
-						CASE 1
-							CALL TWO_DIGIT, 12, "月", 1
-							月 = RESULT
-							GOTO BTTF
-						CASE 2
-							CALL TWO_DIGIT, 31, "日", 1
-							日 = RESULT
-							GOTO BTTF
-						CASE 3
-							IF !EXIST_DAY(年, 月, 日)
-								PRINTFORMW {年}年{月}月{日}日は存在しません
-								GOTO BTTF
-							ENDIF
-						CASE 4
-							RESTART
-					ENDSELECT
-				CASE "ティル・ナ・ノーグ"
-					PRINTL □ティル・ナ・ノーグで体を大きくする対象を選んでください
-					FOR PAGING, 0, CHARANUM
-						CALL PAGING, TALENT:PAGING:小人体型
-					NEXT
-					SIF RESULT == -1
-						RESTART
-					対象 = RESULT
-				CASE "エナジードライブ"
-					IF エナジードライブ > 0
-						PRINTW エナジードライブは既に発動中です
-						RESTART
-					ENDIF
-				CASE "ポゼッション"
-					PRINTL □憑依する相手を選んでください
-					FOR PAGING, 0, CHARANUM
-						CALL PAGING, PAGING != 詠唱者 && PAGING != MASTER
-					NEXT
-					SIF RESULT == -1
-						RESTART
-					対象 = RESULT
-				CASE "ミラクル・スイート・スイーツ・マジック！！"
-					$MSSM
-					PRINTL □仲良しにする2人を選んでください
-					IF 対象 == -1
-						PRINTFORM 　[0] 選択する
-					ELSE
-						PRINTFORM 　[0] %NAME:対象%
-					ENDIF
-					PRINTPLAIN ×
-					IF 対象:1 == -1
-						PRINTFORML [1] 選択する
-					ELSE
-						PRINTFORML [1] %NAME:(対象:1)%
-					ENDIF
-					PRINT 　
-					SIF 対象 >= 0 && 対象:1 >= 0 && 対象 != 対象:1
-						PRINT [2] 確定 
-					PRINTL [3] キャンセル
-					DO
-						INPUT
-						SELECTCASE RESULT
-							CASE 0
-								FOR PAGING, 0, CHARANUM
-									CALL PAGING, PAGING != 詠唱者 && PAGING != 対象:1
-								NEXT
-								SIF RESULT == -1
-									GOTO MSSM
-								対象 = RESULT
-								GOTO MSSM
-							CASE 1
-								FOR PAGING, 0, CHARANUM
-									CALL PAGING, PAGING != 詠唱者 && PAGING != 対象
-								NEXT
-								SIF RESULT == -1
-									GOTO MSSM
-								対象:1 = RESULT
-								GOTO MSSM
-							CASE 2
-								SIF 対象 >= 0 && 対象:1 >= 0 && 対象 != 対象:1
-									BREAK
-							CASE 3
-								RESTART
-						ENDSELECT
-					LOOP 1
-				CASE "ジュエリーストーム"
-					PRINTFORML □ジュエリーストームの対象に選んでください
-					FOR PAGING, 1, CHARANUM
-						CALL PAGING, PAGING != MASTER && PAGING != 詠唱者 && CSTR:PAGING:種族 != "機械" && !TALENT:PAGING:無機物 && !TALENT:PAGING:霊体 && NO:PAGING != FLAG:パートナー
-					NEXT
-					SIF RESULT == -1
-						RESTART
-					対象 = RESULT
-				;これだけここで完結する
-				CASE "スウィートイリュージョン"
-					VARSET 対象, -1
-					$SWEET
-					PRINTFORML %CALLNAME:詠唱者%にスウィートイリュージョンを詠唱させます。誰を対象にしますか？
-					PRINTFORML [0] - お菓子に変えるキャラ(\@ 対象 >= 0 ? %NAME:対象% # 無し \@)
-					PRINTFORML [1] - それを食べるキャラ(\@ 対象:1 >= 0 ? %NAME:(対象:1)% # 無し \@)
-					SIF 対象 >= 0 && 対象:1 >= 0
-						PRINTL [2] - これで決定
-					PRINTL [3] - やめる
-					CALL INPUTF, 0, 1, 2, 3
-					SELECTCASE RESULT
-						CASE 3
-							RESTART
-						CASE 0
-							FOR PAGING, 1, CHARANUM
-								CALL PAGING, PAGING != MASTER && PAGING != 詠唱者 && CSTR:PAGING:種族 != "機械" && !TALENT:PAGING:無機物 && !TALENT:PAGING:霊体 && PAGING != 対象:1 && NO:PAGING != FLAG:パートナー
-							NEXT
-							対象 = RESULT
-							GOTO SWEET
-						CASE 1
-							FOR PAGING, 0, CHARANUM
-								CALL PAGING, PAGING != 対象
-							NEXT
-							対象:1 = RESULT
-							GOTO SWEET
-						CASE 2
-							TFLAG:キャスター = 詠唱者
-							;被捕食者のID<詠唱者のIDの場合はキャラロストで1ずれるので戻す
-							SIF 対象 < 詠唱者
-								詠唱者--
-							CALL 捕食, 対象:1, 対象, 1
-							PRINTFORML %CALLNAME:詠唱者%の詠唱経験+10
-							EXP:詠唱者:詠唱経験 += 10
-							BREAK
-					ENDSELECT
-				CASE "ハニーバニー"
-					PRINTL □ハニーバニーで気を引く対象を選んでください
-					FOR PAGING, 1, CHARANUM
-						CALL PAGING, (TALENT:PAGING:恋心 || TALENT:PAGING:既婚者) && PAGING != 詠唱者
-					NEXT
-					SIF RESULT == -1
-						RESTART
-					対象 = RESULT
-			ENDSELECT
-			IF 年
-				PRINTFORML %CALLNAME:詠唱者%に、{年}年{月}月{日}日を目標した%使用スペル名%を詠唱させます。よろしいですか？
-			ELSEIF 対象 >= 0 && 対象:1 >= 0
-				PRINTFORML %CALLNAME:詠唱者%に、%CALLNAME:対象%と%CALLNAME:(対象:1)%を対象にした%使用スペル名%を詠唱させます。よろしいですか？
-			ELSEIF 対象 >= 0
-				PRINTFORML %CALLNAME:詠唱者%に、%CALLNAME:対象%を対象にした%使用スペル名%を詠唱させます。よろしいですか？
-			ELSE
-				PRINTFORML %CALLNAME:詠唱者%に%使用スペル名%を詠唱させます。よろしいですか？
-			ENDIF
-			PRINTL [0] - はい
-			PRINTL [1] - いいえ
-			CALL INPUTF, 0, 1
-			SIF RESULT == 1
-				RESTART
-			詠唱魔法 = %使用スペル名%
+BINPUT
 
-			;優先度は詠唱者の口上→対象の口上→地の文
-			;ただし地の文は口上側で管理するようになる
-			IF OPTION:口上表示
-				TRYCCALLFORM SPELLCAST_%CSVNAMERPS(詠唱者)%, 詠唱者, 対象:0, 対象:1
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASEELSE
+		使用スペル名 = %魔法一覧:(RESULT*2)%
+		必要レベル = TOINT(魔法一覧:(RESULT*2+1))
+		コスト = BASE:詠唱者:魔力 - 魔力消費量(必要レベル, スキル)
+		IF コスト < 0
+			IF 詠唱者 == MASTER
+				PRINTFORMW 主人は魔力の限界を越えた詠唱はできません
+				RESTART
+			ELSE
+				PRINTFORML 魔力が不足しています。このまま詠唱すると反動で{ABS(コスト/100)+1}ターン使用不可状態になります
+			ENDIF
+		ENDIF
+		対象 = -1
+		対象:1 = -1
+		年 = 0
+		月 = 0
+		日 = 0
+		;独自の入力が必要なもの
+		SELECTCASE 使用スペル名
+			CASE "ビーストモード", "ビーストモードtype2"
+				PRINTFORML □%使用スペル名%で獣人化する対象を選んでください
+				FOR PAGING, 0, CHARANUM
+					表示 = 0
+					;既に付与素質全部あるキャラは無理
+					IF 使用スペル名 == "ビーストモードtype2"
+						SIF !TALENT:PAGING:尻尾 || !TALENT:PAGING:動物耳 || !TALENT:PAGING:ファーリー
+							表示 = 1
+					ELSE
+						SIF !TALENT:PAGING:尻尾 || !TALENT:PAGING:動物耳
+							表示 = 1
+					ENDIF
+					;ビーストモード発動中のキャラは無理
+					SIF ビーストモード:PAGING:0
+						表示 = 0
+					;詠唱者も無理
+					SIF PAGING == 詠唱者
+						表示 = 0
+					;霊体も無理
+					SIF TALENT:PAGING:霊体
+						表示 = 0
+					CALL PAGING, 表示, @"%CSTR:PAGING:種族%"
+				NEXT
+				SIF RESULT == -1
+					RESTART
+				対象 = RESULT
+			CASE "ジェントルストレス"
+				PRINTL □ジェントルストレスでストレスを抑える対象を選んでください
+				表示 = 0
+				SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳) || TALENT:詠唱者:孔雀の瞳
+					表示 = 1
+				FOR PAGING, 0, CHARANUM
+					CALL PAGING, 詠唱者 != PAGING, @"\@ 表示 ? ストレス値:{CFLAG:PAGING:ストレス値} #  \@"
+				NEXT
+				SIF RESULT == -1
+					RESTART
+				対象 = RESULT
+			CASE "クロノダイブ"
+				$BTTF
+				PRINTL □移動先の日付を入力してください
+				PRINTFORM 　[0] - {年}年 
+				PRINTFORM [1] - {月}月 
+				PRINTFORML [2] - {日}日
+				PRINT 　[3] - 確定 
+				PRINTL [4] - キャンセル
+				BINPUT
+				SELECTCASE RESULT
+					CASE 0
+						PRINT 移動先の西暦を入力してください
+						INPUT
+						年 = RESULT
+						GOTO BTTF
+					CASE 1
+						CALL TWO_DIGIT, 12, "月", 1
+						月 = RESULT
+						GOTO BTTF
+					CASE 2
+						CALL TWO_DIGIT, 31, "日", 1
+						日 = RESULT
+						GOTO BTTF
+					CASE 3
+						IF !EXIST_DAY(年, 月, 日)
+							PRINTFORMW {年}年{月}月{日}日は存在しません
+							GOTO BTTF
+						ENDIF
+					CASE 4
+						RESTART
+				ENDSELECT
+			CASE "ティル・ナ・ノーグ"
+				PRINTL □ティル・ナ・ノーグで体を大きくする対象を選んでください
+				FOR PAGING, 0, CHARANUM
+					CALL PAGING, TALENT:PAGING:小人体型
+				NEXT
+				SIF RESULT == -1
+					RESTART
+				対象 = RESULT
+			CASE "エナジードライブ"
+				IF エナジードライブ > 0
+					PRINTW エナジードライブは既に発動中です
+					RESTART
+				ENDIF
+			CASE "ポゼッション"
+				PRINTL □憑依する相手を選んでください
+				FOR PAGING, 0, CHARANUM
+					CALL PAGING, PAGING != 詠唱者 && PAGING != MASTER
+				NEXT
+				SIF RESULT == -1
+					RESTART
+				対象 = RESULT
+			CASE "ミラクル・スイート・スイーツ・マジック！！"
+				$MSSM
+				PRINTL □仲良しにする2人を選んでください
+				IF 対象 == -1
+					PRINTFORM 　[0] 選択する
+				ELSE
+					PRINTFORM 　[0] %NAME:対象%
+				ENDIF
+				PRINTPLAIN ×
+				IF 対象:1 == -1
+					PRINTFORML [1] 選択する
+				ELSE
+					PRINTFORML [1] %NAME:(対象:1)%
+				ENDIF
+				PRINT 　
+				SIF 対象 >= 0 && 対象:1 >= 0 && 対象 != 対象:1
+					PRINT [2] 確定 
+				PRINTL [3] キャンセル
+				BINPUT
+				SELECTCASE RESULT
+					CASE 0
+						FOR PAGING, 0, CHARANUM
+							CALL PAGING, PAGING != 詠唱者 && PAGING != 対象:1
+						NEXT
+						SIF RESULT == -1
+							GOTO MSSM
+						対象 = RESULT
+						GOTO MSSM
+					CASE 1
+						FOR PAGING, 0, CHARANUM
+							CALL PAGING, PAGING != 詠唱者 && PAGING != 対象
+						NEXT
+						SIF RESULT == -1
+							GOTO MSSM
+						対象:1 = RESULT
+						GOTO MSSM
+					CASE 2
+						SIF 対象 >= 0 && 対象:1 >= 0 && 対象 != 対象:1
+							BREAK
+					CASE 3
+						RESTART
+				ENDSELECT
+			CASE "ジュエリーストーム"
+				PRINTFORML □ジュエリーストームの対象を選んでください
+				FOR PAGING, 1, CHARANUM
+					CALL PAGING, PAGING != MASTER && PAGING != 詠唱者 && CSTR:PAGING:種族 != "機械" && !TALENT:PAGING:無機物 && !TALENT:PAGING:霊体 && CHARANAMEF(PAGING) != パートナー
+				NEXT
+				SIF RESULT == -1
+					RESTART
+				対象 = RESULT
+			;これだけここで完結する
+			CASE "スウィートイリュージョン"
+				VARSET 対象, -1
+				$SWEET
+				PRINTFORML %CALLNAME:詠唱者%にスウィートイリュージョンを詠唱させます。誰を対象にしますか？
+				PRINTFORML [0] - お菓子に変えるキャラ(\@ 対象 >= 0 ? %NAME:対象% # 無し \@)
+				PRINTFORML [1] - それを食べるキャラ(\@ 対象:1 >= 0 ? %NAME:(対象:1)% # 無し \@)
+				SIF 対象 >= 0 && 対象:1 >= 0
+					PRINTL [2] - これで決定
+				PRINTL [3] - やめる
+				BINPUT
+				SELECTCASE RESULT
+					CASE 3
+						RESTART
+					CASE 0
+						FOR PAGING, 1, CHARANUM
+							CALL PAGING, PAGING != MASTER && PAGING != 詠唱者 && CSTR:PAGING:種族 != "機械" && !TALENT:PAGING:無機物 && !TALENT:PAGING:霊体 && PAGING != 対象:1 && CHARANAMEF(PAGING) != パートナー
+						NEXT
+						対象 = RESULT
+						GOTO SWEET
+					CASE 1
+						FOR PAGING, 0, CHARANUM
+							CALL PAGING, PAGING != 対象
+						NEXT
+						対象:1 = RESULT
+						GOTO SWEET
+					CASE 2
+						TFLAG:キャスター = 詠唱者
+						;被捕食者のID<詠唱者のIDの場合はキャラロストで1ずれるので戻す
+						;SIF 対象 < 詠唱者
+						;	詠唱者--
+						CALL 捕食, 対象:1, 対象, 1
+						PRINTFORML %CALLNAME:詠唱者%の詠唱経験+10
+						EXP:詠唱者:詠唱経験 += 10
+						BREAK
+				ENDSELECT
+			CASE "ハニーバニー"
+				PRINTL □ハニーバニーで気を引く対象を選んでください
+				FOR PAGING, 1, CHARANUM
+					CALL PAGING, (TALENT:PAGING:恋心 || TALENT:PAGING:既婚者) && PAGING != 詠唱者
+				NEXT
+				SIF RESULT == -1
+					RESTART
+				対象 = RESULT
+		ENDSELECT
+		IF 年
+			PRINTFORML %CALLNAME:詠唱者%に、{年}年{月}月{日}日を目標した%使用スペル名%を詠唱させます。よろしいですか？
+		ELSEIF 対象 >= 0 && 対象:1 >= 0
+			PRINTFORML %CALLNAME:詠唱者%に、%CALLNAME:対象%と%CALLNAME:(対象:1)%を対象にした%使用スペル名%を詠唱させます。よろしいですか？
+		ELSEIF 対象 >= 0
+			PRINTFORML %CALLNAME:詠唱者%に、%CALLNAME:対象%を対象にした%使用スペル名%を詠唱させます。よろしいですか？
+		ELSE
+			PRINTFORML %CALLNAME:詠唱者%に%使用スペル名%を詠唱させます。よろしいですか？
+		ENDIF
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		BINPUT
+		SIF RESULT == 1
+			RESTART
+		詠唱魔法 = %使用スペル名%
+
+		;優先度は詠唱者の口上→対象の口上→地の文
+		;ただし地の文は口上側で管理するようになる
+		IF OPTION:口上表示
+			TRYCCALLFORM SPELLCAST_%CSVNAMERPS(詠唱者)%, 詠唱者, 対象:0, 対象:1
+			CATCH
+				TRYCCALLFORM RECIEVE_SPELLCAST_%CSVNAMERPS(対象:0)%, 詠唱者, 対象:0, 対象:1
 				CATCH
-					TRYCCALLFORM RECIEVE_SPELLCAST_%CSVNAMERPS(対象:0)%, 詠唱者, 対象:0, 対象:1
+					SIF 対象:1 < 0
+						GOTO NOTTARGET1
+					TRYCCALLFORM RECIEVE_SPELLCAST_%CSVNAMERPS(対象:1)%, 詠唱者, 対象:0, 対象:1
 					CATCH
-						SIF 対象:1 < 0
-							GOTO NOTTARGET1
-						TRYCCALLFORM RECIEVE_SPELLCAST_%CSVNAMERPS(対象:1)%, 詠唱者, 対象:0, 対象:1
-						CATCH
-							$NOTTARGET1
-							SIF OPTION:地の文表示
-								CALL SPELLCAST_地の文, 詠唱者, 対象:0, 対象:1
-						ENDCATCH
+						$NOTTARGET1
+						SIF OPTION:地の文表示
+							CALL SPELLCAST_地の文, 詠唱者, 対象:0, 対象:1
 					ENDCATCH
 				ENDCATCH
-			ELSEIF OPTION:地の文表示
-				CALL SPELLCAST_地の文, 詠唱者, 対象:0, 対象:1
-			ENDIF
-			CALL EXPUP, "詠唱経験", 必要レベル, 詠唱者
-			;魔法の効果処理
-			SELECTCASE 使用スペル名
-				CASE "フリージングアトモスフィア"
-					フリージングアトモスフィア = スキル
-					SIF ターン == "昼"
-						FLAG:気温 -= フリージングアトモスフィア*30
-				CASE "バーニンザフロア"
-					バーニンザフロア = スキル
-					SIF ターン == "昼"
-						FLAG:気温 += バーニンザフロア*30
-				CASE "ストームバスター"
-					ストームバスター = スキル
-					スウィートレイン = 0
-					スノープリズム = 0
-					FLAG:天気 = 1
-				CASE "スウィートレイン"
-					ストームバスター = 0
-					スウィートレイン = スキル
-					スノープリズム = 0
-					FLAG:天気 = 3
-				CASE "スノープリズム"
-					ストームバスター = 0
-					スウィートレイン = 0
-					スノープリズム = スキル
-					FLAG:天気 = 6
-				CASE "ビーストモード", "ビーストモードtype2"
-					;ビーストモード:0=効果時間 1=耳の有無 2=尻尾の有無 3=ファーリーの有無
-					;ビーストモードS=元の種族名
-					ビーストモード:対象:0 = スキル
-					SIF !TALENT:対象:動物耳
-						ビーストモード:対象:1 = 1
-					SIF !TALENT:対象:尻尾
-						ビーストモード:対象:2 = 1
-					ビーストモードS:対象:0 = %CSTR:対象:種族%
-					TALENT:対象:動物耳 = 1
-					TALENT:対象:尻尾 = 1
-					CSTR:対象:種族 = 獣人
-					IF 使用スペル名 == "ビーストモードtype2"
-						SIF !TALENT:対象:ファーリー
-							ビーストモード:対象:3 = 1
-						TALENT:対象:ファーリー = 1
-					ENDIF
-				CASE "リ：ジェネレーション"
-					リジェネレーション = スキル
-				CASE "ジェントルストレス"
-					ジェントルストレス:対象:0 = スキル
-					ジェントルストレス:対象:1 = CFLAG:対象:ストレス値
-				CASE "クロノダイブ"
-					CALL プレイログ記録, @"クロノダイブで{年}年{月}月{日}日にタイムリープ"
-					YEAR = 年
-					MONTH = 月
-					DAYS = 日
-				CASE "ヒプノティッククライシス"
-					ヒプノティッククライシス = スキル
-				CASE "ティル・ナ・ノーグ"
-					ティルナノーグ:対象:0 = スキル
-					TALENT:対象:小人体型 = 0
-					;TALENT:対象:小柄体型 = 1
-				CASE "エナジードライブ"
-					エナジードライブ = スキル
-					エナジードライブ:1 = スキル-7
-					FOR LCOUNT, 0, VARSIZE("ABL")
-						SIF ABLNAME:LCOUNT != ""
-							ABL:MASTER:LCOUNT += スキル-7
-					NEXT
-				CASE "ポゼッション"
-					FOR LCOUNT, 0, 30
-						SIF ABLNAME:LCOUNT == "魔法技能"
-							CONTINUE
-						ポゼッション:対象:LCOUNT = ABL:対象:LCOUNT
-						ABL:対象:LCOUNT = ABL:詠唱者:LCOUNT
-					NEXT
-					CFLAG:対象:ポゼ = スキル
-				CASE "ミラクル・スイート・スイーツ・マジック！！"
-					CALL 相性加算, 対象, 対象:1, 20
-					CALL 相性加算, 対象:1, 対象, 20
-				CASE "バック・トゥ・クロノス"
-					CALL プレイログ記録, @"バック・トゥ・クロノス詠唱"
-					DO
-						DAYS--
-						IF DAYS <= 0
-							MONTH--
-							IF MONTH <= 0
-								YEAR--
-								MONTH = 12
-							ENDIF
-							DAYS = 31
+			ENDCATCH
+		ELSEIF OPTION:地の文表示
+			CALL SPELLCAST_地の文, 詠唱者, 対象:0, 対象:1
+		ENDIF
+		CALL EXPUP, "詠唱経験", 必要レベル, 詠唱者
+		;魔法の効果処理
+		SELECTCASE 使用スペル名
+			CASE "フリージングアトモスフィア"
+				フリージングアトモスフィア = スキル
+				SIF ターン == "昼"
+					FLAG:気温 -= フリージングアトモスフィア*30
+			CASE "バーニンザフロア"
+				バーニンザフロア = スキル
+				SIF ターン == "昼"
+					FLAG:気温 += バーニンザフロア*30
+			CASE "ストームバスター"
+				ストームバスター = スキル
+				スウィートレイン = 0
+				スノープリズム = 0
+				FLAG:天気 = 1
+			CASE "スウィートレイン"
+				ストームバスター = 0
+				スウィートレイン = スキル
+				スノープリズム = 0
+				FLAG:天気 = 3
+			CASE "スノープリズム"
+				ストームバスター = 0
+				スウィートレイン = 0
+				スノープリズム = スキル
+				FLAG:天気 = 6
+			CASE "ビーストモード", "ビーストモードtype2"
+				;ビーストモード:0=効果時間 1=耳の有無 2=尻尾の有無 3=ファーリーの有無
+				;ビーストモードS=元の種族名
+				ビーストモード:対象:0 = スキル
+				SIF !TALENT:対象:動物耳
+					ビーストモード:対象:1 = 1
+				SIF !TALENT:対象:尻尾
+					ビーストモード:対象:2 = 1
+				ビーストモードS:対象:0 = %CSTR:対象:種族%
+				TALENT:対象:動物耳 = 1
+				TALENT:対象:尻尾 = 1
+				CSTR:対象:種族 = 獣人
+				IF 使用スペル名 == "ビーストモードtype2"
+					SIF !TALENT:対象:ファーリー
+						ビーストモード:対象:3 = 1
+					TALENT:対象:ファーリー = 1
+				ENDIF
+			CASE "リ：ジェネレーション"
+				リジェネレーション = スキル
+			CASE "ジェントルストレス"
+				ジェントルストレス:対象:0 = スキル
+				ジェントルストレス:対象:1 = CFLAG:対象:ストレス値
+			CASE "クロノダイブ"
+				CALL プレイログ記録, @"クロノダイブで{年}年{月}月{日}日にタイムリープ"
+				YEAR = 年
+				MONTH = 月
+				DAYS = 日
+			CASE "ヒプノティッククライシス"
+				ヒプノティッククライシス = スキル
+			CASE "ティル・ナ・ノーグ"
+				ティルナノーグ:対象:0 = スキル
+				TALENT:対象:小人体型 = 0
+				;TALENT:対象:小柄体型 = 1
+			CASE "エナジードライブ"
+				エナジードライブ = スキル
+				エナジードライブ:1 = スキル-7
+				FOR LCOUNT, 0, VARSIZE("ABL")
+					SIF ABLNAME:LCOUNT != ""
+						ABL:MASTER:LCOUNT += スキル-7
+				NEXT
+			CASE "ポゼッション"
+				FOR LCOUNT, 0, 30
+					SIF ABLNAME:LCOUNT == "魔法技能"
+						CONTINUE
+					ポゼッション:対象:LCOUNT = ABL:対象:LCOUNT
+					ABL:対象:LCOUNT = ABL:詠唱者:LCOUNT
+				NEXT
+				CFLAG:対象:ポゼ = スキル
+			CASE "ミラクル・スイート・スイーツ・マジック！！"
+				CALL 相性加算, 対象, 対象:1, 20
+				CALL 相性加算, 対象:1, 対象, 20
+			CASE "バック・トゥ・クロノス"
+				CALL プレイログ記録, @"バック・トゥ・クロノス詠唱"
+				DO
+					DAYS--
+					IF DAYS <= 0
+						MONTH--
+						IF MONTH <= 0
+							YEAR--
+							MONTH = 12
 						ENDIF
-					LOOP !EXIST_DAY(YEAR, MONTH, DAYS)
-					DAY--
-				CASE "ジュエリーストーム"
-					CALL ジュエリーストーム, 対象, 詠唱者
-					SIF RESULT == 0
-						RESTART
-					;被詠唱者のID<詠唱者のIDの場合はキャラロストで1ずれるので戻す
-					SIF 対象 < 詠唱者
-						詠唱者--
-				CASE "ハニーバニー"
-					ハニーバニー:対象:0 = スキル
-				CASEELSE
-					CONTINUE
-			ENDSELECT
-			BREAK
-	ENDSELECT
-LOOP 1
+						DAYS = 31
+					ENDIF
+				LOOP !EXIST_DAY(YEAR, MONTH, DAYS)
+				DAY--
+			CASE "ジュエリーストーム"
+				CALL ジュエリーストーム, 対象, 詠唱者
+				SIF RESULT == 0
+					RESTART
+				;被詠唱者のID<詠唱者のIDの場合はキャラロストで1ずれるので戻す
+				;SIF 対象 < 詠唱者
+				;	詠唱者--
+			CASE "ハニーバニー"
+				ハニーバニー:対象:0 = スキル
+			CASEELSE
+				CONTINUE
+		ENDSELECT
+		BREAK
+ENDSELECT
+
 WAIT
 BASE:詠唱者:魔力 = コスト
 IF コスト < 0
@@ -619,7 +612,7 @@ SIF CSTR:対象:背中の印 != ""
 SIF CSTR:対象:胴体の印 != ""
 	価値 += 300
 ;人気度を加算
-価値 += 人気度:(NO:対象)
+価値 += 人気度:(NOF(対象))
 
 ;崩壊が付いてると激減
 SIF TALENT:対象:崩壊
@@ -654,7 +647,7 @@ SIF TALENT:対象:隷属
 SIF TALENT:対象:崩壊
 	MUSEUM:空き変数:1 = 今にも朽ちそうな%NAME:対象%の像
 
-MUSEUM:空き変数:2 = {NO:対象}
+MUSEUM:空き変数:2 = {NOF(対象)}
 MUSEUM:空き変数:3 = {価値}
 MUSEUM:空き変数:4 = {色保存用}
 MUSEUM:空き変数:5 = {CFLAG:対象:血縁コード}
@@ -663,6 +656,8 @@ MUSEUM:空き変数:7 = 100
 MUSEUM:空き変数:8 = 0
 
 CALL プレイログ記録, @"%NAME:対象%が鉱物化する"
+CSTR:対象:ロスト要因 = 鉱物化
+CSTR:対象:ロスト詳細 = ジュエリーストームによって鉱物となる
 CALL CLEAR_CHARA, 対象
 
 RETURN 1
@@ -690,7 +685,7 @@ GDISPOSE 0
 GDISPOSE 1
 GDISPOSE 2
 GDISPOSE 3
-
+REDRAW 0
 CALL LOOP_CLEARLINE
 
 GCREATE 0, 256, 17
@@ -854,10 +849,10 @@ INT_B = LIMIT(INT_B, 0, 255)
 
 RESTART
 
+;;;対象に魔法強化がかかっているかの判定
 @ISENCHANT, 対象
 #FUNCTION
 #DIM DYNAMIC 対象
-;対象に魔法強化がかかっているかの判定
 SIF 対象 < 0
 	RETURNF 0
 
@@ -917,6 +912,8 @@ IF エナジードライブ > 0
 	ENDIF
 ENDIF
 FOR LCOUNT, 0, CHARANUM
+	SIF CFLAG:LCOUNT:キャラロスト
+		CONTINUE
 	IF ビーストモード:LCOUNT:0 > 0
 		IF --ビーストモード:LCOUNT:0 == 0
 			PRINTFORMW %CALLNAME:LCOUNT%にかけられた[ビーストモード]の効果が切れました

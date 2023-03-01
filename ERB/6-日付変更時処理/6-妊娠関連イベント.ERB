@@ -215,9 +215,9 @@ IF RAND:妊娠乱数 <= TEQUIP:対象:妊娠確率分子-1
 	IF CFLAG:竿役:憑依 >= 0
 		PREG:対象:父親 = CFLAG:竿役:憑依
 	ELSE
-		PREG:対象:父親 = NO:竿役
+		PREG:対象:父親 = NOF(竿役)
 	ENDIF
-	PREG:対象:母親 = NO:対象
+	PREG:対象:母親 = NOF(対象)
 ENDIF
 
 
@@ -332,9 +332,9 @@ IF RAND:妊娠乱数 <= TEQUIP:MASTER:妊娠確率分子-1
 	IF CFLAG:竿役:憑依 >= 0
 		PREG:MASTER:父親 = CFLAG:竿役:憑依
 	ELSE
-		PREG:MASTER:父親 = NO:竿役
+		PREG:MASTER:父親 = NOF(竿役)
 	ENDIF
-	PREG:MASTER:母親 = NO:MASTER
+	PREG:MASTER:母親 = NOF(MASTER)
 ENDIF
 
 ;妊娠処理
@@ -372,8 +372,8 @@ IF ARG == MASTER
 	PRINTFORMW %CALLNAME:MASTER%はどうやら%CSVCALLNAMEF(PREG:ARG:父親)%の子供を身籠ってしまったようだ
 	TALENT:MASTER:妊娠 = 1
 	FOR LCOUNT, 0, CHARANUM
-		IF NO:LCOUNT == PREG:ARG:父親
-			孕ませ回数:LCOUNT:(NO:ARG)++
+		IF NOF(LCOUNT) == PREG:ARG:父親
+			孕ませ回数:LCOUNT:NOF(ARG)++
 			BREAK
 		ENDIF
 	NEXT
@@ -392,8 +392,8 @@ ELSE
 	ELSE
 		PRINTFORMW %CALLNAME:ARG%は%CSVCALLNAMEF(PREG:ARG:父親)%の子供を身篭ったようだ
 		FOR LCOUNT, 0, CHARANUM
-			IF NO:LCOUNT == PREG:ARG:父親
-				孕ませ回数:LCOUNT:(NO:ARG)++
+			IF NOF(LCOUNT) == PREG:ARG:父親
+				孕ませ回数:LCOUNT:NOF(ARG)++
 				;実績:ふたなりのいちかを主人にして10人孕ませる
 				IF LCOUNT == 0 && CHARANAMEF(LCOUNT) == "いちか"
 					SIF SUMARRAY(孕ませ回数:LCOUNT:0, 0) >= 10
@@ -436,7 +436,7 @@ ENDIF
 IF ARG != MASTER || !TALENT:ARG:妊娠確定
 	ストレス計算用 = 100
 	;父親が主人
-	IF 父親 == NO:MASTER
+	IF 父親 == NOF(MASTER)
 		SELECTCASE FALLTYPE(ARG)
 			;恋慕もしくは親愛
 			CASE 1
@@ -708,7 +708,7 @@ SIF PREG:ARG:出産トラウマ計算用 < 0
 	PREG:ARG:出産トラウマ計算用 = 0
 
 ;ヤンデレで父親が主人、陥落済みだと出産トラウマは0になる
-SIF TALENT:ARG:ヤンデレ && CFLAG:ARG:陥落 && PREG:ARG:父親 == NO:MASTER
+SIF TALENT:ARG:ヤンデレ && CFLAG:ARG:陥落 && PREG:ARG:父親 == NOF(MASTER)
 	PREG:ARG:出産トラウマ計算用 = 0
 
 ;主人には出産トラウマ付かない
@@ -745,7 +745,7 @@ SIF ARG == ASSI
 TALENT:ARG:育児中 = 1
 ;女で恋慕or親愛持ちで父親が主人
 IF ARG != MASTER
-	IF SEX(ARG) == 2 && FALLTYPE(ARG) == 1 && PREG:ARG:父親 == NO:MASTER && !TALENT:ARG:母性
+	IF SEX(ARG) == 2 && FALLTYPE(ARG) == 1 && PREG:ARG:父親 == NOF(MASTER) && !TALENT:ARG:母性
 		PRINTFORMW どうやら%CALLNAME:ARG%は[母性]に目覚めたようだ
 		TALENT:ARG:母性 = 1
 	ENDIF
@@ -1238,7 +1238,7 @@ SELECTCASE RESULT
 	CASE 0
 		PRINTFORML %CALLNAME:ARG%の育てていた子供を養子に出しました
 		;主人との間にできた恋慕、親愛キャラの子供なら仕送りが来るようになる
-		IF NO:ARG == PREG:ARG:母親 && NO:MASTER == PREG:ARG:父親 && FALLTYPE(ARG) == 1
+		IF NOF(ARG) == PREG:ARG:母親 && NOF(MASTER) == PREG:ARG:父親 && FALLTYPE(ARG) == 1
 			PRINTFORML 自立した子供から定期的に仕送りが来るようになりました
 			FLAG:仕送り++
 		ENDIF
@@ -1347,6 +1347,7 @@ SELECTCASE RESULT
 		;10000が恋心と既婚者のフラグに使われてるので、子供のNOは10001から
 		FLAG:子供の数++
 		NO:TARGET = FLAG:子供の数+10000
+		CFLAG:CSV無し = 1
 		;NO-10000のCHILDNAMEに名前が記録される
 		CHILDNAME:(FLAG:子供の数) = %NAME:TARGET%
 		CFLAG:血縁コード = PREG:ARG:父親*100000+PREG:ARG:母親
@@ -1354,21 +1355,21 @@ SELECTCASE RESULT
 		SIF ARG != MASTER || PREG:ARG:父親の認知
 			RELATION:(PREG:ARG:父親) = 150
 		RELATION:(PREG:ARG:母親) = 150
-		RELATION:(NO:ARG) = 150
-		RELATION:ARG:(NO:TARGET) = 150
+		RELATION:NOF(ARG) = 150
+		RELATION:ARG:(NOF(TARGET)) = 150
 		;親が居れば親→子の相性も良くなる 兄弟姉妹間の相性も良くなる
 		FOR LCOUNT, 0, CHARANUM
-			SELECTCASE NO:LCOUNT
+			SELECTCASE NOF(LCOUNT)
 				CASE PREG:ARG:父親
 					;認知してなければ相性は変わらず
 					SIF ARG != MASTER || PREG:ARG:父親の認知
-						RELATION:LCOUNT:(NO:TARGET) = 150
+						RELATION:LCOUNT:(NOF(TARGET)) = 150
 				CASE PREG:ARG:母親
-					RELATION:LCOUNT:(NO:TARGET) = 150
+					RELATION:LCOUNT:(NOF(TARGET)) = 150
 			ENDSELECT
 			IF CFLAG:血縁コード == CFLAG:LCOUNT:血縁コード && TARGET != LCOUNT
-				RELATION:(NO:LCOUNT) = 150
-				RELATION:LCOUNT:(NO:TARGET) = 150
+				RELATION:(NOF(LCOUNT)) = 150
+				RELATION:LCOUNT:(NOF(TARGET)) = 150
 			ENDIF
 		NEXT
 		CFLAG:生殖力担当魔術師 = -1
