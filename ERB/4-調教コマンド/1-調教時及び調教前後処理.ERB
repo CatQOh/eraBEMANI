@@ -10,9 +10,12 @@ DO
 LOOP TFLAG:調教終了 == 0
 
 CALL 調教終了
+SIF RESULT
+	GOTO END
 
 CALL USER_ABLUP
 
+$END
 CALL ターン終了
 
 ;調教前の処理
@@ -1009,14 +1012,18 @@ WEND
 ;自爆したらDELCHARAして全部無視してTURNEND
 IF ハッキング命令 == "自爆"
 	CALL プレイログ記録, @"%NAME:TARGET%自爆"
+	CSTR:ロスト要因 = 自爆
+	CSTR:ロスト詳細 = ハッキングにより自爆した
 	CALL CLEAR_CHARA, TARGET
 	TARGET = -1
-	JUMP ターン終了
+	RETURN 1
 ELSEIF SELECTCOMS == "剥製加工"
 	CALL プレイログ記録, @"%NAME:TARGET%の死体を剥製に加工"
+	CSTR:ロスト要因 = 死亡
+	CSTR:ロスト詳細 = 死亡のち剥製に加工された
 	CALL CLEAR_CHARA, TARGET
 	TARGET = -1
-	JUMP ターン終了
+	RETURN 1
 ENDIF
 
 ;屋外プレイで雨、もしくはお風呂場プレイ中に終了した場合、人魚の体力気力を半減させる
@@ -1199,8 +1206,10 @@ VARLINE = 0
 
 IF CFLAG:死亡
 	CALL キャラ死亡, TARGET
-	JUMP ターン終了
+	RETURN 1
 ENDIF
+
+RETURN 0
 
 @アイテム修理
 #DIM DYNAMIC LCOUNT
