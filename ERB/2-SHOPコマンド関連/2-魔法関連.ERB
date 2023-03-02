@@ -85,6 +85,8 @@ FOR LCOUNT, 1, VARSIZE("魔法一覧")/2
 	SELECTCASE 使用スペル名
 		;天土と緋浮美は作中で使ってるので魔法技能無しで詠唱可能
 		CASE "ビーストモード", "ビーストモードtype2"
+			SIF CHARANUM < 2
+				CONTINUE
 			SIF GROUPMATCH(CHARANAMEF(詠唱者), "梅桐 天土", "梅桐 緋浮美")
 				GOTO OK
 		;クロノダイブのみクロノスとカイロスは無条件で使える
@@ -97,10 +99,14 @@ FOR LCOUNT, 1, VARSIZE("魔法一覧")/2
 				CONTINUE
 		;まり花のみレベル8から使用可能
 		CASE "ミラクル・スイート・スイーツ・マジック！！"
+			SIF CHARANUM < 2
+				CONTINUE
 			SIF CHARANAMEF(詠唱者) == "山形 まり花" && ABL:詠唱者:魔法技能 >= 8
 				GOTO OK
 		;ロザリー、塵、アサギス、キャスは魔法技能無しで使える
 		CASE "ジュエリーストーム"
+			SIF CHARANUM < 2
+				CONTINUE
 			;要STS
 			SIF !MOD:STS
 				CONTINUE
@@ -108,7 +114,12 @@ FOR LCOUNT, 1, VARSIZE("魔法一覧")/2
 				GOTO OK
 		;要STS
 		CASE "スウィートイリュージョン"
+			SIF CHARANUM < 2
+				CONTINUE
 			SIF !MOD:STS
+				CONTINUE
+		CASE "ジェントルストレス", "ハニーバニー", "ティル・ナ・ノーグ", "ポゼッション"
+			SIF CHARANUM < 2
 				CONTINUE
 	ENDSELECT
 	SIF ABL:詠唱者:魔法技能 < 必要レベル
@@ -336,7 +347,7 @@ SELECTCASE RESULT
 				ENDSELECT
 			CASE "ジュエリーストーム"
 				PRINTFORML □ジュエリーストームの対象を選んでください
-				FOR PAGING, 1, CHARANUM
+				FOR PAGING, 0, CHARANUM
 					CALL PAGING, PAGING != MASTER && PAGING != 詠唱者 && CSTR:PAGING:種族 != "機械" && !TALENT:PAGING:無機物 && !TALENT:PAGING:霊体 && CHARANAMEF(PAGING) != パートナー
 				NEXT
 				SIF RESULT == -1
@@ -357,7 +368,7 @@ SELECTCASE RESULT
 					CASE 3
 						RESTART
 					CASE 0
-						FOR PAGING, 1, CHARANUM
+						FOR PAGING, 0, CHARANUM
 							CALL PAGING, PAGING != MASTER && PAGING != 詠唱者 && CSTR:PAGING:種族 != "機械" && !TALENT:PAGING:無機物 && !TALENT:PAGING:霊体 && PAGING != 対象:1 && CHARANAMEF(PAGING) != パートナー
 						NEXT
 						対象 = RESULT
@@ -402,6 +413,8 @@ SELECTCASE RESULT
 		SIF RESULT == 1
 			RESTART
 		詠唱魔法 = %使用スペル名%
+		SIF 詠唱魔法 == "ジュエリーストーム"
+			GOTO JEWEL
 
 		;優先度は詠唱者の口上→対象の口上→地の文
 		;ただし地の文は口上側で管理するようになる
@@ -515,6 +528,8 @@ SELECTCASE RESULT
 				LOOP !EXIST_DAY(YEAR, MONTH, DAYS)
 				DAY--
 			CASE "ジュエリーストーム"
+				$JEWEL
+				VARLINE = LINECOUNT
 				CALL ジュエリーストーム, 対象, 詠唱者
 				SIF RESULT == 0
 					RESTART
@@ -526,7 +541,6 @@ SELECTCASE RESULT
 			CASEELSE
 				CONTINUE
 		ENDSELECT
-		BREAK
 ENDSELECT
 
 WAIT

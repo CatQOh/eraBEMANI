@@ -1,4 +1,222 @@
 ﻿;ステータス表示
+@所持キャラ一覧
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC カウント数
+;#DIM DYNAMIC SHOP_未表示キャラ
+#DIM DYNAMIC LTARGET
+#DIM 表示切り替え
+#DIM DYNAMIC 表示上限 = 30
+
+VARLINE = LINECOUNT
+
+IF ゲームモード() == "新婚モード"
+	CALL COLUMNPRINT, 0, "□キャラ一覧 "
+ELSE
+	SELECTCASE SHOP_キャラ表示情報
+		CASE "調教対象選択"
+			CALL COLUMNPRINT, 0, "□調教対象変更 "
+		CASE "助手選択"
+			CALL COLUMNPRINT, 0, "□助手変更     "
+		CASE "ロストキャラ表示"
+			CALL COLUMNPRINT, 0, "□ロストキャラ "
+		CASEELSE
+			CALL COLUMNPRINT, 0, "□キャラ一覧   "
+	ENDSELECT
+ENDIF
+
+IF SHOP_キャラ表示情報 == "調教対象選択"
+	CALL COLUMNPRINT, 0, "[--] 対象選択 ", "deepskyblue"
+ELSE
+	CALL COLUMNPRINT, 0, "[-1] 対象選択 "
+ENDIF
+IF SHOP_キャラ表示情報 == "助手選択"
+	CALL COLUMNPRINT, 0, "[--] 助手選択 ", "deepskyblue"
+ELSE
+	CALL COLUMNPRINT, 0, "[-2] 助手選択 "
+ENDIF
+IF SHOP_キャラ表示情報 == "能力表示"
+	CALL COLUMNPRINT, 0, "[--] 能力表示 ", "deepskyblue"
+ELSE
+	CALL COLUMNPRINT, 0, "[-3] 能力表示 "
+ENDIF
+IF SHOP_キャラ表示情報 == "ABL上昇"
+	CALL COLUMNPRINT, 0, "[--] ABL上昇 ", "deepskyblue"
+ELSE
+	CALL COLUMNPRINT, 0, "[-4] ABL上昇 "
+ENDIF
+IF SHOP_キャラ表示情報 == "ロストキャラ表示"
+	CALL COLUMNPRINT, 0, "[--] ロストキャラ ", "deepskyblue"
+ELSE
+	CALL COLUMNPRINT, 0, "[-5] ロストキャラ "
+ENDIF
+CALL COLUMNPRINTL, 0, ""
+;PRINTL [-1] 表示上限を減らす [-9] 表示上限を増やす
+
+SHOP_未表示キャラ = 0
+
+FOR LCOUNT, 0, CHARANUM
+	;1巡目はMASTERとTARGET及びASSIの能力表示
+	IF LCOUNT == 0 && SHOP_キャラ表示情報 != "ロストキャラ表示"
+		IF SHOP_キャラ表示情報 == "助手選択"
+			CALL COLUMNPRINTL, 0, "　[  0] 助手無し"
+		ELSE
+			CALL COLUMNPRINTL, 0, @"　[  0] %CALLNAME:MASTER%(主人) \@ SEX(MASTER) == 1 ? ♂ # ♀ \@ \@ TALENT:MASTER:ふたなり ? 双 #\@"
+		ENDIF
+		;TARGETとASSIはMASTERの下に表示する
+		IF TARGET > 0
+			;助手の指定なら助手不可能なキャラは除外
+			SIF SHOP_キャラ表示情報 == "助手選択" && !助手可能(TARGET)
+				CONTINUE
+			CALL STATUS_BAR, TARGET
+		ENDIF
+		SIF ASSI > 0
+			CALL STATUS_BAR, ASSI
+		CALL COLUMNDRAWLINE, 0
+		CONTINUE
+	ENDIF
+
+	;2巡目以降は通常のキャラ表示なので条件を指定
+	;ロストしたキャラは別枠
+	SIF CFLAG:LCOUNT:キャラロスト && SHOP_キャラ表示情報 != "ロストキャラ表示"
+		CONTINUE
+	SIF !CFLAG:LCOUNT:キャラロスト && SHOP_キャラ表示情報 == "ロストキャラ表示"
+		CONTINUE
+	;助手の指定なら助手不可能なキャラは除外
+	SIF SHOP_キャラ表示情報 == "助手選択" && 助手可能(LCOUNT)
+		CONTINUE
+	;登場作品フィルタが設定してあるならそれ以外のキャラは除外
+	SIF 登場作品フィルタ != "" && GROUPMATCH(登場作品フィルタ, CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３) == 0 && ORIGIN
+		CONTINUE
+	;キャラの表示上限に達したら終了
+	IF 表示数 >= 表示上限
+		SHOP_未表示キャラ = 1
+		BREAK
+	ENDIF
+	;対象と助手は主人の下に表示されるので除外
+	SIF GROUPMATCH(LCOUNT, TARGET, ASSI)
+		CONTINUE
+	カウント数++
+	;ページ数×表示上限まで表示を飛ばす
+	SIF SHOP_キャラページ*表示上限 >= カウント数
+		CONTINUE
+	CALL STATUS_BAR, LCOUNT
+	表示数++
+NEXT
+;表示数が足りない場合は改行入れる
+IF 表示数 < 表示上限
+	DO
+		CALL COLUMNPRINTL, 0, ""
+		表示数++
+	LOOP 表示数 < 表示上限
+ENDIF
+
+CALL COLUMNDRAWLINE, 0
+CALL COLUMNPRINTL, 0, "　☆：調教中　★：助手　○：助手可　●：元助手 ■：タグ色"
+CALL COLUMNPRINTL, 0, "　KA：経営モードに配属中　不：使用不可　妊：妊娠育児中　獣：ペット候補　を表しています"
+CALL COLUMNDRAWLINE, 0
+
+;条件を満たしているにも関わらずまだリスト表示されてないキャラが居ればSHOP_未表示キャラフラグは1になる
+;RETURN SHOP_未表示キャラ
+
+;DRAWLINE
+;CALL LIFE_LIST, "調教対象選択", 0, 表示上限
+;RESULTにはSHOP_未表示キャラが居るかどうか
+;次ページあり = RESULT
+;DRAWLINE
+;PRINTPLAIN 　CHANGE TARGET　
+CALL COLUMNPRINT, 0, RETURNSPACE(SHOP_キャラページ, "　[999] 前ページ ")
+CALL COLUMNPRINT, 0, RETURNSPACE(SHOP_未表示キャラ, "[1001] 次ページ ")
+CALL COLUMNPRINT, 0, "[1010] キャラソート "
+IF SHOP_表示切り替え
+	CALL COLUMNPRINT, 0, "[1011] 通常表示に切り替え "
+ELSE
+	CALL COLUMNPRINT, 0, "[1011] 経営用表示に切り替え "
+ENDIF
+SIF ORIGIN
+	CALL COLUMNPRINT, 0, "[1012] 登場作品で絞る"
+CALL COLUMNPRINTL, 0, ""
+
+@所持キャラ一覧_INPUT
+#DIM DYNAMIC LTARGET
+SELECTCASE CRESULT:1
+	CASE MASTER
+		SELECTCASE SHOP_キャラ表示情報
+			CASE "調教対象選択"
+				PRINTW 自分を調教することはできません
+			CASE "助手選択"
+				ASSI = 0
+			CASE "ABL上昇"
+				PRINTW 主人の能力上昇はスキルツリーから行ってください
+			CASE "能力表示"
+				GOTO 能力表示
+		ENDSELECT
+	CASE -1
+		SHOP_キャラ表示情報 = 調教対象選択
+	CASE -2
+		SHOP_キャラ表示情報 = 助手選択
+		SHOP_キャラページ = 0
+	CASE -3
+		SHOP_キャラ表示情報 = 能力表示
+	CASE -4
+		SHOP_キャラ表示情報 = ABL上昇
+	CASE -5
+		SHOP_キャラ表示情報 = ロストキャラ表示
+		SHOP_キャラページ = 0
+	;CASE -1
+	;	SIF 表示上限 > 10
+	;		表示上限 -= 10
+	;CASE -9
+	;	表示上限 += 10
+	CASE 999
+		SHOP_キャラページ--
+	CASE 1000
+		RETURN
+	CASE 1001
+		SHOP_キャラページ++
+	CASE 1010
+		CALL CHARA_SORT
+	CASE 1011
+		INVERTBIT SHOP_表示切り替え, 0
+	CASE 1012
+		CALL 登場作品フィルタ設定
+		SHOP_キャラページ = 0
+	CASE 0 TO CHARANUM-1
+		SELECTCASE SHOP_キャラ表示情報
+			CASE "調教対象選択"
+				CALL ASSIGN_TARGET, CRESULT:1
+			CASE "助手選択"
+				CALL ASSIGN_ASSI, CRESULT:1
+			CASE "能力表示", "ロストキャラ表示"
+				$能力表示
+				LTARGET = TARGET
+				TARGET = CRESULT:1
+				;TARGETの能力表示中はあっちで「調教対象に指定」を表示させないためのフラグ
+				IF TARGET == LTARGET
+					SHOW_TARGET = LTARGET
+				ELSE
+					SHOW_TARGET = 0
+				ENDIF
+				IF SHOP_キャラ表示情報 == "ロストキャラ表示"
+					CALL STATUS, 1
+				ELSE
+					CALL STATUS
+				ENDIF
+				;TARGET変更がされてる場合は戻さない
+				SIF !RESULT && ASSI != LTARGET
+					TARGET = LTARGET
+				;TARGET変更無しかつ元々TARGETが居なかった場合も戻す
+				SIF !RESULT && LTARGET == -1
+					TARGET = -1
+			CASE "ABL上昇"
+				FLAG:能力上昇 = TARGET
+				TARGET = CRESULT:1
+				CALL USER_ABLUP
+				TARGET = FLAG:能力上昇
+		ENDSELECT
+		RETURN
+ENDSELECT
+
 [SKIPSTART]
 @SHOW_CHARADATA
 #DIM 表示切り替え
@@ -423,287 +641,283 @@ DRAWLINE
 PRINTPLAIN 　CHARA SORT　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		DRAWLINE
+		PRINTL □刻印
+		FOR LCOUNT, 0, 4
+			SIF MARKNAME:LCOUNT != ""
+				PRINTFORML 　[{LCOUNT}] - %MARKNAME:LCOUNT%
+		NEXT
+		DRAWLINE
+		PRINTPLAIN 　MARK　
+		PRINTL [100] - 戻る
+		BINPUT
+		番号 = RESULT
+		SIF RESULT == 100
 			RETURN 0
-		CASE 1
-			DRAWLINE
-			PRINTL □刻印
-			FOR LCOUNT, 0, 4
-				SIF MARKNAME:LCOUNT != ""
-					PRINTFORML 　[{LCOUNT}] - %MARKNAME:LCOUNT%
-			NEXT
-			DRAWLINE
-			PRINTPLAIN 　MARK　
-			PRINTL [100] - 戻る
-			CALL INPUTF, 0, 1, 2, 3, 100
-			番号 = RESULT
-			SIF RESULT == 100
-				RETURN 0
-			PRINTL □並べ替え
-			PRINTL 　[0] - 昇順(低い順)
-			PRINTL 　[1] - 降順(高い順)
-			DRAWLINE
-			PRINTPLAIN 　MARK　
-			PRINTL [10] - 戻る
-			CALL INPUTF, 0, 1, 10
-			SELECTCASE RESULT
-				CASE 0
-					PRINTFORMW %MARKNAME:番号%で昇順にソートしました
-					SORTCHARA MARK:番号
-				CASE 1
-					PRINTFORMW %MARKNAME:番号%で降順にソートしました
-					SORTCHARA MARK:番号, BACK
-			ENDSELECT
-			RETURN
-		CASE 2
-			DRAWLINE
-			PRINTL □能力
-			FOR LCOUNT, 0, 50
-				SIF ABLNAME:LCOUNT == ""
-					CONTINUE
-				PRINTFORMLC 　[{LCOUNT, 2}] - %ABLNAME:LCOUNT%
-			NEXT
-			CALL NEWLINE
-
-			DRAWLINE
-			PRINTPLAIN 　ABL　
-			PRINTL [100] - 戻る
-			DO
-				INPUT
-				番号 = RESULT
-				SELECTCASE RESULT
-					CASE 0 TO 50
-						SIF ABLNAME:RESULT == ""
-							CONTINUE
-						PRINTL □並べ替え
-						PRINTL 　[0] - 昇順(低い順)
-						PRINTL 　[1] - 降順(高い順)
-						DRAWLINE
-						PRINTPLAIN 　ABL　
-						PRINTL [10] - 戻る
-						CALL INPUTF, 0, 1, 10
-						SELECTCASE RESULT
-							CASE 0
-								PRINTFORMW %ABLNAME:番号%で昇順にソートしました
-								SORTCHARA ABL:番号
-							CASE 1
-								PRINTFORMW %ABLNAME:番号%で降順にソートしました
-								SORTCHARA ABL:番号, BACK
-						ENDSELECT
-						RETURN
-				ENDSELECT
-			LOOP LOOPRES(100)
-			RETURN
-		CASE 3
-			DRAWLINE
-			PRINTL □経験
-			FOR LCOUNT, 0, VARSIZE("EXP")
-				SIF EXPNAME:LCOUNT == ""
-					CONTINUE
-				PRINTFORMLC 　[{LCOUNT, 2}] - %EXPNAME:LCOUNT%
-			NEXT
-			CALL NEWLINE
-
-			DRAWLINE
-			PRINTPLAIN 　EXP　
-			PRINTFORML [{VARSIZE("EXP")}] - 戻る
-			DO
-				INPUT
-				番号 = RESULT
-				SELECTCASE RESULT
-					CASE VARSIZE("EXP")
-						RETURN
-					CASE 0 TO VARSIZE("EXP")-1
-						SIF EXPNAME:番号 == ""
-							CONTINUE
-						PRINTL □並べ替え
-						PRINTL 　[0] - 昇順(低い順)
-						PRINTL 　[1] - 降順(高い順)
-						DRAWLINE
-						PRINTPLAIN 　ABL　
-						PRINTL [10] - 戻る
-						CALL INPUTF, 0, 1, 10
-						SELECTCASE RESULT
-							CASE 0
-								PRINTFORMW %EXPNAME:番号%で昇順にソートしました
-								SORTCHARA EXP:番号
-							CASE 1
-								PRINTFORMW %EXPNAME:番号%で降順にソートしました
-								SORTCHARA EXP:番号, BACK
-						ENDSELECT
-						RETURN
-				ENDSELECT
-			LOOP 1
-		CASE 4
-			DRAWLINE
-			PRINTL □名前
-			PRINTL 　[0] - 昇順(フルネーム)
-			PRINTL 　[1] - 降順(フルネーム)
-			PRINTL 　[2] - 昇順(呼び名)
-			PRINTL 　[3] - 降順(呼び名)
-			PRINTL 　[4] - 昇順(アルファベット)
-			PRINTL 　[5] - 降順(アルファベット)
-			DRAWLINE
-			PRINTPLAIN 　NAME　
-			PRINTL [10] - 戻る
-			CALL INPUTF, 0, 1, 2, 3, 4, 5, 10
-			SELECTCASE RESULT
-				CASE 0
-					PRINTW 名前(フルネーム)で昇順にソートしました
-					SORTCHARA NAME
-				CASE 1
-					PRINTW 名前(フルネーム)で降順にソートしました
-					SORTCHARA NAME, BACK
-				CASE 2
-					PRINTW 名前(呼び名)で昇順にソートしました
-					SORTCHARA CALLNAME
-				CASE 3
-					PRINTW 名前(呼び名)で降順にソートしました
-					SORTCHARA CALLNAME, BACK
-				CASE 4
-					PRINTW 名前(アルファベット)で昇順にソートしました
-					SORTCHARA CSTR:英語名
-				CASE 5
-					PRINTW 名前(アルファベット)で昇順にソートしました
-					SORTCHARA CSTR:英語名, BACK
-			ENDSELECT
-			RETURN
-		CASE 5
-			DRAWLINE
-			PRINTL □番号
-			PRINTL 　[0] - 昇順(0～)
-			PRINTL 　[1] - 降順(～0)
-			DRAWLINE
-			PRINTPLAIN 　NUMBER　
-			PRINTL [10] - 戻る
-			CALL INPUTF, 0, 1, 10
-			SELECTCASE RESULT
-				CASE 0
-					PRINTW キャラ番号で昇順にソートしました
-					SORTCHARA
-				CASE 1
-					PRINTW キャラ番号で降順にソートしました
-					SORTCHARA BACK
-			ENDSELECT
-			RETURN
-		CASE 6
-			DRAWLINE
-			PRINTL □体力
-			PRINTL 　[0] - 昇順(低い順)
-			PRINTL 　[1] - 降順(高い順)
-			DRAWLINE
-			PRINTPLAIN 　HEALTH　
-			PRINTL [10] - 戻る
-			CALL INPUTF, 0, 1, 10
-			SELECTCASE RESULT
-				CASE 0
-					PRINTW 体力で昇順にソートしました
-					SORTCHARA BASE:体力
-				CASE 1
-					PRINTW 体力で降順にソートしました
-					SORTCHARA BASE:体力, BACK
-			ENDSELECT
-			RETURN
-		CASE 7
-			DRAWLINE
-			PRINTL □気力
-			PRINTL 　[0] - 昇順(低い順)
-			PRINTL 　[1] - 降順(高い順)
-			DRAWLINE
-			PRINTPLAIN 　VITAL　
-			PRINTL [10] - 戻る
-			CALL INPUTF, 0, 1, 10
-			SELECTCASE RESULT
-				CASE 0
-					PRINTW 気力で昇順にソートしました
-					SORTCHARA BASE:気力
-				CASE 1
-					PRINTW 気力で降順にソートしました
-					SORTCHARA BASE:気力, BACK
-			ENDSELECT
-			RETURN
-		CASE 8
-			DRAWLINE
-			PRINTL □素質
-			FOR LCOUNT, 0, VARSIZE("TALENT")
-				SIF TALENTNAME:LCOUNT == ""
-					CONTINUE
-				PRINTFORMLC 　[{LCOUNT, 2}] - %TALENTNAME:LCOUNT%
-			NEXT
-			CALL NEWLINE
-
-			DRAWLINE
-			PRINTPLAIN 　TALENT　
-			PRINTFORML [{VARSIZE("TALENT")}] - 戻る
-			DO
-				INPUT
-				番号 = RESULT
-				SELECTCASE RESULT
-					CASE VARSIZE("TALENT")
-						RETURN
-					CASE 0 TO VARSIZE("TALENT")-1
-						SIF TALENTNAME:番号 == ""
-							CONTINUE
-						PRINTL □並べ替え
-						PRINTL 　[0] - 昇順(素質の無いキャラ優先)
-						PRINTL 　[1] - 降順(素質のあるキャラ優先)
-						DRAWLINE
-						PRINTPLAIN 　TALENT　
-						PRINTL [10] - 戻る
-						CALL INPUTF, 0, 1, 10
-						SELECTCASE RESULT
-							CASE 0
-								PRINTFORMW %TALENTNAME:番号%で昇順にソートしました
-								SORTCHARA TALENT:番号
-							CASE 1
-								PRINTFORMW %TALENTNAME:番号%で降順にソートしました
-								SORTCHARA TALENT:番号, BACK
-						ENDSELECT
-						RETURN
-				ENDSELECT
-			LOOP 1
-		CASE 9
-			DRAWLINE
-			PRINTL □配属先
-			PRINTL 　[0] - 昇順(配属されてないキャラ優先)
-			PRINTL 　[1] - 降順(配属されてるキャラ優先)
-			DRAWLINE
-			PRINTPLAIN 　ASSIGNED　
-			PRINTL [10] - 戻る
-			CALL INPUTF, 0, 1, 10
-			SELECTCASE RESULT
-				CASE 0
-					PRINTW 配属先で昇順にソートしました
-					SORTCHARA CSTR:配属
-				CASE 1
-					PRINTW 配属先で降順にソートしました
-					SORTCHARA CSTR:配属, BACK
-			ENDSELECT
-			RETURN
-		CASE 10
-			SIF ORIGIN
+		PRINTL □並べ替え
+		PRINTL 　[0] - 昇順(低い順)
+		PRINTL 　[1] - 降順(高い順)
+		DRAWLINE
+		PRINTPLAIN 　MARK　
+		PRINTL [10] - 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				PRINTFORMW %MARKNAME:番号%で昇順にソートしました
+				SORTCHARA MARK:番号
+			CASE 1
+				PRINTFORMW %MARKNAME:番号%で降順にソートしました
+				SORTCHARA MARK:番号, BACK
+		ENDSELECT
+		SORTCHARA CFLAG:キャラロスト
+		RETURN
+	CASE 2
+		DRAWLINE
+		PRINTL □能力
+		FOR LCOUNT, 0, 50
+			SIF ABLNAME:LCOUNT == ""
 				CONTINUE
-			FOR LCOUNT, 0, CHARANUM
-				ソート用購入日:LCOUNT:0 = BUYY:LCOUNT:0*10000+BUYM:LCOUNT:0*100+BUYD:LCOUNT:0
-			NEXT
-			PRINTL □解禁日
-			PRINTL 　[0] - 昇順(早い順)
-			PRINTL 　[1] - 降順(遅い順)
-			DRAWLINE
-			PRINTPLAIN 　UNLOCK　
-			PRINTL [10] - 戻る
-			CALL INPUTF, 0, 1, 10
-			SELECTCASE RESULT
-				CASE 0
-					PRINTW 解禁日で昇順にソートしました
-					SORTCHARA ソート用購入日:0
-				CASE 1
-					PRINTW 解禁日で降順にソートしました
-					SORTCHARA ソート用購入日:0, BACK
-			ENDSELECT
+			PRINTFORMLC 　[{LCOUNT, 2}] - %ABLNAME:LCOUNT%
+		NEXT
+		CALL NEWLINE
+
+		DRAWLINE
+		PRINTPLAIN 　ABL　
+		PRINTL [100] - 戻る
+		BINPUT
+		番号 = RESULT
+		SIF RESULT == 100
 			RETURN
-	ENDSELECT
-LOOP 1
+		PRINTL □並べ替え
+		PRINTL 　[0] - 昇順(低い順)
+		PRINTL 　[1] - 降順(高い順)
+		DRAWLINE
+		PRINTPLAIN 　ABL　
+		PRINTL [10] - 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				PRINTFORMW %ABLNAME:番号%で昇順にソートしました
+				SORTCHARA ABL:番号
+			CASE 1
+				PRINTFORMW %ABLNAME:番号%で降順にソートしました
+				SORTCHARA ABL:番号, BACK
+		ENDSELECT
+		SORTCHARA CFLAG:キャラロスト
+		RETURN
+	CASE 3
+		DRAWLINE
+		PRINTL □経験
+		FOR LCOUNT, 0, VARSIZE("EXP")
+			SIF EXPNAME:LCOUNT == ""
+				CONTINUE
+			PRINTFORMLC 　[{LCOUNT, 2}] - %EXPNAME:LCOUNT%
+		NEXT
+		CALL NEWLINE
+
+		DRAWLINE
+		PRINTPLAIN 　EXP　
+		PRINTFORML [{VARSIZE("EXP")}] - 戻る
+		BINPUT
+		番号 = RESULT
+		SELECTCASE RESULT
+			CASE VARSIZE("EXP")
+				RETURN
+			CASE 0 TO VARSIZE("EXP")-1
+				PRINTL □並べ替え
+				PRINTL 　[0] - 昇順(低い順)
+				PRINTL 　[1] - 降順(高い順)
+				DRAWLINE
+				PRINTPLAIN 　ABL　
+				PRINTL [10] - 戻る
+				BINPUT
+				SELECTCASE RESULT
+					CASE 0
+						PRINTFORMW %EXPNAME:番号%で昇順にソートしました
+						SORTCHARA EXP:番号
+					CASE 1
+						PRINTFORMW %EXPNAME:番号%で降順にソートしました
+						SORTCHARA EXP:番号, BACK
+				ENDSELECT
+				SORTCHARA CFLAG:キャラロスト
+				RETURN
+		ENDSELECT
+	CASE 4
+		DRAWLINE
+		PRINTL □名前
+		PRINTL 　[0] - 昇順(フルネーム)
+		PRINTL 　[1] - 降順(フルネーム)
+		PRINTL 　[2] - 昇順(呼び名)
+		PRINTL 　[3] - 降順(呼び名)
+		PRINTL 　[4] - 昇順(アルファベット)
+		PRINTL 　[5] - 降順(アルファベット)
+		DRAWLINE
+		PRINTPLAIN 　NAME　
+		PRINTL [10] - 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				PRINTW 名前(フルネーム)で昇順にソートしました
+				SORTCHARA NAME
+			CASE 1
+				PRINTW 名前(フルネーム)で降順にソートしました
+				SORTCHARA NAME, BACK
+			CASE 2
+				PRINTW 名前(呼び名)で昇順にソートしました
+				SORTCHARA CALLNAME
+			CASE 3
+				PRINTW 名前(呼び名)で降順にソートしました
+				SORTCHARA CALLNAME, BACK
+			CASE 4
+				PRINTW 名前(アルファベット)で昇順にソートしました
+				SORTCHARA CSTR:英語名
+			CASE 5
+				PRINTW 名前(アルファベット)で昇順にソートしました
+				SORTCHARA CSTR:英語名, BACK
+		ENDSELECT
+		SORTCHARA CFLAG:キャラロスト
+		RETURN
+	CASE 5
+		DRAWLINE
+		PRINTL □番号
+		PRINTL 　[0] - 昇順(0～)
+		PRINTL 　[1] - 降順(～0)
+		DRAWLINE
+		PRINTPLAIN 　NUMBER　
+		PRINTL [10] - 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				PRINTW キャラ番号で昇順にソートしました
+				SORTCHARA
+			CASE 1
+				PRINTW キャラ番号で降順にソートしました
+				SORTCHARA BACK
+		ENDSELECT
+		SORTCHARA CFLAG:キャラロスト
+		RETURN
+	CASE 6
+		DRAWLINE
+		PRINTL □体力
+		PRINTL 　[0] - 昇順(低い順)
+		PRINTL 　[1] - 降順(高い順)
+		DRAWLINE
+		PRINTPLAIN 　HEALTH　
+		PRINTL [10] - 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				PRINTW 体力で昇順にソートしました
+				SORTCHARA BASE:体力
+			CASE 1
+				PRINTW 体力で降順にソートしました
+				SORTCHARA BASE:体力, BACK
+		ENDSELECT
+		SORTCHARA CFLAG:キャラロスト
+		RETURN
+	CASE 7
+		DRAWLINE
+		PRINTL □気力
+		PRINTL 　[0] - 昇順(低い順)
+		PRINTL 　[1] - 降順(高い順)
+		DRAWLINE
+		PRINTPLAIN 　VITAL　
+		PRINTL [10] - 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				PRINTW 気力で昇順にソートしました
+				SORTCHARA BASE:気力
+			CASE 1
+				PRINTW 気力で降順にソートしました
+				SORTCHARA BASE:気力, BACK
+		ENDSELECT
+		SORTCHARA CFLAG:キャラロスト
+		RETURN
+	CASE 8
+		DRAWLINE
+		PRINTL □素質
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF TALENTNAME:LCOUNT == ""
+				CONTINUE
+			PRINTFORMLC 　[{LCOUNT, 2}] - %TALENTNAME:LCOUNT%
+		NEXT
+		CALL NEWLINE
+
+		DRAWLINE
+		PRINTPLAIN 　TALENT　
+		PRINTFORML [{VARSIZE("TALENT")}] - 戻る
+		BINPUT
+		番号 = RESULT
+		SELECTCASE RESULT
+			CASE VARSIZE("TALENT")
+				RETURN
+			CASE 0 TO VARSIZE("TALENT")-1
+				SIF TALENTNAME:番号 == ""
+					CONTINUE
+				PRINTL □並べ替え
+				PRINTL 　[0] - 昇順(素質の無いキャラ優先)
+				PRINTL 　[1] - 降順(素質のあるキャラ優先)
+				DRAWLINE
+				PRINTPLAIN 　TALENT　
+				PRINTL [10] - 戻る
+				BINPUT
+				SELECTCASE RESULT
+					CASE 0
+						PRINTFORMW %TALENTNAME:番号%で昇順にソートしました
+						SORTCHARA TALENT:番号
+					CASE 1
+						PRINTFORMW %TALENTNAME:番号%で降順にソートしました
+						SORTCHARA TALENT:番号, BACK
+				ENDSELECT
+				SORTCHARA CFLAG:キャラロスト
+				RETURN
+		ENDSELECT
+	CASE 9
+		DRAWLINE
+		PRINTL □配属先
+		PRINTL 　[0] - 昇順(配属されてないキャラ優先)
+		PRINTL 　[1] - 降順(配属されてるキャラ優先)
+		DRAWLINE
+		PRINTPLAIN 　ASSIGNED　
+		PRINTL [10] - 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				PRINTW 配属先で昇順にソートしました
+				SORTCHARA CSTR:配属
+			CASE 1
+				PRINTW 配属先で降順にソートしました
+				SORTCHARA CSTR:配属, BACK
+		ENDSELECT
+		SORTCHARA CFLAG:キャラロスト
+		RETURN
+	CASE 10
+		SIF ORIGIN
+			CONTINUE
+		FOR LCOUNT, 0, CHARANUM
+			ソート用購入日:LCOUNT:0 = BUYY:LCOUNT:0*10000+BUYM:LCOUNT:0*100+BUYD:LCOUNT:0
+		NEXT
+		PRINTL □解禁日
+		PRINTL 　[0] - 昇順(早い順)
+		PRINTL 　[1] - 降順(遅い順)
+		DRAWLINE
+		PRINTPLAIN 　UNLOCK　
+		PRINTL [10] - 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				PRINTW 解禁日で昇順にソートしました
+				SORTCHARA ソート用購入日:0
+			CASE 1
+				PRINTW 解禁日で降順にソートしました
+				SORTCHARA ソート用購入日:0, BACK
+		ENDSELECT
+		SORTCHARA CFLAG:キャラロスト
+		RETURN
+ENDSELECT
