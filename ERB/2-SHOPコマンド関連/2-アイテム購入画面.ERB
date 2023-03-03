@@ -345,6 +345,7 @@ SELECTCASE アイテム分類
 		ITEMSALES:排卵誘発剤 = 1
 		ITEMSALES:特殊技能研修 = 1
 		ITEMSALES:抗スライム薬 = 1
+		ITEMSALES:睡眠薬 = 1
 
 		;調合知識が必要
 		SIF 調合知識有り
@@ -1293,7 +1294,14 @@ SELECTCASE アイテム名
 	CASE "仮死薬"
 		CALL SE再生, ドリンク
 		PRINTFORMW ＜%NAME:使用対象%は仮死状態になった＞
-		CFLAG:使用対象:仮死薬 = 1
+		TEQUIP:使用対象:仮死薬 = 1
+	CASE "睡眠薬"
+		CALL SE再生, ドリンク
+		PRINTFORMW ＜%NAME:使用対象%はうとうとし始めた＞
+		TEQUIP:使用対象:睡眠 = 30
+		;酔ってれば効果倍
+		SIF CFLAG:使用対象:酔
+			TEQUIP:使用対象:睡眠 += 30
 ENDSELECT
 
 CALL SETBASE, 使用対象
@@ -1535,6 +1543,14 @@ SELECTCASE アイテムNO
 					RETURNF 0
 				;死亡のリスクがあるのでパートナーには使えない
 				SIF ゲームモード() == "経営モード" && CHARANAMEF(使用対象) == パートナー
+					RETURNF 0
+				RETURNF 1
+			CASE "睡眠薬"
+				;ゾンビには使用不可
+				SIF CSTR:使用対象:種族 == "ゾンビ" || TALENT:使用対象:ゾンビ
+					RETURNF 0
+				;スライムにも使えない
+				SIF TALENT:使用対象:スライム || TALENT:使用対象:溶ける快
 					RETURNF 0
 				RETURNF 1
 		ENDSELECT
@@ -1828,6 +1844,8 @@ SELECTCASE アイテム名
 		FONTBOLD
 		PRINTL 蘇生が遅れると本当に死んでしまう点に注意
 		FONTREGULAR
+	CASE "睡眠薬"
+		PRINTL 不眠症の改善などに役立つ薬。用法用量を守って正しくお使いください
 ENDSELECT
 
 @アイテム使用_逆引き, 使用対象
