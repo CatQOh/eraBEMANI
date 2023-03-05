@@ -5,20 +5,13 @@
 @IN_VAGINA
 #DIM DYNAMIC LCOUNT
 
-#DIM CONST 主人膣内射精 = 0
-#DIM CONST 助手膣内射精 = 1
-#DIM CONST 奴隷膣内射精 = 2
-#DIM CONST モブ膣内射精 = 3
-#DIM CONST 主人への膣内射精 = 4
-#DIM CONST 出産予定日 = 10
-#DIM CONST 妊娠確定フラグ = 11
-#DIM CONST 父親 = 21
-
 FOR LCOUNT, 0, CHARANUM
 	SIF LCOUNT == MASTER
 		CONTINUE
 	;死んでたら妊娠しない
 	SIF CFLAG:LCOUNT:死亡
+		CONTINUE
+	SIF CFLAG:LCOUNT:キャラロスト
 		CONTINUE
 	;主人の中田氏による妊娠判定
 	SIF PREG:LCOUNT:主人膣内射精
@@ -44,6 +37,8 @@ NEXT
 
 ;妊娠確定時の処理
 FOR LCOUNT, 0, CHARANUM
+	SIF CFLAG:LCOUNT:キャラロスト
+		CONTINUE
 	IF !TALENT:LCOUNT:妊娠 && PREG:LCOUNT:妊娠確定フラグ && PREG:LCOUNT:出産予定日 == 0
 		;獣人と獣は早く産める
 		SELECTCASE CSTR:LCOUNT:種族
@@ -72,17 +67,6 @@ NEXT
 #DIM DYNAMIC 精液量
 #DIM DYNAMIC 確率チェック
 #DIM DYNAMIC 妊娠乱数
-
-#DIM CONST 主人膣内射精 = 0
-#DIM CONST 助手膣内射精 = 1
-#DIM CONST 奴隷膣内射精 = 2
-#DIM CONST モブ膣内射精 = 3
-#DIM CONST 主人への膣内射精 = 4
-#DIM CONST 出産予定日 = 10
-#DIM CONST 妊娠確定フラグ = 11
-#DIM CONST 父親 = 21
-#DIM CONST 母親 = 22
-
 
 ;中出しされた精子量に応じて確率処理
 ;対象 = 現在妊娠判定してるキャラ番号
@@ -229,12 +213,6 @@ ENDIF
 #DIM DYNAMIC 確率チェック
 #DIM DYNAMIC 妊娠乱数
 
-#DIM CONST 主人への膣内射精 = 4
-#DIM CONST 出産予定日 = 10
-#DIM CONST 妊娠確定フラグ = 11
-#DIM CONST 父親 = 21
-#DIM CONST 母親 = 22
-
 ;現状アニマルは繁殖しない
 SIF TALENT:竿役:アニマル
 	RETURN 0
@@ -341,9 +319,6 @@ ENDIF
 @GET_CHILD
 #DIM DYNAMIC LCOUNT
 
-#DIM CONST 出産予定日 = 10
-#DIM CONST 妊娠確定フラグ = 11
-
 FOR LCOUNT, 0, CHARANUM
 	SIF PREG:LCOUNT:妊娠確定フラグ == 0
 		CONTINUE
@@ -356,14 +331,6 @@ NEXT
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC ストレス計算用
 #DIM DYNAMIC 父親ID
-
-#DIM CONST 父親の認知 = 5
-#DIM CONST 出産予定日 = 10
-#DIM CONST 妊娠確定フラグ = 11
-#DIM CONST 出産トラウマ計算用 = 12
-#DIM CONST 父親 = 21
-#DIM CONST 母親 = 22
-#DIM CONST 母乳体質付与 = 25
 
 ;父親 = PREG:ARG:21
 
@@ -436,7 +403,7 @@ ENDIF
 IF ARG != MASTER || !TALENT:ARG:妊娠確定
 	ストレス計算用 = 100
 	;父親が主人
-	IF 父親 == NOF(MASTER)
+	IF PREG:ARG:父親 == NOF(MASTER)
 		SELECTCASE FALLTYPE(ARG)
 			;恋慕もしくは親愛
 			CASE 1
@@ -451,7 +418,7 @@ IF ARG != MASTER || !TALENT:ARG:妊娠確定
 				PREG:ARG:出産トラウマ計算用 = 15
 		ENDSELECT
 	;父親が奴隷または助手
-	ELSEIF 父親 != -1
+	ELSEIF PREG:ARG:父親 != -1
 		SELECTCASE FALLTYPE(ARG)
 			;恋慕もしくは親愛
 			CASE 1
@@ -469,7 +436,7 @@ IF ARG != MASTER || !TALENT:ARG:妊娠確定
 				PREG:ARG:出産トラウマ計算用 = 15
 		ENDSELECT
 	;父親が顧客
-	ELSEIF 父親 == -1
+	ELSEIF PREG:ARG:父親 == -1
 		SELECTCASE FALLTYPE(ARG)
 			;恋慕もしくは親愛
 			CASE 1
@@ -488,13 +455,13 @@ IF ARG != MASTER || !TALENT:ARG:妊娠確定
 		ENDSELECT
 	ENDIF
 	;相性による変動
-	IF 父親 != -1
+	IF PREG:ARG:父親 != -1
 		ストレス計算用 *= 100
-		SIF RELATION:ARG:父親
-			ストレス計算用 /= RELATION:ARG:父親
+		SIF RELATION:ARG:(PREG:ARG:父親)
+			ストレス計算用 /= RELATION:ARG:(PREG:ARG:父親)
 		;出産トラウマは相性20%ごとに±1変動
 		;端的に言えば恋慕付き東雲姉妹同士で孕ませ合っても相性300%なので出産トラウマは5残ってしまう
-		PREG:ARG:出産トラウマ計算用 -= (RELATION:ARG:父親-100)/20
+		PREG:ARG:出産トラウマ計算用 -= (RELATION:ARG:(PREG:ARG:父親)-100)/20
 		SIF PREG:ARG:出産トラウマ計算用 < 0
 			PREG:ARG:出産トラウマ計算用 = 0
 	ENDIF
@@ -586,11 +553,6 @@ SIF ASSI == ARG
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 父親ID
 
-#DIM CONST 父親の認知 = 5
-#DIM CONST 乳母 = 6
-#DIM CONST 出産予定日 = 10
-#DIM CONST 父親 = 21
-
 ;オリコ「くノ一忍法帖」ならスルー
 SIF 受験段位名 == "くノ一忍法帖"
 	RETURN 0
@@ -673,10 +635,6 @@ NEXT
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 父親ID
 
-#DIM CONST 父親の認知 = 5
-#DIM CONST 出産トラウマ計算用 = 12
-#DIM CONST 父親 = 21
-
 IF PREG:ARG:父親 >= 0
 	PRINTFORMW %CALLNAME:ARG%は、%CSVNAMEF(PREG:ARG:父親)%の子供を無事出産しました
 ELSE
@@ -758,8 +716,6 @@ SIF CHARANAMEF(ARG) == "育江" && !エレジー
 @CHILD_CARE_ROOM_SELECT, ARG
 #DIM DYNAMIC LTARGET
 
-#DIM CONST 出産トラウマ計算用 = 12
-
 PRINTFORML %CALLNAME:ARG%の様子を見に行きますか？
 PRINTL [0] - 育児室へ行く
 PRINTL [1] - 育児室へ行かない
@@ -788,9 +744,6 @@ ENDSELECT
 #DIM DYNAMIC 素質上限
 #DIM DYNAMIC 素質付与判定, 30
 #DIM DYNAMIC 特殊素質上限
-
-#DIM CONST 近親交配フラグ = 27
-#DIM CONST 魔法の才能 = 28
 
 SIF 母体 == -1
 	母体 = 母親
@@ -1198,14 +1151,6 @@ SIF CSTR:母親:種族 == "魔術師" || CSTR:父親:種族 == "魔術師" || TA
 #DIM DYNAMIC 命名パターン
 #DIMS DYNAMIC 命名用変数, 10
 #DIM DYNAMIC 服装選出用
-
-#DIM CONST 父親の認知 = 5
-#DIM CONST 出産予定日 = 10
-#DIM CONST 父親 = 21
-#DIM CONST 母親 = 22
-#DIM CONST 母乳体質付与 = 25
-#DIM CONST 近親交配フラグ = 27
-#DIM CONST 魔法の才能 = 28
 
 PRINTFORML %CALLNAME:ARG%の育てていた子供の容態が安定してきたようだ
 IF ARG == MASTER

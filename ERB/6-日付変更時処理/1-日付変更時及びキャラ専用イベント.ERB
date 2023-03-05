@@ -26,7 +26,7 @@ FOR LCOUNT, 0, 関数カウント
 	CALLFORM %関数名:LCOUNT%
 NEXT
 
-IF TARGET >= 0
+IF TARGET >= 0 && !CFLAG:キャラロスト
 	;売却可能&助手可能判定 陥落系で無視できるって条件はほとんど意味無いか
 	;従順+欲望が6以上
 	SIF ABL:従順+ABL:欲望 >= 6
@@ -62,7 +62,7 @@ IF TARGET >= 0
 			IF CFLAG:陥落
 				IF TALENT:妊娠
 					売却可能条件 = 1
-				ELSEIF FALLTYPE(TARGET) == 1 && PREG:TARGET:11
+				ELSEIF FALLTYPE(TARGET) == 1 && PREG:TARGET:妊娠確定フラグ
 					売却可能条件 = 1
 					;この場合一度だけ着床したことを教えてもらえる(再起動でフラグが消失するのは仕様)
 					;変数「着床告知」にビットで管理
@@ -111,10 +111,10 @@ IF TARGET >= 0
 		IF ABL:技巧 >= 3 || ABL:奉仕精神 >= 3 || ABL:マゾっ気 >= 3 || 
 		   ABL:Ｃ感覚+ABL:Ｖ感覚+ABL:Ａ感覚+ABL:Ｂ感覚 >= 8 || ABL:従順 >= 5 || ABL:欲望 >= 5
 		}
-			IF CFLAG:状態 <= 0 && ゲームモード() != "新婚モード"
+			IF !CFLAG:売却可能 && ゲームモード() != "新婚モード"
 				PRINTFORMW %NAME:TARGET%が売却可能になりました
 				CALL プレイログ記録, @"%NAME:TARGET%が売却可能になる"
-				CFLAG:状態 = 1
+				CFLAG:売却可能 = 1
 				;実績:愛撫コマンドのみで売却可能
 				SIF 愛撫双:TARGET:0 == 0
 					CALL 実績解除, "I've so Happy"
@@ -122,10 +122,10 @@ IF TARGET >= 0
 			ENDIF
 			;さらに従順+欲望+技巧が14以上なら助手可能
 			IF ABL:従順+ABL:欲望+ABL:技巧 >= 14
-				IF CFLAG:状態 <= 1
+				IF !CFLAG:助手可能
 					PRINTFORMW %NAME:TARGET%が助手可能になりました
 					CALL プレイログ記録, @"%NAME:TARGET%が助手可能になる"
-					CFLAG:状態 = 2
+					CFLAG:助手可能 = 1
 				ENDIF
 			ENDIF
 		ENDIF
@@ -209,6 +209,8 @@ IF ゲームモード() != "新婚モード" && MONEY >= TONUM("5000万") && !FL
 ENDIF
 
 FOR LCOUNT, 0, CHARANUM
+	SIF CFLAG:LCOUNT:キャラロスト
+		CONTINUE
 	;主人が使用不可だと体力・気力・ストレス値等は変動しない
 	IF !CFLAG:MASTER:使用不可
 		;ミッドナイトスペシャル
@@ -354,6 +356,8 @@ CALL TURNEND_調理室
 
 ;スライム化処理
 FOR LCOUNT, 0, CHARANUM
+	SIF CFLAG:LCOUNT:キャラロスト
+		CONTINUE
 	SIF CFLAG:LCOUNT:スライム度 <= 0
 		CONTINUE
 	;機械と無機物と霊体は感染しない
@@ -469,6 +473,8 @@ SIF タルタ童貞喰い & 7
 ;実績：陥落したイロドリミドリの全員と同棲する
 ;実績：ユーリ、アッシュ、スマイルの三人を陥落させる
 FOR LCOUNT, 0, CHARANUM
+	SIF CFLAG:LCOUNT:キャラロスト
+		CONTINUE
 	IF CFLAG:LCOUNT:陥落
 		SELECTCASE CHARANAMEF(LCOUNT)
 			CASE "明坂 芹菜", "御形 アリシアナ", "天王洲 なずな", "小仏 凪", "箱部 なる"
@@ -497,6 +503,8 @@ CALL TEMPERATURE
 ;主人・奴隷・助手の場合の方が影響が強い
 IF ターン == "昼"
 	FOR LCOUNT, 0, CHARANUM
+		SIF CFLAG:LCOUNT:キャラロスト
+			CONTINUE
 		SELECTCASE CHARANAMEF(LCOUNT)
 			CASE "フローラ"
 				IF GROUPMATCH(LCOUNT, MASTER, TARGET, ASSI)
@@ -544,6 +552,8 @@ ENDIF
 CALL WEATHER
 
 FOR LCOUNT, 0, CHARANUM
+	SIF CFLAG:LCOUNT:キャラロスト
+		CONTINUE
 	;フローラ専用イベント
 	IF CHARANAMEF(LCOUNT) == "フローラ"
 		最大体力 = MAXBASE:LCOUNT:体力
@@ -635,6 +645,8 @@ ENDIF
 
 ;特定キャラの日付変更時イベント
 FOR LCOUNT, 0, CHARANUM
+	SIF CFLAG:LCOUNT:キャラロスト
+		CONTINUE
 	;らいむ専用イベント 陥落済みでどこにも配属していないフリーな状態である場合に発生
 	IF CHARANAMEF(LCOUNT) == "高須 らいむ"
 		IF CFLAG:LCOUNT:陥落 && CSTR:LCOUNT:配属 == "" && !CFLAG:LCOUNT:使用不可 && !TALENT:LCOUNT:育児中 && !TALENT:LCOUNT:妊娠
@@ -702,6 +714,8 @@ NEXT
 ;スライム奴隷の処女膜再生イベント
 ;スライム化しているキャラであり、かつ処女を喪失しており、再生処女を持たない場合
 FOR LCOUNT, 0, CHARANUM
+	SIF CFLAG:LCOUNT:キャラロスト
+		CONTINUE
 	IF ISSLIME(LCOUNT) && TALENT:LCOUNT:処女 == 0 && TALENT:LCOUNT:再生処女 == 0 && VAGINA(LCOUNT)
 		TALENT:LCOUNT:再生処女 = 1
 		PRINTFORMW ＜%CALLNAME:LCOUNT%は、スライムの身体が持つ再生力で失った処女膜を再生させた＞
@@ -832,6 +846,8 @@ CALL GET_CHILD
 
 ;排卵誘発剤の効果終了と、不妊治療薬のコスト処理
 FOR LCOUNT, 0, CHARANUM
+	SIF CFLAG:LCOUNT:キャラロスト
+		CONTINUE
 	IF CFLAG:LCOUNT:排卵誘発剤 > 0
 		SIF --CFLAG:LCOUNT:排卵誘発剤 <= 0
 			PRINTFORMW %CALLNAME:LCOUNT%の排卵誘発剤の効果が切れたようだ
@@ -1013,7 +1029,7 @@ ENDSELECT
 @ユリア天使化
 #DIM DYNAMIC LTARGET
 
-IF GETCHARANAME("鬼蝮 ユリア") >= 0
+IF GETCHARANAME("鬼蝮 ユリア") >= 0 && !CFLAG:GETCHARANAME("鬼蝮 ユリア"):キャラロスト
 	LTARGET = TARGET
 	TARGET = GETCHARANAME("鬼蝮 ユリア")
 	CALL KOJO_MESSAGE_EVENT, "天使化"

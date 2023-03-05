@@ -338,7 +338,7 @@ IF CHK_V
 		CFLAG:膣を責められて射精した経験++
 		CFLAG:犯されて射精した経験++
 	ENDIF
-	PREG:0 += 射精回数
+	PREG:主人膣内射精 += 射精回数
 	CALL IN_VAGINA
 ELSE
 	CALL EXPUP, "Ａ経験", プレイ回数
@@ -376,6 +376,12 @@ SIF CFLAG:スライム度 <= 0 && ISSLIME(MASTER) && CSTR:種族 != "機械" && 
 ;調教者がペニス持ちで、調教者の射精残数が0の場合は発生しない
 ;SIF PENIS(MASTER) && CFLAG:MASTER:残数 == 0
 ;	RETURN 0
+
+SIF CFLAG:使用不可
+	RETURN 0
+
+SIF CFLAG:死亡
+	RETURN 0
 
 ;アニマルだと発生しない
 SIF TALENT:アニマル
@@ -664,9 +670,9 @@ IF PENIS(TARGET)
 		中出され回数:MASTER:(NOF(TARGET)) += 射精回数基礎値:2
 		射精回数:2:0 += 射精回数基礎値:2
 		;既に誰かの精液がある場合はランダムで上書きされる
-		IF PREG:MASTER:9 == ASSI || RAND:3 == 0
-			PREG:MASTER:4++
-			PREG:MASTER:9 = TARGET
+		IF PREG:MASTER:最新中出し == ASSI || RAND:3 == 0
+			PREG:MASTER:主人への膣内射精++
+			PREG:MASTER:最新中出し = TARGET
 		ENDIF
 	ENDIF
 	IF VAGINA(ASSI) && !TALENT:ASSI:処女 && !TALENT:MASTER:再生処女
@@ -681,7 +687,7 @@ IF PENIS(TARGET)
 		中出し回数:(NOF(ASSI)) += 射精回数基礎値:2
 		中出され回数:ASSI:(NOF(TARGET)) += 射精回数基礎値:2
 		射精回数:2:0 += 射精回数基礎値:2
-		PREG:ASSI:2 += 射精回数基礎値:2
+		PREG:ASSI:奴隷膣内射精 += 射精回数基礎値:2
 	ENDIF
 ENDIF
 
@@ -700,9 +706,9 @@ IF PENIS(ASSI)
 		中出され回数:MASTER:(NOF(ASSI)) += 射精回数基礎値:1
 		射精回数:1:0 += 射精回数基礎値:1
 		;既に誰かの精液がある場合はランダムで上書きされる
-		IF PREG:MASTER:9 == TARGET || RAND:3 == 0
-			PREG:MASTER:4++
-			PREG:MASTER:9 = ASSI
+		IF PREG:MASTER:最新中出し == TARGET || RAND:3 == 0
+			PREG:MASTER:主人への膣内射精++
+			PREG:MASTER:最新中出し = ASSI
 		ENDIF
 	ENDIF
 	IF VAGINA(TARGET) && !TALENT:処女 && !TALENT:再生処女
@@ -717,7 +723,7 @@ IF PENIS(ASSI)
 		中出し回数:ASSI:(NOF(TARGET)) += 射精回数基礎値:1
 		中出され回数:(NOF(ASSI)) += 射精回数基礎値:1
 		射精回数:1:2 += 射精回数基礎値:1
-		PREG:1 += 射精回数基礎値:1
+		PREG:助手膣内射精 += 射精回数基礎値:1
 	ENDIF
 ENDIF
 
@@ -735,7 +741,7 @@ IF PENIS(MASTER)
 		中出し回数:MASTER:(NOF(ASSI)) += 射精回数基礎値:0
 		中出され回数:ASSI:(NOF(MASTER)) += 射精回数基礎値:0
 		射精回数:0:1 += 射精回数基礎値:0
-		PREG:ASSI:0 += 射精回数基礎値:0
+		PREG:ASSI:主人膣内射精 += 射精回数基礎値:0
 	ENDIF
 	IF VAGINA(TARGET) && !TALENT:処女 && !TALENT:再生処女
 		プレイ回数 = MIN(2+ABL:Ｖ感覚, 8)
@@ -749,7 +755,7 @@ IF PENIS(MASTER)
 		中出し回数:MASTER:(NOF(TARGET)) += 射精回数基礎値:0
 		中出され回数:(NOF(MASTER)) += 射精回数基礎値:0
 		射精回数:0:2 += 射精回数基礎値:0
-		PREG:0 += 射精回数基礎値:0
+		PREG:主人膣内射精 += 射精回数基礎値:0
 	ENDIF
 ENDIF
 
@@ -1006,7 +1012,7 @@ ELSE
 			経験回数:(NOF(MASTER)) += 奉仕ポイント
 			中出し回数:MASTER:(NOF(TARGET)) += CFLAG:MASTER:残数/2+1
 			中出され回数:(NOF(MASTER)) += CFLAG:MASTER:残数/2+1
-			PREG:0 += CFLAG:MASTER:残数/2+1
+			PREG:主人膣内射精 += CFLAG:MASTER:残数/2+1
 			性交経験加算済み = 1
 		ELSEIF ABL:Ａ感覚 > 3 && 部位 == "Ａ"
 			CALL EXPUP, "Ａ経験", 奉仕ポイント
@@ -1039,8 +1045,8 @@ ELSE
 			ENDIF
 			中出し回数:(NOF(MASTER)) += CFLAG:残数/2+1
 			中出され回数:MASTER:(NOF(TARGET)) += CFLAG:残数/2+1
-			PREG:4 += CFLAG:残数/2+1
-			PREG:9 = TARGET
+			PREG:主人への膣内射精 += CFLAG:残数/2+1
+			PREG:最新中出し = TARGET
 		ELSE
 			CALL EXPUP, "Ａ経験", 奉仕ポイント/2+1, MASTER
 			IF !性交経験加算済み
@@ -1336,7 +1342,7 @@ ELSEIF SEX(TARGET) == 2
 	経験回数:(NOF(MASTER)) += 奉仕ポイント
 	中出し回数:MASTER:(NOF(TARGET)) += 奉仕ポイント/2
 	中出され回数:(NOF(MASTER)) += 奉仕ポイント/2
-	PREG:0 += 奉仕ポイント/2
+	PREG:主人膣内射精 += 奉仕ポイント/2
 	CFLAG:MASTER:残数 -= 奉仕ポイント
 	CFLAG:調教後夜這い経験++
 	CFLAG:MASTER:調教後夜這い経験++
