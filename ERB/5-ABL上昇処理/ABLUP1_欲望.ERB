@@ -1,91 +1,75 @@
-﻿@ABLUP1
-#DIM DYNAMIC LCOUNT
-SIF ABL:欲望 == 10 && !TALENT:リミットバースト
-	RETURN 0
-SIF ABL:欲望 < 0
-	RETURN 0
-CALL NEED_JUEL_欲望
-CALL CHECK_JUEL_欲望
-IF RESULT
-	CALL NEED_JUEL_欲望
-	FOR LCOUNT, 0, 15
-		JUEL:LCOUNT -= ABLUP:LCOUNT
-	NEXT
-	ABL:欲望++
-ENDIF
-
-@NEED_JUEL_欲望
+﻿@ABL_CHECK_欲望
 SELECTCASE ABL:欲望
 	CASE 0
-		ABLUP:GETPALAM("欲情") = 1
+		ABLUP:欲情 = 1
 	CASE 1
-		ABLUP:GETPALAM("欲情") = 20
+		ABLUP:欲情 = 20
 	CASE 2
-		ABLUP:GETPALAM("欲情") = 1000
+		ABLUP:欲情 = 1000
 	CASE 3
-		ABLUP:GETPALAM("欲情") = 8000
+		ABLUP:欲情 = 8000
 	CASE 4
-		ABLUP:GETPALAM("欲情") = 24000
+		ABLUP:欲情 = 24000
 	CASE 5
-		ABLUP:GETPALAM("欲情") = 30000
+		ABLUP:欲情 = 30000
 	CASE 6
-		ABLUP:GETPALAM("欲情") = 36000
+		ABLUP:欲情 = 36000
 	CASE 7
-		ABLUP:GETPALAM("欲情") = 45000
+		ABLUP:欲情 = 45000
 	CASE 8
-		ABLUP:GETPALAM("欲情") = 55000
+		ABLUP:欲情 = 55000
 	CASE 9
-		ABLUP:GETPALAM("欲情") = 70000
+		ABLUP:欲情 = 70000
 	CASE IS >= 10
-		ABLUP:GETPALAM("欲情") = 800 * POWER(ABL:欲望, 2)
+		ABLUP:欲情 = 800 * POWER(ABL:欲望, 2)
 ENDSELECT
 
 ;LV4からは異常経験もしくは快楽刻印LV3必要 LV7からは異常経験3以上必要（陥落済みもしくは[快感に素直]なら無視できる）
 IF !CFLAG:陥落 && !TALENT:快感に素直
 	IF ABL:欲望 >= 7
-		ABLUPEXP:GETEXP("異常経験") = 3
+		ABLUPEXP:異常経験 = 3
 	ELSEIF ABL:欲望 >= 4
-		ABLUPEXP:GETEXP("異常経験") = 1
+		ABLUPEXP:異常経験 = 1
 	ENDIF
 ENDIF
 
 ;素質での補正
 ;淫乱
 SIF TALENT:淫乱
-	TIMES ABLUP:GETPALAM("欲情") , 0.70
+	TIMES ABLUP:欲情 , 0.70
 ;娼婦
 SIF TALENT:娼婦
-	TIMES ABLUP:GETPALAM("欲情") , 0.50
+	TIMES ABLUP:欲情 , 0.50
 ;快感に素直
 SIF TALENT:快感に素直
-	TIMES ABLUP:GETPALAM("欲情") , 0.70
+	TIMES ABLUP:欲情 , 0.70
 ;感情乏しい、無関心
 SIF TALENT:感情乏しい || TALENT:無関心
-	TIMES ABLUP:GETPALAM("欲情") , 1.30
+	TIMES ABLUP:欲情 , 1.30
 ;快感の否定
 SIF TALENT:快感の否定
-	TIMES ABLUP:GETPALAM("欲情") , 2.00
+	TIMES ABLUP:欲情 , 2.00
 ;ツンデレ
 SIF TALENT:ツンデレ
-	TIMES ABLUP:GETPALAM("欲情") , 0.80
+	TIMES ABLUP:欲情 , 0.80
 ;サドマゾ
 SIF TALENT:サド || TALENT:マゾ
-	TIMES ABLUP:GETPALAM("欲情") , 0.90
+	TIMES ABLUP:欲情 , 0.90
 ;去勢済み
 SIF TALENT:去勢済み
-	TIMES ABLUP:GETPALAM("欲情") , 2.00
+	TIMES ABLUP:欲情 , 2.00
 ;快楽刻印 1ごとに10%引き 最大30%オフ！
-ABLUP:GETPALAM("欲情") -= (ABLUP:GETPALAM("欲情")/10)*MARK:快楽刻印
+ABLUP:欲情 -= ABLUP:欲情/10*MARK:快楽刻印
 
-@CHECK_JUEL_欲望
+;@CHECK_JUEL_欲望
 SELECTCASE ABL:欲望
 	CASE 4
 		;異常経験もしくは快楽刻印LV3必要
-		SIF EXP:異常経験 < ABLUPEXP:GETEXP("異常経験") && MARK:快楽刻印 < 3
+		SIF EXP:異常経験 < ABLUPEXP:異常経験 && MARK:快楽刻印 < 3
 			RETURN 0
 	CASE 7
 		;異常経験が規定値に満たないと上昇できない
-		SIF EXP:異常経験 < ABLUPEXP:GETEXP("異常経験")
+		SIF EXP:異常経験 < ABLUPEXP:異常経験
 			RETURN 0
 ENDSELECT
 
@@ -99,7 +83,7 @@ ELSEIF ABL:欲望 >= 3 && MARK:快楽刻印 < 1
 ENDIF
 
 ;欲情の珠が必要
-SIF JUEL:欲情 >= ABLUP:GETPALAM("欲情")
+SIF JUEL:欲情 >= ABLUP:欲情
 	RETURN 1
 
 ;上記の条件を満たせなかったら上げられない
@@ -111,13 +95,13 @@ SELECTCASE ABL:欲望
 	CASE 4
 		SIF EXP:異常経験 == 0 && MARK:快楽刻印 < 3
 			SETCOLORBYNAME gray
-		SIF ABLUPEXP:GETEXP("異常経験")
+		SIF ABLUPEXP:異常経験
 			PRINT [異常経験1以上or快楽刻印LV3]
 		RESETCOLOR
 	CASE 7
-		SIF EXP:異常経験 < ABLUPEXP:GETEXP("異常経験")
+		SIF EXP:異常経験 < ABLUPEXP:異常経験
 			SETCOLORBYNAME gray
-		SIF ABLUPEXP:GETEXP("異常経験")
+		SIF ABLUPEXP:異常経験
 			PRINT [異常経験3以上]
 		RESETCOLOR
 ENDSELECT
@@ -137,8 +121,7 @@ SELECTCASE ABL:欲望
 		RESETCOLOR
 ENDSELECT
 
-SIF JUEL:欲情 < ABLUP:GETPALAM("欲情")
+SIF JUEL:欲情 < ABLUP:欲情
 	SETCOLORBYNAME gray
-PRINTFORM [欲情の珠×{ABLUP:GETPALAM("欲情")}]
+PRINTFORM [欲情の珠×{ABLUP:欲情}]
 RESETCOLOR
-
