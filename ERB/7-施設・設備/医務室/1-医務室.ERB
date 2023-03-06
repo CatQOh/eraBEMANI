@@ -18,7 +18,7 @@ PRINTL □医務室
 PRINTL 　医療班を配属させたり、医薬品の補充によってキャラクターの健康管理が可能です
 PRINTL 　配属中のキャラの能力に応じて体力・気力・ストレス値の回復量が変動します
 PRINT 　医薬品の在庫:
-SELECTCASE FLAG:医薬品
+SELECTCASE リソース:医薬品
 	CASE 0
 		SETCOLORBYNAME gray
 	CASE 1 TO 15
@@ -28,7 +28,7 @@ SELECTCASE FLAG:医薬品
 	CASE 51 TO 100
 		SETCOLORBYNAME lime
 ENDSELECT
-PRINTFORM {FLAG:医薬品}\%
+PRINTFORM {リソース:医薬品}\%
 RESETCOLOR
 CALL PASELIL, @" 配属人数:{配属人数}/3 所持金:{MONEY}＄"
 PRINTL □担当医
@@ -42,6 +42,9 @@ IF CMATCH(CSTR:配属, "医務室")
 			PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 
 			SIF !CFLAG:LCOUNT:配属完了
 				PRINT 【配属準備中】
+			PRINTFORM 医療技能:{ABL:LCOUNT:医療技能} 
+			SIF 統率者("医務室") && !TALENT:LCOUNT:統率
+				PRINT 統率者ボーナス+1 
 			CALL ISTALENT, LCOUNT, "調合知識"
 			SIF TALENT:LCOUNT:調合知識
 				調合知識あり = 1
@@ -71,7 +74,7 @@ ELSE
 	PRINTL [無し]
 ENDIF
 PRINTL 
-;医薬品主人を除くキャラ人数*5000
+;医薬品 主人を除くキャラ人数*5000
 ;浪費癖一人につき一人頭1000アップ
 ;植生学一人につき一人頭500削減
 補充費 = (CHARANUM-1)*(5000+浪費癖人数("医務室")*1000-植生学人数*500)
@@ -94,10 +97,10 @@ IF 禁断の知識あり
 ELSE
 	CALL PRINTCOLORL, "　[-] - 人体錬成をする(主人か配属中のキャラが[禁断の知識]を持っている必要があります)", "gray"
 ENDIF
-SIF MOD:STS
+IF MOD:STS
 	PRINTL 　[8] - キャラを安楽死させる
-SIF MOD:STS
 	PRINTL 　[9] - キャラを解体する
+ENDIF
 
 ;IF 配属人数
 ;	PRINTL [3] - 健康診断を行う
@@ -110,60 +113,55 @@ DRAWLINE
 PRINTPLAIN 　医務室　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1
-			IF FLAG:医薬品 >= 100
-				PRINTW 医薬品は十分に揃っています
-			ELSEIF MONEY > 補充費 || ORIGIN
-				PRINTW 医薬品を補充しました
-				MONEY -= 補充費
-				CALL 現金出納帳記録, @"医薬品の補充費/-{補充費}"
-				FLAG:医薬品 = 100
-			ELSE
-				PRINTW 所持金が足りません
-			ENDIF
-			RESTART
-		CASE 2
-			CALL STRATEGY_PERSONAL, "医務室"
-			RESTART
-		CASE 3
-			CALL 医務室利用者
-			RESTART
-		CASE 4
-			SIF 禁断の知識あり
-				CALL BODY_MOD_1
-			RESTART
-		CASE 5
-			SIF 調合知識あり
-				CALL MED_MOD
-			RESTART
-		CASE 6
-			SIF 禁断の知識あり
-				CALL 人体錬成
-			RESTART
-		CASE 8
-			SIF MOD:STS
-				CALL STS_KILL
-			RESTART
-		CASE 9
-			SIF MOD:STS
-				CALL STS_BLOOD
-			RESTART
-		;CASE 3
-		;	DRAWLINE
-		;	FOR PAGING, 0, CHARANUM
-		;		;色変えしたいのでここだけ特別処理
-		;		CALL PAGING, PAGING != 0, "健康診断用", "健康診断"
-		;	NEXT
-		;	SIF RESULT == -1
-		;		RESTART
-		;	CALL 健康診断, RESULT
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		IF リソース:医薬品 >= 100
+			PRINTW 医薬品は十分に揃っています
+		ELSEIF MONEY > 補充費 || ORIGIN
+			PRINTW 医薬品を補充しました
+			MONEY -= 補充費
+			CALL 現金出納帳記録, @"医薬品の補充費/-{補充費}"
+			リソース:医薬品 = 100
+		ELSE
+			PRINTW 所持金が足りません
+		ENDIF
+	CASE 2
+		CALL STRATEGY_PERSONAL, "医務室"
+	CASE 3
+		CALL 医務室利用者
+	CASE 4
+		CALL BODY_MOD_1
+		SIF RESULT
+			JUMP ターン終了
+	CASE 5
+		CALL MED_MOD
+	CASE 6
+		CALL 人体錬成
+		SIF RESULT
+			JUMP ターン終了
+	CASE 8
+		CALL STS_KILL
+		SIF RESULT
+			JUMP ターン終了
+	CASE 9
+		CALL STS_BLOOD
+		SIF RESULT
+			JUMP ターン終了
+	;CASE 3
+	;	DRAWLINE
+	;	FOR PAGING, 0, CHARANUM
+	;		;色変えしたいのでここだけ特別処理
+	;		CALL PAGING, PAGING != 0, "健康診断用", "健康診断"
+	;	NEXT
+	;	SIF RESULT == -1
+	;		RESTART
+	;	CALL 健康診断, RESULT
+ENDSELECT
+
+RESTART
 
 @健康診断, 対象
 #DIM DYNAMIC 対象
@@ -254,15 +252,21 @@ FOR LCOUNT, 0, CHARANUM
 			医務室体力補正 += 30
 			医務室気力補正 += 30
 			医務室ストレス補正++
-			;奉仕精神を見る
-			IF 統率者("調理室") && !TALENT:LCOUNT:統率
+			;奉仕精神、医療技能を見る
+			IF 統率者("医務室") && !TALENT:LCOUNT:統率
 				医務室体力補正 += LIMIT(ABL:LCOUNT:奉仕精神+1, 0, 10)/2*10
 				医務室気力補正 += LIMIT(ABL:LCOUNT:奉仕精神+1, 0, 10)/2*10
 				医務室ストレス補正 += LIMIT(ABL:LCOUNT:奉仕精神+1, 0, 10)/3
+				医務室体力補正 += LIMIT(ABL:LCOUNT:医療技能+1, 0, 10)/2*20
+				医務室気力補正 += LIMIT(ABL:LCOUNT:医療技能+1, 0, 10)/2*20
+				医務室ストレス補正 += LIMIT(ABL:LCOUNT:医療技能+1, 0, 10)/2
 			ELSE
 				医務室体力補正 += LIMIT(ABL:LCOUNT:奉仕精神, 0, 10)/2*10
 				医務室気力補正 += LIMIT(ABL:LCOUNT:奉仕精神, 0, 10)/2*10
 				医務室ストレス補正 += LIMIT(ABL:LCOUNT:奉仕精神, 0, 10)/3
+				医務室体力補正 += LIMIT(ABL:LCOUNT:医療技能, 0, 10)/2*20
+				医務室気力補正 += LIMIT(ABL:LCOUNT:医療技能, 0, 10)/2*20
+				医務室ストレス補正 += LIMIT(ABL:LCOUNT:医療技能, 0, 10)/2
 			ENDIF
 			SELECTCASE SEX(LCOUNT)
 				CASE 1
@@ -290,9 +294,9 @@ FOR LCOUNT, 0, CHARANUM
 					CASE "ハイテンション", "解放", "鼓舞"
 						医務室気力補正 += 10
 						医務室ストレス補正++
-					;サボり魔は25%の確率で上記の基礎補正を打ち消す
+					;サボり魔はモチベに応じて基礎補正を打ち消す
 					CASE "サボり魔"
-						IF RAND:4 == 0 && !ワーカホリックレベル(LCOUNT)
+						IF サボり判定(LCOUNT) && !ワーカホリックレベル(LCOUNT)
 							医務室体力補正 -= 50
 							医務室気力補正 -= 50
 							医務室ストレス補正--
@@ -360,19 +364,13 @@ FOR LCOUNT, 0, CHARANUM
 			モチベ加算値 += 相性モチベ補正(LCOUNT)
 			CFLAG:LCOUNT:モチベーション = LIMIT(モチベ加算値, 1, 100)
 
-			IF ABL:LCOUNT:奉仕精神 >= 5
-				医務室体力補正 += 20
-				医務室気力補正 += 20
-				医務室ストレス補正++
-			ENDIF
 			;実務経験加算
 			EXP:LCOUNT:実務経験 += 2
+			EXP:LCOUNT:医療経験++
 			;習得早ければ+1
 			SIF TALENT:LCOUNT:習得早い
 				EXP:LCOUNT:実務経験++
 		ENDIF
-		;配属完了にする
-		CFLAG:LCOUNT:配属完了 = 1
 	ENDIF
 NEXT
 
@@ -381,7 +379,7 @@ NEXT
 医務室ストレス補正 = MAX(医務室ストレス補正, 0)
 
 ;医薬品が足りてない場合はそれぞれ/10
-IF FLAG:医薬品 <= 0
+IF リソース:医薬品 <= 0
 	医務室体力補正 /= 10
 	医務室気力補正 /= 10
 	医務室ストレス補正 /= 10
@@ -403,6 +401,8 @@ FOR LCOUNT, 0, CHARANUM
 		CONTINUE
 	;配属中の医師も除外
 	SIF CSTR:LCOUNT:配属 == "医務室"
+		CONTINUE
+	SIF CFLAG:LCOUNT:キャラロスト
 		CONTINUE
 	;残り体力と気力とストレス値から確率を割り出す
 	;各値それぞれ最大100%(ストレス値は99%)で、合計を利用確率にする
@@ -465,11 +465,21 @@ NEXT
 ;最後に利用者の割合に応じて医薬品を減らす 1ターンで最大10
 ;調合知識持ちだけ医薬品の消費を抑える
 SIF 利用人数
-	FLAG:医薬品 -= MAX((利用人数*10)/CHARANUM-調合知識持ち, 1)
+	リソース:医薬品 -= MAX((利用人数*10)/CHARANUM-調合知識持ち, 1)
 
-FLAG:医薬品 = LIMIT(FLAG:医薬品, 0, 100)
+リソース:医薬品 = LIMIT(リソース:医薬品, 0, 100)
 
 PRINTFORML {利用人数}人が医務室を利用しました
+
+;利用人数に応じてさらに医療経験加算
+FOR LCOUNT, 0, CHARANUM
+	IF CSTR:LCOUNT:配属 == "医務室"
+		SIF CFLAG:LCOUNT:配属完了
+			EXP:LCOUNT:医療経験 += LIMIT(利用人数, 0, 3)
+		;配属完了にする
+		CFLAG:LCOUNT:配属完了 = 1
+	ENDIF
+NEXT
 
 RETURN
 
@@ -526,34 +536,23 @@ FOR LCOUNT, 0, 1000
 NEXT
 DRAWLINE
 PRINTPLAIN 　医務室利用履歴　
-IF ページ > 0
-	PRINT [1] 翌日の履歴 
-ELSE
-	PRINTPLAIN 　　　　　　　 
-ENDIF
+CALL PRINTSPACE, ページ > 0, "[1] 翌日の履歴 "
 PRINT [0] 戻る 
-IF ページ < 4
-	PRINT [9] 前日の履歴
-ELSE
-	PRINTPLAIN 　　　　　　　
-ENDIF
+CALL PRINTSPACE, ページ < 4, "[9] 前日の履歴 "
+PRINTL 
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			VARLINE = 0
-			RETURN
-		CASE 1
-			SIF ページ > 0
-				ページ--
-			GOTO LOOP
-		CASE 9
-			SIF ページ < 4
-				ページ++
-			GOTO LOOP
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		VARLINE = 0
+		RETURN
+	CASE 1
+		ページ--
+		GOTO LOOP
+	CASE 9
+		ページ++
+		GOTO LOOP
+ENDSELECT
 
 @出産用医務室ランク, ARG
 #FUNCTION
@@ -578,11 +577,16 @@ FOR LCOUNT, 0, CHARANUM
 						医務室ランク--
 				ENDSELECT
 			NEXT
+			IF 統率者("医務室") && !TALENT:LCOUNT:統率
+				医務室ランク += (ABL:LCOUNT:医療技能+1)/2
+			ELSE
+				医務室ランク += ABL:LCOUNT:医療技能/2
+			ENDIF
 		ENDIF
 	ENDIF
 NEXT
 
-;3人まで配属できるので最大6
+;3人まで配属できるので最大12
 RETURNF 医務室ランク
 
 @STS_KILL
@@ -634,15 +638,11 @@ PRINTL
 BINPUT
 SELECTCASE RESULT
 	CASE 0
-		RETURN
+		RETURN 0
 	CASE -1
-		SIF ページ数 > 0
-			ページ数--
-		RESTART
+		ページ数--
 	CASE -9
-		SIF 次ページあり
-			ページ数++
-		RESTART
+		ページ数++
 	CASEELSE
 		対象 = RESULT
 		PRINTFORML %NAME:対象%を安楽死させます。よろしいですか？
@@ -656,8 +656,10 @@ SELECTCASE RESULT
 		CSTR:対象:ロスト詳細 = 薬の投与で安楽死した
 		CALL プレイログ記録, @"%NAME:対象%が死亡"
 		CALL CLEAR_CHARA, 対象
-		RESTART
+		RETURN 1
 ENDSELECT
+
+RESTART
 
 @STS_BLOOD
 #DIM DYNAMIC LCOUNT
@@ -743,126 +745,120 @@ PRINT [0] - 戻る
 CALL PRINTSPACE, 次ページあり, "[-9] - 次ページ "
 PRINTL 
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE -1
-			SIF ページ数 > 0
-				ページ数--
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE -1
+		ページ数--
+	CASE -9
+		ページ数++
+	CASE 1 TO CHARANUM
+		対象 = RESULT
+		SIF TALENT:対象:無機物
+			CONTINUE
+		SIF ゲームモード() == "経営モード" && CHARANAMEF(対象) == パートナー
+			CONTINUE
+		PRINTFORML %NAME:対象%を解体します。よろしいですか？
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		PRINTL [2] - 楽しみながら解体する
+		BINPUT
+		SIF RESULT == 1
 			RESTART
-		CASE -9
-			SIF 次ページあり
-				ページ数++
-			RESTART
-		CASE 1 TO CHARANUM
-			対象 = RESULT
-			SIF TALENT:対象:無機物
-				CONTINUE
-			SIF ゲームモード() == "経営モード" && CHARANAMEF(対象) == パートナー
-				CONTINUE
-			PRINTFORML %NAME:対象%を解体します。よろしいですか？
-			PRINTL [0] - はい
-			PRINTL [1] - いいえ
-			PRINTL [2] - 楽しみながら解体する
-			DO
-				INPUT
-				SIF RESULT == 1
-					RESTART
-			LOOP LOOPRES(0, 2)
-			CALL プレイログ記録, @"%NAME:対象%を解体"
-			IF RESULT == 2
-				DRAWLINE
-				TALENT:MASTER:狂気 = 1
-				IF VAGINA(対象)
-					CALL EXPUP, "Ｖ経験", RAND(10, 21), 対象
-					CALL EXPUP, "膣射経験", RAND(2, 5), 対象
-				ENDIF
-				CALL EXPUP, "Ａ経験", RAND(10, 21), 対象
-				CALL EXPUP, "絶頂経験", RAND(5, 11), 対象
-				SIF PENIS(対象)
-					CALL EXPUP, "射精経験", RAND(5, 11), 対象
-				CALL EXPUP, "放尿経験", RAND(1, 5), 対象
-				SIF TALENT:対象:妊娠
-					CALL EXPUP, "流産経験", 1, 対象
+		CALL プレイログ記録, @"%NAME:対象%を解体"
+		IF RESULT == 2
+			DRAWLINE
+			TALENT:MASTER:狂気 = 1
+			IF VAGINA(対象)
+				CALL EXPUP, "Ｖ経験", RAND(10, 21), 対象
+				CALL EXPUP, "膣射経験", RAND(2, 5), 対象
+			ENDIF
+			CALL EXPUP, "Ａ経験", RAND(10, 21), 対象
+			CALL EXPUP, "絶頂経験", RAND(5, 11), 対象
+			SIF PENIS(対象)
+				CALL EXPUP, "射精経験", RAND(5, 11), 対象
+			CALL EXPUP, "放尿経験", RAND(1, 5), 対象
+			SIF TALENT:対象:妊娠
+				CALL EXPUP, "流産経験", 1, 対象
 
-				CALL EXPUP, "異常経験", 5, 対象
-				CALL JUELUP, "苦痛", RAND(100, 1000)*100, 対象
-				CALL JUELUP, "恐怖", RAND(100, 1000)*100, 対象
-				SIF PENIS(MASTER)
-					CALL EXPUP, "射精経験", RAND(5, 11), MASTER
-				CALL EXPUP, "嗜虐快楽経験", 10, MASTER
-			ENDIF
-			SETCOLORBYNAME red
-			CUSTOMDRAWLINE ✂----------
-			RESETCOLOR
-			PRINTFORML %NAME:対象%を解体しました
-			IF ISSLIME(対象)
-				IF TALENT:対象:小柄体型
-					PRINTL 保管済み粘液+2500ml
-					リソース:粘液 += 2500
-				ELSE
-					PRINTL 保管済み粘液+4000ml
-					リソース:粘液 += 4000
-				ENDIF
+			CALL EXPUP, "異常経験", 5, 対象
+			CALL JUELUP, "苦痛", RAND(100, 1000)*100, 対象
+			CALL JUELUP, "恐怖", RAND(100, 1000)*100, 対象
+			SIF PENIS(MASTER)
+				CALL EXPUP, "射精経験", RAND(5, 11), MASTER
+			CALL EXPUP, "嗜虐快楽経験", 10, MASTER
+		ENDIF
+		SETCOLORBYNAME red
+		CUSTOMDRAWLINE ✂----------
+		RESETCOLOR
+		PRINTFORML %NAME:対象%を解体しました
+		IF ISSLIME(対象)
+			IF TALENT:対象:小柄体型
+				PRINTL 保管済み粘液+2500ml
+				リソース:粘液 += 2500
 			ELSE
-				IF TALENT:対象:小柄体型
-					PRINTL 保管済み血液+2500ml
-					リソース:血液 += 2500
-				ELSE
-					PRINTL 保管済み血液+4000ml
-					リソース:血液 += 4000
-				ENDIF
+				PRINTL 保管済み粘液+4000ml
+				リソース:粘液 += 4000
 			ENDIF
-			IF 生殖機能♂(対象)
-				PRINTL 保管済み精液+100ml
-				リソース:精液 += 100
+		ELSE
+			IF TALENT:対象:小柄体型
+				PRINTL 保管済み血液+2500ml
+				リソース:血液 += 2500
+			ELSE
+				PRINTL 保管済み血液+4000ml
+				リソース:血液 += 4000
 			ENDIF
-			IF TALENT:対象:母乳体質
-				PRINTL 保管済み母乳+200ml
-				リソース:母乳 += 200
-			ENDIF
-			IF TALENT:対象:動物耳
-				PRINTL ケモミミが付いた頭+1
-				リソース:ケモミミが付いた頭 += 1
-			ENDIF
-			IF TALENT:対象:羽
-				PRINTL 翼の生えた胴体+1
-				リソース:翼の生えた胴体 += 1
-			ENDIF
-			IF TALENT:対象:足使用不可
-				PRINTL 人魚の下半身+1
-				リソース:人魚の下半身 += 1
-			ENDIF
-			IF TALENT:対象:尻尾
-				PRINTL 切断された尻尾+1
-				リソース:切断された尻尾 += 1
-			ENDIF
-			SELECTCASE CSTR:対象:種族
-				CASE "悪魔"
-					PRINTL 悪魔の心臓+1
-					リソース:悪魔の心臓 += 1
-				CASE "天使"
-					PRINTL 天使の心臓+1
-					リソース:天使の心臓 += 1
-				CASE "神"
-					PRINTL 神の心臓+1
-					リソース:神の心臓 += 1
-				CASE "魔術師"
-					PRINTL 魔術師の心臓+1
-					リソース:魔術師の心臓 += 1
-			ENDSELECT
-			IF NOF(対象) < 10000 && !DNAデータ:NOF(対象)
-				PRINTFORML %CALLNAME:対象%のDNAデータを解析できるようになりました
-				DNAデータ:NOF(対象) = 1
-			ENDIF
-			SIF TALENT:対象:ゾンビ && !CSVTALENT(NOF(対象), GETNUM(TALENT, "ゾンビ"))
-				CALL 実績解除, "ロメロ再殺部隊"
-			WAIT
-			CSTR:対象:ロスト要因 = 死亡
-			CSTR:対象:ロスト詳細 = 解体されて血液や内蔵を摘出された
-			CALL CLEAR_CHARA, 対象
-			RESTART
-	ENDSELECT
-LOOP 1
+		ENDIF
+		IF 生殖機能♂(対象)
+			PRINTL 保管済み精液+100ml
+			リソース:精液 += 100
+		ENDIF
+		IF TALENT:対象:母乳体質
+			PRINTL 保管済み母乳+200ml
+			リソース:母乳 += 200
+		ENDIF
+		IF TALENT:対象:動物耳
+			PRINTL ケモミミが付いた頭+1
+			リソース:ケモミミが付いた頭 += 1
+		ENDIF
+		IF TALENT:対象:羽
+			PRINTL 翼の生えた胴体+1
+			リソース:翼の生えた胴体 += 1
+		ENDIF
+		IF TALENT:対象:足使用不可
+			PRINTL 人魚の下半身+1
+			リソース:人魚の下半身 += 1
+		ENDIF
+		IF TALENT:対象:尻尾
+			PRINTL 切断された尻尾+1
+			リソース:切断された尻尾 += 1
+		ENDIF
+		SELECTCASE CSTR:対象:種族
+			CASE "悪魔"
+				PRINTL 悪魔の心臓+1
+				リソース:悪魔の心臓 += 1
+			CASE "天使"
+				PRINTL 天使の心臓+1
+				リソース:天使の心臓 += 1
+			CASE "神"
+				PRINTL 神の心臓+1
+				リソース:神の心臓 += 1
+			CASE "魔術師"
+				PRINTL 魔術師の心臓+1
+				リソース:魔術師の心臓 += 1
+		ENDSELECT
+		IF NOF(対象) < 10000 && !DNAデータ:NOF(対象)
+			PRINTFORML %CALLNAME:対象%のDNAデータを解析できるようになりました
+			DNAデータ:NOF(対象) = 1
+		ENDIF
+		SIF TALENT:対象:ゾンビ && !CSVTALENT(NOF(対象), GETNUM(TALENT, "ゾンビ"))
+			CALL 実績解除, "ロメロ再殺部隊"
+		WAIT
+		CSTR:対象:ロスト要因 = 死亡
+		CSTR:対象:ロスト詳細 = 解体されて血液や内蔵を摘出された
+		CALL CLEAR_CHARA, 対象
+		RETURN 1
+ENDSELECT
+
+RESTART

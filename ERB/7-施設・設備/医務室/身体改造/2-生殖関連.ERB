@@ -17,36 +17,31 @@ DRAWLINE
 PRINTPLAIN 　生殖関連　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			CALL 体外受精
-		CASE 2
-			CALL 薬物投与
-		CASE 3
-			CALL 魔術師不妊治療
-		CASE 4
-			CALL 卵管結紮
-		CASE 5
-			CALL 精管結紮
-		CASE 6
-			CALL 魔術師不妊化
-		CASE 7
-			CALL 中絶
-		CASE 8
-			CALL 性器切断
-		CASE 9
-			CALL 男性器形成
-		CASE 10
-			CALL 女性器形成
-		CASEELSE
-			CONTINUE
-	ENDSELECT
-	BREAK
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		CALL 体外受精
+	CASE 2
+		CALL 薬物投与
+	CASE 3
+		CALL 魔術師不妊治療
+	CASE 4
+		CALL 卵管結紮
+	CASE 5
+		CALL 精管結紮
+	CASE 6
+		CALL 魔術師不妊化
+	CASE 7
+		CALL 中絶
+	CASE 8
+		CALL 性器切断
+	CASE 9
+		CALL 男性器形成
+	CASE 10
+		CALL 女性器形成
+ENDSELECT
 
 SELECTCASE RESULT
 	CASE 0
@@ -68,7 +63,7 @@ PRINTL □体外受精
 PRINTL 　採取した精子と卵子を人工的に受精させ、受精卵を母体に戻す不妊治療
 IF !ORIGIN
 	PRINTL □費用
-	CALL PASELIL, @"　{費用:0+費用:1+費用:2}＄"
+	CALL PASELIL, @"　{SUMARRAY(費用)}＄"
 ENDIF
 PRINTL □注意事項
 PRINTL 　父親、母親、母体は陥落済みでなければならない
@@ -112,133 +107,132 @@ SIF 父親 >= 0 && 母親 >= 0 && 母体 >= 0
 	PRINT [5] - この組み合わせで行う
 PRINTL 
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			DRAWLINE
-			PRINTL □父親を選んでください
-			FOR PAGING, 0, CHARANUM
-				CALL PAGING, (CFLAG:PAGING:陥落 || PAGING == MASTER) && 生殖機能♂(PAGING), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "父親"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					LRESULT = RESULT
-					費用:0 = 50000
-					;小柄体型だと費用がかさむ
-					SIF TALENT:LRESULT:小柄体型
-						費用:0 += 30000
-					;父親はNOで入れる
-					父親 = NOF(LRESULT)
-					;子供の素質設定用
-					父親:1 = LRESULT
-					RESTART
-			ENDSELECT
-		CASE 2
-			DRAWLINE
-			PRINTL □母親を選んでください
-			FOR PAGING, 0, CHARANUM
-				CALL PAGING, (CFLAG:PAGING:陥落 || PAGING == MASTER) && 生殖機能♀(PAGING) && !TALENT:PAGING:妊娠 && !TALENT:PAGING:妊娠確定, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "母親"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					費用:1 = 50000
-					;小柄体型だと費用がかさむ
-					SIF TALENT:RESULT:小柄体型
-						費用:1 += 30000
-					母親 = RESULT
-					RESTART
-			ENDSELECT
-		CASE 3
-			DRAWLINE
-			PRINTL □母体を選んでください
-			FOR PAGING, 0, CHARANUM
-				CALL PAGING, (CFLAG:PAGING:陥落 || PAGING == MASTER) && VAGINA(PAGING) && !TALENT:PAGING:妊娠 && !TALENT:PAGING:妊娠確定, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "母体"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					費用:2 = 50000
-					;小柄体型だと費用がかさむ
-					SIF TALENT:RESULT:小柄体型
-						費用:2 += 30000
-					;初産でも費用かさむ
-					SIF !EXP:RESULT:出産経験
-						費用:2 += 30000
-					母体 = RESULT
-					RESTART
-			ENDSELECT
-		CASE 4
-			DRAWLINE
-			PRINTL □誰の精子を使いますか？
-			FOR LCOUNT, 0, 10000
-				SIF 採取精液:LCOUNT
-					PRINTFORML 　[{LCOUNT, 5, RIGHT}] %CSVNAMEF(LCOUNT)%
-			NEXT
-			DRAWLINE
-			PRINTPLAIN 　採取精子　
-			PRINT [-1] 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE -1
-						RESTART
-					CASEELSE
-						SIF !採取精液:RESULT
-							CONTINUE
-						費用:0 = 100000
-						父親 = RESULT
-						RESTART
-				ENDSELECT
-			LOOP 1
-		CASE 5
-			DRAWLINE
-			IF MONEY < 費用:0+費用:1+費用:2 && !ORIGIN
-				PRINTW 費用が足りません
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		DRAWLINE
+		PRINTL □父親を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, (CFLAG:PAGING:陥落 || PAGING == MASTER) && 生殖機能♂(PAGING), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "父親"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
 				RESTART
-			ENDIF
-			PRINTL 体外受精を始めます
-			MONEY -= 費用:0+費用:1+費用:2
-			CALL 現金出納帳記録, @"体外受精費用/-{費用:0+費用:1+費用:2}"
-			IF 母親 != 母体
-				PRINTFORMW %CALLNAME:母親%と%CALLNAME:母体%は準備のため休養に入ります
-			ELSE
-				PRINTFORMW %CALLNAME:母親%は準備のため休養に入ります
-			ENDIF
-			SIF TARGET == 母親 || TARGET == 母体
-				TARGET = -1
-			SIF ASSI == 母親 || ASSI == 母体
-				ASSI = -1
-			CFLAG:母親:使用不可 = 15
-			CFLAG:母体:使用不可 = 15
-			CFLAG:母親:使用不可状態 = 1
-			CFLAG:母体:使用不可状態 = 1
-			CFLAG:母親:ストレス値 += 5
-			CFLAG:母体:ストレス値 += 10
+			CASEELSE
+				LRESULT = RESULT
+				費用:0 = 50000
+				;小柄体型だと費用がかさむ
+				SIF TALENT:LRESULT:小柄体型
+					費用:0 += 30000
+				;父親はNOで入れる
+				父親 = NOF(LRESULT)
+				;子供の素質設定用
+				父親:1 = LRESULT
+				RESTART
+		ENDSELECT
+	CASE 2
+		DRAWLINE
+		PRINTL □母親を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, (CFLAG:PAGING:陥落 || PAGING == MASTER) && 生殖機能♀(PAGING) && !TALENT:PAGING:妊娠 && !TALENT:PAGING:妊娠確定, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "母親"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
+				RESTART
+			CASEELSE
+				費用:1 = 50000
+				;小柄体型だと費用がかさむ
+				SIF TALENT:RESULT:小柄体型
+					費用:1 += 30000
+				母親 = RESULT
+				RESTART
+		ENDSELECT
+	CASE 3
+		DRAWLINE
+		PRINTL □母体を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, (CFLAG:PAGING:陥落 || PAGING == MASTER) && VAGINA(PAGING) && !TALENT:PAGING:妊娠 && !TALENT:PAGING:妊娠確定, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "母体"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
+				RESTART
+			CASEELSE
+				費用:2 = 50000
+				;小柄体型だと費用がかさむ
+				SIF TALENT:RESULT:小柄体型
+					費用:2 += 30000
+				;初産でも費用かさむ
+				SIF !EXP:RESULT:出産経験
+					費用:2 += 30000
+				母体 = RESULT
+				RESTART
+		ENDSELECT
+	CASE 4
+		DRAWLINE
+		PRINTL □誰の精子を使いますか？
+		FOR LCOUNT, 0, 20000
+			SIF 採取精液:LCOUNT
+				PRINTFORML 　[{LCOUNT, 5, RIGHT}] %CSVNAMEF(LCOUNT)% 残り:{採取精液:LCOUNT}回分
+		NEXT
+		DRAWLINE
+		PRINTPLAIN 　採取精子　
+		PRINT [-1] 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE -1
+				RESTART
+			CASEELSE
+				費用:0 = 100000
+				父親 = RESULT
+				RESTART
+		ENDSELECT
+	CASE 5
+		DRAWLINE
+		IF MONEY < SUMARRAY(費用) && !ORIGIN
+			PRINTW 費用が足りません
+			RESTART
+		ENDIF
+		PRINTL 体外受精を始めます
+		CALL PAYMENT, -SUMARRAY(費用), "体外受精費用"
+		IF 母親 != 母体
+			PRINTFORMW %CALLNAME:母親%と%CALLNAME:母体%は準備のため休養に入ります
+		ELSE
+			PRINTFORMW %CALLNAME:母親%は準備のため休養に入ります
+		ENDIF
+		SIF TARGET == 母親 || TARGET == 母体
+			TARGET = -1
+		SIF ASSI == 母親 || ASSI == 母体
+			ASSI = -1
+		CFLAG:母親:使用不可 = 15
+		CFLAG:母体:使用不可 = 15
+		CFLAG:母親:使用不可状態 = 1
+		CFLAG:母体:使用不可状態 = 1
+		CFLAG:母親:ストレス値 += 5
+		CFLAG:母体:ストレス値 += 10
 
-			;妊娠は確定する
-			PREG:母体:出産予定日 = DAY+60+RAND:21
-			PREG:母体:父親 = 父親
-			PREG:母体:母親 = NOF(母親)
-			PREG:母体:体外受精 = 1
-			TALENT:母体:妊娠確定 = 1
-			SIF 父親:1 == -1
-				採取精液:父親--
-			CALL CHILDSET, 母親, 父親:1, 母体
-			RETURN 1
-	ENDSELECT
-LOOP 1
+		;妊娠は確定する
+		PREG:母体:出産予定日 = DAY+60+RAND:21
+		PREG:母体:父親 = 父親
+		PREG:母体:母親 = NOF(母親)
+		PREG:母体:体外受精 = 1
+		TALENT:母体:妊娠確定 = 1
+		SIF 父親:1 == -1
+			採取精液:父親--
+		CALL CHILDSET, 母親, 父親:1, 母体
+		;医療経験加算
+		FOR LCOUNT, 0, CHARANUM
+			SIF CSTR:LCOUNT:配属 == "医務室" && CFLAG:LCOUNT:配属完了
+				EXP:LCOUNT:医療経験 += 3
+		NEXT
+		RETURN 1
+ENDSELECT
 
 @薬物投与
 #DIM DYNAMIC 患者 = -1
 #DIM DYNAMIC 費用
+#DIM DYNAMIC LCOUNT
 PRINTL □薬物投与
 PRINTL 　継続的な薬剤投与により生殖力を高める不妊治療
 IF !ORIGIN
@@ -260,42 +254,45 @@ PRINT [0] - 戻る　
 SIF 患者 >= 0
 	PRINT [2] - 治療を行う
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			DRAWLINE
-			PRINTL □患者を選んでください
-			FOR PAGING, 0, CHARANUM
-				CALL PAGING, CFLAG:PAGING:生殖力強化 == 0 && (生殖機能♂(PAGING) || 生殖機能♀(PAGING)), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					費用 = 30000
-					;小柄体型だと費用がかさむ
-					SIF TALENT:RESULT:小柄体型
-						費用 += 20000
-					患者 = RESULT
-					RESTART
-			ENDSELECT
-		CASE 2
-			IF MONEY < 費用 && !ORIGIN
-				PRINTW 費用が足りません
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		DRAWLINE
+		PRINTL □患者を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, CFLAG:PAGING:生殖力強化 == 0 && (生殖機能♂(PAGING) || 生殖機能♀(PAGING)), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
 				RESTART
-			ENDIF
-			PRINTW 薬物投与による不妊治療を始めます
-			MONEY -= 費用
-			CALL 現金出納帳記録, @"不妊治療費用/-{費用}"
-			CFLAG:患者:生殖力強化 = 1
-			CFLAG:患者:ストレス値++
-			TALENT:患者:改造済み += 5
-			RETURN 1
-	ENDSELECT
-LOOP 1
+			CASEELSE
+				費用 = 30000
+				;小柄体型だと費用がかさむ
+				SIF TALENT:RESULT:小柄体型
+					費用 += 20000
+				患者 = RESULT
+				RESTART
+		ENDSELECT
+	CASE 2
+		IF MONEY < 費用 && !ORIGIN
+			PRINTW 費用が足りません
+			RESTART
+		ENDIF
+		PRINTW 薬物投与による不妊治療を始めます
+		MONEY -= 費用
+		CALL 現金出納帳記録, @"不妊治療費用/-{費用}"
+		CFLAG:患者:生殖力強化 = 1
+		CFLAG:患者:ストレス値++
+		TALENT:患者:改造済み += 5
+		;医療経験加算
+		FOR LCOUNT, 0, CHARANUM
+			SIF CSTR:LCOUNT:配属 == "医務室" && CFLAG:LCOUNT:配属完了
+				EXP:LCOUNT:医療経験 += 1
+		NEXT
+		RETURN 1
+ENDSELECT
 
 @魔術師不妊治療
 #DIM DYNAMIC 対象 = -1
@@ -314,7 +311,7 @@ PRINTL □魔術師による不妊治療
 PRINTL 　魔術師との契約により精力及び受精率を上げる不妊治療
 IF !ORIGIN
 	PRINTL □費用
-	CALL PASELIL, @"　{費用+費用:1}＄"
+	CALL PASELIL, @"　{SUMARRAY(費用)}＄"
 	PRINTL □注意事項
 	PRINTL 　術士は種族「魔術師」の必要がある
 	PRINTL 　投薬と比べると日毎の経費は発生しないが、契約魔術師が主人、または助手でないと効果が得られない
@@ -352,78 +349,77 @@ IF 対象 >= 0 && 術師 >= 0
 	ENDIF
 ENDIF
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			DRAWLINE
-			PRINTL □対象を選んでください
-			FOR PAGING, 0, CHARANUM
-				CALL PAGING, (!CFLAG:PAGING:生殖力強化 || CFLAG:PAGING:生殖力強化 == 2) && (生殖機能♂(PAGING) || 生殖機能♀(PAGING)), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "対象"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					対象 = RESULT
-					費用 = 10000
-					RESTART
-			ENDSELECT
-		CASE 2
-			DRAWLINE
-			PRINTL □対象を選んでください
-			FOR PAGING, 0, CHARANUM
-				契約主 = -1
-				;魔術師に契約済みのキャラが居ればそれも表示
-				SIF CSTR:PAGING:種族 == "魔術師"
-					契約主 = FINDCHARA(CFLAG:生殖力担当魔術師, NOF(PAGING))
-				CALL PAGING, CSTR:PAGING:種族 == "魔術師", @"技巧:LV{ABL:PAGING:技巧} \@ 契約主 >= 0 ? %CALLNAME:契約主%と契約中 #  \@", "術師"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					術師 = RESULT
-					契約対象 = FINDCHARA(CFLAG:生殖力担当魔術師, NOF(術師))
-					費用:1 = 30000
-					;技巧次第で費用は下がる
-					SELECTCASE ABL:術師:技巧
-						CASE IS <= 9
-							費用:1 /= LIMIT(ABL:術師:技巧, 1, 9)
-						CASEELSE
-							費用:1 = 3000
-					ENDSELECT
-					RESTART
-			ENDSELECT
-		CASE 3
-			IF MONEY < 費用+費用:1 && !ORIGIN
-				PRINTW 費用が足りません
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		DRAWLINE
+		PRINTL □対象を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, (!CFLAG:PAGING:生殖力強化 || CFLAG:PAGING:生殖力強化 == 2) && (生殖機能♂(PAGING) || 生殖機能♀(PAGING)), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "対象"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
 				RESTART
-			ENDIF
-			IF CFLAG:対象:生殖力担当魔術師 == NOF(術師)
-				PRINTFORMW %NAME:対象%と%NAME:術師%の契約を破棄します
-				CFLAG:対象:生殖力強化 = 0
-				CFLAG:対象:生殖力担当魔術師 = -1
-			ELSE
-				PRINTW 魔術師による不妊治療を始めます
-				MONEY -= 費用+費用:1
-				CALL 現金出納帳記録, @"魔術師による不妊治療/-{費用:0+費用:1}"
-				CFLAG:対象:生殖力強化 = 2
-				CFLAG:対象:生殖力担当魔術師 = NOF(術師)
-			ENDIF
-			CFLAG:対象:使用不可 = 3
-			CFLAG:術師:使用不可 = 3
-			CFLAG:対象:ストレス値 += 3
-			CFLAG:術師:ストレス値 += 3
-			RETURN 1
-	ENDSELECT
-LOOP 1
+			CASEELSE
+				対象 = RESULT
+				費用 = 10000
+				RESTART
+		ENDSELECT
+	CASE 2
+		DRAWLINE
+		PRINTL □対象を選んでください
+		FOR PAGING, 0, CHARANUM
+			契約主 = -1
+			;魔術師に契約済みのキャラが居ればそれも表示
+			SIF CSTR:PAGING:種族 == "魔術師"
+				契約主 = FINDCHARA(CFLAG:生殖力担当魔術師, NOF(PAGING))
+			CALL PAGING, CSTR:PAGING:種族 == "魔術師", @"技巧:LV{ABL:PAGING:技巧} \@ 契約主 >= 0 ? %CALLNAME:契約主%と契約中 #  \@", "術師"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
+				RESTART
+			CASEELSE
+				術師 = RESULT
+				契約対象 = FINDCHARA(CFLAG:生殖力担当魔術師, NOF(術師))
+				費用:1 = 30000
+				;技巧次第で費用は下がる
+				SELECTCASE ABL:術師:技巧
+					CASE IS <= 9
+						費用:1 /= LIMIT(ABL:術師:技巧, 1, 9)
+					CASEELSE
+						費用:1 = 3000
+				ENDSELECT
+				RESTART
+		ENDSELECT
+	CASE 3
+		IF MONEY < SUMARRAY(費用) && !ORIGIN
+			PRINTW 費用が足りません
+			RESTART
+		ENDIF
+		IF CFLAG:対象:生殖力担当魔術師 == NOF(術師)
+			PRINTFORMW %NAME:対象%と%NAME:術師%の契約を破棄します
+			CFLAG:対象:生殖力強化 = 0
+			CFLAG:対象:生殖力担当魔術師 = -1
+		ELSE
+			PRINTW 魔術師による不妊治療を始めます
+			MONEY -= SUMARRAY(費用)
+			CALL 現金出納帳記録, @"魔術師による不妊治療/-{SUMARRAY(費用)}"
+			CFLAG:対象:生殖力強化 = 2
+			CFLAG:対象:生殖力担当魔術師 = NOF(術師)
+		ENDIF
+		CFLAG:対象:使用不可 = 3
+		CFLAG:術師:使用不可 = 3
+		CFLAG:対象:ストレス値 += 3
+		CFLAG:術師:ストレス値 += 3
+		RETURN 1
+ENDSELECT
 
 @卵管結紮
 #DIM DYNAMIC 患者 = -1
 #DIM DYNAMIC 費用
+#DIM DYNAMIC LCOUNT
 PRINTL □薬物投与
 PRINTL 　卵管を結紮し、受精を未然に防ぐ不妊手術
 IF !ORIGIN
@@ -445,47 +441,51 @@ PRINT [0] - 戻る　
 SIF 患者 >= 0
 	PRINT [2] - 術式を行う
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			DRAWLINE
-			PRINTL □患者を選んでください
-			FOR PAGING, 0, CHARANUM
-				CALL PAGING, VAGINA(PAGING) && !CFLAG:PAGING:卵管結紮, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					費用 = 50000
-					;小柄体型だと費用が減る
-					SIF TALENT:RESULT:小柄体型
-						費用 -= 30000
-					患者 = RESULT
-					RESTART
-			ENDSELECT
-		CASE 2
-			IF MONEY < 費用 && !ORIGIN
-				PRINTW 費用が足りません
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		DRAWLINE
+		PRINTL □患者を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, VAGINA(PAGING) && !CFLAG:PAGING:卵管結紮, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
 				RESTART
-			ENDIF
-			PRINTW 卵管結紮の術式を始めます
-			MONEY -= 費用
-			CALL 現金出納帳記録, @"卵管結紮費用/-{費用}"
-			CFLAG:患者:卵管結紮 = 1
-			CFLAG:患者:使用不可 = 15
-			CFLAG:患者:ストレス値 += 10
-			TALENT:患者:改造済み += 10
-			RETURN 1
-	ENDSELECT
-LOOP 1
+			CASEELSE
+				費用 = 50000
+				;小柄体型だと費用が減る
+				SIF TALENT:RESULT:小柄体型
+					費用 -= 30000
+				患者 = RESULT
+				RESTART
+		ENDSELECT
+	CASE 2
+		IF MONEY < 費用 && !ORIGIN
+			PRINTW 費用が足りません
+			RESTART
+		ENDIF
+		PRINTW 卵管結紮の術式を始めます
+		MONEY -= 費用
+		CALL 現金出納帳記録, @"卵管結紮費用/-{費用}"
+		CFLAG:患者:卵管結紮 = 1
+		CFLAG:患者:使用不可 = 15
+		CFLAG:患者:ストレス値 += 10
+		TALENT:患者:改造済み += 10
+		;医療経験加算
+		FOR LCOUNT, 0, CHARANUM
+			SIF CSTR:LCOUNT:配属 == "医務室" && CFLAG:LCOUNT:配属完了
+				EXP:LCOUNT:医療経験 += 5
+		NEXT
+		RETURN 1
+ENDSELECT
 
 @精管結紮
 #DIM DYNAMIC 患者 = -1
 #DIM DYNAMIC 費用
+#DIM DYNAMIC LCOUNT
 PRINTL □精管結紮
 PRINTL 　精管を結紮し精子を生成できなくする不妊手術
 IF !ORIGIN
@@ -507,44 +507,46 @@ PRINT [0] - 戻る　
 SIF 患者 >= 0
 	PRINT [2] - 術式を行う
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			DRAWLINE
-			PRINTL □患者を選んでください
-			FOR PAGING, 0, CHARANUM
-				CALL PAGING, PENIS(PAGING) && !CFLAG:PAGING:精管結紮, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					費用 = 30000
-					;小柄体型だと費用が減る
-					SIF TALENT:RESULT:小柄体型
-						費用 -= 20000
-					患者 = RESULT
-					RESTART
-			ENDSELECT
-		CASE 2
-			IF MONEY < 費用 && !ORIGIN
-				PRINTW 費用が足りません
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		DRAWLINE
+		PRINTL □患者を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, PENIS(PAGING) && !CFLAG:PAGING:精管結紮, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
 				RESTART
-			ENDIF
-			PRINTW 精管結紮の術式を始めます
-			MONEY -= 費用
-			CALL 現金出納帳記録, @"精管結紮費用/-{費用}"
-			CFLAG:患者:精管結紮 = 1
-			CFLAG:患者:使用不可 = 15
-			CFLAG:患者:ストレス値 += 10
-			TALENT:患者:改造済み += 5
-			RETURN 1
-	ENDSELECT
-LOOP 1
-
+			CASEELSE
+				費用 = 30000
+				;小柄体型だと費用が減る
+				SIF TALENT:RESULT:小柄体型
+					費用 -= 20000
+				患者 = RESULT
+				RESTART
+		ENDSELECT
+	CASE 2
+		IF MONEY < 費用 && !ORIGIN
+			PRINTW 費用が足りません
+			RESTART
+		ENDIF
+		PRINTW 精管結紮の術式を始めます
+		MONEY -= 費用
+		CALL 現金出納帳記録, @"精管結紮費用/-{費用}"
+		CFLAG:患者:精管結紮 = 1
+		CFLAG:患者:使用不可 = 15
+		CFLAG:患者:ストレス値 += 10
+		TALENT:患者:改造済み += 5
+		;医療経験加算
+		FOR LCOUNT, 0, CHARANUM
+			SIF CSTR:LCOUNT:配属 == "医務室" && CFLAG:LCOUNT:配属完了
+				EXP:LCOUNT:医療経験 += 5
+		NEXT
+		RETURN 1
+ENDSELECT
 
 @性器切断
 #DIM DYNAMIC 患者 = -1
@@ -573,63 +575,67 @@ PRINT [0] - 戻る　
 SIF 患者 >= 0
 	PRINT [2] - 術式を行う
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			DRAWLINE
-			PRINTL □患者を選んでください
-			FOR PAGING, 0, CHARANUM
-				CALL PAGING, CFLAG:PAGING:陥落 && PENIS(PAGING) && SEX(PAGING) == 1, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					費用 = 50000
-					;小柄体型だと費用が減る
-					SIF TALENT:RESULT:小柄体型
-						費用 += 20000
-					患者 = RESULT
-					RESTART
-			ENDSELECT
-		CASE 2
-			IF MONEY < 費用 && !ORIGIN
-				PRINTW 費用が足りません
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		DRAWLINE
+		PRINTL □患者を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, CFLAG:PAGING:陥落 && PENIS(PAGING) && SEX(PAGING) == 1, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
 				RESTART
+			CASEELSE
+				費用 = 50000
+				;小柄体型だと費用が減る
+				SIF TALENT:RESULT:小柄体型
+					費用 += 20000
+				患者 = RESULT
+				RESTART
+		ENDSELECT
+	CASE 2
+		IF MONEY < 費用 && !ORIGIN
+			PRINTW 費用が足りません
+			RESTART
+		ENDIF
+		PRINTW 去勢の術式を始めます
+		MONEY -= 費用
+		CALL 現金出納帳記録, @"去勢費用/-{費用}"
+		TALENT:患者:去勢済み = 1
+		CFLAG:患者:使用不可 = 15
+		TALENT:患者:改造済み += 15
+
+		;医療経験加算
+		FOR LCOUNT, 0, CHARANUM
+			SIF CSTR:LCOUNT:配属 == "医務室" && CFLAG:LCOUNT:配属完了
+				EXP:LCOUNT:医療経験 += 5
+		NEXT
+
+		;博物館で使えるオブジェクトとして保管してみる
+		FOR LCOUNT, 1, VARSIZE("MUSEUM", 0)
+			IF MUSEUM:LCOUNT:0 == ""
+				空き変数 = LCOUNT
+				BREAK
 			ENDIF
-			PRINTW 去勢の術式を始めます
-			MONEY -= 費用
-			CALL 現金出納帳記録, @"去勢費用/-{費用}"
-			TALENT:患者:去勢済み = 1
-			CFLAG:患者:使用不可 = 15
-			TALENT:患者:改造済み += 15
+		NEXT
 
-			;博物館で使えるオブジェクトとして保管してみる
-			FOR LCOUNT, 1, VARSIZE("MUSEUM", 0)
-				IF MUSEUM:LCOUNT:0 == ""
-					空き変数 = LCOUNT
-					BREAK
-				ENDIF
-			NEXT
+		;#;SIF 空き変数 == 0
+		;#;	THROW 変数「MUSEUM」に空きがありません
 
-			;#;SIF 空き変数 == 0
-			;#;	THROW 変数「MUSEUM」に空きがありません
-
-			MUSEUM:空き変数:0 = その他
-			MUSEUM:空き変数:1 = %NAME:患者%の男性器のオブジェ
-			MUSEUM:空き変数:2 = {NOF(患者)}
-			MUSEUM:空き変数:3 = 200
-			MUSEUM:空き変数:4 = {COLOR_FROMNAME("whitesmoke")}
-			MUSEUM:空き変数:5 = 0
-			MUSEUM:空き変数:6 = 0
-			MUSEUM:空き変数:7 = 100
-			MUSEUM:空き変数:8 = 0
-			RETURN 1
-	ENDSELECT
-LOOP 1
+		MUSEUM:空き変数:0 = その他
+		MUSEUM:空き変数:1 = %NAME:患者%の男性器のオブジェ
+		MUSEUM:空き変数:2 = {NOF(患者)}
+		MUSEUM:空き変数:3 = 200
+		MUSEUM:空き変数:4 = {COLOR_FROMNAME("whitesmoke")}
+		MUSEUM:空き変数:5 = 0
+		MUSEUM:空き変数:6 = 0
+		MUSEUM:空き変数:7 = 100
+		MUSEUM:空き変数:8 = 0
+		RETURN 1
+ENDSELECT
 
 @魔術師不妊化
 #DIM DYNAMIC 対象 = -1
@@ -637,12 +643,13 @@ LOOP 1
 #DIM DYNAMIC 術師 = -1
 #DIM DYNAMIC 契約対象 = -1
 #DIM DYNAMIC 現契約者
+#DIM DYNAMIC LCOUNT
 
 PRINTL □魔術師による不妊化
 PRINTL 　魔術師との契約により、限定的に生殖力を失わせる不妊化
 IF !ORIGIN
 	PRINTL □費用
-	CALL PASELIL, @"　{費用+費用:1}＄"
+	CALL PASELIL, @"　{SUMARRAY(費用)}＄"
 ENDIF
 PRINTL □注意事項
 PRINTL 　術士は種族「魔術師」の必要がある
@@ -679,81 +686,80 @@ IF 対象 >= 0 && 術師 >= 0
 	ENDSELECT
 ENDIF
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			DRAWLINE
-			PRINTL □対象を選んでください
-			FOR PAGING, 0, CHARANUM
-				CALL PAGING, CFLAG:PAGING:精管結紮 == 2 || CFLAG:PAGING:卵管結紮 == 2 || 生殖機能♂(PAGING) || 生殖機能♀(PAGING), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "対象"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					対象 = RESULT
-					費用 = 10000
-					RESTART
-			ENDSELECT
-		CASE 2
-			DRAWLINE
-			PRINTL □対象を選んでください
-			FOR PAGING, 0, CHARANUM
-				;魔術師に契約済みのキャラが居ればそれも表示
-				SIF CSTR:PAGING:種族 == "魔術師"
-					現契約者 = FINDCHARA(CFLAG:不妊担当魔術師, NOF(PAGING))
-				CALL PAGING, CSTR:PAGING:種族 == "魔術師", @"技巧:LV{ABL:PAGING:技巧} \@ 現契約者 >= 0 ? %CALLNAME:現契約者%と契約中 #  \@", "術師"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					術師 = RESULT
-					契約対象 = FINDCHARA(CFLAG:不妊担当魔術師, NOF(術師))
-					費用:1 = 30000
-					;技巧次第で費用は下がる
-					SELECTCASE ABL:術師:技巧
-						CASE IS <= 9
-							費用:1 /= LIMIT(ABL:術師:技巧, 1, 9)
-						CASEELSE
-							費用:1 = 3000
-					ENDSELECT
-					RESTART
-			ENDSELECT
-		CASE 3
-			IF MONEY < 費用+費用:1 && !ORIGIN
-				PRINTW 費用が足りません
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		DRAWLINE
+		PRINTL □対象を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, CFLAG:PAGING:精管結紮 == 2 || CFLAG:PAGING:卵管結紮 == 2 || 生殖機能♂(PAGING) || 生殖機能♀(PAGING), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "対象"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
 				RESTART
-			ENDIF
-			IF CFLAG:対象:不妊担当魔術師 == NOF(術師)
-				PRINTFORMW %NAME:対象%と%NAME:術師%の契約を破棄します
-				SIF CFLAG:対象:精管結紮 == 2
-					CFLAG:対象:精管結紮 = 0
-				SIF CFLAG:対象:卵管結紮 == 2
-					CFLAG:対象:卵管結紮 = 0
-				CFLAG:対象:不妊担当魔術師 = -1
-			ELSE
-				PRINTW 魔術師による不妊化を始めます
-				MONEY -= 費用+費用:1
-				CALL 現金出納帳記録, @"魔術師による不妊化費用/-{費用:0+費用:1}"
-				SIF 生殖機能♂(対象)
-					CFLAG:対象:精管結紮 = 2
-				SIF 生殖機能♀(対象)
-					CFLAG:対象:卵管結紮 = 2
-				CFLAG:対象:不妊担当魔術師 = NOF(術師)
-			ENDIF
-			CFLAG:対象:使用不可 = 3
-			CFLAG:術師:使用不可 = 3
-			RETURN 1
-	ENDSELECT
-LOOP 1
+			CASEELSE
+				対象 = RESULT
+				費用 = 10000
+				RESTART
+		ENDSELECT
+	CASE 2
+		DRAWLINE
+		PRINTL □対象を選んでください
+		FOR PAGING, 0, CHARANUM
+			;魔術師に契約済みのキャラが居ればそれも表示
+			SIF CSTR:PAGING:種族 == "魔術師"
+				現契約者 = FINDCHARA(CFLAG:不妊担当魔術師, NOF(PAGING))
+			CALL PAGING, CSTR:PAGING:種族 == "魔術師", @"技巧:LV{ABL:PAGING:技巧} \@ 現契約者 >= 0 ? %CALLNAME:現契約者%と契約中 #  \@", "術師"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
+				RESTART
+			CASEELSE
+				術師 = RESULT
+				契約対象 = FINDCHARA(CFLAG:不妊担当魔術師, NOF(術師))
+				費用:1 = 30000
+				;技巧次第で費用は下がる
+				SELECTCASE ABL:術師:技巧
+					CASE IS <= 9
+						費用:1 /= LIMIT(ABL:術師:技巧, 1, 9)
+					CASEELSE
+						費用:1 = 3000
+				ENDSELECT
+				RESTART
+		ENDSELECT
+	CASE 3
+		IF MONEY < SUMARRAY(費用) && !ORIGIN
+			PRINTW 費用が足りません
+			RESTART
+		ENDIF
+		IF CFLAG:対象:不妊担当魔術師 == NOF(術師)
+			PRINTFORMW %NAME:対象%と%NAME:術師%の契約を破棄します
+			SIF CFLAG:対象:精管結紮 == 2
+				CFLAG:対象:精管結紮 = 0
+			SIF CFLAG:対象:卵管結紮 == 2
+				CFLAG:対象:卵管結紮 = 0
+			CFLAG:対象:不妊担当魔術師 = -1
+		ELSE
+			PRINTW 魔術師による不妊化を始めます
+			MONEY -= SUMARRAY(費用)
+			CALL 現金出納帳記録, @"魔術師による不妊化費用/-{SUMARRAY(費用)}"
+			SIF 生殖機能♂(対象)
+				CFLAG:対象:精管結紮 = 2
+			SIF 生殖機能♀(対象)
+				CFLAG:対象:卵管結紮 = 2
+			CFLAG:対象:不妊担当魔術師 = NOF(術師)
+		ENDIF
+		CFLAG:対象:使用不可 = 3
+		CFLAG:術師:使用不可 = 3
+		RETURN 1
+ENDSELECT
 
 @中絶
 #DIM DYNAMIC 患者 = -1
 #DIM DYNAMIC 費用
+#DIM DYNAMIC LCOUNT
 
 PRINTL □中絶
 PRINTL 　出産前の胎児を堕ろす外科手術
@@ -776,52 +782,55 @@ PRINT [0] - 戻る　
 SIF 患者 >= 0
 	PRINT [2] - 術式を行う
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			DRAWLINE
-			PRINTL □患者を選んでください
-			FOR PAGING, 0, CHARANUM
-				CALL PAGING, TALENT:PAGING:妊娠, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					;出産予定日が近いほど費用が上がり、小柄体型だとさらに費用がかさむ
-					IF TALENT:RESULT:小柄体型
-						費用 = (100-(PREG:RESULT:出産予定日-DAY))*2000
-					ELSE
-						費用 = (100-(PREG:RESULT:出産予定日-DAY))*1000
-					ENDIF
-					費用 += 30000
-					患者 = RESULT
-					RESTART
-			ENDSELECT
-		CASE 2
-			IF MONEY < 費用 && !ORIGIN
-				PRINTW 費用が足りません
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		DRAWLINE
+		PRINTL □患者を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, TALENT:PAGING:妊娠, @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "患者"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
 				RESTART
-			ENDIF
-			PRINTFORMW %NAME:患者%の胎児を堕ろします
-			SIF MARK:患者:反発刻印 < 3 && 患者 != MASTER
-				PRINTFORMW %CALLNAME:患者%は反発刻印LV3を得た
-			MARK:患者:反発刻印 = 3
-			;実績：体外受精で宿した子供を堕ろす
-			SIF PREG:患者:体外受精
-				CALL 実績解除, "命を弄ぶ者"
-			MONEY -= 費用
-			CALL 現金出納帳記録, @"中絶費用/-{費用}"
-			TALENT:患者:妊娠 = 0
-			CALL CLEAR_FLAG, 患者
-			CFLAG:患者:使用不可 = 29
-			CFLAG:患者:ストレス値 += 30
-			RETURN 1
-	ENDSELECT
-LOOP 1
+			CASEELSE
+				;出産予定日が近いほど費用が上がり、小柄体型だとさらに費用がかさむ
+				IF TALENT:RESULT:小柄体型
+					費用 = (100-(PREG:RESULT:出産予定日-DAY))*2000
+				ELSE
+					費用 = (100-(PREG:RESULT:出産予定日-DAY))*1000
+				ENDIF
+				費用 += 30000
+				患者 = RESULT
+				RESTART
+		ENDSELECT
+	CASE 2
+		IF MONEY < 費用 && !ORIGIN
+			PRINTW 費用が足りません
+			RESTART
+		ENDIF
+		PRINTFORMW %NAME:患者%の胎児を堕ろします
+		SIF MARK:患者:反発刻印 < 3 && 患者 != MASTER
+			PRINTFORMW %CALLNAME:患者%は反発刻印LV3を得た
+		MARK:患者:反発刻印 = 3
+		;実績：体外受精で宿した子供を堕ろす
+		SIF PREG:患者:体外受精
+			CALL 実績解除, "命を弄ぶ者"
+		MONEY -= 費用
+		CALL 現金出納帳記録, @"中絶費用/-{費用}"
+		TALENT:患者:妊娠 = 0
+		CALL CLEAR_FLAG, 患者
+		CFLAG:患者:使用不可 = 29
+		CFLAG:患者:ストレス値 += 30
+		;医療経験加算
+		FOR LCOUNT, 0, CHARANUM
+			SIF CSTR:LCOUNT:配属 == "医務室" && CFLAG:LCOUNT:配属完了
+				EXP:LCOUNT:医療経験 += 5
+		NEXT
+		RETURN 1
+ENDSELECT
 
 
 @男性器形成
@@ -830,6 +839,7 @@ LOOP 1
 #DIM DYNAMIC 提供者 = -1
 #DIM DYNAMIC 費用, 3
 #DIM DYNAMIC LRESULT
+#DIM DYNAMIC LCOUNT
 
 ;費用:2 = ペニスサイズ*10000
 
@@ -837,7 +847,7 @@ PRINTL □男性器形成
 PRINTL 　魔法、もしくは外科手術により女性の陰部に男性器を形成、もしくは移植する
 IF !ORIGIN
 	PRINTL □費用
-	CALL PASELIL, @"　{費用+費用:1+費用:2}＄"
+	CALL PASELIL, @"　{SUMARRAY(費用)}＄"
 ENDIF
 PRINTL □注意事項
 PRINTL 　魔法か外科手術かによって形成後の機能が異なる
@@ -917,80 +927,79 @@ SIF 対象 >= 0
 	PRINT [3] - 形成を始める
 PRINTL 
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			DRAWLINE
-			PRINTL □対象を選んでください
-			FOR PAGING, 0, CHARANUM
-				CALL PAGING, SEX(PAGING) == 2 && !PENIS(PAGING), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "対象"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					対象 = RESULT
-					費用 = 50000
-					;小柄体型だと費用は下がる
-					SIF TALENT:RESULT:小柄体型
-						費用 -= 20000
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		DRAWLINE
+		PRINTL □対象を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, SEX(PAGING) == 2 && !PENIS(PAGING), @"\@ TALENT:PAGING:小柄体型 ? 幼 #  \@", "対象"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
+				RESTART
+			CASEELSE
+				対象 = RESULT
+				費用 = 50000
+				;小柄体型だと費用は下がる
+				SIF TALENT:RESULT:小柄体型
+					費用 -= 20000
 ;					ペニスサイズ = 0
-					RESTART
-			ENDSELECT
-		CASE 2
-			DRAWLINE
-			PRINTL □対象を選んでください
-			FOR PAGING, 0, CHARANUM
-				CALL PAGING, CSTR:PAGING:種族 == "魔術師" || (CFLAG:PAGING:陥落 && !TALENT:PAGING:小人体型 && SEX(PAGING) == 1 && PENIS(PAGING)), @"\@ CSTR:PAGING:種族 == "魔術師" ? 魔術師 #  \@", "術師・提供者"
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					IF !TALENT:小人体型 && SEX(RESULT) == 1 && PENIS(RESULT) && CSTR:RESULT:種族 == "魔術師"
-						LRESULT = RESULT
-						PRINTL 魔術師と男性器提供者のどちらを担当しますか？
-						PRINTL [0] - 魔術師
-						PRINTL [1] - 男性器提供者
-						DO
-							INPUT
-							SELECTCASE RESULT
-								CASE 0
-									提供者 = -1
-									術師 = LRESULT
-								CASE 1
-									提供者 = LRESULT
-									術師 = -1
-							ENDSELECT
-						LOOP LOOPRES(0, 1)
-						RESULT = LRESULT
-					ELSEIF CSTR:RESULT:種族 == "魔術師"
-						提供者 = -1
-						術師 = RESULT
-					ELSE
-						提供者 = RESULT
-						術師 = -1
-					ENDIF
-					費用:1 = 50000
-					IF 提供者 >= 0
-						;提供者が小柄体型だと費用はかさむ
-						SIF TALENT:RESULT:小柄体型
-							費用 += 20000
-					ELSEIF 術師 >= 0
-						;魔術師だと技巧に応じて費用は下がる
-						SELECTCASE ABL:RESULT:技巧
-							CASE IS <= 9
-								費用:1 /= ABL:RESULT:技巧
-							CASEELSE
-								費用:1 = 3000
+				RESTART
+		ENDSELECT
+	CASE 2
+		DRAWLINE
+		PRINTL □対象を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, CSTR:PAGING:種族 == "魔術師" || (CFLAG:PAGING:陥落 && !TALENT:PAGING:小人体型 && SEX(PAGING) == 1 && PENIS(PAGING)), @"\@ CSTR:PAGING:種族 == "魔術師" ? 魔術師 #  \@", "術師・提供者"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
+				RESTART
+			CASEELSE
+				IF !TALENT:小人体型 && SEX(RESULT) == 1 && PENIS(RESULT) && CSTR:RESULT:種族 == "魔術師"
+					LRESULT = RESULT
+					PRINTL 魔術師と男性器提供者のどちらを担当しますか？
+					PRINTL [0] - 魔術師
+					PRINTL [1] - 男性器提供者
+					DO
+						INPUT
+						SELECTCASE RESULT
+							CASE 0
+								提供者 = -1
+								術師 = LRESULT
+							CASE 1
+								提供者 = LRESULT
+								術師 = -1
 						ENDSELECT
-					ENDIF
+					LOOP LOOPRES(0, 1)
+					RESULT = LRESULT
+				ELSEIF CSTR:RESULT:種族 == "魔術師"
+					提供者 = -1
+					術師 = RESULT
+				ELSE
+					提供者 = RESULT
+					術師 = -1
+				ENDIF
+				費用:1 = 50000
+				IF 提供者 >= 0
+					;提供者が小柄体型だと費用はかさむ
+					SIF TALENT:RESULT:小柄体型
+						費用 += 20000
+				ELSEIF 術師 >= 0
+					;魔術師だと技巧に応じて費用は下がる
+					SELECTCASE ABL:RESULT:技巧
+						CASE IS <= 9
+							費用:1 /= ABL:RESULT:技巧
+						CASEELSE
+							費用:1 = 3000
+					ENDSELECT
+				ENDIF
 ;					ペニスサイズ = 0
-					RESTART
-			ENDSELECT
+				RESTART
+		ENDSELECT
 ;		CASE 3
 ;			SIF 対象 == -1 || 提供者 >= 0
 ;				RESTART
@@ -1003,39 +1012,45 @@ DO
 ;				ペニスサイズ = RESULT
 ;			LOOP LOOPRES(1, 2, 3)
 ;			RESTART
-		CASE 3
-			SIF 対象 == -1
-				RESTART
-			IF 費用+費用:1+費用:2 > MONEY && !ORIGIN
-				PRINTW 費用が足りません
-				RESTART
-			ENDIF
-			PRINTL 男性器の形成を始めます
-			PRINTFORM %CALLNAME:対象%
-			SIF 提供者 >= 0
-				PRINTFORM と%CALLNAME:提供者%
-			SIF 術師 >= 0
-				PRINTFORM と%CALLNAME:術師%
-			PRINTW は準備のため休養に入ります
-			TALENT:対象:ふたなり = 1
+	CASE 3
+		SIF 対象 == -1
+			RESTART
+		IF SUMARRAY(費用) > MONEY && !ORIGIN
+			PRINTW 費用が足りません
+			RESTART
+		ENDIF
+		PRINTL 男性器の形成を始めます
+		PRINTFORM %CALLNAME:対象%
+		SIF 提供者 >= 0
+			PRINTFORM と%CALLNAME:提供者%
+		SIF 術師 >= 0
+			PRINTFORM と%CALLNAME:術師%
+		PRINTW は準備のため休養に入ります
+		MONEY -= SUMARRAY(費用)
+		CALL 現金出納帳記録, @"男性器移植手術費用/-{SUMARRAY(費用)}"
+		TALENT:対象:ふたなり = 1
 ;			CFLAG:対象:ペニスサイズ = ペニスサイズ
-			CFLAG:対象:精管結紮 = 1
-			CFLAG:対象:使用不可 = 15
-			CFLAG:対象:男性器提供者 = -1
-			IF 提供者 >= 0
-			;	CFLAG:対象:ペニスサイズ = CFLAG:提供者:ペニスサイズ
-				CFLAG:対象:精管結紮 = 0
-				TALENT:提供者:去勢済み = 1
-				CFLAG:対象:男性器提供者 = NOF(提供者)
-				CFLAG:対象:男性器移植済み = 1
-				CFLAG:提供者:使用不可 = 15
-			ENDIF
-			IF 術師 >= 0
-				CFLAG:対象:精管結紮 = 0
-				CFLAG:術師:使用不可 = 7
-			ENDIF
-			RETURN 1
-	ENDSELECT
-LOOP 1
+		CFLAG:対象:精管結紮 = 1
+		CFLAG:対象:使用不可 = 15
+		CFLAG:対象:男性器提供者 = -1
+		IF 提供者 >= 0
+		;	CFLAG:対象:ペニスサイズ = CFLAG:提供者:ペニスサイズ
+			CFLAG:対象:精管結紮 = 0
+			TALENT:提供者:去勢済み = 1
+			CFLAG:対象:男性器提供者 = NOF(提供者)
+			CFLAG:対象:男性器移植済み = 1
+			CFLAG:提供者:使用不可 = 15
+		ENDIF
+		IF 術師 >= 0
+			CFLAG:対象:精管結紮 = 0
+			CFLAG:術師:使用不可 = 7
+		ENDIF
+		;医療経験加算
+		FOR LCOUNT, 0, CHARANUM
+			SIF CSTR:LCOUNT:配属 == "医務室" && CFLAG:LCOUNT:配属完了
+				EXP:LCOUNT:医療経験 += 5
+		NEXT
+		RETURN 1
+ENDSELECT
 
 @女性器形成

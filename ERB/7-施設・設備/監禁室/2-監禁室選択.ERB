@@ -23,36 +23,32 @@ DRAWLINE
 PRINTPLAIN 　監禁室　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	LRESULT = RESULT
-	SELECTCASE LRESULT
-		CASE 0
-			RETURN
-		CASE 1 TO 10
-			IF 監禁室使用キャラ:LRESULT > 0
-				PRINTFORML 監禁室{LRESULT}には現在%CALLNAME:(監禁室使用キャラ:LRESULT)%を監禁中です。ここを使いますか？
-				PRINTL [0] - はい
-				PRINTL [1] - いいえ
-				PRINTL [2] - 解放する
-				DO
-					INPUT
-					SELECTCASE RESULT
-						CASE 1
-							RESTART
-						CASE 2
-							IF FINDCHARA(CFLAG:監禁, LRESULT) > 0
-								監禁室使用状況:LRESULT = 
-								CFLAG:FINDCHARA(CFLAG:監禁, LRESULT):監禁 = 0
-								RESTART
-							ENDIF
-					ENDSELECT
-				LOOP LOOPRES(0)
-			ENDIF
-			CALL 監禁室使用, LRESULT
-			RESTART
-	ENDSELECT
-LOOP 1
+BINPUT
+LRESULT = RESULT
+SELECTCASE LRESULT
+	CASE 0
+		RETURN
+	CASE 1 TO 10
+		IF 監禁室使用キャラ:LRESULT > 0
+			PRINTFORML 監禁室{LRESULT}には現在%CALLNAME:(監禁室使用キャラ:LRESULT)%を監禁中です。ここを使いますか？
+			PRINTL [0] - はい
+			PRINTL [1] - いいえ
+			PRINTL [2] - 解放する
+			BINPUT
+			SELECTCASE RESULT
+				CASE 1
+					RESTART
+				CASE 2
+					IF FINDCHARA(CFLAG:監禁, LRESULT) > 0
+						監禁室使用状況:LRESULT = 
+						CFLAG:FINDCHARA(CFLAG:監禁, LRESULT):監禁 = 0
+						RESTART
+					ENDIF
+			ENDSELECT
+		ENDIF
+		CALL 監禁室使用, LRESULT
+		RESTART
+ENDSELECT
 
 
 @監禁室使用, 監禁室番号
@@ -60,11 +56,12 @@ LOOP 1
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 配属人数
 #DIM DYNAMIC 配属スライム
+#DIM DYNAMIC 配属触手
 #DIM DYNAMIC 監禁可能
 #DIM DYNAMIC 監禁対象
 #DIMS DYNAMIC 監禁内容
 
-IF CHARANUM == 1
+IF CHARANUM == 1 || CHARANUM-CMATCH(CFLAG:キャラロスト, 1) == 1
 	PRINTW 監禁できるキャラが居ません
 	RETURN
 ENDIF
@@ -76,8 +73,13 @@ FOR LCOUNT, 1, CHARANUM
 		配属人数++
 		SIF TALENT:LCOUNT:スライム || TALENT:LCOUNT:溶ける快
 			配属スライム++
+		SIF TALENT:LCOUNT:触手使い
+			配属触手++
 	ENDIF
 NEXT
+
+SIF TALENT:MASTER:触手使い
+	配属触手++
 
 PRINTL □誰を監禁しますか？
 FOR PAGING, 1, CHARANUM
@@ -91,10 +93,10 @@ SELECTCASE RESULT
 ENDSELECT
 
 PRINTL □どのように監禁しますか？
-IF TALENT:MASTER:触手使い
+IF 配属触手
 	PRINTL 　[1] - 触手監禁(触手による各性感帯の開発)
 ELSE
-	CALL PRINTCOLORL, "　[-] - 触手監禁(主人に[触手使い]が必要)", "gray"
+	CALL PRINTCOLORL, "　[-] - 触手監禁(主人か配属中のキャラに[触手使い]が必要)", "gray"
 ENDIF
 IF TALENT:監禁対象:母乳体質
 	PRINTL 　[2] - 搾乳監禁(母乳の採集)
@@ -152,34 +154,31 @@ SELECTCASE RESULT
 		PRINTFORML 　[4] - Ｂ(\@ GETBIT(CFLAG:監禁対象:監禁, 4) ? ○ # ×\@)
 		PRINTFORML 　[5] - 尿道(\@ GETBIT(CFLAG:監禁対象:監禁, 5) ? ○ # ×\@)
 		PRINTL 　[0] - 戻る [10] - 確定
-		DO
-			INPUT
-			SELECTCASE RESULT
-				CASE 0
-					CFLAG:監禁対象:監禁 = 0
-					RESTART
-				CASE 10
-					IF CFLAG:監禁対象:監禁 == 0
-						PRINTW 開発する部位を選んでください
-						GOTO 触手監禁
-					ENDIF
-					監禁内容  = 触手監禁/
-					SIF GETBIT(CFLAG:監禁対象:監禁, 1)
-						監禁内容  += "Ｖ/"
-					SIF GETBIT(CFLAG:監禁対象:監禁, 2)
-						監禁内容  += "Ｃ/"
-					SIF GETBIT(CFLAG:監禁対象:監禁, 3)
-						監禁内容  += "Ａ/"
-					SIF GETBIT(CFLAG:監禁対象:監禁, 4)
-						監禁内容  += "Ｂ/"
-					SIF GETBIT(CFLAG:監禁対象:監禁, 5)
-						監禁内容  += "尿道/"
-					BREAK
-				CASE 1 TO 5
-					INVERTBIT CFLAG:監禁対象:監禁, RESULT
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				CFLAG:監禁対象:監禁 = 0
+				RESTART
+			CASE 10
+				IF CFLAG:監禁対象:監禁 == 0
+					PRINTW 開発する部位を選んでください
 					GOTO 触手監禁
-			ENDSELECT
-		LOOP 1
+				ENDIF
+				監禁内容  = 触手監禁/
+				SIF GETBIT(CFLAG:監禁対象:監禁, 1)
+					監禁内容  += "Ｖ/"
+				SIF GETBIT(CFLAG:監禁対象:監禁, 2)
+					監禁内容  += "Ｃ/"
+				SIF GETBIT(CFLAG:監禁対象:監禁, 3)
+					監禁内容  += "Ａ/"
+				SIF GETBIT(CFLAG:監禁対象:監禁, 4)
+					監禁内容  += "Ｂ/"
+				SIF GETBIT(CFLAG:監禁対象:監禁, 5)
+					監禁内容  += "尿道/"
+			CASE 1 TO 5
+				INVERTBIT CFLAG:監禁対象:監禁, RESULT
+				GOTO 触手監禁
+		ENDSELECT
 	CASE 2
 		$搾乳監禁
 		PRINTL □搾精の方法を選んでください
@@ -199,30 +198,27 @@ SELECTCASE RESULT
 			CALL PRINTCOLORL, "　[-] - 薬を使用する(医務室ランクが必要)", "gray"
 		ENDIF
 		PRINTL 　[0] - 戻る [10] - 確定
-		DO
-			INPUT
-			SELECTCASE RESULT
-				CASE 0
-					CFLAG:監禁対象:監禁 = 0
-					RESTART
-				CASE 10
-					IF CFLAG:監禁対象:監禁 == 0
-						PRINTW 搾乳方法を選んでください
-						GOTO 搾乳監禁
-					ENDIF
-					監禁内容  = 搾乳監禁/
-					SIF GETBIT(CFLAG:監禁対象:監禁, 1)
-						監禁内容  += "スタッフの手/"
-					SIF GETBIT(CFLAG:監禁対象:監禁, 2)
-						監禁内容  += "道具機械/"
-					SIF GETBIT(CFLAG:監禁対象:監禁, 3)
-						監禁内容  += "薬品/"
-					BREAK
-				CASE 1 TO 3
-					INVERTBIT CFLAG:監禁対象:監禁, RESULT
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				CFLAG:監禁対象:監禁 = 0
+				RESTART
+			CASE 10
+				IF CFLAG:監禁対象:監禁 == 0
+					PRINTW 搾乳方法を選んでください
 					GOTO 搾乳監禁
-			ENDSELECT
-		LOOP 1
+				ENDIF
+				監禁内容  = 搾乳監禁/
+				SIF GETBIT(CFLAG:監禁対象:監禁, 1)
+					監禁内容  += "スタッフの手/"
+				SIF GETBIT(CFLAG:監禁対象:監禁, 2)
+					監禁内容  += "道具機械/"
+				SIF GETBIT(CFLAG:監禁対象:監禁, 3)
+					監禁内容  += "薬品/"
+			CASE 1 TO 3
+				INVERTBIT CFLAG:監禁対象:監禁, RESULT
+				GOTO 搾乳監禁
+		ENDSELECT
 	CASE 3
 		$搾精監禁
 		PRINTL □搾精の方法を選んでください
@@ -244,32 +240,29 @@ SELECTCASE RESULT
 			CALL PRINTCOLORL, "　[-] - 尿道を使用する(医務室ランクが必要)", "gray"
 		ENDIF
 		PRINTL 　[0] - 戻る [10] - 確定
-		DO
-			INPUT
-			SELECTCASE RESULT
-				CASE 0
-					CFLAG:監禁対象:監禁 = 0
-					RESTART
-				CASE 10
-					IF CFLAG:監禁対象:監禁 == 0
-						PRINTW 搾精方法を選んでください
-						GOTO 搾精監禁
-					ENDIF
-					監禁内容  = 搾精監禁/
-					SIF GETBIT(CFLAG:監禁対象:監禁, 1)
-						監禁内容  += "スタッフの手/"
-					SIF GETBIT(CFLAG:監禁対象:監禁, 2)
-						監禁内容  += "道具機械/"
-					SIF GETBIT(CFLAG:監禁対象:監禁, 3)
-						監禁内容  += "薬品/"
-					SIF GETBIT(CFLAG:監禁対象:監禁, 4)
-						監禁内容  += "尿道/"
-					BREAK
-				CASE 1 TO 4
-					INVERTBIT CFLAG:監禁対象:監禁, RESULT
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				CFLAG:監禁対象:監禁 = 0
+				RESTART
+			CASE 10
+				IF CFLAG:監禁対象:監禁 == 0
+					PRINTW 搾精方法を選んでください
 					GOTO 搾精監禁
-			ENDSELECT
-		LOOP 1
+				ENDIF
+				監禁内容  = 搾精監禁/
+				SIF GETBIT(CFLAG:監禁対象:監禁, 1)
+					監禁内容  += "スタッフの手/"
+				SIF GETBIT(CFLAG:監禁対象:監禁, 2)
+					監禁内容  += "道具機械/"
+				SIF GETBIT(CFLAG:監禁対象:監禁, 3)
+					監禁内容  += "薬品/"
+				SIF GETBIT(CFLAG:監禁対象:監禁, 4)
+					監禁内容  += "尿道/"
+			CASE 1 TO 4
+				INVERTBIT CFLAG:監禁対象:監禁, RESULT
+				GOTO 搾精監禁
+		ENDSELECT
 	CASE 4
 		$採血監禁
 		PRINTL □搾精の方法を選んでください
@@ -284,47 +277,41 @@ SELECTCASE RESULT
 			CALL PRINTCOLORL, "　[-] - 道具と機械を使用する(実験室ランクが必要)", "gray"
 		ENDIF
 		PRINTL 　[0] - 戻る [10] - 確定
-		DO
-			INPUT
-			SELECTCASE RESULT
-				CASE 0
-					CFLAG:監禁対象:監禁 = 0
-					RESTART
-				CASE 10
-					IF CFLAG:監禁対象:監禁 == 0
-						PRINTW 搾精方法を選んでください
-						GOTO 採血監禁
-					ENDIF
-					監禁内容 = 採血監禁/
-					SIF GETBIT(CFLAG:監禁対象:監禁, 1)
-						監禁内容  += "スタッフの手/"
-					SIF GETBIT(CFLAG:監禁対象:監禁, 2)
-						監禁内容  += "道具機械/"
-					BREAK
-				CASE 1 TO 2
-					CFLAG:監禁対象:監禁 = 0
-					INVERTBIT CFLAG:監禁対象:監禁, RESULT
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				CFLAG:監禁対象:監禁 = 0
+				RESTART
+			CASE 10
+				IF CFLAG:監禁対象:監禁 == 0
+					PRINTW 搾精方法を選んでください
 					GOTO 採血監禁
-			ENDSELECT
-		LOOP 1
+				ENDIF
+				監禁内容 = 採血監禁/
+				SIF GETBIT(CFLAG:監禁対象:監禁, 1)
+					監禁内容  += "スタッフの手/"
+				SIF GETBIT(CFLAG:監禁対象:監禁, 2)
+					監禁内容  += "道具機械/"
+			CASE 1 TO 2
+				CFLAG:監禁対象:監禁 = 0
+				INVERTBIT CFLAG:監禁対象:監禁, RESULT
+				GOTO 採血監禁
+		ENDSELECT
 	CASE 5
 		PRINTFORML %CALLNAME:監禁対象%をスライム監禁します。よろしいですか？
 		PRINTL [0] - はい
 		PRINTL [1] - いいえ
-		DO
-			INPUT
-			SELECTCASE RESULT
-				CASE 0
-					監禁内容  = スライム監禁/
-					SIF FINDCHARA(CFLAG:監禁, 監禁室番号) > 0
-						CFLAG:FINDCHARA(CFLAG:監禁, 監禁室番号):監禁 = 0
-					CFLAG:監禁対象:監禁 = 監禁室番号
-					BREAK
-				CASE 1
-					CFLAG:監禁対象:監禁 = 0
-					RESTART
-			ENDSELECT
-		LOOP 1
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				監禁内容  = スライム監禁/
+				SIF FINDCHARA(CFLAG:監禁, 監禁室番号) > 0
+					CFLAG:FINDCHARA(CFLAG:監禁, 監禁室番号):監禁 = 0
+				CFLAG:監禁対象:監禁 = 監禁室番号
+			CASE 1
+				CFLAG:監禁対象:監禁 = 0
+				RESTART
+		ENDSELECT
 	CASE 6
 		;処刑のバリエーションは増やしたい
 		PRINTFORML %CALLNAME:監禁対象%を処刑します。よろしいですか？

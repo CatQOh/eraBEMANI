@@ -6,11 +6,11 @@
 
 PRINTL □ここではロボットの制作ができます
 PRINT 　
-FOR LCOUNT, GETNUM(ITEM, "マテリアル"), GETNUM(ITEM, "マテリアル")+10
-	IF ITEM:LCOUNT
+FOR LCOUNT, GETNUM(リソース, "マテリアル"), GETNUM(リソース, "マテリアル")+50
+	IF リソース:LCOUNT
 		SIF LINEISEMPTY()
 			PRINT 　
-		PRINTFORM %ITEMNAME:LCOUNT%×{ITEM:LCOUNT} 
+		PRINTFORM %ERDNAME(リソース, LCOUNT)%×{リソース:LCOUNT} 
 	ENDIF
 NEXT
 CALL NEWLINE
@@ -29,69 +29,69 @@ DRAWLINE
 PRINTPLAIN 　ロボットファクトリー　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1
-			LTARGET = TARGET
-			CALL ADD_ランダムキャラ, RAND(1, 3), -1, 1
-			TARGET = CHARANUM-1
-			CSTR:種族 = 機械
-			TALENT:無機物 = 1
-			MAXBASE:体力 = 1500
-			MAXBASE:気力 = 1500
-			VARSET TALENT:0, 0, 1
-			BREAK
-		CASE 2
-			LTARGET = TARGET
-			CALL 所持DNA, 1
-			SIF RESULT == 0
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		LTARGET = TARGET
+		CALL ADD_ランダムキャラ, RAND(1, 3), -1, 1
+		TARGET = CHARANUM-1
+		CSTR:種族 = 機械
+		TALENT:無機物 = 1
+		MAXBASE:体力 = 1500
+		MAXBASE:気力 = 1500
+		VARSET TALENT:0, 0, 1
+	CASE 2
+		LTARGET = TARGET
+		CALL 所持DNA, 1
+		SIF RESULT == 0
+			RESTART
+		オリジナル = RESULT
+		CALL CHARA_ADD, オリジナル
+		TARGET = CHARANUM-1
+		CFLAG:複製 = オリジナル
+		魔法技能記録用 = ABL:魔法技能
+		;EXPとABLを初期化するが魔法技能だけ例外
+		VARSET EXP:0
+		VARSET ABL:0
+		ABL:魔法技能 = 魔法技能記録用
+		;相性や関係も初期化する
+		VARSET RELATION:0, 100
+		CALL 初期経験リセット, TARGET
+		SIF PENIS(TARGET)
+			TALENT:童貞 = 1
+		SIF VAGINA(TARGET)
+			TALENT:処女 = 1
+	CASE 3
+		CALL STS_MACHINE
+		SIF RESULT
+			RETURN 1
+		RESTART
+	CASE 4
+		IF MONEY < 100000 && !ORIGIN
+			PRINTW 所持金が足りません
+			RESTART
+		ENDIF
+		CALL 機械化
+		SIF RESULT
+			RETURN 1
+		RESTART
+	CASE 5
+		PRINTL □改造するロボットを選んでください
+		FOR PAGING, 1, CHARANUM
+			CALL PAGING, CSTR:PAGING:種族 == "機械" || TALENT:PAGING:無機物
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
 				RESTART
-			オリジナル = RESULT
-			CALL CHARA_ADD, オリジナル
-			TARGET = CHARANUM-1
-			CFLAG:複製 = オリジナル
-			魔法技能記録用 = ABL:魔法技能
-			;EXPとABLを初期化するが魔法技能だけ例外
-			VARSET EXP:0
-			VARSET ABL:0
-			ABL:魔法技能 = 魔法技能記録用
-			;相性や関係も初期化する
-			VARSET RELATION:0, 100
-			CALL 初期経験リセット, TARGET
-			SIF PENIS(TARGET)
-				TALENT:童貞 = 1
-			SIF VAGINA(TARGET)
-				TALENT:処女 = 1
-			BREAK
-		CASE 3
-			SIF MOD:STS
-				CALL STS_MACHINE
-			RESTART
-		CASE 4
-			IF MONEY < 100000 && !ORIGIN
-				PRINTW 所持金が足りません
-				RESTART
-			ENDIF
-			CALL 機械化
-			MONEY -= 100000
-			RESTART
-		CASE 5
-			PRINTL □改造するロボットを選んでください
-			FOR PAGING, 1, CHARANUM
-				CALL PAGING, CSTR:PAGING:種族 == "機械" || TALENT:PAGING:無機物
-			NEXT
-			SELECTCASE RESULT
-				CASE -1
-					RESTART
-				CASEELSE
-					CALL ロボット改造, RESULT
-			ENDSELECT
-			RESTART
-	ENDSELECT
-LOOP 1
+			CASEELSE
+				CALL ロボット改造, RESULT
+				SIF RESULT
+					RETURN 1
+		ENDSELECT
+		RESTART
+ENDSELECT
 
 ;10000以降のNOを使うので子供の数と共用
 NO:TARGET = FLAG:子供の数+10001
@@ -103,6 +103,10 @@ ENDIF
 CALL ロボット制作
 SIF !RESULT
 	TARGET = LTARGET
+SIF RESULT
+	RETURN 1
+
+RESTART
 
 @ロボット制作
 #DIM DYNAMIC LCOUNT
@@ -163,12 +167,12 @@ TALENT:処女 = VAGINA(TARGET)
 製作コスト += 素質コスト
 
 PRINTL □ロボットを制作します
-FOR LCOUNT, GETNUM(ITEM, "マテリアル"), GETNUM(ITEM, "マテリアル")+10
-	IF ITEM:LCOUNT
+FOR LCOUNT, GETNUM(リソース, "マテリアル"), GETNUM(リソース, "マテリアル")+50
+	IF リソース:LCOUNT
 		SIF LINEISEMPTY()
 			PRINT 　
-		PRINTFORM %ITEMNAME:LCOUNT%×{ITEM:LCOUNT} 
-		SIF ITEMNAME:LCOUNT != "マテリアル"
+		PRINTFORM %ERDNAME(リソース, LCOUNT)%×{リソース:LCOUNT} 
+		SIF ERDNAME(リソース, LCOUNT) != "マテリアル"
 			アイテムあり = 1
 	ENDIF
 NEXT
@@ -216,413 +220,377 @@ DRAWLINE
 PRINTPLAIN 　ロボットファクトリー　
 PRINTL [0] - 戻る [10] - 作成する
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			CALL CLEAR_CHARA, TARGET, 1
-			RETURN 0
-		CASE 1
-			SIF CFLAG:複製
-				CONTINUE
-			VARLINE = 0
-			$TALENT
-			SIF VARLINE
-				CLEARLINE LINECOUNT-VARLINE
-			VARLINE = LINECOUNT
-			DRAWLINE
-			PRINTL □素質を選択してください 括弧内は製作コスト
-			FOR LCOUNT, 0, VARSIZE("TALENT")
-				SIF 素質変更可能:LCOUNT
-					PRINTFORMLC [{LCOUNT, 3}] %TALENTNAME:LCOUNT%({素質変更可能:LCOUNT}) \@ TALENT:LCOUNT ? ○ # × \@
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		CALL CLEAR_CHARA, TARGET, 1
+		RETURN 0
+	CASE 1
+		VARLINE = 0
+		$TALENT
+		SIF VARLINE
+			CLEARLINE LINECOUNT-VARLINE
+		VARLINE = LINECOUNT
+		DRAWLINE
+		PRINTL □素質を選択してください 括弧内は製作コスト
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF 素質変更可能:LCOUNT
+				PRINTFORMLC [{LCOUNT, 3}] %TALENTNAME:LCOUNT%({素質変更可能:LCOUNT}) \@ TALENT:LCOUNT ? ○ # × \@
+		NEXT
+		CALL NEWLINE
+		SIF TALENT:性別 == 2
+			PRINTFORML [{TALENTF("バストサイズ")}] バストサイズ:%バストサイズ(TALENT:バストサイズ)%
+		DRAWLINE
+		PRINTPLAIN 　ロボットファクトリー　
+		PRINTL [-1] - 戻る
+		BINPUT
+		SIF RESULT == -1
+			RESTART
+		LRESULT = RESULT
+		IF INRANGE(LRESULT, 0, VARSIZE("TALENT"))
+			IF TALENTNAME:LRESULT == "バストサイズ" && TALENT:性別 == 2
+				PRINTL [1] 絶壁にする
+				PRINTL [2] 貧乳にする
+				PRINTL [3] 並乳にする
+				PRINTL [4] 巨乳にする
+				PRINTL [5] 豊乳にする
+				PRINTL [6] 爆乳にする
+				BINPUT
+				TALENT:バストサイズ = RESULT
+				GOTO TALENT
+			ELSEIF 素質変更可能:LRESULT
+				INVERTBIT TALENT:LRESULT, 0
+				GOTO TALENT
+			ENDIF
+		ENDIF
+		RESTART
+	CASE 2
+		PRINTL プリセットを選択してください
+		PRINTL [1] - 従順
+		PRINTL [2] - 家事手伝い
+		PRINTL [3] - セクサロイド
+		PRINTL [4] - ポンコツ
+		PRINTL [0] - 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE 1
+				VARSET TALENT:0, 0, 1
+				TALENT:素直 = 1
+				TALENT:快感に素直 = 1
+				TALENT:大人しい = 1
+				TALENT:献身的 = 1
+				TALENT:汚れ無視 = 1
+			CASE 2
+				VARSET TALENT:0, 0, 1
+				TALENT:世話好き = 1
+				TALENT:習得早い = 1
+				TALENT:買い物上手 = 1
+				TALENT:潔癖症 = 1
+				TALENT:鼓舞 = 1
+			CASE 3
+				VARSET TALENT:0, 0, 1
+				TALENT:好奇心 = 1
+				TALENT:汚れ無視 = 1
+				TALENT:回復早い = 1
+				TALENT:男好き = 1
+				TALENT:女好き = 1
+				TALENT:舌使い = 1
+				TALENT:小悪魔 = 1
+			CASE 4
+				VARSET TALENT:0, 0, 1
+				TALENT:反抗的 = 1
+				TALENT:回復遅い = 1
+				TALENT:浪費癖 = 1
+				TALENT:痛みに弱い = 1
+				TALENT:習得遅い = 1
+				TALENT:遊び人 = 1
+		ENDSELECT
+		RESTART
+	CASE 3
+		VARLINE = 0
+		$ABL
+		SIF VARLINE
+			CLEARLINE LINECOUNT-VARLINE
+		VARLINE = LINECOUNT
+		感覚合計 = 0
+		IF リソース:性感センサー
+			PRINTFORML □感覚の強化 性感センサーを使用(現在{リソース:性感センサー}個所持)
+			FOR LCOUNT, 0, 100
+				SELECTCASE ABLNAME:LCOUNT
+					CASE "Ｖ感覚"
+						SIF !VAGINA(TARGET)
+							CONTINUE
+					CASE "Ｃ感覚", "Ａ感覚", "Ｂ感覚"
+					CASEELSE
+						CONTINUE
+				ENDSELECT
+				感覚合計 += ABL:LCOUNT
+				PRINTPLAINFORM 　%ABLNAME:LCOUNT%Lv{ABL:LCOUNT} 
+				PRINTFORM [-{LCOUNT+1}] %ABLNAME:LCOUNT%-1 
+				PRINTFORM [{LCOUNT+1}] %ABLNAME:LCOUNT%+1
+				PRINTL 
 			NEXT
-			CALL NEWLINE
-			SIF TALENT:性別 == 2
-				PRINTFORML [{TALENTF("バストサイズ")}] バストサイズ:%バストサイズ(TALENT:バストサイズ)%
-			DRAWLINE
-			PRINTPLAIN 　ロボットファクトリー　
-			PRINTL [-1] - 戻る
-			DO
-				INPUT
-				SIF RESULT == -1
+		ENDIF
+		交友合計 = 0
+		IF リソース:交友インターフェイス
+			PRINTFORML □コミュニケーション能力を強化 交友インターフェイスを使用(現在{リソース:交友インターフェイス}個所持)
+			FOR LCOUNT, 0, 100
+				SELECTCASE ABLNAME:LCOUNT
+					CASE "従順", "欲望", "技巧", "奉仕精神"
+					CASEELSE
+						CONTINUE
+				ENDSELECT
+				交友合計 += ABL:LCOUNT
+				PRINTPLAINFORM 　%ABLNAME:LCOUNT%Lv{ABL:LCOUNT} 
+				PRINTFORM [-{LCOUNT+1}] %ABLNAME:LCOUNT%-1 
+				PRINTFORM [{LCOUNT+1}] %ABLNAME:LCOUNT%+1
+				PRINTL 
+			NEXT
+		ENDIF
+		中毒合計 = 0
+		IF リソース:制御不能基板
+			PRINTFORML □不規則性プログラムを追加 制御不能基板が必要(現在{リソース:制御不能基板}個所持)
+			FOR LCOUNT, 0, 100
+				SELECTCASE ABLNAME:LCOUNT
+					CASE "自慰中毒", "性液中毒", "レズ中毒", "ゲイ中毒", "性交中毒"
+					CASEELSE
+						CONTINUE
+				ENDSELECT
+				中毒合計 += ABL:LCOUNT
+				PRINTPLAINFORM 　%ABLNAME:LCOUNT%Lv{ABL:LCOUNT} 
+				PRINTFORM [-{LCOUNT+1}] %ABLNAME:LCOUNT%-1 
+				PRINTFORM [{LCOUNT+1}] %ABLNAME:LCOUNT%+1
+				PRINTL 
+			NEXT
+		ENDIF
+		SIF リソース:感情再現デバイス（恋慕）
+			PRINTL [100] - 恋慕を付ける
+		SIF リソース:感情再現デバイス（淫乱）
+			PRINTL [101] - 淫乱を付ける
+		SIF リソース:感情再現デバイス（服従）
+			PRINTL [102] - 服従を付ける
+		SIF FALLTYPE(TARGET)
+			PRINTL [103] - 陥落素質を付けない
+		DRAWLINE
+		PRINTPLAIN 　アイテム使用　
+		PRINTL [0] - 戻る
+		BINPUT
+		LRESULT = RESULT
+		SELECTCASE ABS(LRESULT)
+			CASE 0
+				IF 感覚合計 > リソース:性感センサー
+					PRINTW 性感センサーが足りません
+					GOTO ABL
+				ENDIF
+				IF 交友合計 > リソース:交友インターフェイス
+					PRINTW 交友インターフェイスが足りません
+					GOTO ABL
+				ENDIF
+				IF 中毒合計 > リソース:制御不能基板
+					PRINTW 制御不能基板が足りません
+					GOTO ABL
+				ENDIF
+				RESTART
+			CASE 1 TO 99
+				IF SIGN(LRESULT) == -1
+					SIF ABL:(ABS(LRESULT)-1) > 0
+						ABL:(ABS(LRESULT)-1)--
+				ELSE
+					SIF ABL:(LRESULT-1) < 10
+						ABL:(LRESULT-1)++
+				ENDIF
+			CASE 100
+				TALENT:恋慕 = 1
+				TALENT:淫乱 = 0
+				TALENT:服従 = 0
+			CASE 101
+				TALENT:恋慕 = 0
+				TALENT:淫乱 = 1
+				TALENT:服従 = 0
+			CASE 102
+				TALENT:恋慕 = 0
+				TALENT:淫乱 = 0
+				TALENT:服従 = 1
+			CASE 103
+				TALENT:恋慕 = 0
+				TALENT:淫乱 = 0
+				TALENT:服従 = 0
+		ENDSELECT
+		GOTO ABL
+	CASE 4
+		PRINTL [1] - ランダムで命名する
+		PRINTL [2] - 名前を入力する
+		BINPUT
+		SELECTCASE RESULT
+			CASE 1
+				NAME:TARGET = %ランダム命名(RAND(1, 4))%
+				CALLNAME:TARGET = %NAME:TARGET%
+				RESTART
+			CASE 2
+				PRINTL 名前を入力してください（何も入力しなかった場合は変更されません）
+				INPUTS
+				SIF RESULTS == ""
 					RESTART
-				LRESULT = RESULT
-				IF INRANGE(LRESULT, 0, VARSIZE("TALENT"))
-					IF TALENTNAME:LRESULT == "バストサイズ" && TALENT:性別 == 2
-						PRINTL [1] 絶壁にする
-						PRINTL [2] 貧乳にする
-						PRINTL [3] 並乳にする
-						PRINTL [4] 巨乳にする
-						PRINTL [5] 豊乳にする
-						PRINTL [6] 爆乳にする
-						DO
-							INPUT
-						LOOP LOOPRES(1, 2, 3, 4, 5, 6)
-						TALENT:バストサイズ = RESULT
-						GOTO TALENT
-					ELSEIF 素質変更可能:LRESULT
-						INVERTBIT TALENT:LRESULT, 0
-						GOTO TALENT
-					ENDIF
-				ENDIF
-			LOOP 1
-			RESTART
-		CASE 2
-			SIF CFLAG:複製
-				CONTINUE
-			PRINTL プリセットを選択してください
-			PRINTL [1] - 従順
-			PRINTL [2] - 家事手伝い
-			PRINTL [3] - セクサロイド
-			PRINTL [4] - ポンコツ
-			PRINTL [0] - 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						RESTART
-					CASE 1
-						VARSET TALENT:0, 0, 1
-						TALENT:素直 = 1
-						TALENT:快感に素直 = 1
-						TALENT:大人しい = 1
-						TALENT:献身的 = 1
-						TALENT:汚れ無視 = 1
-						RESTART
-					CASE 2
-						VARSET TALENT:0, 0, 1
-						TALENT:世話好き = 1
-						TALENT:習得早い = 1
-						TALENT:買い物上手 = 1
-						TALENT:潔癖症 = 1
-						TALENT:鼓舞 = 1
-						RESTART
-					CASE 3
-						VARSET TALENT:0, 0, 1
-						TALENT:好奇心 = 1
-						TALENT:汚れ無視 = 1
-						TALENT:回復早い = 1
-						TALENT:男好き = 1
-						TALENT:女好き = 1
-						TALENT:舌使い = 1
-						TALENT:小悪魔 = 1
-						TALENT:倒錯的 = 1
-						RESTART
-					CASE 4
-						VARSET TALENT:0, 0, 1
-						TALENT:反抗的 = 1
-						TALENT:回復遅い = 1
-						TALENT:浪費癖 = 1
-						TALENT:痛みに弱い = 1
-						TALENT:習得遅い = 1
-						TALENT:遊び人 = 1
-						RESTART
-				ENDSELECT
-			LOOP 1
-		CASE 3
-			SIF !アイテムあり
-				CONTINUE
-			VARLINE = 0
-			$ABL
-			SIF VARLINE
-				CLEARLINE LINECOUNT-VARLINE
-			VARLINE = LINECOUNT
-			感覚合計 = 0
-			IF リソース:性感センサー
-				PRINTFORML □感覚の強化 性感センサーを使用(現在{リソース:性感センサー}個所持)
-				FOR LCOUNT, 0, 100
-					SELECTCASE ABLNAME:LCOUNT
-						CASE "Ｖ感覚"
-							SIF !VAGINA(TARGET)
-								CONTINUE
-						CASE "Ｃ感覚", "Ａ感覚", "Ｂ感覚"
-						CASEELSE
-							CONTINUE
-					ENDSELECT
-					感覚合計 += ABL:LCOUNT
-					PRINTPLAINFORM 　%ABLNAME:LCOUNT%Lv{ABL:LCOUNT} 
-					PRINTFORM [-{LCOUNT+1}] %ABLNAME:LCOUNT%-1 
-					PRINTFORM [{LCOUNT+1}] %ABLNAME:LCOUNT%+1
-					PRINTL 
-				NEXT
-			ENDIF
-			交友合計 = 0
-			IF リソース:交友インターフェイス
-				PRINTFORML □コミュニケーション能力を強化 交友インターフェイスを使用(現在{リソース:交友インターフェイス}個所持)
-				FOR LCOUNT, 0, 100
-					SELECTCASE ABLNAME:LCOUNT
-						CASE "従順", "欲望", "技巧", "奉仕精神"
-						CASEELSE
-							CONTINUE
-					ENDSELECT
-					交友合計 += ABL:LCOUNT
-					PRINTPLAINFORM 　%ABLNAME:LCOUNT%Lv{ABL:LCOUNT} 
-					PRINTFORM [-{LCOUNT+1}] %ABLNAME:LCOUNT%-1 
-					PRINTFORM [{LCOUNT+1}] %ABLNAME:LCOUNT%+1
-					PRINTL 
-				NEXT
-			ENDIF
-			中毒合計 = 0
-			IF リソース:制御不能基板
-				PRINTFORML □不規則性プログラムを追加 制御不能基板が必要(現在{リソース:制御不能基板}個所持)
-				FOR LCOUNT, 0, 100
-					SELECTCASE ABLNAME:LCOUNT
-						CASE "自慰中毒", "性液中毒", "レズ中毒", "ゲイ中毒", "性交中毒"
-						CASEELSE
-							CONTINUE
-					ENDSELECT
-					中毒合計 += ABL:LCOUNT
-					PRINTPLAINFORM 　%ABLNAME:LCOUNT%Lv{ABL:LCOUNT} 
-					PRINTFORM [-{LCOUNT+1}] %ABLNAME:LCOUNT%-1 
-					PRINTFORM [{LCOUNT+1}] %ABLNAME:LCOUNT%+1
-					PRINTL 
-				NEXT
-			ENDIF
-			SIF リソース:感情再現デバイス（恋慕）
-				PRINTL [100] - 恋慕を付ける
-			SIF リソース:感情再現デバイス（淫乱）
-				PRINTL [101] - 淫乱を付ける
-			SIF リソース:感情再現デバイス（服従）
-				PRINTL [102] - 服従を付ける
-			SIF FALLTYPE(TARGET)
-				PRINTL [103] - 陥落素質を付けない
-			DRAWLINE
-			PRINTPLAIN 　アイテム使用　
-			PRINTL [0] - 戻る
-			DO
-				INPUT
-				LRESULT = RESULT
-				SELECTCASE ABS(LRESULT)
-					CASE 0
-						IF 感覚合計 > リソース:性感センサー
-							PRINTW 性感センサーが足りません
-							GOTO ABL
-						ENDIF
-						IF 交友合計 > リソース:交友インターフェイス
-							PRINTW 交友インターフェイスが足りません
-							GOTO ABL
-						ENDIF
-						IF 中毒合計 > リソース:制御不能基板
-							PRINTW 制御不能基板が足りません
-							GOTO ABL
-						ENDIF
-						RESTART
-					CASE 1 TO 99
-						IF SIGN(LRESULT) == -1
-							SIF ABL:(ABS(LRESULT)-1) > 0
-								ABL:(ABS(LRESULT)-1)--
-						ELSE
-							SIF ABL:(LRESULT-1) < 10
-								ABL:(LRESULT-1)++
-						ENDIF
-						GOTO ABL
-					CASE 100
-						SIF !リソース:感情再現デバイス（恋慕）
-							CONTINUE
-						TALENT:恋慕 = 1
-						TALENT:淫乱 = 0
-						TALENT:服従 = 0
-						GOTO ABL
-					CASE 101
-						SIF !リソース:感情再現デバイス（淫乱）
-							CONTINUE
-						TALENT:恋慕 = 0
-						TALENT:淫乱 = 1
-						TALENT:服従 = 0
-						GOTO ABL
-					CASE 102
-						SIF !リソース:感情再現デバイス（服従）
-							CONTINUE
-						TALENT:恋慕 = 0
-						TALENT:淫乱 = 0
-						TALENT:服従 = 1
-						GOTO ABL
-					CASE 103
-						TALENT:恋慕 = 0
-						TALENT:淫乱 = 0
-						TALENT:服従 = 0
-						GOTO ABL
-				ENDSELECT
-			LOOP 1
-		CASE 4
-			SIF CFLAG:複製
-				CONTINUE
-			PRINTL [1] - ランダムで命名する
-			PRINTL [2] - 名前を入力する
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 1
-						NAME:TARGET = %ランダム命名(RAND(1, 4))%
-						CALLNAME:TARGET = %NAME:TARGET%
-						RESTART
-					CASE 2
-						PRINTL 名前を入力してください（何も入力しなかった場合は変更されません）
-						INPUTS
-						SIF RESULTS == ""
-							RESTART
-						NAME:TARGET = %RESULTS%
-						CALLNAME:TARGET = %RESULTS%
-						RESTART
-				ENDSELECT
-			LOOP 1
-		CASE 8
-			SELECTCASE TALENT:性別
-				CASE 1
-					TALENT:性別 = 2
-				CASE 2
-					TALENT:性別 = 1
-					TALENT:バストサイズ = 0
-			ENDSELECT
-			RESTART
-		CASE -9
-			SIF MAXBASE:体力 <= 1500
-				CONTINUE
-			MAXBASE:体力 -= 300
-			MAXBASE:気力 -= 300
-			RESTART
-		CASE 9
-			MAXBASE:体力 += 300
-			MAXBASE:気力 += 300
-			RESTART
-		CASE 10
-			IF 製作コスト*コスト基準額 > MONEY+(リソース:マテリアル*コスト基準額) && !ORIGIN
-				PRINTW 所持金が足りません
+				NAME:TARGET = %RESULTS%
+				CALLNAME:TARGET = %RESULTS%
 				RESTART
-			ENDIF
-			IF ORIGIN
-				PRINTL このロボットを作成します。よろしいですか？
-			ELSE
-				IF リソース:マテリアル >= 製作コスト
-					PRINTFORML マテリアル{製作コスト}個を使用してこのロボットを作成します。よろしいですか？
-				ELSEIF リソース:マテリアル
-					CALL PASELIL, @"マテリアルを{リソース:マテリアル}個と{(製作コスト-リソース:マテリアル)*コスト基準額}＄を使用してこのロボットを作成します。よろしいですか？"
-				ELSE
-					CALL PASELIL, @"{製作コスト*コスト基準額}＄を使用してこのロボットを作成します。よろしいですか？"
-				ENDIF
-			ENDIF
-			PRINTL [0] - はい
-			PRINTL [1] - いいえ
-			CALL INPUTF, 0, 1
-			SIF RESULT == 1
-				RESTART
+		ENDSELECT
+	CASE 8
+		SELECTCASE TALENT:性別
+			CASE 1
+				TALENT:性別 = 2
+			CASE 2
+				TALENT:性別 = 1
+				TALENT:バストサイズ = 0
+		ENDSELECT
+		RESTART
+	CASE -9
+		SIF MAXBASE:体力 <= 1500
+			CONTINUE
+		MAXBASE:体力 -= 300
+		MAXBASE:気力 -= 300
+		RESTART
+	CASE 9
+		MAXBASE:体力 += 300
+		MAXBASE:気力 += 300
+		RESTART
+	CASE 10
+		IF 製作コスト*コスト基準額 > MONEY+(リソース:マテリアル*コスト基準額) && !ORIGIN
+			PRINTW 所持金が足りません
+			RESTART
+		ENDIF
+		IF ORIGIN
+			PRINTL このロボットを作成します。よろしいですか？
+		ELSE
 			IF リソース:マテリアル >= 製作コスト
-				リソース:マテリアル -= 製作コスト
+				PRINTFORML マテリアル{製作コスト}個を使用してこのロボットを作成します。よろしいですか？
 			ELSEIF リソース:マテリアル
-				MONEY -= (製作コスト-リソース:マテリアル)*コスト基準額
-				CALL 現金出納帳記録, @"ロボット製作/-{(製作コスト-リソース:マテリアル)*コスト基準額}"
-				リソース:マテリアル = 0
+				CALL PASELIL, @"マテリアルを{リソース:マテリアル}個と{(製作コスト-リソース:マテリアル)*コスト基準額}＄を使用してこのロボットを作成します。よろしいですか？"
 			ELSE
-				MONEY -= 製作コスト*コスト基準額
-				CALL 現金出納帳記録, @"ロボット製作/-{製作コスト*コスト基準額}"
+				CALL PASELIL, @"{製作コスト*コスト基準額}＄を使用してこのロボットを作成します。よろしいですか？"
 			ENDIF
-			;子供と同じ扱い
-			FLAG:子供の数++
-			BUYY = YEAR
-			BUYM = MONTH
-			BUYD = DAYS
-			CFLAG:誕生日 = MONTH*100+DAYS
-			CFLAG:モチベーション = 50
-			リソース:性感センサー -= 感覚合計
-			リソース:交友インターフェイス -= 交友合計
-			リソース:制御不能基板 -= 中毒合計
-			TALENT:無機物 = 1
-			CALL SETBASE, TARGET
-			SELECTCASE FALLTYPE(TARGET)
-				CASE 1
-					リソース:感情再現デバイス（恋慕）--
-				CASE 2
-					リソース:感情再現デバイス（淫乱）--
-				CASE 3
-					リソース:感情再現デバイス（服従）--
-			ENDSELECT
-			IF 素質コスト > 10 && !CFLAG:複製
-				;超過分だけ回して余分な素質が付く
-				FOR LCOUNT, 0, 素質コスト-10
-					SELECTCASE RAND:17
-						CASE 0
-							IF RAND:2
-								TALENT:プライド高い = 1
-								TALENT:プライド低い = 0
-							ELSE
-								TALENT:プライド高い = 0
-								TALENT:プライド低い = 1
-							ENDIF
-						CASE 1
-							TALENT:ツンデレ = 1
-						CASE 2
-							TALENT:衝動的 = 1
-						CASE 3
-							IF RAND:2
-								TALENT:強気 = 1
-								TALENT:弱気 = 0
-							ELSE
-								TALENT:強気 = 0
-								TALENT:弱気 = 1
-							ENDIF
-						CASE 4
-							TALENT:サボり魔 = 1
-						CASE 5
-							TALENT:保守的 = 1
-						CASE 6
-							IF RAND:2
-								TALENT:楽観的 = 1
-								TALENT:悲観的 = 0
-							ELSE
-								TALENT:楽観的 = 0
-								TALENT:悲観的 = 1
-							ENDIF
-						CASE 7
-							TALENT:一線越えない = 1
-						CASE 8
-							TALENT:目立ちたがり = 1
-						CASE 9
-							IF RAND:2
-								TALENT:貞操観念 = 1
-								TALENT:貞操無頓着 = 0
-							ELSE
-								TALENT:貞操観念 = 0
-								TALENT:貞操無頓着 = 1
-							ENDIF
-						CASE 10
-							IF RAND:2
-								TALENT:恥じらい = 1
-								TALENT:恥薄い = 0
-							ELSE
-								TALENT:恥じらい = 0
-								TALENT:恥薄い = 1
-							ENDIF
-						CASE 11
-							TALENT:寂しがり屋 = 1
-						CASE 12
-							TALENT:自慰しやすい = 1
-						CASE 13
-							TALENT:犬嫌い = 1
-						CASE 14
-							TALENT:猫嫌い = 1
-						CASE 15
-							SIF !TALENT:男好き
-								TALENT:男嫌い = 1
-						CASE 16
-							SIF !TALENT:女好き
-								TALENT:女好き = 1
-					ENDSELECT
-				NEXT
-			ENDIF
-			PRINTFORMW %NAME:TARGET%を制作しました
-			IF CFLAG:複製
-				IF 分析データ:(CFLAG:複製) == 1
-					CALL プレイログ記録, @"%CSVNAMEF(CFLAG:複製)%のコピーを生成"
-				ELSE
-					CALL プレイログ記録, @"%CSVNAMEF(CFLAG:複製)%の{分析データ:(CFLAG:複製)}体目のコピーを生成"
-				ENDIF
-				分析データ:(CFLAG:複製)++
+		ENDIF
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		BINPUT
+		SIF RESULT == 1
+			RESTART
+		IF リソース:マテリアル >= 製作コスト
+			リソース:マテリアル -= 製作コスト
+		ELSEIF リソース:マテリアル
+			MONEY -= (製作コスト-リソース:マテリアル)*コスト基準額
+			CALL 現金出納帳記録, @"ロボット製作/-{(製作コスト-リソース:マテリアル)*コスト基準額}"
+			リソース:マテリアル = 0
+		ELSE
+			MONEY -= 製作コスト*コスト基準額
+			CALL 現金出納帳記録, @"ロボット製作/-{製作コスト*コスト基準額}"
+		ENDIF
+		;子供と同じ扱い
+		FLAG:子供の数++
+		BUYY = YEAR
+		BUYM = MONTH
+		BUYD = DAYS
+		CFLAG:誕生日 = MONTH*100+DAYS
+		CFLAG:モチベーション = 50
+		リソース:性感センサー -= 感覚合計
+		リソース:交友インターフェイス -= 交友合計
+		リソース:制御不能基板 -= 中毒合計
+		TALENT:無機物 = 1
+		CALL SETBASE, TARGET
+		SELECTCASE FALLTYPE(TARGET)
+			CASE 1
+				リソース:感情再現デバイス（恋慕）--
+			CASE 2
+				リソース:感情再現デバイス（淫乱）--
+			CASE 3
+				リソース:感情再現デバイス（服従）--
+		ENDSELECT
+		IF 素質コスト > 10 && !CFLAG:複製
+			;超過分だけ回して余分な素質が付く
+			FOR LCOUNT, 0, 素質コスト-10
+				SELECTCASE RAND:17
+					CASE 0
+						IF RAND:2
+							TALENT:プライド高い = 1
+							TALENT:プライド低い = 0
+						ELSE
+							TALENT:プライド高い = 0
+							TALENT:プライド低い = 1
+						ENDIF
+					CASE 1
+						TALENT:ツンデレ = 1
+					CASE 2
+						TALENT:衝動的 = 1
+					CASE 3
+						IF RAND:2
+							TALENT:強気 = 1
+							TALENT:弱気 = 0
+						ELSE
+							TALENT:強気 = 0
+							TALENT:弱気 = 1
+						ENDIF
+					CASE 4
+						TALENT:サボり魔 = 1
+					CASE 5
+						TALENT:保守的 = 1
+					CASE 6
+						IF RAND:2
+							TALENT:楽観的 = 1
+							TALENT:悲観的 = 0
+						ELSE
+							TALENT:楽観的 = 0
+							TALENT:悲観的 = 1
+						ENDIF
+					CASE 7
+						TALENT:一線越えない = 1
+					CASE 8
+						TALENT:目立ちたがり = 1
+					CASE 9
+						IF RAND:2
+							TALENT:貞操観念 = 1
+							TALENT:貞操無頓着 = 0
+						ELSE
+							TALENT:貞操観念 = 0
+							TALENT:貞操無頓着 = 1
+						ENDIF
+					CASE 10
+						IF RAND:2
+							TALENT:恥じらい = 1
+							TALENT:恥薄い = 0
+						ELSE
+							TALENT:恥じらい = 0
+							TALENT:恥薄い = 1
+						ENDIF
+					CASE 11
+						TALENT:寂しがり屋 = 1
+					CASE 12
+						TALENT:自慰しやすい = 1
+					CASE 13
+						TALENT:犬嫌い = 1
+					CASE 14
+						TALENT:猫嫌い = 1
+					CASE 15
+						SIF !TALENT:男好き
+							TALENT:男嫌い = 1
+					CASE 16
+						SIF !TALENT:女好き
+							TALENT:女好き = 1
+				ENDSELECT
+			NEXT
+		ENDIF
+		PRINTFORMW %NAME:TARGET%を制作しました
+		IF CFLAG:複製
+			IF 分析データ:(CFLAG:複製) == 1
+				CALL プレイログ記録, @"%CSVNAMEF(CFLAG:複製)%のコピーを生成"
 			ELSE
-				CALL プレイログ記録, @"ロボット「%NAME:TARGET%」を生成"
+				CALL プレイログ記録, @"%CSVNAMEF(CFLAG:複製)%の{分析データ:(CFLAG:複製)}体目のコピーを生成"
 			ENDIF
-			RETURN 1
-	ENDSELECT
-LOOP 1
+			分析データ:(CFLAG:複製)++
+		ELSE
+			CALL プレイログ記録, @"ロボット「%NAME:TARGET%」を生成"
+		ENDIF
+		RETURN 1
+ENDSELECT
 
 @ロボット改造, 対象
 #DIM DYNAMIC LCOUNT
@@ -707,9 +675,11 @@ PRINTFORM [0] - 決定(必要マテリアル:{必要マテリアル}個)
 PRINT [1] - 戻る 
 PRINTL [2] - 素質を変更する
 
-CALL INPUTF, 0, 1, 2
+BINPUT
 SELECTCASE RESULT
 	CASE 0
+		SIF !必要マテリアル
+			RETURN 0
 		IF リソース:マテリアル < 必要マテリアル
 			PRINTW マテリアルが足りません
 			GOTO RESTART
@@ -717,7 +687,7 @@ SELECTCASE RESULT
 		PRINTFORML マテリアルを{必要マテリアル}個使用して%CALLNAME:TARGET%を改造します。よろしいですか？
 		PRINTL [0] - はい
 		PRINTL [1] - いいえ
-		CALL INPUTF, 0, 1
+		BINPUT
 		SIF RESULT == 1
 			GOTO RESTART
 		PRINTFORMW %CALLNAME:TARGET%に改造を施しました
@@ -733,10 +703,10 @@ SELECTCASE RESULT
 		NEXT
 		リソース:マテリアル -= 必要マテリアル
 		TARGET = LTARGET
-		RETURN
+		RETURN 1
 	CASE 1
 		TARGET = LTARGET
-		RETURN
+		RETURN 0
 	CASE 2
 		VARLINE = 0
 		$TALENT
@@ -771,30 +741,26 @@ SELECTCASE RESULT
 		DRAWLINE
 		PRINTPLAIN 　ロボットファクトリー　
 		PRINTL [-1] - 戻る
-		DO
-			INPUT
-			SIF RESULT == -1
-				GOTO RESTART
-			LRESULT = RESULT
-			IF INRANGE(LRESULT, 0, VARSIZE("TALENT"))
-				IF TALENTNAME:LRESULT == "バストサイズ" && TALENT:性別 == 2
-					PRINTL [1] 絶壁にする
-					PRINTL [2] 貧乳にする
-					PRINTL [3] 並乳にする
-					PRINTL [4] 巨乳にする
-					PRINTL [5] 豊乳にする
-					PRINTL [6] 爆乳にする
-					DO
-						INPUT
-					LOOP LOOPRES(1, 2, 3, 4, 5, 6)
-					素質変更:LRESULT = RESULT
-					GOTO TALENT
-				ELSEIF 素質変更可能:LRESULT
-					INVERTBIT 素質変更:LRESULT, 0
-					GOTO TALENT
-				ENDIF
+		BINPUT
+		SIF RESULT == -1
+			GOTO RESTART
+		LRESULT = RESULT
+		IF INRANGE(LRESULT, 0, VARSIZE("TALENT"))
+			IF TALENTNAME:LRESULT == "バストサイズ" && TALENT:性別 == 2
+				PRINTL [1] 絶壁にする
+				PRINTL [2] 貧乳にする
+				PRINTL [3] 並乳にする
+				PRINTL [4] 巨乳にする
+				PRINTL [5] 豊乳にする
+				PRINTL [6] 爆乳にする
+				BINPUT
+				素質変更:LRESULT = RESULT
+				GOTO TALENT
+			ELSEIF 素質変更可能:LRESULT
+				INVERTBIT 素質変更:LRESULT, 0
+				GOTO TALENT
 			ENDIF
-		LOOP 1
+		ENDIF
 ENDSELECT
 
 @STS_MACHINE
@@ -816,6 +782,8 @@ FONTREGULAR
 表示数 = 0
 次ページあり = 0
 FOR LCOUNT, 1, CHARANUM
+	SIF CFLAG:LCOUNT:キャラロスト
+		CONTINUE
 	SIF !TALENT:LCOUNT:無機物
 		CONTINUE
 	SIF ゲームモード() == "経営モード" && CHARANAMEF(LCOUNT) == パートナー
@@ -869,82 +837,78 @@ PRINT [0] - 戻る
 CALL PRINTSPACE, 次ページあり, "[-9] - 次ページ "
 PRINTL 
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE -1
-			SIF ページ数 > 0
-				ページ数--
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE -1
+		ページ数--
+	CASE -9
+		ページ数++
+	CASE 1 TO CHARANUM
+		対象 = RESULT
+		SIF !TALENT:対象:無機物
+			CONTINUE
+		SIF ゲームモード() == "経営モード" && CHARANAMEF(対象) == パートナー
+			CONTINUE
+		PRINTFORML %NAME:対象%を解体します。よろしいですか？
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		BINPUT
+		SIF RESULT == 1
 			RESTART
-		CASE -9
-			SIF 次ページあり
-				ページ数++
-			RESTART
-		CASE 1 TO CHARANUM
-			対象 = RESULT
-			SIF !TALENT:対象:無機物
-				CONTINUE
-			SIF ゲームモード() == "経営モード" && CHARANAMEF(対象) == パートナー
-				CONTINUE
-			PRINTFORML %NAME:対象%を解体します。よろしいですか？
-			PRINTL [0] - はい
-			PRINTL [1] - いいえ
-			CALL INPUTF, 0, 1
-			SIF RESULT == 1
-				RESTART
-			DRAWLINE
-			RESETCOLOR
-			PRINTFORML %NAME:対象%を解体しました
-			CALL プレイログ記録, @"%NAME:対象%を解体"
-			IF TALENT:対象:小柄体型
-				PRINTL マテリアル+3
-				リソース:マテリアル += 3
-			ELSE
-				PRINTL マテリアル+5
-				リソース:マテリアル += 5
-			ENDIF
+		DRAWLINE
+		RESETCOLOR
+		PRINTFORML %NAME:対象%を解体しました
+		CALL プレイログ記録, @"%NAME:対象%を解体"
+		IF TALENT:対象:小柄体型
+			PRINTL マテリアル+3
+			リソース:マテリアル += 3
+		ELSE
+			PRINTL マテリアル+5
+			リソース:マテリアル += 5
+		ENDIF
 
-			入手数 = ABL:対象:Ｃ感覚+ABL:対象:Ｖ感覚+ABL:対象:Ａ感覚+ABL:対象:Ｂ感覚
-			IF 入手数
-				PRINTFORML 性感センサー+{入手数}
-				リソース:性感センサー += 入手数
-			ENDIF
+		入手数 = ABL:対象:Ｃ感覚+ABL:対象:Ｖ感覚+ABL:対象:Ａ感覚+ABL:対象:Ｂ感覚
+		IF 入手数
+			PRINTFORML 性感センサー+{入手数}
+			リソース:性感センサー += 入手数
+		ENDIF
 
-			SELECTCASE FALLTYPE(対象)
-				CASE 1
-					PRINTL 感情再現デバイス（恋慕）+1
-					リソース:感情再現デバイス（恋慕）++
-				CASE 2
-					PRINTL 感情再現デバイス（淫乱）+1
-					リソース:感情再現デバイス（淫乱）++
-				CASE 3
-					PRINTL 感情再現デバイス（服従）+1
-					リソース:感情再現デバイス（服従）++
-			ENDSELECT
+		SELECTCASE FALLTYPE(対象)
+			CASE 1
+				PRINTL 感情再現デバイス（恋慕）+1
+				リソース:感情再現デバイス（恋慕）++
+			CASE 2
+				PRINTL 感情再現デバイス（淫乱）+1
+				リソース:感情再現デバイス（淫乱）++
+			CASE 3
+				PRINTL 感情再現デバイス（服従）+1
+				リソース:感情再現デバイス（服従）++
+		ENDSELECT
 
-			入手数 = ABL:対象:従順+ABL:対象:欲望+ABL:対象:技巧+ABL:対象:奉仕精神
-			IF 入手数
-				PRINTFORML 交友インターフェイス+{入手数}
-				リソース:交友インターフェイス += 入手数
-			ENDIF
+		入手数 = ABL:対象:従順+ABL:対象:欲望+ABL:対象:技巧+ABL:対象:奉仕精神
+		IF 入手数
+			PRINTFORML 交友インターフェイス+{入手数}
+			リソース:交友インターフェイス += 入手数
+		ENDIF
 
-			入手数 = ABL:対象:自慰中毒+ABL:対象:精液中毒+ABL:対象:レズ中毒+ABL:対象:ゲイ中毒+ABL:対象:性交中毒+ABL:対象:噴乳中毒
-			IF 入手数
-				PRINTFORML 制御不能基板+{入手数}
-				リソース:制御不能基板 += 入手数
-			ENDIF
+		入手数 = ABL:対象:自慰中毒+ABL:対象:精液中毒+ABL:対象:レズ中毒+ABL:対象:ゲイ中毒+ABL:対象:性交中毒+ABL:対象:噴乳中毒
+		IF 入手数
+			PRINTFORML 制御不能基板+{入手数}
+			リソース:制御不能基板 += 入手数
+		ENDIF
 
-			IF NOF(対象) < 10000 && !分析データ:NOF(対象)
-				PRINTFORML %CALLNAME:対象%の構成データを解析できるようになりました
-				分析データ:NOF(対象) = 1
-			ENDIF
-			WAIT
-			CALL CLEAR_CHARA, 対象, 1
-			RESTART
-	ENDSELECT
-LOOP 1
+		IF NOF(対象) < 10000 && !分析データ:NOF(対象)
+			PRINTFORML %CALLNAME:対象%の構成データを解析できるようになりました
+			分析データ:NOF(対象) = 1
+		ENDIF
+		WAIT
+		CSTR:対象:ロスト要因 = 解体
+		CSTR:対象:ロスト詳細 = 体中のパーツを分解された
+		CALL CLEAR_CHARA, 対象, 1
+		RETURN 1
+ENDSELECT
 
 @機械化
 #DIM DYNAMIC 可否
@@ -998,6 +962,7 @@ SELECTCASE SEX(対象)
 ENDSELECT
 
 PRINTFORMW %CALLNAME:対象%の人格を機械の体に移植し、身体は依代として保管しました
+MONEY -= 100000
 CALL 現金出納帳記録, @"%NAME:対象%の機械化/-100000"
 
-RETURN
+RETURN 1

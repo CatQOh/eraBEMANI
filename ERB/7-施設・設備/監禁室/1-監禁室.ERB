@@ -22,34 +22,28 @@ DRAWLINE
 PRINTPLAIN 　監禁室　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1
-			CALL 監禁室選択
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		CALL 監禁室選択
+	CASE 2
+		CALL STRATEGY_PERSONAL, "監禁室"
+	CASE 3
+		CALL 監禁室_状況
+	CASE 4
+		IF MONEY < TONUM("100万")
+			PRINTW 所持金が足りません
 			RESTART
-		CASE 2
-			CALL STRATEGY_PERSONAL, "監禁室"
-			RESTART
-		CASE 3
-			CALL 監禁室_状況
-			RESTART
-		CASE 4
-			SIF ITEM:監禁室 >= 10
-				CONTINUE
-			IF MONEY < TONUM("100万")
-				PRINTW 所持金が足りません
-				RESTART
-			ENDIF
-			PRINTW 部屋を増築しました
-			ITEM:監禁室++
-			MONEY -= TONUM("100万")
-			CALL 現金出納帳記録, @"監禁室増築/-1000000"
-			RESTART
-	ENDSELECT
-LOOP 1
+		ENDIF
+		PRINTW 部屋を増築しました
+		ITEM:監禁室++
+		MONEY -= TONUM("100万")
+		CALL 現金出納帳記録, @"監禁室増築/-1000000"
+ENDSELECT
+
+RESTART
 
 @監禁室_状況
 #DIM DYNAMIC LCOUNT
@@ -108,6 +102,8 @@ WAIT
 #DIM DYNAMIC 搾精量
 #DIM DYNAMIC 比率
 #DIM DYNAMIC 人数
+#DIM DYNAMIC 自慰回数
+#DIM DYNAMIC 調教経験増加量
 
 人数 = 0
 FOR LCOUNT, 1, CHARANUM
@@ -145,6 +141,8 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 	ENDIF
 
 	VARSET 監禁方法
+	自慰回数 = 0
+	調教経験増加量 = 0
 	SPLIT 監禁室使用状況:LCOUNT, "/", 監禁方法
 	;比率を求める
 	SIF RESULT >= 2
@@ -244,6 +242,7 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 			ELSEIF FINDELEMENT(監禁方法, "スタッフの手") > 0 && スタッフ:0 > 0
 				PRINTFORML %CALLNAME:スタッフ%の手で数回に分けて搾乳を行ったようだ
 				比率 = 3
+				調教経験増加量 = 3
 			ENDIF
 			IF TALENT:監禁対象:小人体型
 				PRINTFORML {比率*30}mlの母乳を採取した
@@ -256,6 +255,8 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 				リソース:母乳 += 比率*100
 			ENDIF
 			CALL EXPUP, "噴乳経験", 比率, 監禁対象
+			SIF 調教経験増加量
+				CALL EXPUP, "調教経験", 調教経験増加量, スタッフ
 		CASE "搾精監禁"
 			PRINTFORML %CALLNAME:監禁対象%が搾精されている
 			VARSET 搾精内容, 0
@@ -313,6 +314,7 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 					ENDSELECT
 				ENDIF
 				搾精内容:3 = 技巧合計+5
+				調教経験増加量 = 5
 			ELSE
 				;尿道も機械も人の手も無し
 				IF !搾精内容:1 && !搾精内容:2
@@ -321,14 +323,17 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 						IF FALLTYPE(監禁対象) == 2
 							PRINT 性欲と渇望のままに何度も自慰を行い、精液採取用の道具を一杯にしていた
 							搾精内容:3 = 10
+							自慰回数 = 10
 						ELSE
 							PRINT とうとう我慢できなくなったのか自慰を行って精液採取用の道具に精液を溜めた
 							搾精内容:3 = 5
+							自慰回数 = 5
 						ENDIF
 					ELSE
 						IF FALLTYPE(監禁対象) == 2
 							PRINT 精液の提出を要求されると、監禁室にある本や道具を使って自慰を行っていた
 							搾精内容:3 = 5
+							自慰回数 = 5
 						ELSE
 							PRINT 監禁に不満を示し、最後まで自慰と精液の提出を行うことはなかった
 							搾精内容:3 = 0
@@ -347,6 +352,10 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 				CALL EXPUP, "射精経験", 搾精量/15, 監禁対象
 				CALL EXPUP, "射精管理経験", 搾精内容:1+搾精内容:2, 監禁対象
 				CALL EXPUP, "緊縛経験", 2, 監禁対象
+				SIF 自慰回数
+					CALL EXPUP, "自慰経験", 自慰回数, 監禁対象
+				SIF 調教経験増加量
+					CALL EXPUP, "調教経験", 調教経験増加量, スタッフ
 			ENDIF
 		CASE "採血監禁"
 			PRINTFORML %CALLNAME:監禁対象%が採血のために監禁されている
@@ -356,6 +365,7 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 			ELSEIF FINDELEMENT(監禁方法, "スタッフの手") > 0 && スタッフ:0 > 0
 				PRINTFORML %CALLNAME:スタッフ%の手で数回に分けて採血を行ったようだ
 				比率 = 1
+				調教経験増加量 = 3
 			ENDIF
 			IF TALENT:監禁対象:小人体型
 				PRINTFORML {比率*50}mlの血液を採取した
@@ -373,6 +383,8 @@ FOR LCOUNT, 1, ITEM:監禁室+1
 				PRINTFORMW %CALLNAME:監禁対象%のDNAデータを解析できるようになりました
 				DNAデータ:NOF(監禁対象) = 1
 			ENDIF
+			SIF 調教経験増加量
+				CALL EXPUP, "医療経験", 調教経験増加量, スタッフ
 		CASE "スライム監禁"
 			IF TALENT:監禁対象:スライム || TALENT:監禁対象:溶ける快
 				IF スタッフ

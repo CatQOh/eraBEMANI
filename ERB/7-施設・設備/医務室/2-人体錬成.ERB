@@ -11,9 +11,9 @@ DRAWLINE
 
 PRINTL □保管した血液から新しいキャラを作ることができます
 PRINTFORM 　保管済み血液:{リソース:血液}ml 保管済み粘液:{リソース:粘液}ml 
-FOR LCOUNT, GETNUM(ITEM, "ケモミミが付いた頭"), GETNUM(ITEM, "ケモミミが付いた頭")+30
-	SIF ITEM:LCOUNT
-		PRINTFORM %ITEMNAME:LCOUNT%×{ITEM:LCOUNT} 
+FOR LCOUNT, GETNUM(リソース, "ケモミミが付いた頭"), GETNUM(リソース, "ケモミミが付いた頭")+50
+	SIF リソース:LCOUNT
+		PRINTFORM %ERDNAME(リソース, LCOUNT)%×{リソース:LCOUNT} 
 NEXT
 PRINTL 
 PRINTL □人体錬成の条件を選択してください
@@ -26,55 +26,54 @@ PRINTL 　[6] - 霊体に依代を用意する
 DRAWLINE
 PRINTPLAIN 　人体錬成　
 PRINTL 　[0] - 戻る
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1
-			IF 性別設定 == 1
-				性別設定 = 2
-			ELSE
-				性別設定 = 1
-			ENDIF
+
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		IF 性別設定 == 1
+			性別設定 = 2
+		ELSE
+			性別設定 = 1
+		ENDIF
+		RESTART
+	CASE 2
+		INVERTBIT 体型設定, 0
+		RESTART
+	CASE 3
+		INVERTBIT スライム設定, 0
+		RESTART
+	CASE 4
+		$REROLL
+		CALL ADD_ランダムキャラ, 性別設定, 体型設定, 1
+		対象 = CHARANUM-1
+	CASE 5
+		CALL 所持DNA
+		SIF RESULT == 0
 			RESTART
-		CASE 2
-			INVERTBIT 体型設定, 0
-			RESTART
-		CASE 3
-			INVERTBIT スライム設定, 0
-			RESTART
-		CASE 4
-			$REROLL
-			CALL ADD_ランダムキャラ, 性別設定, 体型設定, 1
-			対象 = CHARANUM-1
-			BREAK
-		CASE 5
-			CALL 所持DNA
-			SIF RESULT == 0
-				RESTART
-			オリジナル = RESULT
-			CALL CHARA_ADD, オリジナル, 1
-			対象 = CHARANUM-1
-			CFLAG:対象:複製 = オリジナル
-			魔法技能記録用 = ABL:対象:魔法技能
-			;EXPとABLを初期化するが魔法技能だけ例外
-			VARSET EXP:対象:0
-			VARSET ABL:対象:0
-			ABL:対象:魔法技能 = 魔法技能記録用
-			;相性や関係も初期化する
-			VARSET RELATION:対象:0, 100
-			CALL 初期経験リセット, 対象
-			SIF PENIS(対象)
-				TALENT:対象:童貞 = 1
-			SIF VAGINA(対象)
-				TALENT:対象:処女 = 1
-			BREAK
-		CASE 6
-			CALL ANIMATE_BODY
-			RESTART
-	ENDSELECT
-LOOP 1
+		オリジナル = RESULT
+		CALL CHARA_ADD, オリジナル, 1
+		対象 = CHARANUM-1
+		CFLAG:対象:複製 = オリジナル
+		魔法技能記録用 = ABL:対象:魔法技能
+		;EXPとABLを初期化するが魔法技能だけ例外
+		VARSET EXP:対象:0
+		VARSET ABL:対象:0
+		ABL:対象:魔法技能 = 魔法技能記録用
+		;相性や関係も初期化する
+		VARSET RELATION:対象:0, 100
+		CALL 初期経験リセット, 対象
+		SIF PENIS(対象)
+			TALENT:対象:童貞 = 1
+		SIF VAGINA(対象)
+			TALENT:対象:処女 = 1
+	CASE 6
+		CALL ANIMATE_BODY
+		SIF RESULT
+			RETURN 1
+		RESTART
+ENDSELECT
 
 IF TALENT:対象:小柄体型
 	IF リソース:血液 < 3000
@@ -106,13 +105,17 @@ CFLAG:対象:人工物 = 1
 VARSET HIDE_TALENT
 IF CFLAG:対象:複製
 	NAME:対象 = %NAME:対象%(クローン\@ DNAデータ:(CFLAG:対象:複製) >= 2 ? {DNAデータ:(CFLAG:対象:複製)} #\@)
-	CALLNAME:対象 = %NAME:対象%
+	CALLNAME:対象 = %CALLNAME:対象%(クローン\@ DNAデータ:(CFLAG:対象:複製) >= 2 ? {DNAデータ:(CFLAG:対象:複製)} #\@)
 ENDIF
 
 CALL 人体錬成_調整, 対象
 
-SIF RESULT
+;再生成
+SIF RESULT == 1
 	GOTO REROLL
+;生成した=ターン終了
+SIF RESULT == 2
+	RETURN 1
 
 RESTART
 
@@ -122,14 +125,13 @@ RESTART
 #DIM DYNAMIC LRESULT
 #DIM DYNAMIC 服装選出用
 
-
 CALL ADD_ランダムキャラ_STATUS, 対象, 1
 
 DRAWLINE
 IF !CFLAG:対象:複製
-	FOR LCOUNT, GETNUM(ITEM, "ケモミミが付いた頭"), GETNUM(ITEM, "ケモミミが付いた頭")+30
-		SIF ITEM:LCOUNT
-			PRINTFORMLC 　[{LCOUNT}]%ITEMNAME:LCOUNT%×{ITEM:LCOUNT} 
+	FOR LCOUNT, GETNUM(リソース, "ケモミミが付いた頭"), GETNUM(リソース, "ケモミミが付いた頭")+50
+		SIF リソース:LCOUNT
+			PRINTFORMLC 　[{LCOUNT}]%ERDNAME(リソース, LCOUNT)%×{リソース:LCOUNT} 
 	NEXT
 ENDIF
 CALL NEWLINE
@@ -150,219 +152,200 @@ IF CFLAG:対象:複製
 ENDIF
 PRINTL 
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			CALL CLEAR_CHARA, 対象, 1
-			RETURN 0
-		CASE 1
-			TARGET = 対象
-			PRINTFORML %NAME:TARGET%を錬成しました
-			;子供と同じ扱い
-			FLAG:子供の数++
-			BUYY = YEAR
-			BUYM = MONTH
-			BUYD = DAYS
-			CFLAG:誕生日 = MONTH*100+DAYS
-			CFLAG:モチベーション = 50
-			IF TALENT:小柄体型
-				PRINTL 保管済み血液を3000ml使用しました
-				リソース:血液 -= 3000
-			ELSE
-				PRINTL 保管済み血液を5000ml使用しました
-				リソース:血液 -= 5000
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		CALL CLEAR_CHARA, 対象, 1
+		RETURN 0
+	CASE 1
+		TARGET = 対象
+		PRINTFORML %NAME:TARGET%を錬成しました
+		;子供と同じ扱い
+		FLAG:子供の数++
+		BUYY = YEAR
+		BUYM = MONTH
+		BUYD = DAYS
+		CFLAG:誕生日 = MONTH*100+DAYS
+		CFLAG:モチベーション = 50
+		IF TALENT:小柄体型
+			PRINTL 保管済み血液を3000ml使用しました
+			リソース:血液 -= 3000
+		ELSE
+			PRINTL 保管済み血液を5000ml使用しました
+			リソース:血液 -= 5000
+		ENDIF
+		IF ISSLIME(TARGET)
+			PRINTL 保管済み粘液を500ml使用しました
+			リソース:粘液 -= 500
+		ENDIF
+		IF !CFLAG:対象:複製
+			IF TALENT:動物耳
+				PRINTL ケモミミが付いた頭を付けました
+				リソース:ケモミミが付いた頭--
 			ENDIF
-			IF ISSLIME(TARGET)
-				PRINTL 保管済み粘液を500ml使用しました
-				リソース:粘液 -= 500
+			IF TALENT:羽
+				PRINTL 翼の生えた胴体を付けました
+				リソース:翼の生えた胴体--
 			ENDIF
-			IF !CFLAG:対象:複製
-				IF TALENT:動物耳
-					PRINTL ケモミミが付いた頭を付けました
-					リソース:ケモミミが付いた頭--
+			IF TALENT:尻尾
+				PRINTL 切断された尻尾を使用しました
+				リソース:切断された尻尾--
+			ENDIF
+			IF TALENT:足使用不可
+				PRINTL 人魚の下半身を付けました
+				リソース:人魚の下半身--
+			ENDIF
+			SELECTCASE CSTR:種族
+				CASE "悪魔"
+					PRINTL 悪魔の心臓を植え付けました
+					リソース:悪魔の心臓--
+				CASE "天使"
+					PRINTL 天使の心臓を植え付けました
+					リソース:天使の心臓--
+				CASE "神"
+					PRINTL 神の心臓を植え付けました
+					リソース:神の心臓--
+				CASE "魔術師"
+					PRINTL 魔術師の心臓を植え付けました
+					リソース:魔術師の心臓--
+					ABL:魔法技能 = 3
+					MAXBASE:魔力 = 3000
+					BASE:魔力 = 3000
+			ENDSELECT
+			CALL プレイログ記録, @"キャラクター「%NAME:TARGET%」を錬成"
+		ELSE
+			IF GETCHARA(CFLAG:対象:複製) > 0 && !CFLAG:GETCHARA(CFLAG:対象:複製):キャラロスト
+				CALL JUELUP, "否定", 10000, GETCHARA(CFLAG:対象:複製)
+				CALL KOJO_MESSAGE_EVENT, "クローン生成", GETCHARA(CFLAG:対象:複製)
+				IF MARK:GETCHARA(CFLAG:対象:複製):反発刻印 < 3
+					PRINTFORML オリジナルの%NAME:GETCHARA(CFLAG:対象:複製)%の反発刻印がLv3になった
+					MARK:GETCHARA(CFLAG:対象:複製):反発刻印 = 3
 				ENDIF
-				IF TALENT:羽
-					PRINTL 翼の生えた胴体を付けました
-					リソース:翼の生えた胴体--
-				ENDIF
-				IF TALENT:尻尾
-					PRINTL 切断された尻尾を使用しました
-					リソース:切断された尻尾--
-				ENDIF
-				IF TALENT:足使用不可
-					PRINTL 人魚の下半身を付けました
-					リソース:人魚の下半身--
-				ENDIF
-				SELECTCASE CSTR:種族
-					CASE "悪魔"
-						PRINTL 悪魔の心臓を植え付けました
-						リソース:悪魔の心臓--
-					CASE "天使"
-						PRINTL 天使の心臓を植え付けました
-						リソース:天使の心臓--
-					CASE "神"
-						PRINTL 神の心臓を植え付けました
-						リソース:神の心臓--
-					CASE "魔術師"
-						PRINTL 魔術師の心臓を植え付けました
-						リソース:魔術師の心臓--
-						ABL:魔法技能 = 3
-						MAXBASE:魔力 = 3000
-						BASE:魔力 = 3000
-				ENDSELECT
-				CALL プレイログ記録, @"キャラクター「%NAME:TARGET%」を錬成"
+			ENDIF
+			IF DNAデータ:(CFLAG:対象:複製) == 1
+				CALL プレイログ記録, @"%CSVNAME(CFLAG:対象:複製)%のクローンを錬成"
 			ELSE
-				IF GETCHARA(CFLAG:対象:複製) > 0
-					CALL JUELUP, "否定", 10000, GETCHARA(CFLAG:対象:複製)
-					CALL KOJO_MESSAGE_EVENT, "クローン生成", GETCHARA(CFLAG:対象:複製)
-					IF MARK:GETCHARA(CFLAG:対象:複製):反発刻印 < 3
-						PRINTFORML オリジナルの%NAME:GETCHARA(CFLAG:対象:複製)%の反発刻印がLv3になった
-						MARK:GETCHARA(CFLAG:対象:複製):反発刻印 = 3
-					ENDIF
-				ENDIF
-				IF DNAデータ:(CFLAG:対象:複製) == 1
-					CALL プレイログ記録, @"%CSVNAME(CFLAG:対象:複製)%のクローンを錬成"
+				CALL プレイログ記録, @"%CSVNAME(CFLAG:対象:複製)%の{DNAデータ:(CFLAG:対象:複製)}体目のクローンを錬成"
+			ENDIF
+			DNAデータ:(CFLAG:対象:複製)++
+		ENDIF
+		PRINTL 服を着せますか？
+		PRINTL [0] - 何も着せない
+		PRINTL [1] - 適当に何か着せる
+		SIF CFLAG:対象:複製
+			PRINTL [2] - オリジナルと同じ服を着せる
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				FOR LCOUNT, 100, 107
+					CSTR:LCOUNT =
+				NEXT
+				CFLAG:挿入可 = 0
+				CFLAG:着衣併用 = 0
+				CFLAG:上着パイズリ = 0
+				CFLAG:下着パイズリ = 0
+			CASE 1
+				服装選出用 = RAND(1, 10000)
+				WHILE !EXISTCSV(服装選出用) || CSVTALENT(服装選出用, GETNUM(TALENT, "性別")) != SEX(対象)
+					服装選出用 += RAND:10+1
+					SIF 服装選出用 >= 10000
+						服装選出用 = 1
+				WEND
+				FOR LCOUNT, 100, 107
+					CSTR:LCOUNT = %CSVCSTR(服装選出用, LCOUNT)%
+				NEXT
+				CFLAG:挿入可 = CSVCFLAG(服装選出用, GETNUM(CFLAG, "挿入可"))
+				CFLAG:着衣併用 = CSVCFLAG(服装選出用, GETNUM(CFLAG, "着衣併用"))
+				CFLAG:上着パイズリ = CSVCFLAG(服装選出用, GETNUM(CFLAG, "上着パイズリ"))
+				CFLAG:下着パイズリ = CSVCFLAG(服装選出用, GETNUM(CFLAG, "下着パイズリ"))
+		ENDSELECT
+		RETURN 2
+	CASE 2
+		PRINTL [1] - ランダムで命名する
+		PRINTL [2] - 名前を入力する
+		BINPUT
+		SELECTCASE RESULT
+			CASE 1
+				NAME:対象 = %ランダム命名(RAND(1, 4))%
+				CALLNAME:対象 = %NAME:対象%
+			CASE 2
+				PRINTL 名前を入力してください（何も入力しなかった場合は変更されません）
+				INPUTS
+				SIF RESULTS == ""
+					RESTART
+				NAME:対象 = %RESULTS%
+				CALLNAME:対象 = %RESULTS%
+		ENDSELECT
+	CASE 3
+		CALL CLEAR_CHARA, 対象, 1
+		RETURN 1
+	CASE 4
+		SELECTCASE TALENT:対象:性別
+			CASE 1
+				TALENT:対象:性別 = 2
+				IF TALENT:対象:小柄体型
+					TALENT:対象:バストサイズ = 2
 				ELSE
-					CALL プレイログ記録, @"%CSVNAME(CFLAG:対象:複製)%の{DNAデータ:(CFLAG:対象:複製)}体目のクローンを錬成"
+					TALENT:対象:バストサイズ = 3
 				ENDIF
-				DNAデータ:(CFLAG:対象:複製)++
-			ENDIF
-			PRINTL 服を着せますか？
-			PRINTL [0] - 何も着せない
-			PRINTL [1] - 適当に何か着せる
-			SIF CFLAG:対象:複製
-				PRINTL [2] - オリジナルと同じ服を着せる
-			CALL INPUTF, 0, 1, 2
-			SELECTCASE RESULT
-				CASE 0
-					FOR LCOUNT, 100, 107
-						CSTR:LCOUNT =
-					NEXT
-					CFLAG:挿入可 = 0
-					CFLAG:着衣併用 = 0
-					CFLAG:上着パイズリ = 0
-					CFLAG:下着パイズリ = 0
-				CASE 1
-					服装選出用 = RAND(1, 10000)
-					WHILE !EXISTCSV(服装選出用) || CSVTALENT(服装選出用, GETNUM(TALENT, "性別")) != SEX(対象)
-						服装選出用++
-						SIF 服装選出用 >= 10000
-							服装選出用 = 1
-					WEND
-					FOR LCOUNT, 100, 107
-						CSTR:LCOUNT = %CSVCSTR(服装選出用, LCOUNT)%
-					NEXT
-					CFLAG:挿入可 = CSVCFLAG(服装選出用, GETNUM(CFLAG, "挿入可"))
-					CFLAG:着衣併用 = CSVCFLAG(服装選出用, GETNUM(CFLAG, "着衣併用"))
-					CFLAG:上着パイズリ = CSVCFLAG(服装選出用, GETNUM(CFLAG, "上着パイズリ"))
-					CFLAG:下着パイズリ = CSVCFLAG(服装選出用, GETNUM(CFLAG, "下着パイズリ"))
+			CASE 2
+				TALENT:対象:性別 = 1
+				TALENT:対象:バストサイズ = 0
+		ENDSELECT
+		TALENT:対象:童貞 = PENIS(対象)
+		TALENT:対象:処女 = VAGINA(対象)
+	CASE 5
+		PRINTL 体型を選んでください
+		PRINTL [1] - 普通体型
+		PRINTL [2] - 小柄体型
+		PRINTL [3] - 小人体型
+		BINPUT
+		SELECTCASE RESULT
+			CASE 1
+				TALENT:対象:小柄体型 = 0
+				TALENT:対象:小人体型 = 0
+			CASE 2
+				TALENT:対象:小柄体型 = 1
+				TALENT:対象:小人体型 = 0
+			CASE 3
+				TALENT:対象:小柄体型 = 0
+				TALENT:対象:小人体型 = 1
+		ENDSELECT
+	CASE 6
+		PRINTL バストサイズを選んでください
+		PRINTL [1] - 絶壁
+		PRINTL [2] - 貧乳
+		PRINTL [3] - 並乳
+		PRINTL [4] - 巨乳
+		PRINTL [5] - 豊乳
+		PRINTL [6] - 爆乳
+		BINPUT
+		TALENT:対象:バストサイズ = RESULT
+	CASEELSE
+		LRESULT = RESULT
+		IF INRANGE(LRESULT, リソース, VARSIZE("リソース")) && リソース:LRESULT
+			SELECTCASE ERDNAME(リソース, LRESULT)
+				CASE "ケモミミが付いた頭"
+					INVERTBIT TALENT:対象:動物耳, 0
+				CASE "翼の生えた胴体"
+					INVERTBIT TALENT:対象:羽, 0
+				CASE "人魚の下半身"
+					INVERTBIT TALENT:対象:足使用不可, 0
+				CASE "切断された尻尾"
+					INVERTBIT TALENT:対象:尻尾, 0
+				CASE "悪魔の心臓"
+					CSTR:対象:種族 = 悪魔
+				CASE "天使の心臓"
+					CSTR:対象:種族 = 天使
+				CASE "神の心臓"
+					CSTR:対象:種族 = 神
+				CASE "魔術師の心臓"
+					CSTR:対象:種族 = 魔術師
 			ENDSELECT
-			RETURN 0
-		CASE 2
-			SIF CFLAG:対象:複製
-				CONTINUE
-			PRINTL [1] - ランダムで命名する
-			PRINTL [2] - 名前を入力する
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 1
-						NAME:対象 = %ランダム命名(RAND(1, 4))%
-						CALLNAME:対象 = %NAME:対象%
-						RESTART
-					CASE 2
-						PRINTL 名前を入力してください（何も入力しなかった場合は変更されません）
-						INPUTS
-						SIF RESULTS == ""
-							RESTART
-						NAME:対象 = %RESULTS%
-						CALLNAME:対象 = %RESULTS%
-						RESTART
-				ENDSELECT
-			LOOP 1
-		CASE 3
-			SIF CFLAG:対象:複製
-				CONTINUE
-			CALL CLEAR_CHARA, 対象, 1
-			RETURN 1
-		CASE 4
-			SIF !CFLAG:対象:複製
-				CONTINUE
-			SELECTCASE TALENT:対象:性別
-				CASE 1
-					TALENT:対象:性別 = 2
-					IF TALENT:対象:小柄体型
-						TALENT:対象:バストサイズ = 2
-					ELSE
-						TALENT:対象:バストサイズ = 3
-					ENDIF
-				CASE 2
-					TALENT:対象:性別 = 1
-					TALENT:対象:バストサイズ = 0
-			ENDSELECT
-			TALENT:対象:童貞 = PENIS(対象)
-			TALENT:対象:処女 = VAGINA(対象)
-			RESTART
-		CASE 5
-			SIF !CFLAG:対象:複製
-				CONTINUE
-			PRINTL 体型を選んでください
-			PRINTL [1] - 普通体型
-			PRINTL [2] - 小柄体型
-			PRINTL [3] - 小人体型
-			CALL INPUTF, 1, 2, 3
-			SELECTCASE RESULT
-				CASE 1
-					TALENT:対象:小柄体型 = 0
-					TALENT:対象:小人体型 = 0
-				CASE 2
-					TALENT:対象:小柄体型 = 1
-					TALENT:対象:小人体型 = 0
-				CASE 3
-					TALENT:対象:小柄体型 = 0
-					TALENT:対象:小人体型 = 1
-			ENDSELECT
-			RESTART
-		CASE 6
-			SIF SEX(対象) != 2 || !CFLAG:対象:複製
-				CONTINUE
-			PRINTL バストサイズを選んでください
-			PRINTL [1] - 絶壁
-			PRINTL [2] - 貧乳
-			PRINTL [3] - 並乳
-			PRINTL [4] - 巨乳
-			PRINTL [5] - 豊乳
-			PRINTL [6] - 爆乳
-			CALL INPUTF, 1, 2, 3, 4, 5, 6
-			TALENT:対象:バストサイズ = RESULT
-			RESTART
-		CASEELSE
-			LRESULT = RESULT
-			IF INRANGE(LRESULT, 0, VARSIZE("ITEM")) && ITEM:LRESULT
-				SELECTCASE ITEMNAME:LRESULT
-					CASE "ケモミミが付いた頭"
-						INVERTBIT TALENT:対象:動物耳, 0
-					CASE "翼の生えた胴体"
-						INVERTBIT TALENT:対象:羽, 0
-					CASE "人魚の下半身"
-						INVERTBIT TALENT:対象:足使用不可, 0
-					CASE "切断された尻尾"
-						INVERTBIT TALENT:対象:尻尾, 0
-					CASE "悪魔の心臓"
-						CSTR:対象:種族 = 悪魔
-					CASE "天使の心臓"
-						CSTR:対象:種族 = 天使
-					CASE "神の心臓"
-						CSTR:対象:種族 = 神
-					CASE "魔術師の心臓"
-						CSTR:対象:種族 = 魔術師
-				ENDSELECT
-				RESTART
-			ENDIF
-	ENDSELECT
-LOOP 1
+		ENDIF
+ENDSELECT
 
+RESTART
 
 @所持DNA, ロボット
 #DIM DYNAMIC LCOUNT
@@ -395,24 +378,19 @@ PRINT [0] - 戻る
 CALL PRINTSPACE, 次ページあり, "[-9]  - 次ページ"
 PRINTL 
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE -1
-			SIF ページ数 > 0
-				ページ数--
-			RESTART
-		CASE -9
-			SIF 次ページあり
-				ページ数++
-			RESTART
-		CASEELSE
-			SIF (!ロボット && DNAデータ:RESULT) || (ロボット && 分析データ:RESULT)
-				RETURN RESULT
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE -1
+		ページ数--
+	CASE -9
+		ページ数++
+	CASEELSE
+		RETURN RESULT
+ENDSELECT
+
+RESTART
 
 @ANIMATE_BODY
 #DIM DYNAMIC 対象
@@ -425,7 +403,7 @@ FOR PAGING, 0, CHARANUM
 NEXT
 
 SIF RESULT == -1
-	RETURN
+	RETURN 0
 
 対象 = RESULT
 
@@ -445,7 +423,7 @@ PRINTFORML 血液を\@ TALENT:対象:小柄体型 ? 3000ml # 5000ml \@使用し�
 PRINTL [0] - はい
 PRINTL [1] - いいえ
 
-CALL INPUTF, 0, 1
+BINPUT
 SIF RESULT == 1
 	RESTART
 
@@ -460,4 +438,4 @@ TARGET = 対象
 CSTR:種族 = 人間
 TALENT:霊体 = 0
 
-RETURN
+RETURN 1
