@@ -152,16 +152,12 @@ DRAWLINE
 PRINTPLAIN 　ショートカット　
 PRINTL [-1] - 戻る
 
-DO
-	INPUT
-	登録番号 = RESULT
-	SELECTCASE 登録番号
-		CASE -1
-			RETURN 0
-		CASE 0 TO VARSIZE("LNK")
-			BREAK
-	ENDSELECT
-LOOP 1
+BINPUT
+登録番号 = RESULT
+SELECTCASE 登録番号
+	CASE -1
+		RETURN 0
+ENDSELECT
 
 $コマンド選択
 DRAWLINE
@@ -174,150 +170,112 @@ PRINTL 　[5] - ○○(キャラ)の部屋に行く
 PRINTL 　[6] - セーブ関連
 PRINTL 　[7] - ロード関連
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 1
-			FOR PAGING, 1, CHARANUM
-				CALL PAGING, 1, "", "TARGET"
-			NEXT
-			SIF RESULT == -1
-				GOTO コマンド選択
-			IF NOF(RESULT) > 10000
-				LNK:登録番号 = 調教/{NOF(RESULT)}
-			ELSE
-				LNK:登録番号 = 調教/%NAME:RESULT%
-			ENDIF
-		CASE 2
-			FOR PAGING, 1, CHARANUM
-				CALL PAGING, 1, "", "TARGET", "調教対象を外す"
-			NEXT
-			LRESULT = RESULT
-			IF LRESULT == -1
-				LNK:登録番号 = 対象選択/-1
-			ELSE
-				SIF !調教可能(LRESULT)
-					CONTINUE
-				IF NOF(LRESULT) > 10000
-					LNK:登録番号 = 対象選択/{NOF(LRESULT)}
-				ELSE
-					LNK:登録番号 = 対象選択/%NAME:LRESULT%
-				ENDIF
-			ENDIF
-		CASE 3
-			FOR PAGING, 1, CHARANUM
-				CALL PAGING, CFLAG:PAGING:助手可能, "", "ASSI", "助手を外す"
-			NEXT
-			LRESULT = RESULT
-			IF LRESULT == -1
-				LNK:登録番号 = 助手選択/-1
-			ELSE
-				SIF !助手可能(LRESULT)
-					CONTINUE
-				IF NOF(LRESULT) > 10000
-					LNK:登録番号 = 助手選択/{NOF(LRESULT)}
-				ELSE
-					LNK:登録番号 = 助手選択/%NAME:LRESULT%
-				ENDIF
-
-			ENDIF
-		CASE 4
-			VARSET 選択可能
-			FOR LCOUNT, 0, VARSIZE("施設名")
-				SELECTCASE 施設名:LCOUNT
-					CASE "ゲームセンター", "娼館"
-						SIF !ITEM:風俗店営業許可証
-							CONTINUE
-					CASE "博物館"
-						SIF !ITEM:博物館 || !MOD:STS
-							CONTINUE
-					CASE "医務室", "実験室", "図書室"
-						SIF !ITEM:(施設名:LCOUNT)
-							CONTINUE
-					CASE "霊安室"
-						SIF !MOD:STS
-							CONTINUE
-				ENDSELECT
-				選択可能:LCOUNT = 1
-				PRINTFORMLC [{LCOUNT}] %施設名:LCOUNT%
-			NEXT
-			CALL NEWLINE
-			DO
-				INPUT
-				IF 施設名:RESULT != "" && 選択可能:RESULT
-					LNK:登録番号 = 施設/%施設名:RESULT%
-					BREAK
-				ENDIF
-			LOOP 1
-		CASE 5
-			FOR PAGING, 0, CHARANUM
-				CALL PAGING, CFLAG:PAGING:居住, "", "ROOM"
-			NEXT
-			SIF RESULT == -1
-				BREAK
-			IF NOF(RESULT) > 10000
-				LNK:登録番号 = 居住部屋/{NOF(RESULT)}
-			ELSE
-				LNK:登録番号 = 居住部屋/%NAME:RESULT%
-			ENDIF
-		CASE 6
-			$SAVE
-			FOR LCOUNT, ページ数*20, ページ数*20+20
-				PRINTFORML 　[{LCOUNT, 2}] - {LCOUNT}番にセーブ
-			NEXT
-			DRAWLINE
-			CALL PRINTSPACE, ページ数 > 0, "　[101] 前ページ　"
-			CALL PRINTSPACE, ページ数 < 3, "[109] 次ページ"
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 101
-						SIF ページ数 > 0
-							ページ数--
-						GOTO SAVE
-					CASE 109
-						SIF ページ数 < 3
-							ページ数++
-						GOTO SAVE
-				ENDSELECT
-				SIF !INRANGE(RESULT, 0, 79)
-					CONTINUE
-				LNK:登録番号 = セーブ/{RESULT}
-			LOOP 0
-		CASE 7
-			$LOAD
-			FOR LCOUNT, ページ数*20, ページ数*20+20
-				PRINTFORML 　[{LCOUNT, 2}] - {LCOUNT}番のセーブデータをロード
-			NEXT
-			DRAWLINE
-			FOR LCOUNT, 1, 7
-				PRINTFORML 　[{LCOUNT+90, 2}] - {LCOUNT}ターン前のセーブデータをロード
-			NEXT
-			DRAWLINE
-			CALL PRINTSPACE, ページ数 > 0, "　[101] 前ページ　"
-			CALL PRINTSPACE, ページ数 < 3, "[109] 次ページ"
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 101
-						SIF ページ数 > 0
-							ページ数--
-						GOTO LOAD
-					CASE 109
-						SIF ページ数 < 3
-							ページ数++
-						GOTO LOAD
-					CASE 0 TO 79
-						LNK:登録番号 = ロード/{RESULT}
-						BREAK
-					CASE 91 TO 96
-						LNK:登録番号 = チェックポイント/{RESULT-90}
-						BREAK
-				ENDSELECT
-			LOOP 1
-	ENDSELECT
-	RESTART
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 1
+		FOR PAGING, 1, CHARANUM
+			CALL PAGING, 1, "", "TARGET"
+		NEXT
+		SIF RESULT == -1
+			GOTO コマンド選択
+		LNK:登録番号 = 調教/{NOF(RESULT)}
+	CASE 2
+		FOR PAGING, 1, CHARANUM
+			CALL PAGING, 1, "", "TARGET", "調教対象を外す"
+		NEXT
+		LRESULT = RESULT
+		IF LRESULT == -1
+			LNK:登録番号 = 対象選択/-1
+		ELSE
+			SIF !調教可能(LRESULT)
+				CONTINUE
+			LNK:登録番号 = 対象選択/{NOF(LRESULT)}
+		ENDIF
+	CASE 3
+		FOR PAGING, 1, CHARANUM
+			CALL PAGING, CFLAG:PAGING:助手可能, "", "ASSI", "助手を外す"
+		NEXT
+		LRESULT = RESULT
+		IF LRESULT == -1
+			LNK:登録番号 = 助手選択/-1
+		ELSE
+			SIF !助手可能(LRESULT)
+				CONTINUE
+			LNK:登録番号 = 助手選択/{NOF(LRESULT)}
+		ENDIF
+	CASE 4
+		FOR LCOUNT, 0, VARSIZE("施設名")
+			SELECTCASE 施設名:LCOUNT
+				CASE "ゲームセンター", "娼館"
+					SIF !ITEM:風俗店営業許可証
+						CONTINUE
+				CASE "博物館"
+					SIF !ITEM:博物館 || !MOD:STS
+						CONTINUE
+				CASE "医務室", "実験室", "図書室"
+					SIF !ITEM:(施設名:LCOUNT)
+						CONTINUE
+				CASE "霊安室"
+					SIF !MOD:STS
+						CONTINUE
+			ENDSELECT
+			PRINTFORMLC [{LCOUNT}] %施設名:LCOUNT%
+		NEXT
+		CALL NEWLINE
+		BINPUT
+		LNK:登録番号 = 施設/%施設名:RESULT%
+	CASE 5
+		FOR PAGING, 0, CHARANUM
+			CALL PAGING, CFLAG:PAGING:居住, "", "ROOM"
+		NEXT
+		SIF RESULT == -1
+			RESTART
+		LNK:登録番号 = 居住部屋/{NOF(RESULT)}
+	CASE 6
+		$SAVE
+		FOR LCOUNT, ページ数*20, ページ数*20+20
+			PRINTFORML 　[{LCOUNT, 2}] - {LCOUNT}番にセーブ
+		NEXT
+		DRAWLINE
+		CALL PRINTSPACE, ページ数 > 0, "　[101] 前ページ　"
+		CALL PRINTSPACE, ページ数 < 3, "[109] 次ページ"
+		BINPUT
+		SELECTCASE RESULT
+			CASE 101
+				ページ数--
+				GOTO SAVE
+			CASE 109
+				ページ数++
+				GOTO SAVE
+		ENDSELECT
+		LNK:登録番号 = セーブ/{RESULT}
+	CASE 7
+		$LOAD
+		FOR LCOUNT, ページ数*20, ページ数*20+20
+			PRINTFORML 　[{LCOUNT, 2}] - {LCOUNT}番のセーブデータをロード
+		NEXT
+		DRAWLINE
+		FOR LCOUNT, 1, 7
+			PRINTFORML 　[{LCOUNT+90, 2}] - {LCOUNT}ターン前のセーブデータをロード
+		NEXT
+		DRAWLINE
+		CALL PRINTSPACE, ページ数 > 0, "　[101] 前ページ　"
+		CALL PRINTSPACE, ページ数 < 3, "[109] 次ページ"
+		BINPUT
+		SELECTCASE RESULT
+			CASE 101
+				ページ数--
+				GOTO LOAD
+			CASE 109
+				ページ数++
+				GOTO LOAD
+			CASE 0 TO 79
+				LNK:登録番号 = ロード/{RESULT}
+			CASE 91 TO 96
+				LNK:登録番号 = チェックポイント/{RESULT-90}
+		ENDSELECT
+ENDSELECT
+RESTART
 
 @LNKCOM, コマンド内容
 #FUNCTIONS

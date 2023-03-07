@@ -6,6 +6,7 @@
 #DIM DYNAMIC 禁断の知識あり
 #DIM DYNAMIC 調合知識あり
 #DIM DYNAMIC 植生学人数
+#DIM DYNAMIC LTARGET
 
 SIF TALENT:MASTER:禁断の知識
 	禁断の知識あり = 1
@@ -37,6 +38,7 @@ IF CMATCH(CSTR:配属, "医務室")
 		SIF CSTR:LCOUNT:配属 == "医務室"
 			CALL SETMAX(名前文字数, STRLENS(NAME:LCOUNT))
 	NEXT
+	LTARGET = TARGET
 	FOR LCOUNT, 0, CHARANUM
 		IF CSTR:LCOUNT:配属 == "医務室"
 			PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 
@@ -45,6 +47,8 @@ IF CMATCH(CSTR:配属, "医務室")
 			PRINTFORM 医療技能:{ABL:LCOUNT:医療技能} 
 			SIF 統率者("医務室") && !TALENT:LCOUNT:統率
 				PRINT 統率者ボーナス+1 
+			SIF 特質("ワーカホリック", LCOUNT)
+				PRINTFORM [ワーカホリック+{特質("ワーカホリック", LCOUNT)/10}]
 			CALL ISTALENT, LCOUNT, "調合知識"
 			SIF TALENT:LCOUNT:調合知識
 				調合知識あり = 1
@@ -67,9 +71,14 @@ IF CMATCH(CSTR:配属, "医務室")
 				PRINT [人気]
 			ENDIF
 			CALL ISTALENT, LCOUNT, "統率"
+			TARGET = LCOUNT
+			CALL ABL_CHECK_医療技能
+			SIF RESULT && ABL:LCOUNT:医療技能 < 10
+				PRINTBUTTON "[医療技能上昇可能]", LCOUNT+10
 			PRINTL 
 		ENDIF
 	NEXT
+	TARGET = LTARGET
 ELSE
 	PRINTL [無し]
 ENDIF
@@ -150,6 +159,12 @@ SELECTCASE RESULT
 		CALL STS_BLOOD
 		SIF RESULT
 			JUMP ターン終了
+	CASEELSE
+		LTARGET = TARGET
+		TARGET = RESULT-10
+		SIF CSTR:配属 == "医療技能"
+			CALL ABLUP, "医療技能"
+		TARGET = LTARGET
 	;CASE 3
 	;	DRAWLINE
 	;	FOR PAGING, 0, CHARANUM
@@ -230,6 +245,7 @@ PRINTL
 #DIM DYNAMIC 利用確率補正
 #DIM DYNAMIC モチベ計算用
 #DIM DYNAMIC モチベ加算値
+#DIM DYNAMIC 補正後
 
 医務室体力補正 = 0
 医務室気力補正 = 0
@@ -257,17 +273,20 @@ FOR LCOUNT, 0, CHARANUM
 				医務室体力補正 += LIMIT(ABL:LCOUNT:奉仕精神+1, 0, 10)/2*10
 				医務室気力補正 += LIMIT(ABL:LCOUNT:奉仕精神+1, 0, 10)/2*10
 				医務室ストレス補正 += LIMIT(ABL:LCOUNT:奉仕精神+1, 0, 10)/3
-				医務室体力補正 += LIMIT(ABL:LCOUNT:医療技能+1, 0, 10)/2*20
-				医務室気力補正 += LIMIT(ABL:LCOUNT:医療技能+1, 0, 10)/2*20
-				医務室ストレス補正 += LIMIT(ABL:LCOUNT:医療技能+1, 0, 10)/2
+				;ワーカホリックの補正が乗るのは医療技能だけ
+				補正後 = ABL:LCOUNT:医療技能+1
+				補正後 += 特質("ワーカホリック", LCOUNT)/10
 			ELSE
 				医務室体力補正 += LIMIT(ABL:LCOUNT:奉仕精神, 0, 10)/2*10
 				医務室気力補正 += LIMIT(ABL:LCOUNT:奉仕精神, 0, 10)/2*10
 				医務室ストレス補正 += LIMIT(ABL:LCOUNT:奉仕精神, 0, 10)/3
-				医務室体力補正 += LIMIT(ABL:LCOUNT:医療技能, 0, 10)/2*20
-				医務室気力補正 += LIMIT(ABL:LCOUNT:医療技能, 0, 10)/2*20
-				医務室ストレス補正 += LIMIT(ABL:LCOUNT:医療技能, 0, 10)/2
+				;ワーカホリックの補正が乗るのは医療技能だけ
+				補正後 = ABL:LCOUNT:医療技能
+				補正後 += 特質("ワーカホリック", LCOUNT)/10
 			ENDIF
+			医務室体力補正 += LIMIT(ABL:LCOUNT:医療技能, 0, 10)/2*20
+			医務室気力補正 += LIMIT(ABL:LCOUNT:医療技能, 0, 10)/2*20
+			医務室ストレス補正 += LIMIT(ABL:LCOUNT:医療技能, 0, 10)/2
 			SELECTCASE SEX(LCOUNT)
 				CASE 1
 					男性医師++
@@ -578,9 +597,9 @@ FOR LCOUNT, 0, CHARANUM
 				ENDSELECT
 			NEXT
 			IF 統率者("医務室") && !TALENT:LCOUNT:統率
-				医務室ランク += (ABL:LCOUNT:医療技能+1)/2
+				医務室ランク += MIN((ABL:LCOUNT:医療技能+1+特質("ワーカホリック", LCOUNT)/10)/2, 3)
 			ELSE
-				医務室ランク += ABL:LCOUNT:医療技能/2
+				医務室ランク += MIN((ABL:LCOUNT:医療技能+特質("ワーカホリック", LCOUNT)/10)/2, 3)
 			ENDIF
 		ENDIF
 	ENDIF

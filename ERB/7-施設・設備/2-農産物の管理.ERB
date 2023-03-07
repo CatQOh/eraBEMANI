@@ -37,31 +37,23 @@ DRAWLINE
 PRINTPLAIN 　農業　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 1
-			SIF ITEM:田んぼ || ITEM:畑 || ITEM:プランター
-				CALL 作物を植える
-			RESTART
-		CASE 2
-			SIF (ITEM:田んぼ || ITEM:畑 || ITEM:プランター) && ゲームモード() != "新婚モード"
-				CALL STRATEGY_PERSONAL, "農業"
-			RESTART
-		CASE 3
-			CALL 生産状況_農業
-			RESTART
-		CASE 4
-			SIF !ORIGIN
-				CALL 農業設備導入
-			RESTART
-		CASE 5
-			CALL MANUAL_農業
-			RESTART
-		CASE 0
-			RETURN
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 1
+		CALL 作物を植える
+	CASE 2
+		CALL STRATEGY_PERSONAL, "農業"
+	CASE 3
+		CALL 生産状況_農業
+	CASE 4
+		CALL 農業設備導入
+	CASE 5
+		CALL MANUAL_農業
+	CASE 0
+		RETURN
+ENDSELECT
+
+RESTART
 
 @作物を植える
 #DIM DYNAMIC LCOUNT
@@ -94,31 +86,24 @@ DRAWLINE
 PRINTPLAIN 　作物を植える　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1
-			SIF ITEM:プランター
-				GOTO プランター
-		CASE 2
-			SIF ITEM:畑
-				GOTO 畑
-		CASE 3
-			SIF ITEM:田んぼ
-				GOTO 田んぼ
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		GOTO プランター
+	CASE 2
+		GOTO 畑
+	CASE 3
+		GOTO 田んぼ
+ENDSELECT
 
 $プランター
 DRAWLINE
 PRINTL □使用するプランターを選んでください
 FOR LCOUNT, 1, 5
 	IF ITEM:プランター < LCOUNT
-		SETCOLORBYNAME gray
-		PRINTL 　[-] - プランター未所持
-		RESETCOLOR
+		CALL PRINTCOLORL, @"　[-] - プランター未所持", "gray"
 	ELSE
 		PRINTFORM 　[{LCOUNT}] - 
 		IF プランターの作物:LCOUNT == ""
@@ -132,66 +117,56 @@ DRAWLINE
 PRINTPLAIN 　プランター　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RESTART
-		CASE 1 TO 4
-			SIF RESULT > ITEM:プランター
-				CONTINUE
-			LRESULT = RESULT
-			IF プランターの作物:RESULT != ""
-				PRINTFORML {LRESULT}番のプランターでは%プランターの作物:LRESULT%を栽培しています。新しく別のものを栽培しますか？
-				PRINTL [0] - 新しいものに挑戦したい
-				PRINTL [1] - 考え直す
-				DO
-					INPUT
-					SIF RESULT == 1
-						GOTO プランター
-				LOOP LOOPRES(0)
-			ENDIF
-			DRAWLINE
-			PRINTFORML □{LRESULT}番プランターに何を植えますか？
-			IF !ITEM:600
-				PRINTL 
-				PRINTL 【育てられる作物がありません】
-				PRINTL 
-			ELSE
-				FOR LCOUNT, 600, 650
-					SIF ITEM:LCOUNT
-						PRINTFORML [{LCOUNT-600, 2}] - %ITEMNAME:LCOUNT%(収穫目安 およそ{MAX(ITEMPRICE:LCOUNT-成長速度補正(), 3)}日)
-				NEXT
-			ENDIF
-			DRAWLINE
-			PRINTPLAIN 　プランター　
-			PRINTL [100] - 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 100
-						GOTO プランター
-					CASEELSE
-						作物 = RESULT+600
-						IF ITEM:作物
-							PRINTFORML {LRESULT}番プランターに%ITEMNAME:作物%を植えました
-							プランター収穫日:LRESULT = MAX(ITEMPRICE:作物-成長速度補正(), 3)
-							プランターの作物:LRESULT = %ITEMNAME:作物%
-							GOTO プランター
-						ENDIF
-				ENDSELECT
-			LOOP 1
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RESTART
+	CASE 1 TO 4
+		SIF RESULT > ITEM:プランター
+			CONTINUE
+		LRESULT = RESULT
+		IF プランターの作物:RESULT != ""
+			PRINTFORML {LRESULT}番のプランターでは%プランターの作物:LRESULT%を栽培しています。新しく別のものを栽培しますか？
+			PRINTL [0] - 新しいものに挑戦したい
+			PRINTL [1] - 考え直す
+			BINPUT
+			SIF RESULT == 1
+				GOTO プランター
+		ENDIF
+		DRAWLINE
+		PRINTFORML □{LRESULT}番プランターに何を植えますか？
+		IF !ITEM:ハーブ
+			PRINTL 
+			PRINTL 【育てられる作物がありません】
+			PRINTL 
+		ELSE
+			FOR LCOUNT, 600, 650
+				SIF ITEM:LCOUNT
+					PRINTFORML [{LCOUNT-600, 2}] - %ITEMNAME:LCOUNT%(収穫目安 およそ{MAX(ITEMPRICE:LCOUNT-成長速度補正(), 3)}日)
+			NEXT
+		ENDIF
+		DRAWLINE
+		PRINTPLAIN 　プランター　
+		PRINTL [100] - 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE 100
+				GOTO プランター
+			CASEELSE
+				作物 = RESULT+600
+				PRINTFORML {LRESULT}番プランターに%ITEMNAME:作物%を植えました
+				プランター収穫日:LRESULT = MAX(ITEMPRICE:作物-成長速度補正(), 3)
+				プランターの作物:LRESULT = %ITEMNAME:作物%
+				GOTO プランター
+		ENDSELECT
+ENDSELECT
 
 $畑
 DRAWLINE
 PRINTL □使用する畑を選んでください
 FOR LCOUNT, 1, 9
 	IF ITEM:畑 < LCOUNT
-		SETCOLORBYNAME gray
-		PRINTL 　[-] - 畑未所持
-		RESETCOLOR
+		CALL PRINTCOLORL, "　[-] - 畑未所持", "gray"
 	ELSE
 		PRINTFORM 　[{LCOUNT}] - 
 		IF 畑の作物:LCOUNT == ""
@@ -205,66 +180,56 @@ DRAWLINE
 PRINTPLAIN 　畑　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RESTART
-		CASE 1 TO 8
-			SIF RESULT > ITEM:畑
-				CONTINUE
-			LRESULT = RESULT
-			IF 畑の作物:RESULT != ""
-				PRINTFORML {LRESULT}番の畑では%畑の作物:LRESULT%を栽培しています。新しく別のものを栽培しますか？
-				PRINTL [0] - 新しいものに挑戦したい
-				PRINTL [1] - 考え直す
-				DO
-					INPUT
-					SIF RESULT == 1
-						GOTO 畑
-				LOOP LOOPRES(0)
-			ENDIF
-			DRAWLINE
-			PRINTFORML □{LRESULT}番の畑に何を植えますか？
-			IF !ITEM:650
-				PRINTL 
-				PRINTL 【育てられる作物がありません】
-				PRINTL 
-			ELSE
-				FOR LCOUNT, 650, 700
-					SIF ITEM:LCOUNT
-						PRINTFORML [{LCOUNT-650, 2}] - %ITEMNAME:LCOUNT%(収穫目安 およそ{MAX(ITEMPRICE:LCOUNT-成長速度補正(), 3)}日)
-				NEXT
-			ENDIF
-			DRAWLINE
-			PRINTPLAIN 　畑　
-			PRINTL [100] - 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 100
-						GOTO 畑
-					CASEELSE
-						作物 = RESULT+650
-						IF ITEM:作物
-							PRINTFORML {LRESULT}番の畑に%ITEMNAME:作物%を植えました
-							畑収穫日:LRESULT = MAX(ITEMPRICE:作物-成長速度補正(), 3)
-							畑の作物:LRESULT = %ITEMNAME:作物%
-							GOTO 畑
-						ENDIF
-				ENDSELECT
-			LOOP 1
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RESTART
+	CASE 1 TO 8
+		SIF RESULT > ITEM:畑
+			CONTINUE
+		LRESULT = RESULT
+		IF 畑の作物:RESULT != ""
+			PRINTFORML {LRESULT}番の畑では%畑の作物:LRESULT%を栽培しています。新しく別のものを栽培しますか？
+			PRINTL [0] - 新しいものに挑戦したい
+			PRINTL [1] - 考え直す
+			BINPUT
+			SIF RESULT == 1
+				GOTO 畑
+		ENDIF
+		DRAWLINE
+		PRINTFORML □{LRESULT}番の畑に何を植えますか？
+		IF !ITEM:トマト
+			PRINTL 
+			PRINTL 【育てられる作物がありません】
+			PRINTL 
+		ELSE
+			FOR LCOUNT, 650, 700
+				SIF ITEM:LCOUNT
+					PRINTFORML [{LCOUNT-650, 2}] - %ITEMNAME:LCOUNT%(収穫目安 およそ{MAX(ITEMPRICE:LCOUNT-成長速度補正(), 3)}日)
+			NEXT
+		ENDIF
+		DRAWLINE
+		PRINTPLAIN 　畑　
+		PRINTL [100] - 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE 100
+				GOTO 畑
+			CASEELSE
+				作物 = RESULT+650
+				PRINTFORML {LRESULT}番の畑に%ITEMNAME:作物%を植えました
+				畑収穫日:LRESULT = MAX(ITEMPRICE:作物-成長速度補正(), 3)
+				畑の作物:LRESULT = %ITEMNAME:作物%
+				GOTO 畑
+		ENDSELECT
+ENDSELECT
 
 $田んぼ
 DRAWLINE
 PRINTL □使用する田んぼを選んでください
 FOR LCOUNT, 1, 3
 	IF ITEM:田んぼ < LCOUNT
-		SETCOLORBYNAME gray
-		PRINTL 　[-] - 田んぼ未所持
-		RESETCOLOR
+		CALL PRINTCOLORL, "　[-] - 田んぼ未所持", "gray"
 	ELSE
 		PRINTFORM 　[{LCOUNT}] - 
 		IF 田んぼの作物:LCOUNT == ""
@@ -278,57 +243,49 @@ DRAWLINE
 PRINTPLAIN 　田んぼ　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RESTART
-		CASE 1 TO 2
-			SIF RESULT > ITEM:田んぼ
-				CONTINUE
-			LRESULT = RESULT
-			IF 田んぼの作物:RESULT != ""
-				PRINTFORML {LRESULT}番の田んぼでは%田んぼの作物:LRESULT%を栽培しています。新しく別のものを栽培しますか？
-				PRINTL [0] - 新しいものに挑戦したい
-				PRINTL [1] - 考え直す
-				DO
-					INPUT
-					SIF RESULT == 1
-						GOTO 田んぼ
-				LOOP LOOPRES(0)
-			ENDIF
-			DRAWLINE
-			PRINTFORML □{LRESULT}番の田んぼに何を植えますか？
-			IF !ITEM:700
-				PRINTL 
-				PRINTL 【育てられる作物がありません】
-				PRINTL 
-			ELSE
-				FOR LCOUNT, 700, 750
-					SIF ITEM:LCOUNT
-						PRINTFORML [{LCOUNT-700}] - %ITEMNAME:LCOUNT%(収穫目安 およそ{MAX(ITEMPRICE:LCOUNT-成長速度補正(), 3)}日)
-				NEXT
-			ENDIF
-			DRAWLINE
-			PRINTPLAIN 　田んぼ　
-			PRINTL [100] - 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 100
-						GOTO 田んぼ
-					CASEELSE
-						作物 = RESULT+700
-						IF ITEM:作物
-							PRINTFORML {LRESULT}番の田んぼに%ITEMNAME:作物%を植えました
-							田んぼ収穫日:LRESULT = MAX(ITEMPRICE:作物-成長速度補正(), 3)
-							田んぼの作物:LRESULT = %ITEMNAME:作物%
-							GOTO 田んぼ
-						ENDIF
-				ENDSELECT
-			LOOP 1
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RESTART
+	CASE 1 TO 2
+		SIF RESULT > ITEM:田んぼ
+			CONTINUE
+		LRESULT = RESULT
+		IF 田んぼの作物:RESULT != ""
+			PRINTFORML {LRESULT}番の田んぼでは%田んぼの作物:LRESULT%を栽培しています。新しく別のものを栽培しますか？
+			PRINTL [0] - 新しいものに挑戦したい
+			PRINTL [1] - 考え直す
+			BINPUT
+			SIF RESULT == 1
+				GOTO 田んぼ
+		ENDIF
+		DRAWLINE
+		PRINTFORML □{LRESULT}番の田んぼに何を植えますか？
+		IF !ITEM:米
+			PRINTL 
+			PRINTL 【育てられる作物がありません】
+			PRINTL 
+		ELSE
+			FOR LCOUNT, 700, 750
+				SIF ITEM:LCOUNT
+					PRINTFORML [{LCOUNT-700}] - %ITEMNAME:LCOUNT%(収穫目安 およそ{MAX(ITEMPRICE:LCOUNT-成長速度補正(), 3)}日)
+			NEXT
+		ENDIF
+		DRAWLINE
+		PRINTPLAIN 　田んぼ　
+		PRINTL [100] - 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE 100
+				GOTO 田んぼ
+			CASEELSE
+				作物 = RESULT+700
+				PRINTFORML {LRESULT}番の田んぼに%ITEMNAME:作物%を植えました
+				田んぼ収穫日:LRESULT = MAX(ITEMPRICE:作物-成長速度補正(), 3)
+				田んぼの作物:LRESULT = %ITEMNAME:作物%
+				GOTO 田んぼ
+		ENDSELECT
+ENDSELECT
 
 
 @生産状況_農業
@@ -431,27 +388,25 @@ DRAWLINE
 PRINTPLAIN 　生産状況　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			;新婚モード
-			IF ゲームモード() == "新婚モード" && FINDCHARA(CFLAG:嫁, 1) >= 0
-				CSTR:MASTER:配属 = 
-				CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 
-			ENDIF
-			RETURN
-		CASE -1
-			CALL 植物図鑑
-			RESTART
-		CASEELSE
-			LTARGET = TARGET
-			TARGET = RESULT-1
-			SIF CSTR:配属 == "農業"
-				CALL ABLUP, "栽培技能"
-			TARGET = LTARGET
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		;新婚モード
+		IF ゲームモード() == "新婚モード" && FINDCHARA(CFLAG:嫁, 1) >= 0
+			CSTR:MASTER:配属 = 
+			CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 
+		ENDIF
+		RETURN
+	CASE -1
+		CALL 植物図鑑
+		RESTART
+	CASEELSE
+		LTARGET = TARGET
+		TARGET = RESULT-1
+		SIF CSTR:配属 == "農業"
+			CALL ABLUP, "栽培技能"
+		TARGET = LTARGET
+ENDSELECT
 
 @栽培解禁
 #DIM DYNAMIC LCOUNT
@@ -641,7 +596,7 @@ FOR LCOUNT, 600, 750
 				CASE "ハーブ"
 					PRINTL 繁殖力がすさまじい薬草たち。ゾンビパンデミックでも重宝する
 				CASE "もやし"
-					PRINTL 買っても育ててもお手軽。シャキシャキ感がたまらない。カロリーは無いが栄養も無い
+					PRINTL 買っても育ててもお手軽。シャキシャキ感がたまらない
 				CASE "イチゴ"
 					PRINTL 甘くて美味しい。身近な果物の代表格
 				CASE "唐辛子"
@@ -733,30 +688,21 @@ PRINTL 灰文字:未解禁
 RESETCOLOR
 DRAWLINE
 PRINTPLAINFORM 　植物図鑑 {ページ数+1}ページ　
-IF ページ数
-	PRINT [1] 前ページ 
-ELSE
-	PRINT 　　　　　　 
-ENDIF
+CALL PRINTSPACE, ページ数, "[1] 前ページ "
 PRINT [0] 戻る 
-SIF 次ページあり
-	PRINT [9] 次ページ
+CALL PRINTSPACE, 次ページあり, "[9] 次ページ"
+PRINTL
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1
-			SIF ページ数
-				ページ数--
-			RESTART
-		CASE 9
-			SIF 次ページあり
-				ページ数++
-			RESTART
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		ページ数--
+	CASE 9
+		ページ数++
+ENDSELECT
+RESTART
 
 @農業設備導入
 #DIMS DYNAMIC 購入設備
@@ -788,28 +734,17 @@ ELSE
 ENDIF
 PRINTL 　[9] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			IF ITEM:田んぼ < 田んぼ上限
-				購入設備 = 田んぼ
-				BREAK
-			ENDIF
-		CASE 1
-			IF ITEM:畑 < 畑上限
-				購入設備 = 畑
-				BREAK
-			ENDIF
-		CASE 2
-			IF ITEM:プランター < 4
-				購入設備 = プランター
-				BREAK
-			ENDIF
-		CASE 9
-			RETURN
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		購入設備 = 田んぼ
+	CASE 1
+		購入設備 = 畑
+	CASE 2
+		購入設備 = プランター
+	CASE 9
+		RETURN
+ENDSELECT
 
 IF MONEY < ITEMPRICE:購入設備
 	PRINTW 所持金が足りません
@@ -818,20 +753,17 @@ ELSE
 	CALL PASELIL, @"%購入設備%を購入します。よろしいですか？(所持金:{MONEY}＄→{MONEY-ITEMPRICE:購入設備}＄)"
 	PRINTL [0] - はい
 	PRINTL [1] - いいえ
-	DO
-		INPUT
-		SELECTCASE RESULT
-			CASE 0
-				PRINTFORMW %購入設備%を購入しました
-				ITEM:購入設備++
-				MONEY -= ITEMPRICE:購入設備
-				CALL 現金出納帳記録, @"「%購入設備%」購入/-{ITEMPRICE:購入設備}"
-				RESTART
-			CASE 1
-				RESTART
-		ENDSELECT
-	LOOP 1
+	BINPUT
+	SELECTCASE RESULT
+		CASE 0
+			PRINTFORMW %購入設備%を購入しました
+			ITEM:購入設備++
+			MONEY -= ITEMPRICE:購入設備
+			CALL 現金出納帳記録, @"「%購入設備%」購入/-{ITEMPRICE:購入設備}"
+	ENDSELECT
 ENDIF
+
+RESTART
 
 @栽培レベル, ARG
 #FUNCTION
@@ -944,7 +876,6 @@ FOR LCOUNT, 1, 3
 		田んぼ収穫日:LCOUNT = MIN(田んぼ収穫日:LCOUNT+減少値, ITEMPRICE:(田んぼの作物:LCOUNT))
 NEXT
 
-
 @TURNEND_農業
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 栽培数, 4
@@ -1033,25 +964,22 @@ DRAWLINE
 PRINTPLAIN 　農業　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1
-			PRINTL 農業ではプランター、畑、田んぼで野菜や穀物を育てられます
-			PRINTL 配属したキャラクターの栽培技能に応じて育てられる作物や使用できる設備が増え、
-			PRINTL 配属上限人数も上がります。最初はプランターだけですが、最終的には米や麦などを収穫可能です
-			PRINTL プランター、畑、田んぼには数に限りがあるため、一度に育てられる種類にも限りがあります
-			PRINTL 農業では設備を買うとき以外には費用がかかりません。農業担当に任せて気長に収穫を待ちましょう
-			WAIT
-			RESTART
-		CASE 2
-			PRINTL 育てた作物は調理室で使用できます。農業で収穫可能となった作物を使用して料理を作ります
-			PRINTL 収穫可能となった作物はいくらでも使用でき、数の概念はありません。逆に、備蓄もできません
-			PRINTL その時その時で収穫可能となっている作物を利用してレシピを考えましょう。
-			PRINTL 詳しくは調理室の項も参照
-			WAIT
-			RESTART
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		PRINTL 農業ではプランター、畑、田んぼで野菜や穀物を育てられます
+		PRINTL 配属したキャラクターの栽培技能に応じて育てられる作物や使用できる設備が増え、
+		PRINTL 配属上限人数も上がります。最初はプランターだけですが、最終的には米や麦などを収穫可能です
+		PRINTL プランター、畑、田んぼには数に限りがあるため、一度に育てられる種類にも限りがあります
+		PRINTL 農業では設備を買うとき以外には費用がかかりません。農業担当に任せて気長に収穫を待ちましょう
+		WAIT
+	CASE 2
+		PRINTL 育てた作物は調理室で使用できます。農業で収穫可能となった作物を使用して料理を作ります
+		PRINTL 収穫可能となった作物はいくらでも使用でき、数の概念はありません。逆に、備蓄もできません
+		PRINTL その時その時で収穫可能となっている作物を利用してレシピを考えましょう。
+		PRINTL 詳しくは調理室の項も参照
+		WAIT
+ENDSELECT
+RESTART

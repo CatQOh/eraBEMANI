@@ -48,12 +48,12 @@ IF ORIGIN
 	ITEM:畜舎 = 1
 	ITEM:養蜂場 = 1
 	ITEM:生け簀 = 1
-	牛の状態 = 50
-	馬の状態 = 50
-	羊の状態 = 50
-	豚の状態 = 50
-	鶏の状態 = 50
-	蜂の状態 = 50
+	家畜:牛 = 50
+	家畜:馬 = 50
+	家畜:羊 = 50
+	家畜:豚 = 50
+	家畜:鶏 = 50
+	家畜:蜂 = 50
 ENDIF
 
 DRAWLINE
@@ -62,15 +62,15 @@ IF !ORIGIN
 	IF ITEM:牧場 || ITEM:畜舎 || ITEM:養蜂場 || ITEM:生け簀
 		PRINT 　現在の予算 
 		SIF ITEM:牧場
-			CALL PASELI, @"牧場の予算:{牧場の予算}＄/1000000＄ "
+			CALL PASELI, @"牧場の予算:{リソース:牧場の予算}＄/%TOOPTIONINT(1000000)%＄ "
 		SIF ITEM:畜舎
-			CALL PASELI, @"畜舎の予算:{畜舎の予算}＄/1000000＄ "
+			CALL PASELI, @"畜舎の予算:{リソース:畜舎の予算}＄/%TOOPTIONINT(1000000)%＄ "
 		PRINTL 
 		PRINT 　　　　　　 
 		SIF ITEM:養蜂場
-			CALL PASELI, @"養蜂場の予算:{養蜂場の予算}＄/100000＄ "
+			CALL PASELI, @"養蜂場の予算:{リソース:養蜂場の予算}＄/%TOOPTIONINT(100000)%＄ "
 		SIF ITEM:生け簀
-			CALL PASELI, @"生け簀の予算:{生け簀の予算}＄/1000000＄"
+			CALL PASELI, @"生け簀の予算:{リソース:生け簀の予算}＄/%TOOPTIONINT(1000000)%＄"
 		PRINTL 
 	ENDIF
 ENDIF
@@ -99,45 +99,35 @@ ENDIF
 PRINTL 　[4] - 生産状況を確認する
 SIF !ORIGIN
 	PRINTL 　[5] - 設備を導入する
-;PRINTL 　[6] - 畜産業の説明
+PRINTL 　[6] - 畜産業の説明
 DRAWLINE
 PRINTPLAIN 　畜産　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 1
-			SIF (ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場) && ゲームモード() != "新婚モード" && !ORIGIN
-				CALL 畜産業に投資する
-			RESTART
-		CASE 2
-			SIF (ITEM:牧場 || ITEM:畜舎 || ITEM:生け簀 || ITEM:養蜂場) && ゲームモード() != "新婚モード"
-				CALL STRATEGY_PERSONAL, "畜産業"
-			RESTART
-		CASE 3
-			SIF ITEM:生け簀
-				CALL 魚の養殖, 減額率, 養殖レベル計算用
-			RESTART
-		CASE 4
-			CALL 生産状況_畜産, 減額率
-			RESTART
-		CASE 5
-			SIF !ORIGIN
-				CALL 畜産設備導入
-			RESTART
-		CASE 6
-			CALL MANUAL_畜産業
-			RESTART
-		CASE 0
-			;新婚モード
-			IF ゲームモード() == "新婚モード" && FINDCHARA(CFLAG:嫁, 1) >= 0
-				CSTR:MASTER:配属 = 
-				CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 
-			ENDIF
-			RETURN
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 1
+		CALL 畜産業に投資する
+	CASE 2
+		CALL STRATEGY_PERSONAL, "畜産業"
+	CASE 3
+		CALL 魚の養殖, 減額率, 養殖レベル計算用
+	CASE 4
+		CALL 生産状況_畜産, 減額率
+	CASE 5
+		CALL 畜産設備導入
+	CASE 6
+		CALL MANUAL_畜産業
+	CASE 0
+		;新婚モード
+		IF ゲームモード() == "新婚モード" && FINDCHARA(CFLAG:嫁, 1) >= 0
+			CSTR:MASTER:配属 = 
+			CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 
+		ENDIF
+		RETURN
+ENDSELECT
+
+RESTART
 
 @畜産業に投資する
 #DIM DYNAMIC 自動投資可能
@@ -149,266 +139,256 @@ CALL PASELIL, @"　現在の予算:{MONEY}＄"
 PRINTL 
 自動投資可能 = 0
 IF ITEM:牧場
-	CALL PASELIL, @"　[0] - 牧場に投資する(現在の予算:{牧場の予算}＄/1000000＄)"
+	CALL PASELIL, @"　[0] - 牧場に投資する(現在の予算:{リソース:牧場の予算}＄/1000000＄)"
 	自動投資可能 = 1
 ELSE
-	SETCOLORBYNAME gray
-	PRINTL 　[-] - 牧場未所持
-	RESETCOLOR
+	CALL PRINTCOLORL, "　[-] - 牧場未所持", "gray"
 ENDIF
 
 IF ITEM:畜舎
-	CALL PASELIL, @"　[1] - 畜舎に投資する(現在の予算:{畜舎の予算}＄/1000000＄)"
+	CALL PASELIL, @"　[1] - 畜舎に投資する(現在の予算:{リソース:畜舎の予算}＄/1000000＄)"
 	自動投資可能 = 1
 ELSE
-	SETCOLORBYNAME gray
-	PRINTL 　[-] - 畜舎未所持
-	RESETCOLOR
+	CALL PRINTCOLORL, "　[-] - 畜舎未所持", "gray"
 ENDIF
 
 IF ITEM:養蜂場
-	CALL PASELIL, @"　[2] - 養蜂場に投資する(現在の予算:{養蜂場の予算}＄/100000＄)"
+	CALL PASELIL, @"　[2] - 養蜂場に投資する(現在の予算:{リソース:養蜂場の予算}＄/100000＄)"
 	自動投資可能 = 1
 ELSE
-	SETCOLORBYNAME gray
-	PRINTL 　[-] - 養蜂場未所持
-	RESETCOLOR
+	CALL PRINTCOLORL, "　[-] - 養蜂場未所持", "gray"
 ENDIF
 
 IF ITEM:生け簀
-	CALL PASELIL, @"　[3] - 養殖に投資する(現在の予算:{生け簀の予算}＄/1000000＄)"
+	CALL PASELIL, @"　[3] - 養殖に投資する(現在の予算:{リソース:生け簀の予算}＄/1000000＄)"
 	自動投資可能 = 1
 ELSE
-	SETCOLORBYNAME gray
-	PRINTL 　[-] - 生け簀未所持
-	RESETCOLOR
+	CALL PRINTCOLORL, "　[-] - 生け簀未所持", "gray"
 ENDIF
 SIF 自動投資可能
 	PRINTFORML 　[4] - 自動投資を\@ 自動投資 ? オフ # オン \@にする
 
 PRINTL 　[9] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			IF ITEM:牧場
-				PRINTL □牧場への投資
-				CALL PASELIL, @"　投資する金額を入力してください 現在の所持金:{MONEY}＄"
-				PRINTBUTTON "　[MAX]", MONEY > 1000000-牧場の予算 ? 1000000-牧場の予算 # MONEY
-				PRINTL [500000][100000][50000][10000][5000]
-				IF 牛の状態 == 0 || 馬の状態 == 0 || 羊の状態 == 0
-					PRINTL 
-					PRINTL □動物を購入
-					SIF 牛の状態 == 0
-						CALL PASELIL, @"　[-1] - 牛を買う(100000＄)"
-					SIF 馬の状態 == 0
-						CALL PASELIL, @"　[-2] - 馬を買う(100000＄)"
-					SIF 羊の状態 == 0
-						CALL PASELIL, @"　[-3] - 羊を買う(50000＄)"
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		IF ITEM:牧場
+			PRINTL □牧場への投資
+			CALL PASELIL, @"　投資する金額を入力してください 現在の所持金:{MONEY}＄"
+			PRINTBUTTON "　[MAX]", MONEY > 1000000-リソース:牧場の予算 ? 1000000-リソース:牧場の予算 # MONEY
+			PRINTL [500000][100000][50000][10000][5000]
+			IF 家畜:牛 == 0 || 家畜:馬 == 0 || 家畜:羊 == 0
+				PRINTL 
+				PRINTL □動物を購入
+				SIF 家畜:牛 == 0
+					CALL PASELIL, @"　[-1] - 牛を買う(100000＄)"
+				SIF 家畜:馬 == 0
+					CALL PASELIL, @"　[-2] - 馬を買う(100000＄)"
+				SIF 家畜:羊 == 0
+					CALL PASELIL, @"　[-3] - 羊を買う(50000＄)"
+			ENDIF
+			PRINTL 　[0] - 戻る
+			DO
+				INPUT
+				LRESULT = RESULT
+				SELECTCASE LRESULT
+					CASE -1
+						SIF 家畜:牛
+							CONTINUE
+						IF 100000 > MONEY
+							PRINTW 所持金が足りません
+							BREAK
+						ENDIF
+						PRINTW 牛を購入しました
+						MONEY -= 100000
+						CALL 現金出納帳記録, @"牛を購入/-100000"
+						家畜:牛 = 50
+						ITEM:牛肉 = 1
+						BREAK
+					CASE -2
+						SIF 家畜:馬
+							CONTINUE
+						IF 100000 > MONEY
+							PRINTW 所持金が足りません
+							BREAK
+						ENDIF
+						PRINTW 馬を購入しました
+						MONEY -= 100000
+						CALL 現金出納帳記録, @"馬を購入/-100000"
+						家畜:馬 = 50
+						ITEM:馬肉 = 1
+						BREAK
+					CASE -3
+						SIF 家畜:羊
+							CONTINUE
+						IF 50000 > MONEY
+							PRINTW 所持金が足りません
+							BREAK
+						ENDIF
+						PRINTW 羊を購入しました
+						MONEY -= 50000
+						CALL 現金出納帳記録, @"羊を購入/-50000"
+						家畜:羊 = 50
+						ITEM:羊肉 = 1
+						BREAK
+					CASE 0
+						RESTART
+				ENDSELECT
+				IF LRESULT > MONEY
+					PRINTW 所持金が足りません
+					CONTINUE
 				ENDIF
-				PRINTL 　[0] - 戻る
-				DO
-					INPUT
-					LRESULT = RESULT
-					SELECTCASE LRESULT
-						CASE -1
-							SIF 牛の状態
-								CONTINUE
-							IF 100000 > MONEY
-								PRINTW 所持金が足りません
-								BREAK
-							ENDIF
-							PRINTW 牛を購入しました
-							MONEY -= 100000
-							CALL 現金出納帳記録, @"牛を購入/-100000"
-							牛の状態 = 50
-							ITEM:牛肉 = 1
-							BREAK
-						CASE -2
-							SIF 馬の状態
-								CONTINUE
-							IF 100000 > MONEY
-								PRINTW 所持金が足りません
-								BREAK
-							ENDIF
-							PRINTW 馬を購入しました
-							MONEY -= 100000
-							CALL 現金出納帳記録, @"馬を購入/-100000"
-							馬の状態 = 50
-							ITEM:馬肉 = 1
-							BREAK
-						CASE -3
-							SIF 羊の状態
-								CONTINUE
-							IF 50000 > MONEY
-								PRINTW 所持金が足りません
-								BREAK
-							ENDIF
-							PRINTW 羊を購入しました
-							MONEY -= 50000
-							CALL 現金出納帳記録, @"羊を購入/-50000"
-							羊の状態 = 50
-							ITEM:羊肉 = 1
-							BREAK
-						CASE 0
-							RESTART
-					ENDSELECT
-					IF LRESULT > MONEY
-						PRINTW 所持金が足りません
-						CONTINUE
-					ENDIF
-					CALL SETMIN, LRESULT, 1000000-牧場の予算
-					SIF LRESULT == 0
-						RESTART
-					CALL PASELIW, @"牧場に{LRESULT}＄投資しました"
-					牧場の予算 += LRESULT
-					MONEY -= LRESULT
-					CALL 現金出納帳記録, @"牧場への投資/-{LRESULT}"
+				CALL SETMIN, LRESULT, 1000000-リソース:牧場の予算
+				SIF LRESULT == 0
 					RESTART
-				LOOP 1
+				CALL PASELIW, @"牧場に{LRESULT}＄投資しました"
+				リソース:牧場の予算 += LRESULT
+				MONEY -= LRESULT
+				CALL 現金出納帳記録, @"牧場への投資/-{LRESULT}"
 				RESTART
-			ENDIF
-		CASE 1
-			IF ITEM:畜舎
-				PRINTL □畜舎に投資する
-				CALL PASELIL, @"　投資する金額を入力してください 現在の所持金:{MONEY}＄"
-				PRINTBUTTON "　[MAX]", MONEY > 1000000-畜舎の予算 ? 1000000-畜舎の予算 # MONEY
-				PRINTL [500000][100000][50000][10000][5000][0]
-				IF 豚の状態 == 0 || 鶏の状態 == 0
-					PRINTL 
-					PRINTL □動物を購入する
-					SIF 豚の状態 == 0
-						CALL PASELIL, @"　[-1] - 豚を買う(50000＄)"
-					SIF 鶏の状態 == 0
-						CALL PASELIL, @"　[-2] - 鶏を買う(30000＄)"
-				ENDIF
-				PRINTL 　[0] - 戻る
-				DO
-					INPUT
-					LRESULT = RESULT
-					SELECTCASE LRESULT
-						CASE -1
-							SIF 豚の状態
-								CONTINUE
-							IF 50000 > MONEY
-								PRINTW 所持金が足りません
-								BREAK
-							ENDIF
-							PRINTW 豚を購入しました
-							MONEY -= 50000
-							CALL 現金出納帳記録, @"豚を購入/-50000"
-							豚の状態 = 50
-							ITEM:豚肉 = 1
-							BREAK
-						CASE -2
-							SIF 鶏の状態
-								CONTINUE
-							IF 30000 > MONEY
-								PRINTW 所持金が足りません
-								BREAK
-							ENDIF
-							PRINTW 鶏を購入しました
-							MONEY -= 30000
-							CALL 現金出納帳記録, @"鶏を購入/-30000"
-							鶏の状態 = 50
-							ITEM:鶏肉 = 1
-							BREAK
-						CASE 0
-							RESTART
-					ENDSELECT
-					IF LRESULT > MONEY
-						PRINTW 所持金が足りません
-						CONTINUE
-					ENDIF
-					CALL SETMIN, LRESULT, 1000000-畜舎の予算
-					SIF LRESULT == 0
-						RESTART
-					CALL PASELIW, @"畜舎に{LRESULT}＄投資しました"
-					畜舎の予算 += LRESULT
-					MONEY -= LRESULT
-					CALL 現金出納帳記録, @"畜舎への投資/-{LRESULT}"
-					RESTART
-				LOOP 1
-				RESTART
-			ENDIF
-		CASE 2
-			IF ITEM:養蜂場
-				PRINTL □養蜂場に投資する
-				CALL PASELIL, @"　投資する金額を入力してください 現在の所持金:{MONEY}＄"
-				PRINTBUTTON "　[MAX]", MONEY > 100000-養蜂場の予算 ? 100000-養蜂場の予算 # MONEY
-				PRINTL [50000][10000][5000][0]
-				IF 蜂の状態 == 0
-					PRINTL 
-					PRINTL □動物を購入する
-					CALL PASELIL, @"　[-1] - ミツバチを購入する(10000＄)"
-				ENDIF
-				PRINTL 　[0] - 戻る
-				DO
-					INPUT
-					LRESULT = RESULT
-					SELECTCASE LRESULT
-						CASE -1
-							SIF 蜂の状態
-								CONTINUE
-							IF 10000 > MONEY
-								PRINTW 所持金が足りません
-								BREAK
-							ENDIF
-							PRINTW ミツバチを購入しました
-							MONEY -= 10000
-							CALL 現金出納帳記録, @"ミツバチを購入/-10000"
-							蜂の状態 = 50
-							ITEM:蜂蜜 = 1
-							BREAK
-						CASE 0
-							RESTART
-					ENDSELECT
-					IF LRESULT > MONEY
-						PRINTW 所持金が足りません
-						CONTINUE
-					ENDIF
-					CALL SETMIN, LRESULT, 100000-養蜂場の予算
-					SIF LRESULT == 0
-						RESTART
-					CALL PASELIW, @"養蜂場に{LRESULT}＄投資しました"
-					CALL 現金出納帳記録, @"養蜂場への投資/-{LRESULT}"
-					養蜂場の予算 += LRESULT
-					MONEY -= LRESULT
-					RESTART
-				LOOP 1
-				RESTART
-			ENDIF
-		CASE 3
-			IF ITEM:生け簀
-				CALL PASELIL, @"投資する金額を入力してください 現在の所持金:{MONEY}＄"
-				PRINTBUTTON "[MAX]", MONEY > 1000000-生け簀の予算 ? 1000000-生け簀の予算 # MONEY
-				PRINTL [500000][100000][50000][10000][5000][0]
-				PRINTL [0] - 戻る
-				DO
-					INPUT
-					LRESULT = RESULT
-					IF LRESULT > MONEY
-						PRINTW 所持金が足りません
-						CONTINUE
-					ENDIF
-					CALL SETMIN, LRESULT, 1000000-生け簀の予算
-					SIF LRESULT == 0
-						RESTART
-					CALL PASELIW, @"生け簀に{LRESULT}＄投資しました"
-					CALL 現金出納帳記録, @"生け簀への投資/-{LRESULT}"
-					生け簀の予算 += LRESULT
-					MONEY -= LRESULT
-					RESTART
-				LOOP 1
-			ENDIF
-		CASE 4
-			INVERTBIT 自動投資, 0
+			LOOP 1
 			RESTART
-		CASE 9
-			RETURN
-	ENDSELECT
-LOOP 1
+		ENDIF
+	CASE 1
+		IF ITEM:畜舎
+			PRINTL □畜舎に投資する
+			CALL PASELIL, @"　投資する金額を入力してください 現在の所持金:{MONEY}＄"
+			PRINTBUTTON "　[MAX]", MONEY > 1000000-リソース:畜舎の予算 ? 1000000-リソース:畜舎の予算 # MONEY
+			PRINTL [500000][100000][50000][10000][5000][0]
+			IF 家畜:豚 == 0 || 家畜:鶏 == 0
+				PRINTL 
+				PRINTL □動物を購入する
+				SIF 家畜:豚 == 0
+					CALL PASELIL, @"　[-1] - 豚を買う(50000＄)"
+				SIF 家畜:鶏 == 0
+					CALL PASELIL, @"　[-2] - 鶏を買う(30000＄)"
+			ENDIF
+			PRINTL 　[0] - 戻る
+			DO
+				INPUT
+				LRESULT = RESULT
+				SELECTCASE LRESULT
+					CASE -1
+						SIF 家畜:豚
+							CONTINUE
+						IF 50000 > MONEY
+							PRINTW 所持金が足りません
+							BREAK
+						ENDIF
+						PRINTW 豚を購入しました
+						MONEY -= 50000
+						CALL 現金出納帳記録, @"豚を購入/-50000"
+						家畜:豚 = 50
+						ITEM:豚肉 = 1
+						BREAK
+					CASE -2
+						SIF 家畜:鶏
+							CONTINUE
+						IF 30000 > MONEY
+							PRINTW 所持金が足りません
+							BREAK
+						ENDIF
+						PRINTW 鶏を購入しました
+						MONEY -= 30000
+						CALL 現金出納帳記録, @"鶏を購入/-30000"
+						家畜:鶏 = 50
+						ITEM:鶏肉 = 1
+						BREAK
+					CASE 0
+						RESTART
+				ENDSELECT
+				IF LRESULT > MONEY
+					PRINTW 所持金が足りません
+					CONTINUE
+				ENDIF
+				CALL SETMIN, LRESULT, 1000000-リソース:畜舎の予算
+				SIF LRESULT == 0
+					RESTART
+				CALL PASELIW, @"畜舎に{LRESULT}＄投資しました"
+				リソース:畜舎の予算 += LRESULT
+				MONEY -= LRESULT
+				CALL 現金出納帳記録, @"畜舎への投資/-{LRESULT}"
+				RESTART
+			LOOP 1
+			RESTART
+		ENDIF
+	CASE 2
+		IF ITEM:養蜂場
+			PRINTL □養蜂場に投資する
+			CALL PASELIL, @"　投資する金額を入力してください 現在の所持金:{MONEY}＄"
+			PRINTBUTTON "　[MAX]", MONEY > 100000-リソース:養蜂場の予算 ? 100000-リソース:養蜂場の予算 # MONEY
+			PRINTL [50000][10000][5000][0]
+			IF 家畜:蜂 == 0
+				PRINTL 
+				PRINTL □動物を購入する
+				CALL PASELIL, @"　[-1] - ミツバチを購入する(10000＄)"
+			ENDIF
+			PRINTL 　[0] - 戻る
+			DO
+				INPUT
+				LRESULT = RESULT
+				SELECTCASE LRESULT
+					CASE -1
+						SIF 家畜:蜂
+							CONTINUE
+						IF 10000 > MONEY
+							PRINTW 所持金が足りません
+							BREAK
+						ENDIF
+						PRINTW ミツバチを購入しました
+						MONEY -= 10000
+						CALL 現金出納帳記録, @"ミツバチを購入/-10000"
+						家畜:蜂 = 50
+						ITEM:蜂蜜 = 1
+						BREAK
+					CASE 0
+						RESTART
+				ENDSELECT
+				IF LRESULT > MONEY
+					PRINTW 所持金が足りません
+					CONTINUE
+				ENDIF
+				CALL SETMIN, LRESULT, 100000-リソース:養蜂場の予算
+				SIF LRESULT == 0
+					RESTART
+				CALL PASELIW, @"養蜂場に{LRESULT}＄投資しました"
+				CALL 現金出納帳記録, @"養蜂場への投資/-{LRESULT}"
+				リソース:養蜂場の予算 += LRESULT
+				MONEY -= LRESULT
+				RESTART
+			LOOP 1
+			RESTART
+		ENDIF
+	CASE 3
+		IF ITEM:生け簀
+			CALL PASELIL, @"投資する金額を入力してください 現在の所持金:{MONEY}＄"
+			PRINTBUTTON "[MAX]", MONEY > 1000000-リソース:生け簀の予算 ? 1000000-リソース:生け簀の予算 # MONEY
+			PRINTL [500000][100000][50000][10000][5000][0]
+			PRINTL [0] - 戻る
+			DO
+				INPUT
+				LRESULT = RESULT
+				IF LRESULT > MONEY
+					PRINTW 所持金が足りません
+					CONTINUE
+				ENDIF
+				CALL SETMIN, LRESULT, 1000000-リソース:生け簀の予算
+				SIF LRESULT == 0
+					RESTART
+				CALL PASELIW, @"生け簀に{LRESULT}＄投資しました"
+				CALL 現金出納帳記録, @"生け簀への投資/-{LRESULT}"
+				リソース:生け簀の予算 += LRESULT
+				MONEY -= LRESULT
+				RESTART
+			LOOP 1
+		ENDIF
+	CASE 4
+		INVERTBIT 自動投資, 0
+		RESTART
+	CASE 9
+		RETURN
+ENDSELECT
 
 @魚の養殖, 減額率, 養殖レベル計算用
 #DIM DYNAMIC LCOUNT
@@ -432,48 +412,42 @@ DRAWLINE
 PRINTPLAIN 　魚の養殖　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1 TO 4
-			LRESULT = RESULT
-			IF 生け簀の養殖:LRESULT != ""
-				PRINTFORML {LRESULT}番の生け簀では%生け簀の養殖:LRESULT%を養殖中です。新しく別の魚を養殖しますか？
-				PRINTL [0] - 新しいものに挑戦したい
-				PRINTL [1] - もったいないからやめる
-				DO 
-					INPUT
-					SIF RESULT == 1
-						RESTART
-				LOOP LOOPRES(0)
-			ENDIF
-			DRAWLINE
-			PRINTFORML □{LRESULT}番の生け簀で何を養殖しますか？
-			FOR LCOUNT, 800, 850
-				SIF ITEMNAME:LCOUNT != ""
-					CALL PASELIL, @"　[{LCOUNT-800, 2}] - %ITEMNAME:LCOUNT%\@ !ORIGIN ? (養殖費用 およそ{ITEMPRICE:LCOUNT*(100-減額率)/100}＄/日)#\@"
-			NEXT
-			DRAWLINE
-			PRINTPLAIN 　生け簀　
-			PRINTL [100] - 戻る
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 100
-						RESTART
-					CASEELSE
-						海産物 = RESULT+800
-						PRINTFORML {LRESULT}番の生け簀で%ITEMNAME:海産物%の養殖を始めました
-						生け簀の状態:LRESULT = 50-養殖レベル計算用/2
-						生け簀の養殖:LRESULT = %ITEMNAME:海産物%
-						ITEM:海産物 = 1
-						RESTART
-				ENDSELECT
-			LOOP 1
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1 TO 4
+		LRESULT = RESULT
+		IF 生け簀の養殖:LRESULT != ""
+			PRINTFORML {LRESULT}番の生け簀では%生け簀の養殖:LRESULT%を養殖中です。新しく別の魚を養殖しますか？
+			PRINTL [0] - 新しいものに挑戦したい
+			PRINTL [1] - もったいないからやめる
+			BINPUT
+			SIF RESULT == 1
+				RESTART
+		ENDIF
+		DRAWLINE
+		PRINTFORML □{LRESULT}番の生け簀で何を養殖しますか？
+		FOR LCOUNT, 800, 850
+			SIF ITEMNAME:LCOUNT != ""
+				CALL PASELIL, @"　[{LCOUNT-800, 2}] - %ITEMNAME:LCOUNT%\@ !ORIGIN ? (養殖費用 およそ{ITEMPRICE:LCOUNT*(100-減額率)/100}＄/日)#\@"
+		NEXT
+		DRAWLINE
+		PRINTPLAIN 　生け簀　
+		PRINTL [100] - 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE 100
+				RESTART
+			CASEELSE
+				海産物 = RESULT+800
+				PRINTFORML {LRESULT}番の生け簀で%ITEMNAME:海産物%の養殖を始めました
+				生け簀の状態:LRESULT = 50-養殖レベル計算用/2
+				生け簀の養殖:LRESULT = %ITEMNAME:海産物%
+				ITEM:海産物 = 1
+				RESTART
+		ENDSELECT
+ENDSELECT
 
 @生産状況_畜産, 減額率
 #DIM DYNAMIC LCOUNT
@@ -510,9 +484,9 @@ IF CMATCH(CSTR:配属, "畜産業")
 					PRINT [妖精]
 			ENDSELECT
 			CALL ISTALENT, LCOUNT, "統率"
-			CALL ABL_CHECK_飼育技能
 			SIF 特質("ワーカホリック", LCOUNT)
 				PRINTFORM [ワーカホリック+{特質("ワーカホリック", LCOUNT)/10}]
+			CALL ABL_CHECK_飼育技能
 			SIF RESULT && ABL:LCOUNT:飼育技能 < 10
 				PRINTBUTTON "[飼育技能上昇可能]", LCOUNT+1
 			PRINTL 
@@ -531,61 +505,53 @@ PRINTL □自動投資
 PRINTFORML 　現在:\@ 自動投資 ? オン # オフ \@
 PRINTL 
 
-CALL PASELIL, @"□現在の牧場 (牧場の予算:{牧場の予算}＄/1000000＄)"
+CALL PASELIL, @"□現在の牧場 (牧場の予算:{リソース:牧場の予算}＄/%TOOPTIONINT(1000000)%＄)"
 IF !ITEM:牧場
-	SETCOLORBYNAME gray
-	PRINTL 　[牧場未所持]
-	RESETCOLOR
+	CALL PRINTCOLORL, "　[牧場未所持]", "gray"
 ELSE
-	PRINT 　牛の状態:
-	CALL 動物の具合, 牛の状態
-	PRINT 馬の状態:
-	CALL 動物の具合, 馬の状態
-	PRINT 羊の状態:
-	CALL 動物の具合, 羊の状態
-	IF ユニコーンの状態 > 0
-		PRINT ユニコーンの状態:
-		CALL 動物の具合, ユニコーンの状態
+	PRINT 　家畜:牛:
+	CALL 動物の具合, 家畜:牛
+	PRINT 家畜:馬:
+	CALL 動物の具合, 家畜:馬
+	PRINT 家畜:羊:
+	CALL 動物の具合, 家畜:羊
+	IF 家畜:ユニコーン > 0
+		PRINT 家畜:ユニコーン:
+		CALL 動物の具合, 家畜:ユニコーン
 	ENDIF
-	IF バイコーンの状態 > 0
-		PRINT バイコーンの状態:
-		CALL 動物の具合, バイコーンの状態
+	IF 家畜:バイコーン > 0
+		PRINT 家畜:バイコーン:
+		CALL 動物の具合, 家畜:バイコーン
 	ENDIF
 	PRINTL 
 ENDIF
 PRINTL 
 
-CALL PASELIL, @"□現在の畜舎 (畜舎の予算:{畜舎の予算}＄/1000000＄)"
+CALL PASELIL, @"□現在の畜舎 (畜舎の予算:{リソース:畜舎の予算}＄/%TOOPTIONINT(1000000)%＄)"
 IF !ITEM:畜舎
-	SETCOLORBYNAME gray
-	PRINTL 　[畜舎未所持]
-	RESETCOLOR
+	CALL PRINTCOLORL, "　[畜舎未所持]", "gray"
 ELSE
-	PRINT 　豚の状態:
-	CALL 動物の具合, 豚の状態
-	PRINT 　鶏の状態:
-	CALL 動物の具合, 鶏の状態
+	PRINT 　家畜:豚:
+	CALL 動物の具合, 家畜:豚
+	PRINT 　家畜:鶏:
+	CALL 動物の具合, 家畜:鶏
 	PRINTL 
 ENDIF
 PRINTL 
 
-CALL PASELIL, @"□現在の養蜂場 (養蜂場の予算:{養蜂場の予算}＄/100000＄)"
+CALL PASELIL, @"□現在の養蜂場 (養蜂場の予算:{リソース:養蜂場の予算}＄/%TOOPTIONINT(100000)%＄)"
 IF !ITEM:養蜂場
-	SETCOLORBYNAME gray
-	PRINTL 　[養蜂場未所持]
-	RESETCOLOR
+	CALL PRINTCOLORL, "　[養蜂場未所持]", "gray"
 ELSE
-	PRINT 　蜂の状態:
-	CALL 動物の具合, 蜂の状態
+	PRINT 　家畜:蜂:
+	CALL 動物の具合, 家畜:蜂
 	PRINTL 
 ENDIF
 PRINTL 
 
-CALL PASELIL, @"□現在の生け簀 (生け簀の予算:{生け簀の予算}＄/1000000＄)"
+CALL PASELIL, @"□現在の生け簀 (生け簀の予算:{リソース:生け簀の予算}＄/%TOOPTIONINT(1000000)%＄)"
 IF !ITEM:生け簀
-	SETCOLORBYNAME gray
-	PRINTL 　[生け簀未所持]
-	RESETCOLOR
+	CALL PRINTCOLORL, "　[生け簀未所持]", "gray"
 ELSE
 	FOR LCOUNT, 1, 5
 		IF 生け簀の養殖:LCOUNT != ""
@@ -610,28 +576,28 @@ PRINTL
 
 PRINTL □現在生産できるアイテム
 PRINT 　
-SIF 牛の状態 >= 30
+SIF 家畜:牛 >= 30
 	PRINT [牛肉]
-SIF 牛の状態 >= 80
+SIF 家畜:牛 >= 80
 	PRINT [牛乳]
-SIF 馬の状態 >= 30 || ユニコーンの状態 >= 30 || バイコーンの状態 >= 30
+SIF 家畜:馬 >= 30 || 家畜:ユニコーン >= 30 || 家畜:バイコーン >= 30
 	PRINT [馬肉]
-SIF 羊の状態 >= 30
+SIF 家畜:羊 >= 30
 	PRINT [羊肉]
-SIF 羊の状態 >= 80
+SIF 家畜:羊 >= 80
 	PRINT [チーズ]
 
-SIF 豚の状態 >= 30
+SIF 家畜:豚 >= 30
 	PRINT [豚肉]
-SIF 鶏の状態 >= 30
+SIF 家畜:鶏 >= 30
 	PRINT [鶏肉]
-SIF 鶏の状態 >= 80
+SIF 家畜:鶏 >= 80
 	PRINT [卵]
 
 SIF TALENT:MASTER:触手使い
 	PRINT [触手肉]
 
-SIF 蜂の状態 >= 30
+SIF 家畜:蜂 >= 30
 	PRINT [蜂蜜]
 
 FOR LCOUNT, 1, 5
@@ -651,23 +617,20 @@ DRAWLINE
 PRINTPLAIN 　生産状況　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE -1
-			CALL 動物図鑑
-			RESTART
-		CASEELSE
-			LTARGET = TARGET
-			TARGET = RESULT-1
-			SIF CSTR:配属 == "畜産業"
-				CALL ABLUP, "飼育技能"
-			TARGET = LTARGET
-	ENDSELECT
-LOOP 1
-
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE -1
+		CALL 動物図鑑
+		RESTART
+	CASEELSE
+		LTARGET = TARGET
+		TARGET = RESULT-1
+		SIF CSTR:配属 == "畜産業"
+			CALL ABLUP, "飼育技能"
+		TARGET = LTARGET
+ENDSELECT
 
 @動物の具合, ARG
 SELECTCASE ARG
@@ -697,28 +660,11 @@ RESETCOLOR
 DRAWLINE
 PRINTL □畜産用設備の導入
 PRINT 現在の設備 
-SETCOLORBYNAME gray
-IF ITEM:牧場
-	PRINTD [牧場]
-ELSE
-	PRINT [牧場]
-ENDIF
-IF ITEM:畜舎
-	PRINTD [畜舎]
-ELSE
-	PRINT [畜舎]
-ENDIF
-IF ITEM:養蜂場
-	PRINTD [養蜂場]
-ELSE
-	PRINT [養蜂場]
-ENDIF
-IF ITEM:生け簀
-	PRINTD [生け簀]
-ELSE
-	PRINT [生け簀]
-ENDIF
-RESETCOLOR
+CALL PRINTCOLOR, "[牧場]", @"\@ !ITEM:牧場 ? gray #\@"
+CALL PRINTCOLOR, "[畜舎]", @"\@ !ITEM:畜舎 ? gray #\@"
+CALL PRINTCOLOR, "[養蜂場]", @"\@ !ITEM:養蜂場 ? gray #\@"
+CALL PRINTCOLOR, "[生け簀]", @"\@ !ITEM:生け簀 ? gray #\@"
+
 PRINTL 
 PRINTL 
 IF ITEM:牧場
@@ -743,34 +689,19 @@ ELSE
 ENDIF
 PRINTL 　[9] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			IF !ITEM:牧場
-				購入設備 = 牧場
-				BREAK
-			ENDIF
-		CASE 1
-			IF !ITEM:畜舎
-				購入設備 = 畜舎
-				BREAK
-			ENDIF
-		CASE 2
-			IF !ITEM:養蜂場
-				購入設備 = 養蜂場
-				BREAK
-			ENDIF
-		CASE 3
-			IF !ITEM:生け簀
-				購入設備 = 生け簀
-				BREAK
-			ENDIF
-		CASE 9
-			RETURN
-	ENDSELECT
-LOOP 1
-
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		購入設備 = 牧場
+	CASE 1
+		購入設備 = 畜舎
+	CASE 2
+		購入設備 = 養蜂場
+	CASE 3
+		購入設備 = 生け簀
+	CASE 9
+		RETURN
+ENDSELECT
 
 SELECTCASE 購入設備
 	CASE "牧場"
@@ -789,20 +720,16 @@ ELSE
 	CALL PASELIL, @"%購入設備%を購入します。よろしいですか？(所持金:{MONEY}＄→{MONEY-ITEMPRICE:購入設備}＄)"
 	PRINTL [0] - はい
 	PRINTL [1] - いいえ
-	DO
-		INPUT
-		SELECTCASE RESULT
-			CASE 0
-				PRINTFORMW %購入設備%を購入しました
-				ITEM:購入設備 = 1
-				MONEY -= ITEMPRICE:購入設備
-				CALL 現金出納帳記録, @"「%購入設備%」購入/-{ITEMPRICE:購入設備}"
-				RESTART
-			CASE 1
-				RESTART
-		ENDSELECT
-	LOOP 1
+	BINPUT
+	SELECTCASE RESULT
+		CASE 0
+			PRINTFORMW %購入設備%を購入しました
+			ITEM:購入設備 = 1
+			MONEY -= ITEMPRICE:購入設備
+			CALL 現金出納帳記録, @"「%購入設備%」購入/-{ITEMPRICE:購入設備}"
+	ENDSELECT
 ENDIF
+RESTART
 
 @動物図鑑
 
@@ -900,402 +827,402 @@ ENDIF
 
 ;ORIGINなら予算は常にMAX
 IF ORIGIN
-	牧場の予算 = 1000000
-	畜舎の予算 = 1000000
-	養蜂場の予算 = 100000
-	生け簀の予算 = 1000000
+	リソース:牧場の予算 = 1000000
+	リソース:畜舎の予算 = 1000000
+	リソース:養蜂場の予算 = 100000
+	リソース:生け簀の予算 = 1000000
 	自動投資 = 0
 ENDIF
 
 ;減額率が0なら1にする
 CALL SETMAX, 減額率, 1
 
-IF 馬の状態
+IF 家畜:馬
 	;1日の出費は5万円±5千円とする
 	出費 = RAND(45000, 55000)
 	;減額率で計算
 	出費 = 出費*(100-減額率)/100
 	
 	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
-	IF 出費 > 牧場の予算 && 自動投資
+	IF 出費 > リソース:牧場の予算 && 自動投資
 		IF MONEY >= 出費
-			CALL PASELIL, @"馬の育成費用、{出費}＄を牧場の予算に繰り入れました"
+			CALL PASELIL, @"馬の育成費用、{出費}＄をリソース:牧場の予算に繰り入れました"
 			CALL 現金出納帳記録, @"馬の育成費用/-{出費}"
 			MONEY -= 出費
-			牧場の予算 += 出費
+			リソース:牧場の予算 += 出費
 		ELSE
 			PRINTL 所持金が足りないため、自動投資ができませんでした
 		ENDIF
 	ENDIF
-	IF 出費 > 牧場の予算
+	IF 出費 > リソース:牧場の予算
 		;状態が3以下の場合は1日1づつ下がっていき、0で全滅する
-		IF 馬の状態 <= 3
-			馬の状態--
+		IF 家畜:馬 <= 3
+			家畜:馬--
 		ELSE
 			状態計算用 = MAX(10-(飼育レベル計算用/20), 1)
 			;乱数で上下する ゆくゆくは気温や天候などでやりたい
 			状態計算用 += RAND:3
-			馬の状態 -= 状態計算用
-			SIF 馬の状態 <= 3
-				馬の状態 = 3
+			家畜:馬 -= 状態計算用
+			SIF 家畜:馬 <= 3
+				家畜:馬 = 3
 		ENDIF
 	;予算が足りてると状態が良くなる
 	ELSE
 		状態計算用 = MAX(飼育レベル計算用/20, 1)
 		;乱数で上下する ゆくゆくは気温や天候などでやりたい
 		状態計算用 += RAND:3
-		馬の状態 += 状態計算用
+		家畜:馬 += 状態計算用
 	ENDIF
-	牧場の予算 -= 出費
+	リソース:牧場の予算 -= 出費
 	;飼育レベル次第で状態の最大値が決まる 条件はゆるめ
 	SELECTCASE 飼育レベル計算用
 		CASE 0
-			CALL SETMIN, 馬の状態, 50
+			CALL SETMIN, 家畜:馬, 50
 		CASE IS < 10
-			CALL SETMIN, 馬の状態, 60
+			CALL SETMIN, 家畜:馬, 60
 		CASE IS < 20
-			CALL SETMIN, 馬の状態, 70
+			CALL SETMIN, 家畜:馬, 70
 		CASE IS < 30
-			CALL SETMIN, 馬の状態, 80
+			CALL SETMIN, 家畜:馬, 80
 		CASE IS < 40
-			CALL SETMIN, 馬の状態, 90
+			CALL SETMIN, 家畜:馬, 90
 		CASEELSE
-			CALL SETMIN, 馬の状態, 100
+			CALL SETMIN, 家畜:馬, 100
 	ENDSELECT
-	IF 馬の状態 == 0
+	IF 家畜:馬 == 0
 		PRINTL 馬たちは飢餓で全滅しました……
 		動物の死亡++
 	ENDIF
 ENDIF
 
 ;以下馬の計算とほぼ同じ
-IF 牛の状態
+IF 家畜:牛
 	;1日の出費は5万円±5千円とする
 	出費 = RAND(45000, 55000)
 	;減額率で計算
 	出費 = 出費*(100-減額率)/100
 	
-	IF 出費 > 牧場の予算 && 自動投資
+	IF 出費 > リソース:牧場の予算 && 自動投資
 		IF MONEY >= 出費
-			CALL PASELIL, @"牛の育成費用、{出費}＄を牧場の予算に繰り入れました"
+			CALL PASELIL, @"牛の育成費用、{出費}＄をリソース:牧場の予算に繰り入れました"
 			CALL 現金出納帳記録, @"牛の育成費用/-{出費}"
 			MONEY -= 出費
-			牧場の予算 += 出費
+			リソース:牧場の予算 += 出費
 		ELSE
 			PRINTL 所持金が足りないため、自動投資ができませんでした
 		ENDIF
 	ENDIF
 	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
-	IF 出費 > 牧場の予算
+	IF 出費 > リソース:牧場の予算
 		;状態が3以下の場合は1日1づつ下がっていき、0で全滅する
-		IF 牛の状態 <= 3
-			牛の状態--
+		IF 家畜:牛 <= 3
+			家畜:牛--
 		ELSE
 			状態計算用 = MAX(10-(飼育レベル計算用/20), 1)
 			;乱数で上下する ゆくゆくは気温や天候などでやりたい
 			状態計算用 += RAND:3
-			牛の状態 -= 状態計算用
-			SIF 牛の状態 <= 3
-				牛の状態 = 3
+			家畜:牛 -= 状態計算用
+			SIF 家畜:牛 <= 3
+				家畜:牛 = 3
 		ENDIF
 	;予算が足りてると状態が良くなる
 	ELSE
 		状態計算用 = MAX(飼育レベル計算用/20, 1)
 		;乱数で上下する ゆくゆくは気温や天候などでやりたい
 		状態計算用 += RAND:3
-		牛の状態 += 状態計算用
+		家畜:牛 += 状態計算用
 	ENDIF
-	牧場の予算 -= 出費
+	リソース:牧場の予算 -= 出費
 	;飼育レベル次第で状態の最大値が決まる 条件はゆるめ
 	SELECTCASE 飼育レベル計算用
 		CASE 0
-			CALL SETMIN, 牛の状態, 50
+			CALL SETMIN, 家畜:牛, 50
 		CASE IS < 10
-			CALL SETMIN, 牛の状態, 60
+			CALL SETMIN, 家畜:牛, 60
 		CASE IS < 20
-			CALL SETMIN, 牛の状態, 70
+			CALL SETMIN, 家畜:牛, 70
 		CASE IS < 30
-			CALL SETMIN, 牛の状態, 80
+			CALL SETMIN, 家畜:牛, 80
 		CASE IS < 40
-			CALL SETMIN, 牛の状態, 90
+			CALL SETMIN, 家畜:牛, 90
 		CASEELSE
-			CALL SETMIN, 牛の状態, 100
+			CALL SETMIN, 家畜:牛, 100
 	ENDSELECT
-	SIF 牛の状態 >= 80
+	SIF 家畜:牛 >= 80
 		ITEM:牛乳 = 1
-	IF 牛の状態 == 0
+	IF 家畜:牛 == 0
 		PRINTL 牛たちは飢餓で全滅しました……
 		動物の死亡++
 	ENDIF
 ENDIF
 
-IF 羊の状態
+IF 家畜:羊
 	;1日の出費は2万円±2千円とする
 	出費 = RAND(18000, 22000)
 	;減額率で計算
 	出費 = 出費*(100-減額率)/100
 	
-	IF 出費 > 牧場の予算 && 自動投資
+	IF 出費 > リソース:牧場の予算 && 自動投資
 		IF MONEY >= 出費
-			CALL PASELIL, @"羊の育成費用、{出費}＄を牧場の予算に繰り入れました"
+			CALL PASELIL, @"羊の育成費用、{出費}＄をリソース:牧場の予算に繰り入れました"
 			CALL 現金出納帳記録, @"羊の育成費用/-{出費}"
 			MONEY -= 出費
-			牧場の予算 += 出費
+			リソース:牧場の予算 += 出費
 		ELSE
 			PRINTL 所持金が足りないため、自動投資ができませんでした
 		ENDIF
 	ENDIF
 	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
-	IF 出費 > 牧場の予算
+	IF 出費 > リソース:牧場の予算
 		;状態が3以下の場合は1日1づつ下がっていき、0で全滅する
-		IF 羊の状態 <= 3
-			羊の状態--
+		IF 家畜:羊 <= 3
+			家畜:羊--
 		ELSE
 			状態計算用 = MAX(10-(飼育レベル計算用/20), 1)
 			;乱数で上下する ゆくゆくは気温や天候などでやりたい
 			状態計算用 += RAND:3
-			羊の状態 -= 状態計算用
-			SIF 羊の状態 <= 3
-				羊の状態 = 3
+			家畜:羊 -= 状態計算用
+			SIF 家畜:羊 <= 3
+				家畜:羊 = 3
 		ENDIF
 	;予算が足りてると状態が良くなる
 	ELSE
 		状態計算用 = MAX(飼育レベル計算用/20, 1)
 		;乱数で上下する ゆくゆくは気温や天候などでやりたい
 		状態計算用 += RAND:3
-		羊の状態 += 状態計算用
+		家畜:羊 += 状態計算用
 	ENDIF
-	牧場の予算 -= 出費
+	リソース:牧場の予算 -= 出費
 	;飼育レベル次第で状態の最大値が決まる 条件はゆるめ
 	SELECTCASE 飼育レベル計算用
 		CASE 0
-			CALL SETMIN, 羊の状態, 50
+			CALL SETMIN, 家畜:羊, 50
 		CASE IS < 10
-			CALL SETMIN, 羊の状態, 60
+			CALL SETMIN, 家畜:羊, 60
 		CASE IS < 20
-			CALL SETMIN, 羊の状態, 70
+			CALL SETMIN, 家畜:羊, 70
 		CASE IS < 30
-			CALL SETMIN, 羊の状態, 80
+			CALL SETMIN, 家畜:羊, 80
 		CASE IS < 40
-			CALL SETMIN, 羊の状態, 90
+			CALL SETMIN, 家畜:羊, 90
 		CASEELSE
-			CALL SETMIN, 羊の状態, 100
+			CALL SETMIN, 家畜:羊, 100
 	ENDSELECT
-	SIF 羊の状態 >= 80
+	SIF 家畜:羊 >= 80
 		ITEM:チーズ = 1
-	IF 羊の状態 == 0
+	IF 家畜:羊 == 0
 		PRINTL 羊たちは飢餓で全滅しました……
 		動物の死亡++
 	ENDIF
 ENDIF
 
-IF ユニコーンの状態
+IF 家畜:ユニコーン
 	;ユニコーンとバイコーンは出費無し
 	;アライメントが純潔寄りで合計50未満、もしくは飼育レベル50未満だと居なくなる
 	IF 特殊馬アライメント合計 < 50 || ユニコーン飼育レベル < 50
 		PRINTL 飼育係をお気に召さないユニコーンは、どこかに逃げ出してしまった……
-		ユニコーンの状態 = 0
+		家畜:ユニコーン = 0
 		GOTO 特殊馬終了
 	ENDIF
 	;状態は(アライメント+飼育レベル-50)/2で決まる
-	ユニコーンの状態 = (特殊馬アライメント合計+ユニコーン飼育レベル-50)/2
-	CALL SETMIN, ユニコーンの状態, 100
+	家畜:ユニコーン = (特殊馬アライメント合計+ユニコーン飼育レベル-50)/2
+	CALL SETMIN, 家畜:ユニコーン, 100
 ELSEIF 特殊馬アライメント合計 >= 50 && ユニコーン飼育レベル >= 50 && ITEM:牧場
 	PRINTL どこからかやってきたユニコーンが牧場に住み着いたようだ
-	ユニコーンの状態 = (特殊馬アライメント合計+ユニコーン飼育レベル-50)/2
-	CALL SETMIN, ユニコーンの状態, 100
+	家畜:ユニコーン = (特殊馬アライメント合計+ユニコーン飼育レベル-50)/2
+	CALL SETMIN, 家畜:ユニコーン, 100
 ENDIF
 
-IF バイコーンの状態
+IF 家畜:バイコーン
 	;ユニコーンとバイコーンは出費無し
 	;アライメントが不純寄りで合計-300未満、もしくは飼育レベル100未満だと居なくなる
 	IF 特殊馬アライメント合計 > -300 || バイコーン飼育レベル < 100
 		PRINTL 飼育係をお気に召さないバイコーンは、どこかに逃げ出してしまった……
-		バイコーンの状態 = 0
+		家畜:バイコーン = 0
 		GOTO 特殊馬終了
 	ENDIF
 	;状態は(ABS(アライメント)/5+飼育レベル-100)/2で決まる
-	バイコーンの状態 = (ABS(特殊馬アライメント合計)/5+バイコーン飼育レベル-100)/2
-	CALL SETMIN, バイコーンの状態, 100
+	家畜:バイコーン = (ABS(特殊馬アライメント合計)/5+バイコーン飼育レベル-100)/2
+	CALL SETMIN, 家畜:バイコーン, 100
 ELSEIF 特殊馬アライメント合計 <= -300 && バイコーン飼育レベル >= 100 && ITEM:牧場
 	PRINTL どこからかやってきたバイコーンが牧場に住み着いたようだ
-	バイコーンの状態 = (ABS(特殊馬アライメント合計)/5+バイコーン飼育レベル-100)/2
-	CALL SETMIN, バイコーンの状態, 100
+	家畜:バイコーン = (ABS(特殊馬アライメント合計)/5+バイコーン飼育レベル-100)/2
+	CALL SETMIN, 家畜:バイコーン, 100
 ENDIF
 
 $特殊馬終了
 
-IF 豚の状態
+IF 家畜:豚
 	;1日の出費は5万円±5千円とする
 	出費 = RAND(45000, 55000)
 	;減額率で計算
 	出費 = 出費*(100-減額率)/100
 	
-	IF 出費 > 畜舎の予算 && 自動投資
+	IF 出費 > リソース:畜舎の予算 && 自動投資
 		IF MONEY >= 出費
-			CALL PASELIL, @"豚の育成費用、{出費}＄を畜舎の予算に繰り入れました"
+			CALL PASELIL, @"豚の育成費用、{出費}＄をリソース:畜舎の予算に繰り入れました"
 			CALL 現金出納帳記録, @"豚の育成費用/-{出費}"
 			MONEY -= 出費
-			畜舎の予算 += 出費
+			リソース:畜舎の予算 += 出費
 		ELSE
 			PRINTL 所持金が足りないため、自動投資ができませんでした
 		ENDIF
 	ENDIF
 	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
-	IF 出費 > 畜舎の予算
+	IF 出費 > リソース:畜舎の予算
 		;状態が3以下の場合は1日1づつ下がっていき、0で全滅する
-		IF 豚の状態 <= 3
-			豚の状態--
+		IF 家畜:豚 <= 3
+			家畜:豚--
 		ELSE
 			状態計算用 = MAX(10-(飼育レベル計算用/20), 1)
 			;乱数で上下する ゆくゆくは気温や天候などでやりたい
 			状態計算用 += RAND:3
-			豚の状態 -= 状態計算用
-			SIF 豚の状態 <= 3
-				豚の状態 = 3
+			家畜:豚 -= 状態計算用
+			SIF 家畜:豚 <= 3
+				家畜:豚 = 3
 		ENDIF
 	;予算が足りてると状態が良くなる
 	ELSE
 		状態計算用 = MAX(飼育レベル計算用/20, 1)
 		;乱数で上下する ゆくゆくは気温や天候などでやりたい
 		状態計算用 += RAND:3
-		豚の状態 += 状態計算用
+		家畜:豚 += 状態計算用
 	ENDIF
-	畜舎の予算 -= 出費
+	リソース:畜舎の予算 -= 出費
 	;飼育レベル次第で状態の最大値が決まる 条件はゆるめ
 	SELECTCASE 飼育レベル計算用
 		CASE 0
-			CALL SETMIN, 豚の状態, 50
+			CALL SETMIN, 家畜:豚, 50
 		CASE IS < 10
-			CALL SETMIN, 豚の状態, 60
+			CALL SETMIN, 家畜:豚, 60
 		CASE IS < 20
-			CALL SETMIN, 豚の状態, 70
+			CALL SETMIN, 家畜:豚, 70
 		CASE IS < 30
-			CALL SETMIN, 豚の状態, 80
+			CALL SETMIN, 家畜:豚, 80
 		CASE IS < 40
-			CALL SETMIN, 豚の状態, 90
+			CALL SETMIN, 家畜:豚, 90
 		CASEELSE
-			CALL SETMIN, 豚の状態, 100
+			CALL SETMIN, 家畜:豚, 100
 	ENDSELECT
-	IF 豚の状態 == 0
+	IF 家畜:豚 == 0
 		PRINTL 豚たちは飢餓で全滅しました……
 		動物の死亡++
 	ENDIF
 ENDIF
 
-IF 鶏の状態
+IF 家畜:鶏
 	;1日の出費は1万円±1千円とする
 	出費 = RAND(9000, 11000)
 	;減額率で計算
 	出費 = 出費*(100-減額率)/100
 	
-	IF 出費 > 畜舎の予算 && 自動投資
+	IF 出費 > リソース:畜舎の予算 && 自動投資
 		IF MONEY >= 出費
-			CALL PASELIL, @"鶏の育成費用、{出費}＄を畜舎の予算に繰り入れました"
+			CALL PASELIL, @"鶏の育成費用、{出費}＄をリソース:畜舎の予算に繰り入れました"
 			CALL 現金出納帳記録, @"鶏の育成費用/-{出費}"
 			MONEY -= 出費
-			畜舎の予算 += 出費
+			リソース:畜舎の予算 += 出費
 		ELSE
 			PRINTL 所持金が足りないため、自動投資ができませんでした
 		ENDIF
 	ENDIF
 	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
-	IF 出費 > 畜舎の予算
+	IF 出費 > リソース:畜舎の予算
 		;状態が3以下の場合は1日1づつ下がっていき、0で全滅する
-		IF 鶏の状態 <= 3
-			鶏の状態--
+		IF 家畜:鶏 <= 3
+			家畜:鶏--
 		ELSE
 			状態計算用 = MAX(10-(飼育レベル計算用/20), 1)
 			;乱数で上下する ゆくゆくは気温や天候などでやりたい
 			状態計算用 += RAND:3
-			鶏の状態 -= 状態計算用
-			SIF 鶏の状態 <= 3
-				鶏の状態 = 3
+			家畜:鶏 -= 状態計算用
+			SIF 家畜:鶏 <= 3
+				家畜:鶏 = 3
 		ENDIF
 	;予算が足りてると状態が良くなる
 	ELSE
 		状態計算用 = MAX(飼育レベル計算用/20, 1)
 		;乱数で上下する ゆくゆくは気温や天候などでやりたい
 		状態計算用 += RAND:3
-		鶏の状態 += 状態計算用
+		家畜:鶏 += 状態計算用
 	ENDIF
-	畜舎の予算 -= 出費
+	リソース:畜舎の予算 -= 出費
 	;飼育レベル次第で状態の最大値が決まる 条件はゆるめ
 	SELECTCASE 飼育レベル計算用
 		CASE 0
-			CALL SETMIN, 鶏の状態, 50
+			CALL SETMIN, 家畜:鶏, 50
 		CASE IS < 10
-			CALL SETMIN, 鶏の状態, 60
+			CALL SETMIN, 家畜:鶏, 60
 		CASE IS < 20
-			CALL SETMIN, 鶏の状態, 70
+			CALL SETMIN, 家畜:鶏, 70
 		CASE IS < 30
-			CALL SETMIN, 鶏の状態, 80
+			CALL SETMIN, 家畜:鶏, 80
 		CASE IS < 40
-			CALL SETMIN, 鶏の状態, 90
+			CALL SETMIN, 家畜:鶏, 90
 		CASEELSE
-			CALL SETMIN, 鶏の状態, 100
+			CALL SETMIN, 家畜:鶏, 100
 	ENDSELECT
-	SIF 鶏の状態 >= 80
+	SIF 家畜:鶏 >= 80
 		ITEM:卵 = 1
-	IF 鶏の状態 == 0
+	IF 家畜:鶏 == 0
 		PRINTL 鶏たちは飢餓で全滅しました……
 		動物の死亡++
 	ENDIF
 ENDIF
 
-IF 蜂の状態
+IF 家畜:蜂
 	;1日の出費は5000円±500円とする
 	出費 = RAND(4500, 5500)
 	;減額率で計算
 	出費 = 出費*(100-減額率)/100
 
-	IF 出費 > 養蜂場の予算 && 自動投資
+	IF 出費 > リソース:養蜂場の予算 && 自動投資
 		IF MONEY >= 出費
-			CALL PASELIL, @"蜂の育成費用、{出費}＄を養蜂場の予算に繰り入れました"
+			CALL PASELIL, @"蜂の育成費用、{出費}＄をリソース:養蜂場の予算に繰り入れました"
 			CALL 現金出納帳記録, @"蜂の育成費用/-{出費}"
 			MONEY -= 出費
-			養蜂場の予算 += 出費
+			リソース:養蜂場の予算 += 出費
 		ELSE
 			PRINTL 所持金が足りないため、自動投資ができませんでした
 		ENDIF
 	ENDIF
 	;予算が足りないと状態が悪くなる 1日で最大10 乱数次第では増えたりもする
-	IF 出費 > 養蜂場の予算
+	IF 出費 > リソース:養蜂場の予算
 		;状態が3以下の場合は1日1づつ下がっていき、0で全滅する
-		IF 蜂の状態 <= 3
-			蜂の状態--
+		IF 家畜:蜂 <= 3
+			家畜:蜂--
 		ELSE
 			状態計算用 = MAX(10-(飼育レベル計算用/20), 1)
 			;乱数で上下する ゆくゆくは気温や天候などでやりたい
 			状態計算用 += RAND:3
-			蜂の状態 -= 状態計算用
-			SIF 蜂の状態 <= 3
-				蜂の状態 = 3
+			家畜:蜂 -= 状態計算用
+			SIF 家畜:蜂 <= 3
+				家畜:蜂 = 3
 		ENDIF
 	;予算が足りてると状態が良くなる
 	ELSE
 		状態計算用 = MAX(飼育レベル計算用/20, 1)
 		;乱数で上下する ゆくゆくは気温や天候などでやりたい
 		状態計算用 += RAND:3
-		蜂の状態 += 状態計算用
+		家畜:蜂 += 状態計算用
 	ENDIF
-	養蜂場の予算 -= 出費
+	リソース:養蜂場の予算 -= 出費
 	;飼育レベル次第で状態の最大値が決まる 条件はゆるめ
 	SELECTCASE 飼育レベル計算用
 		CASE 0
-			CALL SETMIN, 蜂の状態, 50
+			CALL SETMIN, 家畜:蜂, 50
 		CASE IS < 10
-			CALL SETMIN, 蜂の状態, 60
+			CALL SETMIN, 家畜:蜂, 60
 		CASE IS < 20
-			CALL SETMIN, 蜂の状態, 70
+			CALL SETMIN, 家畜:蜂, 70
 		CASE IS < 30
-			CALL SETMIN, 蜂の状態, 80
+			CALL SETMIN, 家畜:蜂, 80
 		CASE IS < 40
-			CALL SETMIN, 蜂の状態, 90
+			CALL SETMIN, 家畜:蜂, 90
 		CASEELSE
-			CALL SETMIN, 蜂の状態, 100
+			CALL SETMIN, 家畜:蜂, 100
 	ENDSELECT
-	IF 蜂の状態 == 0
+	IF 家畜:蜂 == 0
 		PRINTL 蜂たちは病気で全滅しました……
 		動物の死亡++
 	ENDIF
@@ -1316,24 +1243,24 @@ IF ITEM:生け簀
 	養殖中 = 1
 	
 	出費 = 出費*(100-減額率)/100
-	IF 出費 > 生け簀の予算 && 自動投資
+	IF 出費 > リソース:生け簀の予算 && 自動投資
 		IF MONEY >= 出費
-			CALL PASELIL, @"魚の育成費用、{出費}＄を生け簀の予算に繰り入れました"
+			CALL PASELIL, @"魚の育成費用、{出費}＄をリソース:生け簀の予算に繰り入れました"
 			CALL 現金出納帳記録, @"魚の育成費用/-{出費}"
 			MONEY -= 出費
-			生け簀の予算 += 出費
+			リソース:生け簀の予算 += 出費
 		ELSE
 			PRINTL 所持金が足りないため、自動投資ができませんでした
 		ENDIF
 	ENDIF
-	IF 生け簀の予算 < 出費
+	IF リソース:生け簀の予算 < 出費
 		FOR LCOUNT, 1, 5
 			IF 生け簀の養殖:LCOUNT != ""
 				IF 生け簀の状態:LCOUNT == 0
-					PRINTFORML 生け簀の予算不足のため、%生け簀の養殖:LCOUNT%の収穫ができませんでした
+					PRINTFORML リソース:生け簀の予算不足のため、%生け簀の養殖:LCOUNT%の収穫ができませんでした
 					生け簀の状態:LCOUNT = 1
 				ELSE
-					PRINTFORML 生け簀の予算不足のため、%生け簀の養殖:LCOUNT%の養殖ができませんでした
+					PRINTFORML リソース:生け簀の予算不足のため、%生け簀の養殖:LCOUNT%の養殖ができませんでした
 				ENDIF
 			ENDIF
 		NEXT
@@ -1346,22 +1273,22 @@ IF ITEM:生け簀
 				ENDIF
 			ENDIF
 		NEXT
-		生け簀の予算 -= 出費
+		リソース:生け簀の予算 -= 出費
 	ENDIF
 ENDIF
 $養殖無し
 
-IF 牧場の予算 < 0
-	PRINTL 牧場の予算が不足しています。補充しましょう
-	牧場の予算 = 0
+IF リソース:牧場の予算 < 0
+	PRINTL リソース:牧場の予算が不足しています。補充しましょう
+	リソース:牧場の予算 = 0
 ENDIF
-IF 畜舎の予算 < 0
-	PRINTL 畜舎の予算が不足しています。補充しましょう
-	畜舎の予算 = 0
+IF リソース:畜舎の予算 < 0
+	PRINTL リソース:畜舎の予算が不足しています。補充しましょう
+	リソース:畜舎の予算 = 0
 ENDIF
-IF 養蜂場の予算 < 0
-	PRINTL 養蜂場の予算が不足しています。補充しましょう
-	養蜂場の予算 = 0
+IF リソース:養蜂場の予算 < 0
+	PRINTL リソース:養蜂場の予算が不足しています。補充しましょう
+	リソース:養蜂場の予算 = 0
 ENDIF
 
 ;モチベ計算用にもう一度回す
@@ -1385,11 +1312,11 @@ FOR LCOUNT, 0, CHARANUM
 				モチベ計算用--
 		ENDSELECT
 		;予算がたくさん(7割以上)あるとモチベも上がる 養蜂場は例外
-		SIF 牧場の予算 >= 700000
+		SIF リソース:牧場の予算 >= 700000
 			モチベ計算用++
-		SIF 畜舎の予算 >= 700000
+		SIF リソース:畜舎の予算 >= 700000
 			モチベ計算用++
-		SIF 生け簀の予算 >= 700000
+		SIF リソース:生け簀の予算 >= 700000
 			モチベ計算用++
 		;動物が死んでるとモチベ激減する
 		モチベ計算用 -= 動物の死亡*50
@@ -1400,7 +1327,7 @@ FOR LCOUNT, 0, CHARANUM
 		モチベ合計値 += 相性モチベ補正(LCOUNT)
 		CFLAG:LCOUNT:モチベーション = LIMIT(モチベ合計値, 1, 100)
 		;経験も加算しとく
-		EXP:LCOUNT:飼育経験 += (馬の状態>0)+(牛の状態>0)+(羊の状態>0)+(豚の状態>0)+(鶏の状態>0)+(蜂の状態>0)+養殖中
+		EXP:LCOUNT:飼育経験 += (家畜:馬>0)+(家畜:牛>0)+(家畜:羊>0)+(家畜:豚>0)+(家畜:鶏>0)+(家畜:蜂>0)+養殖中
 		;習得の加算
 		;JUEL:LCOUNT:習得 += CFLAG:LCOUNT:モチベーション*10
 	ENDIF
@@ -1419,10 +1346,10 @@ CALL CHECKDRAWLINEW
 IF ゲームモード() == "新婚モード" && FINDCHARA(CFLAG:嫁, 1) >= 0
 	CSTR:MASTER:配属 = 
 	CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 
-	牧場の予算 = 1000000
-	畜舎の予算 = 1000000
-	養蜂場の予算 = 100000
-	生け簀の予算 = 1000000
+	リソース:牧場の予算 = 1000000
+	リソース:畜舎の予算 = 1000000
+	リソース:養蜂場の予算 = 100000
+	リソース:生け簀の予算 = 1000000
 ENDIF
 
 @飼育レベル, ARG
@@ -1509,7 +1436,7 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 			計算用 += 5
 		CASE "既婚者", "淫乱", "貞操無頓着", "快感に素直", "即落ち", "淫核", "淫膣", "淫尻", "淫乳", "両刀", "ふたなり"
 			計算用 -= 5
-		CASE "娼婦", "ヤンデレ", "性器破損", "狂気", "母性"
+		CASE "娼婦", "ヤンデレ", "性器破損", "狂気", "母性", "サキュバス", "インキュバス"
 			計算用 -= 10
 		CASE "傷物"
 			計算用 -= MAX(TALENT:ARG:傷物, 10)
@@ -1542,19 +1469,10 @@ RETURNF 計算用
 
 @MANUAL_畜産業
 DRAWLINE
-PRINTL □畜産業について
-PRINTL 　[1] - 畜産業のシステム
-PRINTL 　[2] - 
-DRAWLINE
-PRINTPLAIN 　畜産業　
-PRINTL [0] - 戻る
-
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1
-			PRINTL 
-	ENDSELECT
-LOOP 1
+PRINTL 畜産業では牧場や畜舎を購入し、牛や豚などの家畜を育てることで食材を得ることができます
+PRINTL ここで得た食材は調理室での献立や、飲食店経営で使用することが可能です
+PRINTL キャラを配属し、手動もしくは自動で予算を投入することで家畜の健康状態を維持することができ、健康状態が良いほど上位の食材が手に入ります
+PRINTL 農業と違い、家畜の維持には多くの人手と大金が必要になるため、予算が少ないうちは注意しましょう。予算が足りないと家畜が飢えるおそれがあります
+PRINTL 魚の養殖については予算が足りなくなると養殖がストップし、一時的に魚の補充ができなくなります。予算を再投入することで補充が再開されます
+PRINTL キャラクターの能力に応じて出費を大幅に削減できるため、飼育技能は積極的に伸ばしていきましょう
+WAIT
