@@ -1,4 +1,4 @@
-﻿@GC_MAP, 階層
+﻿@GC_MAP, 選択階層
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC X座標
@@ -27,7 +27,7 @@
 #DIM DYNAMIC 重複確認, 30, 30
 #DIM DYNAMIC 重複確認X
 #DIM DYNAMIC 重複確認Y
-#DIM DYNAMIC 階層
+#DIM DYNAMIC 選択階層
 #DIM DYNAMIC 階層保存用
 #DIM DYNAMIC レイアウトスロット
 #DIM DYNAMIC 適用不可
@@ -38,17 +38,17 @@ VARLINE = LINECOUNT
 
 ;オブジェクト名, X座標の長さ, Y座標の長さ 1次元目の数値はオブジェクトIDとしても扱う 0は欠番
 ;幅:0(X幅)と幅:1(Y幅)はそれぞれ筐体が↓もしくは↑の場合の数字
-FOR LCOUNT, 1000, 1500
-	SIF ITEMNAME:LCOUNT == ""
+FOR LCOUNT, 0, 500
+	SIF ERDNAME(筐体, LCOUNT) == ""
 		CONTINUE
-	CALL 筐体サイズ, ITEMNAME:LCOUNT, オブジェクト名, 幅
+	CALL 筐体サイズ, ERDNAME(筐体, LCOUNT), オブジェクト名, 幅
 
 	FOR LCOUNT2, 1, 5
 		SELECTCASE 筐体向き:LCOUNT2
 			CASE "←", "→"
-				オブジェクト情報:((LCOUNT-1100)*4+LCOUNT2):0 '= @"%オブジェクト名%_%筐体向き:LCOUNT2%", @"{幅:1}", @"{幅:0}"
+				オブジェクト情報:(LCOUNT*4+LCOUNT2):0 '= @"%オブジェクト名%_%筐体向き:LCOUNT2%", @"{幅:1}", @"{幅:0}"
 			CASE "↓", "↑"
-				オブジェクト情報:((LCOUNT-1100)*4+LCOUNT2):0 '= @"%オブジェクト名%_%筐体向き:LCOUNT2%", @"{幅:0}", @"{幅:1}"
+				オブジェクト情報:(LCOUNT*4+LCOUNT2):0 '= @"%オブジェクト名%_%筐体向き:LCOUNT2%", @"{幅:0}", @"{幅:1}"
 		ENDSELECT
 	NEXT
 NEXT
@@ -78,8 +78,8 @@ SPRITECREATE "GRID_OVER", 2, 0, 0, 32, 32
 CALL スプライト作成_ゲームセンター
 
 ;ゲーセンの拡張度合いに応じて広くなる
-マップ横幅 = 10+GC広さ
-マップ縦幅 = 10+GC広さ
+マップ横幅 = 10+GC:広さ
+マップ縦幅 = 10+GC:広さ
 
 DO
 	$RESTART
@@ -155,10 +155,10 @@ DO
 			;配置しようとするオブジェクトも仮表示してみる
 			SIF オブジェクト配置 && Y座標 == 始点:1+幅:1-1 && X座標 == 始点:0
 				表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト情報:オブジェクト配置:0%' pos='{X座標*100}'><img src='%オブジェクト情報:オブジェクト配置:0%' srcb='' height='{幅:1*100}' width='{幅:0*100}' ypos='{(幅:1-1)*(-100)}'></button>"
-			IF GCオブジェクト:階層:Y座標:X座標 != 0
-				オブジェクト名 = %オブジェクト情報:(GCオブジェクト:階層:Y座標:X座標):0%
-				オブジェクト幅:0 = TOINT(オブジェクト情報:(GCオブジェクト:階層:Y座標:X座標):1)
-				オブジェクト幅:1 = TOINT(オブジェクト情報:(GCオブジェクト:階層:Y座標:X座標):2)
+			IF GCオブジェクト:選択階層:Y座標:X座標 != 0
+				オブジェクト名 = %オブジェクト情報:(GCオブジェクト:選択階層:Y座標:X座標):0%
+				オブジェクト幅:0 = TOINT(オブジェクト情報:(GCオブジェクト:選択階層:Y座標:X座標):1)
+				オブジェクト幅:1 = TOINT(オブジェクト情報:(GCオブジェクト:選択階層:Y座標:X座標):2)
 				表示用変数:X座標 += @"<button value='{(X座標*100)+Y座標}' title='%オブジェクト名%' pos='{X座標*100}'><img src='%オブジェクト名%' srcb='' height='{オブジェクト幅:1*100}' width='{オブジェクト幅:0*100}' ypos='{(オブジェクト幅:1-1)*(-100)}'></button>"
 
 				FOR 重複確認Y, Y座標, Y座標-オブジェクト幅:1, -1
@@ -176,12 +176,12 @@ DO
 	PRINTL 
 
 	;階層101～103はレイアウト保存用なので別処理
-	IF 階層 > 100
+	IF 選択階層 > 100
 		;レイアウト適用後の筐体数を計算する
-		CALL 設置済み筐体計算, 階層保存用, 階層
-		FOR LCOUNT, 1000, 1500
-			IF ITEM:LCOUNT < 設置済み筐体:(LCOUNT-1000)
-				PRINTFORML レイアウトの適用には%ITEMNAME:LCOUNT%が{ABS((ITEM:LCOUNT)-(設置済み筐体:(LCOUNT-1000)))}個足りません
+		CALL 設置済み筐体計算, 階層保存用, 選択階層
+		FOR LCOUNT, 0, 400
+			IF 筐体:LCOUNT < 設置済み筐体:LCOUNT
+				PRINTFORML レイアウトの適用には%ERDNAME(筐体, LCOUNT)%が{ABS(筐体:LCOUNT-設置済み筐体:LCOUNT)}個足りません
 				適用不可 = 1
 			ENDIF
 		NEXT
@@ -189,25 +189,23 @@ DO
 			WAIT
 			$適用終了
 			適用不可 = 0
-			階層 = 階層保存用
+			選択階層 = 階層保存用
 			CALL 設置済み筐体計算
 			GOTO RESTART
 		ENDIF
 		PRINTL このレイアウトを使用します。よろしいですか？
 		PRINTL [0] - はい
 		PRINTL [1] - いいえ
-		CALL INPUTF, 0, 1
+		BINPUT
 		SELECTCASE RESULT
 			CASE 0
 				FOR X座標, 0, 30
 					FOR Y座標, 0, 30
-						GCオブジェクト:階層保存用:Y座標:X座標 = GCオブジェクト:階層:Y座標:X座標
+						GCオブジェクト:階層保存用:Y座標:X座標 = GCオブジェクト:選択階層:Y座標:X座標
 					NEXT
 				NEXT
-				GOTO 適用終了
-			CASE 1
-				GOTO 適用終了
 		ENDSELECT
+		GOTO 適用終了
 	ENDIF
 
 	IF オブジェクト配置
@@ -281,7 +279,7 @@ DO
 					NEXT
 				NEXT
 				$DECIDE
-				GCオブジェクト:階層:(始点:1+幅:1-1):(始点:0) = オブジェクト配置
+				GCオブジェクト:選択階層:(始点:1+幅:1-1):(始点:0) = オブジェクト配置
 				オブジェクト配置 = 0
 				VARSET 始点保存用, -1
 				CALL 設置済み筐体計算
@@ -295,25 +293,25 @@ DO
 
 		CONTINUE
 	ELSE
-		PRINTFORML □現在:{階層}F/{GC階層}F
+		PRINTFORML □現在:{選択階層}F/{GC:階層}F
 		PRINTL 　[50] - 筐体を配置する [51] - マップを初期化する
 		PRINT 　
-		IF 階層 >= 2
+		IF 選択階層 >= 2
 			PRINT [60] - 下の階に行く 
 		ELSE
 			PRINTPLAIN 　　　　　　　　　 
 		ENDIF
-		IF 階層 >= 6
+		IF 選択階層 >= 6
 			PRINT [61] - 5階下に行く 
 		ELSE
 			PRINTPLAIN 　　　　　　　　　
 		ENDIF
-		IF GC階層 > 階層
+		IF GC:階層 > 選択階層
 			PRINT [65] - 上の階に行く 
 		ELSE
 			PRINTPLAIN 　　　　　　　　　 
 		ENDIF
-		IF GC階層-5 >= 5
+		IF GC:階層-5 >= 5
 			PRINT [66] - 5階上に行く 
 		ELSE
 			PRINTPLAIN 　　　　　　　　　
@@ -332,27 +330,27 @@ DO
 				PRINTL マップを初期化します。よろしいですか？
 				PRINTL [0] - はい
 				PRINTL [1] - いいえ
-				CALL INPUTF, 0, 1
+				BINPUT
 				IF RESULT == 0
 					VARSET GCオブジェクト
 					CALL 設置済み筐体計算
 				ENDIF
 				CONTINUE
 			CASE 60
-				SIF 階層 >= 2
-					階層--
+				SIF 選択階層 >= 2
+					選択階層--
 				CONTINUE
 			CASE 61
-				SIF 階層 >= 6
-					階層 -= 5
+				SIF 選択階層 >= 6
+					選択階層 -= 5
 				CONTINUE
 			CASE 65
-				SIF GC階層 > 階層
-					階層++
+				SIF GC:階層 > 選択階層
+					選択階層++
 				CONTINUE
 			CASE 66
-				SIF GC階層-5 >= 階層
-					階層 += 5
+				SIF GC:階層-5 >= 選択階層
+					選択階層 += 5
 				CONTINUE
 			CASE 70
 				INVERTBIT グリッド表示, 0
@@ -365,7 +363,7 @@ DO
 						PRINTFORML 保存用スロット{レイアウトスロット-100}には既にマップデータが存在します。上書きしますか？
 						PRINTL [0] - はい
 						PRINTL [1] - いいえ
-						CALL INPUTF, 0, 1
+						BINPUT
 						SIF RESULT
 							GOTO RESTART
 						BREAK
@@ -373,14 +371,14 @@ DO
 				NEXT
 				FOR Y座標, 0, 30
 					FOR X座標, 0, 30
-						GCオブジェクト:レイアウトスロット:Y座標:X座標 = GCオブジェクト:階層:Y座標:X座標
+						GCオブジェクト:レイアウトスロット:Y座標:X座標 = GCオブジェクト:選択階層:Y座標:X座標
 					NEXT
 				NEXT
 				PRINTW レイアウトを保存しました
 			CASE 91 TO 93
 				レイアウトスロット = RESULT-90+100
-				階層保存用 = 階層
-				階層 = レイアウトスロット
+				階層保存用 = 選択階層
+				選択階層 = レイアウトスロット
 				RESTART
 			CASEELSE
 				;RESULTからX,Y座標を調べる
@@ -388,10 +386,10 @@ DO
 				選択座標:0 = RESULT/100
 				;Y
 				選択座標:1 = RESULT%100
-				選択オブジェクト = %オブジェクト情報:(GCオブジェクト:階層:(選択座標:1):(選択座標:0)):0%
+				選択オブジェクト = %オブジェクト情報:(GCオブジェクト:選択階層:(選択座標:1):(選択座標:0)):0%
 				;座標の情報表示
 				PRINT □
-				SIF GCオブジェクト:階層:(選択座標:1):(選択座標:0)
+				SIF GCオブジェクト:選択階層:(選択座標:1):(選択座標:0)
 					PRINTFORM %選択オブジェクト%配置中 
 				PRINTFORML {選択座標:0}×{選択座標:1}
 				;オブジェクトの扱い
@@ -417,8 +415,8 @@ DO
 								CONTINUE
 							SPLIT 選択オブジェクト, "_", 表示用変数
 							筐体向き = %表示用変数:1%
-							オブジェクト配置 = GCオブジェクト:階層:(始点:1):(始点:0)
-							GCオブジェクト:階層:(始点:1):(始点:0) = 0
+							オブジェクト配置 = GCオブジェクト:選択階層:(始点:1):(始点:0)
+							GCオブジェクト:選択階層:(始点:1):(始点:0) = 0
 							;縦にずれてる分を調整
 							始点:1 -= TOINT(オブジェクト情報:オブジェクト配置:2)-1
 							ARRAYCOPY "始点", "始点保存用"
@@ -426,7 +424,7 @@ DO
 						CASE 2
 							SIF 選択オブジェクト == ""
 								CONTINUE
-							GCオブジェクト:階層:(始点:1):(始点:0) = 0
+							GCオブジェクト:選択階層:(始点:1):(始点:0) = 0
 							CALL 設置済み筐体計算
 							GOTO RESTART
 						CASE 3
@@ -434,13 +432,13 @@ DO
 							PRINTL □配置する筐体を選んでください 名前(横幅×縦幅)
 							CALL 設置済み筐体計算
 							表示数 = 0
-							FOR LCOUNT, 1000, 1500
-								SIF ITEMNAME:LCOUNT == ""
+							FOR LCOUNT, 0, 500
+								SIF ERDNAME(筐体, LCOUNT) == ""
 									CONTINUE
-								SIF !ITEM:LCOUNT
+								SIF !筐体:LCOUNT
 									CONTINUE
-								PRINTFORM 　[{LCOUNT-1000}] %ITEMNAME:LCOUNT, 15, LEFT%({TOINT(オブジェクト情報:((LCOUNT-1000)*4+1):2)}×{TOINT(オブジェクト情報:((LCOUNT-1000)*4+1):1)}) 
-								PRINTFORM 設置済み:{設置済み筐体:(LCOUNT-1000)}/{ITEM:LCOUNT}
+								PRINTFORM 　[{LCOUNT}] %ERDNAME(筐体, LCOUNT), 15, LEFT%({TOINT(オブジェクト情報:(LCOUNT*4+1):2)}×{TOINT(オブジェクト情報:(LCOUNT*4+1):1)}) 
+								PRINTFORM 設置済み:{設置済み筐体:LCOUNT}/{筐体:LCOUNT}
 								表示数++
 								IF 表示数 == 3
 									PRINTL 
@@ -450,25 +448,18 @@ DO
 							CALL NEWLINE
 							DRAWLINE
 							PRINTL [-1] 戻る
-							DO
-								INPUT
-								SELECTCASE RESULT
-									CASE -1
-										GOTO RESTART
-									CASE 0 TO 400
-										SIF ITEMNAME:(RESULT+1000) == ""
-											CONTINUE
-										SIF !ITEM:(RESULT+1000)
-											CONTINUE
-										IF 設置済み筐体:RESULT >= ITEM:(RESULT+1000)
-											PRINTW 筐体の在庫がありません。追加購入してください
-											GOTO オブジェクト配置
-										ENDIF
-										オブジェクト配置 = RESULT*4+2
-										筐体向き = ↓
-										GOTO RESTART
-								ENDSELECT
-							LOOP 1
+							BINPUT
+							SELECTCASE RESULT
+								CASE -1
+									GOTO RESTART
+							ENDSELECT
+							IF 設置済み筐体:RESULT >= 筐体:RESULT
+								PRINTW 筐体の在庫がありません。追加購入してください
+								GOTO オブジェクト配置
+							ENDIF
+							オブジェクト配置 = RESULT*4+2
+							筐体向き = ↓
+							GOTO RESTART
 							BREAK
 					ENDSELECT
 				LOOP 1
