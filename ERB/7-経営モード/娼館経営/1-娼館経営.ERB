@@ -4,21 +4,21 @@
 #DIMS DYNAMIC 定休日設定
 CALL BR_ITEM_POINT
 
-SIF 娼館広さ == 0
-	娼館広さ = 1
-SIF 娼館部屋数 == 0
-	娼館部屋数 = 1
-SIF 娼館方針 == 0
-	娼館方針 = 1
+SIF BR:広さ == 0
+	BR:広さ = 1
+SIF BR:部屋数 == 0
+	BR:部屋数 = 1
+SIF BR:方針 == 0
+	BR:方針 = 1
 
 DRAWLINE
 PRINT □
-SIF 娼館店名 != "娼館"
-	PRINTFORM 娼館の店名：%娼館店名% 
-PRINTFORM 娼館レベル：{娼館レベル} 運営方針：%娼館方針名(娼館方針)% 
-IF 娼館方針名(娼館方針) != "ソフト方針"
+SIF BRS:店名 != "娼館"
+	PRINTFORM 娼館の店名：%BRS:店名% 
+PRINTFORM 娼館レベル：{BR:レベル} 運営方針：%娼館方針名(BR:方針)% 
+IF 娼館方針名(BR:方針) != "ソフト方針"
 	PRINT 客の性別：
-	SELECTCASE 娼館性別固定
+	SELECTCASE BR:性別固定
 		CASE 0
 			PRINT 固定無し
 		CASE 1
@@ -29,11 +29,11 @@ IF 娼館方針名(娼館方針) != "ソフト方針"
 ENDIF
 PRINTL 
 
-PRINTFORML 　定休日：\@ 娼館定休日 == "" ? 無し # %娼館定休日%曜日 \@
-IF 娼館レベル >= 1000
+PRINTFORML 　定休日：\@ BRS:定休日 == "" ? 無し # %BRS:定休日%曜日 \@
+IF BR:レベル >= 1000
 	PRINTL 　娼館レベルは最大です
 ELSE
-	CALL PASELIL, @"　次のランクアップまであと{娼館レベルアップ必要額}＄の売上が必要"
+	CALL PASELIL, @"　次のランクアップまであと{BR:レベルアップ必要額}＄の売上が必要"
 ENDIF
 PRINTL 
 
@@ -54,88 +54,76 @@ PRINTPLAIN 　BROTHEL　
 PRINT [0] - 戻る
 PRINTL 　[100] 各コマンドの説明
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			CALL BR_ITEM
-		CASE 2
-			CALL BR_RENOVATION
-		CASE 3
-			CALL BR_PLAN
-		CASE 4
-			CALL SELECT_ROOM_BR
-		CASE 5
-			PRINT □店名を入力してください
-			SIF GCS:店名 != "娼館"
-				PRINTFORM  現在の店名：%娼館店名%
-			PRINTL 
-			PRINTBUTTON "[変更しない]", "変更しない"
-			PRINTL 
-			INPUTS
-			SIF RESULTS == "変更しない"
-				RESTART
-			PRINTFORMW 店名を「%RESULTS%」に変更しました
-			娼館店名 = %RESULTS%
-		CASE 8
-			VARLINE = 0
-			DO
-				CALL LOOP_CLEARLINE
-				定休日設定 = 
-				DRAWLINE
-				PRINTL □定休日を選んでください
-				PRINTFORML 　[1] - 日曜日（\@ BR定休日("日") ? 定休 # 営業 \@）
-				PRINTFORML 　[2] - 月曜日（\@ BR定休日("月") ? 定休 # 営業 \@）
-				PRINTFORML 　[3] - 火曜日（\@ BR定休日("火") ? 定休 # 営業 \@）
-				PRINTFORML 　[4] - 水曜日（\@ BR定休日("水") ? 定休 # 営業 \@）
-				PRINTFORML 　[5] - 木曜日（\@ BR定休日("木") ? 定休 # 営業 \@）
-				PRINTFORML 　[6] - 金曜日（\@ BR定休日("金") ? 定休 # 営業 \@）
-				PRINTFORML 　[0] - 土曜日（\@ BR定休日("土") ? 定休 # 営業 \@）
-				PRINTL 　[9] - 設定終了
-				INPUT
-				LRESULT = RESULT
-				SELECTCASE LRESULT
-					CASE 0 TO 6
-						FOR LCOUNT, 0, 7
-							IF LRESULT == LCOUNT
-								IF !BR定休日(DOW(LRESULT))
-									娼館定休日 += @"・%DOW(LRESULT)%"
-								ELSE
-									CONTINUE
-								ENDIF
-							ENDIF
-							IF BR定休日(DOW(LCOUNT))
-								IF 定休日設定 == ""
-									定休日設定 = %DOW(LCOUNT)%
-								ELSE
-									定休日設定 += @"・%DOW(LCOUNT)%"
-								ENDIF
-							ENDIF
-						NEXT
-						娼館定休日 = %定休日設定%
-					CASE 9
-						BREAK
-				ENDSELECT
-			LOOP 1
-		CASE 9
-			IF BR:営業中 > 0
-				PRINTW 娼館の経営を一時中断しました
-				;定休日じゃない休業は-1
-				BR:営業中 = -1
-			ELSE
-				PRINTW 娼館の経営を開始しました
-				BR:営業中 = DAY
-			ENDIF
-		CASE 100
-			CALL BR_TUTORIAL
-		CASEELSE
-			CONTINUE
-	ENDSELECT
-	RESTART
-LOOP 1
-
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		CALL BR_ITEM
+	CASE 2
+		CALL BR_RENOVATION
+	CASE 3
+		CALL BR_PLAN
+	CASE 4
+		CALL SELECT_ROOM_BR
+	CASE 5
+		PRINT □店名を入力してください
+		SIF GCS:店名 != "娼館"
+			PRINTFORM  現在の店名：%BRS:店名%
+		PRINTL 
+		PRINTBUTTON "[変更しない]", "変更しない"
+		PRINTL 
+		INPUTS "娼館"
+		SIF RESULTS == "変更しない"
+			RESTART
+		PRINTFORMW 店名を「%RESULTS%」に変更しました
+		BRS:店名 = %RESULTS%
+	CASE 8
+		VARLINE = 0
+		DO
+			CALL LOOP_CLEARLINE
+			定休日設定 = 
+			DRAWLINE
+			PRINTL □定休日を選んでください
+			PRINTFORML 　[1] - 日曜日（\@ BR定休日("日") ? 定休 # 営業 \@）
+			PRINTFORML 　[2] - 月曜日（\@ BR定休日("月") ? 定休 # 営業 \@）
+			PRINTFORML 　[3] - 火曜日（\@ BR定休日("火") ? 定休 # 営業 \@）
+			PRINTFORML 　[4] - 水曜日（\@ BR定休日("水") ? 定休 # 営業 \@）
+			PRINTFORML 　[5] - 木曜日（\@ BR定休日("木") ? 定休 # 営業 \@）
+			PRINTFORML 　[6] - 金曜日（\@ BR定休日("金") ? 定休 # 営業 \@）
+			PRINTFORML 　[0] - 土曜日（\@ BR定休日("土") ? 定休 # 営業 \@）
+			PRINTL 　[9] - 設定終了
+			BINPUT
+			LRESULT = RESULT
+			SIF RESULT == 9
+				BREAK
+			FOR LCOUNT, 0, 7
+				IF LRESULT == LCOUNT
+					IF !BR定休日(DOW(LRESULT))
+						BRS:定休日 += @"・%DOW(LRESULT)%"
+					ELSE
+						CONTINUE
+					ENDIF
+				ENDIF
+				SIF BR定休日(DOW(LCOUNT))
+					定休日設定 += @"・%DOW(LCOUNT)%"
+			NEXT
+			BRS:定休日 = %SUBSTRINGU(定休日設定, 1)%
+		LOOP 1
+	CASE 9
+		IF BR:営業中 > 0
+			PRINTW 娼館の経営を一時中断しました
+			;定休日じゃない休業は-1
+			BR:営業中 = -1
+		ELSE
+			PRINTW 娼館の経営を開始しました
+			BR:営業中 = DAY
+		ENDIF
+	CASE 100
+		CALL BR_TUTORIAL
+	CASEELSE
+		CONTINUE
+ENDSELECT
 RESTART
 
 ;----------------------------------------------------
@@ -154,7 +142,7 @@ DRAWLINE
 PRINTPLAIN 　TUTORIAL　
 PRINTL [0] - 戻る
 
-CALL INPUTF, 0, 1, 2, 3, 4
+BINPUT
 
 SELECTCASE RESULT
 	CASE 0
@@ -177,7 +165,7 @@ SELECTCASE RESULT
 		PRINTL 奴隷から人員を選出するコマンドです。
 		PRINTL 当然身体を売る奴隷がいないと収入はありません。売春を行ったキャラは、売春の回数に応じて売却額が下がっていきます。
 		PRINTL 体力が減っている、もしくはストレス過多の奴隷は配置しても売春できないため、奴隷の身体をちゃんと考えてあげましょう。
-		PRINTW (数値上1000以上減っていると自動で休憩に入り、回復後に売春を行います)
+		PRINTW (数値上は体力1000以下まで減っていると自動で休憩に入り、回復後に売春を行います)
 ENDSELECT
 
 RESTART
@@ -200,46 +188,38 @@ PRINTL
 DRAWLINE
 
 娼館道具設置数 = 0
-FOR LCOUNT, GETNUM(ITEM, "娼館ローター"), GETNUM(ITEM, "お風呂場")
-	SIF ITEM:LCOUNT
+FOR LCOUNT, GETNUM(BRITEM, "ローター"), GETNUM(BRITEM, "お風呂場")
+	SIF BRITEM:LCOUNT
 		娼館道具設置数++
 NEXT
 PRINT  *配置枠*［
 表示数 = 0
-REPEAT 娼館広さ
+REPEAT BR:広さ
 	IF 表示数 < 娼館道具設置数
-		SETCOLOR 0 , 100 , 250
-			PRINT ■
-		RESETCOLOR
+		CALL PRINTCOLOR, "■", "deepskyblue"
 	ELSE
-		SETCOLOR 120 , 120 , 120
-			PRINT ■
-		RESETCOLOR
+		CALL PRINTCOLOR, "■", "gray"
 	ENDIF
 	表示数++
 REND
 PRINTL ］
 DRAWLINE
 表示数 = 0
-FOR LCOUNT, GETNUM(ITEM, "娼館ローター"), GETNUM(ITEM, "お風呂場")
-	SIF ITEMNAME:LCOUNT == ""
+FOR LCOUNT, GETNUM(BRITEM, "ローター"), GETNUM(BRITEM, "お風呂場")
+	SIF ERDNAME(BRITEM, LCOUNT) == ""
 		CONTINUE
 	SIF 表示数%3 == 0
 		PRINT 　
-	PRINTFORM [{LCOUNT}] %SUBSTRINGU(ITEMNAME:LCOUNT, 2, -1)%
+	PRINTFORM [{LCOUNT, 2}] %ERDNAME(BRITEM, LCOUNT), 15, LEFT%
 	SIF !ORIGIN
-		CALL PASELI, @" 維持費:{ITEMPRICE:LCOUNT}＄"
-	IF ITEM:LCOUNT == 0
+		CALL PASELI, @" 維持費:{BRアイテム価格(LCOUNT), 5}＄"
+	IF BRITEM:LCOUNT == 0
 		PRINT 【
-		SETCOLOR 120 , 120 , 120
-			PRINT 未配置
-		RESETCOLOR
+		CALL PRINTCOLOR, "未配置", "gray"
 		PRINT 】
 	ELSE
 		PRINT 【
-		SETCOLOR 0 , 100 , 250
-			PRINT 配置中
-		RESETCOLOR
+		CALL PRINTCOLOR, "配置中", "deepskyblue"
 		PRINT 】
 	ENDIF
 	表示数++
@@ -251,33 +231,29 @@ DRAWLINE
 PRINTPLAIN 　PERSONAL　
 PRINTL [100] - 戻る
 
-DO
-	INPUT
-	LRESULT = RESULT
-	SELECTCASE LRESULT
-		CASE 100
-			RETURN 0
-		CASEELSE
-			SIF ITEMNAME:LRESULT == ""
-				CONTINUE
-			IF ITEM:LRESULT == 0
-				IF 娼館道具設置数 >= 娼館広さ
-					PRINTW 【これ以上配置できません】
-				ELSE
-					PRINTFORMW %SUBSTRINGU(ITEMNAME:LRESULT, 2, -1)%を配置しました
-					ITEM:LRESULT = 1
-					IF パートナー != ""
-						SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
-							TRYCALLFORM BR_ITEM_%CSVNAMERPS(GETNO(パートナー))%, LRESULT
-					ENDIF
-				ENDIF
+BINPUT
+LRESULT = RESULT
+SELECTCASE LRESULT
+	CASE 100
+		RETURN 0
+	CASEELSE
+		IF BRITEM:LRESULT == 0
+			IF 娼館道具設置数 >= BR:広さ
+				PRINTW 【これ以上配置できません】
 			ELSE
-				PRINTFORMW %SUBSTRINGU(ITEMNAME:LRESULT, 2, -1)%を回収しました
-				ITEM:LRESULT = 0
+				PRINTFORMW %ERDNAME(BRITEM, LRESULT)%を配置しました
+				BRITEM:LRESULT = 1
+				IF パートナー != ""
+					SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
+						TRYCALLFORM BR_ITEM_%CSVNAMERPS(GETNO(パートナー))%, LRESULT
+				ENDIF
 			ENDIF
-			RESTART
-	ENDSELECT
-LOOP 1
+		ELSE
+			PRINTFORMW %ERDNAME(BRITEM, LRESULT)%を回収しました
+			BRITEM:LRESULT = 0
+		ENDIF
+		RESTART
+ENDSELECT
 
 @PRINT_BR_ITEM
 #DIM DYNAMIC LCOUNT
@@ -285,15 +261,15 @@ LOOP 1
 #DIM DYNAMIC 表示数
 
 PRINTFORML 【設備】
-FOR LCOUNT, GETNUM(ITEM, "お風呂場"), GETNUM(ITEM, "わけのわからないもの")+1
-	SIF ITEMNAME:LCOUNT == ""
+FOR LCOUNT, GETNUM(BRITEM, "お風呂場"), GETNUM(BRITEM, "わけのわからないもの")+1
+	SIF ERDNAME(BRITEM, LCOUNT) == ""
 		CONTINUE
-	SIF ITEM:LCOUNT == 0
+	SIF BRITEM:LCOUNT == 0
 		CONTINUE
 	SIF 文字数 == 0
 		PRINT 　
-	PRINTFORM [%ITEMNAME:LCOUNT%]
-	文字数 += STRLENS(ITEMNAME:LCOUNT)
+	PRINTFORM [%ERDNAME(BRITEM, LCOUNT)%]
+	文字数 += STRLENS(ERDNAME(BRITEM, LCOUNT))
 	IF 文字数 > 80
 		PRINTL 
 		文字数 = 0
@@ -308,34 +284,29 @@ CALL NEWLINE
 @BR_RENOVATION
 #DIM DYNAMIC 費用, 2
 
-費用 = POWER(娼館広さ, 2)*50000
-費用:1 = POWER(2, 娼館部屋数)*100000
+DRAWLINE
+費用 = POWER(BR:広さ, 2)*50000
+費用:1 = POWER(2, BR:部屋数)*100000
 PRINTL □物件を増設します
-PRINTFORMLC 　広さ:{娼館広さ}
-PRINTFORMLC 部屋数:{娼館部屋数}
+PRINTFORMLC 　広さ:{BR:広さ}
+PRINTFORMLC 部屋数:{BR:部屋数}
 PRINTL 
 DRAWLINE
 CALL PRINT_BR_ITEM
 DRAWLINE
 
 IF ORIGIN
-	娼館広さ = 10
-	娼館部屋数 = 20
+	BR:広さ = 10
+	BR:部屋数 = 20
 ENDIF
 
-IF 娼館広さ >= 10
-	SETCOLORBYNAME gray
-	PRINTPLAIN 　[-] - これ以上広く出来ません
-	PRINTL 
-	RESETCOLOR
+IF BR:広さ >= 10
+	CALL PRINTCOLORL, "　[-] - これ以上広く出来ません", "gray"
 ELSE
 	CALL PASELIL, @"　[1] - 広くする({費用}＄)"
 ENDIF
-IF 娼館部屋数 >= 20
-	SETCOLORBYNAME gray
-	PRINTPLAIN 　[-] - これ以上部屋を増やせません
-	PRINTL 
-	RESETCOLOR
+IF BR:部屋数 >= 20
+	CALL PRINTCOLORL, "　[-] - これ以上部屋を増やせません", "gray"
 ELSE
 	CALL PASELIL, @"　[2] - 部屋を増やす({費用:1}＄)"
 ENDIF
@@ -344,66 +315,60 @@ DRAWLINE
 PRINTPLAIN 　RENOVATION　
 PRINTL [0] - 戻る
 
-CALL INPUTF, 0, 1, 2, 3
-
+BINPUT
 SELECTCASE RESULT
 	CASE 0
 		RETURN 0
 	CASE 1
-		SIF 娼館広さ >= 10
-			RESTART
 		IF 費用 > MONEY
 			PRINTW 所持金が足りません
 			RESTART
 		ENDIF
 		PRINTL 娼館を広くしますか？
-		PRINTFORML 広さ {娼館広さ}→{娼館広さ+1}
+		PRINTFORML 広さ {BR:広さ}→{BR:広さ+1}
 		CALL PASELIL, @"増設後の所持金 {MONEY-費用}＄"
 		PRINTL 
 		PRINTL [0] - はい
 		PRINTL [1] - いいえ
-		CALL INPUTF, 0, 1
+		BINPUT
 		SELECTCASE RESULT
 			CASE 0
 				PRINTW 娼館を広くしました
 				MONEY -= 費用
 				CALL 現金出納帳記録, @"娼館改築/-{費用}"
-				娼館広さ++
+				BR:広さ++
 				IF パートナー != ""
 					SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
 						TRYCALLFORM BR_RENOVATION_%CSVNAMERPS(GETNO(パートナー))%, 1
 				ENDIF
 		ENDSELECT
-		RESTART
 	CASE 2
-		SIF 娼館部屋数 >= 20
-			RESTART
 		IF 費用:1 > MONEY
 			PRINTW 所持金が足りません
 			RESTART
 		ENDIF
 		PRINTL 娼館の部屋を増やしますか？
-		PRINTFORML 部屋数 {娼館部屋数}→{娼館部屋数+1}
+		PRINTFORML 部屋数 {BR:部屋数}→{BR:部屋数+1}
 		CALL PASELIL, @"増設後の所持金 {MONEY-費用:1}＄"
 		PRINTL 
 		PRINTL [0] - はい
 		PRINTL [1] - いいえ
-		CALL INPUTF, 0, 1
+		BINPUT
 		SELECTCASE RESULT
 			CASE 0
 				PRINTW 娼館の部屋を増やしました
 				MONEY -= 費用:1
 				CALL 現金出納帳記録, @"娼館改築/-{費用:1}"
-				娼館部屋数++
+				BR:部屋数++
 				IF パートナー != ""
 					SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
 						TRYCALLFORM BR_RENOVATION_%CSVNAMERPS(GETNO(パートナー))%, 2
 				ENDIF
 		ENDSELECT
-		RESTART
 	CASE 3
 		CALL BR_ITEM_BUY
 ENDSELECT
+RESTART
 
 ;設備導入----------------------------------------------------
 @BR_ITEM_BUY
@@ -420,17 +385,17 @@ DRAWLINE
 CALL PRINT_BR_ITEM
 DRAWLINE
 
-FOR LCOUNT, GETNUM(ITEM, "お風呂場"), GETNUM(ITEM, "わけのわからないもの")+1
-	SIF ITEMNAME:LCOUNT == ""
+FOR LCOUNT, GETNUM(BRITEM, "お風呂場"), GETNUM(BRITEM, "わけのわからないもの")+1
+	SIF ERDNAME(BRITEM, LCOUNT) == ""
 		CONTINUE
 	SIF 表示数 == 0
 		PRINT 　
-	IF ITEM:LCOUNT
+	IF BRITEM:LCOUNT
 		SETCOLORBYNAME gray
-		PRINTFORMLC [導入済み] %ITEMNAME:LCOUNT%
+		PRINTFORMLC [導入済み] %ERDNAME(BRITEM, LCOUNT)%
 		RESETCOLOR
 	ELSE
-		表示用 = [{LCOUNT}] %ITEMNAME:LCOUNT%\@ !ORIGIN ? ({ITEMPRICE:LCOUNT}＄)#\@
+		表示用 = [{LCOUNT}] %ERDNAME(BRITEM, LCOUNT)%\@ !ORIGIN ? ({BRアイテム価格(LCOUNT)}＄)#\@
 		IF ORIGIN
 			PRINTFORMLC %表示用%
 		ELSE
@@ -461,60 +426,54 @@ DRAWLINE
 PRINTPLAIN 　ITEM　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASEELSE
-			SIF ITEMNAME:RESULT == ""
-				CONTINUE
-			SIF ITEM:RESULT
-				CONTINUE
-			IF ITEMPRICE:RESULT > MONEY && !ORIGIN
-				PRINTW 所持金が足りません
-				RESTART
-			ENDIF
-			DRAWLINE
-			LRESULT = RESULT
-			PRINTFORM %ITEMNAME:RESULT%:
-			SELECTCASE ITEMNAME:RESULT
-				CASE "お風呂場"
-					PRINTL 性行為の前には体を洗いましょう
-				CASE "高級ベッド"
-					PRINTL 広々とした空間で新たなプレイを
-				CASE "隠しカメラ"
-					PRINTL マジックミラーの後ろに仕込む隠しカメラ
-				CASE "換気扇"
-					PRINTL 臭いと不快感を減らす
-				CASE "ピンクライト"
-					PRINTL 売春の雰囲気UP!
-				CASE "防音壁"
-					PRINTL 外に声が漏れないので遠慮なく楽しめます
-				CASE "拷問器具"
-					PRINTL 普通のSMプレイにも飽きた人へ
-				CASE "わけのわからないもの"
-					PRINTL わけのわからない人たちが使う
-			ENDSELECT
-			SIF !ORIGIN
-				CALL PASELIL, @"導入後の所持金 {MONEY}＄→{MONEY-ITEMPRICE:RESULT}＄"
-			PRINTL [0] - 導入する
-			PRINTL [1] - 導入しない
-			CALL INPUTF, 0, 1
-			SELECTCASE RESULT
-				CASE 0
-					PRINTFORMW %ITEMNAME:LRESULT%を導入しました
-					ITEM:LRESULT = 1
-					MONEY -= ITEMPRICE:LRESULT
-					CALL 現金出納帳記録, @"「%ITEMNAME:LRESULT%」購入/-{ITEMPRICE:LRESULT}"
-					IF パートナー != ""
-						SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
-							TRYCALLFORM BR_ITEM_%CSVNAMERPS(GETNO(パートナー))%, LRESULT
-					ENDIF
-			ENDSELECT
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASEELSE
+		IF BRアイテム価格(RESULT) > MONEY && !ORIGIN
+			PRINTW 所持金が足りません
 			RESTART
-	ENDSELECT
-LOOP 1
+		ENDIF
+		DRAWLINE
+		LRESULT = RESULT
+		PRINTFORM %ERDNAME(BRITEM, RESULT)%:
+		SELECTCASE ERDNAME(BRITEM, RESULT)
+			CASE "お風呂場"
+				PRINTL 性行為の前には体を洗いましょう
+			CASE "高級ベッド"
+				PRINTL 広々とした空間で新たなプレイを
+			CASE "隠しカメラ"
+				PRINTL マジックミラーの後ろに仕込む隠しカメラ
+			CASE "換気扇"
+				PRINTL 臭いと不快感を減らす
+			CASE "ピンクライト"
+				PRINTL 売春の雰囲気UP!
+			CASE "防音壁"
+				PRINTL 外に声が漏れないので遠慮なく楽しめます
+			CASE "拷問器具"
+				PRINTL 普通のSMプレイにも飽きた人へ
+			CASE "わけのわからないもの"
+				PRINTL わけのわからない人たちが使う
+		ENDSELECT
+		SIF !ORIGIN
+			CALL PASELIL, @"導入後の所持金 {MONEY}＄→{MONEY-BRアイテム価格(RESULT)}＄"
+		PRINTL [0] - 導入する
+		PRINTL [1] - 導入しない
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				PRINTFORMW %ERDNAME(BRITEM, LRESULT)%を導入しました
+				BRITEM:LRESULT = 1
+				MONEY -= BRアイテム価格(LRESULT)
+				CALL 現金出納帳記録, @"「%ERDNAME(BRITEM, LRESULT)%」購入/-{BRアイテム価格(LRESULT)}"
+				IF パートナー != ""
+					SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
+						TRYCALLFORM BR_ITEM_%CSVNAMERPS(GETNO(パートナー))%, LRESULT
+				ENDIF
+		ENDSELECT
+		RESTART
+ENDSELECT
 
 
 ;運営方針----------------------------------------------------
@@ -529,10 +488,10 @@ PRINTFORMLC SM - {SMポイント}
 PRINTFORMLC 狂気 - {狂気ポイント}
 PRINTL 
 DRAWLINE
-PRINTFORM □現在の方針：%娼館方針名(娼館方針)% 客の性別：
-SIF 娼館方針名(娼館方針) == "ソフト方針"
+PRINTFORM □現在の方針：%娼館方針名(BR:方針)% 客の性別：
+SIF 娼館方針名(BR:方針) == "ソフト方針"
 	SETCOLORBYNAME gray
-SELECTCASE 娼館性別固定
+SELECTCASE BR:性別固定
 	CASE 0
 		PRINT 固定無し
 	CASE 1
@@ -540,7 +499,7 @@ SELECTCASE 娼館性別固定
 	CASE 2
 		PRINT 女性のみ
 ENDSELECT
-SIF 娼館方針名(娼館方針) == "ソフト方針"
+SIF 娼館方針名(BR:方針) == "ソフト方針"
 	PRINT (ソフト方針では男性客のみの対応となります)
 PRINTL
 RESETCOLOR
@@ -560,18 +519,18 @@ PRINTPLAIN 　PLAN　
 PRINT [0] 戻る 
 PRINTL [20] 各方針の説明
 
-INPUT
+BINPUT
 SELECTCASE RESULT
 	CASE 0
 		RETURN
 	CASE 1 TO 4
-		娼館方針 = RESULT
+		BR:方針 = RESULT
 		IF パートナー != ""
 			SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
 				TRYCALLFORM BR_PLAN_%CSVNAMERPS(GETNO(パートナー))%, RESULT
 		ENDIF
 	CASE 5 TO 7
-		娼館性別固定 = RESULT-5
+		BR:性別固定 = RESULT-5
 	CASE 8
 		INVERTBIT FLAG:娼館報告, 0
 	CASE 9
@@ -640,66 +599,66 @@ RESTART
 SMポイント = 0
 狂気ポイント = 0
 
-FOR LCOUNT, GETNUM(ITEM, "娼館ローター"), GETNUM(ITEM, "お風呂場")
-	SIF ITEMNAME:LCOUNT == ""
+FOR LCOUNT, GETNUM(BRITEM, "ローター"), GETNUM(BRITEM, "お風呂場")
+	SIF ERDNAME(BRITEM, LCOUNT) == ""
 		CONTINUE
-	SIF !ITEM:LCOUNT
+	SIF !BRITEM:LCOUNT
 		CONTINUE
-	SELECTCASE ITEMNAME:LCOUNT
-		CASE "娼館ローター"
+	SELECTCASE ERDNAME(BRITEM, LCOUNT)
+		CASE "ローター"
 			ソフトポイント += 20
 			ハードポイント += 10
 			狂気ポイント += 5
-		CASE "娼館バイブ"
+		CASE "バイブ"
 			ハードポイント += 10
 			SMポイント += 20
 			狂気ポイント += 15
-		CASE "娼館アナルバイブ"
+		CASE "アナルバイブ"
 			ハードポイント += 5
 			SMポイント += 25
 			狂気ポイント += 15
-		CASE "娼館鞭"
+		CASE "鞭"
 			SMポイント += 30
 			狂気ポイント += 20
-		CASE "娼館縄"
+		CASE "縄"
 			SMポイント += 25
 			狂気ポイント += 35
-		CASE "娼館ペニスバンド"
+		CASE "ペニスバンド"
 			ハードポイント += 10
 			SMポイント += 30
 			狂気ポイント += 5
-		CASE "娼館コンドーム"
+		CASE "コンドーム"
 			ソフトポイント += 5
 			ハードポイント += 20
 			SMポイント += 15
 			狂気ポイント += 5
-		CASE "娼館ローション"
+		CASE "ローション"
 			ソフトポイント += 15
 			ハードポイント += 20
 			SMポイント += 10
 			狂気ポイント += 5
-		CASE "娼館媚薬"
+		CASE "媚薬"
 			ソフトポイント += 20
 			ハードポイント += 40
 			SMポイント += 35
 			狂気ポイント += 30
-		CASE "娼館睡眠薬"
+		CASE "睡眠薬"
 			ハードポイント += 5
 			SMポイント += 10
 			狂気ポイント += 30
-		CASE "娼館ゴム手袋"
+		CASE "ゴム手袋"
 			ソフトポイント += 15
 			狂気ポイント += 5
 	ENDSELECT
 NEXT
 
-SIF ITEM:ピンクライト
+SIF BRITEM:ピンクライト
 	TIMES ソフトポイント , 1.50
-SIF ITEM:防音壁
+SIF BRITEM:防音壁
 	TIMES ハードポイント , 1.50
-SIF ITEM:拷問器具
+SIF BRITEM:拷問器具
 	TIMES SMポイント , 1.50
-SIF ITEM:わけのわからないもの
+SIF BRITEM:わけのわからないもの
 	TIMES 狂気ポイント , 1.50
 
 
@@ -725,7 +684,7 @@ FOR LCOUNT, 0, CHARANUM
 NEXT
 
 PRINTL □キャラを配属させる部屋を選んでください
-FOR LCOUNT, 1, 娼館部屋数+1
+FOR LCOUNT, 1, BR:部屋数+1
 	PRINTFORM 　[{LCOUNT}] {LCOUNT}番ルーム(
 	IF 娼館部屋状態:LCOUNT:0
 		PRINTFORM %CALLNAME:(娼館部屋状態:LCOUNT:0)%
@@ -740,28 +699,24 @@ DRAWLINE
 PRINTPLAIN 　娼館配属　
 PRINTL [0] 戻る
 
-DO
-	INPUT
-	選択部屋 = RESULT
-	SIF 選択部屋 == 0
-		RETURN
-	SIF !INRANGE(選択部屋, 1, 娼館部屋数)
-		CONTINUE
-	
-	IF 娼館部屋状態:選択部屋:0 && 娼館部屋状態:選択部屋:1
-		PRINTFORML これ以上{選択部屋}番ルームには配属できません
-		PRINTL [0] - 仕方ないな
-		PRINTL [1] - その部屋に配属してるキャラを外してくれ
-		CALL INPUTF, 0, 1
-		IF RESULT == 1
-			CALL 配属解除, 娼館部屋状態:選択部屋:0
-			CALL 配属解除, 娼館部屋状態:選択部屋:1
-		ENDIF
-		RESTART
+BINPUT
+選択部屋 = RESULT
+SIF 選択部屋 == 0
+	RETURN
+
+IF 娼館部屋状態:選択部屋:0 && 娼館部屋状態:選択部屋:1
+	PRINTFORML これ以上{選択部屋}番ルームには配属できません
+	PRINTL [0] - 仕方ないな
+	PRINTL [1] - その部屋に配属してるキャラを外してくれ
+	BINPUT
+	IF RESULT == 1
+		CALL 配属解除, 娼館部屋状態:選択部屋:0
+		CALL 配属解除, 娼館部屋状態:選択部屋:1
 	ENDIF
-	CALL STRATEGY_PERSONAL, "娼館", RESULT
 	RESTART
-LOOP 1
+ENDIF
+CALL STRATEGY_PERSONAL, "娼館", RESULT
+RESTART
 
 ;収入計算----------------------------------------------------
 @INCOME_BR
@@ -781,7 +736,7 @@ CVARSET 通常出勤
 対象 = FINDCHARA(CFLAG:上級娼婦, 1)
 IF 対象 >= 0
 	;方針設定してないとダメ
-	SIF 娼館方針 == 0
+	SIF BR:方針 == 0
 		GOTO 通常営業
 	;体力不足
 	IF BASE:対象:体力 <= 1000
@@ -812,7 +767,7 @@ ENDIF
 
 $通常営業
 
-FOR LCOUNT, 1, 娼館部屋数+1
+FOR LCOUNT, 1, BR:部屋数+1
 	CALL CHECKDRAWLINE
 	部屋配属人数 = 0
 	FOR LCOUNT2, 1, CHARANUM
@@ -829,7 +784,7 @@ FOR LCOUNT, 1, 娼館部屋数+1
 		SIF CFLAG:LCOUNT2:休憩
 			GOTO 売春不可
 		;上級娼婦は上で処理してるので除外
-		SIF CFLAG:LCOUNT2:上級娼婦 && 娼館方針
+		SIF CFLAG:LCOUNT2:上級娼婦 && BR:方針
 			GOTO 売春不可
 		;以下、売春できないキャラが居る部屋は収入の対象にならない
 		;体力不足
@@ -888,7 +843,7 @@ NEXT
 CALL CHECKDRAWLINE
 
 ;方針とポイントに応じて上下する
-SELECTCASE 娼館方針
+SELECTCASE BR:方針
 	;ソフト
 	CASE 1
 		収入合計 += 収入合計*ソフトポイント/100
@@ -904,7 +859,7 @@ SELECTCASE 娼館方針
 ENDSELECT
 
 ;隠し撮りビデオを売却して追加報酬
-SIF ITEM:隠しカメラ
+SIF BRITEM:隠しカメラ
 	収入合計 += 収入合計/10
 
 ;娼館にいる上級売春をしているキャラを除くキャラ同士の相性値をすべて掛け算する
@@ -923,35 +878,35 @@ SIF ITEM:隠しカメラ
 ;収入合計 /= 100
 
 IF 収入合計
-	CALL PASELIL, @"%娼館店名%の収入が{収入合計}＄入りました"
+	CALL PASELIL, @"%BRS:店名%の収入が{収入合計}＄入りました"
 	MONEY += 収入合計
 	BR:前日の収入 = 収入合計
-	娼館総収入 += 収入合計
+	BR:総収入 += 収入合計
 	バンめし = 0
 	DO
 		ノルマ = 0
 		;高級ベッドがあるとレベルが上がりやすくなる
-		IF ITEM:高級ベッド
-			ノルマ = 700*POWER(娼館レベル, 2)
+		IF BRITEM:高級ベッド
+			ノルマ = 700*POWER(BR:レベル, 2)
 		ELSE
-			ノルマ = 1000*POWER(娼館レベル, 2)
+			ノルマ = 1000*POWER(BR:レベル, 2)
 		ENDIF
-		SIF 娼館総収入 >= ノルマ
-			娼館レベル++
-	LOOP 娼館総収入 >= ノルマ
+		SIF BR:総収入 >= ノルマ
+			BR:レベル++
+	LOOP BR:総収入 >= ノルマ
 
-	娼館レベルアップ必要額 = ノルマ-娼館総収入
-	SIF 娼館レベル > 1000
-		娼館レベル = 1000
+	BR:レベルアップ必要額 = ノルマ-BR:総収入
+	SIF BR:レベル > 1000
+		BR:レベル = 1000
 
-	FOR LCOUNT, 1500, 1580
-		IF ITEM:LCOUNT
-			支出 += ITEMPRICE:LCOUNT
-			支出 += ITEMPRICE:LCOUNT/5*浪費癖人数("娼館")
+	FOR LCOUNT, 0, GETNUM(BRITEM, "お風呂場")
+		IF BRITEM:LCOUNT
+			支出 += BRアイテム価格(LCOUNT)
+			支出 += BRアイテム価格(LCOUNT)/5*浪費癖人数("娼館")
 		ENDIF
 	NEXT
 	SIF 支出
-		CALL PASELIL, @"%娼館店名%の支出は{支出}＄でした"
+		CALL PASELIL, @"%BRS:店名%の支出は{支出}＄でした"
 	MONEY -= 支出
 	CALL 現金出納帳記録, @"娼館収支/{収入合計-支出}"
 ENDIF
@@ -996,7 +951,7 @@ CALL 娼婦補正, 娼婦
 SIF PREMIUM_FRIDAY(YEAR, MONTH, DAYS)
 	TIMES 収入, 1.10
 
-SELECTCASE 娼館方針
+SELECTCASE BR:方針
 	CASE 1
 		絶頂 = RAND:6
 		;射精 = RAND:6
@@ -1029,7 +984,7 @@ SELECTCASE 娼館方針
 		SIF RAND:5 == 0
 			客の性別 = 3
 		;女性固定の場合はふたなりのみ
-		SELECTCASE 娼館性別固定
+		SELECTCASE BR:性別固定
 			CASE 1
 				客の性別 = 0
 			CASE 2
@@ -1062,7 +1017,7 @@ SELECTCASE 娼館方針
 		客の射精 = 中出し+アナル中出し+フェラで射精
 	CASE 3
 		客の性別 = RAND:4
-		SELECTCASE 娼館性別固定
+		SELECTCASE BR:性別固定
 			CASE 1
 				客の性別 = 0
 			CASE 2
@@ -1107,7 +1062,7 @@ SELECTCASE 娼館方針
 		客の射精 = 中出し+アナル中出し+手コキで射精+足コキで射精+フェラで射精
 	CASE 4
 		客の性別 = RAND:4
-		SELECTCASE 娼館性別固定
+		SELECTCASE BR:性別固定
 			CASE 1
 				客の性別 = 0
 			CASE 2
@@ -1130,14 +1085,14 @@ SELECTCASE 娼館方針
 		ENDSELECT
 ENDSELECT
 
-IF FLAG:娼館報告 && 娼館方針
+IF FLAG:娼館報告 && BR:方針
 	IF OPTION:口上表示
 		TRYCCALLFORM BR_PLAY_%CSVNAMERPS(NOF(娼婦))%, 客の性別, 絶頂, 射精, 客の射精, 自慰, 自慰で射精, フェラ, フェラで射精, ヴァギナ, 中出し, アナル, アナル中出し, 手コキ, 手コキで射精, 足コキ, 足コキで射精, 兜合わせ, 兜合わせで射精, 素股, 素股で射精, ゲイ, レズ, 
 		CATCH
 			$NOTKOJO
 			PRINTFORML %CALLNAME:娼婦%が今日の仕事を報告してきた。
 			PRINTFORM %CALLNAME:娼婦%は
-			SIF 娼館方針 == 3 && 手コキで射精
+			SIF BR:方針 == 3 && 手コキで射精
 				PRINT マゾヒストの
 			SELECTCASE 客の性別
 				CASE IS <= 1
@@ -1425,7 +1380,7 @@ SIF 近親相姦(娼婦:0, 娼婦:1)
 SIF PREMIUM_FRIDAY(YEAR, MONTH, DAYS)
 	TIMES 収入, 1.10
 
-SELECTCASE 娼館方針
+SELECTCASE BR:方針
 	CASE 1
 		絶頂:0 = RAND:3
 		絶頂:1 = RAND:3
@@ -1544,7 +1499,7 @@ SELECTCASE 娼館方針
 		;稀にふたなり女性客が来る
 		SIF RAND:5 == 0
 			客の性別 = 3
-		SELECTCASE 娼館性別固定
+		SELECTCASE BR:性別固定
 			CASE 1
 				客の性別 = 0
 			CASE 2
@@ -1648,7 +1603,7 @@ SELECTCASE 娼館方針
 			レズ:1 = RAND(3, 10)
 	CASE 3
 		客の性別 = RAND:4
-		SELECTCASE 娼館性別固定
+		SELECTCASE BR:性別固定
 			CASE 1
 				客の性別 = 0
 			CASE 2
@@ -1786,7 +1741,7 @@ SELECTCASE 娼館方針
 		SIF SEX(娼婦:1) == 2 && 客の性別 >= 2
 			レズ:1 = RAND(3, 10)
 	CASE 4
-		SELECTCASE 娼館性別固定
+		SELECTCASE BR:性別固定
 			CASE 1
 				客の性別 = 0
 			CASE 2
@@ -1828,7 +1783,7 @@ SELECTCASE 娼館方針
 			レズ:1 = RAND(10, 20)
 ENDSELECT
 
-IF FLAG:娼館報告 && 娼館方針
+IF FLAG:娼館報告 && BR:方針
 	IF OPTION:口上表示
 		;番号が小さい方を前に並べる
 		口上対象:0 = MIN(NOF(娼婦:0), NOF(娼婦:1))
@@ -1837,12 +1792,12 @@ IF FLAG:娼館報告 && 娼館方針
 		CATCH
 			$NOTKOJO
 			表示済み = 0
-			IF 娼館方針 == 4
+			IF BR:方針 == 4
 				PRINTFORML 娼館で働いてる%CALLNAME:(娼婦:0)%と%CALLNAME:(娼婦:1)%の様子を見に行くと、何度も犯されて身動きが取れないほど消耗したふたりが居た
 			ELSE
 				PRINTFORML %CALLNAME:(娼婦:0)%と%CALLNAME:(娼婦:1)%が今日の仕事を報告してきた。
 				PRINT 今日は
-				SIF 娼館方針 == 3 && 手コキで射精
+				SIF BR:方針 == 3 && 手コキで射精
 					PRINT マゾヒストの
 				SELECTCASE 客の性別
 					CASE IS <= 1
@@ -1856,13 +1811,17 @@ IF FLAG:娼館報告 && 娼館方針
 			
 			;マゾヒスト用
 			IF 手コキで射精
-				対象 = FINDELEMENT(手コキ, 1)
+				対象 = FINDELEMENT(手コキ, MAXARRAY(手コキ))
 				PRINTFORM まずは%CALLNAME:(娼婦:対象)%が手で扱いて{手コキで射精}回抜いた後、
 				IF ダブル足コキで射精
-					PRINTFORML ふたりで言葉責めをしながら足コキをして{ダブル足コキで射精}回射精ようだ。
+					PRINTFORML ふたりで言葉責めをしながら足で扱いて{ダブル足コキで射精}回射精ようだ。
 				ELSE
-					対象 = FINDELEMENT(足コキ, 1)
-					PRINTFORML %CALLNAME:(娼婦:対象)%が足コキで{足コキで射精}回射精ようだ。
+					対象 = FINDELEMENT(足コキ, MAXARRAY(足コキ))
+					IF 足コキで射精
+						PRINTFORML %CALLNAME:(娼婦:対象)%が足で扱いて{足コキで射精}回射精させたようだ。
+					ELSE
+						PRINTFORML %CALLNAME:(娼婦:対象)%が足で扱いたが、射精には至らなかったようだ。
+					ENDIF
 				ENDIF
 				SIF 逆アナル責めで射精
 					PRINTFORML 次にふたりは客を拘束し、ふたりでアナルや乳首、前立腺を責めながら{逆アナル責めで射精}回射精させることに成功したらしい。
@@ -1975,7 +1934,7 @@ IF FLAG:娼館報告 && 娼館方針
 				ELSE
 					PRINTFORML 客の前で自慰を披露した。
 				ENDIF
-				IF 娼館方針 == 3
+				IF BR:方針 == 3
 					IF 射精地獄:0 || 絶頂地獄:0
 						対象 = 0
 					ELSE
@@ -2005,7 +1964,7 @@ IF FLAG:娼館報告 && 娼館方針
 				IF MAX(中出し:0, アナル中出し:0) >= 1 && MAX(中出し:1, アナル中出し:1) >= 1
 					IF 拘束プレイ
 						PRINT ふたりは動けないように拘束されたまま
-					ELSEIF 娼館方針 == 4
+					ELSEIF BR:方針 == 4
 						PRINT ふたりは
 					ENDIF
 					PRINT 交互に犯され、
@@ -2059,7 +2018,7 @@ IF FLAG:娼館報告 && 娼館方針
 				ENDIF
 			ENDIF
 			
-			IF 娼館方針 == 4
+			IF BR:方針 == 4
 				IF 拘束プレイ
 					PRINTL 家畜のように縛られて放置されるふたりは並外れた回数の中出しに、妊娠したように腹を膨らませ、未だ収まりきらない激しい絶頂の余韻に足をがくがくと震わせている。
 				ELSE
@@ -2097,14 +2056,14 @@ IF FLAG:娼館報告 && 娼館方針
 						PRINT 乳房で扱い
 					ENDIF
 					IF パイズリで射精 || フェラで射精
-						SELECTCASE 娼館方針
+						SELECTCASE BR:方針
 							CASE 2, 3
 								PRINTFORML て{パイズリで射精+フェラで射精}回射精させた。
 							CASEELSE
 								PRINTFORM て{パイズリで射精+フェラで射精}回射精させた後、
 						ENDSELECT
 					ELSE
-						SELECTCASE 娼館方針
+						SELECTCASE BR:方針
 							CASE 2, 3
 								PRINTL てお掃除したそうだ。
 							CASEELSE
@@ -2114,7 +2073,7 @@ IF FLAG:娼館報告 && 娼館方針
 				ELSEIF 客の性別 != 2
 					SIF 表示済み
 						PRINT その後、
-					IF 娼館方針 == 2 || 娼館方針 == 3
+					IF BR:方針 == 2 || BR:方針 == 3
 						IF フェラ:0
 							PRINTFORM %CALLNAME:(娼婦:0)%が口で奉仕
 						ELSEIF フェラ:1
@@ -2245,7 +2204,7 @@ RETURN 収入
 #DIM DYNAMIC 消耗量
 
 ;方針による補正
-SELECTCASE 娼館方針
+SELECTCASE BR:方針
 	;ソフト
 	CASE 1
 		;まずはプラス素質から計算
@@ -2858,7 +2817,7 @@ SELECTCASE 娼館方針
 		;マイナス
 		不適性 = 20
 		;娼館レベルに応じて変動
-		収入 = 収入*娼館レベル/50
+		収入 = 収入*BR:レベル/50
 		;ここから能力で倍率計算
 		IF 統率者("娼館", CFLAG:娼婦:娼館部屋番号) && !TALENT:娼婦:統率
 			収入 += (収入/10)*(ABL:娼婦:従順+1)
@@ -2882,7 +2841,7 @@ SELECTCASE 娼館方針
 ENDSELECT
 ;体力気力消費計算
 消耗量 = MAX(不適性-適性, 1)
-SELECTCASE 娼館方針
+SELECTCASE BR:方針
 	;ソフト
 	CASE 1
 		BASE:娼婦:体力 -= 消耗量*50
@@ -2906,9 +2865,9 @@ SIF BASE:娼婦:体力 <= 0
 ;最低1000は保証
 CALL SETMAX, 収入, 1000
 
-収入 += 収入*娼館レベル/100
+収入 += 収入*BR:レベル/100
 
-SELECTCASE 娼館方針
+SELECTCASE BR:方針
 	CASE 1
 		収入 += ソフトポイント*10
 	CASE 2
@@ -2920,13 +2879,13 @@ SELECTCASE 娼館方針
 ENDSELECT
 
 ;お風呂場があるとストレス溜まりづらくなる
-IF ITEM:お風呂場
+IF BRITEM:お風呂場
 	CFLAG:娼婦:ストレス値 += MAX(不適性-適性, 0)
 ELSE
 	CFLAG:娼婦:ストレス値 += MAX((不適性-適性)*2, 0)
 ENDIF
 ;換気口あるとさらに軽減
-SIF ITEM:換気口
+SIF BRITEM:換気口
 	CFLAG:娼婦:ストレス値 -= 2
 ;実務経験を加算
 EXP:娼婦:実務経験++
