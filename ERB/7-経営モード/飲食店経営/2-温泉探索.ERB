@@ -43,7 +43,7 @@ DRAWLINE
 PRINTPLAIN 　温泉探索　
 PRINTL [0] - 戻る
 
-CALL INPUTF, 0, 1, 2, 3, 10, 11
+BINPUT
 
 SELECTCASE RESULT
 	CASE 0
@@ -220,6 +220,10 @@ IF 失敗
 	PRINTW 温泉の発掘に失敗しました
 	CALL MS消去, ARG
 	CALL 現金出納帳記録, @"温泉発掘費用/-{総発掘費用}"
+	IF パートナー != ""
+		SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
+			TRYCALLFORM 温泉発掘失敗_%CSVNAMERPS(GETNO(パートナー))%
+	ENDIF
 	RETURN
 ENDIF
 
@@ -307,11 +311,11 @@ DO
 			ENDIF
 			GOTO RESTART
 		CASE "4"
-			PRINTPLAINFORM 温泉レベル[{温泉マス}]で採掘を完了します。よろしいですか？(現在の温泉レベル:{温泉レベル})
+			PRINTPLAINFORM 温泉レベル[{温泉マス}]で採掘を完了します。よろしいですか？(現在の温泉レベル:{INN:温泉レベル})
 			PRINTL 
 			PRINTL [0] - はい
 			PRINTL [1] - いいえ
-			CALL INPUTF, 0, 1
+			BINPUT
 			SIF RESULT == 1
 				GOTO RESTART
 			PRINTL 無事に採掘を終えた！
@@ -321,12 +325,16 @@ DO
 			;実績:ミニゲーム100回クリアまたは勝利
 			SIF TATSUJIN >= 100
 				CALL 実績解除, "ゲームの達人"
-			IF 温泉マス > 温泉レベル
+			IF 温泉マス > INN:温泉レベル
 				PRINTFORML 温泉レベルが{温泉マス}に上がった！
-				温泉レベル = 温泉マス
+				INN:温泉レベル = 温泉マス
 			ENDIF
 			WAIT
 			CALL MS消去, ARG
+			IF パートナー != ""
+				SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
+					TRYCALLFORM 温泉発掘_%CSVNAMERPS(GETNO(パートナー))%
+			ENDIF
 			RETURN
 		CASE "10"
 			INVERTBIT ログ表示, 0
@@ -441,7 +449,6 @@ IF 隣接爆弾数 == 0
 	NEXT
 ENDIF
 
-
 @温泉探索_候補
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 広さ上限X
@@ -491,7 +498,7 @@ PRINTL
 PRINTFORML 　[5] - この条件で探す(最大温泉レベル:{総温泉数})
 PRINTL 　[0] - 戻る
 
-CALL INPUTF, 0, 1, 2, 3, 5
+BINPUT
 
 SELECTCASE RESULT
 	CASE 0
@@ -521,13 +528,13 @@ SELECTCASE RESULT
 				PRINTFORML [{LCOUNT}] - 広さ:%MS広さ:LCOUNT% 難易度:{MS難易度:LCOUNT}の発掘現場 が保存されています
 			ENDIF
 		NEXT
-		CALL INPUTF, 1, 2, 3
+		BINPUT
 		LRESULT = RESULT
 		IF MS広さ:RESULT != ""
 			PRINTL 既に発掘現場が保存されています。上書きしますか？
 			PRINTL [0] - はい
 			PRINTL [1] - いいえ
-			CALL INPUTF, 0, 1
+			BINPUT
 			SIF RESULT == 1
 				RESTART
 		ENDIF
