@@ -87,6 +87,8 @@ FOR LCOUNT, 0, CHARANUM
 	;主人は無理
 	SIF LCOUNT == MASTER
 		CONTINUE
+	SIF CFLAG:LCOUNT:キャラロスト
+		CONTINUE
 	;アニマルも当然無理
 	SIF TALENT:LCOUNT:アニマル
 		CONTINUE
@@ -328,120 +330,108 @@ SIF !(配属先 == "出版社" && 雑誌編集中())
 	PRINT [1002] 全員帰還
 PRINTL 
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 999
-			SIF ページ数 > 0
-				ページ数--
-		CASE 1000
-			VARLINE = 0
-			RETURN 0
-		CASE 1001
-			;表示できるキャラがまだ居れば次ページ
-			SIF 表示数+20*ページ数 < 配属可能人数 
-				ページ数++
-		CASE 1002
-			SIF 配属先 == "出版社" && 雑誌編集中()
-				CONTINUE
-			FOR LCOUNT, 0, CHARANUM
-				SIF CSTR:LCOUNT:配属 == 配属先
-					CALL 配属解除, LCOUNT
-			NEXT
-			SELECTCASE 配属先
-				CASE "医務室", "図書室", "実験室", "調理室"
-					PRINTFORMW %配属先%の全員を担当から外しました
-				CASEELSE
-					PRINTFORMW %配属先%に配属してる人員が全員帰宅しました
-			ENDSELECT
-			RESTART
-		CASEELSE
-			SIF !配属可能:RESULT
-				CONTINUE
-			SELECTCASE CSTR:RESULT:配属
-				CASE 配属先
-					;娼館の別部屋に配属してる場合はそちらから引っ張ってくる
-					SIF 配属先 == "娼館" && CFLAG:RESULT:娼館部屋番号 != 配属部屋
-						GOTO 娼館ELSE
-					SELECTCASE 配属先
-						CASE "医務室", "図書室", "実験室", "調理室"
-							PRINTFORMW %CALLNAME:RESULT%を%配属先%担当から外しました
-						CASEELSE
-							PRINTFORMW %CALLNAME:RESULT%が帰宅しました
-					ENDSELECT
-					LRESULT = RESULT
-					CALL 配属解除, LRESULT
-					LTARGET = TARGET
-					TARGET = LRESULT
-					;配属解除時の口上
-					SIF OPTION:口上表示 && !CFLAG:口上非表示
-						TRYCALLFORM %配属先%_ASSIGNOFF_%CSVNAMERPS(NOF(LRESULT))%
-					TARGET = LTARGET
-					;配属先ごとに専用の処理がある場合は呼び出す
-					TRYCALLFORM %配属先%_ASSIGNOFF_OPTION, LRESULT
+BINPUT
+SELECTCASE RESULT
+	CASE 999
+		ページ数--
+	CASE 1000
+		VARLINE = 0
+		RETURN 0
+	CASE 1001
+		ページ数++
+	CASE 1002
+		FOR LCOUNT, 0, CHARANUM
+			SIF CSTR:LCOUNT:配属 == 配属先
+				CALL 配属解除, LCOUNT
+		NEXT
+		SELECTCASE 配属先
+			CASE "医務室", "図書室", "実験室", "調理室"
+				PRINTFORMW %配属先%の全員を担当から外しました
+			CASEELSE
+				PRINTFORMW %配属先%に配属してる人員が全員帰宅しました
+		ENDSELECT
+		RESTART
+	CASEELSE
+		SELECTCASE CSTR:RESULT:配属
+			CASE 配属先
+				;娼館の別部屋に配属してる場合はそちらから引っ張ってくる
+				SIF 配属先 == "娼館" && CFLAG:RESULT:娼館部屋番号 != 配属部屋
+					GOTO 娼館ELSE
+				SELECTCASE 配属先
+					CASE "医務室", "図書室", "実験室", "調理室"
+						PRINTFORMW %CALLNAME:RESULT%を%配属先%担当から外しました
+					CASEELSE
+						PRINTFORMW %CALLNAME:RESULT%が帰宅しました
+				ENDSELECT
+				LRESULT = RESULT
+				CALL 配属解除, LRESULT
+				LTARGET = TARGET
+				TARGET = LRESULT
+				;配属解除時の口上
+				SIF OPTION:口上表示 && !CFLAG:口上非表示
+					TRYCALLFORM %配属先%_ASSIGNOFF_%CSVNAMERPS(NOF(LRESULT))%
+				TARGET = LTARGET
+				;配属先ごとに専用の処理がある場合は呼び出す
+				TRYCALLFORM %配属先%_ASSIGNOFF_OPTION, LRESULT
+			CASEELSE
+				$娼館ELSE
+				IF 配属人数 >= 配属上限
+					PRINTW これ以上配属できません
 					RESTART
-				CASEELSE
-					$娼館ELSE
-					IF 配属人数 >= 配属上限
-						PRINTW これ以上配属できません
-						RESTART
-					ENDIF
-					PRINTFORMW %CALLNAME:RESULT%を配属しました
-					LRESULT = RESULT
-					CALL 配属解除, LRESULT
-					CSTR:LRESULT:配属 = %配属先%
-					SIF 配属先 == "娼館"
-						CFLAG:LRESULT:娼館部屋番号 = 配属部屋
-					LTARGET = TARGET
-					TARGET = LRESULT
-					;配属時の口上
-					SIF OPTION:口上表示 && !CFLAG:口上非表示
-						TRYCALLFORM %配属先%_ASSIGNON_%CSVNAMERPS(NOF(LRESULT))%
-					TARGET = LTARGET
-					SIF ASSI == LRESULT
-						ASSI = -1
-					SIF TARGET == LRESULT
-						TARGET = -1
-					;配属先ごとに専用の処理がある場合は呼び出す
-					TRYCALLFORM %配属先%_ASSIGNON_OPTION, LRESULT
-					;配属先によっては即配属完了にする
-					SELECTCASE 配属先
-						CASE "調理室", "芸能プロダクション", "出版社"
-							CFLAG:LRESULT:配属完了 = 1
-					ENDSELECT
-					;実績:日向美ビタースイーツ♪のメンバーを全員娼館に配属する
-					実績用変数 = 0
-					IF 配属先 == "娼館"
-						FOR LCOUNT, 0, CHARANUM
-							IF CSTR:LCOUNT:配属 == "娼館"
-								SELECTCASE CHARANAMEF(LCOUNT)
-									CASE "山形 まり花", "和泉 一舞", "春日 咲子", "霜月 凛", "芽兎 めう"
-										実績用変数++
-								ENDSELECT
-							ENDIF
-						NEXT
-						SIF 実績用変数 == 5
-							CALL 実績解除, "日向美商店街で噂の売春宿"
-					ENDIF
-					;実績:ユーズ、ター子、レイジを調理室に配属する
-					実績用変数 = 0
-					IF 配属先 == "調理室"
-						FOR LCOUNT, 0, CHARANUM
-							IF CSTR:LCOUNT:配属 == "調理室"
-								SELECTCASE CHARANAMEF(LCOUNT)
-									CASE "ユーズ", "ター子", "レイジ"
-										実績用変数++
-								ENDSELECT
-							ENDIF
-						NEXT
-						SIF 実績用変数 == 3
-							CALL 実績解除, "今夜はたこ焼きパーティ"
-					ENDIF
-					RESTART
-			ENDSELECT
-	ENDSELECT
-LOOP 0
-
+				ENDIF
+				PRINTFORMW %CALLNAME:RESULT%を配属しました
+				LRESULT = RESULT
+				CALL 配属解除, LRESULT
+				CSTR:LRESULT:配属 = %配属先%
+				SIF 配属先 == "娼館"
+					CFLAG:LRESULT:娼館部屋番号 = 配属部屋
+				LTARGET = TARGET
+				TARGET = LRESULT
+				;配属時の口上
+				SIF OPTION:口上表示 && !CFLAG:口上非表示
+					TRYCALLFORM %配属先%_ASSIGNON_%CSVNAMERPS(NOF(LRESULT))%
+				TARGET = LTARGET
+				SIF ASSI == LRESULT
+					ASSI = -1
+				SIF TARGET == LRESULT
+					TARGET = -1
+				;配属先ごとに専用の処理がある場合は呼び出す
+				TRYCALLFORM %配属先%_ASSIGNON_OPTION, LRESULT
+				;配属先によっては即配属完了にする
+				SELECTCASE 配属先
+					CASE "調理室", "芸能プロダクション", "出版社"
+						CFLAG:LRESULT:配属完了 = 1
+				ENDSELECT
+				;実績:日向美ビタースイーツ♪のメンバーを全員娼館に配属する
+				実績用変数 = 0
+				IF 配属先 == "娼館"
+					FOR LCOUNT, 0, CHARANUM
+						IF CSTR:LCOUNT:配属 == "娼館"
+							SELECTCASE CHARANAMEF(LCOUNT)
+								CASE "山形 まり花", "和泉 一舞", "春日 咲子", "霜月 凛", "芽兎 めう"
+									実績用変数++
+							ENDSELECT
+						ENDIF
+					NEXT
+					SIF 実績用変数 == 5
+						CALL 実績解除, "日向美商店街で噂の売春宿"
+				ENDIF
+				;実績:ユーズ、ター子、レイジを調理室に配属する
+				実績用変数 = 0
+				IF 配属先 == "調理室"
+					FOR LCOUNT, 0, CHARANUM
+						IF CSTR:LCOUNT:配属 == "調理室"
+							SELECTCASE CHARANAMEF(LCOUNT)
+								CASE "ユーズ", "ター子", "レイジ"
+									実績用変数++
+							ENDSELECT
+						ENDIF
+					NEXT
+					SIF 実績用変数 == 3
+						CALL 実績解除, "今夜はたこ焼きパーティ"
+				ENDIF
+		ENDSELECT
+ENDSELECT
 RESTART
 
 @配属解除, ARG
