@@ -7,7 +7,7 @@ RETURN 1
 SIF GROUPMATCH(ターン, "昼", "夕", "夜")
 	バイト可能 = 1
 ;ロケーション解禁済みで可能
-SIF FINDELEMENT(解禁済みロケーション, "ゲームセンター", 0, VARSIZE("解禁済みロケーション"), 1) >= 0
+SIF FINDELEMENTF(解禁済みロケーション, "ゲームセンター") >= 0
 	RETURN GETCHARANAME("識")
 
 RETURN 0
@@ -44,7 +44,8 @@ FOR LCOUNT, 始点, 終点
 			 "梅桐 彩葉", "シア", "鉄火", "トラン", "黄シグ", "ハーティ", "夜兎姫", "おいわちゃん", 
 			 "ミミ", "ニャミ", "MZD", "パステルくん", "揚羽", "エミ", "ユニ", "フリオ", "リノン", 
 			 "オトベア", "BisCo", "Mei", "ToRa", "伊澄 いずみ", "三田 希少", "グリム・ハルト", "芽兎 めう", 
-			 "いちか", "クプロ"
+			 "いちか", "クプロ", "ゴリラ", "エリザベス", "リリィ", "九部 リア", "青士朗", "ラプラシア", "ぼんきち", 
+			 "新井 桃子", "黒原 きずな", "スカイフェザー", "くらんて", "荒場 流子", "舞園 星斗", "ライオンくん", "のの", "みや",
 		}
 			SIF 出現率:LCOUNT >= 0
 				出現率:LCOUNT = 30
@@ -73,6 +74,9 @@ FOR LCOUNT, 始点, 終点
 						集団行動:グループ数:3 = RESULT:2
 				ENDIF
 				グループ数++
+			ELSE
+				SIF TALENT:LCOUNT:音ゲーマー && 出現率:LCOUNT >= 0
+					出現率:LCOUNT = 10
 			ENDIF
 	ENDSELECT
 NEXT
@@ -95,14 +99,63 @@ ENDIF
 RETURN RESULT
 
 @ゲームセンター_専用コマンド_INPUT
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 滞在キャラ, 1000
+#DIM DYNAMIC 対象
+
+CALL 出現キャラ_ゲームセンター
+
+FOR LCOUNT, 1, CHARANUM
+	SIF 出現率:LCOUNT && CSTR:LCOUNT:現在地 == ""
+		ARRAYSHIFT 滞在キャラ, 1, LCOUNT
+NEXT
 
 SELECTCASE CRESULT:1
 	CASE 0
-		SIF MONEY < 100
-			RETURN 0
-		;CALL ゲームセンター_音ゲーを遊ぶ
+		PRINTL 音ゲーを遊ぶことにした
+		;誰かが話しかけてくる
+		IF 滞在キャラ:0 != 0
+			対象 = 滞在キャラ:(RAND:FINDELEMENT(滞在キャラ, 0))
+			PRINTFORML 音ゲーを遊んでいると、同じく音ゲーマーであろう%CALLNAME:対象%が話しかけてきた
+			IF EXP:PLAYER:音ゲー経験 < EXP:対象:音ゲー経験
+				PRINTFORML %CALLNAME:対象%は%CALLNAME:PLAYER%と音ゲーの話で盛り上がりながら、上達のコツを教えてくれた
+				CALL 好感度上昇, 対象, "友情", 10
+				CALL 好感度上昇, 対象, "舎弟", 10
+			ELSEIF EXP:PLAYER:音ゲー経験 >= 100
+				PRINTFORML %CALLNAME:対象%は%CALLNAME:PLAYER%の音ゲーの腕前を褒め称え、音ゲーの話で盛り上がった
+				CALL 好感度上昇, 対象, "友情", 10
+				CALL 好感度上昇, 対象, "尊敬", 10
+			ELSE
+				PRINTFORML %CALLNAME:対象%と音ゲー談義をして盛り上がった
+				CALL 好感度上昇, 対象, "友情", 10
+			ENDIF
+		ENDIF
+		CALL EXPUP, "音ゲー経験", 1, PLAYER
+		CALL EXPUP, "音ゲー経験", 1, 対象
+		MONEY -= 100
+		WAIT
 	CASE 1
-		SIF MONEY < 200 || !同行者
-			RETURN 0
-		;CALL ゲームセンター_同行者と音ゲーを遊ぶ
+		PRINTFORML %CALLNAME:同行者%と一緒に音ゲーを遊ぶことにした
+		IF EXP:PLAYER:音ゲー経験 <= EXP:同行者:音ゲー経験
+			IF RANDPER(80)
+				PRINTFORML スコアでは負けてしまったが、充実した時間を過ごすことができた
+				CALL 好感度上昇, 対象, "友情", 10
+				CALL 好感度上昇, 対象, "舎弟", 10
+			ELSE
+				PRINTFORML かろうじてスコアで勝利し、充実な時間を過ごすことができた
+				CALL 好感度上昇, 対象, "友情", 10
+				CALL 好感度上昇, 対象, "尊敬", 10
+			ENDIF
+		ELSEIF EXP:PLAYER:音ゲー経験 >= 100
+			PRINTFORML %CALLNAME:PLAYER%の鮮やかなプレイに、%CALLNAME:同行者%は感嘆している様子だ
+			CALL 好感度上昇, 対象, "友情", 10
+			CALL 好感度上昇, 対象, "尊敬", 10
+		ELSE
+			CALL 好感度上昇, 対象, "友情", 10
+			CALL 好感度上昇, 対象, "尊敬", 10
+		ENDIF
+		CALL EXPUP, "音ゲー経験", 1, PLAYER
+		CALL EXPUP, "音ゲー経験", 1, 対象
+		MONEY -= 200
+		WAIT
 ENDSELECT
