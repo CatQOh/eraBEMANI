@@ -402,8 +402,234 @@ RETURNF NAME:対象
 #DIM DYNAMIC 対象
 #DIMS DYNAMIC 好感度種類
 #DIM DYNAMIC 上昇値
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 倍率 = 100
+
+;上昇値は既成事実以外は5刻みで渡されるはず
+;なので倍率は20刻みになるのがちょうどいい
 
 ;素質等での補正を入れる
+SELECTCASE 好感度種類
+	CASE "友情"
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:対象:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				{
+				CASE "反抗的", "プライド高い", "弱気", "ツンデレ", "無関心", "保守的", "抑圧",
+					 "恥じらい", "弱味"
+				}
+					倍率 -= 20
+				{
+				CASE "素直", "プライド低い", "ハイテンション", "寂しがり屋", "幼稚", "楽観的", "目立ちたがり",
+					 "解放", "好奇心"
+				}
+					倍率 += 20
+				CASE "即落ち"
+					倍率 += 40
+				CASE "男好き"
+					SIF SEX(PLAYER) == 1
+						倍率 += 40
+				CASE "女好き"
+					SIF SEX(PLAYER) == 2
+						倍率 += 40
+				CASE "男嫌い"
+					SIF SEX(PLAYER) == 1
+						倍率 -= 40
+				CASE "女嫌い"
+					SIF SEX(PLAYER) == 2
+						倍率 -= 40
+				CASE "同族嫌悪"
+					SIF CSTR:対象:種族 == CSTR:PLAYER:種族
+						倍率 -= 40
+				CASE "子供好き"
+					SIF TALENT:PLAYER:小柄体型
+						倍率 += 20
+				CASE "恋心"
+					SIF TALENT:PLAYER:恋心 == NO:PLAYER
+						倍率 += 20
+				CASE "既婚者"
+					SIF TALENT:PLAYER:既婚者 == NO:PLAYER
+						倍率 += 40
+			ENDSELECT
+		NEXT
+	CASE "ときめき"
+		;性別同じだとときめきづらい
+		IF SEX(対象) == SEX(PLAYER)
+			IF SEX(PLAYER) == 1 && !TALENT:対象:男好き
+				倍率 -= 20
+			ELSEIF SEX(PLAYER) == 2 && !TALENT:対象:女好き
+				倍率 -= 20
+			ENDIF
+		ENDIF
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:対象:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				{
+				CASE "生意気", "臆病", "冷静", "大人しい", "幼稚", "自制心", "無関心", "感情乏しい",
+						"悲観的", "抑圧"
+				}
+					倍率 -= 20
+				{
+				CASE "素直", "衝動的", "寂しがり屋", "ツンデレ", "解放", "恥薄い"
+				}
+					倍率 += 20
+				CASE "即落ち", "ヤンデレ"
+					倍率 += 40
+				CASE "男好き"
+					SIF SEX(PLAYER) == 1
+						倍率 += 20
+				CASE "女好き"
+					SIF SEX(PLAYER) == 2
+						倍率 += 20
+				CASE "男嫌い"
+					SIF SEX(PLAYER) == 1
+						倍率 -= 40
+				CASE "女嫌い"
+					SIF SEX(PLAYER) == 2
+						倍率 -= 40
+				CASE "同族嫌悪"
+					SIF CSTR:対象:種族 == CSTR:PLAYER:種族
+						倍率 -= 40
+				CASE "子供好き"
+					SIF TALENT:PLAYER:小柄体型
+						倍率 += 20
+				CASE "恋心"
+					IF TALENT:PLAYER:恋心 == NO:PLAYER
+						倍率 += 20
+					ELSE
+						倍率 -= 40
+					ENDIF
+				CASE "既婚者"
+					IF TALENT:PLAYER:既婚者 == NO:PLAYER
+						倍率 += 40
+					ELSE
+						倍率 -= 60
+					ENDIF
+			ENDSELECT
+		NEXT
+	CASE "尊敬"
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:対象:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "生意気", "反抗的", "プライド高い", "強気", "ツンデレ"
+					倍率 -= 20
+				CASE "臆病", "冷静", "プライド低い", "大人しい", "弱気", "寂しがり屋", "ヤンデレ", "幼稚", "献身的"
+					倍率 += 20
+				CASE "即落ち"
+					倍率 += 40
+				CASE "同族嫌悪"
+					SIF CSTR:対象:種族 == CSTR:PLAYER:種族
+						倍率 -= 40
+				CASE "子供好き"
+					SIF TALENT:PLAYER:小柄体型
+						倍率 -= 20
+				CASE "恋心"
+					SIF TALENT:PLAYER:恋心 == NO:PLAYER
+						倍率 += 20
+				CASE "既婚者"
+					SIF TALENT:PLAYER:既婚者 == NO:PLAYER
+						倍率 += 40
+			ENDSELECT
+		NEXT
+	CASE "舎弟"
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:対象:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "臆病", "プライド低い", "大人しい", "弱気", "悲観的", "抑圧", ""
+					倍率 -= 20
+				{
+				CASE "生意気", "反抗的", "冷静", "プライド高い", "強気", "ツンデレ", "自制心", "保守的", "目立ちたがり", "気丈",
+					 "統率", "世話好き"
+				}
+					倍率 += 20
+				CASE "即落ち"
+					倍率 += 40
+				CASE "同族嫌悪"
+					SIF CSTR:対象:種族 == CSTR:PLAYER:種族
+						倍率 -= 40
+				CASE "子供好き"
+					SIF TALENT:PLAYER:小柄体型
+						倍率 += 20
+				CASE "恋心"
+					SIF TALENT:PLAYER:恋心 == NO:PLAYER
+						倍率 += 20
+				CASE "既婚者"
+					SIF TALENT:PLAYER:既婚者 == NO:PLAYER
+						倍率 += 40
+			ENDSELECT
+		NEXT
+	CASE "セフレ"
+		;性別同じだと上がりづらい
+		IF SEX(対象) == SEX(PLAYER)
+			IF SEX(PLAYER) == 1 && !TALENT:対象:男好き
+				倍率 -= 40
+			ELSEIF SEX(PLAYER) == 2 && !TALENT:対象:女好き
+				倍率 -= 40
+			ENDIF
+		ENDIF
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:対象:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				{
+				CASE "臆病", "大人しい", "幼稚", "自制心", "無関心", "一線越えない", "貞操観念", "恥じらい", "快感の否定",
+						"潔癖症", 
+				}
+					倍率 -= 20
+				{
+				CASE "衝動的", "プライド低い", "ハイテンション", "弱気", "ツンデレ", "好奇心", "楽観的", "貞操無頓着",
+						"解放", "恥薄い", "弱味", "快感に素直", "中毒しやすい", "濡れやすい", "勃ちやすい", "自慰しやすい"
+				}
+					倍率 += 20
+				CASE "即落ち", "ヤンデレ"
+					倍率 += 40
+				CASE "男好き"
+					SIF SEX(PLAYER) == 1
+						倍率 += 20
+				CASE "女好き"
+					SIF SEX(PLAYER) == 2
+						倍率 += 20
+				CASE "男嫌い"
+					SIF SEX(PLAYER) == 1
+						倍率 -= 40
+				CASE "女嫌い"
+					SIF SEX(PLAYER) == 2
+						倍率 -= 40
+				CASE "同族嫌悪"
+					SIF CSTR:対象:種族 == CSTR:PLAYER:種族
+						倍率 -= 40
+				CASE "子供好き"
+					SIF TALENT:PLAYER:小柄体型
+						倍率 += 20
+				CASE "恋心"
+					IF TALENT:PLAYER:恋心 == NO:PLAYER
+						倍率 += 20
+					ELSE
+						倍率 -= 60
+					ENDIF
+				CASE "既婚者"
+					IF TALENT:PLAYER:既婚者 == NO:PLAYER
+						倍率 += 40
+					ELSE
+						倍率 -= 80
+					ENDIF
+			ENDSELECT
+		NEXT
+ENDSELECT
+
+IF TALENT:PLAYER:謎の魅力
+	倍率 += 40
+ELSEIF TALENT:PLAYER:魅力 || TALENT:PLAYER:魅惑
+	倍率 += 20
+ENDIF
+
+倍率 = MAX(倍率, 20)
+
+上昇値 = 上昇値*倍率/100
 
 好感度:対象:好感度種類 += 上昇値
 
