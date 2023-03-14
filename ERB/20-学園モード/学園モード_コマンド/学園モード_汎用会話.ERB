@@ -18,7 +18,7 @@ IF 連絡先:TARGET
 ELSE
 	PRINTL [5] 連絡先を聞いてみる
 ENDIF
-IF 同行者 != TARGET
+IF 同行者 != TARGET && !校内()
 	IF 同行者
 		CALL PRINTCOLORL, @"[-] 同行を提案する(既に%NAME:同行者%と行動中)", "gray"
 	ELSE
@@ -33,7 +33,7 @@ BINPUT
 SELECTCASE RESULT
 	CASE 0
 		PRINTFORML %CALLNAME:PLAYER%は%CALLNAME:TARGET%と会話した
-			CALL SCHOOL_KOJO, TARGET, "何気ない会話"
+		CALL SCHOOL_KOJO, TARGET, "何気ない会話"
 		CALL 好感度上昇, TARGET, "友情", 10
 		WAIT
 		RETURN 1
@@ -73,13 +73,39 @@ SELECTCASE RESULT
 		WAIT
 	CASE 3
 		IF 好感度:既成事実 >= 10
-			PRINTFORML 既に何度も体を重ねている%CALLNAME:TARGET%は、%CALLNAME:PLAYER%の誘いにも二つ返事で乗ってきた
+			IF 校内() && CFLAG:倫理観 < 50
+				PRINTFORML 何度も体を重ねている%CALLNAME:TARGET%だが、さすがに学校ではできないと断られてしまった……
+				CALL SCHOOL_KOJO, TARGET, "誘惑_失敗"
+				RETURN 1
+			ELSE
+				PRINTFORML 既に何度も体を重ねている%CALLNAME:TARGET%は、\@ 校内() ? 学校に居ることもお構いなしに #\@%CALLNAME:PLAYER%の誘いにも二つ返事で乗ってきた
+			ENDIF
 			CALL SCHOOL_KOJO, TARGET, "誘惑_成功"
 		ELSEIF 好感度:セフレ >= 1000
-			PRINTFORML %CALLNAME:PLAYER%の提案に、興味津々な%CALLNAME:TARGET%は快く応じた
+			IF 校内()
+				IF CFLAG:倫理観 < 50
+					PRINTFORML %CALLNAME:PLAYER%の提案に%CALLNAME:TARGET%も興味があるようだが、さすがに学校ではできないと断られてしまった……
+					CALL SCHOOL_KOJO, TARGET, "誘惑_失敗"
+					RETURN 1
+				ELSE
+					PRINTFORML %CALLNAME:PLAYER%の提案に、学校に居ることもお構いなしに%CALLNAME:TARGET%は乗ってきた
+				ENDIF
+			ELSE
+				PRINTFORML %CALLNAME:PLAYER%の提案に、興味津々な%CALLNAME:TARGET%は快く応じた
+			ENDIF
 			CALL SCHOOL_KOJO, TARGET, "誘惑_成功"
 		ELSEIF TALENT:恋慕
-			PRINTFORML %CALLNAME:TARGET%は恋人の%CALLNAME:PLAYER%の提案を聞くと、落ち着いた声で了承した
+			IF 校内()
+				IF CFLAG:倫理観 < 50
+					PRINTFORML 恋仲の%CALLNAME:TARGET%でもさすがに学校ではできないと断られてしまった……
+					CALL SCHOOL_KOJO, TARGET, "誘惑_失敗"
+					RETURN 1
+				ELSE
+					PRINTFORML %CALLNAME:TARGET%は%CALLNAME:PLAYER%の提案を聞くと、学校内ですることに少し困惑した様子だが、結局は了承してくれた
+				ENDIF
+			ELSE
+				PRINTFORML %CALLNAME:TARGET%は恋人の%CALLNAME:PLAYER%の提案を聞くと、落ち着いた声で了承した
+			ENDIF
 			CALL SCHOOL_KOJO, TARGET, "誘惑_成功"
 		ELSE
 			PRINTFORML %CALLNAME:TARGET%は困惑した様子で%CALLNAME:PLAYER%との会話を打ち切った……
@@ -107,14 +133,18 @@ SELECTCASE RESULT
 			RETURN 1
 		ELSE
 			PRINTFORML □%CALLNAME:TARGET%をどこに連れ込みますか？
-			IF CSTR:在任 != ""
-				PRINTFORML 　[0] - ホテル(%CALLNAME:TARGET%が宿泊料負担)
-			ELSE
-				CALL PASELIL, 　"[0] - ホテル(宿泊料10000＄必要)"
+			IF 校内()
+				IF CSTR:在任 != ""
+					PRINTFORML 　[0] - ホテル(%CALLNAME:TARGET%が宿泊料負担)
+				ELSE
+					CALL PASELIL, 　"[0] - ホテル(宿泊料10000＄必要)"
+				ENDIF
 			ENDIF
-			PRINTL [1] - 共用トイレ
-			SIF ターン != "夜"
+			PRINTFORML [1] - \@ 校内() ? 人気の無いトイレ # 共用トイレ \@
+			SIF ターン != "夜" && !校内()
 				PRINTL [2] - 自宅
+			SIF 校内()
+				PRINTL [3] - 保健室
 			BINPUT
 			SELECTCASE RESULT
 				CASE 0
@@ -134,7 +164,7 @@ SELECTCASE RESULT
 					TARGET = -1
 					RETURN 1
 				CASE 1
-					PRINTFORMW %CALLNAME:TARGET%を手頃な広さのトイレにこっそりと連れ込んだ
+					PRINTFORMW %CALLNAME:TARGET%を\@ 校内() ? 校舎でも人の少ない # 手頃な広さの \@トイレにこっそりと連れ込んだ
 					DRAWLINE
 					トイレ使用中 = 1
 					CALL SCHOOL_KOJO, TARGET, "トイレ_行為前"
@@ -159,6 +189,24 @@ SELECTCASE RESULT
 					CSTR:PLAYER:現在地 = 自宅
 					CSTR:目的 = セックス
 					CALL SCHOOL_KOJO, TARGET, "一緒に帰宅"
+					TARGET = -1
+					RETURN 1
+				CASE 3
+					PRINTFORMW %CALLNAME:TARGET%と保健室前まで来ると、中に誰も居ないことを確認してベッドに入った
+					DRAWLINE
+					CALL SCHOOL_KOJO, TARGET, "保健室_行為前"
+					CALL TRAIN_SCHOOL
+					CALL CHECKDRAWLINE
+					PRINTFORMW %CALLNAME:TARGET%は呼吸を整え、汗と体液で汚れた体をアルコールティッシュで拭き、保健室を後にした
+					CALL SCHOOL_KOJO, TARGET, "保健室_行為後"
+					CALL 好感度上昇, TARGET, "友情", 30
+					CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
+					CALL 好感度上昇, TARGET, "セフレ", 50
+					CALL 好感度上昇, TARGET, "既成事実", 1
+					SIF !TALENT:恋慕
+						CFLAG:倫理観++
+					CFLAG:倫理観++
+					トイレ使用中 = 0
 					TARGET = -1
 					RETURN 1
 			ENDSELECT

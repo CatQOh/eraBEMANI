@@ -1,48 +1,65 @@
-﻿@ロケーション_保健室
-CALL ロケーション_学校
+﻿;@ロケーション_保健室
+;CALL ロケーション_学校
 
-@ロケーション_学校
+@学校_コマンド
 #DIM DYNAMIC LRESULT
+#DIM DYNAMIC 教師
 
-;日数表示
-CALL CHECKDRAWLINE
-PRINT □
-PRINTFORML %日付表示()% %ゲームモード表示()%
 
-PRINTFORML 　天気:%天気()% 気温:%DIV10(FLAG:気温)%℃ %月齢()%(月齢:%DIV100(月齢)%)
+CALL COLUMNSHOP_SCHOOL
 
-DRAWLINE
-PRINTL 　[アイテム][を表示][したり]
-DRAWLINE
-PRINTFORML □時間:%ターン%
-SELECTCASE ターン
-	CASE "朝"
-		;朝に学校に居ることはまず無い
-	CASE "昼"
-		PRINTL 　[200] - 校内を散策する
-		PRINTL 　[201] - 校外を散策する
-		PRINTL 　[202] - 午後の授業をサボる
-		SIF CSTR:PLAYER:現在地 == "保健室"
-			PRINTL [203] - 保健室でくつろぐ
-	CASE "夜"
-		;夜に学校に居ることもないんじゃないかなぁ
+CALL COLUMNDRAWLINE, 0
+CALL COLUMNPRINTL, 0, "何をしよう？"
+
+授業中 = 教師ランダム(CSTR:PLAYER:在校)
+
+IF !授業中
+	CALL COLUMNPRINTL, 0, @"[---] - \@ ターン == "朝" ? 午前 # 午後 \@の授業を受ける(自習)", "gray"
+ELSE
+	CALL COLUMNPRINTL, 0, @"[100] - \@ ターン == "朝" ? 午前 # 午後 \@の授業を受ける(%CSTR:授業中:担当科目%:%NAME:授業中%先生)"
+ENDIF
+CALL COLUMNPRINTL, 0, "[101] - 校内を散策する"
+SIF ターン == "昼"
+	CALL COLUMNPRINTL, 0, "[102] - 友人を昼食に誘う"
+CALL COLUMNPRINTL, 0, "[500] - データベース"
+
+@学校_コマンド_INPUT
+SELECTCASE CRESULT:1
+	CASE 100
+		CALL 授業を受ける
+	CASE 101
+		CALL 校内を散策する
+	CASE 102
+		CALL 友人を昼食に誘う
+	CASE 500
+		CALL 学園データベース
 ENDSELECT
-DRAWLINE
-PRINTPLAIN 　SCHOOL MODE
 
-DO
-	INPUT
-	LRESULT = RESULT
-	SELECTCASE LRESULT
-		CASE 200 TO 299
-			SIF ターン != "昼"
-				CONTINUE
-			SELECTCASE LRESULT
-				CASE 200
-			ENDSELECT
-			CALL TURNEND_学園
-			BREAK
-	ENDSELECT
-LOOP 1
+SIF RESULT
+	CALL TURNEND_学園
 
-RESTART
+@教師ランダム, ARGS
+#FUNCTION
+#DIM DYNAMIC 教師一覧, 50
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 返り値
+
+FOR LCOUNT, 1, CHARANUM
+	SIF CSTR:LCOUNT:在任 == ARGS && CSTR:LCOUNT:担当科目 != "校長"
+		ARRAYSHIFT 教師一覧, 1, LCOUNT
+NEXT
+SIF 教師一覧:0 == 0
+	RETURNF 0
+
+DUMPRAND
+;授業を受けられるのは朝と昼
+IF ターン == "朝"
+	RANDOMIZE DAY*2
+ELSE
+	RANDOMIZE DAY*2+1
+ENDIF
+返り値 = 教師一覧:(RAND:(FINDELEMENT(教師一覧, 0)))
+
+INITRAND
+
+RETURNF 返り値

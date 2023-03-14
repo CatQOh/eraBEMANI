@@ -32,12 +32,18 @@ SELECTCASE ターン
 			SIF CSTR:LCOUNT:現在地 == CSTR:LCOUNT:在任 && RAND:2
 				CSTR:LCOUNT:現在地 = 
 		NEXT
+		;PLAYERも学校に入れば帰宅
+		SIF CSTR:PLAYER:現在地 == CSTR:PLAYER:在校
+			CSTR:PLAYER:現在地 = 自宅
 	CASE "夕"
 		PRINTW 夜になった……
 		ターン = 夜
 		;教師陣も確定で帰る
-		SIF CSTR:LCOUNT:現在地 == CSTR:LCOUNT:在任
-			CSTR:LCOUNT:現在地 = 
+		;生徒は放課後タイム
+		FOR LCOUNT, 1, CHARANUM
+			SIF CSTR:LCOUNT:現在地 == CSTR:LCOUNT:在任
+				CSTR:LCOUNT:現在地 = 
+		NEXT
 	CASE "夜"
 		IF 同行者
 			PRINTFORMW %CALLNAME:同行者%は、今日はもう遅いからまた明日と%CALLNAME:PLAYER%に別れを告げた
@@ -284,6 +290,9 @@ RETURN GETCHARA(候補:0), GETCHARA(候補:1), GETCHARA(候補:2), GETCHARA(候�
 @学園データベース
 #DIM DYNAMIC LCOUNT
 
+CALL 学校一覧_データベース
+RETURN 0
+
 PRINTL [1] - 学校一覧
 ;PRINTL [2] - 
 DRAWLINE
@@ -398,7 +407,8 @@ RETURNF NAME:対象
 #DIMS DYNAMIC 好感度種類
 #DIM DYNAMIC 上昇値
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC 倍率 = 100
+;なんか全体的に数値が重く感じたので2倍にしてみる
+#DIM DYNAMIC 倍率 = 200
 
 ;上昇値は既成事実以外は5刻みで渡されるはず
 ;なので倍率は20刻みになるのがちょうどいい
@@ -417,7 +427,7 @@ SELECTCASE 好感度種類
 					倍率 -= 20
 				{
 				CASE "素直", "プライド低い", "ハイテンション", "寂しがり屋", "幼稚", "楽観的", "目立ちたがり",
-					 "解放", "好奇心"
+					 "解放", "好奇心", "世話好き"
 				}
 					倍率 += 20
 				CASE "即落ち"
@@ -624,14 +634,15 @@ ENDIF
 
 倍率 = MAX(倍率, 20)
 
-上昇値 = 上昇値*倍率/100
+SIF SIGN(上昇値) == 1
+	上昇値 = 上昇値*倍率/100
 
 好感度:対象:好感度種類 += 上昇値
 
 IF SEX(対象) == 2 && 好感度種類 == "舎弟"
-	PRINTFORML 好感度上昇:%NAME:対象%(母性+{上昇値})
+	PRINTFORML 好感度上昇:%NAME:対象%(母性\@ SIGN(上昇値) == 1 ? + #\@{上昇値})
 ELSE
-	PRINTFORML 好感度上昇:%NAME:対象%(%好感度種類%+{上昇値})
+	PRINTFORML 好感度上昇:%NAME:対象%(%好感度種類%\@ SIGN(上昇値) == 1 ? + #\@{上昇値})
 ENDIF
 
 ;;;連絡先入手とメッセージ表示
