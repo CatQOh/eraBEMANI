@@ -18,6 +18,12 @@ SIF RESULT == 0
 	RETURN 0
 
 対象 = RESULT
+
+IF EXISTFUNCTION(@"SCHOOL_KOJO_%CSVNAMERPS(NO:対象)%_コマンド_家に友人を呼ぶ")
+	CALL SCHOOL_KOJO, 対象, "コマンド_家に友人を呼ぶ"
+	RETURN RESULT
+ENDIF
+
 PRINTFORML %CALLNAME:対象%をどういった名目で呼びますか？
 PRINTL [1] - うちで遊ぼうと提案する
 PRINTL [2] - 有り余る劣情を伝える
@@ -32,28 +38,34 @@ SELECTCASE RESULT
 			IF TALENT:対象:サボり魔
 				PRINTFORMW %CALLNAME:対象%は学校に居るようだが、サボってその提案に乗るといった旨の返事をしてきた
 				PRINTFORMW しばらくすると、%CALLNAME:対象%が%CALLNAME:PLAYER%の家にやってきた
+				CALL SCHOOL_KOJO, 対象, "呼び出し_成功"
 				CSTR:対象:現在地 = %CALLNAME:PLAYER%の家
 				CSTR:対象:目的 = 遊び
 				同行者 = 対象
 			ELSE
 				PRINTFORMW しかし今は学校に居るから行けないと断られてしまった……
+				CALL SCHOOL_KOJO, 対象, "呼び出し_失敗"
 				RETURN 0
 			ENDIF
 		ELSEIF CSTR:対象:現在地 == CSTR:対象:在任
 			IF GROUPMATCH(ターン, "昼")
 				PRINTFORMW しかし%CALLNAME:対象%は学校をサボって遊ぼうとしている%CALLNAME:PLAYER%を咎めるだけで終わった……
+				CALL SCHOOL_KOJO, 対象, "呼び出し_失敗"
 			ELSE
 				PRINTFORMW しかしまだ仕事が終わっていないと断られてしまった……
+				CALL SCHOOL_KOJO, 対象, "呼び出し_失敗"
 			ENDIF
 			RETURN 0
 		ELSE
 			IF ターン == "夜"
 				PRINTFORMW しかし今日はもう遅いからやめておこうと%CALLNAME:対象%に諭されてしまった……
+				CALL SCHOOL_KOJO, 対象, "呼び出し_失敗"
 				RETURN 0
 			ELSE
 				PRINTFORMW %CALLNAME:対象%は肯定的な返事をすると、しばらく時間をおいて%CALLNAME:PLAYER%の家にやってきた
 				CSTR:対象:現在地 = %CALLNAME:PLAYER%の家
 				CSTR:対象:目的 = 遊び
+				CALL SCHOOL_KOJO, 対象, "呼び出し_成功"
 				同行者 = 対象
 			ENDIF
 		ENDIF
@@ -67,6 +79,7 @@ SELECTCASE RESULT
 						PRINTFORMW しばらくすると、%CALLNAME:対象%が%CALLNAME:PLAYER%の家にやってきた
 					ELSE
 						PRINTFORMW %CALLNAME:対象%も%CALLNAME:PLAYER%に対する惚気を伝えてくるが、今は学校に居るから行けないと断られてしまった……
+						CALL SCHOOL_KOJO, 対象, "劣情を伝える_失敗"
 						RETURN 0
 					ENDIF
 				ELSE
@@ -75,31 +88,37 @@ SELECTCASE RESULT
 						PRINTFORMW しばらくすると、%CALLNAME:対象%が%CALLNAME:PLAYER%の家にやってきた
 					ELSE
 						PRINTFORMW %CALLNAME:対象%はさすがに学業を疎かにはできないとその提案を断った……
+						CALL SCHOOL_KOJO, 対象, "劣情を伝える_失敗"
 						RETURN 0
 					ENDIF
 				ENDIF
 			ELSEIF CFLAG:倫理観 >= 80
 				PRINTFORMW %CALLNAME:PLAYER%の遠回しなアプローチを察したのか、%CALLNAME:対象%は興味があると承諾した
 				PRINTFORMW しばらくすると、%CALLNAME:対象%が%CALLNAME:PLAYER%の家にやってきた
+				CALL SCHOOL_KOJO, 対象, "劣情を伝える_成功"
 			ELSEIF 好感度:対象:セフレ >= 1000
 				IF TALENT:対象:サボり魔
 					PRINTFORMW %CALLNAME:対象%は学校に居るようだが、日頃のアプローチが功を成したか興味がある旨の返事をしてきた
 					PRINTFORMW しばらくすると、%CALLNAME:対象%が%CALLNAME:PLAYER%の家にやってきた
 				ELSE
 					PRINTFORMW %CALLNAME:対象%は学校に居るため断られてしまったが、放課後や休日に誘ってほしいとオブラートに包んだ返事をしてきた
+					CALL SCHOOL_KOJO, 対象, "劣情を伝える_失敗"
 					RETURN 0
 				ENDIF
 			ELSE
 				IF CFLAG:対象:倫理観 >= 30
 					PRINTFORMW %CALLNAME:対象%は学校に居るからと断り、ついでにまだそんな関係ではないと釘を刺してきた
+					CALL SCHOOL_KOJO, 対象, "劣情を伝える_失敗"
 					RETURN 0
 				ELSE
 					PRINTFORMW %CALLNAME:対象%は若干引き気味に、今は学校に居るから行けないと断ってきた……
+					CALL SCHOOL_KOJO, 対象, "劣情を伝える_失敗"
 					CALL 好感度上昇, 対象, "友情", -5
 					CALL 好感度上昇, 対象, "ときめき", -5
 					RETURN 0
 				ENDIF
 			ENDIF
+			CALL SCHOOL_KOJO, 対象, "劣情を伝える_成功"
 			CSTR:対象:現在地 = %CALLNAME:PLAYER%の家
 			CSTR:対象:目的 = セックス
 			同行者 = 対象
@@ -121,6 +140,7 @@ SELECTCASE RESULT
 					CALL 好感度上昇, 対象, "ときめき", -5
 				ENDIF
 			ENDIF
+			CALL SCHOOL_KOJO, 対象, "劣情を伝える_失敗"
 			RETURN 0
 		ELSE
 			IF 好感度:対象:既成事実
@@ -136,14 +156,17 @@ SELECTCASE RESULT
 			ELSE
 				IF CFLAG:対象:倫理観 >= 30
 					PRINTFORMW しかし%CALLNAME:対象%は平然と断り、ついでにまだそんな関係ではないと釘を刺してきた
+					CALL SCHOOL_KOJO, 対象, "劣情を伝える_失敗"
 					RETURN 0
 				ELSE
 					PRINTFORMW %CALLNAME:対象%は若干引き気味にその提案を断ってきた……
+					CALL SCHOOL_KOJO, 対象, "劣情を伝える_失敗"
 					CALL 好感度上昇, 対象, "友情", -5
 					CALL 好感度上昇, 対象, "ときめき", -5
 					RETURN 0
 				ENDIF
 			ENDIF
+			CALL SCHOOL_KOJO, 対象, "劣情を伝える_成功"
 			CSTR:対象:現在地 = %CALLNAME:PLAYER%の家
 			CSTR:対象:目的 = セックス
 			同行者 = 対象

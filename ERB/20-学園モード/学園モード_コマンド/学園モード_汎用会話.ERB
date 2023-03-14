@@ -2,14 +2,23 @@
 #DIM DYNAMIC 対象
 TARGET = 対象
 
+IF EXISTFUNCTION(@"SCHOOL_KOJO_%CSVNAMERPS(NO:TARGET)%_コマンド_汎用会話")
+	CALL SCHOOL_KOJO, TARGET, "コマンド_汎用会話"
+	RETURN RESULT
+ENDIF
+
 PRINTFORML □%CALLNAME:TARGET%と会話します
 PRINTL [0] 何気ない会話をする
 PRINTL [1] 少し踏み込んだ会話をする
 PRINTL [2] 下ネタを振る
 PRINTL [3] 性的に誘う
 PRINTL [4] 思い切って告白する
-PRINTL [5] 連絡先を聞いてみる
-IF 同行者 != 対象
+IF 連絡先:TARGET
+	CALL PRINTCOLORL, @"[-] 連絡先を聞いてみる(%CALLNAME:TARGET%の連絡先は既に知っている)", "gray"
+ELSE
+	PRINTL [5] 連絡先を聞いてみる
+ENDIF
+IF 同行者 != TARGET
 	IF 同行者
 		CALL PRINTCOLORL, @"[-] 同行を提案する(既に%NAME:同行者%と行動中)", "gray"
 	ELSE
@@ -24,14 +33,17 @@ BINPUT
 SELECTCASE RESULT
 	CASE 0
 		PRINTFORML %CALLNAME:PLAYER%は%CALLNAME:TARGET%と会話した
+			CALL SCHOOL_KOJO, TARGET, "何気ない会話"
 		CALL 好感度上昇, TARGET, "友情", 10
 		WAIT
 		RETURN 1
 	CASE 1
 		IF 好感度合計(TARGET) < 200
 			PRINTFORML %CALLNAME:PLAYER%の踏み込んだ会話に、%CALLNAME:TARGET%は少し迷惑そうにしている……
+			CALL SCHOOL_KOJO, TARGET, "踏み込んだ会話_失敗"
 		ELSE
 			PRINTFORML %CALLNAME:PLAYER%の踏み込んだ会話で、%CALLNAME:TARGET%のことをより詳しく知ることができた
+			CALL SCHOOL_KOJO, TARGET, "踏み込んだ会話_成功"
 			CALL 好感度上昇, TARGET, "友情", 10
 			CALL 好感度上昇, TARGET, "ときめき", 10
 		ENDIF
@@ -39,38 +51,49 @@ SELECTCASE RESULT
 	CASE 2
 		IF 好感度:セフレ >= 200
 			PRINTFORML %CALLNAME:PLAYER%の品の無い会話にも、%CALLNAME:TARGET%は喜んで付き合った
+			CALL SCHOOL_KOJO, TARGET, "品の無い会話_成功"
 			CALL 好感度上昇, TARGET, "友情", 10
 			CALL 好感度上昇, TARGET, "セフレ", 20
 		ELSEIF TALENT:貞操無頓着 || TALENT:淫乱 || CFLAG:倫理観 >= 30
 			PRINTFORML %CALLNAME:PLAYER%の下品な会話に%CALLNAME:TARGET%もノリの良い返しをしてきた
+			CALL SCHOOL_KOJO, TARGET, "品の無い会話_成功"
 			CALL 好感度上昇, TARGET, "セフレ", 20
 		ELSEIF 好感度合計(TARGET) >= 200
 			PRINTFORML %CALLNAME:PLAYER%の下品な話を、%CALLNAME:TARGET%は宥めながらも聞いてくれた
+			CALL SCHOOL_KOJO, TARGET, "品の無い会話_成功"
 			CALL 好感度上昇, TARGET, "セフレ", 10
 		ELSEIF TALENT:幼稚
 			PRINTFORML %CALLNAME:TARGET%は%CALLNAME:PLAYER%の話をよく理解できていないようだ……
+			CALL SCHOOL_KOJO, TARGET, "品の無い会話_失敗"
 		ELSE
 			PRINTFORML %CALLNAME:PLAYER%の下品な話に、%CALLNAME:TARGET%は若干引いている様子だ……
+			CALL SCHOOL_KOJO, TARGET, "品の無い会話_失敗"
 			CALL 好感度上昇, TARGET, "ときめき", -10
 		ENDIF
 		WAIT
 	CASE 3
 		IF 好感度:既成事実 >= 10
 			PRINTFORML 既に何度も体を重ねている%CALLNAME:TARGET%は、%CALLNAME:PLAYER%の誘いにも二つ返事で乗ってきた
+			CALL SCHOOL_KOJO, TARGET, "誘惑_成功"
 		ELSEIF 好感度:セフレ >= 1000
 			PRINTFORML %CALLNAME:PLAYER%の提案に、興味津々な%CALLNAME:TARGET%は快く応じた
+			CALL SCHOOL_KOJO, TARGET, "誘惑_成功"
 		ELSEIF TALENT:恋慕
 			PRINTFORML %CALLNAME:TARGET%は恋人の%CALLNAME:PLAYER%の提案を聞くと、落ち着いた声で了承した
+			CALL SCHOOL_KOJO, TARGET, "誘惑_成功"
 		ELSE
 			PRINTFORML %CALLNAME:TARGET%は困惑した様子で%CALLNAME:PLAYER%との会話を打ち切った……
+			CALL SCHOOL_KOJO, TARGET, "誘惑_失敗"
 			RETURN 1
 		ENDIF
 		WAIT
 		IF CSTR:PLAYER:現在地 == "自宅"
 			DRAWLINE
+			CALL SCHOOL_KOJO, TARGET, "自宅_行為前"
 			CALL TRAIN_SCHOOL
 			CALL CHECKDRAWLINE
 			PRINTFORMW 行為に満足した%CALLNAME:TARGET%は\@ TALENT:恋慕 ? 名残惜しそうにしながらも # 軽くシャワーを浴びて \@%CALLNAME:PLAYER%の家を後にした
+			CALL SCHOOL_KOJO, TARGET, "自宅_行為後"
 			CSTR:現在地 =
 			CSTR:目的 =
 			CALL 好感度上昇, TARGET, "友情", 30
@@ -90,15 +113,18 @@ SELECTCASE RESULT
 				CALL PASELIL, 　"[0] - ホテル(宿泊料10000＄必要)"
 			ENDIF
 			PRINTL [1] - 共用トイレ
-			PRINTL [2] - 自宅
-			CALL INPUTF, 0, 1, 2
+			SIF ターン != "夜"
+				PRINTL [2] - 自宅
+			BINPUT
 			SELECTCASE RESULT
 				CASE 0
 					PRINTFORMW %CALLNAME:TARGET%とホテルへ向かうことにした
 					DRAWLINE
+					CALL SCHOOL_KOJO, TARGET, "ホテル_行為前"
 					CALL TRAIN_SCHOOL
 					CALL CHECKDRAWLINE
 					PRINTFORMW 行為を終えた%CALLNAME:TARGET%たちは、時間差でホテルを後にして別れた
+					CALL SCHOOL_KOJO, TARGET, "ホテル_行為後"
 					CALL 好感度上昇, TARGET, "友情", 30
 					CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
 					CALL 好感度上昇, TARGET, "セフレ", 50
@@ -111,9 +137,11 @@ SELECTCASE RESULT
 					PRINTFORMW %CALLNAME:TARGET%を手頃な広さのトイレにこっそりと連れ込んだ
 					DRAWLINE
 					トイレ使用中 = 1
+					CALL SCHOOL_KOJO, TARGET, "トイレ_行為前"
 					CALL TRAIN_SCHOOL
 					CALL CHECKDRAWLINE
 					PRINTFORMW 行為を終えた%CALLNAME:TARGET%は、乱れた服を直して周りを確認しながら別れた
+					CALL SCHOOL_KOJO, TARGET, "トイレ_行為後"
 					CALL 好感度上昇, TARGET, "友情", 30
 					;トイレはホテルほどときめかない
 					CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
@@ -128,9 +156,11 @@ SELECTCASE RESULT
 				CASE 2
 					PRINTFORMW %CALLNAME:TARGET%を家に招き入れることにした
 					CSTR:現在地 = %CALLNAME:PLAYER%の家
+					CSTR:PLAYER:現在地 = 自宅
 					CSTR:目的 = セックス
+					CALL SCHOOL_KOJO, TARGET, "一緒に帰宅"
 					TARGET = -1
-					JUMP SHOP_SCHOOL
+					RETURN 1
 			ENDSELECT
 		ENDIF
 	CASE 4
@@ -139,62 +169,70 @@ SELECTCASE RESULT
 		IF 好感度:セフレ && 好感度:セフレ >= 好感度:ときめき
 			IF 好感度:既成事実
 				PRINTFORMW しかし%CALLNAME:TARGET%は、%CALLNAME:PLAYER%とは体だけの関係で居たいと言って断られてしまった……
+				CALL SCHOOL_KOJO, TARGET, "告白_失敗"
 				CALL 好感度上昇, TARGET, "セフレ", 10
 				WAIT
 			ELSE
 				IF 好感度:セフレ >= 1000
 					PRINTFORMW %CALLNAME:TARGET%はしばし考え込むとその告白をやんわりと断ったが、性的なことには興味があるとオブラートに包んで言ってきた……
+					CALL SCHOOL_KOJO, TARGET, "告白_失敗"
 					CALL 好感度上昇, TARGET, "セフレ", 5
 					WAIT
 				ELSE
 					PRINTFORMW しかし%CALLNAME:TARGET%はいまいち腑に落ちない様子で、かつ遺恨を残さないようにはっきりと断った……
+					CALL SCHOOL_KOJO, TARGET, "告白_失敗"
 				ENDIF
 			ENDIF
 		ELSEIF 好感度:ときめき >= 1000
 			PRINTFORMW %CALLNAME:TARGET%は少し驚いた様子を見せたが、自分も%CALLNAME:PLAYER%のことが気になっていたと肯定的な返事をした
+			CALL SCHOOL_KOJO, TARGET, "告白_成功"
 			CALL 恋仲, TARGET
 			WAIT
 		ELSEIF 好感度:ときめき >= 500 && 連絡先:TARGET
 			PRINTFORML 突然の告白に%CALLNAME:TARGET%は困惑し、今は決められないから少し時間が欲しいと言ってきた
 			PRINTFORMW 数日以内に%CALLNAME:TARGET%から連絡が来るだろう
 			告白保留:TARGET = RAND(4, 8)
+			CALL SCHOOL_KOJO, TARGET, "告白_保留"
 			CALL 好感度上昇, TARGET, "ときめき", 10
 			WAIT
 		ELSE
 			IF 好感度:友情 >= 300
 				PRINTFORMW しかし%CALLNAME:TARGET%は告白をはっきりと断り、友達のままで居たいと言った……
+				CALL SCHOOL_KOJO, TARGET, "告白_失敗"
 				CALL 好感度上昇, TARGET, "友情", 10
 				CALL 好感度上昇, TARGET, "ときめき", 5
 			ELSE
 				PRINTFORMW しかしお互いの関係が浅すぎるせいか、%CALLNAME:TARGET%は明らかに気まずそうな様子で断ってきた……
+				CALL SCHOOL_KOJO, TARGET, "告白_失敗"
 				CALL 好感度上昇, TARGET, "友情", 5
 				CALL 好感度上昇, TARGET, "ときめき", -5
 			ENDIF
 		ENDIF
 	CASE 5
-		SIF 連絡先:TARGET
-			RESTART
 		IF 好感度合計(TARGET) >= 500
 			PRINTFORMW %CALLNAME:TARGET%に連絡先を尋ねると、快く教えてくれた
+			CALL SCHOOL_KOJO, TARGET, "連絡先入手_成功"
 			CALL 連絡先入手, TARGET
 			CALL 好感度上昇, TARGET, "友情", 10
 			WAIT
 		ELSE
 			PRINTFORMW %CALLNAME:TARGET%はまだそこまで親密な関係だと思っていないのか、教えてもらえずにはぐらかされてしまった……
+			CALL SCHOOL_KOJO, TARGET, "連絡先入手_失敗"
 		ENDIF
 	CASE 6
-		SIF 同行者
-			RESTART
 		IF ターン == "夜"
 			PRINTFORMW %CALLNAME:TARGET%と行動を共にしようと提案したが、今日はもう遅いからと断られてしまった
+			CALL SCHOOL_KOJO, TARGET, "同行_失敗"
 			RESTART
 		ELSEIF 好感度合計(TARGET) >= 200
 			PRINTFORMW %CALLNAME:TARGET%は快諾して%CALLNAME:PLAYER%と行動を共にすることにした
 			同行者 = TARGET
+			CALL SCHOOL_KOJO, TARGET, "同行_成功"
 			CALL 好感度上昇, TARGET, "友情", 5
 			CALL 好感度上昇, TARGET, "ときめき", 5
 		ELSE
 			PRINTFORMW %CALLNAME:TARGET%は遠慮がちに断った。まだそこまで親密だと思っていないようだ……
+			CALL SCHOOL_KOJO, TARGET, "同行_失敗"
 		ENDIF
 	CASE 10
 		RETURN 0

@@ -44,6 +44,8 @@ SELECTCASE LRESULT
 		ENDIF
 
 		PRINTFORML %CALLNAME:PLAYER%は%目的地%に向かった
+		SIF 同行者
+			CALL SCHOOL_KOJO, 同行者, @"一緒に%目的地%に行く"
 		CSTR:PLAYER:現在地 = %目的地%
 	CASE 10000
 		RETURN 0
@@ -100,45 +102,38 @@ CATCH
 	DRAWLINE
 	PRINTPLAINFORM 　%目的地%　
 	PRINTFORML [0] - 帰る [-1] - %目的地%に留まる [-2] - もう少し周りを見てみる
-	DO
-		INPUT
-		LRESULT = RESULT
-		SELECTCASE LRESULT
-			CASE 0
-				CSTR:PLAYER:現在地 = 自宅
-				RETURN 1
-			CASE -1
-				RETURN 1
-			CASE -2
+	BINPUT
+	LRESULT = RESULT
+	SELECTCASE LRESULT
+		CASE 0
+			CSTR:PLAYER:現在地 = 自宅
+			RETURN 1
+		CASE -1
+			RETURN 1
+		CASE -2
+			GOTO リロード
+		CASE 1 TO CHARANUM
+			CALL 学園モード_汎用会話, LRESULT
+			SIF !RESULT
 				GOTO リロード
-			CASE 1 TO CHARANUM
-				SIF !会話候補:LRESULT
-					CONTINUE
-				CALL 学園モード_汎用会話, LRESULT
-				SIF !RESULT
-					GOTO リロード
-				BREAK
-			CASE 1000 TO 1009
-				SIF 集団行動:(LRESULT-1000):0 == 0
-					CONTINUE
-				FOR LCOUNT, 0, 5
-					PRINTFORM %NAME:(集団行動:(LRESULT-1000):LCOUNT)%
-					IF LCOUNT != 4 && 集団行動:(LRESULT-1000):(LCOUNT+1) > 0
-						PRINT 、
-					ELSE
-						BREAK
-					ENDIF
-				NEXT
-				PRINTL のグループと会話した
-				FOR LCOUNT, 0, 5
-					SIF 集団行動:(LRESULT-1000):LCOUNT > 0
-						CALL 好感度上昇, 集団行動:(LRESULT-1000):LCOUNT, "友情", 10
-				NEXT
-				BREAK
-		ENDSELECT
-	LOOP 1
+		CASE 1000 TO 1009
+			SIF 集団行動:(LRESULT-1000):0 == 0
+				CONTINUE
+			FOR LCOUNT, 0, 5
+				PRINTFORM %NAME:(集団行動:(LRESULT-1000):LCOUNT)%
+				IF LCOUNT != 4 && 集団行動:(LRESULT-1000):(LCOUNT+1) > 0
+					PRINT 、
+				ELSE
+					BREAK
+				ENDIF
+			NEXT
+			PRINTL のグループと会話した
+			FOR LCOUNT, 0, 5
+				SIF 集団行動:(LRESULT-1000):LCOUNT > 0
+					CALL 好感度上昇, 集団行動:(LRESULT-1000):LCOUNT, "友情", 10
+			NEXT
+	ENDSELECT
 ENDCATCH
-
 
 RETURN 1
 

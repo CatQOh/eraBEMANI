@@ -13,69 +13,76 @@ FOR LCOUNT, 1, CHARANUM
 	IF CSTR:LCOUNT:在校 == CSTR:PLAYER:在校 && 連絡先:LCOUNT
 		;確率は 1/同じ学校の在校生の人数
 		IF RAND:CMATCH(CSTR:在校, CSTR:PLAYER:在校) == 0
+			IF EXISTFUNCTION(@"SCHOOL_KOJO_%CSVNAMERPS(NO:TARGET)%_コマンド_サボり中に連絡")
+				CALL SCHOOL_KOJO, TARGET, "コマンド_サボり中に連絡"
+				RETURN RESULT
+			ENDIF
+
 			PRINTFORML 学校を休んだ%CALLNAME:PLAYER%を心配してか、%CALLNAME:LCOUNT%が電話をかけてきた
+			CALL SCHOOL_KOJO, LCOUNT, "サボり中に連絡"
 			PRINTL [0] - 大丈夫だと伝える
 			PRINTL [1] - 具合が悪いから看病してほしいと言う
 			PRINTL [2] - 正直にサボりだと答える
-			DO
-				INPUT
-				LRESULT = RESULT
-				SELECTCASE LRESULT
-					CASE 0
+			BINPUT
+			LRESULT = RESULT
+			SELECTCASE LRESULT
+				CASE 0
+					;素質で反応が変わる
+					IF TALENT:LCOUNT:強気 || TALENT:LCOUNT:ツンデレ
+						PRINTFORMW %CALLNAME:PLAYER%が大丈夫と答えると、%CALLNAME:LCOUNT%は心配して損したといった様子で電話を切ってしまった……
+					ELSEIF TALENT:LCOUNT:弱気 || TALENT:LCOUNT:寂しがり屋
+						PRINTFORMW %CALLNAME:PLAYER%は大丈夫と答えたものの、%CALLNAME:LCOUNT%は未だ不安げな様子のまま通話を終えた
+					ELSEIF TALENT:LCOUNT:冷静 || TALENT:LCOUNT:無関心
+						PRINTFORMW %CALLNAME:PLAYER%が大丈夫と答えると、それを確認した%CALLNAME:LCOUNT%は早々に通話を切った
+					ELSE
+						PRINTFORMW %CALLNAME:PLAYER%が大丈夫と答えると、%CALLNAME:LCOUNT%は安心した様子で通話を終えた
+					ENDIF
+					CALL SCHOOL_KOJO, LCOUNT, "大丈夫と伝える"
+					CALL 好感度上昇, LCOUNT, "友情", 10
+				CASE 1
+					;好感度が高いと聞き入れてもらえる
+					IF 好感度合計(LCOUNT) >= 500
 						;素質で反応が変わる
 						IF TALENT:LCOUNT:強気 || TALENT:LCOUNT:ツンデレ
-							PRINTFORMW %CALLNAME:PLAYER%が大丈夫と答えると、%CALLNAME:LCOUNT%は心配して損したといった様子で電話を切ってしまった……
+							PRINTFORML %CALLNAME:PLAYER%が仮病を装うと、%CALLNAME:LCOUNT%は呆れた様子で、後でそちらに向かうと答えた
 						ELSEIF TALENT:LCOUNT:弱気 || TALENT:LCOUNT:寂しがり屋
-							PRINTFORMW %CALLNAME:PLAYER%は大丈夫と答えたものの、%CALLNAME:LCOUNT%は未だ不安げな様子のまま通話を終えた
+							PRINTFORML %CALLNAME:PLAYER%が仮病を装うと、%CALLNAME:LCOUNT%は今にも駆け出しそうな慌てぶりで、看病に向かうと答えた
 						ELSEIF TALENT:LCOUNT:冷静 || TALENT:LCOUNT:無関心
-							PRINTFORMW %CALLNAME:PLAYER%が大丈夫と答えると、それを確認した%CALLNAME:LCOUNT%は早々に通話を切った
+							PRINTFORML %CALLNAME:PLAYER%が仮病を装うと、%CALLNAME:LCOUNT%はその様子を疑いつつも、後でそちらに向かうと答えた
 						ELSE
-							PRINTFORMW %CALLNAME:PLAYER%が大丈夫と答えると、%CALLNAME:LCOUNT%は安心した様子で通話を終えた
+							PRINTFORML %CALLNAME:PLAYER%が仮病を装うと、%CALLNAME:LCOUNT%は心配した様子で、後でそちらに向かうと答えた
 						ENDIF
-						CALL 好感度上昇, LCOUNT, "友情", 10
-						BREAK
-					CASE 1
-						;好感度が高いと聞き入れてもらえる
-						IF 好感度合計(LCOUNT) >= 500
-							;素質で反応が変わる
-							IF TALENT:LCOUNT:強気 || TALENT:LCOUNT:ツンデレ
-								PRINTFORML %CALLNAME:PLAYER%が仮病を装うと、%CALLNAME:LCOUNT%は呆れた様子で、後でそちらに向かうと答えた
-							ELSEIF TALENT:LCOUNT:弱気 || TALENT:LCOUNT:寂しがり屋
-								PRINTFORML %CALLNAME:PLAYER%が仮病を装うと、%CALLNAME:LCOUNT%は今にも駆け出しそうな慌てぶりで、看病に向かうと答えた
-							ELSEIF TALENT:LCOUNT:冷静 || TALENT:LCOUNT:無関心
-								PRINTFORML %CALLNAME:PLAYER%が仮病を装うと、%CALLNAME:LCOUNT%はその様子を疑いつつも、後でそちらに向かうと答えた
-							ELSE
-								PRINTFORML %CALLNAME:PLAYER%が仮病を装うと、%CALLNAME:LCOUNT%は心配した様子で、後でそちらに向かうと答えた
-							ENDIF
-							訪問者 = LCOUNT
+						CALL SCHOOL_KOJO, LCOUNT, "仮病を装う_成功"
+						訪問者 = LCOUNT
+					ELSE
+						;素質で反応が変わる
+						IF TALENT:LCOUNT:強気 || TALENT:LCOUNT:ツンデレ
+							PRINTFORML %CALLNAME:PLAYER%は仮病を装うが、%CALLNAME:LCOUNT%には無情にも拒否されてしまった……
+						ELSEIF TALENT:LCOUNT:弱気 || TALENT:LCOUNT:寂しがり屋
+							PRINTFORML %CALLNAME:PLAYER%が仮病を装うが、%CALLNAME:LCOUNT%はそっちに向かえないと言って謝られてしまった……
+						ELSEIF TALENT:LCOUNT:冷静 || TALENT:LCOUNT:無関心
+							PRINTFORML %CALLNAME:PLAYER%は仮病を装うが、%CALLNAME:LCOUNT%には簡単に見抜かれ通話を切られてしまった……
 						ELSE
-							;素質で反応が変わる
-							IF TALENT:LCOUNT:強気 || TALENT:LCOUNT:ツンデレ
-								PRINTFORML %CALLNAME:PLAYER%は仮病を装うが、%CALLNAME:LCOUNT%には無情にも拒否されてしまった……
-							ELSEIF TALENT:LCOUNT:弱気 || TALENT:LCOUNT:寂しがり屋
-								PRINTFORML %CALLNAME:PLAYER%が仮病を装うが、%CALLNAME:LCOUNT%はそっちに向かえないと言って謝られてしまった……
-							ELSEIF TALENT:LCOUNT:冷静 || TALENT:LCOUNT:無関心
-								PRINTFORML %CALLNAME:PLAYER%は仮病を装うが、%CALLNAME:LCOUNT%には簡単に見抜かれ通話を切られてしまった……
-							ELSE
-								PRINTFORML %CALLNAME:PLAYER%が仮病を装うが、%CALLNAME:LCOUNT%には授業があるから無理と断られてしまった……
-							ENDIF
+							PRINTFORML %CALLNAME:PLAYER%が仮病を装うが、%CALLNAME:LCOUNT%には授業があるから無理と断られてしまった……
 						ENDIF
-						BREAK
-					CASE 2
-						;サボり魔持ちにはサボりが伝染する
-						IF TALENT:LCOUNT:サボり魔
-							PRINTFORML %CALLNAME:PLAYER%が正直にサボりだと答えると、%CALLNAME:LCOUNT%も笑いながら自分もサボると言ってきた
-							訪問者 = LCOUNT
-						;好感度が高いと許される
-						ELSEIF 好感度合計(LCOUNT) >= 500
-							PRINTFORML %CALLNAME:PLAYER%が正直にサボりだと答えると、%CALLNAME:LCOUNT%は呆れた様子で通話を終えた
-						ELSE
-							PRINTFORML %CALLNAME:PLAYER%が正直にサボりだと答えると、%CALLNAME:LCOUNT%にサボったことを咎められてしまった……
-							CALL 好感度上昇, LCOUNT, "友情", -10
-						ENDIF
-						BREAK
-				ENDSELECT
-			LOOP 1
+						CALL SCHOOL_KOJO, LCOUNT, "仮病を装う_失敗"
+					ENDIF
+				CASE 2
+					;サボり魔持ちにはサボりが伝染する
+					IF TALENT:LCOUNT:サボり魔
+						PRINTFORML %CALLNAME:PLAYER%が正直にサボりだと答えると、%CALLNAME:LCOUNT%も笑いながら自分もサボると言ってきた
+						CALL SCHOOL_KOJO, LCOUNT, "サボりと伝える"
+						訪問者 = LCOUNT
+					;好感度が高いと許される
+					ELSEIF 好感度合計(LCOUNT) >= 500
+						PRINTFORML %CALLNAME:PLAYER%が正直にサボりだと答えると、%CALLNAME:LCOUNT%は呆れた様子で通話を終えた
+						CALL SCHOOL_KOJO, LCOUNT, "サボりと伝える"
+					ELSE
+						PRINTFORML %CALLNAME:PLAYER%が正直にサボりだと答えると、%CALLNAME:LCOUNT%にサボったことを咎められてしまった……
+						CALL SCHOOL_KOJO, LCOUNT, "サボりと伝える"
+						CALL 好感度上昇, LCOUNT, "友情", -10
+					ENDIF
+			ENDSELECT
 			WAIT
 			BREAK
 		ENDIF
@@ -91,12 +98,14 @@ IF 訪問者
 			CSTR:訪問者:現在地 = %CALLNAME:PLAYER%の家
 			CSTR:訪問者:目的 = 看病
 			同行者 = 訪問者
+			CALL SCHOOL_KOJO, 訪問者, "自宅に来訪"
 		;サボり
 		CASE 2
 			PRINTFORMW その後、授業をサボった%CALLNAME:訪問者%が%CALLNAME:PLAYER%の家にやってきた
 			CSTR:訪問者:現在地 = %CALLNAME:PLAYER%の家
 			CSTR:訪問者:目的 = 遊び
 			同行者 = 訪問者
+			CALL SCHOOL_KOJO, 訪問者, "自宅に来訪"
 	ENDSELECT
 ENDIF
 

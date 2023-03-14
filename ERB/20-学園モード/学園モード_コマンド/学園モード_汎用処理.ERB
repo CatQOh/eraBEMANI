@@ -64,7 +64,9 @@ ENDSELECT
 
 CALL SYSTEM_AUTOSAVE
 
-JUMP SHOP_SCHOOL
+LOOP_BREAK = 1
+
+;JUMP SHOP_SCHOOL
 
 @相性増加, ARG, ARG:1, 上昇値
 #DIM DYNAMIC 上昇値
@@ -283,21 +285,19 @@ RETURN GETCHARA(候補:0), GETCHARA(候補:1), GETCHARA(候補:2), GETCHARA(候�
 #DIM DYNAMIC LCOUNT
 
 PRINTL [1] - 学校一覧
-PRINTL [2] - 
+;PRINTL [2] - 
 DRAWLINE
 PRINTPLAIN 　DATABASE　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0 
-			RETURN
-		CASE 1
-			CALL 学校一覧_データベース
-			RESTART
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0 
+		RETURN 0
+	CASE 1
+		CALL 学校一覧_データベース
+		RESTART
+ENDSELECT
 
 @学校一覧_データベース
 #DIM DYNAMIC LCOUNT
@@ -307,6 +307,8 @@ LOOP 1
 #DIM DYNAMIC 表示数
 
 FOR LCOUNT, 0, VARSIZE("学校名")
+	SIF 学校名:LCOUNT == ""
+		CONTINUE
 	PRINTFORMLC 　[{LCOUNT, 2}] - %学校名:LCOUNT%
 NEXT
 CALL NEWLINE
@@ -315,74 +317,67 @@ DRAWLINE
 PRINTPLAIN 　DATABASE　
 PRINTL [-1] - 戻る
 
-DO
-	INPUT
-	選択校 = RESULT
-	SELECTCASE 選択校
-		CASE -1
-			RETURN
-		CASE 0 TO VARSIZE("学校名")-1
-			$生徒選択
-			DRAWLINE
-			PRINTFORML □%学校名:選択校%の在校生
-			FOR LCOUNT, 0, CHARANUM
-				SIF CSTR:LCOUNT:在校 != 学校名:選択校
-					CONTINUE
-				PRINTFORML 　[{LCOUNT}] %NAME:LCOUNT%
-			NEXT
-			PRINTFORML □%学校名:選択校%の教師
-			FOR LCOUNT, 0, CHARANUM
-				SIF CSTR:LCOUNT:在任 != 学校名:選択校
-					CONTINUE
-				PRINTFORML 　担当科目:%CSTR:LCOUNT:担当科目% [{LCOUNT}] %NAME:LCOUNT% 
-			NEXT
-			DRAWLINE
-			PRINTPLAINFORM 　%学校名:選択校%　
-			PRINTL [-1] - 戻る
+BINPUT
+選択校 = RESULT
+SIF RESULT == -1
+	RETURN
 
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE -1
-						RESTART
-					CASE 0 TO CHARANUM-1
-						選択キャラ = RESULT
-						DRAWLINE
-						PRINTFORML □%NAME:選択キャラ%の情報
-						PRINTFORML 　倫理観崩壊度:{CFLAG:選択キャラ:倫理観}
-						PRINTL □各ロケーションでの出現率
-						;どこのロケーションに出現するのかを表示
-						データベース参照中 = 選択キャラ
-						FOR LCOUNT, 0, VARSIZE("ロケーション")
-							VARSET 出現率
-							SPLIT ロケーション:LCOUNT, "/", 名称抜き取り用
-							;分割されてたらスラッシュより後の部分だけを使用する
-							IF RESULT >= 2
-								RESULT = 0
-								TRYCALLFORM 出現キャラ_%名称抜き取り用:1%
-							ELSE
-								RESULT = 0
-								TRYCALLFORM 出現キャラ_%ロケーション:LCOUNT%
-							ENDIF
-							;出現率も表示
-							IF 出現率:選択キャラ > 0
-								PRINTFORMLC 　%ロケーション:LCOUNT%({出現率:選択キャラ}\%)
-								表示数++
-							ENDIF
-							SIF 表示数 != 0 && 表示数%5 == 0
-								PRINTL 
-						NEXT
-						データベース参照中 = 0
-						CALL NEWLINE
-						DRAWLINE
-						PRINTPLAIN 　DATABASE　
-						PRINTW クリック・Enterで戻る
-						BREAK
-				ENDSELECT
-			LOOP 1
-			GOTO 生徒選択
-	ENDSELECT
-LOOP 1
+$生徒選択
+DRAWLINE
+PRINTFORML □%学校名:選択校%の在校生
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:在校 != 学校名:選択校
+		CONTINUE
+	PRINTFORML 　[{LCOUNT}] %NAME:LCOUNT%
+NEXT
+PRINTFORML □%学校名:選択校%の教師
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:在任 != 学校名:選択校
+		CONTINUE
+	PRINTFORML 　担当科目:%CSTR:LCOUNT:担当科目% [{LCOUNT}] %NAME:LCOUNT% 
+NEXT
+DRAWLINE
+PRINTPLAINFORM 　%学校名:選択校%　
+PRINTL [-1] - 戻る
+
+BINPUT
+SIF RESULT == -1
+	RESTART
+
+選択キャラ = RESULT
+DRAWLINE
+PRINTFORML □%NAME:選択キャラ%の情報
+PRINTFORML 　倫理観崩壊度:{CFLAG:選択キャラ:倫理観}
+PRINTL □各ロケーションでの出現率
+;どこのロケーションに出現するのかを表示
+データベース参照中 = 選択キャラ
+表示数 = 0
+FOR LCOUNT, 0, VARSIZE("ロケーション")
+	VARSET 出現率
+	SPLIT ロケーション:LCOUNT, "/", 名称抜き取り用
+	;分割されてたらスラッシュより後の部分だけを使用する
+	IF RESULT >= 2
+		RESULT = 0
+		TRYCALLFORM 出現キャラ_%名称抜き取り用:1%
+	ELSE
+		RESULT = 0
+		TRYCALLFORM 出現キャラ_%ロケーション:LCOUNT%
+	ENDIF
+	;出現率も表示
+	SIF !出現率:選択キャラ
+		CONTINUE
+	PRINTFORMLC 　%ロケーション:LCOUNT%({出現率:選択キャラ}\%)
+	表示数++
+	SIF 表示数 != 0 && 表示数%5 == 0
+		PRINTL 
+NEXT
+データベース参照中 = 0
+CALL NEWLINE
+DRAWLINE
+PRINTPLAIN 　DATABASE　
+PRINTW クリック・Enterで戻る
+
+GOTO 生徒選択
 
 @好感度合計, 対象
 #FUNCTION

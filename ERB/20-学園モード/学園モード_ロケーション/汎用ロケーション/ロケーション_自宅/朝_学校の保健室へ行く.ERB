@@ -27,12 +27,14 @@ SIF !保健医
 IF 保健医
 	PRINTFORML %CALLNAME:PLAYER%が保健室に行くと、保健医の%CALLNAME:保健医%先生が対応してくれた
 	TARGET = 保健医
+	CALL SCHOOL_KOJO, TARGET, "保健室"
 	PRINTL [0] - 具合が悪いので保健室で休む
 	PRINTL [1] - 授業に戻る
 ELSE
 	IF CSTR:保健室滞在者:在任 != ""
 		PRINTFORML %CALLNAME:PLAYER%が保健室に行くと、%CSTR:保健室滞在者:担当科目%の%CALLNAME:保健室滞在者%先生が対応してくれた
 		TARGET = 保健室滞在者
+		CALL SCHOOL_KOJO, TARGET, "保健室"
 		PRINTL [0] - 具合が悪いので保健室で休む
 		PRINTL [1] - 授業に戻る
 	ELSE
@@ -46,28 +48,37 @@ ELSE
 			PRINTFORML %CSTR:保健室滞在者%も保健室に訪れていた
 		ENDIF
 		TARGET = 保健室滞在者
+		SIF !睡眠中
+			CALL SCHOOL_KOJO, TARGET, "保健室"
 		PRINTL [0] - 具合が悪いので保健室で休む
 		PRINTL [1] - 授業に戻る
 	ENDIF
 ENDIF
 
-CALL INPUTF, 0, 1
+BINPUT
 
 SELECTCASE RESULT
 	CASE 0
 		IF CSTR:在任 != ""
+			IF EXISTFUNCTION(@"SCHOOL_KOJO_%CSVNAMERPS(NO:TARGET)%_コマンド_保健室")
+				CALL SCHOOL_KOJO, TARGET, "コマンド_保健室"
+				RETURN RESULT
+			ENDIF
+			CALL SCHOOL_KOJO, TARGET, "保健室で休む"
 			PRINTFORML □どこが悪いのかと%CALLNAME:TARGET%が聞いてきた
 			PRINTL 　[0] - だるいので安静にしたい
 			PRINTL 　[1] - 実はサボりだと言う
 			PRINTL 　[2] - 股間の具合が悪い
 			PRINTL 　[3] - 治ったので授業に戻る
-			CALL INPUTF, 0, 1, 2, 3
+			BINPUT
 			SELECTCASE RESULT
 				CASE 0
 					PRINTFORMW %CALLNAME:TARGET%は%CALLNAME:PLAYER%をベッドに寝かせ、静かにカーテンを閉めた
+					CALL SCHOOL_KOJO, TARGET, "保健室_安静"
 					CALL 好感度上昇, TARGET, "舎弟", 10
 				CASE 1
 					PRINTFORMW %CALLNAME:TARGET%は呆れた様子で%CALLNAME:PLAYER%を叱り、授業に戻るよう諭した
+					CALL SCHOOL_KOJO, TARGET, "保健室_サボり"
 					CALL 好感度上昇, TARGET, "舎弟", 10
 				CASE 2
 					IF 好感度:既成事実 >= 10
@@ -78,14 +89,18 @@ SELECTCASE RESULT
 						PRINTFORMW %CALLNAME:TARGET%は少し困惑したものの、手早く済ませることを条件にベッドに向かった
 					ELSE
 						PRINTFORMW %CALLNAME:TARGET%は気まずそうに言葉を濁しながら、やんわりと%CALLNAME:PLAYER%を保健室から追い出した
+						CALL SCHOOL_KOJO, TARGET, "保健室_誘惑_失敗"
 						CALL 好感度上昇, TARGET, "ときめき", -10
 						CALL 好感度上昇, TARGET, "舎弟", -10
 						WAIT
 						RETURN 1
 					ENDIF
+					DRAWLINE
+					CALL SCHOOL_KOJO, TARGET, "保健室_誘惑_成功"
 					CALL TRAIN_SCHOOL
 					CALL CHECKDRAWLINE
 					PRINTFORMW %CALLNAME:TARGET%は衣服を直し、淫らな残り香が漂う保健室に芳香剤を振り撒いて%CALLNAME:PLAYER%を見送った
+					CALL SCHOOL_KOJO, TARGET, "保健室_行為後"
 					CALL 好感度上昇, TARGET, "友情", 30
 					CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
 					CALL 好感度上昇, TARGET, "セフレ", 50
@@ -95,7 +110,8 @@ SELECTCASE RESULT
 					CFLAG:倫理観 += 2
 				CASE 3
 					PRINTFORMW %CALLNAME:TARGET%は何も疑わずに%CALLNAME:PLAYER%を見送った
-					JUMP SHOP_SCHOOL
+					CALL SCHOOL_KOJO, TARGET, "保健室で休まない"
+					RETURN 0
 			ENDSELECT
 		ELSE
 			IF 睡眠中
@@ -116,9 +132,14 @@ SELECTCASE RESULT
 						PRINTFORMW 満足した%CALLNAME:PLAYER%は、ベッドの布団を元に戻し、%CALLNAME:TARGET%が気づかないうちに保健室を後にした
 					CASE 2
 						PRINTFORMW %CALLNAME:TARGET%を起こさないように保健室を後にした
-						JUMP SHOP_SCHOOL
+						RETURN 0
 				ENDSELECT
 			ELSE
+				IF EXISTFUNCTION(@"SCHOOL_KOJO_%CSVNAMERPS(NO:TARGET)%_コマンド_保健室")
+					CALL SCHOOL_KOJO, TARGET, "コマンド_保健室"
+					RETURN RESULT
+				ENDIF
+				CALL SCHOOL_KOJO, TARGET, "保健室"
 				PRINTFORML □%CALLNAME:TARGET%は%CALLNAME:PLAYER%を一瞥すると、軽く声を掛けてきた
 				PRINTL 　[0] - 軽い挨拶で返す
 				PRINTL 　[1] - 盛り上がりそうな話を振る
@@ -128,14 +149,17 @@ SELECTCASE RESULT
 				SELECTCASE RESULT
 					CASE 0
 						PRINTFORMW %CALLNAME:TARGET%も挨拶に応え、一言二言程度の軽い会話を交わした
+						CALL SCHOOL_KOJO, TARGET, "保健室_挨拶"
 						CALL 好感度上昇, TARGET, "友情", 10
 					CASE 1
 						IF 好感度:友情 >= 200 || TALENT:サボり魔
 							PRINTFORMW %CALLNAME:TARGET%は具合が悪そうな素振りも見せずに%CALLNAME:PLAYER%との会話を楽しんだ
+							CALL SCHOOL_KOJO, TARGET, "保健室_会話_成功"
 							CALL 好感度上昇, TARGET, "友情", 10
 							CALL 好感度上昇, TARGET, "ときめき", 10
 						ELSE
 							PRINTFORMW %CALLNAME:TARGET%は本当に具合が悪いのか、%CALLNAME:PLAYER%の話を不快そうな顔で遮った……
+							CALL SCHOOL_KOJO, TARGET, "保健室_会話_失敗"
 							CALL 好感度上昇, TARGET, "ときめき", -10
 						ENDIF
 					CASE 2
@@ -147,14 +171,17 @@ SELECTCASE RESULT
 							PRINTFORMW %CALLNAME:TARGET%は少し戸惑ったが、好奇心のほうが勝ったのか早めに済ませることを強調して提案に乗った
 						ELSE
 							PRINTFORMW %CALLNAME:TARGET%は引き気味に言葉を濁し、逃げるように保健室から出ていってしまった……
+							CALL SCHOOL_KOJO, TARGET, "保健室_ベッドシェア_失敗"
 							CALL 好感度上昇, TARGET, "ときめき", -10
 							WAIT
 							RETURN 1
 						ENDIF
+						CALL SCHOOL_KOJO, TARGET, "保健室_ベッドシェア_成功"
 						DRAWLINE
 						CALL TRAIN_SCHOOL
 						CALL CHECKDRAWLINE
 						PRINTFORMW %CALLNAME:TARGET%は呼吸を整え、汗と体液で汚れた体をアルコールティッシュで拭き、保健室を後にした
+						CALL SCHOOL_KOJO, TARGET, "保健室_行為後"
 						CALL 好感度上昇, TARGET, "友情", 30
 						CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
 						CALL 好感度上昇, TARGET, "セフレ", 50
@@ -164,12 +191,14 @@ SELECTCASE RESULT
 						CFLAG:倫理観++
 					CASE 3
 						PRINTFORMW 怪訝そうな顔をする%CALLNAME:TARGET%に会釈して保健室を後にした……
-						JUMP SHOP_SCHOOL
+						CALL SCHOOL_KOJO, TARGET, "保健室で休まない"
+						RETURN 0
 				ENDSELECT
 			ENDIF
 		ENDIF
 	CASE 1
-		JUMP SHOP_SCHOOL
+		CALL SCHOOL_KOJO, TARGET, "保健室で休まない"
+		RETURN 0
 ENDSELECT
 WAIT
 RETURN 1

@@ -37,7 +37,9 @@ ELSE
 	CALL カラム生成, "学園用汎用カラム", "コマンド", "学園用_セーブカラム", "学園用_ロードカラム"
 ENDIF
 
-TRYCALLFORM ロケーション_%CSTR:PLAYER:現在地%
+;TRYCALLFORM ロケーション_%CSTR:PLAYER:現在地%
+
+RESTART
 
 @COLUMNSHOP_SCHOOL
 CALL COLUMNPRINT, 0, @"□%日付表示()%"
@@ -81,6 +83,7 @@ IF 同行者
 	CALL COLUMNPRINTL, 0, @"　[110] - %CALLNAME:同行者%と会話する"
 	CALL COLUMNPRINTL, 0, @"　[111] - %CALLNAME:同行者%と別行動する"
 ENDIF
+CALL COLUMNPRINTL, 0, "　[500] - データベース"
 
 @学園用汎用カラム_コマンド_INPUT
 SELECTCASE CRESULT:1
@@ -96,14 +99,19 @@ SELECTCASE CRESULT:1
 		IF 同行者
 			CSTR:同行者:現在地 = %CALLNAME:PLAYER%の家
 			CSTR:同行者:目的 = 遊び
+			CALL SCHOOL_KOJO, 同行者, "一緒に帰宅"
 		ENDIF
 	CASE 110
 		CALL 学園モード_汎用会話, 同行者
 	CASE 111
 		PRINTFORMW %CALLNAME:PLAYER%は%CALLNAME:同行者%と別れた
+		CALL SCHOOL_KOJO, 同行者, "別れる"
 		同行者 = 0
+		RETURN 0
+	CASE 500
+		CALL 学園データベース
 		RETURN 0
 ENDSELECT
 
 SIF RESULT
-	JUMP TURNEND_学園
+	CALL TURNEND_学園
