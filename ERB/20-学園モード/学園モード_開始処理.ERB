@@ -367,84 +367,74 @@ DRAWLINE
 PRINTPLAIN 　学校一覧　
 PRINTL [100] - 決定 [101] - やり直し
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0 TO VARSIZE("学校名")-1
-			DRAWLINE
-			PRINTFORML □%学校名:RESULT%の在校生
-			FOR LCOUNT, 0, CHARANUM
-				SIF CSTR:LCOUNT:在校 != 学校名:RESULT
-					CONTINUE
-				PRINTFORML 　No.{NOF(LCOUNT)} %NAME:LCOUNT%
-			NEXT
-			PRINTFORML □%学校名:RESULT%の教師
-			FOR LCOUNT, 0, CHARANUM
-				SIF CSTR:LCOUNT:在任 != 学校名:RESULT
-					CONTINUE
-				PRINTFORML 　担当科目:%CSTR:LCOUNT:担当科目% No.{NOF(LCOUNT)} %NAME:LCOUNT%
-			NEXT
-			DRAWLINE
-			PRINTPLAINFORM 　%学校名:RESULT%　
-			PRINTFORML [0] - 戻る  \@ ゲームモード() == "学園モード" ? [1] - ここに入学する #\@
+BINPUT
+SELECTCASE RESULT
+	CASE 0 TO VARSIZE("学校名")-1
+		DRAWLINE
+		PRINTFORML □%学校名:RESULT%の在校生
+		FOR LCOUNT, 0, CHARANUM
+			SIF CSTR:LCOUNT:在校 != 学校名:RESULT
+				CONTINUE
+			PRINTFORML 　No.{NOF(LCOUNT)} %NAME:LCOUNT%
+		NEXT
+		PRINTFORML □%学校名:RESULT%の教師
+		FOR LCOUNT, 0, CHARANUM
+			SIF CSTR:LCOUNT:在任 != 学校名:RESULT
+				CONTINUE
+			PRINTFORML 　担当科目:%CSTR:LCOUNT:担当科目% No.{NOF(LCOUNT)} %NAME:LCOUNT%
+		NEXT
+		DRAWLINE
+		PRINTPLAINFORM 　%学校名:RESULT%　
+		PRINTFORML [0] - 戻る  \@ ゲームモード() == "学園モード" ? [1] - ここに入学する #\@
 
-			LRESULT = RESULT
+		LRESULT = RESULT
 
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						BREAK
-					CASE 1
-						IF 小中高(学校名:LRESULT) == "小" && !TALENT:PLAYER:小柄体型
-							PRINTL 小学校に入学するには素質「小柄体型」が必要です
-							PRINTL [0] - 仕方ないな
-							PRINTL [1] - 小柄になってやんよ
-							BINPUT
-							SIF !RESULT
-								BREAK
-							TALENT:PLAYER:小柄体型 = 1
-						ENDIF
-						入学先 = LRESULT
-						BREAK
-				ENDSELECT
-			LOOP 1
-			GOTO 学校一覧表示
-		CASE 98
-			CALL 学園モード用コマンドテンプレ生成
-			GOTO 学校一覧表示
-		CASE 99
-			DRAWLINE
-			PRINTL □学園モード未実装キャラ
-			未実装キャラ = 0
-			FOR LCOUNT, 0, CHARANUM
-				IF CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == ""
-					PRINTFORML 　No.{NOF(LCOUNT)} %NAME:LCOUNT%
-					未実装キャラ++
+		BINPUT
+		SELECTCASE RESULT
+			CASE 1
+				IF 小中高(学校名:LRESULT) == "小" && !TALENT:PLAYER:小柄体型
+					PRINTL 小学校に入学するには素質「小柄体型」が必要です
+					PRINTL [0] - 仕方ないな
+					PRINTL [1] - 小柄になってやんよ
+					BINPUT
+					SIF !RESULT
+						GOTO 学校一覧表示
+					TALENT:PLAYER:小柄体型 = 1
 				ENDIF
-			NEXT
-			PRINTL 
-			PRINTFORML 　計{未実装キャラ}人
-			WAIT
-			GOTO 学校一覧表示
-		CASE 100
-			SIF ゲームモード() == "SLGモード"
-				BREAK
-			IF 入学先 == -1
-				PRINTW 入学先を選んでください
-				GOTO 学校一覧表示
+				入学先 = LRESULT
+		ENDSELECT
+		GOTO 学校一覧表示
+	CASE 98
+		CALL 学園モード用コマンドテンプレ生成
+		GOTO 学校一覧表示
+	CASE 99
+		DRAWLINE
+		PRINTL □学園モード未実装キャラ
+		未実装キャラ = 0
+		FOR LCOUNT, 0, CHARANUM
+			IF CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == ""
+				PRINTFORML 　No.{NOF(LCOUNT)} %NAME:LCOUNT%
+				未実装キャラ++
 			ENDIF
-			CSTR:MASTER:在校 = %学校名:入学先%
-			BREAK
-		CASE 101
-			FOR LCOUNT, CHARANUM-1, 0, -1
-				DELCHARA LCOUNT
-			NEXT
-			VARSET 学園乱数固定用
-			入学先 = -1
-			GOTO クラス分け
-	ENDSELECT
-LOOP 1
+		NEXT
+		PRINTL 
+		PRINTFORML 　計{未実装キャラ}人
+		WAIT
+		GOTO 学校一覧表示
+	CASE 100
+		IF 入学先 == -1
+			PRINTW 入学先を選んでください
+			GOTO 学校一覧表示
+		ENDIF
+		CSTR:MASTER:在校 = %学校名:入学先%
+	CASE 101
+		FOR LCOUNT, CHARANUM-1, 0, -1
+			DELCHARA LCOUNT
+		NEXT
+		VARSET 学園乱数固定用
+		入学先 = -1
+		GOTO クラス分け
+ENDSELECT
 
 CALL SETUP_GAMESTART
 
@@ -460,6 +450,9 @@ FOR LCOUNT, 0, 総数
 	SIF RESULT
 		解禁済みロケーション:FINDELEMENTF(解禁済みロケーション, "") = %SPLITVAR:1%
 NEXT
+
+OPTION:口上表示 = 1
+OPTION:地の文表示 = 1
 
 CALL SYSTEM_AUTOSAVE
 
