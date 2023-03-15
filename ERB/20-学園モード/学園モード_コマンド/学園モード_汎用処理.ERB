@@ -22,7 +22,7 @@ SELECTCASE ターン
 				CSTR:LCOUNT:現在地 = 
 		NEXT
 	CASE "昼"
-		PRINTW 夕方になった……
+		PRINTL 夕方になった……
 		ターン = 夕
 		;生徒は放課後タイム
 		FOR LCOUNT, 1, CHARANUM
@@ -33,8 +33,11 @@ SELECTCASE ターン
 				CSTR:LCOUNT:現在地 = 
 		NEXT
 		;PLAYERも学校に入れば帰宅
-		SIF CSTR:PLAYER:現在地 == CSTR:PLAYER:在校
+		IF CSTR:PLAYER:現在地 == CSTR:PLAYER:在校
+			PRINTL 授業の日程を終えて下校した
 			CSTR:PLAYER:現在地 = 自宅
+		ENDIF
+		WAIT
 	CASE "夕"
 		PRINTW 夜になった……
 		ターン = 夜
@@ -46,7 +49,7 @@ SELECTCASE ターン
 		NEXT
 	CASE "夜"
 		IF 同行者
-			PRINTFORMW %CALLNAME:同行者%は、今日はもう遅いからまた明日と%CALLNAME:PLAYER%に別れを告げた
+			PRINTFORMW %CALLNAME:同行者%は、今日はもう遅いからまた明日と%CALLNAME:PLAYER%と別れた
 			同行者 = 0
 			CSTR:同行者:現在地 =
 			CSTR:同行者:目的 =
@@ -661,7 +664,11 @@ TALENT:対象:恋慕 = 1
 
 PRINTFORML %NAME:対象%が恋人になった！
 
-@TRAIN_SCHOOL
+@TRAIN_SCHOOL, 場所
+#DIMS DYNAMIC 場所
+
+CALL SCHOOL_COMFILTER, 場所
+
 BASE:体力 = MAXBASE:体力
 BASE:気力 = MAXBASE:気力
 
@@ -731,3 +738,112 @@ ENDIF
 ;立つ鳥跡を濁さず
 CALL アイテム修理
 CALL CVAR_RESET
+
+@SCHOOL_COMFILTER, 場所
+#DIMS DYNAMIC 場所
+#DIM DYNAMIC LCOUNT
+
+USINGFILTERG = 0
+
+TRYCALLFORM SCHOOL_COMFILTER_%CSVNAMERPS(NO:TARGET)%, 場所
+
+VARSET COMFILTER, 1
+
+FOR LCOUNT, 0, VARSIZE("TRAINNAME")
+	SELECTCASE TRAINNAME:LCOUNT
+		;ロケーション関係なく実行可能
+		{
+		CASE "愛撫", "クンニ", "指挿入れ", "フェラする", "下着扱きする", "手淫する",
+			 "パイズリする", "パイズリフェラする", "射精寸止め","お掃除フェラする", "アナル舐め", "アナル愛撫",
+			 "胸揉み", "乳首責め", "胸愛撫", "乳首舐め", "自慰", "胸自慰", "秘貝開帳", "自慰見せつけ", "秘貝開帳見せつけ",
+			 "キスする", "キスしてもらう", "情欲を煽る", "スキンシップ", "母乳飲み", "尻尾を撫でる",
+			 "ふたなり化", "バストサイズ変更", "コンドーム", "ローション", "媚薬", "ローション注入", "後背位", "後背位アナル",
+			 "後背位させる", "後背位アナルさせる", "手淫", "フェラチオ", "イラマチオ", "下着扱き", "素股", "パイズリ", "パイズリフェラ",
+			 "縦パイズリ", "クンニさせる", "アナル愛撫させる", "アナルを舐めさせる", "兜合わせ", "貝あわせ", "シックスナイン", "69パイズリ",
+			 "Gスポット刺激", "授乳手コキ", "前立腺刺激", "オナフェラ", "騎乗乳房自慰", "挿入Gスポ責め", "挿入子宮口責め", "正常位キス", "騎乗位キス",
+			 "正常位アナルキス", "騎乗位アナルキス", "後背位手淫", "騎乗位手淫", "後背位アナル手淫", "騎乗位アナル手淫", "正常位キスさせる",
+			 "逆レイプキス"
+		}
+			COMFILTER:LCOUNT = 0
+	ENDSELECT
+
+	;ベッドの有無
+	IF GROUPMATCH(場所, "自宅", "ホテル", "保健室")
+		SELECTCASE TRAINNAME:LCOUNT
+			{
+			CASE "正常位", "騎乗位", "下着ずらし挿入", "正常位アナル", "騎乗位アナル", "下着ずらし挿入アナル",
+				 "正常位させる", "逆レイプ", "正常位アナルさせる", "顔面騎乗する"
+			}
+				COMFILTER:LCOUNT = 0
+		ENDSELECT
+	ENDIF
+	;自宅とホテルは道具、風呂場使用可
+	IF GROUPMATCH(場所, "自宅", "ホテル")
+		SELECTCASE TRAINNAME:LCOUNT
+			{
+			CASE "ローター", "電気按摩", "バイブ", "ペニスバンド", "アナルバイブ", "乳首ローター",
+				 "お風呂場プレイ", "シャワー", "腸洗浄"
+			}
+				COMFILTER:LCOUNT = 0
+		ENDSELECT
+	ENDIF
+	;自宅限定
+	IF GROUPMATCH(場所, "自宅")
+		SELECTCASE TRAINNAME:LCOUNT
+			CASE "お酒を飲ませる", "野外プレイ"
+				COMFILTER:LCOUNT = 0
+		ENDSELECT
+	ENDIF
+	;自宅限定
+	IF GROUPMATCH(場所, "トイレ")
+		SELECTCASE TRAINNAME:LCOUNT
+			CASE "放尿"
+				COMFILTER:LCOUNT = 0
+		ENDSELECT
+	ENDIF
+
+	SELECTCASE 場所
+		CASE "自宅", "ホテル", "トイレ", "保健室"
+		CASEELSE
+			;#;THROW 「%場所%」のコマンドフィルターが設定されていない
+	ENDSELECT
+NEXT
+
+@学園モード用コマンドテンプレ生成
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC フィルター記録, 1000, 5
+
+CALL SCHOOL_COMFILTER, "自宅"
+FOR LCOUNT, 0, 1000
+	フィルター記録:LCOUNT:0 = COMFILTER:LCOUNT
+NEXT
+
+CALL SCHOOL_COMFILTER, "ホテル"
+FOR LCOUNT, 0, 1000
+	フィルター記録:LCOUNT:1 = COMFILTER:LCOUNT
+NEXT
+
+CALL SCHOOL_COMFILTER, "トイレ"
+FOR LCOUNT, 0, 1000
+	フィルター記録:LCOUNT:2 = COMFILTER:LCOUNT
+NEXT
+
+CALL SCHOOL_COMFILTER, "保健室"
+FOR LCOUNT, 0, 1000
+	フィルター記録:LCOUNT:3 = COMFILTER:LCOUNT
+NEXT
+
+CLEARLINE LINECOUNT
+
+FOR LCOUNT, 0, 1000
+	SIF フィルター記録:LCOUNT:0 && フィルター記録:LCOUNT:1 && フィルター記録:LCOUNT:2 && フィルター記録:LCOUNT:3
+		CONTINUE
+	PRINTL ;-------------------------------------------------
+	PRINTFORML ;%TRAINNAME:LCOUNT%
+	PRINTFORML ;\@ !フィルター記録:LCOUNT:0 ? 自宅, #\@\@ !フィルター記録:LCOUNT:1 ? ホテル, #\@\@ !フィルター記録:LCOUNT:2 ? 保健室, #\@\@ !フィルター記録:LCOUNT:3 ? トイレ, #\@で実行可能
+	PRINTL ;-------------------------------------------------
+	PRINTFORML @COM_%TRAINNAME:LCOUNT%_KX1
+	PRINTL 
+NEXT
+
+OUTPUTLOG "SCHOOL_COM_KX1.ERB"

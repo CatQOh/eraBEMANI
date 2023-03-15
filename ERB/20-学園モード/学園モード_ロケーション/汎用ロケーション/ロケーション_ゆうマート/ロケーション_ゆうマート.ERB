@@ -1,0 +1,84 @@
+﻿@ロケーション条件_ゆうマート
+#DIM DYNAMIC LCOUNT
+;汎用ロケーション_条件無し
+RETURN -1
+
+@バイト条件_ゆうマート
+;バイトの時間帯などを書く
+バイト要項 = 終日募集中
+;バイト可能かどうかの条件式
+;常に可
+バイト可能 = 1
+
+;ロケーション解禁済みで可能
+;返り値はその店の責任者で、面接官扱いになる。居なければ1でOK
+SIF FINDELEMENTF(解禁済みロケーション, "ゆうマート") >= 0
+	RETURN 1
+
+RETURN 0
+
+@出現キャラ_ゆうマート
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 始点
+#DIM DYNAMIC 終点
+#DIM DYNAMIC グループ数
+
+;NOではなく登録番号で指定する
+IF データベース参照中
+	始点 = データベース参照中
+	終点 = データベース参照中+1
+ELSE
+	始点 = 1
+	終点 = CHARANUM
+ENDIF
+
+FOR LCOUNT, 始点, 終点
+	;学校などに行ってるキャラは居ない
+	SIF CSTR:LCOUNT:現在地 != "" && !データベース参照中
+		CONTINUE
+	;出現率:LCOUNT = {出現率(100分率)} で指定できる
+	;コンビニは誰でも使うので誰でも居る可能性がある
+	IF RANDPER(1) && グループ数 < 10
+		;相性の良いキャラと3人で行動している
+		CALL クラスメイト選出, LCOUNT, "相性"
+		;2人以上揃わなかったら無かったことにする
+		SIF RESULT:0 == 0
+			CONTINUE
+		集団行動:グループ数:0 = LCOUNT
+		集団行動:グループ数:1 = RESULT:0
+		集団行動:グループ数:2 = RESULT:1
+		グループ数++
+	ELSE
+		SIF 出現率:LCOUNT >= 0
+			出現率:LCOUNT = 1
+	ENDIF
+NEXT
+
+@ゆうマート_専用コマンド
+
+SIF 同行者
+	CALL COLUMNPRINTL, 0, @"　\@ MONEY < 300 ? [---] # [  0] \@ - %CALLNAME:同行者%に軽食を奢る(300＄必要)", @"\@ MONEY < 300 ? gray #\@"
+
+CALL COLUMNPRINTL, 0, @"　\@ MONEY < 500 ? [---] # [  1] \@ - コンドーム(12個入り)を買う(500＄必要)", @"\@ MONEY < 500 ? gray #\@"
+CALL COLUMNPRINTL, 0, @"　\@ MONEY < 500 ? [---] # [  2] \@ - 個包装ローション(5個入り)を買う(500＄必要)", @"\@ MONEY < 500 ? gray #\@"
+
+@ゆうマート_専用コマンド_INPUT
+
+SELECTCASE CRESULT:1
+	CASE 0
+		PRINTFORML %CALLNAME:同行者%に軽食を奢り、しばらくコンビニの前で談笑した
+		CALL SCHOOL_KOJO, 同行者, "コンビニデート"
+		CALL 好感度上昇, 同行者, "友情", 15
+		CALL 好感度上昇, 同行者, "ときめき", 5
+		RETURN 1
+	CASE 1
+		CALL PASELIW, @"コンドーム(12個入り)を購入した（所持金{MONEY}＄→{MONEY-500}＄）"
+		ITEM:コンドーム += 12
+		MONEY -= 500
+		RETURN 0
+	CASE 2
+		CALL PASELIW, @"個包装ローション(5個入り)を購入した（所持金{MONEY}＄→{MONEY-500}＄）"
+		ITEM:ローション += 5
+		MONEY -= 500
+		RETURN 0
+ENDSELECT
