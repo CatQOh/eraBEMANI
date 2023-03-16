@@ -1,71 +1,105 @@
 ﻿;-------------------------------------------------
+;最初に呼ばれる関数
+;-------------------------------------------------
+@SCHOOL_KOJO_START_菱宮_津軽
+;主人公のタイプで全体が分岐
+;同じ学校の生徒
+IF CSTR:PLAYER:在校 == CSTR:在校
+	TSUGARU:分岐 = 1
+;違う学校で年上
+ELSEIF !GROUPMATCH(小中高(CSTR:PLAYER:在校), "小", "中")
+	TSUGARU:分岐 = 2
+;違う学校の同年代
+ELSEIF !GROUPMATCH(小中高(CSTR:PLAYER:在校), "中")
+	TSUGARU:分岐 = 3
+;年下
+ELSE
+	TSUGARU:分岐 = 4
+ENDIF
+
+;-------------------------------------------------
 ;汎用会話コマンド
 ;-------------------------------------------------
 @SCHOOL_菱宮_津軽_何気ない会話
-;同じ学校
-IF CSTR:PLAYER:在校 == CSTR:在校
-	SELECTCASE CSTR:PLAYER:現在地
-		;校内
-		CASE CSTR:PLAYER:在校
-			;初対面
-			IF !CFLAG:面識
-				SELECTCASE ターン
-					CASE "朝"
-						PRINT 「おはようございます。
-					CASEELSE
-						PRINT 「こんにちは。
-				ENDSELECT
-				PRINT 生徒会に関する話？ 違うの？ えーと、あなたは……
-				IF 名前あり()
-					PRINTFORMW %CALLNAME:PLAYER%さんっていうのね」
+SELECTCASE TSUGARU:分岐
+	CASE 1
+		SELECTCASE CSTR:PLAYER:現在地
+			;校内
+			CASE CSTR:PLAYER:在校
+				;初対面
+				IF !CFLAG:面識
+					SELECTCASE ターン
+						CASE "朝"
+							PRINT 「おはようございます。
+						CASEELSE
+							PRINT 「こんにちは。
+					ENDSELECT
+					PRINT 生徒会に関する話？ 違うの？ えーと、あなたは……
+					IF 名前あり()
+						PRINTFORMW %CALLNAME:PLAYER%さんっていうのね」
+					ELSE
+						PRINTW 同じ学年の生徒ね」
+					ENDIF
+					PRINTFORMW 「よろしくお願いします。一応自己紹介すると、私は生徒会長の菱宮ツガル。校内で問題があれば何でも相談してね」
 				ELSE
-					PRINTW 同じ学年の生徒ね」
+					SELECTCASE RAND:3
+						CASE 0
+							SELECTCASE ターン
+								CASE "朝"
+									PRINT 「おはよう。
+								CASEELSE
+									PRINT 「こんにちは。
+							ENDSELECT
+							SIF 名前あり()
+								PRINTFORM %CALLNAME:PLAYER%さん。
+							PRINTW 別に私が生徒会長だからって、すれ違うたびに挨拶しなくていいんだよ？」
+					ENDSELECT
 				ENDIF
-				PRINTFORMW 「よろしくお願いします。一応自己紹介すると、私は生徒会長の菱宮ツガル。校内で問題があれば何でも相談してね」
-			ELSE
-				SELECTCASE RAND:3
-					CASE 0
-						SELECTCASE ターン
-							CASE "朝"
-								PRINT 「おはよう。
-							CASEELSE
-								PRINT 「こんにちは。
-						ENDSELECT
-						SIF 名前あり()
-							PRINTFORM %CALLNAME:PLAYER%さん。
-						PRINTW 別に私が生徒会長だからって、すれ違うたびに挨拶しなくていいんだよ？」
-				ENDSELECT
-			ENDIF
-		;ゲーセン
-		CASE "ゲームセンター"
-			;初対面
-			IF !CFLAG:面識
-				IF !GROUPMATCH(DOW(), "土", "日")
-					PRINTW 「こんばんは。うーんと、どこかで会ったっけ？」
-					PRINTW 「えっ……ち、違うよ！ 生徒会長じゃないし！ 菱宮でもないし！」
-					PRINTW 「なんて、バレバレだよね。はぁ、私がこんな時間にゲーセンで遊んでるところ、先生や生徒会の人たちには内緒にしててね、お願い！」
+			;ゲーセン
+			CASE "ゲームセンター"
+				;初対面
+				IF !CFLAG:面識
+					IF !GROUPMATCH(DOW(), "土", "日")
+						PRINTW 「こんばんは。うーんと、どこかで会ったっけ？」
+						PRINTW 「えっ……ち、違うよ！ 生徒会長じゃないし！ 菱宮でもないし！」
+						PRINTW 「なんて、バレバレだよね。はぁ、私がこんな時間にゲーセンで遊んでるところ、先生や生徒会の人たちには内緒にしててね、お願い！」
+					ELSE
+						PRINTFORMW 「\@ GROUPMATCH(ターン, "朝", "昼") ? こんにちは # こんばんは \@。もしかしてうちの生徒？ もー、外で生徒会長はやめてよ」
+						PRINTW 「休みの日くらいゲームセンターで遊んでてもいいじゃない。あなたは何を遊びに来たの？ 私は音楽ゲームが好きなの」
+					ENDIF
 				ELSE
+					IF !GROUPMATCH(DOW(), "土", "日")
+						PRINTW 「こんばんは～。あはは、こんな時間にゲーセンなんて、本当は私も注意する立場なんだけど、人のこと言えないよね」
+					ELSE
+						PRINTFORMW 「\@ GROUPMATCH(ターン, "朝", "昼") ? こんにちは # こんばんは \@。今日も楽しそうだね」
+					ENDIF
+				ENDIF
+			CASEELSE
+				;初対面
+				IF !CFLAG:面識
 					PRINTFORMW 「\@ GROUPMATCH(ターン, "朝", "昼") ? こんにちは # こんばんは \@。もしかしてうちの生徒？ もー、外で生徒会長はやめてよ」
-					PRINTW 「休みの日くらいゲームセンターで遊んでてもいいじゃない。あなたは何を遊びに来たの？ 私は音楽ゲームが好きなの」
-				ENDIF
-			ELSE
-				IF !GROUPMATCH(DOW(), "土", "日")
-					PRINTW 「こんばんは～。あはは、こんな時間にゲーセンなんて、本当は私も注意する立場なんだけど、人のこと言えないよね」
+					PRINTW 「ほら、外では普通の女の子だから。気兼ねなく遊びに誘ってね」
 				ELSE
-					PRINTFORMW 「\@ GROUPMATCH(ターン, "朝", "昼") ? こんにちは # こんばんは \@。今日も楽しそうだね」
+					SIF RANDPER(33)
+						PRINTFORMW 「\@ GROUPMATCH(ターン, "朝", "昼") ? こんにちは # こんばんは \@。こんなところで会うなんて奇遇ね」
 				ENDIF
-			ENDIF
-		CASEELSE
-			;初対面
-			IF !CFLAG:面識
-				PRINTFORMW 「\@ GROUPMATCH(ターン, "朝", "昼") ? こんにちは # こんばんは \@。もしかしてうちの生徒？ もー、外で生徒会長はやめてよ」
-				PRINTW 「ほら、外では普通の女の子だから。気兼ねなく遊びに誘ってね」
-			ELSE
-				SIF RANDPER(33)
-					PRINTFORMW 「\@ GROUPMATCH(ターン, "朝", "昼") ? こんにちは # こんばんは \@。こんなところで会うなんて奇遇ね」
-			ENDIF
-	ENDSELECT
-ENDIF
+		ENDSELECT
+	CASE 2
+		;初対面
+		IF !CFLAG:面識
+			PRINTFORMW 「\@ GROUPMATCH(ターン, "朝", "昼") ? こんにちは # こんばんは \@。どこかでお会いしましたっけ？」
+			PRINTW 「私、ツガルって言います。名字は……それは置いといて、何か用ですか？」
+			PRINTW 「ビストローバーで？ そうなんですか。あの時は職業体験中で、今はたまにお手伝いに行くくらいなんですよ」
+			PRINTFORMW 「\@ 名前あり() ? %CALLNAME:PLAYER%さんですか。#\@へぇ～、%CSTR:PLAYER:在校%の生徒なんですね。先輩って呼んでもいいですか？」
+		ELSE
+			PRINTDATAW
+				DATAFORM 「あっ、先輩！ \@ GROUPMATCH(ターン, "朝", "昼") ? こんにちは # こんばんは \@～」
+				DATA 「先輩！ 高校って楽しいですか？ 私も早く高校生になりたいな～」
+				DATA 「先輩、数学の問題でちょっと分からないことがあって……教えてくれませんか？」
+				DATA 「なんだか先輩とよく会うな～。嫌じゃないですよ？ 意外とこの街も狭いんだなって」
+			ENDDATA
+		ENDIF
+ENDSELECT
 
 
 @SCHOOL_菱宮_津軽_踏み込んだ会話_成功
@@ -183,7 +217,7 @@ IF CSTR:PLAYER:在校 == CSTR:在校
 						CASE 1
 							PRINTW 校外で学校のイメージを下げる不良男子の話になるからね」
 						CASE 2
-							PRINTW 風紀を乱す女生徒たちの話になるからね
+							PRINTW 風紀を乱す女生徒たちの話になるからね」
 					ENDSELECT
 				CASE 1
 					PRINTW 「もー、学校の外でそういう話するのは勝手だけど、私にするのはやめてっ」
@@ -421,7 +455,7 @@ IF !CFLAG:面識
 					PRINTFORMW 「大丈夫だって！ \@ CFLAG:シア:面識 ? こいつ、悪い人違うヨ # 悪い人には見えないにゃ～。私はシア。こっちは \@」
 					PRINTW 「菱宮……ツガルです。先生たちには内緒だよ」
 				ELSE
-					PRINTW 「\@ こんばんは。うーんと、どこかで会ったっけ？」
+					PRINTFORMW 「\@ GROUPMATCH(ターン, "朝", "昼") ? こんにちは # こんばんは \@。うーんと、どこかで会ったっけ？」
 					PRINTW 「えっ……ち、違うよ！ 生徒会長じゃないし！ 菱宮でもないし！」
 					PRINTW 「なんて、バレバレだよね。はぁ、私がこんな時間にゲーセンで遊んでるところ、先生や生徒会の人たちには内緒にしててね、お願い！」
 				ENDIF
