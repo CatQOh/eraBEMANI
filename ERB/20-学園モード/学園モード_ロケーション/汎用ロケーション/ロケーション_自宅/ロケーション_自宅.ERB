@@ -44,6 +44,7 @@ ELSEIF GROUPMATCH(DOW(FLAG:曜日), "土", "日") || GROUPMATCH(ターン, "昼"
 		CALL COLUMNPRINTL, 0, "　[114] - バイトを探す"
 	ENDIF
 	CALL COLUMNPRINTL, 0, "　[400] - 家で過ごす"
+	CALL COLUMNPRINTL, 0, "　[401] - 通販サイトを見る"
 ELSEIF ターン == "朝"
 	CALL COLUMNPRINTL, 0, "　[100] - 学校へ行く "
 	CALL COLUMNPRINTL, 0, "　[101] - クラスメイトと一緒に登校する"
@@ -60,14 +61,19 @@ ELSEIF ターン == "夜"
 		ELSE
 			CALL COLUMNPRINTL, 0, @"　[---] - %バイト先%のシフトは入っていません", "gray"
 		ENDIF
+		CALL COLUMNPRINTL, 0, "　[114] - 転職する"
 	ELSE
 		CALL COLUMNPRINTL, 0, "　[114] - バイトを探す"
 	ENDIF
 	CALL COLUMNPRINTL, 0, "　[400] - 寝る"
+	CALL COLUMNPRINTL, 0, "　[401] - 通販サイトを見る"
 ENDIF
 
 CALL COLUMNPRINTL, 0, "　[500] - データベース"
-
+CALL COLUMNPRINTL, 0, @"　[501] - 口上表示切り替え(現在:\@ OPTION:口上表示 ? オン # オフ \@)"
+CALL COLUMNPRINTL, 0, @"　[502] - 行為中の地の文表示切り替え(現在:\@ OPTION:地の文表示 ? オン # オフ \@)"
+SIF ITEM:ラブスコープ
+	CALL COLUMNPRINTL, 0, @"　[502] - ラブスコープの表示切り替え(現在:\@ ラブスコープ使用 ? オン # オフ \@)"
 
 @自宅_コマンド_INPUT
 #DIM DYNAMIC LRESULT
@@ -116,8 +122,19 @@ SELECTCASE LRESULT
 		CALL ロケーション選択
 	CASE 400
 		CALL TURNEND_学園
+	CASE 401
+		CALL 学園_通販サイト
 	CASE 500
 		CALL 学園データベース
+	CASE 501
+		INVERTBIT OPTION:口上表示, 0
+		RETURN 0
+	CASE 502
+		INVERTBIT OPTION:地の文表示, 0
+		RETURN 0
+	CASE 503
+		INVERTBIT ラブスコープ使用, 0
+		RETURN 0
 ENDSELECT
 
 SIF RESULT
@@ -132,3 +149,102 @@ SIF RESULT
 RELATION:ARG:(ARG:1) += 上昇値
 RELATION:(ARG:1):ARG += 上昇値
 [SKIPEND]
+
+@学園_通販サイト
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 購入アイテム
+DRAWLINE
+
+PRINTL □通販サイト おいしいツーハン生活
+PRINTL 　ツーハンでお買い物♪お部屋でのんびりゴージャス気分♪
+CALL PASELIL, @"　所持金:{MONEY}＄"
+PRINTL 
+表示数 = 0
+FOR LCOUNT, 0, VARSIZE("ITEM")
+	SELECTCASE ITEMNAME:LCOUNT
+		CASE "ローター", "電気按摩", "バイブ", "アナルバイブ", "ペニスバンド", "ラブスコープ"
+			SIF ITEM:LCOUNT
+				CONTINUE
+			PRINTFORMLC 　[{LCOUNT}] %ITEMNAME:LCOUNT% {ITEMPRICE:LCOUNT*2}円
+			表示数++
+		CASE "ローション"
+			PRINTFORMLC 　[{LCOUNT}] 個包装ローション(5個入) 1000円
+			表示数++
+		CASE "コンドーム"
+			PRINTFORMLC 　[{LCOUNT}] コンドーム(12個入) 1000円
+			表示数++
+		CASE "スーパードライ", "一番搾り", "プレミアムモルツ", "ヱビス"
+			PRINTFORMLC 　[{LCOUNT}] %ITEMNAME:LCOUNT%(6本入り) 2000円
+			表示数++
+		CASE "ほろよい", "ストロングゼロ"
+			PRINTFORMLC 　[{LCOUNT}] %ITEMNAME:LCOUNT%(6本入り) 1200円
+			表示数++
+	ENDSELECT
+	IF 表示数 == 4
+		PRINTL
+		表示数 = 0
+	ENDIF
+NEXT
+SIF !LINEISEMPTY()
+	PRINTL 
+DRAWLINE
+PRINTPLAIN 　通販　
+PRINTL [1000] - 戻る
+
+BINPUT
+SIF RESULT == 1000
+	RETURN 0
+
+購入アイテム = RESULT
+SELECTCASE ITEMNAME:RESULT
+	CASE "ローション"
+		IF MONEY < 1000
+			PRINTW 所持金が足りません
+			RESTART
+		ENDIF
+		PRINTL 個包装ローション(5個入り)を購入した
+		CALL PASELIW, @"所持金:{MONEY}＄→{MONEY-1000}＄"
+		ITEM:ローション += 5
+		MONEY -= 1000
+	CASE "コンドーム"
+		IF MONEY < 1000
+			PRINTW 所持金が足りません
+			RESTART
+		ENDIF
+		PRINTL コンドーム(12個入り)を購入した
+		CALL PASELIW, @"所持金:{MONEY}＄→{MONEY-1000}＄"
+		ITEM:コンドーム += 12
+		MONEY -= 1000
+	CASE "スーパードライ", "一番搾り", "プレミアムモルツ", "ヱビス"
+		IF MONEY < 2000
+			PRINTW 所持金が足りません
+			RESTART
+		ENDIF
+		PRINTFORML %ITEMNAME:購入アイテム%(6本入り)を購入した
+		CALL PASELIW, @"所持金:{MONEY}＄→{MONEY-2000}＄"
+		ITEM:購入アイテム += 6
+		MONEY -= 2000
+	CASE "ほろよい", "ストロングゼロ"
+		IF MONEY < 1200
+			PRINTW 所持金が足りません
+			RESTART
+		ENDIF
+		PRINTFORML %ITEMNAME:購入アイテム%(6本入り)を購入した
+		CALL PASELIW, @"所持金:{MONEY}＄→{MONEY-1200}＄"
+		ITEM:購入アイテム += 6
+		MONEY -= 1200
+	CASEELSE
+		IF MONEY < ITEMPRICE:購入アイテム*2
+			PRINTW 所持金が足りません
+			RESTART
+		ENDIF
+		PRINTFORML %ITEMNAME:購入アイテム%を購入した
+		CALL PASELIW, @"所持金:{MONEY}＄→{MONEY-(ITEMPRICE:購入アイテム*2)}＄"
+		ITEM:購入アイテム = 1
+		MONEY -= ITEMPRICE:購入アイテム*2
+		SIF ITEMNAME:購入アイテム == "ラブスコープ"
+			ラブスコープ使用 = 1
+ENDSELECT
+
+RETURN 1
