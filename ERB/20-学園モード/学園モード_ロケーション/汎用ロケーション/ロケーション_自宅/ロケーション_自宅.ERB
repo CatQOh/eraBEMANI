@@ -4,6 +4,7 @@
 
 @自宅_コマンド
 #DIM DYNAMIC 滞在者
+#DIMS DYNAMIC 表示好感度
 
 CALL COLUMNSHOP_SCHOOL
 
@@ -72,12 +73,24 @@ ENDIF
 CALL COLUMNPRINTL, 0, "　[500] - データベース"
 CALL COLUMNPRINTL, 0, @"　[501] - 口上表示切り替え(現在:\@ OPTION:口上表示 ? オン # オフ \@)"
 CALL COLUMNPRINTL, 0, @"　[502] - 行為中の地の文表示切り替え(現在:\@ OPTION:地の文表示 ? オン # オフ \@)"
-SIF ITEM:ラブスコープ
-	CALL COLUMNPRINTL, 0, @"　[502] - ラブスコープの表示切り替え(現在:\@ ラブスコープ使用 ? オン # オフ \@)"
+IF ITEM:ラブスコープ
+	SELECTCASE ラブスコープ使用
+		CASE 0
+			表示好感度 = 表示しない
+		CASE 1 TO 6
+			表示好感度 = %ERDNAME(好感度, ラブスコープ使用-1)%
+		CASE 7
+			表示好感度 = 好感度合計
+		CASE 8
+			表示好感度 = 倫理観崩壊度
+	ENDSELECT
+	CALL COLUMNPRINTL, 0, @"　[503] - ラブスコープの表示切り替え(現在:%表示好感度%)"
+ENDIF
 
 @自宅_コマンド_INPUT
 #DIM DYNAMIC LRESULT
 #DIM DYNAMIC 滞在者
+#DIM DYNAMIC LCOUNT
 滞在者 = FINDCHARA(CSTR:現在地, @"%CALLNAME:PLAYER%の家", 1)
 
 LRESULT = CRESULT:1
@@ -133,7 +146,21 @@ SELECTCASE LRESULT
 		INVERTBIT OPTION:地の文表示, 0
 		RETURN 0
 	CASE 503
-		INVERTBIT ラブスコープ使用, 0
+		PRINTL □ラブスコープで表示する好感度を選んでください
+		FOR LCOUNT, 0, 9
+			SELECTCASE LCOUNT
+				CASE 0
+					PRINTL 　[0] - 表示しない
+				CASE 1 TO 6
+					PRINTFORML 　[{LCOUNT}] - %ERDNAME(好感度, LCOUNT-1)%
+				CASE 7
+					PRINTL 　[7] - 好感度合計
+				CASE 8
+					PRINTL 　[8] - 倫理観崩壊度
+			ENDSELECT
+		NEXT
+		BINPUT
+		ラブスコープ使用 = RESULT
 		RETURN 0
 ENDSELECT
 
@@ -244,7 +271,7 @@ SELECTCASE ITEMNAME:RESULT
 		ITEM:購入アイテム = 1
 		MONEY -= ITEMPRICE:購入アイテム*2
 		SIF ITEMNAME:購入アイテム == "ラブスコープ"
-			ラブスコープ使用 = 1
+			ラブスコープ使用 = 7
 ENDSELECT
 
 RETURN 1

@@ -66,7 +66,7 @@ SELECTCASE ターン
 		DAY++
 		CALL NEXTDAY
 		CSTR:PLAYER:現在地 = 自宅
-		IF !ISHOLIDAY()
+		IF !休日()
 			;朝は在校生と教師は学校に居る
 			FOR LCOUNT, 1, CHARANUM
 				;ただしサボり魔は10%でサボってる 教師も例外ではない
@@ -78,7 +78,14 @@ SELECTCASE ターン
 		ENDIF
 ENDSELECT
 
+FOR LCOUNT, 1, CHARANUM
+	SIF CFLAG:LCOUNT:倫理観 > 100
+		CFLAG:LCOUNT:倫理観 = 100
+NEXT
+
 CALL SYSTEM_AUTOSAVE
+
+VARLINE = LINECOUNT
 
 LOOP_BREAK = 1
 
@@ -347,13 +354,17 @@ PRINTFORML □%学校名:選択校%の在校生
 FOR LCOUNT, 0, CHARANUM
 	SIF CSTR:LCOUNT:在校 != 学校名:選択校
 		CONTINUE
-	PRINTFORML 　[{LCOUNT}] %SNAME(LCOUNT)%
+	PRINTFORM 　[{LCOUNT}] 
+	CALL SNAME(LCOUNT)
+	PRINTL 
 NEXT
 PRINTFORML □%学校名:選択校%の教師
 FOR LCOUNT, 0, CHARANUM
 	SIF CSTR:LCOUNT:在任 != 学校名:選択校
 		CONTINUE
-	PRINTFORML 　担当科目:%CSTR:LCOUNT:担当科目% [{LCOUNT}] %SNAME(LCOUNT)% 
+	PRINTFORM 　担当科目:%CSTR:LCOUNT:担当科目% [{LCOUNT}] 
+	CALL SNAME(LCOUNT)
+	PRINTL  
 NEXT
 DRAWLINE
 PRINTPLAINFORM 　%学校名:選択校%　
@@ -417,13 +428,54 @@ RETURNF SUMARRAY(好感度:対象:0)
 
 ;;;学園モードの名前表示処理
 @SNAME, 対象
-#FUNCTIONS
 #DIM DYNAMIC 対象
+#DIM DYNAMIC 好感度値
+#DIMS DYNAMIC 表示好感度
 
 IF ラブスコープ使用
-	RETURNF @"%NAME:対象%(好感度:{好感度合計(対象)})"
+	PRINTFORM %NAME:対象%
+	SELECTCASE ラブスコープ使用
+		CASE 1 TO 6
+			表示好感度 = %ERDNAME(好感度, ラブスコープ使用-1)%
+			好感度値 = 好感度:対象:(ラブスコープ使用-1)
+		CASE 7
+			表示好感度 = 好感度合計
+			好感度値 = 好感度合計(対象)
+		CASE 8
+			表示好感度 = 倫理観崩壊度
+			好感度値 = CFLAG:対象:倫理観
+	ENDSELECT
+	SELECTCASE 表示好感度
+		CASE "倫理観崩壊度"
+			SELECTCASE 好感度値
+				CASE 0
+					SETCOLORBYNAME gray
+				CASE 1 TO 29
+					SETCOLORBYNAME lime
+				CASE 30 TO 49
+					SETCOLORBYNAME yellow
+				CASE IS >= 50
+					SETCOLORBYNAME coral
+			ENDSELECT
+		CASEELSE
+			SELECTCASE 好感度値
+				CASE 0
+					SETCOLORBYNAME gray
+				CASE 1 TO 99
+				CASE 100 TO 299
+					SETCOLORBYNAME lime
+				CASE 300 TO 499
+					SETCOLORBYNAME deepskyblue
+				CASE 500 TO 999
+					SETCOLORBYNAME violet
+				CASE IS >= 1000
+					SETCOLORBYNAME coral
+			ENDSELECT
+	ENDSELECT
+	PRINTFORM (%表示好感度%:{好感度値})
+	RESETCOLOR
 ELSE
-	RETURNF NAME:対象
+	PRINTFORM %NAME:対象%
 ENDIF
 
 ;;;好感度上昇とメッセージ表示を行う
@@ -879,3 +931,55 @@ OUTPUTLOG "SCHOOL_COM_KX1.ERB"
 SIF CALLNAME:PLAYER == "あなた"
 	RETURNF 0
 RETURNF 1
+
+@グループ_倫理観計算, デバッグ
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC LCOUNT3
+#DIM DYNAMIC 倫理観最大値
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 倫理観変動値
+#DIM DYNAMIC デバッグ
+
+IF デバッグ
+	対象 = デバッグ
+	GOTO デバッグ
+ENDIF
+
+FOR LCOUNT, 0, 10
+	倫理観最大値 = 0
+	FOR LCOUNT2, 0, 5
+		対象 = 集団行動:LCOUNT:LCOUNT2
+		SIF 対象 < 1
+			CONTINUE
+		倫理観最大値 = MAX(倫理観最大値, CFLAG:対象:倫理観)
+	NEXT
+	FOR LCOUNT2, 0, 5
+		対象 = 集団行動:LCOUNT:LCOUNT2
+		SIF CFLAG:対象:倫理観 >= 倫理観最大値
+			CONTINUE
+		$デバッグ
+		倫理観変動値 = 倫理観最大値/10
+		FOR LCOUNT3, 0, VARSIZE("TALENT")
+			SIF !TALENT:対象:LCOUNT3
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT3
+				{
+				CASE "衝動的", "寂しがり屋", "幼稚", "好奇心", "貞操無頓着", "解放", "恥薄い", "快感に素直",
+					 "即落ち", "濡れやすい", "勃ちやすい", "自慰しやすい", "倒錯的", "男好き", "女好き", "両刀",
+				}
+					倫理観変動値++
+				{
+				CASE "冷静", "自制心", "無関心", "保守的", "一線越えない", "貞操観念", "恥じらい",
+					 "快感の否定", "濡れにくい", "勃ちにくい", "男嫌い", "女嫌い", "同族嫌悪", 
+				}
+					倫理観変動値--
+			ENDSELECT
+		NEXT
+		SIF デバッグ
+			RETURN 倫理観変動値
+		SIF 倫理観変動値 <= 0
+			CONTINUE
+		CFLAG:対象:倫理観 = MIN(CFLAG:対象:倫理観+倫理観変動値, 倫理観最大値)
+	NEXT
+NEXT
