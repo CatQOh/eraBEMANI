@@ -9,6 +9,7 @@ CALL NEWLINE
 
 @TURNEND_学園
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC 滞在者
 
 ;ターンを進める
@@ -70,10 +71,43 @@ SELECTCASE ターン
 			;朝は在校生と教師は学校に居る
 			FOR LCOUNT, 1, CHARANUM
 				;ただしサボり魔は10%でサボってる 教師も例外ではない
-				SIF CSTR:LCOUNT:在校 != "" && !(TALENT:LCOUNT:サボり魔 && RAND:10 == 0)
+				IF CSTR:LCOUNT:在校 != "" && !(TALENT:LCOUNT:サボり魔 && RAND:10 == 0)
 					CSTR:LCOUNT:現在地 = %CSTR:LCOUNT:在校%
+					;小学校のみ私服登校可
+					IF 小中高(CSTR:LCOUNT:在校) != "小"
+						SELECTCASE SEX(LCOUNT)
+							CASE 1
+								CSTR:LCOUNT:上半身上着 = 制服
+								CSTR:LCOUNT:下半身上着 = ズボン
+								CSTR:LCOUNT:全身上着 =
+
+								CFLAG:LCOUNT:挿入可 = 0
+								CFLAG:LCOUNT:着衣併用 = 0
+								CFLAG:LCOUNT:上着パイズリ = 5
+							CASE 2
+								CSTR:LCOUNT:上半身上着 = 制服
+								CSTR:LCOUNT:下半身上着 = スカート
+								CSTR:LCOUNT:全身上着 =
+
+								CFLAG:LCOUNT:挿入可 = 1
+								CFLAG:LCOUNT:着衣併用 = 0
+								CFLAG:LCOUNT:上着パイズリ = 5
+						ENDSELECT
+					ENDIF
+				ENDIF
 				SIF CSTR:LCOUNT:在任 != "" && !(TALENT:LCOUNT:サボり魔 && RAND:10 == 0)
 					CSTR:LCOUNT:現在地 = %CSTR:LCOUNT:在任%
+			NEXT
+		ELSE
+			;休日なら各々私服になる
+			FOR LCOUNT, 1, CHARANUM
+				FOR LCOUNT2, 100, 107
+					CSTR:LCOUNT:LCOUNT2 = %CSVCSTR(NOF(LCOUNT), LCOUNT2)%
+				NEXT
+				CFLAG:LCOUNT:挿入可 = CSVCFLAG(NOF(LCOUNT), GETNUM(CFLAG, "挿入可"))
+				CFLAG:LCOUNT:着衣併用 = CSVCFLAG(NOF(LCOUNT), GETNUM(CFLAG, "着衣併用"))
+				CFLAG:LCOUNT:上着パイズリ = CSVCFLAG(NOF(LCOUNT), GETNUM(CFLAG, "上着パイズリ"))
+				CFLAG:LCOUNT:下着パイズリ = CSVCFLAG(NOF(LCOUNT), GETNUM(CFLAG, "下着パイズリ"))
 			NEXT
 		ENDIF
 ENDSELECT
