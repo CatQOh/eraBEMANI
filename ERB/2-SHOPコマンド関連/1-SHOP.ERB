@@ -114,6 +114,7 @@ ENDIF
 #DIM DYNAMIC 助手可能
 #DIM DYNAMIC 売却可能
 #DIM DYNAMIC 調教可能
+#DIM DYNAMIC 別キャラあり
 ;ゲーム内で表示されるショップ画面
 ;□XXXX年XX月XX日(曜日) X日目(昼夜) X周目 MODE:XXXXX
 ;　天気:XX 気温:XX.X℃ XXX(月齢.XXX) 
@@ -148,6 +149,17 @@ ENDIF
 ;□適用中のMOD(あれば表示)
 ;　[XXX][XXX]
 ;
+
+IF GUI
+	;カレンダーは別カラムで表示する
+	CALL COLUMNCREATE, 1
+	CALL COLUMNRESIZE, 1, 1100, 1200
+	CALL COLUMNMOVE, 1, 5000, 0
+	CALL カレンダー生成
+	;そうそうサイズは変わらないと思うのでサイズ直指定してみる
+	CALL COLUMNIMG, 1, "カレンダー", 1095, 1162
+	CALL COLUMNPRINTL, 1, ""
+ENDIF
 
 ;現助手＋元助手のキャラ数の確認
 FOR LCOUNT, 1, CHARANUM
@@ -241,13 +253,6 @@ IF !ORIGIN
 			ELSEIF MONEY < LASTMONEY
 				CALL COLUMNPRINT, 0, @"↓%TOOPTIONINT(LASTMONEY-MONEY)% DOWN...", "lightskyblue"
 			ENDIF
-			IF GUI
-				;ここらへんでカレンダーを表示してみる
-				CALL カレンダー生成
-				;そうそうサイズは変わらないと思うのでサイズ直指定してみる
-				CALL COLUMNPRINT, 0, "　　　　　　　"
-				CALL COLUMNIMG, 0, "カレンダー", 1095, 1162
-			ENDIF
 			CALL COLUMNPRINTL, 0, ""
 
 			;新婚生活中は非表示
@@ -318,21 +323,27 @@ IF TARGET > 0
 			CALL COLUMNPRINTL, 0, ""
 		ELSE
 			CALL COLUMNPRINT, 0, "□調教中 "
+			別キャラあり = 0
 			FOR LCOUNT, 1, TARGET
-				IF 調教可能(LCOUNT)
+				IF 調教可能(LCOUNT) && (!OPTION:配属キャラを飛ばす || CSTR:LCOUNT:配属 == "")
 					CALL COLUMNPRINT, 0, "[10] 前のキャラ "
+					別キャラあり = 1
 					BREAK
 				ENDIF
 			NEXT
-			SIF LCOUNT == TARGET || TARGET == 1
+			SIF !別キャラあり
 				CALL COLUMNPRINT, 0, @"%SPACESLENS("[10] 前のキャラ ")%"
+			別キャラあり = 0
 			FOR LCOUNT, TARGET+1, CHARANUM
-				IF 調教可能(LCOUNT)
-					CALL COLUMNPRINT, 0, "[19] 次のキャラ"
+				IF 調教可能(LCOUNT) && (!OPTION:配属キャラを飛ばす || CSTR:LCOUNT:配属 == "")
+					CALL COLUMNPRINT, 0, "[19] 次のキャラ "
+					別キャラあり = 1
 					BREAK
 				ENDIF
 			NEXT
-			CALL COLUMNPRINTL, 0, ""
+			SIF !別キャラあり
+				CALL COLUMNPRINT, 0, @"%SPACESLENS("[19] 次のキャラ ")%"
+			CALL COLUMNPRINTL, 0, @"[15] 配属中のキャラを飛ばす(現在:\@ OPTION:配属キャラを飛ばす ? オン # オフ \@)"
 		ENDIF
 		CALL COLUMNPRINT, 0, @"　No.{TARGET} %NAMEDISP(TARGET)% \@ TEQUIP:仮死薬 ? (仮死薬作用中) #\@\@ TEQUIP:睡眠 ? (睡眠薬作用中) #\@"
 	ENDIF
@@ -982,11 +993,13 @@ SELECTCASE CRESULT:1
 					LTARGET++
 			ENDSELECT
 			;調教可能かどうか確認してからTARGETにアサインする 不可能だった場合は次のキャラに飛ぶ
-			IF 調教可能(LTARGET)
+			IF 調教可能(LTARGET) && (!OPTION:配属キャラを飛ばす || CSTR:LTARGET:配属 == "")
 				CALL ASSIGN_TARGET, LTARGET
 				BREAK
 			ENDIF
 		LOOP INRANGE(LTARGET, 1, CHARANUM-2)
+	CASE 15
+		INVERTBIT OPTION:配属キャラを飛ばす, 0
 	;ゲーセン営業変更
 	CASE 20
 		IF GC:営業中 > 0

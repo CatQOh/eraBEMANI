@@ -21,7 +21,7 @@ ELSE
 ENDIF
 PRINTL 　[2] - 温泉を探す
 PRINTL 　[3] - 経営方針の管理
-IF INNS:ジャンル != ""
+IF INNS:ジャンル != "提供無し"
 	PRINTL 　[4] - メニューを変更
 ELSE
 	CALL PRINTCOLORL ,@"　[-] - %INNS:店名%では料理の提供を行っていません", "gray"
@@ -71,8 +71,7 @@ SELECTCASE RESULT
 	CASE 3
 		CALL 経営方針_飲食店
 	CASE 4
-		SIF INNS:ジャンル != ""
-			CALL メニュー変更_飲食店
+		CALL メニュー変更_飲食店
 	CASE 5
 		CALL 基本料金設定
 	CASE 6
@@ -208,7 +207,7 @@ SELECTCASE INNS:業種
 	CASE "バー", "ピンクサロン", "ライブハウス", "ホストクラブ", "キャバクラ"
 		PRINTL 　[-] - 料理のジャンル(お酒で固定)
 	CASEELSE
-		PRINTFORML 　[5] - 料理のジャンル(現在:%INNS:ジャンル%)
+		PRINTFORML 　[5] - 料理のジャンル(現在:\@ INNS:ジャンル == "" ? 何でも # %INNS:ジャンル% \@)
 ENDSELECT
 PRINTL 　[6] - 名前の変更
 
@@ -286,7 +285,7 @@ SELECTCASE RESULT
 		PRINTL 　[4] - スイーツ
 		PRINTL 　[5] - ファストフード
 		PRINTL 　[6] - お酒
-		PRINTL 　[0] - 無し
+		PRINTL 　[0] - 指定無し
 		BINPUT
 		SELECTCASE RESULT
 			CASE 0
@@ -325,7 +324,7 @@ SELECTCASE RESULT
 				INNS:ジャンル = お酒
 			;飲食物を提供しない店
 			CASE "日帰り温泉", "ラブホテル"
-				INNS:ジャンル = 
+				INNS:ジャンル = 提供無し
 		ENDSELECT
 		;リーダー以外の配属も初期化
 		FOR LCOUNT, 1, CHARANUM
@@ -369,7 +368,7 @@ SELECTCASE RESULT
 	CASE 10
 		RETURN
 	CASE 11
-		CALL TWO_DIGIT, 100, "×10(%)", 1
+		CALL TWO_DIGIT, 20, "×10(%)", 1
 		飲食店価格倍率 = RESULT
 		RESTART
 	CASE 12
@@ -635,6 +634,12 @@ SELECTCASE INNS:業種
 	CASE "ホストクラブ", "キャバクラ"
 		PRINT (アルコール類と軽食、至福のひとときを提供) 
 ENDSELECT
+PRINT 料理ジャンル:
+IF INNS:ジャンル == ""
+	PRINT 何でも 
+ELSE
+	PRINTFORM %INNS:ジャンル% 
+ENDIF
 SIF INN:基本料金
 	CALL PASELI, @"基本料金:{INN:基本料金}＄ "
 SELECTCASE INNS:業種
@@ -781,6 +786,7 @@ SELECTCASE INNS:業種
 			平均価格 += 料理価格*飲食店価格倍率/10
 		NEXT
 		平均価格 /= メニュー数
+		DEBUGPRINTFORML 平均価格:{平均価格}
 		;平均価格と名声で来客数が変動する 同値で約10人とし、あとは価格と反比例する(=名声に比例)
 		;補正値を300取る
 		来客数 = ((INN:飲食店名声+300)*10)/平均価格
@@ -791,8 +797,8 @@ SELECTCASE INNS:業種
 			CASE "土", "日"
 				TIMES 来客数, 1.20
 		ENDSELECT
-		;最低10人は保証する
-		CALL SETMAX, 来客数, 10
+		;最低価格倍率に応じて最低保証変わる 20-倍率%/10
+		CALL SETMAX, 来客数, 20-飲食店価格倍率
 		;各メニューの注文数を計算する
 		;基本的にどれかは出る
 		DO
@@ -945,8 +951,8 @@ SELECTCASE INNS:業種
 			CASE "土", "日"
 				TIMES 来客数, 1.20
 		ENDSELECT
-		;最低5人は保証する
-		CALL SETMAX, 来客数, 5
+		;最低保証人数は10-価格倍率%/20
+		CALL SETMAX, 来客数, 10-飲食店価格倍率/2
 		;各メニューの注文数を計算する
 		;基本的にどれかは出る
 		DO
