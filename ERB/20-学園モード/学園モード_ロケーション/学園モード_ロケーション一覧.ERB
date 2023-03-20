@@ -152,6 +152,8 @@ RETURN 1
 @ロケーション一覧
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC 名称抜き取り用, 2
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 選択可能
 
 FOR LCOUNT, 0, VARSIZE("ロケーション")
 	;条件判定用関数でロケーションごとの出現条件を設定する
@@ -163,16 +165,34 @@ FOR LCOUNT, 0, VARSIZE("ロケーション")
 		SIF CSTR:PLAYER:現在地 == 名称抜き取り用:1
 			CONTINUE
 		TRYCALLFORM ロケーション条件_%名称抜き取り用:1%
+		選択可能 = RESULT
+		ロケーション可否 =
+		TRYCALLFORM ロケーション可否_%名称抜き取り用:1%
 	ELSE
 		RESULT = 0
 		;既に現在地の場合は無効
 		SIF CSTR:PLAYER:現在地 == ロケーション:LCOUNT
 			CONTINUE
 		TRYCALLFORM ロケーション条件_%ロケーション:LCOUNT%
+		選択可能 = RESULT
+		ロケーション可否 =
+		TRYCALLFORM ロケーション可否_%ロケーション:LCOUNT%
 	ENDIF
 	;RETURN 1で返されたら条件を満たしている
-	SIF !RESULT
+	SIF !選択可能
 		CONTINUE
-	PRINTFORMLC 　[{LCOUNT}] - %ロケーション:LCOUNT%
+	;ただしRESULTSに何か入っていれば行けない
+	IF ロケーション可否 != ""
+		SETCOLORBYNAME gray
+		PRINTPLAINFORM 　[---] %@"%ロケーション:LCOUNT%(%ロケーション可否%)", 40, LEFT%
+		RESETCOLOR
+	ELSE
+		PRINTFORM 　[{LCOUNT, 3}] %ロケーション:LCOUNT, 40, LEFT%
+	ENDIF
+	表示数++
+	IF 表示数 == 3
+		PRINTL 
+		表示数 = 0
+	ENDIF
 NEXT
 CALL NEWLINE
