@@ -1,7 +1,7 @@
-﻿タイトル：EmueraEM+EE 最終更新日:2023/01/15
-バージョン：1.824+v17+EMv17+EEv29
+﻿タイトル：EmueraEM+EE 最終更新日:2023/06/08
+バージョン：1.824+v18+EMv17+EEv36
 改変者：Enter
-元となったアプリケーション：Emuera1.824+v17（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)、Emuera.EM（EvilMask制作）
+元となったアプリケーション：Emuera1.824+v18（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)、Emuera.EM（EvilMask制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
 eraシリーズまとめwikiのページ：https://seesaawiki.jp/eraseries/d/EmueraEM%2bEE%a4%ce%c4%c9%b2%c3%b5%a1%c7%bd
 docs：https://evilmask.gitlab.io/emuera.em.doc/
@@ -14,10 +14,15 @@ docs：https://evilmask.gitlab.io/emuera.em.doc/
 
 ※使用しているセキュリティソフト次第では危険なファイルとして警告・削除される場合があります
 　セキュリティソフトの設定を変更して使用することはできますが、自己責任でお願いします
-　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/d5155b80218ecbd0859868fa1acc22c2a782c5a3fd2bce99eee3d4c7f6db70b5
+　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/506507cf9da72c47dd22322cd254ef2300fe74fc1c839a57ea2f94bfa0c86b17
 
 [v12にてEmuera.EMと機能統合。上記リンクのドキュメント(docs)を参照]
 [EMv8+EEv15にてhtml形式のドキュメントを同梱。追加機能などがより詳しく書かれています]
+
+[一部のエラーについて]
+System.TypeInitializationException:'MinorShift.Emuera.GameProc.Function.FunctionIdentifier' のタイプ初期化子が例外をスローしました。
+
+上記のエラーはWindows Media Playerがインストールされてないことが原因のひとつと確認されており、インストールすることで直る場合があります
 
 [報告]
 EmueraEM+EEのVSCode用拡張機能を作りました。sasami氏のerabasic拡張機能をベースにしています
@@ -185,6 +190,29 @@ SHOW_SHOP内などフロー上で行われるINPUTにデフォルト値、クリ
 スプライトをすべて破棄する。引数に0を指定するとERB上で作成したものだけ、非0を指定するとresourceフォルダ内のCSVで定義したものも含めて全部破棄する
 返り値はそれぞれ破棄されたスプライト数を返す
 
+・SKIPLOG
+引数に非0を渡すと右クリック等でスキップしてる状態にする。0を渡すとスキップ状態を強制解除する
+
+・BINPUT、BINPUTS
+実行時点でボタン化されている値のみを受け付けるINPUT(INPUTS)。「ボタン入力のみを受け付ける」ではなく「ボタン化されてる値のみを受け付ける」ため、マウス操作とキーボード操作を両立させつつ、マウス操作では入力し得ない値を弾く
+ボタンが一つも無い状態で実行された場合は、デフォルト値が設定されていれば入力待ちをせずにRESULT(S)にデフォルト値を入れる。デフォルト値も無ければゲームが進行不可になるのでエラーになる
+
+・GDRAWLINE gID, fromX, fromY, forX, forY
+指定したgIDのfromX,fromY座標からforX,forY座標に線を引く。線の色と太さはGSETPENで指定したものを使用。式中関数としても使える
+
+・GETDISPLAYLINE
+PRINT、もしくはHTML_PRINTで表示済みの行の内容を取得する。HTML_PRINTのほうはタグ付きなので、表示文字だけ取得したいのならHTML_TOPLAINTEXTなどと組み合わせるとよい
+表示行の内容は配列で保存されているため、0からのスタートとなる(=GETDISPLAYLINE(LINECOUNT)は常に空文字)。LINECOUNTでループ回すとちょうど全行取得できる
+
+・GCREATEFROMFILE拡張
+第三引数に非0を渡すことで、Emueraからの相対パスで画像ファイルを指定できる。これによりERBやCSVフォルダ、独自に作成したフォルダも画像用フォルダとして使用可能になる
+本家の時点で親ディレクトリが指定できちゃったのは内緒。一応この仕様は残してある
+
+・GDASHSTYLE gID, DashStyle, DashCap
+GDRAWLINEの線のスタイルを指定する。DashStyle、DashCapそれぞれC#のDashStyle、DashCap列挙型の数値で指定可能
+DashStyle 0=普通の線 1=ダッシュで構成された線 2=ドットで構成された線 3=ダッシュとドットで構成された線 4=ダッシュとドット2個で構成された線
+DashCap(線の端の形) 0=普通の形(直角) 2=丸めた形 3=三角形の形 1は欠番。文句はMicrosoftに言ってください
+
 ・多言語化対応
 詳しくは下記リンク
 https://evilmask.gitlab.io/emuera.em.doc/i18n/
@@ -199,6 +227,12 @@ https://evilmask.gitlab.io/emuera.em.doc/i18n/
 ・日本語→英語の翻訳辞書機能を実装
 JukesBouver99氏のパッチにて実装。辞書ファイルは同梱済み
 コンフィグでオンオフ切替可能。不要な場合は辞書ファイルも削除可能
+
+・ttfファイルとotfファイルに対応
+Emueraと同じディレクトリに「font」フォルダを作成してttfファイルかotfファイルを置くと、コンフィグ→フォントからそのフォントが使用可能になる
+GSETFONTとTOOLTIP_SETFONTにも対応
+サンプルとしてたぬきフォント様の「たぬゴ」「全児童フォント」を同梱。以下はたぬきフォント様のサイトのリンク
+https://tanukifont.com/
 
 ・UPDATECHECK
 アップデートチェック命令を追加。以下使い方
