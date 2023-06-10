@@ -7,6 +7,7 @@
 #DIM DYNAMIC 金額取得
 #DIMS DYNAMIC 追加情報
 #DIM DYNAMIC 倍率
+#DIM DYNAMIC 口上補正あり
 
 ;金額取得の引数を渡されたらそのキャラの金額を取得する
 IF 金額取得
@@ -225,12 +226,18 @@ IF 金額取得
 	RETURN PRICE
 ENDIF
 
+TRYCALLFORM 売却額補正_%CSVNAMERPS(NO:TARGET)%
+IF RESULT
+	PRICE = RESULT
+	口上補正あり = 1
+ENDIF
+
 ;売却確認
 PRINTFORM %NAME:TARGET%は
 SETCOLOR 50, 150, 250
 CALL PASELI, @"{PRICE}＄"
 RESETCOLOR
-PRINTL で売れそうです
+PRINTFORML で売れそうです\@ 口上補正あり ? (口上補正) #\@
 PRINTL 売却しますか？
 PRINTL [0] はい
 PRINTL [1] いいえ
@@ -239,6 +246,7 @@ CALL INPUTF, 0, 1
 
 SELECTCASE RESULT
 	CASE 0
+		CFLAG:売却額 = PRICE
 		SELECTCASE 月齢
 			CASE 2300 TO 2599
 				SIF FALLTYPE(TARGET) == 1
@@ -261,8 +269,6 @@ SELECTCASE RESULT
 		ENDIF
 		;売却時のイベント口上
 		CALL KOJO_MESSAGE_EVENT, "売却時"
-		;売却額
-		CALL PASELIW, @"結果、%NAME:TARGET%は{PRICE}＄で売れました"
 		バンめし = 0
 		IF !CSVTALENT(NOF(MASTER), GETNUM(TALENT, "子供好き"))
 			IF TALENT:小柄体型
