@@ -52,8 +52,8 @@ ENDSELECT
 
 @体外受精
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC 父親, 2 = -1
-#DIM DYNAMIC 母親 = -1
+#DIM DYNAMIC 父親ID, 2 = -1
+#DIM DYNAMIC 母親ID = -1
 #DIM DYNAMIC 母体 = -1
 #DIM DYNAMIC 費用, 3
 #DIM DYNAMIC LRESULT
@@ -78,18 +78,18 @@ PRINTLC [3] - 母体を選ぶ
 PRINTL 
 PRINTL 　[4] - 既に採取してある精子を使用する
 
-IF 父親 == -1
+IF 父親ID == -1
 	SETCOLORBYNAME gray
 	PRINTFORMLC 　父親:----
 ELSE
-	PRINTFORMLC 　父親:%CSVNAMEF(父親)%
+	PRINTFORMLC 　父親:%CSVNAMEF(父親ID)%
 ENDIF
 RESETCOLOR
-IF 母親 == -1
+IF 母親ID == -1
 	SETCOLORBYNAME gray
 	PRINTFORMLC 母親:----
 ELSE
-	PRINTFORMLC 母親:%NAME:母親%
+	PRINTFORMLC 母親:%NAME:母親ID%
 ENDIF
 RESETCOLOR
 IF 母体 == -1
@@ -103,7 +103,7 @@ PRINTL
 DRAWLINE
 PRINTPLAIN 　体外受精　
 PRINT [0] - 中止する　
-SIF 父親 >= 0 && 母親 >= 0 && 母体 >= 0
+SIF 父親ID >= 0 && 母親ID >= 0 && 母体 >= 0
 	PRINT [5] - この組み合わせで行う
 PRINTL 
 
@@ -127,9 +127,9 @@ SELECTCASE RESULT
 				SIF TALENT:LRESULT:小柄体型
 					費用:0 += 30000
 				;父親はNOで入れる
-				父親 = NOF(LRESULT)
+				父親ID = NOF(LRESULT)
 				;子供の素質設定用
-				父親:1 = LRESULT
+				父親ID:1 = LRESULT
 				RESTART
 		ENDSELECT
 	CASE 2
@@ -146,7 +146,7 @@ SELECTCASE RESULT
 				;小柄体型だと費用がかさむ
 				SIF TALENT:RESULT:小柄体型
 					費用:1 += 30000
-				母親 = RESULT
+				母親ID = RESULT
 				RESTART
 		ENDSELECT
 	CASE 3
@@ -185,7 +185,8 @@ SELECTCASE RESULT
 				RESTART
 			CASEELSE
 				費用:0 = 100000
-				父親 = RESULT
+				父親ID = RESULT
+				父親ID:1 = GETCHARA(父親ID)
 				RESTART
 		ENDSELECT
 	CASE 5
@@ -196,31 +197,31 @@ SELECTCASE RESULT
 		ENDIF
 		PRINTL 体外受精を始めます
 		CALL PAYMENT, -SUMARRAY(費用), "体外受精費用"
-		IF 母親 != 母体
-			PRINTFORMW %CALLNAME:母親%と%CALLNAME:母体%は準備のため休養に入ります
+		IF 母親ID != 母体
+			PRINTFORMW %CALLNAME:母親ID%と%CALLNAME:母体%は準備のため休養に入ります
 		ELSE
-			PRINTFORMW %CALLNAME:母親%は準備のため休養に入ります
+			PRINTFORMW %CALLNAME:母親ID%は準備のため休養に入ります
 		ENDIF
-		SIF TARGET == 母親 || TARGET == 母体
+		SIF TARGET == 母親ID || TARGET == 母体
 			TARGET = -1
-		SIF ASSI == 母親 || ASSI == 母体
+		SIF ASSI == 母親ID || ASSI == 母体
 			ASSI = -1
-		CFLAG:母親:使用不可 = 15
+		CFLAG:母親ID:使用不可 = 15
 		CFLAG:母体:使用不可 = 15
-		CFLAG:母親:使用不可状態 = 1
+		CFLAG:母親ID:使用不可状態 = 1
 		CFLAG:母体:使用不可状態 = 1
-		CFLAG:母親:ストレス値 += 5
+		CFLAG:母親ID:ストレス値 += 5
 		CFLAG:母体:ストレス値 += 10
 
 		;妊娠は確定する
 		PREG:母体:出産予定日 = DAY+60+RAND:21
-		PREG:母体:父親 = 父親
-		PREG:母体:母親 = NOF(母親)
+		PREG:母体:父親 = 父親ID
+		PREG:母体:母親 = NOF(母親ID)
 		PREG:母体:体外受精 = 1
 		TALENT:母体:妊娠確定 = 1
-		SIF 父親:1 == -1
-			採取精液:父親--
-		CALL CHILDSET, 母親, 父親:1, 母体
+		SIF 父親ID:1 == -1 || CFLAG:父親ID:キャラロスト
+			採取精液:父親ID--
+		CALL CHILDSET, 母親ID, 父親ID:1, 母体
 		;医療経験加算
 		FOR LCOUNT, 0, CHARANUM
 			SIF CSTR:LCOUNT:配属 == "医務室" && CFLAG:LCOUNT:配属完了
