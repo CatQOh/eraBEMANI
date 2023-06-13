@@ -1,0 +1,133 @@
+﻿@ロケーション条件_カラオケルーム
+RETURN -1
+
+@バイト条件_カラオケルーム
+;バイトの時間帯などを書く
+バイト要項 = 終日募集中
+;バイト可能かどうかの条件式
+RETURN 1
+
+@出現キャラ_カラオケルーム
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC グループ数
+#DIM DYNAMIC 始点
+#DIM DYNAMIC 終点
+
+;NOではなく登録番号で指定する
+IF データベース参照中
+	始点 = データベース参照中
+	終点 = データベース参照中+1
+ELSE
+	始点 = 1
+	終点 = CHARANUM
+ENDIF
+
+FOR LCOUNT, 始点, 終点
+	;学校などに行ってるキャラは居ない
+	SIF CSTR:LCOUNT:現在地 != "" && !データベース参照中
+		CONTINUE
+	IF RANDPER(1) && グループ数 < 10
+		;相性の良いキャラと2～5人で行動している
+		;無所属、教師陣のグループは休日のみ現れる
+		IF 休日()
+			CALL グループキャラ選出, LCOUNT, "相性"
+		;あとは放課後等
+		ELSEIF CSTR:LCOUNT:在校 != ""
+			CALL クラスメイト選出, LCOUNT, "相性"
+		ELSE
+			CONTINUE
+		ENDIF
+		;2人以上揃わなかったら無かったことにする
+		SIF RESULT:0 == 0
+			CONTINUE
+		;2～5人のグループ
+		集団行動:グループ数:0 = LCOUNT
+		集団行動:グループ数:1 = RESULT:0
+		IF RANDPER(50)
+			集団行動:グループ数:2 = RESULT:1
+			IF RANDPER(50)
+				集団行動:グループ数:3 = RESULT:2
+				SIF RANDPER(50)
+					集団行動:グループ数:4 = RESULT:3
+			ENDIF
+		ENDIF
+		グループ数++
+	ENDIF
+	;ヒトカラするやつは居ない
+NEXT
+
+@カラオケルーム_専用コマンド
+IF MONEY < 500
+	CALL COLUMNPRINTL, 0, "　[---] - 1時間ほど歌っていく(500＄必要)", "gray"
+	SIF 同行者
+		CALL COLUMNPRINTL, 0, @"　[  1] - %CALLNAME:同行者%に奢らせる"
+ELSE
+	IF 同行者
+		CALL COLUMNPRINTL, 0, @"　[  1] - %CALLNAME:同行者%とカラオケを楽しむ(500＄必要)"
+	ELSE
+		CALL COLUMNPRINTL, 0, "　[  0] - 1時間ほど歌っていく(500＄必要)"
+	ENDIF
+ENDIF
+
+@カラオケルーム_専用コマンド_INPUT
+
+IF MONEY < 500
+	IF RESULT == 1
+		;教師か恋人なら許される
+		IF CSTR:同行者:在任 != "" || TALENT:同行者:恋慕
+			PRINTFORML %CALLNAME:同行者%は金欠の%CALLNAME:PLAYER%を笑いながらも快く奢ってくれた
+		ELSE
+			PRINTFORML %CALLNAME:同行者%はたかられるのを不満そうにしつつも奢ってくれた
+			CALL 好感度上昇, 同行者, -5
+		ENDIF
+	ENDIF
+ELSE
+	IF RESULT == 1
+		PRINTFORML %CALLNAME:同行者%とカラオケを楽しむことにした
+		IF ABL:PLAYER:歌唱技能 >= 4
+			IF ABL:PLAYER:歌唱技能 > ABL:同行者:歌唱技能
+				PRINTFORML %CALLNAME:PLAYER%の歌声に%CALLNAME:同行者%は聞き入っている
+				CALL SCHOOL_KOJO, 同行者, "一緒にカラオケ"
+				CALL 好感度上昇, 同行者, "尊敬", 20
+				CALL 好感度上昇, 同行者, "友情", 10
+			ELSE
+				PRINTFORML %CALLNAME:PLAYER%の歌唱に感心する%CALLNAME:同行者%とデュエットを組み、存分にカラオケを楽しんだ
+				CALL SCHOOL_KOJO, 同行者, "一緒にカラオケ"
+				CALL 好感度上昇, 同行者, "尊敬", 10
+				CALL 好感度上昇, 同行者, "友情", 10
+			ENDIF
+		ELSE
+			CALL SCHOOL_KOJO, 同行者, "一緒にカラオケ"
+			CALL 好感度上昇, 同行者, "友情", 10
+		ENDIF
+		CALL EXPUP, "歌唱経験", 3, PLAYER
+		CALL EXPUP, "歌唱経験", 3, 同行者
+	ELSE
+		PRINTFORML %CALLNAME:PLAYER%は一人でカラオケを楽しんだ
+		CALL EXPUP, "歌唱経験", 3, PLAYER
+	ENDIF
+	MONEY -= 500
+	IF 同行者 && TALENT:同行者:恋慕
+		PRINTFORML カラオケルームに2人きり、どことなく良い雰囲気だ
+		PRINTL [0] - 何もしない
+		PRINTL [1] - スキンシップを試みる
+		PRINTL [2] - キスしてみる
+		BINPUT
+		選択肢 = RESULT
+		SELECTCASE RESULT
+			CASE 0
+				PRINTFORML 良い雰囲気になりながらも%CALLNAME:PLAYER%は%CALLNAME:同行者%に何もせずカラオケルームを後にした
+			CASE 1
+				PRINTFORML %CALLNAME:同行者%にスキンシップを試みると、恋人らしい反応を見せてくれた
+				CALL SCHOOL_KOJO, 同行者, "カラオケルームでロマンス"
+				CALL 好感度上昇, 同行者, "ときめき", 10
+				CALL 好感度上昇, 同行者, "友情", 10
+			CASE 2
+				PRINTFORML じっと%CALLNAME:同行者%を見つめると、%CALLNAME:同行者%も察してキスを受け入れてくれた
+				CALL SCHOOL_KOJO, 同行者, "カラオケルームでロマンス"
+				CALL 好感度上昇, 同行者, "ときめき", 20
+		ENDSELECT
+	ENDIF
+ENDIF
+
+RETURN 1
