@@ -1,36 +1,21 @@
-﻿@ロケーション条件_ボルテ軒
-#DIM DYNAMIC LCOUNT
-;出現条件のキャラをフルネーム(NAME)で入れる
-{
-#DIMS DYNAMIC 条件用キャラ = 
-"野増菜 かなで",
-"野増菜 しずく"
-}
+﻿@ロケーション条件_ジョニーズ
+RETURN -1
 
-FOR LCOUNT, 0, VARSIZE("条件用キャラ")
-	IF GETCHARANAME(条件用キャラ:LCOUNT) > 0
-		SIF 好感度合計(GETCHARANAME(条件用キャラ:LCOUNT)) >= 100
-			RETURN GETCHARANAME(条件用キャラ:LCOUNT)
-	ENDIF
-NEXT
-
-RETURN 0
-
-@ロケーション可否_ボルテ軒
+@ロケーション可否_ジョニーズ
+;時間帯などで使えない場合は理由を書く
 SIF ターン == "朝"
 	ロケーション可否 = 営業準備中
 
-@バイト条件_ボルテ軒
-バイト要項 = 昼、夜の時間帯で募集中
-SIF GROUPMATCH(ターン, "昼", "夜")
+@バイト条件_ジョニーズ
+;バイトの時間帯などを書く
+バイト要項 = 昼～夜のシフトで募集中。制服貸与
+;バイト可能かどうかの条件式
+SIF GROUPMATCH(ターン, "昼", "夕", "夜")
 	バイト可能 = 1
-;ロケーション解禁済みで可能
-SIF FINDELEMENTF(解禁済みロケーション, "ボルテ軒") >= 0
-	RETURN GETCHARANAME("野増菜 かなで")
 
-RETURN 0
+RETURN 1
 
-@出現キャラ_ボルテ軒
+@出現キャラ_ジョニーズ
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC グループ数
 #DIM DYNAMIC 始点
@@ -51,14 +36,15 @@ FOR LCOUNT, 始点, 終点
 		CONTINUE
 	;出現率:LCOUNT = {出現率(100分率)} で指定できる
 	SELECTCASE CHARANAMEF(LCOUNT)
-		;かなでは確定
-		CASE "野増菜 かなで"
+		;バイト組 50%
+		CASE "北見 エリカ", "クロノス", "カイロス", "おいわちゃん"
+		;お客さんたち メイド喫茶なのでメイドが来る（？？？）
+		{
+		CASE "ベリゼベス", "ニーソ姫", "恋刃", "ラッテ", "リエル", "グリム・リエル", "鬼蝮 ユリア", "葉和 とれび",
+			 "ラズ", "シフォン", "ソルト", "春日 咲子", "芽兎 めう"
+		}
 			SIF 出現率:LCOUNT >= 0
-				出現率:LCOUNT = 100
-		;しずく他バイトの子やラーメン好きなキャラ
-		CASE "おいわちゃん", "野増菜 しずく", "ハラ＝ヘッタ", "白のロピカ", "ヒメル"
-			SIF 出現率:LCOUNT >= 0
-				出現率:LCOUNT = 50
+				出現率:LCOUNT = 20
 		;休日や放課後に集団で来ているグループとかがある
 		CASEELSE
 			IF RANDPER(2) && グループ数 < 10
@@ -79,11 +65,9 @@ FOR LCOUNT, 始点, 終点
 			ELSE
 				SIF TALENT:LCOUNT:食欲皆伝 && 出現率:LCOUNT >= 0
 					出現率:LCOUNT = 20
-				;ボルテキャラたち
-				SIF GROUPMATCH("SOUND VOLTEX", CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３) && 出現率:LCOUNT >= 0
+				;Roots26キャラたち
+				SIF GROUPMATCH("Roots26", CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３) && 出現率:LCOUNT >= 0
 					出現率:LCOUNT = 25
 			ENDIF
 	ENDSELECT
 NEXT
-
-	

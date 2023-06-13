@@ -1,0 +1,77 @@
+﻿@ロケーション条件_ビストローバー
+RETURN -1
+
+@ロケーション可否_ビストローバー
+;時間帯などで使えない場合は理由を書く
+SIF DOW(FLAG:曜日) == "火"
+	ロケーション可否 = 毎週火曜日定休
+SIF ターン == "朝"
+	ロケーション可否 = 営業準備中
+
+@バイト条件_ビストローバー
+;バイトの時間帯などを書く
+バイト要項 = 定休日（火）除く昼、夜のシフト。メイド服が似合う可愛い子ちゃん募集。野郎でも可
+;バイト可能かどうかの条件式
+IF GROUPMATCH(ターン, "昼", "夜")
+	SIF DOW(FLAG:曜日) != "火"
+		バイト可能 = 1
+ENDIF
+;返り値はその店の責任者で、面接官扱いになる。居なければ1でOK
+RETURN GETCHARANAME("ジルチ")
+
+@出現キャラ_ビストローバー
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC グループ数
+#DIM DYNAMIC 始点
+#DIM DYNAMIC 終点
+
+;NOではなく登録番号で指定する
+IF データベース参照中
+	始点 = データベース参照中
+	終点 = データベース参照中+1
+ELSE
+	始点 = 1
+	終点 = CHARANUM
+ENDIF
+
+FOR LCOUNT, 始点, 終点
+	;学校などに行ってるキャラは居ない
+	SIF CSTR:LCOUNT:現在地 != "" && !データベース参照中
+		CONTINUE
+	;出現率:LCOUNT = {出現率(100分率)} で指定できる
+	IF RANDPER(1) && グループ数 < 10
+		;相性の良いキャラと2～4人で行動している
+		CALL クラスメイト選出, LCOUNT, "相性"
+		;2人以上揃わなかったら無かったことにする
+		SIF RESULT:0 == 0
+			CONTINUE
+		集団行動:グループ数:0 = LCOUNT
+		集団行動:グループ数:1 = RESULT:0
+		IF RANDPER(50)
+			集団行動:グループ数:2 = RESULT:1
+			SIF RANDPER(50)
+				集団行動:グループ数:3 = RESULT:2
+		ENDIF
+		グループ数++
+	ELSE
+		SELECTCASE CHARANAMEF(LCOUNT)
+			;店長
+			CASE "ジルチ"
+				SIF 出現率:LCOUNT >= 0
+					出現率:LCOUNT = 100
+			;バイトやヘルプ
+			CASE "菱宮 津軽", "シア", "ナイア", "識", "光伊 計名", "チャオ"
+				SIF 出現率:LCOUNT >= 0
+					出現率:LCOUNT = 50
+			CASEELSE
+				SIF TALENT:LCOUNT:食欲皆伝 && 出現率:LCOUNT >= 0
+					出現率:LCOUNT = 20
+				;Roots26
+				SIF GROUPMATCH("Roots26", CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３) && 出現率:LCOUNT >= 0
+					出現率:LCOUNT = 25
+				;地元で愛されるお店なので誰でも来る
+				SIF 出現率:LCOUNT >= 0
+					出現率:LCOUNT = 1
+		ENDSELECT
+	ENDIF
+NEXT
