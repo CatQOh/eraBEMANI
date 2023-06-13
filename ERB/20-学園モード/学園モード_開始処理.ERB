@@ -8,6 +8,7 @@
 #DIMS DYNAMIC SPLITVAR, 2
 #DIM DYNAMIC キャラ選択フラグ, 10000
 #DIMS DYNAMIC 固定用学校, 4
+#DIM DYNAMIC 運命の人選択
 
 通貨単位 = 円
 
@@ -605,9 +606,15 @@ FOR LCOUNT, 0, VARSIZE("学校名")
 	RESETCOLOR
 NEXT
 PRINTL
+IF 運命の人選択
+	PRINTFORM 　[96] 運命の人を選ばない
+ELSE
+	PRINTFORM 　[96] 運命の人を選ぶ(\@ 運命の人 != "" ? %運命の人% # ロケーションでの遭遇確率が上がります \@)
+ENDIF
 ;#;PRINTL 　[97]倫理観変動値の確認 [-98] 学園モード用コマンドテンプレ生成 
-PRINTL 　[99] 学園モード未実装のキャラ一覧
-PRINTL 　キャラクターをクリックすると、やり直したときにクリックしたキャラクターが同じ学校にまとまります（同学年の場合）
+PRINTL 　[99] 無所属or社会人のキャラ一覧
+SIF !運命の人選択
+	PRINTL 　キャラクターをクリックすると、やり直したときにクリックしたキャラクターが同じ学校にまとまります（同学年の場合）
 DRAWLINE
 PRINTPLAIN 　学校一覧　
 PRINTL [100] - 決定 [101] - やり直し
@@ -634,6 +641,8 @@ SELECTCASE RESULT
 			SIF CSTR:LCOUNT:在任 != 学校名:RESULT
 				CONTINUE
 			RESETCOLOR
+			SIF NAME:LCOUNT == 運命の人
+				SETCOLORBYNAME coral
 			SIF キャラ選択フラグ:NOF(LCOUNT)
 				SETCOLORBYNAME deepskyblue
 			PRINTFORML 　担当科目:%CSTR:LCOUNT:担当科目% No.[{NOF(LCOUNT)}] %NAME:LCOUNT%
@@ -660,10 +669,22 @@ SELECTCASE RESULT
 				ENDIF
 				入学先 = LRESULT
 			CASEELSE
-				INVERTBIT キャラ選択フラグ:RESULT, 0
+				IF 運命の人選択
+					SIF RESULT
+						運命の人 = %CSVNAME(RESULT)%
+					運命の人選択 = 0
+					GOTO 学校一覧表示
+				ELSE
+					INVERTBIT キャラ選択フラグ:RESULT, 0
+				ENDIF
 				RESULT = LRESULT
 				GOTO キャラ一覧
 		ENDSELECT
+		GOTO 学校一覧表示
+	CASE 96
+		SIF 運命の人選択
+			運命の人 =
+		INVERTBIT 運命の人選択, 0
 		GOTO 学校一覧表示
 	CASE 97
 		FOR LCOUNT, 1, CHARANUM
@@ -681,13 +702,28 @@ SELECTCASE RESULT
 		未実装キャラ = 0
 		FOR LCOUNT, 0, CHARANUM
 			IF CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == ""
-				PRINTFORML 　No.{NOF(LCOUNT)} %NAME:LCOUNT%
+				SIF NAME:LCOUNT == 運命の人
+					SETCOLORBYNAME coral
+				IF 運命の人選択
+					PRINTFORML 　No.[{NOF(LCOUNT)}] %NAME:LCOUNT%
+				ELSE
+					PRINTFORML 　No.{NOF(LCOUNT)} %NAME:LCOUNT%
+				ENDIF
+				RESETCOLOR
 				未実装キャラ++
 			ENDIF
 		NEXT
 		PRINTL 
 		PRINTFORML 　計{未実装キャラ}人
-		WAIT
+		IF 運命の人選択
+			PRINTL 　[0] 運命の人を選ばない
+			BINPUT
+			SIF RESULT
+				運命の人 = %CSVNAME(RESULT)%
+			運命の人選択 = 0
+		ELSE
+			WAIT
+		ENDIF
 		GOTO 学校一覧表示
 	CASE 100
 		IF 入学先 == -1

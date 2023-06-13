@@ -369,12 +369,14 @@ ENDSELECT
 #DIM DYNAMIC 選択校
 #DIM DYNAMIC 選択キャラ
 #DIM DYNAMIC 表示数
+#DIM CONST 無所属 = VARSIZE("学校名")
 
 FOR LCOUNT, 0, VARSIZE("学校名")
 	SIF 学校名:LCOUNT == ""
 		CONTINUE
 	PRINTFORMLC 　[{LCOUNT, 2}] - %学校名:LCOUNT%
 NEXT
+PRINTFORMLC 　[{無所属, 2}] - 無所属or社会人
 CALL NEWLINE
 
 DRAWLINE
@@ -388,24 +390,31 @@ SIF RESULT == -1
 
 $生徒選択
 DRAWLINE
-PRINTFORML □%学校名:選択校%の在校生
+PRINTFORML □\@ RESULT == 無所属 ? 無所属or社会人のキャラ # %学校名:選択校%の在校生 \@
 FOR LCOUNT, 0, CHARANUM
-	SIF CSTR:LCOUNT:在校 != 学校名:選択校
-		CONTINUE
+	IF 選択校 == 無所属
+		SIF CSTR:LCOUNT:在校 != "" || CSTR:LCOUNT:在任 != ""
+			CONTINUE
+	ELSE
+		SIF CSTR:LCOUNT:在校 != 学校名:選択校
+			CONTINUE
+	ENDIF
 	PRINTFORM 　[{LCOUNT}] 
 	CALL SNAME(LCOUNT)
 	PRINTL 
 NEXT
-PRINTFORML □%学校名:選択校%の教師
-FOR LCOUNT, 0, CHARANUM
-	SIF CSTR:LCOUNT:在任 != 学校名:選択校
-		CONTINUE
-	PRINTFORM 　担当科目:%CSTR:LCOUNT:担当科目% [{LCOUNT}] 
-	CALL SNAME(LCOUNT)
-	PRINTL  
-NEXT
+IF 選択校 != 無所属
+	PRINTFORML □%学校名:選択校%の教師
+	FOR LCOUNT, 0, CHARANUM
+		SIF CSTR:LCOUNT:在任 != 学校名:選択校
+			CONTINUE
+		PRINTFORM 　担当科目:%CSTR:LCOUNT:担当科目% [{LCOUNT}] 
+		CALL SNAME(LCOUNT)
+		PRINTL  
+	NEXT
+ENDIF
 DRAWLINE
-PRINTPLAINFORM 　%学校名:選択校%　
+PRINTPLAINFORM 　\@ 選択校 == 無所属 ? 無所属or社会人のキャラ # %学校名:選択校% \@　
 PRINTL [-1] - 戻る
 
 BINPUT
@@ -447,7 +456,7 @@ FOR LCOUNT, 0, VARSIZE("ロケーション")
 		CONTINUE
 	PRINTFORMLC 　%ロケーション:LCOUNT%({出現率:選択キャラ}\%)
 	表示数++
-	SIF 表示数 != 0 && 表示数%5 == 0
+	SIF 表示数 != 0 && 表示数%4 == 0
 		PRINTL 
 NEXT
 データベース参照中 = 0
@@ -471,7 +480,10 @@ RETURNF SUMARRAY(好感度:対象:0)
 #DIMS DYNAMIC 表示好感度
 
 IF ラブスコープ使用
+	SIF NAME:対象 == 運命の人
+		SETCOLORBYNAME coral
 	PRINTFORM %NAME:対象%
+	RESETCOLOR
 	SELECTCASE ラブスコープ使用
 		CASE 1 TO 6
 			表示好感度 = %ERDNAME(好感度, ラブスコープ使用-1)%
@@ -513,7 +525,10 @@ IF ラブスコープ使用
 	PRINTFORM (%表示好感度%:{好感度値})
 	RESETCOLOR
 ELSE
+	SIF NAME:対象 == 運命の人
+		SETCOLORBYNAME coral
 	PRINTFORM %NAME:対象%
+	RESETCOLOR
 ENDIF
 
 ;;;好感度上昇とメッセージ表示を行う
