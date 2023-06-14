@@ -3,7 +3,8 @@
 #DIM DYNAMIC 保健医
 #DIM DYNAMIC 保健室滞在者
 #DIM DYNAMIC 候補, 50
-#DIM DYNAMIC 候補人数
+#DIM DYNAMIC 優先, 50
+#DIM DYNAMIC 候補人数, 2
 #DIM DYNAMIC 睡眠中
 
 CSTR:PLAYER:現在地 = %CSTR:PLAYER:在校%
@@ -15,24 +16,33 @@ FOR LCOUNT, 1, CHARANUM
 		BREAK
 	ENDIF
 	IF CSTR:LCOUNT:在任 == CSTR:PLAYER:在校 || CSTR:LCOUNT:在校 == CSTR:PLAYER:在校
+		IF 好感度合計(LCOUNT)
+			優先:(候補人数:1) = LCOUNT
+			候補人数:1++
+		ENDIF
 		候補:候補人数 = LCOUNT
 		候補人数++
 	ENDIF
 NEXT
 
 ;保健医がいなければランダムで誰かが居る
-SIF !保健医
-	保健室滞在者 = 候補:(RAND:候補人数)
+IF !保健医
+	IF 候補人数:1
+		保健室滞在者 = 優先:(RAND:(候補人数:1))
+	ELSE
+		保健室滞在者 = 候補:(RAND:候補人数)
+	ENDIF
+ENDIF
 
 IF 保健医
-	PRINTFORML %CALLNAME:PLAYER%が保健室に行くと、保健医の%CALLNAME:保健医%先生が対応してくれた
+	PRINTFORML □%CALLNAME:PLAYER%が保健室に行くと、保健医の%CALLNAME:保健医%先生が対応してくれた
 	TARGET = 保健医
 	CALL SCHOOL_KOJO, TARGET, "保健室"
 	PRINTL 　[0] - 具合が悪いので保健室で休む
 	PRINTL 　[1] - 授業に戻る
 ELSE
 	IF CSTR:保健室滞在者:在任 != ""
-		PRINTFORML %CALLNAME:PLAYER%が保健室に行くと、%CSTR:保健室滞在者:担当科目%の%CALLNAME:保健室滞在者%先生が対応してくれた
+		PRINTFORML □%CALLNAME:PLAYER%が保健室に行くと、%CSTR:保健室滞在者:担当科目%の%CALLNAME:保健室滞在者%先生が対応してくれた
 		TARGET = 保健室滞在者
 		CALL SCHOOL_KOJO, TARGET, "保健室"
 		PRINTL 　[0] - 具合が悪いので保健室で休む
@@ -41,7 +51,7 @@ ELSE
 		;20%で睡眠中
 		SIF RANDPER(20)
 			睡眠中 = 1
-		PRINTFORM %CALLNAME:PLAYER%が保健室に行くと、
+		PRINTFORM □%CALLNAME:PLAYER%が保健室に行くと、
 		IF 睡眠中
 			PRINTFORML %CSTR:保健室滞在者%がベッドで眠っていた
 		ELSE
@@ -180,8 +190,11 @@ SELECTCASE RESULT
 						DRAWLINE
 						CALL TRAIN_SCHOOL, "保健室"
 						CALL CHECKDRAWLINE
-						PRINTFORMW %CALLNAME:TARGET%は呼吸を整え、汗と体液で汚れた体をアルコールティッシュで拭き、保健室を後にした
-						CALL SCHOOL_KOJO, TARGET, "保健室_行為後"
+						IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_保健室_行為後")
+							CALL SCHOOL_KOJO, TARGET, "保健室_行為後"
+						ELSE
+							PRINTFORMW %CALLNAME:TARGET%は呼吸を整え、汗と体液で汚れた体をアルコールティッシュで拭き、保健室を後にした
+						ENDIF
 						CALL 好感度上昇, TARGET, "友情", 30
 						CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
 						CALL 好感度上昇, TARGET, "セフレ", 50
