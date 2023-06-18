@@ -259,6 +259,7 @@ SELECTCASE ゲームモード()
 		ENDIF
 	;STRATEGYモード専用処理
 	CASE "経営モード"
+		CALL 口上表示設定
 		DRAWLINE
 		TFLAG:ページ数 = 0
 		IF LANGUAGE == "ENG"
@@ -274,27 +275,32 @@ SELECTCASE ゲームモード()
 		TALENT:ASSI:恋慕 = 0
 		TALENT:ASSI:淫乱 = 0
 		TALENT:ASSI:服従 = 0
-		;この時点では口上表示の設定はできないので強制表示
-		TRYCCALLFORM PARTNER_%CSVNAMERPS(NOF(ASSI))%
-		CATCH
+		RESULT = 0
+		IF OPTION:口上表示 && EXISTFUNCTION(@"PARTNER_%CSVNAMERPS(NOF(ASSI))%")
+			CALLFORM PARTNER_%CSVNAMERPS(NOF(ASSI))%
+		ELSE
 			IF LANGUAGE == "ENG"
 				PRINTFORMW %NAMEDISP(ASSI)% is your manager.
 			ELSE
 				PRINTFORMW %NAMEDISP(ASSI)%をパートナーに選択しました
 			ENDIF
-		ENDCATCH
-		IF LANGUAGE == "ENG"
-			PRINTFORML Select %CALLNAMEDISP(ASSI)%'s falltype.
-			PRINTL [0] - Affection
-			PRINTL [1] - Lewd
-			PRINTL [2] - Obey
-		ELSE
-			PRINTL 陥落状態を選択してください。
-			PRINTL [0] - 恋慕
-			PRINTL [1] - 淫乱
-			PRINTL [2] - 服従
 		ENDIF
-		BINPUT
+		IF RESULT
+			RESULT = RESULT-1
+		ELSE
+			IF LANGUAGE == "ENG"
+				PRINTFORML Select %CALLNAMEDISP(ASSI)%'s falltype.
+				PRINTL [0] - Affection
+				PRINTL [1] - Lewd
+				PRINTL [2] - Obey
+			ELSE
+				PRINTL 陥落状態を選択してください。
+				PRINTL [0] - 恋慕
+				PRINTL [1] - 淫乱
+				PRINTL [2] - 服従
+			ENDIF
+			BINPUT
+		ENDIF
 		SELECTCASE RESULT
 			CASE 0
 				TALENT:ASSI:恋慕 = 1
@@ -344,41 +350,6 @@ IF ゲームモード() != "新婚モード"
 			ENDIF
 		ENDIF
 	ENDIF
-ENDIF
-
-DRAWLINE
-IF DOPTION:有効
-	OPTION:地の文表示 = DOPTION:地の文
-	OPTION:口上表示 = DOPTION:口上
-ELSE
-	IF LANGUAGE == "ENG"
-		PRINTL Want you dialogues?(Can change options command)
-		PRINTL [0] - Character Dialogues+General Dialogues
-		PRINTL [1] - Character Dialogues only
-		PRINTL [2] - General Dialogues only
-		PRINTL [3] - No, Don't wanna
-	ELSE
-		PRINTL 口上を表示しますか？(オプションでも変更できます)
-		PRINTL [0] - 口上+地の文を表示する
-		PRINTL [1] - 口上のみ表示する
-		PRINTL [2] - 地の文のみ表示する
-		PRINTL [3] - 口上も地の文も表示しない
-	ENDIF
-	BINPUT
-	SELECTCASE RESULT
-		CASE 0
-			OPTION:地の文表示 = 1
-			OPTION:口上表示 = 1
-		CASE 1
-			OPTION:地の文表示 = 0
-			OPTION:口上表示 = 1
-		CASE 2
-			OPTION:地の文表示 = 1
-			OPTION:口上表示 = 0
-		CASE 3
-			OPTION:地の文表示 = 0
-			OPTION:口上表示 = 0
-	ENDSELECT
 ENDIF
 
 IF QMA
@@ -769,6 +740,43 @@ IF ゲームモード() == "新婚モード"
 ENDIF
 
 RETURN 0
+
+@口上表示設定
+DRAWLINE
+IF DOPTION:有効
+	OPTION:地の文表示 = DOPTION:地の文
+	OPTION:口上表示 = DOPTION:口上
+ELSE
+	IF LANGUAGE == "ENG"
+		PRINTL Want you display dialogues?(Can change options command)
+		PRINTL [0] - Character Dialogues+General Dialogues
+		PRINTL [1] - Character Dialogues only
+		PRINTL [2] - General Dialogues only
+		PRINTL [3] - No, Don't wanna
+	ELSE
+		PRINTL 口上を表示しますか？(オプションでも変更できます)
+		PRINTL [0] - 口上+地の文を表示する
+		PRINTL [1] - 口上のみ表示する
+		PRINTL [2] - 地の文のみ表示する
+		PRINTL [3] - 口上も地の文も表示しない
+	ENDIF
+	BINPUT
+	SELECTCASE RESULT
+		CASE 0
+			OPTION:地の文表示 = 1
+			OPTION:口上表示 = 1
+		CASE 1
+			OPTION:地の文表示 = 0
+			OPTION:口上表示 = 1
+		CASE 2
+			OPTION:地の文表示 = 1
+			OPTION:口上表示 = 0
+		CASE 3
+			OPTION:地の文表示 = 0
+			OPTION:口上表示 = 0
+	ENDSELECT
+ENDIF
+
 
 @PLAYER_CUSTOM, ARG = -1
 #DIM DYNAMIC LCOUNT
