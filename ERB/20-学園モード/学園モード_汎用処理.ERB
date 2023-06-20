@@ -232,6 +232,9 @@ SELECTCASE 選出タイプ
 			ARRAYSHIFT 候補, 1, クラスメイト:LCOUNT
 		NEXT
 		ARRAYCOPY "クラスメイト", "候補"
+		FOR LCOUNT, 0, 5
+			出現率:(候補:LCOUNT) = -1
+		NEXT
 ENDSELECT
 
 RETURN 候補:0, 候補:1, 候補:2, 候補:3, 候補:4
@@ -242,6 +245,8 @@ RETURN 候補:0, 候補:1, 候補:2, 候補:3, 候補:4
 #DIM DYNAMIC 候補, 5
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC 出現率記録用, 1000
+#DIM DYNAMIC 乱数
 
 ;上のとほぼ同じだが、こちらは学校ごとではなく全体でグループを作る
 ;ただし学校が同じでもない、相性が良いわけでもない、何も接点の無いキャラはグループにならない
@@ -265,9 +270,13 @@ ENDIF
 ;番号が変わるので対象の値をNOにしておく
 対象 = NO:対象
 
+ARRAYCOPY "出現率", "出現率記録用"
+
 ;キャラの順番をシャッフルする
 FOR LCOUNT, 1, CHARANUM
-	SWAPCHARA LCOUNT, RAND(LCOUNT, CHARANUM)
+	乱数 = RAND(LCOUNT, CHARANUM)
+	SWAPCHARA LCOUNT, 乱数
+	SWAP 出現率記録用:LCOUNT, 出現率記録用:乱数
 NEXT
 
 SELECTCASE 選出タイプ
@@ -279,7 +288,7 @@ SELECTCASE 選出タイプ
 			SIF LCOUNT == GETCHARA(対象)
 				CONTINUE
 			;既にグループ候補の場合は入れない
-			SIF 出現率:LCOUNT == -1
+			SIF 出現率記録用:LCOUNT == -1
 				CONTINUE
 			;現在地が確定してる場合も無理
 			SIF CSTR:LCOUNT:現在地 != ""
