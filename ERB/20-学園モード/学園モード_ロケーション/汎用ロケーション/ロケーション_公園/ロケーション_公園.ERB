@@ -54,3 +54,76 @@ FOR LCOUNT, 始点, 終点
 			ENDIF
 	ENDSELECT
 NEXT
+
+@公園_専用コマンド
+SIF 同行者
+	CALL COLUMNPRINTL, 0, @"　[  0] - %CALLNAME:同行者%を茂みに連れ込む"
+
+@公園_専用コマンド_INPUT
+SELECTCASE CRESULT:1
+	CASE 0
+		IF 好感度:同行者:既成事実 >= 10 && CFLAG:同行者:倫理観 >= 50
+			CALL SCHOOL_KOJO, 同行者, "茂みに連れ込む_成功"
+		ELSEIF 好感度:同行者:セフレ >= 1000 && CFLAG:同行者:倫理観 >= 50
+			CALL SCHOOL_KOJO, 同行者, "茂みに連れ込む_成功"
+		ELSEIF TALENT:同行者:恋慕 && CFLAG:同行者:倫理観 >= 50
+			CALL SCHOOL_KOJO, 同行者, "茂みに連れ込む_成功"
+		ELSE
+			IF TALENT:同行者:幼稚 && 小中高(CSTR:同行者:在校) == "小"
+				CALL SCHOOL_KOJO, 同行者, "茂みに連れ込む_成功"
+			ELSE
+				CALL SCHOOL_KOJO, 同行者, "茂みに連れ込む_失敗"
+				CALL 好感度上昇, 同行者, "友情", -20
+				CALL 好感度上昇, 同行者, "ときめき", -20
+				CALL 好感度上昇, 同行者, "セフレ", 5
+				RETURN 1
+			ENDIF
+		ENDIF
+		野外プレイ中 = 1
+		TARGET = 同行者
+		CALL SCHOOL_KOJO, 同行者, "青姦_行為前"
+		CALL TRAIN_SCHOOL, "青姦"
+		CALL CHECKDRAWLINE
+		CALL SCHOOL_KOJO, 同行者, "青姦_行為後"
+		CALL 好感度上昇, 同行者, "友情", 30
+		CALL 好感度上昇, 同行者, "ときめき", ときめき増加量*5
+		CALL 好感度上昇, 同行者, "セフレ", 50
+		CALL 好感度上昇, 同行者, "既成事実", 1
+		SIF !TALENT:同行者:恋慕
+			CFLAG:同行者:倫理観 += 2
+		CFLAG:同行者:倫理観 += 2
+		野外プレイ中 = 0
+		TARGET = -1
+		RETURN 1
+ENDSELECT
+
+@SCHOOL_MESSAGE_茂みに連れ込む_成功
+IF 好感度:既成事実 >= 10
+	PRINTFORMW %CALLNAME:TARGET%を茂みに連れ込むと、%CALLNAME:PLAYER%と同じことを考えていたのか何も言わずに激しく求めてきた
+ELSEIF 好感度:セフレ >= 1000
+	PRINTFORMW %CALLNAME:TARGET%を茂みに連れ込むと、%CALLNAME:PLAYER%の目論見を察した%CALLNAME:TARGET%も乗り気で身を寄せてきた
+ELSEIF TALENT:恋慕
+	PRINTFORMW %CALLNAME:TARGET%は茂みで事を進めようとする%CALLNAME:PLAYER%に少し戸惑ったが、%CALLNAME:PLAYER%を突き放すこともできずそれに応じた
+ELSE
+	SIF TALENT:幼稚 && 小中高(CSTR:同行者:在校) == "小"
+		PRINTFORMW %CALLNAME:TARGET%を茂みに連れ込み、意味も分からず不思議がるその体にいたずらをすることにした
+ENDIF
+
+@SCHOOL_MESSAGE_茂みに連れ込む_失敗
+IF 好感度:既成事実 >= 10 || 好感度:セフレ >= 1000 || TALENT:恋慕
+	PRINTFORMW %CALLNAME:TARGET%を茂みに連れ込んで行為を迫ったが、外ではできないと静止されてしまった……
+ELSE
+	PRINTFORMW %CALLNAME:TARGET%に人目に付かない場所に行こうと提案したが、%CALLNAME:PLAYER%の劣情を察した%CALLNAME:TARGET%はそそくさと逃げ出してしまった……
+ENDIF
+
+;上記のがあるので多分必要ない
+@SCHOOL_MESSAGE_青姦_行為前
+DRAWLINE
+
+@SCHOOL_MESSAGE_青姦_行為後
+IF 好感度:既成事実 >= 10 || 好感度:セフレ >= 1000 || TALENT:恋慕
+	PRINTFORMW %CALLNAME:TARGET%は誰も見ていないことを確認すると、何事も無かったように%CALLNAME:PLAYER%と人目の多い場所に戻った
+ELSE
+	SIF TALENT:幼稚 && 小中高(CSTR:同行者:在校) == "小"
+		PRINTFORMW %CALLNAME:TARGET%は自分がされたことの意味もよく分かっていないようだが、悪い気はしないらしく相変わらず%CALLNAME:PLAYER%に懐いている
+ENDIF

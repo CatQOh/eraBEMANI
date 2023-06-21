@@ -561,6 +561,8 @@ ENDIF
 ;なんか全体的に数値が重く感じたので2倍にしてみる
 #DIM DYNAMIC 倍率 = 200
 #DIM DYNAMIC 欲望計算用
+#DIM DYNAMIC 目標値
+#DIM DYNAMIC 欲望上昇済
 
 ;上昇値は既成事実以外は5刻みで渡されるはず
 ;なので倍率は20刻みになるのがちょうどいい
@@ -607,10 +609,10 @@ SELECTCASE 好感度種類
 					SIF TALENT:PLAYER:小柄体型
 						倍率 += 20
 				CASE "恋心"
-					SIF TALENT:PLAYER:恋心 == NO:PLAYER
+					SIF TALENT:対象:恋心 == NO:PLAYER
 						倍率 += 20
 				CASE "既婚者"
-					SIF TALENT:PLAYER:既婚者 == NO:PLAYER
+					SIF TALENT:対象:既婚者 == NO:PLAYER
 						倍率 += 40
 			ENDSELECT
 		NEXT
@@ -657,13 +659,13 @@ SELECTCASE 好感度種類
 					SIF TALENT:PLAYER:小柄体型
 						倍率 += 20
 				CASE "恋心"
-					IF TALENT:PLAYER:恋心 == NO:PLAYER
+					IF TALENT:対象:恋心 == NO:PLAYER
 						倍率 += 20
 					ELSE
 						倍率 -= 40
 					ENDIF
 				CASE "既婚者"
-					IF TALENT:PLAYER:既婚者 == NO:PLAYER
+					IF TALENT:対象:既婚者 == NO:PLAYER
 						倍率 += 40
 					ELSE
 						倍率 -= 60
@@ -688,10 +690,10 @@ SELECTCASE 好感度種類
 					SIF TALENT:PLAYER:小柄体型
 						倍率 -= 20
 				CASE "恋心"
-					SIF TALENT:PLAYER:恋心 == NO:PLAYER
+					SIF TALENT:対象:恋心 == NO:PLAYER
 						倍率 += 20
 				CASE "既婚者"
-					SIF TALENT:PLAYER:既婚者 == NO:PLAYER
+					SIF TALENT:対象:既婚者 == NO:PLAYER
 						倍率 += 40
 			ENDSELECT
 		NEXT
@@ -716,10 +718,10 @@ SELECTCASE 好感度種類
 					SIF TALENT:PLAYER:小柄体型
 						倍率 += 20
 				CASE "恋心"
-					SIF TALENT:PLAYER:恋心 == NO:PLAYER
+					SIF TALENT:対象:恋心 == NO:PLAYER
 						倍率 += 20
 				CASE "既婚者"
-					SIF TALENT:PLAYER:既婚者 == NO:PLAYER
+					SIF TALENT:対象:既婚者 == NO:PLAYER
 						倍率 += 40
 			ENDSELECT
 		NEXT
@@ -767,13 +769,13 @@ SELECTCASE 好感度種類
 					SIF TALENT:PLAYER:小柄体型
 						倍率 += 20
 				CASE "恋心"
-					IF TALENT:PLAYER:恋心 == NO:PLAYER
+					IF TALENT:対象:恋心 == NO:PLAYER
 						倍率 += 20
 					ELSE
 						倍率 -= 60
 					ENDIF
 				CASE "既婚者"
-					IF TALENT:PLAYER:既婚者 == NO:PLAYER
+					IF TALENT:対象:既婚者 == NO:PLAYER
 						倍率 += 40
 					ELSE
 						倍率 -= 80
@@ -793,6 +795,9 @@ ENDIF
 SIF SIGN(上昇値) == 1
 	上昇値 = 上昇値*倍率/100
 
+SIF 上昇値 == 0
+	RETURN
+
 好感度:対象:好感度種類 += 上昇値
 
 IF (SEX(対象) == 2 || NAME:対象 == "ハニー") && 好感度種類 == "舎弟"
@@ -809,46 +814,42 @@ ENDIF
 
 欲望計算用 = 好感度:対象:友情+好感度:対象:セフレ*2+好感度:対象:既成事実*100
 
-IF 欲望計算用 >= 100 && ABL:対象:欲望 < 1
-	ABL:対象:欲望++
-	PRINTFORML %NAME:対象%の欲望が1になった
-ENDIF
-IF 欲望計算用 >= 300 && ABL:対象:欲望 < 2
-	ABL:対象:欲望++
-	PRINTFORML %NAME:対象%の欲望が2になった
-ENDIF
-IF 欲望計算用 >= 500 && ABL:対象:欲望 < 3
-	ABL:対象:欲望++
-	PRINTFORML %NAME:対象%の欲望が3になった
-ENDIF
-IF 欲望計算用 >= 700 && ABL:対象:欲望 < 4
-	ABL:対象:欲望++
-	PRINTFORML %NAME:対象%の欲望が4になった
-ENDIF
-IF 欲望計算用 >= 1000 && ABL:対象:欲望 < 5
-	ABL:対象:欲望++
-	PRINTFORML %NAME:対象%の欲望が5になった
-ENDIF
-IF 欲望計算用 >= 1500 && ABL:対象:欲望 < 6
-	ABL:対象:欲望++
-	PRINTFORML %NAME:対象%の欲望が6になった
-ENDIF
-IF 欲望計算用 >= 2000 && ABL:対象:欲望 < 7
-	ABL:対象:欲望++
-	PRINTFORML %NAME:対象%の欲望が7になった
-ENDIF
-IF 欲望計算用 >= 3000 && ABL:対象:欲望 < 8
-	ABL:対象:欲望++
-	PRINTFORML %NAME:対象%の欲望が8になった
-ENDIF
-IF 欲望計算用 >= 4000 && ABL:対象:欲望 < 9
-	ABL:対象:欲望++
-	PRINTFORML %NAME:対象%の欲望が9になった
-ENDIF
-IF 欲望計算用 >= 5000 && ABL:対象:欲望 < 10
-	ABL:対象:欲望++
-	PRINTFORML %NAME:対象%の欲望が10になった
-ENDIF
+DO
+	SELECTCASE ABL:対象:欲望
+		CASE 0
+			目標値 = 300
+		CASE 1
+			目標値 = 800
+		CASE 2
+			目標値 = 1200
+		CASE 3
+			目標値 = 1800
+		CASE 4
+			目標値 = 3000
+		CASE 5
+			目標値 = 4200
+		CASE 6
+			目標値 = 5600
+		CASE 7
+			目標値 = 7000
+		CASE 8
+			目標値 = 8500
+		CASE 9
+			目標値 = 10000
+		CASEELSE
+			BREAK
+	ENDSELECT
+
+	IF 欲望計算用 >= 目標値
+		ABL:対象:欲望++
+		欲望上昇済 = 1
+	ELSE
+		BREAK
+	ENDIF
+LOOP 1
+
+SIF 欲望上昇済
+	PRINTFORML %NAME:対象%の欲望が{ABL:対象:欲望}になった
 
 ;;;連絡先入手とメッセージ表示
 @連絡先入手, 対象
@@ -1045,7 +1046,7 @@ FOR LCOUNT, 0, VARSIZE("TRAINNAME")
 		ENDSELECT
 	ENDIF
 	;トイレ限定
-	IF GROUPMATCH(場所, "トイレ")
+	IF GROUPMATCH(場所, "トイレ", "青姦")
 		SELECTCASE TRAINNAME:LCOUNT
 			CASE "放尿"
 				COMFILTER:LCOUNT = 0
@@ -1053,7 +1054,7 @@ FOR LCOUNT, 0, VARSIZE("TRAINNAME")
 	ENDIF
 
 	SELECTCASE 場所
-		CASE "自宅", "ホテル", "トイレ", "保健室", "体育倉庫", "校長室"
+		CASE "自宅", "ホテル", "トイレ", "保健室", "体育倉庫", "校長室", "青姦"
 		CASEELSE
 			;#;THROW 「%場所%」のコマンドフィルターが設定されていない
 	ENDSELECT
