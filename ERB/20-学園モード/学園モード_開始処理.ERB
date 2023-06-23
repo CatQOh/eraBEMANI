@@ -9,6 +9,7 @@
 #DIM DYNAMIC キャラ選択フラグ, 10000
 #DIMS DYNAMIC 固定用学校, 4
 #DIM DYNAMIC 運命の人選択
+#DIM DYNAMIC 赴任先学年
 
 通貨単位 = 円
 
@@ -48,12 +49,14 @@ NEXT
 ;舞ヶ原高校
 
 ;固定用の学校は事前に決めておく
-固定用学校:0 = %学園ランダム("小")%
-固定用学校:1 = %学園ランダム("中")%
-固定用学校:2 = %学園ランダム("高")%
+IF 固定用学校:0 == ""
+	固定用学校:0 = %学園ランダム("小")%
+	固定用学校:1 = %学園ランダム("中")%
+	固定用学校:2 = %学園ランダム("高")%
 
-;教師の赴任先はどれかランダム
-固定用学校:3 = %固定用学校:RAND(0, 3)%
+	;教師の赴任先はどれかランダム
+	固定用学校:3 = %固定用学校:RAND(0, 3)%
+ENDIF
 
 ;マジックアカデミー以外で固定の教師陣
 
@@ -606,6 +609,8 @@ FOR LCOUNT, 0, VARSIZE("学校名")
 	RESETCOLOR
 NEXT
 PRINTL
+PRINTFORML 　[90] キャラ固定用の小学校を選択する(現在:%固定用学校:0%) [91] キャラ固定用の中学校を選択する(現在:%固定用学校:1%)
+PRINTFORML 　[92] キャラ固定用の高校を選択する(現在:%固定用学校:2%) [93] キャラ固定用の赴任先を選択する(現在:%固定用学校:3%)
 IF 運命の人選択
 	PRINTFORM 　[96] 運命の人を選ばない
 ELSE
@@ -680,6 +685,26 @@ SELECTCASE RESULT
 				RESULT = LRESULT
 				GOTO キャラ一覧
 		ENDSELECT
+		GOTO 学校一覧表示
+	CASE 90 TO 93
+		PRINTL 学校を選択してください
+		LRESULT = RESULT
+		FOR LCOUNT, 0, VARSIZE("学校名")
+			SIF LRESULT == 90 && 小中高(学校名:LCOUNT) != "小"
+				CONTINUE
+			SIF LRESULT == 91 && 小中高(学校名:LCOUNT) != "中"
+				CONTINUE
+			SIF LRESULT == 92 && 小中高(学校名:LCOUNT) != "高"
+				CONTINUE
+			SIF LRESULT == 93 && !GROUPMATCH(小中高(学校名:LCOUNT), "小", "中", "高")
+				CONTINUE
+			PRINTFORML [{LCOUNT, 2}] %学校名:LCOUNT%
+		NEXT
+		PRINTL [100] 戻る
+		BINPUT
+		SIF RESULT == 100
+			GOTO 学校一覧表示
+		固定用学校:(LRESULT-90) = %学校名:RESULT%
 		GOTO 学校一覧表示
 	CASE 96
 		SIF 運命の人選択
