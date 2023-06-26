@@ -1,0 +1,66 @@
+﻿@ロケーション条件_居酒屋
+RETURN -1
+
+@ロケーション可否_居酒屋
+;時間帯などで使えない場合は理由を書く
+SIF !GROUPMATCH(ターン, "夕", "夜")
+	ロケーション可否 = 営業準備中
+
+@バイト条件_居酒屋
+;バイトの時間帯などを書く
+バイト要項 = 夕方、夜の時間帯で募集
+;バイト可能かどうかの条件式
+SIF GROUPMATCH(ターン, "夕", "夜")
+	バイト可能 = 1
+
+RETURN -1
+
+@出現キャラ_居酒屋
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC グループ数
+#DIM DYNAMIC 始点
+#DIM DYNAMIC 終点
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC 人数
+
+;NOではなく登録番号で指定する
+IF データベース参照中
+	始点 = データベース参照中
+	終点 = データベース参照中+1
+ELSE
+	始点 = 1
+	終点 = CHARANUM
+ENDIF
+
+FOR LCOUNT, 始点, 終点
+	;学校などに行ってるキャラは居ない
+	SIF CSTR:LCOUNT:現在地 != "" && !データベース参照中
+		CONTINUE
+	;教師陣や学校行ってないキャラが集まる
+	IF RANDPER(5) && グループ数 < 10
+		;学生は来ない
+		SIF CSTR:LCOUNT:在校 != ""
+			CONTINUE
+		;相性の良いキャラと2～5人で行動している
+		VARSET RESULT
+		CALL グループキャラ選出, LCOUNT
+		;2人以上揃わなかったら無かったことにする
+		SIF SUMARRAY(RESULT) == 0
+			CONTINUE
+		集団行動:グループ数:0 = LCOUNT
+		人数 = 1
+		FOR LCOUNT2, 0, 4
+			IF CSTR:(RESULT:LCOUNT2):在校 == ""
+				集団行動:グループ数:人数 = RESULT:LCOUNT2
+				人数++
+			ENDIF
+		NEXT
+		グループ数++
+	ELSEIF 出現率:LCOUNT >= 0
+		IF CHARANAMEF(LCOUNT) == "ヨシダさん"
+			出現率:LCOUNT = 100
+		ELSEIF TALENT:LCOUNT:酒豪 && CSTR:LCOUNT:在校 == "" && !TALENT:LCOUNT:小柄体型
+			出現率:LCOUNT = 10
+		ENDIF
+	ENDIF
+NEXT
