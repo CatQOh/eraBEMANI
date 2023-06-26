@@ -1,0 +1,99 @@
+﻿@宿泊イベント
+TARGET = 同行者
+
+DRAWLINE
+IF CSTR:目的 == "セックス"
+	選択肢 = 0
+	GOTO 本番
+ENDIF
+PRINTFORMW %CALLNAME:PLAYER%の家に泊まる%CALLNAME:TARGET%と他愛もない会話や遊びをしている。これからどうしようか
+PRINTL [0] - ロマンチックな雰囲気を作る
+PRINTL [1] - 普通に遊んで寝る
+BINPUT
+選択肢 = RESULT
+SELECTCASE RESULT
+	CASE 0
+		IF TALENT:恋慕
+		ELSEIF 好感度:ときめき >= 1000 && 好感度:ときめき > 好感度:セフレ
+		ELSEIF 好感度:セフレ >= 1000
+		ELSE
+			CALL SCHOOL_KOJO, TARGET, "自宅に宿泊"
+			CALL 好感度上昇, TARGET, "友情", 5
+			CALL 好感度上昇, TARGET, "ときめき", 5
+			RETURN 1
+		ENDIF
+		$本番
+		CALL SCHOOL_KOJO, TARGET, "自宅に宿泊"
+		CALL TRAIN_SCHOOL, "自宅"
+		CALL CHECKDRAWLINE
+		CALL SCHOOL_KOJO, TARGET, "宿泊_行為後"
+		IF 好感度:ときめき >= 1000 && 好感度:ときめき > 好感度:セフレ
+			CALL 恋仲, TARGET
+			WAIT
+		ENDIF
+		CALL 好感度上昇, TARGET, "友情", 30
+		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
+		CALL 好感度上昇, TARGET, "セフレ", 30
+		CALL 好感度上昇, TARGET, "既成事実", 1
+		SIF !TALENT:恋慕
+			CFLAG:倫理観 += 1
+		RETURN 1
+	CASE 1
+		CALL SCHOOL_KOJO, TARGET, "自宅に宿泊"
+		CALL 好感度上昇, TARGET, "友情", 20
+		CALL 好感度上昇, TARGET, "ときめき", 10
+		RETURN 1
+ENDSELECT
+
+@SCHOOL_MESSAGE_自宅に宿泊
+SELECTCASE 選択肢
+	CASE 0
+		IF CSTR:目的 == "セックス"
+			PRINTFORMW %CALLNAME:PLAYER%の家に訪れた%CALLNAME:TARGET%は、本来の目的通りベッドの上で行為を始めた
+		ELSEIF TALENT:恋慕
+			PRINTFORM %CALLNAME:TARGET%は%CALLNAME:PLAYER%が雰囲気を作っていることに気づくと、
+			IF 好感度:既成事実
+				PRINTFORMW それまでの遊びとは違う熱の入ったスキンシップの後に行為に及んだ
+			ELSE
+				IF TALENT:処女 || TALENT:童貞
+					PRINTW 少し緊張した面持ちで誘いに乗ってきた
+				ELSE
+					PRINTFORMW %CALLNAME:PLAYER%との行為を心待ちにしていたかのように誘いに乗ってきた
+				ENDIF
+			ENDIF
+		ELSEIF 好感度:ときめき >= 1000 && 好感度:ときめき > 好感度:セフレ
+			IF 好感度:既成事実
+				PRINTFORMW %CALLNAME:PLAYER%は%CALLNAME:TARGET%に良い雰囲気を作ってみるが、%CALLNAME:TARGET%はそれに応じるにも関わらずいつもと様子が違う。心境の変化が感じられる
+			ELSE
+				PRINTFORMW %CALLNAME:TARGET%は%CALLNAME:PLAYER%の話術に困惑した様子だが、拒否するつもりは無いらしい。二人の長い夜が始まった
+			ENDIF
+		ELSEIF 好感度:セフレ >= 1000
+			PRINTFORM %CALLNAME:TARGET%は%CALLNAME:PLAYER%が雰囲気を作っていることに気づくと、
+			IF 好感度:既成事実
+				PRINTFORMW ごく当たり前のように二人の情事を始める流れになった
+			ELSE
+				PRINTFORMW 普段からの%CALLNAME:PLAYER%とのやり取りの間で気になっていたことを実践するつもりになったようだ
+			ENDIF
+		ELSE
+			PRINTFORMW それらしい雰囲気を作ってみたものの、%CALLNAME:TARGET%は気づかずに夜も更けそのまま眠ってしまった
+		ENDIF
+	CASE 1
+		PRINTFORMW %CALLNAME:PLAYER%と%CALLNAME:TARGET%はそのまま楽しく夜更かししながら眠りについた
+ENDSELECT
+
+;宿泊_行為前にあたる地の文は自宅に宿泊で表示
+@SCHOOL_MESSAGE_宿泊_行為後
+IF TALENT:恋慕
+	PRINTFORMW 行為を終えた%CALLNAME:PLAYER%と%CALLNAME:TARGET%はお風呂で体を洗い流し、布団の中で愛を囁き合いながら眠りについた
+ELSEIF 好感度:ときめき >= 1000 && 好感度:ときめき > 好感度:セフレ
+	PRINTFORMW 行為を終えると、%CALLNAME:TARGET%は以前から%CALLNAME:PLAYER%のことが気になっていたという心中を明かし、%CALLNAME:PLAYER%はそれに応じた
+ELSEIF 好感度:セフレ >= 1000
+	PRINTFORMW %CALLNAME:PLAYER%と%CALLNAME:TARGET%は汗ばんだ体をお風呂で洗い流すと、用意していた布団で別々に眠りについた
+ENDIF
+
+@SCHOOL_MESSAGE_起床
+IF TALENT:恋慕
+	PRINTFORMW %CALLNAME:PLAYER%と%CALLNAME:TARGET%は共に朝の支度をしている。まるで本当の夫婦のようだ
+ELSE
+	PRINTFORMW %CALLNAME:PLAYER%と%CALLNAME:TARGET%はどちらともなく起床し、朝の支度を整えた
+ENDIF
