@@ -17,6 +17,8 @@
 ;;10 = 逆レイプで射精
 ;--------------------------------------
 ;11 = 3P助手射精
+;12 = 臍中出し
+;13 = 乳管挿入
 
 IF !PENIS(PLAYER)  && !TALENT:PLAYER:去勢済み
 	BASE:PLAYER:射精 = 0
@@ -102,6 +104,12 @@ SELECTCASE ARG
 	;3P助手射精
 	CASE 11
 		PRINTFORML %CALLNAME:ASSI%\@ 射精強度 >= 2 ? 大量 #\@射精\@ 避妊具(ASSI) ? (避妊具) #\@
+	;臍中出し
+	CASE 12
+		PRINTFORML \@ PLAYER == ASSI ? %CALLNAME:ASSI% #\@\@ 射精強度 >= 2 ? 大量 #\@臍内射精\@ 避妊具(ASSI) ? (避妊具) #\@
+	;乳管中出し
+	CASE 13
+		PRINTFORML \@ PLAYER == ASSI ? %CALLNAME:ASSI% #\@\@ 射精強度 >= 2 ? 大量 #\@乳管内射精\@ 避妊具(ASSI) ? (避妊具) #\@
 ENDSELECT
 
 NOWEX:PLAYER:射精 = 射精強度
@@ -294,6 +302,8 @@ SIF 射精量 <= 0
 ;;10 = 逆レイプで射精
 ;--------------------------------------
 ;11 = 3P助手射精
+;12 = 臍中出し
+;13 = 乳管中出し
 
 ;コマンドごとの分岐
 SELECTCASE 射精先
@@ -474,6 +484,32 @@ SELECTCASE 射精先
 	;3P助手射精
 	CASE 11
 		;
+	;臍中出し
+	CASE 12
+		IF !TEQUIP:PLAYER:コンドーム
+			SIF !CFLAG:臍に中出しされた経験
+				CALL EXPUP, "異常経験", 1
+			CFLAG:臍に中出しされた経験++
+			;獣人、獣による催淫
+			SELECTCASE CSTR:射精したキャラ:種族
+				CASE "獣人", "獣"
+					CFLAG:射精されるキャラ:残数 += ((CFLAG:射精されるキャラ:媚薬%5)+計算用射精量)/5
+					CFLAG:射精されるキャラ:媚薬 += 計算用射精量
+			ENDSELECT
+		ENDIF
+	;乳管中出し
+	CASE 13
+		IF !TEQUIP:PLAYER:コンドーム
+			SIF !CFLAG:乳管に中出しされた経験
+				CALL EXPUP, "異常経験", 1
+			CFLAG:乳管に中出しされた経験++
+			;獣人、獣による催淫
+			SELECTCASE CSTR:射精したキャラ:種族
+				CASE "獣人", "獣"
+					CFLAG:射精されるキャラ:残数 += ((CFLAG:射精されるキャラ:媚薬%5)+計算用射精量)/5
+					CFLAG:射精されるキャラ:媚薬 += 計算用射精量
+			ENDSELECT
+		ENDIF
 ENDSELECT
 
 IF 射精したキャラ == MASTER
@@ -493,7 +529,7 @@ SIF TALENT:アニマル && 射精先 == 4
 	CFLAG:PLAYER:動物に舐められて射精した経験++
 
 ;射精回数カウント
-EX:(射精したキャラ):射精++
+EX:射精したキャラ:射精++
 
 ;経験増加
 IF EXP:射精したキャラ:射精経験 == 0 && SEX(射精したキャラ) == 2
@@ -534,8 +570,8 @@ SIF BASE:射精したキャラ:射精 >= MAXBASE:射精したキャラ:射精
 IF 射精されるキャラ == TARGET
 	;射精時に中毒、達成のソースを追加
 	SELECTCASE 射精先
-		;膣、アナル
-		CASE 1, 2
+		;膣、アナル、臍、乳管
+		CASE 1, 2, 12, 13
 			増加量 = 射精量*400
 		;口、胸、顔射
 		CASE 4, 5, 8
@@ -587,7 +623,7 @@ IF !TEQUIP:射精したキャラ:コンドーム
 		CASE TARGET
 			SELECTCASE 射精先
 				;中出し
-				CASE 1, 2
+				CASE 1, 2, 12, 13
 					魔力回復量 += MAXBASE:魔力/30
 					;スライムなら感染する
 					SIF TALENT:射精したキャラ:スライム

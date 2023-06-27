@@ -1,0 +1,282 @@
+﻿@USERCOM_ABLE_臍挿入, ARG
+#FUNCTION
+
+コマンド実行条件 += "臍拡張経験100以上必要"
+SIF EXP:臍拡張経験 < 100
+	COMRESULT = 0
+コマンド実行条件 += "睡眠中は実行できない/"
+SIF TEQUIP:睡眠
+	COMRESULT = 0
+コマンド実行条件 += "対象が[アニマル]の場合は実行できない/"
+SIF TALENT:アニマル
+	COMRESULT = 0
+;ゲーセンに居る場合はトイレじゃないとできない
+コマンド実行条件 += "ゲーセンではトイレじゃないと実行できない/"
+SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
+	COMRESULT = 0
+;上級売春中は方針がハード、SMじゃないとダメ
+コマンド実行条件 += "上級売春中は経営方針がハードor狂気じゃないと実行できない/"
+SIF 上級売春中 && !GROUPMATCH(BR:方針, 2, 4)
+	COMRESULT = 0
+;調教者がペニス有り、もしくはペニスバンドがないとダメ
+コマンド実行条件 += "実行者に男性器、もしくはペニスバンドが必要/"
+SIF !PENIS(PLAYER) && !TEQUIP:PLAYER:ペニスバンド
+	COMRESULT = 0
+;Ｐ使用中か使用不可のときはダメ
+コマンド実行条件 += "実行者の男性器に道具仕様中は実行できない/"
+SIF Ｐ使用中(PLAYER) || Ｐ使用不可(PLAYER)
+	COMRESULT = 0
+;小人体型持ちは、調教者と調教対象が小人体型ならOK
+コマンド実行条件 += "対象が[小人体型]の場合、実行者に[小人体型]か、主人に[禁断の知識]が必要/"
+SIF TALENT:小人体型 && !TALENT:PLAYER:小人体型
+	COMRESULT = 0
+;触手調教中はダメ
+コマンド実行条件 += "触手召喚中は実行できない/"
+SIF TEQUIP:触手
+	COMRESULT = 0
+;お風呂場プレイ中はプレイマットが無いとダメ
+コマンド実行条件 += "お風呂場ではプレイマット(アイテム)が無いと実行できない/"
+IF TEQUIP:お風呂場
+	SIF !ITEM:プレイマット
+		COMRESULT = 0
+ENDIF
+
+RETURNF COMRESULT
+
+@実行判定_臍挿入
+#DIM DYNAMIC 実効値, 2
+#DIM DYNAMIC LCOUNT
+;-------------------------------------------------
+;実行判定処理
+;-------------------------------------------------
+;縄で縛られている場合は無視（縄が無い時のみ実行判定を行う）
+SIF TEQUIP:縄
+	RETURN 1
+
+;すべての命令に共通の要素を考慮
+;(従順が高いと命令に従いやすいなど)
+CALL COM_ORDER
+実効値 = RESULT
+
+;ABL:欲望
+IF ABL:欲望
+	実効値 += ABL:欲望*3
+	PRINTFORM +欲望LV{ABL:欲望}({ABL:欲望*3})
+ENDIF
+;ABL:性交中毒
+IF ABL:性交中毒
+	実効値 += ABL:性交中毒
+	PRINTFORM +性交中毒LV{ABL:性交中毒}({ABL:性交中毒})
+ENDIF
+;快楽刻印
+IF MARK:快楽刻印
+	実効値 += MARK:快楽刻印*3
+	PRINTFORM +快楽刻印LV{MARK:快楽刻印}({MARK:快楽刻印*3})
+ENDIF
+;PALAM:潤滑（の不足）
+IF PALAM:潤滑 < PALAMLV:3
+	実効値 -= 5
+	PRINT -潤滑不足(5)
+ENDIF
+
+CALL COM_ORDER_欲情, 0
+実効値 += RESULT
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	実効値:1 = 0
+	SIF !TALENT:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "娼婦", "隷属"
+			実効値:1 = 10
+		CASE "淫乱", "服従"
+			実効値:1 = 5
+		CASE "恥じらい"
+			実効値:1 = -2
+		CASE "サキュバス"
+			実効値:1 = 20
+		CASE "マゾ", "倒錯的"
+			実効値:1 = 5
+	ENDSELECT
+	IF 実効値:1
+		PRINTFORM \@SIGN(実効値:1) == 1 ? + # - \@%TALENTNAME:LCOUNT%({ABS(実効値:1)})
+		実効値 += 実効値:1
+	ENDIF
+NEXT
+
+;媚薬
+IF TEQUIP:媚薬
+	実効値 += 6
+	PRINT +媚薬(6)
+ENDIF
+
+;PLAYERが搾精コンドーム付ける時無いと思う
+IF !TEQUIP:PLAYER:コンドーム && !TEQUIP:PLAYER:搾精コンドーム
+	IF ゲームモード() == "学園モード"
+		実効値 -= 50
+		PRINT -ゴム無し(50)
+	ELSEIF !CFLAG:陥落
+		実効値 -= 20
+		PRINT -ゴム無し(20)
+	ENDIF
+ENDIF
+
+実効値:1 = 0
+;精液の汚れ
+SIF GETBIT(STAIN:PLAYER:ペニス, 2)
+	実効値:1 += 5
+;アナルの汚れ
+SIF GETBIT(STAIN:PLAYER:ペニス, 3)
+	実効値:1 += 7
+;母乳
+SIF GETBIT(STAIN:PLAYER:ペニス, 4)
+	実効値:1 += 2
+;尿
+SIF GETBIT(STAIN:PLAYER:ペニス, 7)
+	実効値:1 += 4
+
+SIF !TALENT:汚れ無視
+	実効値:1 /= 3
+SIF TALENT:潔癖症
+	実効値:1 *= 2
+
+;汚れあり
+IF 実効値:1
+	実効値 -= 実効値:1
+	IF TALENT:汚れ無視
+		PRINT -汚れあり、汚れ無視
+	ELSEIF TALENT:潔癖症
+		PRINT -汚れあり、潔癖症
+	ELSE
+		PRINT -汚れあり
+	ENDIF
+	PRINTFORM ({実効値:1})
+ENDIF
+
+;20以上で実行
+CALL 実効値判定, 実効値, 40
+
+RETURN RESULT
+
+@COM_臍挿入
+#DIM DYNAMIC 増加量
+
+PRINTL 臍挿入
+
+SIF !TFLAG:実行判定無視
+	CALLFORM 実行判定_%SELECTCOMS%
+SIF !RESULT && !TFLAG:実行判定無視
+	RETURN 0
+
+;-------------------------------------------------
+;実行決定
+;-------------------------------------------------
+CALL KOJO_MESSAGE_COM
+
+[SKIPSTART]
+;童貞喪失
+IF TALENT:PLAYER:童貞
+	TALENT:PLAYER:童貞 = 0
+	IF TALENT:PLAYER:性転換済
+		CSTR:PLAYER:性転換童貞 = %NAME:TARGET%
+	ELSE
+		CSTR:PLAYER:童貞 = %NAME:TARGET%
+	ENDIF
+ENDIF
+[SKIPEND]
+
+;-------------------------------------------------
+;射精ゲージチェック（実行者）
+;-------------------------------------------------
+増加量 = 500
+;ABL:従順をみる
+増加量 += (増加量/10)*ABL:従順 - (増加量/10)*2
+
+;ABL:欲望をみる
+増加量 += (増加量/10)*ABL:欲望
+
+;PALAM:潤滑をみる
+増加量 += (GETPALAMLV(PALAM:潤滑, 4)-2)*(増加量/5)
+
+;プレイヤーのABL:Ｃ感覚をみる
+SELECTCASE ABL:PLAYER:Ｃ感覚
+	CASE 0
+		TIMES 増加量 , 1.00
+	CASE 1
+		TIMES 増加量 , 1.50
+	CASE 2
+		TIMES 増加量 , 2.00
+	CASE 3
+		TIMES 増加量 , 2.50
+	CASE 4
+		TIMES 増加量 , 3.50
+	CASEELSE
+		増加量 += 増加量*(ABL:PLAYER:Ｃ感覚-1)
+ENDSELECT
+
+;ABL:調教者の技巧をみる
+増加量 += (増加量/5)*ABL:PLAYER:技巧
+
+;ABL:技巧をみる
+増加量 += (増加量/10)*ABL:技巧
+
+
+CALL 射精ゲージ増加, 増加量, PLAYER
+
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+LOSEBASE:体力 += 150
+LOSEBASE:気力 += 200
+
+DOWNBASE:MASTER:体力 += 80
+DOWNBASE:MASTER:気力 += 50
+
+SOURCE:情愛 = 100
+SOURCE:苦痛 = 1500
+SOURCE:中毒 = 500
+SOURCE:露出 = 500
+SOURCE:反感 = 1000
+SOURCE:恭順 = 200
+SOURCE:不潔 = 300
+
+;汚れ
+SIF GET_STAIN(STAIN:PLAYER:ペニス, "精液", "アナル", "尿")
+	SOURCE:不潔 += 200
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:抑圧 || TALENT:抵抗
+	SOURCE:鬱屈 += 300
+
+CALL 特殊ソース処理_セックス
+
+;-------------------------------------------------
+;絶頂チェック
+;-------------------------------------------------
+CALL SOURCE_CHECK_CVAB
+
+;-------------------------------------------------
+;射精チェック
+;-------------------------------------------------
+CALL SAMEN_CHECK, 12
+CALL SAMEN_CHECK_T, 0
+
+CALL SAMEN_SHOOT, 12, NOWEX:PLAYER:射精
+CALL SAMEN_SHOOT_T, 0, NOWEX:射精
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL EXPUP_BASE, 2, 4
+
+CALL EXPUP, "臍拡張経験", 2
+
+;魔力回復
+SIF !避妊具(PLAYER)
+	CALL 魔力回復, 3
+
+RETURN 1
