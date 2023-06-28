@@ -1,40 +1,24 @@
-﻿@ロケーション条件_ジョニーズ
+﻿@ロケーション条件_猫カフェ
 RETURN -1
 
-@ロケーション可否_ジョニーズ
+@ロケーション可否_猫カフェ
 ;時間帯などで使えない場合は理由を書く
-SIF ターン == "朝"
+IF ターン == "朝"
 	ロケーション可否 = 営業準備中
+ELSEIF ターン == "夜"
+	ロケーション可否 = 猫たちはおねむ
+ENDIF
 
-@バイト条件_ジョニーズ
+@バイト条件_猫カフェ
 ;バイトの時間帯などを書く
-バイト要項 = 昼～夜のシフトで募集中。制服貸与
+バイト要項 = 昼、夕方のシフトで募集中
 ;バイト可能かどうかの条件式
-SIF GROUPMATCH(ターン, "昼", "夕", "夜")
+SIF GROUPMATCH(ターン, "昼", "夕")
 	バイト可能 = 1
 
 RETURN -1
 
-;バイト時に好感度が上がるキャラ
-@職場出現キャラ_ジョニーズ
-#DIM DYNAMIC 対象
-{
-#DIMS DYNAMIC 出現キャラ =
-"北見 エリカ",
-"クロノス",
-"カイロス",
-}
-
-対象 = GETCHARANAME(出現キャラ:(RAND:VARSIZE("出現キャラ")))
-
-CALL EXPUP, "料理経験", 2, PLAYER
-
-SIF 対象 > 0 && CSTR:対象:現在地 == ""
-	RETURN 対象
-
-RETURN 0
-
-@出現キャラ_ジョニーズ
+@出現キャラ_猫カフェ
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC グループ数
 #DIM DYNAMIC 始点
@@ -55,12 +39,10 @@ FOR LCOUNT, 始点, 終点
 		CONTINUE
 	;出現率:LCOUNT = {出現率(100分率)} で指定できる
 	SELECTCASE CHARANAMEF(LCOUNT)
-		;バイト組 50%
-		CASE "北見 エリカ", "クロノス", "カイロス", "おいわちゃん"
-		;お客さんたち メイド喫茶なのでメイドが来る（？？？）
+		;猫は下で出現率設定してるので猫以外で来そうなキャラ
 		{
-		CASE "ベリゼベス", "ニーソ姫", "恋刃", "ラッテ", "リエル", "グリム・リエル", "鬼蝮 ユリア", "葉和 とれび",
-			 "ラズ", "シフォン", "ソルト", "春日 咲子", "芽兎 めう"
+		CASE "北見 エリカ", "神崎 士朗", "ニクス", "雛月 理々奈", "シア", "ＴＡＭＡ", "サトウさん", "風雅", "大牙",
+			 "BisCo", "山形 まり花"
 		}
 			SIF 出現率:LCOUNT >= 0
 				出現率:LCOUNT = 20
@@ -82,11 +64,9 @@ FOR LCOUNT, 始点, 終点
 				ENDIF
 				グループ数++
 			ELSE
-				SIF TALENT:LCOUNT:食欲皆伝 && 出現率:LCOUNT >= 0
+				;猫が居る
+				SIF TALENT:LCOUNT:猫 && 出現率:LCOUNT >= 0
 					出現率:LCOUNT = 20
-				;Roots26キャラたち
-				SIF GROUPMATCH("Roots26", CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３) && 出現率:LCOUNT >= 0
-					出現率:LCOUNT = 25
 			ENDIF
 	ENDSELECT
 NEXT
