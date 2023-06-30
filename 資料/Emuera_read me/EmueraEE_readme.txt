@@ -1,5 +1,5 @@
-﻿タイトル：EmueraEM+EE 最終更新日:2023/06/08
-バージョン：1.824+v18+EMv17+EEv36
+﻿タイトル：EmueraEM+EE 最終更新日:2023/06/30
+バージョン：1.824+v18+EMv17+EEv37
 改変者：Enter
 元となったアプリケーション：Emuera1.824+v18（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)、Emuera.EM（EvilMask制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
@@ -14,7 +14,7 @@ docs：https://evilmask.gitlab.io/emuera.em.doc/
 
 ※使用しているセキュリティソフト次第では危険なファイルとして警告・削除される場合があります
 　セキュリティソフトの設定を変更して使用することはできますが、自己責任でお願いします
-　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/506507cf9da72c47dd22322cd254ef2300fe74fc1c839a57ea2f94bfa0c86b17
+　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/6b1e48a50bf56d0a138d0677c356b929313d424089766dcd85c928bab616b29b
 
 [v12にてEmuera.EMと機能統合。上記リンクのドキュメント(docs)を参照]
 [EMv8+EEv15にてhtml形式のドキュメントを同梱。追加機能などがより詳しく書かれています]
