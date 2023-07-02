@@ -7,6 +7,8 @@
 "班田 みみこ"
 }
 
+ロケーション名記録用 = Cafe VOLTE
+
 FOR LCOUNT, 0, VARSIZE("条件用キャラ")
 	IF GETCHARANAME(条件用キャラ:LCOUNT) > 0
 		SIF 好感度合計(GETCHARANAME(条件用キャラ:LCOUNT)) >= 100
@@ -127,3 +129,59 @@ FOR LCOUNT, 始点, 終点
 
 	ENDSELECT
 NEXT
+
+@Cafe_VOLTE_専用コマンド
+IF 同行者
+	IF MONEY < 1000
+		CALL COLUMNPRINTL, 0, @" [---] - %CALLNAME:同行者%とお茶する", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, @" [  2] - %CALLNAME:同行者%とお茶する"
+	ENDIF
+ELSE
+	IF MONEY < 500
+		CALL COLUMNPRINTL, 0, "　[---] - コーヒーを注文する(500＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, "　[  0] - コーヒーを注文する(500＄)"
+	ENDIF
+	IF MONEY < 1000
+		CALL COLUMNPRINTL, 0, "　[---] - コーヒーと軽食を注文する(1000＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, "　[  1] - コーヒーと軽食を注文する(1000＄)"
+	ENDIF
+ENDIF
+
+@Cafe_VOLTE_専用コマンド_INPUT
+#DIM DYNAMIC 対象
+
+選択肢 = CRESULT:1
+IF CSTR:GETCHARANAME("班田 みみこ"):現在地 != "" && RAND:2
+	対象 = GETCHARANAME("班田 みみこ")
+ELSE
+	対象 = GETCHARANAME("埴仁 虎子")
+ENDIF
+SELECTCASE CRESULT:1
+	CASE 0
+		CALL SCHOOL_KOJO, 対象, "Cafe_VOLTEで注文"
+		CALL 好感度上昇, 対象, "友情", 15
+		MONEY -= 500
+	CASE 1
+		CALL SCHOOL_KOJO, 対象, "Cafe_VOLTEで注文"
+		CALL 好感度上昇, 対象, "友情", 30
+		MONEY -= 1000
+	CASE 2
+		CALL SCHOOL_KOJO, 同行者, "Cafe_VOLTEでお茶する"
+		CALL 好感度上昇, 同行者, "友情", 30
+		MONEY -= 1000
+ENDSELECT
+WAIT
+RETURN 1
+
+@SCHOOL_MESSAGE_Cafe_VOLTEで注文
+SELECTCASE 選択肢
+	CASE 0
+		PRINTFORML コーヒーを注文して、持ってきてくれた%CALLNAME:TARGET%と談笑した
+	CASE 1
+		PRINTFORML コーヒーと軽食を注文して、持ってきてくれた%CALLNAME:TARGET%と談笑した
+	CASE 2
+		PRINTFORML Cafe VOLTEで%CALLNAME:TARGET%と楽しいティータイムの時間を過ごした
+ENDSELECT

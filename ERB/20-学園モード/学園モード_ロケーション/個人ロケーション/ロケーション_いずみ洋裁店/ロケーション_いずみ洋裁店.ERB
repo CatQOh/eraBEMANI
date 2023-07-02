@@ -80,3 +80,72 @@ FOR LCOUNT, 始点, 終点
 				GOTO HINABITA
 	ENDSELECT
 NEXT
+
+@いずみ洋裁店_専用コマンド
+CALL COLUMNPRINTL, 0, "[  0] - ウィンドウショッピングする"
+IF MONEY < 3000
+	CALL COLUMNPRINTL, 0, "　[---] - 一着何か買ってみる(3000＄)", "gray"
+ELSE
+	CALL COLUMNPRINTL, 0, "　[  1] - 一着何か買ってみる(3000＄)"
+ENDIF
+
+@いずみ洋裁店_専用コマンド_INPUT
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象
+
+選択肢 = CRESULT:1
+SELECTCASE CRESULT:1
+	CASE 0
+		IF 同行者
+			CALL SCHOOL_KOJO, 同行者, "いずみ洋裁店でウィンドウショッピング"
+			CALL 好感度上昇, 同行者, "友情", 10
+		ELSE
+			CALL 出現キャラ_いずみ洋裁店
+			CALL 出現キャラランダム選出
+			対象 = RESULT
+			CALL SCHOOL_KOJO, 対象, "いずみ洋裁店でウィンドウショッピング"
+			CALL 好感度上昇, 対象, "友情", 10
+		ENDIF
+	CASE 1
+		IF 同行者
+			CALL SCHOOL_KOJO, 同行者, "いずみ洋裁店で買い物"
+			CALL 好感度上昇, 同行者, "友情", 20
+		ELSE
+			IF CSTR:GETCHARANAME("和泉 一舞"):現在地 != ""
+				;対象が居ないのでここで地の文書く
+				PRINTFORML いずみ洋裁店で服を購入した
+			ELSE
+				DO
+					CALL 職場出現キャラ_いずみ洋裁店
+					IF RESULT
+						対象 = RESULT
+						BREAK
+					ENDIF
+				LOOP 1
+				CALL SCHOOL_KOJO, 対象, "いずみ洋裁店で買い物"
+				CALL 好感度上昇, 対象, "友情", 30
+			ENDIF
+		ENDIF
+		MONEY -= 3000
+		SITEM:いずみ洋裁店の服++
+ENDSELECT
+WAIT
+
+RETURN 1
+
+;Roots26のコピペじゃん
+@SCHOOL_MESSAGE_いずみ洋裁店でウィンドウショッピング
+IF 同行者
+	PRINTFORML %CALLNAME:TARGET%と店内を回りながらお互いに似合う服を探し合った
+ELSE
+	PRINTFORML 服を見て回ってると%CALLNAME:TARGET%が話しかけてきた
+	PRINTFORML %CALLNAME:TARGET%と服飾について語り合った
+ENDIF
+
+@SCHOOL_MESSAGE_いずみ洋裁店で買い物
+IF 同行者
+	PRINTFORML %CALLNAME:TARGET%と似合う服を吟味して買い物を楽しんだ
+ELSE
+	PRINTFORML 服の会計に%CALLNAME:TARGET%が対応した
+	PRINTFORML 会計をそっちのけで%CALLNAME:TARGET%と服飾について語り合った
+ENDIF

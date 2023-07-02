@@ -1,8 +1,9 @@
 ﻿@SHOP_SCHOOL
-#DIMS DYNAMIC SPLITVAR, 2
+#DIMS DYNAMIC SPLITVAR, 10
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 総数
 #DIM DYNAMIC 表示数
+#DIMS 保存用
 ;学園モードのSHOP画面 ここを噛ませて各ロケーション関数に飛ぶ
 
 CALL セーブデータアップデート
@@ -11,8 +12,13 @@ ENUMFUNCBEGINSWITH "ロケーション条件_"
 総数 = RESULT
 表示数 = 0
 FOR LCOUNT, 0, 総数
+	VARSET SPLITVAR
 	SPLIT RESULTS:LCOUNT, "_", SPLITVAR
 	CALLFORM %RESULTS:LCOUNT%
+	IF ロケーション名記録用 != ""
+		SPLITVAR:1 = %ロケーション名記録用%
+		ロケーション名記録用 = 
+	ENDIF
 	IF RESULT && FINDELEMENTF(解禁済みロケーション, SPLITVAR:1) == -1
 		IF RESULT >= 0
 			PRINTFORML %NAME:RESULT%との交友を深め、ロケーション「%SPLITVAR:1%」に行けるようになった！
@@ -92,7 +98,7 @@ CALL COLUMNDRAWLINE, 0
 CALL COLUMNPRINTL, 0, @"□何をしよう？"
 
 ;ここで0～99を使う
-TRYCALLFORM %CSTR:PLAYER:現在地%_専用コマンド
+TRYCALLFORM %RPS(CSTR:PLAYER:現在地)%_専用コマンド
 
 CALL COLUMNPRINTL, 0, @"　[100] - \@ 同行者 ? %CALLNAME:同行者%と #\@別の場所に行く"
 CALL COLUMNPRINTL, 0, @"　[101] - %CSTR:PLAYER:現在地%を散策する"
@@ -106,7 +112,7 @@ CALL COLUMNPRINTL, 0, "　[500] - データベース"
 @学園用汎用カラム_コマンド_INPUT
 SELECTCASE CRESULT:1
 	CASE 0 TO 99
-		TRYCALLFORM %CSTR:PLAYER:現在地%_専用コマンド_INPUT
+		TRYCALLFORM %RPS(CSTR:PLAYER:現在地)%_専用コマンド_INPUT
 	CASE 100
 		CALL ロケーション選択
 	CASE 101

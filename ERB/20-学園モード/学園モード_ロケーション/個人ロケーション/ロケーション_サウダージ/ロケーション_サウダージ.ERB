@@ -86,4 +86,64 @@ FOR LCOUNT, 始点, 終点
 	ENDSELECT
 NEXT
 
-	
+@サウダージ_専用コマンド
+CALL COLUMNPRINTL, 0, "　[  0] - レコードを試聴する"
+IF MONEY < 1000
+	CALL COLUMNPRINTL, 0, "　[---] - レコードを買う(1000＄必要)", "gray"
+ELSE
+	CALL COLUMNPRINTL, 0, "　[  1] - レコードを買う(1000＄必要)"
+ENDIF
+
+@サウダージ_専用コマンド_INPUT
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象
+
+SELECTCASE CRESULT:1
+	CASE 0
+		IF 同行者
+			CALL SCHOOL_KOJO, 同行者, "サウダージで試聴"
+			CALL 好感度上昇, 同行者, "友情", 10
+		ELSE
+			CALL 出現キャラ_サウダージ
+			CALL 出現キャラランダム選出
+			対象 = RESULT
+			CALL SCHOOL_KOJO, 対象, "サウダージで試聴"
+			CALL 好感度上昇, 対象, "友情", 10
+		ENDIF
+	CASE 1
+		IF 同行者
+			CALL SCHOOL_KOJO, 同行者, "サウダージで買い物"
+			CALL 好感度上昇, 同行者, "友情", 20
+		ELSE
+			DO
+				CALL 職場出現キャラ_サウダージ
+				IF RESULT
+					対象 = RESULT
+					BREAK
+				ENDIF
+			LOOP 1
+			CALL SCHOOL_KOJO, 対象, "サウダージで買い物"
+			CALL 好感度上昇, 対象, "友情", 30
+		ENDIF
+		MONEY -= 1000
+		SITEM:サウダージのレコード++
+ENDSELECT
+WAIT
+
+RETURN 1
+
+@SCHOOL_MESSAGE_サウダージで試聴
+IF 同行者
+	PRINTFORML 店内を回りながら%CALLNAME:TARGET%とレコードの音に浸った
+ELSE
+	PRINTFORML レコードを視聴していると%CALLNAME:TARGET%が話しかけてきた
+	PRINTFORML %CALLNAME:TARGET%と音楽の趣味や音楽史について語り合った
+ENDIF
+
+@SCHOOL_MESSAGE_サウダージで買い物
+IF 同行者
+	PRINTFORML %CALLNAME:TARGET%とレコードを聴き比べながら理想の1枚を探し出して購入した
+ELSE
+	PRINTFORML レコードの会計に%CALLNAME:TARGET%が対応した
+	PRINTFORML %CALLNAME:TARGET%はそのレコードの曲や年代についての小話を披露してくれた
+ENDIF
