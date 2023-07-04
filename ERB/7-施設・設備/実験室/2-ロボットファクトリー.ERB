@@ -130,11 +130,6 @@ VARSET 素質変更可能
 素質コスト = 0
 FOR LCOUNT, 0, VARSIZE("TALENT")
 	SELECTCASE TALENTNAME:LCOUNT
-		;コスト-1
-		CASE "小柄体型"
-			素質変更可能:LCOUNT = -1
-			SIF TALENT:LCOUNT
-				素質コスト -= 1
 		;コスト1
 		{
 		CASE "生意気", "臆病", "素直", "反抗的", "ハイテンション", "大人しい", "世話好き",
@@ -197,7 +192,7 @@ PRINTL [9] +300/コスト+1
 PRINT 　素質:
 FOR LCOUNT, 0, VARSIZE("TALENT")
 	SELECTCASE TALENTNAME:LCOUNT
-		CASE "性別", "恋心", "既婚者", "バストサイズ"
+		CASE "性別", "恋心", "既婚者", "バストサイズ", "体格"
 		CASEELSE
 			SIF TALENT:LCOUNT
 				PRINTFORM [%TALENTNAME:LCOUNT%]
@@ -238,8 +233,10 @@ SELECTCASE RESULT
 				PRINTFORMLC [{LCOUNT, 3}] %TALENTNAME:LCOUNT%({素質変更可能:LCOUNT}) \@ TALENT:LCOUNT ? ○ # × \@
 		NEXT
 		CALL NEWLINE
+		PRINTFORM [{TALENTF("体格")}] 体格:%体格(TALENT:体格)% 
 		SIF TALENT:性別 == 2
 			PRINTFORML [{TALENTF("バストサイズ")}] バストサイズ:%バストサイズ(TALENT:バストサイズ)%
+		CALL NEWLINE
 		DRAWLINE
 		PRINTPLAIN 　ロボットファクトリー　
 		PRINTL [-1] - 戻る
@@ -248,7 +245,7 @@ SELECTCASE RESULT
 			RESTART
 		LRESULT = RESULT
 		IF INRANGE(LRESULT, 0, VARSIZE("TALENT"))
-			IF TALENTNAME:LRESULT == "バストサイズ" && TALENT:性別 == 2
+			IF TALENTNAME:LRESULT == "バストサイズ"
 				PRINTL [1] 絶壁にする
 				PRINTL [2] 貧乳にする
 				PRINTL [3] 並乳にする
@@ -257,6 +254,14 @@ SELECTCASE RESULT
 				PRINTL [6] 爆乳にする
 				BINPUT
 				TALENT:バストサイズ = RESULT
+				GOTO TALENT
+			ELSEIF TALENTNAME:LRESULT == "体格"
+				PRINTL [1] 幼児体型にする
+				PRINTL [2] 小柄体型にする
+				PRINTL [3] 普通体型にする
+				PRINTL [4] 長身体型にする
+				BINPUT
+				TALENT:体格 = RESULT
 				GOTO TALENT
 			ELSEIF 素質変更可能:LRESULT
 				INVERTBIT TALENT:LRESULT, 0
@@ -660,12 +665,15 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 			SIF 素質変更:LCOUNT
 				必要マテリアル += 2
 		;コスト3
-		CASE "調合知識", "謎の魅力", "ネクロマンサー", "禁断の知識", "小柄体型"
+		CASE "調合知識", "謎の魅力", "ネクロマンサー", "禁断の知識"
 			素質変更可能:LCOUNT = 3
 			SIF 素質変更:LCOUNT
 				必要マテリアル += 3
 		CASE "バストサイズ"
 			SIF TALENT:LCOUNT && 素質変更:LCOUNT
+				必要マテリアル += ABS(TALENT:LCOUNT-素質変更:LCOUNT)
+		CASE "体格"
+			SIF 素質変更:LCOUNT
 				必要マテリアル += ABS(TALENT:LCOUNT-素質変更:LCOUNT)
 	ENDSELECT
 NEXT
@@ -731,6 +739,11 @@ SELECTCASE RESULT
 			ENDIF
 		NEXT
 		CALL NEWLINE
+		IF 素質変更:TALENTF("体格") && 素質変更:TALENTF("体格") != TALENT:体格
+			CALL PRINTCOLOR, @"[{TALENTF("体格")}] 体格:%体格(素質変更:TALENTF("体格"))% ", "deepskyblue"
+		ELSE
+			PRINTFORM [{TALENTF("体格")}] 体格:%体格(TALENT:体格)% 
+		ENDIF
 		IF TALENT:性別 == 2
 			IF 素質変更:TALENTF("バストサイズ") && 素質変更:TALENTF("バストサイズ") != TALENT:バストサイズ
 				CALL PRINTCOLORL, @"[{TALENTF("バストサイズ")}] バストサイズ:%バストサイズ(素質変更:TALENTF("バストサイズ"))%", "deepskyblue"
@@ -738,6 +751,7 @@ SELECTCASE RESULT
 				PRINTFORML [{TALENTF("バストサイズ")}] バストサイズ:%バストサイズ(TALENT:バストサイズ)%
 			ENDIF
 		ENDIF
+		CALL NEWLINE
 		DRAWLINE
 		PRINTPLAIN 　ロボットファクトリー　
 		PRINTL [-1] - 戻る
@@ -746,7 +760,7 @@ SELECTCASE RESULT
 			GOTO RESTART
 		LRESULT = RESULT
 		IF INRANGE(LRESULT, 0, VARSIZE("TALENT"))
-			IF TALENTNAME:LRESULT == "バストサイズ" && TALENT:性別 == 2
+			IF TALENTNAME:LRESULT == "バストサイズ"
 				PRINTL [1] 絶壁にする
 				PRINTL [2] 貧乳にする
 				PRINTL [3] 並乳にする
@@ -755,6 +769,14 @@ SELECTCASE RESULT
 				PRINTL [6] 爆乳にする
 				BINPUT
 				素質変更:LRESULT = RESULT
+				GOTO TALENT
+			ELSEIF TALENTNAME:LRESULT == "体格"
+				PRINTL [1] 幼児体型にする
+				PRINTL [2] 小柄体型にする
+				PRINTL [3] 普通体型にする
+				PRINTL [4] 長身体型にする
+				BINPUT
+				TALENT:体格 = RESULT
 				GOTO TALENT
 			ELSEIF 素質変更可能:LRESULT
 				INVERTBIT 素質変更:LRESULT, 0
@@ -795,12 +817,7 @@ FOR LCOUNT, 1, CHARANUM
 	ENDIF
 	SIF !INRANGE(表示数, ページ数*20, ページ数*20+20)
 		CONTINUE
-	PRINTFORM 　[{LCOUNT, 2}] %NAME:LCOUNT, 26, LEFT% 回収できる物:
-	IF TALENT:LCOUNT:小柄体型
-		PRINT マテリアル3個 
-	ELSE
-		PRINT マテリアル5個 
-	ENDIF
+	PRINTFORM 　[{LCOUNT, 2}] %NAME:LCOUNT, 26, LEFT% 回収できる物:マテリアル{TALENT:LCOUNT:体格+2}個 
 
 	入手数 = ABL:LCOUNT:Ｃ感覚+ABL:LCOUNT:Ｖ感覚+ABL:LCOUNT:Ａ感覚+ABL:LCOUNT:Ｂ感覚
 	SIF 入手数
@@ -861,13 +878,8 @@ SELECTCASE RESULT
 		RESETCOLOR
 		PRINTFORML %NAME:対象%を解体しました
 		CALL プレイログ記録, @"%NAME:対象%を解体"
-		IF TALENT:対象:小柄体型
-			PRINTL マテリアル+3
-			リソース:マテリアル += 3
-		ELSE
-			PRINTL マテリアル+5
-			リソース:マテリアル += 5
-		ENDIF
+		PRINTFORML マテリアル+{TALENT:対象:体格+2}
+		リソース:マテリアル += TALENT:対象:体格+2
 
 		入手数 = ABL:対象:Ｃ感覚+ABL:対象:Ｖ感覚+ABL:対象:Ａ感覚+ABL:対象:Ｂ感覚
 		IF 入手数

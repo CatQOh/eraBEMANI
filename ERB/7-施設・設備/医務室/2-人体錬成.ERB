@@ -2,7 +2,7 @@
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 対象
 #DIM 性別設定 = 1
-#DIM 体型設定
+#DIM 体型設定 = 3
 #DIM スライム設定
 #DIM DYNAMIC 魔法技能記録用
 #DIM DYNAMIC オリジナル
@@ -18,7 +18,18 @@ NEXT
 PRINTL 
 PRINTL □人体錬成の条件を選択してください
 PRINTFORML 　[1] - 性別を変更する(\@ 性別設定 == 1 ? 男性 # 女性 \@)
-PRINTFORML 　[2] - 体型を変更する(\@ 体型設定 == 1 ? 子供:3000mlの血液が必要 # 普通:5000mlの血液が必要 \@)
+PRINT 　[2] - 体格を変更する(
+
+SELECTCASE 体型設定
+	CASE 1
+		PRINTL 幼児:3000mlの血液が必要)
+	CASE 2
+		PRINTL 小柄:4000mlの血液が必要)
+	CASE 3
+		PRINTL 普通:5000mlの血液が必要)
+	CASE 4
+		PRINTL 長身:6000mlの血液が必要)
+ENDSELECT
 PRINTFORML 　[3] - スライムの粘液(\@ スライム設定 == 1 ? 混ぜる:500ml必要 # 混ぜない \@)
 PRINTL 　[4] - 上記の条件でシミュレートする
 PRINTL 　[5] - DNAデータからクローンを作る
@@ -32,11 +43,13 @@ SELECTCASE RESULT
 	CASE 0
 		RETURN 0
 	CASE 1
-		IF 性別設定 == 1
-			性別設定 = 2
-		ELSE
-			性別設定 = 1
-		ENDIF
+		PRINTL 体格を選んでください
+		PRINTL [1] - 幼児
+		PRINTL [2] - 小柄
+		PRINTL [3] - 普通
+		PRINTL [4] - 長身
+		BINPUT
+		体型設定 = RESULT
 		RESTART
 	CASE 2
 		INVERTBIT 体型設定, 0
@@ -75,19 +88,32 @@ SELECTCASE RESULT
 		RESTART
 ENDSELECT
 
-IF TALENT:対象:小柄体型
-	IF リソース:血液 < 3000
-		PRINTW 材料の血液が足りません
-		CALL CLEAR_CHARA, 対象, 1
-		RESTART
-	ENDIF
-ELSE
-	IF リソース:血液 < 5000
-		PRINTW 材料の血液が足りません
-		CALL CLEAR_CHARA, 対象, 1
-		RESTART
-	ENDIF
-ENDIF
+SELECTCASE TALENT:対象:体格
+	CASE 1
+		IF リソース:血液 < 3000
+			PRINTW 材料の血液が足りません
+			CALL CLEAR_CHARA, 対象, 1
+			RESTART
+		ENDIF
+	CASE 2
+		IF リソース:血液 < 4000
+			PRINTW 材料の血液が足りません
+			CALL CLEAR_CHARA, 対象, 1
+			RESTART
+		ENDIF
+	CASE 3
+		IF リソース:血液 < 5000
+			PRINTW 材料の血液が足りません
+			CALL CLEAR_CHARA, 対象, 1
+			RESTART
+		ENDIF
+	CASE 4
+		IF リソース:血液 < 6000
+			PRINTW 材料の血液が足りません
+			CALL CLEAR_CHARA, 対象, 1
+			RESTART
+		ENDIF
+ENDSELECT
 
 IF スライム設定
 	IF リソース:粘液 < 500
@@ -167,13 +193,20 @@ SELECTCASE RESULT
 		BUYD = DAYS
 		CFLAG:誕生日 = MONTH*100+DAYS
 		CFLAG:モチベーション = 50
-		IF TALENT:小柄体型
-			PRINTL 保管済み血液を3000ml使用しました
-			リソース:血液 -= 3000
-		ELSE
-			PRINTL 保管済み血液を5000ml使用しました
-			リソース:血液 -= 5000
-		ENDIF
+		SELECTCASE TALENT:対象:体格
+			CASE 1
+				PRINTL 保管済み血液を3000ml使用しました
+				リソース:血液 -= 3000
+			CASE 2
+				PRINTL 保管済み血液を4000ml使用しました
+				リソース:血液 -= 4000
+			CASE 3
+				PRINTL 保管済み血液を5000ml使用しました
+				リソース:血液 -= 5000
+			CASE 4
+				PRINTL 保管済み血液を6000ml使用しました
+				リソース:血液 -= 6000
+		ENDSELECT
 		IF ISSLIME(TARGET)
 			PRINTL 保管済み粘液を500ml使用しました
 			リソース:粘液 -= 500
@@ -283,11 +316,7 @@ SELECTCASE RESULT
 		SELECTCASE TALENT:対象:性別
 			CASE 1
 				TALENT:対象:性別 = 2
-				IF TALENT:対象:小柄体型
-					TALENT:対象:バストサイズ = 2
-				ELSE
-					TALENT:対象:バストサイズ = 3
-				ENDIF
+				TALENT:対象:バストサイズ = TALENT:対象:体格
 			CASE 2
 				TALENT:対象:性別 = 1
 				TALENT:対象:バストサイズ = 0
@@ -295,20 +324,19 @@ SELECTCASE RESULT
 		TALENT:対象:童貞 = PENIS(対象)
 		TALENT:対象:処女 = VAGINA(対象)
 	CASE 5
-		PRINTL 体型を選んでください
-		PRINTL [1] - 普通体型
+		PRINTL 体格を選んでください
+		PRINTL [1] - 幼児体型
 		PRINTL [2] - 小柄体型
-		PRINTL [3] - 小人体型
+		PRINTL [3] - 普通体型
+		PRINTL [4] - 長身体型
+		PRINTL [5] - 小人体型
 		BINPUT
 		SELECTCASE RESULT
-			CASE 1
-				TALENT:対象:小柄体型 = 0
+			CASE 1 TO 4
+				TALENT:対象:体格 = RESULT
 				TALENT:対象:小人体型 = 0
-			CASE 2
-				TALENT:対象:小柄体型 = 1
-				TALENT:対象:小人体型 = 0
-			CASE 3
-				TALENT:対象:小柄体型 = 0
+			CASE 5
+				TALENT:対象:体格 = 3
 				TALENT:対象:小人体型 = 1
 		ENDSELECT
 	CASE 6
@@ -401,10 +429,10 @@ RESTART
 #DIM DYNAMIC 対象
 
 PRINTL □霊体に生身の身体を用意します。対象を選んでください
-PRINTFORML 　保管済み血液:{リソース:血液}ml 小柄体型は3000ml、それ以外は5000ml必要
+PRINTFORML 　保管済み血液:{リソース:血液}ml 幼児体型は3000ml、小柄体型は4000ml、普通体型は5000ml、長身体型は6000ml必要
 
 FOR PAGING, 0, CHARANUM
-	CALL PAGING, TALENT:PAGING:霊体, @"\@ TALENT:PAGING:小柄体型 ? 小柄体型 #\@"
+	CALL PAGING, TALENT:PAGING:霊体, @"%体格(TALENT:PAGING:体格)%体型"
 NEXT
 
 SIF RESULT == -1
@@ -412,19 +440,12 @@ SIF RESULT == -1
 
 対象 = RESULT
 
-IF TALENT:対象:小柄体型
-	IF リソース:血液 < 3000
-		PRINTW 血液が3000ml必要です。材料の血液が足りません
-		RESTART
-	ENDIF
-ELSE
-	IF リソース:血液 < 5000
-		PRINTW 血液が5000ml必要です。材料の血液が足りません
-		RESTART
-	ENDIF
+IF リソース:血液 < (TALENT:対象:体格+2)*1000
+	PRINTFORMW 血液が{(TALENT:対象:体格+2)*1000}ml必要です。材料の血液が足りません
+	RESTART
 ENDIF
 
-PRINTFORML 血液を\@ TALENT:対象:小柄体型 ? 3000ml # 5000ml \@使用して%NAME:対象%の身体を用意します。よろしいですか？
+PRINTFORML 血液を{(TALENT:対象:体格+2)*1000}ml使用して%NAME:対象%の身体を用意します。よろしいですか？
 PRINTL [0] - はい
 PRINTL [1] - いいえ
 
@@ -432,11 +453,7 @@ BINPUT
 SIF RESULT == 1
 	RESTART
 
-IF TALENT:対象:小柄体型
-	リソース:血液 -= 3000
-ELSE
-	リソース:血液 -= 5000
-ENDIF
+リソース:血液 -= (TALENT:対象:体格+2)*1000
 
 PRINTFORMW 身体を作り、%NAME:対象%を宿しました
 TARGET = 対象
