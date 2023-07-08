@@ -3,13 +3,12 @@
 ;-------------------------------------------------
 @USERCOM_ABLE_プレゼント, ARG
 #FUNCTION
-;ゲーセンに居る場合はできない
+
 コマンド実行条件 += "ゲーセンでは実行不可/"
 SIF TEQUIP:ゲームセンター
 	COMRESULT = 0
-;奴隷が恋慕か親愛で実行者が主人でないとダメ
-コマンド実行条件 += "[恋慕][親愛]かつ実行者が主人じゃないと実行できない/"
-SIF FALLTYPE(TARGET) != 1 || PLAYER != MASTER
+コマンド実行条件 += "[恋慕][親愛][服従][隷属]かつ実行者が主人じゃないと実行できない/"
+SIF (!GROUPMATCH(FALLTYPE(TARGET), 1, 3) || PLAYER != MASTER) && !上級売春中
 	COMRESULT = 0
 ;拘束中はダメ
 コマンド実行条件 += "拘束中は実行できない/"
@@ -80,74 +79,63 @@ IF ISHOLIDAY("クリスマス・イブ") || ISHOLIDAY("クリスマス")
 ENDIF
 
 CALL PASELIL, @"何を贈りますか？(所持金{MONEY}＄)"
-PRINTFORML [0] スマイル(タダ)
-CALL PASELIL, @"[1] パセリカード(1000＄)"
-CALL PASELIL, @"[2] 日用品(2500＄)"
-CALL PASELIL, @"[3] アクセサリ(10000＄)"
-CALL PASELIL, @"[4] 服(25000＄)"
-CALL PASELIL, @"[5] 素敵な指輪(100000＄)"
-CALL PASELIL, @"[6] 特別仕様のIIDX筐体(980000＄)"
-CALL PASELIL, @"[7] 特注品のディルド(30000＄)"
-SIF 特殊プレゼント != ""
+
+IF OPTION:口上表示 && !CFLAG:口上非表示 && EXISTFUNCTION(@"DISABLE_プレゼント選択_%CSVNAMERPS(NOF(TARGET))%")
+	CALLFORM DISABLE_プレゼント選択_%CSVNAMERPS(NOF(TARGET))%
+	DISABLE = RESULT
+ENDIF
+
+;DISABLEはビット数で管理
+SIF !GETBIT(DISABLE, 0)
+	PRINTFORML [0] スマイル(タダ)
+SIF !GETBIT(DISABLE, 1)
+	CALL PASELIL, @"[1] パセリカード(1000＄)"
+SIF !GETBIT(DISABLE, 2)
+	CALL PASELIL, @"[2] 日用品(2500＄)"
+SIF !GETBIT(DISABLE, 3)
+	CALL PASELIL, @"[3] アクセサリ(10000＄)"
+SIF !GETBIT(DISABLE, 4)
+	CALL PASELIL, @"[4] 服(25000＄)"
+SIF !GETBIT(DISABLE, 5)
+	CALL PASELIL, @"[5] 素敵な指輪(100000＄)"
+SIF !GETBIT(DISABLE, 6)
+	CALL PASELIL, @"[6] 特別仕様のIIDX筐体(980000＄)"
+SIF !GETBIT(DISABLE, 7)
+	CALL PASELIL, @"[7] 特注品のディルド(30000＄)"
+SIF 特殊プレゼント != "" && !GETBIT(DISABLE, 8)
 	CALL PASELIL, @"[8] %特殊プレゼント%({特殊プレゼント価格}＄)"
-SIF 材料判定("アルストロメリア") == 2
+SIF 材料判定("アルストロメリア") == 2 && !GETBIT(DISABLE, 10)
 	PRINTL [10] 育てたアルストロメリア
-SIF 材料判定("薔薇") == 2
+SIF 材料判定("薔薇") == 2 && !GETBIT(DISABLE, 11)
 	PRINTL [11] 育てた薔薇
 
 
 PRINTFORML [100] やっぱりやめる
 
-DO
-	SIF ISSKIP()
-		BREAK
-	INPUT
-	SELECTCASE RESULT
-		CASE 1
-			価格 = 1000
-			BREAK
-		CASE 2
-			価格 = 2500
-			BREAK
-		CASE 3
-			価格 = 10000
-			BREAK
-		CASE 4
-			価格 = 25000
-			BREAK
-		CASE 5
-			価格 = 100000
-			BREAK
-		CASE 6
-			価格 = 980000
-			BREAK
-		CASE 7
-			価格 = 30000
-			BREAK
-		CASE 8
-			SIF 特殊プレゼント == ""
-				CONTINUE
-			価格 = 特殊プレゼント価格
-			BREAK
-		CASE 10
-			IF 材料判定("アルストロメリア") == 2
-				RESULT = 10
-				BREAK
-			ELSE
-				CONTINUE
-			ENDIF
-		CASE 11
-			IF 材料判定("薔薇") == 2
-				RESULT = 11
-				BREAK
-			ELSE
-				CONTINUE
-			ENDIF
-		CASE 100
-			PRINTFORMW プレゼントを渡すのを止めました
-			RETURN 0
-	ENDSELECT
-LOOP 1
+SIF ISSKIP()
+	RETURN 0
+BINPUT
+SELECTCASE RESULT
+	CASE 1
+		価格 = 1000
+	CASE 2
+		価格 = 2500
+	CASE 3
+		価格 = 10000
+	CASE 4
+		価格 = 25000
+	CASE 5
+		価格 = 100000
+	CASE 6
+		価格 = 980000
+	CASE 7
+		価格 = 30000
+	CASE 8
+		価格 = 特殊プレゼント価格
+	CASE 100
+		PRINTFORMW プレゼントを渡すのを止めました
+		RETURN 0
+ENDSELECT
 
 IF MONEY < 価格 && !ISSKIP()
 	PRINTW 所持金が足りません
@@ -259,7 +247,7 @@ SELECTCASE TFLAG:プレゼント
 		増加量 = 10
 ENDSELECT
 
-SIF TFLAG:プレゼント != 6
+SIF TFLAG:プレゼント != 6 && FALLTYPE(TARGET) == 1
 	CALL EXPUP, "愛情経験", 増加量
 
 ;-------------------------------------------------
