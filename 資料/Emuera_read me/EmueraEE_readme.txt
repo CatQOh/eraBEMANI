@@ -14,7 +14,7 @@ docs：https://evilmask.gitlab.io/emuera.em.doc/
 
 ※使用しているセキュリティソフト次第では危険なファイルとして警告・削除される場合があります
 　セキュリティソフトの設定を変更して使用することはできますが、自己責任でお願いします
-　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/6b1e48a50bf56d0a138d0677c356b929313d424089766dcd85c928bab616b29b
+　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/8bbc88d1dfeaab25a9681ddc61e85de935c1a972e2d5ed54e7e41824dfa88471
 
 [v12にてEmuera.EMと機能統合。上記リンクのドキュメント(docs)を参照]
 [EMv8+EEv15にてhtml形式のドキュメントを同梱。追加機能などがより詳しく書かれています]
@@ -233,6 +233,10 @@ Emueraと同じディレクトリに「font」フォルダを作成してttfフ�
 GSETFONTとTOOLTIP_SETFONTにも対応
 サンプルとしてたぬきフォント様の「たぬゴ」「全児童フォント」を同梱。以下はたぬきフォント様のサイトのリンク
 https://tanukifont.com/
+
+・.NET 7に正式対応
+CRER氏のお陰で対応できました。感謝
+一部UIが現代的に変わっています
 
 ・UPDATECHECK
 アップデートチェック命令を追加。以下使い方
