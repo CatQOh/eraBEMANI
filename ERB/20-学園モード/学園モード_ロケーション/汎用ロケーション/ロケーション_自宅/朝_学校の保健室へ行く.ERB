@@ -1,42 +1,47 @@
 ﻿@朝_学校の保健室に行く
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC 保健医
+#DIM DYNAMIC 保健医, 10
 #DIM DYNAMIC 保健室滞在者
 #DIM DYNAMIC 候補, 50
 #DIM DYNAMIC 優先, 50
-#DIM DYNAMIC 候補人数, 2
+#DIM DYNAMIC 候補人数, 3
 #DIM DYNAMIC 睡眠中
 
 CSTR:PLAYER:現在地 = %CSTR:PLAYER:在校%
 
-FOR LCOUNT, 1, CHARANUM
-	;保健医がいれば設定
-	IF CSTR:LCOUNT:在任 == CSTR:PLAYER:在校 && CSTR:LCOUNT:担当科目 == "保健"
-		保健医 = LCOUNT
-		BREAK
-	ENDIF
-	IF CSTR:LCOUNT:在任 == CSTR:PLAYER:在校 || CSTR:LCOUNT:在校 == CSTR:PLAYER:在校
-		IF 好感度合計(LCOUNT)
-			優先:(候補人数:1) = LCOUNT
-			候補人数:1++
+;3分の1の確率で運命の人
+IF !RAND:3 && 運命の人 != "" && (CSTR:GETCHARANAME(運命の人):在任 == CSTR:PLAYER:在校 || CSTR:GETCHARANAME(運命の人):在校 == CSTR:PLAYER:在校)
+	保健室滞在者 = 運命の人
+ELSE
+	FOR LCOUNT, 1, CHARANUM
+		;保健医とそれ以外を別々にカウント
+		IF CSTR:LCOUNT:在任 == CSTR:PLAYER:在校 && CSTR:LCOUNT:担当科目 == "保健"
+			保健医:(候補人数:2) = LCOUNT
+			候補人数:2++
+		ELSEIF CSTR:LCOUNT:在任 == CSTR:PLAYER:在校 || CSTR:LCOUNT:在校 == CSTR:PLAYER:在校
+			IF 好感度合計(LCOUNT)
+				優先:(候補人数:1) = LCOUNT
+				候補人数:1++
+			ENDIF
+			候補:候補人数 = LCOUNT
+			候補人数++
 		ENDIF
-		候補:候補人数 = LCOUNT
-		候補人数++
-	ENDIF
-NEXT
-
-;保健医がいなければランダムで誰かが居る
-IF !保健医
-	IF 候補人数:1
-		保健室滞在者 = 優先:(RAND:(候補人数:1))
+	NEXT
+	;運命の人ではない場合場合3分の2の確率で保健医の中からランダム すり抜けた場合保健医以外からランダム
+	IF 候補人数:2 && RAND:3 
+		保健室滞在者 = 保健医:(RAND:(候補人数:2))
 	ELSE
-		保健室滞在者 = 候補:(RAND:候補人数)
+		IF 候補人数:1
+			保健室滞在者 = 優先:(RAND:(候補人数:1))
+		ELSE
+			保健室滞在者 = 候補:(RAND:候補人数)
+		ENDIF
 	ENDIF
 ENDIF
 
-IF 保健医
+IF CSTR:保健室滞在者:担当科目 == "保健"
 	PRINTFORML □%CALLNAME:PLAYER%が保健室に行くと、保健医の%CALLNAME:保健医%先生が対応してくれた
-	TARGET = 保健医
+	TARGET = 保健室滞在者
 	CALL SCHOOL_KOJO, TARGET, "保健室"
 	PRINTL 　[0] - 具合が悪いので保健室で休む
 	PRINTL 　[1] - 授業に戻る
