@@ -1,0 +1,77 @@
+﻿@ロケーション条件_オカルト研究部の部室
+#DIM DYNAMIC LCOUNT
+;出現条件のキャラをフルネーム(NAME)で入れる
+{
+#DIMS DYNAMIC 条件用キャラ = 
+"梅桐 彩葉",
+"雛月 理々奈"
+}
+
+FOR LCOUNT, 0, VARSIZE("条件用キャラ")
+	IF GETCHARANAME(条件用キャラ:LCOUNT) > 0
+		SIF 好感度合計(GETCHARANAME(条件用キャラ:LCOUNT)) >= 100
+			RETURN GETCHARANAME(条件用キャラ:LCOUNT)
+	ENDIF
+NEXT
+
+;オカ研と同じ学校なら行ける
+SIF GROUPMATCH(CSTR:PLAYER:在校, CSTR:GETCHARANAME("梅桐 彩葉"):在校, CSTR:GETCHARANAME("雛月 理々奈"):在校)
+	RETURN -1
+
+RETURN 0
+
+@ロケーション可否_オカルト研究部の部室
+;時間帯などで使えない場合は理由を書く
+SIF 夏休み()
+	ロケーション可否 = 夏休み期間中
+SIF 冬休み()
+	ロケーション可否 = 冬休み期間中
+SIF 春休み()
+	ロケーション可否 = 春休み期間中
+SIF ISHOLIDAY_SCHOOL()
+	ロケーション可否 = 学校休日
+
+SIF ターン == "夜"
+	ロケーション可否 = 全員下校しました
+
+@出現キャラ_オカルト研究部の部室
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC グループ数
+#DIM DYNAMIC 始点
+#DIM DYNAMIC 終点
+
+;NOではなく登録番号で指定する
+IF データベース参照中
+	始点 = データベース参照中
+	終点 = データベース参照中+1
+ELSE
+	IF 始点
+		終点 = 始点
+		始点 = 1
+	ELSE
+		始点 = RAND(1, CHARANUM)
+		終点 = CHARANUM
+	ENDIF
+ENDIF
+
+FOR LCOUNT, 始点, 終点
+	;学校などに行ってるキャラは居ない
+	SIF CSTR:LCOUNT:現在地 != "" && !データベース参照中
+		CONTINUE
+	;出現率:LCOUNT = {出現率(100分率)} で指定できる
+	SELECTCASE CHARANAMEF(LCOUNT)
+		;白黒
+		CASE "梅桐 彩葉", "雛月 理々奈"
+			SIF 出現率:LCOUNT >= 0
+				出現率:LCOUNT = 100
+		;白黒のファン
+		CASE "神崎 慧靂", "鉄火"
+			SIF 出現率:LCOUNT >= 0
+				出現率:LCOUNT = 30
+	ENDSELECT
+NEXT
+
+SIF 始点 == 1
+	RETURN
+SIF !データベース参照中
+	RESTART
