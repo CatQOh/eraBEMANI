@@ -1,5 +1,8 @@
 ﻿@タイトル_MOD
 #DIMS DYNAMIC HTML
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT1
+
 SELECTCASE MODページ
 	CASE 0
 		CALL COLUMNPRINTL, 0, "□エクストラMODの設定ができます"
@@ -41,7 +44,23 @@ SELECTCASE MODページ
 		CALL COLUMNPRINTL, 0, ""
 		CALL COLUMNPRINTL, 0, "□バスト特化MOD(新しく購入、追加したキャラにのみ適用)"
 		CALL COLUMNPRINTL, 0, @"　[81] - MOD:バストサイズカスタム(現在:\@ MOD:バストサイズカスタム ? オン # オフ \@) 全ての女性キャラが元のバストサイズに応じて変化する", @"\@ MOD:バストサイズカスタム ? deepskyblue #\@"
-		CALL COLUMNPRINTL, 0, "絶壁 → "
+		CALL COLUMNPRINTL, 0, "　　現在の設定   絶壁に 貧乳に 並乳に 巨乳に 豊乳に 爆乳に 爆乳+1 爆乳+2 爆乳+3 爆乳+4 爆乳+5 爆乳+6 爆乳+7 爆乳+8 爆乳+9"
+		FOR LCOUNT, 1, 7
+			SIF バストサイズカスタム:LCOUNT == 0
+				バストサイズカスタム:LCOUNT = LCOUNT
+			CALL COLUMNPRINT, 0, @"　　%バストサイズ(LCOUNT)%→%バストサイズ(バストサイズカスタム:LCOUNT)%"
+			SIF バストサイズカスタム:LCOUNT < 7
+				CALL COLUMNPRINT, 0, "  "
+			FOR LCOUNT1, 1, 16
+				IF バストサイズカスタム:LCOUNT == LCOUNT1
+					CALL COLUMNPRINT, 0, @" [{8000+100*LCOUNT+LCOUNT1}]", "deepskyblue"
+				ELSE
+					CALL COLUMNPRINT, 0, @" [{8000+100*LCOUNT+LCOUNT1}]"
+				ENDIF
+			NEXT
+			CALL COLUMNPRINTL, 0, ""
+		NEXT
+		CALL COLUMNPRINTL, 0, @"　[82] - MOD:バストサイズ限界突破(現在:\@ MOD:バストサイズ限界突破 ? オン # オフ \@) バストサイズを爆乳よりも大きくできる", @"\@ MOD:バストサイズ限界突破 ? deepskyblue #\@"
 ENDSELECT
 CALL COLUMNDRAWLINE, 0
 CALL COLUMNPRINT, 0, @"%RETURNSPACE(MODページ > 0, "[101] 前ページ ")%"
@@ -49,6 +68,9 @@ CALL COLUMNPRINT, 0, @"%RETURNSPACE(MODページ < 1, "[109] 次ページ")%"
 CALL COLUMNPRINTL, 0, ""
 
 @タイトル_MOD_INPUT
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC サイズ7
+
 SELECTCASE CRESULT:1
 	CASE 101
 		MODページ--
@@ -69,9 +91,11 @@ SELECTCASE CRESULT:1
 	CASE 11
 		INVERTBIT MOD:爆乳, 0
 		MOD:絶壁 = 0
+		MOD:バストサイズカスタム = 0
 	CASE 12
 		INVERTBIT MOD:絶壁, 0
 		MOD:爆乳 = 0
+		MOD:バストサイズカスタム = 0
 	CASE 16
 		INVERTBIT MOD:ロリショタ, 0
 		MOD:大人化 = 0
@@ -90,6 +114,37 @@ SELECTCASE CRESULT:1
 		INVERTBIT MOD:服従, 0
 		MOD:恋慕 = 0
 		MOD:淫乱 = 0
+	CASE 81
+		INVERTBIT MOD:バストサイズカスタム, 0
+		MOD:絶壁 = 0
+		MOD:爆乳 = 0
+		IF MOD:バストサイズカスタム
+			サイズ7 = 0
+			FOR LCOUNT, 1, 7
+				SIF バストサイズカスタム:LCOUNT >= 7
+					サイズ7 = 1
+			NEXT
+			SIF サイズ7
+				MOD:バストサイズ限界突破 = 1
+		ENDIF
+	CASE 82
+		サイズ7 = 0
+		FOR LCOUNT, 1, 7
+			SIF バストサイズカスタム:LCOUNT >= 7
+				サイズ7 = 1
+		NEXT
+		IF サイズ7 && MOD:バストサイズカスタム
+			MOD:バストサイズ限界突破 = 1
+		ELSE
+			INVERTBIT MOD:バストサイズ限界突破, 0
+		ENDIF
+	CASE 8101 TO 8700
+		MOD:バストサイズカスタム = 1
+		MOD:絶壁 = 0
+		MOD:爆乳 = 0
+		バストサイズカスタム:((CRESULT:1-1)/100 - 80) = (CRESULT:1-1)%100 + 1
+		SIF (CRESULT:1-1)%100 + 1>= 7
+			MOD:バストサイズ限界突破 = 1
 	CASEELSE
 		INVERTBIT MOD:(CRESULT:1), 0
 ENDSELECT
