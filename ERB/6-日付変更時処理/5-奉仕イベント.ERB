@@ -170,9 +170,9 @@ CALL EXPUP, "射精経験", 射精回数, MASTER
 CALL EXPUP, "絶頂経験", 射精回数, MASTER
 WAIT
 
-CFLAG:朝フェラ経験++
-CFLAG:MASTER:朝フェラ経験++
-CFLAG:口で射精させた経験++
+CFLAG:朝フェラ経験 += フェラ回数
+CFLAG:MASTER:朝フェラ経験 += フェラ回数
+CFLAG:口で射精させた経験 += 射精回数
 SIF CFLAG:スライム度 <= 0 && ISSLIME(MASTER) && CSTR:種族 != "機械" && !TALENT:無機物 && !FLAG:抗スライム
 	CFLAG:スライム度 += 5
 
@@ -185,8 +185,9 @@ CALL KOJO_MESSAGE_EVENT, "朝パイズリ"
 
 ;ここからパイズリ回数の計算
 パイズリ回数 = 相性値(TARGET, MASTER)/75
-パイズリ回数 += ABL:精液中毒
+パイズリ回数 += ABL:従順/2
 パイズリ回数 += ABL:奉仕精神/2
+パイズリ回数 += ABL:精液中毒/3
 パイズリ回数 += ABL:Ｂ感覚/10
 
 SIF TALENT:汚臭鈍感
@@ -203,32 +204,68 @@ SIF TALENT:娼婦
 	パイズリ回数 += 3
 SIF TALENT:淫乳
 	パイズリ回数 += 3
+SIF TALENT:恋慕
+	パイズリ回数 += 4
+SIF TALENT:親愛
+	パイズリ回数 += 5
 
 SIF パイズリ回数 < 1
 	パイズリ回数 = 1
 
 ;ここから射精回数の計算
 ;ただしどれだけ多くてもパイズリ回数よりは多く射精しない
-射精回数 = 10*パイズリ回数;整数しか扱えない関係で一旦10倍に
+射精回数 = 100*パイズリ回数;整数しか扱えない関係で一旦100倍に
+SELECTCASE TALENT:バストサイズ
+	CASE 1
+		TIMES 射精回数, 0.40
+	CASE 2
+		TIMES 射精回数, 0.70
+	CASE 3
+		TIMES 射精回数, 1.00
+	CASE 4
+		TIMES 射精回数, 1.20
+	CASE 5
+		TIMES 射精回数, 1.40
+	CASE 6
+		TIMES 射精回数, 1.60
+	CASE 7
+		TIMES 射精回数, 1.80
+	CASE IS >= 8
+		TIMES 射精回数, 2.00
+ENDSELECT
 SIF !TALENT:汚れ無視
 	TIMES 射精回数, 0.90
 SIF !TALENT:舌使い
 	TIMES 射精回数, 0.80
 SIF !TALENT:MASTER:絶倫
 	TIMES 射精回数, 0.60
-射精回数 *= ABL:技巧
-射精回数 /= 30
 射精回数 *= (10 + ABL:MASTER:Ｃ感覚)
 射精回数 /= 10
-SELECTCASE TALENT:バストサイズ
+射精回数 *= (600 + MIN(EXP:パイズリ経験, 1000))
+射精回数 /= 800
+SELECTCASE ABL:技巧
+	CASE 1
+		TIMES 射精回数, 0.01
 	CASE 2
-		TIMES 射精回数, 0.90
-	CASE 4, 5
-		TIMES 射精回数, 1.10
+		TIMES 射精回数, 0.03
+	CASE 3
+		TIMES 射精回数, 0.06
+	CASE 4
+		TIMES 射精回数, 0.10
+	CASE 5
+		TIMES 射精回数, 0.15
 	CASE 6
-		TIMES 射精回数, 1.30
+		TIMES 射精回数, 0.21
+	CASE 7
+		TIMES 射精回数, 0.28
+	CASE 8
+		TIMES 射精回数, 0.36
+	CASE 9
+		TIMES 射精回数, 0.45
+	CASE IS >= 10
+		TIMES 射精回数, 0.55
 ENDSELECT
-射精回数 /= 10
+射精回数 /= 100
 射精回数 = LIMIT(射精回数, 1, パイズリ回数)
 IF TALENT:MASTER:絶倫
 	射精回数 = MIN(射精回数, 15)
@@ -242,18 +279,24 @@ CALL EXPUP, "パイズリ経験", パイズリ回数
 SIF TALENT:バストサイズ >= 3 && パイズリ回数 >= 2
 	CALL EXPUP, "フェラ経験", パイズリ回数/2
 CALL EXPUP, "精液経験", 射精回数
-CALL JUELUP, "快Ｂ", パイズリ回数*20
-CALL JUELUP, "恭順", パイズリ回数*100
-CALL JUELUP, "屈服", パイズリ回数*30
-CALL JUELUP, "習得", パイズリ回数*40
+IF MOD:パイズリ奉仕特化 && ゲームモード() != "段位認定"
+	CALL JUELUP, "恭順", パイズリ回数*110
+	CALL JUELUP, "屈服", パイズリ回数*33
+	CALL JUELUP, "習得", パイズリ回数*44
+ELSE
+	CALL JUELUP, "快Ｂ", パイズリ回数*5
+	CALL JUELUP, "恭順", パイズリ回数*100
+	CALL JUELUP, "屈服", パイズリ回数*30
+	CALL JUELUP, "習得", パイズリ回数*40
+ENDIF
 
 CALL EXPUP, "射精経験", 射精回数, MASTER
 CALL EXPUP, "絶頂経験", 射精回数, MASTER
 WAIT
 
-CFLAG:朝パイズリ経験++
-CFLAG:MASTER:朝パイズリ経験++
-CFLAG:胸で射精させた経験++
+CFLAG:朝パイズリ経験 += パイズリ回数
+CFLAG:MASTER:朝パイズリ経験 += パイズリ回数
+CFLAG:胸で射精させた経験 += 射精回数
 SIF CFLAG:スライム度 <= 0 && ISSLIME(MASTER) && CSTR:種族 != "機械" && !TALENT:無機物 && !FLAG:抗スライム
 	CFLAG:スライム度 += 5
 

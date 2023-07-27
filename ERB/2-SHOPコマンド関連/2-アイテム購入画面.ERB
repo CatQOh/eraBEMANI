@@ -1017,15 +1017,9 @@ SELECTCASE アイテム名
 			;普乳→巨乳
 			CASE 3
 				PRINTFORMW ＜%CALLNAME:使用対象%の胸が豊満になった＞
-				;実績:リピカをグラマラスにする
-				SIF CHARANAMEF(使用対象) == "赤のリピカ" && TALENT:使用対象:体格 >= 3
-					CALL 実績解除, "「ふっふーん 『ないすばでぃ』を手に入れたのさー♪」"
 			;巨乳→豊乳
 			CASE 4
 				PRINTFORMW ＜%CALLNAME:使用対象%の胸がさらに豊満になった＞
-				;実績:リピカをグラマラスにする
-				SIF CHARANAMEF(使用対象) == "赤のリピカ" && TALENT:使用対象:体格 >= 3
-					CALL 実績解除, "「ふっふーん 『ないすばでぃ』を手に入れたのさー♪」"
 			;豊乳→爆乳
 			CASE 5
 				;幼児体型、小柄体型、小人体型
@@ -1035,18 +1029,22 @@ SELECTCASE アイテム名
 				ELSE
 					PRINTFORMW ＜%CALLNAME:使用対象%の胸が溢れんばかりの大きさになった＞
 				ENDIF
-				;実績:リピカをグラマラスにする
-				SIF CHARANAMEF(使用対象) == "赤のリピカ" && TALENT:使用対象:体格 >= 3
-					CALL 実績解除, "「ふっふーん 『ないすばでぃ』を手に入れたのさー♪」"
+			CASE IS >= 6
+				PRINTFORMW ＜%CALLNAME:使用対象%の豊満な胸がさらに大きくなった＞
 		ENDSELECT
 		TALENT:使用対象:バストサイズ++
+		IF TALENT:使用対象:バストサイズ >= 4
+			;実績:リピカをグラマラスにする
+			SIF CHARANAMEF(使用対象) == "赤のリピカ" && TALENT:使用対象:体格 >= 3
+				CALL 実績解除, "「ふっふーん 『ないすばでぃ』を手に入れたのさー♪」"
+		ENDIF
 		CFLAG:使用対象:ストレス値 += 70
 	;縮乳化
 	CASE "縮胸剤"
 		CALL SE再生, ドリンク
 		SELECTCASE TALENT:使用対象:バストサイズ
 			;爆乳→豊乳→巨乳
-			CASE 5, 6
+			CASE IS >= 5
 				PRINTFORMW ＜%CALLNAME:使用対象%の豊かすぎる胸が一回り小さくなった＞
 			;巨乳→普乳
 			CASE 4
@@ -1182,8 +1180,10 @@ SELECTCASE アイテム名
 		IF TALENT:使用対象:体格 <= 2
 			PRINTFORMW ＜%CALLNAME:使用対象%は立派な大人の体になった＞
 			TALENT:使用対象:体格 = 3
-			SIF SEX(使用対象) == 2 && TALENT:使用対象:バストサイズ != 6
-				TALENT:使用対象:バストサイズ++
+			IF SEX(使用対象) == 2
+				SIF TALENT:使用対象:バストサイズ != 6 || MOD:バストサイズ限界突破
+					TALENT:使用対象:バストサイズ++
+			ENDIF
 			MAXBASE:使用対象:体力 += 200
 			BASE:使用対象:体力 += 200
 			;実績:リピカをグラマラスにする
@@ -1482,7 +1482,7 @@ SELECTCASE アイテムNO
 		ENDSELECT
 		SELECTCASE アイテム名
 			CASE "豊胸剤"
-				SIF TALENT:使用対象:バストサイズ == 6 || TALENT:使用対象:バストサイズ == 0
+				SIF (TALENT:使用対象:バストサイズ == 6 && MOD:バストサイズ限界突破 == 0) || TALENT:使用対象:バストサイズ == 0
 					RETURNF 0
 				RETURNF 1
 			CASE "縮胸剤"
