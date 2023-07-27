@@ -1,0 +1,93 @@
+﻿@ロケーション条件_ポップン電機
+RETURN -1
+
+@ロケーション可否_ポップン電機
+;時間帯などで使えない場合は理由を書く
+ロケーション可否 = 
+SIF ターン == "朝"
+	ロケーション可否 = 営業準備中
+
+@バイト条件_ポップン電機
+;バイトの時間帯などを書く
+バイト要項 = 昼～夜のシフトで募集中
+;バイト可能かどうかの条件式
+SIF GROUPMATCH(ターン, "昼", "夕", "夜")
+	バイト可能 = 1
+
+RETURN -1
+
+;バイト時に好感度が上がるキャラ
+@職場出現キャラ_ポップン電機
+#DIM DYNAMIC 対象
+{
+#DIMS DYNAMIC 出現キャラ =
+"レインボーヤ",
+}
+
+対象 = GETCHARANAME(出現キャラ:(RAND:VARSIZE("出現キャラ")))
+
+SIF 対象 > 0 && CSTR:対象:現在地 == ""
+	RETURN 対象
+
+RETURN 0
+
+@出現キャラ_ポップン電機
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC グループ数
+#DIM DYNAMIC 始点
+#DIM DYNAMIC 終点
+
+;NOではなく登録番号で指定する
+IF データベース参照中
+	始点 = データベース参照中
+	終点 = データベース参照中+1
+ELSE
+	IF 始点
+		終点 = 始点
+		始点 = 1
+	ELSE
+		始点 = RAND(1, CHARANUM)
+		終点 = CHARANUM
+	ENDIF
+ENDIF
+
+FOR LCOUNT, 始点, 終点
+	;学校などに行ってるキャラは居ない
+	SIF CSTR:LCOUNT:現在地 != "" && !データベース参照中
+		CONTINUE
+	;出現率:LCOUNT = {出現率(100分率)} で指定できる
+	IF RANDPER(1) && グループ数 < 5
+		;相性の良いキャラと2～3人で行動している
+		CALL クラスメイト選出, LCOUNT, "相性"
+		;2人以上揃わなかったら無かったことにする
+		SIF RESULT:0 == 0
+			CONTINUE
+		集団行動:グループ数:0 = LCOUNT
+		集団行動:グループ数:1 = RESULT:0
+		SIF RANDPER(30)
+			集団行動:グループ数:2 = RESULT:1
+		グループ数++
+	ELSE
+		SELECTCASE CHARANAMEF(LCOUNT)
+			;レインボーヤ確定
+			CASE "レインボーヤ"
+				SIF 出現率:LCOUNT >= 0
+					出現率:LCOUNT = 100
+			;とりあえず居そうなやつ
+			CASE "ツクバ", "アキバ"
+				SIF 出現率:LCOUNT >= 0
+					出現率:LCOUNT = 30
+			CASEELSE
+				;ポップンキャラがいる
+				IF GROUPMATCH("pop'n music", CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３)
+					SIF 出現率:LCOUNT >= 0
+						出現率:LCOUNT = 4
+				ENDIF
+		ENDSELECT
+	ENDIF
+NEXT
+
+SIF 始点 == 1
+	RETURN
+SIF !データベース参照中
+	RESTART
