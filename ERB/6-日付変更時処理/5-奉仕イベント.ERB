@@ -64,7 +64,7 @@ DO
 			ENDIF
 		CASE 1
 			;朝パイズリ判定
-			IF TALENT:バストサイズ >= 1 && ABL:奉仕精神 >= 5
+			IF ABL:奉仕精神 >= 3 && TALENT:バストサイズ >= 1 && TALENT:バストサイズ+ABL:奉仕精神 >= 7
 				CALL EVENT_CHECK, "朝パイズリ"
 				BREAK
 			ENDIF
@@ -178,51 +178,54 @@ CALL EXPUP, "射精経験", 射精回数, MASTER
 CALL EXPUP, "絶頂経験", 射精回数, MASTER
 WAIT
 
-CFLAG:朝フェラ経験 += フェラ回数
-CFLAG:MASTER:朝フェラ経験 += フェラ回数
+CFLAG:朝フェラ経験 += 1
+CFLAG:MASTER:朝フェラ経験 += 1
 CFLAG:口で射精させた経験 += 射精回数
 SIF CFLAG:スライム度 <= 0 && ISSLIME(MASTER) && CSTR:種族 != "機械" && !TALENT:無機物 && !FLAG:抗スライム
 	CFLAG:スライム度 += 5
 
 @EVENT_朝パイズリ
-#DIM DYNAMIC パイズリ回数
+#DIM DYNAMIC パイズリカウント
 #DIM DYNAMIC 射精回数
 
 CALL CHECKDRAWLINE
 CALL KOJO_MESSAGE_EVENT, "朝パイズリ"
 
-;ここからパイズリ回数の計算
-パイズリ回数 = 相性値(TARGET, MASTER)/75
-パイズリ回数 += ABL:従順/2
-パイズリ回数 += ABL:奉仕精神/2
-パイズリ回数 += ABL:精液中毒/3
-パイズリ回数 += ABL:Ｂ感覚/10
+;ここからパイズリカウントの計算
+パイズリカウント = 相性値(TARGET, MASTER)/75
+パイズリカウント += ABL:従順/2
+パイズリカウント += ABL:奉仕精神/2
+パイズリカウント += ABL:精液中毒/3
+パイズリカウント += ABL:Ｂ感覚/10
 
 SIF TALENT:汚臭鈍感
-	パイズリ回数++
+	パイズリカウント++
 SIF TALENT:汚臭敏感
-	パイズリ回数--
+	パイズリカウント--
 SIF TALENT:潔癖症
-	パイズリ回数--
+	パイズリカウント--
 SIF TALENT:献身的
-	パイズリ回数 += 2
+	パイズリカウント += 2
 SIF TALENT:淫乱
-	パイズリ回数 += 2
+	パイズリカウント += 2
 SIF TALENT:娼婦
-	パイズリ回数 += 3
+	パイズリカウント += 3
 SIF TALENT:淫乳
-	パイズリ回数 += 3
+	パイズリカウント += 3
 SIF TALENT:恋慕
-	パイズリ回数 += 4
+	パイズリカウント += 4
 SIF TALENT:親愛
-	パイズリ回数 += 5
+	パイズリカウント += 5
 
-SIF パイズリ回数 < 1
-	パイズリ回数 = 1
+SIF MOD:朝パイズリ特化 && ゲームモード() != "段位認定"
+	TIMES パイズリカウント, 1.30
+
+SIF パイズリカウント < 1
+	パイズリカウント = 1
 
 ;ここから射精回数の計算
-;ただしどれだけ多くてもパイズリ回数よりは多く射精しない
-射精回数 = 100*パイズリ回数;整数しか扱えない関係で一旦100倍に
+;ただしどれだけ多くてもパイズリカウントよりは多く射精しない
+射精回数 = 100*パイズリカウント;整数しか扱えない関係で一旦100倍に
 SELECTCASE TALENT:バストサイズ
 	CASE 1
 		TIMES 射精回数, 0.40
@@ -274,37 +277,41 @@ SELECTCASE ABL:技巧
 		TIMES 射精回数, 0.55
 ENDSELECT
 射精回数 /= 100
-射精回数 = LIMIT(射精回数, 1, パイズリ回数)
-IF TALENT:MASTER:絶倫
-	射精回数 = MIN(射精回数, 15)
-ELSE
-	射精回数 = MIN(射精回数, 10)
+射精回数 = LIMIT(射精回数, 1, パイズリカウント)
+IF !MOD:朝パイズリ特化 || ゲームモード() == "段位認定"
+	IF TALENT:MASTER:絶倫
+		射精回数 = MIN(射精回数, 15)
+	ELSE
+		射精回数 = MIN(射精回数, 10)
+	ENDIF
 ENDIF
 
 PRINTFORMW その後も%CALLNAME:TARGET%のパイズリを楽しみ、今朝は{射精回数}回射精した
 
-CALL EXPUP, "パイズリ経験", パイズリ回数
-SIF TALENT:バストサイズ >= 3 && パイズリ回数 >= 2
-	CALL EXPUP, "フェラ経験", パイズリ回数/2
+CALL EXPUP, "パイズリ経験", パイズリカウント
+SIF TALENT:バストサイズ >= 3 && パイズリカウント >= 2
+	CALL EXPUP, "フェラ経験", パイズリカウント/2
 CALL EXPUP, "精液経験", 射精回数
 IF MOD:パイズリ奉仕特化 && ゲームモード() != "段位認定"
-	CALL JUELUP, "恭順", パイズリ回数*110
-	CALL JUELUP, "屈服", パイズリ回数*33
-	CALL JUELUP, "習得", パイズリ回数*44
+	CALL JUELUP, "恭順", パイズリカウント*110
+	CALL JUELUP, "屈服", パイズリカウント*33
+	CALL JUELUP, "習得", パイズリカウント*44
 ELSE
-	CALL JUELUP, "快Ｂ", パイズリ回数*5
-	CALL JUELUP, "恭順", パイズリ回数*100
-	CALL JUELUP, "屈服", パイズリ回数*30
-	CALL JUELUP, "習得", パイズリ回数*40
+	CALL JUELUP, "快Ｂ", パイズリカウント*5
+	CALL JUELUP, "恭順", パイズリカウント*100
+	CALL JUELUP, "屈服", パイズリカウント*30
+	CALL JUELUP, "習得", パイズリカウント*40
 ENDIF
 
 CALL EXPUP, "射精経験", 射精回数, MASTER
 CALL EXPUP, "絶頂経験", 射精回数, MASTER
 WAIT
 
-CFLAG:朝パイズリ経験 += パイズリ回数
-CFLAG:MASTER:朝パイズリ経験 += パイズリ回数
+CFLAG:朝パイズリ経験 += 1
+CFLAG:MASTER:朝パイズリ経験 += 1
 CFLAG:胸で射精させた経験 += 射精回数
+パイズリ回数:TARGET:(NOF(PLAYER)) += パイズリカウント
+挟射回数:TARGET:(NOF(PLAYER)) += 射精回数
 SIF CFLAG:スライム度 <= 0 && ISSLIME(MASTER) && CSTR:種族 != "機械" && !TALENT:無機物 && !FLAG:抗スライム
 	CFLAG:スライム度 += 5
 
@@ -394,7 +401,7 @@ IF CHK_V
 	CALL JUELUP, "快Ｖ", プレイ回数*100
 	中出し回数:MASTER:(NOF(TARGET)) += 射精回数
 	中出され回数:(NOF(MASTER)) += 射精回数
-	CFLAG:騎乗位で射精させた経験++
+	CFLAG:騎乗位で射精させた経験 += 射精回数
 	IF PENIS(TARGET)
 		CALL EXPUP, "射精経験", 1
 		CALL EXPUP, "絶頂経験", 1
@@ -408,7 +415,7 @@ ELSE
 	CALL JUELUP, "快Ａ", プレイ回数*100
 	アナル中出し回数:MASTER:(NOF(TARGET)) += 射精回数
 	アナル中出され回数:(NOF(MASTER)) += 射精回数
-	CFLAG:アナル騎乗位で射精させた経験++
+	CFLAG:アナル騎乗位で射精させた経験 += 射精回数
 	IF PENIS(TARGET)
 		CALL EXPUP, "射精経験", 1
 		CALL EXPUP, "絶頂経験", 1

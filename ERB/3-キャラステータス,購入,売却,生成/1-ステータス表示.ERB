@@ -201,7 +201,7 @@ IF LANGUAGE == "ENG"
 	PRINTL 
 ELSE
 	PRINT [0] 戻る 
-	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+	SIF MOD:パイズリステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 		PRINT [4] 性経験履歴 
 	PRINT [5] その他情報 
 	CALL PRINTSPACE, 前のキャラ >= 0, "[6] 前のキャラ "
@@ -309,8 +309,11 @@ IF LANGUAGE == "ENG"
 		PRINTFORM (Fallen characters:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従})　
 		PRINTFORM Difficulty:%難易度()%
 	ENDIF
-	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-		PRINTFORM 　Experienced Count:{経験人数(TARGET)}
+	PRINT 　
+	SIF MOD:パイズリステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+		PRINTFORM Experienced Count:{経験人数(TARGET)}
+	SIF MOD:パイズリステータス表示
+		PRINTFORM Titfuck Count:{パイズリ経験人数(TARGET)}
 ELSE
 	PRINT □ 基本情報 
 	IF CFLAG:タグ色
@@ -349,8 +352,10 @@ ELSE
 	ENDIF
 	PRINTL
 	PRINT 　
-	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+	SIF MOD:パイズリステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 		PRINTFORM 経験人数:{経験人数(TARGET)} 
+	SIF MOD:パイズリステータス表示
+		PRINTFORM パイズリ経験人数:{パイズリ経験人数(TARGET)} 
 	IF TARGET == MASTER
 		PRINT 称号:
 		IF 固定称号 != ""
@@ -1200,7 +1205,7 @@ NEXT
 DRAWLINE
 PRINTPLAIN 　etc... 
 PRINT [0] 戻る 
-SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+SIF MOD:パイズリステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 	PRINT [4] 性経験履歴 
 PRINT [5] 基本情報　 
 CALL PRINTSPACE, 前のキャラ >= 0, "[6] 前のキャラ "
@@ -1303,7 +1308,7 @@ PRINTL □ 性経験履歴
 [ENDIF]
 FOR LCOUNT, 0, 20000
 	IF 経験回数:TARGET:LCOUNT
-		PRINTFORM %CSVNAMEF(LCOUNT)%:{経験回数:TARGET:LCOUNT}回
+		PRINTFORM 　%CSVNAMEF(LCOUNT)%:{経験回数:TARGET:LCOUNT}回
 		[IF_DEBUG]
 			SEX_TOTAL += 経験回数:TARGET:LCOUNT
 			NAKADASHI_TOTAL += 中出され回数:TARGET:LCOUNT
@@ -1349,7 +1354,7 @@ FOR LCOUNT, 0, 20000
 	ENDIF
 NEXT
 IF モブ経験人数:TARGET:0
-	PRINTFORM 不明:{モブ経験回数:TARGET:0}回/{モブ経験人数:TARGET:0}人
+	PRINTFORM 　不明:{モブ経験回数:TARGET:0}回/{モブ経験人数:TARGET:0}人
 	[IF_DEBUG]
 		SEX_TOTAL += モブ経験回数:TARGET:0
 		NAKADASHI_TOTAL += モブ中出され回数:TARGET:0
@@ -1414,12 +1419,34 @@ ENDIF
 	IF 設定
 		PRINTFORML  [{LIST_+1}] 性交経験をこれに合わせる(現在:{EXP:性交経験}回)
 		PRINTFORML  [{LIST_+2}] 膣射経験をこれに合わせる(現在:{EXP:膣射経験}回)
-		SIF !TALENT:童貞
+		SIF !TALENT:童貞 && PENIS(TARGET)
 			PRINTFORML  [{LIST_+3}] 童貞を捧げた相手………………\@ CSTR:童貞 != "" ? %CSTR:童貞% # 不明 \@
-		SIF !TALENT:処女
+		SIF !TALENT:処女 && VAGINA(TARGET)
 			PRINTFORML  [{LIST_+4}] 処女を捧げた相手………………\@ CSTR:処女 != "" ? %CSTR:処女% # 不明 \@
+	ELSE
+		SIF !TALENT:童貞 && PENIS(TARGET)
+			PRINTFORML 　童貞を捧げた相手………………\@ CSTR:童貞 != "" ? %CSTR:童貞% # 不明 \@
+		SIF !TALENT:処女 && VAGINA(TARGET)
+			PRINTFORML 　処女を捧げた相手………………\@ CSTR:処女 != "" ? %CSTR:処女% # 不明 \@
 	ENDIF
 [ENDIF]
+
+IF MOD:パイズリステータス表示
+	ID = NOF(TARGET)
+	PRINTL □パイズリ経験履歴
+	FOR LCOUNT, 0, 20000
+		IF パイズリ回数:TARGET:LCOUNT
+			PRINTFORML 　%CSVNAMEF(LCOUNT)%:{パイズリ回数:TARGET:LCOUNT}回
+			SIF 挟射回数:TARGET:LCOUNT
+				PRINTFORML 　　%CSVCALLNAMEF(LCOUNT)%は%CSVCALLNAMEF(ID)%のパイズリで{挟射回数:TARGET:LCOUNT}回射精している。
+		ENDIF
+	NEXT
+	IF モブパイズリ人数:TARGET:0
+		PRINTFORML 　不明:{モブパイズリ回数:TARGET:0}回/{モブパイズリ人数:TARGET:0}人
+		SIF モブ挟射回数:TARGET:0
+			PRINTFORML 　　%CSVCALLNAMEF(ID)%はパイズリで{モブ挟射回数:TARGET:0}回射精させている。
+	ENDIF
+ENDIF
 
 FOR LCOUNT, TARGET+1, CHARANUM
 	IF ロストキャラ表示
