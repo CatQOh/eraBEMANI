@@ -46,13 +46,13 @@ SELECTCASE MODページ
 		CALL COLUMNPRINTL, 0, @"　[81] - MOD:バストサイズカスタム(現在:\@ MOD:バストサイズカスタム ? オン # オフ \@) 全ての女性キャラが元のバストサイズに応じて変化する", @"\@ MOD:バストサイズカスタム ? deepskyblue #\@"
 		CALL COLUMNPRINTL, 0, "　　現在の設定   絶壁に 貧乳に 並乳に 巨乳に 豊乳に 爆乳に 爆乳+1 爆乳+2 爆乳+3 爆乳+4 爆乳+5 爆乳+6 爆乳+7 爆乳+8 爆乳+9"
 		FOR LCOUNT, 1, 7
-			SIF バストサイズカスタム:LCOUNT == 0
-				バストサイズカスタム:LCOUNT = LCOUNT
-			CALL COLUMNPRINT, 0, @"　　%バストサイズ(LCOUNT)%→%バストサイズ(バストサイズカスタム:LCOUNT)%"
-			SIF バストサイズカスタム:LCOUNT < 7
+			SIF バストサイズ指定:LCOUNT == 0
+				バストサイズ指定:LCOUNT = LCOUNT
+			CALL COLUMNPRINT, 0, @"　　%バストサイズ(LCOUNT)%→%バストサイズ(バストサイズ指定:LCOUNT)%"
+			SIF バストサイズ指定:LCOUNT < 7
 				CALL COLUMNPRINT, 0, "  "
 			FOR LCOUNT1, 1, 16
-				IF バストサイズカスタム:LCOUNT == LCOUNT1
+				IF バストサイズ指定:LCOUNT == LCOUNT1
 					CALL COLUMNPRINT, 0, @" [{8000+100*LCOUNT+LCOUNT1}]", "deepskyblue"
 				ELSE
 					CALL COLUMNPRINT, 0, @" [{8000+100*LCOUNT+LCOUNT1}]"
@@ -62,6 +62,11 @@ SELECTCASE MODページ
 		NEXT
 		CALL COLUMNPRINTL, 0, @"　[82] - MOD:バストサイズ限界突破(現在:\@ MOD:バストサイズ限界突破 ? オン # オフ \@) バストサイズを爆乳よりも大きくできる", @"\@ MOD:バストサイズ限界突破 ? deepskyblue #\@"
 		CALL COLUMNPRINTL, 0, @"　[83] - MOD:パイズリ奉仕特化(現在:\@ MOD:パイズリ奉仕特化 ? オン # オフ \@) パイズリによる快Ｂ取得が0になるかわりに他が微増する", @"\@ MOD:パイズリ奉仕特化 ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[84] - MOD:朝パイズリ特化(現在:\@ MOD:朝パイズリ特化 ? オン # オフ \@) 日付変更時の奉仕イベントで可能なら必ずパイズリになりイベントが強化される", @"\@ MOD:朝パイズリ特化 ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[85] - MOD:パイズリステータス表示(現在:\@ MOD:パイズリステータス表示 ? オン # オフ \@) パイズリに特化したステータスが見られます", @"\@ MOD:パイズリステータス表示 ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[86] - MOD:着衣パイズリ特化(現在:\@ MOD:着衣パイズリ特化 ? オン # オフ \@) 着衣パイズリをアシストするオプションが追加される", @"\@ MOD:着衣パイズリ特化 ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, ""
+		CALL COLUMNPRINTL, 0, "  [-1] - MODをすべてオフにする"
 ENDSELECT
 CALL COLUMNDRAWLINE, 0
 CALL COLUMNPRINT, 0, @"%RETURNSPACE(MODページ > 0, "[101] 前ページ ")%"
@@ -73,6 +78,8 @@ CALL COLUMNPRINTL, 0, ""
 #DIM DYNAMIC サイズ7
 
 SELECTCASE CRESULT:1
+	CASE -1
+		VARSET MOD
 	CASE 101
 		MODページ--
 	CASE 109
@@ -122,7 +129,7 @@ SELECTCASE CRESULT:1
 		IF MOD:バストサイズカスタム
 			サイズ7 = 0
 			FOR LCOUNT, 1, 7
-				SIF バストサイズカスタム:LCOUNT >= 7
+				SIF バストサイズ指定:LCOUNT >= 7
 					サイズ7 = 1
 			NEXT
 			SIF サイズ7
@@ -131,7 +138,7 @@ SELECTCASE CRESULT:1
 	CASE 82
 		サイズ7 = 0
 		FOR LCOUNT, 1, 7
-			SIF バストサイズカスタム:LCOUNT >= 7
+			SIF バストサイズ指定:LCOUNT >= 7
 				サイズ7 = 1
 		NEXT
 		IF サイズ7 && MOD:バストサイズカスタム
@@ -139,13 +146,11 @@ SELECTCASE CRESULT:1
 		ELSE
 			INVERTBIT MOD:バストサイズ限界突破, 0
 		ENDIF
-	CASE 83
-		INVERTBIT MOD:パイズリ奉仕特化, 0
 	CASE 8101 TO 8700
 		MOD:バストサイズカスタム = 1
 		MOD:絶壁 = 0
 		MOD:爆乳 = 0
-		バストサイズカスタム:((CRESULT:1-1)/100 - 80) = (CRESULT:1-1)%100 + 1
+		バストサイズ指定:((CRESULT:1-1)/100 - 80) = (CRESULT:1-1)%100 + 1
 		SIF (CRESULT:1-1)%100 + 1>= 7
 			MOD:バストサイズ限界突破 = 1
 	CASEELSE
@@ -381,13 +386,15 @@ ENDIF
 
 @APPLY_MOD_バストサイズカスタム, 対象
 #DIM DYNAMIC 対象
-#DIM DYNAMIC LINECOUNT
+#DIM DYNAMIC LCOUNT
 
 IF SEX(対象) == 2
 	FOR LCOUNT, 1, 7
 		IF LCOUNT == TALENT:対象:バストサイズ
-			TALENT:対象:バストサイズ = バストサイズカスタム:LCOUNT
+			TALENT:対象:バストサイズ = バストサイズ指定:LCOUNT
 			CSTR:対象:適用MOD += "[MOD:胸囲指定]"
+			BREAK
+		ENDIF
 	NEXT
 ENDIF
 
@@ -436,19 +443,19 @@ ENDIF
 #DIM DYNAMIC 対象
 
 TALENT:対象:恋慕 = 1
-TALENT:対象:陥落 = 1
+CFLAG:対象:陥落 = 1
 CSTR:対象:適用MOD += "[MOD:恋慕]"
 
 @APPLY_MOD_淫乱, 対象
 #DIM DYNAMIC 対象
 
 TALENT:対象:淫乱 = 1
-TALENT:対象:陥落 = 1
+CFLAG:対象:陥落 = 1
 CSTR:対象:適用MOD += "[MOD:淫乱]"
 
 @APPLY_MOD_服従, 対象
 #DIM DYNAMIC 対象
 
 TALENT:対象:服従 = 1
-TALENT:対象:陥落 = 1
+CFLAG:対象:陥落 = 1
 CSTR:対象:適用MOD += "[MOD:服従]"
