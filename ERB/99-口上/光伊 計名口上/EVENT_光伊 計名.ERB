@@ -57,11 +57,11 @@ SIF OPTION:口上表示 == 0
 ;-------------------------------------------------
 	DRAWLINE
 ;カップリング口上への分岐
-IF KENA_SHIKI() && EXISTFUNCTION(@"KOJO_START_光伊_計名_新婚（識）")
-	CALLFORM KOJO_START_光伊_計名_新婚（識）
+IF KENA_SHIKI()
+	TRYCALLFORM KOJO_START_光伊_計名_新婚（識）
 	RETURN 0
-ELSEIF KENA_ZILCH() && EXISTFUNCTION(@"KOJO_START_光伊_計名_新婚（ジルチ）")
-	CALLFORM KOJO_START_光伊_計名_新婚（ジルチ）
+ELSEIF KENA_ZILCH()
+	TRYCALLFORM KOJO_START_光伊_計名_新婚（ジルチ）
 	RETURN 0
 ENDIF
 ;---------------
@@ -303,7 +303,7 @@ ELSE
 									PRINTDATAW
 										DATA 「ん、今回は私に逢いたかったんか。嬉しいな」
 										DATA 「元気に燃えてる？……そ…そっか～、いつもよりテンション高いって言われると…」
-										DATAFORM 「%CALLNAME:MASTER%。もし事務作業があれば……手伝おうか」
+										DATAFORM 「\@名前あり() ? %CALLNAME:MASTER%。 # \@もし事務作業があれば……手伝おうか」
 									ENDDATA
 								CASE 1
 									PRINTFORMW 「仕事の合間で羽伸ばしに来てくれた……訳無いよな、早速しようか」
@@ -313,14 +313,14 @@ ELSE
 						CASE 2
 							SELECTCASE RAND:6
 								CASE 0
-									PRINTFORMW 「あ…%CALLNAME:MASTER%」
+									PRINTFORMW 「あ…\@名前あり() ? %CALLNAME:MASTER% # 先に \@来てたんか」
 									PRINTDATAW
 										DATA 「えっと…私、熱っぽいか……さっきまで興奮してただけ、安心して」
 										DATA 「昨日からしたくてオナ禁してたから…早う抜きたくて……」
 										DATA 「君も相当溜まってるやろ。早速顔に出とるし…他人の事言えへんな？」
 									ENDDATA
 								CASE 1
-									PRINTFORMW 「燃えてるか～？ほら、調教での威勢はどこに行ってもうたんか。私が居るから……な」
+									PRINTFORMW 「燃えてるか～？ほらほら、調教での威勢はどこに行ってもうたんか。私が居るから……な」
 								CASE 2
 									IF TALENT:TARGET:娼婦
 										IF KEINA:14 == 0
@@ -479,11 +479,11 @@ RETURN 0
 @KOJO_TURNEND_光伊_計名
 	DRAWLINE
 ;カップリング口上への分岐
-IF KENA_SHIKI() && EXISTFUNCTION(@"KOJO_TURNEND_光伊_計名_新婚（識）")
-	CALLFORM KOJO_TURNEND_光伊_計名_新婚（識）
+IF KENA_SHIKI()
+	TRYCALLFORM KOJO_TURNEND_光伊_計名_新婚（識）
 	RETURN 0
-ELSEIF KENA_ZILCH() && EXISTFUNCTION(@"KOJO_TURNEND_光伊_計名_新婚（ジルチ）")
-	CALLFORM KOJO_TURNEND_光伊_計名_新婚（ジルチ）
+ELSEIF KENA_ZILCH()
+	TRYCALLFORM KOJO_TURNEND_光伊_計名_新婚（ジルチ）
 	RETURN 0
 ENDIF
 ;---------------
@@ -534,22 +534,34 @@ RETURN 0
 ;SIF PLAYER != MASTER
 ;	RETURN 0
 
-;地の文表示関数 地の文を表示させたくないコマンドがあれば除外すると良い
-;TRYCALLFORM MESSAGE_COM_%SELECTCOMS%
-
 ;ボールギャグ着用時には地の文を表示して口上をスキップする
 SIF TEQUIP:ボールギャグ &&  SELECTCOMS != "ボールギャグ"
 	RETURN 0
 SIF OPTION:口上表示 == 0
 	RETURN 0
 
-;カップリング口上への分岐
-IF KENA_SHIKI() && EXISTFUNCTION(@"COM_%SELECTCOMS%_光伊_計名_新婚（識）")
-	CALLFORM COM_%SELECTCOMS%_光伊_計名_新婚（識）
-ELSEIF KENA_ZILCH() && EXISTFUNCTION(@"COM_%SELECTCOMS%_光伊_計名_新婚（ジルチ）")
-	CALLFORM COM_%SELECTCOMS%_光伊_計名_新婚（ジルチ）
+;カップリング口上への分岐（コマンド別関数がなければそれぞれ地の文を表示する）
+IF KENA_SHIKI()
+	TRYCCALLFORM COM_%SELECTCOMS%_光伊_計名_新婚（識）
+	CATCH
+		TRYCALLLIST
+			FUNC COM_%SELECTCOMS%_光伊_計名
+			FUNC MESSAGE_COM_%SELECTCOMS%
+		ENDFUNC
+	ENDCATCH
+ELSEIF KENA_ZILCH()
+	TRYCCALLFORM COM_%SELECTCOMS%_光伊_計名_新婚（ジルチ）
+	CATCH
+		TRYCALLLIST
+			FUNC COM_%SELECTCOMS%_光伊_計名
+			FUNC MESSAGE_COM_%SELECTCOMS%
+		ENDFUNC
+	ENDCATCH
 ELSE
-	TRYCALLFORM COM_%SELECTCOMS%_光伊_計名
+	TRYCCALLFORM COM_%SELECTCOMS%_光伊_計名
+	CATCH
+		TRYCALLFORM MESSAGE_COM_%SELECTCOMS%
+	ENDCATCH
 ENDIF
 
 ;-------------------------------------------------
@@ -567,10 +579,16 @@ ENDIF
 TRYCALLFORM MESSAGE_USERCOM_{ARG}
 
 ;カップリング口上への分岐
-IF KENA_SHIKI() && EXISTFUNCTION(@"USERCOM_{ARG}_光伊_計名_新婚（識）")
-	CALLFORM COM_USERCOM_{ARG}_光伊_計名_新婚（識）
-ELSEIF KENA_ZILCH() && EXISTFUNCTION(@"USERCOM_{ARG}_光伊_計名_新婚（ジルチ）")
-	CALLFORM USERCOM_{ARG}_光伊_計名_新婚（ジルチ）
+IF KENA_SHIKI()
+	TRYCCALLFORM COM_USERCOM_{ARG}_光伊_計名_新婚（識）
+	CATCH
+		TRYCALLFORM USERCOM_{ARG}_光伊_計名
+	ENDCATCH
+ELSEIF KENA_ZILCH()
+	TRYCCALLFORM USERCOM_{ARG}_光伊_計名_新婚（ジルチ）
+	CATCH
+		TRYCALLFORM USERCOM_{ARG}_光伊_計名
+	ENDCATCH
 ELSE
 	TRYCALLFORM USERCOM_{ARG}_光伊_計名
 ENDIF
@@ -759,12 +777,16 @@ SIF OPTION:口上表示 == 0
 	RETURN 0
 
 ;カップリング口上への分岐
-IF KENA_SHIKI() && EXISTFUNCTION(@"KOJO_MESSAGE_SHOOT_光伊_計名_新婚（識）")
-	CALLFORM KOJO_MESSAGE_SHOOT_光伊_計名_新婚（識）
-	RETURN 0
-ELSEIF KENA_ZILCH() && EXISTFUNCTION(@"KOJO_MESSAGE_SHOOT_光伊_計名_新婚（ジルチ）")
-	CALLFORM KOJO_MESSAGE_SHOOT_光伊_計名_新婚（ジルチ）
-	RETURN 0
+IF KENA_SHIKI()
+	TRYCCALLFORM KOJO_MESSAGE_SHOOT_光伊_計名_新婚（識）
+		RETURN 0
+	CATCH
+	ENDCATCH
+ELSEIF KENA_ZILCH()
+	TRYCCALLFORM KOJO_MESSAGE_SHOOT_光伊_計名_新婚（ジルチ）
+		RETURN 0
+	CATCH
+	ENDCATCH
 ENDIF
 
 ;-------------------------------------------------
@@ -975,12 +997,16 @@ SIF OPTION:口上表示 == 0
 	RETURN 0
 
 ;カップリング口上への分岐
-IF KENA_SHIKI() && EXISTFUNCTION(@"KOJO_MESSAGE_TSHOOT_光伊_計名_新婚（識）")
-	CALLFORM KOJO_MESSAGE_TSHOOT_光伊_計名_新婚（識）
-	RETURN 0
-ELSEIF KENA_ZILCH() && EXISTFUNCTION(@"KOJO_MESSAGE_TSHOOT_光伊_計名_新婚（ジルチ）")
-	CALLFORM KOJO_MESSAGE_TSHOOT_光伊_計名_新婚（ジルチ）
-	RETURN 0
+IF KENA_SHIKI()
+	TRYCCALLFORM KOJO_MESSAGE_TSHOOT_光伊_計名_新婚（識）
+		RETURN 0
+	CATCH
+	ENDCATCH
+ELSEIF KENA_ZILCH()
+	TRYCCALLFORM KOJO_MESSAGE_TSHOOT_光伊_計名_新婚（ジルチ）
+		RETURN 0
+	CATCH
+	ENDCATCH
 ENDIF
 
 ;-------------------------------------------------
@@ -990,9 +1016,7 @@ ENDIF
 ;触手が射精
 ;-------------------------------------------------
 IF NOWEX:MASTER:触手射精
-	IF KENA_ZILCH()
-
-	ELSEIF CFLAG:陥落
+	IF CFLAG:陥落
 		SELECTCASE SELECTCOMS
 			CASE "アナル触手", "触手挿入"
 				SELECTCASE RAND:4
@@ -1028,12 +1052,16 @@ SIF OPTION:口上表示 == 0
 	RETURN 0
 
 ;カップリング口上への分岐
-IF KENA_SHIKI() && EXISTFUNCTION(@"KOJO_MESSAGE_EX_光伊_計名_新婚（識）")
-	CALLFORM KOJO_MESSAGE_EX_光伊_計名_新婚（識）
-	RETURN 0
-ELSEIF KENA_ZILCH() && EXISTFUNCTION(@"KOJO_MESSAGE_EX_光伊_計名_新婚（ジルチ）")
-	CALLFORM KOJO_MESSAGE_EX_光伊_計名_新婚（ジルチ）
-	RETURN 0
+IF KENA_SHIKI()
+	TRYCCALLFORM KOJO_MESSAGE_EX_光伊_計名_新婚（識）
+		RETURN 0
+	CATCH
+	ENDCATCH
+ELSEIF KENA_ZILCH()
+	TRYCCALLFORM KOJO_MESSAGE_EX_光伊_計名_新婚（ジルチ）
+		RETURN 0
+	CATCH
+	ENDCATCH
 ENDIF
 
 ;-------------------------------------------------
@@ -1512,7 +1540,7 @@ IF NOWEX:射精
 				SELECTCASE RAND:6
 					CASE 0
 						PRINTFORMW ｢はぁ…ん、あぁ……あはぁ……あくぅうう、イイっ……！｣
-						PRINTFORMW 「%CALLNAME:PLAYER%、も…イこ…？」
+						PRINTFORMW 「\@名前あり() ? %CALLNAME:PLAYER% # 君 \@、も…イこ…？」
 					CASE 1
 						PRINTFORMW 「は…ぁ、あぁあああああっ！」
 				ENDSELECT
@@ -1527,7 +1555,7 @@ IF NOWEX:射精
 						PRINTFORMW %CALLNAME:PLAYER%の腸内に搾り取られるかのように射精した…
 					CASE 1
 						PRINTFORMW 「あぁああ…くぅ…」
-						PRINTFORMW 「うぅ…気持ち良すぎてつい…無理させてごめんな…」
+						PRINTFORMW 「うぅ…気持ち良すぎてつい…\@名前あり() ? %CALLNAME:PLAYER% # 君 \@の身体に、無理させてごめんな…」
 				ENDSELECT
 			ELSEIF ハニーバニー
 				TRYCALL EX_MESSAGE
@@ -1578,7 +1606,7 @@ IF NOWEX:射精
 				SELECTCASE RAND:3
 					CASE 0
 						PRINTFORMW 「もうイク…ん……っ…！」
-						PRINTFORMW 「はぁ、あぁ…%CALLNAME:PLAYER%…気持ち良かった…？」
+						PRINTFORMW 「はぁ、あぁ…\@名前あり() ? %CALLNAME:PLAYER% # \@…気持ち良かった…？」
 					CASE 1
 						PRINTFORMW 「あっ…ごめん…これ以上は持たへんかも…！」
 					CASE 2
@@ -1644,12 +1672,16 @@ SIF OPTION:口上表示 == 0
 	RETURN 0
 
 ;カップリング口上への分岐
-IF KENA_SHIKI() && EXISTFUNCTION(@"KOJO_MESSAGE_AFTER_光伊_計名_新婚（識）")
-	CALLFORM KOJO_MESSAGE_AFTER_光伊_計名_新婚（識）
-	RETURN 0
-ELSEIF KENA_ZILCH() && EXISTFUNCTION(@"KOJO_MESSAGE_AFTER_光伊_計名_新婚（ジルチ）")
-	CALLFORM KOJO_MESSAGE_AFTER_光伊_計名_新婚（ジルチ）
-	RETURN 0
+IF KENA_SHIKI()
+	TRYCCALLFORM KOJO_MESSAGE_AFTER_光伊_計名_新婚（識）
+		RETURN 0
+	CATCH
+	ENDCATCH
+ELSEIF KENA_ZILCH()
+	TRYCCALLFORM KOJO_MESSAGE_AFTER_光伊_計名_新婚（ジルチ）
+		RETURN 0
+	CATCH
+	ENDCATCH
 ENDIF
 
 ;-------------------------------------------------
@@ -1702,10 +1734,10 @@ SIF OPTION:口上表示 == 0
 	RETURN 0
 
 ;カップリング口上への分岐
-IF KENA_SHIKI() && EXISTFUNCTION(@"KOJO_MESSAGE_PALAM_光伊_計名_新婚（識）")
+IF KENA_SHIKI()
 	TRYCALLFORM KOJO_MESSAGE_PALAM_光伊_計名_新婚（識）
 	RETURN 0
-ELSEIF KENA_ZILCH() && EXISTFUNCTION(@"KOJO_MESSAGE_PALAM_光伊_計名_新婚（ジルチ）")
+ELSEIF KENA_ZILCH()
 	TRYCALLFORM KOJO_MESSAGE_PALAM_光伊_計名_新婚（ジルチ）
 	RETURN 0
 ENDIF
@@ -1734,10 +1766,16 @@ SIF OPTION:口上表示 == 0
 	RETURN 0
 
 ;カップリング口上への分岐
-IF KENA_SHIKI() && EXISTFUNCTION(@"MARK{ARG}_光伊_計名_新婚（識）")
-	CALLFORM MARK{ARG}_光伊_計名_新婚（識）
-ELSEIF KENA_ZILCH() && EXISTFUNCTION(@"MARK{ARG}_光伊_計名_新婚（ジルチ）")
-	CALLFORM MARK{ARG}_光伊_計名_新婚（ジルチ）
+IF KENA_SHIKI()
+	TRYCCALLFORM MARK{ARG}_光伊_計名_新婚（識）
+	CATCH
+		TRYCALLFORM MARK{ARG}_光伊_計名
+	ENDCATCH
+ELSEIF KENA_ZILCH()
+	TRYCCALLFORM MARK{ARG}_光伊_計名_新婚（ジルチ）
+	CATCH
+		TRYCALLFORM MARK{ARG}_光伊_計名
+	ENDCATCH
 ELSE
 	TRYCALLFORM MARK{ARG}_光伊_計名
 ENDIF
@@ -1866,7 +1904,7 @@ IF MARK:屈服刻印 >= 2
 ELSE
 	SELECTCASE MARK:反発刻印
 		CASE 1
-			PRINTFORMW 「今の状況…分かってます？」
+			PRINTFORMW 「今の状況、分かってます？」
 		CASE 2
 			PRINTFORMW （チィッ、コイツには良識がない！）
 			PRINTFORMW %CALLNAME:PLAYER%の横暴さに憤怒していた…
@@ -1893,15 +1931,28 @@ ENDIF
 SIF OPTION:口上表示 == 0
 	RETURN 0
 
-;カップリング口上への分岐
-IF KENA_SHIKI() && EXISTFUNCTION(@"EVENT_%ARGS%_光伊_計名_新婚（識）")
-	CALLFORM EVENT_%ARGS%_光伊_計名_新婚（識）
-ELSEIF KENA_ZILCH() && EXISTFUNCTION(@"EVENT_%ARGS%_光伊_計名_新婚（ジルチ）")
-	CALLFORM EVENT_%ARGS%_光伊_計名_新婚（ジルチ）
+;カップリング口上への分岐（イベント別関数がなければそれぞれ地の文を表示する）
+IF KENA_SHIKI()
+	TRYCCALLFORM EVENT_%ARGS%_光伊_計名_新婚（識）
+	CATCH
+		TRYCALLLIST
+			FUNC EVENT_%ARGS%_光伊_計名
+			FUNC EVENT_MESSAGE_%ARGS%
+		ENDFUNC
+	ENDCATCH
+ELSEIF KENA_ZILCH()
+	TRYCCALLFORM EVENT_%ARGS%_光伊_計名_新婚（ジルチ）
+	CATCH
+		TRYCALLLIST
+			FUNC EVENT_%ARGS%_光伊_計名
+			FUNC EVENT_MESSAGE_%ARGS%
+		ENDFUNC
+	ENDCATCH
 ELSE
 	TRYCALLFORM EVENT_%ARGS%_光伊_計名
 ENDIF
 
+RETURN RESULT
 ;-------------------------------------------------
 ;朝フェラ 陥落していないと発生しない
 ;-------------------------------------------------
@@ -1920,7 +1971,6 @@ ENDSELECT
 ;-------------------------------------------------
 ;朝騎乗位 陥落していないと発生しない
 ;-------------------------------------------------
-;新婚カプのみ自作地の文
 @EVENT_朝騎乗位_光伊_計名
 	TRYCALLFORM EVENT_MESSAGE_朝騎乗位
 SELECTCASE RAND:3
@@ -1984,7 +2034,7 @@ SELECTCASE RAND:3
 						PRINTFORMW もう誰にも邪魔建て出来ない程に…
 					;男主人＋女助手
 					CASE 2
-						PRINTFORMW 「ん、%CALLNAME:MASTER%ったら…そないにがっつかなくても…」
+						PRINTFORMW 「ん、\@名前あり() ? %CALLNAME:MASTER%ったら… # \@そないにがっつかなくても…」
 						PRINTFORMW 「%CALLNAME:ASSI%にヤキモチ焼かんでもええのに」
 				ENDSELECT
 			;女主人
@@ -2017,7 +2067,7 @@ ENDSELECT
 ;今後他ですり抜け発生時にIF ゲームモード() == "新婚モード"＋SELECTCASEで主人キャラ分岐にする
 IF ゲームモード() == "新婚モード"
 		TRYCALLFORM EVENT_MESSAGE_調教後自慰
-		PRINTFORMW 「%CALLNAME:MASTER%…へ、部屋に戻ってたんじゃ……気になるんなら、見抜きしていってもえぇよ…」
+		PRINTFORMW 「\@名前あり() ? %CALLNAME:MASTER% # あ… \@…へ、部屋に戻ってたんじゃ……気になるんなら、見抜きしていってもえぇよ…」
 		PRINTFORMW 自慰する姿を見られ、恥ずかしそうに手を動かしていた…
 ;陥落済み
 ELSEIF CFLAG:陥落
@@ -2085,7 +2135,7 @@ SELECTCASE TFLAG:色仕掛け
 	;夜這い失敗
 	CASE 2
 		IF CFLAG:陥落
-			PRINTFORMW 「んん……%CALLNAME:MASTER%……夜遅くにどないしたん…まさか仕事の件とか？」
+			PRINTFORMW 「んん……\@名前あり() ? %CALLNAME:MASTER% # \@……夜遅くにどないしたん…まさか仕事の件とか？」
 			PRINTFORMW 「え、夜這い？悪いなぁ………今はしたい気分やないから寝かせて…」
 			PRINTFORMW 明日には相手するから、と言うと少しだけ不満そうな表情をする%CALLNAME:MASTER%だが、素直に諦めて部屋から立ち去ることにした…
 		ELSEIF ハニーバニー
@@ -2111,7 +2161,7 @@ SELECTCASE TFLAG:色仕掛け
 	;色仕掛け失敗
 	CASE 4
 		IF CFLAG:陥落
-			PRINTFORMW 「え、%CALLNAME:MASTER%！？」
+			PRINTFORMW 「え、\@名前あり() ? %CALLNAME:MASTER% # どないしたんその恰好 \@！？」
 			PRINTFORMW 「あわわっ、き………今日は無理、ゴメン！おやすみっ！」
 			PRINTFORMW 寝間着と下着にいつもより気合を入れた%CALLNAME:MASTER%だが、たじろぐケイナに拒絶されてしまった……
 			PRINTFORMW 「…………はぁ、誘いを断るにしても彼女に悪い事してもうた。明日にでも謝るか…」
@@ -2152,22 +2202,45 @@ ENDSELECT
 ;-------------------------------------------------
 ;売却時
 ;-------------------------------------------------
+@売却額補正_光伊_計名
+;キャラ番号と同じ額
+SIF CFLAG:陥落
+	RETURN 160
+
 @EVENT_売却時_光伊_計名
+
 SELECTCASE FALLTYPE(TARGET)
 	;恋慕、親愛
 	CASE 1
-		PRINTFORMW 「な、なんでや！？、今までずっと愛してくれたのに！」
-		PRINTFORMW 「…………………幾ら何でも、突然すぎるやろ…」
+		PRINTFORMW 「な、なんでや！？今までずっと愛してくれたのに！」
+		PRINTFORMW 「幾ら何でも突然すぎるやろ…\@名前あり() ? %CALLNAME:PLAYER%っ、# \@考え直して？」
+		;売却時の最終確認みたいなのが欲しい～、書いた
+		PRINTFORM 酷く動揺したケイナはどうしても%CALLNAME:PLAYER%の元から離れたがらない。……
+		FONTBOLD
+		PRINTW 本当に売却しますか？
+		FONTREGULAR
+		PRINTL [0] はい
+		PRINTL [1] いいえ
+		CFLAG:売却寸止め = 1
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				CALL PASELIW, @"%CALLNAME:PLAYER%が必死に説得した末、{CFLAG:売却額}＄と引き換えにケイナを元居た家に帰しました"
+			CASE 1
+				PRINTFORMW 売らないと宣言した%CALLNAME:PLAYER%に、ケイナはほっと胸を撫で下ろした
+				RETURN 1
+		ENDSELECT
 	;淫乱・娼婦
 	CASE 2
-		PRINTFORMW 「ははっ、商人まで呼んできて…なんやこの状況…」
-		PRINTFORMW 「どうせ冗談に決まっとるんやろ？ 今のもう一度言うて欲しいな」
-		PRINTFORMW 再度別れ話を切り出した%CALLNAME:MASTER%の言葉に、ケイナは青ざめた表情のままへたり込んでしまった…
-		PRINTFORMW 「…………そんな、どうして…」
+		PRINTFORMW 「商人まで呼んできたって事は……私を手放す気つもり？このまま可愛がってくれると思うてたのに」
+		PRINTFORMW %CALLNAME:MASTER%の言葉にケイナは皮肉を添えて、調教師であり後悔の情すら無い%CALLNAME:PLAYER%との別れを惜しんだ。憂いを浮かべながら微笑する…
+		PRINTFORMW 「それが君の仕事やから仕方ない…暫くはお別れや。\@名前あり() ? さようなら%CALLNAME:PLAYER% # またな… \@………」
+		CALL PASELIW, @"{CFLAG:売却額}＄で売却されてからその後、ケイナは高級娼館の男娼として幸せに過ごしましたとさ"
 	;服従・隷属
 	CASE 3
-		PRINTFORMW 「主従関係の解消、か。正直屋敷を離れるのは辛いけど……」
-		PRINTFORMW 「何処かで逢えたらえぇな」
+		PRINTFORMW 「主従関係の解消か。正直屋敷を離れるのは辛いけど、私はどこでも耐えてみせるよ」
+		PRINTFORMW 「今までありがとう\@名前あり() ? %CALLNAME:PLAYER%… # … \@さようなら」
+		CALL PASELIW, @"%CALLNAME:PLAYER%は新しい主から、手切れ金として{CFLAG:売却額}＄を受け取りケイナを引き渡した。後日、彼は忠実な奴隷グループの一員として暮らしているそうだ…"
 	;未陥落
 	CASEELSE
 		PRINT 「今までお世話になりました。
@@ -2429,10 +2502,16 @@ SIF OPTION:口上表示 == 0
 	RETURN 0
 
 ;カップリング口上への分岐
-IF KENA_SHIKI() && EXISTFUNCTION(@"USE_ITEM_%ARGS%_光伊_計名_新婚（識）")
-	CALLFORM USE_ITEM_%ARGS%_光伊_計名_新婚（識）
-ELSEIF KENA_ZILCH() && EXISTFUNCTION(@"USE_ITEM_%ARGS%_光伊_計名_新婚（ジルチ）")
-	CALLFORM USE_ITEM_%ARGS%_光伊_計名_新婚（ジルチ）
+IF KENA_SHIKI()
+	TRYCCALLFORM USE_ITEM_%ARGS%_光伊_計名_新婚（識）
+	CATCH
+		TRYCALLFORM USE_ITEM_%ARGS%_光伊_計名
+	ENDCATCH
+ELSEIF KENA_ZILCH()
+	TRYCCALLFORM USE_ITEM_%ARGS%_光伊_計名_新婚（ジルチ）
+	CATCH
+		TRYCALLFORM USE_ITEM_%ARGS%_光伊_計名
+	ENDCATCH
 ELSE
 	TRYCALLFORM USE_ITEM_%ARGS%_光伊_計名
 ENDIF
@@ -2489,10 +2568,10 @@ ENDIF
 #DIM DYNAMIC 対象, 2
 
 ;カップリング口上への分岐
-IF KENA_SHIKI() && EXISTFUNCTION(@"SPELLCAST_光伊_計名_新婚（識）")
+IF KENA_SHIKI()
 	TRYCALLFORM SPELLCAST_光伊_計名_新婚（識）, 詠唱者, 対象:0, 対象:1
 	RETURN 0
-ELSEIF KENA_ZILCH() && EXISTFUNCTION(@"SPELLCAST_光伊_計名_新婚（ジルチ）")
+ELSEIF KENA_ZILCH()
 	TRYCALLFORM SPELLCAST_光伊_計名_新婚（ジルチ）, 詠唱者, 対象:0, 対象:1
 	RETURN 0
 ENDIF
@@ -2528,10 +2607,10 @@ CALL SPELLCAST_地の文, 詠唱者, 対象:0, 対象:1
 #DIM DYNAMIC 対象, 2
 
 ;カップリング口上への分岐
-IF KENA_SHIKI() && EXISTFUNCTION(@"RECIEVE_SPELLCAST_光伊_計名_新婚（識）")
+IF KENA_SHIKI()
 	TRYCALLFORM RECIEVE_SPELLCAST_光伊_計名_新婚（識）, 詠唱者, 対象:0, 対象:1
 	RETURN 0
-ELSEIF KENA_ZILCH() && EXISTFUNCTION(@"RECIEVE_SPELLCAST_光伊_計名_新婚（ジルチ）")
+ELSEIF KENA_ZILCH()
 	TRYCALLFORM RECIEVE_SPELLCAST_光伊_計名_新婚（ジルチ）, 詠唱者, 対象:0, 対象:1
 	RETURN 0
 ENDIF
