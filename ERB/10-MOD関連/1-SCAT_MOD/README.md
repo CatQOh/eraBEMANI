@@ -4,4 +4,5 @@
 - [ ] Add items
 - [ ] Add training
 - [ ] Add text
-
+- [ ] Calculate sources
+- [ ] Fix game balance
