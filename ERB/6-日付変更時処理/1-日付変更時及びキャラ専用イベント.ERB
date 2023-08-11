@@ -761,6 +761,7 @@ ENDIF
 #DIM DYNAMIC 治療コスト
 #DIM DYNAMIC 関数カウント
 #DIMS DYNAMIC 関数名, 1000
+#DIM DYNAMIC ばらつき
 
 ;日付加算関数
 CALL NEXTDAY
@@ -845,11 +846,47 @@ ENDIF
 
 ;全体の妊娠発覚時のイベント
 CALL GET_CHILD
+;出産準備のイベント
+CALL PREG_READY
 
+;排卵周期を回す処理
 ;排卵誘発剤の効果終了と、不妊治療薬のコスト処理
 FOR LCOUNT, 0, CHARANUM
 	SIF CFLAG:LCOUNT:キャラロスト
 		CONTINUE
+	IF MOD:排卵周期
+		IF 生殖機能♀(LCOUNT)
+			IF 排卵からの経過時間:LCOUNT <= 0
+				排卵からの経過時間:LCOUNT = 1+RAND:280
+			ELSE
+				ばらつき = 50
+				;排卵周期は平均で10進むが、さまざまな要因で進む値にブレが生じてくる
+				;体格が小さかったりストレスが大きかったりするとブレが大きくなる
+				;正規分布関数RAND_Nは、95%の確率で-196～+196、99%の確率で-258～+258をとる(RAND_Nの取る範囲は-387～+387)
+				;RAND_Nでとった値に変数「ばらつき」を掛けて10000で割ってブレを出す
+				;デフォルトのばらつき50なら95%強の確率で全くブレない			
+				IF TALENT:LCOUNT:小人体型
+					ばらつき += 133
+				ELSE
+					SELECTCASE TALENT:LCOUNT:体格
+						CASE 1
+							ばらつき += 111
+						CASE 2
+							ばらつき += 44
+					ENDSELECT
+				ENDIF
+				;ストレス値10につき、ばらつき1増加(小数切り上げ)
+				ばらつき += (CFLAG:LCOUNT:ストレス値+9)/10
+
+				;ここから増加処理
+				排卵からの経過時間:LCOUNT += 10
+				排卵からの経過時間:LCOUNT += RAND_N()*ばらつき/10000
+				;1～280の値をとるので、280より大きくなったら280を引く
+				SIF 排卵からの経過時間:LCOUNT > 280
+					排卵からの経過時間:LCOUNT -= 280
+			ENDIF
+		ENDIF
+	ENDIF
 	IF CFLAG:LCOUNT:排卵誘発剤 > 0
 		SIF --CFLAG:LCOUNT:排卵誘発剤 <= 0
 			PRINTFORMW %CALLNAME:LCOUNT%の排卵誘発剤の効果が切れたようだ
@@ -865,8 +902,6 @@ FOR LCOUNT, 0, CHARANUM
 		CFLAG:LCOUNT:ストレス値 += 5
 	ENDIF
 NEXT
-
-CALL PREG_READY
 
 ;懸賞が届く 現状は必ず当選する
 IF FLAG:ナンプレ懸賞
