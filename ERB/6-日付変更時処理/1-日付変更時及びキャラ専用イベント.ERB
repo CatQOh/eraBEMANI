@@ -762,6 +762,7 @@ ENDIF
 #DIM DYNAMIC 関数カウント
 #DIMS DYNAMIC 関数名, 1000
 #DIM DYNAMIC ばらつき
+#DIM DYNAMIC 排卵進行度合い
 
 ;日付加算関数
 CALL NEXTDAY
@@ -885,6 +886,22 @@ FOR LCOUNT, 0, CHARANUM
 				SIF 排卵からの経過時間:LCOUNT:0 > 280
 					排卵からの経過時間:LCOUNT:0 -= 280
 			ENDIF
+			;排卵日とその直前(妊娠確率最大)ではない10～260であるとき、排卵誘発剤・排卵マッサージに応じて260まで割合で進行させる
+			IF INRANGE(排卵からの経過時間:LCOUNT:0, 10, 260)
+				;単位は%、100%なら260まで進行する
+				排卵進行度合い = 0
+				SIF CFLAG:LCOUNT:排卵誘発剤
+					排卵進行度合い = 80
+				SIF CFLAG:LCOUNT:排卵マッサージ
+					排卵進行度合い += 3*CFLAG:LCOUNT:排卵マッサージ
+				SIF 排卵進行度合い > 0
+					排卵進行度合い += RAND:41 - 20;-20～+20
+				LIMIT 排卵進行度合い, 0, 100
+				SIF 排卵進行度合い
+					排卵からの経過時間:LCOUNT:0 += (260-排卵からの経過時間:LCOUNT:0)*排卵進行度合い/100
+			;ただし、妊娠確定していて140以上の値をとっているとき139(生理直前)で止まる
+			SIF PREG:LCOUNT:妊娠確定フラグ && 排卵からの経過時間:LCOUNT:0 >= 140
+				排卵からの経過時間:LCOUNT:0 = 139
 		ENDIF
 	ENDIF
 	IF CFLAG:LCOUNT:排卵誘発剤 > 0
