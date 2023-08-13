@@ -201,7 +201,7 @@ IF LANGUAGE == "ENG"
 	PRINTL 
 ELSE
 	PRINT [0] 戻る 
-	SIF MOD:パイズリステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+	SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 		PRINT [4] 性経験履歴 
 	PRINT [5] その他情報 
 	CALL PRINTSPACE, 前のキャラ >= 0, "[6] 前のキャラ "
@@ -222,6 +222,8 @@ IF !ロストキャラ表示
 		PRINT [11] タグ色変更 
 	ENDIF
 ENDIF
+SIF MOD:バスト関連ステータス表示
+	PRINT [97] バストサイズをメモする 
 PRINT [98] メモを書く
 
 PRINTL 
@@ -272,6 +274,10 @@ SELECTCASE RESULT
 			PRINTW 称号の固定を解除しました
 		ENDIF
 		JUMP STATUS, ロストキャラ表示
+	;97 バストサイズ詳細
+	CASE 97
+		CALL CHARA_BUST_SETTING, NOF(TARGET)
+		JUMP STATUS, ロストキャラ表示
 	;98 メモ
 	CASE 98
 		PRINTL メモの内容を入力してください
@@ -319,9 +325,9 @@ IF LANGUAGE == "ENG"
 	ENDIF
 	PRINTL
 	PRINT 　
-	SIF MOD:パイズリステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+	SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 		PRINTFORM Experienced Count:{経験人数(TARGET)} 
-	SIF MOD:パイズリステータス表示
+	SIF MOD:バスト関連ステータス表示
 		PRINTFORM Titfuck Count:{パイズリ経験人数(TARGET)} 
 ELSE
 	PRINT □ 基本情報 
@@ -361,10 +367,16 @@ ELSE
 	ENDIF
 	PRINTL
 	PRINT 　
-	SIF MOD:パイズリステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+	SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 		PRINTFORM 経験人数:{経験人数(TARGET)} 
-	SIF MOD:パイズリステータス表示
+	IF MOD:バスト関連ステータス表示
 		PRINTFORM パイズリ経験人数:{パイズリ経験人数(TARGET)} 
+		IF INRANGE(NOF(TARGET), 0, 9999) && バストサイズ詳細トップ:(NOF(TARGET))
+			PRINT バスト:
+			CALL バストサイズ詳細表示(バストサイズ詳細トップ:(NOF(TARGET)), バストサイズ詳細アンダー:(NOF(TARGET)))
+			PRINT  
+		ENDIF
+	ENDIF
 	IF TARGET == MASTER
 		PRINT 称号:
 		IF 固定称号 != ""
@@ -1216,7 +1228,7 @@ NEXT
 DRAWLINE
 PRINTPLAIN 　etc... 
 PRINT [0] 戻る 
-SIF MOD:パイズリステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 	PRINT [4] 性経験履歴 
 PRINT [5] 基本情報　 
 CALL PRINTSPACE, 前のキャラ >= 0, "[6] 前のキャラ "
@@ -1442,7 +1454,7 @@ ENDIF
 	ENDIF
 [ENDIF]
 
-IF MOD:パイズリステータス表示
+IF MOD:バスト関連ステータス表示
 	ID = NOF(TARGET)
 	PRINTL □パイズリ経験履歴
 	FOR LCOUNT, 0, 20000
@@ -2501,7 +2513,8 @@ NEXT
 SIF CFLAG:ARG:貞操帯
 	PRINTFORML 　貞操帯　　:{CFLAG:ARG:貞操帯}日目
 
-@SHOW_INFO, ARG
+@SHOW_INFO, ARG, 調教中
+#DIM DYNAMIC 調教中
 DRAWLINE
 IF LANGUAGE == "ENG"
 	PRINTL □ Experience
@@ -2519,7 +2532,10 @@ IF LANGUAGE == "ENG"
 	CALL SHOW_INFO_TALENT, ARG
 	IF !CFLAG:ARG:キャラロスト || CFLAG:ARG:死亡 || CFLAG:ARG:依代
 		DRAWLINE
-		PRINTFORML □ Clothes [99] - Change %CALLNAMEDISP(ARG)%'s clothes
+		PRINT □ Clothes 
+		SIF !調教中
+			PRINTBUTTON "[99] - Change %CALLNAMEDISP(ARG)%'s clothes", 99
+		PRINTL
 		CALL SHOW_INFO_CLOTHES, ARG
 	ENDIF
 ELSE
@@ -2539,7 +2555,14 @@ ELSE
 	IF !CFLAG:ARG:キャラロスト || CFLAG:ARG:死亡 || CFLAG:ARG:依代
 		DRAWLINE
 		PRINT □ 服装 
-		PRINTBUTTON "[99] - 服装を変更する", 99
+		IF OPTION:口上表示 && !CFLAG:ARG:口上非表示
+			TRYCALLFORM DISABLE_服装変更_%CSVNAMERPS(NOF(ARG))%
+				SIF RESULT
+					GOTO 服装変更非表示
+		ENDIF
+		SIF !調教中
+			PRINTBUTTON "[99] - 服装を変更する", 99
+		$服装変更非表示
 		PRINTL
 		CALL SHOW_INFO_CLOTHES, ARG
 	ENDIF

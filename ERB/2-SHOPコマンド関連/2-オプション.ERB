@@ -744,3 +744,76 @@ SELECTCASE RESULT
 	CASE 100
 		RETURN
 ENDSELECT
+
+@CHARA_BUST_SETTING, 対象キャラ番号
+;キャラ番号(キャラごとに常に固定)を使うのに注意
+#DIM DYNAMIC 対象キャラ番号
+#DIM DYNAMIC トップ
+#DIM DYNAMIC アンダー
+#DIM DYNAMIC 差分
+
+SIF !EXISTCSV(対象キャラ番号)
+	RETURN 0
+SIF !INRANGE(対象キャラ番号, 0, 9999)
+	RETURN 0
+
+トップ = バストサイズ詳細トップ:対象キャラ番号
+アンダー = バストサイズ詳細アンダー:対象キャラ番号
+差分 = トップ-アンダー
+PRINTL
+PRINTFORM %CSVNAMEF(対象キャラ番号)%のバストサイズ: 
+CALL バストサイズ詳細表示(トップ, アンダー)
+PRINTL
+IF トップ
+	PRINTFORML 　　トップ:{トップ/10}.{トップ%10}cm
+	IF アンダー
+		PRINTFORML 　　アンダー:{アンダー/10}.{アンダー%10}cm
+		PRINTFORML 　　　　差:{差分/10}.{差分%10}cm
+	ELSE
+		PRINTL アンダー:未設定
+	ENDIF
+ENDIF
+PRINT 現在の小数処理の設定: 
+SELECTCASE バストサイズ詳細小数処理
+	CASE 0
+		PRINTL 四捨五入
+	CASE 1
+		PRINTL 切り捨て
+	CASE 2
+		PRINTL 切り上げ
+	CASE 3
+		PRINTL 小数表示
+ENDSELECT
+PRINTL
+PRINTL [0] - トップのサイズを入力する
+PRINTL [1] - アンダーのサイズを入力する
+SIF トップ
+	PRINTL [2] - トップを固定してカップ数を入力する
+SIF アンダー
+	PRINTL [3] - アンダーを固定してカップ数を入力する
+PRINTL [9] - 終わる
+BINPUT
+
+SELECTCASE RESULT
+	CASE 0
+		PRINTL トップのサイズを入力してください(0で未入力扱いになります)
+		INPUTS
+		バストサイズ詳細トップ:対象キャラ番号 = X10INPUT(RESULTS)
+	CASE 1
+		PRINTL アンダーのサイズを入力してください(0で未入力扱いになります)
+		INPUTS
+		バストサイズ詳細アンダー:対象キャラ番号 = X10INPUT(RESULTS)
+	CASE 2
+		PRINTL カップ数を入力してください
+		INPUTS
+		SIF トップアンダー差分(RESULTS) >= 0
+			バストサイズ詳細アンダー:対象キャラ番号 = バストサイズ詳細トップ:対象キャラ番号-トップアンダー差分(RESULTS)
+	CASE 3
+		PRINTL カップ数を入力してください
+		INPUTS
+		SIF トップアンダー差分(RESULTS) >= 0
+			バストサイズ詳細トップ:対象キャラ番号 = バストサイズ詳細アンダー:対象キャラ番号+トップアンダー差分(RESULTS)
+	CASE 9
+		RETURN 0
+ENDSELECT
+RESTART
