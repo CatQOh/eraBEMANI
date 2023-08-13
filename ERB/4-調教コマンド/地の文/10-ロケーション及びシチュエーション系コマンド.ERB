@@ -198,18 +198,71 @@ WAIT
 ;女装させる
 ;-------------------------------------------------
 @MESSAGE_COM_女装させる
+#DIM DYNAMIC 判定用
+#DIM DYNAMIC ノリの良さ
+#DIM DYNAMIC 無関心
+判定用 = ABL:メス度
+
+;女装に抵抗なさそうor普段から女装しているキャラに最低保証
+;多分csvに置くべき情報だけど一旦ここ
+SELECTCASE CHARANAMEF(TARGET)
+	CASE "ハニー"
+		SIF 判定用 < 7
+			判定用 = 7
+	CASE "タイマー", "スマイル"
+		SIF 判定用 < 4
+			判定用 = 4
+	CASE "BroGamerの少年", "MZD"
+		SIF 判定用 < 2
+			判定用 = 2
+ENDSELECT
+;元女に最低保証
+SIF TALENT:性転換済 && 判定用 < 4
+	判定用 = 4
+
+SIF TALENT:貞操無頓着
+	ノリの良さ++
+SIF TALENT:解放
+	ノリの良さ++
+SIF TALENT:ハイテンション
+	ノリの良さ++
+SIF TALENT:好奇心
+	ノリの良さ++
+SIF TALENT:無関心
+	無関心++
+SIF TALENT:感情乏しい
+	無関心++
+SIF TALENT:冷静
+	無関心++
+
 IF TEQUIP:女装
 	PRINTFORMW %CALLNAME:TARGET%の女装をやめさせ、元の服を返した……
 ELSE
 	PRINTFORML %CALLNAME:TARGET%を女装させることにした
-	SELECTCASE ABL:メス度
-		CASE 0 TO 2
-			PRINTFORML %CALLNAME:TARGET%は女物の服を着せられ、羞恥と屈辱に耐えている……
-		CASE 3 TO 6
-			PRINTFORML %CALLNAME:TARGET%は嫌がることもなく女物の服を着こなしている……
-		CASE IS >= 7
-			PRINTFORML %CALLNAME:TARGET%はこれが自身のあるべき姿だとでも言うように、仕草まで女性になりきっている……
-	ENDSELECT
+	IF ノリの良さ >= 2 && 判定用 < 4
+		PRINTFORML 特に抵抗なく女物の服に着替えた%CALLNAME:TARGET%は、自分の格好を見ておかしそうに笑っている……
+	ELSEIF TALENT:ナルシスト && 判定用 < 4
+		PRINTFORML 女物の服を身に纏った%CALLNAME:TARGET%は、%CALLNAME:PLAYER%の前に立つと挑戦的にポーズを決めてみせた……
+	ELSEIF (TALENT:生意気 || TALENT:反抗的) && !TALENT:プライド低い && 判定用 < 2
+		PRINTFORML %CALLNAME:TARGET%は女物の服を着ることを嫌がっていたが、再度命令すると\@ TALENT:献身的 ? 溜め息をつきながら # 不服そうに顔を顰めながら \@着替え始めた……
+	ELSEIF 無関心 >= 2 && 判定用 < 2
+		PRINTFORML 女物の服を着せられた%CALLNAME:TARGET%は、自分の格好にも特に興味はない様子だ……
+	ELSEIF TALENT:体格 == 1 && TALENT:幼稚 && 判定用 < 4
+		PRINTFORML %CALLNAME:TARGET%は女の子の服を着せられてもさほど抵抗がない年頃らしく、普段着ることのない服に少しそわそわしている……
+	ELSEIF (TALENT:献身的 || TALENT:大人しい) && 判定用 < 2
+		PRINTFORML %CALLNAME:TARGET%は何か言いたそうにしつつも、言われた通りに女物の服に着替えてみせた……
+	ELSE
+		SELECTCASE 判定用
+			CASE 0 TO 1
+				PRINTFORML %CALLNAME:TARGET%は女物の服を着せられ、羞恥と屈辱に耐えている……
+			CASE 2 TO 3
+				PRINTFORML %CALLNAME:TARGET%は渋々ながらといった顔をしつつも、特に文句は言わず女物の服に着替えている……
+			CASE 4 TO 6
+				PRINTFORML %CALLNAME:TARGET%は嫌がることもなく女物の服を着こなしている……
+			CASE IS >= 7
+				PRINTFORML %CALLNAME:TARGET%はこれが自身のあるべき姿だとでも言うように、仕草まで女性になりきっている……
+		ENDSELECT
+	ENDIF
 ENDIF
 WAIT
 
