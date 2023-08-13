@@ -142,7 +142,14 @@ IF 対象部位 == "背中の印"
 		CALL PRINTCOLORL, "　[-] - 奴隷の焼印(未陥落、もしくは[服従][隷属]のみ選択可 [服従][隷属]以外の陥落素質が得られなくなる)", "gray"
 	ENDIF
 ENDIF
+
+IF MOD:SCAT
+	PRINTL 　[6] - スカのタトゥー(体質が変化する特質を宿す)
+	選択可:6 = 1
+ENDIF
+
 DRAWLINE
+
 PRINTPLAINFORM 　%対象部位%　
 PRINTL [0] - 戻る [10] - 特質一覧を見る
 
@@ -224,6 +231,20 @@ SELECTCASE RESULT
 		CSTR:対象部位 = 奴隷の焼印
 		FLAG:経験値--
 		RETURN 1
+	CASE 6
+		SIF !選択可:6
+			RESTART
+		PRINTFORML \@ !ORIGIN ? 経験値を1消費して#\@%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「スカのタトゥー」を刻みます。よろしいですか？
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		BINPUT
+		SIF RESULT
+			RESTART
+		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「スカのタトゥー」を刻みました
+		CALL プレイログ記録, @"%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「スカのタトゥー」を刻む"
+		CSTR:対象部位 = スカのタトゥー
+		FLAG:経験値--
+		RETURN 1
 ENDSELECT
 
 PRINTL 
@@ -260,6 +281,12 @@ PRINTL
 "異種族融和",
 "薬効増強",
 "過剰分泌",
+}
+
+{
+#DIMS DYNAMIC スカ特質 =
+"胃腸過敏",
+"過剰排泄"
 }
 
 DRAWLINE
@@ -359,6 +386,23 @@ SELECTCASE CSTR:対象部位
 					PRINTFORML 　　　　潤滑の増加量が{効果倍率/5}倍になる(効果倍率は加算される) また、男性キャラでも潤滑が自然増加するようになる
 			ENDSELECT
 		NEXT
+		SIF マニュアル && MOD:SCAT
+			GOTO スカのタトゥー
+	CASE "スカのタトゥー"
+		$スカのタトゥー
+		FOR LCOUNT, 0, VARSIZE("スカ特質")
+			IF マニュアル
+				PRINTFORML 　・%スカ特質:LCOUNT% 宿せる印:スカのタトゥー
+			ELSE
+				PRINTFORML 　[{LCOUNT}] - %スカ特質:LCOUNT% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == スカ特質:LCOUNT ? 装備中 #\@
+			ENDIF
+			SELECTCASE スカ特質:LCOUNT
+				CASE "胃腸過敏"
+					PRINTFORML 　　　　便意と増加量が{効果倍率/5}倍になる(効果倍率は加算される)
+				CASE "過剰排泄"
+					PRINTFORML 　　　　便量の増加量が{効果倍率/5}倍になる(効果倍率は加算される)
+			ENDSELECT
+		NEXT
 ENDSELECT
 DRAWLINE
 IF マニュアル
@@ -389,6 +433,9 @@ SELECTCASE CSTR:対象部位
 		RESTART
 	CASE "異質のタトゥー"
 		CSTR:(GETNUM(CSTR, 対象部位)+10) = %異質特質:RESULT%
+		RESTART
+	CASE "スカのタトゥー"
+		CSTR:(GETNUM(CSTR, 対象部位)+10) = %スカ特質:RESULT%
 		RESTART
 ENDSELECT
 
