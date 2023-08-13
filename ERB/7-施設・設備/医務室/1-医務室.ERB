@@ -691,6 +691,9 @@ RESTART
 #DIM DYNAMIC 次ページあり
 #DIM DYNAMIC ページ数
 #DIM DYNAMIC 対象
+#DIM DYNAMIC 挿入回数
+#DIM DYNAMIC 射精回数
+#DIM DYNAMIC 最低保証
 
 DRAWLINE
 
@@ -809,9 +812,8 @@ SELECTCASE RESULT
 		RESETCOLOR
 		PRINTFORML %NAME:対象%を解体しました
 		IF RESULT == 2
-			TALENT:MASTER:狂気 = 1
+			挿入回数 = RAND(10, 25)/2
 			IF VAGINA(対象)
-				;;;処女喪失 状況的に新たに5が必要そうなので一旦コメントアウト
 				IF TALENT:対象:処女
 					PRINTL ＜処女喪失＞
 					TALENT:対象:処女 = 0
@@ -825,23 +827,36 @@ SELECTCASE RESULT
 					PRINTL ＜再生処女喪失＞
 					TALENT:対象:再生処女 = 0
 				ENDIF
-				CALL EXPUP, "Ｖ経験", RAND(10, 21), 対象
-				CALL EXPUP, "膣射経験", RAND(2, 5), 対象
+				CALL EXPUP, "Ｖ経験", 挿入回数, 対象
+				
+				CALL EXPUP, "Ａ経験", 挿入回数, 対象
+			ELSE
+				CALL EXPUP, "Ａ経験", 挿入回数*2, 対象
 			ENDIF
-			CALL EXPUP, "Ａ経験", RAND(10, 21), 対象
+			IF PENIS(MASTER)
+				射精回数 = RAND(5, 11)/2
+				SIF VAGINA(対象)
+					CALL EXPUP, "膣射経験", 射精回数, 対象
+				CALL EXPUP, "精液経験", 射精回数*2, 対象
+				CALL EXPUP, "射精経験", 射精回数*2, MASTER
+			ENDIF
 			CALL EXPUP, "絶頂経験", RAND(5, 11), 対象
 			SIF PENIS(対象)
 				CALL EXPUP, "射精経験", RAND(5, 11), 対象
-			CALL EXPUP, "放尿経験", RAND(1, 5), 対象
+			最低保証 = TALENT:対象:おもらし癖 ? 3 # 0
+			CALL EXPUP, "放尿経験", 最低保証+RAND(1, 5), 対象
 			SIF TALENT:対象:妊娠
 				CALL EXPUP, "流産経験", 1, 対象
-
 			CALL EXPUP, "異常経験", 5, 対象
 			CALL JUELUP, "苦痛", RAND(100, 1000)*100, 対象
 			CALL JUELUP, "恐怖", RAND(100, 1000)*100, 対象
-			SIF PENIS(MASTER)
-				CALL EXPUP, "射精経験", RAND(5, 11), MASTER
+			SIF TALENT:対象:マゾ
+				CALL JUELUP, "欲情", RAND(50, 200), 対象
 			CALL EXPUP, "嗜虐快楽経験", 10, MASTER
+			IF !TALENT:MASTER:狂気
+				TALENT:MASTER:狂気 = 1
+				PRINTFORML %CALLNAME:MASTER%は【狂気】を得た
+			ENDIF
 		ENDIF
 		IF ISSLIME(対象)
 			SELECTCASE TALENT:対象:体格
