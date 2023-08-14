@@ -169,6 +169,11 @@ ENDSELECT
 #DIM DYNAMIC 処理数
 #DIM DYNAMIC ページ数
 #DIM DYNAMIC 次ページあり
+#DIM DYNAMIC 剥製加工不可
+#DIM DYNAMIC 白骨加工不可
+#DIM DYNAMIC ホルマリン漬け不可
+#DIM DYNAMIC 透明標本不可
+#DIM DYNAMIC 稼働停止不可
 
 ;GOTO CREATE_CORPSE
 
@@ -214,17 +219,23 @@ SIF RESULT == -1
 
 対象 = RESULT
 
+剥製加工不可 = TALENT:対象:無機物 || CSTR:対象:種族 == "機械" || ISSLIME(対象) || (CHARANAMEF(対象) == "ハート" && TRANCERACE:対象:0 == "") ? 1 # 0
+白骨加工不可 = TALENT:対象:無機物 || CSTR:対象:種族 == "機械" || ISSLIME(対象) || (CHARANAMEF(対象) == "ハート" && TRANCERACE:対象:0 == "") ? 1 # 0
+ホルマリン漬け不可 = TALENT:対象:無機物 || CSTR:対象:種族 == "機械" ? 1 # 0
+透明標本不可 = TALENT:対象:無機物 || CSTR:対象:種族 == "機械" || ISSLIME(対象) || (CHARANAMEF(対象) == "ハート" && TRANCERACE:対象:0 == "") ? 1 # 0
+稼働停止不可 = (!TALENT:対象:無機物 && CSTR:対象:種族 != "機械") ? 1 # 0
+
 PRINTFORML %NAME:対象%を加工します。どのように加工しますか？
 PRINTL [0] - やっぱりやめる
-SIF (!TALENT:対象:無機物 && CSTR:対象:種族 != "機械") && !ISSLIME(対象)
+SIF !剥製加工不可
 	PRINTL [1] - 剥製に加工する
-SIF (!TALENT:対象:無機物 && CSTR:対象:種族 != "機械") && !ISSLIME(対象)
+SIF !白骨加工不可
 	PRINTL [2] - 白骨に加工する
-SIF !TALENT:対象:無機物 && CSTR:対象:種族 != "機械"
+SIF !ホルマリン漬け不可
 	PRINTL [3] - ホルマリン漬けに加工する
-SIF (!TALENT:対象:無機物 && CSTR:対象:種族 != "機械") && !ISSLIME(対象)
+SIF !透明標本不可
 	PRINTL [4] - 透明標本に加工する
-SIF TALENT:対象:無機物 || CSTR:対象:種族 == "機械"
+SIF !稼働停止不可
 	PRINTL [10] - 稼働を停止させる
 BINPUT
 SELECTCASE RESULT
@@ -357,8 +368,8 @@ SIF RESULT != -1 && MUSEUM:対象:種類 != "白骨死体"
 FOR LCOUNT, 0, 4
 	MUSEUM:空き変数:種類 = 部位
 	MUSEUM:空き変数:名前 = %CSVNAMEF(TOINT(MUSEUM:対象:キャラナンバー))%
-	SIF ISSLIME(GETCHARANAME(CSVNAMEF(TOINT(MUSEUM:対象:キャラナンバー)), 1))
-		MUSEUM:空き変数:名前 += "スライム"
+	STRFIND MUSEUM:対象:名前, "(スライム)"
+		MUSEUM:空き変数:名前 += "(スライム)"
 	MUSEUM:空き変数:名前 += "の"
 	SELECTCASE LCOUNT
 		CASE 0
@@ -803,6 +814,8 @@ SELECTCASE 作品種類
 ENDSELECT
 
 MUSEUM:空き変数:種類 = %作品種類%
+SIF CHARANAMEF(対象) == "ハート" && TRANCERACE:対象:0 == ""
+	MUSEUM:空き変数:種類 = 臓器/心臓
 MUSEUM:空き変数:キャラナンバー = {NOF(対象)}
 MUSEUM:空き変数:価値 = {作品価値}
 MUSEUM:空き変数:血縁コード = {CFLAG:対象:血縁コード}

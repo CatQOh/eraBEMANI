@@ -1189,25 +1189,72 @@ SELECTCASE アイテム名
 	;時の砂時計
 	CASE "時の砂時計"
 		CALL SE再生, 神聖
-		IF TALENT:使用対象:体格 <= 2
-			PRINTFORMW ＜%CALLNAME:使用対象%は立派な大人の体になった＞
-			TALENT:使用対象:体格 = 3
-			IF SEX(使用対象) == 2
-				SIF TALENT:使用対象:バストサイズ != 6 || MOD:バストサイズ限界突破
-					TALENT:使用対象:バストサイズ++
+		IF CHARANAMEF(使用対象) == "ハート"
+			IF TRANCERACE:使用対象:0 == ""
+				;実績ほしい
+				PRINTFORMW ＜ハートは時が巻き戻り、自らの肉体を取り戻した＞
+				TALENT:使用対象:猫 = 1
+				TALENT:使用対象:動物耳 = 1
+				TALENT:使用対象:尻尾 = 1
+				TALENT:使用対象:ファーリー = 1
+				TALENT:使用対象:足使用不可 = 0
+				TRANCE:使用対象:TALENTF("猫") = 1
+				TRANCE:使用対象:TALENTF("動物耳") = 1
+				TRANCE:使用対象:TALENTF("尻尾") = 1
+				TRANCE:使用対象:TALENTF("ファーリー") = 1
+				TRANCE:使用対象:TALENTF("足使用不可") = 1
+				TRANCERACE:使用対象:0 = %CSTR:使用対象:種族%
+				CSTR:使用対象:種族 = 獣
+				IF GETCHARANAME("マッドラット") >= 0
+					PRINTFORMW マッドラットの心機能が低下しました
+					TALENT:GETCHARANAME("マッドラット"):回復早い = 0
+					TALENT:GETCHARANAME("マッドラット"):回復遅い = 1
+					TRANCE:GETCHARANAME("マッドラット"):TALENTF("回復早い") = 1
+					TRANCE:GETCHARANAME("マッドラット"):TALENTF("回復遅い") = 1
+				ENDIF
+			ELSE
+				PRINTFORMW ＜ハートは再び肉体を失い、心臓の姿になった＞
+				TALENT:使用対象:猫 = 0
+				TALENT:使用対象:動物耳 = 0
+				TALENT:使用対象:尻尾 = 0
+				TALENT:使用対象:ファーリー = 0
+				TALENT:使用対象:足使用不可 = 1
+				TRANCE:使用対象:TALENTF("猫") = 0
+				TRANCE:使用対象:TALENTF("動物耳") = 0
+				TRANCE:使用対象:TALENTF("尻尾") = 0
+				TRANCE:使用対象:TALENTF("ファーリー") = 0
+				TRANCE:使用対象:TALENTF("足使用不可") = 0
+				CSTR:使用対象:種族 = %TRANCERACE:使用対象:0%
+				TRANCERACE:使用対象:0 = 
+				IF GETCHARANAME("マッドラット") >= 0
+					PRINTFORMW マッドラットの心機能が回復しました
+					TALENT:GETCHARANAME("マッドラット"):回復早い = 1
+					TALENT:GETCHARANAME("マッドラット"):回復遅い = 0
+					TRANCE:GETCHARANAME("マッドラット"):TALENTF("回復早い") = 0
+					TRANCE:GETCHARANAME("マッドラット"):TALENTF("回復遅い") = 0
+				ENDIF
 			ENDIF
-			MAXBASE:使用対象:体力 += 200
-			BASE:使用対象:体力 += 200
-			;実績:リピカをグラマラスにする
-			SIF CHARANAMEF(使用対象) == "赤のリピカ" && TALENT:使用対象:バストサイズ >= 4
-				CALL 実績解除, "「ふっふーん 『ないすばでぃ』を手に入れたのさー♪」"
 		ELSE
-			PRINTFORMW ＜%CALLNAME:使用対象%は\@ SEX(使用対象) == 1 ? 少年 # 幼女 \@のような小さな体になった＞
-			TALENT:使用対象:体格 = 2
-			SIF SEX(使用対象) == 2 && TALENT:使用対象:バストサイズ != 1
-				TALENT:使用対象:バストサイズ--
-			MAXBASE:使用対象:体力 -= 200
-			BASE:使用対象:体力 -= 200
+			IF TALENT:使用対象:体格 <= 2
+				PRINTFORMW ＜%CALLNAME:使用対象%は立派な大人の体になった＞
+				TALENT:使用対象:体格 = 3
+				IF SEX(使用対象) == 2
+					SIF TALENT:使用対象:バストサイズ != 6 || MOD:バストサイズ限界突破
+						TALENT:使用対象:バストサイズ++
+				ENDIF
+				MAXBASE:使用対象:体力 += 200
+				BASE:使用対象:体力 += 200
+				;実績:リピカをグラマラスにする
+				SIF CHARANAMEF(使用対象) == "赤のリピカ" && TALENT:使用対象:バストサイズ >= 4
+					CALL 実績解除, "「ふっふーん 『ないすばでぃ』を手に入れたのさー♪」"
+			ELSE
+				PRINTFORMW ＜%CALLNAME:使用対象%は\@ SEX(使用対象) == 1 ? 少年 # 幼女 \@のような小さな体になった＞
+				TALENT:使用対象:体格 = 2
+				SIF SEX(使用対象) == 2 && TALENT:使用対象:バストサイズ != 1
+					TALENT:使用対象:バストサイズ--
+				MAXBASE:使用対象:体力 -= 200
+				BASE:使用対象:体力 -= 200
+			ENDIF
 		ENDIF
 		CFLAG:使用対象:ストレス値 += 100
 	;永続的利尿剤
@@ -1523,7 +1570,7 @@ SELECTCASE アイテムNO
 					RETURNF 0
 				RETURNF 1
 			CASE "時の砂時計"
-				SIF TALENT:使用対象:小人体型
+				SIF TALENT:使用対象:小人体型 && CHARANAMEF(使用対象) != "ハート"
 					RETURNF 0
 				RETURNF 1
 			CASE "永続的利尿剤"
