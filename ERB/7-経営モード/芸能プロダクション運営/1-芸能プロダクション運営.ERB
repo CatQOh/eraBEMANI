@@ -206,6 +206,7 @@ ENDSELECT
 DRAWLINE
 PRINTL □何のイベントを開催しますか？
 PRINTL 　[1] ライブ
+PRINTL 　[2] 出演依頼を見る
 DRAWLINE
 PRINTPLAIN 　EVENT　
 PRINTL [0] 戻る
@@ -217,9 +218,73 @@ SELECTCASE RESULT
 	CASE 1
 		CALL IDOL_LIVE
 		RETURN RESULT
+	CASE 2
+		CALL IDOL_出演依頼
+		RETURN RESULT
 ENDSELECT
 
-@IDOL_LIVE
+@IDOL_出演依頼
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 曲番号
+#DIM DYNAMIC 総曲数
+#DIM DYNAMIC 依頼番号
+
+CALL REF_MUSIC
+総曲数 = RESULT
+
+DRAWLINE
+IF MATCH(出演依頼, 0) == VARSIZE("出演依頼")
+	PRINTL
+	PRINTL -----出演依頼はありません-----
+	PRINTL 
+ELSE
+	DUMPRAND
+	FOR LCOUNT, 0, VARSIZE("出演依頼")
+		SIF 出演依頼:LCOUNT == 0
+			BREAK
+		RANDOMIZE 出演依頼:LCOUNT
+		曲番号 = RAND:総曲数
+		PRINTFORML 　[{LCOUNT}] - 依頼曲:%楽曲情報:曲番号:0% 難易度:\@ 楽曲情報:曲番号:1 != "0" ? Vo%楽曲情報:曲番号:1+" "%#\@Inst%楽曲情報:曲番号:2% Dance%楽曲情報:曲番号:3% [{LCOUNT+VARSIZE("出演依頼")}] - 断る
+		CALL 楽曲依頼文生成, 曲番号
+		PRINTL 
+	NEXT
+	INITRAND
+ENDIF
+
+DRAWLINE
+PRINTPLAIN 　出演依頼　
+PRINT [100] - 戻る 
+SIF MATCH(出演依頼, 0) != VARSIZE("出演依頼")
+	PRINT [101] - 依頼を全部断る
+PRINTL 
+
+BINPUT
+SELECTCASE RESULT
+	CASE 100
+		RETURN 0
+	CASE 101
+		VARSET 出演依頼
+		RESTART
+	CASE IS >= VARSIZE("出演依頼")
+		ARRAYREMOVE 出演依頼, RESULT-VARSIZE("出演依頼"), 1
+		RESTART
+	CASEELSE
+		依頼番号 = RESULT
+		DUMPRAND
+		RANDOMIZE 出演依頼:依頼番号
+		曲番号 = RAND:総曲数
+		FOR LCOUNT, 0, 4
+			IDOL選曲:LCOUNT = %楽曲情報:曲番号:LCOUNT%
+		NEXT
+		INITRAND
+		CALL IDOL_LIVE, 1
+		SIF !RESULT
+			RESTART
+		ARRAYREMOVE 出演依頼, 依頼番号, 1
+		RETURN RESULT
+ENDSELECT
+
+@IDOL_LIVE, 依頼
 #DIM DYNAMIC 分野
 #DIM DYNAMIC 技量, 4
 #DIM DYNAMIC 難度, 4
@@ -233,6 +298,7 @@ ENDSELECT
 #DIM DYNAMIC 選出可能, 11
 #DIM DYNAMIC ユニット担当記録用, 1000
 #DIMS DYNAMIC HTML用
+#DIM DYNAMIC 依頼
 
 ;ユニット数を数える
 ユニット数 = 0
@@ -242,6 +308,8 @@ FOR LCOUNT, 1, 11
 NEXT
 
 $MUSIC_SELECT
+SIF 依頼
+	GOTO MEMBER_LOOP
 CALL MUSIC_LIST
 SIF IDOL選曲 == ""
 	RETURN 0
@@ -258,28 +326,28 @@ FOR LCOUNT, 0, CHARANUM
 		SELECTCASE ユニット担当記録用:LCOUNT
 			CASE 1
 				;担当曲補正
-				IF STRFIND(CSTR:LCOUNT:担当曲, IDOL選曲) >= 0
+				IF 担当曲判定(LCOUNT, IDOL選曲)
 					技量:3 += 12000*ABL:LCOUNT:舞踊技能
 				ELSE
 					技量:3 += 10000*ABL:LCOUNT:舞踊技能
 				ENDIF
 				人数:3++
 			CASE 2
-				IF STRFIND(CSTR:LCOUNT:担当曲, IDOL選曲) >= 0
+				IF 担当曲判定(LCOUNT, IDOL選曲)
 					技量:2 += 12000*ABL:LCOUNT:演奏技能
 				ELSE
 					技量:2 += 10000*ABL:LCOUNT:演奏技能
 				ENDIF
 				人数:2++
 			CASE 3
-				IF STRFIND(CSTR:LCOUNT:担当曲, IDOL選曲) >= 0
+				IF 担当曲判定(LCOUNT, IDOL選曲)
 					技量:1 += 12000*ABL:LCOUNT:歌唱技能
 				ELSE
 					技量:1 += 10000*ABL:LCOUNT:歌唱技能
 				ENDIF
 				人数:1++
 			CASE 4
-				IF STRFIND(CSTR:LCOUNT:担当曲, IDOL選曲) >= 0
+				IF 担当曲判定(LCOUNT, IDOL選曲)
 					技量:3 += 9000*ABL:LCOUNT:舞踊技能
 					技量:1 += 9000*ABL:LCOUNT:歌唱技能
 				ELSE
@@ -289,7 +357,7 @@ FOR LCOUNT, 0, CHARANUM
 				人数:3++
 				人数:1++
 			CASE 5
-				IF STRFIND(CSTR:LCOUNT:担当曲, IDOL選曲) >= 0
+				IF 担当曲判定(LCOUNT, IDOL選曲)
 					技量:2 += 9000*ABL:LCOUNT:演奏技能
 					技量:1 += 9000*ABL:LCOUNT:歌唱技能
 				ELSE
@@ -379,13 +447,18 @@ NEXT
 DRAWLINE
 PRINTPLAIN 　LIVE　
 PRINT [ 0] - ライブを始める　
-PRINT [-1] - 選曲画面に戻る　
-PRINTL [-2] - 戻る
+IF 依頼
+	PRINT [-1] - 出演依頼一覧に戻る　
+ELSE
+	PRINT [-1] - 選曲画面に戻る　
+	;PRINT [-2] - 戻る
+ENDIF
+PRINTL 
 SIF ユニット数
-	PRINTL 　　　　[-3] - ユニットで選出する
+	PRINTL 　　　　[-2] - ユニットで選出する
 
 BINPUT
-IF RESULT == -3
+IF RESULT == -2
 	SIF !ユニット数
 		CONTINUE
 	DRAWLINE
@@ -444,11 +517,13 @@ IF RESULT == -3
 	ENDSELECT
 ENDIF
 
-SIF RESULT == -2
-	RESTART
-SIF RESULT == -1
+;SIF RESULT == -2
+;	RESTART
+IF RESULT == -1
+	SIF 依頼
+		RETURN 0
 	GOTO MUSIC_SELECT
-IF RESULT == 0
+ELSEIF RESULT == 0
 	IF 人数:1 == 0  && 人数:2 == 0 && 人数:3 == 0
 		PRINTW メンバーを1人以上選び出してください
 		GOTO MEMBER_LOOP
@@ -502,28 +577,28 @@ FOR LCOUNT, 0, CHARANUM
 			SELECTCASE ユニット担当記録用:LCOUNT
 				CASE 1
 					;担当曲補正
-					IF STRFIND(CSTR:LCOUNT:担当曲, IDOL選曲) >= 0
+					IF 担当曲判定(LCOUNT, IDOL選曲)
 						技量:3 -= 12000*ABL:LCOUNT:舞踊技能
 					ELSE
 						技量:3 -= 10000*ABL:LCOUNT:舞踊技能
 					ENDIF
 					人数:3--
 				CASE 2
-					IF STRFIND(CSTR:LCOUNT:担当曲, IDOL選曲) >= 0
+					IF 担当曲判定(LCOUNT, IDOL選曲)
 						技量:2 -= 12000*ABL:LCOUNT:演奏技能
 					ELSE
 						技量:2 -= 10000*ABL:LCOUNT:演奏技能
 					ENDIF
 					人数:2--
 				CASE 3
-					IF STRFIND(CSTR:LCOUNT:担当曲, IDOL選曲) >= 0
+					IF 担当曲判定(LCOUNT, IDOL選曲)
 						技量:1 -= 12000*ABL:LCOUNT:歌唱技能
 					ELSE
 						技量:1 -= 10000*ABL:LCOUNT:歌唱技能
 					ENDIF
 					人数:1--
 				CASE 4
-					IF STRFIND(CSTR:LCOUNT:担当曲, IDOL選曲) >= 0
+					IF 担当曲判定(LCOUNT, IDOL選曲)
 						技量:3 -= 9000*ABL:LCOUNT:舞踊技能
 						技量:1 -= 9000*ABL:LCOUNT:歌唱技能
 					ELSE
@@ -533,7 +608,7 @@ FOR LCOUNT, 0, CHARANUM
 					人数:3--
 					人数:1--
 				CASE 5
-					IF STRFIND(CSTR:LCOUNT:担当曲, IDOL選曲) >= 0
+					IF 担当曲判定(LCOUNT, IDOL選曲)
 						技量:2 -= 9000*ABL:LCOUNT:演奏技能
 						技量:1 -= 9000*ABL:LCOUNT:歌唱技能
 					ELSE
@@ -600,7 +675,12 @@ NEXT
 ;収入 *= ABS(収入)
 ;収入 /= 100000
 ;2乗はやりすぎ *10くらいで様子見
-収入 *= 10
+;出演依頼なら*15
+IF 依頼
+	収入 *= 15
+ELSE
+	収入 *= 10
+ENDIF
 収入:1 = 収入
 ;最後に知名度による補正
 ;マイナスも増幅するので、知名度が高いときにしくじると大惨事
@@ -677,6 +757,20 @@ IF 技量:1 >= 難度:1 && 技量:2 >= 難度:2 && 技量:3 >= 難度:3
 ENDIF
 ;ライブを行った場合はRETURN 1
 RETURN 1
+
+@担当曲判定, キャラ, 曲名
+#FUNCTION
+#DIM DYNAMIC キャラ
+#DIMS DYNAMIC 曲名
+#DIMS DYNAMIC SPLITVAR, 20
+
+SPLIT CSTR:キャラ:担当曲, "|", SPLITVAR
+IF FINDELEMENTF(SPLITVAR, 曲名) >= 0
+	RETURNF 1
+ELSE
+	RETURNF 0
+ENDIF
+
 
 ;賄賂・枕営業----------------------------------------------------
 @IDOL_BRIBE
@@ -1293,6 +1387,15 @@ IF ユニット担当記録用 && IDOL:報告%4 < 2
 	ENDIF
 ENDIF
 
+;出演依頼が入る 知名度1000ごとに一日の依頼件数が増加
+IF ターン == "夜" && MATCH(出演依頼, 0)
+	PRINTFORML 芸能プロダクションに出演依頼が{MIN(MATCH(出演依頼, 0), IDOL:知名度/1000+1)}件入りました
+	FOR LCOUNT, 0, MIN(MATCH(出演依頼, 0), IDOL:知名度/1000+1)
+		;RANDOMIZE用の乱数
+		出演依頼:FINDELEMENT(出演依頼, 0) = RAND(1, __INT_MAX__)
+	NEXT
+ENDIF
+
 CALL CHECKDRAWLINEW
 
 ;ターン終了時の口上呼び出し
@@ -1572,3 +1675,343 @@ IDOL:知名度 += 満足度
 JUEL:ARG:習得 += 満足度*100
 
 CALL CHECKDRAWLINE
+
+@楽曲依頼文生成, 曲番号
+#DIM DYNAMIC 曲番号
+#DIM DYNAMIC 語尾
+;RANDOMIZEは関数CALL前に行われてるので好きにやっていい 必ず同じ結果になる
+;「[X] - 」の分全角スペース3つ空ける
+
+PRINT 　　　　
+
+SELECTCASE RAND:3
+	CASE 0
+		PRINTDATA
+			DATA 商店街
+			DATA 駅
+			DATA デパート
+			DATA 会社
+		ENDDATA
+		PRINTFORM の創立{RAND(1, 15)*10}周年記念の祝賀会に%楽曲情報:曲番号:0%を演奏して
+		語尾 = RAND:8
+		SELECTCASE 語尾
+			CASE 0
+				PRINTL ほしいんだ。
+			CASE 1
+				PRINTL ほしいのよ。
+			CASE 2
+				PRINTL ください。
+			CASE 3
+				PRINTL くれないか？
+			CASE 4
+				PRINTL ちょうだい。
+			CASE 5
+				PRINTL くれぬか？
+			CASE 6
+				PRINTL ほしいッス。
+			CASE 7
+				PRINTL よ！
+		ENDSELECT
+		PRINT 　　　　
+		SELECTCASE RAND:3
+			CASE 0
+				SELECTCASE 語尾
+					CASE 0, 7
+						PRINT 僕
+					CASE 3, 6
+						PRINT 俺
+					CASE 1, 2
+						PRINT 私
+					CASE 4
+						PRINT あたし
+					CASE 5
+						PRINT わし
+				ENDSELECT
+				PRINT の首がかかって
+				SELECTCASE 語尾
+					CASE 0, 3
+						PRINT いるんだ。
+					CASE 1, 4
+						PRINT るの。
+					CASE 2
+						PRINT るんです。
+					CASE 3
+						PRINT くれないか？
+					CASE 5
+						PRINT おるのじゃ。
+					CASE 6
+						PRINT るッス。
+					CASE 7
+						PRINT るんだ！
+				ENDSELECT
+				PRINT 絶対に成功させて
+				SELECTCASE 語尾
+					CASE 0, 3
+						PRINTL くれ。
+					CASE 1, 4
+						PRINTL ね。
+					CASE 2
+						PRINTL ください。
+					CASE 5
+						PRINTL ほしい。
+					CASE 6
+						PRINTL くれッス。
+					CASE 7
+						PRINTL ね！
+				ENDSELECT
+			CASE 1
+				PRINT 報酬は
+				SELECTCASE 語尾
+					CASE 0
+						PRINT 弾むよ。
+					CASE 1, 4
+						PRINT 弾むわ。
+					CASE 2
+						PRINT 弾みます。
+					CASE 3, 5
+						PRINT 十分用意した。
+					CASE 6
+						PRINT 弾むッス。
+					CASE 7
+						PRINT 弾むよ！
+				ENDSELECT
+				SELECTCASE 語尾
+					CASE 0
+						PRINTL 期待しているよ。
+					CASE 1, 4
+						PRINTL 期待してるわよ。
+					CASE 2
+						PRINTL 期待しています。
+					CASE 3
+						PRINTL 期待しているぞ。
+					CASE 5
+						PRINTL 期待しておるぞ。
+					CASE 6
+						PRINTL 期待してるッスよ。
+					CASE 7
+						PRINTL 期待してるからね！
+				ENDSELECT
+			CASE 2
+				PRINT みんな楽しみに
+				SELECTCASE 語尾
+					CASE 0, 3
+						PRINTL している。頼んだぞ。
+					CASE 1, 4
+						PRINTL しているわ。お願いね。
+					CASE 2
+						PRINTL しています。頼みますよ。
+					CASE 5
+						PRINTL しておる。どうか頼んだ。
+					CASE 6
+						PRINTL してるッス。よろしくお願いしまッス。
+					CASE 7
+						PRINTL してるんだ！お願いだよ！
+				ENDSELECT
+		ENDSELECT
+	CASE 1
+		PRINTDATA
+			DATA 学校の学園祭
+			DATA 幼稚園のお遊戯会
+			DATA 病院のチャリティーイベント
+			DATA 老人ホームのパーティ
+			DATA 飲み会の余興
+			DATA 結婚式の余興
+			DATA 友人へのサプライズ
+		ENDDATA
+		PRINTFORM で%楽曲情報:曲番号:0%の演奏を
+		語尾 = RAND:6
+		SELECTCASE 語尾
+			CASE 0
+				PRINTL 頼みたい。
+			CASE 1
+				PRINTL 頼みたいの。
+			CASE 2
+				PRINTL 頼みたいです。
+			CASE 3
+				PRINTL 頼む。
+			CASE 4
+				PRINTL 頼むッス。
+			CASE 5
+				PRINTL 頼むよ！
+		ENDSELECT
+		PRINT 　　　　
+		SELECTCASE RAND:3
+			CASE 0
+				PRINT 他のアーティストたちには全部断られて
+				SELECTCASE 語尾
+					CASE 0
+						PRINT そちらが
+					CASE 1, 2
+						PRINT あなたたちが
+					CASE 3
+						PRINT そなたらが
+					CASE 4
+						PRINT みなさんが
+					CASE 5
+						PRINT 君たちが
+				ENDSELECT
+				PRINT 最後の希望
+				SELECTCASE 語尾
+					CASE 0
+						PRINTL なんだ。よろしく頼む。
+					CASE 1
+						PRINTL なの。お願いよ。
+					CASE 2
+						PRINTL なんです。お願いします。
+					CASE 3
+						PRINTL なのじゃ。どうかこの通り。
+					CASE 4
+						PRINTL ッス。なんでもしますから！
+					CASE 5
+						PRINTL なんだ！よろしくお願いします！
+				ENDSELECT
+			CASE 1
+				PRINT みんなが喜んでいる顔が
+				SELECTCASE 語尾
+					CASE 0
+						PRINTL 目に浮かぶね。楽しみにしているよ。
+					CASE 1
+						PRINTL 目に浮かぶわ。楽しみにしてるわ。
+					CASE 2
+						PRINTL 目に浮かびます。楽しみにしていますよ。
+					CASE 3
+						PRINTL 目に浮かぶ。楽しみにしておるぞ。
+					CASE 4
+						PRINTL 目に浮かぶッスね～。楽しみッス。
+					CASE 5
+						PRINTL 目に浮かぶね！楽しみだよ！
+				ENDSELECT
+			CASE 2
+				SELECTCASE 語尾
+					CASE 0
+						PRINT そちらの
+					CASE 1, 2
+						PRINT あなたたちの
+					CASE 3
+						PRINT そなたらの
+					CASE 4
+						PRINT みなさんの
+					CASE 5
+						PRINT 君たちの
+				ENDSELECT
+				PRINT 素晴らしい演奏なら大成功
+				SELECTCASE 語尾
+					CASE 0
+						PRINTL 間違いなしだ。
+					CASE 1
+						PRINTL 間違いなしね。
+					CASE 2
+						PRINTL 間違いなしですね。
+					CASE 3
+						PRINTL は間違いないはず。
+					CASE 4
+						PRINTL 間違いなしッス。
+					CASE 5
+						PRINTL 間違いなしだね！
+				ENDSELECT
+		ENDSELECT
+	CASE 2
+		PRINTDATA
+			DATA 友人
+			DATA 親友
+			DATA 恋人
+			DATA 婚約者
+			DATA 夫
+			DATA 妻
+			DATA 弟
+			DATA 妹
+			DATA 兄
+			DATA 姉
+			DATA 義弟
+			DATA 義妹
+			DATA 義兄
+			DATA 義姉
+			DATA 義父
+			DATA 義母
+			DATA 息子
+			DATA 娘
+			DATA 孫
+			DATA 祖父
+			DATA 祖母
+		ENDDATA
+		語尾 = RAND:6
+		SELECTCASE RAND:2
+			CASE 0
+				PRINTFORM の誕生日パーティで、大好きでよく聞いている%楽曲情報:曲番号:0%の生演奏を聴かせてあげたい
+				SELECTCASE 語尾
+					CASE 0
+						PRINTL んだ。
+					CASE 1
+						PRINTL のよ。
+					CASE 2
+						PRINTL んです。
+					CASE 3
+						PRINTL のじゃ。
+					CASE 4
+						PRINTL ッス。
+					CASE 5
+						PRINTL ！
+				ENDSELECT
+				PRINT 　　　　
+				PRINT きっと喜んでくれるはず
+				SELECTCASE 語尾
+					CASE 0
+						PRINTL だ。頼んだぞ。
+					CASE 1
+						PRINTL よ。お願いね。
+					CASE 2
+						PRINTL です。お願いしますね。
+					CASE 3
+						PRINTL じゃ。よろしゅう頼む。
+					CASE 4
+						PRINTL ッス。頼みますよ～。
+					CASE 5
+						PRINTL ！頼んだよ！
+				ENDSELECT
+			CASE 1
+				PRINT が危篤でもう長くない
+				SELECTCASE 語尾
+					CASE 0, 3
+						PRINT らしい。
+					CASE 1
+						PRINT らしいわ。
+					CASE 2
+						PRINT ようです。
+					CASE 4
+						PRINT らしいッス。
+					CASE 5
+						PRINT らしい！
+				ENDSELECT
+				PRINTFORM まだ意識があるうちに、せめて最期にあの人の大好きな%楽曲情報:曲番号:0%を聴かせてあげたい
+				SELECTCASE 語尾
+					CASE 0
+						PRINTL んだ。
+					CASE 1
+						PRINTL の。
+					CASE 2
+						PRINTL んです。
+					CASE 3
+						PRINTL のじゃ。
+					CASE 4
+						PRINTL ッス。
+					CASE 5
+						PRINTL んだ！
+				ENDSELECT
+				PRINT 　　　　
+				PRINT いつ容態が悪化するかも
+				SELECTCASE 語尾
+					CASE 0
+						PRINTL 分からない。できるだけ早く依頼を受けてほしい。
+					CASE 1
+						PRINTL 分からないわ。できるだけ早く来てほしいわ。
+					CASE 2
+						PRINTL 分かりません。急を要する事態です。お願いします。
+					CASE 3
+						PRINTL 分からぬ。無理は承知じゃ。どうか頼む。
+					CASE 4
+						PRINTL 分からないッス。どうかこの通りッス。頼みを聞いてください！
+					CASE 5
+						PRINTL 分からない！この依頼のためなら金は惜しまないよ！
+				ENDSELECT
+		ENDSELECT
+ENDSELECT
