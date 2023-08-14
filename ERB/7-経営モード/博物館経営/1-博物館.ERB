@@ -160,8 +160,9 @@ ENDSELECT
 
 @博物館_CREATE
 #DIM DYNAMIC 対象, 2
-#DIM DYNAMIC 価値
+#DIM DYNAMIC 作品価値
 #DIM DYNAMIC 空き変数
+#DIM DYNAMIC 空き変数カウント
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC 処理数
@@ -197,7 +198,7 @@ FONTBOLD
 PRINTL 加工したキャラは死亡します
 FONTREGULAR
 FOR PAGING, 1, CHARANUM
-	CALL PAGING, PAGING > 0 && !TALENT:PAGING:無機物 && CSTR:PAGING:種族 != "機械" && !ISSLIME(PAGING) && !TALENT:PAGING:霊体
+	CALL PAGING, PAGING > 0 && !TALENT:PAGING:無機物 && CSTR:PAGING:種族 != "機械" && !TALENT:PAGING:霊体
 NEXT
 
 SIF RESULT == -1
@@ -207,8 +208,11 @@ SIF RESULT == -1
 
 PRINTFORML %NAME:対象%を加工します。どのように加工しますか？
 PRINTL [0] - やっぱりやめる
-PRINTL [1] - 剥製に加工する
-PRINTL [2] - 白骨に加工する
+SIF !ISSLIME(対象)
+	PRINTL [1] - 剥製に加工する
+SIF !ISSLIME(対象)
+	PRINTL [2] - 白骨に加工する
+PRINTL [3] - ホルマリン漬けに加工する
 BINPUT
 SELECTCASE RESULT
 	CASE 0
@@ -223,50 +227,21 @@ SELECTCASE RESULT
 		CALL CLEAR_CHARA, 対象, 0, 1
 		RETURN 1
 	CASE 2
-		SETCOLORBYNAME red
+		SETCOLORBYNAME ivory
 		CUSTOMDRAWLINE ✂----------
 		RESETCOLOR
-		PRINTFORMW %NAME:対象%を白骨に加工しました
-		;価値は1000は保証
-		価値 = 1000
-
-		FOR LCOUNT, 0, VARSIZE("TALENT")
-			SIF !TALENT:対象:LCOUNT
-				CONTINUE
-			SELECTCASE TALENTNAME:LCOUNT
-				CASE "尻尾", "羽"
-					価値 += 500
-				CASE "足使用不可"
-					価値 += 1000
-			ENDSELECT
-		NEXT
-		SIF TALENT:対象:体格 == 1
-			価値 += 500
-		;人気度を加算
-		価値 += 人気度:NOF(対象)
-
-		FOR LCOUNT, 1, VARSIZE("MUSEUM", 1)
-			IF MUSEUM:LCOUNT:種類 == ""
-				空き変数 = LCOUNT
-				BREAK
-			ENDIF
-		NEXT
-
-		;#;SIF 空き変数 == 0
-		;#;	THROW 変数「MUSEUM」に空きがありません
-
-		MUSEUM:空き変数:種類 = 白骨死体
-		MUSEUM:空き変数:名前 = %NAME:対象%の白骨死体
-		MUSEUM:空き変数:キャラナンバー = {NOF(対象)}
-		MUSEUM:空き変数:価値 = {価値}
-		MUSEUM:空き変数:色 = {COLOR_FROMNAME("whitesmoke")}
-		MUSEUM:空き変数:血縁コード = {CFLAG:対象:血縁コード}
-		MUSEUM:空き変数:オリジナルナンバー = {CFLAG:対象:複製}
-		MUSEUM:空き変数:集客力 = 100
-		MUSEUM:空き変数:汚れ = 0
-
+		CALL 白骨加工, 対象
 		CSTR:対象:ロスト要因 = 死亡
 		CSTR:対象:ロスト詳細 = 白骨に加工された
+		CALL CLEAR_CHARA, 対象, 0, 1
+		RETURN 1
+	CASE 3
+		SETCOLORBYNAME yellowgreen
+		CUSTOMDRAWLINE ✂----------
+		RESETCOLOR
+		CALL ホルマリン加工, 対象
+		CSTR:対象:ロスト要因 = 死亡
+		CSTR:対象:ロスト詳細 = ホルマリン漬けに加工された
 		CALL CLEAR_CHARA, 対象, 0, 1
 		RETURN 1
 ENDSELECT
@@ -276,7 +251,7 @@ PRINTL □同じ種類の2つの作品を組み合わせます 何を組み合�
 処理数 = 0
 ページ数 = 0
 FOR LCOUNT, 1, 1000
-	SIF !GROUPMATCH(MUSEUM:LCOUNT:種類, "剥製", "白骨死体")
+	SIF !GROUPMATCH(MUSEUM:LCOUNT:種類, "剥製", "白骨死体", "ホルマリン漬け")
 		CONTINUE
 	IF 処理数 < ページ数*10
 		処理数++
@@ -289,7 +264,7 @@ $DESTRUCT_CORPSE
 PRINTL □作品を解体して展示物にできます 何を解体しますか？
 処理数 = 0
 FOR LCOUNT, 1, 1000
-	SIF !GROUPMATCH(MUSEUM:LCOUNT:種類, "剥製", "白骨死体")
+	SIF !GROUPMATCH(MUSEUM:LCOUNT:種類, "剥製", "白骨死体", "ホルマリン漬け")
 		CONTINUE
 	IF 処理数 > ページ数*10+10
 		次ページあり = 1
@@ -334,24 +309,37 @@ SIF RESULT == 1
 FOR LCOUNT, 0, 4
 	FOR LCOUNT2, 1, VARSIZE("MUSEUM", 1)
 		IF MUSEUM:LCOUNT2:種類 == ""
-			空き変数 = LCOUNT2
-			BREAK
+			空き変数カウント++
+			IF 空き変数カウント == 4
+				空き変数 = LCOUNT2-3
+				BREAK
+			ENDIF
+		ELSE
+			空き変数カウント = 0
 		ENDIF
 	NEXT
 	MUSEUM:空き変数:種類 = 部位
-	MUSEUM:空き変数:名前 = %CSVNAMEF(TOINT(MUSEUM:対象:キャラナンバー))%の
+	MUSEUM:空き変数:名前 = %CSVNAMEF(TOINT(MUSEUM:対象:キャラナンバー))%
+	SIF ISSLIME(GETCHARANAME(CSVNAMEF(TOINT(MUSEUM:対象:キャラナンバー)), 1))
+		MUSEUM:空き変数:名前 += "スライム"
+	MUSEUM:空き変数:名前 += "の"
 	SELECTCASE LCOUNT
 		CASE 0
 			MUSEUM:空き変数:名前 += "頭"
 		CASE 1
+			STRFIND MUSEUM:対象:名前, "妊娠した"
+			SIF RESULT != -1 && MUSEUM:対象:種類 != "白骨死体"
+				MUSEUM:空き変数:名前 += "お腹の膨らんだ"
 			MUSEUM:空き変数:名前 += "胴体"
 		CASE 2
 			MUSEUM:空き変数:名前 += "腕"
 		CASE 3
 			MUSEUM:空き変数:名前 += "足"
 	ENDSELECT
-	SIF MUSEUM:対象:0 == "白骨"
+	SIF MUSEUM:対象:種類 == "白骨死体"
 		MUSEUM:空き変数:名前 += "(白骨)"
+	SIF MUSEUM:対象:種類 == "ホルマリン漬け"
+		MUSEUM:空き変数:名前 += "(液浸標本)"
 
 	MUSEUM:空き変数:キャラナンバー = %MUSEUM:対象:キャラナンバー%
 	MUSEUM:空き変数:価値 = {TOINT(MUSEUM:対象:価値)/5}
@@ -513,50 +501,137 @@ WAIT
 
 @剥製加工, 対象
 #DIM DYNAMIC 対象
-#DIM DYNAMIC 価格
+#DIM DYNAMIC 作品価値
 #DIM DYNAMIC 空き変数
 #DIM DYNAMIC LCOUNT
 
 PRINTFORMW %NAME:対象%を剥製に加工しました
 ;価値は1000は保証
-価格 = 1000
+作品価値 = 1000
 
 FOR LCOUNT, 0, VARSIZE("TALENT")
 	SIF !TALENT:対象:LCOUNT
 		CONTINUE
 	SELECTCASE TALENTNAME:LCOUNT
 		CASE "狐", "妖狐", "戦士", "ファーリー", "尻尾", "動物耳", "羽", "ふたなり"
-			価格 += 500
+			作品価値 += 500
 		CASE "魅力", "魅惑", "足使用不可", "スライム", "溶ける快"
-			価格 += 1000
+			作品価値 += 1000
 		CASE "謎の魅力", "人気", "妊娠"
-			価格 += 1500
+			作品価値 += 1500
 		CASE "バストサイズ"
 			SELECTCASE TALENT:対象:バストサイズ
 				CASE IS >= 4
-					価格 += (TALENT:対象:バストサイズ-3)*100
+					作品価値 += (TALENT:対象:バストサイズ-3)*100
 			ENDSELECT
 	ENDSELECT
 NEXT
 
 SIF TALENT:対象:体格 == 1
-	価格 += 500
+	作品価値 += 500
 
 ;タトゥーでも微増
 SIF CSTR:対象:右腕の印 != ""
-	価格 += 100
+	作品価値 += 100
 SIF CSTR:対象:左腕の印 != ""
-	価格 += 100
+	作品価値 += 100
 SIF CSTR:対象:右足の印 != ""
-	価格 += 100
+	作品価値 += 100
 SIF CSTR:対象:左足の印 != ""
-	価格 += 100
+	作品価値 += 100
 SIF CSTR:対象:背中の印 != ""
-	価格 += 200
+	作品価値 += 200
 SIF CSTR:対象:胴体の印 != ""
-	価格 += 300
+	作品価値 += 300
 ;人気度を加算
-価格 += 人気度:NOF(対象)
+作品価値 += 人気度:NOF(対象)
+
+CALL 作品加工共通処理, "剥製", 対象, 作品価値
+
+@白骨加工, 対象
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 作品価値
+#DIM DYNAMIC 空き変数
+#DIM DYNAMIC LCOUNT
+
+PRINTFORMW %NAME:対象%を白骨に加工しました
+;作品価値は1000は保証
+作品価値 = 1000
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:対象:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "尻尾", "羽"
+			作品価値 += 500
+		CASE "足使用不可"
+			作品価値 += 1000
+	ENDSELECT
+NEXT
+SIF TALENT:対象:体格 == 1
+	作品価値 += 500
+;人気度を加算
+作品価値 += 人気度:NOF(対象)
+
+CALL 作品加工共通処理, "白骨死体", 対象, 作品価値
+
+@ホルマリン加工, 対象
+;//一旦剥製からコピペ
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 作品価値
+#DIM DYNAMIC 空き変数
+#DIM DYNAMIC LCOUNT
+
+PRINTFORMW %NAME:対象%をホルマリン漬けに加工しました
+;価値は1000は保証
+作品価値 = 1000
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:対象:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "狐", "妖狐", "戦士", "ファーリー", "尻尾", "動物耳", "羽", "ふたなり"
+			作品価値 += 500
+		CASE "魅力", "魅惑", "足使用不可", "スライム", "溶ける快"
+			作品価値 += 1000
+		CASE "謎の魅力", "人気", "妊娠"
+			作品価値 += 1500
+		CASE "バストサイズ"
+			SELECTCASE TALENT:対象:バストサイズ
+				CASE IS >= 4
+					作品価値 += (TALENT:対象:バストサイズ-3)*100
+			ENDSELECT
+	ENDSELECT
+NEXT
+
+SIF TALENT:対象:体格 == 1
+	作品価値 += 500
+
+;タトゥーでも微増
+SIF CSTR:対象:右腕の印 != ""
+	作品価値 += 100
+SIF CSTR:対象:左腕の印 != ""
+	作品価値 += 100
+SIF CSTR:対象:右足の印 != ""
+	作品価値 += 100
+SIF CSTR:対象:左足の印 != ""
+	作品価値 += 100
+SIF CSTR:対象:背中の印 != ""
+	作品価値 += 200
+SIF CSTR:対象:胴体の印 != ""
+	作品価値 += 300
+;人気度を加算
+作品価値 += 人気度:NOF(対象)
+
+CALL 作品加工共通処理, "ホルマリン漬け", 対象, 作品価値
+
+
+@作品加工共通処理, 作品種類, 対象, 作品価値
+#DIMS DYNAMIC 作品種類
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 作品価値
+#DIM DYNAMIC 空き変数
+#DIM DYNAMIC LCOUNT
 
 FOR LCOUNT, 1, VARSIZE("MUSEUM", 1)
 	IF MUSEUM:LCOUNT:種類 == ""
@@ -568,14 +643,26 @@ NEXT
 ;#;SIF 空き変数 == 0
 ;#;	THROW 変数「MUSEUM」に空きがありません
 
-MUSEUM:空き変数:種類 = 剥製
-MUSEUM:空き変数:名前 = %NAME:対象%の剥製
+SIF TALENT:対象:妊娠 && 作品種類 != "白骨死体"
+	MUSEUM:空き変数:名前 += "妊娠した"
+MUSEUM:空き変数:名前 '= MUSEUM:空き変数:名前 + NAME:対象
+SIF ISSLIME(対象)
+	MUSEUM:空き変数:名前 += "スライム"
+MUSEUM:空き変数:名前 '= MUSEUM:空き変数:名前 + "の" + 作品種類
+
+SELECTCASE 作品種類
+	CASE "剥製"
+		MUSEUM:空き変数:色 = {COLOR_FROMNAME("red")}
+	CASE "白骨死体"
+		MUSEUM:空き変数:色 = {COLOR_FROMNAME("ivory")}
+	CASE "ホルマリン漬け"
+		MUSEUM:空き変数:色 = {COLOR_FROMNAME("yellowgreen")}
+ENDSELECT
+
+MUSEUM:空き変数:種類 = %作品種類%
 MUSEUM:空き変数:キャラナンバー = {NOF(対象)}
-MUSEUM:空き変数:価値 = {価格}
-MUSEUM:空き変数:色 = {COLOR_FROMNAME("red")}
+MUSEUM:空き変数:価値 = {作品価値}
 MUSEUM:空き変数:血縁コード = {CFLAG:対象:血縁コード}
 MUSEUM:空き変数:オリジナルナンバー = {CFLAG:対象:複製}
 MUSEUM:空き変数:集客力 = 100
 MUSEUM:空き変数:汚れ = 0
-
-;CLEAR_CHARAは呼び出し元で行う
