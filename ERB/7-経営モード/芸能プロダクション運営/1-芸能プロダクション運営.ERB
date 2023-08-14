@@ -299,6 +299,7 @@ ENDSELECT
 #DIM DYNAMIC ユニット担当記録用, 1000
 #DIMS DYNAMIC HTML用
 #DIM DYNAMIC 依頼
+#DIM DYNAMIC 超過ポイント
 
 ;ユニット数を数える
 ユニット数 = 0
@@ -556,15 +557,15 @@ ELSE
 ENDIF
 
 ;上記を超えるとライブ開始
-難度:1 = 10000*TOINT(IDOL選曲:1)
-難度:2 = 10000*TOINT(IDOL選曲:2)
+難度:1 = 100*TOINT(IDOL選曲:1)
+難度:2 = 100*TOINT(IDOL選曲:2)
 ;CHAOSはダンス難易度が4～9の間で変動する
 SELECTCASE IDOL選曲
 	CASE "CHAOS"
 		IDOL選曲:3 = RAND(4, 10)
 ENDSELECT
-難度:3 = 10000*TOINT(IDOL選曲:3)
-難度合計 = (難度:1 + 難度:2 + 難度:3) / 10000
+難度:3 = 100*TOINT(IDOL選曲:3)
+難度合計 = TOINT(IDOL選曲:1) + TOINT(IDOL選曲:2) + TOINT(IDOL選曲:3)
 ;魅惑で2%、魅力で3%、謎の魅力で4%、人気で5%技量が上がる(乗算で重複する)
 ;ビジュアルによって難度が下がる(※かわいいは正義)ことを表現したいのだが
 ;難度を下げると収入も下がってしまうので相対的に技量を上げる
@@ -578,42 +579,42 @@ FOR LCOUNT, 0, CHARANUM
 				CASE 1
 					;担当曲補正
 					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:3 -= 12000*ABL:LCOUNT:舞踊技能
+						技量:3 -= 120*ABL:LCOUNT:舞踊技能
 					ELSE
-						技量:3 -= 10000*ABL:LCOUNT:舞踊技能
+						技量:3 -= 100*ABL:LCOUNT:舞踊技能
 					ENDIF
 					人数:3--
 				CASE 2
 					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:2 -= 12000*ABL:LCOUNT:演奏技能
+						技量:2 -= 120*ABL:LCOUNT:演奏技能
 					ELSE
-						技量:2 -= 10000*ABL:LCOUNT:演奏技能
+						技量:2 -= 100*ABL:LCOUNT:演奏技能
 					ENDIF
 					人数:2--
 				CASE 3
 					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:1 -= 12000*ABL:LCOUNT:歌唱技能
+						技量:1 -= 120*ABL:LCOUNT:歌唱技能
 					ELSE
-						技量:1 -= 10000*ABL:LCOUNT:歌唱技能
+						技量:1 -= 100*ABL:LCOUNT:歌唱技能
 					ENDIF
 					人数:1--
 				CASE 4
 					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:3 -= 9000*ABL:LCOUNT:舞踊技能
-						技量:1 -= 9000*ABL:LCOUNT:歌唱技能
+						技量:3 -= 90*ABL:LCOUNT:舞踊技能
+						技量:1 -= 90*ABL:LCOUNT:歌唱技能
 					ELSE
-						技量:3 -= 7500*ABL:LCOUNT:舞踊技能
-						技量:1 -= 7500*ABL:LCOUNT:歌唱技能
+						技量:3 -= 75*ABL:LCOUNT:舞踊技能
+						技量:1 -= 75*ABL:LCOUNT:歌唱技能
 					ENDIF
 					人数:3--
 					人数:1--
 				CASE 5
 					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:2 -= 9000*ABL:LCOUNT:演奏技能
-						技量:1 -= 9000*ABL:LCOUNT:歌唱技能
+						技量:2 -= 90*ABL:LCOUNT:演奏技能
+						技量:1 -= 90*ABL:LCOUNT:歌唱技能
 					ELSE
-						技量:2 -= 7500*ABL:LCOUNT:演奏技能
-						技量:1 -= 7500*ABL:LCOUNT:歌唱技能
+						技量:2 -= 75*ABL:LCOUNT:演奏技能
+						技量:1 -= 75*ABL:LCOUNT:歌唱技能
 					ENDIF
 					人数:2--
 					人数:1--
@@ -660,40 +661,51 @@ SELECTCASE IDOL選曲
 	TIMES 技量:3, 0.33
 ENDSELECT
 収入 = 0
+超過ポイント = 0
 ;それぞれの分野についての基本収入を出す
-;収入は難度Xに対して技量が同じだとX*10000となり、
-;不足分1あたり25000ずつ減り、超過分1あたり4000ずつ増える
+;収入は(合計難易度*合計難易度)*1万円が目安 超過で最大5倍まで増える
+収入 = 難度合計*難度合計*1000
 FOR 分野, 1, 4
-	収入 += 難度:分野
-	IF 技量:分野 >= 難度:分野
-		収入 += (技量:分野 - 難度:分野)*2/5
+	;他の技能で補えるのは変なのでマイナス分は2倍にする
+	IF 技量:分野-難度:分野 < 0
+		超過ポイント += (技量:分野-難度:分野)*2
 	ELSE
-		収入 += (技量:分野 - 難度:分野)*5/2
+		超過ポイント += 技量:分野-難度:分野
 	ENDIF
 NEXT
-;2乗して10万で割る
-;収入 *= ABS(収入)
-;収入 /= 100000
-;2乗はやりすぎ *10くらいで様子見
-;出演依頼なら*15
-IF 依頼
-	収入 *= 15
-ELSE
-	収入 *= 10
-ENDIF
+
+;超過ポイントは100倍されたものが入ってる
+SELECTCASE SIGN(超過ポイント)
+	;+
+	CASE 1
+		収入 *= LIMIT((超過ポイント/難度合計), 100, 500)
+		収入 /= 100
+	;-
+	CASE -1
+		収入 *= -LIMIT((超過ポイント/難度合計), 100, 500)
+		;可哀想なので損失は低めに
+		収入 /= 1000
+ENDSELECT
+
+;出演依頼なら1.5倍
+SIF 依頼
+	TIMES 収入 , 1.5
+
 収入:1 = 収入
 ;最後に知名度による補正
 ;マイナスも増幅するので、知名度が高いときにしくじると大惨事
-;収入:1 *= (100+IDOL:知名度)
-;収入:1 /= 100
-;知名度1につき0.1%の上昇に調整
-収入:1 *= (1000+IDOL:知名度)
-収入:1 /= 1000
+;√知名度%の上昇に調整 最大300%
+収入:1 += 収入*LIMIT(SQRT(IDOL:知名度), 1, 300)/100
 
 MONEY += 収入:1
 CALL 現金出納帳記録, @"ライブの収支/{収入:1}"
 ;最終的な収益の計算の後に知名度の増減を行う
-IDOL:知名度 += 収入/1000
+SELECTCASE SIGN(収入)
+	CASE 1
+		IDOL:知名度 += SQRT(収入)/10
+	CASE -1
+		IDOL:知名度 -= SQRT(収入)/10
+ENDSELECT
 PRINTL
 PRINTL ライブが終了しました
 IF 収入:1 >= 0
@@ -703,10 +715,10 @@ ELSE
 ENDIF
 IF ABS(収入) >= 10000
 	PRINT 知名度が
-	IF 収入 >= 0
-		PRINTFORMW {収入/1000}増えました
+	IF SIGN(収入) == 1
+		PRINTFORMW {SQRT(収入)/10}増えました
 	ELSE
-		PRINTFORMW {ABS(収入/10000)}減りました
+		PRINTFORMW {SQRT(収入)/10}減りました
 	ENDIF
 ENDIF
 SIF IDOL:知名度 < 0
