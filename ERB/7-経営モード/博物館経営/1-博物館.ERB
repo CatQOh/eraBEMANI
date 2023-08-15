@@ -303,7 +303,12 @@ SELECTCASE RESULT
 		RESETCOLOR
 		CALL 稼働停止, 対象
 		CSTR:対象:ロスト要因 = 死亡
-		CSTR:対象:ロスト詳細 = 永久に稼働を停止した
+		SELECTCASE CHARANAMEF(対象)
+			CASE "にんじん"
+				CSTR:対象:ロスト詳細 = 魂を失いカカシとなった
+			CASEELSE
+				CSTR:対象:ロスト詳細 = 永久に稼働を停止した
+		ENDSELECT
 		CALL CLEAR_CHARA, 対象, 0, 1
 		RETURN 1
 ENDSELECT
@@ -602,20 +607,25 @@ WAIT
 #DIM DYNAMIC LCOUNT
 
 PRINTFORMW %NAME:対象%を剥製に加工しました
-SELECTCASE TALENT:対象:体格
-	CASE 1
-		PRINTL 保管済み血液+800ml
-		リソース:血液 += 800
-	CASE 2
-		PRINTL 保管済み血液+1200ml
-		リソース:血液 += 1200
-	CASE 3
-		PRINTL 保管済み血液+1500ml
-		リソース:血液 += 1500
-	CASE 4
-		PRINTL 保管済み血液+2000ml
-		リソース:血液 += 2000
-ENDSELECT
+IF TALENT:対象:小人体型
+	PRINTL 保管済み血液+300ml
+	リソース:血液 += 300
+ELSE
+	SELECTCASE TALENT:対象:体格
+		CASE 1
+			PRINTL 保管済み血液+800ml
+			リソース:血液 += 800
+		CASE 2
+			PRINTL 保管済み血液+1200ml
+			リソース:血液 += 1200
+		CASE 3
+			PRINTL 保管済み血液+1500ml
+			リソース:血液 += 1500
+		CASE 4
+			PRINTL 保管済み血液+2000ml
+			リソース:血液 += 2000
+	ENDSELECT
+ENDIF
 
 ;価値は1000は保証
 作品価値 = 1000
@@ -700,20 +710,25 @@ CALL 作品加工共通処理, "白骨死体", 対象, 作品価値, ""
 
 IF 加工方法 == "臓器摘出"
 	PRINTFORMW %NAME:対象%の臓器を取り出し、ホルマリン漬けに加工しました
-	SELECTCASE TALENT:対象:体格
-		CASE 1
-			PRINTL 保管済み血液+300ml
-			リソース:血液 += 300
-		CASE 2
-			PRINTL 保管済み血液+600ml
-			リソース:血液 += 600
-		CASE 3
-			PRINTL 保管済み血液+1000ml
-			リソース:血液 += 1000
-		CASE 4
-			PRINTL 保管済み血液+1500ml
-			リソース:血液 += 1500
-	ENDSELECT
+	IF TALENT:対象:小人体型
+		PRINTL 保管済み血液+100ml
+		リソース:血液 += 100
+	ELSE
+		SELECTCASE TALENT:対象:体格
+			CASE 1
+				PRINTL 保管済み血液+300ml
+				リソース:血液 += 300
+			CASE 2
+				PRINTL 保管済み血液+600ml
+				リソース:血液 += 600
+			CASE 3
+				PRINTL 保管済み血液+1000ml
+				リソース:血液 += 1000
+			CASE 4
+				PRINTL 保管済み血液+1500ml
+				リソース:血液 += 1500
+		ENDSELECT
+	ENDIF
 
 	FOR LCOUNT, 0, VARSIZE("TALENT")
 		SIF !TALENT:対象:LCOUNT
@@ -901,10 +916,16 @@ FOR LCOUNT, 0, 必要空き枠
 		ENDSELECT
 		MUSEUM:空き変数:名前 += "(液浸標本)"
 	ELSE
+		IF 作品種類 == "人形"
+			SELECTCASE CHARANAMEF(対象)
+				CASE "にんじん"
+					MUSEUM:空き変数:名前 += "ただのカカシとなった"
+				CASEELSE
+					MUSEUM:空き変数:名前 += "稼働を停止した"
+			ENDSELECT
+		ENDIF
 		SIF TALENT:対象:妊娠 && 作品種類 != "白骨死体"
 			MUSEUM:空き変数:名前 += "妊娠した"
-		SIF 作品種類 == "人形"
-			MUSEUM:空き変数:名前 += "稼働を停止した"
 		MUSEUM:空き変数:名前 '= MUSEUM:空き変数:名前 + NAME:対象
 		SIF ISSLIME(対象) && !CSVTALENT(NO:対象, GETNUM(TALENT, "スライム")) && !CSVTALENT(NO:対象, GETNUM(TALENT, "溶ける快"))
 			MUSEUM:空き変数:名前 += "(スライム)"
