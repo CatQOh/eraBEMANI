@@ -1,9 +1,21 @@
 ﻿@RITUAL_OF_ACCESSORY
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC LTARGET = -1
 #DIM DYNAMIC APOINT = -1
 #DIMS DYNAMIC EQUIPD_ACCESSORY
 #DIM ACC
+#DIMS DYNAMIC アクセサリー名
+#DIMS DYNAMIC 着用可能部位リスト
+#DIMS DYNAMIC SPLITVAR, 10
+
+;装飾の種類、装着可能な部位（/で区切る）の順
+{
+#DIMS DYNAMIC アクセサリーリスト = 
+"空欄", "空欄", 
+"リングピアス", "右乳首/左乳首", 
+"バーベルピアス", "右乳首/左乳首", 
+}
 
 DRAWLINE
 
@@ -17,10 +29,39 @@ RESETCOLOR
 PRINTL （未実装です）
 PRINTL
 
-PRINTFORML 　[1] - 対象を選ぶ \@ LTARGET != -1 ? （選択中：%CHARANAMEF(LTARGET)%） #  \@
-PRINTFORML 　[2] - 部位を選ぶ \@ APOINT != -1 ? （指定している部位：%ERDNAME(ACCESSORY,APOINT)%） #  \@
-PRINTFORML 　[3] - アクセサリーを選ぶ \@ EQUIPD_ACCESSORY != "" ? （つけるアクセサリー：%EQUIPD_ACCESSORY%） #  \@
-PRINTL 　[7] - 装飾をつける
+IF !LTARGET
+	PRINTFORML 　[1] - 対象を選ぶ（選択中：%CALLNAME:MASTER%）
+ELSE
+	PRINTFORML 　[1] - 対象を選ぶ\@ LTARGET != -1 ? （選択中：%CHARANAMEF(LTARGET)%） #  \@
+ENDIF
+
+IF LTARGET == -1
+	SETCOLORBYNAME gray
+	PRINTPLAIN 　[2] - 部位を選ぶ（対象を指定してください）
+	RESETCOLOR
+ELSE
+	PRINTFORM 　[2] - 部位を選ぶ\@ APOINT != -1 ? （指定している部位：%ERDNAME(ACCESSORY,APOINT)%） #  \@
+ENDIF
+PRINTL 
+
+IF APOINT == -1
+	SETCOLORBYNAME gray
+	PRINTPLAIN 　[3] - アクセサリーを選ぶ（部位を指定してください）
+	RESETCOLOR
+ELSE
+	PRINTFORM 　[3] - アクセサリーを選ぶ\@ EQUIPD_ACCESSORY != "" ? （つけるアクセサリー：%EQUIPD_ACCESSORY%） #  \@
+ENDIF
+PRINTL 
+
+IF EQUIPD_ACCESSORY == ""
+	SETCOLORBYNAME gray
+	PRINTPLAIN 　[7] - 装飾をつける
+	RESETCOLOR
+ELSE
+	PRINTFORM 　[7] - 装飾をつける
+ENDIF
+PRINTL 
+
 
 DRAWLINE
 PRINTPLAIN 　装飾の儀　
@@ -44,8 +85,17 @@ SELECTCASE RESULT
 	CASE 2
 		DRAWLINE
 		PRINTFORML □どの部位に装飾を施しますか？
-		PRINTFORML [10] - 右乳首\@ LTARGET >=0 && ACCESSORY:LTARGET:右乳首 != "" ? (%ACCESSORY:LTARGET:右乳首%がついています) #  \@
-		PRINTFORML [20] - 左乳首\@ LTARGET >=0 && ACCESSORY:LTARGET:左乳首 != "" ? (%ACCESSORY:LTARGET:左乳首%がついています) #  \@
+
+		;装着可能部位はACCESSORY.ERDに定義を追加する事で増やす
+		FOR LCOUNT, 0, VARSIZE("ACCESSORY")
+			IF ERDNAME(ACCESSORY,LCOUNT) != ""
+				{
+				PRINTFORML [{LCOUNT}] - %ERDNAME(ACCESSORY,LCOUNT)%
+				\@ LTARGET >=0 && ACCESSORY:LTARGET:(ERDNAME(ACCESSORY,LCOUNT)) != "" ? 
+				(%ACCESSORY:LTARGET:(ERDNAME(ACCESSORY,LCOUNT))%がついています) #  \@
+				}
+			ENDIF
+		NEXT
 		DRAWLINE
 		PRINTPLAINFORM 　ACCESSORY　
 		PRINTL [0] - 戻る
@@ -55,12 +105,38 @@ SELECTCASE RESULT
 			RESTART
 		ELSE
 			APOINT = RESULT
+			;アクセサリー指定済の場合そこにつけられないアクセサリーなら外す（動作未確認）
+			IF EQUIPD_ACCESSORY != ""
+				FOR LCOUNT, 1, VARSIZE("アクセサリーリスト")/2
+					アクセサリー名 = %アクセサリーリスト:(LCOUNT*2)%
+					IF EQUIPD_ACCESSORY == アクセサリー名
+						着用可能部位リスト = %アクセサリーリスト:(LCOUNT*2+1)%
+						BREAK
+					ENDIF
+				NEXT
+				SPLIT 着用可能部位リスト, "/", SPLITVAR
+				FOR LCOUNT, 0, RESULT
+					SIF SPLITVAR:LCOUNT == ERDNAME(ACCESSORY,APOINT)
+						GOTO OK
+				NEXT
+				EQUIPD_ACCESSORY = 
+				$OK
+			ENDIF
 		ENDIF
 	CASE 3
 		DRAWLINE
 		PRINTFORML □どんなアクセサリーをつけますか？
-		PRINTFORML [1] - リングピアス
-		PRINTFORML [2] - バーベルピアス
+
+		;アクセサリーの種類は上で定義
+		FOR LCOUNT, 1, VARSIZE("アクセサリーリスト")/2
+			アクセサリー名 = %アクセサリーリスト:(LCOUNT*2)%
+			着用可能部位リスト = %アクセサリーリスト:(LCOUNT*2+1)%
+			SPLIT 着用可能部位リスト, "/", SPLITVAR
+			FOR LCOUNT2, 0, RESULT
+				SIF SPLITVAR:LCOUNT2 == ERDNAME(ACCESSORY,APOINT)
+					PRINTFORML [{LCOUNT}] - %アクセサリー名%
+			NEXT
+		NEXT
 		DRAWLINE
 		PRINTPLAINFORM 　ACCESSORY　
 		PRINTL [0] - 戻る
@@ -69,22 +145,16 @@ SELECTCASE RESULT
 		SELECTCASE RESULT
 			CASE 0
 				RESTART
-			CASE 1
-				EQUIPD_ACCESSORY = リングピアス
-			CASE 2
-				EQUIPD_ACCESSORY = バーベルピアス
+			CASEELSE
+				EQUIPD_ACCESSORY = %アクセサリーリスト:(RESULT*2)%
 		ENDSELECT
 	CASE 7
-		IF LTARGET == -1
-			PRINTW アクセサリーをつける対象を選択してください
-		ELSEIF APOINT == -1
-			PRINTW アクセサリーをつける部位を選択してください
-		ELSEIF EQUIPD_ACCESSORY == ""
-			PRINTW つけるアクセサリーを選択してください
-		ELSEIF ACCESSORY:LTARGET:APOINT == EQUIPD_ACCESSORY
+		IF ACCESSORY:LTARGET:APOINT == EQUIPD_ACCESSORY
 			PRINTW その部位には既に同じアクセサリーがついているようです
 		ELSE
 			PRINTL □アクセサリーをつけますか？
+			SIF ACCESSORY:LTARGET:APOINT != ""
+				PRINTFORML 　（この部位には既に%ACCESSORY:LTARGET:APOINT%がついています）
 			PRINTL [0] - つける
 			PRINTL [1] - やっぱやめる
 
@@ -97,15 +167,10 @@ SELECTCASE RESULT
 	CASE 100
 		DRAWLINE
 		PRINTFORML □%CHARANAMEF(LTARGET)%の装飾
-		FOR LCOUNT, 0, 100
-			IF ACCESSORY:LTARGET:LCOUNT != ""
-				PRINTFORML 　%ERDNAME(ACCESSORY,LCOUNT)%：%ACCESSORY:LTARGET:LCOUNT%
-				ACC++
-			ENDIF
+		FOR LCOUNT, 0, VARSIZE("ACCESSORY")
+			SIF ERDNAME(ACCESSORY,LCOUNT) != ""
+				PRINTFORML 　%ERDNAME(ACCESSORY,LCOUNT)%：\@ACCESSORY:LTARGET:LCOUNT != "" ? %ACCESSORY:LTARGET:LCOUNT% # なし \@
 		NEXT
-		IF !ACC
-			PRINT 　なにもついていません
-		ENDIF
 		WAIT
 ENDSELECT
 
