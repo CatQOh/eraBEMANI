@@ -103,6 +103,10 @@ IF スライム設定
 	TALENT:対象:スライム = 1
 	CSTR:対象:種族 = スライム
 ENDIF
+
+;種族をセーブしておく
+TRANCERACE:対象:0 = %CSTR:対象:種族%
+
 ;10000以降のNOを使うので子供の数と共用
 NO:対象 = FLAG:子供の数+10001
 CFLAG:CSV無し = 1
@@ -129,14 +133,19 @@ RESTART
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LRESULT
 #DIM DYNAMIC 服装選出用
+#DIM DYNAMIC 選択中リソース, 150
 
 CALL ADD_ランダムキャラ_STATUS, 対象, 1
 
 DRAWLINE
 IF !CFLAG:対象:複製
 	FOR LCOUNT, GETNUM(リソース, "ケモミミが付いた頭"), GETNUM(リソース, "ケモミミが付いた頭")+50
-		SIF リソース:LCOUNT
-			PRINTFORMLC 　[{LCOUNT}]%ERDNAME(リソース, LCOUNT)%×{リソース:LCOUNT} 
+		IF リソース:LCOUNT
+			SIF GETBIT(選択中リソース:LCOUNT, 0)
+				SETCOLORBYNAME deepskyblue
+			PRINTFORMLC 　[{LCOUNT}]%ERDNAME(リソース, LCOUNT)%×{(リソース:LCOUNT)-GETBIT(選択中リソース:LCOUNT, 0)} 
+			RESETCOLOR
+		ENDIF
 	NEXT
 ENDIF
 CALL NEWLINE
@@ -211,6 +220,7 @@ SELECTCASE RESULT
 					MAXBASE:魔力 = 3000
 					BASE:魔力 = 3000
 			ENDSELECT
+			TRANCERACE:TARGET:0 = 
 			CALL プレイログ記録, @"キャラクター「%NAME:TARGET%」を錬成"
 		ELSE
 			IF GETCHARA(CFLAG:対象:複製) > 0 && !CFLAG:GETCHARA(CFLAG:対象:複製):キャラロスト
@@ -332,20 +342,61 @@ SELECTCASE RESULT
 			SELECTCASE ERDNAME(リソース, LRESULT)
 				CASE "ケモミミが付いた頭"
 					INVERTBIT TALENT:対象:動物耳, 0
+					INVERTBIT 選択中リソース:LRESULT, 0
 				CASE "翼の生えた胴体"
 					INVERTBIT TALENT:対象:羽, 0
+					INVERTBIT 選択中リソース:LRESULT, 0
 				CASE "人魚の下半身"
 					INVERTBIT TALENT:対象:足使用不可, 0
+					INVERTBIT 選択中リソース:LRESULT, 0
 				CASE "切断された尻尾"
 					INVERTBIT TALENT:対象:尻尾, 0
+					INVERTBIT 選択中リソース:LRESULT, 0
 				CASE "悪魔の心臓"
-					CSTR:対象:種族 = 悪魔
+					IF CSTR:対象:種族 == "悪魔"
+						CSTR:対象:種族 = %TRANCERACE:対象:0%
+						INVERTBIT 選択中リソース:LRESULT, 0
+					ELSE
+						CSTR:対象:種族 = 悪魔
+						INVERTBIT 選択中リソース:LRESULT, 0
+						;とりあえずの処置
+						CLEARBIT 選択中リソース:GETNUM(リソース, "天使の心臓"), 0
+						CLEARBIT 選択中リソース:GETNUM(リソース, "神の心臓"), 0
+						CLEARBIT 選択中リソース:GETNUM(リソース, "魔術師の心臓"), 0
+					ENDIF
 				CASE "天使の心臓"
-					CSTR:対象:種族 = 天使
+					IF CSTR:対象:種族 == "天使"
+						CSTR:対象:種族 = %TRANCERACE:対象:0%
+						INVERTBIT 選択中リソース:LRESULT, 0
+					ELSE
+						CSTR:対象:種族 = 天使
+						INVERTBIT 選択中リソース:LRESULT, 0
+						CLEARBIT 選択中リソース:GETNUM(リソース, "悪魔の心臓"), 0
+						CLEARBIT 選択中リソース:GETNUM(リソース, "神の心臓"), 0
+						CLEARBIT 選択中リソース:GETNUM(リソース, "魔術師の心臓"), 0
+					ENDIF
 				CASE "神の心臓"
-					CSTR:対象:種族 = 神
+					IF CSTR:対象:種族 == "神"
+						CSTR:対象:種族 = %TRANCERACE:対象:0%
+						INVERTBIT 選択中リソース:LRESULT, 0
+					ELSE
+						CSTR:対象:種族 = 神
+						INVERTBIT 選択中リソース:LRESULT, 0
+						CLEARBIT 選択中リソース:GETNUM(リソース, "悪魔の心臓"), 0
+						CLEARBIT 選択中リソース:GETNUM(リソース, "天使の心臓"), 0
+						CLEARBIT 選択中リソース:GETNUM(リソース, "魔術師の心臓"), 0
+					ENDIF
 				CASE "魔術師の心臓"
-					CSTR:対象:種族 = 魔術師
+					IF CSTR:対象:種族 == "魔術師"
+						CSTR:対象:種族 = %TRANCERACE:対象:0%
+						INVERTBIT 選択中リソース:LRESULT, 0
+					ELSE
+						CSTR:対象:種族 = 魔術師
+						INVERTBIT 選択中リソース:LRESULT, 0
+						CLEARBIT 選択中リソース:GETNUM(リソース, "悪魔の心臓"), 0
+						CLEARBIT 選択中リソース:GETNUM(リソース, "天使の心臓"), 0
+						CLEARBIT 選択中リソース:GETNUM(リソース, "神の心臓"), 0
+					ENDIF
 			ENDSELECT
 		ENDIF
 ENDSELECT
