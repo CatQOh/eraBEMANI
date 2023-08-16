@@ -13,34 +13,24 @@ CALL 基本情報
 
 IF TARGET != MASTER
 	DRAWLINE
-	IF LANGUAGE == "ENG"
-		PRINTL □ Jewel
-	ELSE
-		PRINTL □ 珠
-	ENDIF
+	PRINTFORML □ %SYSTXTDISP("珠")% 
 	CALL SHOW_INFO_JUEL, TARGET
 ENDIF
 CALL SHOW_INFO, TARGET
 
-IF LANGUAGE == "ENG"
-	PRINTL □ Relation
-	SIF TALENT:服従
-		PRINTL 　All Characters×120%
-	SIF TALENT:隷属
-		PRINTL 　All Characters×150%
-ELSE
-	PRINTL □ 相性
-	SIF TALENT:服従
-		PRINTL 　全キャラ×120%
-	SIF TALENT:隷属
-		PRINTL 　全キャラ×150%
-ENDIF
+PRINTFORML □ %SYSTXTDISP("相性")% 
+SIF TALENT:服従
+	PRINTFORML 　%SYSTXTDISP("全キャラ")%×120% 
+SIF TALENT:隷属
+	PRINTFORML 　%SYSTXTDISP("全キャラ")%×150% 
+
 SIF TALENT:犬嫌い
-	PRINTL 　素質:[犬]との相性-30%
+	PRINTFORML 　%SYSTXTDISP("素質:[犬]との相性")%-30%
 SIF TALENT:猫嫌い
-	PRINTL 　素質:[猫]との相性-30%
+	PRINTFORML 　%SYSTXTDISP("素質:[猫]との相性")%-30%
 SIF CSTR:種族嫌悪 != ""
 	PRINTFORML 　種族:%CSTR:種族嫌悪%との相性-30\%
+
 表示数 = 0
 FOR LCOUNT, 0, 20000
 	;CSVがあるか、子供の場合に参照
@@ -138,7 +128,7 @@ CALL NEWLINE
 
 DRAWLINE
 IF ORIGIN
-	PRINTL □キャラマニュアル
+	PRINTFORML □%SYSTXTDISP("キャラマニュアル")%
 	FOR LCOUNT, 0, 100
 		SIF CSTR:LCOUNT == ""
 			BREAK
@@ -148,7 +138,7 @@ IF ORIGIN
 ENDIF
 IF CFLAG:キャラロスト
 	CALL CHECKDRAWLINE
-	PRINTL □キャラロストの原因
+	PRINTFORML □%SYSTXTDISP(キャラロストの原因"")%
 	CALL PASELIL, @"　%CSTR:ロスト詳細%"
 ENDIF
 
@@ -201,7 +191,7 @@ IF LANGUAGE == "ENG"
 	ENDIF
 	PRINTL 
 ELSE
-	PRINT [0] 戻る 
+	PRINTFORM [0] %SYSTXTDISP("戻る")% 
 	SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
 		PRINT [4] 性経験履歴 
 	PRINT [5] その他情報 
@@ -217,30 +207,16 @@ ELSE
 ENDIF
 PRINTPLAINFORM %SPACESLENS("　BASIC　")%
 
-IF LANGUAGE == "ENG"
-	IF !ロストキャラ表示
-		IF ISSLIME(TARGET)
-			PRINT [11] Change BodyColor  
-		ELSE
-			PRINT [11] Change LabelColor 
-		ENDIF
+IF !ロストキャラ表示
+	IF ISSLIME(TARGET)
+		PRINTFORM [11] %SYSTXTDISP("体色変更　")% 
+	ELSE
+		PRINTFORM [11] %SYSTXTDISP("タグ色変更")% 
 	ENDIF
-	SIF MOD:バスト関連ステータス表示
-		PRINT [97] Note Down breastSize 
-	PRINT [98] Write a Note
-ELSE
-	IF !ロストキャラ表示
-		IF ISSLIME(TARGET)
-			PRINT [11] 体色変更　 
-		ELSE
-			PRINT [11] タグ色変更 
-		ENDIF
-	ENDIF
-	SIF MOD:バスト関連ステータス表示
-		PRINT [97] バストサイズをメモする 
-	PRINT [98] メモを書く
 ENDIF
-
+SIF MOD:バスト関連ステータス表示
+	PRINTFORM [97] %SYSTXTDISP("バストサイズをメモする")% 
+PRINTFORM [98] %SYSTXTDISP("メモを書く")%
 PRINTL 
 
 BINPUT
@@ -308,103 +284,78 @@ ENDSELECT
 @基本情報
 #DIMS DYNAMIC 表示用変数
 
-IF LANGUAGE == "ENG"
-	PRINT □ Basic Infomation 
-	IF CFLAG:タグ色
-		PRINT Tag Color:
-		SETCOLOR CFLAG:タグ色
-		PRINT ■
-		RESETCOLOR
+PRINTFORM □ %SYSTXTDISP("基本情報")% 
+IF CFLAG:タグ色
+	IF ISSLIME(TARGET)
+		PRINTFORM %SYSTXTDISP("体色")%:
+	ELSE
+		PRINTFORM %SYSTXTDISP("タグ色")%:
 	ENDIF
-	PRINTL 
-	PRINTFORM 　Name:%NAMEDISP(TARGET)% Gender:%性別表示(TARGET)% 
-	IF NOF(TARGET) >= 10000 || CSTR:種族 == CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))
-		PRINTFORM Race:%RACEDISP(TARGET)% 
-	ELSEIF NOF(MASTER) == 0
-		IF CSTR:種族 != 主人初期種族 && 主人初期種族 != ""
+	SETCOLOR CFLAG:タグ色
+	PRINT ■
+	RESETCOLOR
+ENDIF
+PRINTL 
+PRINTFORM 　%SYSTXTDISP("名前")%:%NAMEDISP(TARGET)% %SYSTXTDISP("性別")%:%性別表示(TARGET)% 
+IF NOF(TARGET) == MASTER || NOF(TARGET) >= 10000 || CSTR:種族 == CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))
+	IF TARGET == MASTER && CSTR:種族 != 主人初期種族 && 主人初期種族 != ""
+		IF LANGUAGE == "ENG"
 			PRINTFORM Race:%主人初期種族%→%CSTR:種族% 
 		ELSE
-			PRINTFORM Race:%CSTR:種族% 
-		ENDIF
-	ELSEIF CSTR:種族 != CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))
-		PRINTFORM Race:%CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))%→%RACEDISP(TARGET)% 
-	ENDIF
-	IF TARGET != MASTER
-		PRINT Stress:
-		CALL ストレス表示, TARGET
-		SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-			PRINTFORM 　Depend:{CFLAG:依存度}
-	ELSEIF TARGET == MASTER && ゲームモード() != "新婚モード"
-		PRINTFORM (Fallen characters:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従})　
-		PRINTFORM Difficulty:%難易度()%
-	ENDIF
-	PRINTL
-	PRINT 　
-	SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-		PRINTFORM Experienced Count:{経験人数(TARGET)} 
-	SIF MOD:バスト関連ステータス表示
-		PRINTFORM Titfuck Count:{パイズリ経験人数(TARGET)} 
-ELSE
-	PRINT □ 基本情報 
-	IF CFLAG:タグ色
-		IF ISSLIME(TARGET)
-			PRINT 体色:
-		ELSE
-			PRINT タグ色:
-		ENDIF
-		SETCOLOR CFLAG:タグ色
-		PRINT ■
-		RESETCOLOR
-	ENDIF
-	PRINTL 
-	PRINTFORM 　名前:%NAMEDISP(TARGET)% 性別:%性別表示(TARGET)% 
-	IF NOF(TARGET) == MASTER || NOF(TARGET) >= 10000 || CSTR:種族 == CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))
-		IF TARGET == MASTER && CSTR:種族 != 主人初期種族 && 主人初期種族 != ""
 			PRINTFORM 種族:元%主人初期種族%の%CSTR:種族% 
+		ENDIF
+	ELSE
+		IF LANGUAGE == "ENG"
+			PRINTFORM Race:%RACEDISP(TARGET)% 
 		ELSE
 			PRINTFORM 種族:%CSTR:種族% 
 		ENDIF
-	ELSEIF CSTR:種族 != CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))
+	ENDIF
+ELSEIF CSTR:種族 != CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))
+	IF LANGUAGE == "ENG"
+		PRINTFORM Race:%CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))%→%RACEDISP(TARGET)% 
+	ELSE
 		PRINTFORM 種族:元%CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))%の%CSTR:種族% 
 	ENDIF
-	IF TARGET != MASTER
-		PRINT ストレス値:
-		IF GUI
-			HTML_PRINT IMGTOTAG(BASEBAR("ストレス値", TARGET, 4)), 1
-		ELSE
-			CALL ストレス表示, TARGET
-		ENDIF
-		SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-			PRINTFORM  依存度:{CFLAG:依存度} 
-	ELSEIF TARGET == MASTER && ゲームモード() != "新婚モード"
-		PRINTFORM (堕した人数:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従}人) 
-		PRINTFORM 難易度:%難易度()% 
-	ENDIF
-	PRINTL
-	PRINT 　
-	SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-		PRINTFORM 経験人数:{経験人数(TARGET)} 
-	IF MOD:バスト関連ステータス表示
-		PRINTFORM パイズリ経験人数:{パイズリ経験人数(TARGET)} 
-		IF INRANGE(NOF(TARGET), 0, 9999) && バストサイズ詳細トップ:(NOF(TARGET))
-			PRINT バスト:
-			CALL バストサイズ詳細表示(バストサイズ詳細トップ:(NOF(TARGET)), バストサイズ詳細アンダー:(NOF(TARGET)))
-			PRINT  
-		ENDIF
-	ENDIF
-	IF TARGET == MASTER
-		PRINT 称号:
-		IF 固定称号 != ""
-			PRINTFORM %固定称号%
-		ELSE
-			CALL 称号表示
-		ENDIF
-		PRINTPLAIN  
-		PRINTFORM [50]\@ 固定称号 == "" ? 称号を固定する # 称号の固定を解除する \@
+ENDIF
+IF TARGET != MASTER
+	PRINTFORM %SYSTXTDISP("ストレス値")%:
+	IF GUI
+		HTML_PRINT IMGTOTAG(BASEBAR("ストレス値", TARGET, 4)), 1
 	ELSE
-		PRINTFORM %メモ:TARGET:0%
+		CALL ストレス表示, TARGET
+	ENDIF
+	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+		PRINTFORM  %SYSTXTDISP("依存度")%:{CFLAG:依存度} 
+ELSEIF TARGET == MASTER && ゲームモード() != "新婚モード"
+	PRINTFORM (%SYSTXTDISP("堕した人数")%:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従}人) 
+	PRINTFORM %SYSTXTDISP("難易度")%:%難易度()% 
+ENDIF
+PRINTL
+PRINT 　
+SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+	PRINTFORM %SYSTXTDISP("経験人数")%:{経験人数(TARGET)} 
+IF MOD:バスト関連ステータス表示
+	PRINTFORM %SYSTXTDISP("パイズリ経験人数")%:{パイズリ経験人数(TARGET)} 
+	IF INRANGE(NOF(TARGET), 0, 9999) && バストサイズ詳細トップ:(NOF(TARGET))
+		PRINTFORM %SYSTXTDISP("バスト")%:
+		CALL バストサイズ詳細表示(バストサイズ詳細トップ:(NOF(TARGET)), バストサイズ詳細アンダー:(NOF(TARGET)))
+		PRINT  
 	ENDIF
 ENDIF
+IF TARGET == MASTER
+	PRINTFORM %SYSTXTDISP("称号")%:
+	IF 固定称号 != ""
+		PRINTFORM %固定称号%
+	ELSE
+		CALL 称号表示
+	ENDIF
+	PRINTPLAIN  
+	PRINTFORM [50]\@ 固定称号 == "" ? 称号を固定する # 称号の固定を解除する \@
+ELSE
+	PRINTFORM %メモ:TARGET:0%
+ENDIF
+
 IF 顔グラ表示
 	GDISPOSE 0
 	;まずFACEフォルダを探しに行く
@@ -1914,43 +1865,22 @@ SIF ISSLIME(ARG) && CFLAG:ARG:タグ色
 	SETCOLOR CFLAG:ARG:タグ色
 
 IF GUI
-	IF LANGUAGE == "ENG"
-		PRINT 　Health:
-		HTML_PRINT IMGTOTAG(BASEBAR("体力", ARG)), 1
+	PRINTFORM %SYSTXTDISP("　　　体力")%:
+	HTML_PRINT IMGTOTAG(BASEBAR("体力", ARG)), 1
+	PRINTL 
+	PRINTFORM %SYSTXTDISP("　　　気力")%:
+	HTML_PRINT IMGTOTAG(BASEBAR("気力", ARG)), 1
+	PRINTL 
+	IF TALENT:ARG:魔法使い
+		PRINTFORM %SYSTXTDISP("　　　魔力")%:
+		HTML_PRINT IMGTOTAG(BASEBAR("魔力", ARG)), 1
 		PRINTL 
-		PRINT 　Energy:
-		HTML_PRINT IMGTOTAG(BASEBAR("気力", ARG)), 1
-		PRINTL 
-		IF TALENT:ARG:魔法使い
-			PRINT 　MagicP:
-			HTML_PRINT IMGTOTAG(BASEBAR("魔力", ARG)), 1
-			PRINTL 
-		ENDIF
-	ELSE
-		PRINT 　　　体力:
-		HTML_PRINT IMGTOTAG(BASEBAR("体力", ARG)), 1
-		PRINTL 
-		PRINT 　　　気力:
-		HTML_PRINT IMGTOTAG(BASEBAR("気力", ARG)), 1
-		PRINTL 
-		IF TALENT:ARG:魔法使い
-			PRINT 　　　魔力:
-			HTML_PRINT IMGTOTAG(BASEBAR("魔力", ARG)), 1
-			PRINTL 
-		ENDIF
 	ENDIF
 ELSE
-	IF LANGUAGE == "ENG"
-		PRINTFORML 　Health%BARBASE("体力", ARG)%
-		PRINTFORML 　Energy%BARBASE("気力", ARG)%
-		SIF TALENT:ARG:魔法使い
-			PRINTFORML 　MagicP%BARBASE("魔力", ARG)%
-	ELSE
-		PRINTFORML 　　　体力%BARBASE("体力", ARG)%
-		PRINTFORML 　　　気力%BARBASE("気力", ARG)%
-		SIF TALENT:ARG:魔法使い
-			PRINTFORML 　　　魔力%BARBASE("魔力", ARG)%
-	ENDIF
+	PRINTFORML %SYSTXTDISP("　　　体力")%%BARBASE("体力", ARG)%
+	PRINTFORML %SYSTXTDISP("　　　気力")%%BARBASE("気力", ARG)%
+	SIF TALENT:ARG:魔法使い
+		PRINTFORML %SYSTXTDISP("　　　魔力")%%BARBASE("魔力", ARG)%
 ENDIF
 RESETCOLOR
 
@@ -2275,40 +2205,19 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 
 	IF TALENTNAME:LCOUNT == "バストサイズ"
 		IF LANGUAGE == "ENG"
-			SELECTCASE TALENT:ARG:バストサイズ
-				CASE 1
-					素質名 = [NoneBreast]
-				CASE 2
-					素質名 = [LittleBreast]
-				CASE 3
-					素質名 = [BasicBreast]
-				CASE 4
-					素質名 = [LargeBreast]
-				CASE 5
-					素質名 = [XLargeBreast]
-				CASE 6
-					素質名 = [HugeBreast]
-				CASE IS >= 7
-					素質名 = [HugeBreast
-					素質名 += @"+{TALENT:ARG:バストサイズ-6}]"
-			ENDSELECT
+			素質名 = [%バストサイズ(TALENT:ARG:バストサイズ)%Breast]
 		ELSE
 			素質名 = [%バストサイズ(TALENT:ARG:バストサイズ)%]
 		ENDIF
 	ELSEIF TALENTNAME:LCOUNT == "体格"
-		IF LANGUAGE == "ENG"
-			SELECTCASE TALENT:ARG:体格
-				CASE 1
-					素質名 = [Petit]
-				CASE 2
-					素質名 = [Child]
-				CASE 3
-					素質名 = [Basic]
-				CASE 4
-					素質名 = [Tall]
-			ENDSELECT
+		IF TALENT:ARG:小人体型
+			CONTINUE
 		ELSE
-			素質名 = [%体格(TALENT:ARG:体格)%体型]
+			IF LANGUAGE == "ENG"
+				素質名 = [%体格(TALENT:ARG:体格)%]
+			ELSE
+				素質名 = [%体格(TALENT:ARG:体格)%体型]
+			ENDIF
 		ENDIF
 	ELSE
 		素質名 = [%TALENTDISP(LCOUNT)%]
@@ -2550,55 +2459,35 @@ SIF CFLAG:ARG:貞操帯
 @SHOW_INFO, ARG, 調教中
 #DIM DYNAMIC 調教中
 DRAWLINE
-IF LANGUAGE == "ENG"
-	PRINTL □ Experience
-	CALL SHOW_INFO_EXP, ARG
+
+PRINTFORML □ %SYSTXTDISP("経験")% 
+CALL SHOW_INFO_EXP, ARG
+DRAWLINE
+PRINTFORML □ %SYSTXTDISP("能力")% 
+CALL SHOW_INFO_ABL, ARG
+DRAWLINE
+IF ARG != MASTER
+	PRINTFORML □ %SYSTXTDISP("刻印")% 
+	CALL SHOW_INFO_MARK, ARG
 	DRAWLINE
-	PRINTL □ Ability
-	CALL SHOW_INFO_ABL, ARG
-	DRAWLINE
-	IF ARG != MASTER
-		PRINTL □ Mark
-		CALL SHOW_INFO_MARK, ARG
-		DRAWLINE
-	ENDIF
-	PRINTL □ Talents
-	CALL SHOW_INFO_TALENT, ARG
-	IF !CFLAG:ARG:キャラロスト || CFLAG:ARG:死亡 || CFLAG:ARG:依代
-		DRAWLINE
-		PRINT □ Clothes 
-		SIF !調教中
-			PRINTBUTTON "[99] - Change clothes", 99
-		PRINTL
-		CALL SHOW_INFO_CLOTHES, ARG
-	ENDIF
-ELSE
-	PRINTL □ 経験
-	CALL SHOW_INFO_EXP, ARG
-	DRAWLINE
-	PRINTL □ 能力
-	CALL SHOW_INFO_ABL, ARG
-	DRAWLINE
-	IF ARG != MASTER
-		PRINTL □ 刻印
-		CALL SHOW_INFO_MARK, ARG
-		DRAWLINE
-	ENDIF
-	PRINTL □ 素質
-	CALL SHOW_INFO_TALENT, ARG
-	IF !CFLAG:ARG:キャラロスト || CFLAG:ARG:死亡 || CFLAG:ARG:依代
-		DRAWLINE
-		PRINT □ 服装 
-		IF OPTION:口上表示 && !CFLAG:ARG:口上非表示 && EXISTFUNCTION(@"DISABLE_服装変更_%CSVNAMERPS(NOF(ARG))%")
-			CALLFORM DISABLE_服装変更_%CSVNAMERPS(NOF(ARG))%
-				SIF RESULT
-					GOTO 服装変更非表示
-		ENDIF
-		SIF !調教中
-			PRINTBUTTON "[99] - 服装を変更する", 99
-		$服装変更非表示
-		PRINTL
-		CALL SHOW_INFO_CLOTHES, ARG
-	ENDIF
 ENDIF
+PRINTFORML □ %SYSTXTDISP("素質")% 
+CALL SHOW_INFO_TALENT, ARG
+IF !CFLAG:ARG:キャラロスト || CFLAG:ARG:死亡 || CFLAG:ARG:依代
+	DRAWLINE
+	PRINTFORM □ %SYSTXTDISP("服装") % 
+	RESULT = 0
+	SIF OPTION:口上表示 && !CFLAG:ARG:口上非表示
+		TRYCALLFORM DISABLE_服装変更_%CSVNAMERPS(NOF(ARG))%
+	IF !調教中 && !RESULT
+		IF LANGUAGE == "ENG"
+			PRINTBUTTON "[99] - Change clothes", 99
+		ELSE
+			PRINTBUTTON "[99] - 服装を変更する", 99
+		ENDIF
+	ENDIF
+	PRINTL
+	CALL SHOW_INFO_CLOTHES, ARG
+ENDIF
+
 DRAWLINE
