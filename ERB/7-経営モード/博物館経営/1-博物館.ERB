@@ -1,5 +1,7 @@
 ﻿@博物館
 #DIM DYNAMIC 改装費用
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 名前文字数
 
 SIF MU:広さ < 10
 	MU:広さ = 10
@@ -10,6 +12,36 @@ DRAWLINE
 PRINTL □博物館の運営をします
 PRINTL 　博物館に展示できるオブジェは、魔法「ジュエリーストーム(レベル5)」やキャラを加工して作成できます
 CALL PASELIL, @"　現在の名声:{MU:名声} 昨日の収入:{MU:収入}＄ 現在の所持金:{MONEY}＄"
+PRINTL □配属中のスタッフ
+IF CMATCH(CSTR:配属, "博物館")
+	FOR LCOUNT, 0, CHARANUM
+		SIF CSTR:LCOUNT:配属 == "博物館"
+			CALL SETMAX(名前文字数, STRLENS(NAME:LCOUNT))
+	NEXT
+	FOR LCOUNT, 0, CHARANUM
+		IF CSTR:LCOUNT:配属 == "博物館"
+			PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 
+			SIF !CFLAG:LCOUNT:配属完了
+				PRINT 【配属準備中】
+			PRINTFORM 医療技能:{ABL:LCOUNT:医療技能} 
+			PRINTFORM 工作技能:{ABL:LCOUNT:工作技能} 
+			SIF 統率者("博物館") && !TALENT:LCOUNT:統率
+				PRINT 統率者ボーナス+1 
+			SIF 特質("ワーカホリック", LCOUNT)
+				PRINTFORM [ワーカホリック+{特質("ワーカホリック", LCOUNT)/10}]
+			CALL ISTALENT, LCOUNT, "ネクロマンサー"
+			CALL ISTALENT, LCOUNT, "潔癖症"
+			CALL ISTALENT, LCOUNT, "汚れ無視"
+			CALL ISTALENT, LCOUNT, "倒錯的"
+			CALL ISTALENT, LCOUNT, "禁断の知識"
+			CALL ISTALENT, LCOUNT, "戦士"
+			PRINTL 
+		ENDIF
+	NEXT
+ELSE
+	PRINTL 　[無し]
+ENDIF
+
 PRINTL 
 PRINTL 　[1] - 作品を展示する
 PRINTL 　[2] - 作品を作る
@@ -18,6 +50,7 @@ IF MU:広さ >= 30
 ELSE
 	CALL PASELIL, @"　[3] - 博物館を改装する（現在の広さ:{MU:広さ} 改装費用:{改装費用}＄）"
 ENDIF
+PRINTL 　[4] - キャラを配属する
 PRINTL 　[9] - 博物館マニュアル
 DRAWLINE
 PRINTPLAIN 　MUSEUM　
@@ -44,6 +77,8 @@ SELECTCASE RESULT
 		MONEY -= 改装費用
 		CALL 現金出納帳記録, @"博物館改築/-{改装費用}"
 		MU:広さ++
+	CASE 4
+		CALL STRATEGY_PERSONAL, "博物館"
 	CASE 9
 		CALL MANUAL_博物館
 ENDSELECT
@@ -176,6 +211,8 @@ ENDSELECT
 #DIM DYNAMIC 稼働停止不可
 #DIMS DYNAMIC 加工方法
 #DIM DYNAMIC 臓器摘出不可
+#DIM DYNAMIC 加工技術
+#DIMS DYNAMIC 加工者
 
 ;GOTO CREATE_CORPSE
 
@@ -205,6 +242,7 @@ PRINT □加工するキャラを選んでください。
 FONTBOLD
 PRINTL 加工したキャラは死亡します
 FONTREGULAR
+
 FOR PAGING, 1, CHARANUM
 	;DISABLEチェック
 	DISABLE = 0
@@ -213,7 +251,7 @@ FOR PAGING, 1, CHARANUM
 		SIF RESULT
 			DISABLE = 1
 	ENDIF
-	CALL PAGING, PAGING > 0 && !TALENT:PAGING:霊体 && !DISABLE
+	CALL PAGING, PAGING > 0 && !TALENT:PAGING:霊体 && !DISABLE && CSTR:PAGING:配属 != "博物館"
 NEXT
 
 SIF RESULT == -1
@@ -229,7 +267,20 @@ SIF RESULT == -1
 
 臓器摘出不可 = TALENT:対象:無機物 || CSTR:対象:種族 == "機械" || ISSLIME(対象) || (CHARANAMEF(対象) == "ハート" && TRANCERACE:対象:0 == "") ? 1 # 0
 
-PRINTFORML %NAME:対象%を加工します。どのように加工しますか？
+
+PRINTFORML □%NAME:対象%を加工します。どのように加工しますか？
+PRINTL □加工スタッフ
+加工者 =
+
+FOR LCOUNT, 1, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "博物館" || !CFLAG:LCOUNT:配属完了
+		CONTINUE
+	CALLF 加工技術, LCOUNT
+	加工者 += CALLNAME:LCOUNT+"、"
+NEXT
+加工者 = %SUBSTRINGU(加工者, 0, STRLENSU(加工者)-1)%
+PRINTFORML 　合計:{加工技術合計()}
+PRINTL 
 PRINTL [0] - やっぱりやめる
 SIF !剥製加工不可
 	PRINTL [1] - 剥製に加工する
@@ -251,8 +302,12 @@ SELECTCASE RESULT
 		RESETCOLOR
 		CALL 剥製加工, 対象
 		CSTR:対象:ロスト要因 = 死亡
-		CSTR:対象:ロスト詳細 = 剥製に加工された
-		CALL CLEAR_CHARA, 対象, 0, 1
+		IF CMATCH(CSTR:配属, "博物館")
+			CSTR:対象:ロスト詳細 = %加工者%の手で剥製に加工された
+		ELSE
+			CSTR:対象:ロスト詳細 = %CALLNAME:MASTER%の手で剥製に加工された
+		ENDIF
+		CALL CLEAR_CHARA, 対象, 0, 1, 1
 		RETURN 1
 	CASE 2
 		SETCOLORBYNAME ivory
@@ -260,8 +315,12 @@ SELECTCASE RESULT
 		RESETCOLOR
 		CALL 白骨加工, 対象
 		CSTR:対象:ロスト要因 = 死亡
-		CSTR:対象:ロスト詳細 = 白骨に加工された
-		CALL CLEAR_CHARA, 対象, 0, 1
+		IF CMATCH(CSTR:配属, "博物館")
+			CSTR:対象:ロスト詳細 = %加工者%の手で白骨に加工された
+		ELSE
+			CSTR:対象:ロスト詳細 = %CALLNAME:MASTER%の手で剥製に加工された
+		ENDIF
+		CALL CLEAR_CHARA, 対象, 0, 1, 1
 		RETURN 1
 	CASE 3
 		IF !臓器摘出不可
@@ -285,8 +344,12 @@ SELECTCASE RESULT
 		RESETCOLOR
 		CALL ホルマリン加工, 対象, 加工方法
 		CSTR:対象:ロスト要因 = 死亡
-		CSTR:対象:ロスト詳細 = ホルマリン漬けに加工された
-		CALL CLEAR_CHARA, 対象, 0, 1
+		IF CMATCH(CSTR:配属, "博物館")
+			CSTR:対象:ロスト詳細 = %加工者%の手でホルマリン漬けに加工された
+		ELSE
+			CSTR:対象:ロスト詳細 = %CALLNAME:MASTER%の手でホルマリン漬けに加工された
+		ENDIF
+		CALL CLEAR_CHARA, 対象, 0, 1, 1
 		RETURN 1
 	CASE 4
 		SETCOLORBYNAME cyan
@@ -294,8 +357,12 @@ SELECTCASE RESULT
 		RESETCOLOR
 		CALL 透明標本加工, 対象
 		CSTR:対象:ロスト要因 = 死亡
-		CSTR:対象:ロスト詳細 = 透明標本に加工された
-		CALL CLEAR_CHARA, 対象, 0, 1
+		IF CMATCH(CSTR:配属, "博物館")
+			CSTR:対象:ロスト詳細 = %加工者%の手で透明標本に加工された
+		ELSE
+			CSTR:対象:ロスト詳細 = %CALLNAME:MASTER%の手で透明標本に加工された
+		ENDIF
+		CALL CLEAR_CHARA, 対象, 0, 1, 1
 		RETURN 1
 	CASE 10
 		SETCOLORBYNAME gray
@@ -307,9 +374,13 @@ SELECTCASE RESULT
 			CASE "にんじん"
 				CSTR:対象:ロスト詳細 = 魂を失いカカシとなった
 			CASEELSE
-				CSTR:対象:ロスト詳細 = 永久に稼働を停止した
+				IF CMATCH(CSTR:配属, "博物館")
+					CSTR:対象:ロスト詳細 = %加工者%の手で永久に稼働を停止した
+				ELSE
+					CSTR:対象:ロスト詳細 = %CALLNAME:MASTER%の手で永久に稼働を停止した
+				ENDIF
 		ENDSELECT
-		CALL CLEAR_CHARA, 対象, 0, 1
+		CALL CLEAR_CHARA, 対象, 0, 1, 1
 		RETURN 1
 ENDSELECT
 
@@ -522,7 +593,7 @@ NEXT
 
 ;総価値0=何も設置してなければ計算しない
 SIF 総価値 == 0
-	RETURN
+	GOTO STAFF
 
 ;入場料は価値の平均+設置数*10 10未満切り上げ
 入場料 = 総価値/総設置数
@@ -563,9 +634,9 @@ FOR LCOUNT, 1, 1000
 	;設置中なら3下げる 最低1
 	IF 設置済み:LCOUNT
 		MUSEUM:LCOUNT:集客力 = {MAX(TOINT(MUSEUM:LCOUNT:集客力)-3, 1)}
-	;設置してないやつは10上げる 最高150
+	;設置してないやつは10+加工技術合計上げる 最高150
 	ELSE
-		MUSEUM:LCOUNT:集客力 = {MIN(TOINT(MUSEUM:LCOUNT:集客力)+10, 150)}
+		MUSEUM:LCOUNT:集客力 = {MIN(TOINT(MUSEUM:LCOUNT:集客力)+10+加工技術合計(), 150)}
 	ENDIF
 NEXT
 
@@ -588,6 +659,36 @@ IF MU:実用
 		;DEBUGPRINTFORML %MUSEUM:(設置済み:対象):名前%+
 	REND
 ENDIF
+
+$STAFF
+;配属スタッフの処理
+FOR LCOUNT, 1, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "博物館"
+		CONTINUE
+	IF !CFLAG:LCOUNT:配属完了
+		CFLAG:LCOUNT:配属完了 = 1
+		CONTINUE
+	ENDIF
+	;狂気度が上がる ネクロマンサーor隷属なら上がらない
+	IF !TALENT:LCOUNT:ネクロマンサー && !TALENT:LCOUNT:隷属 && !TALENT:LCOUNT:崩壊
+		FOR LCOUNT2, 0, 1000
+			SIF !設置済み:LCOUNT2
+				CONTINUE
+			IF RELATION:LCOUNT:TOINT(MUSEUM:LCOUNT2:キャラナンバー) > 100
+				CFLAG:LCOUNT:狂気度 += (RELATION:LCOUNT:TOINT(MUSEUM:LCOUNT2:キャラナンバー)-100)/20+1
+				IF CFLAG:LCOUNT:狂気度 >= 100 && !TALENT:LCOUNT:狂気
+					PRINTFORML %CALLNAME:LCOUNT%は%MUSEUM:LCOUNT2:名前%の手入れ作業で気が狂ってしまったようだ……
+					TALENT:LCOUNT:狂気 = 1
+				ENDIF
+			ENDIF
+			CFLAG:LCOUNT:狂気度 += 3
+			IF CFLAG:LCOUNT:狂気度 >= 100 && !TALENT:LCOUNT:狂気
+				PRINTFORML %CALLNAME:LCOUNT%は博物館の手入れ作業で気が狂ってしまったようだ……
+				TALENT:LCOUNT:狂気 = 1
+			ENDIF
+		NEXT
+	ENDIF
+NEXT
 
 @MANUAL_博物館
 PRINTL □博物館経営について
@@ -949,6 +1050,7 @@ FOR LCOUNT, 0, 必要空き枠
 			MUSEUM:空き変数:色 = {COLOR_FROMNAME("gray")}
 	ENDSELECT
 
+	作品価値 += 作品価値*加工技術合計()/100
 	;価値の偏り
 	IF 作品種類 == "ホルマリン漬け" && 加工方法 == "臓器摘出"
 		IF TALENT:対象:妊娠
@@ -970,5 +1072,84 @@ FOR LCOUNT, 0, 必要空き枠
 	MUSEUM:空き変数:オリジナルナンバー = {CFLAG:対象:複製}
 	MUSEUM:空き変数:集客力 = 100
 	MUSEUM:空き変数:汚れ = 0
-		空き変数++
+	空き変数++
 NEXT
+
+IF NOF(対象) < 10000 && !DNAデータ:NOF(対象)
+	PRINTFORML %CALLNAME:対象%のDNAデータを解析できるようになりました
+	DNAデータ:NOF(対象) = 1
+ENDIF
+
+死亡キャラ = 対象
+SIF GETCHARA(父親取得(対象)) > 0 && CSTR:GETCHARA(父親取得(対象)):配属 == "博物館"
+	CALL 崩壊処理, GETCHARA(父親取得(対象)), "子供を解体"
+SIF GETCHARA(母親取得(対象)) > 0 && CSTR:GETCHARA(母親取得(対象)):配属 == "博物館"
+	CALL 崩壊処理, GETCHARA(母親取得(対象)), "子供を解体"
+
+FOR LCOUNT, 1, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "博物館"
+		CONTINUE
+	CFLAG:LCOUNT:狂気度 += 10
+	SIF 相性値(LCOUNT, 対象) > 100
+		CFLAG:LCOUNT:狂気度 += (LIMIT((相性値(LCOUNT, 対象)-100)/10, 1, 10))*10
+	IF CFLAG:LCOUNT:狂気度 >= 100 && !TALENT:LCOUNT:狂気
+		PRINTFORML %CALLNAME:LCOUNT%は%CALLNAME:対象%を加工したことで気が狂ってしまったようだ……
+		TALENT:LCOUNT:狂気 = 1
+	ENDIF
+NEXT
+
+@加工技術, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIM DYNAMIC PT
+#DIM DYNAMIC 名前文字数
+#DIM DYNAMIC LCOUNT
+
+PT += LIMIT(ABL:対象:医療技能, 0, 10)
+PT += LIMIT(ABL:対象:工作技能/2, 0, 5)
+
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 == "博物館"
+		名前文字数 = MAX(名前文字数, STRLENS(NAMEDISP(LCOUNT)))
+NEXT
+
+PRINTFORM 　%NAMEDISP(対象), 名前文字数% 医療技能Lv{ABL:対象:医療技能}(+{ABL:対象:医療技能}) 工作技能Lv{ABL:対象:工作技能}(+{ABL:対象:工作技能/2}) 
+
+IF TALENT:対象:ネクロマンサー
+	PT += 2
+	PRINT ネクロマンサー(+2) 
+ENDIF
+
+IF TALENT:対象:倒錯的
+	PT += 1
+	PRINT 倒錯的(+1) 
+ENDIF
+
+IF TALENT:対象:禁断の知識
+	PT += 1
+	PRINT 禁断の知識(+1) 
+ENDIF
+
+IF TALENT:対象:戦士
+	PT += 1
+	PRINT 戦士(+1) 
+ENDIF
+
+PRINTFORML 合計{PT}
+
+RETURNF PT
+
+@加工技術合計
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC PT
+
+SKIPDISP 1
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "博物館" || !CFLAG:LCOUNT:配属完了
+		CONTINUE
+	PT += 加工技術(LCOUNT)
+NEXT
+SKIPDISP 0
+
+RETURNF PT

@@ -303,10 +303,11 @@ SELECTCASE RESULT
 		RESTART
 ENDSELECT
 
-@CLEAR_CHARA, ARG, ARG:1, 死
+@CLEAR_CHARA, ARG, ARG:1, 死, 加工
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC LASSI
 #DIM DYNAMIC 死
+#DIM DYNAMIC 加工
 
 ;アイドルユニットに属していた場合、そのユニットは解散
 SIF CFLAG:ARG:ユニット番号
@@ -360,12 +361,13 @@ IF 死
 			CALL CLEAR_CHARA, GETCHARANAME("マッドラット"), 0, 1
 		ENDIF
 	ENDIF
-	IF GETCHARA(父親取得(ARG)) > 0 || GETCHARA(母親取得(ARG)) > 0
-		SIF GETCHARA(父親取得(ARG)) > 0
+	IF (GETCHARA(父親取得(ARG)) > 0 && !加工 && CSTR:GETCHARA(父親取得(ARG)):配属 != "博物館") || (GETCHARA(母親取得(ARG)) > 0 && !加工 && CSTR:GETCHARA(母親取得(ARG)):配属 != "博物館")
+		;博物館で加工した場合はそっちで処理済みなので計算しない
+		SIF GETCHARA(父親取得(ARG)) > 0 && !加工 && CSTR:GETCHARA(父親取得(ARG)):配属 != "博物館"
 			PRINTFORM %CALLNAME:GETCHARA(父親取得(ARG))%
-		SIF GETCHARA(父親取得(ARG)) > 0 && GETCHARA(母親取得(ARG)) > 0
+		SIF GETCHARA(父親取得(ARG)) > 0 && !加工 && CSTR:GETCHARA(父親取得(ARG)):配属 != "博物館" && GETCHARA(母親取得(ARG)) > 0 && !加工 && CSTR:GETCHARA(母親取得(ARG)):配属 != "博物館"
 			PRINT と
-		SIF GETCHARA(母親取得(ARG)) > 0
+		SIF GETCHARA(母親取得(ARG)) > 0 && !加工 && CSTR:GETCHARA(母親取得(ARG)):配属 != "博物館"
 			PRINTFORM %CALLNAME:GETCHARA(母親取得(ARG))%
 		PRINTFORML に%CALLNAME:ARG%の死を伝えますか？
 		PRINTL [0] - はい
@@ -373,9 +375,9 @@ IF 死
 		BINPUT
 		IF RESULT == 0
 			死亡キャラ = ARG
-			SIF GETCHARA(父親取得(ARG)) > 0
+			SIF GETCHARA(父親取得(ARG)) > 0 && !加工 && CSTR:GETCHARA(父親取得(ARG)):配属 != "博物館"
 				CALL 崩壊処理, GETCHARA(父親取得(ARG)), "子供の死"
-			SIF GETCHARA(母親取得(ARG)) > 0
+			SIF GETCHARA(母親取得(ARG)) > 0 && !加工 && CSTR:GETCHARA(母親取得(ARG)):配属 != "博物館"
 				CALL 崩壊処理, GETCHARA(母親取得(ARG)), "子供の死"
 		ENDIF
 	ENDIF
