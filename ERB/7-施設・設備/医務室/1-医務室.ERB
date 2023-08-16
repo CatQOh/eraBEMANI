@@ -691,6 +691,8 @@ RESTART
 #DIM DYNAMIC 次ページあり
 #DIM DYNAMIC ページ数
 #DIM DYNAMIC 対象
+#DIM DYNAMIC 獲得リソース数
+#DIMS DYNAMIC 心臓リソース
 #DIM DYNAMIC 挿入回数
 #DIM DYNAMIC 射精回数
 #DIM DYNAMIC 最低保証
@@ -726,59 +728,27 @@ FOR LCOUNT, 1, CHARANUM
 	SIF !INRANGE(表示数, ページ数*20, ページ数*20+20)
 		CONTINUE
 	PRINTFORM 　[{LCOUNT, 2}] %NAME:LCOUNT, 26, LEFT% 回収できる物:
-	IF ISSLIME(LCOUNT)
-		IF TALENT:LCOUNT:小人体型
-			PRINT 粘液1000ml 
-		ELSE
-			SELECTCASE TALENT:LCOUNT:体格
-				CASE 1
-					PRINT 粘液2500ml 
-				CASE 2
-					PRINT 粘液3000ml 
-				CASE 3
-					PRINT 粘液4000ml 
-				CASE 4
-					PRINT 粘液5000ml 
-			ENDSELECT
-		ENDIF
-	ELSE
-		IF TALENT:LCOUNT:小人体型
-			PRINT 血液1000ml 
-		ELSE
-			SELECTCASE TALENT:LCOUNT:体格
-				CASE 1
-					PRINT 血液2500ml 
-				CASE 2
-					PRINT 血液3000ml 
-				CASE 3
-					PRINT 血液4000ml 
-				CASE 4
-					PRINT 血液5000ml 
-			ENDSELECT
-		ENDIF
-	ENDIF
-	SIF 生殖機能♂(LCOUNT)
-		PRINT 精液100ml 
-	SIF TALENT:LCOUNT:母乳体質
-		PRINT 母乳200ml 
+	PRINTFORM \@ ISSLIME(LCOUNT) ? 粘液 # 血液 \@{獲得リソース数(LCOUNT, "体液")}ml 
+	SIF 獲得リソース数(LCOUNT, "精液")
+		PRINTFORM 精液{獲得リソース数(LCOUNT, "精液")}ml 
+	SIF 獲得リソース数(LCOUNT, "母乳")
+		PRINTFORM 母乳{獲得リソース数(LCOUNT, "母乳")}ml 
 	SIF TALENT:LCOUNT:動物耳
 		PRINT ケモミミが付いた頭 
 	SIF TALENT:LCOUNT:羽
 		PRINT 翼の生えた胴体 
-	SIF TALENT:LCOUNT:足使用不可 && CHARANAMEF(LCOUNT) != "にんじん" && CHARANAMEF(LCOUNT) != "ハート"
+	SIF TALENT:LCOUNT:足使用不可 && !GROUPMATCH(CHARANAMEF(LCOUNT), "にんじん", "ハート")
 		PRINT 人魚の下半身 
 	SIF TALENT:LCOUNT:尻尾
 		PRINT 切断された尻尾 
 	SELECTCASE CSTR:LCOUNT:種族
-		CASE "悪魔"
-			PRINT 悪魔の心臓 
-		CASE "天使"
-			PRINT 天使の心臓 
-		CASE "神"
-			PRINT 神の心臓 
-		CASE "魔術師"
-			PRINT 魔術師の心臓 
+		CASE "悪魔", "天使", "神", "魔術師"
+			心臓リソース '= CSTR:LCOUNT:種族 + "の心臓"
+		CASEELSE
+			心臓リソース = 
 	ENDSELECT
+	SIF 心臓リソース != ""
+		PRINTFORM %心臓リソース% 
 	PRINTL 
 NEXT
 IF 表示数 == 0
@@ -866,84 +836,46 @@ SELECTCASE RESULT
 				PRINTFORML %CALLNAME:MASTER%は【狂気】を得た
 			ENDIF
 		ENDIF
+		PRINTFORML 保管済み\@ ISSLIME(対象) ? 粘液 # 血液 \@+{獲得リソース数(対象, "体液")}ml
 		IF ISSLIME(対象)
-			IF TALENT:対象:小人体型
-				PRINTL 保管済み粘液+1000ml
-				リソース:粘液 += 1000
-				SELECTCASE TALENT:対象:体格
-					CASE 1
-						PRINTL 保管済み粘液+2500ml
-						リソース:粘液 += 2500
-					CASE 2
-						PRINTL 保管済み粘液+3000ml
-						リソース:粘液 += 3000
-					CASE 3
-						PRINTL 保管済み粘液+4000ml
-						リソース:粘液 += 4000
-					CASE 4
-						PRINTL 保管済み粘液+5000ml
-						リソース:粘液 += 5000
-				ENDSELECT
-			ENDIF
+			リソース:粘液 += 獲得リソース数(対象, "体液")
 		ELSE
-			IF TALENT:対象:小人体型
-				PRINTL 保管済み血液+1000ml
-				リソース:血液 += 1000
-			ELSE
-				SELECTCASE TALENT:対象:体格
-					CASE 1
-						PRINTL 保管済み血液+2500ml
-						リソース:血液 += 2500
-					CASE 2
-						PRINTL 保管済み血液+3000ml
-						リソース:血液 += 3000
-					CASE 3
-						PRINTL 保管済み血液+4000ml
-						リソース:血液 += 4000
-					CASE 4
-						PRINTL 保管済み血液+5000ml
-						リソース:血液 += 5000
-				ENDSELECT
-			ENDIF
+			リソース:血液 += 獲得リソース数(対象, "体液")
 		ENDIF
-		IF 生殖機能♂(対象)
-			PRINTL 保管済み精液+100ml
-			リソース:精液 += 100
+		IF 獲得リソース数(対象, "精液")
+			PRINTFORML 保管済み精液+{獲得リソース数(対象, "精液")}ml
+			リソース:精液 += 獲得リソース数(対象, "精液")
 		ENDIF
-		IF TALENT:対象:母乳体質
-			PRINTL 保管済み母乳+200ml
-			リソース:母乳 += 200
+		IF 獲得リソース数(対象, "母乳")
+			PRINTFORML 保管済み母乳+{獲得リソース数(対象, "母乳")}ml
+			リソース:母乳 += 獲得リソース数(対象, "母乳")
 		ENDIF
 		IF TALENT:対象:動物耳
 			PRINTL ケモミミが付いた頭+1
-			リソース:ケモミミが付いた頭 += 1
+			リソース:ケモミミが付いた頭++
 		ENDIF
 		IF TALENT:対象:羽
 			PRINTL 翼の生えた胴体+1
-			リソース:翼の生えた胴体 += 1
+			リソース:翼の生えた胴体++
 		ENDIF
-		IF TALENT:対象:足使用不可 && CHARANAMEF(対象) != "にんじん" && CHARANAMEF(対象) != "ハート"
+		IF TALENT:対象:足使用不可 && !GROUPMATCH(CHARANAMEF(対象), "にんじん", "ハート")
 			PRINTL 人魚の下半身+1
-			リソース:人魚の下半身 += 1
+			リソース:人魚の下半身++
 		ENDIF
 		IF TALENT:対象:尻尾
 			PRINTL 切断された尻尾+1
-			リソース:切断された尻尾 += 1
+			リソース:切断された尻尾++
 		ENDIF
 		SELECTCASE CSTR:対象:種族
-			CASE "悪魔"
-				PRINTL 悪魔の心臓+1
-				リソース:悪魔の心臓 += 1
-			CASE "天使"
-				PRINTL 天使の心臓+1
-				リソース:天使の心臓 += 1
-			CASE "神"
-				PRINTL 神の心臓+1
-				リソース:神の心臓 += 1
-			CASE "魔術師"
-				PRINTL 魔術師の心臓+1
-				リソース:魔術師の心臓 += 1
+			CASE "悪魔", "天使", "神", "魔術師"
+				心臓リソース '= CSTR:対象:種族 + "の心臓"
+			CASEELSE
+				心臓リソース = 
 		ENDSELECT
+		IF 心臓リソース != ""
+			PRINTFORML %心臓リソース%+1
+			リソース:心臓リソース++
+		ENDIF
 		IF NOF(対象) < 10000 && !DNAデータ:NOF(対象)
 			PRINTFORML %CALLNAME:対象%のDNAデータを解析できるようになりました
 			DNAデータ:NOF(対象) = 1
@@ -959,3 +891,43 @@ SELECTCASE RESULT
 ENDSELECT
 
 RESTART
+
+
+@獲得リソース数, 対象, 種別
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 種別
+#DIM DYNAMIC リソース数
+
+SELECTCASE 種別
+	CASE "体液"
+		IF TALENT:対象:小人体型
+			リソース数 = 1000
+		ELSE
+			SELECTCASE TALENT:対象:体格
+				CASE 1
+					リソース数 = 2500
+				CASE 2
+					リソース数 = 3000
+				CASE 3
+					リソース数 = 4000
+				CASE 4
+					リソース数 = 5000
+			ENDSELECT
+		ENDIF
+	CASE "精液"
+		IF 生殖機能♂(対象)
+			IF TALENT:対象:小人体型
+				リソース数 = 30
+			ELSE
+				リソース数 = 100
+			ENDIF
+			SIF TALENT:対象:絶倫
+				リソース数 *= 2
+		ENDIF
+	CASE "母乳"
+		SIF TALENT:対象:母乳体質
+			獲得リソース数 = 200
+ENDSELECT
+
+RETURNF リソース数

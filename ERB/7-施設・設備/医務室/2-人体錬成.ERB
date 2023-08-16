@@ -3,6 +3,8 @@
 #DIM DYNAMIC 対象
 #DIM 性別設定 = 1
 #DIM 体型設定 = 3
+#DIMS 体型
+#DIM 小人体型
 #DIM スライム設定
 #DIM DYNAMIC 魔法技能記録用
 #DIM DYNAMIC オリジナル
@@ -15,21 +17,27 @@ FOR LCOUNT, GETNUM(リソース, "ケモミミが付いた頭"), GETNUM(リソ�
 	SIF リソース:LCOUNT
 		PRINTFORM %ERDNAME(リソース, LCOUNT)%×{リソース:LCOUNT} 
 NEXT
+
+IF 小人体型
+	体型 = 小人
+ELSE
+	SELECTCASE 体型設定
+		CASE 1
+			体型 = 幼児
+		CASE 2
+			体型 = 小柄
+		CASE 3
+			体型 = 普通
+		CASE 4
+			体型 = 長身
+	ENDSELECT
+ENDIF
+
 PRINTL 
 PRINTL □人体錬成の条件を選択してください
 PRINTFORML 　[1] - 性別を変更する(\@ 性別設定 == 1 ? 男性 # 女性 \@)
-PRINT 　[2] - 体格を変更する(
+PRINTFORML 　[2] - 体格を変更する(%体型%:{人体錬成_消費血液量(体型設定, 小人体型)}mlの血液が必要)
 
-SELECTCASE 体型設定
-	CASE 1
-		PRINTL 幼児:3000mlの血液が必要)
-	CASE 2
-		PRINTL 小柄:4000mlの血液が必要)
-	CASE 3
-		PRINTL 普通:5000mlの血液が必要)
-	CASE 4
-		PRINTL 長身:6000mlの血液が必要)
-ENDSELECT
 PRINTFORML 　[3] - スライムの粘液(\@ スライム設定 == 1 ? 混ぜる:500ml必要 # 混ぜない \@)
 PRINTL 　[4] - 上記の条件でシミュレートする
 PRINTL 　[5] - DNAデータからクローンを作る
@@ -92,32 +100,11 @@ SELECTCASE RESULT
 		RESTART
 ENDSELECT
 
-SELECTCASE TALENT:対象:体格
-	CASE 1
-		IF リソース:血液 < 3000
-			PRINTW 材料の血液が足りません
-			CALL CLEAR_CHARA, 対象, 1
-			RESTART
-		ENDIF
-	CASE 2
-		IF リソース:血液 < 4000
-			PRINTW 材料の血液が足りません
-			CALL CLEAR_CHARA, 対象, 1
-			RESTART
-		ENDIF
-	CASE 3
-		IF リソース:血液 < 5000
-			PRINTW 材料の血液が足りません
-			CALL CLEAR_CHARA, 対象, 1
-			RESTART
-		ENDIF
-	CASE 4
-		IF リソース:血液 < 6000
-			PRINTW 材料の血液が足りません
-			CALL CLEAR_CHARA, 対象, 1
-			RESTART
-		ENDIF
-ENDSELECT
+IF リソース:血液 < 人体錬成_消費血液量(TALENT:対象:体格, TALENT:対象:小人体型)
+	PRINTW 材料の血液が足りません
+	CALL CLEAR_CHARA, 対象, 1
+	RESTART
+ENDIF
 
 IF スライム設定
 	IF リソース:粘液 < 500
@@ -197,20 +184,8 @@ SELECTCASE RESULT
 		BUYD = DAYS
 		CFLAG:誕生日 = MONTH*100+DAYS
 		CFLAG:モチベーション = 50
-		SELECTCASE TALENT:対象:体格
-			CASE 1
-				PRINTL 保管済み血液を3000ml使用しました
-				リソース:血液 -= 3000
-			CASE 2
-				PRINTL 保管済み血液を4000ml使用しました
-				リソース:血液 -= 4000
-			CASE 3
-				PRINTL 保管済み血液を5000ml使用しました
-				リソース:血液 -= 5000
-			CASE 4
-				PRINTL 保管済み血液を6000ml使用しました
-				リソース:血液 -= 6000
-		ENDSELECT
+		PRINTFORML 保管済み血液を{人体錬成_消費血液量(TALENT:体格, TALENT:小人体型)}ml使用しました
+		リソース:血液 -= 人体錬成_消費血液量(TALENT:体格, TALENT:小人体型)
 		IF ISSLIME(TARGET)
 			PRINTL 保管済み粘液を500ml使用しました
 			リソース:粘液 -= 500
@@ -252,11 +227,17 @@ SELECTCASE RESULT
 			CALL プレイログ記録, @"キャラクター「%NAME:TARGET%」を錬成"
 		ELSE
 			IF GETCHARA(CFLAG:対象:複製) > 0 && !CFLAG:GETCHARA(CFLAG:対象:複製):キャラロスト
-				CALL JUELUP, "否定", 10000, GETCHARA(CFLAG:対象:複製)
 				CALL KOJO_MESSAGE_EVENT, "クローン生成", GETCHARA(CFLAG:対象:複製)
-				IF MARK:GETCHARA(CFLAG:対象:複製):反発刻印 < 3
-					PRINTFORML オリジナルの%NAME:GETCHARA(CFLAG:対象:複製)%の反発刻印がLv3になった
-					MARK:GETCHARA(CFLAG:対象:複製):反発刻印 = 3
+				IF OPTION:口上表示 && !CFLAG:GETCHARA(CFLAG:対象:複製):口上非表示
+					TRYCALLFORM DISABLE_クローン生成反発_%CSVNAMERPS(NOF(GETCHARA(CFLAG:対象:複製)))%
+						DISABLE = RESULT
+				ENDIF
+				IF !TALENT:GETCHARA(CFLAG:対象:複製):隷属 && !TALENT:GETCHARA(CFLAG:対象:複製):崩壊 && !DISABLE
+					CALL JUELUP, "否定", 10000, GETCHARA(CFLAG:対象:複製)
+					IF MARK:GETCHARA(CFLAG:対象:複製):反発刻印 < 3
+						PRINTFORML オリジナルの%NAME:GETCHARA(CFLAG:対象:複製)%の反発刻印がLv3になった
+						MARK:GETCHARA(CFLAG:対象:複製):反発刻印 = 3
+					ENDIF
 				ENDIF
 			ENDIF
 			IF DNAデータ:(CFLAG:対象:複製) == 1
@@ -433,7 +414,7 @@ RESTART
 #DIM DYNAMIC 対象
 
 PRINTL □霊体に生身の身体を用意します。対象を選んでください
-PRINTFORML 　保管済み血液:{リソース:血液}ml 幼児体型は3000ml、小柄体型は4000ml、普通体型は5000ml、長身体型は6000ml必要
+PRINTFORML 　保管済み血液:{リソース:血液}ml 小人体型は1000ml、幼児体型は3000ml、小柄体型は4000ml、普通体型は5000ml、長身体型は6000ml必要
 
 FOR PAGING, 0, CHARANUM
 	CALL PAGING, TALENT:PAGING:霊体, @"%体格(TALENT:PAGING:体格)%体型"
@@ -444,12 +425,12 @@ SIF RESULT == -1
 
 対象 = RESULT
 
-IF リソース:血液 < (TALENT:対象:体格+2)*1000
-	PRINTFORMW 血液が{(TALENT:対象:体格+2)*1000}ml必要です。材料の血液が足りません
+IF リソース:血液 < 人体錬成_消費血液量(TALENT:対象:体格, TALENT:対象:小人体型)
+	PRINTFORMW 血液が{人体錬成_消費血液量(TALENT:対象:体格, TALENT:対象:小人体型)}ml必要です。材料の血液が足りません
 	RESTART
 ENDIF
 
-PRINTFORML 血液を{(TALENT:対象:体格+2)*1000}ml使用して%NAME:対象%の身体を用意します。よろしいですか？
+PRINTFORML 血液を{人体錬成_消費血液量(TALENT:対象:体格, TALENT:対象:小人体型)}ml使用して%NAME:対象%の身体を用意します。よろしいですか？
 PRINTL [0] - はい
 PRINTL [1] - いいえ
 
@@ -457,7 +438,7 @@ BINPUT
 SIF RESULT == 1
 	RESTART
 
-リソース:血液 -= (TALENT:対象:体格+2)*1000
+リソース:血液 -= 人体錬成_消費血液量(TALENT:対象:体格, TALENT:対象:小人体型)
 
 PRINTFORMW 身体を作り、%NAME:対象%を宿しました
 TARGET = 対象
@@ -465,3 +446,17 @@ CSTR:種族 = 人間
 TALENT:霊体 = 0
 
 RETURN 1
+
+
+@人体錬成_消費血液量, ARG = 3, 小人体型フラグ
+#FUNCTION
+#DIM DYNAMIC 消費量
+#DIM DYNAMIC 小人体型フラグ
+
+IF 小人体型フラグ
+	消費量 = 1000
+ELSE
+	消費量 = (ARG+2)*1000
+ENDIF
+
+RETURNF 消費量
