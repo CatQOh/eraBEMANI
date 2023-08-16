@@ -2,6 +2,7 @@
 #DIM DYNAMIC 改装費用
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 名前文字数
+#DIMS DYNAMIC COLORNAME
 
 SIF MU:広さ < 10
 	MU:広さ = 10
@@ -51,6 +52,7 @@ ELSE
 	CALL PASELIL, @"　[3] - 博物館を改装する（現在の広さ:{MU:広さ} 改装費用:{改装費用}＄）"
 ENDIF
 PRINTL 　[4] - キャラを配属する
+PRINTL 　[5] - 客層を確認する
 PRINTL 　[9] - 博物館マニュアル
 DRAWLINE
 PRINTPLAIN 　MUSEUM　
@@ -79,6 +81,28 @@ SELECTCASE RESULT
 		MU:広さ++
 	CASE 4
 		CALL STRATEGY_PERSONAL, "博物館"
+	CASE 5
+		CALL カテゴリ計算用
+		FOR LCOUNT, 0, VARSIZE("博物館客層")
+			SIF ERDNAME(博物館客層, LCOUNT) == ""
+				BREAK
+			PRINTFORM %ERDNAME(博物館客層, LCOUNT), 14%:
+			SELECTCASE ERDNAME(博物館客層, LCOUNT)
+				CASE "剥製"
+					COLORNAME = red
+				CASE "白骨死体"
+					COLORNAME = ivory
+				CASE "ホルマリン漬け"
+					COLORNAME = yellowgreen
+				CASE "透明標本"
+					COLORNAME = cyan
+				CASEELSE
+					COLORNAME = silver
+			ENDSELECT
+			HTML_PRINT IMGTOTAG(GBAR(博物館客層:LCOUNT, 100, 10, COLORNAME, "gray", @"{博物館客層:LCOUNT}/100", "black")), 1
+			PRINTL 
+		NEXT
+		WAIT
 	CASE 9
 		CALL MANUAL_博物館
 ENDSELECT
@@ -117,6 +141,17 @@ FOR LCOUNTY, 0, MU:広さ
 	NEXT
 	HTML_PRINT HTML用
 NEXT
+
+CALL カテゴリ計算用
+
+PRINT 　各種類の割合　
+FOR LCOUNT, 0, VARSIZE("博物館客層")
+	SIF ERDNAME(博物館客層, LCOUNT) == ""
+		BREAK
+	PRINTFORM %ERDNAME(博物館客層, LCOUNT)%:{RESULT:LCOUNT}\% 
+NEXT
+PRINTL 
+
 DRAWLINE
 PRINTPLAIN 　MUSEUM MAP　
 PRINTFORML [-1] 戻る [-2] 全て片付ける [-3] 実用の許可/不許可(現在:\@ MU:実用 ? 許可 # 不許可 \@)
@@ -246,7 +281,7 @@ FONTREGULAR
 FOR PAGING, 1, CHARANUM
 	;DISABLEチェック
 	DISABLE = 0
-	IF OPTION:口上表示 && !CFLAG:PAGING:口上非表示
+	IF OPTION:口上表示 && !CFLAG:PAGING:口上非表示 && EXISTFUNCTION(@"DISABLE_作品加工_%CSVNAMERPS(NOF(PAGING))%")
 		TRYCALLFORM DISABLE_作品加工_%CSVNAMERPS(NOF(PAGING))%
 		SIF RESULT
 			DISABLE = 1
@@ -530,6 +565,53 @@ NEXT
 
 RETURN 1
 
+@カテゴリ計算用
+#DIM DYNAMIC LCOUNTX
+#DIM DYNAMIC LCOUNTY
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 客層計算用, VARSIZE("博物館客層")
+#DIM DYNAMIC 総カテゴリ数
+#DIM DYNAMIC カテゴリ割合, VARSIZE("博物館客層")
+#DIM DYNAMIC ID
+#DIM DYNAMIC 総設置数
+
+FOR LCOUNTY, 0, 30
+	FOR LCOUNTX, 0, 30
+		ID = 博物館マップ:LCOUNTY:LCOUNTX
+		IF ID > 0 && MUSEUM:ID:種類 == ""
+			博物館マップ:LCOUNTY:LCOUNTX = 0
+			CONTINUE
+		ENDIF
+		IF ID
+			SELECTCASE MUSEUM:ID:種類
+				CASE "剥製", "白骨死体", "ホルマリン漬け", "透明標本", "人形", "鉱物"
+					客層計算用:GETNUM(博物館客層, MUSEUM:ID:種類)++
+				CASEELSE
+					客層計算用:GETNUM(博物館客層, "部位")++
+			ENDSELECT
+			総設置数++
+		ENDIF
+	NEXT
+NEXT
+
+SIF 総設置数 == 0
+	GOTO RETURN
+
+;全体設置数に対する種類の割合で客層を変動させる
+FOR LCOUNT, 0, VARSIZE("博物館客層")
+	IF ERDNAME(博物館客層, LCOUNT) == ""
+		総カテゴリ数 = LCOUNT
+		BREAK
+	ENDIF
+NEXT
+
+FOR LCOUNT, 0, 総カテゴリ数
+	カテゴリ割合:LCOUNT = 客層計算用:LCOUNT*100/総設置数
+NEXT
+
+$RETURN
+RETURN カテゴリ割合:0, カテゴリ割合:1, カテゴリ割合:2, カテゴリ割合:3, カテゴリ割合:4, カテゴリ割合:5, カテゴリ割合:6, カテゴリ割合:7, カテゴリ割合:8, カテゴリ割合:9
+
 @INCOME_博物館
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
@@ -544,6 +626,8 @@ RETURN 1
 #DIM DYNAMIC 集客力平均
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 総設置数
+#DIM DYNAMIC 総カテゴリ数
+#DIM DYNAMIC カテゴリ割合, VARSIZE("博物館客層")
 
 SIF !ITEM:博物館
 	RETURN
@@ -562,6 +646,16 @@ FOR LCOUNTY, 0, 30
 			総設置数++
 		ENDIF
 	NEXT
+NEXT
+
+;全体設置数に対する種類の割合で客層を変動させる
+CALL カテゴリ計算用
+
+ARRAYCOPY "RESULT", "カテゴリ割合"
+総カテゴリ数 = FINDELEMENT(カテゴリ割合, 0)
+
+FOR LCOUNT, 0, VARSIZE("博物館客層")
+	博物館客層:LCOUNT = LIMIT(博物館客層:LCOUNT+(カテゴリ割合:LCOUNT/10)-2, 0, 100)
 NEXT
 
 ;同じキャラ(クローン含む)を一緒に設置した場合は価値が半減する
@@ -603,6 +697,12 @@ SIF 総価値 == 0
 
 ;総価値/100or名声+広さ が一日の来客数上限
 客数 = MAX(総価値/100, MU:名声+MU:広さ)
+
+;カテゴリ割合と客層に応じて増やす カテゴリ特化かつ客層ポイントが最大(100)で100人増える
+FOR LCOUNT, 0, 総カテゴリ数
+	客数 += カテゴリ割合:LCOUNT*博物館客層:LCOUNT/100
+NEXT
+
 ;さらに集客力平均で下げる
 客数 = 客数*集客力平均/100
 ;そこからさらにRANDでふるいにかける
@@ -674,14 +774,15 @@ FOR LCOUNT, 1, CHARANUM
 		FOR LCOUNT2, 0, 1000
 			SIF !設置済み:LCOUNT2
 				CONTINUE
-			IF RELATION:LCOUNT:TOINT(MUSEUM:LCOUNT2:キャラナンバー) > 100
-				CFLAG:LCOUNT:狂気度 += (RELATION:LCOUNT:TOINT(MUSEUM:LCOUNT2:キャラナンバー)-100)/20+1
+			CFLAG:LCOUNT:狂気度 += 3
+			IF RELATION:LCOUNT:TOINT(MUSEUM:(設置済み:LCOUNT2):キャラナンバー) > 100
+				CFLAG:LCOUNT:狂気度 += (RELATION:LCOUNT:TOINT(MUSEUM:(設置済み:LCOUNT2):キャラナンバー)-100)/20+1
+				DEBUGPRINTFORML %CALLNAME:LCOUNT%が%MUSEUM:(設置済み:LCOUNT2):名前%を掃除
 				IF CFLAG:LCOUNT:狂気度 >= 100 && !TALENT:LCOUNT:狂気
-					PRINTFORML %CALLNAME:LCOUNT%は%MUSEUM:LCOUNT2:名前%の手入れ作業で気が狂ってしまったようだ……
+					PRINTFORML %CALLNAME:LCOUNT%は博物館に飾られた%MUSEUM:(設置済み:LCOUNT2):名前%の手入れ作業で気が狂ってしまったようだ……
 					TALENT:LCOUNT:狂気 = 1
 				ENDIF
 			ENDIF
-			CFLAG:LCOUNT:狂気度 += 3
 			IF CFLAG:LCOUNT:狂気度 >= 100 && !TALENT:LCOUNT:狂気
 				PRINTFORML %CALLNAME:LCOUNT%は博物館の手入れ作業で気が狂ってしまったようだ……
 				TALENT:LCOUNT:狂気 = 1
