@@ -8,6 +8,10 @@
 #DIMS DYNAMIC 入力欄
 #DIM DYNAMIC 前キャラ
 #DIM DYNAMIC 次キャラ
+#DIM 選択文字色
+
+GETFOCUSCOLOR
+選択文字色 = RESULT
 
 前キャラ = -1
 次キャラ = -1
@@ -25,14 +29,14 @@ CALL LOOP_CLEARLINE
 
 DRAWLINE
 ;経験と珠の表示はそれぞれ別関数だったりする
-PRINTL □経験
+PRINTFORML □%SYSTXTDISP("経験")%
 CALL SHOW_INFO_EXP, TARGET
 DRAWLINE
-PRINTL □珠
+PRINTFORML □%SYSTXTDISP("珠")%
 CALL SHOW_INFO_JUEL, TARGET
 DRAWLINE
 
-PRINTFORML □%NAME:TARGET%の能力
+PRINTFORML □%NAMEDISP(TARGET)%%SYSTXTDISP("の能力")%
 FOR LCOUNT, 0, VARSIZE("ABL")
 	VARSET ABLUP, 0
 	VARSET ABLUPEXP, 0
@@ -88,14 +92,22 @@ FOR LCOUNT, 0, VARSIZE("ABL")
 			RESETCOLOR
 			IF GUI
 				SIF ISNUMERIC(マウスオーバー) && TOINT(マウスオーバー) == LCOUNT
-					SETCOLORBYNAME yellow
-				PRINTFORM 　[{LCOUNT, 2}] %ABLNAME:LCOUNT, 8% 
+					SETCOLOR 選択文字色
+				IF LANGUAGE == "ENG" || LANGUAGE != "CN"
+					PRINTFORM 　[{LCOUNT,2}] %ABLDISP(LCOUNT), 12% 
+				ELSE
+					PRINTFORM 　[{LCOUNT,2}] %ABLNAME:LCOUNT, 8% 
+				ENDIF
 				SIF BAR作成済み:LCOUNT == ""
 					BAR作成済み:LCOUNT = %IMGTOTAG(@"%GBAR(ABL:LCOUNT, 10, 20, BARCOLOR:能力, "gray", @"{ABL:LCOUNT} *MAX*", "black")%")%
 				HTML_PRINT BAR作成済み:LCOUNT, 1
 				PRINTL 
 			ELSE
-				PRINTFORML 　[{LCOUNT, 2}] %ABLNAME:LCOUNT, 8, LEFT% - LV{ABL:LCOUNT} *MAX*
+				IF LANGUAGE == "ENG" || LANGUAGE != "CN"
+					PRINTFORML 　[{LCOUNT, 2}] %ABLNAME:LCOUNT, 12, LEFT% - LV{ABL:LCOUNT} *MAX*
+				ELSE
+					PRINTFORML 　[{LCOUNT, 2}] %ABLNAME:LCOUNT, 8, LEFT% - LV{ABL:LCOUNT} *MAX*
+				ENDIF
 			ENDIF
 			CONTINUE
 		ELSE
@@ -107,19 +119,27 @@ FOR LCOUNT, 0, VARSIZE("ABL")
 			ENDSELECT
 			IF GUI
 				SIF ISNUMERIC(マウスオーバー) && TOINT(マウスオーバー) == LCOUNT
-					SETCOLORBYNAME yellow
-				PRINTFORM 　[{LCOUNT, 2}] %ABLNAME:LCOUNT, 8% 
+					SETCOLOR 選択文字色
+				IF LANGUAGE == "ENG" || LANGUAGE != "CN"
+					PRINTFORM 　[{LCOUNT,2}] %ABLDISP(LCOUNT), 12% 
+				ELSE
+					PRINTFORM 　[{LCOUNT,2}] %ABLNAME:LCOUNT, 8% 
+				ENDIF
 				SIF BAR作成済み:LCOUNT == ""
 					BAR作成済み:LCOUNT = %IMGTOTAG(@"%GBAR(ABL:LCOUNT, 10, 20, BARCOLOR:能力, "gray", @"{ABL:LCOUNT}", "black")%")%
 				HTML_PRINT BAR作成済み:LCOUNT, 1
 			ELSE
-				PRINTFORM 　[{LCOUNT, 2}] %ABLNAME:LCOUNT, 8, LEFT% - LV{ABL:LCOUNT}
+				IF LANGUAGE == "ENG" || LANGUAGE != "CN"
+					PRINTFORM 　[{LCOUNT, 2}] %ABLNAME:LCOUNT, 12, LEFT% - LV{ABL:LCOUNT}
+				ELSE
+					PRINTFORM 　[{LCOUNT, 2}] %ABLNAME:LCOUNT, 8, LEFT% - LV{ABL:LCOUNT}
+				ENDIF
 				PRINT  
 			ENDIF
 		ENDIF
 		RESETCOLOR
 		SIF !GUI
-			CALLFORM ABLUP_MESSAGE_%ABLNAME:LCOUNT%
+			CALL ABLUP_MESSAGE, LCOUNT
 	ENDIF
 	PRINTL 
 NEXT
@@ -142,8 +162,13 @@ FOR LCOUNT, 0, 2
 
 	IF GUI
 		SIF ISNUMERIC(マウスオーバー) && TOINT(マウスオーバー) == 90+LCOUNT
-			SETCOLORBYNAME yellow
-		PRINTFORM 　[{90+LCOUNT}] %能力名, 8% 
+			SETCOLOR 選択文字色
+				IF LANGUAGE == "ENG" || LANGUAGE != "CN"
+					PRINTFORM 　[{90+LCOUNT}] %MARKDISP(GETNUM(MARK, 能力名)), 12% 
+				ELSE
+					PRINTFORM 　[{90+LCOUNT}] %能力名, 8% 
+				ENDIF
+
 		SIF BAR作成済み:(90+LCOUNT) == ""
 			BAR作成済み:(90+LCOUNT) = %IMGTOTAG(@"%GBAR(MARK:能力名, 3, 20, BARCOLOR:能力, "gray", @"{MARK:能力名}", "black")%")%
 		HTML_PRINT BAR作成済み:(90+LCOUNT), 1
@@ -154,7 +179,7 @@ FOR LCOUNT, 0, 2
 	IF MARK:能力名 > 0 && !GUI
 		PRINT  
 		RESETCOLOR
-		CALLFORM ABLUP_MESSAGE_%能力名%
+		CALL ABLUP_MESSAGE, GETNUM(ABL, "能力名")
 	ENDIF
 
 	RESETCOLOR
@@ -163,7 +188,7 @@ NEXT
 
 IF GUI
 	DRAWLINE
-	PRINTL □条件
+	PRINTFORML □%SYSTXTDISP("条件")%
 	PRINT 　
 
 	VARSET ABLUP, 0
@@ -173,16 +198,16 @@ IF GUI
 			CASE 90
 				CALL ABL_CHECK_苦痛刻印
 				;CALL NEED_JUEL_苦痛刻印
-				CALL ABLUP_MESSAGE_苦痛刻印
+				CALL ABLUP_MESSAGE, TOINT(マウスオーバー)
 			CASE 91
 				CALL ABL_CHECK_反発刻印
 				;CALL NEED_JUEL_反発刻印
-				CALL ABLUP_MESSAGE_反発刻印
+				CALL ABLUP_MESSAGE, TOINT(マウスオーバー)
 			CASEELSE
 				IF ABL:TOINT(マウスオーバー) < 10 || TALENT:リミットバースト
 					TRYCALLFORM ABL_CHECK_%ABLNAME:TOINT(マウスオーバー)%
 					;TRYCALLFORM NEED_JUEL_%ABLNAME:TOINT(マウスオーバー)%
-					TRYCALLFORM ABLUP_MESSAGE_%ABLNAME:TOINT(マウスオーバー)%
+					TRYCALL ABLUP_MESSAGE, TOINT(マウスオーバー)
 				ENDIF
 		ENDSELECT
 	ENDIF
@@ -192,18 +217,18 @@ ENDIF
 DRAWLINE
 PRINTPLAIN 　ABLUP　
 SIF GUI && ISNUMERIC(マウスオーバー) && TOINT(マウスオーバー) == 100
-	SETCOLORBYNAME yellow
-PRINT [100] 能力値アップの終了 
+	SETCOLOR 選択文字色
+PRINTFORM [100] %SYSTXTDISP("能力値アップの終了")% 
 RESETCOLOR
 IF FLAG:能力上昇 != 0
 	SIF GUI && ISNUMERIC(マウスオーバー) && TOINT(マウスオーバー) == 101
-		SETCOLORBYNAME yellow
-	CALL PRINTSPACE, 前キャラ != -1, "[101] 前のキャラ "
+		SETCOLOR 選択文字色
+	CALL PRINTSPACE, 前キャラ != -1, @"[101] %SYSTXTDISP("前のキャラ")% "
 	RESETCOLOR
 
 	SIF GUI && ISNUMERIC(マウスオーバー) && TOINT(マウスオーバー) == 109
-		SETCOLORBYNAME yellow
-	CALL PRINTSPACE, 次キャラ != -1, "[109] 次のキャラ "
+		SETCOLOR 選択文字色
+	CALL PRINTSPACE, 次キャラ != -1, @"[109] %SYSTXTDISP("次のキャラ")% "
 	RESETCOLOR
 ENDIF
 PRINTL 
@@ -397,6 +422,120 @@ ENDSELECT
 
 RESTART
 [SKIPEND]
+
+;-------------------------------------------------
+;能力上昇条件の表示
+;-------------------------------------------------
+@ABLUP_MESSAGE, ARG
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 表示用
+
+;刻印や他能力など
+IF ARG < 90
+	SELECTCASE ABLNAME:ARG
+		CASE "欲望"
+			SIF (ABL:欲望 >= 7 && MARK:快楽刻印 < 3) || (ABL:欲望 >= 5 && MARK:快楽刻印 < 2) || (ABL:欲望 >= 3 && MARK:快楽刻印 < 1)
+				SETCOLORBYNAME gray
+			;LV3からは快楽刻印LV1必要 LV5からは快楽刻印LV2必要 LV7からは快楽刻印LV3必要
+			IF ABL:欲望 >= 7
+				表示用 = [%MARKDISP(GETNUM(MARK, "快楽刻印"))%LV3]
+			ELSEIF ABL:欲望 >= 5
+				表示用 = [%MARKDISP(GETNUM(MARK, "快楽刻印"))%LV2%SYSTXTDISP("以上")%]
+			ELSEIF ABL:欲望 >= 3
+				表示用 = [%MARKDISP(GETNUM(MARK, "快楽刻印"))%LV1%SYSTXTDISP("以上")%]
+			ENDIF
+		CASE "露出癖"
+			SIF ABL:欲望 < ABL:露出癖+1
+				SETCOLORBYNAME gray
+			表示用 = [%ABLDISP(GETNUM(ABL, "欲望"))%LV{ABL:露出癖+1}%SYSTXTDISP("以上")%]
+		CASE "サドっ気"
+			SIF ABL:欲望 < ABL:サドっ気+1
+				SETCOLORBYNAME gray
+			表示用 = [%ABLDISP(GETNUM(ABL, "サドっ気"))%LV{ABL:露出癖+1}%SYSTXTDISP("以上")%]
+		CASE "レズ中毒"
+			SIF ABL:奉仕精神 < ABL:レズ中毒+1
+				SETCOLORBYNAME gray
+			表示用 = [%ABLDISP(GETNUM(ABL, "奉仕精神"))%LV{ABL:レズ中毒+1}%SYSTXTDISP("以上")%]
+		CASE "ゲイ中毒"
+			SIF ABL:奉仕精神 < ABL:ゲイ中毒+1
+				SETCOLORBYNAME gray
+			表示用 = [%ABLDISP(GETNUM(ABL, "奉仕精神"))%LV{ABL:ゲイ中毒+1}%SYSTXTDISP("以上")%]
+		CASE "噴乳中毒"
+			SIF ABL:Ｂ感覚 < ABL:噴乳中毒+1
+				SETCOLORBYNAME gray
+			表示用 = [%ABLDISP(GETNUM(ABL, "Ｂ感覚"))%LV{ABL:噴乳中毒+1}%SYSTXTDISP("以上")%]
+	ENDSELECT
+ELSE
+	SELECTCASE ARG
+		CASE 90;苦痛刻印
+			SIF ABL:奉仕精神 < MARK:苦痛刻印
+				SETCOLORBYNAME gray
+			PRINTFORM [%ABLDISP(GETNUM(ABL, "奉仕精神"))%LV{MARK:苦痛刻印}%SYSTXTDISP("以上")%]
+		CASE 91;反発刻印
+			SIF ABL:従順 < MARK:屈服刻印
+				SETCOLORBYNAME gray
+			PRINTFORM [%ABLDISP(GETNUM(ABL, "従順"))%LV{MARK:反発刻印}%SYSTXTDISP("以上")%]
+	ENDSELECT
+ENDIF
+SIF 表示用 != ""
+	PRINTFORM %表示用%
+RESETCOLOR
+
+;珠
+FOR LCOUNT, 0, VARSIZE("ABLUP")
+	IF ABLUP:LCOUNT > 0
+		SIF JUEL:LCOUNT < ABLUP:LCOUNT
+			SETCOLORBYNAME gray
+		表示用 = [%JEWELTXTDISP(LCOUNT)%×{ABLUP:LCOUNT}]
+	ELSE
+		表示用 = 
+	ENDIF
+	SIF 表示用 != ""
+		PRINTFORM %表示用%
+	RESETCOLOR
+NEXT
+
+;経験
+FOR LCOUNT, 0, VARSIZE("ABLUPEXP")
+	IF ABLUPEXP:LCOUNT > 0
+		SELECTCASE EXPNAME:LCOUNT
+			CASE "異常経験"
+				;刻印を要求される場合は特殊
+				SELECTCASE ABLNAME:ARG
+					CASE "従順"
+						IF ABL:従順 == 4
+							SIF EXP:異常経験 < ABLUPEXP:異常経験 && MARK:屈服刻印 < 3
+								SETCOLORBYNAME gray
+							SIF ABLUPEXP:異常経験
+								表示用 = [%EXPDISP(GETNUM(EXP, "異常経験"))%:{ABLUPEXP:異常経験}%SYSTXTDISP("以上")% or %MARKDISP(GETNUM(MARK, "屈服刻印"))%LV3]
+						ELSEIF ABL:従順 == 7
+							GOTO 汎用
+						ENDIF
+					CASE "欲望"
+						IF ABL:欲望 == 4
+							SIF EXP:異常経験 == 0 && MARK:快楽刻印 < 3
+								SETCOLORBYNAME gray
+							SIF ABLUPEXP:異常経験
+								表示用 = [%EXPDISP(GETNUM(EXP, 異常経験))%1%SYSTXTDISP("以上")% or %MARKDISP(GETNUM(MARK, "快楽刻印"))%LV3]
+						ELSEIF ABL:欲望 == 7
+							GOTO 汎用
+						ENDIF
+					CASEELSE
+						GOTO 汎用
+				ENDSELECT
+			CASEELSE
+				$汎用
+				SIF EXP:LCOUNT < ABLUPEXP:LCOUNT
+					SETCOLORBYNAME gray
+				表示用 = [%EXPDISP(LCOUNT)%\:{ABLUPEXP:LCOUNT}%SYSTXTDISP("以上")%]
+		ENDSELECT
+	ELSE
+		表示用 = 
+	ENDIF
+	SIF 表示用 != ""
+		PRINTFORM %表示用%
+	RESETCOLOR
+NEXT
 
 ;-------------------------------------------------
 ;能力の上昇による素質の消滅をチェック

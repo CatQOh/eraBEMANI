@@ -20,14 +20,14 @@ CALL SHOW_INFO, TARGET
 
 PRINTFORML □ %SYSTXTDISP("相性")% 
 SIF TALENT:服従
-	PRINTFORML 　%SYSTXTDISP("全キャラ")%×120% 
+	PRINTFORML 　%SYSTXTDISP("全キャラ")%×120\% 
 SIF TALENT:隷属
-	PRINTFORML 　%SYSTXTDISP("全キャラ")%×150% 
+	PRINTFORML 　%SYSTXTDISP("全キャラ")%×150\% 
 
 SIF TALENT:犬嫌い
-	PRINTFORML 　%SYSTXTDISP("素質:[犬]との相性")%-30%
+	PRINTFORML 　%SYSTXTDISP("素質:[犬]との相性")%-30\%
 SIF TALENT:猫嫌い
-	PRINTFORML 　%SYSTXTDISP("素質:[猫]との相性")%-30%
+	PRINTFORML 　%SYSTXTDISP("素質:[猫]との相性")%-30\%
 SIF CSTR:種族嫌悪 != ""
 	PRINTFORML 　種族:%CSTR:種族嫌悪%との相性-30\%
 
@@ -70,47 +70,28 @@ FOR LCOUNT, 0, 20000
 				ENDIF
 			ENDIF
 			IF CSTR:種族嫌悪 != ""
-				IF GETCHARA(LCOUNT) >= 0 && CSTR:GETCHARA(LCOUNT):種族 == CSTR:種族嫌悪 && !種族嫌悪例外処理(CHARANAMEF(TARGET), CHARANAMEF(LCOUNT))
+				IF GETCHARA(LCOUNT) >= 0 && ISHATERACE(TARGET, GETCHARA(LCOUNT)) && !種族嫌悪例外処理(CHARANAMEF(TARGET), CHARANAMEF(LCOUNT))
 					相性補正後 = MAX(相性補正後-30, 1)
-				ELSEIF EXISTCSV(LCOUNT) && CSVCSTR(LCOUNT, GETNUM(CSTR, "種族")) == CSTR:種族嫌悪 && !種族嫌悪例外処理(CHARANAMEF(TARGET), CSVNAMEF(LCOUNT))
+					SIF ORIGIN && CSTR:GETCHARA(LCOUNT):種族 == "人間" && 相性補正後 == 70
+						CONTINUE
+				ELSEIF EXISTCSV(LCOUNT) && 特定種族嫌悪(TARGET, CSVCSTR(LCOUNT, GETNUM(CSTR, "種族"))) && !種族嫌悪例外処理(CHARANAMEF(TARGET), CSVNAMEF(LCOUNT))
 					相性補正後 = MAX(相性補正後-30, 1)
+					;人間嫌い70%を全部表示するとえらいこっちゃなので除外
+					SIF CSVCSTR(LCOUNT, GETNUM(CSTR, "種族")) == "人間" && 相性補正後 == 70
+						CONTINUE
 				ENDIF
 			ENDIF
-			SIF 相性補正後 == 100
+			SIF (相性補正後 == 100) || (TALENT:服従 && 相性補正後 > 120) || (TALENT:隷属 && 相性補正後 > 150)
 				CONTINUE
-			IF !TALENT:服従 && !TALENT:隷属
-				IF 相性補正後 > 100
-					SETCOLORBYNAME coral
-				ELSE
-					SETCOLORBYNAME lightskyblue
-				ENDIF
-				IF NOF(MASTER) == LCOUNT
-					相性表示用 = 　%NAMEDISP(MASTER)%×{相性補正後}\%
-				ELSE
-					相性表示用 = 　%CSVNAMEDISP(LCOUNT)%×{相性補正後}\%
-				ENDIF
-			ELSEIF 相性補正後 > 120 && TALENT:服従
-				IF 相性補正後 > 120
-					SETCOLORBYNAME coral
-				ELSE
-					SETCOLORBYNAME lightskyblue
-				ENDIF
-				IF NOF(MASTER) == LCOUNT
-					相性表示用 = 　%NAMEDISP(MASTER)%×{相性補正後}\%
-				ELSE
-					相性表示用 = 　%CSVNAMEDISP(LCOUNT)%×{相性補正後}\%
-				ENDIF
-			ELSEIF 相性補正後 > 150 && TALENT:隷属
-				IF 相性補正後 > 150
-					SETCOLORBYNAME coral
-				ELSE
-					SETCOLORBYNAME lightskyblue
-				ENDIF
-				IF NOF(MASTER) == LCOUNT
-					相性表示用 = 　%NAMEDISP(MASTER)%×{相性補正後}\%
-				ELSE
-					相性表示用 = 　%CSVNAMEDISP(LCOUNT)%×{相性補正後}\%
-				ENDIF
+			IF 相性補正後 > 100
+				SETCOLORBYNAME coral
+			ELSE
+				SETCOLORBYNAME lightskyblue
+			ENDIF
+			IF NOF(MASTER) == LCOUNT
+				相性表示用 = 　%NAMEDISP(MASTER)%×{相性補正後}\%
+			ELSE
+				相性表示用 = 　%CSVNAMEDISP(LCOUNT)%×{相性補正後}\%
 			ENDIF
 		ENDIF
 		IF 相性表示用 != ""
@@ -138,7 +119,7 @@ IF ORIGIN
 ENDIF
 IF CFLAG:キャラロスト
 	CALL CHECKDRAWLINE
-	PRINTFORML □%SYSTXTDISP(キャラロストの原因"")%
+	PRINTFORML □%SYSTXTDISP("キャラロストの原因")%
 	CALL PASELIL, @"　%CSTR:ロスト詳細%"
 ENDIF
 
@@ -173,38 +154,21 @@ FOR LCOUNT, TARGET-1, -1, -1
 	ENDIF
 NEXT
 
-IF LANGUAGE == "ENG"
-	PRINT [0] Back 
-	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-		PRINT [4] Sexual History 
-	PRINT [5] Other Info 
-	CALL PRINTSPACE, 前のキャラ >= 0, "[6] Prev Character "
-	CALL PRINTSPACE, 次のキャラ >= 0, "[7] Next Character "
-	PRINTL
+PRINTFORM [0] %SYSTXTDISP("戻る")% 
+SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+	PRINTFORM [4] %SYSTXTDISP("性経験履歴")% 
+PRINTFORM [5] %SYSTXTDISP("その他情報")% 
+CALL PRINTSPACE, 前のキャラ >= 0, @"[6] %SYSTXTDISP("前のキャラ")% "
+CALL PRINTSPACE, 次のキャラ >= 0, @"[7] %SYSTXTDISP("次のキャラ")% "
+PRINTL 
+PRINTPLAINFORM %SPACESLENS("　BASIC　")%
 
-	PRINTPLAINFORM %SPACESLENS("　BASIC　")%
-	IF !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && TARGET != MASTER
-		SIF SHOW_TARGET != TARGET
-			PRINT [8] Assign on Target 
-		CALL PRINTSPACE, NOSAMES(TARGET, MASTER, ASSI) && CFLAG:助手可能, "[9] Assign on Assistant "
-		PRINT [10] Give Item
-	ENDIF
-	PRINTL 
-ELSE
-	PRINTFORM [0] %SYSTXTDISP("戻る")% 
-	SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-		PRINT [4] 性経験履歴 
-	PRINT [5] その他情報 
-	CALL PRINTSPACE, 前のキャラ >= 0, "[6] 前のキャラ "
-	CALL PRINTSPACE, 次のキャラ >= 0, "[7] 次のキャラ "
-
-	IF !ロストキャラ表示 && (調教可能(TARGET) || 助手可能(TARGET))
-		CALL PRINTSPACE, SHOW_TARGET != TARGET && 調教可能(TARGET), "[8] 対象に指定 "
-		CALL PRINTSPACE, NOSAMES(TARGET, MASTER, ASSI) && 助手可能(TARGET), "[9] 助手に指定 "
-		PRINT [10] アイテム使用
-	ENDIF
-	PRINTL 
+IF !ロストキャラ表示 && (調教可能(TARGET) || 助手可能(TARGET))
+	CALL PRINTSPACE, SHOW_TARGET != TARGET && 調教可能(TARGET), @"[8] %SYSTXTDISP("対象に指定")% "
+	CALL PRINTSPACE, NOSAMES(TARGET, MASTER, ASSI) && 助手可能(TARGET), @"[9] %SYSTXTDISP("助手に指定")% "
+	PRINTFORM [10] %SYSTXTDISP("アイテム使用")%
 ENDIF
+PRINTL 
 PRINTPLAINFORM %SPACESLENS("　BASIC　")%
 
 IF !ロストキャラ表示
@@ -888,7 +852,7 @@ IF CFLAG:人工物
 	ELSE
 		PRINTFORML 　{BUYY}年{BUYM}月{BUYD}日に人体錬成で作られた
 	ENDIF
-ELSEIF CFLAG:誕生日
+ELSEIF CFLAG:誕生日 >= 101
 	PRINTFORML 　誕生日は{CFLAG:誕生日/100}月{CFLAG:誕生日%100}日のようだ
 ENDIF
 
