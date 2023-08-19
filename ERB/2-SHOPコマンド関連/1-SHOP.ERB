@@ -51,21 +51,11 @@ CALL キャラステータス最適化
 
 CALL CVAR_RESET
 
-IF GCS:店名 == ""
-	IF LANGUAGE == "ENG"
-		GCS:店名 = Game Center
-	ELSE
-		GCS:店名 = ゲームセンター
-	ENDIF
-ENDIF
+SIF GCS:店名 == ""
+	GCS:店名 = %I18N("ゲームセンター")%
 
-IF BRS:店名 == ""
-	IF LANGUAGE == "ENG"
-		BRS:店名 = Brothel
-	ELSE
-		BRS:店名 = 娼館
-	ENDIF
-ENDIF
+SIF BRS:店名 == ""
+	BRS:店名 = %I18N("娼館")%
 
 ;GUMINDAYSキャラ5人以上陥落でユリア天使化イベント
 SIF GUMINDAYS >= 5
@@ -186,8 +176,13 @@ CALL COLUMNPRINT, 0, @"□%日付表示()%"
 
 ;ORIGINでは表示しない
 IF !ORIGIN
-	SIF FLAG:周回数 > 1
-		CALL COLUMNPRINT, 0, @" {FLAG:周回数}周目 "
+	IF FLAG:周回数 > 1
+		IF LANGUAGE == "ENG"
+			CALL COLUMNPRINT, 0, @" Playthrough.{FLAG:周回数} "
+		ELSE
+			CALL COLUMNPRINT, 0, @" {FLAG:周回数}周目 "
+		ENDIF
+	ENDIF
 	IF ゲームモード() == "段位認定"
 		CALL GRADE, FLAG:選択段位, 1
 	ELSE
@@ -200,97 +195,55 @@ ELSEIF ORIGIN && GAMEBASE_TITLE == "eraBEMANI+α"
 ENDIF
 CALL COLUMNPRINTL, 0, ""
 
-IF LANGUAGE == "ENG"
-	CALL COLUMNPRINTL, 0, @"　Weather:%WEATHERDISP()% Temperature:%DIV10(FLAG:気温)%℃"
-ELSE
-	CALL COLUMNPRINT, 0, @"　天気:"
-	IF GUI
-		;夜で晴れなら月アイコン
-		IF ターン == "夜" && 天気() == "晴れ"
-			CALL COLUMNIMG, 0, 月齢画像(), 100, 100
-		ELSE
-			CALL COLUMNIMG, 0, 天気(), 100, 100
-		ENDIF
+CALL COLUMNPRINT, 0, @"　%I18N("天気")%:"
+IF GUI
+	;夜で晴れなら月アイコン
+	IF ターン == "夜" && 天気() == "晴れ"
+		CALL COLUMNIMG, 0, 月齢画像(), 100, 100
 	ELSE
-		CALL COLUMNPRINT, 0, @"%天気()%"
+		CALL COLUMNIMG, 0, 天気(FLAG:天気, 1), 100, 100
 	ENDIF
-	;GUIモードでは情報量を減らしていく
-	;SIF !GUI
-		CALL COLUMNPRINTL, 0, @" 気温:%DIV10(FLAG:気温)%℃ %月齢()%(月齢:%DIV100(月齢)%)"
+ELSE
+	CALL COLUMNPRINT, 0, @"%天気()%"
 ENDIF
+CALL COLUMNPRINTL, 0, @" %I18N("気温")%:%DIV10(FLAG:気温)%℃ \@ LANGUAGE == "JP" ? %月齢()%(月齢:%DIV100(月齢)%)#\@"
 
 ;段位認定のときのみ表示を変える
 ;ORIGINでは所持金、難易度は表示しない
 IF !ORIGIN
 	IF ゲームモード() != "段位認定"
-		IF LANGUAGE == "ENG"
-			;所持金表示
-			CALL COLUMNPRINT, 0, @"　Money:{MONEY}＄"
-			SIF 借金 > 0
-				CALL COLUMNPRINT, 0, @" Debts:{借金}＄"
-			CALL COLUMNPRINT, 0, @" Money(Yesterday):{LASTMONEY}＄"
-			IF MONEY == LASTMONEY
-				CALL COLUMNPRINTL, 0, "→0 KEEP"
-			ELSEIF MONEY > LASTMONEY
-				CALL COLUMNPRINTL, 0, @"↑{MONEY-LASTMONEY} UP!", "coral"
-			ELSEIF MONEY < LASTMONEY
-				CALL COLUMNPRINTL, 0, @"↓{LASTMONEY-MONEY} DOWN...", "lightskyblue"
-			ENDIF
+		;所持金表示
+		CALL COLUMNPRINT, 0, @"　%I18N("所持金")%:%TOOPTIONINT(MONEY)%＄"
+		SIF 借金 > 0
+			CALL COLUMNPRINT, 0, @" %I18N("借金")%:%TOOPTIONINT(借金)%＄"
+		CALL COLUMNPRINT, 0, @" %I18N("昨日の所持金")%:%TOOPTIONINT(LASTMONEY)%＄"
+		IF MONEY == LASTMONEY
+			CALL COLUMNPRINT, 0, "→0 KEEP "
+		ELSEIF MONEY > LASTMONEY
+			CALL COLUMNPRINT, 0, @"↑%TOOPTIONINT(MONEY-LASTMONEY)% UP!", "coral"
+		ELSEIF MONEY < LASTMONEY
+			CALL COLUMNPRINT, 0, @"↓%TOOPTIONINT(LASTMONEY-MONEY)% DOWN...", "lightskyblue"
+		ENDIF
+		CALL COLUMNPRINTL, 0, ""
 
-			;新婚生活中は非表示
-			IF ゲームモード() != "新婚モード"
-				;難易度表示
-				CALL COLUMNPRINT, 0, @"　Difficulty:%難易度()%", 難易度色()
-				;奴隷人数表示
-				CALL COLUMNPRINTL, 0, @"　Characters:{CHARANUM-1}\/Fell:{CMATCH(CFLAG:陥落, 1)}"
-			ENDIF
-		ELSE
-			;所持金表示
-			CALL COLUMNPRINT, 0, @"　所持金:%TOOPTIONINT(MONEY)%＄"
-			SIF 借金 > 0
-				CALL COLUMNPRINT, 0, @" 借金:%TOOPTIONINT(借金)%＄"
-			CALL COLUMNPRINT, 0, @" 昨日の所持金:%TOOPTIONINT(LASTMONEY)%＄"
-			IF MONEY == LASTMONEY
-				CALL COLUMNPRINT, 0, "→0 KEEP "
-			ELSEIF MONEY > LASTMONEY
-				CALL COLUMNPRINT, 0, @"↑%TOOPTIONINT(MONEY-LASTMONEY)% UP!", "coral"
-			ELSEIF MONEY < LASTMONEY
-				CALL COLUMNPRINT, 0, @"↓%TOOPTIONINT(LASTMONEY-MONEY)% DOWN...", "lightskyblue"
-			ENDIF
-			CALL COLUMNPRINTL, 0, ""
-
-			;新婚生活中は非表示
-			IF ゲームモード() != "新婚モード"
-				;難易度表示
-				CALL COLUMNPRINT, 0, @"　難易度:%難易度()%", 難易度色()
-				;奴隷人数表示
-				CALL COLUMNPRINTL, 0, @"　総奴隷数:{CHARANUM-1}\/陥落済み:{CMATCH(CFLAG:陥落, 1)}"
-			ENDIF
+		;新婚生活中は非表示
+		IF ゲームモード() != "新婚モード"
+			;難易度表示
+			CALL COLUMNPRINT, 0, @"　%I18N("難易度")%:%難易度()%", 難易度色()
+			;奴隷人数表示
+			CALL COLUMNPRINTL, 0, @"　%I18N("総キャラ数")%:{CHARANUM-1}\/%I18N("陥落済み")%:{CMATCH(CFLAG:陥落, 1)}"
 		ENDIF
 	ELSE
-		IF LANGUAGE == "ENG"
-			;所持金表示
-			CALL COLUMNPRINT, 0, @"　Money:{MONEY}＄"
-			SIF ストック > 0
-				CALL COLUMNPRINT, 0, @" (Stock:{ストック}＄)"
-			CALL COLUMNPRINTL, 0, ""
+		;所持金表示
+		CALL COLUMNPRINT, 0, @"　%I18N("")%:%TOOPTIONINT(MONEY)%＄"
+		SIF ストック > 0
+			CALL COLUMNPRINT, 0, @" (%I18N("ストック")%:%TOOPTIONINT(ストック)%＄)"
+		CALL COLUMNPRINTL, 0, ""
 
-			;難易度表示
-			CALL COLUMNPRINT, 0, @"　Difficulty:%難易度()% ", 難易度色()
-			;売却可能人数表示
-			CALL COLUMNPRINTL, 0, @"Characters:{CHARANUM-1}\/Can sell:{売却可能}"
-		ELSE
-			;所持金表示
-			CALL COLUMNPRINT, 0, @"　所持金:%TOOPTIONINT(MONEY)%＄"
-			SIF ストック > 0
-				CALL COLUMNPRINT, 0, @" (ストック:%TOOPTIONINT(ストック)%＄)"
-			CALL COLUMNPRINTL, 0, ""
-
-			;難易度表示
-			CALL COLUMNPRINT, 0, @"　難易度:%難易度()% ", 難易度色()
-			;売却可能人数表示
-			CALL COLUMNPRINTL, 0, @"総奴隷数:{CHARANUM-1}\/売却可能:{売却可能}"
-		ENDIF
+		;難易度表示
+		CALL COLUMNPRINT, 0, @"　%I18N("難易度")%:%難易度()% ", 難易度色()
+		;売却可能人数表示
+		CALL COLUMNPRINTL, 0, @"%I18N("総キャラ数")%:{CHARANUM-1}\/%I18N("売却可能")%:{売却可能}"
 		CALL COLUMNPRINT, 0, "　"
 		CALL 段位ゲージ表示
 		CALL COLUMNPRINTL, 0, ""
@@ -301,11 +254,7 @@ ENDIF
 IF TARGET > 0
 	CALL COLUMNPRINTL, 0, ""
 	IF ゲームモード() == "新婚モード"
-		IF LANGUAGE == "ENG"
-			CALL COLUMNPRINTL, 0, "□Partner"
-		ELSE
-			CALL COLUMNPRINTL, 0, "□同棲中"
-		ENDIF
+		CALL COLUMNPRINTL, 0, @"□%I18N("同棲中")%"
 		CALL COLUMNPRINT, 0, @"　%NAMEDISP(TARGET)%\@ TEQUIP:仮死薬 ? (仮死薬作用中) #\@\@ TEQUIP:睡眠 ? (睡眠薬作用中) #\@"
 	ELSE
 		IF LANGUAGE == "ENG"
@@ -326,263 +275,164 @@ IF TARGET > 0
 			NEXT
 			CALL COLUMNPRINTL, 0, ""
 		ELSE
-			CALL COLUMNPRINT, 0, "□調教中 "
+			CALL COLUMNPRINT, 0, @"□%I18N("調教中")% "
 			別キャラあり = 0
 			FOR LCOUNT, 1, TARGET
 				IF 調教可能(LCOUNT) && (!OPTION:配属キャラを飛ばす || CSTR:LCOUNT:配属 == "")
-					CALL COLUMNPRINT, 0, "[10] 前のキャラ "
+					CALL COLUMNPRINT, 0, @"[10] %I18N("前のキャラ")% "
 					別キャラあり = 1
 					BREAK
 				ENDIF
 			NEXT
 			SIF !別キャラあり
-				CALL COLUMNPRINT, 0, @"%SPACESLENS("[10] 前のキャラ ")%"
+				CALL COLUMNPRINT, 0, @"%SPACESLENS(I18N("前のキャラ"))%"
 			別キャラあり = 0
 			FOR LCOUNT, TARGET+1, CHARANUM
 				IF 調教可能(LCOUNT) && (!OPTION:配属キャラを飛ばす || CSTR:LCOUNT:配属 == "")
-					CALL COLUMNPRINT, 0, "[19] 次のキャラ "
+					CALL COLUMNPRINT, 0, @"[19] %I18N("次のキャラ")% "
 					別キャラあり = 1
 					BREAK
 				ENDIF
 			NEXT
 			SIF !別キャラあり
-				CALL COLUMNPRINT, 0, @"%SPACESLENS("[19] 次のキャラ ")%"
-			CALL COLUMNPRINTL, 0, @"[15] 配属中のキャラを飛ばす(現在:\@ OPTION:配属キャラを飛ばす ? オン # オフ \@)"
+				CALL COLUMNPRINT, 0, @"%SPACESLENS(I18N("次のキャラ"))%"
+			CALL COLUMNPRINTL, 0, @"[15] %I18N("配属中のキャラを飛ばす")%(\@ OPTION:配属キャラを飛ばす ? %I18N("オン")% # %I18N("オフ")% \@)"
 		ENDIF
-		CALL COLUMNPRINT, 0, @"　No.{TARGET} %NAMEDISP(TARGET)% \@ TEQUIP:仮死薬 ? (仮死薬作用中) #\@\@ TEQUIP:睡眠 ? (睡眠薬作用中) #\@"
+		CALL COLUMNPRINT, 0, @"　No.{TARGET} %NAMEDISP(TARGET)% \@ TEQUIP:仮死薬 ? (%I18N("仮死薬作用中")%) #\@\@ TEQUIP:睡眠 ? (%I18N("睡眠薬作用中")%) #\@"
 	ENDIF
 	CALL COLUMNPRINT, 0, @"%性別表示(TARGET)% "
-	IF LANGUAGE == "ENG"
-		SIF TALENT:ふたなり
-			CALL COLUMNPRINT, 0, "[Futanari]"
-		SIF TALENT:アニマル
-			CALL COLUMNPRINT, 0, "[Animal]"
-		FOR LCOUNT, 0, VARSIZE("TALENT")
-			SIF !TALENT:LCOUNT
-				CONTINUE
-			SELECTCASE TALENTNAME:LCOUNT
-				CASE "恋慕", "淫乱", "服従", "親愛", "娼婦", "隷属", "崩壊", "淫核", "淫膣", "淫尻", "淫乳"
-					CALL COLUMNPRINT, 0, @"【%TALENTDISP(LCOUNT)%】"
-				CASE "妊娠"
-					CALL COLUMNPRINT, 0, "【Prengnant】"
-				CASE "リミットバースト"
-					CALL COLUMNPRINT, 0, "【BURST】"
-			ENDSELECT
-		NEXT
-		SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-			CALL COLUMNPRINT, 0, @"Depend:{CFLAG:依存度} "
-		CALL COLUMNPRINT, 0, "Stress:"
-
+	SIF TALENT:ふたなり
+		CALL COLUMNPRINT, 0, @"[%I18N("ふたなり")%]"
+	SIF TALENT:アニマル
+		CALL COLUMNPRINT, 0, @"[%I18N("獣")%]"
+	FOR LCOUNT, 0, VARSIZE("TALENT")
+		SIF !TALENT:LCOUNT
+			CONTINUE
+		SELECTCASE TALENTNAME:LCOUNT
+			CASE "恋慕", "淫乱", "服従", "親愛", "娼婦", "隷属", "崩壊", "淫核", "淫膣", "淫尻", "淫乳"
+				CALL COLUMNPRINT, 0, @"【%TALENTDISP(LCOUNT)%】"
+			CASE "妊娠"
+				CALL COLUMNPRINT, 0, @"【%I18N("妊娠中")%】"
+			CASE "リミットバースト"
+				CALL COLUMNPRINT, 0, "【BURST】"
+		ENDSELECT
+	NEXT
+	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+		CALL COLUMNPRINT, 0, @"%I18N("依存度")%:{CFLAG:依存度} "
+	IF GUI
+		CALL COLUMNPRINT, 0, @"%I18N("ストレス値")%:%IMGTOTAG(BASEBAR("ストレス値", TARGET, 4))% "
+	ELSE
+		CALL COLUMNPRINT, 0, @"%I18N("ストレス値")%"
 		SELECTCASE CFLAG:ストレス値
 			CASE 0
-				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999", "gray"
+				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999 ", "gray"
 			CASE 1 TO 99
-				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999", "lime"
+				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999 ", "lime"
 			CASE 100 TO 299
-				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999", "yellow"
+				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999 ", "yellow"
 			CASE 300 TO 499
-				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999", "red"
+				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999 ", "red"
 			CASE IS >= 500
-				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999", "darkred"
+				CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999 ", "darkred"
 		ENDSELECT
-
-		CALL COLUMNPRINTL, 0, ""
-		
+	ENDIF
+	IF GROUPMATCH(CSTR:種族, "獣人", "獣")
+		CALL COLUMNPRINT, 0, @"%I18N("発情")%:"
 		IF GUI
-			CALL COLUMNTOOLTIP, 0, "　Obedience:", ABL_COMMENT("従順")
-			CALL COLUMNIMG, 0, GBAR(ABL:従順, 10, 3, BARCOLOR:能力, "gray", @"{ABL:従順}", "black")
-			CALL COLUMNTOOLTIP, 0, " Lust:", ABL_COMMENT("欲望")
-			CALL COLUMNIMG, 0, GBAR(ABL:欲望, 10, 3, BARCOLOR:能力, "gray", @"{ABL:欲望}", "black")
-			CALL COLUMNTOOLTIP, 0, " Technique:", ABL_COMMENT("技巧")
-			CALL COLUMNIMG, 0, GBAR(ABL:技巧, 10, 3, BARCOLOR:能力, "gray", @"{ABL:技巧}", "black")
-			CALL COLUMNPRINTL, 0, ""
-
-			CALL COLUMNTOOLTIP, 0, "　CSence:", ABL_COMMENT("Ｃ感覚")
-			CALL COLUMNIMG, 0, GBAR(ABL:Ｃ感覚, 10, 3, BARCOLOR:能力, "gray", @"{ABL:Ｃ感覚}", "black")
-			IF VAGINA(TARGET)
-				CALL COLUMNTOOLTIP, 0, " VSence:", ABL_COMMENT("Ｖ感覚")
-				CALL COLUMNIMG, 0, GBAR(ABL:Ｖ感覚, 10, 3, BARCOLOR:能力, "gray", @"{ABL:Ｖ感覚}", "black")
-			ENDIF
-			CALL COLUMNTOOLTIP, 0, " ASence:", ABL_COMMENT("Ａ感覚")
-			CALL COLUMNIMG, 0, GBAR(ABL:Ａ感覚, 10, 3, BARCOLOR:能力, "gray", @"{ABL:Ａ感覚}", "black")
-			CALL COLUMNTOOLTIP, 0, @" BSence:", ABL_COMMENT("Ｂ感覚")
-			CALL COLUMNIMG, 0, GBAR(ABL:Ｂ感覚, 10, 3, BARCOLOR:能力, "gray", @"{ABL:Ｂ感覚}", "black")
-			CALL COLUMNPRINTL, 0, ""
+			;26日周期で13日目がピーク
+			SELECTCASE CFLAG:発情周期
+				CASE 0 TO 6
+					CALL COLUMNPRINT, 0, @"%IMGTOTAG(GBAR(発情度(TARGET), 100, 2, "white", "gray", @"{発情度(TARGET)}\%", "black"))% "
+				CASE 7 TO 9
+					CALL COLUMNPRINT, 0, @"%IMGTOTAG(GBAR(発情度(TARGET), 100, 2, "yellow", "gray", @"{発情度(TARGET)}\%", "black"))% "
+				CASE 10 TO 12
+					CALL COLUMNPRINT, 0, @"%IMGTOTAG(GBAR(発情度(TARGET), 100, 2, "lime", "gray", @"{発情度(TARGET)}\%", "black"))% "
+				CASE 13
+					CALL COLUMNPRINT, 0, @"%IMGTOTAG(GBAR(発情度(TARGET), 100, 2, "deepskyblue", "gray", "100%", "black"))% "
+				CASE 14 TO 16
+					CALL COLUMNPRINT, 0, @"%IMGTOTAG(GBAR(100-発情度(TARGET), 100, 2, "gray", "lime", @"{発情度(TARGET)}\%", "black"))% "
+				CASE 17 TO 19
+					CALL COLUMNPRINT, 0, @"%IMGTOTAG(GBAR(100-発情度(TARGET), 100, 2, "gray", "yellow", @"{発情度(TARGET)}\%", "black"))% "
+				CASE 20 TO 25
+					CALL COLUMNPRINT, 0, @"%IMGTOTAG(GBAR(100-発情度(TARGET), 100, 2, "gray", "white", @"{発情度(TARGET)}\%", "black"))% "
+			ENDSELECT
 		ELSE
-			CALL COLUMNTOOLTIP, 0, @"　Obedience:LV{ABL:従順, 2, LEFT}", ABL_COMMENT("従順")
-			CALL COLUMNTOOLTIP, 0, @" Lust:LV{ABL:欲望, 2, LEFT}", ABL_COMMENT("欲望")
-			CALL COLUMNTOOLTIPL, 0, @" Technique:LV{ABL:技巧, 2, LEFT}", ABL_COMMENT("技巧")
+			CALL COLUMNPRINT, 0, @"{発情度(TARGET)}\%"
+		ENDIF
+	ENDIF
+	CALL COLUMNPRINTL, 0, ""
+	
+	IF GUI
+		CALL COLUMNTOOLTIP, 0, @"　%I18N("従順")%:", ABL_COMMENT("従順")
+		CALL COLUMNIMG, 0, GBAR(ABL:従順, 10, 3, BARCOLOR:能力, "gray", @"{ABL:従順}", "black")
+		CALL COLUMNTOOLTIP, 0, @"%I18N("欲望")%:", ABL_COMMENT("欲望")
+		CALL COLUMNIMG, 0, GBAR(ABL:欲望, 10, 3, BARCOLOR:能力, "gray", @"{ABL:欲望}", "black")
+		CALL COLUMNTOOLTIP, 0, @"%I18N("技巧")%:", ABL_COMMENT("技巧")
+		CALL COLUMNIMG, 0, GBAR(ABL:技巧, 10, 3, BARCOLOR:能力, "gray", @"{ABL:技巧}", "black")
+		CALL COLUMNPRINTL, 0, ""
 
-			CALL COLUMNTOOLTIP, 0, @"　CSence:LV{ABL:Ｃ感覚, 2, LEFT}", ABL_COMMENT("Ｃ感覚")
-			SIF VAGINA(TARGET)
-				CALL COLUMNTOOLTIP, 0, @" VSence:LV{ABL:Ｖ感覚, 2, LEFT}", ABL_COMMENT("Ｖ感覚")
-			CALL COLUMNTOOLTIP, 0, @" ASence:LV{ABL:Ａ感覚, 2, LEFT}", ABL_COMMENT("Ａ感覚")
-			CALL COLUMNTOOLTIPL, 0, @" BSence:LV{ABL:Ｂ感覚, 2, LEFT}", ABL_COMMENT("Ｂ感覚")
+		CALL COLUMNTOOLTIP, 0, @"　%I18N("Ｃ感")%:", ABL_COMMENT("Ｃ感覚")
+		CALL COLUMNIMG, 0, GBAR(ABL:Ｃ感覚, 10, 3, BARCOLOR:能力, "gray", @"{ABL:Ｃ感覚}", "black")
+		IF VAGINA(TARGET)
+			CALL COLUMNTOOLTIP, 0, @"%I18N("Ｖ感")%:", ABL_COMMENT("Ｖ感覚")
+			CALL COLUMNIMG, 0, GBAR(ABL:Ｖ感覚, 10, 3, BARCOLOR:能力, "gray", @"{ABL:Ｖ感覚}", "black")
+		ENDIF
+		CALL COLUMNTOOLTIP, 0, @"%I18N("Ａ感")%:", ABL_COMMENT("Ａ感覚")
+		CALL COLUMNIMG, 0, GBAR(ABL:Ａ感覚, 10, 3, BARCOLOR:能力, "gray", @"{ABL:Ａ感覚}", "black")
+		CALL COLUMNTOOLTIP, 0, @"%I18N("Ｂ感")%:", ABL_COMMENT("Ｂ感覚")
+		CALL COLUMNIMG, 0, GBAR(ABL:Ｂ感覚, 10, 3, BARCOLOR:能力, "gray", @"{ABL:Ｂ感覚}", "black")
+		CALL COLUMNPRINTL, 0, ""
+	ELSE
+		CALL COLUMNTOOLTIP, 0, @"　%I18N("従順")%:LV{ABL:従順, 2, LEFT}", ABL_COMMENT("従順")
+		CALL COLUMNTOOLTIP, 0, @"%I18N("欲望")%:LV{ABL:欲望, 2, LEFT}", ABL_COMMENT("欲望")
+		CALL COLUMNTOOLTIPL, 0, @"%I18N("技巧")%:LV{ABL:技巧, 2, LEFT}", ABL_COMMENT("技巧")
+
+		CALL COLUMNTOOLTIP, 0, @"　%I18N("Ｃ感")%:LV{ABL:Ｃ感覚, 2, LEFT}", ABL_COMMENT("Ｃ感覚")
+		SIF VAGINA(TARGET)
+			CALL COLUMNTOOLTIP, 0, @"%I18N("Ｖ感")%:LV{ABL:Ｖ感覚, 2, LEFT}", ABL_COMMENT("Ｖ感覚")
+		CALL COLUMNTOOLTIP, 0, @"%I18N("Ａ感")%:LV{ABL:Ａ感覚, 2, LEFT}", ABL_COMMENT("Ａ感覚")
+		CALL COLUMNTOOLTIPL, 0, @"%I18N("Ｂ感覚")%:LV{ABL:Ｂ感覚, 2, LEFT}", ABL_COMMENT("Ｂ感覚")
+	ENDIF
+	CALL COLUMNTOOLTIP, 0, @"　%I18N("苦痛刻印")%:LV{MARK:苦痛刻印, 2, LEFT}", MARK_COMMENT("苦痛刻印")
+	CALL COLUMNTOOLTIP, 0, @" %I18N("快楽刻印")%:LV{MARK:快楽刻印, 2, LEFT}", MARK_COMMENT("快楽刻印")
+	CALL COLUMNTOOLTIPL, 0, @" %I18N("屈服刻印")%:LV{MARK:屈服刻印, 2, LEFT}", MARK_COMMENT("屈服刻印")
+
+	IF GUI
+		CALL COLUMNPRINT, 0, @"　%I18N("体力")%:"
+		CALL COLUMNIMG, 0, BASEBAR("体力")
+		CALL COLUMNPRINTL, 0, ""
+
+		CALL COLUMNPRINT, 0, @"　%I18N("気力")%:"
+		CALL COLUMNIMG, 0, BASEBAR("気力")
+		CALL COLUMNPRINTL, 0, ""
+
+		IF TALENT:魔法使い
+			CALL COLUMNPRINT, 0, @"　%I18N("魔力")%:"
+		CALL COLUMNIMG, 0, BASEBAR("魔力")
+			CALL COLUMNPRINTL, 0, ""
 		ENDIF
 
-		CALL COLUMNTOOLTIP, 0, @" PainMark:LV{MARK:苦痛刻印, 2, LEFT}", MARK_COMMENT("苦痛刻印")
-		CALL COLUMNTOOLTIP, 0, @" PlesureMark:LV{MARK:快楽刻印, 2, LEFT}", MARK_COMMENT("快楽刻印")
-		CALL COLUMNTOOLTIPL, 0, @" YieldMark:LV{MARK:屈服刻印, 2, LEFT}", MARK_COMMENT("屈服刻印")
-
-		CALL COLUMNPRINTL, 0, @"　Health%BARBASE("体力")%"
-		CALL COLUMNPRINTL, 0, @"　Energy%BARBASE("気力")%"
-		SIF TALENT:魔法使い
-			CALL COLUMNPRINTL, 0, @"　MagicP%BARBASE("魔力")%"
-
-		IF GUI
-			IF MOD:SCAT
-				CALL INITIALIZE_AMOUNT_FOR_DEFECATE, TARGET
-				CALL INITIALIZE_AMOUNT_FOR_FECES, TARGET
-				CALL COLUMNPRINT, 0, "Defecate"
-				CALL COLUMNIMG, 0, BASEBAR("便意")
-				CALL COLUMNPRINTL, 0, ""
-				CALL COLUMNPRINT, 0, "   Feces"
-				CALL COLUMNIMG, 0, BASEBAR("便量")
-				CALL COLUMNPRINTL, 0, ""
-			ENDIF
-		ELSE
+		IF MOD:SCAT
 			CALL INITIALIZE_AMOUNT_FOR_DEFECATE, TARGET
 			CALL INITIALIZE_AMOUNT_FOR_FECES, TARGET
-			CALL COLUMNPRINTL, 0, @"Defecate%BARBASE("便意")%"
-			CALL COLUMNPRINTL, 0, @"   Feces%BARBASE("便量")%"
+			CALL COLUMNPRINT, 0, @"　%I18N("便意")%:"
+			CALL COLUMNIMG, 0, BASEBAR("便意")
+			CALL COLUMNPRINTL, 0, ""
+			CALL COLUMNPRINT, 0, @"　%I18N("便量")%:"
+			CALL COLUMNIMG, 0, BASEBAR("便量")
+			CALL COLUMNPRINTL, 0, ""
 		ENDIF
 	ELSE
-		SIF TALENT:ふたなり
-			CALL COLUMNPRINT, 0, "[ふたなり]"
-		SIF TALENT:アニマル
-			CALL COLUMNPRINT, 0, "[獣]"
-		FOR LCOUNT, 0, VARSIZE("TALENT")
-			SIF !TALENT:LCOUNT
-				CONTINUE
-			SELECTCASE TALENTNAME:LCOUNT
-				CASE "恋慕", "淫乱", "服従", "親愛", "娼婦", "隷属", "崩壊", "淫核", "淫膣", "淫尻", "淫乳"
-					CALL COLUMNPRINT, 0, @"【%TALENTDISP(LCOUNT)%】"
-				CASE "妊娠"
-					IF LANGUAGE == "ENG"
-						CALL COLUMNPRINT, 0, "【Prengnant】"
-					ELSE
-						CALL COLUMNPRINT, 0, "【妊娠中】"
-					ENDIF
-				CASE "リミットバースト"
-					CALL COLUMNPRINT, 0, "【BURST】"
-			ENDSELECT
-		NEXT
-		SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-			CALL COLUMNPRINT, 0, @"依存度:{CFLAG:依存度} "
-		IF GUI
-			CALL COLUMNPRINT, 0, @"ストレス値:%IMGTOTAG(BASEBAR("ストレス値", TARGET, 4))% "
-		ELSE
-			CALL COLUMNPRINT, 0, "ストレス値:"
-			SELECTCASE CFLAG:ストレス値
-				CASE 0
-					CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999 ", "gray"
-				CASE 1 TO 99
-					CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999 ", "lime"
-				CASE 100 TO 299
-					CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999 ", "yellow"
-				CASE 300 TO 499
-					CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999 ", "red"
-				CASE IS >= 500
-					CALL COLUMNPRINT, 0, @"{CFLAG:ストレス値}/999 ", "darkred"
-			ENDSELECT
-		ENDIF
-		IF GROUPMATCH(CSTR:種族, "獣人", "獣")
-			IF GUI
-				;26日周期で13日目がピーク
-				SELECTCASE CFLAG:発情周期
-					CASE 0 TO 6
-						CALL COLUMNPRINT, 0, @"発情:%IMGTOTAG(GBAR(発情度(TARGET), 100, 2, "white", "gray", @"{発情度(TARGET)}\%", "black"))% "
-					CASE 7 TO 9
-						CALL COLUMNPRINT, 0, @"発情:%IMGTOTAG(GBAR(発情度(TARGET), 100, 2, "yellow", "gray", @"{発情度(TARGET)}\%", "black"))% "
-					CASE 10 TO 12
-						CALL COLUMNPRINT, 0, @"発情:%IMGTOTAG(GBAR(発情度(TARGET), 100, 2, "lime", "gray", @"{発情度(TARGET)}\%", "black"))% "
-					CASE 13
-						CALL COLUMNPRINT, 0, @"発情:%IMGTOTAG(GBAR(発情度(TARGET), 100, 2, "deepskyblue", "gray", "100%", "black"))% "
-					CASE 14 TO 16
-						CALL COLUMNPRINT, 0, @"発情:%IMGTOTAG(GBAR(100-発情度(TARGET), 100, 2, "gray", "lime", @"{発情度(TARGET)}\%", "black"))% "
-					CASE 17 TO 19
-						CALL COLUMNPRINT, 0, @"発情:%IMGTOTAG(GBAR(100-発情度(TARGET), 100, 2, "gray", "yellow", @"{発情度(TARGET)}\%", "black"))% "
-					CASE 20 TO 25
-						CALL COLUMNPRINT, 0, @"発情:%IMGTOTAG(GBAR(100-発情度(TARGET), 100, 2, "gray", "white", @"{発情度(TARGET)}\%", "black"))% "
-				ENDSELECT
-			ELSE
-				CALL COLUMNPRINT, 0, @"発情:{発情度(TARGET)}\%"
-			ENDIF
-		ENDIF
-		CALL COLUMNPRINTL, 0, ""
-		
-		IF GUI
-			CALL COLUMNTOOLTIP, 0, "　従順:", ABL_COMMENT("従順")
-			CALL COLUMNIMG, 0, GBAR(ABL:従順, 10, 3, BARCOLOR:能力, "gray", @"{ABL:従順}", "black")
-			CALL COLUMNTOOLTIP, 0, "欲望:", ABL_COMMENT("欲望")
-			CALL COLUMNIMG, 0, GBAR(ABL:欲望, 10, 3, BARCOLOR:能力, "gray", @"{ABL:欲望}", "black")
-			CALL COLUMNTOOLTIP, 0, "技巧:", ABL_COMMENT("技巧")
-			CALL COLUMNIMG, 0, GBAR(ABL:技巧, 10, 3, BARCOLOR:能力, "gray", @"{ABL:技巧}", "black")
-			CALL COLUMNPRINTL, 0, ""
+		CALL COLUMNPRINTL, 0, @"　%I18N("体力")%%BARBASE("体力")%"
+		CALL COLUMNPRINTL, 0, @"　%I18N("気力")%%BARBASE("気力")%"
+		SIF TALENT:魔法使い
+			CALL COLUMNPRINTL, 0, @"　%I18N("魔力")%%BARBASE("魔力")%"
 
-			CALL COLUMNTOOLTIP, 0, "　Ｃ感:", ABL_COMMENT("Ｃ感覚")
-			CALL COLUMNIMG, 0, GBAR(ABL:Ｃ感覚, 10, 3, BARCOLOR:能力, "gray", @"{ABL:Ｃ感覚}", "black")
-			IF VAGINA(TARGET)
-				CALL COLUMNTOOLTIP, 0, "Ｖ感:", ABL_COMMENT("Ｖ感覚")
-				CALL COLUMNIMG, 0, GBAR(ABL:Ｖ感覚, 10, 3, BARCOLOR:能力, "gray", @"{ABL:Ｖ感覚}", "black")
-			ENDIF
-			CALL COLUMNTOOLTIP, 0, "Ａ感:", ABL_COMMENT("Ａ感覚")
-			CALL COLUMNIMG, 0, GBAR(ABL:Ａ感覚, 10, 3, BARCOLOR:能力, "gray", @"{ABL:Ａ感覚}", "black")
-			CALL COLUMNTOOLTIP, 0, @"Ｂ感:", ABL_COMMENT("Ｂ感覚")
-			CALL COLUMNIMG, 0, GBAR(ABL:Ｂ感覚, 10, 3, BARCOLOR:能力, "gray", @"{ABL:Ｂ感覚}", "black")
-			CALL COLUMNPRINTL, 0, ""
-		ELSE
-			CALL COLUMNTOOLTIP, 0, @"　従順:LV{ABL:従順, 2, LEFT}", ABL_COMMENT("従順")
-			CALL COLUMNTOOLTIP, 0, @"欲望:LV{ABL:欲望, 2, LEFT}", ABL_COMMENT("欲望")
-			CALL COLUMNTOOLTIPL, 0, @"技巧:LV{ABL:技巧, 2, LEFT}", ABL_COMMENT("技巧")
-
-			CALL COLUMNTOOLTIP, 0, @"　Ｃ感:LV{ABL:Ｃ感覚, 2, LEFT}", ABL_COMMENT("Ｃ感覚")
-			SIF VAGINA(TARGET)
-				CALL COLUMNTOOLTIP, 0, @"Ｖ感:LV{ABL:Ｖ感覚, 2, LEFT}", ABL_COMMENT("Ｖ感覚")
-			CALL COLUMNTOOLTIP, 0, @"Ａ感:LV{ABL:Ａ感覚, 2, LEFT}", ABL_COMMENT("Ａ感覚")
-			CALL COLUMNTOOLTIPL, 0, @"Ｂ感:LV{ABL:Ｂ感覚, 2, LEFT}", ABL_COMMENT("Ｂ感覚")
-		ENDIF
-		CALL COLUMNTOOLTIP, 0, @"　苦痛刻印:LV{MARK:苦痛刻印, 2, LEFT}", MARK_COMMENT("苦痛刻印")
-		CALL COLUMNTOOLTIP, 0, @" 快楽刻印:LV{MARK:快楽刻印, 2, LEFT}", MARK_COMMENT("快楽刻印")
-		CALL COLUMNTOOLTIPL, 0, @" 屈服刻印:LV{MARK:屈服刻印, 2, LEFT}", MARK_COMMENT("屈服刻印")
-
-		IF GUI
-			CALL COLUMNPRINT, 0, "　体力:"
-			CALL COLUMNIMG, 0, BASEBAR("体力")
-			CALL COLUMNPRINTL, 0, ""
-
-			CALL COLUMNPRINT, 0, "　気力:"
-			CALL COLUMNIMG, 0, BASEBAR("気力")
-			CALL COLUMNPRINTL, 0, ""
-
-			IF TALENT:魔法使い
-				CALL COLUMNPRINT, 0, "　魔力:"
-			CALL COLUMNIMG, 0, BASEBAR("魔力")
-				CALL COLUMNPRINTL, 0, ""
-			ENDIF
-
-			IF MOD:SCAT
-				CALL INITIALIZE_AMOUNT_FOR_DEFECATE, TARGET
-				CALL INITIALIZE_AMOUNT_FOR_FECES, TARGET
-				CALL COLUMNPRINT, 0, "　便意:"
-				CALL COLUMNIMG, 0, BASEBAR("便意")
-				CALL COLUMNPRINTL, 0, ""
-				CALL COLUMNPRINT, 0, "　便量:"
-				CALL COLUMNIMG, 0, BASEBAR("便量")
-				CALL COLUMNPRINTL, 0, ""
-			ENDIF
-		ELSE
-			CALL COLUMNPRINTL, 0, @"　体力%BARBASE("体力")%"
-			CALL COLUMNPRINTL, 0, @"　気力%BARBASE("気力")%"
-			SIF TALENT:魔法使い
-				CALL COLUMNPRINTL, 0, @"　魔力%BARBASE("魔力")%"
-
-			IF MOD:SCAT
-				CALL INITIALIZE_AMOUNT_FOR_DEFECATE, TARGET
-				CALL INITIALIZE_AMOUNT_FOR_FECES, TARGET
-				CALL COLUMNPRINTL, 0, @"　体力%BARBASE("　便意")%"
-				CALL COLUMNPRINTL, 0, @"　気力%BARBASE("　便量")%"
-			ENDIF
+		IF MOD:SCAT
+			CALL INITIALIZE_AMOUNT_FOR_DEFECATE, TARGET
+			CALL INITIALIZE_AMOUNT_FOR_FECES, TARGET
+			CALL COLUMNPRINTL, 0, @"　%I18N("便意")%%BARBASE("　便意")%"
+			CALL COLUMNPRINTL, 0, @"　%I18N("便量")%%BARBASE("　便量")%"
 		ENDIF
 	ENDIF
 ENDIF
@@ -1671,6 +1521,7 @@ SIF !SP
 CALL COLUMNPRINTL, 0, @"　[5] - 能力表示画面の顔グラ表示(現在:\@ 顔グラ表示 == 1 ? オン # オフ \@)"
 CALL COLUMNPRINTL, 0, @"　[6] - GUIを有効にする(現在:\@ GUI ? オン # オフ \@)"
 CALL COLUMNPRINTL, 0, @"　　　　[7] - GUIの色変更"
+CALL COLUMNPRINTL, 0, "　[8] 言語変更 - Change Language"
 
 @SHOP_オプション_INPUT
 #DIM DYNAMIC LRESULT
@@ -1764,6 +1615,13 @@ SELECTCASE CRESULT:1
 		SAVEGLOBAL
 	CASE 7
 		CALL GUI_COLOR
+	CASE 8
+		IF LANGUAGE == "ENG"
+			LANGUAGE = JP
+		ELSE
+			LANGUAGE = ENG
+		ENDIF
+		SAVEGLOBAL
 ENDSELECT
 
 @SHOP_ショートカット
