@@ -497,7 +497,7 @@ IF GC:物件 && ゲームモード() != "通常モード" && LCOUNT == 0
 		店長 = FINDCHARA(CFLAG:ゲーセン店長, 1)
 		SIF 店長 == -1
 			店長 = 0
-		CALL COLUMNPRINTL, 0, @"　%SYSTXTDISP("前営業日の状況")%:%TOOPTIONINT(GC:前日の収入)%＄ %I18N("店長")%:%NAMEDISP(店長)%"
+		CALL COLUMNPRINTL, 0, @"　%SYSTXTDISP("前営業日の収入")%:%TOOPTIONINT(GC:前日の収入)%＄ %I18N("店長")%:%NAMEDISP(店長)%"
 	ELSE
 		CALL COLUMNPRINT, 0, @"　%I18N("休業中")% "
 		CALL COLUMNPRINTL, 0, @"[20] - %SYSTXTDISP("営業を開始する")%"
@@ -510,7 +510,7 @@ IF ITEM:風俗店営業許可証 && ゲームモード() != "通常モード"
 	IF BR:営業中 > 0
 		CALL COLUMNPRINT, 0, @"　%I18N("営業中")% "
 		CALL COLUMNPRINTL, 0, @"[21] - %SYSTXTDISP("一時休業する")%"
-		CALL COLUMNPRINTL, 0, @"　%SYSTXTDISP("前営業日の状況")%:%TOOPTIONINT(BR:前日の収入)%＄"
+		CALL COLUMNPRINTL, 0, @"　%SYSTXTDISP("前営業日の収入")%:%TOOPTIONINT(BR:前日の収入)%＄"
 	ELSE
 		CALL COLUMNPRINT, 0, @"　%I18N("休業中")% "
 		CALL COLUMNPRINTL, 0, @"[21] - %SYSTXTDISP("営業を開始する")%"
@@ -523,7 +523,7 @@ IF INNS:業種 != "" && ゲームモード() != "通常モード"
 	IF INN:営業中 > 0
 		CALL COLUMNPRINT, 0, @"　%I18N("営業中")% "
 		CALL COLUMNPRINTL, 0, @"[22] - %SYSTXTDISP("一時休業する")%"
-		CALL COLUMNPRINTL, 0, @"　%SYSTXTDISP("前営業日の状況")%:%TOOPTIONINT(飲食店売上)%＄"
+		CALL COLUMNPRINTL, 0, @"　%SYSTXTDISP("前営業日の収入")%:%TOOPTIONINT(飲食店売上)%＄"
 	ELSE
 		CALL COLUMNPRINT, 0, @"　%I18N("休業中")% "
 		CALL COLUMNPRINTL, 0, @"[22] - %SYSTXTDISP("営業を開始する")%"
@@ -536,11 +536,7 @@ CALL SHOW_MODS, 1
 誕生日キャラ = 0
 ;グリムキャラが全員誕生日2月21日なのでUI破壊対策
 IF MONTH == 2 && DAYS == 21
-	IF LANGUAGE == "ENG"
-		CALL COLUMNPRINTL, 0, "　Today is Grim characters birthday."
-	ELSE
-		CALL COLUMNPRINTL, 0, "　今日はグリムキャラ（QMA）の誕生日です"
-	ENDIF
+	CALL COLUMNPRINTL, 0, @"　%SYSTXTDISP("今日はグリムキャラ（QMA）の誕生日です")%"
 	誕生日キャラ++
 ENDIF
 FOR LCOUNT, 0, 10000
@@ -552,11 +548,7 @@ FOR LCOUNT, 0, 10000
 	ENDIF
 NEXT
 IF 誕生日キャラ
-	IF LANGUAGE == "ENG"
-		CALL COLUMNPRINTL, 0, "　Happy Birthday!"
-	ELSE
-		CALL COLUMNPRINTL, 0, "　ハッピーバースデー！"
-	ENDIF
+	CALL COLUMNPRINTL, 0, @"　%SYSTXTDISP("ハッピーバースデー！")%"
 	CALL COLUMNDRAWLINE, 0
 ENDIF
 ;IF LANGUAGE == "ENG"
@@ -577,204 +569,107 @@ ENDSELECT
 
 CALL COLUMNPRINT, 0, "　"
 
-IF LANGUAGE == "ENG"
-	;TARGETがいれば表示
-	;九尾狐夜行では夜だけ調教可能
-	IF 受験段位名 == "九尾狐夜行" && ターン == "昼"
-		CALL COLUMNTOOLTIP, 0, "[-] Start Training ", "You can training at night only.", "gray"
-	ELSEIF TARGET > 0
-		SELECTCASE FALLTYPE(TARGET)
-			CASE 1
-				CALL COLUMNTOOLTIP, 0, "[0] Foster Love ", @"Make love to %CALLNAMEDISP(TARGET)%."
-			CASE 2
-				CALL COLUMNTOOLTIP, 0, @"[0] Lewd %LCALL% ", @"Get laid by %CALLNAMEDISP(TARGET)%"
-			CASE 3
-				CALL COLUMNTOOLTIP, 0, "[0] Dominate ", @"Dominate %LCALL%"
-			CASEELSE
-				CALL COLUMNTOOLTIP, 0, "[0] Start Training ", @"Training with %CALLNAMEDISP(TARGET)%"
-		ENDSELECT
-	ELSE
-		SETCOLORBYNAME gray
-		IF CHARANUM == 1 && ゲームモード() == "段位認定"
-			CALL COLUMNTOOLTIP, 0, "[-] Start Training ", "Characters are can't train.", "gray"
-		ELSEIF ゲームモード() == "新婚モード"
-			CALL COLUMNTOOLTIP, 0, "[-] Foster Love ", "Please select a character from Character→Change Target", "gray"
-		ELSEIF 調教可能
-			CALL COLUMNTOOLTIP, 0, "[-] Start Training ", "Please select a character from Character→Change Target", "gray"
-		ELSE
-			CALL COLUMNTOOLTIP, 0, "[-] Start Training ", "Please buy character from Store→Buy Slaves", "gray"
-		ENDIF
-		RESETCOLOR
-	ENDIF
-	;無条件で表示
-	CALL COLUMNTOOLTIP, 0, "[1] Rest ", "Take a half day break"
-	;STRATEGYモード、PFREEモードなら表示
-	SELECTCASE ゲームモード()
-		CASE "経営モード", "フリーモード"
-			;パートナーに話しかける口上が実装されていれば表示
-			IF EXISTFUNCTION(@"TALK_PARTNER_%CSVNAMERPS(GETNO(パートナー))%")
-				SIF OPTION:口上表示 && !CFLAG:GETCHARA(GETNO(パートナー)):口上非表示
-					CALL COLUMNTOOLTIP, 0, "[2] Talk with Manager ", @"%CSVCALLNAMEDISP(GETNO(パートナー))%に経営の相談をします"
-			ENDIF
+;TARGETがいれば表示
+;九尾狐夜行では夜だけ調教可能
+IF 受験段位名 == "九尾狐夜行" && ターン == "昼"
+	CALL COLUMNTOOLTIP, 0, @"[-] %I18N("調教開始")% ", @"%I18N("九尾狐夜行に挑戦中は夜のみ調教可能です")%", "gray"
+ELSEIF TARGET > 0
+	SELECTCASE FALLTYPE(TARGET)
+		CASE 1
+			CALL COLUMNTOOLTIP, 0, @"[0] %I18N("愛を育む")% ", @"%I18N("|0|と幸せな時間を過ごします", CALLNAMEDISP(TARGET))%"
+		CASE 2
+			CALL COLUMNTOOLTIP, 0, @"[0] %I18N("乱れ合う", LCALL)% ", @"%I18N("|0|と互いの欲望を満たし合います", CALLNAMEDISP(TARGET))%"
+		CASE 3
+			CALL COLUMNTOOLTIP, 0, @"[0] %I18N("躾をする")% ", @"%I18N("|0|に権威を示します", CALLNAMEDISP(TARGET))%"
+		CASEELSE
+			CALL COLUMNTOOLTIP, 0, @"[0] %I18N("調教開始")% ", @"%I18N("|0|を調教します", CALLNAMEDISP(TARGET))%"
 	ENDSELECT
-
-	;新婚モードの一転攻勢
-	IF ゲームモード() == "新婚モード"
-		IF TALENT:FINDCHARA(CFLAG:嫁, 1):妊娠 || TALENT:FINDCHARA(CFLAG:嫁, 1):育児中
-			CALL COLUMNTOOLTIP, 0, "[-] Replace a Master ", @"%CALLNAMEDISP(FINDCHARA(CFLAG:嫁, 1))%が身篭っているため、できません", "gray"
-		ELSEIF !CFLAG:FINDCHARA(CFLAG:嫁, 1):キャラロスト
-			CALL COLUMNTOOLTIP, 0, "[3] Replace a Master ", @"%CALLNAMEDISP(MASTER)%と%CALLNAMEDISP(FINDCHARA(CFLAG:嫁, 1))%の受け攻めを変えます"
-		ENDIF
-	ENDIF
-
-	;主人のスキルアップ
-	CALL COLUMNTOOLTIP, 0, "[4] SKILL UP ", @"%CALLNAMEDISP(MASTER)%のスキルツリーを表示します"
-	CALL COLUMNPRINTL, 0, ""
-
-
-	;所持金が条件に達していて、ゲームモードがSTANDARDもしくはSTRATEGYなら表示
-	SELECTCASE ゲームモード()
-		;STANDARD
-		CASE "通常モード"
-			IF MONEY < DIG_SEP("1,000,000")
-				CALL COLUMNTOOLTIP, 0, "　[-] Payment ", "1,000,000の所持金が必要です", "gray"
-			ELSE
-				CALL COLUMNTOOLTIP, 0, "　[5] Payment ", "1,000,000の所持金を納め、ゲームをクリアします"
-			ENDIF
-		;STRATEGY
-		CASE "経営モード"
-			IF MONEY < DIG_SEP("100,000,000")
-				CALL COLUMNTOOLTIP, 0, "　[-] Payment ", "100,000,000の所持金が必要です", "gray"
-			ELSE
-				CALL COLUMNTOOLTIP, 0, "　[5] Payment ", "100,000,000の所持金を納め、ゲームをクリアします"
-			ENDIF
-		;新婚
-		CASE "新婚モード"
-			CALL COLUMNTOOLTIP, 0, "　[-] Payment ", "新婚モードでは納金の必要はありません", "gray"
-		;段位認定
-		CASE "段位認定"
-			CALL COLUMNTOOLTIP, 0, "　[-] Payment ", "段位認定では納金の必要はありません", "gray"
-		;PFREE
-		CASE "フリーモード"
-			CALL COLUMNTOOLTIP, 0, "　[-] Payment ", "PREMIUM FREE MODEでは納金の必要はありません", "gray"
-	ENDSELECT
-	;周回可能なら表示
-	IF FLAG:周回可能
-		CALL COLUMNTOOLTIP, 0, "[6] New Game+ ", "この周を終了し、引き継いでニューゲームを開始します"
-	ELSE
-		SELECTCASE ゲームモード()
-			CASE "新婚モード"
-				CALL COLUMNTOOLTIP, 0, "[-] New Game+ ", "新婚モードでは周回出来ません", "gray"
-			CASE "段位認定"
-				CALL COLUMNTOOLTIP, 0, "[-] New Game+ ", "段位認定では周回出来ません", "gray"
-			CASE "フリーモード"
-				CALL COLUMNTOOLTIP, 0, "[-] New Game+ ", "PREMIUM FREE MODEでは周回出来ません", "gray"
-			CASEELSE
-				CALL COLUMNTOOLTIP, 0, "[-] New Game+ ", "ゲームをクリアしないと周回は出来ません", "gray"
-		ENDSELECT
-	ENDIF
 ELSE
-	;TARGETがいれば表示
-	;九尾狐夜行では夜だけ調教可能
-	IF 受験段位名 == "九尾狐夜行" && ターン == "昼"
-		CALL COLUMNTOOLTIP, 0, "[-] 調教開始 ", "九尾狐夜行に挑戦中は夜のみ調教可能です", "gray"
-	ELSEIF TARGET > 0
-		SELECTCASE FALLTYPE(TARGET)
-			CASE 1
-				CALL COLUMNTOOLTIP, 0, "[0] 愛を育む ", @"%CALLNAME:TARGET%と幸せな時間を過ごします"
-			CASE 2
-				CALL COLUMNTOOLTIP, 0, "[0] 乱れ合う ", @"%CALLNAME:TARGET%と互いの欲望を満たし合います"
-			CASE 3
-				CALL COLUMNTOOLTIP, 0, "[0] 躾をする ", @"%CALLNAME:TARGET%に権威を示します"
-			CASEELSE
-				CALL COLUMNTOOLTIP, 0, "[0] 調教開始 ", @"%CALLNAME:TARGET%を調教します"
-		ENDSELECT
+	IF CHARANUM == 1 && ゲームモード() == "段位認定"
+		CALL COLUMNTOOLTIP, 0, @"[-] %I18N("調教開始")% ", @"%I18N("調教可能なキャラが居ません")%", "gray"
+	ELSEIF ゲームモード() == "新婚モード"
+		CALL COLUMNTOOLTIP, 0, @"[-] %I18N("愛を育む")% ", @"%I18N("キャラクター→対象変更 から対象を選択してください")%", "gray"
+	ELSEIF 調教可能
+		CALL COLUMNTOOLTIP, 0, @"[-] %I18N("調教開始")% ", @"%I18N("キャラクター→奴隷変更 から調教対象を選択してください")%", "gray"
 	ELSE
-		IF CHARANUM == 1 && ゲームモード() == "段位認定"
-			CALL COLUMNTOOLTIP, 0, "[-] 調教開始 ", "調教可能なキャラが居ません", "gray"
-		ELSEIF ゲームモード() == "新婚モード"
-			CALL COLUMNTOOLTIP, 0, "[-] 愛を育む ", "キャラクター→対象変更 から対象を選択してください", "gray"
-		ELSEIF 調教可能
-			CALL COLUMNTOOLTIP, 0, "[-] 調教開始 ", "キャラクター→奴隷変更 から調教対象を選択してください", "gray"
-		ELSE
-			CALL COLUMNTOOLTIP, 0, "[-] 調教開始 ", "キャラ・アイテム購入→奴隷購入 からキャラを購入してください", "gray"
-		ENDIF
+		CALL COLUMNTOOLTIP, 0, @"[-] %I18N("調教開始")% ", @"%I18N("キャラ・アイテム購入→奴隷購入 からキャラを購入してください")%", "gray"
 	ENDIF
-	;無条件で表示
-	CALL COLUMNTOOLTIP, 0, "[1] 休憩 ", @"\@ ターン == "昼" ? 夜まで休憩します # 翌日まで休憩します \@。体力、気力、ストレスが回復します"
-
-	;STRATEGYモード、PFREEモードなら表示
-	SELECTCASE ゲームモード()
-		CASE "経営モード", "フリーモード"
-			;パートナーに話しかける口上が実装されていれば表示
-			IF EXISTFUNCTION(@"TALK_PARTNER_%CSVNAMERPS(GETNO(パートナー))%")
-				SIF OPTION:口上表示 && !CFLAG:GETCHARA(GETNO(パートナー)):口上非表示
-					CALL COLUMNTOOLTIP, 0, "[2] 経営相談 ", @"%CSVCALLNAMEF(GETNO(パートナー))%に経営の相談をします"
-			ENDIF
-	ENDSELECT
-
-	;新婚モードの一転攻勢
-	IF ゲームモード() == "新婚モード" && FINDCHARA(CFLAG:嫁, 1) >= 0
-		IF TALENT:FINDCHARA(CFLAG:嫁, 1):妊娠 || TALENT:FINDCHARA(CFLAG:嫁, 1):育児中
-			CALL COLUMNTOOLTIP, 0, "[-] 一転攻勢 ", @"%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%が身篭っているため、できません", "gray"
-		ELSEIF !CFLAG:FINDCHARA(CFLAG:嫁, 1):キャラロスト
-			CALL COLUMNTOOLTIP, 0, "[3] 一転攻勢 ", @"%CALLNAME:MASTER%と%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%の受け攻めを変えます"
-		ENDIF
-	ENDIF
-
-	;主人のスキルアップ
-	CALL COLUMNTOOLTIP, 0, "[4] SKILL UP ", @"%CALLNAME:MASTER%のスキルツリーを表示します"
-	CALL COLUMNPRINTL, 0
-
-	;所持金が条件に達していて、ゲームモードがSTANDARDもしくはSTRATEGYなら表示
-	SELECTCASE ゲームモード()
-		;STANDARD
-		CASE "通常モード"
-			IF MONEY < DIG_SEP("1,000,000")
-				CALL COLUMNTOOLTIP, 0, "　[-] 納金 ", "1,000,000の所持金が必要です", "gray"
-			ELSE
-				CALL COLUMNTOOLTIP, 0, "　[5] 納金 ", "1,000,000の所持金を納め、ゲームをクリアします"
-			ENDIF
-		;STRATEGY
-		CASE "経営モード"
-			IF MONEY < DIG_SEP("100,000,000")
-				CALL COLUMNTOOLTIP, 0, "　[-] 納金 ", "100,000,000の所持金が必要です", "gray"
-			ELSE
-				CALL COLUMNTOOLTIP, 0, "　[5] 納金 ", "100,000,000の所持金を納め、ゲームをクリアします"
-			ENDIF
-		;新婚
-		CASE "新婚モード"
-			CALL COLUMNTOOLTIP, 0, "　[-] 納金 ", "新婚モードでは納金の必要はありません", "gray"
-		;段位認定
-		CASE "段位認定"
-			CALL COLUMNTOOLTIP, 0, "　[-] 納金 ", "段位認定では納金の必要はありません", "gray"
-		;PFREE
-		CASE "フリーモード"
-			CALL COLUMNTOOLTIP, 0, "　[-] 納金 ", "PREMIUM FREE MODEでは納金の必要はありません", "gray"
-	ENDSELECT
-	;周回可能なら表示
-	IF FLAG:周回可能 && FLAG:難易度 != -1
-		CALL COLUMNTOOLTIP, 0, "[6] 周回 ", "この周を終了し、引き継いでニューゲームを開始します"
-	ELSE
-		SELECTCASE ゲームモード()
-			CASE "新婚モード"
-				CALL COLUMNTOOLTIP, 0, "[-] 周回 ", "新婚モードでは周回出来ません", "gray"
-			CASE "段位認定"
-				CALL COLUMNTOOLTIP, 0, "[-] 周回 ", "段位認定では周回出来ません", "gray"
-			CASE "フリーモード"
-				CALL COLUMNTOOLTIP, 0, "[-] 周回 ", "PREMIUM FREE MODEでは周回出来ません", "gray"
-			CASEELSE
-				IF FLAG:難易度 == -1
-					CALL COLUMNTOOLTIP, 0, "[-] 周回 ", @"難易度%難易度()%では周回出来ません", "gray"
-				ELSE
-					CALL COLUMNTOOLTIP, 0, "[-] 周回 ", "ゲームをクリアしないと周回は出来ません", "gray"
-				ENDIF
-		ENDSELECT
-	ENDIF
-	CALL COLUMNPRINTL, 0, ""
-	SIF TARGET > 0 && CFLAG:陥落
-		CALL COLUMNPRINTL, 0, @"　[9] %CALLNAME:TARGET%の奉仕行為を抑制する(現在:\@ CFLAG:奉仕イベント抑制 ? 抑制中 # 非抑制 \@)"
 ENDIF
+;無条件で表示
+CALL COLUMNTOOLTIP, 0, @"[1] %I18N("休憩")% ", @"%I18N("|0|。体力、気力、ストレスが回復します", @"\@ ターン == "昼" ? 夜まで休憩します # 翌日まで休憩します \@")%"
+
+;STRATEGYモード、PFREEモードなら表示
+SELECTCASE ゲームモード()
+	CASE "経営モード", "フリーモード"
+		;パートナーに話しかける口上が実装されていれば表示
+		IF EXISTFUNCTION(@"TALK_PARTNER_%CSVNAMERPS(GETNO(パートナー))%")
+			SIF OPTION:口上表示 && !CFLAG:GETCHARA(GETNO(パートナー)):口上非表示
+				CALL COLUMNTOOLTIP, 0, @"[2] %I18N("経営相談")% ", @"%I18N("|0|に経営の相談をします", CSVCALLNAMEF(GETNO(パートナー)))%"
+		ENDIF
+ENDSELECT
+
+;新婚モードの一転攻勢
+IF ゲームモード() == "新婚モード" && FINDCHARA(CFLAG:嫁, 1) >= 0
+	IF TALENT:FINDCHARA(CFLAG:嫁, 1):妊娠 || TALENT:FINDCHARA(CFLAG:嫁, 1):育児中
+		CALL COLUMNTOOLTIP, 0, @"[-] %I18N("一転攻勢")% ", @"%I18N("|0|が身篭っているため、できません", CALLNAME:FINDCHARA(CFLAG:嫁, 1))%", "gray"
+	ELSEIF !CFLAG:FINDCHARA(CFLAG:嫁, 1):キャラロスト
+		CALL COLUMNTOOLTIP, 0, @"[3] %I18N("一転攻勢")% ", @"%I18N("|0|と|1|の受け攻めを変えます", CALLNAME:MASTER, CALLNAME:FINDCHARA(CFLAG:嫁, 1))%"
+	ENDIF
+ENDIF
+
+;主人のスキルアップ
+CALL COLUMNTOOLTIP, 0, "[4] SKILL UP ", @"%I18N("|0|のスキルツリーを表示します", CALLNAMEDISP(MASTER))%"
+CALL COLUMNPRINTL, 0
+
+;所持金が条件に達していて、ゲームモードがSTANDARDもしくはSTRATEGYなら表示
+SELECTCASE ゲームモード()
+	;STANDARD
+	CASE "通常モード"
+		IF MONEY < DIG_SEP("1,000,000")
+			CALL COLUMNTOOLTIP, 0, @"　[-] %I18N("納金")% ", @"%I18N("|0|の所持金が必要です", "1,000,000")%", "gray"
+		ELSE
+			CALL COLUMNTOOLTIP, 0, @"　[5] %I18N("納金")% ", @"%I18N("|0|の所持金を納め、ゲームをクリアします", "1,000,000")%"
+		ENDIF
+	;STRATEGY
+	CASE "経営モード"
+		IF MONEY < DIG_SEP("100,000,000")
+			CALL COLUMNTOOLTIP, 0, @"　[-] %I18N("納金")% ", @"%I18N("|0|の所持金が必要です", "100,000,000")%", "gray"
+		ELSE
+			CALL COLUMNTOOLTIP, 0, @"　[5] %I18N("納金")% ", @"%I18N("|0|の所持金を納め、ゲームをクリアします", "100,000,000")%"
+		ENDIF
+	;新婚
+	CASE "新婚モード"
+		CALL COLUMNTOOLTIP, 0, @"　[-] %I18N("納金")% ", @"%I18N("新婚モードでは納金の必要はありません")%", "gray"
+	;段位認定
+	CASE "段位認定"
+		CALL COLUMNTOOLTIP, 0, @"　[-] %I18N("納金")% ", @"%I18N("段位認定では納金の必要はありません")%", "gray"
+	;PFREE
+	CASE "フリーモード"
+		CALL COLUMNTOOLTIP, 0, @"　[-] %I18N("納金")% ", @"%I18N("PREMIUM FREE MODEでは納金の必要はありません")%", "gray"
+ENDSELECT
+
+;周回可能なら表示
+IF FLAG:周回可能 && FLAG:難易度 != -1
+	CALL COLUMNTOOLTIP, 0, @"[6] %I18N("周回")% ", @"%I18N("この周を終了し、引き継いでニューゲームを開始します")%"
+ELSE
+	SELECTCASE ゲームモード()
+		CASE "新婚モード"
+			CALL COLUMNTOOLTIP, 0, @"[-] %I18N("周回")% ", @"%I18N("新婚モードでは周回出来ません")%", "gray"
+		CASE "段位認定"
+			CALL COLUMNTOOLTIP, 0, @"[-] %I18N("周回")% ", @"%I18N("段位認定では周回出来ません")%", "gray"
+		CASE "フリーモード"
+			CALL COLUMNTOOLTIP, 0, @"[-] %I18N("周回")% ", @"%I18N("PREMIUM FREE MODEでは周回出来ません")%", "gray"
+		CASEELSE
+			IF FLAG:難易度 == -1
+				CALL COLUMNTOOLTIP, 0, @"[-] %I18N("周回")% ", @"%I18N("難易度|0|では周回出来ません", 難易度())%", "gray"
+			ELSE
+				CALL COLUMNTOOLTIP, 0, @"[-] %I18N("周回")% ", @"%I18N("ゲームをクリアしないと周回は出来ません")%", "gray"
+			ENDIF
+	ENDSELECT
+ENDIF
+CALL COLUMNPRINTL, 0, ""
+SIF TARGET > 0 && CFLAG:陥落
+	CALL COLUMNPRINTL, 0, @"　[9] %I18N("|0|の奉仕行為を抑制する(現在:|1|)", CALLNAMEDISP(TARGET), @"\@ CFLAG:奉仕イベント抑制 ? %I18N("抑制中")% # %I18N("非抑制")% \@")%"
 
 ;PALAMのオーバーフロー警告をする
 VARLINE = LINECOUNT
