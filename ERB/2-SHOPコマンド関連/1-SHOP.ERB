@@ -1,4 +1,19 @@
 ﻿@SHOP画面
+;毎ターン呼ばれる関数はそちらに移動
+CALL SHOP画面処理
+
+
+;段位認定では施設経営を外す
+IF ゲームモード() == "段位認定"
+	CALL カラム生成, "SHOP", "メイン", "キャラクター", "キャラ・アイテム購入", "その他", "データベース", "セーブ", "ロード", "ショートカット", "オプション"
+ELSE
+	CALL カラム生成, "SHOP", "メイン", "キャラクター", "施設・経営", "キャラ・アイテム購入", "その他", "データベース", "セーブ", "ロード", "ショートカット", "オプション"
+ENDIF
+
+;何かあったときのためにRESTART置いておく
+RESTART
+
+@SHOP画面処理
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LTARGET
 #DIM CSV読み込み
@@ -6,6 +21,8 @@
 REDRAW 0
 
 CALL GIDDEL
+
+MAX_LINE = 45
 
 ;MaxLogを超えるとdivが崩れる不具合がまだ起きるのでERBで対応する
 ;SIF LINECOUNT >= 45000
@@ -90,15 +107,6 @@ SIF (ASSI >= 0 && CFLAG:ASSI:使用不可) || ASSI == 0
 
 VARLINE = LINECOUNT
 
-MAX_LINE = 45
-
-;段位認定では施設経営を外す
-IF ゲームモード() == "段位認定"
-	CALL カラム生成, "SHOP", "メイン", "キャラクター", "キャラ・アイテム購入", "その他", "データベース", "セーブ", "ロード", "ショートカット", "オプション"
-ELSE
-	CALL カラム生成, "SHOP", "メイン", "キャラクター", "施設・経営", "キャラ・アイテム購入", "その他", "データベース", "セーブ", "ロード", "ショートカット", "オプション"
-ENDIF
-
 @SHOP_メイン
 #DIMS DYNAMIC 能力表示用, 4
 #DIM DYNAMIC LCOUNT
@@ -144,6 +152,8 @@ ENDIF
 ;□適用中のMOD(あれば表示)
 ;　[XXX][XXX]
 ;
+
+CALL SHOP画面処理
 
 IF GUI
 	;カレンダーは別カラムで表示する
@@ -611,9 +621,11 @@ ENDSELECT
 ;新婚モードの一転攻勢
 IF ゲームモード() == "新婚モード" && FINDCHARA(CFLAG:嫁, 1) >= 0
 	IF TALENT:FINDCHARA(CFLAG:嫁, 1):妊娠 || TALENT:FINDCHARA(CFLAG:嫁, 1):育児中
-		CALL COLUMNTOOLTIP, 0, @"[-] %I18N("一転攻勢")% ", @"%I18N("|0|が身篭っているため、できません", CALLNAME:FINDCHARA(CFLAG:嫁, 1))%", "gray"
+		CALL COLUMNTOOLTIP, 0, @"[-] %I18N("一転攻勢")% ", @"%I18N("|0|が身篭っているため、できません", CALLNAMEDISP(FINDCHARA(CFLAG:嫁, 1)))%", "gray"
+	ELSEIF TALENT:MASTER:妊娠 || TALENT:MASTER:育児中
+		CALL COLUMNTOOLTIP, 0, @"[-] %I18N("一転攻勢")% ", @"%I18N("|0|が身篭っているため、できません", CALLNAMEDISP(MASTER))%", "gray"
 	ELSEIF !CFLAG:FINDCHARA(CFLAG:嫁, 1):キャラロスト
-		CALL COLUMNTOOLTIP, 0, @"[3] %I18N("一転攻勢")% ", @"%I18N("|0|と|1|の受け攻めを変えます", CALLNAME:MASTER, CALLNAME:FINDCHARA(CFLAG:嫁, 1))%"
+		CALL COLUMNTOOLTIP, 0, @"[3] %I18N("一転攻勢")% ", @"%I18N("|0|と|1|の受け攻めを変えます", CALLNAMEDISP(MASTER), CALLNAMEDISP(FINDCHARA(CFLAG:嫁, 1)))%"
 	ENDIF
 ENDIF
 
