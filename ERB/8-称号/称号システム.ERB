@@ -1,22 +1,4 @@
 ﻿@称号表示
-;誰に
-#DIM CONST ロリコンP = 0
-#DIM CONST ショタコンP = 1
-#DIM CONST 男性P = 2
-#DIM CONST 女性P = 3
-#DIM CONST 貧乳P = 4
-#DIM CONST 巨乳P = 5
-#DIM CONST ふたなりP = 6
-#DIM DYNAMIC WHO_P, 7
-
-;何をしたか
-#DIM CONST 通常P = 0
-#DIM CONST 加虐P = 1
-#DIM CONST 被虐P = 2
-#DIM CONST 受けP = 3
-#DIM CONST 攻めP = 4
-#DIM DYNAMIC DID_P, 5
-
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC CHARA_1
@@ -24,6 +6,9 @@
 #DIM DYNAMIC CHARA_3
 #DIM DYNAMIC 特殊称号計算用, 3
 #DIM DYNAMIC 特殊称号候補, 3
+
+VARSET WHO_P
+VARSET DID_P
 
 ;将来的に色付けたりするかもしれないので式中関数ではなく普通の関数
 
@@ -121,12 +106,13 @@ FOR LCOUNT, 0, VARSIZE("WHO_P")
 	FOR LCOUNT2, 0, VARSIZE("DID_P")
 		WHO_P:LCOUNT += 調教称号:LCOUNT:LCOUNT2
 	NEXT
+	;DEBUGPRINTFORML %ERDNAME(WHO_P, LCOUNT)%{WHO_P:LCOUNT}pt
 NEXT
 
 IF MAXARRAY(WHO_P) == 0
 	PRINT 調教師
 ELSE
-	SELECTCASE FINDELEMENT(WHO_P, MAXARRAY(WHO_P))
+	SELECTCASE MAXARRAY(WHO_P)
 		CASE WHO_P:ロリコンP, WHO_P:ショタコンP
 			;各ポイントが片方の2倍以上なら◯◯コン、差が小さければペドフィリア
 			IF WHO_P:ロリコンP > WHO_P:ショタコンP*2
@@ -263,8 +249,9 @@ ENDIF
 }
 
 ;休憩だけ一時的に減らす
+;あまりにも疲れやすいためいっそ0にしてみる
 休憩値 = プレイ称号:0
-プレイ称号:0 /= 2
+プレイ称号:0 = 0
 
 IF ARGS == "プレイ称号表示"
 	SELECTCASE プレイ称号一覧:FINDELEMENT(プレイ称号, MAXARRAY(プレイ称号))
@@ -324,62 +311,47 @@ ENDIF
 プレイ称号:0 = 休憩値
 
 @調教称号計算
-;誰に
-#DIM CONST ロリコンP = 0
-#DIM CONST ショタコンP = 1
-#DIM CONST 男性P = 2
-#DIM CONST 女性P = 3
-#DIM CONST 貧乳P = 4
-#DIM CONST 巨乳P = 5
-#DIM CONST ふたなりP = 6
-
-;何をしたか
-#DIM CONST 通常P = 0
-#DIM CONST 加虐P = 1
-#DIM CONST 被虐P = 2
-#DIM CONST 受けP = 3
-#DIM CONST 攻めP = 4
-#DIM DYNAMIC DID_P
+#DIM DYNAMIC 行動内容
 
 CFLAG:調教回数++
 
 IF PALAM:苦痛+PALAM:恐怖 > PALAM:恭順+PALAM:屈服
 	CFLAG:加虐調教++
-	DID_P = 加虐P
+	行動内容 = GETNUM(調教称号, "加虐P", 2)
 ELSEIF EXP:嗜虐快楽経験 > 嗜虐経験計算用
 	CFLAG:被虐調教++
-	DID_P = 被虐P
+	行動内容 = GETNUM(調教称号, "被虐P", 2)
 ELSEIF (EXP:MASTER:Ａ経験+EXP:MASTER:Ｖ経験)-主人ＡＶ経験計算用 > (EXP:Ａ経験+EXP:Ｖ経験)-ＡＶ経験計算用
 	CFLAG:攻め調教++
-	DID_P = 受けP
+	行動内容 = GETNUM(調教称号, "受けP", 2)
 ELSEIF (EXP:MASTER:Ａ経験+EXP:MASTER:Ｖ経験)-主人ＡＶ経験計算用 < (EXP:Ａ経験+EXP:Ｖ経験)-ＡＶ経験計算用
+	行動内容 = GETNUM(調教称号, "攻めP", 2)
 	CFLAG:受け調教++
-	DID_P = 攻めP
 ELSE
 	CFLAG:通常調教++
-	DID_P = 通常P
+	行動内容 = GETNUM(調教称号, "通常P", 2)
 ENDIF
 
 SELECTCASE SEX(TARGET)
 	CASE 1
 		IF TALENT:体格 <= 2
-			調教称号:ショタコンP:DID_P++
+			調教称号:ショタコンP:行動内容++
 		ELSE
-			調教称号:男性P:DID_P++
+			調教称号:男性P:行動内容++
 		ENDIF
 	CASE 2
 		IF TALENT:体格 <= 2
-			調教称号:ロリコンP:DID_P++
+			調教称号:ロリコンP:行動内容++
 		ELSE
-			調教称号:女性P:DID_P++
+			調教称号:女性P:行動内容++
 		ENDIF
 		SELECTCASE TALENT:バストサイズ
 			CASE 1, 2
-				調教称号:貧乳P:DID_P++
+				調教称号:貧乳P:行動内容++
 			CASE IS >= 4
-				調教称号:巨乳P:DID_P++
+				調教称号:巨乳P:行動内容++
 		ENDSELECT
 ENDSELECT
 
 SIF TALENT:ふたなり
-	調教称号:ふたなりP:DID_P++
+	調教称号:ふたなりP:行動内容++
