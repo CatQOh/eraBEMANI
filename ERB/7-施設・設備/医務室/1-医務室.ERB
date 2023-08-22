@@ -107,6 +107,7 @@ ELSE
 	CALL PRINTCOLORL, "　[-] - 人体錬成をする(主人か配属中のキャラが[禁断の知識]を持っている必要があります)", "gray"
 ENDIF
 IF MOD:STS
+	PRINTL 　[7] - リソースを確認する
 	PRINTL 　[8] - キャラを安楽死させる
 	PRINTL 　[9] - キャラを解体する
 ENDIF
@@ -151,6 +152,8 @@ SELECTCASE RESULT
 		CALL 人体錬成
 		SIF RESULT
 			JUMP ターン終了
+	CASE 7
+		CALL リソース一覧
 	CASE 8
 		CALL STS_KILL
 		SIF RESULT
@@ -677,6 +680,7 @@ SELECTCASE RESULT
 		CSTR:対象:ロスト詳細 = 薬の投与で安楽死した
 		CALL プレイログ記録, @"%NAME:対象%が死亡"
 		CALL CLEAR_CHARA, 対象, 0, 1
+		CFLAG:対象:死亡 = 1
 		RETURN 1
 ENDSELECT
 
@@ -713,7 +717,7 @@ FOR LCOUNT, 1, CHARANUM
 		CONTINUE
 	SIF ゲームモード() == "経営モード" && CHARANAMEF(LCOUNT) == パートナー
 		CONTINUE
-	CALLFORM DISABLE, "EVENT_解体", LCOUNT
+	CALL DISABLE, "EVENT_解体", LCOUNT
 	SIF RESULT
 		CONTINUE
 	表示数++
@@ -721,7 +725,7 @@ FOR LCOUNT, 1, CHARANUM
 		次ページあり = 1
 		BREAK
 	ENDIF
-	SIF !INRANGE(表示数, ページ数*20, ページ数*20+20)
+	SIF !INRANGE(表示数, ページ数*20, ページ数*20+19)
 		CONTINUE
 	PRINTFORM 　[{LCOUNT, 2}] %NAME:LCOUNT, 26, LEFT% 回収できる物:
 	PRINTFORM \@ ISSLIME(LCOUNT) ? 粘液 # 血液 \@{獲得リソース数(LCOUNT, "体液")}ml 
@@ -729,12 +733,23 @@ FOR LCOUNT, 1, CHARANUM
 		PRINTFORM 精液{獲得リソース数(LCOUNT, "精液")}ml 
 	SIF 獲得リソース数(LCOUNT, "母乳")
 		PRINTFORM 母乳{獲得リソース数(LCOUNT, "母乳")}ml 
+	SIF PENIS(LCOUNT)
+		PRINT 男性器 
+	SIF VAGINA(LCOUNT)
+		PRINT 女性器 
+	SIF TALENT:LCOUNT:バストサイズ >= 3
+		PRINT 乳房 
 	SIF TALENT:LCOUNT:動物耳
 		PRINT ケモミミが付いた頭 
 	SIF TALENT:LCOUNT:羽
 		PRINT 翼の生えた胴体 
-	SIF TALENT:LCOUNT:足使用不可 && !GROUPMATCH(CHARANAMEF(LCOUNT), "にんじん", "ハート")
-		PRINT 人魚の下半身 
+	IF !GROUPMATCH(CHARANAMEF(LCOUNT), "にんじん", "ハート")
+		IF TALENT:LCOUNT:足使用不可
+			PRINT 人魚の下半身 
+		ELSE
+			PRINT 臀部 
+		ENDIF
+	ENDIF
 	SIF TALENT:LCOUNT:尻尾
 		PRINT 切断された尻尾 
 	SELECTCASE CSTR:LCOUNT:種族
@@ -846,6 +861,18 @@ SELECTCASE RESULT
 			PRINTFORML 保管済み母乳+{獲得リソース数(対象, "母乳")}ml
 			リソース:母乳 += 獲得リソース数(対象, "母乳")
 		ENDIF
+		IF PENIS(対象)
+			PRINTFORML %NAME:対象%の男性器+1
+			性器リソース:NOF(対象):男性器++
+		ENDIF
+		IF VAGINA(対象)
+			PRINTFORML %NAME:対象%の女性器+1
+			性器リソース:NOF(対象):女性器++
+		ENDIF
+		IF TALENT:対象:バストサイズ >= 3
+			PRINTFORML %NAME:対象%の乳房+1
+			性器リソース:NOF(対象):乳房++
+		ENDIF
 		IF TALENT:対象:動物耳
 			PRINTL ケモミミが付いた頭+1
 			リソース:ケモミミが付いた頭++
@@ -854,9 +881,14 @@ SELECTCASE RESULT
 			PRINTL 翼の生えた胴体+1
 			リソース:翼の生えた胴体++
 		ENDIF
-		IF TALENT:対象:足使用不可 && !GROUPMATCH(CHARANAMEF(対象), "にんじん", "ハート")
-			PRINTL 人魚の下半身+1
-			リソース:人魚の下半身++
+		IF !GROUPMATCH(CHARANAMEF(対象), "にんじん", "ハート")
+			IF TALENT:対象:足使用不可
+				PRINTL 人魚の下半身+1
+				リソース:人魚の下半身++
+			ELSE
+				PRINTFORML %NAME:対象%の臀部+1
+				性器リソース:NOF(対象):臀部++
+			ENDIF
 		ENDIF
 		IF TALENT:対象:尻尾
 			PRINTL 切断された尻尾+1
@@ -949,3 +981,112 @@ SELECTCASE 種別
 ENDSELECT
 
 RETURNF リソース数
+
+@リソース一覧
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 種類 = "男性器"
+
+DRAWLINE
+PRINTL 　□体液
+PRINT 　
+FOR LCOUNT, GETNUM(リソース, "母乳"), GETNUM(リソース, "母乳")+50
+	SIF リソース:LCOUNT
+		PRINTFORM %ERDNAME(リソース, LCOUNT)%×{リソース:LCOUNT}ml 
+NEXT
+PRINTL 
+
+PRINTL 　□身体部位
+PRINT 　
+FOR LCOUNT, GETNUM(リソース, "ケモミミが付いた頭"), GETNUM(リソース, "ケモミミが付いた頭")+50
+	SIF リソース:LCOUNT
+		PRINTFORM %ERDNAME(リソース, LCOUNT)%×{リソース:LCOUNT} 
+NEXT
+PRINTL 
+
+PRINTL 　□機械部品
+PRINT 　
+FOR LCOUNT, GETNUM(リソース, "マテリアル"), GETNUM(リソース, "マテリアル")+50
+	SIF リソース:LCOUNT
+		PRINTFORM %ERDNAME(リソース, LCOUNT)%×{リソース:LCOUNT} 
+NEXT
+PRINTL 
+
+PRINTPLAIN 　□性器一覧 
+FOR LCOUNT, 0, VARSIZE("性器リソース", 2)
+	SIF ERDNAME(性器リソース, LCOUNT, 2) != ""
+		PRINTFORM [{LCOUNT}] - %ERDNAME(性器リソース, LCOUNT, 2)% 
+NEXT
+PRINTL 
+CALL 性器一覧, 種類, 1
+
+SELECTCASE RESULT
+	CASE -1
+		RETURN
+	CASE 0 TO 10
+		種類 = %ERDNAME(性器リソース, RESULT, 2)%
+ENDSELECT
+RESTART
+
+@性器一覧, 種類, 表示のみ
+#DIMS DYNAMIC 種類
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 飛ばした数
+#DIM ページ数
+#DIM DYNAMIC 次ページあり
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 表示のみ
+
+次ページあり = 0
+表示数 = 0
+飛ばした数 = 0
+
+FOR LCOUNT, 0, 20000
+	IF 性器リソース:LCOUNT:種類
+		IF 飛ばした数 < ページ数*20
+			飛ばした数++
+			CONTINUE
+		ENDIF
+		IF 表示数 >= 20
+			次ページあり = 1
+			BREAK
+		ENDIF
+		IF 表示のみ
+			PRINTFORML 　%CSVNAMEF(LCOUNT)%の%種類%({性器リソース:LCOUNT:種類}個)
+		ELSE
+			PRINTFORML 　[{LCOUNT, 5}] %CSVNAMEF(LCOUNT)%の%種類%({性器リソース:LCOUNT:種類}個)
+		ENDIF
+		表示数++
+	ENDIF
+NEXT
+
+IF !表示数
+	PRINTL 
+	PRINTL 　----------何もありません----------
+	PRINTL 
+ENDIF
+
+DRAWLINE
+PRINTPLAINFORM 　%種類%一覧　
+CALL PRINTSPACE, ページ数 > 0, @"[-1] - 前ページ "
+PRINT [-5] - 戻る 
+CALL PRINTSPACE, 次ページあり, @"[-9] - 次ページ "
+PRINTL 
+
+BINPUT
+SELECTCASE RESULT
+	CASE -1
+		ページ数--
+		SIF 表示のみ
+			RETURN 0
+	CASE -9
+		ページ数++
+		SIF 表示のみ
+			RETURN 0
+	CASE -5
+		ページ数 = 0
+		RETURN -1
+	CASEELSE
+		ページ数 = 0
+		RETURN RESULT
+ENDSELECT
+RESTART

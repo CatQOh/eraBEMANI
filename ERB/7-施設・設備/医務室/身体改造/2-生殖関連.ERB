@@ -874,6 +874,7 @@ ENDSELECT
 #DIM DYNAMIC 費用, 3
 #DIM DYNAMIC LRESULT
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 性器リソース使用 = -1
 
 ;費用:2 = ペニスサイズ*10000
 
@@ -887,7 +888,7 @@ PRINTL □注意事項
 PRINTL 　魔法か外科手術かによって形成後の機能が異なる
 PRINTL 　外科手術によって形成した場合、射精は可能だが精子は含まれない
 PRINTL 　ただし本物の男性器を移植した場合はその限りではない。提供者は陥落済みの必要がある
-PRINTL 　移植後、提供者は[去勢済み]となる
+PRINTL 　移植後、提供者は[去勢済み]となる。事前に採集した男性器も使用可能
 PRINTL 　魔術師によって形成した場合、射精も交配も可能
 PRINTL 　術士は種族「魔術師」の必要がある
 PRINTL 　どちらの方法も、対象、男性器提供者共に1週間、魔術師は3日ほどの安静が必要
@@ -905,6 +906,11 @@ ELSEIF 術師 >= 0
 	PRINTFORMLC [2] - %NAME:術師%(魔術師)
 ELSE
 	PRINTLC [2] - 術師・提供者を選ぶ
+ENDIF
+IF 性器リソース使用 >= 0
+	PRINTFORMLC [3] - 保管している%CSVNAMEF(性器リソース使用)%の男性器を使用
+ELSE
+	PRINTLC [3] - 保管済みの男性器を使う
 ENDIF
 PRINTL 
 ;IF 対象 >= 0
@@ -958,7 +964,7 @@ DRAWLINE
 PRINTPLAIN 　男性器形成　
 PRINT [0] - 戻る　
 SIF 対象 >= 0
-	PRINT [3] - 形成を始める
+	PRINT [4] - 形成を始める
 PRINTL 
 
 BINPUT
@@ -1005,9 +1011,11 @@ SELECTCASE RESULT
 						CASE 0
 							提供者 = -1
 							術師 = LRESULT
+							性器リソース使用 = -1
 						CASE 1
 							提供者 = LRESULT
 							術師 = -1
+							性器リソース使用 = -1
 					ENDSELECT
 					RESULT = LRESULT
 				ELSEIF CSTR:RESULT:種族 == "魔術師"
@@ -1034,6 +1042,15 @@ SELECTCASE RESULT
 ;					ペニスサイズ = 0
 				RESTART
 		ENDSELECT
+	CASE 3
+		DRAWLINE
+		CALL 性器一覧, "男性器"
+		性器リソース使用 = RESULT
+		IF 性器リソース使用 >= 0
+			提供者 = -1
+			術師 = -1
+		ENDIF
+		RESTART
 ;		CASE 3
 ;			SIF 対象 == -1 || 提供者 >= 0
 ;				RESTART
@@ -1046,7 +1063,7 @@ SELECTCASE RESULT
 ;				ペニスサイズ = RESULT
 ;			LOOP LOOPRES(1, 2, 3)
 ;			RESTART
-	CASE 3
+	CASE 4
 		SIF 対象 == -1
 			RESTART
 		IF SUMARRAY(費用) > MONEY && !ORIGIN
@@ -1078,6 +1095,12 @@ SELECTCASE RESULT
 		IF 術師 >= 0
 			CFLAG:対象:精管結紮 = 0
 			CFLAG:術師:使用不可 = 7
+		ENDIF
+		IF 性器リソース使用 >= 0
+			性器リソース:性器リソース使用:男性器--
+			CFLAG:対象:精管結紮 = 0
+			CFLAG:対象:男性器提供者 = 性器リソース使用
+			CFLAG:対象:男性器移植済み = 1
 		ENDIF
 		口上用患者:0 = 対象
 		口上用患者:1 = 提供者

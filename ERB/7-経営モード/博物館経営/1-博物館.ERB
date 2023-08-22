@@ -45,7 +45,7 @@ ENDIF
 
 PRINTL 
 PRINTL 　[1] - 作品を展示する
-PRINTL 　[2] - 作品を作る
+PRINTL 　[2] - 作品を作る・廃棄する
 IF MU:広さ >= 30
 	PRINTL 　[-] - 博物館の広さは最大です
 ELSE
@@ -133,7 +133,7 @@ FOR LCOUNTY, 0, MU:広さ
 			ID = 0
 		ENDIF
 		IF ID > 0
-			HTML用 += SET_TOOLTIPBUTTON("■", @"{LCOUNTX*100+LCOUNTY}", @"%MUSEUM:ID:名前% 価値:%MUSEUM:ID:価値% 集客力:%MUSEUM:ID:集客力%\% \@ MU:実用 ? 汚された回数:%MUSEUM:ID:汚れ% #\@", MUSEUM:ID:色)
+			HTML用 += SET_TOOLTIPBUTTON("■", @"{LCOUNTX*100+LCOUNTY}", @"%MUSEUM:ID:名前% 価値:%MUSEUM:ID:価値% \@ MUSEUM:ID:種類 == "性具" ? 耐久度:%MUSEUM:ID:耐久度%\% # 集客力:%MUSEUM:ID:集客力%\% \@ \@ MU:実用 ? 汚された回数:%MUSEUM:ID:汚れ% #\@", MUSEUM:ID:色)
 			設置済み:ID = 1
 		ELSE
 			HTML用 += SET_TOOLTIPBUTTON("■", @"{LCOUNTX*100+LCOUNTY}", "未設置")
@@ -199,9 +199,16 @@ SELECTCASE RESULT
 				処理数++
 				SIF ページ数*20 >= 処理数
 					CONTINUE
-				CALL PASELI, @"　[{LCOUNT, 2}] %MUSEUM:LCOUNT:名前% 価値:%MUSEUM:LCOUNT:価値%＄ 集客力:%MUSEUM:LCOUNT:集客力%\% "
-				PRINT 色:
-				CALL PRINTCOLORL, "■", MUSEUM:LCOUNT:色
+				IF MUSEUM:LCOUNT:廃棄済み == "1"
+					SETCOLORBYNAME gray
+					CALL PASELI, @"　[--] %MUSEUM:LCOUNT:名前% 価値:%MUSEUM:LCOUNT:価値%＄ 廃棄済み \@ MUSEUM:LCOUNT:汚れ != "0" ? 汚された回数:%MUSEUM:LCOUNT:汚れ+" "% #\@"
+					PRINT 色:
+					CALL PRINTCOLORL, "■", MUSEUM:LCOUNT:色
+				ELSE
+					CALL PASELI, @"　[{LCOUNT, 2}] %MUSEUM:LCOUNT:名前% 価値:%MUSEUM:LCOUNT:価値%＄ \@ MUSEUM:LCOUNT:種類 == "性具" ? 耐久度:%MUSEUM:LCOUNT:耐久度%\% # 集客力:%MUSEUM:LCOUNT:集客力%\% \@ \@ MUSEUM:LCOUNT:汚れ != "0" ? 汚された回数:%MUSEUM:LCOUNT:汚れ +" " % #\@"
+					PRINT 色:
+					CALL PRINTCOLORL, "■", MUSEUM:LCOUNT:色
+				ENDIF
 			ENDIF
 		NEXT
 		DRAWLINE
@@ -248,6 +255,10 @@ ENDSELECT
 #DIM DYNAMIC 臓器摘出不可
 #DIM DYNAMIC 加工技術
 #DIMS DYNAMIC 加工者
+#DIM DYNAMIC LCOUNTX
+#DIM DYNAMIC LCOUNTY
+#DIM DYNAMIC ID
+#DIMS DYNAMIC 種類
 
 ;GOTO CREATE_CORPSE
 
@@ -257,6 +268,8 @@ CALL PRINTCOLOR, "加工", "red"
 PRINTL する
 ;PRINTL 　[2] - 既存の作品を組み合わせる
 PRINTL 　[3] - 既存の作品を解体する
+PRINTL 　[4] - リソースから作成する
+PRINTL 　[5] - 作品を破棄する
 PRINTL 　[0] - 戻る
 
 BINPUT
@@ -269,6 +282,10 @@ SELECTCASE RESULT
 		GOTO JOIN_CORPSE
 	CASE 3
 		GOTO DESTRUCT_CORPSE
+	CASE 4
+		GOTO CREATE_CORPSE_BY_RESOURCE
+	CASE 5
+		GOTO DISPOSE_CORPSE
 ENDSELECT
 
 
@@ -428,7 +445,7 @@ FOR LCOUNT, 1, 1000
 	ENDIF
 	PRINTFORML 　[{LCOUNT, 2}] %MUSEUM:LCOUNT:種類%
 NEXT
-	
+
 $DESTRUCT_CORPSE
 PRINTL □作品を解体して展示物にできます 何を解体しますか？
 処理数 = 0
@@ -436,11 +453,13 @@ FOR LCOUNT, 1, 1000
 	;人形の解体は一旦まだ
 	SIF !GROUPMATCH(MUSEUM:LCOUNT:種類, "剥製", "白骨死体", "ホルマリン漬け", "透明標本")
 		CONTINUE
+	SIF MUSEUM:LCOUNT:廃棄済み == "1"
+		CONTINUE
 	IF 処理数 > ページ数*10+10
 		次ページあり = 1
 		BREAK
 	ENDIF
-	IF 処理数 < ページ数*10
+	IF 処理数 <= ページ数*10
 		処理数++
 		CONTINUE
 	ENDIF
@@ -450,8 +469,8 @@ NEXT
 DRAWLINE
 PRINTPLAINFORM 　解体　
 CALL PRINTSPACE, ページ数, "[-1] 前ページ "
-PRINT [0] 戻る
-CALL PRINTSPACE, ページ数, "[-9] 次ページ "
+PRINT [0] 戻る 
+CALL PRINTSPACE, 次ページあり, "[-9] 次ページ "
 PRINTL 
 
 BINPUT
@@ -555,11 +574,120 @@ FOR LCOUNT, 0, 4
 NEXT
 
 PRINTFORMW %MUSEUM:対象:1%を解体しました
-FOR LCOUNT, 0, 10
+FOR LCOUNT, 0, 20
 	MUSEUM:対象:LCOUNT '= ""
 NEXT
 
 RETURN 1
+
+$CREATE_CORPSE_BY_RESOURCE
+PRINTL □リソースから作品を作成できます。何を使いますか？
+FOR LCOUNT, 0, VARSIZE("性器リソース", 2)
+	SIF ERDNAME(性器リソース, LCOUNT, 2) == ""
+		CONTINUE
+	PRINTFORML 　[{LCOUNT}] - %ERDNAME(性器リソース, LCOUNT, 2)%
+NEXT
+DRAWLINE
+PRINTPLAIN 　リソース　
+PRINTL [10] - 戻る
+BINPUT
+
+SIF RESULT == 10
+	RESTART
+
+種類 = %ERDNAME(性器リソース, RESULT, 2)%
+
+CALL 性器一覧, 種類
+
+SIF RESULT == -1
+	GOTO CREATE_CORPSE_BY_RESOURCE
+
+対象 = RESULT
+
+PRINTFORM %CSVNAMEF(対象)%の%種類%を加工して
+
+SELECTCASE 種類
+	CASE "男性器"
+		PRINT ディルド
+	CASE "女性器", "臀部", "乳房"
+		PRINT オナホ
+ENDSELECT
+
+PRINTL のオブジェクトを作成します。よろしいですか？
+PRINTL [0] - はい
+PRINTL [1] - いいえ
+
+BINPUT
+SIF RESULT == 1
+	GOTO CREATE_CORPSE_BY_RESOURCE
+
+CALL 性器リソース加工, 対象, 種類
+
+RETURN 1
+
+$DISPOSE_CORPSE
+PRINTL □作品を廃棄できます 何を廃棄しますか？
+処理数 = 0
+FOR LCOUNT, 1, 1000
+	SIF MUSEUM:LCOUNT:廃棄済み == "1"
+		CONTINUE
+	SIF MUSEUM:LCOUNT:名前 == ""
+		CONTINUE
+	IF 処理数 > ページ数*10+10
+		次ページあり = 1
+		BREAK
+	ENDIF
+	IF 処理数 <= ページ数*10
+		処理数++
+		CONTINUE
+	ELSE
+		PRINTFORML 　[{LCOUNT, 2}] %MUSEUM:LCOUNT:名前%
+	ENDIF
+	処理数++
+NEXT
+DRAWLINE
+PRINTPLAINFORM 　廃棄　
+CALL PRINTSPACE, ページ数, "[-1] 前ページ "
+PRINT [0] 戻る 
+CALL PRINTSPACE, 次ページあり, "[-9] 次ページ "
+PRINTL 
+
+BINPUT
+SELECTCASE RESULT
+	CASE -1
+		ページ数--
+		GOTO DISPOSE_CORPSE
+	CASE 0
+		RESTART
+	CASE -9
+		ページ数++
+		GOTO DISPOSE_CORPSE
+ENDSELECT
+
+対象 = RESULT
+
+PRINTFORML %MUSEUM:対象:名前%を廃棄します。よろしいですか？
+PRINTL [0] - はい
+PRINTL [1] - いいえ
+
+BINPUT
+SIF RESULT == 1
+	GOTO DESTRUCT_CORPSE
+
+PRINTFORMW %MUSEUM:対象:名前%はゴミとして廃棄されました
+MUSEUM:対象:廃棄済み = 1
+
+FOR LCOUNTY, 0, 30
+	FOR LCOUNTX, 0, 30
+		ID = 博物館マップ:LCOUNTY:LCOUNTX
+		IF ID == 対象
+			博物館マップ:LCOUNTY:LCOUNTX = 0
+			RESTART
+		ENDIF
+	NEXT
+NEXT
+
+RESTART
 
 @カテゴリ計算用
 #DIM DYNAMIC LCOUNTX
@@ -626,6 +754,7 @@ RETURN カテゴリ割合:0, カテゴリ割合:1, カテゴリ割合:2, カテ�
 #DIM DYNAMIC 総設置数
 #DIM DYNAMIC 総カテゴリ数
 #DIM DYNAMIC カテゴリ割合, VARSIZE("博物館客層")
+#DIM DYNAMIC 価値計算用
 
 SIF !ITEM:博物館
 	RETURN
@@ -633,10 +762,13 @@ SIF !ITEM:博物館
 FOR LCOUNTY, 0, 30
 	FOR LCOUNTX, 0, 30
 		ID = 博物館マップ:LCOUNTY:LCOUNTX
-		IF ID > 0 && MUSEUM:ID:種類 == ""
+		IF (ID > 0 && MUSEUM:ID:種類 == "") || MUSEUM:ID:廃棄済み == "1"
 			博物館マップ:LCOUNTY:LCOUNTX = 0
 			CONTINUE
 		ENDIF
+		;性具かつ実用不許可だと無視
+		SIF MUSEUM:ID:種類 == "性具" && !MU:実用
+			CONTINUE
 		IF ID
 			設置済み:ID = ID
 			総価値 += TOINT(MUSEUM:ID:価値)*TOINT(MUSEUM:ID:集客力)/100
@@ -735,9 +867,114 @@ SIF 名声上昇量 > 0
 FOR LCOUNT, 1, 1000
 	;設置中なら3下げる 最低1
 	IF 設置済み:LCOUNT
-		MUSEUM:LCOUNT:集客力 = {MAX(TOINT(MUSEUM:LCOUNT:集客力)-3, 1)}
+		;性具は集客力の代わりに耐久度を下げる
+		IF MUSEUM:LCOUNT:種類 == "性具"
+			;ただし客が来てなければ下げない
+			IF 客数
+				;耐久度が100(MAX)なら価値を半減させる
+				IF MUSEUM:LCOUNT:耐久度 == "100"
+					MUSEUM:LCOUNT:価値 = {TOINT(MUSEUM:LCOUNT:価値)/2}
+				;それ以外なら10%ずつ下げていく
+				ELSE
+					価値計算用 = TOINT(MUSEUM:LCOUNT:価値)
+					TIMES 価値計算用, 0.90
+					MUSEUM:LCOUNT:価値 = {MAX(価値計算用, 1)}
+				ENDIF
+				;耐久度に応じて名前を変える 3下がる計算で
+				SELECTCASE TOINT(MUSEUM:LCOUNT:耐久度)
+					CASE 100
+						SELECTCASE MUSEUM:LCOUNT:ベースリソース
+							CASE "男性器"
+								MUSEUM:LCOUNT:名前 = %CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%のペニスを加工した使用済みディルド
+							CASE "女性器"
+								MUSEUM:LCOUNT:名前 = %CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%の膣を加工した使用済みオナホ
+							CASE "臀部"
+								MUSEUM:LCOUNT:名前 = %CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%のアナルを加工した使用済みオナホ
+							CASE "乳房"
+								MUSEUM:LCOUNT:名前 = %CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%の乳房を加工した使用済みオナホ
+						ENDSELECT
+					CASE 70 TO 72
+						MUSEUM:LCOUNT:名前 = 傷んできた
+						SELECTCASE MUSEUM:LCOUNT:ベースリソース
+							CASE "男性器"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%のペニス加工ディルド"
+							CASE "女性器"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%の膣オナホ"
+							CASE "臀部"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%のアナルオナホ"
+							CASE "乳房"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%の乳房オナホ"
+						ENDSELECT
+					CASE 50 TO 52
+						MUSEUM:LCOUNT:名前 = 異臭を放つ
+						SELECTCASE MUSEUM:LCOUNT:ベースリソース
+							CASE "男性器"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%のペニス加工ディルド"
+							CASE "女性器"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%の膣オナホ"
+							CASE "臀部"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%のアナルオナホ"
+							CASE "乳房"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%の乳房オナホ"
+						ENDSELECT
+					CASE 30 TO 32
+						IF MUSEUM:LCOUNT:ベースリソース == "男性器"
+							MUSEUM:LCOUNT:名前 = 融解しつつある
+						ELSE
+							MUSEUM:LCOUNT:名前 = ボロボロになった
+						ENDIF
+						SELECTCASE MUSEUM:LCOUNT:ベースリソース
+							CASE "男性器"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%のペニス加工ディルド"
+							CASE "女性器"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%の膣オナホ"
+							CASE "臀部"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%のアナルオナホ"
+							CASE "乳房"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%の乳房オナホ"
+						ENDSELECT
+					CASE 10 TO 12
+						IF MUSEUM:LCOUNT:ベースリソース == "男性器"
+							MUSEUM:LCOUNT:名前 = 使いすぎて元の形を失った
+						ELSE
+							MUSEUM:LCOUNT:名前 = 裂けるまで使い込まれてズタボロになった
+						ENDIF
+						SELECTCASE MUSEUM:LCOUNT:ベースリソース
+							CASE "男性器"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%のペニス加工ディルド"
+							CASE "女性器"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%の膣オナホ"
+							CASE "臀部"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%のアナルオナホ"
+							CASE "乳房"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%の乳房オナホ"
+						ENDSELECT
+					CASE 2 TO 4
+						MUSEUM:LCOUNT:名前 = カビにまみれてグチャグチャになった
+						SELECTCASE MUSEUM:LCOUNT:ベースリソース
+							CASE "男性器"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%のペニス加工ディルド"
+							CASE "女性器"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%の膣オナホ"
+							CASE "臀部"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%のアナルオナホ"
+							CASE "乳房"
+								MUSEUM:LCOUNT:名前 += @"%CSVNAMEF(TOINT(MUSEUM:LCOUNT:キャラナンバー))%の乳房オナホ"
+						ENDSELECT
+						MUSEUM:LCOUNT:名前 += "の残骸"
+				ENDSELECT
+				MUSEUM:LCOUNT:耐久度 = {MAX(TOINT(MUSEUM:LCOUNT:耐久度)-3, 1)}
+				;ついでに汚しておく
+				MUSEUM:LCOUNT:汚れ = {TOINT(MUSEUM:LCOUNT:汚れ)+MAX(RAND:客数, 1)}
+			ENDIF
+		ELSE
+			MUSEUM:LCOUNT:集客力 = {MAX(TOINT(MUSEUM:LCOUNT:集客力)-3, 1)}
+		ENDIF
 	;設置してないやつは10+加工技術合計上げる 最高150
 	ELSE
+		;ただし性具は耐久度を見るので回復しない
+		SIF MUSEUM:LCOUNT:種類 == "性具"
+			CONTINUE
 		MUSEUM:LCOUNT:集客力 = {MIN(TOINT(MUSEUM:LCOUNT:集客力)+10+加工技術合計(), 150)}
 	ENDIF
 NEXT
@@ -1068,8 +1305,94 @@ SIF CSTR:対象:胴体の印 != ""
 ;種別は便宜上
 CALL 作品加工共通処理, "人形", 対象, 作品価値, ""
 
+@性器リソース加工, 対象, 種類
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 種類
+#DIM DYNAMIC 作品価値
+#DIM DYNAMIC 空き変数
+#DIM DYNAMIC LCOUNT
 
-@作品加工共通処理, 作品種類, 対象, 作品価値, 加工方法
+PRINTFORMW %CSVNAMEF(対象)%の%種類%を\@ 種類 == "男性器" ? ディルド # オナホ \@に加工しました
+
+性器リソース:対象:種類--
+
+;最低保証は2000 他より高いが性具は例外的に価値が下がっていく
+作品価値 = 2000
+
+;生前の素質を見る
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:GETCHARA(対象):LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "魅力", "魅惑", "ファーリー"
+			作品価値 += 1500
+		CASE "人気", "謎の魅力"
+			作品価値 += 2000
+	ENDSELECT
+NEXT
+SELECTCASE TALENT:GETCHARA(対象):体格
+	CASE 1
+		作品価値 += 1000
+	CASE 2
+		作品価値 += 500
+ENDSELECT
+;人気度を加算
+作品価値 += 人気度:対象*5
+
+CALL 作品加工共通処理, "性器リソース", 対象, 作品価値, "", 種類
+
+@稼働停止, 対象
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 作品価値
+#DIM DYNAMIC 空き変数
+#DIM DYNAMIC LCOUNT
+
+PRINTFORMW %NAME:対象%を稼働停止させました
+;博物館の客は人形ではなく死体を見に来ているので低め
+作品価値 = 600
+
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:対象:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "狐", "妖狐", "戦士", "ファーリー", "尻尾", "動物耳", "羽", "ふたなり"
+			作品価値 += 500
+		CASE "魅力", "魅惑", "足使用不可", "スライム", "溶ける快"
+			作品価値 += 1000
+		CASE "謎の魅力", "人気", "妊娠"
+			作品価値 += 1500
+		CASE "バストサイズ"
+			SELECTCASE TALENT:対象:バストサイズ
+				CASE IS >= 4
+					作品価値 += (TALENT:対象:バストサイズ-3)*100
+			ENDSELECT
+	ENDSELECT
+NEXT
+
+SIF TALENT:対象:体格 == 1
+	作品価値 += 500
+
+;タトゥーでも微増
+SIF CSTR:対象:右腕の印 != ""
+	作品価値 += 100
+SIF CSTR:対象:左腕の印 != ""
+	作品価値 += 100
+SIF CSTR:対象:右足の印 != ""
+	作品価値 += 100
+SIF CSTR:対象:左足の印 != ""
+	作品価値 += 100
+SIF CSTR:対象:背中の印 != ""
+	作品価値 += 200
+SIF CSTR:対象:胴体の印 != ""
+	作品価値 += 300
+;人気度を加算
+作品価値 += 人気度:NOF(対象)
+
+;種別は便宜上
+CALL 作品加工共通処理, "人形", 対象, 作品価値, ""
+
+
+@作品加工共通処理, 作品種類, 対象, 作品価値, 加工方法, 性器種類
 #DIMS DYNAMIC 作品種類
 #DIMS DYNAMIC 加工方法
 #DIM DYNAMIC 対象
@@ -1078,6 +1401,7 @@ CALL 作品加工共通処理, "人形", 対象, 作品価値, ""
 #DIM DYNAMIC 空き変数カウント
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 必要空き枠
+#DIMS DYNAMIC 性器種類
 
 IF 作品種類 == "ホルマリン漬け" && 加工方法 == "臓器摘出"
 	必要空き枠 = 2
@@ -1101,11 +1425,32 @@ NEXT
 ;#;	THROW 変数「MUSEUM」に空きがありません
 
 FOR LCOUNT, 0, 必要空き枠
-	;種類の特殊分類
-	SIF CHARANAMEF(対象) == "ハート" && TRANCERACE:対象:0 == ""
-		MUSEUM:空き変数:種類 = 臓器/心臓
-	SIF 加工方法 == "胎児"
-		MUSEUM:空き変数:種類 = 胎児
+	;性器リソース加工はNOで渡してるのでいろいろ不都合
+	IF 作品種類 == "性器リソース"
+		MUSEUM:空き変数:種類 = 性具
+		SELECTCASE 性器種類
+			CASE "男性器"
+				MUSEUM:空き変数:名前 = %CSVNAMEF(対象)%のペニスを加工したディルド
+			CASE "女性器"
+				MUSEUM:空き変数:名前 = %CSVNAMEF(対象)%の膣を加工したオナホ
+			CASE "臀部"
+				MUSEUM:空き変数:名前 = %CSVNAMEF(対象)%のアナルを加工したオナホ
+			CASE "乳房"
+				MUSEUM:空き変数:名前 = %CSVNAMEF(対象)%の乳房を加工したオナホ
+		ENDSELECT
+		MUSEUM:空き変数:色 = {COLOR_FROMNAME("wheat")}
+		MUSEUM:空き変数:ベースリソース = %性器種類%
+
+		MUSEUM:空き変数:価値 = {作品価値+作品価値*加工技術合計()/100}
+
+		MUSEUM:空き変数:キャラナンバー = {対象}
+		MUSEUM:空き変数:血縁コード = 0
+		MUSEUM:空き変数:オリジナルナンバー = 0
+		MUSEUM:空き変数:集客力 = 100
+		MUSEUM:空き変数:汚れ = 0
+		MUSEUM:空き変数:耐久度 = 100
+		RETURN
+	ENDIF
 
 	;作品名と種類の設定
 	IF 加工方法 == "胎児"
@@ -1177,7 +1522,7 @@ FOR LCOUNT, 0, 必要空き枠
 	IF 加工方法 == "胎児"
 		MUSEUM:空き変数:キャラナンバー = -1
 		;血縁コードわからないから頼んだ
-		MUSEUM:空き変数:オリジナルナンバー = {NOF(対象)}
+		MUSEUM:空き変数:オリジナルナンバー = 0
 	ELSE
 		MUSEUM:空き変数:キャラナンバー = {NOF(対象)}
 		MUSEUM:空き変数:血縁コード = {CFLAG:対象:血縁コード}
