@@ -204,7 +204,6 @@ WAIT
 判定用 = ABL:メス度
 
 ;女装に抵抗なさそうor普段から女装しているキャラに最低保証
-;多分csvに置くべき情報だけど一旦ここ
 SELECTCASE CHARANAMEF(TARGET)
 	CASE "ハニー", "舞園 星斗", "トア", "八咫烏 鋼太郎"
 		SIF 判定用 < 7
@@ -240,11 +239,31 @@ IF TEQUIP:女装
 ELSE
 	PRINTFORML %CALLNAME:TARGET%を女装させることにした
 	IF ノリの良さ >= 2 && 判定用 < 4
-		PRINTFORML 特に抵抗なく女物の服に着替えた%CALLNAME:TARGET%は、自分の格好を見ておかしそうに笑っている……
+		PRINTFORML 特に抵抗なく女物の服に着替えた%CALLNAME:TARGET%は、
+		IF CFLAG:陥落 || GROUPMATCH(CSVNAMEF(NOF(MASTER), CSTR:恋心, CSTR:既婚者) || ハニーバニー
+			PRINTFORML %CALLNAME:PLAYER%に向かって似合っているか聞いてきた……
+		ELSE
+			PRINTFORML 自分の格好を見ておかしそうに笑っている……
+		ENDIF
 	ELSEIF TALENT:ナルシスト && 判定用 < 4
 		PRINTFORML 女物の服を身に纏った%CALLNAME:TARGET%は、%CALLNAME:PLAYER%の前に立つと挑戦的にポーズを決めてみせた……
 	ELSEIF (TALENT:生意気 || TALENT:反抗的) && !TALENT:プライド低い && 判定用 < 2
-		PRINTFORML %CALLNAME:TARGET%は女物の服を着ることを嫌がっていたが、再度命令すると\@ TALENT:献身的 ? 溜め息をつきながら # 不服そうに顔を顰めながら \@着替え始めた……
+		PRINTFORM %CALLNAME:TARGET%は
+		IF FALLTYPE(TARGET) == 3
+			PRINTFORMW 一瞬嫌そうな反応を見せたものの命令に逆らうつもり自体は無いらしく、大人しく女物の服に着替え始めた……
+			RETURN
+		ENDIF
+		PRINTFORM 女物の服を着ることを嫌がっていたが、
+		IF FALLTYPE(TARGET) == 1 || GROUPMATCH(CSVNAMEF(NOF(MASTER), CSTR:恋心, CSTR:既婚者) || ハニーバニー
+			;実行者は必ず主人
+			PRINTFORM 愛する%CALLNAME:PLAYER%の頼みだと思い直し
+		ELSEIF FALLTYPE(TARGET) == 2
+			PRINTFORMW ふと何か思いついたような顔をするとにやりと笑みを浮かべ、いそいそ着替え始めた……
+			RETURN
+		ELSE
+			PRINTFORM 再度命令すると
+		ENDIF
+		PRINTFORML \@ TALENT:献身的 ? 溜め息をつきながら # 不服そうに顔を顰めながら \@も着替え始めた……
 	ELSEIF 無関心 >= 2 && 判定用 < 2
 		PRINTFORML 女物の服を着せられた%CALLNAME:TARGET%は、自分の格好にも特に興味はない様子だ……
 	ELSEIF TALENT:体格 == 1 && TALENT:幼稚 && 判定用 < 4
@@ -254,7 +273,16 @@ ELSE
 	ELSE
 		SELECTCASE 判定用
 			CASE 0 TO 1
-				PRINTFORML %CALLNAME:TARGET%は女物の服を着せられ、羞恥と屈辱に耐えている……
+				IF FALLTYPE(TARGET) == 1 || GROUPMATCH(CSVNAMEF(NOF(MASTER), CSTR:恋心, CSTR:既婚者) || ハニーバニー
+					PRINTFORM 女物の服を着せられた%CALLNAME:TARGET%は
+					IF TALENT:恥薄い
+						PRINTFORML どことなく居心地が悪そうにも見える……
+					ELSE
+						PRINTFORML 恥ずかしそうに%CALLNAME:PLAYER%から目を逸らした……
+					ENDIF
+				ELSE
+					PRINTFORML %CALLNAME:TARGET%は女物の服を着せられ、羞恥と屈辱に耐えている……
+				ENDIF
 			CASE 2 TO 3
 				PRINTFORML %CALLNAME:TARGET%は渋々ながらといった顔をしつつも、特に文句は言わず女物の服に着替えている……
 			CASE 4 TO 6
