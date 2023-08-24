@@ -1,0 +1,47 @@
+﻿@尿意ゲージ加算
+#DIM DYNAMIC 尿意計算用
+;1000刻みが理想
+SELECTCASE SELECTCOMS
+	CASE "お酒を飲ませる"
+		尿意計算用 = 3000
+	CASE "ジュースを飲ませる"
+		尿意計算用 = 1000
+	CASE "放尿", "触手強制放尿"
+		BASE:尿意 = 0
+	;*2されるので確実にMAXになる
+	CASE "利尿剤"
+		BASE:尿意 = 5000
+	CASEELSE
+		IF TEQUIP:尿道カテーテル
+			BASE:尿意 = 0
+			RETURN
+		ENDIF
+		;何も無くても尿意ゲージは上がる
+		尿意計算用 = 300
+ENDSELECT
+
+
+;酔ゲージに応じて倍率 最大5倍
+尿意計算用 = 尿意計算用*LIMIT(CFLAG:酔, 20, 100)/20
+
+;獣人だと2倍、アニマルだと3倍
+IF TALENT:アニマル
+	尿意計算用 *= 3
+ELSEIF GROUPMATCH(CSTR:種族, "獣人", "獣")
+	尿意計算用 *= 2
+ENDIF
+
+;おもらし癖と利尿剤はそれぞれ2倍
+SIF TALENT:おもらし癖
+	尿意計算用 *= 2
+IF TEQUIP:利尿剤
+	IF 利尿剤強化値
+		尿意計算用 *= MAX(利尿剤強化値/10, 2)
+	ELSE
+		尿意計算用 *= 2
+	ENDIF
+ENDIF
+
+BASE:尿意 += 尿意計算用
+
+BASE:尿意 = LIMIT(BASE:尿意, 0, 10000)
