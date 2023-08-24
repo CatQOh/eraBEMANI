@@ -133,8 +133,17 @@ IF SHOP_表示切り替え
 ELSE
 	CALL COLUMNPRINT, 0, "[1011] 経営用表示に切り替え "
 ENDIF
+IF SHOP_配属キャラ選択不可
+	CALL COLUMNPRINT, 0, "[1012] 配属済キャラも選択可能にする "
+ELSE
+	CALL COLUMNPRINT, 0, "[1012] 配属済キャラを選択不可にする "
+ENDIF
+CALL COLUMNPRINTL, 0, ""
+
+CALL COLUMNPRINT, 0, RETURNSPACE(SHOP_キャラページ, "　[999] 前ページ ")
+CALL COLUMNPRINT, 0, RETURNSPACE(SHOP_未表示キャラ, "[1001] 次ページ ")
 SIF ORIGIN
-	CALL COLUMNPRINT, 0, "[1012] 登場作品で絞る"
+	CALL COLUMNPRINT, 0, "[1013] 登場作品で絞る"
 CALL COLUMNPRINTL, 0, ""
 
 @所持キャラ一覧_INPUT
@@ -143,7 +152,7 @@ SELECTCASE CRESULT:1
 	CASE MASTER
 		SELECTCASE SHOP_キャラ表示情報
 			CASE "調教対象選択"
-				PRINTW 自分を調教することはできません
+				TARGET = -1
 			CASE "助手選択"
 				ASSI = -1
 			CASE "ABL上昇"
@@ -179,6 +188,8 @@ SELECTCASE CRESULT:1
 	CASE 1011
 		INVERTBIT SHOP_表示切り替え, 0
 	CASE 1012
+		INVERTBIT SHOP_配属キャラ選択不可, 0
+	CASE 1013
 		CALL 登場作品フィルタ設定
 		SHOP_キャラページ = 0
 	CASE 0 TO CHARANUM-1
@@ -223,10 +234,6 @@ ENDSELECT
 #DIM DYNAMIC 文字色
 #DIMS DYNAMIC 文字列
 
-;調教対象の指定、もしくは助手の指定なら、育児部屋に移動しているキャラと使用不可キャラは灰色表示
-;SIF SHOP_キャラ表示情報 != "通常表示" && (CHECK_CHILD_CARE(対象) || CFLAG:対象:使用不可)
-;	SETCOLORBYNAME gray
-
 IF CFLAG:対象:タグ色 > 0
 	文字色 = CFLAG:対象:タグ色
 ELSE
@@ -260,7 +267,8 @@ ELSE
 ENDIF
 
 ;調教対象の指定、もしくは助手の指定なら、育児部屋に移動しているキャラと監禁中キャラは選べない
-IF SHOP_キャラ表示情報 != "通常表示" && (CHECK_CHILD_CARE(対象) || CFLAG:対象:使用不可 || CFLAG:対象:監禁)
+;配属キャラ選択不可オンの場合経営に配属したキャラも選べない（誤爆対策）
+IF GROUPMATCH(SHOP_キャラ表示情報, "調教対象選択", "助手選択") && (CHECK_CHILD_CARE(対象) || CFLAG:対象:使用不可 || CFLAG:対象:監禁 || (SHOP_配属キャラ選択不可 && CSTR:対象:配属 != ""))
 	文字列 += COLUMNPRINTF(@"[---] %CALLNAMEDISP(対象), 20, LEFT%", "gray")
 ELSE
 	文字列 += COLUMNPRINTF(@"[{対象, 3}] %CALLNAMEDISP(対象), 20, LEFT%")
