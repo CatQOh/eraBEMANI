@@ -716,11 +716,11 @@ SELECTCASE RESULT
 		RETURN 1
 	;着衣設定
 	CASE 903
-		CALL CLOTHES_CHANGE
+		CALL CLOTHES_CHANGE, TARGET
 		RETURN 1
 	;着衣設定(PLAYER)
 	CASE 904
-		CALL CLOTHES_CHANGE_PLAYER
+		CALL CLOTHES_CHANGE, PLAYER
 		RETURN 1
 	;PLAYERの能力表示
 	CASE 906
@@ -833,6 +833,7 @@ RETURN 0
 
 @SHOW_LOG
 #DIM DYNAMIC PREG_PER, 3, 3;0,1,2は主人,助手,奴隷に対応
+#DIM DYNAMIC LCOUNT
 DRAWLINE
 PRINTL □ 珠
 CALL SHOW_INFO_JUEL, TARGET
@@ -853,72 +854,41 @@ CALL SHOW_EQUIP
 PRINTL 
 
 PRINTL □ 服装
-IF !TEQUIP:特殊 && !TEQUIP:上半身上着 && !TEQUIP:下半身上着 && TEQUIP:全身上着 && !TEQUIP:上半身下着 && !TEQUIP:下半身下着 && !TEQUIP:足元
-	PRINTL 　全裸
-ELSE
-	IF CSTR:特殊 != "" && CFLAG:特殊 != 100
-		PRINT 　特殊　　　:
-		IF !TEQUIP:特殊
-			PRINTFORML 脱
-		ELSE
-			PRINTFORML %CSTR:特殊%
+FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
+	IF CSTR:LCOUNT == ""
+		IF LCOUNT == GETNUM(CSTR, "足元")
+			PRINTL 　全裸
+			GOTO 全裸
 		ENDIF
+	ELSE
+		BREAK
 	ENDIF
-
-	IF CSTR:上半身上着 != "" && CFLAG:上半身上着 != 100
-		PRINT 　上半身上着:
-		IF !TEQUIP:上半身上着
-			PRINTL 脱
-		ELSE
-			PRINTFORML %CSTR:上半身上着%
-		ENDIF
+NEXT
+FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
+	IF CSTR:LCOUNT != ""
+		SELECTCASE CSTRNAME:LCOUNT
+			CASE "特殊"
+				PRINT 　特殊　　　:
+			CASE "上半身上着"
+				PRINT 　上半身上着:
+			CASE "下半身上着"
+				PRINT 　下半身上着:
+			CASE "全身上着"
+				PRINT 　全身上着　:
+			CASE "上半身下着"
+				PRINT 　上半身下着:
+			CASE "下半身下着"
+				PRINT 　下半身下着:
+			CASE "足元"
+				PRINT 　足元　　　:
+		ENDSELECT
+		SIF !TEQUIP:TARGET:(LCOUNT-100)
+			SETCOLORBYNAME gray
+		PRINTFORML %CSTR:LCOUNT%
 	ENDIF
-
-	IF CSTR:下半身上着 != "" && CFLAG:下半身上着 != 100
-		PRINT 　下半身上着:
-		IF !TEQUIP:下半身上着
-			PRINTL 脱
-		ELSE
-			PRINTFORML %CSTR:下半身上着%
-		ENDIF
-	ENDIF
-
-	IF CSTR:全身上着 != "" && CFLAG:全身上着 != 100
-		PRINT 　全身上着　:
-		IF !TEQUIP:全身上着
-			PRINTL 脱
-		ELSE
-			PRINTFORML %CSTR:全身上着%
-		ENDIF
-	ENDIF
-
-	IF CSTR:上半身下着 != "" && CFLAG:上半身下着 != 100
-		PRINT 　上半身下着:
-		IF !TEQUIP:上半身下着
-			PRINTL 脱
-		ELSE
-			PRINTFORML %CSTR:上半身下着%
-		ENDIF
-	ENDIF
-
-	IF CSTR:下半身下着 != "" && CFLAG:下半身下着 != 100
-		PRINT 　下半身下着:
-		IF !TEQUIP:下半身下着
-			PRINTL 脱
-		ELSE
-			PRINTFORML %CSTR:下半身下着%
-		ENDIF
-	ENDIF
-
-	IF CSTR:足元 != "" && CFLAG:足元 != 100
-		PRINT 　足元　　　:
-		IF !TEQUIP:足元
-			PRINTL 脱
-		ELSE
-			PRINTFORML %CSTR:足元%
-		ENDIF
-	ENDIF
-ENDIF
+	RESETCOLOR
+NEXT
+$全裸
 PRINTL 
 
 PRINTL □絶頂回数
@@ -1020,9 +990,10 @@ WAIT
 ;-------------------------------------------------
 ;調教中の着衣変更
 ;-------------------------------------------------
-@CLOTHES_CHANGE
+@CLOTHES_CHANGE, 対象
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LRESULT
+#DIM DYNAMIC 対象
 #DIM DYNAMIC 字数
 
 DRAWLINE
@@ -1030,39 +1001,39 @@ PRINTL 着衣について設定します
 
 ;位置調整用の字数カウント
 FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
-	LIMIT STRLENS(CSTR:LCOUNT), 字数, STRLENS(CSTR:LCOUNT)
+	LIMIT STRLENS(CSTR:対象:LCOUNT), 字数, STRLENS(CSTR:対象:LCOUNT)
 	字数 = RESULT
 NEXT
 
 ;現在来ている服を表示、PRINTLは改行用
-PRINTFORML □%CALLNAME:TARGET%の着衣
+PRINTFORML □%CALLNAME:対象%の着衣
 FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
-	IF CSTR:LCOUNT != ""
-		IF TEQUIP:(CSTRNAME:LCOUNT)
+	IF CSTR:対象:LCOUNT != ""
+		IF TEQUIP:対象:(CSTRNAME:LCOUNT)
 			PRINT 　(着)
-		ELSEIF !TEQUIP:(CSTRNAME:LCOUNT)
+		ELSEIF !TEQUIP:対象:(CSTRNAME:LCOUNT)
 			SETCOLORBYNAME gray
 			PRINT 　(脱)
 		ENDIF
-		PRINTFORM %CSTR:LCOUNT, 字数, LEFT%
+		PRINTFORM %CSTR:対象:LCOUNT, 字数, LEFT%
 		RESETCOLOR
 
 		PRINTFORM  - [{LCOUNT-100, 2}] 
-		IF TEQUIP:(CSTRNAME:LCOUNT)
+		IF TEQUIP:対象:(CSTRNAME:LCOUNT)
 			SELECTCASE CSTRNAME:LCOUNT
 				CASE "特殊"
-					PRINTL 奪う
+					PRINTFORML \@ 対象 == TARGET ? 奪う # 取る \@
 				CASEELSE
-					PRINTL 脱がす
+					PRINTFORML \@ 対象 == TARGET ? 脱がす # 脱ぐ \@
 			ENDSELECT
-		ELSEIF !TEQUIP:(CSTRNAME:LCOUNT)
+		ELSEIF !TEQUIP:対象:(CSTRNAME:LCOUNT)
 			SELECTCASE CSTRNAME:LCOUNT
 				CASE "特殊"
-					PRINTL 返す
+					PRINTFORML \@ 対象 == TARGET ? 返す # 身につける \@
 				CASE "下半身下着", "足元"
-					PRINTL 穿かせる
+					PRINTFORML \@ 対象 == TARGET ? 穿かせる # 穿く \@
 				CASEELSE
-					PRINTL 着せる
+					PRINTFORML \@ 対象 == TARGET ? 着せる # 着る \@
 			ENDSELECT
 		ENDIF
 	ENDIF
@@ -1070,16 +1041,16 @@ NEXT
 
 ;何か着てたらすべて脱がすコマンド表示
 FOR LCOUNT, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
-	IF TEQUIP:LCOUNT
-		PRINT 　[10] すべて脱がす
+	IF TEQUIP:対象:LCOUNT
+		PRINTFORM 　[10] すべて\@ 対象 == TARGET ? 脱がす # 脱ぐ \@
 		BREAK
 	ENDIF
 NEXT
 
 ;何か着てないものがあったらすべて着せるコマンド表示
 FOR LCOUNT, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
-	IF !TEQUIP:LCOUNT && CSTR:(LCOUNT+100) != ""
-		PRINT 　[11] すべて着せる
+	IF !TEQUIP:対象:LCOUNT && CSTR:(LCOUNT+100) != ""
+		PRINTFORM 　[11] すべて\@ 対象 == TARGET ? 着せる # 着る \@
 		BREAK
 	ENDIF
 NEXT
@@ -1092,27 +1063,46 @@ PRINTFORML [100] 戻る　[101] 着脱の簡略化(現在:\@ OPTION:服着脱ウ
 BINPUT
 SELECTCASE RESULT
 	CASE GETNUM(TEQUIP, "特殊") TO GETNUM(TEQUIP, "足元")
-		LRESULT = RESULT
-		IF TEQUIP:LRESULT
-			;脱がせるテキストを呼ぶ
-			CALL CLOTHES_MESSAGE_TAKE, RESULT
-			TEQUIP:LRESULT = 0
-		ELSEIF !TEQUIP:LRESULT
-			;着せるテキストを呼ぶ
-			CALL CLOTHES_MESSAGE_PUT, RESULT
-			TEQUIP:LRESULT = 1
+		IF TEQUIP:対象:RESULT
+			PRINTFORM %CSTR:(RESULT+100)%を
+			SELECTCASE TEQUIPNAME:RESULT
+				CASE "特殊"
+					PRINTFORML \@ 対象 == TARGET ? 奪った # 取った \@
+				CASEELSE
+					PRINTFORML \@ 対象 == TARGET ? 脱がした # 脱いだ \@
+			ENDSELECT
+			TEQUIP:対象:RESULT = 0
+		ELSEIF !TEQUIP:対象:RESULT
+			PRINTFORM %CSTR:(RESULT+100)%を
+			SELECTCASE TEQUIPNAME:RESULT
+				CASE "特殊"
+					PRINTFORML \@ 対象 == TARGET ? 返した # 身につけた \@
+				CASE "下半身下着", "足元"
+					PRINTFORML \@ 対象 == TARGET ? 穿かせた # 穿いた \@
+				CASEELSE
+					PRINTFORML \@ 対象 == TARGET ? 着せた # 着た \@
+			ENDSELECT
+			TEQUIP:対象:RESULT = 1
 		ENDIF
+		SIF !OPTION:服着脱ウェイト無
+			WAIT
 	;服を脱がせる場合
 	CASE 10
 		FOR LCOUNT, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
-			TEQUIP:LCOUNT = 0
+			TEQUIP:対象:LCOUNT = 0
 		NEXT
+		PRINTFORML 服をすべて\@ 対象 == TARGET ? 脱がせました # 脱ぎました \@
+		SIF !OPTION:服着脱ウェイト無
+			WAIT
 	;服を着せる場合
 	CASE 11
 		FOR LCOUNT, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
 			SIF CSTR:(TEQUIPNAME:LCOUNT) != ""
-				TEQUIP:LCOUNT = 1
+				TEQUIP:対象:LCOUNT = 1
 		NEXT
+		PRINTFORML 服をすべて\@ 対象 == TARGET ? 着せました # 着ました \@
+		SIF !OPTION:服着脱ウェイト無
+			WAIT
 	CASE 100
 		RETURN 0
 	CASE 101
@@ -1121,131 +1111,9 @@ SELECTCASE RESULT
 ENDSELECT
 
 TFLAG:服着脱 = RESULT
-CALL KOJO_MESSAGE_USERCOM, 803
-
-RESTART
-
-;-------------------------------------------------
-;きせかえ時のメッセージ処理
-;-------------------------------------------------
-@CLOTHES_MESSAGE_TAKE, ARG
-PRINTFORM %CSTR:(ARG+100)%を
-SELECTCASE TEQUIPNAME:ARG
-	CASE "特殊"
-		PRINTL 奪った
-	CASEELSE
-		PRINTL 脱がした
-ENDSELECT
-SIF !OPTION:服着脱ウェイト無
-	WAIT
-
-@CLOTHES_MESSAGE_PUT, ARG
-PRINTFORM %CSTR:(ARG+100)%を
-SELECTCASE TEQUIPNAME:ARG
-	CASE "特殊"
-		PRINTL 返した
-	CASE "下半身下着", "足元"
-		PRINTL 穿かせた
-	CASEELSE
-		PRINTL 着せた
-ENDSELECT
-SIF !OPTION:服着脱ウェイト無
-	WAIT
-
-;-------------------------------------------------
-;調教中の着衣変更
-;-------------------------------------------------
-@CLOTHES_CHANGE_PLAYER
-#DIM DYNAMIC LCOUNT
-#DIM DYNAMIC LRESULT
-#DIM DYNAMIC 字数
-
-DRAWLINE
-PRINTL 着衣について設定します
-
-;位置調整用の字数カウント
-FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
-	LIMIT STRLENS(CSTR:PLAYER:LCOUNT), 字数, STRLENS(CSTR:PLAYER:LCOUNT)
-	字数 = RESULT
-NEXT
-
-;現在来ている服を表示、PRINTLは改行用
-PRINTFORML □%CALLNAME:PLAYER%の着衣
-FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
-	IF CSTR:PLAYER:LCOUNT != ""
-		IF TEQUIP:PLAYER:(CSTRNAME:LCOUNT)
-			PRINT 　(着)
-		ELSEIF !TEQUIP:PLAYER:(CSTRNAME:LCOUNT)
-			SETCOLORBYNAME gray
-			PRINT 　(脱)
-		ENDIF
-		PRINTFORM %CSTR:PLAYER:LCOUNT, 字数, LEFT%
-		RESETCOLOR
-
-		PRINTFORM  - [{LCOUNT-100, 2}] 
-		IF TEQUIP:PLAYER:(CSTRNAME:LCOUNT)
-			SELECTCASE CSTRNAME:LCOUNT
-				CASE "特殊"
-					PRINTL 取る
-				CASEELSE
-					PRINTL 脱ぐ
-			ENDSELECT
-		ELSEIF !TEQUIP:PLAYER:(CSTRNAME:LCOUNT)
-			SELECTCASE CSTRNAME:LCOUNT
-				CASE "特殊"
-					PRINTL 身につける
-				CASE "下半身下着", "足元"
-					PRINTL 穿く
-				CASEELSE
-					PRINTL 着る
-			ENDSELECT
-		ENDIF
-	ENDIF
-NEXT
-
-;何か着てたらすべて脱ぐコマンド表示
-FOR LCOUNT, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
-	IF TEQUIP:PLAYER:LCOUNT
-		PRINT 　[10] すべて脱ぐ
-		BREAK
-	ENDIF
-NEXT
-
-;何か着てないものがあったらすべて着るコマンド表示
-FOR LCOUNT, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
-	IF !TEQUIP:PLAYER:LCOUNT && CSTR:PLAYER:(LCOUNT+100) != ""
-		PRINT 　[11] すべて着る
-		BREAK
-	ENDIF
-NEXT
-PRINTL 
-
-DRAWLINE
-PRINTPLAIN 　COORDINATE　
-PRINT [100] 戻る
-
-BINPUT
-SELECTCASE RESULT
-	CASE GETNUM(TEQUIP, "特殊") TO GETNUM(TEQUIP, "足元")
-		LRESULT = RESULT
-		INVERTBIT TEQUIP:PLAYER:LRESULT, 0
-	;服を脱ぐ場合
-	CASE 10
-		FOR LCOUNT, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
-			TEQUIP:PLAYER:LCOUNT = 0
-		NEXT
-	;服を着る場合
-	CASE 11
-		FOR LCOUNT, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
-			SIF CSTR:PLAYER:(TEQUIPNAME:LCOUNT) != ""
-				TEQUIP:PLAYER:LCOUNT = 1
-		NEXT
-	CASE 100
-		RETURN 0
-ENDSELECT
-
-TFLAG:服着脱 = RESULT
-CALL KOJO_MESSAGE_USERCOM, 804
+;PLAYERに表示する事ある？暴発しそうなので一旦TARGETだけにしておく
+SIF 対象 == TARGET
+	CALL KOJO_MESSAGE_USERCOM, 803
 
 RESTART
 

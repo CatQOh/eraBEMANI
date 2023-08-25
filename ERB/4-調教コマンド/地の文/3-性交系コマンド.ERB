@@ -124,10 +124,71 @@ IF TALENT:アニマル
 ;陥落済み
 ELSEIF CFLAG:陥落 && !CFLAG:死亡 && !TEQUIP:睡眠
 	PRINTL 貫いた
-	IF ISSLIME(TARGET)
-		PRINTFORMW %CALLNAME:TARGET%も%CALLNAME:PLAYER%に自身を構成する粘液の一部を絡め腰を押し付けてくる……
-	ELSEIF !TALENT:足使用不可
-		PRINTFORMW %CALLNAME:TARGET%も%CALLNAME:PLAYER%に足を絡め腰を押し付けてくる……
+	IF (FALLTYPE(TARGET) == 1 && (PLAYER == MASTER || TALENT:貞操無頓着)) || FALLTYPE(TARGET) == 2
+		PRINTFORM %CALLNAME:TARGET%も%CALLNAME:PLAYER%に
+		IF ISSLIME(TARGET)
+			PRINT 自身を構成する粘液の一部を絡め腰を
+		ELSEIF TALENT:足使用不可
+			PRINT 腰を浮かせるようにしてその秘所を
+		ELSE
+			PRINT 足を絡め腰を
+		ENDIF
+		PRINTFORMW 押し付けて\@ PLAYER == MASTER ? くる # いる \@……
+	ELSEIF FALLTYPE(TARGET) == 3
+		PRINTFORM %CALLNAME:TARGET%は%CALLNAME:PLAYER%
+		IF ISSLIME(TARGET)
+			PRINT の腰に自身を構成する粘液の一部を絡め、
+		ELSEIF TALENT:足使用不可
+			PRINT に自らの秘所を押し付けるようにして、
+		ELSE
+			PRINT の腰に足を絡め、
+		ENDIF
+		PRINTFORMW %CALLNAME:PLAYER%\@ PENIS(PLAYER) ? のペニスを # との疑似的な性交を \@受け入れている……
+	;この分岐に入ったら貞操無頓着無しの恋慕陥落かつ助手確定
+	ELSE
+		SELECTCASE 相性値(TARGET, PLAYER)
+			CASE IS >= 150
+				PRINTFORM %CALLNAME:TARGET%も%CALLNAME:PLAYER%\@ PENIS(PLAYER) ? のペニスを受け入れる事には # との疑似的な性交には \@悪い気はしないらしく、%CALLNAME:PLAYER%
+				IF ISSLIME(TARGET)
+					PRINT の腰に自身を構成する粘液の一部を絡めて
+				ELSEIF TALENT:足使用不可
+					PRINT に自らの秘所を押し付けるようにして
+				ELSE
+					PRINT の腰に足を絡めて
+				ENDIF
+				PRINTW 応じている……
+			CASE IS > 100
+				PRINTFORMW %CALLNAME:TARGET%は戸惑いを隠せない様子で%CALLNAME:MASTER%に視線を向けている……
+			CASEELSE
+				IF (TALENT:男嫌い && SEX(PLAYER) == 1) || TALENT:貞操観念
+					PRINTFORM %CALLNAME:TARGET%は
+					IF TALENT:貞操観念
+						PRINTFORM %CALLNAME:MASTER%以外の相手
+					ELSE
+						PRINTFORM \@ SEX(MASTER) == 1 ? %CALLNAME:MASTER%以外の #  \@男
+					ENDIF
+					PRINTFORM に犯される事に否定的な反応を見せるが、
+					IF ABL:Ｖ感覚 >= 3
+						PRINTFORM 敏感な膣内を深く摩擦される
+						IF TEQUIP:ボールギャグ
+							PRINTFORMW 度にくぐもった喘ぎ声をあげている……
+						ELSE
+							PRINTFORMW と拒絶の声はやがて嬌声へと変わっていった……
+						ENDIF
+					ELSEIF TEQUIP:縄
+						PRINTFORMW 縄で拘束された体では抵抗の術はなく、なすがままに%CALLNAME:PLAYER%\@ PENIS(PLAYER) ? のペニスを # との行為を \@受け入れる事となった……
+					ELSE
+						PRINTFORMW \@ TEQUIP:ボールギャグ ? くぐもった声をあげながら # 唇を噛んで \@膣内を前後する感覚に耐えている……
+					ENDIF
+				ELSE
+					PRINTFORM %CALLNAME:TARGET%は
+					IF TEQUIP:アイマスク
+						PRINTFORMW 快感から逃げるように身を捩っている……
+					ELSE
+						PRINTFORMW 身を捩り、縋るような視線を%CALLNAME:MASTER%に向けた……
+					ENDIF
+				ENDIF
+		ENDSELECT
 	ENDIF
 ELSE
 	PRINTL 貫いた……
@@ -183,14 +244,14 @@ IF PLAYER == TFLAG:前コマンド実行者
 			ENDIF
 			RETURN 0
 		CASE "正常位", "正常位キス"
-			IF CFLAG:死亡
+			IF CFLAG:死亡 || TEQUIP:縄
 				PRINTFORMW %CALLNAME:TARGET%の体をうつ伏せにひっくり返し、下半身を持ち上げて再び犯し始めた……
 			ELSE
 				PRINTFORMW 膣内から抜き去ることなく%CALLNAME:TARGET%の後ろに回り、再び腰を動かし始めた……
 			ENDIF
 			RETURN 0
 		CASE "対面座位", "背面座位", "騎乗位", "対面座位キス", "騎乗位キス", "後背位手淫", "騎乗位手淫"
-			IF CFLAG:死亡
+			IF CFLAG:死亡 || TEQUIP:縄
 				PRINTFORMW 挿入したまま%CALLNAME:TARGET%の体をうつ伏せにし、下半身を持ち上げて再び犯し始めた……
 			ELSE
 				PRINTFORMW 挿入したまま%CALLNAME:TARGET%を寝かせて四つん這いにし、再び腰を動かし始めた……
@@ -200,7 +261,7 @@ IF PLAYER == TFLAG:前コマンド実行者
 			IF ISSLIME(TARGET)
 				PRINTFORMW %CALLNAME:PLAYER%と%CALLNAME:TARGET%は混ざりあうのを止め、繋がったままかつての形に戻ると%CALLNAME:TARGET%を寝かせて四つん這いにし、カタチある行為に興じている……
 			ELSE
-				PRINTFORMW %CALLNAME:PLAYER%は、膣内に自身の一部を入れたままかつての姿に戻り、%CALLNAME:TARGET%を寝かせて四つん這いにし、腰を動かし始めた……
+				PRINTFORMW %CALLNAME:PLAYER%は、膣内に自身の一部を入れたままかつての姿に戻り、%CALLNAME:TARGET%を寝かせて\@ TEQUIP:縄 ? うつ伏せ # 四つん這い \@にし、腰を動かし始めた……
 			ENDIF
 			RETURN 0
 	ENDSELECT
@@ -218,6 +279,8 @@ ELSEIF TEQUIP:ゲームセンター
 	PRINTFORM %CALLNAME:TARGET%を前かがみにさせ、
 ELSEIF TEQUIP:野外プレイ
 	PRINTFORM %CALLNAME:TARGET%を木に手を付かせ、
+ELSEIF TEQUIP:縄
+	PRINTFORM 縄で縛られた%CALLNAME:TARGET%をうつ伏せに寝かせて下半身を持ち上げ、
 ELSE
 	PRINTFORM %CALLNAME:TARGET%を四つん這いにさせ、
 ENDIF
@@ -1091,10 +1154,68 @@ IF TALENT:アニマル
 	PRINTL アナルに、後ろ足を掴みながら突き入れた……
 	SIF CFLAG:依存度 >= 1500
 		PRINTFORML %CALLNAME:TARGET%は嬉しそうな鳴き声を上げ、舌を出して飼い主の%CALLNAME:PLAYER%に媚びている……
-ELSEIF CFLAG:陥落 && !CFLAG:死亡
-	PRINTL 尻穴にペニスを突き入れた
-	SIF !TALENT:足使用不可
-		PRINTFORML %CALLNAME:TARGET%は%CALLNAME:PLAYER%に足を絡め腰を押し付けてきた……
+ELSEIF CFLAG:陥落 && !CFLAG:死亡 && !TEQUIP:睡眠
+	PRINTL 貫いた
+	IF (FALLTYPE(TARGET) == 1 && (PLAYER == MASTER || TALENT:貞操無頓着)) || FALLTYPE(TARGET) == 2
+		PRINTFORM %CALLNAME:TARGET%も%CALLNAME:PLAYER%に
+		IF ISSLIME(TARGET)
+			PRINT 自身を構成する粘液の一部を絡め腰を
+		ELSE
+			PRINT 足を絡め腰を
+		ENDIF
+		PRINTFORMW 押し付けて\@ PLAYER == MASTER ? くる # いる \@……
+	ELSEIF FALLTYPE(TARGET) == 3
+		PRINTFORM %CALLNAME:TARGET%は%CALLNAME:PLAYER%
+		IF ISSLIME(TARGET)
+			PRINT の腰に自身を構成する粘液の一部を絡め、
+		ELSE
+			PRINT の腰に足を絡め、
+		ENDIF
+		PRINTFORMW %CALLNAME:PLAYER%\@ PENIS(PLAYER) ? のペニスを # との疑似的な性交を \@受け入れている……
+	;この分岐に入ったら貞操無頓着無しの恋慕陥落かつ助手確定
+	ELSE
+		SELECTCASE 相性値(TARGET, PLAYER)
+			CASE IS >= 150
+				PRINTFORM %CALLNAME:TARGET%も%CALLNAME:PLAYER%\@ PENIS(PLAYER) ? のペニスを受け入れる事には # との疑似的な性交には \@悪い気はしないらしく、%CALLNAME:PLAYER%
+				IF ISSLIME(TARGET)
+					PRINT の腰に自身を構成する粘液の一部を絡めて
+				ELSE
+					PRINT の腰に足を絡めて
+				ENDIF
+				PRINTW 応じている……
+			CASE IS > 100
+				PRINTFORMW %CALLNAME:TARGET%は戸惑いを隠せない様子で%CALLNAME:MASTER%に視線を向けている……
+			CASEELSE
+				IF ((TALENT:男嫌い || (SEX(TARGET) == 1 && ABL:ゲイ中毒 < 3)) && SEX(PLAYER) == 1) || TALENT:貞操観念
+					PRINTFORM %CALLNAME:TARGET%は
+					IF TALENT:貞操観念
+						PRINTFORM %CALLNAME:MASTER%以外の相手
+					ELSE
+						PRINTFORM \@ SEX(MASTER) == 1 ? %CALLNAME:MASTER%以外の #  \@男
+					ENDIF
+					PRINTFORM に犯される事に否定的な反応を見せるが、
+					IF ABL:Ａ感覚 >= 3
+						PRINTFORM 敏感な直腸を深く摩擦される
+						IF TEQUIP:ボールギャグ
+							PRINTFORMW 度にくぐもった喘ぎ声をあげている……
+						ELSE
+							PRINTFORMW と拒絶の声はやがて嬌声へと変わっていった……
+						ENDIF
+					ELSEIF TEQUIP:縄
+						PRINTFORMW 縄で拘束された体では抵抗の術はなく、なすがままに%CALLNAME:PLAYER%\@ PENIS(PLAYER) ? のペニスを # との行為を \@受け入れる事となった……
+					ELSE
+						PRINTFORMW \@ TEQUIP:ボールギャグ ? くぐもった声をあげながら # 唇を噛んで \@腸内を前後する感覚に耐えている……
+					ENDIF
+				ELSE
+					PRINTFORM %CALLNAME:TARGET%は
+					IF TEQUIP:アイマスク
+						PRINTFORMW 快感から逃げるように身を捩っている……
+					ELSE
+						PRINTFORMW 身を捩り、縋るような視線を%CALLNAME:MASTER%に向けた……
+					ENDIF
+				ENDIF
+		ENDSELECT
+	ENDIF
 ELSE
 	PRINTL アナルを貫いた……
 ENDIF
@@ -1120,10 +1241,18 @@ IF PLAYER == TFLAG:前コマンド実行者
 			ENDIF
 			RETURN 0
 		CASE "正常位アナル", "正常位アナルキス"
-			PRINTFORMW 腸内から抜き去ることなく%CALLNAME:TARGET%の後ろに回り、再び腰を動かし始めた……
+			IF CFLAG:死亡 || TEQUIP:縄
+				PRINTFORMW %CALLNAME:TARGET%の体をうつ伏せにひっくり返し、尻を持ち上げて再び犯し始めた……
+			ELSE
+				PRINTFORMW 腸内から抜き去ることなく%CALLNAME:TARGET%の後ろに回り、再び腰を動かし始めた……
+			ENDIF
 			RETURN 0
 		CASE "対面座位アナル", "背面座位アナル", "騎乗位アナル", "対面座位アナルキス", "騎乗位アナルキス", "後背位アナル手淫", "騎乗位アナル手淫"
-			PRINTFORMW 挿入したまま%CALLNAME:TARGET%\@ CFLAG:死亡 ? の死体 #\@を寝かせて四つん這いにし、再び腰を動かし始めた……
+			IF CFLAG:死亡 || TEQUIP:縄
+				PRINTFORMW 挿入したまま%CALLNAME:TARGET%の\@ CFLAG:死亡 ? 死体 # 体 \@をうつ伏せにし、尻を持ち上げて再び犯し始めた……
+			ELSE
+				PRINTFORMW 挿入したまま%CALLNAME:TARGET%を寝かせて四つん這いにし、再び腰を動かし始めた……
+			ENDIF
 			RETURN 0
 	ENDSELECT
 ENDIF
@@ -1132,6 +1261,8 @@ IF TEQUIP:睡眠
 	PRINTFORM 眠っている%CALLNAME:TARGET%をうつ伏せにし、
 ELSEIF TEQUIP:ゲームセンター
 	PRINTFORM %CALLNAME:TARGET%を前かがみにさせ、
+ELSEIF TEQUIP:縄
+	PRINTFORM 縄で縛られた%CALLNAME:TARGET%をうつ伏せに寝かせて尻を持ち上げ、
 ELSE
 	PRINTFORM %CALLNAME:TARGET%を四つん這いにさせ、
 ENDIF
