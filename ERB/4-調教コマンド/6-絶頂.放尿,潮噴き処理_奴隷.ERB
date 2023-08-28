@@ -472,6 +472,24 @@ EXP:絶頂経験 += ORG_C+ORG_V+ORG_A+ORG_B
 SIF CSTR:種族 == "スライム"
 	CFLAG:スライム度 += ORG_C+ORG_V+ORG_A+ORG_B
 
+;-------------------------------------------------
+;絶頂時の放尿処理
+;-------------------------------------------------
+CALL ORGASM_ADD_URINE
+
+;-------------------------------------------------
+;調教対象の噴乳チェック
+;-------------------------------------------------
+CALL TARGET_MILK_CHECK
+
+;-------------------------------------------------
+;SCAT MOD
+;-------------------------------------------------
+SIF MOD:SCAT
+	CALL TARGET_DEFECATION_CHECK
+SIF MOD:SCAT2
+	CALL 尿意ゲージ加算
+
 RETURN 1
 
 ;-------------------------------------------------
@@ -547,6 +565,10 @@ SIF CFLAG:死亡
 ;尿意ゲージ5000必要
 SIF BASE:尿意 < 5000
 	RETURN 0
+;射精と同時には無理
+SIF NOWEX:射精
+	RETURN 0
+
 
 
 SELECTCASE SELECTCOMS
@@ -556,12 +578,7 @@ SELECTCASE SELECTCOMS
 	CASE "正常位首絞め", "後背位首絞め", "正常位アナル首絞め", "後背位アナル首絞め",
 		 "尿道挿入"
 	}
-
-		IF (TEQUIP:利尿剤 ||  TALENT:おもらし癖) && !PENIS(TARGET) && !CFLAG:死亡
-			放尿量 = 1
-		ELSE
-			GOTO ELSE
-		ENDIF
+		放尿量 = 1
 	;尿道スライム
 	CASE "スライム尿道責め"
 		IF !TEQUIP:尿道スライム
@@ -569,21 +586,27 @@ SELECTCASE SELECTCOMS
 				RETURN 0
 			放尿量 = LIMIT(TFLAG:尿道スライム量/10, 1, 30)
 		ENDIF
+	;性交させる系コマンドは派生があるので漏れない
+	CASE "正常位させる", "後背位させる", "正常位アナルさせる", "後背位アナルさせる"
+		RETURN 0
 	CASEELSE
-		$ELSE
-		SIF TFLAG:絶頂強度 == 0 || (!TEQUIP:利尿剤 && !TALENT:おもらし癖) || PENIS(TARGET)
+		SIF TFLAG:絶頂強度 == 0
+			RETURN 0
+		;ペニスありの場合はVAB絶頂時のみ
+		SIF PENIS(TARGET) && NOWEX:Ｖ絶頂+NOWEX:Ａ絶頂+NOWEX:Ｂ絶頂 == 0
 			RETURN 0
 ENDSELECT
 
 ;放尿コマンド選んだターンでは絶頂放尿しない
 SELECTCASE SELECTCOMS
-	CASE "放尿", "触手強制放尿"
+	CASE "放尿", "触手強制放尿", "飲尿する", "体内放尿させる"
 		RETURN 0
 ENDSELECT
 
 ;ゲーセンでトイレじゃない場合は必死に耐える
 SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
 	RETURN 0
+
 
 SELECTCASE TFLAG:絶頂強度
 	CASE IS >= 7
@@ -604,6 +627,9 @@ IF TEQUIP:利尿剤
 ENDIF
 SIF TALENT:おもらし癖
 	放尿量++
+
+SIF 放尿量 == 0
+	RETURN 0
 
 PRINTFORML %CALLNAME:TARGET%放尿
 ;PRINTFORML 放尿経験+{放尿量}
@@ -637,24 +663,32 @@ SIF TEQUIP:利尿剤 <= 0
 	TEQUIP:利尿剤 = 0
 
 ;汚れ追加
-SETBIT STAIN:ヴァギナ, 7
+IF PENIS(TARGET)
+	SETBIT STAIN:ペニス, 7
+ELSEIF VAGINA(TARGET)
+	SETBIT STAIN:ヴァギナ, 7
+ENDIF
 
 ;ビデオ撮影時はボーナスカウント
 SIF TEQUIP:ビデオカメラ
 	VIDEOBONUS:放尿++
 
-;下着穿いてたら下着に尿汚れ追加
-SIF TEQUIP:下半身下着
-	SETBIT STAIN:下着, 7
+IF 避妊具(TARGET)
+	CALL 避妊具処理, 0
+	TFLAG:避妊具放尿 = 放尿量
+ELSE
+	;下着穿いてたら下着に尿汚れ追加
+	SIF TEQUIP:下半身下着
+		SETBIT STAIN:下着, 7
 
-;獣人、獣による催淫
-SELECTCASE CSTR:種族
-	CASE "獣人", "獣"
-		CFLAG:PLAYER:媚薬++
-		SIF CFLAG:PLAYER:媚薬%5 == 0
-			CFLAG:PLAYER:残数++
-ENDSELECT
-
+	;獣人、獣による催淫
+	SELECTCASE CSTR:種族
+		CASE "獣人", "獣"
+			CFLAG:PLAYER:媚薬++
+			SIF CFLAG:PLAYER:媚薬%5 == 0
+				CFLAG:PLAYER:残数++
+	ENDSELECT
+ENDIF
 
 ;-------------------------------------------------
 ;潮噴き処理
