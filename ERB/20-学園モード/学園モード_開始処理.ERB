@@ -10,6 +10,7 @@
 #DIMS DYNAMIC 固定用学校, 4
 #DIM DYNAMIC 運命の人選択
 #DIM DYNAMIC 赴任先学年
+#DIM DYNAMIC 優先処理済
 
 通貨単位 = 円
 
@@ -19,6 +20,23 @@ SIF ゲームモード() == "学園モード"
 	CALL PLAYER_CUSTOM
 
 TALENT:PLAYER:霊感 = 1
+
+LOADGLOBAL
+IF 学園グローバル設定あり
+	PRINTL 保存されているクラス分けの設定を適用しますか？
+	PRINTL [0] もちろん
+	PRINTL [1] 今回は全部ランダムで
+	BINPUT
+	IF RESULT == 0
+		FOR LCOUNT, 0, VARSIZE("G固定用学校")
+			固定用学校:LCOUNT = %G固定用学校:LCOUNT%
+		NEXT
+		FOR LCOUNT, 1, 10000
+			キャラ選択フラグ:LCOUNT = Gキャラ選択フラグ:LCOUNT
+		NEXT
+		運命の人 = %G運命の人%
+	ENDIF
+ENDIF
 
 $クラス分け
 PRINTL クラス分け処理中...
@@ -51,14 +69,19 @@ NEXT
 ;舞ヶ原高校
 
 ;固定用の学校は事前に決めておく
-IF 固定用学校:0 == ""
+SIF 固定用学校:0 == ""
 	固定用学校:0 = %学園ランダム("小")%
+SIF 固定用学校:1 == ""
 	固定用学校:1 = %学園ランダム("中")%
+SIF 固定用学校:2 == ""
 	固定用学校:2 = %学園ランダム("高")%
-
-	;教師の赴任先はどれかランダム
+;教師の赴任先は小中高ランダム
+SIF 固定用学校:3 == ""
 	固定用学校:3 = %固定用学校:RAND(0, 3)%
-ENDIF
+
+;キャラ選択フラグつきを優先して処理
+優先処理済 = 0
+$ランダム入学処理
 
 ;マジックアカデミー以外で固定の教師陣
 
@@ -112,6 +135,10 @@ ENDIF
 CSTR:GETCHARANAME("アウグスト=ヴェルテックス"):担当科目 = 社会
 
 FOR LCOUNT, 1, CHARANUM
+	SIF !優先処理済 && !キャラ選択フラグ:NOF(LCOUNT)
+		CONTINUE
+	SIF 優先処理済 && キャラ選択フラグ:NOF(LCOUNT)
+		CONTINUE
 	SELECTCASE NAME:LCOUNT
 		;学校固定の人たち
 		;華練学園の3人
@@ -293,18 +320,13 @@ FOR LCOUNT, 1, CHARANUM
 			ELSE
 				CSTR:LCOUNT:在校 = %学園乱数固定用:4%
 			ENDIF
-		;ラピス組は全員同じ ただしときドル学園以外
+		;ラピス組は全員同じ
 		{
 		CASE "ミミ", "ニャミ", "タイマー", "スミレ", "ハヤト", "翔", "ルート＠超ドー研", "風雅", "烈", "氷海", "鈴花", "ニア(pop'n)", "タクト",
 			 "美結", "翠里", "トア", "大牙", "塵", "ラーズ", "桐生", "蒼刻院 弓弦"
 		}
-			IF 学園乱数固定用:5 == ""
-				DO
-					学園乱数固定用:5 = %学園ランダム("高", 1)%
-					SIF 学園乱数固定用:5 != "プリンセスリパブリック音楽学院高等部"
-						BREAK
-				LOOP 1
-			ENDIF
+			SIF 学園乱数固定用:5 == ""
+				学園乱数固定用:5 = %学園ランダム("高", 1)%
 			IF キャラ選択フラグ:NOF(LCOUNT)
 				CSTR:LCOUNT:在校 = %固定用学校:2%
 			ELSE
@@ -627,6 +649,12 @@ FOR LCOUNT, 1, CHARANUM
 	ENDSELECT
 NEXT
 
+;優先処理が終わったらもう一周
+IF !優先処理済
+	優先処理済 = 1
+	GOTO ランダム入学処理
+ENDIF
+
 ;キャラ番号順にソート
 SORTCHARA
 
@@ -658,15 +686,24 @@ NEXT
 PRINTL
 PRINTFORML 　[90] キャラ固定用の小学校を選択する(現在:%固定用学校:0%) [91] キャラ固定用の中学校を選択する(現在:%固定用学校:1%)
 PRINTFORML 　[92] キャラ固定用の高校を選択する(現在:%固定用学校:2%) [93] キャラ固定用の赴任先を選択する(現在:%固定用学校:3%)
-IF 運命の人選択
-	PRINTFORM 　[96] 運命の人を選ばない
+
+IF 運命の人 != ""
+	PRINTFORM 　[94] 運命の人を\@ 運命の人選択 ? 変更しない # 変更する \@(現在:
+	SETCOLORBYNAME coral
+	PRINTFORM %運命の人%
+	RESETCOLOR
+	PRINT ) 
 ELSE
-	PRINTFORM 　[96] 運命の人を選ぶ(\@ 運命の人 != "" ? %運命の人% # ロケーションでの遭遇確率が上がります \@)
+	PRINTFORM 　[94] 運命の人を\@ 運命の人選択 ? 選ばない # 選ぶ \@(ロケーションでの遭遇確率が上がります)
 ENDIF
-;#;PRINTL 　[97]倫理観変動値の確認 [-98] 学園モード用コマンドテンプレ生成 
-PRINTL 　[99] 無所属or社会人のキャラ一覧
-SIF !運命の人選択
+PRINTL [95] 無所属or社会人のキャラ一覧 [96] 現在の設定をグローバルに保存する
+
+;#;PRINTL 　[97]倫理観変動値の確認 [98] 学園モード用コマンドテンプレ生成 
+IF 運命の人選択
+	PRINTL 　キャラクターをクリックする事で対象を運命の人に指定します（運命の人を選ばないを選択でキャンセル）
+ELSE
 	PRINTL 　キャラクターをクリックすると、やり直したときにクリックしたキャラクターが同じ学校にまとまります（同学年の場合）
+ENDIF
 DRAWLINE
 PRINTPLAIN 　学校一覧　
 PRINTL [100] - 決定 [101] - やり直し
@@ -771,22 +808,10 @@ SELECTCASE RESULT
 			GOTO 学校一覧表示
 		固定用学校:(LRESULT-90) = %学校名:RESULT%
 		GOTO 学校一覧表示
-	CASE 96
-		SIF 運命の人選択
-			運命の人 =
+	CASE 94
 		INVERTBIT 運命の人選択, 0
 		GOTO 学校一覧表示
-	CASE 97
-		FOR LCOUNT, 1, CHARANUM
-			CALL グループ_倫理観計算, LCOUNT
-			PRINTFORML 　No.{NO:LCOUNT} %NAME:LCOUNT, 30% 変動値:{RESULT}
-		NEXT
-		WAIT
-		GOTO 学校一覧表示 
-	CASE 98
-		CALL 学園モード用コマンドテンプレ生成
-		GOTO 学校一覧表示
-	CASE 99
+	CASE 95
 		DRAWLINE
 		PRINTL □学園モード未実装キャラ
 		未実装キャラ = 0
@@ -806,7 +831,7 @@ SELECTCASE RESULT
 		PRINTL 
 		PRINTFORML 　計{未実装キャラ}人
 		IF 運命の人選択
-			PRINTL 　[0] 運命の人を選ばない
+			PRINTL 　[0] 運命の人を\@ 運命の人 != "" ? 変更しない # 選ばない \@
 			BINPUT
 			SIF RESULT
 				運命の人 = %CSVNAME(RESULT)%
@@ -814,6 +839,37 @@ SELECTCASE RESULT
 		ELSE
 			WAIT
 		ENDIF
+		GOTO 学校一覧表示
+	CASE 96
+		LOADGLOBAL
+		PRINTL 現在のキャラ固定用設定（選択中キャラと固定用学校）+運命の人の設定を保存し、ニューゲーム時に呼び出せるようにしますか？
+		SIF 学園グローバル設定あり
+			PRINTL （注意：現在保存されている設定は上書きされます）
+		PRINTL [0] 保存する
+		PRINTL [1] 保存しない
+		BINPUT
+		IF RESULT == 0
+			FOR LCOUNT, 0, VARSIZE("G固定用学校")
+				G固定用学校:LCOUNT = %固定用学校:LCOUNT%
+			NEXT
+			FOR LCOUNT, 1, 10000
+				Gキャラ選択フラグ:LCOUNT = キャラ選択フラグ:LCOUNT
+			NEXT
+			G運命の人 = %運命の人%
+			学園グローバル設定あり = 1
+			SAVEGLOBAL
+			PRINTW 設定を保存しました
+		ENDIF
+		GOTO 学校一覧表示
+	CASE 97
+		FOR LCOUNT, 1, CHARANUM
+			CALL グループ_倫理観計算, LCOUNT
+			PRINTFORML 　No.{NO:LCOUNT} %NAME:LCOUNT, 30% 変動値:{RESULT}
+		NEXT
+		WAIT
+		GOTO 学校一覧表示 
+	CASE 98
+		CALL 学園モード用コマンドテンプレ生成
 		GOTO 学校一覧表示
 	CASE 100
 		IF 入学先 == -1
