@@ -552,6 +552,60 @@ ELSEIF ISNUMERIC(入力文字)
 ENDIF
 RETURNF 0
 
+;;;10倍で保存されていることを想定した変数を書き出す
+;;;右詰めで-99.9～999.9の間で表示
+;;;ゼロ処理をオンにして入力が0のとき空白で出力
+@X10PRINT5DIGIT(数値, ゼロ処理=0)
+#DIM DYNAMIC 数値
+#DIM DYNAMIC 表示数値
+#DIM DYNAMIC ゼロ処理
+
+IF ゼロ処理 && !数値
+	PRINT      
+	RETURN 0
+ENDIF
+
+表示数値 = LIMIT(数値, -999, 9999)
+SELECTCASE 表示数値
+	CASE -99 TO -1;-9.9～-0.1(スペース1個)
+		PRINT  
+	CASE 0 TO 99;0.0～9.9(スペース2個)
+		PRINT   
+	CASE 100 TO 999;10.0～99.9(スペース1個)
+		PRINT  
+ENDSELECT
+
+PRINTFORM {表示数値/10}.{ABS(表示数値)%10}
+RETURN 0
+
+@キャラバストサイズ表示(対象)
+#DIM DYNAMIC 対象
+#DIM DYNAMIC トップ
+#DIM DYNAMIC アンダー
+#DIM DYNAMIC 成長割合
+#DIM DYNAMIC トップMIN
+#DIM DYNAMIC アンダーMIN
+#DIM DYNAMIC トップMAX
+#DIM DYNAMIC アンダーMAX
+
+トップMIN = バストサイズ詳細トップ:(NOF(対象)):(TALENT:対象:バストサイズ)
+アンダーMIN = バストサイズ詳細アンダー:(NOF(対象)):(TALENT:対象:バストサイズ)
+トップMAX = バストサイズ詳細トップ:(NOF(対象)):(TALENT:対象:バストサイズ+1)
+アンダーMAX = バストサイズ詳細アンダー:(NOF(対象)):(TALENT:対象:バストサイズ+1)
+
+IF TALENT:対象:バスト成長 && トップMIN && アンダーMIN && トップMAX && アンダーMAX
+	成長割合 = LIMIT(CFLAG:対象:バスト成長, 0, 999)
+	トップ = トップMIN
+	アンダー = アンダーMIN
+	トップ += (トップMAX-トップMIN)*成長割合/1000
+	アンダー += (アンダーMAX-アンダーMIN)*成長割合/1000
+ELSE
+	トップ = トップMIN
+	アンダー = アンダーMIN
+ENDIF
+CALL バストサイズ詳細表示(トップ, アンダー)
+
+
 @バストサイズ詳細表示(トップ, アンダー)
 #DIM DYNAMIC トップ
 #DIM DYNAMIC アンダー
