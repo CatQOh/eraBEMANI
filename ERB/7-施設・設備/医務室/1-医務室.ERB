@@ -706,9 +706,15 @@ RESTART
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 獲得リソース数
 #DIMS DYNAMIC 心臓リソース
-#DIM DYNAMIC 挿入回数
-#DIM DYNAMIC 射精回数
+#DIM DYNAMIC Ｖ挿入回数
+#DIM DYNAMIC Ａ挿入回数
+#DIM DYNAMIC Ｖ射精回数
+#DIM DYNAMIC Ａ射精回数
 #DIM DYNAMIC 最低保証
+#DIM DYNAMIC 苦痛獲得数
+#DIM DYNAMIC 恐怖獲得数
+#DIM DYNAMIC 否定獲得数
+#DIM DYNAMIC 絶頂回数
 
 DRAWLINE
 
@@ -811,8 +817,13 @@ SELECTCASE RESULT
 		CUSTOMDRAWLINE ✂----------
 		RESETCOLOR
 		PRINTFORML %NAME:対象%を解体しました
+		;楽しみながら解体の処理
 		IF RESULT == 2
-			挿入回数 = RAND(10, 25)/2
+			;挿入経験
+			Ｖ挿入回数 = RAND(7, 14)
+			Ａ挿入回数 = RAND(7, 14)
+			Ｖ射精回数 = RAND(4, Ｖ挿入回数)
+			Ａ射精回数 = RAND(4, Ａ挿入回数)
 			IF VAGINA(対象)
 				IF TALENT:対象:処女
 					PRINTL ＜処女喪失＞
@@ -827,37 +838,85 @@ SELECTCASE RESULT
 					PRINTL ＜再生処女喪失＞
 					TALENT:対象:再生処女 = 0
 				ENDIF
-				CALL EXPUP, "Ｖ経験", 挿入回数, 対象
-				
-				CALL EXPUP, "Ａ経験", 挿入回数, 対象
+				CALL EXPUP, "Ｖ経験", Ｖ挿入回数, 対象
+				CALL EXPUP, "Ａ経験", Ａ挿入回数, 対象
 			ELSE
-				CALL EXPUP, "Ａ経験", 挿入回数*2, 対象
+				CALL EXPUP, "Ａ経験", Ｖ挿入回数+Ａ挿入回数, 対象
 			ENDIF
 			IF PENIS(MASTER)
-				射精回数 = RAND(5, 11)/2
-				SIF VAGINA(対象)
-					CALL EXPUP, "膣射経験", 射精回数, 対象
-				CALL EXPUP, "精液経験", 射精回数*2, 対象
-				CALL EXPUP, "射精経験", 射精回数*2, MASTER
+				IF VAGINA(対象)
+					CALL EXPUP, "膣射経験", Ｖ射精回数, 対象
+					中出され回数:対象:(NOF(MASTER)) += Ｖ射精回数
+					中出し回数:MASTER:(NOF(対象)) += Ｖ射精回数
+					アナル中出され回数:対象:(NOF(MASTER)) += Ａ射精回数
+					アナル中出し回数:MASTER:(NOF(対象)) += Ａ射精回数
+				ELSE
+					アナル中出され回数:対象:(NOF(MASTER)) += Ｖ射精回数+Ａ射精回数
+					アナル中出し回数:MASTER:(NOF(対象)) += Ｖ射精回数+Ａ射精回数
+				ENDIF
+				CALL EXPUP, "精液経験", Ｖ射精回数+Ａ射精回数, 対象
+				CALL EXPUP, "射精経験", Ｖ射精回数+Ａ射精回数, MASTER
+				経験回数:対象:(NOF(MASTER)) += Ｖ挿入回数+Ａ挿入回数
+				経験回数:MASTER:(NOF(対象)) += Ｖ挿入回数+Ａ挿入回数
 			ENDIF
+			;その他経験
+			絶頂回数 = 3+RAND(0, ABL:MASTER:技巧+ABL:対象:Ｖ感覚+ABL:対象:Ａ感覚+ABL:対象:マゾっ気)
 			CALL EXPUP, "絶頂経験", RAND(5, 11), 対象
-			SIF PENIS(対象)
-				CALL EXPUP, "射精経験", RAND(5, 11), 対象
-			最低保証 = TALENT:対象:おもらし癖 ? 3 # 0
-			CALL EXPUP, "放尿経験", 最低保証+RAND(1, 5), 対象
-			SIF TALENT:対象:妊娠
+			IF PENIS(対象)
+				TIMES 絶頂回数, 0.75
+					CALL EXPUP, "射精経験", 絶頂回数, 対象
+					CALL EXPUP, "精液経験", 絶頂回数, MASTER
+			ENDIF
+			IF MOD:SCAT2
+				最低保証 = TALENT:対象:おもらし癖 ? 3 # 0
+				CALL EXPUP, "放尿経験", 最低保証+RAND(1, 5), 対象
+			ENDIF
+			IF TALENT:対象:妊娠
 				CALL EXPUP, "流産経験", 1, 対象
+				TALENT:対象:妊娠 = 0
+				SIF !TALENT:隷属
+					否定獲得数 += RAND(150, 300)
+			ENDIF
 			CALL EXPUP, "異常経験", 5, 対象
-			CALL JUELUP, "苦痛", RAND(100, 1000)*100, 対象
-			CALL JUELUP, "恐怖", RAND(100, 1000)*100, 対象
+			;珠
+			苦痛獲得数 += RAND(100, 500)
+			恐怖獲得数 += RAND(100, 500)
+			IF TALENT:MASTER:サド
+				苦痛獲得数 += 200
+				恐怖獲得数 += 200
+			ENDIF
+			IF TALENT:MASTER:狂気
+				苦痛獲得数 += 100
+				恐怖獲得数 += 300
+			ENDIF
+			IF TALENT:対象:痛みに弱い
+				TIMES 苦痛獲得数, 1.50
+				TIMES 恐怖獲得数, 1.20
+			ELSEIF TALENT:対象:痛みに強い
+				TIMES 苦痛獲得数, 0.75
+			ENDIF
+			SIF TALENT:対象:臆病
+				恐怖獲得数 += 100
+			SIF FALLTYPE(対象) == 1
+				否定獲得数 += RAND(150, 300)
+			IF TALENT:対象:感情乏しい
+				TIMES 恐怖獲得数, 0.80
+				TIMES 否定獲得数, 0.80
+			ENDIF
+			CALL JUELUP, "苦痛", 苦痛獲得数*100, 対象
+			CALL JUELUP, "恐怖", 恐怖獲得数*100, 対象
+			SIF 否定獲得数
+				CALL JUELUP, "否定", 否定獲得数*100, 対象
 			SIF TALENT:対象:マゾ
 				CALL JUELUP, "欲情", RAND(50, 200), 対象
-			CALL EXPUP, "嗜虐快楽経験", 10, MASTER
+			最低保証 = 恐怖獲得数/100
+			CALL EXPUP, "嗜虐快楽経験", 最低保証+RAND(5, 10), MASTER
 			IF !TALENT:MASTER:狂気
 				TALENT:MASTER:狂気 = 1
 				PRINTFORML %CALLNAME:MASTER%は【狂気】を得た
 			ENDIF
 		ENDIF
+		;リソース（液体）
 		PRINTFORML 保管済み\@ ISSLIME(対象) ? 粘液 # 血液 \@+{獲得リソース数(対象, "体液")}ml
 		IF ISSLIME(対象)
 			リソース:粘液 += 獲得リソース数(対象, "体液")
@@ -872,6 +931,7 @@ SELECTCASE RESULT
 			PRINTFORML 保管済み母乳+{獲得リソース数(対象, "母乳")}ml
 			リソース:母乳 += 獲得リソース数(対象, "母乳")
 		ENDIF
+		;リソース（部位）
 		IF PENIS(対象)
 			PRINTFORML %NAME:対象%の男性器+1
 			性器リソース:NOF(対象):男性器++
@@ -892,14 +952,12 @@ SELECTCASE RESULT
 			PRINTL 翼の生えた胴体+1
 			リソース:翼の生えた胴体++
 		ENDIF
-		IF !GROUPMATCH(CHARANAMEF(対象), "にんじん", "ハート")
-			IF TALENT:対象:足使用不可
-				PRINTL 人魚の下半身+1
-				リソース:人魚の下半身++
-			ELSE
-				PRINTFORML %NAME:対象%の臀部+1
-				性器リソース:NOF(対象):臀部++
-			ENDIF
+		IF TALENT:対象:足使用不可 && !GROUPMATCH(CHARANAMEF(対象), "にんじん", "ハート")
+			PRINTL 人魚の下半身+1
+			リソース:人魚の下半身++
+		ELSE
+			PRINTFORML %NAME:対象%の臀部+1
+			性器リソース:NOF(対象):臀部++
 		ENDIF
 		IF TALENT:対象:尻尾
 			PRINTL 切断された尻尾+1
@@ -915,6 +973,7 @@ SELECTCASE RESULT
 			PRINTFORML %心臓リソース%+1
 			リソース:心臓リソース++
 		ENDIF
+
 		IF NOF(対象) < 10000 && !DNAデータ:NOF(対象)
 			PRINTFORML %CALLNAME:対象%のDNAデータを解析できるようになりました
 			DNAデータ:NOF(対象) = 1
@@ -999,15 +1058,15 @@ RETURNF リソース数
 
 DRAWLINE
 PRINTL 　□体液
-PRINT 　
+PRINT 　　
 FOR LCOUNT, GETNUM(リソース, "母乳"), GETNUM(リソース, "母乳")+50
 	SIF リソース:LCOUNT
-		PRINTFORM %ERDNAME(リソース, LCOUNT)%×{リソース:LCOUNT}ml 
+		PRINTFORM %ERDNAME(リソース, LCOUNT)%×{リソース:LCOUNT}ml
 NEXT
 PRINTL 
 
 PRINTL 　□身体部位
-PRINT 　
+PRINT 　　
 FOR LCOUNT, GETNUM(リソース, "ケモミミが付いた頭"), GETNUM(リソース, "ケモミミが付いた頭")+50
 	SIF リソース:LCOUNT
 		PRINTFORM %ERDNAME(リソース, LCOUNT)%×{リソース:LCOUNT} 
@@ -1015,7 +1074,7 @@ NEXT
 PRINTL 
 
 PRINTL 　□機械部品
-PRINT 　
+PRINT 　　
 FOR LCOUNT, GETNUM(リソース, "マテリアル"), GETNUM(リソース, "マテリアル")+50
 	SIF リソース:LCOUNT
 		PRINTFORM %ERDNAME(リソース, LCOUNT)%×{リソース:LCOUNT} 
@@ -1062,9 +1121,9 @@ FOR LCOUNT, 0, 20000
 			BREAK
 		ENDIF
 		IF 表示のみ
-			PRINTFORML 　%CSVNAMEF(LCOUNT)%の%性器種別%({性器リソース:LCOUNT:性器種別}個)
+			PRINTFORML 　　%CSVNAMEF(LCOUNT)%の%性器種別%({性器リソース:LCOUNT:性器種別}個)
 		ELSE
-			PRINTFORML 　[{LCOUNT, 5}] %CSVNAMEF(LCOUNT)%の%性器種別%({性器リソース:LCOUNT:性器種別}個)
+			PRINTFORML 　　[{LCOUNT, 5}] %CSVNAMEF(LCOUNT)%の%性器種別%({性器リソース:LCOUNT:性器種別}個)
 		ENDIF
 		表示数++
 	ENDIF
@@ -1074,6 +1133,11 @@ IF !表示数
 	PRINTL 
 	PRINTL 　----------何もありません----------
 	PRINTL 
+ELSE
+	SIF 表示数 < 3
+		PRINTL 
+	SIF 表示数 < 2
+		PRINTL 
 ENDIF
 
 DRAWLINE
