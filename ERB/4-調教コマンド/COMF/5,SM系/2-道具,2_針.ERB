@@ -21,9 +21,10 @@ IF PLAYER == ASSI
 	SIF ABL:ASSI:従順 < 5 && !TALENT:ASSI:サド && !TALENT:ASSI:針さばき
 		COMRESULT = 0
 ENDIF
-;全裸でないとダメ（足元、特殊は除く）
-コマンド実行条件 += "対象が服を着ていると実行できない/"
-SIF OVER_BUST(TARGET) != "" || OVER_GENITAL(TARGET) != ""
+;ＣorＰとＢが両方塞がってるとダメ
+コマンド実行条件 += "対象の刺突可能な部位が服で覆われてるか道具使用中だと実行できない/"
+コマンド実行条件 += "対象が[去勢済み]の場合胸が露出していないかB道具使用中だと実行できない/"
+SIF (((PENIS(TARGET) && Ｐ使用中(TARGET)) || TEQUIP:クリキャップ || TALENT:去勢済み) || OVER_GENITAL(TARGET) != "") && (OVER_BUST(TARGET) != "" || Ｂ使用中(TARGET))
 	COMRESULT = 0
 ;触手調教中はダメ
 コマンド実行条件 += "触手召喚中は実行できない/"
@@ -40,21 +41,13 @@ SIF TEQUIP:エプロン
 コマンド実行条件 += "睡眠中は実行できない/"
 SIF TEQUIP:睡眠
 	COMRESULT = 0
-;ＣorＰとＢが両方塞がってるとダメ
-コマンド実行条件 += "対象のCとBが両方使用中は実行できない/"
-SIF ((PENIS(TARGET) && Ｐ使用中(TARGET)) || TEQUIP:クリキャップ) && Ｂ使用中(TARGET)
-	COMRESULT = 0
-;去勢済みでＢ塞がってるとダメ
-コマンド実行条件 += "対象が[去勢済み]の場合B道具使用中は実行できない/"
-SIF TALENT:去勢済み && Ｂ使用中(TARGET)
-	COMRESULT = 0
 
 RETURNF COMRESULT
 
 @COM_針
-IF Ｂ使用中(TARGET)
+IF OVER_BUST(TARGET) != "" || Ｂ使用中(TARGET)
 	TFLAG:刺突箇所 = 2
-ELSEIF ((PENIS(TARGET) && Ｐ使用中(TARGET)) || TEQUIP:クリキャップ)
+ELSEIF ((PENIS(TARGET) && Ｐ使用中(TARGET)) || TEQUIP:クリキャップ || TALENT:去勢済み) || OVER_GENITAL(TARGET) != ""
 	TFLAG:刺突箇所 = 1
 ELSEIF !ISSKIP() && (PENIS(TARGET) || SEX(TARGET) == 2)
 	PRINTL 針でどこを責めますか？

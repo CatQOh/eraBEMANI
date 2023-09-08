@@ -595,7 +595,7 @@ RETURNF ARG*1000-(ARG*100*(ARG:1-ARG))
 #DIM DYNAMIC 色保存用
 
 PRINTFORML □%CALLNAME:対象%を鉱物化する際の色を設定してください
-CALL RGBBAR, CFLAG:対象:タグ色/0x10000, CFLAG:対象:タグ色%0x10000/0x100, CFLAG:対象:タグ色%0x100
+CALL RGBBAR, CFLAG:対象:タグ色/0x10000, CFLAG:対象:タグ色%0x10000/0x100, CFLAG:対象:タグ色%0x100, , -1
 
 色保存用 = RESULT
 
@@ -720,13 +720,14 @@ CALL CLEAR_CHARA, 対象, 0, 1
 
 RETURN 1
 
-@RGBBAR, INT_R, INT_G, INT_B, DEFAULT
+@RGBBAR, INT_R, INT_G, INT_B, DEFAULT, 対象
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC INT_R
 #DIM DYNAMIC INT_G
 #DIM DYNAMIC INT_B
 #DIM DYNAMIC DEFAULT
+#DIM DYNAMIC 対象
 {
 #DIMS DYNAMIC 色プリセット = 
 "ゴールド",
@@ -744,6 +745,9 @@ GDISPOSE 1
 GDISPOSE 2
 GDISPOSE 3
 REDRAW 0
+LOADGLOBAL
+SIF 対象 >= 0 && NOF(対象) > 10000
+	対象 = -1
 CALL LOOP_CLEARLINE
 
 GCREATE 0, 256, 17
@@ -822,7 +826,9 @@ ENDIF
 DRAWLINE
 PRINTPLAIN 　RGB　
 PRINTBUTTON "[0] - 戻る ", "0"
-PRINTBUTTON "[1] - 決定", "1"
+PRINTBUTTON "[1] - 決定 ", "1"
+SIF 対象 >= 0 && NOF(対象) < 10000
+	PRINTBUTTON "[2] - グローバル色設定 ", "2"
 PRINTL 
 
 ONEINPUTS
@@ -839,7 +845,72 @@ SELECTCASE RESULTS
 		GDISPOSE 1
 		GDISPOSE 2
 		GDISPOSE 3
+		SIF Gタグ色保存設定 && 対象 > 0
+			Gタグ色:NOF(対象) = COLOR_FROMRGB(INT_R, INT_G, INT_B)
+		SAVEGLOBAL
 		RETURN COLOR_FROMRGB(INT_R, INT_G, INT_B)
+	CASE "2"
+		IF 対象 >= 0 && NOF(対象) < 10000
+			PRINTFORML グローバルに保存された色設定はキャラを購入した際などに全セーブデータで自動的に反映されます
+			PRINTFORML [0] 現在の色をグローバルに保存して決定
+			PRINTFORML [1] 全キャラのタグ色を一括でグローバルに保存して決定
+			PRINTFORML [2] 色決定時に自動でグローバルにも保存する（現在：\@ Gタグ色保存設定 ? オン # オフ \@）
+			PRINTFORML [3] このキャラのグローバル色設定をクリア
+			PRINTFORML [4] 全キャラのグローバル色設定をクリア
+			PRINTFORML [100] 戻る
+			BINPUT
+			SELECTCASE RESULT
+				CASE 0
+					GDISPOSE 0
+					GDISPOSE 1
+					GDISPOSE 2
+					GDISPOSE 3
+					Gタグ色:NOF(対象) = COLOR_FROMRGB(INT_R, INT_G, INT_B)
+					SAVEGLOBAL
+					RETURN COLOR_FROMRGB(INT_R, INT_G, INT_B)
+				CASE 1
+					PRINTL 現在購入済のキャラの色設定を全てグローバルに保存します。よろしいですか？
+					PRINTL [0] はい
+					PRINTL [1] いいえ
+					BINPUT
+					IF RESULT == 0
+						FOR LCOUNT, 0, CHARANUM
+							SIF NOF(LCOUNT) < 10000 && CFLAG:LCOUNT:タグ色
+								Gタグ色:NOF(LCOUNT) = CFLAG:LCOUNT:タグ色
+						NEXT
+						Gタグ色:NOF(対象) = COLOR_FROMRGB(INT_R, INT_G, INT_B)
+						SAVEGLOBAL
+						RETURN COLOR_FROMRGB(INT_R, INT_G, INT_B)
+					ENDIF
+				CASE 2
+					INVERTBIT Gタグ色保存設定, 0
+					PRINTL 設定を変更しました
+					SIF Gタグ色保存設定
+						PRINTL （以降タグ色を決定すると自動でグローバルにも保存されます）
+					SAVEGLOBAL
+					WAIT
+				CASE 3
+					PRINTFORML %CALLNAME:対象%のグローバル色設定をクリアします。よろしいですか？
+					PRINTL [0] はい
+					PRINTL [1] いいえ
+					BINPUT
+					IF RESULT == 0
+							Gタグ色:NOF(対象) = 0
+							PRINTW 設定をクリアしました
+					ENDIF
+					SAVEGLOBAL
+				CASE 4
+					PRINTFORML 全キャラのグローバル色設定をクリアします。よろしいですか？（元に戻せません）
+					PRINTL [0] はい
+					PRINTL [1] いいえ
+					BINPUT
+					IF RESULT == 0
+							VARSET Gタグ色
+							PRINTW 設定をクリアしました
+					ENDIF
+					SAVEGLOBAL
+			ENDSELECT
+		ENDIF
 	CASE "10"
 		INT_R = DEFAULT/0x10000
 		INT_G = DEFAULT/0x100%0x100
