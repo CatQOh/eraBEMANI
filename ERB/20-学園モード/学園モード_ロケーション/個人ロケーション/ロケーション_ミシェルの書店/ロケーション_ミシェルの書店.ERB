@@ -1,0 +1,95 @@
+﻿@ロケーション条件_ミシェルの書店
+#DIM DYNAMIC LCOUNT
+;出現条件のキャラをフルネーム(NAME)で入れる
+{
+#DIMS DYNAMIC 条件用キャラ = 
+"アルフォンス・ミシェル"
+}
+
+FOR LCOUNT, 0, VARSIZE("条件用キャラ")
+	IF GETCHARANAME(条件用キャラ:LCOUNT) > 0
+		SIF 好感度合計(GETCHARANAME(条件用キャラ:LCOUNT)) >= 100
+			RETURN GETCHARANAME(条件用キャラ:LCOUNT)
+	ENDIF
+NEXT
+
+RETURN 0
+
+@ロケーション可否_ミシェルの書店
+;時間帯などで使えない場合は理由を書く
+SIF ターン == "夜"
+	ロケーション可否 = 本日閉店
+
+@バイト条件_ミシェルの書店
+;バイトの時間帯などを書く
+バイト要項 = 朝～夕方のシフトで募集
+;バイト可能かどうかの条件式
+SIF !GROUPMATCH(ターン, "夜")
+	バイト可能 = 1
+;ロケーション解禁済みで可能
+;返り値はその店の責任者で、面接官扱いになる。居なければ-1でOK
+SIF FINDELEMENTF(解禁済みロケーション, "アルフォンス・ミシェル") >= 0
+	RETURN GETCHARANAME("")
+
+RETURN 0
+
+;バイト時に好感度が上がるキャラ
+@職場出現キャラ_ミシェルの書店
+#DIM DYNAMIC 対象
+{
+#DIMS DYNAMIC 出現キャラ =
+"アルフォンス・ミシェル",
+}
+
+対象 = GETCHARANAME(出現キャラ:(RAND:VARSIZE("出現キャラ")))
+
+SIF 対象 > 0 && CSTR:対象:現在地 == ""
+	RETURN 対象
+
+RETURN 0
+
+@出現キャラ_ミシェルの書店
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC グループ数
+#DIM DYNAMIC 始点
+#DIM DYNAMIC 終点
+
+;NOではなく登録番号で指定する
+IF データベース参照中
+	始点 = データベース参照中
+	終点 = データベース参照中+1
+ELSE
+	IF 始点
+		終点 = 始点
+		始点 = 1
+	ELSE
+		始点 = RAND(1, CHARANUM)
+		終点 = CHARANUM
+	ENDIF
+ENDIF
+
+FOR LCOUNT, 始点, 終点
+	;学校などに行ってるキャラは居ない
+	SIF CSTR:LCOUNT:現在地 != "" && !データベース参照中
+		CONTINUE
+	;出現率:LCOUNT = {出現率(100分率)} で指定できる
+	SELECTCASE CHARANAMEF(LCOUNT)
+		CASE "アルフォンス・ミシェル"
+			SIF 出現率:LCOUNT >= 0
+				出現率:LCOUNT = 100
+		;ほぼ読書家付いてる罠
+		CASE "浅見 文彦", "セシル", "みっちゃん", "にんじん", "ヒュー"
+			SIF 出現率:LCOUNT >= 0
+				出現率:LCOUNT = 10
+		CASEELSE
+			IF TALENT:LCOUNT:読書家
+				SIF 出現率:LCOUNT >= 0
+					出現率:LCOUNT = 10
+			ENDIF
+	ENDSELECT
+NEXT
+
+SIF 始点 == 1
+	RETURN
+SIF !データベース参照中
+	RESTART
