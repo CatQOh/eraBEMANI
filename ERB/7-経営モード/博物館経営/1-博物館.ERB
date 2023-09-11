@@ -414,20 +414,19 @@ SELECTCASE RESULT
 		RESETCOLOR
 		CALL 稼働停止, 対象
 		CSTR:対象:ロスト要因 = 死亡
-		SELECTCASE CHARANAMEF(対象)
-			CASE "にんじん"
-				IF CMATCH(CSTR:配属, "博物館")
-					CSTR:対象:ロスト詳細 = %加工者%の手により魂を失いカカシとなった
-				ELSE
-					CSTR:対象:ロスト詳細 = %CALLNAME:MASTER%の手により魂を失いカカシとなった
-				ENDIF
-			CASEELSE
-				IF CMATCH(CSTR:配属, "博物館")
-					CSTR:対象:ロスト詳細 = %加工者%の手で永久に稼働を停止した
-				ELSE
-					CSTR:対象:ロスト詳細 = %CALLNAME:MASTER%の手で永久に稼働を停止した
-				ENDIF
-		ENDSELECT
+		IF GROUPMATCH("にんじん", CHARANAMEF(対象), CSVNAME(CFLAG:対象:複製))
+			IF CMATCH(CSTR:配属, "博物館")
+				CSTR:対象:ロスト詳細 = %加工者%の手により魂を失いカカシとなった
+			ELSE
+				CSTR:対象:ロスト詳細 = %CALLNAME:MASTER%の手により魂を失いカカシとなった
+			ENDIF
+		ELSE
+			IF CMATCH(CSTR:配属, "博物館")
+				CSTR:対象:ロスト詳細 = %加工者%の手で永久に稼働を停止した
+			ELSE
+				CSTR:対象:ロスト詳細 = %CALLNAME:MASTER%の手で永久に稼働を停止した
+			ENDIF
+		ENDIF
 		CALL CLEAR_CHARA, 対象, 0, 1, 1
 		RETURN 1
 ENDSELECT
@@ -1470,12 +1469,11 @@ FOR LCOUNT, 0, 必要空き枠
 		MUSEUM:空き変数:名前 += "(液浸標本)"
 	ELSE
 		IF 作品種類 == "人形"
-			SELECTCASE CHARANAMEF(対象)
-				CASE "にんじん"
-					MUSEUM:空き変数:名前 += "ただのカカシとなった"
-				CASEELSE
-					MUSEUM:空き変数:名前 += "稼働を停止した"
-			ENDSELECT
+			IF GROUPMATCH("にんじん", CHARANAMEF(対象), CSVNAME(CFLAG:対象:複製))
+				MUSEUM:空き変数:名前 += "ただのカカシとなった"
+			ELSE
+				MUSEUM:空き変数:名前 += "稼働を停止した"
+			ENDIF
 		ENDIF
 		SIF TALENT:対象:妊娠 && 作品種類 != "白骨死体"
 			MUSEUM:空き変数:名前 += "妊娠した"
@@ -1534,8 +1532,13 @@ FOR LCOUNT, 0, 必要空き枠
 NEXT
 
 IF NOF(対象) < 10000 && !DNAデータ:NOF(対象) && 加工方法 != "胎児"
-	PRINTFORML %CALLNAME:対象%のDNAデータを解析できるようになりました
-	DNAデータ:NOF(対象) = 1
+	IF 作品種類 == "人形"
+		PRINTFORML %CALLNAME:対象%の構成データを解析できるようになりました
+		分析データ:NOF(対象) = 1
+	ELSE
+		PRINTFORML %CALLNAME:対象%のDNAデータを解析できるようになりました
+		DNAデータ:NOF(対象) = 1
+	ENDIF
 ENDIF
 
 IF 加工方法 != "胎児"

@@ -365,7 +365,7 @@ SELECTCASE RESULT
 			PRINTFORML □不規則性プログラムを追加 制御不能基板が必要(現在{リソース:制御不能基板}個所持)
 			FOR LCOUNT, 0, 100
 				SELECTCASE ABLNAME:LCOUNT
-					CASE "自慰中毒", "性液中毒", "レズ中毒", "ゲイ中毒", "性交中毒"
+					CASE "自慰中毒", "精液中毒", "レズ中毒", "ゲイ中毒", "性交中毒"
 					CASEELSE
 						CONTINUE
 				ENDSELECT
@@ -933,6 +933,9 @@ ENDSELECT
 @機械化
 #DIM DYNAMIC 可否
 #DIM DYNAMIC 対象
+#DIM DYNAMIC 童貞フラグ
+#DIM DYNAMIC 処女フラグ
+#DIM DYNAMIC ふたなりフラグ
 
 DRAWLINE
 
@@ -944,6 +947,10 @@ FOR PAGING, 0, CHARANUM
 	SIF TALENT:PAGING:無機物 || CSTR:PAGING:種族 == "機械"
 		可否 = 0
 	SIF TALENT:PAGING:妊娠
+		可否 = 0
+	;DISABLEチェック
+	CALLFORM DISABLE, "EVENT_機械化", PAGING
+	SIF RESULT
 		可否 = 0
 	CALL PAGING, 可否
 NEXT
@@ -961,6 +968,11 @@ BINPUT
 SIF RESULT == 1
 	RETURN
 
+;フラグ記録
+童貞フラグ = TALENT:対象:童貞
+処女フラグ = TALENT:対象:処女
+ふたなりフラグ = TALENT:対象:ふたなり
+
 ;一度幽体離脱処理を行う
 CALL 幽体離脱, -1, 対象
 
@@ -971,15 +983,10 @@ CALL 幽体離脱, -1, 対象
 TALENT:対象:無機物 = 1
 CSTR:対象:種族 = 機械
 
-;経験が無ければ童貞、処女にする
-SELECTCASE SEX(対象)
-	CASE 1
-		SIF CSTR:対象:童貞 == ""
-			TALENT:対象:童貞 = 1
-	CASE 2
-		SIF CSTR:対象:処女 == ""
-			TALENT:対象:処女 = 1
-ENDSELECT
+;経験が無ければ童貞、処女にする ふたなりも反映
+TALENT:対象:童貞 = 童貞フラグ
+TALENT:対象:処女 = 処女フラグ
+TALENT:対象:ふたなり = ふたなりフラグ
 
 PRINTFORMW %CALLNAME:対象%の人格を機械の体に移植し、身体は依代として保管しました
 MONEY -= 100000

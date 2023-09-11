@@ -8,7 +8,7 @@
 #DIM DYNAMIC 人数
 #DIM 着床告知;DYNAMICじゃない変数 プレーヤーへの告知用なので起動ごとに破棄してもよい
 #DIM DYNAMIC DEUIL
-#DIM DYNAMIC 売却可能条件
+#DIM DYNAMIC 売却可
 #DIM DYNAMIC 妖精イベント, 2
 #DIM DYNAMIC YORIDORI
 #DIM DYNAMIC 最大体力
@@ -26,43 +26,23 @@ IF OPTION:口上表示
 ENDIF
 
 IF TARGET >= 0 && !CFLAG:キャラロスト
-	;売却可能&助手可能判定 陥落系で無視できるって条件はほとんど意味無いか
-	;従順+欲望が6以上
-	SIF ABL:従順+ABL:欲望 >= 6
-		売却可能条件 = 1
-
-	;[反抗的][気丈]なら従順LV4以上必要 服従系陥落素質があれば無視できる
-	IF (TALENT:反抗的 || TALENT:気丈) && !TALENT:服従 && !TALENT:隷属
-		SIF ABL:従順 < 4
-			売却可能条件 = 0
-	ENDIF
-
-	;[自制心][無関心]なら欲望LV4以上必要 淫乱系陥落素質があれば無視できる
-	IF (TALENT:自制心 || TALENT:無関心) && !TALENT:淫乱 && !TALENT:娼婦
-		SIF ABL:欲望 < 4
-			売却可能条件 = 0
-	ENDIF
-
-	;[プライド高い][生意気]なら奉仕精神LV3以上必要
-	IF TALENT:プライド高い || TALENT:生意気
-		SIF ABL:奉仕精神 < 3
-			売却可能条件 = 0
-	ENDIF
+	;売却可能条件は専用関数で判定
+	売却可 = 売却可能条件(TARGET)
 
 	;段位モード専用の特殊条件
 	IF ゲームモード() == "段位認定"
 		;段位認定裏七級の場合、陥落していないと売却できない
 		IF 受験段位名 == "裏七級"
 			SIF !CFLAG:陥落
-				売却可能条件 = 0
+				売却可 = 0
 		;「炎の孕ませポップン学園」の場合、陥落させたうえで着床を認知していないと売却できない
 		ELSEIF 受験段位名 == "炎の孕ませポップン学園"
-			売却可能条件 = 0
+			売却可 = 0
 			IF CFLAG:陥落
 				IF TALENT:妊娠
-					売却可能条件 = 1
+					売却可 = 1
 				ELSEIF FALLTYPE(TARGET) == 1 && PREG:TARGET:妊娠確定フラグ
-					売却可能条件 = 1
+					売却可 = 1
 					;この場合一度だけ着床したことを教えてもらえる(再起動でフラグが消失するのは仕様)
 					;変数「着床告知」にビットで管理
 					;(GETBIT)0:ミニッツ 1:ルート 2:翠里 3:鈴花 4:氷海
@@ -104,29 +84,21 @@ IF TARGET >= 0 && !CFLAG:キャラロスト
 	ENDIF
 
 	;憑依中は売却可能・助手可能にならない
-	IF 売却可能条件 && CFLAG:憑依 == -1
-		;上記をクリアし、技巧3以上or奉仕精神3以上orマゾっ気3以上orCVAB感覚合計8以上or従順5以上or欲望5以上なら売却可能
-		{
-		IF ABL:技巧 >= 3 || ABL:奉仕精神 >= 3 || ABL:マゾっ気 >= 3 || 
-		   ABL:Ｃ感覚+ABL:Ｖ感覚+ABL:Ａ感覚+ABL:Ｂ感覚 >= 8 || ABL:従順 >= 5 || ABL:欲望 >= 5
-		}
-			IF !CFLAG:売却可能 && ゲームモード() != "新婚モード"
-				PRINTFORMW %NAME:TARGET%が売却可能になりました
-				CALL プレイログ記録, @"%NAME:TARGET%が売却可能になる"
-				CFLAG:売却可能 = 1
-				;実績:愛撫コマンドのみで売却可能
-				SIF 愛撫双:TARGET:0 == 0
-					CALL 実績解除, "I've so Happy"
-				CALL 経験値取得, TARGET, "売却可能"
-			ENDIF
-			;さらに従順+欲望+技巧が14以上なら助手可能
-			IF ABL:従順+ABL:欲望+ABL:技巧 >= 14
-				IF !CFLAG:助手可能
-					PRINTFORMW %NAME:TARGET%が助手可能になりました
-					CALL プレイログ記録, @"%NAME:TARGET%が助手可能になる"
-					CFLAG:助手可能 = 1
-				ENDIF
-			ENDIF
+	IF 売却可 && CFLAG:憑依 == -1
+		IF !CFLAG:売却可能 && ゲームモード() != "新婚モード"
+			PRINTFORMW %NAME:TARGET%が売却可能になりました
+			CALL プレイログ記録, @"%NAME:TARGET%が売却可能になる"
+			CFLAG:売却可能 = 1
+			;実績:愛撫コマンドのみで売却可能
+			SIF 愛撫双:TARGET:0 == 0
+				CALL 実績解除, "I've so Happy"
+			CALL 経験値取得, TARGET, "売却可能"
+		ENDIF
+		;さらに従順+欲望+技巧が14以上なら助手可能
+		IF 助手可能条件(TARGET) && !CFLAG:助手可能
+			PRINTFORMW %NAME:TARGET%が助手可能になりました
+			CALL プレイログ記録, @"%NAME:TARGET%が助手可能になる"
+			CFLAG:助手可能 = 1
 		ENDIF
 	ENDIF
 ENDIF
