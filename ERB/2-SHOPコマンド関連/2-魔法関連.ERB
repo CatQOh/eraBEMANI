@@ -436,28 +436,9 @@ SELECTCASE RESULT
 		SIF 詠唱魔法 == "スウィートイリュージョン"
 			GOTO OKASHI
 
-		;優先度は詠唱者の口上→対象の口上→地の文
-		;ただし地の文は口上側で管理するようになる
-		IF OPTION:口上表示
-			TRYCCALLFORM SPELLCAST_%CSVNAMERPS(NOF(詠唱者))%, 詠唱者, 対象:0, 対象:1
-			CATCH
-				SIF 対象:0 < 0
-					GOTO NOTTARGET
-				TRYCCALLFORM RECIEVE_SPELLCAST_%CSVNAMERPS(NOF(対象:0))%, 詠唱者, 対象:0, 対象:1
-				CATCH
-					SIF 対象:1 < 0
-						GOTO NOTTARGET
-					TRYCCALLFORM RECIEVE_SPELLCAST_%CSVNAMERPS(NOF(対象:1))%, 詠唱者, 対象:0, 対象:1
-					CATCH
-						$NOTTARGET
-						SIF OPTION:地の文表示
-							CALL SPELLCAST_地の文, 詠唱者, 対象:0, 対象:1
-					ENDCATCH
-				ENDCATCH
-			ENDCATCH
-		ELSEIF OPTION:地の文表示
-			CALL SPELLCAST_地の文, 詠唱者, 対象:0, 対象:1
-		ENDIF
+		;口上の処理は全て口上制御関数に
+		CALL KOJO_MESSAGE_SPELL, 詠唱者, 対象:0, 対象:1
+
 		CALL EXPUP, "詠唱経験", 必要レベル, 詠唱者
 		;魔法の効果処理
 		SELECTCASE 使用スペル名
@@ -755,14 +736,22 @@ RETURN 1
 #DIM DYNAMIC 対象
 {
 #DIMS DYNAMIC 色プリセット = 
-"ゴールド",
 "ルビー",
 "サファイア",
 "エメラルド",
 "アメジスト",
 "トパーズ",
+"ペリドット",
 "クリスタル",
+"コーラル",
+"",
+"ゴールド",
+"シルバー",
+"カッパー",
+"ブロンズ",
+"ブラス",
 "石",
+"黒曜石",
 }
 
 GDISPOSE 0
@@ -843,8 +832,19 @@ ELSE
 	PRINTL □プリセットから選ぶ
 	PRINT 　
 	FOR LCOUNT, 0, VARSIZE("色プリセット")
+		IF 色プリセット:LCOUNT == ""
+			PRINTL 
+			PRINT 　
+			CONTINUE
+		ENDIF
 		PRINTBUTTON @"[%色プリセット:LCOUNT%]", 色プリセット:LCOUNT
 	NEXT
+
+	PRINTL 
+	PRINT 　
+	PRINTBUTTON "[ランダム]", "ランダム"
+	SIF 対象 >= 0 && Gタグ色:NOF(対象)
+		PRINTBUTTON "[グローバル]", "グローバル"
 	PRINTL 
 ENDIF
 
@@ -852,7 +852,7 @@ DRAWLINE
 PRINTPLAIN 　RGB　
 PRINTBUTTON "[0] - 戻る ", "0"
 PRINTBUTTON "[1] - 決定 ", "1"
-SIF 対象 >= 0 && NOF(対象) < 10000
+SIF 対象 >= 0
 	PRINTBUTTON "[2] - グローバル色設定 ", "2"
 PRINTL 
 
@@ -875,7 +875,7 @@ SELECTCASE RESULTS
 		SAVEGLOBAL
 		RETURN COLOR_FROMRGB(INT_R, INT_G, INT_B)
 	CASE "2"
-		IF 対象 >= 0 && NOF(対象) < 10000
+		IF 対象 >= 0
 			PRINTFORML グローバルに保存された色設定はキャラを購入した際などに全セーブデータで自動的に反映されます
 			PRINTFORML [0] 現在の色をグローバルに保存して決定
 			PRINTFORML [1] 全キャラのタグ色を一括でグローバルに保存して決定
@@ -963,10 +963,6 @@ SELECTCASE RESULTS
 			CASE "SET_B"
 				INT_B = RESULT
 		ENDSELECT
-	CASE "ゴールド"
-		INT_R = 0xFF
-		INT_G = 0xD7
-		INT_B = 0x00
 	CASE "ルビー"
 		INT_R = 0xC7
 		INT_G = 0x00
@@ -984,17 +980,57 @@ SELECTCASE RESULTS
 		INT_G = 0x76
 		INT_B = 0xB4
 	CASE "トパーズ"
-		INT_R = 0xE9
-		INT_G = 0xBC
+		INT_R = 0xFF
+		INT_G = 0xCD
 		INT_B = 0x00
+	CASE "ペリドット"
+		INT_R = 0xA0
+		INT_G = 0xDC
+		INT_B = 0x32
 	CASE "クリスタル"
 		INT_R = 0x00
 		INT_G = 0xFF
 		INT_B = 0xFF
+	CASE "コーラル"
+		INT_R = 0xFF
+		INT_G = 0x7D
+		INT_B = 0xC8
+	CASE "ゴールド"
+		INT_R = 0xF0
+		INT_G = 0xAA
+		INT_B = 0x00
+	CASE "シルバー"
+		INT_R = 0xC8
+		INT_G = 0xCD
+		INT_B = 0xCF
+	CASE "カッパー"
+		INT_R = 0xE1
+		INT_G = 0x82
+		INT_B = 0x46
+	CASE "ブロンズ"
+		INT_R = 0x5A
+		INT_G = 0xB4
+		INT_B = 0xAA
+	CASE "ブラス"
+		INT_R = 0xCD
+		INT_G = 0xAF
+		INT_B = 0x32
 	CASE "石"
-		INT_R = 0xA9
-		INT_G = 0xA9
-		INT_B = 0xA9
+		INT_R = 0x80
+		INT_G = 0x80
+		INT_B = 0x80
+	CASE "黒曜石"
+		INT_R = 0x55
+		INT_G = 0x4B
+		INT_B = 0x5F
+	CASE "ランダム"
+		INT_R = RAND:256
+		INT_G = RAND:256
+		INT_B = RAND:256
+	CASE "グローバル"
+		INT_R = (Gタグ色:NOF(対象))/0x10000
+		INT_G = (Gタグ色:NOF(対象))/0x100%0x100
+		INT_B = (Gタグ色:NOF(対象))%0x100
 ENDSELECT
 
 INT_R = LIMIT(INT_R, 0, 255)
@@ -1070,7 +1106,9 @@ FOR LCOUNT, 0, CHARANUM
 		CONTINUE
 	IF ビーストモード:LCOUNT:0 > 0
 		IF --ビーストモード:LCOUNT:0 == 0
-			PRINTFORMW %CALLNAME:LCOUNT%にかけられた[ビーストモード]の効果が切れました
+			CALL KOJO_MESSAGE_SPELLEND, "ビーストモード", LCOUNT
+			SIF !RESULT
+				PRINTFORMW %CALLNAME:LCOUNT%にかけられた[ビーストモード]の効果が切れました
 			SIF ビーストモード:LCOUNT:1
 				TALENT:LCOUNT:動物耳 = 0
 			SIF ビーストモード:LCOUNT:2
@@ -1084,19 +1122,25 @@ FOR LCOUNT, 0, CHARANUM
 	ENDIF
 	IF ジェントルストレス:LCOUNT:0 > 0
 		IF --ジェントルストレス:LCOUNT:0 == 0
-			PRINTFORMW %CALLNAME:LCOUNT%にかけられたジェントルストレスの効果が切れました
+			CALL KOJO_MESSAGE_SPELLEND, "ジェントルストレス", LCOUNT
+			SIF !RESULT
+				PRINTFORMW %CALLNAME:LCOUNT%にかけられたジェントルストレスの効果が切れました
 			ジェントルストレス:LCOUNT:1 = 0
 		ENDIF
 	ENDIF
 	IF ティルナノーグ:LCOUNT:0 > 0
 		IF --ティルナノーグ:LCOUNT:0 == 0
-			PRINTFORMW %CALLNAME:LCOUNT%にかけられた[ティル・ナ・ノーグ]の効果が切れました
+			CALL KOJO_MESSAGE_SPELLEND, "ティル・ナ・ノーグ", LCOUNT
+			SIF !RESULT
+				PRINTFORMW %CALLNAME:LCOUNT%にかけられた[ティル・ナ・ノーグ]の効果が切れました
 			TALENT:LCOUNT:小人体型 = 1
 		ENDIF
 	ENDIF
 	IF CFLAG:LCOUNT:ポゼ
 		IF --CFLAG:LCOUNT:ポゼ == 0
-			PRINTFORMW %CALLNAME:LCOUNT%にかけられた[ポゼッション]の効果が切れました
+			CALL KOJO_MESSAGE_SPELLEND, "ポゼッション", LCOUNT
+			SIF !RESULT
+				PRINTFORMW %CALLNAME:LCOUNT%にかけられた[ポゼッション]の効果が切れました
 			FOR LCOUNT2, 0, 30
 				SIF ABLNAME:LCOUNT2 == "魔法技能"
 					CONTINUE
@@ -1107,6 +1151,8 @@ FOR LCOUNT, 0, CHARANUM
 	ENDIF
 	IF ハニーバニー:LCOUNT:0 > 0
 		SIF -- ハニーバニー:LCOUNT:0 == 0
+			CALL KOJO_MESSAGE_SPELLEND, "ハニーバニー", LCOUNT
+				SIF !RESULT
 			PRINTFORMW %CALLNAME:LCOUNT%にかけられた[ハニーバニー]の効果が切れました
 	ENDIF
 NEXT
