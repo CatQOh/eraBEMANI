@@ -42,6 +42,9 @@ SELECTCASE RESULT
 		MAXBASE:体力 = 1500
 		MAXBASE:気力 = 1500
 		VARSET TALENT:0, 0, 1
+		TALENT:体格 = 3
+		SIF SEX(TARGET) == 2
+			TALENT:バストサイズ = 3
 	CASE 2
 		LTARGET = TARGET
 		CALL 所持DNA, 1
@@ -118,6 +121,7 @@ RESTART
 
 @ロボット制作
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC アイテムあり
 ;余分に要素数を取っておく
 #DIM DYNAMIC 素質変更可能, 1000
@@ -198,12 +202,29 @@ PRINTL [9] +300/コスト+1
 耐久コスト = (MAXBASE:体力-1500)/300
 製作コスト += 耐久コスト
 PRINT 　素質:
+LCOUNT2 = 0
 FOR LCOUNT, 0, VARSIZE("TALENT")
 	SELECTCASE TALENTNAME:LCOUNT
-		CASE "性別", "恋心", "既婚者", "バストサイズ", "体格"
+		CASE "性別", "恋心", "既婚者"
 		CASEELSE
-			SIF TALENT:LCOUNT
-				PRINTFORM [%TALENTNAME:LCOUNT%]
+			IF TALENT:LCOUNT
+				IF LCOUNT2 >= 10
+					PRINTL 
+					PRINT 　　　 
+					LCOUNT2 = 0
+				ENDIF
+				SELECTCASE TALENTNAME:LCOUNT
+					CASE "体格"
+						SIF TALENT:小人体型
+							CONTINUE
+						PRINTFORM [%体格(TALENT:体格)%体型]
+					CASE "バストサイズ"
+						PRINTFORM [%バストサイズ(TALENT:バストサイズ)%]
+					CASEELSE
+						PRINTFORM [%TALENTNAME:LCOUNT%]
+				ENDSELECT
+				LCOUNT2++
+			ENDIF
 	ENDSELECT
 NEXT
 PRINTL 
@@ -217,8 +238,11 @@ IF !CFLAG:複製
 	PRINTL 　[2] - 素質をプリセットから選ぶ
 	SIF アイテムあり
 		PRINTL 　[3] - 部品を使用する
-	PRINTL 　[4] - 名前を変更する
 ENDIF
+PRINTL 　[4] - 名前を変更する
+PRINTL 　[5] - 体格を変更する
+SIF TALENT:性別 == 2 || MOD:バストサイズ男性対象
+	PRINTL 　[6] - バストサイズを変更する
 DRAWLINE
 PRINTPLAIN 　ロボットファクトリー　
 PRINTL [0] - 戻る [10] - 作成する
@@ -241,10 +265,6 @@ SELECTCASE RESULT
 				PRINTFORMLC [{LCOUNT, 3}] %TALENTNAME:LCOUNT%({素質変更可能:LCOUNT}) \@ TALENT:LCOUNT ? ○ # × \@
 		NEXT
 		CALL NEWLINE
-		PRINTFORM [{TALENTF("体格")}] 体格:%体格(TALENT:体格)% 
-		SIF TALENT:性別 == 2
-			PRINTFORML [{TALENTF("バストサイズ")}] バストサイズ:%バストサイズ(TALENT:バストサイズ)%
-		CALL NEWLINE
 		DRAWLINE
 		PRINTPLAIN 　ロボットファクトリー　
 		PRINTL [-1] - 戻る
@@ -252,29 +272,9 @@ SELECTCASE RESULT
 		SIF RESULT == -1
 			RESTART
 		LRESULT = RESULT
-		IF INRANGE(LRESULT, 0, VARSIZE("TALENT"))
-			IF TALENTNAME:LRESULT == "バストサイズ"
-				PRINTL [1] 絶壁にする
-				PRINTL [2] 貧乳にする
-				PRINTL [3] 並乳にする
-				PRINTL [4] 巨乳にする
-				PRINTL [5] 豊乳にする
-				PRINTL [6] 爆乳にする
-				BINPUT
-				TALENT:バストサイズ = RESULT
-				GOTO TALENT
-			ELSEIF TALENTNAME:LRESULT == "体格"
-				PRINTL [1] 幼児体型にする
-				PRINTL [2] 小柄体型にする
-				PRINTL [3] 普通体型にする
-				PRINTL [4] 長身体型にする
-				BINPUT
-				TALENT:体格 = RESULT
-				GOTO TALENT
-			ELSEIF 素質変更可能:LRESULT
-				INVERTBIT TALENT:LRESULT, 0
-				GOTO TALENT
-			ENDIF
+		IF INRANGE(LRESULT, 0, VARSIZE("TALENT")) && 素質変更可能:LRESULT
+			INVERTBIT TALENT:LRESULT, 0
+			GOTO TALENT
 		ENDIF
 		RESTART
 	CASE 2
@@ -433,6 +433,8 @@ SELECTCASE RESULT
 	CASE 4
 		PRINTL [1] - ランダムで命名する
 		PRINTL [2] - 名前を入力する
+		SIF CFLAG:複製
+			PRINTL [3] - オリジナルと同じ名前にする
 		BINPUT
 		SELECTCASE RESULT
 			CASE 1
@@ -447,14 +449,51 @@ SELECTCASE RESULT
 				NAME:TARGET = %RESULTS%
 				CALLNAME:TARGET = %RESULTS%
 				RESTART
+			CASE 3
+				NAME:TARGET = %CSVNAME(CFLAG:複製)%(クローン\@ DNAデータ:(CFLAG:複製) >= 2 ? {DNAデータ:(CFLAG:複製)} #\@)
+				CALLNAME:TARGET = %CSVCALLNAME(CFLAG:複製)%(クローン\@ DNAデータ:(CFLAG:複製) >= 2 ? {DNAデータ:(CFLAG:複製)} #\@)
+				RESTART
 		ENDSELECT
+	CASE 5
+		PRINTL 体格を選んでください
+		PRINTL [1] - 幼児体型
+		PRINTL [2] - 小柄体型
+		PRINTL [3] - 普通体型
+		PRINTL [4] - 長身体型
+		PRINTL [5] - 小人体型
+		BINPUT
+		SELECTCASE RESULT
+			CASE 1 TO 4
+				TALENT:体格 = RESULT
+				TALENT:小人体型 = 0
+			CASE 5
+				TALENT:体格 = 3
+				TALENT:小人体型 = 1
+		ENDSELECT
+		RESTART
+	CASE 6
+		PRINTL バストサイズを選んでください
+		SIF TALENT:性別 == 1
+			PRINTL [0] 無し
+		PRINTL [1] - 絶壁
+		PRINTL [2] - 貧乳
+		PRINTL [3] - 並乳
+		PRINTL [4] - 巨乳
+		PRINTL [5] - 豊乳
+		PRINTL [6] - 爆乳
+		BINPUT
+		TALENT:バストサイズ = RESULT
+		RESTART
 	CASE 8
 		SELECTCASE TALENT:性別
 			CASE 1
 				TALENT:性別 = 2
+				SIF !TALENT:バストサイズ
+					TALENT:バストサイズ = 3
 			CASE 2
 				TALENT:性別 = 1
-				TALENT:バストサイズ = 0
+				SIF !MOD:バストサイズ男性対象
+					TALENT:バストサイズ = 0
 		ENDSELECT
 		RESTART
 	CASE -9
@@ -500,11 +539,7 @@ SELECTCASE RESULT
 		ENDIF
 		;子供と同じ扱い
 		FLAG:子供の数++
-		BUYY = YEAR
-		BUYM = MONTH
-		BUYD = DAYS
 		CFLAG:誕生日 = MONTH*100+DAYS
-		CFLAG:モチベーション = 50
 		リソース:性感センサー -= 感覚合計
 		リソース:交友インターフェイス -= 交友合計
 		リソース:制御不能基板 -= 中毒合計
@@ -623,6 +658,8 @@ PRINTFORML □%CALLNAME:TARGET%を改造します マテリアル所持数:{リ�
 PRINT 　素質:
 FOR LCOUNT, 0, VARSIZE("TALENT")
 	SELECTCASE TALENTNAME:LCOUNT
+		CASE "性別"
+			CONTINUE
 		CASE "性別", "恋心", "既婚者"
 			SIF TALENT:LCOUNT && TALENT:LCOUNT != 10000
 				PRINTFORM [%TALENTNAME:LCOUNT%]
@@ -634,8 +671,18 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 					CALL PRINTCOLOR, @"[%バストサイズ(素質変更:LCOUNT)%]", "deepskyblue"
 				ENDIF
 			ENDIF
+		CASE "体格"
+			SIF 素質変更:TALENTF("小人体型") && !TALENT:小人体型
+				CONTINUE
+			IF !素質変更:LCOUNT || 素質変更:LCOUNT == TALENT:体格 && !素質変更:TALENTF("小人体型")
+				PRINTFORM [%体格(TALENT:体格)%体型]
+			ELSE
+				CALL PRINTCOLOR, @"[%体格(素質変更:LCOUNT)%体型]", "deepskyblue"
+			ENDIF
 		CASEELSE
 			IF TALENT:LCOUNT
+				SIF TALENTNAME:LCOUNT == "小人体型" && 素質変更:LCOUNT
+					CONTINUE
 				SIF 素質変更:LCOUNT
 					SETCOLORBYNAME gray
 				PRINTFORM [%TALENTNAME:LCOUNT%]
@@ -678,11 +725,14 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 			SIF 素質変更:LCOUNT
 				必要マテリアル += 3
 		CASE "バストサイズ"
-			SIF TALENT:LCOUNT && 素質変更:LCOUNT
-				必要マテリアル += ABS(TALENT:LCOUNT-素質変更:LCOUNT)
-		CASE "体格"
 			SIF 素質変更:LCOUNT
 				必要マテリアル += ABS(TALENT:LCOUNT-素質変更:LCOUNT)
+		CASE "体格"
+			SIF 素質変更:LCOUNT && !素質変更:TALENTF("小人体型")
+				必要マテリアル += ABS(TALENT:LCOUNT-素質変更:LCOUNT)
+		CASE "小人体型"
+			SIF 素質変更:LCOUNT
+				必要マテリアル += 4
 	ENDSELECT
 NEXT
 DRAWLINE
@@ -710,8 +760,14 @@ SELECTCASE RESULT
 		FOR LCOUNT, 0, VARSIZE("TALENT")
 			IF 素質変更:LCOUNT
 				SELECTCASE TALENTNAME:LCOUNT
+					CASE "体格"
+						TALENT:LCOUNT = 素質変更:LCOUNT
 					CASE "バストサイズ"
 						TALENT:LCOUNT = 素質変更:LCOUNT
+					CASE "小人体型"
+						INVERTBIT TALENT:LCOUNT, 0
+						SIF TALENT:小人体型
+							TALENT:体格 = 3
 					CASEELSE
 						INVERTBIT TALENT:LCOUNT, 0
 				ENDSELECT
@@ -747,16 +803,34 @@ SELECTCASE RESULT
 			ENDIF
 		NEXT
 		CALL NEWLINE
-		IF 素質変更:TALENTF("体格") && 素質変更:TALENTF("体格") != TALENT:体格
-			CALL PRINTCOLOR, @"[{TALENTF("体格")}] 体格:%体格(素質変更:TALENTF("体格"))% ", "deepskyblue"
-		ELSE
-			PRINTFORM [{TALENTF("体格")}] 体格:%体格(TALENT:体格)% 
-		ENDIF
-		IF TALENT:性別 == 2
-			IF 素質変更:TALENTF("バストサイズ") && 素質変更:TALENTF("バストサイズ") != TALENT:バストサイズ
-				CALL PRINTCOLORL, @"[{TALENTF("バストサイズ")}] バストサイズ:%バストサイズ(素質変更:TALENTF("バストサイズ"))%", "deepskyblue"
+
+		IF TALENT:小人体型
+			IF 素質変更:TALENTF("小人体型")
+				SETCOLORBYNAME deepskyblue
+				PRINTFORMLC [{TALENTF("体格")}] 体格:%体格(素質変更:TALENTF("体格"))% 
 			ELSE
-				PRINTFORML [{TALENTF("バストサイズ")}] バストサイズ:%バストサイズ(TALENT:バストサイズ)%
+				PRINTFORMLC [{TALENTF("体格")}] 体格:小人 
+			ENDIF
+			RESETCOLOR
+		ELSE
+			IF 素質変更:TALENTF("小人体型")
+				SETCOLORBYNAME deepskyblue
+				PRINTFORMLC [{TALENTF("体格")}] 体格:小人 
+			ELSEIF 素質変更:TALENTF("体格") && 素質変更:TALENTF("体格") != TALENT:体格
+				SETCOLORBYNAME deepskyblue
+				PRINTFORMLC [{TALENTF("体格")}] 体格:%体格(素質変更:TALENTF("体格"))% 
+			ELSE
+				PRINTFORMLC [{TALENTF("体格")}] 体格:%体格(TALENT:体格)% 
+			ENDIF
+			RESETCOLOR
+		ENDIF
+		IF TALENT:性別 == 2 || MOD:バストサイズ男性対象
+			IF 素質変更:TALENTF("バストサイズ") && 素質変更:TALENTF("バストサイズ") != TALENT:バストサイズ
+				SETCOLORBYNAME deepskyblue
+				PRINTFORMLC [{TALENTF("バストサイズ")}] バストサイズ:%バストサイズ(素質変更:TALENTF("バストサイズ"))%
+				RESETCOLOR
+			ELSE
+				PRINTFORMLC [{TALENTF("バストサイズ")}] バストサイズ:%バストサイズ(TALENT:バストサイズ)%
 			ENDIF
 		ENDIF
 		CALL NEWLINE
@@ -783,8 +857,15 @@ SELECTCASE RESULT
 				PRINTL [2] 小柄体型にする
 				PRINTL [3] 普通体型にする
 				PRINTL [4] 長身体型にする
+				PRINTL [5] 小人体型にする
 				BINPUT
-				TALENT:体格 = RESULT
+				IF RESULT == 5
+					素質変更:TALENTF("小人体型") = TALENT:小人体型 ? 0 # 1
+					素質変更:LRESULT = 0
+				ELSE
+					素質変更:TALENTF("小人体型") = TALENT:小人体型 ? 1 # 0
+					素質変更:LRESULT = RESULT
+				ENDIF
 				GOTO TALENT
 			ELSEIF 素質変更可能:LRESULT
 				INVERTBIT 素質変更:LRESULT, 0
