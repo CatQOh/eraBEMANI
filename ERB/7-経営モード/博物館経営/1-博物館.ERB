@@ -305,13 +305,13 @@ SIF RESULT == -1
 
 対象 = RESULT
 
-剥製加工不可 = TALENT:対象:無機物 || CSTR:対象:種族 == "機械" || ISSLIME(対象) || (CHARANAMEF(対象) == "ハート" && TRANCERACE:対象:0 == "") ? 1 # 0
-白骨加工不可 = TALENT:対象:無機物 || CSTR:対象:種族 == "機械" || ISSLIME(対象) || (CHARANAMEF(対象) == "ハート" && TRANCERACE:対象:0 == "") ? 1 # 0
-ホルマリン漬け不可 = TALENT:対象:無機物 || CSTR:対象:種族 == "機械" ? 1 # 0
-透明標本不可 = TALENT:対象:無機物 || CSTR:対象:種族 == "機械" || ISSLIME(対象) || (CHARANAMEF(対象) == "ハート" && TRANCERACE:対象:0 == "") ? 1 # 0
-稼働停止不可 = (!TALENT:対象:無機物 && CSTR:対象:種族 != "機械") ? 1 # 0
+剥製加工不可 = TALENT:対象:無機物 || GROUPMATCH(CSTR:対象:種族, "機械", "人形") || ISSLIME(対象) || (CHARANAMEF(対象) == "ハート" && TRANCERACE:対象:0 == "") ? 1 # 0
+白骨加工不可 = TALENT:対象:無機物 || GROUPMATCH(CSTR:対象:種族, "機械", "人形") || ISSLIME(対象) || (CHARANAMEF(対象) == "ハート" && TRANCERACE:対象:0 == "") ? 1 # 0
+ホルマリン漬け不可 = TALENT:対象:無機物 || GROUPMATCH(CSTR:対象:種族, "機械", "人形") ? 1 # 0
+透明標本不可 = TALENT:対象:無機物 || GROUPMATCH(CSTR:対象:種族, "機械", "人形") || ISSLIME(対象) || (CHARANAMEF(対象) == "ハート" && TRANCERACE:対象:0 == "") ? 1 # 0
+稼働停止不可 = (!TALENT:対象:無機物 && !GROUPMATCH(CSTR:対象:種族, "機械", "人形")) ? 1 # 0
 
-臓器摘出不可 = TALENT:対象:無機物 || CSTR:対象:種族 == "機械" || ISSLIME(対象) || (CHARANAMEF(対象) == "ハート" && TRANCERACE:対象:0 == "") ? 1 # 0
+臓器摘出不可 = TALENT:対象:無機物 || GROUPMATCH(CSTR:対象:種族, "機械", "人形") || ISSLIME(対象) || (CHARANAMEF(対象) == "ハート" && TRANCERACE:対象:0 == "") ? 1 # 0
 
 
 PRINTFORML □%NAME:対象%を加工します。どのように加工しますか？
@@ -336,8 +336,14 @@ SIF !ホルマリン漬け不可
 	PRINTL [3] - ホルマリン漬けに加工する
 SIF !透明標本不可
 	PRINTL [4] - 透明標本に加工する
-SIF !稼働停止不可
-	PRINTL [10] - 稼働を停止させる
+IF !稼働停止不可
+	IF CSTR:対象:種族 == "機械"
+		PRINTL [10] - 稼働を停止させる
+	ELSE
+		;これだと霊体になりそう
+		PRINTL [10] - 魂を抜き去る
+	ENDIF
+ENDIF
 BINPUT
 SELECTCASE RESULT
 	CASE 0
@@ -420,11 +426,17 @@ SELECTCASE RESULT
 			ELSE
 				CSTR:対象:ロスト詳細 = %CALLNAME:MASTER%の手により魂を失いカカシとなった
 			ENDIF
-		ELSE
+		ELSEIF CSTR:対象:種族 == "機械"
 			IF CMATCH(CSTR:配属, "博物館")
 				CSTR:対象:ロスト詳細 = %加工者%の手で永久に稼働を停止した
 			ELSE
 				CSTR:対象:ロスト詳細 = %CALLNAME:MASTER%の手で永久に稼働を停止した
+			ENDIF
+		ELSE
+			IF CMATCH(CSTR:配属, "博物館")
+				CSTR:対象:ロスト詳細 = %加工者%の手により魂を失い動かなくなった
+			ELSE
+				CSTR:対象:ロスト詳細 = %CALLNAME:MASTER%の手により魂を失い動かなくなった
 			ENDIF
 		ENDIF
 		CALL CLEAR_CHARA, 対象, 0, 1, 1
@@ -1260,7 +1272,11 @@ CALL 作品加工共通処理, "透明標本", 対象, 作品価値, ""
 #DIM DYNAMIC 空き変数
 #DIM DYNAMIC LCOUNT
 
-PRINTFORMW %NAME:対象%を稼働停止させました
+IF CSTR:対象:種族 == "機械"
+	PRINTFORMW %NAME:対象%を稼働停止させました
+ELSE
+	PRINTFORMW %NAME:対象%は魂を失い二度と動かなくなりました
+ENDIF
 ;博物館の客は人形ではなく死体を見に来ているので低め
 作品価値 = 600
 
@@ -1471,8 +1487,10 @@ FOR LCOUNT, 0, 必要空き枠
 		IF 作品種類 == "人形"
 			IF GROUPMATCH("にんじん", CHARANAMEF(対象), CSVNAME(CFLAG:対象:複製))
 				MUSEUM:空き変数:名前 += "ただのカカシとなった"
-			ELSE
+			ELSEIF CSTR:対象:種族 == "機械"
 				MUSEUM:空き変数:名前 += "稼働を停止した"
+			ELSE
+				MUSEUM:空き変数:名前 += "動かなくなった"
 			ENDIF
 		ENDIF
 		SIF TALENT:対象:妊娠 && 作品種類 != "白骨死体"
