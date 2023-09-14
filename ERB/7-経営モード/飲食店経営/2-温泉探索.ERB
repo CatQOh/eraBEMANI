@@ -82,7 +82,7 @@ RESTART
 #DIM DYNAMIC ログ削除用
 #DIM DYNAMIC 発掘費用
 #DIMS DYNAMIC 分割用, 2
-#DIM DYNAMIC 魔法判定
+#DIM DYNAMIC 魔法判定, 2
 #DIM DYNAMIC 総発掘費用
 #DIM DYNAMIC 地質学人数
 #DIM DYNAMIC LTARGET
@@ -144,7 +144,7 @@ SIF !ORIGIN
 FOR LCOUNTY, 0, Y幅
 	PRINT 　
 	FOR LCOUNTX, 0, X幅
-		;変数内訳は0=未解明 1=解明 2=温泉ありかつ未解明 3=温泉ありかつ解明 4=爆弾ありかつ未解明 5=爆弾をありかつ解明 6~=マーク
+		;変数内訳は0=未解明 1=解明 2=温泉ありかつ未解明 3=温泉ありかつ解明 4=爆弾ありかつ未解明 5=爆弾ありかつ解明 6~=マーク
 		SELECTCASE MS:LCOUNTX:LCOUNTY
 			;未解明
 			CASE 0, 2, 4
@@ -274,45 +274,50 @@ DO
 					PRINTW 所持金が足りません
 					GOTO RESTART
 				ENDIF
-				X開放 = -1
-				Y開放 = -1
-				魔法判定 = 0
+				魔法判定:0 = 0
+				X開放 = 0
+				Y開放 = 0
 				DO
-					;終盤だと一生乱数回すようになってしまうので加算式にする
-					IF X開放 >= 0 && Y開放 >= 0
-						IF 魔法判定
-							X開放++
-							SIF X開放 >= X幅
-								X開放 = 0
-						ELSE
-							Y開放++
-							SIF Y開放 >= Y幅
-								Y開放 = 0
-						ENDIF
-						INVERTBIT 魔法判定, 0
-					ELSE
-						X開放 = RAND:X幅
-						Y開放 = RAND:Y幅
-					ENDIF
 					SELECTCASE MS:X開放:Y開放
-						CASE 0, 2
-							MS:X開放:Y開放++
-							素材変換 += 地質学人数+1
-							CALL マス目開放, X開放, Y開放, X幅, Y幅
-							MS魔法ストック--
-							MONEY -= 発掘費用
-							総発掘費用 += 発掘費用
-							GOTO RESTART
-						CASE 6, 8
-							MS:X開放:Y開放 -= 5
-							素材変換 += 地質学人数+1
-							CALL マス目開放, X開放, Y開放, X幅, Y幅
-							MS魔法ストック--
-							MONEY -= 発掘費用
-							総発掘費用 += 発掘費用
-							GOTO RESTART
+						CASE 0, 2, 6, 8
+							魔法判定:0++
 					ENDSELECT
+					X開放++
+					IF X開放 >= X幅
+						X開放 = 0
+						Y開放++
+					ENDIF
+					SIF Y開放 >= Y幅
+						BREAK
 				LOOP 1
+				魔法判定:1 = RAND:(魔法判定:0)
+				X開放 = 0
+				Y開放 = 0
+				DO
+					SELECTCASE MS:X開放:Y開放
+						CASE 0, 2, 6, 8
+							SIF 魔法判定:1 == 0
+								BREAK
+							魔法判定:1--
+					ENDSELECT
+					X開放++
+					IF X開放 >= X幅
+						X開放 = 0
+						Y開放++
+					ENDIF
+				LOOP 1
+				SELECTCASE MS:X開放:Y開放
+					CASE 0, 2
+						MS:X開放:Y開放++
+					CASE 6, 8
+						MS:X開放:Y開放 -= 5
+				ENDSELECT
+				素材変換 += 地質学人数+1
+				CALL マス目開放, X開放, Y開放, X幅, Y幅
+				MS魔法ストック--
+				MONEY -= 発掘費用
+				総発掘費用 += 発掘費用
+				GOTO RESTART
 			ENDIF
 			GOTO RESTART
 		CASE "4"
