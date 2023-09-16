@@ -35,8 +35,9 @@ SIF FINDELEMENTF(解禁済みロケーション, "あけさか") >= 0
 RETURN 0
 
 ;バイト時に好感度が上がるキャラ
-@職場出現キャラ_あけさか
+@職場出現キャラ_あけさか, キャラ取得
 #DIM DYNAMIC 対象
+#DIM DYNAMIC キャラ取得
 {
 #DIMS DYNAMIC 出現キャラ =
 "明坂 芹菜",
@@ -45,7 +46,8 @@ RETURN 0
 
 対象 = GETCHARANAME(出現キャラ:(RAND:VARSIZE("出現キャラ")))
 
-CALL EXPUP, "料理経験", 2, PLAYER
+SIF !キャラ取得
+	CALL EXPUP, "料理経験", 2, PLAYER
 
 SIF 対象 > 0 && CSTR:対象:現在地 == ""
 	RETURN 対象
@@ -113,3 +115,48 @@ SIF 始点 == 1
 	RETURN
 SIF !データベース参照中
 	RESTART
+
+
+@あけさか_専用コマンド
+IF 同行者
+	IF MONEY < 2000
+		CALL COLUMNPRINTL, 0, @"　[---] - %CALLNAME:同行者%とカレーを食べる(2000＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, @"　[  1] - %CALLNAME:同行者%とカレーを食べる(2000＄)"
+	ENDIF
+ELSE
+	IF MONEY < 1000
+		CALL COLUMNPRINTL, 0, "　[---] - カレーを注文する(1000＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, "　[  0] - カレーを注文する(500＄)"
+	ENDIF
+ENDIF
+
+@あけさか_専用コマンド_INPUT
+#DIM DYNAMIC 対象
+
+選択肢 = CRESULT:1
+CALL 職場出現キャラ_あけさか
+対象 = RESULT
+SELECTCASE CRESULT:1
+	CASE 0
+		IF 対象
+			CALL SCHOOL_KOJO, 対象, "あけさかで注文"
+			CALL 好感度上昇, 対象, "友情", 15
+		ELSE
+			PRINTL あけさかで美味しいカレーを食べた
+		ENDIF
+		MONEY -= 1000
+	CASE 1
+		CALL SCHOOL_KOJO, 同行者, "あけさかで食事"
+		CALL 好感度上昇, 同行者, "友情", 30
+		MONEY -= 2000
+ENDSELECT
+WAIT
+RETURN 1
+
+@SCHOOL_MESSAGE_あけさかで注文
+PRINTFORML カレーを注文して、持ってきてくれた%CALLNAME:TARGET%と談笑した
+
+@SCHOOL_MESSAGE_あけさかで食事
+PRINTFORML あけさかで%CALLNAME:TARGET%と一緒に美味しいカレーを食べながら楽しい時間を過ごした
