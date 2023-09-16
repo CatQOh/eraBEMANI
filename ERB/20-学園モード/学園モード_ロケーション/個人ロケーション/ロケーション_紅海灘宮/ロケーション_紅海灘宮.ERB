@@ -1,9 +1,9 @@
-﻿@ロケーション条件_ミシェルの書店
+﻿@ロケーション条件_紅海灘宮
 #DIM DYNAMIC LCOUNT
 ;出現条件のキャラをフルネーム(NAME)で入れる
 {
 #DIMS DYNAMIC 条件用キャラ = 
-"アルフォンス・ミシェル"
+"チャオ"
 }
 
 FOR LCOUNT, 0, VARSIZE("条件用キャラ")
@@ -15,30 +15,30 @@ NEXT
 
 RETURN 0
 
-@ロケーション可否_ミシェルの書店
+@ロケーション可否_紅海灘宮
 ;時間帯などで使えない場合は理由を書く
-SIF ターン == "夜"
-	ロケーション可否 = 本日閉店
+SIF GROUPMATCH(ターン, "朝", "夕")
+	ロケーション可否 = 営業準備中
 
-@バイト条件_ミシェルの書店
+@バイト条件_紅海灘宮
 ;バイトの時間帯などを書く
-バイト要項 = 朝～夕方のシフトで募集
+バイト要項 = 昼、夜のシフトで募集中
 ;バイト可能かどうかの条件式
-SIF !GROUPMATCH(ターン, "夜")
+SIF GROUPMATCH(ターン, "昼", "夜")
 	バイト可能 = 1
 ;ロケーション解禁済みで可能
 ;返り値はその店の責任者で、面接官扱いになる。居なければ-1でOK
-SIF FINDELEMENTF(解禁済みロケーション, "アルフォンス・ミシェル") >= 0
-	RETURN GETCHARANAME("アルフォンス・ミシェル")
+SIF FINDELEMENTF(解禁済みロケーション, "紅海灘宮") >= 0
+	RETURN GETCHARANAME("チャオ")
 
 RETURN 0
 
 ;バイト時に好感度が上がるキャラ
-@職場出現キャラ_ミシェルの書店
+@職場出現キャラ_紅海灘宮
 #DIM DYNAMIC 対象
 {
 #DIMS DYNAMIC 出現キャラ =
-"アルフォンス・ミシェル",
+"チャオ",
 }
 
 対象 = GETCHARANAME(出現キャラ:(RAND:VARSIZE("出現キャラ")))
@@ -48,7 +48,7 @@ SIF 対象 > 0 && CSTR:対象:現在地 == ""
 
 RETURN 0
 
-@出現キャラ_ミシェルの書店
+@出現キャラ_紅海灘宮
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC グループ数
 #DIM DYNAMIC 始点
@@ -74,18 +74,16 @@ FOR LCOUNT, 始点, 終点
 		CONTINUE
 	;出現率:LCOUNT = {出現率(100分率)} で指定できる
 	SELECTCASE CHARANAMEF(LCOUNT)
-		CASE "アルフォンス・ミシェル"
+		CASE "チャオ"
 			SIF 出現率:LCOUNT >= 0
 				出現率:LCOUNT = 100
-		;ほぼ読書家付いてる罠
-		CASE "浅見 文彦", "セシル", "みっちゃん", "にんじん", "ヒュー"
+		;高級料理店なのでセレブが来る
+		{
+		CASE "菱宮 津軽", "ジルチ", "梅桐 緋浮美", "菱宮 春一", "大犬のお姉さん", "マモニス", "夜兎姫", "ドゥイさん", "エクレメス", "マタン・カトルセ",
+			 "ザ・キング", "ショルキー", "アイス", "ハニー", "白鳥 姫子", "ハラ＝ヘッタ", "こうもりおとこ", "アフロ", "グリム・ヤンヤン", "サーミリアス"
+		}
 			SIF 出現率:LCOUNT >= 0
-				出現率:LCOUNT = 10
-		CASEELSE
-			IF TALENT:LCOUNT:読書家
-				SIF 出現率:LCOUNT >= 0
-					出現率:LCOUNT = 10
-			ENDIF
+				出現率:LCOUNT = 30
 	ENDSELECT
 NEXT
 
@@ -93,19 +91,3 @@ SIF 始点 == 1
 	RETURN
 SIF !データベース参照中
 	RESTART
-
-@ミシェルの書店_専用コマンド
-IF MONEY < 1000
-	CALL COLUMNPRINTL, 0, "[---] - 本を買う(3000＄)", "gray"
-ELSE
-	CALL COLUMNPRINTL, 0, "[  0] - 本を買う(3000＄)"
-ENDIF
-
-@ミシェルの書店_専用コマンド_INPUT
-#DIM DYNAMIC 対象
-対象 = GETCHARANAME("アルフォンス・ミシェル")
-CALL SCHOOL_KOJO, 対象, "ミシェルの書店で買い物"
-CALL 好感度上昇, 対象, "友情", 15
-MONEY -= 1000
-SITEM:書籍++
-RETURN 1

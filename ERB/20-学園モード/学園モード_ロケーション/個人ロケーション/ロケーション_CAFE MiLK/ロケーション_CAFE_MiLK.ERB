@@ -1,10 +1,14 @@
-﻿@ロケーション条件_シャノワール
+﻿@ロケーション条件_CAFE_MiLK
 #DIM DYNAMIC LCOUNT
 ;出現条件のキャラをフルネーム(NAME)で入れる
 {
 #DIMS DYNAMIC 条件用キャラ = 
-"春日 咲子"
+"ラズ",
+"シフォン",
+"ソルト"
 }
+
+ロケーション名記録用 = CAFE MiLK
 
 FOR LCOUNT, 0, VARSIZE("条件用キャラ")
 	IF GETCHARANAME(条件用キャラ:LCOUNT) > 0
@@ -15,34 +19,42 @@ NEXT
 
 RETURN 0
 
-@バイト条件_シャノワール
-バイト要項 = 昼、夜の時間帯で募集中
-SIF GROUPMATCH(ターン, "昼", "夜")
+@ロケーション可否_CAFE_MiLK
+;時間帯などで使えない場合は理由を書く
+SIF GROUPMATCH(ターン, "朝", "昼")
+	ロケーション可否 = ラズ、シフォン、ソルトが通学中
+
+@バイト条件_CAFE_MiLK
+;バイトの時間帯などを書く
+バイト要項 = 夕方～夜のシフトで募集中
+;バイト可能かどうかの条件式
+SIF GROUPMATCH(ターン, "夕", "夜")
 	バイト可能 = 1
 ;ロケーション解禁済みで可能
-SIF FINDELEMENTF(解禁済みロケーション, "シャノワール") >= 0
-	RETURN -1
+;返り値はその店の責任者で、面接官扱いになる。居なければ-1でOK
+SIF FINDELEMENTF(解禁済みロケーション, "CAFE MiLK") >= 0
+	RETURN GETCHARANAME("ラズ")
 
 RETURN 0
 
 ;バイト時に好感度が上がるキャラ
-@職場出現キャラ_シャノワール
+@職場出現キャラ_CAFE_MiLK
 #DIM DYNAMIC 対象
 {
 #DIMS DYNAMIC 出現キャラ =
-"春日 咲子",
+"ラズ",
+"シフォン",
+"ソルト",
 }
 
 対象 = GETCHARANAME(出現キャラ:(RAND:VARSIZE("出現キャラ")))
-
-CALL EXPUP, "料理経験", 2, PLAYER
 
 SIF 対象 > 0 && CSTR:対象:現在地 == ""
 	RETURN 対象
 
 RETURN 0
 
-@出現キャラ_シャノワール
+@出現キャラ_CAFE_MiLK
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC グループ数
 #DIM DYNAMIC 始点
@@ -68,31 +80,35 @@ FOR LCOUNT, 始点, 終点
 		CONTINUE
 	;出現率:LCOUNT = {出現率(100分率)} で指定できる
 	SELECTCASE CHARANAMEF(LCOUNT)
-		;咲子確定
-		CASE "春日 咲子"
+		;3人組
+		CASE "ラズ", "シフォン", "ソルト"
 			SIF 出現率:LCOUNT >= 0
 				出現率:LCOUNT = 100
-		;喫茶店を必要としている人たち（漠然すぎる概要）
+		;しゃまみるく
+		CASE "しゃま", "みるく"
+			SIF 出現率:LCOUNT >= 0
+				出現率:LCOUNT = 50
+		;カフェ系共通
 		{
 		CASE "英利", "大犬のお姉さん", "マモニス", "夜々祇", "クリープ", "ドゥイさん", "Dr.Φ", "エクレメス", "マタン・カトルセ",
 			 "タルト", "タフィ", "ショルキー", "ムラサキ", "ハニー", "モモコさん", "サトウさん", "ウーノ", "フォクシー", "浅見 文彦",
 			 "アルフォンス・ミシェル", "アルビレオ", "愛子", "ヴィルヘルム", "いずみさん", "アン", "エミーリオ", "一条司令", "チク・タク",
-			 "シェリー", "ハーピア", "スミス氏", "パステルくん", "おしゃれずきん", "ソルト", "ラズ", "シフォン", "しゃま", "みるく",
-			 "タルタ", "トリフォリ", "おいわちゃん", "埴仁 虎子", "チョコプラちゃん", "赤のリピカ", "黃のラピカ", "シャロン", "リエル", "グリム・シャロン", "ココ"
+			 "シェリー", "ハーピア", "スミス氏", "パステルくん", "おしゃれずきん", "埴仁 虎子", "シャロン", "リエル", "グリム・シャロン", "ココ"
 		}
 			SIF 出現率:LCOUNT >= 0
 				出現率:LCOUNT = 20
-		;他ひなビタキャラがいる
-		CASE "ひなビタキャラ"
-			$HINABITA
-			出現率:LCOUNT = 50
 		CASEELSE
-			SIF GROUPMATCH("ひなビタ♪", CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３)
-				GOTO HINABITA
-			;休日や放課後に集団で来ているグループとかがある
 			IF RANDPER(2) && グループ数 < 10
 				;相性の良いキャラと2～4人で行動している
-				CALL グループキャラ選出, LCOUNT, "相性"
+				;無所属、教師陣のグループは休日のみ現れる
+				IF 休日()
+					CALL グループキャラ選出, LCOUNT, "相性"
+				;あとは放課後等
+				ELSEIF CSTR:LCOUNT:在校 != ""
+					CALL クラスメイト選出, LCOUNT, "相性"
+				ELSE
+					CONTINUE
+				ENDIF
 				;2人以上揃わなかったら無かったことにする
 				SIF RESULT:0 == 0
 					CONTINUE
@@ -107,7 +123,7 @@ FOR LCOUNT, 始点, 終点
 				グループ数++
 			ELSE
 				SIF TALENT:LCOUNT:食欲皆伝 && 出現率:LCOUNT >= 0
-					出現率:LCOUNT = 20
+					出現率:LCOUNT = 10
 			ENDIF
 	ENDSELECT
 NEXT
