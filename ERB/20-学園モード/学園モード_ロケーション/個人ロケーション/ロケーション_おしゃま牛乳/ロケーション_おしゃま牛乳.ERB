@@ -18,7 +18,7 @@ RETURN 0
 
 @ロケーション可否_おしゃま牛乳
 ;時間帯などで使えない場合は理由を書く
-SIF GROUPMATCH(ターン, "朝", "昼")
+SIF !GROUPMATCH("", CSTR:GETCHARANAME("しゃま"):現在地, CSTR:GETCHARANAME("みるく"):現在地)
 	ロケーション可否 = しゃまとみるくは通学中
 
 @バイト条件_おしゃま牛乳
@@ -102,3 +102,45 @@ SIF 始点 == 1
 	RETURN
 SIF !データベース参照中
 	RESTART
+
+@おしゃま牛乳_専用コマンド
+IF 同行者
+	IF MONEY < 400
+		CALL COLUMNPRINTL, 0, @"　[---] - %CALLNAME:同行者%と牛乳を飲む(400＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, @"　[  1] - %CALLNAME:同行者%と牛乳を飲む(400＄)"
+	ENDIF
+ELSE
+	IF MONEY < 500
+		CALL COLUMNPRINTL, 0, "　[---] - 牛乳を注文する(200＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, "　[  0] - 牛乳を注文する(200＄)"
+	ENDIF
+ENDIF
+
+@おしゃま牛乳_専用コマンド_INPUT
+#DIM DYNAMIC 対象
+
+選択肢 = CRESULT:1
+対象 = 0
+CALL 職場出現キャラ_おしゃま牛乳
+対象 = RESULT
+SELECTCASE CRESULT:1
+	CASE 0
+		CALL SCHOOL_KOJO, 対象, "おしゃま牛乳で注文"
+		CALL 好感度上昇, 対象, "友情", 5
+		MONEY -= 500
+	CASE 1
+		CALL SCHOOL_KOJO, 同行者, "おしゃま牛乳で乾杯"
+		CALL 好感度上昇, 同行者, "友情", 10
+		MONEY -= 1000
+ENDSELECT
+WAIT
+RETURN 1
+
+@SCHOOL_MESSAGE_おしゃま牛乳で注文
+PRINTFORML 美味しい牛乳を飲みながら%CALLNAME:TARGET%と談笑した
+PRINTL 牛乳の成分については……企業秘密だとはぐらかされてしまった
+
+@SCHOOL_MESSAGE_おしゃま牛乳で乾杯
+PRINTFORML おしゃま牛乳で%CALLNAME:TARGET%と乾杯した。体が成長しそうな味だ
