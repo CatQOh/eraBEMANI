@@ -35,17 +35,19 @@ SIF FINDELEMENTF(解禁済みロケーション, "ボルテ軒") >= 0
 RETURN 0
 
 ;バイト時に好感度が上がるキャラ
-@職場出現キャラ_ボルテ軒
+@職場出現キャラ_ボルテ軒, キャラ取得
 #DIM DYNAMIC 対象
 {
 #DIMS DYNAMIC 出現キャラ =
 "野増菜 かなで",
 "野増菜 しずく",
 }
+#DIM DYNAMIC キャラ取得
 
 対象 = GETCHARANAME(出現キャラ:(RAND:VARSIZE("出現キャラ")))
 
-CALL EXPUP, "料理経験", 2, PLAYER
+SIF !キャラ取得
+	CALL EXPUP, "料理経験", 2, PLAYER
 
 SIF 対象 > 0 && CSTR:対象:現在地 == ""
 	RETURN 対象
@@ -117,3 +119,135 @@ SIF 始点 == 1
 	RETURN
 SIF !データベース参照中
 	RESTART
+
+@ボルテ軒_専用コマンド
+IF 同行者
+	IF MONEY < 1600
+		CALL COLUMNPRINTL, 0, @"　[---] - %CALLNAME:同行者%と食事する(1600＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, @"　[  1] - %CALLNAME:同行者%と食事する(1600＄)"
+	ENDIF
+ELSE
+	IF MONEY < 800
+		CALL COLUMNPRINTL, 0, "　[---] - ラーメンを注文する(800＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, "　[  0] - ラーメンを注文する(800＄)"
+	ENDIF
+ENDIF
+
+@ボルテ軒_専用コマンド_INPUT
+#DIM DYNAMIC 対象
+#DIM DYNAMIC ヤサイ = 3
+#DIM DYNAMIC ニンニク = 3
+#DIM DYNAMIC アブラ = 3
+#DIM DYNAMIC タレ = 3
+
+選択肢 = CRESULT:1
+CALL 職場出現キャラ_ボルテ軒, 1
+対象 = RESULT
+SELECTCASE CRESULT:1
+	CASE 0
+		VARLINE = LINECOUNT
+		DO
+			CLEARLINE LINECOUNT-VARLINE
+			PRINTL □ボルテ軒でラーメンを注文することにした。呪文をどうぞ
+			PRINT 　ヤサイ
+			SELECTCASE ヤサイ
+				CASE 1
+					PRINT 無し　　　
+				CASE 2
+					PRINT 少なめ　　
+				CASE 3
+					PRINT 普通　　　
+				CASE 4
+					PRINT マシ　　　
+				CASE 5
+					PRINT マシマシ　
+			ENDSELECT
+			PRINTPLAIN 　
+			PRINTL [ 1] 無し [ 2] 少なめ [ 3] 普通 [ 4] マシ　 [ 5] マシマシ
+			PRINT 　ニンニク
+			SELECTCASE ニンニク
+				CASE 1
+					PRINT 無し　　
+				CASE 2
+					PRINT 少なめ　
+				CASE 3
+					PRINT 普通　　
+				CASE 4
+					PRINT オオメ　
+				CASE 5
+					PRINT マシマシ
+			ENDSELECT
+			PRINTPLAIN 　
+			PRINTL [11] 無し [12] 少なめ [13] 普通 [14] オオメ [15] マシマシ
+			PRINT 　アブラ
+			SELECTCASE アブラ
+				CASE 1
+					PRINT 無し　　　
+				CASE 2
+					PRINT 少なめ　　
+				CASE 3
+					PRINT 普通　　　
+				CASE 4
+					PRINT オオメ　　
+				CASE 5
+					PRINT マシマシ　
+			ENDSELECT
+			PRINTPLAIN 　
+			PRINTL [21] 無し [22] 少なめ [23] 普通 [24] オオメ [25] マシマシ
+			PRINT 　タレ
+			SELECTCASE タレ
+				CASE 1
+					PRINT 無味　　　　
+				CASE 2
+					PRINT 少なめ　　　
+				CASE 3
+					PRINT 普通　　　　
+				CASE 4
+					PRINT カラメ　　　
+				CASE 5
+					PRINT マシマシ　　
+			ENDSELECT
+			PRINTPLAIN 　
+			PRINTL [31] 無味 [32] 少なめ [33] 普通 [34] カラメ [35] マシマシ
+			PRINTL 　[0] これで注文
+			BINPUT
+			SELECTCASE RESULT
+				CASE 0
+					BREAK
+				CASE 1 TO 5
+					ヤサイ = RESULT
+				CASE 11 TO 15
+					ニンニク = RESULT%10
+				CASE 21 TO 25
+					アブラ = RESULT%10
+				CASE 31 TO 35
+					タレ = RESULT%10
+			ENDSELECT
+		LOOP 1
+		IF 対象
+			CALL SCHOOL_KOJO, 対象, "ボルテ軒で注文"
+			;ヤサイマシニンニクアブラオオメ以上だと好感度ボーナス
+			IF ヤサイ >= 4 && ニンニク >= 4 && アブラ >= 4 && NAME:対象 == "野増菜 かなで"
+				CALL 好感度上昇, 対象, "友情", 20
+			ELSE
+				CALL 好感度上昇, 対象, "友情", 15
+			ENDIF
+		ELSE
+			PRINTL ボルテ軒で美味しいラーメンを食べた
+		ENDIF
+		MONEY -= 800
+	CASE 2
+		CALL SCHOOL_KOJO, 同行者, "ボルテ軒で食事する"
+		CALL 好感度上昇, 同行者, "友情", 30
+		MONEY -= 1600
+ENDSELECT
+WAIT
+RETURN 1
+
+@SCHOOL_MESSAGE_ボルテ軒で注文
+PRINTFORML ラーメンを注文して、持ってきてくれた%CALLNAME:TARGET%と談笑した
+
+@SCHOOL_MESSAGE_ボルテ軒で食事する
+PRINTFORML ボルテ軒で%CALLNAME:TARGET%と談笑しながら美味しいラーメンを食べた
