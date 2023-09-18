@@ -31,17 +31,19 @@ SIF FINDELEMENTF(解禁済みロケーション, "星龍華") >= 0
 RETURN 0
 
 ;バイト時に好感度が上がるキャラ
-@職場出現キャラ_星龍華
+@職場出現キャラ_星龍華, キャラ取得
 #DIM DYNAMIC 対象
 {
 #DIMS DYNAMIC 出現キャラ =
 "ナイア",
 "シア"
 }
+#DIM DYNAMIC キャラ取得
 
 対象 = GETCHARANAME(出現キャラ:(RAND:VARSIZE("出現キャラ")))
 
-CALL EXPUP, "料理経験", 2, PLAYER
+SIF !キャラ取得
+	CALL EXPUP, "料理経験", 2, PLAYER
 
 SIF 対象 > 0 && CSTR:対象:現在地 == ""
 	RETURN 対象
@@ -117,3 +119,48 @@ SIF 始点 == 1
 	RETURN
 SIF !データベース参照中
 	RESTART
+
+
+@星龍華_専用コマンド
+IF 同行者
+	IF MONEY < 2000
+		CALL COLUMNPRINTL, 0, @"　[---] - %CALLNAME:同行者%と食事する(2000＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, @"　[  1] - %CALLNAME:同行者%と食事する(2000＄)"
+	ENDIF
+ELSE
+	IF MONEY < 1000
+		CALL COLUMNPRINTL, 0, "　[---] - 中華料理を注文する(1000＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, "　[  0] - 中華料理を注文する(1000＄)"
+	ENDIF
+ENDIF
+
+@星龍華_専用コマンド_INPUT
+#DIM DYNAMIC 対象
+
+選択肢 = CRESULT:1
+CALL 職場出現キャラ_星龍華, 1
+対象 = RESULT
+SELECTCASE CRESULT:1
+	CASE 0
+		IF 対象
+			CALL SCHOOL_KOJO, 対象, "星龍華で注文"
+			CALL 好感度上昇, 対象, "友情", 15
+		ELSE
+			PRINTL 星龍華で美味しい中華料理を頂いた
+		ENDIF
+		MONEY -= 1000
+	CASE 1
+		CALL SCHOOL_KOJO, 同行者, "星龍華でお茶する"
+		CALL 好感度上昇, 同行者, "友情", 30
+		MONEY -= 2000
+ENDSELECT
+WAIT
+RETURN 1
+
+@SCHOOL_MESSAGE_星龍華で注文
+PRINTFORML 料理を注文して、持ってきてくれた%CALLNAME:TARGET%と談笑した
+
+@SCHOOL_MESSAGE_星龍華で食事する
+PRINTFORML 星龍華で%CALLNAME:TARGET%と美味しい中華料理を食べながら談笑した
