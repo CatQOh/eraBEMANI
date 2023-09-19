@@ -5,7 +5,7 @@
 #FUNCTION
 ;スライムのみ行える
 コマンド実行条件 += "実行者か対象に[スライム][溶ける快]が必要/"
-SIF !TALENT:スライム && !TALENT:PLAYER:スライム && !TALENT:溶ける快 && !TALENT:PLAYER:溶ける快
+SIF !ISSLIME(PLAYER) && !ISSLIME(TARGET)
 	COMRESULT = 0
 コマンド実行条件 += "睡眠中は実行できない/"
 SIF TEQUIP:睡眠
@@ -21,46 +21,44 @@ RETURNF COMRESULT
 @COM_ふたなり化
 
 PRINTL □誰が行いますか？
-SIF TALENT:スライム || TALENT:溶ける快
+SIF ISSLIME(TARGET)
 	PRINTFORML 　[1] %CALLNAME:TARGET%(\@ TALENT:ふたなり ? ふたなり解除する # ふたなり化する \@)
-SIF TALENT:PLAYER:スライム || TALENT:PLAYER:溶ける快
+SIF ISSLIME(PLAYER)
 	PRINTFORML 　[2] %CALLNAME:PLAYER%(\@ TALENT:PLAYER:ふたなり ? ふたなり解除する # ふたなり化する \@)
 PRINTL 　[0] キャンセル
 
-DO
-	SIF ISSKIP()
-		BREAK
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			IF TALENT:スライム || TALENT:溶ける快
-				INVERTBIT TALENT:ふたなり, 0
-				IF TALENT:ふたなり
-					IF TALENT:性転換済
-						SIF CSTR:性転換童貞 == ""
-							TALENT:童貞 = 1
-					ELSE
-						SIF CSTR:童貞 == ""
-							TALENT:童貞 = 1
-					ENDIF
+SIF ISSKIP()
+	RETURN
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		IF ISSLIME(TARGET)
+			INVERTBIT TALENT:ふたなり, 0
+			IF TALENT:ふたなり
+				IF TALENT:性転換済
+					SIF CSTR:性転換童貞 == ""
+						TALENT:童貞 = 1
+				ELSE
+					SIF CSTR:童貞 == ""
+						TALENT:童貞 = 1
 				ENDIF
-				RETURN 1
 			ENDIF
-		CASE 2
-			IF TALENT:PLAYER:スライム || TALENT:PLAYER:溶ける快
-				INVERTBIT TALENT:PLAYER:ふたなり, 0
-				IF TALENT:PLAYER:ふたなり
-					IF TALENT:PLAYER:性転換済
-						SIF CSTR:PLAYER:性転換童貞 == ""
-							TALENT:PLAYER:童貞 = 1
-					ELSE
-						SIF CSTR:PLAYER:童貞 == ""
-							TALENT:PLAYER:童貞 = 1
-					ENDIF
+			RETURN 1
+		ENDIF
+	CASE 2
+		IF ISSLIME(PLAYER)
+			INVERTBIT TALENT:PLAYER:ふたなり, 0
+			IF TALENT:PLAYER:ふたなり
+				IF TALENT:PLAYER:性転換済
+					SIF CSTR:PLAYER:性転換童貞 == ""
+						TALENT:PLAYER:童貞 = 1
+				ELSE
+					SIF CSTR:PLAYER:童貞 == ""
+						TALENT:PLAYER:童貞 = 1
 				ENDIF
-				RETURN 1
 			ENDIF
-	ENDSELECT
-LOOP 1
+			RETURN 1
+		ENDIF
+ENDSELECT

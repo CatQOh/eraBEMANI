@@ -2105,6 +2105,56 @@ SIF CSTR:ARG:種族 == "スライム"
 	RETURNF 1
 RETURNF 0
 
+;;;スライム度増加処理用関数
+@スライム度増加, ARG, 対象, 増加量, スライム増加量 = -1
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 増加量
+#DIM DYNAMIC スライム増加量
+
+;DISABLE
+CALLFORM DISABLE, "スライム感染", 対象
+SIF RESULT
+	RETURN
+;感染可能かどうかは下の式中関数で判定
+SIF !スライム感染可能(対象)
+	RETURN
+;スライムか否かで増加量が異なる
+SIF スライム増加量 == -1
+	スライム増加量 = 増加量
+IF ISSLIME(対象)
+	IF ARG
+		CFLAG:対象:スライム度 = スライム増加量
+	ELSE
+		CFLAG:対象:スライム度 += スライム増加量
+	ENDIF
+ELSE
+	IF ARG
+		CFLAG:対象:スライム度 = 増加量
+	ELSE
+		CFLAG:対象:スライム度 += 増加量
+	ENDIF
+ENDIF
+
+@スライム感染可能, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+;感染予防中は増加しない
+SIF FLAG:抗スライム
+	RETURNF 0
+;妊娠育児中は感染進まない
+SIF TALENT:対象:妊娠 || TALENT:対象:育児中
+	RETURNF 0
+;眷属化していると感染しない ついでに眷属主も弾く
+SIF CSTR:対象:種族 != "スライム" && (CSTR:対象:眷属主 != "" || CFLAG:対象:眷属化した人数)
+	RETURNF 0
+;無機物と機械には感染しない ただし偽トランを除く（暫定）
+SIF (TALENT:対象:無機物 || CSTR:対象:種族 == "機械") && CHARANAMEF(対象) != "偽トラン"
+	RETURNF 0
+;霊体もだめ
+SIF TALENT:対象:霊体
+	RETURNF 0
+RETURNF 1
+
 ;;;処女or再生処女
 @処女膜, ARG
 #FUNCTION

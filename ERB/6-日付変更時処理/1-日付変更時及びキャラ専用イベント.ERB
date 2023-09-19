@@ -342,28 +342,16 @@ FOR LCOUNT, 0, CHARANUM
 		CONTINUE
 	SIF CFLAG:LCOUNT:スライム度 <= 0
 		CONTINUE
-	;機械と無機物と霊体は感染しない
-	IF CSTR:LCOUNT:種族 == "機械" || TALENT:LCOUNT:無機物 || TALENT:LCOUNT:霊体
+	IF FLAG:抗スライム && !ISSLIME(LCOUNT)
 		CFLAG:LCOUNT:スライム度 = 0
 		CONTINUE
 	ENDIF
-	;眷属化したキャラは感染しない
-	IF CSTR:LCOUNT:種族 != "スライム" && CSTR:LCOUNT:眷属主 != ""
-		CFLAG:LCOUNT:スライム度 = 0
-		CONTINUE
-	ENDIF
-	IF FLAG:抗スライム && !TALENT:LCOUNT:スライム && !TALENT:LCOUNT:溶ける快
-		CFLAG:LCOUNT:スライム度 = 0
-		CONTINUE
-	ENDIF
-	;妊娠育児中は感染進まない
-	SIF TALENT:LCOUNT:妊娠 || TALENT:LCOUNT:育児中
-		CONTINUE
 	;スライム度は1日1～3ランダムで増加
-	CFLAG:LCOUNT:スライム度 += RAND(1, 4)
+	CALL スライム度増加, 0, LCOUNT, RAND(1, 4)
 	;30を超えるとスライム化する
-	IF CFLAG:LCOUNT:スライム度 >= 30 && !TALENT:LCOUNT:スライム && !TALENT:LCOUNT:溶ける快
+	IF CFLAG:LCOUNT:スライム度 >= 30 && !ISSLIME(LCOUNT)
 		CALL KOJO_MESSAGE_EVENT, "スライム化", LCOUNT
+		LOADGLOBAL
 		スライム化イベント回数++
 		SAVEGLOBAL
 		SIF スライム化イベント回数 >= 10

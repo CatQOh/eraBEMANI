@@ -44,89 +44,66 @@ SIF NOF(TARGET) < 10000
 	PRINTFORML [8] - 構成情報を分析する（\@ 分析データ:(NOF(TARGET)) ? 分析データは入手済み # 複製用の分析データを入手 \@）
 PRINTL [0] - キャンセル
 
-DO
-	SIF ISSKIP()
-		BREAK
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN 0
-		CASE 1
-			;機械は苦痛を1/10にするので大きめの値にする
-			LOSEBASE:体力 += 200
-			LOSEBASE:気力 += 300
-			SOURCE:苦痛 = スキル*20000
-			SOURCE:屈従 = スキル*500
-			ハッキング命令 = 過電流
-		CASE 2
-			SIF スキル < 5
-				CONTINUE
-			LOSEBASE:体力 += 50
-			LOSEBASE:気力 += 50
-			IF PENIS(TARGET)
-				BASE:射精 += スキル*(MAXBASE:射精/5)
-				ハッキング命令 = 射精
-			ELSE
-				PALAM:快Ｃ += スキル*2000
-				ハッキング命令 = Ｃ絶頂
-			ENDIF
-		CASE 3
-			SIF スキル < 5
-				CONTINUE
-			LOSEBASE:体力 += 50
-			LOSEBASE:気力 += 50
-			PALAM:快Ｂ += スキル*2000
-			ハッキング命令 = Ｂ絶頂
-		CASE 4
-			SIF スキル < 7 || !VAGINA(TARGET)
-				CONTINUE
-			LOSEBASE:体力 += 80
-			LOSEBASE:気力 += 50
-			PALAM:快Ｖ += スキル*2000
-			ハッキング命令 = Ｖ絶頂
-		CASE 5
-			SIF スキル < 7
-				CONTINUE
-			LOSEBASE:体力 += 80
-			LOSEBASE:気力 += 50
-			PALAM:快Ａ += スキル*2000
-			ハッキング命令 = Ａ絶頂
-		CASE 6
-			SIF CFLAG:死亡 || TEQUIP:睡眠
-				CONTINUE
-			SIF スキル < 9
-				CONTINUE
-			TFLAG:実行判定無視 = 10000
-			ハッキング命令 = 従属
-		CASE 7
-			SIF CFLAG:死亡 || TEQUIP:睡眠
-				CONTINUE
-			SIF スキル < 10 || !MOD:STS
-				CONTINUE
-			PRINTL 自爆命令を実行します。本当によろしいですか？
-			PRINTL [0] - はい
-			PRINTL [1] - いいえ
-			DO
-				INPUT
-				SELECTCASE RESULT
-					CASE 0
-						LOSEBASE:体力 = POWER(RAND(5, 9), RAND(15, 21))
-						ハッキング命令 = 自爆
-						リソース:マテリアル += 3
-						BREAK
-					CASE 1
-						RETURN 0
-				ENDSELECT
-			LOOP 1
-			BREAK
-		CASE 8
-			SIF NOF(TARGET) > 10000
-				CONTINUE
-			SIF !分析データ:(NOF(TARGET))
-				分析データ:(NOF(TARGET)) = 1
-			ハッキング命令 = 分析
-	ENDSELECT
-LOOP LOOPRES(1, 2, 3, 4, 5, 6, 8)
+
+SIF ISSKIP()
+	RETURN
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		;機械は苦痛を1/10にするので大きめの値にする
+		LOSEBASE:体力 += 200
+		LOSEBASE:気力 += 300
+		SOURCE:苦痛 = スキル*20000
+		SOURCE:屈従 = スキル*500
+		ハッキング命令 = 過電流
+	CASE 2
+		LOSEBASE:体力 += 50
+		LOSEBASE:気力 += 50
+		IF PENIS(TARGET)
+			BASE:射精 += スキル*(MAXBASE:射精/5)
+			ハッキング命令 = 射精
+		ELSE
+			PALAM:快Ｃ += スキル*2000
+			ハッキング命令 = Ｃ絶頂
+		ENDIF
+	CASE 3
+		LOSEBASE:体力 += 50
+		LOSEBASE:気力 += 50
+		PALAM:快Ｂ += スキル*2000
+		ハッキング命令 = Ｂ絶頂
+	CASE 4
+		LOSEBASE:体力 += 80
+		LOSEBASE:気力 += 50
+		PALAM:快Ｖ += スキル*2000
+		ハッキング命令 = Ｖ絶頂
+	CASE 5
+		LOSEBASE:体力 += 80
+		LOSEBASE:気力 += 50
+		PALAM:快Ａ += スキル*2000
+		ハッキング命令 = Ａ絶頂
+	CASE 6
+		TFLAG:実行判定無視 = 10000
+		ハッキング命令 = 従属
+	CASE 7
+		PRINTL 自爆命令を実行します。本当によろしいですか？
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				LOSEBASE:体力 = POWER(RAND(5, 9), RAND(15, 21))
+				ハッキング命令 = 自爆
+				リソース:マテリアル += 3
+			CASE 1
+				RETURN 0
+		ENDSELECT
+	CASE 8
+		SIF !分析データ:(NOF(TARGET))
+			分析データ:(NOF(TARGET)) = 1
+		ハッキング命令 = 分析
+ENDSELECT
 
 ;ハッキングするとものすごく不快感を感じる
 IF ハッキング命令 != "自爆"
