@@ -65,3 +65,94 @@ SIF 始点 == 1
 	RETURN
 SIF !データベース参照中
 	RESTART
+
+@ルーテージ図書館_専用コマンド
+IF 同行者
+	CALL COLUMNPRINTL, 0, @"　[  1] - %CALLNAME:同行者%と本を読む"
+ELSE
+	IF ルーテージ図書館_貸出中
+		CALL COLUMNPRINTL, 0, "　[  0] - 本を返却する"
+	ELSE
+		CALL COLUMNPRINTL, 0, "　[  0] - 本を借りる"
+	ENDIF
+ENDIF
+
+@ルーテージ図書館_専用コマンド_INPUT
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 出現キャラ = "リプンテ", "スタンパ", "クリープ"
+#DIM DYNAMIC 乱数
+
+IF GROUPMATCH("", CSTR:GETCHARANAME("リプンテ"):現在地, CSTR:GETCHARANAME("スタンパ"):現在地, CSTR:GETCHARANAME("クリープ"):現在地)
+	DO
+		乱数 = RAND:3
+		IF CSTR:GETCHARANAME(出現キャラ:乱数):現在地 == ""
+			対象 = GETCHARANAME(出現キャラ:乱数)
+			BREAK
+		ENDIF
+	LOOP 1
+ENDIF
+
+SELECTCASE CRESULT:1
+	CASE 0
+		IF 対象
+			IF ルーテージ図書館_貸出中
+				CALL SCHOOL_KOJO, 対象, "ルーテージ図書館で本を借りる"
+			ELSE
+				CALL SCHOOL_KOJO, 対象, "ルーテージ図書館で本を返却"
+			ENDIF
+			CALL 好感度上昇, 対象, "友情", 5
+		ELSE
+			IF ルーテージ図書館_貸出中
+				PRINTL ルーテージ図書館で本を返却した
+			ELSE
+				PRINTL ルーテージ図書館で本を借りた
+			ENDIF
+		ENDIF
+	CASE 1
+		PRINTFORML □%CALLNAME:同行者%とどの本を読みますか？
+		PRINTL 　[0] - 普通の本
+		PRINTL 　[1] - 男女の身体について詳しく書かれた本
+		BINPUT
+		選択肢 = RESULT
+		CALL SCHOOL_KOJO, 同行者, "ルーテージ図書館で本を読む"
+		SELECTCASE 選択肢
+			CASE 0
+				CALL 好感度上昇, 同行者, "友情", 5
+			CASE 1
+				IF 小中高(CSTR:対象:在校) == "小" && !好感度:対象:既成事実 && CFLAG:対象:倫理観 < 30
+					CALL 好感度上昇, 同行者, "友情", 5
+				ELSE
+					SIF CFLAG:対象:倫理観 >= 30 || TALENT:対象:貞操無頓着
+						CALL 好感度上昇, 同行者, "セフレ", 5
+				ENDIF
+		ENDSELECT
+ENDSELECT
+WAIT
+RETURN 1
+
+@SCHOOL_MESSAGE_ルーテージ図書館で本を借りる
+PRINTFORML 本を借りる際、受付をしてくれた%CALLNAME:TARGET%と本について軽く話した
+
+@SCHOOL_MESSAGE_ルーテージ図書館で本を返却
+PRINTFORML 本を返却する際、受付をしてくれた%CALLNAME:TARGET%と本について軽く話した
+
+@SCHOOL_MESSAGE_ルーテージ図書館で本を読む
+SELECTCASE 選択肢
+	CASE 0
+		PRINTFORML ルーテージ図書館で%CALLNAME:TARGET%と本を読んで過ごした
+	CASE 1
+		IF 小中高(CSTR:在校) == "小" && !好感度:既成事実 && CFLAG:倫理観 < 30
+			PRINTFORML %CALLNAME:TARGET%に性教育の本を読ませてみたが、意味はよく分かっていないようだ……
+		ELSE
+			PRINTFORM %CALLNAME:TARGET%のところに性教育の本を持っていくと、
+			IF CFLAG:倫理観 >= 30 || TALENT:貞操無頓着
+				IF TALENT:恥じらい
+					PRINTFORML 少し恥ずかしそうにしつつも%CALLNAME:PLAYER%の読書に仕方なく付き合っている
+				ELSE
+					PRINTFORML 関心を示し他の利用者に聞こえないように猥談を交えながらページをめくっていった
+				ENDIF
+			ELSE
+				PRINTFORML 少し嫌そうな顔をして別の本を読み始めてしまった
+			ENDIF
+		ENDIF
+ENDSELECT
