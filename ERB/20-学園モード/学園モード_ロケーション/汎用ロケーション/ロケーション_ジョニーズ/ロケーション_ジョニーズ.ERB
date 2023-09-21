@@ -16,8 +16,9 @@ SIF GROUPMATCH(ターン, "昼", "夕", "夜")
 RETURN -1
 
 ;バイト時に好感度が上がるキャラ
-@職場出現キャラ_ジョニーズ
+@職場出現キャラ_ジョニーズ, キャラ取得
 #DIM DYNAMIC 対象
+#DIM DYNAMIC キャラ取得
 {
 #DIMS DYNAMIC 出現キャラ =
 "北見 エリカ",
@@ -27,7 +28,8 @@ RETURN -1
 
 対象 = GETCHARANAME(出現キャラ:(RAND:VARSIZE("出現キャラ")))
 
-CALL EXPUP, "料理経験", 2, PLAYER
+SIF !キャラ取得
+	CALL EXPUP, "料理経験", 2, PLAYER
 
 SIF 対象 > 0 && CSTR:対象:現在地 == ""
 	RETURN 対象
@@ -62,6 +64,8 @@ FOR LCOUNT, 始点, 終点
 	SELECTCASE CHARANAMEF(LCOUNT)
 		;バイト組 50%
 		CASE "北見 エリカ", "クロノス", "カイロス", "おいわちゃん"
+			SIF 出現率:LCOUNT >= 0
+				出現率:LCOUNT = 50
 		;お客さんたち メイド喫茶なのでメイドが来る（？？？）
 		{
 		CASE "ベリゼベス", "ニーソ姫", "恋刃", "ラッテ", "リエル", "グリム・リエル", "鬼蝮 ユリア", "葉和 とれび",
@@ -100,3 +104,72 @@ SIF 始点 == 1
 	RETURN
 SIF !データベース参照中
 	RESTART
+
+@ジョニーズ_専用コマンド
+;メイド喫茶は割高
+IF 同行者
+	IF MONEY < 2000
+		CALL COLUMNPRINTL, 0, @"　[---] - %CALLNAME:同行者%とお茶する(2000＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, @"　[  2] - %CALLNAME:同行者%とお茶する(1000＄)"
+	ENDIF
+ELSE
+	IF MONEY < 1000
+		CALL COLUMNPRINTL, 0, "　[---] - 飲み物を注文する(1000＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, "　[  0] - 飲み物を注文する(1000＄)"
+	ENDIF
+	IF MONEY < 2000
+		CALL COLUMNPRINTL, 0, "　[---] - 飲み物とオムライスを注文する(2000＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, "　[  1] - 飲み物とオムライスを注文する(2000＄)"
+	ENDIF
+ENDIF
+
+@ジョニーズ_専用コマンド_INPUT
+#DIM DYNAMIC 対象
+
+対象 = 0
+選択肢 = CRESULT:1
+IF キャラ現在地判定("北見 エリカ", "クロノス", "カイロス")
+	DO
+		CALL 職場出現キャラ_ジョニーズ, 1
+		対象 = RESULT
+	LOOP !対象
+ENDIF
+
+SELECTCASE CRESULT:1
+	CASE 0
+		IF 対象
+			CALL SCHOOL_KOJO, 対象, "ジョニーズで注文"
+			CALL 好感度上昇, 対象, "友情", 15
+		ELSE
+			PRINTL ジョニーズでメイドさんが魔法をかけてくれた飲み物を頂いた。いつもより美味しい気がする
+		ENDIF
+		MONEY -= 1000
+	CASE 1
+		IF 対象
+			CALL SCHOOL_KOJO, 対象, "ジョニーズで注文"
+			CALL 好感度上昇, 対象, "友情", 30
+		ELSE
+			PRINTL ジョニーズでメイドさんが魔法をかけてくれた飲み物とオムライスを頂いた。いつもより美味しい気がする
+		ENDIF
+		MONEY -= 2000
+	CASE 2
+		CALL SCHOOL_KOJO, 同行者, "ジョニーズでお茶する"
+		CALL 好感度上昇, 同行者, "友情", 30
+		MONEY -= 2000
+ENDSELECT
+WAIT
+RETURN 1
+
+@SCHOOL_MESSAGE_ジョニーズで注文
+SELECTCASE 選択肢
+	CASE 0
+		PRINTFORML ジョニーズで飲み物を注文すると、持ってきてくれた%CALLNAME:TARGET%がおまじないをかけてくれた。いつもより美味しい気がする
+	CASE 1
+		PRINTFORML ジョニーズで飲み物とオムライスを注文すると、持ってきてくれた%CALLNAME:TARGET%がおまじないをかけてくれた。いつもより美味しい気がする
+ENDSELECT
+
+@SCHOOL_MESSAGE_ジョニーズでお茶する
+PRINTFORML ジョニーズで%CALLNAME:TARGET%と楽しいティータイムの時間を過ごした

@@ -20,8 +20,9 @@ ENDIF
 RETURN GETCHARANAME("ジルチ")
 
 ;バイト時に好感度が上がるキャラ
-@職場出現キャラ_ビストローバー
+@職場出現キャラ_ビストローバー, キャラ取得
 #DIM DYNAMIC 対象
+#DIM DYNAMIC キャラ取得
 {
 #DIMS DYNAMIC 出現キャラ =
 "ジルチ",
@@ -33,7 +34,8 @@ RETURN GETCHARANAME("ジルチ")
 
 対象 = GETCHARANAME(出現キャラ:(RAND:VARSIZE("出現キャラ")))
 
-CALL EXPUP, "料理経験", 2, PLAYER
+SIF !キャラ取得
+	CALL EXPUP, "料理経験", 2, PLAYER
 
 SIF 対象 > 0 && CSTR:対象:現在地 == ""
 	RETURN 対象
@@ -106,3 +108,52 @@ SIF 始点 == 1
 	RETURN
 SIF !データベース参照中
 	RESTART
+
+
+@ビストローバー_専用コマンド
+IF 同行者
+	IF MONEY < 2000
+		CALL COLUMNPRINTL, 0, @"　[---] - %CALLNAME:同行者%と食事する(2000＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, @"　[  1] - %CALLNAME:同行者%と食事する(2000＄)"
+	ENDIF
+ELSE
+	IF MONEY < 1000
+		CALL COLUMNPRINTL, 0, "　[---] - コースメニューを注文する(1000＄)", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, "　[  0] - コースメニューを注文する(1000＄)"
+	ENDIF
+ENDIF
+
+@ビストローバー_専用コマンド_INPUT
+#DIM DYNAMIC 対象
+
+対象 = 0
+IF キャラ現在地判定("ジルチ", "チャオ", "ナイア", "識", "光伊 計名")
+	DO
+		CALL 職場出現キャラ_ビストローバー, 1
+		対象 = RESULT
+	LOOP !対象
+ENDIF
+SELECTCASE CRESULT:1
+	CASE 0
+		IF 対象
+			CALL SCHOOL_KOJO, 対象, "ビストローバーで注文"
+			CALL 好感度上昇, 対象, "友情", 20
+		ELSE
+			PRINTL ビストローバーでコースメニューを注文した。この価格とは思えないほどの味と量だ！
+		ENDIF
+		MONEY -= 1000
+	CASE 1
+		CALL SCHOOL_KOJO, 同行者, "ビストローバーで食事する"
+		CALL 好感度上昇, 同行者, "友情", 30
+		MONEY -= 2000
+ENDSELECT
+WAIT
+RETURN 1
+
+@SCHOOL_MESSAGE_ビストローバーで注文
+PRINTFORML コースメニューを注文して、持ってきてくれた%CALLNAME:TARGET%と談笑しつつ美味しい料理に舌鼓を打った
+
+@SCHOOL_MESSAGE_ビストローバーで食事する
+PRINTFORML ビストローバーで%CALLNAME:TARGET%と美味しい食事を楽しんだ
