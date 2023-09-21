@@ -467,22 +467,28 @@ SIF TALENT:アニマル
 SIF TALENT:霊体 && !TALENT:MASTER:霊感 && !TALENT:MASTER:ネクロマンサー
 	RETURN 0
 
-;調教後3P、調教後セックスどちらか一つ（強精神剤の反動が起こる時は無効）
-;助手がいる場合は3P判定 対象と助手が陥落済み、対象と助手間の相性がそれぞれ100より↑、対象の体力500以上
-IF ASSI >= 0 && CFLAG:陥落 && CFLAG:ASSI:陥落 && 相性値(TARGET, ASSI) > 100 && 相性値(ASSI, TARGET) > 100 && BASE:体力 >= 500 && TEQUIP:強精神薬 <= 2
+;調教後3P、調教後セックスどちらか一つ
+;対象の体力500以上必要、強精神剤の反動が起こる時は無効
+SIF BASE:体力 < 500 || TEQUIP:強精神薬 > 2
+	GOTO ELSE
+;助手がいる場合は3P判定 対象と助手が陥落済み、対象と助手間の相性がそれぞれ100より↑
+IF ASSI >= 0 && CFLAG:陥落 && CFLAG:ASSI:陥落 && 相性値(TARGET, ASSI) > 100 && 相性値(ASSI, TARGET) > 100
 	;どちらかが貞操帯つけてると発生しない
 	SIF CFLAG:貞操帯 || CFLAG:ASSI:貞操帯
 		GOTO ELSE
 	;メス度10以上でも発生しない
 	SIF ABL:メス度 >= 10 || ABL:ASSI:メス度 >= 10
 		GOTO ELSE
+	;去勢済みだと発生しない（暫定）
+	SIF TALENT:去勢済み || TALENT:ASSI:去勢済み
+		GOTO ELSE
 	;ただし出産トラウマがある場合は発生しない時がある
 	不発確率 = CFLAG:出産トラウマ+CFLAG:ASSI:出産トラウマ
 	;RAND:(合計値/10+2) <= (合計値/10)
 	SIF !(不発確率 && RAND:(不発確率/10+2) <= 不発確率/10)
 		CALL EVENT_CHECK, "調教後3P"
-;ふたりエッチ判定 対象が陥落済み、対象の体力500以上
-ELSEIF CFLAG:陥落 && BASE:体力 >= 500 && TEQUIP:強精神薬 <= 2
+;ふたりエッチ判定 対象が陥落済み
+ELSEIF CFLAG:陥落 && BASE:体力 >= 500
 	;貞操帯装着中は発生しない
 	SIF CFLAG:貞操帯
 		GOTO ELSE
@@ -628,7 +634,7 @@ CALL JUELUP, "快Ｃ", 奉仕ポイント*10*ABL:Ｃ感覚
 CALL JUELUP, "欲情", 奉仕ポイント*50
 
 ;奴隷が男で他に竿役がいれば奴隷掘られる
-IF SEX(TARGET) == 1 && (PENIS(MASTER) || PENIS(ASSI))
+IF SEX(TARGET) == 1 && (PENIS(MASTER) || PENIS(ASSI)) && ABL:TARGET:Ａ感覚 >= 3
 	SELECTCASE ABL:Ａ感覚
 		CASE 0 TO 4
 			受けＡ = ABL:Ａ感覚+1
@@ -663,7 +669,7 @@ IF SEX(TARGET) == 1 && (PENIS(MASTER) || PENIS(ASSI))
 ENDIF
 
 ;助手が男で他に竿役がいれば助手掘られる
-IF SEX(ASSI) == 1 && (PENIS(MASTER) || PENIS(TARGET))
+IF SEX(ASSI) == 1 && (PENIS(MASTER) || PENIS(TARGET)) && ABL:ASSI:Ａ感覚 >= 3
 	SELECTCASE ABL:ASSI:Ａ感覚
 		CASE 0 TO 4
 			受けＡ = ABL:ASSI:Ａ感覚+1
@@ -698,7 +704,7 @@ IF SEX(ASSI) == 1 && (PENIS(MASTER) || PENIS(TARGET))
 ENDIF
 
 ;主人が男で他に竿役がいれば主人掘られる
-IF SEX(MASTER) == 1 && (PENIS(ASSI) || PENIS(TARGET))
+IF SEX(MASTER) == 1 && (PENIS(ASSI) || PENIS(TARGET)) && ABL:MASTER:Ａ感覚 >= 3
 	SELECTCASE ABL:MASTER:Ａ感覚
 		CASE 0 TO 4
 			受けＡ = ABL:MASTER:Ａ感覚+1

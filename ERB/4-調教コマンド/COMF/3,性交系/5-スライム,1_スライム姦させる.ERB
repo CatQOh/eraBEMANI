@@ -95,7 +95,7 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 NEXT
 
 ;V経験
-IF !TALENT:処女 && EXP:Ｖ経験 < 30
+IF VAGINA(TARGET) && !TALENT:処女 && EXP:Ｖ経験 < 30
 	実効値 -= 15
 	PRINT -Ｖ経験不足(15)
 ENDIF
@@ -231,18 +231,20 @@ SELECTCASE RAND:5
 	CASE 4
 		SOURCE:快B = 500
 ENDSELECT
-SELECTCASE RAND:5
-	CASE 0
-		SOURCE:快V = 300
-	CASE 1
-		SOURCE:快V = 350
-	CASE 2
-		SOURCE:快V = 400
-	CASE 3
-		SOURCE:快V = 450
-	CASE 4
-		SOURCE:快V = 500
-ENDSELECT
+IF VAGINA(TARGET)
+	SELECTCASE RAND:5
+		CASE 0
+			SOURCE:快V = 300
+		CASE 1
+			SOURCE:快V = 350
+		CASE 2
+			SOURCE:快V = 400
+		CASE 3
+			SOURCE:快V = 450
+		CASE 4
+			SOURCE:快V = 500
+	ENDSELECT
+ENDIF
 SELECTCASE RAND:5
 	CASE 0
 		SOURCE:快A = 300
@@ -264,7 +266,6 @@ SOURCE:反感 = 100
 SOURCE:恐怖 = 50
 SOURCE:恭順 = 200
 SOURCE:不潔 = 300
-
 
 ;-------------------------------------------------
 ;特殊ソース処理
@@ -334,12 +335,13 @@ ENDIF
 IF CSTR:PLAYER:種族 == "スライム" || TALENT:PLAYER:スライム
 	SOURCE:快C += 100
 	SOURCE:快B += 100
-	SOURCE:快V += 100
+	SIF VAGINA(TARGET)
+		SOURCE:快V += 100
 	SOURCE:快A += 100
 ENDIF
 
-
-CALL 特殊ソース処理_Ｖ
+SIF VAGINA(TARGET)
+	CALL 特殊ソース処理_Ｖ
 CALL 特殊ソース処理_Ａ
 CALL 特殊ソース処理_セックス
 
@@ -352,10 +354,18 @@ CALL SOURCE_CHECK_CVAB
 ;射精チェック
 ;-------------------------------------------------
 ;射精時の処理
-IF PLAYER == MASTER
-	射精先 = 1
-ELSEIF PLAYER == ASSI
-	射精先 = 2
+IF VAGINA(PLAYER)
+	IF PLAYER == MASTER
+		射精先 = 1
+	ELSEIF PLAYER == ASSI
+		射精先 = 2
+	ENDIF
+ELSE
+	IF PLAYER == MASTER
+		射精先 = 6
+	ELSEIF PLAYER == ASSI
+		射精先 = 7
+	ENDIF
 ENDIF
 
 CALL SAMEN_CHECK, 6
@@ -368,12 +378,14 @@ CALL SAMEN_SHOOT_T, 射精先, NOWEX:射精
 ;汚れの処理
 ;-------------------------------------------------
 ;射精に関係なく行われる処理はここから
-;膣内に破瓜の血の汚れを付加
-SIF (TALENT:処女 || TALENT:再生処女) && CSTR:種族 != "スライム"
-	SETBIT STAIN:膣内, 6
-;奴隷の膣内⇔調教者のペニスの汚れが移動
-STAIN:膣内 |= STAIN:PLAYER:ペニス
-STAIN:PLAYER:ペニス |= STAIN:膣内
+IF VAGINA(TARGET)
+	;膣内に破瓜の血の汚れを付加
+	SIF (TALENT:処女 || TALENT:再生処女) && CSTR:種族 != "スライム"
+		SETBIT STAIN:膣内, 6
+	;奴隷の膣内⇔調教者のペニスの汚れが移動
+	STAIN:膣内 |= STAIN:PLAYER:ペニス
+	STAIN:PLAYER:ペニス |= STAIN:膣内
+ENDIF
 
 ;調教者の全ての部位に粘液汚れを付加
 SETBIT STAIN:PLAYER:口, 5
@@ -384,7 +396,8 @@ SIF VAGINA(PLAYER)
 	SETBIT STAIN:PLAYER:ヴァギナ, 5
 SETBIT STAIN:PLAYER:アナル, 5
 SETBIT STAIN:PLAYER:胸, 5
-SETBIT STAIN:PLAYER:膣内, 5
+SIF VAGINA(PLAYER)
+	SETBIT STAIN:PLAYER:膣内, 5
 SIF TEQUIP:PLAYER:下半身下着
 	SETBIT STAIN:PLAYER:下着, 5
 
@@ -393,7 +406,8 @@ SIF TEQUIP:PLAYER:下半身下着
 ;-------------------------------------------------
 CALL EXPUP_BASE, 3, 2
 
-CALL EXPUP, "Ｖ経験", 1
+SIF VAGINA(TARGET)
+	CALL EXPUP, "Ｖ経験", 1
 CALL EXPUP, "Ａ経験", 1
 CALL EXPUP, "性交経験", 1
 CALL EXPUP, "性交経験", 1, PLAYER
