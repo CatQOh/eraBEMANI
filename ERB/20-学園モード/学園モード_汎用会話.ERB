@@ -1,4 +1,5 @@
 ﻿@学園モード_汎用会話, 対象
+#DIM DYNAMIC LRESULT
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 必要値
 TARGET = 対象
@@ -40,8 +41,49 @@ PRINTPLAIN 　会話　
 PRINTL [10] なんでもない
 
 BINPUT
+LRESULT = RESULT
 
-SELECTCASE RESULT
+;口上のコマンド上書き関数を優先
+SELECTCASE LRESULT
+	CASE 0
+		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_何気ない会話をする")
+			CALL SCHOOL_KOJO, TARGET, "コマンド_何気ない会話をする"
+			RETURN RESULT
+		ENDIF
+	CASE 1
+		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_少し踏み込んだ会話をする")
+			CALL SCHOOL_KOJO, TARGET, "コマンド_少し踏み込んだ会話をする"
+			RETURN RESULT
+		ENDIF
+	CASE 2
+		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_下ネタを振る")
+			CALL SCHOOL_KOJO, TARGET, "コマンド_下ネタを振る"
+			RETURN RESULT
+		ENDIF
+	CASE 3
+		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_性的に誘う")
+			CALL SCHOOL_KOJO, TARGET, "コマンド_性的に誘う"
+			RETURN RESULT
+		ENDIF
+	CASE 4
+		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_思い切って告白する")
+			CALL SCHOOL_KOJO, TARGET, "コマンド_思い切って告白する"
+			RETURN RESULT
+		ENDIF
+	CASE 5
+		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_連絡先を聞いてみる")
+			CALL SCHOOL_KOJO, TARGET, "コマンド_連絡先を聞いてみる"
+			RETURN RESULT
+		ENDIF
+	CASE 6
+		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_同行を提案する")
+			CALL SCHOOL_KOJO, TARGET, "コマンド_同行を提案する"
+			RETURN RESULT
+		ENDIF
+ENDSELECT
+
+;上書き関数がない場合
+SELECTCASE LRESULT
 	CASE 0
 		CALL SCHOOL_KOJO, TARGET, "何気ない会話"
 		CALL 好感度上昇, TARGET, "友情", 10
@@ -116,145 +158,12 @@ SELECTCASE RESULT
 			同行者 = 0
 			RETURN 1
 		ELSE
-			IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_性的に誘う")
-				CALL SCHOOL_KOJO, TARGET, "コマンド_性的に誘う"
+			IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_連れ込む")
+				CALL SCHOOL_KOJO, TARGET, "コマンド_連れ込む"
 				RETURN RESULT
 			ENDIF
-			PRINTFORML □%CALLNAME:TARGET%をどこに連れ込みますか？
-			IF !校内()
-				IF CSTR:在任 != ""
-					PRINTFORML 　[0] - ホテル(%CALLNAME:TARGET%が宿泊料負担)
-				ELSEIF TALENT:恋慕
-					IF MONEY < 10000
-						SETCOLORBYNAME gray
-						CALL PASELIL, "　[-] - ホテル(宿泊料10000＄必要)"
-						RESETCOLOR
-					ELSE
-						CALL PASELIL, "　[0] - ホテル(宿泊料10000＄必要)"
-					ENDIF
-				ELSE
-					IF MONEY < 5000
-						SETCOLORBYNAME gray
-						CALL PASELIL, "　[-] - ホテル(割り勘で宿泊料5000＄必要)"
-						RESETCOLOR
-					ELSE
-						CALL PASELIL, "　[0] - ホテル(割り勘で宿泊料5000＄必要)"
-					ENDIF
-				ENDIF
-			ENDIF
-			PRINTFORML 　[1] - \@ 校内() ? 人気の無いトイレ # 共用トイレ \@
-			SIF ターン != "夜" && !校内()
-				PRINTL 　[2] - 自宅
-			IF 校内()
-				PRINTL 　[3] - 保健室
-				PRINTL 　[4] - 体育倉庫
-				SIF CSTR:担当科目 == "校長"
-					PRINTL 　[5] - 校長室
-				SIF CSTR:担当科目 == "理事長"
-					PRINTL 　[5] - 理事長室
-			ENDIF
-			BINPUT
-			SELECTCASE RESULT
-				CASE 0
-					IF CSTR:在任 != ""
-					ELSEIF TALENT:恋慕
-						MONEY -= 10000
-					ELSE
-						MONEY -= 5000
-					ENDIF
-					CALL SCHOOL_KOJO, TARGET, "ホテル_行為前"
-					DRAWLINE
-					CALL TRAIN_SCHOOL, "ホテル"
-					CALL CHECKDRAWLINE
-					CALL SCHOOL_KOJO, TARGET, "ホテル_行為後"
-					CALL 好感度上昇, TARGET, "友情", 30
-					CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
-					CALL 好感度上昇, TARGET, "セフレ", 50
-					CALL 好感度上昇, TARGET, "既成事実", 1
-					SIF !TALENT:恋慕
-						CFLAG:倫理観++
-					TARGET = -1
-					RETURN 1
-				CASE 1
-					トイレ使用中 = 1
-					CALL SCHOOL_KOJO, TARGET, "トイレ_行為前"
-					DRAWLINE
-					CALL TRAIN_SCHOOL, "トイレ"
-					CALL CHECKDRAWLINE
-					CALL SCHOOL_KOJO, TARGET, "トイレ_行為後"
-					CALL 好感度上昇, TARGET, "友情", 30
-					;トイレはホテルほどときめかない
-					CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
-					CALL 好感度上昇, TARGET, "セフレ", 50
-					CALL 好感度上昇, TARGET, "既成事実", 1
-					SIF !TALENT:恋慕
-						CFLAG:倫理観 += 2
-					CFLAG:倫理観 += 2
-					トイレ使用中 = 0
-					TARGET = -1
-					RETURN 1
-				CASE 2
-					CSTR:現在地 = %CALLNAME:PLAYER%の家
-					CSTR:PLAYER:現在地 = 自宅
-					CSTR:目的 = セックス
-					同行者 = TARGET
-					CALL SCHOOL_KOJO, TARGET, "一緒に帰宅"
-					TARGET = -1
-					RETURN 1
-				CASE 3
-					CALL SCHOOL_KOJO, TARGET, "保健室_行為前"
-					DRAWLINE
-					CALL TRAIN_SCHOOL, "保健室"
-					CALL CHECKDRAWLINE
-					CALL SCHOOL_KOJO, TARGET, "保健室_行為後"
-					CALL 好感度上昇, TARGET, "友情", 30
-					CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
-					CALL 好感度上昇, TARGET, "セフレ", 50
-					CALL 好感度上昇, TARGET, "既成事実", 1
-					SIF !TALENT:恋慕
-						CFLAG:倫理観 += 2
-					CFLAG:倫理観 += 2
-					TARGET = -1
-					RETURN 1
-				CASE 4
-					CALL SCHOOL_KOJO, TARGET, "体育倉庫_行為前"
-					DRAWLINE
-					CALL TRAIN_SCHOOL, "体育倉庫"
-					CALL CHECKDRAWLINE
-					CALL SCHOOL_KOJO, TARGET, "体育倉庫_行為後"
-					CALL 好感度上昇, TARGET, "友情", 30
-					CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
-					CALL 好感度上昇, TARGET, "セフレ", 50
-					CALL 好感度上昇, TARGET, "既成事実", 1
-					SIF !TALENT:恋慕
-						CFLAG:倫理観 += 2
-					CFLAG:倫理観 += 2
-					TARGET = -1
-					RETURN 1
-				CASE 5
-					IF CSTR:担当科目 == "校長"
-						CALL SCHOOL_KOJO, TARGET, "校長室_行為前"
-						DRAWLINE
-						CALL TRAIN_SCHOOL, "校長室"
-						CALL CHECKDRAWLINE
-						CALL SCHOOL_KOJO, TARGET, "校長室_行為後"
-					ELSEIF CSTR:担当科目 == "理事長"
-						CALL SCHOOL_KOJO, TARGET, "理事長室_行為前"
-						DRAWLINE
-						CALL TRAIN_SCHOOL, "理事長室"
-						CALL CHECKDRAWLINE
-						CALL SCHOOL_KOJO, TARGET, "理事長室_行為後"
-					ENDIF
-					CALL 好感度上昇, TARGET, "友情", 30
-					CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
-					CALL 好感度上昇, TARGET, "セフレ", 50
-					CALL 好感度上昇, TARGET, "既成事実", 1
-					SIF !TALENT:恋慕
-						CFLAG:倫理観 += 3
-					CFLAG:倫理観 += 3
-					TARGET = -1
-					RETURN 1
-			ENDSELECT
+			CALL SCHOOL_連れ込み先
+			RETURN 1
 		ENDIF
 	CASE 4
 		;割りと大事な場面なので素質で分岐させたりしたいかも
@@ -334,6 +243,136 @@ SELECTCASE RESULT
 ENDSELECT
 
 RETURN 1
+
+
+@SCHOOL_連れ込み先
+PRINTFORML □%CALLNAME:TARGET%をどこに連れ込みますか？
+IF !校内()
+	IF CSTR:在任 != ""
+		PRINTFORML 　[0] - ホテル(%CALLNAME:TARGET%が宿泊料負担)
+	ELSEIF TALENT:恋慕
+		IF MONEY < 10000
+			SETCOLORBYNAME gray
+			CALL PASELIL, "　[-] - ホテル(宿泊料10000＄必要)"
+			RESETCOLOR
+		ELSE
+			CALL PASELIL, "　[0] - ホテル(宿泊料10000＄必要)"
+		ENDIF
+	ELSE
+		IF MONEY < 5000
+			SETCOLORBYNAME gray
+			CALL PASELIL, "　[-] - ホテル(割り勘で宿泊料5000＄必要)"
+			RESETCOLOR
+		ELSE
+			CALL PASELIL, "　[0] - ホテル(割り勘で宿泊料5000＄必要)"
+		ENDIF
+	ENDIF
+ENDIF
+PRINTFORML 　[1] - \@ 校内() ? 人気の無いトイレ # 共用トイレ \@
+SIF ターン != "夜" && !校内()
+	PRINTL 　[2] - 自宅
+IF 校内()
+	PRINTL 　[3] - 保健室
+	PRINTL 　[4] - 体育倉庫
+	SIF CSTR:担当科目 == "校長"
+		PRINTL 　[5] - 校長室
+	SIF CSTR:担当科目 == "理事長"
+		PRINTL 　[5] - 理事長室
+ENDIF
+BINPUT
+
+SELECTCASE RESULT
+	CASE 0
+		IF CSTR:在任 != ""
+		ELSEIF TALENT:恋慕
+			MONEY -= 10000
+		ELSE
+			MONEY -= 5000
+		ENDIF
+		CALL SCHOOL_KOJO, TARGET, "ホテル_行為前"
+		DRAWLINE
+		CALL TRAIN_SCHOOL, "ホテル"
+		CALL CHECKDRAWLINE
+		CALL SCHOOL_KOJO, TARGET, "ホテル_行為後"
+		CALL 好感度上昇, TARGET, "友情", 30
+		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
+		CALL 好感度上昇, TARGET, "セフレ", 50
+		CALL 好感度上昇, TARGET, "既成事実", 1
+		SIF !TALENT:恋慕
+			CFLAG:倫理観++
+	CASE 1
+		トイレ使用中 = 1
+		CALL SCHOOL_KOJO, TARGET, "トイレ_行為前"
+		DRAWLINE
+		CALL TRAIN_SCHOOL, "トイレ"
+		CALL CHECKDRAWLINE
+		CALL SCHOOL_KOJO, TARGET, "トイレ_行為後"
+		CALL 好感度上昇, TARGET, "友情", 30
+		;トイレはホテルほどときめかない
+		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
+		CALL 好感度上昇, TARGET, "セフレ", 50
+		CALL 好感度上昇, TARGET, "既成事実", 1
+		SIF !TALENT:恋慕
+			CFLAG:倫理観 += 2
+		CFLAG:倫理観 += 2
+		トイレ使用中 = 0
+	CASE 2
+		CSTR:現在地 = %CALLNAME:PLAYER%の家
+		CSTR:PLAYER:現在地 = 自宅
+		CSTR:目的 = セックス
+		同行者 = TARGET
+		CALL SCHOOL_KOJO, TARGET, "一緒に帰宅"
+	CASE 3
+		CALL SCHOOL_KOJO, TARGET, "保健室_行為前"
+		DRAWLINE
+		CALL TRAIN_SCHOOL, "保健室"
+		CALL CHECKDRAWLINE
+		CALL SCHOOL_KOJO, TARGET, "保健室_行為後"
+		CALL 好感度上昇, TARGET, "友情", 30
+		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
+		CALL 好感度上昇, TARGET, "セフレ", 50
+		CALL 好感度上昇, TARGET, "既成事実", 1
+		SIF !TALENT:恋慕
+			CFLAG:倫理観 += 2
+		CFLAG:倫理観 += 2
+	CASE 4
+		CALL SCHOOL_KOJO, TARGET, "体育倉庫_行為前"
+		DRAWLINE
+		CALL TRAIN_SCHOOL, "体育倉庫"
+		CALL CHECKDRAWLINE
+		CALL SCHOOL_KOJO, TARGET, "体育倉庫_行為後"
+		CALL 好感度上昇, TARGET, "友情", 30
+		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
+		CALL 好感度上昇, TARGET, "セフレ", 50
+		CALL 好感度上昇, TARGET, "既成事実", 1
+		SIF !TALENT:恋慕
+			CFLAG:倫理観 += 2
+		CFLAG:倫理観 += 2
+	CASE 5
+		IF CSTR:担当科目 == "校長"
+			CALL SCHOOL_KOJO, TARGET, "校長室_行為前"
+			DRAWLINE
+			CALL TRAIN_SCHOOL, "校長室"
+			CALL CHECKDRAWLINE
+			CALL SCHOOL_KOJO, TARGET, "校長室_行為後"
+		ELSEIF CSTR:担当科目 == "理事長"
+			CALL SCHOOL_KOJO, TARGET, "理事長室_行為前"
+			DRAWLINE
+			CALL TRAIN_SCHOOL, "理事長室"
+			CALL CHECKDRAWLINE
+			CALL SCHOOL_KOJO, TARGET, "理事長室_行為後"
+		ENDIF
+		CALL 好感度上昇, TARGET, "友情", 30
+		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
+		CALL 好感度上昇, TARGET, "セフレ", 50
+		CALL 好感度上昇, TARGET, "既成事実", 1
+		SIF !TALENT:恋慕
+			CFLAG:倫理観 += 3
+		CFLAG:倫理観 += 3
+ENDSELECT
+
+TARGET = -1
+
 
 @SCHOOL_MESSAGE_何気ない会話
 PRINTFORML %CALLNAME:PLAYER%は%CALLNAME:TARGET%と会話した
