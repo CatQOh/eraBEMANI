@@ -1,5 +1,5 @@
-﻿タイトル：EmueraEM+EE 最終更新日:2023/06/30
-バージョン：1.824+v18+EMv17+EEv37
+﻿タイトル：EmueraEM+EE 最終更新日:2023/09/23
+バージョン：1.824+v18+EMv17+EEv41fix
 改変者：Enter
 元となったアプリケーション：Emuera1.824+v18（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)、Emuera.EM（EvilMask制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
@@ -14,7 +14,7 @@ docs：https://evilmask.gitlab.io/emuera.em.doc/
 
 ※使用しているセキュリティソフト次第では危険なファイルとして警告・削除される場合があります
 　セキュリティソフトの設定を変更して使用することはできますが、自己責任でお願いします
-　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/8bbc88d1dfeaab25a9681ddc61e85de935c1a972e2d5ed54e7e41824dfa88471
+　virustotal(ファイルの安全性確認サイト)のリンク：https://www.virustotal.com/gui/file/67a3417cf72a823464e1ad37f5f36e568fced6dbbae2e9f30f6366de69c0ba6b
 
 [v12にてEmuera.EMと機能統合。上記リンクのドキュメント(docs)を参照]
 [EMv8+EEv15にてhtml形式のドキュメントを同梱。追加機能などがより詳しく書かれています]
@@ -213,6 +213,9 @@ GDRAWLINEの線のスタイルを指定する。DashStyle、DashCapそれぞれC
 DashStyle 0=普通の線 1=ダッシュで構成された線 2=ドットで構成された線 3=ダッシュとドットで構成された線 4=ダッシュとドット2個で構成された線
 DashCap(線の端の形) 0=普通の形(直角) 2=丸めた形 3=三角形の形 1は欠番。文句はMicrosoftに言ってください
 
+・GETDOINGFUNCTION
+現在実行中の関数名を返す。デバッグモード使用時の__FUNCTION__と同義
+
 ・多言語化対応
 詳しくは下記リンク
 https://evilmask.gitlab.io/emuera.em.doc/i18n/
@@ -237,6 +240,10 @@ https://tanukifont.com/
 ・.NET 7に正式対応
 CRER氏のお陰で対応できました。感謝
 一部UIが現代的に変わっています
+
+・TOOLTIP_IMG
+ツールチップに画像を使用することが可能に。非0でオンになる。ツールチップ拡張もオンになっている必要がある
+ツールチップ文字列に数値を渡すことで、そのgIDの画像がツールチップに表示される。gIDが生成されてない、文字列が数値じゃない場合はそのまま文字列としてツールチップ表示する
 
 ・UPDATECHECK
 アップデートチェック命令を追加。以下使い方
