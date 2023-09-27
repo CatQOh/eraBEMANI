@@ -746,48 +746,43 @@ DO
 				CALL NEWLINE
 				DRAWLINE
 				PRINTL [0] 戻る
-				DO
-					INPUT
-					SELECTCASE RESULT
-						CASE 0
-							GOTO RESTART
-						CASE 1 TO VARSIZE("部屋情報", 1)
-							;現在は部屋名とアイテム名が一致してるからこれでいい
-							部屋名 = %部屋情報:RESULT:0%
-							SELECTCASE 部屋名
-								CASE "レッスン室", "調理室"
-									部屋配置 = RESULT
-									IF 設置済み:RESULT
-										始点:0 = タイル始点:RESULT:0
-										始点:1 = タイル始点:RESULT:1
-									ENDIF
-								;居住部屋は空いている番号を使う
-								CASE "居住部屋"
-									部屋配置 = FINDELEMENT(居住区, 0, 1, 100)+100
-									IF 部屋配置 >= 200
-										PRINTW これ以上居住部屋を置けません
-										GOTO RESTART
-									ENDIF
-								CASEELSE
-									SIF ITEM:部屋名 == 0
-										CONTINUE
-									部屋配置 = RESULT
-									IF 設置済み:RESULT
-										始点:0 = タイル始点:RESULT:0
-										始点:1 = タイル始点:RESULT:1
-									ENDIF
-							ENDSELECT
-							BREAK
-					ENDSELECT
-				LOOP 1
+				BINPUT
+				SELECTCASE RESULT
+					CASE 0
+						GOTO RESTART
+					CASE 1 TO VARSIZE("部屋情報", 1)
+						;現在は部屋名とアイテム名が一致してるからこれでいい
+						部屋名 = %部屋情報:RESULT:0%
+						SELECTCASE 部屋名
+							CASE "レッスン室", "調理室"
+								部屋配置 = RESULT
+								IF 設置済み:RESULT
+									始点:0 = タイル始点:RESULT:0
+									始点:1 = タイル始点:RESULT:1
+								ENDIF
+							;居住部屋は空いている番号を使う
+							CASE "居住部屋"
+								部屋配置 = FINDELEMENT(居住区, 0, 1, 100)+100
+								IF 部屋配置 >= 200
+									PRINTW これ以上居住部屋を置けません
+									GOTO RESTART
+								ENDIF
+							CASEELSE
+								SIF ITEM:部屋名 == 0
+									CONTINUE
+								部屋配置 = RESULT
+								IF 設置済み:RESULT
+									始点:0 = タイル始点:RESULT:0
+									始点:1 = タイル始点:RESULT:1
+								ENDIF
+						ENDSELECT
+				ENDSELECT
 				CONTINUE
 			CASE 62
 				PRINTL オブジェクト情報を初期化します。よろしいですか？
 				PRINTL [0] - はい
 				PRINTL [1] - いいえ
-				DO
-					INPUT
-				LOOP LOOPRES(0, 1)
+				BINPUT
 				SIF RESULT == 0
 					VARSET OBJECTS
 				CONTINUE
@@ -795,9 +790,7 @@ DO
 				PRINTL 部屋情報を初期化します。よろしいですか？
 				PRINTL [0] - はい
 				PRINTL [1] - いいえ
-				DO
-					INPUT
-				LOOP LOOPRES(0, 1)
+				BINPUT
 				SIF RESULT == 0
 					VARSET 土地
 				CONTINUE
@@ -876,14 +869,12 @@ DO
 				始点:0 = 選択座標:0
 				始点:1 = 選択座標:1
 				DO
-					INPUT
+					BINPUT
 					SELECTCASE RESULT
 						CASE 0
 							VARSET 始点
 							GOTO RESTART
 						CASE 1
-							SIF 選択オブジェクト == ""
-								CONTINUE
 							オブジェクト配置 = %オブジェクト(OBJECTS:(始点:1):(始点:0), "名前")%
 							幅:0 = TOINT(オブジェクト(OBJECTS:(始点:1):(始点:0), "横幅"))
 							幅:1 = TOINT(オブジェクト(OBJECTS:(始点:1):(始点:0), "縦幅"))
@@ -894,8 +885,6 @@ DO
 							ARRAYCOPY "始点", "始点保存用"
 							GOTO RESTART
 						CASE 2
-							SIF 選択オブジェクト == ""
-								CONTINUE
 							OBJECTS:(始点:1):(始点:0) = 
 							GOTO RESTART
 						CASE 3
@@ -904,8 +893,6 @@ DO
 							VARSET 幅
 							GOTO RESTART
 						CASE 4
-							SIF 選択部屋 == ""
-								CONTINUE
 							部屋配置 = 土地:(始点:1):(始点:0)
 							IF 設置済み:部屋配置
 								始点:0 = タイル始点:部屋配置:0
@@ -914,8 +901,6 @@ DO
 							ARRAYCOPY "始点", "始点保存用"
 							GOTO RESTART
 						CASE 5
-							SIF 選択部屋 == ""
-								CONTINUE
 							IF 選択部屋 == "居住部屋"
 								部屋番号 = 土地:(選択座標:1):(選択座標:0)-100
 								PRINTFORML %選択部屋%,{部屋番号}を取り壊します。よろしいですか？(マップ上から消えるだけで機能は失われません)
@@ -925,25 +910,23 @@ DO
 							PRINTL [0] - はい
 							PRINTL [1] - いいえ
 							ROOMID = 土地:(選択座標:1):(選択座標:0)
-							DO
-								INPUT
-								IF RESULT == 0
-									FOR LCOUNT, 0, 30
-										FOR LCOUNT2, 0, 60
-											SIF 土地:LCOUNT:LCOUNT2 == ROOMID
-												土地:LCOUNT:LCOUNT2 = 0
-										NEXT
+							BINPUT
+							IF RESULT == 0
+								FOR LCOUNT, 0, 30
+									FOR LCOUNT2, 0, 60
+										SIF 土地:LCOUNT:LCOUNT2 == ROOMID
+											土地:LCOUNT:LCOUNT2 = 0
 									NEXT
-									VARSET 始点
-								ENDIF
-								IF 選択部屋 == "居住部屋"
-									FOR 居住LCOUNT, 0, CHARANUM
-										SIF CFLAG:居住LCOUNT:居住 == 部屋番号
-											CFLAG:居住LCOUNT:居住 = 0
-									NEXT
-								ENDIF
-								GOTO RESTART
-							LOOP 1
+								NEXT
+								VARSET 始点
+							ENDIF
+							IF 選択部屋 == "居住部屋"
+								FOR 居住LCOUNT, 0, CHARANUM
+									SIF CFLAG:居住LCOUNT:居住 == 部屋番号
+										CFLAG:居住LCOUNT:居住 = 0
+								NEXT
+							ENDIF
+							GOTO RESTART
 						CASE 6
 							SELECTCASE 選択部屋
 								CASE "レッスン室"
@@ -993,36 +976,32 @@ DO
 							CALL NEWLINE
 							DRAWLINE
 							PRINTL [0] 戻る
-							DO
-								INPUT
-								SELECTCASE RESULT
-									CASE 0
-										GOTO RESTART
-									CASE 1 TO VARSIZE("部屋情報", 1)
-										;現在は部屋名とアイテム名が一致してるからこれでいい
-										部屋名 = %部屋情報:RESULT:0%
-										SELECTCASE 部屋名
-											CASE "レッスン室", "調理室"
-												部屋配置 = RESULT
-											;居住部屋は空いている番号を使う
-											CASE "居住部屋"
-												部屋配置 = FINDELEMENT(居住区, 0, 1, 100)+100
-												IF 部屋配置 >= 200
-													PRINTW これ以上居住部屋を置けません
-													GOTO RESTART
-												ENDIF
-											CASEELSE
-												SIF ITEM:部屋名 == 0
-													CONTINUE
-												部屋配置 = RESULT
-										ENDSELECT
-										GOTO RESTART
-								ENDSELECT
-							LOOP 1
+							BINPUT
+							SELECTCASE RESULT
+								CASE 0
+									GOTO RESTART
+								CASE 1 TO VARSIZE("部屋情報", 1)
+									;現在は部屋名とアイテム名が一致してるからこれでいい
+									部屋名 = %部屋情報:RESULT:0%
+									SELECTCASE 部屋名
+										CASE "レッスン室", "調理室"
+											部屋配置 = RESULT
+										;居住部屋は空いている番号を使う
+										CASE "居住部屋"
+											部屋配置 = FINDELEMENT(居住区, 0, 1, 100)+100
+											IF 部屋配置 >= 200
+												PRINTW これ以上居住部屋を置けません
+												GOTO RESTART
+											ENDIF
+										CASEELSE
+											SIF ITEM:部屋名 == 0
+												CONTINUE
+											部屋配置 = RESULT
+									ENDSELECT
+									GOTO RESTART
+							ENDSELECT
 							CONTINUE
 						CASE 8
-							SIF 選択部屋 != "居住部屋"
-								CONTINUE
 							CALL 住人配置, 部屋番号
 							GOTO 部屋オプション
 					ENDSELECT
@@ -1054,46 +1033,65 @@ SELECTCASE 指定タイプ
 		RETURNF OBJECTS_DATA:配列:1
 	CASE "縦幅"
 		RETURNF OBJECTS_DATA:配列:2
-	CASE "オブジェクトタイプ"
+	CASE "オブジェクトカテゴリ"
 		RETURNF OBJECTS_DATA:配列:3
+	CASE "オブジェクトタイプ"
+		RETURNF OBJECTS_DATA:配列:4
 ENDSELECT
 
 @オブジェクト一覧, オブジェクト配置
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LRESULT
 #DIMS REF オブジェクト配置
+#DIMS 選択カテゴリ
 
 SIF VARLINE
 	CLEARLINE LINECOUNT-VARLINE
 VARLINE = LINECOUNT
+SIF 選択カテゴリ == ""
+	選択カテゴリ = %OBJCATEGORY_DATA:0%
+DRAWLINE
 
 ;とりあえず上限は1000で設定しておく
 FOR LCOUNT, 1, 1000
+	SIF OBJECTS_DATA:LCOUNT:3 != 選択カテゴリ
+		CONTINUE
 	SIF OBJECTS_DATA:LCOUNT:0 == ""
 		BREAK
 	PRINTFORMLC 　[{LCOUNT}] %OBJECTS_DATA:LCOUNT:0%(%OBJECTS_DATA:LCOUNT:1%×%OBJECTS_DATA:LCOUNT:2%)
 NEXT
 CALL NEWLINE
-
 DRAWLINE
+
+;カテゴリ別
+FOR LCOUNT, 0, VARSIZE("OBJCATEGORY_DATA")
+	SIF OBJCATEGORY_DATA:LCOUNT == ""
+		BREAK
+	SIF OBJCATEGORY_DATA:LCOUNT == 選択カテゴリ
+		SETCOLORBYNAME deepskyblue
+	PRINTFORMLC 　[{LCOUNT+10000}] %OBJCATEGORY_DATA:LCOUNT%
+	RESETCOLOR
+NEXT
+CALL NEWLINE
+DRAWLINE
+
 PRINTL [0] 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			オブジェクト配置 = 
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		オブジェクト配置 = 
+		RETURN
+	CASE IS >= 10000
+		選択カテゴリ = %OBJCATEGORY_DATA:(RESULT-10000)%
+		RESTART
+	CASEELSE
+		LRESULT = RESULT
+		IF OBJECTS_DATA:LRESULT:0 != ""
+			オブジェクト配置 = %OBJECTS_DATA:LRESULT:0%
 			RETURN
-		CASEELSE
-			LRESULT = RESULT
-			IF OBJECTS_DATA:LRESULT:0 != ""
-				オブジェクト配置 = %OBJECTS_DATA:LRESULT:0%
-				RETURN
-			ELSE
-				CONTINUE
-			ENDIF
-	ENDSELECT
-LOOP 1
+		ENDIF
+ENDSELECT
 
 @オブジェクト, オブジェクト名, タイプ指定
 #FUNCTIONS
