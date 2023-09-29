@@ -800,6 +800,7 @@ ENDIF
 #DIM DYNAMIC 年
 #DIM DYNAMIC 月
 #DIM DYNAMIC 日
+#DIM DYNAMIC ロード済み
 
 CALL TUTORIAL
 
@@ -809,6 +810,13 @@ SIF ARG == -1
 	ARG = MASTER
 SIF CSTR:ARG:種族 == ""
 	CSTR:ARG:種族 = 人間
+
+IF !ロード済み && CHKCHARADATA(@"CUSTOMPLAYER_{キャラメイクデフォルト}") == 0
+	DELCHARA ARG
+	LOADCHARA @"CUSTOMPLAYER_{キャラメイクデフォルト}"
+ENDIF
+ロード済み = 1
+
 DRAWLINE
 IF LANGUAGE == "ENG"
 	PRINTL 【Basic】
@@ -1011,7 +1019,7 @@ PRINTPLAIN 　PLAYER CUSTOM　
 IF LANGUAGE == "ENG"
 	PRINTL [0] - Complete [100] - Save character data [101] - Load character data
 ELSE
-	PRINTL [0] - 完了 [100] - キャラデータを保存 [101] - キャラデータをロード
+	PRINTFORML [0] - 完了 [100] - キャラデータを保存 [101] - キャラデータをロード [102] - キャラメイク時のデフォルトのデータを選ぶ（現在:{キャラメイクデフォルト}番のキャラデータ）
 ENDIF
 
 BINPUT
@@ -1188,7 +1196,8 @@ SELECTCASE RESULT
 					SAVECHARA @"CUSTOMPLAYER_{LRESULT}", @"%NAME:ARG% {年}/{月}/{日}に作成", ARG
 				ENDIF
 		ENDSELECT
-	CASE 101
+	CASE 101, 102
+		LRESULT = RESULT
 		FOR LCOUNT, 0, 10
 			IF CHKCHARADATA(@"CUSTOMPLAYER_{LCOUNT}") == 0
 				PRINTFORML [{LCOUNT}] - %RESULTS%
@@ -1205,8 +1214,12 @@ SELECTCASE RESULT
 		SELECTCASE RESULT
 			CASE 0 TO 9
 				IF CHKCHARADATA(@"CUSTOMPLAYER_{RESULT}") == 0
-					DELCHARA ARG
-					LOADCHARA @"CUSTOMPLAYER_{RESULT}"
+					IF LRESULT == 101
+						DELCHARA ARG
+						LOADCHARA @"CUSTOMPLAYER_{RESULT}"
+					ELSEIF LRESULT == 102
+						キャラメイクデフォルト = RESULT
+					ENDIF
 				ENDIF
 		ENDSELECT
 ENDSELECT
