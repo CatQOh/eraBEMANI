@@ -541,7 +541,11 @@ RESTART
 @GC_ARCADEGAME
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC ページ
-#DIM DYNAMIC LRESULT
+#DIM DYNAMIC 購入筐体
+#DIM DYNAMIC 購入数
+#DIMS DYNAMIC 筐体名表示用
+#DIM DYNAMIC 最長文字数
+
 DRAWLINE
 PRINTL 【筐体購入】
 PRINTL アーケードゲームを購入できます
@@ -566,10 +570,24 @@ DO
 			DRAWLINE
 			SIF !ORIGIN
 				CALL PASELIL, @"所持金:{MONEY}＄"
+			最長文字数 = 0
+			FOR LCOUNT, ページ*100, ページ*100+100
+				IF ERDNAME(筐体, LCOUNT) != ""
+					筐体名表示用 = %ERDNAME(筐体, LCOUNT)%
+					SIF !ORIGIN
+						筐体名表示用 '= 筐体名表示用 + "(" + @"{筐体価格(LCOUNT)}" + "＄)"
+					CALL SETMAX, 最長文字数, STRLENS(筐体名表示用)
+				ENDIF
+			NEXT
+
 			PRINTL □購入する筐体を選んでください
 			FOR LCOUNT, ページ*100, ページ*100+100
-				SIF ERDNAME(筐体, LCOUNT) != ""
-					CALL PASELIL, @"　[{LCOUNT, 3}] - %ERDNAME(筐体, LCOUNT)%\@ !ORIGIN ? ({筐体価格(LCOUNT)}＄)#\@"
+				IF ERDNAME(筐体, LCOUNT) != ""
+					筐体名表示用 = %ERDNAME(筐体, LCOUNT)%
+					SIF !ORIGIN
+						筐体名表示用 '= 筐体名表示用 + "(" + @"{筐体価格(LCOUNT)}" + "＄)"
+					CALL PASELIL, @"　[{LCOUNT, 3}] - %筐体名表示用, 最長文字数+1, LEFT% 所持:{筐体:LCOUNT, 2}"
+				ENDIF
 			NEXT
 			DRAWLINE
 			PRINTPLAIN 　ARCADE　
@@ -584,17 +602,37 @@ DO
 						PRINTW 所持金が足りません
 						CONTINUE
 					ELSE
-						CALL TUTORIAL, "経営_GC_3"
-						PRINTFORMW ＜%ERDNAME(筐体, RESULT)%を購入しました＞
-						筐体:RESULT++
-						LRESULT = RESULT
-						MONEY -= 筐体価格(RESULT)
-						CALL 現金出納帳記録, @"筐体「%ERDNAME(筐体, RESULT)%」購入/-{筐体価格(RESULT)}"
-						IF パートナー != ""
-							SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
-								TRYCALLFORM BUY_ARCADEGAME_%CSVNAMERPS(GETNO(パートナー))%, LRESULT
-						ENDIF
-						CONTINUE
+						購入筐体 = RESULT
+						PRINTFORML %ERDNAME(筐体, 購入筐体)%の購入数を選択してください
+						FOR LCOUNT, 1, 13
+							IF MONEY < 筐体価格(購入筐体)*LCOUNT && !ORIGIN
+								SETCOLORBYNAME gray
+								PRINTPLAINFORM [{LCOUNT, 2}]
+								RESETCOLOR
+							ELSE
+								PRINTFORM [{LCOUNT, 2}]
+							ENDIF
+							SIF LCOUNT%6 == 0
+								PRINTL 
+						NEXT
+						PRINTL [-1] やめる
+						BINPUT
+						SELECTCASE RESULT
+							CASE -1
+								CONTINUE
+							CASEELSE
+								購入数 = RESULT
+								CALL TUTORIAL, "経営_GC_3"
+								PRINTFORMW ＜%ERDNAME(筐体, 購入筐体)%を{購入数}台購入しました＞
+								筐体:購入筐体 += 購入数
+								MONEY -= 筐体価格(購入筐体)*購入数
+								CALL 現金出納帳記録, @"筐体「%ERDNAME(筐体, 購入筐体)%」×{購入数}購入/-{筐体価格(購入筐体)*購入数}"
+								IF パートナー != ""
+									SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
+										TRYCALLFORM BUY_ARCADEGAME_%CSVNAMERPS(GETNO(パートナー))%, 購入筐体
+								ENDIF
+								CONTINUE
+						ENDSELECT
 					ENDIF
 			ENDSELECT
 	ENDSELECT
@@ -652,20 +690,57 @@ ENDSELECT
 ;----------------------------------------------------
 @PRINT_AC_ITEM
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC 所持筐体数
+#DIM DYNAMIC 筐体所持数
+#DIM DYNAMIC その他所持数
+#DIM DYNAMIC 表示可能文字数
+#DIMS DYNAMIC 表示用
 
 CALL CHECKDRAWLINE
-FOR LCOUNT, 0, 500
+表示可能文字数 = GETCONFIG("ウィンドウ幅")*2/(GETCONFIG("フォントサイズ")+1)
+
+PRINTL □ゲーム筐体
+PRINT 　
+FOR LCOUNT, 0, 200
 	SIF ERDNAME(筐体, LCOUNT) == ""
 		CONTINUE
 	SIF 筐体:LCOUNT == 0
 		CONTINUE
-
-	PRINTFORM [%ERDNAME(筐体, LCOUNT)%×{筐体:LCOUNT}]
-	所持筐体数++
+	IF STRLENS(表示用)+STRLENS(@"[%ERDNAME(筐体, LCOUNT)%×{筐体:LCOUNT}]") >= 表示可能文字数
+		PRINTFORML %表示用%
+		PRINT 　
+		表示用 = [%ERDNAME(筐体, LCOUNT)%×{筐体:LCOUNT}]
+	ELSE
+		表示用 += @"[%ERDNAME(筐体, LCOUNT)%×{筐体:LCOUNT}]"
+	ENDIF
+	筐体所持数++
 NEXT
-SIF !所持筐体数
-	PRINTFORM [所持筐体無し]
+	SIF 表示用 != ""
+		PRINTFORML %表示用%
+	SIF !筐体所持数
+		PRINTFORML [所持筐体無し]
+
+表示用 = 
+PRINTL □両替機・自販機・椅子等
+PRINT 　
+FOR LCOUNT, 300, 400
+	SIF ERDNAME(筐体, LCOUNT) == ""
+		CONTINUE
+	SIF 筐体:LCOUNT == 0
+		CONTINUE
+	IF STRLENS(表示用)+STRLENS(@"[%ERDNAME(筐体, LCOUNT)%×{筐体:LCOUNT}]") >= 表示可能文字数
+		PRINTFORML %表示用%
+		PRINT 　
+		表示用 = [%ERDNAME(筐体, LCOUNT)%×{筐体:LCOUNT}]
+	ELSE
+		表示用 += @"[%ERDNAME(筐体, LCOUNT)%×{筐体:LCOUNT}]"
+	ENDIF
+	その他所持数++
+NEXT
+	SIF 表示用 != ""
+		PRINTFORM %表示用%
+	SIF !その他所持数
+		PRINTFORM [所持筐体無し]
+
 CALL NEWLINE
 DRAWLINE
 
