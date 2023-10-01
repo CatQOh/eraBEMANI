@@ -1,4 +1,5 @@
 ﻿@GAMBLE, カジノの種類
+#DIM DYNAMIC ギャンブル合計収支
 #DIM DYNAMIC チップ
 #DIM DYNAMIC 利子
 #DIM DYNAMIC 利益計算用
@@ -120,17 +121,26 @@ SELECTCASE カジノの種類
 			PRINTL で借金の返済をしていただきます。
 		ENDIF
 ENDSELECT
+ギャンブル合計収支 = ギャンブル総収支:0 + ギャンブル総収支:1
 IF LANGUAGE== "ENG"
-	CALL PASELIL, @"Money:{MONEY}＄"
+	CALL PASELIL, @"       Money:{MONEY}＄"
+	CALL PASELIL, @"Total Income:{ギャンブル合計収支}＄"
+	IF ギャンブル総収支:1
+		CALL PASELIL, @" NORMAL GAMBLE:{ギャンブル総収支:1}＄"
+		CALL PASELIL, @"      VIP ROOM:{ギャンブル総収支:1}＄"
+	ENDIF
 	[IF_DEBUG]
-		CALL PASELIL, @"Total Income:{ギャンブル総収支}＄"
 		PRINTFORML Carol's Rating:{キャロル好感度}
 		PRINTFORML Kotomi's Rating:{ことみちゃん好感度}
 	[ENDIF]
 ELSE
 	CALL PASELIL, @"所持金:{MONEY}＄"
+	CALL PASELIL, @"総収支:{ギャンブル合計収支}＄"
+	IF ギャンブル総収支:1
+		CALL PASELIL, @"通常収支:{ギャンブル総収支:0}＄"
+		CALL PASELIL, @"VIP ROOM:{ギャンブル総収支:1}＄"
+	ENDIF
 	[IF_DEBUG]
-		CALL PASELIL, @"総収支:{ギャンブル総収支}＄"
 		PRINTFORML キャロル好感度:{キャロル好感度}
 		PRINTFORML ことみちゃん好感度:{ことみちゃん好感度}
 	[ENDIF]
@@ -209,7 +219,7 @@ CALL CHECKDRAWLINE
 ;今回のギャンブルでの収支
 収支 = MONEY-利益計算用
 ;ギャンブルでの総収支
-ギャンブル総収支 += 収支
+ギャンブル総収支:0 += 収支
 
 ;バンドだけでめしを食ってないのでフラグを消す
 バンめし = 0
@@ -234,7 +244,7 @@ SELECTCASE 収支
 		SIF 収支 >= 10000
 			ことみちゃん好感度 += 100*(1+LOG10(収支/10000))
 		;総収支がプラスかつキャロルの好感度が1000以上のときお誘いを受ける
-		IF ギャンブル総収支 > 0 && キャロル好感度 >= 1000 && GETCHARANAME("キャロル") == -1 && キャロル進行フラグ >= 0
+		IF ギャンブル総収支:0 > 0 && キャロル好感度 >= 1000 && GETCHARANAME("キャロル") == -1 && キャロル進行フラグ >= 0
 			SELECTCASE キャロル進行フラグ
 				CASE 0
 					PRINTFORML 今日も勝つことができた%CALLNAME:MASTER%が屋敷に戻ろうとしたとき
@@ -260,6 +270,23 @@ SELECTCASE 収支
 					PRINTFORML ことみちゃんが%CALLNAME:MASTER%にこっそり誘いをかけてきた。
 			ENDSELECT
 			ことみちゃんお誘いフラグ = 1
+		;総収支が多いほど誘いを受けやすい
+		;1億でちょうど100%
+		ELSEIF BroGamerの少年好感度+ギャンブル総収支:0/100000 > RAND:1000 && GETCHARANAME("BroGamerの少年") == -1 && BroGamerの少年進行フラグ >= 0
+			SELECTCASE BroGamerの少年進行フラグ
+				CASE 0
+					PRINTFORML %CALLNAME:MASTER%が帰ろうとしたそのとき、近くのテーブルから1人のディーラーがやってきた。
+					PRINTL ……確か聞いたことがある。
+					PRINTL カジノには性別を偽って潜入したディーラーがいて、名前は不明だが
+					PRINTL 「BroGamerの少年」や「ハートのクイーン」などの通り名で呼ばれている、と。
+					PRINTL 女性のような見た目のこの少年こそが、その本人なのだろう。
+					PRINTFORML 着々と勝利を重ねる%CALLNAME:MASTER%に何か思うところがありこの後お相手してほしいそうだ。
+					CALL プレイログ記録, @"カジノにてBroGamerの少年と出会う"
+					BroGamerの少年進行フラグ = 1
+				CASE 1
+					PRINTFORML BroGamerの少年が%CALLNAME:MASTER%に誘いをかけてきた。
+			ENDSELECT
+			BroGamerの少年お誘いフラグ = 1
 		ENDIF
 	CASE IS < 0
 		CALL PASELIW, @"{ABS(収支)}＄損してしまった……"
@@ -280,6 +307,8 @@ IF キャロルお誘いフラグ
 	CALL キャロルイベント
 ELSEIF ことみちゃんお誘いフラグ
 	CALL ことみちゃんイベント
+ELSEIF BroGamerの少年お誘いフラグ
+	CALL BroGamerの少年イベント
 ENDIF
 
 ;借金を背負ったとき
@@ -488,22 +517,6 @@ SELECTCASE RESULT
 	CASE 0, 1
 		SIF RESULT == 0
 			ASSI = -1
-		PRINTFORMW キャロルの誘いに乗ると、%CALLNAME:MASTER%はカジノ施設の一級スイートルームへと案内された
-		PRINTFORML きらびやかな装飾や家具、ワイングラスが部屋を彩る中、キャロルは制服のバニースーツで淫らなポーズを取りながら、
-		PRINTFORMW %CALLNAME:MASTER%をベッドへと誘惑している。さて、どうしようか……
-		;道具は一時的に無しにする
-		ARRAYCOPY "ITEM", "道具フラグ退避用"
-		VARSET ITEM
-		;お酒と避妊具は用意してある
-		ITEM:コンドーム = 99
-		ITEM:スーパードライ = 12
-		ITEM:一番搾り = 12
-		ITEM:プレミアムモルツ = 12
-		ITEM:ヱビス = 12
-		ITEM:皆伝 = 10
-		ITEM:魔王 = 10
-		ITEM:アルパカ = 10
-		ITEM:倉吉 = 10
 		;調教開始準備
 		;過去に誘いに乗ったならそのステータスを引き継ぎ
 		IF CHKCHARADATA(@"キャロル_{データID}") == 0
@@ -514,6 +527,29 @@ SELECTCASE RESULT
 		TARGET = CHARANUM-1
 		;好感度がそのまま依存度になる
 		CFLAG:依存度 = キャロル好感度
+		SIF MARK:屈服刻印 < 2
+			MARK:屈服刻印 = 2
+		RELATION:(NOF(MASTER)) = 100 + LIMIT(CFLAG:依存度,0,9999)/100
+
+		PRINTFORMW キャロルの誘いに乗ると、%CALLNAME:MASTER%はカジノの特別室へと案内された
+		PRINTFORML きらびやかな装飾や家具、ワイングラスが部屋を彩る中、キャロルは制服のバニースーツで淫らなポーズを取りながら、
+		PRINTFORMW %CALLNAME:MASTER%をベッドへと誘惑している。さて、どうしようか……
+		;道具は一時的に無しにする
+		ARRAYCOPY "ITEM", "道具フラグ退避用"
+		VARSET ITEM
+		;お酒と避妊具は用意してある
+		ITEM:ローション = 12
+		ITEM:コンドーム = 60
+		ITEM:プレイマット = 1
+		ITEM:スーパードライ = 12
+		ITEM:一番搾り = 12
+		ITEM:プレミアムモルツ = 12
+		ITEM:ヱビス = 12
+		ITEM:皆伝 = 10
+		ITEM:魔王 = 10
+		ITEM:アルパカ = 10
+		ITEM:倉吉 = 10
+
 		;ここから調教開始
 		;体力気力を回復する
 		FOR LCOUNT, 0, VARSIZE("BASE")
@@ -531,6 +567,7 @@ SELECTCASE RESULT
 			;CALL USERCOM
 		LOOP TFLAG:調教終了 == 0
 		CALL 調教終了
+		キャロル好感度 = CFLAG:依存度
 		DO
 			CALL ABL上昇画面
 			INPUT
@@ -553,7 +590,7 @@ SELECTCASE RESULT
 			CALL CLEAR_CHARA, TARGET, 1
 			TARGET = -1
 			DRAWLINE
-			PRINTFORMW キャロルは%CALLNAME:MASTER%との行為も大変気に入った様子で、またのご来店を促している
+			PRINTFORMW キャロルは%CALLNAME:MASTER%との行為も大変気に入った様子で、またの来店を促している
 			PRINTFORMW 彼女に見損なわれないようにカジノで勝ち続けよう
 			ARRAYCOPY "道具フラグ退避用", "ITEM"
 		ENDIF
@@ -574,22 +611,7 @@ SELECTCASE RESULT
 	CASE 0, 1
 		SIF RESULT == 0
 			ASSI = -1
-		PRINTFORMW ことみちゃんの誘いに乗ると、%CALLNAME:MASTER%はカジノ施設の一級スイートルームへと案内された
-		PRINTFORML きらびやかな装飾や家具、ワイングラスが部屋を彩る中、ことみちゃんはドレスの裾をたくし上げ、
-		PRINTFORMW %CALLNAME:MASTER%をベッドへと誘惑している。さて、どうしようか……
-		;道具は一時的に無しにする
-		ARRAYCOPY "ITEM", "道具フラグ退避用"
-		VARSET ITEM
-		;お酒と避妊具は用意してある
-		ITEM:コンドーム = 99
-		ITEM:スーパードライ = 12
-		ITEM:一番搾り = 12
-		ITEM:プレミアムモルツ = 12
-		ITEM:ヱビス = 12
-		ITEM:皆伝 = 10
-		ITEM:魔王 = 10
-		ITEM:アルパカ = 10
-		ITEM:倉吉 = 10
+
 		;調教開始準備
 		;過去に誘いに乗ったならそのステータスを引き継ぎ
 		IF CHKCHARADATA(@"ことみちゃん_{データID}") == 0
@@ -600,6 +622,40 @@ SELECTCASE RESULT
 		TARGET = CHARANUM-1
 		;好感度がそのまま依存度になる
 		CFLAG:依存度 = ことみちゃん好感度
+		SIF MARK:屈服刻印 < 2
+			MARK:屈服刻印 = 2
+		RELATION:(NOF(MASTER)) = 100 + LIMIT(CFLAG:依存度,0,9999)/100
+
+		PRINTFORMW ことみちゃんの誘いに乗ると、%CALLNAME:MASTER%はカジノ施設の一級スイートルームへと案内された
+		PRINT きらびやかな装飾や家具、ワイングラスが部屋を彩る中、ことみちゃんは
+		SIF TALENT:処女
+			PRINT ぎこちない手で
+		PRINTL ドレスの裾をたくし上げ、
+		SELECTCASE ABL:欲望
+			CASE 0
+				PRINT 見るからに緊張しながらも
+			CASE IS >= 4
+				PRINT 淫らな仕草で
+		ENDSELECT
+		PRINTFORMW %CALLNAME:MASTER%をベッドへと誘惑している。さて、どうしようか……
+		;道具は一時的に無しにする
+		ARRAYCOPY "ITEM", "道具フラグ退避用"
+		VARSET ITEM
+		;お酒と避妊具は用意してある
+		IF TALENT:処女
+			ITEM:コンドーム = 2
+		ELSE
+			ITEM:コンドーム = 14
+		ENDIF
+		ITEM:スーパードライ = 12
+		ITEM:一番搾り = 12
+		ITEM:プレミアムモルツ = 12
+		ITEM:ヱビス = 12
+		ITEM:皆伝 = 10
+		ITEM:魔王 = 10
+		ITEM:アルパカ = 10
+		ITEM:倉吉 = 10
+
 		;ここから調教開始
 		;体力気力を回復する
 		FOR LCOUNT, 0, VARSIZE("BASE")
@@ -617,6 +673,7 @@ SELECTCASE RESULT
 			;CALL USERCOM
 		LOOP TFLAG:調教終了 == 0
 		CALL 調教終了
+		ことみちゃん好感度 = CFLAG:依存度
 		DO
 			CALL ABL上昇画面
 			INPUT
@@ -639,12 +696,98 @@ SELECTCASE RESULT
 			CALL CLEAR_CHARA, TARGET, 1
 			TARGET = -1
 			DRAWLINE
-			PRINTFORMW ことみちゃんは%CALLNAME:MASTER%との行為も大変気に入った様子で、またのご来店を促している
+			PRINTFORMW ことみちゃんは%CALLNAME:MASTER%との行為も大変気に入った様子で、また会いたいと言っている
 			PRINTFORMW 彼女に見損なわれないようにカジノで勝ち続けよう
 			ARRAYCOPY "道具フラグ退避用", "ITEM"
 		ENDIF
 	CASE 2
 		PRINTFORMW %CALLNAME:MASTER%はことみちゃんの誘いを丁寧に断った……
+ENDSELECT
+
+@BroGamerの少年イベント
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 道具フラグ退避用, 2000
+PRINTL [0] - BroGamerの少年の誘いを受ける
+SIF ASSI > 0
+	PRINTFORML [1] - %CALLNAME:ASSI%と一緒にBroGamerの少年の誘いを受ける
+PRINTL [2] - BroGamerの少年の誘いを断る
+BINPUT
+
+SELECTCASE RESULT
+	CASE 0, 1
+		SIF RESULT == 0
+			ASSI = -1
+
+		;調教開始準備
+		;過去に誘いに乗ったならそのステータスを引き継ぎ
+		IF CHKCHARADATA(@"BroGamerの少年_{データID}") == 0
+			LOADCHARA @"BroGamerの少年_{データID}"
+		ELSE
+			CALL CHARA_ADD, GETNO("BroGamerの少年")
+		ENDIF
+		TARGET = CHARANUM-1
+		;好感度がそのまま依存度になる
+		CFLAG:依存度 = BroGamerの少年好感度
+		SIF MARK:屈服刻印 < 2
+			MARK:屈服刻印 = 2
+		RELATION:(NOF(MASTER)) = 100 + LIMIT(CFLAG:依存度,0,9999)/100
+
+		;PRINTFORMW BroGamerの少年の誘いに乗ると、%CALLNAME:MASTER%はカジノの近くにあるホテルへと案内された
+
+
+
+		;道具は一時的に無しにする
+		ARRAYCOPY "ITEM", "道具フラグ退避用"
+		VARSET ITEM
+		;避妊具などは用意してある
+		ITEM:ローション = 12
+		ITEM:コンドーム = 12
+
+		;ここから調教開始
+		;体力気力を回復する
+		FOR LCOUNT, 0, VARSIZE("BASE")
+			SIF BASENAME:LCOUNT == ""
+				CONTINUE
+			BASE:LCOUNT = MAXBASE:LCOUNT
+		NEXT
+		CFLAG:酔 = 0
+
+		CALL EVENTUSERTRAIN
+		DO
+			CALL SHOW_STATUS
+			CALL SHOW_USERCOM
+			;INPUT
+			;CALL USERCOM
+		LOOP TFLAG:調教終了 == 0
+		CALL 調教終了
+		BroGamerの少年好感度 = CFLAG:依存度
+		DO
+			CALL ABL上昇画面
+			INPUT
+			SIF RESULT == 100
+				BREAK
+			;TRYCALLFORM ABLUP{RESULT}
+		LOOP RESULT != 100
+		CALL EVENTCHECK_T
+		;陥落したら加入する
+		IF CFLAG:陥落
+
+			CFLAG:売却不可 = 1
+			BroGamer進行フラグ = -1
+			CALL プレイログ記録, @"BroGamerの少年を迎え入れる"
+			ARRAYCOPY "道具フラグ退避用", "ITEM"
+		ELSE
+			CALL CLEAR_FLAG, TARGET
+			SAVECHARA　@"BroGamerの少年_{データID}", "", TARGET
+			CALL CLEAR_CHARA, TARGET, 1
+			TARGET = -1
+			DRAWLINE
+			;PRINTFORMW BroGamerの少年は%CALLNAME:MASTER%との行為も大変気に入った様子で、また会いたいと言っている
+			;PRINTFORMW 彼に見損なわれないようにカジノで勝ち続けよう
+			ARRAYCOPY "道具フラグ退避用", "ITEM"
+		ENDIF
+	CASE 2
+		PRINTFORMW %CALLNAME:MASTER%はBroGamerの少年の誘いを丁寧に断った……
 ENDSELECT
 
 ;以下、各ゲーム共通の賭け金設定
@@ -923,3 +1066,4 @@ RESETCOLOR
 @CLEAR_CASINO_FLAG
 キャロル進行フラグ = 0
 ことみちゃん進行フラグ = 0
+BroGamerの少年進行フラグ = 0
