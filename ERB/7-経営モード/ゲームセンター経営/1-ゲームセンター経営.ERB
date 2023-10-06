@@ -545,6 +545,8 @@ RESTART
 #DIM DYNAMIC 購入数
 #DIMS DYNAMIC 筐体名表示用
 #DIM DYNAMIC 最長文字数
+#DIM DYNAMIC 最高所持数
+#DIM DYNAMIC 表示用桁
 
 DRAWLINE
 PRINTL 【筐体購入】
@@ -571,22 +573,32 @@ DO
 			SIF !ORIGIN
 				CALL PASELIL, @"所持金:{MONEY}＄"
 			最長文字数 = 0
+			最高所持数 = 0
+			表示用桁 = 0
 			FOR LCOUNT, ページ*100, ページ*100+100
 				IF ERDNAME(筐体, LCOUNT) != ""
 					筐体名表示用 = %ERDNAME(筐体, LCOUNT)%
 					SIF !ORIGIN
 						筐体名表示用 '= 筐体名表示用 + "(" + @"{筐体価格(LCOUNT)}" + "＄)"
 					CALL SETMAX, 最長文字数, STRLENS(筐体名表示用)
+					CALL SETMAX, 最高所持数, 筐体:LCOUNT
 				ENDIF
 			NEXT
+			DO
+				表示用桁++
+				最高所持数 /= 10
+				SIF 最高所持数 == 0
+					BREAK
+			LOOP 1
 
 			PRINTL □購入する筐体を選んでください
+			CALL 設置済み筐体計算
 			FOR LCOUNT, ページ*100, ページ*100+100
 				IF ERDNAME(筐体, LCOUNT) != ""
 					筐体名表示用 = %ERDNAME(筐体, LCOUNT)%
 					SIF !ORIGIN
 						筐体名表示用 '= 筐体名表示用 + "(" + @"{筐体価格(LCOUNT)}" + "＄)"
-					CALL PASELIL, @"　[{LCOUNT, 3}] - %筐体名表示用, 最長文字数+1, LEFT% 所持:{筐体:LCOUNT, 2}"
+					CALL PASELIL, @"　[{LCOUNT, 3}] - %筐体名表示用, 最長文字数+1, LEFT% 設置/所持:{設置済み筐体:LCOUNT, 表示用桁}/{筐体:LCOUNT, 表示用桁}"
 				ENDIF
 			NEXT
 			DRAWLINE
