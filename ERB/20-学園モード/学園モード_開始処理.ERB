@@ -476,6 +476,17 @@ FOR LCOUNT, 1, CHARANUM
 			ELSE
 				CSTR:LCOUNT:在校 = %学園乱数固定用:16%
 			ENDIF
+		;ロビン＆クックは同じ学校に
+		CASE "ロビン", "クック"
+			SIF 学園乱数固定用:17 == ""
+				学園乱数固定用:17 = %学園ランダム("中", 1)%
+			IF キャラ選択フラグ:NOF(LCOUNT)
+				CSTR:LCOUNT:在校 = %固定用学校:1%
+			ELSE
+				CSTR:LCOUNT:在校 = %学園乱数固定用:17%
+			ENDIF
+			SIF NAME:LCOUNT == "クック"
+				CFLAG:LCOUNT:特殊在校 = 1
 		;以下大学＆ランダム入学
 		{
 		CASE "水城 セリカ", "北見 エリカ", "神崎 紗矢", "理子", "夜兎姫", "トヨタマヒメ", "スタンパ", "アヤ", "ヒュー", "愛子", "レナ", "彗星ローラ",
@@ -501,7 +512,7 @@ FOR LCOUNT, 1, CHARANUM
 		{
 		CASE "ヒメル", "タルト", "タフィ", "ノクス・カトルセ", "マタン・カトルセ", "おはな", "ルシェ", "キュベルト", "黄のラピカ", "Aegis",
 			 "スモモ", "クロノス", "牡丹", "橙之 針子", "ジャックハンス", "ジャックティーロ", "ギガデリック：オズワルド", "アーミィ", "エグゼ",
-			 "Ⅸ籠", "おいわちゃん", "うらしまたろ子", "ミニッツ", "ポエット", "ロビン", "つらら", "セシル", "ジャック", "ベンベン", "ホワイトメリー",
+			 "Ⅸ籠", "おいわちゃん", "うらしまたろ子", "ミニッツ", "ポエット", "つらら", "セシル", "ジャック", "ベンベン", "ホワイトメリー",
 			 "鹿ノ子", "リアン", "ター子", "ライラ", "しおん", "寿々姫", "マルクト", "ピュアクルリップ", "雷蔵", "＊うさぬこ＊", "ポチコ", "ちぇるみん",
 			 "スペース＠マコ", "リデル", "なぎさ", "リノン", "リノン(黒)", "かぐや", "トルテ", "あい", "サニー", "セイナ", "ローズ", "リリカ", "ココ",
 			 "アバリータ", "エンビー", "アシディア", "プリッド", "グリコ", "ラクリア", "ウエステ", "ちい", "ナルル", "ティア", "ライア", "フィクル",
@@ -756,9 +767,10 @@ IF 運命の人 != ""
 ELSE
 	PRINTFORM 　[94] 運命の人を\@ 運命の人選択 ? 選ばない # 選ぶ \@(ロケーションでの遭遇確率が上がります)
 ENDIF
-PRINTL [95] 無所属or社会人のキャラ一覧 [96] 現在の設定をグローバルに保存する
+PRINTL 
+PRINTL 　[95] 無所属or社会人のキャラ一覧 [96] 現在の設定をグローバルに保存する
+;#;PRINTL 　[97] 倫理観変動値の確認 [98] 学園モード用コマンドテンプレ生成 [99] 全キャラの最大出現率確認
 
-;#;PRINTL 　[97]倫理観変動値の確認 [98] 学園モード用コマンドテンプレ生成 
 IF 運命の人選択
 	PRINTL 　キャラクターをクリックする事で対象を運命の人に指定します（運命の人を選ばないを選択でキャンセル）
 ELSE
@@ -893,7 +905,7 @@ SELECTCASE RESULT
 		DRAWLINE
 		PRINTL □学園モード未実装キャラ
 		未実装キャラ = 0
-		FOR LCOUNT, 0, CHARANUM
+		FOR LCOUNT, 1, CHARANUM
 			IF CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == ""
 				SIF NAME:LCOUNT == 運命の人
 					SETCOLORBYNAME coral
@@ -948,6 +960,9 @@ SELECTCASE RESULT
 		GOTO 学校一覧表示 
 	CASE 98
 		CALL 学園モード用コマンドテンプレ生成
+		GOTO 学校一覧表示
+	CASE 99
+		CALL 学園最大出現率確認
 		GOTO 学校一覧表示
 	CASE 100
 		IF 入学先 == -1
@@ -1079,6 +1094,121 @@ NEXT
 CALL SYSTEM_AUTOSAVE
 
 CALL SHOP_SCHOOL
+
+
+@学園最大出現率確認
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIMS DYNAMIC SPLITVAR, 2
+#DIMS DYNAMIC 確認オプション
+#DIM DYNAMIC 最大出現率
+#DIMS DYNAMIC 最大出現率場所
+#DIM DYNAMIC 低出現率, 3
+#DIM DYNAMIC 無所属低出現率, 3
+#DIM DYNAMIC 合計人数
+
+PRINTL 
+PRINTL [0] 全キャラ分の出現率を確認する
+PRINTL [1] 所属ありキャラ(大学除く)
+PRINTL 　[2] 生徒のみ
+PRINTL 　[3] 教師のみ
+PRINTL [4] 大学生のみ
+PRINTL [9] 無所属のみ
+PRINTL [100] 戻る
+BINPUT
+SELECTCASE RESULT
+	CASE 100
+		RETURN
+	CASE 1
+		確認オプション = 所属あり
+	CASE 2
+		確認オプション = 生徒
+	CASE 3
+		確認オプション = 教師
+	CASE 4
+		確認オプション = 大学
+	CASE 9
+		確認オプション = 無所属
+ENDSELECT
+
+DRAWLINE
+PRINTL □最大出現率一覧
+VARSET 低出現率
+FOR LCOUNT, 1, CHARANUM
+	SELECTCASE 確認オプション
+		CASE "所属あり"
+			SIF (CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == "") || 小中高(CSTR:LCOUNT:在校) == "大"
+				CONTINUE
+		CASE "生徒"
+			SIF CSTR:LCOUNT:在校 == "" || CSTR:LCOUNT:在任 != "" || 小中高(CSTR:LCOUNT:在校) == "大"
+				CONTINUE
+		CASE "教師"
+			SIF CSTR:LCOUNT:在任 == "" || CSTR:LCOUNT:在校 != ""
+				CONTINUE
+		CASE "大学"
+			SIF CSTR:LCOUNT:在任 != "" || 小中高(CSTR:LCOUNT:在校) != "大"
+				CONTINUE
+		CASE "無所属"
+			SIF CSTR:LCOUNT:在校 != "" || CSTR:LCOUNT:在任 != ""
+				CONTINUE
+	ENDSELECT
+	合計人数++
+	データベース参照中 = LCOUNT
+	VARSET 最大出現率
+	VARSET 最大出現率場所
+	FOR LCOUNT2, 0, VARSIZE("ロケーション")
+		VARSET 出現率
+		SPLIT ロケーション:LCOUNT2, "/", SPLITVAR
+		IF RESULT >= 2
+			TRYCALLFORM 出現キャラ_%RPS(SPLITVAR:1)%
+		ELSE
+			TRYCALLFORM 出現キャラ_%RPS(ロケーション:LCOUNT2)%
+		ENDIF
+		SIF !出現率:LCOUNT
+			CONTINUE
+		RESULT = 0
+		CALL SETMAX, 最大出現率, 出現率:LCOUNT
+		SIF RESULT
+			最大出現率場所 = %ロケーション:LCOUNT2%
+	NEXT
+	SIF NAME:LCOUNT == 運命の人
+		SETCOLORBYNAME coral
+	PRINTFORM 　No.{NOF(LCOUNT), 4, LEFT} %NAME:LCOUNT, 30, LEFT%
+	RESETCOLOR
+	PRINT 最大出現率:
+	SELECTCASE 最大出現率
+		CASE IS <= 1
+			SETCOLORBYNAME red
+			低出現率:0++
+			SIF CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == ""
+				無所属低出現率:0++
+		CASE 2 TO 5
+			SETCOLORBYNAME orange
+			低出現率:1++
+			SIF CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == ""
+				無所属低出現率:1++
+		CASE 6 TO 10
+			SETCOLORBYNAME yellow
+			低出現率:2++
+			SIF CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == ""
+				無所属低出現率:2++
+	ENDSELECT
+	PRINTFORM {最大出現率, 3}\%
+	RESETCOLOR
+	PRINTFORM (%最大出現率場所%) 
+	SIF CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == "" && 確認オプション == ""
+		PRINT ※所属なし
+	PRINTL 
+	SIF LCOUNT%100 == 0
+		AWAIT
+NEXT
+データベース参照中 = 0
+PRINTL 
+PRINTFORM 　計{合計人数}人中…
+PRINTFORM 出現率1\%以下:{低出現率:0}人\@ 確認オプション == "" ? (うち無所属{無所属低出現率:0}人) #\@　
+PRINTFORM 5\%以下:{低出現率:1}人\@ 確認オプション == "" ? (うち無所属{無所属低出現率:1}人) #\@　
+PRINTFORM 10\%以下:{低出現率:2}人\@ 確認オプション == "" ? (うち無所属{無所属低出現率:2}人) #\@
+WAIT
 
 @学園ランダム, ARGS, 性別判定
 #FUNCTIONS
