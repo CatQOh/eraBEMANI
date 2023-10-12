@@ -1,0 +1,104 @@
+﻿@ロケーション条件_海豹屋
+#DIM DYNAMIC LCOUNT
+;出現条件のキャラをフルネーム(NAME)で入れる
+{
+#DIMS DYNAMIC 条件用キャラ = 
+"ゴマネ"
+}
+
+FOR LCOUNT, 0, VARSIZE("条件用キャラ")
+	IF GETCHARANAME(条件用キャラ:LCOUNT) > 0
+		SIF 好感度合計(GETCHARANAME(条件用キャラ:LCOUNT)) >= 100
+			RETURN GETCHARANAME(条件用キャラ:LCOUNT)
+	ENDIF
+NEXT
+
+RETURN 0
+
+@ロケーション可否_海豹屋
+;時間帯などで使えない場合は理由を書く
+SIF ターン == "朝"
+	ロケーション可否 = 営業準備中
+SIF ターン == "夜"
+	ロケーション可否 = 本日閉店
+
+@バイト条件_海豹屋
+;バイトの時間帯などを書く
+バイト要項 = 昼～夕方の時間帯で募集中
+;バイト可能かどうかの条件式
+SIF GROUPMATCH(ターン, "昼", "夕")
+	バイト可能 = 1
+;ロケーション解禁済みで可能
+SIF FINDELEMENTF(解禁済みロケーション, "海豹屋") >= 0
+	RETURN GETCHARANAME("ゴマネ")
+
+RETURN 0
+
+;バイト時に好感度が上がるキャラ
+@職場出現キャラ_海豹屋
+#DIM DYNAMIC 対象
+{
+#DIMS DYNAMIC 出現キャラ =
+"ゴマネ",
+}
+
+対象 = GETCHARANAME(出現キャラ:(RAND:VARSIZE("出現キャラ")))
+
+SIF 対象 > 0 && CSTR:対象:現在地 == ""
+	RETURN 対象
+
+RETURN 0
+
+@出現キャラ_海豹屋
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC グループ数
+#DIM DYNAMIC 始点
+#DIM DYNAMIC 終点
+
+;NOではなく登録番号で指定する
+IF データベース参照中
+	始点 = データベース参照中
+	終点 = データベース参照中+1
+ELSE
+	IF 始点
+		終点 = 始点
+		始点 = 1
+	ELSE
+		始点 = RAND(1, CHARANUM)
+		終点 = CHARANUM
+	ENDIF
+ENDIF
+
+FOR LCOUNT, 始点, 終点
+	;学校などに行ってるキャラは居ない
+	SIF CSTR:LCOUNT:現在地 != "" && !データベース参照中
+		CONTINUE
+	;出現率:LCOUNT = {出現率(100分率)} で指定できる
+	SELECTCASE CHARANAMEF(LCOUNT)
+		;店長
+		CASE "ゴマネ"
+			SIF 出現率:LCOUNT >= 0
+				出現率:LCOUNT = 100
+		;どんと来い超常現象
+		{
+		CASE "傍丹 桜子", "氷雪ちゃん", "西日暮里さん", "ハーレクイン", "汐夏 ほたる", "冥道 ユウキ", 
+			 "ジズ", "パピルス", "キララ", "雨人形壱ノ妙", "イマ", "ナカジ", "オフィーリア", "鬼-BE", "ごくそつくん", "イナリ", "星のひと", 
+			 "ハラ＝ヘッタ", "ジーナ", "N・ナーガ", "たぬちよ", "弐ノ丸", "デボラ", "小坊主", "テンコ", "にんじん", "＊うさぬこ＊", "こうもりおとこ", 
+			 "てまり", "エクリプス", "シャル", "玉藻 銀丸", "リデル", 
+			 "リリアリス・コルチカム", "八咫烏 鋼太郎", "マゼラン・マゼラン", "宍戸 美鈴", "知雲 ひばり", "伊賀崎ノ 楠子", "天稲荷 コテツ", "高須 らいむ", "不来方 とあ", 
+		}
+			SIF 出現率:LCOUNT >= 0
+				出現率:LCOUNT = 10
+		CASEELSE
+			;アニマリアキャラもいる
+			IF GROUPMATCH("アニマリア", CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３)
+				SIF 出現率:LCOUNT >= 0
+					出現率:LCOUNT = 20
+			ENDIF
+	ENDSELECT
+NEXT
+
+SIF 始点 == 1
+	RETURN
+SIF !データベース参照中
+	RESTART

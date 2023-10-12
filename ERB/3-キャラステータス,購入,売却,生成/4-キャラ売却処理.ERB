@@ -253,26 +253,26 @@ SELECTCASE RESULT
 			TARGET = LTARGET
 			RESTART
 		ENDIF
+		SIF PRICE >= 1000000
+			CALL 実績解除, "100-???-???"
+		SIF PRICE >= 2000000
+			CALL 実績解除, "100-200-???"
+		SIF PRICE >= 4000000
+			CALL 実績解除, "100-200-400"
 		SELECTCASE 月齢
 			CASE 2300 TO 2599
 				SIF FALLTYPE(TARGET) == 1
 					CALL 実績解除, "下弦の月に願うは君への罰"
 		ENDSELECT
-		IF NOF(TARGET) != 0
-			SELECTCASE CHARANAMEF(TARGET)
-				;実績「Σかリアンを素数価格で売却する」
-				CASE "Σ", "リアン"
-					SIF ISPRIME(PRICE)
-						CALL 実績解除, "I only Divide Me"
-				;実績「緋浮美を140,000パセリ以上で売却する」
-				CASE "梅桐 緋浮美"
-					SIF PRICE >= 140000
-						CALL 実績解除, "GOLD RUSH"
-				;実績:オトベアを売り飛ばす
-				CASE "オトベア"
-					CALL 実績解除, "お前よりくまモンの方がいい！"
-			ENDSELECT
-		ENDIF
+		SELECTCASE CHARANAMEF(TARGET)
+			;実績「Σかリアンを素数価格で売却する」
+			CASE "Σ", "リアン"
+				SIF ISPRIME(PRICE)
+					CALL 実績解除, "I only Divide Me"
+			;実績:オトベアを売り飛ばす
+			CASE "オトベア"
+				CALL 実績解除, "お前よりくまモンの方がいい！"
+		ENDSELECT
 		バンめし = 0
 		IF !CSVTALENT(NOF(MASTER), GETNUM(TALENT, "子供好き"))
 			IF TALENT:体格 <= 2
@@ -363,6 +363,9 @@ IF 死
 			CALL CLEAR_CHARA, GETCHARANAME("マッドラット"), 0, 1
 		ENDIF
 	ENDIF
+	殺害人数++
+	SIF 殺害人数 >= 10
+		CALL 実績解除, "DEATH BRINGER"
 	IF (GETCHARA(父親取得(ARG)) > 0 && !加工 && CSTR:GETCHARA(父親取得(ARG)):配属 != "博物館") || (GETCHARA(母親取得(ARG)) > 0 && !加工 && CSTR:GETCHARA(母親取得(ARG)):配属 != "博物館")
 		;博物館で加工した場合はそっちで処理済みなので計算しない
 		SIF GETCHARA(父親取得(ARG)) > 0 && !加工 && CSTR:GETCHARA(父親取得(ARG)):配属 != "博物館"
@@ -569,9 +572,10 @@ NEXT
 
 RETURN PRICE
 
-@売却額補正計算
+@売却額補正計算, グラフ
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 倍率
+#DIM DYNAMIC グラフ
 
 倍率 = 100
 ;素質による売却額補正値計算
@@ -741,6 +745,13 @@ ENDIF
 IF TALENT:傷物
 	倍率 -= TALENT:傷物
 	PRINTFORML 傷物 -{TALENT:傷物}\%
+ENDIF
+
+IF グラフ
+	SIF TALENT:狂気
+		倍率 -= 60
+	SIF TALENT:即落ち
+		倍率 -= 160
 ENDIF
 
 RETURN 倍率

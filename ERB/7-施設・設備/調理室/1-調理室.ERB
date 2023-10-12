@@ -72,6 +72,8 @@ PRINTL 　[2] - 料理当番を配属する
 PRINTL 　[3] - レシピを確認する
 PRINTL 　[4] - 調理室の説明
 PRINTL 　[5] - 調理器具を購入する
+SIF MOD:STS
+	PRINTL 　[8] - キャラを精肉する
 DRAWLINE
 PRINTPLAIN 　調理室　
 PRINTL [0] - 戻る
@@ -100,6 +102,11 @@ SELECTCASE RESULT
 		RESTART
 	CASE 5
 		CALL SHOPITEM_LIST, "施設"
+		RESTART
+	CASE 8
+		CALL 精肉
+		SIF RESULT
+			RETURN 1
 		RESTART
 ENDSELECT
 
@@ -877,6 +884,7 @@ NEXT
 #DIM DYNAMIC カフェイン
 #DIM DYNAMIC 調理器具ボーナス
 #DIM DYNAMIC 効果値
+#DIM DYNAMIC LTARGET
 
 ;新婚モード
 IF ゲームモード() == "新婚モード" && FINDCHARA(CFLAG:嫁, 1) >= 0
@@ -887,8 +895,14 @@ ENDIF
 
 ;ターン終了時の口上呼び出し
 FOR LCOUNT, 0, CHARANUM
-	SIF CSTR:LCOUNT:配属 == "調理室" && !CFLAG:LCOUNT:口上非表示
-		TRYCALLFORM TURNEND_調理室_%CSVNAMERPS(NOF(LCOUNT))%
+	IF CSTR:LCOUNT:配属 == "調理室"
+		IF OPTION:口上表示 && !CFLAG:LCOUNT:口上非表示
+			LTARGET = TARGET
+			TARGET = LCOUNT
+			TRYCALLFORM TURNEND_調理室_%CSVNAMERPS(NOF(LCOUNT))%
+			TARGET = LTARGET
+		ENDIF
+	ENDIF
 NEXT
 
 ;昼 朝食と昼食の効果発動
@@ -960,7 +974,7 @@ IF ターン == "昼"
 			BASE:LCOUNT:体力 += 滋養強壮*30
 			BASE:LCOUNT:気力 += 滋養強壮*30
 		ENDIF
-		SIF 愛情 && CFLAG:LCOUNT:陥落
+		SIF 愛情 && 陥落(LCOUNT)
 			EXP:LCOUNT:愛情経験 += 愛情
 		IF 狂気度計算用
 			CFLAG:LCOUNT:狂気度 += 狂気度計算用
@@ -1069,7 +1083,7 @@ ELSE
 			REND
 			CFLAG:LCOUNT:魔剤耐性 = LIMIT(CFLAG:LCOUNT:魔剤耐性, 1000, 2000)
 		ENDIF
-		SIF 愛情 && CFLAG:LCOUNT:陥落
+		SIF 愛情 && 陥落(LCOUNT)
 			EXP:LCOUNT:愛情経験 += 愛情
 		IF 狂気度計算用
 			CFLAG:LCOUNT:狂気度 += 狂気度計算用
@@ -1283,3 +1297,138 @@ DO
 			RESTART
 	ENDSELECT
 LOOP 1
+
+@精肉
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 単価
+#DIM DYNAMIC 倍率
+#DIM DYNAMIC 数量
+#DIM DYNAMIC 合計
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 加工者
+
+PRINTL □キャラを精肉して出荷します。精肉したキャラは死亡します
+FOR PAGING, 1, CHARANUM
+	CALL PAGING, 精肉可能(PAGING), @"ストレス値:{CFLAG:PAGING:ストレス値}/999 種族:%CSTR:PAGING:種族%", "精肉カタログ", "戻る", 1
+NEXT
+
+SIF RESULT == -1
+	RETURN 0
+対象 = RESULT
+
+DRAWLINE
+PRINTL □対象
+PRINTFORM 　名前:%NAME:対象% 
+CALL ストレス表示, 対象
+PRINTFORML  種族:%CSTR:対象:種族%
+
+PRINTL □加工スタッフ
+加工者 =
+
+FOR LCOUNT, 1, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "調理室" || !CFLAG:LCOUNT:配属完了
+		CONTINUE
+	PRINTFORML 　%NAME:LCOUNT%
+	加工者 += CALLNAME:LCOUNT+"、"
+NEXT
+加工者 = %SUBSTRINGU(加工者, 0, STRLENSU(加工者)-1)%
+IF 加工者 == ""
+	PRINTFORML 　%NAME:MASTER%
+	加工者 = %NAME:MASTER%
+ENDIF
+PRINTL □価値
+
+SELECTCASE CSTR:対象:種族
+	CASE "獣人", "獣"
+		倍率 = 120
+	CASE "神", "悪魔", "天使"
+		倍率 = 150
+	CASE "人魚"
+		倍率 = 200
+	CASEELSE
+		倍率 = 100
+ENDSELECT
+
+単価 = 2000-CFLAG:対象:ストレス値
+
+SELECTCASE TALENT:対象:体格
+	CASE 1
+		数量 = 5
+	CASE 2
+		数量 = 7
+	CASE 3
+		数量 = 10
+	CASE 4
+		数量 = 12
+	CASE 5
+		数量 = 20
+ENDSELECT
+
+合計 = PERCENT(単価, 倍率+(料理レベル()*10))*数量
+
+PRINTFORML 　単価:2000-{CFLAG:対象:ストレス値}（ストレス値）={単価}
+PRINTFORML 　倍率:{倍率}\%（種族:%CSTR:対象:種族%）+{料理レベル()*10}\%（料理レベル合計:{料理レベル()}）={倍率+(料理レベル()*10)}
+PRINTFORM 　数量:{数量}（%体格(TALENT:対象:体格)%体型）
+CALL PASELIL, @"合計:{合計}＄"
+PRINTL 
+PRINTFORML %NAME:対象%を精肉しますか？
+PRINTL [0] - はい
+PRINTL [1] - いいえ
+
+BINPUT
+
+SIF RESULT == 1
+	RESTART
+
+SETCOLORBYNAME red
+CUSTOMDRAWLINE ✂----------
+RESETCOLOR
+CALL PASELIL, @"%NAME:対象%の食肉加工、出荷を行い、計{合計}＄の収入を得ました"
+CALL PAYMENT, 合計, @"%NAME:対象%を精肉して出荷"
+
+CSTR:対象:ロスト要因 = 死亡
+CSTR:対象:ロスト詳細 = %加工者%の手で屠殺の後、食肉加工されて出荷（総額:{合計}＄）
+CALL CLEAR_CHARA, 対象, 0, 1
+CALL プレイログ記録, @"%NAME:対象%を精肉"
+
+SIF NOF(対象) < 10000 && !DNAデータ:NOF(対象)
+	CALL DNAデータ解析, 対象
+
+死亡キャラ = 対象
+SIF GETCHARA(父親取得(対象)) > 0 && CSTR:GETCHARA(父親取得(対象)):配属 == "調理室"
+	CALL 崩壊処理, GETCHARA(父親取得(対象)), "子供を解体"
+SIF GETCHARA(母親取得(対象)) > 0 && CSTR:GETCHARA(母親取得(対象)):配属 == "調理室"
+	CALL 崩壊処理, GETCHARA(母親取得(対象)), "子供を解体"
+
+FOR LCOUNT, 1, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "調理室"
+		CONTINUE
+	CFLAG:LCOUNT:狂気度 += 10
+	SIF 相性値(LCOUNT, 対象) > 100
+		CFLAG:LCOUNT:狂気度 += (LIMIT((相性値(LCOUNT, 対象)-100)/10, 1, 10))*10
+	IF CFLAG:LCOUNT:狂気度 >= 100 && !TALENT:LCOUNT:狂気
+		PRINTFORML %CALLNAME:LCOUNT%は%CALLNAME:対象%を食肉加工したことで気が狂ってしまったようだ……
+		TALENT:LCOUNT:狂気 = 1
+	ENDIF
+NEXT
+
+RETURN 1
+
+@精肉可能, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+
+SIF CSTR:対象:配属 == "調理室"
+	RETURNF 0
+SIF CFLAG:対象:キャラロスト
+	RETURNF 0
+SIF TALENT:対象:霊体
+	RETURNF 0
+SIF TALENT:対象:ゾンビ
+	RETURNF 0
+SIF TALENT:対象:無機物
+	RETURNF 0
+SIF CSTR:対象:種族 == "機械"
+	RETURNF 0
+
+RETURNF 1

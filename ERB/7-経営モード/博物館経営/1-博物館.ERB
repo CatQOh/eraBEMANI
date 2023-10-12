@@ -766,10 +766,12 @@ RETURN カテゴリ割合:0, カテゴリ割合:1, カテゴリ割合:2, カテ�
 #DIM DYNAMIC 総カテゴリ数
 #DIM DYNAMIC カテゴリ割合, VARSIZE("博物館客層")
 #DIM DYNAMIC 価値計算用
+#DIM DYNAMIC 手コレクション
 
 SIF !ITEM:博物館
 	RETURN
 
+手コレクション = 1
 FOR LCOUNTY, 0, 30
 	FOR LCOUNTX, 0, 30
 		ID = 博物館マップ:LCOUNTY:LCOUNTX
@@ -777,6 +779,8 @@ FOR LCOUNTY, 0, 30
 			博物館マップ:LCOUNTY:LCOUNTX = 0
 			CONTINUE
 		ENDIF
+		SIF MUSEUM:ID:種類 != "部位/腕"
+			手コレクション = 0
 		;性具かつ実用不許可だと無視
 		SIF MUSEUM:ID:種類 == "性具" && !MU:実用
 			CONTINUE
@@ -873,6 +877,8 @@ ELSE
 ENDIF
 SIF 名声上昇量 > 0
 	PRINTFORML 博物館の名声が{名声上昇量}上がりました
+SIF 手コレクション && 総設置数 >= 5
+	CALL 実績解除, "下品なんですが……フフ……"
 
 ;集客力の変動
 FOR LCOUNT, 1, 1000
@@ -1006,6 +1012,8 @@ IF MU:実用
 		WEND
 		;0～2回汚される
 		MUSEUM:(設置済み:対象):汚れ = {TOINT(MUSEUM:(設置済み:対象):汚れ)+RAND:2}
+		SIF TOINT(MUSEUM:(設置済み:対象):汚れ) >= 10000
+			CALL 実績解除, "作品には手を触れないでください"
 		;DEBUGPRINTFORML %MUSEUM:(設置済み:対象):名前%+
 	REND
 ENDIF

@@ -608,12 +608,6 @@ ENDIF
 #DIM DYNAMIC LCOUNT
 ;なんか全体的に数値が重く感じたので2倍にしてみる
 #DIM DYNAMIC 倍率 = 200
-#DIM DYNAMIC 欲望計算用
-#DIM DYNAMIC 欲望上昇済
-#DIM DYNAMIC っ気
-#DIM DYNAMIC っ気計算用
-#DIM DYNAMIC っ気上昇済
-#DIM DYNAMIC 目標値
 
 ;上昇値は既成事実以外は5刻みで渡されるはず
 ;なので倍率は20刻みになるのがちょうどいい
@@ -863,81 +857,8 @@ IF 好感度合計(対象) >= CFLAG:対象:経験値取得履歴*500+500
 	CFLAG:対象:経験値取得履歴++
 ENDIF
 
-欲望計算用 = 好感度:対象:友情+好感度:対象:セフレ*2+好感度:対象:既成事実*100
-DO
-	SELECTCASE ABL:対象:欲望
-		CASE 0
-			目標値 = 300
-		CASE 1
-			目標値 = 800
-		CASE 2
-			目標値 = 1200
-		CASE 3
-			目標値 = 1800
-		CASE 4
-			目標値 = 3000
-		CASE 5
-			目標値 = 4200
-		CASE 6
-			目標値 = 5600
-		CASE 7
-			目標値 = 7000
-		CASE 8
-			目標値 = 8500
-		CASE 9
-			目標値 = 10000
-		CASEELSE
-			BREAK
-	ENDSELECT
-	IF 欲望計算用 >= 目標値
-		ABL:対象:欲望++
-		欲望上昇済 = 1
-	ELSE
-		BREAK
-	ENDIF
-LOOP 1
-SIF 欲望上昇済
-	PRINTFORML %NAME:対象%の欲望が{ABL:対象:欲望}になった
-
-;一旦目標値は欲望と同値でときめきをやや強く 要調整
-IF SEX(PLAYER) == SEX(対象)
-	っ気計算用 = 好感度:対象:友情+好感度:対象:ときめき*3+好感度:対象:既成事実*80
-	っ気 = SEX(対象) == 1 ? GETNUM(ABL, "ホモっ気") # GETNUM(ABL, "レズっ気")
-	DO
-		SELECTCASE ABL:対象:っ気
-			CASE 0
-				目標値 = 300
-			CASE 1
-				目標値 = 800
-			CASE 2
-				目標値 = 1200
-			CASE 3
-				目標値 = 1800
-			CASE 4
-				目標値 = 3000
-			CASE 5
-				目標値 = 4200
-			CASE 6
-				目標値 = 5600
-			CASE 7
-				目標値 = 7000
-			CASE 8
-				目標値 = 8500
-			CASE 9
-				目標値 = 10000
-			CASEELSE
-				BREAK
-		ENDSELECT
-		IF っ気計算用 >= 目標値
-			ABL:対象:っ気++
-			っ気上昇済 = 1
-		ELSE
-			BREAK
-		ENDIF
-	LOOP 1
-	SIF っ気上昇済
-		PRINTFORML %NAME:対象%の\@ SEX(対象) == 1 ? ホモっ気 # レズっ気 \@が{ABL:対象:っ気}になった
-ENDIF
+;好感度に応じて能力が上昇
+CALL SCHOOL_ABLUP, 対象, 1
 
 ;;;連絡先入手とメッセージ表示
 @連絡先入手, 対象
@@ -959,9 +880,6 @@ CALL 経験値取得, 対象, "学園"
 @TRAIN_SCHOOL, 場所
 #DIMS DYNAMIC 場所
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC 目標値
-#DIM DYNAMIC 従順計算用
-#DIM DYNAMIC 従順上昇済
 
 CALL SCHOOL_COMFILTER, 場所
 
@@ -979,218 +897,23 @@ DO
 LOOP !TFLAG:調教終了
 
 DRAWLINE
-;感覚系の珠加算
-FOR LCOUNT, GETNUM(PALAM, "快Ｃ"), GETNUM(PALAM, "快Ｂ")+1
-	SELECTCASE GETPALAMLV(PALAM:LCOUNT, 3)
-		CASE 0
-		CASE 1
-			IF PALAM:LCOUNT < PALAMLV:1*3
-				JUEL:LCOUNT += 1
-			ELSE
-				JUEL:LCOUNT += 2
-			ENDIF
-		CASE 2
-			IF PALAM:LCOUNT < PALAMLV:2*3
-				JUEL:LCOUNT += 10
-			ELSE
-				JUEL:LCOUNT += 20
-			ENDIF
-		CASE 3
-			IF PALAM:LCOUNT < PALAMLV:3*2
-				JUEL:LCOUNT += 100
-			ELSE
-				JUEL:LCOUNT += 200
-			ENDIF
-	ENDSELECT
+
+;珠の獲得
+CALL JUEL_GETTING
+
+;快と習得だけ加算される
+FOR LCOUNT, 0, VARSIZE("PALAM")
 	SELECTCASE PALAMNAME:LCOUNT
-		CASE "快Ｃ"
-			IF PENIS(TARGET)
-				JUEL:LCOUNT += ((EX:射精-EX:膣責め射精-EX:アナル責め射精)*2000)+(EX:潮噴き*3000)
-			ELSE
-				JUEL:LCOUNT += EX:Ｃ絶頂*1000
-			ENDIF
-		CASE "快Ｖ"
-			JUEL:LCOUNT += (EX:Ｖ絶頂+EX:膣責め射精)*1000
-		CASE "快Ａ"
-			JUEL:LCOUNT += (EX:Ａ絶頂+EX:アナル責め射精)*1000
-		CASE "快Ｂ"
-			JUEL:LCOUNT += EX:Ｂ絶頂*1000
+		CASE "反感"
+			BREAK
+		CASE "快Ｃ", "快Ｖ", "快Ａ", "快Ｂ", "習得"
+			DEBUGPRINTFORML %PALAMNAME:LCOUNT%の珠×({JUEL:LCOUNT}+{GOTJUEL:LCOUNT})
+			JUEL:LCOUNT += GOTJUEL:LCOUNT
 	ENDSELECT
 NEXT
 
-;習得の珠加算
-SELECTCASE GETPALAMLV(PALAM:習得, 10)
-	CASE 0
-	CASE 1
-		IF PALAM:習得 < PALAMLV:1*3
-			JUEL:習得 += 1
-		ELSE
-			JUEL:習得 += 2
-		ENDIF
-	CASE 2
-		IF PALAM:習得 < PALAMLV:2*3
-			JUEL:習得 += 10
-		ELSE
-			JUEL:習得 += 20
-		ENDIF
-	CASE 3
-		IF PALAM:習得 < PALAMLV:3*2
-			JUEL:習得 += 100
-		ELSE
-			JUEL:習得 += 200
-		ENDIF
-	CASE 5
-		JUEL:習得 += 1000
-	CASE 6
-		JUEL:習得 += 2000
-	CASE 7
-		JUEL:習得 += 3000
-	CASE 8
-		JUEL:習得 += 5000
-	CASE 9
-		JUEL:習得 += 8000
-	CASEELSE
-		JUEL:習得 += PALAM:習得/20
-ENDSELECT
-
-;従順の上昇
-従順計算用 = EXP:奉仕快楽経験+EXP:苦痛快楽経験
-DO
-	SELECTCASE ABL:従順
-		CASE 0
-			目標値 = 50
-		CASE 1
-			目標値 = 150
-		CASE 2
-			目標値 = 300
-		CASE 3
-			目標値 = 500
-		CASE 4
-			目標値 = 800
-		CASE 5
-			目標値 = 1200
-		CASE 6
-			目標値 = 1700
-		CASE 7
-			目標値 = 2300
-		CASE 8
-			目標値 = 3000
-		CASE 9
-			目標値 = 4000
-		CASEELSE
-			BREAK
-	ENDSELECT
-	IF 従順計算用 >= 目標値
-		ABL:従順++
-		従順上昇済 = 1
-	ELSE
-		BREAK
-	ENDIF
-LOOP 1
-SIF 従順上昇済
-	PRINTFORML %NAME:TARGET%の従順が{ABL:従順}になった
-
-;珠で上げる系（感覚と技巧）
-IF !ABL:Ｃ感覚
-	IF JUEL:快Ｃ >= 20
-		ABL:Ｃ感覚++
-		PRINTFORML %NAME:TARGET%のＣ感覚が1になった
-	ENDIF
-ELSE
-	IF JUEL:快Ｃ >= PALAMLV:(ABL:Ｃ感覚)+1
-		JUEL:快Ｃ -= PALAMLV:(ABL:Ｃ感覚)+1
-		ABL:Ｃ感覚++
-		PRINTFORML %NAME:TARGET%のＣ感覚が{ABL:Ｃ感覚}になった
-	ENDIF
-ENDIF
-IF !ABL:Ｂ感覚
-	IF JUEL:快Ｂ >= 20
-		ABL:Ｂ感覚++
-		PRINTFORML %NAME:TARGET%のＢ感覚が1になった
-	ENDIF
-ELSE
-	IF JUEL:快Ｂ >= PALAMLV:(ABL:Ｂ感覚)+1
-		JUEL:快Ｂ -= PALAMLV:(ABL:Ｂ感覚)+1
-		ABL:Ｂ感覚++
-		PRINTFORML %NAME:TARGET%のＢ感覚が{ABL:Ｂ感覚}になった
-	ENDIF
-ENDIF
-IF !ABL:Ｖ感覚
-	IF JUEL:快Ｖ >= 20
-		ABL:Ｖ感覚++
-		PRINTFORML %NAME:TARGET%のＶ感覚が1になった
-	ENDIF
-ELSE
-	IF JUEL:快Ｖ >= PALAMLV:(ABL:Ｖ感覚)+1
-		JUEL:快Ｖ -= PALAMLV:(ABL:Ｖ感覚)+1
-		ABL:Ｖ感覚++
-		PRINTFORML %NAME:TARGET%のＶ感覚が{ABL:Ｖ感覚}になった
-	ENDIF
-ENDIF
-IF !ABL:Ａ感覚
-	IF JUEL:快Ａ >= 20
-		ABL:Ａ感覚++
-		PRINTFORML %NAME:TARGET%のＡ感覚が1になった
-	ENDIF
-ELSE
-	IF JUEL:快Ａ >= PALAMLV:(ABL:Ａ感覚)+1
-		JUEL:快Ａ -= PALAMLV:(ABL:Ａ感覚)+1
-		ABL:Ａ感覚++
-		PRINTFORML %NAME:TARGET%のＡ感覚が{ABL:Ａ感覚}になった
-	ENDIF
-ENDIF
-IF !ABL:技巧
-	IF JUEL:習得 >= 20
-		ABL:技巧++
-		PRINTFORML %NAME:TARGET%の技巧が1になった
-	ENDIF
-ELSE
-	IF JUEL:習得 >= PALAMLV:(ABL:技巧)+1
-		JUEL:習得 -= PALAMLV:(ABL:技巧)+1
-		ABL:技巧++
-		PRINTFORML %NAME:TARGET%の技巧が{ABL:技巧}になった
-	ENDIF
-ENDIF
-
-;同性愛
-IF EXP:ゲイ経験/300 > ABL:ゲイ中毒 && ABL:ゲイ中毒 < 10
-	ABL:ゲイ中毒++
-	PRINTFORML %NAME:TARGET%のゲイ中毒が{ABL:ゲイ中毒}になった
-ENDIF
-IF EXP:レズ経験/300 > ABL:レズ中毒 && ABL:レズ中毒 < 10
-	ABL:レズ中毒++
-	PRINTFORML %NAME:TARGET%のレズ中毒が{ABL:レズ中毒}になった
-ENDIF
-
-;奉仕精神だけひとまず微調整
-IF EXP:奉仕快楽経験 > 50 && ABL:奉仕精神 == 0
-	ABL:奉仕精神++
-	PRINTFORML %NAME:TARGET%の奉仕精神が1になった
-ELSEIF EXP:奉仕快楽経験 > 100 && ABL:奉仕精神 == 1
-	ABL:奉仕精神++
-	PRINTFORML %NAME:TARGET%の奉仕精神が2になった
-ELSEIF EXP:奉仕快楽経験/300 > ABL:奉仕精神 && ABL:奉仕精神 < 10
-	ABL:奉仕精神++
-	PRINTFORML %NAME:TARGET%の奉仕精神が{ABL:奉仕精神}になった
-ENDIF
-
-;その他能力
-IF EXP:精液経験/300 > ABL:精液中毒 && ABL:精液中毒 < 10
-	ABL:精液中毒++
-	PRINTFORML %NAME:TARGET%の精液中毒が{ABL:精液中毒}になった
-ENDIF
-IF EXP:自慰経験/300 > ABL:自慰中毒 && ABL:自慰中毒 < 10
-	ABL:自慰中毒++
-	PRINTFORML %NAME:TARGET%の自慰中毒が{ABL:自慰中毒}になった
-ENDIF
-IF EXP:性交経験/150 > ABL:性交中毒 && ABL:性交中毒 < 10
-	ABL:性交中毒++
-	PRINTFORML %NAME:TARGET%の性交中毒が{ABL:性交中毒}になった
-ENDIF
-IF EXP:苦痛快楽経験/150 > ABL:マゾっ気 && ABL:マゾっ気 < 10
-	ABL:マゾっ気++
-	PRINTFORML %NAME:TARGET%のマゾっ気が{ABL:マゾっ気}になった
-ENDIF
+;能力の自動上昇処理
+CALL SCHOOL_ABLUP, TARGET, 0
 
 ;イった回数に応じてときめき増加
 ときめき増加量 = SUMARRAY(EX:TARGET:0)
@@ -1199,6 +922,226 @@ ENDIF
 CALL アイテム修理
 ;口上で参照したいのでちょっと外してみる
 ;CALL CVAR_RESET
+
+@SCHOOL_ABLUP, 対象, MODE
+#DIM DYNAMIC 対象
+#DIM DYNAMIC MODE
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 目標値
+#DIM DYNAMIC 上昇済
+#DIM DYNAMIC 対応珠
+#DIM DYNAMIC 計算用EXP
+
+;好感度上昇に付随する能力上昇はこっち
+IF MODE == 1
+	FOR LCOUNT, 0, VARSIZE("ABL")
+		上昇済 = 0
+		SIF ABL:対象:LCOUNT >= 10
+			CONTINUE
+		SELECTCASE ABLNAME:LCOUNT
+			CASE "欲望"
+				計算用EXP = 好感度:対象:友情+好感度:対象:セフレ*2+好感度:対象:既成事実*100
+				DO
+					SELECTCASE ABL:対象:欲望
+						CASE 0
+							目標値 = 300
+						CASE 1
+							目標値 = 800
+						CASE 2
+							目標値 = 1200
+						CASE 3
+							目標値 = 1800
+						CASE 4
+							目標値 = 3000
+						CASE 5
+							目標値 = 4200
+						CASE 6
+							目標値 = 5600
+						CASE 7
+							目標値 = 7000
+						CASE 8
+							目標値 = 8500
+						CASE 9
+							目標値 = 10000
+						CASEELSE
+							BREAK
+					ENDSELECT
+					SIF 計算用EXP < 目標値
+						BREAK
+					ABL:対象:欲望++
+					上昇済++
+				LOOP 1
+			CASE "レズっ気"
+				SIF SEX(対象) == 2 && SEX(PLAYER) == 2
+					GOTO っ気の上昇
+			CASE "ホモっ気"
+				SIF SEX(対象) == 1 && SEX(PLAYER) == 1
+					GOTO っ気の上昇
+			CASE "っ気"
+				$っ気の上昇
+				;一旦目標値は欲望と同値でときめきをやや強く 要調整
+				計算用EXP = 好感度:対象:友情+好感度:対象:ときめき*3+好感度:対象:既成事実*80
+				DO
+					SELECTCASE ABL:対象:LCOUNT
+						CASE 0
+							目標値 = 300
+						CASE 1
+							目標値 = 800
+						CASE 2
+							目標値 = 1200
+						CASE 3
+							目標値 = 1800
+						CASE 4
+							目標値 = 3000
+						CASE 5
+							目標値 = 4200
+						CASE 6
+							目標値 = 5600
+						CASE 7
+							目標値 = 7000
+						CASE 8
+							目標値 = 8500
+						CASE 9
+							目標値 = 10000
+						CASEELSE
+							BREAK
+					ENDSELECT
+					SIF 計算用EXP < 目標値
+						BREAK
+					ABL:対象:LCOUNT++
+					上昇済 = 1
+				LOOP 1
+		ENDSELECT
+		SIF ABL:対象:LCOUNT > 10
+			ABL:対象:LCOUNT = 10
+		SIF 上昇済
+			PRINTFORML %NAME:対象%の%ABLNAME:LCOUNT%が{ABL:対象:LCOUNT}になった
+	NEXT
+	RETURN
+ENDIF
+
+FOR LCOUNT, 0, VARSIZE("ABL")
+	上昇済 = 0
+	SIF ABL:対象:LCOUNT >= 10
+		CONTINUE
+	SELECTCASE ABLNAME:LCOUNT
+		CASE "Ｃ感覚"
+			対応珠 = GETPALAM("快Ｃ")
+			GOTO UPWITHJUEL
+		CASE "Ｖ感覚"
+			対応珠 = GETPALAM("快Ｖ")
+			GOTO UPWITHJUEL
+		CASE "Ａ感覚"
+			対応珠 = GETPALAM("快Ａ")
+			GOTO UPWITHJUEL
+		CASE "Ｂ感覚"
+			対応珠 = GETPALAM("快Ｂ")
+			GOTO UPWITHJUEL
+		CASE "技巧"
+			対応珠 = GETPALAM("習得")
+			GOTO UPWITHJUEL
+		CASE "ゲイ中毒"
+			IF EXP:対象:ゲイ経験/300 > ABL:対象:ゲイ中毒
+				ABL:対象:ゲイ中毒 = EXP:対象:ゲイ経験/300
+				上昇済++
+			ENDIF
+		CASE "レズ中毒"
+			IF EXP:対象:レズ経験/300 > ABL:対象:レズ中毒
+				ABL:対象:レズ中毒 = EXP:対象:レズ経験/300
+				上昇済++
+			ENDIF
+		CASE "精液中毒"
+			IF EXP:対象:精液経験/300 > ABL:対象:精液中毒
+				ABL:対象:精液中毒 = EXP:対象:精液経験/300
+				上昇済++
+			ENDIF
+		CASE "自慰中毒"
+			IF EXP:対象:自慰経験/300 > ABL:対象:自慰中毒
+				ABL:対象:自慰中毒 = EXP:対象:自慰経験/300
+				上昇済++
+			ENDIF
+		CASE "性交中毒"
+			IF EXP:対象:性交経験/150 > ABL:対象:性交中毒
+				ABL:対象:性交中毒 = EXP:対象:性交経験/150
+				上昇済++
+			ENDIF
+		CASE "マゾっ気"
+			IF EXP:対象:苦痛快楽経験/150 > ABL:対象:マゾっ気
+				ABL:対象:マゾっ気 = EXP:対象:苦痛快楽経験/150
+				上昇済++
+			ENDIF
+		CASE "奉仕精神"
+			DO
+				SELECTCASE ABL:対象:LCOUNT
+					CASE 0
+						目標値 = 50
+					CASE 1
+						目標値 = 100
+					CASE IS <10
+						目標値 = ABL:対象:LCOUNT*300
+					CASEELSE
+						BREAK
+				ENDSELECT
+				SIF EXP:対象:奉仕快楽経験 < 目標値
+					BREAK
+				ABL:対象:LCOUNT++
+				上昇済++
+			LOOP 1
+		CASE "珠使うやつ"
+			$UPWITHJUEL
+			DO
+				SELECTCASE ABL:対象:LCOUNT
+					CASE 0
+						目標値 = 20
+					CASE IS < 10
+						目標値 = PALAMLV:(ABL:対象:LCOUNT)+1
+					CASEELSE
+						BREAK
+				ENDSELECT
+				SIF JUEL:対象:対応珠 < 目標値
+					BREAK
+				JUEL:対象:対応珠 -= 目標値
+				ABL:対象:LCOUNT++
+				上昇済++
+			LOOP 1
+		CASE "従順"
+			計算用EXP = EXP:対象:奉仕快楽経験+EXP:対象:苦痛快楽経験
+			DO
+				SELECTCASE ABL:対象:従順
+					CASE 0
+						目標値 = 50
+					CASE 1
+						目標値 = 150
+					CASE 2
+						目標値 = 300
+					CASE 3
+						目標値 = 500
+					CASE 4
+						目標値 = 800
+					CASE 5
+						目標値 = 1200
+					CASE 6
+						目標値 = 1700
+					CASE 7
+						目標値 = 2300
+					CASE 8
+						目標値 = 3000
+					CASE 9
+						目標値 = 4000
+					CASEELSE
+						BREAK
+				ENDSELECT
+				SIF 計算用EXP < 目標値
+					BREAK
+				ABL:対象:従順++
+				上昇済++
+			LOOP 1
+	ENDSELECT
+	SIF ABL:対象:LCOUNT > 10
+		ABL:対象:LCOUNT = 10
+	SIF 上昇済
+		PRINTFORML %NAME:対象%の%ABLNAME:LCOUNT%が{ABL:対象:LCOUNT}になった
+NEXT
 
 @SCHOOL_COMFILTER, 場所
 #DIMS DYNAMIC 場所

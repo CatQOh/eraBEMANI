@@ -534,6 +534,11 @@ ENDIF
 SIF CHARANAMEF(MASTER) == "パステルくん" && ASSI > 0 && 相性値(TARGET, ASSI) > 100
 	CALL 実績解除, "「わ～いらくち～ん」"
 
+SIF CHARANAMEF(TARGET) == "小野 美苗"
+	美苗チェック = DAY
+
+打カウント = 0
+
 CALL KOJO_START
 
 ;コマンド終了時に呼ばれる ここでは調教終了処理と媚薬処理
@@ -626,7 +631,7 @@ ELSE
 		ELSE
 			PRINTFORML （激しい調教で%CALLNAME:TARGET%はひどく消耗したようです　調教を終了します）
 			;従順ダウン 陥落済みなら発生しない
-			IF ABL:従順 > 0 && !CFLAG:陥落
+			IF ABL:従順 > 0 && !陥落(TARGET)
 				ABL:従順--
 				PRINTFORML %CALLNAME:TARGET%の従順が1下がった
 			ENDIF
@@ -664,7 +669,7 @@ ENDIF
 SIF CSTR:種族 != "人間"
 	RETURN
 ;スライム侵食イベント
-IF スライム感染可能(TARGET) && (ISSLIME(MASTER) || (ASSI >= 0 && ISSLIME(ASSI) && CFLAG:ASSI:陥落))
+IF スライム感染可能(TARGET) && (ISSLIME(MASTER) || (ASSI >= 0 && ISSLIME(ASSI) && 陥落(ASSI)))
 	IF ISSLIME(MASTER)
 		PRINTFORMW 消耗して動けない%CALLNAME:TARGET%を見下ろしながら思う……
 		PRINTFORMW このまま%CALLNAME:TARGET%を……
@@ -709,7 +714,7 @@ IF スライム感染可能(TARGET) && (ISSLIME(MASTER) || (ASSI >= 0 && ISSLIME
 					TALENT:スライム = 1
 					TALENT:崩壊 = 1
 					CSTR:種族 = スライム
-					IF CFLAG:陥落
+					IF 陥落(TARGET)
 						PRINTFORML %CALLNAME:TARGET%が%CALLNAME:MASTER%に抱いていた感情は、スライムの本能に塗りつぶされてしまった……
 						SIF TALENT:恋慕
 							PRINTFORML %CALLNAME:TARGET%は[恋慕]を失った
@@ -729,7 +734,6 @@ IF スライム感染可能(TARGET) && (ISSLIME(MASTER) || (ASSI >= 0 && ISSLIME
 						SIF TALENT:隷属
 							PRINTFORML %CALLNAME:TARGET%は[隷属]を失った
 							TALENT:隷属 = 0
-						CFLAG:陥落 = 0
 						WAIT
 					ENDIF
 				ENDIF
@@ -761,7 +765,7 @@ IF スライム感染可能(TARGET) && (ISSLIME(MASTER) || (ASSI >= 0 && ISSLIME
 ENDIF
 
 ;吸血イベント
-IF TALENT:MASTER:吸血鬼 || (ASSI >= 0 && TALENT:ASSI:吸血鬼 && CFLAG:ASSI:陥落)
+IF TALENT:MASTER:吸血鬼 || (ASSI >= 0 && TALENT:ASSI:吸血鬼 && 陥落(ASSI))
 	IF TALENT:MASTER:吸血鬼
 		PRINTFORMW 消耗して動けない%CALLNAME:TARGET%を見下ろしながら思う……
 		PRINTFORMW このまま%CALLNAME:TARGET%を……
@@ -828,7 +832,7 @@ ENDIF
 ;PRINTFORMW 激しい調教の影響によって、%CALLNAME:TARGET%の精神に異常をきたしてしまったようだ
 ;PRINTFORMW %NAME:TARGET%は【崩壊】してしまった
 ;TALENT:崩壊 = 1
-;IF CFLAG:陥落
+;IF 陥落(TARGET)
 ;	PRINTFORMW 今まで重ねてきた時間も虚しく、%CALLNAME:TARGET%はすっかり心を閉ざしてしまった……
 ;	SIF TALENT:恋慕
 ;		PRINTFORMW %CALLNAME:TARGET%は[恋慕]を失った
@@ -842,7 +846,7 @@ ENDIF
 ;		PRINTFORMW %CALLNAME:TARGET%は[娼婦]を失った
 ;	SIF TALENT:隷属
 ;		PRINTFORMW %CALLNAME:TARGET%は[隷属]を失った
-;	CFLAG:陥落 = 0
+;	陥落(TARGET) = 0
 ;ENDIF
 [SKIPEND]
 
@@ -936,7 +940,7 @@ SIF CFLAG:死亡 || TEQUIP:睡眠
 ;快感に素直、快感の否定は絶頂回数に応じてストレス増減
 IF TALENT:快感に素直
 	CFLAG:ストレス値 -= EX:Ｃ絶頂+EX:Ｖ絶頂+EX:Ａ絶頂+EX:Ｂ絶頂+EX:射精/3
-ELSEIF TALENT:快感の否定 && !CFLAG:陥落
+ELSEIF TALENT:快感の否定 && !陥落(TARGET)
 	CFLAG:ストレス値 += EX:Ｃ絶頂+EX:Ｖ絶頂+EX:Ａ絶頂+EX:Ｂ絶頂+EX:射精/3
 ENDIF
 
@@ -1037,6 +1041,9 @@ ENDIF
 CALL IN_VAGINA
 
 ;何の珠を得られたか
+CALL JUEL_GETTING
+
+;得られた珠を加算
 CALL JUEL_CHECK
 
 ;否定の珠の打ち消しチェック
@@ -1100,7 +1107,7 @@ FOR LCOUNT, 0, VARSIZE("ITEM")
 	ENDIF
 NEXT
 
-@JUEL_CHECK
+@JUEL_GETTING
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 取得量
 
@@ -1163,6 +1170,9 @@ FOR LCOUNT, 0, VARSIZE("PALAM")
 			GOTJUEL:LCOUNT = 取得量
 	ENDSELECT
 NEXT
+
+@JUEL_CHECK
+#DIM DYNAMIC LCOUNT
 
 CALL CHECKDRAWLINE
 PRINTL 調教の結果：
