@@ -16,6 +16,7 @@
 #DIM DYNAMIC LASSI
 #DIM DYNAMIC 売却可能
 #DIM DYNAMIC 経過日数
+#DIM DYNAMIC 入店カウント計算用
 ;新しくゲームを追加する場合はここに名称を追加する
 {
 #DIMS DYNAMIC ゲーム名 = 
@@ -94,6 +95,7 @@ SELECTCASE カジノの種類
 	;表カジノ
 	CASE 1
 		CALL BGM再生, カジノBGM
+		表カジノ入店回数++
 		IF LANGUAGE == "ENG"
 			PRINTL Welcome to casino! What play game you do?
 			PRINTL But If you debt and can't payment,
@@ -105,6 +107,7 @@ SELECTCASE カジノの種類
 		ENDIF
 	;裏カジノ
 	CASE 2
+		裏カジノ入店回数++
 		IF LANGUAGE == "ENG"
 			PRINTL Welcome to Darkness casino! What play game you do?
 			PRINTL But If you debt and can't payment,
@@ -123,6 +126,10 @@ SELECTCASE カジノの種類
 ENDSELECT
 ギャンブル合計収支 = ギャンブル総収支:0 + ギャンブル総収支:1
 IF LANGUAGE== "ENG"
+	PRINTFORM Entry:{表カジノ入店回数}
+	SIF 裏カジノ入店回数
+		PRINTFORM +{裏カジノ入店回数}
+	PRINTL
 	CALL PASELIL, @"       Money:{MONEY}＄"
 	CALL PASELIL, @"Total Income:{ギャンブル合計収支}＄"
 	IF ギャンブル総収支:1
@@ -132,8 +139,13 @@ IF LANGUAGE== "ENG"
 	[IF_DEBUG]
 		PRINTFORML Carol's Rating:{キャロル好感度}
 		PRINTFORML Kotomi's Rating:{ことみちゃん好感度}
+		PRINTFORML BroGamerBoy's Rating:{BroGamerの少年好感度}
 	[ENDIF]
 ELSE
+	PRINTFORM 入店:{表カジノ入店回数}
+	SIF 裏カジノ入店回数
+		PRINTFORM +{裏カジノ入店回数}
+	PRINTL 回
 	CALL PASELIL, @"所持金:{MONEY}＄"
 	CALL PASELIL, @"総収支:{ギャンブル合計収支}＄"
 	IF ギャンブル総収支:1
@@ -143,6 +155,7 @@ ELSE
 	[IF_DEBUG]
 		PRINTFORML キャロル好感度:{キャロル好感度}
 		PRINTFORML ことみちゃん好感度:{ことみちゃん好感度}
+		PRINTFORML BroGamerの少年好感度:{BroGamerの少年好感度}
 	[ENDIF]
 ENDIF
 
@@ -270,20 +283,20 @@ SELECTCASE 収支
 					PRINTFORML ことみちゃんが%CALLNAME:MASTER%にこっそり誘いをかけてきた。
 			ENDSELECT
 			ことみちゃんお誘いフラグ = 1
-		;総収支が多いほど誘いを受けやすい
-		;1億でちょうど100%
+		;好感度(好感度1000で100%)
+		;総収支(1億で100%)
+		;これらを合算した確率でお誘いを受ける
 		ELSEIF BroGamerの少年好感度+ギャンブル総収支:0/100000 > RAND:1000 && GETCHARANAME("BroGamerの少年") == -1 && BroGamerの少年進行フラグ >= 0
 			SELECTCASE BroGamerの少年進行フラグ
 				CASE 0
 					PRINTFORML %CALLNAME:MASTER%が帰ろうとしたそのとき、近くのテーブルから1人のディーラーがやってきた。
 					PRINTL ……確か聞いたことがある。
-					PRINTL カジノには性別を偽って潜入したディーラーがいて、名前は不明だが
+					PRINTL 最近このカジノには性別を偽って潜入した新入りのディーラーがいるらしく、名前は不明だが
 					PRINTL 「BroGamerの少年」や「ハートのクイーン」などの通り名で呼ばれている、と。
 					PRINTL 女性のような見た目のこの少年こそが、その本人なのだろう。
 					PRINTFORML 着々と勝利を重ねる%CALLNAME:MASTER%に何か思うところがありこの後お相手してほしいそうだ。
 					CALL プレイログ記録, @"カジノにてBroGamerの少年と出会う"
-					BroGamerの少年進行フラグ = 1
-				CASE 1
+				CASE 2
 					PRINTFORML BroGamerの少年が%CALLNAME:MASTER%に誘いをかけてきた。
 			ENDSELECT
 			BroGamerの少年お誘いフラグ = 1
@@ -309,6 +322,22 @@ ELSEIF ことみちゃんお誘いフラグ
 	CALL ことみちゃんイベント
 ELSEIF BroGamerの少年お誘いフラグ
 	CALL BroGamerの少年イベント
+ELSEIF !BroGamerの少年進行フラグ && MONEY >= 10000
+	;すべてのお誘いがないとき(入店回数-8)^2/1000の確率でBroGamerの少年に接近できる
+	;ただし、裏カジノへの入店は4倍で数え、入店回数-8が負のときは0とする
+	入店カウント計算用 = MAX(0, 表カジノ入店回数+4*裏カジノ入店回数-8)
+	IF POWER(入店カウント計算用,2) > RAND:1000
+		PRINTFORML 普段からカジノに出入りしている%CALLNAME:MASTER%は見慣れない新入りのディーラーを見つけた。
+		PRINTL 女性のディーラーしか居ないこのカジノで、彼はどうやら女装しているようだが……
+		PRINTL 話しかけますか？
+		PRINTL [0] - はい
+		PRINTL [1] - いいえ
+		BINPUT
+		IF RESULT == 0
+			BroGamerの少年進行フラグ = 1
+			CALL BroGamerの少年イベント
+		ENDIF
+	ENDIF
 ENDIF
 
 ;借金を背負ったとき
@@ -365,7 +394,7 @@ IF MONEY < 0
 							売却可能 = 0
 						SIF PAGING == MASTER
 							売却可能 = 0
-						SIF GROUPMATCH(CHARANAMEF(PAGING), "キャロル", "ことみちゃん")
+						SIF GROUPMATCH(CHARANAMEF(PAGING), "キャロル", "ことみちゃん", "BroGamerの少年")
 							売却可能 = 0
 						IF PAGING > 0
 							CALL CHARA_SELL, PAGING
@@ -582,6 +611,7 @@ SELECTCASE RESULT
 			PRINTFORMW ＜キャロルを家に迎え入れました＞
 			CFLAG:売却不可 = 1
 			キャロル進行フラグ = -1
+			RELATION:(NOF(MASTER)) = 200
 			CALL プレイログ記録, @"キャロルを迎え入れる"
 			ARRAYCOPY "道具フラグ退避用", "ITEM"
 		ELSE
@@ -688,6 +718,7 @@ SELECTCASE RESULT
 			PRINTFORMW ＜ことみちゃんを家に迎え入れました＞
 			CFLAG:売却不可 = 1
 			ことみちゃん進行フラグ = -1
+			RELATION:(NOF(MASTER)) = 200
 			CALL プレイログ記録, @"ことみちゃんを迎え入れる"
 			ARRAYCOPY "道具フラグ退避用", "ITEM"
 		ELSE
@@ -707,11 +738,23 @@ ENDSELECT
 @BroGamerの少年イベント
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 道具フラグ退避用, 2000
-PRINTL [0] - BroGamerの少年の誘いを受ける
-SIF ASSI > 0
-	PRINTFORML [1] - %CALLNAME:ASSI%と一緒にBroGamerの少年の誘いを受ける
-PRINTL [2] - BroGamerの少年の誘いを断る
-BINPUT
+
+IF BroGamerの少年進行フラグ == 1
+	PRINTL 聞いた話だと彼は「BroGamerの少年」と呼ばれていて、
+	PRINTL 何らかの事情があって女装してディーラーとして潜入しているようだ。
+
+	PRINTL [0] - 単独でBroGamerの少年に接触する
+	SIF ASSI > 0
+		PRINTFORML [1] - %CALLNAME:ASSI%と一緒にBroGamerの少年に接触する
+	PRINTL [2] - やっぱりやめておこう
+	BINPUT
+ELSE
+	PRINTL [0] - BroGamerの少年の誘いを受ける
+	SIF ASSI > 0
+		PRINTFORML [1] - %CALLNAME:ASSI%と一緒にBroGamerの少年の誘いを受ける
+	PRINTL [2] - BroGamerの少年の誘いを断る
+	BINPUT
+ENDIF
 
 SELECTCASE RESULT
 	CASE 0, 1
@@ -786,8 +829,14 @@ SELECTCASE RESULT
 			;PRINTFORMW 彼に見損なわれないようにカジノで勝ち続けよう
 			ARRAYCOPY "道具フラグ退避用", "ITEM"
 		ENDIF
-	CASE 2
-		PRINTFORMW %CALLNAME:MASTER%はBroGamerの少年の誘いを丁寧に断った……
+		BroGamerの少年進行フラグ = 3
+	CASE 3
+		IF BroGamerの少年進行フラグ == 1
+			BroGamerの少年進行フラグ = 2
+		ELSE
+			PRINTFORMW %CALLNAME:MASTER%はBroGamerの少年の誘いを丁寧に断った……
+			BroGamerの少年進行フラグ = 3
+		ENDIF
 ENDSELECT
 
 ;以下、各ゲーム共通の賭け金設定
