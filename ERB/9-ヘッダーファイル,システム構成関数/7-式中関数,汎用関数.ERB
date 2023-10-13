@@ -93,6 +93,43 @@ SIF TEQUIP:ARG:下半身下着
 SIF CFLAG:ARG:貞操帯
 	RETURNF "貞操帯"
 
+;;;対象の性器を覆い隠している服は何か OVER_GENITALとの違いは、スカート系(挿入可)の服なら下着が返される点
+;;;性器露出とセットでどうぞ
+@UNDER_GENITAL, 対象
+#FUNCTIONS
+#DIM DYNAMIC 対象
+SIF 対象 == -1
+	RETURNF 
+
+IF TEQUIP:対象:全身上着
+	IF CFLAG:対象:着衣併用 == 2
+		IF CSTR:対象:全身上着 == "逆バニースーツ"
+			SIF CFLAG:対象:貞操帯
+				RETURNF "貞操帯"
+			RETURNF 
+		ELSE
+			SIF CFLAG:対象:挿入可 && TEQUIP:対象:下半身下着
+				RETURNF CSTR:対象:下半身下着
+			SIF TEQUIP:対象:下半身上着
+				RETURNF CSTR:対象:下半身上着
+			RETURNF CSTR:対象:全身上着
+		ENDIF
+	ELSEIF CFLAG:対象:着衣併用 == 0
+		SIF CFLAG:対象:挿入可 && TEQUIP:対象:下半身下着
+			RETURNF CSTR:対象:下半身下着
+		RETURNF CSTR:対象:全身上着
+	ENDIF
+ENDIF
+
+SIF CFLAG:対象:挿入可 && TEQUIP:対象:下半身下着
+	RETURNF CSTR:対象:下半身下着
+SIF CFLAG:対象:貞操帯
+	RETURNF "貞操帯"
+SIF TEQUIP:対象:下半身上着
+	RETURNF CSTR:対象:下半身上着
+SIF TEQUIP:対象:下半身下着
+	RETURNF CSTR:対象:下半身下着
+
 ;;;式中関数「OVER_BUST」
 ;;;対象の乳房を覆い隠している服は何か 一番上の服が返される 上半身上着＝全身上着＞上半身下着
 @OVER_BUST, ARG
@@ -2477,8 +2514,9 @@ SIF TALENT:対象:サキュバス || TALENT:対象:インキュバス
 RETURNF 0
 
 ;;;ループやRESTART時に同じ物を表示しないようにCLEARLINEする関数
-@LOOP_CLEARLINE
-SIF VARLINE > 0
+@LOOP_CLEARLINE, 非消去
+#DIM DYNAMIC 非消去
+SIF VARLINE > 0 && !非消去
 	CLEARLINE LINECOUNT-VARLINE
 VARLINE = LINECOUNT
 RETURN RESULT
