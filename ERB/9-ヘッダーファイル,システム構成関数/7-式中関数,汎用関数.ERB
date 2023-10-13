@@ -824,17 +824,19 @@ LSUM *= SIGN(ARG)
 
 RETURNF LSUM
 
-;;;整数ARGの4/3乗を返す関数
+;;;変数「整数」の4/3乗を返す関数
 ;;;負の数でもエラーは吐かないようになっている
-;;;また、結果をARG:1倍にもできる(3乗根の中で計算するので誤差があまり大きくならない)
+;;;また、結果を「倍率」倍にもできる(3乗根の中で計算するので誤差があまり大きくならない)
 ;;;係数による2^63エラーの対策はとっていないので注意
-@POW4V3(ARG, ARG:1=1)
+@POW4V3(整数, 倍率=1)
 #FUNCTION
+#DIM DYNAMIC 整数
+#DIM DYNAMIC 倍率
 #DIM DYNAMIC LCL
-IF ABS(ARG) < 9800
-	LCL = CBRT( 1000 * POWER(ARG,4) * POWER(ABS(ARG:1),3) ) / 10
+IF ABS(整数) < 9800
+	LCL = CBRT( 1000 * POWER(整数,4) * POWER(ABS(倍率),3) ) / 10
 ELSE
-	LCL = ABS(ARG) * CBRT( 1000 * ABS(ARG) * POWER(ABS(ARG:1),3) ) / 10
+	LCL = ABS(整数) * CBRT( 1000 * ABS(整数) * POWER(ABS(倍率),3) ) / 10
 ENDIF
 RETURNF LCL
 
@@ -2077,7 +2079,8 @@ ELSE
 ENDIF
 
 ;;;色付きでPRINTしてからRESETCOLORする 引数はBYNAME
-@PRINTCOLOR, ARGS, 色名
+@PRINTCOLOR, 本文, 色名
+#DIMS DYNAMIC 本文
 #DIMS DYNAMIC 色名
 
 IF COLOR_FROMNAME(色名) == -1
@@ -2090,14 +2093,15 @@ ELSE
 	SETCOLOR COLOR_FROMNAME(色名)
 ENDIF
 
-PRINTFORM %ARGS%
+PRINTFORM %本文%
 RESETCOLOR
 
 ;;;上記処理を改行する
-@PRINTCOLORL, ARGS, 色名
+@PRINTCOLORL, 本文, 色名
+#DIMS DYNAMIC 本文
 #DIMS DYNAMIC 色名
 
-CALL PRINTCOLOR, ARGS, 色名
+CALL PRINTCOLOR, 本文, 色名
 PRINTL
 
 ;;;スライムor溶ける快
@@ -2172,12 +2176,13 @@ SIF TALENT:ARG:処女 || TALENT:ARG:再生処女
 RETURNF 0
 
 ;;;バストサイズ
-@バストサイズ, ARG
+@バストサイズ, サイズ
 #FUNCTIONS
+#DIM DYNAMIC サイズ
 #DIMS DYNAMIC プラス値
 
 IF LANGUAGE == "ENG"
-	SELECTCASE ARG
+	SELECTCASE サイズ
 		CASE 1
 			RETURNF "None"
 		CASE 2
@@ -2192,11 +2197,11 @@ IF LANGUAGE == "ENG"
 			RETURNF "Huge"
 		CASE IS >= 7
 			プラス値 = Huge+
-			プラス値 += TOSTR(ARG-6)
+			プラス値 += TOSTR(サイズ-6)
 			RETURNF プラス値
 	ENDSELECT
 ELSE
-	SELECTCASE ARG
+	SELECTCASE サイズ
 		CASE 1
 			RETURNF "絶壁"
 		CASE 2
@@ -2211,17 +2216,18 @@ ELSE
 			RETURNF "爆乳"
 		CASE IS >= 7
 			プラス値 = 爆乳+
-			プラス値 += TOSTR(ARG-6)
+			プラス値 += TOSTR(サイズ-6)
 			RETURNF プラス値
 	ENDSELECT
 ENDIF
 
 ;;;体格
-@体格, ARG
+@体格, サイズ
 #FUNCTIONS
+#DIM DYNAMIC サイズ
 
 IF LANGUAGE == "ENG"
-	SELECTCASE ARG
+	SELECTCASE サイズ
 		CASE 1
 			RETURNF "Petit"
 		CASE 2
@@ -2232,7 +2238,7 @@ IF LANGUAGE == "ENG"
 			RETURNF "Tall"
 	ENDSELECT
 ELSE
-	SELECTCASE ARG
+	SELECTCASE サイズ
 		CASE 1
 			RETURNF "幼児"
 		CASE 2
@@ -2423,7 +2429,7 @@ LOOP LOOPRES(数値:0, 数値:1, 数値:2, 数値:3, 数値:4, 数値:5, 数値:
 RETURN RESULT
 [SKIPEND]
 
-@撮影中, ARG
+@撮影中
 #FUNCTION
 
 SIF TEQUIP:ビデオカメラ || TEQUIP:ライブ配信
@@ -2478,9 +2484,11 @@ VARLINE = LINECOUNT
 RETURN RESULT
 
 ;;;英数字→漢数字に変換する式中関数 現状0～15まで
-@CONV_NO(ARG)
+@CONV_NO(英数字)
 #FUNCTIONS
-SELECTCASE ARG
+#DIM DYNAMIC 英数字
+
+SELECTCASE 英数字
 	CASE 0
 		RETURNF "零"
 	CASE 1
@@ -2569,17 +2577,18 @@ ENDIF
 
 
 ;;;尿道に道具使ってるかどうかの式中関数
-@Ｕ使用中, ARG
+@Ｕ使用中, 対象
 #FUNCTION
+#DIM DYNAMIC 対象
 
-SIF ARG == -1
-	ARG = TARGET
+SIF 対象 == -1
+	対象 = TARGET
 
-SIF TEQUIP:ARG:尿道カテーテル
+SIF TEQUIP:対象:尿道カテーテル
 	RETURNF 1
-SIF TEQUIP:ARG:尿道ポッキー
+SIF TEQUIP:対象:尿道ポッキー
 	RETURNF 1
-SIF TEQUIP:ARG:尿道スライム
+SIF TEQUIP:対象:尿道スライム
 	RETURNF 1
 
 ;;;引数のフォーマットは「イベント内容」
@@ -2690,14 +2699,15 @@ NEXT
 SPRITECREATE "カレンダー", 0
 
 ;;;画像名をHTMLタグに整形するだけ
-@IMGTOTAG, ARGS, HEIGHT, WIDTH
+@IMGTOTAG, SOURCE, HEIGHT, WIDTH
 #FUNCTIONS
+#DIMS DYNAMIC SOURCE
 #DIM DYNAMIC HEIGHT
 #DIM DYNAMIC WIDTH
 IF HEIGHT
-	RETURNF @"<img src='%ARGS%' srcb='' height='{HEIGHT}' width='{WIDTH}'>"
+	RETURNF @"<img src='%SOURCE%' srcb='' height='{HEIGHT}' width='{WIDTH}'>"
 ELSE
-	RETURNF @"<img src='%ARGS%' srcb=''>"
+	RETURNF @"<img src='%SOURCE%' srcb=''>"
 ENDIF
 
 ;;;グラフィカルなBAR画像を作成

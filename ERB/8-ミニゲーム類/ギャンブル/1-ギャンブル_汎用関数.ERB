@@ -963,33 +963,42 @@ CALL SE再生, カジノコイン
 RETURN 賭け金
 
 ;フィッシャー・イェーツのシャッフル
-;CARD:0からCARD:{ARG-1}までの配列にシャッフルした順列を返す
-;第二引数が渡された場合はARG:0～ARG:1間のカードをシャッフルする
-@SHUFFLE, ARG, ARG:1
+;CARD:0からCARD:{(変数1)-1}までの配列にシャッフルした順列を返す
+;第二引数が渡された場合は(変数1)～(変数2)間のカードをシャッフルする
+@SHUFFLE, 変数1, 変数2
+#DIM DYNAMIC 変数1
+#DIM DYNAMIC 変数2
+#DIM DYNAMIC 枚数
+#DIM DYNAMIC 始点
+#DIM DYNAMIC 終点
 #DIM DYNAMIC LCOUNT0
 #DIM DYNAMIC LCOUNT1
 
-IF ARG:1 > 0
-	;ARG以下にあるカードは初期値に含まれない LCOUNT1を使用
-	FOR LCOUNT0, ARG, ARG:1
-		WHILE FINDELEMENT(CARD, LCOUNT1, 0, ARG-1) >= 0
+IF 変数2 > 0
+	始点 = 変数1
+	終点 = 変数2
+	;(始点)以下にあるカードは初期値に含まれない LCOUNT1を使用
+	FOR LCOUNT0, 始点, 終点
+		WHILE FINDELEMENT(CARD, LCOUNT1, 0, 終点) >= 0
 			LCOUNT1++
 		WEND
 		CARD:LCOUNT0 = LCOUNT1
 		LCOUNT1++
 	NEXT
-	;LCOUNT0はARG:1の値から1づつ下げていく
-	FOR LCOUNT0, ARG:1, ARG, -1
-		LCOUNT1 = RAND(ARG, LCOUNT0);ARG以上LCOUNT0未満の数を決めてこれをLCOUNT1とする
+	;LCOUNT0を(終点)から(始点)まで1ずつ下げていく
+	FOR LCOUNT0, 終点, 始点, -1
+		LCOUNT1 = RAND(始点, LCOUNT0);(始点)以上LCOUNT0未満の数を決めてこれをLCOUNT1とする
 		;LCOUNT1番目と(LCOUNT0-1)番目を入れ替える
 		SWAP CARD:(LCOUNT0-1), CARD:LCOUNT1
 	NEXT
 ELSE
-	FOR LCOUNT0, 0, ARG
+	枚数 = 変数1
+	;CARD:0～CARD:(枚数)まで、0から順番に代入
+	FOR LCOUNT0, 0, 枚数
 		CARD:LCOUNT0 = LCOUNT0
 	NEXT
 
-	;LCOUNT0はARGの値から1づつ下げていく
+	;LCOUNT0を(枚数)から1まで1ずつ下げていく
 	FOR LCOUNT0, ARG, 0, -1
 		LCOUNT1 = RAND:LCOUNT0;0以上LCOUNT0未満の数を決めてこれをLCOUNT1とする
 		;LCOUNT1番目と(LCOUNT0-1)番目を入れ替える
@@ -997,13 +1006,15 @@ ELSE
 	NEXT
 ENDIF
 
-;第1引数を52で割った余りに対し以下を表示
+;第1引数「カード」を52で割った余りに対し以下を表示
 ;クラブK(余り0)→スペードA(余り1)→スペード2(余り2)→ … →ハートA(余り14)→ … →ダイヤA(余り27)→ … →クラブA(余り40)→ … →クラブQ(余り51)
-;第2引数にSETCOLORBYNAMEで使える文字列を入れると強制的にその色になる
-@PRTCARD, ARG, ARGS
+;第2引数「色指定」にSETCOLORBYNAMEで使える文字列を入れると強制的にその色になる
+@PRTCARD, カード, 色指定
+#DIM DYNAMIC カード
+#DIMS DYNAMIC 色指定
 
-IF ARGS == "" || COLOR_FROMNAME(ARGS) == -1
-	SELECTCASE ((ARG+51)%52)/13
+IF 色指定 == "" || COLOR_FROMNAME(色指定) == -1
+	SELECTCASE ((カード+51)%52)/13
 		;スペード
 		CASE 0
 			SETCOLORBYNAME deepskyblue
@@ -1018,10 +1029,10 @@ IF ARGS == "" || COLOR_FROMNAME(ARGS) == -1
 			SETCOLORBYNAME skyblue
 	ENDSELECT
 ELSE
-	SETCOLOR COLOR_FROMNAME(ARGS)
+	SETCOLOR COLOR_FROMNAME(色指定)
 ENDIF
 
-SELECTCASE ((ARG+51)%52)/13
+SELECTCASE ((カード+51)%52)/13
 	;スペード
 	CASE 0
 		PRINT ♠
@@ -1036,12 +1047,12 @@ SELECTCASE ((ARG+51)%52)/13
 		PRINT ♣
 ENDSELECT
 
-SELECTCASE ARG%13
+SELECTCASE カード%13
 	CASE 1
 		PRINT Ａ
 	;2～9はUIに配慮して全角にする
 	CASE 2 TO 9
-		PRINTFORM %TOFULL(TOSTR(ARG%13))%
+		PRINTFORM %TOFULL(TOSTR(カード%13))%
 	CASE 10
 		PRINT 10
 	CASE 11
@@ -1054,13 +1065,15 @@ ENDSELECT
 RESETCOLOR
 
 ;上のボタン化関数 第二引数に押した時の返り値が入る
-@PRTCARDBUTTON, ARG, ボタン, ARGS
+@PRTCARDBUTTON, カード, ボタン, 色指定
+#DIM DYNAMIC カード
+#DIMS DYNAMIC 色指定
 #DIM DYNAMIC ボタン
 #DIMS DYNAMIC スート
 #DIMS DYNAMIC 数字
 
-IF ARGS == "" || COLOR_FROMNAME(ARGS) == -1
-	SELECTCASE ((ARG+51)%52)/13
+IF 色指定 == "" || COLOR_FROMNAME(色指定) == -1
+	SELECTCASE ((カード+51)%52)/13
 		;スペード
 		CASE 0
 			SETCOLORBYNAME deepskyblue
@@ -1075,10 +1088,10 @@ IF ARGS == "" || COLOR_FROMNAME(ARGS) == -1
 			SETCOLORBYNAME skyblue
 	ENDSELECT
 ELSE
-	SETCOLOR COLOR_FROMNAME(ARGS)
+	SETCOLOR COLOR_FROMNAME(色指定)
 ENDIF
 
-SELECTCASE ((ARG+51)%52)/13
+SELECTCASE ((カード+51)%52)/13
 	;スペード
 	CASE 0
 		スート = ♠
@@ -1098,7 +1111,7 @@ SELECTCASE ARG%13
 		数字 = Ａ
 	;2～9はUIに配慮して全角にする
 	CASE 2 TO 9
-		数字 = %TOFULL(TOSTR(ARG%13))%
+		数字 = %TOFULL(TOSTR(カード%13))%
 	CASE 10
 		数字 = 10
 	CASE 11
