@@ -621,134 +621,6 @@ ENDSELECT
 PRINTFORM {表示数値/10}.{ABS(表示数値)%10}
 RETURN 0
 
-
-;;;素数かどうかを判定する
-;;;素数なら1,それ以外(合成数・1以下の整数)なら0
-@ISPRIME, 数値
-#FUNCTION
-#DIM DYNAMIC 数値
-#DIM DYNAMIC LCOUNT
-SIF 数値 < 2
-	RETURNF 0
-SIF 数値 == 2
-	RETURNF 1
-SIF 数値 % 2 == 0
-	RETURNF 0
-FOR LCOUNT, 3, SQRT(数値)+1, 2
-	SIF 数値 % LCOUNT == 0
-		RETURNF 0
-NEXT
-RETURNF 1
-
-;;;平方数(整数を2乗してできる数)なら1を返す式中関数
-@ISSQUARE, 数値
-#FUNCTION
-#DIM DYNAMIC 数値
-SIF 数値 < 0
-	RETURNF 0
-IF 数値 == SQRT(数値)*SQRT(数値)
-	RETURNF 1
-ELSE
-	RETURNF 0
-ENDIF
-
-;;;約数関数
-;;;第1引数の正の約数全てを第2引数で乗した総和を表す
-;;;第2引数が0で約数の個数、第2引数が1で約数の総和を求める
-;;;第1引数が0のとき特例で0、第1引数が負でABS(第1引数)での値にマイナスをつける
-@SIGMA(数値, 冪数 = 1)
-#FUNCTION
-#DIM DYNAMIC LCOUNT
-#DIM DYNAMIC LSUM
-#DIM DYNAMIC 数値
-#DIM DYNAMIC 冪数
-SIF 数値 == 0
-	RETURNF 0
-
-FOR LCOUNT, 1, ABS(数値)+1
-	SIF ABS(数値)%LCOUNT == 0
-		LSUM += POWER(LCOUNT, 冪数)
-NEXT
-LSUM *= SIGN(数値)
-
-RETURNF LSUM
-
-;;;変数「数値」の4/3乗を返す関数
-;;;負の数でもエラーは吐かないようになっている
-;;;また、結果を「倍率」倍にもできる(3乗根の中で計算するので誤差があまり大きくならない)
-;;;係数による2^63エラーの対策はとっていないので注意
-@POW4V3(数値, 倍率=1)
-#FUNCTION
-#DIM DYNAMIC 数値
-#DIM DYNAMIC 倍率
-#DIM DYNAMIC LCL
-IF ABS(数値) < 9800
-	LCL = CBRT( 1000 * POWER(数値, 4) * POWER(ABS(倍率),3) ) / 10
-ELSE
-	LCL = ABS(数値) * CBRT( 1000 * ABS(数値) * POWER(ABS(倍率),3) ) / 10
-ENDIF
-RETURNF LCL
-
-;;;確率を表示
-@確率表示, 分子, 分母, 分子係数 = 1, 分母係数 = 1
-#DIM DYNAMIC 分子
-#DIM DYNAMIC 分母
-#DIM DYNAMIC 分子係数
-#DIM DYNAMIC 分母係数
-#DIM DYNAMIC 表示用分子
-#DIM DYNAMIC 表示用分母
-#DIM DYNAMIC 約分
-
-表示用分子 = 分子*分子係数
-表示用分母 = 分母*分母係数
-約分 = 表示用分子
-
-IF 表示用分子 == 0 || 表示用分母 == 0
-	PRINTFORM 0/1 (0.0\%)
-	RETURN
-ENDIF
-;桁を減らす
-DO
-	IF (表示用分子%約分)+(表示用分母%約分) == 0
-		表示用分子 /= 約分
-		表示用分母 /= 約分
-		BREAK
-	ELSE
-		約分--
-	ENDIF
-LOOP 1
-PRINTFORM {表示用分子}/{表示用分母} ({(表示用分子*100)/表示用分母}.{((表示用分子*1000)/表示用分母)%10}\%)
-
-;;;2つの確率を合算して表示
-@確率表示2, 分子:0, 分子:1, 分母:0, 分母:1, 分子係数 = 1, 分母係数 = 1
-#DIM DYNAMIC 分子, 2
-#DIM DYNAMIC 分母, 2
-#DIM DYNAMIC 分子係数
-#DIM DYNAMIC 分母係数
-#DIM DYNAMIC 表示用分子
-#DIM DYNAMIC 表示用分母
-#DIM DYNAMIC 約分
-
-表示用分子 = (分子:0+分子:1)*分子係数
-表示用分母 = (分母:0+分母:1)*分母係数
-約分 = 表示用分子
-
-IF 表示用分子 == 0 || 表示用分母 == 0
-	PRINTFORM 0/1 (0.0\%)
-	RETURN
-ENDIF
-;桁を減らす
-DO
-	IF (表示用分子%約分)+(表示用分母%約分) == 0
-		表示用分子 /= 約分
-		表示用分母 /= 約分
-		BREAK
-	ELSE
-		約分--
-	ENDIF
-LOOP 1
-PRINTFORM {表示用分子}/{表示用分母} ({(表示用分子*100)/表示用分母}.{((表示用分子*1000)/表示用分母)%10}\%)
-
 ;;;近親相姦の判定用関数
 ;;;1なら兄弟姉妹間、2なら親子間、それ以外なら0
 @近親相姦, 対象, 相手
@@ -1860,18 +1732,6 @@ SELECTCASE 数値表示設定
 		RETURNF @"\@ SIGN(変換対象) == -1 ? - #\@%TOSTR(ABS(変換対象))%"
 ENDSELECT
 
-;;;DIVIDE10 10で割って小数点付ける関数 マイナスにも対応 ほぼ気温表示用
-@DIV10, 数値
-#FUNCTIONS
-#DIM DYNAMIC 数値
-RETURNF @"{数値/10}.{ABS(数値%10)}"
-
-;;;DIVIDE100 100で割って小数点付ける関数 ほぼ月齢表示用
-@DIV100, 数値
-#FUNCTIONS
-#DIM DYNAMIC 数値
-RETURNF @"{数値/100}.\@ABS(数値%100) < 10 ? 0 # \@{ABS(数値%100)}"
-
 ;;;性別不明キャラの性別選択関数
 ;;;TALENT:性別が0のキャラは性別不明とする
 @性別選択, 対象
@@ -1950,17 +1810,6 @@ IF TALENT:キャラ:素質名
 	ENDIF
 ELSE
 	RETURNF ""
-ENDIF
-
-;;;100分率で(引数)%で1を返す
-@RANDPER, 確率
-#FUNCTION
-#DIM DYNAMIC 確率
-
-IF RAND(1, 101) <= 確率
-	RETURNF 1
-ELSE
-	RETURNF 0
 ENDIF
 
 ;;;色付きでPRINTしてからRESETCOLORする 引数はBYNAME
@@ -3018,14 +2867,6 @@ SIF !GROUPMATCH(CSTR:対象:種族, "獣人", "獣")
 	RETURNF 0
 
 RETURNF (LIMIT(25-ABS(CFLAG:対象:発情周期-13)*2, 0, 25))*4
-
-;;;第1引数の、第2引数で指定した割合(パーセント)を返す。丸め誤差あり。ゼロ除算対応
-@PERCENT, 対象, 割合
-#FUNCTION
-#DIM DYNAMIC 対象
-#DIM DYNAMIC 割合
-
-RETURNF 対象*割合/100
 
 ;;;絶頂できない状態異常
 @絶頂止め, 対象

@@ -1,0 +1,243 @@
+﻿;;;DIVIDE10 10で割って小数点付ける関数 マイナスにも対応 ほぼ気温表示用
+@DIV10, 数値
+#FUNCTIONS
+#DIM DYNAMIC 数値
+RETURNF @"{数値/10}.{ABS(数値%10)}"
+
+
+;;;DIVIDE100 100で割って小数点付ける関数 ほぼ月齢表示用
+@DIV100, 数値
+#FUNCTIONS
+#DIM DYNAMIC 数値
+RETURNF @"{数値/100}.\@ABS(数値%100) < 10 ? 0 # \@{ABS(数値%100)}"
+
+
+;;;100分率で(引数)%で1を返す
+@RANDPER, 確率
+#FUNCTION
+#DIM DYNAMIC 確率
+
+IF RAND(1, 101) <= 確率
+	RETURNF 1
+ELSE
+	RETURNF 0
+ENDIF
+
+
+;;;第1引数の、第2引数で指定した割合(パーセント)を返す。丸め誤差あり。ゼロ除算対応
+@PERCENT, 対象, 割合
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 割合
+
+RETURNF 対象*割合/100
+
+
+;;;素数かどうかを判定する
+;;;素数なら1,それ以外(合成数・1以下の整数)なら0
+@ISPRIME, 数値
+#FUNCTION
+#DIM DYNAMIC 数値
+#DIM DYNAMIC LCOUNT
+SIF 数値 < 2
+	RETURNF 0
+SIF 数値 == 2
+	RETURNF 1
+SIF 数値 % 2 == 0
+	RETURNF 0
+FOR LCOUNT, 3, SQRT(数値)+1, 2
+	SIF 数値 % LCOUNT == 0
+		RETURNF 0
+NEXT
+RETURNF 1
+
+
+;;;平方数(整数を2乗してできる数)なら1を返す式中関数
+@ISSQUARE, 数値
+#FUNCTION
+#DIM DYNAMIC 数値
+SIF 数値 < 0
+	RETURNF 0
+IF 数値 == SQRT(数値)*SQRT(数値)
+	RETURNF 1
+ELSE
+	RETURNF 0
+ENDIF
+
+
+;;;約数関数
+;;;第1引数の正の約数全てを第2引数で乗した総和を表す
+;;;第2引数が0で約数の個数、第2引数が1で約数の総和を求める
+;;;第1引数が0のとき特例で0、第1引数が負でABS(第1引数)での値にマイナスをつける
+@SIGMA(数値, 冪数 = 1)
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LSUM
+#DIM DYNAMIC 数値
+#DIM DYNAMIC 冪数
+SIF 数値 == 0
+	RETURNF 0
+
+FOR LCOUNT, 1, ABS(数値)+1
+	SIF ABS(数値)%LCOUNT == 0
+		LSUM += POWER(LCOUNT, 冪数)
+NEXT
+LSUM *= SIGN(数値)
+
+RETURNF LSUM
+
+
+;;;変数「数値」の4/3乗を返す関数
+;;;負の数でもエラーは吐かないようになっている
+;;;また、結果を「倍率」倍にもできる(3乗根の中で計算するので誤差があまり大きくならない)
+;;;係数による2^63エラーの対策はとっていないので注意
+@POW4V3(数値, 倍率=1)
+#FUNCTION
+#DIM DYNAMIC 数値
+#DIM DYNAMIC 倍率
+#DIM DYNAMIC LCL
+IF ABS(数値) < 9800
+	LCL = CBRT( 1000 * POWER(数値, 4) * POWER(ABS(倍率),3) ) / 10
+ELSE
+	LCL = ABS(数値) * CBRT( 1000 * ABS(数値) * POWER(ABS(倍率),3) ) / 10
+ENDIF
+RETURNF LCL
+
+
+;;;確率を表示
+@確率表示, 分子, 分母, 分子係数 = 1, 分母係数 = 1
+#DIM DYNAMIC 分子
+#DIM DYNAMIC 分母
+#DIM DYNAMIC 分子係数
+#DIM DYNAMIC 分母係数
+#DIM DYNAMIC 表示用分子
+#DIM DYNAMIC 表示用分母
+#DIM DYNAMIC 約分
+
+表示用分子 = 分子*分子係数
+表示用分母 = 分母*分母係数
+約分 = 表示用分子
+
+IF 表示用分子 == 0 || 表示用分母 == 0
+	PRINTFORM 0/1 (0.0\%)
+	RETURN
+ENDIF
+;桁を減らす
+DO
+	IF (表示用分子%約分)+(表示用分母%約分) == 0
+		表示用分子 /= 約分
+		表示用分母 /= 約分
+		BREAK
+	ELSE
+		約分--
+	ENDIF
+LOOP 1
+PRINTFORM {表示用分子}/{表示用分母} ({(表示用分子*100)/表示用分母}.{((表示用分子*1000)/表示用分母)%10}\%)
+
+
+;;;2つの確率を合算して表示
+@確率表示2, 分子:0, 分子:1, 分母:0, 分母:1, 分子係数 = 1, 分母係数 = 1
+#DIM DYNAMIC 分子, 2
+#DIM DYNAMIC 分母, 2
+#DIM DYNAMIC 分子係数
+#DIM DYNAMIC 分母係数
+#DIM DYNAMIC 表示用分子
+#DIM DYNAMIC 表示用分母
+#DIM DYNAMIC 約分
+
+表示用分子 = (分子:0+分子:1)*分子係数
+表示用分母 = (分母:0+分母:1)*分母係数
+約分 = 表示用分子
+
+IF 表示用分子 == 0 || 表示用分母 == 0
+	PRINTFORM 0/1 (0.0\%)
+	RETURN
+ENDIF
+;桁を減らす
+DO
+	IF (表示用分子%約分)+(表示用分母%約分) == 0
+		表示用分子 /= 約分
+		表示用分母 /= 約分
+		BREAK
+	ELSE
+		約分--
+	ENDIF
+LOOP 1
+PRINTFORM {表示用分子}/{表示用分母} ({(表示用分子*100)/表示用分母}.{((表示用分子*1000)/表示用分母)%10}\%)
+
+
+;;;ARG個からARG:1個を選び出す組み合わせを求める関数
+;;;例:BINOM(7,3)=35
+;;;限度はBINOM(61,30)くらい(23京だが、途中計算で700京弱になる)
+@BINOM(INT0, INT1)
+#FUNCTION
+#DIM DYNAMIC INT0
+#DIM DYNAMIC INT1
+#DIM DYNAMIC 返り値
+#DIM DYNAMIC LCOUNT
+
+;BINOM(N, K) == BINOM(N, N-K)なので計算量を少なくする
+INT1 = MIN(INT1, INT0-INT1)
+
+IF INT1 < 0
+	RETURNF 0
+ELSEIF INT1 == 0
+	RETURNF 1
+ENDIF
+
+返り値 = 1
+INT0 -= INT1
+
+;BINOM(N+1, K+1) = BINOM(N, K)*(N+1)/(K+1)
+;という漸化式を使って計算(再帰による計算はeraBASICとの相性が悪すぎてやめた)
+
+FOR LCOUNT, 1, INT1 + 1
+	返り値 *= (INT0 + LCOUNT)
+	返り値 /= LCOUNT
+NEXT
+
+RETURNF 返り値
+
+
+;;;(1+X)^Yの二項展開で複利を計算する　利率は千分率で入力する
+;;;Xには0.001～0.1が代入され、X^11の項まで計算される(一応0.9まで代入はできるようにはするが精度の関係から非推奨)
+;;;また、マイナスの利率も代入できる
+@COMP_INTEREST(利率, 期数)
+#FUNCTION
+
+#DIM DYNAMIC L_CNT
+#DIM DYNAMIC L_CNT1
+#DIM DYNAMIC L_SUM
+
+#DIM DYNAMIC 利率
+#DIM DYNAMIC 期数
+#DIM DYNAMIC 桁数
+#DIM DYNAMIC 利子
+#DIM DYNAMIC 浮動小数点
+
+
+;利率10割以上は弾き、利率0%は「1倍」と返し関数を終了させる
+IF ABS(利率) >= 1000
+	RETURNF 0
+ELSEIF 利率 == 0
+	RETURNF 1000
+ENDIF
+
+;利率は利率(千分率)の桁数
+;ARGは有効数字1桁にする
+;浮動小数点は千分率を小数に直すための補正値(例えば5%なら100で5/100=0.05と計算される)
+桁数 = LOG10(ABS(利率))
+利率 /= POWER(10, 桁数)
+浮動小数点 = POWER(10, 3-桁数)
+L_SUM = 0
+
+FOR L_CNT, 0, 12
+	利子 = 1000 * BINOM(期数, L_CNT) * POWER(利率, L_CNT)
+	FOR L_CNT1, 0, L_CNT
+		利子 /= 浮動小数点
+	NEXT
+	L_SUM += 利子
+NEXT
+
+RETURNF L_SUM
+
