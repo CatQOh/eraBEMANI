@@ -1,11 +1,12 @@
-﻿@体力計算, ARG
+﻿@体力計算, 対象
+#DIM DYNAMIC 対象
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 体力補正
 #DIM DYNAMIC 料理ランク
 
 LTARGET = TARGET
-TARGET = ARG
+TARGET = 対象
 
 ;体力の回復（午後の調教後は夜の休みが入るので回復大きい）
 SELECTCASE ターン
@@ -176,14 +177,15 @@ TARGET = LTARGET
 
 RETURN
 
-@気力計算, ARG
+@気力計算, 対象
+#DIM DYNAMIC 対象
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 気力補正
 #DIM DYNAMIC ストレス値計算用
 
 LTARGET = TARGET
-TARGET = ARG
+TARGET = 対象
 
 ;気力の回復
 ;基本的に昼なら1/3回復、夜なら2/3回復
@@ -249,7 +251,8 @@ TARGET = LTARGET
 
 RETURN
 
-@ストレス値計算, ARG
+@ストレス値計算, 対象
+#DIM DYNAMIC 対象
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
@@ -258,11 +261,11 @@ RETURN
 #DIM DYNAMIC 貞操帯ストレス補正
 
 LTARGET = TARGET
-TARGET = ARG
+TARGET = 対象
 
 ;ヤンデレのストレス処理
 IF TALENT:ヤンデレ
-	IF LTARGET != ARG
+	IF LTARGET != 対象
 		;陥落済み
 		IF 陥落(TARGET)
 			;MASTERとの相性が良いほど待機中のストレス増加
@@ -285,7 +288,7 @@ IF TALENT:ヤンデレ
 		;SIF ストレス補正 > 0
 		;	CFLAG:ストレス値 += ストレス補正
 	;逆に調教対象の場合は相性に応じて大幅にストレス値減少
-	ELSEIF LTARGET == ARG
+	ELSEIF LTARGET == 対象
 		;(MASTERとの相性-100)/5 つまり200%(恋慕時)だと20減少 上がることはない
 		ストレス補正 = -MAX((相性値(TARGET, MASTER)-100)/5, 0)
 		;(ASSIとの相性-100)/10 こちらもストレス値上がることはない
@@ -296,7 +299,7 @@ ENDIF
 
 ;その他ストレス処理
 ;調教対象の場合
-IF LTARGET == ARG
+IF LTARGET == 対象
 	;未陥落 +5
 	SIF !陥落(TARGET)
 		CFLAG:ストレス値 += 5
@@ -309,7 +312,7 @@ IF LTARGET == ARG
 		CFLAG:ストレス値 += MAX(100-相性値(TARGET, ASSI), 0)/10
 ELSE
 	;助手の場合
-	SIF ASSI == ARG
+	SIF ASSI == 対象
 		CFLAG:ASSI:ストレス値 += 3
 	;反発刻印
 	CFLAG:ストレス値 += MARK:反発刻印
@@ -323,10 +326,10 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 		;陥落素質があれば特殊処理(代入後BREAK)
 		;淫乱系 非TARGET時にストレス上昇 ただし娼館配属中はそちらの補正で打ち消し
 		CASE "淫乱"
-			SIF LTARGET != ARG
+			SIF LTARGET != 対象
 				ストレス補正 += 1
 		CASE "娼婦"
-			SIF LTARGET != ARG
+			SIF LTARGET != 対象
 				ストレス補正 += 3
 		;服従系、恋慕系 基本的に上がらない ただしヤンデレは除く
 		CASE "服従", "恋慕"
@@ -350,7 +353,7 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 			ENDIF
 		;寂しがり屋 未配属でTARGETでもASSIでもない場合は+3
 		CASE "寂しがり屋"
-			SIF CSTR:配属 == "" && LTARGET != ARG && TARGET != ASSI
+			SIF CSTR:配属 == "" && LTARGET != 対象 && TARGET != ASSI
 				ストレス補正 += 3
 		;抑圧 +ABL:欲望
 		CASE "抑圧"
@@ -487,7 +490,7 @@ ENDIF
 SELECTCASE ゲームモード()
 	;STANDARD、段位認定
 	CASE "通常モード", "段位認定"
-		IF !TALENT:ヤンデレ || ARG == LTARGET
+		IF !TALENT:ヤンデレ || 対象 == LTARGET
 			SELECTCASE FALLTYPE(TARGET)
 				;恋慕、親愛、服従、隷属
 				CASE 1, 3
@@ -499,7 +502,7 @@ SELECTCASE ゲームモード()
 		ENDIF
 	;STRATEGY、PFREE 一律-5 その他要素で
 	CASE "経営モード", "フリーモード"
-		IF !TALENT:ヤンデレ || ARG == LTARGET
+		IF !TALENT:ヤンデレ || 対象 == LTARGET
 			SIF FALLTYPE(TARGET) > 0
 				CFLAG:ストレス値 -= 5
 		ENDIF
