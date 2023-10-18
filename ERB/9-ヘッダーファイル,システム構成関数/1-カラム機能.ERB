@@ -265,81 +265,130 @@ SELECTCASE RESULT
 		RETURN
 ENDSELECT
 
-@COLUMNCREATE, ARG
-SIF COLUMN:ARG:CREATED
+;;;(カラム番号) カラム生成
+@COLUMNCREATE, カラム番号
+#DIM DYNAMIC カラム番号
+
+SIF COLUMN:カラム番号:CREATED
 	RETURN 0
 
-COLUMN:ARG:CREATED = 1
+COLUMN:カラム番号:CREATED = 1
 RETURN 1
 
-@COLUMNDISPOSE, ARG
-SIF !COLUMN:ARG:CREATED
+;;;(カラム番号) カラム破棄
+@COLUMNDISPOSE, カラム番号
+#DIM DYNAMIC カラム番号
+
+SIF !COLUMN:カラム番号:CREATED
 	RETURN 0
 
-COLUMN:ARG:CREATED = 0
+COLUMN:カラム番号:CREATED = 0
 RETURN 1
 
-@COLUMNRESIZE, ARG, ARG:1, ARG:2
+;;;(カラム番号, 幅, 高さ) カラムサイズ変更
+@COLUMNRESIZE, カラム番号, 幅, 高さ
+#DIM DYNAMIC カラム番号
+#DIM DYNAMIC 幅
+#DIM DYNAMIC 高さ
 
-COLUMN:ARG:WIDTH = ARG:1
-COLUMN:ARG:HEIGHT = ARG:2/100*GETCONFIG("一行の高さ")
+COLUMN:カラム番号:WIDTH = 幅
+COLUMN:カラム番号:HEIGHT = 高さ/100*GETCONFIG("一行の高さ")
 
-@COLUMNMOVE, ARG, ARG:1, ARG:2
+;;;(カラム番号, XPOS, YPOS) カラム移動
+@COLUMNMOVE, カラム番号, X軸, Y軸
+#DIM DYNAMIC カラム番号
+#DIM DYNAMIC X軸
+#DIM DYNAMIC Y軸
 
-COLUMN:ARG:XPOS = ARG:1
-COLUMN:ARG:YPOS = -(ARG:2/100*GETCONFIG("一行の高さ"))
+COLUMN:カラム番号:XPOS = X軸
+COLUMN:カラム番号:YPOS = -(Y軸/100*GETCONFIG("一行の高さ"))
 
-@COLUMNBGCOLOR, ARG, ARGS
+;;;(カラム番号, 16進数カラーコードor色名) カラム背景色変更
+@COLUMNBGCOLOR, カラム番号, 色
+#DIM DYNAMIC カラム番号
+#DIMS DYNAMIC 色
 
-IF ISNUMERIC(ARGS)
-	COLUMN:ARG:BGCOLOR = TOINT(ARGS)
+IF ISNUMERIC(色)
+	COLUMN:カラム番号:BGCOLOR = TOINT(色)
 ELSE
-	COLUMN:ARG:BGCOLOR = COLOR_FROMNAME(ARGS)
+	COLUMN:カラム番号:BGCOLOR = COLOR_FROMNAME(色)
 ENDIF
 
-@COLUMNPRINT, ARG, ARGS, ARGS:1
-CALL COLUMNSHIFT(ARG, ARGS, ARGS:1)
+;;;(カラム番号, 本文, 色) 改行しない本文追加
+@COLUMNPRINT, カラム番号, 本文, 色
+#DIM DYNAMIC カラム番号
+#DIMS DYNAMIC 本文
+#DIMS DYNAMIC 色
 
-@COLUMNPRINTL, ARG, ARGS, ARGS:1
+CALL COLUMNSHIFT(カラム番号, 本文, 色)
+
+;;;(カラム番号, 本文, 色) 改行する本文追加
+@COLUMNPRINTL, カラム番号, 本文, 色
+#DIM DYNAMIC カラム番号
+#DIMS DYNAMIC 本文
+#DIMS DYNAMIC 色
+
 ;空行の場合は専用の識別子入れる
-IF COLUMNLOG:ARG:(COLUMN:ARG:LINE) == "" && ARGS == ""
-	COLUMNLOG:ARG:(COLUMN:ARG:LINE) = [THIS_IS_EMPTY]
+IF COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) == "" && 本文 == ""
+	COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) = [THIS_IS_EMPTY]
 ELSE
-	CALL COLUMNSHIFT(ARG, ARGS, ARGS:1)
+	CALL COLUMNSHIFT(カラム番号, 本文, 色)
 ENDIF
-COLUMN:ARG:LINE++
+COLUMN:カラム番号:LINE++
 
-;INSERTは整形済みのタグを入れるだけ
-@COLUMNINSERT, ARG, ARGS
-COLUMNLOG:ARG:(COLUMN:ARG:LINE) += ARGS
+;;;(カラム番号, 本文) INSERTは整形済みのタグを入れるだけ
+@COLUMNINSERT, カラム番号, 本文
+#DIM DYNAMIC カラム番号
+#DIMS DYNAMIC 本文
 
+COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) += 本文
 
-@COLUMNINSERTL, ARG, ARGS, ARGS:1
-COLUMNLOG:ARG:(COLUMN:ARG:LINE) += ARGS
-COLUMN:ARG:LINE++
+;;;(カラム番号, 本文) INSERTは整形済みのタグを入れるだけ
+@COLUMNINSERTL, カラム番号, 本文
+#DIM DYNAMIC カラム番号
+#DIMS DYNAMIC 本文
 
-@COLUMNIMG, ARG, ARGS, ARG:1, ARG:2
-CALL GCREATESTACK, ARGS
-COLUMNLOG:ARG:(COLUMN:ARG:LINE) += @"<img src='%ESCAPE(ARGS)%' srcb='' width='{ARG:1}' height='{ARG:2}'>"
+COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) += 本文
+COLUMN:カラム番号:LINE++
 
-@COLUMNTOOLTIP, ARG, ARGS, ARGS:1, ARGS:2
-CALL COLUMNSHIFT(ARG, ARGS, ARGS:2, ARGS:1)
+;;;(カラム番号, スプライト名, 幅, 高さ) 現自体のカラム位置に画像描写
+@COLUMNIMG, カラム番号, スプライト名, 幅, 高さ
+#DIM DYNAMIC カラム番号
+#DIMS DYNAMIC スプライト名
+#DIM DYNAMIC 幅
+#DIM DYNAMIC 高さ
 
-@COLUMNTOOLTIPL, ARG, ARGS, ARGS:1, ARGS:2
-CALL COLUMNSHIFT(ARG, ARGS, ARGS:2, ARGS:1)
-COLUMN:ARG:LINE++
+CALL GCREATESTACK, スプライト名
+COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) += @"<img src='%ESCAPE(スプライト名)%' srcb='' width='{幅}' height='{高さ}'>"
 
-;F付きはタグ文字を返す
-@COLUMNPRINTF, ARGS, ARGS:1
+;;;(カラム番号, 本文, ツールチップ, 16進数カラーコードor色名) ツールチップ付きのカラム文
+@COLUMNTOOLTIP, カラム番号, 本文, ツールチップ, 色
+#DIM DYNAMIC カラム番号
+#DIMS DYNAMIC 本文
+#DIMS DYNAMIC ツールチップ
+#DIMS DYNAMIC 色
+
+CALL COLUMNSHIFT(カラム番号, 本文, 色, ツールチップ)
+
+;;;(カラム番号, 本文, ツールチップ, 16進数カラーコードor色名) ツールチップ付きのカラム文
+@COLUMNTOOLTIPL, カラム番号, 本文, ツールチップ, 色
+#DIM DYNAMIC カラム番号
+#DIMS DYNAMIC 本文
+#DIMS DYNAMIC ツールチップ
+#DIMS DYNAMIC 色
+
+CALL COLUMNSHIFT(カラム番号, 本文, 色, ツールチップ)
+COLUMN:カラム番号:LINE++
+
+;;;(本文, 色) F付きはタグ文字を返す
+@COLUMNPRINTF, 本文, 色
 #FUNCTIONS
-RETURNF COLUMNSHIFTF(ARGS, ARGS:1)
+#DIMS DYNAMIC 本文
+#DIMS DYNAMIC 色
 
+RETURNF COLUMNSHIFTF(本文, 色)
 
-;@COLUMNEFFECT, ARG, ARGS, ARG:1, ARG:2
-;COLUMNLOG:ARG:(COLUMN:ARG:LINE) += @"<nonbutton pos='0'><img src='%ARGS%' srcb='' width='{ARG:1}' height='{ARG:2}'></nonbutton>"
-;エフェクトあり = 1
-
-@COLUMNBAR, ARG, 数値, 最大値, 長さ
+@COLUMNBAR, カラム番号, 数値, 最大値, 長さ
 #DIM DYNAMIC GID
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
@@ -348,6 +397,7 @@ RETURNF COLUMNSHIFTF(ARGS, ARGS:1)
 #DIM DYNAMIC 長さ
 #DIM DYNAMIC 割合
 #DIM DYNAMIC ピクセル
+#DIM DYNAMIC カラム番号
 
 ピクセル = (長さ/100)*GETCONFIG("フォントサイズ")
 
@@ -368,9 +418,10 @@ NEXT
 
 SPRITECREATE @"BAR{GID}", GID
 
-COLUMNLOG:ARG:(COLUMN:ARG:LINE) += @"<img src='BAR{GID}' srcb='' width='{長さ}' height='100'>"
+COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) += @"<img src='BAR{GID}' srcb='' width='{長さ}' height='100'>"
 
-@COLUMNSHIFT, ARG, ARGS, ETC, TOOLTIP
+;;;カラム機能外での呼び出し非推奨
+@COLUMNSHIFT, カラム番号, 本文, ETC, TOOLTIP
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC ETC
 #DIMS DYNAMIC TOOLTIP
@@ -378,32 +429,34 @@ COLUMNLOG:ARG:(COLUMN:ARG:LINE) += @"<img src='BAR{GID}' srcb='' width='{長さ}
 #DIM DYNAMIC ボタン = -3189415
 #DIM DYNAMIC 括弧, 2
 #DIMS DYNAMIC HTML
+#DIMS DYNAMIC 本文
+#DIM DYNAMIC カラム番号
 
-SIF ARGS == ""
+SIF 本文 == ""
 	RETURN
 
 IF COLOR_FROMNAME(ETC) >= 0
-	ARGS = <font color='%ETC%'>%ARGS%</font>
+	本文 = <font color='%ETC%'>%本文%</font>
 ELSEIF ISNUMERIC(ETC) && TOINT(ETC) >= 0
-	ARGS = <font color='#%CONVERT(TOINT(ETC), 16)%'>%ARGS%</font>
+	本文 = <font color='#%CONVERT(TOINT(ETC), 16)%'>%本文%</font>
 ELSE
-	ARGS = <font color='#%CONVERT(GETCOLOR(), 16)%'>%ARGS%</font>
+	本文 = <font color='#%CONVERT(GETCOLOR(), 16)%'>%本文%</font>
 ENDIF
 
 ;パセリに対応
 IF OPTION:パセリ表示
-	ARGS = %REPLACE(ARGS, "＄", "<img src='PASELI' srcb='' width='100' height='100'>")%
+	本文 = %REPLACE(本文, "＄", "<img src='PASELI' srcb='' width='100' height='100'>")%
 ELSE
-	ARGS = %REPLACE(ARGS, "＄", 通貨単位)%
+	本文 = %REPLACE(本文, "＄", 通貨単位)%
 ENDIF
 
 ;ボタン化処理はここでツールチップと同時に行うことにした
-括弧 = STRFINDU(ARGS, "[")
-括弧:1 = STRFINDU(ARGS, "]")
+括弧 = STRFINDU(本文, "[")
+括弧:1 = STRFINDU(本文, "]")
 
 IF 括弧 != -1 && 括弧:1 != -1
 	;STRFIND系使うと"[～]"の範囲を取得してるので"["と"]"を省くために+1と-1する
-	文字列ボタン = %SUBSTRINGU(ARGS, 括弧+1, 括弧:1-括弧-1)%
+	文字列ボタン = %SUBSTRINGU(本文, 括弧+1, 括弧:1-括弧-1)%
 	SIF ISNUMERIC(文字列ボタン)
 		ボタン = TOINT(文字列ボタン)
 ENDIF
@@ -413,7 +466,7 @@ IF ボタン != -3189415
 	HTML += @"<button value ='{ボタン}' "
 	SIF TOOLTIP != ""
 		HTML += @"title='%TOOLTIP%'"
-	HTML += @">%ARGS%</button>"
+	HTML += @">%本文%</button>"
 ELSEIF 文字列ボタン != ""
 	;ただし括弧内が"-"のみで構成されてるものはボタン扱いしない
 	SIF STRCOUNT(文字列ボタン, "-") == STRLENS(文字列ボタン)
@@ -421,47 +474,46 @@ ELSEIF 文字列ボタン != ""
 	HTML += @"<button value ='%文字列ボタン%' "
 	SIF TOOLTIP != ""
 		HTML += @"title='%TOOLTIP%'"
-	HTML += @">%ARGS%</button>"
+	HTML += @">%本文%</button>"
 ELSE
 	$NONBUTTON
 	HTML += @"<nonbutton "
 	SIF TOOLTIP != ""
 		HTML += @"title='%TOOLTIP%'"
-	HTML += @">%ARGS%</nonbutton>"
+	HTML += @">%本文%</nonbutton>"
 ENDIF
 
-COLUMNLOG:ARG:(COLUMN:ARG:LINE) += HTML
+COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) += HTML
 
-;後でまとめてボタン化するための関数なのでボタン属性は付けない
-;いろいろと不具合が起こりそうなコードではある
-@COLUMNSHIFTF, ARGS, ETC
+;;;後でまとめてボタン化するための関数なのでボタン属性は付けない
+;;;いろいろと不具合が起こりそうなコードではある
+@COLUMNSHIFTF, 本文, ETC
 #FUNCTIONS
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC ETC
+#DIMS DYNAMIC 本文
 
-SIF ARGS == ""
+SIF 本文 == ""
 	RETURNF ""
 
 IF COLOR_FROMNAME(ETC) >= 0
-	ARGS = <font color='%ETC%'>%ARGS%</font>
+	本文 = <font color='%ETC%'>%本文%</font>
 ELSEIF ISNUMERIC(ETC) && TOINT(ETC) >= 0
-	ARGS = <font color='#%CONVERT(TOINT(ETC), 16)%'>%ARGS%</font>
+	本文 = <font color='#%CONVERT(TOINT(ETC), 16)%'>%本文%</font>
 ELSE
-	ARGS = <font color='#%CONVERT(GETCOLOR(), 16)%'>%ARGS%</font>
+	本文 = <font color='#%CONVERT(GETCOLOR(), 16)%'>%本文%</font>
 ENDIF
 
 ;パセリに対応
 IF OPTION:パセリ表示
-	ARGS = %REPLACE(ARGS, "＄", "<img src='PASELI' srcb='' width='100' height='100'>")%
+	本文 = %REPLACE(本文, "＄", "<img src='PASELI' srcb='' width='100' height='100'>")%
 ELSE
-	ARGS = %REPLACE(ARGS, "＄", 通貨単位)%
+	本文 = %REPLACE(本文, "＄", 通貨単位)%
 ENDIF
 
-RETURNF ARGS
+RETURNF 本文
 
-;@COLUMNBGCOLOR, ARG, ARG:1
-;COLUMN:ARG:BGCOLOR = ARG:1
-
+[SKIPSTART]
 @COLUMNBORDER, ARG, ARG:1
 COLUMN:ARG:BORDER = ARG:1
 
@@ -470,10 +522,13 @@ COLUMN:ARG:BCOLOR = ARG:1
 
 @COLUMNRADIUS, ARG, ARG:1
 COLUMN:ARG:RADIUS = ARG:1
+[SKIPEND]
 
-@COLUMNDRAWLINE, ARG
+;;;(カラム番号) DRAWLINE
+@COLUMNDRAWLINE, カラム番号
+#DIM DYNAMIC カラム番号
 
-CALL COLUMNPRINTL, ARG, "-"*COLUMNDRAW
+CALL COLUMNPRINTL, カラム番号, "-"*COLUMNDRAW
 
 @COLUMNSHOW
 #DIM DYNAMIC LCOUNT
@@ -527,13 +582,18 @@ HTML += "</nobr>"
 
 HTML_PRINT HTML
 
-@GCREATESTACK, ARGS
-GCREATEFROMFILE GCOUNT, ARGS
-SPRITECREATE ARGS, GCOUNT
+@GCREATESTACK, ファイル名
+#DIMS DYNAMIC ファイル名
+
+GCREATEFROMFILE GCOUNT, ファイル名
+SPRITECREATE ファイル名, GCOUNT
 GCOUNT++
 
-@GCREATESTACKVOID, ARG, ARG:1
-GCREATE GCOUNT, ARG, ARG:1
+@GCREATESTACKVOID, 幅, 高さ
+#DIM DYNAMIC 幅
+#DIM DYNAMIC 高さ
+
+GCREATE GCOUNT, 幅, 高さ
 GCOUNT++
 RETURN GCOUNT-1
 

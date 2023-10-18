@@ -8,6 +8,8 @@ TRYCALLFORM SCHOOL_MESSAGE_%シチュエーション%
 
 TRYCALLFORM SCHOOL_%CSVNAMERPS(NO:TARGET)%_%シチュエーション%
 
+RETURN RESULT
+
 @山吹分岐
 #FUNCTION
 ;同じ学校の生徒
@@ -16,6 +18,201 @@ IF CSTR:GETCHARANAME("山吹"):在任 == CSTR:PLAYER:在校
 ENDIF
 
 RETURNF 0
+
+;-------------------------------------------------
+;汎用会話オーバーライド
+;-------------------------------------------------
+@SCHOOL_山吹_コマンド_汎用会話
+PRINTFORML □%CALLNAME:TARGET%と会話します
+PRINTL 　[0] 何気ない会話をする
+PRINTL 　[1] 少し踏み込んだ会話をする
+;山吹口上限定コマンド
+IF 山吹分岐()
+	PRINTL 　[2] セクハラする
+ELSE
+	PRINTL 　[2] 下ネタを振る
+ENDIF
+IF 同行者 && 同行者 != TARGET
+	CALL PRINTCOLORL, @"　[-] 性的に誘う(%NAME:同行者%が同行中)", "gray"
+ELSE
+	PRINTL 　[3] 性的に誘う
+ENDIF
+IF TALENT:恋慕
+	CALL PRINTCOLORL, @"　[-] 思い切って告白する(%NAME:TARGET%は既に%CALLNAME:PLAYER%の恋人)", "gray"
+ELSE
+	PRINTL 　[4] 思い切って告白する
+ENDIF
+IF 連絡先:TARGET
+	CALL PRINTCOLORL, @"　[-] 連絡先を聞いてみる(%CALLNAME:TARGET%の連絡先は既に知っている)", "gray"
+ELSE
+	PRINTL 　[5] 連絡先を聞いてみる
+ENDIF
+IF 同行者 != TARGET && !校内()
+	IF 同行者
+		CALL PRINTCOLORL, @"　[-] 同行を提案する(既に%NAME:同行者%と行動中)", "gray"
+	ELSE
+		PRINTL 　[6] 同行を提案する
+	ENDIF
+ENDIF
+
+DRAWLINE
+PRINTPLAIN 　会話　
+PRINTL [10] なんでもない
+
+BINPUT
+
+;口上のコマンド上書き関数を優先
+SELECTCASE RESULT
+	CASE 0
+		CALL SCHOOL_何気ない会話をする
+	CASE 1
+		CALL SCHOOL_少し踏み込んだ会話をする
+	CASE 2
+		IF 山吹分岐()
+			CALL SCHOOL_山吹_セクハラする
+		ELSE
+			CALL SCHOOL_下ネタを振る
+		ENDIF
+	CASE 3
+		CALL SCHOOL_性的に誘う
+	CASE 4
+		CALL SCHOOL_思い切って告白する
+	CASE 5
+		CALL SCHOOL_連絡先を聞いてみる
+	CASE 6
+		CALL SCHOOL_同行を提案する
+	CASE 10
+		RETURN 0
+ENDSELECT
+RETURN 1
+
+;-------------------------------------------------
+;山吹専用コマンド
+;-------------------------------------------------
+@SCHOOL_山吹_セクハラする
+#DIM DYNAMIC 教師リスト, 1000
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象
+
+PRINTFORML %CALLNAME:PLAYER%は山吹にセクハラをした
+IF !YAMABUKI:セクハラ回数
+	IF CSTR:PLAYER:現在地 == CSTR:PLAYER:在校
+		PRINTW 「ええと……今なんと？ 授業に関することなら話せますが、いささか不適切な言葉が聞こえたような」
+		PRINTW 「他の先生方に同じことを言ったら、どんな処罰が下されるか分かりませんよ。今回だけは許してあげましょう」
+	ELSE
+		SELECTCASE SEX(PLAYER)
+			CASE 1
+				PRINTW 「な、なんですかあなたは。私は雄ですよ。よく間違われますが……いや、待ちなさい。あなたはうちの生徒ですね？」
+			CASE 2
+				PRINTW 「いえ、私は、その……やめてください、お嬢さん。はて、動揺してしまいましたが、あなたの顔には見覚えがあります。うちの生徒ですね？」
+		ENDSELECT
+		PRINTW 「なんとふしだらな……人にそのような品の無い話をしてはいけませんよ。今回だけは許してあげましょう」
+	ENDIF
+ELSE
+	SELECTCASE RAND:9
+		CASE 0
+			FOR LCOUNT, 1, CHARANUM
+				SIF CSTR:在任 != CSTR:LCOUNT:在任
+					CONTINUE
+				SIF NAME:LCOUNT == "山吹"
+					CONTINUE
+				SIF TALENT:LCOUNT:尻尾
+					教師リスト:(対象++) = LCOUNT
+			NEXT
+			SIF 対象
+				対象 = 教師リスト:(RAND:対象)
+			PRINTW 「うわぁ！ こら！ 急に尻尾を掴んではいけません！」
+			PRINTFORM 「相手が私だったから叱る程度で済みますが、
+			IF 対象
+				PRINTFORM %CALLNAME:対象%先生にやったら大変なことになりますよ。
+				SELECTCASE NAME:対象
+					CASE "カネノブ", "獅子若", "ニョア", "獅子次", "アルビレオ"
+						PRINTW 特に猫は反射的に爪を立てますからね」
+					CASE "チャコル"
+						PRINTW 特に女性の方には絶対に駄目です」
+					CASE "ネロ", "ヴォルフガング", "ライアン"
+						PRINTW 校庭を何周走らされるか分かりませんからね」
+					CASEELSE
+						PRINTW 不快に思う方のほうが多いですからね」
+				ENDSELECT
+			ELSE
+				PRINTW 獣人相手に尻尾を掴むなんていたずらは控えてください」
+			ENDIF
+		CASE 1
+			PRINTW 「なんですか、さっきから耳を触ったり鼻を触ったり……一応、私が先生であなたは生徒なのですがね」
+			IF CSTR:PLAYER:現在地 == CSTR:PLAYER:在校
+				IF 好感度:既成事実
+					PRINTW 「生徒たちのいらぬ視線を集めてしまいますから、そういうのは二人きりのときにお願いします」
+				ELSE
+					PRINTW 「そこまでにしてください。他の生徒に示しがつきませんから。授業が始まってしまいますよ」
+				ENDIF
+			ELSE
+				IF 好感度:既成事実
+					PRINTW 「人目もありますから、どこか二人きりになれる場所のほうが……いえ、決して他意があるわけでは……」
+				ELSE
+					PRINTW 「あなたがうちの生徒だからいいものを、これが赤の他人なら警察沙汰ですよ。気をつけてください」
+				ENDIF
+			ENDIF
+		CASE 2
+			PRINTW 「ちょっと、顔が近いですよ。しかも随分と淫らな言葉まで……意味くらい分かりますよ、私だって」
+			IF CSTR:PLAYER:現在地 == CSTR:PLAYER:在校
+				IF 好感度:既成事実
+					PRINTW 「人前でする話ではないでしょう。せめて、学校が終わってからにしてください」
+				ELSE
+					PRINTW 「他の生徒にまで真似されては困ります。度が過ぎるようなら職員室に呼び出しです」
+				ENDIF
+			ELSE
+				IF 好感度:既成事実
+					PRINTW 「ほら、みんな不審な目で見てますから。別の場所に行きませんか？」
+				ELSE
+					PRINTW 「いえ、こちらは私の生徒なので大丈夫です。警察は呼ばなくても結構、私の方から指導しておきます」
+				ENDIF
+			ENDIF
+		CASE 3
+			PRINT 「ちょっ、どこ触ってるんですか！ 
+			SELECTCASE SEX(PLAYER)
+				CASE 1
+					PRINTW あなた方生徒同士でやるのは勝手ですが、先生相手にすることではないでしょう」
+				CASE 2
+					PRINTW 女性が気軽に男性の体に触っては……風紀が乱れます。控えてください」
+			ENDSELECT
+			IF 好感度:既成事実
+				PRINTW 「あの時のことを引き合いに出しても無駄ですよ。場所を弁えてください。やるのなら、然るべき時に然るべき場所で」
+			ELSE
+				PRINTW 「このようなことを続けていては、いつ問題になるか分かりませんよ。学校、ひいては生徒全員に迷惑がかかりますからね」
+			ENDIF
+		CASE 4
+			PRINTW 「すみません、髪を引っ張らないで。あなたの手が毛だらけになってしまいますよ？」
+			PRINTW 「どこに行っても子供は手頃な長いものを引っ張ろうとするのですね。呆れを通り越して感心すらします」
+		CASE 5
+			IF CSTR:PLAYER:現在地 == CSTR:PLAYER:在校
+				PRINTW 「学校でそのような話は……誰が聞いてるかも分かりませんし、やめてください……」
+			ELSE
+				PRINTW 「急に何を話しかけられたと思えば、あなたでしたか。まだ学生でしょう。少しはつつしんだらどうですか」
+			ENDIF
+		CASE 6
+			IF CSTR:PLAYER:現在地 == CSTR:PLAYER:在校
+				PRINTW 「わ、私は保険医ではないので……次の授業の準備もあるので、失礼します」
+			ELSE
+				PRINTW 「あ、あの、すみません、私は雄で……って、またあなたですか。教師相手に淫らな言葉遣いは困ります」
+			ENDIF
+		CASE 7
+			IF CSTR:PLAYER:現在地 == CSTR:PLAYER:在校
+				PRINTW 「相手が教師とはいえ、内容が、その……本来なら教師である私が止めるべきですが、その手の話は苦手でして……」
+			ELSE
+				PRINTW 「学業にもそのくらい熱が入ればいいのですが……長いこと子供たちの面倒は見ていますが、あなた方の、その、欲望に忠実な姿勢は可愛くもあり厄介でもあり……」
+			ENDIF
+		CASE 8
+			PRINTW 「笛を吹く姿をそのように見立てるとは……斬新ではありますが……」
+			IF 好感度:既成事実
+				PRINTW 「あなたとの情事と普段の立ち振る舞いとでは話は別です。日常的に邪な目で見られては、私といえど気持ちの良いものではありません」
+			ELSE
+				PRINTW 「奏者に対する冒涜です。少しは品性を身に付けてください」
+			ENDIF
+	ENDSELECT
+ENDIF
+
+YAMABUKI:セクハラ回数++
 
 ;-------------------------------------------------
 ;汎用会話コマンド
@@ -62,6 +259,7 @@ SELECTCASE 山吹分岐()
 					DATAFORM 「%セリフ%」
 					DATA 「音楽史に興味はありますか？ 実は私自身、人の世界との関わりが浅く、恥ずかしながら歴史には疎いのです。授業の構想を練りながら私も勉強をせねば」
 					DATA 「あなたたちの間で一番人気があるのは弦楽器のように見えます。私も三味線や箏は嗜みますが、目を引くほど派手なものではないかもしれません」
+					DATA 「そろそろ予鈴が鳴りますよ。教室に戻りましょう。話の続きはまた次の休み時間に」
 				ENDDATA
 			ENDIF
 		ELSE
@@ -73,49 +271,36 @@ SELECTCASE 山吹分岐()
 					DATA 「おっと、少し話しすぎてしまいましたね。面白いお話でした。私はこれにて」
 					DATA 「外ではどこもかしこも派手な音楽が流れていますね。私も造詣を深めていかねば」
 					DATA 「生徒たちの間では『げぇむせんたぁ』という場所が流行っているようですね。少し覗いてみましたが……様々な音が交錯していて、私には合いませんでした」
+					DATA 「たまに山道で演奏会を開いてるのですよ。お知り合いかもしれませんが、ハーピアさんや熊井さんたちと音楽を奏でています。あなたも見に来てはどうでしょう？」
 				ENDDATA
 			ENDIF
 		ENDIF
 ENDSELECT
 
-
-
-@SCHOOL_KX1_踏み込んだ会話_成功
+@SCHOOL_山吹_踏み込んだ会話_成功
+SELECTCASE RAND:3
+	CASE 0
+		PRINTW 「昔から子供たちの面倒を見るのが好きでしてね。どういう因果か教師にまでなって、充実した教師生活です」
+		PRINT 「あなたたち生徒がみんな個性があって面白いというのもあります。あなたたちと過ごす時間が
+		IF 小中高(CSTR:PLAYER:在校) == "小"
+			PRINT 六年
+		ELSE
+			PRINT 三年
+		ENDIF
+		PRINTW では足りないくらいです」
+	CASE 1
+		PRINTW 「生まれは、北の方の山深くです。とても寒く、それでも自然豊かな美しい場所です。この辺りは気候も比較的緩やかですので、想像しづらいかもしれませんね」
+		PRINTW 「私はこの通り、寒さには順応していますが、それでも屋内の囲炉裏の暖かさはとても心地良いものでした」
+	CASE 2
+		PRINTW 「私の故郷では神事が盛んでして、笛吹きもその一環です。神との儀式を執り行うのに音楽が必要なのです」
+		PRINTW 「全国的に行われてるお祭りでの祭囃子も同じですね。神様を祝うため、喜ばせるために囃し立てるという意味があります。諸説ありますが」
+ENDSELECT
 
 @SCHOOL_KX1_踏み込んだ会話_失敗
 
 @SCHOOL_KX1_品の無い会話_成功
 
-@SCHOOL_山吹_品の無い会話_失敗
-IF CSTR:PLAYER:現在地 == CSTR:PLAYER:在校
-	IF !YAMABUKI:セクハラ失敗
-		PRINTW 「ええと……今なんと？ 授業に関することなら話せますが、いささか不適切な言葉が聞こえたような」
-		PRINTW 「他の先生方に同じことを言ったら、どんな処罰が下されるか分かりませんよ。今回だけは許してあげましょう」
-	ELSE
-		PRINTDATAW
-			DATA 「学校でそのような話は……誰が聞いてるかも分かりませんし、やめてください……」
-			DATA 「わ、私は保険医ではないので……次の授業の準備もあるので、失礼します」
-			DATA 「相手が教師とはいえ、内容が、その……本来なら教師である私が止めるべきですが、その手の話は苦手でして……」
-		ENDDATA
-	ENDIF
-ELSE
-	IF !YAMABUKI:セクハラ失敗
-		SELECTCASE SEX(PLAYER)
-			CASE 1
-				PRINTW 「な、なんですかあなたは。私は雄ですよ。よく間違われますが……いや、待ちなさい。あなたはうちの生徒ですね？」
-			CASE 2
-				PRINTW 「いえ、私は、その……やめてください、お嬢さん。はて、動揺してしまいましたが、あなたの顔には見覚えがあります。うちの生徒ですね？」
-		ENDSELECT
-		PRINTW 「なんとふしだらな……人にそのような品の無い話をしてはいけませんよ。今回だけは許してあげましょう」
-	ELSE
-		PRINTDATAW
-			DATA 「急に何を話しかけられたと思えば、あなたでしたか。まだ学生でしょう。少しはつつしんだらどうですか」
-			DATA 「あ、あの、すみません、私は雄で……って、またあなたですか。教師相手に淫らな言葉遣いは困ります」
-			DATA 「学業にもそのくらい熱が入ればいいのですが……長いこと子供たちの面倒は見ていますが、あなた方の、その、欲望に忠実な姿勢は可愛くもあり厄介でもあり……」
-		ENDDATA
-	ENDIF
-ENDIF
-YAMABUKI:セクハラ失敗++
+@SCHOOL_KX1_品の無い会話_失敗
 
 @SCHOOL_KX1_誘惑_成功
 

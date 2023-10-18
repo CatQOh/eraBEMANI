@@ -60,7 +60,7 @@ ENDSELECT
 
 RESTART
 
-@マインスイーパ, ARG
+@マインスイーパ, マップ
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNTX
 #DIM DYNAMIC LCOUNTY
@@ -87,13 +87,14 @@ RESTART
 #DIM DYNAMIC 地質学人数
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC 必要素材数
+#DIM DYNAMIC マップ
 
 VARSET MS
 
-必要素材数 = (7-MS難易度:ARG)*100
+必要素材数 = (7-MS難易度:マップ)*100
 
 ;保存してあるやつを呼び出す
-SELECTCASE ARG
+SELECTCASE マップ
 	CASE 1
 		ARRAYCOPY "MS1", "MS"
 	CASE 2
@@ -102,12 +103,12 @@ SELECTCASE ARG
 		ARRAYCOPY "MS3", "MS"
 ENDSELECT
 
-SPLIT MS広さ:ARG, "/", 分割用
+SPLIT MS広さ:マップ, "/", 分割用
 
 X幅 = TOINT(分割用:0)
 Y幅 = TOINT(分割用:1)
 
-発掘費用 = X幅*Y幅*(MS難易度:ARG)/2
+発掘費用 = X幅*Y幅*(MS難易度:マップ)/2
 
 FOR LCOUNT, 0, CHARANUM
 	SIF CSTR:LCOUNT:配属 == "温泉探索" && TALENT:LCOUNT:地質学
@@ -125,7 +126,7 @@ DRAWLINE
 IF マーク画面
 	PRINTPLAIN □任意の場所に目印を付けます 
 ELSE
-	PRINTPLAINFORM □温泉を探します 広さ:%MS広さ:ARG% 難易度:{MS難易度:ARG} 
+	PRINTPLAINFORM □温泉を探します 広さ:%MS広さ:マップ% 難易度:{MS難易度:マップ} 
 ENDIF
 PRINTBUTTON @"[10] - \@ ログ表示 ? ログを表示しない # ログを表示する \@ ", "10"
 PRINTBUTTON "[11] - ログを消す", "11"
@@ -222,7 +223,7 @@ IF 失敗
 	PRINTW …………
 	PRINTW ……
 	PRINTW 温泉の発掘に失敗しました
-	CALL MS消去, ARG
+	CALL MS消去, マップ
 	CALL 現金出納帳記録, @"温泉発掘費用/-{総発掘費用}"
 	IF パートナー != ""
 		IF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
@@ -259,7 +260,7 @@ DO
 	INPUTS
 	SELECTCASE RESULTS
 		CASE "1"
-			SELECTCASE ARG
+			SELECTCASE マップ
 				CASE 1
 					ARRAYCOPY "MS", "MS1"
 				CASE 2
@@ -344,7 +345,7 @@ DO
 				INN:温泉レベル = 温泉マス
 			ENDIF
 			WAIT
-			CALL MS消去, ARG
+			CALL MS消去, マップ
 			IF パートナー != ""
 				SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
 					TRYCALLFORM 温泉発掘_%CSVNAMERPS(GETNO(パートナー))%
@@ -560,7 +561,7 @@ ENDSELECT
 
 RESTART
 
-@マインスイーパ生成, 広さ, 難易度, ARG
+@マインスイーパ生成, 広さ, 難易度, マップ
 #DIM DYNAMIC LCOUNTX
 #DIM DYNAMIC LCOUNTY
 #DIM DYNAMIC LCOUNT
@@ -573,12 +574,13 @@ RESTART
 #DIM DYNAMIC 爆弾数
 #DIM DYNAMIC 温泉数
 #DIMS DYNAMIC 分割用, 2
+#DIM DYNAMIC マップ
 
 ;60*30は最大の広さ 廃人用
 VARSET MS
 
 ;広さはXX/XXなのでSPLIT
-MS広さ:ARG = %広さ%
+MS広さ:マップ = %広さ%
 SPLIT 広さ, "/", 分割用
 X幅 = TOINT(分割用:0)
 Y幅 = TOINT(分割用:1)
@@ -623,8 +625,8 @@ LOOP 温泉数 != 0
 ;#;NEXT
 ;#;WAIT
 
-;ARGで指定されたセーブデータ変数に結果をコピーする
-SELECTCASE ARG
+;変数マップで指定されたセーブデータ変数に結果をコピーする
+SELECTCASE マップ
 	CASE 1
 		MS広さ:1 = %広さ%
 		MS難易度:1 = 難易度
@@ -643,10 +645,12 @@ VARSET MS
 
 RETURN
 
-@MS消去, ARG
-MS広さ:ARG = 
-MS難易度:ARG = 0
-SELECTCASE ARG
+@MS消去, マップ
+#DIM DYNAMIC マップ
+
+MS広さ:マップ = 
+MS難易度:マップ = 0
+SELECTCASE マップ
 	CASE 1
 		VARSET MS1
 	CASE 2
