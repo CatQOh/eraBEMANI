@@ -767,7 +767,7 @@ ENDIF
 
 RESTART
 
-@栽培レベル, ARG
+@栽培レベル
 #FUNCTION
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 返り値
@@ -785,44 +785,47 @@ FOR LCOUNT, 1, CHARANUM
 	ELSE
 		返り値 += MIN(ABL:LCOUNT:栽培技能+(特質("ワーカホリック", LCOUNT)/10), 10)
 	ENDIF
-	SIF TALENT:ARG:植生学
+	SIF TALENT:LCOUNT:植生学
 		返り値 += 3
 NEXT
 
 RETURNF 返り値
 
-@成長速度補正, ARG
+@成長速度補正
 #FUNCTION
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 魔法レベル
 #DIM DYNAMIC 科学レベル
+#DIM DYNAMIC 合計値
 
 FOR LCOUNT, 0, CHARANUM
 	SIF CSTR:LCOUNT:配属 != "農業"
 		CONTINUE
 	IF 統率者("農業") && !TALENT:LCOUNT:統率
-		魔法レベル += MIN((ABL:LCOUNT:魔法技能+1), 10)
-		科学レベル += MIN((ABL:LCOUNT:工作技能+1), 10)
+		魔法レベル = MIN((ABL:LCOUNT:魔法技能+1), 10)
+		科学レベル = MIN((ABL:LCOUNT:工作技能+1), 10)
 	ELSE
-		魔法レベル += MIN(ABL:LCOUNT:魔法技能, 10)
-		科学レベル += MIN(ABL:LCOUNT:工作技能, 10)
+		魔法レベル = MIN(ABL:LCOUNT:魔法技能, 10)
+		科学レベル = MIN(ABL:LCOUNT:工作技能, 10)
+	ENDIF
+	IF TALENT:LCOUNT:植生学
+		合計値 += 魔法レベル+科学レベル+3
+	ELSE
+		合計値 += 魔法レベル+科学レベル
 	ENDIF
 NEXT
 
-IF TALENT:ARG:植生学
-	RETURNF 栽培レベル()*2+魔法レベル+科学レベル+3
-ELSE
-	RETURNF 栽培レベル()*2+魔法レベル+科学レベル
-ENDIF
+RETURNF 栽培レベル()*2+合計値
 
 ;収穫日数の再計算
-@農業_ASSIGNON_OPTION, ARG
+@農業_ASSIGNON_OPTION, 対象
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 上昇値
+#DIM DYNAMIC 対象
 
 ;配属したキャラが成長速度補正に及ぼす影響を調べる
-上昇値 = ABL:ARG:栽培技能*2+ABL:ARG:魔法技能+ABL:ARG:工作技能
-SIF TALENT:ARG:植生学
+上昇値 = ABL:対象:栽培技能*2+ABL:対象:魔法技能+ABL:対象:工作技能
+SIF TALENT:対象:植生学
 	上昇値 += 3
 
 ;成長速度補正が基礎成長日数以下なら上昇値の分収穫を早める 最短で3日まで
@@ -847,13 +850,14 @@ FOR LCOUNT, 1, 3
 		田んぼ収穫日:LCOUNT = MAX(田んぼ収穫日:LCOUNT-上昇値, 3)
 NEXT
 
-@農業_ASSIGNOFF_OPTION, ARG
+@農業_ASSIGNOFF_OPTION, 対象
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 減少値
+#DIM DYNAMIC 対象
 
 ;外したキャラが成長速度補正に及ぼしていた影響を調べる
-減少値 = ABL:ARG:栽培技能*2+ABL:ARG:魔法技能+ABL:ARG:工作技能
-SIF TALENT:ARG:植生学
+減少値 = ABL:対象:栽培技能*2+ABL:対象:魔法技能+ABL:対象:工作技能
+SIF TALENT:対象:植生学
 	減少値 += 3
 
 ;成長速度補正が基礎成長日数以下なら減少値の分収穫を先延ばしにする

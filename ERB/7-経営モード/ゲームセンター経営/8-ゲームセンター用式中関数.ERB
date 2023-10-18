@@ -2,9 +2,11 @@
 ;ゲームセンター経営モードのグレード名をここで定義します
 ;----------------------------------------------------
 ;物件グレード----------------------------------------------------
-@物件名, ARG
+@物件名, 物件番号
 #FUNCTIONS
-SELECTCASE ARG
+#DIM DYNAMIC 物件番号
+
+SELECTCASE 物件番号
 	CASE 0
 		RETURNF "無し"
 	CASE 1
@@ -23,8 +25,9 @@ SELECTCASE ARG
 		RETURNF "アミューズメント"
 ENDSELECT
 
-@GCテナント, ARG
+@GCテナント
 #FUNCTION
+
 SELECTCASE GC:物件
 	CASE 2, 4, 6
 		RETURNF 1
@@ -32,9 +35,11 @@ ENDSELECT
 RETURNF 0
 
 ;物件の値段-----------
-@物件価格, ARG
+@物件価格, 物件番号
 #FUNCTION
-SELECTCASE ARG
+#DIM DYNAMIC 物件番号
+
+SELECTCASE 物件番号
 	;ボロ屋
 	CASE 1
 		RETURNF 300000
@@ -59,9 +64,11 @@ SELECTCASE ARG
 ENDSELECT
 
 ;名声グレード----------------------------------------------------
-@GC名声グレード, ARG
+@GC名声グレード, 名声値
 #FUNCTIONS
-SELECTCASE ARG
+#DIM DYNAMIC 名声値
+
+SELECTCASE 名声値
 	CASE IS < 100
 		RETURNF "まったくの無名ゲーセン"
 	CASE IS < 500
@@ -91,9 +98,11 @@ SELECTCASE ARG
 ENDSELECT
 
 ;評判グレード----------------------------------------------------
-@GC評判グレード, ARG
+@GC評判グレード, 評判値
 #FUNCTIONS
-SELECTCASE ARG
+#DIM DYNAMIC 評判値
+
+SELECTCASE 評判値
 	CASE IS <= -2000
 		RETURNF "怖い人いっぱい居るよこのゲーセン(´；ω；)(；ω；｀)"
 	CASE IS <= -1000
@@ -115,9 +124,13 @@ SELECTCASE ARG
 ENDSELECT
 
 ;収入グレード----------------------------------------------------
-@GC収入グレード, ARG
+@GC収入グレード, 収入値
 #FUNCTIONS
-SELECTCASE ARG
+#DIM DYNAMIC 収入値
+
+RETURNF ""
+
+SELECTCASE 収入値
 	CASE IS < -100000
 		RETURNF "このままではｶﾞｼｬﾝしてしまう！"
 	CASE IS < -50000
@@ -153,10 +166,12 @@ SELECTCASE ARG
 ENDSELECT
 
 ;メンテグレード----------------------------------------------------
-@GCメンテグレード, ARG
+@GCメンテグレード, メンテ値
 #FUNCTIONS
 #DIMS DYNAMIC 返り値
-SELECTCASE ARG
+#DIM DYNAMIC メンテ値
+
+SELECTCASE メンテ値
 	CASE 0
 		RETURNF "グレード無し"
 	CASE 1 TO 14
@@ -172,6 +187,7 @@ SELECTCASE ARG
 			DATA 手垢やばい
 			DATA ブルスク出た
 			DATA ツーバスへたれすぎ
+			DATA 無反応多すぎ
 		ENDDATA
 	CASE 15 TO 29
 		STRDATA 返り値
@@ -184,6 +200,7 @@ SELECTCASE ARG
 			DATA パネル抜けた
 			DATA 多重やばい
 			DATA スピーカー壊れてる
+			DATA LED切れてる
 		ENDDATA
 	CASE 30 TO 49
 		SELECTCASE RAND:4
@@ -212,6 +229,8 @@ SELECTCASE ARG
 			DATA 結構いいと思うよ
 			DATA 遅延も無いし判定良好
 			DATA ボタンの押し心地最高！
+			DATA ホームにしたい！
+			DATA もうここでしかプレイできない
 		ENDDATA
 	CASE 70 TO 79
 		RETURNF "ここでやったらスコア伸びました！"
@@ -225,6 +244,8 @@ ENDSELECT
 
 RETURNF 返り値
 
+;使ってなかった
+[SKIPSTART]
 @名声計算（筐体）, ARG
 #FUNCTION
 #DIM DYNAMIC 合計値
@@ -249,6 +270,7 @@ FOR LCOUNT, 0, 500
 NEXT
 
 RETURNF 合計値
+[SKIPEND]
 
 @階層収入バッファ, 階層
 #DIM DYNAMIC 階層
@@ -399,30 +421,16 @@ FOR LCOUNT, 0, 400
 					CONTINUE
 				;筐体ごとにシナジーがある 階層の筐体数で単価が決まる
 				SELECTCASE ERDNAME(筐体, LCOUNT:1)
-					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
-						単価 = 20
-					CASE "pop'n music"
+					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）", "pop'n music", "maimai", "オンゲキ"
 						単価 = 20
 					CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
 						単価 = 80
 					CASE "GITADORA"
 						単価 = 40
-					CASE "jubeat"
-						単価 = 10
-					CASE "REFLEC BEAT"
-						単価 = 10
-					CASE "SOUND VOLTEX", "SOUND VOLTEX（VM）"
+					CASE "jubeat", "REFLEC BEAT", "SOUND VOLTEX", "SOUND VOLTEX（VM）", "CHUNITHM", "クイズマジックアカデミー"
 						単価 = 10
 					CASE "Dance Evolution"
 						単価 = 60
-					CASE "maimai"
-						単価 = 20
-					CASE "CHUNITHM"
-						単価 = 10
-					CASE "オンゲキ"
-						単価 = 20
-					CASE "クイズマジックアカデミー"
-						単価 = 10
 					CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
 						単価 = 30
 				ENDSELECT
@@ -434,30 +442,12 @@ FOR LCOUNT, 0, 400
 					CONTINUE
 				;筐体ごとにシナジーがある
 				SELECTCASE ERDNAME(筐体, LCOUNT:1)
-					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
+					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）", "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）", "Dance Evolution", "maimai", "クイズマジックアカデミー"
 						単価 = 20
-					CASE "pop'n music"
+					CASE "pop'n music", "jubeat", "REFLEC BEAT", "SOUND VOLTEX", "SOUND VOLTEX（VM）", "CHUNITHM", "オンゲキ"
 						単価 = 10
-					CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
-						単価 = 20
 					CASE "GITADORA"
 						単価 = 50
-					CASE "jubeat"
-						単価 = 10
-					CASE "REFLEC BEAT"
-						単価 = 10
-					CASE "SOUND VOLTEX", "SOUND VOLTEX（VM）"
-						単価 = 10
-					CASE "Dance Evolution"
-						単価 = 20
-					CASE "maimai"
-						単価 = 20
-					CASE "CHUNITHM"
-						単価 = 10
-					CASE "オンゲキ"
-						単価 = 10
-					CASE "クイズマジックアカデミー"
-						単価 = 20
 					CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
 						単価 = 40
 				ENDSELECT
@@ -469,31 +459,13 @@ FOR LCOUNT, 0, 400
 					CONTINUE
 				;筐体ごとにシナジーがある
 				SELECTCASE ERDNAME(筐体, LCOUNT:1)
-					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
+					CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）", "REFLEC BEAT", "GITADORA", "CHUNITHM", "クイズマジックアカデミー"
 						単価 = 10
-					CASE "pop'n music"
+					CASE "pop'n music", "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）", "Dance Evolution"
 						単価 = 40
-					CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
-						単価 = 40
-					CASE "GITADORA"
-						単価 = 10
-					CASE "jubeat"
+					CASE "jubeat", "maimai", "オンゲキ"
 						単価 = 20
-					CASE "REFLEC BEAT"
-						単価 = 10
-					CASE "SOUND VOLTEX", "SOUND VOLTEX（VM）"
-						単価 = 30
-					CASE "Dance Evolution"
-						単価 = 40
-					CASE "maimai"
-						単価 = 20
-					CASE "CHUNITHM"
-						単価 = 10
-					CASE "オンゲキ"
-						単価 = 20
-					CASE "クイズマジックアカデミー"
-						単価 = 10
-					CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
+					CASE "SOUND VOLTEX", "SOUND VOLTEX（VM）", "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
 						単価 = 30
 				ENDSELECT
 			NEXT
@@ -507,49 +479,23 @@ NEXT
 #DIM DYNAMIC 補正額
 
 SELECTCASE ERDNAME(筐体, 筐体ナンバー)
-	CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
+	CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）", "GITADORA"
 		補正額 = 1000
 	CASE "pop'n music"
 		補正額 = 900
-	CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
+	CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）", "Dance Evolution"
 		補正額 = 1500
-	CASE "GITADORA"
-		補正額 = 1000
-	CASE "jubeat"
-		補正額 = 500
-	CASE "REFLEC BEAT"
+	CASE "jubeat", "REFLEC BEAT", "maimai", "CHUNITHM", "オンゲキ"
 		補正額 = 500
 	CASE "SOUND VOLTEX", "SOUND VOLTEX（VM）"
 		補正額 = 600
-	CASE "Dance Evolution"
-		補正額 = 1500
-	CASE "両替機"
-		補正額 = 300
-	CASE "メダル両替機"
-		補正額 = 300
-	CASE "PASELI券売機"
-		補正額 = 500
-	CASE "PASELIチャージ機"
-		補正額 = 500
-	CASE "自販機（飲み物）"
-		補正額 = 700
 	CASE "自販機（軽食）"
-		補正額 = 900
-	CASE "自販機（アイス）"
-		補正額 = 800
-	CASE "マッサージチェア"
-		補正額 = 200
-	CASE "maimai"
-		補正額 = 500
-	CASE "CHUNITHM"
-		補正額 = 500
-	CASE "オンゲキ"
-		補正額 = 500
-	CASE "クイズマジックアカデミー"
+		補正額 = 400
+	CASE "クイズマジックアカデミー", "自販機（アイス）"
 		補正額 = 300
-	CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
+	CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック", "両替機", "メダル両替機", "マッサージチェア"
 		補正額 = 100
-	CASE "カードコネクト", "カードメイカー"
+	CASE "カードコネクト", "カードメイカー", "PASELI券売機", "PASELIチャージ機", "自販機（飲み物）"
 		補正額 = 200
 ENDSELECT
 補正額 += 補正額/10*浪費癖人数("ゲームセンター")
@@ -700,55 +646,18 @@ RETURNF レベル
 
 ;大体筐体コストと同じ
 SELECTCASE ERDNAME(筐体, 筐体ナンバー)
-	CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）"
-		補正値 = 2
-	CASE "pop'n music"
-		補正値 = 2
-	CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）"
-		補正値 = 3
-	CASE "GITADORA"
-		補正値 = 3
-	CASE "jubeat"
-		補正値 = 1
-	CASE "REFLEC BEAT"
-		補正値 = 1
-	CASE "SOUND VOLTEX", "SOUND VOLTEX（VM）"
-		補正値 = 1
-	CASE "Dance Evolution"
-		補正値 = 3
-	CASE "両替機"
-		補正値 = 1
-	CASE "メダル両替機"
-		補正値 = 1
-	CASE "PASELI券売機"
-		補正値 = 2
-	CASE "PASELIチャージ機"
-		補正値 = 2
-	CASE "自販機（飲み物）"
-		補正値 = 1
-	CASE "自販機（軽食）"
-		補正値 = 2
-	CASE "自販機（アイス）"
-		補正値 = 1
-	CASE "マッサージチェア"
-		補正値 = 3
-	CASE "待ち椅子"
-		補正値 = 1
-	CASE "maimai"
-		補正値 = 1
-	CASE "CHUNITHM"
-		補正値 = 1
-	CASE "オンゲキ"
-		補正値 = 1
-	CASE "クイズマジックアカデミー"
-		補正値 = 3
-	CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック"
-		補正値 = 1
-	CASE "カードコネクト", "カードメイカー"
-		補正値 = 1
+	CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）", "pop'n music"
+		RETURNF 2
+	CASE "Dance Dance Revolution", "Dance Dance Revolution（白）", "Dance Dance Revolution（金）", "GITADORA", "Dance Evolution", "クイズマジックアカデミー"
+		RETURNF 3
+	CASE "jubeat", "REFLEC BEAT", "SOUND VOLTEX", "SOUND VOLTEX（VM）", "maimai", "CHUNITHM", "オンゲキ"
+		RETURNF 1
+	CASE "ビデオポーカー", "ポーカーソリティア", "モンテカルロ", "ブラックジャック", "カードコネクト", "カードメイカー"
+		RETURNF 1
 ENDSELECT
 
-RETURNF 補正値
+;#;THROW 筐体:{筐体ナンバー}番に筐体は登録されていない
+RETURNF 0
 
 @名声人事補正
 #FUNCTION
@@ -857,6 +766,9 @@ FOR LCOUNT, 1, CHARANUM
 	合計値 += 補正値
 NEXT
 
+;配属人数が十分でないと評判下がる
+合計値 -= MAX(GC:物件-配属人数("ゲームセンター"), 0)*10
+
 RETURNF 合計値
 
 @評判筐体補正
@@ -930,33 +842,35 @@ RETURN 評判補正
 
 ;;;引数で指定した曜日が定休日かどうか 省略すれば今日の曜日
 ;;;書式 GCS:定休日("木") みたいな
-@GC定休日, ARGS
+@GC定休日, 指定曜日
 #FUNCTION
 #DIMS DYNAMIC 分割用, 10
+#DIMS DYNAMIC 指定曜日
 
-SIF ARGS == ""
-	ARGS = %DOW(FLAG:曜日)%
+SIF 指定曜日 == ""
+	指定曜日 = %DOW(FLAG:曜日)%
 
 SPLIT GCS:定休日, "・", 分割用
 
-IF FINDELEMENT(分割用, ARGS) >= 0
+IF FINDELEMENT(分割用, 指定曜日) >= 0
 	RETURNF 1
 ELSE
 	RETURNF 0
 ENDIF
 
 ;;;筐体がゲーセンに設置されてるかどうかの判定用関数
-@EXISTGAMES, ARGS
+@EXISTGAMES, 筐体名
 #FUNCTION
 #DIM DYNAMIC 筐体ナンバー
 #DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 筐体名
 
-筐体ナンバー = GETNUM(筐体, ARGS)
+筐体ナンバー = GETNUM(筐体, 筐体名)
 
 SIF 筐体ナンバー < 0
 	RETURNF 0
 
-SELECTCASE ARGS
+SELECTCASE 筐体名
 	CASE "beatmaniaIIDX"
 		{
 		IF 設置済み筐体:GETNUM(筐体, "beatmaniaIIDX") || 
@@ -994,10 +908,11 @@ SELECTCASE ARGS
 ENDSELECT
 
 ;;;筐体価格
-@筐体価格, ARG
+@筐体価格, 筐体ナンバー
 #FUNCTION
+#DIM DYNAMIC 筐体ナンバー
 
-SELECTCASE ERDNAME(筐体, ARG)
+SELECTCASE ERDNAME(筐体, 筐体ナンバー)
 	CASE "beatmaniaIIDX", "beatmaniaIIDX（LM）", "マッサージチェア"
 		RETURNF 100000
 	CASE "pop'n music", "自販機（軽食）"
@@ -1026,4 +941,4 @@ SELECTCASE ERDNAME(筐体, ARG)
 		RETURNF 0
 ENDSELECT
 
-;#; THROW %ERDNAME(筐体, ARG)%の価格が設定されてない
+;#; THROW %ERDNAME(筐体, 筐体ナンバー)%の価格が設定されてない

@@ -453,29 +453,31 @@ SELECTCASE RESULT
 ENDSELECT
 RESTART
 
-@配属解除, ARG, キャラロスト処理
+@配属解除, 対象, キャラロスト処理
 #DIMS DYNAMIC 配属先
 #DIM DYNAMIC キャラロスト処理
+#DIM DYNAMIC 対象
 
-配属先 = %CSTR:ARG:配属%
-CSTR:ARG:配属 = 
-CSTR:ARG:転属 = 
-CFLAG:ARG:配属完了 = 0
-CFLAG:ARG:ゲーセン店長 = 0
-CFLAG:ARG:上級娼婦 = 0
-CFLAG:ARG:レッスン = 0
-CFLAG:ARG:娼館部屋番号 = 0
-飲食店リーダー:ARG:0 = 0
+配属先 = %CSTR:対象:配属%
+CSTR:対象:配属 = 
+CSTR:対象:転属 = 
+CFLAG:対象:配属完了 = 0
+CFLAG:対象:ゲーセン店長 = 0
+CFLAG:対象:上級娼婦 = 0
+CFLAG:対象:レッスン = 0
+CFLAG:対象:娼館部屋番号 = 0
+飲食店リーダー:対象:0 = 0
 SIF !キャラロスト処理
-	TRYCALLFORM %配属先%_ASSIGNOFF_OPTION, ARG
+	TRYCALLFORM %配属先%_ASSIGNOFF_OPTION, 対象
 
-@浪費癖人数, ARGS
+@浪費癖人数, 配属先
 #FUNCTION
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 返り値
+#DIMS DYNAMIC 配属先
 
 FOR LCOUNT, 0, CHARANUM
-	SIF CSTR:LCOUNT:配属 == ARGS && TALENT:LCOUNT:浪費癖
+	SIF CSTR:LCOUNT:配属 == 配属先 && TALENT:LCOUNT:浪費癖
 		返り値++
 NEXT
 
@@ -483,17 +485,18 @@ RETURNF 返り値
 
 ;同じ配属先に相性が良いキャラが居る場合にモチベに補正がかかる
 ;相性悪いともちろん下がる
-@相性モチベ補正, ARG
+@相性モチベ補正, 対象
 #FUNCTION
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 計算用
 #DIM DYNAMIC 相性
+#DIM DYNAMIC 対象
 
 FOR LCOUNT, 1, CHARANUM
-	SIF LCOUNT == ARG
+	SIF LCOUNT == 対象
 		CONTINUE
-	IF CSTR:ARG:配属 == CSTR:LCOUNT:配属
-		相性 = 相性値(ARG, LCOUNT)
+	IF CSTR:対象:配属 == CSTR:LCOUNT:配属
+		相性 = 相性値(対象, LCOUNT)
 		IF 相性 > 100
 			計算用 += 相性/100
 		ELSEIF 相性 < 100
@@ -505,21 +508,23 @@ NEXT
 RETURNF 計算用
 
 ;指定した配属先に素質「統率」持ちがいるかどうかを確認
-@統率者, ARGS, ARG
+@統率者, 配属先, 対象
 #FUNCTION
 #DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 配属先
+#DIM DYNAMIC 対象
 
 ;娼館のみ同じ部屋のキャラが対象
-IF ARGS == "娼館"
+IF 配属先 == "娼館"
 	FOR LCOUNT, 1, CHARANUM
-		SIF CSTR:LCOUNT:配属 != ARGS
+		SIF CSTR:LCOUNT:配属 != 配属先
 			CONTINUE
-		SIF TALENT:LCOUNT:統率 && CFLAG:LCOUNT:配属完了 && CFLAG:LCOUNT:娼館部屋番号 == ARG
+		SIF TALENT:LCOUNT:統率 && CFLAG:LCOUNT:配属完了 && CFLAG:LCOUNT:娼館部屋番号 == 対象
 			RETURNF 1
 	NEXT
 ELSE
 	FOR LCOUNT, 1, CHARANUM
-		SIF CSTR:LCOUNT:配属 != ARGS
+		SIF CSTR:LCOUNT:配属 != 配属先
 			CONTINUE
 		SIF TALENT:LCOUNT:統率 && CFLAG:LCOUNT:配属完了
 			RETURNF 1
@@ -528,23 +533,25 @@ ENDIF
 
 RETURNF 0
 
-@世話好き人数, ARGS, ARG
+@世話好き人数, 配属先, 対象
 #FUNCTION
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 人数
+#DIMS DYNAMIC 配属先
+#DIM DYNAMIC 対象
 
 ;娼館のみ同じ部屋のキャラが対象
-IF ARGS == "娼館"
+IF 配属先 == "娼館"
 	FOR LCOUNT, 1, CHARANUM
-		SIF CSTR:LCOUNT:配属 != ARGS
+		SIF CSTR:LCOUNT:配属 != 配属先
 			CONTINUE
-		SIF TALENT:LCOUNT:世話好き && CFLAG:LCOUNT:配属完了 && CFLAG:LCOUNT:娼館部屋番号 == ARG
+		SIF TALENT:LCOUNT:世話好き && CFLAG:LCOUNT:配属完了 && CFLAG:LCOUNT:娼館部屋番号 == 対象
 			人数++
 	NEXT
 	RETURNF 人数
 ELSE
 	FOR LCOUNT, 1, CHARANUM
-		SIF CSTR:LCOUNT:配属 != ARGS
+		SIF CSTR:LCOUNT:配属 != 配属先
 			CONTINUE
 		SIF TALENT:LCOUNT:世話好き && CFLAG:LCOUNT:配属完了
 			人数++
