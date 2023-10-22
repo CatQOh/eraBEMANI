@@ -204,24 +204,18 @@ CALL COLUMNPRINTL, 0, @"Ver.2023/10/02"
 CALL COLUMNPRINTL, 0, @"TOTAL CHARA {CSVCOUNT}"
 ;CALL COLUMNPRINTL, 0, ""
 
-IF LANGUAGE == "ENG"
+SIF LANGUAGE == "ENG"
 	WINDOW_TITLE = %GAMEBASE_TITLE% {GAMEBASE_VERSION/1000}.{GAMEBASE_VERSION%1000/10} English Version
-	IF !ORIGIN
-		CALL COLUMNPRINT, 0, "Grade:"
-		CALL GRADE, 段位
-		CALL COLUMNPRINTL, 0, ""
-		CALL COLUMNPRINTL, 0, TITLECOMMENT()
-	ENDIF
-ELSE
-	;経営要素をオミットするのももったいないので注意書きを載せつつ使えるようにしてみる
-	IF ORIGIN
+
+;経営要素をオミットするのももったいないので注意書きを載せつつ使えるようにしてみる
+IF ORIGIN
+	SIF LANGUAGE == "JP"
 		CALL COLUMNPRINTL, 0, "※eraOrigin中で表示される収入・支出は全てフレーバー要素です ゲームプレイに影響はありません"
-	ELSE
-		CALL COLUMNPRINT, 0, "現在の段位:"
-		CALL GRADE, 段位
-		CALL COLUMNPRINTL, 0, "" 
-		CALL COLUMNPRINTL, 0, TITLECOMMENT()
-	ENDIF
+ELSE
+	CALL COLUMNPRINT, 0, @"%I18N("現在の段位:")%"
+	CALL GRADE, 段位
+	CALL COLUMNPRINTL, 0, "" 
+	CALL COLUMNPRINTL, 0, TITLECOMMENT()
 ENDIF
 CALL COLUMNDRAWLINE, 0
 
@@ -231,42 +225,27 @@ LDAYS = TOINT(SUBSTRING(GETTIMES(), 8, 2))
 誕生日人数 = 0
 ;グリムキャラが全員誕生日2月21日なのでUI破壊対策
 IF LMONTH == 2 && LDAYS == 21
-	IF LANGUAGE == "ENG"
-		CALL COLUMNPRINTL, 0, "Today is Grim characters birthday."
-	ELSE
-		CALL COLUMNPRINTL, 0, "今日はグリムキャラ（QMA）の誕生日です"
-	ENDIF
+	CALL COLUMNPRINTL, 0, @"%I18N("今日はグリムキャラ（QMA）の誕生日です")%"
 	誕生日人数++
 ENDIF
 FOR LCOUNT, 0, 10000
 	SIF !EXISTCSV(LCOUNT)
 		CONTINUE
 	IF CSVCFLAG(LCOUNT, GETNUM(CFLAG, "誕生日"))/100 == LMONTH && CSVCFLAG(LCOUNT, 0)%100 == LDAYS && !CSVCFLAG(LCOUNT, GETNUM(CFLAG, "グリム"))
-		IF LANGUAGE == "ENG"
-			CALL COLUMNPRINTL, 0, @"Today is %CSVENGNAME(LCOUNT)%'s birthday."
-		ELSE
-			CALL COLUMNPRINTL, 0, @"今日は%CSVNAMEF(LCOUNT)%の誕生日です"
-		ENDIF
+		CALL COLUMNPRINTL, 0, @"%I18N("今日は|0|の誕生日です",, CSVNAMEDISP(LCOUNT))%"
 		誕生日人数++
 	ENDIF
 NEXT
 IF 誕生日人数
-	IF LANGUAGE == "ENG"
-		CALL COLUMNPRINTL, 0, "Happy Birthday!"
-	ELSE
-		CALL COLUMNPRINTL, 0, "ハッピーバースデー！"
-	ENDIF
+	CALL COLUMNPRINTL, 0, @"　%I18N("ハッピーバースデー！")%"
+	CALL COLUMNDRAWLINE, 0
 ENDIF
 誕生日人数 = 0
 
 CALL COLUMNPRINTL, 0, ""
-IF LANGUAGE == "ENG"
-	CALL COLUMNPRINTL, 0, "[0] New Game"
-ELSE
-	CALL COLUMNPRINTL, 0, "[0] 最初から始める"
-ENDIF
+CALL COLUMNPRINTL, 0, @"[0] %I18N("最初から始める")%"
 SIF !ORIGIN
-	CALL COLUMNPRINTL, 0, "[1] チュートリアルを受ける"
+	CALL COLUMNPRINTL, 0, @"[1] %I18N("チュートリアルを受ける")%"
 
 @タイトル_インフォメーション_INPUT
 SELECTCASE CRESULT:1
@@ -288,8 +267,8 @@ ENDSELECT
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 最新セーブ, 2
 #DIMS DYNAMIC SPLITVAR, 2
-CALL COLUMNPRINTL, 0, "□何番をロードしますか？"
-CALL COLUMNPRINTL, 0, "　[--]　　　 現実の時間　　　　|　　　ゲーム内の時間"
+CALL COLUMNPRINTL, 0, @"%I18N("□何番をロードしますか？")%"
+CALL COLUMNPRINTL, 0, @"　[--]　　　 %I18N("現実の時間")%　　　　|　　　%I18N("ゲーム内の時間")%"
 
 FOR LCOUNT, SHOP_セーブページ*20, SHOP_セーブページ*20+20
 	SELECTCASE CHKDATA(LCOUNT)
@@ -298,11 +277,11 @@ FOR LCOUNT, SHOP_セーブページ*20, SHOP_セーブページ*20+20
 		CASE 1
 			CALL COLUMNPRINTL, 0, @"　[--] ----　　　　　　　　　　|", "gray"
 		CASE 2
-			CALL COLUMNPRINTL, 0, @"　[--] 別バリアントのセーブデータです", "gray"
+			CALL COLUMNPRINTL, 0, @"　[--] %I18N("別バリアントのセーブデータです")%", "gray"
 		CASE 3
-			CALL COLUMNPRINTL, 0, @"　[--] 互換性の無いセーブデータです", "gray"
+			CALL COLUMNPRINTL, 0, @"　[--] %I18N("互換性の無いセーブデータです")%", "gray"
 		CASE 4
-			CALL COLUMNPRINTL, 0, @"　[--] ロードできないセーブデータです", "gray"
+			CALL COLUMNPRINTL, 0, @"　[--] %I18N("ロードできないセーブデータです")%", "gray"
 	ENDSELECT
 NEXT
 CALL COLUMNDRAWLINE, 0
@@ -325,8 +304,8 @@ FOR LCOUNT, 94, 100
 NEXT
 CALL COLUMNDRAWLINE, 0
 
-CALL COLUMNPRINT, 0, @"%RETURNSPACE(SHOP_セーブページ > 0, "[101] 前ページ ")%"
-CALL COLUMNPRINT, 0, @"%RETURNSPACE(SHOP_セーブページ < 3, "[109] 次ページ")%"
+CALL COLUMNPRINT, 0, @"%RETURNSPACE(SHOP_セーブページ > 0, @"[101] %I18N("前ページ")% ")%"
+CALL COLUMNPRINT, 0, @"%RETURNSPACE(SHOP_セーブページ < 3, @"[109] %I18N("次ページ")%")%"
 CALL COLUMNPRINTL, 0, ""
 
 @タイトル_セーブデータのロード_INPUT
@@ -350,15 +329,9 @@ SELECTCASE CRESULT:1
 ENDSELECT
 
 @タイトル_エディター
-IF LANGUAGE == "ENG"
-	CALL COLUMNPRINTL, 0, "[0] Run CSV Editor"
-	SIF !SP
-		CALL COLUMNPRINTL, 0, "[1] Run Dialog Editor"
-ELSE
-	CALL COLUMNPRINTL, 0, "[0] CSVエディターを開く"
-	SIF !SP
-		CALL COLUMNPRINTL, 0, @"[1] 口上エディタ"
-ENDIF
+CALL COLUMNPRINTL, 0, @"[0] %I18N("CSVエディターを開く")%"
+SIF !SP
+	CALL COLUMNPRINTL, 0, @"[1] %I18N("口上エディタ")%"
 
 @タイトル_エディター_INPUT
 SELECTCASE CRESULT:1
@@ -371,32 +344,18 @@ SELECTCASE CRESULT:1
 ENDSELECT
 
 @タイトル_設定
-IF LANGUAGE == "ENG"
-	CALL COLUMNPRINTL, 0, "[0] Option Preset"
-	SIF !SP
-		CALL COLUMNPRINTL, 0, @"[1] Sound&amp;BGM(Now:\@ サウンド == 1 ? On # Off \@)"
-	CALL COLUMNPRINTL, 0, "[2] Change Language - 言語変更"
-	IF QMA
-		CALL COLUMNPRINTL, 0, "[4] Set eraBEMANI mode"
-	ELSE
-		CALL COLUMNPRINTL, 0, "[4] Set eraQMA mode"
-	ENDIF
-	CALL COLUMNPRINTL, 0, @"[5] Enable GUI(Now:\@ GUI ? On # Off \@)"
-	CALL COLUMNPRINTL, 0, @"　　[6] Change GUI Color"
+CALL COLUMNPRINTL, 0, @"[0] %I18N("オプションの初期設定を変更する")%"
+	CALL COLUMNPRINTL, 0, @"[1] %I18N("サウンド再生機能(現在:")%\@ サウンド ? %I18N("オン")% # %I18N("オフ")% \@)"
+CALL COLUMNPRINTL, 0, @"[2] %I18N("言語変更 - Change Language")%"
+SIF !SP
+	CALL COLUMNPRINTL, 0, @"[3] %I18N("アップデートをチェックする")%"
+IF QMA
+	CALL COLUMNPRINTL, 0, @"[4] %I18N("eraBEMANI仕様に戻す")%"
 ELSE
-	CALL COLUMNPRINTL, 0, "[0] オプションの初期設定を変更する"
-		CALL COLUMNPRINTL, 0, @"[1] サウンド再生機能(現在:\@ サウンド == 1 ? オン # オフ \@)"
-	CALL COLUMNPRINTL, 0, "[2] 言語変更 - Change Language"
-	SIF !SP
-		CALL COLUMNPRINTL, 0, "[3] アップデートをチェックする"
-	IF QMA
-		CALL COLUMNPRINTL, 0, "[4] eraBEMANI仕様に戻す"
-	ELSE
-		CALL COLUMNPRINTL, 0, "[4] eraQMA仕様にする"
-	ENDIF
-	CALL COLUMNPRINTL, 0, @"[5] GUIを有効にする(現在:\@ GUI ? オン # オフ \@)"
-	CALL COLUMNPRINTL, 0, @"　　[6] GUIの色変更"
+	CALL COLUMNPRINTL, 0, @"[4] %I18N("eraQMA仕様にする")%"
 ENDIF
+CALL COLUMNPRINTL, 0, @"[5] %I18N("GUIを有効にする(現在:")%\@ GUI ? %I18N("オン")% # %I18N("オフ")% \@)"
+CALL COLUMNPRINTL, 0, @"　　[6] %I18N("GUIの色変更")%"
 
 @タイトル_設定_INPUT
 SELECTCASE CRESULT:1
@@ -439,28 +398,19 @@ ENDSELECT
 ;MOD関連はエクストラMOD.ERBにて
 
 @タイトル_データベース・その他
-IF LANGUAGE == "ENG"
-	IF !ORIGIN
-		;CALL COLUMNPRINTL, 0, "[0] Achievement"
-		SIF MAXARRAY(ENDING, 1, 100) > 0
-			CALL COLUMNPRINTL, 0, "[1] Show Epilogues"
-	ENDIF
-	CALL COLUMNPRINTL, 0, "[2] Show manuals"
-ELSE
-	IF !ORIGIN
-		;CALL COLUMNPRINTL, 0, "[0] アチーブメントを確認する"
-		SIF MAXARRAY(ENDING, 1, 100) > 0
-			CALL COLUMNPRINTL, 0, "[1] エンディングを見る"
-	ENDIF
-	CALL COLUMNPRINTL, 0, "[2] ゲーム内マニュアルを読む"
-	SIF ORIGIN
-		CALL COLUMNPRINTL, 0, "[3] eraOrigin旧バージョンのCSVを再整形する"
+IF !ORIGIN
+	;CALL COLUMNPRINTL, 0, "[0] アチーブメントを確認する"
+	SIF MAXARRAY(ENDING, 1, 100) > 0
+		CALL COLUMNPRINTL, 0, @"[1] %I18N("エンディングを見る")%"
+ENDIF
+CALL COLUMNPRINTL, 0, @"[2] %I18N("ゲーム内マニュアルを読む")%"
+SIF ORIGIN
+	CALL COLUMNPRINTL, 0, "[3] eraOrigin旧バージョンのCSVを再整形する"
 ;	SIF !ORIGIN
 ;		CALL COLUMNPRINTL, 0, "[4] 学園モードデバッグ"
-;#;	SIF !ORIGIN
-;#;		CALL COLUMNPRINTL, 0, "[5] SLGモードデバッグ"
-;#;	CALL COLUMNPRINTL, 0, "[6] レーダーチャートデバッグ"
-ENDIF
+;#;SIF !ORIGIN
+;#;	CALL COLUMNPRINTL, 0, "[5] SLGモードデバッグ"
+;#;CALL COLUMNPRINTL, 0, "[6] レーダーチャートデバッグ"
 
 @タイトル_データベース・その他_INPUT
 SELECTCASE CRESULT:1
