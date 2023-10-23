@@ -6,6 +6,8 @@
 #DIM DYNAMIC 表示数
 #DIMS DYNAMIC 表示用変数, 6
 #DIM DYNAMIC LRESULT
+#DIMS DYNAMIC 種族名, 100
+#DIM DYNAMIC 種族
 
 ADDVOIDCHARA
 ADDVOIDCHARA
@@ -395,9 +397,32 @@ SELECTCASE RESULTS
 		MAXBASE:気力 = RESULT
 		GOTO RESTART
 	CASE "種族"
-		PRINTL 種族名を入力してください
-		INPUTS
-		CSTR:TARGET:種族 = %RESULTS%
+		PRINTL 種族を選択してください
+		VARSET 種族名
+
+		種族 = GETNUM(CSTR, "種族")
+
+		FOR LCOUNT, 1, 10000
+			SIF !EXISTCSV(LCOUNT)
+				CONTINUE
+			;変数「種族名」の配列に該当種族名がまだ入ってない場合は入れる
+			IF CSVCSTR(LCOUNT, 種族) != ""
+				SIF FINDELEMENT(種族名, ESCAPE(CSVCSTR(LCOUNT, 種族)), 0, VARSIZE("種族名"), 1) == -1
+					種族名:FINDELEMENT(種族名, "", 0, VARSIZE("種族名"), 1) = %CSVCSTR(LCOUNT, 種族)%
+			ENDIF
+		NEXT
+
+		;追加の特殊種族
+		種族名:FINDELEMENT(種族名, "", 0, VARSIZE("種族名"), 1) = スライム
+
+		FOR LCOUNT, 0, VARSIZE("種族名")
+			SIF 種族名:LCOUNT == ""
+				BREAK
+			PRINTFORMLC [{LCOUNT}] %I18N(種族名:LCOUNT)%
+		NEXT
+		CALL NEWLINE
+		BINPUT
+		CSTR:種族 = %種族名:RESULT%
 		GOTO RESTART
 	CASE "素質を変更する"
 		CALL TALENT_CHANGE, 素質数値指定, 1
