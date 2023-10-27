@@ -771,6 +771,7 @@ WAIT
 #DIM DYNAMIC 自動投資済
 #DIM DYNAMIC 予算プール
 #DIM DYNAMIC LTARGET
+#DIM DYNAMIC 投資額
 
 SIF !ITEM:牧場 && !ITEM:畜舎 && !ITEM:養蜂場 && !ITEM:生け簀
 	RETURN 0
@@ -846,7 +847,7 @@ ENDIF
 IF ORIGIN
 	リソース:牧場の予算 = 1000000
 	リソース:畜舎の予算 = 1000000
-	リソース:養蜂場の予算 = 100000
+	リソース:養蜂場の予算 = 1000000
 	リソース:生け簀の予算 = 1000000
 	自動投資 = 0
 ENDIF
@@ -887,16 +888,17 @@ FOR LCOUNT, 0, GETNUM(家畜, "蜂")+1
 
 		IF 出費 > リソース:予算プール && 自動投資
 			IF MONEY >= 出費
+				投資額 = MAX(出費, MIN(MONEY/10, 1000000))
 				IF 自動投資報告簡略化
 					SIF !自動投資済
 						PRINTL 畜産業への自動投資を行いました
 					自動投資済 = 1
 				ELSE
-					CALL PASELIL, @"%ERDNAME(家畜, LCOUNT)%の育成費用、{出費}＄をリソース:%ERDNAME(リソース, 予算プール)%に繰り入れました"
+					CALL PASELIL, @"%ERDNAME(家畜, LCOUNT)%の育成費用、{投資額}＄を%ERDNAME(リソース, 予算プール)%に繰り入れました"
 				ENDIF
-				CALL 現金出納帳記録, @"%ERDNAME(家畜, LCOUNT)%の育成費用/-{出費}"
-				MONEY -= 出費
-				リソース:予算プール += 出費
+				CALL 現金出納帳記録, @"%ERDNAME(家畜, LCOUNT)%の育成費用/-{投資額}"
+				MONEY -= 投資額
+				リソース:予算プール += 投資額
 			ELSE
 				PRINTFORML 所持金が足りないため、%ERDNAME(家畜, LCOUNT)%の育成費用への自動投資ができませんでした
 			ENDIF
@@ -994,16 +996,17 @@ IF ITEM:生け簀
 	出費 = 出費*(100-減額率)/100
 	IF 出費 > リソース:生け簀の予算 && 自動投資
 		IF MONEY >= 出費
+			投資額 = MAX(出費, MIN(MONEY/10, 1000000))
 			IF 自動投資報告簡略化
 				SIF !自動投資済
 					PRINTL 畜産業への自動投資を行いました
 				自動投資済 = 1
 			ELSE
-				CALL PASELIL, @"魚の育成費用、{出費}＄をリソース:生け簀の予算に繰り入れました"
+				CALL PASELIL, @"魚の育成費用、{投資額}＄をリソース:生け簀の予算に繰り入れました"
 			ENDIF
-			CALL 現金出納帳記録, @"魚の育成費用/-{出費}"
-			MONEY -= 出費
-			リソース:生け簀の予算 += 出費
+			CALL 現金出納帳記録, @"魚の育成費用/-{投資額}"
+			MONEY -= 投資額
+			リソース:生け簀の予算 += 投資額
 		ELSE
 			PRINTL 所持金が足りないため、魚の育成費用への自動投資ができませんでした
 		ENDIF
