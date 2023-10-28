@@ -761,6 +761,8 @@ DRAWLINE
 ;最大で9万回ループのため重くなりそうなら別の処理を考える
 ;----------------------------------------------------
 @設置済み筐体計算, レイアウトロード:0, レイアウトロード:1
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC 選択階層
 #DIM DYNAMIC X座標
 #DIM DYNAMIC Y座標
@@ -768,6 +770,7 @@ DRAWLINE
 #DIM DYNAMIC レイアウトロード, 2
 
 VARSET 設置済み筐体
+VARSET 階層別設置済み筐体
 
 ;各階層、各マップに設置してある筐体数を計算
 ;オブジェクトナンバーはそれぞれ上下左右の向きで4つ分ある
@@ -779,7 +782,7 @@ FOR 選択階層, 1, GC:階層+1
 			FOR Y座標, 0, 10+GC:広さ
 				IF GCオブジェクト:(レイアウトロード:1):X座標:Y座標
 					筐体NO = (GCオブジェクト:(レイアウトロード:1):X座標:Y座標-1)/4
-					設置済み筐体:筐体NO++
+					階層別設置済み筐体:選択階層:筐体NO++
 				ENDIF
 			NEXT
 		NEXT
@@ -788,11 +791,17 @@ FOR 選択階層, 1, GC:階層+1
 			FOR Y座標, 0, 10+GC:広さ
 				IF GCオブジェクト:選択階層:X座標:Y座標
 					筐体NO = (GCオブジェクト:選択階層:X座標:Y座標-1)/4
-					設置済み筐体:筐体NO++
+					階層別設置済み筐体:選択階層:筐体NO++
 				ENDIF
 			NEXT
 		NEXT
 	ENDIF
+NEXT
+
+FOR LCOUNT, 1, GC:階層+1
+	FOR LCOUNT2, 0, VARSIZE("設置済み筐体")
+		設置済み筐体:LCOUNT2 += 階層別設置済み筐体:LCOUNT:LCOUNT2
+	NEXT
 NEXT
 
 @GC_売上詳細
@@ -861,10 +870,10 @@ RESTART
 #DIM DYNAMIC 来客確率
 #DIM DYNAMIC バッファ終端
 #DIMS DYNAMIC SPLITVAR, 2
-#DIM DYNAMIC バッファ計算用
 #DIM DYNAMIC 注文率
 #DIM DYNAMIC フードコート収入
 #DIM DYNAMIC 給料
+#DIM DYNAMIC 実行回数
 
 CALL 設置済み筐体計算
 
@@ -927,22 +936,19 @@ NEXT
 [SKIPEND]
 
 バッファ終端 = FINDELEMENTF(収入バッファ, "")
+FOR LCOUNT, 0, バッファ終端-1
+	SWAP 収入バッファ:LCOUNT, 収入バッファ:RAND(LCOUNT+1, バッファ終端)
+NEXT
 
 ;一人あたりのバッファ消費量はメンテと評判で決まる 粘着するほどメンテ良いか、長居するほど治安が良いかというイメージ 最大100
 FOR LCOUNT, 0, 来客数*(GC:メンテ/3+1)*MAX(GC:評判/100, 1)
-	SIF バッファ終端 == 0
+	SIF バッファ終端 == LCOUNT
 		BREAK
-	バッファ計算用 = RAND:バッファ終端
-	SPLIT 収入バッファ:バッファ計算用, "/", SPLITVAR
+	SPLIT 収入バッファ:LCOUNT, "/", SPLITVAR
 	収入 += TOINT(SPLITVAR:0)
 	CALL GC_CELL_PLUS, @"%SPLITVAR:1%売上", TOINT(SPLITVAR:0)
 
 	;GC売上:0:(SPLITVAR:1) += TOINT(SPLITVAR:0)
-	;ARRAYREMOVEだと重いので手動
-	FOR LCOUNT2, バッファ計算用, バッファ終端
-		収入バッファ:LCOUNT2 = %収入バッファ:(LCOUNT2+1)%
-	NEXT
-	バッファ終端--
 NEXT
 
 ;フードコートレベルに応じて追加収入
