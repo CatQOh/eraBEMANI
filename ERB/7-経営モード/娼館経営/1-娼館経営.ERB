@@ -2132,8 +2132,16 @@ SIF 適性 > 0
 RETURN 収入
 
 @ソロ売春_地の文
+#DIMS DYNAMIC 口上関数
 IF OPTION:口上表示 && !CFLAG:(BRREP:売春キャラ):口上非表示
-	TRYCCALLFORM BR_PLAY_%CSVNAMERPS(NOF(BRREP:売春キャラ))%
+	;ペア売春との兼ね合いでこれだけフォーマットが違う
+	IF NOF(BRREP:売春キャラ) > 10000
+		口上関数 = 娼館_PLAY_CLONE_%CSVNAMERPS(CFLAG:(BRREP:売春キャラ):複製)%
+		口上関数 = 娼館_PLAY_CHILD_%CSVNAMERPS(CFLAG:(BRREP:売春キャラ):血縁コード/100000)%×%CSVNAMERPS(CFLAG:(BRREP:売春キャラ):血縁コード%100000)%
+	ELSE
+		口上関数 = 娼館_PLAY_%CSVNAMERPS(NOF(BRREP:売春キャラ))%
+	ENDIF
+	TRYCCALLFORM %口上関数%
 	CATCH
 		GOTO NOTKOJO
 	ENDCATCH
@@ -2292,26 +2300,38 @@ ENDIF
 @ペア売春_地の文
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 表示済み
-#DIM DYNAMIC 口上対象, 2
+#DIM DYNAMIC 口上対象, 3
+#DIMS DYNAMIC 口上対象名前, 3
 #DIMS DYNAMIC 口上関数
 
+FOR 口上対象, 1, 3
+	IF CFLAG:(BRREP:@"売春キャラ{口上対象}"):複製
+		口上対象名前:口上対象 = CLONE_%CSVNAMERPS(CFLAG:(BRREP:@"売春キャラ{口上対象}"):複製)%
+	ELSEIF CFLAG:(BRREP:@"売春キャラ{口上対象}"):血縁コード
+		口上対象名前:口上対象 = CHILD_%CSVNAMERPS(CFLAG:(BRREP:@"売春キャラ{口上対象}"):血縁コード/100000)%×%CSVNAMERPS(CFLAG:(BRREP:@"売春キャラ{口上対象}"):血縁コード%100000)%
+	ELSE
+		口上対象名前:口上対象 = %CSVNAMERPS(NOF(BRREP:@"売春キャラ{口上対象}"))%
+	ENDIF
+NEXT
+
+VARSET 口上対象
 IF OPTION:口上表示
-	SIF EXISTFUNCTION(@"BR_PLAY_%CSVNAMERPS(NOF(BRREP:売春キャラ1))%_%CSVNAMERPS(NOF(BRREP:売春キャラ2))%") && !CFLAG:(BRREP:売春キャラ1):口上非表示
-		口上対象:0 = 1
-	SIF EXISTFUNCTION(@"BR_PLAY_%CSVNAMERPS(NOF(BRREP:売春キャラ2))%_%CSVNAMERPS(NOF(BRREP:売春キャラ1))%") && !CFLAG:(BRREP:売春キャラ2):口上非表示
+	SIF EXISTFUNCTION(@"娼館_PLAY_%口上対象名前:1%_%口上対象名前:2%") && !CFLAG:(BRREP:売春キャラ1):口上非表示
 		口上対象:1 = 1
+	SIF EXISTFUNCTION(@"娼館_PLAY_%口上対象名前:2%_%口上対象名前:1%") && !CFLAG:(BRREP:売春キャラ2):口上非表示
+		口上対象:2 = 1
 	;口上があるほうを出す 二人ともあればランダム
-	IF 口上対象:0 && 口上対象:1
+	IF 口上対象:1 && 口上対象:2
 		IF RAND:2
 			$一人目
-			口上関数 = BR_PLAY_%CSVNAMERPS(NOF(BRREP:売春キャラ1))%_%CSVNAMERPS(NOF(BRREP:売春キャラ2))%
+			口上関数 = 娼館_PLAY_%口上対象名前:1%_%口上対象名前:2%
 		ELSE
 			$二人目
-			口上関数 = BR_PLAY_%CSVNAMERPS(NOF(BRREP:売春キャラ2))%_%CSVNAMERPS(NOF(BRREP:売春キャラ1))%
+			口上関数 = 娼館_PLAY_%口上対象名前:2%_%口上対象名前:1%
 		ENDIF
-	ELSEIF 口上対象:0
-		GOTO 一人目
 	ELSEIF 口上対象:1
+		GOTO 一人目
+	ELSEIF 口上対象:2
 		GOTO 二人目
 	ELSE
 		GOTO NOTKOJO

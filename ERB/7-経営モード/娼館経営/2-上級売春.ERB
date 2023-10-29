@@ -32,7 +32,7 @@ FOR LCOUNT, 1, 6
 NEXT
 
 ;5分の1の確率で常連客が来る
-IF RAND:5 == 0
+IF RANDPER(20)
 	FOR LCOUNT, 1, 6
 		IF 常連客:MASTER:LCOUNT
 			DO
@@ -49,22 +49,6 @@ IF RAND:5 == 0
 						PRINTFORMW %CALLNAME:MASTER%の、今日の売春相手は、常連客の%CALLNAME:TARGET%だ
 					ELSE
 						PRINTFORMW %CALLNAME:MASTER%の、今日の売春相手は、常連客の%CSTR:種族%の\@ TALENT:体格 <= 2 ? 幼い #  \@\@TALENT:ふたなり ? ふたなり #  \@\@SEX(TARGET) == 1 ? 男性 # 女性 \@だ
-					ENDIF
-					;経験に応じて感度とかいろいろ上がる
-					ABL:Ｃ感覚 = MAX(ABL:TARGET:Ｃ感覚, LIMIT(EXP:絶頂経験/50, 0, 10))
-					ABL:Ｂ感覚 = MAX(ABL:TARGET:Ｂ感覚, LIMIT(EXP:絶頂経験/50, 0, 10))
-					ABL:Ｖ感覚 = MAX(ABL:TARGET:Ｖ感覚, LIMIT(EXP:Ｖ経験/100, 0, 10))
-					ABL:Ａ感覚 = MAX(ABL:TARGET:Ａ感覚, LIMIT(EXP:Ａ経験/100, 0, 10))
-					ABL:精液中毒 = MAX(ABL:TARGET:精液中毒, LIMIT(EXP:精液経験/300, 0, 10))
-					ABL:ゲイ中毒 = MAX(ABL:TARGET:ゲイ中毒, LIMIT(EXP:ゲイ経験/300, 0, 10))
-					ABL:レズ中毒 = MAX(ABL:TARGET:レズ中毒, LIMIT(EXP:レズ経験/300, 0, 10))
-					ABL:自慰中毒 = MAX(ABL:TARGET:自慰中毒, LIMIT(EXP:自慰経験/300, 0, 10))
-					ABL:奉仕精神 = MAX(ABL:TARGET:奉仕精神, LIMIT(EXP:奉仕快楽経験/200, 0, 10))
-					ABL:性交中毒 = MAX(ABL:TARGET:性交中毒, LIMIT(EXP:性交経験/300, 0, 10))
-					ABL:マゾっ気 = MAX(ABL:TARGET:マゾっ気, LIMIT(EXP:苦痛快楽経験/300, 0, 10))
-					IF JUEL:習得 >= PALAMLV:(ABL:技巧)
-						JUEL:習得 -= PALAMLV:(ABL:技巧)
-						ABL:技巧++
 					ENDIF
 					;PALAMは初期化
 					VARSET PALAM:TARGET:0, 0
@@ -90,34 +74,29 @@ ASSI = -1
 NAME:TARGET = 売春相手
 CALLNAME:TARGET = 売春相手
 
-PRINTFORM %CALLNAME:MASTER%の、今日の売春相手は
+PRINTFORM %CALLNAME:MASTER%の今日の売春相手は
 
 SELECTCASE RAND:6
 	CASE 0
-		PRINT 人間の
 		CSTR:種族 = 人間
 	CASE 1
-		PRINT 精霊の
 		CSTR:種族 = 精霊
 	CASE 2
-		PRINT 悪魔の
 		CSTR:種族 = 悪魔
 	CASE 3
-		PRINT 鳳凰の
 		CSTR:種族 = 鳳凰
 		TALENT:羽 = 1
 	CASE 4
-		PRINT 獣人の
 		CSTR:種族 = 獣人
 		TALENT:動物耳 = 1
 		TALENT:尻尾 = 1
 		;5分の1でもふもふ
-		SIF RAND:5 == 0
+		SIF RANDPER(20)
 			TALENT:ファーリー = 1
 	CASE 5
-		PRINT 人魚の
 		CSTR:種族 = 人魚
 ENDSELECT
+PRINTFORM %CSTR:種族%の
 
 ;欲望は常に5
 ABL:欲望 = 5
@@ -128,7 +107,7 @@ ABL:奉仕精神 = 1
 ;技巧はランダム
 ABL:技巧 = RAND(1, 6)
 
-IF RAND:4 == 0
+IF RANDPER(25)
 	PRINT 幼い
 	TALENT:体格 = RAND(1, 3)
 	;子供は技巧を消して従順と奉仕精神に割り振る
@@ -211,9 +190,15 @@ IF TALENT:性別 == TALENT:MASTER:性別
 	ENDSELECT
 ENDIF
 
-;ふたなり指名の場合は3分の1で男好き
-SIF RAND:3 == 0 && TALENT:PLAYER:ふたなり
-	TALENT:男好き = 1
+;ふたなり指名の場合は3分の1でもう片方の素質
+IF RANDPER(33) && TALENT:PLAYER:ふたなり
+	SELECTCASE SEX(PLAYER)
+		CASE 1
+			TALENT:女好き = 1
+		CASE 2
+			TALENT:男好き = 1
+	ENDSELECT
+ENDIF
 
 ;両方付いた場合は両刀にする
 IF TALENT:男好き && TALENT:女好き
@@ -695,8 +680,17 @@ ENDSELECT
 
 $START
 
-;口上呼び出し
-TRYCALLFORM BR_上級売春開始時_%CSVNAMERPS(NOF(MASTER))%
+;口上呼び出し TARGETに客が入っているので共通関数は使わない
+IF OPTION:口上表示 && !CFLAG:MASTER:口上非表示
+	IF NOF(MASTER) > 10000
+		TRYCALLLIST
+			FUNC CLONE_娼館_上級売春開始時_%CSVNAMERPS(CFLAG:MASTER:複製)%
+			FUNC CHILD_娼館_上級売春開始時_%CSVNAMERPS(CFLAG:MASTER:血縁コード/100000)%×%CSVNAMERPS(CFLAG:MASTER:血縁コード%100000)%
+		ENDFUNC
+	ELSE
+		TRYCALLFORM 娼館_上級売春開始時_%CSVNAMERPS(NOF(MASTER))%
+	ENDIF
+ENDIF
 
 CALL EVENTUSERTRAIN
 DO
@@ -725,40 +719,13 @@ DO
 ;4だと満足した状態 3だと満足してない状態
 LOOP 上級売春中 < 3
 
-;習得の珠加算
-SELECTCASE GETPALAMLV(PALAM:習得, 10)
-	CASE 0
-	CASE 1
-		IF PALAM:習得 < PALAMLV:1*3
-			JUEL:習得 += 1
-		ELSE
-			JUEL:習得 += 2
-		ENDIF
-	CASE 2
-		IF PALAM:習得 < PALAMLV:2*3
-			JUEL:習得 += 10
-		ELSE
-			JUEL:習得 += 20
-		ENDIF
-	CASE 3
-		IF PALAM:習得 < PALAMLV:3*2
-			JUEL:習得 += 100
-		ELSE
-			JUEL:習得 += 200
-		ENDIF
-	CASE 5
-		JUEL:習得 += 1000
-	CASE 6
-		JUEL:習得 += 2000
-	CASE 7
-		JUEL:習得 += 3000
-	CASE 8
-		JUEL:習得 += 5000
-	CASE 9
-		JUEL:習得 += 8000
-	CASEELSE
-		JUEL:習得 += PALAM:習得/20
-ENDSELECT
+;珠の獲得（快と習得だけ加算される）
+CALL JUEL_GETTING, 1
+
+;能力の自動上昇処理は学園と共通
+SKIPDISP 1
+CALL SCHOOL_ABLUP, TARGET, 0
+SKIPDISP 0
 
 総収入計算用 = TFLAG:上級売春収入値+(TFLAG:上級売春収入値*BR:レベル/10)
 
@@ -1322,7 +1289,7 @@ SELECTCASE SELECTCOMS
 			TFLAG:満足度 += 20
 			TFLAG:上級売春収入値 += 300
 		ENDIF
-	CASE "手淫", "フェラチオ", "パイズリ", "パイズリフェラ", "素股", "縦パイズリ", "兜合わせ", "貝合わせ", "下着扱き", "イラマチオ", "素股する"
+	CASE "手淫", "フェラチオ", "パイズリ", "パイズリフェラ", "素股", "縦パイズリ", "兜合わせ", "貝あわせ", "下着扱き", "イラマチオ", "素股する"
 		TFLAG:満足度 += 15+性格レベル/2
 		TFLAG:上級売春収入値 += 300
 		IF NOWEX:PLAYER:射精

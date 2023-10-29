@@ -12,10 +12,7 @@
 ;--------------------------------------------------
 @KOJO_MESSAGE_COM
 #DIMS DYNAMIC ゲームセンター口上あり
-
-;ゲームセンターコマンド選択時、店長の経営用口上を確認する
-SIF SELECTCOMS == "ゲームセンター" && FINDCHARA(CFLAG:ゲーセン店長, 1) > 0
-	ゲームセンター口上あり = PARTNER_COM_ゲームセンター_%CSVNAMERPS(NOF(FINDCHARA(CFLAG:ゲーセン店長, 1)))%
+#DIM DYNAMIC 店長
 
 ;口上の優先度 TARGETの口上→MASTERの口上→ゲームセンターコマンド口上→地の文
 IF OPTION:口上表示 && !CFLAG:口上非表示
@@ -40,6 +37,18 @@ IF OPTION:口上表示 && !CFLAG:口上非表示
 			ENDFUNC
 		ENDIF
 	ENDIF
+ENDIF
+;TARGETの口上が呼ばれていない場合、ゲームセンターコマンドなら店長の判定
+IF SELECTCOMS == "ゲームセンター" && FINDCHARA(CFLAG:ゲーセン店長, 1) > 0
+	店長 = FINDCHARA(CFLAG:ゲーセン店長, 1)
+	IF CFLAG:店長:複製
+		ゲームセンター口上あり = CLONE_ゲームセンター_COM_%CSVNAMERPS(CFLAG:店長:複製)%
+	ELSEIF CFLAG:店長:血縁コード
+		ゲームセンター口上あり = CHILD_ゲームセンター_COM_%CSVNAMERPS(CFLAG:店長:血縁コード/100000)%×%CSVNAMERPS(CFLAG:店長:血縁コード%100000)%
+	ELSE
+		ゲームセンター口上あり = ゲームセンター_COM_%CSVNAMERPS(NOF(店長))%
+	ENDIF
+	TRYJUMPFORM %ゲームセンター口上あり%
 ENDIF
 
 SIF OPTION:口上表示
@@ -547,11 +556,56 @@ SIF OPTION:口上表示 && !CFLAG:口上非表示
 
 ;-------------------------------------------------
 ;@KOJO_STRATEGY
-;経営用口上
+;経営用口上の管理用関数 パートナー限定口上やその他挙動が特殊なものはこの関数を通さず直接呼ぶ
 ;-------------------------------------------------
-;@KOJO_STRATEGY, ARGS
-;SIF OPTION:口上表示
-;	TRYCALLFORM %ARGS%
+@KOJO_STRATEGY, 対象, 施設名, イベント名, 付帯情報:0, 付帯情報:1, 付帯情報:2
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 施設名
+#DIMS DYNAMIC イベント名
+#DIM DYNAMIC LTARGET
+#DIM DYNAMIC 付帯情報, 3
+
+SIF !OPTION:口上表示 || CFLAG:口上非表示
+	RETURN
+
+LTARGET = TARGET
+TARGET = 対象
+RESULT = 0
+
+;付帯情報が発生する口上を分ける
+IF (GROUPMATCH(施設名, "ゲームセンター", "飲食店") && イベント名 == "ASSIGNLEADER") || (施設名 == "ゲームセンター" && イベント名 == "TURNEND")
+	;ASSIGNLEADERは0に現店長の番号、1に元店長の番号 ゲーセンのTURNENDは収入と支出
+	IF NOF(TARGET) > 10000
+		TRYCALLLIST
+			FUNC CLONE_%施設名%_%イベント名%_%CSVNAMERPS(CFLAG:TARGET:複製)%, 付帯情報:0, 付帯情報:1
+			FUNC CHILD_%施設名%_%イベント名%_%CSVNAMERPS(CFLAG:血縁コード/100000)%×%CSVNAMERPS(CFLAG:血縁コード%100000)%, 付帯情報:0, 付帯情報:1
+		ENDFUNC
+	ELSE
+		TRYCALLFORM %施設名%_%イベント名%_%CSVNAMERPS(NOF(TARGET))%, 付帯情報:0, 付帯情報:1
+	ENDIF
+ELSEIF 施設名 == "飲食店" && イベント名 == "TURNEND"
+	;飲食店のTURNENDは収入支出に加えて来客数が入る
+	IF NOF(TARGET) > 10000
+		TRYCALLLIST
+			FUNC CLONE_%施設名%_%イベント名%_%CSVNAMERPS(CFLAG:TARGET:複製)%, 付帯情報:0, 付帯情報:1, 付帯情報:2
+			FUNC CHILD_%施設名%_%イベント名%_%CSVNAMERPS(CFLAG:血縁コード/100000)%×%CSVNAMERPS(CFLAG:血縁コード%100000)%, 付帯情報:0, 付帯情報:1, 付帯情報:2
+		ENDFUNC
+	ELSE
+		TRYCALLFORM %施設名%_%イベント名%_%CSVNAMERPS(NOF(TARGET))%, 付帯情報:0, 付帯情報:1, 付帯情報:2
+	ENDIF
+ELSE
+	IF NOF(TARGET) > 10000
+		TRYCALLLIST
+			FUNC CLONE_%施設名%_%イベント名%_%CSVNAMERPS(CFLAG:TARGET:複製)%
+			FUNC CHILD_%施設名%_%イベント名%_%CSVNAMERPS(CFLAG:血縁コード/100000)%×%CSVNAMERPS(CFLAG:血縁コード%100000)%
+		ENDFUNC
+	ELSE
+		TRYCALLFORM %施設名%_%イベント名%_%CSVNAMERPS(NOF(TARGET))%
+	ENDIF
+ENDIF
+
+TARGET = LTARGET
+RETURN RESULT
 
 ;-------------------------------------------------
 ;@DISABLE
