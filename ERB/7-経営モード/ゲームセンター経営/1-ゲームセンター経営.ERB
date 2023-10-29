@@ -873,6 +873,7 @@ RESTART
 #DIM DYNAMIC 来客数
 #DIM DYNAMIC 来客確率
 #DIM DYNAMIC バッファ終端
+#DIMS DYNAMIC SWAP用バッファ
 #DIMS DYNAMIC SPLITVAR, 2
 #DIM DYNAMIC 注文率
 #DIM DYNAMIC フードコート収入
@@ -938,9 +939,17 @@ FOR LCOUNT, 6, -1, -1
 NEXT
 [SKIPEND]
 
-バッファ終端 = FINDELEMENTF(収入バッファ, "")
+;バッファの使用量を取得してSWAPかける処理は手動のほうが軽い
+FOR LCOUNT, 0, VARSIZE("収入バッファ")
+	IF 収入バッファ:LCOUNT == ""
+		バッファ終端 = LCOUNT
+		BREAK
+	ENDIF
+NEXT
 FOR LCOUNT, 0, バッファ終端-1
-	SWAP 収入バッファ:LCOUNT, 収入バッファ:RAND(LCOUNT+1, バッファ終端)
+	SWAP用バッファ = %収入バッファ:LCOUNT%
+	収入バッファ:LCOUNT = %収入バッファ:RAND(LCOUNT+1, バッファ終端)%
+	収入バッファ:RAND(LCOUNT+1, バッファ終端) = %SWAP用バッファ%
 NEXT
 
 ;一人あたりのバッファ消費量はメンテと評判で決まる 粘着するほどメンテ良いか、長居するほど治安が良いかというイメージ 最大100
@@ -950,7 +959,6 @@ FOR LCOUNT, 0, 来客数*(GC:メンテ/3+1)*MAX(GC:評判/100, 1)
 	SPLIT 収入バッファ:LCOUNT, "/", SPLITVAR
 	収入 += TOINT(SPLITVAR:0)
 	CALL GC_CELL_PLUS, @"%SPLITVAR:1%売上", TOINT(SPLITVAR:0)
-
 	;GC売上:0:(SPLITVAR:1) += TOINT(SPLITVAR:0)
 NEXT
 
