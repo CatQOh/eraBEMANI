@@ -259,6 +259,7 @@ ENDSELECT
 #DIM DYNAMIC LCOUNTY
 #DIM DYNAMIC ID
 #DIMS DYNAMIC 性器種別
+#DIM DYNAMIC Quietフラグ
 
 ;GOTO CREATE_CORPSE
 
@@ -323,7 +324,11 @@ FOR LCOUNT, 1, CHARANUM
 		CONTINUE
 	CALLF 加工技術, LCOUNT
 	加工者 += CALLNAME:LCOUNT+"、"
+	SIF CHARANAMEF(LCOUNT) == "ジズ"
+		Quietフラグ = 1
 NEXT
+SIF !CMATCH(CSTR:配属, "博物館") && CHARANAMEF(MASTER) == "ジズ"
+	Quietフラグ = 1
 加工者 = %SUBSTRINGU(加工者, 0, STRLENSU(加工者)-1)%
 PRINTFORML 　合計:{加工技術合計()}
 PRINTL 
@@ -412,6 +417,7 @@ SELECTCASE RESULT
 		ELSE
 			CSTR:対象:ロスト詳細 = %CALLNAME:MASTER%の手で透明標本に加工された
 		ENDIF
+
 		CALL CLEAR_CHARA, 対象, 0, 1, 1
 		RETURN 1
 	CASE 10
@@ -439,6 +445,8 @@ SELECTCASE RESULT
 				CSTR:対象:ロスト詳細 = %CALLNAME:MASTER%の手により魂を失い動かなくなった
 			ENDIF
 		ENDIF
+		SIF Quietフラグ && CHARANAMEF(対象) == "ALT"
+			CALL 実績解除, "Quiet"
 		CALL CLEAR_CHARA, 対象, 0, 1, 1
 		RETURN 1
 ENDSELECT

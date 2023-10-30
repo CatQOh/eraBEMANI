@@ -916,6 +916,7 @@ RETURN
 #DIMS DYNAMIC アイテム名
 #DIM DYNAMIC 回復量
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LRESULT
 
 ;口上表示
 CALL KOJO_USE_ITEM, アイテム名, 使用対象
@@ -1192,26 +1193,26 @@ SELECTCASE アイテム名
 		CALL SE再生, 神聖
 		IF CHARANAMEF(使用対象) == "ハート"
 			IF TRANCERACE:使用対象:0 == ""
-				;実績ほしい
 				PRINTFORMW ＜ハートは時が巻き戻り、自らの肉体を取り戻した＞
 				TALENT:使用対象:猫 = 1
 				TALENT:使用対象:動物耳 = 1
 				TALENT:使用対象:尻尾 = 1
 				TALENT:使用対象:ファーリー = 1
 				TALENT:使用対象:足使用不可 = 0
-				TRANCE:使用対象:TALENTF("猫") = 1
-				TRANCE:使用対象:TALENTF("動物耳") = 1
-				TRANCE:使用対象:TALENTF("尻尾") = 1
-				TRANCE:使用対象:TALENTF("ファーリー") = 1
-				TRANCE:使用対象:TALENTF("足使用不可") = 1
+				INVERTBIT TRANCE:使用対象:TALENTF("猫"), 0
+				INVERTBIT TRANCE:使用対象:TALENTF("動物耳"), 0
+				INVERTBIT TRANCE:使用対象:TALENTF("尻尾"), 0
+				INVERTBIT TRANCE:使用対象:TALENTF("ファーリー"), 0
+				INVERTBIT TRANCE:使用対象:TALENTF("足使用不可"), 0
 				TRANCERACE:使用対象:0 = %CSTR:使用対象:種族%
 				CSTR:使用対象:種族 = 獣
 				IF GETCHARANAME("マッドラット") >= 0
 					PRINTFORMW マッドラットの心機能が低下しました
 					TALENT:GETCHARANAME("マッドラット"):回復早い = 0
 					TALENT:GETCHARANAME("マッドラット"):回復遅い = 1
-					TRANCE:GETCHARANAME("マッドラット"):TALENTF("回復早い") = 1
-					TRANCE:GETCHARANAME("マッドラット"):TALENTF("回復遅い") = 1
+					INVERTBIT TRANCE:GETCHARANAME("マッドラット"):TALENTF("回復早い"), 0
+					INVERTBIT TRANCE:GETCHARANAME("マッドラット"):TALENTF("回復遅い"), 0
+					CALL 実績解除, "ハート、おれの心臓"
 				ENDIF
 			ELSE
 				PRINTFORMW ＜ハートは再び肉体を失い、心臓の姿になった＞
@@ -1220,39 +1221,60 @@ SELECTCASE アイテム名
 				TALENT:使用対象:尻尾 = 0
 				TALENT:使用対象:ファーリー = 0
 				TALENT:使用対象:足使用不可 = 1
-				TRANCE:使用対象:TALENTF("猫") = 0
-				TRANCE:使用対象:TALENTF("動物耳") = 0
-				TRANCE:使用対象:TALENTF("尻尾") = 0
-				TRANCE:使用対象:TALENTF("ファーリー") = 0
-				TRANCE:使用対象:TALENTF("足使用不可") = 0
+				INVERTBIT TRANCE:使用対象:TALENTF("猫"), 0
+				INVERTBIT TRANCE:使用対象:TALENTF("動物耳"), 0
+				INVERTBIT TRANCE:使用対象:TALENTF("尻尾"), 0
+				INVERTBIT TRANCE:使用対象:TALENTF("ファーリー"), 0
+				INVERTBIT TRANCE:使用対象:TALENTF("足使用不可"), 0
 				CSTR:使用対象:種族 = %TRANCERACE:使用対象:0%
 				TRANCERACE:使用対象:0 = 
 				IF GETCHARANAME("マッドラット") >= 0
 					PRINTFORMW マッドラットの心機能が回復しました
 					TALENT:GETCHARANAME("マッドラット"):回復早い = 1
 					TALENT:GETCHARANAME("マッドラット"):回復遅い = 0
-					TRANCE:GETCHARANAME("マッドラット"):TALENTF("回復早い") = 0
-					TRANCE:GETCHARANAME("マッドラット"):TALENTF("回復遅い") = 0
+					INVERTBIT TRANCE:GETCHARANAME("マッドラット"):TALENTF("回復早い"), 0
+					INVERTBIT TRANCE:GETCHARANAME("マッドラット"):TALENTF("回復遅い"), 0
 				ENDIF
 			ENDIF
 		ELSE
-			IF TALENT:使用対象:体格 <= 2
-				PRINTFORMW ＜%CALLNAME:使用対象%は立派な大人の体になった＞
-				TALENT:使用対象:体格 = 3
-				IF SEX(使用対象) == 2
-					SIF TALENT:使用対象:バストサイズ != 6 || MOD:バストサイズ限界突破
-						TALENT:使用対象:バストサイズ++
-				ENDIF
-				MAXBASE:使用対象:体力 += 200
-				BASE:使用対象:体力 += 200
-			ELSE
-				PRINTFORMW ＜%CALLNAME:使用対象%は\@ SEX(使用対象) == 1 ? 少年 # 幼女 \@のような小さな体になった＞
-				TALENT:使用対象:体格 = 2
-				SIF SEX(使用対象) == 2 && TALENT:使用対象:バストサイズ != 1
+			PRINTFORML %CALLNAME:使用対象%の肉体年齢をどのくらいにしますか？
+			SIF TALENT:使用対象:体格 != 1
+				PRINTL [1] 小さな子供
+			SIF TALENT:使用対象:体格 != 2
+				PRINTL [2] まだ未成熟な年齢
+			SIF TALENT:使用対象:体格 != 3
+				PRINTL [3] 普通の成人相当
+			SIF TALENT:使用対象:体格 != 4
+				PRINTL [4] とにかくでっかくする
+			BINPUT
+			LRESULT = RESULT
+			SELECTCASE LRESULT
+				CASE 1
+					PRINTFORMW ＜%CALLNAME:使用対象%は年端もいかない子供のような小さな体になった＞
+				CASE 2
+					IF TALENT:使用対象:体格 < 2
+						PRINTFORMW ＜%CALLNAME:使用対象%の体はほんの少しだけ大人に近付いた＞
+					ELSE
+						PRINTFORMW ＜%CALLNAME:使用対象%は未成熟な\@ SEX(使用対象) == 1 ? 少年 # 少女 \@の体になった＞
+					ENDIF
+				CASE 3
+					IF TALENT:使用対象:体格 < 3
+						PRINTFORMW ＜%CALLNAME:使用対象%は立派な大人の体になった＞
+					ELSE
+						PRINTFORMW ＜%CALLNAME:使用対象%の体は少し小柄になった＞
+					ENDIF
+				CASE 4
+					PRINTFORMW ＜%CALLNAME:使用対象%の体は\@ TALENT:MASTER:体格 == 4 ? %CALLNAME:MASTER%と同じくらいまで # %CALLNAME:MASTER%を見下ろすほど \@大きくなった＞
+			ENDSELECT
+			IF SEX(使用対象) == 2 || MOD:バストサイズ男性対象
+				SIF TALENT:使用対象:バストサイズ < 6 && LRESULT-TALENT:使用対象:体格 > 0
+					TALENT:使用対象:バストサイズ++
+				SIF TALENT:使用対象:バストサイズ > 1 && LRESULT-TALENT:使用対象:体格 < 0
 					TALENT:使用対象:バストサイズ--
-				MAXBASE:使用対象:体力 -= 200
-				BASE:使用対象:体力 -= 200
 			ENDIF
+			MAXBASE:使用対象:体力 += (LRESULT-TALENT:使用対象:体格)*100
+			BASE:使用対象:体力 += (LRESULT-TALENT:使用対象:体格)*100
+			TALENT:使用対象:体格 = LRESULT
 		ENDIF
 		CFLAG:使用対象:ストレス値 += 100
 	;永続的利尿剤
