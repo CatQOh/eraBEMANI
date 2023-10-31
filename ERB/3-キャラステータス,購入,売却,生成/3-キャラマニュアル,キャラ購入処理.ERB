@@ -7,25 +7,17 @@
 #DIM DYNAMIC 対象
 
 IF GETCHARA(対象) > 0
-	IF LANGUAGE == "ENG"
-		PRINTFORMW %CSVENGNAME(対象)% was been unlocked.
-	ELSE
-		PRINTFORMW %CSVNAMEF(対象)%は既に購入されています
-	ENDIF
+	PRINTFORMW %I18N("|0|は既に購入されています", , CSVNAMEDISP(対象))%
 	RETURN 1
 ELSEIF CCB:対象
-	IF LANGUAGE == "ENG"
-		PRINTFORMW %CSVENGNAME(対象)% is can't unlock.
-	ELSE
-		PRINTFORMW %CSVNAMEF(対象)%は購入できません
-	ENDIF
+	PRINTFORMW %I18N("|0|は購入できません", , CSVNAMEDISP(対象))%
 	RETURN 1
 ELSEIF 対象 == NOF(MASTER)
 	RETURN 1
 ENDIF
 
-IF LANGUAGE == "ENG"
-	PRINTFORML 【%CSVENGNAME(対象)%（%CSVNAMEF(対象)%）】
+IF LANGUAGE != "JP"
+	PRINTFORML 【%CSVNAMEDISP(対象)%（%CSVNAMEF(対象)%）】
 ELSE
 	FOR LCOUNT, 0, 100
 		SIF CSVCSTR(対象, LCOUNT) == ""
@@ -34,7 +26,14 @@ ELSE
 		CALL NEWLINE
 	NEXT
 ENDIF
-PRINTFORML 登場作品：「%CSVCSTR(対象, GETNUM(CSTR, "登場作品"))%」\@ CSVCSTR(対象, GETNUM(CSTR, "登場作品２")) != "" ? 「%CSVCSTR(対象, GETNUM(CSTR, "登場作品２"))%」 #\@\@ CSVCSTR(対象, GETNUM(CSTR, "登場作品３")) != "" ? 「%CSVCSTR(対象, GETNUM(CSTR, "登場作品３"))%」 #\@
+PRINTFORM %I18N("登場作品")%：
+SIF CSVCSTR(対象, GETNUM(CSTR, "登場作品")) != ""
+	PRINTFORM 「%CSVCSTR(対象, GETNUM(CSTR, "登場作品"))%」
+SIF CSVCSTR(対象, GETNUM(CSTR, "登場作品２")) != ""
+	PRINTFORM 「%CSVCSTR(対象, GETNUM(CSTR, "登場作品２"))%」
+SIF CSVCSTR(対象, GETNUM(CSTR, "登場作品３")) != ""
+	PRINTFORM 「%CSVCSTR(対象, GETNUM(CSTR, "登場作品３"))%」
+PRINTL 
 
 開発難易度PT = LIMIT(開発難易度PT計算(対象)+50, 1, 100)
 性経験PT = LIMIT(性経験PT計算(対象), 1, 100)
@@ -47,21 +46,10 @@ FOR LCOUNT, 0, 9
 	PRINTL
 NEXT
 
-IF CSVTALENT(対象, GETNUM(TALENT, "アニマル"))
-	IF LANGUAGE == "ENG"
-		PRINTL ※This character is Pet chara. If you unlocked with little money, you can't clear games.
-	ELSE
-		PRINTL ※このキャラはペット候補なので売却できません。所持金が少ない状態で購入するとゲームの攻略が不可能になる場合があります
-	ENDIF
-ENDIF
-
-IF MOD:チャレンジ
-	IF LANGUAGE == "ENG"
-		PRINTL ※You trying CHALLENGE mode. There has difference from this talents.
-	ELSE
-		PRINTL ※MOD:チャレンジを導入中です。表示されているマニュアル・素質とは齟齬がある場合があります
-	ENDIF
-ENDIF
+SIF CSVTALENT(対象, GETNUM(TALENT, "アニマル"))
+	PRINTFORML ※%I18N("このキャラはペット候補なので売却できません。所持金が少ない状態で購入するとゲームの攻略が不可能になる場合があります")%
+SIF MOD:チャレンジ
+	PRINTFORML ※%I18N("MOD:チャレンジを導入中です。表示されているマニュアル・素質とは齟齬がある場合があります")%
 
 ;キャラマニュアル内でタグ付けされていれば特殊表示する
 ;これでCSV内でマニュアルも完結できる
@@ -173,152 +161,147 @@ ENDIF
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC 素質表示済み
 #DIM DYNAMIC 対象
+#DIM DYNAMIC 素質表示数
 
 IF !EXISTCSV(対象)
 	PRINTL 
-	IF LANGUAGE == "ENG"
-		PRINTW Does not exist CSV.
-	ELSE
-		PRINTW CSVが未実装です（仕様）
-	ENDIF
+	PRINTFORMW ＜%I18N("CSVが未実装です")%＞
 	RETURN 1
 ELSEIF MONEY < CSVCFLAG(対象, 50)
 	PRINTL 
-	IF LANGUAGE == "ENG"
-		PRINTW Your money not enough.
-	ELSE
-		PRINTW ＜金額が足りません＞
-	ENDIF
+	PRINTFORMW ＜%I18N("金額が足りません")%＞
 	RETURN 1
 ELSE
-	SIF LANGUAGE == "ENG"
+	SIF LANGUAGE != "JP"
 		GOTO SHOW_TALENTS
-	DO
-		PRINTL 
-		IF LANGUAGE == "ENG"
-			PRINTL Are you unlock this character?
-			PRINTL [0]Yes
-			PRINTL [1]No
-		ELSE
-			PRINTL 購入しますか？
-			PRINTL [0]はい
-			PRINTL [1]いいえ
-		ENDIF
-		SIF !素質表示済み
-			PRINTL [2]素質を表示する
-		BINPUT
-		SELECTCASE RESULT
-			CASE 0
-				CALL CHARA_ADD, 対象
-				CALL PAYMENT, -CSVCFLAG(対象, GETNUM(CFLAG, "価格")), @"キャラクター「%CSVNAMEF(対象)%」購入"
-				CALL プレイログ記録, @"%CSVNAMEF(対象)%を購入"
-				IF LANGUAGE == "ENG"
-					PRINTFORMW ＜You unlocked %CSVENGNAME(対象)%＞
-				ELSE
-					PRINTFORMW ＜%CSVNAMEF(対象)%を解禁しました＞
+	$DISPLAYEDTALENTS
+	PRINTL 
+	PRINTFORML %I18N("購入しますか？")%
+	PRINTFORML [0] %I18N("はい")%
+	PRINTFORML [1] %I18N("いいえ")%
+	SIF !素質表示済み
+		PRINTL [2] 素質を表示する
+	BINPUT
+	SELECTCASE RESULT
+		CASE 0
+			CALL CHARA_ADD, 対象
+			CALL PAYMENT, -CSVCFLAG(対象, GETNUM(CFLAG, "価格")), @"キャラクター「%CSVNAMEF(対象)%」購入"
+			CALL プレイログ記録, @"%CSVNAMEF(対象)%を購入"
+			PRINTFORMW ＜%I18N("|0|を解禁しました", , CSVNAMEDISP(対象))%＞
+			TRYCALLFORM %CSVNAMERPS(対象)%_CHARABUY
+			TRYCALLFORM MASTER_%CSVNAMERPS(NOF(MASTER))%_CHARABUY, 対象
+			IF パートナー != ""
+				IF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
+					LTARGET = TARGET
+					TARGET = GETCHARANAME(パートナー)
+					TRYCALLFORM PARTNER_%CSVNAMERPS(GETNO(パートナー))%_CHARABUY, 対象
+					TARGET = LTARGET
 				ENDIF
-				TRYCALLFORM %CSVNAMERPS(対象)%_CHARABUY
-				TRYCALLFORM MASTER_%CSVNAMERPS(NOF(MASTER))%_CHARABUY, 対象
-				IF パートナー != ""
-					IF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
-						LTARGET = TARGET
-						TARGET = GETCHARANAME(パートナー)
-						TRYCALLFORM PARTNER_%CSVNAMERPS(GETNO(パートナー))%_CHARABUY, 対象
-						TARGET = LTARGET
-					ENDIF
-				ENDIF
-				SIF CFLAG:誕生日 == (MONTH*100)+DAYS
-					CALL 実績解除, "アンハッピーバースデー"
-				SIF CHARANAMEF(TARGET) == "つらら" && MONTH == 12 && (DAYS == 24 || DAYS == 25)
-					CALL 実績解除, "クリスマス中止のお知らせ"
-				SIF CHARANAMEF(TARGET) == "小野 美苗"
-					美苗チェック = DAY
-				FOR LCOUNT, 0, VARSIZE("MOD")
-					SIF ERDNAME(MOD, LCOUNT) == ""
+			ENDIF
+			SIF CFLAG:誕生日 == (MONTH*100)+DAYS
+				CALL 実績解除, "アンハッピーバースデー"
+			SIF CHARANAMEF(TARGET) == "つらら" && MONTH == 12 && (DAYS == 24 || DAYS == 25)
+				CALL 実績解除, "クリスマス中止のお知らせ"
+			SIF CHARANAMEF(TARGET) == "小野 美苗"
+				美苗チェック = DAY
+			FOR LCOUNT, 0, VARSIZE("MOD")
+				SIF ERDNAME(MOD, LCOUNT) == ""
+					CONTINUE
+				SIF !MOD:LCOUNT
+					CONTINUE
+				SELECTCASE ERDNAME(MOD, LCOUNT)
+					CASE "性転換"
+						SIF CSVTALENT(NOF(TARGET), TALENTF("性別")) != 0
+							CALL 実績解除, "なんか変だ！"
+					CASE "男性化"
+						SIF CSVTALENT(NOF(TARGET), TALENTF("性別")) == 2
+							CALL 実績解除, "なんか変だ！"
+					CASE "女性化"
+						SIF CSVTALENT(NOF(TARGET), TALENTF("性別")) == 1
+							CALL 実績解除, "なんか変だ！"
+					CASE "おもらし"
+						SIF !CSVTALENT(NOF(TARGET), TALENTF("おもらし癖"))
+							CALL 実績解除, "なんか変だ！"
+					CASE "ふたなり"
+						SIF !CSVTALENT(NOF(TARGET), TALENTF("ふたなり"))
+							CALL 実績解除, "なんか変だ！"
+					CASE "ロリショタ"
+						SIF CSVTALENT(NOF(TARGET), TALENTF("体格")) >= 3
+							CALL 実績解除, "なんか変だ！"
+					CASE "大人化"
+						SIF CSVTALENT(NOF(TARGET), TALENTF("体格")) <= 2
+							CALL 実績解除, "なんか変だ！"
+					CASEELSE
+						SIF CSVTALENT(NOF(TARGET), TALENTF("バストサイズ")) != TALENT:バストサイズ
+							CALL 実績解除, "なんか変だ！"
+				ENDSELECT
+			NEXT
+			RETURN 0
+		CASE 1
+			RETURN 1
+		CASE 2
+			$SHOW_TALENTS
+			素質表示済み = 1
+			PRINTL 
+			PRINTFORM 【%I18N("性別")%】
+			SELECTCASE CSVTALENT(対象, GETNUM(TALENT, "性別"))
+				CASE 0
+					PRINTFORM %I18N("不明")%
+				CASE 1
+					SIF MOD:性転換 || MOD:女性化
+						GOTO MODFEMALE
+					PRINTFORM %I18N("男性")%
+				CASE 2
+					SIF MOD:性転換 || MOD:男性化
+						GOTO MODMALE
+					PRINTFORM %I18N("女性")%
+				CASE 1000
+					$MODMALE
+					CALL PRINTCOLOR, @"%I18N("男性")%(%I18N("MOD適用中")%)", "coral"
+				CASE 1001
+					$MODFEMALE
+					CALL PRINTCOLOR, @"%I18N("女性")%(%I18N("MOD適用中")%)", "coral"
+			ENDSELECT
+			PRINTFORM  【%I18N("種族")%】%I18N(CSVCSTR(対象, GETNUM(CSTR, "種族")), "RACE")%
+			PRINTFORM  【%I18N("体格", "TALENT")%】
+			IF CSVTALENT(対象, GETNUM(TALENT, "小人体型"))
+				PRINTFORM %I18N("小人体型", "TALENT")%
+			ELSEIF !CSVTALENT(対象, GETNUM(TALENT, "体格"))
+				PRINTFORM %I18N("普通", "TALENT")%
+			ELSE
+				PRINTFORM %I18N(体格(CSVTALENT(対象, GETNUM(TALENT, "体格"))), "TALENT")%
+			ENDIF
+			SIF CSVTALENT(対象, GETNUM(TALENT, "バストサイズ"))
+				PRINTFORM  【%I18N("バストサイズ", "TALENT")%】%I18N(バストサイズ(CSVTALENT(対象, GETNUM(TALENT, "バストサイズ"))), "TALENT")%
+			PRINTL 
+			PRINTFORML 【%I18N("素質")%】
+			PRINT 　
+			IF CSVCSTR(対象, GETNUM(CSTR, "恋心")) != ""
+				PRINTPLAINFORM [%I18N("恋心", "TALENT")%]
+				素質表示数++
+			ENDIF
+			IF CSVCSTR(対象, GETNUM(CSTR, "既婚者")) != ""
+				PRINTPLAINFORM [%I18N("既婚者", "TALENT")%]
+				素質表示数++
+			ENDIF
+			FOR LCOUNT, 0, VARSIZE("TALENT")
+				SELECTCASE TALENTNAME:LCOUNT
+					CASE "性別", "バストサイズ", "体格", "小人体型"
 						CONTINUE
-					SIF !MOD:LCOUNT
-						CONTINUE
-					SELECTCASE ERDNAME(MOD, LCOUNT)
-						CASE "性転換"
-							SIF CSVTALENT(NOF(TARGET), TALENTF("性別")) != 0
-								CALL 実績解除, "なんか変だ！"
-						CASE "男体化"
-							SIF CSVTALENT(NOF(TARGET), TALENTF("性別")) == 2
-								CALL 実績解除, "なんか変だ！"
-						CASE "女体化"
-							SIF CSVTALENT(NOF(TARGET), TALENTF("性別")) == 1
-								CALL 実績解除, "なんか変だ！"
-						CASE "おもらし"
-							SIF !CSVTALENT(NOF(TARGET), TALENTF("おもらし癖"))
-								CALL 実績解除, "なんか変だ！"
-						CASE "ふたなり"
-							SIF !CSVTALENT(NOF(TARGET), TALENTF("ふたなり"))
-								CALL 実績解除, "なんか変だ！"
-						CASE "ロリショタ"
-							SIF CSVTALENT(NOF(TARGET), TALENTF("体格")) >= 3
-								CALL 実績解除, "なんか変だ！"
-						CASE "大人化"
-							SIF CSVTALENT(NOF(TARGET), TALENTF("体格")) <= 2
-								CALL 実績解除, "なんか変だ！"
-						CASEELSE
-							SIF CSVTALENT(NOF(TARGET), TALENTF("バストサイズ")) != TALENT:バストサイズ
-								CALL 実績解除, "なんか変だ！"
-					ENDSELECT
-				NEXT
-				RETURN 0
-			CASE 1
-				RETURN 1
-			CASE 2
-				$SHOW_TALENTS
-				素質表示済み = 1
-				PRINTL 
-				IF LANGUAGE == "ENG"
-					SELECTCASE CSVTALENT(対象, GETNUM(TALENT, "性別"))
-						CASE 0
-							PRINT Sex:Unknown 
-						CASE 1
-							PRINT Sex:Male 
-						CASE 2
-							PRINT Sex:Female 
-					ENDSELECT
-					PRINTFORML Race:%CSVCSTR(対象, GETNUM(CSTR, "種族"))%
-				ELSE
-					SELECTCASE CSVTALENT(対象, GETNUM(TALENT, "性別"))
-						CASE 0
-							PRINT 性別:不明 
-						CASE 1
-							PRINT 性別:男性 
-						CASE 2
-							PRINT 性別:女性 
-					ENDSELECT
-					PRINTFORML 種族:%CSVCSTR(対象, GETNUM(CSTR, "種族"))%
-				ENDIF
-				PRINT 素質
-				FOR LCOUNT, 0, VARSIZE("TALENT")
-					SELECTCASE TALENTNAME:LCOUNT
-						CASE "性別"
-							CONTINUE
-						CASE "バストサイズ"
-							IF LANGUAGE == "ENG"
-								PRINTFORM 【%バストサイズ(CSVTALENT(対象, LCOUNT))%Breast】
-							ELSE
-								PRINTFORM 【%バストサイズ(CSVTALENT(対象, LCOUNT))%】
-							ENDIF
-							CONTINUE
-						CASE "体格"
-							IF LANGUAGE == "ENG"
-								PRINTFORM 【%体格(CSVTALENT(対象, LCOUNT))%】
-							ELSE
-								PRINTFORM 【%体格(CSVTALENT(対象, LCOUNT))%体型】
-							ENDIF
-							CONTINUE
-					ENDSELECT
-					SIF CSVTALENT(対象, LCOUNT)
-						PRINTFORM 【%I18N(TALENTNAME:LCOUNT, "TALENT")%】
-				NEXT
-				PRINTL 
-		ENDSELECT
-	LOOP 1
+					CASEELSE
+						IF CSVTALENT(対象, LCOUNT)
+							SIF LINEISEMPTY()
+								PRINT 　
+							PRINTPLAINFORM [%I18N(TALENTNAME:LCOUNT, "TALENT")%]
+							素質表示数++
+							SIF 素質表示数%8 == 0
+								PRINTL
+						ENDIF
+				ENDSELECT
+			NEXT
+			CALL NEWLINE
+			GOTO DISPLAYEDTALENTS
+	ENDSELECT
 ENDIF
 
 RETURN 0
