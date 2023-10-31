@@ -500,24 +500,46 @@ CALL PRINTCOLOR, "[3] - SM方針 ", @"\@ BR:方針 == 3 ? deepskyblue # \@"
 CALL PRINTCOLOR, "[4] - 狂気方針 ", @"\@ BR:方針 == 4 ? deepskyblue # \@"
 PRINTL 
 
-PRINTL □客の性別
+PRINTL □客の性別・嗜好
 PRINT 　
-IF 娼館方針名(BR:方針) == "ソフト方針"
-	CALL PRINTCOLOR, "[-] - ソフト方針では男性客のみの対応となります", "gray"
+SELECTCASE 娼館方針名(BR:方針)
+	CASE "ソフト方針"
+		CALL PRINTCOLOR, "[-] - ソフト方針では男性客のみの対応となります", "gray"
+	CASE "SM方針"
+		IF BR:サドマゾ固定 == 2
+			CALL PRINTCOLOR, "[-] - マゾ客専門店では男性客のみの対応となります", "gray"
+		ELSE
+			GOTO ELSE
+		ENDIF
+	CASEELSE
+		$ELSE
+		CALL PRINTCOLOR, "[10] - 固定しない ", @"\@ BR:性別固定 == 0 ? deepskyblue # \@"
+		CALL PRINTCOLOR, "[11] - 男性客専門店にする ", @"\@ BR:性別固定 == 1 ? deepskyblue # \@"
+		CALL PRINTCOLOR, "[12] - 女性客専門店にする ", @"\@ BR:性別固定 == 2 ? deepskyblue # \@"
+ENDSELECT
+PRINTL 
+PRINT 　
+IF 娼館方針名(BR:方針) != "SM方針"
+	CALL PRINTCOLOR, "[-] - 客のSM嗜好はSM方針でのみ設定できます", "gray"
 ELSE
-	CALL PRINTCOLOR, "[5] - 固定しない ", @"\@ BR:性別固定 == 0 ? deepskyblue # \@"
-	CALL PRINTCOLOR, "[6] - 男性客専門店にする ", @"\@ BR:性別固定 == 1 ? deepskyblue # \@"
-	CALL PRINTCOLOR, "[7] - 女性客専門店にする ", @"\@ BR:性別固定 == 2 ? deepskyblue # \@"
+	CALL PRINTCOLOR, "[20] - 固定しない ", @"\@ BR:サドマゾ固定 == 0 ? deepskyblue # \@"
+	CALL PRINTCOLOR, "[21] - サド客専門店にする ", @"\@ BR:サドマゾ固定 == 1 ? deepskyblue # \@"
+	CALL PRINTCOLOR, "[22] - マゾ客専門店にする ", @"\@ BR:サドマゾ固定 == 2 ? deepskyblue # \@"
 ENDIF
+PRINTL 
+PRINT 　
+CALL PRINTCOLOR, "[30] - 固定しない ", @"\@ BR:体格固定 == 0 ? deepskyblue # \@"
+CALL PRINTCOLOR, "[31] - 子供客専門店にする ", @"\@ BR:体格固定 == 1 ? deepskyblue # \@"
+CALL PRINTCOLOR, "[32] - 大人客専門店にする ", @"\@ BR:体格固定 == 2 ? deepskyblue # \@"
 PRINTL 
 
 PRINTFORML □その他オプション
-PRINTFORML 　[8] - プレイ内容の報告（現在:\@ FLAG:娼館報告 ? 報告する # 報告しない \@）
-PRINTFORML 　[9] - 上級娼婦を任命する（現在の上級娼婦:\@ FINDCHARA(CFLAG:上級娼婦, 1) >= 0 ? %NAME:(FINDCHARA(CFLAG:上級娼婦, 1))% # 無し\@）
+PRINTFORML 　[98] - プレイ内容の報告（現在:\@ FLAG:娼館報告 ? 報告する # 報告しない \@）
+PRINTFORML 　[99] - 上級娼婦を任命する（現在の上級娼婦:\@ FINDCHARA(CFLAG:上級娼婦, 1) >= 0 ? %NAME:(FINDCHARA(CFLAG:上級娼婦, 1))% # 無し\@）
 DRAWLINE
 PRINTPLAIN 　PLAN　
 PRINT [0] 戻る 
-PRINTL [20] 各方針の説明
+PRINTL [100] 各方針の説明
 
 BINPUT
 SELECTCASE RESULT
@@ -529,11 +551,15 @@ SELECTCASE RESULT
 			SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
 				TRYCALLFORM BR_PLAN_%CSVNAMERPS(GETNO(パートナー))%
 		ENDIF
-	CASE 5 TO 7
-		BR:性別固定 = RESULT-5
-	CASE 8
+	CASE 10 TO 12
+		BR:性別固定 = RESULT-10
+	CASE 20 TO 22
+		BR:サドマゾ固定 = RESULT-20
+	CASE 30 TO 32
+		BR:体格固定 = RESULT-30
+	CASE 98
 		INVERTBIT FLAG:娼館報告, 0
-	CASE 9
+	CASE 99
 		現上級娼婦 = FINDCHARA(CFLAG:上級娼婦, 1)
 		SIF 現上級娼婦 >= 0
 			CFLAG:現上級娼婦:上級娼婦 = 0
@@ -552,7 +578,7 @@ SELECTCASE RESULT
 					CFLAG:RESULT:名刺 = 5
 				CFLAG:RESULT:上級娼婦に任命された経験++
 		ENDSELECT
-	CASE 20
+	CASE 100
 		;PRINTL 0-方針無し
 		;PRINTL ├特に方針を指定しません。初期設定でもあります。
 		;PRINTL ├無計画ということなので方針としての効果は皆無。
@@ -576,8 +602,8 @@ SELECTCASE RESULT
 		PRINTL  ├脱法的な経営なので、客は少なく、ランクが低いとまったく収入がありません。
 		PRINTL  └崩壊した奴隷や特殊な素質を持った奴隷の効果が高く、玄人向けの方針といえるでしょう。
 		PRINTL 
-		PRINTL □客の性別
-		PRINTL ├娼館に訪れる客の性別を男女どちらかに固定するかランダムにするか選ぶ事ができます。
+		PRINTL □客の性別・嗜好の固定
+		PRINTL ├娼館に訪れる客の性別や嗜好を固定するかランダムにするか選ぶ事ができます。
 		PRINTL └ソフト方針を選んでいる場合は自動的に男性客専門店の扱いになります。
 		PRINTL 
 		PRINTL □プレイ内容を報告させる
@@ -867,7 +893,8 @@ SIF BRITEM:隠しカメラ
 IF 収入合計
 	CALL PASELIL, @"%BRS:店名%の収入が{収入合計}＄入りました"
 	MONEY += 収入合計
-	BR:前日の収入 = 収入合計
+	BR:前日の収入 = 収入合計+BR:上級売春売上
+	BR:上級売春売上 = 0
 	BR:総収入 += 収入合計
 	バンめし = 0
 	DO
@@ -1370,7 +1397,8 @@ SELECTCASE BR:方針
 				BRREP:客の性別 = RAND(2, 4)
 		ENDSELECT
 		;たまにマゾが来る
-		IF BRREP:客の性別 <= 1 && RANDPER(20)
+		IF (BRREP:客の性別 <= 1 && RANDPER(20)) || BR:サドマゾ固定 == 2
+			BRREP:客の性別 = 0
 			対象 = RAND(1, 3)
 			BRREP:@"手コキ{対象}" = 1
 			BRREP:手コキで射精 = RAND(1, 4)
@@ -1581,6 +1609,8 @@ FOR LCOUNT, 1, 3
 		CALL EXPUP, "レズ経験", BRREP:@"レズ{LCOUNT}", BRREP:@"売春キャラ{LCOUNT}"
 	SIF BRREP:@"ゲイ{LCOUNT}"
 		CALL EXPUP, "ゲイ経験", BRREP:@"ゲイ{LCOUNT}", BRREP:@"売春キャラ{LCOUNT}"
+	SIF (BRREP:@"手コキ{LCOUNT}")+(BRREP:@"足コキ{LCOUNT}")+BRREP:ダブル足コキで射精+BRREP:逆アナル責めで射精
+		CALL EXPUP, "嗜虐快楽経験", (BRREP:@"手コキ{LCOUNT}")+(BRREP:@"足コキ{LCOUNT}")+BRREP:ダブル足コキで射精+BRREP:逆アナル責めで射精, BRREP:@"売春キャラ{LCOUNT}"
 	SKIPDISP 0
 	IF BRREP:@"ヴァギナ{LCOUNT}" && TALENT:(BRREP:@"売春キャラ{LCOUNT}"):処女
 		IF TALENT:(BRREP:@"売春キャラ{LCOUNT}"):性転換済
@@ -2151,6 +2181,8 @@ ELSE
 	PRINTFORM %CALLNAME:(BRREP:売春キャラ)%は
 	SIF BR:方針 == 3 && BRREP:手コキで射精
 		PRINT マゾヒストの
+	SIF BR:体格固定 == 1
+		PRINT 幼い
 	SELECTCASE BRREP:客の性別
 		CASE IS <= 1
 			PRINT 男性客を相手に
@@ -2170,6 +2202,8 @@ ELSE
 			IF BRREP:ヴァギナ || BRREP:アナル || BRREP:手コキ || BRREP:足コキ || BRREP:素股 || BRREP:兜合わせ
 				PRINT 後、
 			ELSE
+				SIF BR:体格固定 == 1 && !BRREP:フェラで射精
+					PRINT が、初めての体験で緊張しているらしく上手に出せなかったらしい
 				PRINT 。
 			ENDIF
 		ENDIF
@@ -2205,7 +2239,7 @@ ELSE
 				IF BRREP:ヴァギナ || BRREP:アナル || BRREP:素股 || BRREP:兜合わせ
 					PRINT き、
 				ELSE
-					PRINT いたが、射精させるには至らなかった。
+					PRINTFORM いたが、\@ BR:体格固定 == 1 ? 客は初めての体験で緊張しているようで #\@射精させるには至らなかった。
 				ENDIF
 			ENDIF
 		ENDIF
@@ -2232,9 +2266,15 @@ ELSE
 				PRINT と
 			SIF BRREP:アナル
 				PRINT アナル
-			PRINT で性行為に
+			IF BR:体格固定 == 1
+				PRINT で筆おろしに
+			ELSE
+				PRINT で性行為に
+			ENDIF
 			IF BRREP:中出し || BRREP:アナル中出し
 				PRINT 及び、
+				SIF BR:体格固定 == 1
+					PRINT 童貞を捨てたばかりで高ぶった客から
 				IF BRREP:中出し && BRREP:アナル中出し
 					PRINTFORM 膣に{BRREP:中出し}回、アナルに{BRREP:アナル中出し}回中出しされた。
 				ELSEIF BRREP:中出し
@@ -2243,7 +2283,7 @@ ELSE
 					PRINTFORM {BRREP:アナル中出し}回中出しされた。
 				ENDIF
 			ELSE
-				PRINT 及んだが、射精させるには至らなかった。
+				PRINTFORM 及んだが、\@ BR:体格固定 == 1 ? 客は初めての体験に緊張しているようで #\@射精させるには至らなかった。
 			ENDIF
 		ENDIF
 		PRINTL 
@@ -2251,6 +2291,8 @@ ELSE
 	IF (BRREP:アナル || BRREP:ヴァギナ) && (BRREP:絶頂 || BRREP:射精)
 		SIF BRREP:客の性別 != 2
 			PRINTFORM %CALLNAME:(BRREP:売春キャラ)%は
+		SIF BR:体格固定 == 1
+			PRINT 初めての性行為で興味津々の客に
 		SIF BRREP:アナル
 			PRINT アナル
 		SIF BRREP:アナル && BRREP:ヴァギナ
@@ -2347,6 +2389,8 @@ ELSE
 		PRINT 今日は
 		SIF BR:方針 == 3 && BRREP:手コキで射精
 			PRINT マゾヒストの
+		SIF BR:体格固定 == 1
+			PRINT 幼い
 		SELECTCASE BRREP:客の性別
 			CASE IS <= 1
 				PRINT 男性客を相手に
@@ -2403,7 +2447,11 @@ ELSE
 	ENDIF
 
 	IF BRREP:交互騎乗位
-		PRINT 交互に騎乗位をして、
+		IF BR:体格固定 == 1
+			PRINT 交互の騎乗位で贅沢な筆おろしをして、
+		ELSE
+			PRINT 交互に騎乗位をして、
+		ENDIF
 		IF MAX(BRREP:中出し1, BRREP:アナル中出し1) == MAX(BRREP:中出し2, BRREP:アナル中出し2)
 			PRINTFORML ふたりとも{MAX(BRREP:中出し1, BRREP:アナル中出し1)}回ずつ搾り取ったようだ。
 		ELSE
@@ -2508,8 +2556,11 @@ ELSE
 				PRINT ふたりは動けないように拘束されたまま
 			ELSEIF BR:方針 == 4
 				PRINT ふたりは
+			ELSEIF BR:体格固定 == 1
+				PRINT ふたりで優しく手ほどきして筆おろしをしつつ、
+			ELSE
+				PRINT 交互に犯され、
 			ENDIF
-			PRINT 交互に犯され、
 			IF BRREP:中出し1 && BRREP:中出し2
 				IF BRREP:中出し1 == BRREP:中出し2
 					PRINTFORML 互いに{BRREP:中出し1}回ずつ膣内に中出しされたようだ。
@@ -2540,20 +2591,41 @@ ELSE
 			表示済み = 1
 		ELSEIF BRREP:中出し1 || BRREP:アナル中出し1
 			PRINT 体中を触られた後、
-			PRINTFORM %CALLNAME:(BRREP:売春キャラ1)%の方を気に入った客は%CALLNAME:(BRREP:売春キャラ1)%と
-			IF BRREP:中出し1
-				PRINTFORM 性交に及び、{BRREP:中出し1}回
-			ELSEIF BRREP:アナル中出し1
-				PRINTFORM アナルセックスに及び、{BRREP:アナル中出し1}回
+			PRINTFORM %CALLNAME:(BRREP:売春キャラ1)%の方を気に入った客は
+			IF BR:体格固定 == 1
+				PRINTFORM %CALLNAME:(BRREP:売春キャラ1)%を筆おろしの相手に選び、
+				IF BRREP:中出し1
+					PRINTFORM 童貞を卒業しつつ{BRREP:中出し1}回
+				ELSEIF BRREP:アナル中出し1
+					PRINTFORM アナルで童貞を卒業しつつ{BRREP:アナル中出し1}回
+				ENDIF
+			ELSE
+				PRINTFORM %CALLNAME:(BRREP:売春キャラ1)%と
+				IF BRREP:中出し1
+					PRINTFORM 性交に及び、{BRREP:中出し1}回
+				ELSEIF BRREP:アナル中出し1
+					PRINTFORM アナルセックスに及び、{BRREP:アナル中出し1}回
+				ENDIF
 			ENDIF
 			PRINTL 中出ししたようだ。
 			表示済み = 1
 		ELSEIF BRREP:中出し2 || BRREP:アナル中出し2
-			PRINTFORM %CALLNAME:(BRREP:売春キャラ2)%の方を気に入った客は%CALLNAME:(BRREP:売春キャラ2)%と
-			IF BRREP:中出し2
-				PRINTFORM 性交に及び、{BRREP:中出し2}回
-			ELSEIF BRREP:アナル中出し2
-				PRINTFORM アナルセックスに及び、{BRREP:アナル中出し2}回
+			PRINT 体中を触られた後、
+			PRINTFORM %CALLNAME:(BRREP:売春キャラ2)%の方を気に入った客は
+			IF BR:体格固定 == 1
+				PRINTFORM %CALLNAME:(BRREP:売春キャラ2)%を筆おろしの相手に選び、
+				IF BRREP:中出し2
+					PRINTFORM 童貞を卒業しつつ{BRREP:中出し2}回
+				ELSEIF BRREP:アナル中出し2
+					PRINTFORM アナルで童貞を卒業しつつ{BRREP:アナル中出し2}回
+				ENDIF
+			ELSE
+				PRINTFORM %CALLNAME:(BRREP:売春キャラ2)%と
+				IF BRREP:中出し2
+					PRINTFORM 性交に及び、{BRREP:中出し2}回
+				ELSEIF BRREP:アナル中出し2
+					PRINTFORM アナルセックスに及び、{BRREP:アナル中出し2}回
+				ENDIF
 			ENDIF
 			PRINTL 中出ししたようだ。
 			表示済み = 1

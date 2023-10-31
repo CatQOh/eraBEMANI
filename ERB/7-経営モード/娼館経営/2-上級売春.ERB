@@ -107,13 +107,15 @@ ABL:奉仕精神 = 1
 ;技巧はランダム
 ABL:技巧 = RAND(1, 6)
 
-IF RANDPER(25)
-	PRINT 幼い
-	TALENT:体格 = RAND(1, 3)
-	;子供は技巧を消して従順と奉仕精神に割り振る
-	ABL:従順 += ABL:技巧/2
-	ABL:奉仕精神 += ABL:技巧/2
-	ABL:技巧 = 0
+IF !BR:体格固定 != 2
+	IF RANDPER(25) || BR:体格固定 == 1
+		PRINT 幼い
+		TALENT:体格 = RAND(1, 3)
+		;子供は技巧を消して従順と奉仕精神に割り振る
+		ABL:従順 += ABL:技巧/2
+		ABL:奉仕精神 += ABL:技巧/2
+		ABL:技巧 = 0
+	ENDIF
 ENDIF
 
 SELECTCASE BR:性別固定
@@ -678,6 +680,20 @@ SELECTCASE BR:方針
 		LOOP 素質数上限 != 素質数
 ENDSELECT
 
+;サドマゾ固定
+SELECTCASE BR:サドマゾ固定
+	CASE 1
+		TALENT:サド = 1
+		TALENT:マゾ = 0
+		ABL:サドっ気 = MAX(ABL:サドっ気, ABL:マゾっ気)
+		ABL:マゾっ気 = 0
+	CASE 2
+		TALENT:サド = 0
+		TALENT:マゾ = 1
+		ABL:マゾっ気 = MAX(ABL:サドっ気, ABL:マゾっ気)
+		ABL:サドっ気 = 0
+ENDSELECT
+
 $START
 
 ;口上呼び出し TARGETに客が入っているので共通関数は使わない
@@ -735,6 +751,7 @@ IF 上級売春中 == 3
 		CALL PASELIW, @"%CALLNAME:TARGET%は%CALLNAME:PLAYER%との行為に満足いかなかったのか、{総収入計算用/5}＄を払って%BRS:店名%を後にした……"
 	ENDCATCH
 	MONEY += 総収入計算用/5
+	BR:上級売春売上 = 総収入計算用/5
 	CALL 現金出納帳記録, @"上級娼婦%NAME:PLAYER%の収入/{総収入計算用/5}"
 	BR:総収入 += 総収入計算用/5
 	CFLAG:常連客候補--
@@ -752,6 +769,7 @@ IF 上級売春中 == 3
 ELSE
 	CALL PASELIW, @"%CALLNAME:TARGET%は%CALLNAME:PLAYER%との行為に満足して、{総収入計算用}＄の報酬を払ってくれた"
 	MONEY += 総収入計算用
+	BR:上級売春売上 = 総収入計算用
 	CALL 現金出納帳記録, @"上級娼婦%NAME:PLAYER%の収入/{総収入計算用}"
 	BR:総収入 += 総収入計算用
 	IF CFLAG:常連客候補 > 0
@@ -790,6 +808,8 @@ DELCHARA TARGET
 @上級売春コマンド結果
 #DIM DYNAMIC 技巧レベル
 #DIM DYNAMIC 性格レベル
+#DIM DYNAMIC 絶頂満足度
+#DIM DYNAMIC 絶頂追加料金
 
 技巧レベル = ABL:PLAYER:技巧
 
@@ -965,90 +985,63 @@ SELECTCASE SELECTCOMS
 			TFLAG:満足度 -= 5
 			TFLAG:上級売春収入値 -= 50
 		ENDIF
-		IF NOWEX:射精
-			TFLAG:満足度 += 3
-			TFLAG:上級売春収入値 += 50
-		ENDIF
+		絶頂満足度 = 3
+		絶頂追加料金 = 50
 	CASE "クンニ"
 		TFLAG:満足度 += 15+技巧レベル+性格レベル/2+ABL:Ｃ感覚
 		TFLAG:上級売春収入値 += 300
-		IF NOWEX:射精
-			TFLAG:満足度 += 5
-			TFLAG:上級売春収入値 += 100
-		ENDIF
-	CASE "フェラする"
+		絶頂満足度 = 5
+		絶頂追加料金 = 100
+	CASE "フェラする", "お掃除フェラ"
 		TFLAG:満足度 += 20+技巧レベル+性格レベル/2+ABL:Ｃ感覚
 		TFLAG:上級売春収入値 += 400
+
 		IF NOWEX:潮噴き
-			TFLAG:満足度 += 5
-			TFLAG:上級売春収入値 += 100
+			絶頂満足度 = 5
+			絶頂追加料金 = 100
 			IF TALENT:マゾ
-				TFLAG:満足度 += 20
-				TFLAG:上級売春収入値 += 500
+				絶頂満足度 = 20
+				絶頂追加料金 = 500
 			ENDIF
 		ENDIF
 		IF NOWEX:射精
-			TFLAG:満足度 += 10
-			TFLAG:上級売春収入値 += 200
+			絶頂満足度 = 10
+			絶頂追加料金 = 200
 		ENDIF
 	CASE "指挿入れ", "Gスポット刺激"
 		TFLAG:満足度 += 10+技巧レベル+性格レベル/2+ABL:Ｖ感覚/2
 		TFLAG:上級売春収入値 += 200
-		IF NOWEX:Ｖ絶頂
-			TFLAG:満足度 += 15
-			TFLAG:上級売春収入値 += 250
-		ENDIF
-		IF NOWEX:射精
-			TFLAG:満足度 += 5
-			TFLAG:上級売春収入値 += 100
-		ENDIF
+		絶頂満足度 = 15
+		絶頂追加料金 = 250
 	CASE "アナル舐め"
 		TFLAG:満足度 += 10+技巧レベル+性格レベル/2+ABL:Ａ感覚/3
 		TFLAG:上級売春収入値 += 250
 		IF TALENT:マゾ || ABL:Ａ感覚
-			TFLAG:満足度 += 5
-			TFLAG:上級売春収入値 += 50
+			絶頂満足度 = 10
+			絶頂追加料金 = 150
 		ELSE
-			TFLAG:満足度 -= 3
-		ENDIF
-		IF NOWEX:Ａ絶頂
-			TFLAG:満足度 += 10
-			TFLAG:上級売春収入値 += 150
-		ENDIF
-		IF NOWEX:射精
-			TFLAG:満足度 += 5
-			TFLAG:上級売春収入値 += 100
+			TFLAG:満足度 = -3
 		ENDIF
 	CASE "アナル愛撫", "前立腺刺激"
 		TFLAG:満足度 += 15+技巧レベル+性格レベル/2+ABL:Ａ感覚/2
 		TFLAG:上級売春収入値 += 350
 		IF TALENT:マゾ || ABL:Ａ感覚
-			TFLAG:満足度 += 10
-			TFLAG:上級売春収入値 += 100
+			絶頂満足度 = 15
+			絶頂追加料金 = 250
 		ELSE
-			TFLAG:満足度 -= 5
-		ENDIF
-		IF NOWEX:Ａ絶頂
-			TFLAG:満足度 += 15
-			TFLAG:上級売春収入値 += 250
-		ENDIF
-		IF NOWEX:射精
-			TFLAG:満足度 += 10
-			TFLAG:上級売春収入値 += 200
+			TFLAG:満足度 = -5
 		ENDIF
 	CASE "胸揉み", "乳首責め", "胸愛撫"
 		TFLAG:満足度 += 10+技巧レベル+性格レベル/2+ABL:Ｂ感覚/2
 		TFLAG:上級売春収入値 += 200
-		IF NOWEX:Ｂ絶頂
-			TFLAG:満足度 += 10
-			TFLAG:上級売春収入値 += 250
-		ENDIF
+		絶頂満足度 = 10
+		絶頂追加料金 = 250
 	CASE "秘貝開帳"
 		TFLAG:満足度 += 3+性格レベル
 		TFLAG:上級売春収入値 += 50
 		IF TALENT:マゾ
-			TFLAG:満足度 += 7
-			TFLAG:上級売春収入値 += 150
+			絶頂満足度 = 7
+			絶頂追加料金 = 150
 		ELSEIF TALENT:サド
 			TFLAG:満足度 -= 3
 		ENDIF
@@ -1061,11 +1054,8 @@ SELECTCASE SELECTCOMS
 		ELSEIF TALENT:サド
 			TFLAG:満足度 -= 3
 		ENDIF
-		IF NOWEX:Ｂ絶頂
-			TFLAG:満足度 += 5
-			TFLAG:上級売春収入値 += 200
-		ENDIF
-		
+		絶頂満足度 = 5
+		絶頂追加料金 = 200
 	CASE "自慰"
 		TFLAG:満足度 += 5+性格レベル+ABL:Ｃ感覚/3
 		TFLAG:上級売春収入値 += 100
@@ -1075,10 +1065,8 @@ SELECTCASE SELECTCOMS
 		ELSEIF TALENT:サド
 			TFLAG:満足度 -= 5
 		ENDIF
-		IF NOWEX:射精 || NOWEX:Ｃ絶頂
-			TFLAG:満足度 += 10
-			TFLAG:上級売春収入値 += 300
-		ENDIF
+		絶頂満足度 = 10
+		絶頂追加料金 = 300
 	CASE "足扱きする"
 		TFLAG:満足度 += 15+技巧レベル+性格レベル/2+ABL:Ｃ感覚/2
 		TFLAG:上級売春収入値 += 250
@@ -1086,13 +1074,11 @@ SELECTCASE SELECTCOMS
 			TFLAG:満足度 += 15
 			TFLAG:上級売春収入値 += 250
 		ENDIF
-		IF NOWEX:射精
-			TFLAG:満足度 += 10
-			TFLAG:上級売春収入値 += 200
-			IF TALENT:マゾ
-				TFLAG:満足度 += 10
-				TFLAG:上級売春収入値 += 200
-			ENDIF
+		絶頂満足度 = 10
+		絶頂追加料金 = 200
+		IF TALENT:マゾ
+			絶頂満足度 = 20
+			絶頂追加料金 = 400
 		ENDIF
 	CASE "下着扱きする"
 		TFLAG:満足度 += 15+技巧レベル+性格レベル/2+ABL:Ｃ感覚/2
@@ -1101,17 +1087,19 @@ SELECTCASE SELECTCOMS
 			TFLAG:満足度 += 5
 			TFLAG:上級売春収入値 += 100
 		ENDIF
-		IF NOWEX:射精
-			TFLAG:満足度 += 10
-			TFLAG:上級売春収入値 += 200
-		ENDIF
+		絶頂満足度 = 10
+		絶頂追加料金 = 200
 	CASE "手淫する"
 		TFLAG:満足度 += 15+技巧レベル+性格レベル/2+ABL:Ｃ感覚/2
 		TFLAG:上級売春収入値 += 250
-		IF NOWEX:射精
-			TFLAG:満足度 += 20
-			TFLAG:上級売春収入値 += 350
-		ENDIF
+		絶頂満足度 = 20
+		絶頂追加料金 = 350
+	CASE "パイズリする"
+		TFLAG:満足度 += 20+技巧レベル+性格レベル/2+ABL:Ｃ感覚/2
+		TFLAG:上級売春収入値 += 300
+		TFLAG:満足度 += TALENT:PLAYER:バストサイズ+1
+		絶頂満足度 = 20+TALENT:PLAYER:バストサイズ+1
+		絶頂追加料金 = 350
 	CASE "自慰見せつけ"
 		TFLAG:満足度 += 5+(性格レベル*3)/2
 		TFLAG:上級売春収入値 += 200
@@ -1119,7 +1107,7 @@ SELECTCASE SELECTCOMS
 			TFLAG:満足度 += 10
 			TFLAG:上級売春収入値 += 200
 		ENDIF
-	CASE "秘貝開帳見せつけ", "クンニさせる"
+	CASE "秘貝開帳見せつけ", "クンニさせる", "顔面騎乗する"
 		TFLAG:満足度 += 5+(性格レベル*3)/2
 		TFLAG:上級売春収入値 += 200
 		IF TALENT:女好き
@@ -1142,18 +1130,8 @@ SELECTCASE SELECTCOMS
 	CASE "ローター"
 		TFLAG:満足度 += 5+技巧レベル+性格レベル/3+ABL:Ｃ感覚/3+ABL:Ｂ感覚/3
 		TFLAG:上級売春収入値 += 300
-		IF NOWEX:射精
-			TFLAG:満足度 += 10
-			TFLAG:上級売春収入値 += 250
-		ENDIF
-		IF NOWEX:Ｂ絶頂
-			TFLAG:満足度 += 5
-			TFLAG:上級売春収入値 += 200
-		ENDIF
-		IF NOWEX:Ｃ絶頂
-			TFLAG:満足度 += 5
-			TFLAG:上級売春収入値 += 200
-		ENDIF
+		絶頂満足度 = 10
+		絶頂追加料金 = 250
 	CASE "バイブ"
 		TFLAG:満足度 += 20+技巧レベル+性格レベル/2+ABL:Ｖ感覚/2
 		TFLAG:上級売春収入値 += 100*ABL:Ｖ感覚
@@ -1161,14 +1139,8 @@ SELECTCASE SELECTCOMS
 			TFLAG:満足度 += 25+技巧レベル
 			TFLAG:上級売春収入値 += 300*技巧レベル/2
 		ENDIF
-		IF NOWEX:Ｖ絶頂
-			TFLAG:満足度 += 15
-			TFLAG:上級売春収入値 += 350
-		ENDIF
-		IF NOWEX:射精
-			TFLAG:満足度 += 20
-			TFLAG:上級売春収入値 += 400
-		ENDIF
+		絶頂満足度 = 20
+		絶頂追加料金 = 400
 	CASE "アナルバイブ"
 		TFLAG:満足度 += 15+技巧レベル+性格レベル/2+ABL:Ａ感覚/2
 		TFLAG:上級売春収入値 += 100+ABL:Ａ感覚
@@ -1176,21 +1148,13 @@ SELECTCASE SELECTCOMS
 			TFLAG:満足度 += 5*ABL:Ａ感覚
 			TFLAG:上級売春収入値 += 50+ABL:Ａ感覚
 		ENDIF
-		IF NOWEX:Ａ絶頂
-			TFLAG:満足度 += 15
-			TFLAG:上級売春収入値 += 350
-		ENDIF
-		IF NOWEX:射精
-			TFLAG:満足度 += 20
-			TFLAG:上級売春収入値 += 400
-		ENDIF
+		絶頂満足度 = 20
+		絶頂追加料金 = 400
 	CASE "乳首ローター"
 		TFLAG:満足度 += 5+ 技巧レベル+性格レベル/3+ABL:Ｂ感覚/2
 		TFLAG:上級売春収入値 += 80+ABL:Ｂ感覚
-		IF NOWEX:Ｂ絶頂
-			TFLAG:満足度 += 10
-			TFLAG:上級売春収入値 += 300
-		ENDIF
+		絶頂満足度 = 10
+		絶頂追加料金 = 300
 	CASE "コンドーム"
 		TFLAG:満足度 -= 3
 	CASE "バイブ被挿入"
@@ -1238,7 +1202,7 @@ SELECTCASE SELECTCOMS
 			TFLAG:満足度 += 10
 			TFLAG:上級売春収入値 += 150
 		ENDIF
-	CASE "正常位", "後背位", "騎乗位", "対面座位", "背面座位", "挿入Gスポ責め", "挿入子宮口責め"
+	CASE "正常位", "後背位", "騎乗位", "対面座位", "背面座位", "挿入Gスポ責め", "挿入子宮口責め", "後背位手淫", "騎乗位手淫"
 		TFLAG:満足度 += 25+ABL:Ｖ感覚+技巧レベル
 		TFLAG:上級売春収入値 += 600
 		IF NOWEX:PLAYER:射精
@@ -1250,15 +1214,9 @@ SELECTCASE SELECTCOMS
 				TFLAG:上級売春収入値 += 1000
 			ENDIF
 		ENDIF
-		IF NOWEX:Ｖ絶頂
-			TFLAG:満足度 += 20
-			TFLAG:上級売春収入値 += 400
-		ENDIF
-		IF NOWEX:射精
-			TFLAG:満足度 += 15
-			TFLAG:上級売春収入値 += 30
-		ENDIF
-	CASE "正常位アナル", "後背位アナル", "騎乗位アナル", "対面座位アナル", "背面座位アナル"
+		絶頂満足度 = 20
+		絶頂追加料金 = 400
+	CASE "正常位アナル", "後背位アナル", "騎乗位アナル", "対面座位アナル", "背面座位アナル", "後背位アナル手淫", "騎乗位アナル手淫"
 		TFLAG:満足度 += 25+ABL:Ａ感覚+技巧レベル
 		TFLAG:上級売春収入値 += 600
 		IF NOWEX:PLAYER:射精
@@ -1270,24 +1228,23 @@ SELECTCASE SELECTCOMS
 				TFLAG:上級売春収入値 += 1000
 			ENDIF
 		ENDIF
-		IF NOWEX:Ａ絶頂
-			TFLAG:満足度 += 20
-			TFLAG:上級売春収入値 += 400
-		ENDIF
-		IF NOWEX:射精
-			TFLAG:満足度 += 15
-			TFLAG:上級売春収入値 += 30
-		ENDIF
-	CASE "正常位させる", "後背位させる", "正常位アナルさせる", "後背位アナルさせる", "逆レイプ"
+		絶頂満足度 = 20
+		絶頂追加料金 = 400
+	CASE "正常位させる", "後背位させる", "正常位アナルさせる", "後背位アナルさせる", "逆レイプ", "助手を犯させる"
 		TFLAG:満足度 += 30+ABL:Ｃ感覚/2*性格レベル/2+技巧レベル/2
 		TFLAG:上級売春収入値 += 800
-		IF NOWEX:射精
-			TFLAG:満足度 += 50
-			TFLAG:上級売春収入値 += 1000
-		ENDIF
-		IF NOWEX:PLAYER:射精
-			TFLAG:満足度 += 20
-			TFLAG:上級売春収入値 += 300
+		絶頂満足度 = 50
+		絶頂追加料金 = 1000
+		IF SELECTCOMS == "助手を犯させる"
+			IF NOWEX:ASSI:射精
+				TFLAG:満足度 += 20
+				TFLAG:上級売春収入値 += 300
+			ENDIF
+		ELSE
+			IF NOWEX:PLAYER:射精
+				TFLAG:満足度 += 20
+				TFLAG:上級売春収入値 += 300
+			ENDIF
 		ENDIF
 	CASE "手淫", "フェラチオ", "パイズリ", "パイズリフェラ", "素股", "縦パイズリ", "兜合わせ", "貝あわせ", "下着扱き", "イラマチオ", "素股する"
 		TFLAG:満足度 += 15+性格レベル/2
@@ -1313,6 +1270,8 @@ SELECTCASE SELECTCOMS
 	CASE "スパンキング", "乳スパンキング", "鞭", "縄", "フィストファック", "アナルフィスト", "両穴フィスト"
 		TFLAG:満足度 += 30/技巧レベル/3+性格レベル/3
 		TFLAG:上級売春収入値 += 300
+		絶頂満足度 = 30
+		絶頂追加料金 = 400
 	CASE "踏んでもらう", "叩いてもらう", "鞭打ちしてもらう"
 		TFLAG:満足度 += 10/性格レベル
 		TFLAG:上級売春収入値 += 150
@@ -1334,9 +1293,45 @@ SELECTCASE SELECTCOMS
 			TFLAG:満足度 += 10
 			TFLAG:上級売春収入値 += 150
 		ENDIF
+	;ここから助手とのコマンド
+	CASE "ダブルフェラ", "ダブル素股"
+		TFLAG:満足度 += 30+技巧レベル+性格レベル/2+ABL:Ｃ感覚
+		TFLAG:上級売春収入値 += 600
+
+		IF NOWEX:潮噴き
+			絶頂満足度 = 10
+			絶頂追加料金 = 200
+			IF TALENT:マゾ
+				絶頂満足度 = 40
+				絶頂追加料金 = 1000
+			ENDIF
+		ENDIF
+		IF NOWEX:射精
+			絶頂満足度 = 20
+			絶頂追加料金 = 400
+		ENDIF
+	CASE "ダブルパイズリ", "3P", "数珠繋ぎ"
+		TFLAG:満足度 += 40+技巧レベル+性格レベル/2+ABL:Ｃ感覚
+		TFLAG:上級売春収入値 += 800
+
+		IF NOWEX:潮噴き
+			絶頂満足度 = 10
+			絶頂追加料金 = 200
+			IF TALENT:マゾ
+				絶頂満足度 = 40
+				絶頂追加料金 = 1000
+			ENDIF
+		ENDIF
+		IF NOWEX:射精
+			絶頂満足度 = 30
+			絶頂追加料金 = 600
+		ENDIF
 	CASEELSE
 		DEBUGPRINTFORML コマンド:%SELECTCOMS%は上級売春用の満足度計算が無い
 ;	CASE ""
 ;		TFLAG:満足度 += 
 ;		TFLAG:上級売春収入値 += 
 ENDSELECT
+
+TFLAG:満足度 += 絶頂満足度*SUMARRAY(NOWEX)
+TFLAG:上級売春収入値 += 絶頂追加料金*SUMARRAY(NOWEX)
