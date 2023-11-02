@@ -45,6 +45,7 @@ RESTART
 #DIM DYNAMIC 詠唱者
 #DIM DYNAMIC 表示
 #DIM DYNAMIC 必要レベル
+#DIM DYNAMIC ミゼラン, 2
 ;#DIM DYNAMIC 詠唱可能, 50
 ;魔法名, 必要レベル
 {
@@ -405,10 +406,28 @@ SELECTCASE RESULT
 				ENDSELECT
 			CASE "ハニーバニー"
 				PRINTL □ハニーバニーで気を引く対象を選んでください
+				ミゼラン = GETCHARANAME("ミゼラン・ミゼラン")
+				IF ミゼラン >= 0 && TRANCEFLAG:ミゼラン:ミゼラン専用 == 10000
+					FOR LCOUNT, 0, CHARANUM
+						SIF !ミゼラン変身中:LCOUNT:0
+							CONTINUE
+						ミゼラン:1 = LCOUNT
+						BREAK
+					NEXT
+				ENDIF
 				FOR PAGING, 1, CHARANUM
+					表示 = 0
+					;恋心か既婚者が対象
+					SIF TALENT:PAGING:恋心 || TALENT:PAGING:既婚者
+						表示 = 1
+					;ミゼランの変身は併用不可
+					SIF PAGING == ミゼラン:1
+						表示 = 0
+					SIF ミゼラン >= 0 && GROUPMATCH(CSVNAME(TRANCEFLAG:ミゼラン:ミゼラン専用), CSTR:PAGING:恋心, CSTR:PAGING:既婚者)
+						表示 = 0
 					;DISABLEチェック
 					CALLFORM DISABLE, "RECIEVE_" + 使用スペル名, PAGING
-					CALL PAGING, !RESULT && (TALENT:PAGING:恋心 || TALENT:PAGING:既婚者) && PAGING != 詠唱者
+					CALL PAGING, !RESULT && 表示 && PAGING != 詠唱者
 				NEXT
 				SIF RESULT == -1
 					RESTART
