@@ -127,6 +127,24 @@ REND
 CALL COLUMNPRINT, 0, "]"
 
 @GORILLA_ITEM
+#DIM DYNAMIC LCOUNT
+#DIMS SPLITVAR, 3
+#DIM DYNAMIC 複数個あり
+#DIM DYNAMIC 購入アイテム
+{
+#DIMS アイテムリスト = 
+"ローター/2",
+"オナホール/4",
+"バイブ/4",
+"アナルバイブ/6",
+"アイマスク/4",
+"縄/6",
+"ビデオカメラ/10",
+"ビデオテープ/6/3",
+"ローション/2/5",
+"媚薬/2",
+}
+
 DRAWLINE
 CALL 段位ゲージ表示
 PRINTL 
@@ -136,118 +154,57 @@ DRAWLINE
 PRINTL □段位認定試験では通貨の代わりにゲージを消耗します。
 PRINTL 　購入したいアイテムを選んでください。
 PRINTL
-SIF !ITEM:ローター
-	PRINTL 　[0] ローター（ゲージ2%）
-SIF !ITEM:オナホール
-	PRINTL 　[1] オナホール（ゲージ4%）
-SIF !ITEM:バイブ
-	PRINTL 　[2] バイブ（ゲージ4%）
-SIF !ITEM:アナルバイブ
-	PRINTL 　[3] アナルバイブ（ゲージ6%）
-SIF !ITEM:アイマスク
-	PRINTL 　[4] アイマスク（ゲージ4%）
-SIF !ITEM:縄
-	PRINTL 　[5] 縄（ゲージ6%）
-SIF !ITEM:ビデオカメラ
-	PRINTL 　[6] ビデオカメラ テープ×3付属（ゲージ10%）
-SIF ITEM:ビデオカメラ
-	PRINTL 　[7] ビデオテープ×3（ゲージ6%）
-PRINTL 　[8] ローション×5（ゲージ2%）
-PRINTL 　[9] 媚薬（ゲージ2%）
+
+FOR LCOUNT, 0, VARSIZE("アイテムリスト")
+	SPLIT アイテムリスト:LCOUNT, "/", SPLITVAR
+	複数個あり = RESULT == 3 ? 1 # 0
+	SELECTCASE SPLITVAR:0
+		CASE "共通"
+			$共通
+			PRINTFORML 　[{LCOUNT}] %SPLITVAR:0%\@ 複数個あり ? ×%SPLITVAR:2% \@（ゲージ%SPLITVAR:1%\%）
+		CASE "ビデオカメラ"
+			SIF ITEM:ビデオカメラ
+				CONTINUE
+			PRINTFORML 　[{LCOUNT}] ビデオカメラ テープ×3付属（ゲージ%SPLITVAR:1%\%）
+		CASE "ビデオテープ"
+			SIF !ITEM:ビデオカメラ
+				CONTINUE
+			GOTO 共通
+		CASE "ローション", "媚薬"
+			GOTO 共通
+		CASEELSE
+			SIF ITEM:GETNUM(ITEM, SPLITVAR:0)
+				CONTINUE
+			GOTO 共通
+	ENDSELECT
+NEXT
 DRAWLINE
 PRINTPLAIN 　ITEM　
 PRINTL [10] 戻る
 
 BINPUT
-SELECTCASE RESULT
-	CASE 0
-		IF FLAG:段位ゲージ > 1
-			PRINTW ＜ローターを購入しました＞
-			ITEM:ローター = 1
-			FLAG:段位ゲージ -= 1
-		ELSE
-			PRINTW ゲージが足りません
-		ENDIF
-	CASE 1
-		IF FLAG:段位ゲージ > 2
-			PRINTW ＜オナホールを購入しました＞
-			ITEM:オナホール = 1
-			FLAG:段位ゲージ -= 2
-		ELSE
-			PRINTW ゲージが足りません
-		ENDIF
-	CASE 2
-		IF FLAG:段位ゲージ > 2
-			PRINTW ＜バイブを購入しました＞
-			ITEM:バイブ = 1
-			FLAG:段位ゲージ -= 2
-		ELSE
-			PRINTW ゲージが足りません
-		ENDIF
-	CASE 3
-		IF FLAG:段位ゲージ > 3
-			PRINTW ＜アナルバイブを購入しました＞
-			ITEM:アナルバイブ = 1
-			FLAG:段位ゲージ -= 3
-		ELSE
-			PRINTW ゲージが足りません
-		ENDIF
-	CASE 4
-		IF FLAG:段位ゲージ > 2
-			PRINTW ＜アイマスクを購入しました＞
-			ITEM:アイマスク = 1
-			FLAG:段位ゲージ -= 2
-		ELSE
-			PRINTW ゲージが足りません
-		ENDIF
-	CASE 5
-		IF FLAG:段位ゲージ > 3
-			PRINTW ＜縄を購入しました＞
-			ITEM:縄 = 1
-			FLAG:段位ゲージ -= 3
-		ELSE
-			PRINTW ゲージが足りません
-		ENDIF
-	CASE 6
-		IF FLAG:段位ゲージ > 5
-			PRINTW ＜ビデオカメラを購入しました＞
-			ITEM:ビデオカメラ = 1
-			ITEM:ビデオテープ += 3
-			FLAG:段位ゲージ -= 5
-		ELSE
-			PRINTW ゲージが足りません
-		ENDIF
-	CASE 7
-		IF FLAG:段位ゲージ > 3
-			PRINTW ＜ビデオテープ×3を購入しました＞
-			ITEM:ビデオテープ += 3
-			FLAG:段位ゲージ -= 3
-		ELSE
-			PRINTW ゲージが足りません
-		ENDIF
-	CASE 8
-		IF ITEM:ローション >= 95
-			PRINTW ローションはこれ以上持てません
-		ELSEIF FLAG:段位ゲージ > 1
-			PRINTW ＜ローション×5を購入しました＞
-			ITEM:ローション += 5
-			FLAG:段位ゲージ -= 1
-		ELSE
-			PRINTW ゲージが足りません
-		ENDIF
-	CASE 9
-		IF ITEM:媚薬 >= 99
-			PRINTW 媚薬はこれ以上持てません
-		ELSEIF FLAG:段位ゲージ > 1
-			PRINTW ＜媚薬を購入しました＞
-			ITEM:媚薬 += 1
-			FLAG:段位ゲージ -= 1
-		ELSE
-			PRINTW ゲージが足りません
-		ENDIF
-	CASE 10
-		RETURN 0
-ENDSELECT
+SIF RESULT == 10
+	RETURN
+購入アイテム = RESULT
+SPLIT アイテムリスト:購入アイテム, "/", SPLITVAR
+複数個あり = RESULT == 3 ? 1 # 0
+
+IF  FLAG:段位ゲージ < TOINT(SPLITVAR:1)/2
+	PRINTW ゲージが足りません
+	RESTART
+ELSEIF SPLITVAR:0 == "ローション" && ITEM:ローション >= 95
+	PRINTW ローションはこれ以上持てません
+	RESTART
+ELSEIF SPLITVAR:0 == "媚薬" && ITEM:媚薬 >= 99
+	PRINTW 媚薬はこれ以上持てません
+	RESTART
+ENDIF
+
+PRINTFORMW ＜%SPLITVAR:0%\@ 複数個あり ? ×%SPLITVAR:2% #\@を購入しました＞
+ITEM:GETNUM(ITEM, SPLITVAR:0) += 複数個あり ? TOINT(SPLITVAR:2) # 1
+FLAG:段位ゲージ -= TOINT(SPLITVAR:1)/2
+SIF SPLITVAR:0 == "ビデオカメラ"
+	ITEM:ビデオテープ += 3
 
 RESTART
 

@@ -1571,7 +1571,11 @@ FOR LCOUNT, 1, CHARANUM
 								不明な変身先 = LCOUNT2
 								BREAK
 							NEXT
-							PRINTFORML 　[{LCOUNT, 2}] %NAME:LCOUNT% 現在：%NAME:不明な変身先%の想い人に変身中
+							IF CSVNAME(不明な変身先) == "マゼラン・マゼラン"
+								PRINTFORML 　[{LCOUNT, 2}] %NAME:LCOUNT% 現在：フェルディナンド＝カジキ先輩に変身中
+							ELSE
+								PRINTFORML 　[{LCOUNT, 2}] %NAME:LCOUNT% 現在：%NAME:不明な変身先%の\@ TALENT:相性参照キャラ:恋心 ? 想い人 # 結婚相手 \@に変身中
+							ENDIF
 						CASEELSE
 							PRINTFORML 　[{LCOUNT, 2}] %NAME:LCOUNT% 現在：%CSVNAME(TRANCEFLAG:LCOUNT:ミゼラン専用)%に変身中
 					ENDSELECT
@@ -1612,9 +1616,12 @@ SELECTCASE RESULT
 					相性参照キャラ = RESULT
 					PRINTL □変身先を選んでください
 					;恋心か既婚者持ちの場合別枠（不明も可能）ただしハニーバニーと重複不可
-					IF !ハニーバニー:相性参照キャラ:0
+					CALL DISABLE, "EVENT_ミゼラン変身", 相性参照キャラ
+					IF !RESULT && !ハニーバニー:相性参照キャラ:0
 						IF TALENT:相性参照キャラ:恋心
-							IF CSTR:相性参照キャラ:恋心 == "不明"
+							IF CSVNAME(相性参照キャラ) == "マゼラン・マゼラン"
+								PRINTFORML 　[10000] フェルディナンド＝カジキ先輩
+							ELSEIF CSTR:相性参照キャラ:恋心 == "不明"
 								PRINTFORML 　[10000] %NAME:相性参照キャラ%の想い人
 							ELSEIF GETNO(CSTR:相性参照キャラ:恋心)
 								PRINTFORML 　[{GETNO(CSTR:相性参照キャラ:恋心)}] %CSTR:相性参照キャラ:恋心%
@@ -1633,8 +1640,8 @@ SELECTCASE RESULT
 						;相性のあるキャラのみ変身可能（正負は問わない）
 						SIF !RELATION:相性参照キャラ:LCOUNT
 							CONTINUE
-						;マゼランにはもうなってる
-						SIF CSVNAME(LCOUNT) == "マゼラン・マゼラン"
+						;マゼランにはもうなってる（自分にもなれない）
+						SIF GROUPMATCH(CSVNAME(LCOUNT), "マゼラン・マゼラン", "ミゼラン・ミゼラン")
 							CONTINUE
 						;ハニバ対象は上で表示済
 						SIF GROUPMATCH(CSVNAME(LCOUNT), CSTR:相性参照キャラ:恋心, CSTR:相性参照キャラ:既婚者)
@@ -1649,11 +1656,17 @@ SELECTCASE RESULT
 					変身先 = RESULT
 					PRINT ＜ミゼランは
 					IF 変身先 == 10000
-						PRINTFORM \@ TALENT:相性参照キャラ:恋心 ? %NAME:相性参照キャラ%の想い人 # %NAME:相性参照キャラ%の結婚相手 \@
+						IF CSVNAME(相性参照キャラ) == "マゼラン・マゼラン"
+							PRINT フェルディナンド＝カジキ先輩
+						ELSE
+							PRINTFORM %NAME:相性参照キャラ%の\@ TALENT:相性参照キャラ:恋心 ? 想い人 # 結婚相手 \@
+						ENDIF
 					ELSE
 						PRINTFORM %CSVNAME(変身先)%
 					ENDIF
 					PRINTW に変身した＞
+					SIF 変身先 == 10000 || GROUPMATCH(CSVNAME(変身先), CSTR:相性参照キャラ:恋心, CSTR:相性参照キャラ:既婚者)
+						CALL 実績解除, "もっとマシな使い方はないのか"
 					;残り時間は不明の場合参照キャラに記録 それ以外はミゼランに記録
 					TRANCEFLAG:ミゼラン専用 = 変身先
 					IF 変身先 == 10000
