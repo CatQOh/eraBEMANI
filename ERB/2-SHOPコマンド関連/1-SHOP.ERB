@@ -1540,18 +1540,55 @@ NEXT
 
 @変化
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC LTARGET
+#DIM DYNAMIC 相性参照キャラ
+#DIM DYNAMIC 変身先
+#DIM DYNAMIC 不明な変身先
+#DIM DYNAMIC CSV体格
 DRAWLINE
 PRINTL □変化させるキャラを選んでください
 FOR LCOUNT, 1, CHARANUM
-	IF 変化可能()
-		IF 陥落(LCOUNT)
-			PRINTFORML [{LCOUNT, 2}] %NAME:LCOUNT% 現在：\@ TALENT:LCOUNT:アニマル ? 獣の姿 # 人間の姿 \@
-		ELSE
-			SETCOLORBYNAME gray
-			PRINTFORML [--] %NAME:LCOUNT% 未陥落
-			RESETCOLOR
-		ENDIF
+	SIF !TALENT:LCOUNT:変化
+		CONTINUE
+	SIF CFLAG:LCOUNT:キャラロスト
+		CONTINUE
+	SIF CFLAG:LCOUNT:使用不可
+		CONTINUE
+	SIF CFLAG:LCOUNT:監禁
+		CONTINUE
+	IF 陥落(LCOUNT)
+		SELECTCASE CHARANAMEF(LCOUNT)
+			CASE "ミゼラン・ミゼラン"
+				IF !TALENT:LCOUNT:妊娠
+					SELECTCASE TRANCEFLAG:LCOUNT:ミゼラン専用
+						CASE IS < 0
+							CALL PRINTCOLORL, @"　[--] %NAME:LCOUNT% 現在：マゼラン・マゼランに変身中(休憩中です)", "gray"
+						CASE 0
+							PRINTFORML 　[{LCOUNT, 2}] %NAME:LCOUNT% 現在：マゼラン・マゼランに変身中
+						CASE 10000
+							FOR LCOUNT2, 0, CHARANUM
+								SIF !ミゼラン変身中:LCOUNT2:0
+									CONTINUE
+								不明な変身先 = LCOUNT2
+								BREAK
+							NEXT
+							IF CSVNAME(不明な変身先) == "マゼラン・マゼラン"
+								PRINTFORML 　[{LCOUNT, 2}] %NAME:LCOUNT% 現在：フェルディナンド＝カジキ先輩に変身中
+							ELSE
+								PRINTFORML 　[{LCOUNT, 2}] %NAME:LCOUNT% 現在：%NAME:不明な変身先%の\@ TALENT:相性参照キャラ:恋心 ? 想い人 # 結婚相手 \@に変身中
+							ENDIF
+						CASEELSE
+							PRINTFORML 　[{LCOUNT, 2}] %NAME:LCOUNT% 現在：%CSVNAME(TRANCEFLAG:LCOUNT:ミゼラン専用)%に変身中
+					ENDSELECT
+				ELSE
+					CALL PRINTCOLORL, @"　[--] %NAME:LCOUNT% 現在：マゼラン・マゼランに変身中(妊娠中は変身できません)", "gray"
+				ENDIF
+			CASEELSE
+				PRINTFORML 　[{LCOUNT, 2}] %NAME:LCOUNT% 現在：\@ TALENT:LCOUNT:アニマル ? 獣 # 人間 \@\@ TRANCEFLAG:LCOUNT:獣変化 ? に変身中 # の姿 \@
+		ENDSELECT
+	ELSE
+		CALL PRINTCOLORL, @"　[--] %NAME:LCOUNT% 未陥落", "gray"
 	ENDIF
 NEXT
 DRAWLINE
@@ -1566,84 +1603,284 @@ SELECTCASE RESULT
 		;TRANCE変数を使うのは変化後に付いた素質を維持するため
 		LTARGET = TARGET
 		TARGET = RESULT
-		IF 陥落(TARGET) && TALENT:変化
-			IF TALENT:アニマル
-				;着衣フラグのリセット
-				FOR LCOUNT, GETNUM(CFLAG, "特殊着衣不可"), GETNUM(CFLAG, "足元着衣不可")+1
-					CFLAG:LCOUNT = CSVCFLAG(NOF(TARGET), LCOUNT)
-				NEXT
-				FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
-					CSTR:LCOUNT = %CSVCSTR(NOF(TARGET), LCOUNT)%
-				NEXT
-				PRINTFORMW %CALLNAME:TARGET%は人間の姿に変化した
-				TALENT:RESULT:アニマル = 0
-				IF !TRANCE:TALENTF("動物耳")
-					TALENT:動物耳 = 0
-					TRANCE:TALENTF("動物耳") = 0
-				ENDIF
-				IF !TRANCE:TALENTF("尻尾")
-					TALENT:尻尾 = 0
-					TRANCE:TALENTF("尻尾") = 0
-				ENDIF
-				;茶倉だけ特殊で機械処理なので人間に戻す
-				;スーツだと判明したので除外
-				[SKIPSTART]
-				IF CHARANAMEF(TARGET) == "戌"
-					IF TRANCE:TALENTF("無機物")
-						TALENT:無機物 = 0
-						CSTR:種族 = %TRANCERACE:TARGET:0%
-						NAME:TARGET = 大伴 茶倉
-						CALLNAME:TARGET = 茶倉
-						TRANCE:TALENTF("無機物") = 0
+		;一部キャラは専用の挙動
+		SELECTCASE CHARANAMEF(TARGET)
+			CASE "ミゼラン・ミゼラン"
+				;ミゼランは今いるキャラの知り合い（全キャラ選べると面倒）に変身する
+				$MIGELLAN_TRANCE
+				IF !TRANCEFLAG:ミゼラン専用
+					PRINTL □誰の知り合いに変身しますか？
+					FOR PAGING, 0, CHARANUM
+						CALL PAGING, NO:PAGING < 10000 && PAGING != TARGET
+					NEXT
+					SIF RESULT == -1
+						RESTART
+					相性参照キャラ = RESULT
+					PRINTL □変身先を選んでください
+					;恋心か既婚者持ちの場合別枠（不明も可能）ただしハニーバニーと重複不可
+					CALL DISABLE, "EVENT_ミゼラン変身", 相性参照キャラ
+					IF !RESULT && !ハニーバニー:相性参照キャラ:0
+						IF TALENT:相性参照キャラ:恋心
+							IF CSVNAME(相性参照キャラ) == "マゼラン・マゼラン"
+								PRINTFORML 　[10000] フェルディナンド＝カジキ先輩
+							ELSEIF CSTR:相性参照キャラ:恋心 == "不明"
+								PRINTFORML 　[10000] %NAME:相性参照キャラ%の想い人
+							ELSEIF GETNO(CSTR:相性参照キャラ:恋心)
+								PRINTFORML 　[{GETNO(CSTR:相性参照キャラ:恋心)}] %CSTR:相性参照キャラ:恋心%
+							ENDIF
+						ELSEIF TALENT:相性参照キャラ:既婚者
+							IF CSTR:相性参照キャラ:既婚者 == "不明"
+								PRINTFORML 　[10000] %NAME:相性参照キャラ%の結婚相手
+							ELSEIF GETNO(CSTR:相性参照キャラ:既婚者)
+								PRINTFORML 　[{GETNO(CSTR:相性参照キャラ:既婚者)}] %CSTR:相性参照キャラ:既婚者%
+							ENDIF
+						ENDIF
 					ENDIF
+					FOR LCOUNT, 1, 10000
+						SIF !EXISTCSV(LCOUNT)
+							CONTINUE
+						;相性のあるキャラのみ変身可能（正負は問わない）
+						SIF !RELATION:相性参照キャラ:LCOUNT
+							CONTINUE
+						;マゼランにはもうなってる（自分にもなれない）
+						SIF GROUPMATCH(CSVNAME(LCOUNT), "マゼラン・マゼラン", "ミゼラン・ミゼラン")
+							CONTINUE
+						;ハニバ対象は上で表示済
+						SIF GROUPMATCH(CSVNAME(LCOUNT), CSTR:相性参照キャラ:恋心, CSTR:相性参照キャラ:既婚者)
+							CONTINUE
+						PRINTFORML 　[{LCOUNT}] %CSVNAME(LCOUNT)%
+					NEXT
+					DRAWLINE
+					PRINTFORML 　[-1] 戻る
+					BINPUT
+					SIF RESULT == -1
+						GOTO MIGELLAN_TRANCE
+					変身先 = RESULT
+					PRINT ＜ミゼランは
+					IF 変身先 == 10000
+						IF CSVNAME(相性参照キャラ) == "マゼラン・マゼラン"
+							PRINT フェルディナンド＝カジキ先輩
+						ELSE
+							PRINTFORM %NAME:相性参照キャラ%の\@ TALENT:相性参照キャラ:恋心 ? 想い人 # 結婚相手 \@
+						ENDIF
+					ELSE
+						PRINTFORM %CSVNAME(変身先)%
+					ENDIF
+					PRINTW に変身した＞
+					SIF 変身先 == 10000 || GROUPMATCH(CSVNAME(変身先), CSTR:相性参照キャラ:恋心, CSTR:相性参照キャラ:既婚者)
+						CALL 実績解除, "もっとマシな使い方はないのか"
+					;残り時間は不明の場合参照キャラに記録 それ以外はミゼランに記録
+					TRANCEFLAG:ミゼラン専用 = 変身先
+					IF 変身先 == 10000
+						ミゼラン変身中:相性参照キャラ:0 = 6
+					ELSE
+						ミゼラン変身中:TARGET:0 = 6
+					ENDIF
+					;CSVのある対象に変身する場合一部素質を模倣（性別、体格、バストサイズ、羽、尻尾、動物耳、ファーリー）種族はそのままとする
+					IF 変身先 != 10000
+						CSV体格 = CSVTALENT(変身先, TALENTF("体格")) > 0 ? CSVTALENT(変身先, TALENTF("体格")) # 3
+						CALL TRANCETALENT, TARGET, "体格", CSV体格
+						CALL TRANCETALENT, TARGET, "バストサイズ", CSVTALENT(変身先, TALENTF("バストサイズ"))
+						;後天的に付与される可能性も一応考慮しておく
+						CALL TRANCETALENT, TARGET, "羽", CSVTALENT(変身先, TALENTF("羽"))
+						CALL TRANCETALENT, TARGET, "尻尾", CSVTALENT(変身先, TALENTF("尻尾"))
+						CALL TRANCETALENT, TARGET, "動物耳", CSVTALENT(変身先, TALENTF("動物耳"))
+						CALL TRANCETALENT, TARGET, "ファーリー", CSVTALENT(変身先, TALENTF("ファーリー"))
+						;TS処理を最後に行う
+						SIF CSVTALENT(変身先, TALENTF("性別")) > 0 && TALENT:性別 != CSVTALENT(変身先, TALENTF("性別"))
+							GOTO TS
+					ELSEIF 1
+						;CSVない場合参照キャラが同性なら性別だけ変えておく バストサイズは女体化の場合3
+						IF SEX(TARGET) == SEX(相性参照キャラ)
+							CALL TRANCETALENT, TARGET, "バストサイズ", SEX(TARGET) == 1 ? 3 # 0
+							GOTO TS
+						ENDIF
+					ELSE
+						$TS
+						;TS処理 性転換薬使用済などで変になりそう
+						TRANCE:TALENTF("性別") = TALENT:性別
+						IF SEX(TARGET) == 2
+							TALENT:性別 = 1
+							SIF CSTR:童貞 == ""
+								TALENT:童貞 = 1
+							CALL TRANCETALENT, TARGET, "処女", 0
+						ELSE
+							TALENT:性別 = 2
+							SIF CSTR:処女 == ""
+								TALENT:処女 = 1
+							CALL TRANCETALENT, TARGET, "童貞", 0
+						ENDIF
+					ENDIF
+					;服装をどうするかは未定
 				ELSE
-				[SKIPEND]
-					IF TRANCE:TALENTF("ファーリー")
-						TALENT:ファーリー = 0
-						TRANCE:TALENTF("ファーリー") = 0
-					ENDIF
-				;ENDIF
-				TALENT:バストサイズ = TRANCE:TALENTF("バストサイズ")
-				TRANCE:TALENTF("バストサイズ") = 0
-			ELSE
-				PRINTFORMW %CALLNAME:TARGET%は獣の姿に変化した
-				;着衣フラグの変更
-				VARSET CFLAG, 1, GETNUM(CFLAG, "特殊着衣不可"), GETNUM(CFLAG, "足元着衣不可")+1
-				VARSET CSTR, "", GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
-				TALENT:アニマル = 1
-				IF !TALENT:動物耳
-					TALENT:動物耳 = 1
-					TRANCE:TALENTF("動物耳") = 1
+					;変身解除処理だけ分離
+					CALL ミゼラン変身解除, TARGET
 				ENDIF
-				IF !TALENT:尻尾
-					TALENT:尻尾 = 1
-					TRANCE:TALENTF("尻尾") = 1
-				ENDIF
-				;茶倉だけ特殊で機械（戌）になる
-				;スーツだと判明したので除外
-				[SKIPSTART]
-				IF CHARANAMEF(TARGET) == "大伴 茶倉"
-					IF !TALENT:無機物
-						TALENT:無機物 = 1
-						TRANCERACE:TARGET:0 = %CSTR:種族%
-						CSTR:種族 = 機械
-						NAME:TARGET = 戌
-						CALLNAME:TARGET = 戌
-						TRANCE:TALENTF("無機物") = 1
-					ENDIF
+			CASEELSE
+				;人間←→アニマルに変化
+				IF TALENT:アニマル
+					;着衣フラグのリセット
+					FOR LCOUNT, GETNUM(CFLAG, "特殊着衣不可"), GETNUM(CFLAG, "足元着衣不可")+1
+						CFLAG:LCOUNT = CSVCFLAG(NOF(TARGET), LCOUNT)
+					NEXT
+					FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
+						CSTR:LCOUNT = %CSVCSTR(NOF(TARGET), LCOUNT)%
+					NEXT
+					PRINTFORMW ＜%CALLNAME:TARGET%は人間の姿に変化した＞
+					CALL TRANCETALENT, TARGET, "アニマル", 0
+					CALL TRANCETALENT, TARGET, "動物耳", 0
+					CALL TRANCETALENT, TARGET, "尻尾", 0
+					CALL TRANCETALENT, TARGET, "ファーリー", 0
+					;茶倉だけ特殊で機械処理なので人間に戻す
+					;スーツだと判明したので除外
+					[SKIPSTART]
+					IF CHARANAMEF(TARGET) == "戌"
+						IF TRANCE:TALENTF("無機物")
+							TALENT:無機物 = 0
+							CSTR:種族 = %TRANCERACE:TARGET:0%
+							NAME:TARGET = 大伴 茶倉
+							CALLNAME:TARGET = 茶倉
+							TRANCE:TALENTF("無機物") = 0
+						ENDIF
+					ELSE
+					[SKIPEND]
+					TALENT:バストサイズ = TRANCE:TALENTF("バストサイズ")
+					TRANCE:TALENTF("バストサイズ") = 0
 				ELSE
-				[SKIPEND]
-					IF !TALENT:ファーリー
-						TALENT:ファーリー = 1
-						TRANCE:TALENTF("ファーリー") = 1
-					ENDIF
-				;ENDIF
-				TRANCE:TALENTF("バストサイズ") = TALENT:バストサイズ
-				TALENT:バストサイズ = 0
-			ENDIF
-		ENDIF
+					PRINTFORMW ＜%CALLNAME:TARGET%は獣の姿に変化した＞
+					;着衣フラグの変更
+					VARSET CFLAG, 1, GETNUM(CFLAG, "特殊着衣不可"), GETNUM(CFLAG, "足元着衣不可")+1
+					VARSET CSTR, "", GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
+					CALL TRANCETALENT, TARGET, "アニマル", 1
+					CALL TRANCETALENT, TARGET, "ファーリー", 1
+					CALL TRANCETALENT, TARGET, "動物耳", 1
+					CALL TRANCETALENT, TARGET, "尻尾", 1
+					;茶倉だけ特殊で機械（戌）になる
+					;スーツだと判明したので除外
+					[SKIPSTART]
+					IF CHARANAMEF(TARGET) == "大伴 茶倉"
+						IF !TALENT:無機物
+							TALENT:無機物 = 1
+							TRANCERACE:TARGET:0 = %CSTR:種族%
+							CSTR:種族 = 機械
+							NAME:TARGET = 戌
+							CALLNAME:TARGET = 戌
+							TRANCE:TALENTF("無機物") = 1
+						ENDIF
+					ELSE
+					[SKIPEND]
+					TRANCE:TALENTF("バストサイズ") = TALENT:バストサイズ
+					TALENT:バストサイズ = 0
+				ENDIF
+				INVERTBIT TRANCEFLAG:TARGET:獣変化
+		ENDSELECT
 		TARGET = LTARGET
 		RESTART
+ENDSELECT
+
+@ミゼラン変身時間経過処理
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC ミゼラン
+SIF GETCHARANAME("ミゼラン・ミゼラン") == -1
+	RETURN
+ミゼラン = GETCHARANAME("ミゼラン・ミゼラン")
+SIF !TRANCEFLAG:ミゼラン:ミゼラン専用
+	RETURN
+
+IF TRANCEFLAG:ミゼラン:ミゼラン専用 < 0
+	;クールタイムの処理
+	TRANCEFLAG:ミゼラン:ミゼラン専用++
+	RETURN
+ELSE
+	FOR LCOUNT, 0, CHARANUM
+		IF ミゼラン変身中:LCOUNT:0 > 0
+			ミゼラン変身中:LCOUNT:0--
+			SIF !ミゼラン変身中:LCOUNT:0
+				CALL ミゼラン変身解除, ミゼラン
+			BREAK
+		ENDIF
+	NEXT
+ENDIF
+
+@ミゼラン変身解除, ミゼラン
+#DIM DYNAMIC ミゼラン
+
+PRINTFORMW ＜ミゼランはマゼランの姿に戻った＞
+TRANCEFLAG:ミゼラン:ミゼラン専用 = -6
+VARSET ミゼラン変身中
+;クールタイム無しは強すぎなので
+PRINTFORMW ミゼランは変身中の演技で疲れたようです。すぐにまた変身させるのは控えましょう
+;素質を戻す処理
+CALL TRANCETALENT, ミゼラン, "体格", 999
+CALL TRANCETALENT, ミゼラン, "バストサイズ", 999
+CALL TRANCETALENT, ミゼラン, "羽", 999
+CALL TRANCETALENT, ミゼラン, "尻尾", 999
+CALL TRANCETALENT, ミゼラン, "動物耳", 999
+CALL TRANCETALENT, ミゼラン, "ファーリー", 999
+IF TRANCE:ミゼラン:TALENTF("性別")
+	IF SEX(ミゼラン) == 1
+		TALENT:ミゼラン:童貞 = 0
+		CALL TRANCETALENT, ミゼラン, "処女", 1
+	ELSE
+		TALENT:ミゼラン:処女 = 0
+		CALL TRANCETALENT, ミゼラン, "童貞", 1
+	ENDIF
+	TALENT:ミゼラン:性別 = TRANCE:ミゼラン:TALENTF("性別")
+	TRANCE:ミゼラン:TALENTF("性別") = 0
+ENDIF
+
+
+;;;TRANCE変数をオンオフする（要改良）
+@TRANCETALENT, 対象, 素質名, 数値
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 素質名
+#DIM DYNAMIC 数値
+
+IF 数値 == 999
+	IF TRANCE:対象:TALENTF(素質名) == -1
+		TRANCE:対象:TALENTF(素質名) = 0
+	ELSEIF 素質名 == "バストサイズ" || 素質名 == "体格"
+		TALENT:対象:TALENTF(素質名) = TRANCE:対象:TALENTF(素質名)
+	ELSEIF TRANCE:対象:TALENTF(素質名) == 1
+		INVERTBIT TALENT:対象:TALENTF(素質名), 0
+	ENDIF
+	TRANCE:対象:TALENTF(素質名) = 0
+	RETURN
+ENDIF
+
+SELECTCASE 素質名
+	CASE "バストサイズ"
+		SELECTCASE TRANCE:対象:TALENTF("バストサイズ")
+			CASE -1
+				TALENT:対象:バストサイズ = 0
+				TRANCE:対象:TALENTF("バストサイズ") = 0
+			CASE 0
+				;男のバストサイズ無しの場合は-1にする
+				TRANCE:対象:TALENTF("バストサイズ") = TALENT:対象:バストサイズ > 0 ? TALENT:対象:バストサイズ # -1
+				TALENT:対象:バストサイズ = 数値
+			CASEELSE
+				TALENT:対象:バストサイズ = TRANCE:対象:TALENTF("バストサイズ")
+				TRANCE:対象:TALENTF("バストサイズ") = 0
+		ENDSELECT
+	CASE "体格"
+		IF TRANCE:対象:TALENTF("体格")
+			TALENT:対象:体格 = TRANCE:対象:TALENTF("体格")
+			TRANCE:対象:TALENTF("体格") = 0
+		ELSE
+			TRANCE:対象:TALENTF("体格") = TALENT:対象:体格
+			TALENT:対象:体格 = 数値 > 0 ? 数値 # 3
+		ENDIF
+	CASEELSE
+		IF TRANCE:対象:TALENTF(素質名) == -1
+			TRANCE:対象:TALENTF(素質名) = 0
+		ELSE
+			IF TALENT:対象:TALENTF(素質名) != 数値
+				TALENT:対象:TALENTF(素質名) = 数値
+				INVERTBIT TRANCE:対象:TALENTF(素質名), 0
+			ELSE
+				 TRANCE:対象:TALENTF(素質名) = -1
+			ENDIF
+		ENDIF
 ENDSELECT
 
 @所持ビデオ一覧
