@@ -1,5 +1,5 @@
-﻿タイトル：EmueraEM+EE 最終更新日:2023/09/23
-バージョン：1.824+v18+EMv17+EEv41fix
+﻿タイトル：EmueraEM+EE 最終更新日:2023/11/17
+バージョン：1.824+v18+EMv17+EEv43
 改変者：Enter
 元となったアプリケーション：Emuera1.824+v18（妊）|дﾟ)の中の人、及びMinorShift制作）、WebP-wrapper(JosePineiro制作)、Emuera.EM（EvilMask制作）
 連絡先：Twitter/@eraBEMANI Discord/https://discord.gg/p5rb5uK
