@@ -205,7 +205,7 @@ ENDSELECT
 @IDOL_EVENT
 DRAWLINE
 PRINTL □何のイベントを開催しますか？
-PRINTL 　[1] ライブ
+PRINTL 　[1] ライブを企画する
 PRINTL 　[2] 出演依頼を見る
 DRAWLINE
 PRINTPLAIN 　EVENT　
@@ -293,7 +293,7 @@ ENDSELECT
 #DIM DYNAMIC LMEMORY
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
-#DIM DYNAMIC 収入, 2
+#DIM DYNAMIC 収入, 4
 #DIM DYNAMIC ユニット数
 #DIM DYNAMIC 選出可能, 11
 #DIM DYNAMIC ユニット担当記録用, 1000
@@ -317,66 +317,124 @@ SIF IDOL選曲 == ""
 	RETURN 0
 
 $MEMBER_LOOP
-;◆◆◆技量の計算◆◆◆
-;	技量 = 技能LVの合計値 / √(担当人数)
-;D&VやI&Vの場合は、それぞれで1人として数えるが技能LVを0.75倍で計算する
-;技量は10000倍にして計算する(表記上は小数第4位まで計算する)
+
+;メイン担当なら10、サブ担当なら6 担当曲ならそれぞれ14、7.5
 VARSET 技量
 VARSET 人数
 FOR LCOUNT, 0, CHARANUM
-	IF CSTR:LCOUNT:配属 == "芸能プロダクション"
+	IF CSTR:LCOUNT:配属 == "芸能プロダクション" && ユニット担当記録用:LCOUNT
 		SELECTCASE ユニット担当記録用:LCOUNT
 			CASE 1
 				;担当曲補正
 				IF 担当曲判定(LCOUNT, IDOL選曲)
-					技量:3 += 12000*ABL:LCOUNT:舞踊技能
+					技量:3 += 140*ABL:LCOUNT:舞踊技能
 				ELSE
-					技量:3 += 10000*ABL:LCOUNT:舞踊技能
+					技量:3 += 100*ABL:LCOUNT:舞踊技能
 				ENDIF
 				人数:3++
 			CASE 2
 				IF 担当曲判定(LCOUNT, IDOL選曲)
-					技量:2 += 12000*ABL:LCOUNT:演奏技能
+					技量:2 += 140*ABL:LCOUNT:演奏技能
 				ELSE
-					技量:2 += 10000*ABL:LCOUNT:演奏技能
+					技量:2 += 100*ABL:LCOUNT:演奏技能
 				ENDIF
 				人数:2++
 			CASE 3
 				IF 担当曲判定(LCOUNT, IDOL選曲)
-					技量:1 += 12000*ABL:LCOUNT:歌唱技能
+					技量:1 += 140*ABL:LCOUNT:歌唱技能
 				ELSE
-					技量:1 += 10000*ABL:LCOUNT:歌唱技能
+					技量:1 += 100*ABL:LCOUNT:歌唱技能
 				ENDIF
 				人数:1++
 			CASE 4
 				IF 担当曲判定(LCOUNT, IDOL選曲)
-					技量:3 += 9000*ABL:LCOUNT:舞踊技能
-					技量:1 += 9000*ABL:LCOUNT:歌唱技能
+					技量:3 += 75*ABL:LCOUNT:舞踊技能
+					技量:1 += 75*ABL:LCOUNT:歌唱技能
 				ELSE
-					技量:3 += 7500*ABL:LCOUNT:舞踊技能
-					技量:1 += 7500*ABL:LCOUNT:歌唱技能
+					技量:3 += 60*ABL:LCOUNT:舞踊技能
+					技量:1 += 60*ABL:LCOUNT:歌唱技能
 				ENDIF
 				人数:3++
 				人数:1++
 			CASE 5
 				IF 担当曲判定(LCOUNT, IDOL選曲)
-					技量:2 += 9000*ABL:LCOUNT:演奏技能
-					技量:1 += 9000*ABL:LCOUNT:歌唱技能
+					技量:2 += 75*ABL:LCOUNT:演奏技能
+					技量:1 += 75*ABL:LCOUNT:歌唱技能
 				ELSE
-					技量:2 += 7500*ABL:LCOUNT:演奏技能
-					技量:1 += 7500*ABL:LCOUNT:歌唱技能
+					技量:2 += 60*ABL:LCOUNT:演奏技能
+					技量:1 += 60*ABL:LCOUNT:歌唱技能
 				ENDIF
 				人数:2++
 				人数:1++
 		ENDSELECT
+		人数++
 	ENDIF
 NEXT
-FOR 分野, 1, 4
-	SIF 人数:分野 <= 0
-		CONTINUE
-	技量:分野 *= 10000
-	技量:分野 /= SQRT(人数:分野*10000*10000)
+
+難度:1 = 100*TOINT(IDOL選曲:1)
+難度:2 = 100*TOINT(IDOL選曲:2)
+難度:3 = 100*TOINT(IDOL選曲:3)
+;難度合計 = TOINT(IDOL選曲:1) + TOINT(IDOL選曲:2) + TOINT(IDOL選曲:3)
+;魅惑で2%、魅力で3%、謎の魅力で4%、人気で5%技量が上がる(乗算で重複する)
+;ビジュアルによって難度が下がる(※かわいいは正義)ことを表現したいのだが
+;難度を下げると収入も下がってしまうので相対的に技量を上げる
+FOR LCOUNT, 0, CHARANUM
+	IF CSTR:LCOUNT:配属 == "芸能プロダクション" && ユニット担当記録用:LCOUNT
+		IF TALENT:LCOUNT:魅惑
+			TIMES 技量:1, 1.02
+			TIMES 技量:2, 1.02
+			TIMES 技量:3, 1.02
+		ENDIF
+		IF TALENT:LCOUNT:魅力
+			TIMES 技量:1, 1.03
+			TIMES 技量:2, 1.03
+			TIMES 技量:3, 1.03
+		ENDIF
+		IF TALENT:LCOUNT:謎の魅力
+			TIMES 技量:1, 1.04
+			TIMES 技量:2, 1.04
+			TIMES 技量:3, 1.04
+		ENDIF
+		IF TALENT:LCOUNT:人気
+			TIMES 技量:1, 1.05
+			TIMES 技量:2, 1.05
+			TIMES 技量:3, 1.05
+		ENDIF
+		;去勢済みの男性はボーカルにボーナス
+		SIF TALENT:LCOUNT:去勢済み && SEX(LCOUNT) == 1
+			TIMES 技量:1, 1.05
+	ENDIF
 NEXT
+;GAMBOL・nine seconds・SPICY PIECEの場合は判定が厳しくなる
+SELECTCASE IDOL選曲
+	CASE "GAMBOL", "nine seconds", "SPICY PIECE"
+	TIMES 技量:1, 0.33
+	TIMES 技量:2, 0.33
+	TIMES 技量:3, 0.33
+ENDSELECT
+
+VARSET 収入
+;それぞれの分野についての基本収入を出す
+;難易度1が1万円。2以降は(MIN(難度, 技量)-1)*20000
+;難易度より技量が高い場合は、上記の収入の10%*超過技量
+;難易度より技量が低い場合は、-40000*不足技量
+FOR 分野, 1, 4
+	SIF !難度:分野
+		CONTINUE
+	収入:分野 = MAX((MIN(難度:分野, 技量:分野)-1)*20000/100, 10000)
+	IF 技量:分野 > 難度:分野
+		収入:分野 += 収入:分野*(技量:分野-難度:分野)/10000
+	ELSEIF 技量:分野 < 難度:分野
+		収入:分野 -= (難度:分野-技量:分野)*40000/100
+	ENDIF
+	収入 += 収入:分野
+NEXT
+
+;出演依頼なら1.5倍
+;今後この式は出演依頼に限定する予定なのでいずれ補正消す
+SIF 依頼
+	TIMES 収入 , 1.5
+
 DRAWLINE
 PRINTL □ライブに出すメンバーと担当するパートを選んでください
 PRINTL 　(ボーカル曲の場合、最低でも1人はボーカルを担当する必要があります)
@@ -386,38 +444,53 @@ PRINT 　楽曲難易度　
 FOR 分野, 1, 4
 	SELECTCASE 分野
 		CASE 1
-			PRINT Vocal:
+			PRINT |Vocal:
 		CASE 2
-			PRINT Inst.:
+			PRINT |Inst.:
 		CASE 3
-			PRINT Dance:
+			PRINT |Dance:
 	ENDSELECT
 	SELECTCASE TOINT(IDOL選曲:分野)
 		CASE 0
-			PRINT ‐ 
+			PRINT ‐
 		CASE IS < 10
-			PRINTFORM %TOFULL(IDOL選曲:分野)% 
+			PRINTFORM %TOFULL(IDOL選曲:分野)%
 		CASEELSE
-			PRINTFORM %IDOL選曲:分野% 
+			PRINTFORM %IDOL選曲:分野%
 	ENDSELECT
 NEXT
 PRINTL 
 PRINT 　現在の技量　
 FOR 分野, 1, 4
-	PRINTFORM {技量:分野/10000, 3, RIGHT}.
-	FOR LCOUNT, 0, 4-STRLENS(TOSTR(技量:分野%10000))
-		PRINT 0
-	NEXT
-	PRINTFORM {技量:分野%10000} 
+	PRINTFORM |%@"{技量:分野/100}.{技量:分野%100}", 8%
 NEXT
 PRINTL 
+IF 収入 >= 0
+	SETCOLORBYNAME deepskyblue
+ELSE
+	SETCOLORBYNAME gray
+ENDIF
+CALL PASELI, @"　収入見込額:{収入}＄ "
+RESETCOLOR
+IF 収入 >= 0
+	PRINTFORM メンバーへの報酬:15\%×{人数}={15*人数}\% 
+	IF 収入 >= 0
+		SETCOLORBYNAME deepskyblue
+	ELSE
+		SETCOLORBYNAME gray
+	ENDIF
+	CALL PASELI, @"合計:{収入}-{PERCENT(収入, 15*人数)}={収入-PERCENT(収入, 15*人数)}＄"
+	RESETCOLOR
+ENDIF
 PRINTL 
 FOR LCOUNT, 0, CHARANUM
-	;体力不足だと無理
-	SIF BASE:LCOUNT:体力 < 500
-		CONTINUE
 	IF CSTR:LCOUNT:配属 == "芸能プロダクション"
 		PRINT 　
+		;体力不足だと無理
+		IF BASE:LCOUNT:体力 < 500
+			CALL PRINTCOLORL, @"疲弊 [--] - %NAME:LCOUNT, 26, LEFT%(歌唱技能:{ABL:LCOUNT:歌唱技能, 2, LEFT} 演奏技能:{ABL:LCOUNT:演奏技能, 2, LEFT} 舞踊技能:{ABL:LCOUNT:舞踊技能, 2, LEFT})", "gray"
+			CONTINUE
+		ENDIF
 		SELECTCASE ユニット担当記録用:LCOUNT
 			CASE 0
 				PRINT 　　
@@ -526,13 +599,21 @@ IF RESULT == -1
 		RETURN 0
 	GOTO MUSIC_SELECT
 ELSEIF RESULT == 0
-	IF 人数:1 == 0  && 人数:2 == 0 && 人数:3 == 0
+	IF 人数 == 0
 		PRINTW メンバーを1人以上選び出してください
 		GOTO MEMBER_LOOP
 	ENDIF
 	IF IDOL選曲:1 != "0" && 人数:1 == 0
 		PRINTW ボーカルを1人以上選び出してください
 		GOTO MEMBER_LOOP
+	ENDIF
+	IF 収入 < 0
+		PRINTL このライブでは収入を見込めません。本当に開催しますか？
+		PRINTL [0] - あいつらが失敗するところを見たい
+		PRINTL [1] - やめておこう
+		BINPUT
+		SIF RESULT
+			GOTO MEMBER_LOOP
 	ENDIF
 ELSE
 	LMEMORY = RESULT
@@ -558,6 +639,7 @@ ELSE
 ENDIF
 
 ;上記を超えるとライブ開始
+;一応もう一度計算する
 難度:1 = 100*TOINT(IDOL選曲:1)
 難度:2 = 100*TOINT(IDOL選曲:2)
 ;CHAOSはダンス難易度が4～9の間で変動する
@@ -580,46 +662,47 @@ FOR LCOUNT, 0, CHARANUM
 				CASE 1
 					;担当曲補正
 					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:3 -= 120*ABL:LCOUNT:舞踊技能
+						技量:3 -= 140*ABL:LCOUNT:舞踊技能
 					ELSE
 						技量:3 -= 100*ABL:LCOUNT:舞踊技能
 					ENDIF
 					人数:3--
 				CASE 2
 					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:2 -= 120*ABL:LCOUNT:演奏技能
+						技量:2 -= 140*ABL:LCOUNT:演奏技能
 					ELSE
 						技量:2 -= 100*ABL:LCOUNT:演奏技能
 					ENDIF
 					人数:2--
 				CASE 3
 					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:1 -= 120*ABL:LCOUNT:歌唱技能
+						技量:1 -= 140*ABL:LCOUNT:歌唱技能
 					ELSE
 						技量:1 -= 100*ABL:LCOUNT:歌唱技能
 					ENDIF
 					人数:1--
 				CASE 4
 					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:3 -= 90*ABL:LCOUNT:舞踊技能
-						技量:1 -= 90*ABL:LCOUNT:歌唱技能
-					ELSE
 						技量:3 -= 75*ABL:LCOUNT:舞踊技能
 						技量:1 -= 75*ABL:LCOUNT:歌唱技能
+					ELSE
+						技量:3 -= 60*ABL:LCOUNT:舞踊技能
+						技量:1 -= 60*ABL:LCOUNT:歌唱技能
 					ENDIF
 					人数:3--
 					人数:1--
 				CASE 5
 					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:2 -= 90*ABL:LCOUNT:演奏技能
-						技量:1 -= 90*ABL:LCOUNT:歌唱技能
-					ELSE
 						技量:2 -= 75*ABL:LCOUNT:演奏技能
 						技量:1 -= 75*ABL:LCOUNT:歌唱技能
+					ELSE
+						技量:2 -= 60*ABL:LCOUNT:演奏技能
+						技量:1 -= 60*ABL:LCOUNT:歌唱技能
 					ENDIF
 					人数:2--
 					人数:1--
 			ENDSELECT
+			人数--
 			ユニット担当記録用:LCOUNT = 0
 			CONTINUE
 		ENDIF
@@ -661,34 +744,25 @@ SELECTCASE IDOL選曲
 	TIMES 技量:2, 0.33
 	TIMES 技量:3, 0.33
 ENDSELECT
-収入 = 0
-超過ポイント = 0
+VARSET 収入
 ;それぞれの分野についての基本収入を出す
-;収入は(合計難易度*合計難易度)*1万円が目安 超過で最大5倍まで増える
-収入 = 難度合計*難度合計*1000
+;難易度1が1万円。2以降は(MIN(難度, 技量)-1)*20000
+;難易度より技量が高い場合は、上記の収入の10%*超過技量
+;難易度より技量が低い場合は、-40000*不足技量
 FOR 分野, 1, 4
-	;他の技能で補えるのは変なのでマイナス分は2倍にする
-	IF 技量:分野-難度:分野 < 0
-		超過ポイント += (技量:分野-難度:分野)*2
-	ELSE
-		超過ポイント += 技量:分野-難度:分野
+	SIF !難度:分野
+		CONTINUE
+	収入:分野 = MAX((MIN(難度:分野, 技量:分野)-1)*20000/100, 10000)
+	IF 技量:分野 > 難度:分野
+		収入:分野 += 収入:分野*(技量:分野-難度:分野)/10000
+	ELSEIF 技量:分野 < 難度:分野
+		収入:分野 -= (難度:分野-技量:分野)*40000/100
 	ENDIF
+	収入 += 収入:分野
 NEXT
 
-;超過ポイントは100倍されたものが入ってる
-SELECTCASE SIGN(超過ポイント)
-	;+
-	CASE 1
-		収入 *= LIMIT((超過ポイント/難度合計), 100, 500)
-		収入 /= 100
-	;-
-	CASE -1
-		収入 *= -LIMIT((超過ポイント/難度合計), 100, 500)
-		;可哀想なので損失は低めに
-		収入 /= 1000
-ENDSELECT
-
 ;出演依頼なら1.5倍
+;今後この式は出演依頼に限定する予定なのでいずれ補正消す
 SIF 依頼
 	TIMES 収入 , 1.5
 
@@ -696,7 +770,24 @@ SIF 依頼
 ;最後に知名度による補正
 ;マイナスも増幅するので、知名度が高いときにしくじると大惨事
 ;√知名度%の上昇に調整 最大300%
-収入:1 += 収入*LIMIT(SQRT(IDOL:知名度), 1, 300)/100
+;収入見込額の仕様追加したため一旦コメントアウト
+;収入:1 += 収入*LIMIT(SQRT(IDOL:知名度), 1, 300)/100
+
+PRINTL ライブが終了しました
+IF 収入:1 >= 0
+	CALL PASELI, @"{収入:1}＄の利益を出し、"
+ELSE
+	CALL PASELI, @"{ABS(収入:1)}＄の損失を出し、"
+ENDIF
+PRINT 知名度が
+IF SIGN(収入) == 1
+	PRINTFORML {SQRT(収入)/10}増えました
+ELSE
+	収入 *= -1
+	PRINTFORML {SQRT(収入)/10}減りました
+	収入 *= -1
+ENDIF
+CALL PASELIW, @"利益のうち、{PERCENT(収入, 人数*15)}＄の報酬を出演者に支払い、%CALLNAME:MASTER%の収入は{収入-PERCENT(収入, 人数*15)}＄でした"
 
 MONEY += 収入:1
 CALL 現金出納帳記録, @"ライブの収支/{収入:1}"
@@ -709,21 +800,6 @@ SELECTCASE SIGN(収入)
 		IDOL:知名度 -= SQRT(収入)/10
 		収入 *= -1
 ENDSELECT
-PRINTL
-PRINTL ライブが終了しました
-IF 収入:1 >= 0
-	CALL PASELI, @"{収入:1}＄の利益を出し、"
-ELSE
-	CALL PASELI, @"{ABS(収入:1)}＄の損失を出し、"
-ENDIF
-PRINT 知名度が
-IF SIGN(収入) == 1
-	PRINTFORMW {SQRT(収入)/10}増えました
-ELSE
-	収入 *= -1
-	PRINTFORMW {SQRT(収入)/10}減りました
-	収入 *= -1
-ENDIF
 
 SIF IDOL:知名度 < 0
 	IDOL:知名度 = 0
@@ -761,7 +837,14 @@ IF 収入:1 > 0
 				CALL 実績解除, "conflict歌います"
 		ENDIF
 	NEXT
+;マイナスならモチベを下げる
+ELSE
+	FOR LCOUNT, 0, CHARANUM
+		SIF CSTR:LCOUNT:配属 == "芸能プロダクション" && ユニット担当記録用:LCOUNT
+			CFLAG:LCOUNT:モチベーション /= 3
+	NEXT
 ENDIF
+
 SIF リミ曲実績:0 && リミ曲実績:1
 	CALL 実績解除, "「じゃ、その曲ちょっと貸してくんない？」"
 IF 技量:1 >= 難度:1 && 技量:2 >= 難度:2 && 技量:3 >= 難度:3
