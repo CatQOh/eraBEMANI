@@ -27,7 +27,7 @@ ENDIF
 ;2017/07/11に、表示～選択までの全てを関数内で行うように
 ;;;第1引数=表示場面(購入,全キャラ表示,主人選択,パートナー選択,段位エディット)
 ;;;第2引数がTRUEなら無条件で選択可能
-@CHARA_LIST, 表示場面, 無条件選択
+@CHARA_LIST, 表示場面, 無条件選択, 全キャラ検索
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 単位文字数
 #DIM DYNAMIC 価格上限
@@ -45,6 +45,12 @@ ENDIF
 #DIMS DYNAMIC 表示場面
 #DIM DYNAMIC 無条件選択
 #DIM フィルタ有効 = 1
+#DIM DYNAMIC 検索機能
+#DIM DYNAMIC 検索ワード
+#DIMS DYNAMIC マウスオーバー
+#DIM DYNAMIC 全キャラ検索
+
+検索機能 = 全キャラ検索
 
 ;選択可能キャラのフラグを立てる
 FOR LCOUNT, 0, 10000
@@ -98,7 +104,10 @@ FOR LCOUNT, 0, 10000
 	SIF !選択可能:LCOUNT
 		CONTINUE
 	;フィルタによる除外
-	IF フィルタ有効
+	IF 検索機能
+		SIF GETTEXTBOX() != "" && STRFIND(TOUPPER(CSVNAME(LCOUNT)), TOUPPER(GETTEXTBOX())) == -1 && STRFIND(TOUPPER(CSVCSTR(LCOUNT, GETNUM(CSTR, "英語名"))), TOUPPER(GETTEXTBOX())) == -1
+			CONTINUE
+	ELSEIF フィルタ有効
 		SIF GROUPMATCH(表示場面, "購入", "段位エディット") && LCOUNT == NOF(MASTER)
 			CONTINUE
 		SIF CCB:LCOUNT
@@ -274,8 +283,16 @@ FOR LCOUNT, 0, 10000
 		ENDSELECT
 	ENDIF
 	IF 表示場面 == "全キャラ表示"
+		IF 検索機能
+			SIF TOINT(マウスオーバー) == LCOUNT
+				SETCOLORBYNAME yellow
+		ENDIF
 		PRINTFORM %文字列表示用 , 38 , LEFT%
 	ELSE
+		IF 検索機能
+			SIF TOINT(マウスオーバー) == LCOUNT
+				SETCOLORBYNAME yellow
+		ENDIF
 		CALL PASELI, 文字列表示用, 1
 		;3人目は空白埋めしない
 		IF 表示数%3 != 2
@@ -299,7 +316,12 @@ NEXT
 PRINTL 
 
 DRAWLINE
-IF !フィルタ有効
+IF 検索機能
+	IF !全キャラ検索
+		PRINTPLAIN 　CHARA  FILTER　
+		CALL PRINTCOLORL, "[20030] 検索機能をオフにする", @"\@ TOINT(マウスオーバー) == 20030 ? yellow # silver \@"
+	ENDIF
+ELSEIF !フィルタ有効
 	PRINTFORML 　[30000] %I18N("フィルタを有効にする")%
 	DRAWLINE
 ELSE
@@ -524,13 +546,20 @@ ELSE
 
 	PRINTPLAINFORM %SPACESLENS("　CUSTOM FILTER　")%
 	PRINTFORML [20020] %I18N("表示キャラを増やす")%　[20021] %I18N("表示キャラを減らす")%
+	PRINTPLAINFORM %SPACESLENS("　CUSTOM FILTER　")%
+	PRINTFORML [20030] %I18N("キャラ名で検索する(ローマ字も有効)")%
 	DRAWLINE
 	PRINTFORML 　[30000] %I18N("フィルタを無効にする")%
 	DRAWLINE
 ENDIF
 
 PRINTPLAINFORM 　PAGE.{TFLAG:ページ数+1, 2, LEFT}　
+SIF 検索機能 && TOINT(マウスオーバー) == 10001
+	SETCOLORBYNAME yellow
 CALL PRINTSPACE, TFLAG:ページ数, @"[10001] %I18N("前ページ")% "
+RESETCOLOR
+SIF 検索機能 && TOINT(マウスオーバー) == 10000
+	SETCOLORBYNAME yellow
 SELECTCASE 表示場面
 	CASE "購入"
 		PRINTFORM [10000] %I18N("購入しない")% 
@@ -542,12 +571,31 @@ SELECTCASE 表示場面
 		SIF CSVEDITOR
 			PRINTFORM [10000] %I18N("戻る")% 
 ENDSELECT
+RESETCOLOR
+SIF 検索機能 && TOINT(マウスオーバー) == 10009
+	SETCOLORBYNAME yellow
 CALL PRINTSPACE, 次ページあり, @"[10009] %I18N("次ページ")% "
-SIF 表示場面 == "購入"
+RESETCOLOR
+SIF 表示場面 == "購入" && !検索機能
 	PRINTFORM [10010] %I18N("ランダムセレクト")%
 PRINTL 
 
-INPUT
+IF 検索機能
+	AWAIT 1
+	IF GETKEYTRIGGERED(0x01) && ISNUMERIC(マウスオーバー)
+		RESULT = TOINT(マウスオーバー)
+		GOTO BREAK
+	ENDIF
+	IF MOUSEB() != ""
+		マウスオーバー = %MOUSEB()%
+	ELSE
+		マウスオーバー = -1
+	ENDIF
+	GOTO リスト表示
+ELSE
+	INPUT
+ENDIF
+$BREAK
 SELECTCASE RESULT
 	CASE 10000
 		SELECTCASE 表示場面
@@ -605,6 +653,9 @@ SELECTCASE RESULT
 	CASE 20021
 		SIF 表示上限 > 30
 			表示上限 -= 30
+	CASE 20030
+		INVERTBIT 検索機能, 0
+		マウスオーバー =
 	CASE 30000
 		INVERTBIT フィルタ有効, 0
 	CASE 0 TO 9999
