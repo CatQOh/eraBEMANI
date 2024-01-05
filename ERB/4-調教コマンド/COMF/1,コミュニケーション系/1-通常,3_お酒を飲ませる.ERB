@@ -5,8 +5,8 @@
 #FUNCTION
 #DIM DYNAMIC LCOUNT
 ;ゲーセンに居る場合はできない
-コマンド実行条件 += "ゲーセンでは実行不可/"
-SIF TEQUIP:ゲームセンター
+コマンド実行条件 += "ゲーセンではフードコートが無いと不可/"
+SIF TEQUIP:ゲームセンター && !GC:フードコート
 	COMRESULT = 0
 ;上級売春中は不可
 コマンド実行条件 += "上級売春中は実行不可/"
@@ -41,15 +41,15 @@ IF MOD:STS
 ENDIF
 
 ;お酒持ってないとダメ ただしお正月はお屠蘇があるのでおｋ
-コマンド実行条件 += "お酒アイテムが必要/"
-IF MONTH == 1 && DAYS == 1
-	RETURNF COMRESULT
-ELSEIF COMRESULT
-	SIF SUMARRAY(ITEM, 250, 300) == 0
-		COMRESULT = 0
-	;SIF レシピ判定("自家醸造日本酒") == 2 || レシピ判定("自家製ワイン") == 2 || レシピ判定("自家製ウイスキー") == 2 || レシピ判定("自家醸造ビール") == 2
-	;	LOCAL = 1
-ENDIF
+;コマンド実行条件 += "お酒アイテムが必要/"
+;IF MONTH == 1 && DAYS == 1
+;	RETURNF COMRESULT
+;ELSEIF COMRESULT
+;	SIF SUMARRAY(ITEM, 250, 300) == 0
+;		COMRESULT = 0
+;	;SIF レシピ判定("自家醸造日本酒") == 2 || レシピ判定("自家製ワイン") == 2 || レシピ判定("自家製ウイスキー") == 2 || レシピ判定("自家醸造ビール") == 2
+;	;	LOCAL = 1
+;ENDIF
 
 RETURNF COMRESULT
 
@@ -62,8 +62,34 @@ RETURNF COMRESULT
 
 VARSET 材料, 0
 
-PRINTL 何を飲ませますか？
+IF TEQUIP:ゲームセンター
+	CALL PASELIL, @"何を注文しますか？(各300＄)"
+	PRINTL [1] 生ビール
+	PRINTL [2] ハイボール
+	PRINTL [3] レモンサワー
+	PRINTL [100] やっぱりやめる
+	BINPUT
+	SELECTCASE RESULT
+		CASE 1
+			酒名 = 生ビール
+			製法 = ビール
+			ALC = 5
+		CASE 2
+			酒名 = ハイボール
+			製法 = ハイボール
+			ALC = 7
+		CASE 3
+			酒名 = レモンサワー
+			製法 = カクテル
+			ALC = 3
+		CASE 100
+			PRINTFORMW お酒を飲ませるのを止めました
+			RETURN 0
+	ENDSELECT
+	GOTO 判定
+ENDIF
 
+PRINTL 何を飲ませますか？
 SIF ITEM:スーパードライ || ITEM:一番搾り || ITEM:プレミアムモルツ || ITEM:ヱビス || ITEM:ほろよい || ITEM:ストロングゼロ
 	PRINTL [1] 缶飲料類
 SIF ITEM:皆伝; || レシピ判定("自家醸造日本酒") == 2
@@ -594,6 +620,8 @@ SELECTCASE RESULT
 		RETURN 0
 ENDSELECT
 
+$判定
+
 CALL ALC_ORDER, ALC, 製法, お酒
 
 PRINTFORM  = {RESULT}
@@ -616,7 +644,7 @@ IF RESULT < 0
 	CALL KOJO_MESSAGE_EVENT, "飲酒拒否時"
 	RETURN 0
 ELSE
-	SIF 酒名 != "お屠蘇" && お酒 >= 0
+	SIF GETNUM(ITEM, 酒名) >= 0 && お酒 >= 0
 		ITEM:お酒--
 	SELECTCASE 製法
 		CASE "ハイボール"
@@ -835,7 +863,7 @@ IF GETPALAMLV(PALAM:恭順, 10)
 	実効値 += GETPALAMLV(PALAM:恭順, 10)
 ENDIF
 
-IF 製法 == "ビール" && !TALENT:酒豪 && (TALENT:体格 <= 2 || TALENT:下戸)
+IF 製法 == "ビール" && !TALENT:酒豪 && (TALENT:児童 || TALENT:下戸)
 	PRINT -ビールは苦くて無理(10)
 	実効値 -= 10
 	SELECTCASE 酒名
@@ -930,7 +958,7 @@ SELECTCASE 製法
 		ENDIF
 ENDSELECT
 
-IF TALENT:体格 <= 2 && !TALENT:酒豪
+IF TALENT:児童 && !TALENT:酒豪
 	PRINT -子供(3)
 	実効値 -= 3
 ENDIF
