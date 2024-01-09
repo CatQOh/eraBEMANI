@@ -8,6 +8,9 @@
 #DIM DYNAMIC LRESULT
 #DIMS DYNAMIC 種族名, 100
 #DIM DYNAMIC 種族ナンバー
+#DIM DYNAMIC 服装プリセット = 1
+#DIMS DYNAMIC 選択文字列
+#DIM DYNAMIC 付随番号
 
 ADDVOIDCHARA
 ADDVOIDCHARA
@@ -211,22 +214,37 @@ NEXT
 CALL NEWLINE
 
 DRAWLINE
-PRINTL □ 服装
+PRINT □ 服装 
+FOR LCOUNT, 1, 11
+	SIF 服装プリセット == LCOUNT
+		SETCOLORBYNAME deepskyblue
+	PRINTBUTTON @"[{LCOUNT}]", @"服装プリセット{LCOUNT}"
+	RESETCOLOR
+NEXT
+PRINTL 
 FOR LCOUNT, 0, VARSIZE("CSTR")
 	SELECTCASE CSTRNAME:LCOUNT
 		CASE "特殊", "上半身上着", "下半身上着", "全身上着", "上半身下着", "下半身下着", "足元"
 			IF CFLAG:(CSTRNAME:LCOUNT+"着衣不可")
 				表示用変数 = 着衣不可
 			ELSE
-				表示用変数 = %CSTR:LCOUNT%
+				IF 服装プリセット > 1
+					表示用変数 = %CSTR:@"%CSTRNAME:LCOUNT%{服装プリセット}"%
+				ELSE
+					表示用変数 = %CSTR:LCOUNT%
+				ENDIF
 			ENDIF
-			PRINTBUTTON @"%@"　[%CSTRNAME:LCOUNT%]", 14, LEFT%:%表示用変数% ", CSTRNAME:LCOUNT
+			PRINTBUTTON @"%@"　[%CSTRNAME:LCOUNT%]", 14, LEFT%:%表示用変数% ", @"%CSTRNAME:LCOUNT%{服装プリセット}"
 			IF 表示用変数 != "着衣不可"
 				SELECTCASE CSTRNAME:LCOUNT
 					CASE "下半身上着"
-						PRINTBUTTON @"[挿入可フラグ]:上着を着たまま挿入\@ CFLAG:挿入可 == 1 ? 可能 # 不可能 \@", "挿入可"
+						IF 服装プリセット > 1
+							PRINTBUTTON @"[挿入可フラグ]:上着を着たまま挿入\@ CFLAG:@"挿入可{服装プリセット}" == 1 ? 可能 # 不可能 \@", @"挿入可{服装プリセット}"
+						ELSE
+							PRINTBUTTON @"[挿入可フラグ]:上着を着たまま挿入\@ CFLAG:挿入可 == 1 ? 可能 # 不可能 \@", @"挿入可{服装プリセット}"
+						ENDIF
 					CASE "全身上着"
-						SELECTCASE CFLAG:着衣併用
+						SELECTCASE CFLAG:@"着衣併用\@ 服装プリセット > 1 ? {服装プリセット} #\@"
 							CASE 0
 								表示用変数 = フラグ無し
 							CASE 1
@@ -234,7 +252,7 @@ FOR LCOUNT, 0, VARSIZE("CSTR")
 							CASE 2
 								表示用変数 = 下着との併用不可能
 						ENDSELECT
-						PRINTBUTTON @"[着衣併用フラグ]:%表示用変数%", "着衣併用"
+						PRINTBUTTON @"[着衣併用フラグ]:%表示用変数%", @"着衣併用{服装プリセット}"
 				ENDSELECT
 			ENDIF
 			PRINTL 
@@ -299,7 +317,40 @@ PRINTBUTTON "[4] プロジェクトを初期化する", "4"
 $LOOP
 INPUTS
 CLEARLINE 1
-SELECTCASE RESULTS
+選択文字列 = %RESULTS%
+IF STRFIND(選択文字列, "挿入可") >= 0
+	選択文字列 = 挿入可
+	付随番号 = DIG_SEP(RESULTS)
+ELSEIF STRFIND(選択文字列, "着衣併用") >= 0
+	選択文字列 = 着衣併用
+	付随番号 = DIG_SEP(RESULTS)
+ELSEIF STRFIND(選択文字列, "特殊") >= 0
+	選択文字列 = 特殊
+	付随番号 = DIG_SEP(RESULTS)
+ELSEIF STRFIND(選択文字列, "上半身上着") >= 0
+	選択文字列 = 上半身上着
+	付随番号 = DIG_SEP(RESULTS)
+ELSEIF STRFIND(選択文字列, "下半身上着") >= 0
+	選択文字列 = 下半身上着
+	付随番号 = DIG_SEP(RESULTS)
+ELSEIF STRFIND(選択文字列, "全身上着") >= 0
+	選択文字列 = 全身上着
+	付随番号 = DIG_SEP(RESULTS)
+ELSEIF STRFIND(選択文字列, "上半身下着") >= 0
+	選択文字列 = 上半身下着
+	付随番号 = DIG_SEP(RESULTS)
+ELSEIF STRFIND(選択文字列, "下半身下着") >= 0
+	選択文字列 = 下半身下着
+	付随番号 = DIG_SEP(RESULTS)
+ELSEIF STRFIND(選択文字列, "足元") >= 0
+	選択文字列 = 足元
+	付随番号 = DIG_SEP(RESULTS)
+ELSEIF STRFIND(選択文字列, "服装プリセット") >= 0
+	選択文字列 = 服装プリセット
+	付随番号 = DIG_SEP(RESULTS)
+ENDIF
+
+SELECTCASE 選択文字列
 	CASE "0"
 		PRINTL 現在の作業状況のCSVをログに出力します。よろしいですか？
 		PRINTL [0] - はい
@@ -431,7 +482,7 @@ SELECTCASE RESULTS
 		INVERTBIT 素質数値指定, 0
 		GOTO RESTART
 	CASE "特殊", "上半身上着", "下半身上着", "全身上着", "上半身下着", "下半身下着", "足元"
-		表示用変数 = %RESULTS%
+		表示用変数 = %選択文字列%
 		PRINTFORML %表示用変数%の名前を入力してください
 		PRINTBUTTON "[着衣不可にする]", "着衣不可にする"
 		PRINTBUTTON "[着衣可にする]", "着衣可にする"
@@ -444,7 +495,7 @@ SELECTCASE RESULTS
 			CASE "着衣可にする"
 				CFLAG:(表示用変数+"着衣不可") = 0
 			CASEELSE
-				CSTR:表示用変数 = %RESULTS%
+				CSTR:@"%表示用変数%\@ 付随番号 > 1 ? {付随番号} #\@" = %RESULTS%
 		ENDSELECT
 		GOTO RESTART
 	CASE "挿入可"
@@ -452,7 +503,7 @@ SELECTCASE RESULTS
 		PRINTL [0] - フラグ無し
 		PRINTL [1] - 下半身上着、もしくは全身上着を着たまま性交可能
 		BINPUT
-		CFLAG:挿入可 = RESULT
+		CFLAG:@"挿入可\@ 付随番号 > 1 ? {付随番号} #\@" = RESULT
 		GOTO RESTART
 	CASE "着衣併用"
 		PRINTL 全身上着の着衣併用フラグを設定してください
@@ -460,7 +511,10 @@ SELECTCASE RESULTS
 		PRINTL [1] - 上半身上着及び下半身上着との併用可能
 		PRINTL [2] - 上半身下着及び下半身下着との併用不可能
 		BINPUT
-		CFLAG:着衣併用 = RESULT
+		CFLAG:@"着衣併用\@ 付随番号 > 1 ? {付随番号} #\@" = RESULT
+		GOTO RESTART
+	CASE "服装プリセット"
+		服装プリセット = 付随番号
 		GOTO RESTART
 	CASE "相性を変更する"
 		PRINTL 相手の番号を入力してください
@@ -651,6 +705,8 @@ GOTO RESTART
 @CSV出力, 再整形
 #DIM DYNAMIC 再整形
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 服装プリセット
+#DIM DYNAMIC PREVLINE
 
 ;TARGETが対象
 CLEARLINE LINECOUNT
@@ -765,26 +821,35 @@ NEXT
 PRINTL 
 
 PRINTL ;服装
-FOR LCOUNT, 0, VARSIZE("CSTR")
-	SELECTCASE CSTRNAME:LCOUNT
-		CASE "特殊", "上半身上着", "下半身上着", "全身上着", "上半身下着", "下半身下着", "足元"
-			IF CFLAG:(CSTRNAME:LCOUNT+"着衣不可")
-				PRINTFORML フラグ,%CSTRNAME:LCOUNT%着衣不可
-			ELSEIF CSTR:LCOUNT != ""
-				PRINTFORML CSTR,%CSTRNAME:LCOUNT%,%CSTR:LCOUNT%
-			ENDIF
-	ENDSELECT
+PREVLINE = LINECOUNT
+FOR 服装プリセット, 1, 11
+	FOR LCOUNT, 0, VARSIZE("CSTR")
+		SELECTCASE CSTRNAME:LCOUNT
+			CASE "特殊", "上半身上着", "下半身上着", "全身上着", "上半身下着", "下半身下着", "足元"
+				IF CFLAG:(CSTRNAME:LCOUNT+"着衣不可") && 服装プリセット == 1
+					PRINTFORML フラグ,%CSTRNAME:LCOUNT%着衣不可
+				ELSEIF CSTR:@"%CSTRNAME:LCOUNT%\@ 服装プリセット > 1 ? {服装プリセット} #\@" != ""
+					PRINTFORML CSTR,%CSTRNAME:LCOUNT%\@ 服装プリセット > 1 ? {服装プリセット} #\@,%CSTR:@"%CSTRNAME:LCOUNT%\@ 服装プリセット > 1 ? {服装プリセット} #\@"%
+				ENDIF
+		ENDSELECT
+	NEXT
+	SIF CFLAG:@"挿入可\@ 服装プリセット > 1 ? {服装プリセット} #\@"
+		PRINTFORML フラグ,挿入可\@ 服装プリセット > 1 ? {服装プリセット} #\@
+	SIF CFLAG:@"着衣併用\@ 服装プリセット > 1 ? {服装プリセット} #\@" != 0
+		PRINTFORML フラグ,着衣併用\@ 服装プリセット > 1 ? {服装プリセット} #\@,{CFLAG:@"着衣併用\@ 服装プリセット > 1 ? {服装プリセット} #\@"}
+	SIF CFLAG:@"上着パイズリ\@ 服装プリセット > 1 ? {服装プリセット} #\@" != 0
+		PRINTFORML フラグ,上着パイズリ\@ 服装プリセット > 1 ? {服装プリセット} #\@,{CFLAG:@"上着パイズリ\@ 服装プリセット > 1 ? {服装プリセット} #\@"}
+	SIF CFLAG:@"下着パイズリ\@ 服装プリセット > 1 ? {服装プリセット} #\@" != 0
+		PRINTFORML フラグ,下着パイズリ,{CFLAG:@"下着パイズリ\@ 服装プリセット > 1 ? {服装プリセット} #\@"}
+	SIF CFLAG:@"全身上着パイズリ\@ 服装プリセット > 1 ? {服装プリセット} #\@" != 0
+		PRINTFORML フラグ,全身上着パイズリ,{CFLAG:@"全身上着パイズリ\@ 服装プリセット > 1 ? {服装プリセット} #\@"}
+	SIF CFLAG:@"耐水\@ 服装プリセット > 1 ? {服装プリセット} #\@" != 0
+		PRINTFORML フラグ,耐水,{CFLAG:@"耐水\@ 服装プリセット > 1 ? {服装プリセット} #\@"}
+	SIF PREVLINE != LINECOUNT
+		PRINTL 
+	PREVLINE = LINECOUNT
 NEXT
-SIF CFLAG:挿入可
-	PRINTL フラグ,挿入可
-SIF CFLAG:着衣併用 != 0
-	PRINTFORML フラグ,着衣併用,{CFLAG:着衣併用}
-SIF CFLAG:上着パイズリ != 0
-	PRINTFORML フラグ,上着パイズリ,{CFLAG:上着パイズリ}
-SIF CFLAG:下着パイズリ != 0
-	PRINTFORML フラグ,下着パイズリ,{CFLAG:下着パイズリ}
 
-PRINTL 
 PRINTFORML CSTR,種族,%CSTR:種族%
 IF CFLAG:グリム
 	PRINTL 
