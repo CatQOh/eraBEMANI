@@ -371,6 +371,7 @@ ENDIF
 #DIM DYNAMIC 次のキャラ = -1
 #DIM DYNAMIC 前のキャラ = -1
 #DIM DYNAMIC ロストキャラ表示
+#DIM 曲表示
 
 ;処女が主人のドラゴンとなっている場合は、現在のドラゴンの名前を入れて後で戻す
 IF CSTR:処女 == "主人のドラゴン"
@@ -384,6 +385,14 @@ ENDIF
 
 DRAWLINE
 CALL 基本情報
+
+PRINTL □担当楽曲・出演曲
+IF 曲表示
+	CALL 担当曲表示, NOF(TARGET)
+	PRINTL 　[100] 非表示にする
+ELSE
+	PRINTL 　[100] 表示する
+ENDIF
 
 PRINTL □ その他情報
 IF パートナー != "" && パートナー == CHARANAMEF(TARGET)
@@ -1232,6 +1241,9 @@ SELECTCASE RESULT
 		CALL RGBBAR, CFLAG:タグ色/0x10000, CFLAG:タグ色%0x10000/0x100, CFLAG:タグ色%0x100
 		SIF RESULT
 			CFLAG:タグ色 = RESULT
+		JUMP STATUS_ETC, ロストキャラ表示
+	CASE 100
+		INVERTBIT 曲表示, 0
 		JUMP STATUS_ETC, ロストキャラ表示
 ENDSELECT
 
@@ -2508,3 +2520,46 @@ IF !CFLAG:対象:キャラロスト || CFLAG:対象:死亡 || CFLAG:対象:依�
 ENDIF
 
 DRAWLINE
+
+;;;NOで渡す
+@担当曲表示, 対象
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 曲一覧, 1000
+;行頭に全角スペースを入れるため
+#DIM DYNAMIC 表示文字数 = 2
+#DIM CONST 表示可能文字数 = STRLENS(GETLINESTR("-"))
+#DIM DYNAMIC LCOUNT
+
+IF !EXISTCSV(対象)
+	PRINTL 　[無し]
+	RETURN
+ENDIF
+
+SPLIT CSVCSTR(対象, GETNUM(CSTR, "担当曲")), "| ", 曲一覧
+
+IF 曲一覧:0 == ""
+	PRINTL 　[無し]
+	RETURN
+ENDIF
+
+;曲一覧:0のみ行頭に改行相当のスペースが入ってるので一文字消す
+曲一覧:0 = %SUBSTRING(曲一覧:0, 1)%
+
+PRINT 　
+FOR LCOUNT, 0, 1000
+	SIF 曲一覧:LCOUNT == ""
+		BREAK
+	;括弧2個分で+4
+	表示文字数 += STRLENS(曲一覧:LCOUNT)+4
+	IF 表示文字数 >= 表示可能文字数
+		PRINTL 
+		PRINT 　
+		;括弧+全角スペース=6
+		表示文字数 = STRLENS(曲一覧:LCOUNT)+6
+	ENDIF
+	PRINTFORM 『%曲一覧:LCOUNT%』
+NEXT
+CALL NEWLINE
+RETURN
+
+	
