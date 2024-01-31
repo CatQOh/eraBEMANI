@@ -13,6 +13,7 @@ PRINTL 　[7] - 中絶
 PRINTL 　[8] - 性器切断(不妊手術,去勢)
 PRINTL 　[9] - 男性器形成(ふたなり化)
 ;PRINTL 　[10] - 女性器形成(ふたなり化)
+PRINTL 　[11] - 肋骨除去術
 DRAWLINE
 PRINTPLAIN 　生殖関連　
 PRINTL [0] - 戻る
@@ -41,6 +42,8 @@ SELECTCASE RESULT
 		CALL 男性器形成
 	CASE 10
 		CALL 女性器形成
+	CASE 11
+		CALL 肋骨除去
 ENDSELECT
 
 SELECTCASE RESULT
@@ -1113,3 +1116,80 @@ SELECTCASE RESULT
 ENDSELECT
 
 @女性器形成
+
+@肋骨除去
+#DIM DYNAMIC 対象 = -1
+#DIM DYNAMIC 費用
+#DIM DYNAMIC LRESULT
+#DIM DYNAMIC LCOUNT
+
+PRINTL □肋骨除去
+PRINTL 　外科手術により肋骨を除去する骨格矯正
+IF !ORIGIN
+	PRINTL □費用
+	CALL PASELIL, @"　{費用}＄"
+ENDIF
+PRINTL □注意事項
+PRINTL 　手術後は一週間ほど安静が必要
+PRINTL 　術後は肋骨を回収し、博物館にて展示可能
+PRINTL 　対象は胸部が柔らかくなり外傷にも弱くなる
+PRINTL □対象
+IF 対象 >= 0
+	PRINTFORMLC 　[1] - %NAME:対象%
+ELSE
+	PRINTLC 　[1] - 対象を選ぶ
+ENDIF
+PRINTL 
+DRAWLINE
+PRINTPLAIN 　肋骨除去　
+PRINT [0] - 戻る　
+SIF 対象 >= 0
+	PRINT [2] - 術式を始める
+PRINTL 
+
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		DRAWLINE
+		PRINTL □対象を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALLFORM DISABLE, "EVENT_肋骨除去", PAGING
+			CALL PAGING, !RESULT && !TALENT:PAGING:肋骨除去済み, @"\@ TALENT:PAGING:体格 == 1 ? 幼 #  \@", "対象"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
+				RESTART
+			CASEELSE
+				対象 = RESULT
+				費用 = 30000
+				;小柄体型だと費用は下がる
+				SIF TALENT:RESULT:体格 == 1
+					費用 -= 20000
+				RESTART
+		ENDSELECT
+	CASE 2
+		SIF 対象 == -1
+			RESTART
+		IF SUMARRAY(費用) > MONEY && !ORIGIN
+			PRINTW 費用が足りません
+			RESTART
+		ENDIF
+		PRINTL 肋骨除去の術式を始めます
+		PRINTFORMW %CALLNAME:対象%は準備のため休養に入ります
+		MONEY -= SUMARRAY(費用)
+		CALL 現金出納帳記録, @"肋骨除去手術費用/-{SUMARRAY(費用)}"
+		TALENT:対象:肋骨除去済み = 1
+		CFLAG:対象:使用不可 = 15
+		CFLAG:対象:男性器提供者 = -1
+		口上用患者 = 対象
+		CALL 作品加工共通処理, "肋骨除去", 対象, 500+TALENT:対象:体格*100, ""
+		CALL 身体改造口上, "男性器形成"
+		;医療経験加算
+		FOR LCOUNT, 0, CHARANUM
+			SIF CSTR:LCOUNT:配属 == "医務室" && CFLAG:LCOUNT:配属完了
+				EXP:LCOUNT:医療経験 += 5
+		NEXT
+		RETURN 1
+ENDSELECT
