@@ -1,0 +1,182 @@
+;以下はeraBEMANIVer2.23時点における仕様
+
+;+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+;    コマンド別口上をまとめる
+;+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	;性交系コマンド等をまとめる際に分岐した関数を再度まとめるのではなく元の関数の時点でまとめてしまう案
+	;無駄な関数が減る
+;-----------------------------
+@KOJO_COM_（キャラ名）
+TRYCALLFORM MESSAGE_COM_%SELECTCOMS%
+SIF CFLAG:憑依 >= 0 && (TEQUIP:ボールギャグ && SELECTCOMS != "ボールギャグ")
+	RETURN
+;SIF PLAYER != MASTER
+;	RETURN
+SELECTCASE SELECTCOMS
+	CASE "正常位", "後背位", "騎乗位", "対面座位", "背面座位", "下着ずらし挿入"
+		TRYCALL COM_Ｖ性交汎用_（キャラ名）
+	CASE "正常位アナル", "後背位アナル", "騎乗位アナル", "対面座位アナル", "背面座位アナル", "下着ずらし挿入アナル"
+		TRYCALL COM_Ａ性交汎用_（キャラ名）
+	CASE "胸揉み", "胸愛撫", "乳首責め", "乳首舐め"
+		TRYCALL COM_Ｂ責め汎用_（キャラ名）
+	CASEELSE
+		TRYCALLFORM COM_%SELECTCOMS%_（キャラ名）
+ENDSELECT
+
+@COM_Ｖ性交汎用_（キャラ名）
+@COM_Ａ性交汎用_（キャラ名）
+@COM_Ｂ責め汎用_（キャラ名）
+
+
+;+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+;    絶頂時口上の構文を考える
+;+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	;関数一覧で採用している構文は下記（地の文関数、非表示条件は省略）
+	;他重絶頂の場合上から順番に一つずつ表示される
+;-----------------------------
+IF NOWEX:Ｃ絶頂
+ENDIF
+IF NOWEX:Ｖ絶頂
+ENDIF
+IF NOWEX:Ａ絶頂
+ENDIF
+IF NOWEX:Ｂ絶頂
+ENDIF
+IF NOWEX:噴乳
+ENDIF
+IF NOWEX:射精
+ENDIF
+IF NOWEX:潮噴き
+ENDIF
+IF NOWEX:放尿
+ENDIF
+;-----------------------------
+	;上記の構文は口上を書きやすいが実際に表示された際不自然になりやすいため別案その1
+	;ＣＶＡＢは全ての組み合わせで択一、射精と潮噴きも択一、他は個別
+;-----------------------------
+IF NOWEX:Ｃ絶頂 && NOWEX:Ｖ絶頂 && NOWEX:Ａ絶頂 && NOWEX:Ｂ絶頂
+ELSEIF NOWEX:Ｖ絶頂 && NOWEX:Ａ絶頂 && NOWEX:Ｂ絶頂
+ELSEIF NOWEX:Ｃ絶頂 && NOWEX:Ｖ絶頂 && NOWEX:Ａ絶頂
+ELSEIF NOWEX:Ｃ絶頂 && NOWEX:Ｖ絶頂 && NOWEX:Ｂ絶頂
+ELSEIF NOWEX:Ｃ絶頂 && NOWEX:Ａ絶頂 && NOWEX:Ｂ絶頂
+ELSEIF NOWEX:Ｃ絶頂 && NOWEX:Ｖ絶頂
+ELSEIF NOWEX:Ｃ絶頂 && NOWEX:Ａ絶頂
+ELSEIF NOWEX:Ｃ絶頂 && NOWEX:Ｂ絶頂
+ELSEIF NOWEX:Ｖ絶頂 && NOWEX:Ａ絶頂
+ELSEIF NOWEX:Ｖ絶頂 && NOWEX:Ｂ絶頂
+ELSEIF NOWEX:Ａ絶頂 && NOWEX:Ｂ絶頂
+ELSEIF NOWEX:Ｃ絶頂
+ELSEIF NOWEX:Ｖ絶頂
+ELSEIF NOWEX:Ａ絶頂
+ELSEIF NOWEX:Ｂ絶頂
+ENDIF
+IF NOWEX:噴乳
+ENDIF
+IF NOWEX:射精
+ELSEIF NOWEX:潮噴き
+ENDIF
+IF NOWEX:放尿
+ENDIF
+;-----------------------------
+	;絶頂部位ではなくコマンド別に書く事も考えられる
+;-----------------------------
+SELECTCASE SELECTCOMS
+	CASE "愛撫"
+		IF NOWEX:Ｃ絶頂 && NOWEX:Ｂ絶頂
+		ELSEIF NOWEX:Ｃ絶頂
+		ELSEIF NOWEX:Ｂ絶頂
+		ENDIF
+	CASE "搾乳"
+		IF NOWEX:Ｂ絶頂 && NOWEX:噴乳
+		ELSEIF NOWEX:噴乳
+		ELSEIF NOWEX:Ｂ絶頂
+		ENDIF
+	CASE "正常位", "後背位", "騎乗位"
+		IF NOWEX:Ｖ絶頂
+		ENDIF
+ENDSELECT
+;-----------------------------
+	;絶頂時口上関数は絶頂した時だけでなく常に呼び出されている事を利用した構文案
+	;口上が対応している状況の場合は地の文が表示されず、口上がなかった場合は表示される
+	;空のPRINTFORMWなどが入ると正常に動かなくなる
+;-----------------------------
+@KOJO_MESSAGE_EX_（キャラ名）
+#DIM DYNAMIC LINECOUNTSAVE
+
+LINECOUNTSAVE = LINECOUNT
+SIF CFLAG:憑依 >= 0 && (TEQUIP:ボールギャグ && SELECTCOMS != "ボールギャグ")
+	GOTO 地の文のみ
+;SIF PLAYER != MASTER
+;	GOTO 地の文のみ
+SELECTCASE SELECTCOMS
+	CASE "愛撫"
+		IF NOWEX:Ｃ絶頂
+		ENDIF
+	CASE "正常位", "後背位", "騎乗位"
+		IF NOWEX:Ｖ絶頂
+		ENDIF
+ENDSELECT
+
+$地の文のみ
+SIF LINECOUNTSAVE == LINECOUNT
+	TRYCALL EX_MESSAGE
+
+
+;+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+;    ゲーセン店長の口上を優先する
+;+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	;調教対象にコマンド「ゲームセンター」の口上がある場合ゲーセン店長の口上は表示されない
+	;口上側で店長口上を優先したり確率分岐したりする案 例は50%
+;-----------------------------
+@COM_ゲームセンター_（キャラ名）
+IF EXISTFUNCTION("ゲームセンター_COM_（店長キャラ名）") && RANDPER(50)
+	CALL ゲームセンター_COM_（店長キャラ名）
+	RETURN
+ENDIF
+;【ここに本文】
+
+
+;+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+;    グループ会話を特定の組み合わせに限定する
+;+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	;関係性のある特定組み合わせ限定でのグループ会話を書く場合の構文案 在校繋がりの例も併記
+	;現状の仕様ではグループ内の全キャラの口上が順に呼ばれるため口上側で競合を避ける必要がある
+	;このキャラをＡとして組み合わせを判定している部分は必ずグループに含まれるＡ以外をMATCH+GETCHARANAMEで検出する
+;-----------------------------
+@SCHOOL_（キャラ名）_グループ会話
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 会話人数
+#DIMS DYNAMIC 会話組み合わせ
+
+会話人数 = VARSIZE("グループ会話_口上用")-MATCH(グループ会話_口上用, 0)
+SELECTCASE 会話人数
+	CASE 2
+		SIF MATCH(グループ会話_口上用, GETCHARANAME("（キャラＢ）"))
+			会話組み合わせ = ＡＢ
+	CASE 3
+		SIF MATCH(グループ会話_口上用, GETCHARANAME("（キャラＣ）")) && MATCH(グループ会話_口上用, GETCHARANAME("（キャラＤ）"))
+			会話組み合わせ = ＡＣＤ
+ENDSELECT
+IF 会話組み合わせ == "" && CSTR:在校 != ""
+	会話組み合わせ = クラスメイト
+	FOR LCOUNT, 0, 会話人数
+		SIF CSTR:在校 != CSTR:(グループ会話_口上用:LCOUNT):在校
+			会話組み合わせ = 
+	NEXT
+ENDIF
+
+SELECTCASE 会話組み合わせ
+	CASE "ＡＢ"
+		;【ＡとＢでの会話】
+	CASE "ＡＣＤ"
+		;【ＡとＣとＤでの会話】
+	CASE "クラスメイト"
+		;【上記以外でＡを含む同じ学校繋がりでの会話】
+	CASEELSE
+		;【Ａを含む任意のグループでの会話】
+ENDSELECT
+
+
+
+
+
