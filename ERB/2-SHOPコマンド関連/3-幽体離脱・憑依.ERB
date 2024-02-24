@@ -34,7 +34,6 @@ SELECTCASE LRESULT
 	CASE 0
 		RESTART
 	CASEELSE
-		;LOADCHARA @"依代_{LRESULT}_{データID}"
 		LTARGET = TARGET
 		TARGET = LRESULT
 		DRAWLINE
@@ -61,7 +60,6 @@ SELECTCASE LRESULT
 		CALL SHOW_INFO_JUEL, TARGET
 		CALL SHOW_INFO, TARGET
 		WAIT
-		DELCHARA TARGET
 		TARGET = LTARGET
 		RESTART
 ENDSELECT
@@ -96,6 +94,9 @@ FOR PAGING, 1, CHARANUM
 	SIF TALENT:PAGING:霊感
 		表示 = 1
 	SIF CFLAG:PAGING:憑依 >= 0
+		表示 = 1
+	;先天霊体なら可
+	SIF NOF(PAGING) < 10000 && CSVTALENT(NOF(PAGING), GETNUM(TALENT, "霊体"))
 		表示 = 1
 	;既に霊体なら無理
 	SIF TALENT:PAGING:霊体
@@ -154,16 +155,11 @@ ADDCOPYCHARA 対象
 FOR LCOUNT, 0, VARSIZE("ABL")
 	SIF ABLNAME:LCOUNT == ""
 		CONTINUE
-	SELECTCASE ABLNAME:LCOUNT
-		;体に残るのは感覚系と中毒系
-		{
-		CASE "Ｃ感覚", "Ｖ感覚", "Ａ感覚", "Ｂ感覚", "メス度",
-			 "自慰中毒", "精液中毒", "レズ中毒", "ゲイ中毒", "性交中毒", "噴乳中毒",
-		}
-			ABL:幽体:LCOUNT = 0
-		CASEELSE
-			ABL:対象:LCOUNT = 0
-	ENDSELECT
+	IF BODYSTUFF("ABL", ABLNAME:LCOUNT)
+		ABL:幽体:LCOUNT = 0
+	ELSE
+		ABL:対象:LCOUNT = 0
+	ENDIF
 NEXT
 ;CFLAGは全て身体
 VARSET CFLAG:幽体:0
@@ -178,16 +174,11 @@ CSTR:幽体:種族 = 幽霊
 FOR LCOUNT, 0, VARSIZE("EXP")
 	SIF EXPNAME:LCOUNT == ""
 		CONTINUE
-	SELECTCASE EXPNAME:LCOUNT
-		;身体で覚える経験を分離する
-		{
-		CASE "Ｖ経験", "Ａ経験", "絶頂経験", "射精経験", "性交経験", "膣射経験", "精液経験", "噴乳経験", "放尿経験",
-			 "射精管理経験", "Ｖ拡張経験", "Ａ拡張経験", "出産経験", "流産経験", "尿道経験", "臍拡張経験", "尿管拡張経験",
-		}
-			EXP:幽体:LCOUNT = 0
-		CASEELSE
-			EXP:対象:LCOUNT = 0
-	ENDSELECT
+	IF BODYSTUFF("EXP", EXPNAME:LCOUNT)
+		EXP:幽体:LCOUNT = 0
+	ELSE
+		EXP:対象:LCOUNT = 0
+	ENDIF
 NEXT
 
 ;MARKは全て幽体
@@ -196,35 +187,23 @@ VARSET MARK:対象:0
 FOR LCOUNT, 0, VARSIZE("PALAM")
 	SIF PALAMNAME:LCOUNT == ""
 		CONTINUE
-	SELECTCASE PALAMNAME:LCOUNT
-		;快系JUELを分離する
-		CASE "快Ｃ", "快Ｖ", "快Ａ", "快Ｂ"
-			JUEL:幽体:LCOUNT = 0
-		CASEELSE
-			JUEL:対象:LCOUNT = 0
-	ENDSELECT
+	IF BODYSTUFF("JUEL", PALAMNAME:LCOUNT)
+		JUEL:幽体:LCOUNT = 0
+	ELSE
+		JUEL:対象:LCOUNT = 0
+	ENDIF
 NEXT
 
 FOR LCOUNT, 0, VARSIZE("TALENT")
 	SIF TALENTNAME:LCOUNT == ""
 		CONTINUE
-	SELECTCASE TALENTNAME:LCOUNT
-		;身体系素質を分離する
-		{
-		CASE "処女", "再生処女", "童貞", "傷物", "改造済み",
-			 "痛みに弱い", "痛みに強い", "濡れやすい", "濡れにくい", "勃ちやすい", "勃ちにくい",
-			 "猫舌", "薬毒耐性", "おもらし癖", "淫核", "淫膣", "淫尻", "淫乳",
-			 "狐", "妖狐", "体格", "Ｃ鈍感", "Ｃ敏感", "Ｖ鈍感", "Ｖ敏感", "Ａ鈍感", "Ａ敏感", "Ｂ鈍感", "Ｂ敏感",
-			 "ファーリー", "尻尾", "動物耳", "羽", "無機物", "小人体型", "暑さに弱い", "寒さに弱い", "アニマル",
-			 "足使用不可", "性転換済み", "ゾンビ", "母乳体質", "ふたなり", "絶倫", "去勢済み", "回復早い", "回復遅い",
-			 "日光浴", "月光浴", "人気", "妊娠", "育児中", "孔雀の瞳", "ドラゴン使い", "妊娠確定", "変化", "犬", "猫",
-			 "リミットバースト"
-		}
+	SELECTCASE BODYSTUFF("TALENT", TALENTNAME:LCOUNT)
+		CASE 1
 			TALENT:幽体:LCOUNT = 0
-		CASE "性別", "バストサイズ"
-		CASEELSE
+		CASE 0
 			TALENT:対象:LCOUNT = 0
 	ENDSELECT
+	;2が返ってくる素質は何もしない
 NEXT
 ;身体の相性を初期化
 VARSET RELATION:対象:0, 100
@@ -339,28 +318,16 @@ SIF RESULT == 0
 FOR LCOUNT, 0, VARSIZE("ABL")
 	SIF ABLNAME:LCOUNT == ""
 		CONTINUE
-	SELECTCASE ABLNAME:LCOUNT
-		;体に残ってる感覚系と中毒系は身体のまま
-		{
-		CASE "Ｃ感覚", "Ｖ感覚", "Ａ感覚", "Ｂ感覚", "メス度",
-			 "自慰中毒", "精液中毒", "レズ中毒", "ゲイ中毒", "性交中毒", "噴乳中毒",
-		}
-		CASEELSE
-			ABL:対象:LCOUNT = ABL:憑依霊:LCOUNT
-	ENDSELECT
+	;体に残ってる感覚系と中毒系は身体のまま
+	SIF !BODYSTUFF("ABL", ABLNAME:LCOUNT)
+		ABL:対象:LCOUNT = ABL:憑依霊:LCOUNT
 NEXT
 
 FOR LCOUNT, 0, VARSIZE("EXP")
 	SIF EXPNAME:LCOUNT == ""
 		CONTINUE
-	SELECTCASE EXPNAME:LCOUNT
-		{
-		CASE "Ｖ経験", "Ａ経験", "絶頂経験", "射精経験", "性交経験", "膣射経験", "精液経験", "噴乳経験", "放尿経験",
-			 "射精管理経験", "Ｖ拡張経験", "Ａ拡張経験", "出産経験", "流産経験", "尿道経験", "臍拡張経験", "尿管拡張経験",
-		}
-		CASEELSE
-			EXP:対象:LCOUNT = EXP:憑依霊:LCOUNT
-	ENDSELECT
+	SIF !BODYSTUFF("EXP", EXPNAME:LCOUNT)
+		EXP:対象:LCOUNT = EXP:憑依霊:LCOUNT
 NEXT
 
 FOR LCOUNT, 0, VARSIZE("MARK")
@@ -370,32 +337,15 @@ NEXT
 FOR LCOUNT, 0, VARSIZE("PALAM")
 	SIF PALAMNAME:LCOUNT == ""
 		CONTINUE
-	SELECTCASE PALAMNAME:LCOUNT
-		CASE "快Ｃ", "快Ｖ", "快Ａ", "快Ｂ"
-		CASEELSE
-			JUEL:対象:LCOUNT = JUEL:憑依霊:LCOUNT
-	ENDSELECT
+	SIF !BODYSTUFF("JUEL", PALAMNAME:LCOUNT)
+		JUEL:対象:LCOUNT = JUEL:憑依霊:LCOUNT
 NEXT
 
 FOR LCOUNT, 0, VARSIZE("TALENT")
 	SIF TALENTNAME:LCOUNT == ""
 		CONTINUE
-	SELECTCASE TALENTNAME:LCOUNT
-		;身体系素質を分離する
-		{
-		CASE "処女", "再生処女", "童貞", "傷物", "改造済み",
-			 "痛みに弱い", "痛みに強い", "濡れやすい", "濡れにくい", "勃ちやすい", "勃ちにくい",
-			 "猫舌", "薬毒耐性", "おもらし癖", "淫核", "淫膣", "淫尻", "淫乳",
-			 "狐", "妖狐", "体格", "Ｃ鈍感", "Ｃ敏感", "Ｖ鈍感", "Ｖ敏感", "Ａ鈍感", "Ａ敏感", "Ｂ鈍感", "Ｂ敏感",
-			 "ファーリー", "尻尾", "動物耳", "羽", "無機物", "小人体型", "暑さに弱い", "寒さに弱い", "アニマル",
-			 "足使用不可", "性転換済み", "ゾンビ", "母乳体質", "ふたなり", "絶倫", "去勢済み", "回復早い", "回復遅い",
-			 "日光浴", "月光浴", "人気", "妊娠", "育児中", "孔雀の瞳", "ドラゴン使い", "妊娠確定", "変化", "犬", "猫",
-			 "リミットバースト"
-		}
-		CASE "性別", "バストサイズ"
-		CASEELSE
-			TALENT:対象:LCOUNT = TALENT:憑依霊:LCOUNT
-	ENDSELECT
+	SIF !BODYSTUFF("TALENT", TALENTNAME:LCOUNT)
+		TALENT:対象:LCOUNT = TALENT:憑依霊:LCOUNT
 NEXT
 
 FOR LCOUNT, 0, 20000
@@ -477,3 +427,47 @@ SELECTCASE RESULT
 ENDSELECT
 
 RESTART
+
+;;;肉体由来のものか否かは式中関数で判定する
+@BODYSTUFF, 分類, 判定対象
+#FUNCTION
+#DIMS DYNAMIC 分類
+#DIMS DYNAMIC 判定対象
+
+SELECTCASE 分類
+	;体に残るのは感覚系と中毒系
+	CASE "ABL"
+		{
+		SIF GROUPMATCH(判定対象, "Ｃ感覚", "Ｖ感覚", "Ａ感覚", "Ｂ感覚", "メス度",
+			 "自慰中毒", "精液中毒", "レズ中毒", "ゲイ中毒", "性交中毒", "噴乳中毒")
+		}
+			RETURNF 1
+	;身体で覚える経験を分離する
+	CASE "EXP"
+		{
+		SIF GROUPMATCH(判定対象, "Ｖ経験", "Ａ経験", "絶頂経験", "射精経験", "性交経験", "膣射経験", "精液経験", "噴乳経験", "放尿経験",
+			 "射精管理経験", "Ｖ拡張経験", "Ａ拡張経験", "出産経験", "流産経験", "尿道経験", "臍拡張経験", "尿管拡張経験")
+		}
+			RETURNF 1
+	;快系JUELを分離する
+	CASE "JUEL"
+		SIF GROUPMATCH(判定対象, "快Ｃ", "快Ｖ", "快Ａ", "快Ｂ")
+			RETURNF 1
+	;身体系素質を分離する
+	CASE "TALENT"
+		{
+		SIF GROUPMATCH(判定対象, "性別", "バストサイズ", "体格", "処女", "再生処女", "童貞", "傷物", "改造済み",
+			 "痛みに弱い", "痛みに強い", "濡れやすい", "濡れにくい", "勃ちやすい", "勃ちにくい",
+			 "猫舌", "薬毒耐性", "おもらし癖", "淫核", "淫膣", "淫尻", "淫乳", "狐", "妖狐", 
+			 "Ｃ鈍感", "Ｃ敏感", "Ｖ鈍感", "Ｖ敏感", "Ａ鈍感", "Ａ敏感", "Ｂ鈍感", "Ｂ敏感",
+			 "ファーリー", "尻尾", "動物耳", "羽", "無機物", "小人体型", "暑さに弱い", "寒さに弱い", "アニマル",
+			 "足使用不可", "性転換済み", "ゾンビ", "母乳体質", "ふたなり", "絶倫", "去勢済み", "回復早い", "回復遅い",
+			 "日光浴", "月光浴", "人気", "妊娠", "育児中", "孔雀の瞳", "ドラゴン使い", "妊娠確定", "変化", "犬", "猫",
+			 "リミットバースト")
+		}
+			RETURNF 1
+		;分離時に触らないもの
+		SIF GROUPMATCH(判定対象, "性別", "バストサイズ", "体格")
+			RETURNF 2
+ENDSELECT
+RETURNF 0

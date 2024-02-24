@@ -619,14 +619,20 @@ ELSE
 		IF CFLAG:死亡
 			;蘇生せずに体力0になると本当に死ぬ
 			IF TEQUIP:仮死薬
-				PRINTW ………………
-				PRINTW …………
-				PRINTW ……
-				PRINTFORMW %CALLNAME:TARGET%の様子がおかしい
-				PRINTW 蘇生薬を投与しても反応が無い。どうやら蘇生が遅すぎたようだ
-				PRINTFORML ★★★%CALLNAME:TARGET%は死亡しました★★★
+				CALL DISABLE, "EVENT_仮死薬死亡", TARGET
+				IF RESULT
+					;DISABLEされている場合蘇生薬投与と同様の処理
+					CFLAG:死亡 = 0
+					CFLAG:使用不可 = 6
+				ELSE
+					PRINTW ………………
+					PRINTW …………
+					PRINTW ……
+					PRINTFORMW %CALLNAME:TARGET%の様子がおかしい
+					PRINTW 蘇生薬を投与しても反応が無い。どうやら蘇生が遅すぎたようだ
+					PRINTFORML ★★★%CALLNAME:TARGET%は死亡しました★★★
+				ENDIF
 				TEQUIP:仮死薬 = 0
-				CFLAG:死亡 = 1
 			;ガチ屍姦中は体力とか関係無い
 			ELSE
 				RETURN
@@ -868,17 +874,32 @@ ENDIF
 CALL TUTORIAL, "珠取得"
 
 CALL CHECKDRAWLINE
-SIF ハッキング命令 != "自爆"
+IF ハッキング命令 != "自爆"
+	;WIDEDISABLEの判定
+	CALL WIDEDISABLE, "憑依時口上表示", TARGET, "KOJO_TURNEND"
+	SIF RESULT
+		GOTO WIDEDISABLE
 	CALL KOJO_TURNEND
+	$WIDEDISABLE
+ENDIF
+
 PRINTW 調教を終了しました
 
 IF TEQUIP:仮死薬
-	PRINTW ………………
-	PRINTW …………
-	PRINTW ……
-	PRINTFORMW %CALLNAME:TARGET%の様子がおかしい
-	PRINTW 蘇生薬を投与しても反応が無い。どうやら蘇生が遅すぎたようだ
-	PRINTFORML ★★★%CALLNAME:TARGET%は死亡しました★★★
+	CALL DISABLE, "EVENT_仮死薬死亡", TARGET
+	IF RESULT
+		;DISABLEされている場合蘇生薬投与と同様の処理
+		TEQUIP:仮死薬 = 0
+		CFLAG:死亡 = 0
+		CFLAG:使用不可 = 6
+	ELSE
+		PRINTW ………………
+		PRINTW …………
+		PRINTW ……
+		PRINTFORMW %CALLNAME:TARGET%の様子がおかしい
+		PRINTW 蘇生薬を投与しても反応が無い。どうやら蘇生が遅すぎたようだ
+		PRINTFORML ★★★%CALLNAME:TARGET%は死亡しました★★★
+	ENDIF
 ENDIF
 
 CALL 調教称号計算
