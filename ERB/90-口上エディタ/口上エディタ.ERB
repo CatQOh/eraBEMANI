@@ -320,6 +320,47 @@ DO
 LOOP 1
 
 
+@口上エディタ_タグ変換, 入力
+#DIMS DYNAMIC 入力
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC ラベル, 2
+#DIMS DYNAMIC SPLITVAR, 10
+#DIM DYNAMIC 分割数
+
+SPLIT 入力, "＋＋＋", SPLITVAR
+分割数 = RESULT
+IF 分割数 > 1
+	入力 = 
+	FOR LCOUNT, 0, 分割数-1
+		PRINTFORML 調教者に名前が設定されている場合の{LCOUNT+1}番目の＋＋＋の中身を入力してください
+		INPUTS
+		ラベル:0 = %RESULTS%
+		PRINTFORML 調教者の名前がデフォルトの場合の{LCOUNT+1}番目の＋＋＋の中身を入力してください
+		INPUTS
+		ラベル:1 = %RESULTS%
+		入力 += @"%SPLITVAR:LCOUNT%\\@ 名前あり\(\) ? %ラベル:0% # %ラベル:1% \\@"
+	NEXT
+	入力 += SPLITVAR:(分割数-1)
+ENDIF
+SPLIT 入力, "＃＃＃", SPLITVAR
+分割数 = RESULT
+IF 分割数 > 1
+	入力 = 
+	FOR LCOUNT, 0, 分割数-1
+		入力 += SPLITVAR:LCOUNT + "%CALLNAME:PLAYER%"
+	NEXT
+	入力 += SPLITVAR:(分割数-1)
+ENDIF
+RESULTS = %入力%
+
+@口上エディタ_ヘルプ
+PRINTFORML □特殊タグの入力について
+PRINTFORML 　「＃＃＃」を入力すると口上表示時にあなたの名前が表示されるタグに変換されます
+PRINTFORML 　「＋＋＋」を入力するとあなたの名前が「あなた」かどうかで表示される文章を変える事ができます
+PRINTFORML 　（敬称をつけた場合に「あなたさん」「あなたくん」となってしまうような時にお使いください）
+PRINTFORMW 　また、タグ「＋＋＋」の中で「＃＃＃」を使う事も可能です
+
+
 @口上エディタ_コマンド, コマンド, テンプレ作成
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
@@ -582,7 +623,7 @@ IF 表示行数 == 0
 ENDIF
 DRAWLINE
 PRINTPLAIN 　COM　
-PRINT [-1] - 戻る 
+PRINT [-1] - 戻る　[-2] - ヘルプを見る　
 SIF 着脱コマンド:コマンド
 	PRINTFORM [-9] - \@ 着脱切り替え ? 実行時の口上を書く # 解除時の口上を書く \@
 PRINTL 
@@ -593,6 +634,9 @@ DO
 	SELECTCASE LRESULT
 		CASE -1
 			RESTART
+		CASE -2
+			CALL 口上エディタ_ヘルプ
+			GOTO WRITE
 		CASE -9
 			INVERTBIT 着脱切り替え, 0
 			GOTO WRITE
@@ -614,6 +658,7 @@ DO
 				CASE 0
 					PRINTL 文章を入力してください
 					INPUTS
+					CALL 口上エディタ_タグ変換, RESULTS
 					内容 = %RESULTS%
 					ARRAYSHIFT COMD, 1, "", LRESULT
 					IF 着脱コマンド:コマンド
@@ -624,6 +669,7 @@ DO
 				CASE 1
 					PRINTL 文章を入力してください
 					INPUTS
+					CALL 口上エディタ_タグ変換, RESULTS
 					内容 = %RESULTS%
 					ARRAYSHIFT COMD, 1, "", LRESULT+1
 					IF 着脱コマンド:コマンド
@@ -820,7 +866,7 @@ IF 表示行数 == 0
 ENDIF
 DRAWLINE
 PRINTPLAIN 　COM　
-PRINTL [-1] - 戻る 
+PRINTL [-1] - 戻る　[-2] - ヘルプを見る
 
 DO
 	INPUT
@@ -828,6 +874,9 @@ DO
 	SELECTCASE LRESULT
 		CASE -1
 			RESTART
+		CASE -2
+			CALL 口上エディタ_ヘルプ
+			GOTO WRITE
 		CASE 0 TO VARSIZE("EVEVAR")-1
 			IF 表示行数 == 0
 				PRINTL [0] 行を追加
@@ -846,6 +895,7 @@ DO
 				CASE 0
 					PRINTL 文章を入力してください
 					INPUTS
+					CALL 口上エディタ_タグ変換, RESULTS
 					内容 = %RESULTS%
 					ARRAYSHIFT EVEVAR, 1, "", LRESULT
 					SELECTCASE タイプ
@@ -859,6 +909,7 @@ DO
 				CASE 1
 					PRINTL 文章を入力してください
 					INPUTS
+					CALL 口上エディタ_タグ変換, RESULTS
 					内容 = %RESULTS%
 					ARRAYSHIFT EVEVAR, 1, "", LRESULT+1
 					SELECTCASE タイプ
