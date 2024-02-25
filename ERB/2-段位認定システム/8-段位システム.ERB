@@ -6,14 +6,13 @@
 #DIM DYNAMIC LGAUGE
 #DIM DYNAMIC LSTOCK
 #DIM DYNAMIC 攻略人数
+#DIM DYNAMIC クリアフラグ
 
-SIF ターン == "昼"
-	GOTO クリア判定
-
-IF MONEY >= 4000
+;日付変更時に所持金を段位ゲージへ
+IF ターン == "夜" && MONEY >= 4000
 	;値を格納
 	LMONEY = MONEY
-	LGAUGE = FLAG:段位ゲージ*2
+	LGAUGE = FLAG:段位ゲージ
 	LSTOCK = ストック
 	PRINT 所持金を段位ゲージに換算しました。
 	FLAG:段位ゲージ += MONEY/4000
@@ -30,10 +29,10 @@ IF MONEY >= 4000
 	ENDIF
 	PRINTL 
 	PRINTFORML 所持金 {LMONEY} → {MONEY}
-	PRINTFORML 段位ゲージ {LGAUGE} → {FLAG:段位ゲージ*2}
+	PRINTFORML 段位ゲージ {LGAUGE*2} → {FLAG:段位ゲージ*2}
 ENDIF
 
-$クリア判定
+;ここからクリア判定の処理
 FOR LCOUNT, 0, CHARANUM
 	SIF CFLAG:LCOUNT:売却可能 || CFLAG:LCOUNT:助手可能
 		攻略人数++
@@ -42,49 +41,49 @@ FOR LCOUNT, 0, CHARANUM
 		FLAG:段位ゲージ = 0
 NEXT
 
-;クリア判定
-;まずは特殊勝利から
-IF 受験段位名 == "いちかのアダルトチャンネル"
-	IF ストック >= 100000
-		CALL FADEOUTBGM
-		CALL TEST_CLEAR
-	ENDIF
-;通常のクリア条件
-ELSE
-	IF 攻略人数 >= (CHARANUM-1)
-		CALL FADEOUTBGM
-		CALL TEST_CLEAR
-	ENDIF
-ENDIF
-SIF ターン == "昼"
-	RETURN
-
-;上のクリア判定をスルーした場合、ゲージを減らす処理が入る
-IF 受験段位名 == "少女達の芳香は艶やかに、猛き賓客を癒し惑わす。"
-;オリジナルコース15では「混乱少女♥そふらんちゃん!!」にちなんでゲージの減りが不規則
-;次の日のDAYについて、[約数の個数]%だけゲージが減る(「FLAG:段位ゲージ」では半分の値をとっていることに注意)
-;平方数の約数は真ん中の数を二重に数える(例:次が36日目…1,36と2,18と3,12と4,9と6,6で10%減少)
-	FLAG:段位ゲージ -= SIGMA(DAY+1, 0)/2
-	SIF ISSQUARE(DAY+1)
-		FLAG:段位ゲージ -= 1
-ELSEIF 受験段位名 == "HELL CHARGE NOTES"
-	FOR LCOUNT, 0, CHARANUM
-		ストレス値合計 += CFLAG:LCOUNT:ストレス値
-	NEXT
-	ストレス値合計 /= 2
-	SIF ストレス値合計 < 1
-		ストレス値合計 = 1
-	FLAG:段位ゲージ -= ストレス値合計
-ELSEIF 受験段位名 == "BisCoのEX-HARD☆大作戦"
-	FLAG:段位ゲージ -= 5
-ELSEIF 受験段位名 == "何かを間違えた房中術"
-	FLAG:段位ゲージ -= 10
-ELSE
-	FLAG:段位ゲージ -= 1
-ENDIF
-IF FLAG:段位ゲージ <= 0
+クリアフラグ = 0
+SELECTCASE 受験段位名
+	CASE "いちかのアダルトチャンネル"
+		SIF ストック >= 100000
+			クリアフラグ = 1
+	CASEELSE
+		SIF 攻略人数 >= (CHARANUM-1)
+			クリアフラグ = 1
+ENDSELECT
+IF クリアフラグ
 	CALL FADEOUTBGM
-	CALL TEST_FAILED
+	CALL TEST_CLEAR
+ENDIF
+
+;上のクリア判定をスルーした場合、日付変更時にゲージを減らす処理が入る
+IF ターン == "夜"
+	SELECTCASE 受験段位名
+		CASE "少女達の芳香は艶やかに、猛き賓客を癒し惑わす。"
+			;オリジナルコース15では「混乱少女♥そふらんちゃん!!」にちなんでゲージの減りが不規則
+			;次の日のDAYについて、[約数の個数]%だけゲージが減る(「FLAG:段位ゲージ」では半分の値をとっていることに注意)
+			;平方数の約数は真ん中の数を二重に数える(例:次が36日目…1,36と2,18と3,12と4,9と6,6で10%減少)
+				FLAG:段位ゲージ -= SIGMA(DAY+1, 0)/2
+				SIF ISSQUARE(DAY+1)
+					FLAG:段位ゲージ -= 1
+		CASE "HELL CHARGE NOTES"
+			FOR LCOUNT, 0, CHARANUM
+				ストレス値合計 += CFLAG:LCOUNT:ストレス値
+			NEXT
+			ストレス値合計 /= 2
+			SIF ストレス値合計 < 1
+				ストレス値合計 = 1
+			FLAG:段位ゲージ -= ストレス値合計
+		CASE "BisCoのEX-HARD☆大作戦"
+			FLAG:段位ゲージ -= 5
+		CASE "何かを間違えた房中術"
+			FLAG:段位ゲージ -= 10
+		CASEELSE
+			FLAG:段位ゲージ--
+	ENDSELECT
+	IF FLAG:段位ゲージ <= 0
+		CALL FADEOUTBGM
+		CALL TEST_FAILED
+	ENDIF
 ENDIF
 
 ;段位ゲージに応じてBGMが変わる
@@ -102,27 +101,16 @@ ENDSELECT
 
 ;段位ゲージの表示
 @段位ゲージ表示
-#DIM DYNAMIC EXH
-#DIMS DYNAMIC COLOR
-SELECTCASE 受験段位名
-	CASE "BisCoのEX-HARD☆大作戦", "何かを間違えた房中術"
-		EXH = 1
-ENDSELECT
 CALL COLUMNPRINT, 0, @"段位ゲージ {FLAG:段位ゲージ*2}\%["
 REPEAT FLAG:段位ゲージ
-	IF EXH
-		COLOR = orange
-		;SETCOLOR 220, 255, 0
+	IF GROUPMATCH(受験段位名, "BisCoのEX-HARD☆大作戦", "何かを間違えた房中術")
+		CALL COLUMNPRINT, 0, "|", "orange"
 	ELSE
-		COLOR = red
-		;SETCOLOR 255, 0, 0
+		CALL COLUMNPRINT, 0, "|", "red"
 	ENDIF
-	CALL COLUMNPRINT, 0, "|", COLOR
 REND
 REPEAT 50-FLAG:段位ゲージ
-	COLOR = gray
-	;SETCOLOR 128, 128, 128
-	CALL COLUMNPRINT, 0, "|", COLOR
+	CALL COLUMNPRINT, 0, "|", "gray"
 REND
 CALL COLUMNPRINT, 0, "]"
 
@@ -189,7 +177,7 @@ SIF RESULT == 10
 SPLIT アイテムリスト:購入アイテム, "/", SPLITVAR
 複数個あり = RESULT == 3 ? 1 # 0
 
-IF  FLAG:段位ゲージ < TOINT(SPLITVAR:1)/2
+IF FLAG:段位ゲージ < TOINT(SPLITVAR:1)/2
 	PRINTW ゲージが足りません
 	RESTART
 ELSEIF SPLITVAR:0 == "ローション" && ITEM:ローション >= 95
@@ -214,94 +202,34 @@ RESTART
 #DIM DYNAMIC 段位値
 #DIM DYNAMIC モード表示
 
-SELECTCASE 段位値
-	;緑段位
-	CASE 1 TO 7
+SELECTCASE ERDNAME(段位名, 段位値)
+	CASE "七級", "六級", "五級", "四級", "三級", "二級", "一級"
 		COLOR = lime
-		;SETCOLOR 140, 240, 140
-	;青段位
-	CASE 11 TO 18
+	CASE "初段", "二段", "三段", "四段", "五段", "六段", "七段", "八段"
 		COLOR = blue
-		;SETCOLOR 170, 220, 230
-	;赤段位
-	CASE 19, 20
+	CASE "九段", "十段"
 		COLOR = red
-		;SETCOLOR 250, 150, 150
-	;中伝
-	CASE 30
+	CASE "中伝"
 		COLOR = silver
-		;SETCOLOR 240, 240, 240
-	;皆伝、裏七級
-	CASE 573, 50
+	CASE "皆伝", "裏七級"
 		COLOR = gold
-		;SETCOLOR 250, 180, 0
-	;overjoy
-	CASE 999
+	CASE "overjoy"
 		COLOR = white
-		;SETCOLOR 255, 255, 255
 ENDSELECT
 
 SIF モード表示
 	CALL COLUMNPRINT, 0, "MODE:段位認定 "
 
-SELECTCASE 段位値
-	;緑段位
-	CASE 1, 50
-		CALL COLUMNPRINT, 0, "七級", COLOR
-	CASE 2
-		CALL COLUMNPRINT, 0, "六級", COLOR
-	CASE 3
-		CALL COLUMNPRINT, 0, "五級", COLOR
-	CASE 4
-		CALL COLUMNPRINT, 0, "四級", COLOR
-	CASE 5
-		CALL COLUMNPRINT, 0, "三級", COLOR
-	CASE 6
-		CALL COLUMNPRINT, 0, "二級", COLOR
-	CASE 7
-		CALL COLUMNPRINT, 0, "一級", COLOR
-	;青段位
-	CASE 11
-		CALL COLUMNPRINT, 0, "初段", COLOR
-	CASE 12
-		CALL COLUMNPRINT, 0, "二段", COLOR
-	CASE 13
-		CALL COLUMNPRINT, 0, "三段", COLOR
-	CASE 14
-		CALL COLUMNPRINT, 0, "四段", COLOR
-	CASE 15
-		CALL COLUMNPRINT, 0, "五段", COLOR
-	CASE 16
-		CALL COLUMNPRINT, 0, "六段", COLOR
-	CASE 17
-		CALL COLUMNPRINT, 0, "七段", COLOR
-	CASE 18
-		CALL COLUMNPRINT, 0, "八段", COLOR
-	;赤段位
-	CASE 19
-		CALL COLUMNPRINT, 0, "九段", COLOR
-	CASE 20
-		CALL COLUMNPRINT, 0, "十段", COLOR
-	;中伝・皆伝
-	CASE 30
-		CALL COLUMNPRINT, 0, "中伝", COLOR
-	CASE 573
-		CALL COLUMNPRINT, 0, "皆伝", COLOR
-	;overjoy
-	CASE 999
-		CALL COLUMNPRINT, 0, "(^^)", COLOR
-	;EDIT,無名
-	CASE 99
-		CALL COLUMNPRINT, 0, "EDIT", COLOR
-	CASE 0
-		CALL COLUMNPRINT, 0, "無名", COLOR
-	;オリジナルコース
-	CASE 51 TO 90
-		CALL COLUMNPRINT, 0, "ORIGINAL", COLOR
-ENDSELECT
-
+;EDIT以外のオリジナルコースとoverjoyだけ特殊表示
+IF !段位認定対象(段位値) && ERDNAME(段位名, 段位値) != "EDIT"
+	CALL COLUMNPRINT, 0, "ORIGINAL", COLOR
+ELSEIF ERDNAME(段位名, 段位値) == "overjoy"
+	CALL COLUMNPRINT, 0, "(^^)", COLOR
+ELSE
+	CALL COLUMNPRINT, 0, ERDNAME(段位名, 段位値), COLOR
+ENDIF
 RESETCOLOR
 
 ;ヤンデレ
-SIF 段位値 == 80
+SIF ERDNAME(段位名, 段位値) == "ヤンデレの音ゲーキャラに死ぬほど愛されて眠れないコース"
 	SETCOLORBYNAME red
