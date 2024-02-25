@@ -1,4 +1,4 @@
-﻿@学園モード開始
+﻿@学園モード開始, 新規追加フラグ
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC 学園乱数固定用, 100
 #DIM DYNAMIC 入学先 = -1
@@ -11,6 +11,29 @@
 #DIM DYNAMIC 運命の人選択
 #DIM DYNAMIC 赴任先学年
 #DIM DYNAMIC 優先処理済
+#DIM DYNAMIC 新規追加フラグ
+#DIM DYNAMIC LCHARANUM
+
+IF 新規追加フラグ
+	;不在キャラを追加
+	SKIPDISP 1
+	LCHARANUM = CHARANUM
+	FOR LCOUNT, 1, 10000
+		SIF !EXISTCSV(LCOUNT)
+			CONTINUE
+		SIF GETCHARA(LCOUNT) > 0
+			CONTINUE
+		CALL CHARA_ADD, LCOUNT
+	NEXT
+	SKIPDISP 0
+	;キャラ追加がなくても所属追加は確認するため続行（SWAPはしない）
+	IF LCHARANUM > CHARANUM
+		FOR LCOUNT, LCHARANUM-1, CHARANUM-1
+			SWAPCHARA LCOUNT, RAND(LCOUNT+1, CHARANUM)
+		NEXT
+	ENDIF
+	GOTO ランダム入学処理
+ENDIF
 
 通貨単位 = 円
 
@@ -174,7 +197,10 @@ CSTR:GETCHARANAME("T.B.リカ"):担当科目 = 技術
 
 
 FOR LCOUNT, 1, CHARANUM
-	SIF !優先処理済 && !キャラ選択フラグ:NOF(LCOUNT)
+	;キャラアップデートの場合新規追加キャラと所属が追加された可能性のある無所属キャラだけ見る
+	SIF 新規追加フラグ && (CSTR:LCOUNT:在校 != "" || CSTR:LCOUNT:在任 != "")
+		CONTINUE
+	SIF !優先処理済 && !キャラ選択フラグ:NOF(LCOUNT) && !新規追加フラグ
 		CONTINUE
 	SIF 優先処理済 && キャラ選択フラグ:NOF(LCOUNT)
 		CONTINUE
@@ -615,7 +641,80 @@ FOR LCOUNT, 1, CHARANUM
 				LOOP 1
 			ENDIF
 		
-		;ここから教師陣の選任
+		;ここから教師陣の選任 固定の教師陣を優先して処理
+		;ボルテ学園
+		CASE "プロフェッサー識苑", "シャトー・ロワーレ", "オルトリンデ", "トライプル・ストレエッジ", "ボルテナイザー・マキシマ", "ライオット・デストルドー", "アウグスト=ヴェルテックス"
+			IF キャラ選択フラグ:NOF(LCOUNT)
+				CSTR:LCOUNT:在任 = %固定用学校:3%
+			ELSE
+				CSTR:LCOUNT:在任 = ボルテ学園高等部
+			ENDIF
+			SIF NAME:LCOUNT == "プロフェッサー識苑"
+				CSTR:LCOUNT:担当科目 = 技術
+			SIF NAME:LCOUNT == "シャトー・ロワーレ"
+				CSTR:LCOUNT:担当科目 = 音楽
+			SIF NAME:LCOUNT == "オルトリンデ"
+				CSTR:LCOUNT:担当科目 = 国語
+			SIF NAME:LCOUNT == "トライプル・ストレエッジ"
+				CSTR:LCOUNT:担当科目 = 数学
+			SIF NAME:LCOUNT == "ボルテナイザー・マキシマ"
+				CSTR:LCOUNT:担当科目 = 英語
+			SIF NAME:LCOUNT == "ライオット・デストルドー"
+				CSTR:LCOUNT:担当科目 = 美術
+			SIF NAME:LCOUNT == "アウグスト=ヴェルテックス"
+				CSTR:LCOUNT:担当科目 = 社会
+		;ラピストリア学園
+		CASE "ジェダイト", "ジェイド", "ヴァイス", "まどか"
+			IF キャラ選択フラグ:NOF(LCOUNT)
+				CSTR:LCOUNT:在任 = %固定用学校:3%
+			ELSE
+				CSTR:LCOUNT:在任 = ラピストリア学園
+			ENDIF
+			SIF NAME:LCOUNT == "ジェダイト"
+				CSTR:LCOUNT:担当科目 = 校長
+			SIF NAME:LCOUNT == "ジェイド"
+				CSTR:LCOUNT:担当科目 = 理事長
+			SIF NAME:LCOUNT == "ヴァイス"
+				CSTR:LCOUNT:担当科目 = 保健
+			SIF NAME:LCOUNT == "まどか"
+				CSTR:LCOUNT:担当科目 = 数学
+		;マジックアカデミー
+		CASE "サツキ", "マロン", "リディア", "エリーザ", "アメリア", "ミランダ", "ガルーダ", "ウィーズ", "フランシス"
+			IF キャラ選択フラグ:NOF(LCOUNT)
+				CSTR:LCOUNT:在任 = %固定用学校:3%
+			ELSE
+				CSTR:LCOUNT:在任 = マジックアカデミー
+			ENDIF
+			SIF NAME:LCOUNT == "サツキ"
+				CSTR:LCOUNT:担当科目 = 科学
+			SIF NAME:LCOUNT == "マロン"
+				CSTR:LCOUNT:担当科目 = 美術
+			SIF NAME:LCOUNT == "リディア"
+				CSTR:LCOUNT:担当科目 = 家庭科
+			SIF NAME:LCOUNT == "エリーザ"
+				CSTR:LCOUNT:担当科目 = 社会
+			SIF NAME:LCOUNT == "アメリア"
+				CSTR:LCOUNT:担当科目 = 国語
+			SIF NAME:LCOUNT == "ミランダ"
+				CSTR:LCOUNT:担当科目 = 保健
+			SIF NAME:LCOUNT == "ガルーダ"
+				CSTR:LCOUNT:担当科目 = 体育
+			SIF NAME:LCOUNT == "ウィーズ"
+				CSTR:LCOUNT:担当科目 = 数学
+			SIF NAME:LCOUNT == "フランシス"
+				CSTR:LCOUNT:担当科目 = 音楽
+			;最新の設定を反映させてロマノフ先生は外した
+			;SIF NAME:LCOUNT == "ロマノフ"
+			;	CSTR:LCOUNT:担当科目 = 校長
+		CASE "T.B.リカ"
+			;追記。公式設定資料集未読なので技術かもしれない
+			IF キャラ選択フラグ:NOF(GETCHARANAME(""))
+				CSTR:LCOUNT:在任 = %固定用学校:3%
+			ELSE
+				CSTR:LCOUNT:在任 = 聖グラディウス学園
+			ENDIF
+			CSTR:LCOUNT:担当科目 = 技術
+
 		;国語
 		CASE "A", "ユーリ", "カゲトラ", "浅見 文彦", "桔梗", "ムラサキ", "玉藻 銀丸", "イマ", "弐ノ丸", "こうもりおとこ"
 			IF キャラ選択フラグ:NOF(LCOUNT)
@@ -704,62 +803,11 @@ FOR LCOUNT, 1, CHARANUM
 				CSTR:LCOUNT:在任 = %選任ランダム("校長")%
 			ENDIF
 			CSTR:LCOUNT:担当科目 = 校長
-		;マジックアカデミーは固定
-		CASE "サツキ"
-			CSTR:LCOUNT:在任 = マジックアカデミー
-			SIF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			CSTR:LCOUNT:担当科目 = 科学
-		CASE "マロン"
-			CSTR:LCOUNT:在任 = マジックアカデミー
-			SIF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			CSTR:LCOUNT:担当科目 = 美術
-		CASE "リディア"
-			CSTR:LCOUNT:在任 = マジックアカデミー
-			SIF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			CSTR:LCOUNT:担当科目 = 家庭科
-		CASE "エリーザ"
-			CSTR:LCOUNT:在任 = マジックアカデミー
-			SIF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			CSTR:LCOUNT:担当科目 = 社会
-		CASE "アメリア"
-			CSTR:LCOUNT:在任 = マジックアカデミー
-			SIF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			CSTR:LCOUNT:担当科目 = 国語
-		CASE "ミランダ"
-			CSTR:LCOUNT:在任 = マジックアカデミー
-			SIF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			CSTR:LCOUNT:担当科目 = 保健
-		CASE "ガルーダ"
-			CSTR:LCOUNT:在任 = マジックアカデミー
-			SIF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			CSTR:LCOUNT:担当科目 = 体育
-		CASE "ウィーズ"
-			CSTR:LCOUNT:在任 = マジックアカデミー
-			SIF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			CSTR:LCOUNT:担当科目 = 数学
-		CASE "フランシス"
-			CSTR:LCOUNT:在任 = マジックアカデミー
-			SIF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			CSTR:LCOUNT:担当科目 = 音楽
-		;最新の設定を反映させてロマノフ先生は外した
-		;CASE "ロマノフ"
-		;	CSTR:LCOUNT:在任 = マジックアカデミー
-		;	SIF キャラ選択フラグ:NOF(LCOUNT)
-		;		CSTR:LCOUNT:在任 = %固定用学校:3%
 	ENDSELECT
 NEXT
 
 ;優先処理が終わったらもう一周
-IF !優先処理済
+IF !優先処理済 && !新規追加フラグ
 	優先処理済 = 1
 	GOTO ランダム入学処理
 ENDIF
@@ -776,6 +824,9 @@ FOR LCOUNT, 1, CHARANUM
 		CSTR:LCOUNT:担当科目 = 理科
 	ENDIF
 NEXT
+
+SIF 新規追加フラグ
+	RETURN 1
 
 $学校一覧表示
 DRAWLINE
