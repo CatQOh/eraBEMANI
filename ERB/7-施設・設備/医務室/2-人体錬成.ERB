@@ -150,6 +150,7 @@ RESTART
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LRESULT
 #DIM DYNAMIC 服装選出用
+#DIM DYNAMIC 服装変更フラグ
 #DIM DYNAMIC 選択中リソース, 150
 
 CALL ADD_ランダムキャラ_STATUS, 対象, 1
@@ -239,6 +240,7 @@ SELECTCASE RESULT
 			IF GETCHARA(CFLAG:対象:複製) > 0 && !CFLAG:GETCHARA(CFLAG:対象:複製):キャラロスト
 				;口上表示→反発イベントDISABLEの順（イベントの有無に関わらず口上は出る）
 				CALL KOJO_MESSAGE_EVENT, "クローン生成", GETCHARA(CFLAG:対象:複製)
+				服装変更フラグ = RESULT
 				CALLFORM DISABLE, "EVENT_クローン生成反発", GETCHARA(CFLAG:対象:複製)
 				IF !TALENT:GETCHARA(CFLAG:対象:複製):隷属 && !TALENT:GETCHARA(CFLAG:対象:複製):崩壊 && !RESULT
 					CALL JUELUP, "否定", 10000, GETCHARA(CFLAG:対象:複製)
@@ -255,14 +257,17 @@ SELECTCASE RESULT
 			ENDIF
 			DNAデータ:(CFLAG:対象:複製)++
 		ENDIF
-		PRINTL 服を着せますか？
-		PRINTL [0] - 何も着せない
-		PRINTL [1] - 適当に何か着せる
-		SIF CFLAG:対象:複製
-			PRINTL [2] - オリジナルと同じ服を着せる
-		BINPUT
-		SELECTCASE RESULT
-			CASE 0
+		IF !服装変更フラグ
+			PRINTL 服を着せますか？
+			PRINTL [1] - 何も着せない
+			PRINTL [2] - 適当に何か着せる
+			SIF CFLAG:対象:複製
+				PRINTL [3] - オリジナルと同じ服を着せる
+			BINPUT
+			服装変更フラグ = RESULT
+		ENDIF
+		SELECTCASE 服装変更フラグ
+			CASE 1
 				FOR LCOUNT, 100, 107
 					CSTR:LCOUNT =
 				NEXT
@@ -270,7 +275,7 @@ SELECTCASE RESULT
 				CFLAG:着衣併用 = 0
 				CFLAG:上着パイズリ = 0
 				CFLAG:下着パイズリ = 0
-			CASE 1
+			CASE 2
 				服装選出用 = RAND(1, 10000)
 				WHILE !EXISTCSV(服装選出用) || CSVTALENT(服装選出用, GETNUM(TALENT, "性別")) != SEX(対象)
 					服装選出用 += RAND:10+1
@@ -429,7 +434,7 @@ FOR LCOUNT, 1, 10000
 	IF (!ロボット && DNAデータ:LCOUNT) || (ロボット && 分析データ:LCOUNT)
 		SIF !EXISTCSV(LCOUNT)
 			CONTINUE
-		CALLFORM DISABLE, "EVENT_クローン生成", LCOUNT, 1
+		CALL DISABLE, "EVENT_クローン生成", LCOUNT
 		SIF RESULT
 			CONTINUE
 		表示数++

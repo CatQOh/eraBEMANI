@@ -618,16 +618,9 @@ ELSE
 	ELSEIF BASE:体力 <= 0
 		IF CFLAG:死亡
 			;蘇生せずに体力0になると本当に死ぬ
-			IF TEQUIP:仮死薬
-				PRINTW ………………
-				PRINTW …………
-				PRINTW ……
-				PRINTFORMW %CALLNAME:TARGET%の様子がおかしい
-				PRINTW 蘇生薬を投与しても反応が無い。どうやら蘇生が遅すぎたようだ
-				PRINTFORML ★★★%CALLNAME:TARGET%は死亡しました★★★
-				TEQUIP:仮死薬 = 0
-				CFLAG:死亡 = 1
 			;ガチ屍姦中は体力とか関係無い
+			IF TEQUIP:仮死薬
+				CALL 仮死薬による死
 			ELSE
 				RETURN
 			ENDIF
@@ -834,6 +827,31 @@ IF TALENT:MASTER:吸血鬼 || (ASSI >= 0 && TALENT:ASSI:吸血鬼 && 陥落(ASSI
 	RETURN
 ENDIF
 
+@仮死薬による死
+;TEQUIP:仮死薬は実際の死亡判定に使用されるためここでは解除しない
+CALL DISABLE, "EVENT_仮死薬死亡", TARGET
+IF RESULT
+	;DISABLEされている場合蘇生薬投与と同様の処理
+	CFLAG:死亡 = 0
+	CFLAG:使用不可 = 6
+ELSE
+	PRINTFORML ………………
+	PRINTFORML …………
+	PRINTFORMW ……
+	PRINTFORMW %CALLNAME:TARGET%の様子がおかしい
+	PRINTFORMW 蘇生薬を投与しても反応が無い。どうやら蘇生が遅すぎたようだ
+	PRINTFORML ★★★%CALLNAME:TARGET%は死亡しました★★★
+	;陥落済の先天霊体の場合幽体離脱で済む
+	IF 陥落(TARGET) && NOF(TARGET) < 10000 && CSVTALENT(NOF(TARGET), GETNUM(TALENT, "霊体"))
+		CFLAG:死亡 = 0
+		CALL 幽体離脱, -1, TARGET
+		TARGET = CHARANUM-1
+		TALENT:霊体 = 1
+		CFLAG:使用不可 = 3
+		CALL KOJO_MESSAGE_EVENT, "調教後幽体離脱", TARGET
+	ENDIF
+ENDIF
+
 [SKIPSTART]
 ;調教で【崩壊】を得た場合のイベント
 ;@COLLAPSE_MIND_TRAIN
@@ -868,18 +886,19 @@ ENDIF
 CALL TUTORIAL, "珠取得"
 
 CALL CHECKDRAWLINE
-SIF ハッキング命令 != "自爆"
+IF ハッキング命令 != "自爆"
+	;WIDEDISABLEの判定
+	CALL WIDEDISABLE, "憑依時口上表示", TARGET, "KOJO_TURNEND"
+	SIF RESULT
+		GOTO WIDEDISABLE
 	CALL KOJO_TURNEND
+	$WIDEDISABLE
+ENDIF
+
 PRINTW 調教を終了しました
 
-IF TEQUIP:仮死薬
-	PRINTW ………………
-	PRINTW …………
-	PRINTW ……
-	PRINTFORMW %CALLNAME:TARGET%の様子がおかしい
-	PRINTW 蘇生薬を投与しても反応が無い。どうやら蘇生が遅すぎたようだ
-	PRINTFORML ★★★%CALLNAME:TARGET%は死亡しました★★★
-ENDIF
+SIF TEQUIP:仮死薬
+	CALL 仮死薬による死
 
 CALL 調教称号計算
 CALL アイテム修理
@@ -1091,18 +1110,14 @@ FLAG:能力上昇 = 0
 
 VARLINE = 0
 
-IF TEQUIP:仮死薬
-	TEQUIP:仮死薬 = 0
-	CFLAG:死亡 = 1
-	CALL プレイログ記録, @"%NAME:TARGET%が死亡"
-	CSTR:ロスト要因 = 死亡
-	CSTR:ロスト詳細 = 屍姦プレイ中に蘇生が遅れた
-	CALL CLEAR_CHARA, TARGET, 0, 1
-	TARGET = -1
-	RETURN 1
-ENDIF
-
 IF CFLAG:死亡
+	IF TEQUIP:仮死薬
+		TEQUIP:仮死薬 = 0
+		CALL プレイログ記録, @"%NAME:TARGET%が死亡"
+		CSTR:ロスト要因 = 死亡
+		CSTR:ロスト詳細 = 屍姦プレイ中に蘇生が遅れた
+		CALL CLEAR_CHARA, TARGET, 0, 1
+	ENDIF
 	TARGET = -1
 	RETURN 1
 ENDIF
