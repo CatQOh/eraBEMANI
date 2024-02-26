@@ -44,15 +44,21 @@ FOR LCOUNT, 0, CHARANUM
 		SELECTCASE CSTR:LCOUNT:種族
 			CASE "獣人", "獣"
 				PREG:LCOUNT:出産予定日 = DAY+RAND(30, 41)
-				;MOD:人口飽和なら次の日にはもう出産する
-				SIF MOD:人口飽和 && ゲームモード() != "段位認定"
+				;MODによる操作
+				IF MOD:妊娠期間上限
+					PREG:LCOUNT:出産予定日 = DAY+RAND(MOD:妊娠期間下限, MOD:妊娠期間上限+1)
+				ELSEIF MOD:人口飽和 && ゲームモード() != "段位認定"
 					PREG:LCOUNT:出産予定日 = DAY+1
+				ENDIF
 				CALL CHILDSET, LCOUNT, FINDCHARA(NO, PREG:LCOUNT:父親)
 			CASEELSE
 				PREG:LCOUNT:出産予定日 = DAY+RAND(60, 81)
-				;MOD:人口飽和なら次の日にはもう出産する
-				SIF MOD:人口飽和 && ゲームモード() != "段位認定"
+				;MODによる操作
+				IF MOD:妊娠期間上限
+					PREG:LCOUNT:出産予定日 = DAY+RAND(MOD:妊娠期間下限, MOD:妊娠期間上限+1)
+				ELSEIF MOD:人口飽和 && ゲームモード() != "段位認定"
 					PREG:LCOUNT:出産予定日 = DAY+1
+				ENDIF
 				CALL CHILDSET, LCOUNT, FINDCHARA(NO, PREG:LCOUNT:父親)
 		ENDSELECT
 	ENDIF
@@ -451,8 +457,20 @@ FOR LCOUNT, 0, CHARANUM
 	SIF PREG:LCOUNT:妊娠確定フラグ == 0
 		CONTINUE
 	;出産予定日より20日前で妊娠発覚
-	SIF !TALENT:LCOUNT:妊娠 && !TALENT:LCOUNT:育児中 && DAY >= PREG:LCOUNT:出産予定日-20
-		CALL GET_CHILD_MESSAGE, LCOUNT
+	;妊娠期間MODを入れてる場合は下限/3 妊娠確定時と発覚時にMODが一致してないケースがあるためなんともいえないので3日前にはイベント起こす
+
+	IF !TALENT:LCOUNT:妊娠 && !TALENT:LCOUNT:育児中
+		IF MOD:妊娠期間上限
+			IF DAY >= PREG:LCOUNT:出産予定日-(MOD:妊娠期間下限+3)/3
+				CALL GET_CHILD_MESSAGE, LCOUNT
+			ELSEIF DAY >= PREG:LCOUNT:出産予定日-3
+				CALL GET_CHILD_MESSAGE, LCOUNT
+			ENDIF
+		ELSE
+			SIF DAY >= PREG:LCOUNT:出産予定日-20
+				CALL GET_CHILD_MESSAGE, LCOUNT
+		ENDIF
+	ENDIF
 NEXT
 
 @GET_CHILD_MESSAGE, 対象
