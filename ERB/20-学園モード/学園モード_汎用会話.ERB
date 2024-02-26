@@ -1,4 +1,20 @@
-﻿@学園モード_汎用会話, 対象
+﻿@汎用会話可否判定, 対象, コマンド名
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC コマンド名
+RESULTS = 
+TRYCCALLFORM SCHOOL_%CSVNAMERPS(NO:対象)%_コマンド不可_%コマンド名%
+	SIF RESULT == -1
+		RETURN -1
+	IF RESULT
+		SIF RESULTS != ""
+			RESULTS = (%RESULTS%)
+		RETURN 1
+	ENDIF
+CATCH
+ENDCATCH
+RETURN 0
+
+@学園モード_汎用会話, 対象
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LRESULT
 #DIM DYNAMIC 対象
@@ -6,40 +22,90 @@
 #DIM DYNAMIC 総数
 TARGET = 対象
 
-IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_汎用会話")
-	CALL SCHOOL_KOJO, TARGET, "コマンド_汎用会話"
-	RETURN RESULT
+IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_汎用会話開始")
+	CALLFORM SCHOOL_%CSVNAMERPS(NO:TARGET)%_汎用会話開始
+ELSE
+	PRINTFORML □%CALLNAME:TARGET%と会話します
 ENDIF
 
-PRINTFORML □%CALLNAME:TARGET%と会話します
-PRINTL 　[0] 何気ない会話をする
-PRINTL 　[1] 少し踏み込んだ会話をする
-PRINTL 　[2] 下ネタを振る
-IF 同行者 && 同行者 != TARGET
-	CALL PRINTCOLORL, @"　[-] 性的に誘う(%NAME:同行者%が同行中)", "gray"
-ELSE
-	PRINTL 　[3] 性的に誘う
+;コマンド表示
+CALL 汎用会話可否判定, TARGET, "何気ない会話をする"
+IF RESULT == 1
+	CALL PRINTCOLORL, @"　[-] 何気ない会話をする%RESULTS%", "gray"
+ELSEIF RESULT == 0
+	PRINTL 　[0] 何気ない会話をする
 ENDIF
-IF TALENT:恋慕
-	CALL PRINTCOLORL, @"　[-] 思い切って告白する(%NAME:TARGET%は既に%CALLNAME:PLAYER%の恋人)", "gray"
-ELSE
-	PRINTL 　[4] 思い切って告白する
+
+CALL 汎用会話可否判定, TARGET, "少し踏み込んだ会話をする"
+IF RESULT == 1
+	CALL PRINTCOLORL, @"　[-] 少し踏み込んだ会話をする%RESULTS%", "gray"
+ELSEIF RESULT == 0
+	PRINTL 　[1] 少し踏み込んだ会話をする
 ENDIF
-IF 連絡先:TARGET
-	CALL PRINTCOLORL, @"　[-] 連絡先を聞いてみる(%CALLNAME:TARGET%の連絡先は既に知っている)", "gray"
-ELSE
-	PRINTL 　[5] 連絡先を聞いてみる
+
+CALL 汎用会話可否判定, TARGET, "下ネタを振る"
+IF RESULT == 1
+	CALL PRINTCOLORL, @"　[-] 下ネタを振る%RESULTS%", "gray"
+ELSEIF RESULT == 0
+	PRINTL 　[2] 下ネタを振る
 ENDIF
-IF 同行者 != TARGET && !校内()
-	IF 同行者
-		CALL PRINTCOLORL, @"　[-] 同行を提案する(既に%NAME:同行者%と行動中)", "gray"
+
+CALL 汎用会話可否判定, TARGET, "性的に誘う"
+IF RESULT == 1
+	CALL PRINTCOLORL, @"　[-] 性的に誘う%RESULTS%", "gray"
+ELSEIF RESULT == 0
+	IF 同行者 && 同行者 != TARGET
+		CALL PRINTCOLORL, @"　[-] 性的に誘う(%NAME:同行者%が同行中)", "gray"
 	ELSE
-		PRINTL 　[6] 同行を提案する
+		PRINTL 　[3] 性的に誘う
 	ENDIF
 ENDIF
-SIF CSTR:PLAYER:現在地 == "雀喫茶ローシャンテ"
-	PRINTL 　[20] 一局やらないか(八牌麻雀を開始)
 
+CALL 汎用会話可否判定, TARGET, "思い切って告白する"
+IF RESULT == 1
+	CALL PRINTCOLORL, @"　[-] 思い切って告白する%RESULTS%", "gray"
+ELSEIF RESULT == 0
+	IF TALENT:恋慕
+		CALL PRINTCOLORL, @"　[-] 思い切って告白する(%NAME:TARGET%は既に%CALLNAME:PLAYER%の恋人)", "gray"
+	ELSE
+		PRINTL 　[4] 思い切って告白する
+	ENDIF
+ENDIF
+
+CALL 汎用会話可否判定, TARGET, "連絡先を聞いてみる"
+IF RESULT == 1
+	CALL PRINTCOLORL, @"　[-] 連絡先を聞いてみる%RESULTS%", "gray"
+ELSEIF RESULT == 0
+	IF 連絡先:TARGET
+		CALL PRINTCOLORL, @"　[-] 連絡先を聞いてみる(%CALLNAME:TARGET%の連絡先は既に知っている)", "gray"
+	ELSE
+		PRINTL 　[5] 連絡先を聞いてみる
+	ENDIF
+ENDIF
+
+CALL 汎用会話可否判定, TARGET, "同行を提案する"
+IF RESULT == 1
+	CALL PRINTCOLORL, @"　[-] 同行を提案する%RESULTS%", "gray"
+ELSEIF RESULT == 0
+	IF 同行者 != TARGET && !校内()
+		IF 同行者
+			CALL PRINTCOLORL, @"　[-] 同行を提案する(既に%NAME:同行者%と行動中)", "gray"
+		ELSE
+			PRINTL 　[6] 同行を提案する
+		ENDIF
+	ENDIF
+ENDIF
+
+IF CSTR:PLAYER:現在地 == "雀喫茶ローシャンテ"
+	CALL 汎用会話可否判定, TARGET, "八牌麻雀"
+	IF RESULT == 1
+		CALL PRINTCOLORL, @"　[-] 一局やらないか%RESULTS%", "gray"
+	ELSEIF RESULT == 0
+		PRINTL 　[20] 一局やらないか(八牌麻雀を開始)
+	ENDIF
+ENDIF
+
+;口上専用コマンド
 IF OPTION:口上表示 && !CFLAG:TARGET:口上非表示
 	ENUMFUNCBEGINSWITH @"SCHOOL_%CSVNAMERPS(NO:TARGET)%_専用コマンド_"
 	総数 = RESULT
@@ -119,6 +185,8 @@ SELECTCASE LRESULT
 		SIF !RESULT
 			RESTART
 	CASE 10
+		SIF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_汎用会話キャンセル")
+			CALLFORM SCHOOL_%CSVNAMERPS(NO:TARGET)%_汎用会話キャンセル
 		RETURN 0
 	CASE 20
 		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_八牌麻雀")
@@ -132,6 +200,8 @@ SELECTCASE LRESULT
 ENDSELECT
 RETURN 1
 
+
+;ここからコマンド実行時の処理
 @SCHOOL_何気ない会話をする
 CALL SCHOOL_KOJO, TARGET, "何気ない会話"
 CALL 好感度上昇, TARGET, "友情", 10
@@ -290,6 +360,19 @@ ELSE
 	CALL SCHOOL_KOJO, TARGET, "同行_失敗"
 ENDIF
 
+@SCHOOL_八牌麻雀
+CALL SCHOOL_KOJO, TARGET, "八牌麻雀_開始"
+CALL MAHJONG8
+IF PAI8SCORE > PAI8SCORE:1
+	CALL SCHOOL_KOJO, TARGET, "八牌麻雀_勝利"
+	CALL 好感度上昇, TARGET, "友情", 20
+ELSE
+	CALL SCHOOL_KOJO, TARGET, "八牌麻雀_敗北"
+	CALL 好感度上昇, TARGET, "友情", 5
+ENDIF
+
+
+;連れ込み先の選択は更に分離
 @SCHOOL_連れ込み先
 PRINTFORML □%CALLNAME:TARGET%をどこに連れ込みますか？
 IF !校内()
@@ -418,17 +501,8 @@ ENDSELECT
 
 TARGET = -1
 
-@SCHOOL_八牌麻雀
-CALL SCHOOL_KOJO, TARGET, "八牌麻雀_開始"
-CALL MAHJONG8
-IF PAI8SCORE > PAI8SCORE:1
-	CALL SCHOOL_KOJO, TARGET, "八牌麻雀_勝利"
-	CALL 好感度上昇, TARGET, "友情", 20
-ELSE
-	CALL SCHOOL_KOJO, TARGET, "八牌麻雀_敗北"
-	CALL 好感度上昇, TARGET, "友情", 5
-ENDIF
 
+;地の文関数
 @SCHOOL_MESSAGE_何気ない会話
 PRINTFORML %CALLNAME:PLAYER%は%CALLNAME:TARGET%と会話した
 
