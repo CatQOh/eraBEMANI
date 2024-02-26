@@ -138,25 +138,7 @@
 ;-------------------------------------------------
 ;  セーブデータのフラグを参照する
 ;-------------------------------------------------
-;「FLAG:(フラグ名)」でフラグを参照する
-;★構文例は下記
-	SELECTCASE FLAG:曜日
-		CASE 0
-			PRINTFORML 【土曜日】
-		CASE 1
-			PRINTFORML 【日曜日】
-		CASE 2
-			PRINTFORML 【月曜日】
-		CASE 3
-			PRINTFORML 【火曜日】
-		CASE 4
-			PRINTFORML 【水曜日】
-		CASE 5
-			PRINTFORML 【木曜日】
-		CASE 6
-			PRINTFORML 【金曜日】
-	ENDSELECT
-
+;「FLAG:(フラグ名)」でフラグを参照する FLAG:曜日は式中関数化されているため便利な式中関数の項目に移設
 	SELECTCASE FLAG:天気
 		CASE 1
 			PRINTFORML 【晴れ】
@@ -263,6 +245,35 @@
 	CALL 相性加算, TARGET, MASTER, -10
 	PRINTFORMW こうして%CALLNAME:TARGET%から%CALLNAME:MASTER%への相性は{相性値(TARGET, MASTER)}になった
 
+	PRINTFORML 今日は%DOW()%曜日！
+	SELECTCASE DOW()
+		CASE "土", "日"
+			PRINTFORML 今日は休日だよ
+		CASE "月", "水", "金"
+			PRINTFORML 燃えるごみは月・水・金
+	ENDSELECT
+
+;-------------------------------------------------
+;  条件式の短縮等
+;-------------------------------------------------
+;CHARAWORKING("（キャラ名）", "（施設）") 指定したキャラが指定した施設に配属されているか TARGET以外のキャラを参照する場合などに
+;キャラがいなくてもエラーにならず0を返す 「存在するがどこにも配属されていない」の判定は「CHARAWORKING("（キャラ名）", "")」で行える
+;「存在して別の施設に配属されている」はNOTCHARAWORK("（キャラ名）", "（施設）") で判定できる !だと配属の不一致とキャラの不在を区別不可能
+;★構文例は下記
+IF CSTR:配属 == "ゲームセンター"
+	;【TARGETがゲームセンターに配属されている】
+	IF CHARAWORKING("識", "ゲームセンター")
+		;【さらに識も配属されていた場合】
+	ENDIF
+	IF NOTCHARAWORK("ジルチ", "ゲームセンター")
+		;【ジルチが所持奴隷に存在するがゲーセンにはいない場合】
+	ENDIF
+ELSEIF CSTR:配属 != ""
+	;【TARGETがゲームセンター以外のどこかに配属されている】
+	IF CHARAWORKING("山形 まり花", CSTR:配属)
+		;【さらにまり花もTARGETと同じ施設に配属されていた場合】
+	ENDIF
+ENDIF
 
 ;+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ;    学園モードでの構文など
