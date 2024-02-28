@@ -18,7 +18,8 @@ CALL ABL上昇画面
 $END
 CALL ターン終了
 
-;調教前の処理
+
+;;;調教前の処理
 @EVENTUSERTRAIN
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC コマンドフィルタ変数
@@ -26,6 +27,8 @@ CALL ターン終了
 #DIM DYNAMIC アイテム種
 #DIM DYNAMIC アイテム数
 #DIM DYNAMIC 気温ボーナス
+#DIM DYNAMIC CSTR始点
+#DIM DYNAMIC TEQUIP始点
 
 REDRAW 1
 
@@ -39,14 +42,16 @@ SIF 野外プレイ中
 	TEQUIP:野外プレイ = 1
 
 ;初期着衣設定に応じて、服の設定をする
-FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
-	SIF CSTR:LCOUNT != ""
-		TEQUIP:(LCOUNT-100) = 1
-	SIF CSTR:MASTER:LCOUNT != ""
-		TEQUIP:MASTER:(LCOUNT-100) = 1
+CSTR始点 = GETNUM(CSTR, "特殊")
+TEQUIP始点 = GETNUM(TEQUIP, "特殊")
+FOR LCOUNT, 0, 7
+	SIF CSTR:(CSTR始点+LCOUNT) != ""
+		TEQUIP:(TEQUIP始点+LCOUNT) = 1
+	SIF CSTR:MASTER:(CSTR始点+LCOUNT) != ""
+		TEQUIP:MASTER:(TEQUIP始点+LCOUNT) = 1
 	IF ASSI > 0
-		SIF CSTR:ASSI:LCOUNT != ""
-			TEQUIP:ASSI:(LCOUNT-100) = 1
+		SIF CSTR:ASSI:(CSTR始点+LCOUNT) != ""
+			TEQUIP:ASSI:(TEQUIP始点+LCOUNT) = 1
 	ENDIF
 NEXT
 
@@ -73,34 +78,9 @@ ENDSELECT
 SIF CFLAG:死亡 && !TEQUIP:仮死薬
 	CFLAG:ストレス値 = 0
 
+
 ;調教対象・助手が特定のキャラの場合、調教開始時に豹変することがある
-;紅刃……1/5の確率で豹変
-;冷音……天気が雨・雪・雷雨で豹変
-;シュープリス……50%(1/2)の確率で豹変
-IF TARGET >= 0 && !CFLAG:死亡
-	IF CHARANAMEF(TARGET) == "紅刃" && RAND:5 == 0
-		CALL TRANCE_ON, TARGET
-		PRINTFORMW ＜紅刃は性格が豹変した＞
-	ELSEIF CHARANAMEF(TARGET) == "青雨 冷音" && INRANGE(FLAG:天気, 3, 5)
-		CALL TRANCE_ON, TARGET
-		PRINTFORMW ＜冷音は性格が豹変した＞
-	ELSEIF CHARANAMEF(TARGET) == "シュープリス" && RAND:2 == 0
-		CALL TRANCE_ON, TARGET
-		PRINTFORMW ＜シュープリスは記憶を思い出そうと同時に湧き上がる破壊衝動で性格が豹変した……＞
-	ENDIF
-ENDIF
-IF ASSI >= 0 && !CFLAG:ASSI:死亡
-	IF CHARANAMEF(ASSI) == "紅刃" && RAND:5 == 0
-		CALL TRANCE_ON, ASSI
-		PRINTFORMW ＜紅刃は性格が豹変した＞
-	ELSEIF CHARANAMEF(ASSI) == "青雨 冷音" && INRANGE(FLAG:天気, 3, 5)
-		CALL TRANCE_ON, ASSI
-		PRINTFORMW ＜冷音は性格が豹変した＞
-	ELSEIF CHARANAMEF(ASSI) == "シュープリス" && RAND:2 == 0
-		CALL TRANCE_ON, ASSI
-		PRINTFORMW ＜シュープリスは記憶を思い出そうと同時に湧き上がる破壊衝動で性格が豹変した……＞
-	ENDIF
-ENDIF
+CALL 豹変イベント, 1
 
 ;条件を満たしていればユリア天使化
 SIF GROUPMATCH("鬼蝮 ユリア", CHARANAMEF(TARGET), CHARANAMEF(ASSI)) && GROUPMATCH("イングリット・オーリック・コーネル", CHARANAMEF(TARGET), CHARANAMEF(ASSI))
@@ -275,17 +255,12 @@ SIF TEQUIP:仮死薬
 	CFLAG:死亡 = 1
 
 ;死体は体力気力魔力0
-IF CFLAG:死亡
-	IF !TEQUIP:仮死薬
-		BASE:体力 = 0
-		BASE:気力 = 0
-		BASE:魔力 = 0
-	ENDIF
-	;実行判定も無視
-	TFLAG:実行判定無視 = 100
+IF CFLAG:死亡 && !TEQUIP:仮死薬
+	BASE:体力 = 0
+	BASE:気力 = 0
+	BASE:魔力 = 0
 ENDIF
-
-SIF TEQUIP:睡眠
+SIF CFLAG:死亡 || TEQUIP:睡眠
 	TFLAG:実行判定無視 = 100
 
 ;屍姦、睡姦中は口上表示しない(暫定)
@@ -353,54 +328,7 @@ SIF ASSI >= 0 && TALENT:ASSI:ドラゴン使い && CSTR:ASSI:ドラゴン == ""
 	CSTR:ASSI:ドラゴン = ドラゴン
 
 ;種族宇宙人の感度変化
-IF CSTR:種族 == "宇宙人"
-	IF VAGINA(TARGET)
-		SELECTCASE RAND:3
-			CASE 0
-				TALENT:Ｖ敏感 = 0
-				TALENT:Ｖ鈍感 = 1
-			CASE 1
-				TALENT:Ｖ敏感 = 0
-				TALENT:Ｖ鈍感 = 0
-			CASE 2
-				TALENT:Ｖ敏感 = 1
-				TALENT:Ｖ鈍感 = 0
-		ENDSELECT
-	ENDIF
-	SELECTCASE RAND:3
-		CASE 0
-			TALENT:Ｃ敏感 = 0
-			TALENT:Ｃ鈍感 = 1
-		CASE 1
-			TALENT:Ｃ敏感 = 0
-			TALENT:Ｃ鈍感 = 0
-		CASE 2
-			TALENT:Ｃ敏感 = 1
-			TALENT:Ｃ鈍感 = 0
-	ENDSELECT
-	SELECTCASE RAND:3
-		CASE 0
-			TALENT:Ａ敏感 = 0
-			TALENT:Ａ鈍感 = 1
-		CASE 1
-			TALENT:Ａ敏感 = 0
-			TALENT:Ａ鈍感 = 0
-		CASE 2
-			TALENT:Ａ敏感 = 1
-			TALENT:Ａ鈍感 = 0
-	ENDSELECT
-	SELECTCASE RAND:3
-		CASE 0
-			TALENT:Ｂ敏感 = 0
-			TALENT:Ｂ鈍感 = 1
-		CASE 1
-			TALENT:Ｂ敏感 = 0
-			TALENT:Ｂ鈍感 = 0
-		CASE 2
-			TALENT:Ｂ敏感 = 1
-			TALENT:Ｂ鈍感 = 0
-	ENDSELECT
-ENDIF
+CALL 宇宙人感度変化, TARGET
 
 ;種族妖精ならランダムで消費アイテム取得
 IF CSTR:種族 == "妖精"
@@ -541,8 +469,12 @@ SIF CHARANAMEF(TARGET) == "小野 美苗"
 CALL CHECKDRAWLINE
 CALL KOJO_START
 
-;コマンド終了時に呼ばれる ここでは調教終了処理と媚薬処理
+;;;コマンド終了時に呼ばれる ここでは調教終了処理と媚薬処理
 @EVENTUSERCOMEND
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 獣人
+
 ;SKIPDISP中は無視
 SIF ISSKIP()
 	RETURN
@@ -553,44 +485,32 @@ IF SELECTCOMS == "蘇生薬投与"
 	TFLAG:調教終了 = 1
 ENDIF
 
-IF !TEQUIP:媚薬 && CFLAG:媚薬 >= 10
-	IF TFLAG:ハニーパーティ
-	ELSE
-		SELECTCASE CSTR:MASTER:種族
-			CASE "獣人", "獣"
-				PRINTFORML %CALLNAME:MASTER%のフェロモンで%CALLNAME:TARGET%は媚薬を飲まされたかのように発情してしまった……
-			CASEELSE
-				PRINTFORML %CALLNAME:ASSI%のフェロモンで%CALLNAME:TARGET%は媚薬を飲まされたかのように発情してしまった……
-		ENDSELECT
+;ケモノフェロモンもしくはハニーパーティの媚薬効果
+FOR LCOUNT, 0, 3
+	獣人 = -1
+	SIF LCOUNT == 0
+		対象 = TARGET
+	SIF LCOUNT == 1
+		対象 = MASTER
+	IF LCOUNT == 2
+		SIF ASSI == -1
+			BREAK
+		対象 = ASSI
 	ENDIF
-	TEQUIP:媚薬 = 1
-ENDIF
-IF !TEQUIP:MASTER:媚薬 && CFLAG:MASTER:媚薬 >= 10
-	IF TFLAG:ハニーパーティ
-	ELSE
-		SELECTCASE CSTR:種族
-			CASE "獣人", "獣"
-				PRINTFORML %CALLNAME:TARGET%のフェロモンで%CALLNAME:MASTER%は媚薬を飲まされたかのように発情してしまった……
-			CASEELSE
-				PRINTFORML %CALLNAME:ASSI%のフェロモンで%CALLNAME:MASTER%は媚薬を飲まされたかのように発情してしまった……
-		ENDSELECT
+	IF GROUPMATCH(CSTR:MASTER:種族, "獣人", "獣") && 対象 != MASTER
+		獣人 = MASTER
+	ELSEIF GROUPMATCH(CSTR:TARGET:種族, "獣人", "獣") && 対象 != TARGET
+		獣人 = TARGET
+	ELSEIF ASSI >= 0 && GROUPMATCH(CSTR:ASSI:種族, "獣人", "獣") && 対象 != ASSI
+		獣人 = ASSI
 	ENDIF
-	TEQUIP:MASTER:媚薬 = 1
-ENDIF
-IF ASSI > 0
-	IF !TEQUIP:ASSI:媚薬 && CFLAG:ASSI:媚薬 >= 10
-		IF TFLAG:ハニーパーティ
-		ELSE
-			SELECTCASE CSTR:種族
-				CASE "獣人", "獣"
-					PRINTFORML %CALLNAME:TARGET%のフェロモンで%CALLNAME:ASSI%は媚薬を飲まされたかのように発情してしまった……
-				CASEELSE
-					PRINTFORML %CALLNAME:MASTER%のフェロモンで%CALLNAME:ASSI%は媚薬を飲まされたかのように発情してしまった……
-			ENDSELECT
-		ENDIF
+
+	IF !TEQUIP:対象:媚薬 && CFLAG:対象:媚薬 >= 10
+		SIF !TFLAG:ハニーパーティ && 獣人 >= 0
+			PRINTFORML %CALLNAME:獣人%のフェロモンで%CALLNAME:対象%は媚薬を飲まされたかのように発情してしまった……
+		TEQUIP:対象:媚薬 = 1
 	ENDIF
-	TEQUIP:ASSI:媚薬 = 1
-ENDIF
+NEXT
 
 CALL TUTORIAL, "調教終了無効"
 
@@ -641,7 +561,7 @@ ELSE
 			CFLAG:回復量低下 += 2
 			CFLAG:ストレス値 += 10
 			BASE:体力 = 1
-			CALL 吸血イベント
+			CALL 種族変化イベント
 			;実績:ガッキー博士で奴隷の体力を0にする
 			SIF CHARANAMEF(PLAYER) == "ガッキー博士"
 				CALL 実績解除, "「科学の発展に犠牲は付き物デース」"
@@ -649,7 +569,7 @@ ELSE
 	ELSEIF BASE:体力 < 500 && !特質("無理強い") && !CFLAG:死亡
 		TFLAG:調教終了 = 1
 		PRINTL （体力が限界に来ています　調教を終了します）
-		CALL 吸血イベント
+		CALL 種族変化イベント
 	ENDIF
 ENDIF
 
@@ -664,9 +584,41 @@ IF TFLAG:流産
 	TFLAG:調教終了 = 1
 ENDIF
 
-@吸血イベント
-;条件を満たしていれば吸血イベント発生するか選択できる 助手を使う場合は助手が陥落している必要がある
-;優先度はスライム＞吸血鬼
+;;;宇宙人の感度はランダム変化する
+@宇宙人感度変化, 対象
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 部位
+SIF CSTR:対象:種族 != "宇宙人"
+	RETURN
+FOR LCOUNT, 0, 4
+	SIF LCOUNT == 0
+		部位 = Ｃ
+	SIF LCOUNT == 1
+		部位 = Ｂ
+	SIF LCOUNT == 2
+		部位 = Ａ
+	IF LCOUNT == 3
+		SIF !VAGINA(対象)
+			BREAK
+		部位 = Ｖ
+	ENDIF
+	SELECTCASE RAND:3
+		CASE 0
+			TALENT:対象:@"%部位%敏感" = 0
+			TALENT:対象:@"%部位%鈍感" = 1
+		CASE 1
+			TALENT:対象:@"%部位%敏感" = 0
+			TALENT:対象:@"%部位%鈍感" = 0
+		CASE 2
+			TALENT:対象:@"%部位%敏感" = 1
+			TALENT:対象:@"%部位%鈍感" = 0
+	ENDSELECT
+NEXT
+
+;;;条件を満たしていれば種族変化系のイベントを発生させるか選択できる 助手を使う場合は助手が陥落している必要がある
+;;;優先度はスライム＞吸血鬼
+@種族変化イベント
 ;対象が種族[人間]でなければ戻る
 SIF CSTR:種族 != "人間"
 	RETURN
@@ -720,22 +672,22 @@ IF スライム感染可能(TARGET) && (ISSLIME(MASTER) || (ASSI >= 0 && ISSLIME
 						PRINTFORML %CALLNAME:TARGET%が%CALLNAME:MASTER%に抱いていた感情は、スライムの本能に塗りつぶされてしまった……
 						SIF TALENT:恋慕
 							PRINTFORML %CALLNAME:TARGET%は[恋慕]を失った
-							TALENT:恋慕 = 0
 						SIF TALENT:淫乱
 							PRINTFORML %CALLNAME:TARGET%は[淫乱]を失った
-							TALENT:淫乱 = 0
 						SIF TALENT:服従
 							PRINTFORML %CALLNAME:TARGET%は[服従]を失った
-							TALENT:服従 = 0
 						SIF TALENT:親愛
 							PRINTFORML %CALLNAME:TARGET%は[親愛]を失った
-							TALENT:親愛 = 0
 						SIF TALENT:淫魔
 							PRINTFORML %CALLNAME:TARGET%は[淫魔]を失った
-							TALENT:淫魔 = 0
 						SIF TALENT:隷属
 							PRINTFORML %CALLNAME:TARGET%は[隷属]を失った
-							TALENT:隷属 = 0
+						TALENT:恋慕 = 0
+						TALENT:淫乱 = 0
+						TALENT:服従 = 0
+						TALENT:親愛 = 0
+						TALENT:淫魔 = 0
+						TALENT:隷属 = 0
 						WAIT
 					ENDIF
 				ENDIF
@@ -928,8 +880,8 @@ ELSEIF TEQUIP:野外プレイ
 	ENDSELECT
 ENDIF
 
-;女装してたら服を元に戻す
 IF TEQUIP:女装
+	;女装してたら服を元に戻す
 	CSTR:特殊 = %服装保存用:0%
 	CSTR:上半身上着 = %服装保存用:1%
 	CSTR:下半身上着 = %服装保存用:2%
@@ -937,24 +889,25 @@ IF TEQUIP:女装
 	CSTR:上半身下着 = %服装保存用:4%
 	CSTR:下半身下着 = %服装保存用:5%
 	CSTR:足元 = %服装保存用:6%
-
 	CFLAG:挿入可 = 服装フラグ保存用:0
 	CFLAG:着衣併用 = 服装フラグ保存用:1
 	CFLAG:上着パイズリ = 服装フラグ保存用:2
 	CFLAG:下着パイズリ = 服装フラグ保存用:3
-
+	CFLAG:全身上着パイズリ = 服装フラグ保存用:4
 	TEQUIP:女装 = 0
 ENDIF
 
-;自爆したらDELCHARAして全部無視してTURNEND
 IF ハッキング命令 == "自爆"
+	;自爆は全部無視してTURNEND
 	CALL プレイログ記録, @"%NAME:TARGET%自爆"
 	CSTR:ロスト要因 = 自爆
 	CSTR:ロスト詳細 = ハッキングにより自爆した
 	CALL CLEAR_CHARA, TARGET, 0, 1
 	TARGET = -1
 	RETURN 1
-ELSEIF SELECTCOMS == "剥製加工"
+ENDIF
+IF SELECTCOMS == "剥製加工"
+	;剥製加工も同様
 	CALL プレイログ記録, @"%NAME:TARGET%の死体を剥製に加工"
 	CSTR:ロスト要因 = 死亡
 	CSTR:ロスト詳細 = 死亡のち剥製に加工された
@@ -963,151 +916,132 @@ ELSEIF SELECTCOMS == "剥製加工"
 	RETURN 1
 ENDIF
 
-SIF CFLAG:死亡 || TEQUIP:睡眠
-	GOTO SKIP
+IF !CFLAG:死亡 && !TEQUIP:睡眠
+	;各ストレス増減処理
+	;快感に素直、快感の否定は絶頂回数に応じてストレス増減
+	IF TALENT:快感に素直
+		CFLAG:ストレス値 -= EX:Ｃ絶頂+EX:Ｖ絶頂+EX:Ａ絶頂+EX:Ｂ絶頂+EX:射精/3
+	ELSEIF TALENT:快感の否定 && !陥落(TARGET)
+		CFLAG:ストレス値 += EX:Ｃ絶頂+EX:Ｖ絶頂+EX:Ａ絶頂+EX:Ｂ絶頂+EX:射精/3
+	ENDIF
 
-;快感に素直、快感の否定は絶頂回数に応じてストレス増減
-IF TALENT:快感に素直
-	CFLAG:ストレス値 -= EX:Ｃ絶頂+EX:Ｖ絶頂+EX:Ａ絶頂+EX:Ｂ絶頂+EX:射精/3
-ELSEIF TALENT:快感の否定 && !陥落(TARGET)
-	CFLAG:ストレス値 += EX:Ｃ絶頂+EX:Ｖ絶頂+EX:Ａ絶頂+EX:Ｂ絶頂+EX:射精/3
-ENDIF
+	;恋慕系陥落で流産してなければ愛情経験に応じてストレス低下
+	ストレス低下量 = EXP:愛情経験-TFLAG:愛情経験計算用
+	IF ストレス低下量 > 0 && CFLAG:ストレス値 > 0
+		IF TALENT:恋慕 && ストレス低下量 >= 2
+			PRINTFORMW %CALLNAME:TARGET%は%CALLNAME:MASTER%の求愛によってストレスが緩和されました
+			CFLAG:ストレス値 -= ストレス低下量/2
+		ELSEIF TALENT:親愛
+			PRINTFORMW %CALLNAME:TARGET%は%CALLNAME:MASTER%からの愛を確かめることでことでストレスが緩和されました
+			CFLAG:ストレス値 -= ストレス低下量
+		ENDIF
+	ENDIF
 
-;恋慕系陥落で流産してなければ愛情経験に応じてストレス低下
-ストレス低下量 = EXP:愛情経験-TFLAG:愛情経験計算用
-IF ストレス低下量 > 0 && CFLAG:ストレス値 > 0
-	IF TALENT:恋慕 && ストレス低下量 >= 2
-		PRINTFORMW %CALLNAME:TARGET%は%CALLNAME:MASTER%の求愛によってストレスが緩和されました
-		CFLAG:ストレス値 -= ストレス低下量/2
-	ELSEIF TALENT:親愛
-		PRINTFORMW %CALLNAME:TARGET%は%CALLNAME:MASTER%からの愛を確かめることでことでストレスが緩和されました
-		CFLAG:ストレス値 -= ストレス低下量
+	;淫乱系陥落で絶頂回数に応じてストレス低下
+	ストレス低下量 = EX:Ｃ絶頂+EX:Ｖ絶頂+EX:Ａ絶頂*EX:Ｂ絶頂+EX:射精
+	IF ストレス低下量 > 0
+		IF TALENT:淫乱
+			PRINTFORMW %CALLNAME:TARGET%は欲求を満たされることでストレスが緩和しました
+			CFLAG:ストレス値 -= ストレス低下量
+		ELSEIF TALENT:淫魔
+			PRINTFORMW %CALLNAME:TARGET%は肉欲を満たされることでストレスが緩和しました
+			CFLAG:ストレス値 -= ストレス低下量*2
+		ENDIF
+	ENDIF
+
+	;マゾっ気があればPALAM:苦痛のPALAMLVに応じてストレス低下
+	IF ABL:マゾっ気 && GETPALAMLV(PALAM:苦痛, 10)
+		PRINTFORMW %CALLNAME:TARGET%はマゾヒズムを満たされることでストレスが緩和しました
+		CFLAG:ストレス値 -= MIN(ABL:マゾっ気, GETPALAMLV(PALAM:苦痛, 10))
+	ENDIF
+
+	;精液中毒 主人と助手の射精回数に応じてストレス低下
+	ストレス低下量 = EX:MASTER:射精+EX:MASTER:触手射精
+	SIF ASSI > 0
+		ストレス低下量 += EX:ASSI:射精
+	IF ストレス低下量 > 4 && ABL:精液中毒
+		PRINTFORMW %CALLNAME:TARGET%は精液への渇望を満たされることでストレスが緩和しました
+		CFLAG:ストレス値 -= MIN(ABL:精液中毒, ストレス低下量/5)
 	ENDIF
 ENDIF
 
-;淫乱系陥落で絶頂回数に応じてストレス低下
-ストレス低下量 = EX:Ｃ絶頂+EX:Ｖ絶頂+EX:Ａ絶頂*EX:Ｂ絶頂+EX:射精
-IF ストレス低下量 > 0
-	IF TALENT:淫乱
-		PRINTFORMW %CALLNAME:TARGET%は欲求を満たされることでストレスが緩和しました
-		CFLAG:ストレス値 -= ストレス低下量
-	ELSEIF TALENT:淫魔
-		PRINTFORMW %CALLNAME:TARGET%は肉欲を満たされることでストレスが緩和しました
-		CFLAG:ストレス値 -= ストレス低下量*2
-	ENDIF
-ENDIF
-
-;マゾっ気があればPALAM:苦痛のPALAMLVに応じてストレス低下
-IF ABL:マゾっ気 && GETPALAMLV(PALAM:苦痛, 10)
-	PRINTFORMW %CALLNAME:TARGET%はマゾヒズムを満たされることでストレスが緩和しました
-	CFLAG:ストレス値 -= MIN(ABL:マゾっ気, GETPALAMLV(PALAM:苦痛, 10))
-ENDIF
-
-;精液中毒 主人と助手の射精回数に応じてストレス低下
-ストレス低下量 = EX:MASTER:射精+EX:MASTER:触手射精
-SIF ASSI > 0
-	ストレス低下量 += EX:ASSI:射精
-IF ストレス低下量 > 4 && ABL:精液中毒
-	PRINTFORMW %CALLNAME:TARGET%は精液への渇望を満たされることでストレスが緩和しました
-	CFLAG:ストレス値 -= MIN(ABL:精液中毒, ストレス低下量/5)
-ENDIF
-
-;採血
 IF TFLAG:採血量
 	PRINTFORMW 今回の調教で計{TFLAG:採血量}mlの血液を採取しました
 	リソース:血液 += TFLAG:採血量
 ENDIF
-
-$SKIP
-
-;搾乳した母乳の売却
+;母乳、精液、ビデオ、写真の売却処理
 CALL SELL_MILK
-
-;搾精した精液の売却
 CALL SELL_SAMEN
-
-;調教時に録画したビデオを売却
 CALL SELL_VIDEO
-
-;調教時に撮影した写真を売却
 VARLINE = 0
 CALL SELL_PICTURE
 
-SIF CFLAG:死亡
-	GOTO SKIP2
+IF !CFLAG:死亡
+	;調教後行為のチェック 気絶、流産時、裸体盛り時はスルー
+	SIF !TFLAG:気絶 && !TFLAG:流産 && !CFLAG:使用不可 && !TFLAG:裸体盛り && !TEQUIP:睡眠
+		CALL SELF_CHECK
 
-;調教後行為のチェック 気絶、流産時、裸体盛り時はスルー
-SIF !TFLAG:気絶 && !TFLAG:流産 && !CFLAG:使用不可 && !TFLAG:裸体盛り && !TEQUIP:睡眠
-	CALL SELF_CHECK
-
-;コース「THE 房中術」「何かを間違えた房中術」での処理
-SELECTCASE 受験段位名
-	CASE "THE 房中術"
-		FLAG:段位ゲージ -= EX:MASTER:射精
-	CASE "何かを間違えた房中術"
-		CALL PAYMENT, 2000*EX:MASTER:射精, "房中術パワー"
-ENDSELECT
-
-;実績「1回の調教でフローラに10回以上中出しする」
-IF CHARANAMEF(TARGET) == "フローラ"
-	実績計算用 = 0
-	実績計算用 += PREG:主人膣内射精
-	SIF ASSI > -1
-		実績計算用 += PREG:助手膣内射精
-	IF 実績計算用 >= 10
-		CALL 実績解除, "生命の環を紡いで"
+	;コース「THE 房中術」「何かを間違えた房中術」での処理
+	SELECTCASE 受験段位名
+		CASE "THE 房中術"
+			FLAG:段位ゲージ -= EX:MASTER:射精
+		CASE "何かを間違えた房中術"
+			CALL PAYMENT, 2000*EX:MASTER:射精, "房中術パワー"
+	ENDSELECT
+	;実績「1回の調教でフローラに10回以上中出しする」
+	IF CHARANAMEF(TARGET) == "フローラ"
+		実績計算用 = 0
+		実績計算用 += PREG:主人膣内射精
+		SIF ASSI > -1
+			実績計算用 += PREG:助手膣内射精
+		IF 実績計算用 >= 10
+			CALL 実績解除, "生命の環を紡いで"
+		ENDIF
+	ELSEIF ASSI > -1 && CHARANAMEF(ASSI) == "フローラ"
+		実績計算用 = 0
+		実績計算用 += PREG:ASSI:主人膣内射精
+		実績計算用 += PREG:ASSI:奴隷膣内射精
+		IF 実績計算用 >= 10
+			CALL 実績解除, "生命の環を紡いで"
+		ENDIF
 	ENDIF
-ELSEIF ASSI > -1 && CHARANAMEF(ASSI) == "フローラ"
-	実績計算用 = 0
-	実績計算用 += PREG:ASSI:主人膣内射精
-	実績計算用 += PREG:ASSI:奴隷膣内射精
-	IF 実績計算用 >= 10
-		CALL 実績解除, "生命の環を紡いで"
+
+	;全体の妊娠判定の処理
+	CALL IN_VAGINA
+
+
+	;獲得した珠を計算して加算、否定の珠の打ち消しチェック
+	CALL JUEL_CHECK
+	CALL DENIAL_CHECK
+
+	CALL TUTORIAL
+	CALL TUTORIAL, "ABL上昇"
+
+	;淫乱or淫魔 奴隷の相性増加
+	IF TALENT:淫乱
+		IF RAND:3 == 0
+			CALL 相性加算, TARGET, MASTER, 1, 150
+			SIF ASSI > 0
+				CALL 相性加算, TARGET, ASSI, 1, 150
+		ENDIF
+	ELSEIF TALENT:淫魔
+		IF RAND:2 == 0
+			CALL 相性加算, TARGET, MASTER, 1, 200
+			SIF ASSI > 0
+				CALL 相性加算, TARGET, ASSI, 1, 200
+		ENDIF
+	ENDIF
+	;絶倫：調教中の射精回数10回以上（出し尽くす）
+	IF CFLAG:残数 <= 0 && !TALENT:絶倫 && PENIS(TARGET)
+		CALL KOJO_MESSAGE_EVENT, "絶倫"
+		TALENT:絶倫 = 1
 	ENDIF
 ENDIF
 
-;全体の妊娠判定の処理
-CALL IN_VAGINA
 
-;何の珠を得られたか
-CALL JUEL_GETTING
-
-;得られた珠を加算
-CALL JUEL_CHECK
-
-;否定の珠の打ち消しチェック
-CALL DENIAL_CHECK
-
-CALL TUTORIAL
-CALL TUTORIAL, "ABL上昇"
-
-;淫乱or淫魔 奴隷の相性増加
-IF TALENT:淫乱
-	IF RAND:3 == 0
-		CALL 相性加算, TARGET, MASTER, 1, 150
-		SIF ASSI > 0
-			CALL 相性加算, TARGET, ASSI, 1, 150
-	ENDIF
-ELSEIF TALENT:淫魔
-	IF RAND:2 == 0
-		CALL 相性加算, TARGET, MASTER, 1, 200
-		SIF ASSI > 0
-			CALL 相性加算, TARGET, ASSI, 1, 200
-	ENDIF
-ENDIF
-
-;絶倫：調教中の射精回数10回以上（出し尽くす）
-IF CFLAG:残数 <= 0 && !TALENT:絶倫 && PENIS(TARGET)
-	CALL KOJO_MESSAGE_EVENT, "絶倫"
-	TALENT:絶倫 = 1
-ENDIF
-
-$SKIP2
-
-
+VARSET FCOMT
 OPTION:口上表示 = TFLAG:口上フラグ退避用
 FLAG:能力上昇 = 0
-
 VARLINE = 0
 
 IF CFLAG:死亡
@@ -1121,8 +1055,8 @@ IF CFLAG:死亡
 	TARGET = -1
 	RETURN 1
 ENDIF
-
 RETURN 0
+
 
 @アイテム修理
 #DIM DYNAMIC LCOUNT
@@ -1134,105 +1068,106 @@ FOR LCOUNT, 0, VARSIZE("ITEM")
 	ENDIF
 NEXT
 
-@JUEL_GETTING, MODE
+;;;外部から参照可能なように分離してみる
+@JUELVALUE, PALAM量
+#FUNCTION
+#DIM DYNAMIC PALAM量
+SELECTCASE GETPALAMLV(PALAM量, 10)
+	CASE 0
+		RETURNF 0
+	CASE 1
+		IF PALAM量 < PALAMLV:1*3
+			RETURNF 1
+		ELSE
+			RETURNF 2
+		ENDIF
+	CASE 2
+		IF PALAM量 < PALAMLV:2*3
+			RETURNF 10
+		ELSE
+			RETURNF 20
+		ENDIF
+	CASE 3
+		IF PALAM量 < PALAMLV:3*2
+			RETURNF 100
+		ELSE
+			RETURNF 200
+		ENDIF
+	CASE 4
+		RETURNF 500
+	CASE 5
+		RETURNF 1000
+	CASE 6
+		RETURNF 2000
+	CASE 7
+		RETURNF 3000
+	CASE 8
+		RETURNF 5000
+	CASE 9
+		RETURNF 8000
+	CASEELSE
+		RETURNF PALAM量/20
+ENDSELECT
+
+
+;;;PALAMから獲得量を計算して珠を加算
+@JUEL_CHECK, MODE
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC 取得量
 #DIM DYNAMIC MODE
 
 FOR LCOUNT, 0, VARSIZE("PALAM")
 	SIF PALAMNAME:LCOUNT == ""
 		CONTINUE
-	SELECTCASE GETPALAMLV(PALAM:LCOUNT, 10)
-		CASE 0
-			取得量 = 0
-		CASE 1
-			IF PALAM:LCOUNT < PALAMLV:1*3
-				取得量 = 1
-			ELSE
-				取得量 = 2
-			ENDIF
-		CASE 2
-			IF PALAM:LCOUNT < PALAMLV:2*3
-				取得量 = 10
-			ELSE
-				取得量 = 20
-			ENDIF
-		CASE 3
-			IF PALAM:LCOUNT < PALAMLV:3*2
-				取得量 = 100
-			ELSE
-				取得量 = 200
-			ENDIF
-		CASE 4
-			取得量 = 500
-		CASE 5
-			取得量 = 1000
-		CASE 6
-			取得量 = 2000
-		CASE 7
-			取得量 = 3000
-		CASE 8
-			取得量 = 5000
-		CASE 9
-			取得量 = 8000
-		CASEELSE
-			取得量 = PALAM:LCOUNT/20
-	ENDSELECT
-
+	GOTJUEL:LCOUNT = JUELVALUE(PALAM:LCOUNT)
 	SELECTCASE PALAMNAME:LCOUNT
 		CASE "快Ｃ"
 			IF PENIS(TARGET)
-				GOTJUEL:LCOUNT = 取得量+((EX:射精-EX:膣責め射精-EX:アナル責め射精)*2000)+(EX:潮噴き*3000)
+				GOTJUEL:LCOUNT += ((EX:射精-EX:膣責め射精-EX:アナル責め射精)*2000)+(EX:潮噴き*3000)
 			ELSE
-				GOTJUEL:LCOUNT = 取得量+EX:Ｃ絶頂*1000
+				GOTJUEL:LCOUNT += EX:Ｃ絶頂*1000
 			ENDIF
 		CASE "快Ｖ"
-			GOTJUEL:LCOUNT = 取得量+(EX:Ｖ絶頂+EX:膣責め射精)*1000
+			GOTJUEL:LCOUNT += (EX:Ｖ絶頂+EX:膣責め射精)*1000
 		CASE "快Ａ"
-			GOTJUEL:LCOUNT = 取得量+(EX:Ａ絶頂+EX:アナル責め射精)*1000
+			GOTJUEL:LCOUNT += (EX:Ａ絶頂+EX:アナル責め射精)*1000
 		CASE "快Ｂ"
-			GOTJUEL:LCOUNT = 取得量+EX:Ｂ絶頂*1000
+			GOTJUEL:LCOUNT += 取EX:Ｂ絶頂*1000
 		CASE "反感", "不快", "抑鬱", "否定"
-			GOTJUEL:否定 += 取得量
-		CASEELSE
-			GOTJUEL:LCOUNT = 取得量
+			GOTJUEL:否定 += GOTJUEL:LCOUNT
+			GOTJUEL:LCOUNT =  0
 	ENDSELECT
 NEXT
 
-SIF !MODE
-	RETURN
-;学園や上級売春では快と習得以外の珠を破棄
-FOR LCOUNT, 0, VARSIZE("PALAM")
-	SELECTCASE PALAMNAME:LCOUNT
-		CASE "反感"
-			BREAK
-		CASE "快Ｃ", "快Ｖ", "快Ａ", "快Ｂ", "習得"
-			DEBUGPRINTFORML %PALAMNAME:LCOUNT%の珠×({JUEL:LCOUNT}+{GOTJUEL:LCOUNT})
-			JUEL:LCOUNT += GOTJUEL:LCOUNT
-	ENDSELECT
-NEXT
-
-@JUEL_CHECK
-#DIM DYNAMIC LCOUNT
-
-CALL CHECKDRAWLINE
-PRINTL 調教の結果：
-FOR LCOUNT, 0, VARSIZE("PALAM")
-	SIF PALAMNAME:LCOUNT == ""
-		CONTINUE
-	SELECTCASE PALAMNAME:LCOUNT
-		CASE "反感"
-			PRINTFORML 否定の珠×({JUEL:否定}+{GOTJUEL:否定})
-			JUEL:否定 += GOTJUEL:否定
-			BREAK
-		CASE "潤滑", "勃起"
-		CASEELSE
-			PRINTFORML %PALAMNAME:LCOUNT%の珠×({JUEL:LCOUNT}+{GOTJUEL:LCOUNT})
-			JUEL:LCOUNT += GOTJUEL:LCOUNT
-	ENDSELECT
-NEXT
-
-PRINTW 以上の珠を得ました
+IF MODE
+	;学園や上級売春では快と習得以外の珠を破棄
+	FOR LCOUNT, 0, VARSIZE("PALAM")
+		SELECTCASE PALAMNAME:LCOUNT
+			CASE "反感"
+				BREAK
+			CASE "快Ｃ", "快Ｖ", "快Ａ", "快Ｂ", "習得"
+				DEBUGPRINTFORML %PALAMNAME:LCOUNT%の珠×({JUEL:LCOUNT}+{GOTJUEL:LCOUNT})
+				JUEL:LCOUNT += GOTJUEL:LCOUNT
+		ENDSELECT
+	NEXT
+ELSE
+	CALL CHECKDRAWLINE
+	PRINTL 調教の結果：
+	FOR LCOUNT, 0, VARSIZE("PALAM")
+		SIF PALAMNAME:LCOUNT == ""
+			CONTINUE
+		SELECTCASE PALAMNAME:LCOUNT
+			CASE "反感"
+				PRINTFORML 否定の珠×({JUEL:否定}+{GOTJUEL:否定})
+				JUEL:否定 += GOTJUEL:否定
+				BREAK
+			CASE "潤滑", "勃起"
+			CASEELSE
+				PRINTFORML %PALAMNAME:LCOUNT%の珠×({JUEL:LCOUNT}+{GOTJUEL:LCOUNT})
+				JUEL:LCOUNT += GOTJUEL:LCOUNT
+		ENDSELECT
+	NEXT
+	PRINTW 以上の珠を得ました
+ENDIF
 
 ;上限は999,999,999,999
 FOR LCOUNT, 0, VARSIZE("PALAM")
@@ -1249,45 +1184,40 @@ FOR LCOUNT, 0, VARSIZE("PALAM")
 	ENDSELECT
 NEXT
 
+
+;;;否定の珠との打ち消し処理
 @DENIAL_CHECK
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 相殺量
 
-;欲情、屈服、恭順の珠から順に打ち消される
 SIF JUEL:否定 == 0
 	RETURN 0
-
 CALL CHECKDRAWLINE
 PRINTL 否定の珠と他の珠の打ち消しが発生しています
 
+;欲情、屈服、恭順の珠から順に打ち消される
 IF JUEL:否定 > 0 && (JUEL:恭順+JUEL:欲情+JUEL:屈服) > 0
 	相殺量 = JUEL:否定
 	SIF JUEL:欲情 < JUEL:否定
 		相殺量 = JUEL:欲情
-
 	JUEL:欲情 -= 相殺量
 	JUEL:否定 -= 相殺量
-
 	SIF 相殺量 > 0
 		PRINTFORML 欲情の珠×{相殺量}減少
 
 	相殺量 = JUEL:否定
 	SIF JUEL:屈服 < JUEL:否定
 		相殺量 = JUEL:屈服
-
 	SIF 相殺量 > 0
 		PRINTFORML 屈服の珠×{相殺量}減少
-
 	JUEL:屈服 -= 相殺量
 	JUEL:否定 -= 相殺量
 
 	相殺量 = JUEL:否定
 	SIF JUEL:恭順 < JUEL:否定
 		相殺量 = JUEL:恭順
-
 	JUEL:恭順 -= 相殺量
 	JUEL:否定 -= 相殺量
-
 	SIF 相殺量 > 0
 		PRINTFORML 恭順の珠×{相殺量}減少
 ENDIF
@@ -1305,8 +1235,8 @@ FOR LCOUNT, 0, VARSIZE("PALAM")
 			PRINTFORML %PALAMNAME:LCOUNT%の珠×({JUEL:LCOUNT})
 	ENDSELECT
 NEXT
-
 PRINTW 以上のように変化しました
+
 
 @CVAR_RESET
 #DIM DYNAMIC 睡眠時間保存用

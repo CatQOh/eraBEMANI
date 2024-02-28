@@ -5,17 +5,18 @@
 @ターン終了
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
-#DIM DYNAMIC 人数
-#DIM 着床告知;DYNAMICじゃない変数 プレーヤーへの告知用なので起動ごとに破棄してもよい
-#DIM DYNAMIC DEUIL
-#DIM DYNAMIC 売却可
-#DIM DYNAMIC 妖精イベント, 2
-#DIM DYNAMIC YORIDORI
-#DIM DYNAMIC 最大体力
-#DIM DYNAMIC 鳳凰イベント, 3
 #DIM DYNAMIC LTARGET
+#DIM 着床告知;DYNAMICじゃない変数 プレーヤーへの告知用なので起動ごとに破棄してもよい
+#DIM DYNAMIC 人数
+#DIM DYNAMIC 売却可
+#DIM DYNAMIC 最大体力
+#DIM DYNAMIC 妖精イベント, 2
+#DIM DYNAMIC 鳳凰イベント, 3
 #DIM DYNAMIC 関数カウント
 #DIMS DYNAMIC 関数名, 1000
+#DIM DYNAMIC DEUIL
+#DIM DYNAMIC YORIDORI
+#DIM DYNAMIC GUMINDAYS
 
 REDRAW 1
 
@@ -186,6 +187,9 @@ IF ゲームモード() != "新婚モード" && MONEY >= TONUM("5000万") && !FL
 ENDIF
 
 FOR LCOUNT, 0, CHARANUM
+	;GUMINDAYSだけロスト済でもカウント
+	SIF GROUPMATCH("GUMIN", CSTR:登場作品, CSTR:登場作品２, CSTR:登場作品３)
+		GUMINDAYS++
 	SIF CFLAG:LCOUNT:キャラロスト
 		CONTINUE
 	CALL 服装プリセット選出, LCOUNT
@@ -437,6 +441,10 @@ SELECTCASE ターン
 		CALL EVENT_NEWDAY_SELF
 ENDSELECT
 
+;GUMINDAYSキャラ5人以上陥落でユリア天使化イベント
+SIF GUMINDAYS >= 5
+	CALL ユリア天使化
+
 ;実績「タルタでラジェ・ガレト・ヴァロ全員の童貞を奪う」
 ;ビットで処理(ラジェが1、ガレトが2、ヴァロが4)
 ;7になったら実績解除
@@ -620,24 +628,8 @@ CALL SYSTEM_AUTOSAVE
 @EVENT_NEXTDAY
 #DIM DYNAMIC LCOUNT
 
-;調教対象・助手が豹変しているとき、元に戻る
-;現在豹変し得るのは、紅刃・冷音
-IF TARGET >= 0 && TRANCE:999
-	SELECTCASE CHARANAMEF(TARGET)
-		CASE "紅刃", "青雨 冷音", "シュープリス"
-			CALL TRANCE_OFF, TARGET
-			TRANCE:999 = 0
-			PRINTFORMW ＜%CALLNAME:TARGET%は元の性格にもどった＞
-	ENDSELECT
-ENDIF
-IF ASSI >= 0 && TRANCE:ASSI:999
-	SELECTCASE CHARANAMEF(ASSI)
-		CASE "紅刃", "青雨 冷音", "シュープリス"
-			CALL TRANCE_OFF, ASSI
-			TRANCE:ASSI:999 = 0
-			PRINTFORMW ＜%CALLNAME:ASSI%は元の性格にもどった＞
-	ENDSELECT
-ENDIF
+;豹変中のキャラを元に戻す
+CALL 豹変イベント, 0
 
 ;特定キャラの日付変更時イベント
 FOR LCOUNT, 0, CHARANUM
@@ -971,6 +963,61 @@ ENDIF
 ;人気度は毎日1下がる 上限は1000
 FOR LCOUNT, 0, 20000
 	人気度:LCOUNT = LIMIT(人気度:LCOUNT-1, 0, 1000)
+NEXT
+
+
+;-------------------------------------------------
+;豹変イベント関連
+;-------------------------------------------------
+;;;調教の場にいれば1 一応睡眠と死亡をここで弾いておく
+@豹変可能, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+SIF 対象 == -1
+	RETURNF 0
+SIF CFLAG:対象:死亡 || TEQUIP:対象:睡眠
+	RETURNF 0
+;既に弾いてるからASSI不在に一致することはないはず
+IF GROUPMATCH(対象, TARGET, MASTER, ASSI)
+	RETURNF 1
+ENDIF
+RETURNF 0
+
+@豹変イベント, オン
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC オン
+#DIM DYNAMIC 対象
+
+FOR LCOUNT, 0, 3
+	SIF LCOUNT == 0
+		対象 = TARGET
+	SIF LCOUNT == 1
+		対象 = MASTER
+	IF LCOUNT == 2
+		SIF ASSI == -1
+			BREAK
+		対象 = ASSI
+	ENDIF
+	IF オン && 豹変可能(対象)
+		IF CHARANAMEF(対象) == "紅刃" && RANDPER(20)
+			CALL TRANCE_ON, 対象
+			PRINTFORMW ＜紅刃は性格が豹変した＞
+		ENDIF
+		IF CHARANAMEF(対象) == "青雨 冷音" && INRANGE(FLAG:天気, 3, 5)
+			CALL TRANCE_ON, 対象
+			PRINTFORMW ＜冷音は性格が豹変した＞
+		ENDIF
+		IF CHARANAMEF(対象) == "シュープリス" && RANDPER(50)
+			CALL TRANCE_ON, 対象
+			PRINTFORMW ＜シュープリスは記憶を思い出そうと同時に湧き上がる破壊衝動で性格が豹変した……＞
+		ENDIF
+	ELSE
+		IF TRANCE:対象:999 && GROUPMATCH(CHARANAMEF(対象), "紅刃", "青雨 冷音", "シュープリス")
+			CALL TRANCE_OFF, 対象
+			TRANCE:対象:999 = 0
+			PRINTFORMW ＜%CALLNAME:対象%は元の性格に戻った＞
+		ENDIF
+	ENDIF
 NEXT
 
 @TRANCE_ON, 対象
