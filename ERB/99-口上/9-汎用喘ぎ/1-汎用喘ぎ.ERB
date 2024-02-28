@@ -1,0 +1,1557 @@
+﻿;----------------------------------------------------------------------
+;汎用喘ぎ別人版ERB
+;ver0.02(10/11/28)
+
+;>>118さん版または別人版0.01verでは「PANT_E |= 2とするとみさくら語が表示されなくなる」と説明していましたが、実際にはPANT_E |= 2とするとみさくら語が表示されるようになってました
+;以前のバージョンを使っている方でみさくら語を禁止したい方はPANT_E |= 2を消してください。
+;絶叫系喘ぎとみさくら語を禁止してた方はPANT_E |= 3をPANT_E |= 1にしてください。
+;----------------------------------------------------------------------
+;をeraBEMANI用に改造。マジックナンバーを減らし、加筆
+
+;;;各喘ぎ生成関数の構造
+;文字列変数「汎用喘ぎセリフ」と文字列変数「汎用喘ぎ締め」に分けて処理を行う
+
+;汎用喘ぎセリフの生成は「WHILE 汎用喘ぎ:頻度」でループ 1回生成する毎に-1して0になったら終了
+;選択された喘ぎ声のパーツはまず文字列変数「汎用喘ぎ一時」に入れる
+;関数「汎用喘ぎ乱数制御」選択された喘ぎ声のパーツが前回と一致しているなら1を返す
+;異なるなら文字列変数「汎用喘ぎセリフ」に選択されたパーツを追加して前回データに上書き
+;1を返された場合CONTINUEする、生成終了の-1はこの直後に行う
+
+;ループが終了したら文字列変数「汎用喘ぎ締め」に締めセリフを入れて戻る
+;最後に汎用喘ぎセリフと汎用喘ぎ締めを繋げて鍵括弧の中に入れて表示
+;----------------------------------------------------------------------
+;変数初期化
+;----------------------------------------------------------------------
+@汎用喘ぎ口上
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 分岐先
+#DIM DYNAMIC 感度計算用
+#DIM DYNAMIC 頻度計算用
+
+SIF !汎用喘ぎ:口調
+	RETURN
+
+汎用喘ぎ:頻度 = 0
+汎用喘ぎ:感度 = 0
+汎用喘ぎ:分岐 = 0
+頻度計算用 = 0
+感度計算用 = 0
+
+;----------------------------------------------------------------------
+;素質によって喘ぐ回数と感度にプラスマイナス。
+;上がり下がりは自分の想像です。
+;感度や苦痛に関わる素質は最後に。
+;----------------------------------------------------------------------
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "ツンデレ"
+			IF ABL:従順 >= 4
+				汎用喘ぎ:頻度++
+			ELSE
+				汎用喘ぎ:頻度--
+			ENDIF
+		CASE "一線越えない"
+			IF !陥落(TARGET)
+				汎用喘ぎ:頻度--
+				汎用喘ぎ:感度 -= 2
+			ENDIF
+		CASE "自慰しやすい"
+			SIF GROUPMATCH(SELECTCOMS, "自慰", "胸自慰", "秘貝開帳", "オナフェラ", "騎乗乳房自慰")
+				汎用喘ぎ:感度++
+
+		CASE "無関心", "快感の否定"
+			汎用喘ぎ:頻度 -= 2
+			汎用喘ぎ:感度 -= 2
+		CASE "プライド高い"
+			汎用喘ぎ:頻度 -= 2
+			汎用喘ぎ:感度--
+		CASE "感情乏しい"
+			汎用喘ぎ:頻度 -= 3
+			汎用喘ぎ:感度--
+		CASE "自制心", "貞操観念"
+			汎用喘ぎ:頻度--
+			汎用喘ぎ:感度 -= 2
+		CASE "反抗的"
+			汎用喘ぎ:頻度--
+			汎用喘ぎ:感度--
+		CASE "気丈", "保守的", "恥じらい"
+			汎用喘ぎ:頻度--
+		CASE "抑圧", "抵抗"
+			汎用喘ぎ:感度--
+
+		CASE "快感に素直"
+			汎用喘ぎ:頻度 += 2
+			汎用喘ぎ:感度 += 2
+		CASE "解放"
+			汎用喘ぎ:頻度 += 2
+			汎用喘ぎ:感度++
+		CASE "素直", "プライド低い", "恥薄い"
+			汎用喘ぎ:頻度++
+	ENDSELECT
+NEXT
+
+;回数異常阻止
+;真面目で大人しい性格だと感度上がってもどうしようもないので。
+SIF 汎用喘ぎ:頻度 < 1
+	汎用喘ぎ:頻度 = 1
+SIF 汎用喘ぎ:感度 < -2
+	汎用喘ぎ:感度 = -2
+;快感が入ってなくても喘ぎだすので素質補正は２まで
+SIF 汎用喘ぎ:感度 > 2
+	汎用喘ぎ:感度 = 2
+
+
+;----------------------------------------------------------------------
+;行為箇所＋感度計算
+;----------------------------------------------------------------------
+;感覚が高いと汎用喘ぎ:頻度 汎用喘ぎ:感度にプラス。
+;またこの時点でどこを使った行為か汎用喘ぎ:分岐に付ける
+;泡踊りってなんだろう…。
+;----------------------------------------------------------------------
+
+;Ｂ系コマンドと道具
+IF GETBIT(コマンド属性:SELECTCOM, FINDELEMENTF(喘ぎBIT, "Ｂ"))
+	CALL 汎用喘ぎ分岐セット, "Ｂ"
+	SELECTCASE ABL:Ｂ感覚
+		CASE IS >= 7
+			頻度計算用 += 2
+			感度計算用 += 3
+		CASE IS >= 5
+			頻度計算用++
+			感度計算用 += 2
+		CASE IS >= 3
+			感度計算用++
+		CASEELSE
+			感度計算用--
+	ENDSELECT
+	SELECTCASE ABL:PLAYER:技巧
+		CASE IS >= 7
+			感度計算用 += 2
+		CASE IS >= 5
+			感度計算用++
+		CASE IS < 3
+			頻度計算用--
+	ENDSELECT
+ENDIF
+IF Ｂ使用中(TARGET)
+	CALL 汎用喘ぎ分岐セット, "Ｂ"
+	SELECTCASE ABL:Ｂ感覚
+		CASE IS >= 5
+			頻度計算用 += 2
+		CASE IS >= 3
+			頻度計算用++
+	ENDSELECT
+ENDIF
+
+;Ｃ系コマンドと道具
+IF GETBIT(コマンド属性:SELECTCOM, FINDELEMENTF(喘ぎBIT, "Ｃ"))
+	CALL 汎用喘ぎ分岐セット, "Ｃ"
+	SELECTCASE ABL:Ｃ感覚
+		CASE IS >= 7
+			頻度計算用 += 2
+			感度計算用 += 3
+		CASE IS >= 5
+			頻度計算用++
+			感度計算用 += 2
+		CASE IS >= 3
+			感度計算用++
+		CASEELSE
+			頻度計算用++
+	ENDSELECT
+	SELECTCASE ABL:PLAYER:技巧
+		CASE IS >= 7
+			感度計算用 += 2
+		CASE IS >= 5
+			感度計算用++
+		CASE IS < 3
+			感度計算用--
+	ENDSELECT
+ENDIF
+IF Ｐ使用中(TARGET) || TEQUIP:クリキャップ
+	CALL 汎用喘ぎ分岐セット, "Ｃ"
+	SELECTCASE ABL:Ｃ感覚
+		CASE IS >= 5
+			頻度計算用 += 2
+		CASE IS >= 3
+			感度計算用++
+	ENDSELECT
+ENDIF
+
+;Ａ系コマンドと道具
+IF GETBIT(コマンド属性:SELECTCOM, FINDELEMENTF(喘ぎBIT, "Ａ")) || GROUPMATCH(2, TFLAG:主人挿入箇所, TFLAG:助手挿入箇所)
+	CALL 汎用喘ぎ分岐セット, "Ａ"
+	SELECTCASE ABL:Ａ感覚
+		CASE IS >= 7
+			頻度計算用 += 2
+			感度計算用 += 3
+		CASE IS >= 5
+			頻度計算用++
+			感度計算用 += 2
+		CASE IS >= 3
+			感度計算用++
+		CASEELSE
+			頻度計算用 -= 1
+			IF PALAM:潤滑 < PALAMLV:2
+				CALL 汎用喘ぎ分岐セット, "苦痛2"
+			ELSE
+				CALL 汎用喘ぎ分岐セット, "苦痛1"
+			ENDIF
+			CALL 汎用喘ぎ分岐セット, "強引"
+	ENDSELECT
+	SELECTCASE ABL:PLAYER:技巧
+		CASE IS >= 7
+			感度計算用 += 2
+		CASE IS >= 5
+			感度計算用 += 1
+		CASE IS < 3
+			感度計算用 -= 1
+	ENDSELECT
+ENDIF
+IF Ａ使用中(TARGET)
+	CALL 汎用喘ぎ分岐セット, "Ａ"
+	SELECTCASE ABL:Ａ感覚
+		CASE IS >= 5
+			頻度計算用 += 2
+		CASE IS >= 3
+			感度計算用++
+		CASEELSE
+			;慣れてない＆濡れてないと痛い
+			IF PALAM:潤滑 < PALAMLV:2
+				CALL 汎用喘ぎ分岐セット, "苦痛1"
+				CALL 汎用喘ぎ分岐セット, "強引"
+			ENDIF
+	ENDSELECT
+ENDIF
+
+;Ｖ系コマンドと道具
+IF GETBIT(コマンド属性:SELECTCOM, FINDELEMENTF(喘ぎBIT, "Ｖ")) || GROUPMATCH(1, TFLAG:主人挿入箇所, TFLAG:助手挿入箇所)
+	CALL 汎用喘ぎ分岐セット, "Ｖ"
+	SELECTCASE ABL:Ｖ感覚
+		CASE IS >= 7
+			頻度計算用 += 2
+			感度計算用 += 3
+		CASE IS >= 5
+			頻度計算用++
+			感度計算用 += 2
+		CASE IS >= 3
+			感度計算用++
+		CASEELSE
+			頻度計算用 -= 1
+			IF PALAM:潤滑 < PALAMLV:2
+				CALL 汎用喘ぎ分岐セット, "苦痛1"
+				CALL 汎用喘ぎ分岐セット, "強引"
+			ENDIF
+	ENDSELECT
+	SELECTCASE ABL:PLAYER:技巧
+		CASE IS >= 7
+			感度計算用 += 2
+		CASE IS >= 5
+			感度計算用 += 1
+		CASE IS < 3
+			感度計算用 -= 1
+	ENDSELECT
+ENDIF
+IF Ｖ使用中(TARGET)
+	CALL 汎用喘ぎ分岐セット, "Ｖ"
+	SELECTCASE ABL:Ｖ感覚
+		CASE IS >= 5
+			頻度計算用 += 2
+		CASE IS >= 3
+			感度計算用++
+		CASEELSE
+			;慣れてない＆濡れてないと痛い
+			IF PALAM:潤滑 < PALAMLV:2
+				CALL 汎用喘ぎ分岐セット, "苦痛1"
+				CALL 汎用喘ぎ分岐セット, "強引"
+			ENDIF
+	ENDSELECT
+ENDIF
+
+汎用喘ぎ:頻度 += 頻度計算用
+汎用喘ぎ:感度 += 感度計算用
+
+
+;口が塞がるコマンド
+{
+SIF GROUPMATCH(3, TFLAG:主人挿入箇所, TFLAG:助手挿入箇所) || GROUPMATCH(SELECTCOMS, 
+"フェラチオ", "イラマチオ", "パイズリフェラ", "クンニさせる", "顔面騎乗する", "アナルを舐めさせる",
+"ダブルフェラ", "フェラさせる（ドラゴン）", "シックスナイン", "オナフェラ", "二本フェラ")
+}
+	CALL 汎用喘ぎ分岐セット, "口"
+
+;苦痛系コマンド
+SIF GETBIT(コマンド属性:SELECTCOM, FINDELEMENTF(喘ぎBIT, "苦痛1"))
+	CALL 汎用喘ぎ分岐セット, "苦痛1"
+
+;ここまで来て分岐も属性も無ければRETURN
+SIF !汎用喘ぎ:分岐 && !コマンド属性:SELECTCOM
+	RETURN
+
+
+
+;----------------------------------------------------------------------
+;陥落素質等
+;----------------------------------------------------------------------
+SIF TALENT:恋慕
+	汎用喘ぎ:頻度++
+SIF TALENT:親愛
+	汎用喘ぎ:頻度++
+
+IF TALENT:淫乱
+	汎用喘ぎ:頻度 += 2
+	汎用喘ぎ:感度++
+ENDIF
+IF TALENT:淫魔
+	汎用喘ぎ:頻度 += 2
+	汎用喘ぎ:感度 += 2
+ENDIF
+
+SIF TALENT:服従
+	汎用喘ぎ:頻度--
+SIF TALENT:隷属
+	汎用喘ぎ:頻度--
+
+IF MARK:反発刻印 && !陥落(TARGET)
+	;認めたくないってことで汎用喘ぎ:感度 - 
+	汎用喘ぎ:頻度 -= 2
+	汎用喘ぎ:感度 -= 2
+ENDIF
+
+;----------------------------------------------------------------------
+;部位に対応する素質
+;----------------------------------------------------------------------
+IF 汎用喘ぎ分岐("Ｃ")
+	IF TALENT:Ｃ鈍感
+		汎用喘ぎ:頻度--
+		汎用喘ぎ:感度--
+	ENDIF
+	IF TALENT:Ｃ敏感
+		汎用喘ぎ:頻度++
+		汎用喘ぎ:感度++
+	ENDIF
+	IF TALENT:淫核
+		汎用喘ぎ:頻度++
+		汎用喘ぎ:感度++
+	ENDIF
+ENDIF
+
+IF 汎用喘ぎ分岐("Ｖ")
+	IF TALENT:Ｖ鈍感
+		汎用喘ぎ:頻度--
+		汎用喘ぎ:感度--
+	ENDIF
+	IF TALENT:Ｖ敏感
+		汎用喘ぎ:頻度++
+		汎用喘ぎ:感度++
+	ENDIF
+	IF TALENT:淫膣
+		汎用喘ぎ:頻度++
+		汎用喘ぎ:感度++
+	ENDIF
+ENDIF
+
+IF 汎用喘ぎ分岐("Ａ")
+	IF TALENT:Ａ鈍感
+		汎用喘ぎ:頻度--
+		汎用喘ぎ:感度--
+	ENDIF
+	IF TALENT:Ａ敏感
+		汎用喘ぎ:頻度++
+		汎用喘ぎ:感度++
+	ENDIF
+	IF TALENT:淫尻
+		汎用喘ぎ:頻度++
+		汎用喘ぎ:感度++
+	ENDIF
+ENDIF
+
+IF 汎用喘ぎ分岐("Ｂ")
+	IF TALENT:Ｂ鈍感
+		汎用喘ぎ:頻度--
+		汎用喘ぎ:感度--
+	ENDIF
+	IF TALENT:Ｂ敏感
+		汎用喘ぎ:頻度++
+		汎用喘ぎ:感度++
+	ENDIF
+	IF TALENT:淫乳
+		汎用喘ぎ:頻度++
+		汎用喘ぎ:感度++
+	ENDIF
+	;胸はバストサイズと母乳体質の処理
+	SELECTCASE TALENT:バストサイズ
+		CASE 1
+			汎用喘ぎ:感度 += 2
+		CASE 2
+			汎用喘ぎ:感度++
+		CASE 4
+			汎用喘ぎ:感度 -= 1
+		CASE IS >= 5
+			汎用喘ぎ:感度 -= 2
+	ENDSELECT
+	SIF TALENT:母乳体質
+		汎用喘ぎ:感度++
+ENDIF
+
+;----------------------------------------------------------------------
+;苦痛系と対応する素質
+;----------------------------------------------------------------------
+IF 汎用喘ぎ分岐("苦痛1") || 汎用喘ぎ分岐("苦痛2")
+	;臆病は苦痛があるとき頻度+1（ぎゃあぎゃあ喚くイメージ）
+	SIF TALENT:臆病
+		汎用喘ぎ:頻度++
+
+	IF TALENT:痛みに弱い
+		汎用喘ぎ:頻度++
+		汎用喘ぎ:感度--
+	ENDIF
+	IF TALENT:痛みに強い
+		汎用喘ぎ:頻度 -= 1
+		IF 汎用喘ぎ分岐("苦痛2")
+			CALL 汎用喘ぎ分岐セット, "苦痛2", 1
+			CALL 汎用喘ぎ分岐セット, "苦痛1"
+		ENDIF
+	ENDIF
+
+	SIF TALENT:サド
+		汎用喘ぎ:感度--
+	IF TALENT:マゾ
+		SIF 汎用喘ぎ分岐("苦痛2")
+			汎用喘ぎ:感度++
+		汎用喘ぎ:感度++
+		汎用喘ぎ:頻度++
+	ENDIF
+ENDIF
+
+;----------------------------------------------------------------------
+;喘ぎ声生成と表示
+;----------------------------------------------------------------------
+;頻度と回数に異常ないかチェック 現状10回以上は繰り返さない。
+汎用喘ぎ:頻度 = LIMIT(汎用喘ぎ:頻度, 1, 10)
+SIF 汎用喘ぎ:感度 < 0
+	汎用喘ぎ:感度 = 0
+
+;苦痛LV2と快感LV3,4が喚きすぎるので-処理
+SIF 汎用喘ぎ分岐("苦痛2") || 汎用喘ぎ:感度 >= 4
+	汎用喘ぎ:頻度 -= 4
+
+
+;頻度指定してればそれで
+SIF 汎用喘ぎ:頻度指定
+	汎用喘ぎ:頻度 = 汎用喘ぎ:頻度指定
+
+;種類指定してればそれで
+IF 汎用喘ぎ:種類指定
+	分岐先 = %汎用喘ぎ_種類:(汎用喘ぎ:種類指定)%
+ELSE
+	IF TALENT:崩壊
+		汎用喘ぎ:感度 = 0
+		分岐先 = 快感1
+	ELSEIF 汎用喘ぎ分岐("口")
+		分岐先 = 口使用中
+	ELSEIF 汎用喘ぎ分岐("苦痛2")
+		IF 汎用喘ぎ:絶叫禁止
+			分岐先 = 苦痛1
+		ELSE
+			;絶叫系は6回まで
+			SIF 汎用喘ぎ:頻度 > 6
+				汎用喘ぎ:頻度 = 6
+			分岐先 = 苦痛2
+		ENDIF
+	ELSEIF 汎用喘ぎ分岐("苦痛1")
+		分岐先 = 苦痛1
+	ELSE
+		;快感はLV1～LV4で分ける
+		SELECTCASE 汎用喘ぎ:感度
+			CASE IS >= 8
+				IF 汎用喘ぎ:絶叫禁止
+					分岐先 = 快感3
+				ELSE
+					;絶叫系は6回まで
+					SIF 汎用喘ぎ:頻度 > 6
+						汎用喘ぎ:頻度 = 6
+					分岐先 = 快感4
+				ENDIF
+			CASE IS >= 5
+				分岐先 = 快感3
+			CASE IS >= 3
+				分岐先 = 快感2
+			CASEELSE
+				分岐先 = 快感1
+		ENDSELECT
+	ENDIF
+ENDIF
+
+IF OPTION:口上表示 && !EXISTFUNCTION(@"EXIST_KOJO_%CSVNAMERPS(NOF(TARGET))%")
+	汎用喘ぎセリフ = 
+	汎用喘ぎ前回 = 
+	汎用喘ぎ一時 = 
+	汎用喘ぎ締め = 
+	CALLFORM PANT_VOICE_%分岐先%
+	PRINTFORMW 「%汎用喘ぎセリフ%%汎用喘ぎ締め%」
+ENDIF
+
+
+;----------------------------------------------------------------------
+;式中関数等
+;----------------------------------------------------------------------
+;;;前回と完全一致する場合1を返して呼び出し元関数でCONTINUEする そうでなければセリフ追加処理
+@汎用喘ぎ乱数制御
+IF 汎用喘ぎ一時 == 汎用喘ぎ前回
+	RETURN 1
+ELSE
+	汎用喘ぎセリフ += 汎用喘ぎ一時
+	汎用喘ぎ前回 = %汎用喘ぎ一時%
+	RETURN 0
+ENDIF
+
+;;;SETBITとCLEARBIT簡略化 文字列でBIT名を指定
+@汎用喘ぎ分岐セット, BIT名, 消去
+#DIMS DYNAMIC BIT名
+#DIM DYNAMIC 消去
+IF 消去
+	CLEARBIT 汎用喘ぎ:分岐, FINDELEMENTF(喘ぎBIT, BIT名)
+ELSE
+	SETBIT 汎用喘ぎ:分岐, FINDELEMENTF(喘ぎBIT, BIT名)
+ENDIF
+
+;;;GETBIT簡略化 文字列でBIT名を指定
+@汎用喘ぎ分岐, BIT名
+#FUNCTION
+#DIMS DYNAMIC BIT名
+RETURNF GETBIT(汎用喘ぎ:分岐, FINDELEMENTF(喘ぎBIT, BIT名))
+
+;;;GETBIT簡略化 Ｂ>Ｐ>Ｃ>Ａ>Ｖの優先度で文字列を返す
+@汎用喘ぎ快感分岐
+#FUNCTIONS
+SIF 汎用喘ぎ分岐("Ｂ")
+	RETURNF "Ｂ"
+SIF 汎用喘ぎ分岐("Ｃ") && PENIS(TARGET)
+	RETURNF "Ｐ"
+SIF 汎用喘ぎ分岐("Ｃ")
+	RETURNF "Ｃ"
+SIF 汎用喘ぎ分岐("Ａ")
+	RETURNF "Ａ"
+SIF 汎用喘ぎ分岐("Ｖ")
+	RETURNF "Ｖ"
+RETURNF ""
+
+;;;簡略化 設定されている口調の名前を返す
+@汎用喘ぎ口調分岐
+#FUNCTIONS
+	RETURNF 汎用喘ぎ_口調:(汎用喘ぎ:口調)
+
+;----------------------------------------------------------------------
+;喘ぎ声生成関数
+;----------------------------------------------------------------------
+;;;快感LV1
+@PANT_VOICE_快感1
+WHILE 汎用喘ぎ:頻度
+	STRDATA 汎用喘ぎ一時
+		DATA ……
+		DATA …ん、
+		DATA あ…
+		DATA んっ、
+		DATA ……ふぁ、
+		DATA んん…、
+		DATA んぁ…、
+		DATA …っ……
+		DATA ……ぁ…、
+		DATA …は……、
+	ENDDATA
+	SELECTCASE RAND:10
+		CASE 0
+			IF TEQUIP:ボールギャグ || TEQUIP:触手口辱
+				汎用喘ぎ一時 = ん…
+			ELSEIF MARK:反発刻印 && !陥落(TARGET)
+				SELECTCASE 汎用喘ぎ口調分岐()
+					CASE "標準"
+						汎用喘ぎ一時 = やめ…っ、
+					CASE "乱暴"
+						汎用喘ぎ一時 = やめろっ！
+					CASE "柔らかめ"
+						汎用喘ぎ一時 = ヤダ…っ、
+					CASE "敬語"
+						汎用喘ぎ一時 = 触らないでください…
+					CASE "幼い"
+						汎用喘ぎ一時 = やぁだぁ…
+					CASE "老人"
+						汎用喘ぎ一時 = 嫌じゃ…
+					CASE "お嬢様"
+						汎用喘ぎ一時 = いけませんわ…
+					CASE "レイシス語"
+						汎用喘ぎ一時 = だめデス…
+					CASE "メスガキ"
+						汎用喘ぎ一時 = 触んないでよ！
+					CASE "お姉さん"
+						汎用喘ぎ一時 = だめよ…
+					CASE "土佐弁"
+						汎用喘ぎ一時 = 離しとぉせ…
+					CASE "戦士"
+						汎用喘ぎ一時 = 離せ！
+					CASE "関西弁"
+						汎用喘ぎ一時 = 触んなや…
+					CASE "博多弁"
+						汎用喘ぎ一時 = やめてくれんね！
+				ENDSELECT
+			ELSEIF FALLTYPE(TARGET) == 2
+				SELECTCASE 汎用喘ぎ口調分岐()
+					CASE "乱暴", "標準"
+						汎用喘ぎ一時 = そこ…、じゃなくて…っ、
+					CASE "柔らかめ", "敬語"
+						汎用喘ぎ一時 = もっと…ぁ、
+					CASE "幼い"
+						汎用喘ぎ一時 = もっとしてぇ…
+					CASE "老人"
+						汎用喘ぎ一時 = よいぞ…
+					CASE "お嬢様"
+						汎用喘ぎ一時 = お上手ですわ…
+					CASE "レイシス語"
+						汎用喘ぎ一時 = はうぅ…
+					CASE "メスガキ"
+						汎用喘ぎ一時 = 下手くそ♡
+					CASE "お姉さん"
+						汎用喘ぎ一時 = 上手ね…
+					CASE "土佐弁"
+						汎用喘ぎ一時 = …そこや、ないきに……、
+					CASE "戦士"
+						汎用喘ぎ一時 = ……違う…、
+					CASE "関西弁"
+						汎用喘ぎ一時 = しょこや、なくて…っ
+					CASE "博多弁"
+						汎用喘ぎ一時 = しょこつちごうとる…
+				ENDSELECT
+			ENDIF
+	ENDSELECT
+	$分岐確定
+	CALL 汎用喘ぎ乱数制御
+	SIF RESULT
+		CONTINUE
+	汎用喘ぎ:頻度--
+WEND
+STRDATA 汎用喘ぎ締め
+	DATA …っ
+	DATA んっ
+	DATA …ぁ
+ENDDATA
+
+;;;快感LV2
+@PANT_VOICE_快感2
+WHILE 汎用喘ぎ:頻度
+	IF TEQUIP:ボールギャグ || TEQUIP:触手口辱
+		STRDATA 汎用喘ぎ一時
+		    DATA んんっ…
+		    DATA ふぅっ…
+		    DATA っ…、
+		    DATA ぅあ…
+		    DATA ふっ…ぅ、
+		    DATA んっ、
+		    DATA あ…っ、
+		    DATA くぅ…
+		    DATA ふっ…あっ、
+		    DATA ぁあ…
+		ENDDATA
+		GOTO 分岐確定
+	ENDIF
+	STRDATA 汎用喘ぎ一時
+		DATA ふっ…
+		DATA んあっ、
+		DATA んんっ…
+		DATA あっ、あ…っ、
+		DATA はぁ…んっ…
+		DATA …ぁあっ、
+		DATA ん…
+		DATA …ん、ぅ、
+		DATA いっ…
+		DATA っあ…！
+	ENDDATA
+	SELECTCASE RAND:10
+		CASE 0
+			SIF !汎用喘ぎ:淫語
+				GOTO 分岐確定
+			SELECTCASE 汎用喘ぎ快感分岐()
+				CASE "Ｂ"
+					汎用喘ぎ一時 = 胸いい…っ
+				CASE "Ｐ"
+					汎用喘ぎ一時 = おちんぽどくどくする…
+				CASE "Ｃ"
+					汎用喘ぎ一時 = もっとそこくりくりし
+					SELECTCASE 汎用喘ぎ口調分岐()
+						CASE "乱暴", "戦士", "老人"
+							汎用喘ぎ一時 += "てくれぇ…、"
+						CASE "敬語"
+							汎用喘ぎ一時 += "てくださ…っ、"
+						CASE "お嬢様", "メスガキ"
+							汎用喘ぎ一時 += "なさい…っ、"
+						CASE "レイシス語"
+							汎用喘ぎ一時 += "てくだサイ…っ、"
+						CASEELSE
+							汎用喘ぎ一時 += "てぇ…"
+					ENDSELECT
+				CASE "Ａ"
+					汎用喘ぎ一時 = けつまんこいい…っ
+				CASE "Ｖ"
+					汎用喘ぎ一時 = おまんこ汁出
+					SELECTCASE 汎用喘ぎ口調分岐()
+						CASE "乱暴"
+							汎用喘ぎ一時 += "るぅ…、"
+						CASE "敬語"
+							汎用喘ぎ一時 += "ちゃいます…っ、"
+						CASE "戦士", "老人"
+							汎用喘ぎ一時 += "てしまう…っ、"
+						CASE "幼い"
+							汎用喘ぎ一時 += "ちゃうぅ…っ、"
+						CASE "お嬢様"
+							汎用喘ぎ一時 += "ちゃいますわ…"
+						CASE "レイシス語"
+							汎用喘ぎ一時 += "ちゃいマス…"
+						CASE "メスガキ"
+							汎用喘ぎ一時 += "ちゃうって…"
+						CASEELSE
+							汎用喘ぎ一時 += "るよぉ…"
+					ENDSELECT
+			ENDSELECT
+		CASE 1
+			IF FALLTYPE(TARGET) == 2
+				SELECTCASE 汎用喘ぎ口調分岐()
+					CASE "乱暴", "標準", "柔らかめ", "敬語", "戦士"
+						汎用喘ぎ一時 = いい、っ…
+					CASE "土佐弁"
+						汎用喘ぎ一時 = えい、よぉ…っ、
+					CASE "関西弁"
+						汎用喘ぎ一時 = ええ…っ、
+					CASE "博多弁"
+						汎用喘ぎ一時 = 気持ちよか…っ、
+					CASE "幼い"
+						汎用喘ぎ一時 = すごいよぉ…
+					CASE "老人"
+						汎用喘ぎ一時 = よい…
+					CASE "お嬢様"
+						汎用喘ぎ一時 = 素敵ですわ…
+					CASE "レイシス語"
+						汎用喘ぎ一時 = すごいデス…
+					CASE "メスガキ"
+						汎用喘ぎ一時 = 最っ高♡
+					CASE "お姉さん"
+						汎用喘ぎ一時 = いいわ…
+				ENDSELECT
+			ELSEIF MARK:反発刻印 && !陥落(TARGET)
+				SELECTCASE 汎用喘ぎ口調分岐()
+					CASE "乱暴"
+						汎用喘ぎ一時 = くそ…っ、
+					CASE "標準"
+						汎用喘ぎ一時 = ヤダっ…
+					CASE "柔らかめ"
+						汎用喘ぎ一時 = だめ、ぇっ…っ、
+					CASE "敬語"
+						汎用喘ぎ一時 = やめ…てくださ…っ、
+					CASE "土佐弁"
+						汎用喘ぎ一時 = やが…っ、
+					CASE "戦士"
+						汎用喘ぎ一時 = 離せ…っ、
+					CASE "関西弁"
+						汎用喘ぎ一時 = 嫌や…っ、
+					CASE "博多弁"
+						汎用喘ぎ一時 = やめ…っ、
+					CASE "幼い"
+						汎用喘ぎ一時 = やめて…っ、
+					CASE "老人"
+						汎用喘ぎ一時 = ならぬ…っ、
+					CASE "お嬢様"
+						汎用喘ぎ一時 = いけませんわ…っ、
+					CASE "レイシス語"
+						汎用喘ぎ一時 = だめデス…っ、
+					CASE "メスガキ"
+						汎用喘ぎ一時 = 離せっ、ザコ…っ、
+					CASE "お姉さん"
+						汎用喘ぎ一時 = だめよ…っ、
+				ENDSELECT
+			ENDIF
+		CASE 2
+			;陥落前でAで感じる、または男でBで感じる
+			IF (!陥落(TARGET) && 汎用喘ぎ分岐("Ａ")) || (SEX(TARGET) == 1 && 汎用喘ぎ分岐("Ｂ"))
+				SELECTCASE 汎用喘ぎ口調分岐()
+					CASE "乱暴"
+						汎用喘ぎ一時 = うそだ…っ、
+					CASE "標準", "柔らかめ"
+						汎用喘ぎ一時 = なん、で…っ？
+					CASE "敬語", "戦士", "老人"
+						汎用喘ぎ一時 = …嘘……、
+					CASE "土佐弁"
+						汎用喘ぎ一時 = なん、が…っ
+					CASE "関西弁"
+						汎用喘ぎ一時 = 嘘や、ん…っ
+					CASE "博多弁"
+						汎用喘ぎ一時 = なして、こぎゃんこつっ
+					CASE "幼い"
+						汎用喘ぎ一時 = 変だよぉ…
+					CASE "お嬢様"
+						汎用喘ぎ一時 = ありえませんわ…っ
+					CASE "レイシス語"
+						汎用喘ぎ一時 = はわわ…
+					CASE "メスガキ"
+						汎用喘ぎ一時 = 嘘でしょ…
+					CASE "お姉さん"
+						汎用喘ぎ一時 = こんなことって…
+				ENDSELECT
+			ENDIF
+	ENDSELECT
+	$分岐確定
+	CALL 汎用喘ぎ乱数制御
+	SIF RESULT
+		CONTINUE
+	汎用喘ぎ:頻度--
+WEND
+STRDATA 汎用喘ぎ締め
+	DATA んっ
+	DATA あ…っ！
+	DATA あっ、ん
+ENDDATA
+
+;;;快感LV3
+@PANT_VOICE_快感3
+WHILE 汎用喘ぎ:頻度
+	IF TEQUIP:ボールギャグ || TEQUIP:触手口辱
+		STRDATA 汎用喘ぎ一時
+		    DATA ん―！
+		    DATA ふぅっ…！
+		    DATA んおっ…
+		    DATA ぅっ…
+		    DATA くぅっ、
+		    DATA んんっ！
+		    DATA あぅ…っ、
+		    DATA んく…っ、
+		    DATA ふっ…あっ、
+		    DATA あうぅ！
+		ENDDATA
+		GOTO 分岐確定
+	ENDIF
+	STRDATA 汎用喘ぎ一時
+		DATA や…っ、
+		DATA あっ、あっ、
+		DATA ふあ、ひ…っ、
+		DATA あひ、ぃっ、
+		DATA ひぁっ…
+		DATA もっ…
+		DATA やああっ…！
+		DATA あーっ！
+		DATA んっ、んーっ…
+		DATA ひいっ、
+	ENDDATA
+	SELECTCASE RAND:10
+		CASE 0
+			SIF !汎用喘ぎ:淫語
+				GOTO 分岐確定
+			SELECTCASE 汎用喘ぎ快感分岐()
+				CASE "Ｂ"
+					STRDATA 汎用喘ぎ一時
+						DATA おっぱいだめぇ……っ
+						DATA おっぱいいじめられるぅ
+						DATA おっぱいいいのぉっ
+						DATA ちくびいいのぉっ
+						DATA ちくび感じちゃうっ
+						DATA ちくびコリコリいいっ、
+					ENDDATA
+				CASE "Ｐ"
+					汎用喘ぎ一時 = ちんぽ汁出るぅっ、
+					SIF GROUPMATCH(汎用喘ぎ口調分岐(), "標準", "柔らかめ", "敬語", "土佐弁")
+						汎用喘ぎ一時 '= "お"+汎用喘ぎ一時
+				CASE "Ｃ"
+					汎用喘ぎ一時 = クリきもちいいっ、
+				CASE "Ａ"
+					STRDATA 汎用喘ぎ一時
+						DATA けつまんこがぁ…っ
+						DATA おしりがぁ……っ
+						DATA おしりやぁっ……
+						DATA けつまんこやぁ……っ
+						DATA けつまんこいぃのぉっ、
+						DATA おしりいじられてるぅ……っ
+					ENDDATA
+				CASE "Ｖ"
+					STRDATA 汎用喘ぎ一時
+						DATA おまんこいいっ
+						DATA おまんこがぁ……っ
+						DATA おまんこいいのぉっ
+						DATA おまんこいじられて……っ
+						DATA やぁ、おまんこ感じちゃうっ
+						DATA おまんこ、いいっ
+					ENDDATA
+			ENDSELECT
+		CASE 1
+	ENDSELECT
+	$分岐確定
+	CALL 汎用喘ぎ乱数制御
+	SIF RESULT
+		CONTINUE
+	汎用喘ぎ:頻度--
+WEND
+IF TEQUIP:ボールギャグ || TEQUIP:触手口辱
+	STRDATA 汎用喘ぎ締め
+		DATA んあぁ――！
+		DATA む――！
+		DATA ふあぁ――！
+	ENDDATA
+ELSE
+	STRDATA 汎用喘ぎ締め
+		DATA ぁあああ―っ！
+		DATA …っく――！！
+		DATA ああっ
+	ENDDATA
+ENDIF
+
+;;;快感LV4
+@PANT_VOICE_快感4
+#DIMS DYNAMIC 淫語モード用
+#DIMS DYNAMIC 淫語モード用2
+WHILE 汎用喘ぎ:頻度
+	IF TEQUIP:ボールギャグ || TEQUIP:触手口辱
+		STRDATA 汎用喘ぎ一時
+		    DATA んん――――！
+		    DATA む―――！
+		    DATA あうっ…、
+		    DATA んうう！
+		    DATA ふうぅっ、
+		    DATA んおっ、
+		    DATA あぉ…っ！
+		    DATA んく…っ、
+		    DATA んんんっ、
+		    DATA あううぅ！
+		ENDDATA
+		GOTO 分岐確定
+	ENDIF
+	STRDATA 汎用喘ぎ一時
+		DATA ひぃあああっ、
+		DATA あああっ！
+		DATA んっ…ああっ、
+		DATA イ…くぅっ、
+		DATA イくっ、イくぅ――…！！
+		DATA …んああああ！
+		DATA ひぃっ、
+		DATA あああ…っ、
+		DATA ＃口調変換＃
+		DATA ＃口調変換＃
+	ENDDATA
+	IF 汎用喘ぎ一時 == "＃口調変換＃"
+		IF RAND:2
+			SELECTCASE 汎用喘ぎ口調分岐()
+				CASE "乱暴", "戦士"
+					汎用喘ぎ一時 = イ…くぅ…っ
+				CASE "関西弁"
+					汎用喘ぎ一時 = イってまぅ…
+				CASE "幼い"
+					汎用喘ぎ一時 = イっちゃううぅ…っ、
+				CASE "レイシス語"
+					汎用喘ぎ一時 = イっちゃいマス…っ、
+				CASE "老人"
+					汎用喘ぎ一時 = 達する…っ、
+				CASE "お嬢様"
+					汎用喘ぎ一時 = イきますわ…っ、
+				CASE "メスガキ"
+					汎用喘ぎ一時 = ザコにイかされる…っ、
+				CASE "お姉さん"
+					汎用喘ぎ一時 = イきそうよ…っ、
+				CASEELSE
+					汎用喘ぎ一時 = イ…くっ、
+			ENDSELECT
+		ELSE
+			SELECTCASE 汎用喘ぎ口調分岐()
+				CASE "柔らかめ", "敬語"
+					汎用喘ぎ一時 = 壊れちゃ…っ、
+				CASE "土佐弁"
+					汎用喘ぎ一時 = わらくる…っ、
+				CASE "戦士"
+					汎用喘ぎ一時 = こんな…嘘だろ…ッ、
+				CASE "関西弁"
+					汎用喘ぎ一時 = あかん…っ、あかんてぇ…
+				CASE "博多弁"
+					汎用喘ぎ一時 = 嫌ばい、えずかちゃー…
+				CASE "幼い"
+					汎用喘ぎ一時 = あたまがヘンになっちゃったよぉ…
+				CASE "老人"
+					汎用喘ぎ一時 = おかしゅうなる…
+				CASE "お嬢様"
+					汎用喘ぎ一時 = はしたないですわ…
+				CASE "レイシス語"
+					汎用喘ぎ一時 = はうぅーーーーっ！
+				CASE "メスガキ"
+					汎用喘ぎ一時 = ザコにイかされちゃ…っ♡
+				CASE "お姉さん"
+					汎用喘ぎ一時 = こんな、すごいの…
+				CASEELSE
+					汎用喘ぎ一時 = あたまがっ…変になるっ…
+			ENDSELECT
+		ENDIF
+	ENDIF
+	SELECTCASE RAND:10
+		CASE 0
+			SIF !陥落(TARGET)
+				GOTO 分岐確定
+			SELECTCASE 汎用喘ぎ_口調:(汎用喘ぎ:口調)
+				CASE "乱暴", "標準", "柔らかめ", "敬語", "戦士"
+					汎用喘ぎ一時 = いやだあああっ！
+				CASE "幼い"
+					汎用喘ぎ一時 = やだぁ、やだぁっ！
+				CASE "お嬢様"
+					汎用喘ぎ一時 = やめてくださいまし！
+				CASE "レイシス語"
+					汎用喘ぎ一時 = 嫌デスうぅ！
+				CASE "メスガキ"
+					汎用喘ぎ一時 = やだぁ、やだぁっ♡
+				CASE "お姉さん"
+					汎用喘ぎ一時 = 嫌よっ！
+				CASE "土佐弁", "老人"
+					汎用喘ぎ一時 = 嫌じゃあああっ！
+				CASE "関西弁"
+					汎用喘ぎ一時 = 嫌やあああっ！
+				CASE "博多弁"
+					汎用喘ぎ一時 = 嫌ったいっ！
+			ENDSELECT
+		CASE 1
+			SIF !汎用喘ぎ:淫語
+				GOTO 分岐確定
+			SELECTCASE 汎用喘ぎ快感分岐()
+				CASE "Ｂ"
+					STRDATA 汎用喘ぎ一時
+						DATA ちくびへんになるぅぅ！！
+						DATA おっぱいへんになるぅぅ！！
+						DATA ちくびいいのぉぉ♡
+						DATA おっぱいいいのぉぉ♡
+						DATA おっぱいでいっちゃうぅぅ♡
+						DATA ちくびでいっちゃうぅぅ♡
+						DATA ちくびしゅごいよぉぉっ♡
+						DATA おっぱいしゅごいよぉぉっ♡
+					ENDDATA
+				CASE "Ｐ"
+					STRDATA 汎用喘ぎ一時
+						DATA おちんぽからせーえき出るぅっ！
+						DATA おちんぽぴゅっぴゅってしちゃぅぅっ！！
+						DATA おちんぽみるくでちゃうぅぅ♡♡
+						DATA おちんぽからお汁もれちゃうぅぅ♡♡
+						DATA くりちんぽ壊れるぅぅぅっ♡♡♡
+						DATA おちんぽ壊れるぅぅぅっ♡♡♡
+						DATA おちんぽしゅごいよぉぉぉっ♡♡♡
+						DATA お潮でちゃうぅぅぅぅ♡
+					ENDDATA
+				CASE "Ｃ"
+					STRDATA 汎用喘ぎ一時
+						DATA クリ感じすぎちゃっ…んああ！
+						DATA えっちなお豆いじられていくぅぅ♡♡
+						DATA クリいじっちゃやぁぁ♡♡
+						DATA えっちなお豆くにゅくにゅしないでぇぇ♡♡
+						DATA クリトリス壊れるぅぅぅっ♡♡♡
+						DATA えっちなお豆さんいいのぉぉ♡♡
+						DATA クリいじられたらお潮でちゃうぅぅぅぅ♡
+					ENDDATA
+				CASE "Ａ"
+					STRDATA 汎用喘ぎ一時
+						DATA けつまんこぐちゃぐちゃにされてイくぅ！
+						DATA けつまんこ感じすぎりゅからぁぁぁ♡♡
+						DATA けつまんこすごいのぉぉぉ！！！
+						DATA けつまんこ、いいっ！いいよぉぉっ♡♡
+						DATA おしり壊れるぅ♡♡♡
+						DATA おしりまんこ壊れるぅ♡♡♡
+						DATA おしりぐちゃぐちゃなのぉ♡♡♡
+						DATA けつまんこぐちゃぐちゃになるぅ♡
+					ENDDATA
+				CASE "Ｖ"
+					STRDATA 汎用喘ぎ一時
+						DATA おまんこいいぃいぃぃ！
+						DATA おまんこっ♡おまんこぉぉ♡♡気持ちよすぎりゅぅぅぅ！！！
+						DATA おまんこ、壊れるっ♡♡♡
+						DATA おまんこがぁぁッ♡♡♡
+						DATA 気持ちよすぎぃ♡おまんこ壊れるぅ♡♡♡
+						DATA おまんこぐちゃぐちゃなのぉぉ♡
+					ENDDATA
+			ENDSELECT
+		CASE 2
+			SIF !汎用喘ぎ:淫語
+				GOTO 分岐確定
+			STRDATA 淫語モード用
+				DATA 気持ちいぃっ、気持ちいぃのぉっ♡
+				DATA ぐちゃぐちゃにされて
+				DATA 気持ちいいこといっぱいで
+				DATA あちこちいじめられて
+				DATA 全部きもちいぃっ♡
+				DATA 全部、ぜんぶいいっ♡　ぜんぶいいのぉっ♡
+				DATA 気持ちよすぎてバカになっちゃうぅぅ♡
+				DATA ぜんぶいいっ♡　全身きもちいいっ♡
+			ENDDATA
+			SELECTCASE 汎用喘ぎ快感分岐()
+				CASE "Ｂ"
+					STRDATA 汎用喘ぎ一時
+						DATA ちくびいじられて
+						DATA おっぱいいじられて
+						DATA ちくびいじめられて
+						DATA おっぱいいじめられて
+						DATA ちくび気持ちぃぃ♡
+						DATA おっぱい気持ちいぃぃ♡
+						DATA ちくび気持ちいぃのらめぇぇ♡
+						DATA おっぱいもうらめぇぇ♡
+						DATA おっぱい気持ちいぃのらめぇぇぇぇ♡
+						DATA ちくびもうらめぇぇ♡
+						DATA おっぱいいじめるのらめぇぇ♡
+						DATA ちくびいじめるのらめぇぇ♡
+						DATA ちくびでいくっ♡いっちゃうぅぅ♡
+						DATA ちくびがおかしくなるぅぅぅっ♡
+						DATA おっぱいおかしくなるぅぅぅっ♡
+						DATA おっぱいでいくっ♡いっちゃうぅぅ♡
+						DATA ちくび感じすぎるのぉぉ♡
+						DATA おっぱい感じすぎるのぉぉぉ♡
+					ENDDATA
+				CASE "Ｐ"
+					STRDATA 淫語モード用2
+						DATA おちんぽ
+						DATA はしたないおちんぽ
+						DATA いやらしいおちんぽ
+					ENDDATA
+					IF ABL:メス度 >= 5 && RANDPER(50)
+						STRDATA 淫語モード用2
+							DATA クリちんぽ
+							DATA メスちんぽ
+							DATA 役立たずのおちんぽ
+						ENDDATA
+					ENDIF
+					;後半はＶの有無で分岐
+					IF VAGINA(TARGET)
+						STRDATA 汎用喘ぎ一時
+							DATA とおまんこからえっちなお汁でるうう♡♡♡
+							DATA とおまんこからお汁でちゃうぅぅ♡♡♡
+							DATA とおまんこがお潮ふいちゃうぅぅぅ♡♡♡
+							DATA とおまんこからお汁もれちゃうぅぅ♡♡♡
+							DATA とおまんこからぴゅっぴゅするぅぅぅう♡♡♡
+							DATA からみるくでちゃうぅぅぅぅ♡♡おまんこもイっちゃうぅぅぅ♡♡
+						ENDDATA
+					ELSE
+						STRDATA 汎用喘ぎ一時
+							DATA からえっちなお汁でるうう♡♡♡
+							DATA からお汁でちゃうぅぅ♡♡♡
+							DATA がお潮ふいちゃうぅぅぅ♡♡♡
+							DATA 汁もれちゃうぅぅ♡♡♡
+							DATA ぴゅっぴゅするぅぅぅう♡♡♡
+							DATA からみるくでちゃうぅぅぅぅ♡♡♡
+						ENDDATA
+					ENDIF
+					汎用喘ぎ一時 '= 淫語モード用2+汎用喘ぎ一時
+				CASE "Ａ"
+					STRDATA 汎用喘ぎ一時
+						DATA けつまんこいじられて
+						DATA おしりいじられて
+						DATA おしりほじほじされて
+						DATA けつまんこぐちゅぐちゅされて
+						DATA けつまんこいじめられて
+						DATA おしりいじめられて
+						DATA おしりなのに感じるぅ♡
+						DATA けつまんこ気持ちいぃぃ♡
+						DATA おしりぐちゃぐちゃだよぉ♡
+						DATA けつまんこいっぱいして♡
+						DATA おしりがおまんこになっちゃうぅぅ♡
+						DATA おしりっ、おしりもうっ、おまんこにゃるのぉぉ♡
+						DATA おしりぐちゅぐちゅしゅごいのぉぉ♡
+						DATA けつまんこ感じすぎるのぉぉ♡
+						DATA おしりっ♡おしりじゅぽじゅぽってぇ♡
+						DATA けつまんこじゅぽじゅぽいいっ♡
+						DATA けつまんこ♡まんこ♡もうおまんこなのぉぉ♡
+						DATA おしりじゅぽじゅぽしゅごいいっ♡
+						DATA おしりの奥まで入ってるぅっ♡
+						DATA けつまんこ壊れちゃうぅぅぅ♡
+						DATA けつまんこの奥まできてるぅぅ♡
+						DATA おしりがっ♡おしりが壊れちゃうぅぅっ♡
+						DATA おしりがっ♡おしりがぁぁっ♡
+						DATA おしりっ♡女の子にされてるぅぅっ♡
+						DATA けちゅまんこ♡女の子にされてるぅ♡
+					ENDDATA
+				CASEELSE
+					STRDATA 汎用喘ぎ一時
+						DATA おまんこからお汁でちゃうぅぅうう！
+						DATA お潮でちゃうぅぅぅ♡♡
+					ENDDATA
+			ENDSELECT
+			汎用喘ぎ一時 '= 淫語モード用+汎用喘ぎ一時
+		CASE 3
+			SIF !汎用喘ぎ:みさくら語
+				GOTO 分岐確定
+			STRDATA 汎用喘ぎ一時
+				DATA らめぇっ、
+				DATA …んああああ！
+				DATA んおぉぉぉぉっ♡♡
+				DATA ひぃぃぃぃん！！
+				DATA やらぁぁぁぁぁぁ♡
+				DATA んほぉぉっ♡
+				DATA きもぢいぃﾞーっ♡
+				DATA ぴぎゃあぁ！！
+				DATA あへぇぇぇっ♡
+				DATA いいいいいっ♡♡
+				DATA だめぇっ♡ダメえへええぇぇえぇっ♡♡
+				DATA らめっ♡らめっ♡らめぇえぇぇぇっ♡♡
+				DATA もおいぐぅ♡
+				DATA いぐっ、いぐぅぅぅ♡♡
+				DATA いってりゅ♡もぉいってゅぅぅうぅ♡
+				DATA アクメぇ♡♡アクメしゅりゅぅぅぅう♡♡♡
+				DATA イクぅぅっ♡イクイクイクイクイクっ♡♡♡
+				DATA もおイクぅぅぅっ♡♡
+				DATA くほぉぉぉぉっ♡
+				DATA んほぉぉぉぉっ！！
+			ENDDATA
+	ENDSELECT
+	$分岐確定
+	CALL 汎用喘ぎ乱数制御
+	SIF RESULT
+		CONTINUE
+	汎用喘ぎ:頻度--
+WEND
+IF TEQUIP:ボールギャグ || TEQUIP:触手口辱
+	STRDATA 汎用喘ぎ締め
+		DATA んう――――！
+		DATA んあっぁあああ！
+		DATA ああ――――！
+	ENDDATA
+ELSE
+	STRDATA 汎用喘ぎ締め
+		DATA ひぃ―――っ！！！
+		DATA あああぁっぁぁぁ！！！
+		DATAFORM \@ 汎用喘ぎ:みさくら語 ? らめぇぇええ！！ # …ッッッ！！！ \@
+	ENDDATA
+ENDIF
+
+;;;苦痛LV1
+@PANT_VOICE_苦痛1
+WHILE 汎用喘ぎ:頻度
+	IF TEQUIP:ボールギャグ || TEQUIP:触手口辱
+		STRDATA 汎用喘ぎ一時
+		    DATA んぅぅ！
+		    DATA …くぅ…
+		    DATA ん…
+		    DATA あぅっ…
+		    DATA んむぅ…
+		    DATA …っ…！
+		    DATA あぉ…っ、
+		    DATA んく…っ、
+		    DATA ぐぅ…
+		    DATA むぅぅ…！
+		ENDDATA
+		GOTO 分岐確定
+	ENDIF
+	IF TALENT:マゾ || ABL:マゾっ気 > 2 || 汎用喘ぎ:感度 >= 5
+		STRDATA 汎用喘ぎ一時
+			DATA ああ！
+			DATA ひいッ、
+			DATA い…っ、
+			DATA ぁっん…！
+			DATA やめっ、
+			DATA ぁああっ…
+			DATA ひっ、
+			DATA んあっ…、
+			DATA あっ…ぁあ…っ、
+			DATA ああ！
+		ENDDATA
+		IF !陥落(TARGET) && RANDPER(10)
+			SELECTCASE 汎用喘ぎ口調分岐()
+				CASE "乱暴", "標準", "柔らかめ", "敬語", "戦士"
+					汎用喘ぎ一時 = なんでっ、感じ…っ、
+				CASE "土佐弁"
+					汎用喘ぎ一時 = なんで、えいなが…
+				CASE "関西弁"
+					汎用喘ぎ一時 = なんでええのぉ…？
+				CASE "博多弁"
+					汎用喘ぎ一時 = なしてよかん…っ、
+				CASE "お嬢様"
+					汎用喘ぎ一時 = 感じてなんか…いませんわっ、
+				CASEELSE
+					汎用喘ぎ一時 = く…ぁっ…、
+			ENDSELECT
+		ENDIF
+	ELSE
+		STRDATA 汎用喘ぎ一時
+			DATA ああ！
+			DATA ひいッ、
+			DATA い…っ、
+			DATA やぁっ…！
+			DATA やめっ、
+			DATA ぐ…
+			DATA うぐ…っ、
+			DATA くぅ…っ…
+			DATA ＃口調変換＃
+			DATA ＃口調変換＃
+		ENDDATA
+		IF 汎用喘ぎ一時 == "＃口調変換＃"
+			IF RAND:2
+				SELECTCASE 汎用喘ぎ口調分岐()
+					CASE "柔らかめ", "敬語"
+						汎用喘ぎ一時 = いや…
+					CASE "土佐弁"
+						汎用喘ぎ一時 = も…っ、やめ…っ、
+					CASE "戦士"
+						汎用喘ぎ一時 = くそッ…、
+					CASE "関西弁"
+						汎用喘ぎ一時 = も…っ、せんで…っ、
+					CASE "博多弁"
+						汎用喘ぎ一時 = ちゃしてとってくれ…
+					CASE "幼い"
+						汎用喘ぎ一時 = やめてぇっ！
+					CASE "老人"
+						汎用喘ぎ一時 = やめんか…っ、
+					CASE "お嬢様", "お姉さん"
+						汎用喘ぎ一時 = やめなさい…っ、
+					CASE "レイシス語"
+						汎用喘ぎ一時 = やめてくだサイ…っ、
+					CASE "メスガキ"
+						汎用喘ぎ一時 = やめてよ…っ、
+					CASEELSE
+						汎用喘ぎ一時 = やめっ…！
+				ENDSELECT
+			ELSE
+				SELECTCASE 汎用喘ぎ口調分岐()
+					CASE "乱暴", "戦士"
+						汎用喘ぎ一時 = …っ…ふ…ざけ……、
+					CASE "標準", "柔らかめ", "敬語"
+						汎用喘ぎ一時 = ダメ…っ、
+					CASE "土佐弁"
+						汎用喘ぎ一時 = いかん…っ
+					CASE "関西弁"
+						汎用喘ぎ一時 = 嫌やぁ―っ、
+					CASE "博多弁"
+						汎用喘ぎ一時 = 嫌ばいっ
+					CASEELSE
+						汎用喘ぎ一時 = 嫌…っ
+				ENDSELECT
+			ENDIF
+		ENDIF
+	ENDIF
+	$分岐確定
+	CALL 汎用喘ぎ乱数制御
+	SIF RESULT
+		CONTINUE
+	汎用喘ぎ:頻度--
+WEND
+IF TEQUIP:ボールギャグ || TEQUIP:触手口辱
+	STRDATA 汎用喘ぎ締め
+		DATA …んんっ！
+		DATA …ぅ…
+		DATA …ん…ぁぅ…
+	ENDDATA
+ELSEIF TALENT:マゾ || ABL:マゾっ気 > 2 || 汎用喘ぎ:感度 >= 5
+	STRDATA 汎用喘ぎ締め
+		DATA やああっんっ
+		DATA …ぅう、あ…
+		DATA んっ、あぅ…
+	ENDDATA
+ELSE
+	STRDATA 汎用喘ぎ締め
+		DATA …ぅう、あ…
+		DATA あ……あ………
+		DATA ひいぃっ！
+	ENDDATA
+ENDIF
+
+;;;苦痛LV2
+@PANT_VOICE_苦痛2
+WHILE 汎用喘ぎ:頻度
+	IF TEQUIP:ボールギャグ || TEQUIP:触手口辱
+		STRDATA 汎用喘ぎ一時
+		    DATA んぐぅぅぅぅぅぅ！
+		    DATA あううぅ…！
+		    DATA ん――――！
+		    DATA う゛ぅっ…
+		    DATA ぐぅっ、
+		    DATA む―――っ！
+		    DATA あぉぉ…っ、
+		    DATA んんんっ、
+		    DATA んぐっ
+		    DATA むぅぅ…！
+		ENDDATA
+		GOTO 分岐確定
+	ENDIF
+	IF TALENT:マゾ || 汎用喘ぎ:感度 >= 5
+		STRDATA 汎用喘ぎ一時
+			DATA いあああああっ！
+			DATA ひいいいっ…！
+			DATA ひ、―――ッッッッ、
+			DATA ひぁっ…！
+			DATA ぎゃっ、
+			DATA ひぎぃ――っ！
+			DATA あ゛――…っ、
+			DATA ひぃぃっ、
+			DATA ＃口調変換＃
+			DATA ＃口調変換＃
+		ENDDATA
+		IF 汎用喘ぎ一時 == "＃口調変換＃"
+			IF RAND:2
+				SELECTCASE 汎用喘ぎ口調分岐()
+					CASE "乱暴", "戦士", "博多弁"
+						汎用喘ぎ一時 = きもち、い゛っ…
+					CASE "柔らかめ"
+						汎用喘ぎ一時 = もっとしてぇっ！
+					CASE "土佐弁"
+						汎用喘ぎ一時 = おかしゅうなるき、いかんちや…っ、
+					CASE "関西弁"
+						汎用喘ぎ一時 = 狂ってまう…！
+					CASE "博多弁"
+						汎用喘ぎ一時 = えらいぼっこしてぇ…っ、
+					CASE "老人"
+						汎用喘ぎ一時 = いじめぬいてくれぃ…っ、
+					CASE "お嬢様", "メスガキ", "お姉さん"
+						汎用喘ぎ一時 = もっといたぶりなさい…っ、
+					CASE "レイシス語"
+						汎用喘ぎ一時 = 痛いのに、感じちゃいマス…っ、
+					CASEELSE
+						汎用喘ぎ一時 = やだっ…やだ、気持ちぃよぉおっ、
+				ENDSELECT
+			ELSE
+				SELECTCASE 汎用喘ぎ_口調:(汎用喘ぎ:口調)
+					CASE "柔らかめ", "戦士"
+						汎用喘ぎ一時 = 気持ち、ぃ…
+					CASE "敬語"
+						汎用喘ぎ一時 = …ヘン、になっちゃいま…っ、
+					CASE "土佐弁"
+						汎用喘ぎ一時 = えい、えいがよ…っ
+					CASE "関西弁"
+						汎用喘ぎ一時 = あかん、て…っ
+					CASE "博多弁"
+						汎用喘ぎ一時 = 気持ちよか…っ
+					CASEELSE
+						汎用喘ぎ一時 = あっ、あっ、
+				ENDSELECT
+			ENDIF
+		ENDIF
+	ELSE
+		STRDATA 汎用喘ぎ一時
+			DATA ひぎぃ――っ、
+			DATA いあああああっ！
+			DATA ひいいいっ…！
+			DATA ひ、―――ッッッッ、
+			DATA ぎゃっ、
+			DATA 死ぬ、ぅっ
+			DATA はぁっ……はぁっ、はっ、
+			DATA ぐあ…っ！
+			DATA ＃口調変換＃
+			DATA ＃口調変換＃
+		ENDDATA
+	ENDIF
+	IF 汎用喘ぎ一時 == "＃口調変換＃"
+		IF RAND:2
+			SELECTCASE 汎用喘ぎ_口調:(汎用喘ぎ:口調)
+				CASE "乱暴", "標準", "博多弁"
+					汎用喘ぎ一時 = やめ…っ、
+				CASE "柔らかめ"
+					汎用喘ぎ一時 = やめて…っ、
+				CASE "敬語"
+					汎用喘ぎ一時 = お願っ…ですから…！
+				CASE "土佐弁"
+					汎用喘ぎ一時 = もっ、やめとぉせ…
+				CASE "戦士"
+					汎用喘ぎ一時 = む、り……だぁっ
+				CASE "関西弁"
+					汎用喘ぎ一時 = もっ、堪忍して…やぁっ、
+				CASE "幼い", "メスガキ"
+					汎用喘ぎ一時 = やめ…やめて…よぉ…
+				CASE "老人"
+					汎用喘ぎ一時 = もう、これ以上は…後生じゃ…
+				CASE "お嬢様"
+					汎用喘ぎ一時 = もう…無理、ですわ…
+				CASE "レイシス語"
+					汎用喘ぎ一時 = やめてくだサイッ！
+				CASE "お姉さん"
+					汎用喘ぎ一時 = だめよっ、もう…っ
+			ENDSELECT
+		ELSE
+			SELECTCASE 汎用喘ぎ口調分岐()
+				CASE "乱暴", "戦士"
+					汎用喘ぎ一時 = …っ…ふ…ざけ……、
+				CASE "標準", "柔らかめ", "敬語"
+					汎用喘ぎ一時 = ダメ…っ、
+				CASE "土佐弁"
+					汎用喘ぎ一時 = いかん…っ
+				CASE "関西弁"
+					汎用喘ぎ一時 = 嫌やぁ―っ、
+				CASE "博多弁"
+					汎用喘ぎ一時 = 嫌ばいっ
+				CASEELSE
+					汎用喘ぎ一時 = 嫌…っ
+			ENDSELECT
+		ENDIF
+		;一部素質や反発は上書き
+		IF TALENT:反抗的 || TALENT:気丈 || TALENT:プライド高い || TALENT:生意気 || TALENT:抵抗 || TALENT:痛みに弱い || TALENT:服従 || TALENT:隷属 || MARK:反発刻印
+			STRDATA 汎用喘ぎ一時
+				DATA ひ…っ、
+				DATA ぐ…っ、
+			ENDDATA
+		ENDIF
+	ENDIF
+	$分岐確定
+	CALL 汎用喘ぎ乱数制御
+	SIF RESULT
+		CONTINUE
+	汎用喘ぎ:頻度--
+WEND
+IF TEQUIP:ボールギャグ || TEQUIP:触手口辱
+	STRDATA 汎用喘ぎ締め
+		DATA んぐううぅぅうう！
+		DATA あおおおっ…！
+		DATA ぐぅぅ…ふっ…
+	ENDDATA
+ELSE
+	STRDATA 汎用喘ぎ締め
+		DATA ああぁっぁぁっぁあぁ！！！
+		DATA ひぃ―――っっ！！！
+		DATA はぁん…っ、はぁ…
+	ENDDATA
+ENDIF
+
+
+;;;口が塞がってる(ボールギャグ・触手口虐中以外)
+@PANT_VOICE_口使用中
+WHILE 汎用喘ぎ:頻度
+	IF 汎用喘ぎ分岐("苦痛1") || 汎用喘ぎ分岐("苦痛2")
+		STRDATA 汎用喘ぎ一時
+			DATA ……
+			DATA んん、
+			DATA んっ、
+			DATA …んぅ、
+			DATA ん、むっ…
+			DATA ふぅ…
+			DATA んぐっ！
+			DATA ん゛ー…っ、
+			DATA んーっんー！
+			DATA うぐ…
+		ENDDATA
+	ELSEIF 汎用喘ぎ分岐("奉仕系")
+		STRDATA 汎用喘ぎ一時
+			DATA ……
+			DATA んん、
+			DATA んっ、
+			DATA …んぅ、
+			DATA ん、むっ…
+			DATA ふぅ…
+			DATA んく…っ、
+			DATA あむっ…
+			DATA …ちゅ、
+			DATAFORM \@ 陥落(TARGET) ? おいひ…っ、 # は…、 \@
+		ENDDATA
+	ELSE
+		STRDATA 汎用喘ぎ一時
+			DATA ……
+			DATA んん、
+			DATA んっ、
+			DATA …んぅ、
+			DATA ん、むっ…
+			DATA ふぅ…
+			DATA んく…っ、
+			DATA あむっ…
+			DATA …ちゅ、
+			DATA は…、
+		ENDDATA
+	ENDIF
+	$分岐確定
+	CALL 汎用喘ぎ乱数制御
+	SIF RESULT
+		CONTINUE
+	汎用喘ぎ:頻度--
+WEND
+STRDATA 汎用喘ぎ締め
+	DATA んんっ
+	DATA …ぷはっ
+	;反発3または苦痛有でえづく
+	DATAFORM \@ MARK:反発刻印 || 汎用喘ぎ分岐("苦痛1") || 汎用喘ぎ分岐("苦痛2") ? ……ぅ、ぐぇ… # …はぁ…っ \@
+ENDDATA
