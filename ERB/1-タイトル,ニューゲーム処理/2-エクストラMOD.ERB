@@ -54,6 +54,20 @@ SELECTCASE MODページ
 		;CALL COLUMNPRINTL, 0, @"　[36] - MOD:妊娠確率(現在:\@ MOD:妊娠確率 ? オン # オフ \@) 妊娠確率や危険日かどうかなどを可視化します", @"\@ MOD:妊娠確率 ? deepskyblue #\@"
 		CALL COLUMNPRINTL, 0, @"　[37] - MOD:妊娠期間(現在:\@ MOD:妊娠期間上限 ? {MOD:妊娠期間下限}～{MOD:妊娠期間上限}日 # オフ \@) 妊娠期間の日数を設定します(下限～上限の日数でランダム化 人口飽和と併用不可)", @"\@ MOD:妊娠期間上限 ? deepskyblue #\@"
 		CALL COLUMNPRINTL, 0, ""
+		CALL COLUMNPRINTL, 0, "□部位感覚素質MOD(新しく購入、追加したキャラにのみ適用。また種族:宇宙人の素質変更無効化)"
+		FOR LCOUNT, GETNUM(MOD, "Ｃ素質"), GETNUM(MOD, "Ｂ素質")+1
+			CALL COLUMNPRINT, 0, @"　%ERDNAME(MOD, LCOUNT)%… "
+			CALL COLUMNPRINT, 0, @"[{LCOUNT*100+1}] なし　", @"\@ ABS(MOD:LCOUNT) == 1 ? deepskyblue #\@"
+			CALL COLUMNPRINT, 0, @"[{LCOUNT*100+2}] 敏感　", @"\@ ABS(MOD:LCOUNT) == 2 ? deepskyblue #\@"
+			CALL COLUMNPRINT, 0, @"[{LCOUNT*100+3}] 鈍感　", @"\@ ABS(MOD:LCOUNT) == 3 ? deepskyblue #\@"
+			CALL COLUMNPRINT, 0, @"[{LCOUNT*100}] オフにする　"
+			SIF ERDNAME(MOD, LCOUNT) == "Ｖ素質"
+				CALL COLUMNPRINT, 0, @"[{LCOUNT*100+99}] 男性にも適用", @"\@ SIGN(MOD:LCOUNT) == -1 ? deepskyblue #\@"
+			SIF ERDNAME(MOD, LCOUNT) == "Ｂ素質"
+				CALL COLUMNPRINT, 0, @"[{LCOUNT*100+99}] 全てオフ"
+			CALL COLUMNPRINTL, 0, ""
+		NEXT
+		CALL COLUMNPRINTL, 0, ""
 		CALL COLUMNPRINTL, 0, "□陥落素質MOD(新しく購入、追加したキャラにのみ適用。各MODの重複は不可。一度適用されたセーブでは実績解除不可)"
 		CALL COLUMNPRINTL, 0, @"　[51] MOD:恋慕(現在:\@ MOD:恋慕 ? オン # オフ \@ キャラが最初から恋慕状態になる)", @"\@ MOD:恋慕 ? deepskyblue #\@"
 		CALL COLUMNPRINTL, 0, @"　[52] MOD:淫乱(現在:\@ MOD:淫乱 ? オン # オフ \@ キャラが最初から淫乱状態になる)", @"\@ MOD:淫乱 ? deepskyblue #\@"
@@ -178,6 +192,19 @@ ELSE
 			LOOP 1
 		CASE 345
 			安全係数設定 = 1
+		CASE 4899
+			MOD:Ｖ素質 *= -1
+		CASE 5099
+			MOD:Ｃ素質 = 0
+			MOD:Ｖ素質 = 0
+			MOD:Ａ素質 = 0
+			MOD:Ｂ素質 = 0
+		CASE 4700 TO 5003
+			IF MOD:((CRESULT:1)/100) < 0
+				MOD:((CRESULT:1)/100) = ((CRESULT:1)%100)*-1
+			ELSE
+				MOD:((CRESULT:1)/100) = (CRESULT:1)%100
+			ENDIF
 		CASE 51
 			INVERTBIT MOD:恋慕, 0
 			MOD:淫乱 = 0
@@ -351,14 +378,18 @@ IF TALENT:性別 == 2
 	IF CSTR:上半身下着 == "ブラジャー"
 		IF RANDPER(80)
 			CSTR:上半身下着 = インナーシャツ
+			CFLAG:下着パイズリ = 5
 		ELSE
 			CSTR:上半身下着 = 
+			CFLAG:下着パイズリ = 0
 		ENDIF
 	ELSEIF CSTR:上半身下着 == "スポーツブラ"
 		IF RANDPER(20)
 			CSTR:上半身下着 = インナーシャツ
+			CFLAG:下着パイズリ = 5
 		ELSE
 			CSTR:上半身下着 = 
+			CFLAG:下着パイズリ = 0
 		ENDIF
 	ENDIF
 	IF CSTR:下半身下着 == "パンティ"
@@ -443,6 +474,7 @@ IF TALENT:性別 == 1
 
 	;衣服をある程度調整
 	IF CSTR:上半身下着 == "インナーシャツ"
+		CFLAG:下着パイズリ = 0
 		乱数 = RAND:100
 		SELECTCASE TALENT:バストサイズ
 			CASE IS >= 4
@@ -472,6 +504,8 @@ IF TALENT:性別 == 1
 					CSTR:上半身下着 = 
 				ENDIF
 		ENDSELECT
+		SIF CSTR:上半身下着 == "ブラジャー"
+			CFLAG:下着パイズリ = 4
 	ENDIF
 	IF CSTR:下半身下着 == "ボクサーパンツ" || CSTR:下半身下着 == "ボクサーブリーフ" || CSTR:下半身下着 == "トランクス"
 		SIF RANDPER(95)
@@ -580,8 +614,8 @@ ENDIF
 @APPLY_MOD_ロリショタ, 対象
 #DIM DYNAMIC 対象
 
-IF TALENT:対象:体格 > 2
-	TALENT:対象:体格 = 2
+IF TALENT:対象:体格 > 1
+	TALENT:対象:体格 = 1
 	CSTR:対象:適用MOD += "[MOD:ロリショタ]"
 ENDIF
 
@@ -609,6 +643,48 @@ IF !TALENT:対象:ヤンデレ
 	TALENT:対象:ヤンデレ = 1
 	CSTR:対象:適用MOD += "[MOD:ヤンデレ]"
 ENDIF
+
+
+@APPLY_MOD_部位素質MOD総合, 対象, 部位
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 部位
+SELECTCASE ABS(MOD:@"%部位%素質")
+	CASE 1
+		SIF !TALENT:@"%部位%敏感" && !TALENT:@"%部位%鈍感"
+			RETURN
+		TALENT:@"%部位%敏感" = 0
+		TALENT:@"%部位%鈍感" = 0
+	CASE 2
+		SIF TALENT:@"%部位%敏感"
+			RETURN
+		TALENT:@"%部位%敏感" = 1
+		TALENT:@"%部位%鈍感" = 0
+	CASE 3
+		SIF TALENT:@"%部位%鈍感"
+			RETURN
+		TALENT:@"%部位%敏感" = 0
+		TALENT:@"%部位%鈍感" = 1
+ENDSELECT
+CSTR:対象:適用MOD += @"[MOD:%部位%素質]"
+
+@APPLY_MOD_Ｃ素質, 対象
+#DIM DYNAMIC 対象
+CALL APPLY_MOD_部位素質MOD総合, 対象, "Ｃ"
+
+@APPLY_MOD_Ｖ素質, 対象
+#DIM DYNAMIC 対象
+SIF !VAGINA(対象) && SIGN(MOD:Ｖ素質) == 1
+	RETURN
+CALL APPLY_MOD_部位素質MOD総合, 対象, "Ｖ"
+
+@APPLY_MOD_Ａ素質, 対象
+#DIM DYNAMIC 対象
+CALL APPLY_MOD_部位素質MOD総合, 対象, "Ａ"
+
+@APPLY_MOD_Ｂ素質, 対象
+#DIM DYNAMIC 対象
+CALL APPLY_MOD_部位素質MOD総合, 対象, "Ｂ"
+
 
 @APPLY_MOD_恋慕, 対象
 #DIM DYNAMIC 対象
