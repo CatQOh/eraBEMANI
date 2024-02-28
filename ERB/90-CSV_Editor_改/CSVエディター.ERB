@@ -85,41 +85,9 @@ FOR LCOUNT, 0, VARSIZE("EXP")
 	SIF EXP:LCOUNT == 0
 		SETCOLORBYNAME gray
 
-	SELECTCASE EXPNAME:LCOUNT
-		CASE "奉仕快楽経験"
-			経験名 = 奉快経験
-		CASE "フェラ経験"
-			経験名 = 口淫経験
-		CASE "パイズリ経験"
-			経験名 = 乳擦経験
-		CASE "射精管理経験"
-			経験名 = 射精管理
-		CASE "苦痛快楽経験"
-			経験名 = 痛楽経験
-		CASE "嗜虐快楽経験"
-			経験名 = 虐快経験
-		CASE "主人調教経験"
-			経験名 = 主調経験
-		CASE "助手調教経験"
-			経験名 = 助調経験
-		CASE "Ｖ拡張経験"
-			経験名 = Ｖ拡経験
-		CASE "Ａ拡張経験"
-			経験名 = Ａ拡経験
-		CASE "ダンス経験"
-			経験名 = 舞踊経験
-		CASE "音ゲー経験"
-			経験名 = 音ゲ経験
-		CASE "乳管拡張経験"
-			経験名 = 乳拡経験
-		CASE "臍拡張経験"
-			経験名 = 臍拡経験
-		CASEELSE
-			SIF EXPNAME:LCOUNT == "排便経験" && !MOD:SCAT
-				CONTINUE
-			経験名 = %EXPNAME:LCOUNT%
-	ENDSELECT
-
+	SIF EXPNAME:LCOUNT == "排便経験" && !MOD:SCAT
+		CONTINUE
+	経験名 = %短縮経験名(EXPNAME:LCOUNT)%
 	表示用変数:(表示数%6) = %SET_TOOLTIP(@"　[%経験名, 8%]:{EXP:LCOUNT, 4, LEFT}", EXP_COMMENT(EXPNAME:LCOUNT, TARGET))%
 	RESETCOLOR
 	表示数++
@@ -662,27 +630,8 @@ SELECTCASE 選択文字列
 		RESULTS = %REPLACE(RESULTS, " ", "")%
 		SIF RESULTS == ""
 			GOTO RESTART
-		SIF RESULTS == "舞踊経験"
-			RESULTS = ダンス経験
-		SIF RESULTS == "音ゲ経験"
-			RESULTS = 音ゲー経験
-		SIF RESULTS == "Ｖ拡経験"
-			RESULTS = Ｖ拡張経験
-		SIF RESULTS == "Ａ拡経験"
-			RESULTS = Ａ拡張経験
-		SIF RESULTS == "口淫経験"
-			RESULTS = フェラ経験
-		SIF RESULTS == "虐快経験"
-			RESULTS = 嗜虐快楽経験
-		SIF RESULTS == "奉快経験"
-			RESULTS = 奉仕快楽経験
-		SIF RESULTS == "痛楽経験"
-			RESULTS = 苦痛快楽経験
-		SIF RESULTS == "射精管理"
-			RESULTS = 射精管理経験
-		SIF RESULTS == "乳擦経験"
-			RESULTS = パイズリ経験
-		
+		;経験名は短縮されているので復元する
+		RESULTS = %短縮経験名(RESULTS, 1)%
 		FOR LCOUNT, 0, VARSIZE("EXP")
 			IF EXPNAME:LCOUNT == RESULTS
 				PRINTFORML %EXPNAME:LCOUNT%の数値を入力してください
@@ -707,6 +656,7 @@ GOTO RESTART
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 服装プリセット
 #DIM DYNAMIC PREVLINE
+#DIMS DYNAMIC SPLITVAR, 500
 
 ;TARGETが対象
 CLEARLINE LINECOUNT
@@ -717,6 +667,11 @@ IF CALLNAME:TARGET == ""
 ELSE
 	PRINTFORML 呼び名,%CALLNAME:TARGET%
 ENDIF
+SIF CSTR:英語名 != ""
+	PRINTFORML CSTR,英語名,%CSTR:英語名%
+SIF CSTR:英語呼び名 != ""
+	PRINTFORML CSTR,英語呼び名,%CSTR:英語呼び名%
+
 PRINTL 
 PRINTFORML フラグ,価格,{CFLAG:価格}
 SIF CFLAG:誕生日
@@ -764,6 +719,20 @@ IF MAXARRAY(RELATION) != 0 || MINARRAY(RELATION) != 0
 	FOR LCOUNT, 0, 10000
 		SIF RELATION:LCOUNT
 			PRINTFORML %CSVNAME(LCOUNT)%*{RELATION:LCOUNT}/
+	NEXT
+	PRINTL }
+ENDIF
+IF CSTR:担当曲 != ""
+	SPLIT CSTR:担当曲, "|", SPLITVAR
+	PRINTL {
+	PRINTL CSTR,担当曲,
+	FOR LCOUNT, 0, RESULT
+		;先頭の半角スペースを詰める
+		SIF SUBSTRINGU(SPLITVAR:LCOUNT, 0, 1) == " "
+			SPLITVAR:LCOUNT = %SUBSTRINGU(SPLITVAR:LCOUNT, 1, -1)%
+		SIF SPLITVAR:LCOUNT == ""
+			CONTINUE
+		PRINTFORML %SPLITVAR:LCOUNT%|
 	NEXT
 	PRINTL }
 ENDIF
