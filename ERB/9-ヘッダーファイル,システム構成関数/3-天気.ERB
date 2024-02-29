@@ -37,7 +37,7 @@ SELECTCASE ターン
 		
 		;1ミリでも降水量があるとき、雨とする
 		IF FLAG:降水量
-			FLAG:天気 = 3
+			FLAG:天気 = 天気TOINT("雨")
 		;それ以外の場合、曇りか晴れかの判定
 		ELSE
 			;前日の昼との温度差を比較する
@@ -46,16 +46,16 @@ SELECTCASE ターン
 			;気温が高いと基本的に曇りにくい
 			気温差 = FLAG:気温 + 2*(FLAG:気温-前の昼の気温)
 			;前日が晴れなら曇りになりにくい
-			SIF FLAG:天気 == 1
+			SIF FLAG:天気 == 天気TOINT("晴れ")
 				気温差 += 10
 			;気温+50の乱数 前日が晴れでなく気温が同じなら、気温10℃で曇り33%、気温20℃で曇り20%、気温30℃で曇り14%、0℃なら当然100%曇る
 			;気温-5℃以下は必ず曇りになる
 			IF FLAG:気温 <= -50
-				FLAG:天気 = 2
+				FLAG:天気 = 天気TOINT("曇り")
 			ELSEIF RAND:(FLAG:気温+50) >= 気温差
-				FLAG:天気 = 2
+				FLAG:天気 = 天気TOINT("曇り")
 			ELSE
-				FLAG:天気 = 1
+				FLAG:天気 = 天気TOINT("晴れ")
 			ENDIF
 		ENDIF
 		
@@ -66,13 +66,12 @@ SELECTCASE ターン
 	;夜になって昼より気温が上がることはないが、デバッグモード使えば出来るから一応処理書いとく
 	CASE "夜"
 		;現在の天気を参照
-		SELECTCASE FLAG:天気
-			;晴れ
-			CASE 1
+		SELECTCASE 天気()
+			CASE "晴れ"
 				;気温が下がってない場合、晴れをキープ
 				;ただし気温が下がらないというのは夏でも1割程度
 				IF 前の昼の気温 <= FLAG:気温
-					FLAG:天気 = 1
+					FLAG:天気 = 天気TOINT("晴れ")
 				;気温が下がっている場合
 				ELSE
 					;昼との温度差を比較する
@@ -82,18 +81,17 @@ SELECTCASE ターン
 					;気温+75の乱数 昼と気温が同じなら、気温10℃で曇り42%、気温20℃で曇り27%、気温30℃で曇り20%、0℃なら当然100%曇る
 					;気温-7.5℃以下は必ず曇りになる
 					IF FLAG:気温 <= -75
-						FLAG:天気 = 2
+						FLAG:天気 = 天気TOINT("曇り")
 					ELSEIF RAND:(FLAG:気温+75) >= 気温差
-						FLAG:天気 = 2
+						FLAG:天気 = 天気TOINT("曇り")
 					ELSE
-						FLAG:天気 = 1
+						FLAG:天気 = 天気TOINT("晴れ")
 					ENDIF
 				ENDIF
-			;曇り
-			CASE 2
+			CASE "曇り"
 				;気温が下がってない場合、晴れにする
 				IF 前の昼の気温 <= FLAG:気温
-					FLAG:天気 = 1
+					FLAG:天気 = 天気TOINT("晴れ")
 				;気温が下がっている場合
 				ELSE
 					;雨量指数(FLAG:降水量)を再計算
@@ -105,7 +103,7 @@ SELECTCASE ターン
 						FLAG:降水量 += RAND:20
 					;1ミリでも降水量があるとき、雨とする
 					IF FLAG:降水量
-						FLAG:天気 = 3
+						FLAG:天気 = 天気TOINT("雨")
 					;それ以外の場合、曇りか晴れかの判定
 					ELSE
 						;昼との温度差を比較する
@@ -115,19 +113,18 @@ SELECTCASE ターン
 						;気温+75の乱数 昼と気温が同じなら、気温10℃で曇り42%、気温20℃で曇り27%、気温30℃で曇り20%、0℃なら当然100%曇る
 						;気温-7.5℃以下は必ず曇りになる
 						IF FLAG:気温 <= -75
-							FLAG:天気 = 2
+							FLAG:天気 = 天気TOINT("曇り")
 						ELSEIF RAND:(FLAG:気温+75) >= 気温差
-							FLAG:天気 = 2
+							FLAG:天気 = 天気TOINT("曇り")
 						ELSE
-							FLAG:天気 = 1
+							FLAG:天気 = 天気TOINT("晴れ")
 						ENDIF
 					ENDIF
 				ENDIF
-			;雨,雪
-			CASE 3 TO 7
+			CASE "雨", "大雨", "雷雨", "雪", "大雪"
 				;気温が下がってない場合、曇りにする
 				IF 前の昼の気温 <= FLAG:気温 && !スウィートレイン && !スノープリズム
-					FLAG:天気 = 2
+					FLAG:天気 = 天気TOINT("曇り")
 					FLAG:降水量 = 0
 				;気温が下がった場合、降水量を再計算し、現在の降水量/3+1を追加
 				ELSE
@@ -147,7 +144,7 @@ ENDSELECT
 
 ;ストームバスター発動中は問答無用で晴れる
 SIF ストームバスター
-	FLAG:天気 = 1
+	FLAG:天気 = 天気TOINT("晴れ")
 
 ;降水時に雨か雪かの処理
 ;一応5月～10月の設定はしてるけど、この条件式だと雪になることはまず無いと思われる
@@ -163,17 +160,17 @@ SELECTCASE MONTH
 ENDSELECT
 
 ;雨,雪の分岐処理 一定以下の気温だと乱数次第でずっと雪が続く
-IF FLAG:天気 >= 3
+IF GROUPMATCH(天気(), "雨", "大雨", "雷雨", "雪", "大雪")
 	;魔法唱えてると必ずその天気になる
 	IF スウィートレイン
-		FLAG:天気 = 3
+		FLAG:天気 = 天気TOINT("雨")
 	ELSEIF スノープリズム
-		FLAG:天気 = 6
+		FLAG:天気 = 天気TOINT("雪")
 	ELSE
 		SELECTCASE FLAG:気温
 			;気温0℃以下は雪
 			CASE IS <= 0
-				FLAG:天気 = 6
+				FLAG:天気 = 天気TOINT("雪")
 			;0.1℃以上の場合
 			CASEELSE
 				;12月～2月は2.5℃以下で雪確定
@@ -182,7 +179,7 @@ IF FLAG:天気 >= 3
 				;7月～9月は0.5℃以下で雪確定
 				SELECTCASE FLAG:気温 - 降雪確率補正
 					CASE IS <= 0
-						FLAG:天気 = 6
+						FLAG:天気 = 天気TOINT("雪")
 					CASEELSE
 						;降雪確率補正が低いほど雪になる確率は低い
 						;雪が降る可能性のある最高気温
@@ -193,12 +190,12 @@ IF FLAG:天気 >= 3
 						IF FLAG:気温*5/降雪確率補正 <= 降雪確率補正
 							;上記の気温以下なら、気温が低ければ低いほど雪の確率アップ
 							IF RAND:(FLAG:気温) < 降雪確率補正
-								FLAG:天気 = 6
+								FLAG:天気 = 天気TOINT("雪")
 							ELSE
-								FLAG:天気 = 3
+								FLAG:天気 = 天気TOINT("雨")
 							ENDIF
 						ELSE
-							FLAG:天気 = 3
+							FLAG:天気 = 天気TOINT("雨")
 						ENDIF
 				ENDSELECT
 		ENDSELECT
@@ -218,18 +215,17 @@ SELECTCASE MONTH
 		雷雨確率補正 = 50
 ENDSELECT
 
-SELECTCASE FLAG:天気
-	;雨、大雨、雷雨の設定
-	CASE 3, 4, 5
+SELECTCASE 天気()
+	CASE "雨", "大雨", "雷雨"
 		;降水量15以上で大雨
 		IF FLAG:降水量 >= 15
-			FLAG:天気 = 4
+			FLAG:天気 = 天気TOINT("大雨")
 		;14以下だと大雨解除
 		ELSE
-			FLAG:天気 = 3
+			FLAG:天気 = 天気TOINT("雨")
 		ENDIF
 		;大雨で気温が下がっている場合、確率で雷が伴う
-		IF FLAG:天気 == 4
+		IF FLAG:天気 == 天気TOINT("大雨")
 			;気温が下がってなければ終わり
 			気温差 = 前の昼の気温-FLAG:気温
 			SIF 気温差 <= 0
@@ -239,15 +235,15 @@ SELECTCASE FLAG:天気
 			;9～11月で 気温差が1℃ある場合は9%、 3℃ある場合は23%、5℃ある場合は33%
 			;それ以外で気温差が1℃ある場合は6%、 3℃ある場合は16%、5℃ある場合は25%
 			SIF RAND:(雷雨確率補正+気温差) < 気温差
-				FLAG:天気 = 5
+				FLAG:天気 = 天気TOINT("雷雨")
 		ENDIF
-	CASE 6, 7
+	CASE "雪", "大雪"
 		;降水量10以上の雪で大雪
 		;普通にプレイしてたら多分大雪にはめったにならない
 		IF FLAG:降水量 >= 10
-			FLAG:天気 = 7
+			FLAG:天気 = 天気TOINT("大雪")
 		;9以下だと普通の雪
 		ELSE
-			FLAG:天気 = 6
+			FLAG:天気 = 天気TOINT("雪")
 		ENDIF
 ENDSELECT
