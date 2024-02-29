@@ -1107,35 +1107,10 @@ ENDSELECT
 #FUNCTIONS
 #DIMS DYNAMIC 返り値
 #DIM DYNAMIC LCOUNT
-IF LANGUAGE == "ENG"
-	SELECTCASE MONTH
-		CASE 1
-			返り値 += "January "
-		CASE 2
-			返り値 += "February "
-		CASE 3
-			返り値 += "March "
-		CASE 4
-			返り値 += "April "
-		CASE 5
-			返り値 += "May "
-		CASE 6
-			返り値 += "June "
-		CASE 7
-			返り値 += "July "
-		CASE 8
-			返り値 += "August "
-		CASE 9
-			返り値 += "September "
-		CASE 10
-			返り値 += "October "
-		CASE 11
-			返り値 += "November "
-		CASE 12
-			返り値 += "December "
-	ENDSELECT
+#DIMS DYNAMIC 英語月名 = "", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"
 
-	返り値 += @"{DAYS}, "
+IF LANGUAGE == "ENG"
+	返り値 += @"%英語月名:MONTH% {DAYS}, "
 	IF YEAR > 0
 		返り値 += @"{YEAR}"
 	ELSE
@@ -1276,6 +1251,34 @@ SELECTCASE 英数字
 		RETURNF ""
 ENDSELECT
 
+;;;ラテン文字を半角大文字に統一 コンバート系としてとりあえずここ
+@CONV_ABC, 入力文字
+#FUNCTIONS
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 入力文字
+#DIMS DYNAMIC 出力文字
+#DIMS DYNAMIC 判定
+#DIM DYNAMIC 文字数
+#DIM DYNAMIC 差分, 3
+
+差分:0 = ENCODETOUNI("a")-ENCODETOUNI("A")
+差分:1 = ENCODETOUNI("Ａ")-ENCODETOUNI("A")
+差分:2 = ENCODETOUNI("ａ")-ENCODETOUNI("A")
+文字数 = STRLENSU(入力文字)
+
+FOR LCOUNT, 0, 文字数
+	判定 = %SUBSTRINGU(入力文字, LCOUNT, 1)%
+	SELECTCASE ENCODETOUNI(判定)
+		CASE ENCODETOUNI("a") TO ENCODETOUNI("z")
+			判定 = %UNICODE(ENCODETOUNI(判定)-(差分:0))%
+		CASE ENCODETOUNI("Ａ") TO ENCODETOUNI("Ｚ")
+			判定 = %UNICODE(ENCODETOUNI(判定)-(差分:1))%
+		CASE ENCODETOUNI("ａ") TO ENCODETOUNI("ｚ")
+			判定 = %UNICODE(ENCODETOUNI(判定)-(差分:2))%
+	ENDSELECT
+	出力文字 += 判定
+NEXT
+RETURNF 出力文字
 
 ;-------------------------------------------------
 ;;;キャラ名と番号の相互判定、GETNUMやFINDELEMENT等簡略化
@@ -2706,34 +2709,197 @@ SIF TEQUIP:対象:上半身上着
 SIF TEQUIP:対象:上半身下着
 	RETURNF CSTR:対象:上半身下着
 
-;;;式中関数「ズリ穴作り」
-;;;対象の服が自主的に服に穴などを作ることによりパイズリできる状態かを判別する
-;;;タイプ=0 なら通常のパイズリ タイプ=1 なら縦パイズリ
-;;;できる場合、1を返す
-@ズリ穴作り, 対象, タイプ
+
+;;;0=なにもなし 1=下着 2=上着 3=両方 着衣併用などの状態を判別（スク水は下着で返す等）
+@上半身着衣状態, 対象
 #FUNCTION
 #DIM DYNAMIC 対象
+#DIM DYNAMIC 結果
+
+SIF TEQUIP:対象:上半身上着
+	SETBIT 結果, 1
+SIF TEQUIP:対象:上半身下着
+	SETBIT 結果, 0
+IF TEQUIP:対象:全身上着
+	SELECTCASE CFLAG:対象:着衣併用
+		CASE 0
+			SETBIT 結果, 1
+		CASE 2
+			SETBIT 結果, 0
+	ENDSELECT
+ENDIF
+RETURNF 結果
+
+;;;ビットで返す 0=パイズリ(通常)可 1=縦パイズリ可 2=パイズリフェラ可
+;;;メモ 0=パイズリ不可 1=下方向だけ穴あき 2=チューブトップ状 3=正面に穴
+;;;     4=全て可能 5=たくしあげ 6=はだけさせる
+;;;     10=水着(はだけさせる、爆乳以上で谷間に生地を挟む) 20=ぴっちりスーツ(はだけさせられない、服上パイズリ可)
+;;;  水着とピチスーの下一桁 1=下方向だけ穴あき 2=チューブトップ状 3=正面に穴 4=スリット状
+@パイズリ判定, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 結果
+#DIM DYNAMIC 判定フラグ
+#DIMS DYNAMIC 判定衣服
+
+SETBIT 結果, 0
+SETBIT 結果, 1
+SETBIT 結果, 2
+FOR LCOUNT, 0, 3
+	SELECTCASE LCOUNT
+		CASE 0
+			判定衣服 = 上半身上着
+			判定フラグ = CFLAG:対象:上着パイズリ
+		CASE 1
+			判定衣服 = 上半身下着
+			判定フラグ = CFLAG:対象:下着パイズリ
+		CASE 2
+			判定衣服 = 全身上着
+			判定フラグ = CFLAG:対象:全身上着パイズリ
+	ENDSELECT
+	IF TEQUIP:対象:判定衣服
+		SIF 判定衣服 == "全身上着" && CFLAG:対象:着衣併用 == 1
+			CONTINUE
+		SELECTCASE 判定フラグ
+			CASE 0
+				RETURNF 0
+			CASE 1
+				CLEARBIT 結果, 2
+			CASE 2
+				CLEARBIT 結果, 1
+			CASE 3
+				CLEARBIT 結果, 0
+				CLEARBIT 結果, 2
+			CASE 5
+				CLEARBIT 結果, 2
+		ENDSELECT
+	ELSE
+		CONTINUE
+	ENDIF
+NEXT
+RETURNF 結果
+
+;;;直接触れる状態か否か
+@胸露出可, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 判定フラグ
+#DIMS DYNAMIC 判定衣服
+
+FOR LCOUNT, 0, 3
+	SELECTCASE LCOUNT
+		CASE 0
+			判定衣服 = 上半身上着
+			判定フラグ = CFLAG:対象:上着パイズリ
+		CASE 1
+			判定衣服 = 上半身下着
+			判定フラグ = CFLAG:対象:下着パイズリ
+		CASE 2
+			判定衣服 = 全身上着
+			判定フラグ = CFLAG:対象:全身上着パイズリ
+	ENDSELECT
+	IF TEQUIP:対象:判定衣服
+		SIF 判定衣服 == "全身上着" && CFLAG:対象:着衣併用 == 1
+			CONTINUE
+		SELECTCASE 判定フラグ
+			CASE 0, 3, 10 TO 14, 20 TO 24
+				RETURNF 0
+		ENDSELECT
+	ELSE
+		CONTINUE
+	ENDIF
+NEXT
+RETURNF 1
+
+;;;ビットで返す 0=下方向 1=正面
+;;;何も着てなかったら両方可能で返す ピチスーは乳袋で水着ははだけ可なので影響なし
+@胸穴あき, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 結果
+#DIM DYNAMIC 判定フラグ
+#DIMS DYNAMIC 判定衣服
+
+SETBIT 結果, 0
+SETBIT 結果, 1
+FOR LCOUNT, 0, 3
+	SELECTCASE LCOUNT
+		CASE 0
+			判定衣服 = 上半身上着
+			判定フラグ = CFLAG:対象:上着パイズリ
+		CASE 1
+			判定衣服 = 上半身下着
+			判定フラグ = CFLAG:対象:下着パイズリ
+		CASE 2
+			判定衣服 = 全身上着
+			判定フラグ = CFLAG:対象:全身上着パイズリ
+	ENDSELECT
+	IF TEQUIP:対象:判定衣服
+		SIF 判定衣服 == "全身上着" && CFLAG:対象:着衣併用 == 1
+			CONTINUE
+		SELECTCASE 判定フラグ
+			CASE 0
+				RETURNF 0
+			CASE 1, 2
+				CLEARBIT 結果, 1
+			CASE 3
+				CLEARBIT 結果, 0
+		ENDSELECT
+	ELSE
+		CONTINUE
+	ENDIF
+NEXT
+RETURNF 結果
+
+;;;式中関数「ズリ穴作り」
+;;;対象の服が自主的に服に穴などを作ることによりパイズリできる状態かを判別する
+;;;タイプ=0 なら通常のパイズリ タイプ=1 なら縦パイズリ できる場合、1を返す
+;;;胸露出可とは違って穴を作る動きがあるか否か
+@ズリ穴作り, 対象, タイプ
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象
 #DIM DYNAMIC タイプ
+#DIMS DYNAMIC 判定部位
+#DIM DYNAMIC フラグ可否, 2
 SIF 対象 == -1
 	RETURNF 0
 
-IF TEQUIP:対象:上半身上着 || (TEQUIP:対象:全身上着 && CFLAG:対象:着衣併用!=1)
-	IF CFLAG:対象:上着パイズリ == 5
-		IF TEQUIP:対象:上半身下着
-			SELECTCASE CFLAG:対象:下着パイズリ
-				CASE 1
-					SIF タイプ == 0
-						RETURNF 1
-				CASE 2
-					SIF タイプ == 1
-						RETURNF 1
-				CASE 3
-					RETURNF 1
-			ENDSELECT
-		ELSE
+IF TEQUIP:対象:全身上着
+	SIF CFLAG:対象:全身上着パイズリ == 6
+		フラグ可否:0 = 1
+	SIF CFLAG:対象:着衣併用 == 1
+		フラグ可否:0 = -1
+ELSE
+	フラグ可否:0 = -1
+ENDIF
+IF TEQUIP:対象:上半身上着
+	SIF CFLAG:対象:上着パイズリ == 6
+		フラグ可否:1 = 1
+ELSE
+	フラグ可否:1 = -1
+ENDIF
+
+;不可判定が片方でもあるか両方脱いでたらだめ
+SIF MATCH(フラグ可否, 0) || MATCH(フラグ可否, -1) == 2
+	RETURNF 0
+;両方可能もしくは片方脱いでて片方可能だけ残るので下着の状態で判定
+IF TEQUIP:対象:上半身下着
+	SELECTCASE CFLAG:対象:下着パイズリ
+		CASE 1, 2
+			SIF タイプ == 0
+				RETURNF 1
+		CASE 3
+			SIF タイプ == 1
+				RETURNF 1
+		CASE 4
 			RETURNF 1
-		ENDIF
-	ENDIF
+	ENDSELECT
+ELSE
+	RETURNF 1
 ENDIF
 RETURNF 0
 
