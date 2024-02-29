@@ -23,9 +23,22 @@ ENDIF
 
 RETURNF COMRESULT
 
+;;;ビットを直接操作しない用
+@魔法TOBIT, 魔法名
+#FUNCTION
+#DIMS DYNAMIC 魔法名
+{
+#DIMS DYNAMIC 調教魔法リスト = "", "魔力吸収", "魔力譲与", "ヒートストローク", "ホワイトアウト", "リカーシブファンクション", "ニコニコサンフラワーキッス", 
+"メタリックマインド", "ゴー・バーサーク", "ハニーパーティ", "ラブキャンセーブユー", "チェイン・オブ・ペイン", "デッドロック", "終極オーバーキル"
+}
+SIF FINDELEMENTF(調教魔法リスト, 魔法名) == -1
+	RETURNF 0
+RETURNF FINDELEMENTF(調教魔法リスト, 魔法名)
+
 @COM_魔法詠唱
 #DIM DYNAMIC スキル
 #DIM DYNAMIC 消費量
+#DIM DYNAMIC DISABLE
 
 CALLFORM DISABLE, "魔法詠唱選択", TARGET
 DISABLE = RESULT
@@ -35,31 +48,31 @@ DRAWLINE
 PRINTFORML □魔法一覧 詠唱者:%NAME:PLAYER% 魔法技能LV{スキル}
 PRINTFORML 　%NAME:PLAYER%の魔力%BARSTR(BASE:PLAYER:魔力, MAXBASE:PLAYER:魔力, 32)%({BASE:PLAYER:魔力}/{MAXBASE:PLAYER:魔力})
 IF TALENT:魔法使い
-	SIF 相性値(PLAYER, TARGET) >= 150 && 相性値(TARGET, PLAYER) >= 150 && !GETBIT(DISABLE, 1)
+	SIF 相性値(PLAYER, TARGET) >= 150 && 相性値(TARGET, PLAYER) >= 150 && !GETBIT(DISABLE, 魔法TOBIT("魔力吸収"))
 		PRINTFORML 　[ 1] - 魔力吸収 唇を介して魔力を受け取る 相性が良くないと実行不可（150％）
-	SIF !GETBIT(DISABLE, 2)
+	SIF !GETBIT(DISABLE, 魔法TOBIT("魔力譲与"))
 		PRINTFORML 　[ 2] - 魔力譲与 唇を介して魔力を与える 相性が良いほど効率が良い（最高200％）
 ENDIF
 消費量 = 魔力消費量(3, スキル)/3
 ;Heatstroke
-IF !GETBIT(DISABLE, 3)
+IF !GETBIT(DISABLE, 魔法TOBIT("ヒートストローク"))
 	PRINTFORML 　[ 3] - ヒートストローク（魔力消費量 {消費量}）
 	PRINTL 　　　　 気温が高いほど実効値上昇
 ENDIF
 ;WHITE OUT
-IF !GETBIT(DISABLE, 4)
+IF !GETBIT(DISABLE, 魔法TOBIT("ホワイトアウト"))
 	PRINTFORML 　[ 4] - ホワイトアウト（魔力消費量 {消費量}）
 	PRINTL 　　　　 気温が低いほど実効値上昇
 ENDIF
 IF スキル >= 4
 	消費量 = 魔力消費量(4, スキル)/3
 	;リカーシブファンクション
-	IF !GETBIT(DISABLE, 5)
+	IF !GETBIT(DISABLE, 魔法TOBIT("リカーシブファンクション"))
 		PRINTFORML 　[ 5] - リカーシブファンクション（魔力消費量 {消費量}）
 		PRINTL 　　　　 コマンド連続実行によるデメリットが発生しなくなる
 	ENDIF
 	;魚氷に上り 耀よひて
-	IF !GETBIT(DISABLE, 6)
+	IF !GETBIT(DISABLE, 魔法TOBIT("ニコニコサンフラワーキッス"))
 		PRINTFORML 　[ 6] - ニコニコサンフラワーキッス（魔力消費量 {消費量}）
 		PRINTL 　　　　 キス系コマンドに恐怖が伴うようになる
 	ENDIF
@@ -67,12 +80,12 @@ ENDIF
 IF スキル >= 5
 	消費量 = 魔力消費量(5, スキル)/3
 	;METALLIC MIND
-	IF !GETBIT(DISABLE, 7)
+	IF !GETBIT(DISABLE, 魔法TOBIT("メタリックマインド"))
 		PRINTFORML 　[ 7] - メタリックマインド（魔力消費量 {消費量}）
 		PRINTL 　　　　 実効値が低下する代わりにマイナスソースを軽減する
 	ENDIF
 	;Go Berzerk
-	IF !GETBIT(DISABLE, 8)
+	IF !GETBIT(DISABLE, 魔法TOBIT("ゴー・バーサーク"))
 		PRINTFORML 　[ 8] - ゴー・バーサーク（魔力消費量 {消費量}）
 		PRINTL 　　　　 欲情、恭順が上がりやすくなり、気力0でのソース低下が発生しなくなるが、体力消費量が増える
 	ENDIF
@@ -80,12 +93,12 @@ ENDIF
 IF スキル >= 6
 	消費量 = 魔力消費量(6, スキル)/3
 	;Honey Party
-	IF !GETBIT(DISABLE, 9)
+	IF !GETBIT(DISABLE, 魔法TOBIT("ハニーパーティ"))
 		PRINTFORML 　[ 9] - ハニーパーティ（魔力消費量 {消費量}）
 		PRINTL 　　　　 浴槽が媚薬ローション風呂になる
 	ENDIF
 	;LUV CAN SAVE YOU
-	IF !GETBIT(DISABLE, 10)
+	IF !GETBIT(DISABLE, 魔法TOBIT("ラブキャンセーブユー"))
 		IF TFLAG:ラブキャンセーブユー == 2
 			PRINTL 　[10] - ラブキャンセーブユー解除
 			PRINTL 　　　　 当魔法の効果を解除する
@@ -98,7 +111,7 @@ ENDIF
 消費量 = 魔力消費量(7, スキル)/3
 IF スキル >= 7
 	;Chain of Pain
-	IF !GETBIT(DISABLE, 11)
+	IF !GETBIT(DISABLE, 魔法TOBIT("チェイン・オブ・ペイン"))
 		PRINTFORML 　[11] - チェイン・オブ・ペイン（魔力消費量 {消費量}）
 		PRINTL 　　　　 体力減少が苦痛ソースに上乗せされる
 	ENDIF
@@ -106,7 +119,7 @@ ENDIF
 消費量 = 魔力消費量(8, スキル)/3
 IF スキル >= 8
 	;DEADLOCK
-	IF !GETBIT(DISABLE, 12)
+	IF !GETBIT(DISABLE, 魔法TOBIT("デッドロック"))
 		PRINTFORML 　[12] - デッドロック（魔力消費量 {消費量}）
 		PRINTL 　　　　 3ターン、実行判定を無視する
 	ENDIF
@@ -114,7 +127,7 @@ ENDIF
 消費量 = 5000
 IF スキル >= 10
 	;終極+焔獄OVERKILL
-	IF !GETBIT(DISABLE, 13)
+	IF !GETBIT(DISABLE, 魔法TOBIT("終極オーバーキル"))
 		PRINTFORML 　[13] - 終極オーバーキル（魔力消費量 {消費量}）
 		PRINTL 　　　　 常軌を逸した恐怖、苦痛、不快を与え、即時調教を終了する 対象は30ターン使用不可になる
 	ENDIF
