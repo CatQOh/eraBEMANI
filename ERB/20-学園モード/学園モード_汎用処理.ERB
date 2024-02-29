@@ -438,7 +438,9 @@ ENDSELECT
 
 @学校一覧_データベース
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LTARGET
 #DIMS DYNAMIC 名称抜き取り用, 2
+#DIMS DYNAMIC ロケーション名
 #DIM DYNAMIC 選択校
 #DIM DYNAMIC 選択キャラ
 #DIM DYNAMIC 表示数
@@ -558,11 +560,22 @@ FOR LCOUNT, 0, VARSIZE("ロケーション")
 	SPLIT ロケーション:LCOUNT, "/", 名称抜き取り用
 	;分割されてたらスラッシュより後の部分だけを使用する
 	IF RESULT >= 2
-		RESULT = 0
-		TRYCALLFORM 出現キャラ_%RPS(名称抜き取り用:1)%
+		ロケーション名 = %RPS(名称抜き取り用:1)%
 	ELSE
-		RESULT = 0
-		TRYCALLFORM 出現キャラ_%RPS(ロケーション:LCOUNT)%
+		ロケーション名 = %RPS(ロケーション:LCOUNT)%
+	ENDIF
+	TRYCALLFORM 出現キャラ_%RPS(ロケーション名)%
+	;口上による出現率変更
+	IF OPTION:口上表示 && !CFLAG:LCOUNT:口上非表示 && EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:選択キャラ)%_出現率設定")
+		LTARGET = TARGET
+		TARGET = 選択キャラ
+		CALLFORM SCHOOL_%CSVNAMERPS(NO:選択キャラ)%_出現率設定, ロケーション名
+		IF RESULT < 0
+			出現率:選択キャラ = 0
+		ELSEIF RESULT > 0
+			出現率:選択キャラ = LIMIT(RESULT, 0, 100)
+		ENDIF
+		TARGET = LTARGET
 	ENDIF
 	;出現率も表示
 	SIF !出現率:選択キャラ
@@ -923,6 +936,114 @@ TALENT:対象:恋慕 = 1
 PRINTFORML %NAME:対象%が恋人になった！
 CALL 経験値取得, 対象, "学園"
 
+
+;;;TARGETへの代入等は関数呼び出し前後で行う
+@EXECTRAIN_SCHOOL, シチュエーション
+#DIMS DYNAMIC シチュエーション
+#DIMS DYNAMIC 場所名
+#DIMS DYNAMIC 行為前引数
+#DIMS DYNAMIC 行為後引数
+場所名 = %シチュエーション%
+行為前引数 = %シチュエーション%_行為前
+行為後引数 = %シチュエーション%_行為後
+
+SELECTCASE シチュエーション
+	CASE "トイレ"
+		トイレ使用中 = 1
+	CASE "青姦"
+		野外プレイ中 = 1
+	;場所名変更系
+	CASE "宿泊イベント"
+		場所名 = 自宅
+		行為前引数 = 自宅に宿泊
+		行為後引数 = 宿泊_行為後
+	CASE "自宅イベント"
+		場所名 = 自宅
+		行為前引数 = 
+		行為後引数 = 自宅_行為後
+	CASE "保健室ベッドシェア", "保健室教師"
+		場所名 = 保健室
+		行為前引数 = 
+		行為後引数 = 保健室_行為後
+	CASE "保健室眠姦"
+		場所名 = 保健室
+		行為前引数 = 
+		行為後引数 = 
+ENDSELECT
+
+SIF 行為前引数 != ""
+	CALL SCHOOL_KOJO, TARGET, 行為前引数
+CALL CHECKDRAWLINE
+CALL TRAIN_SCHOOL, 場所名
+CALL CHECKDRAWLINE
+SIF 行為後引数 != ""
+	CALL SCHOOL_KOJO, TARGET, 行為後引数
+
+SELECTCASE シチュエーション
+	CASE "自宅", "ホテル"
+		CALL 好感度上昇, TARGET, "友情", 30
+		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
+		CALL 好感度上昇, TARGET, "セフレ", 50
+		CALL 好感度上昇, TARGET, "既成事実", 1
+		SIF !TALENT:恋慕
+			CFLAG:倫理観++
+	CASE "トイレ", "青姦"
+		CALL 好感度上昇, TARGET, "友情", 30
+		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
+		CALL 好感度上昇, TARGET, "セフレ", 50
+		CALL 好感度上昇, TARGET, "既成事実", 1
+		SIF !TALENT:恋慕
+			CFLAG:倫理観 += 2
+		CFLAG:倫理観 += 2
+	CASE "宿泊イベント"
+		IF 好感度:ときめき >= 1000 && 好感度:ときめき > 好感度:セフレ && !TALENT:恋慕
+			CALL 恋仲, TARGET
+			WAIT
+		ENDIF
+		CALL 好感度上昇, TARGET, "友情", 30
+		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
+		CALL 好感度上昇, TARGET, "セフレ", 30
+		CALL 好感度上昇, TARGET, "既成事実", 1
+		SIF !TALENT:恋慕
+			CFLAG:倫理観 += 1
+	CASE "自宅イベント"
+		SIF TALENT:恋慕 && !好感度:既成事実
+			ときめき増加量 += 3
+		CALL 好感度上昇, TARGET, "友情", 30
+		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
+		CALL 好感度上昇, TARGET, "セフレ", 50
+		CALL 好感度上昇, TARGET, "既成事実", 1
+		SIF !TALENT:恋慕
+			CFLAG:倫理観++
+	CASE "保健室ベッドシェア"
+		CALL 好感度上昇, TARGET, "友情", 30
+		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
+		CALL 好感度上昇, TARGET, "セフレ", 50
+		CALL 好感度上昇, TARGET, "既成事実", 1
+		SIF !TALENT:恋慕
+			CFLAG:倫理観++
+		CFLAG:倫理観++
+	CASE "保健室", "保健室教師", "体育倉庫"
+		CALL 好感度上昇, TARGET, "友情", 30
+		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
+		CALL 好感度上昇, TARGET, "セフレ", 50
+		CALL 好感度上昇, TARGET, "既成事実", 1
+		SIF !TALENT:恋慕
+			CFLAG:倫理観 += 2
+		CFLAG:倫理観 += 2
+	CASE "校長室", "理事長室"
+		CALL 好感度上昇, TARGET, "友情", 30
+		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
+		CALL 好感度上昇, TARGET, "セフレ", 50
+		CALL 好感度上昇, TARGET, "既成事実", 1
+		SIF !TALENT:恋慕
+			CFLAG:倫理観 += 3
+		CFLAG:倫理観 += 3
+ENDSELECT
+トイレ使用中 = 0
+野外プレイ中 = 0
+
+
 @TRAIN_SCHOOL, 場所
 #DIMS DYNAMIC 場所
 #DIM DYNAMIC LCOUNT
@@ -945,7 +1066,7 @@ LOOP !TFLAG:調教終了
 DRAWLINE
 
 ;珠の獲得（快と習得だけ加算される）
-CALL JUEL_GETTING, 1
+CALL JUEL_CHECK, 1
 
 ;能力の自動上昇処理
 CALL SCHOOL_ABLUP, TARGET, 0
