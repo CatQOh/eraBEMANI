@@ -19,93 +19,96 @@ IF TARGET != MASTER
 ENDIF
 CALL SHOW_INFO, TARGET
 
-PRINTFORML □ %I18N("相性")% 
-SIF TALENT:服従
-	PRINTFORML 　%I18N("全キャラ")%×120\% 
-SIF TALENT:隷属
-	PRINTFORML 　%I18N("全キャラ")%×150\% 
+PRINTPLAINFORM □ %I18N("相性")% 
+PRINTFORML [100] \@ OPTION:相性非表示 ? 開く # 閉じる \@
+IF !OPTION:相性非表示
+	SIF TALENT:服従
+		PRINTFORML 　%I18N("全キャラ")%×120\% 
+	SIF TALENT:隷属
+		PRINTFORML 　%I18N("全キャラ")%×150\% 
 
-SIF TALENT:犬嫌い
-	PRINTFORML 　%I18N("素質:|0|との相性", , I18N("犬"))%-30\%
-SIF TALENT:猫嫌い
-	PRINTFORML 　%I18N("素質:|0|との相性", , I18N("猫"))%-30\%
-SIF CSTR:種族嫌悪 != ""
-	PRINTFORML 　種族:%CSTR:種族嫌悪%との相性-30\%
+	SIF TALENT:犬嫌い
+		PRINTFORML 　%I18N("素質:|0|との相性", , I18N("犬"))%-30\%
+	SIF TALENT:猫嫌い
+		PRINTFORML 　%I18N("素質:|0|との相性", , I18N("猫"))%-30\%
+	SIF CSTR:種族嫌悪 != ""
+		PRINTFORML 　種族:%CSTR:種族嫌悪%との相性-30\%
 
-表示数 = 0
-FOR LCOUNT, 0, 20000
-	;CSVがあるか、子供の場合に参照
-	IF EXISTCSV(LCOUNT) || LCOUNT > 10000
-		;子供・クローンの人数を突っ切ったら終了
-		SIF LCOUNT > 10000 && CHILDNAME:(LCOUNT-10000) == ""
-			BREAK
-		;子供・クローンが何らかの理由で消えてたら相性も消す
-		[SKIPSTART]
-		IF LCOUNT > 10000 && !GETCHARA(LCOUNT)
-			RELATION:LCOUNT = 100
-			CONTINUE
-		ENDIF
-		[SKIPEND]
-		相性表示用 = 
-		相性補正後 = 0
-		IF RELATION:LCOUNT || TALENT:犬嫌い || TALENT:猫嫌い || CSTR:種族嫌悪 != ""
-			IF TALENT:隷属
-				相性補正後 = 150
-			ELSEIF TALENT:服従
-				相性補正後 = 120
-			ELSE
-				相性補正後 = RELATION:LCOUNT == 0 ? 100 # RELATION:LCOUNT
-			ENDIF
-			IF TALENT:犬嫌い
-				IF GETCHARA(LCOUNT) >= 0 && TALENT:GETCHARA(LCOUNT):犬 && !種族嫌悪例外処理(CHARANAMEF(TARGET), CHARANAMEF(LCOUNT))
-					相性補正後 = MAX(相性補正後-30, 1)
-				ELSEIF EXISTCSV(LCOUNT) && CSVTALENT(LCOUNT, GETNUM(TALENT, "犬")) && !種族嫌悪例外処理(CHARANAMEF(TARGET), CSVNAMEF(LCOUNT))
-					相性補正後 = MAX(相性補正後-30, 1)
-				ENDIF
-			ENDIF
-			IF TALENT:猫嫌い
-				IF GETCHARA(LCOUNT) >= 0 && TALENT:GETCHARA(LCOUNT):猫 && !種族嫌悪例外処理(CHARANAMEF(TARGET), CHARANAMEF(LCOUNT))
-					相性補正後 = MAX(相性補正後-30, 1)
-				ELSEIF EXISTCSV(LCOUNT) && CSVTALENT(LCOUNT, GETNUM(TALENT, "猫")) && !種族嫌悪例外処理(CHARANAMEF(TARGET), CSVNAMEF(LCOUNT))
-					相性補正後 = MAX(相性補正後-30, 1)
-				ENDIF
-			ENDIF
-			IF CSTR:種族嫌悪 != ""
-				IF GETCHARA(LCOUNT) >= 0 && ISHATERACE(TARGET, GETCHARA(LCOUNT)) && !種族嫌悪例外処理(CHARANAMEF(TARGET), CHARANAMEF(LCOUNT))
-					相性補正後 = MAX(相性補正後-30, 1)
-					SIF ORIGIN && CSTR:GETCHARA(LCOUNT):種族 == "人間" && 相性補正後 == 70
-						CONTINUE
-				ELSEIF EXISTCSV(LCOUNT) && 特定種族嫌悪(TARGET, CSVCSTR(LCOUNT, GETNUM(CSTR, "種族"))) && !種族嫌悪例外処理(CHARANAMEF(TARGET), CSVNAMEF(LCOUNT))
-					相性補正後 = MAX(相性補正後-30, 1)
-					;人間嫌い70%を全部表示するとえらいこっちゃなので除外
-					SIF CSVCSTR(LCOUNT, GETNUM(CSTR, "種族")) == "人間" && 相性補正後 == 70
-						CONTINUE
-				ENDIF
-			ENDIF
-			SIF (相性補正後 == 100) || (TALENT:服従 && 相性補正後 == 120) || (TALENT:隷属 && 相性補正後 == 150)
+	表示数 = 0
+	FOR LCOUNT, 0, 20000
+		;CSVがあるか、子供の場合に参照
+		IF EXISTCSV(LCOUNT) || LCOUNT > 10000
+			;子供・クローンの人数を突っ切ったら終了
+			SIF LCOUNT > 10000 && CHILDNAME:(LCOUNT-10000) == ""
+				BREAK
+			;子供・クローンが何らかの理由で消えてたら相性も消す
+			[SKIPSTART]
+			IF LCOUNT > 10000 && !GETCHARA(LCOUNT)
+				RELATION:LCOUNT = 100
 				CONTINUE
-			IF 相性補正後 > 100
-				SETCOLORBYNAME coral
-			ELSE
-				SETCOLORBYNAME lightskyblue
 			ENDIF
-			IF NOF(MASTER) == LCOUNT
-				相性表示用 = 　%NAMEDISP(MASTER)%×{相性補正後}\%
-			ELSE
-				相性表示用 = 　%CSVNAMEDISP(LCOUNT)%×{相性補正後}\%
+			[SKIPEND]
+			相性表示用 = 
+			相性補正後 = 0
+			IF RELATION:LCOUNT || TALENT:犬嫌い || TALENT:猫嫌い || CSTR:種族嫌悪 != ""
+				IF TALENT:隷属
+					相性補正後 = 150
+				ELSEIF TALENT:服従
+					相性補正後 = 120
+				ELSE
+					相性補正後 = RELATION:LCOUNT == 0 ? 100 # RELATION:LCOUNT
+				ENDIF
+				IF TALENT:犬嫌い
+					IF GETCHARA(LCOUNT) >= 0 && TALENT:GETCHARA(LCOUNT):犬 && !種族嫌悪例外処理(CHARANAMEF(TARGET), CHARANAMEF(LCOUNT))
+						相性補正後 = MAX(相性補正後-30, 1)
+					ELSEIF EXISTCSV(LCOUNT) && CSVTALENT(LCOUNT, GETNUM(TALENT, "犬")) && !種族嫌悪例外処理(CHARANAMEF(TARGET), CSVNAMEF(LCOUNT))
+						相性補正後 = MAX(相性補正後-30, 1)
+					ENDIF
+				ENDIF
+				IF TALENT:猫嫌い
+					IF GETCHARA(LCOUNT) >= 0 && TALENT:GETCHARA(LCOUNT):猫 && !種族嫌悪例外処理(CHARANAMEF(TARGET), CHARANAMEF(LCOUNT))
+						相性補正後 = MAX(相性補正後-30, 1)
+					ELSEIF EXISTCSV(LCOUNT) && CSVTALENT(LCOUNT, GETNUM(TALENT, "猫")) && !種族嫌悪例外処理(CHARANAMEF(TARGET), CSVNAMEF(LCOUNT))
+						相性補正後 = MAX(相性補正後-30, 1)
+					ENDIF
+				ENDIF
+				IF CSTR:種族嫌悪 != ""
+					IF GETCHARA(LCOUNT) >= 0 && ISHATERACE(TARGET, GETCHARA(LCOUNT)) && !種族嫌悪例外処理(CHARANAMEF(TARGET), CHARANAMEF(LCOUNT))
+						相性補正後 = MAX(相性補正後-30, 1)
+						SIF ORIGIN && CSTR:GETCHARA(LCOUNT):種族 == "人間" && 相性補正後 == 70
+							CONTINUE
+					ELSEIF EXISTCSV(LCOUNT) && 特定種族嫌悪(TARGET, CSVCSTR(LCOUNT, GETNUM(CSTR, "種族"))) && !種族嫌悪例外処理(CHARANAMEF(TARGET), CSVNAMEF(LCOUNT))
+						相性補正後 = MAX(相性補正後-30, 1)
+						;人間嫌い70%を全部表示するとえらいこっちゃなので除外
+						SIF CSVCSTR(LCOUNT, GETNUM(CSTR, "種族")) == "人間" && 相性補正後 == 70
+							CONTINUE
+					ENDIF
+				ENDIF
+				SIF (相性補正後 == 100) || (TALENT:服従 && 相性補正後 == 120) || (TALENT:隷属 && 相性補正後 == 150)
+					CONTINUE
+				IF 相性補正後 > 100
+					SETCOLORBYNAME coral
+				ELSE
+					SETCOLORBYNAME lightskyblue
+				ENDIF
+				IF NOF(MASTER) == LCOUNT
+					相性表示用 = 　%NAMEDISP(MASTER)%×{相性補正後}\%
+				ELSE
+					相性表示用 = 　%CSVNAMEDISP(LCOUNT)%×{相性補正後}\%
+				ENDIF
+			ENDIF
+			IF 相性表示用 != ""
+				PRINTFORMLC %相性表示用%
+				表示数++
+			ENDIF
+			RESETCOLOR
+			IF 表示数 == 4
+				CALL NEWLINE
+				表示数 = 0
 			ENDIF
 		ENDIF
-		IF 相性表示用 != ""
-			PRINTFORMLC %相性表示用%
-			表示数++
-		ENDIF
-		RESETCOLOR
-		IF 表示数 == 4
-			CALL NEWLINE
-			表示数 = 0
-		ENDIF
-	ENDIF
-NEXT
+	NEXT
+ENDIF
 CALL NEWLINE
 
 DRAWLINE
@@ -253,6 +256,9 @@ SELECTCASE RESULT
 	;99に服装変更のボタンがある
 	CASE 99
 		CALL CHARA_CLOTHES_SETTING
+		JUMP STATUS, ロストキャラ表示
+	CASE 100
+		INVERTBIT OPTION:相性非表示, 0
 		JUMP STATUS, ロストキャラ表示
 ENDSELECT
 
@@ -2369,93 +2375,34 @@ CALL NEWLINE
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC チェック箇所
 #DIM DYNAMIC 対象
+#DIM DYNAMIC 衣服文字数
 
-FOR LCOUNT, 0, VARSIZE("CSTR")
-	SELECTCASE CSTRNAME:LCOUNT
-		CASE "特殊", "上半身上着", "下半身上着", "全身上着", "上半身下着", "下半身下着", "足元"
-			IF CSTR:対象:LCOUNT != "" || CFLAG:対象:(CSTRNAME:LCOUNT+"着衣不可")
-				PRINTFORM 　%CSTRNAME:LCOUNT, 10, LEFT%:
-				IF CFLAG:対象:(CSTRNAME:LCOUNT+"着衣不可")
-					PRINTFORM 着衣不可
-				ELSE
-					PRINTFORM %CSTR:対象:LCOUNT%
-				ENDIF
-
-				IF 耐水性(対象, CSTRNAME:LCOUNT)
-					SETCOLOR 0x7FFFD4
-					PRINT  (耐水)
-					RESETCOLOR
-				ENDIF
-
-				IF MOD:着衣パイズリ
-					SELECTCASE CSTRNAME:LCOUNT
-						CASE "上半身上着", "全身上着", "上半身下着"
-							SELECTCASE CSTRNAME:LCOUNT
-								CASE "全身上着"
-									チェック箇所 = CFLAG:対象:全身上着パイズリ
-								CASE "上半身上着"
-									チェック箇所 = CFLAG:対象:上着パイズリ
-								CASE "上半身下着"
-									チェック箇所 = CFLAG:対象:下着パイズリ
-							ENDSELECT
-							SETCOLOR 0xFFC0CB
-							SELECTCASE チェック箇所
-								CASE 1
-									PRINT  (下から挿入するパイズリのみ可能)
-								CASE 2
-									PRINT  (下から挿入してパイズリ・パイズリフェラが可能)
-								CASE 3
-									PRINT  (縦パイズリのみ可能)
-								CASE 4, 14, 24
-									PRINT  (着衣パイズリ可能)
-								CASE 5
-									PRINT  (たくし上げてパイズリ可能)
-								CASE 6
-									PRINT  (はだけさせてパイズリ可能)
-								CASE 10
-									IF TALENT:対象:バストサイズ >= 6
-										PRINT  (谷間に生地を挟んでパイズリ可能)
-									ELSE
-										PRINT  (はだけさせてパイズリ可能)
-									ENDIF
-								CASE 11
-									IF TALENT:対象:バストサイズ >= 6
-										PRINT  (谷間に生地を挟むか下から挿入してパイズリ可能)
-									ELSE
-										PRINT  (はだけさせるか下から挿入してパイズリ可能)
-									ENDIF
-								CASE 12
-									IF TALENT:対象:バストサイズ >= 6
-										PRINT  (谷間に生地を挟んでパイズリ可能 / 下から挿入してパイズリ・パイズリフェラが可能)
-									ELSE
-										PRINT  (はだけさせてパイズリ可能 / 下から挿入してパイズリ・パイズリフェラが可能)
-									ENDIF
-								CASE 13
-									IF TALENT:対象:バストサイズ >= 6
-										PRINT  (谷間に生地を挟むか前から挿入してパイズリ可能)
-									ELSE
-										PRINT  (はだけさせるか前から挿入してパイズリ可能)
-									ENDIF
-								CASE 20
-									PRINT  (服の上からパイズリ可能)
-								CASE 21
-									PRINT  (服の上からパイズリ可能 / 下から挿入してパイズリ可能)
-								CASE 22
-									PRINT  (服の上からパイズリ可能 / 下から挿入してパイズリ・パイズリフェラが可能)
-								CASE 23
-									PRINT  (服の上からパイズリ可能 / 前から挿入してパイズリ可能)
-								CASEELSE
-									PRINT  (着衣パイズリ不可)
-							ENDSELECT
-							RESETCOLOR
-					ENDSELECT
-				ENDIF
-
-				PRINTL
-			ENDIF
-	ENDSELECT
+FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
+	衣服文字数 = MAX(STRLENS(CSTR:対象:LCOUNT), 衣服文字数)
 NEXT
-
+衣服文字数 += 2
+FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
+	IF CFLAG:対象:(CSTRNAME:LCOUNT+"着衣不可")
+		PRINTFORM 　%CSTRNAME:LCOUNT, 10, LEFT%:着衣不可
+	ELSEIF CSTR:対象:LCOUNT != ""
+		PRINTFORM 　%CSTRNAME:LCOUNT, 10, LEFT%:%CSTR:対象:LCOUNT, 衣服文字数, LEFT%
+		SIF 耐水性(対象, CSTRNAME:LCOUNT)
+			PRINT [耐水]
+		IF MOD:着衣パイズリ && GROUPMATCH(CSTRNAME:LCOUNT, "上半身上着", "全身上着", "上半身下着")
+			SELECTCASE CSTRNAME:LCOUNT
+				CASE "全身上着"
+					チェック箇所 = CFLAG:対象:全身上着パイズリ
+				CASE "上半身上着"
+					チェック箇所 = CFLAG:対象:上着パイズリ
+				CASE "上半身下着"
+					チェック箇所 = CFLAG:対象:下着パイズリ
+			ENDSELECT
+			SIF パイズリフラグ説明(チェック箇所) != ""
+				PRINTFORM [%パイズリフラグ説明(チェック箇所, TARGET)%]
+		ENDIF
+	ENDIF
+	CALL NEWLINE
+NEXT
 SIF CFLAG:対象:貞操帯
 	PRINTFORML 　貞操帯　　:{CFLAG:対象:貞操帯}日目
 
