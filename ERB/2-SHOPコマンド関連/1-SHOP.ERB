@@ -1542,6 +1542,7 @@ NEXT
 #DIM DYNAMIC 変身先
 #DIM DYNAMIC 不明な変身先
 #DIM DYNAMIC CSV体格
+
 DRAWLINE
 PRINTL □変化させるキャラを選んでください
 FOR LCOUNT, 1, CHARANUM
@@ -1569,11 +1570,13 @@ FOR LCOUNT, 1, CHARANUM
 								不明な変身先 = LCOUNT2
 								BREAK
 							NEXT
-							IF CSVNAME(不明な変身先) == "マゼラン・マゼラン"
-								PRINTFORML 　[{LCOUNT, 2}] %NAME:LCOUNT% 現在：フェルディナンド＝カジキ先輩に変身中
-							ELSE
-								PRINTFORML 　[{LCOUNT, 2}] %NAME:LCOUNT% 現在：%NAME:不明な変身先%の\@ TALENT:相性参照キャラ:恋心 ? 想い人 # 結婚相手 \@に変身中
-							ENDIF
+							PRINTFORM 　[{LCOUNT, 2}] %NAME:LCOUNT% 現在：
+							SELECTCASE CSVNAME(不明な変身先)
+								CASE "マゼラン・マゼラン"
+									PRINTFORML フェルディナンド＝カジキ先輩に変身中
+								CASEELSE
+									PRINTFORML %NAME:不明な変身先%の\@ TALENT:相性参照キャラ:恋心 ? 想い人 # 結婚相手 \@に変身中
+							ENDSELECT
 						CASEELSE
 							PRINTFORML 　[{LCOUNT, 2}] %NAME:LCOUNT% 現在：%CSVNAME(TRANCEFLAG:LCOUNT:ミゼラン専用)%に変身中
 					ENDSELECT
@@ -1616,20 +1619,25 @@ SELECTCASE RESULT
 					;恋心か既婚者持ちの場合別枠（不明も可能）ただしハニーバニーと重複不可
 					CALL DISABLE, "EVENT_ミゼラン変身", 相性参照キャラ
 					IF !RESULT && !ハニーバニー:相性参照キャラ:0
-						IF TALENT:相性参照キャラ:恋心
-							IF CSVNAME(相性参照キャラ) == "マゼラン・マゼラン"
-								PRINTFORML 　[10000] フェルディナンド＝カジキ先輩
-							ELSEIF CSTR:相性参照キャラ:恋心 == "不明"
-								PRINTFORML 　[10000] %NAME:相性参照キャラ%の想い人
-							ELSEIF GETNO(CSTR:相性参照キャラ:恋心)
-								PRINTFORML 　[{GETNO(CSTR:相性参照キャラ:恋心)}] %CSTR:相性参照キャラ:恋心%
-							ENDIF
-						ELSEIF TALENT:相性参照キャラ:既婚者
-							IF CSTR:相性参照キャラ:既婚者 == "不明"
-								PRINTFORML 　[10000] %NAME:相性参照キャラ%の結婚相手
-							ELSEIF GETNO(CSTR:相性参照キャラ:既婚者)
-								PRINTFORML 　[{GETNO(CSTR:相性参照キャラ:既婚者)}] %CSTR:相性参照キャラ:既婚者%
-							ENDIF
+						IF TALENT:相性参照キャラ:恋心 || TALENT:相性参照キャラ:既婚者
+							SELECTCASE CSVNAME(相性参照キャラ)
+								CASE "マゼラン・マゼラン"
+									PRINTFORML 　[10000] フェルディナンド＝カジキ先輩
+								CASEELSE
+									IF TALENT:相性参照キャラ:恋心
+										IF CSTR:相性参照キャラ:恋心 == "不明"
+											PRINTFORML 　[10000] %NAME:相性参照キャラ%の想い人
+										ELSEIF GETNO(CSTR:相性参照キャラ:恋心)
+											PRINTFORML 　[{GETNO(CSTR:相性参照キャラ:恋心)}] %CSTR:相性参照キャラ:恋心%
+										ENDIF
+									ELSE
+										IF CSTR:相性参照キャラ:既婚者 == "不明"
+											PRINTFORML 　[10000] %NAME:相性参照キャラ%の結婚相手
+										ELSEIF GETNO(CSTR:相性参照キャラ:既婚者)
+											PRINTFORML 　[{GETNO(CSTR:相性参照キャラ:既婚者)}] %CSTR:相性参照キャラ:既婚者%
+										ENDIF
+									ENDIF
+							ENDSELECT
 						ENDIF
 					ENDIF
 					FOR LCOUNT, 1, 10000
@@ -1654,11 +1662,12 @@ SELECTCASE RESULT
 					変身先 = RESULT
 					PRINT ＜ミゼランは
 					IF 変身先 == 10000
-						IF CSVNAME(相性参照キャラ) == "マゼラン・マゼラン"
-							PRINT フェルディナンド＝カジキ先輩
-						ELSE
-							PRINTFORM %NAME:相性参照キャラ%の\@ TALENT:相性参照キャラ:恋心 ? 想い人 # 結婚相手 \@
-						ENDIF
+						SELECTCASE CSVNAME(相性参照キャラ)
+							CASE "マゼラン・マゼラン"
+								PRINT フェルディナンド＝カジキ先輩
+							CASEELSE
+								PRINTFORM %NAME:相性参照キャラ%の\@ TALENT:相性参照キャラ:恋心 ? 想い人 # 結婚相手 \@
+						ENDSELECT
 					ELSE
 						PRINTFORM %CSVNAME(変身先)%
 					ENDIF
@@ -1800,6 +1809,16 @@ ELSE
 	NEXT
 ENDIF
 CALL CHECKDRAWLINE
+
+;;;対象が変身中のミゼランなら1 NO参照フラグに
+@ISMIGELLAN, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+SIF 対象 == -1
+	RETURNF 0
+SIF 対象 == GETCHARANAME("ミゼラン・ミゼラン") && TRANCEFLAG:対象:ミゼラン専用
+	RETURNF 1
+RETURNF 0
 
 @ミゼラン変身解除, ミゼラン
 #DIM DYNAMIC ミゼラン

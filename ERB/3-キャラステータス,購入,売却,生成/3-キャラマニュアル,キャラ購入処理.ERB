@@ -314,13 +314,14 @@ ENDIF
 
 RETURN 0
 
-@CHARA_ADD, 対象, クローニング
+@CHARA_ADD, 対象, クローニング, 高速化
 #DIM DYNAMIC LCOUNT
 ;今のところは100人まで
 #DIMS DYNAMIC 相性設定用, 100
 #DIM DYNAMIC 名前例外処理
 #DIMS DYNAMIC 相性値, 200
 #DIM DYNAMIC クローニング
+#DIM DYNAMIC 高速化
 #DIM DYNAMIC 適正ABL
 #DIM DYNAMIC 適正EXP
 #DIM DYNAMIC 対象
@@ -371,14 +372,16 @@ IF 対象 == GETNO("マッドラット") && GETCHARANAME("ハート") >= 0 && TR
 	TRANCE:TALENTF("回復遅い") = 1
 ENDIF
 
-;グローバルタグ色設定の反映
-LOADGLOBAL
-SIF Gタグ色:NOF(TARGET)
-	CFLAG:タグ色 = Gタグ色:NOF(TARGET)
+;グローバルタグ色設定の反映 学園モードは意味がないので飛ばす
+IF ゲームモード() != "学園モード"
+	LOADGLOBAL
+	SIF Gタグ色:NOF(TARGET)
+		CFLAG:タグ色 = Gタグ色:NOF(TARGET)
+ENDIF
 
 ;MOD適用
 ;性別不明キャラは上で選んでるので性別MODは適用されない
-IF ゲームモード() != "段位認定"
+IF ゲームモード() != "段位認定" && !GETBIT(高速化, 1)
 	FOR LCOUNT, 0, VARSIZE("MOD")
 		SIF ERDNAME(MOD, LCOUNT) == ""
 			CONTINUE
@@ -399,25 +402,27 @@ CALL キャラ生成初期フラグ
 CALL 初期経験セット, TARGET
 
 ;上昇可能なABLは上げておく
-FOR LCOUNT, 0, VARSIZE("ABL")
-	SIF ABLNAME:LCOUNT == "魔法技能"
-		CONTINUE
-	適正ABL = 0
-	適正EXP = 0
-	REPEAT 10
-		VARSET ABLUP
-		VARSET ABLUPEXP
-		TRYCALLFORM ABL_CHECK_%ABLNAME:LCOUNT%
-		CALL ABLUP, ABLNAME:LCOUNT
-		IF RESULT
-			適正ABL = ABL:LCOUNT
-			SIF !適正EXP
-				適正EXP = MAXARRAY(ABLUPEXP)
-		ENDIF
-	REND
-	SIF 適正ABL && LCOUNT >= GETNUM(ABL, "料理技能") && ABLNAME:LCOUNT != "栽培技能"
-		DEBUGPRINTFORML %NAME:TARGET%の%ABLNAME:LCOUNT%は不適正 適正ABL:{適正ABL} 適正EXP:{適正EXP}
-NEXT
+IF !GETBIT(高速化, 0)
+	FOR LCOUNT, 0, VARSIZE("ABL")
+		SIF ABLNAME:LCOUNT == "魔法技能"
+			CONTINUE
+		適正ABL = 0
+		適正EXP = 0
+		REPEAT 10
+			VARSET ABLUP
+			VARSET ABLUPEXP
+			TRYCALLFORM ABL_CHECK_%ABLNAME:LCOUNT%
+			CALL ABLUP, ABLNAME:LCOUNT
+			IF RESULT
+				適正ABL = ABL:LCOUNT
+				SIF !適正EXP
+					適正EXP = MAXARRAY(ABLUPEXP)
+			ENDIF
+		REND
+		SIF 適正ABL && LCOUNT >= GETNUM(ABL, "料理技能") && ABLNAME:LCOUNT != "栽培技能"
+			DEBUGPRINTFORML %NAME:TARGET%の%ABLNAME:LCOUNT%は不適正 適正ABL:{適正ABL} 適正EXP:{適正EXP}
+	NEXT
+ENDIF
 
 MAXBASE:魔力 = ABL:魔法技能*1000
 ;アニマルなら助手可能にする
@@ -477,7 +482,8 @@ CFLAG:不妊担当魔術師 = -1
 CFLAG:男性器提供者 = -1
 CFLAG:モチベーション = 50
 CFLAG:憑依 = -1
-CFLAG:本への興味 = MAX(図書室ランク(), 5)
+SIF ゲームモード() != "学園モード"
+	CFLAG:本への興味 = MAX(図書室ランク(), 5)
 排卵からの経過時間:TARGET:0 = 1+RAND:280
 ;獣以外でも獣化したときのために発情期フラグは設定する
 ;段位なら固定

@@ -1297,8 +1297,50 @@ RETURNF GETNUM(EXP, 経験名)
 #FUNCTION
 #DIMS REF 変数
 #DIMS DYNAMIC 検索文字列
-
 RETURNF FINDELEMENT(変数, 検索文字列, 0, VARSIZE("変数"), 1)
+
+
+;;;以下CSVありはCSVの値CSVなしはそのまま返す 文字列で判定するので使用時にGETNUMする必要はない
+@CSVTALENTF, 対象, 素質名
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 素質名
+SIF EXISTCSV(対象)
+	RETURNF CSVTALENT(対象, GETNUM(TALENT, 素質名))
+RETURNF TALENT:FINDCHARA(NO, 対象):素質名
+
+@CSVABLF, 対象, 能力名
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 能力名
+SIF EXISTCSV(対象)
+	RETURNF CSVABL(対象, GETNUM(ABL, 能力名))
+RETURNF ABL:FINDCHARA(NO, 対象):能力名
+
+@CSVEXPF, 対象, 経験名
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 経験名
+SIF EXISTCSV(対象)
+	RETURNF CSVEXP(対象, GETNUM(EXP, 経験名))
+RETURNF EXP:FINDCHARA(NO, 対象):経験名
+
+@CSVCFLAGF, 対象, フラグ名
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC フラグ名
+SIF EXISTCSV(対象)
+	RETURNF CSVCFLAG(対象, GETNUM(CFLAG, フラグ名))
+RETURNF CFLAG:FINDCHARA(NO, 対象):フラグ名
+
+@CSVCSTRF, 対象, CSTR名
+#FUNCTIONS
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC CSTR名
+SIF EXISTCSV(対象)
+	RETURNF CSVCSTR(対象, GETNUM(CSTR, CSTR名))
+RETURNF CSTR:FINDCHARA(NO, 対象):CSTR名
+
 
 ;;;引数のキャラのNAMEを返すが、NOの範囲が1～9999じゃないと返さない プレイヤーの名前入力による予期せぬ挙動を防ぐため
 @CHARANAMEF, 対象
@@ -2270,27 +2312,38 @@ NEXT
 
 SPRITECREATE "カレンダー", 0
 
-
 ;-------------------------------------------------
 ;相性や種族嫌悪
 
 ;;;第一引数のキャラの第二引数のキャラに対するRELATIONを返す
-@相性値, 対象, 相手
+@相性値, 対象, 相手, 相手NOFLAG = 0
 #FUNCTION
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 相手
+#DIM DYNAMIC 相手NOFLAG
 #DIM DYNAMIC 補正値
 #DIM DYNAMIC 返り値
 
-SIF TALENT:対象:犬嫌い && TALENT:相手:犬 && !種族嫌悪例外処理(CHARANAMEF(対象), CHARANAMEF(相手))
-	補正値 -= 30
-SIF TALENT:対象:猫嫌い && TALENT:相手:猫 && !種族嫌悪例外処理(CHARANAMEF(対象), CHARANAMEF(相手))
-	補正値 -= 30
-SIF ISHATERACE(対象, 相手) && !種族嫌悪例外処理(CHARANAMEF(対象), CHARANAMEF(相手))
-	補正値 -= 30
+;変身中ミゼランかつ変身先が不明でない場合NO参照に切り替え
+IF !相手NOFLAG && ISMIGELLAN(相手) && TRANCEFLAG:相手:ミゼラン専用 != 10000
+	相手 = TRANCEFLAG:相手:ミゼラン専用
+	相手NOFLAG = 1
+ENDIF
+IF TALENT:対象:犬嫌い && (相手NOFLAG ? CSVTALENTF(相手, "犬") # TALENT:相手:犬)
+	SIF !種族嫌悪例外処理(CHARANAMEF(対象), (相手NOFLAG ? CSVNAMEF(相手, 1) # CHARANAMEF(相手)))
+		補正値 -= 30
+ENDIF
+IF TALENT:対象:猫嫌い && (相手NOFLAG ? CSVTALENTF(相手, "猫") # TALENT:相手:猫)
+	SIF !種族嫌悪例外処理(CHARANAMEF(対象), (相手NOFLAG ? CSVNAMEF(相手, 1) # CHARANAMEF(相手)))
+		補正値 -= 30
+ENDIF
+IF ISHATERACE(対象, 相手, 相手NOFLAG)
+	SIF !種族嫌悪例外処理(CHARANAMEF(対象), (相手NOFLAG ? CSVNAMEF(相手, 1) # CHARANAMEF(相手)))
+		補正値 -= 30
+ENDIF
 
 ;ネクロマンサーと霊感と孔雀の瞳なら中の人が見破れる
-IF CFLAG:相手:憑依 >= 0
+IF !相手NOFLAG && CFLAG:相手:憑依 >= 0
 	IF TALENT:対象:霊感 || TALENT:対象:ネクロマンサー || TALENT:対象:孔雀の瞳
 		IF RELATION:対象:(NO:相手) == 0
 			返り値 = 100+補正値
@@ -2305,10 +2358,13 @@ IF CFLAG:相手:憑依 >= 0
 		ENDIF
 	ENDIF
 ELSE
-	IF RELATION:対象:(NO:相手) == 0
+	;もう使わないので登録番号用変数にNOを上書き（処理追加する場合注意）
+	SIF !相手NOFLAG
+		相手 = NO:相手
+	IF RELATION:対象:相手 == 0
 		返り値 = 100+補正値
 	ELSE
-		返り値 = RELATION:対象:(NO:相手)+補正値
+		返り値 = RELATION:対象:相手+補正値
 	ENDIF
 ENDIF
 
@@ -2390,22 +2446,21 @@ ENDIF
 #DIMS DYNAMIC 分割用, 20
 SIF 対象 < 0
 	RETURNF 0
-
 SPLIT CSTR:対象:種族嫌悪, "/", 分割用
-
 SIF FINDELEMENT(分割用, 対象種族, 0, VARSIZE("分割用"), 1) >= 0
 	RETURNF 1
-
 RETURNF 0
 
 ;;;対象が相手の種族を嫌っているかどうかの判定
-@ISHATERACE, 対象, 相手
+@ISHATERACE, 対象, 相手, 相手NOFLAG = 0
 #FUNCTION
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 相手
+#DIM DYNAMIC 対象NOFLAG
+#DIM DYNAMIC 相手NOFLAG
 SIF 対象 < 0 || 相手 < 0
 	RETURNF 0
-SIF 特定種族嫌悪(対象, CSTR:相手:種族)
+SIF 特定種族嫌悪(対象, (相手NOFLAG ? CSVCSTRF(相手, "種族") # CSTR:相手:種族))
 	RETURNF 1
 RETURNF 0
 
