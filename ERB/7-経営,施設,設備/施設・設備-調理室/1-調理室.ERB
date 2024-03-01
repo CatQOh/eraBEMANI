@@ -1,5 +1,6 @@
 ﻿@調理室
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 未所持調理器具
 #DIM DYNAMIC 名前文字数
 DRAWLINE
 PRINTL □調理室
@@ -28,7 +29,15 @@ IF ゲームモード() == "新婚モード" && FINDCHARA(CFLAG:嫁, 1) >= 0
 ENDIF
 
 IF CMATCH(CSTR:配属, "調理室")
-	PRINTFORML □料理当番:{CMATCH(CSTR:配属, "調理室")}/3 現在の料理レベル:{料理レベル()}
+	PRINTFORM □料理当番:{CMATCH(CSTR:配属, "調理室")}/3 現在の料理レベル:{料理レベル()}
+	SELECTCASE CMATCH(CSTR:配属, "調理室")
+		CASE 1
+			PRINTL (最大10)
+		CASE 2
+			PRINTL (一人あたり最大5)
+		CASE 3
+			PRINTL (一人あたり最大4)
+	ENDSELECT
 	FOR LCOUNT, 0, CHARANUM
 		SIF CSTR:LCOUNT:配属 == "調理室"
 			CALL SETMAX(名前文字数, STRLENS(NAME:LCOUNT))
@@ -36,17 +45,8 @@ IF CMATCH(CSTR:配属, "調理室")
 	FOR LCOUNT, 0, CHARANUM
 		IF CSTR:LCOUNT:配属 == "調理室"
 			PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 料理技能:{ABL:LCOUNT:料理技能, 2, LEFT}
-			SELECTCASE CMATCH(CSTR:配属, "調理室")
-				CASE 1
-					PRINT (最大10)
-				CASE 2
-					PRINT (最大5)
-				CASE 3
-					PRINT (最大4)
-			ENDSELECT
 			SIF 統率者("調理室") && !TALENT:LCOUNT:統率
 				PRINT  統率者ボーナス+1 
-
 			CALL ISTALENT, LCOUNT, "料理人"
 			;CALL ISTALENT, LCOUNT, "潔癖症"
 			;CALL ISTALENT, LCOUNT, "汚れ無視"
@@ -71,7 +71,16 @@ PRINTL 　[1] - 献立を考案する
 PRINTL 　[2] - 料理当番を配属する
 PRINTL 　[3] - レシピを確認する
 PRINTL 　[4] - 調理室の説明
-PRINTL 　[5] - 調理器具を購入する
+未所持調理器具 = 0
+FOR LCOUNT, GETNUM(ITEM, "フラッシュドール窯"), GETNUM(ITEM, "フラッシュドール窯")+10
+	{
+	SIF GROUPMATCH(ITEMNAME:LCOUNT, "フラッシュドール窯", "醸造蒸留設備", "高級製麺機『麺です』", 
+		"ドリップマシーンエボリューション", "レインボーフライヤー", "フライパン・アバーブ", "大地の土鍋") && !ITEM:LCOUNT
+	}
+		未所持調理器具++
+NEXT
+SIF 未所持調理器具
+	PRINTL 　[5] - 調理器具を購入する
 SIF MOD:STS
 	PRINTL 　[8] - キャラを精肉する
 DRAWLINE

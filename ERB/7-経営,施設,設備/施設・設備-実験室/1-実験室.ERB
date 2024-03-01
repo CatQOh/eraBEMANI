@@ -26,8 +26,9 @@ IF CMATCH(CSTR:配属, "実験室")
 	FOR LCOUNT, 0, CHARANUM
 		SIF CSTR:LCOUNT:配属 != "実験室"
 			CONTINUE
-		PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 工作技能:{ABL:LCOUNT:工作技能} サドっ気:{ABL:LCOUNT:サドっ気} マゾっ気:{ABL:LCOUNT:マゾっ気}
+		PRINTFORM 　%NAME:LCOUNT, 名前文字数, LEFT% 工作技能:{ABL:LCOUNT:工作技能} サドっ気:{ABL:LCOUNT:サドっ気} マゾっ気:{ABL:LCOUNT:マゾっ気} 
 		IF !CFLAG:LCOUNT:配属完了
+			SETCOLORBYNAME gray
 			PRINT 【配属準備中】
 		ELSE
 			SIF 統率者("実験室") && !TALENT:LCOUNT:統率
@@ -47,9 +48,10 @@ IF CMATCH(CSTR:配属, "実験室")
 		SIF 特質("ワーカホリック", LCOUNT)
 			PRINTFORM [ワーカホリック+{特質("ワーカホリック", LCOUNT)/10}]
 		PRINTL 
+		RESETCOLOR
 	NEXT
 ELSE
-	PRINTL 　[無し]
+	CALL PRINTCOLORL, "　[無し]", "gray"
 ENDIF
 PRINTL 
 PRINTL 　[1] - キャラを配属させる
@@ -98,12 +100,10 @@ FOR LCOUNT, 0, 50
 	SIF ERDNAME(アイテム改造, LCOUNT) == ""
 		CONTINUE
 	IF ITEM:(ERDNAME(アイテム改造, LCOUNT))
-		PRINTFORML [{LCOUNT, 2}] - %ERDNAME(アイテム改造, LCOUNT)%
+		PRINTFORML 　[{LCOUNT, 2}] - %ERDNAME(アイテム改造, LCOUNT)%
 	ELSE
-		SETCOLORBYNAME gray
-		PRINTFORML [--] - %ERDNAME(アイテム改造, LCOUNT)%（アイテム未所持）
+		CALL PRINTCOLORL, @"　[--] - %ERDNAME(アイテム改造, LCOUNT)%（アイテム未所持）", "gray"
 	ENDIF
-	RESETCOLOR
 NEXT
 DRAWLINE
 PRINTPLAIN 　実験室　
@@ -463,7 +463,7 @@ SELECTCASE 選択アイテム
 			CASE 0
 				RESTART
 			CASE 1
-				改造後 = 普通の首輪
+				改造後 = 通常の首輪
 			CASE 2
 				改造後 = 尻尾プラグ付き首輪
 				費用 = 30000
@@ -480,7 +480,7 @@ SELECTCASE 選択アイテム
 			CASE 0
 				RESTART
 			CASE 1
-				改造後 = 普通のエプロン
+				改造後 = 通常のエプロン
 			CASE 2
 				改造後 = 玄人志向エプロン
 				費用 = 200000
@@ -507,28 +507,27 @@ ELSE
 	DRAWLINE
 	;浪費癖一人につき改造費2割増し
 	費用 += 費用/5*浪費癖人数("実験室")
-	PRINTFORML 「%改造前%」→「%改造後%」に改造します
+	PRINTFORML □「%改造前%」→「%改造後%」に改造します
 	SIF !ORIGIN
-		CALL PASELIL, @"費用:{費用}＄ 現在の所持金:{MONEY}＄"
+		CALL PASELIL, @"　費用:{費用}＄ 現在の所持金:{MONEY}＄"
 	PRINTL 
-	PRINTL 必要レベル(現在のレベル)
-	PRINTFORML 基礎レベル:{必要基礎レベル}({基礎研究レベル}) 欲望レベル:{必要欲望レベル}({欲望研究レベル})
-	PRINTFORML サドレベル:{必要サドレベル}({サド研究レベル}) マゾレベル:{必要マゾレベル}({マゾ研究レベル})
+	PRINTFORML □必要研究レベル
+	CALL アイテム改造_必要レベル表示, 必要基礎レベル, 必要欲望レベル, 必要サドレベル, 必要マゾレベル
 	SIF 必要アイテム != ""
-		PRINTFORML 必要アイテム:%必要アイテム%
+		PRINTFORML 　必要アイテム:%必要アイテム%
 	SIF 必要素質 == "スライム"
-		PRINTFORML 必要素質:スライム または 溶ける快
+		PRINTFORML 　必要素質:[スライム]or[溶ける快]
 	IF 費用 > MONEY && !ORIGIN
-		PRINTW 費用が足りません
+		PRINTW 改造費用が足りません
 		GOTO 改造
 	ELSEIF 必要基礎レベル > 基礎研究レベル || 必要欲望レベル > 欲望研究レベル || 必要サドレベル > サド研究レベル || 必要マゾレベル > マゾ研究レベル
-		PRINTW レベルが足りません
+		PRINTW 研究レベルが足りません
 		GOTO 改造
 	ELSEIF 必要アイテム != "" && !ITEM:必要アイテム
 		PRINTFORMW %必要アイテム%を所持していません
 		GOTO 改造
 	ELSEIF 必要素質 == "スライム" && スライム所属 == 0
-		PRINTFORMW 必要素質:スライム または 溶ける快を所持している研究者がいません
+		PRINTFORMW 必要な素質を所持している研究者がいません
 		GOTO 改造
 	ENDIF
 	PRINTL よろしいですか？
@@ -559,6 +558,29 @@ FOR LCOUNT, 0, CHARANUM
 NEXT
 
 GOTO 改造
+
+
+@アイテム改造_必要レベル表示, 必要:0, 必要:1, 必要:2, 必要:3
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 必要, 4
+#DIM DYNAMIC 研究, 4
+#DIMS DYNAMIC 研究種類 = "基礎", "欲望", "サド", "マゾ"
+研究:0 = 基礎研究レベル
+研究:1 = 欲望研究レベル
+研究:2 = サド研究レベル
+研究:3 = マゾ研究レベル
+
+FOR LCOUNT, 0, 4
+	SIF 必要:LCOUNT == 0
+		SETCOLORBYNAME gray
+	PRINTFORM 　%研究種類:LCOUNT%レベル:
+	SIF 必要:LCOUNT > 研究:LCOUNT
+		SETCOLORBYNAME firebrick
+	PRINTFORM {必要:LCOUNT, 2}/{研究:LCOUNT, 2}
+	RESETCOLOR
+	SIF LCOUNT%2 == 1
+		PRINTL 
+NEXT
 
 @実験室レベル計算
 #DIM DYNAMIC LCOUNT
