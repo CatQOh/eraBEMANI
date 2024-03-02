@@ -223,86 +223,54 @@ ELSEIF SUMEX >= 2 && MARK:快楽刻印 < 1
 ENDIF
 
 ;絶頂倍率計算しておかないと体力気力の消費がヤバイことになる
-IF ORG_C && ORG_V && ORG_A && ORG_B
-	PRINTL 四 重 絶 頂
-	PRINTL (それぞれ8倍の珠が得られます)
-	ORG_C *= 8
-	ORG_V *= 8
-	ORG_A *= 8
-	ORG_B *= 8
-	絶頂倍率 = 8
-	;実績「四重絶頂させる」
-	CALL 実績解除, "Insane Techniques"
-ELSEIF ORG_C && ORG_V && ORG_A
-	PRINTL Ｃ＆Ｖ＆Ａ絶頂
-	PRINTL (それぞれ4倍の珠が得られます)
-	ORG_C *= 4
-	ORG_V *= 4
-	ORG_A *= 4
-	絶頂倍率 = 4
-ELSEIF ORG_B && ORG_V && ORG_A
-	PRINTL Ｂ＆Ｖ＆Ａ絶頂
-	PRINTL (それぞれ4倍の珠が得られます)
-	ORG_B *= 4
-	ORG_V *= 4
-	ORG_A *= 4
-	絶頂倍率 = 4
-ELSEIF ORG_C && ORG_B && ORG_A
-	PRINTL Ｃ＆Ｂ＆Ａ絶頂
-	PRINTL (それぞれ4倍の珠が得られます)
-	ORG_C *= 4
-	ORG_B *= 4
-	ORG_A *= 4
-	絶頂倍率 = 4
-ELSEIF ORG_C && ORG_V && ORG_B
-	PRINTL Ｃ＆Ｖ＆Ｂ絶頂
-	PRINTL (それぞれ4倍の珠が得られます)
-	ORG_C *= 4
-	ORG_V *= 4
-	ORG_B *= 4
-	絶頂倍率 = 4
-ELSEIF ORG_C && ORG_V
-	PRINTL Ｃ＆Ｖ絶頂
-	PRINTL (それぞれ2倍の珠が得られます)
-	ORG_C *= 2
-	ORG_V *= 2
-	絶頂倍率 = 2
-ELSEIF ORG_C && ORG_A
-	PRINTL Ｃ＆Ａ絶頂
-	PRINTL (それぞれ2倍の珠が得られます)
-	ORG_C *= 2
-	ORG_A *= 2
-	絶頂倍率 = 2
-ELSEIF ORG_V && ORG_A
-	PRINTL Ｖ＆Ａ絶頂
-	PRINTL (それぞれ2倍の珠が得られます)
-	ORG_V *= 2
-	ORG_A *= 2
-	絶頂倍率 = 2
-ELSEIF ORG_C && ORG_B
-	PRINTL Ｃ＆Ｂ絶頂
-	PRINTL (それぞれ2倍の珠が得られます)
-	ORG_C *= 2
-	ORG_B *= 2
-	絶頂倍率 = 2
-	SIF CHARANAMEF(TARGET) == "ヨナ・ライゼ"
-		CALL 実績解除, "C＆B"
-ELSEIF ORG_V && ORG_B
-	PRINTL Ｖ＆Ｂ絶頂
-	PRINTL (それぞれ2倍の珠が得られます)
-	ORG_V *= 2
-	ORG_B *= 2
-	絶頂倍率 = 2
-ELSEIF ORG_A && ORG_B
-	PRINTL Ａ＆Ｂ絶頂
-	PRINTL (それぞれ2倍の珠が得られます)
-	ORG_A *= 2
-	ORG_B *= 2
-	絶頂倍率 = 2
-ELSE
-	絶頂倍率 = 1
+SELECTCASE GROUPMATCH(0, ORG_C, ORG_V, ORG_A, ORG_B)
+	CASE 0
+		絶頂倍率 = 8
+	CASE 1
+		絶頂倍率 = 4
+	CASE 2
+		絶頂倍率 = 2
+	CASE 3
+		絶頂倍率 = 1
+	CASE 4
+		絶頂倍率 = 0
+ENDSELECT
+
+IF 絶頂倍率 > 1
+	IF 絶頂倍率 == 8
+		PRINTL 四 重 絶 頂
+	ELSE
+		SIF ORG_C
+			PRINT Ｃ
+		IF ORG_V
+			SIF ORG_C
+				PRINT ＆
+			PRINT Ｖ
+		ENDIF
+		IF ORG_A
+			SIF ORG_C || ORG_V
+				PRINT ＆
+			PRINT Ａ
+		ENDIF
+		IF ORG_B
+			SIF ORG_C || ORG_V || ORG_A
+				PRINT ＆
+			PRINT Ｂ
+		ENDIF
+		PRINTL 絶頂
+	ENDIF
+	PRINTFORML (それぞれ{絶頂倍率}倍の珠が得られます)
+	ORG_C *= 絶頂倍率
+	ORG_V *= 絶頂倍率
+	ORG_A *= 絶頂倍率
+	ORG_B *= 絶頂倍率
 ENDIF
 
+;絶頂関連の実績
+SIF 絶頂倍率 == 8
+	CALL 実績解除, "Insane Techniques"
+SIF ORG_C && ORG_B && !ORG_V && !ORG_A && CHARANAMEF(TARGET) == "ヨナ・ライゼ"
+	CALL 実績解除, "C＆B"
 SIF ORG_C && SELECTCOMS == "電気按摩" && GROUPMATCH(CHARANAMEF(TARGET), "紳士めばえ", "淑女めばえ")
 	CALL 実績解除, "電マの暮らし"
 
