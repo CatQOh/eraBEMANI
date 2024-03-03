@@ -12,38 +12,23 @@ FOR LCOUNT, 0, VARSIZE("TEQUIP")
 		TRYCALLFORM EQUIP_COM_%TEQUIPNAME:LCOUNT%
 NEXT
 
-;お風呂場
+;以下TRAINと名前が異なるTEQUIPの処理
 SIF TEQUIP:お風呂場
 	CALL EQUIP_COM_お風呂場プレイ
-
-;貞操帯
 SIF CFLAG:貞操帯
 	CALL EQUIP_COM_貞操帯
-
-;触手調教中
 SIF TEQUIP:触手
 	CALL EQUIP_COM_触手召喚
-
-;新妻プレイ中
 SIF TEQUIP:エプロン
 	CALL EQUIP_COM_新妻プレイ
-
-;異物挿入中
 SIF TEQUIP:Ｖ異物 || TEQUIP:Ａ異物
 	CALL EQUIP_COM_異物挿入
-
-;尿道スライム
 SIF TEQUIP:尿道スライム
 	CALL EQUIP_COM_スライム尿道責め
-
-;お酒ボーナス
 SIF TEQUIP:お酒ボーナス
 	CALL EQUIP_COM_お酒を飲ませる
-
-;トイレ
 SIF TEQUIP:トイレ
 	CALL EQUIP_COM_トイレに行く
-;女装
 SIF TEQUIP:女装
 	CALL EQUIP_COM_女装させる
 
@@ -52,6 +37,7 @@ RETURN 1
 ;-------------------------------------------------
 ;同性の場合のチェック
 ;-------------------------------------------------
+;;;同性愛調教による補正
 @SOURCE_SEX_CHECK
 #DIM DYNAMIC 同性愛っ気
 #DIM DYNAMIC 同性愛中毒
@@ -61,7 +47,7 @@ SIF SEX(TARGET) != SEX(PLAYER)
 同性愛っ気 = SEX(TARGET) == 1 ? GETNUM(ABL, "ホモっ気") # GETNUM(ABL, "レズっ気")
 同性愛中毒 = SEX(TARGET) == 1 ? GETNUM(ABL, "ゲイ中毒") # GETNUM(ABL, "レズ中毒")
 
-;ABL:ホモっ気、レズっ気をみる
+;TARGET側の補正
 SELECTCASE ABL:同性愛っ気
 	CASE 0
 		TIMES SOURCE:反感, 1.30
@@ -95,7 +81,6 @@ SELECTCASE ABL:同性愛っ気
 		SOURCE:恭順 = (SOURCE:恭順*ABL:同性愛っ気)/5
 		TIMES SOURCE:反感, 0.80
 ENDSELECT
-;ABL:ゲイ中毒、レズ中毒をみる
 SELECTCASE ABL:同性愛中毒
 	CASE 1 TO 9
 		SOURCE:快C += SOURCE:快C/10*ABL:同性愛中毒
@@ -116,7 +101,7 @@ SELECTCASE ABL:同性愛中毒
 ENDSELECT
 SOURCE:中毒 += ABL:同性愛中毒*200
 
-;調教者のABL:ホモっ気またはレズっ気
+;PLAYER側の補正
 SELECTCASE ABL:PLAYER:同性愛っ気
 	CASE 0
 		TIMES SOURCE:情愛, 0.50
@@ -152,7 +137,6 @@ SELECTCASE ABL:PLAYER:同性愛っ気
 		SOURCE:情愛 = (SOURCE:情愛*ABL:PLAYER:同性愛っ気)/5
 		SOURCE:達成 = (SOURCE:達成*ABL:PLAYER:同性愛っ気)/5
 ENDSELECT
-;調教者のABL:ゲイ中毒またはレズ中毒
 SELECTCASE ABL:PLAYER:同性愛中毒
 	CASE 1 TO 9
 		SOURCE:情愛 += SOURCE:情愛/10*ABL:PLAYER:同性愛中毒
@@ -163,177 +147,150 @@ SELECTCASE ABL:PLAYER:同性愛中毒
 		SOURCE:性行動 = (SOURCE:性行動*ABL:PLAYER:同性愛中毒)/5
 		SOURCE:達成 = (SOURCE:達成*ABL:PLAYER:同性愛中毒)/5
 ENDSELECT
-;調教者の自制心
+
 IF TALENT:PLAYER:自制心
 	TIMES SOURCE:性行動, 0.50
 	TIMES SOURCE:達成, 0.50
 ENDIF
 
-
+;;;調教者の素質によるSOURCEへの補正
 @PLAYER_SKILL_CHECK
-;調教者のTALENT:解放をみる
 IF TALENT:PLAYER:解放
-	TIMES SOURCE:快C , 1.20
-	TIMES SOURCE:快V , 1.20
-	TIMES SOURCE:快A , 1.20
-	TIMES SOURCE:快B , 1.20
-	TIMES SOURCE:情愛 , 1.20
+	CALL TIMESCVAB, 120
+	TIMES SOURCE:情愛, 1.20
 ENDIF
-;調教者のTALENT:両刀をみる
 IF TALENT:PLAYER:両刀
-	TIMES SOURCE:情愛 , 1.20
-	TIMES SOURCE:性行動 , 1.20
-	TIMES SOURCE:達成 , 1.20
+	TIMES SOURCE:情愛, 1.20
+	TIMES SOURCE:性行動, 1.20
+	TIMES SOURCE:達成, 1.20
 ENDIF
-;調教者のTALENT:サドをみる
+
 SIF TALENT:PLAYER:サド
-	TIMES SOURCE:恐怖 , 1.50
-;調教者のTALENT:小悪魔をみる
+	TIMES SOURCE:恐怖, 1.50
 SIF TALENT:PLAYER:小悪魔
-	TIMES SOURCE:露出 , 1.50
-;調教者のTALENT:魅惑をみる
+	TIMES SOURCE:露出, 1.50
+
 IF TALENT:PLAYER:魅惑
-	TIMES SOURCE:不潔 , 0.50
-	TIMES SOURCE:逸脱 , 0.50
-	TIMES SOURCE:快C , 1.20
-	TIMES SOURCE:快V , 1.20
-	TIMES SOURCE:快A , 1.20
-	TIMES SOURCE:快B , 1.20
-	TIMES SOURCE:性行動 , 1.20
+	CALL TIMESCVAB, 120
+	TIMES SOURCE:不潔, 0.50
+	TIMES SOURCE:逸脱, 0.50
+	TIMES SOURCE:性行動, 1.20
 ENDIF
-;調教者のTALENT:謎の魅力をみる
 IF TALENT:PLAYER:謎の魅力
-	TIMES SOURCE:不潔 , 0.50
-	TIMES SOURCE:逸脱 , 0.50
-	TIMES SOURCE:快C , 1.20
-	TIMES SOURCE:快V , 1.20
-	TIMES SOURCE:快A , 1.20
-	TIMES SOURCE:快B , 1.20
-	TIMES SOURCE:性行動 , 1.20
-	TIMES SOURCE:達成 , 1.50
+	CALL TIMESCVAB, 120
+	TIMES SOURCE:不潔, 0.50
+	TIMES SOURCE:逸脱, 0.50
+	TIMES SOURCE:性行動, 1.20
+	TIMES SOURCE:達成, 1.50
 ENDIF
 
 ;-------------------------------------------------
 ;主人による調教のボーナス
 ;-------------------------------------------------
+;依存度ボーナス 補正の方向性を定めるものを、依存度の正負から苦痛刻印の有無に変更
 @MASTER_SKILL_CHECK
-;依存度ボーナス
-;補正の方向性を定めるものを、依存度の正負から苦痛刻印の有無に変更
 IF PLAYER == MASTER
 	SELECTCASE MARK:苦痛刻印
-		;苦痛刻印無し
 		CASE 0
 			SELECTCASE CFLAG:依存度
 				CASE IS >= 5000
-					TIMES SOURCE:快C , 1.30
-					TIMES SOURCE:快V , 1.30
-					TIMES SOURCE:快A , 1.30
-					TIMES SOURCE:快B , 1.30
-					TIMES SOURCE:情愛 , 1.50
-					TIMES SOURCE:不潔 , 0.50
-					TIMES SOURCE:逸脱 , 0.50
+					CALL TIMESCVAB, 130
+					TIMES SOURCE:情愛, 1.50
+					TIMES SOURCE:不潔, 0.50
+					TIMES SOURCE:逸脱, 0.50
 				CASE IS >= 2000
-					TIMES SOURCE:快C , 1.20
-					TIMES SOURCE:快V , 1.20
-					TIMES SOURCE:快A , 1.20
-					TIMES SOURCE:快B , 1.20
-					TIMES SOURCE:情愛 , 1.30
-					TIMES SOURCE:不潔 , 0.70
-					TIMES SOURCE:逸脱 , 0.70
+					CALL TIMESCVAB, 120
+					TIMES SOURCE:情愛, 1.30
+					TIMES SOURCE:不潔, 0.70
+					TIMES SOURCE:逸脱, 0.70
 				CASE IS >= 1000
-					TIMES SOURCE:快C , 1.10
-					TIMES SOURCE:快V , 1.10
-					TIMES SOURCE:快A , 1.10
-					TIMES SOURCE:快B , 1.10
-					TIMES SOURCE:情愛 , 1.20
-					TIMES SOURCE:不潔 , 0.80
-					TIMES SOURCE:逸脱 , 0.80
+					CALL TIMESCVAB, 110
+					TIMES SOURCE:情愛, 1.20
+					TIMES SOURCE:不潔, 0.80
+					TIMES SOURCE:逸脱, 0.80
 				CASE IS >= 500
-					TIMES SOURCE:情愛 , 1.10
-					TIMES SOURCE:不潔 , 0.90
-					TIMES SOURCE:逸脱 , 0.90
+					TIMES SOURCE:情愛, 1.10
+					TIMES SOURCE:不潔, 0.90
+					TIMES SOURCE:逸脱, 0.90
 			ENDSELECT
-		;苦痛刻印LV1
 		CASE 1
 			SELECTCASE CFLAG:依存度
 				CASE IS >= 5000
-					TIMES SOURCE:恐怖 , 1.30
-					TIMES SOURCE:中毒 , 1.30
-					TIMES SOURCE:屈従 , 1.40
-					TIMES SOURCE:鬱屈 , 0.60
-					TIMES SOURCE:反感 , 0.60
+					TIMES SOURCE:恐怖, 1.30
+					TIMES SOURCE:中毒, 1.30
+					TIMES SOURCE:屈従, 1.40
+					TIMES SOURCE:鬱屈, 0.60
+					TIMES SOURCE:反感, 0.60
 				CASE IS >= 2000
-					TIMES SOURCE:恐怖 , 1.20
-					TIMES SOURCE:中毒 , 1.20
-					TIMES SOURCE:屈従 , 1.30
-					TIMES SOURCE:鬱屈 , 0.70
-					TIMES SOURCE:反感 , 0.70
+					TIMES SOURCE:恐怖, 1.20
+					TIMES SOURCE:中毒, 1.20
+					TIMES SOURCE:屈従, 1.30
+					TIMES SOURCE:鬱屈, 0.70
+					TIMES SOURCE:反感, 0.70
 				CASE IS >= 1000
-					TIMES SOURCE:恐怖 , 1.10
-					TIMES SOURCE:中毒 , 1.10
-					TIMES SOURCE:屈従 , 1.20
-					TIMES SOURCE:鬱屈 , 0.80
-					TIMES SOURCE:反感 , 0.80
+					TIMES SOURCE:恐怖, 1.10
+					TIMES SOURCE:中毒, 1.10
+					TIMES SOURCE:屈従, 1.20
+					TIMES SOURCE:鬱屈, 0.80
+					TIMES SOURCE:反感, 0.80
 				CASE IS >= 500
-					TIMES SOURCE:屈従 , 1.10
-					TIMES SOURCE:鬱屈 , 0.90
-					TIMES SOURCE:反感 , 0.90
+					TIMES SOURCE:屈従, 1.10
+					TIMES SOURCE:鬱屈, 0.90
+					TIMES SOURCE:反感, 0.90
 			ENDSELECT
-		;苦痛刻印LV2
 		CASE 2
 			SELECTCASE CFLAG:依存度
 				CASE IS >= 5000
-					TIMES SOURCE:恐怖 , 1.40
-					TIMES SOURCE:中毒 , 1.40
-					TIMES SOURCE:屈従 , 1.50
-					TIMES SOURCE:鬱屈 , 0.50
-					TIMES SOURCE:反感 , 0.50
+					TIMES SOURCE:恐怖, 1.40
+					TIMES SOURCE:中毒, 1.40
+					TIMES SOURCE:屈従, 1.50
+					TIMES SOURCE:鬱屈, 0.50
+					TIMES SOURCE:反感, 0.50
 				CASE IS >= 2000
-					TIMES SOURCE:恐怖 , 1.30
-					TIMES SOURCE:中毒 , 1.30
-					TIMES SOURCE:屈従 , 1.40
-					TIMES SOURCE:鬱屈 , 0.60
-					TIMES SOURCE:反感 , 0.60
+					TIMES SOURCE:恐怖, 1.30
+					TIMES SOURCE:中毒, 1.30
+					TIMES SOURCE:屈従, 1.40
+					TIMES SOURCE:鬱屈, 0.60
+					TIMES SOURCE:反感, 0.60
 				CASE IS >= 1000
-					TIMES SOURCE:恐怖 , 1.20
-					TIMES SOURCE:中毒 , 1.20
-					TIMES SOURCE:屈従 , 1.30
-					TIMES SOURCE:鬱屈 , 0.70
-					TIMES SOURCE:反感 , 0.70
+					TIMES SOURCE:恐怖, 1.20
+					TIMES SOURCE:中毒, 1.20
+					TIMES SOURCE:屈従, 1.30
+					TIMES SOURCE:鬱屈, 0.70
+					TIMES SOURCE:反感, 0.70
 				CASE IS >= 500
-					TIMES SOURCE:恐怖 , 1.10
-					TIMES SOURCE:中毒 , 1.10
-					TIMES SOURCE:屈従 , 1.20
-					TIMES SOURCE:鬱屈 , 0.80
-					TIMES SOURCE:反感 , 0.80
+					TIMES SOURCE:恐怖, 1.10
+					TIMES SOURCE:中毒, 1.10
+					TIMES SOURCE:屈従, 1.20
+					TIMES SOURCE:鬱屈, 0.80
+					TIMES SOURCE:反感, 0.80
 			ENDSELECT
-		;苦痛刻印LV3
 		CASE 3
 			SELECTCASE CFLAG:依存度
 				CASE IS >= 5000
-					TIMES SOURCE:恐怖 , 1.50
-					TIMES SOURCE:中毒 , 1.50
-					TIMES SOURCE:屈従 , 1.60
-					TIMES SOURCE:鬱屈 , 0.40
-					TIMES SOURCE:反感 , 0.40
+					TIMES SOURCE:恐怖, 1.50
+					TIMES SOURCE:中毒, 1.50
+					TIMES SOURCE:屈従, 1.60
+					TIMES SOURCE:鬱屈, 0.40
+					TIMES SOURCE:反感, 0.40
 				CASE IS >= 2000
-					TIMES SOURCE:恐怖 , 1.40
-					TIMES SOURCE:中毒 , 1.40
-					TIMES SOURCE:屈従 , 1.50
-					TIMES SOURCE:鬱屈 , 0.50
-					TIMES SOURCE:反感 , 0.50
+					TIMES SOURCE:恐怖, 1.40
+					TIMES SOURCE:中毒, 1.40
+					TIMES SOURCE:屈従, 1.50
+					TIMES SOURCE:鬱屈, 0.50
+					TIMES SOURCE:反感, 0.50
 				CASE IS >= 1000
-					TIMES SOURCE:恐怖 , 1.30
-					TIMES SOURCE:中毒 , 1.30
-					TIMES SOURCE:屈従 , 1.40
-					TIMES SOURCE:鬱屈 , 0.60
-					TIMES SOURCE:反感 , 0.60
+					TIMES SOURCE:恐怖, 1.30
+					TIMES SOURCE:中毒, 1.30
+					TIMES SOURCE:屈従, 1.40
+					TIMES SOURCE:鬱屈, 0.60
+					TIMES SOURCE:反感, 0.60
 				CASE IS >= 500
-					TIMES SOURCE:恐怖 , 1.20
-					TIMES SOURCE:中毒 , 1.20
-					TIMES SOURCE:屈従 , 1.30
-					TIMES SOURCE:鬱屈 , 0.70
-					TIMES SOURCE:反感 , 0.70
+					TIMES SOURCE:恐怖, 1.20
+					TIMES SOURCE:中毒, 1.20
+					TIMES SOURCE:屈従, 1.30
+					TIMES SOURCE:鬱屈, 0.70
+					TIMES SOURCE:反感, 0.70
 			ENDSELECT
 	ENDSELECT
 ENDIF
@@ -343,163 +300,116 @@ ENDIF
 ;-------------------------------------------------
 @LOST_VIRGIN_FEMALE
 #DIM DYNAMIC 増加量
+#DIM DYNAMIC 処女喪失相手
+#DIM DYNAMIC 処女喪失状況
 
 IF TALENT:処女 && TFLAG:膣コマンド
 	PRINTL 処女喪失
 	TALENT:処女 = 0
-	IF TALENT:性転換済
-		IF SELECTCOMS == "3P"
+	;通常処女と性転換処女で別の位置に記録される
+	処女喪失相手 = TALENT:性転換済 ? GETNUM(CSTR, "性転換処女") # GETNUM(CSTR, "処女")
+	SELECTCASE SELECTCOMS
+		CASE "3P"
 			IF TFLAG:主人挿入箇所 == 1
-				CSTR:性転換処女 = %NAME:MASTER%
+				CSTR:処女喪失相手 = %NAME:MASTER%
 			ELSEIF TFLAG:助手挿入箇所 == 1
-				CSTR:性転換処女 = %NAME:ASSI%
+				CSTR:処女喪失相手 = %NAME:ASSI%
 			ENDIF
-		ELSEIF SELECTCOMS == "膣を犯す（ドラゴン）"
+		CASE "膣を犯す（ドラゴン）"
 			IF PLAYER == MASTER
-				CSTR:性転換処女 = 主人のドラゴン
+				CSTR:処女喪失相手 = 主人のドラゴン
 			ELSEIF PLAYER == ASSI
-				CSTR:性転換処女 = %CSTR:ASSI:ドラゴン%
+				CSTR:処女喪失相手 = %CSTR:ASSI:ドラゴン%
 			ENDIF
-		ELSEIF SELECTCOMS == "ペットに犯させる"
-			CSTR:性転換処女 = %NAME:ASSI%
-		ELSE
+		CASE "ペットに犯させる"
+			CSTR:処女喪失相手 = %NAME:ASSI%
+		CASEELSE
 			IF PLAYER == MASTER
-				CSTR:性転換処女 = %NAME:MASTER%
+				CSTR:処女喪失相手 = %NAME:MASTER%
 			ELSEIF PLAYER == ASSI
-				CSTR:性転換処女 = %NAME:ASSI%
+				CSTR:処女喪失相手 = %NAME:ASSI%
 			ENDIF
-		ENDIF
-	ELSE
-		IF SELECTCOMS == "3P"
-			IF TFLAG:主人挿入箇所 == 1
-				CSTR:処女 = %NAME:MASTER%
-			ELSEIF TFLAG:助手挿入箇所 == 1
-				CSTR:処女 = %NAME:ASSI%
-			ENDIF
-		ELSEIF SELECTCOMS == "膣を犯す（ドラゴン）"
-			IF PLAYER == MASTER
-				CSTR:処女 = 主人のドラゴン
-			ELSEIF PLAYER == ASSI
-				CSTR:処女 = %CSTR:ASSI:ドラゴン%
-			ENDIF
-		ELSEIF SELECTCOMS == "ペットに犯させる"
-			CSTR:処女 = %NAME:ASSI%
-		ELSE
-			IF PLAYER == MASTER
-				CSTR:処女 = %NAME:MASTER%
-			ELSEIF PLAYER == ASSI
-				CSTR:処女 = %NAME:ASSI%
-			ENDIF
-		ENDIF
-	ENDIF
+	ENDSELECT
+
 	;汚れ追加
-	SETBIT STAIN:膣内, 6
-	;処女喪失フラグ(今回のコマンド)
+	SETBIT STAIN:膣内, 汚れTOBIT("破瓜血")
+	;それぞれの処女喪失フラグ
 	TFLAG:コマンド破瓜 = 1
-	;処女喪失フラグ(今回の調教)
 	TFLAG:調教破瓜 = 1
-	;処女喪失フラグ(ビデオ撮影)
 	SIF 撮影中()
 		TFLAG:撮影破瓜 = 1
 	;貞操観念+恋慕or親愛（主人による処女喪失のみ）
-	IF TALENT:貞操観念 && FALLTYPE(TARGET) == 1 && TFLAG:恋慕処女
-		TIMES SOURCE:情愛 , 1.20
-		TIMES SOURCE:反感 , 0.50
-	;貞操観念
-	ELSEIF TALENT:貞操観念
-		TIMES SOURCE:情愛 , 0.60
-		TIMES SOURCE:反感 , 10.00
-	;貞操無頓着
+	IF TALENT:貞操観念
+		IF FALLTYPE(TARGET) == 1 && TFLAG:恋慕処女
+			TIMES SOURCE:情愛, 1.20
+			TIMES SOURCE:反感, 0.50
+		ELSE
+			TIMES SOURCE:情愛, 0.60
+			TIMES SOURCE:反感, 10.00
+		ENDIF
 	ELSEIF TALENT:貞操無頓着
-		TIMES SOURCE:情愛 , 0.60
-		TIMES SOURCE:反感 , 0.50
+		TIMES SOURCE:情愛, 0.60
+		TIMES SOURCE:反感, 0.50
 	ENDIF
 	;指挿入れの慣らしギミック処理
-	IF PALAM:快Ｖ >= 80
-		TIMES SOURCE:快V , 1.50
-		TIMES SOURCE:情愛 , 1.20
-		TIMES SOURCE:苦痛 , 0.80
-		TIMES SOURCE:反感 , 0.80
-	ELSEIF PALAM:快Ｖ >= 60
-		TIMES SOURCE:快V , 1.40
-		TIMES SOURCE:情愛 , 1.15
-		TIMES SOURCE:苦痛 , 0.85
-		TIMES SOURCE:反感 , 0.85
-	ELSEIF PALAM:快Ｖ >= 40
-		TIMES SOURCE:快V , 1.30
-		TIMES SOURCE:情愛 , 1.10
-		TIMES SOURCE:苦痛 , 0.90
-		TIMES SOURCE:反感 , 0.90
-	ELSEIF PALAM:快Ｖ >= 20
-		TIMES SOURCE:快V , 1.20
-		TIMES SOURCE:情愛 , 1.05
-		TIMES SOURCE:苦痛 , 0.95
-		TIMES SOURCE:反感 , 0.95
-	ENDIF
+	SELECTCASE PALAM:快Ｖ
+		CASE IS >= 80
+			TIMES SOURCE:快V, 1.50
+			TIMES SOURCE:情愛, 1.20
+			TIMES SOURCE:苦痛, 0.80
+			TIMES SOURCE:反感, 0.80
+		CASE IS >= 60
+			TIMES SOURCE:快V, 1.40
+			TIMES SOURCE:情愛, 1.15
+			TIMES SOURCE:苦痛, 0.85
+			TIMES SOURCE:反感, 0.85
+		CASE IS >= 40
+			TIMES SOURCE:快V, 1.30
+			TIMES SOURCE:情愛, 1.10
+			TIMES SOURCE:苦痛, 0.90
+			TIMES SOURCE:反感, 0.90
+		CASE IS >= 20
+			TIMES SOURCE:快V, 1.20
+			TIMES SOURCE:情愛, 1.05
+			TIMES SOURCE:苦痛, 0.95
+			TIMES SOURCE:反感, 0.95
+	ENDSELECT
+
+	処女喪失状況 = TALENT:性転換済 ? GETNUM(CSTR, "性転換処女の奪われ方") # GETNUM(CSTR, "処女の奪われ方")
 	IF CFLAG:死亡
-		IF TALENT:性転換済
-			CFLAG:性転換処女の奪われ方 = 6
-		ELSE
-			CFLAG:処女の奪われ方 = 6
-		ENDIF
+		CFLAG:処女喪失状況 = 6
 		RETURN
 	ELSEIF 陥落(TARGET)
-		IF TALENT:性転換済
-			CFLAG:性転換処女の奪われ方 = 2
-		ELSE
-			CFLAG:処女の奪われ方 = 2
-		ENDIF
+		CFLAG:処女喪失状況 = 2
 	ELSEIF 相性値(TARGET, PLAYER) > 100
-		IF TALENT:性転換済
-			CFLAG:性転換処女の奪われ方 = 3
-		ELSE
-			CFLAG:処女の奪われ方 = 3
-		ENDIF
+		CFLAG:処女喪失状況 = 3
 	ELSE
-		IF TALENT:性転換済
-			CFLAG:性転換処女の奪われ方 = 1
-		ELSE
-			CFLAG:処女の奪われ方 = 1
-		ENDIF
+		CFLAG:処女喪失状況 = 1
 	ENDIF
+
 	;主人による処女喪失時の処理 恋慕か親愛じゃないと発生しない
 	IF TFLAG:恋慕処女 && SELECTCOMS != "膣を犯す（ドラゴン）" && SELECTCOMS != "ペットに犯させる"
-		;恋慕
+		TFLAG:反発刻印回避 = 1
 		IF TALENT:恋慕
 			PRINTFORML %CALLNAME:TARGET%は%CALLNAME:MASTER%に処女を捧げられた事に幸福を感じているようだ……
-			TFLAG:反発刻印回避 = 1
-			TIMES SOURCE:情愛 , 2.00
-			TIMES SOURCE:反感 , 0.30
-		;親愛
+			TIMES SOURCE:情愛, 2.00
+			TIMES SOURCE:反感, 0.30
 		ELSEIF TALENT:親愛
 			PRINTFORML %CALLNAME:TARGET%は%CALLNAME:MASTER%が初めての相手である事にこの上ない幸せを感じているようだ……
-			TFLAG:反発刻印回避 = 1
-			TIMES SOURCE:情愛 , 2.00
-			TIMES SOURCE:反感 , 0.10
+			TIMES SOURCE:情愛, 2.00
+			TIMES SOURCE:反感, 0.10
 		ENDIF
 		;行為によって、愛情経験を加算する
 		増加量 = 0
 		SELECTCASE SELECTCOMS
 			CASE "正常位"
 				増加量 = 10
-			CASE "後背位"
-				増加量 = 5
-			CASE "騎乗位"
-				増加量 = 5
 			CASE "対面座位"
 				増加量 = 8
-			CASE "背面座位"
-				増加量 = 5
-			CASE "3P"
-				増加量 = 5
-			CASE "乱れ牡丹"
-				増加量 = 5
-			CASE "騎乗乳房自慰"
+			CASE "後背位", "騎乗位", "背面座位", "3P", "乱れ牡丹", "騎乗乳房自慰"
 				増加量 = 5
 		ENDSELECT
-		SIF 増加量
-			PRINTFORML 愛情経験+{増加量}
-		EXP:愛情経験 += 増加量
+		CALL EXPUP, "愛情経験", 増加量
 	ENDIF
 	WAIT
 ENDIF
@@ -510,6 +420,18 @@ ENDIF
 IF TALENT:再生処女 && TFLAG:膣コマンド
 	PRINTW 再生処女喪失
 	TALENT:再生処女 = 0
+
+	SELECTCASE PALAM:快Ｖ
+		CASE IS >= 80
+			TIMES SOURCE:苦痛, 0.80
+		CASE IS >= 60
+			TIMES SOURCE:苦痛, 0.85
+		CASE IS >= 40
+			TIMES SOURCE:苦痛, 0.90
+		CASE IS >= 20
+			TIMES SOURCE:苦痛, 0.95
+	ENDSELECT
+
 	;指挿入れの慣らしギミック処理
 	IF PALAM:快Ｖ >= 80
 		TIMES SOURCE:苦痛 , 0.80
@@ -527,53 +449,45 @@ ENDIF
 ;-------------------------------------------------
 @LOST_VIRGIN_MALE
 #DIM DYNAMIC 増加量
+#DIM DYNAMIC 童貞喪失相手
 
 IF TALENT:童貞
+	童貞喪失相手 = TALENT:性転換済 ? GETNUM(CSTR, "性転換童貞") # GETNUM(CSTR, "童貞")
 	SELECTCASE TRAINNAME:SELECTCOM
 		CASE "助手を犯させる"
 			PRINTW 童貞喪失
 			TALENT:童貞 = 0
-			IF TALENT:性転換済
-				CSTR:性転換童貞 = %NAME:ASSI%
-			ELSE
-				CSTR:童貞 = %NAME:ASSI%
-			ENDIF
+			CSTR:童貞喪失相手 = %NAME:ASSI%
 		CASE "逆レイプ", "正常位させる", "後背位させる", "正常位アナルさせる", "後背位アナルさせる", "スライム姦させる"
 			PRINTL 童貞喪失
 			TALENT:童貞 = 0
-			IF TALENT:性転換済
-				CSTR:性転換童貞 = %NAME:PLAYER%
-			ELSE
-				CSTR:童貞 = %NAME:PLAYER%
-			ENDIF
-			IF TALENT:恋慕 && PLAYER == MASTER
+			CSTR:童貞喪失相手 = %NAME:PLAYER%
+			IF FALLTYPE(TARGET) == 1 && PLAYER == MASTER
 				PRINTFORML %CALLNAME:TARGET%は惚気た目で%CALLNAME:MASTER%を見つめながらその初めての快感に悶えている……
 				TFLAG:反発刻印回避 = 1
-				TIMES SOURCE:快C , 1.50
-				TIMES SOURCE:情愛 , 3.00
-				TIMES SOURCE:達成 , 1.50
-				TIMES SOURCE:苦痛 , 0.75
-				TIMES SOURCE:恐怖 , 0.30
-				TIMES SOURCE:液体 , 1.20
-				TIMES SOURCE:欲情 , 1.30
-				TIMES SOURCE:恭順 , 1.50
-				増加量 = 3
-			ELSEIF TALENT:親愛 && PLAYER == MASTER
-				PRINTFORML %CALLNAME:TARGET%は惚気た目で%CALLNAME:MASTER%を見つめながらその初めての快感に悶えている……
-				TFLAG:反発刻印回避 = 1
-				TIMES SOURCE:快C , 1.80
-				TIMES SOURCE:情愛 , 5.00
-				TIMES SOURCE:達成 , 2.00
-				TIMES SOURCE:苦痛 , 0.50
-				TIMES SOURCE:恐怖 , 0.20
-				TIMES SOURCE:液体 , 1.50
-				TIMES SOURCE:欲情 , 1.80
-				TIMES SOURCE:恭順 , 2.00
-				増加量 = 5
+				IF TALENT:恋慕
+					TIMES SOURCE:快C, 1.50
+					TIMES SOURCE:情愛, 3.00
+					TIMES SOURCE:達成, 1.50
+					TIMES SOURCE:苦痛, 0.75
+					TIMES SOURCE:恐怖, 0.30
+					TIMES SOURCE:液体, 1.20
+					TIMES SOURCE:欲情, 1.30
+					TIMES SOURCE:恭順, 1.50
+					増加量 = 3
+				ELSEIF TALENT:親愛
+					TIMES SOURCE:快C, 1.80
+					TIMES SOURCE:情愛, 5.00
+					TIMES SOURCE:達成, 2.00
+					TIMES SOURCE:苦痛, 0.50
+					TIMES SOURCE:恐怖, 0.20
+					TIMES SOURCE:液体, 1.50
+					TIMES SOURCE:欲情, 1.80
+					TIMES SOURCE:恭順, 2.00
+					増加量 = 5
+				ENDIF
 			ENDIF
-			SIF 増加量
-				PRINTFORML 愛情経験+{増加量}
-			EXP:愛情経験 += 増加量
+			CALL EXPUP, "愛情経験", 増加量
 			WAIT
 	ENDSELECT
 ENDIF
@@ -583,73 +497,37 @@ ENDIF
 ;-------------------------------------------------
 @TECHNIQUE_CHECK
 ;行為をしている者の技巧をチェックする
-;奴隷の場合
 IF TFLAG:奴隷実行
-	;奴隷のABL:技巧
 	SOURCE:快C = (SOURCE:快C/2)+(SOURCE:快C/10*ABL:技巧)
 	SOURCE:快V = (SOURCE:快V/2)+(SOURCE:快V/10*ABL:技巧)
 	SOURCE:快A = (SOURCE:快A/2)+(SOURCE:快A/10*ABL:技巧)
 	SOURCE:快B = (SOURCE:快B/2)+(SOURCE:快B/10*ABL:技巧)
 	SOURCE:性行動 += SOURCE:性行動/10*ABL:技巧
-;調教者の場合
 ELSE
 	;調教者のABL:技巧
 	SELECTCASE ABL:PLAYER:技巧
 		CASE 0
-			TIMES SOURCE:快C , 0.50
-			TIMES SOURCE:快V , 0.50
-			TIMES SOURCE:快A , 0.50
-			TIMES SOURCE:快B , 0.50
+			CALL TIMESCVAB, 50
 		CASE 1
-			TIMES SOURCE:快C , 0.60
-			TIMES SOURCE:快V , 0.60
-			TIMES SOURCE:快A , 0.60
-			TIMES SOURCE:快B , 0.60
+			CALL TIMESCVAB, 60
 		CASE 2
-			TIMES SOURCE:快C , 0.80
-			TIMES SOURCE:快V , 0.80
-			TIMES SOURCE:快A , 0.80
-			TIMES SOURCE:快B , 0.80
+			CALL TIMESCVAB, 80
 		CASE 3
-			TIMES SOURCE:快C , 1.00
-			TIMES SOURCE:快V , 1.00
-			TIMES SOURCE:快A , 1.00
-			TIMES SOURCE:快B , 1.00
+			CALL TIMESCVAB, 100
 		CASE 4
-			TIMES SOURCE:快C , 1.20
-			TIMES SOURCE:快V , 1.20
-			TIMES SOURCE:快A , 1.20
-			TIMES SOURCE:快B , 1.20
+			CALL TIMESCVAB, 120
 		CASE 5
-			TIMES SOURCE:快C , 1.50
-			TIMES SOURCE:快V , 1.50
-			TIMES SOURCE:快A , 1.50
-			TIMES SOURCE:快B , 1.50
+			CALL TIMESCVAB, 150
 		CASE 6
-			TIMES SOURCE:快C , 1.60
-			TIMES SOURCE:快V , 1.60
-			TIMES SOURCE:快A , 1.60
-			TIMES SOURCE:快B , 1.60
+			CALL TIMESCVAB, 160
 		CASE 7
-			TIMES SOURCE:快C , 1.70
-			TIMES SOURCE:快V , 1.70
-			TIMES SOURCE:快A , 1.70
-			TIMES SOURCE:快B , 1.70
+			CALL TIMESCVAB, 170
 		CASE 8
-			TIMES SOURCE:快C , 1.80
-			TIMES SOURCE:快V , 1.80
-			TIMES SOURCE:快A , 1.80
-			TIMES SOURCE:快B , 1.80
+			CALL TIMESCVAB, 180
 		CASE 9
-			TIMES SOURCE:快C , 1.90
-			TIMES SOURCE:快V , 1.90
-			TIMES SOURCE:快A , 1.90
-			TIMES SOURCE:快B , 1.90
+			CALL TIMESCVAB, 190
 		CASE IS >= 10
-			SOURCE:快C *= ABL:PLAYER:技巧/5
-			SOURCE:快V *= ABL:PLAYER:技巧/5
-			SOURCE:快A *= ABL:PLAYER:技巧/5
-			SOURCE:快B *= ABL:PLAYER:技巧/5
+			CALL TIMESCVAB, ABL:PLAYER:技巧*2
 	ENDSELECT
 	EXP:PLAYER:調教経験++
 ENDIF
@@ -659,83 +537,68 @@ ENDIF
 ;-------------------------------------------------
 @ALC_CHECK
 #DIM DYNAMIC ボーナス発生率
-;酔えば酔うほど、デメリットの発動する確率が高まるが、酒豪ならデメリット発動率をかなり軽減できる
-;お酒ボーナスがあってもわずかに減る
-
+#DIM DYNAMIC ベクトル = 1
 SIF !CFLAG:酔
 	RETURN 0
 
+;酔えば酔うほど、デメリットの発動する確率が高まるが、酒豪ならデメリット発動率をかなり軽減できる
+;お酒ボーナスがあってもわずかに減る
 ボーナス発生率 = CFLAG:酔-TEQUIP:お酒ボーナス
 SIF TALENT:酒豪
 	ボーナス発生率 /= 10
 
-IF RAND:100 < ボーナス発生率
-	SOURCE:情愛 -= SOURCE:情愛*CFLAG:酔/100
-	SOURCE:達成 -= SOURCE:達成*CFLAG:酔/100
-	SOURCE:性行動 -= SOURCE:性行動*CFLAG:酔/100
-	SOURCE:習得 -= SOURCE:習得*CFLAG:酔/100
-	SOURCE:欲情 -= SOURCE:欲情*CFLAG:酔/100
-	SOURCE:恭順 -= SOURCE:恭順*CFLAG:酔/100
-	SOURCE:屈従 -= SOURCE:屈従*CFLAG:酔/100
-	SOURCE:逸脱 += SOURCE:逸脱*CFLAG:酔/100
-	SOURCE:反感 += SOURCE:反感*CFLAG:酔/100
-ELSE
-	SOURCE:情愛 += SOURCE:情愛*CFLAG:酔/100
-	SOURCE:達成 += SOURCE:達成*CFLAG:酔/100
-	SOURCE:性行動 += SOURCE:性行動*CFLAG:酔/100
-	SOURCE:習得 += SOURCE:習得*CFLAG:酔/100
-	SOURCE:欲情 += SOURCE:欲情*CFLAG:酔/100
-	SOURCE:恭順 += SOURCE:恭順*CFLAG:酔/100
-	SOURCE:屈従 += SOURCE:屈従*CFLAG:酔/100
-	SOURCE:逸脱 -= SOURCE:逸脱*CFLAG:酔/100
-	SOURCE:反感 -= SOURCE:反感*CFLAG:酔/100
-ENDIF
+SIF RAND:100 < ボーナス発生率
+	ベクトル = -1
+SOURCE:情愛 += SOURCE:情愛*CFLAG:酔/100*ベクトル
+SOURCE:達成 += SOURCE:達成*CFLAG:酔/100*ベクトル
+SOURCE:性行動 += SOURCE:性行動*CFLAG:酔/100*ベクトル
+SOURCE:習得 += SOURCE:習得*CFLAG:酔/100*ベクトル
+SOURCE:欲情 += SOURCE:欲情*CFLAG:酔/100*ベクトル
+SOURCE:恭順 += SOURCE:恭順*CFLAG:酔/100*ベクトル
+SOURCE:屈従 += SOURCE:屈従*CFLAG:酔/100*ベクトル
+SOURCE:逸脱 -= SOURCE:逸脱*CFLAG:酔/100*ベクトル
+SOURCE:反感 -= SOURCE:反感*CFLAG:酔/100*ベクトル
 
 ;-------------------------------------------------
 ;着衣の状態によって、調教中のソースが若干変動する
 ;-------------------------------------------------
 @EQUIP_CLOTHES
 #DIM DYNAMIC LCOUNT
-;着衣状態によるソースを付加（１箇所ごとに露出+10、未陥落時反感+10）
+;着衣状態によるソースを付加（１箇所ごとに露出+10、未陥落時反感+10）デフォルトで着てない場合計算しない
 FOR LCOUNT, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
 	SELECTCASE TEQUIPNAME:LCOUNT
-		;特殊部位と足は計算しない
 		CASE "特殊", "足元"
 			CONTINUE
-		;上着・下半身上着は全身上着をつけているとき計算しない（逆バニー除く）
 		CASE "上半身上着", "下半身上着"
+			;上着・下半身上着は全身上着をつけているとき計算しない（逆バニー除く）
 			SIF TEQUIP:全身上着 && CFLAG:着衣併用 != 1 && CSTR:全身上着 != "逆バニースーツ"
 				CONTINUE
-			;デフォルトで着てない場合も計算しない
 			SIF EXISTCSV(NO:TARGET) && CSVCSTR(NO:TARGET, GETNUM(CSTR, "上半身上着")) == "" && CSVCSTR(NO:TARGET, GETNUM(CSTR, "下半身上着")) == "" && CSVCSTR(NO:TARGET, GETNUM(CSTR, "全身上着")) == ""
 				CONTINUE
-		;全身上着は上着・下半身上着をつけているとき計算しない
 		CASE "全身上着"
+			;全身上着は上着・下半身上着をつけているとき計算しない
 			SIF TEQUIP:上半身上着 || TEQUIP:下半身上着
 				CONTINUE
-			;デフォルトで着てない場合も計算しない
 			SIF EXISTCSV(NO:TARGET) && CSVCSTR(NO:TARGET, GETNUM(CSTR, "上半身上着")) == "" && CSVCSTR(NO:TARGET, GETNUM(CSTR, "下半身上着")) == "" && CSVCSTR(NO:TARGET, GETNUM(CSTR, "全身上着")) == ""
 				CONTINUE
-		;男は上半身下着に関する計算はしない
 		CASE "上半身下着", "下半身下着"
+			;男は上半身下着に関する計算はしない
 			SIF TEQUIPNAME:LCOUNT == "上半身下着" && SEX(TARGET) == 1
 				CONTINUE
-			;デフォルトで着てない場合も計算しない
 			SIF EXISTCSV(NO:TARGET) && CSVCSTR(NO:TARGET, GETNUM(CSTR, TEQUIPNAME:LCOUNT)) == ""
 				CONTINUE
 	ENDSELECT
+
 	IF !TEQUIP:LCOUNT
-		SOURCE:露出 += 10
 		;外及びゲーセンだと増加
+		SOURCE:露出 += 10
 		SIF TEQUIP:ゲームセンター || TEQUIP:野外プレイ
 			SOURCE:露出 += 30
-		;陥落時は反感を加算しない
-		SIF 陥落(TARGET)
-			CONTINUE
-		SOURCE:反感 += 10
-		;外及びゲーセンだと増加
-		SIF TEQUIP:ゲームセンター || TEQUIP:野外プレイ
-			SOURCE:反感 += 30
+		IF !陥落(TARGET)
+			SOURCE:反感 += 10
+			SIF TEQUIP:ゲームセンター || TEQUIP:野外プレイ
+				SOURCE:反感 += 30
+		ENDIF
 	ENDIF
 NEXT
 

@@ -11,9 +11,7 @@
 ;屍姦中はメッセージすら表示しない
 SIF CFLAG:死亡
 	RETURN 0
-
-;依存度のベクトル処理
-;0は関数終了、崩壊、睡眠中も依存度は変化しない
+;崩壊、睡眠中は依存度は変化しない
 IF TALENT:崩壊 || TEQUIP:睡眠
 	PRINTL <依存度変化無し>
 	RETURN 0
@@ -21,15 +19,10 @@ ENDIF
 
 増加量 = 0
 
-増加量 = TFLAG:口上依存度補正
-
-;ABL:従順をみる
+増加量 += TFLAG:口上依存度補正
 増加量 += ABL:従順*2
-
-;ABL:奉仕精神をみる
 増加量 += ABL:奉仕精神
 
-;難易度を見る
 SELECTCASE FLAG:難易度
 	;BEGINNER
 	CASE -1
@@ -48,24 +41,17 @@ SELECTCASE FLAG:難易度
 		増加量 -= 5
 ENDSELECT
 
-;素質による増減
 ;陥落素質
-;恋慕
 SIF TALENT:恋慕
 	増加量 += 7
-;親愛
 SIF TALENT:親愛
 	増加量 += 10
-;淫乱
 SIF TALENT:淫乱 && 相性値(TARGET, MASTER) > 100
 	増加量 += 3
-;淫魔
 SIF TALENT:淫魔 && 相性値(TARGET, MASTER) > 100
 	増加量 += 5
-;服従
 SIF TALENT:服従
 	増加量 += 5
-;隷属
 SIF TALENT:隷属
 	増加量 += 7
 
@@ -73,72 +59,54 @@ SIF TALENT:隷属
 増加量 += TFLAG:絶頂強度
 
 ;その他素質
-;淫核
 SIF TALENT:淫核
 	増加量 += 1
-;淫膣
 SIF TALENT:淫膣
 	増加量 += 1
-;淫尻
 SIF TALENT:淫尻
 	増加量 += 1
-;淫乳
 SIF TALENT:淫乳
 	増加量 += 1
-;妄信
+
 SIF TALENT:妄信
 	増加量 += 2
-;寂しがり屋で助手が居る場合
 SIF TALENT:寂しがり屋 && ASSI > 0
 	増加量 += 3
-;男好き&主人が男
 SIF TALENT:男好き && SEX(MASTER) == 1
 	増加量 += 1
-;女好き&主人が女
 SIF TALENT:女好き && SEX(MASTER) == 2
 	増加量 += 1
-;痛みに弱い
 SIF TALENT:痛みに弱い
 	増加量 += 1
-;快感に素直
 SIF TALENT:快感に素直
 	増加量 += 2
-;マゾ
 SIF TALENT:マゾ
 	増加量 += 1
-;幼稚
 SIF TALENT:幼稚
 	増加量 += 1
-;弱気
 SIF TALENT:弱気
 	増加量 += 2
 
-;主人の魅力
+;主人の素質による増減
 SIF TALENT:MASTER:魅力
 	増加量 += 2
-;主人の魅惑
 SIF TALENT:MASTER:魅惑
 	増加量 += 3
-;主人の謎の魅力
 SIF TALENT:MASTER:謎の魅力
 	増加量 += 5
-;主人の治療
 ;SIF TALENT:MASTER:治療
 ;	増加量 += 2
-;主人の鼓舞
 SIF TALENT:MASTER:鼓舞
 	増加量 += 2
-;主人の人気
 SIF TALENT:MASTER:人気
 	増加量 += 3
 
-;恋心&PLAYERが恋心抱いている相手
-IF TALENT:恋心 && (CSTR:恋心 == CSVNAMEF(NOF(PLAYER), 1) || (ハニーバニー:0 && PLAYER == MASTER))
+;恋心と既婚者
+IF TALENT:恋心 && (CSTR:恋心 == CSVNAMEF(NOF(PLAYER), 1) || (ハニーバニー:0 && PLAYER == MASTER) || ISMIGELLANNTR(TARGET, PLAYER))
 	増加量 += 4
 	ハニーバニー発動 = 1
 ENDIF
-;既婚者&PLAYERが伴侶
-IF TALENT:既婚者 && (CSTR:既婚者 == CSVNAMEF(NOF(PLAYER), 1) || (ハニーバニー:0 && PLAYER == MASTER))
+IF TALENT:既婚者 && (CSTR:既婚者 == CSVNAMEF(NOF(PLAYER), 1) || (ハニーバニー:0 && PLAYER == MASTER) || ISMIGELLANNTR(TARGET, PLAYER))
 	増加量 += 7
 	ハニーバニー発動 = 1
 ENDIF
@@ -153,78 +121,56 @@ IF PLAYER == MASTER && SEX(MASTER) == SEX(TARGET)
 	ENDSELECT
 ENDIF
 
-;屈服刻印
 増加量 += MARK:屈服刻印
-
-;ヤンデレなら依存度1.5倍
 SIF TALENT:ヤンデレ
 	TIMES 増加量, 1.50
 
-;依存度補正を加算
 増加量 += TFLAG:依存度補正
 
-;アニマルなら3倍
-;アニマルだと無理
 SIF TALENT:アニマル
 	増加量 *= 3
 
 
-;同族嫌悪&同種族
+;同族嫌悪&同種族と感情乏しいはプラス値を半減
 SIF TALENT:同族嫌悪 && CSTR:種族 == CSTR:PLAYER:種族
 	増加量 /= 2
-;感情乏しい
 SIF TALENT:感情乏しい
 	増加量 /= 2
 
-;生意気
+;ここからマイナス素質
 SIF TALENT:生意気
 	増加量 -= 1
-;反抗的
 SIF TALENT:反抗的
 	増加量 -= 1
-;ツンデレ+従順3以下
 SIF TALENT:ツンデレ && ABL:従順 <= 3
 	増加量 -= 2
-;自制心
 SIF TALENT:自制心
 	増加量 -= 1
-;無関心
 SIF TALENT:無関心
 	増加量 -= 2
-;一線越えない+未陥落
 SIF TALENT:一線越えない && !陥落(TARGET)
 	増加量 -= 3
-;抑圧
 SIF TALENT:抑圧
 	増加量 -= 1
-;抵抗
 SIF TALENT:抵抗
 	増加量 -= 1
-;弱味
 SIF TALENT:弱味
 	増加量 -= 2
-;痛みに強い
 SIF TALENT:痛みに強い
 	増加量 -= 1
-;快感の否定
 SIF TALENT:快感の否定
 	増加量 -= 2
-;強気
 SIF TALENT:強気
 	増加量 -= 2
-;男嫌い&主人が男
 SIF TALENT:男嫌い && SEX(MASTER) == 1
 	増加量 -= 2
-;女嫌い&主人が女
 SIF TALENT:女嫌い && SEX(MASTER) == 2
 	増加量 -= 2
-;恋心&PLAYERが恋心抱いている相手じゃない
 SIF TALENT:恋心 && CSTR:恋心 != CSVNAMEF(NOF(PLAYER), 1) && !陥落(TARGET) && !ハニーバニー発動
 	増加量 -= 5
-;既婚者&PLAYERが伴侶じゃない
 SIF TALENT:既婚者 && CSTR:既婚者 != CSVNAMEF(NOF(PLAYER)) && !陥落(TARGET) && !ハニーバニー発動
 	増加量 -= 10
-;反発刻印
+
 増加量 -= MARK:反発刻印
 
 ;絶対値が設定されていればそれになる
@@ -247,5 +193,4 @@ ELSE
 ENDIF
 
 TFLAG:依存度補正 = 0
-
 RETURN 0
