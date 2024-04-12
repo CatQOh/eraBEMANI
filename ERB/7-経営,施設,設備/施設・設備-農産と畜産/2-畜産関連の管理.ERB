@@ -103,7 +103,7 @@ ELSE
 	RESETCOLOR
 ENDIF
 
-PRINTL 　[4] - 生産状況を確認する
+PRINTL 　[4] - 生産状況を確認する・家畜を売却する
 SIF !ORIGIN
 	PRINTL 　[5] - 設備を導入する
 PRINTL 　[6] - 畜産業の説明
@@ -618,6 +618,20 @@ ELSE
 ENDIF
 PRINTL 
 
+PRINTL □売却できる動物たちの余力
+PRINT 　
+FOR LCOUNT, 0, 5
+	SIF 家畜余力:LCOUNT < 10
+		SETCOLORBYNAME gray
+	PRINTFORM %ERDNAME(家畜余力, LCOUNT)%:%DIV10(家畜余力:LCOUNT)%頭 [\@ 家畜余力:LCOUNT >= 10 ? {LCOUNT+10} # -- \@] %ERDNAME(家畜, LCOUNT)%を売却 
+	RESETCOLOR
+	IF LCOUNT == 2
+		PRINTL 
+		PRINT 　
+	ENDIF
+NEXT
+PRINTL 
+
 DRAWLINE
 PRINTPLAIN 　生産状況　
 PRINTL [0] - 戻る
@@ -629,6 +643,9 @@ SELECTCASE RESULT
 	CASE -1
 		CALL 動物図鑑
 		RESTART
+	CASE 10 TO 19
+		CALL 家畜売却, RESULT-10
+		RESTART
 	CASEELSE
 		LTARGET = TARGET
 		TARGET = RESULT-1
@@ -636,6 +653,63 @@ SELECTCASE RESULT
 			CALL ABLUP, "飼育技能"
 		TARGET = LTARGET
 ENDSELECT
+
+@家畜売却, 家畜ID
+#DIM DYNAMIC 家畜ID
+#DIM DYNAMIC 単価
+#DIM DYNAMIC 倍率
+#DIM DYNAMIC 合計額
+
+SELECTCASE ERDNAME(家畜, 家畜ID)
+	CASE "牛", "馬"
+		単価 = 10000
+	CASE "羊", "豚"
+		単価 = 5000
+	CASE "鶏"
+		単価 = 3000
+ENDSELECT
+
+PRINTFORML □%ERDNAME(家畜, 家畜ID)%を売却
+PRINTFORM 　余力:%DIV10(家畜余力:家畜ID)%頭×単価:{単価}×
+;下の関数は半角スペース付けられてるので結局コピペ
+SELECTCASE 家畜:家畜ID
+	CASE 80 TO 100
+		SETCOLORBYNAME lime
+		PRINT 元気(120%)
+		倍率 = 120
+	CASE 50 TO 79
+		PRINT 普通(100%)
+		倍率 = 100
+	CASE 30 TO 49
+		SETCOLORBYNAME yellow
+		PRINT 微妙(80%)
+		倍率 = 80
+	CASE 10 TO 29
+		SETCOLORBYNAME red
+		PRINT 悪い(50%)
+		倍率 = 50
+	CASE 1 TO 9
+		SETCOLORBYNAME darkred
+		PRINT 病気(30%)
+		倍率 = 30
+ENDSELECT
+RESETCOLOR
+
+合計額 = (家畜余力:家畜ID/10)*単価*倍率/100
+
+CALL PASELIL, @"＝{合計額}＄"
+PRINTL 　売却しますか？（牧場の生産状況には影響ありません）
+PRINTL 　[0] - はい
+PRINTL 　[1] - いいえ
+
+BINPUT
+
+SIF RESULT
+	RETURN
+
+CALL PASELIW, @"%ERDNAME(家畜, 家畜ID)%の余力を{合計額}＄で売却しました"
+CALL PAYMENT, 合計額, @"%ERDNAME(家畜, 家畜ID)%の余力を売却"
+家畜余力:家畜ID %= 10
 
 @動物の具合, ステータス値
 #DIM DYNAMIC ステータス値
@@ -916,6 +990,10 @@ FOR LCOUNT, 0, GETNUM(家畜, "蜂")+1
 			;乱数で上下する ゆくゆくは気温や天候などでやりたい
 			状態計算用 += RAND:3
 			家畜:LCOUNT += 状態計算用
+			;調子が良いと売却用の余力も増える 1日で最大0.5
+			SIF LCOUNT < 5 && 家畜:LCOUNT >= 60
+				家畜余力:LCOUNT += (家畜:LCOUNT-50)/10
+			CALL SETMIN, 家畜余力:LCOUNT, 100
 		ENDIF
 		リソース:予算プール -= 出費
 		;飼育レベル次第で状態の最大値が決まる 条件はゆるめ
@@ -935,6 +1013,7 @@ FOR LCOUNT, 0, GETNUM(家畜, "蜂")+1
 		ENDSELECT
 		IF 家畜:LCOUNT == 0
 			PRINTFORML %ERDNAME(家畜, LCOUNT)%たちは飢餓で全滅しました……
+			家畜余力:LCOUNT = 0
 			動物の死亡++
 		ENDIF
 	ENDIF
