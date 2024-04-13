@@ -2,34 +2,33 @@
 @段位ゲージ処理
 #DIM DYNAMIC ストレス値合計
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC LMONEY
 #DIM DYNAMIC LGAUGE
 #DIM DYNAMIC LSTOCK
 #DIM DYNAMIC 攻略人数
 #DIM DYNAMIC クリアフラグ
+#DIM DYNAMIC 所持金計算用
 
 ;日付変更時に所持金を段位ゲージへ
 IF ターン == "夜" && MONEY >= 4000
 	;値を格納
-	LMONEY = MONEY
 	LGAUGE = FLAG:段位ゲージ
 	LSTOCK = ストック
 	PRINT 所持金を段位ゲージに換算しました。
 	FLAG:段位ゲージ += MONEY/4000
-	CALL 現金出納帳記録, @"段位ゲージ換金/{MONEY/4000*4000}"
-	MONEY = MONEY%4000
+	所持金計算用 = MONEY/4000*4000
 	;このあと1減らすためゲージの最大は51(102%)
 	IF FLAG:段位ゲージ > 51
 		PRINT (※回復量がカンストしています)
 		ストック += 4000*(FLAG:段位ゲージ-51)
-		ストック -= 3999-MONEY
+		ストック -= 3999-所持金計算用
 		FLAG:段位ゲージ = 51
-		MONEY = 3999
+		所持金計算用 = 3999
 		PRINTFORM ストック {LSTOCK} → {ストック}
 	ENDIF
 	PRINTL 
-	PRINTFORML 所持金 {LMONEY} → {MONEY}
+	PRINTFORML 所持金 {MONEY} → {所持金計算用}
 	PRINTFORML 段位ゲージ {LGAUGE*2} → {FLAG:段位ゲージ*2}
+	CALL PAYMENT, MONEY-所持金計算用, "段位ゲージ換金"
 ENDIF
 
 ;ここからクリア判定の処理
