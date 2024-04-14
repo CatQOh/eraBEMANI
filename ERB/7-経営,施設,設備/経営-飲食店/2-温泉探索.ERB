@@ -224,7 +224,7 @@ IF 失敗
 	PRINTW ……
 	PRINTW 温泉の発掘に失敗しました
 	CALL MS消去, マップ
-	CALL 現金出納帳記録, @"温泉発掘費用/-{総発掘費用}"
+	CALL PAYMENT, -総発掘費用, "温泉発掘費用"
 	IF パートナー != ""
 		IF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
 			LTARGET = TARGET
@@ -268,13 +268,14 @@ DO
 				CASE 3
 					ARRAYCOPY "MS", "MS3"
 			ENDSELECT
+			CALL PAYMENT, -総発掘費用, "温泉発掘費用"
 			RETURN
 		CASE "2"
 			INVERTBIT マーク画面, 0
 			GOTO RESTART
 		CASE "3"
 			IF MS魔法ストック && 温泉マス < 総温泉数
-				IF 発掘費用 > MONEY && !ORIGIN
+				IF 発掘費用 > MONEY-総発掘費用 && !ORIGIN
 					PRINTW 所持金が足りません
 					GOTO RESTART
 				ENDIF
@@ -319,7 +320,6 @@ DO
 				素材変換 += 地質学人数+1
 				CALL マス目開放, X開放, Y開放, X幅, Y幅
 				MS魔法ストック--
-				MONEY -= 発掘費用
 				総発掘費用 += 発掘費用
 				GOTO RESTART
 			ENDIF
@@ -333,7 +333,7 @@ DO
 			SIF RESULT == 1
 				GOTO RESTART
 			PRINTL 無事に採掘を終えた！
-			CALL 現金出納帳記録, @"温泉発掘費用/-{総発掘費用}"
+			CALL PAYMENT, -総発掘費用, "温泉発掘費用"
 			TATSUJIN++
 			SAVEGLOBAL
 			CALL 実績解除, "徳川の埋蔵金まだー？"
@@ -360,7 +360,7 @@ DO
 		CASEELSE
 			SIF RESULTS == ""
 				CONTINUE
-			IF 発掘費用 > MONEY
+			IF 発掘費用 > MONEY-総発掘費用
 				PRINTW 所持金が足りません
 				GOTO RESTART
 			ENDIF
@@ -381,7 +381,6 @@ DO
 				ENDIF
 			ELSE
 				;自動開放では費用がかからない
-				MONEY -= 発掘費用
 				総発掘費用 += 発掘費用
 				素材変換 += 地質学人数+1
 				SELECTCASE MS:X座標:Y座標
@@ -554,8 +553,7 @@ SELECTCASE RESULT
 				RESTART
 		ENDIF
 		CALL マインスイーパ生成, @"{X指定}/{Y指定}", 難易度指定, LRESULT
-		MONEY -= 探索費用
-		CALL 現金出納帳記録, @"温泉探索費用/-{探索費用}"
+		CALL PAYMENT, -探索費用, "温泉探索費用"
 		RETURN
 ENDSELECT
 

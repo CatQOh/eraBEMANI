@@ -230,9 +230,6 @@ CALL CHECKDRAWLINE
 ;ギャンブルでの総収支
 ギャンブル総収支:0 += 収支
 
-;バンドだけでめしを食ってないのでフラグを消す
-バンめし = 0
-
 キャロルお誘いフラグ = 0
 ことみちゃんお誘いフラグ = 0
 
@@ -245,7 +242,9 @@ SELECTCASE 収支
 		ELSE
 			CALL PASELIW, @"{収支}＄儲かった！"
 		ENDIF
-		CALL 現金出納帳記録, @"カジノで勝利/{収支}"
+		;PAYMENT用に元に戻す
+		MONEY -= 収支
+		CALL PAYMENT, 収支, "カジノで勝利"
 		;勝ち分の桁数の20倍だけキャロルの好感度が増える
 		SIF ディーラーあり
 			キャロル好感度 += 20*(1+LOG10(収支))
@@ -299,7 +298,9 @@ SELECTCASE 収支
 		ENDIF
 	CASE IS < 0
 		CALL PASELIW, @"{ABS(収支)}＄損してしまった……"
-		CALL 現金出納帳記録, @"カジノで敗北/{収支}"
+		;PAYMENT用に元に戻す
+		MONEY -= 収支
+		CALL PAYMENT, 収支, "カジノで敗北"
 		;負け分の桁数の10倍だけキャロルの好感度が減る
 		SIF ディーラーあり
 			キャロル好感度 -= 10*(1+LOG10(-収支))
@@ -439,8 +440,7 @@ IF MONEY < 0
 						CASE 0
 							PRINTL 裏カジノに売り飛ばされた者たちは、別れを惜しむ間もなく黒ずくめの関係者に連れて行かれてしまった
 							PRINTFORMW 皆がこれからどんな目に遭うのか、%CALLNAME:MASTER%には知る由もない……
-							CALL 現金出納帳記録, @"裏カジノでの返済（キャラ売却）/-{売却総額}"
-							MONEY += 売却総額
+							CALL PAYMENT, 売却総額, "裏カジノ返済用の補充（キャラ売却）"
 							FOR LCOUNT, CHARANUM-1, 1, -1
 								IF 売却候補:LCOUNT
 									CALL プレイログ記録, @"裏カジノでの返済のために%NAME:LCOUNT%を売却"
@@ -510,8 +510,7 @@ IF MONEY < 0
 							ENDIF
 							CALL NEXTDAY
 						NEXT
-						MONEY += ABS(収支)
-						CALL 現金出納帳記録, @"裏カジノでの返済（体を売る）/{ABS(収支)}"
+						CALL PAYMENT, ABS(収支), "裏カジノ返済用の補充（体を売る）"
 						CALL プレイログ記録, @"裏カジノでの返済のために%NAME:MASTER%が{経過日数}監禁される"
 						IF パートナー != "" && OPTION:口上表示 && !CFLAG:GETCHARA(GETNO(パートナー)):口上非表示
 							LTARGET = TARGET

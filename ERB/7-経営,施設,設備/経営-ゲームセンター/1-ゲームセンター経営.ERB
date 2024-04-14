@@ -370,8 +370,7 @@ ENDIF
 CALL TUTORIAL, "経営_GC_2"
 
 PRINTFORMW ＜%物件名(LRESULT)%を購入しました＞
-MONEY -= 物件価格(LRESULT)
-CALL 現金出納帳記録, @"「%物件名(LRESULT)%」購入/-{物件価格(LRESULT)}"
+CALL PAYMENT, -物件価格(LRESULT), @"「%物件名(LRESULT)%」購入"
 IF パートナー != ""
 	SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
 		TRYCALLFORM BUY_OBJECT_%CSVNAMERPS(GETNO(パートナー))%, LRESULT
@@ -517,9 +516,8 @@ SELECTCASE RESULT
 		GC:トイレ++
 		改築内容 = トイレ
 ENDSELECT
-MONEY -= 費用:RESULT
+CALL PAYMENT, -費用:RESULT, "ゲームセンター改築"
 RESULT = LRESULT
-CALL 現金出納帳記録, @"ゲームセンター改築/-{費用:RESULT}"
 IF パートナー != ""
 	SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
 		TRYCALLFORM GC_RENOVATION_%CSVNAMERPS(GETNO(パートナー))%, 改築内容
@@ -627,8 +625,7 @@ DO
 								CALL TUTORIAL, "経営_GC_3"
 								PRINTFORMW ＜%ERDNAME(筐体, 購入筐体)%を{購入数}台購入しました＞
 								筐体:購入筐体 += 購入数
-								MONEY -= 筐体価格(購入筐体)*購入数
-								CALL 現金出納帳記録, @"筐体「%ERDNAME(筐体, 購入筐体)%」×{購入数}購入/-{筐体価格(購入筐体)*購入数}"
+								CALL PAYMENT, -筐体価格(購入筐体)*購入数, @"筐体「%ERDNAME(筐体, 購入筐体)%」×{購入数}購入/-{筐体価格(購入筐体)*購入数}"
 								IF パートナー != ""
 									SIF OPTION:口上表示 && !CFLAG:GETCHARANAME(パートナー):口上非表示
 										TRYCALLFORM BUY_ARCADEGAME_%CSVNAMERPS(GETNO(パートナー))%, 購入筐体
@@ -939,13 +936,10 @@ IF フードコートレベル()
 ENDIF
 
 CALL PASELIL, @"%GCS:店名%の収入が{収入}＄入りました"
-バンめし = 0
-MONEY += 収入
 
 DT_CELL_SET "GC_HISTORY", DT_ROW_LENGTH("GC_HISTORY")-1, "日付", @"{YEAR}年{MONTH}月{DAYS}日(%DOW(FLAG:曜日)%)"
 CALL GC_CELL_PLUS, "客数", 来客数
 CALL GC_CELL_PLUS, "総売上", 収入
-
 
 ;名声計算--------------------------------------------------------
 ;テナント施設だと名声が上がりやすい
@@ -1049,11 +1043,9 @@ NEXT
 
 
 CALL PASELIL, @"%GCS:店名%の経費に{支出}＄かかりました"
-MONEY -= 支出
 GC:前日の収入 = 収入-支出
 CALL GC_CELL_PLUS, "支出", 支出
-CALL 現金出納帳記録, @"ゲームセンター収支/{GC:前日の収入}"
-
+CALL PAYMENT, GC:前日の収入, "ゲームセンター収支"
 
 ;人事補正計算後に配属中のキャラを配属完了にする
 FOR LCOUNT, 1, CHARANUM
