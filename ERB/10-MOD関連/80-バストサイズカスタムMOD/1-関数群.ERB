@@ -1,4 +1,5 @@
 ﻿@キャラバストサイズ表示, 対象
+#FUNCTIONS
 #DIM DYNAMIC 対象
 #DIM DYNAMIC トップ
 #DIM DYNAMIC アンダー
@@ -23,22 +24,24 @@ ELSE
 	トップ = トップMIN
 	アンダー = アンダーMIN
 ENDIF
-CALL バストサイズ詳細表示(トップ, アンダー)
+RETURNF バストサイズ詳細表示(トップ, アンダー)
 
 
 @バストサイズ詳細表示, トップ, アンダー
+#FUNCTIONS
 #DIM DYNAMIC トップ
 #DIM DYNAMIC アンダー
 #DIM DYNAMIC 差分
 #DIM DYNAMIC 整数
 #DIM DYNAMIC 小数
+#DIMS DYNAMIC 本文
 ;バストサイズ詳細小数処理　0...四捨五入 1...切り捨て 2...切り上げ 3...小数表示
 IF トップ
 	整数 = トップ/10
 	小数 = トップ%10
 	;小数表示
 	IF バストサイズ詳細小数処理 == 3
-		PRINTFORM {整数}.{小数}cm
+		本文 += @"{整数}.{小数}cm"
 	ELSE
 		SELECTCASE バストサイズ詳細小数処理
 			;四捨五入
@@ -50,7 +53,7 @@ IF トップ
 				SIF 小数 > 0
 					整数++
 		ENDSELECT
-		PRINTFORM {整数}cm
+		本文 += @"{整数}cm"
 	ENDIF
 	IF アンダー
 		差分 = トップ-アンダー
@@ -59,17 +62,19 @@ IF トップ
 		差分 /= 25
 		SELECTCASE 差分
 			CASE IS <= 4
-				PRINTFORM (%"A"*(LIMIT(5-差分, 1, 5))%カップ)
+				本文 += @"(%"A"*(LIMIT(5-差分, 1, 5))%カップ)"
 			CASE 5 TO 29
-				PRINTFORM (%UNICODE(ENCODETOUNI("B")+(差分-5))%カップ)
+				本文 += @"(%UNICODE(ENCODETOUNI("B")+(差分-5))%カップ)"
 			CASE IS >= 30
-				PRINT (Zカップ+)
+				本文 += @"(Zカップ+)"
 		ENDSELECT
 	ENDIF
 ELSE
-	CALL PRINTCOLOR, "未設定", "gray"
+	本文 += "未設定"
+	;式中関数化したので一旦色変え保留
+	;CALL PRINTCOLOR, "未設定", "gray"
 ENDIF
-RETURN 0
+RETURNF 本文
 
 
 ;;;カップ数を入れるとトップとアンダーの差をミリメートル単位で出す
@@ -99,4 +104,3 @@ SELECTCASE ENCODETOUNI(CONV_ABC(カップサイズ))
 		RETURNF (エンコード-ENCODETOUNI("A"))*25+100
 ENDSELECT
 RETURNF -1
-

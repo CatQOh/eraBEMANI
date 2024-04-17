@@ -57,7 +57,7 @@ SIF MOD:チャレンジ
 ;キャラマニュアル内でタグ付けされていれば特殊表示する
 ;これでCSV内でマニュアルも完結できる
 ;マニュアル用と題してるが普通の文章表示でもタグ付け機能が使える その際はLINEISEMPTYでの改行を忘れずに
-@MANUALPRINT, マニュアル:0
+@MANUALPRINT, マニュアル:0, カラム
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 検索位置
 #DIMS DYNAMIC マニュアル, 2
@@ -65,6 +65,7 @@ SIF MOD:チャレンジ
 #DIM DYNAMIC 文字数
 #DIMS DYNAMIC 字体, 3
 #DIMS DYNAMIC 本文
+#DIM DYNAMIC カラム
 
 ;タグを探す
 始点 = STRFINDU(マニュアル, "(", 検索位置)
@@ -72,7 +73,11 @@ SIF MOD:チャレンジ
 ;タグ付けされてれば処理実行
 IF 始点 >= 0
 	;タグ付けまでの文章を通常表示
-	PRINTFORM %SUBSTRINGU(マニュアル, 0, 始点)%
+	IF カラム
+		CALL MCOLUMNPRINT, @"%SUBSTRINGU(マニュアル, 0, 始点)%", "", 1
+	ELSE
+		PRINTFORM %SUBSTRINGU(マニュアル, 0, 始点)%
+	ENDIF
 	;処理、内容、本文でSPLITする
 	SPLIT SUBSTRINGU(マニュアル, 始点+1, 文字数-1), ":", 字体
 	本文 = %字体:2%
@@ -85,22 +90,22 @@ IF 始点 >= 0
 				;太字
 				CASE "BOLD"
 					FONTBOLD
-					CALL MANUALPRINT, 本文
+					CALL MANUALPRINT, 本文, カラム
 					FONTREGULAR
 				;打ち消し線
 				CASE "STRIKE"
 					FONTSTYLE 4
-					CALL MANUALPRINT, 本文
+					CALL MANUALPRINT, 本文, カラム
 					FONTSTYLE 0
 			ENDSELECT
 		;色指定 現時点では色名のみで数値指定はできない
 		;指定した色名が無効であればデフォルト色表示
 		CASE "COLOR"
 			IF COLOR_FROMNAME(字体:1) == -1
-				CALL MANUALPRINT, 本文
+				CALL MANUALPRINT, 本文, カラム
 			ELSE
 				SETCOLOR COLOR_FROMNAME(字体:1)
-				CALL MANUALPRINT, 本文
+				CALL MANUALPRINT, 本文, カラム
 				RESETCOLOR
 			ENDIF
 		;その他
@@ -131,12 +136,17 @@ IF 始点 >= 0
 								マニュアル:1 += CHARATU(本文, LCOUNT)
 						ENDSELECT
 					NEXT
-					ALIGNMENT RIGHT
-					PRINTFORML %マニュアル:1%
-					ALIGNMENT LEFT
+					;カラムでは諦める
+					IF カラム
+						CALL MCOLUMNPRINTL, マニュアル:1
+					ELSE
+						ALIGNMENT RIGHT
+						PRINTFORML %マニュアル:1%
+						ALIGNMENT LEFT
+					ENDIF
 				;WAIT このタグを使用すると改行されるので、文末までタグに含めないと表示がおかしくなる
 				CASE "WAIT"
-					CALL MANUALPRINT, 本文
+					CALL MANUALPRINT, 本文, カラム
 					WAIT
 			ENDSELECT
 	ENDSELECT
@@ -149,13 +159,17 @@ IF 始点 >= 0
 		;残りの文章が閉じカッコ以外にもあれば再帰処理
 		ELSE
 			;閉じカッコの分+1
-			CALL MANUALPRINT, SUBSTRINGU(マニュアル, 検索位置+1)
+			CALL MANUALPRINT, SUBSTRINGU(マニュアル, 検索位置+1), カラム
 			RETURN
 		ENDIF
 	ENDIF
 ;タグが無ければ通常表示
 ELSE
-	PRINTFORM %マニュアル%
+	IF カラム
+		CALL MCOLUMNPRINT, @"%マニュアル%", "", 1
+	ELSE
+		PRINTFORM %マニュアル%
+	ENDIF
 	RETURN
 ENDIF
 
