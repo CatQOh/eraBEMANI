@@ -348,6 +348,7 @@ FOR LCOUNT, 0, 10
 	IF 飲食店メニュー:LCOUNT == ""
 		PRINTFORML 　[{LCOUNT}] - メニュー無し
 	ELSE
+		VARSET 分割用
 		CALLF レシピ判定, 飲食店メニュー:LCOUNT
 		SPLIT 料理ジャンル, "/", 分割用
 		SIF MATCH(分割用, INNS:ジャンル)
@@ -715,7 +716,7 @@ ENDIF
 #DIM DYNAMIC 基本料金計算用
 #DIM DYNAMIC 名声上昇値
 #DIM DYNAMIC 料理種類
-#DIMS DYNAMIC 分割用
+#DIMS DYNAMIC 分割用, 5
 #DIM DYNAMIC モチベ加算値
 #DIM DYNAMIC 日給
 #DIM DYNAMIC 対応不可人数
@@ -1229,3 +1230,28 @@ SELECTCASE RESULT
 ENDSELECT
 
 RESTART
+
+;;;飲食店で設定しているメニュー数
+@飲食店メニュー数
+#FUNCTION
+
+RETURNF 10-MATCH(飲食店メニュー, "")
+
+@メニュージャンル一致数
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 分割用, 5
+#DIM DYNAMIC 一致数
+
+FOR LCOUNT, 0, 10
+	SIF 飲食店メニュー:LCOUNT == ""
+		CONTINUE
+	CALLF レシピ判定, 飲食店メニュー:LCOUNT
+	SPLIT 料理ジャンル, "/", 分割用
+
+	;店のジャンルに合ってる場合は3割くらいが追加注文する
+	SIF MATCH(分割用, INNS:ジャンル)
+		一致数++
+NEXT
+
+RETURNF 一致数

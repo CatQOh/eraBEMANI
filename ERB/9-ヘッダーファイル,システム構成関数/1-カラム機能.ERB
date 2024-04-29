@@ -21,7 +21,8 @@ DO
 		ロケーション保存用 = %CSTR:PLAYER:現在地%
 	ENDIF
 	IF LOOP_BREAK
-		選択カラム = 0
+		選択カラム = 選択カラム指定
+		選択カラム指定 = 0
 		CRESULT:0 = 0
 		BREAK
 	ENDIF
@@ -314,25 +315,50 @@ ELSE
 	COLUMN:カラム番号:BGCOLOR = COLOR_FROMNAME(色)
 ENDIF
 
+;;;Main Column PRINT 0の入力省略だけ
+@MCOLUMNPRINT, 本文, 色, エスケープ
+#DIMS DYNAMIC 本文
+#DIMS DYNAMIC 色
+#DIM DYNAMIC エスケープ
+
+CALL COLUMNSHIFT(0, 本文, 色, "", エスケープ)
+
 ;;;(カラム番号, 本文, 色) 改行しない本文追加
-@COLUMNPRINT, カラム番号, 本文, 色
+@COLUMNPRINT, カラム番号, 本文, 色, エスケープ
 #DIM DYNAMIC カラム番号
 #DIMS DYNAMIC 本文
 #DIMS DYNAMIC 色
+#DIM DYNAMIC エスケープ
 
-CALL COLUMNSHIFT(カラム番号, 本文, 色)
+CALL COLUMNSHIFT(カラム番号, 本文, 色, "", エスケープ)
 
-;;;(カラム番号, 本文, 色) 改行する本文追加
-@COLUMNPRINTL, カラム番号, 本文, 色
+;;;Main Column PRINTL 0の入力省略だけ
+@MCOLUMNPRINTL, 本文, 色, エスケープ
 #DIM DYNAMIC カラム番号
 #DIMS DYNAMIC 本文
 #DIMS DYNAMIC 色
+#DIM DYNAMIC エスケープ
 
 ;空行の場合は専用の識別子入れる
 IF COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) == "" && 本文 == ""
 	COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) = [THIS_IS_EMPTY]
 ELSE
-	CALL COLUMNSHIFT(カラム番号, 本文, 色)
+	CALL COLUMNSHIFT(カラム番号, 本文, 色, "", エスケープ)
+ENDIF
+COLUMN:カラム番号:LINE++
+
+;;;(カラム番号, 本文, 色) 改行する本文追加
+@COLUMNPRINTL, カラム番号, 本文, 色, エスケープ
+#DIM DYNAMIC カラム番号
+#DIMS DYNAMIC 本文
+#DIMS DYNAMIC 色
+#DIM DYNAMIC エスケープ
+
+;空行の場合は専用の識別子入れる
+IF COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) == "" && 本文 == ""
+	COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) = [THIS_IS_EMPTY]
+ELSE
+	CALL COLUMNSHIFT(カラム番号, 本文, 色, "", エスケープ)
 ENDIF
 COLUMN:カラム番号:LINE++
 
@@ -360,6 +386,25 @@ COLUMN:カラム番号:LINE++
 
 CALL GCREATESTACK, スプライト名
 COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) += @"<img src='%ESCAPE(スプライト名)%' srcb='' width='{幅}' height='{高さ}'>"
+
+;;;(カラム番号, 本文, ツールチップ, 16進数カラーコードor色名) ツールチップ付きのカラム文
+@MCOLUMNTOOLTIP, 本文, ツールチップ, 色
+#DIM DYNAMIC カラム番号
+#DIMS DYNAMIC 本文
+#DIMS DYNAMIC ツールチップ
+#DIMS DYNAMIC 色
+
+CALL COLUMNSHIFT(カラム番号, 本文, 色, ツールチップ)
+
+;;;(カラム番号, 本文, ツールチップ, 16進数カラーコードor色名) ツールチップ付きのカラム文
+@MCOLUMNTOOLTIPL, 本文, ツールチップ, 色
+#DIM DYNAMIC カラム番号
+#DIMS DYNAMIC 本文
+#DIMS DYNAMIC ツールチップ
+#DIMS DYNAMIC 色
+
+CALL COLUMNSHIFT(カラム番号, 本文, 色, ツールチップ)
+COLUMN:カラム番号:LINE++
 
 ;;;(カラム番号, 本文, ツールチップ, 16進数カラーコードor色名) ツールチップ付きのカラム文
 @COLUMNTOOLTIP, カラム番号, 本文, ツールチップ, 色
@@ -421,7 +466,7 @@ SPRITECREATE @"BAR{GID}", GID
 COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) += @"<img src='BAR{GID}' srcb='' width='{長さ}' height='100'>"
 
 ;;;カラム機能外での呼び出し非推奨
-@COLUMNSHIFT, カラム番号, 本文, ETC, TOOLTIP
+@COLUMNSHIFT, カラム番号, 本文, ETC, TOOLTIP, エスケープ
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC ETC
 #DIMS DYNAMIC TOOLTIP
@@ -431,17 +476,27 @@ COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) += @"<img src='BAR{GID}'
 #DIMS DYNAMIC HTML
 #DIMS DYNAMIC 本文
 #DIM DYNAMIC カラム番号
+#DIM DYNAMIC エスケープ
 
 SIF 本文 == ""
 	RETURN
 
 IF COLOR_FROMNAME(ETC) >= 0
-	本文 = <font color='%ETC%'>%本文%</font>
+	本文 = <font color='%ETC%'>\@ エスケープ ? %HTML_ESCAPE(本文)% # %本文% \@</font>
 ELSEIF ISNUMERIC(ETC) && TOINT(ETC) >= 0
-	本文 = <font color='#%CONVERT(TOINT(ETC), 16)%'>%本文%</font>
+	本文 = <font color='#%CONVERT(TOINT(ETC), 16)%'>\@ エスケープ ? %HTML_ESCAPE(本文)% # %本文% \@</font>
 ELSE
-	本文 = <font color='#%CONVERT(GETCOLOR(), 16)%'>%本文%</font>
+	本文 = <font color='#%CONVERT(GETCOLOR(), 16)%'>\@ エスケープ ? %HTML_ESCAPE(本文)% # %本文% \@</font>
 ENDIF
+
+SIF GETBIT(GETSTYLE(), 0)
+	本文 = <b>%本文%
+SIF GETBIT(GETSTYLE(), 1)
+	本文 = <i>%本文%
+SIF GETBIT(GETSTYLE(), 2)
+	本文 = <s>%本文%
+SIF GETBIT(GETSTYLE(), 3)
+	本文 = <u>%本文%
 
 ;パセリに対応
 IF OPTION:パセリ表示
@@ -482,6 +537,15 @@ ELSE
 		HTML += @"title='%TOOLTIP%'"
 	HTML += @">%本文%</nonbutton>"
 ENDIF
+
+SIF GETBIT(GETSTYLE(), 0)
+	HTML += "</b>"
+SIF GETBIT(GETSTYLE(), 1)
+	HTML += "</i>"
+SIF GETBIT(GETSTYLE(), 2)
+	HTML += "</s>"
+SIF GETBIT(GETSTYLE(), 3)
+	HTML += "</u>"
 
 COLUMNLOG:カラム番号:(COLUMN:カラム番号:LINE) += HTML
 
@@ -524,11 +588,28 @@ COLUMN:ARG:BCOLOR = ARG:1
 COLUMN:ARG:RADIUS = ARG:1
 [SKIPEND]
 
+@MCOLUMNDRAWLINE
+CALL COLUMNDRAWLINE, 0
+
 ;;;(カラム番号) DRAWLINE
 @COLUMNDRAWLINE, カラム番号
 #DIM DYNAMIC カラム番号
 
 CALL COLUMNPRINTL, カラム番号, "-"*COLUMNDRAW
+
+;;;指定のカラム番号を指定した行まで詰める
+@COLUMNSETLINE, カラム番号, 指定行
+#DIM DYNAMIC カラム番号
+#DIM DYNAMIC 指定行
+
+WHILE 指定行 > COLUMN:カラム番号:LINE
+	CALL COLUMNPRINTL, カラム番号, ""
+WEND
+
+@MCOLUMNSETLINE, 指定行
+#DIM DYNAMIC 指定行
+
+CALL COLUMNSETLINE, 0, 指定行
 
 @COLUMNSHOW
 #DIM DYNAMIC LCOUNT

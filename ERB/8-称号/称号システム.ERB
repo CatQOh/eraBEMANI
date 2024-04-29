@@ -1,4 +1,5 @@
 ﻿@称号表示
+#FUNCTIONS
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC CHARA_1
@@ -6,11 +7,13 @@
 #DIM DYNAMIC CHARA_3
 #DIM DYNAMIC 特殊称号計算用, 3
 #DIM DYNAMIC 特殊称号候補, 3
+#DIMS DYNAMIC 本文
 
 VARSET WHO_P
 VARSET DID_P
 
 ;将来的に色付けたりするかもしれないので式中関数ではなく普通の関数
+;色変え等無いので式中関数化した
 
 ;特定の1人または2人の調教回数だけがやたら多い場合は特殊称号
 IF MAXCARRAY(CFLAG:調教回数) >= 30
@@ -38,64 +41,64 @@ IF MAXCARRAY(CFLAG:調教回数) >= 30
 		DID_P:受けP = CFLAG:CHARA_1:攻め調教
 		DID_P:攻めP = CFLAG:CHARA_1:受け調教
 
-		PRINTFORM %CALLNAME:CHARA_1%
+		本文 += @"%CALLNAME:CHARA_1%"
 		SELECTCASE SEX(MASTER)
 			CASE 1
 				IF EXP:CHARA_1:助手調教経験 > EXP:CHARA_1:主人調教経験
-					PRINT を眺める会の会長
+					本文 += "を眺める会の会長"
 				;SM寄り
 				ELSEIF DID_P:加虐P > DID_P:通常P
-					PRINT のご主人様
+					本文 += "のご主人様"
 				ELSEIF DID_P:被虐P > DID_P:通常P
-					PRINT の犬
+					本文 += "の犬"
 				ELSE
 					IF DID_P:受けP > DID_P:攻めP
-						PRINT の愛人
+						本文 += "の愛人"
 					ELSE
-						PRINT の夫
+						本文 += "の夫"
 					ENDIF
 				ENDIF
 			CASE 2
 				IF EXP:CHARA_1:助手調教経験 > EXP:CHARA_1:主人調教経験
-					PRINT を眺める会の会長
+					本文 += "を眺める会の会長"
 				;SM寄り
 				ELSEIF DID_P:加虐P > DID_P:通常P
-					PRINT の女王様
+					本文 += "の女王様"
 				ELSEIF DID_P:被虐P > DID_P:通常P
-					PRINT のメス犬
+					本文 += "のメス犬"
 				ELSE
 					IF DID_P:攻めP > DID_P:受けP
-						PRINT は俺の嫁
+						本文 += "は俺の嫁"
 					ELSE
 						IF TALENT:MASTER:体格 <= 2
-							PRINT の幼妻
+							本文 += "の幼妻"
 						ELSE
-							PRINT の妻
+							本文 += "の妻"
 						ENDIF
 					ENDIF
 				ENDIF
 		ENDSELECT
-		RETURN
+		RETURNF 本文
 	;2人の差が30未満で3人目と30以上離れてる場合
 	ELSEIF 特殊称号計算用:0-特殊称号計算用:1 < 30 && 特殊称号計算用:1-特殊称号計算用:2 >= 30
 		;主人だけ男性&他女性
 		IF SEX(MASTER) == 1 && SEX(CHARA_1) == 2 && SEX(CHARA_2) == 2
-			PRINTFORM %CALLNAME:CHARA_1%と%CALLNAME:CHARA_2%で両手に花
+			本文 += @"%CALLNAME:CHARA_1%と%CALLNAME:CHARA_2%で両手に花"
 		;主人だけ女性&他男性
 		ELSEIF SEX(MASTER) == 2 && SEX(CHARA_1) == 1 && SEX(CHARA_2) == 1
-			PRINTFORM %CALLNAME:CHARA_1%と%CALLNAME:CHARA_2%の間で揺れ動く乙女
+			本文 += @"%CALLNAME:CHARA_1%と%CALLNAME:CHARA_2%の間で揺れ動く乙女"
 		ELSE
-			PRINTFORM %CALLNAME:CHARA_1%と%CALLNAME:CHARA_2%との三角関係
+			本文 += @"%CALLNAME:CHARA_1%と%CALLNAME:CHARA_2%との三角関係"
 		ENDIF
-		RETURN
+		RETURNF 本文
 	ENDIF
 ENDIF
 
 ;ここから普通のプレイ称号・調教称号
 IF MAXARRAY(プレイ称号) == 0
-	PRINT どこにでも居る
+	本文 += "どこにでも居る"
 ELSE
-	CALL プレイ称号計算, "プレイ称号表示"
+	本文 += プレイ称号計算("プレイ称号表示")
 ENDIF
 
 ;「調教称号」変数は二次元配列
@@ -110,7 +113,7 @@ FOR LCOUNT, 0, VARSIZE("WHO_P")
 NEXT
 
 IF MAXARRAY(WHO_P) == 0
-	PRINT 調教師
+	本文 += "調教師"
 ELSE
 	SELECTCASE MAXARRAY(WHO_P)
 		CASE WHO_P:ロリコンP, WHO_P:ショタコンP
@@ -120,22 +123,22 @@ ELSE
 					DID_P:LCOUNT2 = 調教称号:ロリコンP:LCOUNT2
 				NEXT
 				IF DID_P:加虐P > DID_P:通常P
-					PRINT 女児虐待常習者
+					本文 += "女児虐待常習者"
 				ELSEIF DID_P:被虐P > DID_P:通常P || DID_P:受けP > DID_P:攻めP
-					PRINT 女児に踏まれたい人
+					本文 += "女児に踏まれたい人"
 				ELSE
-					PRINT ロリコン
+					本文 += "ロリコン"
 				ENDIF
 			ELSEIF WHO_P:ショタコンP > WHO_P:ロリコンP*2
 				FOR LCOUNT2, 0, VARSIZE("DID_P")
 					DID_P:LCOUNT2 = 調教称号:ショタコンP:LCOUNT2
 				NEXT
 				IF DID_P:加虐P > DID_P:通常P
-					PRINT 男児虐待の常習者
+					本文 += "男児虐待の常習者"
 				ELSEIF DID_P:攻めP > DID_P:受けP
-					PRINT ショタをメス堕ちさせたい人
+					本文 += "ショタをメス堕ちさせたい人"
 				ELSE
-					PRINT ショタコン
+					本文 += "ショタコン"
 				ENDIF
 			ELSE
 				FOR LCOUNT2, 0, VARSIZE("DID_P")
@@ -146,11 +149,11 @@ ELSE
 					ENDIF
 				NEXT
 				IF DID_P:加虐P > DID_P:通常P
-					PRINT 児童虐待常習者
+					本文 += "児童虐待常習者"
 				ELSEIF DID_P:被虐P > DID_P:通常P || DID_P:受けP > DID_P:攻めP
-					PRINT 児童に劣情を抱く者
+					本文 += "児童に劣情を抱く者"
 				ELSE
-					PRINT 小児性愛者
+					本文 += "小児性愛者"
 				ENDIF
 			ENDIF
 		CASE WHO_P:男性P
@@ -160,23 +163,23 @@ ELSE
 			SELECTCASE SEX(MASTER)
 				CASE 1
 					IF DID_P:加虐P > DID_P:通常P || DID_P:被虐P > DID_P:通常P
-						PRINT SM愛好ゲイ
+						本文 += "SM愛好ゲイ"
 					ELSEIF DID_P:攻めP > DID_P:受けP
-						PRINT タチ寄りゲイ
+						本文 += "タチ寄りゲイ"
 					ELSEIF DID_P:受けP > DID_P:攻めP
-						PRINT ネコ寄りゲイ
+						本文 += "ネコ寄りゲイ"
 					ELSE
-						PRINT ゲイ
+						本文 += "ゲイ"
 					ENDIF
 				CASE 2
 					IF DID_P:加虐P > DID_P:通常P || DID_P:攻めP > DID_P:受けP
 						IF TALENT:MASTER:体格 <= 2
-							PRINT メスガキ
+							本文 += "メスガキ"
 						ELSE
-							PRINT 女王様気質
+							本文 += "女王様気質"
 						ENDIF
 					ELSE
-						PRINT 女調教師
+						本文 += "女調教師"
 					ENDIF
 			ENDSELECT
 		CASE WHO_P:女性P
@@ -186,41 +189,45 @@ ELSE
 			SELECTCASE SEX(MASTER)
 				CASE 1
 					IF DID_P:加虐P > DID_P:通常P
-						PRINT サディストな調教師
+						本文 += "サディストな調教師"
 					ELSEIF DID_P:被虐P > DID_P:通常P
-						PRINT マゾヒストな調教師
+						本文 += "マゾヒストな調教師"
 					ELSE
-						PRINT 調教師
+						本文 += "調教師"
 					ENDIF
 				CASE 2
 					IF DID_P:加虐P > DID_P:通常P || DID_P:攻めP > DID_P:受けP
-						PRINT 小悪魔系レズ
+						本文 += "小悪魔系レズ"
 					ELSE
-						PRINT 百合好き女調教師
+						本文 += "百合好き女調教師"
 					ENDIF
 			ENDSELECT
 		CASE WHO_P:貧乳P
-			PRINT 貧乳好き
+			本文 += "貧乳好き"
 		CASE WHO_P:巨乳P
-			PRINT 巨乳好き
+			本文 += "巨乳好き"
 		CASE WHO_P:ふたなりP
 			FOR LCOUNT2, 0, VARSIZE("DID_P")
 				DID_P:LCOUNT2 = 調教称号:ふたなりP:LCOUNT2
 			NEXT
 			IF DID_P:受けP > DID_P:攻めP && SEX(MASTER) == 1
-				PRINT メス堕ちしがちの調教師
+				本文 += "メス堕ちしがちの調教師"
 			ELSE
-				PRINT ふたなり好き
+				本文 += "ふたなり好き"
 			ENDIF
 		CASEELSE
-			PRINT 調教師
+			本文 += "調教師"
 	ENDSELECT
 ENDIF
 
+RETURNF 本文
+
 
 @プレイ称号計算, 状況
+#FUNCTIONS
 #DIM DYNAMIC 休憩値
 #DIMS DYNAMIC 状況
+#DIMS DYNAMIC 本文
 {
 #DIMS CONST プレイ称号一覧 = 
 "休憩",
@@ -257,59 +264,61 @@ ENDIF
 IF 状況 == "プレイ称号表示"
 	SELECTCASE プレイ称号一覧:FINDELEMENT(プレイ称号, MAXARRAY(プレイ称号))
 		CASE "休憩"
-			PRINT やたら疲れやすい
+			本文 += "やたら疲れやすい"
 		CASE "スキル"
-			PRINT 向上心がある
+			本文 += "向上心がある"
 		CASE "能力表示"
-			PRINT キャラの能力が気になる
+			本文 += "キャラの能力が気になる"
 		CASE "魔法詠唱"
-			PRINT 魔法を使いこなす
+			本文 += "魔法を使いこなす"
 		CASE "ギャンブル"
-			PRINT ギャンブラーな
+			本文 += "ギャンブラーな"
 		CASE "マップ"
-			PRINT 風水にこだわる
+			本文 += "風水にこだわる"
 		CASE "アイテム"
-			PRINT 物欲の多い
+			本文 += "物欲の多い"
 		CASE "眷属"
-			PRINT 種族の垣根を越える
+			本文 += "種族の垣根を越える"
 		CASE "セーブ"
-			PRINT 心配性な
+			本文 += "心配性な"
 		CASE "テキスト設定"
-			PRINT いろいろ読みたい
+			本文 += "いろいろ読みたい"
 		CASE "着衣設定"
-			PRINT オシャレな
+			本文 += "オシャレな"
 		CASE "チュートリアル"
-			PRINT 初心を忘れない
+			本文 += "初心を忘れない"
 		CASE "ゲーセン経営"
-			PRINT ゲーマーな
+			本文 += "ゲーマーな"
 		CASE "娼館経営"
-			PRINT 娼婦を束ねる
+			本文 += "娼婦を束ねる"
 		CASE "芸プロ運営"
-			PRINT エンターテイナーな
+			本文 += "エンターテイナーな"
 		CASE "医務室"
-			PRINT 医学に明るい
+			本文 += "医学に明るい"
 		CASE "実験室"
-			PRINT サイエンティストな
+			本文 += "サイエンティストな"
 		CASE "図書室"
-			PRINT 読書家な
+			本文 += "読書家な"
 		CASE "調理室"
-			PRINT グルメな
+			本文 += "グルメな"
 		CASE "農業"
-			PRINT 農業が趣味の
+			本文 += "農業が趣味の"
 		CASE "畜産業"
-			PRINT 動物を愛する
+			本文 += "動物を愛する"
 		CASE "印"
-			PRINT 独占欲が強い
+			本文 += "独占欲が強い"
 		CASE "博物館"
-			PRINT 美意識の高い
+			本文 += "美意識の高い"
 		CASE "カニバリスト"
-			PRINT 食欲旺盛な
+			本文 += "食欲旺盛な"
 	ENDSELECT
 ELSE
 	プレイ称号:FINDELEMENT(プレイ称号一覧, 状況, 0, VARSIZE("プレイ称号一覧"))++
 ENDIF
 
 プレイ称号:0 = 休憩値
+
+RETURNF 本文
 
 @調教称号計算
 #DIM DYNAMIC 行動内容

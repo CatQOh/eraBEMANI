@@ -1,38 +1,203 @@
-﻿@STATUS, ロストキャラ表示
+﻿@STATUS
+#DIM DYNAMIC LCOLUMN
+DRAWLINE
+
+TFLAG:ページ数 = 0
+LCOLUMN = 選択カラム
+選択カラム = 0
+
+CALL カラム生成, "ステータス表示", "ステータス", "服装・相性", "その他情報", "アイテム使用", "メモ", "戻る"
+
+選択カラム指定 = LCOLUMN
+
+;;;今のところSHOPからのステータス表示でしか呼んでいないのでカラム処理化
+@基本情報
+#DIMS DYNAMIC 表示用変数
+
+CALL MCOLUMNPRINT, @" □ %I18N("基本情報")% "
+IF CFLAG:タグ色
+	IF ISSLIME(TARGET)
+		CALL MCOLUMNPRINT, @"%I18N("体色")%:"
+	ELSE
+		CALL MCOLUMNPRINT, @"%I18N("タグ色")%:"
+	ENDIF
+	CALL MCOLUMNPRINT, "■", CFLAG:タグ色
+ENDIF
+CALL MCOLUMNPRINTL, ""
+CALL MCOLUMNPRINT, @"　%I18N("名前")%:%NAMEDISP(TARGET)% %I18N("性別")%:%性別表示(TARGET)% "
+
+CALL MCOLUMNPRINT, @"%I18N("種族")%:"
+IF NOF(TARGET) == MASTER || NOF(TARGET) >= 10000 || CSTR:種族 == CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))
+	IF TARGET == MASTER && CSTR:種族 != 主人初期種族 && 主人初期種族 != ""
+		CALL MCOLUMNPRINT, @"%I18N("元|0|の|1|", , 主人初期種族, CSTR:種族)% "
+	ELSE
+		CALL MCOLUMNPRINT, @"%I18N(CSTR:種族, "RACE")% "
+	ENDIF
+ELSEIF CSTR:種族 != CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))
+	CALL MCOLUMNPRINT,  @"%I18N("元|0|の|1|", , CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族")), CSTR:種族)% "
+ENDIF
+
+IF TARGET != MASTER
+	IF GUI
+		CALL MCOLUMNPRINT, @"%I18N("ストレス値")%:%IMGTOTAG(BASEBAR("ストレス値", TARGET, 4))% "
+	ELSE
+		CALL MCOLUMNPRINT, @"%I18N("ストレス値")%"
+		SELECTCASE CFLAG:ストレス値
+			CASE 0
+				CALL MCOLUMNPRINT, @"{CFLAG:ストレス値}/999 ", "gray"
+			CASE 1 TO 99
+				CALL MCOLUMNPRINT, @"{CFLAG:ストレス値}/999 ", "lime"
+			CASE 100 TO 299
+				CALL MCOLUMNPRINT, @"{CFLAG:ストレス値}/999 ", "yellow"
+			CASE 300 TO 499
+				CALL MCOLUMNPRINT, @"{CFLAG:ストレス値}/999 ", "red"
+			CASE IS >= 500
+				CALL MCOLUMNPRINT, @"{CFLAG:ストレス値}/999 ", "darkred"
+		ENDSELECT
+	ENDIF
+	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+		CALL MCOLUMNPRINT, @" %I18N("依存度")%:{CFLAG:依存度} "
+ELSEIF TARGET == MASTER && ゲームモード() != "新婚モード"
+	CALL MCOLUMNPRINT, @"%I18N("堕した人数")%:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従}人) %I18N("難易度")%:%難易度()% "
+ENDIF
+CALL MCOLUMNPRINTL, ""
+CALL MCOLUMNPRINT, "　"
+SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+	CALL MCOLUMNPRINT, @"%I18N("経験人数")%:{経験人数(TARGET)} "
+IF MOD:バスト関連ステータス表示
+	CALL MCOLUMNPRINT, @"%I18N("パイズリ経験人数")%:{パイズリ経験人数(TARGET)} "
+	SIF INRANGE(NOF(TARGET), 0, 9999) && バストサイズ詳細トップ:(NOF(TARGET)):(TALENT:TARGET:バストサイズ)
+		CALL MCOLUMNPRINT, @"%I18N("バスト")%:%キャラバストサイズ表示(TARGET)% "
+ENDIF
+IF TARGET == MASTER
+	CALL MCOLUMNPRINT, @"%I18N("称号")%:"
+	IF 固定称号 != ""
+		CALL MCOLUMNPRINT, @"%固定称号%"
+	ELSE
+		CALL MCOLUMNPRINT, 称号表示()
+	ENDIF
+	;ここはPRINTPLAINだった
+	CALL MCOLUMNPRINT, " "
+	CALL MCOLUMNPRINT, @"[50]\@ 固定称号 == "" ? 称号を固定する # 称号の固定を解除する \@"
+;ELSE
+	;メモはカラム化(暫定)
+	;PRINTFORM %メモ:TARGET:0%
+ENDIF
+CALL MCOLUMNPRINTL, ""
+
+IF 顔グラ表示
+	GDISPOSE 0
+	;まずFACEフォルダを探しに行く
+	IF !GCREATEFROMFILE(0, @"FACE\\%NAME:TARGET%_FACE.png")
+		;見つからなかったらresources直下を探す
+		GCREATEFROMFILE 0, @"%NAME:TARGET%_FACE.png"
+	ENDIF
+	SPRITECREATE @"%NAME:TARGET%_FACE", 0
+	IF SPRITECREATED(@"%NAME:TARGET%_FACE")
+		CALL MCOLUMNPRINT, @"　%IMGTOTAG(@"%NAME:TARGET%_FACE", 500, 500)%"
+	ELSE
+		CALL MCOLUMNPRINT, @"　%IMGTOTAG("NO_IMAGE", 500, 500)%"
+	ENDIF
+	REPEAT 5
+		CALL MCOLUMNPRINTL, ""
+	REND
+ENDIF
+
+@ステータス表示_ステータス
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC 相性表示用
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC 前のキャラ = -1
 #DIM DYNAMIC 次のキャラ = -1
-#DIM DYNAMIC ロストキャラ表示
+;#DIM DYNAMIC ロストキャラ表示
 #DIM DYNAMIC 相性補正後
 #DIM DYNAMIC 種族嫌悪例外処理
 #DIM マニュアル表示
-DRAWLINE
 
 CALL 基本情報
 
 IF TARGET != MASTER
-	DRAWLINE
-	PRINTFORML □ %I18N("珠")% 
-	CALL SHOW_INFO_JUEL, TARGET
+	CALL MCOLUMNDRAWLINE
+	CALL MCOLUMNPRINTL, @"□ %I18N("珠")%"
+	CALL SHOW_INFO_JUEL, TARGET, 1
 ENDIF
-CALL SHOW_INFO, TARGET
+;CALL SHOW_INFO, TARGET, 0, 1
 
-PRINTPLAINFORM □ %I18N("相性")% 
-PRINTFORML [100] \@ OPTION:相性非表示 ? 開く # 閉じる \@
-IF !OPTION:相性非表示
+CALL MCOLUMNDRAWLINE
+
+CALL MCOLUMNPRINTL, @"□ %I18N("経験")%"
+CALL SHOW_INFO_EXP, TARGET, 0, 1
+CALL MCOLUMNDRAWLINE
+
+CALL MCOLUMNPRINTL, @"□ %I18N("能力")%"
+CALL SHOW_INFO_ABL, TARGET, 1
+CALL MCOLUMNDRAWLINE
+
+IF TARGET != MASTER
+	CALL MCOLUMNPRINTL, @"□ %I18N("刻印")%"
+	CALL SHOW_INFO_MARK, TARGET, 1
+	CALL MCOLUMNDRAWLINE
+ENDIF
+CALL MCOLUMNPRINTL, @"□ %I18N("素質")%"
+CALL SHOW_INFO_TALENT, TARGET, 1
+;CALL MCOLUMNDRAWLINE
+
+CALL ステータス表示汎用メニュー
+
+@ステータス表示_ステータス_INPUT
+CALL ステータス表示汎用メニュー_INPUT
+SELECTCASE CRESULT:1
+	;50 称号の固定
+	CASE 50
+		IF 固定称号 == ""
+			固定称号 = %称号表示()%
+			PRINTFORMW 称号を「%固定称号%」で固定しました
+		ELSE
+			固定称号 = 
+			PRINTW 称号の固定を解除しました
+		ENDIF
+ENDSELECT
+
+@ステータス表示_服装・相性
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 相性表示用
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 前のキャラ = -1
+#DIM DYNAMIC 次のキャラ = -1
+;#DIM DYNAMIC ロストキャラ表示
+#DIM DYNAMIC 相性補正後
+#DIM DYNAMIC 種族嫌悪例外処理
+#DIM マニュアル表示
+
+CALL 基本情報
+
+CALL MCOLUMNDRAWLINE
+
+IF !(CFLAG:キャラロスト || CFLAG:死亡 || CFLAG:依代)
+	CALL MCOLUMNPRINT, @"□ %I18N("服装") % "
+	CALLFORM DISABLE, "服装変更", TARGET
+	SIF !RESULT
+		CALL MCOLUMNPRINT, @"[99] - %I18N("服装を変更する")%"
+	CALL MCOLUMNPRINTL, ""
+	CALL SHOW_INFO_CLOTHES, TARGET, 1
+	CALL MCOLUMNDRAWLINE
+ENDIF
+
+CALL MCOLUMNPRINTL, @"□ %I18N("相性")%"
+;カラム化して見やすくなったので暫定的に消してみる
+;PRINTFORML [100] \@ OPTION:相性非表示 ? 開く # 閉じる \@
+;IF !OPTION:相性非表示
 	SIF TALENT:服従
-		PRINTFORML 　%I18N("全キャラ")%×120\% 
+		CALL MCOLUMNPRINTL, @"　%I18N("全キャラ")%×120\%"
 	SIF TALENT:隷属
-		PRINTFORML 　%I18N("全キャラ")%×150\% 
+		CALL MCOLUMNPRINTL, @"　%I18N("全キャラ")%×150\%"
 
 	SIF TALENT:犬嫌い
-		PRINTFORML 　%I18N("素質:|0|との相性", , I18N("犬"))%-30\%
+		CALL MCOLUMNPRINTL, @"　%I18N("素質:|0|との相性", , I18N("犬"))%-30\%"
 	SIF TALENT:猫嫌い
-		PRINTFORML 　%I18N("素質:|0|との相性", , I18N("猫"))%-30\%
+		CALL MCOLUMNPRINTL, @"　%I18N("素質:|0|との相性", , I18N("猫"))%-30\%"
 	SIF CSTR:種族嫌悪 != ""
-		PRINTFORML 　種族:%CSTR:種族嫌悪%との相性-30\%
+		CALL MCOLUMNPRINTL, @"　種族:%CSTR:種族嫌悪%との相性-30\%"
 
 	表示数 = 0
 	FOR LCOUNT, 0, 20000
@@ -98,261 +263,36 @@ IF !OPTION:相性非表示
 				ENDIF
 			ENDIF
 			IF 相性表示用 != ""
-				PRINTFORMLC %相性表示用%
+				CALL MCOLUMNPRINT, @"%相性表示用, GETCONFIG("PRINTCの文字数"), LEFT%", GETCOLOR()
 				表示数++
 			ENDIF
 			RESETCOLOR
 			IF 表示数 == 4
-				CALL NEWLINE
+				CALL MCOLUMNPRINTL, ""
 				表示数 = 0
 			ENDIF
 		ENDIF
 	NEXT
-ENDIF
-CALL NEWLINE
+;ENDIF
+SIF 表示数
+	CALL MCOLUMNPRINTL, ""
 
-DRAWLINE
-IF ORIGIN || マニュアル表示
-	PRINTFORML □%I18N("キャラマニュアル")%
-	FOR LCOUNT, 0, 100
-		SIF CSTR:LCOUNT == ""
-			BREAK
-		CALL MANUALPRINT, @"　%CSTR:LCOUNT%"
-		CALL NEWLINE
-	NEXT
-	PRINTFORML 　登場作品：「%CSTR:登場作品%」\@ CSTR:登場作品２ != "" ? 「%CSTR:登場作品２%」 #\@\@ CSTR:登場作品３ != "" ? 「%CSTR:登場作品３%」 #\@
-ENDIF
-IF CFLAG:キャラロスト
-	CALL CHECKDRAWLINE
-	PRINTFORML □%I18N("キャラロストの原因")%
-	CALL PASELIL, @"　%CSTR:ロスト詳細%"
-ENDIF
-
-
-CALL CHECKDRAWLINE
-PRINTPLAIN 　BASIC　
-
-FOR LCOUNT, TARGET+1, CHARANUM
-	IF ロストキャラ表示
-		IF CFLAG:LCOUNT:キャラロスト
-			次のキャラ = LCOUNT
-			BREAK
-		ENDIF
-	ELSE
-		IF !CFLAG:LCOUNT:キャラロスト
-			次のキャラ = LCOUNT
-			BREAK
-		ENDIF
-	ENDIF
-NEXT
-FOR LCOUNT, TARGET-1, -1, -1
-	IF ロストキャラ表示
-		IF CFLAG:LCOUNT:キャラロスト
-			前のキャラ = LCOUNT
-			BREAK
-		ENDIF
-	ELSE
-		IF !CFLAG:LCOUNT:キャラロスト
-			前のキャラ = LCOUNT
-			BREAK
-		ENDIF
-	ENDIF
-NEXT
-
-PRINTFORM [0] %I18N("戻る")% 
 SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-	PRINTFORM [4] %I18N("性経験履歴")% 
-PRINTFORM [5] %I18N("その他情報")% 
-CALL PRINTSPACE, 前のキャラ >= 0, @"[6] %I18N("前のキャラ")% "
-CALL PRINTSPACE, 次のキャラ >= 0, @"[7] %I18N("次のキャラ")% "
-;PRINTPLAINFORM %SPACESLENS("　BASIC　")%
+	CALL 性経験履歴, 0, 1
 
-{
-IF !ロストキャラ表示 && (調教可能(TARGET) || 助手可能(TARGET))
- && (!SHOP_配属キャラ選択不可 || (SHOP_配属キャラ選択不可 && CSTR:配属 == ""))
- && !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && !CFLAG:監禁
-}
-	CALL PRINTSPACE, SHOW_TARGET != TARGET && 調教可能(TARGET), @"[8] %I18N("対象に指定")% "
-	CALL PRINTSPACE, NOSAMES(TARGET, MASTER, ASSI) && 助手可能(TARGET), @"[9] %I18N("助手に指定")% "
-	PRINTFORM [10] %I18N("アイテム使用")%
-ENDIF
-PRINTL 
-PRINTPLAINFORM %SPACESLENS("　BASIC　")%
+CALL ステータス表示汎用メニュー
 
-IF !ロストキャラ表示
-	IF ISSLIME(TARGET)
-		PRINTFORM [11] %I18N("体色変更"), 10, LEFT% 
-	ELSE
-		PRINTFORM [11] %I18N("タグ色変更"), 10, LEFT% 
-	ENDIF
-ENDIF
-
-PRINTFORM [12] %I18N("キャラマニュアル表示/非表示")% 
-
-SIF MOD:バスト関連ステータス表示
-	PRINTFORM [97] %I18N("バストサイズをメモする")% 
-PRINTFORM [98] %I18N("メモを書く")%
-PRINTL 
-
-BINPUT
-SELECTCASE RESULT
-	CASE 0
-		RETURN 0
-	CASE 4
-		JUMP STATUS_SEX_EXP
-	CASE 5
-		;以下フラグリセットのためにJUMPで処理
-		JUMP STATUS_ETC, ロストキャラ表示
-	CASE 6
-		TARGET = 前のキャラ
-		JUMP STATUS, ロストキャラ表示
-	CASE 7
-		TARGET = 次のキャラ
-		JUMP STATUS, ロストキャラ表示
-	CASE 8
-		CALL ASSIGN_TARGET, TARGET
-		RETURN 1
-	CASE 9
-		CALL ASSIGN_ASSI, TARGET
-		RETURN 0
-	CASE 10
-		CALL アイテム使用_逆引き, TARGET
-		JUMP STATUS, ロストキャラ表示
-	CASE 11
-		IF ISSLIME(TARGET)
-			PRINTFORML □%CALLNAME:TARGET%の体色を設定してください
-		ELSE
-			PRINTFORML □%CALLNAME:TARGET%のタグ色を設定してください
-		ENDIF
-		VARLINE = LINECOUNT
-		CALL RGBBAR, CFLAG:タグ色/0x10000, CFLAG:タグ色%0x10000/0x100, CFLAG:タグ色%0x100, , TARGET
-		SIF RESULT
-			CFLAG:タグ色 = RESULT
-		JUMP STATUS, ロストキャラ表示
-	CASE 12
-		INVERTBIT マニュアル表示, 0
-		JUMP STATUS, ロストキャラ表示
-	;50 称号の固定
-	CASE 50
-		IF 固定称号 == ""
-			CALL 称号表示
-			固定称号 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%
-			PRINTFORMW 称号を「%固定称号%」で固定しました
-		ELSE
-			固定称号 = 
-			PRINTW 称号の固定を解除しました
-		ENDIF
-		JUMP STATUS, ロストキャラ表示
-	;97 バストサイズ詳細
-	CASE 97
-		CALL CHARA_BUST_SETTING, TARGET
-		JUMP STATUS, ロストキャラ表示
-	;98 メモ
-	CASE 98
-		PRINTL メモの内容を入力してください
-		INPUTS
-		メモ:TARGET:0 = %RESULTS%
-		JUMP STATUS, ロストキャラ表示
-	;99に服装変更のボタンがある
+@ステータス表示_服装・相性_INPUT
+CALL ステータス表示汎用メニュー_INPUT
+SELECTCASE CRESULT:1
 	CASE 99
-		CALL CHARA_CLOTHES_SETTING
-		JUMP STATUS, ロストキャラ表示
+		CALL CHARA_CLOTHES_SETTING, TARGET
 	CASE 100
-		INVERTBIT OPTION:相性非表示, 0
-		JUMP STATUS, ロストキャラ表示
+		CALL 性経験履歴, 1
 ENDSELECT
 
-@基本情報
-#DIMS DYNAMIC 表示用変数
-
-PRINTFORM □ %I18N("基本情報")% 
-IF CFLAG:タグ色
-	IF ISSLIME(TARGET)
-		PRINTFORM %I18N("体色")%:
-	ELSE
-		PRINTFORM %I18N("タグ色")%:
-	ENDIF
-	SETCOLOR CFLAG:タグ色
-	PRINT ■
-	RESETCOLOR
-ENDIF
-PRINTL 
-PRINTFORM 　%I18N("名前")%:%NAMEDISP(TARGET)% %I18N("性別")%:%性別表示(TARGET)% 
-
-PRINTFORM %I18N("種族")%:
-IF NOF(TARGET) == MASTER || NOF(TARGET) >= 10000 || CSTR:種族 == CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))
-	IF TARGET == MASTER && CSTR:種族 != 主人初期種族 && 主人初期種族 != ""
-		PRINTFORM %I18N("元|0|の|1|", , 主人初期種族, CSTR:種族)% 
-	ELSE
-		PRINTFORM %I18N(CSTR:種族, "RACE")% 
-	ENDIF
-ELSEIF CSTR:種族 != CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))
-	PRINTFORM %I18N("元|0|の|1|", , CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族")), CSTR:種族)% 
-ENDIF
-
-IF TARGET != MASTER
-	PRINTFORM %I18N("ストレス値")%:
-	IF GUI
-		HTML_PRINT IMGTOTAG(BASEBAR("ストレス値", TARGET, 4)), 1
-	ELSE
-		CALL ストレス表示, TARGET
-	ENDIF
-	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-		PRINTFORM  %I18N("依存度")%:{CFLAG:依存度} 
-ELSEIF TARGET == MASTER && ゲームモード() != "新婚モード"
-	PRINTFORM (%I18N("堕した人数")%:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従}人) 
-	PRINTFORM %I18N("難易度")%:%難易度()% 
-ENDIF
-PRINTL
-PRINT 　
-SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-	PRINTFORM %I18N("経験人数")%:{経験人数(TARGET)} 
-IF MOD:バスト関連ステータス表示
-	PRINTFORM %I18N("パイズリ経験人数")%:{パイズリ経験人数(TARGET)} 
-	IF INRANGE(NOF(TARGET), 0, 9999) && バストサイズ詳細トップ:(NOF(TARGET)):(TALENT:TARGET:バストサイズ)
-		PRINTFORM %I18N("バスト")%:
-		CALL キャラバストサイズ表示(TARGET)
-		PRINT  
-	ENDIF
-ENDIF
-IF TARGET == MASTER
-	PRINTFORM %I18N("称号")%:
-	IF 固定称号 != ""
-		PRINTFORM %固定称号%
-	ELSE
-		CALL 称号表示
-	ENDIF
-	PRINTPLAIN  
-	PRINTFORM [50]\@ 固定称号 == "" ? 称号を固定する # 称号の固定を解除する \@
-ELSE
-	PRINTFORM %メモ:TARGET:0%
-ENDIF
-
-IF 顔グラ表示
-	GDISPOSE 0
-	;まずFACEフォルダを探しに行く
-	IF !GCREATEFROMFILE(0, @"FACE\\%NAME:TARGET%_FACE.png")
-		;見つからなかったらresources直下を探す
-		GCREATEFROMFILE 0, @"%NAME:TARGET%_FACE.png"
-	ENDIF
-	SPRITECREATE @"%NAME:TARGET%_FACE", 0
-	IF SPRITECREATED(@"%NAME:TARGET%_FACE")
-		表示用変数 = 　<img src='%NAME:TARGET%_FACE' srcb='' height='500' width='500'>
-		HTML_PRINT 表示用変数
-	ELSE
-		表示用変数 = 　<img src='NO_IMAGE' srcb='' height='500' width='500'>
-		HTML_PRINT 表示用変数
-	ENDIF
-	REPEAT 4
-		PRINTL 
-	REND
-ELSE
-	PRINTL 
-ENDIF
-
-
-@STATUS_ETC, ロストキャラ表示
-#DIM PAGE
+@ステータス表示_その他情報
+;#DIM PAGE
 #DIM DYNAMIC ドラゴンに処女, 2
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 家族人数
@@ -376,8 +316,8 @@ ENDIF
 #DIMS DYNAMIC 主人名保存用
 #DIM DYNAMIC 次のキャラ = -1
 #DIM DYNAMIC 前のキャラ = -1
-#DIM DYNAMIC ロストキャラ表示
-#DIM 曲表示
+;#DIM DYNAMIC ロストキャラ表示
+;#DIM 曲表示
 
 ;処女が主人のドラゴンとなっている場合は、現在のドラゴンの名前を入れて後で戻す
 IF CSTR:処女 == "主人のドラゴン"
@@ -389,60 +329,81 @@ IF CSTR:性転換処女 == "主人のドラゴン"
 	ドラゴンに処女:1 = 1
 ENDIF
 
-DRAWLINE
 CALL 基本情報
+CALL MCOLUMNDRAWLINE
 
-PRINTL □担当楽曲・出演曲
-IF 曲表示
-	CALL 担当曲表示, NOF(TARGET)
-	PRINTL 　[100] 非表示にする
-ELSE
-	PRINTL 　[100] 表示する
+DRAWLINE
+;IF ORIGIN || マニュアル表示
+	CALL MCOLUMNPRINTL, @"□%I18N("キャラマニュアル")%"
+	FOR LCOUNT, 0, 100
+		SIF CSTR:LCOUNT == ""
+			BREAK
+		CALL MANUALPRINT, @"　%CSTR:LCOUNT%", 1
+		SIF COLUMNLOG:0:(COLUMN:0:LINE) != ""
+			CALL MCOLUMNPRINTL, ""
+	NEXT
+	CALL MCOLUMNPRINTL, @"　登場作品：「%CSTR:登場作品%」\@ CSTR:登場作品２ != "" ? 「%CSTR:登場作品２%」 #\@\@ CSTR:登場作品３ != "" ? 「%CSTR:登場作品３%」 #\@", "", 1
+;ENDIF
+IF CFLAG:キャラロスト
+	CALL MCOLUMNDRAWLINE
+	CALL CHECKDRAWLINE
+	PRINTFORML □%I18N("キャラロストの原因")%
+	CALL PASELIL, @"　%CSTR:ロスト詳細%"
 ENDIF
 
-PRINTL □ その他情報
+CALL MCOLUMNDRAWLINE
+CALL MCOLUMNPRINTL, "□担当楽曲・出演曲"
+;IF 曲表示
+	CALL 担当曲表示, NOF(TARGET), 1
+;	PRINTL 　[100] 非表示にする
+;ELSE
+;	PRINTL 　[100] 表示する
+;ENDIF
+CALL MCOLUMNDRAWLINE
+
+CALL MCOLUMNPRINTL, "□ その他情報"
 IF パートナー != "" && パートナー == CHARANAMEF(TARGET)
-	PRINTFORML 　%ゲーム開始日()%に%CALLNAME:MASTER%のパートナーになった
+	CALL MCOLUMNPRINTL, @"　%ゲーム開始日()%に%CALLNAME:MASTER%のパートナーになった"
 ELSEIF ゲームモード() == "新婚モード"
 	IF NOF(TARGET) >= 10000
-		PRINTFORML 　%CSVNAMEF(CFLAG:血縁コード/100000)%と%CSVNAMEF(CFLAG:血縁コード%100000)%の\@ CFLAG:近親交配 ? 近親交配で # 間に \@産まれた\@ SEX(TARGET) == 1 ? 息子 # 娘 \@だ
+		CALL MCOLUMNPRINTL, @"　%CSVNAMEF(CFLAG:血縁コード/100000)%と%CSVNAMEF(CFLAG:血縁コード%100000)%の\@ CFLAG:近親交配 ? 近親交配で # 間に \@産まれた\@ SEX(TARGET) == 1 ? 息子 # 娘 \@だ"
 	ELSEIF FINDCHARA(CFLAG:嫁, 1) >= 0
 		IF TARGET == MASTER
-			PRINTFORML 　%ゲーム開始日()%に%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%と結婚した
+			CALL MCOLUMNPRINTL, @"　%ゲーム開始日()%に%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%と結婚した"
 		ELSE
-			PRINTFORML 　%ゲーム開始日()%に%CALLNAME:MASTER%と結婚した
+			CALL MCOLUMNPRINTL, @"　%ゲーム開始日()%に%CALLNAME:MASTER%と結婚した"
 		ENDIF
 	ENDIF
 ELSE
 	IF TARGET == MASTER
-		PRINTFORML 　%ゲーム開始日()%にこの世界へと迷いこむ
-		PRINTFORML 　現在は{CHARANUM-1}人の奴隷を扱う調教師
+		CALL MCOLUMNPRINTL, @"　%ゲーム開始日()%にこの世界へと迷いこむ"
+		CALL MCOLUMNPRINTL, @"　現在は{CHARANUM-1}人の奴隷を扱う調教師"
 		SIF FLAG:周回数 >= 2
-			PRINTFORML 　{FLAG:周回数}周目のゲームであり、この世界を積極的に楽しんでいる
+			CALL MCOLUMNPRINTL, @"　{FLAG:周回数}周目のゲームであり、この世界を積極的に楽しんでいる"
 		SIF FLAG:累計恋慕
-			PRINTFORML 　累計{FLAG:累計恋慕}人の奴隷の心を奪った
+			CALL MCOLUMNPRINTL, @"　累計{FLAG:累計恋慕}人の奴隷の心を奪った"
 		SIF FLAG:累計淫乱
-			PRINTFORML 　累計{FLAG:累計淫乱}人の奴隷を肉欲に溺れさせた
+			CALL MCOLUMNPRINTL, @"　累計{FLAG:累計淫乱}人の奴隷を肉欲に溺れさせた"
 		SIF FLAG:累計服従
-			PRINTFORML 　累計{FLAG:累計服従}人の奴隷が%CALLNAME:MASTER%に服従した
+			CALL MCOLUMNPRINTL, @"　累計{FLAG:累計服従}人の奴隷が%CALLNAME:MASTER%に服従した"
 	ELSE
 		IF NOF(TARGET) == 0
-			PRINTFORML 　%CALLNAME:MASTER%が調教師を始めたと聞いて、自ら奴隷になりたいと志願してきた変人である
+			CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%が調教師を始めたと聞いて、自ら奴隷になりたいと志願してきた変人である"
 		ELSEIF NOF(TARGET) >= 10000 && !CFLAG:人工物
-			PRINTFORML 　%CSVNAMEF(CFLAG:血縁コード/100000)%と%CSVNAMEF(CFLAG:血縁コード%100000)%の\@ CFLAG:近親交配 ? 近親交配で # 間に \@産まれた\@ SEX(TARGET) == 1 ? 息子 # 娘 \@だ
+			CALL MCOLUMNPRINTL, @"　%CSVNAMEF(CFLAG:血縁コード/100000)%と%CSVNAMEF(CFLAG:血縁コード%100000)%の\@ CFLAG:近親交配 ? 近親交配で # 間に \@産まれた\@ SEX(TARGET) == 1 ? 息子 # 娘 \@だ"
 		ELSEIF TALENT:TARGET:隠しキャラ
-			PRINTFORML 　{BUYY:0}年{BUYM:0}月{BUYD:0}日に加入
+			CALL MCOLUMNPRINTL, @"　{BUYY:0}年{BUYM:0}月{BUYD:0}日に加入"
 		ELSEIF !CFLAG:人工物
-			PRINTFORML 　{BUYY:0}年{BUYM:0}月{BUYD:0}日に購入
+			CALL MCOLUMNPRINTL, @"　{BUYY:0}年{BUYM:0}月{BUYD:0}日に購入"
 		ENDIF
 	ENDIF
 ENDIF
 IF CFLAG:嫁
-	PRINTFORML 　現在は%CALLNAME:MASTER%の嫁である
+	CALL MCOLUMNPRINTL, @"　現在は%CALLNAME:MASTER%の嫁である"
 ELSEIF CFLAG:淫魔
-	PRINTFORML 　現在は%CALLNAME:MASTER%の使い魔である
+	CALL MCOLUMNPRINTL, @"　現在は%CALLNAME:MASTER%の使い魔である"
 ELSEIF CFLAG:傀儡
-	PRINTFORML 　現在は%CALLNAME:MASTER%の支配下に置ける傀儡である
+	CALL MCOLUMNPRINTL, @"　現在は%CALLNAME:MASTER%の支配下に置ける傀儡である"
 ENDIF
 
 ;以下血統の表示
@@ -527,7 +488,7 @@ IF CFLAG:血縁コード && NOF(TARGET) < 10000
 					BREAK
 				ENDIF
 			NEXT
-			PRINTFORML 　%CSVNAME(家族番号簡易版)%の%立場%にあたる
+			CALL MCOLUMNPRINTL, @"　%CSVNAME(家族番号簡易版)%の%立場%にあたる"
 		CASE IS >= 2
 			;家族の中で最高齢の人、もしくは兄弟姉妹の一番下を探す
 			FOR LCOUNT, 29, -1, -1
@@ -606,171 +567,171 @@ IF CFLAG:血縁コード && NOF(TARGET) < 10000
 				SELECTCASE 尊属
 					;兄弟姉妹しか居ない場合
 					CASE IS < 10
-						PRINTFORML 　%立場%にあたる
+						CALL MCOLUMNPRINTL, @"　%立場%にあたる"
 					;父母が居る場合
 					CASE IS < 20
-						PRINT 　
+						CALL MCOLUMNPRINT, @"　"
 						SIF 兄弟姉妹数 >= 2
-							PRINTFORM %立場%で、
+							CALL MCOLUMNPRINT, @"%立場%で、"
 						SIF 家族構成:10
-							PRINTFORM %CSVNAME(家族構成:10)%
+							CALL MCOLUMNPRINT, @"%CSVNAME(家族構成:10)%"
 						SIF 家族構成:10 && 家族構成:11
-							PRINT と
+							CALL MCOLUMNPRINT, @"と"
 						SIF 家族構成:11
-							PRINTFORM %CSVNAME(家族構成:11)%
+							CALL MCOLUMNPRINT, @"%CSVNAME(家族構成:11)%"
 						SIF 父親 && 母親
-							PRINT 夫妻
-						PRINTFORML の\@ SEX(TARGET) == 1 ? 息子 # 娘 \@にあたる
+							CALL MCOLUMNPRINT, @"夫妻"
+						CALL MCOLUMNPRINTL, @"の\@ SEX(TARGET) == 1 ? 息子 # 娘 \@にあたる"
 					;祖父母が居る場合
 					CASE IS < 30
-						PRINT 　
+						CALL MCOLUMNPRINT, @"　"
 						SIF 兄弟姉妹数 >= 2
-							PRINTFORM %立場%で
+							CALL MCOLUMNPRINT, @"%立場%で"
 						;さすがに親も居れば情報量を減らす
 						IF 家族構成:10 || 家族構成:11
 							SIF 家族構成:10
-								PRINTFORM %CSVNAME(家族構成:10)%
+								CALL MCOLUMNPRINT, @"%CSVNAME(家族構成:10)%"
 							SIF 家族構成:10 && 家族構成:11
-								PRINT と
+								CALL MCOLUMNPRINT, @"と"
 							SIF 家族構成:11
-								PRINTFORM %CSVNAME(家族構成:11)%
+								CALL MCOLUMNPRINT, @"%CSVNAME(家族構成:11)%"
 							SIF 父親 && 母親
-								PRINT 夫妻
-							PRINTFORM の\@ SEX(TARGET) == 1 ? 息子 # 娘 \@及び、
+								CALL MCOLUMNPRINT, @"夫妻"
+							CALL MCOLUMNPRINT, @"の\@ SEX(TARGET) == 1 ? 息子 # 娘 \@及び、"
 						ENDIF
 						SIF 家族構成:20
-							PRINTFORM %CSVNAME(家族構成:20)%
+							CALL MCOLUMNPRINT, @"%CSVNAME(家族構成:20)%"
 						SIF 家族構成:20 && 家族構成:21
-							PRINT と
+							CALL MCOLUMNPRINT, @"と"
 						SIF 家族構成:21
-							PRINTFORM %CSVNAME(家族構成:21)%
-						PRINTL の孫にあたる
+							CALL MCOLUMNPRINT, @"%CSVNAME(家族構成:21)%"
+						CALL MCOLUMNPRINTL, @"の孫にあたる"
 				ENDSELECT
 			;親の場合
 			ELSEIF CFLAG:続柄 < 2000
 				;息子、娘を表示
-				PRINT 　
+				CALL MCOLUMNPRINT, @"　"
 				FOR LCOUNT, 1, 10
 					SIF 家族構成:LCOUNT == 0
 						BREAK
 					SIF LCOUNT > 1
-						PRINT 、
-					PRINTFORM %CSVNAME(家族構成:LCOUNT)%
+						CALL MCOLUMNPRINT, @"、"
+					CALL MCOLUMNPRINT, @"%CSVNAME(家族構成:LCOUNT)%"
 				NEXT
-				PRINTFORML の\@ SEX(TARGET) == 1 ? 父親 # 母親 \@にあたる
+				CALL MCOLUMNPRINTL, @"の\@ SEX(TARGET) == 1 ? 父親 # 母親 \@にあたる"
 			;祖父母の場合
 			ELSEIF CFLAG:続柄 < 3000
 				;孫を表示
-				PRINT 　
+				CALL MCOLUMNPRINT, @"　"
 				FOR LCOUNT, 1, 10
 					SIF 家族構成:LCOUNT == 0
 						BREAK
 					SIF LCOUNT > 1
-						PRINT 、
-					PRINTFORM %CSVNAME(家族構成:LCOUNT)%
+						CALL MCOLUMNPRINT, @"、"
+					CALL MCOLUMNPRINT, @"%CSVNAME(家族構成:LCOUNT)%"
 				NEXT
-				PRINTFORML の\@ SEX(TARGET) == 1 ? 祖父 # 祖母 \@にあたる
+				CALL MCOLUMNPRINTL, @"の\@ SEX(TARGET) == 1 ? 祖父 # 祖母 \@にあたる"
 			ENDIF
 	ENDSELECT
 ENDIF
 
 SIF CFLAG:クローン番号
-	PRINTFORML 　%CSVNAMEF(CFLAG:複製)%の{CFLAG:クローン番号}体目のクローンだ
+	CALL MCOLUMNPRINTL, @"　%CSVNAMEF(CFLAG:複製)%の{CFLAG:クローン番号}体目のクローンだ"
 
 ;体型と痛み耐性
 IF TALENT:スライム
 	SIF CFLAG:タグ色
 		SETCOLOR CFLAG:タグ色
-	PRINT 　不定形なスライムの体をしている。
+	CALL MCOLUMNPRINT, @"　不定形なスライムの体をしている。"
 	IF (NOF(TARGET) < 10000 && CSTR:種族 == CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))) || CFLAG:複製 || CFLAG:人工物
 		IF TALENT:MASTER:溶ける快
 			SELECTCASE CFLAG:スライム度
 				CASE 1 TO 199
-					PRINT 　まだまだスライムとしては未熟とも言える
+					CALL MCOLUMNPRINT, @"　まだまだスライムとしては未熟とも言える"
 				CASE 200 TO 499
-					PRINT 　それなりに育ってきたと言えるか
+					CALL MCOLUMNPRINT, @"　それなりに育ってきたと言えるか"
 				CASE 500 TO 999
-					PRINT 　進化の兆しが見えつつある
+					CALL MCOLUMNPRINT, @"　進化の兆しが見えつつある"
 				CASE IS >= 1000
-					PRINT 　スライムとしてより上位の存在となる日も近いだろう
+					CALL MCOLUMNPRINT, @"　スライムとしてより上位の存在となる日も近いだろう"
 			ENDSELECT
 		ENDIF
 	ELSE
 		IF TALENT:MASTER:溶ける快
 			SELECTCASE CFLAG:スライム度
 				CASE 1 TO 99
-					PRINT 　まだ慣れておらず、動きが少しぎこちなく見える
+					CALL MCOLUMNPRINT, @"　まだ慣れておらず、動きが少しぎこちなく見える"
 				CASE 100 TO 299
-					PRINT 　スライムの体に少し慣れ始めてきたようだ
+					CALL MCOLUMNPRINT, @"　スライムの体に少し慣れ始めてきたようだ"
 				CASE 300 TO 499
-					PRINT 　今の体にも慣れつつあるようだ
+					CALL MCOLUMNPRINT, @"　今の体にも慣れつつあるようだ"
 				CASE 500 TO 699
-					PRINT 　だいぶ慣れてきたのか体の違和感も薄れてきたようだ
+					CALL MCOLUMNPRINT, @"　だいぶ慣れてきたのか体の違和感も薄れてきたようだ"
 				CASE 700 TO 899
-					PRINT 　もうすっかりこの体にも馴染んできた
+					CALL MCOLUMNPRINT, @"　もうすっかりこの体にも馴染んできた"
 				CASE 900 TO 1049
-					PRINT 　今の体の方が自然であるとすら思えてきた
+					CALL MCOLUMNPRINT, @"　今の体の方が自然であるとすら思えてきた"
 				CASE 1050 TO 1199
-					PRINT 　休眠する時は無意識に形を崩すくらいに順応している
+					CALL MCOLUMNPRINT, @"　休眠する時は無意識に形を崩すくらいに順応している"
 				CASE 1200 TO 1299
-					PRINT 　…体だけではなく、理性もとろけてきてるようにすら見える
+					CALL MCOLUMNPRINT, @"　…体だけではなく、理性もとろけてきてるようにすら見える"
 				CASE 1300 TO 1399
-					PRINT 　…まるで何かを望むかのように、無意識に体を蠢かせている
+					CALL MCOLUMNPRINT, @"　…まるで何かを望むかのように、無意識に体を蠢かせている"
 				CASE IS >= 1400
-					PRINT 　…元に、戻りたく、ない…ずっと、スライムで、いたい…
+					CALL MCOLUMNPRINT, @"　…元に、戻りたく、ない…ずっと、スライムで、いたい…"
 			ENDSELECT
 		ENDIF
 	ENDIF
 	SIF CFLAG:スライム度 && TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-		PRINTFORM （深度:{CFLAG:スライム度}）
-	PRINTL 
+		CALL MCOLUMNPRINT, @"（深度:{CFLAG:スライム度}）"
+	CALL MCOLUMNPRINTL, @""
 	RESETCOLOR
 ELSEIF TALENT:溶ける快
 	SIF CFLAG:タグ色
 		SETCOLOR CFLAG:タグ色
 	IF (NOF(TARGET) < 10000 && CSTR:種族 == CSVCSTR(NOF(TARGET), GETNUM(CSTR, "種族"))) || CFLAG:複製 || CFLAG:人工物
-		PRINT 　不定形なスライムの体の中に、その本体と言うべき核を漂わせている。　スライムとしてはすっかり上位の存在であろう。
+		CALL MCOLUMNPRINT, @"　不定形なスライムの体の中に、その本体と言うべき核を漂わせている。　スライムとしてはすっかり上位の存在であろう。"
 	ELSE
-		PRINT 　不定形なスライムの体の中に、その本体と言うべき核を漂わせている。　もう本来の種族に戻る事は二度と無いだろう…
+		CALL MCOLUMNPRINT, @"　不定形なスライムの体の中に、その本体と言うべき核を漂わせている。　もう本来の種族に戻る事は二度と無いだろう…"
 	ENDIF
 	SIF CFLAG:スライム度 && TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-		PRINTFORM （深度:{CFLAG:スライム度}）
-	PRINTL 
+		CALL MCOLUMNPRINT, @"（深度:{CFLAG:スライム度}）"
+	CALL MCOLUMNPRINTL, @""
 	RESETCOLOR
 ELSE
 	IF TARGET != MASTER
-		PRINT 　
+		CALL MCOLUMNPRINT, @"　"
 		IF TALENT:小人体型
-			PRINTFORM 人間よりとても小さな体をしており、
+			CALL MCOLUMNPRINT, @"人間よりとても小さな体をしており、"
 		ELSE
 			SELECTCASE TALENT:体格
 				CASE 1
-					PRINT いわゆる子供のような未成熟な体であり、
+					CALL MCOLUMNPRINT, @"いわゆる子供のような未成熟な体であり、"
 				CASE 2
-					PRINT まだ成熟しきっていない体をしており、
+					CALL MCOLUMNPRINT, @"まだ成熟しきっていない体をしており、"
 				CASE 4
-					PRINT 平均よりも長身な体格をしており、
+					CALL MCOLUMNPRINT, @"平均よりも長身な体格をしており、"
 			ENDSELECT
 		ENDIF
 		IF TALENT:痛みに弱い
 			IF TALENT:小人体型 || TALENT:体格 <= 2
-				PRINTL 当然与えられる痛みに耐えることは難しいと思われる
+				CALL MCOLUMNPRINTL, @"当然与えられる痛みに耐えることは難しいと思われる"
 			ELSE
 				SIF TALENT:体格 == 4
-					PRINT しかし
-				PRINTL 苦痛を与えられることが苦手なようだ
+					CALL MCOLUMNPRINT, @"しかし"
+				CALL MCOLUMNPRINTL, @"苦痛を与えられることが苦手なようだ"
 			ENDIF
 		ELSEIF TALENT:痛みに強い
 			IF TALENT:小人体型 || TALENT:体格 <= 2
-				PRINTL その小さな体に似合わず人一倍の忍耐力があるようだ
+				CALL MCOLUMNPRINTL, @"その小さな体に似合わず人一倍の忍耐力があるようだ"
 			ELSE
-				PRINTL 丈夫な体ゆえか多少の無茶も問題ないとのことだ
+				CALL MCOLUMNPRINTL, @"丈夫な体ゆえか多少の無茶も問題ないとのことだ"
 			ENDIF
 		ELSE
 			IF TALENT:小人体型 || TALENT:体格 <= 2
-				PRINTFORML しかしいたって健康体で、それなり\@ゲームモード() == "新婚モード" ? に激しい行為でも # の調教なら \@耐えられるだろう
+				CALL MCOLUMNPRINTL, @"しかしいたって健康体で、それなり\@ゲームモード() == "新婚モード" ? に激しい行為でも # の調教なら \@耐えられるだろう"
 			ELSE
-				PRINTFORML \@ TALENT:体格 == 4 ? その # 人並みの \@体が\@ ゲームモード() == "新婚モード" ? 激しい行為 # 調教 \@に耐えられるかどうか、心の問題だ
+				CALL MCOLUMNPRINTL, @"\@ TALENT:体格 == 4 ? その # 人並みの \@体が\@ ゲームモード() == "新婚モード" ? 激しい行為 # 調教 \@に耐えられるかどうか、心の問題だ"
 			ENDIF
 		ENDIF
 	ENDIF
@@ -779,137 +740,139 @@ ELSE
 	IF SEX(TARGET) == 2
 		SELECTCASE TALENT:バストサイズ
 			CASE IS >= 6
-				PRINTFORML 　信じられないほど大きな乳房は実に官能的だ
+				CALL MCOLUMNPRINTL, @"　信じられないほど大きな乳房は実に官能的だ"
 			CASE 4, 5
 				IF TALENT:体格 <= 2
-					PRINTFORML 　その幼い体には不似合いなほどに大きな乳房をしている
+					CALL MCOLUMNPRINTL, @"　その幼い体には不似合いなほどに大きな乳房をしている"
 				ELSE
-					PRINTFORML 　その豊満なスタイルは見ていて飽きないものだ
+					CALL MCOLUMNPRINTL, @"　その豊満なスタイルは見ていて飽きないものだ"
 				ENDIF
 			CASE 3
 				IF TALENT:体格 <= 2
-					PRINTFORML 　その小さな体には少し不釣り合いな大きめの乳房を持っている
+					CALL MCOLUMNPRINTL, @"　その小さな体には少し不釣り合いな大きめの乳房を持っている"
 				ELSE
-					PRINTFORML 　体に釣り合ったバストサイズは成るべくして成ったものだろう
+					CALL MCOLUMNPRINTL, @"　体に釣り合ったバストサイズは成るべくして成ったものだろう"
 				ENDIF
 			CASE 2
-				PRINTFORML 　僅かな胸の膨らみが華奢な美を表している
+				CALL MCOLUMNPRINTL, @"　僅かな胸の膨らみが華奢な美を表している"
 			CASE 1
-				PRINTFORML 　あまり女性らしいスタイルではないが、それが欠点とは限らない
+				CALL MCOLUMNPRINTL, @"　あまり女性らしいスタイルではないが、それが欠点とは限らない"
 		ENDSELECT
 	ELSEIF SEX(TARGET) == 1
 		SIF TALENT:バストサイズ
-			PRINTFORML 　乳首の感度が良くなったあまりに胸が少し膨らんでしまった経緯がある
+			CALL MCOLUMNPRINTL, @"　乳首の感度が良くなったあまりに胸が少し膨らんでしまった経緯がある"
 	ENDIF
 
 	IF TALENT:性転換済
 		IF TALENT:体格 <= 2
-			PRINTFORML 　幼い見た目とは裏腹に、その体はかつて\@ SEX(TARGET) == 1 ? 少女から少年 # 少年から少女 \@に変貌したという特殊な過去を持つ
+			CALL MCOLUMNPRINTL, @"　幼い見た目とは裏腹に、その体はかつて\@ SEX(TARGET) == 1 ? 少女から少年 # 少年から少女 \@に変貌したという特殊な過去を持つ"
 		ELSE
-			PRINTFORML 　かつては\@ SEX(TARGET) == 1 ? 女性 # 男性 \@だったが、異性の体へと変貌してしまった過去を持つ
+			CALL MCOLUMNPRINTL, @"　かつては\@ SEX(TARGET) == 1 ? 女性 # 男性 \@だったが、異性の体へと変貌してしまった過去を持つ"
 		ENDIF
 	ENDIF
 
 	SIF TALENT:去勢済み
-		PRINTFORML 　本来男性器があった場所には切断痕が残っている
+		CALL MCOLUMNPRINTL, @"　本来男性器があった場所には切断痕が残っている"
 	IF CFLAG:男性器移植済み
 		IF CFLAG:男性器提供者 == 0
-			PRINTFORM 　%NAME:MASTER%
+			CALL MCOLUMNPRINT, @"　%NAME:MASTER%"
 		ELSE
-			PRINTFORM 　%CSVNAMEF(CFLAG:男性器提供者)%
+			CALL MCOLUMNPRINT, @"　%CSVNAMEF(CFLAG:男性器提供者)%"
 		ENDIF
-		PRINTL の男性器が陰部に移植されている
+		CALL MCOLUMNPRINTL, @"の男性器が陰部に移植されている"
 	ENDIF
 	IF CFLAG:スライム度 && (TALENT:MASTER:孔雀の瞳 || TALENT:MASTER:溶ける快 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳))
-		PRINTFORM 　スライムに侵食されつつある
+		CALL MCOLUMNPRINT, @"　スライムに侵食されつつある"
 		IF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-			PRINTFORM 　（深度:{CFLAG:スライム度}）
+			CALL MCOLUMNPRINT, @"　（深度:{CFLAG:スライム度}）"
 		ENDIF
-		PRINTL 
+		CALL MCOLUMNPRINTL, @""
 	ENDIF
 ENDIF
 
 IF CFLAG:生殖力強化 == 1
-	PRINTL 　薬物投与によって生殖力が引き上げられている
+	CALL MCOLUMNPRINTL, @"　薬物投与によって生殖力が引き上げられている"
 ELSEIF CFLAG:生殖力強化 == 2
-	PRINTFORML 　%CSVCALLNAMEF(CFLAG:生殖力担当魔術師)%の魔術によって一時的に生殖力が引き上げられている
+	CALL MCOLUMNPRINTL, @"　%CSVCALLNAMEF(CFLAG:生殖力担当魔術師)%の魔術によって一時的に生殖力が引き上げられている"
 ENDIF
 IF CFLAG:精管結紮 == 2 || CFLAG:卵管結紮 == 2
-	PRINTFORML 　%CSVCALLNAMEF(CFLAG:不妊担当魔術師)%の魔術によって一時的に生殖機能を失っている
+	CALL MCOLUMNPRINTL, @"　%CSVCALLNAMEF(CFLAG:不妊担当魔術師)%の魔術によって一時的に生殖機能を失っている"
 ELSE
 	SIF !生殖機能♂(TARGET) && PENIS(TARGET)
-		PRINTL 　男性としての生殖機能は無い
+		CALL MCOLUMNPRINTL, @"　男性としての生殖機能は無い"
 	SIF !生殖機能♀(TARGET) && VAGINA(TARGET)
-		PRINTL 　女性としての生殖機能は無い
+		CALL MCOLUMNPRINTL, @"　女性としての生殖機能は無い"
 ENDIF
 
 IF TALENT:霊体
-	PRINTL 　常人には触れることができない霊的な存在である
+	CALL MCOLUMNPRINTL, @"　常人には触れることができない霊的な存在である"
 ELSE
 	CALL 初めての性経験
 ENDIF
 
 SIF CFLAG:憑依 >= 0
-	PRINTFORML 　%CSVNAMEF(NOF(TARGET))%に憑依されている
+	CALL MCOLUMNPRINTL, @"　%CSVNAMEF(NOF(TARGET))%に憑依されている"
 
 IF TALENT:恋慕
-	PRINTFORML 　%CALLNAME:MASTER%と生活を共にすることに幸せを感じている節が\@ !CFLAG:キャラロスト ? ある # あった \@
+	CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%と生活を共にすることに幸せを感じている節が\@ !CFLAG:キャラロスト ? ある # あった \@"
 ELSEIF TALENT:淫乱
-	PRINTFORML 　積極的に性行為をせがむようになり、時に自らの指で快感に溺れて\@ !CFLAG:キャラロスト ? いる # いた \@
+	CALL MCOLUMNPRINTL, @"　積極的に性行為をせがむようになり、時に自らの指で快感に溺れて\@ !CFLAG:キャラロスト ? いる # いた \@"
 ELSEIF TALENT:服従
-	PRINTFORML 　%CALLNAME:MASTER%に与えられるもの、%CALLNAME:MASTER%に抱かれることが至上の悦びだと思い込んで\@ !CFLAG:キャラロスト ? いる # いた \@
+	CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%に与えられるもの、%CALLNAME:MASTER%に抱かれることが至上の悦びだと思い込んで\@ !CFLAG:キャラロスト ? いる # いた \@"
 ELSEIF TALENT:親愛
-	PRINTFORML 　身も心も%CALLNAME:MASTER%に心酔しきっており、一生を%CALLNAME:MASTER%の伴侶として全うすると決めて\@ !CFLAG:キャラロスト ? いる # いた \@
+	CALL MCOLUMNPRINTL, @"　身も心も%CALLNAME:MASTER%に心酔しきっており、一生を%CALLNAME:MASTER%の伴侶として全うすると決めて\@ !CFLAG:キャラロスト ? いる # いた \@"
 ELSEIF TALENT:淫魔
-	PRINTFORML 　まるで性の快感を司る淫魔であり、暇さえあれば犯し犯されるような毎日を送って\@ !CFLAG:キャラロスト ? いる # いた \@
+	CALL MCOLUMNPRINTL, @"　まるで性の快感を司る淫魔であり、暇さえあれば犯し犯されるような毎日を送って\@ !CFLAG:キャラロスト ? いる # いた \@"
 ELSEIF TALENT:隷属
-	PRINTFORML 　%CALLNAME:MASTER%の言葉こそ絶対であり、%CALLNAME:MASTER%の所有物\@ !CFLAG:キャラロスト ? である # だった \@
+	CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%の言葉こそ絶対であり、%CALLNAME:MASTER%の所有物\@ !CFLAG:キャラロスト ? である # だった \@"
 ELSEIF TALENT:崩壊
-	PRINTFORML 　時たまに不可解な行動を取っては、理解し難い場所が誰かの体液で汚れていることが\@ !CFLAG:キャラロスト ? ある # あった \@
+	CALL MCOLUMNPRINTL, @"　時たまに不可解な行動を取っては、理解し難い場所が誰かの体液で汚れていることが\@ !CFLAG:キャラロスト ? ある # あった \@"
 ENDIF
 
 IF CFLAG:人工物
 	IF CSTR:種族 == "機械"
-		PRINTFORML 　{BUYY}年{BUYM}月{BUYD}日に製造された
+		CALL MCOLUMNPRINTL, @"　{BUYY}年{BUYM}月{BUYD}日に製造された"
 	ELSE
-		PRINTFORML 　{BUYY}年{BUYM}月{BUYD}日に人体錬成で作られた
+		CALL MCOLUMNPRINTL, @"　{BUYY}年{BUYM}月{BUYD}日に人体錬成で作られた"
 	ENDIF
 ELSEIF CFLAG:誕生日 >= 101
-	PRINTFORML 　誕生日は{CFLAG:誕生日/100}月{CFLAG:誕生日%100}日のようだ
+	CALL MCOLUMNPRINTL, @"　誕生日は{CFLAG:誕生日/100}月{CFLAG:誕生日%100}日のようだ"
 ENDIF
 
 SIF CSTR:眷属主 != ""
-	PRINTFORML 　%CSTR:眷属主%の手により%CSTR:種族%の眷属に迎えられた
+	CALL MCOLUMNPRINTL, @"　%CSTR:眷属主%の手により%CSTR:種族%の眷属に迎えられた"
 
 SELECTCASE CFLAG:出産トラウマ
 	CASE 1 TO 9
-		PRINTL 　出産に関して多少の嫌悪感が見られる
+		CALL MCOLUMNPRINTL, @"　出産に関して多少の嫌悪感が見られる"
 	CASE 10 TO 29
-		PRINTL 　妊娠や出産に対してあまり良い思い出が無いようだ
+		CALL MCOLUMNPRINTL, @"　妊娠や出産に対してあまり良い思い出が無いようだ"
 	CASE 30 TO 49
-		PRINTL 　かつての経験から自らが身籠ることを避けたがっている
+		CALL MCOLUMNPRINTL, @"　かつての経験から自らが身籠ることを避けたがっている"
 	CASE IS >= 50
-		PRINTL 　子供を産むことに強いトラウマを抱えている
+		CALL MCOLUMNPRINTL, @"　子供を産むことに強いトラウマを抱えている"
 ENDSELECT
 
 IF TALENT:ドラゴン使い && (陥落(TARGET) || TARGET == MASTER)
-	PRINT 　龍を使役している。
+	CALL MCOLUMNPRINT, "　龍を使役している。"
 	IF CSTR:ドラゴン == "ドラゴン"
-		PRINTL 名前は特に決まっていないようだ
+		CALL MCOLUMNPRINTL, @"名前は特に決まっていないようだ"
 	ELSE
-		PRINTFORML 名前は%CSTR:ドラゴン%というようだ
+		CALL MCOLUMNPRINTL, @"名前は%CSTR:ドラゴン%というようだ"
 	ENDIF
 ENDIF
 
 SELECTCASE CSTR:背中の印
 	CASE "奴隷の焼印"
-		PRINTL 　背中には奴隷の焼印が押されている
+		CALL MCOLUMNPRINTL, @"　背中には奴隷の焼印が押されている"
 	CASE "淫売の焼印"
-		PRINTL 　背中には淫売の焼印が押されている
+		CALL MCOLUMNPRINTL, @"　背中には淫売の焼印が押されている"
 ENDSELECT
 
 SIF CSTR:適用MOD != ""
-	PRINTFORML 　%CSTR:適用MOD%が適用されたキャラ
+	CALL MCOLUMNPRINTL, @"　%CSTR:適用MOD%が適用されたキャラ"
+
+CALL MCOLUMNDRAWLINE
 
 IF TARGET != MASTER
 	;新婚モードなら一時的にCALLNAME:MASTERは「主人」になる
@@ -917,229 +880,227 @@ IF TARGET != MASTER
 		主人名保存用 = %CALLNAME:MASTER%
 		CALLNAME:MASTER = 主人
 	ENDIF
-	SELECTCASE PAGE
+	SELECTCASE TFLAG:ページ数
 		CASE 0
-			PRINTLC □ 日常経験
-			PRINTPLAINFORM %SPACESLENS(" [1]← ")%
-			PRINTL [2]→
+			CALL MCOLUMNPRINT, @"□ %"日常経験", 16, LEFT%%SPACESLENS("[1]← ")%"
+			CALL MCOLUMNPRINTL, "[2]→"
 			SIF CFLAG:売却寸止め
-				PRINTFORML 　売却されそうになったことがある({CFLAG:売却寸止め})
+				CALL MCOLUMNPRINTL, @"　売却されそうになったことがある({CFLAG:売却寸止め})"
 			SIF CFLAG:被吸血経験
-				PRINTFORML 　血を吸われたことがある({CFLAG:被吸血経験})
+				CALL MCOLUMNPRINTL, @"　血を吸われたことがある({CFLAG:被吸血経験})"
 			SIF CFLAG:精肉寸止め
-				PRINTFORML 　精肉されそうになったことがある({CFLAG:精肉寸止め})
+				CALL MCOLUMNPRINTL, @"　精肉されそうになったことがある({CFLAG:精肉寸止め})"
 			SIF CFLAG:朝フェラ経験
-				PRINTFORML 　朝から%CALLNAME:MASTER%をフェラで射精させて起こしたことがある({CFLAG:朝フェラ経験})
+				CALL MCOLUMNPRINTL, @"　朝から%CALLNAME:MASTER%をフェラで射精させて起こしたことがある({CFLAG:朝フェラ経験})"
 			SIF CFLAG:朝パイズリ経験
-				PRINTFORML 　朝から%CALLNAME:MASTER%に胸で奉仕したことがある({CFLAG:朝パイズリ経験})
+				CALL MCOLUMNPRINTL, @"　朝から%CALLNAME:MASTER%に胸で奉仕したことがある({CFLAG:朝パイズリ経験})"
 			SIF CFLAG:朝騎乗位経験
-				PRINTFORML 　朝から%CALLNAME:MASTER%を睡姦して精液を搾り取ったことがある({CFLAG:朝騎乗位経験})
+				CALL MCOLUMNPRINTL, @"　朝から%CALLNAME:MASTER%を睡姦して精液を搾り取ったことがある({CFLAG:朝騎乗位経験})"
 			SIF CFLAG:調教後3P経験
-				PRINTFORML 　調教後に三人で乱れたことがある({CFLAG:調教後3P経験})
+				CALL MCOLUMNPRINTL, @"　調教後に三人で乱れたことがある({CFLAG:調教後3P経験})"
 			SIF CFLAG:調教後奉仕経験
-				PRINTFORML 　調教を終えてから後戯を愉しんだことがある({CFLAG:調教後奉仕経験})
+				CALL MCOLUMNPRINTL, @"　調教を終えてから後戯を愉しんだことがある({CFLAG:調教後奉仕経験})"
 			SIF CFLAG:調教後セックス経験
-				PRINTFORML 　調教を終えた後も満足できずに愛し合ったことがある({CFLAG:調教後セックス経験})
+				CALL MCOLUMNPRINTL, @"　調教を終えた後も満足できずに愛し合ったことがある({CFLAG:調教後セックス経験})"
 			SIF CFLAG:調教後強精神薬反動経験
-				PRINTFORML 　調教後に薬の反動で強い絶頂に襲われたことがある({CFLAG:調教後強精神薬反動経験})
+				CALL MCOLUMNPRINTL, @"　調教後に薬の反動で強い絶頂に襲われたことがある({CFLAG:調教後強精神薬反動経験})"
 			SIF CFLAG:調教後強精神薬反動経験強
-				PRINTFORML 　調教後に薬の反動で絶頂が止まらなくなったことがある({CFLAG:調教後強精神薬反動経験強})
+				CALL MCOLUMNPRINTL, @"　調教後に薬の反動で絶頂が止まらなくなったことがある({CFLAG:調教後強精神薬反動経験強})"
 			SIF CFLAG:調教後搾乳経験
-				PRINTFORML 　調教後に母乳を搾り出して%CALLNAME:MASTER%にご馳走したことがある({CFLAG:調教後搾乳経験})
+				CALL MCOLUMNPRINTL, @"　調教後に母乳を搾り出して%CALLNAME:MASTER%にご馳走したことがある({CFLAG:調教後搾乳経験})"
 			SIF CFLAG:調教後自慰経験
-				PRINTFORML 　調教に満足できず、調教後も自慰に浸ったことがある({CFLAG:調教後自慰経験})
+				CALL MCOLUMNPRINTL, @"　調教に満足できず、調教後も自慰に浸ったことがある({CFLAG:調教後自慰経験})"
 			SIF CFLAG:調教後添い寝経験
-				PRINTFORML 　%CALLNAME:MASTER%と二人同じベッドで一夜を共に過ごしたことがある({CFLAG:調教後添い寝経験})
+				CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%と二人同じベッドで一夜を共に過ごしたことがある({CFLAG:調教後添い寝経験})"
 			SIF CFLAG:調教後夜這い経験
-				PRINTFORML 　寝る前に%CALLNAME:MASTER%の子種で子宮を潤してから共に床についたことがある({CFLAG:調教後夜這い経験})
+				CALL MCOLUMNPRINTL, @"　寝る前に%CALLNAME:MASTER%の子種で子宮を潤してから共に床についたことがある({CFLAG:調教後夜這い経験})"
 			SIF CFLAG:ありえないものをプレゼントされた経験
-				PRINTFORML 　IIDX筐体をプレゼントされたことがある({CFLAG:ありえないものをプレゼントされた経験})
+				CALL MCOLUMNPRINTL, @"　IIDX筐体をプレゼントされたことがある({CFLAG:ありえないものをプレゼントされた経験})"
 			SIF CFLAG:主人に調合知識を伝授した経験
-				PRINTFORML 　主人に薬調合の知識を伝授したことがある({CFLAG:主人に調合知識を伝授した経験})
+				CALL MCOLUMNPRINTL, @"　主人に薬調合の知識を伝授したことがある({CFLAG:主人に調合知識を伝授した経験})"
 			IF CFLAG:眷属化した人数
 				IF TALENT:ネクロマンサー
 					SELECTCASE CSTR:種族
 						CASE "人間", "改造人間", "人間(？)", "宇宙人", "不明"
-							PRINTFORML 　今までに{CFLAG:眷属化した人数}人を屍鬼の眷属に迎え入れた
+							CALL MCOLUMNPRINTL, @"　今までに{CFLAG:眷属化した人数}人を屍鬼の眷属に迎え入れた"
 						CASEELSE
-							PRINTFORML 　今までに{CFLAG:眷属化した人数}人を%CSTR:種族%や屍鬼の眷属に迎え入れた
+							CALL MCOLUMNPRINTL, @"　今までに{CFLAG:眷属化した人数}人を%CSTR:種族%や屍鬼の眷属に迎え入れた"
 					ENDSELECT
 				ELSE
-					PRINTFORML 　今までに{CFLAG:眷属化した人数}人を%CSTR:種族%の眷属に迎え入れた
+					CALL MCOLUMNPRINTL, @"　今までに{CFLAG:眷属化した人数}人を%CSTR:種族%の眷属に迎え入れた"
 				ENDIF
 			ENDIF
 			SIF CFLAG:助手の処女喪失を見せつけられた経験
-				PRINTFORML 　目の前で助手の処女喪失を見せつけられたことがある({CFLAG:助手の処女喪失を見せつけられた経験})
+				CALL MCOLUMNPRINTL, @"　目の前で助手の処女喪失を見せつけられたことがある({CFLAG:助手の処女喪失を見せつけられた経験})"
 			SIF CFLAG:電極で責められた経験
-				PRINTFORML 　電極で責められたことがある({CFLAG:電極で責められた経験})
+				CALL MCOLUMNPRINTL, @"　電極で責められたことがある({CFLAG:電極で責められた経験})"
 			SIF CFLAG:尿道に挿入された経験
-				PRINTFORML 　尿道に男根級のモノを挿入されたことがある({CFLAG:尿道に挿入された経験})
+				CALL MCOLUMNPRINTL, @"　尿道に男根級のモノを挿入されたことがある({CFLAG:尿道に挿入された経験})"
 		CASE 1
-			PRINTLC □ 奉仕経験(回数) 
-			PRINTPLAIN 
-			PRINTL [1]← [2]→
+			CALL MCOLUMNPRINT, @"□ %"奉仕経験と回数", 16, LEFT%"
+			CALL MCOLUMNPRINT, "[1]← "
+			CALL MCOLUMNPRINTL, "[2]→"
 			IF CFLAG:主人からの膣射経験
 				IF 陥落(TARGET)
-					PRINTFORML 　%CALLNAME:MASTER%の精液を膣で受け入れたことがある({CFLAG:主人からの膣射経験})
+					CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%の精液を膣で受け入れたことがある({CFLAG:主人からの膣射経験})"
 				ELSE
-					PRINTFORML 　%CALLNAME:MASTER%に膣内射精されたことがある({CFLAG:主人からの膣射経験})
+					CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%に膣内射精されたことがある({CFLAG:主人からの膣射経験})"
 				ENDIF
 			ENDIF
 			SIF CFLAG:助手からの膣射経験
-				PRINTFORML 　助手に膣内射精されたことがある({CFLAG:助手からの膣射経験})
+				CALL MCOLUMNPRINTL, @"　助手に膣内射精されたことがある({CFLAG:助手からの膣射経験})"
 			IF CFLAG:主人からの腸射経験
 				IF 陥落(TARGET)
-					PRINTFORML 　アナルに%CALLNAME:MASTER%の精液を注がれたことがある({CFLAG:主人からの腸射経験})
+					CALL MCOLUMNPRINTL, @"　アナルに%CALLNAME:MASTER%の精液を注がれたことがある({CFLAG:主人からの腸射経験})"
 				ELSE
-					PRINTFORML 　%CALLNAME:MASTER%に腸内射精されたことがある({CFLAG:主人からの腸射経験})
+					CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%に腸内射精されたことがある({CFLAG:主人からの腸射経験})"
 				ENDIF
 			ENDIF
 			SIF CFLAG:助手からの腸射経験
-				PRINTFORML 　助手に腸内射精されたことがある({CFLAG:助手からの腸射経験})
+				CALL MCOLUMNPRINTL, @"　助手に腸内射精されたことがある({CFLAG:助手からの腸射経験})"
 			SIF CFLAG:手で射精させた経験
-				PRINTFORML 　手で%CALLNAME:MASTER%を射精させたことがある({CFLAG:手で射精させた経験})
+				CALL MCOLUMNPRINTL, @"　手で%CALLNAME:MASTER%を射精させたことがある({CFLAG:手で射精させた経験})"
 			SIF CFLAG:口で射精させた経験
-				PRINTFORML 　口で%CALLNAME:MASTER%を射精させたことがある({CFLAG:口で射精させた経験})
+				CALL MCOLUMNPRINTL, @"　口で%CALLNAME:MASTER%を射精させたことがある({CFLAG:口で射精させた経験})"
 			SIF CFLAG:お掃除フェラ経験
-				PRINTFORML 　%CALLNAME:MASTER%のペニスの汚れを綺麗に舐め取ったことがある({CFLAG:お掃除フェラ経験})
+				CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%のペニスの汚れを綺麗に舐め取ったことがある({CFLAG:お掃除フェラ経験})"
 			SIF CFLAG:胸で射精させた経験
-				PRINTFORML 　胸の奉仕で%CALLNAME:MASTER%を射精させたことがある({CFLAG:胸で射精させた経験})
+				CALL MCOLUMNPRINTL, @"　胸の奉仕で%CALLNAME:MASTER%を射精させたことがある({CFLAG:胸で射精させた経験})"
 			SIF CFLAG:キスで射精させた経験
-				PRINTFORML 　キスだけで%CALLNAME:MASTER%を射精させたことがある({CFLAG:キスで射精させた経験})
+				CALL MCOLUMNPRINTL, @"　キスだけで%CALLNAME:MASTER%を射精させたことがある({CFLAG:キスで射精させた経験})"
 			IF CFLAG:騎乗位で射精させた経験
 				IF 陥落(TARGET)
-					PRINTFORML 　騎乗位で%CALLNAME:MASTER%から精液を搾り取ったことがある({CFLAG:騎乗位で射精させた経験})
+					CALL MCOLUMNPRINTL, @"　騎乗位で%CALLNAME:MASTER%から精液を搾り取ったことがある({CFLAG:騎乗位で射精させた経験})"
 				ELSE
-					PRINTFORML 　%CALLNAME:MASTER%相手に騎乗位で膣内射精されてしまったことがある({CFLAG:騎乗位で射精させた経験})
+					CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%相手に騎乗位で膣内射精されてしまったことがある({CFLAG:騎乗位で射精させた経験})"
 				ENDIF
 			ENDIF
 			IF CFLAG:アナル騎乗位で射精させた経験
 				IF 陥落(TARGET)
-					PRINTFORML 　自らのアナルで%CALLNAME:MASTER%を射精に導いたことがある({CFLAG:アナル騎乗位で射精させた経験})
+					CALL MCOLUMNPRINTL, @"　自らのアナルで%CALLNAME:MASTER%を射精に導いたことがある({CFLAG:アナル騎乗位で射精させた経験})"
 				ELSE
-					PRINTFORML 　アナルでの騎乗位で%CALLNAME:MASTER%を射精させたことがある({CFLAG:アナル騎乗位で射精させた経験})
+					CALL MCOLUMNPRINTL, @"　アナルでの騎乗位で%CALLNAME:MASTER%を射精させたことがある({CFLAG:アナル騎乗位で射精させた経験})"
 				ENDIF
 			ENDIF
 			SIF CFLAG:足で射精させた経験
-				PRINTFORML 　%CALLNAME:MASTER%のペニスを足で扱いて射精させたことがある({CFLAG:足で射精させた経験})
+				CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%のペニスを足で扱いて射精させたことがある({CFLAG:足で射精させた経験})"
 			SIF CFLAG:性交奉仕で射精させた経験
-				PRINTFORML 　%CALLNAME:MASTER%を犯しながら%CALLNAME:MASTER%を射精させたことがある({CFLAG:性交奉仕で射精させた経験})
+				CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%を犯しながら%CALLNAME:MASTER%を射精させたことがある({CFLAG:性交奉仕で射精させた経験})"
 			SIF CFLAG:逆アナルで射精させた経験
-				PRINTFORML 　%CALLNAME:MASTER%のアナルを犯しながら%CALLNAME:MASTER%を射精させたことがある({CFLAG:逆アナルで射精させた経験})
+				CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%のアナルを犯しながら%CALLNAME:MASTER%を射精させたことがある({CFLAG:逆アナルで射精させた経験})"
 			SIF CFLAG:膀胱に射精された経験
-				PRINTFORML 　膀胱内に直接射精されたことがある({CFLAG:膀胱に射精された経験})
+				CALL MCOLUMNPRINTL, @"　膀胱内に直接射精されたことがある({CFLAG:膀胱に射精された経験})"
 			SIF CFLAG:臍に中出しされた経験
-				PRINTFORML 　臍に挿入されて中出しされたことがある({CFLAG:臍に中出しされた経験})
+				CALL MCOLUMNPRINTL, @"　臍に挿入されて中出しされたことがある({CFLAG:臍に中出しされた経験})"
 			SIF CFLAG:乳管に中出しされた経験
-				PRINTFORML 　乳管に挿入されて中出しされたことがある({CFLAG:乳管に中出しされた経験})
+				CALL MCOLUMNPRINTL, @"　乳管に挿入されて中出しされたことがある({CFLAG:乳管に中出しされた経験})"
 		CASE 2
-			PRINTLC □ 絶頂経験
-			PRINTPLAIN 
-			PRINTL [1]← [2]→
+			CALL MCOLUMNPRINT, @"□ %"絶頂経験", 16, LEFT%"
+			CALL MCOLUMNPRINT, "[1]← "
+			CALL MCOLUMNPRINTL, "[2]→"
 			SIF CFLAG:絶頂放尿経験
-				PRINTFORML 　絶頂と同時に尿を漏らしてしまったことがある({CFLAG:絶頂放尿経験})
+				CALL MCOLUMNPRINTL, @"　絶頂と同時に尿を漏らしてしまったことがある({CFLAG:絶頂放尿経験})"
 			SIF CFLAG:野外放尿経験
-				PRINTFORML 　調教中に野外で放尿したことがある({CFLAG:野外放尿経験})
+				CALL MCOLUMNPRINTL, @"　調教中に野外で放尿したことがある({CFLAG:野外放尿経験})"
 			SIF CFLAG:風呂場放尿経験
-				PRINTFORML 　調教中にお風呂場で放尿したことがある({CFLAG:風呂場放尿経験})
+				CALL MCOLUMNPRINTL, @"　調教中にお風呂場で放尿したことがある({CFLAG:風呂場放尿経験})"
 			SIF CFLAG:性交放尿経験
-				PRINTFORML 　セックスの最中に感極まって尿を漏らしてしまったことがある({CFLAG:性交放尿経験})
+				CALL MCOLUMNPRINTL, @"　セックスの最中に感極まって尿を漏らしてしまったことがある({CFLAG:性交放尿経験})"
 			SIF CFLAG:アナル性交放尿経験
-				PRINTFORML 　アナルセックスの最中に尿を漏らしてしまったことがある({CFLAG:アナル性交放尿経験})
+				CALL MCOLUMNPRINTL, @"　アナルセックスの最中に尿を漏らしてしまったことがある({CFLAG:アナル性交放尿経験})"
 			SIF CFLAG:クリキャップ絶頂経験
-				PRINTFORML 　クリキャップの振動で絶頂したことがある({CFLAG:クリキャップ絶頂経験})
+				CALL MCOLUMNPRINTL, @"　クリキャップの振動で絶頂したことがある({CFLAG:クリキャップ絶頂経験})"
 			SIF CFLAG:ニプルキャップ絶頂経験
-				PRINTFORML 　ニプルキャップで乳首を責められて絶頂したことがある({CFLAG:ニプルキャップ絶頂経験})
+				CALL MCOLUMNPRINTL, @"　ニプルキャップで乳首を責められて絶頂したことがある({CFLAG:ニプルキャップ絶頂経験})"
 			SIF CFLAG:バイブ絶頂経験
-				PRINTFORML 　バイブで膣内を犯されて絶頂したことがある({CFLAG:バイブ絶頂経験})
+				CALL MCOLUMNPRINTL, @"　バイブで膣内を犯されて絶頂したことがある({CFLAG:バイブ絶頂経験})"
 			SIF CFLAG:アナルバイブ絶頂経験
-				PRINTFORML 　アナルバイブで腸内を掻き回されて絶頂したことがある({CFLAG:アナルバイブ絶頂経験})
+				CALL MCOLUMNPRINTL, @"　アナルバイブで腸内を掻き回されて絶頂したことがある({CFLAG:アナルバイブ絶頂経験})"
 			SIF CFLAG:アナルビーズ絶頂経験
-				PRINTFORML 　尻穴でアナルビーズを飲み込んで絶頂したことがある({CFLAG:アナルビーズ絶頂経験})
+				CALL MCOLUMNPRINTL, @"　尻穴でアナルビーズを飲み込んで絶頂したことがある({CFLAG:アナルビーズ絶頂経験})"
 			SIF CFLAG:主人への膣射経験
-				PRINTFORML 　%CALLNAME:MASTER%の膣内に射精したことがある({CFLAG:主人への膣射経験})
+				CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%の膣内に射精したことがある({CFLAG:主人への膣射経験})"
 			SIF CFLAG:助手への膣射経験
-				PRINTFORML 　助手の膣内に射精したことがある({CFLAG:助手への膣射経験})
+				CALL MCOLUMNPRINTL, @"　助手の膣内に射精したことがある({CFLAG:助手への膣射経験})"
 			SIF CFLAG:主人への腸射経験
-				PRINTFORML 　%CALLNAME:MASTER%のアナルに射精したことがある({CFLAG:主人への腸射経験})
+				CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%のアナルに射精したことがある({CFLAG:主人への腸射経験})"
 			SIF CFLAG:助手への腸射経験
-				PRINTFORML 　助手のアナルに射精したことがある({CFLAG:主人への腸射経験})
+				CALL MCOLUMNPRINTL, @"　助手のアナルに射精したことがある({CFLAG:主人への腸射経験})"
 			SIF CFLAG:口で射精した経験
-				PRINTFORML 　%CALLNAME:MASTER%の口で射精したことがある({CFLAG:口で射精した経験})
+				CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%の口で射精したことがある({CFLAG:口で射精した経験})"
 			SIF CFLAG:膣を責められて射精した経験
-				PRINTFORML 　膣内への刺激で射精したことがある({CFLAG:膣を責められて射精した経験})
+				CALL MCOLUMNPRINTL, @"　膣内への刺激で射精したことがある({CFLAG:膣を責められて射精した経験})"
 			SIF CFLAG:アナルを責められて射精した経験
-				PRINTFORML 　アナルを弄られて射精したことがある({CFLAG:アナルを責められて射精した経験})
+				CALL MCOLUMNPRINTL, @"　アナルを弄られて射精したことがある({CFLAG:アナルを責められて射精した経験})"
 			SIF CFLAG:犯されて射精した経験
-				PRINTFORML 　%CALLNAME:MASTER%に抱かれながら射精したことがある({CFLAG:犯されて射精した経験})
+				CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%に抱かれながら射精したことがある({CFLAG:犯されて射精した経験})"
 			SIF CFLAG:アナルを犯されて射精した経験
-				PRINTFORML 　%CALLNAME:MASTER%のペニスをアナルで受け入れながら射精したことがある({CFLAG:アナルを犯されて射精した経験})
+				CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%のペニスをアナルで受け入れながら射精したことがある({CFLAG:アナルを犯されて射精した経験})"
 			SIF CFLAG:オナホで射精した経験
-				PRINTFORML 　調教中にオナホールの中で射精したことがある({CFLAG:オナホで射精した経験})
+				CALL MCOLUMNPRINTL, @"　調教中にオナホールの中で射精したことがある({CFLAG:オナホで射精した経験})"
 			SIF CFLAG:道具で前立腺射精経験
-				PRINTFORML 　道具で前立腺を弄られて射精してしまったことがある({CFLAG:道具で前立腺射精経験})
+				CALL MCOLUMNPRINTL, @"　道具で前立腺を弄られて射精してしまったことがある({CFLAG:道具で前立腺射精経験})"
 			SIF CFLAG:避妊具射精経験
-				PRINTFORML 　調教中に避妊具の中に射精したことがある({CFLAG:避妊具射精経験})
+				CALL MCOLUMNPRINTL, @"　調教中に避妊具の中に射精したことがある({CFLAG:避妊具射精経験})"
 			SIF CFLAG:搾精経験
-				PRINTFORML 　搾精目的で精液を搾り取られたことがある({CFLAG:搾精経験})
+				CALL MCOLUMNPRINTL, @"　搾精目的で精液を搾り取られたことがある({CFLAG:搾精経験})"
 			SIF CFLAG:野外で射精した経験
-				PRINTFORML 　調教中に野外で射精したことがある({CFLAG:野外で射精した経験})
+				CALL MCOLUMNPRINTL, @"　調教中に野外で射精したことがある({CFLAG:野外で射精した経験})"
 			SIF CFLAG:兜合わせで一緒に射精した経験
-				PRINTFORML 　%CALLNAME:MASTER%との兜合わせで、二人一緒に射精したことがある({CFLAG:兜合わせで一緒に射精した経験})
+				CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%との兜合わせで、二人一緒に射精したことがある({CFLAG:兜合わせで一緒に射精した経験})"
 			SIF CFLAG:キスで射精した経験
-				PRINTFORML 　%CALLNAME:MASTER%とのキスだけで射精したことがある({CFLAG:キスで射精した経験})
+				CALL MCOLUMNPRINTL, @"　%CALLNAME:MASTER%とのキスだけで射精したことがある({CFLAG:キスで射精した経験})"
 			SIF CFLAG:搾乳された経験
-				PRINTFORML 　調教中に母乳を搾り取られたことがある({CFLAG:搾乳された経験})
+				CALL MCOLUMNPRINTL, @"　調教中に母乳を搾り取られたことがある({CFLAG:搾乳された経験})"
 			SIF CFLAG:浣腸器で脱糞した経験
-				PRINTFORML 　調教中に浣腸器を使用されて排泄物を漏らしてしまったことがある({CFLAG:浣腸器で脱糞した経験})
+				CALL MCOLUMNPRINTL, @"　調教中に浣腸器を使用されて排泄物を漏らしてしまったことがある({CFLAG:浣腸器で脱糞した経験})"
 		CASE 3
-			PRINTLC □ 異種姦経験
-			PRINTPLAIN 
-			PRINTL [1]← [2]→
+			CALL MCOLUMNPRINT, @"□ %"異種姦経験", 16, LEFT%"
+			CALL MCOLUMNPRINT, "[1]← "
+			CALL MCOLUMNPRINTL, "[2]→"
 			SIF CFLAG:触手Ｃ絶頂経験
-				PRINTFORML 　触手にクリトリスを責められて絶頂したことがある({CFLAG:触手Ｃ絶頂経験})
+				CALL MCOLUMNPRINTL, @"　触手にクリトリスを責められて絶頂したことがある({CFLAG:触手Ｃ絶頂経験})"
 			SIF CFLAG:触手Ｖ絶頂経験
-				PRINTFORML 　触手に膣を犯されて絶頂したことがある({CFLAG:触手Ｖ絶頂経験})
+				CALL MCOLUMNPRINTL, @"　触手に膣を犯されて絶頂したことがある({CFLAG:触手Ｖ絶頂経験})"
 			SIF CFLAG:触手Ａ絶頂経験
-				PRINTFORML 　触手にアナルを犯されて絶頂したことがある({CFLAG:触手Ａ絶頂経験})
+				CALL MCOLUMNPRINTL, @"　触手にアナルを犯されて絶頂したことがある({CFLAG:触手Ａ絶頂経験})"
 			SIF CFLAG:触手Ｂ絶頂経験
-				PRINTFORML 　触手に乳首を弄られて絶頂したことがある({CFLAG:触手Ｂ絶頂経験})
+				CALL MCOLUMNPRINTL, @"　触手に乳首を弄られて絶頂したことがある({CFLAG:触手Ｂ絶頂経験})"
 			SIF CFLAG:触手射精経験
-				PRINTFORML 　触手に精液を搾り取られたことがある({CFLAG:触手射精経験})
+				CALL MCOLUMNPRINTL, @"　触手に精液を搾り取られたことがある({CFLAG:触手射精経験})"
 			SIF CFLAG:異種姦経験
-				PRINTFORML 　動物やドラゴンに犯されたことがある({CFLAG:異種姦経験})
+				CALL MCOLUMNPRINTL, @"　動物やドラゴンに犯されたことがある({CFLAG:異種姦経験})"
 			SIF CFLAG:動物に舐められて射精した経験
-				PRINTFORML 　動物に舐められて射精したことがある({CFLAG:動物に舐められて射精した経験})
+				CALL MCOLUMNPRINTL, @"　動物に舐められて射精したことがある({CFLAG:動物に舐められて射精した経験})"
 			SIF CFLAG:動物に舐められてイった経験
-				PRINTFORML 　動物に舐められて絶頂に達したことがある({CFLAG:動物に舐められてイった経験})
+				CALL MCOLUMNPRINTL, @"　動物に舐められて絶頂に達したことがある({CFLAG:動物に舐められてイった経験})"
 			SIF CFLAG:獣姦膣内射精経験
-				PRINTFORML 　獣姦で膣内に中出しされたことがある({CFLAG:獣姦膣内射精経験})
+				CALL MCOLUMNPRINTL, @"　獣姦で膣内に中出しされたことがある({CFLAG:獣姦膣内射精経験})"
 			SIF CFLAG:獣姦腸内射精経験
-				PRINTFORML 　獣姦でアナルに中出しされたことがある({CFLAG:獣姦腸内射精経験})
+				CALL MCOLUMNPRINTL, @"　獣姦でアナルに中出しされたことがある({CFLAG:獣姦腸内射精経験})"
 			SIF CFLAG:ドラゴンを口で射精させた経験
-				PRINTFORML 　ドラゴンを口で射精させたことがある({CFLAG:ドラゴンを口で射精させた経験})
+				CALL MCOLUMNPRINTL, @"　ドラゴンを口で射精させたことがある({CFLAG:ドラゴンを口で射精させた経験})"
 			SIF CFLAG:ドラゴン膣内射精経験
-				PRINTFORML 　ドラゴンに膣内射精されたことがある({CFLAG:ドラゴン膣内射精経験})
+				CALL MCOLUMNPRINTL, @"　ドラゴンに膣内射精されたことがある({CFLAG:ドラゴン膣内射精経験})"
 			SIF CFLAG:ドラゴン腸内射精経験
-				PRINTFORML 　ドラゴンに腸内射精されたことがある({CFLAG:ドラゴン腸内射精経験})
+				CALL MCOLUMNPRINTL, @"　ドラゴンに腸内射精されたことがある({CFLAG:ドラゴン腸内射精経験})"
 			SIF CFLAG:スライム姦された経験
-				PRINTFORML 　スライムに犯されたことがある({CFLAG:スライム姦された経験})
+				CALL MCOLUMNPRINTL, @"　スライムに犯されたことがある({CFLAG:スライム姦された経験})"
 		CASE 4
-			PRINTLC □ 撮影経験
-			PRINTPLAIN 
-			PRINTL [1]←
+			CALL MCOLUMNPRINT, @"□ %"撮影経験", 16, LEFT%"
+			CALL MCOLUMNPRINTL, "[1]←"
 			SIF CFLAG:絶頂を撮影された経験
-				PRINTFORML 　撮影されながらイッたことがある({CFLAG:絶頂を撮影された経験})
+				CALL MCOLUMNPRINTL, @"　撮影されながらイッたことがある({CFLAG:絶頂を撮影された経験})"
 			SIF CFLAG:放尿を撮影された経験
-				PRINTFORML 　放尿しているところを撮影されたことがある({CFLAG:放尿を撮影された経験})
+				CALL MCOLUMNPRINTL, @"　放尿しているところを撮影されたことがある({CFLAG:放尿を撮影された経験})"
 			SIF CFLAG:射精を撮影された経験
-				PRINTFORML 　射精の瞬間を録画されたことがある({CFLAG:射精を撮影された経験})
+				CALL MCOLUMNPRINTL, @"　射精の瞬間を録画されたことがある({CFLAG:射精を撮影された経験})"
 			SIF CFLAG:噴乳を撮影された経験
-				PRINTFORML 　ビデオカメラで撮影中に母乳を垂れ流したことがある({CFLAG:噴乳を撮影された経験})
+				CALL MCOLUMNPRINTL, @"　ビデオカメラで撮影中に母乳を垂れ流したことがある({CFLAG:噴乳を撮影された経験})"
 			SIF CFLAG:自慰を撮影された経験
-				PRINTFORML 　自慰行為の一部始終をビデオカメラに収められたことがある({CFLAG:自慰を撮影された経験})
+				CALL MCOLUMNPRINTL, @"　自慰行為の一部始終をビデオカメラに収められたことがある({CFLAG:自慰を撮影された経験})"
 			SIF CFLAG:脱糞を撮影された経験
-				PRINTFORML 　撮影されながら浣腸液で糞便を撒き散らしたことがある({CFLAG:脱糞を撮影された経験})
+				CALL MCOLUMNPRINTL, @"　撮影されながら浣腸液で糞便を撒き散らしたことがある({CFLAG:脱糞を撮影された経験})"
 	ENDSELECT
 	SIF ゲームモード() == "新婚モード"
 		CALLNAME:MASTER = %主人名保存用%
@@ -1151,6 +1112,124 @@ SIF ドラゴンに処女:1
 	CSTR:性転換処女 = 主人のドラゴン
 
 VARSET ドラゴンに処女, 0
+CALL ステータス表示汎用メニュー
+
+@ステータス表示_その他情報_INPUT
+CALL ステータス表示汎用メニュー_INPUT
+
+SELECTCASE CRESULT:1
+	CASE 1
+		TFLAG:ページ数--
+	CASE 2
+		TFLAG:ページ数++
+ENDSELECT
+
+@ステータス表示_アイテム使用
+CALL アイテム使用_逆引き, TARGET
+CALL ステータス表示汎用メニュー
+
+@ステータス表示_アイテム使用_INPUT
+#DIM DYNAMIC 使用アイテム
+
+CALL ステータス表示汎用メニュー
+SIF CRESULT:1 <= 11
+	RETURN
+
+使用アイテム = CRESULT:1
+IF ITEMPRICE:使用アイテム > MONEY && !ORIGIN
+	PRINTW 所持金が足りません
+	RETURN
+ENDIF
+CALL アイテム使用, TARGET, ITEMNAME:使用アイテム
+
+@ステータス表示_メモ
+#DIM DYNAMIC LCOUNT
+
+CALL MCOLUMNPRINTL, @"□%NAME:TARGET%のキャラクターメモ クリックor番号入力で編集"
+FOR LCOUNT, 0, 10
+	IF メモ:TARGET:LCOUNT == ""
+		CALL MCOLUMNPRINTL, @"　[{LCOUNT+100}] -----"
+	ELSE
+		CALL MCOLUMNPRINTL, @"　[{LCOUNT+100}] %メモ:TARGET:LCOUNT%"
+	ENDIF
+NEXT
+
+SIF MOD:バスト関連ステータス表示
+	CALL CHARA_BUST_SETTING, TARGET
+
+CALL ステータス表示汎用メニュー
+
+@ステータス表示_メモ_INPUT
+CALL ステータス表示汎用メニュー_INPUT
+CALL CHARA_BUST_SETTING_INPUT, TARGET
+
+SELECTCASE CRESULT:1
+	CASE 100 TO 109
+		PRINTPLAIN メモを入力してください 
+		PRINTL [0] - 変更しない
+		INPUTS
+		SIF RESULTS == "0"
+			RETURN
+		メモ:TARGET:(CRESULT:1-100) = %RESULTS%
+ENDSELECT
+
+@ステータス表示汎用メニュー
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 次のキャラ = -1
+#DIM DYNAMIC 前のキャラ = -1
+
+FOR LCOUNT, TARGET+1, CHARANUM
+	IF ロストキャラ表示
+		IF CFLAG:LCOUNT:キャラロスト
+			次のキャラ = LCOUNT
+			BREAK
+		ENDIF
+	ELSE
+		IF !CFLAG:LCOUNT:キャラロスト
+			次のキャラ = LCOUNT
+			BREAK
+		ENDIF
+	ENDIF
+NEXT
+FOR LCOUNT, TARGET-1, -1, -1
+	IF ロストキャラ表示
+		IF CFLAG:LCOUNT:キャラロスト
+			前のキャラ = LCOUNT
+			BREAK
+		ENDIF
+	ELSE
+		IF !CFLAG:LCOUNT:キャラロスト
+			前のキャラ = LCOUNT
+			BREAK
+		ENDIF
+	ENDIF
+NEXT
+CALL MCOLUMNSETLINE, MAX_LINE-3
+CALL MCOLUMNDRAWLINE
+
+CALL MCOLUMNPRINT, RETURNSPACE(前のキャラ >= 0, "[6] 前のキャラ ")
+CALL MCOLUMNPRINT, RETURNSPACE(次のキャラ >= 0, "[7] 次のキャラ ")
+{
+IF !ロストキャラ表示 && (調教可能(TARGET) || 助手可能(TARGET))
+ && (!SHOP_配属キャラ選択不可 || (SHOP_配属キャラ選択不可 && CSTR:配属 == ""))
+ && !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && !CFLAG:監禁
+}
+	CALL MCOLUMNPRINT, RETURNSPACE(SHOW_TARGET != TARGET && 調教可能(TARGET), "[8] 対象に指定 ")
+	CALL MCOLUMNPRINT, RETURNSPACE(NOSAMES(TARGET, MASTER, ASSI) && 助手可能(TARGET), "[9] 助手に指定 ")
+ENDIF
+IF !ロストキャラ表示
+	IF ISSLIME(TARGET)
+		CALL MCOLUMNPRINT, "[11] 体色変更"
+	ELSE
+		CALL MCOLUMNPRINT, "[11] タグ色変更"
+	ENDIF
+ENDIF
+CALL MCOLUMNPRINTL, ""
+
+@ステータス表示汎用メニュー_INPUT
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 次のキャラ
+#DIM DYNAMIC 前のキャラ
 
 FOR LCOUNT, TARGET+1, CHARANUM
 	IF ロストキャラ表示
@@ -1179,64 +1258,18 @@ FOR LCOUNT, TARGET-1, -1, -1
 	ENDIF
 NEXT
 
-DRAWLINE
-PRINTPLAIN 　etc... 
-PRINT [0] 戻る 
-SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
-	PRINT [4] 性経験履歴 
-PRINT [5] 基本情報　 
-CALL PRINTSPACE, 前のキャラ >= 0, "[6] 前のキャラ "
-CALL PRINTSPACE, 次のキャラ >= 0, "[7] 次のキャラ "
-{
-IF !ロストキャラ表示 && (調教可能(TARGET) || 助手可能(TARGET))
- && (!SHOP_配属キャラ選択不可 || (SHOP_配属キャラ選択不可 && CSTR:配属 == ""))
- && !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && !CFLAG:監禁
-}
-	CALL PRINTSPACE, SHOW_TARGET != TARGET && 調教可能(TARGET), "[8] 対象に指定 "
-	CALL PRINTSPACE, NOSAMES(TARGET, MASTER, ASSI) && 助手可能(TARGET), "[9] 助手に指定 "
-	PRINT [10] アイテム使用 
-ENDIF
-PRINTL 
-PRINTPLAINFORM %SPACESLENS("　etcccc ")%
-IF !ロストキャラ表示
-	IF ISSLIME(TARGET)
-		PRINT [11] 体色変更
-	ELSE
-		PRINT [11] タグ色変更
-	ENDIF
-ENDIF
-PRINTL 
-
-BINPUT
-SELECTCASE RESULT
-	CASE 0
-		RETURN 0
-	;以下フラグリセットのためにJUMPで処理
-	CASE 1
-		PAGE--
-		JUMP STATUS_ETC, ロストキャラ表示
-	CASE 2
-		PAGE++
-		JUMP STATUS_ETC, ロストキャラ表示
-	CASE 4
-		JUMP STATUS_SEX_EXP, 0, ロストキャラ表示
-	CASE 5
-		JUMP STATUS, ロストキャラ表示
+SELECTCASE CRESULT:1
 	CASE 6
 		TARGET = 前のキャラ
-		JUMP STATUS_ETC, ロストキャラ表示
 	CASE 7
 		TARGET = 次のキャラ
-		JUMP STATUS_ETC, ロストキャラ表示
 	CASE 8
 		CALL ASSIGN_TARGET, TARGET
-		RETURN 1
+		対象変更済み = 1
+		LOOP_BREAK = 1
 	CASE 9
 		CALL ASSIGN_ASSI, TARGET
-		RETURN 0
-	CASE 10
-		CALL アイテム使用_逆引き, TARGET
-		JUMP STATUS_ETC, ロストキャラ表示
+		LOOP_BREAK = 1
 	CASE 11
 		IF ISSLIME(TARGET)
 			PRINTFORML □%CALLNAME:TARGET%の体色を設定してください
@@ -1247,13 +1280,9 @@ SELECTCASE RESULT
 		CALL RGBBAR, CFLAG:タグ色/0x10000, CFLAG:タグ色%0x10000/0x100, CFLAG:タグ色%0x100
 		SIF RESULT
 			CFLAG:タグ色 = RESULT
-		JUMP STATUS_ETC, ロストキャラ表示
-	CASE 100
-		INVERTBIT 曲表示, 0
-		JUMP STATUS_ETC, ロストキャラ表示
 ENDSELECT
 
-@STATUS_SEX_EXP, 設定, ロストキャラ表示
+@性経験履歴, 設定, カラム
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC ID
 #DIM DYNAMIC NOREV
@@ -1264,158 +1293,232 @@ ENDSELECT
 #DIM DYNAMIC 設定
 #DIM DYNAMIC 次のキャラ = -1
 #DIM DYNAMIC 前のキャラ = -1
-#DIM DYNAMIC ロストキャラ表示
-DRAWLINE
+#DIM DYNAMIC カラム
 
-LIST_ = 10
+;#DIM DYNAMIC ロストキャラ表示
+IF カラム
+	CALL MCOLUMNDRAWLINE
+ELSE
+	DRAWLINE
+ENDIF
 
-SIF 設定 != 1
+LIST_ = 100
+
+SIF 設定 != 1 && !カラム
 	CALL 基本情報
 
-PRINTL □ 性経験履歴
-[IF_DEBUG]
+IF カラム
+	CALL MCOLUMNPRINT, "□ 性経験履歴 "
+	[IF_DEBUG]
+		CALL MCOLUMNPRINT, "[100] - 変更する"
+	[ENDIF]
+	CALL MCOLUMNPRINTL, ""
+ELSE
+	PRINTL □ 性経験履歴
+ENDIF
+IF 設定
 	SEX_TOTAL = 0
 	NAKADASHI_TOTAL = 0
 	LIST_NO:LIST_ = LCOUNT
-	PRINTFORML  [{LIST_}] 新しく加える
-	LIST_++
-[ENDIF]
-[IF_NDEBUG]
-	IF 設定
-		SEX_TOTAL = 0
-		NAKADASHI_TOTAL = 0
-		LIST_NO:LIST_ = LCOUNT
+	IF カラム
+		CALL MCOLUMNPRINTL, @" [{LIST_}] 新しく加える"
+	ELSE
 		PRINTFORML  [{LIST_}] 新しく加える
-		LIST_++
 	ENDIF
-[ENDIF]
+	LIST_++
+ENDIF
 FOR LCOUNT, 0, 20000
 	IF 経験回数:TARGET:LCOUNT
-		PRINTFORM 　%CSVNAMEF(LCOUNT)%:{経験回数:TARGET:LCOUNT}回
-		[IF_DEBUG]
+		IF カラム
+			CALL MCOLUMNPRINT, @"　%CSVNAMEF(LCOUNT)%:{経験回数:TARGET:LCOUNT}回"
+		ELSE
+			PRINTFORM 　%CSVNAMEF(LCOUNT)%:{経験回数:TARGET:LCOUNT}回
+		ENDIF
+		IF 設定
 			SEX_TOTAL += 経験回数:TARGET:LCOUNT
 			NAKADASHI_TOTAL += 中出され回数:TARGET:LCOUNT
 			LIST_NO:LIST_ = LCOUNT
-			PRINTPLAIN  ―――― 
-			PRINTFORM [{LIST_}] 変更
-			LIST_++
-		[ENDIF]
-		[IF_NDEBUG]
-			IF 設定
-				SEX_TOTAL += 経験回数:TARGET:LCOUNT
-				NAKADASHI_TOTAL += 中出され回数:TARGET:LCOUNT
-				LIST_NO:LIST_ = LCOUNT
+			IF カラム
+				CALL MCOLUMNPRINT, " ―――― "
+				CALL MCOLUMNPRINT, @"[{LIST_}] 変更"
+			ELSE
 				PRINTPLAIN  ―――― 
 				PRINTFORM [{LIST_}] 変更
-				LIST_++
 			ENDIF
-		[ENDIF]
-		PRINTL
+			LIST_++
+		ENDIF
+		IF カラム
+			CALL MCOLUMNPRINTL, ""
+		ELSE
+			PRINTL
+		ENDIF
 		ID = NOF(TARGET)
 		IF 中出し回数:TARGET:LCOUNT || アナル中出し回数:TARGET:LCOUNT || 孕ませ回数:TARGET:LCOUNT
-			PRINTFORM 　　%CSVCALLNAMEF(ID)%は%CSVCALLNAMEF(LCOUNT)%の
-			SIF 中出し回数:TARGET:LCOUNT
-				PRINTFORM 膣内に{中出し回数:TARGET:LCOUNT}回
-			SIF アナル中出し回数:TARGET:LCOUNT
-				PRINTFORM アナルに{アナル中出し回数:TARGET:LCOUNT}回
-			PRINT 射精してい
-			SIF 孕ませ回数:TARGET:LCOUNT
-				PRINTFORM て、{孕ませ回数:TARGET:LCOUNT}回孕ませてい
-			PRINTL る。
+			IF カラム
+				CALL MCOLUMNPRINT, @"　　%CSVCALLNAMEF(ID)%は%CSVCALLNAMEF(LCOUNT)%の"
+				SIF 中出し回数:TARGET:LCOUNT
+					CALL MCOLUMNPRINT, @"膣内に{中出し回数:TARGET:LCOUNT}回"
+				SIF アナル中出し回数:TARGET:LCOUNT
+					CALL MCOLUMNPRINT, @"アナルに{アナル中出し回数:TARGET:LCOUNT}回"
+				CALL MCOLUMNPRINT, "射精してい"
+				SIF 孕ませ回数:TARGET:LCOUNT
+					CALL MCOLUMNPRINT, @"て、{孕ませ回数:TARGET:LCOUNT}回孕ませてい"
+				CALL MCOLUMNPRINTL, "る。"
+			ELSE
+				PRINTFORM 　　%CSVCALLNAMEF(ID)%は%CSVCALLNAMEF(LCOUNT)%の
+				SIF 中出し回数:TARGET:LCOUNT
+					PRINTFORM 膣内に{中出し回数:TARGET:LCOUNT}回
+				SIF アナル中出し回数:TARGET:LCOUNT
+					PRINTFORM アナルに{アナル中出し回数:TARGET:LCOUNT}回
+				PRINT 射精してい
+				SIF 孕ませ回数:TARGET:LCOUNT
+					PRINTFORM て、{孕ませ回数:TARGET:LCOUNT}回孕ませてい
+				PRINTL る。
+			ENDIF
 		ENDIF
 		IF 中出され回数:TARGET:LCOUNT || アナル中出され回数:TARGET:LCOUNT || 孕み回数:TARGET:LCOUNT
-			PRINTFORM 　　%CSVCALLNAMEF(LCOUNT)%は%CSVCALLNAMEF(ID)%の
-			SIF 中出され回数:TARGET:LCOUNT
-				PRINTFORM 膣内に{中出され回数:TARGET:LCOUNT}回
-			SIF アナル中出され回数:TARGET:LCOUNT
-				PRINTFORM アナルに{アナル中出され回数:TARGET:LCOUNT}回
-			PRINT 射精してい
-			SIF 孕み回数:TARGET:LCOUNT
-				PRINTFORM て、{孕み回数:TARGET:LCOUNT}回孕ませてい
-			PRINTL る。
+			IF カラム
+				CALL MCOLUMNPRINT, @"　　%CSVCALLNAMEF(LCOUNT)%は%CSVCALLNAMEF(ID)%の"
+				SIF 中出され回数:TARGET:LCOUNT
+					CALL MCOLUMNPRINT, @"膣内に{中出され回数:TARGET:LCOUNT}回"
+				SIF アナル中出され回数:TARGET:LCOUNT
+					CALL MCOLUMNPRINT, @"アナルに{アナル中出され回数:TARGET:LCOUNT}回"
+				CALL MCOLUMNPRINT, "射精してい"
+				SIF 孕み回数:TARGET:LCOUNT
+					CALL MCOLUMNPRINT, @"て、{孕み回数:TARGET:LCOUNT}回孕ませてい"
+				CALL MCOLUMNPRINTL, "る。"
+			ELSE
+				PRINTFORM 　　%CSVCALLNAMEF(LCOUNT)%は%CSVCALLNAMEF(ID)%の
+				SIF 中出され回数:TARGET:LCOUNT
+					PRINTFORM 膣内に{中出され回数:TARGET:LCOUNT}回
+				SIF アナル中出され回数:TARGET:LCOUNT
+					PRINTFORM アナルに{アナル中出され回数:TARGET:LCOUNT}回
+				PRINT 射精してい
+				SIF 孕み回数:TARGET:LCOUNT
+					PRINTFORM て、{孕み回数:TARGET:LCOUNT}回孕ませてい
+				PRINTL る。
+			ENDIF
 		ENDIF
 	ENDIF
 NEXT
 IF モブ経験人数:TARGET:0
-	PRINTFORM 　不明:{モブ経験回数:TARGET:0}回/{モブ経験人数:TARGET:0}人
-	[IF_DEBUG]
+	IF カラム
+		CALL MCOLUMNPRINT, @"　不明:{モブ経験回数:TARGET:0}回/{モブ経験人数:TARGET:0}人"
+	ELSE
+		PRINTFORM 　不明:{モブ経験回数:TARGET:0}回/{モブ経験人数:TARGET:0}人
+	ENDIF
+	IF 設定
 		SEX_TOTAL += モブ経験回数:TARGET:0
 		NAKADASHI_TOTAL += モブ中出され回数:TARGET:0
 		LIST_NO:LIST_ = -1
-		PRINTPLAIN  ―――― 
-		PRINTFORM [{LIST_}] 変更
-	[ENDIF]
-	[IF_NDEBUG]
-		IF 設定
-			SEX_TOTAL += モブ経験回数:TARGET:0
-			NAKADASHI_TOTAL += モブ中出され回数:TARGET:0
-			LIST_NO:LIST_ = -1
+		IF カラム
+			CALL MCOLUMNPRINT, " ―――― "
+			CALL MCOLUMNPRINT, @"[{LIST_}] 変更"
+		ELSE
 			PRINTPLAIN  ―――― 
 			PRINTFORM [{LIST_}] 変更
 		ENDIF
-	[ENDIF]
-	PRINTL
+	ENDIF
+	IF カラム
+		CALL MCOLUMNPRINTL, ""
+	ELSE
+		PRINTL
+	ENDIF
 	ID = NOF(TARGET)
 	IF モブ中出し回数:TARGET:0 || モブアナル中出し回数:TARGET:0 || モブ孕ませ回数:TARGET:0
-		PRINTFORM 　　%CSVCALLNAMEF(ID)%は
-		SIF モブ中出し回数:TARGET:0
-			PRINTFORM 膣内に{モブ中出し回数:TARGET:0}回
-		SIF モブアナル中出し回数:TARGET:0
-			PRINTFORM アナルに{モブアナル中出し回数:TARGET:0}回
-		PRINT 射精してい
-		SIF モブ孕ませ回数:TARGET:0
-			PRINTFORM て、{モブ孕ませ回数:TARGET:0}回孕ませてい
-		PRINTL る。
+		IF カラム
+			CALL MCOLUMNPRINT, @"　　%CSVCALLNAMEF(ID)%は"
+			SIF モブ中出し回数:TARGET:0
+				CALL MCOLUMNPRINT, @"膣内に{モブ中出し回数:TARGET:0}回"
+			SIF モブアナル中出し回数:TARGET:0
+				CALL MCOLUMNPRINT, @"アナルに{モブアナル中出し回数:TARGET:0}回"
+			CALL MCOLUMNPRINT, "射精してい"
+			SIF モブ孕ませ回数:TARGET:0
+				CALL MCOLUMNPRINT, @"て、{モブ孕ませ回数:TARGET:0}回孕ませてい"
+			CALL MCOLUMNPRINTL, "る。"
+		ELSE
+			PRINTFORM 　　%CSVCALLNAMEF(ID)%は
+			SIF モブ中出し回数:TARGET:0
+				PRINTFORM 膣内に{モブ中出し回数:TARGET:0}回
+			SIF モブアナル中出し回数:TARGET:0
+				PRINTFORM アナルに{モブアナル中出し回数:TARGET:0}回
+			PRINT 射精してい
+			SIF モブ孕ませ回数:TARGET:0
+				PRINTFORM て、{モブ孕ませ回数:TARGET:0}回孕ませてい
+			PRINTL る。
+		ENDIF
 	ENDIF
 	IF モブ中出され回数:TARGET:0 || モブアナル中出され回数:TARGET:0 || モブ孕み回数:TARGET:0
-		PRINTFORM 　　%CSVCALLNAMEF(ID)%は
-		SIF モブ中出され回数:TARGET:0
-			PRINTFORM 膣内に{モブ中出され回数:TARGET:0}回
-		SIF モブアナル中出され回数:TARGET:0
-			PRINTFORM アナルに{モブアナル中出され回数:TARGET:0}回
-		PRINT 射精され
-		SIF モブ孕み回数:TARGET:0
-			PRINTFORM 、{モブ孕み回数:TARGET:0}回孕まされ
-		PRINTL ている。
+		IF カラム
+			CALL MCOLUMNPRINT, @"　　%CSVCALLNAMEF(ID)%は"
+			SIF モブ中出され回数:TARGET:0
+				CALL MCOLUMNPRINT, @"膣内に{モブ中出され回数:TARGET:0}回"
+			SIF モブアナル中出され回数:TARGET:0
+				CALL MCOLUMNPRINT, @"アナルに{モブアナル中出され回数:TARGET:0}回"
+			CALL MCOLUMNPRINT, "射精され"
+			SIF モブ孕み回数:TARGET:0
+				CALL MCOLUMNPRINT, @"、{モブ孕み回数:TARGET:0}回孕まされ"
+			CALL MCOLUMNPRINTL, "ている。"
+		ELSE
+			PRINTFORM 　　%CSVCALLNAMEF(ID)%は
+			SIF モブ中出され回数:TARGET:0
+				PRINTFORM 膣内に{モブ中出され回数:TARGET:0}回
+			SIF モブアナル中出され回数:TARGET:0
+				PRINTFORM アナルに{モブアナル中出され回数:TARGET:0}回
+			PRINT 射精され
+			SIF モブ孕み回数:TARGET:0
+				PRINTFORM 、{モブ孕み回数:TARGET:0}回孕まされ
+			PRINTL ている。
+		ENDIF
 	ENDIF
 ELSE
-	[IF_DEBUG]
+	IF 設定
 		LIST_NO:LIST_ = -1
-		PRINTFORML  [{LIST_}] モブ経験人数を加える
-	[ENDIF]
-	[IF_NDEBUG]
-		IF 設定
-			LIST_NO:LIST_ = -1
+		IF カラム
+			CALL MCOLUMNPRINTL, @" [{LIST_}] モブ経験人数を加える"
+		ELSE
 			PRINTFORML  [{LIST_}] モブ経験人数を加える
 		ENDIF
-	[ENDIF]
-ENDIF
-[IF_DEBUG]
-	PRINTFORML  [{LIST_+1}] 性交経験をこれに合わせる(現在:{EXP:性交経験}回)
-	PRINTFORML  [{LIST_+2}] 膣射経験をこれに合わせる(現在:{EXP:膣射経験}回)
-	SIF !TALENT:童貞 && PENIS(TARGET)
-		PRINTFORML  [{LIST_+3}] 童貞を捧げた相手………………\@ CSTR:童貞 != "" ? %CSTR:童貞% # 不明 \@
-	IF !TALENT:処女 && VAGINA(TARGET) 
-		PRINTFORM  [{LIST_+4}] 処女を捧げた相手………………
-		IF CFLAG:処女の奪われ方 == 4
-			PRINTFORML 処女懐胎
-		ELSE
-			PRINTFORML \@ CSTR:処女 != "" ? %CSTR:処女% # 不明 \@
-		ENDIF
 	ENDIF
-[ENDIF]
-[IF_NDEBUG]
-	IF 設定
+ENDIF
+IF 設定
+	IF カラム
+		CALL MCOLUMNPRINTL, @" [{LIST_+1}] 性交経験をこれに合わせる(現在:{EXP:性交経験}回)"
+		CALL MCOLUMNPRINTL, @" [{LIST_+2}] 膣射経験をこれに合わせる(現在:{EXP:膣射経験}回)"
+		SIF !TALENT:童貞 && PENIS(TARGET)
+			CALL MCOLUMNPRINTL, @" [{LIST_+3}] 童貞を捧げた相手………………\@ CSTR:童貞 != "" ? %CSTR:童貞% # 不明 \@"
+		IF !TALENT:処女 && VAGINA(TARGET) 
+			CALL MCOLUMNPRINT, @" [{LIST_+4}] 処女を捧げた相手………………"
+			IF CFLAG:処女の奪われ方 == 4
+				CALL MCOLUMNPRINTL, "処女懐胎"
+			ELSE
+				CALL MCOLUMNPRINTL, @"\@ CSTR:処女 != "" ? %CSTR:処女% # 不明 \@"
+			ENDIF
+		ENDIF
+	ELSE
 		PRINTFORML  [{LIST_+1}] 性交経験をこれに合わせる(現在:{EXP:性交経験}回)
 		PRINTFORML  [{LIST_+2}] 膣射経験をこれに合わせる(現在:{EXP:膣射経験}回)
 		SIF !TALENT:童貞 && PENIS(TARGET)
 			PRINTFORML  [{LIST_+3}] 童貞を捧げた相手………………\@ CSTR:童貞 != "" ? %CSTR:童貞% # 不明 \@
-		IF !TALENT:処女 && VAGINA(TARGET)
+		IF !TALENT:処女 && VAGINA(TARGET) 
 			PRINTFORM  [{LIST_+4}] 処女を捧げた相手………………
 			IF CFLAG:処女の奪われ方 == 4
 				PRINTFORML 処女懐胎
 			ELSE
 				PRINTFORML \@ CSTR:処女 != "" ? %CSTR:処女% # 不明 \@
+			ENDIF
+		ENDIF
+	ENDIF
+ELSE
+	IF カラム
+		SIF !TALENT:童貞 && PENIS(TARGET)
+			CALL MCOLUMNPRINTL, @"　童貞を捧げた相手………………\@ CSTR:童貞 != "" ? %CSTR:童貞% # 不明 \@"
+		IF !TALENT:処女 && VAGINA(TARGET)
+			CALL MCOLUMNPRINT, "　処女を捧げた相手………………"
+			IF CFLAG:処女の奪われ方 == 4
+				CALL MCOLUMNPRINTL, "処女懐胎"
+			ELSE
+				CALL MCOLUMNPRINTL, @"\@ CSTR:処女 != "" ? %CSTR:処女% # 不明 \@"
 			ENDIF
 		ENDIF
 	ELSE
@@ -1430,71 +1533,56 @@ ENDIF
 			ENDIF
 		ENDIF
 	ENDIF
-[ENDIF]
+ENDIF
 
 IF MOD:バスト関連ステータス表示
 	ID = NOF(TARGET)
-	PRINTL □パイズリ経験履歴
-	FOR LCOUNT, 0, 20000
-		IF パイズリ回数:TARGET:LCOUNT
-			PRINTFORML 　%CSVNAMEF(LCOUNT)%:{パイズリ回数:TARGET:LCOUNT}回
-			SIF 挟射回数:TARGET:LCOUNT
-				PRINTFORML 　　%CSVCALLNAMEF(LCOUNT)%は%CSVCALLNAMEF(ID)%のパイズリで{挟射回数:TARGET:LCOUNT}回射精している。
+	IF カラム
+		CALL MCOLUMNPRINTL, "□パイズリ経験履歴"
+		FOR LCOUNT, 0, 20000
+			IF パイズリ回数:TARGET:LCOUNT
+				CALL MCOLUMNPRINTL, @"　%CSVNAMEF(LCOUNT)%:{パイズリ回数:TARGET:LCOUNT}回"
+				SIF 挟射回数:TARGET:LCOUNT
+					CALL MCOLUMNPRINTL, @"　　%CSVCALLNAMEF(LCOUNT)%は%CSVCALLNAMEF(ID)%のパイズリで{挟射回数:TARGET:LCOUNT}回射精している。"
+			ENDIF
+		NEXT
+		IF モブパイズリ人数:TARGET:0
+			CALL MCOLUMNPRINTL, @"　不明:{モブパイズリ回数:TARGET:0}回/{モブパイズリ人数:TARGET:0}人"
+			SIF モブ挟射回数:TARGET:0
+				CALL MCOLUMNPRINTL, @"　　%CSVCALLNAMEF(ID)%はパイズリで{モブ挟射回数:TARGET:0}回射精させている。"
 		ENDIF
-	NEXT
-	IF モブパイズリ人数:TARGET:0
-		PRINTFORML 　不明:{モブパイズリ回数:TARGET:0}回/{モブパイズリ人数:TARGET:0}人
-		SIF モブ挟射回数:TARGET:0
-			PRINTFORML 　　%CSVCALLNAMEF(ID)%はパイズリで{モブ挟射回数:TARGET:0}回射精させている。
+	ELSE
+		PRINTL □パイズリ経験履歴
+		FOR LCOUNT, 0, 20000
+			IF パイズリ回数:TARGET:LCOUNT
+				PRINTFORML 　%CSVNAMEF(LCOUNT)%:{パイズリ回数:TARGET:LCOUNT}回
+				SIF 挟射回数:TARGET:LCOUNT
+					PRINTFORML 　　%CSVCALLNAMEF(LCOUNT)%は%CSVCALLNAMEF(ID)%のパイズリで{挟射回数:TARGET:LCOUNT}回射精している。
+			ENDIF
+		NEXT
+		IF モブパイズリ人数:TARGET:0
+			PRINTFORML 　不明:{モブパイズリ回数:TARGET:0}回/{モブパイズリ人数:TARGET:0}人
+			SIF モブ挟射回数:TARGET:0
+				PRINTFORML 　　%CSVCALLNAMEF(ID)%はパイズリで{モブ挟射回数:TARGET:0}回射精させている。
+		ENDIF
 	ENDIF
 ENDIF
 
-FOR LCOUNT, TARGET+1, CHARANUM
-	IF ロストキャラ表示
-		IF CFLAG:LCOUNT:キャラロスト
-			次のキャラ = LCOUNT
-			BREAK
-		ENDIF
-	ELSE
-		IF !CFLAG:LCOUNT:キャラロスト
-			次のキャラ = LCOUNT
-			BREAK
-		ENDIF
-	ENDIF
-NEXT
-FOR LCOUNT, TARGET-1, -1, -1
-	IF ロストキャラ表示
-		IF CFLAG:LCOUNT:キャラロスト
-			前のキャラ = LCOUNT
-			BREAK
-		ENDIF
-	ELSE
-		IF !CFLAG:LCOUNT:キャラロスト
-			前のキャラ = LCOUNT
-			BREAK
-		ENDIF
-	ENDIF
-NEXT
+IF カラム
+	CALL ステータス表示汎用メニュー
+	RETURN
+ENDIF
 
 DRAWLINE
 PRINTPLAIN 　 EXP 　
 PRINT [0] 戻る 
-IF 設定 != 1
-	PRINT [4] 基本情報 
-	PRINT [5] その他情報 
-	CALL PRINTSPACE, 前のキャラ >= 0, "[6] 前のキャラ "
-	CALL PRINTSPACE, 次のキャラ >= 0, "[7] 次のキャラ "
-ENDIF
 
-IF !CSVEDITOR
-	IF 調教可能(TARGET) || 助手可能(TARGET)
-		CALL PRINTSPACE, SHOW_TARGET != TARGET && 調教可能(TARGET), "[8] 対象に指定 "
-		CALL PRINTSPACE, NOSAMES(TARGET, MASTER, ASSI) && 助手可能(TARGET), "[9] 助手に指定 "
-	ENDIF
-ENDIF
-PRINTL 
-
-PRINTPLAINFORM %SPACESLENS("　 EXP 　")%
+;IF !CSVEDITOR
+;	IF 調教可能(TARGET) || 助手可能(TARGET)
+;		CALL PRINTSPACE, SHOW_TARGET != TARGET && 調教可能(TARGET), "[8] 対象に指定 "
+;		CALL PRINTSPACE, NOSAMES(TARGET, MASTER, ASSI) && 助手可能(TARGET), "[9] 助手に指定 "
+;	ENDIF
+;ENDIF
 PRINTL 
 
 BINPUT
@@ -1503,15 +1591,15 @@ SELECTCASE RESULT
 		RETURN 0
 	;以下フラグリセットのためにJUMPで処理
 	CASE 4
-		JUMP STATUS, ロストキャラ表示
+		;JUMP STATUS
 	CASE 5
-		JUMP STATUS_ETC, ロストキャラ表示
+		;JUMP STATUS_ETC
 	CASE 6
 		TARGET = 前のキャラ
-		JUMP STATUS_SEX_EXP, ロストキャラ表示
+		;JUMP STATUS_SEX_EXP
 	CASE 7
 		TARGET = 次のキャラ
-		JUMP STATUS_SEX_EXP, ロストキャラ表示
+		;JUMP STATUS_SEX_EXP
 	CASE 8, 9
 		CALL ASSIGN_TARGET, TARGET
 		RETURN 1
@@ -1519,7 +1607,6 @@ SELECTCASE RESULT
 		CALL ASSIGN_ASSI, TARGET
 		RETURN 0
 	CASEELSE
-	[IF_DEBUG]
 		IF INRANGE(RESULT, 10, LIST_)
 		ELSEIF GROUPMATCH(RESULT, LIST_+3, LIST_+4)
 		ELSEIF RESULT == 1+LIST_
@@ -1529,20 +1616,6 @@ SELECTCASE RESULT
 			EXP:膣射経験 = NAKADASHI_TOTAL
 			RESTART
 		ENDIF
-	[ENDIF]
-	[IF_NDEBUG]
-		IF 設定
-			IF INRANGE(RESULT, 10, LIST_)
-			ELSEIF GROUPMATCH(RESULT, LIST_+3, LIST_+4)
-			ELSEIF RESULT == 1+LIST_
-				EXP:性交経験 = SEX_TOTAL
-				RESTART
-			ELSEIF RESULT == 2+LIST_
-				EXP:膣射経験 = NAKADASHI_TOTAL
-				RESTART
-			ENDIF
-		ENDIF
-	[ENDIF]
 ENDSELECT
 
 ;BREAKでデバッグメニュー
@@ -1686,37 +1759,37 @@ ELSE
 ENDIF
 
 ;=============================================================================
-;バージンなど
+;バージンなど 現状ステータス画面でしか呼んでないのでカラム化
 @初めての性経験
 IF TALENT:性転換済
 	SELECTCASE SEX(TARGET)
 		CASE 1
 			IF CSTR:処女 == "NOTLOSTVIRGIN"
-				PRINTFORML 　結局、誰にも処女を捧げることなく男性になった
+				CALL MCOLUMNPRINTL, @"　結局、誰にも処女を捧げることなく男性になった"
 			ELSEIF CSTR:処女 != ""
 				IF TARGET == MASTER
-					PRINTFORML 　過去に女性だった時は%CSTR:処女%に処女を捧げた
+					CALL MCOLUMNPRINTL, @"　過去に女性だった時は%CSTR:処女%に処女を捧げた"
 				ELSE
-					PRINTFORM 　過去に女性だった時は%CSTR:処女%に処女を捧げた。
+					CALL MCOLUMNPRINT, @"　過去に女性だった時は%CSTR:処女%に処女を捧げた。"
 					CALL 処女の奪われ方, CFLAG:処女の奪われ方
-					PRINTL 
+					CALL MCOLUMNPRINTL, @""
 				ENDIF
 			ENDIF
 			SIF CSTR:童貞 != "NOTLOSTVIRGIN" && CSTR:童貞 != ""
-				PRINTFORML 　当時、両性具有でもあった%CALLNAME:TARGET%が初めて男性器で繋がった相手は%CSTR:童貞%だ
+				CALL MCOLUMNPRINTL, @"　当時、両性具有でもあった%CALLNAME:TARGET%が初めて男性器で繋がった相手は%CSTR:童貞%だ"
 		CASE 2
 			IF CSTR:童貞 == "NOTLOSTVIRGIN"
-				PRINTFORML 　童貞を捨てられないまま女性になってしまった
+				CALL MCOLUMNPRINTL, @"　童貞を捨てられないまま女性になってしまった"
 			ELSEIF CSTR:童貞 != ""
-				PRINTFORML 　かつて男性だった時の初めての相手は%CSTR:童貞%だ
+				CALL MCOLUMNPRINTL, @"　かつて男性だった時の初めての相手は%CSTR:童貞%だ"
 			ENDIF
 			IF CSTR:処女 != "NOTLOSTVIRGIN" && CSTR:処女 != ""
 				IF TARGET == MASTER
-					PRINTFORML 　当時、両性具有でもあった%CALLNAME:TARGET%が処女を捧げた相手は%CSTR:処女%
+					CALL MCOLUMNPRINTL, @"　当時、両性具有でもあった%CALLNAME:TARGET%が処女を捧げた相手は%CSTR:処女%"
 				ELSE
-					PRINTFORM 　当時、両性具有でもあった%CALLNAME:TARGET%が処女を捧げた相手は%CSTR:処女%。
+					CALL MCOLUMNPRINT, @"　当時、両性具有でもあった%CALLNAME:TARGET%が処女を捧げた相手は%CSTR:処女%。"
 					CALL 処女の奪われ方, CFLAG:処女の奪われ方
-					PRINTL 
+					CALL MCOLUMNPRINTL, @""
 				ENDIF
 			ENDIF
 		CASEELSE
@@ -1724,43 +1797,43 @@ IF TALENT:性転換済
 	SELECTCASE SEX(TARGET)
 		CASE 1
 			IF TALENT:童貞
-				PRINTFORML 　性転換してからは\@ !CFLAG:キャラロスト ? まだ #  \@セックスをしたことがない
+				CALL MCOLUMNPRINTL, @"　性転換してからは\@ !CFLAG:キャラロスト ? まだ #  \@セックスをしたことがない"
 			ELSE
-				PRINTFORML 　男性として初めて性交に及んだ相手は%CSTR:性転換童貞%
+				CALL MCOLUMNPRINTL, @"　男性として初めて性交に及んだ相手は%CSTR:性転換童貞%"
 			ENDIF
 			IF TALENT:処女
-				PRINTFORML 　性転換後も両性具有という形で女性器を得たが、そちらは\@ !CFLAG:キャラロスト ? まだ使っていない # 使われることはなかった \@
+				CALL MCOLUMNPRINTL, @"　性転換後も両性具有という形で女性器を得たが、そちらは\@ !CFLAG:キャラロスト ? まだ使っていない # 使われることはなかった \@"
 			ELSEIF CFLAG:性転換処女の奪われ方 == 4
-				PRINT 性転換後は
+				CALL MCOLUMNPRINT, @"性転換後は"
 				CALL 処女の奪われ方, CFLAG:性転換処女の奪われ方
 			ELSEIF CSTR:性転換処女 != ""
 				IF TARGET == MASTER
-					PRINTFORML 　性転換後も両性具有という形で女性器を取り戻し、そちらの初めての相手は%CSTR:性転換処女%
+					CALL MCOLUMNPRINTL, @"　性転換後も両性具有という形で女性器を取り戻し、そちらの初めての相手は%CSTR:性転換処女%"
 				ELSE
-					PRINTFORM 　性転換後も両性具有という形で女性器を取り戻し、そちらの初めての相手は%CSTR:性転換処女%。
+					CALL MCOLUMNPRINT, @"　性転換後も両性具有という形で女性器を取り戻し、そちらの初めての相手は%CSTR:性転換処女%。"
 					CALL 処女の奪われ方, CFLAG:性転換処女の奪われ方
-					PRINTL 
+					CALL MCOLUMNPRINTL, @""
 				ENDIF
 			ENDIF
 		CASE 2
 			IF TALENT:処女
-				PRINTFORML 　性転換後の身体は純潔を保っており、処女のようだ
+				CALL MCOLUMNPRINTL, @"　性転換後の身体は純潔を保っており、処女のようだ"
 			ELSEIF CFLAG:性転換処女の奪われ方 == 4
-				PRINT 性転換後は
+				CALL MCOLUMNPRINT, @"性転換後は"
 				CALL 処女の奪われ方, CFLAG:性転換処女の奪われ方
 			ELSE
 				IF TARGET == MASTER
-					PRINTFORML 　性転換後は%CSTR:性転換処女%に処女を捧げた。
+					CALL MCOLUMNPRINTL, @"　性転換後は%CSTR:性転換処女%に処女を捧げた。"
 				ELSE
-					PRINTFORM 　性転換後は%CSTR:性転換処女%に処女を捧げた。
+					CALL MCOLUMNPRINT, @"　性転換後は%CSTR:性転換処女%に処女を捧げた。"
 					CALL 処女の奪われ方, CFLAG:性転換処女の奪われ方
-					PRINTL 
+					CALL MCOLUMNPRINTL, @""
 				ENDIF
 			ENDIF
 			IF TALENT:童貞
-				PRINTFORML 　性転換したにも関わらず両性具有という形でペニスがあるが、そちらはまだ未経験のようだ
+				CALL MCOLUMNPRINTL, @"　性転換したにも関わらず両性具有という形でペニスがあるが、そちらはまだ未経験のようだ"
 			ELSEIF CSTR:性転換童貞 != ""
-				PRINTFORML 　性転換後も両性具有という形でペニスを使っており、性転換後の初めての相手は%CSTR:性転換童貞%
+				CALL MCOLUMNPRINTL, @"　性転換後も両性具有という形でペニスを使っており、性転換後の初めての相手は%CSTR:性転換童貞%"
 			ENDIF
 	ENDSELECT
 ELSE
@@ -1768,57 +1841,57 @@ ELSE
 		CASE 1
 			IF TALENT:童貞
 				IF EXP:性交経験
-					PRINTFORML 　被挿入側としての経験こそあるものの、挿入する側として性交した経験は\@ !CFLAG:キャラロスト ? 未だない # なかった \@ようだ
+					CALL MCOLUMNPRINTL, @"　被挿入側としての経験こそあるものの、挿入する側として性交した経験は\@ !CFLAG:キャラロスト ? 未だない # なかった \@ようだ"
 				ELSE
-					PRINTFORML 　未だ性交の経験が無いようだ
+					CALL MCOLUMNPRINTL, @"　未だ性交の経験が無いようだ"
 				ENDIF
 			ELSEIF !TALENT:童貞 && CSTR:童貞 == ""
-				PRINTFORML 　女を知らないわけではないようだが、その初めての相手が誰なのかは不明である
+				CALL MCOLUMNPRINTL, @"　女を知らないわけではないようだが、その初めての相手が誰なのかは不明である"
 			ELSE
-				PRINTFORML 　初めての性交の相手は%CSTR:童貞%
+				CALL MCOLUMNPRINTL, @"　初めての性交の相手は%CSTR:童貞%"
 			ENDIF
 			IF TALENT:処女
-				PRINTFORML 　男であるにも関わらず兼ね添えた女性器は、未だに男を知らないままだ
+				CALL MCOLUMNPRINTL, @"　男であるにも関わらず兼ね添えた女性器は、未だに男を知らないままだ"
 			ELSEIF CFLAG:処女の奪われ方 == 4
 				CALL 処女の奪われ方, CFLAG:処女の奪われ方
 			ELSEIF !TALENT:処女 && CSTR:処女 != "" && !TALENT:ふたなり
-				PRINTFORML 　かつて両性具有となった時に%CSTR:処女%に処女を捧げたが、今はその女性器は無い
+				CALL MCOLUMNPRINTL, @"　かつて両性具有となった時に%CSTR:処女%に処女を捧げたが、今はその女性器は無い"
 			ELSEIF !TALENT:処女 && TALENT:ふたなり
-				PRINTFORM 　\@ TALENT:去勢済み ? 失った男性器の代わりに女性器を有しており # 両性具有であり \@その女性器での初めての相手は%CSTR:処女%
+				CALL MCOLUMNPRINT, @"　\@ TALENT:去勢済み ? 失った男性器の代わりに女性器を有しており # 両性具有であり \@その女性器での初めての相手は%CSTR:処女%"
 				IF TARGET != MASTER
-					PRINT 。
+					CALL MCOLUMNPRINT, @"。"
 					CALL 処女の奪われ方, CFLAG:処女の奪われ方
 				ENDIF
-				PRINTL 
+				CALL MCOLUMNPRINTL, @""
 			ENDIF
 		CASE 2
 			IF TALENT:処女
 				IF EXP:性交経験 && CSTR:童貞 == ""
-					PRINTFORML 　肛門性交の経験こそあるものの、女性器の方は\@ !CFLAG:キャラロスト ? 未だ純潔を保っている # 純潔を保っていた \@ようだ
+					CALL MCOLUMNPRINTL, @"　肛門性交の経験こそあるものの、女性器の方は\@ !CFLAG:キャラロスト ? 未だ純潔を保っている # 純潔を保っていた \@ようだ"
 				ELSE
-					PRINTFORML 　未だ男を知らない生娘のようだ
+					CALL MCOLUMNPRINTL, @"　未だ男を知らない生娘のようだ"
 				ENDIF
 			ELSEIF CFLAG:処女の奪われ方 == 4
-				PRINT 　
+				CALL MCOLUMNPRINT, @"　"
 				CALL 処女の奪われ方, CFLAG:処女の奪われ方
-				PRINTL 
+				CALL MCOLUMNPRINTL, @""
 			ELSEIF !TALENT:処女 && CSTR:処女 == ""
-				PRINTFORML 　非処女だが初めての相手が誰なのかは不明
+				CALL MCOLUMNPRINTL, @"　非処女だが初めての相手が誰なのかは不明"
 			ELSE
 				IF TARGET == MASTER
-					PRINTFORML 　%CSTR:処女%に処女を捧げた
+					CALL MCOLUMNPRINTL, @"　%CSTR:処女%に処女を捧げた"
 				ELSE
-					PRINTFORM 　%CSTR:処女%に処女を捧げた。
+					CALL MCOLUMNPRINT, @"　%CSTR:処女%に処女を捧げた。"
 					CALL 処女の奪われ方, CFLAG:処女の奪われ方
-					PRINTL 
+					CALL MCOLUMNPRINTL, @""
 				ENDIF
 			ENDIF
 			IF TALENT:童貞
-				PRINTFORML 　両性具有であり、雄の貞操は純潔を保って\@ !CFLAG:キャラロスト ? いる # いた \@ようだ
+				CALL MCOLUMNPRINTL, @"　両性具有であり、雄の貞操は純潔を保って\@ !CFLAG:キャラロスト ? いる # いた \@ようだ"
 			ELSEIF !TALENT:童貞 && CSTR:童貞 != "" && !TALENT:ふたなり
-				PRINTFORML 　かつて男性器で%CSTR:童貞%と繋がったことがあるが、現在は成りを潜めている
+				CALL MCOLUMNPRINTL, @"　かつて男性器で%CSTR:童貞%と繋がったことがあるが、現在は成りを潜めている"
 			ELSEIF !TALENT:童貞 && TALENT:ふたなり
-				PRINTFORML 　両性具有であり、%CSTR:童貞%を相手に種牡としても開花したようだ
+				CALL MCOLUMNPRINTL, @"　両性具有であり、%CSTR:童貞%を相手に種牡としても開花したようだ"
 			ENDIF
 	ENDSELECT
 ENDIF
@@ -1828,41 +1901,44 @@ ENDIF
 SELECTCASE フラグ
 	CASE 1
 		IF TALENT:貞操無頓着
-			PRINTFORM ほとんど陵辱のようなものだったが、本人はあまり気にして\@ !CFLAG:キャラロスト ? いない # いなかった \@ようだ
+			CALL MCOLUMNPRINT, @"ほとんど陵辱のようなものだったが、本人はあまり気にして\@ !CFLAG:キャラロスト ? いない # いなかった \@ようだ"
 		ELSE
 			IF 陥落(TARGET)
-				PRINTFORM その方法は強引なものだったが、\@ !CFLAG:キャラロスト ? 今はもう許している # やがて許すことにした \@ようだ
+				CALL MCOLUMNPRINT, @"その方法は強引なものだったが、\@ !CFLAG:キャラロスト ? 今はもう許している # やがて許すことにした \@ようだ"
 			ELSE
-				PRINTFORM 強引に初めてを奪われたことを\@ !CFLAG:キャラロスト ? 未だに根に持っている # 最後まで根に持っていた \@ようだ
+				CALL MCOLUMNPRINT, @"強引に初めてを奪われたことを\@ !CFLAG:キャラロスト ? 未だに根に持っている # 最後まで根に持っていた \@ようだ"
 			ENDIF
 		ENDIF
 	CASE 2
 		IF TALENT:恋慕 || TALENT:親愛
 			IF CSTR:処女 == NAME:MASTER
-				PRINTFORM 最愛の相手に処女を捧げられたことを幸せに思って\@ !CFLAG:キャラロスト ? いる # いた \@
+				CALL MCOLUMNPRINT, @"最愛の相手に処女を捧げられたことを幸せに思って\@ !CFLAG:キャラロスト ? いる # いた \@"
 			ELSE
-				PRINTFORM 本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい
+				CALL MCOLUMNPRINT, @"本当は%CALLNAME:MASTER%に処女を奪ってほしかったらしい"
 			ENDIF
 		ELSEIF TALENT:淫乱 || TALENT:淫魔
-			PRINTFORM 欲望の赴くままに処女を散らした故に、その時のことをよく覚えて\@ !CFLAG:キャラロスト ? いない # いなかった \@らしい
+			CALL MCOLUMNPRINT, @"欲望の赴くままに処女を散らした故に、その時のことをよく覚えて\@ !CFLAG:キャラロスト ? いない # いなかった \@らしい"
 		ELSEIF TALENT:服従 || TALENT:隷属
-			PRINTFORM %CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思って\@ !CFLAG:キャラロスト ? いる # いた \@
+			CALL MCOLUMNPRINT, @"%CALLNAME:MASTER%の命令通りに処女を捨てられたことを誇りに思って\@ !CFLAG:キャラロスト ? いる # いた \@"
 		ELSE
-			PRINTFORM 同意の上での破瓜だったが、その面影は\@ !CFLAG:キャラロスト ? 既にない # 失われた \@
+			CALL MCOLUMNPRINT, @"同意の上での破瓜だったが、その面影は\@ !CFLAG:キャラロスト ? 既にない # 失われた \@"
 		ENDIF
 	CASE 3
 		IF 陥落(TARGET)
-			PRINTFORM 調教を\@ !CFLAG:キャラロスト ? 受け入れた今でも # 受け入れてからも \@自分の処女を奪った当人が気になって\@ !CFLAG:キャラロスト ? いる # いた \@らしい
+			CALL MCOLUMNPRINT, @"調教を\@ !CFLAG:キャラロスト ? 受け入れた今でも # 受け入れてからも \@自分の処女を奪った当人が気になって\@ !CFLAG:キャラロスト ? いる # いた \@らしい"
 		ELSE
-			PRINTFORM 不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思って\@ !CFLAG:キャラロスト ? いる # いた \@
+			CALL MCOLUMNPRINT, @"不可解な状況で犯されるよりは、親しい人物が初めての相手で良かったと思って\@ !CFLAG:キャラロスト ? いる # いた \@"
 		ENDIF
 	CASE 4
-		PRINTFORM 処女懐妊したため、出産と同時に処女を喪失した
+		CALL MCOLUMNPRINT, @"処女懐妊したため、出産と同時に処女を喪失した"
 	CASE 5
-		PRINTFORM 屠殺の際に辱めを受けて処女を失い、その生涯を終えた
+		CALL MCOLUMNPRINT, @"屠殺の際に辱めを受けて処女を失い、その生涯を終えた"
 	CASE 6
-		PRINTFORM 死姦されて処女を失った
+		CALL MCOLUMNPRINT, @"死姦されて処女を失った"
 ENDSELECT
+
+@ステータス表示_戻る
+カラム入力無視 = 1
 
 ;=============================================================================
 ;体力、気力、魔力表示
@@ -2099,17 +2175,22 @@ CALL NEWLINE
 
 ;=============================================================================
 ;能力表示
-@SHOW_INFO_ABL, 対象
+@SHOW_INFO_ABL, 対象, カラム
 #DIMS DYNAMIC 表示用レベル
 #DIM DYNAMIC LCOUNT
 #DIM CONST 表示上限 = 7
 #DIMS DYNAMIC 表示用, 7
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC 対象
+#DIM DYNAMIC カラム
 
 FOR LCOUNT, 0, VARSIZE("ABL")
 	IF LCOUNT == VARSIZE("ABL")-1
-		HTML_PRINT STRJOIN(表示用, "")
+		IF カラム
+			CALL MCOLUMNPRINTL, ""
+		ELSE
+			HTML_PRINT STRJOIN(表示用, "")
+		ENDIF
 		BREAK
 	ELSEIF ABLNAME:LCOUNT == ""
 		CONTINUE
@@ -2117,7 +2198,11 @@ FOR LCOUNT, 0, VARSIZE("ABL")
 
 	;改行するのか？ 続けて出力するのか？
 	IF 表示数%表示上限 == 0 && 表示数 != 0
-		HTML_PRINT STRJOIN(表示用, "")
+		IF カラム
+			CALL MCOLUMNPRINTL, ""
+		ELSE
+			HTML_PRINT STRJOIN(表示用, "")
+		ENDIF
 		VARSET 表示用
 	ENDIF
 
@@ -2160,10 +2245,19 @@ FOR LCOUNT, 0, VARSIZE("ABL")
 	ENDSELECT
 
 	IF GUI
-		表示用:(表示数%表示上限) = %SET_TOOLTIP(@"　%I18N(ABLNAME:LCOUNT, "ABL"), (LANGDATA:LANGUAGE:ABLLEN)%:", ABL_COMMENT(ABLNAME:LCOUNT, 対象))%
-		表示用:(表示数%表示上限) += IMGTOTAG(GBAR(ABL:対象:LCOUNT, 10, 3, BARCOLOR:能力, "gray", @"{ABL:対象:LCOUNT}", "black"))
+		IF カラム
+			CALL MCOLUMNTOOLTIP, @"　%I18N(ABLNAME:LCOUNT, "ABL"), (LANGDATA:LANGUAGE:ABLLEN)%:", ABL_COMMENT(ABLNAME:LCOUNT, 対象)
+			CALL MCOLUMNTOOLTIP, IMGTOTAG(GBAR(ABL:対象:LCOUNT, 10, 3, BARCOLOR:能力, "gray", @"{ABL:対象:LCOUNT}", "black"))
+		ELSE
+			表示用:(表示数%表示上限) = %SET_TOOLTIP(@"　%I18N(ABLNAME:LCOUNT, "ABL"), (LANGDATA:LANGUAGE:ABLLEN)%:", ABL_COMMENT(ABLNAME:LCOUNT, 対象))%
+			表示用:(表示数%表示上限) += IMGTOTAG(GBAR(ABL:対象:LCOUNT, 10, 3, BARCOLOR:能力, "gray", @"{ABL:対象:LCOUNT}", "black"))
+		ENDIF
 	ELSE
-		表示用:(表示数%表示上限) = %SET_TOOLTIP(@"　%I18N(ABLNAME:LCOUNT, "ABL"), (LANGDATA:LANGUAGE:ABLLEN)%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, 対象))%
+		IF カラム
+			CALL MCOLUMNTOOLTIP, @"　%I18N(ABLNAME:LCOUNT, "ABL"), (LANGDATA:LANGUAGE:ABLLEN)%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, 対象)
+		ELSE
+			表示用:(表示数%表示上限) = %SET_TOOLTIP(@"　%I18N(ABLNAME:LCOUNT, "ABL"), (LANGDATA:LANGUAGE:ABLLEN)%:LV%表示用レベル%", ABL_COMMENT(ABLNAME:LCOUNT, 対象))%
+		ENDIF
 	ENDIF
 	RESETCOLOR
 	表示数++
@@ -2172,12 +2266,17 @@ CALL NEWLINE
 
 ;=============================================================================
 ;素質表示
-@SHOW_INFO_TALENT, 対象
+@SHOW_INFO_TALENT, 対象, カラム
 #DIMS DYNAMIC 素質名
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC 表示用, 6
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC 対象
+#DIM DYNAMIC カラム
+
+SIF カラム
+	CALL MCOLUMNPRINT, "　"
+
 
 FOR LCOUNT, 0, VARSIZE("TALENT")
 	SELECTCASE TALENTNAME:LCOUNT
@@ -2191,7 +2290,8 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 				CONTINUE
 	ENDSELECT
 	IF LCOUNT == VARSIZE("TALENT")-1
-		HTML_PRINT STRJOIN(表示用, "")
+		SIF !カラム
+			HTML_PRINT STRJOIN(表示用, "")
 		BREAK
 	ELSEIF TALENT:対象:LCOUNT == 0
 		CONTINUE
@@ -2220,40 +2320,69 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 	SIF 表示数%6 == 0
 		表示用 = 　
 
-	表示用:(表示数%6) += @"%SET_TOOLTIP(素質名, TALENT_COMMENT(TALENTNAME:LCOUNT, 対象))%"
+	IF カラム
+		CALL MCOLUMNTOOLTIP, 素質名, TALENT_COMMENT(TALENTNAME:LCOUNT, 対象)
+	ELSE
+		表示用:(表示数%6) += @"%SET_TOOLTIP(素質名, TALENT_COMMENT(TALENTNAME:LCOUNT, 対象))%"
+	ENDIF
 
 	表示数++
 
 	;改行するのか？ 続けて出力するのか？
 	IF 表示数%6 == 0 && 表示数 != 0
-		HTML_PRINT STRJOIN(表示用, "")
+		IF カラム
+			CALL MCOLUMNPRINTL, ""
+			CALL MCOLUMNPRINT, "　"
+		ELSE
+			HTML_PRINT STRJOIN(表示用, "")
+		ENDIF
 		VARSET 表示用
 	ENDIF
 NEXT
-CALL NEWLINE
+IF カラム
+	SIF 表示数
+		CALL MCOLUMNPRINTL, ""
+ELSE
+	CALL NEWLINE
+ENDIF
 
 ;=============================================================================
 ;刻印表示
-@SHOW_INFO_MARK, 対象
+@SHOW_INFO_MARK, 対象, カラム
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC 表示用, 4
 #DIM DYNAMIC 対象
+#DIM DYNAMIC カラム
 
 FOR LCOUNT, 0, 4
 	IF GUI
-		表示用:LCOUNT = 　%SET_TOOLTIP(@"%I18N(MARKNAME:LCOUNT, "MARK")%:", MARK_COMMENT(MARKNAME:LCOUNT, 対象))%
-		表示用:LCOUNT += IMGTOTAG(GBAR(MARK:対象:LCOUNT, 3, 3, BARCOLOR:能力, "gray", @"{MARK:対象:LCOUNT}", "black"))
+		IF カラム
+			CALL MCOLUMNTOOLTIP, @"　%I18N(MARKNAME:LCOUNT, "MARK")%:", MARK_COMMENT(MARKNAME:LCOUNT, 対象)
+			CALL MCOLUMNPRINT, IMGTOTAG(GBAR(MARK:対象:LCOUNT, 3, 3, BARCOLOR:能力, "gray", @"{MARK:対象:LCOUNT}", "black"))
+		ELSE
+			表示用:LCOUNT = 　%SET_TOOLTIP(@"%I18N(MARKNAME:LCOUNT, "MARK")%:", MARK_COMMENT(MARKNAME:LCOUNT, 対象))%
+			表示用:LCOUNT += IMGTOTAG(GBAR(MARK:対象:LCOUNT, 3, 3, BARCOLOR:能力, "gray", @"{MARK:対象:LCOUNT}", "black"))
+		ENDIF
 	ELSE
-		表示用:LCOUNT = 　%SET_TOOLTIP(@"%I18N(MARKNAME:LCOUNT, "MARK")%:LV{MARK:対象:LCOUNT} %BARSTR(MARK:対象:LCOUNT, 3, 3)%", MARK_COMMENT(MARKNAME:LCOUNT, 対象))%
+		IF カラム
+			CALL MCOLUMNTOOLTIP, @"　%SET_TOOLTIP(@"%I18N(MARKNAME:LCOUNT, "MARK")%:LV{MARK:対象:LCOUNT} %BARSTR(MARK:対象:LCOUNT, 3, 3)%", MARK_COMMENT(MARKNAME:LCOUNT, 対象))%"
+		ELSE
+			表示用:LCOUNT = 　%SET_TOOLTIP(@"%I18N(MARKNAME:LCOUNT, "MARK")%:LV{MARK:対象:LCOUNT} %BARSTR(MARK:対象:LCOUNT, 3, 3)%", MARK_COMMENT(MARKNAME:LCOUNT, 対象))%
+		ENDIF
 	ENDIF
-	SIF LCOUNT == 3
-		HTML_PRINT STRJOIN(表示用, "")
+	IF LCOUNT == 3
+		IF カラム
+			CALL MCOLUMNPRINTL, ""
+		ELSE
+			HTML_PRINT STRJOIN(表示用, "")
+		ENDIF
+	ENDIF
 NEXT
 CALL NEWLINE
 
 ;=============================================================================
 ;経験表示
-@SHOW_INFO_EXP, 対象, ツールチップ不使用
+@SHOW_INFO_EXP, 対象, ツールチップ不使用, カラム
 #DIMS DYNAMIC 表示用経験
 #DIMS DYNAMIC 経験名
 #DIM DYNAMIC LCOUNT
@@ -2263,6 +2392,7 @@ CALL NEWLINE
 #DIM DYNAMIC 対象
 #DIM DYNAMIC ツールチップ不使用
 #DIM DYNAMIC ツールチップオプション保存用
+#DIM DYNAMIC カラム
 
 IF ツールチップ不使用
 	ツールチップオプション保存用 = ツールチップ非表示
@@ -2278,7 +2408,11 @@ ENDIF
 
 FOR LCOUNT, 0, VARSIZE("EXP")
 	IF LCOUNT == VARSIZE("EXP")-1
-		HTML_PRINT STRJOIN(表示用, "")
+		IF カラム
+			CALL MCOLUMNPRINTL, ""
+		ELSE
+			HTML_PRINT STRJOIN(表示用, "")
+		ENDIF
 		BREAK
 	ELSEIF EXPNAME:LCOUNT == ""
 		CONTINUE
@@ -2291,7 +2425,11 @@ FOR LCOUNT, 0, VARSIZE("EXP")
 
 	;改行するのか？ 続けて出力するのか？
 	IF 表示数%一行表示数 == 0 && 表示数 != 0
-		HTML_PRINT STRJOIN(表示用, "")
+		IF カラム
+			CALL MCOLUMNPRINTL, ""
+		ELSE
+			HTML_PRINT STRJOIN(表示用, "")
+		ENDIF
 		VARSET 表示用
 	ENDIF
 
@@ -2333,7 +2471,11 @@ FOR LCOUNT, 0, VARSIZE("EXP")
 	経験名 = %短縮経験名(I18N(EXPNAME:LCOUNT, "EXP"))%
 	経験名 = %経験名, LANGDATA:LANGUAGE:EXPLEN, LEFT%
 
-	表示用:(表示数%一行表示数) = %SET_TOOLTIP(@"　%経験名, 8%:%表示用経験%", EXP_COMMENT(EXPNAME:LCOUNT, 対象))%
+	IF カラム
+		CALL MCOLUMNTOOLTIP, @"　%経験名, 8%:%表示用経験%", EXP_COMMENT(EXPNAME:LCOUNT, 対象)
+	ELSE
+		表示用:(表示数%一行表示数) = %SET_TOOLTIP(@"　%経験名, 8%:%表示用経験%", EXP_COMMENT(EXPNAME:LCOUNT, 対象))%
+	ENDIF
 	RESETCOLOR
 	表示数++
 NEXT
@@ -2344,11 +2486,12 @@ SIF ツールチップ不使用
 
 ;=============================================================================
 ;珠表示
-@SHOW_INFO_JUEL, 対象
+@SHOW_INFO_JUEL, 対象, カラム
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 一行表示数
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC 対象
+#DIM DYNAMIC カラム
 
 ;英語と日本語で文字数が違いすぎるので一行の表示数を変える
 一行表示数 = LANGUAGE == "JP" ? 6 # 4
@@ -2359,23 +2502,38 @@ FOR LCOUNT, 0, VARSIZE("PALAM")
 			CONTINUE
 	ENDSELECT
 	;改行するのか？ 続けて出力するのか？
-	SIF 表示数%一行表示数 == 0 && 表示数 != 0
-		PRINTL 
-	
-	PRINTFORM 　%I18N("|0|の珠", , I18N(PALAMNAME:LCOUNT, "PALAM")), LANGDATA:LANGUAGE:JUELLEN, LEFT%:{JUEL:対象:LCOUNT, 12}
+	IF 表示数%一行表示数 == 0 && 表示数 != 0
+		IF カラム
+			CALL MCOLUMNPRINTL, ""
+		ELSE
+			PRINTL 
+		ENDIF
+	ENDIF
+
+	IF カラム
+		CALL MCOLUMNPRINT, @"　%I18N("|0|の珠", , I18N(PALAMNAME:LCOUNT, "PALAM")), LANGDATA:LANGUAGE:JUELLEN, LEFT%:{JUEL:対象:LCOUNT, 12}"
+	ELSE
+		PRINTFORM 　%I18N("|0|の珠", , I18N(PALAMNAME:LCOUNT, "PALAM")), LANGDATA:LANGUAGE:JUELLEN, LEFT%:{JUEL:対象:LCOUNT, 12}
+	ENDIF
 	表示数++
 NEXT
 ;PRINT 　否定の珠:
 ;PRINTFORM {JUEL:対象:否定, 10}
-CALL NEWLINE
+IF カラム
+	SIF 表示数
+		CALL MCOLUMNPRINTL, ""
+ELSE
+	CALL NEWLINE
+ENDIF
 
 ;=============================================================================
 ;服装表示
-@SHOW_INFO_CLOTHES, 対象
+@SHOW_INFO_CLOTHES, 対象, カラム
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC チェック箇所
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 衣服文字数
+#DIM DYNAMIC カラム
 
 FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
 	衣服文字数 = MAX(STRLENS(CSTR:対象:LCOUNT), 衣服文字数)
@@ -2383,11 +2541,23 @@ NEXT
 衣服文字数 += 2
 FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
 	IF CFLAG:対象:(CSTRNAME:LCOUNT+"着衣不可")
-		PRINTFORM 　%CSTRNAME:LCOUNT, 10, LEFT%:着衣不可
+		IF カラム
+			CALL MCOLUMNPRINT, @"　%CSTRNAME:LCOUNT, 10, LEFT%:着衣不可"
+		ELSE
+			PRINTFORM 　%CSTRNAME:LCOUNT, 10, LEFT%:着衣不可
+		ENDIF
+		SIF カラム
+			CALL MCOLUMNPRINTL, ""
 	ELSEIF CSTR:対象:LCOUNT != ""
-		PRINTFORM 　%CSTRNAME:LCOUNT, 10, LEFT%:%CSTR:対象:LCOUNT, 衣服文字数, LEFT%
-		SIF 耐水性(対象, CSTRNAME:LCOUNT)
-			PRINT [耐水]
+		IF カラム
+			CALL MCOLUMNPRINT, @"　%CSTRNAME:LCOUNT, 10, LEFT%:%CSTR:対象:LCOUNT, 衣服文字数, LEFT%"
+			SIF 耐水性(対象, CSTRNAME:LCOUNT)
+				CALL MCOLUMNPRINT, "[耐水]"
+		ELSE
+			PRINTFORM 　%CSTRNAME:LCOUNT, 10, LEFT%:%CSTR:対象:LCOUNT, 衣服文字数, LEFT%
+			SIF 耐水性(対象, CSTRNAME:LCOUNT)
+				PRINT [耐水]
+		ENDIF
 		IF MOD:着衣パイズリ && GROUPMATCH(CSTRNAME:LCOUNT, "上半身上着", "全身上着", "上半身下着")
 			SELECTCASE CSTRNAME:LCOUNT
 				CASE "全身上着"
@@ -2397,65 +2567,123 @@ FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
 				CASE "上半身下着"
 					チェック箇所 = CFLAG:対象:下着パイズリ
 			ENDSELECT
-			SIF パイズリフラグ説明(チェック箇所) != ""
-				PRINTFORM [%パイズリフラグ説明(チェック箇所, TARGET)%]
+			IF パイズリフラグ説明(チェック箇所) != ""
+				IF カラム
+					CALL MCOLUMNPRINT, @"[%パイズリフラグ説明(チェック箇所, TARGET)%]"
+				ELSE
+					PRINTFORM [%パイズリフラグ説明(チェック箇所, TARGET)%]
+				ENDIF
+			ENDIF
 		ENDIF
+		SIF カラム
+			CALL MCOLUMNPRINTL, ""
 	ENDIF
-	CALL NEWLINE
+	SIF !カラム
+		CALL MCOLUMNPRINTL, ""
 NEXT
-SIF CFLAG:対象:貞操帯
-	PRINTFORML 　貞操帯　　:{CFLAG:対象:貞操帯}日目
+IF CFLAG:対象:貞操帯
+	IF カラム
+		CALL MCOLUMNPRINTL, @"　貞操帯　　:{CFLAG:対象:貞操帯}日目"
+	ELSE
+		PRINTFORML 　貞操帯　　:{CFLAG:対象:貞操帯}日目
+	ENDIF
+ENDIF
 
-@SHOW_INFO, 対象, 調教中
+@SHOW_INFO, 対象, 調教中, カラム
 #DIM DYNAMIC 調教中
 #DIM DYNAMIC 対象
+#DIM DYNAMIC カラム
 
-DRAWLINE
+IF カラム
+	CALL MCOLUMNDRAWLINE
 
-PRINTFORML □ %I18N("経験")% 
-CALL SHOW_INFO_EXP, 対象
-DRAWLINE
-PRINTFORML □ %I18N("能力")% 
-CALL SHOW_INFO_ABL, 対象
-DRAWLINE
-IF 対象 != MASTER
-	PRINTFORML □ %I18N("刻印")% 
-	CALL SHOW_INFO_MARK, 対象
-	DRAWLINE
-ENDIF
-PRINTFORML □ %I18N("素質")% 
-CALL SHOW_INFO_TALENT, 対象
-IF !CFLAG:対象:キャラロスト || CFLAG:対象:死亡 || CFLAG:対象:依代
-	DRAWLINE
-	PRINTFORM □ %I18N("服装") % 
-	CALLFORM DISABLE, "服装変更", 対象
-	IF !調教中 && !RESULT
-		PRINTBUTTON "[99] - " + I18N("服装を変更する"), 99
+	CALL MCOLUMNPRINTL, @"□ %I18N("経験")%"
+	CALL SHOW_INFO_EXP, 対象, 0, カラム
+	CALL MCOLUMNDRAWLINE
+
+	CALL MCOLUMNPRINTL, @"□ %I18N("能力")%"
+	CALL SHOW_INFO_ABL, 対象, カラム
+	CALL MCOLUMNDRAWLINE
+
+	IF 対象 != MASTER
+		CALL MCOLUMNPRINTL, @"□ %I18N("刻印")%"
+		CALL SHOW_INFO_MARK, 対象, カラム
+		CALL MCOLUMNDRAWLINE
 	ENDIF
-	PRINTL
-	CALL SHOW_INFO_CLOTHES, 対象
-ENDIF
+	CALL MCOLUMNPRINTL, @"□ %I18N("素質")%"
+	CALL SHOW_INFO_TALENT, 対象, カラム
+	CALL MCOLUMNDRAWLINE
 
-DRAWLINE
+	IF !(CFLAG:対象:キャラロスト || CFLAG:対象:死亡 || CFLAG:対象:依代)
+		CALL MCOLUMNPRINT, @"□ %I18N("服装") % "
+		CALLFORM DISABLE, "服装変更", 対象
+		SIF !調教中 && !RESULT
+			CALL MCOLUMNPRINT, @"[99] - %I18N("服装を変更する")%"
+		CALL MCOLUMNPRINTL, ""
+		CALL SHOW_INFO_CLOTHES, 対象, カラム
+		CALL MCOLUMNDRAWLINE
+	ENDIF
+ELSE
+	DRAWLINE
+
+	PRINTFORML □ %I18N("経験")%
+	CALL SHOW_INFO_EXP, 対象, 0, カラム
+	DRAWLINE
+
+	PRINTFORML □ %I18N("能力")%
+	CALL SHOW_INFO_ABL, 対象, カラム
+	DRAWLINE
+
+	IF 対象 != MASTER
+		PRINTFORML □ %I18N("刻印")% 
+		CALL SHOW_INFO_MARK, 対象, カラム
+		DRAWLINE
+	ENDIF
+
+	PRINTFORML □ %I18N("素質")% 
+	CALL SHOW_INFO_TALENT, 対象, カラム
+	DRAWLINE
+
+	IF !(CFLAG:対象:キャラロスト || CFLAG:対象:死亡 || CFLAG:対象:依代)
+		PRINTPLAINFORM □ %I18N("服装") % 
+		CALLFORM DISABLE, "服装変更", 対象
+		SIF !調教中 && !RESULT
+			PRINTFORM [99] - %I18N("服装を変更する")%
+		PRINTL
+		CALL SHOW_INFO_CLOTHES, 対象, カラム
+		DRAWLINE
+	ENDIF
+ENDIF
 
 ;;;NOで渡す
-@担当曲表示, 対象
+@担当曲表示, 対象, カラム
 #DIM DYNAMIC 対象
 #DIMS DYNAMIC 曲一覧, 1000
 ;行頭に全角スペースを入れるため
 #DIM DYNAMIC 表示文字数 = 2
-#DIM CONST 表示可能文字数 = STRLENS(GETLINESTR("-"))
+#DIM DYNAMIC 表示可能文字数 = STRLENS(GETLINESTR("-"))
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC カラム
+
+;カラムなら30文字くらい余裕取っておく（適当）
+表示可能文字数 -= 30
 
 IF !EXISTCSV(対象) || CSVCSTR(対象, GETNUM(CSTR, "担当曲")) == ""
-	PRINTL 　[無し]
+	IF カラム
+		CALL MCOLUMNPRINTL, "　[無し]"
+	ELSE
+		PRINTL 　[無し]
+	ENDIF
 	RETURN
 ENDIF
 
 SPLIT CSVCSTR(対象, GETNUM(CSTR, "担当曲")), "|", 曲一覧
 
-
-PRINT 　
+IF カラム
+	CALL MCOLUMNPRINT, "　"
+ELSE
+	PRINT 　
+ENDIF
 FOR LCOUNT, 0, 1000
 	;行頭に改行相当のスペースが入ってるので一文字消す
 	SIF CHARATU(曲一覧:LCOUNT, 0) == " "
@@ -2465,14 +2693,23 @@ FOR LCOUNT, 0, 1000
 	;括弧2個分で+4
 	表示文字数 += STRLENS(曲一覧:LCOUNT)+4
 	IF 表示文字数 >= 表示可能文字数
-		PRINTL 
-		PRINT 　
+		IF カラム
+			CALL MCOLUMNPRINTL, ""
+			CALL MCOLUMNPRINT, "　"
+		ELSE
+			PRINTL 
+			PRINT 　
+		ENDIF
 		;括弧+全角スペース=6
 		表示文字数 = STRLENS(曲一覧:LCOUNT)+6
 	ENDIF
-	PRINTFORM 『%曲一覧:LCOUNT%』
+	CALL MCOLUMNPRINT, @"『%曲一覧:LCOUNT%』", "", 1
 NEXT
-CALL NEWLINE
+IF カラム
+	CALL MCOLUMNPRINTL, ""
+ELSE
+	CALL NEWLINE
+ENDIF
 RETURN
 
 	
