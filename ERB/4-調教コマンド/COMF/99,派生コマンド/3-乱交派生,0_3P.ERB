@@ -20,9 +20,13 @@ ELSE
 	IF TALENT:処女
 		SIF (ABL:ASSI:従順 <= 4 || ABL:ASSI:レズっ気 <= 4) && !TALENT:ASSI:サド && SEX(ASSI) == 2
 			COMRESULT = 0
+		SIF TMASTER == ASSI:1 && (ABL:(ASSI:1):従順 <= 4 || ABL:(ASSI:1):レズっ気 <= 4) && !TALENT:(ASSI:1):サド && SEX(ASSI:1) == 2
+			COMRESULT = 0
 	;潤滑不足で、従順3以下のASSIの場合3Pはできない（サドならＯＫ）
 	ELSEIF PALAM:潤滑 < PALAMLV:2
 		SIF ABL:ASSI:従順 <= 3 && !TALENT:ASSI:サド
+			COMRESULT = 0
+		SIF TMASTER == ASSI:1 && ABL:(ASSI:1):従順 <= 3 && !TALENT:(ASSI:1):サド
 			COMRESULT = 0
 	ENDIF
 ENDIF
@@ -30,7 +34,7 @@ ENDIF
 本数 = 0
 ;MASTERがペニス持ち
 コマンド実行条件 += "主人に男性器が必要(ペニスバンドで代用可能)/"
-SIF PENIS(MASTER) || TEQUIP:MASTER:ペニスバンド
+SIF PENIS(TMASTER) || TEQUIP:TMASTER:ペニスバンド
 	本数++
 ;ASSIがペニス持ち
 コマンド実行条件 += "助手に男性器が必要(ペニスバンドで代用可能)/"
@@ -45,7 +49,7 @@ SIF Ｖ使用中(TARGET) && Ａ使用中(TARGET)
 	COMRESULT = 0
 ;主人、調教対象、助手のいずれかに小人体型がいる場合、主人が禁断の知識を持っていないとダメ
 コマンド実行条件 += "主人、助手、対象のいずれかが[小人体型]の場合、主人に禁断の知識が必要/"
-IF TALENT:MASTER:小人体型 || (ASSI > 0 && TALENT:ASSI:小人体型) || TALENT:小人体型
+IF TALENT:TMASTER:小人体型 || (ASSI > 0 && TALENT:ASSI:小人体型) || TALENT:小人体型
 	SIF !TALENT:MASTER:禁断の知識
 		COMRESULT = 0
 ENDIF
@@ -94,10 +98,10 @@ RETURNF 0
 
 ;前コマンドとPLAYERが同じなら自動でPLAYERを交代する
 IF TFLAG:前コマンド実行者 == PLAYER && PREVCOMS != "3P"
-	IF PLAYER == MASTER
+	IF PLAYER == TMASTER
 		PLAYER = ASSI
 	ELSEIF PLAYER == ASSI
-		PLAYER = MASTER
+		PLAYER = TMASTER
 	ENDIF
 	プレイヤー交代 = 1
 ENDIF
@@ -130,7 +134,7 @@ IF PREVCOMS != "3P"
 		ENDSELECT
 	ELSE
 		;どこに挿れるか選ぶ
-		PRINTFORM \@ PLAYER == MASTER ? %CALLNAME:ASSI% # %CALLNAME:MASTER% \@のペニスは%CALLNAME:TARGET%の
+		PRINTFORM \@ PLAYER == TMASTER ? %CALLNAME:ASSI% # %CALLNAME:TMASTER% \@のペニスは%CALLNAME:TARGET%の
 		SELECTCASE 一本目
 			CASE 1
 				PRINT 膣に挿れられています。
@@ -152,7 +156,7 @@ IF PREVCOMS != "3P"
 		二本目 = RESULT
 	ENDIF
 
-	IF PLAYER == MASTER
+	IF PLAYER == TMASTER
 		TFLAG:助手挿入箇所 = 一本目
 		TFLAG:主人挿入箇所 = 二本目
 	ELSEIF PLAYER == ASSI
@@ -174,12 +178,12 @@ SIF FALLTYPE(TARGET) == 1 && TALENT:処女 && TFLAG:主人挿入箇所 == 1
 ;童貞喪失
 SELECTCASE TFLAG:主人挿入箇所
 	CASE 1, 2
-		IF TALENT:MASTER:童貞
-			TALENT:MASTER:童貞 = 0
-			IF TALENT:MASTER:性転換済
-				CSTR:MASTER:性転換童貞 = %NAME:TARGET%
+		IF TALENT:TMASTER:童貞
+			TALENT:TMASTER:童貞 = 0
+			IF TALENT:TMASTER:性転換済
+				CSTR:TMASTER:性転換童貞 = %NAME:TARGET%
 			ELSE
-				CSTR:MASTER:童貞 = %NAME:TARGET%
+				CSTR:TMASTER:童貞 = %NAME:TARGET%
 			ENDIF
 		ENDIF
 ENDSELECT
@@ -233,7 +237,7 @@ SELECTCASE TFLAG:主人挿入箇所
 ENDSELECT
 
 ;プレイヤーのABL:Ｃ感覚をみる
-SELECTCASE ABL:MASTER:Ｃ感覚
+SELECTCASE ABL:TMASTER:Ｃ感覚
 	CASE 0
 		TIMES 増加量 , 1.00
 	CASE 1
@@ -245,7 +249,7 @@ SELECTCASE ABL:MASTER:Ｃ感覚
 	CASE 4
 		TIMES 増加量 , 3.50
 	CASEELSE
-		増加量 += 増加量*(ABL:MASTER:Ｃ感覚-1)
+		増加量 += 増加量*(ABL:TMASTER:Ｃ感覚-1)
 ENDSELECT
 
 ;EXP:Ｖ経験をみる
@@ -254,10 +258,10 @@ SIF TFLAG:主人挿入箇所 == 1 && TALENT:処女
 	TIMES 増加量 , 1.50
 
 ;再装填処理中は射精ゲージは20分の1に
-SIF CFLAG:MASTER:賢者タイム > 0
+SIF CFLAG:TMASTER:賢者タイム > 0
 	増加量 /= 20
 
-BASE:MASTER:射精 += 増加量
+BASE:TMASTER:射精 += 増加量
 
 ;-------------------------------------------------
 ;射精ゲージチェック（助手）
@@ -315,7 +319,7 @@ BASE:ASSI:射精 += 増加量
 増加量 = 600
 
 ;ABL:主人の技巧をみる
-増加量 += (増加量/5)*ABL:MASTER:技巧
+増加量 += (増加量/5)*ABL:TMASTER:技巧
 
 ;ABL:助手の技巧をみる
 増加量 += (増加量/5)*ABL:ASSI:技巧
@@ -484,7 +488,7 @@ CALL SAMEN_CHECK_M, 射精先
 CALL SAMEN_CHECK_A, 射精先:1
 CALL SAMEN_CHECK_T, 射精先:2
 
-CALL SAMEN_SHOOT, 射精先, NOWEX:MASTER:射精, MASTER
+CALL SAMEN_SHOOT, 射精先, NOWEX:TMASTER:射精, TMASTER
 CALL SAMEN_SHOOT, 射精先:1, NOWEX:ASSI:射精, ASSI
 CALL SAMEN_SHOOT_T, 射精先:2, NOWEX:射精
 
@@ -497,16 +501,16 @@ SELECTCASE TFLAG:主人挿入箇所
 		SIF TALENT:処女 || TALENT:再生処女
 			SETBIT STAIN:膣内, 6
 		;奴隷の膣内⇔主人のペニスの汚れが移動
-		IF PENIS(MASTER)
-			STAIN:膣内 |= STAIN:MASTER:ペニス
-			STAIN:MASTER:ペニス |= STAIN:膣内
+		IF PENIS(TMASTER)
+			STAIN:膣内 |= STAIN:TMASTER:ペニス
+			STAIN:TMASTER:ペニス |= STAIN:膣内
 		ENDIF
 	CASE 2
 		;奴隷のアナル⇔主人のペニスの汚れが移動
-		IF PENIS(MASTER)
-			SETBIT STAIN:MASTER:ペニス, 3
-			STAIN:アナル |= STAIN:MASTER:ペニス
-			STAIN:MASTER:ペニス |= STAIN:アナル
+		IF PENIS(TMASTER)
+			SETBIT STAIN:TMASTER:ペニス, 3
+			STAIN:アナル |= STAIN:TMASTER:ペニス
+			STAIN:TMASTER:ペニス |= STAIN:アナル
 		ENDIF
 ENDSELECT
 
@@ -533,29 +537,29 @@ ENDSELECT
 ;経験の処理
 ;-------------------------------------------------
 ;同性愛経験
-IF SEX(TARGET) == SEX(MASTER) && SEX(TARGET) == SEX(ASSI)
+IF SEX(TARGET) == SEX(TMASTER) && SEX(TARGET) == SEX(ASSI)
 	SELECTCASE SEX(TARGET)
 		CASE 1
 			CALL EXPUP, "ゲイ経験", 6
-			CALL EXPUP, "ゲイ経験", 3, MASTER
+			CALL EXPUP, "ゲイ経験", 3, TMASTER
 			CALL EXPUP, "ゲイ経験", 3, ASSI
 		CASE 2
 			CALL EXPUP, "レズ経験", 6
-			CALL EXPUP, "レズ経験", 3, MASTER
+			CALL EXPUP, "レズ経験", 3, TMASTER
 			CALL EXPUP, "レズ経験", 3, ASSI
 	ENDSELECT
-ELSEIF SEX(TARGET) == SEX(MASTER) || SEX(TARGET) == SEX(ASSI)
+ELSEIF SEX(TARGET) == SEX(TMASTER) || SEX(TARGET) == SEX(ASSI)
 	SELECTCASE SEX(TARGET)
 		CASE 1
 			CALL EXPUP, "ゲイ経験", 3
-			SIF SEX(MASTER) == 1
-				CALL EXPUP, "ゲイ経験", 2, MASTER
+			SIF SEX(TMASTER) == 1
+				CALL EXPUP, "ゲイ経験", 2, TMASTER
 			SIF SEX(ASSI) == 1
 				CALL EXPUP, "ゲイ経験", 2, ASSI
 		CASE 2
 			CALL EXPUP, "レズ経験", 3
-			SIF SEX(MASTER) == 2
-				CALL EXPUP, "レズ経験", 2, MASTER
+			SIF SEX(TMASTER) == 2
+				CALL EXPUP, "レズ経験", 2, TMASTER
 			SIF SEX(ASSI) == 2
 				CALL EXPUP, "レズ経験", 2, ASSI
 	ENDSELECT
@@ -576,18 +580,18 @@ SIF TFLAG:主人挿入箇所 == 2 || TFLAG:助手挿入箇所 == 2
 ;VとAに挿入している場合（口に挿入していない場合）
 IF TFLAG:主人挿入箇所 != 3 && TFLAG:助手挿入箇所 != 3
 	CALL EXPUP, "性交経験", 2
-	CALL EXPUP, "性交経験", 1, MASTER
+	CALL EXPUP, "性交経験", 1, TMASTER
 	CALL EXPUP, "性交経験", 1, ASSI
-	経験回数:MASTER:(NOF(TARGET)) += 1
+	経験回数:TMASTER:(NOF(TARGET)) += 1
 	経験回数:ASSI:(NOF(TARGET)) += 1
-	経験回数:TARGET:(NOF(MASTER)) += 1
+	経験回数:TARGET:(NOF(TMASTER)) += 1
 	経験回数:TARGET:(NOF(ASSI)) += 1
 ;主人だけ挿入している場合
 ELSEIF TFLAG:主人挿入箇所 != 3
 	CALL EXPUP, "性交経験", 1
-	CALL EXPUP, "性交経験", 1, MASTER
-	経験回数:MASTER:(NOF(TARGET)) += 1
-	経験回数:TARGET:(NOF(MASTER)) += 1
+	CALL EXPUP, "性交経験", 1, TMASTER
+	経験回数:TMASTER:(NOF(TARGET)) += 1
+	経験回数:TARGET:(NOF(TMASTER)) += 1
 ;助手だけ挿入している場合
 ELSE
 	CALL EXPUP, "性交経験", 1
@@ -597,17 +601,17 @@ ELSE
 ENDIF
 
 ;魔力回復
-SIF !避妊具(MASTER) && PENIS(MASTER)
+SIF !避妊具(TMASTER) && PENIS(TMASTER)
 	CALL 魔力回復, 3
 SIF !避妊具(ASSI) && PENIS(ASSI)
 	CALL 魔力回復, 3
 
 ;PLAYER交代していた場合は元に戻す
 IF プレイヤー交代
-	IF PLAYER == MASTER
+	IF PLAYER == TMASTER
 		PLAYER = ASSI
 	ELSEIF PLAYER == ASSI
-		PLAYER = MASTER
+		PLAYER = TMASTER
 	ENDIF
 ENDIF
 

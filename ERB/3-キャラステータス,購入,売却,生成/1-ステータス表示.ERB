@@ -55,14 +55,14 @@ IF TARGET != MASTER
 				CALL MCOLUMNPRINT, @"{CFLAG:ストレス値}/999 ", "darkred"
 		ENDSELECT
 	ENDIF
-	SIF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+	SIF TALENT:MASTER:孔雀の瞳 || 助手素質("孔雀の瞳")
 		CALL MCOLUMNPRINT, @" %I18N("依存度")%:{CFLAG:依存度} "
 ELSEIF TARGET == MASTER && ゲームモード() != "新婚モード"
 	CALL MCOLUMNPRINT, @"%I18N("堕した人数")%:{FLAG:累計恋慕+FLAG:累計淫乱+FLAG:累計服従}人) %I18N("難易度")%:%難易度()% "
 ENDIF
 CALL MCOLUMNPRINTL, ""
 CALL MCOLUMNPRINT, "　"
-SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || 助手素質("孔雀の瞳")
 	CALL MCOLUMNPRINT, @"%I18N("経験人数")%:{経験人数(TARGET)} "
 IF MOD:バスト関連ステータス表示
 	CALL MCOLUMNPRINT, @"%I18N("パイズリ経験人数")%:{パイズリ経験人数(TARGET)} "
@@ -277,7 +277,7 @@ CALL MCOLUMNPRINTL, @"□ %I18N("相性")%"
 SIF 表示数
 	CALL MCOLUMNPRINTL, ""
 
-SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+SIF MOD:バスト関連ステータス表示 || TALENT:MASTER:孔雀の瞳 || 助手素質("孔雀の瞳")
 	CALL 性経験履歴, 0, 1
 
 CALL ステータス表示汎用メニュー
@@ -682,7 +682,7 @@ IF TALENT:スライム
 			ENDSELECT
 		ENDIF
 	ENDIF
-	SIF CFLAG:スライム度 && TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+	SIF CFLAG:スライム度 && TALENT:MASTER:孔雀の瞳 || 助手素質("孔雀の瞳")
 		CALL MCOLUMNPRINT, @"（深度:{CFLAG:スライム度}）"
 	CALL MCOLUMNPRINTL, @""
 	RESETCOLOR
@@ -694,7 +694,7 @@ ELSEIF TALENT:溶ける快
 	ELSE
 		CALL MCOLUMNPRINT, @"　不定形なスライムの体の中に、その本体と言うべき核を漂わせている。　もう本来の種族に戻る事は二度と無いだろう…"
 	ENDIF
-	SIF CFLAG:スライム度 && TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+	SIF CFLAG:スライム度 && TALENT:MASTER:孔雀の瞳 || 助手素質("孔雀の瞳")
 		CALL MCOLUMNPRINT, @"（深度:{CFLAG:スライム度}）"
 	CALL MCOLUMNPRINTL, @""
 	RESETCOLOR
@@ -781,9 +781,9 @@ ELSE
 		ENDIF
 		CALL MCOLUMNPRINTL, @"の男性器が陰部に移植されている"
 	ENDIF
-	IF CFLAG:スライム度 && (TALENT:MASTER:孔雀の瞳 || TALENT:MASTER:溶ける快 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳))
+	IF CFLAG:スライム度 && (TALENT:MASTER:孔雀の瞳 || TALENT:MASTER:溶ける快 || 助手素質("孔雀の瞳"))
 		CALL MCOLUMNPRINT, @"　スライムに侵食されつつある"
-		IF TALENT:MASTER:孔雀の瞳 || (ASSI > 0 && TALENT:ASSI:孔雀の瞳)
+		IF TALENT:MASTER:孔雀の瞳 || 助手素質("孔雀の瞳")
 			CALL MCOLUMNPRINT, @"　（深度:{CFLAG:スライム度}）"
 		ENDIF
 		CALL MCOLUMNPRINTL, @""
@@ -1215,7 +1215,7 @@ IF !ロストキャラ表示 && (調教可能(TARGET) || 助手可能(TARGET))
  && !CHECK_CHILD_CARE(TARGET) && !CFLAG:使用不可 && !CFLAG:監禁
 }
 	CALL MCOLUMNPRINT, RETURNSPACE(SHOW_TARGET != TARGET && 調教可能(TARGET), "[8] 対象に指定 ")
-	CALL MCOLUMNPRINT, RETURNSPACE(NOSAMES(TARGET, MASTER, ASSI) && 助手可能(TARGET), "[9] 助手に指定 ")
+	CALL MCOLUMNPRINT, RETURNSPACE(NOSAMES(TARGET, MASTER, ASSI, ASSI:1) && 助手可能(TARGET), "[9] 助手に指定 ")
 ENDIF
 IF !ロストキャラ表示
 	IF ISSLIME(TARGET)
@@ -1283,13 +1283,18 @@ SELECTCASE CRESULT:1
 ENDSELECT
 
 @性経験履歴, 設定, カラム
+#DIM CONST LIST_MIN = 100
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC ID
 #DIM DYNAMIC NOREV
-#DIM DYNAMIC LIST_ = 10
-#DIM DYNAMIC LIST_NO, 1011
+#DIM DYNAMIC LIST_
+#DIM DYNAMIC LIST_NO, 1001
+#DIM DYNAMIC TJ_LIST_MIN
+#DIM DYNAMIC TJ_LIST_
+#DIM DYNAMIC TJ_LIST_NO, 1001
 #DIM DYNAMIC SEX_TOTAL
 #DIM DYNAMIC NAKADASHI_TOTAL
+#DIM DYNAMIC TJ_TOTAL
 #DIM DYNAMIC 設定
 #DIM DYNAMIC 次のキャラ = -1
 #DIM DYNAMIC 前のキャラ = -1
@@ -1302,7 +1307,7 @@ ELSE
 	DRAWLINE
 ENDIF
 
-LIST_ = 100
+LIST_ = LIST_MIN
 
 SIF 設定 != 1 && !カラム
 	CALL 基本情報
@@ -1319,7 +1324,7 @@ ENDIF
 IF 設定
 	SEX_TOTAL = 0
 	NAKADASHI_TOTAL = 0
-	LIST_NO:LIST_ = LCOUNT
+	LIST_NO:(LIST_ - LIST_MIN) = LCOUNT
 	IF カラム
 		CALL MCOLUMNPRINTL, @" [{LIST_}] 新しく加える"
 	ELSE
@@ -1337,7 +1342,7 @@ FOR LCOUNT, 0, 20000
 		IF 設定
 			SEX_TOTAL += 経験回数:TARGET:LCOUNT
 			NAKADASHI_TOTAL += 中出され回数:TARGET:LCOUNT
-			LIST_NO:LIST_ = LCOUNT
+			LIST_NO:(LIST_ - LIST_MIN) = LCOUNT
 			IF カラム
 				CALL MCOLUMNPRINT, " ―――― "
 				CALL MCOLUMNPRINT, @"[{LIST_}] 変更"
@@ -1410,7 +1415,7 @@ IF モブ経験人数:TARGET:0
 	IF 設定
 		SEX_TOTAL += モブ経験回数:TARGET:0
 		NAKADASHI_TOTAL += モブ中出され回数:TARGET:0
-		LIST_NO:LIST_ = -1
+		LIST_NO:(LIST_ - LIST_MIN) = -1
 		IF カラム
 			CALL MCOLUMNPRINT, " ―――― "
 			CALL MCOLUMNPRINT, @"[{LIST_}] 変更"
@@ -1473,7 +1478,7 @@ IF モブ経験人数:TARGET:0
 	ENDIF
 ELSE
 	IF 設定
-		LIST_NO:LIST_ = -1
+		LIST_NO:(LIST_ - LIST_MIN) = -1
 		IF カラム
 			CALL MCOLUMNPRINTL, @" [{LIST_}] モブ経験人数を加える"
 		ELSE
@@ -1509,6 +1514,8 @@ IF 設定
 			ENDIF
 		ENDIF
 	ENDIF
+	TJ_LIST_MIN = LIST_ + 5
+	TJ_LIST_ = TJ_LIST_MIN 
 ELSE
 	IF カラム
 		SIF !TALENT:童貞 && PENIS(TARGET)
@@ -1534,37 +1541,103 @@ ELSE
 		ENDIF
 	ENDIF
 ENDIF
-
 IF MOD:バスト関連ステータス表示
 	ID = NOF(TARGET)
 	IF カラム
 		CALL MCOLUMNPRINTL, "□パイズリ経験履歴"
-		FOR LCOUNT, 0, 20000
-			IF パイズリ回数:TARGET:LCOUNT
-				CALL MCOLUMNPRINTL, @"　%CSVNAMEF(LCOUNT)%:{パイズリ回数:TARGET:LCOUNT}回"
-				SIF 挟射回数:TARGET:LCOUNT
-					CALL MCOLUMNPRINTL, @"　　%CSVCALLNAMEF(LCOUNT)%は%CSVCALLNAMEF(ID)%のパイズリで{挟射回数:TARGET:LCOUNT}回射精している。"
-			ENDIF
-		NEXT
-		IF モブパイズリ人数:TARGET:0
-			CALL MCOLUMNPRINTL, @"　不明:{モブパイズリ回数:TARGET:0}回/{モブパイズリ人数:TARGET:0}人"
-			SIF モブ挟射回数:TARGET:0
-				CALL MCOLUMNPRINTL, @"　　%CSVCALLNAMEF(ID)%はパイズリで{モブ挟射回数:TARGET:0}回射精させている。"
-		ENDIF
 	ELSE
 		PRINTL □パイズリ経験履歴
-		FOR LCOUNT, 0, 20000
-			IF パイズリ回数:TARGET:LCOUNT
-				PRINTFORML 　%CSVNAMEF(LCOUNT)%:{パイズリ回数:TARGET:LCOUNT}回
-				SIF 挟射回数:TARGET:LCOUNT
-					PRINTFORML 　　%CSVCALLNAMEF(LCOUNT)%は%CSVCALLNAMEF(ID)%のパイズリで{挟射回数:TARGET:LCOUNT}回射精している。
-			ENDIF
-		NEXT
-		IF モブパイズリ人数:TARGET:0
-			PRINTFORML 　不明:{モブパイズリ回数:TARGET:0}回/{モブパイズリ人数:TARGET:0}人
-			SIF モブ挟射回数:TARGET:0
-				PRINTFORML 　　%CSVCALLNAMEF(ID)%はパイズリで{モブ挟射回数:TARGET:0}回射精させている。
+	ENDIF
+	IF 設定
+		TJ_TOTAL = 0
+		TJ_LIST_NO:(TJ_LIST_ - TJ_LIST_MIN) = LCOUNT
+		IF カラム
+			CALL MCOLUMNPRINTL, @" [{TJ_LIST_}] 新しく加える"
+		ELSE
+			PRINTFORML  [{TJ_LIST_}] 新しく加える
 		ENDIF
+		TJ_LIST_++
+	ENDIF
+	FOR LCOUNT, 0, 20000
+		IF パイズリ回数:TARGET:LCOUNT
+			IF カラム
+				CALL MCOLUMNPRINT, @"　%CSVNAMEF(LCOUNT)%:{パイズリ回数:TARGET:LCOUNT}回"
+			ELSE
+				PRINTFORM 　%CSVNAMEF(LCOUNT)%:{パイズリ回数:TARGET:LCOUNT}回
+			ENDIF
+			IF 設定
+				TJ_TOTAL += パイズリ回数:TARGET:LCOUNT
+				TJ_LIST_NO:(TJ_LIST_ - TJ_LIST_MIN) = LCOUNT
+				IF カラム
+					CALL MCOLUMNPRINT, " ―――― "
+					CALL MCOLUMNPRINT, @"[{TJ_LIST_}] 変更"
+				ELSE
+					PRINTPLAIN  ―――― 
+					PRINTFORM [{TJ_LIST_}] 変更
+				ENDIF
+				TJ_LIST_++
+			ENDIF
+			IF カラム
+				CALL MCOLUMNPRINTL, ""
+			ELSE
+				PRINTL
+			ENDIF
+			IF 挟射回数:TARGET:LCOUNT
+				IF カラム
+						CALL MCOLUMNPRINTL, @"　　%CSVCALLNAMEF(LCOUNT)%は%CSVCALLNAMEF(ID)%のパイズリで{挟射回数:TARGET:LCOUNT}回射精している。"
+				ELSE
+						PRINTFORML 　　%CSVCALLNAMEF(LCOUNT)%は%CSVCALLNAMEF(ID)%のパイズリで{挟射回数:TARGET:LCOUNT}回射精している。
+				ENDIF
+			ENDIF
+		ENDIF
+	NEXT
+	IF モブパイズリ人数:TARGET:0
+		IF カラム
+			CALL MCOLUMNPRINT, @"　不明:{モブパイズリ回数:TARGET:0}回/{モブパイズリ人数:TARGET:0}人"
+		ELSE
+			PRINTFORM 　不明:{モブパイズリ回数:TARGET:0}回/{モブパイズリ人数:TARGET:0}人
+		ENDIF
+
+		IF 設定
+			TJ_TOTAL += モブパイズリ回数:TARGET:0
+			TJ_LIST_NO:(TJ_LIST_ - TJ_LIST_MIN) = -1
+			IF カラム
+				CALL MCOLUMNPRINT, " ―――― "
+				CALL MCOLUMNPRINT, @"[{TJ_LIST_}] 変更"
+			ELSE
+				PRINTPLAIN  ―――― 
+				PRINTFORM [{TJ_LIST_}] 変更
+			ENDIF
+		ENDIF
+		IF カラム
+			CALL MCOLUMNPRINTL, ""
+		ELSE
+			PRINTL
+		ENDIF
+		IF モブ挟射回数:TARGET:0
+			IF カラム
+				CALL MCOLUMNPRINTL, @"　　%CSVCALLNAMEF(ID)%はパイズリで{モブ挟射回数:TARGET:0}回射精させている。"
+			ELSE
+				PRINTFORML 　　%CSVCALLNAMEF(ID)%はパイズリで{モブ挟射回数:TARGET:0}回射精させている。
+			ENDIF
+		ENDIF
+	ELSE
+		IF 設定
+			TJ_LIST_NO:(TJ_LIST_ - TJ_LIST_MIN) = -1
+			IF カラム
+				CALL MCOLUMNPRINTL, @" [{TJ_LIST_}] モブパイズリ人数を加える"
+			ELSE
+				PRINTFORML  [{TJ_LIST_}] モブパイズリ人数を加える
+			ENDIF
+		ENDIF
+
+	ENDIF
+ENDIF
+IF 設定
+	IF カラム
+		CALL MCOLUMNPRINTL, @" [{TJ_LIST_+1}] パイズリ経験をこれに合わせる(現在:{EXP:パイズリ経験}回)"
+	ELSE
+		PRINTFORML  [{TJ_LIST_+1}] パイズリ経験をこれに合わせる(現在:{EXP:パイズリ経験}回)
 	ENDIF
 ENDIF
 
@@ -1607,13 +1680,16 @@ SELECTCASE RESULT
 		CALL ASSIGN_ASSI, TARGET
 		RETURN 0
 	CASEELSE
-		IF INRANGE(RESULT, 10, LIST_)
+		IF INRANGE(RESULT, LIST_MIN, LIST_)
 		ELSEIF GROUPMATCH(RESULT, LIST_+3, LIST_+4)
 		ELSEIF RESULT == 1+LIST_
 			EXP:性交経験 = SEX_TOTAL
 			RESTART
 		ELSEIF RESULT == 2+LIST_
 			EXP:膣射経験 = NAKADASHI_TOTAL
+			RESTART
+		ELSEIF RESULT == 1+TJ_LIST_
+			EXP:パイズリ経験 = TJ_TOTAL
 			RESTART
 		ENDIF
 ENDSELECT
@@ -1656,7 +1732,7 @@ IF RESULT:1 == LIST_
 	SIF RESULT == 8
 		RESTART
 	RESULT:1 = RESULT
-	PRINTL 回数を入力してください。
+	PRINTFORML \@ RESULT:1 ? 回数 # 人数\@を入力してください。
 	INPUT
 	SELECTCASE RESULT:1
 		CASE 0
@@ -1677,8 +1753,8 @@ IF RESULT:1 == LIST_
 			モブ孕み回数:TARGET:0 = RESULT
 	ENDSELECT
 	GOTO SEX_EXP_DEBUG1
-ELSE
-	IF  GROUPMATCH(RESULT:1, 10, LIST_+3, LIST_+4)
+ELSEIF RESULT:1 < TJ_LIST_MIN
+	IF  GROUPMATCH(RESULT:1, LIST_MIN, LIST_+3, LIST_+4)
 		PRINTL 相手の番号を入力してください
 		PRINT [10000] 一覧表示 
 		INPUT
@@ -1693,7 +1769,7 @@ ELSE
 			RESTART
 		ID = RESULT
 	ELSE
-		ID = LIST_NO:(RESULT:1)
+		ID = LIST_NO:(RESULT:1 - LIST_MIN)
 	ENDIF
 	NOREV = -1
 	FOR LCOUNT, 0, CHARANUM
@@ -1756,6 +1832,70 @@ ELSE
 				孕ませ回数:NOREV:(NOF(TARGET)) = RESULT
 	ENDSELECT
 	GOTO SEX_EXP_DEBUG2
+ELSEIF RESULT:1 == TJ_LIST_
+	$TJ_EXP_DEBUG1
+	PRINTL
+	PRINTFORML 　[0] モブパイズリ人数:{モブパイズリ人数:TARGET:0}人
+	PRINTFORML 　[1] モブパイズリ回数:{モブパイズリ回数:TARGET:0}回
+	PRINTFORML 　[2] モブ挟射回数………………{モブ挟射回数:TARGET:0}回
+	PRINTL 　[3] 戻る
+	BINPUT
+	SIF RESULT == 3
+		RESTART
+	RESULT:1 = RESULT
+	PRINTFORML \@ RESULT:1 ? 回数 # 人数\@を入力してください。
+	INPUT
+	SELECTCASE RESULT:1
+		CASE 0
+			モブパイズリ人数:TARGET:0 = RESULT
+		CASE 1
+			モブパイズリ回数:TARGET:0 = RESULT
+		CASE 2
+			モブ挟射回数:TARGET:0 = RESULT
+	ENDSELECT
+	GOTO TJ_EXP_DEBUG1
+ELSE
+	IF  RESULT:1 == TJ_LIST_MIN
+		PRINTL 相手の番号を入力してください
+		PRINT [10000] 一覧表示 
+		INPUT
+		IF RESULT == 10000
+			PRINTL □ 一覧表示
+			CALL CHARA_LIST, "全キャラ表示"
+		ELSEIF !EXISTCSV(RESULT)
+			PRINTFORMW {RESULT}にはキャラが登録されていません
+			RESTART
+		ENDIF
+		SIF RESULT == 10000
+			RESTART
+		ID = RESULT
+	ELSE
+		ID = TJ_LIST_NO:(RESULT:1 - TJ_LIST_MIN)
+	ENDIF
+	NOREV = -1
+	FOR LCOUNT, 0, CHARANUM
+		IF ID == NOF(LCOUNT)
+			NOREV = LCOUNT
+			BREAK
+		ENDIF
+	NEXT
+	$TJ_EXP_DEBUG2
+	PRINTFORML  [1] %CSVNAMEF(ID)%へのパイズリ回数:{パイズリ回数:TARGET:ID}回
+	PRINTFORML  [2] 挟射回数………………{挟射回数:TARGET:ID}回
+	PRINTL [3] 戻る
+	BINPUT
+	SIF RESULT == 3
+		RESTART
+	RESULT:1 = RESULT
+	PRINTL 回数を入力してください。
+	INPUT
+	SELECTCASE RESULT:1
+		CASE 1
+			パイズリ回数:TARGET:ID = RESULT
+		CASE 2
+			挟射回数:TARGET:ID = RESULT
+	ENDSELECT
+	GOTO TJ_EXP_DEBUG2
 ENDIF
 
 ;=============================================================================

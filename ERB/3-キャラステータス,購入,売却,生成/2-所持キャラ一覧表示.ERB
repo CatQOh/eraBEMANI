@@ -7,6 +7,16 @@
 #DIM DYNAMIC LTARGET
 #DIM 表示切り替え
 #DIM DYNAMIC 表示上限 = 30
+{
+#DIMS DYNAMIC 選択情報 = 
+"",
+"調教対象選択",
+"助手選択1",
+"助手選択2",
+"能力表示",
+"ABL上昇",
+"ロストキャラ表示",
+}
 
 VARLINE = LINECOUNT
 
@@ -16,7 +26,7 @@ ELSE
 	SELECTCASE SHOP_キャラ表示情報
 		CASE "調教対象選択"
 			CALL COLUMNPRINT, 0, "□調教対象変更 "
-		CASE "助手選択"
+		CASE "助手選択1", "助手選択2"
 			CALL COLUMNPRINT, 0, "□助手変更     "
 		CASE "ロストキャラ表示"
 			CALL COLUMNPRINT, 0, "□ロストキャラ "
@@ -25,32 +35,14 @@ ELSE
 	ENDSELECT
 ENDIF
 
-IF SHOP_キャラ表示情報 == "調教対象選択"
-	CALL COLUMNPRINT, 0, "[--] 対象選択 ", "deepskyblue"
-ELSE
-	CALL COLUMNPRINT, 0, "[-1] 対象選択 "
-ENDIF
-IF SHOP_キャラ表示情報 == "助手選択"
-	CALL COLUMNPRINT, 0, "[--] 助手選択 ", "deepskyblue"
-ELSE
-	CALL COLUMNPRINT, 0, "[-2] 助手選択 "
-ENDIF
-IF SHOP_キャラ表示情報 == "能力表示"
-	CALL COLUMNPRINT, 0, "[--] 能力表示 ", "deepskyblue"
-ELSE
-	CALL COLUMNPRINT, 0, "[-3] 能力表示 "
-ENDIF
-IF SHOP_キャラ表示情報 == "ABL上昇"
-	CALL COLUMNPRINT, 0, "[--] ABL上昇 ", "deepskyblue"
-ELSE
-	CALL COLUMNPRINT, 0, "[-4] ABL上昇 "
-ENDIF
-IF SHOP_キャラ表示情報 == "ロストキャラ表示"
-	CALL COLUMNPRINT, 0, "[--] ロストキャラ ", "deepskyblue"
-ELSE
-	CALL COLUMNPRINT, 0, "[-5] ロストキャラ "
-ENDIF
-CALL COLUMNPRINTL, 0, ""
+FOR LCOUNT, 1, VARSIZE("選択情報")
+	IF SHOP_キャラ表示情報 == 選択情報:LCOUNT
+		CALL MCOLUMNPRINT, @"[--] %選択情報:LCOUNT% ", "deepskyblue"
+	ELSE
+		CALL MCOLUMNPRINT, @"[-{LCOUNT}] %選択情報:LCOUNT% "
+	ENDIF
+NEXT
+CALL MCOLUMNPRINTL, ""
 ;PRINTL [-1] 表示上限を減らす [-9] 表示上限を増やす
 
 SHOP_未表示キャラ = 0
@@ -58,7 +50,7 @@ SHOP_未表示キャラ = 0
 FOR LCOUNT, 0, CHARANUM
 	;1巡目はMASTERとTARGET及びASSIの能力表示
 	IF LCOUNT == 0 && SHOP_キャラ表示情報 != "ロストキャラ表示"
-		IF SHOP_キャラ表示情報 == "助手選択"
+		IF STRCOUNT(SHOP_キャラ表示情報, "助手選択")
 			CALL COLUMNPRINTL, 0, "　[  0] 助手無し"
 		ELSE
 			CALL COLUMNPRINTL, 0, @"　[  0] %CALLNAME:MASTER%(主人) \@ SEX(MASTER) == 1 ? ♂ # ♀ \@ \@ TALENT:MASTER:ふたなり ? 双 #\@"
@@ -66,12 +58,13 @@ FOR LCOUNT, 0, CHARANUM
 		;TARGETとASSIはMASTERの下に表示する
 		IF TARGET > 0
 			;助手の指定なら助手不可能なキャラは除外
-			SIF SHOP_キャラ表示情報 == "助手選択" && !助手可能(TARGET)
-				CONTINUE
-			CALL STATUS_BAR, TARGET
+			SIF !STRCOUNT(SHOP_キャラ表示情報, "助手選択") || 助手可能(TARGET)
+				CALL STATUS_BAR, TARGET
 		ENDIF
 		SIF ASSI > 0
 			CALL STATUS_BAR, ASSI
+		SIF ASSI:1 > 0
+			CALL STATUS_BAR, ASSI:1
 		CALL COLUMNDRAWLINE, 0
 		CONTINUE
 	ENDIF
@@ -83,7 +76,10 @@ FOR LCOUNT, 0, CHARANUM
 	SIF !CFLAG:LCOUNT:キャラロスト && SHOP_キャラ表示情報 == "ロストキャラ表示"
 		CONTINUE
 	;助手の指定なら助手不可能なキャラは除外
-	SIF SHOP_キャラ表示情報 == "助手選択" && !助手可能(LCOUNT)
+	SIF STRCOUNT(SHOP_キャラ表示情報, "助手選択") && !助手可能(LCOUNT)
+		CONTINUE
+	;助手2はアニマルも選べない
+	SIF SHOP_キャラ表示情報 == "助手選択2" && TALENT:LCOUNT:アニマル
 		CONTINUE
 	;登場作品フィルタが設定してあるならそれ以外のキャラは除外
 	SIF 登場作品フィルタ != "" && GROUPMATCH(登場作品フィルタ, CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３) == 0 && ORIGIN
@@ -94,7 +90,7 @@ FOR LCOUNT, 0, CHARANUM
 		BREAK
 	ENDIF
 	;対象と助手は主人の下に表示されるので除外
-	SIF GROUPMATCH(LCOUNT, TARGET, ASSI)
+	SIF GROUPMATCH(LCOUNT, TARGET, ASSI, ASSI:1)
 		CONTINUE
 	カウント数++
 	;ページ数×表示上限まで表示を飛ばす
@@ -112,7 +108,7 @@ IF 表示数 < 表示上限
 ENDIF
 
 CALL COLUMNDRAWLINE, 0
-CALL COLUMNPRINTL, 0, "　☆：調教中　★：助手　●：助手可　■：タグ色"
+CALL COLUMNPRINTL, 0, "　☆：調教中　１：助手1 ２：助手2　●：助手可　■：タグ色"
 CALL COLUMNPRINTL, 0, "　KA：経営モードに配属中　不：使用不可　妊：妊娠育児中　監：監禁中　獣：ペット候補　を表しています"
 CALL COLUMNDRAWLINE, 0
 
@@ -161,8 +157,10 @@ SELECTCASE CRESULT:1
 		SELECTCASE SHOP_キャラ表示情報
 			CASE "調教対象選択"
 				TARGET = -1
-			CASE "助手選択"
+			CASE "助手選択1"
 				ASSI = -1
+			CASE "助手選択2"
+				ASSI:1 = -1
 			CASE "ABL上昇"
 				PRINTW 主人の能力上昇はスキルツリーから行ってください
 			CASE "能力表示"
@@ -171,13 +169,16 @@ SELECTCASE CRESULT:1
 	CASE -1
 		SHOP_キャラ表示情報 = 調教対象選択
 	CASE -2
-		SHOP_キャラ表示情報 = 助手選択
+		SHOP_キャラ表示情報 = 助手選択1
 		SHOP_キャラページ = 0
 	CASE -3
-		SHOP_キャラ表示情報 = 能力表示
+		SHOP_キャラ表示情報 = 助手選択2
+		SHOP_キャラページ = 0
 	CASE -4
-		SHOP_キャラ表示情報 = ABL上昇
+		SHOP_キャラ表示情報 = 能力表示
 	CASE -5
+		SHOP_キャラ表示情報 = ABL上昇
+	CASE -6
 		SHOP_キャラ表示情報 = ロストキャラ表示
 		SHOP_キャラページ = 0
 	;CASE -1
@@ -208,8 +209,20 @@ SELECTCASE CRESULT:1
 		SELECTCASE SHOP_キャラ表示情報
 			CASE "調教対象選択"
 				CALL ASSIGN_TARGET, CRESULT:1
-			CASE "助手選択"
-				CALL ASSIGN_ASSI, CRESULT:1
+			CASE "助手選択1"
+				SELECTCASE CRESULT:1
+					CASE ASSI
+						ASSI = -1
+					CASEELSE
+						CALL ASSIGN_ASSI, CRESULT:1
+				ENDSELECT
+			CASE "助手選択2"
+				SELECTCASE CRESULT:1
+					CASE ASSI:1
+						ASSI:1 = -1
+					CASEELSE
+						CALL ASSIGN_ASSI, CRESULT:1, 2
+				ENDSELECT
 			CASE "能力表示", "ロストキャラ表示"
 				CALLF プレイ称号計算, "能力表示"
 				$能力表示
@@ -230,7 +243,7 @@ SELECTCASE CRESULT:1
 					CALL STATUS
 				ENDIF
 				;TARGET変更がされてる場合は戻さない
-				SIF !対象変更済み && ASSI != LTARGET
+				SIF !対象変更済み && ASSI != LTARGET && ASSI:1 != LTARGET
 					TARGET = LTARGET
 				;TARGET変更無しかつ元々TARGETが居なかった場合も戻す
 				SIF !対象変更済み && LTARGET == -1
@@ -267,7 +280,9 @@ ELSE
 	ELSEIF 対象 == TARGET
 		文字列 += COLUMNPRINTF("☆", 文字色)
 	ELSEIF 対象 == ASSI
-		文字列 += COLUMNPRINTF("★", 文字色)
+		文字列 += COLUMNPRINTF("１", 文字色)
+	ELSEIF 対象 == ASSI:1
+		文字列 += COLUMNPRINTF("２", 文字色)
 	ELSEIF CFLAG:対象:監禁
 		文字列 += COLUMNPRINTF("監", 文字色)
 	ELSEIF CSTR:対象:配属 != ""
@@ -287,7 +302,7 @@ ENDIF
 
 ;調教対象の指定、もしくは助手の指定なら、育児部屋に移動しているキャラと監禁中キャラは選べない
 ;配属キャラ選択不可オンの場合経営に配属したキャラも選べない（誤爆対策）
-IF GROUPMATCH(SHOP_キャラ表示情報, "調教対象選択", "助手選択") && (CHECK_CHILD_CARE(対象) || CFLAG:対象:使用不可 || CFLAG:対象:監禁 || (SHOP_配属キャラ選択不可 && CSTR:対象:配属 != ""))
+IF GROUPMATCH(SHOP_キャラ表示情報, "調教対象選択", "助手選択1", "助手選択2") && (CHECK_CHILD_CARE(対象) || CFLAG:対象:使用不可 || CFLAG:対象:監禁 || (SHOP_配属キャラ選択不可 && CSTR:対象:配属 != ""))
 	文字列 += COLUMNPRINTF(@"[---] %LIMITEDCALLNAME(対象, 24), 25, LEFT%", "gray")
 ELSE
 	文字列 += COLUMNPRINTF(@"[{対象, 3}] %LIMITEDCALLNAME(対象, 24), 25, LEFT%")
@@ -493,98 +508,8 @@ SELECTCASE SHOP_キャラ表示情報
 		ENDIF
 ENDSELECT
 RESETCOLOR
+
 CALL COLUMNPRINTL, 0, 文字列
-
-[SKIPSTART]
-@SHOW_CHARADATA
-#DIM 表示切り替え
-#DIM DYNAMIC LTARGET
-#DIM 表示上限 = 10
-#DIM DYNAMIC 次ページあり
-DRAWLINE
-
-CALL LOOP_CLEARLINE
-
-CALL LIFE_LIST, "通常表示", 表示切り替え, 表示上限
-;RESULTにはまだ表示されてないキャラが居るかどうか
-次ページあり = RESULT
-DRAWLINE
-
-PRINTPLAIN 　CHARADATA　
-CALL PRINTSPACE, TFLAG:ページ数, "[999] 前ページ "
-PRINTFORM [1000] 戻る 
-CALL PRINTSPACE, 次ページあり, "[1001] 次ページ "
-
-PRINT [1010] キャラソート 
-IF 表示切り替え
-	PRINT [1011] 通常表示に切り替え 
-ELSE
-	PRINT [1011] 経営用表示に切り替え 
-ENDIF
-SIF ORIGIN
-	PRINT [1012] 登場作品で絞る
-PRINTL
-
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE -1
-			SIF 表示上限 > 10
-				表示上限 -= 10
-			RESTART
-		CASE -9
-			表示上限 += 10
-			RESTART
-		CASE 999
-			SIF TFLAG:ページ数
-				TFLAG:ページ数--
-			RESTART
-		CASE 1000
-			RETURN
-		CASE 1001
-			SIF 次ページあり
-				TFLAG:ページ数++
-			RESTART
-		CASE 1010
-			CALL CHARA_SORT
-			RESTART
-		CASE 1011
-			INVERTBIT 表示切り替え, 0
-			RESTART
-		CASE 1012
-			CALL 登場作品フィルタ設定
-			RESTART
-		CASE 0 TO CHARANUM-1
-			LTARGET = TARGET
-			TARGET = RESULT
-			;TARGETの能力表示中はあっちで「調教対象に指定」を表示させないためのフラグ
-			IF TARGET == LTARGET
-				SHOW_TARGET = LTARGET
-			ELSE
-				SHOW_TARGET = 0
-			ENDIF
-			CALL STATUS
-			;TARGET変更がされてる場合は戻さない
-			SIF !RESULT && ASSI != LTARGET
-				TARGET = LTARGET
-			;TARGET変更無しかつ元々TARGETが居なかった場合も戻す
-			SIF !RESULT && LTARGET == -1
-				TARGET = -1
-			RESTART
-	ENDSELECT
-LOOP 1
-
-;調教対象選択
-@CHANGE_TARGET
-#DIM DYNAMIC LCOUNT
-#DIM 表示上限 = 10
-#DIM DYNAMIC 次ページあり
-
-CALL LOOP_CLEARLINE
-
-
-RESTART
-[SKIPEND]
 
 ;対象指定用関数
 @ASSIGN_TARGET, 対象
@@ -592,6 +517,8 @@ RESTART
 TARGET = 対象
 SIF TARGET == ASSI
 	ASSI = -1
+SIF TARGET == ASSI:1
+	ASSI:1 = -1
 CALL KOJO_MESSAGE_EVENT, "調教対象指定"
 ;配属してたら自動的に外す
 CALL 配属解除, TARGET
@@ -599,302 +526,25 @@ CALL 配属解除, TARGET
 SIF CFLAG:対象:監禁
 	CALL 監禁解除, 対象
 
-[SKIPSTART]
-@SELECT_ASSI
-#DIM DYNAMIC LTARGET
-#DIM 表示上限 = 10
-#DIM DYNAMIC 次ページあり
-
-CALL LOOP_CLEARLINE
-
-DRAWLINE
-CALL LIFE_LIST, "助手選択", 0, 表示上限
-;RESULTにはまだ表示されてないキャラが居るかどうか
-次ページあり = RESULT
-DRAWLINE
-PRINTPLAIN 　SELECT ASSI　
-CALL PRINTSPACE, TFLAG:ページ数, "[999] 前ページ "
-PRINTFORM [1000] 戻る 
-CALL PRINTSPACE, 次ページあり, "[1001] 次ページ "
-PRINT [1010] キャラソート 
-SIF ORIGIN
-	PRINT [1011] 登場作品で絞る
-PRINTL 
-
-INPUT
-SELECTCASE RESULT
-	CASE -1
-		SIF 表示上限 > 10
-			表示上限 -= 10
-	CASE -9
-		表示上限 += 10
-	CASE 999
-		SIF TFLAG:ページ数
-			TFLAG:ページ数--
-	CASE 1000
-		RETURN
-	CASE 1001
-		SIF 次ページあり
-			TFLAG:ページ数++
-	CASE 1010
-		CALL CHARA_SORT
-	CASE 1011
-		CALL 登場作品フィルタ設定
-		TFLAG:ページ数 = 0
-	CASE 0
-		ASSI = -1
-		RETURN 0
-	CASE 0 TO CHARANUM-1
-		SIF CFLAG:RESULT:状態 < 2 && !TALENT:RESULT:アニマル
-			RESTART
-		SIF CHECK_CHILD_CARE(RESULT)
-			RESTART
-		SIF CFLAG:RESULT:使用不可
-			RESTART
-		CALL ASSIGN_ASSI, RESULT
-		RETURN
-ENDSELECT
-
-RESTART
-[SKIPEND]
 ;助手指定用関数
-@ASSIGN_ASSI, 助手
+@ASSIGN_ASSI, 助手, 助手番号 = 1
 #DIM DYNAMIC 助手
-ASSI = 助手
+#DIM DYNAMIC 助手番号
+
+ASSI:(助手番号-1) = 助手
 CALL KOJO_MESSAGE_EVENT, "助手指定", 助手
 ;配属してたら自動的に外す
-CALL 配属解除, ASSI
+CALL 配属解除, ASSI:(助手番号-1)
 ;監禁も解除
 SIF CFLAG:助手:監禁
 	CALL 監禁解除, 助手
 ;助手にした際の素質変化用関数
-CALL ASSI_CHANGE
-ISASSI:ASSI = 1
-SIF ASSI == TARGET
-	TARGET = -1
-
-[SKIPSTART]
-@LIFE_LIST, 表示情報, 表示切り替え, 表示上限 = 10
-#DIM DYNAMIC LCOUNT
-#DIM DYNAMIC 表示数
-#DIM DYNAMIC カウント数
-#DIM DYNAMIC 未表示キャラ
-#DIM DYNAMIC LTARGET
-#DIM 表示切り替え
-#DIMS DYNAMIC 表示情報
-#DIM DYNAMIC 表示上限
-
-DRAWLINE
-IF ゲームモード() == "新婚モード"
-	PRINTPLAIN □キャラ一覧 
-ELSE
-	SELECTCASE 表示情報
-		CASE "調教対象選択"
-			PRINTPLAIN □調教対象変更 
-		CASE "助手選択"
-			PRINTPLAIN □助手変更 
-		CASEELSE
-			PRINTPLAIN □キャラ一覧 
-	ENDSELECT
-ENDIF
-PRINTL [-1] 表示上限を減らす [-9] 表示上限を増やす
-
-FOR LCOUNT, 0, CHARANUM
-	RESETCOLOR
-	;1巡目はMASTERとTARGET及びASSIの能力表示
-	IF LCOUNT == 0
-		IF 表示情報 == "助手選択"
-			PRINTL 　[ 0] 助手無し
-		ELSE
-			PRINTFORM 　[ 0] %CALLNAME:MASTER%(主人) \@ SEX(MASTER) == 1 ? ♂ # ♀ \@ 
-			SIF TALENT:MASTER:ふたなり
-				PRINT 双
-			PRINTL 
-		ENDIF
-		;TARGETとASSIはMASTERの下に表示する
-		IF TARGET > 0
-			;助手の指定なら助手不可能なキャラは除外
-			SIF 表示情報 == "助手選択" && CFLAG:状態 < 2 && !TALENT:アニマル
-				CONTINUE
-			CALL STATUS_BAR, TARGET, 表示情報, 表示切り替え
-		ENDIF
-		SIF ASSI > 0
-			CALL STATUS_BAR, ASSI, 表示情報, 表示切り替え
-		DRAWLINE
-		CONTINUE
-	ENDIF
-
-	;2巡目以降は通常のキャラ表示なので条件を指定
-	;助手の指定なら助手不可能なキャラは除外
-	SIF 表示情報 == "助手選択" && CFLAG:LCOUNT:状態 < 2 && !TALENT:LCOUNT:アニマル
-		CONTINUE
-	;登場作品フィルタが設定してあるならそれ以外のキャラは除外
-	SIF 登場作品フィルタ != "" && GROUPMATCH(登場作品フィルタ, CSTR:LCOUNT:登場作品, CSTR:LCOUNT:登場作品２, CSTR:LCOUNT:登場作品３) == 0 && ORIGIN
-		CONTINUE
-	;キャラを表示上限数表示したら終了
-	IF 表示数 >= 表示上限
-		未表示キャラ = 1
-		BREAK
-	ENDIF
-	;対象と助手は主人の下に表示されるので除外
-	SIF GROUPMATCH(LCOUNT, TARGET, ASSI)
-		CONTINUE
-	カウント数++
-	;ページ数×表示上限まで表示を飛ばす
-	SIF TFLAG:ページ数*表示上限 >= カウント数
-		CONTINUE
-	CALL STATUS_BAR, LCOUNT, 表示情報, 表示切り替え
-	表示数++
-NEXT
-DRAWLINE
-PRINTL 　☆：調教中　★：助手　○：助手可　●：元助手 ■：タグ色
-PRINTL 　KA：経営モードに配属中　不：使用不可　妊：妊娠育児中　獣：ペット候補　を表しています
-
-;条件を満たしているにも関わらずまだリスト表示されてないキャラが居れば未表示キャラフラグは1になる
-RETURN 未表示キャラ
-[SKIPEND]
-
-[SKIPSTART]
-;一行で表示できる内容
-@STATUS_BAR, 対象, 表示情報, 表示切り替え
-#DIM DYNAMIC 対象
-#DIMS DYNAMIC 表示情報
-#DIM DYNAMIC 表示切り替え
-#DIM DYNAMIC 文字色
-
-;調教対象の指定、もしくは助手の指定なら、育児部屋に移動しているキャラは灰色表示
-SIF 表示情報 != "通常表示" && CHECK_CHILD_CARE(対象)
-	SETCOLORBYNAME gray
-;調教対象の指定、もしくは助手の指定なら、使用不可のキャラは灰色表示
-SIF 表示情報 != "通常表示" && CFLAG:対象:使用不可
-	SETCOLORBYNAME gray
-
-文字色 = GETCOLOR()
-
-SIF CFLAG:対象:タグ色
-	SETCOLOR CFLAG:対象:タグ色
-
-IF CFLAG:対象:使用不可
-	PRINT 不
-ELSEIF TALENT:対象:アニマル
-	PRINT 獣
-ELSEIF CHECK_CHILD_CARE(対象)
-	PRINT 妊
-ELSEIF 対象 == TARGET
-	PRINT ☆
-ELSEIF 対象 == ASSI
-	PRINT ★
-ELSEIF CSTR:対象:配属 != ""
-	PRINT KA
-;助手経験あり
-ELSEIF ISASSI:対象
-	PRINT ●
-;助手可能
-ELSEIF CFLAG:対象:状態 >= 2
-	PRINT ○
-ELSEIF CFLAG:対象:タグ色
-	PRINT ■
-ELSE
-	PRINT 　
-ENDIF
-
-SETCOLOR 文字色
-
-;調教対象の指定、もしくは助手の指定なら、育児部屋に移動しているキャラと使用不可キャラは選べない
-IF 表示情報 != "通常表示" && (CHECK_CHILD_CARE(対象) || CFLAG:対象:使用不可)
-	PRINTFORM [--] %CALLNAME:対象, 20, LEFT%
-ELSE
-	PRINTFORM [{対象, 2}] %CALLNAME:対象, 20, LEFT%
-ENDIF
-
-;上記のキャラを表示したら詳細情報も表示
-;助手選択画面では表示しない
-IF 表示情報 != "助手選択"
-	;表示切り替え中は経営用の情報表示
-	IF 表示切り替え
-		PRINT 配属先:
-		IF CSTR:対象:配属 != ""
-			PRINTFORM %CSTR:対象:配属, 20, LEFT% 
-		ELSE
-			PRINTFORM %"無し", 20, LEFT% 
-		ENDIF
-		PRINT モチベーション:
-		SELECTCASE CFLAG:対象:モチベーション
-			CASE 1 TO 9
-				SETCOLORBYNAME gray
-				PRINT 皆無
-			CASE 10 TO 39
-				SETCOLORBYNAME yellow
-				PRINT 微妙
-			CASE 40 TO 60
-				PRINT 普通
-			CASE 61 TO 90
-				SETCOLORBYNAME cyan
-				PRINT 良好
-			CASE 91 TO 100
-				SETCOLORBYNAME lime
-				PRINT 最高
-		ENDSELECT
-		PRINTFORM {CFLAG:対象:モチベーション, 3}/100 
-		RESETCOLOR
-	ELSE
-		PRINTFORM 体力%BARBASE("体力", 対象, 10), 23, LEFT% 
-		PRINTFORM 気力%BARBASE("気力", 対象, 10), 23, LEFT% 
-	ENDIF
-ENDIF
-SELECTCASE SEX(対象)
-	CASE 1
-		PRINT ♂ 
-	CASE 2
-		PRINT ♀ 
-ENDSELECT
-SELECTCASE 表示情報
-	CASE "調教対象選択"
-		SIF TALENT:対象:処女
-			PRINT 処女 
-		SIF TALENT:対象:再生処女
-			PRINT 再生処女 
-		SIF TALENT:対象:童貞
-			PRINT 童貞 
-		SIF TALENT:対象:恋慕
-			PRINT 恋慕 
-		SIF TALENT:対象:淫乱
-			PRINT 淫乱 
-		SIF TALENT:対象:服従
-			PRINT 服従 
-		SIF TALENT:対象:親愛
-			PRINT 親愛 
-		SIF TALENT:対象:淫魔
-			PRINT 娼婦 
-		SIF TALENT:対象:隷属
-			PRINT 隷属 
-		SIF TALENT:対象:崩壊
-			PRINT 崩壊 
-		SIF TALENT:対象:ふたなり
-			PRINT 双 
-		SIF TALENT:対象:リミットバースト
-			PRINT 超 
-		SIF TALENT:対象:スライム || TALENT:対象:溶ける快
-			PRINT 粘 
-	CASE "助手選択"
-		SELECTCASE SEX(対象)
-			CASE 1
-				PRINTFORM 技巧Lv{ABL:対象:技巧} ホモっ気Lv{ABL:対象:ホモっ気} ゲイ中毒Lv{ABL:対象:ゲイ中毒} 
-			CASE 2
-				PRINTFORM 技巧Lv{ABL:対象:技巧} レズっ気Lv{ABL:対象:レズっ気} レズ中毒Lv{ABL:対象:レズ中毒} 
-		ENDSELECT
-		SIF TALENT:対象:両刀
-			PRINT 両刀 
-		SIF TALENT:対象:ふたなり
-			PRINT ふたなり
-	CASEELSE
-		PRINT ストレス値:
-		CALL ストレス表示, 対象
-ENDSELECT
-RESETCOLOR
-PRINTL 
-[SKIPEND]
-
+CALL ASSI_CHANGE, 助手番号
+ISASSI:(ASSI:(助手番号-1)) = 1
+SIF ASSI:(助手番号-1) == ASSI
+	ASSI = -1
+SIF ASSI:(助手番号-1) == ASSI:1
+	ASSI:1 = -1
 
 ;;;キャラソート
 @CHARA_SORT

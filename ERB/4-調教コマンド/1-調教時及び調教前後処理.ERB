@@ -41,6 +41,11 @@ SIF トイレ使用中
 SIF 野外プレイ中
 	TEQUIP:野外プレイ = 1
 
+SIF ASSI == -1 && ASSI:1 > 0
+	SWAP ASSI, ASSI:1
+
+TMASTER = 0
+
 ;初期着衣設定に応じて、服の設定をする
 CSTR始点 = GETNUM(CSTR, "特殊")
 TEQUIP始点 = GETNUM(TEQUIP, "特殊")
@@ -52,6 +57,10 @@ FOR LCOUNT, 0, 7
 	IF ASSI > 0
 		SIF CSTR:ASSI:(CSTR始点+LCOUNT) != ""
 			TEQUIP:ASSI:(TEQUIP始点+LCOUNT) = 1
+	ENDIF
+	IF ASSI:1 > 0
+		SIF CSTR:(ASSI:1):(CSTR始点+LCOUNT) != ""
+			TEQUIP:(ASSI:1):(TEQUIP始点+LCOUNT) = 1
 	ENDIF
 NEXT
 
@@ -71,6 +80,8 @@ SELECTCASE FLAG:着衣設定
 		VARSET TEQUIP:TARGET:0, 0, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
 		SIF ASSI > 0
 			VARSET TEQUIP:ASSI:0, 0, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
+		SIF ASSI:1 > 0
+			VARSET TEQUIP:(ASSI:1):0, 0, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
 	CASE 4
 		VARSET TEQUIP:TARGET:0, 0, GETNUM(TEQUIP, "上半身上着"), GETNUM(TEQUIP, "下半身下着")+1
 ENDSELECT
@@ -83,7 +94,7 @@ SIF CFLAG:死亡 && !TEQUIP:仮死薬
 CALL 豹変イベント, 1
 
 ;条件を満たしていればユリア天使化
-SIF GROUPMATCH("鬼蝮 ユリア", CHARANAMEF(TARGET), CHARANAMEF(ASSI)) && GROUPMATCH("イングリット・オーリック・コーネル", CHARANAMEF(TARGET), CHARANAMEF(ASSI))
+SIF GROUPMATCH("鬼蝮 ユリア", CHARANAMEF(TARGET), CHARANAMEF(ASSI), CHARANAMEF(ASSI:1)) && GROUPMATCH("イングリット・オーリック・コーネル", CHARANAMEF(TARGET), CHARANAMEF(ASSI))
 	CALL ユリア天使化
 
 ;実行コマンド、直前の実行コマンドフラグを初期化
@@ -103,11 +114,15 @@ IF TALENT:服従
 		CALL 相性加算, TARGET, MASTER, 120, 120
 	SIF ASSI > 0 && 相性値(TARGET, ASSI) < 120
 		CALL 相性加算, TARGET, ASSI, 120, 120
+	SIF ASSI:1 > 0 && 相性値(TARGET, ASSI:1) < 120
+		CALL 相性加算, TARGET, ASSI:1, 120, 120
 ELSEIF TALENT:隷属
 	SIF 相性値(TARGET, MASTER) < 150
 		CALL 相性加算, TARGET, MASTER, 150, 150
 	SIF ASSI > 0 && 相性値(TARGET, ASSI) < 150
 		CALL 相性加算, TARGET, ASSI, 150, 150
+	SIF ASSI > 0 && 相性値(TARGET, ASSI:1) < 150
+		CALL 相性加算, TARGET, ASSI:1, 150, 150
 ENDIF
 
 ;助手もまた然り
@@ -115,13 +130,27 @@ IF ASSI > 0
 	IF TALENT:ASSI:服従
 		SIF 相性値(ASSI, MASTER) < 120
 			CALL 相性加算, ASSI, MASTER, 120, 120
-		SIF ASSI > 0 && 相性値(ASSI, TARGET) < 120
+		SIF 相性値(ASSI, TARGET) < 120
 			CALL 相性加算, ASSI, TARGET, 120, 120
 	ELSEIF TALENT:ASSI:隷属
 		SIF 相性値(ASSI, MASTER) < 150
 			CALL 相性加算, ASSI, MASTER, 150, 150
-		SIF ASSI > 0 && 相性値(ASSI, TARGET) < 150
+		SIF 相性値(ASSI, TARGET) < 150
 			CALL 相性加算, ASSI, TARGET, 150, 150
+	ENDIF
+ENDIF
+
+IF ASSI:1 > 0
+	IF TALENT:(ASSI:1):服従
+		SIF 相性値(ASSI:1, MASTER) < 120
+			CALL 相性加算, ASSI:1, MASTER, 120, 120
+		SIF 相性値(ASSI:1, TARGET) < 120
+			CALL 相性加算, ASSI, TARGET, 120, 120
+	ELSEIF TALENT:(ASSI:1):隷属
+		SIF 相性値(ASSI:1, MASTER) < 150
+			CALL 相性加算, ASSI:1, MASTER, 150, 150
+		SIF 相性値(ASSI:1, TARGET) < 150
+			CALL 相性加算, ASSI:1, TARGET, 150, 150
 	ENDIF
 ENDIF
 
@@ -158,20 +187,22 @@ SIF CFLAG:ミッドナイトスペシャル
 	最大値 /= 2
 MAXBASE:射精 = 最大値
 
-IF ASSI >= 0
-	最大値 = 10000
-	SIF TALENT:ASSI:絶倫
-		最大値 /= 2
-	SIF TALENT:ASSI:体格 == 1
-		最大値 *= 2
-	SIF SEX(ASSI) == 2
-		最大値 *= 2
-	SIF TALENT:ASSI:Ｃ鈍感
-		TIMES 最大値, 1.50
-	SIF CFLAG:ASSI:ミッドナイトスペシャル
-		最大値 /= 2
-	MAXBASE:ASSI:射精 = 最大値
-ENDIF
+FOR LCOUNT, 0, 2
+	IF ASSI:LCOUNT >= 0
+		最大値 = 10000
+		SIF TALENT:(ASSI:LCOUNT):絶倫
+			最大値 /= 2
+		SIF TALENT:(ASSI:LCOUNT):体格 == 1
+			最大値 *= 2
+		SIF SEX(ASSI:LCOUNT) == 2
+			最大値 *= 2
+		SIF TALENT:(ASSI:LCOUNT):Ｃ鈍感
+			TIMES 最大値, 1.50
+		SIF CFLAG:(ASSI:LCOUNT):ミッドナイトスペシャル
+			最大値 /= 2
+		MAXBASE:(ASSI:LCOUNT):射精 = 最大値
+	ENDIF
+NEXT
 
 IF TALENT:母乳体質
 	最大値 = 10000
@@ -186,6 +217,8 @@ MAXBASE:MASTER:触手射精 = 10000
 MAXBASE:MASTER:ドラゴン射精 = 10000
 SIF ASSI > 0
 	MAXBASE:ASSI:ドラゴン射精 = 10000
+SIF ASSI:1 > 0
+	MAXBASE:(ASSI:1):ドラゴン射精 = 10000
 
 ; SCAT MOD
 IF MOD:SCAT
@@ -204,6 +237,10 @@ BASE:MASTER:ドラゴン射精 = 0
 IF ASSI >= 0
 	BASE:ASSI:射精 = 0
 	BASE:ASSI:ドラゴン射精 = 0
+ENDIF
+IF ASSI:1 >= 0
+	BASE:(ASSI:1):射精 = 0
+	BASE:(ASSI:1):ドラゴン射精 = 0
 ENDIF
 ;母乳も0に
 BASE:母乳 = 0
@@ -228,24 +265,30 @@ SIF エナジードライブ
 SIF !PENIS(MASTER) && !TALENT:MASTER:去勢済み && !ISSLIME(TARGET)
 	CFLAG:MASTER:残数 = 0
 
-IF ASSI >= 0
-	CFLAG:ASSI:残数 = 10
-	SIF TALENT:ASSI:絶倫
-		CFLAG:ASSI:残数 += 5
-	SIF !PENIS(ASSI) && !TALENT:ASSI:去勢済み && !ISSLIME(TARGET)
-		CFLAG:ASSI:残数 = 0
-ENDIF
+FOR LCOUNT, 0, 2
+	IF ASSI:LCOUNT >= 0
+		CFLAG:(ASSI:LCOUNT):残数 = 10
+		SIF TALENT:(ASSI:LCOUNT):絶倫
+			CFLAG:(ASSI:LCOUNT):残数 += 5
+		SIF !PENIS(ASSI:LCOUNT) && !TALENT:(ASSI:LCOUNT):去勢済み && !ISSLIME(LCOUNT)
+			CFLAG:(ASSI:LCOUNT):残数 = 0
+	ENDIF
+NEXT
 
 CFLAG:射精飾り値 = 0
 CFLAG:MASTER:射精飾り値 = 0
-SIF ASSI >= 0
-	CFLAG:ASSI:射精飾り値 = 0
+FOR LCOUNT, 0, 2
+	SIF ASSI:LCOUNT >= 0
+		CFLAG:(ASSI:LCOUNT):射精飾り値 = 0
+NEXT
 
 ;賢者タイムをリセット
 CFLAG:MASTER:賢者タイム = 0
 CFLAG:賢者タイム = 0
-SIF ASSI >= 0
-	CFLAG:ASSI:賢者タイム = 0
+FOR LCOUNT, 0, 2
+	SIF ASSI:LCOUNT >= 0
+		CFLAG:(ASSI:LCOUNT):賢者タイム = 0
+NEXT
 
 ;TFLAGをリセット
 VARSET TFLAG
@@ -269,15 +312,17 @@ SIF CFLAG:死亡 || TEQUIP:睡眠
 ;	OPTION:口上表示 = 0
 
 ;淫乱なら膣内にヴァギナ汚れを付加
+;淫乱ならペニスに先走り付加
 SIF TALENT:淫乱 && VAGINA(TARGET) && !CFLAG:死亡
 	SETBIT STAIN:膣内, 0
-SIF ASSI >= 0 && TALENT:ASSI:淫乱 && VAGINA(ASSI)
-	SETBIT STAIN:ASSI:膣内, 0
-;淫乱ならペニスに先走り付加
 SIF TALENT:淫乱 && PENIS(TARGET) && !CFLAG:死亡
 	SETBIT STAIN:ペニス, 1
-SIF ASSI >= 0 && TALENT:ASSI:淫乱 && PENIS(ASSI)
-	SETBIT STAIN:ASSI:ペニス, 1
+FOR LCOUNT, 0, 2
+	SIF ASSI:LCOUNT >= 0 && TALENT:(ASSI:LCOUNT):淫乱 && VAGINA(ASSI:LCOUNT)
+		SETBIT STAIN:ASSI:膣内, 0
+	SIF ASSI:LCOUNT >= 0 && TALENT:(ASSI:LCOUNT):淫乱 && PENIS(ASSI:LCOUNT)
+		SETBIT STAIN:ASSI:ペニス, 1
+NEXT
 ;主人は無条件で先走りと愛液付加
 SIF VAGINA(MASTER)
 	SETBIT STAIN:MASTER:ヴァギナ, 0
@@ -287,8 +332,10 @@ SIF PENIS(MASTER)
 ;媚薬の効果をリセット
 CFLAG:MASTER:媚薬 = 0
 CFLAG:媚薬 = 0
-SIF ASSI > 0
-	CFLAG:ASSI:媚薬 = 0
+FOR LCOUNT, 0, 2
+	SIF ASSI:LCOUNT > 0
+		CFLAG:(ASSI:LCOUNT):媚薬 = 0
+NEXT
 
 ;コンドーム射精フラグをリセット
 TFLAG:使用済み避妊具 = 0
@@ -301,10 +348,12 @@ IF ITEM:コンドーム && GETBIT(FLAG:避妊具設定, 0) && PENIS(MASTER) && !
 	TEQUIP:MASTER:コンドーム = 1
 	ITEM:コンドーム--
 ENDIF
-IF ASSI > 0 && ITEM:コンドーム && GETBIT(FLAG:避妊具設定, 1) && PENIS(ASSI) && !Ｐ使用不可(ASSI)
-	TEQUIP:ASSI:コンドーム = 1
-	ITEM:コンドーム--
-ENDIF
+FOR LCOUNT, 0, 2
+	IF ASSI:LCOUNT > 0 && ITEM:コンドーム && GETBIT(FLAG:避妊具設定, 1) && PENIS(ASSI:LCOUNT) && !Ｐ使用不可(ASSI:LCOUNT)
+		TEQUIP:(ASSI:LCOUNT):コンドーム = 1
+		ITEM:コンドーム--
+	ENDIF
+NEXT
 IF ITEM:コンドーム && GETBIT(FLAG:避妊具設定, 2) && PENIS(TARGET) && !Ｐ使用不可(TARGET)
 	TEQUIP:コンドーム = 1
 	ITEM:コンドーム--
@@ -324,8 +373,10 @@ VARSET 写真価格
 ;ドラゴンの名前が無い場合、名前を「ドラゴン」に
 SIF TALENT:MASTER:ドラゴン使い && CSTR:MASTER:ドラゴン == ""
 	CSTR:MASTER:ドラゴン = ドラゴン
-SIF ASSI >= 0 && TALENT:ASSI:ドラゴン使い && CSTR:ASSI:ドラゴン == ""
-	CSTR:ASSI:ドラゴン = ドラゴン
+FOR LCOUNT, 0, 2
+	SIF ASSI:LCOUNT >= 0 && TALENT:(ASSI:LCOUNT):ドラゴン使い && CSTR:(ASSI:LCOUNT):ドラゴン == ""
+		CSTR:(ASSI:LCOUNT):ドラゴン = ドラゴン
+NEXT
 
 ;種族宇宙人の感度変化
 CALL 宇宙人感度変化, TARGET
@@ -407,8 +458,10 @@ CVARSET TEQUIP, GETNUM(TEQUIP, "妊娠確率分子"), 1
 ;対象が霊体、ゾンビ、死体ならネクロ経験の増加
 IF TALENT:霊体 || TALENT:ゾンビ || (CFLAG:死亡 && !TEQUIP:仮死薬)
 	CFLAG:MASTER:ネクロ経験++
-	SIF ASSI > 0
-		CFLAG:ASSI:ネクロ経験++
+	FOR LCOUNT, 0, 2
+		SIF ASSI:LCOUNT > 0
+			CFLAG:(ASSI:LCOUNT):ネクロ経験++
+	NEXT
 ENDIF
 
 ;オナホパフェフラグリセット
@@ -454,12 +507,12 @@ SIF SUMARRAY(ITEM) == 0
 
 ;実績:ロッテとラッテを対面させる
 IF ASSI > 0
-	SIF (CHARANAMEF(TARGET) == "ロッテ" && CHARANAMEF(ASSI) == "ラッテ") || (CHARANAMEF(TARGET) == "ラッテ" && CHARANAMEF(ASSI) == "ロッテ")
+	SIF (CHARANAMEF(TARGET) == "ロッテ" && GROUPMATCH("ラッテ", CHARANAMEF(ASSI), CHARANAMEF(ASSI:1))) || (CHARANAMEF(TARGET) == "ラッテ" && GROUPMATCH("ロッテ", CHARANAMEF(ASSI), CHARANAMEF(ASSI:1)))
 		CALL 実績解除, "パラドックス"
 ENDIF
 
 ;実績;パステルくん主人で奴隷と好相性の助手を使用する
-SIF CHARANAMEF(MASTER) == "パステルくん" && ASSI > 0 && 相性値(TARGET, ASSI) > 100
+SIF CHARANAMEF(MASTER) == "パステルくん" && ((ASSI > 0 && 相性値(TARGET, ASSI) > 100) && ASSI > 0 && (相性値(TARGET, ASSI:1) > 100))
 	CALL 実績解除, "「わ～いらくち～ん」"
 
 SIF CHARANAMEF(TARGET) == "小野 美苗"
