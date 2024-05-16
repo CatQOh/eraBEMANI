@@ -17,7 +17,9 @@ SELECTCASE MODページ
 		CALL COLUMNPRINTL, 0, "□性別関連MOD(新しく購入、追加したキャラにのみ適用。各MODの重複は不可)"
 		CALL COLUMNPRINTL, 0, @"　[1] - MOD:男性化(現在:\@ MOD:男性化 ? オン # オフ \@) 全てのキャラが男性になる", @"\@ MOD:男性化 ? deepskyblue #\@"
 		CALL COLUMNPRINTL, 0, @"　[2] - MOD:女性化(現在:\@ MOD:女性化 ? オン # オフ \@) 全てのキャラが女性になる", @"\@ MOD:女性化 ? deepskyblue #\@"
-		CALL COLUMNPRINTL, 0, @"　[3] - MOD:性転換(現在:\@ MOD:性転換 ? オン # オフ \@) 全てのキャラが性転換する", @"\@ MOD:性転換 ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[3] - MOD:女性化TSバストサイズランダム(現在:\@ MOD:女性化TSバストサイズランダム ? オン # オフ \@) 全てのキャラが女性になりバストサイズがランダムで決定される", @"\@ MOD:女性化TSバストサイズランダム ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[4] - MOD:性転換(現在:\@ MOD:性転換 ? オン # オフ \@) 全てのキャラが性転換する", @"\@ MOD:性転換 ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[5] - MOD:性転換TSバストサイズランダム(現在:\@ MOD:性転換TSバストサイズランダム ? オン # オフ \@) 全てのキャラが性転換し女性化したキャラのバストサイズがランダムで決定される", @"\@ MOD:性転換TSバストサイズランダム ? deepskyblue #\@"
 		CALL COLUMNPRINTL, 0, ""
 		CALL COLUMNPRINTL, 0, "□体質関連MOD(新しく購入、追加したキャラにのみ適用)"
 		CALL COLUMNPRINTL, 0, @"　[11] - MOD:爆乳(現在:\@ MOD:爆乳 ? オン # オフ \@) 全ての女性キャラが爆乳になる。MOD:絶壁との重複不可", @"\@ MOD:爆乳 ? deepskyblue #\@"
@@ -137,15 +139,33 @@ ELSE
 		CASE 1
 			INVERTBIT MOD:男性化, 0
 			MOD:女性化 = 0
+			MOD:女性化TSバストサイズランダム = 0
 			MOD:性転換 = 0
+			MOD:性転換TSバストサイズランダム = 0
 		CASE 2
 			INVERTBIT MOD:女性化, 0
 			MOD:男性化 = 0
+			MOD:女性化TSバストサイズランダム = 0
 			MOD:性転換 = 0
+			MOD:性転換TSバストサイズランダム = 0
 		CASE 3
+			INVERTBIT MOD:女性化TSバストサイズランダム, 0
+			MOD:男性化 = 0
+			MOD:女性化 = 0
+			MOD:性転換 = 0
+			MOD:性転換TSバストサイズランダム = 0
+		CASE 4
 			INVERTBIT MOD:性転換, 0
 			MOD:男性化 = 0
 			MOD:女性化 = 0
+			MOD:女性化TSバストサイズランダム = 0
+			MOD:性転換TSバストサイズランダム = 0
+		CASE 5
+			INVERTBIT MOD:性転換TSバストサイズランダム, 0
+			MOD:男性化 = 0
+			MOD:女性化 = 0
+			MOD:女性化TSバストサイズランダム = 0
+			MOD:性転換 = 0
 		CASE 11
 			INVERTBIT MOD:爆乳, 0
 			MOD:絶壁 = 0
@@ -417,7 +437,22 @@ TARGET = LTARGET
 #DIM DYNAMIC 対象
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC 乱数
+#DIM DYNAMIC TSバストサイズランダム化
 
+[SKIPSTART]
+;ここで選択肢入れると学園モードとかが大変なことになるのでコメントアウト
+PRINTL 女体化したキャラのバストサイズをランダム化しますか？
+PRINTL [0] - はい
+PRINTL [1] - いいえ
+選択肢 = RESULT
+SELECTCASE RESULT
+	CASE 0
+		PRINTL 女体化したキャラのバストサイズがランダム化します。
+		TSバストサイズランダム化 = 1
+	CASE 1
+		PRINTL ランダム化せず、キャラの体格に依存したバストサイズになります。
+ENDSELECT
+[SKIPEND]
 LTARGET = TARGET
 TARGET = 対象
 
@@ -523,6 +558,160 @@ ENDIF
 
 TARGET = LTARGET
 
+@APPLY_MOD_女性化TSバストサイズランダム, 対象
+#DIM DYNAMIC 対象
+#DIM DYNAMIC LTARGET
+#DIM DYNAMIC 乱数
+
+LTARGET = TARGET
+TARGET = 対象
+
+IF TALENT:性別 == 1
+	TALENT:性別 = 2
+	;以下MOD:ふたなりが入ってなければ適用
+	IF !MOD:ふたなり
+		IF TALENT:童貞
+			TALENT:処女 = 1
+			TALENT:童貞 = 0
+		ELSE
+			CSTR:処女 = %CSTR:童貞%
+			CSTR:童貞 = 
+		ENDIF
+		IF TALENT:勃ちやすい
+			TALENT:濡れやすい = 1
+			TALENT:勃ちやすい = 0
+		ENDIF
+		IF TALENT:勃ちにくい
+			TALENT:濡れにくい = 1
+			TALENT:勃ちにくい = 0
+		ENDIF
+		;性別変わって適応される要素
+		EXP:絶頂経験 += EXP:射精経験
+		EXP:射精経験 = 0
+		SIF !TALENT:処女
+			EXP:Ｖ経験 += EXP:性交経験
+		;消す要素
+		EXP:射精経験 = 0
+		;性経験履歴 経験回数、人数以外はリセットで
+		VARSET 中出し回数
+		VARSET アナル中出し回数
+		VARSET 孕ませ回数
+		VARSET 中出され回数
+		VARSET アナル中出され回数
+		VARSET 孕み回数
+
+		VARSET モブ中出し回数
+		VARSET モブアナル中出し回数
+		VARSET モブ孕ませ回数
+		VARSET モブ中出され回数
+		VARSET モブアナル中出され回数
+		VARSET モブ孕み回数
+	ENDIF
+
+	EXP:レズ経験 += EXP:ゲイ経験
+	EXP:ゲイ経験 = 0
+	ABL:レズっ気 += ABL:ホモっ気
+	ABL:ホモっ気 = 0
+	ABL:レズ中毒 += ABL:ゲイ中毒
+	ABL:ゲイ中毒 = 0
+
+	IF TALENT:体格 <= 2
+		SELECTCASE RAND:100
+			;小柄体型は15%で絶壁
+			CASE IS < 15
+				TALENT:バストサイズ = 1
+			;小柄体型は40%で貧乳
+			CASE IS < 55
+				TALENT:バストサイズ = 2
+			;小柄体型は25%で普乳
+			CASE IS < 80
+				TALENT:バストサイズ = 3
+			;小柄体型は8%で巨乳
+			CASE IS < 88
+				TALENT:バストサイズ = 4
+			;小柄体型は7%で豊乳
+			CASE IS < 95
+				TALENT:バストサイズ = 5
+			;小柄体型は5%で爆乳
+			CASEELSE
+				TALENT:バストサイズ = 6
+		ENDSELECT
+	ELSE
+		SELECTCASE RAND:100
+			;普通体型は10%で絶壁
+			CASE IS < 10
+				TALENT:バストサイズ = 1
+			;普通体型は23%で貧乳
+			CASE IS < 33
+				TALENT:バストサイズ = 2
+			;普通体型は34%で普乳
+			CASE IS < 67
+				TALENT:バストサイズ = 3
+			;普通体型は13%で巨乳
+			CASE IS < 80
+				TALENT:バストサイズ = 4
+			;普通体型は10%で豊乳
+			CASE IS < 90
+				TALENT:バストサイズ = 5
+			;普通体型は10%で爆乳
+			CASEELSE
+				TALENT:バストサイズ = 6
+		ENDSELECT
+	ENDIF
+
+	ABL:メス度 = 0
+
+	;衣服をある程度調整
+	IF CSTR:上半身下着 == "インナーシャツ"
+		CFLAG:下着パイズリ = 0
+		乱数 = RAND:100
+		SELECTCASE TALENT:バストサイズ
+			CASE IS >= 4
+				IF 乱数 < 15
+					CSTR:上半身下着 = スポーツブラ
+				ELSE
+					CSTR:上半身下着 = ブラジャー
+				ENDIF
+			CASE 3
+				IF 乱数 < 25
+					CSTR:上半身下着 = スポーツブラ
+				ELSE
+					CSTR:上半身下着 = ブラジャー
+				ENDIF
+			CASE 2
+				IF 乱数 >= 20
+					CSTR:上半身下着 = スポーツブラ
+				ELSEIF 乱数 >= 10
+					CSTR:上半身下着 = ブラジャー
+				ELSE
+					CSTR:上半身下着 = 
+				ENDIF
+			CASE 1
+				IF 乱数 >= 40
+					CSTR:上半身下着 = スポーツブラ
+				ELSE
+					CSTR:上半身下着 = 
+				ENDIF
+		ENDSELECT
+		SIF CSTR:上半身下着 == "ブラジャー"
+			CFLAG:下着パイズリ = 4
+	ENDIF
+	IF CSTR:下半身下着 == "ボクサーパンツ" || CSTR:下半身下着 == "ボクサーブリーフ" || CSTR:下半身下着 == "トランクス"
+		SIF RANDPER(95)
+			CSTR:下半身下着 = パンティ
+	ELSEIF CSTR:下半身下着 == "ブリーフ"
+		IF RANDPER(80)
+			CSTR:下半身下着 = ショーツ
+		ELSE
+			CSTR:下半身下着 = パンティ
+		ENDIF
+	ENDIF
+
+	CSTR:適用MOD += "[MOD:女性化TSバストサイズランダム]"
+ENDIF
+
+TARGET = LTARGET
+
 @APPLY_MOD_性転換, 対象
 #DIM DYNAMIC 対象
 #DIM DYNAMIC LTARGET
@@ -538,6 +727,24 @@ SELECTCASE TALENT:性別
 ENDSELECT
 
 CSTR:適用MOD += "[MOD:性転換]"
+
+TARGET = LTARGET
+
+@APPLY_MOD_性転換TSバストサイズランダム, 対象
+#DIM DYNAMIC 対象
+#DIM DYNAMIC LTARGET
+
+LTARGET = TARGET
+TARGET = 対象
+
+SELECTCASE TALENT:性別
+	CASE 1
+		CALL APPLY_MOD_女性化TSバストサイズランダム, TARGET
+	CASE 2
+		CALL APPLY_MOD_男性化, TARGET
+ENDSELECT
+
+CSTR:適用MOD += "[MOD:性転換TSバストサイズランダム]"
 
 TARGET = LTARGET
 
