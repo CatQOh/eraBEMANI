@@ -1010,6 +1010,39 @@ ENDIF
 
 @SHOP_キャラ・アイテム購入_INPUT
 #DIMS DYNAMIC 購入アイテム分類
+#DIM DYNAMIC 消耗品一括購入価格
+#DIM DYNAMIC 道具一括購入価格
+#DIM DYNAMIC 施設一括購入価格
+#DIM CONST 購入単位 = 5, 10, 50, 99
+#DIM DYNAMIC 個数
+#DIM DYNAMIC LCOUNT
+
+;一括購入に必要な価格を計算する
+道具一括購入価格 = 0
+消耗品一括購入価格 = 0
+施設一括購入価格 = 0
+FOR LCOUNT, 0, 300
+	SIF !ITEMSALES:LCOUNT || ITEMNAME:LCOUNT == ""
+		CONTINUE
+	SELECTCASE LCOUNT
+		CASE 0 TO 99
+			IF 値引き可能()
+				道具一括購入価格 += ITEMPRICE:LCOUNT*7/10
+			ELSE
+				道具一括購入価格 += ITEMPRICE:LCOUNT
+			ENDIF
+		CASE 100 TO 199
+			施設一括購入価格 += ITEMPRICE:LCOUNT
+		CASE 200 TO 299
+			IF 値引き可能()
+				消耗品一括購入価格 += ITEMPRICE:LCOUNT*8/10
+			ELSE
+				消耗品一括購入価格 += ITEMPRICE:LCOUNT
+			ENDIF
+	ENDSELECT
+NEXT
+
+
 SELECTCASE CRESULT:1
 	CASE -1
 		SHOP_アイテム分類 = 調教道具
@@ -1025,6 +1058,39 @@ SELECTCASE CRESULT:1
 		SHOP_アイテム分類 = 本
 	CASE -7
 		SHOP_アイテム分類 = すべて
+	CASE -10
+		IF 道具一括購入価格 > MONEY && !ORIGIN
+			PRINTW 所持金が足りません
+			RESTART
+		ENDIF
+		FOR LCOUNT, 0, 100
+			SIF !ITEMSALES:LCOUNT || ITEMNAME:LCOUNT == ""
+				CONTINUE
+			SIF ITEMNAME:LCOUNT == "コナステ解約"
+				CONTINUE
+			CALL ITEMBUY_DECIDE, ITEMNAME:LCOUNT, "買い切り", 1
+		NEXT
+	CASE -29 TO -20
+		個数 = 購入単位:ABS(CRESULT:1%10)
+		IF 消耗品一括購入価格*個数 > MONEY && !ORIGIN
+			PRINTW 所持金が足りません
+			RESTART
+		ENDIF
+		FOR LCOUNT, 200, 300
+			SIF !ITEMSALES:LCOUNT || ITEMNAME:LCOUNT == ""
+				CONTINUE
+			CALL ITEMBUY_DECIDE, ITEMNAME:LCOUNT, "複数購入可", 個数
+		NEXT
+	CASE -30
+		IF 施設一括購入価格 > MONEY && !ORIGIN
+			PRINTW 所持金が足りません
+			RESTART
+		ENDIF
+		FOR LCOUNT, 100, 200
+			SIF !ITEMSALES:LCOUNT || ITEMNAME:LCOUNT == ""
+				CONTINUE
+			CALL ITEMBUY_DECIDE, ITEMNAME:LCOUNT, "買い切り", 1
+		NEXT
 	CASE 2000
 		CALL TUTORIAL, "奴隷購入"
 		CALL CHARA_BUY
