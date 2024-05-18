@@ -1,55 +1,4 @@
-﻿;アイテムインターフェース改良用の関数郡
-[SKIPSTART]
-@SHOPITEM_BUY
-#DIMS DYNAMIC アイテム分類
-DRAWLINE
-SIF !ORIGIN
-	CALL PASELIL, @"所持金:{MONEY}＄"
-CALL ITEMPRINT
-DRAWLINE
-
-PRINTL 　[0] 調教道具
-PRINTL 　[1] 消耗品・お酒
-PRINTL 　[2] 素質アイテム
-PRINTL 　[3] 薬品類
-PRINTL 　[4] 施設・設備
-PRINTL 　[5] 本・特殊技能
-PRINTL 　[6] すべて
-DRAWLINE
-PRINTPLAIN 　ITEM　
-PRINTL [9] 戻る
-
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0 TO 6
-			SELECTCASE RESULT
-				CASE 0
-					アイテム分類 = 調教道具
-				CASE 1
-					アイテム分類 = 消耗品
-				CASE 2
-					アイテム分類 = 素質アイテム
-				CASE 3
-					アイテム分類 = 薬品類
-				CASE 4
-					アイテム分類 = 施設
-				CASE 5
-					アイテム分類 = 本
-				CASE 6
-					アイテム分類 = すべて
-			ENDSELECT
-			CALL SHOPITEM_LIST, アイテム分類
-			BREAK
-		CASE 9
-			RETURN 0
-	ENDSELECT
-LOOP 1
-
-RESTART
-[SKIPEND]
-
-;PRINT_ITEM命令が微妙だったので作成 所持アイテムを表示する
+﻿;PRINT_ITEM命令が微妙だったので作成 所持アイテムを表示する
 @ITEMPRINT, カラム
 #DIMS DYNAMIC 表示用
 #DIM DYNAMIC LCOUNT
@@ -239,6 +188,11 @@ ENDIF
 #DIM DYNAMIC 条件判定
 #DIM DYNAMIC リミットバースト有り
 #DIM DYNAMIC カラム
+#DIM DYNAMIC 消耗品一括購入価格
+#DIM DYNAMIC 道具一括購入価格
+#DIM DYNAMIC 施設一括購入価格
+#DIM CONST 購入単位 = 5, 10, 50, 99
+#DIM DYNAMIC 個数
 
 ;条件判定フラグ(能力表示画面からのアイテム使用)が立っている場合は一応SKIPDISPをかける
 SIF 条件判定
@@ -451,12 +405,60 @@ SELECTCASE アイテム分類
 		ENDSELECT
 ENDSELECT
 
-SIF !カラム
-	CALL CHECKDRAWLINE
-
 ;主人か助手が買い物上手ならアイテム2割引き、消耗品3割引き
 SIF 値引き可能()
 	割引 = 1
+
+;アイテム一括購入
+IF カラム
+	;一括購入に必要な価格を計算する
+	道具一括購入価格 = 0
+	消耗品一括購入価格 = 0
+	施設一括購入価格 = 0
+	FOR LCOUNT, 0, 300
+		SIF !ITEMSALES:LCOUNT || ITEMNAME:LCOUNT == ""
+			CONTINUE
+		SELECTCASE LCOUNT
+			CASE 0 TO 99
+				IF 割引
+					道具一括購入価格 += ITEMPRICE:LCOUNT*7/10
+				ELSE
+					道具一括購入価格 += ITEMPRICE:LCOUNT
+				ENDIF
+			CASE 100 TO 199
+				施設一括購入価格 += ITEMPRICE:LCOUNT
+			CASE 200 TO 299
+				SIF ITEMNAME:LCOUNT == "おイモ"
+					CONTINUE
+				IF 割引
+					消耗品一括購入価格 += ITEMPRICE:LCOUNT*8/10
+				ELSE
+					消耗品一括購入価格 += ITEMPRICE:LCOUNT
+				ENDIF
+		ENDSELECT
+	NEXT
+
+	IF 道具一括購入価格
+		CALL MCOLUMNPRINT, @"%SPACESLENS("□アイテム購入 ")%"
+		CALL MCOLUMNPRINTL, @"[-10] 道具を一括購入する({道具一括購入価格}＄) "
+	ENDIF
+	IF 消耗品一括購入価格
+		CALL MCOLUMNPRINT, @"%SPACESLENS("□アイテム購入 ")%"
+		CALL MCOLUMNPRINT, "消耗品を一括購入する("
+		CALL MCOLUMNPRINT, @"[-20] 5個 {消耗品一括購入価格*5}＄ "
+		CALL MCOLUMNPRINT, @"[-21] 10個 {消耗品一括購入価格*10}＄ "
+		CALL MCOLUMNPRINT, @"[-22] 50個 {消耗品一括購入価格*50}＄ "
+		CALL MCOLUMNPRINTL, @"[-23] 99個 {消耗品一括購入価格*99}＄) "
+	ENDIF
+	IF 施設一括購入価格
+		CALL MCOLUMNPRINT, @"%SPACESLENS("□アイテム購入 ")%"
+		CALL MCOLUMNPRINTL, @"[-30] 施設を一括購入する({施設一括購入価格}＄)"
+	ENDIF
+ENDIF
+
+SIF !カラム
+	CALL CHECKDRAWLINE
+
 FOR LCOUNT, 0, VARSIZE("ITEM")
 	SIF !ITEMSALES:LCOUNT || ITEMNAME:LCOUNT == ""
 		CONTINUE
@@ -470,7 +472,7 @@ FOR LCOUNT, 0, VARSIZE("ITEM")
 		CASE 200 TO 299
 			IF !ORIGIN
 				IF 割引
-					表示用 += @"({ITEMPRICE:LCOUNT/10*7}＄)"
+					表示用 += @"({ITEMPRICE:LCOUNT*7/10}＄)"
 				ELSE
 					表示用 += @"({ITEMPRICE:LCOUNT}＄)"
 				ENDIF
@@ -481,7 +483,7 @@ FOR LCOUNT, 0, VARSIZE("ITEM")
 				表示用 += @"{YEAR}年{MONTH}月号"
 			IF !ORIGIN
 				IF 割引
-					表示用 += @"({ITEMPRICE:LCOUNT/10*8}＄)"
+					表示用 += @"({ITEMPRICE:LCOUNT*8/10}＄)"
 				ELSE
 					表示用 += @"({ITEMPRICE:LCOUNT}＄)"
 				ENDIF
@@ -608,33 +610,37 @@ ENDSELECT
 
 RETURN 0
 
-@ITEMBUY_DECIDE, アイテム名, アイテム分類
+@ITEMBUY_DECIDE, アイテム名, アイテム分類, 確認無し
 #DIMS DYNAMIC アイテム名
 #DIMS DYNAMIC アイテム分類
 #DIM DYNAMIC 割引
+#DIM DYNAMIC 確認無し
 
 SIF 値引き可能()
 	割引 = 1
 
 DRAWLINE
 
-CALL アイテム説明, アイテム名
+SIF !確認無し
+	CALL アイテム説明, アイテム名
 
 ;購入の意志を再確認するように
 SELECTCASE アイテム分類
 	CASE "買い切り"
-		IF アイテム名 == "コナステ解約"
-			PRINTL 本当にコナステを解約しますか？
-			PRINTL [0] 解約する
-			PRINTL [1] やめる
-		ELSE
-			PRINTFORML 本当に%アイテム名%を購入しますか？
-			PRINTL [0] 購入する
-			PRINTL [1] やめる
+		IF !確認無し
+			IF アイテム名 == "コナステ解約"
+				PRINTL 本当にコナステを解約しますか？
+				PRINTL [0] 解約する
+				PRINTL [1] やめる
+			ELSE
+				PRINTFORML 本当に%アイテム名%を購入しますか？
+				PRINTL [0] 購入する
+				PRINTL [1] やめる
+			ENDIF
+			BINPUT
+			SIF RESULT == 1
+				RETURN
 		ENDIF
-		BINPUT
-		SIF RESULT == 1
-			RETURN
 		IF アイテム名 == "コナステ解約"
 			PRINTFORMW ＜コナステを解約しました。サービスは次の{コナステ%100}日までご利用できます＞
 			CALL プレイログ記録, @"コナステベーシックコース解約"
@@ -646,7 +652,7 @@ SELECTCASE アイテム分類
 		ENDIF
 		;割引対象は淫具のみ
 		IF GETNUM(ITEM, アイテム名) < 100 && 割引
-			CALL PAYMENT, -ITEMPRICE:アイテム名/10*8, @"「%アイテム名%」購入"
+			CALL PAYMENT, -ITEMPRICE:アイテム名*8/10, @"「%アイテム名%」購入"
 		ELSE
 			CALL PAYMENT, -ITEMPRICE:アイテム名, @"「%アイテム名%」購入"
 		ENDIF
@@ -777,7 +783,7 @@ SELECTCASE アイテム分類
 		ENDIF
 	CASE "複数購入可"
 		;消耗品は専用の関数で
-		CALL BUY_PLURAL, アイテム名
+		CALL BUY_PLURAL, アイテム名, 確認無し
 	[SKIPSTART]
 	CASE "素質アイテム"
 		PRINTFORML 本当に%アイテム名%を購入しますか？
@@ -816,11 +822,12 @@ ENDSELECT
 RETURN 0
 
 ;複数個所持可能なアイテムについて、同時購入個数を選択
-@BUY_PLURAL, アイテム名
+@BUY_PLURAL, アイテム名, 個数
 #DIM DYNAMIC アイテム価格
 #DIMS DYNAMIC アイテム名
 #DIM DYNAMIC 購入上限
 #DIM DYNAMIC 購入数
+#DIM DYNAMIC 個数
 
 ;購入できる最大数
 SELECTCASE アイテム名
@@ -840,11 +847,18 @@ ENDIF
 SIF 購入上限 > MONEY/アイテム価格 && !ORIGIN
 	購入上限 = MONEY/アイテム価格
 
+IF 個数
+	購入数 = 個数
+	GOTO DECIDE
+ENDIF
+
 PRINTFORML %アイテム名%をいくつ買いますか？ (最大{購入上限}個、0で戻る)
 CALL TWO_DIGIT, 購入上限, "個"
 購入数 = RESULT
+
 IF RESULT
 	CALL SE再生, 出入金
+	$DECIDE
 	PRINTFORMW ＜%アイテム名%を{購入数}個購入しました＞
 	SELECTCASE アイテム名
 		CASE "皆伝", "魔王", "アルパカ", "倉吉", "スペリオール", "ビーフィーター", "アブソルート", "カルーア"

@@ -213,6 +213,7 @@ FOR LCOUNT, 0, VARSIZE("CSTR")
 						ELSE
 							PRINTBUTTON @"[挿入可フラグ]:上着を着たまま挿入\@ CFLAG:挿入可 == 1 ? 可能 # 不可能 \@", @"挿入可{服装プリセット}"
 						ENDIF
+						PRINTS " "
 					CASE "全身上着"
 						SELECTCASE CFLAG:@"着衣併用\@ 服装プリセット > 1 ? {服装プリセット} #\@"
 							CASE 0
@@ -223,6 +224,47 @@ FOR LCOUNT, 0, VARSIZE("CSTR")
 								表示用変数 = 下着との併用不可能
 						ENDSELECT
 						PRINTBUTTON @"[着衣併用フラグ]:%表示用変数%", @"着衣併用{服装プリセット}"
+						PRINTS " "
+				ENDSELECT
+				SELECTCASE CSTRNAME:LCOUNT
+					CASE "全身上着", "上半身上着", "上半身下着"
+						IF CSTRNAME:LCOUNT == "全身上着"
+							表示用変数 '= "全身上着"
+						ELSE
+							表示用変数 '= SUBSTRINGU(CSTRNAME:LCOUNT,3, 2)
+						ENDIF
+						SELECTCASE CFLAG:@"%表示用変数%パイズリ\@ 服装プリセット > 1 ? {服装プリセット} #\@"
+							CASE 0
+								表示用変数 = 着衣パイズリ不可
+							CASE 1
+								表示用変数 = パイズリのみ可（下に穴）
+							CASE 2
+								表示用変数 = パイズリ、パイズリフェラ可（上下に穴）
+							CASE 3
+								表示用変数 = 縦パイズリのみ可
+							CASE 4
+								表示用変数 = すべて可
+							CASE 5
+								表示用変数 = たくし上げてパイズリ可（Pフェラ不可）
+							CASE 6
+								表示用変数 = はだけさせてパイズリ可（和服など）
+							CASE 10
+								表示用変数 = スク水・競泳水着等
+							CASE 11
+								表示用変数 = スク水・競泳水着等（下に穴）
+							CASE 12
+								表示用変数 = スク水・競泳水着等（下に穴＋上からペニスが出る）
+							CASE 13
+								表示用変数 = スク水・競泳水着等（前面穴）
+							CASE 14
+								表示用変数 = スク水・競泳水着等（スリット）
+						ENDSELECT
+						IF CSTRNAME:LCOUNT == "全身上着"
+							PRINTBUTTON @"[着衣パイズリフラグ]:%表示用変数%", @"%CSTRNAME:LCOUNT%パイズリ{服装プリセット}"
+						ELSE
+							PRINTBUTTON @"[着衣パイズリフラグ]:%表示用変数%", @"%SUBSTRINGU(CSTRNAME:LCOUNT,3, 2)%パイズリ{服装プリセット}"
+						ENDIF
+						PRINTS " "
 				ENDSELECT
 			ENDIF
 			PRINTL 
@@ -294,6 +336,15 @@ IF STRFIND(選択文字列, "挿入可") >= 0
 ELSEIF STRFIND(選択文字列, "着衣併用") >= 0
 	選択文字列 = 着衣併用
 	付随番号 = DIG_SEP(RESULTS)
+ELSEIF STRFIND(選択文字列, "全身上着パイズリ") >= 0
+	選択文字列 = 全身上着パイズリ
+	付随番号 = DIG_SEP(RESULTS)
+ELSEIF STRFIND(選択文字列, "上着パイズリ") >= 0
+	選択文字列 = 上着パイズリ
+	付随番号 = DIG_SEP(RESULTS)
+ELSEIF STRFIND(選択文字列, "下着パイズリ") >= 0
+	選択文字列 = 下着パイズリ
+	付随番号 = DIG_SEP(RESULTS)
 ELSEIF STRFIND(選択文字列, "特殊") >= 0
 	選択文字列 = 特殊
 	付随番号 = DIG_SEP(RESULTS)
@@ -358,6 +409,7 @@ SELECTCASE 選択文字列
 				TALENT:0:体格 = 3
 				SKIPDISP 1
 				CALL CHARA_ADD, LRESULT
+				CCB:LRESULT = 0
 				SKIPDISP 0
 				TARGET = 1
 			ENDIF
@@ -369,7 +421,7 @@ SELECTCASE 選択文字列
 		PRINTL [1] - いいえ
 		BINPUT
 		IF RESULT == 0
-			CALL RESET_DATA
+			DELALLCHARA
 			RESTART
 		ENDIF
 		GOTO RESTART
@@ -482,6 +534,24 @@ SELECTCASE 選択文字列
 		PRINTL [2] - 上半身下着及び下半身下着との併用不可能
 		BINPUT
 		CFLAG:@"着衣併用\@ 付随番号 > 1 ? {付随番号} #\@" = RESULT
+		GOTO RESTART
+	CASE "全身上着パイズリ", "上着パイズリ", "下着パイズリ"
+		表示用変数 '= SUBSTRINGU(選択文字列,0, STRLENSU(選択文字列)-4)
+		PRINTFORML %表示用変数%の着衣パイズリフラグを設定してください
+		PRINTFORML [ 0] - \@表示用変数=="下着" ? 下着 # 上着\@を付けたままパイズリできない
+		PRINTL [ 1] - 下方向だけ穴が空いていてパイズリのみ可(パイズリフェラは不可) 
+		PRINTL [ 2] - 上下に穴が空いていてパイズリフェラが可能
+		PRINTL [ 3] - 縦パイズリなら可
+		PRINTL [ 4] - すべて可能
+		PRINTL [ 5] - 服を少したくし上げてパイズリ可(フェラが入るパイズリフェラができない)
+		PRINTL [ 6] - 服を少しはだけさせてパイズリ可(和服、正面がボタン・ジッパーになっている服等)
+		PRINTL [10] - スク水・競泳水着等(はだけさせてパイズリだが、爆乳以上で谷間に生地を挟む)
+		PRINTL [11] - スク水・競泳水着等+下だけ穴あき
+		PRINTL [12] - スク水・競泳水着等+下だけ穴あきで上からペニスが出る
+		PRINTL [13] - スク水・競泳水着等+前面だけ穴あき
+		PRINTL [14] - スク水・競泳水着等+スリットのようになってる
+		BINPUT
+		CFLAG:@"%表示用変数%パイズリ\@ 付随番号 > 1 ? {付随番号} #\@" = RESULT
 		GOTO RESTART
 	CASE "服装プリセット"
 		服装プリセット = 付随番号

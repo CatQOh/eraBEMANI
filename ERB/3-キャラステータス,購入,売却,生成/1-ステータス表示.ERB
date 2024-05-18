@@ -3,6 +3,7 @@
 DRAWLINE
 
 TFLAG:ページ数 = 0
+TFLAG:担当曲非表示 = -1
 LCOLUMN = 選択カラム
 選択カラム = 0
 
@@ -317,7 +318,6 @@ ENDSELECT
 #DIM DYNAMIC 次のキャラ = -1
 #DIM DYNAMIC 前のキャラ = -1
 ;#DIM DYNAMIC ロストキャラ表示
-;#DIM 曲表示
 
 ;処女が主人のドラゴンとなっている場合は、現在のドラゴンの名前を入れて後で戻す
 IF CSTR:処女 == "主人のドラゴン"
@@ -352,13 +352,15 @@ IF CFLAG:キャラロスト
 ENDIF
 
 CALL MCOLUMNDRAWLINE
-CALL MCOLUMNPRINTL, "□担当楽曲・出演曲"
-;IF 曲表示
+CALL MCOLUMNPRINT, "□担当楽曲・出演曲"
+SIF TFLAG:担当曲非表示 == -1
+	TFLAG:担当曲非表示 = STRLENS(CSVCSTRF(NOF(TARGET), "担当曲")) > 1000 ? 1 # 0
+IF TFLAG:担当曲非表示
+	CALL MCOLUMNPRINTL, "　[100]表示する"
+ELSE
+	CALL MCOLUMNPRINTL, "　[100]非表示にする"
 	CALL 担当曲表示, NOF(TARGET), 1
-;	PRINTL 　[100] 非表示にする
-;ELSE
-;	PRINTL 　[100] 表示する
-;ENDIF
+ENDIF
 CALL MCOLUMNDRAWLINE
 
 CALL MCOLUMNPRINTL, "□ その他情報"
@@ -1122,6 +1124,8 @@ SELECTCASE CRESULT:1
 		TFLAG:ページ数--
 	CASE 2
 		TFLAG:ページ数++
+	CASE 100
+		INVERTBIT TFLAG:担当曲非表示, 0
 ENDSELECT
 
 @ステータス表示_アイテム使用
@@ -1261,8 +1265,10 @@ NEXT
 SELECTCASE CRESULT:1
 	CASE 6
 		TARGET = 前のキャラ
+		TFLAG:担当曲非表示 = -1
 	CASE 7
 		TARGET = 次のキャラ
+		TFLAG:担当曲非表示 = -1
 	CASE 8
 		CALL ASSIGN_TARGET, TARGET
 		対象変更済み = 1
@@ -2674,6 +2680,8 @@ ENDIF
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 衣服文字数
 #DIM DYNAMIC カラム
+#DIMS DYNAMIC 表示用, 100
+#DIM DYNAMIC DISPCOUNT
 
 FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
 	衣服文字数 = MAX(STRLENS(CSTR:対象:LCOUNT), 衣服文字数)
@@ -2681,23 +2689,11 @@ NEXT
 衣服文字数 += 2
 FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
 	IF CFLAG:対象:(CSTRNAME:LCOUNT+"着衣不可")
-		IF カラム
-			CALL MCOLUMNPRINT, @"　%CSTRNAME:LCOUNT, 10, LEFT%:着衣不可"
-		ELSE
-			PRINTFORM 　%CSTRNAME:LCOUNT, 10, LEFT%:着衣不可
-		ENDIF
-		SIF カラム
-			CALL MCOLUMNPRINTL, ""
+		表示用:(DISPCOUNT++) = 　%CSTRNAME:LCOUNT, 10, LEFT%:着衣不可
 	ELSEIF CSTR:対象:LCOUNT != ""
-		IF カラム
-			CALL MCOLUMNPRINT, @"　%CSTRNAME:LCOUNT, 10, LEFT%:%CSTR:対象:LCOUNT, 衣服文字数, LEFT%"
-			SIF 耐水性(対象, CSTRNAME:LCOUNT)
-				CALL MCOLUMNPRINT, "[耐水]"
-		ELSE
-			PRINTFORM 　%CSTRNAME:LCOUNT, 10, LEFT%:%CSTR:対象:LCOUNT, 衣服文字数, LEFT%
-			SIF 耐水性(対象, CSTRNAME:LCOUNT)
-				PRINT [耐水]
-		ENDIF
+		表示用:DISPCOUNT = 　%CSTRNAME:LCOUNT, 10, LEFT%:%CSTR:対象:LCOUNT, 衣服文字数, LEFT%
+		SIF 耐水性(対象, CSTRNAME:LCOUNT)
+		表示用:DISPCOUNT += "[耐水]"
 		IF MOD:着衣パイズリ && GROUPMATCH(CSTRNAME:LCOUNT, "上半身上着", "全身上着", "上半身下着")
 			SELECTCASE CSTRNAME:LCOUNT
 				CASE "全身上着"
@@ -2707,92 +2703,83 @@ FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
 				CASE "上半身下着"
 					チェック箇所 = CFLAG:対象:下着パイズリ
 			ENDSELECT
-			IF パイズリフラグ説明(チェック箇所) != ""
-				IF カラム
-					CALL MCOLUMNPRINT, @"[%パイズリフラグ説明(チェック箇所, TARGET)%]"
-				ELSE
-					PRINTFORM [%パイズリフラグ説明(チェック箇所, TARGET)%]
-				ENDIF
-			ENDIF
+			SIF パイズリフラグ説明(チェック箇所) != ""
+				表示用:DISPCOUNT += @"[%パイズリフラグ説明(チェック箇所, TARGET)%]"
 		ENDIF
-		SIF カラム
-			CALL MCOLUMNPRINTL, ""
+		DISPCOUNT++
 	ENDIF
-	SIF !カラム
-		CALL MCOLUMNPRINTL, ""
 NEXT
-IF CFLAG:対象:貞操帯
+SIF CFLAG:対象:貞操帯
+	表示用:(DISPCOUNT++) = 　貞操帯　　:{CFLAG:対象:貞操帯}日目
+FOR LCOUNT, 0, DISPCOUNT
 	IF カラム
-		CALL MCOLUMNPRINTL, @"　貞操帯　　:{CFLAG:対象:貞操帯}日目"
+		CALL MCOLUMNPRINTL, 表示用:LCOUNT
 	ELSE
-		PRINTFORML 　貞操帯　　:{CFLAG:対象:貞操帯}日目
+		PRINTFORML %表示用:LCOUNT%
 	ENDIF
-ENDIF
+NEXT
 
 @SHOW_INFO, 対象, 調教中, カラム
 #DIM DYNAMIC 調教中
 #DIM DYNAMIC 対象
 #DIM DYNAMIC カラム
 
+CALL MCOLUMNDRAWLINEIF, カラム
 IF カラム
-	CALL MCOLUMNDRAWLINE
-
 	CALL MCOLUMNPRINTL, @"□ %I18N("経験")%"
-	CALL SHOW_INFO_EXP, 対象, 0, カラム
-	CALL MCOLUMNDRAWLINE
-
-	CALL MCOLUMNPRINTL, @"□ %I18N("能力")%"
-	CALL SHOW_INFO_ABL, 対象, カラム
-	CALL MCOLUMNDRAWLINE
-
-	IF 対象 != MASTER
-		CALL MCOLUMNPRINTL, @"□ %I18N("刻印")%"
-		CALL SHOW_INFO_MARK, 対象, カラム
-		CALL MCOLUMNDRAWLINE
-	ENDIF
-	CALL MCOLUMNPRINTL, @"□ %I18N("素質")%"
-	CALL SHOW_INFO_TALENT, 対象, カラム
-	CALL MCOLUMNDRAWLINE
-
-	IF !(CFLAG:対象:キャラロスト || CFLAG:対象:死亡 || CFLAG:対象:依代)
-		CALL MCOLUMNPRINT, @"□ %I18N("服装") % "
-		CALLFORM DISABLE, "服装変更", 対象
-		SIF !調教中 && !RESULT
-			CALL MCOLUMNPRINT, @"[99] - %I18N("服装を変更する")%"
-		CALL MCOLUMNPRINTL, ""
-		CALL SHOW_INFO_CLOTHES, 対象, カラム
-		CALL MCOLUMNDRAWLINE
-	ENDIF
 ELSE
-	DRAWLINE
-
 	PRINTFORML □ %I18N("経験")%
-	CALL SHOW_INFO_EXP, 対象, 0, カラム
-	DRAWLINE
+ENDIF
+CALL SHOW_INFO_EXP, 対象, 0, カラム
+CALL MCOLUMNDRAWLINEIF, カラム
 
+IF カラム
+	CALL MCOLUMNPRINTL, @"□ %I18N("能力")%"
+ELSE
 	PRINTFORML □ %I18N("能力")%
-	CALL SHOW_INFO_ABL, 対象, カラム
-	DRAWLINE
+ENDIF
+CALL SHOW_INFO_ABL, 対象, カラム
+CALL MCOLUMNDRAWLINEIF, カラム
 
-	IF 対象 != MASTER
+IF 対象 != MASTER
+	IF カラム
+		CALL MCOLUMNPRINTL, @"□ %I18N("刻印")%"
+	ELSE
 		PRINTFORML □ %I18N("刻印")% 
-		CALL SHOW_INFO_MARK, 対象, カラム
-		DRAWLINE
 	ENDIF
+	CALL SHOW_INFO_MARK, 対象, カラム
+	CALL MCOLUMNDRAWLINEIF, カラム
+ENDIF
 
+IF カラム
+	CALL MCOLUMNPRINTL, @"□ %I18N("素質")%"
+ELSE
 	PRINTFORML □ %I18N("素質")% 
-	CALL SHOW_INFO_TALENT, 対象, カラム
-	DRAWLINE
+ENDIF
+CALL SHOW_INFO_TALENT, 対象, カラム
+CALL MCOLUMNDRAWLINEIF, カラム
 
-	IF !(CFLAG:対象:キャラロスト || CFLAG:対象:死亡 || CFLAG:対象:依代)
+IF !(CFLAG:対象:キャラロスト || CFLAG:対象:死亡 || CFLAG:対象:依代)
+	IF カラム
+		CALL MCOLUMNPRINT, @"□ %I18N("服装") % "
+	ELSE
 		PRINTPLAINFORM □ %I18N("服装") % 
-		CALLFORM DISABLE, "服装変更", 対象
-		SIF !調教中 && !RESULT
-			PRINTFORM [99] - %I18N("服装を変更する")%
-		PRINTL
-		CALL SHOW_INFO_CLOTHES, 対象, カラム
-		DRAWLINE
 	ENDIF
+	CALLFORM DISABLE, "服装変更", 対象
+	IF !調教中 && !RESULT
+		IF カラム
+			CALL MCOLUMNPRINT, @"[99] - %I18N("服装を変更する")%"
+		ELSE
+			PRINTFORM [99] - %I18N("服装を変更する")%
+		ENDIF
+	ENDIF
+	IF カラム
+		CALL MCOLUMNPRINTL, ""
+	ELSE
+		PRINTL
+	ENDIF
+	CALL SHOW_INFO_CLOTHES, 対象, カラム
+	CALL MCOLUMNDRAWLINEIF, カラム
 ENDIF
 
 ;;;NOで渡す
@@ -2804,52 +2791,36 @@ ENDIF
 #DIM DYNAMIC 表示可能文字数 = STRLENS(GETLINESTR("-"))
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC カラム
+#DIMS DYNAMIC 表示用テキスト, 100
+#DIM DYNAMIC 表示用行数
 
 ;カラムなら30文字くらい余裕取っておく（適当）
 表示可能文字数 -= 30
 
 IF !EXISTCSV(対象) || CSVCSTR(対象, GETNUM(CSTR, "担当曲")) == ""
-	IF カラム
-		CALL MCOLUMNPRINTL, "　[無し]"
-	ELSE
-		PRINTL 　[無し]
-	ENDIF
-	RETURN
-ENDIF
-
-SPLIT CSVCSTR(対象, GETNUM(CSTR, "担当曲")), "|", 曲一覧
-
-IF カラム
-	CALL MCOLUMNPRINT, "　"
+	表示用テキスト = [無し]
 ELSE
-	PRINT 　
-ENDIF
-FOR LCOUNT, 0, 1000
-	;行頭に改行相当のスペースが入ってるので一文字消す
-	SIF CHARATU(曲一覧:LCOUNT, 0) == " "
-		曲一覧:LCOUNT = %SUBSTRING(曲一覧:LCOUNT, 1)%
-	SIF 曲一覧:LCOUNT == ""
-		BREAK
-	;括弧2個分で+4
-	表示文字数 += STRLENS(曲一覧:LCOUNT)+4
-	IF 表示文字数 >= 表示可能文字数
-		IF カラム
-			CALL MCOLUMNPRINTL, ""
-			CALL MCOLUMNPRINT, "　"
-		ELSE
-			PRINTL 
-			PRINT 　
+	SPLIT CSVCSTR(対象, GETNUM(CSTR, "担当曲")), "|", 曲一覧
+	FOR LCOUNT, 0, 1000
+		;行頭に改行相当のスペースが入ってるので一文字消す
+		SIF CHARATU(曲一覧:LCOUNT, 0) == " "
+			曲一覧:LCOUNT = %SUBSTRING(曲一覧:LCOUNT, 1)%
+		SIF 曲一覧:LCOUNT == ""
+			BREAK
+		;括弧2個分で+4
+		表示文字数 += STRLENS(曲一覧:LCOUNT)+4
+		IF 表示文字数 >= 表示可能文字数
+			表示用行数++
+			;括弧+全角スペース=6
+			表示文字数 = STRLENS(曲一覧:LCOUNT)+6
 		ENDIF
-		;括弧+全角スペース=6
-		表示文字数 = STRLENS(曲一覧:LCOUNT)+6
-	ENDIF
-	CALL MCOLUMNPRINT, @"『%曲一覧:LCOUNT%』", "", 1
-NEXT
-IF カラム
-	CALL MCOLUMNPRINTL, ""
-ELSE
-	CALL NEWLINE
+		表示用テキスト:表示用行数 += @"『%曲一覧:LCOUNT%』"
+	NEXT
 ENDIF
-RETURN
-
-	
+FOR LCOUNT, 0, 表示用行数+1
+	IF カラム
+		CALL MCOLUMNPRINTL, @"　%表示用テキスト:LCOUNT%", "", 1
+	ELSE
+		PRINTFORML 　%表示用テキスト:LCOUNT%
+	ENDIF
+NEXT
