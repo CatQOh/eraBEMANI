@@ -3,29 +3,31 @@
 ;-------------------------------------------------
 @USERCOM_ABLE_ダブルパイズリ
 #FUNCTION
+#DIM DYNAMIC 奉仕対象
+奉仕対象 = (PLAYER == ASSI ? TMASTER # ASSI)
 ;ゲーセンに居る場合はできない
 コマンド実行条件 += "ゲーセンでは実行不可/"
 SIF TEQUIP:ゲームセンター
 	COMRESULT = 0
 ;助手じゃないとダメ
 コマンド実行条件 += "実行者が助手じゃないと実行できない/"
-SIF PLAYER != ASSI
+SIF PLAYER == MASTER
 	COMRESULT = 0
 ;助手、奴隷共に女性じゃないとダメ
 ;コマンド実行条件 += "助手、対象共に女性じゃないと実行できない/"
 ;SIF SEX(TARGET) == 1 || SEX(ASSI) == 1
 ;	COMRESULT = 0
-;主人がペニス無いとダメ
+;奉仕対象がペニス無いとダメ
 コマンド実行条件 += "主人に男性器が必要/"
-SIF !PENIS(TMASTER)
+SIF !PENIS(奉仕対象)
 	COMRESULT = 0
-;主人が[魅惑]か[謎の魅力]、もしくは奴隷と助手両方陥落してないとダメ
+;奉仕対象が[魅惑]か[謎の魅力]、もしくは奴隷と助手両方陥落してないとダメ
 コマンド実行条件 += "主人に[魅惑]or[謎の魅力]が必要 または助手、対象共に陥落していれば実行可能/"
-SIF ASSI > 0 && !TALENT:TMASTER:魅惑 && !TALENT:TMASTER:謎の魅力 && (!陥落(TARGET) || !陥落(ASSI))
+SIF PLAYER > 0 && !TALENT:奉仕対象:魅惑 && !TALENT:奉仕対象:謎の魅力 && (!陥落(TARGET) || !陥落(PLAYER))
 	COMRESULT = 0
 ;助手が奉仕精神LV3以上、技巧LV4以上じゃないとダメ
 コマンド実行条件 += "助手の奉仕精神LV3以上と技巧LV4以上が必要/"
-SIF ASSI > 0 && (ABL:ASSI:技巧 < 4 || ABL:ASSI:奉仕精神 < 3)
+SIF PLAYER > 0 && (ABL:PLAYER:技巧 < 4 || ABL:PLAYER:奉仕精神 < 3)
 	COMRESULT = 0
 ;縄使用中は不可
 コマンド実行条件 += "縄で縛ってるときは実行できない/"
@@ -40,7 +42,7 @@ SIF TEQUIP:触手
 SIF TALENT:アニマル
 	COMRESULT = 0
 コマンド実行条件 += "助手が[アニマル]だと実行できない/"
-SIF ASSI > 0 && TALENT:ASSI:アニマル
+SIF PLAYER > 0 && TALENT:PLAYER:アニマル
 	COMRESULT = 0
 コマンド実行条件 += "睡眠中は実行できない/"
 SIF TEQUIP:睡眠
@@ -55,6 +57,9 @@ RETURNF COMRESULT
 
 @実行判定_ダブルパイズリ
 #DIM DYNAMIC 実効値
+#DIM DYNAMIC 奉仕対象
+奉仕対象 = (PLAYER == ASSI ? TMASTER # ASSI)
+
 ;-------------------------------------------------
 ;実行判定処理
 ;-------------------------------------------------
@@ -63,12 +68,12 @@ RETURNF COMRESULT
 CALL COM_ORDER
 実効値 = RESULT
 
-CALL COM_ORDER_フェラ
+CALL COM_ORDER_フェラ, 奉仕対象
 実効値 += RESULT
 
-IF 相性値(ASSI, TARGET) > 100 && 相性値(TARGET, ASSI) > 100
+IF 相性値(PLAYER, TARGET) > 100 && 相性値(TARGET, PLAYER) > 100
 	実効値 += 3
-	PRINTFORM +%CALLNAME:TARGET%と%CALLNAME:ASSI%の相性良好(3)
+	PRINTFORM +%CALLNAME:TARGET%と%CALLNAME:PLAYER%の相性良好(3)
 ENDIF
 
 ;38以上で実行
@@ -78,6 +83,10 @@ RETURN RESULT
 
 @COM_ダブルパイズリ
 #DIM DYNAMIC 増加量
+#DIM DYNAMIC 奉仕対象
+#DIM DYNAMIC ASSI退避 ;口上呼出し用
+#DIM DYNAMIC TMASTER退避 ;口上呼出し用
+奉仕対象 = (PLAYER == ASSI ? TMASTER # ASSI)
 
 PRINTL ダブルパイズリ
 
@@ -89,7 +98,13 @@ SIF !RESULT && !TFLAG:実行判定無視
 ;-------------------------------------------------
 ;実行決定
 ;-------------------------------------------------
+ASSI退避 = ASSI
+TMASTER退避 = TMASTER
+ASSI = PLAYER
+TMASTER = 奉仕対象
 CALL KOJO_MESSAGE_COM
+ASSI = ASSI退避
+TMASTER = TMASTER退避
 
 ;実行者が奴隷であるフラグ
 TFLAG:奴隷実行 = 1
@@ -97,16 +112,16 @@ TFLAG:奴隷実行 = 1
 ;-------------------------------------------------
 ;射精ゲージチェック
 ;-------------------------------------------------
-増加量 = 射精ゲージ計算_奉仕(500)
+増加量 = 射精ゲージ計算_奉仕(500, 奉仕対象)
 
 ;ABL:助手の技巧をみる
-増加量 += (増加量/5)*ABL:ASSI:技巧
+増加量 += (増加量/5)*ABL:PLAYER:技巧
 
 ;ABL:助手の従順をみる
-増加量 += (増加量/10)*ABL:ASSI:従順 - (増加量/10)*2
+増加量 += (増加量/10)*ABL:PLAYER:従順 - (増加量/10)*2
 
 ;ABL:助手の奉仕精神をみる
-SELECTCASE ABL:ASSI:奉仕精神
+SELECTCASE ABL:PLAYER:奉仕精神
 	CASE 0
 		TIMES 増加量 , 0.50
 	CASE 1
@@ -192,7 +207,7 @@ ELSEIF TALENT:無機物
 	TIMES 増加量 , 0.80
 ENDIF
 
-SELECTCASE TALENT:ASSI:バストサイズ
+SELECTCASE TALENT:PLAYER:バストサイズ
 	CASE 0, 1
 		TIMES 増加量 , 0.70
 	CASE 2
@@ -204,13 +219,13 @@ SELECTCASE TALENT:ASSI:バストサイズ
 	CASE 5
 		TIMES 増加量 , 1.40
 	CASE IS >= 6
-		増加量 += 増加量*(TALENT:ASSI:バストサイズ)/10
+		増加量 += 増加量*(TALENT:PLAYER:バストサイズ)/10
 ENDSELECT
 
 ;TALENT:助手のバストサイズをみる
 ;奴隷が小柄体型・小人体型なら身体が柔らかいので増やす
-IF TALENT:ASSI:体格 == 1 || TALENT:ASSI:小人体型
-	SELECTCASE TALENT:ASSI:バストサイズ
+IF TALENT:PLAYER:体格 == 1 || TALENT:PLAYER:小人体型
+	SELECTCASE TALENT:PLAYER:バストサイズ
 		CASE 0, 1
 			TIMES 増加量 , 0.60
 		CASE 2
@@ -228,8 +243,8 @@ IF TALENT:ASSI:体格 == 1 || TALENT:ASSI:小人体型
 		CASE IS >= 8
 			TIMES 増加量 , 1.95
 	ENDSELECT
-ELSEIF TALENT:ASSI:体格 == 2
-	SELECTCASE TALENT:ASSI:バストサイズ
+ELSEIF TALENT:PLAYER:体格 == 2
+	SELECTCASE TALENT:PLAYER:バストサイズ
 		CASE 0, 1
 			TIMES 増加量 , 0.60
 		CASE 2
@@ -248,7 +263,7 @@ ELSEIF TALENT:ASSI:体格 == 2
 			TIMES 増加量 , 1.68
 	ENDSELECT
 ELSE
-	SELECTCASE TALENT:ASSI:バストサイズ
+	SELECTCASE TALENT:PLAYER:バストサイズ
 		CASE 0, 1
 			TIMES 増加量 , 0.60
 		CASE 2
@@ -268,17 +283,17 @@ ELSE
 	ENDSELECT
 ENDIF
 
-増加量 *= (300 + MIN(EXP:ASSI:パイズリ経験, 1500))
+増加量 *= (300 + MIN(EXP:PLAYER:パイズリ経験, 1500))
 増加量 /= 600
 
 ;2人のバストサイズが同じとき効果を高くする
-SIF TALENT:バストサイズ == TALENT:ASSI:バストサイズ
+SIF TALENT:バストサイズ == TALENT:PLAYER:バストサイズ
 	TIMES 増加量 , 1.20
 
 ;無機物の場合、ある程度減らす
-IF TALENT:ASSI:無機物
+IF TALENT:PLAYER:無機物
 	TIMES 増加量 , 0.60
-ELSEIF TALENT:ASSI:無機物
+ELSEIF TALENT:PLAYER:無機物
 	TIMES 増加量 , 0.80
 ENDIF
 
@@ -290,10 +305,10 @@ SIF TALENT:PLAYER:体格 <= 2 || TALENT:PLAYER:小人体型
 SIF TALENT:肋骨除去済み
 	TIMES 増加量 , 1.25
 ;肋骨抜かれてると柔らかい
-SIF TALENT:ASSI:肋骨除去済み
+SIF TALENT:PLAYER:肋骨除去済み
 	TIMES 増加量 , 1.25
 
-CALL 射精ゲージ増加, 増加量, TMASTER
+CALL 射精ゲージ増加, 増加量, 奉仕対象
 
 ;-------------------------------------------------
 ;ソース追加処理
@@ -338,7 +353,7 @@ SOURCE:反感 = 400
 SOURCE:不潔 = 100
 
 ;汚れ
-SIF GET_STAIN(STAIN:TMASTER:ペニス, "アナル", "尿")
+SIF GET_STAIN(STAIN:奉仕対象:ペニス, "アナル", "尿")
 	SOURCE:不潔 += 50
 
 ;-------------------------------------------------
@@ -356,41 +371,62 @@ CALL SOURCE_CHECK_CVAB
 ;-------------------------------------------------
 ;射精チェック
 ;-------------------------------------------------
-;射精するのは主人なので専用の関数を呼ぶ
-CALL SAMEN_CHECK_M, 5
+;射精するのは奉仕対象なので専用の関数を呼ぶ
+IF PLAYER == ASSI
+	CALL SAMEN_CHECK_M, 5
+ELSE
+	CALL SAMEN_CHECK_A, 5
+ENDIF
 CALL SAMEN_CHECK_T, 0
 
-CALL SAMEN_SHOOT, 5, NOWEX:TMASTER:射精, TMASTER
+CALL SAMEN_SHOOT, 5, NOWEX:奉仕対象:射精, 奉仕対象
 CALL SAMEN_SHOOT_T, 0, NOWEX:射精
 
 ;-------------------------------------------------
 ;汚れの処理
 ;-------------------------------------------------
 ;奴隷の胸⇔調教者のペニスの汚れが移動
-STAIN:胸 |= STAIN:TMASTER:ペニス
-STAIN:TMASTER:ペニス |= STAIN:胸
+STAIN:胸 |= STAIN:奉仕対象:ペニス
+STAIN:奉仕対象:ペニス |= STAIN:胸
 
 ;助手の胸⇔調教者のペニスの汚れが移動
-STAIN:ASSI:胸 |= STAIN:TMASTER:ペニス
-STAIN:TMASTER:ペニス |= STAIN:ASSI:胸
+STAIN:PLAYER:胸 |= STAIN:奉仕対象:ペニス
+STAIN:奉仕対象:ペニス |= STAIN:PLAYER:胸
 
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
 ;同性愛経験
-;助手と奴隷が女性じゃないと実行できないのでレズ経験のみ
-IF SEX(TMASTER) == 2
-	CALL EXPUP, "レズ経験", 7
-	CALL EXPUP, "レズ経験", 7, ASSI
-	CALL EXPUP, "レズ経験", 7, TMASTER
-ELSE
-	CALL EXPUP, "レズ経験", 4
-	CALL EXPUP, "レズ経験", 4, ASSI
-	CALL EXPUP, "レズ経験", 4, TMASTER
+IF SEX(TARGET) == SEX(奉仕対象) && SEX(TARGET) == SEX(PLAYER)
+	SELECTCASE SEX(TARGET)
+		CASE 1
+			CALL EXPUP, "ゲイ経験", 7
+			CALL EXPUP, "ゲイ経験", 7, PLAYER
+			CALL EXPUP, "ゲイ経験", 7, 奉仕対象
+		CASE 2
+			CALL EXPUP, "レズ経験", 7
+			CALL EXPUP, "レズ経験", 7, PLAYER
+			CALL EXPUP, "レズ経験", 7, 奉仕対象
+	ENDSELECT
+ELSEIF SEX(TARGET) == SEX(奉仕対象) || SEX(TARGET) == SEX(PLAYER)
+	SELECTCASE SEX(TARGET)
+		CASE 1
+			CALL EXPUP, "ゲイ経験", 4
+			SIF SEX(TARGET) == SEX(PLAYER)
+				CALL EXPUP, "ゲイ経験", 4, PLAYER
+			SIF SEX(TARGET) == SEX(奉仕対象)
+				CALL EXPUP, "ゲイ経験", 4, 奉仕対象
+		CASE 2
+			CALL EXPUP, "レズ経験", 4
+			SIF SEX(TARGET) == SEX(PLAYER)
+				CALL EXPUP, "レズ経験", 4, PLAYER
+			SIF SEX(TARGET) == SEX(奉仕対象)
+				CALL EXPUP, "レズ経験", 4, 奉仕対象
+	ENDSELECT
 ENDIF
 
 ;調教経験
-IF TMASTER == MASTER
+IF 奉仕対象 == MASTER
 	CALL EXPUP, "主人調教経験", 3
 	CALL EXPUP, "助手調教経験", 1
 ELSE
@@ -398,18 +434,18 @@ ELSE
 ENDIF
 
 CALL EXPUP, "パイズリ経験", 1
-CALL EXPUP, "パイズリ経験", 1, ASSI
+CALL EXPUP, "パイズリ経験", 1, PLAYER
 
 IF !避妊具(MASTER)
 	CALL 魔力回復, 3
-	CALL 魔力回復, 3, ASSI
-	CALL 獣人催淫, 1, TARGET, TMASTER
-	CALL 獣人催淫, 1, ASSI, TMASTER
+	CALL 魔力回復, 3, PLAYER
+	CALL 獣人催淫, 1, TARGET, 奉仕対象
+	CALL 獣人催淫, 1, PLAYER, 奉仕対象
 ENDIF
 
 TFLAG:奉仕快楽 = 1
 
 パイズリ回数:TARGET:(NOF(PLAYER)) += 1
-パイズリ回数:ASSI:(NOF(PLAYER)) += 1
+パイズリ回数:PLAYER:(NOF(PLAYER)) += 1
 
 RETURN 1
