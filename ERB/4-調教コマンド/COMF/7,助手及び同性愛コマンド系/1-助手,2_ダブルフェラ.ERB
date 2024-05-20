@@ -3,21 +3,24 @@
 ;-------------------------------------------------
 @USERCOM_ABLE_ダブルフェラ
 #FUNCTION
+#DIM DYNAMIC 奉仕対象
+奉仕対象 = (PLAYER == ASSI ? TMASTER # ASSI)
+
 ;ゲーセンに居る場合はトイレじゃないとできない
 コマンド実行条件 += "ゲーセンではトイレじゃないと実行できない/"
 SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
 	COMRESULT = 0
 ;助手じゃないとダメ
 コマンド実行条件 += "実行者が助手じゃないと実行できない/"
-SIF PLAYER != ASSI
+SIF PLAYER == MASTER
 	COMRESULT = 0
-;主人がペニス無いとダメ
+;奉仕対象がペニス無いとダメ
 コマンド実行条件 += "主人に男性器が必要/"
-SIF !PENIS(TMASTER)
+SIF !PENIS(奉仕対象)
 	COMRESULT = 0
-;主人が[魅惑]か[謎の魅力]、もしくは助手と奴隷が陥落していないとダメ
+;奉仕対象が[魅惑]か[謎の魅力]、もしくは助手と奴隷が陥落していないとダメ
 コマンド実行条件 += "主人に[魅惑]or[謎の魅力]が必要 または助手、対象共に陥落していれば実行可能/"
-SIF ASSI > 0 && !TALENT:TMASTER:魅惑 && !TALENT:TMASTER:謎の魅力 && (!陥落(TARGET) || !陥落(ASSI))
+SIF PLAYER > 0 && !TALENT:奉仕対象:魅惑 && !TALENT:奉仕対象:謎の魅力 && (!陥落(TARGET) || !陥落(PLAYER))
 	COMRESULT = 0
 ;猫舌の奴隷の場合は技巧Lv2以上必要
 コマンド実行条件 += "対象が[猫舌]の場合は対象の技巧LV2以上必要/"
@@ -25,7 +28,7 @@ SIF TALENT:猫舌 && ABL:技巧 < 2
 	COMRESULT = 0
 ;助手が奉仕精神LV3以上、技巧LV3以上じゃないとダメ
 コマンド実行条件 += "助手の奉仕精神と技巧LV3以上必要/"
-SIF ASSI > 0 && (ABL:ASSI:技巧 < 3 || ABL:ASSI:奉仕精神 < 3)
+SIF PLAYER > 0 && (ABL:PLAYER:技巧 < 3 || ABL:PLAYER:奉仕精神 < 3)
 	COMRESULT = 0
 ;ボールギャグ使用中は不可
 コマンド実行条件 += "対象がボールギャグ装着中は実行できない/"
@@ -52,6 +55,8 @@ RETURNF COMRESULT
 
 @実行判定_ダブルフェラ
 #DIM DYNAMIC 実効値
+#DIM DYNAMIC 奉仕対象
+奉仕対象 = (PLAYER == ASSI ? TMASTER # ASSI)
 ;-------------------------------------------------
 ;実行判定処理
 ;-------------------------------------------------
@@ -60,12 +65,12 @@ RETURNF COMRESULT
 CALL COM_ORDER
 実効値 = RESULT
 
-CALL COM_ORDER_フェラ
+CALL COM_ORDER_フェラ, 奉仕対象
 実効値 += RESULT
 
-IF 相性値(ASSI, TARGET) > 100 && 相性値(TARGET, ASSI) > 100
+IF 相性値(PLAYER, TARGET) > 100 && 相性値(TARGET, PLAYER) > 100
 	実効値 += 3
-	PRINTFORM +%CALLNAME:TARGET%と%CALLNAME:ASSI%の相性良好(3)
+	PRINTFORM +%CALLNAME:TARGET%と%CALLNAME:PLAYER%の相性良好(3)
 ENDIF
 
 ;34以上で実行
@@ -75,7 +80,10 @@ RETURN RESULT
 
 @COM_ダブルフェラ
 #DIM DYNAMIC 増加量
-
+#DIM DYNAMIC 奉仕対象
+#DIM DYNAMIC ASSI退避 ;口上呼出し用
+#DIM DYNAMIC TMASTER退避 ;口上呼出し用
+奉仕対象 = (PLAYER == ASSI ? TMASTER # ASSI)
 PRINTL ダブルフェラ
 
 SIF !TFLAG:実行判定無視
@@ -86,7 +94,13 @@ SIF !RESULT && !TFLAG:実行判定無視
 ;-------------------------------------------------
 ;実行決定
 ;-------------------------------------------------
+ASSI退避 = ASSI
+TMASTER退避 = TMASTER
+ASSI = PLAYER
+TMASTER = 奉仕対象
 CALL KOJO_MESSAGE_COM
+ASSI = ASSI退避
+TMASTER = TMASTER退避
 
 ;実行者が奴隷であるフラグ
 TFLAG:奴隷実行 = 1
@@ -94,20 +108,20 @@ TFLAG:奴隷実行 = 1
 ;-------------------------------------------------
 ;射精ゲージチェック
 ;-------------------------------------------------
-増加量 = 射精ゲージ計算_奉仕(400)
+増加量 = 射精ゲージ計算_奉仕(400, 奉仕対象)
 
 ;TALENT:舌使いをみる
 SIF TALENT:舌使い
 	TIMES 増加量 , 1.50
 
 ;ABL:助手の技巧をみる
-増加量 += (増加量/5)*ABL:ASSI:技巧
+増加量 += (増加量/5)*ABL:PLAYER:技巧
 
 ;ABL:助手の従順をみる
-増加量 += (増加量/10)*ABL:ASSI:従順 - (増加量/10)*2
+増加量 += (増加量/10)*ABL:PLAYER:従順 - (増加量/10)*2
 
 ;ABL:助手の奉仕精神をみる
-SELECTCASE ABL:ASSI:奉仕精神
+SELECTCASE ABL:PLAYER:奉仕精神
 	CASE 0
 		TIMES 増加量 , 0.50
 	CASE 1
@@ -123,10 +137,10 @@ SELECTCASE ABL:ASSI:奉仕精神
 ENDSELECT
 
 ;助手のTALENT:舌使いをみる
-SIF TALENT:ASSI:舌使い
+SIF TALENT:PLAYER:舌使い
 	TIMES 増加量 , 1.50
 
-CALL 射精ゲージ増加, 増加量, TMASTER
+CALL 射精ゲージ増加, 増加量, 奉仕対象
 
 ;-------------------------------------------------
 ;ソース追加処理
@@ -163,46 +177,50 @@ CALL SOURCE_CHECK_CVAB
 ;射精チェック
 ;-------------------------------------------------
 ;射精するのは主人なので専用の関数を呼ぶ
-CALL SAMEN_CHECK_M, 4
+IF PLAYER == ASSI
+	CALL SAMEN_CHECK_M, 4
+ELSE
+	CALL SAMEN_CHECK_A, 4
+ENDIF
 CALL SAMEN_CHECK_T, 0
 
-CALL SAMEN_SHOOT, 4, NOWEX:TMASTER:射精, TMASTER
+CALL SAMEN_SHOOT, 4, NOWEX:奉仕対象:射精, 奉仕対象
 CALL SAMEN_SHOOT_T, 0, NOWEX:射精
 
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
 ;同性愛経験
-IF SEX(TARGET) == SEX(TMASTER) && SEX(TARGET) == SEX(ASSI)
+IF SEX(TARGET) == SEX(奉仕対象) && SEX(TARGET) == SEX(PLAYER)
 	SELECTCASE SEX(TARGET)
 		CASE 1
 			CALL EXPUP, "ゲイ経験", 7
-			CALL EXPUP, "ゲイ経験", 7, ASSI
-			CALL EXPUP, "ゲイ経験", 7, TMASTER
+			CALL EXPUP, "ゲイ経験", 7, PLAYER
+			CALL EXPUP, "ゲイ経験", 7, 奉仕対象
 		CASE 2
 			CALL EXPUP, "レズ経験", 7
-			CALL EXPUP, "レズ経験", 7, ASSI
-			CALL EXPUP, "レズ経験", 7, TMASTER
+			CALL EXPUP, "レズ経験", 7, PLAYER
+			CALL EXPUP, "レズ経験", 7, 奉仕対象
 	ENDSELECT
-ELSEIF SEX(TARGET) == SEX(TMASTER) || SEX(TARGET) == SEX(ASSI)
+ELSEIF SEX(TARGET) == SEX(奉仕対象) || SEX(TARGET) == SEX(PLAYER)
 	SELECTCASE SEX(TARGET)
 		CASE 1
 			CALL EXPUP, "ゲイ経験", 4
-			SIF SEX(TARGET) == SEX(ASSI)
-				CALL EXPUP, "ゲイ経験", 4, ASSI
-			SIF SEX(TARGET) == SEX(TMASTER)
-				CALL EXPUP, "ゲイ経験", 4, TMASTER
+			SIF SEX(TARGET) == SEX(PLAYER)
+				CALL EXPUP, "ゲイ経験", 4, PLAYER
+			SIF SEX(TARGET) == SEX(奉仕対象)
+				CALL EXPUP, "ゲイ経験", 4, 奉仕対象
 		CASE 2
 			CALL EXPUP, "レズ経験", 4
-			SIF SEX(TARGET) == SEX(ASSI)
-				CALL EXPUP, "レズ経験", 4, ASSI
-			SIF SEX(TARGET) == SEX(TMASTER)
-				CALL EXPUP, "レズ経験", 4, TMASTER
+			SIF SEX(TARGET) == SEX(PLAYER)
+				CALL EXPUP, "レズ経験", 4, PLAYER
+			SIF SEX(TARGET) == SEX(奉仕対象)
+				CALL EXPUP, "レズ経験", 4, 奉仕対象
 	ENDSELECT
 ENDIF
 
 ;調教経験
-IF TMASTER == MASTER
+IF 奉仕対象 == MASTER
 	CALL EXPUP, "主人調教経験", 2
 	CALL EXPUP, "助手調教経験", 1
 ELSE
@@ -210,7 +228,7 @@ ELSE
 ENDIF
 ;射精に関係なく行われる処理はここから
 CALL EXPUP, "フェラ経験", 1
-CALL EXPUP, "フェラ経験", 1, ASSI
+CALL EXPUP, "フェラ経験", 1, PLAYER
 
 
 ;奴隷が猫舌持ちの場合は、調教者に嗜虐快楽経験を追加
@@ -218,15 +236,15 @@ SIF TALENT:猫舌
 	CALL EXPUP, "嗜虐快楽経験", 1
 
 ;助手が猫舌持ちの場合はry
-SIF TALENT:ASSI:猫舌
-	CALL EXPUP, "嗜虐快楽経験", 1, ASSI
+SIF TALENT:PLAYER:猫舌
+	CALL EXPUP, "嗜虐快楽経験", 1, PLAYER
 
 ;魔力回復
-IF !避妊具(TMASTER)
+IF !避妊具(奉仕対象)
 	CALL 魔力回復, 5
-	CALL 魔力回復, 5, ASSI
-	CALL 獣人催淫, 1, TARGET, TMASTER
-	CALL 獣人催淫, 1, ASSI, TMASTER
+	CALL 魔力回復, 5, PLAYER
+	CALL 獣人催淫, 1, TARGET, 奉仕対象
+	CALL 獣人催淫, 1, PLAYER, 奉仕対象
 ENDIF
 
 TFLAG:奉仕快楽 = 1

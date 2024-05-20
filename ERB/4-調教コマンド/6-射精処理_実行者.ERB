@@ -310,8 +310,8 @@ SELECTCASE 射精先
 ;通常セックス系
 	CASE 1
 		;主人による奴隷への中出し
-		IF 射精したキャラ == TMASTER
-			IF !TEQUIP:TMASTER:コンドーム
+		IF 射精したキャラ == MASTER
+			IF !TEQUIP:MASTER:コンドーム
 				SETBIT TFLAG:中出し, 0
 				PRINTFORML 膣内射精経験+{計算用射精量}
 				EXP:膣射経験 += 計算用射精量
@@ -370,8 +370,8 @@ SELECTCASE 射精先
 				PREG:主人膣内射精 += 計算用精液量
 				CFLAG:主人からの膣射経験++
 				TFLAG:主人から奴隷への膣内射精回数++
-				中出し回数:TMASTER:(NOF(TARGET))++
-				中出され回数:(NOF(TMASTER))++
+				中出し回数:MASTER:(NOF(TARGET))++
+				中出され回数:(NOF(MASTER))++
 				;妊娠していないのであれば中出し時の恐怖判定等
 				SIF !TALENT:妊娠
 					CALL SAMEN_SHOOT_SOURCE, 射精したキャラ
@@ -471,15 +471,95 @@ SELECTCASE 射精先
 				SIF CFLAG:ストレス値 > 999
 					CFLAG:ストレス値 = 999
 			ENDIF
+		ELSEIF 射精したキャラ == ASSI:1
+			IF !TEQUIP:(ASSI:1):コンドーム
+				SETBIT TFLAG:中出し, 0
+				PRINTFORML 膣内射精経験+{計算用射精量}
+				EXP:TARGET:膣射経験 += 計算用射精量
+				;計算用精液量は子宮が受け入れる精液の量
+				計算用精液量 = 1000*計算用射精量
+				;排卵日の前7日と後14日は子宮が降りてきて精液を受け入れやすくなる
+				IF MOD:排卵周期
+					SELECTCASE 排卵からの経過時間:TARGET:0
+						CASE 1 TO 140
+							TIMES 計算用精液量, 1.50
+						CASE 141
+							TIMES 計算用精液量, 1.45
+						CASE 142
+							TIMES 計算用精液量, 1.40
+						CASE 143
+							TIMES 計算用精液量, 1.35
+						CASE 144
+							TIMES 計算用精液量, 1.30
+						CASE 145
+							TIMES 計算用精液量, 1.25
+						CASE 146
+							TIMES 計算用精液量, 1.20
+						CASE 147
+							TIMES 計算用精液量, 1.15
+						CASE 148
+							TIMES 計算用精液量, 1.10
+						CASE 149
+							TIMES 計算用精液量, 1.05
+						CASE 150 TO 210
+							TIMES 計算用精液量, 1.00
+						CASE 211
+							TIMES 計算用精液量, 1.05
+						CASE 212
+							TIMES 計算用精液量, 1.10
+						CASE 213
+							TIMES 計算用精液量, 1.15
+						CASE 214
+							TIMES 計算用精液量, 1.20
+						CASE 215
+							TIMES 計算用精液量, 1.25
+						CASE 216
+							TIMES 計算用精液量, 1.30
+						CASE 217
+							TIMES 計算用精液量, 1.35
+						CASE 218
+							TIMES 計算用精液量, 1.40
+						CASE 219
+							TIMES 計算用精液量, 1.45
+						CASE 220 TO 280
+							TIMES 計算用精液量, 1.50
+					ENDSELECT
+				ENDIF
+				;快Ｖの増加量が大きいほど、膣奥が収縮して精液を吸い上げてくる
+				計算用精液量 *= (100000+UP:快Ｖ)
+				計算用精液量 /= 100000
+				PREG:助手2膣内射精 += 計算用精液量
+				CFLAG:助手からの膣射経験++
+				TFLAG:助手2から奴隷への膣内射精回数++
+				中出し回数:(ASSI:1):(NOF(TARGET))++
+				中出され回数:(NOF(ASSI:1))++
+				;妊娠していないのであれば中出し時の恐怖判定等
+				SIF TALENT:妊娠 == 0
+					CALL SAMEN_SHOOT_SOURCE, 射精したキャラ
+				;ビデオ撮影中はボーナスカウント
+				SIF TEQUIP:ビデオカメラ
+					VIDEOBONUS:助手中出し++
+				;獣人、獣による催淫
+				SELECTCASE CSTR:射精したキャラ:種族
+					CASE "獣人", "獣"
+						CFLAG:射精されるキャラ:残数 += ((CFLAG:射精されるキャラ:媚薬%5)+計算用射精量)/5
+						CFLAG:射精されるキャラ:媚薬 += 計算用射精量
+				ENDSELECT
+				;出産トラウマがあればストレスが溜まる サキュバスなら無効
+				SIF CFLAG:出産トラウマ && !TALENT:サキュバス
+					CFLAG:ストレス値 += CFLAG:出産トラウマ
+				SIF CFLAG:ストレス値 > 999
+					CFLAG:ストレス値 = 999
+			ENDIF
 		ENDIF
 	;アナル射精
 	CASE 2
-		IF 射精したキャラ == TMASTER
-			IF !TEQUIP:TMASTER:コンドーム
+		IF 射精したキャラ == MASTER
+			IF !TEQUIP:MASTER:コンドーム
 				SETBIT TFLAG:中出し, 1
 				CFLAG:主人からの腸射経験++
-				アナル中出し回数:TMASTER:(NOF(TARGET))++
-				アナル中出され回数:(NOF(TMASTER))++
+				アナル中出し回数:MASTER:(NOF(TARGET))++
+				アナル中出され回数:(NOF(MASTER))++
 				;ビデオ撮影時はボーナスカウント
 				SIF TEQUIP:ビデオカメラ
 					VIDEOBONUS:主人アナル中出し++
@@ -496,6 +576,22 @@ SELECTCASE 射精先
 				CFLAG:助手からの腸射経験++
 				アナル中出し回数:ASSI:(NOF(TARGET))++
 				アナル中出され回数:(NOF(ASSI))++
+				;ビデオ撮影時はボーナスカウント
+				SIF TEQUIP:ビデオカメラ
+					VIDEOBONUS:助手アナル中出し++
+				;獣人、獣による催淫
+				SELECTCASE CSTR:射精したキャラ:種族
+					CASE "獣人", "獣"
+						CFLAG:射精されるキャラ:残数 += ((CFLAG:射精されるキャラ:媚薬%5)+計算用射精量)/5
+						CFLAG:射精されるキャラ:媚薬 += 計算用射精量
+				ENDSELECT
+			ENDIF
+		ELSEIF 射精したキャラ == ASSI:1
+			IF !TEQUIP:(ASSI:1):コンドーム
+				SETBIT TFLAG:中出し, 1
+				CFLAG:助手からの腸射経験++
+				アナル中出し回数:(ASSI:1):(NOF(TARGET))++
+				アナル中出され回数:(NOF(ASSI:1))++
 				;ビデオ撮影時はボーナスカウント
 				SIF TEQUIP:ビデオカメラ
 					VIDEOBONUS:助手アナル中出し++
@@ -592,7 +688,7 @@ SELECTCASE 射精先
 		ENDIF
 	;クンニ
 	CASE 8
-		SIF 射精したキャラ == TMASTER
+		SIF 射精したキャラ == MASTER
 			CFLAG:口で射精させた経験++
 	;3P助手射精
 	CASE 11
@@ -625,7 +721,7 @@ SELECTCASE 射精先
 		ENDIF
 ENDSELECT
 
-IF 射精したキャラ == TMASTER
+IF 射精したキャラ == MASTER
 	SELECTCASE SELECTCOMS
 		CASE "キスする"
 			CFLAG:キスで射精させた経験++
@@ -659,7 +755,7 @@ ENDIF
 SELECTCASE SELECTCOMS
 	CASE "ダブルフェラ", "ダブルパイズリ", "ダブル素股"
 		PRINTFORML 精液経験+{LIMIT(射精量, 1, 10)}(%CALLNAME:ASSI%)
-		EXP:ASSI:精液経験 += LIMIT(射精量, 1, 10)
+		EXP:PLAYER:精液経験 += LIMIT(射精量, 1, 10)
 	CASE "数珠繋ぎ", "3P"
 		IF 射精されるキャラ == ASSI
 			PRINTFORML 精液経験+{LIMIT(射精量, 1, 10)}(%CALLNAME:ASSI%)

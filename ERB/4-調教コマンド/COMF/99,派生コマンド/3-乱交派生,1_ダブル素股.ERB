@@ -39,7 +39,7 @@ SIF !USERCOM_ABLE_Ｐ奉仕()
 ;調教者が主人で、前回の調教が貝合わせ(助手)かダブル素股だと可能
 コマンド実行条件 += "実行者が主人で、前回のコマンドが貝合わせ(助手)かダブル素股だと派生可能/"
 IF !TEQUIP:ゲームセンター
-	IF PLAYER == TMASTER && (PREVCOMS == "ダブル素股" || (TFLAG:前コマンド実行者 == ASSI && PREVCOMS == "貝合わせ"))
+	IF TFLAG:前コマンド実行者 != MASTER && (PREVCOMS == "ダブル素股" || (TFLAG:前コマンド実行者 != PLAYER && PREVCOMS == "貝合わせ"))
 		RETURNF COMRESULT
 	ENDIF
 ENDIF
@@ -151,6 +151,8 @@ RETURN RESULT
 
 @COM_ダブル素股
 #DIM DYNAMIC 増加量
+#DIM DYNAMIC ASSI退避 ;口上呼出し用
+#DIM DYNAMIC TMASTER退避 ;口上呼出し用
 
 PRINTL ダブル素股
 
@@ -159,7 +161,13 @@ SIF !TFLAG:実行判定無視
 SIF !RESULT && !TFLAG:実行判定無視
 	RETURN 0
 
+ASSI退避 = ASSI
+TMASTER退避 = TMASTER
+ASSI = TFLAG:前コマンド実行者
+TMASTER = PLAYER
 CALL KOJO_MESSAGE_COM
+ASSI = ASSI退避
+TMASTER = TMASTER退避
 
 ;実行者が奴隷であるフラグ
 TFLAG:奴隷実行 = 1
@@ -167,16 +175,16 @@ TFLAG:奴隷実行 = 1
 ;-------------------------------------------------
 ;射精ゲージチェック
 ;-------------------------------------------------
-増加量 = 射精ゲージ計算_奉仕(300)
+増加量 = 射精ゲージ計算_奉仕(300, PLAYER)
 
 ;ABL:助手の技巧をみる
-増加量 += (増加量/5)*ABL:ASSI:技巧
+増加量 += (増加量/5)*ABL:(TFLAG:前コマンド実行者):技巧
 
 ;ABL:助手の従順をみる
-増加量 += (増加量/10)*ABL:ASSI:従順 - (増加量/10)*2
+増加量 += (増加量/10)*ABL:(TFLAG:前コマンド実行者):従順 - (増加量/10)*2
 
 ;ABL:助手の奉仕精神をみる
-SELECTCASE ABL:ASSI:奉仕精神
+SELECTCASE ABL:(TFLAG:前コマンド実行者):奉仕精神
 	CASE 0
 		TIMES 増加量 , 0.50
 	CASE 1
@@ -238,11 +246,11 @@ CALL SAMEN_SHOOT_T, 0, NOWEX:射精
 STAIN:ヴァギナ |= STAIN:PLAYER:ペニス
 STAIN:PLAYER:ペニス |= STAIN:ヴァギナ
 ;助手のヴァギナ⇔調教者のペニスの汚れが移動
-STAIN:ASSI:3 |= STAIN:PLAYER:ペニス
-STAIN:PLAYER:ペニス |= STAIN:ASSI:3
+STAIN:(TFLAG:前コマンド実行者):3 |= STAIN:PLAYER:ペニス
+STAIN:PLAYER:ペニス |= STAIN:(TFLAG:前コマンド実行者):3
 ;奴隷のヴァギナ⇔助手のヴァギナの汚れが移動
-STAIN:ヴァギナ |= STAIN:ASSI:3
-STAIN:ASSI:3 |= STAIN:ヴァギナ
+STAIN:ヴァギナ |= STAIN:(TFLAG:前コマンド実行者):3
+STAIN:(TFLAG:前コマンド実行者):3 |= STAIN:ヴァギナ
 
 ;-------------------------------------------------
 ;経験の処理
