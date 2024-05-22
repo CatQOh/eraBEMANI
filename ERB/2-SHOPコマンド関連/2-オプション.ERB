@@ -60,6 +60,7 @@ PRINTFORML 　[9] - 調教画面とお金の数値表示の設定(現在:\@ 数�
 PRINTFORML 　[10] - PAGING関数でのキャラ表示数(現在:{PAGING表示数}人)
 PRINTFORML 　[11] - 調教時のテキスト表示のウェイトを自動でスキップする(現在:\@ OPTION:調教時テキストスキップ ? オン # オフ \@)
 PRINTFORML 　[12] - 汎用喘ぎ口上を使用する(現在:\@ OPTION:汎用喘ぎ口上 ? オフ # オン \@)
+PRINTFORML 　[13] - 性別不明キャラの性別自動選択設定
 DRAWLINE
 PRINTPLAIN 　TEXT　
 PRINTL [100] - 戻る
@@ -154,6 +155,8 @@ SELECTCASE RESULT
 		INVERTBIT OPTION:調教時テキストスキップ, 0
 	CASE 12
 		INVERTBIT OPTION:汎用喘ぎ口上, 0
+	CASE 13
+		CALL 性別自動選択
 	CASE 100
 		RETURN 0
 ENDSELECT
@@ -1125,3 +1128,45 @@ SELECTCASE CRESULT:1
 		計算用 = バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ
 		バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ = RAND(計算用-5, 計算用+5)
 ENDSELECT
+
+@性別自動選択
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+{
+#DIMS CONST 項目 =
+"毎回選ぶ",
+"男性",
+"女性",
+"ランダム"
+}
+CALL LOOP_CLEARLINE
+
+CALL CHECKDRAWLINE
+PRINTL □性別を選択してください
+FOR LCOUNT, 1, 10000
+	SIF !EXISTCSV(LCOUNT) || CSVTALENT(LCOUNT, TALENTF("性別"))
+		CONTINUE
+	PRINTFORM 　[{LCOUNT, 4}] %CSVNAME(LCOUNT), 30, LEFT% 
+	FOR LCOUNT2, 0, 4
+		SIF 性別自動選択:LCOUNT == LCOUNT2
+			SETCOLORBYNAME deepskyblue
+		PRINTPLAINFORM [%項目:LCOUNT2%]
+		RESETCOLOR
+	NEXT
+	PRINTL 
+NEXT
+PRINTL 　[0] 戻る
+
+BINPUT
+
+SIF RESULT == 0
+	RETURN
+
+性別自動選択:RESULT++
+
+SIF 性別自動選択:RESULT > 3
+	性別自動選択:RESULT = 0
+
+SAVEGLOBAL
+
+RESTART
