@@ -6,9 +6,15 @@ CALL LOOP_CLEARLINE
 
 ;段位認定では施設経営を外す
 IF ゲームモード() == "段位認定"
-	CALL カラム生成, "SHOP", "メイン", "キャラクター", "キャラ・アイテム購入", "その他", "データベース", "セーブ", "ロード", "ショートカット", "オプション"
+	;#; CALL カラム生成, "SHOP", "メイン", "キャラクター", "キャラ・アイテム購入", "その他", "デバッグ", "データベース", "セーブ", "ロード", "ショートカット", "オプション"
+	[IF_NDEBUG]
+		CALL カラム生成, "SHOP", "メイン", "キャラクター", "キャラ・アイテム購入", "その他", "データベース", "セーブ", "ロード", "ショートカット", "オプション"
+	[ENDIF]
 ELSE
-	CALL カラム生成, "SHOP", "メイン", "キャラクター", "施設・経営", "キャラ・アイテム購入", "その他", "データベース", "セーブ", "ロード", "ショートカット", "オプション"
+	;#; CALL カラム生成, "SHOP", "メイン", "キャラクター", "施設・経営", "キャラ・アイテム購入", "その他", "デバッグ", "データベース", "セーブ", "ロード", "ショートカット", "オプション"
+	[IF_NDEBUG]
+		CALL カラム生成, "SHOP", "メイン", "キャラクター", "施設・経営", "キャラ・アイテム購入", "その他", "データベース", "セーブ", "ロード", "ショートカット", "オプション"
+	[ENDIF]
 ENDIF
 
 ;何かあったときのためにRESTART置いておく
@@ -120,6 +126,9 @@ VARLINE = LINECOUNT
 #DIM DYNAMIC 別キャラあり
 #DIMS DYNAMIC 表示中
 #DIM DYNAMIC ABLNAMELEN
+
+SIF TARGET == 0
+	TARGET = -1
 
 ;ゲーム内で表示されるショップ画面
 ;□XXXX年XX月XX日(曜日) X日目(昼夜) X周目 MODE:XXXXX
@@ -820,12 +829,17 @@ ENDSELECT
 
 ;旧@LIFE_LIST
 @SHOP_キャラクター
+SIF TARGET == 0
+	TARGET = -1
+
 CALL 所持キャラ一覧
 
 @SHOP_キャラクター_INPUT
 CALL 所持キャラ一覧_INPUT
 
 @SHOP_施設・経営
+SIF TARGET == 0
+	TARGET = -1
 
 IF !GROUPMATCH(ゲームモード(), "段位認定", "通常モード")
 	CALL COLUMNPRINTL, 0, "□経営"
@@ -945,6 +959,9 @@ ENDSELECT
 @SHOP_キャラ・アイテム購入
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 売却可能
+
+SIF TARGET == 0
+	TARGET = -1
 
 ;売却可能キャラ数の確認
 FOR LCOUNT, 1, CHARANUM
@@ -1134,6 +1151,9 @@ SELECTCASE CRESULT:1
 ENDSELECT
 
 @SHOP_データベース
+SIF TARGET == 0
+	TARGET = -1
+
 IF LANGUAGE == "ENG"
 	;ビデオ所持していれば表示
 	SIF FINDELEMENT(所持ビデオ, "", 0, VARSIZE("所持ビデオ"), 1) > 0
@@ -1176,6 +1196,9 @@ SELECTCASE CRESULT:1
 ENDSELECT
 
 @SHOP_その他
+SIF TARGET == 0
+	TARGET = -1
+
 IF LANGUAGE == "ENG"
 	;魔法
 	IF 詠唱可能()
@@ -1261,7 +1284,7 @@ ENDIF
 
 ;デバッグモードなら表示
 ;#;CALL COLUMNPRINTL, 0, "　[997] - 乱キャラ"
-;#;CALL COLUMNPRINTL, 0, "　[998] - デバッグ"
+;CALL COLUMNPRINTL, 0, "　[998] - デバッグ"
 
 @SHOP_その他_INPUT
 
@@ -1339,12 +1362,67 @@ SELECTCASE CRESULT:1
 	;#;	CALL DEBUG
 ENDSELECT
 
+@SHOP_デバッグ
+CALL MCOLUMNPRINTL, @"□なにをしますか？ 対象：%NAMEDISP(TARGET)%"
+SIF TARGET != MASTER
+	CALL MCOLUMNPRINTL, "　[0] - デバッグコマンドの対象を主人にする"
+CALL MCOLUMNPRINTL, "　[1] - 素質操作"
+CALL MCOLUMNPRINTL, "　[2] - ABL操作"
+CALL MCOLUMNPRINTL, "　[3] - 経験操作"
+CALL MCOLUMNPRINTL, "　[4] - 刻印操作"
+CALL MCOLUMNPRINTL, "　[5] - ITEM操作"
+CALL MCOLUMNPRINTL, "　[6] - その他"
+CALL MCOLUMNPRINTL, "　[7] - カジノ テストプレイ"
+CALL MCOLUMNPRINTL, "　[8] - デバッグ用セーブデータの作成"
+CALL MCOLUMNPRINTL, "　[9] - 全キャラの売却補正・獲得経験値確認"
+CALL MCOLUMNPRINTL, "　[10] - コマンドのツールチップ、ビデオ、写真の設定確認"
+CALL MCOLUMNPRINTL, "　[11] - 引き継ぎデバッグ"
+CALL MCOLUMNPRINTL, "　[12] - 各作品のキャラ数"
+;PRINTLC [10] - コードのデバッグ
+;PRINTL 
+;CALL MCOLUMNPRINTL, "[-1] 戻る
+
+@SHOP_デバッグ_INPUT
+SELECTCASE CRESULT:1
+	CASE 0
+		CALL ASSIGN_TARGET, 0
+	CASE 1
+		CALL TALENT_CHANGE
+	CASE 2
+		CALL ABL_CHANGE
+	CASE 3
+		CALL EXP_CHANGE
+	CASE 4
+		CALL MARK_CHANGE
+	CASE 5
+		CALL ITEM_CHANGE
+	CASE 6
+		CALL EXTRA_CHANGE
+	CASE 7
+		CALL GAMBLE
+	CASE 8
+		CALL DEBUG_SAVEDATA
+	CASE 9
+		CALL DEBUG_SHOW_CHARADATA
+	CASE 10
+		CALL COMMAND_CHECK
+	CASE 11
+		JUMP SUCCESSION
+	CASE 12
+		CALL 各作品のキャラ数
+	;CASE 10
+	;	CALL CODE_DEBUG
+ENDSELECT
 
 ;USERSAVEの流用
 @SHOP_セーブ
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC データ番号
 #DIM DYNAMIC データ数
+
+SIF TARGET == 0
+	TARGET = -1
+
 CALL COLUMNPRINTL, 0, "□何番にセーブしますか？"
 CALL COLUMNPRINTL, 0, "　[--]　　　 現実の時間　　　　|　　　ゲーム内の時間"
 
@@ -1425,12 +1503,18 @@ SIF データ数 == 80
 SAVEGLOBAL
 
 @SHOP_ロード
+SIF TARGET == 0
+	TARGET = -1
+
 CALL タイトル_セーブデータのロード
 
 @SHOP_ロード_INPUT
 CALL タイトル_セーブデータのロード_INPUT
 
 @SHOP_オプション
+SIF TARGET == 0
+	TARGET = -1
+
 LOADGLOBAL
 CALL COLUMNPRINTL, 0, "□設定項目を選択してください"
 CALL COLUMNPRINTL, 0, "　[0] - テキスト設定"
@@ -1553,6 +1637,10 @@ ENDSELECT
 @SHOP_ショートカット
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC LCOUNT
+
+SIF TARGET == 0
+	TARGET = -1
+
 ;ショートカット有効にしていれば表示
 ;カラム機能を作ったので常時表示
 CALL COLUMNPRINTL, 0, @"□ショートカット一覧 現在の対象:\@ TARGET == -1 ? 無し # %NAME:TARGET% \@ 現在の助手1:\@ ASSI == -1 ? 無し # %NAME:ASSI% \@ 現在の助手2:\@ ASSI:1 == -1 ? 無し # %NAME:(ASSI:1)% \@"
