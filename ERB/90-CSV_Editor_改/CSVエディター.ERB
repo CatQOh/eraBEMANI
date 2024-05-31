@@ -7,6 +7,7 @@
 #DIMS DYNAMIC 表示用変数, 6
 #DIM DYNAMIC LRESULT
 #DIMS DYNAMIC 種族名, 100
+#DIMS DYNAMIC ユーザー種族, 30
 #DIM DYNAMIC 種族ナンバー
 #DIM DYNAMIC 服装プリセット = 1
 #DIMS DYNAMIC 選択文字列
@@ -488,6 +489,12 @@ SELECTCASE 選択文字列
 					種族名:FINDELEMENT(種族名, "", 0, VARSIZE("種族名"), 1) = %CSVCSTR(LCOUNT, 種族ナンバー)%
 			ENDIF
 		NEXT
+		FOR LCOUNT, 0, VARSIZE("ユーザー種族")
+			SIF ユーザー種族:LCOUNT == ""
+				BREAK
+			SIF FINDELEMENT(種族名, ESCAPE(ユーザー種族:LCOUNT), 0, VARSIZE("種族名"), 1) == -1
+				種族名:FINDELEMENT(種族名, "", 0, VARSIZE("種族名"), 1) = %ユーザー種族:LCOUNT%
+		NEXT
 
 		;追加の特殊種族
 		SIF FINDELEMENT(種族名, ESCAPE("スライム"), 0, VARSIZE("種族名"), 1) == -1
@@ -498,9 +505,26 @@ SELECTCASE 選択文字列
 				BREAK
 			PRINTFORMLC [{LCOUNT}] %I18N(種族名:LCOUNT)%
 		NEXT
+		PRINTL 
+			PRINTFORML [{VARSIZE("種族名")}] 種族名を直接入力する
+			PRINTFORML [{VARSIZE("種族名")+1}] キャンセル
 		CALL NEWLINE
 		BINPUT
-		CSTR:種族 = %種族名:RESULT%
+		LRESULT = RESULT
+		SELECTCASE LRESULT
+			CASE 0 TO VARSIZE("種族名") -1
+				CSTR:種族 = %種族名:LRESULT%
+			CASE VARSIZE("種族名")
+				PRINTL 種族名を入力してください
+				PRINTL 何も入力せず決定した場合は種族設定をキャンセルします
+				INPUTS
+				IF RESULTS == ""
+					GOTO RESTART
+				ENDIF
+				CSTR:種族 '= RESULTS
+				SIF FINDELEMENT(ユーザー種族, ESCAPE(CSTR:種族), 0, VARSIZE("ユーザー種族"), 1) == -1
+					ユーザー種族:FINDELEMENT(ユーザー種族, "", 0, VARSIZE("ユーザー種族"), 1) '= CSTR:種族			
+		ENDSELECT
 		GOTO RESTART
 	CASE "素質を変更する"
 		CALL TALENT_CHANGE, 素質数値指定, 1
