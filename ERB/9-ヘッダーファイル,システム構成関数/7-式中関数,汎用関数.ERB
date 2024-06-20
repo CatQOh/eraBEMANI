@@ -1680,14 +1680,59 @@ RETURNF 返り値
 @TOOPTIONINT, 変換対象
 #FUNCTIONS
 #DIM DYNAMIC 変換対象
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 変換後
+#DIM DYNAMIC 整数部分
+#DIM DYNAMIC 小数部分
+#DIM DYNAMIC 小数部分桁数
+
+整数部分 = 変換対象/POWER(10, 桁数下げ)
+小数部分 = ABS(変換対象)%POWER(10, 桁数下げ)
+
+;「前」のとき
+SIF 通貨単位位置 == 1
+	変換後 = ＄
+
 SELECTCASE 数値表示設定
 	CASE "3桁区切り"
-		RETURNF @"\@ SIGN(変換対象) == -1 ? - #\@%TODIGSEP(ABS(変換対象))%"
+		変換後 += @"\@ SIGN(整数部分) == -1 ? - #\@%TODIGSEP(ABS(整数部分))%"
 	CASE "漢字桁表示"
-		RETURNF @"\@ SIGN(変換対象) == -1 ? - #\@%TO漢字(ABS(変換対象))%"
+		変換後 += @"\@ SIGN(整数部分) == -1 ? - #\@%TO漢字(ABS(整数部分))%"
 	CASEELSE
-		RETURNF @"\@ SIGN(変換対象) == -1 ? - #\@%TOSTR(ABS(変換対象))%"
+		変換後 += @"\@ SIGN(整数部分) == -1 ? - #\@%TOSTR(ABS(整数部分))%"
 ENDSELECT
+
+;「中」のとき
+SIF 通貨単位位置 == 2
+	変換後 += "＄"
+
+IF 桁数下げ > 0
+	IF 小数部分 == 0
+		IF ゼロ表示
+			SIF 通貨単位位置 != 2
+				変換後 += "."
+			FOR LCOUNT, 0, 桁数下げ
+				変換後 += "0"
+			NEXT
+		ENDIF
+	ELSE
+		SIF 通貨単位位置 != 2
+			変換後 += "."
+		小数部分桁数 = 1+LOG10(小数部分)
+		IF 小数部分桁数 < 桁数下げ
+			FOR LCOUNT, 0, 桁数下げ-小数部分桁数
+				変換後 += "0"
+			NEXT
+		ENDIF
+		変換後 += TOSTR(小数部分)
+	ENDIF
+ENDIF
+
+;「後」のとき
+SIF 通貨単位位置 == 0
+	変換後 += "＄"
+
+RETURNF 変換後
 
 ;;;10倍の値で保存されていることを想定した変数(例:111.6→1116)に入力するための式中関数
 ;;;入力された値の10倍を返すが、整数と小数第1位までの小数の入力ができる
