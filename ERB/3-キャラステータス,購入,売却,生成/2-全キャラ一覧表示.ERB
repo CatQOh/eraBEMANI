@@ -49,6 +49,7 @@ ENDIF
 #DIM DYNAMIC 検索ワード
 #DIMS DYNAMIC マウスオーバー
 #DIM DYNAMIC 全キャラ検索
+#DIM DYNAMIC 文字数
 
 検索機能 = 全キャラ検索
 
@@ -247,18 +248,16 @@ FOR LCOUNT, 0, 10000
 	SIF 表示数%3 == 0 && 表示数 != 0
 		PRINTL 
 
+	;「[四桁] %名前%(価格)」という表記の半角基準での文字数を数える
+	文字数 = 8;[四桁]で7、その後のスペースで1、価格が入る場合そのカッコで2
 	IF 表示場面 != "購入"
 		文字列表示用 = [{LCOUNT, 4}] %CSVNAMEDISP(LCOUNT)%
+		文字数 += STRLENS(CSVNAMEDISP(LCOUNT))
 	ELSE
-		文字列表示用 = [{LCOUNT, 4}] %CSVNAMEDISP(LCOUNT)% 
-		SELECTCASE 数値表示設定
-			CASE "3桁区切り"
-				文字列表示用 += @"(%TODIGSEP(CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格")))%＄)"
-			CASE "漢字桁表示"
-				文字列表示用 += @"(%TO漢字(CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格")))%＄)"
-			CASEELSE
-				文字列表示用 += @"({CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格"))}＄)"
-		ENDSELECT
+		文字列表示用 =  [{LCOUNT, 4}] %CSVNAMEDISP(LCOUNT)%({CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格"))}＄)
+		文字数 += STRLENS(CSVNAMEDISP(LCOUNT))
+		文字数 += 2
+		文字数 += 価格文字数カウント(CSVCFLAG(LCOUNT, GETNUM(CFLAG, "価格")))
 	ENDIF
 	
 	;口上表示設定、かつ口上の存在するキャラは青文字表示
@@ -296,19 +295,10 @@ FOR LCOUNT, 0, 10000
 			SIF TOINT(マウスオーバー) == LCOUNT
 				SETCOLORBYNAME yellow
 		ENDIF
-		CALL PASELI, 文字列表示用, 1
+		CALL PASELI, 文字列表示用
 		;3人目は空白埋めしない
 		IF 表示数%3 != 2
-			;PRINT_IMGでPRINTC系命令使うとエラーになるので疑似再現
-			IF OPTION:パセリ表示
-				単位文字数 = 2
-			ELSEIF 通貨単位 != ""
-				単位文字数 = STRLENS(通貨単位)
-			ELSE
-				単位文字数 = 1
-			ENDIF
-			;＄の分2文字と通貨単位分
-			PRINTFORM %SPACES(44-(STRLENS(文字列表示用)-2)-単位文字数)%
+			PRINTFORM %SPACES(44-文字数)%
 		ENDIF
 	ENDIF
 	RESETCOLOR
