@@ -1686,12 +1686,17 @@ RETURNF 返り値
 #DIM DYNAMIC 小数部分
 #DIM DYNAMIC 小数部分桁数
 
+SIF 変換対象 < 0
+	変換後 = -
+
+変換対象 = ABS(変換対象)
+
 整数部分 = 変換対象/POWER(10, 桁数下げ)
-小数部分 = ABS(変換対象)%POWER(10, 桁数下げ)
+小数部分 = 変換対象%POWER(10, 桁数下げ)
 
 ;「前」のとき
 SIF 通貨単位位置 == 1
-	変換後 = ＄
+	変換後 += "＄"
 
 SELECTCASE 数値表示設定
 	CASE "3桁区切り"
@@ -1950,8 +1955,14 @@ SPLIT 数値, "＄", 表示用
 表示数 = RESULT
 
 FOR LCOUNT, 0, 表示数
-	SIF LCOUNT == 表示数-1 && 表示用:LCOUNT == ""
+	IF LCOUNT == 表示数-1
+		IF プレーンテキスト
+			PRINTPLAINFORM %表示用:LCOUNT%
+		ELSE
+			PRINTFORM %表示用:LCOUNT%
+		ENDIF
 		BREAK
+	ENDIF
 
 	数字始端 = -1
 	;「表示用:LCOUNT」の終端が数字のとき
@@ -1976,6 +1987,16 @@ FOR LCOUNT, 0, 表示数
 		
 		;以降、数値だけの処理
 		数値全体 = TOINT(SUBSTRINGU(表示用:LCOUNT, 数字始端))
+
+		IF 数値全体 < 0
+			IF プレーンテキスト
+				PRINTPLAIN -
+			ELSE
+				PRINT -
+			ENDIF
+			数値全体 *= -1
+		ENDIF
+
 		整数部分 = 数値全体/POWER(10, 桁数下げ)
 		小数部分 = ABS(数値全体)%POWER(10, 桁数下げ)
 
@@ -2102,11 +2123,6 @@ IF 桁数下げ > 0
 	小数点あり = 1
 	整数部分 = 数値/POWER(10, 桁数下げ)
 	小数部分 = 数値%POWER(10, 桁数下げ)
-	IF 整数部分 >= 10
-		合計文字数 += 1+LOG(整数部分)
-	ELSE
-		合計文字数 += 1
-	ENDIF
 	IF 小数部分 > 0
 		合計文字数 += 桁数下げ
 	ELSE
@@ -2117,12 +2133,8 @@ IF 桁数下げ > 0
 		ENDIF
 	ENDIF
 ELSE
+	整数部分 = 数値
 	小数点あり = 0
-	IF 数値 >= 10
-		合計文字数 += 1+LOG(数値)
-	ELSE
-		合計文字数 += 1
-	ENDIF
 ENDIF
 
 SIF 小数点あり && 通貨単位位置 != 2
@@ -2133,6 +2145,15 @@ IF OPTION:パセリ表示
 ELSE
 	合計文字数 += STRLENS(通貨単位)
 ENDIF
+
+SELECTCASE 数値表示設定
+	CASE "3桁区切り"
+		合計文字数 += STRLENS(TODIGSEP(整数部分))
+	CASE "漢字桁表示"
+		合計文字数 += STRLENS(TO漢字(整数部分))
+	CASEELSE
+		合計文字数 += STRLENS(TOSTR(整数部分))
+ENDSELECT
 
 RETURNF 合計文字数
 
