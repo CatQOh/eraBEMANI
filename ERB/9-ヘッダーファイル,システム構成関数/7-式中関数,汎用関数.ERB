@@ -1886,27 +1886,30 @@ ELSE
 ENDIF
 
 ;;;PRINT
-@PASELI, 数値, 最適化済み
+@PASELI, 数値, プレーンテキスト
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC 数字始端
 ;上限は20くらい取っておく
 #DIMS DYNAMIC 表示用, 20
 #DIM DYNAMIC 表示数
-#DIM DYNAMIC 最適化済み
+#DIM DYNAMIC プレーンテキスト
 #DIMS DYNAMIC 数値
+#DIM DYNAMIC 数値全体
+#DIM DYNAMIC 整数部分
+#DIM DYNAMIC 小数部分
+#DIM DYNAMIC 小数部分桁数
 
 SPLIT 数値, "＄", 表示用
 
 表示数 = RESULT
 
 FOR LCOUNT, 0, 表示数
-	SIF LCOUNT >= 1
-		CALL 通貨単位
-	;既に数字がオプション用に最適化されてればすっ飛ばす
-	SIF 最適化済み
-		GOTO 表示
+	SIF LCOUNT == 表示数-1 && 表示用:LCOUNT == ""
+		BREAK
+
 	数字始端 = -1
+	;「表示用:LCOUNT」の終端が数字のとき
 	IF ISNUMERIC(CHARATU(表示用:LCOUNT, STRLENSU(表示用:LCOUNT)-1))
 		FOR LCOUNT2, STRLENSU(表示用:LCOUNT)-1, -1, -1
 			IF ISNUMERIC(CHARATU(表示用:LCOUNT, LCOUNT2))
@@ -1915,20 +1918,103 @@ FOR LCOUNT, 0, 表示数
 				BREAK
 			ENDIF
 		NEXT
+	
+		;ここで変数「数字始端」は数字でない部分の文字数になっている
+		;数字以外があるならすべて表示
+		IF 数字始端 > 0
+			IF プレーンテキスト
+				PRINTPLAINFORM %SUBSTRINGU(表示用:LCOUNT, 0, 数字始端)%
+			ELSE
+				PRINTFORM %SUBSTRINGU(表示用:LCOUNT, 0, 数字始端)%
+			ENDIF
+		ENDIF
+		
+		;以降、数値だけの処理
+		数値全体 = TOINT(SUBSTRINGU(表示用:LCOUNT, 数字始端))
+		整数部分 = 数値全体/POWER(10, 桁数下げ)
+		小数部分 = ABS(数値全体)%POWER(10, 桁数下げ)
+
+		;「前」のとき
+		SIF 通貨単位位置 == 1
+			CALL 通貨単位
+
+		SELECTCASE 数値表示設定
+			CASE "3桁区切り"
+				IF プレーンテキスト
+					PRINTPLAINFORM %TODIGSEP(整数部分)%
+				ELSE
+					PRINTFORM %TODIGSEP(整数部分)%
+				ENDIF
+			CASE "漢字桁表示"
+				IF プレーンテキスト
+					PRINTPLAINFORM %TO漢字(整数部分)%
+				ELSE
+					PRINTFORM %TO漢字(整数部分)%
+				ENDIF
+			CASEELSE
+				IF プレーンテキスト
+					PRINTPLAINFORM {整数部分}
+				ELSE
+					PRINTFORM {整数部分}
+				ENDIF
+		ENDSELECT
+
+		;「中」のとき
+		SIF 通貨単位位置 == 2
+			CALL 通貨単位
+
+		IF 桁数下げ > 0
+			IF 小数部分 == 0
+				IF ゼロ表示
+					IF 通貨単位位置 != 2
+						IF プレーンテキスト
+							PRINTPLAIN .
+						ELSE
+							PRINT .
+						ENDIF
+					ENDIF
+					FOR LCOUNT2, 0, 桁数下げ
+						IF プレーンテキスト
+							PRINTPLAIN 0
+						ELSE
+							PRINT 0
+						ENDIF
+					NEXT
+				ENDIF
+			ELSE
+				IF 通貨単位位置 != 2
+					IF プレーンテキスト
+						PRINTPLAIN .
+					ELSE
+						PRINT .
+					ENDIF
+				ENDIF
+				小数部分桁数 = 1+LOG10(小数部分)
+				IF 小数部分桁数 < 桁数下げ
+					FOR LCOUNT2, 0, 桁数下げ-小数部分桁数
+						IF プレーンテキスト
+							PRINTPLAIN 0
+						ELSE
+							PRINT 0
+						ENDIF
+					NEXT
+				ENDIF
+				IF プレーンテキスト
+					PRINTPLAINFORM {小数部分}
+				ELSE
+					PRINTFORM {小数部分}
+				ENDIF
+			ENDIF
+		ENDIF
+		
+		;「後」のとき
+		SIF 通貨単位位置 == 0
+			CALL 通貨単位
+	;「表示用:LCOUNT」の終端が数字ではないとき
+	ELSE
+		PRINTFORM %表示用:LCOUNT%
+		CALL 通貨単位
 	ENDIF
-	SELECTCASE 数値表示設定
-		CASE "3桁区切り"
-			PRINTFORM %SUBSTRINGU(表示用:LCOUNT, 0, 数字始端)%
-			SIF 数字始端 >= 0
-				PRINTFORM %TODIGSEP(TOINT(SUBSTRINGU(表示用:LCOUNT, 数字始端)))%
-		CASE "漢字桁表示"
-			PRINTFORM %SUBSTRINGU(表示用:LCOUNT, 0, 数字始端)%
-			SIF 数字始端 >= 0
-				PRINTFORM %TO漢字(TOINT(SUBSTRINGU(表示用:LCOUNT, 数字始端)))%
-		CASEELSE
-			$表示
-			PRINTFORM %表示用:LCOUNT%
-	ENDSELECT
 NEXT
 
 ;;;PRINTL
@@ -1945,44 +2031,9 @@ PRINTW
 
 ;;;PRINTPLAIN
 @PASELIPLAIN, 数値
-#DIM DYNAMIC LCOUNT
-#DIM DYNAMIC LCOUNT2
-#DIM DYNAMIC 数字始端
-;上限は20くらい取っておく
-#DIMS DYNAMIC 表示用, 20
-#DIM DYNAMIC 表示数
 #DIMS DYNAMIC 数値
+CALL PASELI, 数値, 1
 
-SPLIT 数値, "＄", 表示用
-
-表示数 = RESULT
-
-FOR LCOUNT, 0, 表示数
-	SIF LCOUNT >= 1
-		CALL 通貨単位
-	数字始端 = -1
-	IF ISNUMERIC(CHARATU(表示用:LCOUNT, STRLENSU(表示用:LCOUNT)-1))
-		FOR LCOUNT2, STRLENSU(表示用:LCOUNT)-1, -1, -1
-			IF ISNUMERIC(CHARATU(表示用:LCOUNT, LCOUNT2)) || LCOUNT2 == 0
-				数字始端 = LCOUNT2
-			ELSE
-				BREAK
-			ENDIF
-		NEXT
-	ENDIF
-	SELECTCASE 数値表示設定
-		CASE "3桁区切り"
-			PRINTPLAINFORM %SUBSTRINGU(表示用:LCOUNT, 0, 数字始端)%
-			SIF 数字始端 >= 0
-				PRINTPLAINFORM %TODIGSEP(TOINT(SUBSTRINGU(表示用:LCOUNT, 数字始端)))%
-		CASE "漢字桁表示"
-			PRINTPLAINFORM %SUBSTRINGU(表示用:LCOUNT, 0, 数字始端)%
-			SIF 数字始端 >= 0
-				PRINTPLAINFORM %TO漢字(TOINT(SUBSTRINGU(表示用:LCOUNT, 数字始端)))%
-		CASEELSE
-			PRINTPLAINFORM %表示用:LCOUNT%
-	ENDSELECT
-NEXT
 
 ;-------------------------------------------------
 ;;;ツールチップ
