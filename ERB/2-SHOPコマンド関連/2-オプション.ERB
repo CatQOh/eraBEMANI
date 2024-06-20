@@ -87,13 +87,46 @@ SELECTCASE RESULT
 	CASE 5
 		INVERTBIT OPTION:パセリ表示, 0
 	CASE 6
-		PRINTL 通貨単位を入力してください
-		PRINTBUTTON "[変更しない]", "変更しない"
-		PRINTL 
-		INPUTS
-		SIF RESULTS == "変更しない"
-			RESTART
-		通貨単位 = %RESULTS%
+		$通貨単位設定
+		CALL PASELIL, @"通貨単位設定 現在の表示例:1980000＄"
+		PRINTFORML [0] - 通貨単位変更(現在:\@ 通貨単位 == "" ? [未設定] # %通貨単位% \@)
+		PRINTL [1] - 通貨単位の位置変更
+		PRINTFORML [2] - 桁数を下げる(現在:\@ OPTION:桁数下げ > 0 ? {OPTION:桁数下げ}桁下げ # 変更なし \@)
+		PRINTFORML [3] - 小数点以下がゼロでの表示(現在:\@ OPTION:ゼロ表示 ? 表示あり # 表示なし \@)
+		PRINTL [4] - 戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				PRINTL 通貨単位を入力してください
+				PRINTBUTTON "[変更しない]", "変更しない"
+				PRINTL 
+				INPUTS
+				SIF RESULTS == "変更しない"
+					RESTART
+				通貨単位 = %RESULTS%
+			CASE 1
+				PRINTL 通貨単位の位置変更
+				PRINTL [0] - 数値の後ろに付ける
+				PRINTL [1] - 数値の前に付ける
+				PRINTL [2] - 小数点の位置につける
+				BINPUT
+				OPTION:通貨単位位置 = RESULT
+			CASE 2
+				PRINTL 下げる桁数を入力してください(0～12)
+				PRINTL 例:2桁下げの場合、5980→59.80
+				INPUT
+				OPTION:桁数下げ = LIMIT(RESULT, 0, 12)
+			CASE 3
+				PRINTL 小数点以下がゼロでの表示(桁数下げがあるときのみ有効)
+				PRINTL [0] - 表示しない
+				PRINTL [1] - 表示する
+				BINPUT
+				OPTION:ゼロ表示 = RESULT
+			CASE 4
+				RESTART
+		ENDSELECT
+		SAVEGLOBAL
+		GOTO 通貨単位設定
 	CASE 7
 		PRINTL グリムキャラの名前表示
 		PRINTL [0] - 通常の名前で表示する
@@ -859,10 +892,10 @@ ELSE
 	アンダー = アンダーMIN
 	差分 = トップ-アンダー
 	IF トップ
-		CALL MCOLUMNPRINTL, @"　　トップ:{トップ/10}.{トップ%10}cm"
+		CALL MCOLUMNPRINTL, @"　　トップ:{トップ/10, 3}.{トップ%10}cm"
 		IF アンダー
-			CALL MCOLUMNPRINTL, @"　アンダー:{アンダー/10}.{アンダー%10}cm"
-			CALL MCOLUMNPRINTL, @"　　　　差:{差分/10}.{差分%10}cm"
+			CALL MCOLUMNPRINTL, @"　アンダー:{アンダー/10, 3}.{アンダー%10}cm"
+			CALL MCOLUMNPRINTL, @"　　　　差:{差分/10, 3}.{差分%10}cm"
 		ELSE
 			CALL MCOLUMNPRINTL, "　アンダー:未設定"
 		ENDIF
