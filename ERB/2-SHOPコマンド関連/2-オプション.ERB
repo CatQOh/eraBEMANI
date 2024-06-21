@@ -24,7 +24,7 @@ RESTART
 ;テキスト関連
 @TEXT_SETTING
 DRAWLINE
-PRINTL □テキストの設定をしてください
+PRINTL □口上・地の文関連
 PRINT 　現在の設定：
 IF OPTION:地の文表示 && OPTION:口上表示
 	PRINTL 【口上+地の文】
@@ -35,32 +35,41 @@ ELSEIF OPTION:地の文表示 && !OPTION:口上表示
 ELSEIF !OPTION:地の文表示 && !OPTION:口上表示
 	PRINTL 【テキストを表示しない】
 ENDIF
+PRINT 　
 IF ゲームモード() != "段位認定"
-	PRINTL 　[0] - 口上+地の文
-	PRINTL 　[1] - 口上のみ
+	PRINT [ 0] - 口上+地の文 
+	PRINT [ 1] - 口上のみ 
 ENDIF
-PRINTL 　[2] - 地の文のみ
-PRINTL 　[3] - テキストを表示しない
-SIF !ORIGIN
-	PRINTFORML 　[4] - 実績解除時のメッセージ(現在:\@ 実績メッセージ ? オン # オフ \@)
-PRINTFORML 　[5] - パセリ表示(現在:\@ OPTION:パセリ表示 ? オン # オフ \@)
-PRINTFORML 　[6] - 通貨単位設定(現在:\@ 通貨単位 == "" ? [未設定] # %通貨単位% \@)
+PRINT 　[ 2] - 地の文のみ 
+PRINTL 　[ 3] - テキストを表示しない
+
+PRINTFORML 　[ 4] - 調教時のテキスト表示のウェイトを自動でスキップする(現在:\@ OPTION:調教時テキストスキップ ? オン # オフ \@)
+PRINTFORML 　[ 5] - 汎用喘ぎ口上を使用する(現在:\@ OPTION:汎用喘ぎ口上 ? オフ # オン \@)
+
+PRINTL □数値・通貨関連
+PRINTFORML 　[ 6] - パセリ表示(現在:\@ OPTION:パセリ表示 ? オン # オフ \@)
+PRINTFORML 　[ 7] - 通貨単位設定
+;(現在:\@ 通貨単位 == "" ? [未設定] # %通貨単位% \@)
+PRINTFORML 　[ 8] - 調教画面とお金の数値表示の設定(現在:\@ 数値表示設定 == "" ? 設定無し # %数値表示設定% \@)
+
+PRINTL □キャラ関連
 IF !ORIGIN || FINDCHARA(CFLAG:グリム, 1)
-	PRINT 　[7] - グリムキャラの名前表示設定(現在:
+	PRINT 　[ 9] - グリムキャラの名前表示設定(現在:
 	SELECTCASE FLAG:グリムコンフィグ
 		CASE 0
 			PRINTL 通常表示)
 		CASE 1
-			PRINTL 名前の先頭に「グリム・」を付ける
+			PRINTL 名前の先頭に「グリム・」を付ける)
 	ENDSELECT
 ENDIF
+PRINTFORML 　[10] - 性別不明キャラの性別自動選択設定
+
+PRINTL □システム関連
+SIF !ORIGIN
+	PRINTFORML 　[11] - 実績解除時のメッセージ(現在:\@ 実績メッセージ ? オン # オフ \@)
 SIF !SP
-	PRINTL 　[8] - ツールチップ(マウスカーソルを当てた時に表示されるポップアップ)の設定
-PRINTFORML 　[9] - 調教画面とお金の数値表示の設定(現在:\@ 数値表示設定 == "" ? 設定無し # %数値表示設定% \@)
-PRINTFORML 　[10] - PAGING関数でのキャラ表示数(現在:{PAGING表示数}人)
-PRINTFORML 　[11] - 調教時のテキスト表示のウェイトを自動でスキップする(現在:\@ OPTION:調教時テキストスキップ ? オン # オフ \@)
-PRINTFORML 　[12] - 汎用喘ぎ口上を使用する(現在:\@ OPTION:汎用喘ぎ口上 ? オフ # オン \@)
-PRINTFORML 　[13] - 性別不明キャラの性別自動選択設定
+	PRINTL 　[12] - ツールチップ(マウスカーソルを当てた時に表示されるポップアップ)の設定
+PRINTFORML 　[13] - PAGING関数でのキャラ表示数(現在:{PAGING表示数}人)
 DRAWLINE
 PRINTPLAIN 　TEXT　
 PRINTL [100] - 戻る
@@ -83,10 +92,12 @@ SELECTCASE RESULT
 		OPTION:地の文表示 = 0
 		OPTION:口上表示 = 0
 	CASE 4
-		INVERTBIT 実績メッセージ, 0
+		INVERTBIT OPTION:調教時テキストスキップ, 0
 	CASE 5
-		INVERTBIT OPTION:パセリ表示, 0
+		INVERTBIT OPTION:汎用喘ぎ口上, 0
 	CASE 6
+		INVERTBIT OPTION:パセリ表示, 0
+	CASE 7
 		$通貨単位設定
 		CALL PASELIL, @"通貨単位設定 現在の表示例:1980000＄"
 		PRINTFORML [0] - 通貨単位変更(現在:\@ 通貨単位 == "" ? [未設定] # %通貨単位% \@)
@@ -127,13 +138,32 @@ SELECTCASE RESULT
 		ENDSELECT
 		SAVEGLOBAL
 		GOTO 通貨単位設定
-	CASE 7
+	CASE 8
+		PRINTL 調教画面とお金の数値表示の設定
+		PRINTL [0] - 通常表示
+		PRINTL [1] - 3桁区切りで表示
+		PRINTL [2] - 漢字で桁を表示する
+		BINPUT
+		SELECTCASE RESULT
+			CASE 0
+				数値表示設定 = 
+			CASE 1
+				数値表示設定 = 3桁区切り
+			CASE 2
+				数値表示設定 = 漢字桁表示
+		ENDSELECT
+
+	CASE 9
 		PRINTL グリムキャラの名前表示
 		PRINTL [0] - 通常の名前で表示する
 		PRINTL [1] - 名前の先頭に「グリム・」を付ける
 		BINPUT
 		FLAG:グリムコンフィグ = RESULT
-	CASE 8
+	CASE 10
+		CALL 性別自動選択
+	CASE 11
+		INVERTBIT 実績メッセージ, 0
+	CASE 12
 		$TOOLTIP
 		PRINTL ツールチップ設定
 		PRINTFORML [0] - ツールチップ表示(現在:\@ ツールチップ非表示 ? オフ # オン \@)
@@ -165,31 +195,11 @@ SELECTCASE RESULT
 		ENDSELECT
 		SAVEGLOBAL
 		GOTO TOOLTIP
-	CASE 9
-		PRINTL 調教画面とお金の数値表示の設定
-		PRINTL [0] - 通常表示
-		PRINTL [1] - 3桁区切りで表示
-		PRINTL [2] - 漢字で桁を表示する
-		BINPUT
-		SELECTCASE RESULT
-			CASE 0
-				数値表示設定 = 
-			CASE 1
-				数値表示設定 = 3桁区切り
-			CASE 2
-				数値表示設定 = 漢字桁表示
-		ENDSELECT
-	CASE 10
+	CASE 13
 		PRINTL 表示数を選んでください 30人までが実用的だと思います
 		PRINTL [10][20][30][40][50]
 		BINPUT
 		PAGING表示数 = RESULT
-	CASE 11
-		INVERTBIT OPTION:調教時テキストスキップ, 0
-	CASE 12
-		INVERTBIT OPTION:汎用喘ぎ口上, 0
-	CASE 13
-		CALL 性別自動選択
 	CASE 100
 		RETURN 0
 ENDSELECT
