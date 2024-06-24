@@ -4,13 +4,23 @@
 #DIM DYNAMIC LIR_PHASE;賭けの段階
 #DIM DYNAMIC LIR_BET;賭けている場所をビットで記録(1=GETBIT(LIR_BET, 0):(1), 2=GETBIT(LIR_BET, 1):(2), 4=GETBIT(LIR_BET, 2):($), 8=GETBIT(LIR_BET, 3):BONUS)
 #DIM DYNAMIC ゲーム数 = 12
-#DIM DYNAMIC 賭け金上限 = 10000
-#DIM DYNAMIC ボーナスベット = 100
+#DIM DYNAMIC 賭け金上限
+#DIM DYNAMIC ボーナスベット
 #DIM DYNAMIC 賭け金
 #DIM DYNAMIC 配当
 #DIM DYNAMIC ボーナス配当
 #DIM DYNAMIC カジノの種類
 
+;表カジノでの賭け金上限は10000、ボーナスベットは100
+;裏カジノだと25倍になる
+SELECTCASE カジノの種類
+	CASE 1
+		賭け金上限 = 10000
+		ボーナスベット = 100
+	CASE 2
+		賭け金上限 = 250000
+		ボーナスベット = 2500
+ENDSELECT
 
 ;ここからゲーム開始
 DO
@@ -20,14 +30,19 @@ DO
 	PRINTW 実際の賭け金はその3倍になります。
 	CALL STAKE, 賭け金上限, カジノの種類
 	賭け金 = RESULT
+	SIF カジノの種類 == 2
+		裏カジノコンプ += 3*賭け金/200
 	LIR_BET = 7
 	PRINTL 
 	CALL PASELIL, @"{3*賭け金}＄ベットしました。"
 	CALL PASELIL, @"ボーナスベットをしますか？(追加で{ボーナスベット}＄が必要です)"
 	PRINTL [0]する [1]しない
 	BINPUT
-	SIF RESULT == 0
+	IF RESULT == 0
 		LIR_BET = 15
+		SIF カジノの種類 == 2
+			裏カジノコンプ += ボーナスベット/200
+	ENDIF
 
 	CALL SE再生, トランプ配布
 	CALL SHUFFLE, 52
@@ -160,6 +175,9 @@ DO
 		ボーナス配当 = 0
 	配当 *= (GETBIT(LIR_BET, 0)+GETBIT(LIR_BET, 1)+GETBIT(LIR_BET, 2))
 	MONEY += 配当+ボーナス配当
+	;実績：カジノの配当で一度に1億円以上受け取る
+	SIF 配当+ボーナス配当 >= 100000000
+		CALL 実績解除, "one or eight"
 	IF 配当 > 0
 		CALL SE再生, カジノコイン
 		CALL PASELI, @"{配当}＄"
@@ -195,7 +213,7 @@ DO
 	PRINTL [0]やっぱり続ける [1]もうやめる
 	BINPUT
 
-	;継続
+	;終了
 	SIF RESULT == 1
 		BREAK
 
