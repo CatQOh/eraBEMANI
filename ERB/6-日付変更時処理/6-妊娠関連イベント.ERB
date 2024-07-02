@@ -36,36 +36,43 @@ FOR LCOUNT, 0, CHARANUM
 	;夜なら排卵マッサージフラグを減らす
 	SIF ターン == "夜" && CFLAG:LCOUNT:排卵マッサージ > 0
 		CFLAG:LCOUNT:排卵マッサージ--
+	CALL 妊娠確定処理, LCOUNT
 NEXT
 
+@妊娠確定処理, 対象
+#DIM DYNAMIC 対象 = -1
+
+SIF 対象 == -1
+	対象 = TARGET
+SIF 対象 == -1
+	RETURN
+
 ;妊娠確定時の処理
-FOR LCOUNT, 0, CHARANUM
-	SIF CFLAG:LCOUNT:キャラロスト
-		CONTINUE
-	IF !TALENT:LCOUNT:妊娠 && PREG:LCOUNT:妊娠確定フラグ && PREG:LCOUNT:出産予定日 == 0
-		;獣人と獣は早く産める
-		SELECTCASE CSTR:LCOUNT:種族
-			CASE "獣人", "獣"
-				PREG:LCOUNT:出産予定日 = DAY+RAND(30, 41)
-				;MODによる操作
-				IF MOD:妊娠期間上限
-					PREG:LCOUNT:出産予定日 = DAY+RAND(MOD:妊娠期間下限, MOD:妊娠期間上限+1)
-				ELSEIF MOD:人口飽和 && ゲームモード() != "段位認定"
-					PREG:LCOUNT:出産予定日 = DAY+1
-				ENDIF
-				CALL CHILDSET, LCOUNT, FINDCHARA(NO, PREG:LCOUNT:父親)
-			CASEELSE
-				PREG:LCOUNT:出産予定日 = DAY+RAND(60, 81)
-				;MODによる操作
-				IF MOD:妊娠期間上限
-					PREG:LCOUNT:出産予定日 = DAY+RAND(MOD:妊娠期間下限, MOD:妊娠期間上限+1)
-				ELSEIF MOD:人口飽和 && ゲームモード() != "段位認定"
-					PREG:LCOUNT:出産予定日 = DAY+1
-				ENDIF
-				CALL CHILDSET, LCOUNT, FINDCHARA(NO, PREG:LCOUNT:父親)
-		ENDSELECT
-	ENDIF
-NEXT
+SIF CFLAG:対象:キャラロスト
+	CONTINUE
+IF !TALENT:対象:妊娠 && PREG:対象:妊娠確定フラグ && PREG:対象:出産予定日 == 0
+	;獣人と獣は早く産める
+	SELECTCASE CSTR:対象:種族
+		CASE "獣人", "獣"
+			PREG:対象:出産予定日 = DAY+RAND(30, 41)
+			;MODによる操作
+			IF MOD:妊娠期間上限
+				PREG:対象:出産予定日 = DAY+RAND(MOD:妊娠期間下限, MOD:妊娠期間上限+1)
+			ELSEIF MOD:人口飽和 && ゲームモード() != "段位認定"
+				PREG:対象:出産予定日 = DAY+1
+			ENDIF
+			CALL CHILDSET, 対象, FINDCHARA(NO, PREG:対象:父親)
+		CASEELSE
+			PREG:対象:出産予定日 = DAY+RAND(60, 81)
+			;MODによる操作
+			IF MOD:妊娠期間上限
+				PREG:対象:出産予定日 = DAY+RAND(MOD:妊娠期間下限, MOD:妊娠期間上限+1)
+			ELSEIF MOD:人口飽和 && ゲームモード() != "段位認定"
+				PREG:対象:出産予定日 = DAY+1
+			ENDIF
+			CALL CHILDSET, 対象, FINDCHARA(NO, PREG:対象:父親)
+	ENDSELECT
+ENDIF
 
 @NAKADASHI_CHECK, 対象, 竿役, 確率チェック=0, 精液量=0
 #DIMS DYNAMIC 対象種族
