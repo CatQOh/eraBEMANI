@@ -178,7 +178,7 @@ IF !(CFLAG:キャラロスト || CFLAG:死亡 || CFLAG:依代)
 	CALL MCOLUMNPRINT, @"□ %I18N("服装") % "
 	CALLFORM DISABLE, "服装変更", TARGET
 	SIF !RESULT
-		CALL MCOLUMNPRINT, @"[99] - %I18N("服装を変更する")%"
+		CALL MCOLUMNPRINT, @"[98] - %I18N("服装を変更する")%"
 	CALL MCOLUMNPRINTL, ""
 	CALL SHOW_INFO_CLOTHES, TARGET, 1
 	CALL MCOLUMNDRAWLINE
@@ -199,6 +199,14 @@ CALL MCOLUMNPRINTL, @"□ %I18N("相性")%"
 		CALL MCOLUMNPRINTL, @"　%I18N("素質:|0|との相性", , I18N("猫"))%-30\%"
 	SIF CSTR:種族嫌悪 != ""
 		CALL MCOLUMNPRINTL, @"　種族:%CSTR:種族嫌悪%との相性-30\%"
+	[IF RELEASE_ORIGIN]
+	[ELSE]
+		;メロン専用処理
+		IF CHARANAMEF(TARGET) == "メロン"
+			CALL MCOLUMNPRINTL, "　[サボり魔]を持っていない人間系+20% [サボり魔]を持っている人間系-25%"
+			CALL MCOLUMNPRINTL, "　それ以外の種族-50% [サボり魔]を持っているそれ以外の種族-75%"
+		ENDIF
+	[ENDIF]
 
 	表示数 = 0
 	FOR LCOUNT, 0, 20000
@@ -250,6 +258,34 @@ CALL MCOLUMNPRINTL, @"□ %I18N("相性")%"
 							CONTINUE
 					ENDIF
 				ENDIF
+				[IF RELEASE_ORIGIN]
+				[ELSE]
+					;メロン専用処理 メロンはADDCHARA時に相性設定してある
+					;全部表示すると崩れるので相性が変わったキャラのみ表示
+					IF CHARANAMEF(TARGET) == "メロン"
+						IF GROUPMATCH(CSVCSTR(LCOUNT, GETNUM(CSTR, "種族")), "人間", "人間(？)", "人造人間", "不明")
+							;+20%
+							IF !CSVTALENT(LCOUNT, TALENTF("サボり魔"))
+								SIF RELATION:LCOUNT == 120
+									CONTINUE
+							;-25%
+							ELSE
+								SIF RELATION:LCOUNT == 75
+									CONTINUE
+							ENDIF
+						ELSE
+							;-50%
+							IF !CSVTALENT(LCOUNT, TALENTF("サボり魔"))
+								SIF RELATION:LCOUNT == 50
+									CONTINUE
+							;-70%
+							ELSE
+								SIF RELATION:LCOUNT == 30
+									CONTINUE
+							ENDIF
+						ENDIF
+					ENDIF
+				[ENDIF]
 				SIF (相性補正後 == 100) || (TALENT:服従 && 相性補正後 == 120) || (TALENT:隷属 && 相性補正後 == 150)
 					CONTINUE
 				IF 相性補正後 > 100
@@ -286,7 +322,7 @@ CALL ステータス表示汎用メニュー
 @ステータス表示_服装・相性_INPUT
 CALL ステータス表示汎用メニュー_INPUT
 SELECTCASE CRESULT:1
-	CASE 99
+	CASE 98
 		CALL CHARA_CLOTHES_SETTING, TARGET
 	CASE 100
 		CALL 性経験履歴, 1
