@@ -379,13 +379,16 @@ IF !クローニング
 		FOR LCOUNT, 0, VARSIZE("択一キャラリスト")
 			SIF GETNO(択一キャラリスト:LCOUNT) != 対象
 				CONTINUE
-			IF LCOUNT%2 == 0
-				CCB:GETNO(択一キャラリスト:(LCOUNT+1)) = 1
-			ELSE
-				CCB:GETNO(択一キャラリスト:(LCOUNT-1)) = 1
-			ENDIF
+			CCB:GETNO(択一キャラリスト:(LCOUNT/2*2+!(LCOUNT%2))) = 1
 			BREAK
 		NEXT
+		;ニア・バテシバは2:1なので特殊処理
+		IF 対象 == GETNO("ニア・バテシバ")
+			CCB:GETNO("ニア・ユーディット") = 1
+			CCB:GETNO("バテシバ・アヒトフェル") = 1
+		ELSEIF GROUPMATCH(対象, GETNO("ニア・ユーディット"), GETNO("バテシバ・アヒトフェル"))
+			CCB:GETNO("ニア・バテシバ") = 1
+		ENDIF
 	ENDIF
 ENDIF
 
@@ -494,6 +497,37 @@ FOR LCOUNT, 0, RESULT
 	SIF GETNO(相性値) >= 0
 		RELATION:GETNO(相性値) = TOINT(相性値:1)
 NEXT
+
+[IF RELEASE_ORIGIN]
+[ELSE]
+	;メロン専用の相性処理
+	IF CHARANAMEF(TARGET) == "メロン"
+		FOR LCOUNT, 0, 10000
+			SIF !EXISTCSV(LCOUNT)
+				CONTINUE
+			;CSV側で設定されている相性は変えない
+			SIF RELATION:LCOUNT != 0
+				CONTINUE
+			IF GROUPMATCH(CSVCSTR(LCOUNT, GETNUM(CSTR, "種族")), "人間", "人間(？)", "人造人間", "不明")
+				;+20%
+				IF !CSVTALENT(LCOUNT, TALENTF("サボり魔"))
+					RELATION:LCOUNT = 120
+				;-25%
+				ELSE
+					RELATION:LCOUNT = 75
+				ENDIF
+			ELSE
+				;-50%
+				IF !CSVTALENT(LCOUNT, TALENTF("サボり魔"))
+					RELATION:LCOUNT = 50
+				;-70%
+				ELSE
+					RELATION:LCOUNT = 30
+				ENDIF
+			ENDIF
+		NEXT
+	ENDIF
+[ENDIF]
 
 IF MOD:SCAT
 	CALL INITIALIZE_AMOUNT_FOR_DEFECATE, TARGET
