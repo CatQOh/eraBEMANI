@@ -126,9 +126,11 @@ SELECTCASE カジノの種類
 ENDSELECT
 ギャンブル合計収支 = ギャンブル総収支:0 + ギャンブル総収支:1
 IF LANGUAGE== "ENG"
-	PRINTFORM Entry:{表カジノ入店回数}
-	SIF 裏カジノ入店回数
-		PRINTFORM +{裏カジノ入店回数}
+	[IF_DEBUG]
+		PRINTFORM Entry:{表カジノ入店回数}
+		SIF 裏カジノ入店回数
+			PRINTFORM +{裏カジノ入店回数}
+	[ENDIF]
 	PRINTL
 	CALL PASELIL, @"       Money:{MONEY}＄"
 	SIF カジノの種類 == 2
@@ -144,10 +146,12 @@ IF LANGUAGE== "ENG"
 		PRINTFORML BroGamerBoy's Rating:{BroGamerの少年好感度}
 	[ENDIF]
 ELSE
-	PRINTFORM 入店:{表カジノ入店回数}
-	SIF 裏カジノ入店回数
-		PRINTFORM +{裏カジノ入店回数}
-	PRINTL 回
+	[IF_DEBUG]
+		PRINTFORM 入店:{表カジノ入店回数}
+		SIF 裏カジノ入店回数
+			PRINTFORM +{裏カジノ入店回数}
+		PRINTL 回
+	[ENDIF]
 	CALL PASELIL, @"所持金:{MONEY}＄"
 	SIF カジノの種類 == 2
 		CALL PASELIL, @"コンプ:{裏カジノコンプ}＄"
@@ -839,17 +843,23 @@ SELECTCASE RESULT
 ENDSELECT
 
 ;以下、各ゲーム共通の賭け金設定
-@STAKE, 賭け金上限, カジノの種類
+@STAKE, 賭け金上限, カジノの種類, 倍率 = 0
 #DIM DYNAMIC 利子
 #DIM DYNAMIC 賭け金上限
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC ループ用ステップ = 5
+#DIM DYNAMIC ループ用ステップ
 #DIM DYNAMIC マックスベット可
 #DIM DYNAMIC カジノの種類
+#DIM DYNAMIC 倍率;レットイットライドのように入力する数値と実際の賭け金が違う場合に使う
+#DIM DYNAMIC 最大桁数
+#DIM DYNAMIC 文字列長
+#DIM DYNAMIC 最大文字列長
 #DIM DYNAMIC 賭け金
 
 SIF 賭け金上限 <= 0
 	RETURN 0
+SIF 倍率
+	最大桁数 = DGT(賭け金上限)
 
 ;ギャンブルで借金を背負った場合の利子(難易度によって変動)
 IF カジノの種類 == 1
@@ -902,11 +912,47 @@ RESETCOLOR
 
 CALL PASELIL, @" / MAXBET:{賭け金上限}＄)"
 
-SETCOLORBYNAME skyblue
-CALL PASELI, "[100] 100＄  "  
+;一般的なカジノのチップの色
+;   1ドル: 白
+;   5ドル: 赤
+;  25ドル: 緑
+; 100ドル: 黒
+; 500ドル: 紫
+;1000ドル: 黃
 
+;これより高額のチップは特に色が定まっていないため実際のカジノの色とゲーム的な都合を合わせて設定
+;  5000ドル: 白/赤/青・ブラウン・ピンク → ピンク
+; 25000ドル: ブラウン・オレンジ・ピンク → オレンジ
+;100000ドル: ブラウン・オレンジ → ブラウン
+
+;これ以降は適当に
+; 500000ドル: 銀
+;1000000ドル: 金
+
+IF 倍率
+	最大文字列長 = 0
+	ループ用ステップ = 1
+	;チップの価値が1つ下のものの倍数であることを利用して、変数「ループ用ステップ」の値を適宜書き換えていく
+	FOR LCOUNT, 0, 賭け金上限/100+1, ループ用ステップ
+		SELECTCASE LCOUNT
+			CASE 1, 5, 25, 100, 500, 1000, 5000, 25000, 100000, 500000, 1000000
+				文字列長 = OPTIONINTLENS(100*LCOUNT)
+				SIF 文字列長 > 最大文字列長
+					最大文字列長 = 文字列長
+				ループ用ステップ = LCOUNT
+		ENDSELECT
+	NEXT
+	文字列長 = OPTIONINTLENS(賭け金上限)
+	SIF 文字列長 > 最大文字列長
+		最大文字列長 = 文字列長
+ENDIF
+
+ループ用ステップ = 100
+;チップの価値が1つ下のものの倍数であることを利用して、変数「ループ用ステップ」の値を適宜書き換えていく
 FOR LCOUNT, 0, 賭け金上限+1, ループ用ステップ
 	SELECTCASE LCOUNT
+		CASE 100
+			SETCOLORBYNAME aliceblue
 		CASE 500
 			SETCOLORBYNAME crimson
 		CASE 2500
@@ -916,31 +962,46 @@ FOR LCOUNT, 0, 賭け金上限+1, ループ用ステップ
 		CASE 50000
 			SETCOLORBYNAME purple
 		CASE 100000
-			SETCOLORBYNAME yellow
+			SETCOLORBYNAME khaki
 		CASE 500000
-			SETCOLORBYNAME brown
+			SETCOLORBYNAME pink
 		CASE 2500000
 			SETCOLORBYNAME orange
 		CASE 10000000
-			SETCOLORBYNAME cyan
+			SETCOLORBYNAME brown
 		CASE 50000000
-			SETCOLORBYNAME magenta
-		CASE 100000000
 			SETCOLORBYNAME silver
-		CASE 200000000
+		CASE 100000000
 			SETCOLORBYNAME gold
 		CASEELSE
 			マックスベット可 = 1
 			CONTINUE
 	ENDSELECT
-	CALL PASELI, @"[{LCOUNT}] {LCOUNT}＄  "
+	IF 倍率
+		PRINTFORM [{LCOUNT, 最大桁数}] 
+		PRINTFORM %SPACES(最大文字列長-OPTIONINTLENS(LCOUNT))%
+		CALL PASELIL, @"{LCOUNT}＄ ×{倍率}= {LCOUNT*倍率}＄"
+	ELSE
+		;1000ドル(黄色チップ),100万ドル(金色チップ)の前に改行
+		SIF LCOUNT == 1000 || LCOUNT == 1000000
+			PRINTL
+		CALL PASELI, @"[{LCOUNT}] {LCOUNT}＄  "
+	ENDIF
 	ループ用ステップ = LCOUNT
 	マックスベット可 = 0
 NEXT
-PRINTL 
+SIF !倍率
+	PRINTL 
 RESETCOLOR
-SIF マックスベット可
-	CALL PASELIL, @"[{賭け金上限}] MAXBET({賭け金上限}＄)"
+IF マックスベット可
+	IF 倍率
+		PRINTFORM [{賭け金上限}] 
+		PRINTFORM %SPACES(最大文字列長-OPTIONINTLENS(賭け金上限))%
+		CALL PASELIL, @"{賭け金上限}＄ ×{倍率}= {賭け金上限*倍率}＄ (MAXBET)"
+	ELSE
+		CALL PASELIL, @"[{賭け金上限}] MAXBET({賭け金上限}＄)"
+	ENDIF
+ENDIF
 $STAKE_INPUT
 DO
 	INPUT

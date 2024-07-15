@@ -33,6 +33,8 @@
 #DIM DYNAMIC WIN_MONEY
 #DIM DYNAMIC カジノの種類
 #DIM DYNAMIC ハッキング残数
+#DIM DYNAMIC ソフト17あり = 0
+#DIM DYNAMIC 特殊役あり = 0
 
 ;賭け金下限(上限は*10) 表カジノは2,500 裏カジノは20,000 ゲーセンは1枚&デッキ数は1
 SELECTCASE カジノの種類
@@ -40,6 +42,8 @@ SELECTCASE カジノの種類
 		MIN_BET = 2500
 	CASE 2
 		MIN_BET = 20000
+		ソフト17あり = 1
+		特殊役あり = 1
 	CASE 3
 		MIN_BET = 1
 		USE_DECKS = 1
@@ -246,11 +250,7 @@ DO
 				ENDSELECT
 				PRINT :
 				;それぞれの桁数を計算
-				IF CC:(LCOUNT%13) == 0
-					DIGIT = 1
-				ELSE 
-					DIGIT = LOG10(CC:(LCOUNT%13)) + 1
-				ENDIF
+				DIGIT = DGT(CC:(LCOUNT%13))
 				;桁数が足りない場合スペースで揃える
 				FOR LCOUNT2, 0, MAX_DIGIT-DIGIT
 					PRINT  
@@ -991,6 +991,14 @@ DO
 		USE_CARDS += 1
 		BJCNT:0 += 1
 		GOTO BJ_MATCH
+	ELSEIF ソフト17あり && BJSUM(0) == 17
+		IF SOFT17
+			CALL SE再生, トランプドロー
+			BJCARD:0:(BJCNT:0) = CARD:USE_CARDS
+			USE_CARDS += 1
+			BJCNT:0 += 1
+			GOTO BJ_MATCH
+		ENDIF
 	ENDIF
 	WIN_MONEY = 0;配当の合計
 	FOR LCOUNT, 1, AREA_MAX
@@ -1083,6 +1091,9 @@ LOOP 1
 #DIM DYNAMIC ACE_CNT = 0
 #DIM DYNAMIC LCOUNT
 
+SIF プレイ領域 == 0
+	SOFT17 = 0
+
 FOR LCOUNT, 0, (BJCNT:プレイ領域)
 	IF (BJCARD:プレイ領域:LCOUNT) % 13 >= 10 || (BJCARD:プレイ領域:LCOUNT) % 13 == 0
 		LSCORE += 10;10,J,Q,Kは10点
@@ -1093,8 +1104,12 @@ FOR LCOUNT, 0, (BJCNT:プレイ領域)
 		LSCORE += (BJCARD:プレイ領域:LCOUNT) % 13;2-9はそのまま
 	ENDIF
 NEXT
+
+SIF プレイ領域 == 0 && LSCORE == 7 && ACE_CNT > 0
+	SOFT17 = 1;ディーラーが7点ちょうど(次の処理で17点になる)かつエースを持っているときSOFT17となる
 SIF LSCORE <= 11 && ACE_CNT > 0
 	LSCORE += 10;11点以下かつエースを持っているのなら10点増やす
+
 RETURNF LSCORE
 
 
