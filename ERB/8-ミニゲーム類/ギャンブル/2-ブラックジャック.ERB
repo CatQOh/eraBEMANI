@@ -21,6 +21,7 @@
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC CC, 13;CARD COUNTの略で出た枚数を数えるものだがCC:0はK
+#DIM DYNAMIC MAX_LENS = 0
 #DIM DYNAMIC MAX_DIGIT
 #DIM DYNAMIC DIGIT
 #DIM DYNAMIC HI_CARD
@@ -31,6 +32,7 @@
 #DIM DYNAMIC OMEGA2
 #DIM DYNAMIC ABS_TCOUNT
 #DIM DYNAMIC WIN_MONEY
+#DIM DYNAMIC WIN_MONEY_TEMP
 #DIM DYNAMIC カジノの種類
 #DIM DYNAMIC ハッキング残数
 #DIM DYNAMIC ソフト17あり = 0
@@ -48,31 +50,6 @@ SELECTCASE カジノの種類
 		MIN_BET = 1
 		USE_DECKS = 1
 ENDSELECT
-
-;1ゲームにおけるカードの理論上最大枚数(6デッキまでは対応)
-;スプリットは3回まで
-;代入式の右のコメントは4*(プレーヤー枚数)+(ディーラー枚数) さらに右はその内訳
-;「(全角数字)×(半角数字)」は(半角数字)のカードが(全角数字)枚数あるという意味
-SELECTCASE USE_DECKS
-	CASE 1;デッキの残り57.7%(小数第2位以下を四捨五入)未満でシャッフル
-		SHUFFLE_BORDER = 30;4*6+6 ４×(2～6,X)+(1,1,1,1,8,X)
-	CASE 2;39.4%
-		SHUFFLE_BORDER = 41;4*9+5 ４×(２×(1～4),X)+(5,5,5,X)
-	CASE 3;30.1%
-		SHUFFLE_BORDER = 47;4*8+15 ４×(３×(1,2),3,3,5,X)+(４×3,4,X)
-	CASE 4;25.5%
-		SHUFFLE_BORDER = 53;4*11+9 ４×(４×(1,3),２×2,X)+(８×2,X)
-	CASE 5;21.9%
-		SHUFFLE_BORDER = 57;4*12+9 ４×(５×1,３×2,３×3,X)+(８×2,X)
-	CASE 6;19.6%
-		SHUFFLE_BORDER = 61;4*13+9 ４×(６×1,４×2,3,3,X)+(８×2,X)
-	;7デッキ以上はとりあえず理論値(23デッキ以上で成立)を代入
-	CASEELSE
-		SHUFFLE_BORDER = 96;4*21+2 ４×(２０×1,X)+(６×1,6,６×1,X)
-ENDSELECT
-CALL SE再生, トランプシャッフル
-CALL SHUFFLE, 52*USE_DECKS
-USE_CARDS = 0
 
 ;会話回数の計算
 IF TARGET > 0
@@ -146,6 +123,32 @@ ENDIF
 SIF TARGET > 0
 	ハッキング残数 += MIN(ABL:工作技能, 10)
 
+
+;1ゲームにおけるカードの理論上最大枚数(6デッキまでは対応)
+;スプリットは3回まで
+;代入式の右のコメントは4*(プレーヤー枚数)+(ディーラー枚数) さらに右はその内訳
+;「(全角数字)×(半角数字)」は(半角数字)のカードが(全角数字)枚数あるという意味
+SELECTCASE USE_DECKS
+	CASE 1;デッキの残り57.7%(小数第2位以下を四捨五入)未満でシャッフル
+		SHUFFLE_BORDER = 30;4*6+6 ４×(2～6,X)+(1,1,1,1,8,X)
+	CASE 2;39.4%
+		SHUFFLE_BORDER = 41;4*9+5 ４×(２×(1～4),X)+(5,5,5,X)
+	CASE 3;30.1%
+		SHUFFLE_BORDER = 47;4*8+15 ４×(３×(1,2),3,3,5,X)+(４×3,4,X)
+	CASE 4;25.5%
+		SHUFFLE_BORDER = 53;4*11+9 ４×(４×(1,3),２×2,X)+(８×2,X)
+	CASE 5;21.9%
+		SHUFFLE_BORDER = 57;4*12+9 ４×(５×1,３×2,３×3,X)+(８×2,X)
+	CASE 6;19.6%
+		SHUFFLE_BORDER = 61;4*13+9 ４×(６×1,４×2,3,3,X)+(８×2,X)
+	;7デッキ以上はとりあえず理論値(23デッキ以上で成立)を代入
+	CASEELSE
+		SHUFFLE_BORDER = 96;4*21+2 ４×(２０×1,X)+(６×1,6,６×1,X)
+ENDSELECT
+CALL SE再生, トランプシャッフル
+CALL SHUFFLE, 52*USE_DECKS
+USE_CARDS = 0
+
 DO
 	D_DOWN = 0;ダブルダウンの管理([プレー領域]ビット目が1ならダブルダウン)
 	SURRENDER = 0;サレンダーの管理([プレー領域]ビット目が1ならサレンダー)
@@ -183,29 +186,27 @@ DO
 		ENDIF
 	ENDIF
 	PRINTL
+
 	;10個のボタンをずれずに表示する
+	MAX_DIGIT = DGT(10*MIN_BET)
+	FOR LCOUNT, 1, 11
+		SIF 価格文字数カウント(LCOUNT*MIN_BET) > MAX_LENS
+			MAX_LENS = 価格文字数カウント(LCOUNT*MIN_BET)
+	NEXT
 	FOR LCOUNT, 1, 11
 		;先頭でないならばスペースを開ける
 		SIF LCOUNT%5 != 1
 			PRINT  
-		PRINT [
-		;MAXBETと比べて桁が違うのならスペースを開ける
-		IF LOG10(LCOUNT*MIN_BET) != LOG10(10*MIN_BET)
-			PRINT  
-		ENDIF
-		PRINTFORM {LCOUNT*MIN_BET}]
-		;こっちも同じ
-		IF LOG10(LCOUNT*MIN_BET) != LOG10(10*MIN_BET)
-			PRINT  
-		ENDIF
-		PRINTFORM {LCOUNT*MIN_BET}
-		CALL PASELI, @"＄"
+		PRINTFORM [{LCOUNT*MIN_BET,MAX_DIGIT}]
+		;価格の頭にスペースを付けて揃える
+		PRINTFORM %SPACES(MAX_LENS-価格文字数カウント(LCOUNT*MIN_BET))%
+		CALL PASELI, @"{LCOUNT*MIN_BET}＄"
 		;5個表示したら改行
 		IF LCOUNT%5 == 0
-			CALL 通貨単位
 			PRINTL
 		ENDIF
 	NEXT
+
 	INPUT
 	IF RESULT == -1 && TARGET > 0 && USE_CARDS > 0 && 会話回数 > 0 && カジノの種類 != 3
 		;点数別カウンティング能力
@@ -491,6 +492,73 @@ DO
 	AREA_MAX = 2;プレイ領域の数(最初はディーラーとプレイヤーで2)
 	AREA_NOW = 1;現在のプレイ領域
 	VARLINE = 0
+
+	PRINTL
+	IF ソフト17あり
+		IF LANGUAGE == "ENG"
+			PRINTL Dealer must hit SOFT 17
+		ELSE
+			PRINTL ディーラーのルール： 18以上…すべてヒット 17…ソフト17のみヒット 16以下…すべてスタンド
+		ENDIF
+	ELSE
+		IF LANGUAGE == "ENG"
+			PRINTL Dealer must stand on ALL 17 and must draw to 16
+		ELSE
+			PRINTL ディーラーのルール： 17以上…すべてヒット 16以下…すべてスタンド
+		ENDIF
+	ENDIF
+	IF LANGUAGE == "ENG"
+		PRINTL    - PAYOUT -
+		PRINTL Win.........  1 to 1
+		PRINTL Blackjack...  3 to 2
+		IF 特殊役あり
+			;      ♠Ａ♠Ｊ...... 10 to 1
+			CALL PRTCARD(1)
+			CALL PRTCARD(11)
+			PRINTL ...... 10 to 1
+			;      ♠Ａ♣Ｊ......  8 to 1
+			CALL PRTCARD(1)
+			CALL PRTCARD(50)
+			PRINTL ......  8 to 1
+			;      ♦Ａ♦Ｑ......  6 to 1
+			CALL PRTCARD(27)
+			CALL PRTCARD(38)
+			PRINTL ......  6 to 1
+			PRINTL 777.........  6 to 1
+			SIF USE_DECKS >= 3
+				PRINTL 777(Flush)..776 to 1
+			PRINTL 678.........  4 to 1
+			PRINTL 678(Flush).. 54 to 1
+		ENDIF
+		PRINTL Insurance...  2 to 1
+	ELSE
+		PRINTL       - 配当 -
+		PRINTL 勝利　　　　　　 ×2.0
+		PRINTL ブラックジャック ×2.5
+		IF 特殊役あり
+			;      ♠Ａ♠Ｊ　　　　　 ×11
+			CALL PRTCARD(1)
+			CALL PRTCARD(11)
+			PRINTL 　　　　　 ×11
+			;      ♠Ａ♣Ｊ　　　　　 ×9
+			CALL PRTCARD(1)
+			CALL PRTCARD(50)
+			PRINTL 　　　　　 ×9
+			;      ♦Ａ♦Ｑ　　　　　 ×7
+			CALL PRTCARD(27)
+			CALL PRTCARD(38)
+			PRINTL 　　　　　 ×7
+			PRINTL 777 　　　　　　 ×7
+			SIF USE_DECKS >= 3
+				PRINTL 777(フラッシュ)  ×777
+			PRINTL 678 　　　　　　 ×5
+			PRINTL 678(フラッシュ)  ×55
+		ENDIF
+		PRINTL インシュアランス ×3
+	ENDIF
+
+
+
 	$BJ_PLAY
 	CALL LOOP_CLEARLINE
 	PRINTL
@@ -1013,13 +1081,28 @@ DO
 						WIN_MONEY += BJ_BET
 					;そうではないなら2.5倍付け
 					ELSE
-						WIN_MONEY += BJ_BET * 5 / 2
+						IF 特殊役あり
+							;♠Ａ♠Ｊ(1,11)は11倍
+							IF 特殊役判定(LCOUNT, 1, 11)
+								WIN_MONEY += BJ_BET * 11
+							;♠Ａ♣Ｊ(1,50)は9倍
+							ELSEIF 特殊役判定(LCOUNT, 1, 50)
+								WIN_MONEY += BJ_BET * 9
+							;♦Ａ♦Ｑ(27,38)は7倍
+							ELSEIF 特殊役判定(LCOUNT, 27, 38)
+								WIN_MONEY += BJ_BET * 7
+							ELSE
+								WIN_MONEY += BJ_BET * 5 / 2
+							ENDIF
+						ELSE
+							WIN_MONEY += BJ_BET * 5 / 2
+						ENDIF
 					ENDIF
 				;こちらの手札が21点だがブラックジャックではないとき
 				ELSE
 					;相手の手札が21点のとき
 					IF BJSUM(0) == 21
-						;相手の手札がブラックジャックではないなら勝ちで2倍付け
+						;相手の手札がブラックジャックではないなら引き分け
 						IF BJCNT:0 != 2
 							WIN_MONEY += BJ_BET
 							;ダブルダウンをしているならさらに2倍
@@ -1028,33 +1111,57 @@ DO
 						ENDIF
 					;相手の手札が21点でないのなら必ず勝ちで2倍付け
 					ELSE
-						WIN_MONEY += BJ_BET * 2
+						WIN_MONEY_TEMP = 0
+						IF 特殊役あり
+							;777なら7倍(フラッシュなら777倍)
+							IF 特殊ランク判定(LCOUNT, 7, 7, 7)
+								IF 特殊ランク判定(LCOUNT, 7, 7, 7) == 2
+									WIN_MONEY_TEMP = BJ_BET * 777
+								ELSE
+									WIN_MONEY_TEMP = BJ_BET * 7
+								ENDIF
+							;678なら5倍(フラッシュなら55倍)
+							ELSEIF 特殊ランク判定(LCOUNT, 6, 7, 8)
+								IF 特殊ランク判定(LCOUNT, 6, 7, 8) == 2
+									WIN_MONEY_TEMP = BJ_BET * 55
+								ELSE
+									WIN_MONEY_TEMP = BJ_BET * 5
+								ENDIF
+							ELSE
+								WIN_MONEY_TEMP = BJ_BET * 2
+							ENDIF
+						ELSE
+							WIN_MONEY_TEMP = BJ_BET * 2
+						ENDIF
 						;ダブルダウンをしているならさらに2倍
 						SIF GETBIT(D_DOWN, LCOUNT) == 1
-							WIN_MONEY += BJ_BET * 2
+							WIN_MONEY_TEMP *= 2
+						WIN_MONEY += WIN_MONEY_TEMP
 					ENDIF
 				ENDIF
 			;こちらの手札が21点未満のとき
 			ELSEIF BJSUM(LCOUNT) < 21
+				WIN_MONEY_TEMP = 0
 				;相手より点数が高いか相手がバーストしているのなら勝ちで2倍付け
 				IF BJSUM(LCOUNT) > BJSUM(0) || BJSUM(0) > 21
-					WIN_MONEY += BJ_BET * 2
-					;ダブルダウンをしているならさらに2倍
-					SIF GETBIT(D_DOWN, LCOUNT) == 1
-						WIN_MONEY += BJ_BET * 2
+					WIN_MONEY_TEMP = BJ_BET * 2
 				;相手と点数が同じなら引き分け
 				ELSEIF BJSUM(LCOUNT) == BJSUM(0)
-					WIN_MONEY += BJ_BET
-					;ダブルダウンをしているなら2倍払い戻す
-					SIF GETBIT(D_DOWN, LCOUNT) == 1
-						WIN_MONEY += BJ_BET
+					WIN_MONEY_TEMP = BJ_BET
 				ENDIF
+				;ダブルダウンをしているなら2倍
+				SIF GETBIT(D_DOWN, LCOUNT) == 1
+					WIN_MONEY_TEMP *= 2
+				WIN_MONEY += WIN_MONEY_TEMP
 			ENDIF
 		ENDIF
 	NEXT
 	;1ゲーム終了後の処理
 	$BJ_END
 	MONEY += WIN_MONEY
+	;実績：カジノの配当で一度に1億円以上受け取る
+	SIF WIN_MONEY >= 100000000
+		CALL 実績解除, "one or eight"
 	IF WIN_MONEY > 0
 		CALL SE再生, カジノコイン
 		IF LANGUAGE == "ENG"
@@ -1126,3 +1233,87 @@ ELSE
 ENDIF
 PRINTFORM {カードカウントスコア}
 RESETCOLOR
+
+
+;;;第1引数で指定したブラックジャックのプレイ領域に対して、カード枚数が2かつ、第2引数と第3引数で指定したカード番号に順不同で一致するとき1を返す
+@特殊役判定(プレイ領域, カード1, カード2)
+#FUNCTION
+#DIM DYNAMIC プレイ領域
+#DIM DYNAMIC カード1
+#DIM DYNAMIC カード2
+#DIM DYNAMIC 手札1
+#DIM DYNAMIC 手札2
+
+SIF BJCNT:プレイ領域 != 2
+	RETURNF 0
+
+手札1 = (BJCARD:プレイ領域:0)%52
+手札2 = (BJCARD:プレイ領域:1)%52
+
+IF 手札1 == カード1 && 手札2 == カード2
+	RETURNF 1
+ELSEIF 手札1 == カード2 && 手札2 == カード1
+	RETURNF 1
+ELSE
+	RETURNF 0
+ENDIF
+
+
+;;;第1引数で指定したブラックジャックのプレイ領域に対して、カード枚数が3かつ第2引数～第4引数で指定したカードランクに順不同で一致するとき1(スートまで一致で2)を返す
+@特殊ランク判定(プレイ領域, カード1, カード2, カード3)
+#FUNCTION
+#DIM DYNAMIC プレイ領域
+#DIM DYNAMIC カード1
+#DIM DYNAMIC カード2
+#DIM DYNAMIC カード3
+#DIM DYNAMIC 手札1
+#DIM DYNAMIC 手札2
+#DIM DYNAMIC 手札3
+#DIM DYNAMIC フラッシュ
+
+SIF BJCNT:プレイ領域 != 3
+	RETURNF 0
+
+手札1 = BJCARD:プレイ領域:0
+手札2 = BJCARD:プレイ領域:1
+手札3 = BJCARD:プレイ領域:2
+
+IF SUIT(手札1) == SUIT(手札2) && SUIT(手札1) == SUIT(手札3)
+	フラッシュ = 1
+ELSE
+	フラッシュ = 0
+ENDIF
+
+手札1 %= 13
+手札2 %= 13
+手札3 %= 13
+カード1 %= 13
+カード2 %= 13
+カード3 %= 13
+
+;「手札1≦手札2≦手札3」になるようにソート
+SIF 手札1 > 手札2
+	SWAP(手札1, 手札2)
+SIF 手札2 > 手札3
+	SWAP(手札2, 手札3)
+SIF 手札1 > 手札2
+	SWAP(手札1, 手札2)
+
+;「カード1≦カード2≦カード3」になるようにソート
+SIF カード1 > カード2
+	SWAP(カード1, カード2)
+SIF カード2 > カード3
+	SWAP(カード2, カード3)
+SIF カード1 > カード2
+	SWAP(カード1, カード2)
+
+IF 手札1 == カード1 && 手札2 == カード2 && 手札3 == カード3
+	IF フラッシュ
+		RETURNF 2
+	ELSE
+		RETURNF 1
+	ENDIF
+ELSE
+	RETURNF 0
+ENDIF
+
