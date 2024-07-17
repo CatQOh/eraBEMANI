@@ -851,6 +851,365 @@ SELECTCASE RESULT
 		RESTART
 ENDSELECT
 
+
+@CHARA_BUST_LIST
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象リスト番号
+#DIM DYNAMIC CSVバストサイズ, 10000
+#DIM DYNAMIC CBLキャラ最大数
+#DIM DYNAMIC キャラ名長さ
+#DIM DYNAMIC キャラ名長さ最大
+#DIM DYNAMIC MODあり
+#DIM DYNAMIC 対象キャラ番号
+#DIM DYNAMIC 購入時サイズ
+#DIM DYNAMIC 今のサイズ
+#DIM DYNAMIC トップ
+#DIM DYNAMIC アンダー
+#DIM DYNAMIC 成長割合
+#DIM DYNAMIC ワンサイズ増分
+#DIM DYNAMIC CSV女性
+
+;配列「CBLキャラ番号」に0番目から詰めて、キャラ番号(CSVにある固有のもの)が入る
+;配列「CBLリスト番号」に0番目から詰めて、フィルタ後のリストは配列「キャラ番号」の何番目かが入る
+;配列「CBLキャラ番号」の要素数は「CBLキャラ最大数」
+;配列「CBLリスト番号」の要素数は「CBLキャラ数」
+
+IF バストサイズ全キャラ表示
+	キャラ名長さ最大 = 0
+	CBLキャラ最大数 = 0
+	FOR LCOUNT, 0, 10000
+		IF EXISTCSV(LCOUNT)
+			CBLキャラ番号:CBLキャラ最大数 = LCOUNT
+			CSVバストサイズ:CBLキャラ最大数 = CSVTALENT(LCOUNT, GETNUM(TALENT, "バストサイズ"))
+			キャラ名長さ = STRLENS(CSVNAMEF(LCOUNT))
+			SIF キャラ名長さ > キャラ名長さ最大
+				キャラ名長さ最大 = キャラ名長さ
+			CBLキャラ最大数++
+		ENDIF
+	NEXT
+ELSE
+	キャラ名長さ最大 = 0
+	FOR LCOUNT, 0, CHARANUM
+		CBLキャラ番号:LCOUNT = NOF(LCOUNT)
+		対象キャラ番号 = CBLキャラ番号:LCOUNT
+		CSVバストサイズ:LCOUNT = CSVTALENT(対象キャラ番号, GETNUM(TALENT, "バストサイズ"))
+		キャラ名長さ = STRLENS(CSVNAMEF(対象キャラ番号))
+		SIF キャラ名長さ > キャラ名長さ最大
+			キャラ名長さ最大 = キャラ名長さ
+	NEXT
+	CBLキャラ最大数 = CHARANUM
+ENDIF
+
+CBLキャラ数 = 0
+VARSET CBLリスト番号
+FOR LCOUNT, 0, CBLキャラ最大数
+	IF GETBIT(CBLバストサイズフィルタ, CSVバストサイズ:LCOUNT)
+		IF CBL入力済フィルタ有無
+			対象キャラ番号 = CBLキャラ番号:LCOUNT
+			;数値が入っているかどうかとフィルタの種類が食い違う(XORで1)ならCONTINUE
+			SIF バストサイズ詳細入力チェック(対象キャラ番号)^CBL入力済フィルタ種類
+				CONTINUE
+		ENDIF
+		CBLリスト番号:CBLキャラ数 = LCOUNT
+		CBLキャラ数++
+	ENDIF
+NEXT
+
+CALL MCOLUMNDRAWLINE
+CALL MCOLUMNPRINTL, "□バストサイズ一覧"
+CALL MCOLUMNPRINT, "　"
+[IF_DEBUG]
+		CALL MCOLUMNPRINT, " ｷｬﾗ¦ ﾘｽﾄ|"
+[ENDIF]
+CALL MCOLUMNPRINT, @"     %SPACES(キャラ名長さ最大)%| CSVサイズ ¦  トップ(カップ数)  |"
+IF MOD:爆乳 || MOD:絶壁 || MOD:バストサイズカスタム
+	MODあり = 1
+	CALL MCOLUMNPRINT, " MODサイズ ¦  トップ(カップ数)  |"
+ENDIF
+IF !バストサイズ全キャラ表示
+	CALL MCOLUMNPRINT, "今のサイズ ¦  トップ(カップ数)  |"
+ENDIF
+CALL MCOLUMNPRINTL, "成長"
+; 　　 | CSVサイズ ¦  トップ(カップ数)  | MODサイズ ¦  トップ(カップ数)  |今のサイズ ¦  トップ(カップ数)  |
+;_名前_| 1(絶壁)   ¦ 68.0cm(AAAAカップ) |10(爆乳+4) ¦101.0cm(Jカップ)    |10.222/爆+4¦102.0cm(Jカップ)    |
+
+FOR LCOUNT, CBLページ数*20, (CBLページ数+1)*20
+	IF LCOUNT >= CBLキャラ数
+		CALL MCOLUMNPRINT, "　"
+		[IF_DEBUG]
+			CALL MCOLUMNPRINT, @"    ¦    |"
+		[ENDIF]
+		CALL MCOLUMNPRINT, @"     %SPACES(キャラ名長さ最大)%|%SPACES(11)%¦%SPACES(7+13)%|%SPACES(11)%¦%SPACES(7+13)%|"
+		IF !バストサイズ全キャラ表示
+			CALL MCOLUMNPRINT, @"%SPACES(11)%¦%SPACES(7+13)%|"
+		ENDIF
+		CALL MCOLUMNPRINTL,
+		CONTINUE
+	ENDIF
+	対象リスト番号 = CBLリスト番号:LCOUNT
+	対象キャラ番号 = CBLキャラ番号:対象リスト番号
+	キャラ名長さ = STRLENS(CSVNAMEF(対象キャラ番号))
+	[IF_DEBUG]
+		CALL MCOLUMNPRINT, @"　{対象キャラ番号,4}¦{対象リスト番号,4}|"
+	[ENDIF]
+	CALL MCOLUMNPRINT, @"[{20 + LCOUNT%20}] "
+	CALL MCOLUMNPRINT, @"%CSVNAMEF(対象キャラ番号)%%SPACES(キャラ名長さ最大-キャラ名長さ)%|"
+	;CSVサイズ
+	購入時サイズ = CSVバストサイズ:対象リスト番号
+	トップ = バストサイズ詳細トップ:対象キャラ番号:購入時サイズ
+	アンダー = バストサイズ詳細アンダー:対象キャラ番号:購入時サイズ
+	CALL MCOLUMNPRINT, @"%CBL_TALENT(購入時サイズ)%¦%CBL_SIZE(トップ,アンダー)%|"
+	;MODサイズ
+	IF MODあり
+		IF CSVTALENT(対象キャラ番号, GETNUM(TALENT, "性別")) == 2
+			CSV女性 = 1
+		ELSE
+			CSV女性 = 0
+		ENDIF
+		IF MOD:爆乳
+			SIF CSV女性 || MOD:バストサイズ男性対象
+				購入時サイズ = 6
+		ENDIF
+		IF MOD:絶壁
+			SIF CSV女性 || MOD:バストサイズ男性対象
+				購入時サイズ = 1
+		ENDIF
+		IF MOD:バストサイズカスタム
+			IF CSV女性 || MOD:バストサイズ男性対象
+				SIF 購入時サイズ < 1
+					購入時サイズ = 1
+				IF INRANGE(購入時サイズ, 1, 6)
+					購入時サイズ = バストサイズ指定:購入時サイズ
+				ELSE
+					購入時サイズ = バストサイズ指定:6 +(6-購入時サイズ)
+				ENDIF
+			ENDIF
+		ENDIF
+		トップ = バストサイズ詳細トップ:対象キャラ番号:購入時サイズ
+		アンダー = バストサイズ詳細アンダー:対象キャラ番号:購入時サイズ
+		CALL MCOLUMNPRINT, @"%CBL_TALENT(購入時サイズ)%¦%CBL_SIZE(トップ,アンダー)%|"
+	ENDIF
+	;今のサイズ(購入時と異なる場合に表示)
+	IF !バストサイズ全キャラ表示
+		成長割合 = LIMIT(CFLAG:対象リスト番号:バスト成長, 0, 999)
+		今のサイズ = TALENT:対象リスト番号:バストサイズ
+		IF 購入時サイズ != 今のサイズ || 成長割合
+			IF バストサイズ詳細トップ:対象キャラ番号:今のサイズ
+				トップ = バストサイズ詳細トップ:対象キャラ番号:今のサイズ
+				アンダー = バストサイズ詳細アンダー:対象キャラ番号:今のサイズ
+				IF 成長割合
+					IF バストサイズ詳細トップ:対象キャラ番号:(今のサイズ+1)
+						ワンサイズ増分 = バストサイズ詳細トップ:対象キャラ番号:(今のサイズ+1) - トップ
+						トップ += ワンサイズ増分 * 成長割合 / 1000
+						IF アンダー && バストサイズ詳細アンダー:対象キャラ番号:(今のサイズ+1)
+							ワンサイズ増分 = バストサイズ詳細アンダー:対象キャラ番号:(今のサイズ+1) - アンダー
+							アンダー += ワンサイズ増分 * 成長割合 / 1000
+						ENDIF
+					ENDIF
+				ENDIF 
+				CALL MCOLUMNPRINT, @"%CBL_TALENT(今のサイズ, 成長割合)%¦%CBL_SIZE(トップ,アンダー)%|"
+			ELSE
+				CALL MCOLUMNPRINT, @"%CBL_TALENT(今のサイズ, 成長割合)%¦%SPACES(7+13)%|"
+			ENDIF
+		ELSE
+			CALL MCOLUMNPRINT, @"%SPACES(11)%¦%SPACES(7+13)%|"
+		ENDIF
+	ENDIF
+	IF !バストサイズ全キャラ表示
+		SIF TALENT:対象リスト番号:バスト成長 || CSVTALENT(対象キャラ番号, GETNUM(TALENT, "バスト成長"))
+			CALL MCOLUMNPRINT, @"{TALENT:対象リスト番号:バスト成長}/{CSVTALENT(対象キャラ番号, GETNUM(TALENT, "バスト成長"))}"
+	ELSE
+		SIF CSVTALENT(対象キャラ番号, GETNUM(TALENT, "バスト成長"))
+			CALL MCOLUMNPRINT, @"{CSVTALENT(対象キャラ番号, GETNUM(TALENT, "バスト成長"))}"
+	ENDIF
+	CALL MCOLUMNPRINTL,
+NEXT
+
+CBLページMAX = (CBLキャラ数-1)/20
+SIF CBLページMAX < 0
+	CBLページMAX = 0
+
+CBLページ数 = LIMIT(CBLページ数, 0, CBLページMAX)
+
+CALL MCOLUMNPRINTL,
+;内部的には最初が0ページ目だが、表示上はすべて1多くする
+CALL MCOLUMNPRINT, @"　　　　　PAGE{1+CBLページ数, 2}/{1+CBLページMAX, 2, LEFT}: "
+IF CBLページ数
+	CALL MCOLUMNPRINT, "[41]前のページへ "
+ELSE
+	CALL MCOLUMNPRINT, "    　　　　　　 "
+ENDIF
+IF CBLページ数 < CBLページMAX
+	CALL MCOLUMNPRINT, "[42]次のページへ "
+ELSE
+	CALL MCOLUMNPRINT, "    　　　　　　 "
+ENDIF
+CALL MCOLUMNPRINTL,
+CALL MCOLUMNPRINTL,
+
+CALL MCOLUMNPRINT, "　   購入済フィルタ: "
+IF バストサイズ全キャラ表示
+	CALL MCOLUMNPRINT, "全キャラを表示　　　"
+ELSE
+	CALL MCOLUMNPRINT, "購入済キャラのみ表示"
+ENDIF
+CALL MCOLUMNPRINTL, "　[48]切り替え"
+
+CALL MCOLUMNPRINT, "　   入力済フィルタ: "
+IF CBL入力済フィルタ有無
+	IF CBL入力済フィルタ種類
+		CALL MCOLUMNPRINT, "入力済キャラのみ表示"
+	ELSE
+		CALL MCOLUMNPRINT, "未入力キャラのみ表示"
+	ENDIF
+ELSE
+	CALL MCOLUMNPRINT, "フィルタなし　　　　"
+ENDIF
+CALL MCOLUMNPRINTL, "　[49]切り替え"
+
+CALL MCOLUMNPRINT, "　CSVサイズフィルタ: "
+IF GETBIT(CBLバストサイズフィルタ, 0)
+	CALL MCOLUMNPRINT, @"[50]男 "
+ELSE
+	CALL MCOLUMNPRINT, @"[50]男 ", "gray"
+ENDIF
+FOR LCOUNT, 1, 7
+	IF GETBIT(CBLバストサイズフィルタ, LCOUNT)
+		CALL MCOLUMNPRINT, @"[{50+LCOUNT}]%バストサイズ(LCOUNT)% "
+	ELSE
+		CALL MCOLUMNPRINT, @"[{50+LCOUNT}]%バストサイズ(LCOUNT)% ", "gray"
+	ENDIF
+NEXT
+CALL MCOLUMNPRINTL,
+CALL MCOLUMNPRINTL,
+CALL MCOLUMNPRINTL, @"　[-2] - %NAME:TARGET%のバストサイズを見る"
+
+
+;;;関数CHARA_BUST_LISTでサイズとカップを出力する式中関数
+@CBL_SIZE, トップ, アンダー
+#FUNCTIONS
+#DIM DYNAMIC トップ
+#DIM DYNAMIC アンダー
+#DIM DYNAMIC カップ
+#DIMS DYNAMIC 出力
+
+IF !トップ
+	出力 += SPACES(7+13)
+	RETURNF 出力
+ENDIF
+
+トップ = LIMIT(トップ, 1, 9999)
+SELECTCASE トップ
+	CASE 1 TO 99;0.1～9.9(スペース2個)
+		出力 += "  "
+	CASE 100 TO 999;10.0～99.9(スペース1個)
+		出力 +=  " "
+ENDSELECT
+
+出力 += TOSTR(トップ/10)
+出力 += "."
+出力 += TOSTR(トップ%10)
+出力 += "cm"
+
+IF !アンダー
+	出力 += SPACES(13)
+	RETURNF 出力
+ENDIF
+
+カップ = トップ-アンダー
+カップ += 12
+カップ /= 25
+SIF カップ < 0
+	カップ = 0
+
+SELECTCASE カップ
+	CASE IS <= 4
+		出力 += @"(%"A"*(5-カップ)%カップ)%SPACES(カップ)%"
+	CASE 5 TO 29
+		出力 += @"(%UNICODE(ENCODETOUNI("B")+(カップ-5))%カップ)    "
+	CASE IS >= 30
+		出力 += "(Zカップ+)   "
+ENDSELECT
+
+RETURNF 出力
+
+
+;;;関数CHARA_BUST_LISTでバストサイズを出力する式中関数
+@CBL_TALENT, サイズ, 成長度合い = 0
+#FUNCTIONS 
+#DIM DYNAMIC サイズ
+#DIM DYNAMIC 成長度合い
+#DIMS DYNAMIC 出力
+
+サイズ = LIMIT(サイズ, 0, 99)
+成長度合い = LIMIT(成長度合い, 0, 999)
+
+SIF サイズ < 10
+	出力 += " "
+
+出力 += TOSTR(サイズ)
+
+IF 成長度合い
+	IF 成長度合い < 10
+		出力 += ".00"
+	ELSEIF 成長度合い < 100
+		出力 += ".0"
+	ELSE
+		出力 += "."
+	ENDIF
+	出力 += TOSTR(成長度合い)
+	出力 += "/"
+	SELECTCASE サイズ
+		CASE 0
+			出力 += "男  "
+		CASE 1
+			出力 += "絶壁"
+		CASE 2
+			出力 += "貧乳"
+		CASE 3
+			出力 += "並乳"
+		CASE 4
+			出力 += "巨乳"
+		CASE 5
+			出力 += "豊乳"
+		CASE 6
+			出力 += "爆乳"
+		CASEELSE
+			出力 += "爆+"
+			IF サイズ-6 < 10
+				出力 += TOSTR(サイズ-6)
+			ELSE
+				出力 += "+"
+			ENDIF
+	ENDSELECT
+ELSE
+	SELECTCASE サイズ
+		CASE 0
+			出力 += "(男)     "
+		CASE 1
+			出力 += "(絶壁)   "
+		CASE 2
+			出力 += "(貧乳)   "
+		CASE 3
+			出力 += "(並乳)   "
+		CASE 4
+			出力 += "(巨乳)   "
+		CASE 5
+			出力 += "(豊乳)   "
+		CASE 6
+			出力 += "(爆乳)   "
+		CASEELSE
+			出力 += "(爆乳+"
+			出力 += TOSTR(サイズ-6)
+			出力 += ")"
+			SIF サイズ-6 < 10
+				出力 += " "
+	ENDSELECT
+ENDIF
+
+RETURNF 出力
+
+
 ;;;ステータス表示画面でしか呼んでないのでカラム化
 @CHARA_BUST_SETTING, 対象登録番号
 ;キャラ番号(キャラごとに常に固定)を使うのに注意
@@ -914,16 +1273,18 @@ ENDIF
 CALL MCOLUMNPRINT, "　現在の小数処理の設定: "
 SELECTCASE バストサイズ詳細小数処理
 	CASE 0
-		CALL MCOLUMNPRINTL, "四捨五入"
+		CALL MCOLUMNPRINT, "四捨五入"
 	CASE 1
-		CALL MCOLUMNPRINTL, "切り捨て"
+		CALL MCOLUMNPRINT, "切り捨て"
 	CASE 2
-		CALL MCOLUMNPRINTL, "切り上げ"
+		CALL MCOLUMNPRINT, "切り上げ"
 	CASE 3
-		CALL MCOLUMNPRINTL, "小数表示"
+		CALL MCOLUMNPRINT, "小数表示"
 ENDSELECT
+CALL MCOLUMNPRINTL, "　[-3]切り替え"
 CALL MCOLUMNDRAWLINE
-CALL MCOLUMNPRINTL, "　[-1] - サイズ一覧を見る"
+CALL MCOLUMNPRINTL, "　[-2] - 各キャラのバストサイズを見る"
+CALL MCOLUMNPRINTL, @"　[-1] - %CSVNAMEF(対象キャラ番号)%のバストサイズ詳細設定"
 
 
 CALL MCOLUMNPRINTL, @"　[10] - トップ\@ 成長割合 ? (成長前) #\@のサイズを入力する"
@@ -949,6 +1310,7 @@ CALL MCOLUMNPRINTL, "　[19] - 適当に測る"
 #DIM DYNAMIC LVARLINE, 2
 #DIM DYNAMIC 対象登録番号
 #DIM DYNAMIC 対象キャラ番号
+#DIM DYNAMIC 対象リスト番号
 #DIM DYNAMIC トップ
 #DIM DYNAMIC アンダー
 #DIM DYNAMIC 差分
@@ -965,221 +1327,287 @@ CALL MCOLUMNPRINTL, "　[19] - 適当に測る"
 LVARLINE = LINECOUNT
 対象キャラ番号 = NOF(対象登録番号)
 
-SELECTCASE CRESULT:1
-	CASE -1
-		DO
-			入力対象サイズ = -1
-			$サイズ選択済
-			LVARLINE:1 = LINECOUNT
-			DRAWLINE
-			PRINTPLAIN Size欄をクリックで入力メニューへ移動します　
-			PRINTL [-1] 戻る
-			PRINTL    Size  | Top |Under|Diff.|Print
-			FOR LCOUNT, 0, 10
-				IF 入力対象サイズ < 0
-					IF LCOUNT == 0
-						PRINTBUTTON @"[%"男", 7%]", LCOUNT
-					ELSE
-						PRINTBUTTON @"[%バストサイズ(LCOUNT), 7%]", LCOUNT
-					ENDIF
-				ELSE
-					IF LCOUNT == 0
-						PRINTPLAINFORM [%"男", 7%]
-					ELSE
-						PRINTPLAINFORM [%バストサイズ(LCOUNT), 7%]
-					ENDIF
-				ENDIF
-				PRINTPLAIN |
-				CALL X10PRINT5DIGIT(バストサイズ詳細トップ:対象キャラ番号:LCOUNT, 1)
-				PRINTPLAIN |
-				CALL X10PRINT5DIGIT(バストサイズ詳細アンダー:対象キャラ番号:LCOUNT, 1)
-				PRINTPLAIN |
-				IF バストサイズ詳細トップ:対象キャラ番号:LCOUNT && バストサイズ詳細アンダー:対象キャラ番号:LCOUNT
-					CALL X10PRINT5DIGIT(バストサイズ詳細トップ:対象キャラ番号:LCOUNT-バストサイズ詳細アンダー:対象キャラ番号:LCOUNT, 0)
-				ELSE
-					PRINT      
-				ENDIF
-				PRINTPLAIN |
-				PRINTFORM %バストサイズ詳細表示(バストサイズ詳細トップ:対象キャラ番号:LCOUNT, バストサイズ詳細アンダー:対象キャラ番号:LCOUNT)%
-				PRINTL
-			NEXT
-			FOR LCOUNT, 10, 100
-				IF バストサイズ詳細トップ:対象キャラ番号:LCOUNT || バストサイズ詳細アンダー:対象キャラ番号:LCOUNT
-					IF 入力対象サイズ < 0
-						PRINTBUTTON @"[%バストサイズ(LCOUNT), 7%]", LCOUNT
-					ELSE
-						PRINTPLAINFORM [%バストサイズ(LCOUNT), 7%]
-					ENDIF
-					PRINTPLAIN |
-					CALL X10PRINT5DIGIT(バストサイズ詳細トップ:対象キャラ番号:LCOUNT, 1)
-					PRINTPLAIN |
-					CALL X10PRINT5DIGIT(バストサイズ詳細アンダー:対象キャラ番号:LCOUNT, 1)
-					PRINTPLAIN |
-					IF バストサイズ詳細トップ:対象キャラ番号:LCOUNT && バストサイズ詳細アンダー:対象キャラ番号:LCOUNT
-						CALL X10PRINT5DIGIT(バストサイズ詳細トップ:対象キャラ番号:LCOUNT-バストサイズ詳細アンダー:対象キャラ番号:LCOUNT, 0)
-					ELSE
-						PRINT      
-					ENDIF
-					PRINTPLAIN |
-					PRINTFORM %バストサイズ詳細表示(バストサイズ詳細トップ:対象キャラ番号:LCOUNT, バストサイズ詳細アンダー:対象キャラ番号:LCOUNT)%
-					PRINTL
-				ENDIF
-			NEXT
-			IF 入力対象サイズ < 0
-				INPUT
-				SIF RESULT < 0
-					BREAK
-				入力対象サイズ = RESULT
+IF バストサイズ一覧表示
+	SELECTCASE CRESULT:1
+		CASE -2
+			バストサイズ一覧表示 = 0
+		CASE 20 TO 39
+			対象リスト番号 = CBLページ数*20 + (CRESULT:1-20)
+			IF 対象リスト番号 < CBLキャラ数
+				対象キャラ番号 = CBLキャラ番号:(CBLリスト番号:対象リスト番号)
+				CALL バストサイズ詳細入力, 対象キャラ番号
 			ENDIF
-			IF INRANGE(入力対象サイズ, 0, 99)
-				DRAWLINE
-				PRINTFORML 対象サイズ:{入力対象サイズ}(\@ !入力対象サイズ ? 男 # %バストサイズ(入力対象サイズ)% \@)
-				PRINTL [0] - トップのサイズを入力する
-				PRINTL [1] - アンダーのサイズを入力する
-				SIF バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ
-					PRINTL [2] - トップを固定してカップ数を入力する
-				SIF バストサイズ詳細アンダー:対象キャラ番号:入力対象サイズ
-					PRINTL [3] - アンダーを固定してカップ数を入力する
-				SIF CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "トップバスト")) || CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "アンダーバスト"))
-					PRINTL [8] - キャラマニュアル記載のサイズを引用する
-				PRINTL [9] - サイズ一覧に戻る
-				BINPUT
-				IF RESULT != 9
-					SELECTCASE RESULT
-						CASE 0
-							PRINTL トップのサイズを整数か0.1単位の小数で入力してください(0で未入力扱いになります)
-							INPUTS
-							バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ = X10INPUT(RESULTS)
-						CASE 1
-							PRINTL アンダーのサイズを整数か0.1単位の小数で入力してください(0で未入力扱いになります)
-							INPUTS
-							バストサイズ詳細アンダー:対象キャラ番号:入力対象サイズ = X10INPUT(RESULTS)
-						CASE 2
-							PRINTL カップ数を入力してください
-							INPUTS
-							SIF トップアンダー差分(TOUPPER(RESULTS)) >= 0
-								バストサイズ詳細アンダー:対象キャラ番号:入力対象サイズ = バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ-トップアンダー差分(RESULTS)
-						CASE 3
-							PRINTL カップ数を入力してください
-							INPUTS
-							SIF トップアンダー差分(TOUPPER(RESULTS)) >= 0
-								バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ = バストサイズ詳細アンダー:対象キャラ番号:入力対象サイズ+トップアンダー差分(RESULTS)
-						CASE 8
-							SIF CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "トップバスト"))
-								バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ = CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "トップバスト"))
-							SIF CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "アンダーバスト"))
-								バストサイズ詳細アンダー:対象キャラ番号:入力対象サイズ = CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "アンダーバスト"))
+		CASE 41
+			SIF CBLページ数
+				CBLページ数--
+		CASE 42
+			SIF CBLページ数 < CBLページMAX
+				CBLページ数++
+		CASE 48
+			INVERTBIT バストサイズ全キャラ表示, 0
+		CASE 49
+			IF CBL入力済フィルタ有無
+				IF CBL入力済フィルタ種類
+					CBL入力済フィルタ種類 = 0
+				ELSE
+					CBL入力済フィルタ有無 = 0
+					CBL入力済フィルタ種類 = 1
+				ENDIF
+			ELSE
+				CBL入力済フィルタ有無 = 1
+				CBL入力済フィルタ種類 = 1
+			ENDIF
+		CASE 50 TO 56
+			INVERTBIT CBLバストサイズフィルタ, CRESULT:1 - 50
+	ENDSELECT
+ELSE
+	SELECTCASE CRESULT:1
+		CASE -3
+			バストサイズ詳細小数処理++
+			バストサイズ詳細小数処理 %= 4
+		CASE -2
+			バストサイズ一覧表示 = 1
+		CASE -1
+			CALL バストサイズ詳細入力, 対象キャラ番号
+		CASE 10
+			PRINTFORML トップ\@ 成長割合 ? (成長前) #\@のサイズを整数か0.1単位の小数で入力してください(0で未入力扱いになります)
+			INPUTS
+			バストサイズ詳細トップ:対象キャラ番号:(TALENT:対象登録番号:バストサイズ) = X10INPUT(RESULTS)
+		CASE 11
+			PRINTFORML アンダー\@ 成長割合 ? (成長前) #\@のサイズを整数か0.1単位の小数で入力してください(0で未入力扱いになります)
+			INPUTS
+			バストサイズ詳細アンダー:対象キャラ番号:(TALENT:対象登録番号:バストサイズ) = X10INPUT(RESULTS)
+		CASE 12
+			PRINTL カップ数を入力してください
+			INPUTS
+			SIF トップアンダー差分(TOUPPER(RESULTS)) >= 0
+				バストサイズ詳細アンダー:対象キャラ番号:(TALENT:対象登録番号:バストサイズ) = バストサイズ詳細トップ:対象キャラ番号:(TALENT:対象登録番号:バストサイズ)-トップアンダー差分(RESULTS)
+		CASE 13
+			PRINTL カップ数を入力してください
+			INPUTS
+			SIF トップアンダー差分(TOUPPER(RESULTS)) >= 0
+				バストサイズ詳細トップ:対象キャラ番号:(TALENT:対象登録番号:バストサイズ) = バストサイズ詳細アンダー:対象キャラ番号:(TALENT:対象登録番号:バストサイズ)+トップアンダー差分(RESULTS)
+		CASE 14
+			PRINTL トップ(成長後)のサイズを整数か0.1単位の小数で入力してください(0で未入力扱いになります)
+			INPUTS
+			バストサイズ詳細トップ:対象キャラ番号:(TALENT:対象登録番号:バストサイズ+1) = X10INPUT(RESULTS)
+		CASE 15
+			PRINTL アンダー(成長後)のサイズを整数か0.1単位の小数で入力してください(0で未入力扱いになります)
+			INPUTS
+			バストサイズ詳細アンダー:対象キャラ番号:(TALENT:対象登録番号:バストサイズ+1) = X10INPUT(RESULTS)
+		CASE 16
+			PRINTL カップ数を入力してください
+			INPUTS
+			SIF トップアンダー差分(TOUPPER(RESULTS)) >= 0
+				バストサイズ詳細アンダー:対象キャラ番号:(TALENT:対象登録番号:バストサイズ+1) = バストサイズ詳細トップ:対象キャラ番号:(TALENT:対象登録番号:バストサイズ+1)-トップアンダー差分(RESULTS)
+		CASE 17
+			PRINTL カップ数を入力してください
+			INPUTS
+			SIF トップアンダー差分(TOUPPER(RESULTS)) >= 0
+				バストサイズ詳細トップ:対象キャラ番号:(TALENT:対象登録番号:バストサイズ+1) = バストサイズ詳細アンダー:対象キャラ番号:(TALENT:対象登録番号:バストサイズ+1)+トップアンダー差分(RESULTS)
+		CASE 18
+			SIF CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "トップバスト"))
+				バストサイズ詳細トップ:対象キャラ番号:(TALENT:対象登録番号:バストサイズ) = CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "トップバスト"))
+			SIF CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "アンダーバスト"))
+				バストサイズ詳細アンダー:対象キャラ番号:(TALENT:対象登録番号:バストサイズ) = CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "アンダーバスト"))
+			;メモ ヴァニィ 990,690
+		CASE 19
+			入力対象サイズ = TALENT:対象登録番号:バストサイズ
+			PRINTFORML %CSVNAMEF(対象キャラ番号)%の体格はどのくらいですか？
+			PRINTFORML [0] かなり細め
+			PRINTFORML [1] やや細め
+			PRINTFORML [2] 普通
+			PRINTFORML [3] ややしっかり
+			PRINTFORML [4] かなりしっかり
+			BINPUT
+			SELECTCASE RESULT
+				CASE 0
+					計算用 = RAND(610, 631)
+				CASE 1
+					計算用 = RAND(630, 661)
+				CASE 2
+					計算用 = RAND(660, 731)
+				CASE 3
+					計算用 = RAND(730, 771)
+				CASE 4
+					計算用 = RAND(770, 811)
+			ENDSELECT
+			SELECTCASE CSVTALENT(対象キャラ番号, GETNUM(TALENT, "体格"))
+				CASE 1
+					TIMES 計算用, 0.95
+				CASE 2
+					TIMES 計算用, 0.98
+				CASE 4
+					TIMES 計算用, 1.03
+			ENDSELECT
+			バストサイズ詳細アンダー:対象キャラ番号:入力対象サイズ = 計算用
+			SELECTCASE 入力対象サイズ
+				CASE 0
+					計算用 = トップアンダー差分("AAAAA")
+				CASE 1
+					SELECTCASE RAND:10
+						CASE 0 TO 4
+							計算用 = トップアンダー差分("AAAA")
+						CASE 5 TO 8
+							計算用 = トップアンダー差分("AAAA")
+						CASEELSE
+							計算用 = トップアンダー差分("AAA")
 					ENDSELECT
-					CLEARLINE LINECOUNT-LVARLINE:1
-					GOTO サイズ選択済
-				ENDIF
-				CLEARLINE LINECOUNT-LVARLINE:1
+				CASE 2
+					SELECTCASE RAND:10
+						CASE 0, 1
+							計算用 = トップアンダー差分("AA")
+						CASE 2 TO 6
+							計算用 = トップアンダー差分("A")
+						CASEELSE
+							計算用 = トップアンダー差分("B")
+					ENDSELECT
+				CASEELSE
+					;ここから2サイズずつ
+					計算用 = ENCODETOUNI("C")+(入力対象サイズ-3)*2+(RAND:2)
+					SIF 計算用 > ENCODETOUNI("Z")
+						計算用 = ENCODETOUNI("Z")
+					計算用 = トップアンダー差分(UNICODE(計算用))
+			ENDSELECT
+			バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ = バストサイズ詳細アンダー:対象キャラ番号:入力対象サイズ+計算用
+			計算用 = バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ
+			バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ = RAND(計算用-5, 計算用+5)
+	ENDSELECT
+ENDIF
+
+
+@バストサイズ詳細入力, 対象キャラ番号
+#DIM DYNAMIC 対象キャラ番号
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LVARLINE, 2
+#DIM DYNAMIC 入力対象サイズ
+
+DO
+	入力対象サイズ = -1
+	$サイズ選択済
+	LVARLINE:1 = LINECOUNT
+	DRAWLINE
+	PRINTFORML 対象: %CSVNAMEF(対象キャラ番号)% 
+	PRINTPLAIN Size欄をクリックで入力メニューへ移動します　
+	PRINTL [-1] 戻る
+	PRINTL    Size  | Top |Under|Diff.|Print
+	FOR LCOUNT, 0, 10
+		IF 入力対象サイズ < 0
+			IF LCOUNT == 0
+				PRINTBUTTON @"[%"男", 7%]", LCOUNT
+			ELSE
+				PRINTBUTTON @"[%バストサイズ(LCOUNT), 7%]", LCOUNT
 			ENDIF
-		LOOP 1
-	CASE 10
-		PRINTFORML トップ\@ 成長割合 ? (成長前) #\@のサイズを整数か0.1単位の小数で入力してください(0で未入力扱いになります)
-		INPUTS
-		バストサイズ詳細トップ:対象キャラ番号:(TALENT:対象登録番号:バストサイズ) = X10INPUT(RESULTS)
-	CASE 11
-		PRINTFORML アンダー\@ 成長割合 ? (成長前) #\@のサイズを整数か0.1単位の小数で入力してください(0で未入力扱いになります)
-		INPUTS
-		バストサイズ詳細アンダー:対象キャラ番号:(TALENT:対象登録番号:バストサイズ) = X10INPUT(RESULTS)
-	CASE 12
-		PRINTL カップ数を入力してください
-		INPUTS
-		SIF トップアンダー差分(TOUPPER(RESULTS)) >= 0
-			バストサイズ詳細アンダー:対象キャラ番号:(TALENT:対象登録番号:バストサイズ) = バストサイズ詳細トップ:対象キャラ番号:(TALENT:対象登録番号:バストサイズ)-トップアンダー差分(RESULTS)
-	CASE 13
-		PRINTL カップ数を入力してください
-		INPUTS
-		SIF トップアンダー差分(TOUPPER(RESULTS)) >= 0
-			バストサイズ詳細トップ:対象キャラ番号:(TALENT:対象登録番号:バストサイズ) = バストサイズ詳細アンダー:対象キャラ番号:(TALENT:対象登録番号:バストサイズ)+トップアンダー差分(RESULTS)
-	CASE 14
-		PRINTL トップ(成長後)のサイズを整数か0.1単位の小数で入力してください(0で未入力扱いになります)
-		INPUTS
-		バストサイズ詳細トップ:対象キャラ番号:(TALENT:対象登録番号:バストサイズ+1) = X10INPUT(RESULTS)
-	CASE 15
-		PRINTL アンダー(成長後)のサイズを整数か0.1単位の小数で入力してください(0で未入力扱いになります)
-		INPUTS
-		バストサイズ詳細アンダー:対象キャラ番号:(TALENT:対象登録番号:バストサイズ+1) = X10INPUT(RESULTS)
-	CASE 16
-		PRINTL カップ数を入力してください
-		INPUTS
-		SIF トップアンダー差分(TOUPPER(RESULTS)) >= 0
-			バストサイズ詳細アンダー:対象キャラ番号:(TALENT:対象登録番号:バストサイズ+1) = バストサイズ詳細トップ:対象キャラ番号:(TALENT:対象登録番号:バストサイズ+1)-トップアンダー差分(RESULTS)
-	CASE 17
-		PRINTL カップ数を入力してください
-		INPUTS
-		SIF トップアンダー差分(TOUPPER(RESULTS)) >= 0
-			バストサイズ詳細トップ:対象キャラ番号:(TALENT:対象登録番号:バストサイズ+1) = バストサイズ詳細アンダー:対象キャラ番号:(TALENT:対象登録番号:バストサイズ+1)+トップアンダー差分(RESULTS)
-	CASE 18
-		SIF CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "トップバスト"))
-			バストサイズ詳細トップ:対象キャラ番号:(TALENT:対象登録番号:バストサイズ) = CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "トップバスト"))
-		SIF CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "アンダーバスト"))
-			バストサイズ詳細アンダー:対象キャラ番号:(TALENT:対象登録番号:バストサイズ) = CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "アンダーバスト"))
-		;メモ ヴァニィ 990,690
-	CASE 19
-		入力対象サイズ = TALENT:対象登録番号:バストサイズ
-		PRINTFORML %CSVNAMEF(対象キャラ番号)%の体格はどのくらいですか？
-		PRINTFORML [0] かなり細め
-		PRINTFORML [1] やや細め
-		PRINTFORML [2] 普通
-		PRINTFORML [3] ややしっかり
-		PRINTFORML [4] かなりしっかり
+		ELSE
+			IF LCOUNT == 0
+				PRINTPLAINFORM [%"男", 7%]
+			ELSE
+				PRINTPLAINFORM [%バストサイズ(LCOUNT), 7%]
+			ENDIF
+		ENDIF
+		PRINTPLAIN |
+		CALL X10PRINT5DIGIT(バストサイズ詳細トップ:対象キャラ番号:LCOUNT, 1)
+		PRINTPLAIN |
+		CALL X10PRINT5DIGIT(バストサイズ詳細アンダー:対象キャラ番号:LCOUNT, 1)
+		PRINTPLAIN |
+		IF バストサイズ詳細トップ:対象キャラ番号:LCOUNT && バストサイズ詳細アンダー:対象キャラ番号:LCOUNT
+			CALL X10PRINT5DIGIT(バストサイズ詳細トップ:対象キャラ番号:LCOUNT-バストサイズ詳細アンダー:対象キャラ番号:LCOUNT, 0)
+		ELSE
+			PRINT      
+		ENDIF
+		PRINTPLAIN |
+		PRINTFORM %バストサイズ詳細表示(バストサイズ詳細トップ:対象キャラ番号:LCOUNT, バストサイズ詳細アンダー:対象キャラ番号:LCOUNT)%
+		PRINTL
+	NEXT
+	FOR LCOUNT, 10, 100
+		IF バストサイズ詳細トップ:対象キャラ番号:LCOUNT || バストサイズ詳細アンダー:対象キャラ番号:LCOUNT
+			IF 入力対象サイズ < 0
+				PRINTBUTTON @"[%バストサイズ(LCOUNT), 7%]", LCOUNT
+			ELSE
+				PRINTPLAINFORM [%バストサイズ(LCOUNT), 7%]
+			ENDIF
+			PRINTPLAIN |
+			CALL X10PRINT5DIGIT(バストサイズ詳細トップ:対象キャラ番号:LCOUNT, 1)
+			PRINTPLAIN |
+			CALL X10PRINT5DIGIT(バストサイズ詳細アンダー:対象キャラ番号:LCOUNT, 1)
+			PRINTPLAIN |
+			IF バストサイズ詳細トップ:対象キャラ番号:LCOUNT && バストサイズ詳細アンダー:対象キャラ番号:LCOUNT
+				CALL X10PRINT5DIGIT(バストサイズ詳細トップ:対象キャラ番号:LCOUNT-バストサイズ詳細アンダー:対象キャラ番号:LCOUNT, 0)
+			ELSE
+				PRINT      
+			ENDIF
+			PRINTPLAIN |
+			PRINTFORM %バストサイズ詳細表示(バストサイズ詳細トップ:対象キャラ番号:LCOUNT, バストサイズ詳細アンダー:対象キャラ番号:LCOUNT)%
+			PRINTL
+		ENDIF
+	NEXT
+	IF 入力対象サイズ < 0
+		INPUT
+		IF RESULT < 0
+			SAVEGLOBAL
+			BREAK
+		ENDIF
+		入力対象サイズ = RESULT
+	ENDIF
+	IF INRANGE(入力対象サイズ, 0, 99)
+		DRAWLINE
+		PRINTFORML 対象サイズ:{入力対象サイズ}(\@ !入力対象サイズ ? 男 # %バストサイズ(入力対象サイズ)% \@)
+		PRINTL [0] - トップのサイズを入力する
+		PRINTL [1] - アンダーのサイズを入力する
+		SIF バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ
+			PRINTL [2] - トップを固定してカップ数を入力する
+		SIF バストサイズ詳細アンダー:対象キャラ番号:入力対象サイズ
+			PRINTL [3] - アンダーを固定してカップ数を入力する
+		SIF CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "トップバスト")) || CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "アンダーバスト"))
+			PRINTL [8] - キャラマニュアル記載のサイズを引用する
+		PRINTL [9] - サイズ一覧に戻る
 		BINPUT
-		SELECTCASE RESULT
-			CASE 0
-				計算用 = RAND(610, 631)
-			CASE 1
-				計算用 = RAND(630, 661)
-			CASE 2
-				計算用 = RAND(660, 731)
-			CASE 3
-				計算用 = RAND(730, 771)
-			CASE 4
-				計算用 = RAND(770, 811)
-		ENDSELECT
-		SELECTCASE CSVTALENT(対象キャラ番号, GETNUM(TALENT, "体格"))
-			CASE 1
-				TIMES 計算用, 0.95
-			CASE 2
-				TIMES 計算用, 0.98
-			CASE 4
-				TIMES 計算用, 1.03
-		ENDSELECT
-		バストサイズ詳細アンダー:対象キャラ番号:入力対象サイズ = 計算用
-		SELECTCASE 入力対象サイズ
-			CASE 0
-				計算用 = トップアンダー差分("AAAAA")
-			CASE 1
-				SELECTCASE RAND:10
-					CASE 0 TO 4
-						計算用 = トップアンダー差分("AAAA")
-					CASE 5 TO 8
-						計算用 = トップアンダー差分("AAAA")
-					CASEELSE
-						計算用 = トップアンダー差分("AAA")
-				ENDSELECT
-			CASE 2
-				SELECTCASE RAND:10
-					CASE 0, 1
-						計算用 = トップアンダー差分("AA")
-					CASE 2 TO 6
-						計算用 = トップアンダー差分("A")
-					CASEELSE
-						計算用 = トップアンダー差分("B")
-				ENDSELECT
-			CASEELSE
-				;ここから2サイズずつ
-				計算用 = ENCODETOUNI("C")+(入力対象サイズ-3)*2+(RAND:2)
-				SIF 計算用 > ENCODETOUNI("Z")
-					計算用 = ENCODETOUNI("Z")
-				計算用 = トップアンダー差分(UNICODE(計算用))
-		ENDSELECT
-		バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ = バストサイズ詳細アンダー:対象キャラ番号:入力対象サイズ+計算用
-		計算用 = バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ
-		バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ = RAND(計算用-5, 計算用+5)
-ENDSELECT
+		IF RESULT != 9
+			SELECTCASE RESULT
+				CASE 0
+					PRINTL トップのサイズを整数か0.1単位の小数で入力してください(0で未入力扱いになります)
+					INPUTS
+					バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ = X10INPUT(RESULTS)
+				CASE 1
+					PRINTL アンダーのサイズを整数か0.1単位の小数で入力してください(0で未入力扱いになります)
+					INPUTS
+					バストサイズ詳細アンダー:対象キャラ番号:入力対象サイズ = X10INPUT(RESULTS)
+				CASE 2
+					PRINTL カップ数を入力してください
+					INPUTS
+					SIF トップアンダー差分(TOUPPER(RESULTS)) >= 0
+						バストサイズ詳細アンダー:対象キャラ番号:入力対象サイズ = バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ-トップアンダー差分(RESULTS)
+				CASE 3
+					PRINTL カップ数を入力してください
+					INPUTS
+					SIF トップアンダー差分(TOUPPER(RESULTS)) >= 0
+						バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ = バストサイズ詳細アンダー:対象キャラ番号:入力対象サイズ+トップアンダー差分(RESULTS)
+				CASE 8
+					SIF CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "トップバスト"))
+						バストサイズ詳細トップ:対象キャラ番号:入力対象サイズ = CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "トップバスト"))
+					SIF CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "アンダーバスト"))
+						バストサイズ詳細アンダー:対象キャラ番号:入力対象サイズ = CSVCFLAG(対象キャラ番号, GETNUM(CFLAG, "アンダーバスト"))
+			ENDSELECT
+			CLEARLINE LINECOUNT-LVARLINE:1
+			GOTO サイズ選択済
+		ENDIF
+		CLEARLINE LINECOUNT-LVARLINE:1
+	ENDIF
+LOOP 1
+
+
+;;;引数のキャラ番号にバストサイズ(詳細)が入力されていれば1を返す
+@バストサイズ詳細入力チェック, 対象キャラ番号
+#FUNCTION
+#DIM DYNAMIC 対象キャラ番号
+#DIM DYNAMIC LCOUNT
+
+FOR LCOUNT, 0, 100
+	SIF バストサイズ詳細トップ:対象キャラ番号:LCOUNT || バストサイズ詳細アンダー:対象キャラ番号:LCOUNT
+		RETURNF 1
+NEXT
+RETURNF 0
+
 
 @性別自動選択
 #DIM DYNAMIC LCOUNT
