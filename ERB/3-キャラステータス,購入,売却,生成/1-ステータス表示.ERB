@@ -326,6 +326,10 @@ SELECTCASE CRESULT:1
 		CALL CHARA_CLOTHES_SETTING, TARGET
 	CASE 100
 		CALL 性経験履歴, 1
+	CASE 101
+		CPAGE--
+	CASE 109
+		CPAGE++
 ENDSELECT
 
 @ステータス表示_その他情報
@@ -1307,9 +1311,11 @@ SELECTCASE CRESULT:1
 	CASE 6
 		TARGET = 前のキャラ
 		TFLAG:担当曲非表示 = -1
+		CPAGE = 0
 	CASE 7
 		TARGET = 次のキャラ
 		TFLAG:担当曲非表示 = -1
+		CPAGE = 0
 	CASE 8
 		CALL ASSIGN_TARGET, TARGET
 		対象変更済み = 1
@@ -1346,6 +1352,8 @@ ENDSELECT
 #DIM DYNAMIC 次のキャラ = -1
 #DIM DYNAMIC 前のキャラ = -1
 #DIM DYNAMIC カラム
+#DIM DYNAMIC 次ページあり
+#DIM DYNAMIC 人数計算用
 
 ;#DIM DYNAMIC ロストキャラ表示
 IF カラム
@@ -1359,15 +1367,31 @@ LIST_ = LIST_MIN
 SIF 設定 != 1 && !カラム
 	CALL 基本情報
 
+FOR LCOUNT, 0, 20001
+	IF LCOUNT == 20000
+		SIF モブ経験人数:0
+			人数計算用++
+	ELSEIF 経験回数:LCOUNT
+		人数計算用++
+	ENDIF
+	IF 人数計算用 > CPAGE*10+10
+		次ページあり = 1
+		BREAK
+	ENDIF
+NEXT
+
 IF カラム
 	CALL MCOLUMNPRINT, "□ 性経験履歴 "
 	[IF_DEBUG]
-		CALL MCOLUMNPRINT, "[100] - 変更する"
+		CALL MCOLUMNPRINT, "[100] - 変更する "
 	[ENDIF]
+	CALL MCOLUMNPRINT, @"%RETURNSPACE(CPAGE > 0, "[101] - 前ページ ")%"
+	CALL MCOLUMNPRINT, @"%RETURNSPACE(次ページあり, "[109] - 次ページ")%"
 	CALL MCOLUMNPRINTL, ""
 ELSE
 	PRINTL □ 性経験履歴
 ENDIF
+
 IF 設定
 	SEX_TOTAL = 0
 	NAKADASHI_TOTAL = 0
@@ -1379,9 +1403,15 @@ IF 設定
 	ENDIF
 	LIST_++
 ENDIF
-FOR LCOUNT, 0, 20000
+人数計算用 = 0
+FOR LCOUNT, 0, 20001
+	SIF LCOUNT == 20000
+		GOTO モブ表示
 	IF 経験回数:TARGET:LCOUNT
 		IF カラム
+			人数計算用++
+			SIF 人数計算用 <= CPAGE*10
+				CONTINUE
 			CALL MCOLUMNPRINT, @"　%CSVNAMEF(LCOUNT)%:{経験回数:TARGET:LCOUNT}回"
 		ELSE
 			PRINTFORM 　%CSVNAMEF(LCOUNT)%:{経験回数:TARGET:LCOUNT}回
@@ -1451,88 +1481,93 @@ FOR LCOUNT, 0, 20000
 				PRINTL る。
 			ENDIF
 		ENDIF
+		SIF 人数計算用 > CPAGE*10+10
+			BREAK
+	ENDIF
+	CONTINUE
+	$モブ表示
+	IF モブ経験人数:TARGET:0
+		IF カラム
+			CALL MCOLUMNPRINT, @"　不明:{モブ経験回数:TARGET:0}回/{モブ経験人数:TARGET:0}人"
+		ELSE
+			PRINTFORM 　不明:{モブ経験回数:TARGET:0}回/{モブ経験人数:TARGET:0}人
+		ENDIF
+		IF 設定
+			SEX_TOTAL += モブ経験回数:TARGET:0
+			NAKADASHI_TOTAL += モブ中出され回数:TARGET:0
+			LIST_NO:(LIST_ - LIST_MIN) = -1
+			IF カラム
+				CALL MCOLUMNPRINT, " ―――― "
+				CALL MCOLUMNPRINT, @"[{LIST_}] 変更"
+			ELSE
+				PRINTPLAIN  ―――― 
+				PRINTFORM [{LIST_}] 変更
+			ENDIF
+		ENDIF
+		IF カラム
+			CALL MCOLUMNPRINTL, ""
+		ELSE
+			PRINTL
+		ENDIF
+		ID = NOF(TARGET)
+		IF モブ中出し回数:TARGET:0 || モブアナル中出し回数:TARGET:0 || モブ孕ませ回数:TARGET:0
+			IF カラム
+				CALL MCOLUMNPRINT, @"　　%CSVCALLNAMEF(ID)%は"
+				SIF モブ中出し回数:TARGET:0
+					CALL MCOLUMNPRINT, @"膣内に{モブ中出し回数:TARGET:0}回"
+				SIF モブアナル中出し回数:TARGET:0
+					CALL MCOLUMNPRINT, @"アナルに{モブアナル中出し回数:TARGET:0}回"
+				CALL MCOLUMNPRINT, "射精してい"
+				SIF モブ孕ませ回数:TARGET:0
+					CALL MCOLUMNPRINT, @"て、{モブ孕ませ回数:TARGET:0}回孕ませてい"
+				CALL MCOLUMNPRINTL, "る。"
+			ELSE
+				PRINTFORM 　　%CSVCALLNAMEF(ID)%は
+				SIF モブ中出し回数:TARGET:0
+					PRINTFORM 膣内に{モブ中出し回数:TARGET:0}回
+				SIF モブアナル中出し回数:TARGET:0
+					PRINTFORM アナルに{モブアナル中出し回数:TARGET:0}回
+				PRINT 射精してい
+				SIF モブ孕ませ回数:TARGET:0
+					PRINTFORM て、{モブ孕ませ回数:TARGET:0}回孕ませてい
+				PRINTL る。
+			ENDIF
+		ENDIF
+		IF モブ中出され回数:TARGET:0 || モブアナル中出され回数:TARGET:0 || モブ孕み回数:TARGET:0
+			IF カラム
+				CALL MCOLUMNPRINT, @"　　%CSVCALLNAMEF(ID)%は"
+				SIF モブ中出され回数:TARGET:0
+					CALL MCOLUMNPRINT, @"膣内に{モブ中出され回数:TARGET:0}回"
+				SIF モブアナル中出され回数:TARGET:0
+					CALL MCOLUMNPRINT, @"アナルに{モブアナル中出され回数:TARGET:0}回"
+				CALL MCOLUMNPRINT, "射精され"
+				SIF モブ孕み回数:TARGET:0
+					CALL MCOLUMNPRINT, @"、{モブ孕み回数:TARGET:0}回孕まされ"
+				CALL MCOLUMNPRINTL, "ている。"
+			ELSE
+				PRINTFORM 　　%CSVCALLNAMEF(ID)%は
+				SIF モブ中出され回数:TARGET:0
+					PRINTFORM 膣内に{モブ中出され回数:TARGET:0}回
+				SIF モブアナル中出され回数:TARGET:0
+					PRINTFORM アナルに{モブアナル中出され回数:TARGET:0}回
+				PRINT 射精され
+				SIF モブ孕み回数:TARGET:0
+					PRINTFORM 、{モブ孕み回数:TARGET:0}回孕まされ
+				PRINTL ている。
+			ENDIF
+		ENDIF
+	ELSE
+		IF 設定
+			LIST_NO:(LIST_ - LIST_MIN) = -1
+			IF カラム
+				CALL MCOLUMNPRINTL, @" [{LIST_}] モブ経験人数を加える"
+			ELSE
+				PRINTFORML  [{LIST_}] モブ経験人数を加える
+			ENDIF
+		ENDIF
 	ENDIF
 NEXT
-IF モブ経験人数:TARGET:0
-	IF カラム
-		CALL MCOLUMNPRINT, @"　不明:{モブ経験回数:TARGET:0}回/{モブ経験人数:TARGET:0}人"
-	ELSE
-		PRINTFORM 　不明:{モブ経験回数:TARGET:0}回/{モブ経験人数:TARGET:0}人
-	ENDIF
-	IF 設定
-		SEX_TOTAL += モブ経験回数:TARGET:0
-		NAKADASHI_TOTAL += モブ中出され回数:TARGET:0
-		LIST_NO:(LIST_ - LIST_MIN) = -1
-		IF カラム
-			CALL MCOLUMNPRINT, " ―――― "
-			CALL MCOLUMNPRINT, @"[{LIST_}] 変更"
-		ELSE
-			PRINTPLAIN  ―――― 
-			PRINTFORM [{LIST_}] 変更
-		ENDIF
-	ENDIF
-	IF カラム
-		CALL MCOLUMNPRINTL, ""
-	ELSE
-		PRINTL
-	ENDIF
-	ID = NOF(TARGET)
-	IF モブ中出し回数:TARGET:0 || モブアナル中出し回数:TARGET:0 || モブ孕ませ回数:TARGET:0
-		IF カラム
-			CALL MCOLUMNPRINT, @"　　%CSVCALLNAMEF(ID)%は"
-			SIF モブ中出し回数:TARGET:0
-				CALL MCOLUMNPRINT, @"膣内に{モブ中出し回数:TARGET:0}回"
-			SIF モブアナル中出し回数:TARGET:0
-				CALL MCOLUMNPRINT, @"アナルに{モブアナル中出し回数:TARGET:0}回"
-			CALL MCOLUMNPRINT, "射精してい"
-			SIF モブ孕ませ回数:TARGET:0
-				CALL MCOLUMNPRINT, @"て、{モブ孕ませ回数:TARGET:0}回孕ませてい"
-			CALL MCOLUMNPRINTL, "る。"
-		ELSE
-			PRINTFORM 　　%CSVCALLNAMEF(ID)%は
-			SIF モブ中出し回数:TARGET:0
-				PRINTFORM 膣内に{モブ中出し回数:TARGET:0}回
-			SIF モブアナル中出し回数:TARGET:0
-				PRINTFORM アナルに{モブアナル中出し回数:TARGET:0}回
-			PRINT 射精してい
-			SIF モブ孕ませ回数:TARGET:0
-				PRINTFORM て、{モブ孕ませ回数:TARGET:0}回孕ませてい
-			PRINTL る。
-		ENDIF
-	ENDIF
-	IF モブ中出され回数:TARGET:0 || モブアナル中出され回数:TARGET:0 || モブ孕み回数:TARGET:0
-		IF カラム
-			CALL MCOLUMNPRINT, @"　　%CSVCALLNAMEF(ID)%は"
-			SIF モブ中出され回数:TARGET:0
-				CALL MCOLUMNPRINT, @"膣内に{モブ中出され回数:TARGET:0}回"
-			SIF モブアナル中出され回数:TARGET:0
-				CALL MCOLUMNPRINT, @"アナルに{モブアナル中出され回数:TARGET:0}回"
-			CALL MCOLUMNPRINT, "射精され"
-			SIF モブ孕み回数:TARGET:0
-				CALL MCOLUMNPRINT, @"、{モブ孕み回数:TARGET:0}回孕まされ"
-			CALL MCOLUMNPRINTL, "ている。"
-		ELSE
-			PRINTFORM 　　%CSVCALLNAMEF(ID)%は
-			SIF モブ中出され回数:TARGET:0
-				PRINTFORM 膣内に{モブ中出され回数:TARGET:0}回
-			SIF モブアナル中出され回数:TARGET:0
-				PRINTFORM アナルに{モブアナル中出され回数:TARGET:0}回
-			PRINT 射精され
-			SIF モブ孕み回数:TARGET:0
-				PRINTFORM 、{モブ孕み回数:TARGET:0}回孕まされ
-			PRINTL ている。
-		ENDIF
-	ENDIF
-ELSE
-	IF 設定
-		LIST_NO:(LIST_ - LIST_MIN) = -1
-		IF カラム
-			CALL MCOLUMNPRINTL, @" [{LIST_}] モブ経験人数を加える"
-		ELSE
-			PRINTFORML  [{LIST_}] モブ経験人数を加える
-		ENDIF
-	ENDIF
-ENDIF
+
 IF 設定
 	IF カラム
 		CALL MCOLUMNPRINTL, @" [{LIST_+1}] 性交経験をこれに合わせる(現在:{EXP:性交経験}回)"
@@ -2125,6 +2160,7 @@ SELECTCASE フラグ
 ENDSELECT
 
 @ステータス表示_戻る
+CPAGE = 0
 カラム入力無視 = 1
 
 ;=============================================================================
