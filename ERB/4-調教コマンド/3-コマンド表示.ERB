@@ -897,14 +897,21 @@ RETURN 0
 
 @SHOW_LOG
 #DIM DYNAMIC 妊娠確率可視化
-#DIM DYNAMIC 妊娠確率補正あり
-#DIM DYNAMIC PREG_PER, 4, 4;0,1,2,3は主人,奴隷,助手,助手2に対応
+#DIM CONST 最大人数 = 4;現在は主人,奴隷,助手,助手2の4人が最大
+#DIM DYNAMIC 膣内射精回数, 4, 4;0,1,2,3は主人,奴隷,助手,助手2に対応
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 竿役
+#DIM DYNAMIC 精液量正規化前
 #DIM DYNAMIC 精液量
 #DIM DYNAMIC 受精確率
 #DIM DYNAMIC 着床確率
 #DIM DYNAMIC 妊娠確率
+#DIM DYNAMIC 妊娠確率補正あり
 #DIM DYNAMIC 妊娠確率補正後
+#DIM DYNAMIC 妊娠確率総計, 4
+#DIM DYNAMIC 中出され人数
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 
 DRAWLINE
 PRINTL □ 珠
@@ -1002,227 +1009,111 @@ SIF TALENT:MASTER:孔雀の瞳
 IF 妊娠確率可視化
 	PRINTL 
 	PRINTL □中出し回数・妊娠確率
-	
-	;奴隷への中出し(n:1)
-	着床確率 = 着床確率計算(TARGET)
-	IF TEQUIP:TARGET:妊娠確率分子 != 1 || TEQUIP:TARGET:妊娠確率分母 != 1
-		妊娠確率補正あり = 1
-	ELSE
-		妊娠確率補正あり = 0
-	ENDIF
-	
-	;主人→奴隷(0:1)
-	精液量 = 精液量正規化(TARGET, -1, PREG:TARGET:主人膣内射精)
-	PRINTFORM 　%CALLNAME:MASTER%→%CALLNAME:TARGET%:{TFLAG:主人から奴隷への膣内射精回数}回(精液量:{精液量/10}.{精液量%10}\%) ………… 
-	CALL NAKADASHI_CHECK, TARGET, MASTER, 1
-	受精確率 = RESULT
-	妊娠確率 = 受精確率*着床確率/1000
-	IF 妊娠確率補正あり
-		妊娠確率補正後 = 確率補正(妊娠確率, TEQUIP:TARGET:妊娠確率分子, TEQUIP:TARGET:妊娠確率分母)
-		PREG_PER:0:1 = 妊娠確率補正後
-	ELSE
-		PREG_PER:0:1 = 妊娠確率
-	ENDIF
-	PRINTFORM 受精率{受精確率/10}.{受精確率%10}\% × 着床率{着床確率/10}.{着床確率%10}\% ＝ 妊娠率{妊娠確率/10}.{妊娠確率%10}\%
-	SIF 妊娠確率補正あり
-		PRINTFORM  → {妊娠確率補正後/10}.{妊娠確率補正後%10}\%
-	PRINTL
-	;助手→奴隷(2:1)
-	IF ASSI > -1
-		精液量 = 精液量正規化(TARGET, -1, PREG:TARGET:助手膣内射精)
-		PRINTFORM 　%CALLNAME:ASSI%→%CALLNAME:TARGET%:{TFLAG:助手から奴隷への膣内射精回数}回(精液量:{精液量/10}.{精液量%10}\%) ………… 
-		CALL NAKADASHI_CHECK, TARGET, ASSI, 1
-		受精確率 = RESULT
-		妊娠確率 = 受精確率*着床確率/1000
-		IF 妊娠確率補正あり
-			妊娠確率補正後 = 確率補正(妊娠確率, TEQUIP:TARGET:妊娠確率分子, TEQUIP:TARGET:妊娠確率分母)
-			PREG_PER:2:1 = 妊娠確率補正後
-		ELSE
-			PREG_PER:2:1 = 妊娠確率
-		ENDIF
-		PRINTFORM 受精率{受精確率/10}.{受精確率%10}\% × 着床率{着床確率/10}.{着床確率%10}\% ＝ 妊娠率{妊娠確率/10}.{妊娠確率%10}\%
-		SIF 妊娠確率補正あり
-			PRINTFORM  → {妊娠確率補正後/10}.{妊娠確率補正後%10}\%
-		PRINTL
-	ENDIF
-	;助手2→奴隷(3:1)
-	IF ASSI:1 > -1
-		精液量 = 精液量正規化(TARGET, -1, PREG:TARGET:助手2膣内射精)
-		PRINTFORM 　%CALLNAME:(ASSI:1)%→%CALLNAME:TARGET%:{TFLAG:助手2から奴隷への膣内射精回数}回(精液量:{精液量/10}.{精液量%10}\%) ………… 
-		CALL NAKADASHI_CHECK, TARGET, (ASSI:1), 1
-		受精確率 = RESULT
-		妊娠確率 = 受精確率*着床確率/1000
-		IF 妊娠確率補正あり
-			妊娠確率補正後 = 確率補正(妊娠確率, TEQUIP:TARGET:妊娠確率分子, TEQUIP:TARGET:妊娠確率分母)
-			PREG_PER:3:1 = 妊娠確率補正後
-		ELSE
-			PREG_PER:3:1 = 妊娠確率
-		ENDIF
-		PRINTFORM 受精率{受精確率/10}.{受精確率%10}\% × 着床率{着床確率/10}.{着床確率%10}\% ＝ 妊娠率{妊娠確率/10}.{妊娠確率%10}\%
-		SIF 妊娠確率補正あり
-			PRINTFORM  → {妊娠確率補正後/10}.{妊娠確率補正後%10}\%
-		PRINTL
-	ENDIF
-	;確率トータル
-	IF (PREG_PER:0:1 > 0) + (PREG_PER:2:1 > 0) + (PREG_PER:3:1 > 0) > 1
-		妊娠確率 = 確率トータル(PREG_PER:0:1, PREG_PER:2:1, PREG_PER:3:1)
-		PRINTFORML 　　%CALLNAME:TARGET%の妊娠確率: {妊娠確率/10}.{妊娠確率%10}\%
-	ENDIF
 
-	;助手への中出し(n:2)
-	IF ASSI > -1
-		着床確率 = 着床確率計算(ASSI)
-		IF TEQUIP:ASSI:妊娠確率分子 != 1 || TEQUIP:ASSI:妊娠確率分母 != 1
+	膣内射精回数:1:0 = TFLAG:奴隷から主人への膣内射精回数
+	膣内射精回数:0:1 = TFLAG:主人から奴隷への膣内射精回数
+	膣内射精回数:2:1 = TFLAG:助手から奴隷への膣内射精回数
+	膣内射精回数:3:1 = TFLAG:助手2から奴隷への膣内射精回数
+	膣内射精回数:0:2 = TFLAG:主人から助手への膣内射精回数
+	膣内射精回数:1:2 = TFLAG:奴隷から助手への膣内射精回数
+	膣内射精回数:3:2 = TFLAG:助手2から助手への膣内射精回数
+	膣内射精回数:0:3 = TFLAG:主人から助手2への膣内射精回数
+	膣内射精回数:1:3 = TFLAG:奴隷から助手2への膣内射精回数
+	膣内射精回数:2:3 = TFLAG:助手から助手2への膣内射精回数
+
+	;LCOUNT(竿役)とLCOUNT2(対象)が「LCOUNTからLCOUNT2への中出し」に対応
+	;番号は、0:主人 1:奴隷 2:助手 3:助手2…… と対応
+	;ただし、主人への中出し(LCOUNT2=0)のケースだけ別で対応
+	FOR LCOUNT2, 1, 最大人数
+		;対象のキャラ登録番号(購入順に割り振るやつ)を代入
+		SELECTCASE LCOUNT2
+			CASE 1
+				対象 = TARGET
+			CASEELSE
+				対象 = ASSI:(LCOUNT2 - 1)
+		ENDSELECT
+		;対象が存在しなければスキップ
+		SIF 対象 < 0
+			CONTINUE
+		;対象がいるなら共通の計算を済ませる
+		着床確率 = 着床確率計算(対象)
+		IF TEQUIP:対象:妊娠確率分子 != 1 || TEQUIP:対象:妊娠確率分母 != 1
 			妊娠確率補正あり = 1
 		ELSE
 			妊娠確率補正あり = 0
 		ENDIF
 
-		;主人→助手(0:2)
-		精液量 = 精液量正規化(ASSI, -1, PREG:ASSI:主人膣内射精)
-		PRINTFORM 　%CALLNAME:MASTER%→%CALLNAME:ASSI%:{TFLAG:主人から助手への膣内射精回数}回(精液量:{精液量/10}.{精液量%10}\%) ………… 
-		CALL NAKADASHI_CHECK, ASSI, MASTER, 1
-		受精確率 = RESULT
-		妊娠確率 = 受精確率*着床確率/1000
-		IF 妊娠確率補正あり
-			妊娠確率補正後 = 確率補正(妊娠確率, TEQUIP:ASSI:妊娠確率分子, TEQUIP:ASSI:妊娠確率分母)
-			PREG_PER:0:2 = 妊娠確率補正後
-		ELSE
-			PREG_PER:0:2 = 妊娠確率
-		ENDIF
-		PRINTFORM 受精率{受精確率/10}.{受精確率%10}\% × 着床率{着床確率/10}.{着床確率%10}\% ＝ 妊娠率{妊娠確率/10}.{妊娠確率%10}\%
-		SIF 妊娠確率補正あり
-			PRINTFORM  → {妊娠確率補正後/10}.{妊娠確率補正後%10}\%
-		PRINTL
-		;奴隷→助手(1:2)
-		精液量 = 精液量正規化(ASSI, -1, PREG:ASSI:奴隷膣内射精)
-		PRINTFORM 　%CALLNAME:TARGET%→%CALLNAME:ASSI%:{TFLAG:奴隷から助手への膣内射精回数}回(精液量:{精液量/10}.{精液量%10}\%) ………… 
-		CALL NAKADASHI_CHECK, ASSI, TARGET, 1
-		受精確率 = RESULT
-		妊娠確率 = 受精確率*着床確率/1000
-		IF 妊娠確率補正あり
-			妊娠確率補正後 = 確率補正(妊娠確率, TEQUIP:ASSI:妊娠確率分子, TEQUIP:ASSI:妊娠確率分母)
-			PREG_PER:1:2 = 妊娠確率補正後
-		ELSE
-			PREG_PER:1:2 = 妊娠確率
-		ENDIF
-		PRINTFORM 受精率{受精確率/10}.{受精確率%10}\% × 着床率{着床確率/10}.{着床確率%10}\% ＝ 妊娠率{妊娠確率/10}.{妊娠確率%10}\%
-		SIF 妊娠確率補正あり
-			PRINTFORM  → {妊娠確率補正後/10}.{妊娠確率補正後%10}\%
-		PRINTL
-		;助手2→助手(3:2)
-		IF ASSI:1 > -1
-			精液量 = 精液量正規化(ASSI, -1, PREG:ASSI:助手2膣内射精)
-			PRINTFORM 　%CALLNAME:(ASSI:1)%→%CALLNAME:ASSI%:{TFLAG:助手2から助手への膣内射精回数}回(精液量:{精液量/10}.{精液量%10}\%) ………… 
-			CALL NAKADASHI_CHECK, ASSI, (ASSI:1), 1
-			受精確率 = RESULT
-			妊娠確率 = 受精確率*着床確率/1000
-			IF 妊娠確率補正あり
-				妊娠確率補正後 = 確率補正(妊娠確率, TEQUIP:ASSI:妊娠確率分子, TEQUIP:ASSI:妊娠確率分母)
-				PREG_PER:3:2 = 妊娠確率補正後
-			ELSE
-				PREG_PER:3:2 = 妊娠確率
+		中出され人数 = 0
+		VARSET 妊娠確率総計
+		;竿役をループで全員見る
+		FOR LCOUNT, 0, 最大人数
+			;自身への中出しは考えない
+			SIF LCOUNT == LCOUNT2
+				CONTINUE
+			;竿役のキャラ登録番号(購入順に割り振るやつ)を代入
+			SELECTCASE LCOUNT
+				CASE 0
+					竿役 = MASTER
+				CASE 1
+					竿役 = TARGET
+				CASEELSE
+					竿役 = ASSI:(LCOUNT2 - 1)
+			ENDSELECT
+			;竿役が存在しなければスキップ
+			SIF 竿役 < 0
+				CONTINUE
+			;MAX1000に正規化する前の値を取得
+			SELECTCASE LCOUNT
+				CASE 0
+					精液量正規化前 = PREG:対象:主人膣内射精
+				CASE 1
+					精液量正規化前 = PREG:対象:奴隷膣内射精
+				CASE 2
+					精液量正規化前 = PREG:対象:助手膣内射精
+				CASE 3
+					精液量正規化前 = PREG:対象:助手2膣内射精
+			ENDSELECT
+			;MAX1000に正規化
+			精液量 = 精液量正規化(対象, -1, 精液量正規化前)
+			IF 膣内射精回数:LCOUNT:LCOUNT2 || 精液量
+				中出され人数++
+				PRINTFORM 　%CALLNAME:竿役%→%CALLNAME:対象%:{膣内射精回数:LCOUNT:LCOUNT2}回(精液量:{精液量/10}.{精液量%10}\%) ………… 
+				CALL NAKADASHI_CHECK, 対象, 竿役, 1
+				受精確率 = RESULT
+				妊娠確率 = 受精確率*着床確率/1000
+				IF 妊娠確率補正あり
+					妊娠確率補正後 = 確率補正(妊娠確率, TEQUIP:対象:妊娠確率分子, TEQUIP:対象:妊娠確率分母)
+					妊娠確率総計:LCOUNT = 妊娠確率補正後
+				ELSE
+					妊娠確率総計:LCOUNT = 妊娠確率
+				ENDIF
+				PRINTFORM 受精率{受精確率/10}.{受精確率%10}\% × 着床率{着床確率/10}.{着床確率%10}\% ＝ 妊娠率{妊娠確率/10}.{妊娠確率%10}\%
+				SIF 妊娠確率補正あり
+					PRINTFORM  → {妊娠確率補正後/10}.{妊娠確率補正後%10}\%
+				PRINTL
 			ENDIF
-			PRINTFORM 受精率{受精確率/10}.{受精確率%10}\% × 着床率{着床確率/10}.{着床確率%10}\% ＝ 妊娠率{妊娠確率/10}.{妊娠確率%10}\%
-			SIF 妊娠確率補正あり
-				PRINTFORM  → {妊娠確率補正後/10}.{妊娠確率補正後%10}\%
-			PRINTL
-		ENDIF
+		NEXT
 		;確率トータル
-		IF (PREG_PER:0:2 > 0) + (PREG_PER:1:2 > 0) + (PREG_PER:3:2 > 0) > 1
-			妊娠確率 = 確率トータル(PREG_PER:0:2, PREG_PER:1:2, PREG_PER:3:2)
-			PRINTFORML 　　%CALLNAME:ASSI%の妊娠確率: {妊娠確率/10}.{妊娠確率%10}\%
+		IF 中出され人数 > 1
+			妊娠確率 = 確率トータル(妊娠確率総計:0, 妊娠確率総計:1, 妊娠確率総計:2, 妊娠確率総計:3)
+			PRINTFORML 　　%CALLNAME:対象%の妊娠確率: {妊娠確率/10}.{妊娠確率%10}\%
 		ENDIF
-	ENDIF
-	;助手2への中出し(n:3)
-	IF (ASSI:1) > -1
-		着床確率 = 着床確率計算(ASSI:1)
-		IF TEQUIP:(ASSI:1):妊娠確率分子 != 1 || TEQUIP:(ASSI:1):妊娠確率分母 != 1
-			妊娠確率補正あり = 1
-		ELSE
-			妊娠確率補正あり = 0
-		ENDIF
-
-		;主人→助手2(0:3)
-		精液量 = 精液量正規化(ASSI:1, -1, PREG:(ASSI:1):主人膣内射精)
-		PRINTFORM 　%CALLNAME:MASTER%→%CALLNAME:(ASSI:1)%:{TFLAG:主人から助手2への膣内射精回数}回(精液量:{精液量/10}.{精液量%10}\%) ………… 
-		CALL NAKADASHI_CHECK, (ASSI:1), MASTER, 1
-		受精確率 = RESULT
-		妊娠確率 = 受精確率*着床確率/1000
-		IF 妊娠確率補正あり
-			妊娠確率補正後 = 確率補正(妊娠確率, TEQUIP:ASSI:妊娠確率分子, TEQUIP:ASSI:妊娠確率分母)
-			PREG_PER:0:3 = 妊娠確率補正後
-		ELSE
-			PREG_PER:0:3 = 妊娠確率
-		ENDIF
-		PRINTFORM 受精率{受精確率/10}.{受精確率%10}\% × 着床率{着床確率/10}.{着床確率%10}\% ＝ 妊娠率{妊娠確率/10}.{妊娠確率%10}\%
-		SIF 妊娠確率補正あり
-			PRINTFORM  → {妊娠確率補正後/10}.{妊娠確率補正後%10}\%
-		PRINTL
-		;奴隷→助手2(1:3)
-		精液量 = 精液量正規化(ASSI:1, -1, PREG:(ASSI:1):奴隷膣内射精)
-		PRINTFORM 　%CALLNAME:TARGET%→%CALLNAME:(ASSI:1)%:{TFLAG:奴隷から助手2への膣内射精回数}回(精液量:{精液量/10}.{精液量%10}\%) ………… 
-		CALL NAKADASHI_CHECK, (ASSI:1), TARGET, 1
-		受精確率 = RESULT
-		妊娠確率 = 受精確率*着床確率/1000
-		IF 妊娠確率補正あり
-			妊娠確率補正後 = 確率補正(妊娠確率, TEQUIP:ASSI:妊娠確率分子, TEQUIP:ASSI:妊娠確率分母)
-			PREG_PER:1:3 = 妊娠確率補正後
-		ELSE
-			PREG_PER:1:3 = 妊娠確率
-		ENDIF
-		PRINTFORM 受精率{受精確率/10}.{受精確率%10}\% × 着床率{着床確率/10}.{着床確率%10}\% ＝ 妊娠率{妊娠確率/10}.{妊娠確率%10}\%
-		SIF 妊娠確率補正あり
-			PRINTFORM  → {妊娠確率補正後/10}.{妊娠確率補正後%10}\%
-		PRINTL
-		;助手→助手2(2:3)
-		IF ASSI > -1
-			精液量 = 精液量正規化(ASSI:1, -1, PREG:(ASSI:1):助手膣内射精)
-			PRINTFORM 　%CALLNAME:ASSI%→%CALLNAME:(ASSI:1)%:{TFLAG:助手から助手2への膣内射精回数}回(精液量:{精液量/10}.{精液量%10}\%) ………… 
-			CALL NAKADASHI_CHECK, (ASSI:1), ASSI, 1
-			受精確率 = RESULT
-			妊娠確率 = 受精確率*着床確率/1000
-			IF 妊娠確率補正あり
-				妊娠確率補正後 = 確率補正(妊娠確率, TEQUIP:ASSI:妊娠確率分子, TEQUIP:ASSI:妊娠確率分母)
-				PREG_PER:2:3 = 妊娠確率補正後
-			ELSE
-				PREG_PER:2:3 = 妊娠確率
-			ENDIF
-			PRINTFORM 受精率{受精確率/10}.{受精確率%10}\% × 着床率{着床確率/10}.{着床確率%10}\% ＝ 妊娠率{妊娠確率/10}.{妊娠確率%10}\%
-			SIF 妊娠確率補正あり
-				PRINTFORM  → {妊娠確率補正後/10}.{妊娠確率補正後%10}\%
-			PRINTL
-		ENDIF
-		;確率トータル
-		IF (PREG_PER:0:3 > 0) + (PREG_PER:1:3 > 0) + (PREG_PER:2:3 > 0) > 1
-			妊娠確率 = 確率トータル(PREG_PER:0:3, PREG_PER:1:3, PREG_PER:2:3)
-			PRINTFORML 　　%CALLNAME:ASSI%の妊娠確率: {妊娠確率/10}.{妊娠確率%10}\%
-		ENDIF
-	ENDIF
-
-	;主人への中出し
-	着床確率 = 着床確率計算(MASTER)
-	IF TEQUIP:MASTER:妊娠確率分子 != 1 || TEQUIP:MASTER:妊娠確率分母 != 1
-		妊娠確率補正あり = 1
-	ELSE
-		妊娠確率補正あり = 0
-	ENDIF
-	;奴隷→主人(1:0)
+	NEXT
+	;主人への中出しだけ例外処理
+	;現状は「奴隷(1)→主人(0)」のみ
 	精液量 = 精液量正規化(MASTER, -1, PREG:MASTER:助手膣内射精)
-	PRINTFORM 　%CALLNAME:TARGET%→%CALLNAME:MASTER%:{TFLAG:奴隷から主人への膣内射精回数}回(精液量:{精液量/10}.{精液量%10}\%) ………… 
-	CALL NAKADASHI_CHECK_MASTER, TARGET, 1
-	受精確率 = RESULT
-	妊娠確率 = 受精確率*着床確率/1000
-	IF 妊娠確率補正あり
-		妊娠確率補正後 = 確率補正(妊娠確率, TEQUIP:MASTER:妊娠確率分子, TEQUIP:MASTER:妊娠確率分母)
-		PREG_PER:1:0 = 妊娠確率補正後
-	ELSE
-		PREG_PER:1:0 = 妊娠確率
+	IF 膣内射精回数:1:0 || 精液量
+		PRINTFORM 　%CALLNAME:TARGET%→%CALLNAME:MASTER%:{膣内射精回数:1:0}回(精液量:{精液量/10}.{精液量%10}\%) ………… 
+		CALL NAKADASHI_CHECK_MASTER, TARGET, 1
+		受精確率 = RESULT
+		妊娠確率 = 受精確率*着床確率/1000
+		SIF 妊娠確率補正あり
+			妊娠確率補正後 = 確率補正(妊娠確率, TEQUIP:MASTER:妊娠確率分子, TEQUIP:MASTER:妊娠確率分母)
+		PRINTFORM 受精率{受精確率/10}.{受精確率%10}\% × 着床率{着床確率/10}.{着床確率%10}\% ＝ 妊娠率{妊娠確率/10}.{妊娠確率%10}\%
+		SIF 妊娠確率補正あり
+			PRINTFORM  → {妊娠確率補正後/10}.{妊娠確率補正後%10}\%
+		PRINTL
 	ENDIF
-	PRINTFORM 受精率{受精確率/10}.{受精確率%10}\% × 着床率{着床確率/10}.{着床確率%10}\% ＝ 妊娠率{妊娠確率/10}.{妊娠確率%10}\%
-	SIF 妊娠確率補正あり
-		PRINTFORM  → {妊娠確率補正後/10}.{妊娠確率補正後%10}\%
-	PRINTL
 ENDIF
 
 WAIT
