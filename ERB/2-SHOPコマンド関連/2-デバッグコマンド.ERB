@@ -66,6 +66,12 @@ RESTART
 ;[1] - 素質操作  --------------------------------
 @TALENT_CHANGE, 数値指定, CSVエディター
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LVARLINE
+#DIM DYNAMIC バストサイズ入力
+#DIM DYNAMIC 排卵不安定入力
+#DIM DYNAMIC 現在の値
+#DIM DYNAMIC 平均日数
+#DIM DYNAMIC 最大日数
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC 数値指定
 #DIM DYNAMIC 指定素質
@@ -207,20 +213,132 @@ DO
 					TALENT:性別 = RESULT
 			ENDSELECT
 			RESTART
-		CASE "バストサイズ"
+		CASE "バストサイズ", "バスト成長"
 			SIF SEX(TARGET) == 1
 				RESTART
-			PRINTL [1] 絶壁にする
-			PRINTL [2] 貧乳にする
-			PRINTL [3] 並乳にする
-			PRINTL [4] 巨乳にする
-			PRINTL [5] 豊乳にする
-			PRINTL [6] 爆乳にする
-			PRINTL [7] 爆乳+1にする
-			PRINTL [8] 爆乳+2にする
-			PRINTL [9] 爆乳+3にする
-			BINPUT
-			TALENT:バストサイズ = RESULT
+			IF TALENTNAME:RESULT == "バストサイズ" || CSVエディター
+				バストサイズ入力 = 1
+			ELSE
+				バストサイズ入力 = 0
+			ENDIF
+			DO
+				LVARLINE = LINECOUNT
+				SIF !CSVエディター
+					PRINTFORM %NAME:TARGET%の
+				PRINTFORML バストサイズ: {TALENT:バストサイズ}(%バストサイズ(TALENT:バストサイズ)%)
+				IF CSVエディター
+					PRINTFORM バスト成長　: 
+					IF TALENT:バスト成長
+						PRINTL ◯
+					ELSE
+						PRINTL ×
+					ENDIF
+				ELSE
+					PRINTFORM %NAME:TARGET%のバスト成長　: {CFLAG:バスト成長}/1000
+					IF TALENT:バスト成長
+						PRINTL (成長中)
+					ELSE
+						PRINTL (成長ストップ)
+					ENDIF
+				ENDIF
+				IF バストサイズ入力
+					PRINTL [-9] 戻る
+					SIF !CSVエディター
+						PRINTL [-8] バスト成長の入力をする
+					PRINTL [-1] バスト成長の有無を切り替え
+					PRINT [ 1] 絶壁にする
+					PRINTPLAIN 　¦　
+					PRINTL [ 7] 爆乳+1にする
+					PRINT [ 2] 貧乳にする
+					PRINTPLAIN 　¦　
+					PRINTL [ 8] 爆乳+2にする
+					PRINT [ 3] 並乳にする
+					PRINTPLAIN 　¦　
+					PRINTL [ 9] 爆乳+3にする
+					PRINT [ 4] 巨乳にする
+					PRINTPLAIN 　¦　
+					PRINTL [10] 爆乳+4にする
+					PRINT [ 5] 豊乳にする
+					PRINTPLAIN 　¦　
+					PRINTL [11] 爆乳+5にする
+					PRINT [ 6] 爆乳にする
+					PRINTPLAIN 　¦　
+					PRINTL [12] 爆乳+6にする
+				ELSE
+					PRINTL [  -9] 戻る
+					PRINTL [  -8] バストサイズの入力をする
+					PRINTL [  -1] バスト成長の有無を切り替え
+					PRINTL [   0]    0/1000
+					PRINTL [ 250]  250/1000
+					PRINTL [ 500]  500/1000
+					PRINTL [ 750]  750/1000
+					PRINTL [ 999]  999/1000
+					PRINTL [1000] 1000/1000
+				ENDIF
+				INPUT
+				SIF RESULT == -9
+					BREAK
+				SIF RESULT == -8 && !CSVエディター
+					INVERTBIT バストサイズ入力, 0
+				SIF RESULT == -1
+					INVERTBIT TALENT:バスト成長, 0
+				IF バストサイズ入力
+					SIF INRANGE(RESULT, 1, 99)
+						TALENT:バストサイズ = RESULT
+				ELSE
+					SIF RESULT >= 0
+						CFLAG:バスト成長 = RESULT
+				ENDIF
+				CLEARLINE LINECOUNT-LVARLINE
+			LOOP 1
+			RESTART
+		CASE "初潮前", "排卵不安定"
+			IF TALENTNAME:RESULT == "排卵不安定"
+				排卵不安定入力 = 1
+			ELSE
+				排卵不安定入力 = 0
+			ENDIF
+			DO
+				LVARLINE = LINECOUNT
+				IF 排卵不安定入力
+					現在の値 = TALENT:排卵不安定
+					最大日数 = 8000
+				ELSE
+					現在の値 = TALENT:初潮前
+					最大日数 = 4000
+				ENDIF
+				IF 排卵不安定入力
+					PRINTFORML 素質「排卵不安定」の数値: {現在の値}
+				ELSE
+					PRINTFORML 素質「初潮前」の数値　　: {現在の値}
+				ENDIF
+				IF 現在の値
+					平均日数 = 平均日数計算(現在の値, 最大日数)
+					平均日数 /= 1e8
+					PRINTFORML 素質消滅まで　　　　　　: 平均{平均日数/10}.{平均日数%10}日
+					PRINTFORML    1日後までに消滅　　　:{(素質消滅確率:1)/1e7, 3}.{((素質消滅確率:1)/1e6)%10}\%
+					平均日数 /= 10
+					FOR LCOUNT, 2, 最大日数-現在の値
+						SELECTCASE LCOUNT
+							CASE 平均日数, 10, 25, 50, 100
+								PRINTFORML {LCOUNT, 4}日後までに消滅　　　:{(素質消滅確率:LCOUNT)/1e7, 3}.{((素質消滅確率:LCOUNT)/1e6)%10}\%
+						ENDSELECT
+					NEXT
+				ENDIF
+				PRINTL
+				PRINTL [-1]戻る
+				PRINT [0] [100] [500] [1000] [2000] [4000] 
+				SIF 排卵不安定入力
+					PRINT [8000]
+				PRINTL
+				INPUT
+				SIF RESULT < 0
+					BREAK
+				IF INRANGE(RESULT, 0, 最大日数)
+					TALENT:初潮前 = RESULT
+				ENDIF
+				CLEARLINE LINECOUNT-LVARLINE
+			LOOP 1
 			RESTART
 		CASE "体格"
 			PRINTL [1] 幼児にする
