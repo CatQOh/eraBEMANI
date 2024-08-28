@@ -13,8 +13,10 @@
 {
 #DIMS DYNAMIC アクセサリーリスト = 
 "空欄", "空欄", 
-"リングピアス", "右乳首/左乳首", 
-"バーベルピアス", "右乳首/左乳首", 
+"リングピアス", "右乳首/左乳首/陰核/陰茎", 
+"バーベルピアス", "右乳首/左乳首/陰核/陰茎", 
+"ラブレットスタッド", "舌",
+"カーブドバーベル", "臍",
 }
 
 DRAWLINE
@@ -88,7 +90,7 @@ SELECTCASE RESULT
 
 		;装着可能部位はACCESSORY.ERDに定義を追加する事で増やす
 		FOR LCOUNT, 0, VARSIZE("ACCESSORY")
-			IF ERDNAME(ACCESSORY,LCOUNT) != ""
+			IF ERDNAME(ACCESSORY,LCOUNT) != "" && 装飾可能(LTARGET,ERDNAME(ACCESSORY,LCOUNT))
 				{
 				PRINTFORML [{LCOUNT}] - %ERDNAME(ACCESSORY,LCOUNT)%
 				\@ LTARGET >=0 && ACCESSORY:LTARGET:(ERDNAME(ACCESSORY,LCOUNT)) != "" ? 
@@ -168,7 +170,7 @@ SELECTCASE RESULT
 		DRAWLINE
 		PRINTFORML □%CHARANAMEF(LTARGET)%の装飾
 		FOR LCOUNT, 0, VARSIZE("ACCESSORY")
-			SIF ERDNAME(ACCESSORY,LCOUNT) != ""
+			SIF ERDNAME(ACCESSORY,LCOUNT) != "" && 装飾可能(LTARGET,ERDNAME(ACCESSORY,LCOUNT))
 				PRINTFORML 　%ERDNAME(ACCESSORY,LCOUNT)%：\@ACCESSORY:LTARGET:LCOUNT != "" ? %ACCESSORY:LTARGET:LCOUNT% # なし \@
 		NEXT
 		WAIT
@@ -176,3 +178,89 @@ ENDSELECT
 
 RESTART
 
+;;;(対象者, 対象部位) 対象者の対象部位に装飾可能かどうか（装飾部位があるかどうか）
+@装飾可能, 対象者, 対象部位
+#FUNCTION
+#DIM 対象者
+#DIMS 対象部位
+SIF 対象者 < 0
+	RETURNF 0
+SIF 対象部位 == ""
+	RETURNF 0
+
+SELECTCASE 対象部位
+	CASE "陰茎"
+		RETURNF PENIS(対象者)
+	CASE "陰核"
+		RETURNF SEX(対象者) == 2 && TALENT:対象者:ふたなり == 0
+	CASEELSE
+		RETURNF 1
+ENDSELECT
+
+;;;(対象者) 対象者の現在装着不可能な装飾をはずず
+@装飾継続チェック, 対象者
+#DIM 対象者
+#DIM LCOUNT
+
+SIF 対象者 < 0
+	RETURN 0
+
+FOR LCOUNT, 0, VARSIZE("ACCESSORY")
+	SIF !装飾可能(対象者,ERDNAME(ACCESSORY,LCOUNT))
+		ACCESSORY:対象者:LCOUNT = ""
+NEXT
+RETURN 0
+
+
+;;;(提供者, 受容者, 対象部位)  提供者の対象部位にある装飾を受容者に移植する
+@装飾移植, 提供者, 受容者, 対象部位
+#DIM LCOUNT
+#DIM 提供者
+#DIM 受容者
+#DIMS 対象部位
+SIF 対象部位 == ""
+	RETURN 0
+FOR LCOUNT, 0, VARSIZE("ACCESSORY")
+	SELECTCASE ERDNAME(ACCESSORY,LCOUNT)
+		CASE ""
+			CONTINUE
+		CASE 対象部位, "右" + 対象部位, "左" + 対象部位
+			SIF ACCESSORY:提供者:LCOUNT == "" || ACCESSORY:提供者:LCOUNT == "空欄" 
+				RETURN 0
+			ACCESSORY:受容者:LCOUNT = ACCESSORY:提供者:LCOUNT
+			ACCESSORY:提供者:LCOUNT = 0
+			RETURN 1
+	ENDSELECT
+NEXT
+RETURN 0
+;;;(対象者, 対象部位 = "") 対象者の対象部位にある装飾の個数。"乳首"は左右の合計が、空欄だと全部位の合計が返される。
+@装飾数, 対象者, 対象部位 = ""
+#FUNCTION
+#DIM LCOUNT
+#DIM 対象者
+#DIMS 対象部位
+#DIM 個数
+個数 = 0
+
+SIF 対象者 < 0
+	RETURNF 0
+
+FOR LCOUNT, 0, VARSIZE("ACCESSORY")
+	SELECTCASE ERDNAME(ACCESSORY,LCOUNT)
+		CASE ""
+			CONTINUE
+		CASE 対象部位
+			SIF (ACCESSORY:対象者:LCOUNT) != "" &&  (ACCESSORY:対象者:LCOUNT != "空欄")
+				個数++
+		CASE "右" + 対象部位
+			SIF (ACCESSORY:対象者:LCOUNT) != "" &&  (ACCESSORY:対象者:LCOUNT != "空欄")
+				個数++
+		CASE "左" + 対象部位
+			SIF (ACCESSORY:対象者:LCOUNT) != "" &&  (ACCESSORY:対象者:LCOUNT != "空欄")
+				個数++
+		CASEELSE
+			SIF (対象部位 == "") && (ACCESSORY:対象者:LCOUNT != "") &&  (ACCESSORY:対象者:LCOUNT != "空欄")
+				個数++
+	ENDSELECT
+NEXT
+RETURNF 個数
