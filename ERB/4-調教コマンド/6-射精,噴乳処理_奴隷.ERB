@@ -136,6 +136,7 @@ ENDIF
 #DIM DYNAMIC 射精量
 #DIM DYNAMIC 被射精キャラ
 #DIM DYNAMIC 計算用射精量
+#DIM DYNAMIC 賢者タイムプラス値
 #DIM DYNAMIC 魔力回復量
 
 SIF 被射精キャラ == -1
@@ -461,21 +462,29 @@ SIF TEQUIP:強精神薬 <= 1 && TFLAG:ラブキャンセーブユー <= 1
 	CALL ORGASM_ADD
 
 ;射精後は再装填の時間を設ける ミッドナイトスペシャル使用時は賢者タイム無し
-IF !CFLAG:ミッドナイトスペシャル
-	SELECTCASE 射精量
-		CASE 1
-			CFLAG:賢者タイム += 3
-		CASE IS >= 2
-			CFLAG:賢者タイム += 5
-	ENDSELECT
-	;インキュバスだと-1
+IF CFLAG:ミッドナイトスペシャル
+	賢者タイムプラス値 = 0
+ELSE
+	賢者タイムプラス値 = LIMIT(2 + 射精量 - (1+TALENT:絶倫)/2, 0, 5)
+
+	;インキュバスなら-1
 	SIF TALENT:インキュバス
-		CFLAG:賢者タイム--
+		賢者タイムプラス値--
+	;児童なら-1
+	SIF TALENT:児童
+		賢者タイムプラス値--
 	SIF 特質("精力強化")
-		CFLAG:賢者タイム -= 特質("精力強化")/10
-	SIF CFLAG:賢者タイム < 0
-		CFLAG:賢者タイム = 0
+		賢者タイムプラス値 -= 特質("精力強化")/10
+	
+	;媚薬の効果に応じて賢者タイムが短くなる
+	賢者タイムプラス値 -= CFLAG:媚薬/10
 ENDIF
+
+CFLAG:賢者タイム += MAX(賢者タイムプラス値, 0)
+
+SIF CFLAG:賢者タイム < 0
+	CFLAG:賢者タイム = 0
+
 CFLAG:残数--
 ;ミッドナイトスペシャル使用時は無尽蔵
 SIF CFLAG:ミッドナイトスペシャル
