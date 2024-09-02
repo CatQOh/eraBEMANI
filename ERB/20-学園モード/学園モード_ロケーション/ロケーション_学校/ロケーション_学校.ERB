@@ -14,15 +14,24 @@ CALL COLUMNPRINTL, 0, "□何をしよう？"
 授業中 = 教師ランダム(CSTR:PLAYER:在校)
 
 IF !授業中
-	CALL COLUMNPRINTL, 0, @"　[---] - \@ ターン == "朝" ? 午前 # 午後 \@の授業を受ける(自習)", "gray"
+	CALL COLUMNPRINTL, 0, "　次の授業:自習"
+	CALL COLUMNPRINTL, 0, "　担当教師:なし"
 ELSE
-	CALL COLUMNPRINTL, 0, @"　[100] - \@ ターン == "朝" ? 午前 # 午後 \@の授業を受ける(%CSTR:授業中:担当科目%:%NAME:授業中%先生)"
+	CALL COLUMNPRINTL, 0, @"　次の授業:%CSTR:授業中:担当科目%"
+	CALL COLUMNPRINTL, 0, @"　担当教師:%NAME:授業中%先生"
+ENDIF
+
+IF !授業中
+	CALL COLUMNPRINTL, 0, @"　[---] - \@ ターン == "朝" ? 午前 # 午後 \@の授業は自習です", "gray"
+ELSE
+	CALL COLUMNPRINTL, 0, @"　[100] - きちんと準備をして\@ ターン == "朝" ? 午前 # 午後 \@の授業を受ける"
 	CFLAG:授業中:授業回数++
 ENDIF
 CALL COLUMNPRINTL, 0, "　[101] - 校内を散策する"
 SIF ターン == "昼"
 	CALL COLUMNPRINTL, 0, "　[102] - 友人を昼食に誘う"
 CALL COLUMNPRINTL, 0, "　[500] - データベース"
+
 
 @学校_コマンド_INPUT
 SELECTCASE CRESULT:1
@@ -35,10 +44,16 @@ SELECTCASE CRESULT:1
 	CASE 500
 		CALL 学園データベース
 ENDSELECT
+;ターンが終わるような行動をとったときRESULTは1を返す(そうでないなら0)
 
-SIF RESULT
+IF RESULT
+	授業参加フラグ = 0
+	授業中 = 0
 	CALL TURNEND_学園
+ENDIF
 
+
+;;;在籍している教師(校長と理事長を除く)からランダムに選出しキャラ登録番号を返す
 @教師ランダム, 学校
 #FUNCTION
 #DIM DYNAMIC 教師一覧, 50

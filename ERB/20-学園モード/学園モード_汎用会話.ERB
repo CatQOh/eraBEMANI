@@ -52,12 +52,28 @@ ENDIF
 
 CALL 汎用会話可否判定, TARGET, "性的に誘う"
 IF RESULT == 1
-	CALL PRINTCOLORL, @"　[-] 性的に誘う%RESULTS%", "gray"
+	IF 授業中
+		IF TARGET == 授業中
+			CALL PRINTCOLORL, @"　[-] 授業を放棄させて性的に誘う%RESULTS%", "gray"
+		ELSE
+			CALL PRINTCOLORL, @"　[-] 授業をサボって性的に誘う%RESULTS%", "gray"
+		ENDIF
+	ELSE
+		CALL PRINTCOLORL, @"　[-] 性的に誘う%RESULTS%", "gray"
+	ENDIF
 ELSEIF RESULT == 0
 	IF 同行者 && 同行者 != TARGET
 		CALL PRINTCOLORL, @"　[-] 性的に誘う(%NAME:同行者%が同行中)", "gray"
 	ELSE
-		PRINTL 　[3] 性的に誘う
+		IF 授業中
+			IF TARGET == 授業中
+				PRINTL 　[3] 授業を放棄させて性的に誘う
+			ELSE
+				PRINTL 　[3] 授業をサボって性的に誘う
+			ENDIF
+		ELSE
+			PRINTL 　[3] 性的に誘う
+		ENDIF
 	ENDIF
 ENDIF
 
@@ -198,6 +214,15 @@ SELECTCASE LRESULT
 		;専用コマンド用枠として確保
 		CALLFORM SCHOOL_KOJO, TARGET, @"専用コマンド_%専用コマンドリスト:(RESULT-100)%"
 ENDSELECT
+
+;会話後に授業に参加する
+IF 授業参加フラグ
+	PRINTL
+	PRINTL その後、教室へと戻り授業を受けた。
+	CALL 好感度上昇, 授業中, "舎弟", 2
+	WAIT
+ENDIF
+
 RETURN 1
 
 
@@ -236,21 +261,31 @@ ELSE
 ENDIF
 WAIT
 
+
 @SCHOOL_性的に誘う
-IF 好感度:既成事実 >= 10
-	IF 校内() && CFLAG:倫理観 < 50
-		CALL SCHOOL_KOJO, TARGET, "誘惑_失敗"
-		RETURN
+#DIM DYNAMIC 倫理観ボーダー
+
+;現状は校内プレイだけボーダーあり
+IF 校内()
+	IF CSTR:在任 != ""
+		IF TARGET == 授業中
+			倫理観ボーダー = 90
+		ELSE
+			倫理観ボーダー = 70
+		ENDIF
+	ELSE
+		倫理観ボーダー = 60
 	ENDIF
-	CALL SCHOOL_KOJO, TARGET, "誘惑_成功"
-ELSEIF 好感度:セフレ >= 1000
-	IF 校内() && CFLAG:倫理観 < 50
-		CALL SCHOOL_KOJO, TARGET, "誘惑_失敗"
-		RETURN
-	ENDIF
-	CALL SCHOOL_KOJO, TARGET, "誘惑_成功"
-ELSEIF TALENT:恋慕
-	IF 校内() && CFLAG:倫理観 < 50
+	倫理観ボーダー -= MIN(好感度:既成事実, 10)
+	倫理観ボーダー -= MIN(好感度:セフレ/100, 10)
+	SIF TALENT:恋慕
+		倫理観ボーダー -= 10
+ELSE
+	倫理観ボーダー = 0
+ENDIF
+
+IF 好感度:既成事実 >= 10 || 好感度:セフレ >= 1000 || TALENT:恋慕
+	IF CFLAG:倫理観 < 倫理観ボーダー
 		CALL SCHOOL_KOJO, TARGET, "誘惑_失敗"
 		RETURN
 	ENDIF
@@ -260,6 +295,7 @@ ELSE
 	RETURN
 ENDIF
 WAIT
+;失敗した場合はRETURNで終了しているので、ここからは成功した場合の分岐
 IF CSTR:PLAYER:現在地 == "自宅"
 	CALL EXECTRAIN_SCHOOL, "自宅イベント"
 	CSTR:現在地 =
@@ -267,12 +303,33 @@ IF CSTR:PLAYER:現在地 == "自宅"
 	TARGET = -1
 	同行者 = 0
 ELSE
+	IF 授業中
+		;授業をサボる
+		IF TARGET == 授業中
+			;授業を放棄させた
+			CALL 好感度上昇, 授業中, "セフレ", 50
+			CFLAG:倫理観 += 5
+			CFLAG:MASTER:倫理観 += 5
+		ELSE
+			CALL 好感度上昇, 授業中, "舎弟", -2
+			IF CSTR:在任 != ""
+				CFLAG:倫理観 += 2
+				CFLAG:MASTER:倫理観 += 2
+			ELSE
+				CFLAG:倫理観++
+				CFLAG:MASTER:倫理観++
+			ENDIF
+		ENDIF
+		PRINTL
+		授業参加フラグ = 0
+	ENDIF
 	IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_連れ込む")
 		CALL SCHOOL_KOJO, TARGET, "コマンド_連れ込む"
 		RETURN RESULT
 	ENDIF
 	CALL SCHOOL_連れ込み先
 ENDIF
+
 
 @SCHOOL_思い切って告白する
 ;割りと大事な場面なので素質で分岐させたりしたいかも
@@ -327,11 +384,20 @@ ENDIF
 @SCHOOL_同行を提案する
 #DIM DYNAMIC 必要値
 IF ターン == "夜"
-	;異性の場合は友情値は2倍必要
-	必要値 = 300
+	;異性の場合は友情値は5倍必要
+	必要値 = 600
 	SIF SEX(PLAYER) != SEX(TARGET)
-		必要値 *= 2
-	IF TALENT:恋慕 || 好感度:友情 >= 必要値 || 好感度:ときめき >= 1000 || 好感度:セフレ >= 1000
+		必要値 *= 5
+	;ときめき1000で必要値0に
+	必要値 *= MAX(1000-好感度:ときめき, 0)
+	必要値 /= 1000
+	;セフレ1000で必要値0に
+	必要値 *= MAX(1000-好感度:セフレ, 0)
+	必要値 /= 1000
+	;TALENT:恋慕で必要値0に
+	SIF TALENT:恋慕
+		必要値 = 0
+	IF MAX(好感度:友情, 0) >= 必要値
 		CALL SCHOOL_KOJO, TARGET, "同行_成功"
 		同行者 = TARGET
 		CSTR:同行者:目的 = 遊び
@@ -341,7 +407,7 @@ IF ターン == "夜"
 		CALL SCHOOL_KOJO, TARGET, "同行_失敗"
 		RETURN 0
 	ENDIF
-ELSEIF 好感度合計(TARGET) >= 200
+ELSEIF TALENT:恋慕 || 好感度合計(TARGET) >= 200
 	同行者 = TARGET
 	CALL SCHOOL_KOJO, TARGET, "同行_成功"
 	CALL 好感度上昇, TARGET, "友情", 5
@@ -369,20 +435,20 @@ IF !校内()
 	IF CSTR:在任 != ""
 		PRINTFORML 　[0] - ホテル(%CALLNAME:TARGET%が宿泊料負担)
 	ELSEIF TALENT:恋慕
-		IF MONEY < 5000
-			SETCOLORBYNAME gray
-			CALL PASELIL, "　[-] - ホテル(休憩料金5000＄必要)"
-			RESETCOLOR
-		ELSE
-			CALL PASELIL, "　[0] - ホテル(休憩料金5000＄必要)"
-		ENDIF
-	ELSE
 		IF MONEY < 2500
 			SETCOLORBYNAME gray
 			CALL PASELIL, "　[-] - ホテル(割り勘で休憩料金2500＄必要)"
 			RESETCOLOR
 		ELSE
 			CALL PASELIL, "　[0] - ホテル(割り勘で休憩料金2500＄必要)"
+		ENDIF
+	ELSE
+		IF MONEY < 5000
+			SETCOLORBYNAME gray
+			CALL PASELIL, "　[-] - ホテル(休憩料金5000＄必要)"
+			RESETCOLOR
+		ELSE
+			CALL PASELIL, "　[0] - ホテル(休憩料金5000＄必要)"
 		ENDIF
 	ENDIF
 ENDIF
@@ -404,12 +470,10 @@ SELECTCASE RESULT
 		IF CSTR:在任 != ""
 			ITEM:コンドーム += 6
 		ELSEIF TALENT:恋慕
-			MONEY -= 5000
-		ELSE
 			MONEY -= 2500
+		ELSE
+			MONEY -= 5000
 		ENDIF
-		ITEM:コンドーム++
-		ITEM:ローション++
 		CALL EXECTRAIN_SCHOOL, "ホテル"
 	CASE 1
 		CALL EXECTRAIN_SCHOOL, "トイレ"

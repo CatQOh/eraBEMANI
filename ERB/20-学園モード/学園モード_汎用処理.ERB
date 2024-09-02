@@ -586,8 +586,10 @@ GOTO 生徒選択
 RETURNF SUMARRAY(好感度:対象:0)
 
 ;;;学園モードの名前表示処理
-@SNAME, 対象
+;;;第1引数に対象のIDを代入、第2引数が0以外なら在任しているキャラに「先生」をつける
+@SNAME, 対象, 先生=0
 #DIM DYNAMIC 対象
+#DIM DYNAMIC 先生
 #DIM DYNAMIC 好感度値
 #DIMS DYNAMIC 表示好感度
 
@@ -596,6 +598,8 @@ IF ラブスコープ使用
 		SETCOLORBYNAME coral
 	PRINTFORM %NAME:対象%
 	RESETCOLOR
+	SIF CSTR:対象:在任 != ""
+		PRINT 先生
 	SELECTCASE ラブスコープ使用
 		CASE 1 TO 6
 			表示好感度 = %ERDNAME(好感度, ラブスコープ使用-1)%
@@ -643,6 +647,8 @@ ELSE
 		SETCOLORBYNAME coral
 	PRINTFORM %NAME:対象%
 	RESETCOLOR
+	SIF CSTR:対象:在任 != ""
+		PRINT 先生
 ENDIF
 
 ;;;好感度上昇とメッセージ表示を行う
@@ -891,9 +897,9 @@ SIF 上昇値 == 0
 好感度:対象:好感度種類 += 上昇値
 
 IF (SEX(対象) == 2 || NAME:対象 == "ハニー") && 好感度種類 == "舎弟"
-	PRINTFORML 好感度上昇:%NAME:対象%(母性\@ SIGN(上昇値) == 1 ? + #\@{上昇値})
+	PRINTFORML 好感度\@ SIGN(上昇値) == 1 ? 上昇 # 下降 \@:%NAME:対象%(母性\@ SIGN(上昇値) == 1 ? + #\@{上昇値})
 ELSE
-	PRINTFORML 好感度上昇:%NAME:対象%(%好感度種類%\@ SIGN(上昇値) == 1 ? + #\@{上昇値})
+	PRINTFORML 好感度\@ SIGN(上昇値) == 1 ? 上昇 # 下降 \@:%NAME:対象%(%好感度種類%\@ SIGN(上昇値) == 1 ? + #\@{上昇値})
 ENDIF
 
 IF 好感度合計(対象) >= CFLAG:対象:経験値取得履歴*500+500
@@ -929,6 +935,8 @@ CALL 経験値取得, 対象, "学園"
 #DIMS DYNAMIC 場所名
 #DIMS DYNAMIC 行為前引数
 #DIMS DYNAMIC 行為後引数
+#DIM DYNAMIC コンドーム相手持ち
+#DIM DYNAMIC コンドーム行為前所持数
 場所名 = %シチュエーション%
 行為前引数 = %シチュエーション%_行為前
 行為後引数 = %シチュエーション%_行為後
@@ -959,9 +967,53 @@ ENDSELECT
 
 SIF 行為前引数 != ""
 	CALL SCHOOL_KOJO, TARGET, 行為前引数
+
+コンドーム相手持ち = 0
+IF 場所名 == "ホテル"
+	IF PENIS(MASTER) || PENIS(TARGET)
+		IF CSTR:在任 != "" || TALENT:恋慕
+			コンドーム相手持ち = 12
+			PRINTFORML %CALLNAME:TARGET%はホテルへの道中でコンドームを1箱買っていくようだ。
+			SIF MONEY >= 500
+				PRINTFORML %CALLNAME:MASTER%も買っていきますか？
+		ELSE
+			SIF MONEY >= 500
+				PRINTL ホテルへの道中でコンドームを買っていきますか？
+		ENDIF
+		IF MONEY >= 500
+			PRINTL [0] 買わない
+			PRINTL [1] 1箱(12個)買う
+			SIF MONEY >= 1000
+				PRINTL [2] 2箱(24個)買う
+			SIF MONEY >= 1500
+				PRINTL [3] 3箱(36個)買う
+			BINPUT
+			IF RESULT
+				MONEY -= RESULT*500
+				ITEM:コンドーム += RESULT*12
+				PRINTFORMW {RESULT}箱購入しました。
+			ENDIF
+		ENDIF
+	ENDIF
+	PRINTW ホテルに入り、ローションとコンドームを手に入れた。
+	ITEM:ローション++
+	ITEM:コンドーム++
+ENDIF
+
+IF コンドーム相手持ち
+	コンドーム行為前所持数 = ITEM:コンドーム
+	ITEM:コンドーム += コンドーム相手持ち
+ENDIF
+
 CALL CHECKDRAWLINE
 CALL TRAIN_SCHOOL, 場所名
 CALL CHECKDRAWLINE
+
+IF コンドーム相手持ち 
+	SIF ITEM:コンドーム > コンドーム行為前所持数
+		ITEM:コンドーム = コンドーム行為前所持数
+ENDIF
+
 SIF 行為後引数 != ""
 	CALL SCHOOL_KOJO, TARGET, 行為後引数
 
@@ -971,8 +1023,10 @@ SELECTCASE シチュエーション
 		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
 		CALL 好感度上昇, TARGET, "セフレ", 50
 		CALL 好感度上昇, TARGET, "既成事実", 1
-		SIF !TALENT:恋慕
+		IF !TALENT:恋慕
 			CFLAG:倫理観++
+			CFLAG:MASTER:倫理観++
+		ENDIF
 	CASE "ホテル"
 		IF TALENT:恋慕
 			CALL 好感度上昇, TARGET, "友情", 60
@@ -985,15 +1039,20 @@ SELECTCASE シチュエーション
 			CALL 好感度上昇, TARGET, "セフレ", 100
 			CALL 好感度上昇, TARGET, "既成事実", 1
 			CFLAG:倫理観 += 3
+			CFLAG:MASTER:倫理観 += 3
 		ENDIF
 	CASE "トイレ", "青姦"
 		CALL 好感度上昇, TARGET, "友情", 30
 		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
 		CALL 好感度上昇, TARGET, "セフレ", 50
 		CALL 好感度上昇, TARGET, "既成事実", 1
-		SIF !TALENT:恋慕
+		IF !TALENT:恋慕
+			CFLAG:倫理観 += 4
+			CFLAG:MASTER:倫理観 += 4
+		ELSE
 			CFLAG:倫理観 += 2
-		CFLAG:倫理観 += 2
+			CFLAG:MASTER:倫理観 += 2
+		ENDIF
 	CASE "宿泊イベント"
 		IF 好感度:ときめき >= 1000 && 好感度:ときめき > 好感度:セフレ && !TALENT:恋慕
 			CALL 恋仲, TARGET
@@ -1003,8 +1062,10 @@ SELECTCASE シチュエーション
 		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
 		CALL 好感度上昇, TARGET, "セフレ", 30
 		CALL 好感度上昇, TARGET, "既成事実", 1
-		SIF !TALENT:恋慕
-			CFLAG:倫理観 += 1
+		IF !TALENT:恋慕
+			CFLAG:倫理観++
+			CFLAG:MASTER:倫理観++
+		ENDIF
 	CASE "自宅イベント"
 		SIF TALENT:恋慕 && !好感度:既成事実
 			ときめき増加量 += 3
@@ -1012,32 +1073,46 @@ SELECTCASE シチュエーション
 		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
 		CALL 好感度上昇, TARGET, "セフレ", 50
 		CALL 好感度上昇, TARGET, "既成事実", 1
-		SIF !TALENT:恋慕
+		IF !TALENT:恋慕
 			CFLAG:倫理観++
+			CFLAG:MASTER:倫理観++
+		ENDIF
 	CASE "保健室ベッドシェア"
 		CALL 好感度上昇, TARGET, "友情", 30
 		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
 		CALL 好感度上昇, TARGET, "セフレ", 50
 		CALL 好感度上昇, TARGET, "既成事実", 1
-		SIF !TALENT:恋慕
-			CFLAG:倫理観++
-		CFLAG:倫理観++
+		IF !TALENT:恋慕
+			CFLAG:倫理観 += 3
+			CFLAG:MASTER:倫理観 += 3
+		ELSE
+			CFLAG:倫理観 += 1
+			CFLAG:MASTER:倫理観 += 1
+		ENDIF
 	CASE "保健室", "保健室教師", "体育倉庫"
 		CALL 好感度上昇, TARGET, "友情", 30
 		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
 		CALL 好感度上昇, TARGET, "セフレ", 50
 		CALL 好感度上昇, TARGET, "既成事実", 1
-		SIF !TALENT:恋慕
+		IF !TALENT:恋慕
+			CFLAG:倫理観 += 4
+			CFLAG:MASTER:倫理観 += 4
+		ELSE
 			CFLAG:倫理観 += 2
-		CFLAG:倫理観 += 2
+			CFLAG:MASTER:倫理観 += 2
+		ENDIF
 	CASE "校長室", "理事長室"
 		CALL 好感度上昇, TARGET, "友情", 30
 		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
 		CALL 好感度上昇, TARGET, "セフレ", 50
 		CALL 好感度上昇, TARGET, "既成事実", 1
-		SIF !TALENT:恋慕
+		IF !TALENT:恋慕
+			CFLAG:倫理観 += 6
+			CFLAG:MASTER:倫理観 += 6
+		ELSE
 			CFLAG:倫理観 += 3
-		CFLAG:倫理観 += 3
+			CFLAG:MASTER:倫理観 += 3
+		ENDIF
 ENDSELECT
 トイレ使用中 = 0
 野外プレイ中 = 0
@@ -1046,6 +1121,7 @@ ENDSELECT
 VARSET PREG
 VARSET TEQUIP
 VARSET TEQUIP:MASTER:0
+
 
 @TRAIN_SCHOOL, 場所
 #DIMS DYNAMIC 場所
@@ -1057,6 +1133,8 @@ BASE:体力 = MAXBASE:体力
 BASE:気力 = MAXBASE:気力
 
 行為場所 = %場所%
+
+CFLAG:倫理観 = LIMIT(CFLAG:倫理観, 0, 100)
 
 CALL EVENTUSERTRAIN
 DO
