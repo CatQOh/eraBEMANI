@@ -1,0 +1,251 @@
+﻿@ロケーション条件_ラブホテル
+;直接向かうことはできない
+RETURN 0
+
+
+@バイト条件_ラブホテル
+;バイトの時間帯などを書く
+バイト要項 = 清掃業務
+;バイト可能かどうかの条件式
+バイト可能 = 1
+;返り値はその店の責任者で、面接官扱いになる。居なければ-1でOK
+RETURN GETCHARANAME("アーシェム")
+
+
+;バイト時に好感度が上がるキャラ
+@職場出現キャラ_ラブホテル
+#DIM DYNAMIC 対象
+{
+#DIMS DYNAMIC 出現キャラ =
+"アーシェム",
+"サキュバスちゃん",
+}
+
+対象 = GETCHARANAME(出現キャラ:(RAND:VARSIZE("出現キャラ")))
+
+SIF 対象 > 0 && CSTR:対象:現在地 == ""
+	RETURN 対象
+
+RETURN 0
+
+
+@出現キャラ_ラブホテル
+
+
+
+@ラブホテル_コマンド
+#DIMS DYNAMIC 表示好感度
+
+CALL COLUMNSHOP_SCHOOL
+
+CALL COLUMNDRAWLINE, 0
+CALL COLUMNPRINTL, 0, @"□何をしよう？"
+
+IF 同行者 > 0
+	IF ターン == "朝"
+		IF 登校日()
+			CALL COLUMNPRINTL, 0, @"　[105] - %CALLNAME:同行者%と一緒に登校する"
+			;CALL COLUMNPRINTL, 0, @"　[106] - %CALLNAME:同行者%と別々に登校する"
+			CALL COLUMNPRINTL, 0, @"　[107] - 時間ギリギリまで楽しむ"
+		ELSE
+			CALL COLUMNPRINTL, 0, @"　[100] - \@ 同行者 ? %CALLNAME:同行者%と #\@別の場所に行く"
+			CALL COLUMNPRINTL, 0, @"　[102] - %CALLNAME:同行者%を自宅に連れ込む"
+			CALL COLUMNPRINTL, 0, @"　[107] - チェックアウト時刻まで楽しむ"
+			CALL COLUMNPRINTL, 0, @"　[111] - %CALLNAME:同行者%と別行動する"
+		ENDIF
+	ELSE
+	ENDIF
+ELSE
+	IF ターン == "朝"
+		IF 登校日()
+			CALL COLUMNPRINTL, 0, "　[100] - 学校へ行く "
+			CALL COLUMNPRINTL, 0, "　[101] - クラスメイトと一緒に登校する"
+			CALL COLUMNPRINTL, 0, "　[102] - 学校の保健室へ行く"
+		ELSE
+			CALL COLUMNPRINTL, 0, "　[110] - 遊びに行く"
+		ENDIF
+	ELSE
+		CALL COLUMNPRINTL, 0, "　[110] - 遊びに行く"
+	ENDIF
+ENDIF
+
+CALL COLUMNPRINTL, 0, "　[500] - データベース"
+CALL COLUMNPRINTL, 0, @"　[501] - 口上表示切り替え(現在:\@ OPTION:口上表示 ? オン # オフ \@)"
+CALL COLUMNPRINTL, 0, @"　[502] - 行為中の地の文表示切り替え(現在:\@ OPTION:地の文表示 ? オン # オフ \@)"
+IF ITEM:ラブスコープ
+	SELECTCASE ラブスコープ使用
+		CASE 0
+			表示好感度 = 表示しない
+		CASE 1 TO 6
+			表示好感度 = %ERDNAME(好感度, ラブスコープ使用-1)%
+		CASE 7
+			表示好感度 = 好感度合計
+		CASE 8
+			表示好感度 = 倫理観崩壊度
+	ENDSELECT
+	CALL COLUMNPRINTL, 0, @"　[503] - ラブスコープの表示切り替え(現在:\@ 表示好感度 == "舎弟" ? 舎弟or母性 # %表示好感度% \@)"
+ENDIF
+CALL COLUMNPRINTL, 0, "　[504] - スキルツリー"
+CALL COLUMNPRINTL, 0, "　[505] - 服装変更"
+
+
+@ラブホテル_コマンド_INPUT
+#DIM DYNAMIC LRESULT
+#DIM DYNAMIC LCOUNT
+
+LRESULT = CRESULT:1
+SELECTCASE LRESULT
+	CASE 100
+		IF 同行者 > 0
+			CALL ロケーション選択
+		ELSE
+			CALL 学校へ行く
+		ENDIF
+	CASE 101
+		CALL クラスメイトと一緒に登校する
+	CASE 102
+		CALL 学校の保健室に行く
+	CASE 103
+		CALL 他の学校に行く
+	CASE 105
+		CALL 同行者と一緒にホテルから登校する
+	;CASE 106
+	;	CALL 同行者と別々にホテルから登校する
+	CASE 107
+		IF 登校日()
+			CALL ホテルで情事後に登校
+		ELSE
+			CALL チェックアウト時刻まで楽しむ
+		ENDIF
+	CASE 110
+		CALL ロケーション選択
+	CASE 111
+		PRINTFORMW %CALLNAME:PLAYER%は%CALLNAME:同行者%と別れた
+		CALL SCHOOL_KOJO, 同行者, "別れる"
+		CSTR:同行者:現在地 = 
+		CSTR:同行者:目的 =
+		同行者 = 0
+		RETURN 0
+	CASE 500
+		CALL 学園データベース
+	CASE 501
+		INVERTBIT OPTION:口上表示, 0
+		RETURN 0
+	CASE 502
+		INVERTBIT OPTION:地の文表示, 0
+		RETURN 0
+	CASE 503
+		PRINTL □ラブスコープで表示する好感度を選んでください
+		FOR LCOUNT, 0, 9
+			SELECTCASE LCOUNT
+				CASE 0
+					PRINTL 　[0] - 表示しない
+				CASE 1 TO 6
+					IF ERDNAME(好感度, LCOUNT-1) == "舎弟"
+						PRINTFORML 　[{LCOUNT}] - 舎弟or母性
+					ELSE
+						PRINTFORML 　[{LCOUNT}] - %ERDNAME(好感度, LCOUNT-1)%
+					ENDIF
+				CASE 7
+					PRINTL 　[7] - 好感度合計
+				CASE 8
+					PRINTL 　[8] - 倫理観崩壊度
+			ENDSELECT
+		NEXT
+		BINPUT
+		ラブスコープ使用 = RESULT
+		RETURN 0
+	CASE 504
+		CALL スキルツリー
+	CASE 505
+		CALL CHARA_CLOTHES_SETTING, PLAYER
+ENDSELECT
+
+SIF RESULT
+	CALL TURNEND_学園
+
+
+;---ホテルで選択可能なイベント---
+
+@同行者と一緒にホテルから登校する
+CALL SCHOOL_KOJO, 同行者, "ホテルから一緒に登校"
+IF TALENT:同行者:恋慕
+	CALL 好感度上昇, 同行者, "友情", 20
+	CALL 好感度上昇, 同行者, "ときめき", 100
+	IF CSTR:同行者:在任 == CSTR:PLAYER:在校
+		CALL 好感度上昇, 同行者, "セフレ", 60
+	ELSE
+		CALL 好感度上昇, 同行者, "セフレ", 40
+	ENDIF
+ELSE
+	CALL 好感度上昇, 同行者, "友情", 20
+	CALL 好感度上昇, 同行者, "ときめき", 40
+	IF CSTR:同行者:在任 == CSTR:PLAYER:在校
+		CALL 好感度上昇, 同行者, "セフレ", 200
+	ELSE
+		CALL 好感度上昇, 同行者, "セフレ", 100
+	ENDIF
+ENDIF
+WAIT
+
+CSTR:PLAYER:現在地 = %CSTR:PLAYER:在校%
+IF CSTR:同行者:在校 == CSTR:PLAYER:在校 || CSTR:同行者:在任 == CSTR:PLAYER:在校
+	CSTR:同行者:現在地 = %CSTR:PLAYER:在校%
+ELSE
+	CSTR:同行者:現在地 = 
+ENDIF
+CSTR:同行者:目的 =
+同行者 = 0
+TARGET = -1
+;登校ではターンを消費しない
+RETURN 0
+
+@SCHOOL_MESSAGE_ホテルから一緒に登校
+IF CSTR:同行者:在校 == CSTR:PLAYER:在校
+	PRINTFORML %CALLNAME:TARGET%と昨夜の情事を話しながら一緒に登校した
+ELSEIF CSTR:同行者:在任 == CSTR:PLAYER:在校
+	PRINTFORML %CALLNAME:TARGET%との昨夜の情事を思い出し背徳感を覚えながらも、何事もなかったかのように一緒に登校した
+ELSE
+	PRINTFORML %CALLNAME:TARGET%と昨夜の情事を話しながら、学校の通学路を途中まで共にした
+ENDIF
+
+@ホテルで情事後に登校
+学園モード時限イベント = 7
+時限イベント内容 = 登校前プレイ
+ホテル入室済み = 1
+TARGET = 同行者
+CALL EXECTRAIN_SCHOOL, "登校前ホテル"
+
+CSTR:PLAYER:現在地 = %CSTR:PLAYER:在校%
+IF CSTR:同行者:在校 == CSTR:PLAYER:在校 || CSTR:同行者:在任 == CSTR:PLAYER:在校
+	CSTR:同行者:現在地 = %CSTR:PLAYER:在校%
+ELSE
+	CSTR:同行者:現在地 = 
+ENDIF
+同行者 = 0
+TARGET = -1
+;登校ではターンを消費しない
+RETURN 0
+
+@チェックアウト時刻まで楽しむ
+ホテル入室済み = 1
+TARGET = 同行者
+CALL EXECTRAIN_SCHOOL, "ホテル朝プレイ"
+同行者 = 0
+TARGET = -1
+RETURN 1
+
+@SCHOOL_MESSAGE_登校前ホテル_行為前
+PRINTFORMW 登校前のわずかな時間を使って、%CALLNAME:TARGET%と昨夜の続きを始めた
+
+@SCHOOL_MESSAGE_登校前ホテル_行為後
+IF CSTR:同行者:在校 == CSTR:PLAYER:在校
+	PRINTFORML 行為が終わると%CALLNAME:PLAYER%と%CALLNAME:TARGET%は急いで服を着て、遅刻しそうになりながらも一緒に登校した
+ELSEIF CSTR:同行者:在任 == CSTR:PLAYER:在校
+	PRINTFORML 行為が終わると%CALLNAME:PLAYER%と%CALLNAME:TARGET%は急いで服を着て、周りの目も気にせず一緒に登校した
+ELSE
+	PRINTFORML 行為が終わると%CALLNAME:PLAYER%と%CALLNAME:TARGET%は急いで服を着て、学校の通学路を途中まで共にした
+ENDIF
+
+@SCHOOL_MESSAGE_ホテルで起床
+PRINTFORMW %CALLNAME:PLAYER%と%CALLNAME:TARGET%はホテルで一夜を共にし、どちらともなく起床した

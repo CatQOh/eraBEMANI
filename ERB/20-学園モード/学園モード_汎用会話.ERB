@@ -51,28 +51,32 @@ ELSEIF RESULT == 0
 ENDIF
 
 CALL 汎用会話可否判定, TARGET, "性的に誘う"
-IF RESULT == 1
-	IF 授業中
-		IF TARGET == 授業中
-			CALL PRINTCOLORL, @"　[-] 授業を放棄させて性的に誘う%RESULTS%", "gray"
-		ELSE
-			CALL PRINTCOLORL, @"　[-] 授業をサボって性的に誘う%RESULTS%", "gray"
-		ENDIF
-	ELSE
-		CALL PRINTCOLORL, @"　[-] 性的に誘う%RESULTS%", "gray"
-	ENDIF
-ELSEIF RESULT == 0
-	IF 同行者 && 同行者 != TARGET
-		CALL PRINTCOLORL, @"　[-] 性的に誘う(%NAME:同行者%が同行中)", "gray"
-	ELSE
+IF バイト帰り && ターン =="夜"
+	CALL PRINTCOLORL, @"　[-] 性的に誘う(今日はもう夜遅いです)", "gray"
+ELSE
+	IF RESULT == 1
 		IF 授業中
 			IF TARGET == 授業中
-				PRINTL 　[3] 授業を放棄させて性的に誘う
+				CALL PRINTCOLORL, @"　[-] 授業を放棄させて性的に誘う%RESULTS%", "gray"
 			ELSE
-				PRINTL 　[3] 授業をサボって性的に誘う
+				CALL PRINTCOLORL, @"　[-] 授業をサボって性的に誘う%RESULTS%", "gray"
 			ENDIF
 		ELSE
-			PRINTL 　[3] 性的に誘う
+			CALL PRINTCOLORL, @"　[-] 性的に誘う%RESULTS%", "gray"
+		ENDIF
+	ELSEIF RESULT == 0
+		IF 同行者 && 同行者 != TARGET
+			CALL PRINTCOLORL, @"　[-] 性的に誘う(%NAME:同行者%が同行中)", "gray"
+		ELSE
+			IF 授業中
+				IF TARGET == 授業中
+					PRINTL 　[3] 授業を放棄させて性的に誘う
+				ELSE
+					PRINTL 　[3] 授業をサボって性的に誘う
+				ENDIF
+			ELSE
+				PRINTL 　[3] 性的に誘う
+			ENDIF
 		ENDIF
 	ENDIF
 ENDIF
@@ -303,6 +307,10 @@ IF CSTR:PLAYER:現在地 == "自宅"
 	TARGET = -1
 	同行者 = 0
 ELSE
+	IF バイト帰り
+		;バイト帰りで「性的に誘う」コマンドが使えるのは朝から夕まで(日付を跨がない)
+		CALL TURNEND_学園
+	ENDIF
 	IF 授業中
 		;授業をサボる
 		IF TARGET == 授業中
@@ -430,25 +438,49 @@ ENDIF
 
 ;連れ込み先の選択は更に分離
 @SCHOOL_連れ込み先
+#DIM DYNAMIC ホテル宿泊
+
 PRINTFORML □%CALLNAME:TARGET%をどこに連れ込みますか？
 IF !校内()
-	IF CSTR:在任 != ""
-		PRINTFORML 　[0] - ホテル(%CALLNAME:TARGET%が宿泊料負担)
-	ELSEIF TALENT:恋慕
-		IF MONEY < 2500
-			SETCOLORBYNAME gray
-			CALL PASELIL, "　[-] - ホテル(割り勘で休憩料金2500＄必要)"
-			RESETCOLOR
+	IF ターン == "夜"
+		IF CSTR:在任 != ""
+			PRINTFORML 　[0] - ホテル(%CALLNAME:TARGET%が宿泊料金負担)
+		ELSEIF TALENT:恋慕
+			IF MONEY < 3500
+				SETCOLORBYNAME gray
+				CALL PASELIL, "　[-] - ホテル(割り勘で宿泊料金3500＄必要)"
+				RESETCOLOR
+			ELSE
+				CALL PASELIL, "　[0] - ホテル(割り勘で宿泊料金3500＄必要)"
+			ENDIF
 		ELSE
-			CALL PASELIL, "　[0] - ホテル(割り勘で休憩料金2500＄必要)"
+			IF MONEY < 7000
+				SETCOLORBYNAME gray
+				CALL PASELIL, "　[-] - ホテル(宿泊料金7000＄必要)"
+				RESETCOLOR
+			ELSE
+				CALL PASELIL, "　[0] - ホテル(宿泊料金7000＄必要)"
+			ENDIF
 		ENDIF
 	ELSE
-		IF MONEY < 5000
-			SETCOLORBYNAME gray
-			CALL PASELIL, "　[-] - ホテル(休憩料金5000＄必要)"
-			RESETCOLOR
+		IF CSTR:在任 != ""
+			PRINTFORML 　[0] - ホテル(%CALLNAME:TARGET%が休憩料金負担)
+		ELSEIF TALENT:恋慕
+			IF MONEY < 2500
+				SETCOLORBYNAME gray
+				CALL PASELIL, "　[-] - ホテル(割り勘で休憩料金2500＄必要)"
+				RESETCOLOR
+			ELSE
+				CALL PASELIL, "　[0] - ホテル(割り勘で休憩料金2500＄必要)"
+			ENDIF
 		ELSE
-			CALL PASELIL, "　[0] - ホテル(休憩料金5000＄必要)"
+			IF MONEY < 5000
+				SETCOLORBYNAME gray
+				CALL PASELIL, "　[-] - ホテル(休憩料金5000＄必要)"
+				RESETCOLOR
+			ELSE
+				CALL PASELIL, "　[0] - ホテル(休憩料金5000＄必要)"
+			ENDIF
 		ENDIF
 	ENDIF
 ENDIF
@@ -467,11 +499,24 @@ BINPUT
 
 SELECTCASE RESULT
 	CASE 0
-		IF CSTR:在任 != ""
-		ELSEIF TALENT:恋慕
-			MONEY -= 2500
+		IF ターン == "夜"
+			ホテル宿泊 = 1
+			CSTR:現在地 = ラブホテル
+			CSTR:PLAYER:現在地 = ラブホテル
+			同行者 = TARGET
+			IF CSTR:在任 != ""
+			ELSEIF TALENT:恋慕
+				MONEY -= 3500
+			ELSE
+				MONEY -= 7000
+			ENDIF
 		ELSE
-			MONEY -= 5000
+			IF CSTR:在任 != ""
+			ELSEIF TALENT:恋慕
+				MONEY -= 2500
+			ELSE
+				MONEY -= 5000
+			ENDIF
 		ENDIF
 		CALL EXECTRAIN_SCHOOL, "ホテル"
 	CASE 1
@@ -493,7 +538,8 @@ SELECTCASE RESULT
 		CALL EXECTRAIN_SCHOOL, "理事長室"
 ENDSELECT
 
-TARGET = -1
+SIF !ホテル宿泊
+	TARGET = -1
 
 
 ;地の文関数
@@ -567,6 +613,16 @@ ENDIF
 PRINTFORMW %CALLNAME:TARGET%とホテルへ向かうことにした
 
 @SCHOOL_MESSAGE_ホテル_行為後
+IF ターン == "夜"
+	PRINTFORMW 行為を終えた%CALLNAME:TARGET%たちは、そのまま眠りについた
+ELSE
+	PRINTFORMW 行為を終えた%CALLNAME:TARGET%たちは、時間差でホテルを後にして別れた
+ENDIF
+
+@SCHOOL_MESSAGE_ホテル朝プレイ_行為前
+PRINTFORMW %CALLNAME:TARGET%たちはチェックアウトの時間まで楽しむことにした
+
+@SCHOOL_MESSAGE_ホテル朝プレイ_行為後
 PRINTFORMW 行為を終えた%CALLNAME:TARGET%たちは、時間差でホテルを後にして別れた
 
 @SCHOOL_MESSAGE_トイレ_行為前

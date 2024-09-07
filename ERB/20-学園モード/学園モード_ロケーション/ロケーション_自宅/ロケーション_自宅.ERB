@@ -17,7 +17,7 @@ ELSE
 	滞在者 = FINDCHARA(CSTR:現在地, @"%CALLNAME:PLAYER%の家", 1)
 ENDIF
 IF 滞在者 > 0
-	IF !休日() && !ISHOLIDAY_SCHOOL() && ターン == "朝"
+	IF 登校日() && ターン == "朝"
 		CALL COLUMNPRINTL, 0, @"　[105] - %CALLNAME:同行者%と一緒に登校する"
 	ELSE
 		SELECTCASE CSTR:滞在者:目的
@@ -39,7 +39,7 @@ IF 滞在者 > 0
 		SIF ターン == "夜"
 			CALL COLUMNPRINTL, 0, @"　[204] - %CALLNAME:滞在者%に家に泊まるよう提案する"
 	ENDIF
-ELSEIF 休日() || ISHOLIDAY_SCHOOL() || GROUPMATCH(ターン, "昼", "夕")
+ELSEIF !登校日() || GROUPMATCH(ターン, "昼", "夕")
 	CALL COLUMNPRINTL, 0, "　[110] - 遊びに行く"
 	CALL COLUMNPRINTL, 0, "　[111] - 友人と遊びに行く"
 	CALL COLUMNPRINTL, 0, "　[112] - 家に友人を呼ぶ"
@@ -214,8 +214,9 @@ RELATION:(キャラ2):キャラ1 += 上昇値
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC 購入アイテム
-DRAWLINE
+#DIM DYNAMIC 購入フラグ
 
+DRAWLINE
 PRINTL □通販サイト おいしいツーハン生活
 PRINTL 　ツーハンでお買い物♪お部屋でのんびりゴージャス気分♪
 CALL PASELIL, @"　所持金:{MONEY}＄"
@@ -253,8 +254,14 @@ PRINTPLAIN 　通販　
 PRINTL [1000] - 戻る
 
 BINPUT
-SIF RESULT == 1000
-	RETURN 0
+IF RESULT == 1000
+	IF 購入フラグ
+		PRINTW しばらくすると注文した品が届いた
+		RETURN 1
+	ELSE
+		RETURN 0
+	ENDIF
+ENDIF
 
 購入アイテム = RESULT
 SELECTCASE ITEMNAME:RESULT
@@ -263,7 +270,7 @@ SELECTCASE ITEMNAME:RESULT
 			PRINTW 所持金が足りません
 			RESTART
 		ENDIF
-		PRINTL 個包装ローション(5個入り)を購入した
+		PRINTL 個包装ローション(5個入り)を注文した
 		CALL PASELIW, @"所持金:{MONEY}＄→{MONEY-1000}＄"
 		ITEM:ローション += 5
 		MONEY -= 1000
@@ -272,7 +279,7 @@ SELECTCASE ITEMNAME:RESULT
 			PRINTW 所持金が足りません
 			RESTART
 		ENDIF
-		PRINTL コンドーム(12個入り)を購入した
+		PRINTL コンドーム(12個入り)を注文した
 		CALL PASELIW, @"所持金:{MONEY}＄→{MONEY-1000}＄"
 		ITEM:コンドーム += 12
 		MONEY -= 1000
@@ -281,7 +288,7 @@ SELECTCASE ITEMNAME:RESULT
 			PRINTW 所持金が足りません
 			RESTART
 		ENDIF
-		PRINTFORML %ITEMNAME:購入アイテム%(6本入り)を購入した
+		PRINTFORML %ITEMNAME:購入アイテム%(6本入り)を注文した
 		CALL PASELIW, @"所持金:{MONEY}＄→{MONEY-2000}＄"
 		ITEM:購入アイテム += 6
 		MONEY -= 2000
@@ -290,7 +297,7 @@ SELECTCASE ITEMNAME:RESULT
 			PRINTW 所持金が足りません
 			RESTART
 		ENDIF
-		PRINTFORML %ITEMNAME:購入アイテム%(6本入り)を購入した
+		PRINTFORML %ITEMNAME:購入アイテム%(6本入り)を注文した
 		CALL PASELIW, @"所持金:{MONEY}＄→{MONEY-1200}＄"
 		ITEM:購入アイテム += 6
 		MONEY -= 1200
@@ -299,7 +306,7 @@ SELECTCASE ITEMNAME:RESULT
 			PRINTW 所持金が足りません
 			RESTART
 		ENDIF
-		PRINTFORML %ITEMNAME:購入アイテム%を購入した
+		PRINTFORML %ITEMNAME:購入アイテム%を注文した
 		CALL PASELIW, @"所持金:{MONEY}＄→{MONEY-(ITEMPRICE:購入アイテム*2)}＄"
 		ITEM:購入アイテム = 1
 		MONEY -= ITEMPRICE:購入アイテム*2
@@ -307,4 +314,5 @@ SELECTCASE ITEMNAME:RESULT
 			ラブスコープ使用 = 7
 ENDSELECT
 
-RETURN 1
+購入フラグ = 1
+RESTART

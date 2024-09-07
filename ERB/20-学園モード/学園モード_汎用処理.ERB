@@ -78,11 +78,13 @@ SELECTCASE ターン
 				CSTR:LCOUNT:現在地 = 
 		NEXT
 	CASE "夜"
-		IF 同行者 && CSTR:同行者:現在地 != @"%CALLNAME:PLAYER%の家"
-			PRINTFORMW %CALLNAME:同行者%は、今日はもう遅いからまた明日と%CALLNAME:PLAYER%と別れた
-			CSTR:同行者:現在地 =
-			CSTR:同行者:目的 =
-			同行者 = 0
+		IF 同行者
+			IF CSTR:同行者:現在地 != @"%CALLNAME:PLAYER%の家" && CSTR:同行者:現在地 != "ラブホテル"
+				PRINTFORMW %CALLNAME:同行者%は、今日はもう遅いからまた明日と%CALLNAME:PLAYER%と別れた
+				CSTR:同行者:現在地 =
+				CSTR:同行者:目的 =
+				同行者 = 0
+			ENDIF
 		ENDIF
 		;滞在者 = FINDCHARA(CSTR:現在地, @"%CALLNAME:PLAYER%の家", 1)
 		;IF 滞在者 > 0
@@ -94,7 +96,8 @@ SELECTCASE ターン
 		ターン = 朝
 		DAY++
 		CALL NEXTDAY
-		CSTR:PLAYER:現在地 = 自宅
+		SIF CSTR:PLAYER:現在地 !=  "ラブホテル"
+			CSTR:PLAYER:現在地 = 自宅
 		IF 夏休み()
 			SELECTCASE MONTH*100+DAYS
 				CASE 722
@@ -187,8 +190,13 @@ SELECTCASE ターン
 				NEXT
 			ENDIF
 		ENDIF
-		SIF 同行者
-			CALL SCHOOL_KOJO, 同行者, "起床"
+		IF 同行者
+			IF  CSTR:PLAYER:現在地 == "ラブホテル"
+				CALL SCHOOL_KOJO, 同行者, "ホテルで起床"
+			ELSE
+				CALL SCHOOL_KOJO, 同行者, "起床"
+			ENDIF
+		ENDIF
 ENDSELECT
 
 FOR LCOUNT, 1, CHARANUM
@@ -982,13 +990,15 @@ SELECTCASE シチュエーション
 		場所名 = 保健室
 		行為前引数 = 
 		行為後引数 = 
+	CASE "登校前ホテル", "ホテル朝プレイ"
+		場所名 = ホテル
 ENDSELECT
 
 SIF 行為前引数 != ""
 	CALL SCHOOL_KOJO, TARGET, 行為前引数
 
 コンドーム相手持ち = 0
-IF 場所名 == "ホテル"
+IF 場所名 == "ホテル" && !ホテル入室済み
 	IF PENIS(MASTER) || PENIS(TARGET)
 		IF CSTR:在任 != "" || TALENT:恋慕
 			コンドーム相手持ち = 12
@@ -1020,6 +1030,9 @@ IF 場所名 == "ホテル"
 	ITEM:プレイマット = 1
 ENDIF
 
+SIF 場所名 == "ホテル"
+	ITEM:プレイマット = 1
+
 IF コンドーム相手持ち
 	コンドーム行為前所持数 = ITEM:コンドーム
 	ITEM:コンドーム += コンドーム相手持ち
@@ -1038,20 +1051,42 @@ ITEM:プレイマット = 0
 SIF 行為後引数 != ""
 	CALL SCHOOL_KOJO, TARGET, 行為後引数
 
+;同じ学校の教師と生徒の場合、無条件で倫理観+1
+IF CSTR:在任 == CSTR:MASTER:在校
+	CFLAG:倫理観++
+	CFLAG:MASTER:倫理観++
+ENDIF
+
+;シチュエーション別の上昇処理
 SELECTCASE シチュエーション
 	CASE "自宅"
-		CALL 好感度上昇, TARGET, "友情", 30
-		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
-		CALL 好感度上昇, TARGET, "セフレ", 50
-		CALL 好感度上昇, TARGET, "既成事実", 1
-		IF !TALENT:恋慕
+		IF TALENT:恋慕
+			CALL 好感度上昇, TARGET, "友情", 20
+			IF 好感度:既成事実
+				CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*20
+			ELSE
+				ときめき増加量 += 3
+				CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*25
+			ENDIF
+			CALL 好感度上昇, TARGET, "セフレ", 30
+			CALL 好感度上昇, TARGET, "既成事実", 1
+		ELSE
+			CALL 好感度上昇, TARGET, "友情", 10
+			CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
+			CALL 好感度上昇, TARGET, "セフレ", 60
+			CALL 好感度上昇, TARGET, "既成事実", 1
 			CFLAG:倫理観++
 			CFLAG:MASTER:倫理観++
 		ENDIF
-	CASE "ホテル"
+	CASE "ホテル", "ホテル朝プレイ"
 		IF TALENT:恋慕
 			CALL 好感度上昇, TARGET, "友情", 60
-			CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*25
+			IF 好感度:既成事実
+				CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*30
+			ELSE
+				ときめき増加量 += 5
+				CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*35
+			ENDIF
 			CALL 好感度上昇, TARGET, "セフレ", 50
 			CALL 好感度上昇, TARGET, "既成事実", 1
 		ELSE
@@ -1062,10 +1097,28 @@ SELECTCASE シチュエーション
 			CFLAG:倫理観 += 3
 			CFLAG:MASTER:倫理観 += 3
 		ENDIF
+	CASE "登校前ホテル"
+		IF TALENT:同行者:恋慕
+			CALL 好感度上昇, 同行者, "友情", 5
+			CALL 好感度上昇, 同行者, "ときめき", ときめき増加量*15
+			IF CSTR:同行者:在任 == CSTR:PLAYER:在校
+				CALL 好感度上昇, 同行者, "セフレ", 90
+			ELSE
+				CALL 好感度上昇, 同行者, "セフレ", 60
+			ENDIF
+		ELSE
+			CALL 好感度上昇, 同行者, "友情", 5
+			CALL 好感度上昇, 同行者, "ときめき", ときめき増加量*5
+			IF CSTR:同行者:在任 == CSTR:PLAYER:在校
+				CALL 好感度上昇, 同行者, "セフレ", 300
+			ELSE
+				CALL 好感度上昇, 同行者, "セフレ", 150
+			ENDIF
+		ENDIF
 	CASE "トイレ", "青姦"
 		CALL 好感度上昇, TARGET, "友情", 30
 		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*5
-		CALL 好感度上昇, TARGET, "セフレ", 50
+		CALL 好感度上昇, TARGET, "セフレ", 80
 		CALL 好感度上昇, TARGET, "既成事実", 1
 		IF !TALENT:恋慕
 			CFLAG:倫理観 += 4
@@ -1079,22 +1132,40 @@ SELECTCASE シチュエーション
 			CALL 恋仲, TARGET
 			WAIT
 		ENDIF
-		CALL 好感度上昇, TARGET, "友情", 30
-		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
-		CALL 好感度上昇, TARGET, "セフレ", 30
-		CALL 好感度上昇, TARGET, "既成事実", 1
-		IF !TALENT:恋慕
+		IF TALENT:恋慕
+			CALL 好感度上昇, TARGET, "友情", 30
+			IF 好感度:既成事実
+				CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*25
+			ELSE
+				ときめき増加量 += 5
+				CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*30
+			ENDIF
+			CALL 好感度上昇, TARGET, "セフレ", 40
+			CALL 好感度上昇, TARGET, "既成事実", 1
+		ELSE
+			CALL 好感度上昇, TARGET, "友情", 15
+			CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
+			CALL 好感度上昇, TARGET, "セフレ", 80
+			CALL 好感度上昇, TARGET, "既成事実", 1
 			CFLAG:倫理観++
 			CFLAG:MASTER:倫理観++
 		ENDIF
 	CASE "自宅イベント"
-		SIF TALENT:恋慕 && !好感度:既成事実
-			ときめき増加量 += 3
-		CALL 好感度上昇, TARGET, "友情", 30
-		CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
-		CALL 好感度上昇, TARGET, "セフレ", 50
-		CALL 好感度上昇, TARGET, "既成事実", 1
-		IF !TALENT:恋慕
+		IF TALENT:恋慕
+			CALL 好感度上昇, TARGET, "友情", 30
+			IF 好感度:既成事実
+				CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*15
+			ELSE
+				ときめき増加量 += 3
+				CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*20
+			ENDIF
+			CALL 好感度上昇, TARGET, "セフレ", 25
+			CALL 好感度上昇, TARGET, "既成事実", 1
+		ELSE
+			CALL 好感度上昇, TARGET, "友情", 15
+			CALL 好感度上昇, TARGET, "ときめき", ときめき増加量*10
+			CALL 好感度上昇, TARGET, "セフレ", 50
+			CALL 好感度上昇, TARGET, "既成事実", 1
 			CFLAG:倫理観++
 			CFLAG:MASTER:倫理観++
 		ENDIF
@@ -1137,11 +1208,14 @@ SELECTCASE シチュエーション
 ENDSELECT
 トイレ使用中 = 0
 野外プレイ中 = 0
+ホテル入室済み = 0
 
 ;フラグリセット
 VARSET PREG
 VARSET TEQUIP
 VARSET TEQUIP:MASTER:0
+学園モード時限イベント = 0
+時限イベント内容 = 
 
 
 @TRAIN_SCHOOL, 場所
@@ -1661,11 +1735,42 @@ ELSE
 	RETURNF 0
 ENDIF
 
-;;;夏休み、冬休み、春休み判定
-@ISHOLIDAY_SCHOOL()
-#FUNCTION
 
-RETURNF 夏休み() | 冬休み() | 春休み()
+;;;夏休み、冬休み、春休み判定
+@ISHOLIDAY_SCHOOL, 月 = -1, 日 = -1
+#FUNCTION
+#DIM DYNAMIC 月
+#DIM DYNAMIC 日
+
+SIF 月 == -1
+	月 = MONTH
+SIF 日 == -1
+	日 = DAYS
+
+RETURNF 夏休み(月, 日) | 冬休み(月, 日) | 春休み(月, 日)
+
+
+;;;登校日判定
+;;;休日でも長期休暇でもなければ1を返す
+@登校日, 年 = -1, 月 = -1, 日 = -1
+#FUNCTION
+#DIM DYNAMIC 年
+#DIM DYNAMIC 月
+#DIM DYNAMIC 日
+
+SIF 年 == -1
+	年 = YEAR
+SIF 月 == -1
+	月 = MONTH
+SIF 日 == -1
+	日 = DAYS
+
+IF !休日(年, 月, 日) && !ISHOLIDAY_SCHOOL(月, 日)
+	RETURNF 1
+ELSE
+	RETURNF 0
+ENDIF
+
 
 ;;;出現率が設定されてるキャラからランダムで一人選出する 運命の人優先
 @出現キャラランダム選出
@@ -1685,6 +1790,8 @@ IF 滞在キャラ:0 != 0
 ENDIF
 
 RETURN 0
+
+
 
 ;;;現在地フリーなキャラが一人でもいればtrue
 @キャラ現在地判定, キャラ名, キャラ名:1, キャラ名:2, キャラ名:3, キャラ名:4
