@@ -1478,16 +1478,53 @@ ENDIF
 
 @バストサイズ詳細入力, 対象キャラ番号
 #DIM DYNAMIC 対象キャラ番号
+#DIM DYNAMIC CSVサイズ
+#DIM DYNAMIC MODあり
+#DIM DYNAMIC CSV女性
+#DIM DYNAMIC 購入時サイズ
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LVARLINE, 2
 #DIM DYNAMIC 入力対象サイズ
 
+CSVサイズ = CSVTALENT(対象キャラ番号, GETNUM(TALENT, "バストサイズ"))
+SIF MOD:爆乳 || MOD:絶壁 || MOD:バストサイズカスタム
+	MODあり = 1
+IF MODあり
+	購入時サイズ = CSVサイズ
+	IF CSVTALENT(対象キャラ番号, GETNUM(TALENT, "性別")) == 2
+		CSV女性 = 1
+	ELSE
+		CSV女性 = 0
+	ENDIF
+	IF MOD:爆乳
+		SIF CSV女性 || MOD:バストサイズ男性対象
+			購入時サイズ = 6
+	ENDIF
+	IF MOD:絶壁
+		SIF CSV女性 || MOD:バストサイズ男性対象
+			購入時サイズ = 1
+	ENDIF
+	IF MOD:バストサイズカスタム
+		IF CSV女性 || MOD:バストサイズ男性対象
+			SIF 購入時サイズ < 1
+				購入時サイズ = 1
+			IF INRANGE(購入時サイズ, 1, 6)
+				購入時サイズ = バストサイズ指定:購入時サイズ
+			ELSE
+				購入時サイズ = バストサイズ指定:6 +(6-購入時サイズ)
+			ENDIF
+		ENDIF
+	ENDIF
+ENDIF
 DO
 	入力対象サイズ = -1
 	$サイズ選択済
 	LVARLINE:1 = LINECOUNT
 	DRAWLINE
-	PRINTFORML 対象: %CSVNAMEF(対象キャラ番号)% 
+	PRINTFORML    　対象: %CSVNAMEF(対象キャラ番号)%
+	PRINTFORML CSVサイズ:{CSVサイズ, 2}
+	SIF MODあり
+		PRINTFORML MODサイズ:{購入時サイズ, 2}
 	PRINTPLAIN Size欄をクリックで入力メニューへ移動します　
 	PRINTL [-1] 戻る
 	PRINTL    Size  | Top |Under|Diff.|Print

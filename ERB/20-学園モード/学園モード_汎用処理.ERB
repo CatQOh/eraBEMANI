@@ -483,6 +483,10 @@ RETURN 0
 #DIM DYNAMIC 選択キャラ
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC 最大桁数
+#DIM DYNAMIC 最大文字列長
+#DIM DYNAMIC リスト表示
+#DIM DYNAMIC 対象
+#DIM DYNAMIC バストサイズ編集
 #DIM CONST 無所属 = VARSIZE("学校名")
 
 FOR LCOUNT, 0, VARSIZE("学校名")
@@ -574,6 +578,7 @@ FOR LCOUNT, 0, CHARANUM
 NEXT
 
 最大桁数 = 1
+最大文字列長 = 4
 IF 在校人数
 	SIF DGT(在校ID:(在校人数-1)) > 最大桁数
 		最大桁数 = DGT(在校ID:(在校人数-1))
@@ -586,32 +591,115 @@ IF 特殊在校人数
 	SIF DGT(特殊在校ID:(特殊在校人数-1)) > 最大桁数
 		最大桁数 = DGT(特殊在校ID:(特殊在校人数-1))
 ENDIF
+FOR LCOUNT, 0, 在校人数
+	SIF STRLENS(NAME:(在校ID:LCOUNT)) > 最大文字列長
+		最大文字列長 = STRLENS(NAME:(在校ID:LCOUNT))
+NEXT
+FOR LCOUNT, 0, 在任人数
+	SIF STRLENS(NAME:(在任ID:LCOUNT)) > 最大文字列長
+		最大文字列長 = STRLENS(NAME:(在任ID:LCOUNT))
+NEXT
+FOR LCOUNT, 0, 特殊在校人数
+	SIF STRLENS(NAME:(特殊在校ID:LCOUNT)) > 最大文字列長
+		最大文字列長 = STRLENS(NAME:(特殊在校ID:LCOUNT))
+NEXT
+;最大文字列長を偶数にする
+SIF 最大文字列長%2
+	最大文字列長++
 
 $生徒選択
 
 DRAWLINE
-PRINTFORML □\@ 選択校 == 無所属 ? 無所属or社会人のキャラ # %学校名:選択校%の在校生 \@
-FOR LCOUNT, 0, 在校人数
-	PRINTFORM 　[{在校ID:LCOUNT, 最大桁数}] 
-	CALL SNAME(在校ID:LCOUNT)
-	PRINTL 
-NEXT
-IF 選択校 != 無所属
-	PRINTFORML □%学校名:選択校%の教師
-	FOR LCOUNT, 0, 在任人数
-		PRINTFORM 　担当科目:%CSTR:(在任ID:LCOUNT):担当科目% [{在任ID:LCOUNT, 最大桁数}] 
-		CALL SNAME(在任ID:LCOUNT, 1)
-		PRINTL  
+IF リスト表示
+	PRINTFORM 恋人|%SPACES(2+最大桁数)%%SPACES((最大文字列長-4)/2)%名前%SPACES((最大文字列長-4)/2)%| 性別 |
+	SIF MOD:バスト関連ステータス表示
+		PRINT 　バスト　    トップ(カップ数)  |
+	PRINT 　友情　|ときめき|　尊敬　|母性舎弟| セフレ |既成事実|好感度合計|倫理観崩壊|
+	PRINTL
+
+	FOR LCOUNT, 0, 在校人数
+		対象 = 在校ID:LCOUNT
+		IF TALENT:対象:恋慕
+			PRINT  ● 
+		ELSE
+			PRINT 　　
+		ENDIF 
+		PRINTPLAIN |
+		PRINTFORM [{対象, 最大桁数}]
+		CALL リスト_名前表示, 対象, 最大文字列長
+		PRINTPLAIN |
+		CALL リスト_性別表示, 対象
+		PRINTPLAIN |
+		SIF MOD:バスト関連ステータス表示
+			CALL リスト_バストサイズ, 対象
+		CALL 好感度表示, 対象
+		PRINTL
 	NEXT
-ENDIF
-IF 選択校 != 無所属
-	PRINTFORML □その他%学校名:選択校%に居るキャラ
-	FOR LCOUNT, 0, 特殊在校人数
-		PRINTFORM 　[{特殊在校ID:LCOUNT, 最大桁数}] 
-		CALL SNAME(特殊在校ID:LCOUNT)
-		PRINTL  
+	IF 選択校 != 無所属
+		FOR LCOUNT, 0, 在任人数
+			対象 = 在任ID:LCOUNT
+			IF TALENT:対象:恋慕
+				PRINT  ● 
+			ELSE
+				PRINT 　　
+			ENDIF 
+			PRINTPLAIN |
+			PRINTFORM [{対象, 最大桁数}]
+			CALL リスト_名前表示, 対象, 最大文字列長
+			PRINTPLAIN |
+			CALL リスト_性別表示, 対象
+			PRINTPLAIN |
+			SIF MOD:バスト関連ステータス表示
+				CALL リスト_バストサイズ, 対象
+			CALL 好感度表示, 対象
+			PRINTL
+		NEXT
+	ENDIF
+	IF 選択校 != 無所属
+		FOR LCOUNT, 0, 特殊在校人数
+			対象 = 特殊在任ID:LCOUNT
+			IF TALENT:対象:恋慕
+				PRINT  ● 
+			ELSE
+				PRINT 　　
+			ENDIF 
+			PRINTPLAIN |
+			PRINTFORM [{対象, 最大桁数}]
+			CALL リスト_名前表示, 対象, 最大文字列長
+			PRINTPLAIN |
+			CALL リスト_性別表示, 対象
+			PRINTPLAIN |
+			SIF MOD:バスト関連ステータス表示
+				CALL リスト_バストサイズ, 対象
+			CALL 好感度表示, 対象
+			PRINTL
+		NEXT
+	ENDIF
+ELSE
+	PRINTFORML □\@ 選択校 == 無所属 ? 無所属or社会人のキャラ # %学校名:選択校%の在校生 \@
+	FOR LCOUNT, 0, 在校人数
+		PRINTFORM 　[{在校ID:LCOUNT, 最大桁数}] 
+		CALL SNAME(在校ID:LCOUNT)
+		PRINTL 
 	NEXT
+	IF 選択校 != 無所属
+		PRINTFORML □%学校名:選択校%の教師
+		FOR LCOUNT, 0, 在任人数
+			PRINTFORM 　担当科目:%CSTR:(在任ID:LCOUNT):担当科目% [{在任ID:LCOUNT, 最大桁数}] 
+			CALL SNAME(在任ID:LCOUNT, 1)
+			PRINTL  
+		NEXT
+	ENDIF
+	IF 選択校 != 無所属
+		PRINTFORML □その他%学校名:選択校%に居るキャラ
+		FOR LCOUNT, 0, 特殊在校人数
+			PRINTFORM 　[{特殊在校ID:LCOUNT, 最大桁数}] 
+			CALL SNAME(特殊在校ID:LCOUNT)
+			PRINTL  
+		NEXT
+	ENDIF
 ENDIF
+
 DRAWLINE
 PRINTPLAINFORM 　\@ 選択校 == 無所属 ? 無所属or社会人のキャラ # %学校名:選択校% \@　
 PRINT [-1] - 戻る
@@ -627,6 +715,9 @@ IF ITEM:ラブスコープ
 			表示好感度 = 倫理観崩壊度
 	ENDSELECT
 	PRINTFORM 　[-2] - ラブスコープの表示切り替え(現在:\@ 表示好感度 == "舎弟" ? 舎弟or母性 # %表示好感度% \@)
+	PRINT 　[-3] - リスト表示
+	SIF MOD:バスト関連ステータス表示
+		PRINTFORM 　[-8] - バストサイズ編集(現在:\@ バストサイズ編集 ? あり # なし \@)
 ENDIF
 PRINTL
 
@@ -636,10 +727,20 @@ IF RESULT == -1
 ELSEIF RESULT == -2
 	CALL ラブスコープ設定変更
 	GOTO 生徒選択
+ELSEIF RESULT == -3
+	INVERTBIT リスト表示, 0
+	GOTO 生徒選択
+ELSEIF RESULT == -8
+	INVERTBIT バストサイズ編集, 0
+	GOTO 生徒選択
 ENDIF
 
 選択キャラ = RESULT
 $キャラ選択済み
+IF バストサイズ編集
+	CALL バストサイズ詳細入力, NOF(選択キャラ)
+	GOTO 生徒選択
+ENDIF
 DRAWLINE
 PRINTFORML □%NAME:選択キャラ%の情報
 PRINTFORML 　倫理観崩壊度:{CFLAG:選択キャラ:倫理観}
@@ -734,18 +835,32 @@ IF ラブスコープ使用
 		CASE "倫理観崩壊度"
 			SELECTCASE 好感度値
 				CASE 0
-					SETCOLORBYNAME gray
-				CASE 1 TO 29
+					SETCOLOR 0x404040
+				CASE 10 TO 29
 					SETCOLORBYNAME lime
 				CASE 30 TO 49
 					SETCOLORBYNAME yellow
 				CASE IS >= 50
 					SETCOLORBYNAME coral
 			ENDSELECT
+		CASE "既成事実"
+			SELECTCASE 好感度値
+				CASE 0
+					SETCOLOR 0x404040
+				CASE 1 TO 4
+				CASE 5 TO 9
+					SETCOLORBYNAME lime
+				CASE 10 TO 14
+					SETCOLORBYNAME deepskyblue
+				CASE 15 TO 19
+					SETCOLORBYNAME violet
+				CASE IS >= 20
+					SETCOLORBYNAME coral
+			ENDSELECT
 		CASEELSE
 			SELECTCASE 好感度値
 				CASE 0
-					SETCOLORBYNAME gray
+					SETCOLOR 0x404040
 				CASE 1 TO 99
 				CASE 100 TO 299
 					SETCOLORBYNAME lime
@@ -767,6 +882,140 @@ ELSE
 	SIF 先生 && CSTR:対象:在任 != ""
 		PRINT 先生
 ENDIF
+
+@リスト_名前表示, 対象, 最大文字列長
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 最大文字列長
+
+SIF NAME:対象 == 運命の人
+	SETCOLORBYNAME coral
+PRINTFORM %NAME:対象%%SPACES(最大文字列長-STRLENS(NAME:対象))%
+RESETCOLOR
+
+@リスト_性別表示, 対象
+#DIM DYNAMIC 対象
+IF TALENT:対象:性転換済
+	IF SEX(対象) == 1
+		PRINT ♀→♂
+	ELSE
+		PRINT ♂→♀
+	ENDIF
+ELSE
+	IF SEX(対象) == 1
+		PRINT 　♂　
+	ELSE
+		PRINT 　♀　
+	ENDIF
+ENDIF
+
+@リスト_バストサイズ, 対象
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 対象キャラ番号
+#DIM DYNAMIC 今のサイズ
+#DIM DYNAMIC トップ
+#DIM DYNAMIC アンダー
+#DIM DYNAMIC 成長割合
+#DIM DYNAMIC ワンサイズ増分
+
+対象キャラ番号 = NOF(対象)
+成長割合 = LIMIT(CFLAG:対象:バスト成長, 0, 999)
+今のサイズ = TALENT:対象:バストサイズ
+
+SIF !今のサイズ
+	SETCOLOR 0x404040
+
+IF バストサイズ詳細トップ:対象キャラ番号:今のサイズ
+	トップ = バストサイズ詳細トップ:対象キャラ番号:今のサイズ
+	アンダー = バストサイズ詳細アンダー:対象キャラ番号:今のサイズ
+	IF 成長割合
+		IF バストサイズ詳細トップ:対象キャラ番号:(今のサイズ+1)
+			ワンサイズ増分 = バストサイズ詳細トップ:対象キャラ番号:(今のサイズ+1) - トップ
+			トップ += ワンサイズ増分 * 成長割合 / 1000
+			IF アンダー && バストサイズ詳細アンダー:対象キャラ番号:(今のサイズ+1)
+				ワンサイズ増分 = バストサイズ詳細アンダー:対象キャラ番号:(今のサイズ+1) - アンダー
+				アンダー += ワンサイズ増分 * 成長割合 / 1000
+			ENDIF
+		ENDIF
+	ENDIF 
+	PRINTFORM %CBL_TALENT(今のサイズ, 成長割合)% %CBL_SIZE(トップ,アンダー)%
+ELSE
+	PRINTFORM %CBL_TALENT(今のサイズ, 成長割合)% %SPACES(7+13)%
+ENDIF
+RESETCOLOR
+PRINT |
+
+@好感度表示, 対象
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 好感度値
+#DIM DYNAMIC LCOUNT
+
+FOR LCOUNT, 0, 5
+	好感度値 = 好感度:対象:LCOUNT
+	SELECTCASE 好感度値
+		CASE 0
+			SETCOLORBYNAME black
+		CASE 1 TO 99
+		CASE 100 TO 299
+			SETCOLORBYNAME lime
+		CASE 300 TO 499
+			SETCOLORBYNAME deepskyblue
+		CASE 500 TO 999
+			SETCOLORBYNAME violet
+		CASE IS >= 1000
+			SETCOLORBYNAME coral
+	ENDSELECT
+	PRINTFORM {好感度値, 8}
+	RESETCOLOR
+	PRINT |
+NEXT
+好感度値 = 好感度:対象:5
+SELECTCASE 好感度値
+	CASE 0
+		SETCOLORBYNAME black
+	CASE 1 TO 4
+	CASE 5 TO 9
+		SETCOLORBYNAME lime
+	CASE 10 TO 14
+		SETCOLORBYNAME deepskyblue
+	CASE 15 TO 19
+		SETCOLORBYNAME violet
+	CASE IS >= 20
+		SETCOLORBYNAME coral
+ENDSELECT
+PRINTFORM {好感度値, 8}
+RESETCOLOR
+PRINT |
+好感度値 = 好感度合計(対象)
+SELECTCASE 好感度値
+	CASE 0
+		SETCOLORBYNAME black
+	CASE 1 TO 99
+	CASE 100 TO 299
+		SETCOLORBYNAME lime
+	CASE 300 TO 499
+		SETCOLORBYNAME deepskyblue
+	CASE 500 TO 999
+		SETCOLORBYNAME violet
+	CASE IS >= 1000
+		SETCOLORBYNAME coral
+ENDSELECT
+PRINTFORM {好感度値, 10}
+RESETCOLOR
+PRINT |
+好感度値 = CFLAG:対象:倫理観
+SELECTCASE 好感度値
+	CASE 0
+		SETCOLORBYNAME black
+	CASE 10 TO 29
+		SETCOLORBYNAME lime
+	CASE 30 TO 49
+		SETCOLORBYNAME yellow
+	CASE IS >= 50
+		SETCOLORBYNAME coral
+ENDSELECT
+PRINTFORM {好感度値, 10}
+RESETCOLOR
+PRINT |
 
 ;;;好感度上昇とメッセージ表示を行う
 @好感度上昇, 対象, 好感度種類, 上昇値
