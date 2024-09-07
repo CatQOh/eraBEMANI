@@ -474,6 +474,7 @@ RETURN 0
 
 
 @学校一覧_データベース
+#DIMS DYNAMIC 表示好感度
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LTARGET
 #DIMS DYNAMIC 名称抜き取り用, 2
@@ -481,6 +482,7 @@ RETURN 0
 #DIM DYNAMIC 選択校
 #DIM DYNAMIC 選択キャラ
 #DIM DYNAMIC 表示数
+#DIM DYNAMIC 最大桁数
 #DIM CONST 無所属 = VARSIZE("学校名")
 
 FOR LCOUNT, 0, VARSIZE("学校名")
@@ -493,7 +495,21 @@ CALL NEWLINE
 
 DRAWLINE
 PRINTPLAIN 　DATABASE　
-PRINT [-1] - 戻る　[-2] - 名前で検索
+PRINT [-1] - 戻る
+IF ITEM:ラブスコープ
+	SELECTCASE ラブスコープ使用
+		CASE 0
+			表示好感度 = 表示しない
+		CASE 1 TO 6
+			表示好感度 = %ERDNAME(好感度, ラブスコープ使用-1)%
+		CASE 7
+			表示好感度 = 好感度合計
+		CASE 8
+			表示好感度 = 倫理観崩壊度
+	ENDSELECT
+	PRINTFORM 　[-2] - ラブスコープの表示切り替え(現在:\@ 表示好感度 == "舎弟" ? 舎弟or母性 # %表示好感度% \@)
+ENDIF
+PRINT 　[-9] - 名前で検索
 ;#; PRINT 　[-99] - セーブデータのアップデート
 PRINTL 
 
@@ -503,6 +519,9 @@ SELECTCASE RESULT
 	CASE -1
 		RETURN
 	CASE -2
+		CALL ラブスコープ設定変更
+		RESTART
+	CASE -9
 		CALL CHARA_LIST, "全キャラ表示", 1, 1
 		SIF RESULT == 10000
 			RESTART
@@ -522,55 +541,102 @@ SELECTCASE RESULT
 		RESTART
 ENDSELECT
 
-$生徒選択
 SIF 選択校 < 0
 	RESTART
 
-DRAWLINE
-PRINTFORML □\@ 選択校 == 無所属 ? 無所属or社会人のキャラ # %学校名:選択校%の在校生 \@
+VARSET 在校ID
+VARSET 在任ID
+VARSET 特殊在校ID
+VARSET 在校人数
+VARSET 在任人数
+VARSET 特殊在校人数
+
 FOR LCOUNT, 0, CHARANUM
 	IF 選択校 == 無所属
-		SIF CSTR:LCOUNT:在校 != "" || CSTR:LCOUNT:在任 != ""
-			CONTINUE
+		IF CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == ""
+			在校ID:在校人数 = LCOUNT
+			在校人数++
+		ENDIF
 	ELSE
-		SIF CSTR:LCOUNT:在校 != 学校名:選択校
-			CONTINUE
-		SIF CFLAG:LCOUNT:特殊在校
-			CONTINUE
+		IF CSTR:LCOUNT:在校 == 学校名:選択校
+			IF CFLAG:LCOUNT:特殊在校
+				特殊在校ID:特殊在校人数 = LCOUNT
+				特殊在校人数++
+			ELSE
+				在校ID:在校人数 = LCOUNT
+				在校人数++
+			ENDIF
+		ELSEIF CSTR:LCOUNT:在任 == 学校名:選択校
+			在任ID:在任人数 = LCOUNT
+			在任人数++
+		ENDIF
 	ENDIF
-	PRINTFORM 　[{LCOUNT}] 
-	CALL SNAME(LCOUNT)
+NEXT
+
+最大桁数 = 1
+IF 在校人数
+	SIF DGT(在校ID:(在校人数-1)) > 最大桁数
+		最大桁数 = DGT(在校ID:(在校人数-1))
+ENDIF
+IF 在任人数
+	SIF DGT(在任ID:(在任人数-1)) > 最大桁数
+		最大桁数 = DGT(在任ID:(在任人数-1))
+ENDIF
+IF 特殊在校人数
+	SIF DGT(特殊在校ID:(特殊在校人数-1)) > 最大桁数
+		最大桁数 = DGT(特殊在校ID:(特殊在校人数-1))
+ENDIF
+
+$生徒選択
+
+DRAWLINE
+PRINTFORML □\@ 選択校 == 無所属 ? 無所属or社会人のキャラ # %学校名:選択校%の在校生 \@
+FOR LCOUNT, 0, 在校人数
+	PRINTFORM 　[{在校ID:LCOUNT, 最大桁数}] 
+	CALL SNAME(在校ID:LCOUNT)
 	PRINTL 
 NEXT
 IF 選択校 != 無所属
 	PRINTFORML □%学校名:選択校%の教師
-	FOR LCOUNT, 0, CHARANUM
-		SIF CSTR:LCOUNT:在任 != 学校名:選択校
-			CONTINUE
-		PRINTFORM 　担当科目:%CSTR:LCOUNT:担当科目% [{LCOUNT}] 
-		CALL SNAME(LCOUNT)
+	FOR LCOUNT, 0, 在任人数
+		PRINTFORM 　担当科目:%CSTR:(在任ID:LCOUNT):担当科目% [{在任ID:LCOUNT, 最大桁数}] 
+		CALL SNAME(在任ID:LCOUNT, 1)
 		PRINTL  
 	NEXT
 ENDIF
 IF 選択校 != 無所属
 	PRINTFORML □その他%学校名:選択校%に居るキャラ
-	FOR LCOUNT, 0, CHARANUM
-		SIF CSTR:LCOUNT:在校 != 学校名:選択校
-			CONTINUE
-		SIF !CFLAG:LCOUNT:特殊在校
-			CONTINUE
-		PRINTFORM 　[{LCOUNT}] 
-		CALL SNAME(LCOUNT)
+	FOR LCOUNT, 0, 特殊在校人数
+		PRINTFORM 　[{特殊在校ID:LCOUNT, 最大桁数}] 
+		CALL SNAME(特殊在校ID:LCOUNT)
 		PRINTL  
 	NEXT
 ENDIF
 DRAWLINE
 PRINTPLAINFORM 　\@ 選択校 == 無所属 ? 無所属or社会人のキャラ # %学校名:選択校% \@　
-PRINTL [-1] - 戻る
+PRINT [-1] - 戻る
+IF ITEM:ラブスコープ
+	SELECTCASE ラブスコープ使用
+		CASE 0
+			表示好感度 = 表示しない
+		CASE 1 TO 6
+			表示好感度 = %ERDNAME(好感度, ラブスコープ使用-1)%
+		CASE 7
+			表示好感度 = 好感度合計
+		CASE 8
+			表示好感度 = 倫理観崩壊度
+	ENDSELECT
+	PRINTFORM 　[-2] - ラブスコープの表示切り替え(現在:\@ 表示好感度 == "舎弟" ? 舎弟or母性 # %表示好感度% \@)
+ENDIF
+PRINTL
 
 BINPUT
-SIF RESULT == -1
+IF RESULT == -1
 	RESTART
+ELSEIF RESULT == -2
+	CALL ラブスコープ設定変更
+	GOTO 生徒選択
+ENDIF
 
 選択キャラ = RESULT
 $キャラ選択済み
@@ -649,7 +715,7 @@ IF ラブスコープ使用
 		SETCOLORBYNAME coral
 	PRINTFORM %NAME:対象%
 	RESETCOLOR
-	SIF CSTR:対象:在任 != ""
+	SIF 先生 && CSTR:対象:在任 != ""
 		PRINT 先生
 	SELECTCASE ラブスコープ使用
 		CASE 1 TO 6
@@ -698,7 +764,7 @@ ELSE
 		SETCOLORBYNAME coral
 	PRINTFORM %NAME:対象%
 	RESETCOLOR
-	SIF CSTR:対象:在任 != ""
+	SIF 先生 && CSTR:対象:在任 != ""
 		PRINT 先生
 ENDIF
 
