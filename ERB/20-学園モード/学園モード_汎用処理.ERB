@@ -63,6 +63,8 @@ FOR LCOUNT, 0, CHARANUM
 		CASE "夜"
 			CFLAG:LCOUNT:酔 = 0
 	ENDSELECT
+	SIF CFLAG:LCOUNT:酔 < 0
+		CFLAG:LCOUNT:酔 = 0
 NEXT
 
 ;ここで口上側のターン終了時関数を呼ぶ
@@ -1321,6 +1323,7 @@ CALL 経験値取得, 対象, "学園"
 #DIMS DYNAMIC 行為後引数
 #DIM DYNAMIC コンドーム相手持ち
 #DIM DYNAMIC コンドーム行為前所持数
+#DIM DYNAMIC コンドーム買わない率
 場所名 = %シチュエーション%
 行為前引数 = %シチュエーション%_行為前
 行為後引数 = %シチュエーション%_行為後
@@ -1357,7 +1360,21 @@ SIF 行為前引数 != ""
 コンドーム相手持ち = 0
 IF 場所名 == "ホテル" && !ホテル入室済み
 	IF PENIS(MASTER) || PENIS(TARGET)
-		IF CSTR:在任 != "" || TALENT:恋慕
+		IF PENIS(MASTER)
+			IF VAGINA(TARGET)
+				コンドーム買わない率 += 中出され回数:NOF(MASTER)
+			ELSE
+				コンドーム買わない率 += アナル中出され回数:NOF(MASTER)
+			ENDIF
+		ENDIF
+		IF PENIS(TARGET)
+			IF VAGINA(MASTER)
+				コンドーム買わない率 += 中出され回数:MASTER:NOF(TARGET)
+			ELSE
+				コンドーム買わない率 += アナル中出され回数:MASTER:NOF(TARGET)
+			ENDIF
+		ENDIF
+		IF (CSTR:在任 != "" || TALENT:恋慕) && !RANDPER(コンドーム買わない率)
 			コンドーム相手持ち = 12
 			PRINTFORML %CALLNAME:TARGET%はホテルへの道中でコンドームを1箱買っていくようだ
 			SIF MONEY >= 500
