@@ -20,6 +20,11 @@ RETURN 0
 #DIM DYNAMIC 対象
 #DIMS DYNAMIC 専用コマンドリスト, 10
 #DIM DYNAMIC 総数
+#DIMS DYNAMIC コマンドリスト = "何気ない会話をする", "少し踏み込んだ会話をする", "下ネタを振る", "性的に誘う", "思い切って告白する", "連絡先を聞いてみる", "同行を提案する", "八牌麻雀"
+#DIMS DYNAMIC コマンド名表示
+#DIMS DYNAMIC 実行不可理由
+#DIMS DYNAMIC 本体側実行不可理由
+#DIM DYNAMIC 実行不可フラグ
 TARGET = 対象
 
 IF OPTION:口上表示 && !CFLAG:対象:口上非表示 && EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_汎用会話開始")
@@ -29,103 +34,74 @@ ELSE
 ENDIF
 
 ;コマンド表示
-CALL 汎用会話可否判定, TARGET, "何気ない会話をする"
-IF RESULT == 1
-	CALL PRINTCOLORL, @"　[-] 何気ない会話をする%RESULTS%", "gray"
-ELSEIF RESULT == 0
-	PRINTL 　[0] 何気ない会話をする
-ENDIF
-
-CALL 汎用会話可否判定, TARGET, "少し踏み込んだ会話をする"
-IF RESULT == 1
-	CALL PRINTCOLORL, @"　[-] 少し踏み込んだ会話をする%RESULTS%", "gray"
-ELSEIF RESULT == 0
-	PRINTL 　[1] 少し踏み込んだ会話をする
-ENDIF
-
-CALL 汎用会話可否判定, TARGET, "下ネタを振る"
-IF RESULT == 1
-	CALL PRINTCOLORL, @"　[-] 下ネタを振る%RESULTS%", "gray"
-ELSEIF RESULT == 0
-	PRINTL 　[2] 下ネタを振る
-ENDIF
-
-CALL 汎用会話可否判定, TARGET, "性的に誘う"
-IF バイト帰り && ターン =="夜"
-	CALL PRINTCOLORL, @"　[-] 性的に誘う(今日はもう夜遅いです)", "gray"
-ELSE
-	IF RESULT == 1
-		IF 授業中
-			IF TARGET == 授業中
-				CALL PRINTCOLORL, @"　[-] 授業を放棄させて性的に誘う%RESULTS%", "gray"
-			ELSE
-				CALL PRINTCOLORL, @"　[-] 授業をサボって性的に誘う%RESULTS%", "gray"
-			ENDIF
-		ELSE
-			CALL PRINTCOLORL, @"　[-] 性的に誘う%RESULTS%", "gray"
-		ENDIF
-	ELSEIF RESULT == 0
-		IF 同行者 && 同行者 != TARGET
-			CALL PRINTCOLORL, @"　[-] 性的に誘う(%NAME:同行者%が同行中)", "gray"
-		ELSE
-			IF 授業中
+FOR LCOUNT, 0, VARSIZE("コマンドリスト")
+	;口上でのコマンド編集
+	CALL 汎用会話可否判定, TARGET, コマンドリスト:LCOUNT
+	実行不可理由 = %RESULTS%
+	実行不可フラグ = RESULT
+	TRYCCALLFORM SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド名変更_%コマンドリスト:LCOUNT%
+		コマンド名表示 = %RESULTS%
+	CATCH
+		コマンド名表示 = %コマンドリスト:LCOUNT%
+	ENDCATCH
+	
+	;ここから本体側のコマンド編集（実行不可判定は本体優先、理由表示はあれば口上側優先）
+	;コマンドを表示しない場合は実行不可フラグを-1にすること
+	SELECTCASE コマンドリスト:LCOUNT
+		CASE "性的に誘う"
+			IF バイト帰り && ターン == "夜"
+				本体側実行不可理由 = 今日はもう夜遅いです
+				実行不可フラグ = 1
+			ELSEIF 同行者 && 同行者 != TARGET
+				本体側実行不可理由 = %NAME:同行者%が同行中
+				実行不可フラグ = 1
+			ELSEIF 授業中
+				;授業がある場合接頭語（ここも編集できるようにするかは検討）
 				IF TARGET == 授業中
-					PRINTL 　[3] 授業を放棄させて性的に誘う
+					コマンド名表示 = 授業を放棄させて%コマンド名表示%
 				ELSE
-					PRINTL 　[3] 授業をサボって性的に誘う
+					コマンド名表示 = 授業をサボって%コマンド名表示%
 				ENDIF
-			ELSE
-				PRINTL 　[3] 性的に誘う
 			ENDIF
-		ENDIF
+		CASE "思い切って告白する"
+			IF TALENT:恋慕
+				本体側実行不可理由 = %NAME:TARGET%は既に%CALLNAME:PLAYER%の恋人
+				実行不可フラグ = 1
+			ENDIF
+		CASE "連絡先を聞いてみる"
+			IF 連絡先入手済み(TARGET)
+				本体側実行不可理由 = %CALLNAME:TARGET%の連絡先は既に知っている
+				実行不可フラグ = 1
+			ENDIF
+		CASE "同行を提案する"
+			IF 校内() || 同行者 == TARGET
+				実行不可フラグ = -1
+			ELSEIF 同行者
+				本体側実行不可理由 = 既に%NAME:同行者%と行動中
+				実行不可フラグ = 1
+			ENDIF
+		CASE "八牌麻雀"
+			IF CSTR:PLAYER:現在地 != "雀喫茶ローシャンテ"
+				実行不可フラグ = -1
+			ELSE
+				;八牌麻雀だけコマンド名が特殊（口上を優先）
+				SIF コマンド名表示 == "八牌麻雀"
+					コマンド名表示 = 一局やらないか
+				SIF !実行不可フラグ
+					コマンド名表示 += "(八牌麻雀を開始)"
+			ENDIF
+	ENDSELECT
+	SIF 実行不可理由 == ""
+		実行不可理由 = (%本体側実行不可理由%)
+	
+	IF 実行不可フラグ >= 1
+		CALL PRINTCOLORL, @"　[-] %コマンド名表示%%実行不可理由%", "gray"
+	ELSEIF !実行不可フラグ
+		PRINTFORML 　[{LCOUNT}] %コマンド名表示%
 	ENDIF
-ENDIF
+NEXT
 
-CALL 汎用会話可否判定, TARGET, "思い切って告白する"
-IF RESULT == 1
-	CALL PRINTCOLORL, @"　[-] 思い切って告白する%RESULTS%", "gray"
-ELSEIF RESULT == 0
-	IF TALENT:恋慕
-		CALL PRINTCOLORL, @"　[-] 思い切って告白する(%NAME:TARGET%は既に%CALLNAME:PLAYER%の恋人)", "gray"
-	ELSE
-		PRINTL 　[4] 思い切って告白する
-	ENDIF
-ENDIF
-
-CALL 汎用会話可否判定, TARGET, "連絡先を聞いてみる"
-IF RESULT == 1
-	CALL PRINTCOLORL, @"　[-] 連絡先を聞いてみる%RESULTS%", "gray"
-ELSEIF RESULT == 0
-	IF 連絡先入手済み(TARGET)
-		CALL PRINTCOLORL, @"　[-] 連絡先を聞いてみる(%CALLNAME:TARGET%の連絡先は既に知っている)", "gray"
-	ELSE
-		PRINTL 　[5] 連絡先を聞いてみる
-	ENDIF
-ENDIF
-
-CALL 汎用会話可否判定, TARGET, "同行を提案する"
-IF RESULT == 1
-	CALL PRINTCOLORL, @"　[-] 同行を提案する%RESULTS%", "gray"
-ELSEIF RESULT == 0
-	IF 同行者 != TARGET && !校内()
-		IF 同行者
-			CALL PRINTCOLORL, @"　[-] 同行を提案する(既に%NAME:同行者%と行動中)", "gray"
-		ELSE
-			PRINTL 　[6] 同行を提案する
-		ENDIF
-	ENDIF
-ENDIF
-
-IF CSTR:PLAYER:現在地 == "雀喫茶ローシャンテ"
-	CALL 汎用会話可否判定, TARGET, "八牌麻雀"
-	IF RESULT == 1
-		CALL PRINTCOLORL, @"　[-] 一局やらないか%RESULTS%", "gray"
-	ELSEIF RESULT == 0
-		PRINTL 　[20] 一局やらないか(八牌麻雀を開始)
-	ENDIF
-ENDIF
-
-;口上専用コマンド
+;口上専用コマンドの表示
 IF OPTION:口上表示 && !CFLAG:TARGET:口上非表示
 	ENUMFUNCBEGINSWITH @"SCHOOL_%CSVNAMERPS(NO:TARGET)%_専用コマンド_"
 	総数 = RESULT
@@ -153,67 +129,26 @@ ENDIF
 
 DRAWLINE
 PRINTPLAIN 　会話　
-PRINTL [10] なんでもない
+PRINTL [99] なんでもない
 
+時間経過なし = 0
 BINPUT
 LRESULT = RESULT
 
 ;口上のコマンド上書き関数を優先
 SELECTCASE LRESULT
-	CASE 0
-		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_何気ない会話をする")
-			CALL SCHOOL_KOJO, TARGET, "コマンド_何気ない会話をする"
-			RETURN RESULT
+	CASE 0 TO VARSIZE("コマンドリスト")-1
+		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_%コマンドリスト:LRESULT%")
+			CALL SCHOOL_KOJO, TARGET, @"コマンド_%コマンドリスト:LRESULT%"
+		ELSE
+			CALLFORM SCHOOL_%コマンドリスト:LRESULT%
+			SIF コマンドリスト:LRESULT == "同行を提案する" && !RESULT
+				RESTART
 		ENDIF
-		CALL SCHOOL_何気ない会話をする
-	CASE 1
-		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_少し踏み込んだ会話をする")
-			CALL SCHOOL_KOJO, TARGET, "コマンド_少し踏み込んだ会話をする"
-			RETURN RESULT
-		ENDIF
-		CALL SCHOOL_少し踏み込んだ会話をする
-	CASE 2
-		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_下ネタを振る")
-			CALL SCHOOL_KOJO, TARGET, "コマンド_下ネタを振る"
-			RETURN RESULT
-		ENDIF
-		CALL SCHOOL_下ネタを振る
-	CASE 3
-		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_性的に誘う")
-			CALL SCHOOL_KOJO, TARGET, "コマンド_性的に誘う"
-			RETURN RESULT
-		ENDIF
-		CALL SCHOOL_性的に誘う
-	CASE 4
-		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_思い切って告白する")
-			CALL SCHOOL_KOJO, TARGET, "コマンド_思い切って告白する"
-			RETURN RESULT
-		ENDIF
-		CALL SCHOOL_思い切って告白する
-	CASE 5
-		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_連絡先を聞いてみる")
-			CALL SCHOOL_KOJO, TARGET, "コマンド_連絡先を聞いてみる"
-			RETURN RESULT
-		ENDIF
-		CALL SCHOOL_連絡先を聞いてみる
-	CASE 6
-		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_同行を提案する")
-			CALL SCHOOL_KOJO, TARGET, "コマンド_同行を提案する"
-			RETURN RESULT
-		ENDIF
-		CALL SCHOOL_同行を提案する
-		SIF !RESULT
-			RESTART
-	CASE 10
+	CASE 99
 		SIF OPTION:口上表示 && !CFLAG:対象:口上非表示 && EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_汎用会話キャンセル")
 			CALLFORM SCHOOL_%CSVNAMERPS(NO:TARGET)%_汎用会話キャンセル
 		RETURN 0
-	CASE 20
-		IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_八牌麻雀")
-			CALL SCHOOL_KOJO, TARGET, "コマンド_八牌麻雀"
-			RETURN RESULT
-		ENDIF
-		CALL SCHOOL_八牌麻雀
 	CASE 100 TO 110
 		;専用コマンド用枠として確保
 		CALLFORM SCHOOL_KOJO, TARGET, @"専用コマンド_%専用コマンドリスト:(RESULT-100)%"
@@ -227,7 +162,7 @@ IF 授業参加フラグ
 	WAIT
 ENDIF
 
-RETURN 1
+RETURN !時間経過なし
 
 
 ;ここからコマンド実行時の処理
