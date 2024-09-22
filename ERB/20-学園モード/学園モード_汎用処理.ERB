@@ -235,8 +235,7 @@ SELECTCASE ターン
 ENDSELECT
 
 FOR LCOUNT, 1, CHARANUM
-	SIF CFLAG:LCOUNT:倫理観 > 100
-		CFLAG:LCOUNT:倫理観 = 100
+	CFLAG:LCOUNT:倫理観 = LIMIT(CFLAG:LCOUNT:倫理観, -100, 100)
 NEXT
 
 ロケーション可否 =
@@ -507,6 +506,12 @@ RETURN 0
 #DIM DYNAMIC リスト表示
 #DIM DYNAMIC 対象
 #DIM DYNAMIC バストサイズ編集
+#DIM DYNAMIC 風紀_人数カウント
+#DIM DYNAMIC 風紀_カウント倍率
+#DIM DYNAMIC 倫理観平均
+#DIM DYNAMIC 倫理観2乗平均
+#DIM DYNAMIC 倫理観標準偏差
+#DIM DYNAMIC 倫理観偏差値表示
 #DIM CONST 無所属 = VARSIZE("学校名")
 
 FOR LCOUNT, 0, VARSIZE("学校名")
@@ -576,6 +581,13 @@ VARSET 在校人数
 VARSET 在任人数
 VARSET 特殊在校人数
 
+風紀_人数カウント = 0
+倫理観平均 = 0
+倫理観2乗平均 = 0
+;倫理観の重み付け平均※「風紀」と、平均との離れ具合(偏差値)を求める
+;ただし、分散は定義通り求めるより「2乗の平均-平均の2乗」で求めるほうが簡単なのでそっちで求める
+;※重み付けは平均・分散どちらにおいても、教師は2倍(保健は3倍/理事長・校長は5倍)の人数いるものとして計算する
+
 FOR LCOUNT, 0, CHARANUM
 	IF 選択校 == 無所属
 		IF CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == ""
@@ -591,12 +603,49 @@ FOR LCOUNT, 0, CHARANUM
 				在校ID:在校人数 = LCOUNT
 				在校人数++
 			ENDIF
+			風紀_人数カウント++
+			倫理観平均 += CFLAG:LCOUNT:倫理観
+			倫理観2乗平均 += POWER(CFLAG:LCOUNT:倫理観, 2)
 		ELSEIF CSTR:LCOUNT:在任 == 学校名:選択校
 			在任ID:在任人数 = LCOUNT
 			在任人数++
+			SELECTCASE CSTR:LCOUNT:担当科目
+				CASE "理事長", "校長"
+					風紀_カウント倍率 = 5
+				CASE "保健"
+					風紀_カウント倍率 = 3
+				CASEELSE
+					風紀_カウント倍率 = 2
+			ENDSELECT
+			風紀_人数カウント += 風紀_カウント倍率
+			倫理観平均 += 風紀_カウント倍率 * CFLAG:LCOUNT:倫理観
+			倫理観2乗平均 += 風紀_カウント倍率 * POWER(CFLAG:LCOUNT:倫理観, 2)
 		ENDIF
 	ENDIF
 NEXT
+
+倫理観偏差値表示 = 0
+IF 風紀_人数カウント
+	;100倍で計算する
+	倫理観平均 *= 100
+	倫理観平均 /= 風紀_人数カウント
+	倫理観2乗平均 *= 100
+	倫理観2乗平均 /= 風紀_人数カウント
+
+	;「風紀」は10倍で記録しておく
+	風紀:選択校 = 倫理観平均/10
+
+	;この時点では分散の100倍
+	倫理観標準偏差 = 倫理観2乗平均 - 倫理観平均
+
+	;標準偏差は√(分散)で求まる
+	;ここで標準偏差の10倍にする
+	倫理観標準偏差 = SQRT(倫理観標準偏差)
+
+	[IF_DEBUG]
+		倫理観偏差値表示 = 1
+	[ENDIF]
+ENDIF
 
 最大桁数 = 1
 最大文字列長 = 4
@@ -633,11 +682,19 @@ SIF !INRANGE(選択校, 0, VARSIZE("学校名"))
 	RESTART
 
 DRAWLINE
+IF 倫理観偏差値表示
+	PRINTFORML 倫理観平均:{風紀:選択校/10}.{風紀:選択校%10}　倫理観標準偏差:{倫理観標準偏差/10}.{倫理観標準偏差%10}
+ENDIF
 IF リスト表示
 	PRINTFORM 恋人|%SPACES(2+最大桁数)%%SPACES((最大文字列長-4)/2)%名前%SPACES((最大文字列長-4)/2)%| 性別 |
 	SIF MOD:バスト関連ステータス表示
 		PRINT 　バスト　    トップ(カップ数)  |
-	PRINT 　友情　|ときめき|　尊敬　|母性舎弟| セフレ |既成事実|好感度合計|倫理観崩壊|
+	PRINT 　友情　|ときめき|　尊敬　|母性舎弟| セフレ |既成事実|好感度合計|
+	IF 倫理観偏差値表示
+		PRINT 倫理観/偏差値|
+	ELSE
+		PRINT 倫理観崩壊|
+	ENDIF
 	PRINTL
 
 	FOR LCOUNT, 0, 在校人数
@@ -655,7 +712,12 @@ IF リスト表示
 		PRINTPLAIN |
 		SIF MOD:バスト関連ステータス表示
 			CALL リスト_バストサイズ, 対象
-		CALL 好感度表示, 対象
+		IF 倫理観偏差値表示
+			CALL 好感度表示, 対象, 風紀:選択校, 倫理観標準偏差
+		ELSE
+			CALL 好感度表示, 対象
+		ENDIF
+		
 		PRINTL
 	NEXT
 	IF 選択校 != 無所属
@@ -674,7 +736,11 @@ IF リスト表示
 			PRINTPLAIN |
 			SIF MOD:バスト関連ステータス表示
 				CALL リスト_バストサイズ, 対象
-			CALL 好感度表示, 対象
+			IF 倫理観偏差値表示
+				CALL 好感度表示, 対象, 風紀:選択校, 倫理観標準偏差
+			ELSE
+				CALL 好感度表示, 対象
+			ENDIF
 			PRINTL
 		NEXT
 	ENDIF
@@ -694,7 +760,11 @@ IF リスト表示
 			PRINTPLAIN |
 			SIF MOD:バスト関連ステータス表示
 				CALL リスト_バストサイズ, 対象
-			CALL 好感度表示, 対象
+			IF 倫理観偏差値表示
+				CALL 好感度表示, 対象, 風紀:選択校, 倫理観標準偏差
+			ELSE
+				CALL 好感度表示, 対象
+			ENDIF
 			PRINTL
 		NEXT
 	ENDIF
@@ -976,9 +1046,12 @@ ENDIF
 RESETCOLOR
 PRINT |
 
-@好感度表示, 対象
+@好感度表示, 対象, 倫理観平均=0, 倫理観標準偏差=0
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 好感度値
+#DIM DYNAMIC 倫理観平均
+#DIM DYNAMIC 倫理観標準偏差
+#DIM DYNAMIC 偏差値
 #DIM DYNAMIC LCOUNT
 
 FOR LCOUNT, 0, 5
@@ -1045,8 +1118,19 @@ SELECTCASE 好感度値
 	CASE IS >= 50
 		SETCOLORBYNAME coral
 ENDSELECT
-PRINTFORM {好感度値, 10}
-RESETCOLOR
+IF 倫理観標準偏差
+	偏差値 = 500
+	偏差値 += 100*(10*好感度値-倫理観平均)/倫理観標準偏差
+	SIF !好感度値
+		RESETCOLOR
+	PRINTFORM {好感度値, 6}
+	RESETCOLOR
+	PRINT /
+	PRINTFORM {偏差値/10, 4}.{偏差値%10}
+ELSE
+	PRINTFORM {好感度値, 10}
+	RESETCOLOR
+ENDIF
 PRINT |
 
 ;;;好感度上昇とメッセージ表示を行う
@@ -1615,7 +1699,7 @@ BASE:気力 = MAXBASE:気力
 
 行為場所 = %場所%
 
-CFLAG:倫理観 = LIMIT(CFLAG:倫理観, 0, 100)
+CFLAG:倫理観 = LIMIT(CFLAG:倫理観, -100, 100)
 
 CALL EVENTUSERTRAIN
 DO
