@@ -338,6 +338,43 @@ ENDIF
 
 RETURN 0
 
+
+;;;同一人物などの片方しか奴隷にできない択一キャラの名前を返す 複数いる場合/区切りになるためSPLIT必須
+@択一キャラ, キャラ名
+#FUNCTIONS
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC キャラ名
+{
+#DIMS DYNAMIC 択一キャラリスト = 
+"マルクト", "ア・ミリア", 
+"芽兎 めう", "白兎先生", 
+"DJつよし", "OJつよし", 
+"テスタメントネメシス", "ミィム・ミクラー", 
+"ジュナ・サラキア", "ジュナ・フェリクス", 
+"MIR-202【アルテミス・レナ】", "レナ・イシュメイル",
+}
+;↑1:1用 二人並べて記述する
+
+FOR LCOUNT, 0, VARSIZE("択一キャラリスト")
+	SIF 択一キャラリスト:LCOUNT != キャラ名
+		CONTINUE
+	RETURNF 択一キャラリスト:(LCOUNT/2*2+!(LCOUNT%2))
+NEXT
+;2:1や1:1:1は個別
+SELECTCASE キャラ名
+	CASE "ニア・バテシバ"
+		RETURNF "ニア・ユーディット/バテシバ・アヒトフェル"
+	CASE "ニア・ユーディット", "バテシバ・アヒトフェル"
+		RETURNF "ニア・バテシバ"
+	CASE "マリィ"
+		RETURNF "レイヴガール/トルマリン"
+	CASE "レイヴガール"
+		RETURNF "マリィ/トルマリン"
+	CASE "トルマリン"
+		RETURNF "マリィ/レイヴガール"
+ENDSELECT
+RETURNF ""
+
 @CHARA_ADD, 対象, クローニング, 高速化
 #DIM DYNAMIC LCOUNT
 ;今のところは100人まで
@@ -349,16 +386,7 @@ RETURN 0
 #DIM DYNAMIC 適正ABL
 #DIM DYNAMIC 適正EXP
 #DIM DYNAMIC 対象
-{
-#DIMS DYNAMIC 択一キャラリスト = 
-"マルクト", "ア・ミリア", 
-"芽兎 めう", "白兎先生", 
-"DJつよし", "OJつよし", 
-"テスタメントネメシス", "ミィム・ミクラー", 
-"ジュナ・サラキア", "ジュナ・フェリクス", 
-"MIR-202【アルテミス・レナ】", "レナ・イシュメイル",
-}
-;↑同一人物などの片方しか奴隷にできないキャラのNAMEを二人並べて記述する
+#DIMS DYNAMIC SPLITVAR, 10
 
 SIF !クローニング
 	購入人数++
@@ -375,26 +403,12 @@ SIF (データID != 0) && (対象 != 0)
 IF !クローニング
 	CCB:対象 = 1
 	キャラ未購入 = 0
-	IF !ORIGIN
-		FOR LCOUNT, 0, VARSIZE("択一キャラリスト")
-			SIF GETNO(択一キャラリスト:LCOUNT) != 対象
-				CONTINUE
-			CCB:GETNO(択一キャラリスト:(LCOUNT/2*2+!(LCOUNT%2))) = 1
-			BREAK
+	;同一人物などの択一キャラを購入済にする
+	IF !ORIGIN && 択一キャラ(NAME:TARGET) != ""
+		SPLIT 択一キャラ(NAME:TARGET), "/", SPLITVAR
+		FOR LCOUNT, 0, RESULT
+			CCB:GETNO(SPLITVAR:LCOUNT) = 1
 		NEXT
-		;ニア・バテシバは2:1なので特殊処理
-		IF 対象 == GETNO("ニア・バテシバ")
-			CCB:GETNO("ニア・ユーディット") = 1
-			CCB:GETNO("バテシバ・アヒトフェル") = 1
-		ELSEIF GROUPMATCH(対象, GETNO("ニア・ユーディット"), GETNO("バテシバ・アヒトフェル"))
-			CCB:GETNO("ニア・バテシバ") = 1
-		ENDIF
-		;マリィ、レイヴガール、トルマリンも特殊処理
-		IF GROUPMATCH(対象, GETNO("マリィ"), GETNO("レイヴガール"), GETNO("トルマリン"))
-			CCB:GETNO("マリィ") = 1
-			CCB:GETNO("レイヴガール") = 1
-			CCB:GETNO("トルマリン") = 1
-		ENDIF
 	ENDIF
 ENDIF
 
