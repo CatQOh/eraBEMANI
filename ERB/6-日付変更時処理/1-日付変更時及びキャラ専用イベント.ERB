@@ -1005,29 +1005,29 @@ FOR LCOUNT, 0, 3
 					豹変フラグ = 1
 		ENDSELECT
 		IF 豹変フラグ
-			IF CHARANAMEF(対象) == "シュープリス"
-				PRINTFORMW ＜%CALLNAME:対象%は記憶を思い出そうと同時に湧き上がる破壊衝動で性格が豹変した……＞
-			ELSEIF CHARANAMEF(対象) == "クーデルカ・プルミエール"
-				PRINTFORMW ＜%CALLNAME:対象%は突如意識を失い、しばらくすると別人格が現れた……＞
-			ELSE
-				PRINTFORMW ＜%CALLNAME:対象%は性格が豹変した＞
-			ENDIF
+			SELECTCASE CHARANAMEF(対象)
+				CASE "シュープリス"
+					PRINTFORMW ＜%CALLNAME:対象%は記憶を思い出そうと同時に湧き上がる破壊衝動で性格が豹変した……＞
+				CASE "クーデルカ・プルミエール"
+					PRINTFORMW ＜%CALLNAME:対象%は突如意識を失い、しばらくすると別人格が現れた……＞
+				CASEELSE
+					PRINTFORMW ＜%CALLNAME:対象%は性格が豹変した＞
+			ENDSELECT
 			CALL TRANCE_ON, 対象
 			TRANCEFLAG:対象:豹変中 = 1
 		ENDIF
-	ELSE
-		IF TRANCEFLAG:対象:豹変中
-			PRINTFORMW ＜%CALLNAME:対象%は元の性格に戻った＞
-			;冷音は気力を元に戻す
-			SIF CHARANAMEF(対象) == "青雨 冷音"
-				MAXBASE:対象:気力 = TRANCEFLAG:対象:気力保存
-			;変更されている素質を全て元に戻す 今のところ他の素質変化システム（獣変化とミゼランとハート）とは競合しないので不都合はないはず
-			FOR LCOUNT, 0, VARSIZE("TALENT")
-				SIF TRANCE:対象:LCOUNT
-					CALL TRANCETALENT, 対象, TALENTNAME:LCOUNT, 999
-			NEXT
-			TRANCEFLAG:対象:豹変中 = 0
-		ENDIF
+	ELSEIF TRANCEFLAG:対象:豹変中
+		SELECTCASE CHARANAMEF(対象)
+			CASE ""
+			CASEELSE
+				PRINTFORMW ＜%CALLNAME:対象%は元の性格に戻った＞
+		ENDSELECT
+		;冷音は気力を元に戻す
+		SIF CHARANAMEF(対象) == "青雨 冷音"
+			MAXBASE:対象:気力 = TRANCEFLAG:対象:気力保存
+		;変更されている素質を全て元に戻す 今のところ他の素質変化システム（獣変化とミゼランとハート）とは競合しないので不都合はないはず
+		CALL ALLTRANCEOFF, 対象
+		TRANCEFLAG:対象:豹変中 = 0
 	ENDIF
 	CALL CHECKDRAWLINE
 NEXT
@@ -1145,6 +1145,29 @@ SELECTCASE 素質名
 			ENDIF
 		ENDIF
 ENDSELECT
+
+;;;TRANCERACEをオンオフする 種族名に何も入っていないと元に戻す
+@TRANCERACE, 対象, 種族名
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 種族名
+IF 種族名 != ""
+	SIF TRANCERACE:対象:0 == ""
+		TRANCERACE:対象:0 = %CSTR:対象:種族%
+	CSTR:対象:種族 = %種族名%
+ELSEIF TRANCERACE:対象:0 != ""
+	CSTR:対象:種族 = %TRANCERACE:対象:0%
+	TRANCERACE:対象:0 = 
+ENDIF
+
+;;;素質と種族をまとめて全部戻す用 使う場合は競合がないか注意が必要（ビーストモードとは競合しない）
+@ALLTRANCEOFF, 対象
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF TRANCE:対象:LCOUNT
+		CALL TRANCETALENT, 対象, TALENTNAME:LCOUNT, 999
+NEXT
+CALL TRANCERACE, 対象, ""
 
 ;-------------------------------------------------
 ;ユリア天使化
