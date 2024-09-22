@@ -846,53 +846,55 @@ ELSE
 ENDIF
 PRINTL 
 PRINTFORML 　倫理観崩壊度:{CFLAG:選択キャラ:倫理観}
-IF ラブスコープ使用
-	PRINTL □好感度
-	PRINTFORMLC 　友情:{好感度:選択キャラ:友情}
-	PRINTFORMLC ときめき:{好感度:選択キャラ:ときめき}
-	PRINTFORMLC 尊敬:{好感度:選択キャラ:尊敬}
-	PRINTL 
-	PRINTFORMLC 　\@ SEX(選択キャラ) == 2 || NAME:選択キャラ == "ハニー" ? 母性 # 舎弟 \@:{好感度:選択キャラ:舎弟}
-	PRINTFORMLC セフレ:{好感度:選択キャラ:セフレ}
-	PRINTFORMLC 既成事実:{好感度:選択キャラ:既成事実}
-	PRINTL 
-ENDIF
-PRINTL □各ロケーションでの出現率
-;どこのロケーションに出現するのかを表示
-データベース参照中 = 選択キャラ
-表示数 = 0
-FOR LCOUNT, 0, VARSIZE("ロケーション")
-	VARSET 出現率
-	SPLIT ロケーション:LCOUNT, "/", 名称抜き取り用
-	;分割されてたらスラッシュより後の部分だけを使用する
-	IF RESULT >= 2
-		ロケーション名 = %RPS(名称抜き取り用:1)%
-	ELSE
-		ロケーション名 = %RPS(ロケーション:LCOUNT)%
-	ENDIF
-	TRYCALLFORM 出現キャラ_%RPS(ロケーション名)%
-	;口上による出現率変更
-	IF OPTION:口上表示 && !CFLAG:LCOUNT:口上非表示 && EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:選択キャラ)%_出現率設定")
-		LTARGET = TARGET
-		TARGET = 選択キャラ
-		CALLFORM SCHOOL_%CSVNAMERPS(NO:選択キャラ)%_出現率設定, ロケーション名
-		IF RESULT < 0
-			出現率:選択キャラ = 0
-		ELSEIF RESULT > 0
-			出現率:選択キャラ = LIMIT(RESULT, 0, 100)
-		ENDIF
-		TARGET = LTARGET
-	ENDIF
-	;出現率も表示
-	SIF !出現率:選択キャラ
-		CONTINUE
-	PRINTFORMLC 　%ロケーション:LCOUNT%({出現率:選択キャラ}\%)
-	表示数++
-	SIF 表示数 != 0 && 表示数%4 == 0
+IF 選択キャラ != PLAYER
+	IF ラブスコープ使用
+		PRINTL □好感度
+		PRINTFORMLC 　友情:{好感度:選択キャラ:友情}
+		PRINTFORMLC ときめき:{好感度:選択キャラ:ときめき}
+		PRINTFORMLC 尊敬:{好感度:選択キャラ:尊敬}
 		PRINTL 
-NEXT
-データベース参照中 = 0
-CALL NEWLINE
+		PRINTFORMLC 　\@ SEX(選択キャラ) == 2 || NAME:選択キャラ == "ハニー" ? 母性 # 舎弟 \@:{好感度:選択キャラ:舎弟}
+		PRINTFORMLC セフレ:{好感度:選択キャラ:セフレ}
+		PRINTFORMLC 既成事実:{好感度:選択キャラ:既成事実}
+		PRINTL 
+	ENDIF
+	PRINTL □各ロケーションでの出現率
+	;どこのロケーションに出現するのかを表示
+	データベース参照中 = 選択キャラ
+	表示数 = 0
+	FOR LCOUNT, 0, VARSIZE("ロケーション")
+		VARSET 出現率
+		SPLIT ロケーション:LCOUNT, "/", 名称抜き取り用
+		;分割されてたらスラッシュより後の部分だけを使用する
+		IF RESULT >= 2
+			ロケーション名 = %RPS(名称抜き取り用:1)%
+		ELSE
+			ロケーション名 = %RPS(ロケーション:LCOUNT)%
+		ENDIF
+		TRYCALLFORM 出現キャラ_%RPS(ロケーション名)%
+		;口上による出現率変更
+		IF OPTION:口上表示 && !CFLAG:LCOUNT:口上非表示 && EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:選択キャラ)%_出現率設定")
+			LTARGET = TARGET
+			TARGET = 選択キャラ
+			CALLFORM SCHOOL_%CSVNAMERPS(NO:選択キャラ)%_出現率設定, ロケーション名
+			IF RESULT < 0
+				出現率:選択キャラ = 0
+			ELSEIF RESULT > 0
+				出現率:選択キャラ = LIMIT(RESULT, 0, 100)
+			ENDIF
+			TARGET = LTARGET
+		ENDIF
+		;出現率も表示
+		SIF !出現率:選択キャラ
+			CONTINUE
+		PRINTFORMLC 　%ロケーション:LCOUNT%({出現率:選択キャラ}\%)
+		表示数++
+		SIF 表示数 != 0 && 表示数%4 == 0
+			PRINTL 
+	NEXT
+	データベース参照中 = 0
+	CALL NEWLINE
+ENDIF
 DRAWLINE
 PRINTPLAIN 　DATABASE　
 PRINTW クリック・Enterで戻る
@@ -907,83 +909,111 @@ RETURNF SUMARRAY(好感度:対象:0)
 
 ;;;学園モードの名前表示処理
 ;;;第1引数に対象のIDを代入、第2引数が0以外なら在任しているキャラに「先生」をつける
-@SNAME, 対象, 先生=0
+@SNAME, 対象, 先生 = 0
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 先生
 #DIM DYNAMIC 好感度値
 #DIMS DYNAMIC 表示好感度
+#DIMS DYNAMIC 表記
 
+SIF NAME:対象 == 運命の人
+	SETCOLORBYNAME coral
+PRINTFORM %NAME:対象%
+RESETCOLOR
+SIF 先生 && CSTR:対象:在任 != ""
+	PRINT 先生
 IF ラブスコープ使用
-	SIF NAME:対象 == 運命の人
-		SETCOLORBYNAME coral
-	PRINTFORM %NAME:対象%
-	RESETCOLOR
-	SIF 先生 && CSTR:対象:在任 != ""
-		PRINT 先生
-	SELECTCASE ラブスコープ使用
-		CASE 1 TO 6
-			表示好感度 = %ERDNAME(好感度, ラブスコープ使用-1)%
-			好感度値 = 好感度:対象:(ラブスコープ使用-1)
-			SIF (SEX(対象) == 2 || NAME:対象 == "ハニー") && 表示好感度 == "舎弟"
-				表示好感度 = 母性
-		CASE 7
-			表示好感度 = 好感度合計
-			好感度値 = 好感度合計(対象)
-		CASE 8
-			表示好感度 = 倫理観崩壊度
-			好感度値 = CFLAG:対象:倫理観
-	ENDSELECT
+	表示好感度 = %ラブスコープ表示名()%
 	SELECTCASE 表示好感度
+		CASE "好感度合計"
+			好感度値 = 好感度合計(対象)
 		CASE "倫理観崩壊度"
-			SELECTCASE 好感度値
-				CASE 0
-					SETCOLOR 0x404040
-				CASE 10 TO 29
-					SETCOLORBYNAME lime
-				CASE 30 TO 49
-					SETCOLORBYNAME yellow
-				CASE IS >= 50
-					SETCOLORBYNAME coral
-			ENDSELECT
-		CASE "既成事実"
-			SELECTCASE 好感度値
-				CASE 0
-					SETCOLOR 0x404040
-				CASE 1 TO 4
-				CASE 5 TO 9
-					SETCOLORBYNAME lime
-				CASE 10 TO 14
-					SETCOLORBYNAME deepskyblue
-				CASE 15 TO 19
-					SETCOLORBYNAME violet
-				CASE IS >= 20
-					SETCOLORBYNAME coral
-			ENDSELECT
+			好感度値 = CFLAG:対象:倫理観
 		CASEELSE
-			SELECTCASE 好感度値
-				CASE 0
-					SETCOLOR 0x404040
-				CASE 1 TO 99
-				CASE 100 TO 299
-					SETCOLORBYNAME lime
-				CASE 300 TO 499
-					SETCOLORBYNAME deepskyblue
-				CASE 500 TO 999
-					SETCOLORBYNAME violet
-				CASE IS >= 1000
-					SETCOLORBYNAME coral
-			ENDSELECT
+			好感度値 = 好感度:対象:(ラブスコープ使用-1)
+			IF 表示好感度 == "舎弟or母性"
+				IF SEX(対象) == 2 || NAME:対象 == "ハニー"
+					表示好感度 = 母性
+				ELSE
+					表示好感度 = 舎弟
+				ENDIF
+			ENDIF
 	ENDSELECT
-	PRINTFORM (%表示好感度%:{好感度値})
-	RESETCOLOR
-ELSE
-	SIF NAME:対象 == 運命の人
-		SETCOLORBYNAME coral
-	PRINTFORM %NAME:対象%
-	RESETCOLOR
-	SIF 先生 && CSTR:対象:在任 != ""
-		PRINT 先生
+	IF ラブスコープ短縮表記
+		SELECTCASE 表示好感度
+			CASE "友情"
+				表記 = 友
+			CASE "ときめき"
+				表記 = 恋
+			CASE "尊敬"
+				表記 = 敬
+			CASE "舎弟"
+				表記 = 舎
+			CASE "母性"
+				表記 = 母
+			CASE "セフレ"
+				表記 = セ
+			CASE "既成事実"
+				表記 = 既
+			CASE "好感度合計"
+				表記 = 計
+			CASE "倫理観崩壊度"
+				表記 = 倫
+		ENDSELECT
+	ELSE
+		表記 = %表示好感度%
+	ENDIF
+	CALL PRINTCOLOR, @"(%表記%:{好感度値})", 好感度色分け(表示好感度, 好感度値)
 ENDIF
+
+@好感度色分け, 種類, 好感度値
+#FUNCTIONS
+#DIMS DYNAMIC 種類
+#DIM DYNAMIC 好感度値
+SELECTCASE 種類
+	CASE "倫理観", "倫理観崩壊度"
+		SELECTCASE 好感度値
+			CASE 0
+				RETURNF "0x404040"
+			CASE 10 TO 29
+				RETURNF "lime"
+			CASE 30 TO 49
+				RETURNF "yellow"
+			CASE IS >= 50
+				RETURNF "coral"
+		ENDSELECT
+	CASE "既成事実"
+		SELECTCASE 好感度値
+			CASE 0
+				RETURNF "0x404040"
+			CASE 1 TO 4
+				RETURNF ""
+			CASE 5 TO 9
+				RETURNF "lime"
+			CASE 10 TO 14
+				RETURNF "deepskyblue"
+			CASE 15 TO 19
+				RETURNF "violet"
+			CASE IS >= 20
+				RETURNF "coral"
+		ENDSELECT
+	CASEELSE
+		SELECTCASE 好感度値
+			CASE 0
+				RETURNF "0x404040"
+			CASE 1 TO 99
+				RETURNF ""
+			CASE 100 TO 299
+				RETURNF "lime"
+			CASE 300 TO 499
+				RETURNF "deepskyblue"
+			CASE 500 TO 999
+				RETURNF "violet"
+			CASE IS >= 1000
+				RETURNF "coral"
+		ENDSELECT
+ENDSELECT
+
 
 @リスト_名前表示, 対象, 最大文字列長
 #DIM DYNAMIC 対象

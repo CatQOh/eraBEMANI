@@ -90,19 +90,8 @@ ENDIF
 CALL COLUMNPRINTL, 0, "　[500] - データベース"
 CALL COLUMNPRINTL, 0, @"　[501] - 口上表示切り替え(現在:\@ OPTION:口上表示 ? オン # オフ \@)"
 CALL COLUMNPRINTL, 0, @"　[502] - 行為中の地の文表示切り替え(現在:\@ OPTION:地の文表示 ? オン # オフ \@)"
-IF ITEM:ラブスコープ
-	SELECTCASE ラブスコープ使用
-		CASE 0
-			表示好感度 = 表示しない
-		CASE 1 TO 6
-			表示好感度 = %ERDNAME(好感度, ラブスコープ使用-1)%
-		CASE 7
-			表示好感度 = 好感度合計
-		CASE 8
-			表示好感度 = 倫理観崩壊度
-	ENDSELECT
-	CALL COLUMNPRINTL, 0, @"　[503] - ラブスコープの表示切り替え(現在:\@ 表示好感度 == "舎弟" ? 舎弟or母性 # %表示好感度% \@)"
-ENDIF
+SIF ITEM:ラブスコープ
+	CALL COLUMNPRINTL, 0, @"　[503] - ラブスコープの表示切り替え(現在:%ラブスコープ表示名()%)"
 CALL COLUMNPRINTL, 0, "　[504] - スキルツリー"
 CALL COLUMNPRINTL, 0, "　[505] - 服装変更"
 
@@ -301,21 +290,37 @@ RESTART
 @ラブスコープ設定変更
 #DIM DYNAMIC LCOUNT
 PRINTL □ラブスコープで表示する好感度を選んでください
+PRINTFORML 　[-1] - キャンセル
 FOR LCOUNT, 0, 9
-	SELECTCASE LCOUNT
-		CASE 0
-			PRINTL 　[0] - 表示しない
-		CASE 1 TO 6
-			IF ERDNAME(好感度, LCOUNT-1) == "舎弟"
-				PRINTFORML 　[{LCOUNT}] - 舎弟or母性
-			ELSE
-				PRINTFORML 　[{LCOUNT}] - %ERDNAME(好感度, LCOUNT-1)%
-			ENDIF
-		CASE 7
-			PRINTL 　[7] - 好感度合計
-		CASE 8
-			PRINTL 　[8] - 倫理観崩壊度
-	ENDSELECT
+	PRINTFORML 　[{LCOUNT}] - %ラブスコープ表示名(LCOUNT)%
 NEXT
+PRINTFORML 　[99] - 好感度名の短縮表記(現在:\@ ラブスコープ短縮表記 ? する # しない \@)
 BINPUT
-ラブスコープ使用 = RESULT
+SELECTCASE RESULT
+	CASE -1
+		RETURN
+	CASE 99
+		INVERTBIT ラブスコープ短縮表記, 0
+	CASEELSE
+		ラブスコープ使用 = RESULT
+ENDSELECT
+
+@ラブスコープ表示名, 番号 = -1
+#FUNCTIONS
+#DIM DYNAMIC 番号
+SIF 番号 == -1
+	番号 = ラブスコープ使用
+SELECTCASE 番号
+	CASE 0
+		RETURNF "表示しない"
+	CASE 1 TO 6
+		IF ERDNAME(好感度, 番号-1) == "舎弟"
+			RETURNF "舎弟or母性"
+		ELSE
+			RETURNF ERDNAME(好感度, 番号-1)
+		ENDIF
+	CASE 7
+		RETURNF "好感度合計"
+	CASE 8
+		RETURNF "倫理観崩壊度"
+ENDSELECT

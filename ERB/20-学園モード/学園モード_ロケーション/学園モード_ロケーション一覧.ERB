@@ -10,6 +10,7 @@
 #DIM DYNAMIC 散策
 #DIM DYNAMIC 倫理観加算済み
 #DIM DYNAMIC LVARLINE
+#DIM DYNAMIC マリィ
 
 VARSET ロケーション判定
 
@@ -63,22 +64,33 @@ VARSET 出現率
 VARSET 集団行動
 TRYCALLFORM 出現キャラ_%RPS(目的地)%
 
-;マリィ、レイヴガール、トルマリンの特殊処理 グループに入っていたら無視
-IF !GROUPMATCH(-1, GETCHARANAME("マリィ"), GETCHARANAME("レイヴガール"), GETCHARANAME("トルマリン"))
-	IF !GROUPMATCH(-1, 出現率:GETCHARANAME("マリィ"), 出現率:GETCHARANAME("レイヴガール"), 出現率:GETCHARANAME("トルマリン"))
-		IF 同行者 == GETCHARANAME("レイヴガール") || (DOW(FLAG:曜日) == "土" && GROUPMATCH(ターン, "夕", "夜"))
-			出現率:GETCHARANAME("マリィ") = 0
-			出現率:GETCHARANAME("トルマリン") = 0
-		ELSEIF 同行者 == GETCHARANAME("トルマリン") || DAY%5 == 0
-			;トルマリンの分岐は適当、ランダムにするとリロードで変わってしまうため固定
-			出現率:GETCHARANAME("マリィ") = 0
-			出現率:GETCHARANAME("レイヴガール") = 0
-		ELSEIF 同行者 == GETCHARANAME("マリィ") || DAY%5 != 0
-			出現率:GETCHARANAME("レイヴガール") = 0
-			出現率:GETCHARANAME("トルマリン") = 0
-		ENDIF
-	ENDIF
-ENDIF
+;特殊処理のあるキャラ
+FOR LCOUNT, 0, CHARANUM
+	SELECTCASE CHARANAMEF(LCOUNT)
+		CASE "マリィ", "レイヴガール", "トルマリン"
+			IF !マリィ
+				IF GROUPMATCH(同行者, GETCHARANAME("マリィ"), GETCHARANAME("レイヴガール"), GETCHARANAME("トルマリン"))
+					マリィ = 同行者
+				ELSE
+					;トルマリンの分岐は適当、ランダムにするとリロードで変わってしまうため日付固定
+					IF DOW(FLAG:曜日) == "土" && GROUPMATCH(ターン, "夕", "夜")
+						マリィ = GETCHARANAME("レイヴガール")
+					ELSEIF DAY%5 == 0
+						マリィ = GETCHARANAME("トルマリン")
+					ELSE
+						マリィ = GETCHARANAME("マリィ")
+					ENDIF
+				ENDIF
+			ENDIF
+			;上で判定した以外の二人の出現率を0にする グループに入っていたら一旦無視
+			SIF 出現率:LCOUNT > 0 && マリィ > 0 && LCOUNT != マリィ
+				出現率:LCOUNT = 0
+		CASE "リリアリス・コルチカム"
+			;夜しか徘徊しない（人形店ロケーションとかが出来たら除外）
+			SIF 出現率:LCOUNT > 0 && ターン != "夜"
+				出現率:LCOUNT = 0
+	ENDSELECT
+NEXT
 
 ;口上による出現率設定 既にグループに入っていたら無視
 IF OPTION:口上表示
