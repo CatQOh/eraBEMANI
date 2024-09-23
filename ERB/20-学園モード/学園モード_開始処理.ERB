@@ -84,9 +84,9 @@ PRINTFORML クラス分け終了(100\%)
 ;まだ終わってないけど一番時間かかるのはキャラ追加処理なので実質100%
 
 ;まず全キャラの順番をシャッフルする
-FOR LCOUNT, 1, CHARANUM-1
-	SWAPCHARA LCOUNT, RAND(LCOUNT+1, CHARANUM)
-NEXT
+;FOR LCOUNT, 1, CHARANUM-1
+;	SWAPCHARA LCOUNT, RAND(LCOUNT+1, CHARANUM)
+;NEXT
 
 ;学校区分
 ;BEMANI学園 小,中,高
@@ -102,12 +102,14 @@ NEXT
 ;聖グラディウス学園
 ;ボンバーアカデミア 小,中,高（？）
 
+CALL 学校リスト生成, 1
+
 ;固定用の学校は事前に決めておく
-SIF 固定用学校:0 == ""
+SIF 固定用学校:0 == "" || FINDELEMENTF(除外学校リスト, 固定用学校:0) >= 0
 	固定用学校:0 = %学園ランダム("小")%
-SIF 固定用学校:1 == ""
+SIF 固定用学校:1 == "" || FINDELEMENTF(除外学校リスト, 固定用学校:1) >= 0
 	固定用学校:1 = %学園ランダム("中")%
-SIF 固定用学校:2 == ""
+SIF 固定用学校:2 == "" || FINDELEMENTF(除外学校リスト, 固定用学校:2) >= 0
 	固定用学校:2 = %学園ランダム("高")%
 ;教師の赴任先は小中高ランダム
 SIF 固定用学校:3 == ""
@@ -128,10 +130,58 @@ FOR LCOUNT, 1, CHARANUM
 	;キャラアップデートの場合新規追加キャラと所属が追加された可能性のある無所属キャラだけ見る
 	SIF 新規追加フラグ && (CSTR:LCOUNT:在校 != "" || CSTR:LCOUNT:在任 != "")
 		CONTINUE
-	SIF !優先処理済 && !キャラ選択フラグ:NOF(LCOUNT) && !新規追加フラグ
-		CONTINUE
-	SIF 優先処理済 && キャラ選択フラグ:NOF(LCOUNT)
-		CONTINUE
+	;SIF !優先処理済 && !キャラ選択フラグ:NOF(LCOUNT) && !新規追加フラグ
+	;	CONTINUE
+	;SIF 優先処理済 && キャラ選択フラグ:NOF(LCOUNT)
+	;	CONTINUE
+	
+	;学校固定にしたキャラの処理
+	IF キャラ選択フラグ:NOF(LCOUNT) && INRANGE(CFLAG:LCOUNT:学年, 1, 3)
+		IF CSTR:LCOUNT:在任 != ""
+			CSTR:LCOUNT:在任 = %固定用学校:(CFLAG:LCOUNT:学年-1)%
+		ELSE
+			CSTR:LCOUNT:在校 = %固定用学校:(CFLAG:LCOUNT:学年-1)%
+		ENDIF
+	ELSEIF CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == ""
+		IF CSTR:LCOUNT:担当科目 != ""
+			CSTR:LCOUNT:在任 = %選任ランダム(CSTR:LCOUNT:担当科目)%
+		ELSE
+			DO
+				IF CFLAG:LCOUNT:在校グループ
+					IF 学園乱数固定用:(CFLAG:LCOUNT:在校グループ) == ""
+						SELECTCASE CFLAG:LCOUNT:学年
+							CASE 1
+								学園乱数固定用:(CFLAG:LCOUNT:在校グループ) = %学園ランダム("小", 1)%
+							CASE 2
+								学園乱数固定用:(CFLAG:LCOUNT:在校グループ) = %学園ランダム("中", 1)%
+							CASE 3
+								学園乱数固定用:(CFLAG:LCOUNT:在校グループ) = %学園ランダム("高", 1)%
+						ENDSELECT
+					ENDIF
+					CSTR:LCOUNT:在校 = %学園乱数固定用:(CFLAG:LCOUNT:在校グループ)%
+				ELSE
+					SELECTCASE CFLAG:LCOUNT:学年
+						CASE 1
+							CSTR:LCOUNT:在校 = %学園ランダム("小", TALENT:LCOUNT:性別)%
+						CASE 2
+							CSTR:LCOUNT:在校 = %学園ランダム("中", TALENT:LCOUNT:性別)%
+						CASE 3
+							CSTR:LCOUNT:在校 = %学園ランダム("高", TALENT:LCOUNT:性別)%
+						CASE 4
+							CSTR:LCOUNT:在校 = BEMANI大学
+					ENDSELECT
+				ENDIF
+				;グリムキャラはマジックアカデミー以外のどこか
+				SIF CFLAG:LCOUNT:グリム && CSTR:LCOUNT:在校 == "マジックアカデミー"
+					CONTINUE
+				BREAK
+			LOOP 1
+			DEBUGPRINTFORML %NAME:LCOUNT% %CSTR:LCOUNT:在校%
+		ENDIF
+	ENDIF
+
+	;CSVに書くようにしたのでコメントアウトで様子見
+	[SKIPSTART]
 	SELECTCASE NAME:LCOUNT
 		;学校固定の人たち
 		;華練学園の3人
@@ -817,16 +867,17 @@ FOR LCOUNT, 1, CHARANUM
 			ENDIF
 			CSTR:LCOUNT:担当科目 = 校長
 	ENDSELECT
+	[SKIPEND]
 NEXT
 
 ;優先処理が終わったらもう一周
-IF !優先処理済 && !新規追加フラグ
-	優先処理済 = 1
-	GOTO ランダム入学処理
-ENDIF
+;IF !優先処理済 && !新規追加フラグ
+;	優先処理済 = 1
+;	GOTO ランダム入学処理
+;ENDIF
 
 ;キャラ番号順にソート
-SORTCHARA
+;SORTCHARA
 
 CALL FADEOUTBGM
 
@@ -842,6 +893,7 @@ SIF 新規追加フラグ
 	RETURN 1
 
 $学校一覧表示
+CALL 学校リスト生成, 1
 DRAWLINE
 FOR LCOUNT, 0, VARSIZE("学校名")
 	SIF 学校名:LCOUNT == ""
@@ -885,7 +937,7 @@ PRINTL [100] - 決定 [101] - やり直し
 
 BINPUT
 SELECTCASE RESULT
-	CASE 0 TO VARSIZE("学校名")-1
+	CASE 0 TO FINDELEMENTF(学校名, "BEMANI大学")
 		VARLINE = LINECOUNT
 		$キャラ一覧
 		CALL LOOP_CLEARLINE
@@ -1324,78 +1376,80 @@ WAIT
 @学園ランダム, 学年, 性別判定
 #FUNCTIONS
 #DIMS DYNAMIC 候補
-#DIM DYNAMIC 人数記録用, 13
+#DIM DYNAMIC 人数記録用, 100
 #DIM DYNAMIC 性別判定
 #DIMS DYNAMIC 学年
+#DIMS DYNAMIC 小学校, 100
+#DIMS DYNAMIC 中学校, 100
+#DIMS DYNAMIC 高校, 100
+#DIM DYNAMIC 小学校人数, 100
+#DIM DYNAMIC 中学校人数, 100
+#DIM DYNAMIC 高校人数, 100
+#DIM DYNAMIC 学年ID = 1
+#DIM DYNAMIC 入学先
+#DIM DYNAMIC LCOUNT
 
+;マジックアカデミーは小中高全てを包括する
+小学校:0 = マジックアカデミー
+中学校:0 = マジックアカデミー
+高校:0 = マジックアカデミー
+
+FOR LCOUNT, 0, VARSIZE("学校名")
+	SIF 学年ID == 4
+		BREAK
+	IF 学校名:LCOUNT == ""
+		学年ID++
+		CONTINUE
+	ENDIF
+	SELECTCASE 学年ID
+		CASE 1
+			小学校:FINDELEMENTF(小学校, "") = %学校名:LCOUNT%
+		CASE 2
+			中学校:FINDELEMENTF(中学校, "") = %学校名:LCOUNT%
+		CASE 3
+			高校:FINDELEMENTF(高校, "") = %学校名:LCOUNT%
+	ENDSELECT
+NEXT
+
+$再抽選
 SELECTCASE 学年
 	CASE "小"
-		STRDATA 候補
-			DATA BEMANI学園初等部
-			DATA ボルテ学園初等部
-		ENDDATA
-		人数記録用:0 = CMATCH(CSTR:在校, "BEMANI学園初等部")
-		人数記録用:1 = CMATCH(CSTR:在校, "ボルテ学園初等部")
+		候補 = %小学校:(RAND:FINDELEMENTF(小学校, ""))%
+		FOR LCOUNT, 0, 100
+			SIF 小学校:LCOUNT == ""
+				BREAK
+			人数記録用:LCOUNT = CMATCH(CSTR:在校, 小学校:LCOUNT)
+		NEXT
 		;最低人数の学校と3人以上差がついてたら再抽選する
-		SIF CMATCH(CSTR:在校, 候補)-MINARRAY(人数記録用, 0, 2) >= 3
-			RESTART
+		SIF CMATCH(CSTR:在校, 候補)-MINARRAY(人数記録用, 0, FINDELEMENTF(小学校, "")) >= 3
+			GOTO 再抽選
 		RETURNF 候補
 	CASE "中"
-		STRDATA 候補
-			DATA BEMANI学園中等部
-			DATA ボルテ学園中等部
-			DATA 華練学園中等科
-			DATA マジックアカデミー
-			DATA プリンセスリパブリック音楽学院中等部
-			DATA 奏坂学園
-		ENDDATA
+		候補 = %中学校:(RAND:FINDELEMENTF(中学校, ""))%
 		;女子校には男子は入学不可
 		SIF 性別判定 == 1 && 女子校判定(候補)
 			RESTART
-		人数記録用:0 = CMATCH(CSTR:在校, "BEMANI学園中等部")
-		人数記録用:1 = CMATCH(CSTR:在校, "ボルテ学園中等部")
-		人数記録用:2 = CMATCH(CSTR:在校, "華練学園中等科")
-		人数記録用:3 = CMATCH(CSTR:在校, "マジックアカデミー")
-		人数記録用:4 = CMATCH(CSTR:在校, "プリンセスリパブリック音楽学院中等部")
-		人数記録用:5 = CMATCH(CSTR:在校, "奏坂学園")
+		FOR LCOUNT, 0, 100
+			SIF 中学校:LCOUNT == ""
+				BREAK
+			人数記録用:LCOUNT = CMATCH(CSTR:在校, 中学校:LCOUNT)
+		NEXT
 		;最低人数の学校と3人以上差がついてたら再抽選する
-		SIF 性別判定 == 2 && CMATCH(CSTR:在校, 候補)-MINARRAY(人数記録用, 0, 6) >= 3
+		SIF 性別判定 == 2 && CMATCH(CSTR:在校, 候補)-MINARRAY(人数記録用, 0, FINDELEMENTF(中学校, "")) >= 3
 			RESTART
 		RETURNF 候補
 	CASE "高"
-		STRDATA 候補
-			DATA BEMANI学園高等部
-			DATA ボルテ学園高等部
-			DATA 天神学園
-			DATA プリンセスリパブリック音楽学院高等部
-			DATA マジックアカデミー
-			DATA さくら野高校
-			DATA 舞ヶ原高校
-			DATA 奏坂高校
-			DATA ラピストリア学園
-			DATA 聖グラディウス学園
-			DATA ネリマ壱役高等学校
-			DATA アキバ弐役女学院
-			DATA 帝国立ナガタチョウ役満高等学校
-		ENDDATA
+		候補 = %高校:(RAND:FINDELEMENTF(高校, ""))%
 		;女子校には男子は入学不可
 		SIF 性別判定 == 1 && 女子校判定(候補)
 			RESTART
-		人数記録用:0 = CMATCH(CSTR:在校, "BEMANI学園高等部")
-		人数記録用:1 = CMATCH(CSTR:在校, "ボルテ学園高等部")
-		人数記録用:2 = CMATCH(CSTR:在校, "天神学園")
-		人数記録用:3 = CMATCH(CSTR:在校, "プリンセスリパブリック音楽学院高等部")
-		人数記録用:4 = CMATCH(CSTR:在校, "マジックアカデミー")
-		人数記録用:5 = CMATCH(CSTR:在校, "さくら野高校")
-		人数記録用:6 = CMATCH(CSTR:在校, "舞ヶ原高校")
-		人数記録用:7 = CMATCH(CSTR:在校, "奏坂高校")
-		人数記録用:8 = CMATCH(CSTR:在校, "ラピストリア学園")
-		人数記録用:9 = CMATCH(CSTR:在校, "聖グラディウス学園")
-		人数記録用:10 = CMATCH(CSTR:在校, "ネリマ壱役高等学校")
-		人数記録用:11 = CMATCH(CSTR:在校, "アキバ弐役女学院")
-		人数記録用:12 = CMATCH(CSTR:在校, "帝国立ナガタチョウ役満高等学校")
+		FOR LCOUNT, 0, 100
+			SIF 高校:LCOUNT == ""
+				BREAK
+			人数記録用:LCOUNT = CMATCH(CSTR:在校, 高校:LCOUNT)
+		NEXT
 		;最低人数の学校と3人以上差がついてたら再抽選する
-		SIF 性別判定 == 2 && CMATCH(CSTR:在校, 候補)-MINARRAY(人数記録用, 0, 13) >= 3
+		SIF 性別判定 == 2 && CMATCH(CSTR:在校, 候補)-MINARRAY(人数記録用, 0, FINDELEMENTF(高校, "")) >= 3
 			RESTART
 		RETURNF 候補
 ENDSELECT
