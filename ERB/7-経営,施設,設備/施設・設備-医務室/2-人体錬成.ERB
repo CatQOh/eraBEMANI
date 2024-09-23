@@ -163,6 +163,14 @@ SIF CFLAG:GETCHARANAME(CSVNAME(オリジナル)):クローン番号
 SPLIT 択一キャラ(CSVNAME(オリジナル)), "/", 択一キャラリスト
 択一キャラ数 = RESULT
 FOR LCOUNT, 0, 択一キャラ数
+	SELECTCASE 択一キャラリスト:LCOUNT
+		;ニア・バテシバは二人揃っているかつDNAデータがニア側の必要がある
+		CASE "ニア・バテシバ"
+			SIF GETCHARANAME("ニア・ユーディット") == -1 || GETCHARANAME("バテシバ・アヒトフェル") == -1
+				RETURN
+			SIF オリジナル != GETNO("ニア・ユーディット")
+				RETURN
+	ENDSELECT
 	SIF GETCHARANAME(択一キャラリスト:LCOUNT) == -1
 		作成可能リスト:(作成可能数++) = GETNO(択一キャラリスト:LCOUNT)
 NEXT
@@ -176,7 +184,13 @@ NEXT
 SIF 配属魔法技能合計 < 10
 	RETURN
 
-PRINTFORML %CSVNAME(オリジナル)%の\@ 配属先 == "実験室" ? 分析データ # DNA \@と魂を元に特殊なクローンを作成しますか？
+SELECTCASE CSVNAME(オリジナル)
+	CASE "ニア・ユーディット"
+		PRINTFORM ニア・ユーディットのDNAとバテシバ・アヒトフェルの魂
+	CASEELSE
+		PRINTFORM %CSVNAME(オリジナル)%の\@ 配属先 == "実験室" ? 分析データ # DNA \@と魂
+ENDSELECT
+PRINTFORML を元に特殊なクローンを作成しますか？
 PRINTFORML [0] はい
 PRINTFORML [1] いいえ
 BINPUT
@@ -219,7 +233,13 @@ ELSE
 	ENDIF
 ENDIF
 
-PRINTFORML %NAME:オリジナル%の魂を分け、%NAME:作成キャラ%を作成しました
+SELECTCASE NAME:作成キャラ
+	CASE "ニア・バテシバ"
+		PRINTFORM ニア・ユーディットのDNAから生成した肉体をベースにバテシバ・アヒトフェルの魂を分け、
+	CASEELSE
+		PRINTFORM %NAME:オリジナル%の魂を分け、
+ENDSELECT
+PRINTFORML %NAME:作成キャラ%を作成しました
 ;CSVありキャラに複製フラグつけるのが不都合だったら対処
 CFLAG:作成キャラ:複製 = NOF(オリジナル)
 IF 配属先 == "実験室"
@@ -242,6 +262,8 @@ CFLAG:作成キャラ:人工物 = 1
 
 ;口上表示→反発イベントDISABLEの順（イベントの有無に関わらず口上は出る）
 CALL KOJO_MESSAGE_EVENT, "特殊クローン生成", オリジナル
+SIF NAME:作成キャラ == "ニア・バテシバ"
+	CALL KOJO_MESSAGE_EVENT, "特殊クローン生成", GETCHARANAME("バテシバ・アヒトフェル")
 CALL KOJO_MESSAGE_EVENT, "特殊クローンとして誕生", 作成キャラ
 ;反発イベントはちょっと様子見
 [SKIPSTART]
