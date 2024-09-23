@@ -223,7 +223,7 @@ ELSE
 	インモラル閾値 = 0
 ENDIF
 
-IF 好感度:既成事実 >= 10 || 好感度:セフレ >= 1000 || TALENT:恋慕
+IF 好感度:既成事実 >= 10 || セフレ判定(TARGET) || TALENT:恋慕
 	IF CFLAG:インモラル < インモラル閾値
 		CALL SCHOOL_KOJO, TARGET, "誘惑_失敗"
 		RETURN
@@ -276,13 +276,17 @@ ENDIF
 
 @SCHOOL_思い切って告白する
 ;割りと大事な場面なので素質で分岐させたりしたいかも
-IF 好感度:セフレ && 好感度:セフレ >= 好感度:ときめき
+IF 告白判定(TARGET)
+	CALL SCHOOL_KOJO, TARGET, "告白_成功"
+	CALL 恋仲, TARGET
+	WAIT
+ELSEIF 好感度:セフレ && 好感度:セフレ >= 好感度:ときめき
 	IF 好感度:既成事実
 		CALL SCHOOL_KOJO, TARGET, "告白_失敗"
 		CALL 好感度上昇, TARGET, "セフレ", 10
 		WAIT
 	ELSE
-		IF 好感度:セフレ >= 1000
+		IF セフレ判定(TARGET)
 			CALL SCHOOL_KOJO, TARGET, "告白_失敗"
 			CALL 好感度上昇, TARGET, "セフレ", 5
 			WAIT
@@ -290,10 +294,6 @@ IF 好感度:セフレ && 好感度:セフレ >= 好感度:ときめき
 			CALL SCHOOL_KOJO, TARGET, "告白_失敗"
 		ENDIF
 	ENDIF
-ELSEIF 好感度:ときめき >= 1000
-	CALL SCHOOL_KOJO, TARGET, "告白_成功"
-	CALL 恋仲, TARGET
-	WAIT
 [SKIPSTART]
 ELSEIF 好感度:ときめき >= 500 && 連絡先:TARGET
 	CALL SCHOOL_KOJO, TARGET, "告白_保留"
@@ -312,6 +312,48 @@ ELSE
 		CALL 好感度上昇, TARGET, "ときめき", -5
 	ENDIF
 	WAIT
+ENDIF
+
+;;;告白してOKがもらえるなら1を返す
+@告白判定(対象)
+#FUNCTION
+#DIM DYNAMIC 対象
+
+IF 好感度:対象:ときめき >= 1000 && 好感度:対象:ときめき > 好感度:対象:セフレ
+	RETURNF 1
+ENDIF
+RETURNF 0
+
+;;;セフレとして扱われうるなら1を返す
+;;;自宅での宿泊イベントなどに使用
+@セフレ判定(対象)
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIM DYNAMIC セフレ閾値
+
+セフレ閾値 = 1000
+SIF TALENT:対象:貞操観念
+	セフレ閾値 += 300
+SIF TALENT:対象:貞操無頓着
+	セフレ閾値 -= 300
+SIF TALENT:対象:好奇心
+	セフレ閾値 -= 100
+SIF TALENT:対象:保守的
+	セフレ閾値 += 200
+
+セフレ閾値 -= 5*CFLAG:対象:インモラル
+
+SIF TALENT:対象:幼稚
+	TIMES セフレ閾値, 0.90
+SIF TALENT:対象:狂気
+	TIMES セフレ閾値, 0.77
+SIF TALENT:対象:即落ち
+	TIMES セフレ閾値, 0.50
+
+IF 好感度:対象:セフレ >= セフレ閾値
+	RETURNF 1
+ELSE
+	RETURNF 0
 ENDIF
 
 @SCHOOL_連絡先を聞いてみる
