@@ -49,16 +49,24 @@ IF 学園グローバル設定あり
 	PRINTL 保存されているクラス分けの設定を適用しますか？
 	PRINTL [0] もちろん
 	PRINTL [1] 今回は全部ランダムで
+	PRINTL [2] 保存内容を破棄してランダムで開始
 	BINPUT
-	IF RESULT == 0
-		FOR LCOUNT, 0, VARSIZE("G固定用学校")
-			固定用学校:LCOUNT = %G固定用学校:LCOUNT%
-		NEXT
-		FOR LCOUNT, 1, 10000
-			キャラ選択フラグ:LCOUNT = Gキャラ選択フラグ:LCOUNT
-		NEXT
-		運命の人 = %G運命の人%
-	ENDIF
+	SELECTCASE RESULT
+		CASE 0
+			FOR LCOUNT, 0, VARSIZE("G固定用学校")
+				固定用学校:LCOUNT = %G固定用学校:LCOUNT%
+			NEXT
+			FOR LCOUNT, 1, 10000
+				キャラ選択フラグ:LCOUNT = Gキャラ選択フラグ:LCOUNT
+			NEXT
+			運命の人 = %G運命の人%
+		CASE 2
+			VARSET G固定用学校
+			VARSET Gキャラ選択フラグ
+			VARSET G運命の人
+			学園グローバル設定あり = 0
+			SAVEGLOBAL
+	ENDSELECT
 ENDIF
 
 $クラス分け
@@ -142,7 +150,8 @@ FOR LCOUNT, 1, CHARANUM
 		ELSE
 			CSTR:LCOUNT:在校 = %固定用学校:(CFLAG:LCOUNT:学年-1)%
 		ENDIF
-	ELSEIF CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == ""
+	ELSEIF (CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == "")
+		$振り分け
 		IF CSTR:LCOUNT:担当科目 != ""
 			CSTR:LCOUNT:在任 = %選任ランダム(CSTR:LCOUNT:担当科目)%
 		ELSE
@@ -176,8 +185,12 @@ FOR LCOUNT, 1, CHARANUM
 					CONTINUE
 				BREAK
 			LOOP 1
-			DEBUGPRINTFORML %NAME:LCOUNT% %CSTR:LCOUNT:在校%
 		ENDIF
+	ELSE
+		SIF CSTR:LCOUNT:在校 != "" && FINDELEMENTF(除外学校リスト, CSTR:LCOUNT:在校) >= 0
+			GOTO 振り分け
+		SIF CSTR:LCOUNT:在任 != "" && FINDELEMENTF(除外学校リスト, CSTR:LCOUNT:在任) >= 0
+			GOTO 振り分け
 	ENDIF
 
 	;CSVに書くようにしたのでコメントアウトで様子見
@@ -895,24 +908,43 @@ SIF 新規追加フラグ
 $学校一覧表示
 CALL 学校リスト生成, 1
 DRAWLINE
+PRINTL □学校一覧
 FOR LCOUNT, 0, VARSIZE("学校名")
 	SIF 学校名:LCOUNT == ""
 		CONTINUE
 	;運命の人選べなくなるので大学も解放
 	;SIF 小中高(学校名:LCOUNT) == "大"
 	;	CONTINUE
-	SIF 入学先 == LCOUNT && ゲームモード() == "学園モード"
-		SETCOLORBYNAME deepskyblue
+	;学園モードで分岐してるのはSLGモードを作ろうとした名残
+	IF ゲームモード() == "学園モード"
+		SIF 入学先 == LCOUNT
+			SETCOLORBYNAME deepskyblue
+		SELECTCASE 学校名:LCOUNT
+			CASE 固定用学校:0
+				SETCOLORBYNAME aquamarine
+			CASE 固定用学校:1
+				SETCOLORBYNAME lightgreen
+			CASE 固定用学校:2
+				SETCOLORBYNAME violet
+			CASE 固定用学校:3
+				SETCOLORBYNAME peru
+		ENDSELECT
+	ENDIF
 	PRINTFORM 　[{LCOUNT}] %学校名:LCOUNT%(生徒:{CMATCH(CSTR:在校, 学校名:LCOUNT)}人 教師:{CMATCH(CSTR:在任, 学校名:LCOUNT)}人) 
 	SIF 入学先 == LCOUNT && ゲームモード() == "学園モード"
 		PRINTFORM %NAME:MASTER%の入学先
 	PRINTL 
 	RESETCOLOR
 NEXT
+PRINTL □キャラ固定オプション
+CALL MANUALPRINT, @"　[90] キャラ固定用の小学校を選択する（現在:(COLOR:aquamarine:%固定用学校:0%)） "
+CALL MANUALPRINT, @"[91] キャラ固定用の中学校を選択する（現在:(COLOR:lightgreen:%固定用学校:1%)）"
 PRINTL
-PRINTFORML 　[90] キャラ固定用の小学校を選択する(現在:%固定用学校:0%) [91] キャラ固定用の中学校を選択する(現在:%固定用学校:1%)
-PRINTFORML 　[92] キャラ固定用の高校を選択する(現在:%固定用学校:2%) [93] キャラ固定用の赴任先を選択する(現在:%固定用学校:3%)
+CALL MANUALPRINT, @"　[92] キャラ固定用の高校を選択する（現在:(COLOR:violet:%固定用学校:2%)） "
+CALL MANUALPRINT, @"[93] キャラ固定用の赴任先を選択する（現在:(COLOR:peru:%固定用学校:3%)）"
+PRINTL
 
+PRINTL □その他オプション
 IF 運命の人 != ""
 	PRINTFORM 　[94] 運命の人を\@ 運命の人選択 ? 変更しない # 変更する \@(現在:
 	SETCOLORBYNAME coral
@@ -923,7 +955,7 @@ ELSE
 	PRINTFORM 　[94] 運命の人を\@ 運命の人選択 ? 選ばない # 選ぶ \@(ロケーションでの遭遇確率が上がります)
 ENDIF
 PRINTL 
-PRINTL 　[95] 無所属or社会人のキャラ一覧 [96] 現在の設定をグローバルに保存する
+PRINTL 　[95] 無所属or社会人のキャラ一覧 [96] 現在の設定をグローバルに保存する [100] 除外する学園を選択
 ;#;PRINTL 　[97] インモラル変動値の確認 [98] 学園モード用コマンドテンプレ生成 [99] 全キャラの最大出現率確認
 
 IF 運命の人選択
@@ -933,7 +965,7 @@ ELSE
 ENDIF
 DRAWLINE
 PRINTPLAIN 　学校一覧　
-PRINTL [100] - 決定 [101] - やり直し
+PRINTL [200] - 決定 [201] - やり直し
 
 BINPUT
 SELECTCASE RESULT
@@ -1120,12 +1152,15 @@ SELECTCASE RESULT
 		CALL 学園最大出現率確認
 		GOTO 学校一覧表示
 	CASE 100
+		CALL 学園除外リスト
+		GOTO 学校一覧表示
+	CASE 200
 		IF 入学先 == -1
 			PRINTW 入学先を選んでください
 			GOTO 学校一覧表示
 		ENDIF
 		CSTR:MASTER:在校 = %学校名:入学先%
-	CASE 101
+	CASE 201
 		FOR LCOUNT, CHARANUM-1, 0, -1
 			DELCHARA LCOUNT
 		NEXT
@@ -1390,13 +1425,17 @@ WAIT
 #DIM DYNAMIC LCOUNT
 
 ;マジックアカデミーは小中高全てを包括する
-小学校:0 = マジックアカデミー
-中学校:0 = マジックアカデミー
-高校:0 = マジックアカデミー
+IF FINDELEMENTF(除外学校リスト, "マジックアカデミー") == -1
+	小学校:0 = マジックアカデミー
+	中学校:0 = マジックアカデミー
+	高校:0 = マジックアカデミー
+ENDIF
 
 FOR LCOUNT, 0, VARSIZE("学校名")
 	SIF 学年ID == 4
 		BREAK
+	SIF 学校名:LCOUNT != "" && FINDELEMENTF(除外学校リスト, 学校名:LCOUNT) >= 0
+		CONTINUE
 	IF 学校名:LCOUNT == ""
 		学年ID++
 		CONTINUE
@@ -1522,3 +1561,55 @@ ELSEIF INRANGE(FINDELEMENT(学校名, 学校, 0, VARSIZE("学校名"), 1), 中, 
 ELSE
 	RETURNF "大"
 ENDIF
+
+@学園除外リスト
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 学校一覧, 100
+#DIM DYNAMIC 除外, 100
+
+
+FOR LCOUNT, 1, 10000
+	SIF !EXISTCSV(LCOUNT)
+		CONTINUE
+	SIF GROUPMATCH(CSVCSTR(LCOUNT, GETNUM(CSTR, "デフォルト学校名")), "BEMANI学園初等部", "BEMANI学園中等部", "BEMANI学園高等部", "BEMANI大学")
+		CONTINUE
+	SIF FINDELEMENTF(学校一覧, CSVCSTR(LCOUNT, GETNUM(CSTR, "デフォルト学校名"))) == -1
+		学校一覧:FINDELEMENTF(学校一覧, "") = %CSVCSTR(LCOUNT, GETNUM(CSTR, "デフォルト学校名"))%
+NEXT
+FOR LCOUNT, 1, 100
+	SIF FINDELEMENTF(除外学校リスト, 学校一覧:LCOUNT) >= 0
+		除外:LCOUNT = 1
+NEXT
+CALL LOOP_CLEARLINE, 1
+$学校選択
+CALL LOOP_CLEARLINE
+DRAWLINE
+PRINTL □ゲーム上から除外する学校を選択できます
+FOR LCOUNT, 0, 100
+	SIF 学校一覧:LCOUNT == ""
+		BREAK
+	SIF 除外:LCOUNT
+		SETCOLORBYNAME gray
+	PRINTFORM 　[{LCOUNT, 2}] %学校一覧:LCOUNT, 40, LEFT% \@ 除外:LCOUNT ? ✕ # ◯ \@
+	SIF (LCOUNT+1)%3 == 0 && LCOUNT
+		PRINTL 
+	RESETCOLOR
+NEXT
+CALL NEWLINE
+DRAWLINE
+PRINTPLAIN 　学校除外　
+PRINTFORML [100] 戻る(変更を適用するには振り分けをやり直す必要があります)
+
+BINPUT
+SELECTCASE RESULT
+	CASE 100
+	VARSET 除外学校リスト
+		FOR LCOUNT, 0, 100
+			SIF 除外:LCOUNT
+				除外学校リスト:FINDELEMENTF(除外学校リスト, "") = %学校一覧:LCOUNT%
+		NEXT
+		RETURN
+	CASEELSE
+		INVERTBIT 除外:RESULT, 0
+		GOTO 学校選択
+ENDSELECT

@@ -7,7 +7,6 @@
 #DIM スライム設定
 #DIM DYNAMIC 魔法技能記録用
 #DIM DYNAMIC オリジナル
-
 DRAWLINE
 
 PRINTL □保管した血液から新しいキャラを作ることができます
@@ -62,6 +61,9 @@ SELECTCASE RESULT
 		SIF RESULT == 0
 			RESTART
 		オリジナル = RESULT
+		CALL 特殊クローン作成, オリジナル, "医務室"
+		SIF RESULT
+			RETURN 1
 		CALL CHARA_ADD, オリジナル, 1
 		対象 = CHARANUM-1
 		CFLAG:対象:複製 = オリジナル
@@ -135,6 +137,208 @@ SIF RESULT == 2
 	RETURN 1
 
 RESTART
+
+
+;人間とロボの組み合わせの択一キャラが追加された場合は処理の見直しが必要
+@特殊クローン作成, オリジナル, 配属先
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC オリジナル
+#DIM DYNAMIC 作成キャラ
+#DIMS DYNAMIC 配属先
+#DIM DYNAMIC 配属魔法技能合計
+#DIMS DYNAMIC 択一キャラリスト, 10
+#DIM DYNAMIC 択一キャラ数
+#DIM DYNAMIC 作成可能リスト, 10
+#DIM DYNAMIC 作成可能数
+#DIMS DYNAMIC プレイログテキスト
+
+;クローン元が手元に存在する、クローン元がクローンではない、対象が手元に存在しない、主人＋配属キャラの魔法技能合計10以上
+;以上の条件で択一キャラをクローン生成可能
+SIF 択一キャラ(CSVNAME(オリジナル)) == ""
+	RETURN
+SIF GETCHARANAME(CSVNAME(オリジナル)) == -1
+	RETURN
+SIF CFLAG:GETCHARANAME(CSVNAME(オリジナル)):クローン番号
+	RETURN
+SPLIT 択一キャラ(CSVNAME(オリジナル)), "/", 択一キャラリスト
+択一キャラ数 = RESULT
+FOR LCOUNT, 0, 択一キャラ数
+	SELECTCASE 択一キャラリスト:LCOUNT
+		;ニア・バテシバは二人揃っているかつDNAデータがニア側の必要がある
+		CASE "ニア・バテシバ"
+			SIF GETCHARANAME("ニア・ユーディット") == -1 || GETCHARANAME("バテシバ・アヒトフェル") == -1
+				RETURN
+			SIF オリジナル != GETNO("ニア・ユーディット")
+				RETURN
+	ENDSELECT
+	SIF GETCHARANAME(択一キャラリスト:LCOUNT) == -1
+		作成可能リスト:(作成可能数++) = GETNO(択一キャラリスト:LCOUNT)
+NEXT
+SIF !作成可能数
+	RETURN
+
+FOR LCOUNT, 0, CHARANUM
+	SIF LCOUNT == MASTER || (CSTR:LCOUNT:配属 == 配属先 && CFLAG:LCOUNT:配属完了)
+		配属魔法技能合計 += ABL:LCOUNT:魔法技能
+NEXT
+SIF 配属魔法技能合計 < 10
+	RETURN
+
+SELECTCASE CSVNAME(オリジナル)
+	CASE "ニア・ユーディット"
+		PRINTFORM ニア・ユーディットのDNAとバテシバ・アヒトフェルの魂
+	CASEELSE
+		PRINTFORM %CSVNAME(オリジナル)%の\@ 配属先 == "実験室" ? 分析データ # DNA \@と魂
+ENDSELECT
+PRINTFORML を元に特殊なクローンを作成しますか？
+PRINTFORML [0] はい
+PRINTFORML [1] いいえ
+BINPUT
+SIF RESULT
+	RETURN
+FOR LCOUNT, 0, 作成可能数
+	PRINTFORML [{作成可能リスト:LCOUNT, 4}] %CSVNAME(作成可能リスト:LCOUNT)%
+NEXT
+PRINTFORML [0] やっぱりやめる
+BINPUT
+SIF !RESULT
+	RETURN
+作成キャラ = RESULT
+
+CALL CHARA_ADD, 作成キャラ
+;ここからNOを入れていた変数を使い回す（危険）
+オリジナル = GETCHARA(オリジナル)
+作成キャラ = CHARANUM-1
+;経験の削除等は行わない
+
+;オリジナルが存在する事を先に判定してるからCCBへの影響はないはず
+IF 配属先 == "実験室"
+	IF MONEY < 100000
+		PRINTW 所持金が足りません
+		CALL CLEAR_CHARA, 作成キャラ, 1
+		RETURN
+	ENDIF
+ELSE
+	IF リソース:血液 < 人体錬成_消費血液量(TALENT:作成キャラ:体格, TALENT:作成キャラ:小人体型)
+		PRINTW 材料の血液が足りません
+		CALL CLEAR_CHARA, 作成キャラ, 1
+		RETURN
+	ENDIF
+	IF !ISSLIME(作成キャラ)
+		IF リソース:粘液 < 500
+			PRINTW 材料の粘液が足りません
+			CALL CLEAR_CHARA, 作成キャラ, 1
+			RETURN
+		ENDIF
+	ENDIF
+ENDIF
+
+SELECTCASE NAME:作成キャラ
+	CASE "ニア・バテシバ"
+		PRINTFORM ニア・ユーディットのDNAから生成した肉体をベースにバテシバ・アヒトフェルの魂を分け、
+	CASEELSE
+		PRINTFORM %NAME:オリジナル%の魂を分け、
+ENDSELECT
+PRINTFORML %NAME:作成キャラ%を作成しました
+;CSVありキャラに複製フラグつけるのが不都合だったら対処
+CFLAG:作成キャラ:複製 = NOF(オリジナル)
+IF 配属先 == "実験室"
+	;ロボットファクトリーから来る場合のコストがまだ適当
+	CFLAG:作成キャラ:クローン番号 = 分析データ:NOF(オリジナル)
+	分析データ:NOF(オリジナル)++
+	CALL PASELIL, @"作成費用として100000＄消費しました"
+	CALL PAYMENT, -100000, "ロボット制作"
+ELSE
+	CFLAG:作成キャラ:クローン番号 = DNAデータ:NOF(オリジナル)
+	DNAデータ:NOF(オリジナル)++
+	PRINTFORML 保管済み血液を{人体錬成_消費血液量(TALENT:作成キャラ:体格, TALENT:作成キャラ:小人体型)}ml使用しました
+	リソース:血液 -= 人体錬成_消費血液量(TALENT:作成キャラ:体格, TALENT:作成キャラ:小人体型)
+	IF ISSLIME(TARGET)
+		PRINTL 保管済み粘液を500ml使用しました
+		リソース:粘液 -= 500
+	ENDIF
+ENDIF
+CFLAG:作成キャラ:人工物 = 1
+
+;オリジナルからそのまま分離してそうなキャラは後天的に得た能力の一部をコピーしてみる（肉体由来のものはコピーしない）
+;陥落状態もコピーされる（意図的）
+IF GROUPMATCH(CHARANAMEF(オリジナル), "DJつよし", "OJつよし")
+	FOR LCOUNT, 0, VARSIZE("MARK")
+		MARK:作成キャラ:LCOUNT = MARK:オリジナル:LCOUNT
+	NEXT
+	FOR LCOUNT, 0, VARSIZE("ABL")
+		IF !BODYSTUFF("ABL", ABLNAME:LCOUNT) && ABL:オリジナル:LCOUNT > CSVABL(NOF(オリジナル), LCOUNT)
+			;栽培技能だけ最低保証が1あるため特殊
+			IF ABLNAME:LCOUNT == "栽培技能" && CSVABL(NOF(オリジナル), LCOUNT) == 0
+				SIF ABL:オリジナル:LCOUNT-(CSVABL(NOF(オリジナル), LCOUNT)+1) >= 1
+					ABL:作成キャラ:LCOUNT += ABL:オリジナル:LCOUNT-(CSVABL(NOF(オリジナル), LCOUNT)+1)
+			ELSE
+				ABL:作成キャラ:LCOUNT += ABL:オリジナル:LCOUNT-CSVABL(NOF(オリジナル), LCOUNT)
+			ENDIF
+		ENDIF
+		SIF !TALENT:作成キャラ:リミットバースト && ABL:作成キャラ:LCOUNT > 10
+			ABL:作成キャラ:LCOUNT = 10
+	NEXT
+	FOR LCOUNT, 0, VARSIZE("EXP")
+		SIF !BODYSTUFF("EXP", EXPNAME:LCOUNT) && EXP:オリジナル:LCOUNT > CSVEXP(NOF(オリジナル), LCOUNT)
+			EXP:作成キャラ:LCOUNT += EXP:オリジナル:LCOUNT-CSVEXP(NOF(オリジナル), LCOUNT)
+	NEXT
+	FOR LCOUNT, 0, VARSIZE("JUEL")
+		SIF !BODYSTUFF("JUEL", PALAMNAME:LCOUNT)
+			JUEL:作成キャラ:LCOUNT += JUEL:オリジナル:LCOUNT
+	NEXT
+	FOR LCOUNT, 0, VARSIZE("TALENT")
+		SIF !BODYSTUFF("TALENT", TALENTNAME:LCOUNT) && TALENT:オリジナル:LCOUNT != CSVTALENT(NOF(オリジナル), LCOUNT)
+			TALENT:作成キャラ:LCOUNT = TALENT:オリジナル:LCOUNT
+	NEXT
+	;一部CFLAGを手動編集
+	CFLAG:作成キャラ:依存度 = CFLAG:オリジナル:依存度
+	CFLAG:オリジナル:ストレス値 = CFLAG:オリジナル:ストレス値/3*2
+	CFLAG:作成キャラ:ストレス値 = CFLAG:オリジナル:ストレス値
+	CFLAG:オリジナル:狂気度 = CFLAG:オリジナル:狂気度/3*2
+	CFLAG:作成キャラ:狂気度 = CFLAG:オリジナル:狂気度
+	CFLAG:オリジナル:出産トラウマ = CFLAG:オリジナル:出産トラウマ/3*2
+	CFLAG:作成キャラ:出産トラウマ = CFLAG:オリジナル:出産トラウマ
+	CFLAG:作成キャラ:本への興味 = CFLAG:オリジナル:本への興味
+	;主人への相性も一旦手動
+	RELATION:作成キャラ:NOF(MASTER) = RELATION:オリジナル:NOF(MASTER)
+ENDIF
+
+;口上表示→反発イベントDISABLEの順（イベントの有無に関わらず口上は出る）
+CALL KOJO_MESSAGE_EVENT, "特殊クローン生成", オリジナル
+SIF NAME:作成キャラ == "ニア・バテシバ"
+	CALL KOJO_MESSAGE_EVENT, "特殊クローン生成", GETCHARANAME("バテシバ・アヒトフェル")
+CALL KOJO_MESSAGE_EVENT, "特殊クローンとして誕生", 作成キャラ
+;反発イベントはちょっと様子見
+[SKIPSTART]
+CALLFORM DISABLE, "EVENT_特殊クローン生成反発", オリジナル
+IF !TALENT:オリジナル:隷属 && !TALENT:オリジナル:崩壊 && !RESULT
+	CALL JUELUP, "否定", 10000, オリジナル
+	IF MARK:オリジナル:反発刻印 < 3
+		PRINTFORML オリジナルの%NAME:オリジナル%の反発刻印がLv3になった
+		MARK:オリジナル:反発刻印 = 3
+	ENDIF
+ENDIF
+[SKIPEND]
+
+プレイログテキスト = %NAME:オリジナル%の特別な
+IF 配属先 == "実験室"
+	SIF DNAデータ:NOF(オリジナル) > 1
+		プレイログテキスト += @"{分析データ:NOF(オリジナル)}体目の"
+	プレイログテキスト += "コピーとして%NAME:作成キャラ%を作成"
+ELSE
+	SIF DNAデータ:NOF(オリジナル) > 1
+		プレイログテキスト += @"{DNAデータ:NOF(オリジナル)}体目の"
+	プレイログテキスト += "クローンとして%NAME:作成キャラ%を錬成"
+ENDIF
+CALL プレイログ記録, プレイログテキスト
+
+SIF GETCHARANAME("DJつよし") > 0 && GETCHARANAME("OJつよし") > 0
+	CALL 実績解除, "二人二役"
+
+RETURN 1
+
+
 
 @人体錬成_調整, 対象
 #DIM DYNAMIC 対象
