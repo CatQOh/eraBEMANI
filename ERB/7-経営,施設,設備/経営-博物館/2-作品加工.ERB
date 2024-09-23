@@ -1,0 +1,638 @@
+﻿
+
+@博物館_CREATE_CORPSE
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 加工者
+#DIMS DYNAMIC 作品種別
+#DIMS DYNAMIC ロストテキスト
+#DIM DYNAMIC Quietフラグ
+
+PRINT □加工するキャラを選んでください。
+FONTBOLD
+PRINTL 加工したキャラは死亡します
+FONTREGULAR
+
+FOR PAGING, 1, CHARANUM
+	CALLFORM DISABLE, "EVENT_作品加工", PAGING
+	CALL PAGING, !RESULT && PAGING > 0 && !TALENT:PAGING:霊体 && CSTR:PAGING:配属 != "博物館"
+NEXT
+SIF RESULT == -1
+	RETURN 0
+対象 = RESULT
+
+PRINTFORML □%NAME:対象%を加工します。どのように加工しますか？
+PRINTL □加工スタッフ
+加工者 = 
+FOR LCOUNT, 1, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "博物館" || !CFLAG:LCOUNT:配属完了
+		CONTINUE
+	CALLF 加工技術, LCOUNT
+	加工者 += CALLNAME:LCOUNT+"、"
+	SIF CHARANAMEF(LCOUNT) == "ジズ"
+		Quietフラグ = 1
+NEXT
+SIF !CMATCH(CSTR:配属, "博物館") && CHARANAMEF(MASTER) == "ジズ"
+	Quietフラグ = 1
+加工者 = %SUBSTRINGU(加工者, 0, STRLENSU(加工者)-1)%
+PRINTFORML 　合計:{加工技術合計()}
+PRINTL 
+
+PRINTL [0] - やっぱりやめる
+SIF 作品加工可能("剥製", 対象)
+	PRINTL [1] - 剥製に加工する
+SIF 作品加工可能("白骨死体", 対象)
+	PRINTL [2] - 白骨に加工する
+SIF 作品加工可能("ホルマリン漬け", 対象)
+	PRINTL [3] - ホルマリン漬けに加工する
+SIF 作品加工可能("透明標本", 対象)
+	PRINTL [4] - 透明標本に加工する
+IF 作品加工可能("稼働停止", 対象)
+	IF CSTR:対象:種族 == "機械"
+		PRINTL [10] - 稼働を停止させる
+	ELSE
+		;これだと霊体になりそう
+		PRINTL [10] - 魂を抜き去る
+	ENDIF
+ENDIF
+BINPUT
+
+SELECTCASE RESULT
+	CASE 0
+		RETURN -1
+	CASE 1
+		作品種別 = 剥製
+	CASE 2
+		作品種別 = 白骨死体
+	CASE 3
+		作品種別 = ホルマリン漬け
+		IF 作品加工可能("臓器摘出", 対象)
+			PRINTFORML 加工方法を選択してください
+			PRINTL [0] - やっぱりやめる
+			PRINTL [1] - 全身をそのまま加工する
+			PRINTL [2] - 臓器だけを取り出す
+			BINPUT
+			SELECTCASE RESULT
+				CASE 0
+					RETURN -1
+				CASE 2
+					作品種別 = 臓器摘出
+			ENDSELECT
+		ENDIF
+	CASE 4
+		作品種別 = 透明標本
+	CASE 10
+		作品種別 = 人形
+ENDSELECT
+
+SETCOLOR 作品加工色(作品種別)
+CUSTOMDRAWLINE ✂----------
+RESETCOLOR
+CALL 作品加工処理, 対象, 作品種別
+
+CSTR:対象:ロスト要因 = 死亡
+IF CMATCH(CSTR:配属, "博物館")
+	ロストテキスト = %加工者%の手
+ELSE
+	ロストテキスト = %CALLNAME:MASTER%の手
+ENDIF
+SELECTCASE 作品種別
+	CASE "剥製"
+		ロストテキスト += "で剥製に加工された"
+	CASE "白骨死体"
+		ロストテキスト += "で白骨に加工された"
+	CASE "ホルマリン漬け", "臓器摘出"
+		ロストテキスト += "でホルマリン漬けに加工された"
+	CASE "透明標本"
+		ロストテキスト += "で透明標本に加工された"
+	CASE "人形"
+		IF GROUPMATCH("にんじん", CHARANAMEF(対象), CSVNAME(CFLAG:対象:複製))
+			ロストテキスト += "により魂を失いカカシとなった"
+		ELSEIF CSTR:対象:種族 == "機械"
+			ロストテキスト += "で永久に稼働を停止した"
+		ELSE
+			ロストテキスト += "により魂を失い動かなくなった"
+		ENDIF
+		SIF Quietフラグ && CHARANAMEF(対象) == "ALT"
+			CALL 実績解除, "Quiet"
+ENDSELECT
+CSTR:対象:ロスト詳細 = %ロストテキスト%
+
+CALL CLEAR_CHARA, 対象, 0, 1, 1
+RETURN 1
+
+
+
+@作品加工処理, 対象, 加工方法
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 加工方法
+#DIM DYNAMIC 作品価値 = 1000
+#DIM DYNAMIC 血液量
+
+;作品価値の最低保証は標準で1000
+SELECTCASE 加工方法
+	CASE "剥製"
+		PRINTFORMW %NAME:対象%を剥製に加工しました
+		;そこそこ血液がとれる
+		IF TALENT:対象:小人体型
+			血液量 = 300
+		ELSE
+			SELECTCASE TALENT:対象:体格
+				CASE 1
+					血液量 = 800
+				CASE 2
+					血液量 = 1200
+				CASE 3
+					血液量 = 1500
+				CASE 4
+					血液量 = 2000
+			ENDSELECT
+		ENDIF
+		;素質による価値補正
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:対象:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "狐", "妖狐", "戦士", "ファーリー", "尻尾", "動物耳", "羽", "ふたなり"
+					作品価値 += 500
+				CASE "魅力", "魅惑", "足使用不可", "スライム", "溶ける快"
+					作品価値 += 1000
+				CASE "謎の魅力", "人気", "妊娠"
+					作品価値 += 1500
+				CASE "バストサイズ"
+					SELECTCASE TALENT:対象:バストサイズ
+						CASE IS >= 4
+							作品価値 += (TALENT:対象:バストサイズ-3)*100
+					ENDSELECT
+			ENDSELECT
+		NEXT
+	CASE "白骨死体"
+		PRINTFORMW %NAME:対象%を白骨に加工しました
+		;骨だけなのでほとんど補正がない
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:対象:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "尻尾", "羽"
+					作品価値 += 500
+				CASE "足使用不可"
+					作品価値 += 1000
+			ENDSELECT
+		NEXT
+	CASE "ホルマリン漬け"
+		PRINTFORMW %NAME:対象%をホルマリン漬けに加工しました
+		;素質による価値補正
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:対象:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "狐", "妖狐", "戦士", "ファーリー", "尻尾", "動物耳", "羽", "ふたなり"
+					作品価値 += 500
+				CASE "魅力", "魅惑", "足使用不可", "スライム", "溶ける快"
+					作品価値 += 1000
+				CASE "謎の魅力", "人気", "妊娠"
+					作品価値 += 1500
+				CASE "バストサイズ"
+					SELECTCASE TALENT:対象:バストサイズ
+						CASE IS >= 4
+							作品価値 += (TALENT:対象:バストサイズ-3)*100
+					ENDSELECT
+			ENDSELECT
+		NEXT
+	CASE "臓器摘出"
+		PRINTFORMW %NAME:対象%の臓器を取り出し、ホルマリン漬けに加工しました
+		;ちょっと血液がとれる
+		IF TALENT:対象:小人体型
+			血液量 = 100
+		ELSE
+			SELECTCASE TALENT:対象:体格
+				CASE 1
+					血液量 = 300
+				CASE 2
+					血液量 = 600
+				CASE 3
+					血液量 = 1000
+				CASE 4
+					血液量 = 1500
+			ENDSELECT
+		ENDIF
+		;臓器だけなので臓器関係ありそうな素質のみ
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:対象:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "ふたなり"
+					作品価値 += 500
+				CASE "足使用不可"
+					作品価値 += 1000
+				CASE "妊娠"
+					作品価値 += 1500
+			ENDSELECT
+		NEXT
+	CASE "透明標本"
+		PRINTFORMW %NAME:対象%を透明標本に加工しました
+		;綺麗なので最低保証が高い
+		作品価値 = 1500
+		;骨格なのであまり補正がない
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:対象:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "尻尾", "動物耳", "羽"
+					作品価値 += 500
+				CASE "足使用不可"
+					作品価値 += 1000
+				CASE "妊娠"
+					作品価値 += 1500
+			ENDSELECT
+		NEXT
+	CASE "人形"
+		IF CSTR:対象:種族 == "機械"
+			PRINTFORMW %NAME:対象%を稼働停止させました
+		ELSE
+			PRINTFORMW %NAME:対象%は魂を失い二度と動かなくなりました
+		ENDIF
+		;博物館の客は人形ではなく死体を見に来ているので低め
+		作品価値 = 600
+		;素質による補正
+		FOR LCOUNT, 0, VARSIZE("TALENT")
+			SIF !TALENT:対象:LCOUNT
+				CONTINUE
+			SELECTCASE TALENTNAME:LCOUNT
+				CASE "狐", "妖狐", "戦士", "ファーリー", "尻尾", "動物耳", "羽", "ふたなり"
+					作品価値 += 500
+				CASE "魅力", "魅惑", "足使用不可", "スライム", "溶ける快"
+					作品価値 += 1000
+				CASE "謎の魅力", "人気", "妊娠"
+					作品価値 += 1500
+				CASE "バストサイズ"
+					SELECTCASE TALENT:対象:バストサイズ
+						CASE IS >= 4
+							作品価値 += (TALENT:対象:バストサイズ-3)*100
+					ENDSELECT
+			ENDSELECT
+		NEXT
+ENDSELECT
+
+SIF TALENT:対象:体格 == 1
+	作品価値 += 500
+;人気度を加算
+作品価値 += 人気度:NOF(対象)
+;タトゥーでも微増 皮膚がない加工法は補正なし
+IF !GROUPMATCH(加工方法, "白骨死体", "臓器摘出", "透明標本")
+	SIF CSTR:対象:右腕の印 != ""
+		作品価値 += 100
+	SIF CSTR:対象:左腕の印 != ""
+		作品価値 += 100
+	SIF CSTR:対象:右足の印 != ""
+		作品価値 += 100
+	SIF CSTR:対象:左足の印 != ""
+		作品価値 += 100
+	SIF CSTR:対象:背中の印 != ""
+		作品価値 += 200
+	SIF CSTR:対象:胴体の印 != ""
+		作品価値 += 300
+ENDIF
+
+IF 血液量
+	PRINTFORML 保管済み血液+{血液量}ml
+	リソース:血液 += 血液量
+ENDIF
+
+CALL 作品加工共通処理, 加工方法, 対象, 作品価値
+
+
+
+@性器リソース加工, 対象, 種類
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 種類
+#DIM DYNAMIC 作品価値 = 2000
+#DIM DYNAMIC 空き変数
+#DIM DYNAMIC LCOUNT
+
+;最低保証は2000 他より高いが性具は例外的に価値が下がっていく
+PRINTFORMW %CSVNAMEF(対象)%の%種類%を\@ 種類 == "男性器" ? ディルド # オナホ \@に加工しました
+
+性器リソース:対象:種類--
+
+;生前の素質を見る
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	SIF !TALENT:GETCHARA(対象):LCOUNT
+		CONTINUE
+	SELECTCASE TALENTNAME:LCOUNT
+		CASE "魅力", "魅惑", "ファーリー"
+			作品価値 += 1500
+		CASE "人気", "謎の魅力"
+			作品価値 += 2000
+	ENDSELECT
+NEXT
+SELECTCASE TALENT:GETCHARA(対象):体格
+	CASE 1
+		作品価値 += 1000
+	CASE 2
+		作品価値 += 500
+ENDSELECT
+;人気度を加算
+作品価値 += 人気度:対象*5
+
+CALL 作品加工共通処理, "性器リソース", 対象, 作品価値, 種類
+
+
+
+@作品加工共通処理, 作品種類, 対象, 作品価値, 性器種類
+#DIMS DYNAMIC 作品種類
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 作品価値
+#DIM DYNAMIC 空き変数
+#DIM DYNAMIC 空き変数カウント
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC 必要空き枠
+#DIMS DYNAMIC 性器種類
+
+IF 作品種類 == "臓器摘出"
+	必要空き枠 = 2
+ELSE
+	必要空き枠 = 1
+ENDIF
+FOR LCOUNT, 1, VARSIZE("MUSEUM", 1)
+	IF MUSEUM:LCOUNT:種類 == ""
+		空き変数カウント++
+		IF 空き変数カウント == 必要空き枠
+			空き変数 = LCOUNT-必要空き枠+1
+			BREAK
+		ENDIF
+	ELSE
+		空き変数カウント = 0
+	ENDIF
+NEXT
+;#;SIF 空き変数 == 0
+;#;	THROW 変数「MUSEUM」に空きがありません
+
+FOR LCOUNT, 0, 必要空き枠
+	作品価値 += 作品価値*加工技術合計()/100
+	MUSEUM:空き変数:色 = {作品加工色(作品種類)}
+	MUSEUM:空き変数:集客力 = 100
+	MUSEUM:空き変数:汚れ = 0
+
+	;作品名と種類の設定
+	SELECTCASE 作品種類
+		CASE "性器リソース"
+			;性器リソース加工はNOで渡してるのでいろいろ不都合
+			MUSEUM:空き変数:種類 = 性具
+			MUSEUM:空き変数:名前 = %ONAHONAME(性器種類, CSVNAMEF(対象))%
+			MUSEUM:空き変数:価値 = {作品価値}
+			MUSEUM:空き変数:ベースリソース = %性器種類%
+			MUSEUM:空き変数:キャラナンバー = {対象}
+			MUSEUM:空き変数:血縁コード = 0
+			MUSEUM:空き変数:オリジナルナンバー = 0
+			MUSEUM:空き変数:耐久度 = 100
+			RETURN
+		CASE "胎児"
+			MUSEUM:空き変数:名前 '= NAME:対象 + "の胎内から摘出した胎児(液浸標本)"
+		CASE "臓器摘出"
+			SIF TALENT:対象:妊娠 && LCOUNT == 1
+				MUSEUM:空き変数:名前 += "妊娠した"
+			MUSEUM:空き変数:名前 '= MUSEUM:空き変数:名前 + NAME:対象 + "の"
+			SELECTCASE LCOUNT
+				CASE 0
+					MUSEUM:空き変数:名前 += "脳"
+					MUSEUM:空き変数:種類 = 臓器/脳
+				CASE 1
+					MUSEUM:空き変数:名前 += "内臓"
+					MUSEUM:空き変数:種類 = 臓器/内臓
+			ENDSELECT
+			MUSEUM:空き変数:名前 += "(液浸標本)"
+		CASE "肋骨除去"
+			MUSEUM:空き変数:名前 = %NAME:対象%の肋骨
+			MUSEUM:空き変数:種類 = 白骨
+		CASEELSE
+			SIF TALENT:対象:妊娠 && 作品種類 != "白骨死体"
+				MUSEUM:空き変数:名前 += "妊娠した"
+			MUSEUM:空き変数:名前 += NAME:対象
+			SIF ISSLIME(対象) && !CSVTALENT(NO:対象, GETNUM(TALENT, "スライム")) && !CSVTALENT(NO:対象, GETNUM(TALENT, "溶ける快"))
+				MUSEUM:空き変数:名前 += "(スライム)"
+			IF 作品種類 == "人形"
+				IF GROUPMATCH("にんじん", CHARANAMEF(対象), CSVNAME(CFLAG:対象:複製))
+					MUSEUM:空き変数:名前 = ただのカカシとなった%MUSEUM:空き変数:名前%
+				ELSEIF CSTR:対象:種族 == "機械"
+					MUSEUM:空き変数:名前 = 稼働を停止した%MUSEUM:空き変数:名前%
+				ELSE
+					MUSEUM:空き変数:名前 = 動かなくなった%MUSEUM:空き変数:名前%
+				ENDIF
+			ELSE
+				MUSEUM:空き変数:名前 += "の" + 作品種類
+			ENDIF
+			SIF MUSEUM:空き変数:種類 == ""
+				MUSEUM:空き変数:種類 = %作品種類%
+	ENDSELECT
+
+	;最終的な価値の決定 2枠以上ある場合部位によって価値が異なる（ひとつならそのまま）
+	SELECTCASE 作品種類
+		CASE "臓器摘出"
+			IF TALENT:対象:妊娠
+				SELECTCASE LCOUNT
+					CASE 0
+						MUSEUM:空き変数:価値 = {作品価値/4}
+					CASE 1
+						MUSEUM:空き変数:価値 = {作品価値/2}
+				ENDSELECT
+			ELSE
+				MUSEUM:空き変数:価値 = {作品価値/5*2}
+			ENDIF
+		CASEELSE
+			MUSEUM:空き変数:価値 = {作品価値}
+	ENDSELECT
+
+	;ナンバーと血縁コードを設定 胎児の血縁コードは胎児の父親と母親から生成
+	IF 作品種類 == "胎児"
+		MUSEUM:空き変数:キャラナンバー = -1
+		MUSEUM:空き変数:血縁コード = {PREG:対象:父親*100000+PREG:対象:母親}
+		MUSEUM:空き変数:オリジナルナンバー = 0
+	ELSE
+		MUSEUM:空き変数:キャラナンバー = {NOF(対象)}
+		MUSEUM:空き変数:血縁コード = {CFLAG:対象:血縁コード}
+		MUSEUM:空き変数:オリジナルナンバー = {CFLAG:対象:複製}
+	ENDIF
+	空き変数++
+NEXT
+
+IF NOF(対象) < 10000
+	IF 作品種類 == "人形" && !分析データ:NOF(対象)
+		PRINTFORML %CALLNAME:対象%の構成データを解析できるようになりました
+		分析データ:NOF(対象) = 1
+	ELSEIF 作品種類 != "胎児"
+		CALL DNAデータ解析, 対象
+	ENDIF
+ENDIF
+;キャラが死亡する加工方法の場合崩壊処理
+IF !GROUPMATCH(作品種類, "胎児", "肋骨除去")
+	死亡キャラ = 対象
+	SIF GETCHARA(父親取得(対象)) > 0 && CSTR:GETCHARA(父親取得(対象)):配属 == "博物館"
+		CALL 崩壊処理, GETCHARA(父親取得(対象)), "子供を解体"
+	SIF GETCHARA(母親取得(対象)) > 0 && CSTR:GETCHARA(母親取得(対象)):配属 == "博物館"
+		CALL 崩壊処理, GETCHARA(母親取得(対象)), "子供を解体"
+ENDIF
+
+FOR LCOUNT, 1, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "博物館"
+		CONTINUE
+	CFLAG:LCOUNT:狂気度 += 10
+	SIF 相性値(LCOUNT, 対象) > 100 && 作品種類 != "胎児"
+		CFLAG:LCOUNT:狂気度 += (LIMIT((相性値(LCOUNT, 対象)-100)/10, 1, 10))*10
+	IF CFLAG:LCOUNT:狂気度 >= 100 && !TALENT:LCOUNT:狂気
+		PRINTFORML %CALLNAME:LCOUNT%は%CALLNAME:対象%\@ 作品種類 == "胎児" ? の子供 #  \@を加工したことで気が狂ってしまったようだ……
+		TALENT:LCOUNT:狂気 = 1
+	ENDIF
+NEXT
+
+
+
+;-------------------------------------------------
+;式中関数
+;-------------------------------------------------
+
+@ONAHONAME, ベース, キャラ名, 耐久度
+#FUNCTIONS
+#DIMS DYNAMIC ベース
+#DIMS DYNAMIC キャラ名
+#DIM DYNAMIC 耐久度
+#DIMS DYNAMIC ONAHONAME
+
+ONAHONAME = %キャラ名%の
+SELECTCASE ベース
+	CASE "男性器"
+		ONAHONAME += "ペニスを加工したディルド"
+	CASE "女性器"
+		ONAHONAME += "膣を加工したオナホ"
+	CASE "臀部"
+		ONAHONAME += "アナルを加工したオナホ"
+	CASE "乳房"
+		ONAHONAME += "乳房を加工したオナホ"
+ENDSELECT
+SIF !耐久度
+	RETURNF ONAHONAME
+
+;一度でも使用された状態
+ONAHONAME = %REPLACE(ONAHONAME, "を加工した", "を加工した使用済み")%
+SELECTCASE 耐久度
+	CASE 71 TO 100
+	CASE 51 TO 70
+		ONAHONAME = 傷んできた%ONAHONAME%
+	CASE 31 TO 50
+		ONAHONAME = 異臭を放つ%ONAHONAME%
+	CASE 11 TO 30
+		IF ベース == "男性器"
+			ONAHONAME =  融解しつつある%ONAHONAME%
+		ELSE
+			ONAHONAME = ボロボロになった%ONAHONAME%
+		ENDIF
+	CASE 5 TO 10
+		IF ベース == "男性器"
+			ONAHONAME = 使いすぎて元の形を失った%ONAHONAME%
+		ELSE
+			ONAHONAME = 裂けるまで使い込まれてズタボロになった%ONAHONAME%
+		ENDIF
+	CASE 1 TO 4
+		ONAHONAME = カビにまみれてグチャグチャになった%ONAHONAME%の残骸
+ENDSELECT
+
+;接頭語がついていたら接尾語を変形
+IF STRFIND(ONAHONAME, キャラ名+"の") > 0
+	ONAHONAME = %REPLACE(ONAHONAME, "を加工した使用済み", "")%
+	ONAHONAME = %REPLACE(ONAHONAME, "ペニス", "ペニス加工")%
+ENDIF
+RETURNF ONAHONAME
+
+
+@作品加工可能, 種類, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIMS DYNAMIC 種類
+;剥製、白骨死体、ホルマリン漬け、透明標本、稼働停止、臓器摘出
+
+;無機物、機械、人形は稼働停止以外全て不可 それ以外は稼働停止不可
+IF TALENT:対象:無機物 || GROUPMATCH(CSTR:対象:種族, "機械", "人形")
+	SIF 種類 != "稼働停止"
+		RETURNF 0
+ELSE
+	SIF 種類 == "稼働停止"
+		RETURNF 0
+ENDIF
+;スライム、もしくは変身してないハートはホルマリン漬けしかできない
+IF ISSLIME(対象) || (CHARANAMEF(対象) == "ハート" && !TRANCEFLAG:対象:ハート専用)
+	SIF 種類 != "ホルマリン漬け"
+		RETURNF 0
+ENDIF
+;ここまでに何もなければ可能
+RETURNF 1
+
+
+@作品加工色, 作品種類
+#FUNCTION
+#DIMS DYNAMIC 作品種類
+SELECTCASE 作品種類
+	CASE "白骨死体", "肋骨除去"
+		RETURNF COLOR_FROMNAME("ivory")
+	CASE "ホルマリン漬け", "臓器摘出"
+		RETURNF COLOR_FROMNAME("yellowgreen")
+	CASE "透明標本"
+		RETURNF COLOR_FROMNAME("cyan")
+	CASE "人形"
+		RETURNF COLOR_FROMNAME("gray")
+	CASE "性器リソース"
+		RETURNF COLOR_FROMNAME("wheat")
+	;汎用は剥製と同じにしておく
+	CASEELSE
+		RETURNF COLOR_FROMNAME("red")
+ENDSELECT
+
+
+@加工技術, 対象
+#FUNCTION
+#DIM DYNAMIC 対象
+#DIM DYNAMIC PT
+#DIM DYNAMIC 名前文字数
+#DIM DYNAMIC LCOUNT
+
+PT += LIMIT(ABL:対象:医療技能, 0, 10)
+PT += LIMIT(ABL:対象:工作技能/2, 0, 5)
+
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 == "博物館"
+		名前文字数 = MAX(名前文字数, STRLENS(NAMEDISP(LCOUNT)))
+NEXT
+
+PRINTFORM 　%NAMEDISP(対象), 名前文字数% 医療技能Lv{ABL:対象:医療技能}(+{ABL:対象:医療技能}) 工作技能Lv{ABL:対象:工作技能}(+{ABL:対象:工作技能/2}) 
+IF TALENT:対象:ネクロマンサー
+	PT += 2
+	PRINT ネクロマンサー(+2) 
+ENDIF
+IF TALENT:対象:倒錯的
+	PT += 1
+	PRINT 倒錯的(+1) 
+ENDIF
+IF TALENT:対象:禁断の知識
+	PT += 1
+	PRINT 禁断の知識(+1) 
+ENDIF
+IF TALENT:対象:戦士
+	PT += 1
+	PRINT 戦士(+1) 
+ENDIF
+PRINTFORML 合計{PT}
+RETURNF PT
+
+
+@加工技術合計
+#FUNCTION
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC PT
+SKIPDISP 1
+FOR LCOUNT, 0, CHARANUM
+	SIF CSTR:LCOUNT:配属 != "博物館" || !CFLAG:LCOUNT:配属完了
+		CONTINUE
+	PT += 加工技術(LCOUNT)
+NEXT
+SKIPDISP 0
+RETURNF PT
