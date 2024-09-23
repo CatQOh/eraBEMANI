@@ -260,6 +260,50 @@ ELSE
 ENDIF
 CFLAG:作成キャラ:人工物 = 1
 
+;オリジナルからそのまま分離してそうなキャラは後天的に得た能力の一部をコピーしてみる（肉体由来のものはコピーしない）
+;陥落状態もコピーされる（意図的）
+IF GROUPMATCH(CHARANAMEF(オリジナル), "DJつよし", "OJつよし")
+	FOR LCOUNT, 0, VARSIZE("MARK")
+		MARK:作成キャラ:LCOUNT = MARK:オリジナル:LCOUNT
+	NEXT
+	FOR LCOUNT, 0, VARSIZE("ABL")
+		IF !BODYSTUFF("ABL", ABLNAME:LCOUNT) && ABL:オリジナル:LCOUNT > CSVABL(NOF(オリジナル), LCOUNT)
+			;栽培技能だけ最低保証が1あるため特殊
+			IF ABLNAME:LCOUNT == "栽培技能" && CSVABL(NOF(オリジナル), LCOUNT) == 0
+				SIF ABL:オリジナル:LCOUNT-(CSVABL(NOF(オリジナル), LCOUNT)+1) >= 1
+					ABL:作成キャラ:LCOUNT += ABL:オリジナル:LCOUNT-(CSVABL(NOF(オリジナル), LCOUNT)+1)
+			ELSE
+				ABL:作成キャラ:LCOUNT += ABL:オリジナル:LCOUNT-CSVABL(NOF(オリジナル), LCOUNT)
+			ENDIF
+		ENDIF
+		SIF !TALENT:作成キャラ:リミットバースト && ABL:作成キャラ:LCOUNT > 10
+			ABL:作成キャラ:LCOUNT = 10
+	NEXT
+	FOR LCOUNT, 0, VARSIZE("EXP")
+		SIF !BODYSTUFF("EXP", EXPNAME:LCOUNT) && EXP:オリジナル:LCOUNT > CSVEXP(NOF(オリジナル), LCOUNT)
+			EXP:作成キャラ:LCOUNT += EXP:オリジナル:LCOUNT-CSVEXP(NOF(オリジナル), LCOUNT)
+	NEXT
+	FOR LCOUNT, 0, VARSIZE("JUEL")
+		SIF !BODYSTUFF("JUEL", PALAMNAME:LCOUNT)
+			JUEL:作成キャラ:LCOUNT += JUEL:オリジナル:LCOUNT
+	NEXT
+	FOR LCOUNT, 0, VARSIZE("TALENT")
+		SIF !BODYSTUFF("TALENT", TALENTNAME:LCOUNT) && TALENT:オリジナル:LCOUNT != CSVTALENT(NOF(オリジナル), LCOUNT)
+			TALENT:作成キャラ:LCOUNT = TALENT:オリジナル:LCOUNT
+	NEXT
+	;一部CFLAGを手動編集
+	CFLAG:作成キャラ:依存度 = CFLAG:オリジナル:依存度
+	CFLAG:オリジナル:ストレス値 = CFLAG:オリジナル:ストレス値/3*2
+	CFLAG:作成キャラ:ストレス値 = CFLAG:オリジナル:ストレス値
+	CFLAG:オリジナル:狂気度 = CFLAG:オリジナル:狂気度/3*2
+	CFLAG:作成キャラ:狂気度 = CFLAG:オリジナル:狂気度
+	CFLAG:オリジナル:出産トラウマ = CFLAG:オリジナル:出産トラウマ/3*2
+	CFLAG:作成キャラ:出産トラウマ = CFLAG:オリジナル:出産トラウマ
+	CFLAG:作成キャラ:本への興味 = CFLAG:オリジナル:本への興味
+	;主人への相性も一旦手動
+	RELATION:作成キャラ:NOF(MASTER) = RELATION:オリジナル:NOF(MASTER)
+ENDIF
+
 ;口上表示→反発イベントDISABLEの順（イベントの有無に関わらず口上は出る）
 CALL KOJO_MESSAGE_EVENT, "特殊クローン生成", オリジナル
 SIF NAME:作成キャラ == "ニア・バテシバ"
@@ -288,6 +332,9 @@ ELSE
 	プレイログテキスト += "クローンとして%NAME:作成キャラ%を錬成"
 ENDIF
 CALL プレイログ記録, プレイログテキスト
+
+SIF GETCHARANAME("DJつよし") > 0 && GETCHARANAME("OJつよし") > 0
+	CALL 実績解除, "二人二役"
 
 RETURN 1
 
