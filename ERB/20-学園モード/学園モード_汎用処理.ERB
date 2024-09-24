@@ -15,6 +15,14 @@ CALL NEWLINE
 #DIM DYNAMIC 残数最大値
 #DIM DYNAMIC 残数初期化判定
 
+#DIM DYNAMIC 学校ID
+#DIM DYNAMIC 学校ID記録, 10000
+#DIM DYNAMIC 風紀_人数カウント, 学校数上限
+#DIM DYNAMIC 風紀_カウント倍率
+#DIM DYNAMIC インモラル平均, 学校数上限
+#DIM DYNAMIC インモラル2乗平均, 学校数上限
+#DIM DYNAMIC インモラル標準偏差, 学校数上限
+
 授業参加フラグ = 0
 授業中 = 0
 
@@ -234,9 +242,66 @@ SELECTCASE ターン
 				CALL SCHOOL_KOJO, 同行者, "起床"
 			ENDIF
 		ENDIF
+
+		;1日ごとに学校ごとの風紀を計算する
+		FOR LCOUNT, 0, CHARANUM
+			IF CSTR:LCOUNT:在校 != ""
+				学校ID = FINDELEMENT(学校名, CSTR:LCOUNT:在校, 0, 学校数上限, 1)
+				IF 学校ID >= 0
+					学校ID記録:LCOUNT = 学校ID
+					風紀_人数カウント:学校ID++
+					インモラル平均:学校ID += CFLAG:LCOUNT:インモラル
+					インモラル2乗平均:学校ID += POWER(CFLAG:LCOUNT:インモラル, 2)
+				ELSE
+					学校ID記録:LCOUNT = -1
+				ENDIF
+			ELSEIF CSTR:LCOUNT:在任 != ""
+				学校ID = FINDELEMENT(学校名, CSTR:LCOUNT:在任, 0, 学校数上限, 1)
+				IF 学校ID >= 0
+					学校ID記録:LCOUNT = 学校ID
+					SELECTCASE CSTR:LCOUNT:担当科目
+						CASE "理事長", "校長"
+							風紀_カウント倍率 = 5
+						CASE "保健"
+							風紀_カウント倍率 = 3
+						CASEELSE
+							風紀_カウント倍率 = 2
+					ENDSELECT
+					風紀_人数カウント:学校ID += 風紀_カウント倍率
+					インモラル平均:学校ID += 風紀_カウント倍率 * CFLAG:LCOUNT:インモラル
+					インモラル2乗平均:学校ID += 風紀_カウント倍率 * POWER(CFLAG:LCOUNT:インモラル, 2)
+				ELSE
+					学校ID記録:LCOUNT = -1
+				ENDIF
+			ELSE
+				学校ID記録:LCOUNT = -1
+			ENDIF
+		NEXT
+		FOR LCOUNT, 0, 学校数上限
+			IF 風紀_人数カウント:LCOUNT
+				;100倍で計算する
+				インモラル平均:LCOUNT *= 100
+				インモラル平均:LCOUNT /= 風紀_人数カウント:LCOUNT
+				インモラル2乗平均:LCOUNT *= 100
+				インモラル2乗平均:LCOUNT /= 風紀_人数カウント:LCOUNT
+
+				;「風紀」は10倍で記録しておく
+				風紀:LCOUNT = インモラル平均:LCOUNT/10
+
+				;この時点では分散の100倍
+				;分散は「2乗の平均-平均の2乗」で求める
+				;平均はすでに100倍してあり2乗すると10000倍になるので100で割る
+				インモラル標準偏差:LCOUNT = インモラル2乗平均:LCOUNT - POWER(インモラル平均:LCOUNT, 2)/100
+
+				;標準偏差は√(分散)で求まる
+				;ここで標準偏差の10倍にする
+				インモラル標準偏差:LCOUNT = SQRT(インモラル標準偏差:LCOUNT)
+			ENDIF
+		NEXT
+
 ENDSELECT
 
-FOR LCOUNT, 1, CHARANUM
+FOR LCOUNT, 0, CHARANUM
 	CFLAG:LCOUNT:インモラル = LIMIT(CFLAG:LCOUNT:インモラル, -100, 100)
 NEXT
 
@@ -505,6 +570,7 @@ RETURN 0
 #DIM DYNAMIC 表示数
 #DIM DYNAMIC 最大桁数
 #DIM DYNAMIC 最大文字列長
+#DIM DYNAMIC 改行カウント
 #DIM DYNAMIC リスト表示
 #DIM DYNAMIC 対象
 #DIM DYNAMIC バストサイズ編集
@@ -518,12 +584,38 @@ RETURN 0
 #DIM CONST 無所属 = VARSIZE("学校名")
 
 FOR LCOUNT, 0, VARSIZE("学校名")
-	SIF 学校名:LCOUNT == ""
-		CONTINUE
-	PRINTFORMLC 　[{LCOUNT, 2}] - %学校名:LCOUNT%
+	SIF STRLENS(学校名:LCOUNT) > 最大文字列長
+		最大文字列長 = STRLENS(学校名:LCOUNT)
 NEXT
-PRINTFORMLC 　[{無所属, 2}] - 無所属or社会人
-CALL NEWLINE
+;最大文字列長を偶数にする
+SIF 最大文字列長%2
+	最大文字列長++
+PRINTFORML 侵入可%SPACES(7)%%SPACES((最大文字列長-6)/2)%学校名%SPACES((最大文字列長-6)/2)%
+改行カウント = 3
+FOR LCOUNT, 0, VARSIZE("学校名")
+	IF 学校名:LCOUNT == ""
+		IF 改行カウント
+			改行カウント--
+			PRINTL
+		ENDIF
+		CONTINUE
+	ENDIF
+	IF 学校名:LCOUNT == CSTR:MASTER:在校
+		PRINTPLAIN 　★　
+	ELSE
+		PRINTPLAIN 　　　
+	ENDIF
+	PRINTFORM [{LCOUNT, 2}] - %学校名:LCOUNT%
+	PRINTFORM %SPACES(最大文字列長 - STRLENS(学校名:LCOUNT))%
+	IF ITEM:ラブスコープ
+		PRINTPLAIN 　風紀:
+		PRINTFORM {風紀:LCOUNT/10, 2}.{風紀:LCOUNT%10}
+	ENDIF
+	PRINTL
+NEXT
+PRINTFORM 　　　[{無所属, 2}] - 無所属or社会人
+PRINTFORM %SPACES(最大文字列長 - 14)%
+PRINTL
 
 DRAWLINE
 PRINTPLAIN 　DATABASE　
@@ -689,11 +781,15 @@ SIF !INRANGE(選択校, 0, VARSIZE("学校名"))
 
 DRAWLINE
 IF リスト表示
-	PRINTFORML ■%学校名:選択校%
-	IF インモラル偏差値表示
-		PRINTFORML 　インモラル平均(風紀):{風紀_データベース用/10}.{ABS(風紀_データベース用)%10}　インモラル標準偏差:{インモラル標準偏差/10}.{インモラル標準偏差%10}
+	IF 選択校 == 無所属
+		PRINTL ■無所属or社会人
 	ELSE
-		PRINTFORML 　風紀崩壊度:{風紀_データベース用/10}.{ABS(風紀_データベース用)%10}
+		PRINTFORML ■%学校名:選択校%
+		IF インモラル偏差値表示
+			PRINTFORML 　インモラル平均(風紀):{風紀_データベース用/10}.{ABS(風紀_データベース用)%10}　インモラル標準偏差:{インモラル標準偏差/10}.{インモラル標準偏差%10}
+		ELSE
+			PRINTFORML 　風紀崩壊度:{風紀_データベース用/10}.{ABS(風紀_データベース用)%10}
+		ENDIF
 	ENDIF
 	PRINTFORM 恋人|%SPACES(2+最大桁数)%%SPACES((最大文字列長-4)/2)%名前%SPACES((最大文字列長-4)/2)%| 性別 |
 	SIF MOD:バスト関連ステータス表示
