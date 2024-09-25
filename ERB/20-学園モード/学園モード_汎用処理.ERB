@@ -25,6 +25,9 @@ CALL NEWLINE
 #DIM DYNAMIC 偏差値
 #DIM DYNAMIC 補正方向
 
+#DIM DYNAMIC 小学校入学可能
+#DIM DYNAMIC 女子校入学可能
+
 授業参加フラグ = 0
 授業中 = 0
 
@@ -300,6 +303,8 @@ SELECTCASE ターン
 				;ただし、標準偏差は1.0未満にならないようにする
 				インモラル標準偏差:LCOUNT = MAX(インモラル標準偏差:LCOUNT, 100)
 				インモラル標準偏差:LCOUNT = SQRT(インモラル標準偏差:LCOUNT)
+			ELSE
+				風紀:LCOUNT = 0
 			ENDIF
 		NEXT
 		;全キャラのインモラルを変動させる
@@ -319,9 +324,42 @@ SELECTCASE ターン
 				ENDIF
 			ENDIF
 		NEXT
+		;学校への侵入可能判定をする
+		;風紀が10.0以上なら侵入可能、ただし小学校・女子校へは条件を満たしていない場合20.0必要
+		;(例外として、女子校にすでに入学しているなら男でも10.0でOK)
+		SIF TALENT:PLAYER:体格 < 3
+			小学校入学可能 = 1
+		SIF SEX(PLAYER) == 2 || 女子校判定(CSTR:PLAYER:在校)
+			女子校入学可能 = 1
+		FOR LCOUNT, 0, 学校数上限
+			IF 小中高(学校名:LCOUNT) == "小"
+				IF 風紀:LCOUNT >= 200
+					侵入可能:LCOUNT = 1
+				ELSEIF 小学校入学可能 && 風紀:LCOUNT >= 100
+					侵入可能:LCOUNT = 1
+				ELSE
+					侵入可能:LCOUNT = 0
+				ENDIF
+			ELSEIF 女子校判定(学校名:LCOUNT)
+				IF 風紀:LCOUNT >= 200
+					侵入可能:LCOUNT = 1
+				ELSEIF 女子校入学可能 && 風紀:LCOUNT >= 100
+					侵入可能:LCOUNT = 1
+				ELSE
+					侵入可能:LCOUNT = 0
+				ENDIF
+			ELSE
+				IF 風紀:LCOUNT >= 100
+					侵入可能:LCOUNT = 1
+				ELSE
+					侵入可能:LCOUNT = 0
+				ENDIF
+			ENDIF
+		NEXT
 ENDSELECT
 
 FOR LCOUNT, 0, CHARANUM
+	;インモラルは初期値より下がらない
 	SIF CFLAG:LCOUNT:インモラル < CSVCFLAG(NOF(LCOUNT), GETNUM(CFLAG, "インモラル"))
 		CFLAG:LCOUNT:インモラル = CSVCFLAG(NOF(LCOUNT), GETNUM(CFLAG, "インモラル"))
 	CFLAG:LCOUNT:インモラル = LIMIT(CFLAG:LCOUNT:インモラル, -100, 100)
@@ -624,6 +662,8 @@ FOR LCOUNT, 0, VARSIZE("学校名")
 	ENDIF
 	IF 学校名:LCOUNT == CSTR:MASTER:在校
 		PRINTPLAIN 　★　
+	ELSEIF 侵入可能:LCOUNT
+		PRINTPLAIN 　○　
 	ELSE
 		PRINTPLAIN 　　　
 	ENDIF
