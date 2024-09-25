@@ -256,17 +256,17 @@ PRINTL
 
 PRINTL □その他オプション
 IF 運命の人 != ""
-	PRINTFORM 　[94] 運命の人を\@ 運命の人選択 ? 変更しない # 変更する \@(現在:
+	PRINTFORM 　[90] 運命の人を\@ 運命の人選択 ? 変更しない # 変更する \@(現在:
 	SETCOLORBYNAME coral
 	PRINTFORM %運命の人%
 	RESETCOLOR
 	PRINT ) 
 ELSE
-	PRINTFORM 　[94] 運命の人を\@ 運命の人選択 ? 選ばない # 選ぶ \@(ロケーションでの遭遇確率が上がります)
+	PRINTFORM 　[90] 運命の人を\@ 運命の人選択 ? 選ばない # 選ぶ \@(ロケーションでの遭遇確率が上がります)
 ENDIF
 PRINTL 
-PRINTL 　[95] 無所属or社会人のキャラ一覧 [96] 現在の設定をグローバルに保存する [100] 除外する学園を選択
-;#;PRINTL 　[97] インモラル変動値の確認 [98] 学園モード用コマンドテンプレ生成 [99] 全キャラの最大出現率確認
+PRINTL 　[91] 無所属or社会人のキャラ一覧 [92] 現在の設定をグローバルに保存する [93] 除外する学園を選択
+;#;PRINTL 　[95] インモラル変動値の確認 [96] 学園モード用コマンドテンプレ生成 [97] 全キャラの最大出現率確認 [98] 教師キャラのリストを見る
 
 IF 運命の人選択
 	PRINTL 　キャラクターをクリックする事で対象を運命の人に指定します（運命の人を選ばないを選択でキャンセル）
@@ -392,10 +392,10 @@ SELECTCASE RESULT
 			GOTO 学校一覧表示
 		固定用学校:(LRESULT-90) = %学校名:RESULT%
 		GOTO 学校一覧表示
-	CASE 94
+	CASE 90
 		INVERTBIT 運命の人選択, 0
 		GOTO 学校一覧表示
-	CASE 95
+	CASE 91
 		DRAWLINE
 		PRINTL □学園モード未実装キャラ
 		未実装キャラ = 0
@@ -424,7 +424,7 @@ SELECTCASE RESULT
 			WAIT
 		ENDIF
 		GOTO 学校一覧表示
-	CASE 96
+	CASE 92
 		LOADGLOBAL
 		PRINTL 現在の設定を保存し、ニューゲーム時に呼び出せるようにしますか？
 		PRINTL （固定用学校、固定選択中キャラ、運命の人、除外学校リストが保存されます）
@@ -443,21 +443,24 @@ SELECTCASE RESULT
 			PRINTW 設定を保存しました
 		ENDIF
 		GOTO 学校一覧表示
-	CASE 97
+	CASE 93
+		CALL 学園除外リスト
+		GOTO 学校一覧表示
+	CASE 95
 		FOR LCOUNT, 1, CHARANUM
 			CALL グループ_インモラル計算, LCOUNT
 			PRINTFORML 　No.{NO:LCOUNT} %NAME:LCOUNT, 30% 変動値:{RESULT}
 		NEXT
 		WAIT
 		GOTO 学校一覧表示 
-	CASE 98
+	CASE 96
 		CALL 学園モード用コマンドテンプレ生成
 		GOTO 学校一覧表示
-	CASE 99
+	CASE 97
 		CALL 学園最大出現率確認
 		GOTO 学校一覧表示
-	CASE 100
-		CALL 学園除外リスト
+	CASE 98
+		CALL 学園教員リスト確認
 		GOTO 学校一覧表示
 	CASE 200
 		IF 入学先 == -1
@@ -895,7 +898,6 @@ ENDIF
 #DIMS DYNAMIC 学校一覧, 100
 #DIM DYNAMIC 除外, 100
 
-
 FOR LCOUNT, 1, 10000
 	SIF !EXISTCSV(LCOUNT)
 		CONTINUE
@@ -945,6 +947,47 @@ SELECTCASE RESULT
 		INVERTBIT 除外:RESULT, 0
 ENDSELECT
 GOTO 学校選択
+
+
+@学園教員リスト確認
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM DYNAMIC 教科
+#DIMS 科目リスト, 15
+#DIM 科目別教員, 15, 100
+#DIM 科目別教員人数, 15
+
+IF 科目リスト:0 == ""
+	FOR LCOUNT, 0, CHARANUM
+		SIF CSTR:LCOUNT:デフォルト科目 == ""
+			CONTINUE
+		SIF FINDELEMENTF(科目リスト, CSTR:LCOUNT:デフォルト科目) == -1
+			科目リスト:FINDELEMENTF(科目リスト, "") = %CSTR:LCOUNT:デフォルト科目%
+		教科 = FINDELEMENTF(科目リスト, CSTR:LCOUNT:デフォルト科目)
+		科目別教員:教科:(科目別教員人数:教科++) = NO:LCOUNT
+	NEXT
+ENDIF
+
+FOR LCOUNT, 0, 15
+	SIF 科目リスト:LCOUNT == ""
+		CONTINUE
+	PRINTFORML ■%科目リスト:LCOUNT% … 計{科目別教員人数:LCOUNT}人
+	FOR LCOUNT2, 0, 100
+		SIF !科目別教員:LCOUNT:LCOUNT2
+			CONTINUE
+		SIF LINEISEMPTY()
+			PRINT 　
+		PRINTFORM %CSVNAME(科目別教員:LCOUNT:LCOUNT2)%
+		SIF 科目別教員:LCOUNT:(LCOUNT2+1)
+			PRINT 、
+		SIF LCOUNT2 && LCOUNT2%8 == 0
+			PRINTL 
+	NEXT
+	CALL NEWLINE
+	PRINTL 
+NEXT
+PRINTFORML 最多人数 … {MAXARRAY(科目別教員人数)}人
+WAIT
 
 
 ;学校振り分けの旧処理
