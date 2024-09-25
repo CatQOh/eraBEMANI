@@ -22,6 +22,8 @@ CALL NEWLINE
 #DIM DYNAMIC インモラル平均, 学校数上限
 #DIM DYNAMIC インモラル2乗平均, 学校数上限
 #DIM DYNAMIC インモラル標準偏差, 学校数上限
+#DIM DYNAMIC 偏差値
+#DIM DYNAMIC 補正方向
 
 授業参加フラグ = 0
 授業中 = 0
@@ -295,13 +297,33 @@ SELECTCASE ターン
 
 				;標準偏差は√(分散)で求まる
 				;ここで標準偏差の10倍にする
+				;ただし、標準偏差は1.0未満にならないようにする
+				インモラル標準偏差:LCOUNT = MAX(インモラル標準偏差:LCOUNT, 100)
 				インモラル標準偏差:LCOUNT = SQRT(インモラル標準偏差:LCOUNT)
 			ENDIF
 		NEXT
-
+		;全キャラのインモラルを変動させる
+		;インモラル偏差値(標準偏差10)を算出し、平均から偏差値10離れるごとに(平均に向かうように)インモラルを1変動させる
+		;ただし、偏差値の離れ具合が10で割って5.1~9.9余るとき、2%～98%の確率で1変動する
+		FOR LCOUNT, 0, CHARANUM
+			IF 学校ID記録:LCOUNT >= 0
+				学校ID = 学校ID記録:LCOUNT
+				偏差値 = 100*(10*CFLAG:LCOUNT:インモラル-風紀:学校ID)/インモラル標準偏差:学校ID
+				補正方向 = SIGN(-偏差値)
+				偏差値 = ABS(偏差値)
+				CFLAG:LCOUNT:インモラル += 補正方向*(偏差値/100)
+				IF INRANGE(偏差値, 51, 99)
+					IF RANDPER(2*(偏差値-50))
+						CFLAG:LCOUNT:インモラル += 補正方向
+					ENDIF
+				ENDIF
+			ENDIF
+		NEXT
 ENDSELECT
 
 FOR LCOUNT, 0, CHARANUM
+	SIF CFLAG:LCOUNT:インモラル < CSVCFLAG(NOF(LCOUNT), GETNUM(CFLAG, "インモラル"))
+		CFLAG:LCOUNT:インモラル = CSVCFLAG(NOF(LCOUNT), GETNUM(CFLAG, "インモラル"))
 	CFLAG:LCOUNT:インモラル = LIMIT(CFLAG:LCOUNT:インモラル, -100, 100)
 NEXT
 
@@ -609,7 +631,16 @@ FOR LCOUNT, 0, VARSIZE("学校名")
 	PRINTFORM %SPACES(最大文字列長 - STRLENS(学校名:LCOUNT))%
 	IF ITEM:ラブスコープ
 		PRINTPLAIN 　風紀:
+		SELECTCASE 風紀:LCOUNT
+			CASE 100 TO 199
+				SETCOLORBYNAME lime
+			CASE 200 TO 299
+				SETCOLORBYNAME yellow
+			CASE IS >= 300
+				SETCOLORBYNAME coral
+		ENDSELECT
 		PRINTFORM {風紀:LCOUNT/10, 2}.{風紀:LCOUNT%10}
+		RESETCOLOR
 	ENDIF
 	PRINTL
 NEXT
@@ -786,9 +817,17 @@ IF リスト表示
 	ELSE
 		PRINTFORML ■%学校名:選択校%
 		IF インモラル偏差値表示
-			PRINTFORML 　インモラル平均(風紀):{風紀_データベース用/10}.{ABS(風紀_データベース用)%10}　インモラル標準偏差:{インモラル標準偏差/10}.{インモラル標準偏差%10}
+			PRINT 　インモラル平均(風紀):
+			IF 風紀:選択校 != 風紀_データベース用
+				PRINTFORM {風紀:選択校/10}.{ABS(風紀:選択校)%10}→
+			ENDIF
+			PRINTFORML {風紀_データベース用/10}.{ABS(風紀_データベース用)%10}　インモラル標準偏差:{インモラル標準偏差/10}.{インモラル標準偏差%10}
 		ELSE
-			PRINTFORML 　風紀崩壊度:{風紀_データベース用/10}.{ABS(風紀_データベース用)%10}
+			PRINT 　風紀崩壊度:
+			IF 風紀:選択校 != 風紀_データベース用
+				PRINTFORM {風紀:選択校/10}.{ABS(風紀:選択校)%10}→
+			ENDIF
+			PRINTFORML {風紀_データベース用/10}.{ABS(風紀_データベース用)%10}
 		ENDIF
 	ENDIF
 	PRINTFORM 恋人|%SPACES(2+最大桁数)%%SPACES((最大文字列長-4)/2)%名前%SPACES((最大文字列長-4)/2)%| 性別 |
@@ -1181,7 +1220,7 @@ ENDIF
 RESETCOLOR
 PRINT |
 
-@好感度表示, 対象, インモラル平均=0, インモラル標準偏差=0
+@好感度表示, 対象, インモラル平均=0, インモラル標準偏差=-1
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 好感度値
 #DIM DYNAMIC インモラル平均
@@ -1253,9 +1292,10 @@ SELECTCASE 好感度値
 	CASE IS >= 50
 		SETCOLORBYNAME coral
 ENDSELECT
-IF インモラル標準偏差
+IF インモラル標準偏差 >= 0
 	偏差値 = 500
-	偏差値 += 100*(10*好感度値-インモラル平均)/インモラル標準偏差
+	SIF インモラル標準偏差
+		偏差値 += 100*(10*好感度値-インモラル平均)/インモラル標準偏差
 	SIF !好感度値
 		SETCOLOR 0x404040
 	PRINTFORM {好感度値, 5}
