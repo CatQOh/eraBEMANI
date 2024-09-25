@@ -53,24 +53,21 @@ IF 学園グローバル設定あり
 	BINPUT
 	SELECTCASE RESULT
 		CASE 0
-			FOR LCOUNT, 0, VARSIZE("G固定用学校")
-				固定用学校:LCOUNT = %G固定用学校:LCOUNT%
-			NEXT
-			FOR LCOUNT, 1, 10000
-				キャラ選択フラグ:LCOUNT = Gキャラ選択フラグ:LCOUNT
-			NEXT
-			運命の人 = %G運命の人%
+			ARRAYCOPY "G固定用学校", "固定用学校"
+			ARRAYCOPY "Gキャラ選択フラグ", "キャラ選択フラグ"
+			ARRAYCOPY "G除外学校リスト", "除外学校リスト"
+			ARRAYCOPY "G運命の人", "運命の人"
 		CASE 2
 			VARSET G固定用学校
 			VARSET Gキャラ選択フラグ
 			VARSET G運命の人
+			VARSET G除外学校リスト
 			学園グローバル設定あり = 0
 			SAVEGLOBAL
 	ENDSELECT
 ENDIF
 
-$クラス分け
-PRINTFORML クラス分け処理中...(0\%)
+PRINTFORML キャラクター読み込み処理中...(0\%)
 SKIPDISP 1
 FOR LCOUNT, 1, 10000
 	SIF !EXISTCSV(LCOUNT)
@@ -82,19 +79,14 @@ FOR LCOUNT, 1, 10000
 		AWAIT
 		SKIPDISP 0
 		CLEARLINE 1
-		PRINTFORML クラス分け処理中...({(LCOUNT*100)/10000}\%)
+		PRINTFORML キャラクター読み込み処理中...({(LCOUNT*100)/10000}\%)
 		SKIPDISP 1
 	ENDIF
 NEXT
 SKIPDISP 0
 CLEARLINE 1
-PRINTFORML クラス分け終了(100\%)
-;まだ終わってないけど一番時間かかるのはキャラ追加処理なので実質100%
+PRINTFORML キャラクター読み込み終了(100\%)
 
-;まず全キャラの順番をシャッフルする
-;FOR LCOUNT, 1, CHARANUM-1
-;	SWAPCHARA LCOUNT, RAND(LCOUNT+1, CHARANUM)
-;NEXT
 
 ;学校区分
 ;BEMANI学園 小,中,高
@@ -110,7 +102,12 @@ PRINTFORML クラス分け終了(100\%)
 ;聖グラディウス学園
 ;ボンバーアカデミア 小,中,高（？）
 
+$クラス分け
 CALL 学校リスト生成, 1
+;まず全キャラの順番をシャッフルする
+FOR LCOUNT, 1, CHARANUM-1
+	SWAPCHARA LCOUNT, RAND(LCOUNT+1, CHARANUM)
+NEXT
 
 ;固定用の学校は事前に決めておく
 SIF 固定用学校:0 == "" || FINDELEMENTF(除外学校リスト, 固定用学校:0) >= 0
@@ -123,35 +120,36 @@ SIF 固定用学校:2 == "" || FINDELEMENTF(除外学校リスト, 固定用学�
 SIF 固定用学校:3 == ""
 	固定用学校:3 = %固定用学校:RAND(0, 3)%
 
-;キャラ選択フラグつきを優先して処理
+;キャラ選択フラグつきを優先して処理（先に処理しないと教師が被る）
 優先処理済 = 0
 $ランダム入学処理
 
 FOR LCOUNT, 1, CHARANUM
 	SIF LCOUNT%500 == 0
 		AWAIT
-	;担当科目を一旦戻しておく
-	SIF CSTR:LCOUNT:担当科目 == "算数"
-		CSTR:LCOUNT:担当科目 = 数学
-	SIF CSTR:LCOUNT:担当科目 == "理科"
-		CSTR:LCOUNT:担当科目 = 科学
 	;キャラアップデートの場合新規追加キャラと所属が追加された可能性のある無所属キャラだけ見る
 	SIF 新規追加フラグ && (CSTR:LCOUNT:在校 != "" || CSTR:LCOUNT:在任 != "")
 		CONTINUE
-	;SIF !優先処理済 && !キャラ選択フラグ:NOF(LCOUNT) && !新規追加フラグ
-	;	CONTINUE
-	;SIF 優先処理済 && キャラ選択フラグ:NOF(LCOUNT)
-	;	CONTINUE
-	
-	;学校固定にしたキャラの処理
-	IF キャラ選択フラグ:NOF(LCOUNT) && INRANGE(CFLAG:LCOUNT:学年, 1, 3)
-		IF CSTR:LCOUNT:在任 != ""
-			CSTR:LCOUNT:在任 = %固定用学校:(CFLAG:LCOUNT:学年-1)%
-		ELSE
+	SIF !優先処理済 && !キャラ選択フラグ:NOF(LCOUNT) && !新規追加フラグ
+		CONTINUE
+	SIF 優先処理済 && キャラ選択フラグ:NOF(LCOUNT)
+		CONTINUE
+
+	SIF CSTR:LCOUNT:デフォルト科目 != ""
+		CSTR:LCOUNT:担当科目 = %CSTR:LCOUNT:デフォルト科目%
+	IF キャラ選択フラグ:NOF(LCOUNT)
+		IF CSTR:LCOUNT:担当科目 != ""
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSEIF INRANGE(CFLAG:LCOUNT:学年, 1, 3)
 			CSTR:LCOUNT:在校 = %固定用学校:(CFLAG:LCOUNT:学年-1)%
 		ENDIF
-	ELSEIF (CSTR:LCOUNT:在校 == "" && CSTR:LCOUNT:在任 == "")
-		$振り分け
+	ELSEIF INRANGE(CFLAG:LCOUNT:学年, 1, 4) || CSTR:LCOUNT:担当科目 != ""
+		SIF CSTR:LCOUNT:在校 != "" && FINDELEMENTF(除外学校リスト, CSTR:LCOUNT:在校) >= 0
+			CSTR:LCOUNT:在校 = 
+		SIF CSTR:LCOUNT:在任 != "" && FINDELEMENTF(除外学校リスト, CSTR:LCOUNT:在任) >= 0
+			CSTR:LCOUNT:在任 = 
+		SIF CSTR:LCOUNT:在校 != "" || CSTR:LCOUNT:在任 != ""
+			CONTINUE
 		IF CSTR:LCOUNT:担当科目 != ""
 			CSTR:LCOUNT:在任 = %選任ランダム(CSTR:LCOUNT:担当科目)%
 		ELSE
@@ -183,714 +181,24 @@ FOR LCOUNT, 1, CHARANUM
 				;グリムキャラはマジックアカデミー以外のどこか
 				SIF CFLAG:LCOUNT:グリム && CSTR:LCOUNT:在校 == "マジックアカデミー"
 					CONTINUE
+				;美鈴の学校は共学
+				SIF NAME:LCOUNT == "宍戸 美鈴" && 女子校判定(CSTR:LCOUNT:在校)
+					CONTINUE
 				BREAK
 			LOOP 1
 		ENDIF
 	ELSE
-		SIF CSTR:LCOUNT:在校 != "" && FINDELEMENTF(除外学校リスト, CSTR:LCOUNT:在校) >= 0
-			GOTO 振り分け
-		SIF CSTR:LCOUNT:在任 != "" && FINDELEMENTF(除外学校リスト, CSTR:LCOUNT:在任) >= 0
-			GOTO 振り分け
 	ENDIF
-
-	;CSVに書くようにしたのでコメントアウトで様子見
-	[SKIPSTART]
-	SELECTCASE NAME:LCOUNT
-		;学校固定の人たち
-		;華練学園の3人
-		CASE "菱宮 津軽", "刃雪 達磨", "シア"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:1%
-			ELSE
-				CSTR:LCOUNT:在校 = 華練学園中等科
-			ENDIF
-		;ボルテ学園高等部
-		{
-		CASE "EΛΠIΣ‡煌‡", "レイシス", "嬬武器 雷刀", "嬬武器 烈風刀", "紅刃", "昴希", "椿", "福龍", "赤志 魂", "青雨 冷音", "MAD†HOLIC",
-			 "グレイス", "班田 みみこ", "不律 灯色", "京終 始果", "広瀬川 ミヤコ", "焉藤 ギン", "パンナコッター", "覚醒のジュワユース", "つまぶき",
-			 "エスポワール", "キサ＝キジモト", "桐院 るぅき", "アリア・カデンツァ", "ユタニケ", "火琉毘 煉", "鈴音"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = ボルテ学園高等部
-			ENDIF
-			SIF GROUPMATCH(NAME:LCOUNT, "覚醒のジュワユース", "つまぶき", "エスポワール", "鈴音", "ミステリウス・ルージュ")
-				CFLAG:LCOUNT:特殊在校 = 1
-		;中等部
-		{
-		CASE "虹霓・シエル・奈奈", "野増菜 かなで", "樹野 あんず", "ＴＡＭＡちゃん", "粒焼 りむる", "恋刃", "傍丹 桜子", "BisCo", "Mei", "ToRa",
-			 "冥道 ユウキ", "静かなる嵐のイノテンちゃん", "天月 エクサ", "オンディーヌ・シフィカ・チハ"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:1%
-			ELSE
-				CSTR:LCOUNT:在校 = ボルテ学園中等部
-			ENDIF
-			SIF GROUPMATCH(NAME:LCOUNT, "ミステリウス・ルージュ")
-				CFLAG:LCOUNT:特殊在校 = 1
-		;初等部
-		{
-		CASE "野増菜 しずく", "ヴィクトリヤ", "蒼", "雛", "桃", "リボン", "ニア", "ノア", "カヲル", "アシタ", "氷雪ちゃん", "雪翔くん",
-			 "ドゥ・サン・コ・ピリカ", "ハーレクイン", "リリック・リシュナ"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:0%
-			ELSE
-				CSTR:LCOUNT:在校 = ボルテ学園初等部
-			ENDIF
-			SIF GROUPMATCH(NAME:LCOUNT, "ハーレクイン", "ミステリウス・ルージュ")
-				CFLAG:LCOUNT:特殊在校 = 1
-		;イロドリミドリ
-		{
-		CASE "明坂 芹菜", "御形 アリシアナ", "天王洲 なずな", "小仏 凪", "箱部 なる", "月鈴 那知", "月鈴 白奈", "五十嵐 撫子", "萩原 七々瀬", 
-			 "葛城 華", "小野 美苗", "芒崎 奏", "藤堂 陽南袴", "桔梗 小夜曲"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = 舞ヶ原高校
-			ENDIF
-		;ときドル高等部
-		{
-		CASE "結城 秋葉", "月島 美奈都", "田中 フランチェスカ", "川口 夏海", "青山 つばさ", "真田 小幸村", "片桐 奈々菜", "日比野 記子",
-			 "草壁 野々香", "三田 希少", "朝霧 春子"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = プリンセスリパブリック音楽学院高等部
-			ENDIF
-		;ときドル中等部
-		CASE "立川 美翠", "立川 朱音", "伊澄 いずみ", "日毬 みさき"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:1%
-			ELSE
-				CSTR:LCOUNT:在校 = プリンセスリパブリック音楽学院中等部
-			ENDIF
-		;マジックアカデミーは中高一貫
-		{
-		CASE "ルキア", "シャロン", "クララ", "アロエ", "マラリヤ", "ユリ", "ヤンヤン", "リエル", "アイコ", "メディア", "ミュー", "マヤ",
-			 "レオン", "セリオス", "カイル", "ラスク", "サンダース", "タイガ", "ユウ", "ハルト", "リック"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				SELECTCASE NAME:LCOUNT
-					CASE "アロエ", "ミュー", "ラスク", "ユウ"
-						CSTR:LCOUNT:在校 = %固定用学校:0%
-					CASEELSE
-						CSTR:LCOUNT:在校 = %固定用学校:2%
-				ENDSELECT
-			ELSE
-				CSTR:LCOUNT:在校 = マジックアカデミー
-			ENDIF
-		;ひなビタキャラは天神学園
-		CASE "山形 まり花", "和泉 一舞", "春日 咲子", "霜月 凛"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = 天神学園
-			ENDIF
-		;めうのみ中・高がランダム
-		CASE "芽兎 めう"
-			IF RAND:2 == 0
-				IF キャラ選択フラグ:NOF(LCOUNT)
-					CSTR:LCOUNT:在校 = %固定用学校:2%
-				ELSE
-					CSTR:LCOUNT:在校 = 天神学園
-				ENDIF
-			ELSE
-				IF キャラ選択フラグ:NOF(LCOUNT)
-					CSTR:LCOUNT:在校 = %固定用学校:1%
-				ELSE
-					CSTR:LCOUNT:在校 = 華練学園中等科
-				ENDIF
-			ENDIF
-		;ここなつ
-		CASE "東雲 夏陽", "東雲 心菜"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = さくら野高校
-			ENDIF
-		;奏坂高校
-		{
-		CASE "星咲 あかり", "藤沢 柚子", "三角 葵", "高瀬 梨緒", "結城 莉玖", "藍原 椿", "桜井 春菜", 
-			 "早乙女 彩華", "井之原 小星", "柏木 咲姫", "九條 楓", "逢坂 茜", "珠洲島 有栖", "皇城 セツナ",
-			 "ナビニャン"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = 奏坂高校
-			ENDIF
-			SIF GROUPMATCH(NAME:LCOUNT, "ナビニャン")
-				CFLAG:LCOUNT:特殊在校 = 1
-		;奏坂学園（中学）
-		CASE "柏木 美亜", "日向 千夏", "東雲 つむぎ"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:1%
-			ELSE
-				CSTR:LCOUNT:在校 = 奏坂学園
-			ENDIF
-		;さすがに一宮トリオはBEMANI学園でしょう
-		CASE "いちか", "のの", "みや"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = BEMANI学園高等部
-			ENDIF
-		;ラピストリア学園
-		{
-		CASE "ミミ", "ニャミ", "タイマー", "スミレ", "ハヤト", "翔", "ルート＠超ドー研", "風雅", "烈", "氷海", "鈴花", "ニア(pop'n)", "タクト",
-			 "美結", "翠里", "トア", "大牙", "塵", "ラーズ", "桐生", "蒼刻院 弓弦", "ニコラ", "快刀 乱麻", "シャル", "佐倉 満流"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = ラピストリア学園
-			ENDIF
-			SIF NAME:LCOUNT == "シャル"
-				CFLAG:LCOUNT:特殊在校 = 1
-		;聖グラディウス学園
-		{
-		CASE "空羽 亜乃亜", "エリュー・トロン", "マドカ", "エモン・5","ジオール・トゥイー", "ティタ・ニューム", "エスメラルダ","ポイニー・クーン",
-			 "ココロ・ベルモンド", "月士 華風魔", "アーンヴァル", "ストラーフ"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = 聖グラディウス学園
-			ENDIF
-			;オペレッタを教師にさせるのもアレなので（設定的に色々）
-			SIF GROUPMATCH(NAME:LCOUNT, "オペレッタ", "アーンヴァル", "ストラーフ")
-				CFLAG:LCOUNT:特殊在校 = 1
-		;メンタンピントリオ
-		CASE "ヤワラギ・ヒヨリ", "タテナオリ・セン", "ゼツバミ・ヤオ"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在校 = ネリマ壱役高等学校
-			ENDIF
-		;弐女組
-		CASE "ナナツノ・ツミレ", "アンコク・ミツバ", "トイトイ"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在校 = アキバ弐役女学院
-			ENDIF
-		;帝役組 クレンホウもここ
-		CASE "アマト・テンシ", "クニノカミ・ムサシ", "G-14 イヨ"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = 帝国立ナガタチョウ役満高等学校
-			ENDIF
-		;参塾組 仮置き
-		;CASE "イッシキ・カオス", "ペコ", "ジュン"
-		;	IF キャラ選択フラグ:NOF(LCOUNT)
-		;		CSTR:LCOUNT:在校 = %固定用学校:2%
-		;	ELSE
-		;		CSTR:LCOUNT:在校 = カワサキ参役塾高等学校
-		;	ENDIF
-		;
-		;固定ではないがグループ単位で同じ学校の人たち
-		;高校生たち
-		CASE "雛月 理々奈", "梅桐 彩葉", "神崎 慧靂", "鉄 鉄火"
-			SIF 学園乱数固定用:0 == ""
-				学園乱数固定用:0 = %学園ランダム("高", 1)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:0%
-			ENDIF
-		;この3人は同じ
-		CASE "ひなた", "アイ", "まゆ"
-			SIF 学園乱数固定用:1 == ""
-				学園乱数固定用:1 = %学園ランダム("小", 1)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:0%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:1%
-			ENDIF
-		;モドリリ
-		CASE "モード", "リリーゼ"
-			SIF 学園乱数固定用:2 == ""
-				学園乱数固定用:2 = %学園ランダム("小", 2)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:0%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:2%
-			ENDIF
-		;トランプの子
-		CASE "ラジェ", "ガレト", "ヴァロ", "タルタ"
-			SIF 学園乱数固定用:3 == ""
-				学園乱数固定用:3 = %学園ランダム("小", 1)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:0%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:3%
-			ENDIF
-		;ルピレピほうちゃんは同じ
-		CASE "青のルピカ", "青のレピカ", "鳳凰 鈴火"
-			SIF 学園乱数固定用:4 == ""
-				学園乱数固定用:4 = %学園ランダム("高", 2)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:4%
-			ENDIF
-		;ポップンの繋がりがあると思われる女子高生組
-		CASE "リゼット", "歩", "うた", "まりん"
-			SIF 学園乱数固定用:6 == ""
-				学園乱数固定用:6 = %学園ランダム("高", 2)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:6%
-			ENDIF
-		;にじっこ
-		CASE "虹野 ひかり", "夢野 みらい", "星野 そら"
-			SIF 学園乱数固定用:7 == ""
-				学園乱数固定用:7 = %学園ランダム("高", 2)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:7%
-			ENDIF
-		;からふるぱすてる
-		CASE "心音", "陽夏", "涼"
-			SIF 学園乱数固定用:8 == ""
-				学園乱数固定用:8 = %学園ランダム("高", 2)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:8%
-			ENDIF
-		;ヨルド一行
-		CASE "ヨルド", "ミームリウス", "アサギス・ニニギニル", "シャラ"
-			SIF 学園乱数固定用:9 == ""
-				学園乱数固定用:9 = %学園ランダム("高", 1)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:9%
-			ENDIF
-		;ナズナとスズナ
-		CASE "ナズナ", "スズナ"
-			SIF 学園乱数固定用:10 == ""
-				学園乱数固定用:10 = %学園ランダム("小", 2)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:0%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:10%
-			ENDIF
-		;SUPER MOMO TAROSANS
-		CASE "キビ", "ワン"
-			SIF 学園乱数固定用:11 == ""
-				学園乱数固定用:11 = %学園ランダム("高", 1)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:11%
-			ENDIF
-		;BBB
-		CASE "栗花落 夜風", "吉廻 千代"
-			SIF 学園乱数固定用:12 == ""
-				学園乱数固定用:12 = %学園ランダム("高", 2)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:12%
-			ENDIF
-		CASE "黒川 亜理紗", "百武 もなか"
-			SIF 学園乱数固定用:13 == ""
-				学園乱数固定用:13 = %学園ランダム("小", 2)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:0%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:13%
-			ENDIF
-		CASE "アシェル", "シメオン"
-			SIF 学園乱数固定用:14 == ""
-				学園乱数固定用:14 = %学園ランダム("高", 1)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:14%
-			ENDIF
-		CASE "赤ノルニル", "黄ノルニル", "青ノルニル"
-			SIF 学園乱数固定用:15 == ""
-				学園乱数固定用:15 = %学園ランダム("小", 2)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:0%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:15%
-			ENDIF
-		;Mare Nectaris
-		CASE "風々奇", "火々矢", "兎々呂鬼", "夜々祇"
-			SIF 学園乱数固定用:16 == ""
-				学園乱数固定用:16 = %学園ランダム("高", 2)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:16%
-			ENDIF
-		;ロビン＆クックは同じ学校に
-		CASE "ロビン", "クック"
-			SIF 学園乱数固定用:17 == ""
-				学園乱数固定用:17 = %学園ランダム("中", 1)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:1%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:17%
-			ENDIF
-			SIF NAME:LCOUNT == "クック"
-				CFLAG:LCOUNT:特殊在校 = 1
-		;天上学園の二人
-		CASE "チキ", "ウリシュ"
-			SIF 学園乱数固定用:18 == ""
-				学園乱数固定用:18 = %学園ランダム("高", 1)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:18%
-			ENDIF
-		;ここからボンガ枠。一時的にランダム入学に
-		CASE "シロン", "ダァク", "ブラス"
-			SIF 学園乱数固定用:19 == ""
-				学園乱数固定用:19 = %学園ランダム("小", 1)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:0%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:19%
-				;CSTR:LCOUNT:在校 = ボンバーアカデミア初等部
-			ENDIF
-		CASE "グレイ"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:1%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園ランダム("中", TALENT:LCOUNT:性別)%
-				;CSTR:LCOUNT:在校 = ボンバーアカデミア中等部
-			ENDIF
-		CASE "シロ", "クロ", "プラチナ"
-			SIF 学園乱数固定用:20 == ""
-				学園乱数固定用:20 = %学園ランダム("高", 1)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:20%
-				;CSTR:LCOUNT:在校 = ボンバーアカデミア高等部
-			ENDIF
-		;月並組、チグサは高校生だが敢えて潜入している
-		CASE "ウルシ", "アサギ", "チグサ"
-			SIF 学園乱数固定用:21 == ""
-				学園乱数固定用:21 = %学園ランダム("中", 1)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:1%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:21%
-				;CSTR:LCOUNT:在校 = 月並中学校
-			ENDIF
-		;プリボム
-		CASE "モモコ", "パイン", "プルーン", "メロン"
-			SIF 学園乱数固定用:22 == ""
-				学園乱数固定用:22 = %学園ランダム("小", 1)%
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:0%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園乱数固定用:22%
-				;CSTR:LCOUNT:在校 = フルーツ小学校
-			ENDIF
-		;以下大学＆ランダム入学
-		{
-		CASE "水城 セリカ", "北見 エリカ", "神崎 紗矢", "理子", "夜兎姫", "トヨタマヒメ", "スタンパ", "アヤ", "ヒュー", "愛子", "レナ", "彗星ローラ",
-			 "エリカ", "あやめ", "ノネット", "グリム", "エミ", "響香", "しゃま", "星見 日向", "ファロ", "マルファータ", "ベルフォート", "ローズマリー", "レイジ", 
-			 "ノーティガール", "結", "千代", "ミサキ", "マチコ", "伊賀崎ノ 楠子", "黒原 きずな", "アルマ・ヴィス・アウダーチア", "スザク", "イア＝ラムセ", "アシュレイ＝ボア",
-			 "神園 零", "筑波 美夏", "英田 優里", "ケリー", "ロマンス", "桃香", "ナディ", "ヨナ・ライゼ", "ティエイト", "天稲荷 コテツ", "ミスラ・テルセーラ", 
-			 "ニア・ユーディット", "エステル・ヤグルーシュ", "レア・エ・フラータ", "ヴォイド", "ゼファー・ニアルデ", "阿式 黄虎", "セピア・ベルモンド"
-		}
-			CSTR:LCOUNT:在校 = BEMANI大学
-		;小中高ランダム
-		;小○校
-		{
-		CASE "ルルスス", "赤シグ", "黄シグ", "青シグ", "赤のリピカ", "スノーフェアリー", "アムドゥシアン", "リプンテ", "クリープ", "テトラ",
-			 "ロキ", "おんなのこ", "チップ", "ロザリー", "サン", "白鳥 姫子", "たぬちよ", "アリシア", "フローラ", "ホイップ",
-			 "てまり", "ゼルハルト", "アミュレット", "ユビ子", "ルエリシア", "フリオ", "ローズ(GITADORA)", "ソルト", "みるく", "シルビア", "ケリマロ", 
-			 "オオカミ少年", "ミア", "らいむ", "知雲 ひばり", "レインボーヤ", "小坊主", "ルフ", "不来方 とあ", "にんじん", "ジュナ・フェリクス", "マウリツィオ", "MIR-203【セレネ・シェリル】",
-			 "ミーム", "メリリィ", "ディーノ", "ヘンリー", "アクア"
-		}
-			;？→ "兎音 ココ"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:0%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園ランダム("小", TALENT:LCOUNT:性別)%
-			ENDIF
-		;中学
-		{
-		CASE "ヒメル", "タルト", "タフィ", "ノクス・カトルセ", "マタン・カトルセ", "おはな", "ルシェ", "キュベルト", "黄のラピカ", "Aegis",
-			 "スモモ", "クロノス", "牡丹", "橙之 針子", "ジャックハンス", "ジャックティーロ", "ギガデリック：オズワルド", "アーミィ", "エグゼ",
-			 "Ⅸ籠", "おいわちゃん", "うらしまたろ子", "ミニッツ", "ポエット", "つらら", "セシル", "ジャック", "ベンベン", "ホワイトメリー",
-			 "鹿ノ子", "リアン", "ター子", "ライラ", "しおん", "寿々姫", "マルクト", "ピュアクルリップ", "雷蔵", "＊うさぬこ＊", "ポチコ", "ちぇるみん",
-			 "スペース＠マコ", "リデル", "なぎさ", "リノン", "リノン(黒)", "かぐや", "トルテ", "あい", "サニー", "セイナ", "ローズ", "リリカ", "ココ",
-			 "アバリータ", "エンビー", "アシディア", "プリッド", "グリコ", "ラクリア", "ウエステ", "ちい", "ナルル", "ティア", "ライア", "フィクル",
-			 "アイディ", "ルシ子", "イラ", "キャンディッド", "エス", "あいの影", "乙姫", "ラズ", "シフォン", "トラン", "タマヨ", "シャルロット", 
-			 "ニコラシカ", "アイオーネ", "サリュイス", "チャオ", "はまゆきちゃん", "サユリ", "アンナ", "みっちゃん", "クララ(pop'n)", "スカイフェザー", "観音寺 にこる",
-			 "イングリット・オーリック・コーネル", "ソラマチ・メメ", "本宮 梨々花", "リリィ", "鬼蝮 アイリ", "ルミエラ・ヴィス・アニマート", "さらさ", "ごくそつくん",
-			 "くらんて", "フロウフロウ", "テンコ", "シカトリス", "BroGamerの少年", "三田 ナナコ", "ニニカ・クロッシュ", "まひる", "エクレール", "MDA-01【シリウス】", 
-			 "セーレ・ヘイズ", "ソロ・モーニア", "アンナ・マルグレーテ", "MDA-21【レグルス】", "ロクミ", "八重垣 命"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:1%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園ランダム("中", TALENT:LCOUNT:性別)%
-			ENDIF
-		;高校
-		{
-		CASE "キラー", "リヒト", "オロロージョ", "アンネース", "おきつ", "おゆき", "駄天使ちゃん", "ヴァルキリー", "サキュバスちゃん",
-			 "ニンフちゃん", "ニーソ姫", "エレクトロ：チューンド", "パール", "マーメイドガール", "比多木 小瑠璃", "カイロス", "ことみちゃん",
-			 "怪盗いいんちょ", "ミラベル", "あいみ", "ものか", "エクス", "ねむ", "ゼロワン：バンディング", "鎖", "刺斬", "グラビティ：ガルフエッジ",
-			 "ホリック：ランナー", "犬見川 ユウ", "九鬼衣 シエ", "ジュリア", "カーリー", "エス・エイト・タロウ",
-			 "おコン", "リサ", "かごめ", "睦月", "シャラ(pop'n)", "ウーノ", "ツースト", "若さん", "フォース", "Bis子", "アリス(pop'n)",
-			 "ラッテ", "ロッテ", "ナカジ", "花緒", "みここ", "蒼井 硝子", "エッダ", "カケルくん", "アン", "ンビリ", "ちなつ", "紅", "ニット", "まりん",
-			 "みほ", "ブラック", "オーリー", "アリサ", "えりりん", "メリッサ", "神楽", "ちせ", "ユニ", "アリス・イップ", "璃音", "イリル", "フローレス",
-			 "ミカ子", "ヨミ", "アメ", "キャスメラ", "405nm", "あいむ", "オフィーリア", "フェリーラ", "ヨシオ", "イナリ", "ニコ", "アリス・ルナン",
-			 "アイラ", "シリーちゃん", "阿式 眞白", "キララ", "ルル", "カジカ", "ニッキー", "レオン(pop'n)", "荒場 流子", "舞園 星斗", "愛野 ヒカリ", "美嶋 はるな", 
-			 "鬼蝮 ユリア", "葉和 とれび", "八咫烏 鋼太郎", "津久井 シズノ", "マゼラン・マゼラン", "渋沢 ノノ", "暁 凶香", "常世のサツキ", "高須 らいむ",
-			 "幸野 うさぎ", "新田 ちえ", "リタ・カールステット", "エリザベス", "第八皇女エルルーン", "ラニウス・ヴルペクラ", "もえ", "黒須 紘", "リオ", "ハルカ",
-			 "アゲハ", "ハーティー", "ラヴィ", "ALT", "Phantasmagoria", "DJつよし", "OJつよし", "ギタケン", "リラ", "NEO", "ペンデュラム・ライゼ", "ギデオン・ライゼ",
-			 "ミリアム・ベミドバル", "レナ・イシュメイル", "つきこ", "ミァン・テルスウラス", "ジュナ・サラキア", "イゼヴェル・ヤグルーシュ", "黒亀 北斗", "向来 隼", "御影 昴", 
-			 "セラフィナ・ヴィス・アニマート", "ミィム・ミクラー", "ルチア・レ・ベルナデート", "ピリオ", "ブリランテ", "グラーヴェ・ノーヴァ", "シズマ・クロサキ",
-			 "フィーネ・アルトリネス", "シュープリス", "エリシャ・ムルシア", "MIR-202【アルテミス・レナ】", "MIR-201【ヘカティ・ベアトリクス】", "エル・リベルテ",
-			 "阿式 澄桃", "オリガ", "リキュア", "しおり", "HARUKA","クーデルカ・プルミエール", "オレン", "エメラ", "パプル", "オリーヴ・ドラブ", "テッカ"
-		}
-		;テッカは聖茶屋町女学院
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園ランダム("高", TALENT:LCOUNT:性別)%
-			ENDIF
-		CASE "宍戸 美鈴"
-			;美鈴の学校は共学
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				CSTR:LCOUNT:在校 = %学園ランダム("高", 1)%
-			ENDIF
-			CFLAG:LCOUNT:特殊在校 = 1
-		;グリムキャラはマジックアカデミー以外のどこか
-		{
-		CASE "グリム・ルキア", "グリム・シャロン", "グリム・クララ", "グリム・マラリヤ", "グリム・ユリ", "グリム・ヤンヤン", "グリム・リエル",
-			 "グリム・アイコ", "グリム・メディア", "グリム・マヤ", "グリム・レオン", "グリム・セリオス", "グリム・カイル", "グリム・サンダース",
-			 "グリム・タイガ", "グリム・ハルト", "グリム・リック"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:2%
-			ELSE
-				DO
-					CSTR:LCOUNT:在校 = %学園ランダム("高", TALENT:LCOUNT:性別)%
-					SIF CSTR:LCOUNT:在校 == "マジックアカデミー"
-						CONTINUE
-					BREAK
-				LOOP 1
-			ENDIF
-		CASE "グリム・アロエ", "グリム・ミュー", "グリム・ラスク", "グリム・ユウ"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在校 = %固定用学校:0%
-			ELSE
-				DO
-					CSTR:LCOUNT:在校 = %学園ランダム("小", TALENT:LCOUNT:性別)%
-					SIF CSTR:LCOUNT:在校 == "マジックアカデミー"
-						CONTINUE
-					BREAK
-				LOOP 1
-			ENDIF
-		
-		;ここから教師陣の選任 固定の教師陣を優先して処理
-		;ボルテ学園
-		CASE "プロフェッサー識苑", "シャトー・ロワーレ", "オルトリンデ", "トライプル・ストレエッジ", "ボルテナイザー・マキシマ", "ライオット・デストルドー", "アウグスト=ヴェルテックス"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = ボルテ学園高等部
-			ENDIF
-			SIF NAME:LCOUNT == "プロフェッサー識苑"
-				CSTR:LCOUNT:担当科目 = 技術
-			SIF NAME:LCOUNT == "シャトー・ロワーレ"
-				CSTR:LCOUNT:担当科目 = 音楽
-			SIF NAME:LCOUNT == "オルトリンデ"
-				CSTR:LCOUNT:担当科目 = 国語
-			SIF NAME:LCOUNT == "トライプル・ストレエッジ"
-				CSTR:LCOUNT:担当科目 = 数学
-			SIF NAME:LCOUNT == "ボルテナイザー・マキシマ"
-				CSTR:LCOUNT:担当科目 = 英語
-			SIF NAME:LCOUNT == "ライオット・デストルドー"
-				CSTR:LCOUNT:担当科目 = 美術
-			SIF NAME:LCOUNT == "アウグスト=ヴェルテックス"
-				CSTR:LCOUNT:担当科目 = 社会
-		;ラピストリア学園
-		CASE "ジェダイト", "ジェイド", "ヴァイス", "まどか"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = ラピストリア学園
-			ENDIF
-			SIF NAME:LCOUNT == "ジェダイト"
-				CSTR:LCOUNT:担当科目 = 校長
-			SIF NAME:LCOUNT == "ジェイド"
-				CSTR:LCOUNT:担当科目 = 理事長
-			SIF NAME:LCOUNT == "ヴァイス"
-				CSTR:LCOUNT:担当科目 = 保健
-			SIF NAME:LCOUNT == "まどか"
-				CSTR:LCOUNT:担当科目 = 数学
-		;マジックアカデミー
-		CASE "サツキ", "マロン", "リディア", "エリーザ", "アメリア", "ミランダ", "ガルーダ", "ウィーズ", "フランシス"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = マジックアカデミー
-			ENDIF
-			SIF NAME:LCOUNT == "サツキ"
-				CSTR:LCOUNT:担当科目 = 科学
-			SIF NAME:LCOUNT == "マロン"
-				CSTR:LCOUNT:担当科目 = 美術
-			SIF NAME:LCOUNT == "リディア"
-				CSTR:LCOUNT:担当科目 = 家庭科
-			SIF NAME:LCOUNT == "エリーザ"
-				CSTR:LCOUNT:担当科目 = 社会
-			SIF NAME:LCOUNT == "アメリア"
-				CSTR:LCOUNT:担当科目 = 国語
-			SIF NAME:LCOUNT == "ミランダ"
-				CSTR:LCOUNT:担当科目 = 保健
-			SIF NAME:LCOUNT == "ガルーダ"
-				CSTR:LCOUNT:担当科目 = 体育
-			SIF NAME:LCOUNT == "ウィーズ"
-				CSTR:LCOUNT:担当科目 = 数学
-			SIF NAME:LCOUNT == "フランシス"
-				CSTR:LCOUNT:担当科目 = 音楽
-			;最新の設定を反映させてロマノフ先生は外した
-			;SIF NAME:LCOUNT == "ロマノフ"
-			;	CSTR:LCOUNT:担当科目 = 校長
-		CASE "T.B.リカ"
-			;追記。公式設定資料集未読なので技術かもしれない
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = 聖グラディウス学園
-			ENDIF
-			CSTR:LCOUNT:担当科目 = 技術
-
-		;国語
-		CASE "A", "ユーリ", "カゲトラ", "浅見 文彦", "桔梗", "ムラサキ", "玉藻 銀丸", "イマ", "弐ノ丸", "こうもりおとこ", "闘争の女帝 エリス"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = %選任ランダム("国語")%
-			ENDIF
-			CSTR:LCOUNT:担当科目 = 国語
-		;数学
-		CASE "マモニス", "ガユカ", "Σ", "カネノブ", "スミス氏", "コンセント", "ガス", "サトウサン", "サーミリアス","カイナン・メルヴィアス", "黄泉の盟主 ネルガル"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = %選任ランダム("数学")%
-			ENDIF
-			CSTR:LCOUNT:担当科目 = 数学
-		;英語
-		CASE "サイレン", "六", "HOT.D", "アルフォンス・ミシェル", "エイプリル", "アイリーン", "アフロ", "モモコさん"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = %選任ランダム("英語")%
-			ENDIF
-			CSTR:LCOUNT:担当科目 = 英語
-		;科学
-		{
-		CASE "ファウラ", "パラド", "エレノア", "マサムネ", "アル・ハイア", "ガッキー博士", "正論", "ゼーグ・ルルード", 
-			 "スマイル", "Dr.φ", "メリム", "クレメンス・ジークハルト", "帝国魔導師 イセリア"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = %選任ランダム("科学")%
-			ENDIF
-			CSTR:LCOUNT:担当科目 = 科学
-		;社会
-		CASE "サタヌ", "ボルテージ：マインツ", "卑弥呼", "獅子若", "エミーリオ", "ニョア", "リリアンキル", "クニオシ", "N・ナーガ", "はに子", "エコ爺","アンシャール・アウダーチア", "ヤクオン"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = %選任ランダム("社会")%
-			ENDIF
-			CSTR:LCOUNT:担当科目 = 社会
-		;音楽
-		{
-		CASE "菱宮 春一", "ショルキー", "ファティマ", "パンデス", "スモーク", "獅子次", "山吹", "ハーピア", "熊井さん", 
-		"ザ・キング", "イワン", "アイス", "フォクシー", "サイレントルーム"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = %選任ランダム("音楽")%
-			ENDIF
-			CSTR:LCOUNT:担当科目 = 音楽
-		;体育
-		{
-		CASE "シャムシール", "ハジメ", "ネロ", "ヴォルフガング", "金剛寺 亮", "アドフーク", "ミカレイ・バーン", "ライアン", "クアトロ", 
-			 "ロト・トゥエルヴ", "マードゥク・アニマート", "憎悪の戦神 アレウス", "シルヴァ"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = %選任ランダム("体育")%
-			ENDIF
-			CSTR:LCOUNT:担当科目 = 体育
-		;美術
-		CASE "孔雀", "雛月 聖奈", "英利", "シェリー", "チャコル", "パステルくん", "テント・カント", "ミカエール"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = %選任ランダム("美術")%
-			ENDIF
-			CSTR:LCOUNT:担当科目 = 美術
-		;保健
-		CASE "アーシェム", "ミルク", "揚羽", "ゼロ", "エチダナ", "ハニー", "キャロル", "ミク", "サンパウロ容子", "ユグドラシル", "セロ・ダーウィーズ"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = %選任ランダム("保健")%
-			ENDIF
-			CSTR:LCOUNT:担当科目 = 保健
-		;家庭科
-		CASE "ベリゼベス", "トリフォリ", "アッシュ", "ジズ", "アルビレオ", "茜", "弦", "育江", "デボラ","ジーン・ザイン"
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = %選任ランダム("家庭科")%
-			ENDIF
-			CSTR:LCOUNT:担当科目 = 家庭科
-		;校長
-		{
-		CASE "梅桐 天土", "神崎 弦士", "キュベリア", "白のロピカ", "MZD", "ギジリ", "エクレメス", "一条司令", "ヴィルヘルム", 
-			 "ミカ・ドミナンスⅢ", "ダン・ドミナンスⅤ", "ティフォン", "RG-XXX【ティアマット】"
-		}
-			IF キャラ選択フラグ:NOF(LCOUNT)
-				CSTR:LCOUNT:在任 = %固定用学校:3%
-			ELSE
-				CSTR:LCOUNT:在任 = %選任ランダム("校長")%
-			ENDIF
-			CSTR:LCOUNT:担当科目 = 校長
-	ENDSELECT
-	[SKIPEND]
 NEXT
 
 ;優先処理が終わったらもう一周
-;IF !優先処理済 && !新規追加フラグ
-;	優先処理済 = 1
-;	GOTO ランダム入学処理
-;ENDIF
+IF !優先処理済 && !新規追加フラグ
+	優先処理済 = 1
+	GOTO ランダム入学処理
+ENDIF
 
 ;キャラ番号順にソート
-;SORTCHARA
+SORTCHARA
 
 CALL FADEOUTBGM
 
@@ -930,18 +238,20 @@ FOR LCOUNT, 0, VARSIZE("学校名")
 				SETCOLORBYNAME peru
 		ENDSELECT
 	ENDIF
-	PRINTFORM 　[{LCOUNT}] %学校名:LCOUNT%(生徒:{CMATCH(CSTR:在校, 学校名:LCOUNT)}人 教師:{CMATCH(CSTR:在任, 学校名:LCOUNT)}人) 
+	PRINTFORM 　[{LCOUNT}] %学校名:LCOUNT%(生徒:{CMATCH(CSTR:在校, 学校名:LCOUNT)}人 教師:{CMATCH(CSTR:在任, 学校名:LCOUNT)}人)
+	SIF 女子校判定(学校名:LCOUNT)
+		PRINT (女子校)
 	SIF 入学先 == LCOUNT && ゲームモード() == "学園モード"
-		PRINTFORM %NAME:MASTER%の入学先
+		PRINTFORM  %NAME:MASTER%の入学先
 	PRINTL 
 	RESETCOLOR
 NEXT
 PRINTL □キャラ固定オプション
-CALL MANUALPRINT, @"　[90] キャラ固定用の小学校を選択する（現在:(COLOR:aquamarine:%固定用学校:0%)） "
-CALL MANUALPRINT, @"[91] キャラ固定用の中学校を選択する（現在:(COLOR:lightgreen:%固定用学校:1%)）"
+CALL MANUALPRINT, @"　[80] キャラ固定用の小学校を選択する（現在:(COLOR:aquamarine:%固定用学校:0%)） "
+CALL MANUALPRINT, @"[81] キャラ固定用の中学校を選択する（現在:(COLOR:lightgreen:%固定用学校:1%)）"
 PRINTL
-CALL MANUALPRINT, @"　[92] キャラ固定用の高校を選択する（現在:(COLOR:violet:%固定用学校:2%)） "
-CALL MANUALPRINT, @"[93] キャラ固定用の赴任先を選択する（現在:(COLOR:peru:%固定用学校:3%)）"
+CALL MANUALPRINT, @"　[82] キャラ固定用の高校を選択する（現在:(COLOR:violet:%固定用学校:2%)） "
+CALL MANUALPRINT, @"[83] キャラ固定用の赴任先を選択する（現在:(COLOR:peru:%固定用学校:3%)）"
 PRINTL
 
 PRINTL □その他オプション
@@ -980,7 +290,6 @@ SELECTCASE RESULT
 				CONTINUE
 			SIF CFLAG:LCOUNT:特殊在校
 				CONTINUE
-			RESETCOLOR
 			SIF NAME:LCOUNT == 運命の人
 				SETCOLORBYNAME coral
 			SIF キャラ選択フラグ:NOF(LCOUNT)
@@ -992,7 +301,6 @@ SELECTCASE RESULT
 		FOR LCOUNT, 0, CHARANUM
 			SIF CSTR:LCOUNT:在任 != 学校名:RESULT
 				CONTINUE
-			RESETCOLOR
 			SIF NAME:LCOUNT == 運命の人
 				SETCOLORBYNAME coral
 			SIF キャラ選択フラグ:NOF(LCOUNT)
@@ -1006,7 +314,6 @@ SELECTCASE RESULT
 				CONTINUE
 			SIF !CFLAG:LCOUNT:特殊在校
 				CONTINUE
-			RESETCOLOR
 			SIF NAME:LCOUNT == 運命の人
 				SETCOLORBYNAME coral
 			SIF キャラ選択フラグ:NOF(LCOUNT)
@@ -1065,17 +372,17 @@ SELECTCASE RESULT
 				GOTO キャラ一覧
 		ENDSELECT
 		GOTO 学校一覧表示
-	CASE 90 TO 93
+	CASE 80 TO 83
 		PRINTL 学校を選択してください
 		LRESULT = RESULT
 		FOR LCOUNT, 0, VARSIZE("学校名")
-			SIF LRESULT == 90 && 小中高(学校名:LCOUNT) != "小"
+			SIF LRESULT == 80 && 小中高(学校名:LCOUNT) != "小"
 				CONTINUE
-			SIF LRESULT == 91 && 小中高(学校名:LCOUNT) != "中"
+			SIF LRESULT == 81 && 小中高(学校名:LCOUNT) != "中"
 				CONTINUE
-			SIF LRESULT == 92 && 小中高(学校名:LCOUNT) != "高"
+			SIF LRESULT == 82 && 小中高(学校名:LCOUNT) != "高"
 				CONTINUE
-			SIF LRESULT == 93 && !GROUPMATCH(小中高(学校名:LCOUNT), "小", "中", "高")
+			SIF LRESULT == 83 && !GROUPMATCH(小中高(学校名:LCOUNT), "小", "中", "高")
 				CONTINUE
 			PRINTFORML [{LCOUNT, 2}] %学校名:LCOUNT%
 		NEXT
@@ -1119,20 +426,18 @@ SELECTCASE RESULT
 		GOTO 学校一覧表示
 	CASE 96
 		LOADGLOBAL
-		PRINTL 現在のキャラ固定用設定（選択中キャラと固定用学校）+運命の人の設定を保存し、ニューゲーム時に呼び出せるようにしますか？
+		PRINTL 現在の設定を保存し、ニューゲーム時に呼び出せるようにしますか？
+		PRINTL （固定用学校、固定選択中キャラ、運命の人、除外学校リストが保存されます）
 		SIF 学園グローバル設定あり
-			PRINTL （注意：現在保存されている設定は上書きされます）
+			PRINTL 　！注意！現在保存されている設定は上書きされます
 		PRINTL [0] 保存する
 		PRINTL [1] 保存しない
 		BINPUT
 		IF RESULT == 0
-			FOR LCOUNT, 0, VARSIZE("G固定用学校")
-				G固定用学校:LCOUNT = %固定用学校:LCOUNT%
-			NEXT
-			FOR LCOUNT, 1, 10000
-				Gキャラ選択フラグ:LCOUNT = キャラ選択フラグ:LCOUNT
-			NEXT
-			G運命の人 = %運命の人%
+			ARRAYCOPY "固定用学校", "G固定用学校"
+			ARRAYCOPY "キャラ選択フラグ", "Gキャラ選択フラグ"
+			ARRAYCOPY "除外学校リスト", "G除外学校リスト"
+			ARRAYCOPY "運命の人", "G運命の人"
 			学園グローバル設定あり = 1
 			SAVEGLOBAL
 			PRINTW 設定を保存しました
@@ -1161,10 +466,16 @@ SELECTCASE RESULT
 		ENDIF
 		CSTR:MASTER:在校 = %学校名:入学先%
 	CASE 201
-		FOR LCOUNT, CHARANUM-1, 0, -1
-			DELCHARA LCOUNT
-		NEXT
 		VARSET 学園乱数固定用
+		FOR LCOUNT, 0, CHARANUM
+			CSTR:LCOUNT:在校 = 
+			CSTR:LCOUNT:在任 = 
+			CSTR:LCOUNT:担当科目 = %CSTR:LCOUNT:デフォルト科目%
+			SIF CSTR:LCOUNT:担当科目 != ""
+				CSTR:LCOUNT:在任 = %CSTR:LCOUNT:デフォルト学校名%
+			SIF INRANGE(CFLAG:LCOUNT:学年, 1, 3)
+				CSTR:LCOUNT:在校 = %CSTR:LCOUNT:デフォルト学校名%
+		NEXT
 		入学先 = -1
 		GOTO クラス分け
 ENDSELECT
@@ -1218,11 +529,11 @@ SELECTCASE SEX(PLAYER)
 			IF TALENT:PLAYER:バストサイズ <= 2
 				CSTR:PLAYER:上半身下着 = スポーツブラ
 				学園用服装:PLAYER:上半身下着 = スポーツブラ
-				学園用服装フラグ:PLAYER:下着パイズリ = 4
+				学園用服装フラグ:PLAYER:下着パイズリ = 5
 			ELSE
 				CSTR:PLAYER:上半身下着 = ブラジャー
 				学園用服装:PLAYER:上半身下着 = ブラジャー
-				学園用服装フラグ:PLAYER:下着パイズリ = 3
+				学園用服装フラグ:PLAYER:下着パイズリ = 4
 			ENDIF
 			CSTR:PLAYER:下半身下着 = パンティ
 			学園用服装:PLAYER:下半身下着 = パンティ
@@ -1497,34 +808,51 @@ ENDSELECT
 #FUNCTION
 #DIMS DYNAMIC 学校
 
-RETURNF GROUPMATCH(学校, "プリンセスリパブリック音楽学院中等部", "奏坂学園", "プリンセスリパブリック音楽学院高等部", "奏坂高校", "アキバ弐役女学院")
+;ときドル
+SIF GROUPMATCH(学校, "プリンセスリパブリック音楽学院中等部", "プリンセスリパブリック音楽学院高等部")
+	RETURNF 1
+;オンゲキ
+SIF GROUPMATCH(学校, "奏坂学園", "奏坂高校")
+	RETURNF 1
+;ある程度自動判定
+SIF STRCOUNT(学校, "女学院")
+	RETURNF 1
+RETURNF 0
 
 @選任ランダム, 科目
 #FUNCTIONS
-#DIMS DYNAMIC 赴任先
 #DIM DYNAMIC LCOUNT
-#DIMS DYNAMIC 学校
+#DIM DYNAMIC LCOUNT2
 #DIMS DYNAMIC 科目
+#DIMS DYNAMIC 赴任先候補, 100
+#DIMS DYNAMIC 被りなし赴任先候補, 100
+#DIM DYNAMIC 候補数
+#DIM DYNAMIC 被りなし候補数
 
-DO
-	赴任先 = %学校名:(RAND:VARSIZE("学校名"))%
-	SIF 赴任先 == ""
+FOR LCOUNT, 0, 学校数上限
+	SIF 学校名:LCOUNT == ""
 		CONTINUE
 	;マジックアカデミーは固定で付いてるので赴任しない
-	SIF 赴任先 == "マジックアカデミー"
+	SIF 学校名:LCOUNT == "マジックアカデミー"
 		CONTINUE
 	;大学には赴任しない
-	SIF 小中高(赴任先) == "大"
+	SIF 小中高(学校名:LCOUNT) == "大"
 		CONTINUE
-	;赴任先に担当科目の教師が居なければ赴任
-	FOR LCOUNT, 0, CHARANUM
-		SIF 赴任先 == CSTR:LCOUNT:在任 && CSTR:LCOUNT:担当科目 == 科目
-			RESTART
+	赴任先候補:(候補数++) = %学校名:LCOUNT%
+	;担当科目の教師が居なければ被りなしとして追加
+	FOR LCOUNT2, 0, CHARANUM
+		SIF 学校名:LCOUNT == CSTR:LCOUNT2:在任 && CSTR:LCOUNT2:担当科目 == 科目
+			GOTO 被りあり
 	NEXT
-	BREAK
-LOOP 1
-
-RETURNF 赴任先
+	被りなし赴任先候補:(被りなし候補数++) = %学校名:LCOUNT%
+	$被りあり
+NEXT
+;被らない学校を優先 なければ妥協
+IF 被りなし候補数
+	RETURNF 被りなし赴任先候補:(RAND:被りなし候補数)
+ELSE
+	RETURNF 赴任先候補:(RAND:候補数)
+ENDIF
 
 @小中高, 学校
 #FUNCTIONS
@@ -1598,18 +926,713 @@ NEXT
 CALL NEWLINE
 DRAWLINE
 PRINTPLAIN 　学校除外　
-PRINTFORML [100] 戻る(変更を適用するには振り分けをやり直す必要があります)
+PRINTFORML [100] 戻る(変更を適用するには振り分けをやり直す必要があります)　[101] 全部オン　[102] 全部オフ
 
 BINPUT
 SELECTCASE RESULT
 	CASE 100
-	VARSET 除外学校リスト
+		VARSET 除外学校リスト
 		FOR LCOUNT, 0, 100
 			SIF 除外:LCOUNT
 				除外学校リスト:FINDELEMENTF(除外学校リスト, "") = %学校一覧:LCOUNT%
 		NEXT
 		RETURN
+	CASE 101
+		VARSET 除外, 0
+	CASE 102
+		VARSET 除外, 1
 	CASEELSE
 		INVERTBIT 除外:RESULT, 0
-		GOTO 学校選択
 ENDSELECT
+GOTO 学校選択
+
+
+;学校振り分けの旧処理
+;CSVに書くようにしたのでコメントアウトで様子見
+[SKIPSTART]
+SELECTCASE NAME:LCOUNT
+	;学校固定の人たち
+	;華練学園の3人
+	CASE "菱宮 津軽", "刃雪 達磨", "シア"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:1%
+		ELSE
+			CSTR:LCOUNT:在校 = 華練学園中等科
+		ENDIF
+	;ボルテ学園高等部
+	{
+	CASE "EΛΠIΣ‡煌‡", "レイシス", "嬬武器 雷刀", "嬬武器 烈風刀", "紅刃", "昴希", "椿", "福龍", "赤志 魂", "青雨 冷音", "MAD†HOLIC",
+		 "グレイス", "班田 みみこ", "不律 灯色", "京終 始果", "広瀬川 ミヤコ", "焉藤 ギン", "パンナコッター", "覚醒のジュワユース", "つまぶき",
+		 "エスポワール", "キサ＝キジモト", "桐院 るぅき", "アリア・カデンツァ", "ユタニケ", "火琉毘 煉", "鈴音"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = ボルテ学園高等部
+		ENDIF
+		SIF GROUPMATCH(NAME:LCOUNT, "覚醒のジュワユース", "つまぶき", "エスポワール", "鈴音", "ミステリウス・ルージュ")
+			CFLAG:LCOUNT:特殊在校 = 1
+	;中等部
+	{
+	CASE "虹霓・シエル・奈奈", "野増菜 かなで", "樹野 あんず", "ＴＡＭＡちゃん", "粒焼 りむる", "恋刃", "傍丹 桜子", "BisCo", "Mei", "ToRa",
+		 "冥道 ユウキ", "静かなる嵐のイノテンちゃん", "天月 エクサ", "オンディーヌ・シフィカ・チハ"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:1%
+		ELSE
+			CSTR:LCOUNT:在校 = ボルテ学園中等部
+		ENDIF
+		SIF GROUPMATCH(NAME:LCOUNT, "ミステリウス・ルージュ")
+			CFLAG:LCOUNT:特殊在校 = 1
+	;初等部
+	{
+	CASE "野増菜 しずく", "ヴィクトリヤ", "蒼", "雛", "桃", "リボン", "ニア", "ノア", "カヲル", "アシタ", "氷雪ちゃん", "雪翔くん",
+		 "ドゥ・サン・コ・ピリカ", "ハーレクイン", "リリック・リシュナ"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:0%
+		ELSE
+			CSTR:LCOUNT:在校 = ボルテ学園初等部
+		ENDIF
+		SIF GROUPMATCH(NAME:LCOUNT, "ハーレクイン", "ミステリウス・ルージュ")
+			CFLAG:LCOUNT:特殊在校 = 1
+	;イロドリミドリ
+	{
+	CASE "明坂 芹菜", "御形 アリシアナ", "天王洲 なずな", "小仏 凪", "箱部 なる", "月鈴 那知", "月鈴 白奈", "五十嵐 撫子", "萩原 七々瀬", 
+		 "葛城 華", "小野 美苗", "芒崎 奏", "藤堂 陽南袴", "桔梗 小夜曲"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = 舞ヶ原高校
+		ENDIF
+	;ときドル高等部
+	{
+	CASE "結城 秋葉", "月島 美奈都", "田中 フランチェスカ", "川口 夏海", "青山 つばさ", "真田 小幸村", "片桐 奈々菜", "日比野 記子",
+		 "草壁 野々香", "三田 希少", "朝霧 春子"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = プリンセスリパブリック音楽学院高等部
+		ENDIF
+	;ときドル中等部
+	CASE "立川 美翠", "立川 朱音", "伊澄 いずみ", "日毬 みさき"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:1%
+		ELSE
+			CSTR:LCOUNT:在校 = プリンセスリパブリック音楽学院中等部
+		ENDIF
+	;マジックアカデミーは中高一貫
+	{
+	CASE "ルキア", "シャロン", "クララ", "アロエ", "マラリヤ", "ユリ", "ヤンヤン", "リエル", "アイコ", "メディア", "ミュー", "マヤ",
+		 "レオン", "セリオス", "カイル", "ラスク", "サンダース", "タイガ", "ユウ", "ハルト", "リック"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			SELECTCASE NAME:LCOUNT
+				CASE "アロエ", "ミュー", "ラスク", "ユウ"
+					CSTR:LCOUNT:在校 = %固定用学校:0%
+				CASEELSE
+					CSTR:LCOUNT:在校 = %固定用学校:2%
+			ENDSELECT
+		ELSE
+			CSTR:LCOUNT:在校 = マジックアカデミー
+		ENDIF
+	;ひなビタキャラは天神学園
+	CASE "山形 まり花", "和泉 一舞", "春日 咲子", "霜月 凛"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = 天神学園
+		ENDIF
+	;めうのみ中・高がランダム
+	CASE "芽兎 めう"
+		IF RAND:2 == 0
+			IF キャラ選択フラグ:NOF(LCOUNT)
+				CSTR:LCOUNT:在校 = %固定用学校:2%
+			ELSE
+				CSTR:LCOUNT:在校 = 天神学園
+			ENDIF
+		ELSE
+			IF キャラ選択フラグ:NOF(LCOUNT)
+				CSTR:LCOUNT:在校 = %固定用学校:1%
+			ELSE
+				CSTR:LCOUNT:在校 = 華練学園中等科
+			ENDIF
+		ENDIF
+	;ここなつ
+	CASE "東雲 夏陽", "東雲 心菜"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = さくら野高校
+		ENDIF
+	;奏坂高校
+	{
+	CASE "星咲 あかり", "藤沢 柚子", "三角 葵", "高瀬 梨緒", "結城 莉玖", "藍原 椿", "桜井 春菜", 
+		 "早乙女 彩華", "井之原 小星", "柏木 咲姫", "九條 楓", "逢坂 茜", "珠洲島 有栖", "皇城 セツナ",
+		 "ナビニャン"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = 奏坂高校
+		ENDIF
+		SIF GROUPMATCH(NAME:LCOUNT, "ナビニャン")
+			CFLAG:LCOUNT:特殊在校 = 1
+	;奏坂学園（中学）
+	CASE "柏木 美亜", "日向 千夏", "東雲 つむぎ"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:1%
+		ELSE
+			CSTR:LCOUNT:在校 = 奏坂学園
+		ENDIF
+	;さすがに一宮トリオはBEMANI学園でしょう
+	CASE "いちか", "のの", "みや"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = BEMANI学園高等部
+		ENDIF
+	;ラピストリア学園
+	{
+	CASE "ミミ", "ニャミ", "タイマー", "スミレ", "ハヤト", "翔", "ルート＠超ドー研", "風雅", "烈", "氷海", "鈴花", "ニア(pop'n)", "タクト",
+		 "美結", "翠里", "トア", "大牙", "塵", "ラーズ", "桐生", "蒼刻院 弓弦", "ニコラ", "快刀 乱麻", "シャル", "佐倉 満流"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = ラピストリア学園
+		ENDIF
+		SIF NAME:LCOUNT == "シャル"
+			CFLAG:LCOUNT:特殊在校 = 1
+	;聖グラディウス学園
+	{
+	CASE "空羽 亜乃亜", "エリュー・トロン", "マドカ", "エモン・5","ジオール・トゥイー", "ティタ・ニューム", "エスメラルダ","ポイニー・クーン",
+		 "ココロ・ベルモンド", "月士 華風魔", "アーンヴァル", "ストラーフ"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = 聖グラディウス学園
+		ENDIF
+		;オペレッタを教師にさせるのもアレなので（設定的に色々）
+		SIF GROUPMATCH(NAME:LCOUNT, "オペレッタ", "アーンヴァル", "ストラーフ")
+			CFLAG:LCOUNT:特殊在校 = 1
+	;メンタンピントリオ
+	CASE "ヤワラギ・ヒヨリ", "タテナオリ・セン", "ゼツバミ・ヤオ"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在校 = ネリマ壱役高等学校
+		ENDIF
+	;弐女組
+	CASE "ナナツノ・ツミレ", "アンコク・ミツバ", "トイトイ"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在校 = アキバ弐役女学院
+		ENDIF
+	;帝役組 クレンホウもここ
+	CASE "アマト・テンシ", "クニノカミ・ムサシ", "G-14 イヨ"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = 帝国立ナガタチョウ役満高等学校
+		ENDIF
+	;参塾組 仮置き
+	;CASE "イッシキ・カオス", "ペコ", "ジュン"
+	;	IF キャラ選択フラグ:NOF(LCOUNT)
+	;		CSTR:LCOUNT:在校 = %固定用学校:2%
+	;	ELSE
+	;		CSTR:LCOUNT:在校 = カワサキ参役塾高等学校
+	;	ENDIF
+	;
+	;固定ではないがグループ単位で同じ学校の人たち
+	;高校生たち
+	CASE "雛月 理々奈", "梅桐 彩葉", "神崎 慧靂", "鉄 鉄火"
+		SIF 学園乱数固定用:0 == ""
+			学園乱数固定用:0 = %学園ランダム("高", 1)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:0%
+		ENDIF
+	;この3人は同じ
+	CASE "ひなた", "アイ", "まゆ"
+		SIF 学園乱数固定用:1 == ""
+			学園乱数固定用:1 = %学園ランダム("小", 1)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:0%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:1%
+		ENDIF
+	;モドリリ
+	CASE "モード", "リリーゼ"
+		SIF 学園乱数固定用:2 == ""
+			学園乱数固定用:2 = %学園ランダム("小", 2)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:0%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:2%
+		ENDIF
+	;トランプの子
+	CASE "ラジェ", "ガレト", "ヴァロ", "タルタ"
+		SIF 学園乱数固定用:3 == ""
+			学園乱数固定用:3 = %学園ランダム("小", 1)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:0%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:3%
+		ENDIF
+	;ルピレピほうちゃんは同じ
+	CASE "青のルピカ", "青のレピカ", "鳳凰 鈴火"
+		SIF 学園乱数固定用:4 == ""
+			学園乱数固定用:4 = %学園ランダム("高", 2)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:4%
+		ENDIF
+	;ポップンの繋がりがあると思われる女子高生組
+	CASE "リゼット", "歩", "うた", "まりん"
+		SIF 学園乱数固定用:6 == ""
+			学園乱数固定用:6 = %学園ランダム("高", 2)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:6%
+		ENDIF
+	;にじっこ
+	CASE "虹野 ひかり", "夢野 みらい", "星野 そら"
+		SIF 学園乱数固定用:7 == ""
+			学園乱数固定用:7 = %学園ランダム("高", 2)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:7%
+		ENDIF
+	;からふるぱすてる
+	CASE "心音", "陽夏", "涼"
+		SIF 学園乱数固定用:8 == ""
+			学園乱数固定用:8 = %学園ランダム("高", 2)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:8%
+		ENDIF
+	;ヨルド一行
+	CASE "ヨルド", "ミームリウス", "アサギス・ニニギニル", "シャラ"
+		SIF 学園乱数固定用:9 == ""
+			学園乱数固定用:9 = %学園ランダム("高", 1)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:9%
+		ENDIF
+	;ナズナとスズナ
+	CASE "ナズナ", "スズナ"
+		SIF 学園乱数固定用:10 == ""
+			学園乱数固定用:10 = %学園ランダム("小", 2)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:0%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:10%
+		ENDIF
+	;SUPER MOMO TAROSANS
+	CASE "キビ", "ワン"
+		SIF 学園乱数固定用:11 == ""
+			学園乱数固定用:11 = %学園ランダム("高", 1)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:11%
+		ENDIF
+	;BBB
+	CASE "栗花落 夜風", "吉廻 千代"
+		SIF 学園乱数固定用:12 == ""
+			学園乱数固定用:12 = %学園ランダム("高", 2)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:12%
+		ENDIF
+	CASE "黒川 亜理紗", "百武 もなか"
+		SIF 学園乱数固定用:13 == ""
+			学園乱数固定用:13 = %学園ランダム("小", 2)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:0%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:13%
+		ENDIF
+	CASE "アシェル", "シメオン"
+		SIF 学園乱数固定用:14 == ""
+			学園乱数固定用:14 = %学園ランダム("高", 1)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:14%
+		ENDIF
+	CASE "赤ノルニル", "黄ノルニル", "青ノルニル"
+		SIF 学園乱数固定用:15 == ""
+			学園乱数固定用:15 = %学園ランダム("小", 2)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:0%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:15%
+		ENDIF
+	;Mare Nectaris
+	CASE "風々奇", "火々矢", "兎々呂鬼", "夜々祇"
+		SIF 学園乱数固定用:16 == ""
+			学園乱数固定用:16 = %学園ランダム("高", 2)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:16%
+		ENDIF
+	;ロビン＆クックは同じ学校に
+	CASE "ロビン", "クック"
+		SIF 学園乱数固定用:17 == ""
+			学園乱数固定用:17 = %学園ランダム("中", 1)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:1%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:17%
+		ENDIF
+		SIF NAME:LCOUNT == "クック"
+			CFLAG:LCOUNT:特殊在校 = 1
+	;天上学園の二人
+	CASE "チキ", "ウリシュ"
+		SIF 学園乱数固定用:18 == ""
+			学園乱数固定用:18 = %学園ランダム("高", 1)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:18%
+		ENDIF
+	;ここからボンガ枠。一時的にランダム入学に
+	CASE "シロン", "ダァク", "ブラス"
+		SIF 学園乱数固定用:19 == ""
+			学園乱数固定用:19 = %学園ランダム("小", 1)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:0%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:19%
+			;CSTR:LCOUNT:在校 = ボンバーアカデミア初等部
+		ENDIF
+	CASE "グレイ"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:1%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園ランダム("中", TALENT:LCOUNT:性別)%
+			;CSTR:LCOUNT:在校 = ボンバーアカデミア中等部
+		ENDIF
+	CASE "シロ", "クロ", "プラチナ"
+		SIF 学園乱数固定用:20 == ""
+			学園乱数固定用:20 = %学園ランダム("高", 1)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:20%
+			;CSTR:LCOUNT:在校 = ボンバーアカデミア高等部
+		ENDIF
+	;月並組、チグサは高校生だが敢えて潜入している
+	CASE "ウルシ", "アサギ", "チグサ"
+		SIF 学園乱数固定用:21 == ""
+			学園乱数固定用:21 = %学園ランダム("中", 1)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:1%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:21%
+			;CSTR:LCOUNT:在校 = 月並中学校
+		ENDIF
+	;プリボム
+	CASE "モモコ", "パイン", "プルーン", "メロン"
+		SIF 学園乱数固定用:22 == ""
+			学園乱数固定用:22 = %学園ランダム("小", 1)%
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:0%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園乱数固定用:22%
+			;CSTR:LCOUNT:在校 = フルーツ小学校
+		ENDIF
+	;以下大学＆ランダム入学
+	{
+	CASE "水城 セリカ", "北見 エリカ", "神崎 紗矢", "理子", "夜兎姫", "トヨタマヒメ", "スタンパ", "アヤ", "ヒュー", "愛子", "レナ", "彗星ローラ",
+		 "エリカ", "あやめ", "ノネット", "グリム", "エミ", "響香", "しゃま", "星見 日向", "ファロ", "マルファータ", "ベルフォート", "ローズマリー", "レイジ", 
+		 "ノーティガール", "結", "千代", "ミサキ", "マチコ", "伊賀崎ノ 楠子", "黒原 きずな", "アルマ・ヴィス・アウダーチア", "スザク", "イア＝ラムセ", "アシュレイ＝ボア",
+		 "神園 零", "筑波 美夏", "英田 優里", "ケリー", "ロマンス", "桃香", "ナディ", "ヨナ・ライゼ", "ティエイト", "天稲荷 コテツ", "ミスラ・テルセーラ", 
+		 "ニア・ユーディット", "エステル・ヤグルーシュ", "レア・エ・フラータ", "ヴォイド", "ゼファー・ニアルデ", "阿式 黄虎", "セピア・ベルモンド"
+	}
+		CSTR:LCOUNT:在校 = BEMANI大学
+	;小中高ランダム
+	;小○校
+	{
+	CASE "ルルスス", "赤シグ", "黄シグ", "青シグ", "赤のリピカ", "スノーフェアリー", "アムドゥシアン", "リプンテ", "クリープ", "テトラ",
+		 "ロキ", "おんなのこ", "チップ", "ロザリー", "サン", "白鳥 姫子", "たぬちよ", "アリシア", "フローラ", "ホイップ",
+		 "てまり", "ゼルハルト", "アミュレット", "ユビ子", "ルエリシア", "フリオ", "ローズ(GITADORA)", "ソルト", "みるく", "シルビア", "ケリマロ", 
+		 "オオカミ少年", "ミア", "らいむ", "知雲 ひばり", "レインボーヤ", "小坊主", "ルフ", "不来方 とあ", "にんじん", "ジュナ・フェリクス", "マウリツィオ", "MIR-203【セレネ・シェリル】",
+		 "ミーム", "メリリィ", "ディーノ", "ヘンリー", "アクア"
+	}
+		;？→ "兎音 ココ"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:0%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園ランダム("小", TALENT:LCOUNT:性別)%
+		ENDIF
+	;中学
+	{
+	CASE "ヒメル", "タルト", "タフィ", "ノクス・カトルセ", "マタン・カトルセ", "おはな", "ルシェ", "キュベルト", "黄のラピカ", "Aegis",
+		 "スモモ", "クロノス", "牡丹", "橙之 針子", "ジャックハンス", "ジャックティーロ", "ギガデリック：オズワルド", "アーミィ", "エグゼ",
+		 "Ⅸ籠", "おいわちゃん", "うらしまたろ子", "ミニッツ", "ポエット", "つらら", "セシル", "ジャック", "ベンベン", "ホワイトメリー",
+		 "鹿ノ子", "リアン", "ター子", "ライラ", "しおん", "寿々姫", "マルクト", "ピュアクルリップ", "雷蔵", "＊うさぬこ＊", "ポチコ", "ちぇるみん",
+		 "スペース＠マコ", "リデル", "なぎさ", "リノン", "リノン(黒)", "かぐや", "トルテ", "あい", "サニー", "セイナ", "ローズ", "リリカ", "ココ",
+		 "アバリータ", "エンビー", "アシディア", "プリッド", "グリコ", "ラクリア", "ウエステ", "ちい", "ナルル", "ティア", "ライア", "フィクル",
+		 "アイディ", "ルシ子", "イラ", "キャンディッド", "エス", "あいの影", "乙姫", "ラズ", "シフォン", "トラン", "タマヨ", "シャルロット", 
+		 "ニコラシカ", "アイオーネ", "サリュイス", "チャオ", "はまゆきちゃん", "サユリ", "アンナ", "みっちゃん", "クララ(pop'n)", "スカイフェザー", "観音寺 にこる",
+		 "イングリット・オーリック・コーネル", "ソラマチ・メメ", "本宮 梨々花", "リリィ", "鬼蝮 アイリ", "ルミエラ・ヴィス・アニマート", "さらさ", "ごくそつくん",
+		 "くらんて", "フロウフロウ", "テンコ", "シカトリス", "BroGamerの少年", "三田 ナナコ", "ニニカ・クロッシュ", "まひる", "エクレール", "MDA-01【シリウス】", 
+		 "セーレ・ヘイズ", "ソロ・モーニア", "アンナ・マルグレーテ", "MDA-21【レグルス】", "ロクミ", "八重垣 命"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:1%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園ランダム("中", TALENT:LCOUNT:性別)%
+		ENDIF
+	;高校
+	{
+	CASE "キラー", "リヒト", "オロロージョ", "アンネース", "おきつ", "おゆき", "駄天使ちゃん", "ヴァルキリー", "サキュバスちゃん",
+		 "ニンフちゃん", "ニーソ姫", "エレクトロ：チューンド", "パール", "マーメイドガール", "比多木 小瑠璃", "カイロス", "ことみちゃん",
+		 "怪盗いいんちょ", "ミラベル", "あいみ", "ものか", "エクス", "ねむ", "ゼロワン：バンディング", "鎖", "刺斬", "グラビティ：ガルフエッジ",
+		 "ホリック：ランナー", "犬見川 ユウ", "九鬼衣 シエ", "ジュリア", "カーリー", "エス・エイト・タロウ",
+		 "おコン", "リサ", "かごめ", "睦月", "シャラ(pop'n)", "ウーノ", "ツースト", "若さん", "フォース", "Bis子", "アリス(pop'n)",
+		 "ラッテ", "ロッテ", "ナカジ", "花緒", "みここ", "蒼井 硝子", "エッダ", "カケルくん", "アン", "ンビリ", "ちなつ", "紅", "ニット", "まりん",
+		 "みほ", "ブラック", "オーリー", "アリサ", "えりりん", "メリッサ", "神楽", "ちせ", "ユニ", "アリス・イップ", "璃音", "イリル", "フローレス",
+		 "ミカ子", "ヨミ", "アメ", "キャスメラ", "405nm", "あいむ", "オフィーリア", "フェリーラ", "ヨシオ", "イナリ", "ニコ", "アリス・ルナン",
+		 "アイラ", "シリーちゃん", "阿式 眞白", "キララ", "ルル", "カジカ", "ニッキー", "レオン(pop'n)", "荒場 流子", "舞園 星斗", "愛野 ヒカリ", "美嶋 はるな", 
+		 "鬼蝮 ユリア", "葉和 とれび", "八咫烏 鋼太郎", "津久井 シズノ", "マゼラン・マゼラン", "渋沢 ノノ", "暁 凶香", "常世のサツキ", "高須 らいむ",
+		 "幸野 うさぎ", "新田 ちえ", "リタ・カールステット", "エリザベス", "第八皇女エルルーン", "ラニウス・ヴルペクラ", "もえ", "黒須 紘", "リオ", "ハルカ",
+		 "アゲハ", "ハーティー", "ラヴィ", "ALT", "Phantasmagoria", "DJつよし", "OJつよし", "ギタケン", "リラ", "NEO", "ペンデュラム・ライゼ", "ギデオン・ライゼ",
+		 "ミリアム・ベミドバル", "レナ・イシュメイル", "つきこ", "ミァン・テルスウラス", "ジュナ・サラキア", "イゼヴェル・ヤグルーシュ", "黒亀 北斗", "向来 隼", "御影 昴", 
+		 "セラフィナ・ヴィス・アニマート", "ミィム・ミクラー", "ルチア・レ・ベルナデート", "ピリオ", "ブリランテ", "グラーヴェ・ノーヴァ", "シズマ・クロサキ",
+		 "フィーネ・アルトリネス", "シュープリス", "エリシャ・ムルシア", "MIR-202【アルテミス・レナ】", "MIR-201【ヘカティ・ベアトリクス】", "エル・リベルテ",
+		 "阿式 澄桃", "オリガ", "リキュア", "しおり", "HARUKA","クーデルカ・プルミエール", "オレン", "エメラ", "パプル", "オリーヴ・ドラブ", "テッカ"
+	}
+	;テッカは聖茶屋町女学院
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園ランダム("高", TALENT:LCOUNT:性別)%
+		ENDIF
+	CASE "宍戸 美鈴"
+		;美鈴の学校は共学
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			CSTR:LCOUNT:在校 = %学園ランダム("高", 1)%
+		ENDIF
+		CFLAG:LCOUNT:特殊在校 = 1
+	;グリムキャラはマジックアカデミー以外のどこか
+	{
+	CASE "グリム・ルキア", "グリム・シャロン", "グリム・クララ", "グリム・マラリヤ", "グリム・ユリ", "グリム・ヤンヤン", "グリム・リエル",
+		 "グリム・アイコ", "グリム・メディア", "グリム・マヤ", "グリム・レオン", "グリム・セリオス", "グリム・カイル", "グリム・サンダース",
+		 "グリム・タイガ", "グリム・ハルト", "グリム・リック"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:2%
+		ELSE
+			DO
+				CSTR:LCOUNT:在校 = %学園ランダム("高", TALENT:LCOUNT:性別)%
+				SIF CSTR:LCOUNT:在校 == "マジックアカデミー"
+					CONTINUE
+				BREAK
+			LOOP 1
+		ENDIF
+	CASE "グリム・アロエ", "グリム・ミュー", "グリム・ラスク", "グリム・ユウ"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在校 = %固定用学校:0%
+		ELSE
+			DO
+				CSTR:LCOUNT:在校 = %学園ランダム("小", TALENT:LCOUNT:性別)%
+				SIF CSTR:LCOUNT:在校 == "マジックアカデミー"
+					CONTINUE
+				BREAK
+			LOOP 1
+		ENDIF
+	
+	;ここから教師陣の選任 固定の教師陣を優先して処理
+	;ボルテ学園
+	CASE "プロフェッサー識苑", "シャトー・ロワーレ", "オルトリンデ", "トライプル・ストレエッジ", "ボルテナイザー・マキシマ", "ライオット・デストルドー", "アウグスト=ヴェルテックス"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = ボルテ学園高等部
+		ENDIF
+		SIF NAME:LCOUNT == "プロフェッサー識苑"
+			CSTR:LCOUNT:担当科目 = 技術
+		SIF NAME:LCOUNT == "シャトー・ロワーレ"
+			CSTR:LCOUNT:担当科目 = 音楽
+		SIF NAME:LCOUNT == "オルトリンデ"
+			CSTR:LCOUNT:担当科目 = 国語
+		SIF NAME:LCOUNT == "トライプル・ストレエッジ"
+			CSTR:LCOUNT:担当科目 = 数学
+		SIF NAME:LCOUNT == "ボルテナイザー・マキシマ"
+			CSTR:LCOUNT:担当科目 = 英語
+		SIF NAME:LCOUNT == "ライオット・デストルドー"
+			CSTR:LCOUNT:担当科目 = 美術
+		SIF NAME:LCOUNT == "アウグスト=ヴェルテックス"
+			CSTR:LCOUNT:担当科目 = 社会
+	;ラピストリア学園
+	CASE "ジェダイト", "ジェイド", "ヴァイス", "まどか"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = ラピストリア学園
+		ENDIF
+		SIF NAME:LCOUNT == "ジェダイト"
+			CSTR:LCOUNT:担当科目 = 校長
+		SIF NAME:LCOUNT == "ジェイド"
+			CSTR:LCOUNT:担当科目 = 理事長
+		SIF NAME:LCOUNT == "ヴァイス"
+			CSTR:LCOUNT:担当科目 = 保健
+		SIF NAME:LCOUNT == "まどか"
+			CSTR:LCOUNT:担当科目 = 数学
+	;マジックアカデミー
+	CASE "サツキ", "マロン", "リディア", "エリーザ", "アメリア", "ミランダ", "ガルーダ", "ウィーズ", "フランシス"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = マジックアカデミー
+		ENDIF
+		SIF NAME:LCOUNT == "サツキ"
+			CSTR:LCOUNT:担当科目 = 科学
+		SIF NAME:LCOUNT == "マロン"
+			CSTR:LCOUNT:担当科目 = 美術
+		SIF NAME:LCOUNT == "リディア"
+			CSTR:LCOUNT:担当科目 = 家庭科
+		SIF NAME:LCOUNT == "エリーザ"
+			CSTR:LCOUNT:担当科目 = 社会
+		SIF NAME:LCOUNT == "アメリア"
+			CSTR:LCOUNT:担当科目 = 国語
+		SIF NAME:LCOUNT == "ミランダ"
+			CSTR:LCOUNT:担当科目 = 保健
+		SIF NAME:LCOUNT == "ガルーダ"
+			CSTR:LCOUNT:担当科目 = 体育
+		SIF NAME:LCOUNT == "ウィーズ"
+			CSTR:LCOUNT:担当科目 = 数学
+		SIF NAME:LCOUNT == "フランシス"
+			CSTR:LCOUNT:担当科目 = 音楽
+		;最新の設定を反映させてロマノフ先生は外した
+		;SIF NAME:LCOUNT == "ロマノフ"
+		;	CSTR:LCOUNT:担当科目 = 校長
+	CASE "T.B.リカ"
+		;追記。公式設定資料集未読なので技術かもしれない
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = 聖グラディウス学園
+		ENDIF
+		CSTR:LCOUNT:担当科目 = 技術
+
+	;国語
+	CASE "A", "ユーリ", "カゲトラ", "浅見 文彦", "桔梗", "ムラサキ", "玉藻 銀丸", "イマ", "弐ノ丸", "こうもりおとこ", "闘争の女帝 エリス"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = %選任ランダム("国語")%
+		ENDIF
+		CSTR:LCOUNT:担当科目 = 国語
+	;数学
+	CASE "マモニス", "ガユカ", "Σ", "カネノブ", "スミス氏", "コンセント", "ガス", "サトウサン", "サーミリアス","カイナン・メルヴィアス", "黄泉の盟主 ネルガル"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = %選任ランダム("数学")%
+		ENDIF
+		CSTR:LCOUNT:担当科目 = 数学
+	;英語
+	CASE "サイレン", "六", "HOT.D", "アルフォンス・ミシェル", "エイプリル", "アイリーン", "アフロ", "モモコさん"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = %選任ランダム("英語")%
+		ENDIF
+		CSTR:LCOUNT:担当科目 = 英語
+	;科学
+	{
+	CASE "ファウラ", "パラド", "エレノア", "マサムネ", "アル・ハイア", "ガッキー博士", "正論", "ゼーグ・ルルード", 
+		 "スマイル", "Dr.φ", "メリム", "クレメンス・ジークハルト", "帝国魔導師 イセリア"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = %選任ランダム("科学")%
+		ENDIF
+		CSTR:LCOUNT:担当科目 = 科学
+	;社会
+	CASE "サタヌ", "ボルテージ：マインツ", "卑弥呼", "獅子若", "エミーリオ", "ニョア", "リリアンキル", "クニオシ", "N・ナーガ", "はに子", "エコ爺","アンシャール・アウダーチア", "ヤクオン"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = %選任ランダム("社会")%
+		ENDIF
+		CSTR:LCOUNT:担当科目 = 社会
+	;音楽
+	{
+	CASE "菱宮 春一", "ショルキー", "ファティマ", "パンデス", "スモーク", "獅子次", "山吹", "ハーピア", "熊井さん", 
+	"ザ・キング", "イワン", "アイス", "フォクシー", "サイレントルーム"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = %選任ランダム("音楽")%
+		ENDIF
+		CSTR:LCOUNT:担当科目 = 音楽
+	;体育
+	{
+	CASE "シャムシール", "ハジメ", "ネロ", "ヴォルフガング", "金剛寺 亮", "アドフーク", "ミカレイ・バーン", "ライアン", "クアトロ", 
+		 "ロト・トゥエルヴ", "マードゥク・アニマート", "憎悪の戦神 アレウス", "シルヴァ"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = %選任ランダム("体育")%
+		ENDIF
+		CSTR:LCOUNT:担当科目 = 体育
+	;美術
+	CASE "孔雀", "雛月 聖奈", "英利", "シェリー", "チャコル", "パステルくん", "テント・カント", "ミカエール"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = %選任ランダム("美術")%
+		ENDIF
+		CSTR:LCOUNT:担当科目 = 美術
+	;保健
+	CASE "アーシェム", "ミルク", "揚羽", "ゼロ", "エチダナ", "ハニー", "キャロル", "ミク", "サンパウロ容子", "ユグドラシル", "セロ・ダーウィーズ"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = %選任ランダム("保健")%
+		ENDIF
+		CSTR:LCOUNT:担当科目 = 保健
+	;家庭科
+	CASE "ベリゼベス", "トリフォリ", "アッシュ", "ジズ", "アルビレオ", "茜", "弦", "育江", "デボラ","ジーン・ザイン"
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = %選任ランダム("家庭科")%
+		ENDIF
+		CSTR:LCOUNT:担当科目 = 家庭科
+	;校長
+	{
+	CASE "梅桐 天土", "神崎 弦士", "キュベリア", "白のロピカ", "MZD", "ギジリ", "エクレメス", "一条司令", "ヴィルヘルム", 
+		 "ミカ・ドミナンスⅢ", "ダン・ドミナンスⅤ", "ティフォン", "RG-XXX【ティアマット】"
+	}
+		IF キャラ選択フラグ:NOF(LCOUNT)
+			CSTR:LCOUNT:在任 = %固定用学校:3%
+		ELSE
+			CSTR:LCOUNT:在任 = %選任ランダム("校長")%
+		ENDIF
+		CSTR:LCOUNT:担当科目 = 校長
+ENDSELECT
+[SKIPEND]
