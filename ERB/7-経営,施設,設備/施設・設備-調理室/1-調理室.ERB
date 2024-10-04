@@ -894,6 +894,7 @@ NEXT
 #DIM DYNAMIC カフェイン
 #DIM DYNAMIC 調理器具ボーナス
 #DIM DYNAMIC 効果値
+#DIM DYNAMIC ゾンビあり
 
 ;新婚モード
 IF ゲームモード() == "新婚モード" && FINDCHARA(CFLAG:嫁, 1) >= 0
@@ -904,8 +905,11 @@ ENDIF
 
 ;ターン終了時の口上呼び出し
 FOR LCOUNT, 0, CHARANUM
-	SIF CSTR:LCOUNT:配属 == "調理室"
+	IF CSTR:LCOUNT:配属 == "調理室"
 		CALL KOJO_STRATEGY, LCOUNT, "調理室", "TURNEND"
+		SIF TALENT:LCOUNT:ゾンビ
+			ゾンビあり = 1
+	ENDIF
 NEXT
 
 ;昼 朝食と昼食の効果発動
@@ -999,19 +1003,6 @@ IF ターン == "昼"
 			ENDIF
 		ENDIF
 	NEXT
-	IF モチベ回復量
-		;3はちょっと音が高いので一時的に取り下げ
-		SELECTCASE RAND:2
-			CASE 0
-				CALL SE再生, 料理1
-			CASE 1
-				CALL SE再生, 料理2
-			CASE 2
-				CALL SE再生, 料理3
-		ENDSELECT
-		PRINTL おいしい朝食と昼食でキャラたちのモチベーションが上がりました
-		DRAWLINE
-	ENDIF
 ;夜 間食と夕食の効果発動
 ELSE
 	CALL 料理効果計算, "夕食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン, 調理器具ボーナス
@@ -1098,19 +1089,23 @@ ELSE
 		SIF 酔い覚まし
 			TEQUIP:LCOUNT:ウォッカ += 酔い覚まし
 	NEXT
-	IF モチベ回復量
-		SELECTCASE RAND:3
-			CASE 0
-				CALL SE再生, 料理1
-			CASE 1
-				CALL SE再生, 料理2
-			CASE 2
-				CALL SE再生, 料理3
-		ENDSELECT
-		PRINTW おいしい間食と夕食でキャラたちのモチベーションが上がりました
-		DRAWLINE
-	ENDIF
 ENDIF
+IF モチベ回復量
+	;3はちょっと音が高いので一時的に取り下げ
+	SELECTCASE RAND:2
+		CASE 0
+			CALL SE再生, 料理1
+		CASE 1
+			CALL SE再生, 料理2
+		CASE 2
+			CALL SE再生, 料理3
+	ENDSELECT
+	PRINTFORML おいしい\@ ターン == "昼" ? 朝食と昼食 # 間食と夕食 \@でキャラたちのモチベーションが上がりました
+	SIF ゾンビあり
+		CALL 実績解除, "ポイズンクッキング"
+	DRAWLINE
+ENDIF
+
 ;体力、気力の値整理
 FOR LCOUNT, 0, CHARANUM
 	CALL SETBASE, LCOUNT
