@@ -124,19 +124,6 @@ ENDSELECT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC LCOUNT3
 #DIMS DYNAMIC 献立, 9
-#DIM DYNAMIC モチベ計算用
-#DIM DYNAMIC ホット
-#DIM DYNAMIC コールド
-#DIM DYNAMIC 脱水
-#DIM DYNAMIC 水分
-#DIM DYNAMIC 酒あり
-#DIM DYNAMIC 鎮静
-#DIM DYNAMIC 滋養強壮
-#DIM DYNAMIC 愛情
-#DIM DYNAMIC 狂気度計算用
-#DIM DYNAMIC 酔い覚まし
-#DIM DYNAMIC カフェイン
-#DIM DYNAMIC 調理器具ボーナス
 #DIMS DYNAMIC 料理効果処理用, 2
 #DIMS DYNAMIC 食事時間
 #DIMS DYNAMIC 表示用, 2
@@ -157,34 +144,33 @@ FOR LCOUNT, 1, 5
 		CASE 4
 			食事時間 = 間食
 	ENDSELECT
+	VARSET 計算用効果
 	ARRAYCOPY 食事時間, "献立"
+	CALL 料理効果計算, 食事時間
 
-	CALL 料理効果計算, 食事時間, 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン, 調理器具ボーナス
-	モチベ計算用 = RESULT
-
-	SIF モチベ計算用
-		PRINTFORM モチベ上昇量:{モチベ計算用/10}.{モチベ計算用%10} 
-	SIF ホット
-		PRINTFORM 温かさ:{ホット/10}.{ホット%10} 
-	SIF コールド
-		PRINTFORM 冷たさ:{コールド/10}.{コールド%10} 
-	SIF 脱水
-		PRINTFORM 脱水効果:{脱水/10}.{脱水%10} 
-	SIF 鎮静
-		PRINTFORM 鎮静作用:{鎮静} 
-	SIF 滋養強壮
-		PRINTFORM 滋養強壮:{滋養強壮} 
-	SIF 愛情
-		PRINTFORM 愛情:{愛情} 
-	SIF 狂気度計算用
-		PRINTFORM 狂気度上昇量:{狂気度計算用} 
-	SIF 酔い覚まし
-		PRINTFORM 酔い覚まし効果:{酔い覚まし} 
-	SIF カフェイン
-		PRINTFORM カフェイン:{カフェイン} 
-	SIF 調理器具ボーナス
-		PRINTFORM 調理器具ボーナス:{調理器具ボーナス/10}.{調理器具ボーナス%10} 
-	SIF 酒あり
+	SIF 計算用効果:モチベ
+		PRINTFORM モチベ上昇量:%TOSTR(計算用効果:モチベ, "0'.'0")% 
+	SIF 計算用効果:ホット
+		PRINTFORM 温かさ:%TOSTR(計算用効果:ホット, "0'.'0")% 
+	SIF 計算用効果:コールド
+		PRINTFORM 冷たさ:%TOSTR(計算用効果:コールド, "0'.'0")% 
+	SIF 計算用効果:脱水
+		PRINTFORM 脱水効果:%TOSTR(計算用効果:脱水, "0'.'0")% 
+	SIF 計算用効果:鎮静
+		PRINTFORM 鎮静作用:{計算用効果:鎮静} 
+	SIF 計算用効果:滋養強壮
+		PRINTFORM 滋養強壮:{計算用効果:滋養強壮} 
+	SIF 計算用効果: 愛情
+		PRINTFORM 愛情:{計算用効果:愛情} 
+	SIF 計算用効果:狂気
+		PRINTFORM 狂気度上昇量:{計算用効果:狂気} 
+	SIF 計算用効果:酔い覚まし
+		PRINTFORM 酔い覚まし効果:{計算用効果:酔い覚まし} 
+	SIF 計算用効果:カフェイン
+		PRINTFORM カフェイン:{計算用効果:カフェイン} 
+	SIF 計算用効果:調理器具ボーナス
+		PRINTFORM 調理器具ボーナス:%TOSTR(計算用効果:調理器具ボーナス, "0'.'0")% 
+	SIF 計算用効果:酒あり
 		PRINTFORM お酒あり 
 	
 	表示用 = %HTML_POPPRINTINGSTR()%
@@ -469,7 +455,7 @@ ENDIF
 料理名渡し用 = %料理メニュー:LRESULT%
 SIF STRFIND(料理メニュー:LRESULT, "チーズ") >= 0 && GETCHARANAME("マッドラット") > 0
 	CALL 実績解除, "ごほうびをカジる権利"
-RETURN
+
 
 @レシピ一覧
 #DIM DYNAMIC LCOUNT
@@ -835,64 +821,32 @@ ENDSELECT
 
 @献立条件確認
 #DIM DYNAMIC LCOUNT
-
-FOR LCOUNT, 0, 9
-	IF 朝食:LCOUNT != "" && (レシピ判定(朝食:LCOUNT) < 2 || 必要料理レベル > 料理レベル())
-		IF レシピ判定(朝食:LCOUNT) < 2
-			PRINTFORMW 朝食の献立:%朝食:LCOUNT%の原材料が足りないため、献立から外しました
+#DIM DYNAMIC LCOUNT2
+#DIMS DYNAMIC 時間帯 = "朝食", "昼食", "間食", "夕食"
+#DIMS DYNAMIC 献立, 9
+FOR LCOUNT, 0, VARSIZE("時間帯")
+	ARRAYCOPY 時間帯:LCOUNT, "献立"
+	FOR LCOUNT2, 0, VARSIZE(時間帯:LCOUNT)
+		SIF 献立:LCOUNT2 == ""
+			CONTINUE
+		IF レシピ判定(献立:LCOUNT2) < 2
+			PRINTFORMW %時間帯:LCOUNT%の献立:%献立:LCOUNT2%の原材料が足りないため、献立から外しました
+			献立:LCOUNT2 = 
 		ELSEIF 必要料理レベル > 料理レベル()
-			PRINTFORMW 朝食の献立:%朝食:LCOUNT%を作る料理レベルが足りないため、献立から外しました
+			PRINTFORMW %時間帯:LCOUNT%の献立:%献立:LCOUNT2%を作る料理レベルが足りないため、献立から外しました
+			献立:LCOUNT2 = 
 		ENDIF
-		朝食:LCOUNT = 
-	ENDIF
-	IF 昼食:LCOUNT != "" && (レシピ判定(昼食:LCOUNT) < 2 || 必要料理レベル > 料理レベル())
-		IF レシピ判定(昼食:LCOUNT) < 2
-			PRINTFORMW 昼食の献立:%昼食:LCOUNT%の原材料が足りないため、献立から外しました
-		ELSEIF 必要料理レベル > 料理レベル()
-			PRINTFORMW 昼食の献立:%昼食:LCOUNT%を作る料理レベルが足りないため、献立から外しました
-		ENDIF
-		昼食:LCOUNT = 
-	ENDIF
-	IF 夕食:LCOUNT != "" && (レシピ判定(夕食:LCOUNT) < 2 || 必要料理レベル > 料理レベル())
-		IF レシピ判定(夕食:LCOUNT) < 2
-			PRINTFORMW 夕食の献立:%夕食:LCOUNT%の原材料が足りないため、献立から外しました
-		ELSEIF 必要料理レベル > 料理レベル()
-			PRINTFORMW 夕食の献立:%夕食:LCOUNT%を作る料理レベルが足りないため、献立から外しました
-		ENDIF
-		夕食:LCOUNT = 
-	ENDIF
+	NEXT
+	ARRAYCOPY "献立", 時間帯:LCOUNT
 NEXT
 
-FOR LCOUNT, 0, 4
-	IF 間食:LCOUNT != "" && (レシピ判定(間食:LCOUNT) < 2 || 必要料理レベル > 料理レベル())
-		IF レシピ判定(間食:LCOUNT) < 2
-			PRINTFORMW 間食の献立:%間食:LCOUNT%の原材料が足りないため、献立から外しました
-		ELSEIF 必要料理レベル > 料理レベル()
-			PRINTFORMW 間食の献立:%間食:LCOUNT%を作る料理レベルが足りないため、献立から外しました
-		ENDIF
-		間食:LCOUNT = 
-	ENDIF
-NEXT
 
 @TURNEND_調理室
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
-#DIM DYNAMIC ベース回復量
 #DIM DYNAMIC モチベ回復量
 #DIM DYNAMIC モチベ計算用
 #DIM DYNAMIC モチベ合計値
-#DIM DYNAMIC 酒あり
-#DIM DYNAMIC 鎮静
-#DIM DYNAMIC 滋養強壮
-#DIM DYNAMIC 愛情
-#DIM DYNAMIC 狂気度計算用
-#DIM DYNAMIC 酔い覚まし
-#DIM DYNAMIC ホット
-#DIM DYNAMIC コールド
-#DIM DYNAMIC 脱水
-#DIM DYNAMIC 水分
-#DIM DYNAMIC カフェイン
-#DIM DYNAMIC 調理器具ボーナス
 #DIM DYNAMIC 効果値
 #DIM DYNAMIC ゾンビあり
 
@@ -912,85 +866,92 @@ FOR LCOUNT, 0, CHARANUM
 	ENDIF
 NEXT
 
-;昼 朝食と昼食の効果発動
+VARSET 計算用効果
 IF ターン == "昼"
-	CALL 料理効果計算, "朝食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン, 調理器具ボーナス
-	ベース回復量 += RESULT
+	CALL 料理効果計算, "朝食"
+	CALL 料理効果計算, "昼食"
+ELSE
+	CALL 料理効果計算, "間食"
+	CALL 料理効果計算, "夕食"
+ENDIF
 
-	CALL 料理効果計算, "昼食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン, 調理器具ボーナス
-	ベース回復量 += RESULT
+FOR LCOUNT, 0, CHARANUM
+	SIF CFLAG:LCOUNT:キャラロスト
+		CONTINUE
+	モチベ回復量 = 計算用効果:モチベ
 
-	FOR LCOUNT, 0, CHARANUM
-		SIF CFLAG:LCOUNT:キャラロスト
-			CONTINUE
-		;料理効果:ホットは気温が31度以上だとモチベが下がる原因になる
-		;逆に気温が9度以下ならモチベに好影響
-		;[暑さに弱い]と26度以上から悪影響になる
-		;[猫舌]だとモチベ回復量そのものが減る（2割減）
-		モチベ回復量 = ベース回復量
-		IF ホット
-			効果値 = FLAG:気温/10
-			IF 効果値 < 10
-				IF TALENT:LCOUNT:猫舌
-					効果値 = MIN(10-効果値, ホット)
-					TIMES 効果値 , 0.80
-					モチベ回復量 += 効果値
-				ELSE
-					モチベ回復量 += MIN(10-効果値, ホット)
-				ENDIF
+	;料理効果:ホットは気温が31度以上だとモチベが下がる原因になる
+	;逆に気温が9度以下ならモチベに好影響
+	;[暑さに弱い]と26度以上から悪影響になる
+	;[猫舌]だとモチベ回復量そのものが減る（2割減）
+	IF 計算用効果:ホット
+		効果値 = FLAG:気温/10
+		IF 効果値 < 10
+			IF TALENT:LCOUNT:猫舌
+				効果値 = MIN(10-効果値, 計算用効果:ホット)
+				TIMES 効果値 , 0.80
+				モチベ回復量 += 効果値
 			ELSE
-				IF TALENT:LCOUNT:暑さに弱い
-					SIF 効果値 > 25
-						モチベ回復量 -= MIN(効果値-25, ホット)
-				ELSE
-					SIF 効果値 > 30
-						モチベ回復量 -= MIN(効果値-30, ホット)
-				ENDIF
+				モチベ回復量 += MIN(10-効果値, 計算用効果:ホット)
 			ENDIF
-		ENDIF
-		;料理効果:コールドは気温が9度以下だとモチベが下がる原因になる
-		;逆に気温が31度以上ならモチベに好影響
-		;[寒さに弱い]と14度以下から悪影響になる
-		IF コールド
-			効果値 = FLAG:気温/10
-			IF 効果値 > 30
-				モチベ回復量 += MIN(効果値-30, コールド)
+		ELSE
+			IF TALENT:LCOUNT:暑さに弱い
+				SIF 効果値 > 25
+					モチベ回復量 -= MIN(効果値-25, 計算用効果:ホット)
 			ELSE
-				IF TALENT:LCOUNT:寒さに弱い
-					SIF 効果値 < 15
-						モチベ回復量 -= MIN(15-効果値, コールド)
-				ELSE
-					SIF 効果値 < 10
-						モチベ回復量 -= MIN(10-効果値, コールド)
-				ENDIF
+				SIF 効果値 > 30
+					モチベ回復量 -= MIN(効果値-30, 計算用効果:ホット)
 			ENDIF
 		ENDIF
+	ENDIF
 
-		;料理効果:脱水は飲み物か汁物が無いとモチベが下がる原因になる
-		SIF 脱水 && !水分
-			モチベ回復量 -= 脱水
-
-		IF CSTR:LCOUNT:配属 != ""
-			効果値 = CFLAG:LCOUNT:モチベーション+モチベ回復量/10+1
-			CFLAG:LCOUNT:モチベーション = LIMIT(効果値, 1, 100)
-			;DEBUGPRINTFORML %NAME:LCOUNT%のモチベ回復 {モチベ回復量/10}
-		ENDIF
-		SIF 鎮静 && CFLAG:LCOUNT:ストレス値
-			CFLAG:LCOUNT:ストレス値 -= 鎮静
-		IF 滋養強壮
-			BASE:LCOUNT:体力 += 滋養強壮*30
-			BASE:LCOUNT:気力 += 滋養強壮*30
-		ENDIF
-		SIF 愛情 && 陥落(LCOUNT)
-			EXP:LCOUNT:愛情経験 += 愛情
-		IF 狂気度計算用
-			CFLAG:LCOUNT:狂気度 += 狂気度計算用
-			IF CFLAG:LCOUNT:狂気度 >= 100 && !TALENT:LCOUNT:狂気
-				PRINTFORML %CALLNAME:LCOUNT%はおぞましい料理を食べ過ぎたことで気が狂ってしまった……
-				TALENT:LCOUNT:狂気 = 1
+	;料理効果:コールドは気温が9度以下だとモチベが下がる原因になる
+	;逆に気温が31度以上ならモチベに好影響
+	;[寒さに弱い]と14度以下から悪影響になる
+	IF 計算用効果:コールド
+		効果値 = FLAG:気温/10
+		IF 効果値 > 30
+			モチベ回復量 += MIN(効果値-30, 計算用効果:コールド)
+		ELSE
+			IF TALENT:LCOUNT:寒さに弱い
+				SIF 効果値 < 15
+					モチベ回復量 -= MIN(15-効果値, 計算用効果:コールド)
+			ELSE
+				SIF 効果値 < 10
+					モチベ回復量 -= MIN(10-効果値, 計算用効果:コールド)
 			ENDIF
 		ENDIF
-		IF 酒あり
+	ENDIF
+
+	;料理効果:脱水は飲み物か汁物が無いとモチベが下がる原因になる
+	SIF 計算用効果:脱水 && !計算用効果:水分
+		モチベ回復量 -= 計算用効果:脱水
+
+	IF CSTR:LCOUNT:配属 != "" && モチベ回復量
+		効果値 = CFLAG:LCOUNT:モチベーション+モチベ回復量/10+1
+		CFLAG:LCOUNT:モチベーション = LIMIT(効果値, 1, 100)
+		;DEBUGPRINTFORML %NAME:LCOUNT%のモチベ回復 {モチベ回復量/10}
+	ENDIF
+
+	SIF 計算用効果:鎮静 && CFLAG:LCOUNT:ストレス値
+		CFLAG:LCOUNT:ストレス値 -= 計算用効果:鎮静
+	SIF 計算用効果:愛情 && 陥落(LCOUNT)
+		EXP:LCOUNT:愛情経験 += 計算用効果:愛情
+	IF 計算用効果:狂気
+		CFLAG:LCOUNT:狂気度 += 計算用効果:狂気
+		IF CFLAG:LCOUNT:狂気度 >= 100 && !TALENT:LCOUNT:狂気
+			PRINTFORML %CALLNAME:LCOUNT%はおぞましい料理を食べ過ぎたことで気が狂ってしまった……
+			TALENT:LCOUNT:狂気 = 1
+		ENDIF
+	ENDIF
+
+	;昼と夜で処理が違ったので一旦その通りに
+	IF ターン == "昼"
+		IF 計算用効果:滋養強壮
+			BASE:LCOUNT:体力 += 計算用効果:滋養強壮*30
+			BASE:LCOUNT:気力 += 計算用効果:滋養強壮*30
+		ENDIF
+		IF 計算用効果:酒あり
 			IF TALENT:LCOUNT:酒豪
 				SIF CFLAG:LCOUNT:酔 < 50
 					CFLAG:LCOUNT:酔 = 50
@@ -1002,94 +963,21 @@ IF ターン == "昼"
 					CFLAG:LCOUNT:酔 = 20
 			ENDIF
 		ENDIF
-	NEXT
-;夜 間食と夕食の効果発動
-ELSE
-	CALL 料理効果計算, "夕食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン, 調理器具ボーナス
-	ベース回復量 += RESULT
-
-	CALL 料理効果計算, "間食", 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン, 調理器具ボーナス
-	ベース回復量 += RESULT
-
-	FOR LCOUNT, 0, CHARANUM
-		SIF CFLAG:LCOUNT:キャラロスト
-			CONTINUE
-		;料理効果:ホットは気温が31度以上だとモチベが下がる原因になる
-		;逆に気温が9度以下ならモチベに好影響
-		;[暑さに弱い]と26度以上から悪影響になる
-		;[猫舌]だとモチベ回復量そのものが減る（2割減）
-		モチベ回復量 = ベース回復量
-		IF ホット
-			効果値 = FLAG:気温/10
-			IF 効果値 < 10
-				IF TALENT:LCOUNT:猫舌
-					効果値 = MIN(10-効果値, ホット)
-					TIMES 効果値 , 0.80
-					モチベ回復量 += 効果値
-				ELSE
-					モチベ回復量 += MIN(10-効果値, ホット)
-				ENDIF
-			ELSE
-				IF TALENT:LCOUNT:暑さに弱い
-					SIF 効果値 > 25
-						モチベ回復量 -= MIN(効果値-25, ホット)
-				ELSE
-					SIF 効果値 > 30
-						モチベ回復量 -= MIN(効果値-30, ホット)
-				ENDIF
-			ENDIF
-		ENDIF
-		;料理効果:コールドは気温が9度以下だとモチベが下がる原因になる
-		;逆に気温が31度以上ならモチベに好影響
-		;[寒さに弱い]と14度以下から悪影響になる
-		IF コールド
-			効果値 = FLAG:気温/10
-			IF 効果値 > 30
-				モチベ回復量 += MIN(効果値-30, コールド)
-			ELSE
-				IF TALENT:LCOUNT:寒さに弱い
-					SIF 効果値 < 15
-						モチベ回復量 -= MIN(15-効果値, コールド)
-				ELSE
-					SIF 効果値 < 10
-						モチベ回復量 -= MIN(10-効果値, コールド)
-				ENDIF
-			ENDIF
-		ENDIF
-
-		;料理効果:脱水は飲み物か汁物が無いとモチベが下がる原因になる
-		SIF 脱水 && !水分
-			モチベ回復量 -= 脱水
-
-		IF CSTR:LCOUNT:配属 != "" && モチベ回復量
-			効果値 = CFLAG:LCOUNT:モチベーション+モチベ回復量/10+1
-			CFLAG:LCOUNT:モチベーション = LIMIT(効果値, 1, 100)
-			;DEBUGPRINTFORML %NAME:LCOUNT%のモチベ回復 {モチベ回復量/10}
-		ENDIF
-		SIF 鎮静 && CFLAG:LCOUNT:ストレス値
-			CFLAG:LCOUNT:ストレス値 -= 鎮静
-		SIF 滋養強壮
-			BASE:LCOUNT:体力 += 滋養強壮*20
-		IF カフェイン
-			BASE:LCOUNT:気力 += カフェイン*20
-			REPEAT カフェイン
+	ELSE
+		SIF 計算用効果:滋養強壮
+			BASE:LCOUNT:体力 += 計算用効果:滋養強壮*20
+		IF 計算用効果:カフェイン
+			BASE:LCOUNT:気力 += 計算用効果:カフェイン*20
+			REPEAT 計算用効果:カフェイン
 				TIMES CFLAG:LCOUNT:魔剤耐性 , 1.01
 			REND
 			CFLAG:LCOUNT:魔剤耐性 = LIMIT(CFLAG:LCOUNT:魔剤耐性, 1000, 2000)
 		ENDIF
-		SIF 愛情 && 陥落(LCOUNT)
-			EXP:LCOUNT:愛情経験 += 愛情
-		IF 狂気度計算用
-			CFLAG:LCOUNT:狂気度 += 狂気度計算用
-			IF CFLAG:LCOUNT:狂気度 >= 100 && !TALENT:LCOUNT:狂気
-				PRINTFORML %CALLNAME:LCOUNT%はおぞましい料理を食べ過ぎたことで気が狂ってしまった……
-				TALENT:LCOUNT:狂気 = 1
-			ENDIF
-		ENDIF
-		SIF 酔い覚まし
-			TEQUIP:LCOUNT:ウォッカ += 酔い覚まし
-	NEXT
-ENDIF
+		SIF 計算用効果:酔い覚まし
+			TEQUIP:LCOUNT:ウォッカ += 計算用効果:酔い覚まし
+	ENDIF
+NEXT
+
 IF モチベ回復量
 	;3はちょっと音が高いので一時的に取り下げ
 	SELECTCASE RAND:2
@@ -1142,38 +1030,13 @@ IF ゲームモード() == "新婚モード" && FINDCHARA(CFLAG:嫁, 1) >= 0
 	CSTR:FINDCHARA(CFLAG:嫁, 1):配属 = 
 ENDIF
 
-@料理効果計算, 献立渡し用, 鎮静, 滋養強壮, 愛情, 狂気度計算用, 酒あり, 酔い覚まし, ホット, コールド, 脱水, 水分, カフェイン, 調理器具ボーナス
+@料理効果計算, 献立渡し用
 #DIMS DYNAMIC 献立, 9
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
-#DIM DYNAMIC モチベ計算用
 #DIMS DYNAMIC 分割用, 2
-#DIM REF ホット
-#DIM REF コールド
-#DIM REF 脱水
-#DIM REF 水分
-#DIM REF 酒あり
-#DIM REF 鎮静
-#DIM REF 滋養強壮
-#DIM REF 愛情
-#DIM REF 狂気度計算用
-#DIM REF 酔い覚まし
-#DIM REF カフェイン
-#DIM REF 調理器具ボーナス
 #DIMS DYNAMIC 献立渡し用
-
-ホット = 0
-コールド = 0
-脱水 = 0
-水分 = 0
-酒あり = 0
-鎮静 = 0
-滋養強壮 = 0
-愛情 = 0
-狂気度計算用 = 0
-酔い覚まし = 0
-カフェイン = 0
-調理器具ボーナス = 0
+#DIM DYNAMIC 調理器具あり
 
 ARRAYCOPY 献立渡し用, "献立"
 
@@ -1182,81 +1045,50 @@ FOR LCOUNT, 0, 9
 		CONTINUE
 	SELECTCASE 料理分類:FINDELEMENT(料理メニュー, 献立:LCOUNT)
 		CASE "汁物", "飲み物"
-			水分 = 1
+			計算用効果:水分 = 1
 	ENDSELECT
 	CALLF レシピ判定(献立:LCOUNT)
 	FOR LCOUNT2, 0, 3
 		SELECTCASE 料理効果:LCOUNT2
 			CASE "ALC"
-				酒あり = 1
+				計算用効果:酒あり = 1
 			CASE IS != ""
 				SPLIT 料理効果:LCOUNT2, "/", 分割用
-				SELECTCASE 分割用
-					CASE "モチベ"
-						モチベ計算用 += TOINT(分割用:1)
-					CASE "ホット"
-						ホット += TOINT(分割用:1)
-					CASE "コールド"
-						コールド += TOINT(分割用:1)
-					CASE "鎮静"
-						鎮静 += TOINT(分割用:1)
-					CASE "脱水"
-						脱水 += TOINT(分割用:1)
-					CASE "滋養強壮"
-						滋養強壮 += TOINT(分割用:1)
-					CASE "愛情"
-						愛情 += TOINT(分割用:1)
-					CASE "狂気"
-						狂気度計算用 += TOINT(分割用:1)
-					CASE "酔い覚まし"
-						酔い覚まし += TOINT(分割用:1)
-					CASE "カフェイン"
-						カフェイン += TOINT(分割用:1)
-				ENDSELECT
+				SIF GETNUM(計算用効果, 分割用:0) != -1
+					計算用効果:(分割用:0) += TOINT(分割用:1)
 		ENDSELECT
 	NEXT
 	;対応する調理器具を所持していればモチベ上昇
 	;表示用に設定するのみで実際の効果は[モチベ計算用]に加算してる
 	SELECTCASE 調理器具
 		CASE "窯"
-			IF ITEM:フラッシュドール窯
-				モチベ計算用 += 3
-				調理器具ボーナス += 3
-			ENDIF
+			SIF ITEM:フラッシュドール窯
+				調理器具あり = 1
 		CASE "醸造設備"
-			IF ITEM:醸造蒸留設備
-				モチベ計算用 += 3
-				調理器具ボーナス += 3
-			ENDIF
+			SIF ITEM:醸造蒸留設備
+				調理器具あり = 1
 		CASE "製麺機"
-			IF ITEM:高級製麺機『麺です』
-				モチベ計算用 += 3
-				調理器具ボーナス += 3
-			ENDIF
+			SIF ITEM:高級製麺機『麺です』
+				調理器具あり = 1
 		CASE "コーヒーメーカー"
-			IF ITEM:ドリップマシーンエボリューション
-				モチベ計算用 += 3
-				調理器具ボーナス += 3
-			ENDIF
+			SIF ITEM:ドリップマシーンエボリューション
+				調理器具あり = 1
 		CASE "フライヤー"
-			IF ITEM:レインボーフライヤー
-				モチベ計算用 += 3
-				調理器具ボーナス += 3
-			ENDIF
+			SIF ITEM:レインボーフライヤー
+				調理器具あり = 1
 		CASE "フライパン"
-			IF ITEM:フライパン・アバーブ
-				モチベ計算用 += 3
-				調理器具ボーナス += 3
-			ENDIF
+			SIF ITEM:フライパン・アバーブ
+				調理器具あり = 1
 		CASE "鍋"
-			IF ITEM:大地の土鍋
-				モチベ計算用 += 3
-				調理器具ボーナス += 3
-			ENDIF
+			SIF ITEM:大地の土鍋
+				調理器具あり = 1
 	ENDSELECT
+	IF 調理器具あり
+		計算用効果:モチベ += 3
+		計算用効果:調理器具ボーナス += 3
+	ENDIF
 NEXT
 
-RETURN モチベ計算用
 
 @MANUAL_調理室
 DRAWLINE
@@ -1267,35 +1099,31 @@ DRAWLINE
 PRINTPLAIN 　調理室　
 PRINTL [0] - 戻る
 
-DO
-	INPUT
-	SELECTCASE RESULT
-		CASE 0
-			RETURN
-		CASE 1
-			PRINTL 調理室は料理担当を配属し、各食の献立を決めることで、経営に従事するキャラたちのモチベーション上昇を図ることができます
-			PRINTL 料理担当は配属人数によって能力の上限が決められており、1人の場合は10(最大)、2人の場合は5、3人の場合は4となっています
-			PRINTL 低スキルのキャラを3人配属させるもよし、高スキルのキャラ1人に任せるのもよし、キャラの能力に合わせて配属を決めましょう
-			PRINTL 献立の材料は農業・畜産業で収穫したものを使います。まずはそちらで野菜や動物などを育てましょう
-			PRINTL レシピ一覧画面で項目にマウスオーバーすることで必要な材料と料理スキルが表示されます
-			PRINTL 対応した調理器具をグレードアップすることで料理効果を上げることもできます。アイテム一覧から購入してみましょう
-			WAIT
-			RESTART
-		CASE 2
-			PRINTL [モチベ] - モチベーション上昇値 小数点以下は切り上げ
-			PRINTL [ホット] - 寒い日に効果が高く、暑い日に効果が低い
-			PRINTL [コールド] - 暑い日に効果が高く、寒い日に効果が低い
-			PRINTL [鎮静] - ストレス緩和効果あり
-			PRINTL [滋養強壮] - 体力回復効果あり
-			PRINTL [愛情] - 愛情のこもった料理により愛情経験増加(陥落済みのみ)
-			PRINTL [脱水] - 飲み物・汁物が無いと効果減
-			PRINTL [ALC] - お酒。キャラクターたちがほどよく酔う
-			PRINTL [酔い覚まし] - 二日酔いを軽減する
-			PRINTL [カフェイン] - 気力回復効果あり。摂りすぎ注意
-			WAIT
-			RESTART
-	ENDSELECT
-LOOP 1
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		PRINTL 調理室は料理担当を配属し、各食の献立を決めることで、経営に従事するキャラたちのモチベーション上昇を図ることができます
+		PRINTL 料理担当は配属人数によって能力の上限が決められており、1人の場合は10(最大)、2人の場合は5、3人の場合は4となっています
+		PRINTL 低スキルのキャラを3人配属させるもよし、高スキルのキャラ1人に任せるのもよし、キャラの能力に合わせて配属を決めましょう
+		PRINTL 献立の材料は農業・畜産業で収穫したものを使います。まずはそちらで野菜や動物などを育てましょう
+		PRINTL レシピ一覧画面で項目にマウスオーバーすることで必要な材料と料理スキルが表示されます
+		PRINTL 対応した調理器具をグレードアップすることで料理効果を上げることもできます。アイテム一覧から購入してみましょう
+	CASE 2
+		PRINTL [モチベ] - モチベーション上昇値 小数点以下は切り上げ
+		PRINTL [ホット] - 寒い日に効果が高く、暑い日に効果が低い
+		PRINTL [コールド] - 暑い日に効果が高く、寒い日に効果が低い
+		PRINTL [鎮静] - ストレス緩和効果あり
+		PRINTL [滋養強壮] - 体力回復効果あり
+		PRINTL [愛情] - 愛情のこもった料理により愛情経験増加(陥落済みのみ)
+		PRINTL [脱水] - 飲み物・汁物が無いと効果減
+		PRINTL [ALC] - お酒。キャラクターたちがほどよく酔う
+		PRINTL [酔い覚まし] - 二日酔いを軽減する
+		PRINTL [カフェイン] - 気力回復効果あり。摂りすぎ注意
+ENDSELECT
+WAIT
+RESTART
 
 @精肉
 #DIM DYNAMIC 対象
