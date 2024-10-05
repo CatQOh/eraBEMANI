@@ -822,41 +822,8 @@ SELECTCASE RESULT
 	CASE 954
 		CALL COMMENU_START, 1
 		RETURN 1
-	;コマンドフィルタ設定
 	CASE 960
-		$コマンドフィルタ
-		PRINTFORML [1] 愛撫(口を含む)コマンドフィルタ(現在:\@ FLAG:愛撫コマンドフィルタ ? オン # オフ \@)
-		PRINTFORML [2] 道具コマンドフィルタ(現在:\@ FLAG:道具コマンドフィルタ ? オン # オフ \@)
-		PRINTFORML [3] 奉仕コマンドフィルタ(現在:\@ FLAG:奉仕コマンドフィルタ ? オン # オフ \@)
-		PRINTFORML [4] 触手・獣姦コマンドフィルタ(現在:\@ FLAG:獣姦コマンドフィルタ ? オン # オフ \@)
-		PRINTFORML [5] Ｖ系コマンドフィルタ(現在:\@ FLAG:Ｖ系コマンドフィルタ ? オン # オフ \@)
-		PRINTFORML [6] Ａ系コマンドフィルタ(現在:\@ FLAG:Ａ系コマンドフィルタ ? オン # オフ \@)
-		PRINTFORML [7] 暴力系コマンドフィルタ(現在:\@ FLAG:暴力コマンドフィルタ ? オン # オフ \@)
-		PRINTFORML [100] コマンドごとにフィルタを設定する
-		PRINTL [0] 戻る
-		BINPUT
-		SELECTCASE RESULT
-			CASE 0
-				RETURN 1
-			CASE 1
-				INVERTBIT FLAG:愛撫コマンドフィルタ, 0
-			CASE 2
-				INVERTBIT FLAG:道具コマンドフィルタ, 0
-			CASE 3
-				INVERTBIT FLAG:奉仕コマンドフィルタ, 0
-			CASE 4
-				INVERTBIT FLAG:獣姦コマンドフィルタ, 0
-			CASE 5
-				INVERTBIT FLAG:Ｖ系コマンドフィルタ, 0
-			CASE 6
-				INVERTBIT FLAG:Ａ系コマンドフィルタ, 0
-			CASE 7
-				INVERTBIT FLAG:暴力コマンドフィルタ, 0
-			CASE 100
-				VARLINE = 0
-				CALL コマンドフィルタ設定
-		ENDSELECT
-		GOTO コマンドフィルタ
+		CALL コマンドフィルタ設定
 	CASE 961
 		OPTION:コマンド段落非表示++
 		SIF OPTION:コマンド段落非表示 > 2
@@ -1582,12 +1549,47 @@ ENDIF
 
 @コマンドフィルタ設定
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LVARLINE
+#DIMS DYNAMIC 表示用
+SIF !LVARLINE
+	LVARLINE = LINECOUNT
+DRAWLINE
+PRINTFORML □無効にしたいコマンド属性を選んでください（灰色がフィルタオンの状態）
+FOR LCOUNT, GETNUM(FLAG, "愛撫コマンドフィルタ"), GETNUM(FLAG, "暴力コマンドフィルタ")+1
+	表示用 = %REPLACE(FLAGNAME:LCOUNT, "コマンドフィルタ", "")%
+	SELECTCASE 表示用
+		CASE "愛撫"
+			表示用 = 愛撫(口を含む)
+		CASE "獣姦"
+			表示用 = 触手・獣姦
+	ENDSELECT
+	SIF FLAG:LCOUNT
+		SETCOLORBYNAME gray
+	PRINTFORML 　[{LCOUNT-GETNUM(FLAG, "愛撫コマンドフィルタ"), 3}] %表示用%
+	RESETCOLOR
+NEXT
+PRINTFORML 　[ 99] コマンドごとにフィルタを設定する
+PRINTFORML 　[100] 戻る
+BINPUT
+SELECTCASE RESULT
+	CASE 99
+		CALL コマンドフィルタ設定_コマンド別
+	CASE 100
+		RETURN 1
+	CASEELSE
+		INVERTBIT FLAG:(RESULT+GETNUM(FLAG, "愛撫コマンドフィルタ")), 0
+ENDSELECT
+CLEARLINE LINECOUNT-LVARLINE
+RESTART
+
+@コマンドフィルタ設定_コマンド別
+#DIM DYNAMIC LCOUNT
 #DIM DYNAMIC ページ数
 #DIM DYNAMIC 処理数
 #DIM DYNAMIC 次ページあり
-
-CALL LOOP_CLEARLINE
-
+#DIM DYNAMIC LVARLINE
+SIF !LVARLINE
+	LVARLINE = LINECOUNT
 DRAWLINE
 PRINTL □コマンドフィルタを設定します
 処理数 = 0
@@ -1600,10 +1602,15 @@ FOR LCOUNT, 0, VARSIZE("TRAINNAME")
 		CONTINUE
 	ENDIF
 	IF USINGFILTERG
+		SIF COMFILTERG:LCOUNT
+			SETCOLORBYNAME gray
 		PRINTFORMC %I18N(TRAINNAME:LCOUNT, "TRAIN")%[{LCOUNT, 3}]\@ COMFILTERG:LCOUNT ? × # ○ \@
 	ELSE
+		SIF COMFILTER:LCOUNT
+			SETCOLORBYNAME gray
 		PRINTFORMC %I18N(TRAINNAME:LCOUNT, "TRAIN")%[{LCOUNT, 3}]\@ COMFILTER:LCOUNT ? × # ○ \@
 	ENDIF
+	RESETCOLOR
 	処理数++
 	IF 処理数 >= ページ数*60+60
 		次ページあり = 1
@@ -1617,8 +1624,12 @@ PRINTPLAIN 　FILTER　
 CALL PRINTSPACE, ページ数, "[1001] 前ページ "
 PRINT [1000] 戻る 
 CALL PRINTSPACE, 次ページあり, "[1009] 次ページ "
-PRINTFORML [1010] \@ USINGFILTERG ? このセーブデータ専用のフィルタに変更 # セーブデータ間共通のフィルタに変更 \@
-
+PRINTL 
+PRINTPLAINFORM %SPACESLENS("　FILTER　")%
+PRINTFORM [1010] \@ USINGFILTERG ? 全セーブデータ間共通 # このセーブデータ専用 \@のフィルタを適用中（クリックで変更） 
+SIF !USINGFILTERG
+	PRINTFORM [1011] 共通フィルタの設定をコピー 
+PRINTL 
 BINPUT
 SELECTCASE RESULT
 	CASE 0 TO VARSIZE("TRAINNAME")-1
@@ -1627,20 +1638,27 @@ SELECTCASE RESULT
 		ELSE
 			INVERTBIT COMFILTER:RESULT, 0
 		ENDIF
-		RESTART
 	CASE 1000
 		SAVEGLOBAL
 		RETURN
 	CASE 1001
 		ページ数--
-		RESTART
 	CASE 1009
 		ページ数++
-		RESTART
 	CASE 1010
 		INVERTBIT USINGFILTERG, 0
-		RESTART
+	CASE 1011
+		PRINTFORML 全セーブデータ共通の設定をこのセーブデータ専用の設定にコピーしてもいいですか？（現在のフィルタの状態は消去されます）
+		PRINTFORML [0] はい
+		PRINTFORML [1] いいえ
+		BINPUT
+		IF !RESULT
+			ARRAYCOPY "COMFILTERG", "COMFILTER"
+			PRINTFORMW コピーが完了しました
+		ENDIF
 ENDSELECT
+CLEARLINE LINECOUNT-LVARLINE
+RESTART
 
 @汎用喘ぎ設定
 #DIM DYNAMIC LCOUNT
