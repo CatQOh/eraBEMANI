@@ -307,6 +307,10 @@ RESTART
 #DIM DYNAMIC CSTR位置
 #DIM DYNAMIC 衣服文字数 = 20
 #DIMS DYNAMIC フラグ名
+#DIMS DYNAMIC 表示用
+#DIM DYNAMIC 変更不可
+#DIM DYNAMIC 全身上着変更不可
+#DIM DYNAMIC 下半身上着変更不可
 
 IF 対象 != -1
 	LTARGET = TARGET
@@ -322,54 +326,88 @@ PRINTFORML □%NAME:TARGET%の服装設定
 FOR LCOUNT, 0, 7
 	CSTR位置 = GETNUM(CSTR, "特殊")+LCOUNT
 	IF !CFLAG:@"%CSTRNAME:CSTR位置%着衣不可"
-		IF ゲームモード() == "学園モード"
-			PRINTFORM 　[{LCOUNT}] %CSTRNAME:CSTR位置, 10, LEFT%：%学園用服装:(CSTRNAME:CSTR位置), 衣服文字数+2, LEFT%
+		CALL DISABLE, @"服変更_%CSTRNAME:CSTR位置%", TARGET
+		変更不可 = RESULT
+		SELECTCASE CSTRNAME:CSTR位置
+			CASE "下半身上着"
+				下半身上着変更不可 = 変更不可
+			CASE "全身上着"
+				全身上着変更不可 = 変更不可
+		ENDSELECT
+		
+		IF 変更不可
+			SETCOLORBYNAME gray
+			PRINT 　[-] 
 		ELSE
-			PRINTFORM 　[{LCOUNT}] %CSTRNAME:CSTR位置, 10, LEFT%：%CSTR:(CSTRNAME:CSTR位置), 衣服文字数+2, LEFT%
+			PRINTFORM 　[{LCOUNT}] 
 		ENDIF
+		PRINTFORM %CSTRNAME:CSTR位置, 10, LEFT%：
+		IF ゲームモード() == "学園モード"
+			PRINTFORM %学園用服装:(CSTRNAME:CSTR位置), 衣服文字数+2, LEFT%
+		ELSE
+			PRINTFORM %CSTR:(CSTRNAME:CSTR位置), 衣服文字数+2, LEFT%
+		ENDIF
+		
 		IF MOD:着衣パイズリ && CSTR:(CSTRNAME:CSTR位置) != "" && GROUPMATCH(CSTRNAME:CSTR位置, "全身上着", "上半身上着", "上半身下着")
 			IF CSTRNAME:CSTR位置 == "全身上着"
 				フラグ名 = 全身上着パイズリ
 			ELSE
 				フラグ名 = %SUBSTRINGU(CSTRNAME:CSTR位置, 3, -1)%パイズリ
 			ENDIF
-			PRINTFORM [{LCOUNT+100}] %パイズリフラグ説明(CFLAG:フラグ名, TARGET)%
-			IF CFLAG:フラグ名/10 == 1
-				PRINTFORM (水着)
-			ELSEIF CFLAG:フラグ名/10 == 2
-				PRINTFORM (ぴっちりスーツ)
-			ENDIF
+			SIF !変更不可
+				PRINTFORM [{LCOUNT+100}] 
+			PRINTFORM %パイズリフラグ説明(CFLAG:フラグ名, TARGET)%
+			SELECTCASE CFLAG:フラグ名/10
+				CASE 1
+					PRINTFORM (水着)
+				CASE 2
+					PRINTFORM (ぴっちりスーツ)
+			ENDSELECT
 		ENDIF
 		PRINTL 
+		RESETCOLOR
 	ELSE
 		CALL PRINTCOLORL, @"　[-] %CSTRNAME:CSTR位置, 10, LEFT%：着衣不可", "gray"
 	ENDIF
 NEXT
 
 ;下半身上着もしくは全身上着を着用時、挿入可フラグの変更ができる
-IF CSTR:下半身上着 != "" || CSTR:全身上着 != ""
-	PRINTFORML 　[7] 着衣状態での性行為可否の変更(現在:\@ CFLAG:挿入可 ? 可能 # 不可能 \@)
+IF CSTR:下半身上着 == "" && CSTR:全身上着 == ""
+	表示用 = 
 ELSE
-	CALL PRINTCOLORL, "　[-] 着衣状態での性行為可否の変更", "gray"
+	表示用 = \@ CFLAG:挿入可 ? 可能 # 不可能 \@
+ENDIF
+;これでちゃんと判定されるのか微妙
+IF 表示用 != "" && !(下半身上着変更不可 && CSTR:下半身上着 != "") && !(全身上着変更不可 && CSTR:全身上着 != "" && GROUPMATCH(CFLAG:着衣併用, 0, 2))
+	PRINTFORML 　[7] 着衣状態での性行為可否の変更(現在:%表示用%)
+ELSE
+	CALL PRINTCOLORL, @"　[-] 着衣状態での性行為可否の変更\@ 表示用 != "" ? (現在:%表示用%) #\@", "gray"
 ENDIF
 
 ;全身上着の着用時、全身上着の性質の変更ができる
-IF CSTR:全身上着 != ""
-	PRINTFORM 　[8] %CSTR:全身上着%の性質の変更(現在:
+IF CSTR:全身上着 == ""
+	表示用 = 
+ELSE
 	SELECTCASE CFLAG:着衣併用
 		CASE 0
-			PRINTL 上着として着用)
+			表示用 = 上着として着用
 		CASE 1
-			PRINTL 上着の上から着用)
+			表示用 = 上着の上から着用
 		CASE 2
-			PRINTL 下着として着用)
+			表示用 = 下着として着用
 	ENDSELECT
+ENDIF
+IF 表示用 != "" && !全身上着変更不可
+	PRINTFORM 　[8] %CSTR:全身上着%の性質の変更(現在:%表示用%)
 ELSE
-	CALL PRINTCOLORL, "　[-] 全身上着の性質の変更", "gray"
+	CALL PRINTCOLORL, @"　[-] 全身上着の性質の変更\@ 表示用 != "" ? (現在:%表示用%) #\@", "gray"
 ENDIF
 
-SIF NOF(TARGET) < 10000
-	PRINTL 　[9] 着衣設定の初期化
+IF NOF(TARGET) < 10000
+	CALL DISABLE, "服変更_初期化", TARGET
+	SIF !RESULT
+		PRINTL 　[9] 着衣設定の初期化
+ENDIF
 DRAWLINE
 PRINTPLAIN 　COORDINATE　
 PRINTL [10] 戻る

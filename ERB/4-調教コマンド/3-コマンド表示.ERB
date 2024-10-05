@@ -1092,6 +1092,8 @@ WAIT
 #DIM DYNAMIC LRESULT
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 字数
+#DIM DYNAMIC 着脱部位
+#DIM DYNAMIC DISABLE判定
 
 DRAWLINE
 PRINTL 着衣について設定します
@@ -1158,48 +1160,77 @@ PRINTPLAIN 　COORDINATE　
 PRINTFORML [100] 戻る　[101] 着脱の簡略化(現在:\@ OPTION:服着脱ウェイト無 ? オン # オフ \@)
 
 BINPUT
-SELECTCASE RESULT
+;万一TFLAG書き換えられると変になるのでローカルに退避
+着脱部位 = RESULT
+TFLAG:服着脱 = 着脱部位
+DISABLE判定 = 0
+;PLAYERに表示する事ある？暴発しそうなので一旦TARGETだけにしておく
+SIF 対象 == TARGET
+	CALL KOJO_MESSAGE_USERCOM, "服の着脱"
+
+SELECTCASE 着脱部位
 	CASE GETNUM(TEQUIP, "特殊") TO GETNUM(TEQUIP, "足元")
-		IF TEQUIP:対象:RESULT
-			PRINTFORM %CSTR:対象:(RESULT+100)%を
-			SELECTCASE TEQUIPNAME:RESULT
-				CASE "特殊"
-					PRINTFORML \@ 対象 == TARGET ? 奪った # 取った \@
-				CASEELSE
-					PRINTFORML \@ 対象 == TARGET ? 脱がした # 脱いだ \@
-			ENDSELECT
-			TEQUIP:対象:RESULT = 0
-		ELSEIF !TEQUIP:対象:RESULT
-			PRINTFORM %CSTR:対象:(RESULT+100)%を
-			SELECTCASE TEQUIPNAME:RESULT
-				CASE "特殊"
-					PRINTFORML \@ 対象 == TARGET ? 返した # 身につけた \@
-				CASE "下半身下着", "足元"
-					PRINTFORML \@ 対象 == TARGET ? 穿かせた # 穿いた \@
-				CASEELSE
-					PRINTFORML \@ 対象 == TARGET ? 着せた # 着た \@
-			ENDSELECT
-			TEQUIP:対象:RESULT = 1
+		CALL DISABLE, @"服着脱_%服着脱部位(着脱部位)%"
+		IF !RESULT
+			IF TEQUIP:対象:着脱部位
+				PRINTFORM %CSTR:対象:(着脱部位+100)%を
+				SELECTCASE TEQUIPNAME:着脱部位
+					CASE "特殊"
+						PRINTFORML \@ 対象 == TARGET ? 奪った # 取った \@
+					CASEELSE
+						PRINTFORML \@ 対象 == TARGET ? 脱がした # 脱いだ \@
+				ENDSELECT
+			ELSE
+				PRINTFORM %CSTR:対象:(着脱部位+100)%を
+				SELECTCASE TEQUIPNAME:着脱部位
+					CASE "特殊"
+						PRINTFORML \@ 対象 == TARGET ? 返した # 身につけた \@
+					CASE "下半身下着", "足元"
+						PRINTFORML \@ 対象 == TARGET ? 穿かせた # 穿いた \@
+					CASEELSE
+						PRINTFORML \@ 対象 == TARGET ? 着せた # 着た \@
+				ENDSELECT
+			ENDIF
+			INVERTBIT TEQUIP:対象:着脱部位, 0
+			SIF !OPTION:服着脱ウェイト無
+				WAIT
 		ENDIF
-		SIF !OPTION:服着脱ウェイト無
-			WAIT
-	;服を脱がせる場合
 	CASE 10
+		;服を脱がせる場合
 		FOR LCOUNT, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
-			TEQUIP:対象:LCOUNT = 0
+			SIF !TEQUIP:対象:LCOUNT || CSTR:対象:(TEQUIPNAME:LCOUNT) == ""
+				CONTINUE
+			CALL DISABLE, @"服着脱_%TEQUIPNAME:LCOUNT%"
+			IF RESULT
+				SETBIT DISABLE判定, 0
+			ELSE
+				SETBIT DISABLE判定, 1
+				TEQUIP:対象:LCOUNT = 0
+			ENDIF
 		NEXT
-		PRINTFORML 服をすべて\@ 対象 == TARGET ? 脱がせました # 脱ぎました \@
-		SIF !OPTION:服着脱ウェイト無
-			WAIT
-	;服を着せる場合
+		IF GETBIT(DISABLE判定, 1)
+			PRINTFORML 服を\@ GETBIT(DISABLE判定, 0) ? 一部を除き # すべて \@\@ 対象 == TARGET ? 脱がせました # 脱ぎました \@
+			SIF !OPTION:服着脱ウェイト無
+				WAIT
+		ENDIF
 	CASE 11
+		;服を着せる場合
 		FOR LCOUNT, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
-			SIF CSTR:対象:(TEQUIPNAME:LCOUNT) != ""
+			SIF TEQUIP:対象:LCOUNT || CSTR:対象:(TEQUIPNAME:LCOUNT) == ""
+				CONTINUE
+			CALL DISABLE, @"服着脱_%TEQUIPNAME:LCOUNT%"
+			IF RESULT
+				SETBIT DISABLE判定, 0
+			ELSE
+				SETBIT DISABLE判定, 1
 				TEQUIP:対象:LCOUNT = 1
+			ENDIF
 		NEXT
-		PRINTFORML 服をすべて\@ 対象 == TARGET ? 着せました # 着ました \@
-		SIF !OPTION:服着脱ウェイト無
-			WAIT
+		IF GETBIT(DISABLE判定, 1)
+			PRINTFORML 服を\@ GETBIT(DISABLE判定, 0) ? 一部を除き # すべて \@\@ 対象 == TARGET ? 着せました # 着ました \@
+			SIF !OPTION:服着脱ウェイト無
+				WAIT
+		ENDIF
 	CASE 100
 		RETURN 0
 	CASE 101
@@ -1207,16 +1238,15 @@ SELECTCASE RESULT
 		RESTART
 ENDSELECT
 
-TFLAG:服着脱 = RESULT
-;PLAYERに表示する事ある？暴発しそうなので一旦TARGETだけにしておく
-SIF 対象 == TARGET
-	CALL KOJO_MESSAGE_USERCOM, "服の着脱"
 
 RESTART
 
-@服着脱部位
+@服着脱部位(着脱部位 = -1)
 #FUNCTIONS
-SELECTCASE TFLAG:服着脱
+#DIM DYNAMIC 着脱部位
+SIF 着脱部位 == -1
+	着脱部位 = TFLAG:服着脱
+SELECTCASE 着脱部位
 	CASE 10
 		RETURNF "全部脱ぐ"
 	CASE 11
