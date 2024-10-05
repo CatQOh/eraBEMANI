@@ -75,6 +75,7 @@ ENDSELECT
 #DIMS DYNAMIC HTML用
 #DIM DYNAMIC 依頼
 #DIM DYNAMIC 超過ポイント
+#DIMS DYNAMIC 曲名判定用
 #DIM DYNAMIC リミ曲実績, 2
 
 ;ユニット数を数える
@@ -90,6 +91,17 @@ SIF 依頼
 CALL MUSIC_LIST
 SIF IDOL選曲 == ""
 	RETURN 0
+;曲名判定用は技量の補正にのみ使用し実績等の判定では使用しない（曲名で判定する実績をgeneralで解除しないように）
+曲名判定用 = %IDOL選曲%
+IF 曲名判定用 == "General Relativity"
+	FOR LCOUNT, 0, 4
+		IF LCOUNT == 0
+			曲名判定用 = %ジェネラル判定%
+		ELSE
+			IDOL選曲:LCOUNT = %ジェネラル判定:LCOUNT%
+		ENDIF
+	NEXT
+ENDIF
 
 $MEMBER_LOOP
 
@@ -101,28 +113,28 @@ FOR LCOUNT, 0, CHARANUM
 		SELECTCASE ユニット担当記録用:LCOUNT
 			CASE 1
 				;担当曲補正
-				IF 担当曲判定(LCOUNT, IDOL選曲)
+				IF 担当曲判定(LCOUNT, 曲名判定用)
 					技量:3 += 140*ABL:LCOUNT:舞踊技能
 				ELSE
 					技量:3 += 100*ABL:LCOUNT:舞踊技能
 				ENDIF
 				人数:3++
 			CASE 2
-				IF 担当曲判定(LCOUNT, IDOL選曲)
+				IF 担当曲判定(LCOUNT, 曲名判定用)
 					技量:2 += 140*ABL:LCOUNT:演奏技能
 				ELSE
 					技量:2 += 100*ABL:LCOUNT:演奏技能
 				ENDIF
 				人数:2++
 			CASE 3
-				IF 担当曲判定(LCOUNT, IDOL選曲)
+				IF 担当曲判定(LCOUNT, 曲名判定用)
 					技量:1 += 140*ABL:LCOUNT:歌唱技能
 				ELSE
 					技量:1 += 100*ABL:LCOUNT:歌唱技能
 				ENDIF
 				人数:1++
 			CASE 4
-				IF 担当曲判定(LCOUNT, IDOL選曲)
+				IF 担当曲判定(LCOUNT, 曲名判定用)
 					技量:3 += 75*ABL:LCOUNT:舞踊技能
 					技量:1 += 75*ABL:LCOUNT:歌唱技能
 				ELSE
@@ -132,7 +144,7 @@ FOR LCOUNT, 0, CHARANUM
 				人数:3++
 				人数:1++
 			CASE 5
-				IF 担当曲判定(LCOUNT, IDOL選曲)
+				IF 担当曲判定(LCOUNT, 曲名判定用)
 					技量:2 += 75*ABL:LCOUNT:演奏技能
 					技量:1 += 75*ABL:LCOUNT:歌唱技能
 				ELSE
@@ -181,11 +193,11 @@ FOR LCOUNT, 0, CHARANUM
 	ENDIF
 NEXT
 ;GAMBOL・nine seconds・SPICY PIECEの場合は判定が厳しくなる
-SELECTCASE IDOL選曲
+SELECTCASE 曲名判定用
 	CASE "GAMBOL", "nine seconds", "SPICY PIECE"
-	TIMES 技量:1, 0.33
-	TIMES 技量:2, 0.33
-	TIMES 技量:3, 0.33
+		TIMES 技量:1, 0.33
+		TIMES 技量:2, 0.33
+		TIMES 技量:3, 0.33
 ENDSELECT
 
 VARSET 収入
@@ -382,7 +394,7 @@ ELSEIF RESULT == 0
 		PRINTW ボーカルを1人以上選び出してください
 		GOTO MEMBER_LOOP
 	ENDIF
-	IF 収入 < 0
+	IF 収入 <= 0
 		PRINTL このライブでは収入を見込めません。本当に開催しますか？
 		PRINTL [0] - あいつらが失敗するところを見たい
 		PRINTL [1] - やめておこう
@@ -418,7 +430,7 @@ ENDIF
 難度:1 = 100*TOINT(IDOL選曲:1)
 難度:2 = 100*TOINT(IDOL選曲:2)
 ;CHAOSはダンス難易度が4～9の間で変動する
-SELECTCASE IDOL選曲
+SELECTCASE 曲名判定用
 	CASE "CHAOS"
 		IDOL選曲:3 = RAND(4, 10)
 ENDSELECT
@@ -436,28 +448,28 @@ FOR LCOUNT, 0, CHARANUM
 			SELECTCASE ユニット担当記録用:LCOUNT
 				CASE 1
 					;担当曲補正
-					IF 担当曲判定(LCOUNT, IDOL選曲)
+					IF 担当曲判定(LCOUNT, 曲名判定用)
 						技量:3 -= 140*ABL:LCOUNT:舞踊技能
 					ELSE
 						技量:3 -= 100*ABL:LCOUNT:舞踊技能
 					ENDIF
 					人数:3--
 				CASE 2
-					IF 担当曲判定(LCOUNT, IDOL選曲)
+					IF 担当曲判定(LCOUNT, 曲名判定用)
 						技量:2 -= 140*ABL:LCOUNT:演奏技能
 					ELSE
 						技量:2 -= 100*ABL:LCOUNT:演奏技能
 					ENDIF
 					人数:2--
 				CASE 3
-					IF 担当曲判定(LCOUNT, IDOL選曲)
+					IF 担当曲判定(LCOUNT, 曲名判定用)
 						技量:1 -= 140*ABL:LCOUNT:歌唱技能
 					ELSE
 						技量:1 -= 100*ABL:LCOUNT:歌唱技能
 					ENDIF
 					人数:1--
 				CASE 4
-					IF 担当曲判定(LCOUNT, IDOL選曲)
+					IF 担当曲判定(LCOUNT, 曲名判定用)
 						技量:3 -= 75*ABL:LCOUNT:舞踊技能
 						技量:1 -= 75*ABL:LCOUNT:歌唱技能
 					ELSE
@@ -467,7 +479,7 @@ FOR LCOUNT, 0, CHARANUM
 					人数:3--
 					人数:1--
 				CASE 5
-					IF 担当曲判定(LCOUNT, IDOL選曲)
+					IF 担当曲判定(LCOUNT, 曲名判定用)
 						技量:2 -= 75*ABL:LCOUNT:演奏技能
 						技量:1 -= 75*ABL:LCOUNT:歌唱技能
 					ELSE
@@ -513,11 +525,11 @@ FOR LCOUNT, 0, CHARANUM
 	ENDIF
 NEXT
 ;GAMBOL・nine seconds・SPICY PIECEの場合は判定が厳しくなる
-SELECTCASE IDOL選曲
+SELECTCASE 曲名判定用
 	CASE "GAMBOL", "nine seconds", "SPICY PIECE"
-	TIMES 技量:1, 0.33
-	TIMES 技量:2, 0.33
-	TIMES 技量:3, 0.33
+		TIMES 技量:1, 0.33
+		TIMES 技量:2, 0.33
+		TIMES 技量:3, 0.33
 ENDSELECT
 VARSET 収入
 ;それぞれの分野についての基本収入を出す
@@ -539,7 +551,7 @@ NEXT
 ;出演依頼なら1.5倍
 ;今後この式は出演依頼に限定する予定なのでいずれ補正消す
 SIF 依頼
-	TIMES 収入 , 1.5
+	TIMES 収入, 1.5
 
 収入:1 = 収入
 ;最後に知名度による補正
@@ -549,7 +561,7 @@ SIF 依頼
 ;収入:1 += 収入*LIMIT(SQRT(IDOL:知名度), 1, 300)/100
 
 PRINTL ライブが終了しました
-IF 収入:1 >= 0
+IF 収入:1 > 0
 	CALL PASELI, @"{収入:1}＄の利益を出し、"
 ELSE
 	CALL PASELI, @"{ABS(収入:1)}＄の損失を出し、"
@@ -640,6 +652,11 @@ IF 技量:1 >= 難度:1 && 技量:2 >= 難度:2 && 技量:3 >= 難度:3
 	;実績:マイグルーヴレーダーを完成させる
 	SIF MINARRAY(MGR) == 1
 		CALL 実績解除, "真・足神様"
+ENDIF
+IF IDOL選曲 != "General Relativity"
+	FOR LCOUNT, 0, 4
+		ジェネラル判定:LCOUNT = %IDOL選曲:LCOUNT%
+	NEXT
 ENDIF
 ;ライブを行った場合はRETURN 1
 RETURN 1
