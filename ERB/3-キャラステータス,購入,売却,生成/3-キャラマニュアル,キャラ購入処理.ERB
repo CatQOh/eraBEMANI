@@ -344,7 +344,7 @@ RETURN 0
 ;今のところは100人まで
 #DIMS DYNAMIC 相性設定用, 100
 #DIM DYNAMIC 名前例外処理
-#DIMS DYNAMIC 相性値, 200
+#DIMS DYNAMIC 相性値, 2
 #DIM DYNAMIC クローニング
 #DIM DYNAMIC 高速化
 #DIM DYNAMIC 適正ABL
@@ -479,20 +479,14 @@ FOR LCOUNT, 0, RESULT
 		相性設定用:LCOUNT = %SUBSTRINGU(相性設定用:LCOUNT, 1)%
 	SIF 相性設定用:LCOUNT == ""
 		BREAK
-	SPLIT 相性設定用:LCOUNT, "*", 相性値
-	;サタンだけ相性設定用のアスタリスク文字が名前に入ってるので例外的に処理する
-	;「サタン-P」+「L-イブリース」
-	名前例外処理 = FINDELEMENTF(相性値, "サタン-P")
-	IF 名前例外処理 >= 0
-		相性値:名前例外処理 += @"*%相性値:(名前例外処理+1)%"
-		ARRAYREMOVE 相性値, 名前例外処理+1, 1
-	ENDIF
+	CALL ESCAPESPLIT, 相性設定用:LCOUNT, "*", 相性値
 	IF GETNO(相性値, 1) >= 0
 		RELATION:GETNO(相性値) = TOINT(相性値:1)
 	ELSE
 		DEBUGPRINTFORML %NAME:TARGET%の相性:「%相性値%」は存在しないもしくは表記揺れ
 	ENDIF
 NEXT
+
 
 [IF RELEASE_ORIGIN]
 [ELSE]
@@ -529,6 +523,18 @@ IF MOD:SCAT
 	CALL INITIALIZE_AMOUNT_FOR_DEFECATE, TARGET
 	CALL INITIALIZE_AMOUNT_FOR_FECES, TARGET
 ENDIF
+
+;;;主に名前に*が入るキャラ用
+@ESCAPESPLIT, 原文, 区切り文字 = "*", 代入先
+#DIMS DYNAMIC 原文
+#DIMS DYNAMIC 区切り文字
+#DIM DYNAMIC 分割数
+#DIMS REF 代入先, 0
+#DIMS DYNAMIC SPLITVAR, 100
+SPLIT 原文, 区切り文字, SPLITVAR
+分割数 = RESULT
+代入先:0 = %STRJOIN(SPLITVAR, 区切り文字, 0, 分割数-1)%
+代入先:1 = %SPLITVAR:(分割数-1)%
 
 @キャラ生成初期フラグ
 BUYD = DAYS
