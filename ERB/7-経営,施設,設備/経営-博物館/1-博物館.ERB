@@ -130,6 +130,8 @@ RESTART
 #DIM DYNAMIC ID
 #DIM DYNAMIC 設置済み, 1000
 #DIMS DYNAMIC HTML用
+#DIMS DYNAMIC 作品表示色
+#DIM 表示モード
 
 CALL LOOP_CLEARLINE
 
@@ -143,7 +145,25 @@ FOR LCOUNTY, 0, MU:広さ
 			ID = 0
 		ENDIF
 		IF ID > 0
-			HTML用 += SET_TOOLTIPBUTTON("■", @"{LCOUNTX*100+LCOUNTY}", @"%MUSEUM:ID:名前% 価値:%MUSEUM:ID:価値% \@ MUSEUM:ID:種類 == "性具" ? 耐久度:%MUSEUM:ID:耐久度%\% # 集客力:%MUSEUM:ID:集客力%\% \@ \@ MU:実用 ? 汚された回数:%MUSEUM:ID:汚れ% #\@", MUSEUM:ID:色)
+			IF !表示モード
+				作品表示色 = %MUSEUM:ID:色%
+			ELSE
+				SELECTCASE TOINT(MUSEUM:ID:集客力)
+					CASE IS >= 125
+						作品表示色 = 0x0040FF
+					CASE IS >= 100
+						作品表示色 = 0x0088FF
+					CASE IS >= 75
+						作品表示色 = 0x00BEFF
+					CASE IS >= 50
+						作品表示色 = 0x00A0BA
+					CASE IS >= 25
+						作品表示色 = 0x5A808B
+					CASEELSE
+						作品表示色 = 0x5C6666
+				ENDSELECT
+			ENDIF
+			HTML用 += SET_TOOLTIPBUTTON("■", @"{LCOUNTX*100+LCOUNTY}", @"%MUSEUM:ID:名前% 価値:%MUSEUM:ID:価値% \@ MUSEUM:ID:種類 == "性具" ? 耐久度:%MUSEUM:ID:耐久度%\% # 集客力:%MUSEUM:ID:集客力%\% \@ \@ MU:実用 ? 汚された回数:%MUSEUM:ID:汚れ% #\@", 作品表示色)
 			設置済み:ID = 1
 		ELSE
 			HTML用 += SET_TOOLTIPBUTTON("■", @"{LCOUNTX*100+LCOUNTY}", "未設置")
@@ -164,7 +184,7 @@ PRINTL
 
 DRAWLINE
 PRINTPLAIN 　MUSEUM MAP　
-PRINTFORML [-1] 戻る [-2] 全て片付ける [-3] 実用の許可/不許可(現在:\@ MU:実用 ? 許可 # 不許可 \@)
+PRINTFORML [-1] 戻る [-2] 全て片付ける [-3] 実用の許可/不許可(現在:\@ MU:実用 ? 許可 # 不許可 \@) [-4] 表示モード(現在:\@ 表示モード ? 集客力 # 種別 \@)
 
 INPUT
 
@@ -176,6 +196,9 @@ SELECTCASE RESULT
 		RESTART
 	CASE -3
 		INVERTBIT MU:実用, 0
+		RESTART
+	CASE -4
+		INVERTBIT 表示モード, 0
 		RESTART
 	CASEELSE
 		XRES = RESULT/100
@@ -635,7 +658,7 @@ FOR LCOUNTY, 0, 30
 			博物館マップ:LCOUNTY:LCOUNTX = 0
 			CONTINUE
 		ENDIF
-		SIF MUSEUM:ID:種類 != "部位/腕"
+		SIF MUSEUM:ID:種類 != "腕"
 			手コレクション = 0
 		;性具かつ実用不許可だと無視
 		SIF MUSEUM:ID:種類 == "性具" && !MU:実用
