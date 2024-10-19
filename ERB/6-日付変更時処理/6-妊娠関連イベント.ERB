@@ -1086,43 +1086,54 @@ ENDSELECT
 
 ;子供の素質と種族の確定
 @CHILDSET, 母親ID, 父親ID = -1, 母体ID = -1
+#DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 母親ID
 #DIM DYNAMIC 父親ID
 #DIM DYNAMIC 母体ID
 #DIM DYNAMIC 素質数
-#DIM DYNAMIC テーブル
 #DIM DYNAMIC 素質上限
-#DIM DYNAMIC 素質付与判定, 30
 #DIM DYNAMIC 特殊素質上限
+#DIM DYNAMIC LTARGET
+#DIMS DYNAMIC テーブル
+#DIMS DYNAMIC 素質付与判定, 30
+#DIMS DYNAMIC SPLITVAR, 10
 
 SIF 母体ID == -1
 	母体ID = 母親ID
 
-;父親が不明、もしくは採取精液なら母親の種族を受け継ぐ
-IF 父親ID == -1
-	CHILDRACE:母体ID:0 = %CSTR:母親ID:種族%
-;種族一致なら子供も同じ種族
-ELSEIF CSTR:母親ID:種族 == CSTR:父親ID:種族
-	CHILDRACE:母体ID:0 = %CSTR:母親ID:種族%
-;種族不一致なら
+;編集用のキャラと父親のコピー
+LTARGET = TARGET
+ADDVOIDCHARA
+TARGET = CHARANUM-1
+IF 父親ID >= 0
+	ADDVOIDCHARA
+	COPYCHARA 父親ID, CHARANUM-1
+ELSEIF EXISTCSV(PREG:母体ID:父親)
+	ADDCHARA PREG:母体ID:父親
+ELSE
+	ADDVOIDCHARA
+ENDIF
+父親ID = CHARANUM-1
+
+;両親の種族が一致する場合子供も同じ種族、また父親不明などで父親の種族が空欄の場合母親の種族
+IF CSTR:母親ID:種族 == CSTR:父親ID:種族 || CSTR:父親ID:種族 == ""
+	CSTR:種族 = %CSTR:母親ID:種族%
 ELSE
 	;獣人、獣は母親IDの遺伝が強く、母親IDが獣人か獣ならまず獣人になる
 	SELECTCASE CSTR:母親ID:種族
 		CASE "獣人", "獣"
-			CHILDRACE:母体ID:0 = 獣人
+			CSTR:種族 = 獣人
 		CASEELSE
 			;父親が悪魔、もしくは神なら子供も父親の種族を受け継ぐ
 			SELECTCASE CSTR:父親ID:種族
 				CASE "悪魔", "神"
-					CHILDRACE:母体ID:0 = %CSTR:父親ID:種族%
+					CSTR:種族 = %CSTR:父親ID:種族%
 				;それ以外はランダムで父親か母親IDの種族を受け継ぐ
 				CASEELSE
-					SELECTCASE RAND:2
-						CASE 0
-							CHILDRACE:母体ID:0 = %CSTR:父親ID:種族%
-						CASE 1
-							CHILDRACE:母体ID:0 = %CSTR:母親ID:種族%
-					ENDSELECT
+					STRDATA CSTR:種族
+						DATAFORM %CSTR:父親ID:種族%
+						DATAFORM %CSTR:母親ID:種族%
+					ENDDATA
 			ENDSELECT
 	ENDSELECT
 ENDIF
@@ -1131,368 +1142,143 @@ ENDIF
 SIF 近親相姦(父親ID, 母親ID)
 	PREG:母体ID:近親交配フラグ = 1
 
-;続いて素質の設定
-;まずは性別 MODの影響を受ける
-IF MOD:男性化
-	CHILDTALENT:母体ID:TALENTF("性別") = 1
-ELSEIF MOD:女性化 || MOD:女性化TSバストサイズランダム
-	CHILDTALENT:母体ID:TALENTF("性別") = 2
-ELSE
-	CHILDTALENT:母体ID:TALENTF("性別") = RAND(1, 3)
-ENDIF
-
-;幼児体型
-SIF !MOD:大人化
-	CHILDTALENT:母体ID:TALENTF("体格") = 1
-
-;MOD:ふたなり
-SIF MOD:ふたなり
-	CHILDTALENT:母体ID:TALENTF("ふたなり") = 1
-;MOD:おもらし
-SIF MOD:おもらし
-	CHILDTALENT:母体ID:TALENTF("おもらし癖") = 1
-
+;性別は一旦ランダム
+TALENT:性別 = RAND(1, 3)
 ;当然子供なので童貞か処女
-SELECTCASE CHILDTALENT:母体ID:TALENTF("性別")
+SELECTCASE TALENT:性別
 	CASE 1
-		CHILDTALENT:母体ID:TALENTF("童貞") = 1
+		TALENT:童貞 = 1
 	CASE 2
-		CHILDTALENT:母体ID:TALENTF("処女") = 1
+		TALENT:処女 = 1
 		;基本絶壁か貧乳だがまれに大きくなる 爆乳にはならない
-		;MODがあれば固定
-		IF MOD:爆乳
-			CHILDTALENT:母体ID:TALENTF("バストサイズ") = 6
-		ELSEIF MOD:絶壁
-			CHILDTALENT:母体ID:TALENTF("バストサイズ") = 1
-		ELSE
-			SELECTCASE RAND:20
-				CASE 0 TO 5
-					CHILDTALENT:母体ID:TALENTF("バストサイズ") = 1
-				CASE 6 TO 15
-					CHILDTALENT:母体ID:TALENTF("バストサイズ") = 2
-				CASE 16 TO 18
-					CHILDTALENT:母体ID:TALENTF("バストサイズ") = 3
-				CASE 19
-					CHILDTALENT:母体ID:TALENTF("バストサイズ") = 4
-			ENDSELECT
-		ENDIF
-		;MOD:母乳
-		SIF MOD:母乳
-			CHILDTALENT:母体ID:TALENTF("母乳体質") = 1
+		SELECTCASE RAND:20
+			CASE 0 TO 5
+				TALENT:バストサイズ = 1
+			CASE 6 TO 15
+				TALENT:バストサイズ = 2
+			CASE 16 TO 18
+				TALENT:バストサイズ = 3
+			CASE 19
+				TALENT:バストサイズ = 4
+		ENDSELECT
 ENDSELECT
+;幼児体型
+TALENT:体格 = 1
 
 ;狐の遺伝子を持っていれば、獣なら狐、獣人なら妖狐になる
-IF TALENT:母親ID:狐 || TALENT:母親ID:妖狐 || (父親ID > 0 && (TALENT:父親ID:狐 || TALENT:父親ID:妖狐))
-	SIF CHILDRACE:母体ID:0 == "獣"
-		CHILDTALENT:母体ID:TALENTF("狐") = 1
-	SIF CHILDRACE:母体ID:0 == "獣人"
-		CHILDTALENT:母体ID:TALENTF("妖狐") = 1
+IF TALENT:母親ID:狐 || TALENT:母親ID:妖狐 || TALENT:父親ID:狐 || TALENT:父親ID:妖狐
+	SELECTCASE CSTR:種族
+		CASE "獣"
+			TALENT:狐 = 1
+		CASE "獣人"
+			TALENT:妖狐 = 1
+	ENDSELECT
 ;犬、猫も同じく ただし犬×猫なら犬優先 狐が最優先
-ELSEIF TALENT:母親ID:犬 || (父親ID > 0 && TALENT:父親ID:犬)
-	CHILDTALENT:母体ID:TALENTF("犬") = 1
-ELSEIF TALENT:母親ID:猫 || (父親ID > 0 && TALENT:父親ID:猫)
-	CHILDTALENT:母体ID:TALENTF("猫") = 1
+ELSEIF TALENT:母親ID:犬 || TALENT:父親ID:犬
+	TALENT:犬 = 1
+ELSEIF TALENT:母親ID:猫 || TALENT:父親ID:猫
+	TALENT:猫 = 1
 ENDIF
 
-;だいたい6～8個の素質が付く
+;だいたい6～8個の素質が付く 親が神ならさらに2～4個追加
 素質上限 = RAND(6, 9)
-
-;親が神ならさらに2～4個追加
-SIF CSTR:母親ID:種族 == "神" || (父親ID >= 0 && CSTR:父親ID:種族 == "神")
+SIF GROUPMATCH("神", CSTR:母親ID:種族, CSTR:父親ID:種族)
 	素質上限 += RAND(2, 5)
-
 DO
-	テーブル = RAND(1, 23)
-	;既に決定済みのテーブルならやり直し
-	SIF 素質付与判定:テーブル
-		CONTINUE
 	;素質の種類ごとにテーブルを置く
-	SELECTCASE テーブル
-		;生意気、臆病、ツンデレ、強気、弱気
-		CASE 1
-			SELECTCASE RAND:5
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("生意気") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("臆病") = 1
-				CASE 2
-					CHILDTALENT:母体ID:TALENTF("ツンデレ") = 1
-				CASE 3
-					CHILDTALENT:母体ID:TALENTF("強気") = 1
-				CASE 4
-					CHILDTALENT:母体ID:TALENTF("弱気") = 1
-			ENDSELECT
-		;素直、反抗的、衝動的、ヤンデレ
-		CASE 2
-			SELECTCASE RAND:4
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("素直") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("反抗的") = 1
-				CASE 2
-					CHILDTALENT:母体ID:TALENTF("衝動的") = 1
-				CASE 3
-					CHILDTALENT:母体ID:TALENTF("ヤンデレ") = 1
-			ENDSELECT
-		;プライド高い、プライド低い
-		CASE 3
-			SELECTCASE RAND:2
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("プライド高い") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("プライド低い") = 1
-			ENDSELECT
-		;ハイテンション、大人しい
-		CASE 4
-			SELECTCASE RAND:2
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("ハイテンション") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("大人しい") = 1
-			ENDSELECT
-		;自制心、無関心、感情乏しい、好奇心
-		CASE 5
-			SELECTCASE RAND:4
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("自制心") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("無関心") = 1
-				CASE 2
-					CHILDTALENT:母体ID:TALENTF("感情乏しい") = 1
-				CASE 3
-					CHILDTALENT:母体ID:TALENTF("好奇心") = 1
-			ENDSELECT
-		;保守的、楽観的、悲観的
-		CASE 6
-			SELECTCASE RAND:3
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("保守的") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("楽観的") = 1
-				CASE 2
-					CHILDTALENT:母体ID:TALENTF("悲観的") = 1
-			ENDSELECT
-		;貞操観念、貞操無頓着
-		CASE 7
-			SELECTCASE RAND:2
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("貞操観念") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("貞操無頓着") = 1
-			ENDSELECT
-		;恥じらい、恥薄い、寂しがり屋
-		CASE 8
-			SELECTCASE RAND:3
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("恥じらい") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("恥薄い") = 1
-				CASE 2
-					CHILDTALENT:母体ID:TALENTF("寂しがり屋") = 1
-			ENDSELECT
-		;痛みに弱い、痛みに強い
-		CASE 9
-			SELECTCASE RAND:2
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("痛みに弱い") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("痛みに強い") = 1
-			ENDSELECT
-		;濡れやすい、濡れにくい、勃ちやすい、勃ちにくい
-		CASE 10
-			SELECTCASE CHILDTALENT:母体ID:TALENTF("性別")
-				CASE 1
-					SELECTCASE RAND:2
-						CASE 0
-							CHILDTALENT:母体ID:TALENTF("勃ちやすい") = 1
-						CASE 1
-							CHILDTALENT:母体ID:TALENTF("勃ちにくい") = 1
-					ENDSELECT
-				CASE 2
-					SELECTCASE RAND:2
-						CASE 0
-							CHILDTALENT:母体ID:TALENTF("濡れやすい") = 1
-						CASE 1
-							CHILDTALENT:母体ID:TALENTF("濡れにくい") = 1
-					ENDSELECT
-			ENDSELECT
-		;習得早い、習得遅い
-		CASE 11
-			SELECTCASE RAND:3
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("習得早い") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("習得遅い") = 1
-			ENDSELECT
-		;汚臭鈍感、汚臭敏感
-		CASE 12
-			SELECTCASE RAND:2
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("汚臭鈍感") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("汚臭敏感") = 1
-			ENDSELECT
-		;汚れ無視、潔癖症
-		CASE 13
-			SELECTCASE RAND:2
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("汚れ無視") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("潔癖症") = 1
-			ENDSELECT
-		;快感に素直、快感の否定
-		CASE 14
-			SELECTCASE RAND:2
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("快感に素直") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("快感の否定") = 1
-			ENDSELECT
-		;両刀、男好き、女好き、男嫌い、女嫌い、同族嫌悪
-		CASE 15
-			SELECTCASE RAND:6
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("両刀") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("男好き") = 1
-				CASE 2
-					CHILDTALENT:母体ID:TALENTF("女好き") = 1
-				CASE 3
-					CHILDTALENT:母体ID:TALENTF("男嫌い") = 1
-				CASE 4
-					CHILDTALENT:母体ID:TALENTF("女嫌い") = 1
-				CASE 5
-					CHILDTALENT:母体ID:TALENTF("同族嫌悪") = 1
-			ENDSELECT
-		;サド、マゾ
-		CASE 16
-			SELECTCASE RAND:2
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("サド") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("マゾ") = 1
-			ENDSELECT
-		;Ｖ敏感鈍感
-		CASE 17
-			;男ならやり直し
-			SIF CHILDTALENT:母体ID:TALENTF("性別") == 1
-				CONTINUE
-			SELECTCASE RAND:2
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("Ｖ敏感") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("Ｖ鈍感") = 1
-			ENDSELECT
-		;Ｃ敏感鈍感
-		CASE 18
-			SELECTCASE RAND:2
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("Ｃ敏感") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("Ｃ鈍感") = 1
-			ENDSELECT
-		;Ａ敏感鈍感
-		CASE 19
-			SELECTCASE RAND:2
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("Ａ敏感") = 1
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("Ａ鈍感") = 1
-			ENDSELECT
-		;Ｂ敏感鈍感
-		CASE 20
-			SELECTCASE RAND:2
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("Ｂ敏感") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("Ｂ鈍感") = 1
-			ENDSELECT
-		;回復早い、回復遅い、暑さに弱い、寒さに弱い
-		CASE 21
-			SELECTCASE RAND:4
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("回復早い") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("回復遅い") = 1
-				CASE 2
-					CHILDTALENT:母体ID:TALENTF("暑さに弱い") = 1
-				CASE 3
-					CHILDTALENT:母体ID:TALENTF("寒さに弱い") = 1
-			ENDSELECT
-		;酒豪、下戸、食欲皆伝、
-		CASE 22
-			SELECTCASE RAND:3
-				CASE 0
-					CHILDTALENT:母体ID:TALENTF("酒豪") = 1
-				CASE 1
-					CHILDTALENT:母体ID:TALENTF("下戸") = 1
-				CASE 2
-					CHILDTALENT:母体ID:TALENTF("食欲皆伝") = 1
-			ENDSELECT
-	ENDSELECT
-	素質付与判定:テーブル = 1
+	STRDATA テーブル
+		DATAFORM 生意気/臆病/ツンデレ/強気/弱気
+		DATAFORM 素直/反抗的/衝動的/ヤンデレ
+		DATAFORM プライド高い/プライド低い
+		DATAFORM ハイテンション/大人しい
+		DATAFORM 自制心/無関心/感情乏しい/好奇心
+		DATAFORM 保守的/楽観的/悲観的
+		DATAFORM 貞操観念/貞操無頓着
+		DATAFORM 恥じらい/恥薄い/寂しがり屋
+		DATAFORM 痛みに弱い/痛みに強い
+		DATAFORM \@ TALENT:性別 == 1 ? 勃ちやすい/勃ちにくい # 濡れやすい/濡れにくい \@
+		DATAFORM 習得早い/習得遅い
+		DATAFORM 汚臭鈍感/汚臭敏感
+		DATAFORM 汚れ無視/潔癖症
+		DATAFORM 快感に素直/快感の否定
+		DATAFORM 両刀/男好き/女好き/男嫌い/女嫌い/同族嫌悪
+		DATAFORM サド/マゾ
+		DATAFORM \@ TALENT:性別 == 2 ? Ｖ敏感/Ｖ鈍感 #\@
+		DATAFORM Ｃ敏感/Ｃ鈍感
+		DATAFORM Ａ敏感/Ａ鈍感
+		DATAFORM Ｂ敏感/Ｂ鈍感
+		DATAFORM 回復早い/回復遅い/暑さに弱い/寒さに弱い
+		DATAFORM 酒豪/下戸/食欲皆伝
+	ENDDATA
+	;既に決定済みのテーブルならやり直し
+	SIF テーブル == "" || FINDELEMENTF(素質付与判定, テーブル) >= 0
+		CONTINUE
+	素質付与判定:FINDELEMENTF(素質付与判定, "") = %テーブル%
+	SPLIT テーブル, "/", SPLITVAR
+	TALENT:(SPLITVAR:(RAND:RESULT)) = 1
 	素質数++
 LOOP 素質上限 != 素質数
-
 素質数 = 0
 VARSET 素質付与判定
 
-;以下プラス素質から必ず何かひとつ付く
+;以下プラス素質から必ず何かひとつ付く 親が神ならさらに1～3個追加
 特殊素質上限 = 1
-
-;親が神ならさらに1～3個追加
-SIF CSTR:母親ID:種族 == "神" || (父親ID >= 0 && CSTR:父親ID:種族 == "神")
+SIF GROUPMATCH("神", CSTR:母親ID:種族, CSTR:父親ID:種族)
 	特殊素質上限 += RAND(1, 4)
-
 DO
-	テーブル = RAND(1, 11)
+	STRDATA テーブル
+		DATAFORM 目立ちたがり
+		DATAFORM 舌使い
+		DATAFORM 献身的
+		DATAFORM 小悪魔
+		DATAFORM 孔雀の瞳
+		DATAFORM 夢喰い
+		DATAFORM 買い物上手
+		DATAFORM 音ゲーマー
+		DATAFORM ふたなり
+		DATAFORM 霊感
+		;DATAFORM 治療
+	ENDDATA
 	;既に決定済みのテーブルならやり直し
-	SIF 素質付与判定:テーブル
+	SIF テーブル == "" || FINDELEMENTF(素質付与判定, テーブル) >= 0
 		CONTINUE
-	;目立ちたがり、舌使い、献身的、小悪魔、孔雀の瞳、夢喰い、買い物上手、治療、音ゲーマー
-	SELECTCASE テーブル
-		CASE 1
-			CHILDTALENT:母体ID:TALENTF("目立ちたがり") = 1
-		CASE 2
-			CHILDTALENT:母体ID:TALENTF("舌使い") = 1
-		CASE 3
-			CHILDTALENT:母体ID:TALENTF("献身的") = 1
-		CASE 4
-			CHILDTALENT:母体ID:TALENTF("小悪魔") = 1
-		CASE 5
-			CHILDTALENT:母体ID:TALENTF("孔雀の瞳") = 1
-		CASE 6
-			CHILDTALENT:母体ID:TALENTF("夢喰い") = 1
-		CASE 7
-			CHILDTALENT:母体ID:TALENTF("買い物上手") = 1
-		;CASE 8
-		;	CHILDTALENT:母体ID:TALENTF("治療") = 1
-		CASE 8
-			CHILDTALENT:母体ID:TALENTF("音ゲーマー") = 1
-		CASE 9
-			CHILDTALENT:母体ID:TALENTF("ふたなり") = 1
-		CASE 10
-			CHILDTALENT:母体ID:TALENTF("霊感") = 1
-	ENDSELECT
-	素質付与判定:テーブル = 1
+	素質付与判定:FINDELEMENTF(素質付与判定, "") = %テーブル%
+	TALENT:テーブル = 1
 	素質数++
 LOOP 特殊素質上限 != 素質数
 
 ;種族によって固定素質
-SELECTCASE CHILDRACE:母体ID:0
+SELECTCASE CSTR:種族
 	CASE "獣人", "獣"
-		CHILDTALENT:母体ID:TALENTF("動物耳") = 1
-		CHILDTALENT:母体ID:TALENTF("尻尾") = 1
+		TALENT:動物耳 = 1
+		TALENT:尻尾 = 1
 	CASE "天使", "鳳凰"
-		CHILDTALENT:母体ID:TALENTF("羽") = 1
+		TALENT:羽 = 1
 ;	魔法システム追加したので魔法技能を付与する
 ;	CASE "魔術師"
-;		CHILDTALENT:母体ID:TALENTF("調合知識") = 1
+;		TALENT:調合知識 = 1
 ENDSELECT
 
 ;両親が魔術師なら魔法技能フラグを立てる
-SIF CSTR:母親ID:種族 == "魔術師" || CSTR:父親ID:種族 == "魔術師" || TALENT:母親ID:魔法使い || TALENT:父親ID:魔法使い
+SIF GROUPMATCH("魔術師", CSTR:母親ID:種族, CSTR:父親ID:種族) || TALENT:母親ID:魔法使い || TALENT:父親ID:魔法使い
 	PREG:母体ID:魔法の才能 = 1
+
+;最後にMODの確認
+FOR LCOUNT, 0, VARSIZE("MOD")
+	SIF ERDNAME(MOD, LCOUNT) == ""
+		CONTINUE
+	SIF MOD:LCOUNT
+		TRYCALLFORM APPLY_MOD_%ERDNAME(MOD, LCOUNT)%, TARGET
+NEXT
+
+;CHILDTALENTとCHILDRACEにコピーして編集用キャラと父親のコピーを削除
+CHILDRACE:母体ID:0 = %CSTR:種族%
+FOR LCOUNT, 0, VARSIZE("TALENT")
+	CHILDTALENT:母体ID:LCOUNT = TALENT:LCOUNT
+NEXT
+DELCHARA CHARANUM-1
+DELCHARA CHARANUM-1
+TARGET = LTARGET
 
 ;親離れ、もしくは子供を迎え入れる
 @DEPEARENT, 対象
