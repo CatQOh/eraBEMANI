@@ -716,42 +716,30 @@ ENDIF
 #DIM DYNAMIC 採取量, 2
 
 売却額 = TFLAG:搾精量*250
-採取量:0 = TFLAG:搾精量 * 10
-採取量:1 = TFLAG:搾精量 * 50
+採取量 = TFLAG:搾精量*10
 
 IF 売却額 > 0
-	IF ISSLIME(TARGET)
-		DRAWLINE
-		PRINTFORML 今回の調教で%CALLNAME:TARGET%から{採取量}mlの凝縮粘液を採取した
-		PRINTFORML （通常の粘液に換算して{採取量:1}mlに相当します）
-		CALL PASELIL, @"%CALLNAME:TARGET%の粘液は{売却額}＄で売れそうです。売却しますか？"
-		PRINTL [0] - 売却する
-		PRINTL [1] - 保管する
-		BINPUT
-		SELECTCASE RESULT
-			CASE 0
-				CALL PAYMENT, 売却額, @"%NAME:TARGET%の凝縮粘液売却"
-				CALL PASELIW, @"所持金 {売却額}＄増加"
-			CASE 1
-				リソース:粘液 += 採取量:1
-				採取精液:(NOF(TARGET))++
-				PRINTFORMW 保管粘液量 {採取量:1}ml増加
-		ENDSELECT
-	ELSE
-		DRAWLINE
-		PRINTFORML 今回の調教で%CALLNAME:TARGET%から{採取量}mlの精液を採取した
-		CALL PASELIL, @"%CALLNAME:TARGET%の精液は{売却額}＄で売れそうです。売却しますか？"
-		PRINTL [0] - 売却する
-		PRINTL [1] - 保管する
-		BINPUT
-		SELECTCASE RESULT
-			CASE 0
-				CALL PAYMENT, 売却額, @"%NAME:TARGET%の精液売却"
-				CALL PASELIW, @"所持金 {売却額}＄増加"
-			CASE 1
+	DRAWLINE
+	PRINTFORML 今回の調教で%CALLNAME:TARGET%から{採取量}mlの\@ ISSLIME(TARGET) ? 凝縮粘液 # 精液 \@を採取した
+	SIF ISSLIME(TARGET)
+		PRINTFORML （通常の粘液に換算して{採取量*5}mlに相当します）
+	CALL PASELIL, @"%CALLNAME:TARGET%の\@ ISSLIME(TARGET) ? 粘液 # 精液 \@は{売却額}＄で売れそうです。売却しますか？"
+	PRINTL [0] - 売却する
+	PRINTL [1] - 保管する
+	BINPUT
+	SELECTCASE RESULT
+		CASE 0
+			CALL PAYMENT, 売却額, @"%NAME:TARGET%の\@ ISSLIME(TARGET) ? 凝縮粘液 # 精液 \@売却"
+			CALL PASELIW, @"所持金 {売却額}＄増加"
+		CASE 1
+			IF ISSLIME(TARGET)
+				採取量 *= 5
+				リソース:粘液 += 採取量
+			ELSE
 				リソース:精液 += 採取量
+			ENDIF
+			SIF 生殖機能♂(TARGET)
 				採取精液:(NOF(TARGET))++
-				PRINTFORMW 保管精液量 {採取量}ml増加
-		ENDSELECT
-	ENDIF
+			PRINTFORMW 保管\@ ISSLIME(TARGET) ? 粘液 # 精液 \@量 {採取量}ml増加
+	ENDSELECT
 ENDIF
