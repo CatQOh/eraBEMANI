@@ -54,27 +54,21 @@ SIF 対象 == -1
 SIF CFLAG:対象:キャラロスト
 	RETURN
 IF !TALENT:対象:妊娠 && PREG:対象:妊娠確定フラグ && PREG:対象:出産予定日 == 0
-	;獣人と獣は早く産める
-	SELECTCASE CSTR:対象:種族
-		CASE "獣人", "獣"
-			PREG:対象:出産予定日 = DAY+RAND(30, 41)
-			;MODによる操作
-			IF MOD:妊娠期間上限
-				PREG:対象:出産予定日 = DAY+RAND(MOD:妊娠期間下限, MOD:妊娠期間上限+1)
-			ELSEIF MOD:人口飽和 && ゲームモード() != "段位認定"
-				PREG:対象:出産予定日 = DAY+1
-			ENDIF
-			CALL CHILDSET, 対象, FINDCHARA(NO, PREG:対象:父親)
-		CASEELSE
-			PREG:対象:出産予定日 = DAY+RAND(60, 81)
-			;MODによる操作
-			IF MOD:妊娠期間上限
-				PREG:対象:出産予定日 = DAY+RAND(MOD:妊娠期間下限, MOD:妊娠期間上限+1)
-			ELSEIF MOD:人口飽和 && ゲームモード() != "段位認定"
-				PREG:対象:出産予定日 = DAY+1
-			ENDIF
-			CALL CHILDSET, 対象, FINDCHARA(NO, PREG:対象:父親)
-	ENDSELECT
+	;MODによる操作
+	IF MOD:妊娠期間上限
+		PREG:対象:出産予定日 = DAY+RAND(MOD:妊娠期間下限, MOD:妊娠期間上限+1)
+	ELSEIF MOD:人口飽和 && ゲームモード() != "段位認定"
+		PREG:対象:出産予定日 = DAY+1
+	ELSE
+		;獣人と獣は早く産める
+		SELECTCASE CSTR:対象:種族
+			CASE "獣人", "獣"
+				PREG:対象:出産予定日 = DAY+RAND(30, 41)
+			CASEELSE
+				PREG:対象:出産予定日 = DAY+RAND(60, 81)
+		ENDSELECT
+	ENDIF
+	CALL CHILDSET, 対象, FINDCHARA(NO, PREG:対象:父親)
 ENDIF
 
 @NAKADASHI_CHECK, 対象, 竿役, 確率チェック=0, 精液量=0
@@ -1141,17 +1135,15 @@ SIF 近親相姦(父親ID, 母親ID)
 ;まずは性別 MODの影響を受ける
 IF MOD:男性化
 	CHILDTALENT:母体ID:TALENTF("性別") = 1
-ELSEIF MOD:女性化
-	CHILDTALENT:母体ID:TALENTF("性別") = 2
-ELSEIF MOD:女性化TSバストサイズランダム
+ELSEIF MOD:女性化 || MOD:女性化TSバストサイズランダム
 	CHILDTALENT:母体ID:TALENTF("性別") = 2
 ELSE
 	CHILDTALENT:母体ID:TALENTF("性別") = RAND(1, 3)
 ENDIF
 
-;小柄体型
+;幼児体型
 SIF !MOD:大人化
-	CHILDTALENT:母体ID:TALENTF("体格") = 3
+	CHILDTALENT:母体ID:TALENTF("体格") = 1
 
 ;MOD:ふたなり
 SIF MOD:ふたなり
