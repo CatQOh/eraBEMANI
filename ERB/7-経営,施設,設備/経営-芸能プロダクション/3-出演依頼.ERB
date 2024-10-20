@@ -71,7 +71,7 @@ ENDSELECT
 #DIM DYNAMIC 収入, 4
 #DIM DYNAMIC ユニット数
 #DIM DYNAMIC 選出可能, 11
-#DIM DYNAMIC ユニット担当記録用, 1000
+#DIM DYNAMIC ユニット担当記録用, 10000
 #DIMS DYNAMIC HTML用
 #DIM DYNAMIC 依頼
 #DIM DYNAMIC 超過ポイント
@@ -92,101 +92,11 @@ SIF IDOL選曲 == ""
 	RETURN 0
 
 $MEMBER_LOOP
-
-;メイン担当なら10、サブ担当なら6 担当曲ならそれぞれ14、7.5
-VARSET 技量
-VARSET 人数
-FOR LCOUNT, 0, CHARANUM
-	IF CSTR:LCOUNT:配属 == "芸能プロダクション" && ユニット担当記録用:LCOUNT
-		SELECTCASE ユニット担当記録用:LCOUNT
-			CASE 1
-				;担当曲補正
-				IF 担当曲判定(LCOUNT, IDOL選曲)
-					技量:3 += 140*ABL:LCOUNT:舞踊技能
-				ELSE
-					技量:3 += 100*ABL:LCOUNT:舞踊技能
-				ENDIF
-				人数:3++
-			CASE 2
-				IF 担当曲判定(LCOUNT, IDOL選曲)
-					技量:2 += 140*ABL:LCOUNT:演奏技能
-				ELSE
-					技量:2 += 100*ABL:LCOUNT:演奏技能
-				ENDIF
-				人数:2++
-			CASE 3
-				IF 担当曲判定(LCOUNT, IDOL選曲)
-					技量:1 += 140*ABL:LCOUNT:歌唱技能
-				ELSE
-					技量:1 += 100*ABL:LCOUNT:歌唱技能
-				ENDIF
-				人数:1++
-			CASE 4
-				IF 担当曲判定(LCOUNT, IDOL選曲)
-					技量:3 += 75*ABL:LCOUNT:舞踊技能
-					技量:1 += 75*ABL:LCOUNT:歌唱技能
-				ELSE
-					技量:3 += 60*ABL:LCOUNT:舞踊技能
-					技量:1 += 60*ABL:LCOUNT:歌唱技能
-				ENDIF
-				人数:3++
-				人数:1++
-			CASE 5
-				IF 担当曲判定(LCOUNT, IDOL選曲)
-					技量:2 += 75*ABL:LCOUNT:演奏技能
-					技量:1 += 75*ABL:LCOUNT:歌唱技能
-				ELSE
-					技量:2 += 60*ABL:LCOUNT:演奏技能
-					技量:1 += 60*ABL:LCOUNT:歌唱技能
-				ENDIF
-				人数:2++
-				人数:1++
-		ENDSELECT
-		人数++
-	ENDIF
-NEXT
+CALL 技量値計算, ユニット担当記録用, 技量, 人数
 
 難度:1 = 100*TOINT(IDOL選曲:1)
 難度:2 = 100*TOINT(IDOL選曲:2)
 難度:3 = 100*TOINT(IDOL選曲:3)
-;難度合計 = TOINT(IDOL選曲:1) + TOINT(IDOL選曲:2) + TOINT(IDOL選曲:3)
-;魅惑で2%、魅力で3%、謎の魅力で4%、人気で5%技量が上がる(乗算で重複する)
-;ビジュアルによって難度が下がる(※かわいいは正義)ことを表現したいのだが
-;難度を下げると収入も下がってしまうので相対的に技量を上げる
-FOR LCOUNT, 0, CHARANUM
-	IF CSTR:LCOUNT:配属 == "芸能プロダクション" && ユニット担当記録用:LCOUNT
-		IF TALENT:LCOUNT:魅惑
-			TIMES 技量:1, 1.02
-			TIMES 技量:2, 1.02
-			TIMES 技量:3, 1.02
-		ENDIF
-		IF TALENT:LCOUNT:魅力
-			TIMES 技量:1, 1.03
-			TIMES 技量:2, 1.03
-			TIMES 技量:3, 1.03
-		ENDIF
-		IF TALENT:LCOUNT:謎の魅力
-			TIMES 技量:1, 1.04
-			TIMES 技量:2, 1.04
-			TIMES 技量:3, 1.04
-		ENDIF
-		IF TALENT:LCOUNT:人気
-			TIMES 技量:1, 1.05
-			TIMES 技量:2, 1.05
-			TIMES 技量:3, 1.05
-		ENDIF
-		;去勢済みの男性はボーカルにボーナス
-		SIF TALENT:LCOUNT:去勢済み && SEX(LCOUNT) == 1
-			TIMES 技量:1, 1.05
-	ENDIF
-NEXT
-;GAMBOL・nine seconds・SPICY PIECEの場合は判定が厳しくなる
-SELECTCASE IDOL選曲
-	CASE "GAMBOL", "nine seconds", "SPICY PIECE"
-		TIMES 技量:1, 0.33
-		TIMES 技量:2, 0.33
-		TIMES 技量:3, 0.33
-ENDSELECT
 
 VARSET 収入
 ;それぞれの分野についての基本収入を出す
@@ -424,60 +334,14 @@ SELECTCASE IDOL選曲
 ENDSELECT
 難度:3 = 100*TOINT(IDOL選曲:3)
 難度合計 = TOINT(IDOL選曲:1) + TOINT(IDOL選曲:2) + TOINT(IDOL選曲:3)
-;魅惑で2%、魅力で3%、謎の魅力で4%、人気で5%技量が上がる(乗算で重複する)
-;ビジュアルによって難度が下がる(※かわいいは正義)ことを表現したいのだが
-;難度を下げると収入も下がってしまうので相対的に技量を上げる
+
+;技量値を計算する前に体力消費とサボり魔のチェック
 FOR LCOUNT, 0, CHARANUM
 	IF CSTR:LCOUNT:配属 == "芸能プロダクション" && ユニット担当記録用:LCOUNT
 		;サボり魔はモチベに応じてサボる
 		IF サボり判定(LCOUNT)
 			PRINTFORMW %CALLNAME:LCOUNT%はライブをサボりました
 			CFLAG:LCOUNT:ストレス値 -= 5
-			SELECTCASE ユニット担当記録用:LCOUNT
-				CASE 1
-					;担当曲補正
-					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:3 -= 140*ABL:LCOUNT:舞踊技能
-					ELSE
-						技量:3 -= 100*ABL:LCOUNT:舞踊技能
-					ENDIF
-					人数:3--
-				CASE 2
-					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:2 -= 140*ABL:LCOUNT:演奏技能
-					ELSE
-						技量:2 -= 100*ABL:LCOUNT:演奏技能
-					ENDIF
-					人数:2--
-				CASE 3
-					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:1 -= 140*ABL:LCOUNT:歌唱技能
-					ELSE
-						技量:1 -= 100*ABL:LCOUNT:歌唱技能
-					ENDIF
-					人数:1--
-				CASE 4
-					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:3 -= 75*ABL:LCOUNT:舞踊技能
-						技量:1 -= 75*ABL:LCOUNT:歌唱技能
-					ELSE
-						技量:3 -= 60*ABL:LCOUNT:舞踊技能
-						技量:1 -= 60*ABL:LCOUNT:歌唱技能
-					ENDIF
-					人数:3--
-					人数:1--
-				CASE 5
-					IF 担当曲判定(LCOUNT, IDOL選曲)
-						技量:2 -= 75*ABL:LCOUNT:演奏技能
-						技量:1 -= 75*ABL:LCOUNT:歌唱技能
-					ELSE
-						技量:2 -= 60*ABL:LCOUNT:演奏技能
-						技量:1 -= 60*ABL:LCOUNT:歌唱技能
-					ENDIF
-					人数:2--
-					人数:1--
-			ENDSELECT
-			人数--
 			ユニット担当記録用:LCOUNT = 0
 			CONTINUE
 		ENDIF
@@ -487,38 +351,10 @@ FOR LCOUNT, 0, CHARANUM
 			BASE:LCOUNT:体力 = 1
 			CFLAG:LCOUNT:回復量低下 += 2
 		ENDIF
-		IF TALENT:LCOUNT:魅惑
-			TIMES 技量:1, 1.02
-			TIMES 技量:2, 1.02
-			TIMES 技量:3, 1.02
-		ENDIF
-		IF TALENT:LCOUNT:魅力
-			TIMES 技量:1, 1.03
-			TIMES 技量:2, 1.03
-			TIMES 技量:3, 1.03
-		ENDIF
-		IF TALENT:LCOUNT:謎の魅力
-			TIMES 技量:1, 1.04
-			TIMES 技量:2, 1.04
-			TIMES 技量:3, 1.04
-		ENDIF
-		IF TALENT:LCOUNT:人気
-			TIMES 技量:1, 1.05
-			TIMES 技量:2, 1.05
-			TIMES 技量:3, 1.05
-		ENDIF
-		;去勢済みの男性はボーカルにボーナス
-		SIF TALENT:LCOUNT:去勢済み && SEX(LCOUNT) == 1
-			TIMES 技量:1, 1.05
 	ENDIF
 NEXT
-;GAMBOL・nine seconds・SPICY PIECEの場合は判定が厳しくなる
-SELECTCASE IDOL選曲
-	CASE "GAMBOL", "nine seconds", "SPICY PIECE"
-		TIMES 技量:1, 0.33
-		TIMES 技量:2, 0.33
-		TIMES 技量:3, 0.33
-ENDSELECT
+
+CALL 技量値計算, ユニット担当記録用, 技量, 人数
 VARSET 収入
 ;それぞれの分野についての基本収入を出す
 ;難易度1が1万円。2以降は(MIN(難度, 技量)-1)*20000
@@ -591,11 +427,8 @@ IF 収入:1 > 0
 				PRINTFORMW %CALLNAME:LCOUNT%は[人気]を得た
 				CALL KOJO_STRATEGY, LCOUNT, "芸能プロダクション", "人気取得"
 				;実績:ライブでボーカリストが[人気]を取得する
-				SELECTCASE ユニット担当記録用:LCOUNT
-					CASE IS >= 30
-						SIF 難度:1 > 0
-							CALL 実績解除, "プロジェクト・ディーヴァ"
-				ENDSELECT
+				SIF 難度:1 > 0 && GROUPMATCH(ユニット担当記録用:LCOUNT, 3, 4, 5)
+					CALL 実績解除, "プロジェクト・ディーヴァ"
 				TALENT:LCOUNT:人気 = 1
 			ENDIF
 			;実績の判定
@@ -643,6 +476,102 @@ IF 技量:1 >= 難度:1 && 技量:2 >= 難度:2 && 技量:3 >= 難度:3
 ENDIF
 ;ライブを行った場合はRETURN 1
 RETURN 1
+
+
+@技量値計算, ユニット担当記録用, 技量, 人数
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
+#DIM REF ユニット担当記録用, 0
+#DIM REF 技量, 0
+#DIM REF 人数, 0
+#DIM DYNAMIC パート
+#DIM DYNAMIC 担当数
+#DIM DYNAMIC 補正値
+
+VARSET 技量
+VARSET 人数
+
+;パートはbitで判定
+FOR LCOUNT, 0, CHARANUM
+	IF CSTR:LCOUNT:配属 == "芸能プロダクション" && ユニット担当記録用:LCOUNT
+		IF GROUPMATCH(ユニット担当記録用:LCOUNT, 4, 5)
+			;パート兼任
+			補正値 = 担当曲判定(LCOUNT, IDOL選曲) ? 75 # 60
+		ELSE
+			補正値 = 担当曲判定(LCOUNT, IDOL選曲) ? 140 # 100
+		ENDIF
+		パート = 0
+		SELECTCASE ユニット担当記録用:LCOUNT
+			CASE 1
+				SETBIT パート, 3
+			CASE 2
+				SETBIT パート, 2
+			CASE 3
+				SETBIT パート, 1
+			CASE 4
+				SETBIT パート, 1
+				SETBIT パート, 3
+			CASE 5
+				SETBIT パート, 2
+				SETBIT パート, 3
+		ENDSELECT
+		FOR LCOUNT2, 1, 4
+			IF GETBIT(パート, LCOUNT2)
+				人数:LCOUNT2++
+				SELECTCASE LCOUNT2
+					CASE 1
+						技量:LCOUNT2 += 補正値*ABL:LCOUNT:歌唱技能
+					CASE 2
+						技量:LCOUNT2 += 補正値*ABL:LCOUNT:演奏技能
+					CASE 3
+						技量:LCOUNT2 += 補正値*ABL:LCOUNT:舞踊技能
+				ENDSELECT
+			ENDIF
+		NEXT
+		人数++
+	ENDIF
+NEXT
+
+;難度合計 = TOINT(IDOL選曲:1) + TOINT(IDOL選曲:2) + TOINT(IDOL選曲:3)
+;魅惑で2%、魅力で3%、謎の魅力で4%、人気で5%技量が上がる(乗算で重複する)
+;ビジュアルによって難度が下がる(※かわいいは正義)ことを表現したいのだが
+;難度を下げると収入も下がってしまうので相対的に技量を上げる
+FOR LCOUNT, 0, CHARANUM
+	IF CSTR:LCOUNT:配属 == "芸能プロダクション" && ユニット担当記録用:LCOUNT
+		IF TALENT:LCOUNT:魅惑
+			TIMES 技量:1, 1.02
+			TIMES 技量:2, 1.02
+			TIMES 技量:3, 1.02
+		ENDIF
+		IF TALENT:LCOUNT:魅力
+			TIMES 技量:1, 1.03
+			TIMES 技量:2, 1.03
+			TIMES 技量:3, 1.03
+		ENDIF
+		IF TALENT:LCOUNT:謎の魅力
+			TIMES 技量:1, 1.04
+			TIMES 技量:2, 1.04
+			TIMES 技量:3, 1.04
+		ENDIF
+		IF TALENT:LCOUNT:人気
+			TIMES 技量:1, 1.05
+			TIMES 技量:2, 1.05
+			TIMES 技量:3, 1.05
+		ENDIF
+		;去勢済みの男性はボーカルにボーナス
+		SIF TALENT:LCOUNT:去勢済み && SEX(LCOUNT) == 1
+			TIMES 技量:1, 1.05
+	ENDIF
+NEXT
+
+;GAMBOL・nine seconds・SPICY PIECEの場合は判定が厳しくなる
+SELECTCASE IDOL選曲
+	CASE "GAMBOL", "nine seconds", "SPICY PIECE"
+		TIMES 技量:1, 0.33
+		TIMES 技量:2, 0.33
+		TIMES 技量:3, 0.33
+ENDSELECT
+
 
 @楽曲依頼文生成, 曲番号
 #DIM DYNAMIC 曲番号
