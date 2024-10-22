@@ -12,56 +12,63 @@ IF EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_コマンド_アダルトサ�
 ENDIF
 
 IF CFLAG:インモラル >= 80
-	CALL SCHOOL_KOJO, TARGET, "アダルトサイト閲覧"
-	SIF TALENT:恋慕
-		CALL 好感度上昇, TARGET, "ときめき", 5
-	CALL 好感度上昇, TARGET, "セフレ", 30
+	学園分岐 = インモラル
 ELSEIF 好感度:既成事実
-	IF TALENT:恋慕
-		CALL SCHOOL_KOJO, TARGET, "アダルトサイト閲覧"
-		CALL 好感度上昇, TARGET, "ときめき", 20
-		CALL 好感度上昇, TARGET, "セフレ", 5
-	ELSE
-		CALL SCHOOL_KOJO, TARGET, "アダルトサイト閲覧"
-		CALL 好感度上昇, TARGET, "ときめき", 10
-		CALL 好感度上昇, TARGET, "セフレ", 10
-	ENDIF
+	学園分岐 = 既成事実
 ELSEIF TALENT:恥じらい
-	IF TALENT:恋慕
-		CALL SCHOOL_KOJO, TARGET, "アダルトサイト閲覧"
-		CALL 好感度上昇, TARGET, "ときめき", 20
-	ELSE
-		CALL SCHOOL_KOJO, TARGET, "アダルトサイト閲覧"
+	学園分岐 = 恥じらい
+	SIF TALENT:恋慕
+		学園分岐 = 恥じらい恋人
+ELSEIF セフレ判定(TARGET)
+	学園分岐 = セフレ
+ELSEIF TALENT:恋慕
+	学園分岐 = 恋人
+ELSEIF TALENT:無関心 || TALENT:貞操観念 || TALENT:一線越えない
+	学園分岐 = 無関心
+ELSEIF TALENT:好奇心 || TALENT:ハイテンション
+	学園分岐 = 好奇心
+ELSEIF TALENT:幼稚
+	学園分岐 = 幼稚
+ELSE
+	学園分岐 = 
+ENDIF
+
+CALL SCHOOL_KOJO, TARGET, "アダルトサイト閲覧"
+SELECTCASE 学園分岐
+	CASE "インモラル"
+		SIF TALENT:恋慕
+			CALL 好感度上昇, TARGET, "ときめき", 5
+		CALL 好感度上昇, TARGET, "セフレ", 30
+	CASE "既成事実"
+		IF TALENT:恋慕
+			CALL 好感度上昇, TARGET, "ときめき", 20
+			CALL 好感度上昇, TARGET, "セフレ", 5
+		ELSE
+			CALL 好感度上昇, TARGET, "ときめき", 10
+			CALL 好感度上昇, TARGET, "セフレ", 10
+		ENDIF
+	CASE "恥じらい"
 		CALL 好感度上昇, TARGET, "ときめき", 5
 		CALL 好感度上昇, TARGET, "セフレ", 5
-	ENDIF
-ELSEIF 好感度:セフレ >= 1000
-	CALL SCHOOL_KOJO, TARGET, "アダルトサイト閲覧"
-	CALL 好感度上昇, TARGET, "セフレ", 20
-ELSE
-	IF TALENT:恋慕
-		CALL SCHOOL_KOJO, TARGET, "アダルトサイト閲覧"
+	CASE "恥じらい恋人"
+		CALL 好感度上昇, TARGET, "ときめき", 20
+	CASE "セフレ"
+		CALL 好感度上昇, TARGET, "セフレ", 20
+	CASE "恋人"
 		CALL 好感度上昇, TARGET, "ときめき", 30
-	ELSE
-		IF TALENT:無関心 || TALENT:貞操観念 || TALENT:一線越えない
-			CALL SCHOOL_KOJO, TARGET, "アダルトサイト閲覧"
-			CALL 好感度上昇, TARGET, "セフレ", 5
-		ELSEIF TALENT:好奇心 || TALENT:ハイテンション
-			CALL SCHOOL_KOJO, TARGET, "アダルトサイト閲覧"
-			CALL 好感度上昇, TARGET, "友情", 10
-			CALL 好感度上昇, TARGET, "ときめき", 10
-			CALL 好感度上昇, TARGET, "セフレ", 30
-		ELSEIF TALENT:幼稚
-			CALL SCHOOL_KOJO, TARGET, "アダルトサイト閲覧"
-			CALL 好感度上昇, TARGET, "友情", 10
-		ELSE
-			CALL SCHOOL_KOJO, TARGET, "アダルトサイト閲覧"
-			CALL 好感度上昇, TARGET, "友情", 10
-			CALL 好感度上昇, TARGET, "ときめき", 10
-			CALL 好感度上昇, TARGET, "セフレ", 20
-		ENDIF
-	ENDIF
-ENDIF
+	CASE "無関心"
+		CALL 好感度上昇, TARGET, "セフレ", 5
+	CASE "好奇心"
+		CALL 好感度上昇, TARGET, "友情", 10
+		CALL 好感度上昇, TARGET, "ときめき", 10
+		CALL 好感度上昇, TARGET, "セフレ", 30
+	CASE "幼稚"
+		CALL 好感度上昇, TARGET, "友情", 10
+	CASEELSE
+		CALL 好感度上昇, TARGET, "友情", 10
+		CALL 好感度上昇, TARGET, "ときめき", 10
+		CALL 好感度上昇, TARGET, "セフレ", 20
+ENDSELECT
 
 SIF ターン == "夜" && 宿泊可能判定(TARGET)
 	自宅宿泊フラグ = 1
@@ -70,30 +77,25 @@ RETURN !時間経過なし
 
 @SCHOOL_MESSAGE_アダルトサイト閲覧
 PRINTFORMW %CALLNAME:TARGET%とアダルトサイトを閲覧することにした
-IF CFLAG:インモラル >= 80
-	PRINTFORMW %CALLNAME:TARGET%は画面の中で交わる人たちを見ながら含み笑いを浮かべ、実際に試してみるかどうかを%CALLNAME:PLAYER%に問うてきた
-ELSEIF 好感度:既成事実
-	PRINTFORMW %CALLNAME:TARGET%はそれを見て、どうやら過去の%CALLNAME:PLAYER%との行為を思い出してしまったらしい。それっぽい雰囲気になってきた
-ELSEIF TALENT:恥じらい
-	IF TALENT:恋慕
-		PRINTFORMW %CALLNAME:TARGET%はかなり恥ずかしそうにしているが、恋人の%CALLNAME:PLAYER%との行為を想像してか、落ち着きのない様子だ
-	ELSE
+SELECTCASE 学園分岐
+	CASE "インモラル"
+		PRINTFORMW %CALLNAME:TARGET%は画面の中で交わる人たちを見ながら含み笑いを浮かべ、実際に試してみるかどうかを%CALLNAME:PLAYER%に問うてきた
+	CASE "既成事実"
+		PRINTFORMW %CALLNAME:TARGET%はそれを見て、どうやら過去の%CALLNAME:PLAYER%との行為を思い出してしまったらしい。それっぽい雰囲気になってきた
+	CASE "恥じらい"
 		PRINTFORMW %CALLNAME:TARGET%が不意に見せられたものが如何わしいサイトだと察するや否や、%CALLNAME:TARGET%は顔を赤くしてそれを遮った
-	ENDIF
-ELSEIF 好感度:セフレ >= 1000
-	PRINTFORMW %CALLNAME:TARGET%はだいぶ飽き飽きした様子でそれを見ている。もう少し体感的な刺激が欲しいのかもしれない
-ELSE
-	IF TALENT:恋慕
+	CASE "恥じらい恋人"
+		PRINTFORMW %CALLNAME:TARGET%はかなり恥ずかしそうにしているが、恋人の%CALLNAME:PLAYER%との行為を想像してか、落ち着きのない様子だ
+	CASE "セフレ"
+		PRINTFORMW %CALLNAME:TARGET%はだいぶ飽き飽きした様子でそれを見ている。もう少し体感的な刺激が欲しいのかもしれない
+	CASE "恋人"
 		PRINTFORMW %CALLNAME:TARGET%は急に大人しくなり、面白そうにそれを見せつけてくる%CALLNAME:PLAYER%の手に指を絡めてきた……
-	ELSE
-		IF TALENT:無関心 || TALENT:貞操観念 || TALENT:一線越えない
-			PRINTFORMW %CALLNAME:TARGET%は表情一つ変えずにそれを見ている。あまり関心が無いようだ
-		ELSEIF TALENT:好奇心 || TALENT:ハイテンション
-			PRINTFORMW %CALLNAME:TARGET%は大げさにリアクションを交えつつ、面白そうに見入っている
-		ELSEIF TALENT:幼稚
-			PRINTFORMW %CALLNAME:TARGET%はよく分からなさそうにそれを見ている。%CALLNAME:TARGET%にはまだ早かったようだ
-		ELSE
-			PRINTFORMW %CALLNAME:TARGET%は遊びの一環だと知りつつも、どうも何かを意識せずにはいられない様子だ
-		ENDIF
-	ENDIF
-ENDIF
+	CASE "無関心"
+		PRINTFORMW %CALLNAME:TARGET%は表情一つ変えずにそれを見ている。あまり関心が無いようだ
+	CASE "好奇心"
+		PRINTFORMW %CALLNAME:TARGET%は大げさにリアクションを交えつつ、面白そうに見入っている
+	CASE "幼稚"
+		PRINTFORMW %CALLNAME:TARGET%はよく分からなさそうにそれを見ている。%CALLNAME:TARGET%にはまだ早かったようだ
+	CASEELSE
+		PRINTFORMW %CALLNAME:TARGET%は遊びの一環だと知りつつも、どうも何かを意識せずにはいられない様子だ
+ENDSELECT
