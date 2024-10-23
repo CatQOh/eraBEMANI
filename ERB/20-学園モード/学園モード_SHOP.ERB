@@ -1,7 +1,6 @@
 ﻿@SHOP_SCHOOL
 #DIMS DYNAMIC SPLITVAR, 10
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC 総数
 #DIM DYNAMIC 表示数
 #DIMS 保存用
 ;学園モードのSHOP画面 ここを噛ませて各ロケーション関数に飛ぶ
@@ -12,24 +11,18 @@
 
 CALL セーブデータアップデート
 CALL 学校リスト生成
+CALL ロケーションリスト生成
 
-ENUMFUNCBEGINSWITH "ロケーション条件_"
-総数 = RESULT
 表示数 = 0
-FOR LCOUNT, 0, 総数
-	VARSET SPLITVAR
-	SPLIT RESULTS:LCOUNT, "_", SPLITVAR
-	CALLFORM %RESULTS:LCOUNT%
-	IF ロケーション名記録用 != ""
-		SPLITVAR:1 = %ロケーション名記録用%
-		ロケーション名記録用 = 
-	ENDIF
+FOR LCOUNT, 0, ロケーション数
+	SPLIT ロケーション:LCOUNT, "/", SPLITVAR
+	SIF RESULT == 1
+		SPLITVAR:1 = %ロケーション:LCOUNT%
+	TRYCALLFORM ロケーション条件_%RPS(SPLITVAR:1)%
 	IF RESULT && FINDELEMENTF(解禁済みロケーション, SPLITVAR:1) == -1
-		IF RESULT >= 0
-			PRINTFORML %NAME:RESULT%との交友を深め、ロケーション「%SPLITVAR:1%」に行けるようになった！
-		ELSE
-			PRINTFORML ロケーション「%SPLITVAR:1%」に行けるようになった！
-		ENDIF
+		SIF RESULT >= 0
+			PRINTFORM %NAME:RESULT%との交友を深め、
+		PRINTFORML ロケーション「%SPLITVAR:1%」に行けるようになった！
 		表示数++
 		解禁済みロケーション:FINDELEMENTF(解禁済みロケーション, "") = %SPLITVAR:1%
 	ENDIF
