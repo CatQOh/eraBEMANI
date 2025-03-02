@@ -115,6 +115,7 @@ ENDSELECT
 #DIM DYNAMIC LRESULT
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 性器リソース使用 = -1
+#DIM DYNAMIC 空き変数
 
 
 PRINTL □性別再割当手術
@@ -237,7 +238,7 @@ SELECTCASE RESULT
 			PRINTFORM と%CALLNAME:術師%
 		PRINTW は準備のため休養に入ります
 		CALL PAYMENT, -SUMARRAY(費用), "性別再割当手術費用"
-		SELECTCASE 患者性別
+		SELECTCASE TALENT:患者:性別
 			CASE 1
 				IF TALENT:患者:ふたなり
 					TALENT:患者:ふたなり = 0
@@ -311,6 +312,26 @@ SELECTCASE RESULT
 				ABL:患者:メス度 = 0
 				ABL:患者:ホモっ気 = 0
 				ABL:患者:ゲイ中毒 = 0
+				;切り取った物は博物館で使えるオブジェクトとして保管してみる
+				FOR LCOUNT, 1, VARSIZE("MUSEUM", 1)
+					IF MUSEUM:LCOUNT:種類 == ""
+						空き変数 = LCOUNT
+						BREAK
+					ENDIF
+				NEXT
+
+				;#;SIF 空き変数 == 0
+				;#;	THROW 変数「MUSEUM」に空きがありません
+
+				MUSEUM:空き変数:種類 = その他
+				MUSEUM:空き変数:名前 = %NAME:患者%の男性器のオブジェ
+				MUSEUM:空き変数:キャラナンバー = {NOF(患者)}
+				MUSEUM:空き変数:価値 = 200
+				MUSEUM:空き変数:色 = {COLOR_FROMNAME("whitesmoke")}
+				MUSEUM:空き変数:血縁コード = 0
+				MUSEUM:空き変数:オリジナルナンバー = 0
+				MUSEUM:空き変数:集客力 = 100
+				MUSEUM:空き変数:汚れ = 0
 			CASE 2
 				IF TALENT:患者:ふたなり
 					TALENT:患者:ふたなり = 0
@@ -347,6 +368,8 @@ SELECTCASE RESULT
 		CFLAG:患者:ストレス値 += 200
 		TALENT:患者:改造済み += 10
 		口上用患者:0 = 患者
+		CFLAG:LCOUNT:性ホルモン投与中 = 0
+		CFLAG:LCOUNT:性ホルモン投与通算日数 = 0
 		CALL 身体改造口上, "性転換手術"
 		;医療経験加算
 		FOR LCOUNT, 0, CHARANUM
@@ -361,6 +384,87 @@ ENDSELECT
 @性感帯
 
 @性ホルモン
+#DIM DYNAMIC 患者 = -1
+#DIM DYNAMIC 費用
+#DIM DYNAMIC LCOUNT
+PRINTL □性ホルモン投与
+PRINTL 　継続的な薬剤投与により治療
+IF !ORIGIN
+	PRINTL □費用
+	CALL PASELIL, @"　{費用}＄ - {費用/100}＄／日"
+	PRINTL □注意事項
+	PRINTL 　継続的な投与が必要になるため、日毎の費用が発生する
+	PRINTL 　また、売却額は低下する
+ENDIF
+PRINTL □性ホルモン投与
+IF 患者 >= 0
+	PRINTFORML 　[1] - %NAME:患者%
+ELSE
+	PRINTL 　[1] - 患者を選ぶ
+ENDIF
+DRAWLINE
+PRINTPLAIN 　性ホルモン投与　
+PRINT [0] - 戻る　
+IF 患者 >= 0
+	IF CFLAG:患者:性ホルモン投与中
+		PRINT [2] - 投与を中止する
+	ELSE
+		PRINT [2] - 投与を開始する
+	ENDIF
+ENDIF
+
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		DRAWLINE
+		PRINTL □患者を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALLFORM DISABLE, "EVENT_性ホルモン投与", PAGING
+			CALL PAGING, !RESULT && CFLAG:PAGING:生殖力強化 == 0 && (生殖機能♂(PAGING) || 生殖機能♀(PAGING)), @"\@ TALENT:PAGING:体格 == 1 ? 幼 #  \@", "患者"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
+				RESTART
+			CASEELSE
+				費用 = 30000
+				;小柄体型だと費用がかさむ
+				SIF TALENT:RESULT:体格 == 1
+					費用 += 20000
+				患者 = RESULT
+				RESTART
+		ENDSELECT
+	CASE 2
+		IF CFLAG:患者:性ホルモン投与中
+			PRINTW 性ホルモン投与を打ち切ります
+			
+		ELSE
+			IF MONEY < 費用 && !ORIGIN
+				PRINTW 費用が足りません
+				RESTART
+			ENDIF
+			PRINTFORMW \@SEX(患者)==1 ? 女性 # 男性\@ホルモン投与を始めます
+			CALL PAYMENT, -費用, "\@SEX(患者)==1 ? 女性 # 男性\@ホルモン投与費用"
+			SELECTCASE SEX(患者)
+				CASE 1
+					CFLAG:患者:性ホルモン投与中 = 2
+				CASEELSE
+					CFLAG:患者:性ホルモン投与中 = 1
+			ENDSELECT
+			CFLAG:LCOUNT:性ホルモン投与通算日数++
+			CFLAG:患者:ストレス値++
+			TALENT:患者:改造済み += 5
+		ENDIF
+		口上用患者 = 患者
+		CALL 身体改造口上, "性ホルモン投与"
+		;医療経験加算
+		FOR LCOUNT, 0, CHARANUM
+			SIF CSTR:LCOUNT:配属 == "医務室" && CFLAG:LCOUNT:配属完了
+				EXP:LCOUNT:医療経験 += 1
+		NEXT
+		RETURN 1
+ENDSELECT
 
 @ロボトミー手術
 #DIM DYNAMIC 患者 = -1
