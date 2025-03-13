@@ -110,7 +110,14 @@ CALL 射精ゲージ増加, 増加量, PLAYER
 ;-------------------------------------------------
 ;射精ゲージチェック（奴隷）
 ;-------------------------------------------------
-CALL 射精ゲージ増加, 射精ゲージ計算_自慰(200), TARGET
+;電動エネマ挿入中はいじらない
+IF TEQUIP:電動エネマグラ
+	増加量 = 射精ゲージ計算_自慰(5)
+ELSE
+	増加量 = 射精ゲージ計算_自慰(200)
+ENDIF
+
+CALL 射精ゲージ増加, 増加量, TARGET
 
 ;-------------------------------------------------
 ;ソース追加処理
@@ -170,6 +177,21 @@ IF TEQUIP:オナホール
 	SOURCE:快C += 100
 	SOURCE:液体 += 30
 ENDIF
+;ビデオ
+IF 撮影中()
+	SOURCE:恐怖 += 100
+	SOURCE:液体 += 50
+	SOURCE:露出 += 200
+	SOURCE:欲情 += 100
+	SOURCE:反感 += 200
+ENDIF
+;電動エネマグラ
+IF TEQUIP:電動エネマグラ
+	SOURCE:快C -= 80
+	SOURCE:快A += 300
+	SOURCE:露出 += 100
+	SOURCE:性行動 += 50
+ENDIF
 
 ;装飾効果加算
 SOURCE:快C += 装飾効果加算量(SOURCE:快C, TARGET, "陰核")
@@ -195,6 +217,19 @@ CALL SAMEN_SHOOT_T, 0, NOWEX:射精
 SIF ABL:奉仕精神 >= 2 && ABL:技巧 >= 2
 	STAIN:PLAYER:ペニス = 2
 
+;奴隷の指⇔奴隷のヴァギナの汚れが移動
+IF VAGINA(TARGET)
+	STAIN:手 |= STAIN:ヴァギナ
+	STAIN:ヴァギナ |= STAIN:手
+ENDIF
+;奴隷の指⇔奴隷のペニスの汚れが移動
+IF !TEQUIP:電動エネマグラ
+	IF PENIS(TARGET)
+		STAIN:手 |= STAIN:ペニス
+		STAIN:ペニス |= STAIN:手
+	ENDIF
+ENDIF
+
 ;-------------------------------------------------
 ;経験の処理
 ;-------------------------------------------------
@@ -202,6 +237,14 @@ CALL EXPUP_BASE, 4, 3
 
 CALL EXPUP, "フェラ経験", 1
 CALL EXPUP, "自慰経験", 2
+;公開オナニー時は異常経験付加
+IF 撮影中()
+	IF !CFLAG:自慰を撮影された経験
+		PRINTL ＜初自慰撮影＞
+		CALL EXPUP, "異常経験", 1
+	ENDIF
+	CFLAG:自慰を撮影された経験++
+ENDIF
 
 ;奴隷が猫舌持ちの場合は嗜虐快楽経験を追加
 SIF TALENT:猫舌
