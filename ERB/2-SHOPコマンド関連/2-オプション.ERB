@@ -928,12 +928,14 @@ IF バストサイズ全キャラ表示
 ELSE
 	キャラ名長さ最大 = 0
 	FOR LCOUNT, 0, CHARANUM
-		CBLキャラ番号:LCOUNT = NOF(LCOUNT)
-		対象キャラ番号 = CBLキャラ番号:LCOUNT
-		CSVバストサイズ:LCOUNT = CSVTALENT(対象キャラ番号, GETNUM(TALENT, "バストサイズ"))
-		キャラ名長さ = STRLENS(CSVNAMEF(対象キャラ番号))
-		SIF キャラ名長さ > キャラ名長さ最大
-			キャラ名長さ最大 = キャラ名長さ
+		IF EXISTCSV(NOF(LCOUNT))
+			CBLキャラ番号:LCOUNT = NOF(LCOUNT)
+			対象キャラ番号 = CBLキャラ番号:LCOUNT
+			CSVバストサイズ:LCOUNT = CSVTALENT(対象キャラ番号, GETNUM(TALENT, "バストサイズ"))
+			キャラ名長さ = STRLENS(CSVNAMEF(対象キャラ番号))
+			SIF キャラ名長さ > キャラ名長さ最大
+				キャラ名長さ最大 = キャラ名長さ
+		ENDIF
 	NEXT
 	CBLキャラ最大数 = CHARANUM
 ENDIF
@@ -941,15 +943,17 @@ ENDIF
 CBLキャラ数 = 0
 VARSET CBLリスト番号
 FOR LCOUNT, 0, CBLキャラ最大数
-	IF GETBIT(CBLバストサイズフィルタ, CSVバストサイズ:LCOUNT)
-		IF CBL入力済フィルタ有無
-			対象キャラ番号 = CBLキャラ番号:LCOUNT
-			;数値が入っているかどうかとフィルタの種類が食い違う(XORで1)ならCONTINUE
-			SIF バストサイズ詳細入力チェック(対象キャラ番号)^CBL入力済フィルタ種類
-				CONTINUE
+	IF EXISTCSV(NOF(LCOUNT))
+		IF GETBIT(CBLバストサイズフィルタ, CSVバストサイズ:LCOUNT)
+			IF CBL入力済フィルタ有無
+				対象キャラ番号 = CBLキャラ番号:LCOUNT
+				;数値が入っているかどうかとフィルタの種類が食い違う(XORで1)ならCONTINUE
+				SIF バストサイズ詳細入力チェック(対象キャラ番号)^CBL入力済フィルタ種類
+					CONTINUE
+			ENDIF
+			CBLリスト番号:CBLキャラ数 = LCOUNT
+			CBLキャラ数++
 		ENDIF
-		CBLリスト番号:CBLキャラ数 = LCOUNT
-		CBLキャラ数++
 	ENDIF
 NEXT
 
@@ -963,9 +967,9 @@ CALL MCOLUMNDRAWLINE
 CALL MCOLUMNPRINTL, "□バストサイズ一覧"
 CALL MCOLUMNPRINT, "　"
 [IF_DEBUG]
-		CALL MCOLUMNPRINT, " ｷｬﾗ¦ ﾘｽﾄ|"
+		CALL MCOLUMNPRINT, " ｷｬﾗ¦ ﾘｽﾄ|　"
 [ENDIF]
-CALL MCOLUMNPRINT, @"     %SPACES(キャラ名長さ最大)%| CSVサイズ ¦  トップ(カップ数)  |"
+CALL MCOLUMNPRINT, @"   %SPACES(キャラ名長さ最大)%| CSVサイズ ¦  トップ(カップ数)  |"
 IF MOD:爆乳 || MOD:絶壁 || MOD:バストサイズカスタム
 	MODあり = 1
 	CALL MCOLUMNPRINT, " MODサイズ ¦  トップ(カップ数)  |"
@@ -981,9 +985,12 @@ FOR LCOUNT, CBLページ数*20, (CBLページ数+1)*20
 	IF LCOUNT >= CBLキャラ数
 		CALL MCOLUMNPRINT, "　"
 		[IF_DEBUG]
-			CALL MCOLUMNPRINT, @"    ¦    |"
+			CALL MCOLUMNPRINT, @"    ¦    |　"
 		[ENDIF]
-		CALL MCOLUMNPRINT, @"     %SPACES(キャラ名長さ最大)%|%SPACES(11)%¦%SPACES(7+13)%|%SPACES(11)%¦%SPACES(7+13)%|"
+		CALL MCOLUMNPRINT, @"   %SPACES(キャラ名長さ最大)%|%SPACES(11)%¦%SPACES(7+13)%|"
+		IF MODあり
+			CALL MCOLUMNPRINT, @"%SPACES(11)%¦%SPACES(7+13)%|"
+		ENDIF
 		IF !バストサイズ全キャラ表示
 			CALL MCOLUMNPRINT, @"%SPACES(11)%¦%SPACES(7+13)%|"
 		ENDIF
