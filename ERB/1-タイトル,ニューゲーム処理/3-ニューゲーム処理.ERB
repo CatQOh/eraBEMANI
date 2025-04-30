@@ -388,7 +388,12 @@ SELECTCASE ゲームモード()
 	CASE "新婚モード"
 		CALL プレイログ記録, @"「%NAME:MASTER%」と「%NAME:TARGET%」の新婚生活が始まる"
 	CASE "段位認定"
-		CALL プレイログ記録, @"\@ SEX(MASTER) == 1 ? 男性 # 女性\@主人公で段位認定「%受験段位名%」を開始"
+		SELECTCASE SEX(MASTER)
+			CASE 0
+				CALL プレイログ記録, @"無性別主人公で段位認定「%受験段位名%」を開始"
+			CASEELSE
+				CALL プレイログ記録, @"\@ SEX(MASTER) == 1 ? 男性 # 女性\@主人公で段位認定「%受験段位名%」を開始"
+		ENDSELECT
 	CASE "フリーモード"
 		IF ORIGIN
 			CALL プレイログ記録, @"「%NAME:MASTER%」主人公でORIGINモードを開始"
@@ -777,6 +782,8 @@ PRINTPLAIN
 
 CALL PRINTCOLOR, @"%I18N("性別")%:", "lightcoral"
 SELECTCASE SEX(対象)
+	CASE -1
+		CALL PRINTCOLOR, @"%I18N("性別無し")%", "lightcoral"
 	CASE 1
 		CALL PRINTCOLOR, @"%I18N("男性")%", "lightcoral"
 	CASE 2
@@ -864,6 +871,8 @@ SELECTCASE RESULT
 			PRINTFORMW %I18N("性別を選択してください")%
 			RESTART
 		ENDIF
+		SIF TALENT:対象:性別 == -1
+			TALENT:対象:性別 = 0
 		SIF VAGINA(対象) && !EXP:対象:Ｖ経験
 			TALENT:対象:処女 = 1
 		SIF PENIS(対象) && !EXP:対象:性交経験
@@ -1063,17 +1072,27 @@ SIF 対象 == -1
 DRAWLINE
 
 PRINTFORML %I18N("性別を選択してください")%
-PRINTFORML [0] - %I18N("男性")%
-PRINTFORML [1] - %I18N("女性")%
+PRINTFORML [-1] - %I18N("性別無し")%
+PRINTFORML [ 0] - %I18N("男性")%
+PRINTFORML [ 1] - %I18N("女性")%
 SELECTCASE ゲームモード()
 	CASE "通常モード", "経営モード"
 	CASEELSE
-		PRINTFORML [2] - %I18N("男性")%(%I18N("ふたなり", "TALENT")%)
-		PRINTFORML [3] - %I18N("女性")%(%I18N("ふたなり", "TALENT")%)
+		PRINTFORML [ 2] - %I18N("男性")%(%I18N("ふたなり", "TALENT")%)
+		PRINTFORML [ 3] - %I18N("女性")%(%I18N("ふたなり", "TALENT")%)
 ENDSELECT
 
 BINPUT
 SELECTCASE RESULT
+	CASE -1
+		TALENT:対象:性別 = -1
+		TALENT:対象:バストサイズ = 0
+		CSTR:対象:上半身上着 = シャツ
+		CSTR:対象:下半身上着 = ズボン
+		CSTR:対象:全身上着 = 
+		CSTR:対象:上半身下着 =
+		CSTR:対象:下半身下着 = 
+		CFLAG:対象:挿入可 = 0
 	CASE 0, 2
 		TALENT:対象:性別 = 1
 		TALENT:対象:バストサイズ = 0
