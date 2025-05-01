@@ -25,18 +25,28 @@ PRINTL 作成するキャラの性別を選んでください
 PRINTL [1] - 男
 PRINTL [2] - 女
 PRINTL [3] - 性別不明
-PRINTL [4] - 既存のCSVを呼び出す
+; PRINTL [4] - 無性別
+PRINTL [9] - 既存のCSVを呼び出す
 PRINTL [0] - キャンセル
 BINPUT
-IF RESULT == 0
-	DELALLCHARA
-	RETURN
-ENDIF
-SIF RESULT == 4
-	GOTO 既存CSV読み込み
+SELECTCASE RESULT
+	CASE 0
+		DELALLCHARA
+		RETURN
 
-SIF GROUPMATCH(RESULT, 1, 2)
-	TALENT:性別 = RESULT
+	CASE 1,2
+		TALENT:性別 = RESULT
+
+	CASE 3
+		;性別不明（未決定）の場合は何もしなくて良い
+
+	CASE 4
+		TALENT:性別 = -1
+
+	CASE 9
+		GOTO 既存CSV読み込み
+		
+ENDSELECT
 
 $RESTART
 DRAWLINE
@@ -48,11 +58,15 @@ PRINTL
 PRINTBUTTON @"[名前] %NAME:TARGET% ", "名前"
 PRINTBUTTON @"[呼び名] %CALLNAME:TARGET%", "呼び名"
 PRINTL 
-IF TALENT:性別
-	PRINTBUTTON @"[性別] \@ SEX(TARGET) == 1 ? 男 # 女 \@ ", "性別"
-ELSE
-	PRINTBUTTON @"[性別] 不明 ", "性別"
-ENDIF
+SELECTCASE TALENT:性別
+	CASE 1,2
+		PRINTBUTTON @"[性別] \@ SEX(TARGET) == 1 ? 男 # 女 \@ ", "性別"
+	CASE 0
+		PRINTBUTTON @"[性別] 不明 ", "性別"
+	CASE -1
+		PRINTBUTTON @"[性別] 無性別 ", "性別"
+		
+ENDSELECT
 PRINTBUTTON @"[種族] %CSTR:種族%", "種族"
 PRINTL 
 PRINTL 体力=一般的な男性の場合は1800程度、女性なら1700程度が標準値 気力は一律1800程度が標準値
@@ -511,9 +525,10 @@ SELECTCASE 選択文字列
 		GOTO RESTART
 	CASE "性別"
 		PRINTL 性別を選んでください
-		PRINTL [1] - 男
-		PRINTL [2] - 女
-		PRINTL [0] - 不明
+		PRINTL [ 1] - 男
+		PRINTL [ 2] - 女
+		; PRINTL [-1] - 無性別
+		PRINTL [ 0] - 不明
 		BINPUT
 		TALENT:性別 = RESULT
 	CASE "体力"
@@ -1090,4 +1105,15 @@ IF 再整形
 	PRINTFORML No.{NOF(TARGET)} %NAME:TARGET% CSV出力完了
 ELSE
 	PRINTW CreatedCSVフォルダに出力しました。CSV/Charaフォルダに移動orコピーして再起動してください
+ENDIF
+
+;;;「CSVエディタの実行中」or「ゲームプレイ中」の判別を行う。
+;;;CSVエディタ等で呼出されると1を、ゲーム内なら0を返す。
+@編集モード
+#FUNCTION
+;実際の判定はデータIDの有無を見ている
+IF データID
+	RETURNF 0
+ELSE
+	RETURNF 1
 ENDIF
