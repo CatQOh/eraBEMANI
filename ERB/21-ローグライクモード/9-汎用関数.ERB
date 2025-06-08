@@ -1,0 +1,702 @@
+﻿@ダンジョン生成
+#DIM DYNAMIC LCOUNTX
+#DIM DYNAMIC LCOUNTY
+#DIM DYNAMIC LCOUNT
+
+部屋分割数 = 0
+
+VARSET RLMAP_CREATE
+VARSET RL部屋座標
+VARSET RL部屋中継点
+RL部屋数 = 0
+
+
+CALL マップ分割, 0, VARSIZE("RLMAP_CREATE", 1), 0, VARSIZE("RLMAP_CREATE", 2)
+CALL マップ通路生成
+
+FOR LCOUNTY, 0, VARSIZE("RLMAP_CREATE", 1)
+	FOR LCOUNTX, 0, VARSIZE("RLMAP_CREATE", 2)
+		$GOTOX
+		RESETCOLOR
+		FOR LCOUNT, 0, 100
+			SIF RL部屋中継点:LCOUNT:X_POS == 0 || RL部屋中継点:LCOUNT:Y_POS == 0
+				BREAK
+			IF RL部屋中継点:LCOUNT:X_POS == LCOUNTX && RL部屋中継点:LCOUNT:Y_POS == LCOUNTY
+				PRINTFORM {LCOUNT, 2}
+				LCOUNTX++
+				GOTO GOTOX
+			ENDIF
+		NEXT
+
+		SELECTCASE RLMAP_CREATE:LCOUNTX:LCOUNTY
+			CASE 0
+				PRINT 　
+			CASE 1
+				PRINT ■
+			CASE 2
+				SETCOLORBYNAME deepskyblue
+				PRINT ■
+		ENDSELECT
+	NEXT
+	PRINTL
+NEXT
+
+FORCEWAIT
+
+@マップ分割, X_BEGIN, X_END, Y_BEGIN, Y_END, MAP_DEPTH, 方向, 通路:0, 通路:1;, 左X補正:0, 左X補正:1, 左Y補正:0, 左Y補正:1, 右X補正:0, 右X補正:1, 右Y補正:0, 右Y補正:1, 上X補正:0, 上X補正:1, 上Y補正:0, 上Y補正:1, 下X補正:0, 下X補正:1, 下Y補正:0, 下Y補正:1
+#DIM DYNAMIC X_BEGIN
+#DIM DYNAMIC X_END
+#DIM DYNAMIC X_SPLIT
+#DIM DYNAMIC Y_BEGIN
+#DIM DYNAMIC Y_END
+#DIM DYNAMIC Y_SPLIT
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNTX
+#DIM DYNAMIC LCOUNTY
+#DIM DYNAMIC MAP_DEPTH
+#DIM DYNAMIC X補正, 2
+#DIM DYNAMIC Y補正, 2
+#DIM DYNAMIC 左X補正, 2
+#DIM DYNAMIC 左Y補正, 2
+#DIM DYNAMIC 右X補正, 2
+#DIM DYNAMIC 右Y補正, 2
+#DIM DYNAMIC 上X補正, 2
+#DIM DYNAMIC 上Y補正, 2
+#DIM DYNAMIC 下X補正, 2
+#DIM DYNAMIC 下Y補正, 2
+#DIMS DYNAMIC 方向
+#DIM DYNAMIC 通路, 2
+#DIM DYNAMIC 通路生成
+#DIM DYNAMIC 通路用LCOUNT
+#DIM DYNAMIC 通路までのマス数
+#DIMS DYNAMIC 通路までの方向
+#DIM DYNAMIC 中継点1, 2
+#DIM DYNAMIC 中継点2, 2
+#DIM DYNAMIC X距離
+#DIM DYNAMIC Y距離
+
+SIF MAP_DEPTH >= 3
+	GOTO マップ分割
+
+X_SPLIT = RAND(X_BEGIN+(X_END-X_BEGIN)/3, X_END-(X_END-X_BEGIN)/3)
+Y_SPLIT = RAND(Y_BEGIN+(Y_END-Y_BEGIN)/3, Y_END-(Y_END-Y_BEGIN)/3)
+PRINTFORMW {X_SPLIT}, {Y_SPLIT}
+
+部屋分割数++
+
+SELECTCASE RAND:2
+	;縦に分割
+	CASE 0
+		通路:0 = RAND(Y_BEGIN, Y_END)
+		通路:1 = RAND(Y_BEGIN, Y_END)
+
+		[SKIPSTART]
+		左X補正:0 = RAND:((X_SPLIT-X_BEGIN)/2)+2
+		左X補正:1 = RAND:((X_SPLIT-X_BEGIN)/2)+2
+		左Y補正:0 = RAND:((Y_END-Y_BEGIN)/2)+2
+		左Y補正:1 = RAND:((Y_END-Y_BEGIN)/2)+2
+		右X補正:0 = RAND:((X_END-X_SPLIT)/2)+2
+		右X補正:1 = RAND:((X_END-X_SPLIT)/2)+2
+		右Y補正:0 = RAND:((Y_END-Y_BEGIN)/2)+2
+		右Y補正:1 = RAND:((Y_END-Y_BEGIN)/2)+2
+		[SKIPEND]
+
+
+		CALL マップ分割, X_BEGIN, X_SPLIT, Y_BEGIN, Y_END, MAP_DEPTH+1, "横_左", 通路:0, 通路:1;, 左X補正:0, 左X補正:1, 左Y補正:0, 左Y補正:1, 右X補正:0, 右X補正:1, 右Y補正:0, 右Y補正:1, 上X補正:0, 上X補正:1, 上Y補正:0, 上Y補正:1, 下X補正:0, 下X補正:1, 下Y補正:0, 下Y補正:1
+		CALL マップ分割, X_SPLIT, X_END, Y_BEGIN, Y_END, MAP_DEPTH+1, "横_右", 通路:0, 通路:1;,  左X補正:0, 左X補正:1, 左Y補正:0, 左Y補正:1, 右X補正:0, 右X補正:1, 右Y補正:0, 右Y補正:1, 上X補正:0, 上X補正:1, 上Y補正:0, 上Y補正:1, 下X補正:0, 下X補正:1, 下Y補正:0, 下Y補正:1
+		RETURN
+	;横に分割
+	CASE 1
+		通路:0 = RAND(X_BEGIN, X_END)
+		通路:1 = RAND(X_BEGIN, X_END)
+
+		[SKIPSTART]
+		上X補正:0 = RAND:((X_END-X_BEGIN)/2)+2
+		上X補正:1 = RAND:((X_END-X_BEGIN)/2)+2
+		上Y補正:0 = RAND:((Y_SPLIT-Y_BEGIN)/2)+2
+		上Y補正:1 = RAND:((Y_SPLIT-Y_BEGIN)/2)+2
+		下X補正:0 = RAND:((X_END-X_BEGIN)/2)+2
+		下X補正:1 = RAND:((X_END-X_BEGIN)/2)+2
+		下Y補正:0 = RAND:((Y_SPLIT-Y_END)/2)+2
+		下Y補正:1 = RAND:((Y_SPLIT-Y_END)/2)+2
+		[SKIPEND]
+
+		CALL マップ分割, X_BEGIN, X_END, Y_BEGIN, Y_SPLIT, MAP_DEPTH+1, "縦_上", 通路:0, 通路:1;,  左X補正:0, 左X補正:1, 左Y補正:0, 左Y補正:1, 右X補正:0, 右X補正:1, 右Y補正:0, 右Y補正:1, 上X補正:0, 上X補正:1, 上Y補正:0, 上Y補正:1, 下X補正:0, 下X補正:1, 下Y補正:0, 下Y補正:1
+		CALL マップ分割, X_BEGIN, X_END, Y_SPLIT, Y_END, MAP_DEPTH+1, "縦_下", 通路:0, 通路:1;,  左X補正:0, 左X補正:1, 左Y補正:0, 左Y補正:1, 右X補正:0, 右X補正:1, 右Y補正:0, 右Y補正:1, 上X補正:0, 上X補正:1, 上Y補正:0, 上Y補正:1, 下X補正:0, 下X補正:1, 下Y補正:0, 下Y補正:1
+		RETURN
+ENDSELECT
+
+$マップ分割
+[SKIPSTART]
+SELECTCASE 方向
+	CASE "横_左"
+		X補正:0 = 左X補正:0
+		X補正:1 = 左X補正:1
+		Y補正:0 = 左Y補正:0
+		Y補正:0 = 左Y補正:1
+	CASE "横_右"
+		X補正:0 = 右X補正:0
+		X補正:1 = 右X補正:1
+		Y補正:0 = 右Y補正:0
+		Y補正:0 = 右Y補正:1
+	CASE "縦_上"
+		X補正:0 = 上X補正:0
+		X補正:1 = 上X補正:1
+		Y補正:0 = 上Y補正:0
+		Y補正:0 = 上Y補正:1
+	CASE "縦_下"
+		X補正:0 = 下X補正:0
+		X補正:1 = 下X補正:1
+		Y補正:0 = 下Y補正:0
+		Y補正:0 = 下Y補正:1
+ENDSELECT
+[SKIPEND]
+X補正:0 = RAND:((X_END-X_BEGIN)/4)+2
+X補正:1 = RAND:((X_END-X_BEGIN)/4)+2
+Y補正:0 = RAND:((Y_END-Y_BEGIN)/4)+2
+Y補正:1 = RAND:((Y_END-Y_BEGIN)/4)+2
+
+
+IF Y_BEGIN+Y補正:0 >= Y_END-Y補正:1
+	GOTO マップ分割
+ELSEIF X_BEGIN+X補正:0 >= X_END-X補正:1
+	GOTO マップ分割
+ENDIF
+SELECTCASE 方向
+	CASE "横_左", "横_右"
+		通路:0 = RAND(Y_BEGIN+Y補正:0, Y_END-Y補正:1)
+	CASE "縦_上", "縦_下"
+		通路:0 = RAND(X_BEGIN+X補正:0, X_END-X補正:1)
+ENDSELECT
+
+[SKIPSTART]
+通路:0 = RAND(X_BEGIN, X_END)
+通路:1 = RAND(Y_BEGIN, Y_END)
+[SKIPEND]
+
+FOR LCOUNTY, Y_BEGIN+Y補正:0, Y_END-Y補正:1
+	SIF GROUPMATCH(LCOUNTY, Y_BEGIN, Y_END)
+		CONTINUE
+	FOR LCOUNTX, X_BEGIN+X補正:0, X_END-X補正:1
+		SIF GROUPMATCH(LCOUNTX, X_BEGIN, X_END) && LCOUNTX
+			CONTINUE
+		RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+	NEXT
+NEXT
+
+;FOR LCOUNTY, Y_BEGIN+Y補正:0+1, Y_END-Y補正:1
+;	FOR LCOUNTX, X_BEGIN+X補正:0, X_END-X補正:1
+;		SIF LCOUNTX == 通路:0 || LCOUNTY == 通路:1
+;			RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+;	NEXT
+;NEXT
+
+
+[SKIPSTART]
+PRINTFORMW 通路{通路:0}, {通路:1}
+
+FOR LCOUNTY, Y_BEGIN, Y_END
+	FOR LCOUNTX, X_BEGIN, X_END
+		SELECTCASE 方向
+			CASE "横_左"
+				SIF LCOUNTY == 通路:0 && LCOUNTX > X_BEGIN+X補正:0
+					RLMAP_CREATE:LCOUNTX:LCOUNTY = 2
+			CASE "横_右"
+				SIF LCOUNTY == 通路:0 && LCOUNTX < X_END-X補正:1
+					RLMAP_CREATE:LCOUNTX:LCOUNTY = 2
+			CASE "縦_上"
+				SIF LCOUNTX == 通路:0 && LCOUNTY > Y_BEGIN+Y補正:0
+					RLMAP_CREATE:LCOUNTX:LCOUNTY = 2
+			CASE "縦_下"
+				SIF LCOUNTX == 通路:0 && LCOUNTY < Y_END-Y補正:1
+					RLMAP_CREATE:LCOUNTX:LCOUNTY = 2
+		ENDSELECT
+	NEXT
+NEXT
+[SKIPEND]
+
+
+
+RL部屋座標:RL部屋数:X_FROM = X_BEGIN+X補正:0
+RL部屋座標:RL部屋数:X_DIST = X_END-X補正:1
+RL部屋座標:RL部屋数:Y_FROM = Y_BEGIN+Y補正:0
+RL部屋座標:RL部屋数:Y_DIST = Y_BEGIN-Y補正:1
+
+RL部屋中継点:RL部屋数:X_POS = RAND(X_BEGIN+X補正:0, X_END-X補正:1)
+RL部屋中継点:RL部屋数:Y_POS = RAND(Y_BEGIN+Y補正:0, Y_END-Y補正:1)
+
+RL部屋数++
+
+
+[SKIPSTART]
+
+
+FOR LCOUNT, 0, 100
+	SIF RL部屋座標:(LCOUNT+1) == 0
+		BREAK
+	中継点1:0 = RAND(RL部屋座標:LCOUNT/1000000, RL部屋座標:LCOUNT/10000)
+	中継点1:1 = RAND(RL部屋座標:LCOUNT/100, RL部屋座標:LCOUNT%100)
+
+	中継点2:0 = RAND(RL部屋座標:(LCOUNT+1)/1000000, RL部屋座標:(LCOUNT+1)/10000)
+	中継点2:1 = RAND(RL部屋座標:(LCOUNT+1)/100, RL部屋座標:(LCOUNT+1)%100)
+
+	;中継点1と中継点2を繋ぐ
+	;横に繋ぐ場合
+	IF RAND:2 == 0
+		IF 中継点1:0 <= 中継点2:0
+			X距離 = RAND(中継点1:0, 中継点2:0)
+			IF 中継点1:1 >= 中継点2:1
+				Y距離 = 中継点1:1-中継点2:1
+			ELSEIF 中継点1:1 >= 中継点2:1
+				Y距離 = 中継点2:1-中継点1:1
+			ENDIF
+		ELSEIF 中継点1:0 >= 中継点2:0
+			X距離 = RAND(中継点2:0, 中継点1:0)
+			IF 中継点1:1 >= 中継点2:1
+				Y距離 = 中継点1:1-中継点2:1
+			ELSEIF 中継点1:1 >= 中継点2:1
+				Y距離 = 中継点2:1-中継点1:1
+			ENDIF
+		ENDIF
+
+		;座標1X<座標2Xの場合
+		IF 中継点1:0 <= 中継点2:0
+			FOR LCOUNTX, 中継点1:0, 中継点2:0 
+				SIF 中継点1:0+X距離 > LCOUNTX
+					RLMAP_CREATE:(中継点1:0+LCOUNTX):(中継点1:1) = 1
+				IF 中継点1:0+X距離 == LCOUNTX
+					IF 中継点1:1 <= 中継点2:1
+						FOR LCOUNTY, 中継点1:1, 中継点2:1
+							RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+						NEXT
+					ELSE
+						FOR LCOUNTY, 中継点2:1, 中継点1:1
+							RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+						NEXT
+					ENDIF
+				ENDIF
+				SIF 中継点1:0+X距離 < LCOUNTX
+					RLMAP_CREATE:(中継点2:0+LCOUNTX):(中継点2:1) = 1
+			;ELSEIF 中継点1:0 >= 中継点2:0
+			;	X距離 = RAND(中継点2:0, 中継点1:0)
+			;ENDIF
+			NEXT
+		;座標1X>座標2Xの場合
+		ELSEIF 中継点1:0 >= 中継点2:0
+			FOR LCOUNTX, 中継点2:0, 中継点1:0 
+				SIF 中継点2:0+X距離 > LCOUNTX
+					RLMAP_CREATE:(中継点2:0+LCOUNTX):(中継点2:1) = 1
+				IF 中継点2:0+X距離 == LCOUNTX
+					IF 中継点1:1 <= 中継点2:1
+						FOR LCOUNTY, 中継点1:1, 中継点2:1
+							RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+						NEXT
+					ELSE
+						FOR LCOUNTY, 中継点2:1, 中継点1:1
+							RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+						NEXT
+					ENDIF
+				ENDIF
+				SIF 中継点2:0+X距離 < LCOUNTX
+					RLMAP_CREATE:(中継点2:0+LCOUNTX):(中継点2:1) = 1
+			;ELSEIF 中継点1:0 >= 中継点2:0
+			;	X距離 = RAND(中継点2:0, 中継点1:0)
+			;ENDIF
+			NEXT
+		ENDIF
+
+	;縦に繋ぐ場合
+	ELSE
+		IF 中継点1:1 <= 中継点2:1
+			Y距離 = RAND(中継点1:1, 中継点2:1)
+			IF 中継点1:0 >= 中継点2:0
+				X距離 = 中継点1:0-中継点2:0
+			ELSEIF 中継点1:0 <= 中継点2:0
+				X距離 = 中継点2:0-中継点1:0
+			ENDIF
+		ELSEIF 中継点1:1 >= 中継点2:1
+			Y距離 = RAND(中継点2:1, 中継点1:1)
+			IF 中継点1:0 >= 中継点2:0
+				X距離 = 中継点1:0-中継点2:0
+			ELSEIF 中継点1:0 <= 中継点2:0
+				X距離 = 中継点2:0-中継点1:0
+			ENDIF
+		ENDIF
+	ENDIF
+NEXT
+	;IF RAND:2 == 0
+
+[SKIPEND]
+
+
+[SKIPSTART]
+
+SELECTCASE 方向
+	CASE "横_左", "横_右"
+		通路:0 = RAND(Y_BEGIN+Y補正:0, Y_END-Y補正:1)
+		SIF 方向 == "横_左"
+			直前通路 = 通路:0
+	CASE "縦_上", "縦_下"
+		通路:0 = RAND(X_BEGIN+X補正:0, X_END-X補正:1)
+		SIF 方向 == "縦_上"
+			直前通路 = 通路:0
+ENDSELECT
+
+
+SELECTCASE 方向
+	CASE "横_左"
+		通路:0 = RAND(Y_BEGIN+Y補正:0, Y_END-Y補正:1)
+		通路:1 = RAND(Y_BEGIN+右Y補正:0, Y_END-右Y補正:1)
+	CASE "横_右"
+		通路:0 = RAND(Y_BEGIN+Y補正:0, Y_END-Y補正:1)
+		通路:1 = RAND(Y_BEGIN+左Y補正:0, Y_END-左Y補正:1)
+	CASE "縦_上"
+		通路:0 = RAND(X_BEGIN+X補正:0, X_END-X補正:1)
+		通路:1 = RAND(X_BEGIN+下X補正:0, X_END-下X補正:1)
+	CASE "縦_下"
+		通路:0 = RAND(X_BEGIN+X補正:0, X_END-X補正:1)
+		通路:1 = RAND(X_BEGIN+上X補正:0, X_END-上X補正:1)
+ENDSELECT
+
+SELECTCASE 方向
+	CASE "横_左"
+		FOR LCOUNTY, Y_BEGIN, Y_END
+			FOR LCOUNTX, X_BEGIN, X_END+1
+				SIF LCOUNTX < X_END-X補正:1
+					CONTINUE
+				SIF LCOUNTY == 通路:0
+					RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;IF 通路:0 < 通路:1 && INRANGE(LCOUNTY, 通路:0, 通路:1) && LCOUNTX == X_END
+				;	RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;ELSEIF 通路:1 <= 通路:0 && INRANGE(LCOUNTY, 通路:1, 通路:0) && LCOUNTX == X_END
+				;	RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;ENDIF
+			NEXT
+		NEXT
+	CASE "横_右"
+		FOR LCOUNTY, Y_BEGIN, Y_END
+			FOR LCOUNTX, X_BEGIN, X_END
+				SIF LCOUNTX > X_BEGIN+X補正:0
+					CONTINUE
+				IF LCOUNTY == 通路:0
+					RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+					IF LCOUNTX == X_BEGIN
+						;最短距離にある通路を見つけるまでループ
+						通路までのマス数 = 0
+						WHILE RLMAP_CREATE:LCOUNTX:(LCOUNTY+通路用LCOUNT) == 0 && RLMAP_CREATE:LCOUNTX:(LCOUNTY-通路用LCOUNT) == 0
+							通路用LCOUNT++
+							IF RLMAP_CREATE:LCOUNTX:(LCOUNTY+通路用LCOUNT) == 1
+								通路までの方向 = 下
+							ELSEIF RLMAP_CREATE:LCOUNTX:(LCOUNTY-通路用LCOUNT) == 1
+								通路までの方向 = 上
+							ENDIF
+						WEND
+						;PRINTFORMW %通路までの方向% 
+						SELECTCASE 通路までの方向
+							CASE "上"
+								FOR LCOUNT, 1, 通路用LCOUNT+1
+									RLMAP_CREATE:LCOUNTX:(LCOUNTY-LCOUNT) = 1
+								NEXT
+							CASE "下"
+								FOR LCOUNT, 1, 通路用LCOUNT+1
+									RLMAP_CREATE:LCOUNTX:(LCOUNTY+LCOUNT) = 1
+								NEXT
+						ENDSELECT
+					ENDIF
+				ENDIF
+				
+				;IF 直前通路
+				;	IF 直前通路 < 通路:0 && INRANGE(LCOUNTY, 直前通路, 通路:0) && LCOUNTX == X_BEGIN
+				;		RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;	ELSEIF 直前通路 > 通路:0 && INRANGE(LCOUNTY, 通路:0, 直前通路) && LCOUNTX == X_BEGIN
+				;		RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;	ENDIF
+				;ENDIF
+				;直前通路 = 0
+				;IF 通路:0 >= 通路:1 && INRANGE(LCOUNTY, 通路:0, 通路:1) && LCOUNTX == X_BEGIN
+				;	RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;ELSEIF 通路:1 >= 通路:0 && INRANGE(LCOUNTY, 通路:1, 通路:0) && LCOUNTX == X_BEGIN
+				;	RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;ENDIF
+			NEXT
+		NEXT
+	CASE "縦_上"
+		FOR LCOUNTY, Y_BEGIN, Y_END+1
+			FOR LCOUNTX, X_BEGIN, X_END
+				SIF LCOUNTY < Y_END-Y補正:1
+					CONTINUE
+				SIF LCOUNTX == 通路:0
+					RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;IF 通路:0 < 通路:1 && INRANGE(LCOUNTX, 通路:0, 通路:1) && LCOUNTY == Y_END
+				;	RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;ELSEIF 通路:1 < 通路:0 && INRANGE(LCOUNTX, 通路:1, 通路:0) && LCOUNTY == Y_END
+				;	RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;ENDIF
+			NEXT
+		NEXT
+	CASE "縦_下"
+		FOR LCOUNTY, Y_BEGIN, Y_END
+			FOR LCOUNTX, X_BEGIN, X_END
+				SIF LCOUNTY > Y_BEGIN+Y補正:0
+					CONTINUE
+				;SIF LCOUNTX == 通路:0
+				;	RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;IF 直前通路
+				;	IF 直前通路 < 通路:0 && INRANGE(LCOUNTX, 直前通路, 通路:0) && LCOUNTY == Y_BEGIN
+				;		RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;	ELSEIF 直前通路 > 通路:0 && INRANGE(LCOUNTX, 通路:0, 直前通路) && LCOUNTY == Y_BEGIN
+				;		RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;	ENDIF
+				;ENDIF
+				;直前通路 = 0
+				;IF 通路:0 >= 通路:1 && INRANGE(LCOUNTX, 通路:0, 通路:1) && LCOUNTY == Y_BEGIN-1
+				;	RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;ELSEIF 通路:1 >= 通路:0 && INRANGE(LCOUNTX, 通路:1, 通路:0) && LCOUNTY == Y_BEGIN-1
+				;	RLMAP_CREATE:LCOUNTX:LCOUNTY = 1
+				;ENDIF
+			NEXT
+		NEXT
+ENDSELECT
+
+[SKIPEND]
+
+@マップ通路生成
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNTX
+#DIM DYNAMIC LCOUNTY
+#DIM DYNAMIC スタート中継点, 2
+#DIM DYNAMIC ゴール中継点, 2
+#DIM DYNAMIC 曲がり角
+#DIMS DYNAMIC 座標方向
+
+;中継点を繋いでいく
+
+FOR LCOUNT, 0, 100
+	SIF RL部屋中継点:(LCOUNT+1):X_POS == 0 || RL部屋中継点:(LCOUNT+1):Y_POS == 0
+		BREAK
+	スタート中継点:0 = RL部屋中継点:LCOUNT:X_POS
+	スタート中継点:1 = RL部屋中継点:LCOUNT:Y_POS
+	ゴール中継点:0 = RL部屋中継点:(LCOUNT+1):X_POS
+	ゴール中継点:1 = RL部屋中継点:(LCOUNT+1):Y_POS
+	;次の中継点が左にあるならSWAPする
+	座標方向 = %座標方向判別(スタート中継点:0, スタート中継点:1, ゴール中継点:0, ゴール中継点:1)%
+	SELECTCASE 座標方向
+		CASE "左", "左上", "左下"
+			SWAP スタート中継点:0, ゴール中継点:0
+			SWAP スタート中継点:1, ゴール中継点:1
+	ENDSELECT
+
+	;上の処理で必ずX軸は0>=1になってるので右に見ていく
+	SELECTCASE 座標方向
+		CASE "上"
+			FOR LCOUNTY, ゴール中継点:1, スタート中継点:1
+				SIF RLMAP_CREATE:(スタート中継点:0):LCOUNTY == 0
+					RLMAP_CREATE:(スタート中継点:0):LCOUNTY = 2
+			NEXT
+		CASE "下"
+			FOR LCOUNTY, スタート中継点:1, ゴール中継点:1
+				SIF RLMAP_CREATE:(スタート中継点:0):LCOUNTY == 0
+					RLMAP_CREATE:(スタート中継点:0):LCOUNTY = 2
+			NEXT
+		CASE "右", "左"
+			FOR LCOUNTX, スタート中継点:0, ゴール中継点:0
+				SIF RLMAP_CREATE:(スタート中継点:1):LCOUNTX == 0
+					RLMAP_CREATE:(スタート中継点:1):LCOUNTX = 2
+			NEXT
+		CASEELSE
+			SELECTCASE RAND:2
+				;Xに伸ばす
+				CASE 0
+					;まず曲がり角を決める
+					曲がり角 = RAND(スタート中継点:0, ゴール中継点:0)
+					;X軸を埋める
+					;曲がり角まで伸ばす
+					FOR LCOUNTX, スタート中継点:0, 曲がり角+1
+						SIF RLMAP_CREATE:LCOUNTX:(スタート中継点:1) == 0
+							RLMAP_CREATE:LCOUNTX:(スタート中継点:1) = 2
+					NEXT
+					;残りの通路を延ばす
+					FOR LCOUNTX, 曲がり角, ゴール中継点:0
+						SIF RLMAP_CREATE:LCOUNTX:(ゴール中継点:1) == 0
+							RLMAP_CREATE:LCOUNTX:(ゴール中継点:1) = 2
+					NEXT
+					;曲がり角のY軸を埋める
+					IF スタート中継点:1 < ゴール中継点:1
+						FOR LCOUNTY, スタート中継点:1, ゴール中継点:1
+							SIF RLMAP_CREATE:曲がり角:LCOUNTY == 0
+								RLMAP_CREATE:曲がり角:LCOUNTY = 2
+						NEXT
+					ELSEIF スタート中継点:1 > ゴール中継点:1
+						FOR LCOUNTY, ゴール中継点:1, スタート中継点:1
+							SIF RLMAP_CREATE:曲がり角:LCOUNTY == 0
+								RLMAP_CREATE:曲がり角:LCOUNTY = 2
+						NEXT
+					ENDIF
+					;DEBUGPRINTFORML {LCOUNT}→{LCOUNT+1} X曲がり %座標方向%, XSTART:{スタート中継点:0}, YSTART:{スタート中継点:1}, XGOAL:{ゴール中継点:0}, YGOAL:{ゴール中継点:1}, 曲がり角:{曲がり角}
+				;Yに伸ばす
+				CASE 1
+					;まず曲がり角を決める
+					IF スタート中継点:1 < ゴール中継点:1
+						曲がり角 = RAND(スタート中継点:1, ゴール中継点:1)
+					ELSEIF スタート中継点:1 > ゴール中継点:1
+						曲がり角 = RAND(ゴール中継点:1, スタート中継点:1)
+					ENDIF
+					;Y軸を埋める
+					IF スタート中継点:1 < ゴール中継点:1
+						FOR LCOUNTY, スタート中継点:1, 曲がり角+1
+							SIF RLMAP_CREATE:(スタート中継点:0):LCOUNTY == 0
+								RLMAP_CREATE:(スタート中継点:0):LCOUNTY = 2
+						NEXT
+						FOR LCOUNTY, 曲がり角, ゴール中継点:1
+							SIF RLMAP_CREATE:(ゴール中継点:0):LCOUNTY == 0
+								RLMAP_CREATE:(ゴール中継点:0):LCOUNTY = 2
+						NEXT
+					ELSEIF スタート中継点:1 > ゴール中継点:1
+						FOR LCOUNTY, ゴール中継点:1, 曲がり角+1
+							SIF RLMAP_CREATE:(ゴール中継点:0):LCOUNTY == 0
+								RLMAP_CREATE:(ゴール中継点:0):LCOUNTY = 2
+						NEXT
+						FOR LCOUNTY, 曲がり角, スタート中継点:1
+							SIF RLMAP_CREATE:(スタート中継点:0):LCOUNTY  == 0
+								RLMAP_CREATE:(スタート中継点:0):LCOUNTY = 2
+						NEXT
+					ENDIF
+					;曲がり角のX軸を埋める
+					FOR LCOUNTX, スタート中継点:0, ゴール中継点:0
+						SIF RLMAP_CREATE:LCOUNTX:曲がり角 == 0
+							RLMAP_CREATE:LCOUNTX:曲がり角 = 2
+					NEXT
+					;DEBUGPRINTFORML {LCOUNT}→{LCOUNT+1} Y曲がり %座標方向%, XSTART:{スタート中継点:0}, YSTART:{スタート中継点:1}, XGOAL:{ゴール中継点:0}, YGOAL:{ゴール中継点:1}, 曲がり角:{曲がり角}
+			ENDSELECT
+
+			;右にあるので
+		[SKIPSTART]
+		;厄介な処理
+		CASE "右上", "左下"
+			SELECTCASE RAND:2
+				;Xに伸ばす
+				CASE 0
+					;まず曲がり角を決める
+					曲がり角 = RAND(スタート中継点:0, ゴール中継点:0)
+					;曲がり角まで伸ばす
+					FOR LCOUNTX, スタート中継点:0, 曲がり角+1
+						RLMAP_CREATE:LCOUNTX:(スタート中継点:1) = 2
+					NEXT
+					;曲がり角にぶつかったら上に伸ばす(処理場は上から下)
+					FOR LCOUNTY, スタート中継点:1, ゴール中継点:1
+						RLMAP_CREATE:曲がり角:LCOUNTY = 2
+					NEXT
+					;残りの通路を延ばす
+					FOR LCOUNTX, 曲がり角, ゴール中継点:0
+						RLMAP_CREATE:LCOUNTX:(ゴール中継点:1) = 2
+					NEXT
+				;Yに伸ばす
+				CASE 1
+					;まず曲がり角を決める
+					曲がり角 = RAND(ゴール中継点:1, スタート中継点:1)
+					;曲がり角まで伸ばす
+					FOR LCOUNTY, ゴール中継点:1, 曲がり角-1, -1
+						RLMAP_CREATE:(スタート中継点:0):LCOUNTY = 2
+					NEXT
+					;曲がり角にぶつかったら右に伸ばす
+					FOR LCOUNTX, スタート中継点:0, ゴール中継点:0
+						RLMAP_CREATE:LCOUNTX:曲がり角 = 2
+					NEXT
+					FOR LCOUNTY, 曲がり角, スタート中継点:1, -1
+						;残りの通路を延ばす
+						RLMAP_CREATE:(ゴール中継点:0):LCOUNTY = 2
+					NEXT
+			ENDSELECT
+		CASE "右下", "左上"
+			SELECTCASE RAND:2
+				;Xに伸ばす
+				CASE 0
+					;まず曲がり角を決める
+					曲がり角 = RAND(スタート中継点:0, ゴール中継点:0)
+					;曲がり角まで伸ばす
+					FOR LCOUNTX, スタート中継点:0, 曲がり角+1
+						RLMAP_CREATE:LCOUNTX:(スタート中継点:1) = 2
+					NEXT
+					;曲がり角にぶつかったら下に伸ばす
+					FOR LCOUNTY, スタート中継点:1, ゴール中継点:1
+						RLMAP_CREATE:曲がり角:LCOUNTY = 2
+					NEXT
+					;残りの通路を延ばす
+					FOR LCOUNTX, 曲がり角, ゴール中継点:0
+						RLMAP_CREATE:LCOUNTX:(ゴール中継点:1) = 2
+					NEXT
+				;Yに伸ばす
+				CASE 1
+					;まず曲がり角を決める
+					曲がり角 = RAND(スタート中継点:1, ゴール中継点:1)
+					;曲がり角まで伸ばす
+					FOR LCOUNTY, スタート中継点:1, 曲がり角+1
+						RLMAP_CREATE:(スタート中継点:0):LCOUNTY = 2
+					NEXT
+					;曲がり角にぶつかったら右に伸ばす
+					FOR LCOUNTX, スタート中継点:0, ゴール中継点:0
+						RLMAP_CREATE:LCOUNTX:曲がり角 = 2
+					NEXT
+					FOR LCOUNTY, 曲がり角, ゴール中継点:1
+						;残りの通路を延ばす
+						RLMAP_CREATE:(ゴール中継点:0):LCOUNTY = 2
+					NEXT
+			ENDSELECT
+		[SKIPEND]
+	ENDSELECT
+NEXT
+			
+
+
+
+
+@座標方向判別, X1, Y1, X2, Y2
+#FUNCTIONS
+#DIM DYNAMIC X1
+#DIM DYNAMIC Y1
+#DIM DYNAMIC X2
+#DIM DYNAMIC Y2
+
+; X→
+;Y
+;↓
+
+;横に同じ
+IF X1 == X2
+	;縦も同じ
+	IF Y1 == Y2
+		RETURNF "同位置"
+	;上にある
+	ELSEIF Y1 > Y2
+		RETURNF "上"
+	;下にある
+	ELSEIF Y1 < Y2
+		RETURNF "下"
+	ENDIF
+;左にある
+ELSEIF X1 > X2
+	;縦が同じ
+	IF Y1 == Y2
+		RETURNF "左"
+	;上にある
+	ELSEIF Y1 > Y2
+		RETURNF "左上"
+	;下にある
+	ELSEIF Y1 < Y2
+		RETURNF "左下"
+	ENDIF
+;右にある
+ELSEIF X1 < X2
+	;縦が同じ
+	IF Y1 == Y2
+		RETURNF "右"
+	;上にある
+	ELSEIF Y1 > Y2
+		RETURNF "右上"
+	;下にある
+	ELSEIF Y1 < Y2
+		RETURNF "右下"
+	ENDIF
+ENDIF
+
+RETURNF "何かおかしい"
