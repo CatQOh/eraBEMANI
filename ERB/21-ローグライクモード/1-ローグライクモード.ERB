@@ -2,6 +2,15 @@
 
 ;イニシャライズ
 CALL RLスプライト生成
+
+CALL COLUMNCREATE, 1
+CALL COLUMNRESIZE, 1, 4200, 4200
+CALL COLUMNMOVE, 1, -500, 1400
+
+CALL COLUMNCREATE, 2
+CALL COLUMNRESIZE, 2, 4200, 4200
+CALL COLUMNMOVE, 2, -500, -2300
+
 CALL ローグライクモード
 
 @ローグライクモード
@@ -63,10 +72,13 @@ SIF RESULT
 	RESTART
 
 @ダンジョン描写
+#DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNTX
 #DIM DYNAMIC LCOUNTY
 #DIM CONST RLMAP_CONST = VARSIZE("RLMAP", 1)
 #DIM DYNAMIC 全体マップ
+#DIM DYNAMIC 移動先X
+#DIM DYNAMIC 移動先Y
 
 CLEARLINE LINECOUNT
 
@@ -115,15 +127,19 @@ IF 全体マップ
 		PRINTL
 	NEXT
 ELSE
-	CALL COLUMNCREATE, 1
-	CALL COLUMNRESIZE, 1, 4200, 4200
-	CALL COLUMNMOVE, 1, -500, 1000
 	CALL PLMAP生成
 
 	CALL COLUMNIMG, 1, "PLMAP", 4200, 4200
 	CALL COLUMNPRINTL, 1, ""
+	CALL COLUMNLOGRESET, 2
+	
+	FOR LCOUNT, 10, -1, -1
+		CALL COLUMNPRINTL, 2, RLLOG:LCOUNT
+	NEXT
 	CALL COLUMNSHOW
-
+	;SEを鳴らすためのウェイトを入れる予定 オプションで変更可能にする
+	SIF RLWAIT
+		TWAIT RLWAIT, 1
 ENDIF
 
 IF 階段判定()
@@ -136,41 +152,57 @@ ONEINPUTS
 
 SELECTCASE RESULTS
 	CASE "7"
-		IF !壁判定(PL:XPOS-1, PL:YPOS-1)
-			PL:XPOS--
-			PL:YPOS--
-		ENDIF
+		移動先X = PL:XPOS-1
+		移動先Y = PL:YPOS-1
+		;IF !壁判定(PL:XPOS-1, PL:YPOS-1)
+		;	PL:XPOS--
+		;	PL:YPOS--
+		;ENDIF
 	CASE "8"
-		IF !壁判定(PL:XPOS, PL:YPOS-1)
-			PL:YPOS--
-		ENDIF
+		移動先X = PL:XPOS
+		移動先Y = PL:YPOS-1
+		;IF !壁判定(PL:XPOS, PL:YPOS-1)
+		;	PL:YPOS--
+		;ENDIF
 	CASE "9"
-		IF !壁判定(PL:XPOS+1, PL:YPOS-1)
-			PL:XPOS++
-			PL:YPOS--
-		ENDIF
+		移動先X = PL:XPOS+1
+		移動先Y = PL:YPOS-1
+		;IF !壁判定(PL:XPOS+1, PL:YPOS-1)
+		;	PL:XPOS++
+		;	PL:YPOS--
+		;ENDIF
 	CASE "4"
-		IF !壁判定(PL:XPOS-1, PL:YPOS)
-			PL:XPOS--
-		ENDIF
+		移動先X = PL:XPOS-1
+		移動先Y = PL:YPOS
+		;IF !壁判定(PL:XPOS-1, PL:YPOS)
+		;	PL:XPOS--
+		;ENDIF
 	CASE "6"
-		IF !壁判定(PL:XPOS+1, PL:YPOS)
-			PL:XPOS++
-		ENDIF
+		移動先X = PL:XPOS+1
+		移動先Y = PL:YPOS
+		;IF !壁判定(PL:XPOS+1, PL:YPOS)
+		;	PL:XPOS++
+		;ENDIF
 	CASE "1"
-		IF !壁判定(PL:XPOS-1, PL:YPOS+1)
-			PL:XPOS--
-			PL:YPOS++
-		ENDIF
+		移動先X = PL:XPOS-1
+		移動先Y = PL:YPOS+1
+		;IF !壁判定(PL:XPOS-1, PL:YPOS+1)
+		;	PL:XPOS--
+		;	PL:YPOS++
+		;ENDIF
 	CASE "2"
-		IF !壁判定(PL:XPOS, PL:YPOS+1)
-			PL:YPOS++
-		ENDIF
+		移動先X = PL:XPOS
+		移動先Y = PL:YPOS+1
+		;IF !壁判定(PL:XPOS, PL:YPOS+1)
+		;	PL:YPOS++
+		;ENDIF
 	CASE "3"
-		IF !壁判定(PL:XPOS+1, PL:YPOS+1)
-			PL:XPOS++
-			PL:YPOS++
-		ENDIF
+		移動先X = PL:XPOS+1
+		移動先Y = PL:YPOS+1
+		;IF !壁判定(PL:XPOS+1, PL:YPOS+1)
+		;	PL:XPOS++
+		;	PL:YPOS++
+		;ENDIF
 	CASE "5"
 		RETURN 0
 	CASE ">"
@@ -179,6 +211,14 @@ SELECTCASE RESULTS
 	CASE "X"
 		INVERTBIT 全体マップ, 0
 ENDSELECT
+
+;移動方向のフラグが必要かも
+IF 敵判定(移動先X, 移動先Y)
+	CALL RL攻撃, 敵判定(移動先X, 移動先Y), "格闘"
+ELSEIF !壁判定(移動先X, 移動先Y)
+	PL:XPOS = 移動先X
+	PL:YPOS = 移動先Y
+ENDIF
 
 RESTART
 
@@ -230,3 +270,33 @@ SELECTCASE GETKEY()
 	CASE 
 ENDSELECT
 [SKIPEND]
+
+@RL攻撃, ENEMYID, 攻撃手段
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC ENEMYID
+#DIMS DYNAMIC 攻撃手段
+#DIM DYNAMIC ダイス数
+#DIM DYNAMIC ダイス面
+#DIM DYNAMIC ダイス結果, 10
+#DIMS DYNAMIC ダメージテキスト
+
+;ここで攻撃力を見る とりあえず格闘の2d4でテスト
+SELECTCASE 攻撃手段
+	CASE "格闘"
+		ダイス数 = 2
+		ダイス面 = 4
+ENDSELECT
+
+ダメージテキスト '= @"{ダイス数}d{ダイス面} "
+
+FOR LCOUNT, 0, ダイス数
+	ダイス結果:LCOUNT = RAND(1, ダイス面+1)
+	ダメージテキスト += @"{ダイス結果:LCOUNT}+"
+NEXT
+
+;末尾の+を取る
+ダメージテキスト = %SUBSTRING(ダメージテキスト, 0, STRLENS(ダメージテキスト)-1)%
+
+ダメージテキスト += @"={SUMARRAY(ダイス結果)}"
+
+CALL RLLOG, @"@は%攻撃手段%で敵を攻撃した！(%ダメージテキスト%)"
