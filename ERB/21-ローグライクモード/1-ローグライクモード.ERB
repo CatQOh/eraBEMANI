@@ -84,6 +84,8 @@ SIF RESULT
 
 CALL PL視界生成
 
+CVARSET CFLAGRL, GETNUM(CFLAGRL, "移動済み"), 0
+
 FOR LCOUNTX, PL:XPOS-10, PL:XPOS+11
 	FOR LCOUNTY, PL:YPOS-10, PL:YPOS+11
 		SIF INRANGE(LCOUNTX, 0, VARSIZE("RLMAP", 1)-1) && INRANGE(LCOUNTY, 0, VARSIZE("RLMAP", 2)-1) && PL_VISIBLE:LCOUNTX:LCOUNTY == 1
@@ -118,6 +120,10 @@ IF 全体マップ
 					ELSEIF RLMAP_ENEMY:LCOUNTX:LCOUNTY
 						SETCOLORBYNAME coral
 						PRINT 敵
+						RESETCOLOR
+					ELSEIF RLMAP:LCOUNTX:LCOUNTY == 2
+						SETCOLORBYNAME blue
+						PRINT ■
 						RESETCOLOR
 					ELSE
 						PRINT ■
@@ -207,6 +213,9 @@ ELSEIF !壁判定(移動先X, 移動先Y)
 	PL:XPOS = 移動先X
 	PL:YPOS = 移動先Y
 ENDIF
+
+;敵の行動フェーズ
+CALL 敵行動フェーズ
 
 RESTART
 
@@ -337,6 +346,314 @@ FOR LCOUNTX, 0, RLMAP広さ
 	FOR LCOUNTY, 0, RLMAP広さ
 		IF RLMAP_ENEMY:LCOUNTX:LCOUNTY == TARGETID
 			RLMAP_ENEMY:LCOUNTX:LCOUNTY = 0
+		ENDIF
+	NEXT
+NEXT
+
+@敵行動フェーズ
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNTX
+#DIM DYNAMIC LCOUNTY
+#DIM DYNAMIC LCOUNTXE
+#DIM DYNAMIC LCOUNTYE
+#DIM DYNAMIC MOVEX
+#DIM DYNAMIC MOVEY
+
+;この時点でVISIBLE範囲はPLの移動前なので、移動で視界外に出ても敵は追従してくる
+FOR LCOUNTX, 0, RLMAP広さ
+	FOR LCOUNTY, 0, RLMAP広さ
+		IF RLMAP_ENEMY:LCOUNTX:LCOUNTY > 0 && !CFLAGRL:(RLMAP_ENEMY:LCOUNTX:LCOUNTY):移動済み
+			TARGET = RLMAP_ENEMY:LCOUNTX:LCOUNTY
+			;視界内かどうかで動きが変わる
+			IF PL_VISIBLE:LCOUNTX:LCOUNTY
+				;SELECTCASE 座標距離判別, LCOUNTX, LCOUNTY, PL:XPOS, PL:YPOS
+					;9ならちょうど視界から外れてるので視界に入るように動く
+					;CASE 9
+					;一旦行動パターンを単純にしてみる
+						SELECTCASE 座標方向判別(LCOUNTX, LCOUNTY, PL:XPOS, PL:YPOS)
+							CASE "左上"
+								;既に敵が居たら時計回りにずらす
+								IF RLMAP_ENEMY:(LCOUNTX-1):(LCOUNTY-1) > 0
+									;その先にも居たら諦める
+									IF RLMAP_ENEMY:(LCOUNTX):(LCOUNTY+1) > 0
+										RETURN
+									ELSE
+										CALL 敵移動, TARGET, LCOUNTX, LCOUNTY+1
+									ENDIF
+								ELSE
+									CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY-1
+								ENDIF
+							CASE "上"
+								;既に敵が居たら時計回りにずらす
+								IF RLMAP_ENEMY:(LCOUNTX):(LCOUNTY-1) > 0
+									;その先にも居たら諦める
+									IF RLMAP_ENEMY:(LCOUNTX+1):(LCOUNTY-1) > 0
+										RETURN
+									ELSE
+										CALL 敵移動, TARGET, LCOUNTX+1, LCOUNTY-1
+									ENDIF
+								ELSE
+									CALL 敵移動, TARGET, LCOUNTX, LCOUNTY-1
+								ENDIF
+							CASE "右上"
+								;既に敵が居たら時計回りにずらす
+								IF RLMAP_ENEMY:(LCOUNTX+1):(LCOUNTY-1) > 0
+									;その先にも居たら諦める
+									IF RLMAP_ENEMY:(LCOUNTX+1):(LCOUNTY) > 0
+										RETURN
+									ELSE
+										CALL 敵移動, TARGET, LCOUNTX+1, LCOUNTY
+									ENDIF
+								ELSE
+									CALL 敵移動, TARGET, LCOUNTX+1, LCOUNTY-1
+								ENDIF
+							CASE "左"
+								;既に敵が居たら時計回りにずらす
+								IF RLMAP_ENEMY:(LCOUNTX-1):(LCOUNTY) > 0
+									;その先にも居たら諦める
+									IF RLMAP_ENEMY:(LCOUNTX-1):(LCOUNTY+1) > 0
+										RETURN
+									ELSE
+										CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY+1
+									ENDIF
+								ELSE
+									CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY
+								ENDIF
+							CASE "右"
+								;既に敵が居たら時計回りにずらす
+								IF RLMAP_ENEMY:(LCOUNTX+1):(LCOUNTY) > 0
+									;その先にも居たら諦める
+									IF RLMAP_ENEMY:(LCOUNTX+1):(LCOUNTY+1) > 0
+										RETURN
+									ELSE
+										CALL 敵移動, TARGET, LCOUNTX+1, LCOUNTY+1
+									ENDIF
+								ELSE
+									CALL 敵移動, TARGET, LCOUNTX+1, LCOUNTY
+								ENDIF
+							CASE "左下"
+								;既に敵が居たら時計回りにずらす
+								IF RLMAP_ENEMY:(LCOUNTX-1):(LCOUNTY+1) > 0
+									;その先にも居たら諦める
+									IF RLMAP_ENEMY:(LCOUNTX-1):(LCOUNTY) > 0
+										RETURN
+									ELSE
+										CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY
+									ENDIF
+								ELSE
+									CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY+1
+								ENDIF
+							CASE "下"
+								;既に敵が居たら時計回りにずらす
+								IF RLMAP_ENEMY:(LCOUNTX):(LCOUNTY+1) > 0
+									;その先にも居たら諦める
+									IF RLMAP_ENEMY:(LCOUNTX-1):(LCOUNTY+1) > 0
+										RETURN
+									ELSE
+										CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY+1
+									ENDIF
+								ELSE
+									CALL 敵移動, TARGET, LCOUNTX, LCOUNTY+1
+								ENDIF
+							CASE "右下"
+								;既に敵が居たら時計回りにずらす
+								IF RLMAP_ENEMY:(LCOUNTX+1):(LCOUNTY+1) > 0
+									;その先にも居たら諦める
+									IF RLMAP_ENEMY:(LCOUNTX-1):(LCOUNTY+1) > 0
+										RETURN
+									ELSE
+										CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY+1
+									ENDIF
+								ELSE
+									CALL 敵移動, TARGET, LCOUNTX+1, LCOUNTY+1
+								ENDIF
+						ENDSELECT
+					;CASEELSE
+
+
+			;視界外ならランダムウォーク
+			ELSE
+				;通路なら移動方向を決める
+				IF RLMAP:LCOUNTX:LCOUNTY == 2
+					IF CSTRRL:移動方向 == ""
+						DO
+							SELECTCASE RAND:4
+								CASE 0
+									IF GROUPMATCH(RLMAP:(LCOUNTX-1):LCOUNTY, 1, 2)
+										CSTRRL:移動方向 = 左
+										CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY
+										BREAK
+									ENDIF
+								CASE 1
+									IF GROUPMATCH(RLMAP:LCOUNTX:(LCOUNTY-1), 1, 2)
+										CSTRRL:移動方向 = 上
+										CALL 敵移動, TARGET, LCOUNTX, LCOUNTY-1
+										BREAK
+									ENDIF
+								CASE 2
+									IF GROUPMATCH(RLMAP:(LCOUNTX+1):LCOUNTY, 1, 2)
+										CSTRRL:移動方向 = 右
+										CALL 敵移動, TARGET, LCOUNTX+1, LCOUNTY
+										BREAK
+									ENDIF
+								CASE 3
+									IF GROUPMATCH(RLMAP:LCOUNTX:(LCOUNTY+1), 1, 2)
+										CSTRRL:移動方向 = 下
+										CALL 敵移動, TARGET, LCOUNTX, LCOUNTY+1
+										BREAK
+									ENDIF
+							ENDSELECT
+						LOOP 1
+					ELSE
+						SELECTCASE CSTRRL:移動方向
+							CASE "左"
+								;左に進めない場合は上か下に動く
+								IF !GROUPMATCH(RLMAP:(LCOUNTX-1):LCOUNTY, 1, 2)
+									FOR LCOUNT, 0, 1000
+										SELECTCASE RAND:2
+											CASE 0
+												IF GROUPMATCH(RLMAP:LCOUNTX:(LCOUNTY-1), 1, 2)
+													CSTRRL:移動方向 = 上
+													CALL 敵移動, TARGET, LCOUNTX, LCOUNTY-1
+													BREAK
+												ENDIF
+											CASE 1
+												IF GROUPMATCH(RLMAP:LCOUNTX:(LCOUNTY+1), 1, 2)
+													CSTRRL:移動方向 = 下
+													CALL 敵移動, TARGET, LCOUNTX, LCOUNTY+1
+													BREAK
+												ENDIF
+										ENDSELECT
+									NEXT
+									;万が一どちらにも動けなかったら来た道を戻る
+									IF LCOUNT == 999
+										CSTRRL:移動方向 = 右
+										CALL 敵移動, TARGET, LCOUNTX+1, LCOUNTY
+									ENDIF
+								ELSE
+									CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY
+								ENDIF
+							CASE "右"
+								;右もほぼ同じ
+								IF !GROUPMATCH(RLMAP:(LCOUNTX+1):LCOUNTY, 1, 2)
+									FOR LCOUNT, 0, 1000
+										SELECTCASE RAND:2
+											CASE 0
+												IF GROUPMATCH(RLMAP:LCOUNTX:(LCOUNTY-1), 1, 2)
+													CSTRRL:移動方向 = 上
+													CALL 敵移動, TARGET, LCOUNTX, LCOUNTY-1
+													BREAK
+												ENDIF
+											CASE 1
+												IF GROUPMATCH(RLMAP:LCOUNTX:(LCOUNTY+1), 1, 2)
+													CSTRRL:移動方向 = 下
+													CALL 敵移動, TARGET, LCOUNTX, LCOUNTY+1
+													BREAK
+												ENDIF
+										ENDSELECT
+									NEXT
+									;万が一どちらにも動けなかったら来た道を戻る
+									IF LCOUNT == 999
+										CSTRRL:移動方向 = 左
+										CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY
+									ENDIF
+								ELSE
+									CALL 敵移動, TARGET, LCOUNTX+1, LCOUNTY
+								ENDIF
+							CASE "上"
+								;上に進めない場合は左か右に動く
+								IF !GROUPMATCH(RLMAP:LCOUNTX:(LCOUNTY-1), 1, 2)
+									FOR LCOUNT, 0, 1000
+										SELECTCASE RAND:2
+											CASE 0
+												IF GROUPMATCH(RLMAP:LCOUNTX:(LCOUNTY-1), 1, 2)
+													CSTRRL:移動方向 = 左
+													CALL 敵移動, TARGET, (LCOUNTX-1), LCOUNTY
+													BREAK
+												ENDIF
+											CASE 1
+												IF GROUPMATCH(RLMAP:LCOUNTX:(LCOUNTY+1), 1, 2)
+													CSTRRL:移動方向 = 右
+													CALL 敵移動, TARGET, (LCOUNTX+1), LCOUNTY
+													BREAK
+												ENDIF
+										ENDSELECT
+									NEXT
+									;万が一どちらにも動けなかったら来た道を戻る
+									IF LCOUNT == 999
+										CSTRRL:移動方向 = 下
+										CALL 敵移動, TARGET, LCOUNTX, LCOUNTY+1
+									ENDIF
+								ELSE
+									CALL 敵移動, TARGET, LCOUNTX, LCOUNTY-1
+								ENDIF
+							CASE "下"
+								;下もほぼ同じ
+								IF !GROUPMATCH(RLMAP:LCOUNTX:(LCOUNTY+1), 1, 2)
+									FOR LCOUNT, 0, 1000
+										SELECTCASE RAND:2
+											CASE 0
+												IF GROUPMATCH(RLMAP:LCOUNTX:(LCOUNTY-1), 1, 2)
+													CSTRRL:移動方向 = 左
+													CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY
+													BREAK
+												ENDIF
+											CASE 1
+												IF GROUPMATCH(RLMAP:LCOUNTX:(LCOUNTY+1), 1, 2)
+													CSTRRL:移動方向 = 右
+													CALL 敵移動, TARGET, LCOUNTX+1, LCOUNTY
+													BREAK
+												ENDIF
+										ENDSELECT
+									NEXT
+									;万が一どちらにも動けなかったら来た道を戻る
+									IF LCOUNT == 999
+										CSTRRL:移動方向 = 上
+										CALL 敵移動, TARGET, LCOUNTX, LCOUNTY-1
+									ENDIF
+								ELSE
+									CALL 敵移動, TARGET, LCOUNTX, LCOUNTY+1
+								ENDIF
+						ENDSELECT
+					ENDIF
+				;ランダムウォーク
+				ELSE
+					CSTRRL:移動方向 = 
+					DO
+						MOVEX = RAND:3-1
+						MOVEY = RAND:3-1
+						IF GROUPMATCH(RLMAP:(LCOUNTX+MOVEX):(LCOUNTY+MOVEY), 1, 2)
+							CALL 敵移動, TARGET, LCOUNTX+MOVEX, LCOUNTY+MOVEY
+							BREAK
+						ENDIF
+					LOOP 1
+				ENDIF
+			ENDIF
+			CFLAGRL:移動済み = 1
+		ENDIF
+	NEXT
+NEXT
+
+@敵移動, TARGET, X_POS, Y_POS
+#DIMS DYNAMIC 方向
+#DIM DYNAMIC X_POS
+#DIM DYNAMIC Y_POS
+#DIM DYNAMIC LCOUNTX
+#DIM DYNAMIC LCOUNTY
+
+;一応確認はしてるけど移動不可能だったら何もせず終了
+SIF !GROUPMATCH(RLMAP:X_POS:Y_POS, 1, 2)
+	RETURN
+;PLと同じマスなら攻撃が優先されるはずなので終了
+SIF X_POS == PL:XPOS && Y_POS == PL:YPOS
+	RETURN
+
+FOR LCOUNTX, 0, RLMAP広さ
+	FOR LCOUNTY, 0, RLMAP広さ
+		IF RLMAP_ENEMY:LCOUNTX:LCOUNTY == TARGET
+			SWAP RLMAP_ENEMY:LCOUNTX:LCOUNTY, RLMAP_ENEMY:X_POS:Y_POS
+			;PRINTFORMW {TARGET} %CSTRRL:移動方向% {X_POS} {Y_POS}
+			RETURN
 		ENDIF
 	NEXT
 NEXT
