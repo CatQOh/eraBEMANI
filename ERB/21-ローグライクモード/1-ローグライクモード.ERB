@@ -5,11 +5,11 @@ CALL RLスプライト生成
 
 CALL COLUMNCREATE, 1
 CALL COLUMNRESIZE, 1, 4200, 4200
-CALL COLUMNMOVE, 1, -500, 1400
+CALL COLUMNMOVE, 1, -500, 1700
 
 CALL COLUMNCREATE, 2
 CALL COLUMNRESIZE, 2, 4200, 4200
-CALL COLUMNMOVE, 2, -500, -2300
+CALL COLUMNMOVE, 2, -500, -2200
 
 CALL ローグライクモード
 
@@ -60,6 +60,8 @@ FOR LCOUNTX, 0, RLMAP_CONST
 				ADDVOIDCHARA
 				TARGET = CHARANUM-1
 				RLMAP_ENEMY:LCOUNTX:LCOUNTY = TARGET
+				CFLAGRL:HP = 20
+				CFLAGRL:MAXHP = 20
 				CSTRRL:立場 = 敵
 			ENDIF
 		ENDIF
@@ -79,8 +81,6 @@ SIF RESULT
 #DIM DYNAMIC 全体マップ
 #DIM DYNAMIC 移動先X
 #DIM DYNAMIC 移動先Y
-
-CLEARLINE LINECOUNT
 
 CALL PL視界生成
 
@@ -127,25 +127,13 @@ IF 全体マップ
 		PRINTL
 	NEXT
 ELSE
-	CALL PLMAP生成
-
-	CALL COLUMNIMG, 1, "PLMAP", 4200, 4200
-	CALL COLUMNPRINTL, 1, ""
-	CALL COLUMNLOGRESET, 2
-	
-	FOR LCOUNT, 10, -1, -1
-		CALL COLUMNPRINTL, 2, RLLOG:LCOUNT
-	NEXT
-	CALL COLUMNSHOW
-	;SEを鳴らすためのウェイトを入れる予定 オプションで変更可能にする
-	SIF RLWAIT
-		TWAIT RLWAIT, 1
+	CALL RLREDRAW
 ENDIF
 
 IF 階段判定()
-	PRINTL 階段がある >で登る
+	;PRINTL 階段がある >で登る
 ELSE
-	PRINTL 5で終了 Xで全体マップ
+	;PRINTL 5で終了 Xで全体マップ
 ENDIF
 
 ONEINPUTS
@@ -214,7 +202,7 @@ ENDSELECT
 
 ;移動方向のフラグが必要かも
 IF 敵判定(移動先X, 移動先Y)
-	CALL RL攻撃, 敵判定(移動先X, 移動先Y), "格闘"
+	CALL RL攻撃, PLAYER, 敵判定(移動先X, 移動先Y), "格闘"
 ELSEIF !壁判定(移動先X, 移動先Y)
 	PL:XPOS = 移動先X
 	PL:YPOS = 移動先Y
@@ -271,23 +259,41 @@ SELECTCASE GETKEY()
 ENDSELECT
 [SKIPEND]
 
-@RL攻撃, ENEMYID, 攻撃手段
+@RL攻撃, ATTACKERID, TARGETID, 攻撃手段
 #DIM DYNAMIC LCOUNT
-#DIM DYNAMIC ENEMYID
+#DIM DYNAMIC ATTACKERID
+#DIM DYNAMIC TARGETID
 #DIMS DYNAMIC 攻撃手段
 #DIM DYNAMIC ダイス数
 #DIM DYNAMIC ダイス面
 #DIM DYNAMIC ダイス結果, 10
 #DIMS DYNAMIC ダメージテキスト
+#DIM DYNAMIC 命中率
+#DIM DYNAMIC ダメージ値
+
+;命中判定 スキルとかいろいろ見るよね
+SELECTCASE 攻撃手段
+	CASE "格闘"
+		命中率 = 70
+		SIF RLスキル(ATTACKERID, "集中攻撃（格闘）")
+			命中率 = RLスキル(ATTACKERID, "集中攻撃（格闘）")
+	;武器名かDTのIDを見る？
+	CASEELSE
+ENDSELECT
 
 ;ここで攻撃力を見る とりあえず格闘の2d4でテスト
 SELECTCASE 攻撃手段
 	CASE "格闘"
 		ダイス数 = 2
+		IF RLスキル(ATTACKERID, "格闘")
+			ダイス数 += RLスキル(ATTACKERID, "格闘")
+			ダメージテキスト += @"格闘スキルLv{RLスキル(ATTACKERID, "格闘")}発動 "
+		ENDIF
 		ダイス面 = 4
+	CASEELSE
 ENDSELECT
 
-ダメージテキスト '= @"{ダイス数}d{ダイス面} "
+ダメージテキスト += @"{ダイス数}d{ダイス面} "
 
 FOR LCOUNT, 0, ダイス数
 	ダイス結果:LCOUNT = RAND(1, ダイス面+1)
@@ -297,6 +303,40 @@ NEXT
 ;末尾の+を取る
 ダメージテキスト = %SUBSTRING(ダメージテキスト, 0, STRLENS(ダメージテキスト)-1)%
 
-ダメージテキスト += @"={SUMARRAY(ダイス結果)}"
+ダメージ値 = SUMARRAY(ダイス結果)
+
+ダメージテキスト += @"={ダメージ値}"
 
 CALL RLLOG, @"@は%攻撃手段%で敵を攻撃した！(%ダメージテキスト%)"
+
+CALL SE再生, 格闘SE
+RLWAIT = 100
+
+CALL RLREDRAW
+
+CFLAGRL:TARGETID:HP -= ダメージ値
+
+IF CFLAGRL:TARGETID:HP <= 0
+	CALL RLLOG, @"敵を倒した！"
+	CALL 敵撃破, ATTACKERID, TARGETID
+	CALL SE再生, 敵撃破SE
+	RLWAIT = 100
+	CALL RLREDRAW
+ENDIF
+
+@敵撃破, ATTACKERID, TARGETID
+#DIM DYNAMIC ATTACKERID
+#DIM DYNAMIC TARGETID
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNTX
+#DIM DYNAMIC LCOUNTY
+
+;経験値処理やドロップアイテム処理とか
+
+FOR LCOUNTX, 0, RLMAP広さ
+	FOR LCOUNTY, 0, RLMAP広さ
+		IF RLMAP_ENEMY:LCOUNTX:LCOUNTY == TARGETID
+			RLMAP_ENEMY:LCOUNTX:LCOUNTY = 0
+		ENDIF
+	NEXT
+NEXT
