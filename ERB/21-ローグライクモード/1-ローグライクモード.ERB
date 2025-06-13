@@ -5,22 +5,43 @@ CALL RLスプライト生成
 
 CALL COLUMNCREATE, 1
 CALL COLUMNRESIZE, 1, 4200, 4200
-CALL COLUMNMOVE, 1, -500, 1700
+CALL COLUMNMOVE, 1, -500, 1800
 
 CALL COLUMNCREATE, 2
 CALL COLUMNRESIZE, 2, 4200, 4200
 CALL COLUMNMOVE, 2, -500, -2200
 
+CALL COLUMNCREATE, 3
+CALL COLUMNRESIZE, 3, 4200, 4200
+CALL COLUMNMOVE, 3, 3800, 1800
+
+SETSOUNDVOLUME 30
+
+ADDVOIDCHARA
+
 CALL ローグライクモード
 
 @ローグライクモード
+#DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNTX
 #DIM DYNAMIC LCOUNTY
 ;現状は正方形のみ
 #DIM CONST RLMAP_CONST = VARSIZE("RLMAP", 1)
-
+#DIM DYNAMIC 生成キャラ
+#DIM DYNAMIC ランセレ, 10000
 
 CALL ダンジョン生成
+
+VARSET 出現敵イニシャル
+
+;RAND:10000でやると各機種先頭キャラに偏るので一度別変数に入れてから決める
+VARSET ランセレ
+FOR LCOUNT, 0, 10000
+	;SIF NO:PLAYER == LCOUNT
+	;	CONTINUE
+	SIF EXISTCSV(LCOUNT) && !撃破済み:LCOUNT
+		ランセレ:FINDELEMENT(ランセレ, 0) = LCOUNT
+NEXT
 
 ARRAYCOPY "RLMAP_CREATE", "RLMAP"
 
@@ -57,12 +78,26 @@ FOR LCOUNTX, 0, RLMAP_CONST
 			;敵配置
 			IF RAND:250 == 0
 				;敵味方全部キャラデータとして扱う
-				ADDVOIDCHARA
-				TARGET = CHARANUM-1
-				RLMAP_ENEMY:LCOUNTX:LCOUNTY = TARGET
-				CFLAGRL:HP = 20
-				CFLAGRL:MAXHP = 20
-				CSTRRL:立場 = 敵
+				DO
+					;AWAIT 1000
+					生成キャラ = ランセレ:(RAND:FINDELEMENT(ランセレ, 0))
+					;PRINTFORML %CSVNAME(生成キャラ)%生成中 {GETCHARA(生成キャラ)} {FINDELEMENTF(出現敵イニシャル, CHARATU(CSVNAME(生成キャラ), 0))}
+					SIF GETCHARA(生成キャラ) > 0
+						CONTINUE
+					;一文字タイルなのでイニシャルが被ったキャラも諦める
+					SIF FINDELEMENTF(出現敵イニシャル, CHARATU(CSVCALLNAME(生成キャラ), 0)) > 0
+						CONTINUE
+					
+					ADDCHARA 生成キャラ
+					TARGET = CHARANUM-1
+					RLMAP_ENEMY:LCOUNTX:LCOUNTY = TARGET
+					CFLAGRL:HP = BASE:体力/100
+					CFLAGRL:MAXHP = MAXBASE:体力/100
+					CSTRRL:立場 = 敵
+					出現敵イニシャル:FINDELEMENTF(出現敵イニシャル, "") = SUBSTRINGU(NAME:TARGET, 0, 1)
+					;PRINTFORMW 生成成功
+					BREAK
+				LOOP 1
 			ENDIF
 		ENDIF
 	NEXT
@@ -81,6 +116,8 @@ SIF RESULT
 #DIM DYNAMIC 全体マップ
 #DIM DYNAMIC 移動先X
 #DIM DYNAMIC 移動先Y
+
+CLEARLINE LINECOUNT
 
 CALL PL視界生成
 
@@ -113,13 +150,13 @@ IF 全体マップ
 						SETCOLORBYNAME lime
 						PRINT ％
 						RESETCOLOR
+					ELSEIF RLMAP_ENEMY:LCOUNTX:LCOUNTY
+						SETCOLORBYNAME coral
+						PRINTFORM %TOFULL(CHARATU(CALLNAME:(RLMAP_ENEMY:LCOUNTX:LCOUNTY), 0))%
+						RESETCOLOR
 					ELSEIF RLMAP_ITEM:LCOUNTX:LCOUNTY
 						SETCOLORBYNAME gold
 						PRINT ＊
-						RESETCOLOR
-					ELSEIF RLMAP_ENEMY:LCOUNTX:LCOUNTY
-						SETCOLORBYNAME coral
-						PRINT 敵
 						RESETCOLOR
 					ELSEIF RLMAP:LCOUNTX:LCOUNTY == 2
 						SETCOLORBYNAME blue
@@ -141,6 +178,9 @@ IF 階段判定()
 ELSE
 	;PRINTL 5で終了 Xで全体マップ
 ENDIF
+
+移動先X = -1
+移動先Y = -1
 
 ONEINPUTS
 
@@ -200,8 +240,10 @@ SELECTCASE RESULTS
 	CASE "5"
 		RETURN 0
 	CASE ">"
-		SIF 階段判定()
+		IF 階段判定()
+			CALL SE再生, 階段SE
 			RETURN 1
+		ENDIF
 	CASE "X"
 		INVERTBIT 全体マップ, 0
 ENDSELECT
@@ -212,6 +254,8 @@ IF 敵判定(移動先X, 移動先Y)
 ELSEIF !壁判定(移動先X, 移動先Y)
 	PL:XPOS = 移動先X
 	PL:YPOS = 移動先Y
+	SIF 階段判定()
+		CALL RLLOG, "階段がある >で登る"
 ENDIF
 
 ;敵の行動フェーズ
@@ -316,7 +360,7 @@ NEXT
 
 ダメージテキスト += @"={ダメージ値}"
 
-CALL RLLOG, @"@は%攻撃手段%で敵を攻撃した！(%ダメージテキスト%)"
+CALL RLLOG, @"@は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
 
 CALL SE再生, 格闘SE
 RLWAIT = 100
@@ -326,10 +370,10 @@ CALL RLREDRAW
 CFLAGRL:TARGETID:HP -= ダメージ値
 
 IF CFLAGRL:TARGETID:HP <= 0
-	CALL RLLOG, @"敵を倒した！"
+	CALL RLLOG, @"%NAME:TARGETID%を倒した！"
 	CALL 敵撃破, ATTACKERID, TARGETID
 	CALL SE再生, 敵撃破SE
-	RLWAIT = 100
+	;RLWAIT = 100
 	CALL RLREDRAW
 ENDIF
 
@@ -374,9 +418,9 @@ FOR LCOUNTX, 0, RLMAP広さ
 							CASE "左上"
 								;既に敵が居たら時計回りにずらす
 								IF RLMAP_ENEMY:(LCOUNTX-1):(LCOUNTY-1) > 0
-									;その先にも居たら諦める
+									;その先にも居たら諦めてランダムウォークする
 									IF RLMAP_ENEMY:(LCOUNTX):(LCOUNTY+1) > 0
-										RETURN
+										GOTO ランダムウォーク
 									ELSE
 										CALL 敵移動, TARGET, LCOUNTX, LCOUNTY+1
 									ENDIF
@@ -386,9 +430,9 @@ FOR LCOUNTX, 0, RLMAP広さ
 							CASE "上"
 								;既に敵が居たら時計回りにずらす
 								IF RLMAP_ENEMY:(LCOUNTX):(LCOUNTY-1) > 0
-									;その先にも居たら諦める
+									;その先にも居たら諦めてランダムウォークする
 									IF RLMAP_ENEMY:(LCOUNTX+1):(LCOUNTY-1) > 0
-										RETURN
+										GOTO ランダムウォーク
 									ELSE
 										CALL 敵移動, TARGET, LCOUNTX+1, LCOUNTY-1
 									ENDIF
@@ -398,9 +442,9 @@ FOR LCOUNTX, 0, RLMAP広さ
 							CASE "右上"
 								;既に敵が居たら時計回りにずらす
 								IF RLMAP_ENEMY:(LCOUNTX+1):(LCOUNTY-1) > 0
-									;その先にも居たら諦める
+									;その先にも居たら諦めてランダムウォークする
 									IF RLMAP_ENEMY:(LCOUNTX+1):(LCOUNTY) > 0
-										RETURN
+										GOTO ランダムウォーク
 									ELSE
 										CALL 敵移動, TARGET, LCOUNTX+1, LCOUNTY
 									ENDIF
@@ -410,9 +454,9 @@ FOR LCOUNTX, 0, RLMAP広さ
 							CASE "左"
 								;既に敵が居たら時計回りにずらす
 								IF RLMAP_ENEMY:(LCOUNTX-1):(LCOUNTY) > 0
-									;その先にも居たら諦める
+									;その先にも居たら諦めてランダムウォークする
 									IF RLMAP_ENEMY:(LCOUNTX-1):(LCOUNTY+1) > 0
-										RETURN
+										GOTO ランダムウォーク
 									ELSE
 										CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY+1
 									ENDIF
@@ -422,9 +466,9 @@ FOR LCOUNTX, 0, RLMAP広さ
 							CASE "右"
 								;既に敵が居たら時計回りにずらす
 								IF RLMAP_ENEMY:(LCOUNTX+1):(LCOUNTY) > 0
-									;その先にも居たら諦める
+									;その先にも居たら諦めてランダムウォークする
 									IF RLMAP_ENEMY:(LCOUNTX+1):(LCOUNTY+1) > 0
-										RETURN
+										GOTO ランダムウォーク
 									ELSE
 										CALL 敵移動, TARGET, LCOUNTX+1, LCOUNTY+1
 									ENDIF
@@ -434,9 +478,9 @@ FOR LCOUNTX, 0, RLMAP広さ
 							CASE "左下"
 								;既に敵が居たら時計回りにずらす
 								IF RLMAP_ENEMY:(LCOUNTX-1):(LCOUNTY+1) > 0
-									;その先にも居たら諦める
+									;その先にも居たら諦めてランダムウォークする
 									IF RLMAP_ENEMY:(LCOUNTX-1):(LCOUNTY) > 0
-										RETURN
+										GOTO ランダムウォーク
 									ELSE
 										CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY
 									ENDIF
@@ -446,9 +490,9 @@ FOR LCOUNTX, 0, RLMAP広さ
 							CASE "下"
 								;既に敵が居たら時計回りにずらす
 								IF RLMAP_ENEMY:(LCOUNTX):(LCOUNTY+1) > 0
-									;その先にも居たら諦める
+									;その先にも居たら諦めてランダムウォークする
 									IF RLMAP_ENEMY:(LCOUNTX-1):(LCOUNTY+1) > 0
-										RETURN
+										GOTO ランダムウォーク
 									ELSE
 										CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY+1
 									ENDIF
@@ -458,9 +502,9 @@ FOR LCOUNTX, 0, RLMAP広さ
 							CASE "右下"
 								;既に敵が居たら時計回りにずらす
 								IF RLMAP_ENEMY:(LCOUNTX+1):(LCOUNTY+1) > 0
-									;その先にも居たら諦める
+									;その先にも居たら諦めてランダムウォークする
 									IF RLMAP_ENEMY:(LCOUNTX-1):(LCOUNTY+1) > 0
-										RETURN
+										GOTO ランダムウォーク
 									ELSE
 										CALL 敵移動, TARGET, LCOUNTX-1, LCOUNTY+1
 									ENDIF
@@ -618,6 +662,7 @@ FOR LCOUNTX, 0, RLMAP広さ
 					ENDIF
 				;ランダムウォーク
 				ELSE
+					$ランダムウォーク
 					CSTRRL:移動方向 = 
 					DO
 						MOVEX = RAND:3-1
