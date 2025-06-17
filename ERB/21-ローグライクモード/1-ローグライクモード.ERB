@@ -33,6 +33,11 @@ SETSOUNDVOLUME 30
 
 ADDVOIDCHARA
 
+NAME:PLAYER = ＠
+CALLNAME:PLAYER = ＠
+CFLAGRL:PLAYER:HP = 10000
+CFLAGRL:PLAYER:MAXHP = 10000
+
 CALL ローグライクモード
 
 @ローグライクモード
@@ -293,7 +298,10 @@ SELECTCASE RESULTS
 ENDSELECT
 
 ;移動方向のフラグが必要かも
-IF 敵判定(移動先X, 移動先Y)
+IF 中立判定(移動先X, 移動先Y)
+	CALL RL中立キャラ, PLAYER, 中立判定(移動先X, 移動先Y)
+	RESTART
+ELSEIF 敵判定(移動先X, 移動先Y)
 	CALL RL攻撃, PLAYER, 敵判定(移動先X, 移動先Y), "格闘"
 ELSEIF !壁判定(移動先X, 移動先Y)
 	PL:XPOS = 移動先X
@@ -406,7 +414,7 @@ NEXT
 
 ダメージテキスト += @"={ダメージ値}"
 
-CALL RLLOG, @"@は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
 
 CALL SE再生, 格闘SE
 RLWAIT = 100
@@ -440,6 +448,15 @@ FOR LCOUNTX, 0, RLMAP広さ
 	NEXT
 NEXT
 
+;そのうちアイテム交換とか実装予定
+@RL中立キャラ, INTERACTID, TARGETID
+#DIM DYNAMIC INTERACTID
+#DIM DYNAMIC TARGETID
+
+CALL RLLOG, @"%CALLNAME:INTERACTID%は%CALLNAME:TARGETID%に挨拶した"
+
+CALL RLREDRAW
+
 @敵行動フェーズ
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNTX
@@ -454,6 +471,14 @@ FOR LCOUNTX, 0, RLMAP広さ
 	FOR LCOUNTY, 0, RLMAP広さ
 		IF RLMAP_ENEMY:LCOUNTX:LCOUNTY > 0 && !CFLAGRL:(RLMAP_ENEMY:LCOUNTX:LCOUNTY):移動済み
 			TARGET = RLMAP_ENEMY:LCOUNTX:LCOUNTY
+			;中立なら常にランダムウォーク
+			SIF CSTRRL:行動パターン == "中立"
+				GOTO ランダムウォーク
+			;隣接してれば攻撃してくる
+			IF 座標距離判別(LCOUNTX, LCOUNTY, PL:XPOS, PL:YPOS) == 1
+				CALL RL攻撃, TARGET, PLAYER, 近接攻撃候補(TARGET)
+				CONTINUE
+			ENDIF
 			;視界内かどうかで動きが変わる
 			IF PL_VISIBLE:LCOUNTX:LCOUNTY
 				;SELECTCASE 座標距離判別, LCOUNTX, LCOUNTY, PL:XPOS, PL:YPOS
