@@ -56,7 +56,7 @@ GETFOCUSCOLOR
 
 ;選択可能キャラのフラグを立てる
 FOR LCOUNT, 0, 10000
-	SIF LCOUNT == 0 && 表示場面 != "全キャラ表示"
+	SIF LCOUNT == 0 && !GROUPMATCH(表示場面, "全キャラ表示", "RL")
 		CONTINUE
 	SIF !EXISTCSV(LCOUNT)
 		CONTINUE
@@ -64,7 +64,7 @@ FOR LCOUNT, 0, 10000
 	SIF 全キャラ検索 && GETCHARA(LCOUNT) == -1
 		CONTINUE
 	;隠しキャラは選べない
-	SIF CSVTALENT(LCOUNT, GETNUM(TALENT, "隠しキャラ")) && 表示場面 != "全キャラ表示"
+	SIF CSVTALENT(LCOUNT, GETNUM(TALENT, "隠しキャラ")) && !GROUPMATCH(表示場面, "全キャラ表示", "RL")
 		CONTINUE
 	;アニマルは主人にできない
 	SIF 表示場面 == "主人選択" && CSVTALENT(LCOUNT, GETNUM(TALENT, "アニマル"))
@@ -120,9 +120,12 @@ FOR LCOUNT, 0, 10000
 			CONTINUE
 		SIF GROUPMATCH(表示場面, "購入", "段位エディット") && LCOUNT == NOF(MASTER)
 			CONTINUE
-		SIF CCB:LCOUNT && 表示場面 != "全キャラ表示"
+		SIF CCB:LCOUNT && !GROUPMATCH(表示場面, "全キャラ表示", "RL")
 			CONTINUE
 	ELSEIF フィルタ有効
+		;RLは作品フィルタのみ適用する
+		SIF 表示場面 == "RL"
+			GOTO RLフィルタ処理
 		SIF GROUPMATCH(表示場面, "購入", "段位エディット") && LCOUNT == NOF(MASTER)
 			CONTINUE
 		SIF CCB:LCOUNT
@@ -211,6 +214,7 @@ FOR LCOUNT, 0, 10000
 						CONTINUE
 			ENDSELECT
 		ENDIF
+		$RLフィルタ処理
 		SIF OPTIONS:登場作品フィルタ != "" && GROUPMATCH(OPTIONS:登場作品フィルタ, CSVCSTR(LCOUNT, GETNUM(CSTR, "登場作品")), CSVCSTR(LCOUNT, GETNUM(CSTR, "登場作品２")), CSVCSTR(LCOUNT, GETNUM(CSTR, "登場作品３"))) == 0
 			CONTINUE
 		SIF OPTIONS:キャラデザフィルタ != "" && GROUPMATCH(OPTIONS:キャラデザフィルタ, CSVCSTR(LCOUNT, GETNUM(CSTR, "キャラデザ")), CSVCSTR(LCOUNT, GETNUM(CSTR, "キャラデザ２"))) == 0
@@ -240,7 +244,7 @@ FOR LCOUNT, 0, 10000
 			CONTINUE
 		SIF OPTION:性経験フィルタ && !INRANGE(LIMIT(開発難易度PT計算(LCOUNT), 1, 100), OPTION:性経験フィルタ%1000, OPTION:性経験フィルタ/1000)
 			CONTINUE
-		SIF LCOUNT == NOF(MASTER)
+		SIF LCOUNT == NOF(MASTER) && 表示場面 != "RL"
 			CONTINUE
 	ENDIF
 
@@ -295,7 +299,7 @@ FOR LCOUNT, 0, 10000
 					SETCOLOR 100, 150, 200
 		ENDSELECT
 	ENDIF
-	IF 表示場面 == "全キャラ表示"
+	IF GROUPMATCH(表示場面, "全キャラ表示", "RL")
 		IF 検索機能
 			SIF TOINT(マウスオーバー) == LCOUNT
 				SETCOLOR 選択文字色
@@ -334,6 +338,9 @@ ELSEIF !フィルタ有効
 	PRINTFORML 　[30000] %I18N("フィルタを有効にする")%
 	DRAWLINE
 ELSE
+	;RLは作品フィルタのみ使う
+	SIF 表示場面 == "RL"
+		GOTO RLフィルタ1
 	PRINTPLAIN 　CHARA  FILTER　
 	PRINTFORM [20000] %I18N("フィルタ設定")%
 	PRINTPLAIN 　
@@ -475,6 +482,7 @@ ELSE
 	ENDSELECT
 	RESETCOLOR
 
+	$RLフィルタ1
 	PRINTPLAIN 　EXTRA  FILTER　
 	SIF OPTIONS:登場作品フィルタ == ""
 		SETCOLORBYNAME gray
@@ -486,6 +494,10 @@ ELSE
 	ENDIF
 	PRINTPLAIN 　
 	RESETCOLOR
+	IF 表示場面 == "RL"
+		PRINTL 
+		GOTO RLフィルタ2
+	ENDIF
 
 	SIF OPTIONS:キャラデザフィルタ == ""
 		SETCOLORBYNAME gray
@@ -552,6 +564,7 @@ ELSE
 	ENDIF
 	RESETCOLOR
 	PRINTL 
+	$RLフィルタ2
 
 	PRINTPLAINFORM %SPACESLENS("　CUSTOM FILTER　")%
 	PRINTFORML [20020] %I18N("表示キャラを増やす")%　[20021] %I18N("表示キャラを減らす")%
