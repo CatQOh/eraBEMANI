@@ -9,16 +9,30 @@
 #DIMS DYNAMIC ダメージテキスト
 #DIM DYNAMIC 命中率
 #DIM DYNAMIC ダメージ値
+#DIM DYNAMIC ITEMID
+#DIMS DYNAMIC ダイス計算, 2
+#DIMS DYNAMIC 武器種
 
 ;命中判定 スキルとかいろいろ見るよね
-SELECTCASE 攻撃手段
-	CASE "格闘"
-		命中率 = 70
-		SIF RLスキル(ATTACKERID, "集中攻撃（格闘）")
-			命中率 = RLスキル(ATTACKERID, "集中攻撃（格闘）")
-	;武器名かDTのIDを見る？
-	CASEELSE
-ENDSELECT
+;数値なら所持アイテムで攻撃
+IF ISNUMERIC(攻撃手段)
+	ITEMID = TOINT(攻撃手段)
+	攻撃手段 = %RLITEMDT(ITEMID, "アイテム名")%
+	命中率 = TOINT(RLITEMDT(ITEMID, "命中率"))
+	SPLIT RLITEMDT(ITEMID, "ダイスロール"), "d", ダイス計算
+	ダイス数 = TOINT(ダイス計算:0)
+	ダイス面 = TOINT(ダイス計算:1)
+	武器種 = %RLITEMDT(ITEMID, "分類")%
+ELSE
+	SELECTCASE 攻撃手段
+		CASE "格闘"
+			命中率 = 70
+			SIF RLスキル(ATTACKERID, "集中攻撃（格闘）")
+				命中率 = RLスキル(ATTACKERID, "集中攻撃（格闘）")
+		;武器名かDTのIDを見る？
+		CASEELSE
+	ENDSELECT
+ENDIF
 
 ;ここで攻撃力を見る とりあえず格闘の2d4でテスト
 SELECTCASE 攻撃手段
@@ -48,7 +62,20 @@ NEXT
 
 CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
 
-CALL SE再生, 格闘SE
+SELECTCASE 攻撃手段
+	CASE "格闘"
+		CALL SE再生, 格闘SE
+	CASEELSE
+		SELECTCASE 武器種
+			CASE "刀剣"
+				CALL SE再生, 刀剣SE
+			CASE "短剣"
+				CALL SE再生, 短剣SE
+			CASE "鈍器"
+				CALL SE再生, 鈍器SE
+		ENDSELECT
+ENDSELECT
+
 RLWAIT = 100
 
 CALL RLREDRAW
@@ -97,8 +124,6 @@ NEXT
 
 SPLIT CSTRRL:ATTACKERID:攻撃方法, "/", 攻撃手段
 分割数 = RESULT
-
-DEBUGPRINTFORML 分割数 {分割数}
 
 IF 攻撃手段:0 == ""
 	RETURNF "格闘"
