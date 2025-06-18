@@ -60,7 +60,11 @@ NEXT
 
 ダメージテキスト += @"={ダメージ値}"
 
-CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+IF 攻撃手段 == "格闘" && CSTRRL:ATTACKERID:攻撃時メッセージ != ""
+	CALL RLLOG, @"%CALLNAME:ATTACKERID%は%CSTRRL:ATTACKERID:攻撃時メッセージ%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+ELSE
+	CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+ENDIF
 
 SELECTCASE 攻撃手段
 	CASE "格闘"
@@ -81,6 +85,20 @@ RLWAIT = 100
 CALL RLREDRAW
 
 CFLAGRL:TARGETID:HP -= ダメージ値
+
+IF TARGETID == PLAYER
+	FOR LCOUNT, 0, 52
+		SIF !インベントリ:LCOUNT
+			CONTINUE
+		IF RLITEMDT(インベントリ:LCOUNT, "アイテム名") == "メガネ"
+			IF RAND:10 == 0
+				CALL RLLOG, "インベントリ内のメガネが割れた！"
+				インベントリ:LCOUNT = 0
+				BREAK
+			ENDIF
+		ENDIF
+	NEXT
+ENDIF
 
 IF CFLAGRL:TARGETID:HP <= 0
 	IF TARGETID == PLAYER
@@ -112,6 +130,8 @@ FOR LCOUNTX, 0, RLMAP広さ
 		ENDIF
 	NEXT
 NEXT
+
+撃破済み:NOF(TARGETID) = 1
 
 ;;;敵専用関数
 @近接攻撃候補, ATTACKERID

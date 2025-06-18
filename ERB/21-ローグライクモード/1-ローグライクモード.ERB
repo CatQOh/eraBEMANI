@@ -75,6 +75,7 @@ SIF RESULT
 #DIM CONST RLMAP_CONST = VARSIZE("RLMAP", 1)
 #DIM DYNAMIC 生成キャラ
 #DIM DYNAMIC ランセレ, 10000
+#DIM DYNAMIC 試行回数
 
 CALL ダンジョン生成
 
@@ -126,6 +127,7 @@ FOR LCOUNTX, 0, RLMAP_CONST
 			;敵配置
 			IF RAND:250 == 0
 				;敵味方全部キャラデータとして扱う
+				試行回数 = 0
 				DO
 					;AWAIT 1000
 					生成キャラ = ランセレ:(RAND:FINDELEMENT(ランセレ, 0))
@@ -135,6 +137,8 @@ FOR LCOUNTX, 0, RLMAP_CONST
 					;一文字タイルなのでイニシャルが被ったキャラも諦める
 					SIF FINDELEMENTF(出現敵イニシャル, CHARATU(CSVCALLNAME(生成キャラ), 0)) > 0
 						CONTINUE
+					SIF 撃破済み:生成キャラ
+						CONTINUE
 					
 					ADDCHARA 生成キャラ
 					TARGET = CHARANUM-1
@@ -142,10 +146,12 @@ FOR LCOUNTX, 0, RLMAP_CONST
 					CFLAGRL:HP = BASE:体力/100
 					CFLAGRL:MAXHP = MAXBASE:体力/100
 					CSTRRL:立場 = 敵
+					CSTRRL:行動パターン = 中立
 					出現敵イニシャル:FINDELEMENTF(出現敵イニシャル, "") = SUBSTRINGU(NAME:TARGET, 0, 1)
 					;PRINTFORMW 生成成功
 					BREAK
-				LOOP 1
+					試行回数++
+				LOOP 試行回数 < 100
 			ENDIF
 		ENDIF
 	NEXT
