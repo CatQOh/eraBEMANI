@@ -1,4 +1,4 @@
-﻿@RL攻撃, ATTACKERID, TARGETID, 攻撃手段
+﻿@RL攻撃, ATTACKERID, TARGETID, 攻撃手段, 投擲扱い
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC ATTACKERID
@@ -16,17 +16,34 @@
 #DIMS DYNAMIC 武器スキル
 #DIM DYNAMIC 連射回数
 #DIM DYNAMIC 早撃ちスキル発動
+#DIM DYNAMIC 投擲扱い
 
 ;命中判定 スキルとかいろいろ見るよね
 ;数値なら所持アイテムで攻撃
 IF ISNUMERIC(攻撃手段)
 	ITEMID = TOINT(攻撃手段)
 	攻撃手段 = %RLITEMDT(ITEMID, "アイテム名")%
-	命中率計算 = TOINT(RLITEMDT(ITEMID, "命中率"))
-	SPLIT RLITEMDT(ITEMID, "ダイスロール"), "d", ダイス計算
-	ダイス数 = TOINT(ダイス計算:0)
-	ダイス面 = TOINT(ダイス計算:1)
 	武器種 = %RLITEMDT(ITEMID, "分類")%
+	SIF 武器種 == "投擲"
+		投擲扱い = 0
+	;多分武器じゃないアイテムを投擲した
+	IF (RLITEMDT(ITEMID, "ダイスロール") == "" || 投擲扱い)
+		命中率計算 = 50
+		;近接武器ならダイスロール反映
+		IF 近接遠隔逆引き(攻撃手段) == "近接武器"
+			SPLIT RLITEMDT(ITEMID, "ダイスロール"), "d", ダイス計算
+			ダイス数 = TOINT(ダイス計算:0)
+			ダイス面 = TOINT(ダイス計算:1)
+		ELSE
+			ダイス数 = 1
+			ダイス面 = 1
+		ENDIF
+	ELSE
+		命中率計算 = TOINT(RLITEMDT(ITEMID, "命中率"))
+		SPLIT RLITEMDT(ITEMID, "ダイスロール"), "d", ダイス計算
+		ダイス数 = TOINT(ダイス計算:0)
+		ダイス面 = TOINT(ダイス計算:1)
+	ENDIF
 	武器スキル = %RLITEMDT(ITEMID, "アイテムスキル")%
 ELSE
 	SELECTCASE 攻撃手段
@@ -62,24 +79,28 @@ SELECTCASE 攻撃手段
 	CASEELSE
 ENDSELECT
 
-SELECTCASE 武器種
-	CASE "ハンドガン"
-		SIF RLスキル(ATTACKERID, "早撃ち（ハンドガン）") && RANDPER(RLスキル(ATTACKERID, "早撃ち（ハンドガン）")*25)
-			早撃ちスキル発動 = 1
-	CASE "ライフル"
-		SIF RLスキル(ATTACKERID, "早撃ち（ライフル）") && RANDPER(RLスキル(ATTACKERID, "早撃ち（ライフル）")*25)
-			早撃ちスキル発動 = 1
-	CASE "ショットガン"
-		SIF RLスキル(ATTACKERID, "早撃ち（ショットガン）") && RANDPER(RLスキル(ATTACKERID, "早撃ち（ショットガン）")*25)
-			早撃ちスキル発動 = 1
-	CASE "マシンガン"
-		SIF RLスキル(ATTACKERID, "早撃ち（マシンガン）") && RANDPER(RLスキル(ATTACKERID, "早撃ち（マシンガン）")*25)
-			早撃ちスキル発動 = 1
-ENDSELECT
+;投擲なら連射判定は飛ばす
+IF !投擲扱い
+	SELECTCASE 武器種
+		CASE "ハンドガン"
+			SIF RLスキル(ATTACKERID, "早撃ち（ハンドガン）") && RANDPER(RLスキル(ATTACKERID, "早撃ち（ハンドガン）")*25)
+				早撃ちスキル発動 = 1
+		CASE "ライフル"
+			SIF RLスキル(ATTACKERID, "早撃ち（ライフル）") && RANDPER(RLスキル(ATTACKERID, "早撃ち（ライフル）")*25)
+				早撃ちスキル発動 = 1
+		CASE "ショットガン"
+			SIF RLスキル(ATTACKERID, "早撃ち（ショットガン）") && RANDPER(RLスキル(ATTACKERID, "早撃ち（ショットガン）")*25)
+				早撃ちスキル発動 = 1
+		CASE "マシンガン"
+			SIF RLスキル(ATTACKERID, "早撃ち（マシンガン）") && RANDPER(RLスキル(ATTACKERID, "早撃ち（マシンガン）")*25)
+				早撃ちスキル発動 = 1
+	ENDSELECT
+ENDIF
 
 IF RLアイテムスキル(武器スキル, "連射") || 早撃ちスキル発動
+	連射回数 = 1
 	IF RLアイテムスキル(武器スキル, "連射")
-		連射回数 = RLアイテムスキル(武器スキル, "連射")+1
+		連射回数 = RLアイテムスキル(武器スキル, "連射")
 		ダメージテキスト += @"連射スキルLv{RLアイテムスキル(武器スキル, "連射")}発動 "
 	ENDIF
 	IF 早撃ちスキル発動
@@ -104,10 +125,14 @@ IF RLアイテムスキル(武器スキル, "連射") || 早撃ちスキル発�
 
 		ダメージテキスト += @"={ダメージ値}"
 
-		IF 攻撃手段 == "格闘" && CSTRRL:ATTACKERID:攻撃時メッセージ != ""
-			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%CSTRRL:ATTACKERID:攻撃時メッセージ%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
-		ELSE
-			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+		CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+		IF ITEMID
+			CALL 使用回数低下, ITEMID
+			IF TOINT(RLITEMDT(ITEMID, "使用回数")) <= 0
+				CALL RLLOG, @"%攻撃手段%の弾が切れた！"
+				インベントリ:FINDELEMENT(インベントリ, ITEMID) = 0
+				BREAK
+			ENDIF
 		ENDIF
 	NEXT
 ELSE
@@ -127,10 +152,35 @@ ELSE
 
 	IF 攻撃手段 == "格闘" && CSTRRL:ATTACKERID:攻撃時メッセージ != ""
 		CALL RLLOG, @"%CALLNAME:ATTACKERID%は%CSTRRL:ATTACKERID:攻撃時メッセージ%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+	ELSEIF 武器種 == "投擲" || 投擲扱い
+		CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%を投げて%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
 	ELSE
 		CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
 	ENDIF
+	IF ITEMID
+		;投擲したアイテムは投擲アイテム以外なら壊れる
+		IF 投擲扱い
+			CALL RLLOG, @"%攻撃手段%は無茶な使い方で壊れた！"
+			インベントリ:FINDELEMENT(インベントリ, ITEMID) = 0
+		ELSE
+			CALL 使用回数低下, ITEMID
+			IF TOINT(RLITEMDT(ITEMID, "使用回数")) <= 0
+				SELECTCASE 武器種
+					CASE "ハンドガン", "ライフル", "マシンガン", "ショットガン", "重火器"
+						CALL RLLOG, @"%攻撃手段%の弾が切れた！"
+					CASE "弓"
+						CALL RLLOG, @"%攻撃手段%の矢は切れた！"
+					CASEELSE
+						CALL RLLOG, @"%攻撃手段%は壊れた！"
+				ENDSELECT
+				インベントリ:FINDELEMENT(インベントリ, ITEMID) = 0
+			ENDIF
+		ENDIF
+	ENDIF
 ENDIF
+
+SIF 投擲扱い
+	GOTO 投擲SE
 
 SELECTCASE 攻撃手段
 	CASE "格闘"
@@ -150,6 +200,9 @@ SELECTCASE 攻撃手段
 			CASE "マシンガン"
 				$連射SE
 				CALL SE再生, 銃連射SE
+			CASE "投擲"
+				$投擲SE
+				CALL SE再生, 投擲SE
 		ENDSELECT
 ENDSELECT
 
@@ -186,6 +239,10 @@ IF CFLAGRL:TARGETID:HP <= 0
 		CALL RLREDRAW
 	ENDIF
 ENDIF
+
+@使用回数低下, ITEMID
+#DIM DYNAMIC ITEMID
+DT_CELL_SET "RLITEMLIST", ITEMID, "使用回数", TOINT(RLITEMDT(ITEMID, "使用回数"))-1, 1
 
 @敵撃破, ATTACKERID, TARGETID
 #DIM DYNAMIC ATTACKERID
