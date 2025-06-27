@@ -30,7 +30,7 @@ IF ISNUMERIC(攻撃手段)
 	IF (RLITEMDT(ITEMID, "ダイスロール") == "" || 投擲扱い)
 		命中率計算 = 50
 		;近接武器ならダイスロール反映
-		IF 近接遠隔逆引き(攻撃手段) == "近接武器"
+		IF 近接遠距離逆引き(攻撃手段) == "近接武器"
 			SPLIT RLITEMDT(ITEMID, "ダイスロール"), "d", ダイス計算
 			ダイス数 = TOINT(ダイス計算:0)
 			ダイス面 = TOINT(ダイス計算:1)
@@ -296,13 +296,34 @@ DT_CELL_SET "RLITEMLIST", ITEMID, "使用回数", TOINT(RLITEMDT(ITEMID, "使用
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNTX
 #DIM DYNAMIC LCOUNTY
+#DIMS DYNAMIC ドロップアイテム一覧
+#DIM DYNAMIC 分割数
+#DIM DYNAMIC DROP_X
+#DIM DYNAMIC DROP_Y
+#DIMS DYNAMIC ドロップアイテム名
 
 ;経験値処理やドロップアイテム処理とか
+TARGET = TARGETID
 
 FOR LCOUNTX, 0, RLMAP広さ
 	FOR LCOUNTY, 0, RLMAP広さ
 		IF RLMAP_ENEMY:LCOUNTX:LCOUNTY == TARGETID
 			RLMAP_ENEMY:LCOUNTX:LCOUNTY = 0
+			;ドロップ処理
+			SIF CSTRRL:ドロップアイテム == ""
+				CSTRRL:ドロップアイテム = %CSTRRL:初期アイテム%
+			IF CSTRRL:ドロップアイテム != ""
+				CALL アイテムドロップ座標, LCOUNTX, LCOUNTY
+				DROP_X = RESULT:0
+				DROP_Y = RESULT:1
+				SPLIT CSTRRL:ドロップアイテム, "/", ドロップアイテム一覧
+				分割数 = RESULT
+				;ここでアイテムを生成してDTに入れた後にRLMAP_ITEMにはIDを入れる
+				ドロップアイテム名 = %ドロップアイテム一覧:(RAND:分割数)%
+				CALL RLアイテム生成, ドロップアイテム名, 1
+				RLMAP_ITEM:DROP_X:DROP_Y = RESULT
+				CALL RLLOG, @"%CALLNAME:TARGET%は%ドロップアイテム名%を落とした"
+			ENDIF
 		ENDIF
 	NEXT
 NEXT
@@ -312,7 +333,6 @@ NEXT
 ;;;敵専用関数
 @近接攻撃候補, ATTACKERID
 #FUNCTIONS
-#DIM DYNAMIC 格闘
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC 攻撃手段, 10
 #DIM DYNAMIC 分割数
@@ -321,19 +341,42 @@ NEXT
 SPLIT CSTRRL:ATTACKERID:攻撃方法, "/", 攻撃手段
 分割数 = RESULT
 
-IF 攻撃手段:0 == ""
+IF CSTRRL:ATTACKERID:攻撃方法 == ""
 	RETURNF "格闘"
-ELSEIF 攻撃手段:1 == ""
-	RETURNF 攻撃手段:0
 ELSE
 	;近接攻撃優先
 	FOR LCOUNT, 0, 分割数
-		SIF 近接遠隔逆引き(攻撃手段:LCOUNT) == "近接攻撃"
+		SIF 近接遠距離逆引き(攻撃手段:LCOUNT) == "近接攻撃"
 			RETURNF 攻撃手段:LCOUNT
 	NEXT
 	;上記を通らなかったらなんでもいいので武器で攻撃
 	RETURNF 攻撃手段:0
 ENDIF
+
+;;;敵専用関数
+@遠距離攻撃候補, ATTACKERID
+#FUNCTIONS
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 攻撃手段, 10
+#DIM DYNAMIC 分割数
+#DIM DYNAMIC ATTACKERID
+
+SPLIT CSTRRL:ATTACKERID:攻撃方法, "/", 攻撃手段
+分割数 = RESULT
+
+DEBUGPRINTFORML 遠距離分割数 {分割数}
+
+IF 攻撃手段:0 == ""
+	RETURNF ""
+ELSE
+	;遠距離攻撃優先
+	FOR LCOUNT, 0, 分割数
+		SIF 近接遠距離逆引き(攻撃手段:LCOUNT) == "遠距離武器"
+			RETURNF 攻撃手段:LCOUNT
+	NEXT
+ENDIF
+
+RETURNF ""
 
 @NPC攻撃選出
 #DIMS REF 攻撃手段
