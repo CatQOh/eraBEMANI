@@ -17,6 +17,7 @@
 #DIM DYNAMIC 連射回数
 #DIM DYNAMIC 早撃ちスキル発動
 #DIM DYNAMIC 投擲扱い
+#DIM DYNAMIC 攻撃失敗
 
 ;命中判定 スキルとかいろいろ見るよね
 ;数値なら所持アイテムで攻撃
@@ -102,12 +103,25 @@ SELECTCASE 攻撃手段
 				CASE "ライフル"
 					IF  RLスキル(ATTACKERID, "精密射撃（ライフル）")
 						ダイス面 += RLスキル(ATTACKERID, "精密射撃（ライフル）")*2
+						命中率計算 += RLスキル(ATTACKERID, "精密射撃（ライフル）")*10
 						ダメージテキスト += @"精密射撃スキルLv{RLスキル(ATTACKERID, "精密射撃（ライフル）")}発動 "
 					ENDIF
 				CASE "ハンドガン"
 					IF  RLスキル(ATTACKERID, "精密射撃（ハンドガン）")
 						ダイス面 += RLスキル(ATTACKERID, "精密射撃（ハンドガン）")*2
+						命中率計算 += RLスキル(ATTACKERID, "精密射撃（ハンドガン）")*10
 						ダメージテキスト += @"精密射撃スキルLv{RLスキル(ATTACKERID, "精密射撃（ハンドガン）")}発動 "
+					ENDIF
+				CASE "弓"
+					IF  RLスキル(ATTACKERID, "精密射撃（弓）")
+						ダイス面 += RLスキル(ATTACKERID, "精密射撃（弓）")*2
+						命中率計算 += RLスキル(ATTACKERID, "精密射撃（弓）")*10
+						ダメージテキスト += @"精密射撃スキルLv{RLスキル(ATTACKERID, "精密射撃（弓）")}発動 "
+					ENDIF
+				CASE "重火器"
+					IF  RLスキル(ATTACKERID, "精密射撃（重火器）")
+						命中率計算 += RLスキル(ATTACKERID, "精密射撃（重火器）")*10
+						ダメージテキスト += @"精密射撃スキルLv{RLスキル(ATTACKERID, "精密射撃（重火器）")}発動 "
 					ENDIF
 				CASEELSE
 			ENDSELECT
@@ -131,6 +145,16 @@ IF !投擲扱い
 				早撃ちスキル発動 = 1
 	ENDSELECT
 ENDIF
+
+;冷静スキルは命中率を上げる
+SIF RLスキル(ATTACKERID, "冷静")
+	命中率計算 += RLスキル(ATTACKERID, "冷静")*3
+
+;回避スキルがあれば命中率を下げる
+SIF RLスキル(TARGETID, "回避")
+	命中率計算 -= RLスキル(TARGETID, "回避")*10
+
+CALL SETMAX, 命中率計算, 1
 
 IF RLアイテムスキル(武器スキル, "連射") || 早撃ちスキル発動
 	連射回数 = 1
@@ -156,16 +180,24 @@ IF RLアイテムスキル(武器スキル, "連射") || 早撃ちスキル発�
 		;末尾の+を取る
 		ダメージテキスト = %SUBSTRING(ダメージテキスト, 0, STRLENS(ダメージテキスト)-1)%
 
-		ダメージ値 += SUMARRAY(ダイス結果)
-		IF  RLスキル(TARGETID, "頑丈")
-			ダメージ値 -= RLスキル(TARGETID, "頑丈")
-			CALL SETMAX(ダメージ値, 1)
-			ダメージテキスト += @"-{RLスキル(TARGETID, "頑丈")}(頑丈スキル)"
+		IF RANDPER(命中率計算)
+			ダメージ値 += SUMARRAY(ダイス結果)
+			IF  RLスキル(TARGETID, "頑丈")
+				ダメージ値 -= RLスキル(TARGETID, "頑丈")
+				CALL SETMAX(ダメージ値, 1)
+				ダメージテキスト += @"-{RLスキル(TARGETID, "頑丈")}(頑丈スキル)"
+			ENDIF
+
+			ダメージテキスト += @"={ダメージ値}"
+
+			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+		ELSE
+			IF RLスキル(TARGETID, "回避")
+				CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！回避スキルLv{RLスキル(TARGETID, "回避")}発動 攻撃は外れた(命中率:{命中率計算}\%)"
+			ELSE
+				CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！しかし攻撃は外れた(命中率:{命中率計算}\%)"
+			ENDIF
 		ENDIF
-
-		ダメージテキスト += @"={ダメージ値}"
-
-		CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
 		IF ITEMID
 			CALL 使用回数低下, ITEMID
 			IF TOINT(RLITEMDT(ITEMID, "使用回数")) <= 0
@@ -186,22 +218,31 @@ ELSE
 	;末尾の+を取る
 	ダメージテキスト = %SUBSTRING(ダメージテキスト, 0, STRLENS(ダメージテキスト)-1)%
 
-	ダメージ値 = SUMARRAY(ダイス結果)
+	IF RANDPER(命中率計算)
+		ダメージ値 = SUMARRAY(ダイス結果)
 
-	IF  RLスキル(TARGETID, "頑丈")
-		ダメージ値 -= RLスキル(TARGETID, "頑丈")
-		CALL SETMAX(ダメージ値, 1)
-		ダメージテキスト += @"-{RLスキル(TARGETID, "頑丈")}(頑丈スキル)"
-	ENDIF
+		IF  RLスキル(TARGETID, "頑丈")
+			ダメージ値 -= RLスキル(TARGETID, "頑丈")
+			CALL SETMAX(ダメージ値, 1)
+			ダメージテキスト += @"-{RLスキル(TARGETID, "頑丈")}(頑丈スキル)"
+		ENDIF
 
-	ダメージテキスト += @"={ダメージ値}"
+		ダメージテキスト += @"={ダメージ値}"
 
-	IF 攻撃手段 == "格闘" && CSTRRL:ATTACKERID:攻撃時メッセージ != ""
-		CALL RLLOG, @"%CALLNAME:ATTACKERID%は%CSTRRL:ATTACKERID:攻撃時メッセージ%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
-	ELSEIF 武器種 == "投擲" || 投擲扱い
-		CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%を投げて%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+		IF 攻撃手段 == "格闘" && CSTRRL:ATTACKERID:攻撃時メッセージ != ""
+			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%CSTRRL:ATTACKERID:攻撃時メッセージ%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+		ELSEIF 武器種 == "投擲" || 投擲扱い
+			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%を投げて%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+		ELSE
+			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+		ENDIF
 	ELSE
-		CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+		IF RLスキル(TARGETID, "回避")
+			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！回避スキルLv{RLスキル(TARGETID, "回避")}発動 攻撃は外れた(命中率:{命中率計算}\%)"
+		ELSE
+			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！しかし攻撃は外れた(命中率:{命中率計算}\%)"
+		ENDIF
+		攻撃失敗 = 1
 	ENDIF
 	IF ITEMID
 		;投擲したアイテムは投擲アイテム以外なら壊れる
@@ -230,15 +271,31 @@ SIF 投擲扱い
 
 SELECTCASE 攻撃手段
 	CASE "格闘"
-		CALL SE再生, 格闘SE
+		IF 攻撃失敗
+			CALL SE再生, 投擲SE
+		ELSE
+			CALL SE再生, 格闘SE
+		ENDIF
 	CASEELSE
 		SELECTCASE 武器種
 			CASE "刀剣"
-				CALL SE再生, 刀剣SE
+				IF 攻撃失敗
+					CALL SE再生, 投擲SE
+				ELSE
+					CALL SE再生, 刀剣SE
+				ENDIF
 			CASE "短剣"
-				CALL SE再生, 短剣SE
+				IF 攻撃失敗
+					CALL SE再生, 投擲SE
+				ELSE
+					CALL SE再生, 短剣SE
+				ENDIF
 			CASE "鈍器"
-				CALL SE再生, 鈍器SE
+				IF 攻撃失敗
+					CALL SE再生, 投擲SE
+				ELSE
+					CALL SE再生, 鈍器SE
+				ENDIF
 			CASE "ハンドガン", "ライフル", "ショットガン"
 				SIF 連射回数
 					GOTO 連射SE
@@ -249,6 +306,8 @@ SELECTCASE 攻撃手段
 			CASE "投擲"
 				$投擲SE
 				CALL SE再生, 投擲SE
+			CASE "弓"
+				CALL SE再生, 弓SE
 		ENDSELECT
 ENDSELECT
 
@@ -256,20 +315,22 @@ RLWAIT = 100
 
 CALL RLREDRAW
 
-CFLAGRL:TARGETID:HP -= ダメージ値
+IF ダメージ値
+	CFLAGRL:TARGETID:HP -= ダメージ値
 
-IF TARGETID == PLAYER
-	FOR LCOUNT, 0, 52
-		SIF !インベントリ:LCOUNT
-			CONTINUE
-		IF RLITEMDT(インベントリ:LCOUNT, "アイテム名") == "メガネ"
-			IF RAND:10 == 0
-				CALL RLLOG, "インベントリ内のメガネが割れた！"
-				インベントリ:LCOUNT = 0
-				BREAK
+	IF TARGETID == PLAYER
+		FOR LCOUNT, 0, 52
+			SIF !インベントリ:LCOUNT
+				CONTINUE
+			IF RLITEMDT(インベントリ:LCOUNT, "アイテム名") == "メガネ"
+				IF RAND:10 == 0
+					CALL RLLOG, "インベントリ内のメガネが割れた！"
+					インベントリ:LCOUNT = 0
+					BREAK
+				ENDIF
 			ENDIF
-		ENDIF
-	NEXT
+		NEXT
+	ENDIF
 ENDIF
 
 IF CFLAGRL:TARGETID:HP <= 0
