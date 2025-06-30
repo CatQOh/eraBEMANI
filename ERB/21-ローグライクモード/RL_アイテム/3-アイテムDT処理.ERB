@@ -133,7 +133,7 @@ FOR LCOUNT, 0, 52
 	SIF インベントリ:LCOUNT == 0
 		CONTINUE
 	IF INRANGE(表示数, ページ数*20, ページ数*20+20)
-		CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%(%RLITEMDT(インベントリ:LCOUNT, "ダイスロール")% 残り%RLITEMDT(インベントリ:LCOUNT, "使用回数")%回)"
+		CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%";(%RLITEMDT(インベントリ:LCOUNT, "ダイスロール")% 残り%RLITEMDT(インベントリ:LCOUNT, "使用回数")%回)"
 		表示数++
 	ELSE
 		SIF 表示数 > ページ数*20+20
@@ -469,32 +469,89 @@ CALL COLUMNBGCOLOR, 4, "0"
 
 @食料一覧
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC CHOOSE
+#DIM DYNAMIC 選択可能, 52
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 次ページあり
+#DIM DYNAMIC 回復量, 52
 
 CALL COLUMNBGCOLOR, 4, "darkolivegreen"
 
 CALL COLUMNPRINTL, 4, "□食料一覧 [>] 戻る"
+
+VARSET 選択可能
+表示数 = 0
+次ページあり = 0
 
 FOR LCOUNT, 0, 52
 	SIF インベントリ:LCOUNT == 0
 		CONTINUE
 	SELECTCASE RLITEMDT(インベントリ:LCOUNT, "分類")
 		CASE "食料"
-			CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%"
+			回復量:LCOUNT = RLアイテム効果(RLITEMDT(インベントリ:LCOUNT, "アイテム効果"), "満腹度回復")
+			$可食
+			IF INRANGE(表示数, ページ数*20, ページ数*20+20)
+				CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%(満腹度回復量:{回復量:LCOUNT})"
+				表示数++
+			ELSE
+				SIF 表示数 > ページ数*20+20
+					次ページあり = 1
+				表示数++
+			ENDIF
+			選択可能:LCOUNT = 1
+		CASEELSE
+			;イヨは麻雀牌も食える
+			IF CHARANAMEF(PLAYER) == "G-14 イヨ" && RLITEMDT(インベントリ:LCOUNT, "アイテム名") == "麻雀牌"
+				回復量:LCOUNT = 20
+				GOTO 可食
+			ENDIF
 	ENDSELECT
 NEXT
 
+CALL COLUMNPRINTL, 4, @"%RETURNSPACE(ページ数 > 0, "[4] 前ページ")% %RETURNSPACE(次ページあり, "[6] 次ページ")%"
+
 CALL RLREDRAW
 
-ONEBINPUTS
+ONEINPUTS
 
-IF RESULTS == ">"
+;IF RESULTS == ">"
+;	CALL COLUMNLOGRESET, 4
+;	CALL COLUMNBGCOLOR, 4, "0"
+;	RETURN 0
+;ENDIF
+
+SELECTCASE RESULTS
+	CASE "4"
+		IF ページ数 > 0
+			ページ数--
+			RESTART
+		ENDIF
+	CASE "6"
+		IF 次ページあり
+			ページ数++
+			RESTART
+		ENDIF
+ENDSELECT
+
+CHOOSE = FROMALPHABET(RESULTS)
+
+IF CHOOSE == -1 || !選択可能:CHOOSE
 	CALL COLUMNLOGRESET, 4
 	CALL COLUMNBGCOLOR, 4, "0"
 	RETURN 0
 ENDIF
 
+CALL RLLOG, @"%CALLNAME:PLAYER%は%RLITEMDT(インベントリ:CHOOSE, "アイテム名")%を口にした 満腹度が{回復量:CHOOSE}回復した！"
+CFLAGRL:PLAYER:満腹度 += 回復量:CHOOSE*100
+SIF CFLAGRL:PLAYER:満腹度 > CFLAGRL:PLAYER:満腹度最大値
+	CFLAGRL:PLAYER:満腹度 = CFLAGRL:PLAYER:満腹度最大値
+インベントリ:CHOOSE = 0
+
 CALL COLUMNLOGRESET, 4
 CALL COLUMNBGCOLOR, 4, "0"
+
+RETURN 1
 
 @投擲アイテム一覧
 #DIM DYNAMIC LCOUNT
