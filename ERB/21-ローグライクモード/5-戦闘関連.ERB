@@ -18,6 +18,8 @@
 #DIM DYNAMIC 早撃ちスキル発動
 #DIM DYNAMIC 投擲扱い
 #DIM DYNAMIC 攻撃失敗
+#DIMS DYNAMIC 命中率計算テキスト
+#DIM DYNAMIC 距離
 
 ;命中判定 スキルとかいろいろ見るよね
 ;数値なら所持アイテムで攻撃
@@ -160,6 +162,34 @@ SIF RLスキル(ATTACKERID, "冷静")
 SIF RLスキル(TARGETID, "回避")
 	命中率計算 -= RLスキル(TARGETID, "回避")*10
 
+命中率計算テキスト = {命中率計算}
+距離 = 相対距離(ATTACKERID, TARGETID)-1
+IF 距離 > 0
+	SELECTCASE 武器種
+		CASE "ライフル"
+			命中率計算 -= 距離*3
+			SIF 命中率計算 < 0
+				命中率計算 = 0
+			命中率計算テキスト += @"-3×{距離}(距離減衰)={命中率計算}"
+		CASE "ショットガン"
+			命中率計算 -= 距離*8
+			SIF 命中率計算 < 0
+				命中率計算 = 0
+			命中率計算テキスト += @"-15×{距離}(距離減衰)={命中率計算}"
+		CASE "マシンガン"
+			命中率計算 -= 距離*5
+			SIF 命中率計算 < 0
+				命中率計算 = 0
+			命中率計算テキスト += @"-5×{距離}(距離減衰)={命中率計算}"
+		;ハンドガン、投擲、重火器、弓、その他
+		CASEELSE
+			命中率計算 -= 距離*5
+			SIF 命中率計算 < 0
+				命中率計算 = 0
+			命中率計算テキスト += @"-5×{距離}(距離減衰)={命中率計算}"
+	ENDSELECT
+ENDIF
+
 CALL SETMAX, 命中率計算, 1
 
 IF RLアイテムスキル(武器スキル, "連射") || 早撃ちスキル発動
@@ -210,9 +240,9 @@ IF RLアイテムスキル(武器スキル, "連射") || 早撃ちスキル発�
 			ENDIF
 		ELSE
 			IF RLスキル(TARGETID, "回避")
-				CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！回避スキルLv{RLスキル(TARGETID, "回避")}発動 攻撃は外れた(命中率:{命中率計算}\%)"
+				CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！回避スキルLv{RLスキル(TARGETID, "回避")}発動 攻撃は外れた(命中率:%命中率計算テキスト%\%)"
 			ELSE
-				CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！しかし攻撃は外れた(命中率:{命中率計算}\%)"
+				CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！しかし攻撃は外れた(命中率:%命中率計算テキスト%\%)"
 			ENDIF
 		ENDIF
 		IF ITEMID
@@ -259,9 +289,9 @@ ELSE
 		ENDIF
 	ELSE
 		IF RLスキル(TARGETID, "回避")
-			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！回避スキルLv{RLスキル(TARGETID, "回避")}発動 攻撃は外れた(命中率:{命中率計算}\%)"
+			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！回避スキルLv{RLスキル(TARGETID, "回避")}発動 攻撃は外れた(命中率:%命中率計算テキスト%\%)"
 		ELSE
-			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！しかし攻撃は外れた(命中率:{命中率計算}\%)"
+			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！しかし攻撃は外れた(命中率:%命中率計算テキスト%\%)"
 		ENDIF
 		攻撃失敗 = 1
 	ENDIF
