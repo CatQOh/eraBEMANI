@@ -6,6 +6,8 @@
 #DIM DYNAMIC 屈服難易度PT
 #DIM DYNAMIC 対象
 #DIM DYNAMIC 価格表示
+#DIMS DYNAMIC マニュアル内容
+#DIMS DYNAMIC 対象キャラ名
 
 IF GETCHARA(対象) > 0
 	PRINTFORMW %I18N("|0|は既に購入されています", , CSVNAMEDISP(対象))%
@@ -17,13 +19,20 @@ ELSEIF 対象 == NOF(MASTER)
 	RETURN 1
 ENDIF
 
+対象キャラ名 = %CSVNAMEF(対象)%
+CALL キャラExMOD_チェック(対象キャラ名)
 IF LANGUAGE != "JP"
-	PRINTFORML 【%CSVNAMEDISP(対象)%（%CSVNAMEF(対象)%）】
+	PRINTFORML 【%CSVNAMEDISP(対象)%（%対象キャラ名%）】
 ELSE
 	FOR LCOUNT, 0, 100
-		SIF CSVCSTR(対象, LCOUNT) == ""
+		IF キャラマニュアル置き換えあり
+			マニュアル内容 = %キャラマニュアル_置き換え:LCOUNT%
+		ELSE
+			マニュアル内容 = %CSVCSTR(対象, LCOUNT)%
+		ENDIF
+		SIF マニュアル内容 == ""
 			BREAK
-		CALL MANUALPRINT, CSVCSTR(対象, LCOUNT)
+		CALL MANUALPRINT, マニュアル内容
 		CALL NEWLINE
 	NEXT
 ENDIF
@@ -356,6 +365,7 @@ SIF !クローニング
 	購入人数++
 ADDCHARA 対象
 TARGET = CHARANUM-1
+
 SIF CSTR:種族 == ""
 	DEBUGPRINTFORML %NAME:TARGET%に種族が設定されてない
 SIF CSTR:英語名 == ""
@@ -402,7 +412,10 @@ ENDIF
 ;MOD適用
 ;性別不明キャラは上で選んでるので性別MODは適用されない
 IF ゲームモード() != "段位認定" && !GETBIT(高速化, 1)
-	FOR LCOUNT, 0, VARSIZE("MOD")
+	CALL キャラExMOD_チェック(NAME:TARGET)
+	SIF キャラExMOD_MOD名 != ""
+		TRYCALLFORM キャラExMOD_%キャラExMOD_MOD名%(0)
+	FOR LCOUNT, 1, VARSIZE("MOD")
 		SIF ERDNAME(MOD, LCOUNT) == ""
 			CONTINUE
 		SELECTCASE ERDNAME(MOD, LCOUNT)
@@ -558,6 +571,9 @@ SIF ゲームモード() != "学園モード"
 ;段位なら固定
 SIF 受験段位名 == ""
 	CFLAG:発情周期 = RAND:26
+
+SIF ゲームモード() == "学園モード"
+	インモラル初期値補正 = CFLAG:インモラル - CSVCFLAG(GETNO(TARGET), GETNUM(CFLAG, "インモラル"))
 
 ;人気持ちは予め人気度が付く
 SIF TALENT:人気
