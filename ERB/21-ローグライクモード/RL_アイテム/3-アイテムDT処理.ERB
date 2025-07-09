@@ -1,12 +1,30 @@
-﻿@RLアイテム生成
+﻿@RLアイテム生成, アイテム名, ドロップ判定
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC アイテム名
 #DIM DYNAMIC RETURNID
+#DIM DYNAMIC ドロップ判定
+#DIM DYNAMIC レア度判定
 
-IF RAND:2 == 0
-	アイテム名 = %RLWEAPON:(RAND:VARSIZE("RLWEAPON"))%
-ELSE
-	アイテム名 = %RLITEM:(RAND:VARSIZE("RLITEM"))%
+IF !ドロップ判定
+	;5段階 抽選の仕様上高レア度アイテムの生成率は下記の数値より低い
+	SELECTCASE RAND:100
+		CASE 0 TO 49
+			レア度判定 = 1
+		CASE 50 TO 74
+			レア度判定 = 2
+		CASE 75 TO 87
+			レア度判定 = 3
+		CASE 88 TO 96
+			レア度判定 = 4
+		CASE 97 TO 99
+			レア度判定 = 5
+	ENDSELECT
+
+	IF RAND:2 == 0
+		アイテム名 = %RLWEAPON:(RAND:VARSIZE("RLWEAPON"))%
+	ELSE
+		アイテム名 = %RLITEM:(RAND:VARSIZE("RLITEM"))%
+	ENDIF
 ENDIF
 
 CALLF 武器性能, アイテム名
@@ -16,7 +34,9 @@ SIF RLITEMSPEC:分類 == ""
 ;#;SIF RLITEMSPEC:分類 == ""
 ;#; THROW %アイテム名%の性能定義無し
 
-SIF RLITEMSPEC:ドロップ専用 == "1"
+SIF RLITEMSPEC:ドロップ専用 == "1" && !ドロップ判定
+	RESTART
+SIF TOINT(RLITEMSPEC:レア度) > レア度判定 && !ドロップ判定
 	RESTART
 
 RETURNID = DT_ROW_ADD("RLITEMLIST")
@@ -49,12 +69,27 @@ ENDSELECT
 @アイテム拾得, X_POS, Y_POS
 #DIM DYNAMIC X_POS
 #DIM DYNAMIC Y_POS
+#DIM DYNAMIC 空きインベントリ
+
+空きインベントリ = FINDELEMENT(インベントリ, 0)
+
+IF RLMAP_ITEM:X_POS:Y_POS == 0
+	CALL RLLOG, "空気を拾った"
+	RETURN 0
+ENDIF
+
+IF 空きインベントリ == -1
+	CALL RLLOG, "これ以上アイテムを持てない"
+	RETURN 0
+ENDIF
 
 インベントリ:FINDELEMENT(インベントリ, 0) = RLMAP_ITEM:X_POS:Y_POS
 
-CALL RLLOG, @"%RLITEMDT(RLMAP_ITEM:X_POS:Y_POS, "アイテム名")%を拾った"
+CALL RLLOG, @"%RLITEMDT(RLMAP_ITEM:X_POS:Y_POS, "アイテム名")%を拾った(%TOALPHABET(空きインベントリ)%)"
 
 RLMAP_ITEM:X_POS:Y_POS = 0
+
+RETURN 1
 
 @アイテム拾得_生成, アイテム名
 #DIM DYNAMIC LCOUNT
@@ -85,61 +120,144 @@ NEXT
 
 @インベントリ一覧
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC CHOOSE
+#DIM DYNAMIC 選択可能, 52
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 次ページあり
 
 CALL COLUMNBGCOLOR, 4, "darkolivegreen"
 
+CALL COLUMNLOGRESET, 4
+
 CALL COLUMNPRINTL, 4, "□インベントリ一覧 [>] 戻る"
+
+VARSET 選択可能
+表示数 = 0
+次ページあり = 0
 
 FOR LCOUNT, 0, 52
 	SIF インベントリ:LCOUNT == 0
-		BREAK
-	CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%"
+		CONTINUE
+	IF INRANGE(表示数, ページ数*20, ページ数*20+20)
+		CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%";(%RLITEMDT(インベントリ:LCOUNT, "ダイスロール")% 残り%RLITEMDT(インベントリ:LCOUNT, "使用回数")%回)"
+		表示数++
+	ELSE
+		SIF 表示数 > ページ数*20+20
+			次ページあり = 1
+		表示数++
+	ENDIF
+	選択可能:LCOUNT = 1
 NEXT
+
+CALL COLUMNPRINTL, 4, @"%RETURNSPACE(ページ数 > 0, "[4] 前ページ")% %RETURNSPACE(次ページあり, "[6] 次ページ")%"
 
 CALL RLREDRAW
 
-ONEBINPUTS
+ONEINPUTS
 
-IF RESULTS == ">"
+;IF RESULTS == ">"
+;	CALL COLUMNLOGRESET, 4
+;	CALL COLUMNBGCOLOR, 4, "0"
+;	RETURN 0
+;ENDIF
+
+SELECTCASE RESULTS
+	CASE "4"
+		IF ページ数 > 0
+			ページ数--
+			RESTART
+		ENDIF
+	CASE "6"
+		IF 次ページあり
+			ページ数++
+			RESTART
+		ENDIF
+ENDSELECT
+
+CHOOSE = FROMALPHABET(RESULTS)
+
+IF CHOOSE == -1 || !選択可能:CHOOSE
 	CALL COLUMNLOGRESET, 4
 	CALL COLUMNBGCOLOR, 4, "0"
 	RETURN 0
 ENDIF
 
-CALL COLUMNLOGRESET, 4
-CALL COLUMNBGCOLOR, 4, "0"
+CALL RLアイテム詳細表示, インベントリ:CHOOSE
+
+RESTART
 
 @近接武器一覧
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC CHOOSE
 #DIM DYNAMIC ATTACK_X
 #DIM DYNAMIC ATTACK_Y
+#DIM DYNAMIC ATTACK_RANGE
 #DIM DYNAMIC 攻撃方向
+#DIM DYNAMIC 選択可能, 52
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 次ページあり
 
 CALL COLUMNBGCOLOR, 4, "darkolivegreen"
 
+CALL COLUMNLOGRESET, 4
+
 CALL COLUMNPRINTL, 4, "□近接武器一覧 [>] 戻る"
+
+VARSET 選択可能
+表示数 = 0
+次ページあり = 0
 
 FOR LCOUNT, 0, 52
 	SIF インベントリ:LCOUNT == 0
-		BREAK
+		CONTINUE
 	SELECTCASE RLITEMDT(インベントリ:LCOUNT, "分類")
 		CASE "刀剣", "短剣", "鈍器"
-			CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%(%RLITEMDT(インベントリ:LCOUNT, "ダイスロール")% 残り%RLITEMDT(インベントリ:LCOUNT, "使用回数")%回)"
+			IF INRANGE(表示数, ページ数*20, ページ数*20+20)
+				CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%(%RLITEMDT(インベントリ:LCOUNT, "ダイスロール")% 残り%RLITEMDT(インベントリ:LCOUNT, "使用回数")%回)"
+				表示数++
+			ELSE
+				SIF 表示数 > ページ数*20+20
+					次ページあり = 1
+				表示数++
+			ENDIF
+			選択可能:LCOUNT = 1
 	ENDSELECT
 NEXT
 
+CALL COLUMNPRINTL, 4, @"%RETURNSPACE(ページ数 > 0, "[4] 前ページ")% %RETURNSPACE(次ページあり, "[6] 次ページ")%"
+
 CALL RLREDRAW
 
-ONEBINPUTS
+ONEINPUTS
 
-IF RESULTS == ">"
+;IF RESULTS == ">"
+;	CALL COLUMNLOGRESET, 4
+;	CALL COLUMNBGCOLOR, 4, "0"
+;	RETURN 0
+;ENDIF
+
+SELECTCASE RESULTS
+	CASE "4"
+		IF ページ数 > 0
+			ページ数--
+			RESTART
+		ENDIF
+	CASE "6"
+		IF 次ページあり
+			ページ数++
+			RESTART
+		ENDIF
+ENDSELECT
+
+CHOOSE = FROMALPHABET(RESULTS)
+
+IF CHOOSE == -1 || !選択可能:CHOOSE
 	CALL COLUMNLOGRESET, 4
 	CALL COLUMNBGCOLOR, 4, "0"
 	RETURN 0
 ENDIF
-
-CHOOSE = FROMALPHABET(RESULTS)
 
 CALL RLLOG, @"%RLITEMDT(インベントリ:CHOOSE, "アイテム名")%でどこを攻撃する？(テンキーで入力)"
 
@@ -159,6 +277,7 @@ ENDIF
 
 ATTACK_X = RESULT
 ATTACK_Y = RESULT:1
+ATTACK_RANGE = RESULT:2
 
 IF 敵判定(ATTACK_X, ATTACK_Y)
 	CALL RL攻撃, PLAYER, 敵判定(ATTACK_X, ATTACK_Y), インベントリ:CHOOSE
@@ -168,6 +287,7 @@ ELSEIF 中立判定(ATTACK_X, ATTACK_Y)
 	ONEINPUTS
 	SELECTCASE RESULTS
 		CASE "y", "Y"
+			CFLAGRL:PLAYER:中立キャラ攻撃回数++
 			CSTRRL:中立判定(ATTACK_X, ATTACK_Y):行動パターン = 近接攻撃
 			CALL RL攻撃, PLAYER, 敵判定(ATTACK_X, ATTACK_Y), インベントリ:CHOOSE
 			SIF 敵判定(ATTACK_X, ATTACK_Y)
@@ -185,43 +305,131 @@ RETURN 1
 
 @遠距離武器一覧
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC CHOOSE
+#DIM DYNAMIC ATTACK_X
+#DIM DYNAMIC ATTACK_Y
+#DIM DYNAMIC ATTACK_RANGE
+#DIM DYNAMIC 攻撃方向
+#DIM DYNAMIC 選択可能, 52
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 次ページあり
 
 CALL COLUMNBGCOLOR, 4, "darkolivegreen"
 
+CALL COLUMNLOGRESET, 4
+
 CALL COLUMNPRINTL, 4, "□遠距離武器一覧 [>] 戻る"
+
+VARSET 選択可能
+表示数 = 0
+次ページあり = 0
 
 FOR LCOUNT, 0, 52
 	SIF インベントリ:LCOUNT == 0
-		BREAK
+		CONTINUE
 	SELECTCASE RLITEMDT(インベントリ:LCOUNT, "分類")
 		CASE "ハンドガン", "ライフル", "マシンガン", "ショットガン", "弓", "重火器"
-			CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%"
+			IF INRANGE(表示数, ページ数*20, ページ数*20+20)
+				CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%(%RLITEMDT(インベントリ:LCOUNT, "ダイスロール")% 残り%RLITEMDT(インベントリ:LCOUNT, "使用回数")%回)"
+				表示数++
+			ELSE
+				SIF 表示数 > ページ数*20+20
+					次ページあり = 1
+				表示数++
+			ENDIF
+			選択可能:LCOUNT = 1
 	ENDSELECT
 NEXT
 
+CALL COLUMNPRINTL, 4, @"%RETURNSPACE(ページ数 > 0, "[4] 前ページ")% %RETURNSPACE(次ページあり, "[6] 次ページ")%"
+
 CALL RLREDRAW
 
-ONEBINPUTS
+ONEINPUTS
 
-IF RESULTS == ">"
+;IF RESULTS == ">"
+;	CALL COLUMNLOGRESET, 4
+;	CALL COLUMNBGCOLOR, 4, "0"
+;	RETURN 0
+;ENDIF
+
+SELECTCASE RESULTS
+	CASE "4"
+		IF ページ数 > 0
+			ページ数--
+			RESTART
+		ENDIF
+	CASE "6"
+		IF 次ページあり
+			ページ数++
+			RESTART
+		ENDIF
+ENDSELECT
+
+CHOOSE = FROMALPHABET(RESULTS)
+
+IF CHOOSE == -1 || !選択可能:CHOOSE
 	CALL COLUMNLOGRESET, 4
 	CALL COLUMNBGCOLOR, 4, "0"
 	RETURN 0
 ENDIF
 
+CALL RLLOG, @"%RLITEMDT(インベントリ:CHOOSE, "アイテム名")%でどの方向をを攻撃する？(テンキーで入力)"
+
 CALL COLUMNLOGRESET, 4
 CALL COLUMNBGCOLOR, 4, "0"
+
+CALL RLREDRAW
+
+ONEINPUT
+
+CALL 直線NPC座標, RESULT
+
+IF RESULT == 0
+	CALL RLLOG, "無効な入力です"
+	RETURN 0
+ENDIF
+
+ATTACK_X = RESULT
+ATTACK_Y = RESULT:1
+
+IF RESULT == -1
+	CALL RLLOG, "そこには誰も居ない"
+	RETURN 0
+ELSEIF 敵判定(ATTACK_X, ATTACK_Y)
+	CALL RL攻撃, PLAYER, 敵判定(ATTACK_X, ATTACK_Y), インベントリ:CHOOSE
+ELSEIF 中立判定(ATTACK_X, ATTACK_Y)
+	CALL RLLOG, @"%CALLNAME:中立判定(ATTACK_X, ATTACK_Y)%は攻撃したら敵対するだろう 本当に攻撃する？ [y] Yes [n] No"
+	CALL RLREDRAW
+	ONEINPUTS
+	SELECTCASE RESULTS
+		CASE "y", "Y"
+			CFLAGRL:PLAYER:中立キャラ攻撃回数++
+			CSTRRL:中立判定(ATTACK_X, ATTACK_Y):行動パターン = 近接攻撃
+			CALL RL攻撃, PLAYER, 敵判定(ATTACK_X, ATTACK_Y), インベントリ:CHOOSE
+			SIF 敵判定(ATTACK_X, ATTACK_Y)
+				CALL RLLOG, @"%CALLNAME:敵判定(ATTACK_X, ATTACK_Y)%は逆上した！"
+		CASEELSE
+			CALL RLLOG, "攻撃を中断した"
+			RETURN 0
+	ENDSELECT
+ENDIF
+
+RETURN 1
 
 @巻物一覧
 #DIM DYNAMIC LCOUNT
 
 CALL COLUMNBGCOLOR, 4, "darkolivegreen"
 
+CALL COLUMNLOGRESET, 4
+
 CALL COLUMNPRINTL, 4, "□巻物一覧 [>] 戻る"
 
 FOR LCOUNT, 0, 52
 	SIF インベントリ:LCOUNT == 0
-		BREAK
+		CONTINUE
 	SELECTCASE RLITEMDT(インベントリ:LCOUNT, "分類")
 		CASE "巻物"
 			CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%"
@@ -243,88 +451,389 @@ CALL COLUMNBGCOLOR, 4, "0"
 
 @ポーション一覧
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC CHOOSE
+#DIM DYNAMIC 選択可能, 52
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 次ページあり
+#DIM DYNAMIC 回復量, 52
+#DIMS DYNAMIC SPLITVAR, 2
 
 CALL COLUMNBGCOLOR, 4, "darkolivegreen"
+
+CALL COLUMNLOGRESET, 4
 
 CALL COLUMNPRINTL, 4, "□ポーション一覧 [>] 戻る"
 
+VARSET 選択可能
+表示数 = 0
+次ページあり = 0
+
 FOR LCOUNT, 0, 52
 	SIF インベントリ:LCOUNT == 0
-		BREAK
+		CONTINUE
 	SELECTCASE RLITEMDT(インベントリ:LCOUNT, "分類")
 		CASE "ポーション"
-			CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%"
+			IF INRANGE(表示数, ページ数*20, ページ数*20+20)
+				CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%(%RLITEMDT(インベントリ:LCOUNT, "アイテム効果")%)"
+				表示数++
+			ELSE
+				SIF 表示数 > ページ数*20+20
+					次ページあり = 1
+				表示数++
+			ENDIF
+			選択可能:LCOUNT = 1
 	ENDSELECT
 NEXT
 
+CALL COLUMNPRINTL, 4, @"%RETURNSPACE(ページ数 > 0, "[4] 前ページ")% %RETURNSPACE(次ページあり, "[6] 次ページ")%"
+
 CALL RLREDRAW
 
-ONEBINPUTS
+ONEINPUTS
 
-IF RESULTS == ">"
+;IF RESULTS == ">"
+;	CALL COLUMNLOGRESET, 4
+;	CALL COLUMNBGCOLOR, 4, "0"
+;	RETURN 0
+;ENDIF
+
+SELECTCASE RESULTS
+	CASE "4"
+		IF ページ数 > 0
+			ページ数--
+			RESTART
+		ENDIF
+	CASE "6"
+		IF 次ページあり
+			ページ数++
+			RESTART
+		ENDIF
+ENDSELECT
+
+CHOOSE = FROMALPHABET(RESULTS)
+
+IF CHOOSE == -1 || !選択可能:CHOOSE
 	CALL COLUMNLOGRESET, 4
 	CALL COLUMNBGCOLOR, 4, "0"
 	RETURN 0
 ENDIF
 
+CALL RLLOG, @"%CALLNAME:PLAYER%は%RLITEMDT(インベントリ:CHOOSE, "アイテム名")%を飲んだ "
+
+SPLIT RLITEMDT(インベントリ:CHOOSE, "アイテム効果"), "*", SPLITVAR
+
+SELECTCASE SPLITVAR:0
+	CASE "HP回復"
+		CALL RLLOGADD, @"体力が%SPLITVAR:1%回復した！"
+		CFLAGRL:PLAYER:HP += TOINT(SPLITVAR:1)
+		SIF CFLAGRL:PLAYER:HP > CFLAGRL:PLAYER:MAXHP
+			CFLAGRL:PLAYER:HP = CFLAGRL:PLAYER:MAXHP
+	CASE "魅了"
+		CALL RLLOGADD, @"%CALLNAME:PLAYER%は少し惚気た気分になった"
+	CASEELSE
+		CALL RLLOG, "未実装です"
+		CALL COLUMNLOGRESET, 4
+		CALL COLUMNBGCOLOR, 4, "0"
+		RETURN 0
+ENDSELECT
+インベントリ:CHOOSE = 0
+
 CALL COLUMNLOGRESET, 4
 CALL COLUMNBGCOLOR, 4, "0"
+
+RETURN 1
 
 @食料一覧
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC CHOOSE
+#DIM DYNAMIC 選択可能, 52
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 次ページあり
+#DIM DYNAMIC 回復量, 52
 
 CALL COLUMNBGCOLOR, 4, "darkolivegreen"
+
+CALL COLUMNLOGRESET, 4
 
 CALL COLUMNPRINTL, 4, "□食料一覧 [>] 戻る"
 
+VARSET 選択可能
+表示数 = 0
+次ページあり = 0
+
 FOR LCOUNT, 0, 52
 	SIF インベントリ:LCOUNT == 0
-		BREAK
+		CONTINUE
 	SELECTCASE RLITEMDT(インベントリ:LCOUNT, "分類")
 		CASE "食料"
-			CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%"
+			回復量:LCOUNT = RLアイテム効果(RLITEMDT(インベントリ:LCOUNT, "アイテム効果"), "満腹度回復")
+			$可食
+			IF INRANGE(表示数, ページ数*20, ページ数*20+20)
+				CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%(満腹度回復量:{回復量:LCOUNT})"
+				表示数++
+			ELSE
+				SIF 表示数 > ページ数*20+20
+					次ページあり = 1
+				表示数++
+			ENDIF
+			選択可能:LCOUNT = 1
+		CASEELSE
+			;イヨは麻雀牌も食える
+			IF CHARANAMEF(PLAYER) == "G-14 イヨ" && RLITEMDT(インベントリ:LCOUNT, "アイテム名") == "麻雀牌"
+				回復量:LCOUNT = 20
+				GOTO 可食
+			ENDIF
 	ENDSELECT
 NEXT
 
+CALL COLUMNPRINTL, 4, @"%RETURNSPACE(ページ数 > 0, "[4] 前ページ")% %RETURNSPACE(次ページあり, "[6] 次ページ")%"
+
 CALL RLREDRAW
 
-ONEBINPUTS
+ONEINPUTS
 
-IF RESULTS == ">"
+;IF RESULTS == ">"
+;	CALL COLUMNLOGRESET, 4
+;	CALL COLUMNBGCOLOR, 4, "0"
+;	RETURN 0
+;ENDIF
+
+SELECTCASE RESULTS
+	CASE "4"
+		IF ページ数 > 0
+			ページ数--
+			RESTART
+		ENDIF
+	CASE "6"
+		IF 次ページあり
+			ページ数++
+			RESTART
+		ENDIF
+ENDSELECT
+
+CHOOSE = FROMALPHABET(RESULTS)
+
+IF CHOOSE == -1 || !選択可能:CHOOSE
 	CALL COLUMNLOGRESET, 4
 	CALL COLUMNBGCOLOR, 4, "0"
 	RETURN 0
 ENDIF
 
+CALL RLLOG, @"%CALLNAME:PLAYER%は%RLITEMDT(インベントリ:CHOOSE, "アイテム名")%を口にした 満腹度が{回復量:CHOOSE}回復した！"
+CFLAGRL:PLAYER:満腹度 += 回復量:CHOOSE*100
+SIF CFLAGRL:PLAYER:満腹度 > CFLAGRL:PLAYER:満腹度最大値
+	CFLAGRL:PLAYER:満腹度 = CFLAGRL:PLAYER:満腹度最大値
+インベントリ:CHOOSE = 0
+
 CALL COLUMNLOGRESET, 4
 CALL COLUMNBGCOLOR, 4, "0"
 
+RETURN 1
+
 @投擲アイテム一覧
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC CHOOSE
+#DIM DYNAMIC ATTACK_X
+#DIM DYNAMIC ATTACK_Y
+#DIM DYNAMIC ATTACK_RANGE
+#DIM DYNAMIC 攻撃方向
+#DIM DYNAMIC 選択可能, 52
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 次ページあり
 
 CALL COLUMNBGCOLOR, 4, "darkolivegreen"
 
+CALL COLUMNLOGRESET, 4
+
 CALL COLUMNPRINTL, 4, "□投擲アイテム一覧 [>] 戻る"
+
+VARSET 選択可能
+表示数 = 0
+次ページあり = 0
 
 FOR LCOUNT, 0, 52
 	SIF インベントリ:LCOUNT == 0
-		BREAK
+		CONTINUE
 	;実はなんでも投げられる
-	CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%"
+	IF INRANGE(表示数, ページ数*20, ページ数*20+20)
+		CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%\@ RLITEMDT(インベントリ:LCOUNT, "ダイスロール") != "" ? (%RLITEMDT(インベントリ:LCOUNT, "ダイスロール")% 残り%RLITEMDT(インベントリ:LCOUNT, "使用回数")%回) #\@"
+		表示数++
+	ELSE
+		SIF 表示数 > ページ数*20+20
+			次ページあり = 1
+		表示数++
+	ENDIF
+	選択可能:LCOUNT = 1
 NEXT
 
 CALL RLREDRAW
 
-ONEBINPUTS
+ONEINPUTS
 
-IF RESULTS == ">"
+;IF RESULTS == ">"
+;	CALL COLUMNLOGRESET, 4
+;	CALL COLUMNBGCOLOR, 4, "0"
+;	RETURN 0
+;ENDIF
+
+SELECTCASE RESULTS
+	CASE "4"
+		IF ページ数 > 0
+			ページ数--
+			RESTART
+		ENDIF
+	CASE "6"
+		IF 次ページあり
+			ページ数++
+			RESTART
+		ENDIF
+ENDSELECT
+
+CHOOSE = FROMALPHABET(RESULTS)
+
+IF CHOOSE == -1 || !選択可能:CHOOSE
 	CALL COLUMNLOGRESET, 4
 	CALL COLUMNBGCOLOR, 4, "0"
 	RETURN 0
 ENDIF
 
+CALL RLLOG, @"%RLITEMDT(インベントリ:CHOOSE, "アイテム名")%でどの方向をを攻撃する？(テンキーで入力)"
+
 CALL COLUMNLOGRESET, 4
 CALL COLUMNBGCOLOR, 4, "0"
+
+CALL RLREDRAW
+
+ONEINPUT
+
+CALL 直線NPC座標, RESULT
+
+IF RESULT == 0
+	CALL RLLOG, "無効な入力です"
+	RETURN 0
+ENDIF
+
+ATTACK_X = RESULT
+ATTACK_Y = RESULT:1
+
+IF RESULT == -1
+	CALL RLLOG, "そこには誰も居ない"
+	RETURN 0
+ELSEIF 敵判定(ATTACK_X, ATTACK_Y)
+	CALL RL攻撃, PLAYER, 敵判定(ATTACK_X, ATTACK_Y), インベントリ:CHOOSE, 1
+ELSEIF 中立判定(ATTACK_X, ATTACK_Y)
+	CALL RLLOG, @"%CALLNAME:中立判定(ATTACK_X, ATTACK_Y)%は攻撃したら敵対するだろう 本当に攻撃する？ [y] Yes [n] No"
+	CALL RLREDRAW
+	ONEINPUTS
+	SELECTCASE RESULTS
+		CASE "y", "Y"
+			CFLAGRL:PLAYER:中立キャラ攻撃回数++
+			CSTRRL:中立判定(ATTACK_X, ATTACK_Y):行動パターン = 近接攻撃
+			CALL RL攻撃, PLAYER, 敵判定(ATTACK_X, ATTACK_Y), インベントリ:CHOOSE, 1
+			SIF 敵判定(ATTACK_X, ATTACK_Y)
+				CALL RLLOG, @"%CALLNAME:敵判定(ATTACK_X, ATTACK_Y)%は逆上した！"
+		CASEELSE
+			CALL RLLOG, "攻撃を中断した"
+			RETURN 0
+	ENDSELECT
+ENDIF
+
+RETURN 1
+
+@RL使用アイテム一覧
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC CHOOSE
+#DIM DYNAMIC 選択可能, 52
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 表示数
+#DIM DYNAMIC 次ページあり
+
+CALL COLUMNBGCOLOR, 4, "darkolivegreen"
+
+CALL COLUMNLOGRESET, 4
+
+CALL COLUMNPRINTL, 4, "□遠距離武器一覧 [>] 戻る"
+
+VARSET 選択可能
+表示数 = 0
+次ページあり = 0
+
+FOR LCOUNT, 0, 52
+	SIF インベントリ:LCOUNT == 0
+		CONTINUE
+	SELECTCASE RLITEMDT(インベントリ:LCOUNT, "分類")
+		CASE "使用アイテム"
+			IF INRANGE(表示数, ページ数*20, ページ数*20+20)
+				CALL COLUMNPRINTL, 4, @"　[%TOALPHABET(LCOUNT)%] %RLITEMDT(インベントリ:LCOUNT, "アイテム名")%"
+				表示数++
+			ELSE
+				SIF 表示数 > ページ数*20+20
+					次ページあり = 1
+				表示数++
+			ENDIF
+			選択可能:LCOUNT = 1
+	ENDSELECT
+NEXT
+
+CALL COLUMNPRINTL, 4, @"%RETURNSPACE(ページ数 > 0, "[4] 前ページ")% %RETURNSPACE(次ページあり, "[6] 次ページ")%"
+
+CALL RLREDRAW
+
+ONEINPUTS
+
+;IF RESULTS == ">"
+;	CALL COLUMNLOGRESET, 4
+;	CALL COLUMNBGCOLOR, 4, "0"
+;	RETURN 0
+;ENDIF
+
+SELECTCASE RESULTS
+	CASE "4"
+		IF ページ数 > 0
+			ページ数--
+			RESTART
+		ENDIF
+	CASE "6"
+		IF 次ページあり
+			ページ数++
+			RESTART
+		ENDIF
+ENDSELECT
+
+CHOOSE = FROMALPHABET(RESULTS)
+
+IF CHOOSE == -1 || !選択可能:CHOOSE
+	CALL COLUMNLOGRESET, 4
+	CALL COLUMNBGCOLOR, 4, "0"
+	RETURN 0
+ENDIF
+
+SELECTCASE RLITEMDT(インベントリ:CHOOSE, "アイテム効果")
+	CASE "魔法の地図"
+		CALL RLLOG, @"%RLITEMDT(インベントリ:CHOOSE, "アイテム名")%マップが探索済みになった(Xで見れる)"
+		VARSET RLMAP_EXPLORED, 1
+		CALL COLUMNLOGRESET, 4
+		CALL COLUMNBGCOLOR, 4, "0"
+		CALL RLREDRAW
+		RETURN 1
+	CASEELSE
+		CALL RLLOG, "未実装です"
+		VARSET RLMAP_EXPLORED, 1
+		CALL COLUMNLOGRESET, 4
+		CALL COLUMNBGCOLOR, 4, "0"
+		CALL RLREDRAW
+		RETURN 0
+ENDSELECT
+
+CALL COLUMNLOGRESET, 4
+CALL COLUMNBGCOLOR, 4, "0"
+
+CALL RLREDRAW
+
+RETURN 1
 
 @初期アイテム処理, 対象
 #DIM DYNAMIC 対象
@@ -336,8 +845,48 @@ SPLIT CSTRRL:対象:初期アイテム, "/", アイテム名
 
 分割数 = RESULT
 
-DEBUGPRINTFORML 分割数 {分割数}
-
 FOR LCOUNT, 0, 分割数
 	CALL アイテム拾得_生成, アイテム名:LCOUNT
 NEXT
+
+IF 対象 == PLAYER
+	PRINTL □追加で持っていく初期アイテムを選択してください
+	IF アイテム名:0 == ""
+		PRINTFORML 　%NAME:PLAYER%のデフォルトアイテム
+		PRINTL 　　- 無し
+		PRINTL 
+	ELSE
+		PRINTFORML 　- %NAME:PLAYER%のデフォルトアイテム
+		FOR LCOUNT, 0, 分割数
+			PRINTFORML 　　- %アイテム名:LCOUNT%
+		NEXT
+		PRINTL 
+	ENDIF
+	PRINTL 　[0] 刀+おにぎり(サムライ)
+	PRINTL 　[1] バール+おにぎり(撲殺天使)
+	PRINTL 　[2] ライフル+おにぎり(スナイパー)
+	PRINTL 　[3] マシンガン+おにぎり(コマンドー)
+	PRINTL 　[4] 弓+おにぎり(アーチャー)
+	PRINTL 　[5] ピストル+ナイフ+おにぎり(兵士)
+	PRINTL 　[6] ラーメン+おにぎり+バナナ(ランチセット)
+	BINPUT
+	SELECTCASE RESULT
+		CASE 0
+			CALL アイテム拾得_生成, "刀"
+		CASE 1
+			CALL アイテム拾得_生成, "バール"
+		CASE 2
+			CALL アイテム拾得_生成, "ライフル"
+		CASE 3
+			CALL アイテム拾得_生成, "マシンガン"
+		CASE 4
+			CALL アイテム拾得_生成, "弓"
+		CASE 5
+			CALL アイテム拾得_生成, "ピストル"
+			CALL アイテム拾得_生成, "ナイフ"
+		CASE 6
+			CALL アイテム拾得_生成, "ラーメン"
+			CALL アイテム拾得_生成, "バナナ"
+	ENDSELECT
+	CALL アイテム拾得_生成, "おにぎり"
+ENDIF

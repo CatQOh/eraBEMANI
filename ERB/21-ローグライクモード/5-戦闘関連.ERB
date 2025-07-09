@@ -1,5 +1,6 @@
-﻿@RL攻撃, ATTACKERID, TARGETID, 攻撃手段
+﻿@RL攻撃, ATTACKERID, TARGETID, 攻撃手段, 投擲扱い
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC ATTACKERID
 #DIM DYNAMIC TARGETID
 #DIMS DYNAMIC 攻撃手段
@@ -7,30 +8,71 @@
 #DIM DYNAMIC ダイス面
 #DIM DYNAMIC ダイス結果, 10
 #DIMS DYNAMIC ダメージテキスト
-#DIM DYNAMIC 命中率
+#DIM DYNAMIC 命中率計算
 #DIM DYNAMIC ダメージ値
 #DIM DYNAMIC ITEMID
 #DIMS DYNAMIC ダイス計算, 2
 #DIMS DYNAMIC 武器種
+#DIMS DYNAMIC 武器スキル
+#DIM DYNAMIC 連射回数
+#DIM DYNAMIC 早撃ちスキル発動
+#DIM DYNAMIC 投擲扱い
+#DIM DYNAMIC 攻撃失敗
+#DIMS DYNAMIC 命中率計算テキスト
+#DIM DYNAMIC 距離
 
 ;命中判定 スキルとかいろいろ見るよね
 ;数値なら所持アイテムで攻撃
 IF ISNUMERIC(攻撃手段)
 	ITEMID = TOINT(攻撃手段)
 	攻撃手段 = %RLITEMDT(ITEMID, "アイテム名")%
-	命中率 = TOINT(RLITEMDT(ITEMID, "命中率"))
-	SPLIT RLITEMDT(ITEMID, "ダイスロール"), "d", ダイス計算
-	ダイス数 = TOINT(ダイス計算:0)
-	ダイス面 = TOINT(ダイス計算:1)
 	武器種 = %RLITEMDT(ITEMID, "分類")%
+	SIF 武器種 == "投擲"
+		投擲扱い = 0
+	;多分武器じゃないアイテムを投擲した
+	IF (RLITEMDT(ITEMID, "ダイスロール") == "" || 投擲扱い)
+		命中率計算 = 50
+		;近接武器ならダイスロール反映
+		IF 近接遠距離逆引き(攻撃手段) == "近接武器"
+			SPLIT RLITEMDT(ITEMID, "ダイスロール"), "d", ダイス計算
+			ダイス数 = TOINT(ダイス計算:0)
+			ダイス面 = TOINT(ダイス計算:1)
+		ELSE
+			ダイス数 = 1
+			ダイス面 = 1
+		ENDIF
+	ELSE
+		命中率計算 = TOINT(RLITEMDT(ITEMID, "命中率"))
+		SPLIT RLITEMDT(ITEMID, "ダイスロール"), "d", ダイス計算
+		ダイス数 = TOINT(ダイス計算:0)
+		ダイス面 = TOINT(ダイス計算:1)
+	ENDIF
+	武器スキル = %RLITEMDT(ITEMID, "アイテムスキル")%
 ELSE
 	SELECTCASE 攻撃手段
 		CASE "格闘"
-			命中率 = 70
+			$格闘
+			命中率計算 = 70
 			SIF RLスキル(ATTACKERID, "集中攻撃（格闘）")
-				命中率 = RLスキル(ATTACKERID, "集中攻撃（格闘）")
+				命中率計算 = RLスキル(ATTACKERID, "集中攻撃（格闘）")
 		;武器名かDTのIDを見る？
 		CASEELSE
+			;PLはアイテム使わない攻撃は全て格闘
+			SIF ATTACKERID == PLAYER
+				GOTO 格闘
+			;魔法攻撃は未実装なので格闘と同じ扱いにする
+			IF STRFIND(攻撃手段, "魔法") >= 0
+				ダイス数 = 2
+				ダイス面 = 4
+				GOTO 格闘
+			ENDIF
+			CALLF アイテム性能呼び出し, 攻撃手段
+			命中率計算 = TOINT(RLITEMSPEC:命中率)
+			SPLIT RLITEMSPEC:ダイスロール, "d", ダイス計算
+			ダイス数 = TOINT(ダイス計算:0)
+			ダイス面 = TOINT(ダイス計算:1)
+			武器種 = %RLITEMSPEC:分類%
+			武器スキル = %RLITEMSPEC:アイテムスキル%
 	ENDSELECT
 ENDIF
 
@@ -44,39 +86,284 @@ SELECTCASE 攻撃手段
 		ENDIF
 		ダイス面 = 4
 	CASEELSE
+		IF 投擲扱い || 武器種逆引き(攻撃手段) == "投擲"
+			IF  RLスキル(ATTACKERID, "投擲")
+				ダイス面 += RLスキル(ATTACKERID, "投擲")*2
+				ダメージテキスト += @"投擲スキルLv{RLスキル(ATTACKERID, "投擲")}発動 "
+			ENDIF
+		ELSE
+			SELECTCASE 武器種逆引き(攻撃手段)
+				CASE "刀剣"
+					IF  RLスキル(ATTACKERID, "剣術")
+						ダイス面 += RLスキル(ATTACKERID, "剣術")*4
+						ダメージテキスト += @"剣術スキルLv{RLスキル(ATTACKERID, "剣術")}発動 "
+					ENDIF
+				CASE "短剣"
+					IF  RLスキル(ATTACKERID, "忍者")
+						ダイス面 += RLスキル(ATTACKERID, "忍者")*4
+						ダメージテキスト += @"忍者スキルLv{RLスキル(ATTACKERID, "忍者")}発動 "
+					ENDIF
+				CASE "鈍器"
+					IF  RLスキル(ATTACKERID, "フルスイング")
+						ダイス面 += RLスキル(ATTACKERID, "フルスイング")*4
+						ダメージテキスト += @"フルスイングスキルLv{RLスキル(ATTACKERID, "フルスイング")}発動 "
+					ENDIF
+				CASE "ライフル"
+					IF  RLスキル(ATTACKERID, "精密射撃（ライフル）")
+						ダイス面 += RLスキル(ATTACKERID, "精密射撃（ライフル）")*2
+						命中率計算 += RLスキル(ATTACKERID, "精密射撃（ライフル）")*10
+						ダメージテキスト += @"精密射撃スキルLv{RLスキル(ATTACKERID, "精密射撃（ライフル）")}発動 "
+					ENDIF
+				CASE "ハンドガン"
+					IF  RLスキル(ATTACKERID, "精密射撃（ハンドガン）")
+						ダイス面 += RLスキル(ATTACKERID, "精密射撃（ハンドガン）")*2
+						命中率計算 += RLスキル(ATTACKERID, "精密射撃（ハンドガン）")*10
+						ダメージテキスト += @"精密射撃スキルLv{RLスキル(ATTACKERID, "精密射撃（ハンドガン）")}発動 "
+					ENDIF
+				CASE "弓"
+					IF  RLスキル(ATTACKERID, "精密射撃（弓）")
+						ダイス面 += RLスキル(ATTACKERID, "精密射撃（弓）")*2
+						命中率計算 += RLスキル(ATTACKERID, "精密射撃（弓）")*10
+						ダメージテキスト += @"精密射撃スキルLv{RLスキル(ATTACKERID, "精密射撃（弓）")}発動 "
+					ENDIF
+				CASE "重火器"
+					IF  RLスキル(ATTACKERID, "精密射撃（重火器）")
+						命中率計算 += RLスキル(ATTACKERID, "精密射撃（重火器）")*10
+						ダメージテキスト += @"精密射撃スキルLv{RLスキル(ATTACKERID, "精密射撃（重火器）")}発動 "
+					ENDIF
+				CASEELSE
+			ENDSELECT
+		ENDIF
 ENDSELECT
 
-ダメージテキスト += @"{ダイス数}d{ダイス面} "
-
-FOR LCOUNT, 0, ダイス数
-	ダイス結果:LCOUNT = RAND(1, ダイス面+1)
-	ダメージテキスト += @"{ダイス結果:LCOUNT}+"
-NEXT
-
-;末尾の+を取る
-ダメージテキスト = %SUBSTRING(ダメージテキスト, 0, STRLENS(ダメージテキスト)-1)%
-
-ダメージ値 = SUMARRAY(ダイス結果)
-
-ダメージテキスト += @"={ダメージ値}"
-
-IF 攻撃手段 == "格闘" && CSTRRL:ATTACKERID:攻撃時メッセージ != ""
-	CALL RLLOG, @"%CALLNAME:ATTACKERID%は%CSTRRL:ATTACKERID:攻撃時メッセージ%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
-ELSE
-	CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+;投擲なら連射判定は飛ばす
+IF !投擲扱い
+	SELECTCASE 武器種
+		CASE "ハンドガン"
+			SIF RLスキル(ATTACKERID, "早撃ち（ハンドガン）") && RANDPER(RLスキル(ATTACKERID, "早撃ち（ハンドガン）")*25)
+				早撃ちスキル発動 = 1
+		CASE "ライフル"
+			SIF RLスキル(ATTACKERID, "早撃ち（ライフル）") && RANDPER(RLスキル(ATTACKERID, "早撃ち（ライフル）")*25)
+				早撃ちスキル発動 = 1
+		CASE "ショットガン"
+			SIF RLスキル(ATTACKERID, "早撃ち（ショットガン）") && RANDPER(RLスキル(ATTACKERID, "早撃ち（ショットガン）")*25)
+				早撃ちスキル発動 = 1
+		CASE "マシンガン"
+			SIF RLスキル(ATTACKERID, "早撃ち（マシンガン）") && RANDPER(RLスキル(ATTACKERID, "早撃ち（マシンガン）")*25)
+				早撃ちスキル発動 = 1
+	ENDSELECT
 ENDIF
+
+;冷静スキルは命中率を上げる
+SIF RLスキル(ATTACKERID, "冷静")
+	命中率計算 += RLスキル(ATTACKERID, "冷静")*3
+
+;回避スキルがあれば命中率を下げる
+SIF RLスキル(TARGETID, "回避")
+	命中率計算 -= RLスキル(TARGETID, "回避")*10
+
+命中率計算テキスト = {命中率計算}
+距離 = 相対距離(ATTACKERID, TARGETID)-1
+IF 距離 > 0
+	SELECTCASE 武器種
+		CASE "ライフル"
+			命中率計算 -= 距離*3
+			SIF 命中率計算 < 0
+				命中率計算 = 0
+			命中率計算テキスト += @"-3×{距離}(距離減衰)={命中率計算}"
+		CASE "ショットガン"
+			命中率計算 -= 距離*15
+			SIF 命中率計算 < 0
+				命中率計算 = 0
+			命中率計算テキスト += @"-15×{距離}(距離減衰)={命中率計算}"
+		CASE "マシンガン"
+			命中率計算 -= 距離*8
+			SIF 命中率計算 < 0
+				命中率計算 = 0
+			命中率計算テキスト += @"-8×{距離}(距離減衰)={命中率計算}"
+		;ハンドガン、投擲、重火器、弓、その他
+		CASEELSE
+			命中率計算 -= 距離*5
+			SIF 命中率計算 < 0
+				命中率計算 = 0
+			命中率計算テキスト += @"-5×{距離}(距離減衰)={命中率計算}"
+	ENDSELECT
+ENDIF
+
+CALL SETMAX, 命中率計算, 1
+
+IF RLアイテムスキル(武器スキル, "連射") || 早撃ちスキル発動
+	連射回数 = 1
+	IF RLアイテムスキル(武器スキル, "連射")
+		連射回数 += RLアイテムスキル(武器スキル, "連射")
+		ダメージテキスト += @"連射スキルLv{RLアイテムスキル(武器スキル, "連射")}発動 "
+	ENDIF
+	IF 早撃ちスキル発動
+		連射回数 += 早撃ちスキル発動
+		ダメージテキスト += @"早撃ちスキル発動 "
+	ENDIF
+
+	FOR LCOUNT2, 0, 連射回数
+		SIF LCOUNT2 != 0
+			ダメージテキスト = 
+		ダメージテキスト += @"{ダイス数}d{ダイス面} "
+
+		FOR LCOUNT, 0, ダイス数
+			ダイス結果:LCOUNT = RAND(1, ダイス面+1)
+			ダメージテキスト += @"{ダイス結果:LCOUNT}+"
+		NEXT
+
+		;末尾の+を取る
+		ダメージテキスト = %SUBSTRING(ダメージテキスト, 0, STRLENS(ダメージテキスト)-1)%
+
+		IF RANDPER(命中率計算)
+			IF RLスキル(TARGETID, "身代わりの術") && RANDPER(10)
+				CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！身代わりの術発動 %CALLNAME:TARGETID%は攻撃を無効化した！"
+			ELSE
+				ダメージ値 += SUMARRAY(ダイス結果)
+				IF  RLスキル(TARGETID, "頑丈")
+					ダメージ値 -= RLスキル(TARGETID, "頑丈")
+					CALL SETMAX(ダメージ値, 1)
+					ダメージテキスト += @"-{RLスキル(TARGETID, "頑丈")}(頑丈スキル)"
+				ENDIF
+				IF RLスキル(ATTACKERID, "断罪") && CFLAGRL:TARGETID:中立キャラ攻撃回数
+					ダメージテキスト += "*2(断罪！)"
+					ダメージ値 *= 2
+				ELSEIF RLスキル(TARGETID, "断罪") && CFLAGRL:TARGETID:中立キャラ攻撃回数
+					ダメージテキスト += "*2(断罪！)"
+					ダメージ値 *= 2
+				ENDIF
+
+				ダメージテキスト += @"={ダメージ値}"
+
+				CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+			ENDIF
+		ELSE
+			IF RLスキル(TARGETID, "回避")
+				CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！回避スキルLv{RLスキル(TARGETID, "回避")}発動 攻撃は外れた(命中率:%命中率計算テキスト%\%)"
+			ELSE
+				CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！しかし攻撃は外れた(命中率:%命中率計算テキスト%\%)"
+			ENDIF
+		ENDIF
+		IF ITEMID
+			CALL 使用回数低下, ITEMID
+			IF TOINT(RLITEMDT(ITEMID, "使用回数")) <= 0
+				CALL RLLOG, @"%攻撃手段%の弾が切れた！"
+				インベントリ:FINDELEMENT(インベントリ, ITEMID) = 0
+				BREAK
+			ENDIF
+		ENDIF
+	NEXT
+ELSE
+	ダメージテキスト += @"{ダイス数}d{ダイス面} "
+
+	FOR LCOUNT, 0, ダイス数
+		ダイス結果:LCOUNT = RAND(1, ダイス面+1)
+		ダメージテキスト += @"{ダイス結果:LCOUNT}+"
+	NEXT
+
+	;末尾の+を取る
+	ダメージテキスト = %SUBSTRING(ダメージテキスト, 0, STRLENS(ダメージテキスト)-1)%
+
+	IF RANDPER(命中率計算)
+		IF RLスキル(TARGETID, "身代わりの術") && RANDPER(10)
+			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！身代わりの術発動 %CALLNAME:TARGETID%は攻撃を無効化した！"
+		ELSE
+			ダメージ値 = SUMARRAY(ダイス結果)
+
+			IF  RLスキル(TARGETID, "頑丈")
+				ダメージ値 -= RLスキル(TARGETID, "頑丈")
+				CALL SETMAX(ダメージ値, 1)
+				ダメージテキスト += @"-{RLスキル(TARGETID, "頑丈")}(頑丈スキル)"
+			ENDIF
+
+			ダメージテキスト += @"={ダメージ値}"
+
+			IF 攻撃手段 == "格闘" && CSTRRL:ATTACKERID:攻撃時メッセージ != ""
+				CALL RLLOG, @"%CALLNAME:ATTACKERID%は%CSTRRL:ATTACKERID:攻撃時メッセージ%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+			ELSEIF 武器種 == "投擲" || 投擲扱い
+				CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%を投げて%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+			ELSE
+				CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！(%ダメージテキスト%)"
+			ENDIF
+		ENDIF
+	ELSE
+		IF RLスキル(TARGETID, "回避")
+			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！回避スキルLv{RLスキル(TARGETID, "回避")}発動 攻撃は外れた(命中率:%命中率計算テキスト%\%)"
+		ELSE
+			CALL RLLOG, @"%CALLNAME:ATTACKERID%は%攻撃手段%で%CALLNAME:TARGETID%を攻撃した！しかし攻撃は外れた(命中率:%命中率計算テキスト%\%)"
+		ENDIF
+		攻撃失敗 = 1
+	ENDIF
+	IF ITEMID
+		;投擲したアイテムは投擲アイテム以外なら壊れる
+		IF 投擲扱い
+			CALL RLLOG, @"%攻撃手段%は無茶な使い方で壊れた！"
+			インベントリ:FINDELEMENT(インベントリ, ITEMID) = 0
+		ELSE
+			CALL 使用回数低下, ITEMID
+			IF TOINT(RLITEMDT(ITEMID, "使用回数")) <= 0
+				SELECTCASE 武器種
+					CASE "ハンドガン", "ライフル", "マシンガン", "ショットガン", "重火器"
+						CALL RLLOG, @"%攻撃手段%の弾が切れた！"
+					CASE "弓"
+						CALL RLLOG, @"%攻撃手段%の矢は切れた！"
+					CASEELSE
+						CALL RLLOG, @"%攻撃手段%は壊れた！"
+				ENDSELECT
+				インベントリ:FINDELEMENT(インベントリ, ITEMID) = 0
+			ENDIF
+		ENDIF
+	ENDIF
+ENDIF
+
+SIF 投擲扱い
+	GOTO 投擲SE
 
 SELECTCASE 攻撃手段
 	CASE "格闘"
-		CALL SE再生, 格闘SE
+		IF 攻撃失敗
+			CALL SE再生, 投擲SE
+		ELSE
+			CALL SE再生, 格闘SE
+		ENDIF
 	CASEELSE
-		SELECTCASE 武器種
-			CASE "刀剣"
-				CALL SE再生, 刀剣SE
-			CASE "短剣"
-				CALL SE再生, 短剣SE
-			CASE "鈍器"
-				CALL SE再生, 鈍器SE
+		SELECTCASE 攻撃手段
+			CASE "ロケットランチャー"
+				CALL SE再生, 爆発SE
+			CASEELSE
+				SELECTCASE 武器種
+					CASE "刀剣"
+						IF 攻撃失敗
+							CALL SE再生, 投擲SE
+						ELSE
+							CALL SE再生, 刀剣SE
+						ENDIF
+					CASE "短剣"
+						IF 攻撃失敗
+							CALL SE再生, 投擲SE
+						ELSE
+							CALL SE再生, 短剣SE
+						ENDIF
+					CASE "鈍器"
+						IF 攻撃失敗
+							CALL SE再生, 投擲SE
+						ELSE
+							CALL SE再生, 鈍器SE
+						ENDIF
+					CASE "ハンドガン", "ライフル", "ショットガン"
+						SIF 連射回数
+							GOTO 連射SE
+						CALL SE再生, 銃SE
+					CASE "マシンガン"
+						$連射SE
+						CALL SE再生, 銃連射SE
+					CASE "投擲"
+						$投擲SE
+						CALL SE再生, 投擲SE
+					CASE "弓"
+						CALL SE再生, 弓SE
+				ENDSELECT
 		ENDSELECT
 ENDSELECT
 
@@ -84,20 +371,22 @@ RLWAIT = 100
 
 CALL RLREDRAW
 
-CFLAGRL:TARGETID:HP -= ダメージ値
+IF ダメージ値
+	CFLAGRL:TARGETID:HP -= ダメージ値
 
-IF TARGETID == PLAYER
-	FOR LCOUNT, 0, 52
-		SIF !インベントリ:LCOUNT
-			CONTINUE
-		IF RLITEMDT(インベントリ:LCOUNT, "アイテム名") == "メガネ"
-			IF RAND:10 == 0
-				CALL RLLOG, "インベントリ内のメガネが割れた！"
-				インベントリ:LCOUNT = 0
-				BREAK
+	IF TARGETID == PLAYER
+		FOR LCOUNT, 0, 52
+			SIF !インベントリ:LCOUNT
+				CONTINUE
+			IF RLITEMDT(インベントリ:LCOUNT, "アイテム名") == "メガネ"
+				IF RAND:10 == 0
+					CALL RLLOG, "インベントリ内のメガネが割れた！"
+					インベントリ:LCOUNT = 0
+					BREAK
+				ENDIF
 			ENDIF
-		ENDIF
-	NEXT
+		NEXT
+	ENDIF
 ENDIF
 
 IF CFLAGRL:TARGETID:HP <= 0
@@ -114,19 +403,44 @@ IF CFLAGRL:TARGETID:HP <= 0
 	ENDIF
 ENDIF
 
+@使用回数低下, ITEMID
+#DIM DYNAMIC ITEMID
+DT_CELL_SET "RLITEMLIST", ITEMID, "使用回数", TOINT(RLITEMDT(ITEMID, "使用回数"))-1, 1
+
 @敵撃破, ATTACKERID, TARGETID
 #DIM DYNAMIC ATTACKERID
 #DIM DYNAMIC TARGETID
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNTX
 #DIM DYNAMIC LCOUNTY
+#DIMS DYNAMIC ドロップアイテム一覧, 10
+#DIM DYNAMIC 分割数
+#DIM DYNAMIC DROP_X
+#DIM DYNAMIC DROP_Y
+#DIMS DYNAMIC ドロップアイテム名
 
 ;経験値処理やドロップアイテム処理とか
+TARGET = TARGETID
 
 FOR LCOUNTX, 0, RLMAP広さ
 	FOR LCOUNTY, 0, RLMAP広さ
 		IF RLMAP_ENEMY:LCOUNTX:LCOUNTY == TARGETID
 			RLMAP_ENEMY:LCOUNTX:LCOUNTY = 0
+			;ドロップ処理
+			SIF CSTRRL:ドロップアイテム == ""
+				CSTRRL:ドロップアイテム = %CSTRRL:初期アイテム%
+			IF CSTRRL:ドロップアイテム != ""
+				CALL アイテムドロップ座標, LCOUNTX, LCOUNTY
+				DROP_X = RESULT:0
+				DROP_Y = RESULT:1
+				SPLIT CSTRRL:ドロップアイテム, "/", ドロップアイテム一覧
+				分割数 = RESULT
+				;ここでアイテムを生成してDTに入れた後にRLMAP_ITEMにはIDを入れる
+				ドロップアイテム名 = %ドロップアイテム一覧:(RAND:分割数)%
+				CALL RLアイテム生成, ドロップアイテム名, 1
+				RLMAP_ITEM:DROP_X:DROP_Y = RESULT
+				CALL RLLOG, @"%CALLNAME:TARGET%は%ドロップアイテム名%を落とした"
+			ENDIF
 		ENDIF
 	NEXT
 NEXT
@@ -136,7 +450,6 @@ NEXT
 ;;;敵専用関数
 @近接攻撃候補, ATTACKERID
 #FUNCTIONS
-#DIM DYNAMIC 格闘
 #DIM DYNAMIC LCOUNT
 #DIMS DYNAMIC 攻撃手段, 10
 #DIM DYNAMIC 分割数
@@ -145,14 +458,43 @@ NEXT
 SPLIT CSTRRL:ATTACKERID:攻撃方法, "/", 攻撃手段
 分割数 = RESULT
 
-IF 攻撃手段:0 == ""
+IF CSTRRL:ATTACKERID:攻撃方法 == ""
 	RETURNF "格闘"
 ELSE
 	;近接攻撃優先
 	FOR LCOUNT, 0, 分割数
-		SIF 近接遠隔逆引き(攻撃手段:LCOUNT) == "近接攻撃"
+		SIF 近接遠距離逆引き(攻撃手段:LCOUNT) == "近接攻撃"
 			RETURNF 攻撃手段:LCOUNT
 	NEXT
 	;上記を通らなかったらなんでもいいので武器で攻撃
-	RETURNF 攻撃手段:LCOUNT
+	RETURNF 攻撃手段:0
 ENDIF
+
+;;;敵専用関数
+@遠距離攻撃候補, ATTACKERID
+#FUNCTIONS
+#DIM DYNAMIC LCOUNT
+#DIMS DYNAMIC 攻撃手段, 10
+#DIM DYNAMIC 分割数
+#DIM DYNAMIC ATTACKERID
+
+SPLIT CSTRRL:ATTACKERID:攻撃方法, "/", 攻撃手段
+分割数 = RESULT
+
+DEBUGPRINTFORML 遠距離分割数 {分割数}
+
+IF 攻撃手段:0 == ""
+	RETURNF ""
+ELSE
+	;遠距離攻撃優先
+	FOR LCOUNT, 0, 分割数
+		SIF 近接遠距離逆引き(攻撃手段:LCOUNT) == "遠距離武器"
+			RETURNF 攻撃手段:LCOUNT
+	NEXT
+ENDIF
+
+RETURNF ""
+
+@NPC攻撃選出
+#DIMS REF 攻撃手段
+#DIMS DYNAMIC 候補

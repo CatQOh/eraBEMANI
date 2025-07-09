@@ -22,28 +22,33 @@ CALL COLUMNRESIZE, 1, 4200, 4200
 CALL COLUMNMOVE, 1, -500, 1800
 
 CALL COLUMNCREATE, 2
-CALL COLUMNRESIZE, 2, 4200, 4200
+CALL COLUMNRESIZE, 2, 8000, 8000
 CALL COLUMNMOVE, 2, -500, -2200
 
 CALL COLUMNCREATE, 3
-CALL COLUMNRESIZE, 3, 4200, 4200
+CALL COLUMNRESIZE, 3, 4200, 42000
 CALL COLUMNMOVE, 3, 3800, 1200
 
 CALL COLUMNCREATE, 4
-CALL COLUMNRESIZE, 4, 3000, 3000
+CALL COLUMNRESIZE, 4, 4000, 3000
 CALL COLUMNMOVE, 4, 0, 1700
 
 CALL COLUMNCREATE, 5
 CALL COLUMNRESIZE, 5, 3000, 3000
-CALL COLUMNMOVE, 5, 3800, 1800
+CALL COLUMNMOVE, 5, 3800, 2000
 
 SETSOUNDVOLUME 30
 
 $RL_NEWGAME
+CALL FADEOUTBGM
+
 DT_CLEAR "RLITEMLIST"
 RL_GAMEOVER = 0
 VARSET RLLOG
 RLターン数 = 0
+RL階層 = 1
+RLクリア階層 = 30
+VARSET インベントリ
 
 PRINTL □プレイヤーキャラを選んでください
 CALL CHARA_LIST, "RL"
@@ -55,13 +60,22 @@ SWAPCHARA 0, CHARANUM-1
 ;β版の暫定調整
 CFLAGRL:PLAYER:HP = BASE:PLAYER:体力/100*2
 CFLAGRL:PLAYER:MAXHP = MAXBASE:PLAYER:体力/100*2
+CFLAGRL:PLAYER:HP初期値 = CFLAGRL:PLAYER:MAXHP
+CFLAGRL:PLAYER:レベル = 1
 
 TARGET = PLAYER
 TRYCALLFORM RL_%CSVNAMERPS(NOF(PLAYER))%
+;表示上は1/100
+CFLAGRL:満腹度最大値 = 10099
+SIF RLスキル(PLAYER, "過食")
+	CFLAGRL:満腹度最大値 = 20099
+;初期値は変わらない（暫定）
+CFLAGRL:満腹度 = 10099
 
 SIF CSTRRL:初期アイテム != ""
 	CALL 初期アイテム処理, PLAYER
 
+;CALL BGM再生, RLBGM
 CALL ローグライクモード
 
 SIF RESULT
@@ -119,20 +133,22 @@ FOR LCOUNTX, 0, RLMAP_CONST
 	FOR LCOUNTY, 0, RLMAP_CONST
 		IF RLMAP:LCOUNTX:LCOUNTY == 1
 			;アイテム配置
-			IF RAND:250 == 0
+			IF RAND:(250-RLスキル(PLAYER, "幸運")*30) == 0
+				$ITEM
 				;ここでアイテムを生成してDTに入れた後にRLMAP_ITEMにはIDを入れる
 				CALL RLアイテム生成
 				RLMAP_ITEM:LCOUNTX:LCOUNTY = RESULT
 			ENDIF
 			;敵配置
-			IF RAND:250 == 0
+			IF RAND:(250-RL階層*5) == 0
 				;敵味方全部キャラデータとして扱う
 				試行回数 = 0
 				DO
+					試行回数++
 					;AWAIT 1000
 					生成キャラ = ランセレ:(RAND:FINDELEMENT(ランセレ, 0))
 					;PRINTFORML %CSVNAME(生成キャラ)%生成中 {GETCHARA(生成キャラ)} {FINDELEMENTF(出現敵イニシャル, CHARATU(CSVNAME(生成キャラ), 0))}
-					SIF GETCHARA(生成キャラ) > 0
+					SIF GETCHARA(生成キャラ) >= 0
 						CONTINUE
 					;一文字タイルなのでイニシャルが被ったキャラも諦める
 					SIF FINDELEMENTF(出現敵イニシャル, CHARATU(CSVCALLNAME(生成キャラ), 0)) > 0
@@ -142,14 +158,31 @@ FOR LCOUNTX, 0, RLMAP_CONST
 					
 					ADDCHARA 生成キャラ
 					TARGET = CHARANUM-1
+					TRYCALLFORM RL_%CSVNAMERPS(NOF(TARGET))%
 					RLMAP_ENEMY:LCOUNTX:LCOUNTY = TARGET
+					;デバッグ用
+					;CSTRRL:攻撃方法 = ピストル
+					;CSTRRL:ドロップアイテム = 天下無双刀
+					;CALL アイテム拾得_生成, "メガネ"
 					CFLAGRL:HP = BASE:体力/100
 					CFLAGRL:MAXHP = MAXBASE:体力/100
-					CSTRRL:立場 = 敵
-					出現敵イニシャル:FINDELEMENTF(出現敵イニシャル, "") = SUBSTRINGU(NAME:TARGET, 0, 1)
+					CFLAGRL:HP初期値 = CFLAGRL:MAXHP
+					CFLAGRL:レベル = 1
+					SIF RLスキル(PLAYER, "スパイ") && RANDPER(5)
+						CSTRRL:行動パターン = 中立
+					SIF RLスキル(PLAYER, "犬飼い") && RL属性(TARGET, "犬")
+						CSTRRL:行動パターン = 中立
+					SIF RLスキル(PLAYER, "猫語話者") && RL属性(TARGET, "猫")
+						CSTRRL:行動パターン = 中立
+					SIF RLスキル(PLAYER, "お狐同盟") && RL属性(TARGET, "狐")
+						CSTRRL:行動パターン = 中立
+					;CSTRRL:立場 = 敵
+					出現敵イニシャル:FINDELEMENTF(出現敵イニシャル, "") = %CHARATU(CALLNAME:TARGET, 0)%
 					;PRINTFORMW 生成成功
+					;敵の足元はアイテム生成されやすくなる
+					SIF RANDPER(20)
+						GOTO ITEM
 					BREAK
-					試行回数++
 				LOOP 試行回数 < 100
 			ENDIF
 		ENDIF
@@ -181,7 +214,7 @@ CVARSET CFLAGRL, GETNUM(CFLAGRL, "移動済み"), 0
 
 FOR LCOUNTX, PL:XPOS-10, PL:XPOS+11
 	FOR LCOUNTY, PL:YPOS-10, PL:YPOS+11
-		SIF INRANGE(LCOUNTX, 0, VARSIZE("RLMAP", 1)-1) && INRANGE(LCOUNTY, 0, VARSIZE("RLMAP", 2)-1) && PL_VISIBLE:LCOUNTX:LCOUNTY == 1
+		SIF INRANGE(LCOUNTX, 0, RLMAP広さ-1) && INRANGE(LCOUNTY, 0, RLMAP広さ-1) && PL_VISIBLE:LCOUNTX:LCOUNTY == 1
 			RLMAP_EXPLORED:LCOUNTX:LCOUNTY = 1
 	NEXT
 NEXT
@@ -192,33 +225,77 @@ IF 全体マップ
 		FOR LCOUNTX, 0, RLMAP_CONST
 			SELECTCASE RLMAP_CREATE:LCOUNTX:LCOUNTY
 				CASE 0
+					$EMPTY
 					PRINT 　
 				CASE 3
+					[IF_NDEBUG]
+						SIF !RLMAP_EXPLORED:LCOUNTX:LCOUNTY
+							GOTO EMPTY
+					[ENDIF]
 					SETCOLORBYNAME peru
 					PRINT ■
 					RESETCOLOR
 				CASEELSE
 					IF PL:XPOS == LCOUNTX && PL:YPOS == LCOUNTY
+						[IF_NDEBUG]
+							;ありえない分岐
+							SIF !RLMAP_EXPLORED:LCOUNTX:LCOUNTY
+								GOTO EMPTY
+						[ENDIF]
 						SETCOLORBYNAME deepskyblue
 						PRINT ＠
 						RESETCOLOR
 					ELSEIF STAIR:XPOS == LCOUNTX &&  STAIR:YPOS == LCOUNTY
+						SIF RLスキル(PLAYER, "千里眼")
+							GOTO STAIR
+						[IF_NDEBUG]
+							SIF !RLMAP_EXPLORED:LCOUNTX:LCOUNTY
+								GOTO EMPTY
+						[ENDIF]
+						$STAIR
 						SETCOLORBYNAME lime
 						PRINT ％
 						RESETCOLOR
 					ELSEIF RLMAP_ENEMY:LCOUNTX:LCOUNTY
-						SETCOLORBYNAME coral
-						PRINTFORM %TOFULL(CHARATU(CALLNAME:(RLMAP_ENEMY:LCOUNTX:LCOUNTY), 0))%
-						RESETCOLOR
+						SIF RLスキル(PLAYER, "監視者")
+							GOTO ENEMY
+						[IF_NDEBUG]
+							SIF !RLMAP_EXPLORED:LCOUNTX:LCOUNTY
+								GOTO EMPTY
+						[ENDIF]
+						IF PL_VISIBLE:LCOUNTX:LCOUNTY == 1
+							$ENEMY
+							SETCOLORBYNAME coral
+							PRINTFORM %TOFULL(CHARATU(CALLNAME:(RLMAP_ENEMY:LCOUNTX:LCOUNTY), 0))%
+							RESETCOLOR
+						ELSE
+							PRINT ■
+						ENDIF
 					ELSEIF RLMAP_ITEM:LCOUNTX:LCOUNTY
+						[IF_NDEBUG]
+							SIF !RLMAP_EXPLORED:LCOUNTX:LCOUNTY
+								GOTO EMPTY
+						[ENDIF]
 						SETCOLORBYNAME gold
 						PRINT ＊
 						RESETCOLOR
 					ELSEIF RLMAP:LCOUNTX:LCOUNTY == 2
-						SETCOLORBYNAME blue
+						[IF_NDEBUG]
+							SIF !RLMAP_EXPLORED:LCOUNTX:LCOUNTY
+								GOTO EMPTY
+						[ENDIF]
+						[IF_DEBUG]
+							SETCOLORBYNAME blue
+							PRINT ■
+							RESETCOLOR
+							CONTINUE
+						[ENDIF]
 						PRINT ■
-						RESETCOLOR
 					ELSE
+						[IF_NDEBUG]
+							SIF !RLMAP_EXPLORED:LCOUNTX:LCOUNTY
+								GOTO EMPTY
+						[ENDIF]
 						PRINT ■
 					ENDIF
 			ENDSELECT
@@ -240,124 +317,219 @@ ENDIF
 
 ONEINPUTS
 
+IF 全体マップ
+	全体マップ = 0
+	RESTART
+ENDIF
+
 SELECTCASE RESULTS
 	CASE "7"
-		移動先X = PL:XPOS-1
-		移動先Y = PL:YPOS-1
+		IF 見渡し
+			移動先X = 見渡し座標:XPOS-1
+			移動先Y = 見渡し座標:YPOS-1
+		ELSE
+			移動先X = PL:XPOS-1
+			移動先Y = PL:YPOS-1
+		ENDIF
 		;IF !壁判定(PL:XPOS-1, PL:YPOS-1)
 		;	PL:XPOS--
 		;	PL:YPOS--
 		;ENDIF
 	CASE "8"
-		移動先X = PL:XPOS
-		移動先Y = PL:YPOS-1
+		IF 見渡し
+			移動先X = 見渡し座標:XPOS
+			移動先Y = 見渡し座標:YPOS-1
+		ELSE
+			移動先X = PL:XPOS
+			移動先Y = PL:YPOS-1
+		ENDIF
 		;IF !壁判定(PL:XPOS, PL:YPOS-1)
 		;	PL:YPOS--
 		;ENDIF
 	CASE "9"
-		移動先X = PL:XPOS+1
-		移動先Y = PL:YPOS-1
+		IF 見渡し
+			移動先X = 見渡し座標:XPOS+1
+			移動先Y = 見渡し座標:YPOS-1
+		ELSE
+			移動先X = PL:XPOS+1
+			移動先Y = PL:YPOS-1
+		ENDIF
 		;IF !壁判定(PL:XPOS+1, PL:YPOS-1)
 		;	PL:XPOS++
 		;	PL:YPOS--
 		;ENDIF
 	CASE "4"
-		移動先X = PL:XPOS-1
-		移動先Y = PL:YPOS
+		IF 見渡し
+			移動先X = 見渡し座標:XPOS-1
+			移動先Y = 見渡し座標:YPOS
+		ELSE
+			移動先X = PL:XPOS-1
+			移動先Y = PL:YPOS
+		ENDIF
 		;IF !壁判定(PL:XPOS-1, PL:YPOS)
 		;	PL:XPOS--
 		;ENDIF
 	CASE "6"
-		移動先X = PL:XPOS+1
-		移動先Y = PL:YPOS
+		IF 見渡し
+			移動先X = 見渡し座標:XPOS+1
+			移動先Y = 見渡し座標:YPOS
+		ELSE
+			移動先X = PL:XPOS+1
+			移動先Y = PL:YPOS
+		ENDIF
 		;IF !壁判定(PL:XPOS+1, PL:YPOS)
 		;	PL:XPOS++
 		;ENDIF
 	CASE "1"
-		移動先X = PL:XPOS-1
-		移動先Y = PL:YPOS+1
+		IF 見渡し
+			移動先X = 見渡し座標:XPOS-1
+			移動先Y = 見渡し座標:YPOS+1
+		ELSE
+			移動先X = PL:XPOS-1
+			移動先Y = PL:YPOS+1
+		ENDIF
 		;IF !壁判定(PL:XPOS-1, PL:YPOS+1)
 		;	PL:XPOS--
 		;	PL:YPOS++
 		;ENDIF
 	CASE "2"
-		移動先X = PL:XPOS
-		移動先Y = PL:YPOS+1
+		IF 見渡し
+			移動先X = 見渡し座標:XPOS
+			移動先Y = 見渡し座標:YPOS+1
+		ELSE
+			移動先X = PL:XPOS
+			移動先Y = PL:YPOS+1
+		ENDIF
 		;IF !壁判定(PL:XPOS, PL:YPOS+1)
 		;	PL:YPOS++
 		;ENDIF
 	CASE "3"
-		移動先X = PL:XPOS+1
-		移動先Y = PL:YPOS+1
+		IF 見渡し
+			移動先X = 見渡し座標:XPOS+1
+			移動先Y = 見渡し座標:YPOS+1
+		ELSE
+			移動先X = PL:XPOS+1
+			移動先Y = PL:YPOS+1
+		ENDIF
 		;IF !壁判定(PL:XPOS+1, PL:YPOS+1)
 		;	PL:XPOS++
 		;	PL:YPOS++
 		;ENDIF
-	CASE "5"
-		CALL HP自然回復, PLAYER, 2
-	CASE "-"
-		RETURN 0
-	CASE ">"
-		IF 階段判定()
-			CALL SE再生, 階段SE
-			RETURN 1
-		ENDIF
-	CASE "X"
-		INVERTBIT 全体マップ, 0
+	CASE "v"
+		SIF 見渡し
+			CALL RL詳細表示, 見渡し座標:XPOS, 見渡し座標:YPOS
 		RESTART
-	;Get
-	CASE "g", "G"
-		CALL アイテム拾得, PL:XPOS, PL:YPOS
-	;Inventory
-	CASE "i", "I"
-		CALL インベントリ一覧
-		SIF !RESULT
-			RESTART
-	;Swing/Slash
-	CASE "s", "S"
-		CALL 近接武器一覧
-		SIF !RESULT
-			RESTART
-	;Fire
-	CASE "f", "F"
-		CALL 遠距離武器一覧
-		SIF !RESULT
-			RESTART
-	;Read
-	CASE "r", "R"
-		CALL 巻物一覧
-		SIF !RESULT
-			RESTART
-	;Quaff
-	CASE "q", "Q"
-		CALL ポーション一覧
-		SIF !RESULT
-			RESTART
-	;Eat
-	CASE "e", "E"
-		CALL 食料一覧
-		SIF !RESULT
-			RESTART
-	;Throw
-	CASE "t", "T"
-		CALL 投擲アイテム一覧
-		SIF !RESULT
-			RESTART
+	CASE "x"
+		INVERTBIT 見渡し, 0
+		SIF 見渡し
+			CALL RLLOG, "vで詳細表示"
+		見渡し座標:XPOS = PL:XPOS
+		見渡し座標:YPOS = PL:YPOS
+		RESTART
+	CASEELSE
+		見渡し = 0
+		SELECTCASE RESULTS
+			CASE "?"
+				CALL RL操作説明
+			CASE "5", "."
+				CALL RLターン終了処理, PLAYER, 2
+			CASE "-"
+				RETURN 0
+			CASE ">"
+				IF 階段判定()
+					CALL SE再生, 階段SE
+					RL階層++
+					IF RL階層 >= RLクリア階層
+						CALL RLゲームクリア
+						RETURN 0
+					ENDIF
+					RETURN 1
+				ENDIF
+			CASE "X"
+				INVERTBIT 全体マップ, 0
+				RESTART
+			;Get
+			CASE "g", "G"
+				CALL アイテム拾得, PL:XPOS, PL:YPOS
+				SIF !RESULT
+					RESTART
+			;Inventory
+			CASE "i", "I"
+				CALL インベントリ一覧
+				SIF !RESULT
+					RESTART
+			;Swing/Slash
+			CASE "s", "S"
+				SIF RLスキル(PLAYER, "武器使用不可")
+					RESTART
+				CALL 近接武器一覧
+				SIF !RESULT
+					RESTART
+			;Fire
+			CASE "f", "F"
+				SIF RLスキル(PLAYER, "武器使用不可")
+					RESTART
+				CALL 遠距離武器一覧
+				SIF !RESULT
+					RESTART
+			;Read
+			CASE "r", "R"
+				CALL 巻物一覧
+				SIF !RESULT
+					RESTART
+			;Quaff
+			CASE "q", "Q"
+				CALL ポーション一覧
+				SIF !RESULT
+					RESTART
+			;Eat
+			CASE "e", "E"
+				CALL 食料一覧
+				SIF !RESULT
+					RESTART
+			;Throw
+			CASE "t", "T"
+				SIF RLスキル(PLAYER, "武器使用不可")
+					RESTART
+				CALL 投擲アイテム一覧
+				SIF !RESULT
+					RESTART
+			CASE "u", "U"
+				CALL RL使用アイテム一覧
+				SIF !RESULT
+					RESTART
+			CASE "@"
+				CALL RLステータス表示, PLAYER
+				RESTART
+			CASEELSE
+				RESTART
+		ENDSELECT
 ENDSELECT
 
-;移動方向のフラグが必要かも
-IF 中立判定(移動先X, 移動先Y)
-	CALL RL中立キャラ, PLAYER, 中立判定(移動先X, 移動先Y)
+SIF 移動先X == -1
+	見渡し = 0
+
+IF 見渡し
+	IF PL_VISIBLE:移動先X:移動先Y
+		見渡し座標:XPOS = 移動先X
+		見渡し座標:YPOS = 移動先Y
+	ENDIF
 	RESTART
-ELSEIF 敵判定(移動先X, 移動先Y)
-	CALL RL攻撃, PLAYER, 敵判定(移動先X, 移動先Y), "格闘"
-ELSEIF !壁判定(移動先X, 移動先Y)
-	PL:XPOS = 移動先X
-	PL:YPOS = 移動先Y
-	SIF 階段判定()
-		CALL RLLOG, "階段がある >で登る"
-	SIF RLMAP_ITEM:移動先X:移動先Y
-		CALL RLLOG, @"%RLITEMDT(RLMAP_ITEM:移動先X:移動先Y, "アイテム名")%がある gで拾う"
+ELSE
+	;移動方向のフラグが必要かも
+	IF 中立判定(移動先X, 移動先Y)
+		CALL RL中立キャラ, PLAYER, 中立判定(移動先X, 移動先Y)
+		RESTART
+	ELSEIF 敵判定(移動先X, 移動先Y)
+		CALL RL攻撃, PLAYER, 敵判定(移動先X, 移動先Y), "格闘"
+	ELSEIF !壁判定(移動先X, 移動先Y)
+		PL:XPOS = 移動先X
+		PL:YPOS = 移動先Y
+		SIF 階段判定()
+			CALL RLLOG, "階段がある >で登る"
+		SIF RLMAP_ITEM:移動先X:移動先Y
+			CALL RLLOG, @"%RLITEMDT(RLMAP_ITEM:移動先X:移動先Y, "アイテム名")%がある gで拾う"
+	ENDIF
 ENDIF
 
 ;敵の行動フェーズ
@@ -369,8 +541,14 @@ IF RL_GAMEOVER
 	RETURN 1
 ENDIF
 
+RESULTS = 
 FOR LCOUNT, 0, CHARANUM
-	CALL HP自然回復, LCOUNT
+	CALL RLターン終了処理, LCOUNT
+	IF RL_GAMEOVER
+		CALL RLREDRAW
+		FORCEWAIT
+		RETURN 1
+	ENDIF
 NEXT
 
 RLターン数++
@@ -431,6 +609,10 @@ ENDSELECT
 #DIM DYNAMIC INTERACTID
 #DIM DYNAMIC TARGETID
 
-CALL RLLOG, @"%CALLNAME:INTERACTID%は%CALLNAME:TARGETID%に挨拶した"
+IF NAME:TARGETID == "東雲 つむぎ" && TALENT:INTERACTID:体格 >= 3
+	CALL RLLOG, @"%CALLNAME:INTERACTID%は%CALLNAME:TARGETID%に挨拶した つむぎは防犯ブザーを鳴らした！"
+ELSE
+	CALL RLLOG, @"%CALLNAME:INTERACTID%は%CALLNAME:TARGETID%に挨拶した"
+ENDIF
 
 CALL RLREDRAW
