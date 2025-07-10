@@ -188,6 +188,10 @@ ENDIF
 #DIM DYNAMIC LTARGET
 #DIM DYNAMIC 素質表示済み
 #DIM DYNAMIC 対象
+#DIM DYNAMIC 男性フラグ
+#DIM DYNAMIC バストサイズランダムフラグ
+#DIM DYNAMIC バストサイズ変動前
+#DIM DYNAMIC バストサイズ変動後
 #DIM DYNAMIC 素質表示数
 #DIM DYNAMIC 曲表示済み
 
@@ -279,6 +283,7 @@ ELSE
 			$SHOW_TALENTS
 			素質表示済み = 1
 			PRINTL 
+			;性別・種族・体格・バストサイズは最初に表示
 			PRINTFORM 【%I18N("性別")%】
 			SELECTCASE CSVTALENT(対象, GETNUM(TALENT, "性別"))
 				CASE 0
@@ -293,10 +298,12 @@ ELSE
 					PRINTFORM %I18N("女性")%
 				CASE 1000
 					$MODMALE
-					CALL PRINTCOLOR, @"%I18N("男性")%(%I18N("MOD適用中")%)", "coral"
+					PRINTFORM %I18N("男性")%
+					CALL MOD適用表示
 				CASE 1001
 					$MODFEMALE
-					CALL PRINTCOLOR, @"%I18N("女性")%(%I18N("MOD適用中")%)", "coral"
+					PRINTFORM %I18N("女性")%
+					CALL MOD適用表示
 			ENDSELECT
 			PRINTFORM  【%I18N("種族")%】%I18N(CSVCSTR(対象, GETNUM(CSTR, "種族")), "RACE")%
 			PRINTFORM  【%I18N("体格", "TALENT")%】
@@ -307,9 +314,105 @@ ELSE
 			ELSE
 				PRINTFORM %I18N(体格(CSVTALENT(対象, GETNUM(TALENT, "体格"))), "TALENT")%
 			ENDIF
-			SIF CSVTALENT(対象, GETNUM(TALENT, "バストサイズ"))
-				PRINTFORM  【%I18N("バストサイズ", "TALENT")%】%I18N(バストサイズ(CSVTALENT(対象, GETNUM(TALENT, "バストサイズ"))), "TALENT")%
+			;バストサイズが変動するMODは以下の通り(基本的に上から順に適用)
+			;02 女性化……男性はそのまま体格(3が普通)がバストサイズになる
+			;03 女性化TSバストサイズランダム……(確率均等ではないが)1～6で変動
+			;04 性転換……女性はサイズ0、男性は「女性化」と同じ処理
+			;05 性転換TSバストサイズランダム……女性はサイズ0、男性は「女性化TSバストサイズランダム」と同じ処理
+			;11 爆乳……すべての女性がサイズ6に
+			;12 絶壁……すべての女性がサイズ1に
+			;81 バストサイズカスタム……(女性キャラのみ)もとのサイズに対応した変動をする
+			;82 バストサイズ限界突破……7以上の値をとるようになる
+			;87 バストサイズ男性対象……男性もバスト系MODの影響を受けるように
+			バストサイズ変動前 = CSVTALENT(対象, GETNUM(TALENT, "バストサイズ"))
+			SIF !MOD:バストサイズ限界突破 && バストサイズ変動前 > 6
+				バストサイズ変動前 = 6
+			バストサイズ変動後 = バストサイズ変動前
+			SIF CSVTALENT(対象, GETNUM(TALENT, "性別")) == 1 || CSVTALENT(対象, GETNUM(TALENT, "性別")) == 1000
+				男性フラグ = 1
+			IF MOD:女性化 && 男性フラグ
+				IF CSVTALENT(対象, GETNUM(TALENT, "体格"))
+					バストサイズ変動後 = CSVTALENT(対象, GETNUM(TALENT, "体格"))
+				ELSE
+					バストサイズ変動後 = 3
+				ENDIF
+				男性フラグ = 0
+			ENDIF
+			IF MOD:女性化TSバストサイズランダム && 男性フラグ
+				バストサイズ変動後 = -1
+				バストサイズランダムフラグ = 1
+				GOTO バストサイズランダム確定
+			ENDIF
+			IF MOD:性転換
+				IF 男性フラグ
+					IF CSVTALENT(対象, GETNUM(TALENT, "体格"))
+						バストサイズ変動後 = CSVTALENT(対象, GETNUM(TALENT, "体格"))
+					ELSE
+						バストサイズ変動後 = 3
+					ENDIF
+					男性フラグ = 0
+				ELSE
+					バストサイズ変動後 = 0
+					男性フラグ = 1
+				ENDIF
+			ENDIF
+			IF MOD:性転換TSバストサイズランダム
+				IF 男性フラグ
+					男性フラグ = 0
+					バストサイズ変動後 = -1
+					バストサイズランダムフラグ = 1
+					GOTO バストサイズランダム確定
+				ELSE
+					バストサイズ変動後 = 0
+					男性フラグ = 1
+				ENDIF
+			ENDIF
+			IF MOD:爆乳
+				SIF !男性フラグ || MOD:バストサイズ男性対象
+					バストサイズ変動後 = 6
+			ENDIF
+			IF MOD:絶壁
+				SIF !男性フラグ || MOD:バストサイズ男性対象
+					バストサイズ変動後 = 1
+			ENDIF
+			IF MOD:バストサイズカスタム
+				SIF MOD:バストサイズ男性対象 && 男性フラグ && バストサイズ変動後 == 0
+					バストサイズ変動後 = 1
+				IF バストサイズ変動後 > 0
+					FOR LCOUNT, 1, 7
+						IF LCOUNT == バストサイズ変動後
+							バストサイズ変動後 = バストサイズ指定:LCOUNT
+							GOTO サイズ変動終了
+						ENDIF
+					NEXT
+					バストサイズ変動後 = バストサイズ指定:6 + (バストサイズ変動後-6)
+					$サイズ変動終了
+				ENDIF
+			ENDIF
+			$バストサイズランダム確定
+			IF バストサイズ変動後
+				PRINTFORM  【%I18N("バストサイズ", "TALENT")%】
+				IF バストサイズ変動前
+					PRINTFORM %I18N(バストサイズ(バストサイズ変動前), "TALENT")%
+					IF バストサイズ変動前 != バストサイズ変動後
+						IF バストサイズランダムフラグ
+							PRINTFORM →%I18N("不明", "TALENT")%
+						ELSE
+							PRINTFORM →%I18N(バストサイズ(バストサイズ変動後), "TALENT")%
+						ENDIF
+						CALL MOD適用表示
+					ENDIF
+				ELSE
+					IF バストサイズランダムフラグ
+						PRINTFORM %I18N("不明", "TALENT")%
+					ELSE
+						PRINTFORM %I18N(バストサイズ(バストサイズ変動後), "TALENT")%
+					ENDIF
+					CALL MOD適用表示
+				ENDIF
+			ENDIF
 			PRINTL 
+			;その他の素質
 			PRINTFORML 【%I18N("素質")%】
 			PRINT 　
 			IF CSVCSTR(対象, GETNUM(CSTR, "恋心")) != ""
@@ -344,6 +447,14 @@ ELSE
 			GOTO DISPLAYEDTALENTS
 	ENDSELECT
 ENDIF
+
+RETURN 0
+
+
+@MOD適用表示
+PRINT (
+CALL PRINTCOLOR, @"%I18N("MOD適用中")%", "coral"
+PRINT )
 
 RETURN 0
 
@@ -411,6 +522,8 @@ ENDIF
 
 ;MOD適用
 ;性別不明キャラは上で選んでるので性別MODは適用されない
+SIF !MOD:バストサイズ限界突破 && TALENT:バストサイズ > 6
+	TALENT:バストサイズ = 6
 IF ゲームモード() != "段位認定" && !GETBIT(高速化, 1)
 	CALL キャラExMOD_チェック(NAME:TARGET)
 	SIF キャラExMOD_MOD名 != ""
