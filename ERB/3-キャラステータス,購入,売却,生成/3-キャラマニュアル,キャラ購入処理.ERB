@@ -8,6 +8,8 @@
 #DIM DYNAMIC 価格表示
 #DIMS DYNAMIC マニュアル内容
 #DIMS DYNAMIC 対象キャラ名
+#DIMS DYNAMIC キャラEXMOD一覧
+#DIM DYNAMIC キャラEXMOD総数
 
 IF GETCHARA(対象) > 0
 	PRINTFORMW %I18N("|0|は既に購入されています", , CSVNAMEDISP(対象))%
@@ -20,7 +22,20 @@ ELSEIF 対象 == NOF(MASTER)
 ENDIF
 
 対象キャラ名 = %CSVNAMEF(対象)%
-CALL キャラExMOD_チェック(対象キャラ名)
+
+;キャラEXMODの変数オンオフから判定してキャラEXMOD関数を呼ぶ オンMODが複数ある場合は関数が先に見つかったほうが優先
+キャラEXMOD総数 = ENUMVARBEGINSWITH(@"キャラEXMOD_%CSVNAMERPS(対象)%")
+ARRAYCOPY "RESULTS", "キャラEXMOD一覧"
+
+FOR LCOUNT, 0, キャラEXMOD総数
+	IF GETVAR(キャラEXMOD一覧:LCOUNT)
+		VARSET キャラマニュアル_置き換え
+		キャラマニュアル置き換えあり = 0
+		CALLFORM %キャラEXMOD一覧:LCOUNT%, 1
+		BREAK
+	ENDIF
+NEXT
+
 IF LANGUAGE != "JP"
 	PRINTFORML 【%CSVNAMEDISP(対象)%（%対象キャラ名%）】
 ELSE
@@ -360,6 +375,8 @@ RETURN 0
 #DIM DYNAMIC 適正EXP
 #DIM DYNAMIC 対象
 #DIMS DYNAMIC SPLITVAR, 10
+#DIMS DYNAMIC キャラEXMOD一覧
+#DIM DYNAMIC キャラEXMOD総数
 
 SIF !クローニング
 	購入人数++
@@ -412,9 +429,17 @@ ENDIF
 ;MOD適用
 ;性別不明キャラは上で選んでるので性別MODは適用されない
 IF ゲームモード() != "段位認定" && !GETBIT(高速化, 1)
-	CALL キャラExMOD_チェック(NAME:TARGET)
-	SIF キャラExMOD_MOD名 != ""
-		TRYCALLFORM キャラExMOD_%キャラExMOD_MOD名%(0)
+	;キャラEXMODの変数オンオフから判定してキャラEXMOD関数を呼ぶ オンMODが複数ある場合は関数が先に見つかったほうが優先
+	キャラEXMOD総数 = ENUMVARBEGINSWITH(@"キャラEXMOD_%CSVNAMERPS(NOF(TARGET))%")
+	ARRAYCOPY "RESULTS", "キャラEXMOD一覧"
+
+	FOR LCOUNT, 0, キャラEXMOD総数
+		IF GETVAR(キャラEXMOD一覧:LCOUNT)
+			CALLFORM %キャラEXMOD一覧:LCOUNT%, 0
+			BREAK
+		ENDIF
+	NEXT
+
 	FOR LCOUNT, 1, VARSIZE("MOD")
 		SIF ERDNAME(MOD, LCOUNT) == ""
 			CONTINUE

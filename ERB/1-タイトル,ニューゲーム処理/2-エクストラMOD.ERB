@@ -1,35 +1,10 @@
 ﻿@タイトル_MOD
 #DIMS DYNAMIC HTML
-#DIM DYNAMIC DGT_MAX
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC LCOUNT1
 #DIM DYNAMIC ページ固定
-#DIM DYNAMIC Lキャラ番号
-#DIM DYNAMIC 空欄カウント
 
-#DIM DYNAMIC ABL_MAX
-#DIM DYNAMIC LCOUNT_ABL
-#DIM DYNAMIC EXP_MAX
-#DIM DYNAMIC LCOUNT_EXP
-#DIM DYNAMIC TALENT_MAX
-#DIM DYNAMIC LCOUNT_TALENT
-#DIM DYNAMIC 素質追加, 100
-#DIM DYNAMIC 素質追加カウント
-#DIM DYNAMIC 素質削除, 100
-#DIM DYNAMIC 素質削除カウント
-#DIM DYNAMIC 素質変更, 10
-#DIM DYNAMIC 素質変更箇所前, 10
-#DIM DYNAMIC 素質変更箇所後, 10
-#DIM DYNAMIC 素質変更カウント
-
-ABL_MAX = 30
-EXP_MAX = 120
-TALENT_MAX = 600
-
-IF キャラExMOD設定
-	MODページ = 0
-	ページ固定 = 1
-ELSEIF 安全係数設定
+IF 安全係数設定
 	MODページ = 1
 	ページ固定 = 1
 ELSE
@@ -38,166 +13,34 @@ ENDIF
 
 SELECTCASE MODページ
 	CASE 0
-		IF キャラExMOD設定
-			IF キャラExMOD閲覧
-				CALLFORM キャラExMOD_%キャラExMOD_MOD名一覧:キャラExMOD閲覧%(1)
-				CALL COLUMNPRINTL, 0, @"【キャラExMOD】%キャラExMOD_キャラ名% %キャラExMOD_内容%"
-				CALL COLUMNPRINTL, 0, ""
-				Lキャラ番号 = GETNO(キャラExMOD_キャラ名)
-				;キャラ番号を取得して一時的にキャラを増やす
-				ADDCHARA Lキャラ番号
-				TARGET = CHARANUM-1
-				CALLFORM キャラExMOD_%キャラExMOD_MOD名一覧:キャラExMOD閲覧%(0)
-				LCOUNT_ABL = 0
-				WHILE LCOUNT_ABL < ABL_MAX || LCOUNT_EXP < EXP_MAX
-					空欄カウント = 0
-					;ABL変動
-					IF LCOUNT_ABL > ABL_MAX
-						CALL COLUMNPRINT, 0, " 　　　　 　　　¦"
-						空欄カウント++
-					ELSE
-						WHILE LCOUNT_ABL <= ABL_MAX
-							IF ABL:LCOUNT_ABL != CSVABL(Lキャラ番号, LCOUNT_ABL)
-								CALL COLUMNPRINT, 0, @" %ABLNAME:LCOUNT_ABL, 8, LEFT% {CSVABL(Lキャラ番号, LCOUNT_ABL), 2}→{ABL:LCOUNT_ABL, 2, LEFT}¦"
-								LCOUNT_ABL++
-								BREAK
-							ENDIF
-							LCOUNT_ABL++
-							IF LCOUNT_ABL > ABL_MAX
-								CALL COLUMNPRINT, 0, " 　　　　 　　　¦"
-								空欄カウント++
-							ENDIF
-						WEND
-					ENDIF
-					;ABL変動
-					IF LCOUNT_EXP > EXP_MAX
-						CALL COLUMNPRINT, 0, " 　　　　　　 　　　　　　　¦"
-						空欄カウント++
-					ELSE
-						WHILE LCOUNT_EXP <= EXP_MAX
-							IF EXP:LCOUNT_EXP != CSVEXP(Lキャラ番号, LCOUNT_EXP)
-								CALL COLUMNPRINT, 0, @" %EXPNAME:LCOUNT_EXP, 12, LEFT% {CSVEXP(Lキャラ番号, LCOUNT_EXP), 6}→{EXP:LCOUNT_EXP, 6, LEFT}¦"
-								LCOUNT_EXP++
-								BREAK
-							ENDIF
-							LCOUNT_EXP++
-							IF LCOUNT_EXP > EXP_MAX
-								CALL COLUMNPRINT, 0, " 　　　　　　 　　　　　　　¦"
-								空欄カウント++
-							ENDIF
-						WEND
-					ENDIF
-					;性経験
-
-					;改行
-					CALL COLUMNPRINTL, 0, ""
-					;最後の行に内容がない場合、行を削除する
-					IF 空欄カウント >= 2
-						COLUMN:0:LINE--
-						COLUMNLOG:0:(COLUMN:0:LINE) =
-					ENDIF
-				WEND
-				CALL COLUMNPRINTL, 0, ""
-				;素質追加・削除・変更
-				素質追加カウント = 0
-				素質削除カウント = 0
-				素質変更カウント = 0
-				FOR LCOUNT_TALENT, 0, TALENT_MAX
-					SELECTCASE TALENTNAME:LCOUNT_TALENT
-						CASE "性別", "恋心", "既婚者", "傷物", "バストサイズ", "初潮前", "排卵不安定"
-							IF CSVTALENT(Lキャラ番号, LCOUNT_TALENT) != TALENT:LCOUNT_TALENT
-								素質変更:素質変更カウント = LCOUNT_TALENT
-								素質変更箇所前:素質変更カウント = CSVTALENT(Lキャラ番号, LCOUNT_TALENT)
-								素質変更箇所後:素質変更カウント = TALENT:LCOUNT_TALENT
-								素質変更カウント++
-							ENDIF
-						CASEELSE
-							IF CSVTALENT(Lキャラ番号, LCOUNT_TALENT) && !TALENT:LCOUNT_TALENT
-								素質削除:素質削除カウント = LCOUNT_TALENT
-								素質削除カウント++
-							ELSEIF !CSVTALENT(Lキャラ番号, LCOUNT_TALENT) && TALENT:LCOUNT_TALENT
-								素質追加:素質追加カウント = LCOUNT_TALENT
-								素質追加カウント++
-							ENDIF
-					ENDSELECT
-				NEXT
-				IF 素質追加カウント
-					CALL COLUMNPRINT, 0, "　素質追加:"
-					FOR LCOUNT, 0, 素質追加カウント
-						CALL COLUMNPRINT, 0, @" %TALENTNAME:(素質追加:LCOUNT)%"
-					NEXT
-					CALL COLUMNPRINTL, 0, ""
-				ENDIF
-				IF 素質削除カウント
-					CALL COLUMNPRINT, 0, "　素質削除:"
-					FOR LCOUNT, 0, 素質削除カウント
-						CALL COLUMNPRINT, 0, @" %TALENTNAME:(素質削除:LCOUNT)%"
-					NEXT
-					CALL COLUMNPRINTL, 0, ""
-				ENDIF
-				IF 素質変更カウント
-					CALL COLUMNPRINT, 0, "　素質変更:"
-					FOR LCOUNT, 0, 素質変更カウント
-						CALL COLUMNPRINT, 0, @" %TALENTNAME:(素質変更:LCOUNT)%({素質変更箇所前:LCOUNT}→{素質変更箇所後:LCOUNT})"
-					NEXT
-					CALL COLUMNPRINTL, 0, ""
-				ENDIF
-				;インモラル初期値変更
-				SIF CSVCFLAG(Lキャラ番号, GETNUM(CFLAG, "インモラル")) != CFLAG:インモラル
-					CALL COLUMNPRINTL, 0, @"インモラル: {CSVCFLAG(Lキャラ番号, GETNUM(CFLAG, "インモラル"))}→{CFLAG:インモラル}"
-				;増やしたキャラを削除する
-				DELCHARA CHARANUM-1
-				CALL COLUMNPRINTL, 0, ""
-				CALL COLUMNPRINTL, 0, "　[0] - 戻る"
-			ELSE
-				CALL COLUMNPRINTL, 0, "□キャラExMOD一覧"
-
-				DGT_MAX = 2
-				FOR LCOUNT, 1, 21
-					キャラExMOD_キャラ名 =
-					キャラExMOD_内容 =
-					キャラExMOD_ON = 0
-					TRYCALLFORM キャラExMOD_%キャラExMOD_MOD名一覧:LCOUNT%(1)
-					IF キャラExMOD_キャラ名 != ""
-						CALL COLUMNPRINT, 0, @"　[{-LCOUNT, DGT_MAX+1}]内容を見る　"
-						CALL COLUMNPRINTL, 0, @"[{LCOUNT, DGT_MAX}] - %キャラExMOD_キャラ名%:%キャラExMOD_内容%(現在:\@ キャラExMOD_ON ? オン # オフ \@)", @"\@ キャラExMOD_ON ? deepskyblue #\@"
-					ENDIF
-				NEXT
-
-				CALL COLUMNPRINTL, 0, ""
-				CALL COLUMNPRINTL, 0, "　[0] - 設定を終える"
-			ENDIF
-
-		ELSE
-			CALL COLUMNPRINTL, 0, "□エクストラMODの設定ができます"
-			CALL COLUMNPRINTL, 0, "　エクストラMODとは、セーブデータ全体で共有されるオプションで、"
-			CALL COLUMNPRINTL, 0, "　ゲームバランスに大きな影響を及ぼしかねない機能をあえて解禁することで、遊びの幅を広げる試みです"
-			CALL COLUMNPRINTL, 0, "　必要に応じて設定してください。段位認定モードでは適用されません"
-			CALL COLUMNPRINTL, 0, "　また、体質変更MODは既に解禁済みのキャラにも適用されません。新たに解禁したキャラにのみ適用されます"
-			CALL COLUMNPRINTL, 0, ""
-			CALL COLUMNPRINTL, 0, "□キャラExMOD(特定のキャラを新しく購入・追加した際に適用。)"
-			CALL COLUMNPRINTL, 0, "　[0] - 「キャラExMOD」を設定する"
-			CALL COLUMNPRINTL, 0, ""
-			CALL COLUMNPRINTL, 0, "□性別関連MOD(新しく購入、追加したキャラにのみ適用。各MODの重複は不可)"
-			CALL COLUMNPRINTL, 0, @"　[1] - MOD:男性化(現在:\@ MOD:男性化 ? オン # オフ \@) 全てのキャラが男性になる", @"\@ MOD:男性化 ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, @"　[2] - MOD:女性化(現在:\@ MOD:女性化 ? オン # オフ \@) 全てのキャラが女性になる", @"\@ MOD:女性化 ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, @"　[3] - MOD:女性化TSバストサイズランダム(現在:\@ MOD:女性化TSバストサイズランダム ? オン # オフ \@) 全てのキャラが女性になりバストサイズがランダムで決定される", @"\@ MOD:女性化TSバストサイズランダム ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, @"　[4] - MOD:性転換(現在:\@ MOD:性転換 ? オン # オフ \@) 全てのキャラが性転換する", @"\@ MOD:性転換 ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, @"　[5] - MOD:性転換TSバストサイズランダム(現在:\@ MOD:性転換TSバストサイズランダム ? オン # オフ \@) 全てのキャラが性転換し女性化したキャラのバストサイズがランダムで決定される", @"\@ MOD:性転換TSバストサイズランダム ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, ""
-			CALL COLUMNPRINTL, 0, "□体質関連MOD(新しく購入、追加したキャラにのみ適用)"
-			CALL COLUMNPRINTL, 0, @"　[11] - MOD:爆乳(現在:\@ MOD:爆乳 ? オン # オフ \@) 全ての女性キャラが爆乳になる。MOD:絶壁との重複不可", @"\@ MOD:爆乳 ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, @"　[12] - MOD:絶壁(現在:\@ MOD:絶壁 ? オン # オフ \@) 全ての女性キャラが絶壁になる。MOD:爆乳との重複不可", @"\@ MOD:絶壁 ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, @"　[13] - MOD:母乳(現在:\@ MOD:母乳 ? オン # オフ \@) 全ての女性キャラが母乳体質になる", @"\@ MOD:母乳 ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, @"　[14] - MOD:おもらし(現在:\@ MOD:おもらし ? オン # オフ \@) 全てのキャラが漏らすようになる", @"\@ MOD:おもらし ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, @"　[15] - MOD:ふたなり(現在:\@ MOD:ふたなり ? オン # オフ \@) 全てのキャラがふたなりになる", @"\@ MOD:ふたなり ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, @"　[16] - MOD:ロリショタ(現在:\@ MOD:ロリショタ ? オン # オフ \@) 全てのキャラが小柄体型になる。MOD:大人化との重複不可", @"\@ MOD:ロリショタ ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, @"　[17] - MOD:大人化(現在:\@ MOD:大人化 ? オン # オフ \@) 全てのキャラが大人体型になる。MOD:ロリショタとの重複不可", @"\@ MOD:大人化 ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, @"　[18] - MOD:チャレンジ(現在:\@ MOD:チャレンジ ? オン # オフ \@) 全てのキャラの性経験が皆無になる 旧チャレンジモード", @"\@ MOD:チャレンジ ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, @"　[19] - MOD:スライム(現在:\@ MOD:スライム ? オン # オフ \@) 全てのキャラがスライムになる", @"\@ MOD:スライム ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, @"　[20] - MOD:ヤンデレ(現在:\@ MOD:ヤンデレ ? オン # オフ \@) 全てのキャラがヤンデレになる", @"\@ MOD:ヤンデレ ? deepskyblue #\@"
-			CALL COLUMNPRINTL, 0, ""
-		ENDIF
+		CALL COLUMNPRINTL, 0, "□エクストラMODの設定ができます"
+		CALL COLUMNPRINTL, 0, "　エクストラMODとは、セーブデータ全体で共有されるオプションで、"
+		CALL COLUMNPRINTL, 0, "　ゲームバランスに大きな影響を及ぼしかねない機能をあえて解禁することで、遊びの幅を広げる試みです"
+		CALL COLUMNPRINTL, 0, "　必要に応じて設定してください。段位認定モードでは適用されません"
+		CALL COLUMNPRINTL, 0, "　また、体質変更MODは既に解禁済みのキャラにも適用されません。新たに解禁したキャラにのみ適用されます"
+		CALL COLUMNPRINTL, 0, ""
+		CALL COLUMNPRINTL, 0, "□キャラEXMOD(特定のキャラを新しく購入・追加した際に適用。)"
+		CALL COLUMNPRINTL, 0, "　[0] - 「キャラEXMOD」を設定する"
+		CALL COLUMNPRINTL, 0, ""
+		CALL COLUMNPRINTL, 0, "□性別関連MOD(新しく購入、追加したキャラにのみ適用。各MODの重複は不可)"
+		CALL COLUMNPRINTL, 0, @"　[1] - MOD:男性化(現在:\@ MOD:男性化 ? オン # オフ \@) 全てのキャラが男性になる", @"\@ MOD:男性化 ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[2] - MOD:女性化(現在:\@ MOD:女性化 ? オン # オフ \@) 全てのキャラが女性になる", @"\@ MOD:女性化 ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[3] - MOD:女性化TSバストサイズランダム(現在:\@ MOD:女性化TSバストサイズランダム ? オン # オフ \@) 全てのキャラが女性になりバストサイズがランダムで決定される", @"\@ MOD:女性化TSバストサイズランダム ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[4] - MOD:性転換(現在:\@ MOD:性転換 ? オン # オフ \@) 全てのキャラが性転換する", @"\@ MOD:性転換 ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[5] - MOD:性転換TSバストサイズランダム(現在:\@ MOD:性転換TSバストサイズランダム ? オン # オフ \@) 全てのキャラが性転換し女性化したキャラのバストサイズがランダムで決定される", @"\@ MOD:性転換TSバストサイズランダム ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, ""
+		CALL COLUMNPRINTL, 0, "□体質関連MOD(新しく購入、追加したキャラにのみ適用)"
+		CALL COLUMNPRINTL, 0, @"　[11] - MOD:爆乳(現在:\@ MOD:爆乳 ? オン # オフ \@) 全ての女性キャラが爆乳になる。MOD:絶壁との重複不可", @"\@ MOD:爆乳 ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[12] - MOD:絶壁(現在:\@ MOD:絶壁 ? オン # オフ \@) 全ての女性キャラが絶壁になる。MOD:爆乳との重複不可", @"\@ MOD:絶壁 ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[13] - MOD:母乳(現在:\@ MOD:母乳 ? オン # オフ \@) 全ての女性キャラが母乳体質になる", @"\@ MOD:母乳 ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[14] - MOD:おもらし(現在:\@ MOD:おもらし ? オン # オフ \@) 全てのキャラが漏らすようになる", @"\@ MOD:おもらし ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[15] - MOD:ふたなり(現在:\@ MOD:ふたなり ? オン # オフ \@) 全てのキャラがふたなりになる", @"\@ MOD:ふたなり ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[16] - MOD:ロリショタ(現在:\@ MOD:ロリショタ ? オン # オフ \@) 全てのキャラが小柄体型になる。MOD:大人化との重複不可", @"\@ MOD:ロリショタ ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[17] - MOD:大人化(現在:\@ MOD:大人化 ? オン # オフ \@) 全てのキャラが大人体型になる。MOD:ロリショタとの重複不可", @"\@ MOD:大人化 ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[18] - MOD:チャレンジ(現在:\@ MOD:チャレンジ ? オン # オフ \@) 全てのキャラの性経験が皆無になる 旧チャレンジモード", @"\@ MOD:チャレンジ ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[19] - MOD:スライム(現在:\@ MOD:スライム ? オン # オフ \@) 全てのキャラがスライムになる", @"\@ MOD:スライム ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, @"　[20] - MOD:ヤンデレ(現在:\@ MOD:ヤンデレ ? オン # オフ \@) 全てのキャラがヤンデレになる", @"\@ MOD:ヤンデレ ? deepskyblue #\@"
+		CALL COLUMNPRINTL, 0, ""
 	CASE 1
 		CALL COLUMNPRINTL, 0, "□妊娠関連MOD(既存のキャラにも適用される)"
 		CALL COLUMNPRINTL, 0, @"　[31] - MOD:人口飽和(現在:\@ MOD:人口飽和 ? オン # オフ \@) 中出しした翌日に妊娠し、すぐに出産するMOD 妊娠期間MODと併用不可", @"\@ MOD:人口飽和 ? deepskyblue #\@"
@@ -295,21 +138,6 @@ IF 安全係数設定
 		安全日妊娠確率 = CRESULT:1
 	ENDIF
 	安全係数設定 = 0
-ELSEIF キャラExMOD設定
-	IF キャラExMOD閲覧
-		キャラExMOD閲覧 = 0
-	ELSE
-		SELECTCASE CRESULT:1
-			CASE 0
-				キャラExMOD設定 = 0
-			CASE IS < 0
-				キャラExMOD閲覧 = ABS(CRESULT:1)
-			CASE IS > 0
-				キャラExMODオンオフ = 1
-				TRYCALLFORM キャラExMOD_%キャラExMOD_MOD名一覧:(CRESULT:1)%(1)
-				キャラExMODオンオフ = 0
-		ENDSELECT
-	ENDIF
 ELSE
 	SELECTCASE CRESULT:1
 		CASE -1
@@ -319,8 +147,7 @@ ELSE
 		CASE 209
 			MODページ++
 		CASE 0
-			CALL キャラExMOD_リスト化
-			キャラExMOD設定 = 1
+			CALL キャラEXMOD
 		CASE 1
 			INVERTBIT MOD:男性化, 0
 			MOD:女性化 = 0
