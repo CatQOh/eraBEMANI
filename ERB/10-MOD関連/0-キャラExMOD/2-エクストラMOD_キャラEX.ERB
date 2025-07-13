@@ -1,6 +1,7 @@
 ﻿@キャラEXMOD
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC Lキャラ番号
+#DIM DYNAMIC LOG_NO
 #DIM DYNAMIC DGT_MAX
 
 ;このあたりはERHで定数化してもいいかも
@@ -10,6 +11,35 @@
 
 #DIMS DYNAMIC ABL_LOG, 100
 #DIMS DYNAMIC EXP_LOG, 100
+#DIMS DYNAMIC SEXP_LOG, 100
+#DIMS DYNAMIC SEXP_LOG_TEMP
+
+#DIMS DYNAMIC 性経験設定用, 100
+#DIMS DYNAMIC 相手, 2
+
+#DIM DYNAMIC モブ経験人数_前
+#DIM DYNAMIC モブ経験回数_前
+#DIM DYNAMIC モブ中出し回数_前
+#DIM DYNAMIC モブアナル中出し回数_前
+#DIM DYNAMIC モブ中出され回数_前
+#DIM DYNAMIC モブアナル中出され回数_前
+#DIM DYNAMIC モブ孕み回数_前
+#DIM DYNAMIC モブ孕ませ回数_前
+#DIM DYNAMIC モブパイズリ人数_前
+#DIM DYNAMIC モブパイズリ回数_前
+#DIM DYNAMIC モブ挟射回数_前
+
+#DIM DYNAMIC 経験回数_前, 10000
+#DIM DYNAMIC 中出し回数_前, 10000
+#DIM DYNAMIC アナル中出し回数_前, 10000
+#DIM DYNAMIC 中出され回数_前, 10000
+#DIM DYNAMIC アナル中出され回数_前, 10000
+#DIM DYNAMIC 孕み回数_前, 10000
+#DIM DYNAMIC 孕ませ回数_前, 10000
+#DIM DYNAMIC パイズリ回数_前, 10000
+#DIM DYNAMIC 挟射回数_前, 10000
+
+#DIM DYNAMIC キャラ名記入済
 
 #DIMS DYNAMIC 素質追加, 100
 #DIMS DYNAMIC 素質削除, 100
@@ -34,28 +64,270 @@ IF 選択MOD
 	;キャラ番号を取得して一時的にキャラを増やす
 	ADDCHARA Lキャラ番号
 	TARGET = CHARANUM-1
+
+	;元のCSVでの性経験を取得
+	SPLIT CSTR:性経験, "/", 性経験設定用
+	FOR LCOUNT, 0, RESULT, 2
+		SIF 性経験設定用:LCOUNT == ""
+			BREAK
+		;なぜか行連結で行頭にスペースが入るので削る
+		性経験設定用:LCOUNT = %SUBSTRINGU(性経験設定用:LCOUNT, 1)%
+		SELECTCASE 性経験設定用:LCOUNT
+			CASE "モブ経験人数"
+				モブ経験人数_前 = TOINT(性経験設定用:(LCOUNT+1))
+			CASE "モブ経験回数"
+				モブ経験回数_前 = TOINT(性経験設定用:(LCOUNT+1))
+			CASE "モブ中出し回数"
+				モブ中出し回数_前 = TOINT(性経験設定用:(LCOUNT+1))
+			CASE "モブアナル中出し回数"
+				モブアナル中出し回数_前 = TOINT(性経験設定用:(LCOUNT+1))
+			CASE "モブ中出され回数"
+				モブ中出され回数_前 = TOINT(性経験設定用:(LCOUNT+1))
+			CASE "モブアナル中出され回数"
+				モブアナル中出され回数_前 = TOINT(性経験設定用:(LCOUNT+1))
+			CASE "モブ孕み回数"
+				モブ孕み回数_前 = TOINT(性経験設定用:(LCOUNT+1))
+			CASE "モブ孕ませ回数"
+				モブ孕ませ回数_前 = TOINT(性経験設定用:(LCOUNT+1))
+			CASE "モブパイズリ人数"
+				モブパイズリ人数_前 = TOINT(性経験設定用:(LCOUNT+1))
+			CASE "モブパイズリ回数"
+				モブパイズリ回数_前 = TOINT(性経験設定用:(LCOUNT+1))
+			CASE "モブ挟射回数"
+				モブ挟射回数_前 = TOINT(性経験設定用:(LCOUNT+1))
+			;以下
+			;相手:0 = 相手のNAME
+			;相手:1 = 回数
+			CASE "経験回数"
+				CALL ESCAPESPLIT, 性経験設定用:(LCOUNT+1), "*", 相手
+				経験回数_前:GETNO(相手) = TOINT(相手:1)
+			CASE "中出し回数"
+				CALL ESCAPESPLIT, 性経験設定用:(LCOUNT+1), "*", 相手
+				中出し回数_前:GETNO(相手) = TOINT(相手:1)
+			CASE "アナル中出し回数"
+				CALL ESCAPESPLIT, 性経験設定用:(LCOUNT+1), "*", 相手
+				アナル中出し回数_前:GETNO(相手) = TOINT(相手:1)
+			CASE "中出され回数"
+				CALL ESCAPESPLIT, 性経験設定用:(LCOUNT+1), "*", 相手
+				中出され回数_前:GETNO(相手) = TOINT(相手:1)
+			CASE "アナル中出され回数"
+				CALL ESCAPESPLIT, 性経験設定用:(LCOUNT+1), "*", 相手
+				アナル中出され回数_前:GETNO(相手) = TOINT(相手:1)
+			CASE "孕み回数"
+				CALL ESCAPESPLIT, 性経験設定用:(LCOUNT+1), "*", 相手
+				孕み回数_前:GETNO(相手) = TOINT(相手:1)
+			CASE "孕ませ回数"
+				CALL ESCAPESPLIT, 性経験設定用:(LCOUNT+1), "*", 相手
+				孕ませ回数_前:GETNO(相手) = TOINT(相手:1)
+			CASE "パイズリ回数"
+				CALL ESCAPESPLIT, 性経験設定用:(LCOUNT+1), "*", 相手
+				パイズリ回数_前:GETNO(相手) = TOINT(相手:1)
+			CASE "挟射回数"
+				CALL ESCAPESPLIT, 性経験設定用:(LCOUNT+1), "*", 相手
+				挟射回数_前:GETNO(相手) = TOINT(相手:1)
+		ENDSELECT
+	NEXT
+
 	TRYCALLFORM %キャラEXMOD一覧:選択MOD%(0)
+	;MOD適用後の性経験も取得
+	CALL 初期経験セット, TARGET
+
 	;変更箇所をログ変数に入れてからまとめて表示する
+	;能力
 	FOR LCOUNT, 0, ABL_MAX
 		SIF ABL:LCOUNT != CSVABL(Lキャラ番号, LCOUNT)
 			ABL_LOG:FINDELEMENTF(ABL_LOG, "") = %ABLNAME:LCOUNT, 8, LEFT% {CSVABL(Lキャラ番号, LCOUNT), 2}→{ABL:LCOUNT, 2, LEFT}
 	NEXT
+	;経験
 	FOR LCOUNT, 0, EXP_MAX
 		SIF EXP:LCOUNT != CSVEXP(Lキャラ番号, LCOUNT)
 			EXP_LOG:FINDELEMENTF(EXP_LOG, "") = %EXPNAME:LCOUNT, 12, LEFT% {CSVEXP(Lキャラ番号, LCOUNT), 6}→{EXP:LCOUNT, 6, LEFT}
 	NEXT
+	;性経験
+	[SKIPSTART]
+	FOR LCOUNT, 0, 10000
+		VARSET SEXP_LOG_TEMP
+		キャラ名記入済 = 0
+		IF 経験回数_前:LCOUNT != 経験回数:LCOUNT
+			SEXP_LOG_TEMP = %CSVNAME(LCOUNT)%……経験回数:{経験回数_前:LCOUNT}→{経験回数:LCOUNT}
+			キャラ名記入済 = 1
+		ENDIF
+		IF 中出し回数_前:LCOUNT != 中出し回数:LCOUNT
+			IF キャラ名記入済
+				SEXP_LOG_TEMP +=  中出し回数:{中出し回数_前:LCOUNT}→{中出し回数:LCOUNT}
+			ELSE
+				SEXP_LOG_TEMP = %CSVNAME(LCOUNT)%……中出し回数:{中出し回数_前:LCOUNT}→{中出し回数:LCOUNT}
+				キャラ名記入済 = 1
+			ENDIF
+		ENDIF
+		IF 中出され回数_前:LCOUNT != 中出され回数:LCOUNT
+			IF キャラ名記入済
+				SEXP_LOG_TEMP +=  中出され回数:{中出され回数_前:LCOUNT}→{中出され回数:LCOUNT}
+			ELSE
+				SEXP_LOG_TEMP = %CSVNAME(LCOUNT)%……中出され回数:{中出され回数_前:LCOUNT}→{中出され回数:LCOUNT}
+				キャラ名記入済 = 1
+			ENDIF
+		ENDIF
+		IF アナル中出し回数_前:LCOUNT != アナル中出し回数:LCOUNT
+			IF キャラ名記入済
+				SEXP_LOG_TEMP +=  アナル中出し回数:{アナル中出し回数_前:LCOUNT}→{アナル中出し回数:LCOUNT}
+			ELSE
+				SEXP_LOG_TEMP = %CSVNAME(LCOUNT)%……アナル中出し回数:{アナル中出し回数_前:LCOUNT}→{アナル中出し回数:LCOUNT}
+				キャラ名記入済 = 1
+			ENDIF
+		ENDIF
+		IF アナル中出され回数_前:LCOUNT != アナル中出され回数:LCOUNT
+			IF キャラ名記入済
+				SEXP_LOG_TEMP +=  アナル中出され回数:{アナル中出され回数_前:LCOUNT}→{アナル中出され回数:LCOUNT}
+			ELSE
+				SEXP_LOG_TEMP = %CSVNAME(LCOUNT)%……アナル中出され回数:{アナル中出され回数_前:LCOUNT}→{アナル中出され回数:LCOUNT}
+				キャラ名記入済 = 1
+			ENDIF
+		ENDIF
+		IF 孕み回数_前:LCOUNT != 孕み回数:LCOUNT
+			IF キャラ名記入済
+				SEXP_LOG_TEMP +=  孕み回数:{孕み回数_前:LCOUNT}→{孕み回数:LCOUNT}
+			ELSE
+				SEXP_LOG_TEMP = %CSVNAME(LCOUNT)%……孕み回数:{孕み回数_前:LCOUNT}→{孕み回数:LCOUNT}
+				キャラ名記入済 = 1
+			ENDIF
+		ENDIF
+		IF 孕ませ回数_前:LCOUNT != 孕ませ回数:LCOUNT
+			IF キャラ名記入済
+				SEXP_LOG_TEMP +=  孕ませ回数:{孕ませ回数_前:LCOUNT}→{孕ませ回数:LCOUNT}
+			ELSE
+				SEXP_LOG_TEMP = %CSVNAME(LCOUNT)%……孕ませ回数:{孕ませ回数_前:LCOUNT}→{孕ませ回数:LCOUNT}
+				キャラ名記入済 = 1
+			ENDIF
+		ENDIF
+		IF パイズリ回数_前:LCOUNT != パイズリ回数:LCOUNT
+			IF キャラ名記入済
+				SEXP_LOG_TEMP +=  パイズリ回数:{パイズリ回数_前:LCOUNT}→{パイズリ回数:LCOUNT}
+			ELSE
+				SEXP_LOG_TEMP = %CSVNAME(LCOUNT)%……パイズリ回数:{パイズリ回数_前:LCOUNT}→{パイズリ回数:LCOUNT}
+				キャラ名記入済 = 1
+			ENDIF
+		ENDIF
+		IF 挟射回数_前:LCOUNT != 挟射回数:LCOUNT
+			IF キャラ名記入済
+				SEXP_LOG_TEMP +=  挟射回数:{挟射回数_前:LCOUNT}→{挟射回数:LCOUNT}
+			ELSE
+				SEXP_LOG_TEMP = %CSVNAME(LCOUNT)%……挟射回数:{挟射回数_前:LCOUNT}→{挟射回数:LCOUNT}
+				キャラ名記入済 = 1
+			ENDIF
+		ENDIF
+		SIF SEXP_LOG_TEMP != ""
+			SEXP_LOG:FINDELEMENTF(SEXP_LOG, "") = %SEXP_LOG_TEMP%
+	NEXT
+	;性経験(モブ)
+	VARSET SEXP_LOG_TEMP
+	キャラ名記入済 = 0
+	IF モブ経験回数_前 != モブ経験回数:0 || モブ経験人数_前- != モブ経験人数:0
+		SEXP_LOG_TEMP = 不明……経験回数:
+		IF モブ経験回数_前- == モブ経験回数:0
+			SEXP_LOG_TEMP += {モブ経験回数:0}
+		ELSE
+			{モブ経験回数_前}→{モブ経験回数:0}
+		ENDIF
+		IF モブ経験人数_前 == モブ経験人数:0
+			SEXP_LOG_TEMP += (人数:{モブ経験人数:0})
+		ELSE
+			SEXP_LOG_TEMP += (人数:{モブ経験人数_前}→{モブ経験人数:0})
+		ENDIF
+		キャラ名記入済 = 1
+	ENDIF
+	IF モブ中出し回数_前 != モブ中出し回数:0
+		IF キャラ名記入済
+			SEXP_LOG_TEMP +=  中出し回数:{モブ中出し回数_前}→{モブ中出し回数:0}
+		ELSE
+			SEXP_LOG_TEMP = 不明……中出し回数:{モブ中出し回数_前}→{モブ中出し回数:0}
+			キャラ名記入済 = 1
+		ENDIF
+	ENDIF
+	IF モブ中出され回数_前 != モブ中出され回数:0
+		IF キャラ名記入済
+			SEXP_LOG_TEMP +=  中出され回数:{モブ中出され回数_前}→{モブ中出され回数:0}
+		ELSE
+			SEXP_LOG_TEMP = 不明……中出され回数:{モブ中出され回数_前}→{モブ中出され回数:0}
+			キャラ名記入済 = 1
+		ENDIF
+	ENDIF
+	IF モブアナル中出し回数_前 != モブアナル中出し回数:L0
+		IF キャラ名記入済
+			SEXP_LOG_TEMP +=  アナル中出し回数:{モブアナル中出し回数_前}→{モブアナル中出し回数:0}
+		ELSE
+			SEXP_LOG_TEMP = 不明……アナル中出し回数:{モブアナル中出し回数_前}→{モブアナル中出し回数:0}
+			キャラ名記入済 = 1
+		ENDIF
+	ENDIF
+	IF モブアナル中出され回数_前 != モブアナル中出され回数:0
+		IF キャラ名記入済
+			SEXP_LOG_TEMP +=  アナル中出され回数:{モブアナル中出され回数_前}→{モブアナル中出され回数:0}
+		ELSE
+			SEXP_LOG_TEMP = 不明……アナル中出され回数:{モブアナル中出され回数_前}→{モブアナル中出され回数:0}
+			キャラ名記入済 = 1
+		ENDIF
+	ENDIF
+	IF モブ孕み回数_前 != モブ孕み回数:0
+		IF キャラ名記入済
+			SEXP_LOG_TEMP +=  孕み回数:{モブ孕み回数_前}→{モブ孕み回数:0}
+		ELSE
+			SEXP_LOG_TEMP = 不明……孕み回数:{モブ孕み回数_前}→{モブ孕み回数:0}
+			キャラ名記入済 = 1
+		ENDIF
+	ENDIF
+	IF モブ孕ませ回数_前 != モブ孕ませ回数:0
+		IF キャラ名記入済
+			SEXP_LOG_TEMP +=  孕ませ回数:{モブ孕ませ回数_前}→{モブ孕ませ回数:0}
+		ELSE
+			SEXP_LOG_TEMP = 不明……孕ませ回数:{モブ孕ませ回数_前}→{モブ孕ませ回数:0}
+			キャラ名記入済 = 1
+		ENDIF
+	ENDIF
+	IF モブパイズリ回数_前 != モブパイズリ回数:0 || モブパイズリ人数_前 != モブパイズリ人数:0
+		IF キャラ名記入済
+			SEXP_LOG_TEMP +=  パイズリ回数:
+		ELSE
+			SEXP_LOG_TEMP = 不明……パイズリ回数:
+			キャラ名記入済 = 1
+		ENDIF
+		IF モブパイズリ回数_前 == モブパイズリ回数:0
+			SEXP_LOG_TEMP += {モブパイズリ回数:0}
+		ELSE
+			SEXP_LOG_TEMP += {パイズリ回数_前}→{パイズリ回数:0}
+		ENDIF
+		IF モブパイズリ人数_前 == モブパイズリ人数:0
+			SEXP_LOG_TEMP += (人数:{モブパイズリ人数:0})
+		ELSE
+			SEXP_LOG_TEMP += (人数:{パイズリ人数_前}→{パイズリ人数:0})
+		ENDIF
+	ENDIF
+	IF 挟射回数_前 != 挟射回数:0
+		IF キャラ名記入済
+			SEXP_LOG_TEMP +=  挟射回数:{モブ挟射回数_前}→{モブ挟射回数:0}
+		ELSE
+			SEXP_LOG_TEMP = 不明……挟射回数:{モブ挟射回数_前}→{モブ挟射回数:0}
+			キャラ名記入済 = 1
+		ENDIF
+	ENDIF
+	SIF SEXP_LOG_TEMP != ""
+		SEXP_LOG:FINDELEMENTF(SEXP_LOG, "") = %SEXP_LOG_TEMP%
+	[SKIPEND]
 
-	IF MAX(FINDELEMENTF(ABL_LOG, ""), FINDELEMENTF(EXP_LOG, "")) > 0
-		FOR LCOUNT, 0, MAX(FINDELEMENTF(ABL_LOG, ""), FINDELEMENTF(EXP_LOG, ""))
+	IF MAX(FINDELEMENTF(ABL_LOG, ""), FINDELEMENTF(EXP_LOG, ""), FINDELEMENTF(SEXP_LOG, "")) > 0
+		FOR LCOUNT, 0, MAX(FINDELEMENTF(ABL_LOG, ""), FINDELEMENTF(EXP_LOG, ""), FINDELEMENTF(SEXP_LOG, ""))
 			IF ABL_LOG:LCOUNT != ""
 				PRINTFORM 　%ABL_LOG:LCOUNT%|
 			ELSE
 				PRINTFORM 　%SPACESLENS(ABL_LOG:0)%|
 			ENDIF
 			IF EXP_LOG:LCOUNT != ""
-				PRINTFORM 　%EXP_LOG:LCOUNT%|
+				PRINTFORM  %EXP_LOG:LCOUNT%|
 			ELSE
-				PRINTFORM 　%SPACESLENS(EXP_LOG:0)%|
+				PRINTFORM  %SPACESLENS(EXP_LOG:0)%|
+			ENDIF
+			IF SEXP_LOG:LCOUNT != ""
+				PRINTFORM  %SEXP_LOG:LCOUNT%
 			ENDIF
 			PRINTL 
 		NEXT
