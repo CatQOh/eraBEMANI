@@ -339,9 +339,12 @@ IF ゲームモード() == "学園モード"
 		実効値 += 好感度合計(TARGET)/100
 		PRINTFORM +好感度({好感度合計(TARGET)/100})
 	ENDIF
-	IF CFLAG:インモラル
+	IF CFLAG:インモラル > 0
 		実効値 += CFLAG:インモラル
-		PRINTFORM +倫理観崩壊({CFLAG:インモラル})
+		PRINTFORM +インモラル({CFLAG:インモラル})
+	ELSEIF CFLAG:インモラル < 0
+		実効値 += CFLAG:インモラル
+		PRINTFORM -モラル({ABS(CFLAG:インモラル)})
 	ENDIF
 ENDIF
 
@@ -878,17 +881,13 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 	ENDIF
 NEXT
 
-;V経験
+;Ｖ経験不足(30未満に適用)
 IF !TALENT:処女
-	IF EXP:Ｖ経験 < 10
-		実効値 -= 15
-		PRINT -Ｖ経験不足(15)
-	ELSEIF EXP:Ｖ経験 < 20
-		実効値 -= 10
-		PRINT -Ｖ経験不足(10)
-	ELSEIF EXP:Ｖ経験 < 30
-		実効値 -= 5
-		PRINT -Ｖ経験不足(5)
+	実効値:1 = 15
+	実効値:1 -= EXP:Ｖ経験/2
+	IF 実効値:1 > 0
+		実効値 -= 実効値:1
+		PRINTFORM -Ｖ経験不足({実効値:1})
 	ENDIF
 ENDIF
 
@@ -907,8 +906,15 @@ ENDIF
 ;PLAYERが搾精コンドーム付ける時無いと思う
 IF PENIS(PLAYER) && !TEQUIP:PLAYER:コンドーム && !TEQUIP:PLAYER:搾精コンドーム
 	IF ゲームモード() == "学園モード"
-		実効値 -= 50
-		PRINT -ゴム無し(50)
+		IF TALENT:初潮前
+			実効値:1 = 10
+		ELSEIF TALENT:排卵不安定
+			実効値:1 = 30
+		ELSE
+			実効値:1 = 50
+		ENDIF
+		実効値 -= 実効値:1
+		PRINTFORM -ゴム無し({実効値:1})
 	ELSEIF !陥落(TARGET)
 		実効値 -= 20
 		PRINT -ゴム無し(20)
@@ -1031,16 +1037,12 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 	ENDIF
 NEXT
 
-;A経験
-IF EXP:Ａ経験 <= 33
-	実効値 -= 30
-	PRINT -Ａ経験不足(30)
-ELSEIF EXP:Ａ経験 <= 66
-	実効値 -= 20
-	PRINT -Ａ経験不足(20)
-ELSEIF EXP:Ａ経験 <= 99
-	実効値 -= 10
-	PRINT -Ａ経験不足(10)
+;Ａ経験不足(100未満に適用)
+実効値:1 = 30
+実効値:1 -= 30 * Ａ経験 / 100
+IF 実効値:1 > 0
+	実効値 -= 実効値:1
+	PRINTFORM -Ａ経験不足({実効値:1})
 ENDIF
 
 ;媚薬
@@ -1051,11 +1053,11 @@ ENDIF
 
 IF PENIS(PLAYER) && !TEQUIP:PLAYER:コンドーム && !TEQUIP:PLAYER:搾精コンドーム
 	IF ゲームモード() == "学園モード"
-		実効値 -= 50
-		PRINT -ゴム無し(50)
+		実効値 -= 10
+		PRINT -ゴム無し(10)
 	ELSEIF !陥落(TARGET)
-		実効値 -= 20
-		PRINT -ゴム無し(20)
+		実効値 -= 10
+		PRINT -ゴム無し(10)
 	ENDIF
 ENDIF
 
@@ -1162,11 +1164,11 @@ ENDIF
 
 IF PENIS(TARGET) && !TEQUIP:コンドーム && !TEQUIP:搾精コンドーム
 	IF ゲームモード() == "学園モード"
-		実効値 -= 50
-		PRINT -ゴム無し(50)
+		実効値 -= 10
+		PRINT -ゴム無し(10)
 	ELSEIF !陥落(TARGET)
-		実効値 -= 20
-		PRINT -ゴム無し(20)
+		実効値 -= 10
+		PRINT -ゴム無し(10)
 	ENDIF
 ENDIF
 
