@@ -11,6 +11,7 @@
 #DIM DYNAMIC インモラル加算済み
 #DIM DYNAMIC LVARLINE
 #DIM DYNAMIC マリィ
+#DIM DYNAMIC リロード数
 
 VARSET ロケーション判定
 
@@ -127,7 +128,7 @@ CATCH
 		IF 出現率:LCOUNT > 0
 			SIF 運命の人 == NAME:LCOUNT && 出現率:LCOUNT < 50
 				出現率:LCOUNT = 50
-			IF RANDPER(出現率:LCOUNT)
+			IF RANDPER(会話候補出現確率(出現率:LCOUNT, リロード数))
 				PRINTFORM 　[{LCOUNT}] - 
 				CALL SNAME(LCOUNT)
 				PRINTL に話しかける
@@ -161,12 +162,27 @@ CATCH
 	DRAWLINE
 	PRINTPLAINFORM 　%目的地%　
 	PRINT [0] - 帰る
+	PRINTPLAIN  
 	IF ターン == "夜"
-		CALL PRINTCOLOR, @"　[--] - %目的地%に留まる(もう帰宅する時間です)", "gray"
+		CALL PRINTCOLOR, @"[--] - %目的地%に留まる(もう帰宅する時間です)", "gray"
 	ELSE
-		PRINTFORM   [-1] - %目的地%に留まる
+		PRINTFORM  [-1] - %目的地%に留まる
 	ENDIF
-	PRINTL  [-2] - もう少し周りを見てみる
+	PRINTPLAIN  
+	IF リロード数 < 9
+		PRINTL  [-2] - もう少し周りを見てみる
+	ELSE
+		SELECTCASE ターン
+			CASE "朝"
+				CALL PRINTCOLOR, @"[--] - もう少し周りを見てみる(もうすぐ昼になります)", "gray"
+			CASE "昼"
+				CALL PRINTCOLOR, @"[--] - もう少し周りを見てみる(もうすぐ夕方になります)", "gray"
+			CASE "夕"
+				CALL PRINTCOLOR, @"[--] - もう少し周りを見てみる(もうすぐ夜になります)", "gray"
+			CASEELSE
+				CALL PRINTCOLOR, @"[--] - もう少し周りを見てみる(もう帰宅する時間です)", "gray"
+		ENDSELECT
+	ENDIF
 	BINPUT
 	LRESULT = RESULT
 	SELECTCASE LRESULT
@@ -176,6 +192,7 @@ CATCH
 		CASE -1
 			RETURN 1
 		CASE -2
+			リロード数++
 			GOTO リロード
 		CASE 1 TO CHARANUM
 			CALL 学園モード_汎用会話, LRESULT
@@ -214,6 +231,53 @@ CATCH
 ENDCATCH
 
 RETURN 1
+
+
+;;;「百分率^(1+リロード数/3)」を百分率で返す
+;;;すなわちリロード数3回で2乗、6回で3乗、9回で4乗される
+@会話候補出現確率(百分率, リロード数)
+#FUNCTION
+#DIM DYNAMIC 百分率
+#DIM DYNAMIC リロード数
+#DIM DYNAMIC L_INT, 2
+
+;例外処理
+IF 百分率 >= 100
+	RETURNF 100
+ELSEIF 百分率 <= 0
+	RETURNF 0
+ENDIF
+
+;元の確率を1OOp(pは0以上1以下で100pは百分率表記)とすると、
+;ほしい確率は100p^x=(1OOp)^x/100^(x-1)
+
+;整数乗する
+L_INT = POWER(百分率, 1+リロード数/3)
+;必要なら1/3乗もしくは2/3乗をかける
+;ただし、桁落ちを防ぐために10倍にしておく
+IF リロード数%3 != 0
+	L_INT:1 = 1000*百分率
+	SIF リロード数%3 == 2
+		L_INT:1 *= 百分率
+	L_INT *= CBRT(L_INT:1)
+ENDIF
+
+;100^(リロード数/3)で割る
+L_INT /= POWER(100, リロード数/3)
+
+;必要なら100の1/3乗もしくは2/3乗で割る
+;このとき、事前に10倍にしていたため割る方も10倍にする
+;面倒なのでマジックナンバーを使用
+IF リロード数%3 == 1
+	;100の1/3乗は4.64…
+	L_INT /= 46
+ELSEIF リロード数%3 == 2
+	;100の2/3乗は21.54…
+	L_INT /= 215
+ENDIF
+
+RETURNF L_INT
+
 
 @ロケーション一覧
 #DIM DYNAMIC LCOUNT
