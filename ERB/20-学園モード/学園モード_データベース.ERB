@@ -24,6 +24,8 @@ RETURN 0
 #DIM DYNAMIC ページ数
 #DIM DYNAMIC 在学総人数
 
+VARSET ページ数
+
 FOR LCOUNT, 0, VARSIZE("学校名")
 	SIF STRLENS(学校名:LCOUNT) > 最大文字列長
 		最大文字列長 = STRLENS(学校名:LCOUNT)
@@ -124,19 +126,25 @@ SIF !INRANGE(選択校, 0, VARSIZE("学校名"))
 CALL 学園_データベース表示, 選択校, リスト表示, 表示人数, ページ数
 
 DRAWLINE
-PRINTPLAINFORM 　\@ 選択校 == 無所属 ? 無所属or社会人のキャラ # %学校名:選択校% \@　
+PRINTPLAINFORM 　\@ 選択校 == 無所属 ? 無所属or社会人のキャラ # %学校名:選択校% \@ ¦ 
 
-CALL PRINTSPACE(ページ数, "[-7] 前ページ ")
+CALL PRINTSPACE(ページ数, "[-7] 前ページ")
 
-PRINT [-1] - 戻る 
+PRINT 　[-1] - 戻る 
 
 IF 選択校 == 無所属
-	CALL PRINTSPACE(表示人数 < 在学総人数("無所属"), "[-9] 次ページ")
+	CALL PRINTSPACE(表示人数 < 在学総人数("無所属"), "　[-9] 次ページ")
 ELSE
-	CALL PRINTSPACE(表示人数 < 在学総人数(学校名:選択校), "[-9] 次ページ")
+	CALL PRINTSPACE(表示人数 < 在学総人数(学校名:選択校), "　[-9] 次ページ")
 ENDIF
 
 IF ITEM:ラブスコープ
+	PRINTL
+	IF 選択校 == 無所属
+		PRINTPLAINFORM 　%SPACESLENS("無所属or社会人のキャラ")% ¦ 
+	ELSE
+		PRINTPLAINFORM 　%SPACESLENS(学校名:選択校)% ¦ 
+	ENDIF
 	SELECTCASE ラブスコープ使用
 		CASE 0
 			表示好感度 = 表示しない
@@ -147,7 +155,7 @@ IF ITEM:ラブスコープ
 		CASE 8
 			表示好感度 = インモラル
 	ENDSELECT
-	PRINTFORM 　[-2] - ラブスコープの表示切り替え(現在:\@ 表示好感度 == "舎弟" ? 舎弟or母性 # %表示好感度% \@)
+	PRINTFORM [-2] - ラブスコープの表示切り替え(現在:\@ 表示好感度 == "舎弟" ? 舎弟or母性 # %表示好感度% \@)
 	PRINT 　[-3] - リスト表示
 	SIF MOD:バスト関連ステータス表示
 		PRINTFORM 　[-8] - バストサイズ編集(現在:\@ バストサイズ編集 ? あり # なし \@)
@@ -258,6 +266,7 @@ GOTO 生徒選択
 #DIMS DYNAMIC 表示用
 #DIM REF 表示人数
 #DIM REF ページ数
+#DIM CONST 同時に表示する人数 = 40
 
 #DIM DYNAMIC 表示キャラリスト, 10000
 #DIM DYNAMIC COUNTMODE
@@ -387,7 +396,7 @@ IF リスト表示
 	ENDIF
 
 	表示人数 = 0
-	FOR LCOUNT, ページ数*50, 人数
+	FOR LCOUNT, ページ数*同時に表示する人数, 人数
 		表示用 = 
 		IF !LCOUNT
 			IF 選択校 == 無所属
@@ -437,6 +446,8 @@ IF リスト表示
 					PRINT ♀→♂
 				CASE 2
 					PRINT ♂→♀
+				CASEELSE
+					PRINT 　　　
 			ENDSELECT
 		ELSE
 			SELECTCASE SEX(対象)
@@ -446,6 +457,8 @@ IF リスト表示
 					PRINT 　♂　
 				CASE 2
 					PRINT 　♀　
+				CASEELSE
+					PRINT 　　　
 			ENDSELECT
 		ENDIF
 		
@@ -459,14 +472,14 @@ IF リスト表示
 		ENDIF
 		PRINTL
 		表示人数++
-		SIF 表示人数 >= 50
+		SIF 表示人数 >= 同時に表示する人数
 			BREAK
 	NEXT
 ELSE
 	SIF ページ数 == 0
 		PRINTFORML □\@ 選択校 == 無所属 ? 無所属or社会人のキャラ # %学校名:選択校%の在校生 \@
 	表示人数 = 0
-	FOR LCOUNT, ページ数*50, 人数
+	FOR LCOUNT, ページ数*同時に表示する人数, 人数
 		IF 選択校 != 無所属
 			SIF LCOUNT == 生徒人数 && 教師人数
 				PRINTFORML □%学校名:選択校%の教師
@@ -474,10 +487,10 @@ ELSE
 				PRINTFORML □その他%学校名:選択校%に居るキャラ
 		ENDIF
 		PRINTFORM 　[{表示キャラリスト:LCOUNT, 最大桁数}] 
-		CALL SNAME(表示キャラリスト:LCOUNT, 1)
+		CALL SNAME(表示キャラリスト:LCOUNT, 1, 1)
 		PRINTL 
 		表示人数++
-		SIF 表示人数 >= 50
+		SIF 表示人数 >= 同時に表示する人数
 			BREAK
 	NEXT
 ENDIF
