@@ -20,7 +20,7 @@ RETURN 0
 #DIM DYNAMIC 対象
 #DIMS DYNAMIC 専用コマンドリスト, 10
 #DIM DYNAMIC 総数
-#DIMS DYNAMIC コマンドリスト = "何気ない会話をする", "少し踏み込んだ会話をする", "下ネタを振る", "性的に誘う", "思い切って告白する", "連絡先を聞いてみる", "同行を提案する", "八牌麻雀"
+#DIMS DYNAMIC コマンドリスト = "何気ない会話をする", "少し踏み込んだ会話をする", "下ネタを振る", "性的に誘う", "思い切って告白する", "連絡先を聞いてみる", "同行を提案する", "八牌麻雀", "性教育レベルを変更する"
 #DIMS DYNAMIC コマンド名表示
 #DIMS DYNAMIC 実行不可理由
 #DIMS DYNAMIC 本体側実行不可理由
@@ -89,6 +89,20 @@ FOR LCOUNT, 0, VARSIZE("コマンドリスト")
 					コマンド名表示 = 一局やらないか
 				SIF !実行不可フラグ
 					コマンド名表示 += "(八牌麻雀を開始)"
+			ENDIF
+		CASE "性教育レベルを変更する"
+			;ときめき+2×セフレ>=10000 のとき提案可能
+			;ただし恋人なら5000以上
+			IF CSTR:担当科目 == "保健"
+				IF TALENT:恋慕 && 好感度:ときめき + 好感度:セフレ >= 5000
+					コマンド名表示 = %CSTR:在任%の性教育について話をする
+				ELSEIF 好感度:ときめき + 好感度:セフレ >= 5000
+					コマンド名表示 = %CSTR:在任%の性教育について話をする
+				ELSE
+					実行不可フラグ = -1
+				ENDIF
+			ELSE
+				実行不可フラグ = -1
 			ENDIF
 	ENDSELECT
 	SIF 実行不可理由 == ""
@@ -269,6 +283,7 @@ ELSE
 		;授業をサボる
 		IF TARGET == 授業中
 			;授業を放棄させた
+			授業中 = 0
 			CALL 好感度上昇, 授業中, "セフレ", 50
 			CALL インモラル増加, 5
 			CALL インモラル増加, 5, MASTER
@@ -430,6 +445,21 @@ ELSE
 	CALL 好感度上昇, TARGET, "友情", 5
 ENDIF
 
+@SCHOOL_性教育レベルを変更する
+#DIM DYNAMIC 学校ID
+学校ID = FINDELEMENT(学校名, CSTR:在任, 0, 学校数上限, 1)
+
+CALL SCHOOL_KOJO, TARGET, "性教育レベル変更_前"
+PRINTL [-1] 変更しない
+CALL PRINTCONDL(性教育レベル:学校ID, 0, "[ 0] 普通の性教育を行う", "(現在はこのレベル)")
+CALL PRINTCONDL(性教育レベル:学校ID, 1, "[ 1] 具体的な性行為について座学で教える", "(現在はこのレベル)")
+BINPUT
+性教育レベル変更後 = RESULT
+SIF 性教育レベル変更後 >= 0
+	性教育レベル:学校ID = 性教育レベル変更後
+CALL SCHOOL_KOJO, TARGET, "性教育レベル変更_後"
+CALL 好感度上昇, TARGET, "ときめき", 10
+CALL 好感度上昇, TARGET, "セフレ", 100
 
 ;連れ込み先の選択は更に分離
 @SCHOOL_連れ込み先
@@ -739,3 +769,18 @@ ELSEIF TALENT:遊び人
 ELSE
 	PRINTFORMW %CALLNAME:TARGET%との対局に負けてしまった。%CALLNAME:TARGET%は得意げに勝ち誇っている
 ENDIF
+
+@SCHOOL_MESSAGE_性教育レベル変更_前
+;直後にボタンが続くのでWAITしない
+PRINTFORML %CALLNAME:PLAYER%は%CSTR:在任%の性教育の内容を変えてみないかと提案することにした。
+
+@SCHOOL_MESSAGE_性教育レベル変更_後
+SELECTCASE 性教育レベル変更後
+	CASE -1
+		PRINTFORMW 性教育の内容の変更をやめました。
+	CASE 0
+		PRINTFORMW %CALLNAME:PLAYER%は%CSTR:在任%の性教育の内容を一般的なものに戻すように言った。
+	CASE 1
+		PRINTFORML %CALLNAME:PLAYER%は%CSTR:在任%では授業で具体的な性行為の内容を教えるように言った。
+		PRINTW これで性知識のない生徒も性行為に興味をもつようになるだろう。
+ENDSELECT

@@ -188,9 +188,6 @@ SIF RESULT
 #DIM DYNAMIC 小学校入学可能
 #DIM DYNAMIC 女子校入学可能
 
-授業参加フラグ = 0
-授業中 = 0
-
 FOR LCOUNT, 0, CHARANUM
 	SIF PENIS(LCOUNT) && CFLAG:LCOUNT:残数 == 0
 		残数初期化判定++
@@ -239,6 +236,47 @@ FOR LCOUNT, 0, CHARANUM
 	SIF CFLAG:LCOUNT:酔 < 0
 		CFLAG:LCOUNT:酔 = 0
 NEXT
+
+;性教育レベルが1以上かつ保健(性教育)の授業があるとき、出席した生徒のインモラルが風紀(インモラル平均)未満の場合+1される
+IF 登校日()
+	IF ターン == "朝" || ターン == "昼"
+		FOR LCOUNT, 0, 学校数上限
+			IF 性教育レベル:LCOUNT > 0
+				;自分が所属している学校なら、変数「授業中」を参照
+				IF 学校名:LCOUNT == CSTR:PLAYER:在校
+					IF CSTR:授業中:担当科目 == "保健"
+						FOR LCOUNT2, 0, CHARANUM
+							IF CSTR:LCOUNT2:在校 == 学校名:LCOUNT && CSTR:LCOUNT2:現在地 == 学校名:LCOUNT
+								IF 風紀:LCOUNT - 10*CFLAG:LCOUNT2:インモラル >= 100
+									CFLAG:LCOUNT2:インモラル += 2
+								ELSEIF 風紀:LCOUNT - 10*CFLAG:LCOUNT2:インモラル >= 10
+									CFLAG:LCOUNT2:インモラル += 1
+								ENDIF
+							ENDIF
+						NEXT
+					ENDIF
+				;自分が所属していない学校なら、その場で行われたかをみる
+				ELSE
+					;条件仮置き
+					IF !RAND:3
+						FOR LCOUNT2, 0, CHARANUM
+							IF CSTR:LCOUNT2:在校 == 学校名:LCOUNT && CSTR:LCOUNT2:現在地 == 学校名:LCOUNT
+								IF 風紀:LCOUNT - 10*CFLAG:LCOUNT2:インモラル >= 100
+									CFLAG:LCOUNT2:インモラル += 2
+								ELSEIF 風紀:LCOUNT - 10*CFLAG:LCOUNT2:インモラル >= 10
+									CFLAG:LCOUNT2:インモラル += 1
+								ENDIF
+							ENDIF
+						NEXT
+					ENDIF
+				ENDIF
+			ENDIF
+		NEXT
+	ENDIF
+ENDIF
+
+授業参加フラグ = 0
+授業中 = 0
 
 ;ここで口上側のターン終了時関数を呼ぶ
 IF OPTION:口上表示
