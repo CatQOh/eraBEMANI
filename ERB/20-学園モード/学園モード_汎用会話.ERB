@@ -55,9 +55,9 @@ FOR LCOUNT, 0, VARSIZE("コマンドリスト")
 			ELSEIF 同行者 && 同行者 != TARGET
 				本体側実行不可理由 = %NAME:同行者%が同行中
 				実行不可フラグ = 1
-			ELSEIF 授業中 && !ISHOLIDAY_SCHOOL()
+			ELSEIF 授業中_現在地 && !ISHOLIDAY_SCHOOL()
 				;授業がある場合接頭語（ここも編集できるようにするかは検討）
-				IF TARGET == 授業中
+				IF TARGET == 授業中_現在地
 					コマンド名表示 = 授業を放棄させて%コマンド名表示%
 				ELSE
 					コマンド名表示 = 授業をサボって%コマンド名表示%
@@ -172,7 +172,7 @@ ENDSELECT
 IF 授業参加フラグ
 	PRINTL
 	PRINTL その後、教室へと戻り授業を受けた。
-	CALL 好感度上昇, 授業中, "舎弟", 2
+	CALL 好感度上昇, 授業中_現在地, "舎弟", 2
 	WAIT
 ENDIF
 
@@ -221,11 +221,12 @@ WAIT
 
 @SCHOOL_性的に誘う
 #DIM DYNAMIC インモラル閾値
+#DIM DYNAMIC 学校ID
 
 ;校内プレイだけ閾値あり
 IF 校内()
 	IF CSTR:在任 != ""
-		IF TARGET == 授業中
+		IF TARGET == 授業中_現在地
 			インモラル閾値 = 90
 		ELSE
 			インモラル閾値 = 70
@@ -279,16 +280,18 @@ ELSE
 		;バイト帰りで「性的に誘う」コマンドが使えるのは朝から夕まで(日付を跨がない)
 		CALL TURNEND_学園
 	ENDIF
-	IF 授業中
+	IF 授業中_現在地
 		;授業をサボる
-		IF TARGET == 授業中
+		IF TARGET == 授業中_現在地
 			;授業を放棄させた
-			授業中 = 0
-			CALL 好感度上昇, 授業中, "セフレ", 50
+			学校ID = FINDELEMENT(学校名, CSTR:PLAYER:現在地, 0, 学校数上限, 1)
+			授業消滅フラグ:学校ID = 1
+			CALL 好感度上昇, 授業中_現在地, "セフレ", 50
 			CALL インモラル増加, 5
 			CALL インモラル増加, 5, MASTER
 		ELSE
-			CALL 好感度上昇, 授業中, "舎弟", -2
+			SIF 授業参加フラグ
+				CALL 好感度上昇, 授業中_現在地, "舎弟", -2
 			IF CSTR:在任 != ""
 				CALL インモラル増加, 2
 				CALL インモラル増加, 2, MASTER

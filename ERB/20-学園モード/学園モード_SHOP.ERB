@@ -175,6 +175,9 @@ SIF RESULT
 #DIM DYNAMIC 残数最大値
 #DIM DYNAMIC 残数初期化判定
 
+#DIM DYNAMIC 性教育実施フラグ, 学校数上限
+#DIM DYNAMIC 担当教師インモラル値, 学校数上限
+
 #DIM DYNAMIC 学校ID
 #DIM DYNAMIC 学校ID記録, 10000
 #DIM DYNAMIC 風紀_人数カウント, 学校数上限
@@ -237,46 +240,43 @@ FOR LCOUNT, 0, CHARANUM
 		CFLAG:LCOUNT:酔 = 0
 NEXT
 
-;性教育レベルが1以上かつ保健(性教育)の授業があるとき、出席した生徒のインモラルが風紀(インモラル平均)未満の場合+1される
+
 IF 登校日()
 	IF ターン == "朝" || ターン == "昼"
-		FOR LCOUNT, 0, 学校数上限
-			IF 性教育レベル:LCOUNT > 0
-				;自分が所属している学校なら、変数「授業中」を参照
-				IF 学校名:LCOUNT == CSTR:PLAYER:在校
-					IF CSTR:授業中:担当科目 == "保健"
-						FOR LCOUNT2, 0, CHARANUM
-							IF CSTR:LCOUNT2:在校 == 学校名:LCOUNT && CSTR:LCOUNT2:現在地 == 学校名:LCOUNT
-								IF 風紀:LCOUNT - 10*CFLAG:LCOUNT2:インモラル >= 100
-									CFLAG:LCOUNT2:インモラル += 2
-								ELSEIF 風紀:LCOUNT - 10*CFLAG:LCOUNT2:インモラル >= 10
-									CFLAG:LCOUNT2:インモラル += 1
-								ENDIF
-							ENDIF
-						NEXT
+		FOR 学校ID, 0, 学校数上限
+			;性教育が行われたか判定
+			IF 性教育レベル:学校ID > 0 && CSTR:(授業中:学校ID):担当科目 == "保健" && !授業消滅フラグ:学校ID
+				性教育実施フラグ:学校ID = 性教育レベル:学校ID
+			ELSE
+				性教育実施フラグ:学校ID = 0
+			ENDIF
+			;担当教師のインモラル値を記録
+			SIF 授業中:学校ID
+				担当教師インモラル値:学校ID = CFLAG:(授業中:学校ID):インモラル
+		NEXT
+		FOR LCOUNT, 0, CHARANUM
+			IF CSTR:LCOUNT:在校 != ""
+				学校ID = FINDELEMENT(学校名, CSTR:LCOUNT:在校, 0, 学校数上限, 1)
+				;出席を確認
+				IF CSTR:LCOUNT:現在地 == 学校名:学校ID && 授業中:学校ID && !授業消滅フラグ:学校ID
+					;性教育レベルが1以上かつ保健(性教育)の授業があるとき、インモラルが変動する
+					IF 性教育実施フラグ:学校ID
+						;出席した生徒のインモラルが風紀(インモラル平均)未満の場合プラスされる
+						;風紀より10少ないなら+2、1少ないなら+1
+						IF 風紀:学校ID - 10*CFLAG:LCOUNT:インモラル >= 100
+							CFLAG:LCOUNT:インモラル += 2
+						ELSEIF 風紀:学校ID - 10*CFLAG:LCOUNT:インモラル >= 10
+							CFLAG:LCOUNT:インモラル += 1
+						ENDIF
 					ENDIF
-				;自分が所属していない学校なら、その場で行われたかをみる
-				ELSE
-					;条件仮置き
-					IF !RAND:3
-						FOR LCOUNT2, 0, CHARANUM
-							IF CSTR:LCOUNT2:在校 == 学校名:LCOUNT && CSTR:LCOUNT2:現在地 == 学校名:LCOUNT
-								IF 風紀:LCOUNT - 10*CFLAG:LCOUNT2:インモラル >= 100
-									CFLAG:LCOUNT2:インモラル += 2
-								ELSEIF 風紀:LCOUNT - 10*CFLAG:LCOUNT2:インモラル >= 10
-									CFLAG:LCOUNT2:インモラル += 1
-								ENDIF
-							ENDIF
-						NEXT
-					ENDIF
+					;担当教師のインモラルが自分のインモラルより50高ければ、インモラルが1増加する
+					SIF 担当教師インモラル値:学校ID - CFLAG:LCOUNT:インモラル > 50
+						CFLAG:LCOUNT:インモラル++
 				ENDIF
 			ENDIF
 		NEXT
 	ENDIF
 ENDIF
-
-授業参加フラグ = 0
-授業中 = 0
 
 ;ここで口上側のターン終了時関数を呼ぶ
 IF OPTION:口上表示
@@ -296,6 +296,14 @@ SELECTCASE ターン
 			;サボり魔は10%でバックレてる さすがに教師はバックレない
 			SIF CSTR:LCOUNT:現在地 == CSTR:LCOUNT:在校 && TALENT:LCOUNT:サボり魔 && RAND:10 == 0
 				CSTR:LCOUNT:現在地 = 
+		NEXT
+		;全学園の授業担当を決める
+		VARSET 授業消滅フラグ
+		FOR LCOUNT, 0, 学校数上限
+			授業中:LCOUNT = 教師ランダム(学校名:LCOUNT)
+			;教師がサボっているとき、授業消滅フラグが立つ
+			SIF 授業中:LCOUNT && CSTR:(授業中:LCOUNT):現在地 != CSTR:(授業中:LCOUNT):在任
+				授業消滅フラグ:LCOUNT = 1
 		NEXT
 	CASE "昼"
 		PRINTL 夕方になった……
@@ -415,6 +423,14 @@ SELECTCASE ターン
 					ENDIF
 					SIF CSTR:LCOUNT:在任 != "" && !(TALENT:LCOUNT:サボり魔 && RAND:10 == 0)
 						CSTR:LCOUNT:現在地 = %CSTR:LCOUNT:在任%
+				NEXT
+				;全学園の授業担当を決める
+				VARSET 授業消滅フラグ
+				FOR LCOUNT, 0, 学校数上限
+					授業中:LCOUNT = 教師ランダム(学校名:LCOUNT)
+					;教師がサボっているとき、授業消滅フラグが立つ
+					SIF 授業中:LCOUNT && CSTR:(授業中:LCOUNT):現在地 != CSTR:(授業中:LCOUNT):在任
+						授業消滅フラグ:LCOUNT = 1
 				NEXT
 			ELSE
 				;休日なら各々私服になる

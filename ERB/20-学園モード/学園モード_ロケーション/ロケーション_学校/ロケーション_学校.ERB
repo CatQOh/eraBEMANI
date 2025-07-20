@@ -3,34 +3,43 @@
 
 @学校_コマンド
 #DIM DYNAMIC LRESULT
-#DIM DYNAMIC 教師
+#DIM DYNAMIC 学校ID
 
 CALL COLUMNSHOP_SCHOOL
 
 CALL COLUMNDRAWLINE, 0
 CALL COLUMNPRINTL, 0, "□何をしよう？"
 
-授業中 = 0
-IF CSTR:PLAYER:在校 == CSTR:PLAYER:現在地
-	授業中 = 教師ランダム(CSTR:PLAYER:在校)
+学校ID = FINDELEMENT(学校名, CSTR:PLAYER:現在地, 0, 学校数上限, 1)
+授業中_現在地 = 授業中:学校ID
 
-	IF !授業中
-		CALL COLUMNPRINTL, 0, "　次の授業:自習"
-		CALL COLUMNPRINTL, 0, "　担当教師:なし"
+IF !授業中_現在地
+	CALL COLUMNPRINTL, 0, "　次の授業:自習"
+	CALL COLUMNPRINTL, 0, "　担当教師:なし"
+ELSE
+	IF 性教育レベル:学校ID > 0 && CSTR:授業中_現在地:担当科目 == "保健"
+		CALL COLUMNPRINTL, 0, "　次の授業:性教育"
 	ELSE
-		IF 性教育レベル:(FINDELEMENT(学校名, CSTR:PLAYER:在校, 0, 学校数上限, 1)) > 0 && CSTR:授業中:担当科目 == "保健"
-			CALL COLUMNPRINTL, 0, "　次の授業:性教育"
-		ELSE
-			CALL COLUMNPRINTL, 0, @"　次の授業:%CSTR:授業中:担当科目%"
-		ENDIF
-		CALL COLUMNPRINTL, 0, @"　担当教師:%NAME:授業中%先生"
+		CALL COLUMNPRINTL, 0, @"　次の授業:%CSTR:授業中_現在地:担当科目%"
 	ENDIF
-
-	IF !授業中
+	CALL COLUMNPRINTL, 0, @"　担当教師:%NAME:授業中_現在地%先生"
+ENDIF
+授業参加フラグ = 0
+;自分の通う学校にいるとき
+IF CSTR:PLAYER:在校 == CSTR:PLAYER:現在地
+	IF !授業中_現在地
 		CALL COLUMNPRINTL, 0, @"　[---] - \@ ターン == "朝" ? 午前 # 午後 \@の授業は自習です", "gray"
 	ELSE
+		授業参加フラグ = 1
 		CALL COLUMNPRINTL, 0, @"　[100] - きちんと準備をして\@ ターン == "朝" ? 午前 # 午後 \@の授業を受ける"
-		CFLAG:授業中:授業回数++
+		;CFLAG:授業中:授業回数++
+	ENDIF
+;他校にいるとき
+ELSE
+	IF !授業中_現在地
+		CALL COLUMNPRINTL, 0, @"　[---] - \@ ターン == "朝" ? 午前 # 午後 \@の授業は自習です", "gray"
+	ELSE
+		CALL COLUMNPRINTL, 0, "　[---] - 授業に紛れ込むのは難しそうだ", "gray"
 	ENDIF
 ENDIF
 
@@ -64,6 +73,9 @@ SIF RESULT
 #DIM DYNAMIC LCOUNT
 #DIM DYNAMIC 返り値
 #DIMS DYNAMIC 学校
+
+SIF 学校 == ""
+	RETURNF 0
 
 FOR LCOUNT, 1, CHARANUM
 	SIF CSTR:LCOUNT:在任 == 学校 && CSTR:LCOUNT:担当科目 != "校長" && CSTR:LCOUNT:担当科目 != "理事長"
