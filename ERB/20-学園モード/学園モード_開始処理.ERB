@@ -14,6 +14,7 @@
 #DIM DYNAMIC 優先処理済
 #DIM DYNAMIC 新規追加フラグ
 #DIM DYNAMIC LCHARANUM
+#DIM DYNAMIC クラス分け適用
 
 IF 新規追加フラグ
 	;不在キャラを追加
@@ -47,27 +48,60 @@ SIF ゲームモード() == "学園モード"
 TALENT:PLAYER:霊感 = 1
 
 LOADGLOBAL
-IF 学園グローバル設定あり
-	PRINTL 保存されているクラス分けの設定を適用しますか？
-	PRINTL [0] もちろん
-	PRINTL [1] 今回は全部ランダムで
-	PRINTL [2] 保存内容を破棄してランダムで開始
+;IF 学園グローバル設定あり
+DO
+	CALL LOOP_CLEARLINE
+	PRINTL □開始前オプションを設定します
+	PRINT 　[0] 保存済みクラス分けの設定の適用:
+	SELECTCASE クラス分け適用
+		CASE 0
+			PRINTL オン
+		CASE 1
+			PRINTL オフ
+		CASE 2
+			PRINTL 設定を破棄
+	ENDSELECT
+	PRINTL 　[1] 特定の学園を除外する
+	PRINTL 　[2] 性別不明キャラの性別を固定する
+	PRINTL 
+	PRINTL 　[99] 現在の設定で開始
+
 	BINPUT
+
 	SELECTCASE RESULT
 		CASE 0
-			ARRAYCOPY "G固定用学校", "固定用学校"
-			ARRAYCOPY "Gキャラ選択フラグ", "キャラ選択フラグ"
-			ARRAYCOPY "G除外学校リスト", "除外学校リスト"
-			ARRAYCOPY "G運命の人", "運命の人"
+			SELECTCASE クラス分け適用
+				CASE 0
+					クラス分け適用 = 1
+				CASE 1
+					クラス分け適用 = 2
+				CASE 2
+					クラス分け適用 = 0
+			ENDSELECT
+		CASE 1
+			CALL 学園除外リスト
 		CASE 2
-			VARSET G固定用学校
-			VARSET Gキャラ選択フラグ
-			VARSET G運命の人
-			VARSET G除外学校リスト
-			学園グローバル設定あり = 0
-			SAVEGLOBAL
+			CALL 性別自動選択
+		CASE 99
+			BREAK
 	ENDSELECT
-ENDIF
+LOOP 1
+
+SELECTCASE クラス分け適用
+	CASE 0
+		ARRAYCOPY "G固定用学校", "固定用学校"
+		ARRAYCOPY "Gキャラ選択フラグ", "キャラ選択フラグ"
+		ARRAYCOPY "G除外学校リスト", "除外学校リスト"
+		ARRAYCOPY "G運命の人", "運命の人"
+	CASE 2
+		VARSET G固定用学校
+		VARSET Gキャラ選択フラグ
+		VARSET G運命の人
+		VARSET G除外学校リスト
+		学園グローバル設定あり = 0
+		SAVEGLOBAL
+ENDSELECT
+;ENDIF
 
 PRINTFORML キャラクター読み込み処理中...(0\%)
 SKIPDISP 1
