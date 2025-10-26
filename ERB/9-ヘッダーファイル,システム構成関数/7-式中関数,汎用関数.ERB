@@ -619,9 +619,36 @@ ENDIF
 
 ;;;性別不明キャラの性別選択関数
 ;;;TALENT:性別が0のキャラは性別不明とする
-@性別選択, 対象
+@性別選択, 対象, クローニング
 #DIM DYNAMIC 対象
+#DIM DYNAMIC クローニング
+#DIM DYNAMIC オリジナル
+
 IF SEX(対象) == 0
+	;クローンはオリジナルの性別を踏襲させる
+	IF クローニング 
+		オリジナル = GETCHARA(NO:対象)
+		IF オリジナル >0 && 対象 != オリジナル
+			SELECTCASE SEX(オリジナル)
+				CASE 1
+					IF TALENT:オリジナル:性転換済
+						GOTO GENDER_2
+					ELSE
+						GOTO GENDER_1
+					ENDIF
+				CASE 2
+					IF TALENT:オリジナル:性転換済
+						GOTO GENDER_1
+					ELSE
+						GOTO GENDER_2
+					ENDIF
+				CASE 0
+					TALENT:対象:性別 = -1
+					RETURN
+			ENDSELECT
+		ENDIF
+	ENDIF
+
 	;SKIPDISP中ならランダムにしてみる
 	SIF ISSKIP() && GROUPMATCH(性別自動選択:NOF(対象), 0, 3)
 		GOTOFORM GENDER_{RAND(1, 3)}
