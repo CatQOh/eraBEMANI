@@ -4,13 +4,13 @@
 
 CALL CHECKDRAWLINE
 
-PRINTL □幽体離脱・憑依ができます
-PRINTL 　[1] - 幽体離脱させる
-PRINTL 　[2] - 憑依させる
-PRINTL 　[3] - 使われていない依代を見る
+PRINTFORML □%I18N("幽体離脱・憑依ができます")%
+PRINTFORML 　[1] - %I18N("幽体離脱させる")%
+PRINTFORML 　[2] - %I18N("憑依させる")%
+PRINTFORML 　[3] - %I18N("使われていない依代を見る")
 DRAWLINE
-PRINTPLAIN 　幽体離脱・憑依　
-PRINTL [0] - 戻る
+PRINTPLAINFORM 　%I18N("幽体離脱・憑依")%　
+PRINTFORML [0] - %I18N("戻る")%
 
 BINPUT
 
@@ -26,7 +26,7 @@ SELECTCASE RESULT
 	CASE 3
 ENDSELECT
 
-PRINTL □依代一覧を表示します
+PRINTFORML □%I18N("依代一覧を表示します")%
 CALL 依代一覧
 LRESULT = RESULT
 
@@ -78,10 +78,18 @@ IF 機械化
 	GOTO 人格分離
 ENDIF
 
-IF 憑依霊 >= 0
-	PRINTFORML □%CALLNAME:憑依霊%を誰に憑依させますか？
+IF LANGUAGE == "ENG"
+	IF 憑依霊 >= 0
+		PRINTFORML □Who do you want to posses %CALLNAME:憑依霊%？
+	ELSE
+		PRINTL □Who do you send out of your body？
+	ENDIF
 ELSE
-	PRINTL □誰を幽体離脱させますか？
+	IF 憑依霊 >= 0
+		PRINTFORML □%CALLNAME:憑依霊%NAMEを誰に憑依させますか？
+	ELSE
+		PRINTL □誰を幽体離脱させますか？
+	ENDIF
 ENDIF
 
 FOR PAGING, 1, CHARANUM
@@ -126,13 +134,22 @@ SIF RESULT == -1
 	RETURN 0
 
 対象 = RESULT
-
-IF 憑依霊 > 0 && CFLAG:対象:憑依 == NOF(憑依霊)
-	PRINTFORML %CSVNAMEF(NOF(対象))%の精神を追い出して%CALLNAME:憑依霊%の精神を身体に戻します。よろしいですか？
-ELSEIF 憑依霊 >= 0
-	PRINTFORML %NAME:対象%の精神を追い出して%CALLNAME:憑依霊%を憑依させます。よろしいですか？
+IF LANGUAGE == "ENG"
+	IF 憑依霊 > 0 && CFLAG:対象:憑依 == NOF(憑依霊)
+		PRINTFORML Are you sure to expel spirit of %CSVNAMEF(NOF(対象))% from %CALLNAME:憑依霊% body and take %HIS_HER(憑依霊)% soul back？
+	ELSEIF 憑依霊 >= 0
+		PRINTFORML are you sure to take %NAME:対象% soul toto possess %CALLNAME:憑依霊% body?
+	ELSE
+		PRINTFORML Are you sure to take out %NAME:対象% from %HIS_HER(対象)% body?
+	ENDIF
 ELSE
-	PRINTFORML %NAME:対象%を幽体離脱させます。よろしいですか？
+	IF 憑依霊 > 0 && CFLAG:対象:憑依 == NOF(憑依霊)
+		PRINTFORML %CSVNAMEF(NOF(対象))%の精神を追い出して%CALLNAME:憑依霊%の精神を身体に戻します。よろしいですか？
+	ELSEIF 憑依霊 >= 0
+		PRINTFORML %NAME:対象%の精神を追い出して%CALLNAME:憑依霊%を憑依させます。よろしいですか？
+	ELSE
+		PRINTFORML %NAME:対象%を幽体離脱させます。よろしいですか？
+	ENDIF
 ENDIF
 PRINTFORML [0] - %I18N("はい")%
 PRINTFORML [1] - %I18N("いいえ")%
@@ -236,7 +253,7 @@ VARSET 憑依情報:対象:0
 VARSET 憑依情報:幽体:0
 
 IF 憑依霊 >= 0
-	PRINTFORML %CALLNAME:対象%の身体と精神を分離しました
+	PRINTFORML %CALLNAME:対象%%I18N("の身体と精神を分離しました")%
 	TALENT:幽体:霊体 = 1
 	;FOR LCOUNT, 1, 1000
 	;	IF 依代:LCOUNT == 0
@@ -266,7 +283,7 @@ ELSE
 	TARGET = CHARANUM-1
 
 	IF 機械化 == 0
-		PRINTFORMW %CALLNAME:TARGET%の身体と精神を分離して、身体は依代として保管しました
+		PRINTFORMW %CALLNAME:TARGET%%I18N("の身体と精神を分離して、身体は依代として保管しました")%
 		TALENT:霊体 = 1
 	ENDIF
 	RETURN
@@ -279,7 +296,7 @@ ENDIF
 #DIM DYNAMIC 憑依霊
 #DIMS DYNAMIC 憑依霊名
 
-PRINTL □誰を憑依させますか？
+PRINTFORML □%I18N("誰を憑依させますか")%？
 
 FOR PAGING, 1, CHARANUM
 	表示 = 0
@@ -294,8 +311,8 @@ SIF RESULT == -1
 憑依霊 = RESULT
 憑依霊名 = %NAME:RESULT%
 
-PRINTL [0] - 他のキャラに憑依させる
-PRINTL [1] - 依代に憑依させる
+PRINTFORML [0] - %I18N("他のキャラに憑依させる")%
+PRINTFORML [1] - %I18N("依代に憑依させる")%
 
 BINPUT
 
@@ -372,13 +389,23 @@ CFLAG:対象:依代 = 0
 TALENT:対象:霊体 = 0
 
 IF CFLAG:対象:憑依 == NOF(対象)
-	PRINTFORMW %CALLNAME:対象%の身体に精神を戻しました
+	IF LANGUAGE == "ENG"
+	PRINTFORMW Soul returns back to %CALLNAME:対象%
+	ELSE
+	PRINTFORMW %CALLNAME:対象%NAMEの身体に精神を戻しました
+	ENDIF
 	VARSET 憑依情報:対象:0
 	CFLAG:対象:憑依 = -1
 ELSE
-	PRINTFORMW %CALLNAME:対象%の身体に%CALLNAME:憑依霊%を憑依させました
-	NAME:対象 = %NAME:憑依霊%が憑依した%NAME:対象%
-	CALLNAME:対象 = %CALLNAME:憑依霊%が憑依した%CALLNAME:対象%
+	IF LANGUAGE == "ENG"
+		PRINTFORMW %CALLNAME:対象% possessed %CALLNAME:憑依霊% body.
+		NAME:対象 = %NAME:憑依霊% possessed by %NAME:対象% 
+		CALLNAME:対象 = %CALLNAME:憑依霊% possessed by %CALLNAME:対象%
+	ELSE
+		PRINTFORMW %CALLNAME:対象%の身体に%CALLNAME:憑依霊%を憑依させました
+		NAME:対象 = %NAME:憑依霊%が憑依した%NAME:対象%
+		CALLNAME:対象 = %CALLNAME:憑依霊%が憑依した%CALLNAME:対象%
+	ENDIF
 ENDIF
 CALL CLEAR_CHARA, 憑依霊, 1
 
@@ -412,7 +439,7 @@ FOR LCOUNT, 1, CHARANUM
 	ENDIF
 NEXT
 DRAWLINE
-PRINTPLAIN 　依代一覧　
+PRINTPLAINFORM 　%I18N("依代一覧")%　
 CALL PRINTSPACE, ページ数, @"[-1] - %I18N("前ページ")% "
 PRINTFORM [0] - %I18N("戻る")%
 CALL PRINTSPACE, 次ページあり, @"[-9] - %I18N("次ページ")% "

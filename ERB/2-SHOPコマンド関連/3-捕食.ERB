@@ -5,24 +5,34 @@
 #DIM DYNAMIC 可否
 
 DRAWLINE
-
-PRINTL □対象を捕食することで経験値や珠を得られます
-PRINTL 　捕食者は[狂気][ゾンビ][スライムor溶ける快]を持つ者だけです
-PRINTL 　主人が捕食した場合は、被捕食者の能力に応じて経験値を得られることがあります(最高5)
-PRINTL 　それ以外のキャラが捕食した場合は、10%の珠が捕食者に受け継がれます
-PRINTL 　スライム同士の融合はより効率良く各能力が受け継がれます
-PRINTL 
-PRINTFORML 　[1] - 捕食者を選ぶ(\@ 捕食者 >= 0 ? %NAME:捕食者% # 無し \@\@ ISSLIME(捕食者) ? :スライム #\@)
-PRINTFORML 　[2] - 対象を選ぶ(\@ 対象 >= 0 ? %NAME:対象% # 無し \@\@ ISSLIME(対象) ? :スライム #\@)
+IF LANGUAGE == "ENG"
+	PRINTL □You can gain experience points and gems by preying on targets.
+	PRINTFORML 　Only characters with [%I18N("狂気", "TALENT")%][%I18N("ゾンビ", "TALENT")%][%I18N("スライム", "TALENT")%or%I18N("溶ける快", "TALENT")%] talent can eat the others
+	PRINTL 　If the master preys, you may receive experience points depending on the prey's ability.(Highest 5)
+	PRINTL 　If other characters prey, 10% of the beads will be inherited by the predator.
+	PRINTL 　The fusion of slimes allows each ability to be inherited more efficiently.
+	PRINTL 
+	PRINTFORML 　[1] - Predator(\@ 捕食者 >= 0 ? %NAME:捕食者% # None \@\@ ISSLIME(捕食者) ? :slime #\@)
+	PRINTFORML 　[2] - Prey(\@ 対象 >= 0 ? %NAME:対象% # None \@\@ ISSLIME(対象) ? :slime #\@)
+ELSE
+	PRINTL □対象を捕食することで経験値や珠を得られます
+	PRINTL 　捕食者は[狂気][ゾンビ][スライムor溶ける快]を持つ者だけです
+	PRINTL 　主人が捕食した場合は、被捕食者の能力に応じて経験値を得られることがあります(最高5)
+	PRINTL 　それ以外のキャラが捕食した場合は、10%の珠が捕食者に受け継がれます
+	PRINTL 　スライム同士の融合はより効率良く各能力が受け継がれます
+	PRINTL 
+	PRINTFORML 　[1] - 捕食者を選ぶ(\@ 捕食者 >= 0 ? %NAME:捕食者% # 無し \@\@ ISSLIME(捕食者) ? :スライム #\@)
+	PRINTFORML 　[2] - 対象を選ぶ(\@ 対象 >= 0 ? %NAME:対象% # 無し \@\@ ISSLIME(対象) ? :スライム #\@)
+ENDIF
 DRAWLINE
 PRINTPLAIN 　CANNIBALISM　
-PRINT [0] - 戻る 
+PRINTFORM [0] - %I18N("戻る")% 
 IF 捕食者 >= 0 && 対象 >= 0
-	PRINT [3] - これで決定 
+	PRINTFORM [3] - %I18N("これで決定")% 
 	IF !ISSLIME(捕食者)
-		CALL PRINTSPACE, EXP:捕食者:Ｖ拡張経験 >= 500, "[4] - 膣から食べる "
-		CALL PRINTSPACE, EXP:捕食者:Ａ拡張経験 >= 500, "[5] - アナルから食べる "
-		CALL PRINTSPACE, EXP:捕食者:尿道経験 >= 500, "[6] - 尿道から食べる "
+		CALL PRINTSPACE, EXP:捕食者:Ｖ拡張経験 >= 500, @"[4] - %I18N("膣から食べる")% "
+		CALL PRINTSPACE, EXP:捕食者:Ａ拡張経験 >= 500, @"[5] - %I18N("アナルから食べる")% "
+		CALL PRINTSPACE, EXP:捕食者:尿道経験 >= 500, @"[6] - %I18N("尿道から食べる")% "
 	ENDIF
 ENDIF
 PRINTL 
@@ -84,10 +94,18 @@ SELECTCASE RESULT
 					RESTART
 				捕食手段 = 尿道
 		ENDSELECT
-		IF ISSLIME(捕食者) && ISSLIME(対象)
-			PRINTFORML %CALLNAME:対象%を%CALLNAME:捕食者%に融合させます。よろしいですか？
+		IF LANGUAGE == "ENG"
+			IF ISSLIME(捕食者) && ISSLIME(対象)
+				PRINTFORML %CALLNAME:対象% will be devoured by %CALLNAME:捕食者%。Are you sure？
+			ELSE
+				PRINTFORML %CALLNAME:対象% will be devoured by %CALLNAME:捕食者% \@ 捕食手段 != "" ? by %I18N("捕食手段")% #\@。よろしいですか？
+			ENDIF
 		ELSE
-			PRINTFORML %CALLNAME:対象%を%CALLNAME:捕食者%に\@ 捕食手段 != "" ? %捕食手段%から #\@食べさせます。よろしいですか？
+			IF ISSLIME(捕食者) && ISSLIME(対象)
+				PRINTFORML %CALLNAME:対象%を%CALLNAME:捕食者%に融合させます。よろしいですか？
+			ELSE
+				PRINTFORML %CALLNAME:対象%を%CALLNAME:捕食者%に\@ 捕食手段 != "" ? %捕食手段%から #\@食べさせます。よろしいですか？
+			ENDIF
 		ENDIF
 		PRINTFORML [0] - %I18N("はい")%
 		PRINTFORML [1] - %I18N("いいえ")%
@@ -124,20 +142,33 @@ ELSE
 	TFLAG:捕食相手 = 対象
 	CALL KOJO_MESSAGE_EVENT, "捕食", 捕食者
 ENDIF
-
-CALL プレイログ記録, @"%NAME:捕食者%が%NAME:対象%を捕食"
-CSTR:対象:ロスト要因 = 捕食
-SELECTCASE 捕食手段
-	CASE "膣"
-		CSTR:対象:ロスト詳細 = %NAME:捕食者%に膣から捕食された
-	CASE "アナル"
-		CSTR:対象:ロスト詳細 = %NAME:捕食者%にアナルから捕食された
-	CASE "尿道"
-		CSTR:対象:ロスト詳細 = %NAME:捕食者%に尿道から捕食された
-	CASEELSE
-		CSTR:対象:ロスト詳細 = %NAME:捕食者%に捕食された
-ENDSELECT
-
+IF LANGUAGE == "ENG"
+	CALL プレイログ記録, @"%NAME:対象% was devoured by %NAME:捕食者%"
+	CSTR:対象:ロスト要因 = 捕食
+	SELECTCASE 捕食手段
+		CASE "膣"
+			CSTR:対象:ロスト詳細 = %NAME:捕食者%NAMEに膣から捕食された
+		CASE "アナル"
+			CSTR:対象:ロスト詳細 = %NAME:捕食者%NAMEにアナルから捕食された
+		CASE "尿道"
+			CSTR:対象:ロスト詳細 = %NAME:捕食者%NAMEに尿道から捕食された
+		CASEELSE
+			CSTR:対象:ロスト詳細 = devoured by name%NAME:捕食者%
+	ENDSELECT
+ELSE
+	CALL プレイログ記録, @"%NAME:捕食者%が%NAME:対象%を捕食"
+	CSTR:対象:ロスト要因 = 捕食
+	SELECTCASE 捕食手段
+		CASE "膣"
+			CSTR:対象:ロスト詳細 = devoured by %NAME:捕食者% though vagina
+		CASE "アナル"
+			CSTR:対象:ロスト詳細 = devoured by %NAME:捕食者% though anus
+		CASE "尿道"
+			CSTR:対象:ロスト詳細 = devoured by %NAME:捕食者% though uterus
+		CASEELSE
+			CSTR:対象:ロスト詳細 = devoured by %NAME:捕食者%
+	ENDSELECT
+ENDIF
 ;捕食者が主人の場合は経験値取得処理
 IF 捕食者 == MASTER
 	;全ABLの平均/2の経験値が得られる 最高5
@@ -150,7 +181,7 @@ IF 捕食者 == MASTER
 	DEBUGPRINTFORML {取得経験値} {能力数}
 	取得経験値 /= 能力数*2
 	SIF 取得経験値
-		PRINTFORMW {MIN(取得経験値, 5)}の経験値を取得しました
+		PRINTFORMW {MIN(取得経験値, 5)}%I18N("の経験値を取得しました")%
 	FLAG:経験値 = MIN(取得経験値, 5)
 	CALL CLEAR_CHARA, 対象, 0, 1
 	RETURN
@@ -164,14 +195,19 @@ FOR LCOUNT, 0, VARSIZE("JUEL")
 NEXT
 ;魔力が強い相手を食べると魔法技能+1
 IF ABL:対象:魔法技能 > ABL:捕食者:魔法技能
-	PRINTFORML 魔力の強い相手を捕食したことで魔法技能+1
+	PRINTFORML %I18N("魔力の強い相手を捕食したことで魔法技能")%+1
 	ABL:捕食者:魔法技能++
 ENDIF
 ;魔力は全回復させる
 BASE:捕食者:魔力 = MAXBASE:捕食者:魔力
 ;スライム度はそのまま引き継ぐ
-SIF CFLAG:対象:スライム度
-	PRINTFORML %CALLNAME:対象%のスライム感染物が%CALLNAME:捕食者%の体内に入り込んだ……
+IF CFLAG:対象:スライム度
+	IF LANGUAGE == "ENG"
+		PRINTFORML %CALLNAME:対象%`s slime infection has invaded %CALLNAME:捕食者%`s body……
+	ELSE
+		PRINTFORML %CALLNAME:対象%のスライム感染物が%CALLNAME:捕食者%の体内に入り込んだ……
+	ENDIF
+ENDIF
 CALL スライム度増加, 0, 捕食者, CFLAG:対象:スライム度
 
 SIF VARLINE != LINECOUNT && !お菓子化
@@ -197,10 +233,15 @@ TFLAG:捕食相手 = 捕食者
 CALL KOJO_MESSAGE_EVENT, "被捕食", 対象
 TFLAG:捕食相手 = 対象
 CALL KOJO_MESSAGE_EVENT, "捕食", 捕食者
-
-CALL プレイログ記録, @"%NAME:捕食者%が%NAME:対象%を取り込む"
-CSTR:対象:ロスト要因 = 捕食
-CSTR:対象:ロスト詳細 = %NAME:捕食者%に取り込まれた
+IF LANGUAGE == "ENG"
+	CALL プレイログ記録, @"%NAME:捕食者% absorbs %NAME:対象%"
+	CSTR:対象:ロスト要因 = 捕食
+	CSTR:対象:ロスト詳細 = Absorbed by %NAME:捕食者%
+ELSE
+	CALL プレイログ記録, @"%NAME:捕食者%が%NAME:対象%を取り込む"
+	CSTR:対象:ロスト要因 = 捕食
+	CSTR:対象:ロスト詳細 = %NAME:捕食者%に取り込まれた
+ENDIF
 
 ;捕食者が主人の場合は経験値取得処理
 IF 捕食者 == MASTER
@@ -213,7 +254,7 @@ IF 捕食者 == MASTER
 	NEXT
 	取得経験値 /= 能力数
 	SIF 取得経験値
-		PRINTFORMW {MIN(取得経験値, 10)}の経験値を取得しました
+		PRINTFORMW {MIN(取得経験値, 10)}%I18N("の経験値を取得しました")%
 	FLAG:経験値 = MIN(取得経験値, 10)
 	CALL CLEAR_CHARA, 対象, 0, 1
 	RETURN
@@ -229,15 +270,20 @@ NEXT
 FOR LCOUNT, 0, VARSIZE("ABL")
 	SIF ABL:対象:LCOUNT <= 0
 		CONTINUE
-	PRINTFORML %ABLNAME:LCOUNT%+1(%NAME:捕食者%)
+	PRINTFORML %I18N("ABLNAME:LCOUNT", "ABL")%+1(%NAME:捕食者%)
 	ABL:捕食者:LCOUNT++
 NEXT
 
 ;魔力は全回復させる
 BASE:捕食者:魔力 = MAXBASE:捕食者:魔力
 ;スライム度はそのまま引き継ぐ
-SIF CFLAG:対象:スライム度
-	PRINTFORML %CALLNAME:対象%のスライム感染物が%CALLNAME:捕食者%の体内に入り込んだ……
+IF CFLAG:対象:スライム度
+	IF LANGUAGE == "ENG"
+		PRINTFORML %CALLNAME:対象%`s slime infections has invaded %CALLNAME:捕食者%`s body……
+	ELSE
+		PRINTFORML %CALLNAME:対象%のスライム感染物が%CALLNAME:捕食者%の体内に入り込んだ……
+	ENDIF
+ENDIF
 CALL スライム度増加, 0, 捕食者, CFLAG:対象:スライム度
 
 SIF VARLINE != LINECOUNT
