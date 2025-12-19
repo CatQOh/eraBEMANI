@@ -13,21 +13,21 @@ IF ターン == "夜" && MONEY >= 4000
 	;値を格納
 	LGAUGE = FLAG:段位ゲージ
 	LSTOCK = ストック
-	PRINT 所持金を段位ゲージに換算しました。
+	PRINTFORM %I18N("所持金を段位ゲージに換算しました")%。
 	FLAG:段位ゲージ += MONEY/4000
 	所持金計算用 = MONEY/4000*4000
 	;このあと1減らすためゲージの最大は51(102%)
 	IF FLAG:段位ゲージ > 51
-		PRINT (※回復量がカンストしています)
+		PRINTFORM (※%I18N("回復量がカンストしています")%)
 		ストック += 4000*(FLAG:段位ゲージ-51)
 		ストック -= 3999-所持金計算用
 		FLAG:段位ゲージ = 51
 		所持金計算用 = 3999
-		PRINTFORM ストック {LSTOCK} → {ストック}
+		PRINTFORM %I18N("ストック")% {LSTOCK} → {ストック}
 	ENDIF
 	PRINTL 
-	PRINTFORML 所持金 {MONEY} → {所持金計算用}
-	PRINTFORML 段位ゲージ {LGAUGE*2} → {FLAG:段位ゲージ*2}
+	PRINTFORML %I18N("所持金")% {MONEY} → {所持金計算用}
+	PRINTFORML %I18N("段位ゲージ")% {LGAUGE*2} → {FLAG:段位ゲージ*2}
 	CALL PAYMENT, MONEY-所持金計算用, "段位ゲージ換金"
 ENDIF
 
@@ -102,7 +102,7 @@ ENDSELECT
 
 ;段位ゲージの表示
 @段位ゲージ表示
-CALL COLUMNPRINT, 0, @"段位ゲージ {FLAG:段位ゲージ*2}\%["
+CALL COLUMNPRINT, 0, @"%I18N("段位ゲージ")% {FLAG:段位ゲージ*2}\%["
 REPEAT FLAG:段位ゲージ
 	IF GROUPMATCH(受験段位名, "BisCoのEX-HARD☆大作戦", "何かを間違えた房中術")
 		CALL COLUMNPRINT, 0, "|", "orange"
@@ -140,8 +140,13 @@ PRINTL
 DRAWLINE
 CALL ITEMPRINT
 DRAWLINE
-PRINTL □段位認定試験では通貨の代わりにゲージを消耗します。
-PRINTL 　購入したいアイテムを選んでください。
+IF LANGUAGE == "ENG"
+	PRINTL □Grade challenges consume gauges instead of money。
+	PRINTL 　Select the item you would like to buy。
+ELSE
+	PRINTL □段位認定試験では通貨の代わりにゲージを消耗します。
+	PRINTL 　購入したいアイテムを選んでください。
+ENDIF
 PRINTL
 
 FOR LCOUNT, 0, VARSIZE("アイテムリスト")
@@ -150,11 +155,11 @@ FOR LCOUNT, 0, VARSIZE("アイテムリスト")
 	SELECTCASE SPLITVAR:0
 		CASE "共通"
 			$共通
-			PRINTFORML 　[{LCOUNT}] %SPLITVAR:0%\@ 複数個あり ? ×%SPLITVAR:2% # \@（ゲージ%SPLITVAR:1%\%）
+			PRINTFORML 　[{LCOUNT}] %I18N(SPLITVAR:0)%\@ 複数個あり ? ×%SPLITVAR:2% # \@（%I18N("ゲージ")%%SPLITVAR:1%\%）
 		CASE "ビデオカメラ"
 			SIF ITEM:ビデオカメラ
 				CONTINUE
-			PRINTFORML 　[{LCOUNT}] ビデオカメラ テープ×3付属（ゲージ%SPLITVAR:1%\%）
+			PRINTFORML 　[{LCOUNT}] %I18N("ビデオカメラ テープ")%×3%I18N("付属")%（%I18N("ゲージ")%%SPLITVAR:1%\%）
 		CASE "ビデオテープ"
 			SIF !ITEM:ビデオカメラ
 				CONTINUE
@@ -169,7 +174,7 @@ FOR LCOUNT, 0, VARSIZE("アイテムリスト")
 NEXT
 DRAWLINE
 PRINTPLAIN 　ITEM　
-PRINTL [10] 戻る
+PRINTFORML [10] %I18N("戻る")%
 
 BINPUT
 SIF RESULT == 10
@@ -179,17 +184,29 @@ SPLIT アイテムリスト:購入アイテム, "/", SPLITVAR
 複数個あり = RESULT == 3 ? 1 # 0
 
 IF FLAG:段位ゲージ < TOINT(SPLITVAR:1)/2
-	PRINTW ゲージが足りません
+	IF LANGUAGE == "ENG"
+		PRINTW Not enough gauge
+	ELSE
+		PRINTW ゲージが足りません
+	ENDIF
 	RESTART
 ELSEIF SPLITVAR:0 == "ローション" && ITEM:ローション >= 95
-	PRINTW ローションはこれ以上持てません
+	IF LANGUAGE == "ENG"
+		PRINTW Cant hold any more lotions
+	ELSE
+		PRINTW ローションはこれ以上持てません
+	ENDIF
 	RESTART
 ELSEIF SPLITVAR:0 == "媚薬" && ITEM:媚薬 >= 99
-	PRINTW 媚薬はこれ以上持てません
+	IF LANGUAGE == "ENG"
+		PRINTW Cant hold any more aphrodisiacs
+	ELSE
+		PRINTW 媚薬はこれ以上持てません
+	ENDIF
 	RESTART
 ENDIF
 
-PRINTFORMW ＜%SPLITVAR:0%\@ 複数個あり ? ×%SPLITVAR:2% #\@を購入しました＞
+PRINTFORMW ＜%I18N(SPLITVAR:0)%\@ 複数個あり ? ×%SPLITVAR:2% #\@%I18N("を購入しました")%＞
 ITEM:GETNUM(ITEM, SPLITVAR:0) += 複数個あり ? TOINT(SPLITVAR:2) # 1
 FLAG:段位ゲージ -= TOINT(SPLITVAR:1)/2
 SIF SPLITVAR:0 == "ビデオカメラ"
