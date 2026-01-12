@@ -359,7 +359,7 @@ SIF TEQUIP:対象:Ａ異物
 	RETURNF 1
 SIF TEQUIP:対象:電動エネマグラ
 	RETURNF 1
-SIF TEQUIP:対象:野外プレイ && アイテム改造:首輪 == "尻尾プラグ付き首輪"
+SIF TEQUIP:対象:野外プレイ && 尻尾プラグ着用
 	RETURNF 1
 RETURNF 0
 
@@ -619,9 +619,36 @@ ENDIF
 
 ;;;性別不明キャラの性別選択関数
 ;;;TALENT:性別が0のキャラは性別不明とする
-@性別選択, 対象
+@性別選択, 対象, クローニング
 #DIM DYNAMIC 対象
+#DIM DYNAMIC クローニング
+#DIM DYNAMIC オリジナル
+
 IF SEX(対象) == 0
+	;クローンはオリジナルの性別を踏襲させる
+	IF クローニング 
+		オリジナル = GETCHARA(NO:対象)
+		IF オリジナル >0 && 対象 != オリジナル
+			SELECTCASE SEX(オリジナル)
+				CASE 1
+					IF TALENT:オリジナル:性転換済
+						GOTO GENDER_2
+					ELSE
+						GOTO GENDER_1
+					ENDIF
+				CASE 2
+					IF TALENT:オリジナル:性転換済
+						GOTO GENDER_1
+					ELSE
+						GOTO GENDER_2
+					ENDIF
+				CASE 0
+					TALENT:対象:性別 = -1
+					RETURN
+			ENDSELECT
+		ENDIF
+	ENDIF
+
 	;SKIPDISP中ならランダムにしてみる
 	SIF ISSKIP() && GROUPMATCH(性別自動選択:NOF(対象), 0, 3)
 		GOTOFORM GENDER_{RAND(1, 3)}
@@ -714,7 +741,7 @@ RETURN RESULT
 #DIMS DYNAMIC テキスト
 SPLIT テキスト, "Ｗ", 表示用
 
-表示用 = %HTML_POPPRINTINGSTR()%%表示用%
+表示用 = %HTML_TOPLAINTEXT(HTML_POPPRINTINGSTR())%%表示用%
 
 FOR LCOUNT, 0, RESULT
 	IF LCOUNT >= 1
@@ -1936,12 +1963,16 @@ SIF !SP
 #DIMS DYNAMIC 内容
 ARRAYSHIFT プレイログ, 1, ""
 ;年月日を自動で付ける
-プレイログ:0 = {YEAR}年{MONTH, 2}月{DAYS, 2}日\@ ターン == "昼" ? 昼 # 夜 \@ %内容%
+;IF LANGUAGE == "ENG"
+;	プレイログ:0 = Year{YEAR} Month{MONTH, 2} Day{DAYS, 2} \@ ターン == "昼" ? day # night \@ %内容%
+;ELSE
+	プレイログ:0 = {YEAR}年{MONTH, 2}月{DAYS, 2}日\@ ターン == "昼" ? 昼 # 夜 \@ %内容%
+;ENDIF
 
 ;;;リアルタイムでゲームを始めた日を返す
 @ゲーム開始日
 #FUNCTIONS
-RETURNF @"{REALTIME:年}年{REALTIME:月}月{REALTIME:日}日"
+	RETURNF @"{REALTIME:年}年{REALTIME:月}月{REALTIME:日}日"
 
 ;;;入出金はこの関数で行う 名前はPAYMENT(支払い)だが引数は所持金の増減を表すため+で増える
 @PAYMENT, 金額, 明細, バンめしフラグ
@@ -3496,18 +3527,18 @@ IF 表示数 > PAGING表示数 || LCOUNT == CHARANUM-1
 		PRINTPLAINFORM 　%ページ名%　
 	ENDIF
 	IF ページ数 > 0
-		PRINTLC [-7]前ページ
+		PRINTFORMLC [-7]%I18N("前ページ")%
 	ELSE
 		PRINTLC  
 	ENDIF
 	IF 終了表記 == ""
-		PRINTLC [10000] 戻る　
+		PRINTFORMLC [10000] %I18N("戻る")%　
 	ELSE
 		PRINTFORMLC [10000] %終了表記%　
 	ENDIF
 	;表示できるキャラがまだ居れば次ページ
 	SIF 未表示キャラ
-		PRINTLC [-9]次ページ
+		PRINTFORMLC [-9]%I18N("次ページ")%
 	PRINTL 
 	DO
 		INPUT

@@ -7,29 +7,29 @@
 
 DRAWLINE
 
-PRINTL □印を刻むキャラを選択してください
+PRINTFORML □%I18N("印を刻むキャラを選択してください")%
 FOR PAGING, 1, CHARANUM
 	刻印部位 = 
 	SIF CSTR:PAGING:右腕の印 != ""
-		刻印部位 += @"[右腕:%CSTR:PAGING:右腕の印%(\@ CSTR:PAGING:右腕の特質 == "" ? 特質無し # %CSTR:PAGING:右腕の特質% \@)]"
+		刻印部位 += @"[%I18N("右腕")%:%CSTR:PAGING:右腕の印%(\@ CSTR:PAGING:右腕の特質 == "" ? %I18N("特質無し")% # %CSTR:PAGING:右腕の特質% \@)]"
 	SIF CSTR:PAGING:左腕の印 != ""
-		刻印部位 += @"[左腕:%CSTR:PAGING:左腕の印%(\@ CSTR:PAGING:左腕の特質 == "" ? 特質無し # %CSTR:PAGING:左腕の特質% \@)]"
+		刻印部位 += @"[%I18N("左腕")%:%CSTR:PAGING:左腕の印%(\@ CSTR:PAGING:左腕の特質 == "" ? %I18N("特質無し")% # %CSTR:PAGING:左腕の特質% \@)]"
 	SIF CSTR:PAGING:右足の印 != ""
-		刻印部位 += @"[右足:%CSTR:PAGING:右足の印%(\@ CSTR:PAGING:右足の特質 == "" ? 特質無し # %CSTR:PAGING:右足の特質% \@)]"
+		刻印部位 += @"[%I18N("右足")%:%CSTR:PAGING:右足の印%(\@ CSTR:PAGING:右足の特質 == "" ? %I18N("特質無し")% # %CSTR:PAGING:右足の特質% \@)]"
 	SIF CSTR:PAGING:左足の印 != ""
-		刻印部位 += @"[左足:%CSTR:PAGING:左足の印%(\@ CSTR:PAGING:左足の特質 == "" ? 特質無し # %CSTR:PAGING:左足の特質% \@)]"
+		刻印部位 += @"[%I18N("左足")%:%CSTR:PAGING:左足の印%(\@ CSTR:PAGING:左足の特質 == "" ? %I18N("特質無し")% # %CSTR:PAGING:左足の特質% \@)]"
 	IF CSTR:PAGING:背中の印 != ""
 		IF GROUPMATCH(CSTR:PAGING:背中の印, "奴隷の焼印", "淫売の焼印")
-			刻印部位 += @"[背中:%CSTR:PAGING:背中の印%]"
+			刻印部位 += @"[%I18N("背中")%:%CSTR:PAGING:背中の印%]"
 		ELSE
-			刻印部位 += @"[背中:%CSTR:PAGING:背中の印%(\@ CSTR:PAGING:背中の特質 == "" ? 特質無し # %CSTR:PAGING:背中の特質% \@)]"
+			刻印部位 += @"[%I18N("背中")%:%CSTR:PAGING:背中の印%(\@ CSTR:PAGING:背中の特質 == "" ? %I18N("特質無し")% # %CSTR:PAGING:背中の特質% \@)]"
 		ENDIF
 	ENDIF
 	SIF CSTR:PAGING:胴体の印 != ""
-		刻印部位 += @"[胴体:%CSTR:PAGING:胴体の印%(\@ CSTR:PAGING:胴体の特質 == "" ? 特質無し # %CSTR:PAGING:胴体の特質% \@)]"
+		刻印部位 += @"[%I18N("胴体")%:%CSTR:PAGING:胴体の印%(\@ CSTR:PAGING:胴体の特質 == "" ? %I18N("特質無し")% # %CSTR:PAGING:胴体の特質% \@)]"
 	;DISABLEチェック
 	CALLFORM DISABLE, "EVENT_印の儀", PAGING
-	CALL PAGING, !RESULT, @"\@ 刻印部位 != "" ? %刻印部位% #\@", "印の儀"
+	CALL PAGING, !RESULT && PAGING > 0, @"\@ 刻印部位 != "" ? %刻印部位% #\@", "印の儀"
 NEXT
 
 SELECTCASE RESULT
@@ -44,23 +44,35 @@ DRAWLINE
 
 $部位選択
 
-PRINTFORML □%CALLNAME:TARGET%に何をしますか？\@ !ORIGIN ? (印を刻むには経験値を1消費します 現在の経験値:{FLAG:経験値})#\@
+IF LANGUAGE == "ENG"
+	PRINTFORML □What would you do with %CALLNAME:TARGET%？\@ !ORIGIN ? (It costs 1 experience point to engrave a mark. Current experience level:{FLAG:経験値})#\@
+ELSE
+	PRINTFORML □%CALLNAME:TARGET%に何をしますか？\@ !ORIGIN ? (印を刻むには経験値を1消費します 現在の経験値:{FLAG:経験値})#\@
+ENDIF
 FOR LCOUNT, GETNUM(CSTR, "右腕の印"), GETNUM(CSTR, "胴体の印")+1
 	IF CSTR:LCOUNT == ""
 		IF GROUPMATCH(CSTRNAME:LCOUNT, "右足の印", "左足の印") && TALENT:足使用不可
-			CALL PRINTCOLORL, @"　[-] - %CSTRNAME:LCOUNT% 使用不可", "gray"
+			CALL PRINTCOLORL, @"　[-] - %CSTRNAME:LCOUNT% %I18N("使用不可")%", "gray"
 		ELSE
-			PRINTFORML 　[{LCOUNT%10}] - %CSTRNAME:LCOUNT%を施す
+			IF LANGUAGE == "ENG"
+				PRINTFORML 　[{LCOUNT%10}] - manage %CSTRNAME:LCOUNT% 
+			ELSE
+				PRINTFORML 　[{LCOUNT%10}] - %CSTRNAME:LCOUNT%を施す
+			ENDIF
 		ENDIF
 	ELSEIF CSTRNAME:LCOUNT == "背中の印" && GROUPMATCH(CSTR:背中の印, "淫売の焼印", "奴隷の焼印")
-		PRINTFORML 　[-] - 背中の印(%CSTR:背中の印%)
+		PRINTFORML 　[-] - %I18N("背中の印")%(%CSTR:背中の印%)
 	ELSE
-		PRINTFORML 　[{LCOUNT%10}] - %CSTR:LCOUNT%の特質を変更する(現在の特質:\@ CSTR:(LCOUNT+10) == "" ? 無し # %CSTR:(LCOUNT+10)% \@)
+		IF LANGUAGE == "ENG"
+			PRINTFORML 　[{LCOUNT%10}] - Change %CSTR:LCOUNT% stats(%I18N("現在の特質")%:\@ CSTR:(LCOUNT+10) == "" ? %I18N("無し")% # %CSTR:(LCOUNT+10)% \@)
+		ELSE
+			PRINTFORML 　[{LCOUNT%10}] - %CSTR:LCOUNT%の特質を変更する(%I18N("現在の特質")%:\@ CSTR:(LCOUNT+10) == "" ? %I18N("無し")% # %CSTR:(LCOUNT+10)% \@)
+		ENDIF
 	ENDIF
 NEXT
 DRAWLINE
-PRINTPLAIN 　印の儀　
-PRINTL [10] - キャラを変更する [11] - 儀式をやめる
+PRINTPLAINFORM 　%I18N("印の儀")%　
+PRINTFORML [10] - %I18N("キャラを変更する")% [11] - %I18N("儀式をやめる")%
 BINPUT
 SELECTCASE RESULT
 	CASE 10
@@ -74,7 +86,7 @@ SELECTCASE RESULT
 		変数番号 = GETNUM(CSTR, "右腕の印")
 		IF CSTR:(変数番号+LRESULT) == ""
 			IF FLAG:経験値 < 1 && !ORIGIN
-				PRINTW 経験値が足りません
+				PRINTFORMW %I18N("経験値が足りません")%
 				GOTO 部位選択
 			ENDIF
 			CALL 印を刻む, CSTRNAME:(変数番号+LRESULT)
@@ -109,56 +121,84 @@ ENDSELECT
 DRAWLINE
 
 VARSET 選択可
-PRINTFORML □%CALLNAME:TARGET%に%対象部位%を刻みます(１ターン消費 \@ !ORIGIN ? 印によって下がる売却額:{価額低下}\%#\@)
+IF LANGUAGE == "ENG"
+	PRINTFORML □Carve %対象部位% on %CALLNAME:TARGET%(１ turn consumption \@ !ORIGIN ? The sale price decreases depending on the mark:{価額低下}\%#\@)
+ELSE
+	PRINTFORML □%CALLNAME:TARGET%に%対象部位%を刻みます(１ターン消費 \@ !ORIGIN ? 印によって下がる売却額:{価額低下}\%#\@)
+ENDIF
 SIF TALENT:MASTER:魔法使い || 助手素質("魔法使い")
 	魔法使いあり = 1
 SIF TALENT:MASTER:ネクロマンサー || 助手素質("ネクロマンサー")
 	ネクロマンサーあり = 1
 
 IF 魔法使いあり
-	PRINTL 　[1] - 強化のタトゥー(身体能力を強化する特質を宿す)
+	PRINTFORML 　[1] - %I18N("強化のタトゥー(身体能力を強化する特質を宿す)")%
 	選択可:1 = 1
 ELSE
-	CALL PRINTCOLORL, @"　[-] - 強化のタトゥー(主人もしくは助手に[魔法使い]が必要)", "gray"
+	IF LANGUAGE == "ENG"
+		CALL PRINTCOLORL, @"　[-] - Enchanting tattoo ([%I18N("魔法使い")%] is required for master or assistant)", "gray"
+	ELSE
+		CALL PRINTCOLORL, @"　[-] - 強化のタトゥー(主人もしくは助手に[魔法使い]が必要)", "gray"
+	ENDIF
 ENDIF
 IF ネクロマンサーあり
-	PRINTL 　[2] - 制御のタトゥー(行動を制御する特質を宿す)
+	PRINTFORML 　[2] - %I18N("制御のタトゥー(行動を制御する特質を宿す)")%
 	選択可:2 = 1
 ELSE
-	CALL PRINTCOLORL, @"　[-] - 制御のタトゥー(主人もしくは助手に[ネクロマンサー]が必要)", "gray"
+	IF LANGUAGE == "ENG"
+		CALL PRINTCOLORL, @"　[-] - Tatoo of control(主人もしくは助手に[%I18N("ネクロマンサー")%]が必要)", "gray"
+	ELSE
+		CALL PRINTCOLORL, @"　[-] - 制御のタトゥー([Necromancer] is required for master or assistant)", "gray"
+	ENDIF
 ENDIF
-PRINTL 　[3] - 異質のタトゥー(体質が変化する特質を宿す)
+PRINTFORML 　[3] - %I18N("異質のタトゥー(体質が変化する特質を宿す)")%
 選択可:3 = 1
 IF 対象部位 == "背中の印"
 	CALLFORM DISABLE, "EVENT_印の儀_淫売の焼印", TARGET
 	IF !RESULT
 		IF GROUPMATCH(FALLTYPE(TARGET), 0, 2)
-			PRINTL 　[4] - 淫売の焼印(未陥落、もしくは[淫乱][淫魔]のみ選択可 [淫乱][淫魔]以外の陥落素質が得られなくなる)
+			IF LANGUAGE == "ENG"
+				PRINTFORML 　[4] - A brand of prositution (Unfallen characters, or only [%I18N("淫乱", "TALENT")%] or [%I18N("淫魔", "TALENT")%] can be selected. Cannot obtain fallen types othar than [%I18N("淫乱", "TALENT")%] and [%I18N("淫魔", "TALENT")%])
+			ELSE
+				PRINTL 　[4] - 淫売の焼印(未陥落、もしくは[淫乱][淫魔]のみ選択可 [淫乱][淫魔]以外の陥落素質が得られなくなる)
+			ENDIF
 			選択可:4 = 1
 		ELSE
-			CALL PRINTCOLORL, "　[-] - 淫売の焼印(未陥落、もしくは[淫乱][淫魔]のみ選択可 [淫乱][淫魔]以外の陥落素質が得られなくなる)", "gray"
+			IF LANGUAGE == "ENG"
+				CALL PRINTCOLORL, @"　[4] - A brand of prositution (Unfallen characters, or only [%I18N("淫乱", "TALENT")%] or [%I18N("淫魔", "TALENT")%] can be selected. Cannot obtain fallen types othar than [%I18N("淫乱", "TALENT")%] and [%I18N("淫魔", "TALENT")%])"
+			ELSE
+				CALL PRINTCOLORL, "　[-] - 淫売の焼印(未陥落、もしくは[淫乱][淫魔]のみ選択可 [淫乱][淫魔]以外の陥落素質が得られなくなる)", "gray"
+			ENDIF
 		ENDIF
 	ENDIF
 	CALLFORM DISABLE, "EVENT_印の儀_奴隷の焼印", TARGET
 	IF !RESULT
 		IF GROUPMATCH(FALLTYPE(TARGET), 0, 3)
-			PRINTL 　[5] - 奴隷の焼印(未陥落、もしくは[服従][隷属]のみ選択可 [服従][隷属]以外の陥落素質が得られなくなる)
+			IF LANGUAGE == "ENG"
+				PRINTFORML 　[5] - A brand of slave(Unfallen characters, or can only select the ones with [%I18N("服従", "TALENT")%] or [%I18N("隷属", "TALENT")%] traits.  Cannot obtain other fallen types than [%I18N("服従", "TALENT")%] and [%I18N("隷属", "TALENT")%])
+			ELSE
+				PRINTL 　[5] - 奴隷の焼印(未陥落、もしくは[服従][隷属]のみ選択可 [服従][隷属]以外の陥落素質が得られなくなる)
+			ENDIF
 			選択可:5 = 1
 		ELSE
+			IF LANGUAGE == "ENG"
+				CALL PRINTCOLORL, @"　[5] - A brand of slave(Unfallen characters, or can only select the ones with [%I18N("服従", "TALENT")%] or [%I18N("隷属", "TALENT")%] traits.  Cannot obtain other fallen types than [%I18N("服従", "TALENT")%] and [%I18N("隷属", "TALENT")%])"
+			ELSE
 			CALL PRINTCOLORL, "　[-] - 奴隷の焼印(未陥落、もしくは[服従][隷属]のみ選択可 [服従][隷属]以外の陥落素質が得られなくなる)", "gray"
+			ENDIF
 		ENDIF
 	ENDIF
 ENDIF
 
 IF MOD:SCAT
-	PRINTL 　[6] - スカのタトゥー(体質が変化する特質を宿す)
+	PRINTFORML 　[6] - %I18N("スカのタトゥー(体質が変化する特質を宿す)")%
 	選択可:6 = 1
 ENDIF
 
 DRAWLINE
 
 PRINTPLAINFORM 　%対象部位%　
-PRINTL [0] - 戻る [10] - 特質一覧を見る
+PRINTFORML [0] - %I18N("戻る")% [10] - %I18N("特質一覧を見る")%
 
 BINPUT
 
@@ -171,84 +211,138 @@ SELECTCASE RESULT
 	CASE 1
 		SIF !選択可:1
 			RESTART
-		PRINTFORML \@ !ORIGIN ? 経験値を1消費して#\@%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「強化のタトゥー」を刻みます。よろしいですか？
-		PRINTL [0] - はい
-		PRINTL [1] - いいえ
+		IF LANGUAGE == "ENG"
+			PRINTFORML \@ !ORIGIN ? Consume 1 experience level to #\@ Paint a 「%I18N("強化のタトゥー")%」%SUBSTRINGU(対象部位, 0, 2)% on %CALLNAME:TARGET%？
+		ELSE
+			PRINTFORML \@ !ORIGIN ? 経験値を1消費して#\@%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「強化のタトゥー」を刻みます。よろしいですか？
+		ENDIF
+		PRINTFORML [0] - %I18N("はい")%
+		PRINTFORML [1] - %I18N("いいえ")%
 		BINPUT
 		SIF RESULT
 			RESTART
-		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「強化のタトゥー」を刻みました
-		CALL プレイログ記録, @"%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「強化のタトゥー」を刻む"
+		IF LANGUAGE == "ENG"
+			PRINTFORMW 「%I18N("強化のタトゥー")%」%SUBSTRINGU(対象部位, 0, 2)% was painted on %CALLNAME:TARGET%
+			CALL プレイログ記録, @"「%I18N("強化のタトゥー")%」%SUBSTRINGU(対象部位, 0, 2)% was painted on %CALLNAME:TARGET%"
+		ELSE
+			PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「強化のタトゥー」を刻みました
+			CALL プレイログ記録, @"%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「強化のタトゥー」を刻む"
+		ENDIF
 		CSTR:対象部位 = 強化のタトゥー
 		FLAG:経験値--
 		RETURN 1
 	CASE 2
 		SIF !選択可:2
 			RESTART
-		PRINTFORML \@ !ORIGIN ? 経験値を1消費して#\@%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「制御のタトゥー」を刻みます。よろしいですか？
-		PRINTL [0] - はい
-		PRINTL [1] - いいえ
+		IF LANGUAGE == "ENG"
+			PRINTFORML \@ !ORIGIN ? Consume 1 experience level to #\@ Paint a 「%I18N("制御のタトゥー")%」%SUBSTRINGU(対象部位, 0, 2)% on %CALLNAME:TARGET%？
+		ELSE
+			PRINTFORML \@ !ORIGIN ? 経験値を1消費して#\@%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「制御のタトゥー」を刻みます。よろしいですか？
+		ENDIF
+		PRINTFORML [0] - %I18N("はい")%
+		PRINTFORML [1] - %I18N("いいえ")%
 		BINPUT
 		SIF RESULT
 			RESTART
-		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「制御のタトゥー」を刻みました
-		CALL プレイログ記録, @"%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「制御のタトゥー」を刻む"
+		IF LANGUAGE == "ENG"
+			PRINTFORMW 「%I18N("制御のタトゥー")%」%SUBSTRINGU(対象部位, 0, 2)% was painted on %CALLNAME:TARGET%
+			CALL プレイログ記録, @"「%I18N("制御のタトゥー")%」%SUBSTRINGU(対象部位, 0, 2)% was painted on %CALLNAME:TARGET%"
+		ELSE
+			PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「制御のタトゥー」を刻みました
+			CALL プレイログ記録, @"%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「制御のタトゥー」を刻む"
+		ENDIF
 		CSTR:対象部位 = 制御のタトゥー
 		FLAG:経験値--
 		RETURN 1
 	CASE 3
 		SIF !選択可:3
 			RESTART
-		PRINTFORML \@ !ORIGIN ? 経験値を1消費して#\@%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「異質のタトゥー」を刻みます。よろしいですか？
-		PRINTL [0] - はい
-		PRINTL [1] - いいえ
+		IF LANGUAGE == "ENG"
+			PRINTFORML \@ !ORIGIN ? Consume 1 experience level to #\@ Paint a「%I18N("異質のタトゥー")%」%SUBSTRINGU(対象部位, 0, 2)% on %CALLNAME:TARGET%？
+		ELSE
+			PRINTFORML \@ !ORIGIN ? 経験値を1消費して#\@%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「異質のタトゥー」を刻みます。よろしいですか？
+		ENDIF
+		PRINTFORML [0] - %I18N("はい")%
+		PRINTFORML [1] - %I18N("いいえ")%
 		BINPUT
 		SIF RESULT
 			RESTART
-		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「異質のタトゥー」を刻みました
-		CALL プレイログ記録, @"%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「異質のタトゥー」を刻む"
+		IF LANGUAGE == "ENG"
+			PRINTFORMW 「%I18N("異質のタトゥー")%」%SUBSTRINGU(対象部位, 0, 2)% was painted on %CALLNAME:TARGET%
+			CALL プレイログ記録, @"「%I18N("異質のタトゥー")%」%SUBSTRINGU(対象部位, 0, 2)% was painted on %CALLNAME:TARGET%"
+		ELSE
+			PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「異質のタトゥー」を刻みました
+			CALL プレイログ記録, @"%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「異質のタトゥー」を刻む"
+		ENDIF
 		CSTR:対象部位 = 異質のタトゥー
 		FLAG:経験値--
 		RETURN 1
 	CASE 4
 		SIF !選択可:4
 			RESTART
-		PRINTFORML %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「淫売の焼印」を押します。よろしいですか？
-		PRINTL [0] - はい
-		PRINTL [1] - いいえ
+		IF LANGUAGE == "ENG"
+			PRINTFORML Are you sure to engrave a 「%I18N("淫売の焼印")%」%SUBSTRINGU(対象部位, 0, 2)% on %CALLNAME:TARGET%？
+		ELSE
+			PRINTFORML %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「淫売の焼印」を押します。よろしいですか？
+		ENDIF
+		PRINTFORML [0] - %I18N("はい")%
+		PRINTFORML [1] - %I18N("いいえ")%
 		BINPUT
 		SIF RESULT
 			RESTART
-		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「淫売の焼印」を押しました
-		CALL プレイログ記録, @"%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「淫売の焼印」を押す"
+		IF LANGUAGE == "ENG"
+			PRINTFORMW %CALLNAME:TARGET% has been claimed by「%I18N("淫売の焼印")%」%SUBSTRINGU(対象部位, 0, 2)%
+			CALL プレイログ記録, @"%CALLNAME:TARGET% has been claimed by「%I18N("淫売の焼印")%」%SUBSTRINGU(対象部位, 0, 2)%"
+		ELSE
+			PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「淫売の焼印」を押しました
+			CALL プレイログ記録, @"%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「淫売の焼印」を押す"
+		ENDIF
 		CSTR:対象部位 = 淫売の焼印
 		FLAG:経験値--
 		RETURN 1
 	CASE 5
 		SIF !選択可:5
 			RESTART
-		PRINTFORML %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「奴隷の焼印」を押します。よろしいですか？
-		PRINTL [0] - はい
-		PRINTL [1] - いいえ
+		IF LANGUAGE == "ENG"
+			PRINTFORML Are you sure to claim %CALLNAME:TARGET% with 「%I18N("奴隷の焼印")%」 %SUBSTRINGU(対象部位, 0, 2)%？
+		ELSE
+			PRINTFORML %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「奴隷の焼印」を押します。よろしいですか？
+		ENDIF
+		PRINTFORML [0] - %I18N("はい")%
+		PRINTFORML [1] - %I18N("いいえ")%
 		BINPUT
 		SIF RESULT
 			RESTART
-		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「奴隷の焼印」を押しました
-		CALL プレイログ記録, @"%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「奴隷の焼印」を押す"
+		IF LANGUAGE == "ENG"
+			PRINTFORMW %CALLNAME:TARGET% has been claimed by 「%I18N("奴隷の焼印")%」 %SUBSTRINGU(対象部位, 0, 2)%
+			CALL プレイログ記録, @"%CALLNAME:TARGET% has been claimed by 「%I18N("奴隷の焼印")%」 %SUBSTRINGU(対象部位, 0, 2)%"
+		ELSE
+			PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「奴隷の焼印」を押しました
+			CALL プレイログ記録, @"%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「奴隷の焼印」を押す"
+		ENDIF
 		CSTR:対象部位 = 奴隷の焼印
 		FLAG:経験値--
 		RETURN 1
 	CASE 6
 		SIF !選択可:6
 			RESTART
-		PRINTFORML \@ !ORIGIN ? 経験値を1消費して#\@%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「スカのタトゥー」を刻みます。よろしいですか？
-		PRINTL [0] - はい
-		PRINTL [1] - いいえ
+		IF LANGUAGE == "ENG"
+			PRINTFORML \@ !ORIGIN ? Consume 1 experience level to #\@ Point a 「%I18N("スカのタトゥー")%」%SUBSTRINGU(対象部位, 0, 2)% on %CALLNAME:TARGET%？
+		ELSE
+			PRINTFORML \@ !ORIGIN ? 経験値を1消費して#\@%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「スカのタトゥー」を刻みます。よろしいですか？
+		ENDIF
+		PRINTFORML [0] - %I18N("はい")%
+		PRINTFORML [1] - %I18N("いいえ")%
 		BINPUT
 		SIF RESULT
 			RESTART
-		PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「スカのタトゥー」を刻みました
-		CALL プレイログ記録, @"%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「スカのタトゥー」を刻む"
+		IF LANGUAGE == "ENG"
+			PRINTFORMW %CALLNAME:TARGET% has been claimed by 「%I18N("スカのタトゥー")%」 %SUBSTRINGU(対象部位, 0, 2)%
+			CALL プレイログ記録, @"%CALLNAME:TARGET% has been claimed by 「%I18N("スカのタトゥー")%」 %SUBSTRINGU(対象部位, 0, 2)%"
+		ELSE
+			PRINTFORMW %CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「スカのタトゥー」を刻みました
+			CALL プレイログ記録, @"%CALLNAME:TARGET%の%SUBSTRINGU(対象部位, 0, 2)%に「スカのタトゥー」を刻む"
+		ENDIF
 		CSTR:対象部位 = スカのタトゥー
 		FLAG:経験値--
 		RETURN 1
@@ -314,104 +408,187 @@ IF マニュアル
 ELSE
 	CALL LOOP_CLEARLINE
 ENDIF
-
-PRINTFORML □%対象部位%に刻む特質を選択してください(この部位の効果:{効果倍率/10}.{効果倍率%10}倍)
+IF LANGUAGE == "ENG"
+	PRINTFORML □Select a stat to make a tatoo on %対象部位%(Bodypart effect:{効果倍率/10}.{効果倍率%10} times)
+ELSE
+	PRINTFORML □%対象部位%に刻む特質を選択してください(この部位の効果:{効果倍率/10}.{効果倍率%10}倍)
+ENDIF
 SELECTCASE CSTR:対象部位
 	CASE "強化のタトゥー"
 		$強化のタトゥー
 		IF !マニュアル
-			PRINTFORML 　体力%BARBASE("体力")%
-			PRINTFORML 　気力%BARBASE("気力")%
+			PRINTFORML 　%I18N("体力")%%BARBASE("体力")%
+			PRINTFORML 　%I18N("気力")%%BARBASE("気力")%
 			SIF TALENT:魔法使い
-				PRINTFORML 　魔力%BARBASE("魔力")%
+				PRINTFORML 　%I18N("魔力")%%BARBASE("魔力")%
 		ENDIF
 		FOR LCOUNT, 0, VARSIZE("強化特質")
-			IF マニュアル
-				PRINTFORML 　・%強化特質:LCOUNT% 宿せる印:強化のタトゥー
+			IF LANGUAGE == "ENG"
+				IF マニュアル
+					PRINTFORML 　・%I18N(強化特質:LCOUNT)% Seal:%I18N("強化のタトゥー")%
+				ELSE
+					PRINTFORML 　[{LCOUNT}] - %I18N(強化特質:LCOUNT)% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == 強化特質:LCOUNT ? %I18N("装備中")% #\@
+				ENDIF
+				SELECTCASE 強化特質:LCOUNT
+					CASE "体力強化"
+						PRINTFORML 　　　　Increase Max%I18N("体力")% by {5*効果倍率}
+					CASE "気力強化"
+						PRINTFORML 　　　　Increase Max%I18N("気力")% by {10*効果倍率}
+					CASE "代謝強化"
+						PRINTFORML 　　　　Increases recovery amount each turn by {効果倍率*10}\% (additive)
+					CASE "精力強化"
+						PRINTFORML 　　　　Reduces ejaculation cooldown by {効果倍率/10} turns. No penis - no effect.
+					CASE "魔力強化"
+						PRINTFORML 　　　　Increase Max%I18N("魔力")% by {100*効果倍率}
+				ENDSELECT
 			ELSE
-				PRINTFORML 　[{LCOUNT}] - %強化特質:LCOUNT% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == 強化特質:LCOUNT ? 装備中 #\@
+				IF マニュアル
+					PRINTFORML 　・%強化特質:LCOUNT% 宿せる印:強化のタトゥー
+				ELSE
+					PRINTFORML 　[{LCOUNT}] - %強化特質:LCOUNT% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == 強化特質:LCOUNT ? 装備中 #\@
+				ENDIF
+				SELECTCASE 強化特質:LCOUNT
+					CASE "体力強化"
+						PRINTFORML 　　　　最大体力を{5*効果倍率}上昇させる
+					CASE "気力強化"
+						PRINTFORML 　　　　最大気力を{10*効果倍率}上昇させる
+					CASE "代謝強化"
+						PRINTFORML 　　　　毎ターンの回復量を{効果倍率*10}\%増加させる(効果倍率は加算される) 二日酔いのリスクも減る
+					CASE "精力強化"
+						PRINTFORML 　　　　射精のクールダウンを{効果倍率/10}ターン減らす 男性器が無いと効果無し
+					CASE "魔力強化"
+						PRINTFORML 　　　　最大魔力を{100*効果倍率}上昇させる
+				ENDSELECT
 			ENDIF
-			SELECTCASE 強化特質:LCOUNT
-				CASE "体力強化"
-					PRINTFORML 　　　　最大体力を{5*効果倍率}上昇させる
-				CASE "気力強化"
-					PRINTFORML 　　　　最大気力を{10*効果倍率}上昇させる
-				CASE "代謝強化"
-					PRINTFORML 　　　　毎ターンの回復量を{効果倍率*10}\%増加させる(効果倍率は加算される) 二日酔いのリスクも減る
-				CASE "精力強化"
-					PRINTFORML 　　　　射精のクールダウンを{効果倍率/10}ターン減らす 男性器が無いと効果無し
-				CASE "魔力強化"
-					PRINTFORML 　　　　最大魔力を{100*効果倍率}上昇させる
-			ENDSELECT
 		NEXT
 		SIF マニュアル
 			GOTO 制御のタトゥー
 	CASE "制御のタトゥー"
 		$制御のタトゥー
 		FOR LCOUNT, 0, VARSIZE("制御特質")
-			IF マニュアル
-				PRINTFORML 　・%制御特質:LCOUNT% 宿せる印:制御のタトゥー
+			IF LANGUAGE == "ENG"
+				IF マニュアル
+					PRINTFORML 　・%I18N(制御特質:LCOUNT)% Branding:%I18N("制御のタトゥー")%
+				ELSE
+					PRINTFORML 　[{LCOUNT}] - %I18N(制御特質:LCOUNT)% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == 制御特質:LCOUNT ? 装備中 #\@
+				ENDIF
+				SELECTCASE 制御特質:LCOUNT
+					CASE "意志薄弱"
+						PRINTFORML 　　　　Increase points in calculations of the demands of the commands by {効果倍率}
+					CASE "ワーカホリック"
+						PRINTFORML 　　　　When assigned, add {効果倍率/10} points to ability score
+					CASE "しつけ"
+						PRINTFORML 　　　　[%I18N("衝動的")%] characters will no longer to break items. No dublicate effects
+					CASE "洗脳"
+						PRINTFORML 　　　　Suppress the increase in negative parameters by {効果倍率}\% (Multiplicative)
+					CASE "無理強い"
+						PRINTFORML 　　　　Training will not stop even if %I18N("体力")% below 500 No dublicate effects
+				ENDSELECT
 			ELSE
-				PRINTFORML 　[{LCOUNT}] - %制御特質:LCOUNT% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == 制御特質:LCOUNT ? 装備中 #\@
+				IF マニュアル
+					PRINTFORML 　・%I18N(制御特質:LCOUNT)% 宿せる印:制御のタトゥー
+				ELSE
+					PRINTFORML 　[{LCOUNT}] - %I18N(制御特質:LCOUNT)% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == 制御特質:LCOUNT ? 装備中 #\@
+				ENDIF
+				SELECTCASE 制御特質:LCOUNT
+					CASE "意志薄弱"
+						PRINTFORML 　　　　コマンド実行判定時のポイントを{効果倍率}上昇させる
+					CASE "ワーカホリック"
+						PRINTFORML 　　　　配属時に主要能力値に{効果倍率/10}加算される 仕事をサボらなくなる
+					CASE "しつけ"
+						PRINTFORML 　　　　[衝動的]なキャラがアイテムを壊さなくなる 重複効果無し
+					CASE "洗脳"
+						PRINTFORML 　　　　マイナスパラメータの上昇を{効果倍率}\%抑える(効果倍率は加算される)
+					CASE "無理強い"
+						PRINTFORML 　　　　体力500以下で調教終了しなくなる 重複効果無し
+				ENDSELECT
 			ENDIF
-			SELECTCASE 制御特質:LCOUNT
-				CASE "意志薄弱"
-					PRINTFORML 　　　　コマンド実行判定時のポイントを{効果倍率}上昇させる
-				CASE "ワーカホリック"
-					PRINTFORML 　　　　配属時に主要能力値に{効果倍率/10}加算される 仕事をサボらなくなる
-				CASE "しつけ"
-					PRINTFORML 　　　　[衝動的]なキャラがアイテムを壊さなくなる 重複効果無し
-				CASE "洗脳"
-					PRINTFORML 　　　　マイナスパラメータの上昇を{効果倍率}\%抑える(効果倍率は加算される)
-				CASE "無理強い"
-					PRINTFORML 　　　　体力500以下で調教終了しなくなる 重複効果無し
-			ENDSELECT
 		NEXT
 		SIF マニュアル
 			GOTO 異質のタトゥー
 	CASE "異質のタトゥー"
 		$異質のタトゥー
 		FOR LCOUNT, 0, VARSIZE("異質特質")
-			IF マニュアル
-				PRINTFORML 　・%異質特質:LCOUNT% 宿せる印:異質のタトゥー
+			IF LANGUAGE == "ENG"
+				IF マニュアル
+					PRINTFORML 　・%I18N(異質特質:LCOUNT)% A seal:%I18N("異質のタトゥー")%
+				ELSE
+					PRINTFORML 　[{LCOUNT}] - %I18N(異質特質:LCOUNT)% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == 異質特質:LCOUNT ? Equipped #\@
+				ENDIF
+				SELECTCASE 異質特質:LCOUNT
+					CASE "研ぎ澄まされた感覚"
+						PRINTFORML 　　　　{効果倍率*100} of each sense will added in start of the training.
+					CASE "中性"
+						PRINTFORML 　　　　Commands no longer increase homosexual experience. No stacking effect
+					CASE "相貌失認"
+						PRINTFORML 　　　　Assistant training experience will not increase. No stacking effect
+					CASE "無痛症"
+						PRINTFORML 　　　　Pain parameters and pain marks no longer increase. No stacking effect
+					CASE "異種族融和"
+						PRINTFORML 　　　　Each parameter gain increases by {効果倍率*4/10}\% when being trained by a different race.(Multiplicative)
+					CASE "薬効増強"
+						PRINTFORML 　　　　Increase duration of some medicine by{効果倍率/5} turns.(Multiplicative)
+					CASE "過剰分泌"
+						PRINTFORML 　　　　Increase lubriation by {効果倍率/5} times (Multiplicative) Also, lubrication increases naturally for male characters too.
+					CASE "ナルコレプシー"
+						PRINTFORML 　　　　Character fell asleep in beginning of the training sometimes,  cannow awake when using sleeping pills. No stacking effect
+				ENDSELECT
 			ELSE
-				PRINTFORML 　[{LCOUNT}] - %異質特質:LCOUNT% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == 異質特質:LCOUNT ? 装備中 #\@
+				IF マニュアル
+					PRINTFORML 　・%I18N(異質特質:LCOUNT)% 宿せる印:異質のタトゥー
+				ELSE
+					PRINTFORML 　[{LCOUNT}] - %I18N(異質特質:LCOUNT)% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == 異質特質:LCOUNT ? 装備中 #\@
+				ENDIF
+				SELECTCASE 異質特質:LCOUNT
+					CASE "研ぎ澄まされた感覚"
+						PRINTFORML 　　　　調教開始時に各感覚に{効果倍率*100}が初期値で加算される
+					CASE "中性"
+						PRINTFORML 　　　　コマンドで同性愛経験が上がらなくなる 重複効果無し
+					CASE "相貌失認"
+						PRINTFORML 　　　　助手調教経験が上がらなくなる 重複効果無し
+					CASE "無痛症"
+						PRINTFORML 　　　　苦痛のパラメータと苦痛刻印が上がらなくなる 重複効果無し
+					CASE "異種族融和"
+						PRINTFORML 　　　　異なる種族から調教を受けた際の各パラメータの上昇が{効果倍率*4/10}\%増加する(効果倍率は加算される)
+					CASE "薬効増強"
+						PRINTFORML 　　　　一部の薬アイテムの効果時間が{効果倍率/5}倍になる(効果倍率は加算される)
+					CASE "過剰分泌"
+						PRINTFORML 　　　　潤滑の増加量が{効果倍率/5}倍になる(効果倍率は加算される) また、男性キャラでも潤滑が自然増加するようになる
+					CASE "ナルコレプシー"
+						PRINTFORML 　　　　調教開始時に眠ることがある また、睡眠薬使用時に起きなくなる 重複効果無し
+				ENDSELECT
 			ENDIF
-			SELECTCASE 異質特質:LCOUNT
-				CASE "研ぎ澄まされた感覚"
-					PRINTFORML 　　　　調教開始時に各感覚に{効果倍率*100}が初期値で加算される
-				CASE "中性"
-					PRINTFORML 　　　　コマンドで同性愛経験が上がらなくなる 重複効果無し
-				CASE "相貌失認"
-					PRINTFORML 　　　　助手調教経験が上がらなくなる 重複効果無し
-				CASE "無痛症"
-					PRINTFORML 　　　　苦痛のパラメータと苦痛刻印が上がらなくなる 重複効果無し
-				CASE "異種族融和"
-					PRINTFORML 　　　　異なる種族から調教を受けた際の各パラメータの上昇が{効果倍率*4/10}\%増加する(効果倍率は加算される)
-				CASE "薬効増強"
-					PRINTFORML 　　　　一部の薬アイテムの効果時間が{効果倍率/5}倍になる(効果倍率は加算される)
-				CASE "過剰分泌"
-					PRINTFORML 　　　　潤滑の増加量が{効果倍率/5}倍になる(効果倍率は加算される) また、男性キャラでも潤滑が自然増加するようになる
-				CASE "ナルコレプシー"
-					PRINTFORML 　　　　調教開始時に眠ることがある また、睡眠薬使用時に起きなくなる 重複効果無し
-			ENDSELECT
 		NEXT
 		SIF マニュアル && MOD:SCAT
 			GOTO スカのタトゥー
 	CASE "スカのタトゥー"
 		$スカのタトゥー
 		FOR LCOUNT, 0, VARSIZE("スカ特質")
-			IF マニュアル
-				PRINTFORML 　・%スカ特質:LCOUNT% 宿せる印:スカのタトゥー
+			IF LANGUAGE == "ENG"
+				IF マニュアル
+					PRINTFORML 　・%I18N(スカ特質:LCOUNT)% 宿せる印:スカのタトゥー
+				ELSE
+					PRINTFORML 　[{LCOUNT}] - %I18N(スカ特質:LCOUNT)% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == スカ特質:LCOUNT ? 装備中 #\@
+				ENDIF
+				SELECTCASE スカ特質:LCOUNT
+					CASE "胃腸過敏"
+						PRINTFORML 　　　　Increased toilet udge by {効果倍率/5} times (Multiplicative)
+					CASE "過剰排泄"
+						PRINTFORML 　　　　increase poop amount {効果倍率/5} times(Multiplicative)
+				ENDSELECT
 			ELSE
-				PRINTFORML 　[{LCOUNT}] - %スカ特質:LCOUNT% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == スカ特質:LCOUNT ? 装備中 #\@
+				IF マニュアル
+					PRINTFORML 　・%I18N(スカ特質:LCOUNT)% 宿せる印:スカのタトゥー
+				ELSE
+					PRINTFORML 　[{LCOUNT}] - %I18N(スカ特質:LCOUNT)% \@ CSTR:(GETNUM(CSTR, 対象部位)+10) == スカ特質:LCOUNT ? 装備中 #\@
+				ENDIF
+				SELECTCASE スカ特質:LCOUNT
+					CASE "胃腸過敏"
+						PRINTFORML 　　　　便意と増加量が{効果倍率/5}倍になる(効果倍率は加算される)
+					CASE "過剰排泄"
+						PRINTFORML 　　　　便量の増加量が{効果倍率/5}倍になる(効果倍率は加算される)
+				ENDSELECT
 			ENDIF
-			SELECTCASE スカ特質:LCOUNT
-				CASE "胃腸過敏"
-					PRINTFORML 　　　　便意と増加量が{効果倍率/5}倍になる(効果倍率は加算される)
-				CASE "過剰排泄"
-					PRINTFORML 　　　　便量の増加量が{効果倍率/5}倍になる(効果倍率は加算される)
-			ENDSELECT
 		NEXT
 ENDSELECT
 DRAWLINE
@@ -421,7 +598,7 @@ IF マニュアル
 ENDIF
 
 PRINTPLAINFORM 　%対象部位%　
-PRINTL [10] - 戻る
+PRINTFORML [10] - %I18N("戻る")%
 
 BINPUT
 SIF RESULT == 10
