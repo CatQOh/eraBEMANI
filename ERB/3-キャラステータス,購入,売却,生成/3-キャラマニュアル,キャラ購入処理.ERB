@@ -227,9 +227,9 @@ ELSE
 	PRINTFORML [0] %I18N("はい")%
 	PRINTFORML [1] %I18N("いいえ")%
 	SIF !素質表示済み
-		PRINTL [2] 素質を表示する
+		PRINTFORML [2] %I18N("素質を表示する")%
 	SIF !曲表示済み
-		PRINTL [3] 担当曲・出演曲を表示する
+		PRINTFORML [3] %I18N("担当曲・出演曲を表示する")%
 	BINPUT
 	SELECTCASE RESULT
 		CASE 0
@@ -506,11 +506,17 @@ SIF !クローニング
 	購入人数++
 ADDCHARA 対象
 TARGET = CHARANUM-1
-
-SIF CSTR:種族 == ""
-	DEBUGPRINTFORML %NAME:TARGET%に種族が設定されてない
-SIF CSTR:英語名 == ""
-	DEBUGPRINTFORML %NAME:TARGET%に英語名が設定されてない
+IF LANGUAGE == "ENG"
+	SIF CSTR:種族 == ""
+		DEBUGPRINTFORML No race is set for %NAME:TARGET%
+	SIF CSTR:英語名 == ""
+		DEBUGPRINTFORML English name is not set for %NAME:TARGET%
+ELSE
+	SIF CSTR:種族 == ""
+		DEBUGPRINTFORML %NAME:TARGET%に種族が設定されてない
+	SIF CSTR:英語名 == ""
+		DEBUGPRINTFORML %NAME:TARGET%に英語名が設定されてない
+ENDIF
 ;一部のキャラは性別を選択する
 SIF !編集モード() && (対象 != 0)
 	CALL 性別選択, TARGET, クローニング
@@ -609,8 +615,13 @@ IF !GETBIT(高速化, 0)
 					適正EXP = MAXARRAY(ABLUPEXP)
 			ENDIF
 		REND
-		SIF 適正ABL && LCOUNT >= GETNUM(ABL, "料理技能") && ABLNAME:LCOUNT != "栽培技能"
-			DEBUGPRINTFORML %NAME:TARGET%の%ABLNAME:LCOUNT%は不適正 適正ABL:{適正ABL} 適正EXP:{適正EXP}
+		IF 適正ABL && LCOUNT >= GETNUM(ABL, "料理技能") && ABLNAME:LCOUNT != "栽培技能"
+			IF LANGUAGE == "ENG"
+				DEBUGPRINTFORML %NAME:TARGET% have invalid value of %ABLNAME:LCOUNT% Appropriate ABL:{適正ABL} AppropriateEXP:{適正EXP}
+			ELSE
+				DEBUGPRINTFORML %NAME:TARGET%の%ABLNAME:LCOUNT%は不適正 適正ABL:{適正ABL} 適正EXP:{適正EXP}
+			ENDIF
+		ENDIF
 	NEXT
 ENDIF
 
@@ -643,7 +654,7 @@ IF MOD:チャレンジ
 			TALENT:処女 = 1
 	ENDSELECT
 	CALL 初期経験リセット(TARGET)
-	CSTR:適用MOD += "[MOD:チャレンジ]"
+	CSTR:適用MOD += @"[%I18N("MOD:チャレンジ")%]"
 ENDIF
 ;相性の設定
 SPLIT CSTR:相性, "/", 相性設定用
@@ -657,7 +668,11 @@ FOR LCOUNT, 0, RESULT
 	IF GETNO(相性値, 1) >= 0
 		RELATION:GETNO(相性値) = TOINT(相性値:1)
 	ELSE
-		DEBUGPRINTFORML %NAME:TARGET%の相性:「%相性値%」は存在しないもしくは表記揺れ
+		IF LANGUAGE == "ENG"
+			DEBUGPRINTFORML %NAME:TARGET%TARGET compatibility:「%相性値%」does not exist
+		ELSE
+			DEBUGPRINTFORML %NAME:TARGET%の相性:「%相性値%」は存在しないもしくは表記揺れ
+		ENDIF
 	ENDIF
 NEXT
 
@@ -1064,7 +1079,7 @@ FOR LCOUNT, 0, 10000
 	SIF !EXISTCSV(LCOUNT)
 		CONTINUE
 	CALL 売却額PT計算, LCOUNT
-	PRINTFORML %CSVCALLNAME(LCOUNT), 20, LEFT% 開発難易度PT:{開発難易度PT計算(LCOUNT), 4, LEFT} 性経験PT:{性経験PT計算(LCOUNT), 4, LEFT} 売却額PT:{RESULT, 4, LEFT} 屈服難易度PT:{屈服難易度PT計算(LCOUNT), 4, LEFT}
+	PRINTFORML %CSVCALLNAME(LCOUNT), 20, LEFT% %I18N("開発難易度PT")%:{開発難易度PT計算(LCOUNT), 4, LEFT} %I18N("性経験PT")%:{性経験PT計算(LCOUNT), 4, LEFT} %I18N("売却額PT")%:{RESULT, 4, LEFT} %I18N("屈服難易度PT")%:{屈服難易度PT計算(LCOUNT), 4, LEFT}
 NEXT
 
 WAIT

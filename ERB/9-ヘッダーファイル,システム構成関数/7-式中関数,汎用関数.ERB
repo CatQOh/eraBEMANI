@@ -1956,23 +1956,26 @@ CALLF メモリ解放, "RESET_DATA"
 #FUNCTION
 #DIMS DYNAMIC 実行タイミング
 SIF !SP
-	DEBUGPRINTFORML メモリ解放:%実行タイミング%:{CLEARMEMORY()/1024/1024}MB
+	DEBUGPRINTFORML %I18N("メモリ解放")%:%実行タイミング%:{CLEARMEMORY()/1024/1024}MB
 
 ;;;引数のフォーマットは「イベント内容」
 @プレイログ記録, 内容
 #DIMS DYNAMIC 内容
 ARRAYSHIFT プレイログ, 1, ""
-;年月日を自動で付ける
-;IF LANGUAGE == "ENG"
-;	プレイログ:0 = Year{YEAR} Month{MONTH, 2} Day{DAYS, 2} \@ ターン == "昼" ? day # night \@ %内容%
-;ELSE
+IF LANGUAGE == "ENG"
+	プレイログ:0 = Year{YEAR} Month{MONTH, 2} Day{DAYS, 2} \@ ターン == "昼" ? day # night \@ %内容%
+ELSE
 	プレイログ:0 = {YEAR}年{MONTH, 2}月{DAYS, 2}日\@ ターン == "昼" ? 昼 # 夜 \@ %内容%
-;ENDIF
+ENDIF
 
 ;;;リアルタイムでゲームを始めた日を返す
 @ゲーム開始日
 #FUNCTIONS
-	RETURNF @"{REALTIME:年}年{REALTIME:月}月{REALTIME:日}日"
+	IF LANGUAGE == "ENG"
+		RETURNF @"Year{REALTIME:年} Month{REALTIME:月} Day{REALTIME:日}"
+	ELSE
+		RETURNF @"{REALTIME:年}年{REALTIME:月}月{REALTIME:日}日"
+	ENDIF
 
 ;;;入出金はこの関数で行う 名前はPAYMENT(支払い)だが引数は所持金の増減を表すため+で増える
 @PAYMENT, 金額, 明細, バンめしフラグ
@@ -2422,7 +2425,7 @@ IF ISNUMERIC(BGCOLOR)
 	GCLEAR GID, TOINT(BGCOLOR)+0xFF000000
 ELSE
 	SIF COLOR_FROMNAME(BGCOLOR) < 0
-		THROW %BGCOLOR%は色名じゃない
+		THROW %BGCOLOR%%I18N("は色名じゃない")%
 	GCLEAR GID, COLOR_FROMNAME(BGCOLOR)+0xFF000000
 ENDIF
 
@@ -2440,7 +2443,7 @@ IF ISNUMERIC(COLOR)
 	;DEBUGPRINTFORML {GID} %COLOR% {PX}
 ELSE
 	SIF COLOR_FROMNAME(COLOR) < 0
-		THROW %COLOR%は色名じゃない
+		THROW %COLOR%%I18N("は色名じゃない")%
 	GCLEAR GID, COLOR_FROMNAME(COLOR)+0xFF000000, 0, 0, PX, GHEIGHT(GID)
 	;DEBUGPRINTFORML {GID} %COLOR% {PX}
 ENDIF
@@ -2602,7 +2605,11 @@ GCLEAR 0, COLOR_FROMNAME("white")+0xFF000000
 
 GSETFONT 0, "ＭＳ 明朝", 100
 GSETBRUSH 0, 0xFF000000
-GDRAWTEXT 0, @"{年}年 {月}月", 100, 10
+IF LANGUAGE == "ENG"
+	GDRAWTEXT 0, @"Year{年} Day{月}", 100, 10
+ELSE
+	GDRAWTEXT 0, @"{年}年 {月}月", 100, 10
+ENDIF
 
 FOR LCOUNT, 1, 32
 	SIF !EXIST_DAY(年, 月, LCOUNT)
@@ -3299,57 +3306,109 @@ RETURNF 0
 #FUNCTIONS
 #DIM DYNAMIC 対象
 #DIM DYNAMIC フラグ
-SELECTCASE フラグ
-	CASE 0
-		RETURNF "着衣パイズリ不可"
-	CASE 1
-		RETURNF "下から挿入可"
-	CASE 2
-		RETURNF "下から挿入+口淫可"
-	CASE 3
-		RETURNF "前から挿入可"
-	CASE 4, 14, 24
-		RETURNF "着衣可"
-	CASE 5
-		RETURNF "たくし上げ式"
-	CASE 6
-		RETURNF "はだけさせ式"
-	CASE 10
-		IF 対象 > 0 && TALENT:対象:バストサイズ >= 6
-			RETURNF "谷間に生地を挟む"
-		ELSE
+IF LANGUAGE == "ENG"
+	SELECTCASE フラグ
+		CASE 0
+			RETURNF "Paizuri with clothes is not allowed"
+		CASE 1
+			RETURNF "Can be inserted from below"
+		CASE 2
+			RETURNF "insert+fellatio"
+		CASE 3
+			RETURNF "Can be inserted from the front"
+		CASE 4, 14, 24
+			RETURNF "Clothing allowed"
+		CASE 5
+			RETURNF "fold-up type"
+		CASE 6
+			RETURNF "exposed style"
+		CASE 10
+			IF 対象 > 0 && TALENT:対象:バストサイズ >= 6
+				RETURNF "Sandwich the fabric between the cleavage"
+			ELSE
+				RETURNF "exposed style"
+			ENDIF
+		CASE 11
+			IF 対象 > 0 && TALENT:対象:バストサイズ >= 6
+				RETURNF "Sandwich the fabric between the cleavageor can be inserted from below"
+			ELSE
+				RETURNF "exposed style or Can be inserted from below"
+			ENDIF
+		CASE 12
+			IF 対象 > 0 && TALENT:対象:バストサイズ >= 6
+				RETURNF "Sandwich the fabric between the cleavageor, Insert from below + blowjob"
+			ELSE
+				RETURNF "exposed style or Insert from below + blowjob"
+			ENDIF
+		CASE 13
+			IF 対象 > 0 && TALENT:対象:バストサイズ >= 6
+				RETURNF "Sandwich the fabric between the cleavage or Can be inserted from the front"
+			ELSE
+				RETURNF "exposed style or Can be inserted from the front"
+			ENDIF
+		CASE 20
+			RETURNF "Over clothes"
+		CASE 21
+			RETURNF "Over clothes/Can be inserted from below"
+		CASE 22
+			RETURNF "Over clothes/Insert from below+blowjob"
+		CASE 23
+			RETURNF "Over clothes/Can be inserted from the front"
+		CASEELSE
+			RETURNF ""
+	ENDSELECT
+ELSE
+	SELECTCASE フラグ
+		CASE 0
+			RETURNF "着衣パイズリ不可"
+		CASE 1
+			RETURNF "下から挿入可"
+		CASE 2
+			RETURNF "下から挿入+口淫可"
+		CASE 3
+			RETURNF "前から挿入可"
+		CASE 4, 14, 24
+			RETURNF "着衣可"
+		CASE 5
+			RETURNF "たくし上げ式"
+		CASE 6
 			RETURNF "はだけさせ式"
-		ENDIF
-	CASE 11
-		IF 対象 > 0 && TALENT:対象:バストサイズ >= 6
-			RETURNF "谷間に生地を挟むor下から挿入可"
-		ELSE
-			RETURNF "はだけさせ式or下から挿入可"
-		ENDIF
-	CASE 12
-		IF 対象 > 0 && TALENT:対象:バストサイズ >= 6
-			RETURNF "谷間に生地を挟むor下から挿入+口淫可"
-		ELSE
-			RETURNF "はだけさせ式or下から挿入+口淫可"
-		ENDIF
-	CASE 13
-		IF 対象 > 0 && TALENT:対象:バストサイズ >= 6
-			RETURNF "谷間に生地を挟むor前から挿入可"
-		ELSE
-			RETURNF "はだけさせ式or前から挿入可"
-		ENDIF
-	CASE 20
-		RETURNF "服上可"
-	CASE 21
-		RETURNF "服上可/下から挿入可"
-	CASE 22
-		RETURNF "服上可/下から挿入+口淫可"
-	CASE 23
-		RETURNF "服上可/前から挿入可"
-	CASEELSE
-		RETURNF ""
-ENDSELECT
-
+		CASE 10
+			IF 対象 > 0 && TALENT:対象:バストサイズ >= 6
+				RETURNF "谷間に生地を挟む"
+			ELSE
+				RETURNF "はだけさせ式"
+			ENDIF
+		CASE 11
+			IF 対象 > 0 && TALENT:対象:バストサイズ >= 6
+				RETURNF "谷間に生地を挟むor下から挿入可"
+			ELSE
+				RETURNF "はだけさせ式or下から挿入可"
+			ENDIF
+		CASE 12
+			IF 対象 > 0 && TALENT:対象:バストサイズ >= 6
+				RETURNF "谷間に生地を挟むor下から挿入+口淫可"
+			ELSE
+				RETURNF "はだけさせ式or下から挿入+口淫可"
+			ENDIF
+		CASE 13
+			IF 対象 > 0 && TALENT:対象:バストサイズ >= 6
+				RETURNF "谷間に生地を挟むor前から挿入可"
+			ELSE
+				RETURNF "はだけさせ式or前から挿入可"
+			ENDIF
+		CASE 20
+			RETURNF "服上可"
+		CASE 21
+			RETURNF "服上可/下から挿入可"
+		CASE 22
+			RETURNF "服上可/下から挿入+口淫可"
+		CASE 23
+			RETURNF "服上可/前から挿入可"
+		CASEELSE
+			RETURNF ""
+	ENDSELECT
+ENDIF
 ;;;式中関数「性器露出」
 ;;;単に性器が露出している状態かどうかを判別 OVER_GENITALとは少し違う(スカート系が対象にならない)
 @性器露出, 対象
@@ -3462,7 +3521,11 @@ IF 表示 && (使用不可も表示 || !CFLAG:PAGING:使用不可) && !CFLAG:PAG
 		ENDSELECT
 		;健康診断は色変えしたいので特別な処理
 		IF 追加情報 == "健康診断用"
-			PRINTFORM 　[{LCOUNT, 2, RIGHT}] - %NAMEDISP(LCOUNT), 26, LEFT% %性別表記% 体力%BARBASE("体力", PAGING, 10), 23, LEFT% 気力%BARBASE("気力", PAGING, 10), 23, LEFT% ストレス値:
+			IF LANGUAGE == "ENG"
+				PRINTFORM 　[{LCOUNT, 2, RIGHT}] - %NAMEDISP(LCOUNT), 26, LEFT% %性別表記% STA%BARBASE("体力", PAGING, 10), 23, LEFT% ENE%BARBASE("気力", PAGING, 10), 23, LEFT% stress:
+			ELSE
+				PRINTFORM 　[{LCOUNT, 2, RIGHT}] - %NAMEDISP(LCOUNT), 26, LEFT% %性別表記% 体力%BARBASE("体力", PAGING, 10), 23, LEFT% 気力%BARBASE("気力", PAGING, 10), 23, LEFT% ストレス値:
+			ENDIF
 			;孔雀の瞳を持ってるキャラが主人・助手・担当医に居るかを見る
 			SIF TALENT:MASTER:孔雀の瞳
 				クジャクアイ = 1
@@ -3488,19 +3551,19 @@ IF 表示 && (使用不可も表示 || !CFLAG:PAGING:使用不可) && !CFLAG:PAG
 			ELSE
 				SELECTCASE CFLAG:LCOUNT:ストレス値
 					CASE 0
-						PRINTL 無
+						PRINTFORML %I18("無")%
 					CASE 1 TO 99
 						SETCOLORBYNAME lime
-						PRINTL 低
+						PRINTFORML %I18("低")%
 					CASE 100 TO 299
 						SETCOLORBYNAME yellow
-						PRINTL 中
+						PRINTFORML %I18("中")%
 					CASE 300 TO 499
 						SETCOLORBYNAME red
-						PRINTL 高
+						PRINTFORML %I18("高")%
 					CASE IS >= 500
 						SETCOLORBYNAME darkred
-						PRINTL 過多
+						PRINTFORML %I18("過多")%
 				ENDSELECT
 				RESETCOLOR
 			ENDIF
@@ -3517,7 +3580,11 @@ IF 表示数 > PAGING表示数 || LCOUNT == CHARANUM-1
 	;表示できるキャラが居ない場合
 	IF 表示数 == 0
 		DRAWLINE
-		PRINTL 　表示できるキャラが居ません
+		IF LANGUAGE == "ENG"
+			PRINTL 　There are no characters to display.
+		ELSE
+			PRINTL 　表示できるキャラが居ません
+		ENDIF
 	ENDIF
 	DRAWLINE
 	初期化フラグ = 0
