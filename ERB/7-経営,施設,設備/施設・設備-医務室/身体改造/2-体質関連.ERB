@@ -11,6 +11,9 @@ PRINTL 　[4] - 性ホルモンの投与
 PRINTL 　[5] - 代謝の活性化/不活化
 PRINTL 　[6] - 性感帯
 [SKIPEND]
+IF MOD:STS
+	PRINTL 　[9] - 四肢切断
+ENDIF
 DRAWLINE
 PRINTPLAIN 　体質関連　
 PRINTL [0] - 戻る
@@ -31,6 +34,8 @@ SELECTCASE RESULT
         CALL 代謝
     CASE 6
         CALL 性感帯
+    CASE 9
+        CALL 四肢切断
 ENDSELECT
 
 SELECTCASE RESULT
@@ -547,6 +552,163 @@ SELECTCASE RESULT
 		口上用患者 = 患者
 		TALENT:患者:改造済み += 10
 		CALL 身体改造口上, "ロボトミー手術"
+		;医療経験加算
+		FOR LCOUNT, 0, CHARANUM
+			SIF CSTR:LCOUNT:配属 == "医務室" && CFLAG:LCOUNT:配属完了
+				EXP:LCOUNT:医療経験 += 5
+		NEXT
+		RETURN 1
+ENDSELECT
+
+@四肢切断
+#DIM DYNAMIC 対象 = -1
+#DIM DYNAMIC 切除部位
+#DIM DYNAMIC 費用
+#DIM DYNAMIC LRESULT
+#DIM DYNAMIC LCOUNT
+
+PRINTL □四肢切断術
+PRINTL 　外科手術により手や足を切断する
+IF !ORIGIN
+	PRINTL □費用
+	CALL PASELIL, @"　{費用}＄"
+ENDIF
+PRINTL □注意事項
+PRINTL 　手術後は一週間ほど安静が必要
+PRINTL □対象
+IF 対象 >= 0
+	PRINTFORML 　[1] - %NAME:対象%
+	IF 切除部位 & 1
+		PRINTL 　[2] - 右腕(現在の設定：切除する)
+		RESETCOLOR
+	ELSEIF TALENT:対象:上肢切断& 1
+		SETCOLORBYNAME gray
+		PRINTL 　[-] - 右腕は切除済み
+		RESETCOLOR
+	ELSE
+		SETCOLORBYNAME gray
+		PRINTL 　[2] - 右腕(現在の設定：切除しない)
+		RESETCOLOR
+	ENDIF
+	IF 切除部位 & 2
+		PRINTL 　[3] - 左腕(現在の設定：切除する)
+		RESETCOLOR
+	ELSEIF TALENT:対象:上肢切断 & 2
+		SETCOLORBYNAME gray
+		PRINTL 　[-] - 左腕は切除済み
+		RESETCOLOR
+	ELSE
+		SETCOLORBYNAME gray
+		PRINTL 　[3] - 左腕(現在の設定：切除しない)
+		RESETCOLOR
+	ENDIF
+	IF !TALENT:対象:足使用不可
+		IF 切除部位 & 4
+			PRINTL 　[4] - 右足(現在の設定：切除する)
+			RESETCOLOR
+		ELSEIF TALENT:対象:下肢切断 & 1
+			SETCOLORBYNAME gray
+			PRINTL 　[-] - 右足は切除済み
+			RESETCOLOR
+		ELSE
+			SETCOLORBYNAME gray
+			PRINTL 　[4] - 右足(現在の設定：切除しない)
+			RESETCOLOR
+		ENDIF
+		IF 切除部位 & 8
+			PRINTL 　[5] - 左足(現在の設定：切除する)
+			RESETCOLOR
+		ELSEIF TALENT:対象:下肢切断 & 2
+			SETCOLORBYNAME gray
+			PRINTL 　[-] - 左足は切除済み
+			RESETCOLOR
+		ELSE
+			SETCOLORBYNAME gray
+			PRINTL 　[5] - 左足(現在の設定：切除しない)
+			RESETCOLOR
+		ENDIF
+	ENDIF
+ELSE
+	PRINTLC 　[1] - 対象を選ぶ
+ENDIF
+PRINTL 
+DRAWLINE
+PRINTPLAIN 　四肢切断　
+PRINT [0] - 戻る　
+SIF 対象 >= 0 && 切除部位
+	PRINT [9] - 術式を始める
+PRINTL 
+
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE 1
+		DRAWLINE
+		PRINTL □対象を選んでください
+		FOR PAGING, 0, CHARANUM
+			CALLFORM DISABLE, "EVENT_四肢切断", PAGING
+			CALL PAGING, !RESULT && !(TALENT:PAGING:上肢切断 ==3 && TALENT:PAGING:下肢切断 ==3 ) && !(TALENT:PAGING:上肢切断 ==3 && TALENT:PAGING:足使用不可) && CSTR:PAGING:種族 != "機械"  && !TALENT:PAGING:無機物, @"\@ TALENT:PAGING:体格 == 1 ? 幼 #  \@", "対象"
+		NEXT
+		SELECTCASE RESULT
+			CASE -1
+				RESTART
+			CASEELSE
+				対象 = RESULT
+				費用 = 0
+				SIF 切除部位 & 1 && !GETBIT(TALENT:対象:上肢切断,1)
+					費用 += 20000
+				SIF 切除部位 & 2 && !GETBIT(TALENT:対象:上肢切断,2)
+					費用 += 20000
+				SIF 切除部位 & 4 && !GETBIT(TALENT:対象:下肢切断,1)
+					費用 += 30000
+				SIF 切除部位 & 8 && !GETBIT(TALENT:対象:下肢切断,2)
+					費用 += 30000
+				IF 費用
+					費用 += 25000
+					;小柄体型だと費用は下がる
+					SIF TALENT:対象:体格 == 1
+						費用 -= 20000
+				ENDIF
+				RESTART
+		ENDSELECT
+	CASE 2 TO 5
+		INVERTBIT 切除部位, RESULT-2
+			IF 対象 >= 0
+				費用 = 0
+				SIF 切除部位 & 1 && !GETBIT(TALENT:対象:上肢切断,1)
+					費用 += 20000
+				SIF 切除部位 & 2 && !GETBIT(TALENT:対象:上肢切断,2)
+					費用 += 20000
+				SIF 切除部位 & 4 && !GETBIT(TALENT:対象:下肢切断,1)
+					費用 += 30000
+				SIF 切除部位 & 8 && !GETBIT(TALENT:対象:下肢切断,2)
+					費用 += 30000
+				IF 費用
+					費用 += 25000
+					;小柄体型だと費用は下がる
+					SIF TALENT:RESULT:体格 == 1
+						費用 -= 20000
+				ENDIF
+			ENDIF
+		RESTART
+	CASE 9
+		SIF 対象 == -1
+			RESTART
+		SIF !切除部位
+			RESTART
+		IF SUMARRAY(費用) > MONEY && !ORIGIN
+			PRINTW 費用が足りません
+			RESTART
+		ENDIF
+		PRINTL 四肢切断の術式を始めます
+		PRINTFORMW %CALLNAME:対象%は準備のため休養に入ります
+		CALL PAYMENT, -SUMARRAY(費用), "四肢切断手術費用"
+		TALENT:対象:上肢切断 |= (切除部位 & 3)
+		TALENT:対象:下肢切断 |= ((切除部位 >> 2) & 3)
+		CFLAG:対象:使用不可 = 15
+		口上用患者 = 対象
+		CALL 身体改造口上, "四肢切断"
 		;医療経験加算
 		FOR LCOUNT, 0, CHARANUM
 			SIF CSTR:LCOUNT:配属 == "医務室" && CFLAG:LCOUNT:配属完了

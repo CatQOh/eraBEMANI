@@ -665,6 +665,7 @@ ENDSELECT
 #DIM DYNAMIC 必要マテリアル
 #DIM DYNAMIC 素質変更可能, 1000
 #DIM DYNAMIC 素質変更, 1000
+#DIM DYNAMIC TEMPLINE
 
 LTARGET = TARGET
 TARGET = 対象
@@ -750,6 +751,12 @@ FOR LCOUNT, 0, VARSIZE("TALENT")
 		CASE "小人体型"
 			SIF 素質変更:LCOUNT
 				必要マテリアル += 4
+		CASE "上肢切断"
+			SIF 素質変更:LCOUNT && MOD:STS
+				必要マテリアル += GETBIT(素質変更:LCOUNT, 0) + GETBIT(素質変更:LCOUNT, 1)
+		CASE "下肢切断"
+			SIF 素質変更:LCOUNT && MOD:STS
+				必要マテリアル += GETBIT(素質変更:LCOUNT, 0) + GETBIT(素質変更:LCOUNT, 1)
 	ENDSELECT
 NEXT
 DRAWLINE
@@ -798,6 +805,8 @@ SELECTCASE RESULT
 							SIF SEX(TARGET) == 2
 								TALENT:童貞 = 0
 						ENDIF
+					CASE "上肢切断", "下肢切断"
+						TALENT:LCOUNT ^= 素質変更:LCOUNT
 					CASEELSE
 						INVERTBIT TALENT:LCOUNT, 0
 				ENDSELECT
@@ -861,6 +870,35 @@ SELECTCASE RESULT
 				PRINTFORMLC [{TALENTF("バストサイズ")}] バストサイズ:%バストサイズ(TALENT:バストサイズ)%
 			ENDIF
 		ENDIF
+
+		IF MOD:STS
+			SIF 素質変更:TALENTF("上肢切断")
+				SETCOLORBYNAME deepskyblue
+			SELECTCASE 素質変更:TALENTF("上肢切断") ^ TALENT:上肢切断
+				CASE 3
+					PRINTFORMLC [{TALENTF("上肢切断")}] 上肢切断(両腕)
+				CASE 1
+					PRINTFORMLC [{TALENTF("上肢切断")}] 上肢切断(右腕)
+				CASE 2
+					PRINTFORMLC [{TALENTF("上肢切断")}] 上肢切断(左腕)
+				CASEELSE
+					PRINTFORMLC [{TALENTF("上肢切断")}] 上肢切断(欠損なし)
+			ENDSELECT
+			RESETCOLOR
+			SIF 素質変更:TALENTF("下肢切断")
+				SETCOLORBYNAME deepskyblue
+			SELECTCASE 素質変更:TALENTF("下肢切断") ^ TALENT:下肢切断
+				CASE 3
+					PRINTFORMLC [{TALENTF("下肢切断")}] 下肢切断(両脚)
+				CASE 1
+					PRINTFORMLC [{TALENTF("下肢切断")}] 下肢切断(右脚)
+				CASE 2
+					PRINTFORMLC [{TALENTF("下肢切断")}] 下肢切断(左脚)
+				CASEELSE
+					PRINTFORMLC [{TALENTF("下肢切断")}] 下肢切断(欠損なし)
+			ENDSELECT
+			RESETCOLOR
+		ENDIF
 		CALL NEWLINE
 		DRAWLINE
 		PRINTPLAIN 　ロボットファクトリー　
@@ -895,6 +933,40 @@ SELECTCASE RESULT
 					素質変更:LRESULT = RESULT
 				ENDIF
 				GOTO TALENT
+			ELSEIF TALENTNAME:LRESULT == "上肢切断"
+				TEMPLINE = VARLINE
+				VARLINE = 0
+				$上肢パージ
+				CALL LOOP_CLEARLINE
+				PRINTFORML [1] 右腕%\@GETBIT(素質変更:LRESULT, 0) ? を # は\@%%\@GETBIT(TALENT:LRESULT, 0)   ? 接続 # 切断\@%%\@GETBIT(素質変更:LRESULT, 0)   ? する # しない\@%
+				PRINTFORML [2] 左腕%\@GETBIT(素質変更:LRESULT, 1) ? を # は\@%%\@GETBIT(TALENT:LRESULT, 1)   ? 接続 # 切断\@%%\@GETBIT(素質変更:LRESULT, 1)   ? する # しない\@%
+				PRINTL [9] 決定
+				BINPUT
+				SELECTCASE RESULT
+					CASE 1 TO 2
+						INVERTBIT 素質変更:LRESULT, RESULT-1
+						GOTO 上肢パージ
+					CASE 9
+						VARLINE += TEMPLINE
+					GOTO TALENT
+				ENDSELECT
+			ELSEIF TALENTNAME:LRESULT == "下肢切断"
+				TEMPLINE = VARLINE
+				VARLINE = 0
+				$下肢パージ
+				CALL LOOP_CLEARLINE
+				PRINTFORML [1] 右脚%\@GETBIT(素質変更:LRESULT, 0) ? を # は\@%%\@GETBIT(TALENT:LRESULT, 0)   ? 接続 # 切断\@%%\@GETBIT(素質変更:LRESULT, 0)   ? する # しない\@%
+				PRINTFORML [2] 左脚%\@GETBIT(素質変更:LRESULT, 1) ? を # は\@%%\@GETBIT(TALENT:LRESULT, 1)   ? 接続 # 切断\@%%\@GETBIT(素質変更:LRESULT, 1)   ? する # しない\@%
+				PRINTL [9] 決定
+				BINPUT
+				SELECTCASE RESULT
+					CASE 1 TO 2
+						INVERTBIT 素質変更:LRESULT, RESULT-1
+						GOTO 下肢パージ
+					CASE 9
+						VARLINE += TEMPLINE
+					GOTO TALENT
+				ENDSELECT
 			ELSEIF 素質変更可能:LRESULT
 				INVERTBIT 素質変更:LRESULT, 0
 				GOTO TALENT
