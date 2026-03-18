@@ -1,22 +1,26 @@
 ﻿@USERCOM_ABLE_魔法詠唱
 #FUNCTION
 ;ゲーセンに居る場合はできない
-コマンド実行条件 += "ゲーセンでは実行不可/"
+コマンド実行条件 += I18N("ゲーセンでは実行不可/")
 SIF TEQUIP:ゲームセンター
 	COMRESULT = 0
 ;上級売春中も不可能（暫定）
-コマンド実行条件 += "上級売春中は実行不可/"
+コマンド実行条件 += I18N("上級売春中は実行不可/")
 SIF 上級売春中
 	COMRESULT = 0
 ;PLAYERが魔法使いじゃないとできない
-コマンド実行条件 += "実行者が[魔法使い]じゃないと実行できない/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"Cannot be executed unless the executor is a [%I18N("魔法使い")%]/"
+ELSE
+	コマンド実行条件 += "実行者が[魔法使い]じゃないと実行できない/"
+ENDIF
 SIF !TALENT:PLAYER:魔法使い
 	COMRESULT = 0
-コマンド実行条件 += "睡眠中は実行できない/"
+コマンド実行条件 += I18N("睡眠中は実行できない/")
 SIF TEQUIP:睡眠
 	COMRESULT = 0
 IF MOD:STS
-	コマンド実行条件 += "屍姦中は実行できない/"
+	コマンド実行条件 += I18N("屍姦中は実行できない/")
 	SIF CFLAG:死亡
 		COMRESULT = 0
 ENDIF
@@ -45,66 +49,119 @@ DISABLE = RESULT
 
 スキル = ABL:PLAYER:魔法技能
 DRAWLINE
-PRINTFORML □魔法一覧 詠唱者:%NAME:PLAYER% 魔法技能LV{スキル}
-PRINTFORML 　%NAME:PLAYER%の魔力%BARSTR(BASE:PLAYER:魔力, MAXBASE:PLAYER:魔力, 32)%({BASE:PLAYER:魔力}/{MAXBASE:PLAYER:魔力})
+PRINTFORML □%I18N("魔法一覧")% %I18N("詠唱者")%:%NAME:PLAYER% %I18N("魔法技能")%LV{スキル}
+
+PRINTFORML 　%NAME:PLAYER%%I18N("の")%%I18N("魔力")%%BARSTR(BASE:PLAYER:魔力, MAXBASE:PLAYER:魔力, 32)%({BASE:PLAYER:魔力}/{MAXBASE:PLAYER:魔力})
 IF TALENT:魔法使い
-	SIF 相性値(PLAYER, TARGET) >= 150 && 相性値(TARGET, PLAYER) >= 150 && !GETBIT(DISABLE, 魔法TOBIT("魔力吸収"))
-		PRINTFORML 　[ 1] - 魔力吸収 唇を介して魔力を受け取る 相性が良くないと実行不可（150％）
-	SIF !GETBIT(DISABLE, 魔法TOBIT("魔力譲与"))
-		PRINTFORML 　[ 2] - 魔力譲与 唇を介して魔力を与える 相性が良いほど効率が良い（最高200％）
+	IF LANGUAGE == "ENG"
+		SIF 相性値(PLAYER, TARGET) >= 150 && 相性値(TARGET, PLAYER) >= 150 && !GETBIT(DISABLE, 魔法TOBIT("魔力吸収"))
+			PRINTFORML 　[ 1] - Magic transfer.  Receive magical power through your lips. Cannot be executed if there is no compatibility（150％）
+		SIF !GETBIT(DISABLE, 魔法TOBIT("魔力譲与"))
+			PRINTFORML 　[ 2] - Magic transfer. Give magic power through your lips. The better the compatibility, the better the efficiency（%I18N("最高")%200％）
+	ELSE
+		SIF 相性値(PLAYER, TARGET) >= 150 && 相性値(TARGET, PLAYER) >= 150 && !GETBIT(DISABLE, 魔法TOBIT("魔力吸収"))
+			PRINTFORML 　[ 1] - 魔力吸収 唇を介して魔力を受け取る 相性が良くないと実行不可（150％）
+		SIF !GETBIT(DISABLE, 魔法TOBIT("魔力譲与"))
+			PRINTFORML 　[ 2] - 魔力譲与 唇を介して魔力を与える 相性が良いほど効率が良い（最高200％）
+	ENDIF
 ENDIF
 消費量 = 魔力消費量(3, スキル)/3
 ;Heatstroke
 IF !GETBIT(DISABLE, 魔法TOBIT("ヒートストローク"))
-	PRINTFORML 　[ 3] - ヒートストローク（魔力消費量 {消費量}）
-	PRINTL 　　　　 気温が高いほど実効値上昇
+	IF LANGUAGE == "ENG"
+		PRINTFORML 　[ 3] - Heat stroke (magic power consumption {消費量}）
+		PRINTL 　　　　 The higher the temperature, the higher the effective value
+	ELSE
+		PRINTFORML 　[ 3] - ヒートストローク（魔力消費量 {消費量}）
+		PRINTL 　　　　 気温が高いほど実効値上昇
+	ENDIF
 ENDIF
 ;WHITE OUT
 IF !GETBIT(DISABLE, 魔法TOBIT("ホワイトアウト"))
-	PRINTFORML 　[ 4] - ホワイトアウト（魔力消費量 {消費量}）
-	PRINTL 　　　　 気温が低いほど実効値上昇
+	IF LANGUAGE == "ENG"
+		PRINTFORML 　[ 4] - white out（magic power consumption {消費量}）
+		PRINTL 　　　　 The lower the temperature, the higher the effective value
+	ELSE
+		PRINTFORML 　[ 4] - ホワイトアウト（魔力消費量 {消費量}）
+		PRINTL 　　　　 気温が低いほど実効値上昇
+	ENDIF
 ENDIF
 IF スキル >= 4
 	消費量 = 魔力消費量(4, スキル)/3
 	;リカーシブファンクション
 	IF !GETBIT(DISABLE, 魔法TOBIT("リカーシブファンクション"))
-		PRINTFORML 　[ 5] - リカーシブファンクション（魔力消費量 {消費量}）
-		PRINTL 　　　　 コマンド連続実行によるデメリットが発生しなくなる
+		IF LANGUAGE == "ENG"
+			PRINTFORML 　[ 5] - Recursive function（magic power consumption  {消費量}）
+			PRINTL 　　　　 Disadvantages of continuous command execution will no longer occur.
+		ELSE
+			PRINTFORML 　[ 5] - リカーシブファンクション（魔力消費量 {消費量}）
+			PRINTL 　　　　 コマンド連続実行によるデメリットが発生しなくなる
+		ENDIF
 	ENDIF
 	;魚氷に上り 耀よひて
 	IF !GETBIT(DISABLE, 魔法TOBIT("ニコニコサンフラワーキッス"))
-		PRINTFORML 　[ 6] - ニコニコサンフラワーキッス（魔力消費量 {消費量}）
-		PRINTL 　　　　 キス系コマンドに恐怖が伴うようになる
+		IF LANGUAGE == "ENG"
+			PRINTFORML 　[ 6] - Nico Nico Sunflower Kiss（magic power consumption {消費量}）
+			PRINTL 　　　　 Kiss-type commands begin to be accompanied by fear.
+		ELSE
+			PRINTFORML 　[ 6] - ニコニコサンフラワーキッス（魔力消費量 {消費量}）
+			PRINTL 　　　　 キス系コマンドに恐怖が伴うようになる
+		ENDIF
 	ENDIF
 ENDIF
 IF スキル >= 5
 	消費量 = 魔力消費量(5, スキル)/3
 	;METALLIC MIND
 	IF !GETBIT(DISABLE, 魔法TOBIT("メタリックマインド"))
-		PRINTFORML 　[ 7] - メタリックマインド（魔力消費量 {消費量}）
-		PRINTL 　　　　 実効値が低下する代わりにマイナスソースを軽減する
+		IF LANGUAGE == "ENG"
+			PRINTFORML 　[ 7] - metallic mind（magic power consumption  {消費量}）
+			PRINTL 　　　　 Reduce negative sources at the cost of decreasing effective value
+		ELSE
+			PRINTFORML 　[ 7] - メタリックマインド（魔力消費量 {消費量}）
+			PRINTL 　　　　 実効値が低下する代わりにマイナスソースを軽減する
+		ENDIF
 	ENDIF
 	;Go Berzerk
 	IF !GETBIT(DISABLE, 魔法TOBIT("ゴー・バーサーク"))
-		PRINTFORML 　[ 8] - ゴー・バーサーク（魔力消費量 {消費量}）
-		PRINTL 　　　　 欲情、恭順が上がりやすくなり、気力0でのソース低下が発生しなくなるが、体力消費量が増える
+		IF LANGUAGE == "ENG"
+			PRINTFORML 　[ 8] - Go Berserk（magic power consumption {消費量}）
+			PRINTL 　　　　 Lust and obedience will rise more easily, and sources will no longer drop when energy is 0, but physical strength consumption will increase.
+		ELSE
+			PRINTFORML 　[ 8] - ゴー・バーサーク（魔力消費量 {消費量}）
+			PRINTL 　　　　 欲情、恭順が上がりやすくなり、気力0でのソース低下が発生しなくなるが、体力消費量が増える
+		ENDIF
 	ENDIF
 ENDIF
 IF スキル >= 6
 	消費量 = 魔力消費量(6, スキル)/3
 	;Honey Party
 	IF !GETBIT(DISABLE, 魔法TOBIT("ハニーパーティ"))
-		PRINTFORML 　[ 9] - ハニーパーティ（魔力消費量 {消費量}）
-		PRINTL 　　　　 浴槽が媚薬ローション風呂になる
+		IF LANGUAGE == "ENG"
+			PRINTFORML 　[ 9] - honey party（magic power consumption {消費量}）
+			PRINTL 　　　　 The bathtub becomes an aphrodisiac lotion bath
+		ELSE
+			PRINTFORML 　[ 9] - ハニーパーティ（魔力消費量 {消費量}）
+			PRINTL 　　　　 浴槽が媚薬ローション風呂になる
+		ENDIF
 	ENDIF
 	;LUV CAN SAVE YOU
 	IF !GETBIT(DISABLE, 魔法TOBIT("ラブキャンセーブユー"))
 		IF TFLAG:ラブキャンセーブユー == 2
-			PRINTL 　[10] - ラブキャンセーブユー解除
-			PRINTL 　　　　 当魔法の効果を解除する
+			IF LANGUAGE == "ENG"
+				PRINTL 　[10] - love can save you cancel
+				PRINTL 　　　　 Cancels the effect of this magic
+			ELSE
+				PRINTL 　[10] - ラブキャンセーブユー解除
+				PRINTL 　　　　 当魔法の効果を解除する
+			ENDIF
 		ELSEIF TFLAG:ラブキャンセーブユー == 0
-			PRINTFORML 　[10] - ラブキャンセーブユー（魔力消費量 {消費量}）
-			PRINTL 　　　　 対象が絶頂に達しなくなる
+			IF LANGUAGE == "ENG"
+				PRINTFORML 　[10] - love can save you（magic power consumption {消費量}）
+				PRINTL 　　　　 Target no longer reaches climax
+			ELSE
+				PRINTFORML 　[10] - ラブキャンセーブユー（魔力消費量 {消費量}）
+				PRINTL 　　　　 対象が絶頂に達しなくなる
+			ENDIF
 		ENDIF
 	ENDIF
 ENDIF
@@ -112,29 +169,44 @@ ENDIF
 IF スキル >= 7
 	;Chain of Pain
 	IF !GETBIT(DISABLE, 魔法TOBIT("チェイン・オブ・ペイン"))
-		PRINTFORML 　[11] - チェイン・オブ・ペイン（魔力消費量 {消費量}）
-		PRINTL 　　　　 体力減少が苦痛ソースに上乗せされる
+		IF LANGUAGE == "ENG"
+			PRINTFORML 　[11] - chain of pain（magic power consumption {消費量}）
+			PRINTL 　　　　 Loss of physical strength is added to the pain source
+		ELSE
+			PRINTFORML 　[11] - チェイン・オブ・ペイン（魔力消費量 {消費量}）
+			PRINTL 　　　　 体力減少が苦痛ソースに上乗せされる
+		ENDIF
 	ENDIF
 ENDIF
 消費量 = 魔力消費量(8, スキル)/3
 IF スキル >= 8
 	;DEADLOCK
 	IF !GETBIT(DISABLE, 魔法TOBIT("デッドロック"))
-		PRINTFORML 　[12] - デッドロック（魔力消費量 {消費量}）
-		PRINTL 　　　　 3ターン、実行判定を無視する
+		IF LANGUAGE == "ENG"
+			PRINTFORML 　[12] - deadlock（magic power consumption {消費量}）
+			PRINTL 　　　　 Ignore execution judgment for 3 turns
+		ELSE
+			PRINTFORML 　[12] - デッドロック（魔力消費量 {消費量}）
+			PRINTL 　　　　 3ターン、実行判定を無視する
+		ENDIF
 	ENDIF
 ENDIF
 消費量 = 5000
 IF スキル >= 10
 	;終極+焔獄OVERKILL
 	IF !GETBIT(DISABLE, 魔法TOBIT("終極オーバーキル"))
-		PRINTFORML 　[13] - 終極オーバーキル（魔力消費量 {消費量}）
-		PRINTL 　　　　 常軌を逸した恐怖、苦痛、不快を与え、即時調教を終了する 対象は30ターン使用不可になる
+		IF LANGUAGE == "ENG"
+			PRINTFORML 　[13] - Ultimate overkill（magic power consumption {消費量}）
+			PRINTL 　　　　 Inflict extraordinary fear, pain, and discomfort, and immediately terminate training. Target becomes unusable for 30 turns
+		ELSE
+			PRINTFORML 　[13] - 終極オーバーキル（魔力消費量 {消費量}）
+			PRINTL 　　　　 常軌を逸した恐怖、苦痛、不快を与え、即時調教を終了する 対象は30ターン使用不可になる
+		ENDIF
 	ENDIF
 ENDIF
 DRAWLINE
-PRINTPLAIN 　魔法詠唱　
-PRINTL [ 0] - 戻る
+PRINTPLAINFORM 　%I18N("魔法詠唱")%　
+PRINTFORML [ 0] - %I18N("戻る")%
 
 SIF ISSKIP()
 	RETURN 0
@@ -146,12 +218,12 @@ SELECTCASE RESULT
 		詠唱魔法 = 魔力吸収
 		CALL KOJO_MESSAGE_COM
 		;対象の魔力半減
-		PRINTFORML %CALLNAME:TARGET%の魔力-{BASE:魔力-BASE:魔力/2}
+		PRINTFORML %CALLNAME:TARGET%%I18N("の")%%I18N("魔力")%-{BASE:魔力-BASE:魔力/2}
 		消費量 = BASE:魔力-BASE:魔力/2
 		BASE:魔力 /= 2
 		;PLAYERの魔力は相性に応じて貰った分だけ増加 200%でそのまま加算
 		消費量 = 消費量*(LIMIT(相性値(TARGET, PLAYER)-100, 0, 100))/100
-		PRINTFORML %CALLNAME:PLAYER%の魔力+{消費量}
+		PRINTFORML %CALLNAME:PLAYER%%I18N("の")%%I18N("魔力")%+{消費量}
 		BASE:PLAYER:魔力 += 消費量
 		CALL SETBASE, PLAYER
 		LOSEBASE:体力 += 5
@@ -160,13 +232,13 @@ SELECTCASE RESULT
 		詠唱魔法 = 魔力譲与
 		CALL KOJO_MESSAGE_COM
 		;PLAYERの魔力半減
-		PRINTFORML %CALLNAME:PLAYER%の魔力-{BASE:PLAYER:魔力-BASE:PLAYER:魔力/2}
+		PRINTFORML %CALLNAME:PLAYER%%I18N("の")%%I18N("魔力")%-{BASE:PLAYER:魔力-BASE:PLAYER:魔力/2}
 		消費量 = BASE:PLAYER:魔力-BASE:PLAYER:魔力/2
 		BASE:PLAYER:魔力 /= 2
 		;魔力譲与は苦痛が伴う 相性によって効率が上がり、苦痛も軽減される
 		;効率=相性-100%
 		消費量 = 消費量*(LIMIT(相性値(TARGET, PLAYER)-100, 0, 100))/100
-		PRINTFORML %CALLNAME:TARGET%の魔力+{消費量}
+		PRINTFORML %CALLNAME:TARGET%%I18N("の")%%I18N("魔力")%+{消費量}
 		BASE:魔力 += 消費量
 		CALL SETBASE, PLAYER
 		;相性が100%以下だと最大体力の半分のダメージを受ける
@@ -175,7 +247,7 @@ SELECTCASE RESULT
 		消費量 = 魔力消費量(3, スキル)/3
 		詠唱魔法 = ヒートストローク
 		CALL KOJO_MESSAGE_COM
-		PRINTFORML %CALLNAME:PLAYER%の魔力-{消費量}
+		PRINTFORML %CALLNAME:PLAYER%%I18N("の")%%I18N("魔力")%-{消費量}
 		BASE:PLAYER:魔力 -= 消費量
 		CALL EXPUP, "詠唱経験", 3, PLAYER
 		TFLAG:ヒートストローク = 1
@@ -183,7 +255,7 @@ SELECTCASE RESULT
 		消費量 = 魔力消費量(3, スキル)/3
 		詠唱魔法 = ホワイトアウト
 		CALL KOJO_MESSAGE_COM
-		PRINTFORML %CALLNAME:PLAYER%の魔力-{消費量}
+		PRINTFORML %CALLNAME:PLAYER%%I18N("の")%%I18N("魔力")%-{消費量}
 		BASE:PLAYER:魔力 -= 消費量
 		CALL EXPUP, "詠唱経験", 3, PLAYER
 		TFLAG:ホワイトアウト = 1
@@ -191,7 +263,7 @@ SELECTCASE RESULT
 		消費量 = 魔力消費量(4, スキル)/3
 		詠唱魔法 = リカーシブファンクション
 		CALL KOJO_MESSAGE_COM
-		PRINTFORML %CALLNAME:PLAYER%の魔力-{消費量}
+		PRINTFORML %CALLNAME:PLAYER%%I18N("の")%%I18N("魔力")%-{消費量}
 		BASE:PLAYER:魔力 -= 消費量
 		CALL EXPUP, "詠唱経験", 4, PLAYER
 		TFLAG:リカーシブファンクション = 1
@@ -199,7 +271,7 @@ SELECTCASE RESULT
 		消費量 = 魔力消費量(4, スキル)/3
 		詠唱魔法 = ニコニコサンフラワーキッス
 		CALL KOJO_MESSAGE_COM
-		PRINTFORML %CALLNAME:PLAYER%の魔力-{消費量}
+		PRINTFORML %CALLNAME:PLAYER%%I18N("の")%%I18N("魔力")%-{消費量}
 		BASE:PLAYER:魔力 -= 消費量
 		CALL EXPUP, "詠唱経験", 4, PLAYER
 		TFLAG:ニコニコサンフラワーキッス = 1
@@ -207,7 +279,7 @@ SELECTCASE RESULT
 		消費量 = 魔力消費量(5, スキル)/3
 		詠唱魔法 = メタリックマインド
 		CALL KOJO_MESSAGE_COM
-		PRINTFORML %CALLNAME:PLAYER%の魔力-{消費量}
+		PRINTFORML %CALLNAME:PLAYER%%I18N("の")%%I18N("魔力")%-{消費量}
 		BASE:PLAYER:魔力 -= 消費量
 		CALL EXPUP, "詠唱経験", 5, PLAYER
 		TFLAG:メタリックマインド = 1
@@ -215,7 +287,7 @@ SELECTCASE RESULT
 		消費量 = 魔力消費量(5, スキル)/3
 		詠唱魔法 = ゴー・バーサーク
 		CALL KOJO_MESSAGE_COM
-		PRINTFORML %CALLNAME:PLAYER%の魔力-{消費量}
+		PRINTFORML %CALLNAME:PLAYER%%I18N("の")%%I18N("魔力")%-{消費量}
 		BASE:PLAYER:魔力 -= 消費量
 		CALL EXPUP, "詠唱経験", 5, PLAYER
 		TFLAG:ゴーバーサーク = 1
@@ -223,7 +295,7 @@ SELECTCASE RESULT
 		消費量 = 魔力消費量(6, スキル)/3
 		詠唱魔法 = ハニーパーティ
 		CALL KOJO_MESSAGE_COM
-		PRINTFORML %CALLNAME:PLAYER%の魔力-{消費量}
+		PRINTFORML %CALLNAME:PLAYER%%I18N("の")%%I18N("魔力")%-{消費量}
 		BASE:PLAYER:魔力 -= 消費量
 		CALL EXPUP, "詠唱経験", 6, PLAYER
 		TFLAG:ハニーパーティ = 1
@@ -233,7 +305,7 @@ SELECTCASE RESULT
 		詠唱魔法 = ラブキャンセーブユー
 		CALL KOJO_MESSAGE_COM
 		IF !TFLAG:ラブキャンセーブユー
-			PRINTFORML %CALLNAME:PLAYER%の魔力-{消費量}
+			PRINTFORML %CALLNAME:PLAYER%%I18N("の")%%I18N("魔力")%-{消費量}
 			BASE:PLAYER:魔力 -= 消費量
 			CALL EXPUP, "詠唱経験", 6, PLAYER
 			TFLAG:ラブキャンセーブユー = 2
@@ -244,7 +316,7 @@ SELECTCASE RESULT
 		消費量 = 魔力消費量(7, スキル)/3
 		詠唱魔法 = チェイン・オブ・ペイン
 		CALL KOJO_MESSAGE_COM
-		PRINTFORML %CALLNAME:PLAYER%の魔力-{消費量}
+		PRINTFORML %CALLNAME:PLAYER%%I18N("の")%%I18N("魔力")%-{消費量}
 		BASE:PLAYER:魔力 -= 消費量
 		CALL EXPUP, "詠唱経験", 7, PLAYER
 		TFLAG:チェインオブペイン = 1
@@ -252,7 +324,7 @@ SELECTCASE RESULT
 		消費量 = 魔力消費量(8, スキル)/3
 		詠唱魔法 = デッドロック
 		CALL KOJO_MESSAGE_COM
-		PRINTFORML %CALLNAME:PLAYER%の魔力-{消費量}
+		PRINTFORML %CALLNAME:PLAYER%%I18N("の")%%I18N("魔力")%-{消費量}
 		BASE:PLAYER:魔力 -= 消費量
 		CALL EXPUP, "詠唱経験", 8, PLAYER
 		;このターンで-1されるので4
@@ -261,7 +333,7 @@ SELECTCASE RESULT
 		消費量 = 5000
 		詠唱魔法 = 終極オーバーキル
 		CALL KOJO_MESSAGE_COM
-		PRINTFORML %CALLNAME:PLAYER%の魔力-{消費量}
+		PRINTFORML %CALLNAME:PLAYER%%I18N("の")%%I18N("魔力")%-{消費量}
 		BASE:PLAYER:魔力 -= 消費量
 		CALL EXPUP, "詠唱経験", 10, PLAYER
 		LOSEBASE:体力 = BASE:体力

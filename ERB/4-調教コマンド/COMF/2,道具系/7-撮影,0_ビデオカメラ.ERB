@@ -6,15 +6,15 @@
 #DIM DYNAMIC 条件確定
 
 ;ゲーセンに居る場合はできない
-コマンド実行条件 += "ゲーセンでは実行不可/"
+コマンド実行条件 += I18N("ゲーセンでは実行不可/")
 SIF TEQUIP:ゲームセンター
 	COMRESULT = 0
 ;上級売春中は不可
-コマンド実行条件 += "上級売春中は実行不可/"
+コマンド実行条件 += I18N("上級売春中は実行不可/")
 SIF 上級売春中
 	COMRESULT = 0
 ;マジックミラー撮影中はダメ
-コマンド実行条件 += "マジックミラーによる撮影中は実行できない/"
+コマンド実行条件 += I18N("マジックミラーによる撮影中は実行できない/")
 SIF TEQUIP:羞恥プレイ && アイテム改造:大鏡 == "マジックミラー"
 	COMRESULT = 0
 ;解除はいつでも可能
@@ -22,7 +22,7 @@ SIF TEQUIP:ビデオカメラ && COMRESULT
 	条件確定 = 1
 
 ;カメラとテープのアイテムを持っていないとダメ
-コマンド実行条件 += "アイテム[ビデオカメラ][ビデオテープ]が必要/"
+コマンド実行条件 += I18N("アイテム[|0|]が必要/", , @"%I18N("ビデオカメラ", "TRAIN")%][%I18N("ビデオテープ", "TRAIN")%")
 SIF !ITEM:ビデオカメラ || !ITEM:ビデオテープ
 	COMRESULT = 0
 
@@ -35,28 +35,45 @@ RETURNF COMRESULT
 @COM_ビデオカメラ
 ;撮影者の処理
 IF !TEQUIP:ビデオカメラ && ASSI > 0
-	PRINTL 撮影者を選択してください　途中変更はできません
-	PRINTL （撮影者を変更する場合、一度撮影を終了してください）
+	IF LANGUAGE == "ENG"
+		PRINTL Select a photographer. Changes cannot be made midway
+		PRINTL （If you want to change the photographer, finish recording first）
+	ELSE
+		PRINTL 撮影者を選択してください　途中変更はできません
+		PRINTL （撮影者を変更する場合、一度撮影を終了してください）
+	ENDIF
 	PRINTFORML [0] %CALLNAME:MASTER%
 	PRINTFORML [1] %CALLNAME:ASSI%
-	PRINTL [2] やめる
+	PRINTFORML [2] %I18N("やめる")%
 	SIF ISSKIP()
 		RETURN
 	BINPUT
 	SELECTCASE RESULT
 		CASE 0
 			TFLAG:ビデオ撮影者 = 1
-			PRINTFORML 撮影者は%CALLNAME:MASTER%です
+			IF LANGUAGE == "ENG"
+				PRINTFORML The photographer is now %CALLNAME:MASTER%
+			ELSE
+				PRINTFORML 撮影者は%CALLNAME:MASTER%です
+			ENDIF
 		CASE 1
 			TFLAG:ビデオ撮影者 = 2
-			PRINTFORML 撮影者は%CALLNAME:ASSI%です
+			IF LANGUAGE == "ENG"
+				PRINTFORML The photographer is now %CALLNAME:ASSI%
+			ELSE
+				PRINTFORML 撮影者は%CALLNAME:ASSI%です
+			ENDIF
 		CASE 2
 			RETURN 0
 	ENDSELECT
 	
 ELSEIF !TEQUIP:ビデオカメラ
 	TFLAG:ビデオ撮影者 = 1
-	PRINTFORML 撮影者は%CALLNAME:MASTER%です
+	IF LANGUAGE == "ENG"
+		PRINTFORML The photographer is now %CALLNAME:MASTER%
+	ELSE
+		PRINTFORML 撮影者は%CALLNAME:ASSI%です
+	ENDIF
 ENDIF
 
 CALL KOJO_MESSAGE_COM
@@ -68,13 +85,13 @@ IF TEQUIP:ビデオカメラ
 	TEQUIP:ビデオカメラ = 0
 	ITEM:ビデオテープ--
 	CALL PRICE_VIDEO
-	PRINTW ★★★ビデオ撮影を終了します★★★
+	PRINTFORMW ★★★%I18N("ビデオ撮影を終了します")%★★★
 ELSE
 	;ビデオ撮影してなければ初期化して開始
 	TEQUIP:ビデオカメラ = 1
 	TFLAG:ビデオ撮影回数 = 0
 	VARSET ビデオ撮影内容, 
-	PRINTW ★★★ビデオ撮影を開始します★★★
+	PRINTFORMW ★★★%I18N("ビデオ撮影を開始します")%★★★
 ENDIF
 
 ;-------------------------------------------------
@@ -202,9 +219,9 @@ IF TFLAG:ビデオ撮影回数 >= 10
 	TEQUIP:ビデオカメラ = 0
 	ITEM:ビデオテープ--
 	CALL PRICE_VIDEO
-	PRINTL ＜テープの残量がなくなりました　ビデオ撮影を終了します＞
+	PRINTFORML ＜%I18N("テープの残量がなくなりました")%　%I18N("ビデオ撮影を終了します")%＞
 ELSE
-	PRINTFORML ＜ビデオ撮影中{TFLAG:ビデオ撮影回数}/10＞
+	PRINTFORML ＜%I18N("ビデオ撮影中")%{TFLAG:ビデオ撮影回数}/10＞
 ENDIF
 
 RETURN 1

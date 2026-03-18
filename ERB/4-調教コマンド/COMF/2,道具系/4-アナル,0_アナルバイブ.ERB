@@ -10,19 +10,19 @@ SIF アイテム改造:アナルバイブ == "電動エネマグラ"
 	COMRESULT = 0
 
 ;ゲーセンに居る場合はトイレじゃないとできない
-コマンド実行条件 += "ゲーセンではトイレじゃないと実行できない/"
+コマンド実行条件 += I18N("ゲーセンではトイレじゃないと実行できない/")
 SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
 	COMRESULT = 0
 ;触手調教中はダメ
-コマンド実行条件 += "触手召喚中は実行できない/"
+コマンド実行条件 += I18N("触手召喚中は実行できない/")
 SIF TEQUIP:触手
 	COMRESULT = 0
 ;性器が露出してないとダメ
-コマンド実行条件 += "性器が露出していないと実行できない/"
+コマンド実行条件 += I18N("性器が露出していないと実行できない/")
 SIF !性器露出(TARGET)
 	COMRESULT = 0
 ;お風呂場中は防水じゃないとダメ
-コマンド実行条件 += "お風呂場で使用するにはアナルバイブに防水加工が必要/"
+コマンド実行条件 += I18N("お風呂場で使用するには|0|防水加工が必要/", , "アナルバイブに")
 SIF TEQUIP:お風呂場 && アイテム改造:アナルバイブ != "防水アナルバイブ"
 	COMRESULT = 0
 ;解除はいつでも可能
@@ -30,12 +30,20 @@ SIF TEQUIP:アナルバイブ && COMRESULT
 	条件確定 = 1
 
 ;小人体型持ちは主人が禁断の知識持ちじゃないとダメ
-コマンド実行条件 += "対象が[小人体型]の場合、主人に[禁断の知識]が必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"If the target is [%I18N("小人体型", "TALENT")%], the master needs [%I18N("禁断の知識", "TALENT")%]/"
+ELSE
+	コマンド実行条件 += "対象が[小人体型]の場合、主人に[禁断の知識]が必要/"
+ENDIF
 SIF TALENT:小人体型 && !TALENT:MASTER:禁断の知識
 	COMRESULT = 0
 ;アイテムを持っていないとダメ
-コマンド実行条件 += "アイテム[アナルバイブ]が必要/"
-コマンド実行条件 += "　上級売春中は経営方針がソフトだと実行できない/"
+コマンド実行条件 += I18N("アイテム[|0|]が必要/", , I18N("アナルバイブ", "TRAIN"))
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += "If the management policy is soft during high-level prostitution, it cannot be implemented./"
+ELSE
+	コマンド実行条件 += "　上級売春中は経営方針がソフトだと実行できない/"
+ENDIF
 IF 上級売春中
 	;ソフト方針でもダメ
 	SIF BR:方針 == 1
@@ -47,14 +55,18 @@ ELSE
 		COMRESULT = 0
 ENDIF
 ;潤滑不足で、従順3以下・レズっ気ホモっ気3以下のASSIの場合アナルバイブはできない（サドならＯＫ）
-コマンド実行条件 += @"実行者が助手で対象の潤滑{PALAMLV:2}未満の場合、レズっ気LV4orホモっ気LV4以上必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"If the performer is an assistant and the target`s %I18N("潤滑", "PALAM")% is lower than {PALAMLV:2}, at least %I18N("レズっ気")%LV4 or %I18N("ホモっ気")%LV4 or higher is required/"
+ELSE
+	コマンド実行条件 += @"実行者が助手で対象の潤滑{PALAMLV:2}未満の場合、レズっ気LV4orホモっ気LV4以上必要/"
+ENDIF
 IF PALAM:潤滑 < PALAMLV:2 && PLAYER != MASTER
 	SIF (ABL:PLAYER:従順 <= 3 || (ABL:PLAYER:レズっ気 <= 3 && ABL:PLAYER:ホモっ気 <= 3)) && !TALENT:PLAYER:サド
 		COMRESULT = 0
 ENDIF
 
 ;アナル使用中はダメ
-コマンド実行条件 += "対象がA道具使用中は実行できない/"
+コマンド実行条件 += I18N("対象がA道具使用中は実行できない/")
 SIF Ａ使用中(TARGET)
 	COMRESULT = 0
 
@@ -70,10 +82,10 @@ RETURNF COMRESULT
 ;特殊派生処理
 ;-------------------------------------------------
 IF TEQUIP:触手
-	PRINTL アナル触手
+	PRINTFORML %I18N("アナル触手", "TRAIN")%
 	SELECTCOM = GETNUM(TRAINNAME, "アナル触手")
 ELSE
-	PRINTL アナルバイブ
+	PRINTFORML %I18N("アナルバイブ", "TRAIN")%
 ENDIF
 CALL KOJO_MESSAGE_COM
 
@@ -195,7 +207,7 @@ CALL EXPUP_BASE, 2, 1
 
 IF !TEQUIP:触手 && アイテム改造:アナルバイブ == "太いアナルバイブ"
 	IF !EXP:Ｖ拡張経験 && !EXP:Ａ拡張経験
-		PRINTL ＜初Ａ拡張＞
+		PRINTFORML ＜%I18N("初Ａ拡張")%＞
 		CALL EXPUP, "異常経験", 1
 	ENDIF
 	CALL EXPUP, "Ａ拡張経験", 2
@@ -210,10 +222,18 @@ RETURN 1
 #DIM DYNAMIC 増加量
 
 ;アナルバイブ挿入中
-IF TEQUIP:触手
-	PRINTL ＜アナル触手挿入中＞
+IF LANGUAGE == "ENG"
+	IF TEQUIP:触手
+		PRINTL <Anal tentacle inserted>
+	ELSE
+		PRINTL <Anal vibrator inserted>
+	ENDIF
 ELSE
-	PRINTL ＜アナルバイブ挿入中＞
+	IF TEQUIP:触手
+		PRINTL ＜アナル触手挿入中＞
+	ELSE
+		PRINTL ＜アナルバイブ挿入中＞
+	ENDIF
 ENDIF
 
 LOSEBASE:体力 += 20
