@@ -20,7 +20,7 @@ IF ゲームモード() == "新婚モード"
 		IF LANGUAGE == "ENG"
 			PRINTFORM [invintation to %CALLNAME:MASTER% and %CALLNAME:FINDCHARA(CFLAG:嫁, 1)% wedding]
 		ELSE
-		PRINTFORM [%CALLNAME:MASTER%と%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%MASTERとTARGETの結婚式の招待状]
+			PRINTFORM [%CALLNAME:MASTER%と%CALLNAME:FINDCHARA(CFLAG:嫁, 1)%MASTERとTARGETの結婚式の招待状]
 		ENDIF
 	;石化させてた場合はアイテムに入れる
 	ELSE
@@ -585,9 +585,11 @@ ENDIF
 ;表示できるアイテムが無い場合
 IF FINDELEMENT(ITEMSALES, 1) < 0
 	IF カラム
-		CALL COLUMNPRINTL, 0, @"　***%I18N("購入できるアイテムはありません")%***"
+		CALL COLUMNPRINTL, 0, "　***"+@"%I18N("購入できるアイテムはありません")%"+"***"
 	ELSE
-		PRINTL ***%I18N("購入できるアイテムはありません")%***
+		PRINT ***
+		PRINTFORM %I18N("購入できるアイテムはありません")%
+		PRINTL ***
 	ENDIF
 ENDIF
 
@@ -1541,6 +1543,9 @@ SELECTCASE アイテムNO
 		;使用不可のキャラは除外
 		SIF CFLAG:使用対象:使用不可
 			RETURNF 0
+		;ロストしたキャラは除外
+		SIF CFLAG:使用対象:キャラロスト
+			RETURNF 0
 		SELECTCASE アイテム名
 			CASE "古今錬金術大全"
 				SIF !TALENT:使用対象:調合知識
@@ -1572,6 +1577,11 @@ SELECTCASE アイテムNO
 		;使用不可のキャラは除外
 		SIF CFLAG:使用対象:使用不可
 			RETURNF 0
+		;ロストしたキャラは除外 死体へのゾンビパウダーはとりあえず除外しない
+		IF CFLAG:使用対象:キャラロスト
+			SIF アイテム名 != "ゾンビパウダー" || !CFLAG:使用対象:死亡
+				RETURNF 0
+		ENDIF
 		;無機物・機械は除外 リミットバーストと特殊技能研修は可能
 		IF TALENT:使用対象:無機物 || CSTR:使用対象:種族 == "機械"
 			SIF !GROUPMATCH(アイテム名, "リミッター解除", "リミッター制御", "特殊技能研修")
@@ -1718,6 +1728,9 @@ SELECTCASE アイテムNO
 		ENDSELECT
 	;経営用素質は誰でも習得可能 各経験、技能、実務経験が必要
 	CASE 400 TO 449
+		;ロストしたキャラは除外
+		SIF CFLAG:使用対象:キャラロスト
+			RETURNF 0
 		;実務経験が必要
 		SIF EXP:使用対象:実務経験 < 1000
 			RETURNF 0
@@ -2044,6 +2057,6 @@ FOR LCOUNT, 300, 499
 NEXT
 IF !表示数
 	CALL MCOLUMNPRINTL, ""
-	CALL MCOLUMNPRINTL, @"***%("使用できるアイテムはありません")%***"
+	CALL MCOLUMNPRINTL, "***"+@"%I18N("使用できるアイテムはありません")%"+"***"
 	CALL MCOLUMNPRINTL, ""
 ENDIF
