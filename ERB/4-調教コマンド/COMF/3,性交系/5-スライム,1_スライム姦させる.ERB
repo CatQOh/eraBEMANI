@@ -5,7 +5,11 @@
 #FUNCTION
 ;対象の種族がスライムでないとダメ
 ;ただし、種族がスライムでなくとも、特性としてのスライムを所持してる場合は可
-コマンド実行条件 += "対象が[スライム]でないと実行できない/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"Cannot be executed unless the target is [Slime]/"
+ELSE
+	コマンド実行条件 += "対象が[スライム]でないと実行できない/"
+ENDIF
 SIF !ISSLIME(TARGET)
 	COMRESULT = 0
 ;ゲーセンに居る場合はできない
@@ -13,10 +17,10 @@ SIF !ISSLIME(TARGET)
 SIF TEQUIP:ゲームセンター
 	COMRESULT = 0
 ;上級売春中は方針がハード、SMじゃないとダメ
-コマンド実行条件 += "上級売春中は経営方針がハードorSMじゃないと実行できない/"
+コマンド実行条件 += I18N("上級売春中は経営方針がハードorSMじゃないと実行できない/")
 SIF 上級売春中 && !GROUPMATCH(BR:方針, 2, 3)
 	COMRESULT = 0
-コマンド実行条件 += "各部位に道具使用中は実行できない/"
+コマンド実行条件 +=  I18N("各部位に道具使用中は実行できない/")
 SIF TEQUIP:クリキャップ
 	COMRESULT = 0
 SIF Ｂ使用中(TARGET)
@@ -32,7 +36,7 @@ SIF Ａ使用中(TARGET)
 SIF TEQUIP:触手
 	COMRESULT = 0
 ;助手の場合は助手が陥落していないとダメ
-コマンド実行条件 += "実行者が助手の場合、助手が陥落していないと実行できない/"
+コマンド実行条件 += I18N("実行者が助手の場合、助手が陥落していないと実行できない/")
 SIF PLAYER != MASTER && !陥落(PLAYER)
 	COMRESULT = 0
 ;対象が無機物、もしくは種族:機械だとダメ
@@ -97,25 +101,33 @@ NEXT
 ;V経験
 IF VAGINA(TARGET) && !TALENT:処女 && EXP:Ｖ経験 < 30
 	実効値 -= 15
-	PRINT -%I18N("Ｖ経験不足", "TALENT")%(15)
+	PRINTFORM -%I18N("Ｖ経験不足", "TALENT")%(15)
 ENDIF
 
 ;A経験
 IF EXP:Ａ経験 < 100
 	実効値 -= 30
-	PRINT -Ａ経験不足(30)
+	IF LANGUAGE == "ENG"
+		PRINTFORM -lack of %I18N("Ａ経験")%(30)
+	ELSE
+		PRINT -Ａ経験不足(30)
+	ENDIF
 ENDIF
 
 ;媚薬
 IF TEQUIP:媚薬
 	実効値 += 6
-	PRINT +媚薬(6)
+	PRINTFORM +%I18N("媚薬", "TRAIN")%(6)
 ENDIF
 
 ;溶ける快を持たない
 IF !TALENT:溶ける快
 	実効値 -= 34
-	PRINT -溶ける快に目覚めてない(34)
+	IF LANGUAGE == "ENG"
+		PRINTFORM -havent awaken to the melting pleasure(34)
+	ELSE
+		PRINT -溶ける快に目覚めてない(34)
+	ENDIF
 ENDIF
 
 ;35以上で実行
@@ -127,7 +139,7 @@ RETURN RESULT
 #DIM DYNAMIC 増加量
 #DIM DYNAMIC 射精先
 
-PRINTL スライム姦させる
+PRINTFORML %I18N("スライム姦させる")%
 
 SIF !TFLAG:実行判定無視
 	CALLFORM 実行判定_%SELECTCOMS%
@@ -301,7 +313,7 @@ IF TALENT:PLAYER:処女
 ENDIF
 
 IF TALENT:PLAYER:処女 || TALENT:PLAYER:再生処女
-	PRINTFORMW %CALLNAME:PLAYER%処女喪失
+	PRINTFORMW %CALLNAME:PLAYER%%I18N("処女喪失")%
 	SETBIT STAIN:PLAYER:膣内, 6
 ENDIF
 
@@ -415,7 +427,7 @@ CALL EXPUP, "苦痛快楽経験", 1, PLAYER
 
 ;異常経験
 IF CSTR:PLAYER:種族 != "スライム" && !CFLAG:PLAYER:スライム姦された経験
-	PRINTL ＜スライム姦＞
+	PRINTFORML ＜%I18N("スライム姦", "TRAIN")%＞
 	CALL EXPUP, "異常経験", 1, PLAYER
 ENDIF
 CFLAG:PLAYER:スライム姦された経験++
