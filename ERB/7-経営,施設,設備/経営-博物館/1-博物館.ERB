@@ -289,6 +289,9 @@ ENDSELECT
 #DIM DYNAMIC LCOUNTY
 #DIM DYNAMIC ID
 #DIMS DYNAMIC 性器種別
+#DIM DYNAMIC 解体後価値比重, 4
+#DIM DYNAMIC 解体後価値比重合計
+#DIM DYNAMIC 解体後部位数
 
 PRINTL □博物館用の作品を作ります 鉱物は魔法コマンドから作成してください
 PRINT 　[1] - キャラを
@@ -384,11 +387,41 @@ BINPUT
 SIF RESULT == 1
 	GOTO DESTRUCT_CORPSE
 
+STRFIND MUSEUM:対象:名前, "妊娠した"
+SIF RESULT != -1 && MUSEUM:対象:種類 != "白骨死体"
+	妊娠フラグ = 1
+
+解体後価値比重合計 = 0
+解体後部位数 = 0
+FOR LCOUNT, 0, 4
+	SELECTCASE LCOUNT
+		CASE 0
+			解体後価値比重:LCOUNT = 2
+			解体後価値比重合計 += 2
+		CASE 1
+			IF 妊娠フラグ
+				解体後価値比重:LCOUNT = 10
+				解体後価値比重合計 += 10
+			ELSE
+				解体後価値比重:LCOUNT = 2
+				解体後価値比重合計 += 2
+			ENDIF
+		CASE 2
+			解体後価値比重:LCOUNT = 2 - 腕欠損(GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)))
+			解体後価値比重合計 += 2 - 腕欠損(GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)))
+		CASE 3
+			解体後価値比重:LCOUNT = 2 - 脚欠損(GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)))
+			解体後価値比重合計 +=2 - 脚欠損(GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)))
+	ENDSELECT
+	SIF 解体後価値比重:LCOUNT
+		解体後部位数++
+NEXT
+
 FOR LCOUNT2, 1, VARSIZE("MUSEUM", 1)
 	IF MUSEUM:LCOUNT2:種類 == ""
 		空き変数カウント++
-		IF 空き変数カウント == 4
-			空き変数 = LCOUNT2-3
+		IF 空き変数カウント == 解体後部位数
+			空き変数 = LCOUNT2 - 解体後部位数 +1
 			BREAK
 		ENDIF
 	ELSE
@@ -396,11 +429,9 @@ FOR LCOUNT2, 1, VARSIZE("MUSEUM", 1)
 	ENDIF
 NEXT
 
-STRFIND MUSEUM:対象:名前, "妊娠した"
-SIF RESULT != -1 && MUSEUM:対象:種類 != "白骨死体"
-	妊娠フラグ = 1
-
 FOR LCOUNT, 0, 4
+	SIF 解体後価値比重:LCOUNT == 0
+		CONTINUE
 	MUSEUM:空き変数:種類 = 部位/
 	MUSEUM:空き変数:名前 = %CSVNAMEF(TOINT(MUSEUM:対象:キャラナンバー))%
 	STRFIND MUSEUM:対象:名前, "(スライム)"
@@ -423,17 +454,40 @@ FOR LCOUNT, 0, 4
 			MUSEUM:空き変数:名前 += "胴体"
 			MUSEUM:空き変数:種類 += "胴体"
 		CASE 2
-			MUSEUM:空き変数:名前 += "腕"
-			MUSEUM:空き変数:種類 += "腕"
+			SELECTCASE TALENT:GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)):上肢切断
+				CASE 0
+					MUSEUM:空き変数:名前 += "腕"
+					MUSEUM:空き変数:種類 += "腕"
+				CASE 1
+					MUSEUM:空き変数:名前 += "左腕"
+					MUSEUM:空き変数:種類 += "左腕"
+				CASEELSE
+					MUSEUM:空き変数:名前 += "右腕"
+					MUSEUM:空き変数:種類 += "右腕"
+			ENDSELECT
 		CASE 3
 			IF GETCHARANAME(CSVNAMEF(TOINT(MUSEUM:対象:キャラナンバー)),1) > 0 && TALENT:GETCHARANAME(CSVNAMEF(TOINT(MUSEUM:対象:キャラナンバー)),1):足使用不可 == 1
 				MUSEUM:空き変数:名前 += "尾"
 			ELSEIF TALENT:GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)):足使用不可 == 1
 				MUSEUM:空き変数:名前 += "尾"
 			ELSE
-				MUSEUM:空き変数:名前 += "足"
+				SELECTCASE TALENT:GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)):下肢切断
+					CASE 0
+						MUSEUM:空き変数:名前 += "足"
+					CASE 1
+						MUSEUM:空き変数:名前 += "左足"
+					CASEELSE
+						MUSEUM:空き変数:名前 += "右足"
+				ENDSELECT
 			ENDIF
-			MUSEUM:空き変数:種類 += "足"
+			SELECTCASE TALENT:GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)):下肢切断
+				CASE 0
+					MUSEUM:空き変数:種類 += "足"
+				CASE 1
+					MUSEUM:空き変数:種類 += "左足"
+				CASEELSE
+					MUSEUM:空き変数:種類 += "右足"
+			ENDSELECT
 	ENDSELECT
 	SELECTCASE MUSEUM:対象:種類
 		CASE "白骨死体"
@@ -446,16 +500,8 @@ FOR LCOUNT, 0, 4
 			MUSEUM:空き変数:名前 += "パーツ"
 	ENDSELECT
 
-	IF 妊娠フラグ
-		IF LCOUNT == 1
-			MUSEUM:空き変数:価値 = {TOINT(MUSEUM:対象:価値)/2}
-		ELSE
-			;なんだこの変な計算
-			MUSEUM:空き変数:価値 = {((TOINT(MUSEUM:対象:価値)/5*4)-TOINT(MUSEUM:対象:価値)/2)/3}
-		ENDIF
-	ELSE
-		MUSEUM:空き変数:価値 = {TOINT(MUSEUM:対象:価値)/5}
-	ENDIF
+	MUSEUM:空き変数:価値 = {TOINT(MUSEUM:対象:価値) * 解体後価値比重:LCOUNT * 4 / 解体後価値比重合計 / 5}
+
 	MUSEUM:空き変数:キャラナンバー = %MUSEUM:対象:キャラナンバー%
 	MUSEUM:空き変数:色 = %MUSEUM:対象:色%
 	MUSEUM:空き変数:血縁コード = %MUSEUM:対象:血縁コード%
@@ -900,7 +946,7 @@ ELSE
 			ENDSELECT
 			PRINTL 
 
-		CASE "部位/頭", "部位/胴体", "部位/腕", "部位/足"
+		CASE "部位/頭", "部位/胴体", "部位/腕", "部位/足", "部位/右腕", "部位/左腕", "部位/右足", "部位/左足"
 			SIF 登録キャラ番号>0
 				PRINT の
 			SELECTCASE MUSEUM:対象:種類
@@ -916,6 +962,14 @@ ELSE
 					ELSE
 						PRINT 足の
 					ENDIF
+				CASE "部位/右腕"
+					PRINT 右腕の
+				CASE "部位/左腕"
+					PRINT 左腕の
+				CASE "部位/右足"
+					PRINT 右足の
+				CASE "部位/左足"
+					PRINT 左足の
 			ENDSELECT
 
 			IF REGEXPMATCH(MUSEUM:対象:名前,".+\\(白骨\\)\\Z")
@@ -1016,7 +1070,7 @@ ELSE
 						ENDIF
 					NEXT
 				ENDIF
-			CASE "部位/腕"
+			CASE "部位/腕", "部位/右腕", "部位/左腕"
 				IF GROUPMATCH(加工方法,"液浸標本", "静態保存", "剥製標本")
 					FOR LCOUNTX, GETNUM(CSTR, "右腕の印"), GETNUM(CSTR, "左腕の印")+1
 						IF CSTR:登録キャラ番号:LCOUNTX != ""
@@ -1026,7 +1080,7 @@ ELSE
 						ENDIF
 					NEXT
 				ENDIF
-			CASE "部位/足"
+			CASE "部位/足", "部位/右足", "部位/左足"
 				IF GROUPMATCH(加工方法,"液浸標本", "静態保存", "剥製標本")
 					FOR LCOUNTX, GETNUM(CSTR, "右足の印"), GETNUM(CSTR, "左足の印")+1
 						IF CSTR:登録キャラ番号:LCOUNTX != ""
