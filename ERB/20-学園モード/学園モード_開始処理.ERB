@@ -65,7 +65,7 @@ DO
 	PRINTL 　[2] 性別不明キャラの性別を固定する
 	[IF_DEBUG]
 		PRINTL
-		PRINTL 　[3] カップリングの設定
+		PRINTL 　[3] カップリング設定
 	[ENDIF]
 	PRINTL 
 	PRINTL 　[99] 現在の設定で開始
@@ -86,6 +86,8 @@ DO
 			CALL 学園除外リスト
 		CASE 2
 			CALL 性別自動選択
+		CASE 3
+			CALL カップリング設定
 		CASE 99
 			BREAK
 	ENDSELECT
@@ -1719,4 +1721,70 @@ SELECTCASE NAME:LCOUNT
 		ENDIF
 		CSTR:LCOUNT:担当科目 = 校長
 ENDSELECT
+[SKIPEND]
+
+
+
+
+[SKIPSTART]
+
+@カップリング設定
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC L_CHARA
+#DIMS DYNAMIC 相性設定用, 100
+#DIMS DYNAMIC 相性値, 2
+#DIM DYNAMIC 相性リスト_基準, 100000
+#DIM DYNAMIC 相性リスト_相手, 100000
+#DIM DYNAMIC 相性リスト_相性値, 100000
+#DIM DYNAMIC 相性リスト_カウント
+#DIM DYNAMIC リスト化済
+
+#DIM DYNAMIC CSVNUM_相性
+CSVNUM_相性 = GETNUM(CSTR, "相性")
+
+PRINTL [0] 双方の相性値が101%以上の2人を検索
+PRINTL 　[1] 男女のみにする
+PRINTL 　[2] 男性同士のみにする
+PRINTL 　[3] 女性同士のみにする
+PRINTL [9] 終了
+
+BINPUT
+
+SELECTCASE RESULT
+	CASE 0, 1, 2, 3
+		IF !リスト化済
+			FOR L_CHARA, 0, CHARANUM
+				SIF !EXISTCSV(L_CHARA)
+					CONTINUE
+				
+				SPLIT CSVCSTR(L_CHARA, CSVNUM_相性), "/", 相性設定用
+				FOR LCOUNT, 0, RESULT
+					;行連結の仕様で行頭にスペースが入っている場合は1文字削除
+					SIF SUBSTRINGU(相性設定用:LCOUNT, 0, 1) == " "
+						相性設定用:LCOUNT = %SUBSTRINGU(相性設定用:LCOUNT, 1)%
+					SIF 相性設定用:LCOUNT == ""
+						BREAK
+					CALL ESCAPESPLIT, 相性設定用:LCOUNT, "*", 相性値
+					IF GETNO(相性値, 1) >= 0
+						相性リスト_基準:相性リスト_カウント = L_CHARA
+						相性リスト_相手:相性リスト_カウント = GETNO(相性値, 1)
+						相性リスト_相性値:相性リスト_カウント = TOINT(相性値:1)
+						相性リスト_カウント++
+					ELSE
+						DEBUGPRINTFORML %NAME:TARGET%の相性:「%相性値%」は存在しないもしくは表記揺れ
+					ENDIF
+				NEXT
+			NEXT
+			リスト化済 = 1
+		ENDIF
+		
+	CASE 9
+		RETURN 0
+ENDSELECT
+
+RESTART
+
+
+
+
 [SKIPEND]
