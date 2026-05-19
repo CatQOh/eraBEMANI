@@ -6,11 +6,15 @@
 #DIM DYNAMIC 条件確定
 
 ;ゲーセンに居る場合はできない
-コマンド実行条件 += "ゲーセンでは実行不可/"
+コマンド実行条件 += I18N("ゲーセンでは実行不可/")
 SIF TEQUIP:ゲームセンター
 	COMRESULT = 0
 ;上級売春中は設備無いと不可
-コマンド実行条件 += "上級売春中はお風呂場設備が必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += "Bathroom facilities are required during advanced prostitution/"
+ELSE
+	コマンド実行条件 += "上級売春中はお風呂場設備が必要/"
+ENDIF
 SIF 上級売春中 && !BRITEM:お風呂場
 	COMRESULT = 0
 ;解除はいつでも可能
@@ -18,11 +22,19 @@ SIF TEQUIP:お風呂場 && COMRESULT
 	条件確定 = 1
 
 ;従順が1以上ないとダメ
-コマンド実行条件 += "対象に従順LV2以上が必要/"
-SIF ABL:従順 <= 1
-	COMRESULT = 0
-コマンド実行条件 += "対象が種族[獣][獣人]の場合、従順LV4以上必要/"
-コマンド実行条件 += "対象が[無機物]の場合は実行できない/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"%I18N("従順", "ABL")% LV2 or higher required for target/"
+	SIF ABL:従順 <= 1
+		COMRESULT = 0
+	コマンド実行条件 += @"If the target is a [%I18N("獣")%] [%I18N("獣人")%], at least %I18N("従順", "ABL")% LV4 is required instead/"
+	コマンド実行条件 += @"Cannot be executed if the target is [%I18N("無機物")%]/"
+ELSE
+	コマンド実行条件 += "対象に従順LV2以上が必要/"
+	SIF ABL:従順 <= 1
+		COMRESULT = 0
+	コマンド実行条件 += "対象が種族[獣][獣人]の場合、従順LV4以上必要/"
+	コマンド実行条件 += "対象が[無機物]の場合は実行できない/"
+ENDIF
 SELECTCASE CSTR:種族
 	;対象か助手が種族：獣人、獣で、従順が3以下だとダメ
 	CASE "獣人", "獣"
@@ -33,26 +45,26 @@ ENDSELECT
 SIF TALENT:無機物
 	COMRESULT = 0
 ;野外プレイ中はダメ
-コマンド実行条件 += "野外プレイ中は実行できない/"
+コマンド実行条件 += I18N("野外プレイ中は実行できない/")
 SIF TEQUIP:野外プレイ
 	COMRESULT = 0
 ;羞恥プレイ中はダメ
-コマンド実行条件 += "羞恥プレイ中は実行できない/"
+コマンド実行条件 += I18N("羞恥プレイ中は実行できない/")
 SIF TEQUIP:羞恥プレイ
 	COMRESULT = 0
 ;触手調教中はダメ
-コマンド実行条件 += "触手召喚中は実行できない/"
+コマンド実行条件 += I18N("触手召喚中は実行できない/")
 SIF TEQUIP:触手
 	COMRESULT = 0
 ;新妻プレイ中はダメ
-コマンド実行条件 += "エプロン使用中は実行できない/"
+コマンド実行条件 += I18N("エプロン使用中は実行できない/")
 SIF TEQUIP:エプロン
 	COMRESULT = 0
-コマンド実行条件 += "睡眠中は実行できない/"
+コマンド実行条件 += I18N("睡眠中は実行できない/")
 SIF TEQUIP:睡眠
 	COMRESULT = 0
 IF MOD:STS
-	コマンド実行条件 += "屍姦中は実行できない/"
+	コマンド実行条件 += I18N("屍姦中は実行できない/")
 	SIF CFLAG:死亡
 		COMRESULT = 0
 ENDIF
@@ -65,11 +77,18 @@ RETURNF COMRESULT
 
 @COM_お風呂場プレイ
 #DIM DYNAMIC LCOUNT
-
-IF TFLAG:ハニーパーティ
-	PRINTL 媚薬ローション風呂プレイ
+IF LANGUAGE == "ENG"
+	IF TFLAG:ハニーパーティ
+		PRINTL Aphrodisiac lotion bath play
+	ELSE
+		PRINTL bathroom play
+	ENDIF
 ELSE
-	PRINTL お風呂場プレイ
+	IF TFLAG:ハニーパーティ
+		PRINTL 媚薬ローション風呂プレイ
+	ELSE
+		PRINTL お風呂場プレイ
+	ENDIF
 ENDIF
 CALL KOJO_MESSAGE_COM
 
@@ -176,10 +195,18 @@ RETURN 1
 ;装着継続の処理
 ;-------------------------------------------------
 @EQUIP_COM_お風呂場プレイ
-IF TFLAG:ハニーパーティ
-	PRINTL ＜媚薬ローション風呂プレイ中＞
+IF LANGUAGE == "ENG"
+	IF TFLAG:ハニーパーティ
+		PRINTL ＜Aphrodisiac lotion bath play＞
+	ELSE
+		PRINTL ＜Playing in the bathroom＞
+	ENDIF
 ELSE
-	PRINTL ＜お風呂場プレイ中＞
+	IF TFLAG:ハニーパーティ
+		PRINTL ＜媚薬ローション風呂プレイ中＞
+	ELSE
+		PRINTL ＜お風呂場プレイ中＞
+	ENDIF
 ENDIF
 
 LOSEBASE:体力 += 10

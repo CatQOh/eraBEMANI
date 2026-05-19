@@ -56,6 +56,7 @@ ELSE
 ENDIF
 PRINTL 　[4] - キャラを配属する
 PRINTL 　[5] - 客層を確認する
+PRINTL 　[8] - 収蔵品目録を確認する
 PRINTL 　[9] - 博物館マニュアル
 DRAWLINE
 PRINTPLAIN 　MUSEUM　
@@ -105,6 +106,8 @@ SELECTCASE RESULT
 			PRINTL 
 		NEXT
 		WAIT
+	CASE 8
+		CALL 博物館_収蔵品
 	CASE 9
 		PRINTL □博物館経営について
 		PRINTL 　博物館は作成したオブジェを展示して収益を得られる経営要素です
@@ -286,6 +289,9 @@ ENDSELECT
 #DIM DYNAMIC LCOUNTY
 #DIM DYNAMIC ID
 #DIMS DYNAMIC 性器種別
+#DIM DYNAMIC 解体後価値比重, 4
+#DIM DYNAMIC 解体後価値比重合計
+#DIM DYNAMIC 解体後部位数
 
 PRINTL □博物館用の作品を作ります 鉱物は魔法コマンドから作成してください
 PRINT 　[1] - キャラを
@@ -381,11 +387,41 @@ BINPUT
 SIF RESULT == 1
 	GOTO DESTRUCT_CORPSE
 
+STRFIND MUSEUM:対象:名前, "妊娠した"
+SIF RESULT != -1 && MUSEUM:対象:種類 != "白骨死体"
+	妊娠フラグ = 1
+
+解体後価値比重合計 = 0
+解体後部位数 = 0
+FOR LCOUNT, 0, 4
+	SELECTCASE LCOUNT
+		CASE 0
+			解体後価値比重:LCOUNT = 2
+			解体後価値比重合計 += 2
+		CASE 1
+			IF 妊娠フラグ
+				解体後価値比重:LCOUNT = 10
+				解体後価値比重合計 += 10
+			ELSE
+				解体後価値比重:LCOUNT = 2
+				解体後価値比重合計 += 2
+			ENDIF
+		CASE 2
+			解体後価値比重:LCOUNT = 2 - 腕欠損(GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)))
+			解体後価値比重合計 += 2 - 腕欠損(GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)))
+		CASE 3
+			解体後価値比重:LCOUNT = 2 - 脚欠損(GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)))
+			解体後価値比重合計 +=2 - 脚欠損(GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)))
+	ENDSELECT
+	SIF 解体後価値比重:LCOUNT
+		解体後部位数++
+NEXT
+
 FOR LCOUNT2, 1, VARSIZE("MUSEUM", 1)
 	IF MUSEUM:LCOUNT2:種類 == ""
 		空き変数カウント++
-		IF 空き変数カウント == 4
-			空き変数 = LCOUNT2-3
+		IF 空き変数カウント == 解体後部位数
+			空き変数 = LCOUNT2 - 解体後部位数 +1
 			BREAK
 		ENDIF
 	ELSE
@@ -393,11 +429,9 @@ FOR LCOUNT2, 1, VARSIZE("MUSEUM", 1)
 	ENDIF
 NEXT
 
-STRFIND MUSEUM:対象:名前, "妊娠した"
-SIF RESULT != -1 && MUSEUM:対象:種類 != "白骨死体"
-	妊娠フラグ = 1
-
 FOR LCOUNT, 0, 4
+	SIF 解体後価値比重:LCOUNT == 0
+		CONTINUE
 	MUSEUM:空き変数:種類 = 部位/
 	MUSEUM:空き変数:名前 = %CSVNAMEF(TOINT(MUSEUM:対象:キャラナンバー))%
 	STRFIND MUSEUM:対象:名前, "(スライム)"
@@ -420,15 +454,40 @@ FOR LCOUNT, 0, 4
 			MUSEUM:空き変数:名前 += "胴体"
 			MUSEUM:空き変数:種類 += "胴体"
 		CASE 2
-			MUSEUM:空き変数:名前 += "腕"
-			MUSEUM:空き変数:種類 += "腕"
+			SELECTCASE TALENT:GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)):上肢切断
+				CASE 0
+					MUSEUM:空き変数:名前 += "腕"
+					MUSEUM:空き変数:種類 += "腕"
+				CASE 1
+					MUSEUM:空き変数:名前 += "左腕"
+					MUSEUM:空き変数:種類 += "左腕"
+				CASEELSE
+					MUSEUM:空き変数:名前 += "右腕"
+					MUSEUM:空き変数:種類 += "右腕"
+			ENDSELECT
 		CASE 3
-			IF TALENT:GETCHARANAME(CSVNAMEF(TOINT(MUSEUM:対象:キャラナンバー)),1):足使用不可 == 1
+			IF GETCHARANAME(CSVNAMEF(TOINT(MUSEUM:対象:キャラナンバー)),1) > 0 && TALENT:GETCHARANAME(CSVNAMEF(TOINT(MUSEUM:対象:キャラナンバー)),1):足使用不可 == 1
+				MUSEUM:空き変数:名前 += "尾"
+			ELSEIF TALENT:GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)):足使用不可 == 1
 				MUSEUM:空き変数:名前 += "尾"
 			ELSE
-				MUSEUM:空き変数:名前 += "足"
+				SELECTCASE TALENT:GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)):下肢切断
+					CASE 0
+						MUSEUM:空き変数:名前 += "足"
+					CASE 1
+						MUSEUM:空き変数:名前 += "左足"
+					CASEELSE
+						MUSEUM:空き変数:名前 += "右足"
+				ENDSELECT
 			ENDIF
-			MUSEUM:空き変数:種類 += "足"
+			SELECTCASE TALENT:GETCHARA(TOINT(MUSEUM:対象:キャラナンバー)):下肢切断
+				CASE 0
+					MUSEUM:空き変数:種類 += "足"
+				CASE 1
+					MUSEUM:空き変数:種類 += "左足"
+				CASEELSE
+					MUSEUM:空き変数:種類 += "右足"
+			ENDSELECT
 	ENDSELECT
 	SELECTCASE MUSEUM:対象:種類
 		CASE "白骨死体"
@@ -441,16 +500,8 @@ FOR LCOUNT, 0, 4
 			MUSEUM:空き変数:名前 += "パーツ"
 	ENDSELECT
 
-	IF 妊娠フラグ
-		IF LCOUNT == 1
-			MUSEUM:空き変数:価値 = {TOINT(MUSEUM:対象:価値)/2}
-		ELSE
-			;なんだこの変な計算
-			MUSEUM:空き変数:価値 = {((TOINT(MUSEUM:対象:価値)/5*4)-TOINT(MUSEUM:対象:価値)/2)/3}
-		ENDIF
-	ELSE
-		MUSEUM:空き変数:価値 = {TOINT(MUSEUM:対象:価値)/5}
-	ENDIF
+	MUSEUM:空き変数:価値 = {TOINT(MUSEUM:対象:価値) * 解体後価値比重:LCOUNT * 4 / 解体後価値比重合計 / 5}
+
 	MUSEUM:空き変数:キャラナンバー = %MUSEUM:対象:キャラナンバー%
 	MUSEUM:空き変数:色 = %MUSEUM:対象:色%
 	MUSEUM:空き変数:血縁コード = %MUSEUM:対象:血縁コード%
@@ -627,6 +678,449 @@ NEXT
 
 $RETURN
 RETURN カテゴリ割合:0, カテゴリ割合:1, カテゴリ割合:2, カテゴリ割合:3, カテゴリ割合:4, カテゴリ割合:5, カテゴリ割合:6, カテゴリ割合:7, カテゴリ割合:8, カテゴリ割合:9
+
+@博物館_収蔵品
+#DIM DYNAMIC ページ数
+#DIM DYNAMIC 次ページあり
+#DIM DYNAMIC 処理数
+#DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNTX
+#DIM DYNAMIC LCOUNTY
+#DIM DYNAMIC 設置済み, 1000
+#DIM DYNAMIC ID
+VARSET 設置済み
+
+FOR LCOUNTY, 0, MU:広さ
+	FOR LCOUNTX, 0, MU:広さ
+		ID = 博物館マップ:LCOUNTY:LCOUNTX
+		IF ID > 0 && MUSEUM:ID:種類 == ""
+			博物館マップ:LCOUNTY:LCOUNTX = 0
+			ID = 0
+		ENDIF
+		SIF ID > 0
+			設置済み:ID = 1
+	NEXT
+NEXT
+
+$SELECT_OBJECT
+
+
+処理数 = 0
+PRINTL □収蔵品の詳細を確認出来ます。何を確認しますか？
+FOR LCOUNT, 1, 1000
+	IF MUSEUM:LCOUNT:種類 != ""  && (MUSEUM:LCOUNT:廃棄済み != "1")
+		IF 処理数 >= ページ数*20+20
+			次ページあり = 1
+			BREAK
+		ENDIF
+		処理数++
+		SIF ページ数*20 >= 処理数
+			CONTINUE
+		CALL PRINTSPACE,設置済み:LCOUNT , "【展示中】"
+		CALL PASELI, @"[{LCOUNT, 2}] %MUSEUM:LCOUNT:名前% 価値:%MUSEUM:LCOUNT:価値%＄"
+		PRINTL
+
+	ENDIF
+NEXT
+DRAWLINE
+PRINTPLAIN 　収蔵品目録　
+CALL PRINTSPACE, ページ数, @"[-1] %I18N("前ページ")% "
+PRINTFORM [0] %I18N("戻る")% 
+CALL PRINTSPACE, 次ページあり, @"[-9] %I18N("次ページ")% "
+PRINTL 
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE -1
+		ページ数--
+		GOTO SELECT_OBJECT
+	CASE -9
+		ページ数++
+		次ページあり = 0
+		GOTO SELECT_OBJECT
+	CASEELSE
+		ID = RESULT
+		CALL 収蔵品詳細,ID
+		GOTO SELECT_OBJECT
+ENDSELECT
+
+@収蔵品詳細,対象,展示中 = -1
+#DIM DYNAMIC 対象
+#DIM DYNAMIC 展示中
+#DIM DYNAMIC 登録キャラ番号
+#DIM DYNAMIC 妊娠フラグ
+#DIM DYNAMIC LCOUNTX
+#DIM DYNAMIC LCOUNTY
+#DIM DYNAMIC 助詞フラグ
+#DIMS DYNAMIC 加工方法
+#DIMS DYNAMIC SHOP退避S
+#DIM DYNAMIC SHOP退避
+IF 展示中 == -1
+	展示中 = 0
+	FOR LCOUNTY, 0, MU:広さ
+		FOR LCOUNTX, 0, MU:広さ
+			IF 博物館マップ:LCOUNTY:LCOUNTX == 対象
+				展示中 = 1
+				BREAK
+			ENDIF
+		NEXT
+		SIF 展示中 == 1
+			BREAK
+	NEXT
+ENDIF
+
+IF MUSEUM:対象:廃棄済み == "1"
+	登録キャラ番号 = -1
+	PRINTFORML 【廃棄済】%MUSEUM:対象:名前% 
+	PRINTL 
+	PRINTL この作品は廃棄済みです。
+
+ELSE
+	登録キャラ番号 = GETCHARA(TOINT(MUSEUM:対象:キャラナンバー))
+
+	PRINTFORML \@ 展示中 ? 【展示中】 #\@%MUSEUM:対象:名前% 
+	PRINTL 
+	CALL PASELI, @"価値:%MUSEUM:対象:価値%＄"
+	PRINTL
+	IF MUSEUM:対象:種類 == "性具"
+		PRINTFORML 耐久度：%MUSEUM:対象:耐久度%		
+	ELSE
+		PRINTFORML 集客力：%MUSEUM:対象:集客力%		
+	ENDIF
+	PRINTFORML 汚された回数：%MUSEUM:対象:汚れ%
+	PRINTL 
+
+	IF 登録キャラ番号>0
+		PRINTFORM %NAME:登録キャラ番号%
+	ENDIF
+	SIF STRFIND(MUSEUM:対象:名前, "妊娠した") != -1
+		妊娠フラグ = 1
+	
+
+	SELECTCASE MUSEUM:対象:種類
+		CASE "白骨死体"
+			加工方法 '= "骨格標本"
+			SIF 登録キャラ番号>0
+				PRINT の
+			PRINTL 骨格標本。硬骨のみに限られるが「骨」を観察するのに最適な標本。
+			PRINTL 
+		CASE "ホルマリン漬け"
+			加工方法 '= "液浸標本"
+			SIF 登録キャラ番号>0
+				PRINT の
+			PRINTL 全身をホルマリン固定した液浸標本。体組織を捨てずに保存する最適な方法の一つ。
+			PRINTL 
+			IF 妊娠フラグ
+				PRINTL 妊娠中の姿をそのまま保存しており生命の神秘を目で見て学べる教育的価値の高い標本。
+				PRINTL 
+			ENDIF
+		CASE "透明標本"
+			SIF 登録キャラ番号>0
+				PRINT の
+			PRINTL 骨格を染色し皮膚や筋肉を透明化させた液浸標本。手間とコストは掛かるが硬骨・軟骨の配置を生体の配置を保ったまま観察出来る。
+			PRINTL 
+			IF 妊娠フラグ
+				PRINTL 中の胎児も観察することができ生命の神秘を目で見て学べる教育的価値の高い標本。
+				PRINTL 
+			ENDIF
+		CASE "人形"
+			加工方法 '= "静態保存"
+			SIF 登録キャラ番号>0
+				PRINT の
+			PRINTL 静態保存された姿。今にも動き出しそうなほど綺麗な外観で保存されている。
+		CASE "剥製"
+			加工方法 '= "剥製標本"
+			SIF 登録キャラ番号>0
+				PRINT の
+			PRINTL 表皮を剥がし防腐処理を施した剥製標本。表皮のみに限られるが外観を極力損なわず標本として保存する最適な方法の一つ。
+			SIF 登録キャラ番号>0 && TALENT:登録キャラ番号:ファーリー
+				PRINTL 毛並みの美しさを損なう事無く加工されている。
+			PRINTL 
+			IF 妊娠フラグ
+				PRINTL 妊娠中の姿をそのまま再現しており生命の神秘を目で見て学べる教育的価値の高い標本。
+				PRINTL 
+			ENDIF
+		CASE "胎児"
+			加工方法 '= "液浸標本"
+			SIF 登録キャラ番号>0
+				PRINT の
+			PRINTL 胎内から取り出された胎児の液浸標本。生命の神秘を目で見て学べる教育的価値の高い標本。
+			PRINTL 
+		CASE "臓器/脳"
+			加工方法 '= "液浸標本"
+			SIF 登録キャラ番号>0
+				PRINT の
+			PRINTL 脳髄の液浸標本。普段は見る機会のない脳をつぶさに観察することができる。
+			PRINTL 
+		CASE "臓器/内臓"
+			加工方法 '= "液浸標本"
+			SIF 登録キャラ番号>0
+				PRINT の
+			PRINTL 臓器の液浸標本。普段は見る機会のない臓器をじっくり観察することができる。
+			IF 妊娠フラグ
+				PRINTL 妊娠中の膨らんだ子宮も観察することができ、生命の神秘を目で見て学べる教育的価値の高い標本。
+				PRINTL 
+			ENDIF
+		CASE "鉱物"
+			加工方法 '= "鉱石標本"
+			SIF 登録キャラ番号>0
+				PRINT が
+			PRINTL 魔術により姿を変えられた宝石。妖しく艶かしい何かを感じさせ、見た者を惑わす魔力と呼ぶべき魅力がある。
+			PRINTL 
+		CASE "性具"
+			加工方法 '= "性具"
+			SIF 登録キャラ番号>0
+				PRINT の
+			PRINTFORML %MUSEUM:対象:ベースリソース%を素材として作られた\@MUSEUM:対象:ベースリソース == "男性器" ? ディルド # オナホ\@。
+			PRINTL 
+
+
+			SELECTCASE MUSEUM:対象:ベースリソース
+				CASE "男性器"
+					IF 登録キャラ番号>0
+						IF ABL:登録キャラ番号:メス度 >= 10
+							PRINT 持ち主がすっかり牝に成り果て役目を果たせなかった生前とは異なり
+						ELSEIF TALENT:登録キャラ番号:絶倫 || TALENT:登録キャラ番号:勃ちやすい
+							PRINT 精力旺盛だった生前を彷彿とさせる
+						ENDIF
+					ENDIF
+					PRINTFORML 雄々しくそそり立つ姿は鑑賞者の欲望をかき立てる力強さが\@TOINT(MUSEUM:対象:耐久度) > 50 ? ある # 収蔵当初にはあった\@。
+				CASE "女性器"
+					IF 登録キャラ番号>0
+						SELECTCASE ABL:登録キャラ番号:Ｖ感覚
+							CASE IS >= 5
+								PRINT オナホにもかかわらず蜜を湛えていると錯覚するほどの質感でまるで挿入を待ちわびるそれは
+							CASE IS <= 2
+								PRINT やや初々しさを感じさせるそれは
+							CASEELSE
+								PRINT オナホにもかかわらず息づいているかのようなそれは
+						ENDSELECT
+					ENDIF
+					PRINTFORML 鑑賞者の欲望を呼び起こす蠱惑的な魅力が\@TOINT(MUSEUM:対象:耐久度) > 50 ? ある # 収蔵当初にはあった\@。
+				CASE "臀部"
+					IF 登録キャラ番号>0
+						SELECTCASE ABL:登録キャラ番号:Ａ感覚
+							CASE IS >= 5
+								PRINT オナホにもかかわらず穴をヒクつかせて誘っていると錯覚するほどの質感で柔らかく花開くそれは
+							CASE IS <= 2
+								PRINT やや硬さの残るそれは
+							CASEELSE
+								PRINT オナホにもかかわらず息づいているかのようなそれは
+						ENDSELECT
+					ENDIF
+					PRINTFORML 鑑賞者の欲望に囁きかけるような蠱惑的な魅力が\@TOINT(MUSEUM:対象:耐久度) > 50 ? ある # 収蔵当初にはあった\@。
+				CASE "乳房"
+					IF 登録キャラ番号>0
+						SELECTCASE TALENT:登録キャラ番号:バストサイズ
+							CASE IS >= 6
+								PRINT もはや質量の暴力と呼ぶべきサイズのそれは
+							CASE 5
+								PRINT あらゆるものを包み込む具現化した包容力とも呼ぶべきそれは
+							CASE 4
+								PRINT 包み込むような大きさと柔らかさを兼ね備えたそれは
+							CASEELSE
+								PRINT 程よいサイズと弾力を兼ね備えたそれは
+						ENDSELECT
+					ENDIF
+					PRINTFORML 鑑賞者の本能を揺さぶる蠱惑的な魅力が\@TOINT(MUSEUM:対象:耐久度) > 50 ? ある # 収蔵当初にはあった\@。
+			ENDSELECT
+
+			SELECTCASE TOINT(MUSEUM:対象:耐久度)
+				CASE IS >= 100
+					PRINTL 保存状態は完璧と呼ぶ他ない。
+				CASE IS >= 91
+					PRINTL 保存状態は極めて良好で新品同様と言って差し支えない。
+				CASE IS >= 71
+					PRINTL 保存状態は良好でほぼ新品同様と言って差し支えない。
+				CASE IS >= 51
+					PRINTL 保存状態にやや難があり損傷が見られる。
+				CASE IS >= 31
+					PRINTL 保存状態に難があり損傷が激しい。
+				CASE IS >= 11
+					PRINTL 保存状態が悪く元の形を失いつつある。
+				CASE IS >= 5
+					PRINTL 保存状態が極めて悪く原形をとどめていない。
+				CASEELSE
+					PRINTL 損傷が激しくもはやゴミと呼ぶしかない。
+			ENDSELECT
+			PRINTL 
+
+		CASE "部位/頭", "部位/胴体", "部位/腕", "部位/足", "部位/右腕", "部位/左腕", "部位/右足", "部位/左足"
+			SIF 登録キャラ番号>0
+				PRINT の
+			SELECTCASE MUSEUM:対象:種類
+				CASE "部位/頭"
+					PRINT 頭部の
+				CASE "部位/胴体"
+					PRINT 胴部の
+				CASE "部位/腕"
+					PRINT 腕の
+				CASE "部位/足"
+					IF REGEXPMATCH(MUSEUM:対象:名前,".+尾(パーツ|\\(.+?\\))?\\Z")
+						PRINT 尾の
+					ELSE
+						PRINT 足の
+					ENDIF
+				CASE "部位/右腕"
+					PRINT 右腕の
+				CASE "部位/左腕"
+					PRINT 左腕の
+				CASE "部位/右足"
+					PRINT 右足の
+				CASE "部位/左足"
+					PRINT 左足の
+			ENDSELECT
+
+			IF REGEXPMATCH(MUSEUM:対象:名前,".+\\(白骨\\)\\Z")
+				PRINTL 骨格標本。
+				加工方法 '= "骨格標本"
+			ELSEIF REGEXPMATCH(MUSEUM:対象:名前,".+\\(液浸標本\\)\\Z")
+				加工方法 '= "液浸標本"
+				PRINTL 液浸標本。
+				PRINTL 
+				IF 妊娠フラグ && (MUSEUM:対象:種類 == "部位/胴体")
+					PRINTL 妊娠中の姿をそのまま保存しており生命の神秘を目で見て学べる教育的価値の高い標本。
+					PRINTL 
+				ENDIF
+			ELSEIF REGEXPMATCH(MUSEUM:対象:名前,".+\\(透明標本\\)\\Z")
+				加工方法 '= "透明標本"
+				PRINTL 透明標本。
+				PRINTL 
+				IF 妊娠フラグ && (MUSEUM:対象:種類 == "部位/胴体")
+					PRINTL 中の胎児も観察することができ生命の神秘を目で見て学べる教育的価値の高い標本。
+					PRINTL 
+				ENDIF
+			ELSEIF REGEXPMATCH(MUSEUM:対象:名前,".+パーツ\\Z")
+				加工方法 '= "静態保存"
+				PRINTL 部品。外観は非常に良い状態で保存されている。
+			ELSE
+				加工方法 '= "剥製標本"
+				PRINTL 剥製。
+				SIF 登録キャラ番号>0 && TALENT:登録キャラ番号:ファーリー
+					PRINTL 毛並みの美しさを損なう事無く加工されている。
+				PRINTL 
+				IF 妊娠フラグ && (MUSEUM:対象:種類 == "部位/胴体")
+					PRINTL 妊娠中の姿をそのまま再現しており生命の神秘を目で見て学べる教育的価値の高い標本。
+					PRINTL 
+				ENDIF
+			ENDIF
+		CASE "白骨"
+			加工方法 '= "骨格標本"
+			IF 登録キャラ番号>0
+				PRINT の
+			PRINTL 切り取られた肋骨。
+			PRINTL 骨格矯正を目的に切除されたものだがSDGsの観点から展示品として再利用している。
+			PRINTL 
+			ENDIF
+		CASE "その他"
+			IF STRFIND(MUSEUM:対象:名前, "の男性器のオブジェ") != -1
+				加工方法 '= "オブジェ"
+				IF 登録キャラ番号>0
+					PRINT から切除された
+					PRINTL 男性器を加工したオブジェ。
+					PRINTL 去勢を目的に切除されたものだがSDGsの観点から展示品として再利用している。鑑賞用であり性具としての「使用」は出来ない。
+					PRINTL 
+				ENDIF
+			ENDIF
+	ENDSELECT
+	IF PENIS(登録キャラ番号) && VAGINA(登録キャラ番号)
+		SELECTCASE MUSEUM:対象:種類
+			CASE "ホルマリン漬け", "透明標本", "人形", "剥製", "臓器/内臓"
+				PRINTL 雌雄両方の性器が一度に観察出来る点でも資料として優れている。
+				PRINTL 
+			CASE "部位/胴体"
+				IF GROUPMATCH(加工方法, "液浸標本", "透明標本", "静態保存", "剥製標本")
+					PRINTL 雌雄両方の性器が一度に観察出来る点でも資料として優れている。
+					PRINTL 
+				ENDIF
+		ENDSELECT
+	ENDIF
+	IF 登録キャラ番号>0
+		;タトゥー関連
+		助詞フラグ = 0
+		SELECTCASE MUSEUM:対象:種類
+			CASE "ホルマリン漬け", "人形", "剥製"
+				IF GROUPMATCH(CSTR:登録キャラ番号:背中の印, "奴隷の焼印", "淫売の焼印")
+					PRINT 背中に押された烙印
+					助詞フラグ = 1
+				ENDIF
+				FOR LCOUNTX, GETNUM(CSTR, "右腕の印"), GETNUM(CSTR, "胴体の印")+1
+					IF !GROUPMATCH(CSTR:登録キャラ番号:LCOUNTX, "", "奴隷の焼印", "淫売の焼印")
+						SIF 助詞フラグ
+							PRINT や
+						PRINT 生前に施された美しいタトゥー
+						助詞フラグ = 1
+						BREAK
+					ENDIF
+				NEXT
+			CASE "部位/胴体"
+				IF GROUPMATCH(加工方法,"液浸標本", "静態保存", "剥製標本")
+					IF GROUPMATCH(CSTR:登録キャラ番号:背中の印, "奴隷の焼印", "淫売の焼印")
+						PRINT 背中に押された烙印
+						助詞フラグ = 1
+					ENDIF
+					FOR LCOUNTX, GETNUM(CSTR, "背中の印"), GETNUM(CSTR, "胴体の印")+1
+						IF !GROUPMATCH(CSTR:登録キャラ番号:LCOUNTX, "", "奴隷の焼印", "淫売の焼印")
+							SIF 助詞フラグ
+								PRINT や
+							PRINT 生前に施された美しいタトゥー
+							助詞フラグ = 1
+							BREAK
+						ENDIF
+					NEXT
+				ENDIF
+			CASE "部位/腕", "部位/右腕", "部位/左腕"
+				IF GROUPMATCH(加工方法,"液浸標本", "静態保存", "剥製標本")
+					FOR LCOUNTX, GETNUM(CSTR, "右腕の印"), GETNUM(CSTR, "左腕の印")+1
+						IF CSTR:登録キャラ番号:LCOUNTX != ""
+							PRINT 生前に施された美しいタトゥー
+							助詞フラグ = 1
+							BREAK
+						ENDIF
+					NEXT
+				ENDIF
+			CASE "部位/足", "部位/右足", "部位/左足"
+				IF GROUPMATCH(加工方法,"液浸標本", "静態保存", "剥製標本")
+					FOR LCOUNTX, GETNUM(CSTR, "右足の印"), GETNUM(CSTR, "左足の印")+1
+						IF CSTR:登録キャラ番号:LCOUNTX != ""
+							PRINT 生前に施された美しいタトゥー
+							助詞フラグ = 1
+							BREAK
+						ENDIF
+					NEXT
+				ENDIF
+		ENDSELECT
+		IF 助詞フラグ
+			PRINTL も鑑賞できる。
+			PRINTL 
+		ENDIF
+		助詞フラグ = 0
+
+	ENDIF
+
+
+	IF MUSEUM:対象:価値減少 != ""
+		PRINTL 但し、現在では贋作とみなされており価値は低いと考えられている。
+		PRINTL 
+	ENDIF
+ENDIF
+
+PRINTL 
+PRINTFORM [0] %I18N("戻る")%                
+CALL PRINTSPACE, 登録キャラ番号>0 , "[-9] 素材キャラ情報"
+PRINTL 
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN 0
+	CASE -9
+		CALL 単体キャラステータス表示, 登録キャラ番号
+		RESTART
+	CASEELSE
+
+		RETURN
+ENDSELECT
 
 @INCOME_博物館
 #DIM DYNAMIC LCOUNT

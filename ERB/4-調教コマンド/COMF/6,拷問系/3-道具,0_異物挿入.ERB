@@ -4,23 +4,31 @@
 @USERCOM_ABLE_異物挿入
 #FUNCTION
 ;ゲーセンに居る場合はできない
-コマンド実行条件 += "ゲーセンでは実行不可/"
+コマンド実行条件 += I18N("ゲーセンでは実行不可/")
 SIF TEQUIP:ゲームセンター
 	COMRESULT = 0
 ;上級売春中は方針が狂気じゃないとダメ
-コマンド実行条件 += "上級売春中は経営方針が狂気じゃないと実行できない/"
+コマンド実行条件 += I18N("上級売春中は経営方針が狂気じゃないと実行できない/")
 SIF 上級売春中 && BR:方針 != 4
 	COMRESULT = 0
 ;触手召喚中はダメ
-コマンド実行条件 += "触手召喚中は実行できない/"
+コマンド実行条件 += I18N("触手召喚中は実行できない/")
 SIF TEQUIP:触手
 	COMRESULT = 0
 ;V感覚もしくはA感覚が6以上、もしくは拡張経験200以上必要
-コマンド実行条件 += "対象にＶ感覚LV6以上orＡ感覚6以上orＶ拡張経験200以上orＡ拡張経験200以上が必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"Target must have at least LV6%I18N("Ｖ感覚", "ABL")%, LV6%I18N("Ａ感覚", "ABL")%, at least 200%I18N("Ｖ拡張経験", "EXP")%, or at least %I18N("Ａ拡張経験", "EXP")%200 or more/"
+ELSE
+	コマンド実行条件 += "対象にＶ感覚LV6以上orＡ感覚6以上orＶ拡張経験200以上orＡ拡張経験200以上が必要/"
+ENDIF
 SIF ABL:Ｖ感覚 < 6 && ABL:Ａ感覚 < 6 && EXP:Ｖ拡張経験 < 200 && EXP:Ａ拡張経験 < 200
 	COMRESULT = 0
 ;両穴がふさがってると実行できない
-コマンド実行条件 += "挿入可能な穴が使用中だと実行できない/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += "Cannot be executed if needed hole is already in use/"
+ELSE
+	コマンド実行条件 += "挿入可能な穴が使用中だと実行できない/"
+ENDIF
 SIF Ｖ使用中(TARGET) && Ａ使用中(TARGET)
 	COMRESULT = 0
 ;挿入できる穴がふさがってると実行できない
@@ -34,10 +42,10 @@ IF ABL:Ａ感覚 >= 6 || EXP:Ａ拡張経験 >= 200
 ENDIF
 
 ;性器が露出してないとダメ
-コマンド実行条件 += "性器が露出していないと実行できない/"
+コマンド実行条件 += I18N("性器が露出していないと実行できない/")
 SIF !性器露出(TARGET)
 	COMRESULT = 0
-コマンド実行条件 += "睡眠中は実行できない/"
+コマンド実行条件 += I18N("睡眠中は実行できない/")
 SIF TEQUIP:睡眠
 	COMRESULT = 0
 
@@ -85,7 +93,7 @@ RETURNF ""
 #DIM DYNAMIC 増加量
 #DIM DYNAMIC 挿入箇所
 
-PRINTL 異物挿入
+PRINTFORML %I18N("異物挿入", "TRAIN")%
 
 IF VAGINA(TARGET)
 	IF (ABL:Ｖ感覚 >= 6 || EXP:Ｖ拡張経験 >= 200) && ((ABL:Ａ感覚 < 6 && EXP:Ａ拡張経験 < 200) || Ａ使用中(TARGET))
@@ -95,10 +103,14 @@ IF VAGINA(TARGET)
 		LABL = GETNUM(ABL, "Ａ感覚")
 		LEXP = GETNUM(EXP, "Ａ拡張経験")
 	ELSE
-		PRINTL どちらの穴に挿入しますか？
-		PRINTL [0] - 膣穴
-		PRINTL [1] - 尻穴
-		PRINTL [2] - やめる
+		IF LANGUAGE == "ENG"
+			PRINTL Which hole should you insert it into?
+		ELSE
+			PRINTL どちらの穴に挿入しますか？
+		ENDIF
+			PRINTFORML [0] - %I18N("膣穴")%
+			PRINTFORML [1] - %I18N("尻穴")%
+			PRINTFORML [2] - %I18N("やめる")%
 		SIF ISSKIP()
 			RETURN
 		BINPUT
@@ -117,20 +129,29 @@ ELSE
 	LABL = GETNUM(ABL, "Ａ感覚")
 	LEXP = GETNUM(EXP, "Ａ拡張経験")
 ENDIF
-
-IF LABL == GETNUM(ABL, "Ｖ感覚")
-	PRINT 膣穴
-ELSEIF LABL == GETNUM(ABL, "Ａ感覚")
-	PRINT 尻穴
+IF LANGUAGE == "ENG"
+	PRINTL What do you insert into 
+	IF LABL == GETNUM(ABL, "Ｖ感覚")
+		PRINTFORM %I18N("膣穴")%
+	ELSEIF LABL == GETNUM(ABL, "Ａ感覚")
+		PRINTFORM %I18N("尻穴")%
+	ENDIF
+	PRINTL ?
+ELSE
+	IF LABL == GETNUM(ABL, "Ｖ感覚")
+		PRINT 膣穴
+	ELSEIF LABL == GETNUM(ABL, "Ａ感覚")
+		PRINT 尻穴
+	ENDIF
+	PRINTL に何を挿入しますか？
 ENDIF
-PRINTL に何を挿入しますか？
 SIF ABL:LABL >= 6 || EXP:LEXP >= 200
-	PRINTL [1] - コーヒー缶
+	PRINTFORML [1] - %I18N("コーヒー缶")%
 SIF ABL:LABL >= 7 || EXP:LEXP >= 250
-	PRINTL [2] - ペットボトル
+	PRINTFORML [2] - %I18N("ペットボトル")%
 SIF ABL:LABL >= 8 || EXP:LEXP >= 300
-	PRINTL [3] - 空きビン
-PRINTL [4] - やめる
+	PRINTFORML [3] - %I18N("空きビン")%
+PRINTFORML [4] - %I18N("やめる")%
 
 SIF ISSKIP()
 	RETURN
@@ -318,9 +339,9 @@ ENDSELECT
 IF !EXP:Ｖ拡張経験 && !EXP:Ａ拡張経験
 	SELECTCASE 異物挿入部位()
 		CASE "膣"
-			PRINTL ＜初Ｖ拡張＞
+			PRINTFORML ＜%I18N("初Ｖ拡張")%＞
 		CASE "アナル"
-			PRINTL ＜初Ａ拡張＞
+			PRINTFORML ＜%I18N("初Ａ拡張")%＞
 	ENDSELECT
 	CALL EXPUP, "異常経験", 1
 ENDIF
@@ -343,11 +364,23 @@ RETURN 1
 ;異物挿入中
 ;V経験を伴うコマンドのフラグ(処女膜再生対応)
 IF TEQUIP:Ｖ異物
-	PRINTL ＜ヴァギナ異物挿入中＞
+	SELECTCASE LANGUAGE
+		CASE "ENG"
+			PRINTFORML ＜%I18N("ヴァギナ異物", "TRAIN")% is equipped＞
+		CASEELSE
+			PRINTL ＜ヴァギナ異物挿入中＞
+	ENDSELECT
 	TFLAG:膣コマンド = 1
 ENDIF
-SIF TEQUIP:Ａ異物
-	PRINTL ＜アナル異物挿入中＞
+
+IF TEQUIP:Ａ異物
+	SELECTCASE LANGUAGE
+		CASE "ENG"
+			PRINTFORML ＜%I18N("アナル異物", "TRAIN")% is equipped＞
+		CASEELSE
+			PRINTL ＜アナル異物ル挿入中＞
+	ENDSELECT
+ENDIF
 
 IF TEQUIP:Ｖ異物
 	SOURCE:V拡張 += (TEQUIP:Ｖ異物*50)

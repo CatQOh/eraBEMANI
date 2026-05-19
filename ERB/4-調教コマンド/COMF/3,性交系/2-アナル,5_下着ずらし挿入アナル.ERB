@@ -7,12 +7,16 @@
 SIF !PENIS(PLAYER)
 	COMRESULT = 0
 ;アニマルだと無理
-コマンド実行条件 += "対象が[アニマル]の場合は実行できない/"
+コマンド実行条件 += I18N("対象が[|0|]の場合は実行できない/", ,I18N("アニマル", "TALENT"))
 SIF TALENT:アニマル
 	COMRESULT = 0
 
 ;下半身下着をつけていないとダメ(下着一体型全身上着は例外)
-コマンド実行条件 += "対象の下半身がずらせる服を着ていないと実行できない/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += "Cannot be executed without flippable cloth on targets lower abdomen/"
+ELSE
+	コマンド実行条件 += "対象の下半身がずらせる服を着ていないと実行できない/"
+ENDIF
 SIF !TEQUIP:下半身下着 && CFLAG:着衣併用 != 2
 	COMRESULT = 0
 ;下着一体型全身上着は着ていないとダメ
@@ -21,6 +25,11 @@ SIF !TEQUIP:全身上着 && CFLAG:着衣併用 == 2
 ;下の空いてない上着を着ているとダメ
 IF (TEQUIP:下半身上着 || TEQUIP:全身上着) && CFLAG:着衣併用 != 2
 	SIF !CFLAG:挿入可
+		COMRESULT = 0
+ENDIF
+IF MOD:STS
+	コマンド実行条件 += I18N("実行者に腕がないと実行できない/")
+	SIF 腕欠損(PLAYER) == 2
 		COMRESULT = 0
 ENDIF
 
@@ -40,6 +49,9 @@ RETURNF COMRESULT
 ;縄で縛られている場合は無視（縄が無い時のみ実行判定を行う）
 SIF TEQUIP:縄
 	RETURN 1
+;手足がない場合は無視
+SIF MOD:STS && 腕欠損(TARGET) == 2 && 脚欠損(TARGET) == 2
+	RETURN 1
 
 ;すべての命令に共通の要素を考慮
 ;(従順が高いと命令に従いやすいなど)
@@ -51,7 +63,7 @@ CALL COM_ORDER_アナルセックス
 
 IF TALENT:羽
 	実効値 -= 5
-	PRINT -羽(5)
+	PRINTFORM -%I18N("羽", "TALENT")%(5)
 ENDIF
 
 ;30以上で実行
@@ -62,7 +74,7 @@ RETURN RESULT
 @COM_下着ずらし挿入アナル
 #DIM DYNAMIC 増加量
 
-PRINTL 下着ずらし挿入アナル
+PRINTFORML %I18N("下着ずらし挿入アナル")%
 
 SIF !TFLAG:実行判定無視
 	CALLFORM 実行判定_%SELECTCOMS%

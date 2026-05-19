@@ -4,30 +4,46 @@
 @USERCOM_ABLE_踏む
 #FUNCTION
 ;ゲーセンに居る場合はできない
-コマンド実行条件 += "ゲーセンでは実行不可/"
+コマンド実行条件 += I18N("ゲーセンでは実行不可/")
 SIF TEQUIP:ゲームセンター
 	COMRESULT = 0
 ;上級売春中は方針がSMで客がマゾじゃないとダメ
-コマンド実行条件 += "上級売春中は経営方針がSMで客に[マゾ]が必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"During extreme act of prostitution, the management policy is SM and the customer must have [%I18N("マゾ", "TALENT")%]/"
+ELSE
+	コマンド実行条件 += "上級売春中は経営方針がSMで客に[マゾ]が必要/"
+ENDIF
 SIF 上級売春中 && (BR:方針 != 3 || !TALENT:マゾ)
 	COMRESULT = 0
 ;足使用不可だとできない
-コマンド実行条件 += "実行者が[足使用不可]だと実行できない/"
-SIF TALENT:PLAYER:足使用不可
-	COMRESULT = 0
+IF MOD:STS
+	コマンド実行条件 += I18N("実行者が[|0|]だと実行できない/", , @"%I18N("足使用不可")%]or[%I18N("両足欠損")%")
+	SIF TALENT:PLAYER:足使用不可
+		COMRESULT = 0
+	SIF 脚欠損(PLAYER) == 2
+		COMRESULT = 0
+ELSE
+	コマンド実行条件 += I18N("実行者が[|0|]だと実行できない/", , I18N("足使用不可"))
+	SIF TALENT:PLAYER:足使用不可
+		COMRESULT = 0
+ENDIF
 ;アニマルだと無理
-コマンド実行条件 += "対象が[アニマル]の場合は実行できない/"
+コマンド実行条件 += I18N("対象が[|0|]の場合は実行できない/", ,I18N("アニマル", "TALENT"))
 SIF TALENT:アニマル
 	COMRESULT = 0
 ;妊娠中は調教者がサドもしくは禁断の知識持ちじゃないとできない
-コマンド実行条件 += "対象が妊娠中の場合、実行者が主人で[サド]or[禁断の知識]が必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"If the target is pregnant, the executor is the master and requires [%I18N("サド", "TALENT")%] or [%I18N("禁断の知識", "TALENT")%]/"
+ELSE
+	コマンド実行条件 += "対象が妊娠中の場合、実行者が主人で[サド]or[禁断の知識]が必要/"
+ENDIF
 IF TALENT:妊娠
 	SIF PLAYER != MASTER
 		COMRESULT = 0
 	SIF !TALENT:MASTER:サド && !TALENT:MASTER:禁断の知識
 		COMRESULT = 0
 ENDIF
-コマンド実行条件 += "睡眠中は実行できない/"
+コマンド実行条件 += I18N("睡眠中は実行できない/")
 SIF TEQUIP:睡眠
 	COMRESULT = 0
 
@@ -35,9 +51,20 @@ RETURNF COMRESULT
 
 @COM_踏む
 IF ABL:PLAYER:技巧 == 0
-	PRINTL 踏む
+	PRINTFORML %I18N("踏む", "TRAIN")%
 	CALL KOJO_MESSAGE_COM
 ELSEIF ABL:PLAYER:技巧 >= 1
+IF LANGUAGE == "ENG"
+	PRINTL Where do you step?
+	PRINTL [0] Stomach
+	PRINTL [1] Chest
+	SIF ABL:PLAYER:技巧 >= 2
+		PRINTL [2] Crotch
+	SIF ABL:PLAYER:技巧 >= 3
+		PRINTL [3] Head
+	SIF ABL:PLAYER:技巧 >= 4
+		PRINTL [4] Face
+ELSE
 	PRINTL どこを踏みますか？
 	PRINTL [0] 腹
 	PRINTL [1] 胸
@@ -47,23 +74,38 @@ ELSEIF ABL:PLAYER:技巧 >= 1
 		PRINTL [3] 首
 	SIF ABL:PLAYER:技巧 >= 4
 		PRINTL [4] 顔
+ENDIF
 	SIF ISSKIP()
 		RETURN
 	BINPUT
 	TFLAG:踏む部位 = RESULT
-
-	SELECTCASE TFLAG:踏む部位
-		CASE 0
-			PRINTL 腹を踏む
-		CASE 1
-			PRINTL 胸を踏む
-		CASE 2
-			PRINTL 股間を踏む
-		CASE 3
-			PRINTL 首を踏む
-		CASE 4
-			PRINTL 顔を踏む
-	ENDSELECT
+	IF LANGUAGE == "ENG"
+		SELECTCASE TFLAG:踏む部位
+			CASE 0
+				PRINTL step on the belly
+			CASE 1
+				PRINTL step on the chest
+			CASE 2
+				PRINTL step on the crotch
+			CASE 3
+				PRINTL step on the neck
+			CASE 4
+				PRINTL step on the face
+		ENDSELECT
+	ELSE
+		SELECTCASE TFLAG:踏む部位
+			CASE 0
+				PRINTL 腹を踏む
+			CASE 1
+				PRINTL 胸を踏む
+			CASE 2
+				PRINTL 股間を踏む
+			CASE 3
+				PRINTL 首を踏む
+			CASE 4
+				PRINTL 顔を踏む
+		ENDSELECT
+	ENDIF
 	CALL KOJO_MESSAGE_COM
 ENDIF
 
@@ -83,7 +125,7 @@ SELECTCASE TFLAG:踏む部位
 			SOURCE:反感 = 3500
 			SETCOLOR 255 , 0 , 0
 				FONTBOLD
-					PRINTW 流産
+					PRINTFORMW %I18N("流産")%
 				FONTREGULAR
 			RESETCOLOR
 			TFLAG:流産 = 1
@@ -112,7 +154,7 @@ SELECTCASE TFLAG:踏む部位
 			SOURCE:反感 = 2000
 			SETCOLOR 255 , 0 , 0
 				FONTBOLD
-					PRINTW 流産
+					PRINTFORMW %I18N("流産")%
 				FONTREGULAR
 			RESETCOLOR
 			TFLAG:流産 = 1
@@ -143,10 +185,15 @@ SELECTCASE TFLAG:踏む部位
 			SOURCE:屈従 = 500
 			SOURCE:逸脱 = 10000
 			SOURCE:反感 = 3000
-			PRINTFORML %CALLNAME:TARGET%の膣内に挿入されたものが破損するような音と、%CALLNAME:TARGET%の悲鳴が響き渡り
-			PRINTFORMW \@ SEX(TARGET) == 1 ? 彼 # 彼女 \@の膣からは赤く綺麗な血がだらりと漏れだしてきた……
+			IF LANGUAGE == "ENG"
+				PRINTFORML There is a cracking sound of something inside of %CALLNAME:TARGET%`s vagina has broken and %CALLNAME:TARGET%`s scream echoed.
+				PRINTFORMW Beautiful red blood was leaking from %HIS_HER(TARGET)% vagina……
+			ELSE
+				PRINTFORML %CALLNAME:TARGET%の膣内に挿入されたものが破損するような音と、%CALLNAME:TARGET%の悲鳴が響き渡り
+				PRINTFORMW \@ SEX(TARGET) == 1 ? 彼 # 彼女 \@の膣からは赤く綺麗な血がだらりと漏れだしてきた……
+			ENDIF
 			IF !TALENT:性器破損
-				PRINTL 異常経験+1
+				PRINTFORML %I18N("異常経験", "EXP")%+1
 				EXP:異常経験++
 				TALENT:性器破損 = 1
 			ENDIF
@@ -161,7 +208,7 @@ SELECTCASE TFLAG:踏む部位
 			SOURCE:反感 = 1500
 			SETCOLOR 255 , 0 , 0
 				FONTBOLD
-					PRINTW 流産
+					PRINTFORMW %I18N("流産")%
 				FONTREGULAR
 			RESETCOLOR
 			TFLAG:流産 = 1

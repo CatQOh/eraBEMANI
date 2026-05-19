@@ -6,11 +6,11 @@
 #DIM DYNAMIC 条件確定
 
 ;ゲーセンに居る場合はトイレじゃないとできない
-コマンド実行条件 += "ゲーセンではトイレじゃないと実行できない/"
+コマンド実行条件 += I18N("ゲーセンではトイレじゃないと実行できない/")
 SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
 	COMRESULT = 0
 ;上級売春中はアイテム無いとダメ
-コマンド実行条件 += "アイテム[コンドーム]が必要"
+コマンド実行条件 += I18N("アイテム[|0|]が必要/", , I18N("コンドーム", "TRAIN"))
 IF 上級売春中
 	SIF !BRITEM:コンドーム
 		COMRESULT = 0
@@ -21,7 +21,11 @@ ELSE
 ENDIF
 
 ;主人か助手が竿ありならOK
-コマンド実行条件 += "主人、助手、対象に男性器があれば実行可能"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += "Can be executed if the master, assistant, or target has male genitalia"
+ELSE
+	コマンド実行条件 += "主人、助手、対象に男性器があれば実行可能"
+ENDIF
 SIF ((PENIS(TMASTER) && !Ｐ使用不可(TMASTER)) || (PENIS(ASSI) && !Ｐ使用不可(ASSI)) || (PENIS(TARGET) && !Ｐ使用不可(TARGET))) && COMRESULT
 	条件確定 = 1
 
@@ -30,22 +34,38 @@ SIF TEQUIP:コンドーム && COMRESULT
 	条件確定 = 1
 
 ;奴隷は条件で判定する
-コマンド実行条件 += "対象の場合は/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += "If applicable/"
+ELSE
+	コマンド実行条件 += "対象の場合は/"
+ENDIF
 IF !TEQUIP:コンドーム
 	;触手調教中はダメ
-	コマンド実行条件 += "　触手召喚中は実行できない/"
+	IF LANGUAGE == "ENG"
+		コマンド実行条件 += "　Cannot be executed while summoning tentacles/"
+	ELSE
+		コマンド実行条件 += "　触手召喚中は実行できない/"
+	ENDIF
 	SIF TEQUIP:触手
 		COMRESULT = 0
 	;少なくとも半立ち状態じゃないとダメ
-	コマンド実行条件 += @"　勃起{PALAMLV:2}未満だと実行できない/"
+	IF LANGUAGE == "ENG"
+		コマンド実行条件 += @"　Cannot be executed with %I18N("勃起")%{PALAMLV:2} or less/"
+	ELSE
+		コマンド実行条件 += @"　勃起{PALAMLV:2}未満だと実行できない/"
+	ENDIF
 	SIF PALAM:勃起 < PALAMLV:2
 		COMRESULT = 0
 	;性器が露出してないとダメ
-	コマンド実行条件 += "　性器が露出していないと実行できない/"
+	コマンド実行条件 += @"　%I18N("性器が露出していないと実行できない/")%"
 	SIF !性器露出(TARGET)
 		COMRESULT = 0
 	;オナホール及び搾精コンドーム使用中は不可
-	コマンド実行条件 += "　男性期に道具使用中は実行できない"
+	IF LANGUAGE == "ENG"
+		コマンド実行条件 += "　Cannot be performed while using tools in penis"
+	ELSE
+		コマンド実行条件 += "　男性器に道具使用中は実行できない"
+	ENDIF
 	SIF Ｐ使用中(TARGET) || TEQUIP:搾精コンドーム
 		COMRESULT = 0
 ENDIF
@@ -57,7 +77,11 @@ ENDIF
 RETURNF COMRESULT
 
 @COM_コンドーム
-PRINTL コンドームを脱着する対象を選択してください
+IF LANGUAGE ==  "ENG"
+	PRINTL Select the target to put on and take off the condom
+ELSE
+	PRINTL コンドームを脱着する対象を選択してください
+ENDIF
 SIF PENIS(TMASTER)
 	PRINTFORML [0] %CALLNAME:TMASTER%
 SIF PENIS(ASSI)
@@ -67,8 +91,12 @@ IF PENIS(TARGET) && !TEQUIP:触手 && !TEQUIP:搾精コンドーム && !TEQUIP:�
 	SIF !TEQUIP:下半身下着 && ((!TEQUIP:下半身上着 && !TEQUIP:全身上着) || CFLAG:挿入可)
 		PRINTFORML [2] %CALLNAME:TARGET%
 ENDIF
-PRINTL [3] やめる
-PRINTL [4] コンドーム自動装着設定
+PRINTFORML [3] %I18N("やめる")%
+IF LANGUAGE == "ENG"
+	PRINTL [4] Automatic condom using setting
+ELSE
+	PRINTL [4] コンドーム自動装着設定
+ENDIF
 SIF ISSKIP()
 	RETURN
 BINPUT
@@ -136,7 +164,7 @@ RETURN 1
 ;-------------------------------------------------
 @EQUIP_COM_コンドーム
 ;コンドーム装備中
-PRINTL ＜コンドーム装備中＞
+PRINTFORML ＜%I18N("コンドーム", "TRAIN")%%I18N("装備中")%＞
 
 RETURN 1
 
@@ -144,25 +172,26 @@ RETURN 1
 SIF ITEM:コンドーム == 0
 	RETURN 0
 DRAWLINE
-PRINTL コンドームの設定を行う対象を選択してください
+IF LANGUAGE == "ENG"
+	PRINTL Please select the target for condom settings
+ELSE
+	PRINTL コンドームの設定を行う対象を選択してください
+ENDIF
 PRINTL  
 IF PENIS(TMASTER)
 	PRINTFORM [0] - %CALLNAME:TMASTER%
-	IF TEQUIP:TMASTER:コンドーム && GETBIT(FLAG:避妊具設定, 0)
-		PRINTL (装着済み、常備)
-	ELSEIF TEQUIP:TMASTER:コンドーム
-		PRINTL (装着済み)
+	IF LANGUAGE == "ENG"
+		IF TEQUIP:TMASTER:コンドーム && GETBIT(FLAG:避妊具設定, 0)
+			PRINTL (Installed and ready)
+		ELSEIF TEQUIP:TMASTER:コンドーム
+			PRINTL (Installed)
+		ELSE
+			PRINTL (Not installed)
+		ENDIF
 	ELSE
-		PRINTL (未装着)
-	ENDIF
-ENDIF
-
-IF ASSI >= 0
-	IF PENIS(ASSI)
-		PRINTFORM [1] - %CALLNAME:ASSI%
-		IF TEQUIP:ASSI:コンドーム && GETBIT(FLAG:避妊具設定, 1)
+		IF TEQUIP:TMASTER:コンドーム && GETBIT(FLAG:避妊具設定, 0)
 			PRINTL (装着済み、常備)
-		ELSEIF TEQUIP:ASSI:コンドーム
+		ELSEIF TEQUIP:TMASTER:コンドーム
 			PRINTL (装着済み)
 		ELSE
 			PRINTL (未装着)
@@ -170,34 +199,81 @@ IF ASSI >= 0
 	ENDIF
 ENDIF
 
-IF PENIS(TARGET)
-	PRINTFORM [2] - %CALLNAME:TARGET%
-	IF TEQUIP:コンドーム && GETBIT(FLAG:避妊具設定, 2)
-		PRINTL (装着済み、常備)
-	ELSEIF TEQUIP:コンドーム
-		PRINTL (装着済み)
-	ELSEIF TEQUIP:搾精コンドーム && GETBIT(FLAG:避妊具設定, 3)
-		PRINTL (搾精コンドーム装着済み、常備)
-	ELSEIF TEQUIP:搾精コンドーム
-		PRINTL (搾精コンドーム装着済み)
-	ELSE
-		PRINTL (未装着)
+IF ASSI >= 0
+	IF PENIS(ASSI)
+		PRINTFORM [1] - %CALLNAME:ASSI%
+		IF LANGUAGE == "ENG"
+			IF TEQUIP:ASSI:コンドーム && GETBIT(FLAG:避妊具設定, 1)
+				PRINTL (Installed and ready)
+			ELSEIF TEQUIP:ASSI:コンドーム
+				PRINTL (Installed)
+			ELSE
+				PRINTL (Not installed)
+			ENDIF
+		ELSE
+			IF TEQUIP:ASSI:コンドーム && GETBIT(FLAG:避妊具設定, 1)
+				PRINTL (装着済み、常備)
+			ELSEIF TEQUIP:ASSI:コンドーム
+				PRINTL (装着済み)
+			ELSE
+				PRINTL (未装着)
+			ENDIF
+		ENDIF
 	ENDIF
 ENDIF
 
-PRINTL [3] - 戻る
+IF PENIS(TARGET)
+	PRINTFORM [2] - %CALLNAME:TARGET%
+	IF LANGUAGE == "ENG"
+		IF TEQUIP:コンドーム && GETBIT(FLAG:避妊具設定, 2)
+			PRINTL (Installed and ready)
+		ELSEIF TEQUIP:コンドーム
+			PRINTL (Installed)
+		ELSEIF TEQUIP:搾精コンドーム && GETBIT(FLAG:避妊具設定, 3)
+			PRINTL (Sperm condom installed and always on hand)
+		ELSEIF TEQUIP:搾精コンドーム
+			PRINTL (Ejaculation condom installed)
+		ELSE
+			PRINTL (Not installed)
+		ENDIF
+	ELSE
+		IF TEQUIP:コンドーム && GETBIT(FLAG:避妊具設定, 2)
+			PRINTL (装着済み、常備)
+		ELSEIF TEQUIP:コンドーム
+			PRINTL (装着済み)
+		ELSEIF TEQUIP:搾精コンドーム && GETBIT(FLAG:避妊具設定, 3)
+			PRINTL (搾精コンドーム装着済み、常備)
+		ELSEIF TEQUIP:搾精コンドーム
+			PRINTL (搾精コンドーム装着済み)
+		ELSE
+			PRINTL (未装着)
+		ENDIF
+	ENDIF
+ENDIF
+
+PRINTFORML [3] - %I18N("戻る")%
 
 BINPUT
 SELECTCASE RESULT
 	CASE 0
-		PRINTL 避妊具の設定をしてください
-		PRINTL  
-		IF GETBIT(FLAG:避妊具設定, 0)
-			PRINTL [0] 常に避妊しない
+		IF LANGUAGE == "ENG"
+			PRINTL Please set up your contraceptives
+			PRINTL  
+			IF GETBIT(FLAG:避妊具設定, 0)
+				PRINTL [0] not always using contraception
+			ELSE
+				PRINTL [0] always use contraception
+			ENDIF
 		ELSE
-			PRINTL [0] 常に避妊する
+			PRINTL 避妊具の設定をしてください
+			PRINTL  
+			IF GETBIT(FLAG:避妊具設定, 0)
+				PRINTL [0] 常に避妊しない
+			ELSE
+				PRINTL [0] 常に避妊する
+			ENDIF
 		ENDIF
-		PRINTL [1] 戻る
+		PRINTFORML [1] %I18N("戻る")%
 		BINPUT
 		IF RESULT == 0
 			INVERTBIT FLAG:避妊具設定, 0
@@ -212,14 +288,24 @@ SELECTCASE RESULT
 		ENDIF
 		RESTART
 	CASE 1
-		PRINTL 避妊具の設定をしてください
-		PRINTL  
-		IF GETBIT(FLAG:避妊具設定, 1)
-			PRINTL [0] 常に避妊しない
+		IF LANGUAGE == "ENG"
+			PRINTL Please set up your contraceptives
+			PRINTL  
+			IF GETBIT(FLAG:避妊具設定, 0)
+				PRINTL [0] not always using contraception
+			ELSE
+				PRINTL [0] always use contraception
+			ENDIF
 		ELSE
-			PRINTL [0] 常に避妊する
+			PRINTL 避妊具の設定をしてください
+			PRINTL  
+			IF GETBIT(FLAG:避妊具設定, 0)
+				PRINTL [0] 常に避妊しない
+			ELSE
+				PRINTL [0] 常に避妊する
+			ENDIF
 		ENDIF
-		PRINTL [1] 戻る
+		PRINTFORML [1] %I18N("戻る")%
 		BINPUT
 		IF RESULT == 0
 			INVERTBIT FLAG:避妊具設定, 1
@@ -234,16 +320,28 @@ SELECTCASE RESULT
 		ENDIF
 		RESTART
 	CASE 2
-		PRINTL 避妊具の設定をしてください
-		PRINTL  
-		IF GETBIT(FLAG:避妊具設定, 2) || GETBIT(FLAG:避妊具設定, 3)
-			PRINTL [0] 常に何も付けない
-		ELSE 
-			PRINTL [0] 常に避妊する
-			SIF !上級売春中 && ITEM:搾精コンドーム
-				PRINTL [1] 常に搾精コンドームを付ける
+		IF LANGUAGE == "ENG"
+			PRINTL Please set up your contraceptives
+			PRINTL  
+			IF GETBIT(FLAG:避妊具設定, 2) || GETBIT(FLAG:避妊具設定, 3)
+				PRINTL [0] always don`t use anything
+			ELSE 
+				PRINTL [0] always use contraception
+				SIF !上級売春中 && ITEM:搾精コンドーム
+					PRINTL [1] Always wear a condom
+			ENDIF
+		ELSE
+			PRINTL 避妊具の設定をしてください
+			PRINTL  
+			IF GETBIT(FLAG:避妊具設定, 2) || GETBIT(FLAG:避妊具設定, 3)
+				PRINTL [0] 常に何も付けない
+			ELSE 
+				PRINTL [0] 常に避妊する
+				SIF !上級売春中 && ITEM:搾精コンドーム
+					PRINTL [1] 常に搾精コンドームを付ける
+			ENDIF
 		ENDIF
-		PRINTL [2] 戻る
+		PRINTFORML [2] %I18N("戻る")%
 		BINPUT
 		SELECTCASE RESULT
 			CASE 0

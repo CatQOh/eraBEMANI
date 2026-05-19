@@ -73,16 +73,36 @@ ELSE
 ENDIF
 SELECTCASE 配属先
 	CASE "農業", "畜産業", "温泉探索", "博物館"
-		PRINTL 　配属可能条件：無条件
+		PRINT 　配属可能条件：無条件
 	CASE "娼館", "ゲーセン売春"
-		PRINTL 　配属可能条件：売却可能であること
+		PRINT 　配属可能条件：売却可能であること
 	CASE "監禁室"
-		PRINTL 　配属可能条件：淫乱系陥落か服従系陥落であること
+		PRINT 　配属可能条件：淫乱系陥落か服従系陥落であること
 	CASE "飲食店", "ゲームセンター", "出版社"
-		PRINTL 　配属可能条件：従順or奉仕精神Lv3以上
+		PRINT 　配属可能条件：従順or奉仕精神Lv3以上
 	CASEELSE
-		PRINTL 　配属可能条件：助手可能であること
+		PRINT 　配属可能条件：助手可能であること
 ENDSELECT
+
+IF MOD:STS
+	SELECTCASE 配属先
+		;娼館は欠損あっても対応可能
+		CASE "娼館"
+			PRINTL 
+		;五体満足でないと難しい
+		CASE "芸能プロダクション", "医務室", "農業", "畜産業", "温泉探索", "監禁室"
+			PRINTL 　四肢に欠損がないこと
+		;作業や移動スペースを考えると両足と片腕はほしい
+		CASE "ゲームセンター", "ゲーセン売春", "調理室", "飲食店"
+			PRINTL 　両足と片腕が温存されていること
+		;それ以外でも片腕はほしい
+		CASEELSE
+			PRINTL 　片腕が温存されていること
+	ENDSELECT
+ELSE 
+	PRINTL 
+ENDIF
+
 
 配属可能人数 = 0
 
@@ -106,6 +126,27 @@ FOR LCOUNT, 0, CHARANUM
 	;出版社配属中で編集中は選べない
 	SIF CSTR:LCOUNT:配属 == "出版社" && 雑誌編集中()
 		CONTINUE
+
+	IF MOD:STS
+		SELECTCASE 配属先
+			;娼館は欠損あっても対応可能
+			CASE "娼館"
+			;五体満足でないと難しい
+			CASE "芸能プロダクション", "医務室", "農業", "畜産業", "温泉探索", "監禁室"
+				SIF 腕欠損(LCOUNT) || 脚欠損(LCOUNT)
+					CONTINUE
+			;作業や移動スペースを考えると両足と片腕はほしい
+			CASE "ゲームセンター", "ゲーセン売春", "調理室", "飲食店"
+				SIF 腕欠損(LCOUNT) == 2 || 脚欠損(LCOUNT)
+					CONTINUE
+			;それ以外でも片腕はほしい
+			CASEELSE
+				SIF 腕欠損(LCOUNT) == 2
+					CONTINUE
+		ENDSELECT
+	ENDIF
+
+
 	;パートナーなら配属条件無視
 	SIF GETCHARANAME(パートナー) == LCOUNT
 		GOTO 配属条件無視

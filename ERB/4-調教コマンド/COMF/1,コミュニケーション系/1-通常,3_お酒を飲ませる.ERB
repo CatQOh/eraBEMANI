@@ -5,37 +5,45 @@
 #FUNCTION
 #DIM DYNAMIC LCOUNT
 ;ゲーセンに居る場合はできない
-コマンド実行条件 += "ゲーセンではフードコートが無いと不可/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += "You can`t go to an arcade without a food court./"
+ELSE
+	コマンド実行条件 += "ゲーセンではフードコートが無いと不可/"
+ENDIF
 SIF TEQUIP:ゲームセンター && !GC:フードコート
 	COMRESULT = 0
 ;上級売春中は不可
-コマンド実行条件 += "上級売春中は実行不可/"
+コマンド実行条件 += I18N("上級売春中は実行不可/")
 SIF 上級売春中
 	COMRESULT = 0
 ;拘束中はダメ
-コマンド実行条件 += "拘束中は実行できない/"
+コマンド実行条件 += I18N("拘束中は実行できない/")
 SIF TEQUIP:アイマスク || TEQUIP:縄 || TEQUIP:ボールギャグ || TEQUIP:触手
 	COMRESULT = 0
 ;アニマルだと無理
-コマンド実行条件 += "対象が[アニマル]の場合は実行できない/"
+コマンド実行条件 += I18N("対象が[|0|]の場合は実行できない/", ,I18N("アニマル", "TALENT"))
 SIF TALENT:アニマル
 	COMRESULT = 0
 
 ;妊娠中は飲ませされない
-コマンド実行条件 += "対象が妊娠中は実行できない/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += "Cannot be executed while the target is pregnant/"
+ELSE
+	コマンド実行条件 += I18N("対象が妊娠中は実行できない/")
+ENDIF
 SIF TALENT:妊娠
 	COMRESULT = 0
 
 ;機械と無機物は飲めない
-コマンド実行条件 += "対象が[無機物]or[機械]だと実行できない/"
+コマンド実行条件 += I18N("対象が[無機物]or[機械]だと実行できない/")
 SIF TALENT:無機物 || CSTR:種族 == "機械"
 	COMRESULT = 0
 
-コマンド実行条件 += "睡眠中は実行できない/"
+コマンド実行条件 += I18N("睡眠中は実行できない/")
 SIF TEQUIP:睡眠
 	COMRESULT = 0
 IF MOD:STS
-	コマンド実行条件 += "屍姦中は実行できない/"
+	コマンド実行条件 += I18N("屍姦中は実行できない/")
 	SIF CFLAG:死亡
 		COMRESULT = 0
 ENDIF
@@ -63,11 +71,19 @@ RETURNF COMRESULT
 VARSET 材料, 0
 
 IF TEQUIP:ゲームセンター
-	CALL PASELIL, @"何を注文しますか？(各300＄)"
-	PRINTL [1] 生ビール
-	PRINTL [2] ハイボール
-	PRINTL [3] レモンサワー
-	PRINTL [100] やっぱりやめる
+	IF LANGUAGE == "ENG"
+		CALL PASELIL, @"What would you like to order？(300＄ each)"
+		PRINTL [1] Draft beer
+		PRINTL [2] High ball
+		PRINTL [3] Lemon sour
+		PRINTL [100] let's stop after all
+	ELSE
+		CALL PASELIL, @"何を注文しますか？(各300＄)"
+		PRINTL [1] 生ビール
+		PRINTL [2] ハイボール
+		PRINTL [3] レモンサワー
+		PRINTL [100] やっぱりやめる
+	ENDIF
 	BINPUT
 	SELECTCASE RESULT
 		CASE 1
@@ -83,64 +99,117 @@ IF TEQUIP:ゲームセンター
 			製法 = カクテル
 			ALC = 3
 		CASE 100
-			PRINTFORMW お酒を飲ませるのを止めました
+			IF LANGUAGE == "ENG"
+				PRINTFORMW Serving alcohol was cancelled
+			ELSE
+				PRINTFORMW お酒を飲ませるのを止めました
+			ENDIF
 			RETURN 0
 	ENDSELECT
 	GOTO 判定
 ENDIF
+PRINTFORML %I18N("何を飲ませますか")%？
+IF LANGUAGE == "ENG"
+	SIF ITEM:スーパードライ || ITEM:一番搾り || ITEM:プレミアムモルツ || ITEM:ヱビス || ITEM:ほろよい || ITEM:ストロングゼロ
+		PRINTL [1] Canned drinks
+	SIF ITEM:皆伝; || レシピ判定("自家醸造日本酒") == 2
+		PRINTL [2] All stories(Japanese Sake)
+	SIF ITEM:アルパカ; || レシピ判定("自家製ワイン") == 2
+		PRINTL [3] Alpaca(wine)
+	SIF ITEM:魔王
+		PRINTL [4] Demon King(Shochu)
+	SIF ITEM:倉吉; || レシピ判定("自家製ウイスキー") == 2
+		PRINTL [5] Kurayoshi(whiskey)
+	SIF ITEM:スペリオール
+		PRINTL [6] Superior(rum)
+	SIF ITEM:ビーフィーター
+		PRINTL [7] Beefeater(gin)
+	SIF ITEM:アブソルート
+		PRINTL [8] Absolute(Vodka)
+	SIF ITEM:カルーア
+		PRINTL [9] Kahlua
+	SIF MONTH == 1 && DAYS == 1
+		PRINTL [10] Otoso(Alc.2%)
+	SIF レシピ判定("自家醸造日本酒") == 2
+		PRINTL [11] Homemade sake
+	SIF レシピ判定("自家製ワイン") == 2
+		PRINTL [12] Homemade wine
+	SIF レシピ判定("自家製ウイスキー") == 2
+		PRINTL [13] Homemade whiskey
 
-PRINTL 何を飲ませますか？
-SIF ITEM:スーパードライ || ITEM:一番搾り || ITEM:プレミアムモルツ || ITEM:ヱビス || ITEM:ほろよい || ITEM:ストロングゼロ
-	PRINTL [1] 缶飲料類
-SIF ITEM:皆伝; || レシピ判定("自家醸造日本酒") == 2
-	PRINTL [2] 皆伝(日本酒)
-SIF ITEM:アルパカ; || レシピ判定("自家製ワイン") == 2
-	PRINTL [3] アルパカ(ワイン)
-SIF ITEM:魔王
-	PRINTL [4] 魔王(焼酎)
-SIF ITEM:倉吉; || レシピ判定("自家製ウイスキー") == 2
-	PRINTL [5] 倉吉(ウイスキー)
-SIF ITEM:スペリオール
-	PRINTL [6] スペリオール(ラム)
-SIF ITEM:ビーフィーター
-	PRINTL [7] ビーフィーター(ジン)
-SIF ITEM:アブソルート
-	PRINTL [8] アブソルート(ウォッカ)
-SIF ITEM:カルーア
-	PRINTL [9] カルーア
-SIF MONTH == 1 && DAYS == 1
-	PRINTL [10] お屠蘇(Alc.2%)
-SIF レシピ判定("自家醸造日本酒") == 2
-	PRINTL [11] 自家醸造日本酒
-SIF レシピ判定("自家製ワイン") == 2
-	PRINTL [12] 自家製ワイン
-SIF レシピ判定("自家製ウイスキー") == 2
-	PRINTL [13] 自家製ウイスキー
+	;SIF ITEM:スピリタス
+	;	PRINTL [10] スピリタス
+	PRINTL [100] Better to stop after all
+ELSE
+	SIF ITEM:スーパードライ || ITEM:一番搾り || ITEM:プレミアムモルツ || ITEM:ヱビス || ITEM:ほろよい || ITEM:ストロングゼロ
+		PRINTL [1] 缶飲料類
+	SIF ITEM:皆伝; || レシピ判定("自家醸造日本酒") == 2
+		PRINTL [2] 皆伝(日本酒)
+	SIF ITEM:アルパカ; || レシピ判定("自家製ワイン") == 2
+		PRINTL [3] アルパカ(ワイン)
+	SIF ITEM:魔王
+		PRINTL [4] 魔王(焼酎)
+	SIF ITEM:倉吉; || レシピ判定("自家製ウイスキー") == 2
+		PRINTL [5] 倉吉(ウイスキー)
+	SIF ITEM:スペリオール
+		PRINTL [6] スペリオール(ラム)
+	SIF ITEM:ビーフィーター
+		PRINTL [7] ビーフィーター(ジン)
+	SIF ITEM:アブソルート
+		PRINTL [8] アブソルート(ウォッカ)
+	SIF ITEM:カルーア
+		PRINTL [9] カルーア
+	SIF MONTH == 1 && DAYS == 1
+		PRINTL [10] お屠蘇(Alc.2%)
+	SIF レシピ判定("自家醸造日本酒") == 2
+		PRINTL [11] 自家醸造日本酒
+	SIF レシピ判定("自家製ワイン") == 2
+		PRINTL [12] 自家製ワイン
+	SIF レシピ判定("自家製ウイスキー") == 2
+		PRINTL [13] 自家製ウイスキー
 
-;SIF ITEM:スピリタス
-;	PRINTL [10] スピリタス
-PRINTL [100] やっぱりやめる
-
+	;SIF ITEM:スピリタス
+	;	PRINTL [10] スピリタス
+	PRINTL [100] やっぱりやめる
+ENDIF
 SIF ISSKIP()
 	RETURN
 BINPUT
 SELECTCASE RESULT
 	CASE 1
-		PRINTL 何を飲ませますか？
-		SIF ITEM:スーパードライ
-			PRINTL [0] スーパードライ(Alc.5%)
-		SIF ITEM:一番搾り
-			PRINTL [1] 一番搾り(Alc.5%)
-		SIF ITEM:プレミアムモルツ
-			PRINTL [2] プレミアムモルツ(Alc.5%)
-		SIF ITEM:ヱビス
-			PRINTL [3] ヱビス(Alc.5%)
-		SIF ITEM:ほろよい
-			PRINTL [4] ほろよい(Alc.3%)
-		SIF ITEM:ストロングゼロ
-			PRINTL [5] ストロングゼロ(Alc.9%)
-		SIF レシピ判定("自家醸造ビール") == 2
-			PRINTL [6] 自家醸造ビール(Alc.5%)
+		IF LANGUAGE == "ENG"
+			PRINTL Which drink do you want to serve？
+			SIF ITEM:スーパードライ
+				PRINTL [0] Superdry(Alc.5%)
+			SIF ITEM:一番搾り
+				PRINTL [1] Ichiban Shibori(Alc.5%)
+			SIF ITEM:プレミアムモルツ
+				PRINTL [2] Premium Malt`s(Alc.5%)
+			SIF ITEM:ヱビス
+				PRINTL [3] Yebisu(Alc.5%)
+			SIF ITEM:ほろよい
+				PRINTL [4] Horoyoi(Alc.3%)
+			SIF ITEM:ストロングゼロ
+				PRINTL [5] Strong zero(Alc.9%)
+			SIF レシピ判定("自家醸造ビール") == 2
+				PRINTL [6] Home brewed beer(Alc.5%)
+		ELSE
+			PRINTFORML %I18N("何を飲ませますか")%？
+			SIF ITEM:スーパードライ
+				PRINTL [0] スーパードライ(Alc.5%)
+			SIF ITEM:一番搾り
+				PRINTL [1] 一番搾り(Alc.5%)
+			SIF ITEM:プレミアムモルツ
+				PRINTL [2] プレミアムモルツ(Alc.5%)
+			SIF ITEM:ヱビス
+				PRINTL [3] ヱビス(Alc.5%)
+			SIF ITEM:ほろよい
+				PRINTL [4] ほろよい(Alc.3%)
+			SIF ITEM:ストロングゼロ
+				PRINTL [5] ストロングゼロ(Alc.9%)
+			SIF レシピ判定("自家醸造ビール") == 2
+				PRINTL [6] 自家醸造ビール(Alc.5%)
+		ENDIF
 		BINPUT
 		SELECTCASE RESULT
 			CASE 0 TO 3, 6
@@ -150,20 +219,37 @@ SELECTCASE RESULT
 					お酒 = RESULT+250
 				ENDIF
 				IF ITEM:ジンジャーエール || ITEM:レモンジュース || ITEM:アルパカ || レシピ判定("レモンジュース") == 2 || ITEM:トマトジュース || レシピ判定("トマトジュース") == 2 || レシピ判定("自家製ワイン")
-					IF お酒 == -1
-						PRINTL 自家醸造ビールをどのように飲ませますか？
+					IF LANGUAGE == "ENG"
+						IF お酒 == -1
+							PRINTL How do you serve home-brewed beer？
+						ELSE
+							PRINTFORML Do you want to serve %I18N(ITEMNAME:お酒)%？
+						ENDIF
+						PRINTL [1] As it is(Alc.5%)
+						SIF ITEM:ジンジャーエール
+							PRINTL [2] Shandygaff(Alc.3%)
+						SIF ITEM:レモンジュース || レシピ判定("レモンジュース") == 2
+							PRINTL [3] Panache(Alc.3%)
+						SIF ITEM:アルパカ || レシピ判定("自家製ワイン") == 2
+							PRINTL [4] Beer spritzer(Alc.8%)
+						SIF ITEM:トマトジュース || レシピ判定("トマトジュース") == 2
+							PRINTL [5] Red eye(Alc.3%)
 					ELSE
-						PRINTFORML %ITEMNAME:お酒%をどのように飲ませますか？
+						IF お酒 == -1
+							PRINTL 自家醸造ビールをどのように飲ませますか？
+						ELSE
+							PRINTFORML %ITEMNAME:お酒%をどのように飲ませますか？
+						ENDIF
+						PRINTL [1] そのまま(Alc.5%)
+						SIF ITEM:ジンジャーエール
+							PRINTL [2] シャンディガフ(Alc.3%)
+						SIF ITEM:レモンジュース || レシピ判定("レモンジュース") == 2
+							PRINTL [3] パナシェ(Alc.3%)
+						SIF ITEM:アルパカ || レシピ判定("自家製ワイン") == 2
+							PRINTL [4] ビアスプリッツァー(Alc.8%)
+						SIF ITEM:トマトジュース || レシピ判定("トマトジュース") == 2
+							PRINTL [5] レッドアイ(Alc.3%)
 					ENDIF
-					PRINTL [1] そのまま(Alc.5%)
-					SIF ITEM:ジンジャーエール
-						PRINTL [2] シャンディガフ(Alc.3%)
-					SIF ITEM:レモンジュース || レシピ判定("レモンジュース") == 2
-						PRINTL [3] パナシェ(Alc.3%)
-					SIF ITEM:アルパカ || レシピ判定("自家製ワイン") == 2
-						PRINTL [4] ビアスプリッツァー(Alc.8%)
-					SIF ITEM:トマトジュース || レシピ判定("トマトジュース") == 2
-						PRINTL [5] レッドアイ(Alc.3%)
 					BINPUT
 					SELECTCASE RESULT
 						CASE 1
@@ -215,17 +301,31 @@ SELECTCASE RESULT
 			;	酒名 = 自家醸造ビール
 		ENDSELECT
 	CASE 2, 11
-		IF RESULT == 11
-			お酒 = -1
-			PRINTL 自家醸造日本酒をどのように飲ませますか？
+		IF LANGUAGE == "ENG"
+			IF RESULT == 11
+				お酒 = -1
+				PRINTL How do you serve home-brewed sake？
+			ELSE
+				お酒 = GETNUM(ITEM, "皆伝")
+				PRINTL How do you serve a Kaiden drink？
+			ENDIF
+			PRINTL [1] As is(Alc.12%)
+			PRINTL [2] Hot sake(Alc.12%)
+			SIF ITEM:ライムジュース || レシピ判定("ライムジュース") == 2
+				PRINTL [3] Samurai rock(Alc.3～10%)
 		ELSE
-			お酒 = GETNUM(ITEM, "皆伝")
-			PRINTL 皆伝をどのように飲ませますか？
+			IF RESULT == 11
+				お酒 = -1
+				PRINTL 自家醸造日本酒をどのように飲ませますか？
+			ELSE
+				お酒 = GETNUM(ITEM, "皆伝")
+				PRINTL 皆伝をどのように飲ませますか？
+			ENDIF
+			PRINTL [1] そのまま(Alc.12%)
+			PRINTL [2] 熱燗(Alc.12%)
+			SIF ITEM:ライムジュース || レシピ判定("ライムジュース") == 2
+				PRINTL [3] サムライロック(Alc.3～10%)
 		ENDIF
-		PRINTL [1] そのまま(Alc.12%)
-		PRINTL [2] 熱燗(Alc.12%)
-		SIF ITEM:ライムジュース || レシピ判定("ライムジュース") == 2
-			PRINTL [3] サムライロック(Alc.3～10%)
 		BINPUT
 		SELECTCASE RESULT
 			CASE 1
@@ -246,7 +346,7 @@ SELECTCASE RESULT
 			CASE 3
 				製法 = ライム割り
 				酒名 = サムライロック
-				PRINTL アルコール度数を決めてください(3～10%)
+				PRINTFORML %I18N("アルコール度数を決めてください")%(3～10\%)
 				CALL TWO_DIGIT, 10, "%", 3
 				ALC = RESULT
 		ENDSELECT
@@ -261,21 +361,39 @@ SELECTCASE RESULT
 		ALC = 12
 	CASE 4
 		お酒 = GETNUM(ITEM, "魔王")
-		PRINTL 魔王をどのように飲ませますか？
-		PRINTL [1] 水割り(Alc.5～20%)
-		PRINTL [2] お湯割り(Alc.5～20%)
-		PRINTL [3] ロック(Alc.22%)
-		PRINTL [4] ストレート(Alc.25%)
-		SIF ITEM:炭酸水
-			PRINTL [5] 焼酎ハイボール(Alc.5～20%)
-		SIF ITEM:コーラ
-			PRINTL [6] 焼酎コーク(Alc.5～20%)
-		SIF ITEM:ジンジャーエール
-			PRINTL [7] 焼酎ジンジャー(Alc.5～20%)
-		SIF リソース:精液 >= 100
-			PRINTL [8] 精液割り(Alc.5～20%)
-		SIF リソース:母乳 >= 100
-			PRINTL [9] 母乳割り(Alc.5～20%)
+		IF LANGUAGE == "ENG"
+			PRINTL How do you make the Demon King drink？
+			PRINTL [1] Water split(Alc.5～20%)
+			PRINTL [2] Warm water(Alc.5～20%)
+			PRINTL [3] Rock(Alc.22%)
+			PRINTL [4] Straight(Alc.25%)
+			SIF ITEM:炭酸水
+				PRINTL [5] Shochu highball(Alc.5～20%)
+			SIF ITEM:コーラ
+				PRINTL [6] Shochu coke(Alc.5～20%)
+			SIF ITEM:ジンジャーエール
+				PRINTL [7] Shochu ginger(Alc.5～20%)
+			SIF リソース:精液 >= 100
+				PRINTL [8] semen split(Alc.5～20%)
+			SIF リソース:母乳 >= 100
+				PRINTL [9] Breast milk split(Alc.5～20%)
+		ELSE
+			PRINTL 魔王をどのように飲ませますか？
+			PRINTL [1] 水割り(Alc.5～20%)
+			PRINTL [2] お湯割り(Alc.5～20%)
+			PRINTL [3] ロック(Alc.22%)
+			PRINTL [4] ストレート(Alc.25%)
+			SIF ITEM:炭酸水
+				PRINTL [5] 焼酎ハイボール(Alc.5～20%)
+			SIF ITEM:コーラ
+				PRINTL [6] 焼酎コーク(Alc.5～20%)
+			SIF ITEM:ジンジャーエール
+				PRINTL [7] 焼酎ジンジャー(Alc.5～20%)
+			SIF リソース:精液 >= 100
+				PRINTL [8] 精液割り(Alc.5～20%)
+			SIF リソース:母乳 >= 100
+				PRINTL [9] 母乳割り(Alc.5～20%)
+		ENDIF
 		BINPUT
 		SELECTCASE RESULT
 			CASE 1, 2, 5, 6, 7, 8, 9
@@ -305,7 +423,7 @@ SELECTCASE RESULT
 						製法 = 粘液混ぜ
 						酒名 = 焼酎ゼリー
 				ENDSELECT
-				PRINTL アルコール度数を決めてください(5～20%)
+				PRINTFORML %I18N("アルコール度数を決めてください")%(5～20\%)
 				CALL TWO_DIGIT, 20, "%", 5
 				ALC = RESULT
 			CASE 3
@@ -318,27 +436,54 @@ SELECTCASE RESULT
 	CASE 5, 13
 		IF RESULT == 13
 			お酒 = -1
-			PRINTL 自家製ウイスキーをどのように飲ませますか？
+			IF LANGUAGE == "ENG"
+				PRINTL How do you drink homemade whiskey?
+			ELSE
+				PRINTL 自家製ウイスキーをどのように飲ませますか？
+			ENDIF
 		ELSE
 			お酒 = GETNUM(ITEM, "倉吉")
-			PRINTL 倉吉をどのように飲ませますか？
+			IF LANGUAGE == "ENG"
+				PRINTL How do you make Kurayoshi drink?
+			ELSE
+				PRINTL 倉吉をどのように飲ませますか？
+			ENDIF
 		ENDIF
-		PRINTL [1] 水割り(Alc.9～35%)
-		PRINTL [2] お湯割り(Alc.9～35%)
-		PRINTL [3] ロック(Alc.37%)
-		PRINTL [4] ストレート(Alc.40%)
-		SIF ITEM:炭酸水
-			PRINTL [5] ハイボール(Alc.9～35%)
-		SIF ITEM:コーラ
-			PRINTL [6] コークハイ(Alc.9～35%)
-		SIF ITEM:ジンジャーエール
-			PRINTL [7] ジンジャーハイ(Alc.9～35%)
-		SIF リソース:精液 >= 100
-			PRINTL [8] ザーメンハイボール(Alc.9～35%)
-		SIF リソース:母乳 >= 100
-			PRINTL [9] 母乳ハイボール(Alc.9～35%)
-		SIF リソース:粘液 >= 100
-			PRINTL [10] ウイスキージュレ(Alc.9～35%)
+		IF LANGUAGE == "ENG"
+			PRINTL [1] Water split(Alc.9～35%)
+			PRINTL [2] Warm water(Alc.9～35%)
+			PRINTL [3] Rock(Alc.37%)
+			PRINTL [4] Straight(Alc.40%)
+			SIF ITEM:炭酸水
+				PRINTL [5] Highball(Alc.9～35%)
+			SIF ITEM:コーラ
+				PRINTL [6] Coke high(Alc.9～35%)
+			SIF ITEM:ジンジャーエール
+				PRINTL [7] Ginger high(Alc.9～35%)
+			SIF リソース:精液 >= 100
+				PRINTL [8] Semen highball(Alc.9～35%)
+			SIF リソース:母乳 >= 100
+				PRINTL [9] Breast milk highball(Alc.9～35%)
+			SIF リソース:粘液 >= 100
+				PRINTL [10] Whiskey jelly(Alc.9～35%)
+		ELSE
+			PRINTL [1] 水割り(Alc.9～35%)
+			PRINTL [2] お湯割り(Alc.9～35%)
+			PRINTL [3] ロック(Alc.37%)
+			PRINTL [4] ストレート(Alc.40%)
+			SIF ITEM:炭酸水
+				PRINTL [5] ハイボール(Alc.9～35%)
+			SIF ITEM:コーラ
+				PRINTL [6] コークハイ(Alc.9～35%)
+			SIF ITEM:ジンジャーエール
+				PRINTL [7] ジンジャーハイ(Alc.9～35%)
+			SIF リソース:精液 >= 100
+				PRINTL [8] ザーメンハイボール(Alc.9～35%)
+			SIF リソース:母乳 >= 100
+				PRINTL [9] 母乳ハイボール(Alc.9～35%)
+			SIF リソース:粘液 >= 100
+				PRINTL [10] ウイスキージュレ(Alc.9～35%)
+		ENDIF
 		BINPUT
 		SELECTCASE RESULT
 			CASE 1, 2, 5, 6, 7, 8, 9, 10
@@ -368,7 +513,7 @@ SELECTCASE RESULT
 						製法 = 粘液混ぜ
 						酒名 = ウイスキージュレ
 				ENDSELECT
-				PRINTL アルコール度数を決めてください(9～35%)
+				PRINTFORML %I18N("アルコール度数を決めてください")%(9～35\%)
 				CALL TWO_DIGIT, 35, "%", 9
 				ALC = RESULT
 			CASE 3
@@ -388,19 +533,35 @@ SELECTCASE RESULT
 		ENDSELECT
 	CASE 6
 		お酒 = GETNUM(ITEM, "スペリオール")
-		PRINTL スペリオールをどのように飲ませますか？
-		PRINTL [1] ストレート(Alc.40%)
-		PRINTL [2] ロック(Alc.37%)
-		SIF ITEM:コーラ
-			PRINTL [3] キューバリバー(Alc.9～35%)
-		SIF ITEM:ライムジュース || レシピ判定("ライムジュース") == 2
-			PRINTL [4] ダイキリ(Alc.20～35%)
-		SIF ITEM:トニックウォーター
-			PRINTL [5] ラムトニック(Alc.9～35%)
-		SIF (ITEM:レモンジュース || レシピ判定("レモンジュース") == 2) && ITEM:炭酸水
-			PRINTL [6] ラムフィズ(Alc.9～35%)
-		SIF (ITEM:ライムジュース || レシピ判定("ライムジュース") == 2) && ITEM:炭酸水
-			PRINTL [7] モヒート(Alc.9～35%)
+		IF LANGUAGE == "ENG"
+			PRINTL How do you serve a Superior？
+			PRINTL [1] Straight(Alc.40%)
+			PRINTL [2] rock(Alc.37%)
+			SIF ITEM:コーラ
+				PRINTL [3] Cuba river(Alc.9～35%)
+			SIF ITEM:ライムジュース || レシピ判定("ライムジュース") == 2
+				PRINTL [4] Daiquiri(Alc.20～35%)
+			SIF ITEM:トニックウォーター
+				PRINTL [5] Rum tonic(Alc.9～35%)
+			SIF (ITEM:レモンジュース || レシピ判定("レモンジュース") == 2) && ITEM:炭酸水
+				PRINTL [6] Lamb fizz(Alc.9～35%)
+			SIF (ITEM:ライムジュース || レシピ判定("ライムジュース") == 2) && ITEM:炭酸水
+				PRINTL [7] Mohito(Alc.9～35%)
+		ELSE
+			PRINTL スペリオールをどのように飲ませますか？
+			PRINTL [1] ストレート(Alc.40%)
+			PRINTL [2] ロック(Alc.37%)
+			SIF ITEM:コーラ
+				PRINTL [3] キューバリバー(Alc.9～35%)
+			SIF ITEM:ライムジュース || レシピ判定("ライムジュース") == 2
+				PRINTL [4] ダイキリ(Alc.20～35%)
+			SIF ITEM:トニックウォーター
+				PRINTL [5] ラムトニック(Alc.9～35%)
+			SIF (ITEM:レモンジュース || レシピ判定("レモンジュース") == 2) && ITEM:炭酸水
+				PRINTL [6] ラムフィズ(Alc.9～35%)
+			SIF (ITEM:ライムジュース || レシピ判定("ライムジュース") == 2) && ITEM:炭酸水
+				PRINTL [7] モヒート(Alc.9～35%)
+		ENDIF
 		BINPUT
 		SELECTCASE RESULT
 			CASE 1
@@ -434,31 +595,49 @@ SELECTCASE RESULT
 						材料:1 = GETNUM(ITEM, "炭酸水")
 				ENDSELECT
 				IF 酒名 == "ダイキリ"
-					PRINTL アルコール度数を決めてください(20～35%)
+					PRINTFORML %I18N("アルコール度数を決めてください")%(20～35\%)
 					CALL TWO_DIGIT, 35, "%", 20
 				ELSE
-					PRINTL アルコール度数を決めてください(9～35%)
+					PRINTFORML %I18N("アルコール度数を決めてください")%(9～35\%)
 					CALL TWO_DIGIT, 35, "%", 9
 				ENDIF
 				ALC = RESULT
 		ENDSELECT
 	CASE 7
 		お酒 = GETNUM(ITEM, "ビーフィーター")
-		PRINTL ビーフィーターをどのように飲ませますか？
-		PRINTL [1] ストレート(Alc.47%)
-		PRINTL [2] ロック(Alc.44%)
-		SIF ITEM:トニックウォーター
-			PRINTL [3] ジントニック(Alc.9～42%)
-		SIF ITEM:炭酸水
-			PRINTL [4] ジンリッキー(Alc.9～42%)
-		SIF ITEM:ライムジュース || レシピ判定("ライムジュース") == 2
-			PRINTL [5] ギムレット(Alc.25～42%)
-		SIF (ITEM:レモンジュース || レシピ判定("レモンジュース") == 2) && ITEM:炭酸水
-			PRINTL [6] ジンフィズ(Alc.9～42%)
-		SIF (ITEM:レモンジュース || レシピ判定("レモンジュース") == 2) && ITEM:ジンジャーエール
-			PRINTL [7] ジンバック(Alc.9～42%)
-		SIF ITEM:トマトジュース || レシピ判定("トマトジュース") == 2
-			PRINTL [8] ブラッディサム(Alc.9～42%)
+		IF LANGUAGE == "ENG"
+			PRINTL How do you serve Beefeater?
+			PRINTL [1] Straight(Alc.47%)
+			PRINTL [2] Rock(Alc.44%)
+			SIF ITEM:トニックウォーター
+				PRINTL [3] Gin and tonic(Alc.9～42%)
+			SIF ITEM:炭酸水
+				PRINTL [4] Gin Rickey(Alc.9～42%)
+			SIF ITEM:ライムジュース || レシピ判定("ライムジュース") == 2
+				PRINTL [5] Gimlet(Alc.25～42%)
+			SIF (ITEM:レモンジュース || レシピ判定("レモンジュース") == 2) && ITEM:炭酸水
+				PRINTL [6] Gin fizz(Alc.9～42%)
+			SIF (ITEM:レモンジュース || レシピ判定("レモンジュース") == 2) && ITEM:ジンジャーエール
+				PRINTL [7] Jimback(Alc.9～42%)
+			SIF ITEM:トマトジュース || レシピ判定("トマトジュース") == 2
+				PRINTL [8] Bloody sam(Alc.9～42%)
+		ELSE
+			PRINTL ビーフィーターをどのように飲ませますか？
+			PRINTL [1] ストレート(Alc.47%)
+			PRINTL [2] ロック(Alc.44%)
+			SIF ITEM:トニックウォーター
+				PRINTL [3] ジントニック(Alc.9～42%)
+			SIF ITEM:炭酸水
+				PRINTL [4] ジンリッキー(Alc.9～42%)
+			SIF ITEM:ライムジュース || レシピ判定("ライムジュース") == 2
+				PRINTL [5] ギムレット(Alc.25～42%)
+			SIF (ITEM:レモンジュース || レシピ判定("レモンジュース") == 2) && ITEM:炭酸水
+				PRINTL [6] ジンフィズ(Alc.9～42%)
+			SIF (ITEM:レモンジュース || レシピ判定("レモンジュース") == 2) && ITEM:ジンジャーエール
+				PRINTL [7] ジンバック(Alc.9～42%)
+			SIF ITEM:トマトジュース || レシピ判定("トマトジュース") == 2
+				PRINTL [8] ブラッディサム(Alc.9～42%)
+		ENDIF
 		BINPUT
 		SELECTCASE RESULT
 			CASE 1
@@ -497,29 +676,45 @@ SELECTCASE RESULT
 							材料:0 = GETNUM(ITEM, "トマトジュース")
 				ENDSELECT
 				IF 酒名 == "ギムレット"
-					PRINTL アルコール度数を決めてください(25～42%)
+					PRINTFORML %I18N("アルコール度数を決めてください")%(25～42\%)
 					CALL TWO_DIGIT, 42, "%", 25
 				ELSE
-					PRINTL アルコール度数を決めてください(9～42%)
+					PRINTFORML %I18N("アルコール度数を決めてください")%(9～42\%)
 					CALL TWO_DIGIT, 42, "%", 9
 				ENDIF
 				ALC = RESULT
 		ENDSELECT
 	CASE 8
 		お酒 = GETNUM(ITEM, "アブソルート")
-		PRINTL アブソルートをどのように飲ませますか？
-		PRINTL [1] ストレート(Alc.40%)
-		PRINTL [2] ロック(Alc.37%)
-		SIF ITEM:トニックウォーター
-			PRINTL [3] ウォッカトニック(Alc.9～35%)
-		SIF ITEM:炭酸水
-			PRINTL [4] ウォッカリッキー(Alc.9～35%)
-		SIF ITEM:カルーア
-			PRINTL [5] ブラックルシアン(Alc.25～37%)
-		SIF (ITEM:ライムジュース || レシピ判定("ライムジュース") == 2) && ITEM:ジンジャーエール
-			PRINTL [6] モスコミュール(Alc.9～35%)
-		SIF ITEM:トマトジュース || レシピ判定("トマトジュース") == 2
-			PRINTL [7] ブラッディマリー(Alc.9～35%)
+		IF LANGUAGE == "ENG"
+			PRINTL How do you serve Absolute?
+			PRINTL [1] Straight(Alc.40%)
+			PRINTL [2] Rock(Alc.37%)
+			SIF ITEM:トニックウォーター
+				PRINTL [3] Vodka tonic(Alc.9～35%)
+			SIF ITEM:炭酸水
+				PRINTL [4] Vodka wickey(Alc.9～35%)
+			SIF ITEM:カルーア
+				PRINTL [5] Black Russian(Alc.25～37%)
+			SIF (ITEM:ライムジュース || レシピ判定("ライムジュース") == 2) && ITEM:ジンジャーエール
+				PRINTL [6] B52 shot(Alc.9～35%)
+			SIF ITEM:トマトジュース || レシピ判定("トマトジュース") == 2
+				PRINTL [7] Bloody mary(Alc.9～35%)
+		ELSE
+			PRINTL アブソルートをどのように飲ませますか？
+			PRINTL [1] ストレート(Alc.40%)
+			PRINTL [2] ロック(Alc.37%)
+			SIF ITEM:トニックウォーター
+				PRINTL [3] ウォッカトニック(Alc.9～35%)
+			SIF ITEM:炭酸水
+				PRINTL [4] ウォッカリッキー(Alc.9～35%)
+			SIF ITEM:カルーア
+				PRINTL [5] ブラックルシアン(Alc.25～37%)
+			SIF (ITEM:ライムジュース || レシピ判定("ライムジュース") == 2) && ITEM:ジンジャーエール
+				PRINTL [6] モスコミュール(Alc.9～35%)
+			SIF ITEM:トマトジュース || レシピ判定("トマトジュース") == 2
+				PRINTL [7] ブラッディマリー(Alc.9～35%)
+		ENDIF
 		BINPUT
 		SELECTCASE RESULT
 			CASE 1
@@ -553,29 +748,45 @@ SELECTCASE RESULT
 							材料:0 = GETNUM(ITEM, "トマトジュース")
 				ENDSELECT
 				IF 酒名 == "ブラックルシアン"
-					PRINTL アルコール度数を決めてください(25～37%)
+					PRINTFORML %I18N("アルコール度数を決めてください")%(25～37\%)
 					CALL TWO_DIGIT, 37, "%", 25
 				ELSE
-					PRINTL アルコール度数を決めてください(9～35%)
+					PRINTFORML %I18N("アルコール度数を決めてください")%(9～35\%)
 					CALL TWO_DIGIT, 35, "%", 9
 				ENDIF
 				ALC = RESULT
 		ENDSELECT
 	CASE 9
 		お酒 = GETNUM(ITEM, "カルーア")
-		PRINTL カルーアをどのように飲ませますか？
-		PRINTL [1] ストレート(Alc.20%)
-		PRINTL [2] ロック(Alc.18%)
-		;牛乳は生活必需品だから常にある（暴論）
-		PRINTL [3] カルーアミルク(Alc.5～15%)
-		SIF ITEM:炭酸水
-			PRINTL [4] カルーアソーダ(Alc.5～15%)
-		SIF ITEM:アブソルート
-			PRINTL [5] ブラックルシアン(Alc.25～37%)
-		SIF リソース:母乳 >= 100
-			PRINTL [6] カルーア母乳(Alc.5～15%)
-		SIF リソース:粘液 >= 100
-			PRINTL [7] カルーアジュレ(Alc.5～15%)
+		IF LANGUAGE == "ENG"
+			PRINTL How do you serve kahlua？
+			PRINTL [1] Straight(Alc.20%)
+			PRINTL [2] Rock(Alc.18%)
+			;牛乳は生活必需品だから常にある（暴論）
+			PRINTL [3] Kahlua milk(Alc.5～15%)
+			SIF ITEM:炭酸水
+				PRINTL [4] Kahlua soda(Alc.5～15%)
+			SIF ITEM:アブソルート
+				PRINTL [5] Black Russian(Alc.25～37%)
+			SIF リソース:母乳 >= 100
+				PRINTL [6] Kahlua breast milk(Alc.5～15%)
+			SIF リソース:粘液 >= 100
+				PRINTL [7] Karou jelly(Alc.5～15%)
+		ELSE
+			PRINTL カルーアをどのように飲ませますか？
+			PRINTL [1] ストレート(Alc.20%)
+			PRINTL [2] ロック(Alc.18%)
+			;牛乳は生活必需品だから常にある（暴論）
+			PRINTL [3] カルーアミルク(Alc.5～15%)
+			SIF ITEM:炭酸水
+				PRINTL [4] カルーアソーダ(Alc.5～15%)
+			SIF ITEM:アブソルート
+				PRINTL [5] ブラックルシアン(Alc.25～37%)
+			SIF リソース:母乳 >= 100
+				PRINTL [6] カルーア母乳(Alc.5～15%)
+			SIF リソース:粘液 >= 100
+				PRINTL [7] カルーアジュレ(Alc.5～15%)
+		ENDIF
 		BINPUT
 		SELECTCASE RESULT
 			CASE 1
@@ -604,10 +815,10 @@ SELECTCASE RESULT
 						酒名 = カルーアジュレ
 				ENDSELECT
 				IF 酒名 == "ブラックルシアン"
-					PRINTL アルコール度数を決めてください(25～37%)
+					PRINTFORML %I18N("アルコール度数を決めてください")%(25～37\%)
 					CALL TWO_DIGIT, 37, "%", 25
 				ELSE
-					PRINTL アルコール度数を決めてください(5～15%)
+					PRINTFORML %I18N("アルコール度数を決めてください")%(5～15\%)
 					CALL TWO_DIGIT, 15, "%", 5
 				ENDIF
 				ALC = RESULT
@@ -616,7 +827,11 @@ SELECTCASE RESULT
 		酒名 = お屠蘇
 		ALC = 2
 	CASE 100
-		PRINTFORMW お酒を飲ませるのを止めました
+		IF LANGUAGE == "ENG"
+			PRINTFORMW You are stopped serving alcohol
+		ELSE
+			PRINTFORMW お酒を飲ませるのを止めました
+		ENDIF
 		RETURN 0
 ENDSELECT
 
@@ -633,7 +848,7 @@ SELECTCASE RESULT
 	CASEELSE
 		PRINT  = 
 ENDSELECT
-PRINT 実効値0
+PRINTFORM %I18N("実効値")%0
 WAIT
 
 TFLAG:GETNUM(TFLAG, "お酒") = お酒
@@ -823,10 +1038,10 @@ TFLAG:依存度補正 += TEQUIP:お酒ボーナス
 #DIM DYNAMIC 実効値, 2
 
 IF TALENT:下戸
-	PRINTFORM -アルコール度数{ALC}\%({ALC*2})
+	PRINTFORM -%I18N("アルコール度数")%{ALC}\%({ALC*2})
 	実効値 -= ALC*2
 ELSEIF !TALENT:酒豪
-	PRINTFORM -アルコール度数{ALC}\%({ALC})
+	PRINTFORM -%I18N("アルコール度数")%{ALC}\%({ALC})
 	実効値 -= ALC
 ENDIF
 
@@ -841,34 +1056,42 @@ ELSE
 ENDIF
 
 IF 実効値:1 >= 5 && TALENT:下戸
-	PRINTFORM +酒が回っている({実効値:1/5})
+	PRINTFORM +%I18N("酒が回っている")%({実効値:1/5})
 	実効値 += 実効値:1/5
 ELSEIF 実効値:1 >= 3
-	PRINTFORM +酒が回っている({実効値:1/3})
+	PRINTFORM +%I18N("酒が回っている")%({実効値:1/3})
 	実効値 += 実効値:1/3
 ENDIF
 
 IF CFLAG:二日酔い
-	PRINT -二日酔い(5)
+	PRINTFORM -%I18N("二日酔い")%(5)
 	実効値 -= 5
 ENDIF
 
 IF 陥落(TARGET)
-	PRINT +陥落(5)
+	PRINTFORM +%I18N("陥落")%(5)
 	実効値 += 5
 ENDIF
 
 IF GETPALAMLV(PALAM:恭順, 10)
-	PRINTFORM +恭順({GETPALAMLV(PALAM:恭順, 10)})
+	PRINTFORM +%I18N("恭順", "PALAM")%({GETPALAMLV(PALAM:恭順, 10)})
 	実効値 += GETPALAMLV(PALAM:恭順, 10)
 ENDIF
 
 IF 製法 == "ビール" && !TALENT:酒豪 && (TALENT:児童 || TALENT:下戸)
-	PRINT -ビールは苦くて無理(10)
+	IF LANGUAGE == "ENG"
+		PRINT -Beer is bitter and impossible(10)
+	ELSE
+		PRINT -ビールは苦くて無理(10)
+	ENDIF
 	実効値 -= 10
 	SELECTCASE 酒名
 		CASE "シャンディガフ", "パナシェ", "ビアスプリッツァー"
-			PRINT +ビールの苦さを軽減(5)
+			IF LANGUAGE == "ENG"
+				PRINT +Reduces the bitterness of beer(5)
+			ELSE
+				PRINT +ビールの苦さを軽減(5)
+			ENDIF
 			実効値 += 5
 	ENDSELECT
 ENDIF
@@ -877,12 +1100,20 @@ IF !TALENT:下戸
 	SELECTCASE 製法
 		CASE "ハイボール", "ビール", "コーラ割り", "ジンジャー割り", "レモン割り", "ライム割り", "トニック割り", "カクテル"
 			IF FLAG:気温 >= 200
-				PRINTFORM +高気温&冷飲料({(FLAG:気温-190)/10})
+				IF LANGUAGE == "ENG"
+					PRINTFORM +High temperature & cold drinks({(FLAG:気温-190)/10})
+				ELSE
+					PRINTFORM +高気温&冷飲料({(FLAG:気温-190)/10})
+				ENDIF
 				実効値 += (FLAG:気温-190)/10
 			ENDIF
 		CASE "お湯割り", "熱燗"
 			IF FLAG:気温 <= 100
-				PRINTFORM +低気温&温飲料({(110-FLAG:気温)/10})
+				IF LANGUAGE == "ENG"
+					PRINTFORM +Low temperature & hot drinks({(110-FLAG:気温)/10})
+				ELSE
+					PRINTFORM +低気温&温飲料({(110-FLAG:気温)/10})
+				ENDIF
 				実効値 += (110-FLAG:気温)/10
 			ENDIF
 	ENDSELECT
@@ -891,85 +1122,125 @@ ENDIF
 SELECTCASE 製法
 	CASE "精液割り"
 		IF ABL:精液中毒 < 3
-			PRINTFORM -精液中毒LV{ABL:精液中毒}({(3-ABL:精液中毒)*3})
+			PRINTFORM -%I18N("精液中毒", "ABL")%LV{ABL:精液中毒}({(3-ABL:精液中毒)*3})
 			実効値 -= (3-ABL:精液中毒)*3
 		ELSEIF ABL:精液中毒 > 3
-			PRINTFORM +精液中毒LV{ABL:精液中毒}({(ABL:精液中毒-3)*3})
+			PRINTFORM +%I18N("精液中毒", "ABL")%LV{ABL:精液中毒}({(ABL:精液中毒-3)*3})
 			実効値 += (ABL:精液中毒-3)*3
 		ENDIF
 	CASE "母乳割り"
-		PRINT -母乳割り(3)
+		IF LANGUAGE == "ENG"
+			PRINT -Breastmilk split(3)
+		ELSE
+			PRINT -母乳割り(3)
+		ENDIF
 		実効値 -= 3
 	CASE "粘液混ぜ"
 		IF CSTR:種族 == "スライム"
-			PRINT +スライムに粘液ゼリー(8)
+			IF LANGUAGE == "ENG"
+				PRINT +Slime and mucus jelly(8)
+			ELSE
+				PRINT +スライムに粘液ゼリー(8)
+			ENDIF
 			実効値 += 8
 		ELSE
-			PRINT +スイーツ感覚の粘液ゼリー(3)
+			IF LANGUAGE == "ENG"
+				PRINT +Mucus jelly that tastes like sweets(3)
+			ELSE
+				PRINT +スイーツ感覚の粘液ゼリー(3)
+			ENDIF
 			実効値 += 3
 		ENDIF
 	CASE "ハイボール"
-		PRINT +ハイボールは美味しい(3)
+		IF LANGUAGE == "ENG"
+			PRINT +highball is delicious(3)
+		ELSE
+			PRINT +ハイボールは美味しい(3)
+		ENDIF
 		実効値 += 3
 	CASE "コーラ割り", "ジンジャー割り", "トニック割り", "レモン割り", "ライム割り"
-		PRINT +飲みやすいカクテル(5)
+		IF LANGUAGE == "ENG"
+			PRINT +Easy to drink cocktails(5)
+		ELSE
+			PRINT +飲みやすいカクテル(5)
+		ENDIF
 		実効値 += 5
 	CASE "カクテル"
-		PRINT +美味しいカクテル(7)
+		IF LANGUAGE == "ENG"
+			PRINT +Delicious cocktails(7)
+		ELSE
+			PRINT +美味しいカクテル(7)
+		ENDIF
 		実効値 += 7
 ENDSELECT
 
 ;PLAYERの料理技能
 IF ABL:PLAYER:料理技能 > 0 && 製法 != ""
-	PRINTFORML +%CALLNAME:PLAYER%の料理技能({ABL:PLAYER:料理技能})
+	IF LANGUAGE == "ENG"
+		PRINTFORML +%CALLNAME:PLAYER%`s cooking skills ({ABL:PLAYER:料理技能})
+	ELSE
+		PRINTFORML +%CALLNAME:PLAYER%の料理技能({ABL:PLAYER:料理技能})
+	ENDIF
 	実効値 += ABL:PLAYER:料理技能
 ENDIF
 
 IF TALENT:衝動的
-	PRINT +衝動的(3)
+	PRINTFORM +%I18N("衝動的", "TALENT")%(3)
 	実効値 += 3
 ENDIF
 
 IF TALENT:好奇心
-	PRINT +好奇心(3)
+	PRINTFORM +%I18N("好奇心", "TALENT")%(3)
 	実効値 += 3
 ENDIF
 
 IF TALENT:無関心
-	PRINT -無関心(2)
+	PRINTFORM -%I18N("無関心", "TALENT")%(2)
 	実効値 -= 2
 ENDIF
 
 IF TALENT:自制心
-	PRINT -自制心(5)
+	PRINTFORM -%I18N("自制心", "TALENT")%(5)
 	実効値 -= 5
 ENDIF
 
 IF TALENT:目立ちたがり
-	PRINT +目立ちたがり(3)
+	PRINTFORM +%I18N("目立ちたがり", "TALENT")%(3)
 	実効値 += 3
 ENDIF
 
 SELECTCASE 製法
 	CASE "お湯割り", "熱燗"
 		IF TALENT:猫舌
-			PRINT -猫舌(3)
+			PRINTFORM -%I18N("猫舌", "TALENT")%(3)
 			実効値 -= 3
 		ENDIF
 ENDSELECT
 
 IF TALENT:児童 && !TALENT:酒豪
-	PRINT -子供(3)
+	IF LANGUAGE == "ENG"
+		PRINTFORM -Child(3)
+	ELSE
+		PRINTFORM -子供(3)
+	ENDIF
 	実効値 -= 3
 ENDIF
 
 IF TALENT:MASTER:魅惑
-	PRINT +主人が魅惑持ち(2)
+	IF LANGUAGE == "ENG"
+		PRINTFORM +Charming trainer(2)
+	ELSE
+		PRINTFORM +主人が魅惑持ち(2)
+	ENDIF
 	実効値 += 2
 ENDIF
 
 IF ASSI > 0 && TALENT:ASSI:ハイテンション
-	PRINT +助手がハイテンション(2)
+	IF LANGUAGE == "ENG"
+		PRINTFORM +Drunk assistant(2)
+	ELSE
+		PRINTFORM +助手がハイテンション(2)
+	ENDIF
 	実効値 += 2
 ENDIF
 

@@ -8,12 +8,17 @@
 
 ;3P実行判定
 ;助手がいないとダメ
-コマンド実行条件 += "助手が必要/"
+コマンド実行条件 += I18N("助手が必要/")
 SIF ASSI < 1
 	COMRESULT = 0
 ;処女で、従順4以下・レズっ気4以下のASSIの場合3Pはできない（男もしくはサドならＯＫ）
-コマンド実行条件 += "対象が処女で助手が女性の場合、助手に[サド]or従順とレズっ気LV4以上が必要/"
-コマンド実行条件 += @"対象が潤滑{PALAMLV:2}未満の場合、助手に[サド]or従順LV4以上が必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"If the target is a virgin and the assistant is a woman、to assistants [%I18N("サド", "TALENT")%] talent or least LV4 %I18N("レズっ気", "ABL")% with %I18N("従順", "ABL")% is required/"
+	コマンド実行条件 += @"If the target is less than lubricated {PALAMLV:2}、assistants[%I18N("サド", "TALENT")%] or at least %I18N("従順", "ABL")% LV4 is required/"
+ELSE
+	コマンド実行条件 += "対象が処女で助手が女性の場合、助手に[サド]or従順とレズっ気LV4以上が必要/"
+	コマンド実行条件 += @"対象が潤滑{PALAMLV:2}未満の場合、助手に[サド]or従順LV4以上が必要/"
+ENDIF
 IF ASSI < 1
 	COMRESULT = 0
 ELSE
@@ -33,18 +38,22 @@ ENDIF
 
 本数 = 0
 ;MASTERがペニス持ち
-コマンド実行条件 += "主人に男性器が必要(ペニスバンドで代用可能)/"
+コマンド実行条件 += I18N("主人に男性器が必要(ペニスバンドで代用可能)/")
 SIF PENIS(TMASTER) || TEQUIP:TMASTER:ペニスバンド
 	本数++
 ;ASSIがペニス持ち
-コマンド実行条件 += "助手に男性器が必要(ペニスバンドで代用可能)/"
+コマンド実行条件 += I18N("助手に男性器が必要(ペニスバンドで代用可能)/")
 SIF ASSI > 0 && (PENIS(ASSI) || TEQUIP:ASSI:ペニスバンド) && !Ｐ使用不可(ASSI)
 	本数++
 ;ペニスバンドとあわせて二本ないとだめ
 SIF 本数 < 2
 	COMRESULT = 0
 ;膣使用中はダメ
-コマンド実行条件 += "対象のV・A・口のいずれか2箇所以上が挿入可能でないと実行できない/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += "Cannot be executed if targets vagina is used or target is using strapon/"
+ELSE
+	コマンド実行条件 += "対象のV・A・口のいずれか2箇所以上が挿入可能でないと実行できない/"
+ENDIF
 SIF (Ｖ使用中(TARGET) || !VAGINA(TARGET)) && Ａ使用中(TARGET)
 	COMRESULT = 0
 SIF (Ｖ使用中(TARGET) || !VAGINA(TARGET)) && TEQUIP:ボールギャグ
@@ -52,35 +61,51 @@ SIF (Ｖ使用中(TARGET) || !VAGINA(TARGET)) && TEQUIP:ボールギャグ
 SIF Ａ使用中(TARGET) && TEQUIP:ボールギャグ
 	COMRESULT = 0
 ;主人、調教対象、助手のいずれかに小人体型がいる場合、主人が禁断の知識を持っていないとダメ
-コマンド実行条件 += "主人、助手、対象のいずれかが[小人体型]の場合、主人に禁断の知識が必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"If the master, assistant, or target is [%I18N("小人体型", "TALENT")%], master needs a %I18N("禁断の知識", "TALENT")%/"
+ELSE
+	コマンド実行条件 += "主人、助手、対象のいずれかが[小人体型]の場合、主人に禁断の知識が必要/"
+ENDIF
 IF TALENT:TMASTER:小人体型 || (ASSI > 0 && TALENT:ASSI:小人体型) || TALENT:小人体型
 	SIF !TALENT:MASTER:禁断の知識
 		COMRESULT = 0
 ENDIF
 ;一定のＡ経験が必要
-コマンド実行条件 += @"Ａを使う場合は対象のＡ経験{EXPLV:3}以上が必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"When using A, targets %I18N("Ａ経験", "ABL")%{EXPLV:3} or higher is required./"
+ELSE
+	コマンド実行条件 += @"Ａを使う場合は対象のＡ経験{EXPLV:3}以上が必要/"
+ENDIF
 ;触手調教中はダメ
-コマンド実行条件 += "触手召喚中は実行できない/"
+コマンド実行条件 += I18N("触手召喚中は実行できない/")
 SIF TEQUIP:触手
 	COMRESULT = 0
 ;アニマルだと無理
-コマンド実行条件 += "対象が[アニマル]の場合は実行できない/"
+コマンド実行条件 += I18N("対象が[|0|]の場合は実行できない/", ,I18N("アニマル", "TALENT"))
 SIF TALENT:アニマル
 	COMRESULT = 0
-コマンド実行条件 += "助手が[アニマル]の場合は実行できない/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"Cannot be executed if assistant is [%I18N("アニマル", "TALENT")%]/"
+ELSE
+	コマンド実行条件 += "助手が[アニマル]の場合は実行できない/"
+ENDIF
 SIF ASSI > 0 && TALENT:ASSI:アニマル
 	COMRESULT = 0
-コマンド実行条件 += "睡眠中は実行できない/"
+コマンド実行条件 += I18N("睡眠中は実行できない/")
 SIF TEQUIP:睡眠
 	COMRESULT = 0
 IF MOD:STS
-	コマンド実行条件 += "屍姦中は実行できない/"
+	コマンド実行条件 += I18N("屍姦中は実行できない/")
 	SIF CFLAG:死亡
 		COMRESULT = 0
 ENDIF
 
 ;以下のコマンド実行時
-コマンド実行条件 += "3P、性交系コマンド、フェラ系コマンドから派生可能/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += "Can be derived from 3P, sexual intercourse commands, and blowjob commands/"
+ELSE
+	コマンド実行条件 += "3P、性交系コマンド、フェラ系コマンドから派生可能/"
+ENDIF
 SELECTCASE PREVCOMS
 	;3Pなら続行可能
 	CASE "3P"
@@ -152,22 +177,41 @@ IF PREVCOMS != "3P"
 		ENDSELECT
 	ELSE
 		;どこに挿れるか選ぶ
-		PRINTFORM \@ PLAYER == TMASTER ? %CALLNAME:ASSI% # %CALLNAME:TMASTER% \@のペニスは%CALLNAME:TARGET%の
-		SELECTCASE 一本目
-			CASE 1
-				PRINT 膣に挿れられています。
-			CASE 2
-				PRINT アナルに挿れられています。
-			CASE 3
-				PRINT 口に挿れられています。
-		ENDSELECT
-		PRINTFORML どこを犯しますか？
-		SIF 一本目 != 1
-			PRINTL [1] - 膣穴
-		SIF 一本目 != 2 && EXP:Ａ経験 >= EXPLV:3
-			PRINTL [2] - アナル
-		SIF 一本目 != 3
-			PRINTL [3] - 口
+		IF LANGUAGE == "ENG"
+			PRINTFORM \@ PLAYER == TMASTER ? %CALLNAME:ASSI% # %CALLNAME:TMASTER% \@`s penis is inserted into %CALLNAME:TARGET%`s
+			SELECTCASE 一本目
+				CASE 1
+					PRINT vagina。
+				CASE 2
+					PRINT anus。
+				CASE 3
+					PRINT mouth。
+			ENDSELECT
+			PRINTFORML Where another dick will go?
+			SIF 一本目 != 1
+				PRINTL [1] - Into Vagina
+			SIF 一本目 != 2 && EXP:Ａ経験 >= EXPLV:3
+				PRINTL [2] - Into Anus
+			SIF 一本目 != 3
+				PRINTL [3] - Into Mouth
+		ELSE
+			PRINTFORM \@ PLAYER == TMASTER ? %CALLNAME:ASSI% # %CALLNAME:TMASTER% \@のペニスは%CALLNAME:TARGET%の
+			SELECTCASE 一本目
+				CASE 1
+					PRINT 膣に挿れられています。
+				CASE 2
+					PRINT アナルに挿れられています。
+				CASE 3
+					PRINT 口に挿れられています。
+			ENDSELECT
+			PRINTFORML どこを犯しますか？
+			SIF 一本目 != 1
+				PRINTL [1] - 膣穴
+			SIF 一本目 != 2 && EXP:Ａ経験 >= EXPLV:3
+				PRINTL [2] - アナル
+			SIF 一本目 != 3
+				PRINTL [3] - 口
+		ENDIF
 		SIF ISSKIP()
 			RETURN 0
 		BINPUT
@@ -183,7 +227,7 @@ IF PREVCOMS != "3P"
 	ENDIF
 ENDIF
 
-PRINTL 3P
+PRINTFORML %I18N("3P", "TRAIN")%
 CALL KOJO_MESSAGE_COM
 
 ;V経験を伴うコマンドのフラグ(処女膜再生対応)

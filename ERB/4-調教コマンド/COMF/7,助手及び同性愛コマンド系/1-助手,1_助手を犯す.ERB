@@ -4,50 +4,62 @@
 @USERCOM_ABLE_助手を犯す
 #FUNCTION
 ;ゲーセンに居る場合はトイレじゃないとできない
-コマンド実行条件 += "ゲーセンではトイレじゃないと実行できない/"
+コマンド実行条件 += I18N("ゲーセンではトイレじゃないと実行できない/")
 SIF TEQUIP:ゲームセンター && !TEQUIP:トイレ
 	COMRESULT = 0
 ;助手がいないとダメ
-コマンド実行条件 += "助手が必要/"
+コマンド実行条件 += I18N("助手が必要/")
 SIF ASSI < 1
 	COMRESULT = 0
 ;主人じゃないとダメ
-コマンド実行条件 += "実行者が主人じゃないと実行できない/"
+コマンド実行条件 += I18N("実行者が主人じゃないと実行できない/")
 SIF PLAYER != MASTER
 	COMRESULT = 0
 ;助手陥落していないとダメ
-コマンド実行条件 += "助手が陥落していないと実行できない/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += "Cannot be executed unless the assistant has fallen/"
+ELSE
+	コマンド実行条件 += "助手が陥落していないと実行できない/"
+ENDIF
 SIF ASSI > 0 && !陥落(ASSI)
 	COMRESULT = 0
 ;助手が男ならＡ感覚3以上必要
-コマンド実行条件 += "助手が男性、無性別なら助手のＡ感覚LV3以上必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"If the assistant is male、assistants %I18N("Ａ感覚", "ABL")%LV3 or higher is required/"
+ELSE
+	コマンド実行条件 += "助手が男性、無性別なら助手のＡ感覚LV3以上必要/"
+ENDIF
 SIF ASSI > 0 && SEX(ASSI) <= 1 && ABL:ASSI:Ａ感覚 < 3
 	COMRESULT = 0
 ;小人体型持ちは、双方が小人体型ならOK
 ;それ以外の場合は助手が小人体型のとき主人が禁断の知識持ちじゃないとダメ
-コマンド実行条件 += "助手が[小人体型]の場合、主人に[小人体型]or[禁断の知識]が必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"If assistant is [%I18N("小人体型", "TALENT")%]、master is must have [%I18N("小人体型", "TALENT")%] or [%I18N("禁断の知識", "TALENT")%] talents/"
+ELSE
+	コマンド実行条件 += "助手が[小人体型]の場合、主人に[小人体型]or[禁断の知識]が必要/"
+ENDIF
 SIF ASSI > 0 && TALENT:ASSI:小人体型 && !TALENT:MASTER:禁断の知識 && !TALENT:MASTER:小人体型
 	COMRESULT = 0
 ;主人がペニス有り、もしくはペニスバンドがないとダメ
-コマンド実行条件 += "主人に男性器が必要(ペニスバンドで代用可能)/"
+コマンド実行条件 += I18N("主人に男性器が必要(ペニスバンドで代用可能)/")
 SIF !PENIS(MASTER) && !TEQUIP:MASTER:ペニスバンド
 	COMRESULT = 0
 SIF Ｐ使用不可(MASTER)
 	COMRESULT = 0
 ;触手調教中はダメ
-コマンド実行条件 += "触手召喚中は実行できない/"
+コマンド実行条件 += I18N("触手召喚中は実行できない/")
 SIF TEQUIP:触手
 	COMRESULT = 0
 ;お風呂場プレイ中はプレイマットが無いとダメ
-コマンド実行条件 += "お風呂場ではプレイマット(アイテム)が無いと実行できない/"
+コマンド実行条件 += I18N("お風呂場ではプレイマット(アイテム)が無いと実行できない/")
 SIF TEQUIP:お風呂場 && !ITEM:プレイマット
 	COMRESULT = 0
 ;新妻プレイ中はダメ
-コマンド実行条件 += "エプロン使用中は実行できない/"
+コマンド実行条件 += I18N("エプロン使用中は実行できない/")
 SIF TEQUIP:エプロン
 	COMRESULT = 0
 ;助手がＶ使用中はダメ
-コマンド実行条件 += "助手がV使用中は実行できない/"
+コマンド実行条件 += I18N("助手がV使用中は実行できない/")
 SIF Ｖ使用中(ASSI)
 	COMRESULT = 0
 
@@ -61,9 +73,13 @@ RETURN 1
 #DIM DYNAMIC 増加量
 
 IF VAGINA(ASSI)
-	PRINTL 膣とアナルのどちらを犯しますか？
-	PRINTL [1] - 膣
-	PRINTL [2] - アナル
+	IF LANGUAGE == "ENG"
+		PRINTL Which hole would you use?
+	ELSE
+		PRINTL 膣とアナルのどちらを犯しますか？
+	ENDIF
+	PRINTFORML [1] - %I18N("膣")%
+	PRINTFORML [2] - %I18N("アナル")%
 	SIF ISSKIP()
 		RETURN
 	BINPUT
@@ -72,7 +88,7 @@ ELSE
 	TFLAG:主人挿入箇所 = 2
 ENDIF
 
-PRINTL 助手を犯す
+PRINTFORML %I18N("助手を犯す", "TRAIN")%
 CALL KOJO_MESSAGE_COM
 
 ;-------------------------------------------------
@@ -232,9 +248,17 @@ SELECTCASE TFLAG:主人挿入箇所
 		;助手が処女の場合、助手と奴隷に異常経験付加
 		IF TALENT:ASSI:処女
 			TALENT:ASSI:処女 = 0
-			PRINTL ＜助手処女喪失＞
+			IF LANGUAGE == "ENG"
+				PRINTL ＜Assistant virginity loss＞
+			ELSE
+				PRINTL ＜助手処女喪失＞
+			ENDIF
 			IF !CFLAG:助手の処女喪失を見せつけられた経験
-				PRINTL ＜公開処女喪失＞
+				IF LANGUAGE == "ENG"
+					PRINTL ＜Virginity loss in public＞
+				ELSE
+					PRINTL ＜公開処女喪失＞
+				ENDIF
 				IF 相性値(TARGET, ASSI) > 100
 					CALL EXPUP, "異常経験", 2
 				ELSE

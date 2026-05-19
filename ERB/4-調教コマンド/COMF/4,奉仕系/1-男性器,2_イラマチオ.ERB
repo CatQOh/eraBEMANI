@@ -7,29 +7,46 @@
 SIF 上級売春中 && BR:方針 != 3 && !TALENT:マゾ
 	COMRESULT = 0
 ;ボールギャグ使用中は不可
-コマンド実行条件 += "対象がボールギャグ装着中は実行できない/"
+コマンド実行条件 += I18N("対象がボールギャグ装着中は実行できない/")
 SIF TEQUIP:ボールギャグ
 	COMRESULT = 0
 ;従順、欲望の合計が6以上ないとダメ
-コマンド実行条件 += "対象の従順と欲望の合計LV6以上必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"Targets %I18N("欲望")% or %I18N("合計")%LV6 or above required/"
+ELSE
+	コマンド実行条件 += "対象の従順と欲望の合計LV6以上必要/"
+ENDIF
 SIF ABL:従順+ABL:欲望 < 6
 	COMRESULT = 0
 ;猫舌、小柄体型の奴隷の場合は技巧Lv2以上必要
-コマンド実行条件 += "対象が[猫舌]or小柄以下の場合は技巧LV2以上必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"Target must be a [%I18N("猫舌", "TALENT")%] or having %I18N("技巧", "TALENT")%LV2 if target is petite/"
+ELSE
+	コマンド実行条件 += "対象が[猫舌]or小柄以下の場合は技巧LV2以上必要/"
+ENDIF
 SIF (TALENT:猫舌 || TALENT:体格 <= 2) && ABL:技巧 < 2
 	COMRESULT = 0
 ;小人体型持ちは、調教者と調教対象が小人体型ならOK
 ;それ以外の場合は主人が禁断の知識持ちじゃないとダメ
-コマンド実行条件 += "対象が[小人体型]の場合は、実行者に[小人体型]か、主人に[禁断の知識]が無いと実行できない/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"If target is [%I18N("小人体型", "TALENT")%], but the executor is not - This action will cannot be executed without masters [%I18N("禁断の知識", "TALENT")%]/"
+ELSE
+	コマンド実行条件 += "対象が[小人体型]の場合は、実行者に[小人体型]か、主人に[禁断の知識]が無いと実行できない/"
+ENDIF
 SIF TALENT:小人体型 && !TALENT:MASTER:禁断の知識 && !TALENT:PLAYER:小人体型
 	COMRESULT = 0
 ;新妻プレイ中はダメ
-コマンド実行条件 += "エプロン使用中は実行できない/"
+コマンド実行条件 += I18N("エプロン使用中は実行できない/")
 SIF TEQUIP:エプロン
 	COMRESULT = 0
-コマンド実行条件 += "睡眠中は実行できない/"
+コマンド実行条件 += I18N("睡眠中は実行できない/")
 SIF TEQUIP:睡眠
 	COMRESULT = 0
+IF MOD:STS
+	コマンド実行条件 += I18N("実行者に腕がないと実行できない/")
+	SIF 腕欠損(PLAYER) == 2
+		COMRESULT = 0
+ENDIF
 
 ;汎用COMABLE通らなかったらダメ
 SIF !USERCOM_ABLE_Ｐ口奉仕()
@@ -44,6 +61,9 @@ RETURNF COMRESULT
 ;-------------------------------------------------
 ;縄で縛られている場合は無視（縄が無い時のみ実行判定を行う）
 SIF TEQUIP:縄
+	RETURN 1
+;手足がない場合は無視
+SIF MOD:STS && 腕欠損(TARGET) == 2 && 脚欠損(TARGET) == 2
 	RETURN 1
 
 ;すべての命令に共通の要素を考慮
@@ -62,7 +82,7 @@ RETURN RESULT
 @COM_イラマチオ
 #DIM DYNAMIC 増加量
 
-PRINTL イラマチオ
+PRINTFORML %I18N("イラマチオ")%
 
 SIF !TFLAG:実行判定無視
 	CALLFORM 実行判定_%SELECTCOMS%

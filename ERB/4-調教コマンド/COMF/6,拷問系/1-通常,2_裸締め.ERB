@@ -4,31 +4,40 @@
 @USERCOM_ABLE_裸締め
 #FUNCTION
 ;ゲーセンに居る場合はできない
-コマンド実行条件 += "ゲーセンでは実行不可/"
+コマンド実行条件 += I18N("ゲーセンでは実行不可/")
 SIF TEQUIP:ゲームセンター
 	COMRESULT = 0
 ;上級売春中は不可
-コマンド実行条件 += "上級売春中は実行不可/"
+コマンド実行条件 += I18N("上級売春中は実行不可/")
 SIF 上級売春中
 	COMRESULT = 0
 ;サドじゃないとできない
-コマンド実行条件 += "実行者に[サド]が必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"Executor must have [%I18N("サド", "TALENT")%] trait/"
+ELSE
+	コマンド実行条件 += "実行者に[サド]が必要/"
+ENDIF
 SIF !TALENT:PLAYER:サド
 	COMRESULT = 0
 ;アニマルだと無理
-コマンド実行条件 += "対象が[アニマル]の場合は実行できない/"
+コマンド実行条件 += I18N("対象が[|0|]の場合は実行できない/", ,I18N("アニマル", "TALENT"))
 SIF TALENT:アニマル
 	COMRESULT = 0
-コマンド実行条件 += "睡眠中は実行できない/"
+コマンド実行条件 += I18N("睡眠中は実行できない/")
 SIF TEQUIP:睡眠
 	COMRESULT = 0
+IF MOD:STS
+	コマンド実行条件 += I18N("実行者に腕がないと実行できない/")
+	SIF 腕欠損(PLAYER) == 2
+		COMRESULT = 0
+ENDIF
 
 RETURNF COMRESULT
 
 @COM_裸締め
 #DIM DYNAMIC 気絶確率
 
-PRINTL 裸締め
+PRINTFORML %I18N("裸締め", "TRAIN")%
 CALL KOJO_MESSAGE_COM
 
 ;-------------------------------------------------
@@ -80,13 +89,19 @@ SIF BASE:体力 <= 0
 気絶確率 = BASE:体力/100
 SIF BASE:気力 > 0
 	気絶確率 *= 2
+SIF 気絶確率 <= 0
+	気絶確率 = 1
 
 IF RAND:気絶確率 == 0 && !ISSKIP()
 	CALL SOURCE_CHECK
 	PRINTW ………………
 	PRINTW …………
 	PRINTW ……
-	PRINTFORMW 裸締めにより%CALLNAME:TARGET%は気絶しました
+	IF LANGUAGE == "ENG"
+		PRINTFORMW %CALLNAME:TARGET% fainted due to %I18N("裸締め", "TRAIN")%
+	ELSE
+		PRINTFORMW 裸締めにより%CALLNAME:TARGET%は気絶しました
+	ENDIF
 	;気絶フラグ
 	TFLAG:気絶 = 1
 	JUMP 調教終了

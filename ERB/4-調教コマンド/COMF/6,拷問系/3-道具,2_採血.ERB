@@ -6,15 +6,15 @@
 #DIM DYNAMIC 条件確定
 
 ;ゲーセンに居る場合はできない
-コマンド実行条件 += "ゲーセンでは実行不可/"
+コマンド実行条件 += I18N("ゲーセンでは実行不可/")
 SIF TEQUIP:ゲームセンター
 	COMRESULT = 0
 ;上級売春中はダメ
-コマンド実行条件 += "上級売春中は実行不可/"
+コマンド実行条件 += I18N("上級売春中は実行不可/")
 SIF 上級売春中
 	COMRESULT = 0
 ;触手召喚中は別コマンド
-コマンド実行条件 += "触手召喚中は実行できない/"
+コマンド実行条件 += I18N("触手召喚中は実行できない/")
 SIF TEQUIP:触手
 	COMRESULT = 0
 ;解除はいつでも可能
@@ -22,35 +22,48 @@ SIF TEQUIP:採血 && COMRESULT
 	条件確定 = 1
 
 ;血液パックが必要
-コマンド実行条件 += "アイテム[血液パック]が必要/"
+コマンド実行条件 += I18N("アイテム[|0|]が必要/", , I18N("血液パック"))
 SIF !ITEM:血液パック
 	COMRESULT = 0
 ;対象が無機物、もしくは種族:機械だとダメ
-コマンド実行条件 += "対象が[無機物]or[機械]だと実行できない/"
+コマンド実行条件 += I18N("対象が[無機物]or[機械]だと実行できない/")
 SIF TALENT:無機物 || CSTR:種族 == "機械"
 	COMRESULT = 0
 ;対象がゾンビだとダメ
-コマンド実行条件 += "対象が[ゾンビ]だと実行できない/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"Cannot be executed if target is [%I18N("ゾンビ", "RACE")%]/"
+ELSE
+	コマンド実行条件 += "対象が[ゾンビ]だと実行できない/"
+ENDIF
 SIF TALENT:ゾンビ
 	COMRESULT = 0
 ;アニマルは無理
-コマンド実行条件 += "対象が[アニマル]の場合は実行できない/"
+コマンド実行条件 += I18N("対象が[|0|]の場合は実行できない/", ,I18N("アニマル", "TALENT"))
 SIF TALENT:アニマル
 	COMRESULT = 0
 ;風呂場では実行できない
-コマンド実行条件 += "お風呂場では実行できない/"
+コマンド実行条件 += I18N("お風呂場では実行できない/")
 SIF TEQUIP:お風呂場
 	COMRESULT = 0
 ;技巧4以上、針さばき、治療、禁断の知識いずれかが必要
-コマンド実行条件 += "実行者に技巧LV4以上or[針さばき]or医療技能or[禁断の知識]が必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"Executor must have at least LV4%I18N("技巧", "ABl")%, or [%I18N("針さばき", "TALENT")%], or [%I18N("医療技能", "ABL")%], or [%I18N("禁断の知識", "TALENT")%]/"
+ELSE
+	コマンド実行条件 += "実行者に技巧LV4以上or[針さばき]or医療技能or[禁断の知識]が必要/"
+ENDIF
 SIF ABL:PLAYER:技巧 < 4 && !TALENT:PLAYER:針さばき && !ABL:PLAYER:医療技能 && !TALENT:PLAYER:禁断の知識
 	COMRESULT = 0
-コマンド実行条件 += "睡眠中は実行できない/"
+コマンド実行条件 += I18N("睡眠中は実行できない/")
 SIF TEQUIP:睡眠
 	COMRESULT = 0
 IF MOD:STS
-	コマンド実行条件 += "屍姦中は実行できない/"
+	コマンド実行条件 += I18N("屍姦中は実行できない/")
 	SIF CFLAG:死亡
+		COMRESULT = 0
+ENDIF
+IF MOD:STS
+	コマンド実行条件 += I18N("実行者に腕がないと実行できない/")
+	SIF 腕欠損(PLAYER) == 2
 		COMRESULT = 0
 ENDIF
 
@@ -61,7 +74,7 @@ ENDIF
 RETURNF COMRESULT
 
 @COM_採血
-PRINTL 採血
+PRINTFORML %I18N("採血", "TRAIN")%
 
 INVERTBIT TEQUIP:採血, 0
 
@@ -106,7 +119,11 @@ RETURN 1
 ;装着継続の処理
 ;-------------------------------------------------
 @EQUIP_COM_採血
-PRINTL ＜採血中＞
+IF LANGUAGE == "ENG"
+	PRINTL ＜Blood collection in progress＞
+ELSE
+	PRINTL ＜採血中＞
+ENDIF
 
 ;-------------------------------------------------
 ;ソース追加処理

@@ -6,19 +6,23 @@
 #DIM DYNAMIC 条件確定
 
 ;ゲーセンに居る場合はできない
-コマンド実行条件 += "ゲーセンでは実行不可/"
+コマンド実行条件 += I18N("ゲーセンでは実行不可/")
 SIF TEQUIP:ゲームセンター
 	COMRESULT = 0
 ;上級売春中は不可
-コマンド実行条件 += "上級売春中は実行不可/"
+コマンド実行条件 += I18N("上級売春中は実行不可/")
 SIF 上級売春中
 	COMRESULT = 0
 ;普通に撮影中も無理
-コマンド実行条件 += "ビデオカメラによる撮影中は実行できない/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += "Cannot be executed while recording with a video camera/"
+ELSE
+	コマンド実行条件 += "ビデオカメラによる撮影中は実行できない/"
+ENDIF
 SIF TEQUIP:ビデオカメラ
 	COMRESULT = 0
 ;マジックミラー撮影中はダメ
-コマンド実行条件 += "マジックミラーによる撮影中は実行できない/"
+コマンド実行条件 += I18N("マジックミラーによる撮影中は実行できない/")
 SIF TEQUIP:羞恥プレイ && アイテム改造:大鏡 == "マジックミラー"
 	COMRESULT = 0
 ;解除はいつでも可能
@@ -26,11 +30,15 @@ SIF TEQUIP:ライブ配信 && COMRESULT
 	条件確定 = 1
 
 ;ビデオカメラ持っていないとダメ
-コマンド実行条件 += "アイテム[ビデオカメラ]が必要/"
+コマンド実行条件 += I18N("アイテム[|0|]が必要/", ,I18N("ビデオカメラ", "TRAIN"))
 SIF !ITEM:ビデオカメラ
 	COMRESULT = 0
 ;主人か助手の撮影技能3以上必要
-コマンド実行条件 += "主人もしくは助手の撮影技能Lv3以上が必要/"
+IF LANGUAGE == "ENG"
+	コマンド実行条件 += @"Master or assistant`s %I18N("撮影技能")% is must be LV3 or higher/"
+ELSE
+	コマンド実行条件 += "主人もしくは助手の撮影技能Lv3以上が必要/"
+ENDIF
 IF ABL:MASTER:撮影技能 < 3
 	IF ASSI > 0
 		SIF ABL:ASSI:撮影技能 < 3
@@ -50,30 +58,52 @@ RETURNF COMRESULT
 ;撮影者の処理
 IF !TEQUIP:ライブ配信
 	IF ABL:MASTER:撮影技能 >= 3 && (ASSI > 0 && ABL:ASSI:撮影技能 >= 3)
-		PRINTL 撮影者を選択してください　途中変更はできません
-		PRINTL （撮影者を変更する場合、一度撮影を終了してください）
+		IF LANGUAGE == "ENG"
+			PRINTL Select a photographer. Changes cannot be made midway
+			PRINTL （If you want to change the photographer, finish recording first）
+		ELSE
+			PRINTL 撮影者を選択してください　途中変更はできません
+			PRINTL （撮影者を変更する場合、一度撮影を終了してください）
+		ENDIF
 		PRINTFORML [0] %CALLNAME:MASTER%
 		PRINTFORML [1] %CALLNAME:ASSI%
-		PRINTL [2] やめる
+		PRINTFORML [2] %I18N("やめる")%
 		SIF ISSKIP()
 			RETURN
 		BINPUT
 		SELECTCASE RESULT
 			CASE 0
 				TFLAG:ビデオ撮影者 = 1
+			IF LANGUAGE == "ENG"
+				PRINTFORML The photographer is now %CALLNAME:MASTER%
+			ELSE
 				PRINTFORML 撮影者は%CALLNAME:MASTER%です
+			ENDIF
+
 			CASE 1
 				TFLAG:ビデオ撮影者 = 2
-				PRINTFORML 撮影者は%CALLNAME:ASSI%です
+				IF LANGUAGE == "ENG"
+					PRINTFORML The photographer is now %CALLNAME:ASSI%
+				ELSE
+					PRINTFORML 撮影者は%CALLNAME:ASSI%です
+				ENDIF
 			CASE 2
 				RETURN 0
 		ENDSELECT
 	ELSEIF ABL:MASTER:撮影技能 >= 3
 		TFLAG:ビデオ撮影者 = 1
-		PRINTFORML 撮影者は%CALLNAME:MASTER%です
+		IF LANGUAGE == "ENG"
+			PRINTFORML The photographer is now %CALLNAME:MASTER%
+		ELSE
+			PRINTFORML 撮影者は%CALLNAME:MASTER%です
+		ENDIF
 	ELSE
 		TFLAG:ビデオ撮影者 = 2
-		PRINTFORML 撮影者は%CALLNAME:ASSI%です
+		IF LANGUAGE == "ENG"
+			PRINTFORML The photographer is now %CALLNAME:ASSI%
+		ELSE
+			PRINTFORML 撮影者は%CALLNAME:ASSI%です
+		ENDIF
 	ENDIF
 ENDIF
 
@@ -81,11 +111,19 @@ CALL KOJO_MESSAGE_COM
 
 ;着脱の処理
 IF TEQUIP:ライブ配信
-	PRINTW ★★★ライブ配信を終了します★★★
+	IF LANGUAGE == "ENG"
+		PRINTW ★★★Ends live streaming★★★
+	ELSE
+		PRINTW ★★★ライブ配信を終了します★★★
+	ENDIF
 	TFLAG:ビデオ撮影回数 = 0
 	TEQUIP:ライブ配信 = 0
 ELSE
-	PRINTW ★★★ライブ配信を開始します★★★
+	IF LANGUAGE == "ENG"
+		PRINTW ★★★Start live streaming★★★
+	ELSE
+		PRINTW ★★★ライブ配信を開始します★★★
+	ENDIF
 	;視聴者は1人はいる
 	視聴者数 = 1
 	;チャンネル登録者数に応じて増加
@@ -261,13 +299,21 @@ SIF ビデオポイント(SELECTCOMS) < TFLAG:ビデオ撮影回数*10
 ;ポイント*補正(100.00%)/10が視聴者数に加算される
 IF ポイント*視聴者数補正/10000/10
 	視聴者数 += ポイント*視聴者数補正/10000/10
-	PRINTFORML 視聴者数増加+{ポイント*視聴者数補正/10000/10}人(現在{視聴者数}人)
+	IF LANGUAGE == "ENG"
+		PRINTFORML Number of viewers has increased +{ポイント*視聴者数補正/10000/10}persons(Now {視聴者数} Persons)
+	ELSE
+		PRINTFORML 視聴者数増加+{ポイント*視聴者数補正/10000/10}人(現在{視聴者数}人)
+	ENDIF
 ENDIF
 
 ;視聴者数>チャンネル登録者数なら1割の超過分がチャンネル登録される
 IF (視聴者数-チャンネル登録者数)/10 > 0
 	チャンネル登録者数 += (視聴者数-チャンネル登録者数)/10
-	PRINTFORML チャンネル登録者数増加+{(視聴者数-チャンネル登録者数)/10}(現在{チャンネル登録者数}人)
+	IF LANGUAGE == "ENG"
+		PRINTFORML Amount of subscribers has been increased +{(視聴者数-チャンネル登録者数)/10}(Now{チャンネル登録者数} Persons)
+	ELSE
+		PRINTFORML チャンネル登録者数増加+{(視聴者数-チャンネル登録者数)/10}(現在{チャンネル登録者数}人)
+	ENDIF
 ENDIF
 
 RETURN 1
@@ -283,19 +329,35 @@ RETURN 1
 IF TALENT:霊体
 	FOR LCOUNT, 0, RAND(0, MIN(視聴者数, 10))
 		ARRAYSHIFT 視聴コメント, 1, ""
-		STRDATA 視聴コメント
-			DATA ん？
-			DATA 何？
-			DATA ？？？
-			DATA 何も写ってないけど
-			DATA 始まってるのこれ？
-			DATA 謎動画
-			DATA どういうこと？
-			DATA ？
-			DATA 何が起こってるんだ
-			DATA 視えてるの俺だけ？
-			DATA やややケッタイな
-		ENDDATA
+		IF LANGUAGE == "ENG"
+			STRDATA 視聴コメント
+				DATA Yes？
+				DATA what？
+				DATA ？？？
+				DATA I don`t see anything in the photo 
+				DATA Is this starting？
+				DATA mystery video 
+				DATA What do you mean？
+				DATA ？
+				DATA what`s happening
+				DATA Am I the only one who can see it？
+				DATA It`s a little lame
+			ENDDATA		
+		ELSE
+			STRDATA 視聴コメント
+				DATA ん？
+				DATA 何？
+				DATA ？？？
+				DATA 何も写ってないけど
+				DATA 始まってるのこれ？
+				DATA 謎動画
+				DATA どういうこと？
+				DATA ？
+				DATA 何が起こってるんだ
+				DATA 視えてるの俺だけ？
+				DATA やややケッタイな
+			ENDDATA
+		ENDIF
 		コメント数++
 	NEXT
 	RETURN
@@ -304,18 +366,37 @@ ENDIF
 IF CFLAG:死亡
 	FOR LCOUNT, 0, RAND(0, MIN(視聴者数, 10))
 		ARRAYSHIFT 視聴コメント, 1, ""
-		STRDATA 視聴コメント
-			DATA そういうプレイだよね？
-			DATA ガチで死んでるじゃん・・・
-			DATA これ大丈夫なん？
-			DATA こういうの待ってた
-			DATA 遺棄されたタンパク質の有効活用
-			DATA 通報しますた
-			DATA さすがにやばい
-			DATA 閲覧注意
-			DATA エロい
-			DATA 怖すぎて泣いちゃった
-		ENDDATA
+		IF LANGUAGE == "ENG"
+			STRDATA 視聴コメント
+				DATA That`s how you play, right？
+				DATA A death for real・・・
+				DATA This is okay？
+				DATA I was waiting for something like this 
+				DATA Effective use of derelict proteins 
+				DATA I would report it. 
+				DATA It is really dangerous.
+				DATA Be careful when viewing 
+				DATA Erotic 
+				DATA I was so scared I cried 
+				DATA NSFL 
+				DATA We are grilling tonight 
+				DATA Just like 1maul3heads 
+				DATA Underground erotica 
+			ENDDATA
+		ELSE
+			STRDATA 視聴コメント
+				DATA そういうプレイだよね？
+				DATA ガチで死んでるじゃん・・・
+				DATA これ大丈夫なん？
+				DATA こういうの待ってた
+				DATA 遺棄されたタンパク質の有効活用
+				DATA 通報しますた
+				DATA さすがにやばい
+				DATA 閲覧注意
+				DATA エロい
+				DATA 怖すぎて泣いちゃった
+			ENDDATA
+		ENDIF
 		コメント数++
 	NEXT
 	RETURN
@@ -329,6 +410,18 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
+		IF LANGUAGE == "ENG"
+			STRDATA 視聴コメント
+				DATA gentleman 
+				DATA Pleasant 
+				DATA Soft 
+				DATA I want to touch it 
+				DATA cute 
+				DATA Shikan 
+				DATA I want to get it dirty 
+				DATA Erotica
+			ENDDATA
+		ELSE
 			STRDATA 視聴コメント
 				DATA 紳士
 				DATA 気持ちよさそう
@@ -339,12 +432,23 @@ SELECTCASE コマンド名
 				DATA 汚したい
 				DATA えっち
 			ENDDATA
+		ENDIF
 		NEXT
 	CASE "クンニ", "指挿入れ", "アナル舐め", "胸揉み", "乳首責め"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
+		IF LANGUAGE == "ENG"
+			STRDATA 視聴コメント
+				DATA Looks soft
+				DATA Cute
+				DATA Erotic
+				DATA Suck it
+				DATA Delicious 
+				DATA A little dirty 
+			ENDDATA
+		ELSE
 			STRDATA 視聴コメント
 				DATA やわらかそう
 				DATA かわいい
@@ -353,12 +457,26 @@ SELECTCASE コマンド名
 				DATA 触りたい
 				DATA 汚したい
 			ENDDATA
+		ENDIF
 		NEXT
 	CASE "フェラする", "お掃除フェラする"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
+		IF LANGUAGE == "ENG"
+			STRDATA 視聴コメント
+				DATA Penis 
+				DATA It is erect 
+				DATA Looking delicious 
+				DATA The rod you want to stick to 
+				DATA Swallowable 
+				DATA Weird hod dogs 
+				DATA Lolypop 
+				DATAFORM \@ TALENT:ファーリー ? Chemotin is good # Cummin  \@
+				DATAFORM \@ TALENT:ふたなり ? Futanarika that you swallow  # Hold it in your mouth and give it to me  \@
+			ENDDATA
+		ELSE
 			STRDATA 視聴コメント
 				DATA ちんぽ
 				DATA 勃ってる
@@ -369,76 +487,133 @@ SELECTCASE コマンド名
 				DATAFORM \@ TALENT:ファーリー ? ケモチンはいいぞ # イキそう \@
 				DATAFORM \@ TALENT:ふたなり ? ふたなりっ子は至宝 # 咥えて差し上げろ \@
 			ENDDATA
+		ENDIF
 		NEXT
 	CASE "秘貝開帳"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATAFORM \@ TALENT:体格 <= 2 ? ロリマンコやばい # もっとカメラ寄せて \@
-				DATAFORM \@ TALENT:体格 <= 2 ? まったく幼女は最高だぜ！ # ヒクヒクしてる \@
-				DATA いれたい
-				DATA やりたい
-				DATAFORM \@ EXP:Ｖ経験 >= 200 ? 使い込まれてそう # きれいなマンコ \@
-				DATA 濡れてる
-				DATA エロい・・・
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATAFORM \@ TALENT:体格 <= 2 ? Loli pussy is dangerous  # Bring more cameras  \@
+					DATAFORM \@ TALENT:体格 <= 2 ? Little girls are the best！  # I`m tingling  \@
+					DATA I want to put it in
+					DATA I want to do it
+					DATAFORM \@ EXP:Ｖ経験 >= 200 ? Looks like it`s been used before  # pretty pussy \@
+					DATA Wet
+					DATA AVporn・・・
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATAFORM \@ TALENT:体格 <= 2 ? ロリマンコやばい # もっとカメラ寄せて \@
+					DATAFORM \@ TALENT:体格 <= 2 ? まったく幼女は最高だぜ！ # ヒクヒクしてる \@
+					DATA いれたい
+					DATA やりたい
+					DATAFORM \@ EXP:Ｖ経験 >= 200 ? 使い込まれてそう # きれいなマンコ \@
+					DATA 濡れてる
+					DATA エロい・・・
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "秘貝開帳見せつけ"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATAFORM \@ TALENT:PLAYER:体格 <= 2 ? ロリマンコやばい # もっとカメラ寄せて \@
-				DATAFORM \@ TALENT:PLAYER:体格 <= 2 ? まったく幼女は最高だぜ！ # ヒクヒクしてる \@
-				DATA いれたい
-				DATA やりたい
-				DATAFORM \@ EXP:PLAYER:Ｖ経験 >= 200 ? 使い込まれてそう # きれいなマンコ \@
-				DATA 濡れてる
-				DATA エロい・・・
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATAFORM \@ TALENT:体格 <= 2 ? Loli pussy is dangerous  # Bring more cameras  \@
+					DATAFORM \@ TALENT:体格 <= 2 ? Little girls are the best！  # I`m tingling  \@
+					DATA I want to put it in
+					DATA I want to do it
+					DATAFORM \@ EXP:Ｖ経験 >= 200 ? Looks like it`s been used before  # pretty pussy \@
+					DATA Wet
+					DATA AVporn・・・
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATAFORM \@ TALENT:PLAYER:体格 <= 2 ? ロリマンコやばい # もっとカメラ寄せて \@
+					DATAFORM \@ TALENT:PLAYER:体格 <= 2 ? まったく幼女は最高だぜ！ # ヒクヒクしてる \@
+					DATA いれたい
+					DATA やりたい
+					DATAFORM \@ EXP:PLAYER:Ｖ経験 >= 200 ? 使い込まれてそう # きれいなマンコ \@
+					DATA 濡れてる
+					DATA エロい・・・
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "胸自慰"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 乳首でイくの？
-				DATA チクオナキター
-				DATA 乳首勃ってんじゃん
-				DATA おっぱい！
-				DATAFORM \@ PENIS(TARGET) ? ちんちんも写して # 母乳出るの？ \@
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Do you cum with nipples?
+					DATA Nippleturbation
+					DATA Your nipples are hard
+					DATA Tits！
+					DATA Tiddies!
+					DATAFORM \@ PENIS(TARGET) ? Take a picture of my dick too # Does breast milk come out? \@
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 乳首でイくの？
+					DATA チクオナキター
+					DATA 乳首勃ってんじゃん
+					DATA おっぱい！
+					DATAFORM \@ PENIS(TARGET) ? ちんちんも写して # 母乳出るの？ \@
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "足扱きする", "下着扱きする", "手淫する", "素股する"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 気持ちよさそう
-				DATA カウパーすごい
-				DATA されたい
-				DATA 搾られたい
-				DATA がんばって
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA It feels good
+					DATA Cowper is amazing
+					DATA want to be
+					DATA It wants to be squeezed
+					DATA Go for it
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 気持ちよさそう
+					DATA カウパーすごい
+					DATA されたい
+					DATA 搾られたい
+					DATA がんばって
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "自慰"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 激しい
-				DATA すげえオナニー
-				DATA これは絶対感じてる
-				DATA 手伝いたい
-				DATA 今イったよね
-				DATAFORM \@ PENIS(TARGET) ? シコり続けるのだ・・・ # 下の口は正直だな \@
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA intense
+					DATA Amazing masturbation
+					DATAFORM %HE_SHE(TARGET)% is definitely feeling this
+					DATAFORM %HE_SHE(TARGET)% want to help
+					DATA You just cum, right?
+					DATAFORM \@ PENIS(TARGET) ? Keep jerking off・・・ # The bottom part is honest \@
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 激しい
+					DATA すげえオナニー
+					DATA これは絶対感じてる
+					DATA 手伝いたい
+					DATA 今イったよね
+					DATAFORM \@ PENIS(TARGET) ? シコり続けるのだ・・・ # 下の口は正直だな \@
+				ENDDATA
+			ENDIF
 		NEXT
 	{
 	CASE "パイズリする", "パイズリフェラする",
@@ -448,15 +623,27 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA おっぱい！
-				DATA 気持ちよさそう
-				DATA 挟まれたい
-				DATA 揉みたい
-				DATA 音がエロい
-				DATA やわらかそう
-				DATA されたい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Breasts!
+					DATA It feels good
+					DATAFORM %HE_SHE(TARGET)% want to be caught
+					DATAFORM %HE_SHE(TARGET)% want to rub it
+					DATA The sound is erotic
+					DATA Looks soft
+					DATA want to be
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA おっぱい！
+					DATA 気持ちよさそう
+					DATA 挟まれたい
+					DATA 揉みたい
+					DATA 音がエロい
+					DATA やわらかそう
+					DATA されたい
+				ENDDATA
+			ENDIF
 		NEXT
 	;コミュニケーション系
 	CASE "キスする", "キスしてもらう"
@@ -464,52 +651,98 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA ふたりは幸せなキスをして終了
-				DATA 愛を感じる
-				DATA 相手も応じてるのがエロい
-				DATA ちゅっちゅ
-				DATA いいなぁ・・・
-				DATA これ好き
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA The two end with a happy kiss
+					DATA Feel the love
+					DATA It is erotic that the other person also responds
+					DATA Chutchu
+					DATA Nice...
+					DATA Like this
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA ふたりは幸せなキスをして終了
+					DATA 愛を感じる
+					DATA 相手も応じてるのがエロい
+					DATA ちゅっちゅ
+					DATA いいなぁ・・・
+					DATA これ好き
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "吸血する", "吸血させる"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA ぎゃあああああ
-				DATA グロ動画
-				DATA 痛そう
-				DATA ひどい
-				DATA 愛を感じる
-				DATA 相手も応じてるのがエロい
-				DATA うまそう
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Kyaaaaaaaaaaaaa
+					DATA Gro video
+					DATA Looks painful
+					DATA Terrible
+					DATA I feel the love
+					DATA It`s erotic that the other person also responds
+					DATA Looks delicious
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA ぎゃあああああ
+					DATA グロ動画
+					DATA 痛そう
+					DATA ひどい
+					DATA 愛を感じる
+					DATA 相手も応じてるのがエロい
+					DATA うまそう
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "料理を作る", "お菓子を作る"
 		FOR LCOUNT, 0, RAND:4
 			ARRAYSHIFT 視聴コメント, 1, ""
 			SELECTCASE ABL:料理技能
 				CASE 0, 1
-					STRDATA 視聴コメント
-						DATA まずそう
-						DATA いらない
-						DATA 美味しくなさそう
-						DATA 生ゴミ
-						DATA 下手くそ
-						DATA うまそう
-					ENDDATA
+					IF LANGUAGE == "ENG"
+						STRDATA 視聴コメント
+							DATA First of all
+							DATA Not nesessary
+							DATA Doesn`t seem tasty
+							DATA Garbage
+							DATA Dork cooking
+							DATA Looks delicious
+							DATA Amateurs
+						ENDDATA	
+					ELSE
+						STRDATA 視聴コメント
+							DATA まずそう
+							DATA いらない
+							DATA 美味しくなさそう
+							DATA 生ゴミ
+							DATA 下手くそ
+							DATA うまそう
+						ENDDATA
+					ENDIF
 				CASEELSE
-					STRDATA 視聴コメント
-						DATA うまそう
-						DATA 食べたい
-						DATA 美味しそう
-						DATA 飯テロ
-						DATA これ絶対うまいやつやん
-						DATA お腹減ってきた
-					ENDDATA
+					IF LANGUAGE == "ENG"
+						STRDATA 視聴コメント
+							DATA Looks delicious
+							DATA You want to eat it
+							DATA Looks delicious
+							DATA Meal terror
+							DATA This is definitely good.
+							DATA Getting hungry
+						ENDDATA
+					ELSE
+						STRDATA 視聴コメント
+							DATA うまそう
+							DATA 食べたい
+							DATA 美味しそう
+							DATA 飯テロ
+							DATA これ絶対うまいやつやん
+							DATA お腹減ってきた
+						ENDDATA
+					ENDIF
 			ENDSELECT
 			コメント数++
 		NEXT
@@ -520,25 +753,45 @@ SELECTCASE コマンド名
 	}
 		FOR LCOUNT, 0, RAND:4
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 安物のAVみたい
-				DATA 恒例の日常パート
-				DATA これはいらない
-				DATA 和む
-				DATA トイレ休憩
-				DATA この間にコンビニ行ってくる
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Looks like a cheap AV
+					DATA Usual daily part
+					DATA I don`t need this
+					DATA Soothe
+					DATA Toilet break
+					DATA I`m going to the convenience store during this time.
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 安物のAVみたい
+					DATA 恒例の日常パート
+					DATA これはいらない
+					DATA 和む
+					DATA トイレ休憩
+					DATA この間にコンビニ行ってくる
+				ENDDATA
+			ENDIF
 			コメント数++
 		NEXT
 	CASE "お酒を飲ませる", "ジュースを飲ませる"
 		FOR LCOUNT, 0, RAND:3
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA あのさぁ・・・
-				DATA お　ま　た　せ
-				DATA アイスティー
-				DATA サッー！(迫真)
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Well then・・・
+					DATA Let me help you
+					DATA iced tea
+					DATA Wow! (Realistic)
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA あのさぁ・・・
+					DATA お　ま　た　せ
+					DATA アイスティー
+					DATA サッー！(迫真)
+				ENDDATA
+			ENDIF
 			コメント数++
 		NEXT
 	CASE "罵倒"
@@ -546,39 +799,73 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA ぴえん
-				DATA ちくちく言葉
-				DATA ひどい
-				DATA うちの上司みたい
-				DATA これはないわ
-				DATA かわいそう
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Pien
+					DATA Prickly words
+					DATA Terrible
+					DATA Like my boss
+					DATA This doesn`t exist.
+					DATA Poor thing
+					DATA Abuse
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA ぴえん
+					DATA ちくちく言葉
+					DATA ひどい
+					DATA うちの上司みたい
+					DATA これはないわ
+					DATA かわいそう
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "コナステで遊ぶ"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA あ、これヤヴァイ
-				DATA 分かれた
-				DATA やばい！これやばいよ！
-				DATA 超当たりきた！
-				DATA ほんもぁおかしい
-				DATA まさかの3000コンボイ
-				DATA 3000は行かないか
-				DATA これはもやしがあるよ
-				DATA おっおっおっ
-				DATA 裏技だｗｗｗ
-				DATA はじまた
-				DATA 自己ベ出るよ！
-				DATA こーれは・・・
-				DATA 1700ポンドかよ
-				DATA さ、財布取ろう？
-				DATA なんぼなん？
-				DATA 君ビートマニアうまいねぇ！
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Wow! this is crazy
+					DATA Divided
+					DATA Oh no! This is terrible!
+					DATA It was a big hit!
+					DATA Really funny
+					DATA Unexpected 3000 Convoy
+					DATA 3000 won`t go?
+					DATA This has bean sprouts.
+					DATA Whoa whoa whoa
+					DATA trick lol
+					DATA Hajimata
+					DATA I`m going to show myself!
+					DATA This is...
+					DATA 1700 pounds?
+					DATA Shall I get my wallet?
+					DATA What is it?
+					DATA You`re a good beatmaniac!
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA あ、これヤヴァイ
+					DATA 分かれた
+					DATA やばい！これやばいよ！
+					DATA 超当たりきた！
+					DATA ほんもぁおかしい
+					DATA まさかの3000コンボイ
+					DATA 3000は行かないか
+					DATA これはもやしがあるよ
+					DATA おっおっおっ
+					DATA 裏技だｗｗｗ
+					DATA はじまた
+					DATA 自己ベ出るよ！
+					DATA こーれは・・・
+					DATA 1700ポンドかよ
+					DATA さ、財布取ろう？
+					DATA なんぼなん？
+					DATA 君ビートマニアうまいねぇ！
+				ENDDATA
+			ENDIF
 		NEXT
 	;道具系
 	{
@@ -590,69 +877,123 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 使い方うまい
-				DATA これ持ってる
-				DATA すごい感じてる
-				DATA エロい
-				DATA いいね
-				DATA レビューよろ
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Easy going
+					DATA I have this
+					DATAFORM   %HE_SHE(TARGET)% feels amazing
+					DATA Erotic
+					DATA Like
+					DATA Review
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 使い方うまい
+					DATA これ持ってる
+					DATA すごい感じてる
+					DATA エロい
+					DATA いいね
+					DATA レビューよろ
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "貞操帯", "射精寸止め"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA ああ・・・
-				DATA これはつらい
-				DATA 我々の業界ではご褒美です
-				DATA 射精管理はじまた
-				DATA わるいちんちんはしまっちゃおうね～
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Ah・・・
+					DATA This is painful
+					DATA is a reward in our industry.
+					DATA Ejaculation control
+					DATA Let`s put away the bad penis~
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA ああ・・・
+					DATA これはつらい
+					DATA 我々の業界ではご褒美です
+					DATA 射精管理はじまた
+					DATA わるいちんちんはしまっちゃおうね～
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "搾乳器"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA どんどん溜まってく
-				DATA 飲みたい
-				DATA すごい量
-				DATA 牛みたい
-				DATA エロすぎ
-				DATA ストローで啜りたい
-				DATA うまそう
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+				DATA keeps accumulating
+				DATA I want to drink
+				DATA Huge amount
+				DATA Looks like a cow
+				DATA Too erotic
+				DATA I want to sip through a straw
+				DATA Looks delicious
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA どんどん溜まってく
+					DATA 飲みたい
+					DATA すごい量
+					DATA 牛みたい
+					DATA エロすぎ
+					DATA ストローで啜りたい
+					DATA うまそう
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "搾精機"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA どんどん溜まってく
-				DATA 飲みたい
-				DATA すごい量
-				DATA 我々の業界ではご褒美です
-				DATA エロすぎ
-				DATA 搾られたい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA keeps accumulating
+					DATA I want to drink
+					DATA Huge amount
+					DATA is a reward in our industry.
+					DATA too erotic
+					DATA I want to be squeezed
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA どんどん溜まってく
+					DATA 飲みたい
+					DATA すごい量
+					DATA 我々の業界ではご褒美です
+					DATA エロすぎ
+					DATA 搾られたい
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "搾精コンドーム", "コンドーム"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 生じゃないのか・・・
-				DATA 生でやって
-				DATA 咥えゴムエロい
-				DATA 避妊大事
-				DATA ゴムは甘え
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Isn`t it raw...
+					DATA Do it live
+					DATA The rubber in your mouth is erotic
+					DATA Contraception is important
+					DATA Rubber is spoiled
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 生じゃないのか・・・
+					DATA 生でやって
+					DATA 咥えゴムエロい
+					DATA 避妊大事
+					DATA ゴムは甘え
+				ENDDATA
+			ENDIF
 		NEXT
 	;セックス系
 	{
@@ -667,20 +1008,37 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA おおっ
-				DATA エロすぎ
-				DATA 今絶対イったよね
-				DATA めっちゃ激しい
-				DATA ふぅ・・・
-				DATA ここから本編
-				DATA すげええ
-				DATA 声がエロい
-				DATA 抜いた
-				DATA 最高
-				DATA ぐぅシコ
-				DATA 素直に射精です
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Oh
+					DATA too erotic
+					DATA You definitely cum just now, right?
+					DATA very intense
+					DATA Huh...
+					DATA Main story starts here
+					DATA Amazing
+					DATA voice is erotic
+					DATA removed
+					DATA best
+					DATA Gusico
+					DATA I ejaculate honestly
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA おおっ
+					DATA エロすぎ
+					DATA 今絶対イったよね
+					DATA めっちゃ激しい
+					DATA ふぅ・・・
+					DATA ここから本編
+					DATA すげええ
+					DATA 声がエロい
+					DATA 抜いた
+					DATA 最高
+					DATA ぐぅシコ
+					DATA 素直に射精です
+				ENDDATA
+			ENDIF
 		NEXT
 	;奉仕系
 	{
@@ -692,53 +1050,94 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA されたい
-				DATA 気持ちよさそう
-				DATA 汚したい
-				DATA エロい
-				DATA かわいい
-				DATA がんばれ
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA want to be
+					DATA It feels good
+					DATA I want to get dirty
+					DATA Erotic
+					DATA cute
+					DATA do your best
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA されたい
+					DATA 気持ちよさそう
+					DATA 汚したい
+					DATA エロい
+					DATA かわいい
+					DATA がんばれ
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "素股"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA これ絶対入ってるよね
-				DATAFORM \@ TALENT:体格 <= 2 ? ぷにまんに擦られたい # すごい濡れてる \@
-				DATA 実質セックス
-				DATA エロい
-				DATA かわいい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA This is definitely included
+					DATAFORM \@ TALENT:体格 <= 2 ? I want to be rubbed by a tight pussy # Itёs so wet \@
+					DATA real sex
+					DATA Erotic
+					DATA cute
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA これ絶対入ってるよね
+					DATAFORM \@ TALENT:体格 <= 2 ? ぷにまんに擦られたい # すごい濡れてる \@
+					DATA 実質セックス
+					DATA エロい
+					DATA かわいい
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "足を舐めさせる"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 汚い
-				DATA くさそう
-				DATA かわいそう
-				DATA 足エロい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA dirty
+					DATA Looks disgusting
+					DATA poor thing
+					DATA erotic feet
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 汚い
+					DATA くさそう
+					DATA かわいそう
+					DATA 足エロい
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "母乳飲み", "搾乳", "授乳手コキ"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 飲みたい
-				DATA おいしそう
-				DATA エロい
-				DATA バブみ
-				DATA ママ・・・
-				DATA オギャーーー！！
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA I want to drink
+					DATA Looks delicious
+					DATA Erotic
+					DATA Bubbly
+					DATA Mom...
+					DATA Ogyaーーー！！
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 飲みたい
+					DATA おいしそう
+					DATA エロい
+					DATA バブみ
+					DATA ママ・・・
+					DATA オギャーーー！！
+				ENDDATA
+			ENDIF
 		NEXT
 	;SM系
 	{
@@ -750,20 +1149,37 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA おしおきタイム
-				DATA いいぞもっとやれ
-				DATA かわいそう
-				DATA ひどい
-				DATA 痛そう
-				DATA 怯える声がエロい
-				DATA かわいい
-				DATA 急にホラー映画になった
-				DATA ！？
-				DATA これ嫌い
-				DATA 無理
-				DATA やめたげてよぉ
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Punishment time
+					DATA Good, do more
+					DATA Poor thing
+					DATA Terrible
+					DATA Looks painful
+					DATA The frightened voice is erotic
+					DATA Cute
+					DATA suddenly became a horror movie
+					DATA ！？
+					DATA I hate this
+					DATA impossible
+					DATA Stop it!
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA おしおきタイム
+					DATA いいぞもっとやれ
+					DATA かわいそう
+					DATA ひどい
+					DATA 痛そう
+					DATA 怯える声がエロい
+					DATA かわいい
+					DATA 急にホラー映画になった
+					DATA ！？
+					DATA これ嫌い
+					DATA 無理
+					DATA やめたげてよぉ
+				ENDDATA
+			ENDIF
 		NEXT
 	;助手系、レズ系
 	CASE "クンニさせる", "岩清水"
@@ -771,67 +1187,119 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATAFORM \@ SEX(TARGET) == 2 ? あら＾～ # ご褒美 \@
-				DATA で、味は？
-				DATA 濡れてる
-				DATA くさそう
-				DATA 舐めたい
-				DATA エロい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATAFORM \@ SEX(TARGET) == 2 ? fault＾～ # reward \@
+					DATA So, what does it taste like?
+					DATA wet
+					DATA Looks disgusting
+					DATA I want to lick
+					DATA Erotica
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATAFORM \@ SEX(TARGET) == 2 ? あら＾～ # ご褒美 \@
+					DATA で、味は？
+					DATA 濡れてる
+					DATA くさそう
+					DATA 舐めたい
+					DATA エロい
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "貝合わせ", "双頭ディルド", "乳の揉み合い"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA あら＾～
-				DATA 破廉恥ですわ～
-				DATA 百合はいいぞ
-				DATA レズもの助かる
-				DATA かわいい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA fault＾～
+					DATA It's shameless～
+					DATA Yuri is good
+					DATA Lesbian things are helpful
+					DATA Cute
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA あら＾～
+					DATA 破廉恥ですわ～
+					DATA 百合はいいぞ
+					DATA レズもの助かる
+					DATA かわいい
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "ダブルフェラ", "ダブルパイズリ", "3P", "ダブル素股", "数珠繋ぎ"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 男の夢
-				DATA エロゲみたい
-				DATA おいそこ代われ
-				DATA 最高
-				DATA ふぅ・・・
-				DATA シコい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA A man's dream
+					DATA Looks like an eroge
+					DATA Oisoko substitute
+					DATA best
+					DATA Huh・・・
+					DATA cool
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 男の夢
+					DATA エロゲみたい
+					DATA おいそこ代われ
+					DATA 最高
+					DATA ふぅ・・・
+					DATA シコい
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "アナル双頭ディルド"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA ┌(┌^o^)┐ホモォ...
-				DATA エロすぎ
-				DATA 完全にメスの顔
-				DATA 全部入ってる
-				DATA 先走りすごい
-				DATA アーッ！
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA ┌(┌^o^)┐Homooo...
+					DATA Too erotic
+					DATA Completely female face
+					DATA All included
+					DATA Is amazing at being ahead of the curve
+					DATA Ah!
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA ┌(┌^o^)┐ホモォ...
+					DATA エロすぎ
+					DATA 完全にメスの顔
+					DATA 全部入ってる
+					DATA 先走りすごい
+					DATA アーッ！
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "顔面騎乗する"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA されたい
-				DATA 我々の業界ではご褒美です
-				DATA いい匂いしそう
-				DATA エロい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA want to be
+					DATA A reward in our industry.
+					DATA Looks like it smells good
+					DATA Erotic
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA されたい
+					DATA 我々の業界ではご褒美です
+					DATA いい匂いしそう
+					DATA エロい
+				ENDDATA
+			ENDIF
 		NEXT
 	;ハードなコマンド
 	CASE "イラマチオ"
@@ -839,102 +1307,184 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 苦しそう
-				DATA エロすぎ
-				DATA かわいそう
-				DATA 喉コキ
-				DATA したい
-				DATA やりたい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+DATA looks painful
+					DATA too erotic
+					DATA poor thing
+					DATA throat job
+					DATA I want it 
+					DATA I want to do it
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 苦しそう
+					DATA エロすぎ
+					DATA かわいそう
+					DATA 喉コキ
+					DATA したい
+					DATA やりたい
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "浣腸器"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA きたない
-				DATA くさそう
-				DATA かわいそう
-				DATA まずそう
-				DATA これ嫌い
-				DATA うんちぶり
-				DATA ﾌﾞﾘﾌﾞﾘﾌﾞﾘﾌﾞﾘｭﾘｭﾘｭﾘｭﾘｭﾘｭ！
-				DATA ウンドボ
-				DATA これ好き
-				DATA 食べたい
-				DATA 糞が出るう～
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA dirty
+					DATA Looks disgusting
+					DATA poor thing
+					DATA First of all
+					DATA I hate this
+					DATA Poo first time
+					DATA It's so hot!
+					DATA Undobo
+					DATA I like this
+					DATA I want to eat
+					DATA feces come out～
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA きたない
+					DATA くさそう
+					DATA かわいそう
+					DATA まずそう
+					DATA これ嫌い
+					DATA うんちぶり
+					DATA ﾌﾞﾘﾌﾞﾘﾌﾞﾘﾌﾞﾘｭﾘｭﾘｭﾘｭﾘｭﾘｭ！
+					DATA ウンドボ
+					DATA これ好き
+					DATA 食べたい
+					DATA 糞が出るう～
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "アナル電極", "乳房電極"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA ひぎぃ
-				DATA 痛そう
-				DATA かわいそう
-				DATA ビクビクしててエロい
-				DATA うわ
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Higgy
+					DATA Looks painful
+					DATA poor thing
+					DATA Jumpy and erotic
+					DATA Wow
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA ひぎぃ
+					DATA 痛そう
+					DATA かわいそう
+					DATA ビクビクしててエロい
+					DATA うわ
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "フィストファック", "アナルフィスト",　"フィストファックさせる", "アナルフィストさせる", "両穴フィスト"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA ガバ穴
-				DATA ガバガバじゃねえか
-				DATA 肘まで入りそう
-				DATA 痛そう
-				DATA エロい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Gover hole
+					DATA Isn't it loose?
+					DATA I can fit up to my elbows
+					DATA Looks painful
+					DATA Erotic
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA ガバ穴
+					DATA ガバガバじゃねえか
+					DATA 肘まで入りそう
+					DATA 痛そう
+					DATA エロい
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "放尿"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA きたない
-				DATA くさそう
-				DATA これ好き
-				DATA おいしそう
-				DATA 飲みたい
-				DATA お茶漬けにしたい
-				DATA 直飲みしたい
-				DATA かわいい
-				DATA おもらし
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA dirty
+					DATA Looks disgusting
+					DATA I like this
+					DATA Looks delicious
+					DATA I want to drink
+					DATA I want to have golden shower
+					DATA I want to drink it directly
+					DATA cute
+					DATA peeing
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA きたない
+					DATA くさそう
+					DATA これ好き
+					DATA おいしそう
+					DATA 飲みたい
+					DATA お茶漬けにしたい
+					DATA 直飲みしたい
+					DATA かわいい
+					DATA おもらし
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "空気浣腸", "拡張バルーン"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA きたない
-				DATA くさそう
-				DATA かわいそう
-				DATA 痛そう
-				DATA これ好き
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA dirty
+					DATA Looks disgusting
+					DATA poor thing
+					DATA Looks painful
+					DATA I like this
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA きたない
+					DATA くさそう
+					DATA かわいそう
+					DATA 痛そう
+					DATA これ好き
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "アナルを舐めさせる"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA きたない
-				DATA くさそう
-				DATA かわいそう
-				DATA まずそう
-				DATA 病気になりそう
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Dirty
+					DATA Looks disgusting
+					DATA poor thing
+					DATA First of all
+					DATA I'm about to get sick
+					DATA Donuts licking
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA きたない
+					DATA くさそう
+					DATA かわいそう
+					DATA まずそう
+					DATA 病気になりそう
+				ENDDATA
+			ENDIF
 		NEXT
 	;触手系
 	{
@@ -946,16 +1496,29 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 触手先輩キター！
-				DATA 触手かわいい
-				DATA ペットにしたい
-				DATA 触手は癒し
-				DATA 触手おいしそう
-				DATA 触手エロい
-				DATA 触手好き
-				DATA 触手愛してる
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Tentacle Senpai Kita!
+					DATA Tentacles are cute
+					DATA I want to have it as a pet
+					DATA Tentacles are healing
+					DATA Tentacles look delicious
+					DATA Tentacle erotic
+					DATA I like tentacles
+					DATA I love tentacles
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 触手先輩キター！
+					DATA 触手かわいい
+					DATA ペットにしたい
+					DATA 触手は癒し
+					DATA 触手おいしそう
+					DATA 触手エロい
+					DATA 触手好き
+					DATA 触手愛してる
+				ENDDATA
+			ENDIF
 		NEXT
 	;その他
 	CASE "尿道カテーテル"
@@ -963,69 +1526,123 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA ﾋｴｯ
-				DATA 痛そう
-				DATA かわいそう
-				DATA 我々の業界ではご褒美です
-				DATA ひぎぃ
-				DATA 気持ちよさそう
-				DATA 怪我しそう
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Hie
+					DATA Looks painful
+					DATA poor thing
+					DATA is a reward in our industry.
+					DATA Higgy
+					DATA It feels good
+					DATA Looks like I'm going to get hurt
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA ﾋｴｯ
+					DATA 痛そう
+					DATA かわいそう
+					DATA 我々の業界ではご褒美です
+					DATA ひぎぃ
+					DATA 気持ちよさそう
+					DATA 怪我しそう
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "粘液ぶっかけ", "魅惑の粘液"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA スライムになっちゃう
-				DATA おいしそう
-				DATA エロい
-				DATA べとべと
-				DATA 病気になりそう
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Becomes a slime
+					DATA Looks delicious
+					DATA Erotic
+					DATA Sticky
+					DATA I'm about to get sick
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA スライムになっちゃう
+					DATA おいしそう
+					DATA エロい
+					DATA べとべと
+					DATA 病気になりそう
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "新妻プレイ"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA エロゲみたい
-				DATA AVみたい
-				DATA あざとい
-				DATA 狙いすぎ
-				DATA 茶番
-				DATA かわいい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Looks like an eroge
+					DATA Looks like an AV
+					DATA Azatoi
+					DATA Aim too much
+					DATA farce
+					DATA cute
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA エロゲみたい
+					DATA AVみたい
+					DATA あざとい
+					DATA 狙いすぎ
+					DATA 茶番
+					DATA かわいい
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "コンドーム精飲（奴隷）", "コンドーム精飲（助手）"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA まずそう
-				DATA くさそう
-				DATA きたない
-				DATA エロい
-				DATA 飲ザーはちょっと・・・
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA First of all
+					DATA Looks disgusting
+					DATA dirty
+					DATA Erotic
+					DATA Drinking beer is a bit・・・
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA まずそう
+					DATA くさそう
+					DATA きたない
+					DATA エロい
+					DATA 飲ザーはちょっと・・・
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "女装させる"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA かわいい
-				DATA 女の子みたい
-				DATA 美少女
-				DATA 結婚して
-				DATA 嫁に来い
-				DATA 似合ってる
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA cute
+					DATA Looks like a girl
+					DATA Beautiful girl
+					DATA Get married
+					DATA Come to my wife
+					DATA Looks good on you
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA かわいい
+					DATA 女の子みたい
+					DATA 美少女
+					DATA 結婚して
+					DATA 嫁に来い
+					DATA 似合ってる
+				ENDDATA
+			ENDIF
 		NEXT
 	;龍姦系
 	CASE "キス（ドラゴン）"
@@ -1033,78 +1650,144 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA ペットにしたい
-				DATA かっこいい
-				DATA イケメン
-				DATA ドラゴン好き
-				DATA 惚れる
-				DATA エロい
-				DATA 舌使いすごい
-				DATA ドラゴンのほうが良い
-				DATA 気持ちよさそう
-				DATA 最高
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA I want to have it as a pet
+					DATA cCool
+					DATA Handsome guy
+					DATA Dragon lover
+					DATA Fall in love
+					DATA Erotic
+					DATA Amazing tongue use
+					DATA Dragon is better
+					DATA It feels good
+					DATA The best
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA ペットにしたい
+					DATA かっこいい
+					DATA イケメン
+					DATA ドラゴン好き
+					DATA 惚れる
+					DATA エロい
+					DATA 舌使いすごい
+					DATA ドラゴンのほうが良い
+					DATA 気持ちよさそう
+					DATA 最高
+				ENDDATA
+
+			ENDIF
 		NEXT
 	CASE "フェラさせる（ドラゴン）"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA でかい
-				DATA でかすぎ
-				DATA すごく・・・大きいです
-				DATA ペットにしたい
-				DATA ドラゴン好き
-				DATA 惚れる
-				DATA エロい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA big
+					DATA too big
+					DATA It's so... big
+					DATA I want to have it as a pet
+					DATA Dragon lover
+					DATA fall in love
+					DATA Erotic
+					DATA Dovakins demise
+					DATA DRACONIC BLOWJOBS
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA でかい
+					DATA でかすぎ
+					DATA すごく・・・大きいです
+					DATA ペットにしたい
+					DATA ドラゴン好き
+					DATA 惚れる
+					DATA エロい
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "舐め回す（ドラゴン）", "ペットに舐めさせる"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA かわいい
-				DATA 癒し
-				DATA ホームビデオ
-				DATA 唯一の良心
-				DATA ぺろぺろされたい
-				DATA ケモナー歓喜
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA cute
+					DATA healing
+					DATA home video
+					DATA only conscience
+					DATA I want to be licked
+					DATA Kemoner joy
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA かわいい
+					DATA 癒し
+					DATA ホームビデオ
+					DATA 唯一の良心
+					DATA ぺろぺろされたい
+					DATA ケモナー歓喜
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "睨みつける（ドラゴン）"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 怖い
-				DATA かっこいい
-				DATA イケメン
-				DATA ドラゴン好き
-				DATA 惚れる
-				DATA エロい
-				DATA 口説かれたい
-				DATA 抱かれたい
-				DATA フィギュア化希望
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA scary
+					DATA cool
+					DATA Handsome guy
+					DATA Dragon lover
+					DATA fall in love
+					DATA Erotic
+					DATA I want to be wooed
+					DATA I want to be held
+					DATA I want to make it into a figure
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 怖い
+					DATA かっこいい
+					DATA イケメン
+					DATA ドラゴン好き
+					DATA 惚れる
+					DATA エロい
+					DATA 口説かれたい
+					DATA 抱かれたい
+					DATA フィギュア化希望
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "膣を犯す（ドラゴン）", "アナルを犯す（ドラゴン）", "ペットに犯させる"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 異種姦キター！
-				DATA 血出てない？
-				DATA よくこんなの入るな
-				DATA 腹ボコ良い・・・
-				DATA こわれちゃう
-				DATA エロい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Interspecies rape!
+					DATA Isn't there blood?
+					DATA I don't often get stuff like this.
+					DATA I feel hungry...
+					DATA will be destroyed
+					DATA Erotic
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 異種姦キター！
+					DATA 血出てない？
+					DATA よくこんなの入るな
+					DATA 腹ボコ良い・・・
+					DATA こわれちゃう
+					DATA エロい
+				ENDDATA
+			ENDIF
 		NEXT
 	;派生コマンド
 	CASE "二本フェラ"
@@ -1112,83 +1795,151 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA ビッチ
-				DATA 俺のも舐めてくれ
-				DATA 両手に竿
-				DATA エロい
-				DATA ぶっかけたい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Bitch
+					DATA Lick mine too
+					DATA Rod in both hands
+					DATA Erotic
+					DATA I want to bukkake
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA ビッチ
+					DATA 俺のも舐めてくれ
+					DATA 両手に竿
+					DATA エロい
+					DATA ぶっかけたい
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "前立腺刺激"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA メス落ちしそう
-				DATA 男も尻で感じるのか・・・
-				DATA 先走りめっちゃ出てる
-				DATA エロい
-				DATA かわいい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA looks like it's going to fall
+					DATA Do men also feel it in their butts...
+					DATA I'm really running ahead of myself.
+					DATA Erotic
+					DATA cute
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA メス落ちしそう
+					DATA 男も尻で感じるのか・・・
+					DATA 先走りめっちゃ出てる
+					DATA エロい
+					DATA かわいい
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "シックスナイン", "69パイズリ"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 感じてる顔がエロい
-				DATA きみ体やわらかいねぇ～
-				DATA されたい
-				DATA 気持ちよさそう
-				DATA かわいい
-				DATA 負けるな！
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA The face that feels it is erotic
+					DATA Your body is so soft～
+					DATA want to be
+					DATA It feels good
+					DATA cute
+					DATA Don`t lose！
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 感じてる顔がエロい
+					DATA きみ体やわらかいねぇ～
+					DATA されたい
+					DATA 気持ちよさそう
+					DATA かわいい
+					DATA 負けるな！
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "正常位キス", "対面座位キス", "正常位アナルキス", "対面座位アナルキス", "騎乗乳房自慰", "騎乗位キス", "騎乗位アナルキス", "正常位キスさせる"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA リア充爆発しろ！
-				DATA 愛を感じる
-				DATA めっちゃ気持ちよさそう
-				DATA エロい
-				DATA かわいい
-				DATA ふたりは幸せなキスをして終了
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Nearly explode!
+					DATA I feel the love
+					DATA It feels really good
+					DATA Erotic
+					DATA Cute
+					DATA The two end with a happy kiss
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA リア充爆発しろ！
+					DATA 愛を感じる
+					DATA めっちゃ気持ちよさそう
+					DATA エロい
+					DATA かわいい
+					DATA ふたりは幸せなキスをして終了
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "正常位首絞め", "後背位首絞め", "正常位アナル首絞め", "後背位アナル首絞め", "逆レイプ首絞め"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA 通報しました
-				DATA 首絞めックスはちょっと・・・
-				DATA 死にそう
-				DATA エロい
-				DATA よくない
-				DATA これ嫌い
-				DATA 怖い
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA I reported it
+					DATA A bit of a choker・・・
+					DATAFORM %HE_SHE(TARGET)% is about to die
+					DATA Erotic
+					DATA Not good
+					DATA I hate this
+					DATA Scary
+					DATAFORM %HE_SHE(TARGET)% can`t breathe
+					DATAFORM George floyd rolepaly
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA 通報しました
+					DATA 首絞めックスはちょっと・・・
+					DATA 死にそう
+					DATA エロい
+					DATA よくない
+					DATA これ嫌い
+					DATA 怖い
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE "バイブオナニー", "アナルバイブオナニー", "シャワーオナニー", "PC筋エネマグラオナニー", "二穴バイブオナニー", "オナフェラ"
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA sugoi
-				DATA 激しすぎ
-				DATA 気持ちよさそう
-				DATA エロすぎ
-				DATA やばい
-				DATA 手伝いたい
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA sugoi
+					DATA Too intense
+					DATA It feels good
+					DATA Too erotic
+					DATA It is terrible
+					DATA I want to help
+					DATAFORM %HE_SHE(TARGET)% is looking so lonely
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA sugoi
+					DATA 激しすぎ
+					DATA 気持ちよさそう
+					DATA エロすぎ
+					DATA やばい
+					DATA 手伝いたい
+				ENDDATA
+			ENDIF
 		NEXT
 	;汎用
 	CASE IS != "ライブ配信"
@@ -1196,15 +1947,27 @@ SELECTCASE コマンド名
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, ""
-			STRDATA 視聴コメント
-				DATA エロい
-				DATA かわいい
-				DATA 気持ちよさそう
-				DATA これ好き
-				DATA やりたい
-				DATA 最高
-				DATA えっち
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Erotic
+					DATA Cute
+					DATA It feels good
+					DATA I like this
+					DATA I want to do it
+					DATA The best
+					DATA Ecchi
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA エロい
+					DATA かわいい
+					DATA 気持ちよさそう
+					DATA これ好き
+					DATA やりたい
+					DATA 最高
+					DATA えっち
+				ENDDATA
+			ENDIF
 		NEXT
 ENDSELECT
 
@@ -1215,48 +1978,90 @@ SELECTCASE TFLAG:ビデオ撮影回数
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, "", 0, 5
-			STRDATA 視聴コメント
-				DATA わこつ
-				DATA 枠乙
-				DATA 待ってたー！
-				DATA 全裸待機中
-				DATA はじまった
-				DATA １※
-				DATA 1コメげと
-				DATA 1
-				DATA また来てしまった
-				DATA 定期的に見たくなる
-				DATA 息子がお世話になってます
-				DATA 新作ktkr
-				DATAFORM \@ PENIS(TARGET) ? ちんちん見せて # まんこ見せて \@
-				DATA いつもありがとう
-				DATAFORM \@ 人気度:(NOF(TARGET)) < 50 ? 誰？ # %CALLNAME:TARGET%、脱げ！\@
-				DATAFORM \@ 人気度:(NOF(TARGET)) < 50 ? 新しい子？ # %CALLNAME:TARGET%は俺の嫁 \@
-				DATA いきがい
-				DATA 間に合った
-				DATA いつもの
-				DATA 実家のような安心感
-				DATAFORM \@ 自爆キャラ:(NOF(TARGET)) ? %CALLNAME:TARGET%！？爆発したはずでは・・・ # うｐ主は神 \@
-				DATA うぽつ
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA My trick
+					DATA Frame B
+					DATA We are waiting for！
+					DATA Waiting for nakedness
+					DATA It has begun
+					DATA １※
+					DATA 1 rice cake
+					DATA 1
+					DATA I`m here again
+					DATA I want to see it regularly
+					DATA My son is taking care of me
+					DATA New ktkr
+					DATAFORM \@ PENIS(TARGET) ? Show me your dick # Show me your pussy \@
+					DATA thank you as always
+					DATAFORM \@ 人気度:(NOF(TARGET)) < 50 ? who? # %CALLNAME:TARGET%, take it off!\@
+					DATAFORM \@ 人気度:(NOF(TARGET)) < 50 ? New kid? # %CALLNAME:TARGET% is my wife \@
+					DATA Ikigai
+					DATA Got it on time
+					DATA usual
+					DATA Feeling safe like home
+					DATAFORM \@ 自爆キャラ:(NOF(TARGET)) ? %CALLNAME:TARGET%！？It should have exploded・・・ # The uploader is a god \@
+					DATA Thanks you
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA わこつ
+					DATA 枠乙
+					DATA 待ってたー！
+					DATA 全裸待機中
+					DATA はじまった
+					DATA １※
+					DATA 1コメげと
+					DATA 1
+					DATA また来てしまった
+					DATA 定期的に見たくなる
+					DATA 息子がお世話になってます
+					DATA 新作ktkr
+					DATAFORM \@ PENIS(TARGET) ? ちんちん見せて # まんこ見せて \@
+					DATA いつもありがとう
+					DATAFORM \@ 人気度:(NOF(TARGET)) < 50 ? 誰？ # %CALLNAME:TARGET%、脱げ！\@
+					DATAFORM \@ 人気度:(NOF(TARGET)) < 50 ? 新しい子？ # %CALLNAME:TARGET%は俺の嫁 \@
+					DATA いきがい
+					DATA 間に合った
+					DATA いつもの
+					DATA 実家のような安心感
+					DATAFORM \@ 自爆キャラ:(NOF(TARGET)) ? %CALLNAME:TARGET%！？爆発したはずでは・・・ # うｐ主は神 \@
+					DATA うぽつ
+				ENDDATA
+			ENDIF
 		NEXT
 	CASE 2
 		コメント増分 = RAND(0, 視聴者数)
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, "", 0, 5
-			STRDATA 視聴コメント
-				DATA いきなり！？
-				DATA ｗｗｗｗｗｗ
-				DATA ｗ
-				DATA 草
-				DATA エロい
-				DATAFORM \@ TALENT:動物耳 ? ケモミミかわいい # かわいい \@ 
-				DATAFORM \@ ALLSAMES(1, SEX(PLAYER), SEX(TARGET)) ? アーッ！ # いいね \@
-				DATAFORM \@ SEX(TARGET) == 1 && TALENT:戦士 ? ウホッ イイ男 # 早く早く \@
-				DATAFORM \@ TALENT:バストサイズ >= 5 ? めっちゃでかい # 最高 \@
-				DATAFORM \@ 性器露出(TARGET) ? 肌きれい # 着衣プレイがまた良い \@
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA Suddenly！？
+					DATA ｗｗｗｗｗｗ
+					DATA ｗ
+					DATA Grass
+					DATA Erotic
+					DATAFORM \@ TALENT:動物耳 ? Kemomimi is cute # cute \@ 
+					DATAFORM \@ ALLSAMES(1, SEX(PLAYER), SEX(TARGET)) ? Ahhh！ # nice \@
+					DATAFORM \@ SEX(TARGET) == 1 && TALENT:戦士 ? Woohoo nice guy # quicker! quicke! \@
+					DATAFORM \@ TALENT:バストサイズ >= 5 ? It`s really big # Biggest \@
+					DATAFORM \@ 性器露出(TARGET) ? Beautiful skin # Clothed play is also good \@
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA いきなり！？
+					DATA ｗｗｗｗｗｗ
+					DATA ｗ
+					DATA 草
+					DATA エロい
+					DATAFORM \@ TALENT:動物耳 ? ケモミミかわいい # かわいい \@ 
+					DATAFORM \@ ALLSAMES(1, SEX(PLAYER), SEX(TARGET)) ? アーッ！ # いいね \@
+					DATAFORM \@ SEX(TARGET) == 1 && TALENT:戦士 ? ウホッ イイ男 # 早く早く \@
+					DATAFORM \@ TALENT:バストサイズ >= 5 ? めっちゃでかい # 最高 \@
+					DATAFORM \@ 性器露出(TARGET) ? 肌きれい # 着衣プレイがまた良い \@
+				ENDDATA
+			ENDIF
 		NEXT
 	;3ターン目から汎用コメ激減
 	CASEELSE
@@ -1264,45 +2069,87 @@ SELECTCASE TFLAG:ビデオ撮影回数
 		コメント数 += コメント増分
 		FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 			ARRAYSHIFT 視聴コメント, 1, "", 0, 5
-			STRDATA 視聴コメント
-				DATA おお・・・
-				DATA すごい
-				DATA やばい
-				DATA エロい
-				DATA ｗｗｗ
-				DATA やりたい
-				DATA (*´Д`)ﾊｧﾊｧ
-				DATA ←禿同
-				DATA 抜いた
-				DATA うっ
-				DATAFORM %CALLNAME:TARGET%\@ SEX(TARGET) == 1 ? くん # ちゃん \@やっぱエロいわ・・・
-				DATAFORM %CALLNAME:TARGET%\@ SEX(TARGET) == 1 ? くん # ちゃん \@結婚してくだしあ
-				DATAFORM %CALLNAME:TARGET%\@ SEX(TARGET) == 1 ? くん # ちゃん \@好き
-				DATAFORM %CALLNAME:TARGET%、脱げ！
-				DATA これ好き
-				DATA 最the高
-				DATA ぺろぺろ
-				DATAFORM \@ TALENT:バストサイズ >= 5 ? おっぱいでけえ # おっぱい見せて \@
-				DATAFORM \@ TALENT:母性 ? ママ・・・ # 嫁にしたい \@
-				DATAFORM \@ TALENT:動物耳 ? ケモミミかわいい # かわいい \@ 
-				DATAFORM \@ ALLSAMES(1, SEX(PLAYER), SEX(TARGET)) ? アーッ！ # いいね \@
-				DATAFORM \@ ALLSAMES(2, SEX(PLAYER), SEX(TARGET)) ? あら＾～！ # かっこいい \@
-				DATAFORM \@ TALENT:バストサイズ >= 5 ? めっちゃでかい # 最高 \@
-				DATAFORM \@ 性器露出(TARGET) ? 肌きれい # 着衣プレイがまた良い \@
-				DATAFORM \@ TALENT:ファーリー ? ケモナー歓喜 # かわいい \@
-				DATA 2回抜いた
-				DATA ←草
-				DATA セックスしたのか俺以外のやつと
-				DATAFORM \@ TALENT:バストサイズ >= 5 ? デ%"ッ"* RAND(2, 7)%カ # おっぱい揉みたい \@
-				DATA いっぱい出た
-				DATA この2人がついにコラボとか胸熱！
-				DATA 笑いすぎておなか痛い！
-				DATA もっとやってくれー！
-				DATA ファン登録するっ！！
-				DATA すげえええ
-				DATA アーカイブよろ
-				DATA 熱盛ィ！
-			ENDDATA
+			IF LANGUAGE == "ENG"
+				STRDATA 視聴コメント
+					DATA oh・・・
+					DATA amazing
+					DATA terrible
+					DATA Erotic
+					DATA ｗｗｗ
+					DATA I want to do it
+					DATA (*´Д`)Hahahaha
+					DATA ←baldness
+					DATA I pulled it out
+					DATA Ugh
+					DATAFORM %CALLNAME:TARGET%\@ SEX(TARGET) == 1 ? Kun # Chan \@ is really erotic・・・
+					DATAFORM %CALLNAME:TARGET%\@ SEX(TARGET) == 1 ? Kun # Chan \@ please marry me
+					DATAFORM %CALLNAME:TARGET%\@ SEX(TARGET) == 1 ? Kun # Chan \@ love u
+					DATAFORM %CALLNAME:TARGET%、Take it off！
+					DATA I like this
+					DATA the highest
+					DATA Licking
+					DATAFORM \@ TALENT:バストサイズ >= 5 ? Big boobs # show me your boobs \@
+					DATAFORM \@ TALENT:母性 ? Mommy・・・ # I want to marry her \@
+					DATAFORM \@ TALENT:動物耳 ? Kemomimi cute # cute \@ 
+					DATAFORM \@ ALLSAMES(1, SEX(PLAYER), SEX(TARGET)) ? Ahhh！ # nice \@
+					DATAFORM \@ ALLSAMES(2, SEX(PLAYER), SEX(TARGET)) ? Ara～ara＾～！ # cool \@
+					DATAFORM \@ TALENT:バストサイズ >= 5 ? It's really big # 最高 \@
+					DATAFORM \@ 性器露出(TARGET) ? Beautiful skin # CFNM is also good \@
+					DATAFORM \@ TALENT:ファーリー ? Chemoner's joy # cute \@
+					DATA pulled out twice
+					DATA ←Bushy
+					DATA Did you have sex with someone other than me?
+					DATAFORM \@ TALENT:バストサイズ >= 5 ? bo%"o"* RAND(2, 7)%bs # I want to rub your breasts \@ デッカ
+					DATA A lot came out
+					DATA I`m excited that these two are finally collaborating！
+					DATA My stomach hurts from laughing so much！
+					DATA Please do more！
+					DATA I`ll register as a fan！！
+					DATA Awesome
+					DATA Archive Yoro
+					DATA Hot and sexy！
+				ENDDATA
+			ELSE
+				STRDATA 視聴コメント
+					DATA おお・・・
+					DATA すごい
+					DATA やばい
+					DATA エロい
+					DATA ｗｗｗ
+					DATA やりたい
+					DATA (*´Д`)ﾊｧﾊｧ
+					DATA ←禿同
+					DATA 抜いた
+					DATA うっ
+					DATAFORM %CALLNAME:TARGET%\@ SEX(TARGET) == 1 ? くん # ちゃん \@やっぱエロいわ・・・
+					DATAFORM %CALLNAME:TARGET%\@ SEX(TARGET) == 1 ? くん # ちゃん \@結婚してくだしあ
+					DATAFORM %CALLNAME:TARGET%\@ SEX(TARGET) == 1 ? くん # ちゃん \@好き
+					DATAFORM %CALLNAME:TARGET%、脱げ！
+					DATA これ好き
+					DATA 最the高
+					DATA ぺろぺろ
+					DATAFORM \@ TALENT:バストサイズ >= 5 ? おっぱいでけえ # おっぱい見せて \@
+					DATAFORM \@ TALENT:母性 ? ママ・・・ # 嫁にしたい \@
+					DATAFORM \@ TALENT:動物耳 ? ケモミミかわいい # かわいい \@ 
+					DATAFORM \@ ALLSAMES(1, SEX(PLAYER), SEX(TARGET)) ? アーッ！ # いいね \@
+					DATAFORM \@ ALLSAMES(2, SEX(PLAYER), SEX(TARGET)) ? あら＾～！ # かっこいい \@
+					DATAFORM \@ TALENT:バストサイズ >= 5 ? めっちゃでかい # 最高 \@
+					DATAFORM \@ 性器露出(TARGET) ? 肌きれい # 着衣プレイがまた良い \@
+					DATAFORM \@ TALENT:ファーリー ? ケモナー歓喜 # かわいい \@
+					DATA 2回抜いた
+					DATA ←草
+					DATA セックスしたのか俺以外のやつと
+					DATAFORM \@ TALENT:バストサイズ >= 5 ? デ%"ッ"* RAND(2, 7)%カ # おっぱい揉みたい \@
+					DATA いっぱい出た
+					DATA この2人がついにコラボとか胸熱！
+					DATA 笑いすぎておなか痛い！
+					DATA もっとやってくれー！
+					DATA ファン登録するっ！！
+					DATA すげえええ
+					DATA アーカイブよろ
+					DATA 熱盛ィ！
+				ENDDATA
+			ENDIF
 		NEXT
 ENDSELECT
 
@@ -1312,95 +2159,174 @@ IF NOWEX:Ｃ絶頂 && NOWEX:Ｖ絶頂 && NOWEX:Ａ絶頂 && NOWEX:Ｂ絶頂
 	コメント数 += コメント増分
 	FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 		ARRAYSHIFT 視聴コメント, 1, "", 0, 5
-		STRDATA 視聴コメント
-			DATA 四　重　絶　頂
-			DATA イキすぎぃ！
-			DATA 最高のイキ顔
-			DATA テクニカルあなたやばすぎ
-			DATA これは陥落しますわ
-		ENDDATA
+		IF LANGUAGE == "ENG"
+			STRDATA 視聴コメント
+				DATA Fourfold peak
+				DATA I`m so excited！
+				DATA Best face
+				DATA Technically you are too dangerous
+				DATA This will fall
+				DATA Ahegao！
+			ENDDATA
+		ELSE
+			STRDATA 視聴コメント
+				DATA 四　重　絶　頂
+				DATA イキすぎぃ！
+				DATA 最高のイキ顔
+				DATA テクニカルあなたやばすぎ
+				DATA これは陥落しますわ
+			ENDDATA
+		ENDIF
 	NEXT
 ELSEIF NOWEX:射精
 	コメント増分 = RAND(0, 視聴者数)
 	コメント数 += コメント増分
 	FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 		ARRAYSHIFT 視聴コメント, 1, "", 0, 5
-		STRDATA 視聴コメント
-			DATA ドピュッ
-			DATA 射精たー！
-			DATA 気持ちよさそう
-			DATA エロすぎ
-			DATA やばい
-			DATAFORM \@ TALENT:体格 <= 2 ? ショタちんぽぴゅっぴゅしててかわいい # すごい量 \@
-			DATA まだ出てる
-			DATA こんなに出るんだ・・・
-			DATAFORM \@ TALENT:ふたなり ? ふたなりっ子の射精量はすごいなぁ # 賢者タイム突入 \@
-			DATA 出したのにまだ大きい
-			DATA ふぅ・・・
-			DATAFORM \@ TALENT:ファーリー ? ケモチンの射精は抜ける # おいしそう \@
-			DATA 出、出た～～ｗｗｗ
-		ENDDATA
+		IF LANGUAGE == "ENG"
+			STRDATA 視聴コメント
+				DATA Dopyu
+				DATA I am cummingー！
+				DATA It feels good
+				DATA Too erotic
+				DATA terrible
+				DATAFORM \@ TALENT:体格 <= 2 ? His shota dick is so bubbly and cute # There is a lot \@
+				DATA It`s still out
+				DATA It comes out like this・・・
+				DATAFORM \@ TALENT:ふたなり ? The amount of ejaculation of Futanari girls is amazing # Entering sage time \@
+				DATA It`s still big even though I took it out
+				DATA Phew・・・
+				DATAFORM \@ TALENT:ファーリー ? Chemotin ejaculate comes out # Looks delicious \@
+				DATA come out, come out～～ｗｗｗ
+			ENDDATA
+		ELSE
+			STRDATA 視聴コメント
+				DATA ドピュッ
+				DATA 射精たー！
+				DATA 気持ちよさそう
+				DATA エロすぎ
+				DATA やばい
+				DATAFORM \@ TALENT:体格 <= 2 ? ショタちんぽぴゅっぴゅしててかわいい # すごい量 \@
+				DATA まだ出てる
+				DATA こんなに出るんだ・・・
+				DATAFORM \@ TALENT:ふたなり ? ふたなりっ子の射精量はすごいなぁ # 賢者タイム突入 \@
+				DATA 出したのにまだ大きい
+				DATA ふぅ・・・
+				DATAFORM \@ TALENT:ファーリー ? ケモチンの射精は抜ける # おいしそう \@
+				DATA 出、出た～～ｗｗｗ
+			ENDDATA
+		ENDIF
 	NEXT
 ELSEIF NOWEX:潮噴き
 	コメント増分 = RAND(0, 視聴者数)
 	コメント数 += コメント増分
 	FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 		ARRAYSHIFT 視聴コメント, 1, "", 0, 5
-		STRDATA 視聴コメント
-			DATA ！？
-			DATA おもらし？
-			DATA おしっこ出てない？
-			DATA 潮吹いた
-			DATAFORM \@ TALENT:体格 <= 2 ? ちんちん壊れちゃうショタかわいい # びしょびしょじゃん \@
-			DATA 気持ちよさそう
-			DATA いつ止まるの？
-			DATA すげえ
-		ENDDATA
+		IF LANGUAGE == "ENG"
+			STRDATA 視聴コメント
+				DATA ！？
+				DATA Peeing？
+				DATA No pee coming out？
+				DATA Squirted
+				DATAFORM \@ TALENT:体格 <= 2 ? Cute shota that breaks his penis # It`s soaking wet \@
+				DATA It feels good
+				DATA When will it stop？
+				DATA Awesome
+			ENDDATA
+		ELSE
+			STRDATA 視聴コメント
+				DATA ！？
+				DATA おもらし？
+				DATA おしっこ出てない？
+				DATA 潮吹いた
+				DATAFORM \@ TALENT:体格 <= 2 ? ちんちん壊れちゃうショタかわいい # びしょびしょじゃん \@
+				DATA 気持ちよさそう
+				DATA いつ止まるの？
+				DATA すげえ
+			ENDDATA
+		ENDIF
 	NEXT
 ELSEIF NOWEX:噴乳
 	コメント増分 = RAND(0, 視聴者数)
 	コメント数 += コメント増分
 	FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 		ARRAYSHIFT 視聴コメント, 1, "", 0, 5
-		STRDATA 視聴コメント
-			DATA おっぱい
-			DATA エロ同人みたい
-			DATA 飲みたい
-			DATA エロすぎ
-			DATA やばい
-			DATA ママ・・・
-		ENDDATA
+		IF LANGUAGE == "ENG"
+			STRDATA 視聴コメント
+				DATA Tits
+				DATA Looks like that erotic doujin
+				DATA I want to drink
+				DATA Too erotic
+				DATA terrible
+				DATA Mama・・・
+			ENDDATA
+		ELSE
+			STRDATA 視聴コメント
+				DATA おっぱい
+				DATA エロ同人みたい
+				DATA 飲みたい
+				DATA エロすぎ
+				DATA やばい
+				DATA ママ・・・
+			ENDDATA
+		ENDIF
 	NEXT
 ELSEIF NOWEX:Ａ絶頂 && SEX(TARGET) == 1
 	コメント増分 = RAND(0, 視聴者数)
 	コメント数 += コメント増分
 	FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 		ARRAYSHIFT 視聴コメント, 1, "", 0, 5
-		STRDATA 視聴コメント
-			DATA メス堕ち確定
-			DATA 完全にメスの顔
-			DATA こんなん誰でもメス堕ちしますわ
-			DATA アナルじゃないとイけない体に
-			DATA エロい
-			DATA 女の子になっちゃったねぇ
-			DATA お尻でイったの？
-		ENDDATA
+		IF LANGUAGE == "ENG"
+			STRDATA 視聴コメント
+				DATA Female fall confirmed
+				DATA Completely female face
+				DATA Anyone can fall for a female like this.
+				DATA A body that can`t cum unless it`s anal
+				DATA Erotic
+				DATA Became a girl
+				DATA Are you cumming just from your butt?
+			ENDDATA
+		ELSE
+			STRDATA 視聴コメント
+				DATA メス堕ち確定
+				DATA 完全にメスの顔
+				DATA こんなん誰でもメス堕ちしますわ
+				DATA アナルじゃないとイけない体に
+				DATA エロい
+				DATA 女の子になっちゃったねぇ
+				DATA お尻でイったの？
+			ENDDATA
+		ENDIF
 	NEXT
 ELSEIF NOWEX:Ｃ絶頂 || NOWEX:Ｖ絶頂 || NOWEX:Ａ絶頂 || NOWEX:Ｂ絶頂
 	コメント増分 = RAND(0, 視聴者数)
 	コメント数 += コメント増分
 	FOR LCOUNT, 0, MIN(コメント増分,最大表示件数)
 		ARRAYSHIFT 視聴コメント, 1, "", 0, 5
-		STRDATA 視聴コメント
-			DATA イってる
-			DATA イった
-			DATA 気持ちよさそう
-			DATA エロい
-			DATA かわいい
-			DATA 声エロい
-			DATA 最高
-			DATA やばい
-			DATA ふぅ・・・
-		ENDDATA
+		IF LANGUAGE == "ENG"
+			STRDATA 視聴コメント
+				DATA I`m cumming
+				DATA I came
+				DATA It feels good
+				DATA Erotic
+				DATA cute
+				DATA voice is erotic
+				DATA Highest
+				DATA terrible
+				DATA Phew・・・
+			ENDDATA
+		ELSE
+			STRDATA 視聴コメント
+				DATA イってる
+				DATA イった
+				DATA 気持ちよさそう
+				DATA エロい
+				DATA かわいい
+				DATA 声エロい
+				DATA 最高
+				DATA やばい
+				DATA ふぅ・・・
+			ENDDATA
+		ENDIF
 	NEXT
 ENDIF

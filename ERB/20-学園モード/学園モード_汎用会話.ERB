@@ -25,6 +25,7 @@ RETURN 0
 #DIMS DYNAMIC 実行不可理由
 #DIMS DYNAMIC 本体側実行不可理由
 #DIM DYNAMIC 実行不可フラグ
+#DIM DYNAMIC 学校ID
 TARGET = 対象
 
 IF OPTION:口上表示 && !CFLAG:対象:口上非表示 && EXISTFUNCTION(@"SCHOOL_%CSVNAMERPS(NO:TARGET)%_汎用会話開始")
@@ -55,9 +56,11 @@ FOR LCOUNT, 0, VARSIZE("コマンドリスト")
 			ELSEIF 同行者 && 同行者 != TARGET
 				本体側実行不可理由 = %NAME:同行者%が同行中
 				実行不可フラグ = 1
-			ELSEIF 授業中_現在地 && !ISHOLIDAY_SCHOOL()
+			ELSEIF FINDELEMENTF(学校名, CSTR:PLAYER:現在地) > 0 && !ISHOLIDAY_SCHOOL()
 				;授業がある場合接頭語（ここも編集できるようにするかは検討）
-				IF TARGET == 授業中_現在地
+				学校ID = FINDELEMENT(学校名, CSTR:PLAYER:現在地)
+				授業中_現在地 = 授業中:学校ID
+				IF TARGET == 授業中_現在地 && !授業消滅フラグ:学校ID
 					コマンド名表示 = 授業を放棄させて%コマンド名表示%
 				ELSE
 					コマンド名表示 = 授業をサボって%コマンド名表示%
@@ -260,6 +263,7 @@ IF 学園分岐 != ""
 	CALL SCHOOL_KOJO, TARGET, "誘惑_成功"
 ELSE
 	CALL SCHOOL_KOJO, TARGET, "誘惑_失敗"
+	RETURN
 ENDIF
 WAIT
 ;失敗した場合はRETURNで終了しているので、ここからは成功した場合の分岐
