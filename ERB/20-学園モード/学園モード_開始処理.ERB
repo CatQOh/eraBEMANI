@@ -1726,34 +1726,68 @@ ENDSELECT
 
 
 
-[SKIPSTART]
-
 @カップリング設定
 #DIM DYNAMIC LCOUNT
+#DIM DYNAMIC LCOUNT2
 #DIM DYNAMIC L_CHARA
 #DIMS DYNAMIC 相性設定用, 100
 #DIMS DYNAMIC 相性値, 2
-#DIM DYNAMIC 相性リスト_基準, 100000
-#DIM DYNAMIC 相性リスト_相手, 100000
-#DIM DYNAMIC 相性リスト_相性値, 100000
-#DIM DYNAMIC 相性リスト_カウント
-#DIM DYNAMIC リスト化済
+#DIM DYNAMIC DB化済
+#DIM DYNAMIC 行数, 3
+#DIM DYNAMIC 桁数
+
+#DIM DYNAMIC OUT_REL, 10000
+
+#DIM DYNAMIC 仮NO左, 10000
+#DIM DYNAMIC 仮NO右, 10000
+#DIM DYNAMIC 仮REL左右, 10000
+
+#DIM DYNAMIC NO左, 10000
+#DIM DYNAMIC NO右, 10000
+#DIM DYNAMIC REL左右, 10000
+#DIM DYNAMIC REL右左, 10000
+#DIM DYNAMIC 仮REL右左
+
+#DIM DYNAMIC START_INDEX
+#DIM DYNAMIC END_INDEX
+
+#DIM DYNAMIC L_RESULT
 
 #DIM DYNAMIC CSVNUM_相性
-CSVNUM_相性 = GETNUM(CSTR, "相性")
+#DIM DYNAMIC CSVNUM_性別
+#DIM DYNAMIC 相性値閾値
 
-PRINTL [0] 双方の相性値が101%以上の2人を検索
+#DIM DYNAMIC 現在ページ
+#DIM DYNAMIC 最終ページ
+
+CSVNUM_相性 = GETNUM(CSTR, "相性")
+CSVNUM_性別 = GETNUM(TALENT, "性別")
+相性値閾値 = 150
+
+
+PRINTFORML [0] 相性値が{相性値閾値}\%以上の2人を検索
 PRINTL 　[1] 男女のみにする
 PRINTL 　[2] 男性同士のみにする
 PRINTL 　[3] 女性同士のみにする
 PRINTL [9] 終了
 
 BINPUT
+L_RESULT = RESULT
 
-SELECTCASE RESULT
+SELECTCASE L_RESULT
 	CASE 0, 1, 2, 3
-		IF !リスト化済
-			FOR L_CHARA, 0, CHARANUM
+		;全キャラの相性値をデータベースに書き出す(1回限り)
+		IF !DB化済
+			DT_CREATE "相性リスト"
+			;順に「キャラ1のNo」「キャラ1の性別」「キャラ2のNo」「キャラ2の性別」「キャラ1→2の相性値」
+			;性別は最大値127、他は最大値16383
+			DT_COLUMN_ADD "相性リスト", "NO1", 2
+			DT_COLUMN_ADD "相性リスト", "SEX1", 1
+			DT_COLUMN_ADD "相性リスト", "NO2", 2
+			DT_COLUMN_ADD "相性リスト", "SEX2", 1
+			DT_COLUMN_ADD "相性リスト", "REL", 2
+
+			FOR L_CHARA, 0, 10000
 				SIF !EXISTCSV(L_CHARA)
 					CONTINUE
 				
@@ -1766,25 +1800,159 @@ SELECTCASE RESULT
 						BREAK
 					CALL ESCAPESPLIT, 相性設定用:LCOUNT, "*", 相性値
 					IF GETNO(相性値, 1) >= 0
-						相性リスト_基準:相性リスト_カウント = L_CHARA
-						相性リスト_相手:相性リスト_カウント = GETNO(相性値, 1)
-						相性リスト_相性値:相性リスト_カウント = TOINT(相性値:1)
-						相性リスト_カウント++
+						DT_ROW_ADD "相性リスト", "NO1", L_CHARA, "SEX1", CSVTALENT(L_CHARA, CSVNUM_性別), "NO2", GETNO(相性値, 1), "SEX2", CSVTALENT(GETNO(相性値, 1), CSVNUM_性別), "REL", TOINT(相性値:1)
 					ELSE
-						DEBUGPRINTFORML %NAME:TARGET%の相性:「%相性値%」は存在しないもしくは表記揺れ
+						DEBUGPRINTFORML %CSVNAME(L_CHARA)%の相性:「%相性値%」は存在しないもしくは表記揺れ
 					ENDIF
 				NEXT
 			NEXT
-			リスト化済 = 1
+			DB化済 = 1
 		ENDIF
+		;データベース化ここまで
+
+		;DT_SELECTでフィルタを通す
+		;フィルタの段階では常に最低値の相性値101以上
+		;性別に関してはL_RESULTの値が……0:制限なし 1:男女 2:男同士 3:女同士
+
+		VARSET OUT_REL, -1
+		SELECTCASE L_RESULT
+			CASE 0
+				行数 = DT_SELECT("相性リスト", "REL >= 101", , OUT_REL)
+			CASE 1
+				行数 = DT_SELECT("相性リスト", "((SEX1 = 1 AND SEX2 = 2) OR (SEX1 = 2 AND SEX2 = 1)) AND REL >= 101", , OUT_REL)
+			CASE 2
+				行数 = DT_SELECT("相性リスト", "SEX1 = 1 AND SEX2 = 1 AND REL >= 101", , OUT_REL)
+			CASE 3
+				行数 = DT_SELECT("相性リスト", "SEX1 = 2 AND SEX2 = 2 AND REL >= 101", , OUT_REL)
+		ENDSELECT
+		;これでOUT_RELに相性値101%以上の列IDが代入された
 		
+		行数:1 = 0
+		FOR LCOUNT, 0, 行数
+			仮REL左右:(行数:1) = DT_CELL_GET("相性リスト", OUT_REL:LCOUNT, "REL", 1)
+			SIF 仮REL左右:(行数:1) < 相性値閾値
+				CONTINUE
+
+			仮NO左:(行数:1) = DT_CELL_GET("相性リスト", OUT_REL:LCOUNT, "NO1", 1)
+			仮NO右:(行数:1) = DT_CELL_GET("相性リスト", OUT_REL:LCOUNT, "NO2", 1)
+
+			行数:1 += 1
+		NEXT
+		;これでNO1→NO2の相性値が「相性値閾値」以上のものだけ仮の配列に代入された
+
+		;逆向きの相性値チェック
+		;LCOUNT行目のX→Yに対して、Y→◯◯にあたる行を全チェックしY→Xがあれば相性もチェック
+		行数:2 = 0
+		FOR LCOUNT, 0, 行数:1
+			IF 仮NO左:LCOUNT >= 仮NO右:LCOUNT
+				CONTINUE
+			ENDIF
+
+			START_INDEX = FINDELEMENT(仮NO左, 仮NO右:LCOUNT, 0)
+			IF START_INDEX < 0
+				CONTINUE
+			ENDIF
+			END_INDEX = FINDLASTELEMENT(仮NO左, 仮NO右:LCOUNT, START_INDEX)
+
+			仮REL右左 = 100
+			FOR LCOUNT2, START_INDEX, END_INDEX+1
+				IF 仮NO右:LCOUNT2 == 仮NO左:LCOUNT
+					仮REL右左 = 仮REL左右:LCOUNT2
+					BREAK
+				ENDIF
+			NEXT
+
+			IF 仮REL右左 < 相性値閾値
+				CONTINUE
+			ENDIF
+
+			NO左:(行数:2) = 仮NO左:LCOUNT
+			NO右:(行数:2) = 仮NO右:LCOUNT
+			REL左右:(行数:2) = 仮REL左右:LCOUNT
+			REL右左:(行数:2) = 仮REL右左
+			行数:2 += 1
+		NEXT
+
+		桁数 = DGT(行数:2)
+		現在ページ = 0
+		最終ページ = (行数:2 + 29)/30
+
+		$リスト表示
+
+		PRINTL
+		PRINTFORML 全{行数:2}件
+		DRAWLINE
+
+		FOR LCOUNT, 30*現在ページ, 30*(現在ページ+1)
+			IF LCOUNT >= 行数:2
+				PRINTL
+				CONTINUE
+			ENDIF
+			PRINTFORM [{LCOUNT, 桁数}]　%CSVNAME(NO左:LCOUNT), 28%
+			SETCOLORBYNAME gray
+			PRINT -(
+			CALL 色付き相性値(REL左右:LCOUNT)
+			SETCOLORBYNAME gray
+			PRINT )->
+			RESETCOLOR
+			PRINT  
+			SETCOLORBYNAME gray
+			PRINT <-(
+			RESETCOLOR
+			CALL 色付き相性値(REL右左:LCOUNT)
+			SETCOLORBYNAME gray
+			PRINT )- 
+			RESETCOLOR
+			PRINTFORML %CSVNAME(NO右:LCOUNT), 28, LEFT%
+		NEXT
+		DRAWLINE
+		IF 現在ページ == 0
+			PRINT 　　　　　　
+		ELSE
+			PRINT [-4]前ページ
+		ENDIF
+		PRINTPLAIN 　
+		PRINTFORM □{現在ページ+1}/{最終ページ}ページ□
+		PRINTPLAIN 　
+		IF 現在ページ+1 == 最終ページ
+			PRINT 　　　　　　
+		ELSE
+			PRINT [-6]次ページ
+		ENDIF
+		PRINTL 　[-99]戻る
+		BINPUT
+		SELECTCASE RESULT
+			CASE -4
+				現在ページ--
+				GOTO リスト表示
+			CASE -6
+				現在ページ++
+				GOTO リスト表示
+		ENDSELECT
 	CASE 9
+		;データベースを消去
+		DT_CLEAR "相性リスト"
 		RETURN 0
 ENDSELECT
 
 RESTART
 
 
+@色付き相性値(相性値)
+#DIM DYNAMIC 相性値
 
+IF 相性値 >= 300
+	SETCOLOR 255, 127, 0
+ELSEIF 相性値 >= 200
+	SETCOLOR 255, 255-128*(相性値-200)/100, 0
+ELSEIF 相性値 >= 150
+	SETCOLOR 255*(相性値-150)/50, 255, 0
+ELSEIF 相性値 >= 100
+	SETCOLOR 0, 255, 255-255*(相性値-100)/50
+ENDIF
 
-[SKIPEND]
+PRINTFORM {相性値}\%
+RESETCOLOR
+
+RETURN 0
+
