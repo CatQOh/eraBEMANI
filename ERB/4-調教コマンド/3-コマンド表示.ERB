@@ -570,47 +570,71 @@ IF LANGUAGE == "ENG"
 		PRINTC Clothes[903]
 	;お風呂場プレイ時。ゲーセンで遊んでる時は除く
 	IF !TEQUIP:お風呂場 && !(TEQUIP:ゲームセンター && !TEQUIP:トイレ)
-		IF ゲームモード() == "新婚モード"
-			PRINTFORMC Clothes(%CALLNAMEDISP(MASTER)%)[904]
+		IF GROUPMATCH(ゲームモード(), "新婚モード", "学園モード")
+			PRINTFORMC Clothes(%CALLNAME:MASTER%)[904]
 		ELSE
 			PRINTC Clothes(Player)[904]
 		ENDIF
 	ENDIF
-	IF ASSIPLAY
-		PRINTC Show Abilities(Assi)[906]
-	ELSE
-		IF ゲームモード() == "新婚モード"
-			PRINTFORMC Show Abilities(%CALLNAMEDISP(MASTER)%)[906]
-		ELSE
-			PRINTC Show Abilities(Master)[906]
-		ENDIF
-	ENDIF
+	SELECTCASE PLAYER
+		CASE MASTER
+			IF GROUPMATCH(ゲームモード(), "新婚モード", "学園モード")
+				PRINTFORMC Show Abilities(%CALLNAME:MASTER%)[906]
+			ELSE
+				PRINTC Show Abilities(Master)[906]
+			ENDIF
+		CASE ASSI
+			PRINTFORMC Show Abilities(Assi\@ ASSI:1 > 0 ? 1 #\@)[906]
+		CASE ASSI:1
+			PRINTFORMC Show Abilities(Assi2)[906]
+	ENDSELECT
 	PRINTC MANUAL[910]
-	IF ASSI > 0 && !TEQUIP:触手 && !TALENT:ASSI:アニマル
-		IF ASSIPLAY
-			PRINTC Change Master[950]
-		ELSE
-			PRINTC Change Assistant[950]
+	IF !TEQUIP:触手
+		IF ASSI:1 > 0
+			IF PLAYER == ASSI
+				PRINTFORMC Change with %CALLNAMEDISP(TMASTER)%[940]
+			ELSE
+				SIF !TALENT:ASSI:アニマル
+					PRINTFORMC Change with %CALLNAMEDISP(ASSI)%[940]
+			ENDIF
+			IF TMASTER != MASTER
+				PRINTFORMC Change with %CALLNAMEDISP(MASTER)%[941]
+			ELSE
+				PRINTFORMC Change with %CALLNAMEDISP(ASSI:1)%[941]
+			ENDIF
+		ELSEIF ASSI > 0 && !TALENT:ASSI:アニマル
+			IF PLAYER == ASSI
+				PRINTC Change with Master[940]
+			ELSE
+				PRINTC Change with Assistant[940]
+			ENDIF
 		ENDIF
 	ENDIF
-	PRINTC Set CommandList1[951]
-	SIF SELECTCOM:1 >= 0
-		PRINTC Do CommandList1[952]
-	PRINTC Set CommandList2[953]
-	SIF SELECTCOM:11 >= 0
-		PRINTC Do CommandList2[954]
-	PRINTC Set CommandFilter[960]
+	IF ゲームモード() != "学園モード"
+		PRINTC Set CommandList1[951]
+		SIF SELECTCOM:1 >= 0
+			PRINTC Do CommandList1[952]
+		PRINTC Set CommandList2[953]
+		SIF SELECTCOM:11 >= 0
+			PRINTC Do CommandList2[954]
+		SIF 受験段位名 != "ワガママ姫たちの接待調教プログラム"
+			PRINTC Set CommandFilter[960]
+	ENDIF
+	PRINTC Command Separation[961]
+	SIF !OPTION:汎用喘ぎ口上
+		PRINTC Moaning Settings[970]
+	SIF TEQUIP:ライブ配信
+		PRINTC Toggle Stream[990]
 	IF 上級売春中
 		PRINTC End Prostitution[999]
+	ELSEIF GROUPMATCH(ゲームモード(), "新婚モード", "学園モード")
+		PRINTC End Affair[999]
 	ELSE
 		PRINTC End Training[999]
 	ENDIF
 	IF PREVCOMS != ""
 		PRINTL 
-		PRINTFORM ＜Previous Command:%PREVCOMS%
-		SIF TFLAG:前コマンド実行者 == ASSI
-			PRINT (Assi)
-		PRINTL ＞
+		PRINTFORML ＜Previous Command:%PREVCOMS% \@ GROUPMATCH(TFLAG:前コマンド実行者, ASSI:0, ASSI:1) ? (Assi) #\@＞
 	ENDIF
 ELSE
 	PRINTC 履歴表示[900]
