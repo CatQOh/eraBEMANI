@@ -1,0 +1,525 @@
+
+
+@牧場獣姦
+#DIM DYNAMIC ヒト選択
+#DIMS DYNAMIC 家畜選択
+#DIM DYNAMIC 家畜性別
+
+#DIM DYNAMIC ヒト対象
+
+PRINTL ヒト側:
+SELECTCASE ヒト選択
+	CASE 1
+		PRINTFORML 　[1] %NAME:MASTER%がふれあう
+	CASE 2
+		PRINTFORML 　[1] %CALLNAME:TARGET%にふれあわせる
+	CASE 3
+		PRINTFORML 　[1] %CALLNAME:ASSI%にふれあわせる
+	CASE 4
+		PRINTFORML 　[1] %CALLNAME:(ASSI:1)%にふれあわせる
+	CASEELSE
+		PRINTL 　[1] 選択して下さい
+ENDSELECT
+PRINTL 
+
+PRINTL 動物側:
+IF 家畜選択 == ""
+	PRINTL 　[2] 選択して下さい
+ELSEIF ヒト選択 == 1
+	PRINTFORML 　[2] % \@家畜性別 == 1 ? 牡 # 牝\@%%家畜選択%とふれあう
+ELSE
+	PRINTFORML 　[2] % \@家畜性別 == 1 ? 牡 # 牝\@%%家畜選択%をふれあわせる
+ENDIF
+
+
+PRINTL 
+
+IF ヒト選択 && 家畜選択 != ""
+	PRINTFORML 　[3] 実行
+ELSE
+	PRINTFORML 　[-] 対象を選択して下さい
+ENDIF
+PRINTFORML 　[0] 戻る
+
+
+BINPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN -1
+
+	CASE 1
+		PRINTL 誰がふれ合いますか
+		SIF !TALENT:MASTER:アニマル
+			PRINTFORML 　[1] %NAME:MASTER%がふれあう
+
+		SIF TARGET > 0 && !TALENT:アニマル && CFLAG:助手可能
+			PRINTFORML 　[2] %CALLNAME:TARGET%にふれあわせる
+
+		SIF ASSI > 0 && !TALENT:ASSI:アニマル
+			PRINTFORML 　[3] %CALLNAME:ASSI%にふれあわせる
+
+		SIF ASSI:1 > 0 && !TALENT:(ASSI:1):アニマル
+			PRINTFORML 　[4] %CALLNAME:(ASSI:1)%にふれあわせる
+
+		PRINTL 　[0] 戻る
+		BINPUT
+		SIF RESULT
+			ヒト選択 = RESULT
+	CASE 2 
+		PRINTL どの家畜とふれ合いますか
+		IF 家畜:牛
+			PRINTL 　[10] 牡牛とふれあう
+			PRINTL 　[11] 牝牛とふれあう
+			PRINTL 
+
+		ENDIF
+		IF 家畜:馬
+			PRINTL 　[20] 牡馬とふれあう
+			PRINTL 　[21] 牝馬とふれあう
+			PRINTL 
+
+		ENDIF
+		IF 家畜:羊
+			PRINTL 　[30] 牡羊とふれあう
+			PRINTL 　[31] 牝羊とふれあう
+			PRINTL 
+
+		ENDIF
+		IF 家畜:豚
+			PRINTL 　[40] 牡豚とふれあう
+			PRINTL 　[41] 牝豚とふれあう
+			PRINTL 
+		ENDIF
+		PRINTL 　[ 0] 戻る
+
+		BINPUT
+		SIF RESULT == 0
+			RESTART
+		
+		SELECTCASE RESULT / 10
+			CASE 1
+				家畜選択 = 牛
+			CASE 2
+				家畜選択 = 馬
+			CASE 3
+				家畜選択 = 羊
+			CASE 4
+				家畜選択 = 豚
+		ENDSELECT
+
+		家畜性別 = (RESULT % 10) + 1
+
+
+	CASE 3
+
+		SELECTCASE ヒト選択
+			CASE 1
+				SIF TALENT:MASTER:アニマル
+					RESTART
+				ヒト対象 = MASTER
+			CASE 2
+				SIF TARGET <= 0 || TALENT:アニマル
+					RESTART
+				ヒト対象 = TARGET
+			CASE 3
+				SIF ASSI <= 0 || TALENT:ASSI:アニマル
+					RESTART
+				ヒト対象 = ASSI
+			CASE 4
+				SIF ASSI:1 <= 0 || TALENT:(ASSI:1):アニマル
+					RESTART
+				ヒト対象 = ASSI:1
+			CASEELSE
+				RESTART
+		ENDSELECT
+
+		SIF 家畜選択 == ""
+			RESTART
+		SIF 家畜性別 == 0
+			RESTART
+
+
+		;ここでなかよし決行
+		CALL 畜姦実行, ヒト対象, 家畜選択, 家畜性別
+
+		RETURN 0
+
+ENDSELECT
+
+RESTART
+
+
+
+@畜姦実行, ヒト, 畜種, 家畜性別
+#DIM DYNAMIC LMASTER
+#DIM DYNAMIC LTARGET
+#DIM DYNAMIC LASSI ,2
+#DIM DYNAMIC ヒト
+#DIMS DYNAMIC 畜種
+#DIM DYNAMIC 家畜性別
+LMASTER = MASTER
+LTARGET = TARGET
+LASSI:0 = ASSI:0
+LASSI:1 = ASSI:1
+
+MASTER = ヒト
+
+ASSI:0 = -1
+ASSI:1 = -1
+TARGET = 家畜準備(畜種,家畜性別)
+CALL EVENTUSERTRAIN
+DO
+	CALL SHOW_STATUS
+	CALL SHOW_USERCOM
+
+LOOP TFLAG:調教終了 == 0
+;珠の獲得（快と習得だけ加算される）
+CALL JUEL_CHECK, 1
+
+
+;能力の自動上昇処理は学園と共通
+SKIPDISP 1
+CALL SCHOOL_ABLUP, TARGET, 0
+SKIPDISP 0
+
+CALL アイテム修理
+CALL CVAR_RESET
+DELCHARA TARGET
+
+
+
+
+MASTER = LMASTER
+TARGET = LTARGET
+ASSI:0 = LASSI:0
+ASSI:1 = LASSI:1
+
+CALL ターン終了
+
+RETURN 0
+
+@家畜準備, 種類, 雌雄
+#FUNCTION
+#DIMS DYNAMIC 種類
+#DIM DYNAMIC 雌雄
+#DIM DYNAMIC LTARGET
+#DIM DYNAMIC 素質数
+#DIM DYNAMIC テーブル
+#DIM DYNAMIC ポイント
+#DIM DYNAMIC 素質数上限
+#DIM DYNAMIC 素質付与判定, 30
+
+
+
+LTARGET = TARGET
+ADDVOIDCHARA
+TARGET = CHARANUM-1
+
+TALENT:アニマル = 1
+CSTR:種族 '= "獣"
+CFLAG:発情周期 = 13
+TALENT:性別 = 雌雄
+IF 雌雄 == 1
+	TALENT:絶倫 = 1
+ELSE
+	TALENT:バストサイズ = 3
+ENDIF
+
+;欲望は常に5
+ABL:欲望 = 5
+;従順は2
+ABL:従順 = 2
+;奉仕精神は1
+ABL:奉仕精神 = 1
+;技巧はランダム
+ABL:技巧 = RAND(1, 6)
+
+
+;上級売春を参考に（家畜なのでだいぶ性器より）
+ポイント = 6
+DO
+	SELECTCASE RAND:10
+		CASE 0 TO 4
+			IF VAGINA(TARGET)
+				ABL:Ｖ感覚++
+			ELSE
+				ABL:Ｃ感覚++
+			ENDIF
+		CASE 5 TO 7
+			ABL:Ｃ感覚++
+		CASE 7 TO 8
+			ABL:Ａ感覚++
+		CASE 9
+			ABL:Ｂ感覚++
+	ENDSELECT
+	ポイント--
+LOOP ポイント > 0
+;ABLに応じて経験が付く
+EXP:Ｖ経験 = ABL:Ｖ感覚*50
+EXP:Ａ経験 = ABL:Ａ感覚*50
+
+;反発刻印は付かない
+MARK:反発刻印履歴 = 3
+;屈服は3
+MARK:屈服刻印 = 3
+
+;最初から勃ってたり濡れてたりする
+SIF VAGINA(TARGET)
+	PALAM:潤滑 = 3000
+SIF PENIS(TARGET)
+	PALAM:欲情 = 3000
+
+素質数上限 = RAND(4, 11)
+DO
+	テーブル = RAND(1, 19)
+	;既に決定済みのテーブルならやり直し
+	SIF 素質付与判定:テーブル
+		CONTINUE
+	;素質の種類ごとにテーブルを置く
+	SELECTCASE テーブル
+		;生意気、臆病
+		CASE 1
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:生意気 = 1
+				CASE 1
+					TALENT:臆病 = 1
+			ENDSELECT
+		;素直、反抗的、衝動的
+		CASE 2
+			SELECTCASE RAND:3
+				CASE 0
+					TALENT:素直 = 1
+				CASE 1
+					TALENT:反抗的 = 1
+				CASE 2
+					TALENT:衝動的 = 1
+			ENDSELECT
+		;プライド高い、プライド低い
+		CASE 3
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:プライド高い = 1
+				CASE 1
+					TALENT:プライド低い = 1
+			ENDSELECT
+		;ハイテンション、大人しい
+		CASE 4
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:ハイテンション = 1
+				CASE 1
+					TALENT:大人しい = 1
+			ENDSELECT
+		;無関心、好奇心
+		CASE 5
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:無関心 = 1
+				CASE 1
+					TALENT:好奇心 = 1
+			ENDSELECT
+		;楽観的、悲観的
+		CASE 6
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:楽観的 = 1
+				CASE 1
+					TALENT:悲観的 = 1
+			ENDSELECT
+		;痛みに弱い、痛みに強い
+		CASE 7
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:痛みに弱い = 1
+				CASE 1
+					TALENT:痛みに強い = 1
+			ENDSELECT
+		;濡れやすい、濡れにくい
+		CASE 8
+			SELECTCASE SEX(TARGET)
+				CASE 1
+					SELECTCASE RAND:2
+						CASE 0
+							TALENT:勃ちやすい = 1
+						CASE 1
+							TALENT:勃ちにくい = 1
+					ENDSELECT
+				CASE 2
+					SELECTCASE RAND:2
+						CASE 0
+							TALENT:濡れやすい = 1
+						CASE 1
+							TALENT:濡れにくい = 1
+					ENDSELECT
+			ENDSELECT
+		;習得早い、習得遅い
+		CASE 9
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:習得早い = 1
+				CASE 1
+					TALENT:習得遅い = 1
+			ENDSELECT
+		;汚臭鈍感、汚臭敏感
+		CASE 10
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:汚臭鈍感 = 1
+				CASE 1
+					TALENT:汚臭敏感 = 1
+			ENDSELECT
+		;汚れ無視、潔癖症
+		CASE 11
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:汚れ無視 = 1
+				CASE 1
+					TALENT:潔癖症 = 1
+			ENDSELECT
+		;快感に素直、快感の否定
+		CASE 12
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:快感に素直 = 1
+				CASE 1
+					TALENT:快感の否定 = 1
+			ENDSELECT
+		;サド、マゾ
+		CASE 13
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:サド = 1
+				CASE 1
+					TALENT:マゾ = 1
+			ENDSELECT
+		;Ｖ敏感鈍感
+		CASE 14
+			;男ならやり直し
+			SIF SEX(TARGET) == 1
+				CONTINUE
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:Ｖ敏感 = 1
+				CASE 1
+					TALENT:Ｖ鈍感 = 1
+			ENDSELECT
+		;Ｃ敏感鈍感
+		CASE 15
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:Ｃ敏感 = 1
+				CASE 1
+					TALENT:Ｃ鈍感 = 1
+			ENDSELECT
+		;Ａ敏感鈍感
+		CASE 16
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:Ａ敏感 = 1
+				CASE 0
+					TALENT:Ａ鈍感 = 1
+			ENDSELECT
+		;Ｂ敏感鈍感
+		CASE 17
+			SELECTCASE RAND:2
+				CASE 0
+					TALENT:Ｂ敏感 = 1
+				CASE 1
+					TALENT:Ｂ鈍感 = 1
+			ENDSELECT
+		;絶倫
+		CASE 18
+			SIF PENIS(TARGET)
+				TALENT:絶倫 = 1
+			IF SEX(TARGET) == 2
+				TALENT:母乳体質 = 1
+				EXP:噴乳経験 = 10
+			ENDIF
+	ENDSELECT
+	素質付与判定:テーブル = 1
+	素質数++
+LOOP 素質数上限 != 素質数
+
+
+
+
+
+
+
+
+
+
+
+NAME = % \@雌雄 == 1 ? 牡 # 牝\@%%種類%
+CALLNAME = % \@雌雄 == 1 ? 牡 # 牝\@%%種類%
+
+
+
+
+
+SELECTCASE 種類
+	CASE "牛"
+		TALENT:体格 = 4
+		MAXBASE:体力 =2500
+		MAXBASE:気力 =1800
+		IF 雌雄 == 1
+			CSTR:英語名 = The BULL
+			CSTR:英語呼び名 = The BULL
+		ELSE
+			CSTR:英語名 = The COW
+			CSTR:英語呼び名 = The COW
+		ENDIF
+	CASE "馬"
+		TALENT:体格 = 4
+		MAXBASE:体力 =2500
+		MAXBASE:気力 =1800
+		IF 雌雄 == 1
+			CSTR:英語名 = The STALLION
+			CSTR:英語呼び名 = The STALLION
+		ELSE
+			CSTR:英語名 = The MARE
+			CSTR:英語呼び名 = The MARE
+		ENDIF
+	CASE "羊"
+		TALENT:体格 = 3
+		MAXBASE:体力 =2000
+		MAXBASE:気力 =1800
+		IF 雌雄 == 1
+			CSTR:英語名 = The RAM
+			CSTR:英語呼び名 = The RAM
+		ELSE
+			CSTR:英語名 = The EWE
+			CSTR:英語呼び名 = The EWE
+		ENDIF
+	CASE "豚"
+		TALENT:体格 = 4
+		MAXBASE:体力 =2500
+		MAXBASE:気力 =1800
+		IF 雌雄 == 1
+			CSTR:英語名 = The BOAR
+			CSTR:英語呼び名 = The BOAR
+		ELSE
+			CSTR:英語名 = The SOW
+			CSTR:英語呼び名 = The SOW
+		ENDIF
+	CASE "鶏" ;現状は未対応
+		; TALENT:体格 = 1
+		; MAXBASE:体力 =1200
+		; MAXBASE:気力 =1800
+		; IF 雌雄 == 1
+		; 	CSTR:英語名 = The ROOSTER
+		; 	CSTR:英語呼び名 = The ROOSTER
+		; ELSE
+		; 	CSTR:英語名 = The HEN
+		; 	CSTR:英語呼び名 = The HEN
+		; ENDIF
+ENDSELECT
+BASE:体力 = MAXBASE:体力
+BASE:気力 = MAXBASE:気力
+TARGET = LTARGET
+IF MAXBASE:体力 == 0
+	DELCHARA CHARANUM-1
+	RETURNF -1
+ENDIF
+RETURNF CHARANUM-1
