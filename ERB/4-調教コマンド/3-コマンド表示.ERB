@@ -1157,7 +1157,11 @@ WAIT
 #DIM DYNAMIC DISABLE判定
 
 DRAWLINE
-PRINTL 着衣について設定します
+IF LANGUAGE == "ENG"
+	PRINTL Clothing Settings
+ELSE
+	PRINTL 着衣について設定します
+ENDIF
 
 ;位置調整用の字数カウント
 FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
@@ -1166,35 +1170,62 @@ FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
 NEXT
 
 ;現在来ている服を表示、PRINTLは改行用
-PRINTFORML □%CALLNAME:対象%の着衣
+PRINTFORML □%I18N("|0|の着衣",, CALLNAMEDISP(対象))%
+
 FOR LCOUNT, GETNUM(CSTR, "特殊"), GETNUM(CSTR, "足元")+1
 	IF CSTR:対象:LCOUNT != ""
 		IF TEQUIP:対象:(CSTRNAME:LCOUNT)
-			PRINT 　(着)
+			IF LANGUAGE == "ENG"
+				PRINT 　(On) 
+			ELSE
+				PRINT 　(着)
+			ENDIF
 		ELSEIF !TEQUIP:対象:(CSTRNAME:LCOUNT)
 			SETCOLORBYNAME gray
-			PRINT 　(脱)
+			IF LANGUAGE == "ENG"
+				PRINT 　(Off) 
+			ELSE
+				PRINT 　(脱)
+			ENDIF
 		ENDIF
-		PRINTFORM %CSTR:対象:LCOUNT, 字数, LEFT%
+		PRINTFORM %I18N(CSTR:対象:LCOUNT, "CLOTHES"), 字数, LEFT%
 		RESETCOLOR
 
 		PRINTFORM  - [{LCOUNT-100, 2}] 
 		IF TEQUIP:対象:(CSTRNAME:LCOUNT)
-			SELECTCASE CSTRNAME:LCOUNT
-				CASE "特殊"
-					PRINTFORML \@ 対象 == TARGET ? 奪う # 取る \@
-				CASEELSE
-					PRINTFORML \@ 対象 == TARGET ? 脱がす # 脱ぐ \@
-			ENDSELECT
+			IF LANGUAGE == "ENG"
+				SELECTCASE CSTRNAME:LCOUNT
+					CASE "特殊"
+						PRINTFORML \@ 対象 == TARGET ? Take away # Remove \@
+					CASEELSE
+						PRINTFORML Take off
+				ENDSELECT
+			ELSE
+				SELECTCASE CSTRNAME:LCOUNT
+					CASE "特殊"
+						PRINTFORML \@ 対象 == TARGET ? 奪う # 取る \@
+					CASEELSE
+						PRINTFORML \@ 対象 == TARGET ? 脱がす # 脱ぐ \@
+				ENDSELECT
+			ENDIF
 		ELSEIF !TEQUIP:対象:(CSTRNAME:LCOUNT)
-			SELECTCASE CSTRNAME:LCOUNT
-				CASE "特殊"
-					PRINTFORML \@ 対象 == TARGET ? 返す # 身につける \@
-				CASE "下半身下着", "足元"
-					PRINTFORML \@ 対象 == TARGET ? 穿かせる # 穿く \@
-				CASEELSE
-					PRINTFORML \@ 対象 == TARGET ? 着せる # 着る \@
-			ENDSELECT
+			IF LANGUAGE == "ENG"
+				SELECTCASE CSTRNAME:LCOUNT
+					CASE "特殊"
+						PRINTFORML \@ 対象 == TARGET ? Return # Wear \@
+					CASEELSE
+						PRINTFORML Put on
+				ENDSELECT
+			ELSE
+				SELECTCASE CSTRNAME:LCOUNT
+					CASE "特殊"
+						PRINTFORML \@ 対象 == TARGET ? 返す # 身につける \@
+					CASE "下半身下着", "足元"
+						PRINTFORML \@ 対象 == TARGET ? 穿かせる # 穿く \@
+					CASEELSE
+						PRINTFORML \@ 対象 == TARGET ? 着せる # 着る \@
+				ENDSELECT
+			ENDIF
 		ENDIF
 	ENDIF
 NEXT
@@ -1202,7 +1233,11 @@ NEXT
 ;何か着てたらすべて脱がすコマンド表示
 FOR LCOUNT, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
 	IF TEQUIP:対象:LCOUNT
-		PRINTFORM 　[10] すべて\@ 対象 == TARGET ? 脱がす # 脱ぐ \@
+		IF LANGUAGE == "ENG"
+			PRINTFORM 　[10] Take all off
+		ELSE
+			PRINTFORM 　[10] すべて\@ 対象 == TARGET ? 脱がす # 脱ぐ \@
+		ENDIF
 		BREAK
 	ENDIF
 NEXT
@@ -1210,7 +1245,11 @@ NEXT
 ;何か着てないものがあったらすべて着せるコマンド表示
 FOR LCOUNT, GETNUM(TEQUIP, "特殊"), GETNUM(TEQUIP, "足元")+1
 	IF !TEQUIP:対象:LCOUNT && CSTR:(LCOUNT+100) != ""
-		PRINTFORM 　[11] すべて\@ 対象 == TARGET ? 着せる # 着る \@
+		IF LANGUAGE == "ENG"
+			PRINTFORM 　[11] Put all on
+		ELSE
+			PRINTFORM 　[11] すべて\@ 対象 == TARGET ? 着せる # 着る \@
+		ENDIF
 		BREAK
 	ENDIF
 NEXT
@@ -1218,7 +1257,11 @@ NEXT
 PRINTL 
 DRAWLINE
 PRINTPLAIN 　COORDINATE　
-PRINTFORML [100] 戻る　[101] 着脱の簡略化(現在:\@ OPTION:服着脱ウェイト無 ? オン # オフ \@)
+IF LANGUAGE == "ENG"
+	PRINTFORML [100] Back　[101] Simplify changing (Now: \@ OPTION:服着脱ウェイト無 ? On # Off \@)
+ELSE
+	PRINTFORML [100] 戻る　[101] 着脱の簡略化(現在:\@ OPTION:服着脱ウェイト無 ? オン # オフ \@)
+ENDIF
 
 BINPUT
 ;万一TFLAG書き換えられると変になるのでローカルに退避
@@ -1234,23 +1277,55 @@ SELECTCASE 着脱部位
 		CALL DISABLE, @"服着脱_%服着脱部位(着脱部位)%"
 		IF !RESULT
 			IF TEQUIP:対象:着脱部位
-				PRINTFORM %CSTR:対象:(着脱部位+100)%を
-				SELECTCASE TEQUIPNAME:着脱部位
-					CASE "特殊"
-						PRINTFORML \@ 対象 == TARGET ? 奪った # 取った \@
-					CASEELSE
-						PRINTFORML \@ 対象 == TARGET ? 脱がした # 脱いだ \@
-				ENDSELECT
+				IF LANGUAGE == "ENG"
+					SELECTCASE TEQUIPNAME:着脱部位
+						CASE "特殊"
+							PRINTFORM \@ 対象 == TARGET ? Took # Removed \@ 
+						CASEELSE
+							PRINT Took 
+					ENDSELECT
+					PRINTFORM %I18N(CSTR:対象:(着脱部位+100))% 
+					SELECTCASE TEQUIPNAME:着脱部位
+						CASE "特殊"
+							PRINTFORML \@ 対象 == TARGET ? away # \@ 
+						CASEELSE
+							PRINTL off
+					ENDSELECT
+				ELSE
+					PRINTFORM %CSTR:対象:(着脱部位+100)%を
+					SELECTCASE TEQUIPNAME:着脱部位
+						CASE "特殊"
+							PRINTFORML \@ 対象 == TARGET ? 奪った # 取った \@
+						CASEELSE
+							PRINTFORML \@ 対象 == TARGET ? 脱がした # 脱いだ \@
+					ENDSELECT
+				ENDIF
 			ELSE
-				PRINTFORM %CSTR:対象:(着脱部位+100)%を
-				SELECTCASE TEQUIPNAME:着脱部位
-					CASE "特殊"
-						PRINTFORML \@ 対象 == TARGET ? 返した # 身につけた \@
-					CASE "下半身下着", "足元"
-						PRINTFORML \@ 対象 == TARGET ? 穿かせた # 穿いた \@
-					CASEELSE
-						PRINTFORML \@ 対象 == TARGET ? 着せた # 着た \@
-				ENDSELECT
+				IF LANGUAGE == "ENG"
+					SELECTCASE TEQUIPNAME:着脱部位
+						CASE "特殊"
+							PRINTFORM \@ 対象 == TARGET ? Returned # Put \@ 
+						CASEELSE
+							PRINTFORM Put 
+					ENDSELECT
+					PRINTFORM %I18N(CSTR:対象:(着脱部位+100))% 
+					SELECTCASE TEQUIPNAME:着脱部位
+						CASE "特殊"
+							PRINTFORML \@ 対象 == TARGET ? # on \@ 
+						CASEELSE
+							PRINTFORML on 
+					ENDSELECT
+				ELSE
+					PRINTFORM %CSTR:対象:(着脱部位+100)%を
+					SELECTCASE TEQUIPNAME:着脱部位
+						CASE "特殊"
+							PRINTFORML \@ 対象 == TARGET ? 返した # 身につけた \@
+						CASE "下半身下着", "足元"
+							PRINTFORML \@ 対象 == TARGET ? 穿かせた # 穿いた \@
+						CASEELSE
+							PRINTFORML \@ 対象 == TARGET ? 着せた # 着た \@
+					ENDSELECT
+				ENDIF
 			ENDIF
 			INVERTBIT TEQUIP:対象:着脱部位, 0
 			SIF !OPTION:服着脱ウェイト無
@@ -1270,7 +1345,11 @@ SELECTCASE 着脱部位
 			ENDIF
 		NEXT
 		IF GETBIT(DISABLE判定, 1)
-			PRINTFORML 服を\@ GETBIT(DISABLE判定, 0) ? 一部を除き # すべて \@\@ 対象 == TARGET ? 脱がせました # 脱ぎました \@
+			IF LANGUAGE == "ENG"
+				PRINTFORML Took \@ GETBIT(DISABLE判定, 0) ? most # all \@ clothes off
+			ELSE
+				PRINTFORML 服を\@ GETBIT(DISABLE判定, 0) ? 一部を除き # すべて \@\@ 対象 == TARGET ? 脱がせました # 脱ぎました \@
+			ENDIF
 			SIF !OPTION:服着脱ウェイト無
 				WAIT
 		ENDIF
@@ -1288,7 +1367,11 @@ SELECTCASE 着脱部位
 			ENDIF
 		NEXT
 		IF GETBIT(DISABLE判定, 1)
-			PRINTFORML 服を\@ GETBIT(DISABLE判定, 0) ? 一部を除き # すべて \@\@ 対象 == TARGET ? 着せました # 着ました \@
+			IF LANGUAGE == "ENG"
+				PRINTFORML Put \@ GETBIT(DISABLE判定, 0) ? most # all \@ clothes on
+			ELSE
+				PRINTFORML 服を\@ GETBIT(DISABLE判定, 0) ? 一部を除き # すべて \@\@ 対象 == TARGET ? 着せました # 着ました \@
+			ENDIF
 			SIF !OPTION:服着脱ウェイト無
 				WAIT
 		ENDIF
